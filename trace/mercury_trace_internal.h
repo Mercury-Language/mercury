@@ -10,7 +10,7 @@
 #include "mercury_conf.h"	/* for MR_USE_DECLARATIVE_DEBUGGER */
 #include "mercury_types.h"	/* for MR_Code */
 #include "mercury_trace.h"	/* for MR_Event_Info, etc. */
-#include "mercury_std.h"	/* for bool */
+#include "mercury_std.h"	/* for MR_bool */
 
 #include <stdio.h>		/* for FILE */
 
@@ -44,7 +44,7 @@ extern	MR_Trace_Mode	MR_trace_decl_mode;
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 extern	MR_Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
-			bool interactive, MR_Event_Info *event_info);
+			MR_bool interactive, MR_Event_Info *event_info);
 
 
 extern	MR_Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,

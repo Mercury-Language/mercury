@@ -23,7 +23,7 @@
 #include <stddef.h>		/* for size_t */
 
 #include "mercury_types.h"	/* for MR_Word */
-#include "mercury_std.h"	/* for bool */
+#include "mercury_std.h"	/* for MR_bool */
 #include "mercury_conf.h"	/* for MR_CONSERVATIVE_GC, etc. */
 #ifdef MR_CONSERVATIVE_GC
   #include "gc.h"		/* for GC_FREE */

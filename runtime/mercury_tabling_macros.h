@@ -20,7 +20,7 @@
 	MR_table_type((table), (type_info), (value))
 
 #define MR_RAW_TABLE_TAG(table, tag)					\
-	MR_int_fix_index_lookup_or_add((table), 1 << TAGBITS, (tag))
+	MR_int_fix_index_lookup_or_add((table), 1 << MR_TAGBITS, (tag))
 
 #define MR_RAW_TABLE_ENUM(table, range, value)				\
 	MR_int_fix_index_lookup_or_add((table), (range), (value))

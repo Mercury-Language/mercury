@@ -16,7 +16,7 @@
 #include "mercury_layout_util.h"
 
 static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn,
-	MR_Closure *closure, bool *succeeded);
+	MR_Closure *closure, MR_bool *succeeded);
 
 void
 MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
@@ -83,7 +83,7 @@ MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 	tvar_locns = label_layout->MR_sll_tvars;
 	if (tvar_locns != NULL) {
 		MR_TypeInfoParams	type_params;
-		bool			succeeded;
+		MR_bool			succeeded;
 		MR_Integer		count;
 		int			i;
 
@@ -120,7 +120,7 @@ MR_materialize_closure_typeinfos(const MR_Type_Param_Locns *tvar_locns,
 {
 	if (tvar_locns != NULL) {
 		MR_TypeInfoParams	type_params;
-		bool			succeeded;
+		MR_bool			succeeded;
 		MR_Integer		count;
 		int			i;
 
@@ -170,13 +170,13 @@ MR_get_register_number_short(MR_Short_Lval locn)
 }
 
 #ifdef	MR_DEBUG_LVAL_REP
-  #define MR_print_locn TRUE
+  #define MR_print_locn MR_TRUE
 #else
-  #define MR_print_locn FALSE
+  #define MR_print_locn MR_FALSE
 #endif
 
 MR_Word
-MR_lookup_long_lval(MR_Long_Lval locn, MR_Word *saved_regs, bool *succeeded)
+MR_lookup_long_lval(MR_Long_Lval locn, MR_Word *saved_regs, MR_bool *succeeded)
 {
 	return MR_lookup_long_lval_base(locn, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
@@ -185,7 +185,7 @@ MR_lookup_long_lval(MR_Long_Lval locn, MR_Word *saved_regs, bool *succeeded)
 
 static MR_Word
 MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
-	bool *succeeded)
+	MR_bool *succeeded)
 {
 	int	locn_num;
 	int	offset;
@@ -193,7 +193,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 	MR_Word	baseaddr;
 	MR_Word	sublocn;
 
-	*succeeded = FALSE;
+	*succeeded = MR_FALSE;
 	value = 0;
 
 	locn_num = (int) MR_LONG_LVAL_NUMBER(locn);
@@ -205,7 +205,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 			if (locn_num <= closure->MR_closure_num_hidden_args) {
 				value = closure->
 					MR_closure_hidden_args(locn_num);
-				*succeeded = TRUE;
+				*succeeded = MR_TRUE;
 			}
 			break;
 
@@ -270,7 +270,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 			}
 			value = MR_typeclass_info_type_info(baseaddr,
 				offset);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_LONG_LVAL_TYPE_UNKNOWN:
@@ -291,7 +291,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 
 MR_Word
 MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
-	MR_Word *base_sp, MR_Word *base_curfr, bool *succeeded)
+	MR_Word *base_sp, MR_Word *base_curfr, MR_bool *succeeded)
 {
 	int	locn_num;
 	int	offset;
@@ -299,7 +299,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 	MR_Word	baseaddr;
 	MR_Word	sublocn;
 
-	*succeeded = FALSE;
+	*succeeded = MR_FALSE;
 	value = 0;
 
 	locn_num = (int) MR_LONG_LVAL_NUMBER(locn);
@@ -310,7 +310,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 			}
 			if (saved_regs != NULL) {
 				value = MR_saved_reg(saved_regs, locn_num);
-				*succeeded = TRUE;
+				*succeeded = MR_TRUE;
 			}
 			break;
 
@@ -325,7 +325,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 				printf("long stackvar%d\n", locn_num);
 			}
 			value = MR_based_stackvar(base_sp, locn_num);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_LONG_LVAL_TYPE_FRAMEVAR:
@@ -333,7 +333,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 				printf("long framevar%d\n", locn_num);
 			}
 			value = MR_based_framevar(base_curfr, locn_num);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_LONG_LVAL_TYPE_SUCCIP:
@@ -380,7 +380,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 			}
 			value = MR_typeclass_info_type_info(baseaddr,
 				offset);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_LONG_LVAL_TYPE_UNKNOWN:
@@ -400,7 +400,8 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 }
 
 MR_Word
-MR_lookup_short_lval(MR_Short_Lval locn, MR_Word *saved_regs, bool *succeeded)
+MR_lookup_short_lval(MR_Short_Lval locn, MR_Word *saved_regs,
+			MR_bool *succeeded)
 {
 	return MR_lookup_short_lval_base(locn, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
@@ -409,12 +410,12 @@ MR_lookup_short_lval(MR_Short_Lval locn, MR_Word *saved_regs, bool *succeeded)
 
 MR_Word
 MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
-	MR_Word *base_sp, MR_Word *base_curfr, bool *succeeded)
+	MR_Word *base_sp, MR_Word *base_curfr, MR_bool *succeeded)
 {
 	int	locn_num;
 	MR_Word	value;
 
-	*succeeded = FALSE;
+	*succeeded = MR_FALSE;
 	value = 0;
 
 	locn_num = (int) locn >> MR_SHORT_LVAL_TAGBITS;
@@ -425,7 +426,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 			}
 			if (saved_regs != NULL) {
 				value = MR_saved_reg(saved_regs, locn_num);
-				*succeeded = TRUE;
+				*succeeded = MR_TRUE;
 			}
 			break;
 
@@ -434,7 +435,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 				printf("short stackvar%d\n", locn_num);
 			}
 			value = MR_based_stackvar(base_sp, locn_num);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_SHORT_LVAL_TYPE_FRAMEVAR:
@@ -442,7 +443,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 				printf("short framevar%d\n", locn_num);
 			}
 			value = MR_based_framevar(base_curfr, locn_num);
-			*succeeded = TRUE;
+			*succeeded = MR_TRUE;
 			break;
 
 		case MR_SHORT_LVAL_TYPE_SPECIAL:
@@ -490,7 +491,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 	return value;
 }
 
-bool
+MR_bool
 MR_get_type_and_value(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_TypeInfo *type_params, MR_TypeInfo *type_info,
 	MR_Word *value)
@@ -500,13 +501,13 @@ MR_get_type_and_value(const MR_Label_Layout *label_layout, int i,
 		type_params, type_info, value);
 }
 
-bool
+MR_bool
 MR_get_type_and_value_base(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info, MR_Word *value)
 {
 	MR_PseudoTypeInfo	pseudo_type_info;
-	bool			succeeded;
+	MR_bool			succeeded;
 
 	pseudo_type_info = MR_var_pti(label_layout, i);
 	*type_info = MR_create_type_info(type_params, pseudo_type_info);
@@ -532,7 +533,7 @@ MR_get_type_and_value_base(const MR_Label_Layout *label_layout, int i,
 	return succeeded;
 }
 
-bool
+MR_bool
 MR_get_type(const MR_Label_Layout *label_layout, int i, MR_Word *saved_regs,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
@@ -541,7 +542,7 @@ MR_get_type(const MR_Label_Layout *label_layout, int i, MR_Word *saved_regs,
 		type_params, type_info);
 }
 
-bool
+MR_bool
 MR_get_type_base(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
@@ -551,7 +552,7 @@ MR_get_type_base(const MR_Label_Layout *label_layout, int i,
 	pseudo_type_info = MR_var_pti(label_layout, i);
 	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 	
-	return TRUE;
+	return MR_TRUE;
 }
 
 void

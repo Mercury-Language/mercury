@@ -882,7 +882,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 		%	model_semi goal:
 		%		<Goal, Goals>
 		% 	===>
-		%		bool succeeded;
+		%		MR_bool succeeded;
 		%
 		%		<succeeded = Goal>;
 		%		if (succeeded) {
@@ -1742,7 +1742,7 @@ ml_gen_success(model_semi, Context, [SetSuccessTrue]) -->
 	% semidet succeed:
 	%	<do true>
 	% ===>
-	%	succeeded = TRUE;
+	%	succeeded = MR_TRUE;
 	%
 	ml_gen_set_success(const(true), Context, SetSuccessTrue).
 ml_gen_success(model_non, Context, [CallCont]) -->
@@ -1764,7 +1764,7 @@ ml_gen_failure(model_semi, Context, [SetSuccessFalse]) -->
 	% semidet fail:
 	%	<do fail>
 	% ===>
-	%	succeeded = FALSE;
+	%	succeeded = MR_FALSE;
 	%
 	ml_gen_set_success(const(false), Context, SetSuccessFalse).
 ml_gen_failure(model_non, _, MLDS_Statements) -->

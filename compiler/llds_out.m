@@ -572,11 +572,11 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	output_init_name(ModuleName),
 	io__write_string("init(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tstatic MR_bool done = MR_FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
 	io__write_string("\t\treturn;\n"),
 	io__write_string("\t}\n"),
-	io__write_string("\tdone = TRUE;\n"),
+	io__write_string("\tdone = MR_TRUE;\n"),
 
 	output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
 		"always", 0),
@@ -605,11 +605,11 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	output_init_name(ModuleName),
 	io__write_string("init_type_tables(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tstatic MR_bool done = MR_FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
 	io__write_string("\t\treturn;\n"),
 	io__write_string("\t}\n"),
-	io__write_string("\tdone = TRUE;\n"),
+	io__write_string("\tdone = MR_TRUE;\n"),
 	output_type_tables_init_list(Datas, SplitFiles),
 	io__write_string("}\n\n"),
 
@@ -619,11 +619,11 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 	output_init_name(ModuleName),
 	io__write_string("init_debugger(void)\n"),
 	io__write_string("{\n"),
-	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tstatic MR_bool done = MR_FALSE;\n"),
 	io__write_string("\tif (done) {\n"),
 	io__write_string("\t\treturn;\n"),
 	io__write_string("\t}\n"),
-	io__write_string("\tdone = TRUE;\n"),
+	io__write_string("\tdone = MR_TRUE;\n"),
 	output_debugger_init_list(Datas),
 	io__write_string("}\n\n"),
 
@@ -3987,12 +3987,10 @@ output_rval_const(multi_string_const(Length, String)) -->
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
-% XXX we should consider using MR_TRUE and MR_FALSE
-% rather than TRUE and FALSE
 output_rval_const(true) -->
-	io__write_string("TRUE").
+	io__write_string("MR_TRUE").
 output_rval_const(false) -->
-	io__write_string("FALSE").
+	io__write_string("MR_FALSE").
 output_rval_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
 output_rval_const(data_addr_const(DataAddr)) -->
@@ -4065,12 +4063,10 @@ output_rval_static_const(multi_string_const(Length, String)) -->
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
-% XXX we should consider using MR_TRUE and MR_FALSE
-% rather than TRUE and FALSE
 output_rval_static_const(true) -->
-	io__write_string("TRUE").
+	io__write_string("MR_TRUE").
 output_rval_static_const(false) -->
-	io__write_string("FALSE").
+	io__write_string("MR_FALSE").
 output_rval_static_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
 output_rval_static_const(data_addr_const(DataAddr)) -->

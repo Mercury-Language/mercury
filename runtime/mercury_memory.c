@@ -92,7 +92,7 @@
 /*---------------------------------------------------------------------------*/
 
 #ifdef	MR_HAVE_SIGINFO
-  static	bool	try_munprotect(void *address, void *context);
+  static	MR_bool	try_munprotect(void *address, void *context);
   static	char	*explain_context(void *context);
 #endif /* MR_HAVE_SIGINFO */
 
@@ -113,12 +113,12 @@ size_t		MR_page_size;
 void 
 MR_init_memory(void)
 {
-	static bool already_initialized = FALSE;
+	static MR_bool already_initialized = MR_FALSE;
 
-	if (already_initialized != FALSE)
+	if (already_initialized != MR_FALSE)
 		return;
 
-	already_initialized = TRUE;
+	already_initialized = MR_TRUE;
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -126,7 +126,7 @@ MR_init_memory(void)
 	*/
 
 	MR_page_size = getpagesize();
-	MR_unit = max(MR_page_size, MR_pcache_size);
+	MR_unit = MR_max(MR_page_size, MR_pcache_size);
 
 #ifdef MR_CONSERVATIVE_GC
 	MR_heap_size		 = 0;

@@ -53,9 +53,9 @@ typedef struct {
 	char				*MR_var_fullname;
 	char				*MR_var_basename;
 	int				MR_var_num_suffix;
-	bool				MR_var_has_suffix;
-	bool				MR_var_is_headvar;
-	bool				MR_var_is_ambiguous;
+	MR_bool				MR_var_has_suffix;
+	MR_bool				MR_var_is_headvar;
+	MR_bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
 	MR_TypeInfo			MR_var_type;
 	MR_Word				MR_var_value;
@@ -107,7 +107,7 @@ typedef struct {
 	MR_Var_Details		*MR_point_vars;
 } MR_Point;
 
-static	bool		MR_trace_type_is_ignored(
+static	MR_bool		MR_trace_type_is_ignored(
 				MR_PseudoTypeInfo pseudo_type_info);
 static	int		MR_trace_compare_var_details(const void *arg1,
 				const void *arg2);
@@ -115,7 +115,8 @@ static	const char *	MR_trace_browse_one_path(FILE *out,
 				MR_Var_Spec var_spec, char *path,
 				MR_Browser browser,
 				MR_Browse_Caller_Type caller,
-				MR_Browse_Format format, bool must_be_unique);
+				MR_Browse_Format format,
+				MR_bool must_be_unique);
 static	char *		MR_trace_browse_var(FILE *out, MR_Var_Details *var,
 				char *path, MR_Browser browser,
 				MR_Browse_Caller_Type caller,
@@ -210,7 +211,7 @@ MR_trace_ignored_type_ctors[] =
 	NULL
 };
 
-static bool
+static MR_bool
 MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 {
 	MR_TypeCtorInfo	type_ctor_info;
@@ -218,7 +219,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 	int		i;
 
 	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	type_ctor_info =
@@ -228,11 +229,11 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 
 	for (i = 0; i < ignore_type_ctor_count; i++) {
 		if (type_ctor_info == MR_trace_ignored_type_ctors[i]) {
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }
 
 void
@@ -397,7 +398,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 		}
 
 		name = string_table + offset;
-		if (name == NULL || streq(name, "")) {
+		if (name == NULL || MR_streq(name, "")) {
 			/* this value is a compiler-generated variable */
 			continue;
 		}
@@ -431,7 +432,8 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 		}
 
 		if (s == copy + copylen - 1) {
-			MR_point.MR_point_vars[slot].MR_var_has_suffix = FALSE;
+			MR_point.MR_point_vars[slot].MR_var_has_suffix =
+						MR_FALSE;
 			/* num_suffix should not be used */
 			MR_point.MR_point_vars[slot].MR_var_num_suffix = -1;
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
@@ -441,22 +443,25 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 					"variable name starts with digit");
 			}
 
-			MR_point.MR_point_vars[slot].MR_var_has_suffix = TRUE;
+			MR_point.MR_point_vars[slot].MR_var_has_suffix =
+						MR_TRUE;
 			MR_point.MR_point_vars[slot].MR_var_num_suffix
 				= atoi(s + 1);
 			*(s + 1) = '\0';
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
 		}
 
-		if (streq(MR_point.MR_point_vars[slot].MR_var_basename,
+		if (MR_streq(MR_point.MR_point_vars[slot].MR_var_basename,
 			"HeadVar__"))
 		{
-			MR_point.MR_point_vars[slot].MR_var_is_headvar = TRUE;
+			MR_point.MR_point_vars[slot].MR_var_is_headvar =
+						MR_TRUE;
 		} else {
-			MR_point.MR_point_vars[slot].MR_var_is_headvar = FALSE;
+			MR_point.MR_point_vars[slot].MR_var_is_headvar =
+						MR_FALSE;
 		}
 
-		MR_point.MR_point_vars[slot].MR_var_is_ambiguous = FALSE;
+		MR_point.MR_point_vars[slot].MR_var_is_ambiguous = MR_FALSE;
 		slot++;
 	}
 
@@ -480,13 +485,14 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 				&MR_point.MR_point_vars[i],
 				sizeof(MR_Var_Details));
 
-			if (streq(MR_point.MR_point_vars[slot].MR_var_fullname,
+			if (MR_streq(
+				MR_point.MR_point_vars[slot].MR_var_fullname,
 				MR_point.MR_point_vars[slot-1].MR_var_fullname))
 			{
 				MR_point.MR_point_vars[slot - 1].
-					MR_var_is_ambiguous = TRUE;
+					MR_var_is_ambiguous = MR_TRUE;
 				MR_point.MR_point_vars[slot].
-					MR_var_is_ambiguous = TRUE;
+					MR_var_is_ambiguous = MR_TRUE;
 			}
 
 			slot++;
@@ -752,7 +758,7 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
 const char *
 MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 	MR_Browse_Caller_Type caller, MR_Browse_Format format,
-	bool must_be_unique)
+	MR_bool must_be_unique)
 {
 	MR_Var_Spec	var_spec;
 	char		*path;
@@ -810,7 +816,7 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
 const char *
 MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 	MR_Browse_Caller_Type caller, MR_Browse_Format format,
-	bool must_be_unique)
+	MR_bool must_be_unique)
 {
 	return MR_trace_browse_one_path(out, var_spec, NULL, browser,
 		caller, format, must_be_unique);
@@ -819,10 +825,10 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 static const char *
 MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 	MR_Browser browser, MR_Browse_Caller_Type caller,
-	MR_Browse_Format format, bool must_be_unique)
+	MR_Browse_Format format, MR_bool must_be_unique)
 {
 	int		i;
-	bool		found;
+	MR_bool		found;
 	const char	*problem;
 	char		*bad_path;
 
@@ -847,12 +853,12 @@ MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 			return MR_trace_bad_path(bad_path);
 		}
 	} else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
-		found = FALSE;
+		found = MR_FALSE;
 		for (i = 0; i < MR_point.MR_point_var_count; i++) {
-			if (streq(var_spec.MR_var_spec_name,
+			if (MR_streq(var_spec.MR_var_spec_name,
 				MR_point.MR_point_vars[i].MR_var_fullname))
 			{
-				found = TRUE;
+				found = MR_TRUE;
 				break;
 			}
 		}
@@ -880,7 +886,7 @@ MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
 
 				i++;
 			} while (i < MR_point.MR_point_var_count &&
-				streq(var_spec.MR_var_spec_name,
+				MR_streq(var_spec.MR_var_spec_name,
 				MR_point.MR_point_vars[i].MR_var_fullname));
 
 			if (success_count == 0) {

@@ -475,9 +475,9 @@ close(handle(Handle), Result) -->
 :- pred high_level_code is semidet.
 :- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
 #ifdef MR_HIGHLEVEL_CODE
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #else
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 

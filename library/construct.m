@@ -110,7 +110,7 @@
     MR_TypeInfo         type_info;
     MR_Construct_Info   construct_info;
     int                 arity;
-    bool                success;
+    MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
 
@@ -191,7 +191,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     MR_TypeInfo         type_info;
     MR_Construct_Info   construct_info;
     int                 arity;
-    bool                success;
+    MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
 
@@ -244,7 +244,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	mercury::runtime::Errors::SORRY(""foreign code for get_functor_2"");
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 ").
 
 :- pragma foreign_proc("C", 
@@ -253,7 +253,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 "{
     MR_TypeInfo         type_info;
     MR_Construct_Info   construct_info;
-    bool                success;
+    MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
 
@@ -294,7 +294,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
             break;
 
         default:
-            success = FALSE;
+            success = MR_FALSE;
 
         }
     }
@@ -309,7 +309,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     MR_TypeCtorInfo     type_ctor_info;
     MR_Word             new_data;
     MR_Construct_Info   construct_info;
-    bool                success;
+    MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
 

@@ -35,7 +35,7 @@
   #define MR_file(mf)		(mf).file1
   #define MR_line_number(mf)	(mf).line_number1
 
-  #define MR_IS_FILE_STREAM(mf)	( TRUE )
+  #define MR_IS_FILE_STREAM(mf)	( MR_TRUE )
 
   #define MR_MERCURYFILE_INIT(file, line_number)		\
   		{ (file), (line_number) }

@@ -41,14 +41,14 @@
 /*
 ** Are we using PIC?
 */
-#if (defined(__PIC__) || defined(__pic__)) && !defined(PIC)
-  #define PIC 1
+#if (defined(__PIC__) || defined(__pic__)) && !defined(MR_PIC)
+  #define MR_PIC 1
 #endif
 
 /*
 ** Should we keep the GOT register (ebx) free for PIC code?
 */
-#if PIC && !defined(MR_PIC_REG)
+#if MR_PIC && !defined(MR_PIC_REG)
   #define MR_PIC_REG 1
 #endif
 

@@ -420,27 +420,27 @@
 %
 % Phase UNINIT consists of Mercury code executed prior to the first debugger
 % event. Even if main/2 is traced, this will include the initialization of the
-% I/O system itself. During this phase, MR_io_tabling_enabled will be FALSE.
+% I/O system itself. During this phase, MR_io_tabling_enabled will be MR_FALSE.
 %
 % Phase BEFORE consists of Mercury code during whose execution the user does
 % not need safe retry across I/O, probably because he/she does not require
-% retry at all. During this phase, MR_io_tabling_enabled will be TRUE while
-% we ensure that table_io_range returns FALSE by setting MR_io_tabling_start
+% retry at all. During this phase, MR_io_tabling_enabled will be MR_TRUE while
+% we ensure that table_io_range returns MR_FALSE by setting MR_io_tabling_start
 % to the highest possible value.
 %
 % Phase DURING consists of Mercury code during whose execution the user does
 % need safe retry across I/O. During this phase, MR_io_tabling_enabled will be
-% TRUE, and MR_io_tabling_start will be set to the value of
+% MR_TRUE, and MR_io_tabling_start will be set to the value of
 % MR_io_tabling_counter on entry to phase DURING. We will ensure that
-% table_io_in_range returns TRUE by setting MR_io_tabling_end to the highest
+% table_io_in_range returns MR_TRUE by setting MR_io_tabling_end to the highest
 % possible value.
 %
 % Phase AFTER again consists of Mercury code during whose execution the user
 % does not need safe retry across I/O. During this phase, MR_io_tabling_enabled
-% will be TRUE, MR_io_tabling_start will contain the value of
+% will be MR_TRUE, MR_io_tabling_start will contain the value of
 % MR_io_tabling_counter at the time of the entry to phase DURING, while
 % MR_io_tabling_end will contain the value of MR_io_tabling_counter at the end
-% of phase DURING, thus ensuring that table_io_in_range again returns FALSE.
+% of phase DURING, thus ensuring that table_io_in_range again returns MR_FALSE.
 %
 % The transition from phase UNINIT to phase BEFORE will occur during the
 % initialization of the debugger, at the first trace event.
@@ -453,7 +453,7 @@
 % phase AFTER if the user never gives the commands that start those phases.
 %
 % The debugger itself invokes Mercury code e.g. to print the values of
-% variables. During such calls it will set MR_io_tabling_enabled to FALSE,
+% variables. During such calls it will set MR_io_tabling_enabled to MR_FALSE,
 % since the I/O actions executed during such times do not belong to the user
 % program.
 
@@ -480,12 +480,12 @@
 					MR_io_tabling_counter;
 			}
 
-			SUCCESS_INDICATOR = TRUE;
+			SUCCESS_INDICATOR = MR_TRUE;
 		} else {
-			SUCCESS_INDICATOR = FALSE;
+			SUCCESS_INDICATOR = MR_FALSE;
 		}
 	} else {
-		SUCCESS_INDICATOR = FALSE;
+		SUCCESS_INDICATOR = MR_FALSE;
 	}
 ").
 
@@ -753,7 +753,7 @@ XXX :- external stops us from using this
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
 	MR_TrieNode	table;
-	bool		is_new_answer;
+	MR_bool		is_new_answer;
 
 	table = (MR_TrieNode) T;
 
@@ -870,11 +870,11 @@ table_nondet_return_all_ans_2(CurNode0, Answer) :-
 
 	cur_node0 = (MR_AnswerList *) CurNode0;
 	if (cur_node0 == NULL) {
-		SUCCESS_INDICATOR = FALSE;
+		SUCCESS_INDICATOR = MR_FALSE;
 		} else {
 		AnswerBlock = (MR_Word) &cur_node0->answer_data;
 		CurNode = (MR_Word) cur_node0->next_answer;
-		SUCCESS_INDICATOR = TRUE;
+		SUCCESS_INDICATOR = MR_TRUE;
 		}
 #else
 		MR_fatal_error(""minimal model code entered when not enabled"");

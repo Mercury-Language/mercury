@@ -134,7 +134,8 @@ extern	const char	*MR_trace_browse_one_goal(FILE *out,
 extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
 				MR_Browser browser,
 				MR_Browse_Caller_Type caller,
-				MR_Browse_Format format, bool must_be_unique);
+				MR_Browse_Format format,
+				MR_bool must_be_unique);
 
 /*
 ** Print the (names and) values of the specified variables.
@@ -147,7 +148,8 @@ extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
 extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
 				MR_Browser browser,
 				MR_Browse_Caller_Type caller,
-				MR_Browse_Format format, bool must_be_unique);
+				MR_Browse_Format format,
+				MR_bool must_be_unique);
 
 /*
 ** Print the list of the names and values of all variables live at the current

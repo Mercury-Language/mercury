@@ -93,7 +93,7 @@ extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 */
 
 extern	void	MR_trace_init(void);
-extern	void	MR_trace_start(bool enabled);
+extern	void	MR_trace_start(MR_bool enabled);
 extern	void	MR_trace_end(void);
 extern	void	MR_trace_final(void);
 
@@ -103,7 +103,7 @@ extern	void	MR_trace_final(void);
 ** mdb has been spawned. The window process is killed by 
 ** MR_trace_final().
 */
-extern	bool	MR_have_mdb_window;
+extern	MR_bool	MR_have_mdb_window;
 extern	pid_t	MR_mdb_window_pid;
 
 /*
@@ -123,10 +123,10 @@ typedef enum {
 } MR_Trace_Type;
 
 extern	MR_Trace_Type	MR_trace_handler;
-extern	bool		MR_trace_enabled;
+extern	MR_bool		MR_trace_enabled;
 
 extern	MR_Unsigned	MR_trace_event_number;
-extern	bool		MR_trace_from_full;
+extern	MR_bool		MR_trace_from_full;
 
 /*
 ** The details of I/O tabling are documented in library/table_builtin.m.
@@ -153,7 +153,7 @@ typedef	MR_Unsigned	MR_IoActionNum;
 extern	MR_IoTablingPhase	MR_io_tabling_phase;
 
 /* True iff I/O tabling is enabled. */
-extern	bool		MR_io_tabling_enabled;
+extern	MR_bool		MR_io_tabling_enabled;
 
 /* The root of the trie that we use for tabling I/O. */
 extern	MR_TableNode	MR_io_tabling_pointer;

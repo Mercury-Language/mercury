@@ -227,7 +227,7 @@ typedef struct {
 	MR_ConsumerList		consumer_list;	/* for the current subgoal */
 	MR_Consumer		*cur_consumer;
 	MR_AnswerList		cur_consumer_answer_list;
-	bool			changed;
+	MR_bool			changed;
 } MR_ResumeInfo;
 
 struct MR_SubgoalListNode_Struct {

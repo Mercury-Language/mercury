@@ -15,7 +15,7 @@
 #ifndef MERCURY_TRACE_UTIL_H
 #define MERCURY_TRACE_UTIL_H
 
-#include "mercury_std.h"		/* for bool        */
+#include "mercury_std.h"		/* for MR_bool        */
 #include "mercury_types.h"		/* for MR_Word etc */
 #include "mercury_library_types.h"	/* for MercuryFile */
 #include <stdio.h>			/* for FILE        */
@@ -55,10 +55,10 @@ extern	void	MR_c_file_to_mercury_file(FILE *c_file,
 /*
 ** MR_trace_is_number checks whether the given word contains a natural number,
 ** i.e. a sequence of digits. If yes, it puts the value of the number in
-** *value and returns TRUE, otherwise it returns FALSE.
+** *value and returns MR_TRUE, otherwise it returns MR_FALSE.
 */
 
-extern	bool	MR_trace_is_number(const char *word, int *value);
+extern	MR_bool	MR_trace_is_number(const char *word, int *value);
 
 /*
 ** These functions print the values of sets of Mercury abstract machine

@@ -22,7 +22,7 @@
 
 #include <setjmp.h>
 
-#include "mercury_std.h"		/* for `bool' */
+#include "mercury_std.h"		/* for `MR_bool' */
 #include "mercury_types.h"		/* for `MR_Code *' */
 #include "mercury_goto.h"		/* for `MR_define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
@@ -34,7 +34,7 @@
 ** Global flags that control the behaviour of the Mercury engine(s)
 */
 
-extern	bool	MR_debugflag[];
+extern	MR_bool	MR_debugflag[];
 
 #define	MR_PROGFLAG		0
 #define	MR_GOTOFLAG		1
@@ -320,7 +320,7 @@ extern	void		MR_finalize_engine(MercuryEngine *engine);
 ** See the comments in mercury_engine.c for documentation on MR_call_engine().
 */
 extern	MR_Word		*MR_call_engine(MR_Code *entry_point,
-				bool catch_exceptions);
+				MR_bool catch_exceptions);
 extern	void		MR_terminate_engine(void);
 extern	void		MR_dump_prev_locations(void);
 

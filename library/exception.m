@@ -684,7 +684,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 		MR_Pred pred, MR_Pred handler_pred, MR_Box *output);
 
 	/* semidet */
-	bool MR_CALL
+	MR_bool MR_CALL
 	mercury__exception__builtin_catch_3_p_1(MR_Mercury_Type_Info type_info,
 		MR_Pred pred, MR_Pred handler_pred, MR_Box *output);
 
@@ -694,7 +694,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 		MR_Pred pred, MR_Pred handler_pred, MR_Box *output);
 
 	/* cc_nondet */
-	bool MR_CALL
+	MR_bool MR_CALL
 	mercury__exception__builtin_catch_3_p_3(MR_Mercury_Type_Info type_info,
 		MR_Pred pred, MR_Pred handler_pred, MR_Box *output);
 
@@ -743,7 +743,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 	void MR_CALL mercury__exception__builtin_catch_model_det(
 		MR_Mercury_Type_Info type_info, MR_Pred pred,
 		MR_Pred handler_pred, MR_Box *output);
-	bool MR_CALL mercury__exception__builtin_catch_model_semi(
+	MR_bool MR_CALL mercury__exception__builtin_catch_model_semi(
 		MR_Mercury_Type_Info type_info, MR_Pred pred,
 		MR_Pred handler_pred, MR_Box *output);
 	void MR_CALL mercury__exception__builtin_catch_model_non(
@@ -783,7 +783,7 @@ mercury__exception__builtin_catch_3_p_0(MR_Mercury_Type_Info type_info,
 }
 
 /* semidet ==> model_semi */
-bool MR_CALL
+MR_bool MR_CALL
 mercury__exception__builtin_catch_3_p_1(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
@@ -801,7 +801,7 @@ mercury__exception__builtin_catch_3_p_2(MR_Mercury_Type_Info type_info,
 }
 
 /* cc_nondet ==> model_semi */
-bool MR_CALL
+MR_bool MR_CALL
 mercury__exception__builtin_catch_3_p_3(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
@@ -841,11 +841,11 @@ ML_call_goal_det_handcoded(MR_Mercury_Type_Info type_info,
 	(*code)((void *) closure, result);
 }
 
-static bool
+static MR_bool
 ML_call_goal_semi_handcoded(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result)
 {
-	typedef bool MR_CALL SemidetFuncType(void *, MR_Box *);
+	typedef MR_bool MR_CALL SemidetFuncType(void *, MR_Box *);
 	SemidetFuncType *code = (SemidetFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	return (*code)((void *) closure, result);
@@ -931,7 +931,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 	}
 }
 
-bool MR_CALL
+MR_bool MR_CALL
 mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
@@ -945,7 +945,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 #endif
 
 	if (setjmp(this_handler.handler) == 0) {
-		bool result = ML_call_goal_semi_handcoded(type_info, pred,
+		MR_bool result = ML_call_goal_semi_handcoded(type_info, pred,
 			output);
 		ML_exception_handler = this_handler.prev;
 		return result;
@@ -958,7 +958,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 		ML_exception_handler = this_handler.prev;
 		ML_call_handler_det_handcoded(type_info, handler_pred,
 			this_handler.exception, output);
-		return TRUE;
+		return MR_TRUE;
 	}
 }
 
@@ -1491,23 +1491,23 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
 #ifdef	MR_DEEP_PROFILING
 /* XXX the 0s are fake line numbers */
 MR_proc_static_user_ho(exception, builtin_catch, 3, 0,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 MR_proc_static_user_ho(exception, builtin_catch, 3, 1,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 MR_proc_static_user_ho(exception, builtin_catch, 3, 2,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 MR_proc_static_user_ho(exception, builtin_catch, 3, 3,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 MR_proc_static_user_ho(exception, builtin_catch, 3, 4,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 MR_proc_static_user_ho(exception, builtin_catch, 3, 5,
-	""exception.m"", 0, TRUE);
+	""exception.m"", 0, MR_TRUE);
 /*
 ** XXX Builtin_throw will eventually be able to make calls in deep profiling
 ** grades. In the meantime, we need its proc_static structure for its callers.
 */
 MR_proc_static_user_empty(exception, builtin_throw, 1, 0,
-	""exception.m"", 0, FALSE);
+	""exception.m"", 0, MR_FALSE);
 #endif
 
 MR_BEGIN_MODULE(exceptions_module)
@@ -1672,7 +1672,7 @@ MR_BEGIN_CODE
 #define	model			""[model non]""
 #define	save_results()		save_r1
 #define	restore_results()	restore_r1
-#define	version_model_non	TRUE
+#define	version_model_non	MR_TRUE
 #define	handle_ticket_on_exit()	((void) 0)
 #define	handle_ticket_on_fail()	do {					\
 					MR_prune_ticket();		\
@@ -1798,7 +1798,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 				*/
 			} else {
 				MR_dump_stack(MR_succip, MR_sp, MR_curfr,
-					FALSE);
+					MR_FALSE);
 			}
 			exit(1);
 		}
@@ -1958,7 +1958,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
 	/*
 	** If the catch was semidet, we need to set the success indicator
-	** MR_r1 to TRUE and return the result in MR_r2; otherwise, we return
+	** MR_r1 to MR_TRUE and return the result in MR_r2; otherwise, we return
 	** the result in MR_r1, which is where mercury__do_call_closure puts
 	** it, so we can do a tailcall.
 	*/
@@ -1977,7 +1977,7 @@ MR_define_label(mercury__exception__builtin_throw_1_0_i1);
 		MR_LABEL(mercury__exception__builtin_throw_1_0));
 	/* we've just returned from mercury__do_call_closure */
 	MR_r2 = MR_r1;
-	MR_r1 = TRUE;
+	MR_r1 = MR_TRUE;
 	MR_succip = (MR_Code *) MR_stackvar(1);
 	MR_decr_sp_pop_msg(1);
 	MR_proceed(); /* return to the caller of `builtin_catch' */

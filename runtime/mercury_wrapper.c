@@ -101,17 +101,17 @@ size_t		MR_pcache_size =	        8192;
 const char	*MR_mdb_in_filename = NULL;
 const char	*MR_mdb_out_filename = NULL;
 const char	*MR_mdb_err_filename = NULL;
-bool		MR_mdb_in_window = FALSE;
+MR_bool		MR_mdb_in_window = MR_FALSE;
 
 /* other options */
 
-bool		MR_check_space = FALSE;
+MR_bool		MR_check_space = MR_FALSE;
 MR_Word		*MR_watch_addr = NULL;
 MR_Word		*MR_watch_csd_addr = NULL;
 int		MR_watch_csd_ignore = 0;
 
-static	bool	benchmark_all_solns = FALSE;
-static	bool	use_own_timer = FALSE;
+static	MR_bool	benchmark_all_solns = MR_FALSE;
+static	MR_bool	use_own_timer = MR_FALSE;
 static	int	repeats = 1;
 
 static	int	MR_num_output_args = 0;
@@ -132,9 +132,9 @@ int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
 
-bool		MR_profiling = TRUE;
-bool		MR_print_deep_profiling_statistics = FALSE;
-bool		MR_deep_profiling_save_results = TRUE;
+MR_bool		MR_profiling = MR_TRUE;
+MR_bool		MR_print_deep_profiling_statistics = MR_FALSE;
+MR_bool		MR_deep_profiling_save_results = MR_TRUE;
 
 #ifdef	MR_TYPE_CTOR_STATS
 
@@ -245,7 +245,7 @@ void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer,
 		MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
 		MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
 		/* normally ML_DI_output_current (output_current/13) */
-bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+MR_bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
 		MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer,
 		MR_Word, MR_String, MR_Word);
 		/* normally ML_DI_found_match (output_current/12) */
@@ -298,7 +298,7 @@ static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
 void
 mercury_runtime_init(int argc, char **argv)
 {
-	bool	saved_trace_enabled;
+	MR_bool	saved_trace_enabled;
 
 #if MR_NUM_REAL_REGS > 0
 	MR_Word c_regs[MR_NUM_REAL_REGS];
@@ -362,7 +362,7 @@ mercury_runtime_init(int argc, char **argv)
 	*/
 
 	saved_trace_enabled = MR_trace_enabled;
-	MR_trace_enabled = FALSE;
+	MR_trace_enabled = MR_FALSE;
 
 #ifdef MR_NEED_INITIALIZATION_AT_START
 	MR_do_init_modules();
@@ -390,7 +390,7 @@ mercury_runtime_init(int argc, char **argv)
 		int i;
 		MR_init_thread_stuff();
 		MR_init_thread(MR_use_now);
-		MR_exit_now = FALSE;
+		MR_exit_now = MR_FALSE;
 		for (i = 1 ; i < MR_num_threads ; i++)
 			MR_create_thread(NULL);
 	}
@@ -470,7 +470,7 @@ MR_init_conservative_GC(void)
 	*/
 	MR_runqueue_head = NULL;
 
-	GC_quiet = TRUE;
+	GC_quiet = MR_TRUE;
 
 	/*
 	** Call GC_INIT() to tell the garbage collector about this DLL.
@@ -497,7 +497,7 @@ MR_init_conservative_GC(void)
 	{
 		int i;
 
-		for (i = 1; i < (1 << TAGBITS); i++) {
+		for (i = 1; i < (1 << MR_TAGBITS); i++) {
 			GC_REGISTER_DISPLACEMENT(i);
 		}
 	}
@@ -507,23 +507,23 @@ MR_init_conservative_GC(void)
 void 
 MR_do_init_modules(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 
 	if (! done) {
 		(*MR_address_of_init_modules)();
 		MR_close_prof_decl_file();
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }
 
 void 
 MR_do_init_modules_type_tables(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 
 	if (! done) {
 		(*MR_address_of_init_modules_type_tables)();
-		done = TRUE;
+		done = MR_TRUE;
 
 		/*
 		** Some system-defined types have the code to register
@@ -538,11 +538,11 @@ MR_do_init_modules_type_tables(void)
 void 
 MR_do_init_modules_debugger(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 
 	if (! done) {
 		(*MR_address_of_init_modules_debugger)();
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }
 
@@ -898,15 +898,15 @@ process_options(int argc, char **argv)
 
 		case 'w':
 		case MR_MDB_IN_WINDOW:
-			MR_mdb_in_window = TRUE;
+			MR_mdb_in_window = MR_TRUE;
 			break;
 
 		case 'a':
-			benchmark_all_solns = TRUE;
+			benchmark_all_solns = MR_TRUE;
 			break;
 
 		case 'c':
-			MR_check_space = TRUE;
+			MR_check_space = MR_TRUE;
 			break;
 
 		case 'C':
@@ -918,38 +918,38 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'd':	
-			if (streq(MR_optarg, "a")) {
-				MR_calldebug      = TRUE;
-				MR_nondstackdebug = TRUE;
-				MR_detstackdebug  = TRUE;
-				MR_heapdebug      = TRUE;
-				MR_gotodebug      = TRUE;
-				MR_sregdebug      = TRUE;
-				MR_finaldebug     = TRUE;
-				MR_tracedebug     = TRUE;
+			if (MR_streq(MR_optarg, "a")) {
+				MR_calldebug      = MR_TRUE;
+				MR_nondstackdebug = MR_TRUE;
+				MR_detstackdebug  = MR_TRUE;
+				MR_heapdebug      = MR_TRUE;
+				MR_gotodebug      = MR_TRUE;
+				MR_sregdebug      = MR_TRUE;
+				MR_finaldebug     = MR_TRUE;
+				MR_tracedebug     = MR_TRUE;
 #ifdef MR_CONSERVATIVE_GC
-				GC_quiet = FALSE;
+				GC_quiet = MR_FALSE;
 #endif
-			} else if (streq(MR_optarg, "b")) {
-				MR_nondstackdebug = TRUE;
-			} else if (streq(MR_optarg, "c")) {
-				MR_calldebug    = TRUE;
-			} else if (streq(MR_optarg, "d")) {
-				MR_detaildebug  = TRUE;
-			} else if (streq(MR_optarg, "f")) {
-				MR_finaldebug   = TRUE;
-			} else if (streq(MR_optarg, "g")) {
-				MR_gotodebug    = TRUE;
-			} else if (streq(MR_optarg, "G")) {
+			} else if (MR_streq(MR_optarg, "b")) {
+				MR_nondstackdebug = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "c")) {
+				MR_calldebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "d")) {
+				MR_detaildebug  = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "f")) {
+				MR_finaldebug   = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "g")) {
+				MR_gotodebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "G")) {
 #ifdef MR_CONSERVATIVE_GC
-				GC_quiet = FALSE;
+				GC_quiet = MR_FALSE;
 #else
 				; /* ignore inapplicable option */
 #endif
-			} else if (streq(MR_optarg, "h")) {
-				MR_heapdebug    = TRUE;
-			} else if (streq(MR_optarg, "H")) {
-				MR_hashdebug    = TRUE;
+			} else if (MR_streq(MR_optarg, "h")) {
+				MR_heapdebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "H")) {
+				MR_hashdebug    = MR_TRUE;
 			} else if (MR_optarg[0] == 'I') {
 				int	ignore;
 
@@ -958,22 +958,22 @@ process_options(int argc, char **argv)
 				}
 
 				MR_watch_csd_ignore = ignore;
-			} else if (streq(MR_optarg, "m")) {
-				MR_memdebug     = TRUE;
-			} else if (streq(MR_optarg, "p")) {
-				MR_progdebug    = TRUE;
-			} else if (streq(MR_optarg, "r")) {
-				MR_sregdebug    = TRUE;
-			} else if (streq(MR_optarg, "s")) {
-				MR_detstackdebug  = TRUE;
-			} else if (streq(MR_optarg, "S")) {
-				MR_tablestackdebug = TRUE;
-			} else if (streq(MR_optarg, "t")) {
-				MR_tracedebug   = TRUE;
-			} else if (streq(MR_optarg, "T")) {
-				MR_tabledebug   = TRUE;
-			} else if (streq(MR_optarg, "u")) {
-				MR_unbufdebug   = TRUE;
+			} else if (MR_streq(MR_optarg, "m")) {
+				MR_memdebug     = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "p")) {
+				MR_progdebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "r")) {
+				MR_sregdebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "s")) {
+				MR_detstackdebug  = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "S")) {
+				MR_tablestackdebug = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "t")) {
+				MR_tracedebug   = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "T")) {
+				MR_tabledebug   = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "u")) {
+				MR_unbufdebug   = MR_TRUE;
 			} else if (MR_optarg[0] == 'w' || MR_optarg[0] == 'W')
 			{
 				long	addr;
@@ -1002,16 +1002,16 @@ process_options(int argc, char **argv)
 				usage();
 			}
 
-			use_own_timer = FALSE;
+			use_own_timer = MR_FALSE;
 			break;
 
 		case 'D':
-			MR_trace_enabled = TRUE;
+			MR_trace_enabled = MR_TRUE;
 
-			if (streq(MR_optarg, "i"))
+			if (MR_streq(MR_optarg, "i"))
 				MR_trace_handler = MR_TRACE_INTERNAL;
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
-			else if (streq(MR_optarg, "e"))
+			else if (MR_streq(MR_optarg, "e"))
 				MR_trace_handler = MR_TRACE_EXTERNAL;
 #endif
 
@@ -1021,7 +1021,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'p':
-			MR_profiling = FALSE;
+			MR_profiling = MR_FALSE;
 			break;
 
 		case 'P':
@@ -1042,31 +1042,31 @@ process_options(int argc, char **argv)
 			break;
 
 		case 's':	
-			MR_deep_profiling_save_results = FALSE;
+			MR_deep_profiling_save_results = MR_FALSE;
 			break;
 
 		case 'S':	
-			MR_print_deep_profiling_statistics = TRUE;
+			MR_print_deep_profiling_statistics = MR_TRUE;
 			break;
 
 		case 't':	
-			use_own_timer = TRUE;
+			use_own_timer = MR_TRUE;
 
-			MR_calldebug      = FALSE;
-			MR_nondstackdebug = FALSE;
-			MR_detstackdebug  = FALSE;
-			MR_heapdebug      = FALSE;
-			MR_gotodebug      = FALSE;
-			MR_sregdebug      = FALSE;
-			MR_finaldebug     = FALSE;
+			MR_calldebug      = MR_FALSE;
+			MR_nondstackdebug = MR_FALSE;
+			MR_detstackdebug  = MR_FALSE;
+			MR_heapdebug      = MR_FALSE;
+			MR_gotodebug      = MR_FALSE;
+			MR_sregdebug      = MR_FALSE;
+			MR_finaldebug     = MR_FALSE;
 			break;
 
 		case 'T':
-			if (streq(MR_optarg, "r")) {
+			if (MR_streq(MR_optarg, "r")) {
 				MR_time_profile_method = MR_profile_real_time;
-			} else if (streq(MR_optarg, "v")) {
+			} else if (MR_streq(MR_optarg, "v")) {
 				MR_time_profile_method = MR_profile_user_time;
-			} else if (streq(MR_optarg, "p")) {
+			} else if (MR_streq(MR_optarg, "p")) {
 				MR_time_profile_method =
 					MR_profile_user_plus_system_time;
 			} else {
@@ -1076,7 +1076,7 @@ process_options(int argc, char **argv)
 
 		case 'x':
 #ifdef MR_CONSERVATIVE_GC
-			GC_dont_gc = TRUE;
+			GC_dont_gc = MR_TRUE;
 #endif
 
 			break;
@@ -1198,7 +1198,7 @@ mercury_runtime_main(void)
 		MR_do_interpreter();
 #else
 		MR_debugmsg0("About to call engine\n");
-		(void) MR_call_engine(MR_ENTRY(MR_do_interpreter), FALSE);
+		(void) MR_call_engine(MR_ENTRY(MR_do_interpreter), MR_FALSE);
 		MR_debugmsg0("Returning from MR_call_engine()\n");
 #endif
 
@@ -1643,7 +1643,7 @@ mercury_runtime_terminate(void)
 
 #ifndef MR_HIGHLEVEL_CODE
   #ifdef MR_THREAD_SAFE
-	MR_exit_now = TRUE;
+	MR_exit_now = MR_TRUE;
 	pthread_cond_broadcast(MR_runqueue_cond);
   #endif
 #endif

@@ -86,10 +86,11 @@
 	do {								    \
 		if ((slot) >= base##_max) {				    \
 			if (base##_max == 0) {				    \
-				base##_max = max((init), (slot) + 1);	    \
-				base##s = MR_NEW_ARRAY(type, base##_max); \
+				base##_max = MR_max((init), (slot) + 1);    \
+				base##s = MR_NEW_ARRAY(type, base##_max);   \
 			} else {					    \
-				base##_max = max(base##_max * 2, (slot) + 1); \
+				base##_max = MR_max(base##_max * 2,         \
+						(slot) + 1);                \
 				base##s = MR_RESIZE_ARRAY(base##s, type,    \
 						base##_max);		    \
 			}						    \
@@ -107,11 +108,12 @@
 	do {								      \
 		if ((slot) >= base##_max) {				      \
 			if (base##_max == 0) {				      \
-				base##_max = max((init), (slot) + 1);	      \
+				base##_max = MR_max((init), (slot) + 1);      \
 				base##s1 = MR_NEW_ARRAY(type,	base##_max);  \
 				base##s2 = MR_NEW_ARRAY(type,	base##_max);  \
 			} else {					      \
-				base##_max = max(base##_max * 2, (slot) + 1); \
+				base##_max = MR_max(base##_max * 2,           \
+						(slot) + 1);                  \
 				base##s1 = MR_RESIZE_ARRAY(base##s1, type,    \
 						base##_max);		      \
 				base##s2 = MR_RESIZE_ARRAY(base##s2, type,    \
@@ -121,12 +123,12 @@
 	} while(0)
 
 /*
-** MR_bsearch(int next, int& element, bool& found, COMPARE)
+** MR_bsearch(int next, int& element, MR_bool& found, COMPARE)
 **
 ** Given a sorted array, this macro performs a binary search.
 ** If the search is successful, MR_bsearch sets the `found' parameter
-** to TRUE and the `element' parameter to the index of the desired item.
-** If the search is unsuccessful, MR_bsearch sets `found' to FALSE;
+** to MR_TRUE and the `element' parameter to the index of the desired item.
+** If the search is unsuccessful, MR_bsearch sets `found' to MR_FALSE;
 ** `element' will be clobbered.
 **
 ** The number of the elements in the array is given by the `next' parameter.
@@ -154,12 +156,12 @@
 		(element) = 0;						\
 		lo = 0;							\
 		hi = (next) - 1;					\
-		(found) = FALSE;					\
+		(found) = MR_FALSE;					\
 		while (lo <= hi) {					\
 			(element) = (lo + hi) / 2;			\
 			diff = (COMPARE);				\
 			if (diff == 0) {				\
-				(found) = TRUE;				\
+				(found) = MR_TRUE;			\
 				break;					\
 			} else if (diff < 0) {				\
 				lo = (element) + 1;			\

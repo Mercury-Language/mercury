@@ -57,6 +57,10 @@ typedef signed char			MR_int_least8_t;
 typedef	MR_uintptr_t		MR_Word;
 typedef	MR_intptr_t		MR_Integer;
 typedef	MR_uintptr_t		MR_Unsigned;
+/*
+** MR_Bool is the C representation for the Mercury type bool__bool.
+** For ordinary booleans, use MR_bool in mercury_std.h.
+*/
 typedef	MR_intptr_t		MR_Bool;
 
 /*

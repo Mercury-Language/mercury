@@ -127,11 +127,11 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 		}
 
 		if (line == NULL) {
-			SUCCESS_INDICATOR = FALSE;
+			SUCCESS_INDICATOR = MR_FALSE;
 		} else {
 			MR_make_aligned_string_copy(Line, line);
 			MR_free(line);
-			SUCCESS_INDICATOR = TRUE;
+			SUCCESS_INDICATOR = MR_TRUE;
 		}
 	"
 ).

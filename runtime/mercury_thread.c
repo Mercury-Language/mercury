@@ -19,7 +19,7 @@
   MercuryLock MR_global_lock;
 #endif
 
-bool	MR_exit_now;
+MR_bool	MR_exit_now;
 
 #ifdef MR_THREAD_SAFE
 
@@ -67,7 +67,7 @@ MR_create_thread_2(void *goal0)
 
 #endif /* MR_THREAD_SAFE */
 
-bool
+MR_bool
 MR_init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
@@ -79,7 +79,7 @@ MR_init_thread(MR_when_to_use when_to_use)
 		** return, there's nothing for us to do.
 		*/
 	if (MR_GETSPECIFIC(MR_engine_base_key)) {
-		return FALSE;
+		return MR_FALSE;
 	}
 #endif
 	eng = MR_create_engine();
@@ -110,13 +110,14 @@ MR_init_thread(MR_when_to_use when_to_use)
 			MR_fatal_error("Sorry, not implemented: "
 				"--high-level-code and multiple engines");
 #else
-			(void) MR_call_engine(MR_ENTRY(MR_do_runnext), FALSE);
+			(void) MR_call_engine(MR_ENTRY(MR_do_runnext),
+					     MR_FALSE);
 #endif
 			MR_destroy_engine(eng);
-			return FALSE;
+			return MR_FALSE;
 
 		case MR_use_now :
-			return TRUE;
+			return MR_TRUE;
 		
 		default:
 			MR_fatal_error("init_thread was passed a bad value");

@@ -51,12 +51,12 @@ MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
 ** the entire program after being set in mercury_wrapper.c. There is one
 ** exception to this: the Mercury routines called as part of the functionality
 ** of the tracer itself (e.g. the term browser) should always be executed
-** with MR_trace_enabled set to FALSE.
+** with MR_trace_enabled set to MR_FALSE.
 */
 
-bool		MR_trace_enabled = FALSE;
+MR_bool		MR_trace_enabled = MR_FALSE;
 
-bool		MR_have_mdb_window = FALSE;
+MR_bool		MR_have_mdb_window = MR_FALSE;
 pid_t		MR_mdb_window_pid = 0;
 
 /*
@@ -98,18 +98,18 @@ MR_Unsigned	MR_trace_event_number = 0;
 ** traced, it will always generate all trace events, external and internal,
 ** regardless of the setting of this variable on entry.
 **
-** The initial value is set to TRUE to allow the programmer to gain
+** The initial value is set to MR_TRUE to allow the programmer to gain
 ** control in the debugger when main/2 is called.
 */
 
-bool		MR_trace_from_full = TRUE;
+MR_bool		MR_trace_from_full = MR_TRUE;
 
 /*
 ** I/O tabling is documented in library/table_builtin.m
 */
 
 MR_IoTablingPhase	MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
-bool			MR_io_tabling_enabled = FALSE;
+MR_bool			MR_io_tabling_enabled = MR_FALSE;
 MR_TableNode		MR_io_tabling_pointer = { 0 };
 MR_Unsigned		MR_io_tabling_counter = 0;
 MR_Unsigned		MR_io_tabling_counter_hwm = 0;
@@ -181,7 +181,7 @@ MR_trace_fake(const MR_Label_Layout *layout)
 }
 
 #ifdef	MR_TABLE_DEBUG
-bool	MR_saved_tabledebug;
+MR_bool	MR_saved_tabledebug;
 #endif
 
 void
@@ -194,7 +194,7 @@ MR_trace_init(void)
 	*/
 
 	MR_saved_tabledebug = MR_tabledebug;
-	MR_tabledebug = FALSE;
+	MR_tabledebug = MR_FALSE;
 #endif
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
@@ -241,12 +241,12 @@ MR_trace_final(void)
 }
 
 void
-MR_trace_start(bool enabled)
+MR_trace_start(MR_bool enabled)
 {
 	MR_trace_event_number = 0;
 	MR_trace_call_seqno = 0;
 	MR_trace_call_depth = 0;
-	MR_trace_from_full = TRUE;
+	MR_trace_from_full = MR_TRUE;
 	MR_trace_enabled = enabled;
 
 #ifdef	MR_TABLE_DEBUG
@@ -270,14 +270,14 @@ MR_trace_start(bool enabled)
 	{
 		MR_setup_signal(SIGINT,
 			(MR_Code *) MR_address_of_trace_interrupt_handler,
-			FALSE, "mdb: cannot install SIGINT signal handler");
+			MR_FALSE, "mdb: cannot install SIGINT signal handler");
 	}
 }
 
 void
 MR_trace_end(void)
 {
-	MR_trace_enabled = FALSE;
+	MR_trace_enabled = MR_FALSE;
 }
 
 void

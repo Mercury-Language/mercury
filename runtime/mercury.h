@@ -528,7 +528,7 @@ MR_Box MR_asm_box_float(MR_Float f);
 ** Function declarations
 */
 
-bool MR_CALL mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info,
+MR_bool MR_CALL mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info,
 	MR_Box, MR_Box);
 void MR_CALL mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
@@ -539,31 +539,33 @@ void MR_CALL mercury__builtin__compare_3_p_2(MR_Mercury_Type_Info,
 void MR_CALL mercury__builtin__compare_3_p_3(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
 
-bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x, MR_Integer y); 
-bool MR_CALL mercury__builtin____Unify____string_0_0(MR_String x, MR_String y); 
-bool MR_CALL mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y); 
-bool MR_CALL mercury__builtin____Unify____character_0_0(MR_Char x, MR_Char); 
-bool MR_CALL mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y); 
-bool MR_CALL mercury__builtin____Unify____c_pointer_0_0(
+MR_bool MR_CALL mercury__builtin____Unify____int_0_0(MR_Integer x,
+	MR_Integer y); 
+MR_bool MR_CALL mercury__builtin____Unify____string_0_0(MR_String x,
+	MR_String y); 
+MR_bool MR_CALL mercury__builtin____Unify____float_0_0(MR_Float x, MR_Float y); 
+MR_bool MR_CALL mercury__builtin____Unify____character_0_0(MR_Char x, MR_Char); 
+MR_bool MR_CALL mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y); 
+MR_bool MR_CALL mercury__builtin____Unify____c_pointer_0_0(
 	MR_C_Pointer x, MR_C_Pointer y); 
-bool MR_CALL mercury__private_builtin____Unify____heap_pointer_0_0(
+MR_bool MR_CALL mercury__private_builtin____Unify____heap_pointer_0_0(
 	MR_Heap_Pointer x, MR_Heap_Pointer y); 
-bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
-bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
-bool MR_CALL mercury__builtin____Unify____tuple_0_0(
+MR_bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
+MR_bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
+MR_bool MR_CALL mercury__builtin____Unify____tuple_0_0(
 	MR_Mercury_Type_Info type_info, MR_Tuple x, MR_Tuple y); 
-bool MR_CALL mercury__type_desc____Unify____type_desc_0_0(
+MR_bool MR_CALL mercury__type_desc____Unify____type_desc_0_0(
 	MR_Type_Desc x, MR_Type_Desc y); 
-bool MR_CALL mercury__private_builtin____Unify____type_ctor_info_1_0(
+MR_bool MR_CALL mercury__private_builtin____Unify____type_ctor_info_1_0(
 	MR_Mercury_Type_Info type_info,
 	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y); 
-bool MR_CALL mercury__private_builtin____Unify____type_info_1_0(
+MR_bool MR_CALL mercury__private_builtin____Unify____type_info_1_0(
 	MR_Mercury_Type_Info type_info,
 	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y); 
-bool MR_CALL mercury__private_builtin____Unify____typeclass_info_1_0(
+MR_bool MR_CALL mercury__private_builtin____Unify____typeclass_info_1_0(
 	MR_Mercury_Type_Info type_info,
 	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y); 
-bool MR_CALL mercury__private_builtin____Unify____base_typeclass_info_1_0(
+MR_bool MR_CALL mercury__private_builtin____Unify____base_typeclass_info_1_0(
 	MR_Mercury_Type_Info type_info, MR_Mercury_Base_TypeClass_Info x,
 	MR_Mercury_Base_TypeClass_Info y); 
 

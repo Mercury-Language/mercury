@@ -26,13 +26,14 @@
 static	MR_TableNode	MR_type_ctor_table = { 0 };
 
 #define	names_match(tc1, module_name, type_name, arity)			\
-	( streq(MR_type_ctor_name(tc1), type_name)			\
-	&& streq(MR_type_ctor_module_name(tc1), module_name)		\
+	( MR_streq(MR_type_ctor_name(tc1), type_name)			\
+	&& MR_streq(MR_type_ctor_module_name(tc1), module_name)		\
 	&& tc1->MR_type_ctor_arity == arity)
 
 #define	names_match_tc(tc1, tc2)					\
-	( streq(MR_type_ctor_name(tc1), MR_type_ctor_name(tc2))		\
-	&& streq(MR_type_ctor_module_name(tc1), MR_type_ctor_module_name(tc2))\
+	( MR_streq(MR_type_ctor_name(tc1), MR_type_ctor_name(tc2))	\
+	&& MR_streq(MR_type_ctor_module_name(tc1),			\
+		MR_type_ctor_module_name(tc2))				\
 	&& tc1->MR_type_ctor_arity == tc2->MR_type_ctor_arity )
 
 void

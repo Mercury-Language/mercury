@@ -158,7 +158,7 @@ static	MR_Word	collect_lib_maybe_handle;
 ** within a collect module.
 */
 
-static	bool	MR_collect_arguments = FALSE;
+static	MR_bool	MR_collect_arguments = MR_FALSE;
 
 /*
 ** Use a GNU C extension to enforce static type checking
@@ -180,7 +180,7 @@ static void	MR_read_request_from_socket(
 			MR_Word *debugger_request_ptr, 
 			MR_Integer *debugger_request_type_ptr);
 	
-static bool	MR_found_match(const MR_Label_Layout *layout,
+static MR_bool	MR_found_match(const MR_Label_Layout *layout,
 			MR_Trace_Port port, MR_Unsigned seqno,
 			MR_Unsigned depth,
 			/* XXX registers */
@@ -204,7 +204,7 @@ static void	MR_dump_stack_record_print_to_socket(FILE *fp,
 			const MR_Proc_Layout *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
-			const char *goal_path, bool context_mismatch);
+			const char *goal_path, MR_bool context_mismatch);
 static void	MR_get_list_modules_to_import(MR_Word debugger_request, 
 			MR_Integer *modules_list_length_ptr,
 			MR_Word *modules_list_ptr);
@@ -273,7 +273,7 @@ MR_init_unix_address(const char *name, struct sockaddr_un *unix_addr)
 }
 #endif
 
-static bool MR_debug_socket = FALSE;
+static MR_bool MR_debug_socket = MR_FALSE;
 
 void
 MR_trace_init_external(void)
@@ -484,8 +484,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static MR_Word	search_data;
 	static void	(*initialize_ptr)(MR_Word *);
 	static void	(*get_collect_var_type_ptr)(MR_Word *);
-	static bool    	collect_linked = FALSE;
-	bool    	stop_collecting = FALSE;
+	static MR_bool    	collect_linked = MR_FALSE;
+	MR_bool    	stop_collecting = MR_FALSE;
 	MR_Integer		debugger_request_type;
 	MR_Word			debugger_request;
 	MR_Word			var_list;
@@ -495,7 +495,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Code			*jumpaddr = NULL;
 	MR_Event_Details	event_details;
 	const char		*message;
-        bool			include_trace_data = TRUE;
+	MR_bool			include_trace_data = MR_TRUE;
 	const MR_Label_Layout	*layout = event_info->MR_event_sll;
 	MR_Unsigned		seqno = event_info->MR_call_seqno;
 	MR_Unsigned		depth = event_info->MR_call_depth;
@@ -508,7 +508,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static MR_String	MR_object_file_name;
 	int			lineno = 0;
 
-	MR_trace_enabled = FALSE;
+	MR_trace_enabled = MR_FALSE;
 
 	/*
 	** These globals can be overwritten when we call Mercury code,
@@ -645,7 +645,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					stdout, layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
-					include_trace_data, FALSE,
+					include_trace_data, MR_FALSE,
 					&MR_dump_stack_record_print_to_socket);
 				MR_send_message_to_socket("end_stack");
 				if (message != NULL) {
@@ -837,9 +837,11 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					** to MR_COLLECT_filter() are done in 
 					** MR_trace_real().
 					*/
-					        cmd->MR_trace_cmd = MR_CMD_COLLECT;
-						cmd->MR_trace_must_check = FALSE;
-						cmd->MR_trace_strict = TRUE;
+					        cmd->MR_trace_cmd =
+							MR_CMD_COLLECT;
+						cmd->MR_trace_must_check =
+							MR_FALSE;
+						cmd->MR_trace_strict = MR_TRUE;
 						cmd->MR_trace_print_level = 
 						 	MR_PRINT_LEVEL_NONE;
 						goto done;
@@ -869,7 +871,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_COLLECT_ARG_ON\n");
 				}
-				MR_collect_arguments = TRUE;
+				MR_collect_arguments = MR_TRUE;
 				MR_send_message_to_socket("collect_arg_on_ok");
 				break;
 			  }
@@ -879,7 +881,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_COLLECT_ARG_OFF\n");
 				}
-				MR_collect_arguments = FALSE;
+				MR_collect_arguments = MR_FALSE;
 				MR_send_message_to_socket("collect_arg_off_ok");
 				break;
 			  }
@@ -908,7 +910,7 @@ done:
 	MR_trace_call_depth = event_details.MR_call_depth;
 	MR_trace_event_number = event_details.MR_event_number;
 
-	MR_trace_enabled = TRUE;
+	MR_trace_enabled = MR_TRUE;
 
 	return jumpaddr;
 }
@@ -1011,13 +1013,13 @@ MR_read_request_from_socket(
     );
 }
  
-static bool
+static MR_bool
 MR_found_match(const MR_Label_Layout *layout,
 	MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
 	/* XXX live vars */
 	const char *path, MR_Word search_data)
 {
-	bool result;
+	MR_bool result;
 
 	/* XXX get live vars from registers */
 	MR_Word arguments = /* XXX FIXME!!! */ 0;
@@ -1296,7 +1298,7 @@ MR_dump_stack_record_print_to_socket(FILE *fp,
 	const MR_Proc_Layout *entry_layout, int count, int start_level, 
 	MR_Word *base_sp, MR_Word *base_curfr,
 	const char *filename, int linenumber,
-	const char *goal_path, bool context_mismatch)
+	const char *goal_path, MR_bool context_mismatch)
 {
 	MR_send_message_to_socket_format("level(%d).\n", start_level);
 	MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);
@@ -1311,7 +1313,7 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 	}
 
 	if (base_sp != NULL && base_curfr != NULL) {
-		bool print_details = FALSE;
+		MR_bool print_details = MR_FALSE;
 		if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 			MR_Integer maybe_from_full =
 				entry->MR_sle_maybe_from_full;
@@ -1320,7 +1322,7 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 				** for procedures compiled with shallow
 				** tracing, the details will be valid only
 				** if the value of MR_from_full saved in
-				** the appropriate stack slot was TRUE.
+				** the appropriate stack slot was MR_TRUE.
 				*/
 				if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 					print_details = MR_based_stackvar(
@@ -1334,7 +1336,7 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 				** for procedures compiled with full tracing,
 				** always print out the details
 				*/
-				print_details = TRUE;
+				print_details = MR_TRUE;
 			}
 		}
 		if (print_details) {
@@ -1466,7 +1468,7 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 
 	problem = MR_trace_browse_one(NULL, var_spec, MR_trace_browse_external,
 			MR_BROWSE_CALLER_BROWSE, MR_BROWSE_DEFAULT_FORMAT,
-			TRUE);
+			MR_TRUE);
 
 	if (problem != NULL) {
 		MR_send_message_to_socket_format("error(\"%s\").\n", problem);
@@ -1481,7 +1483,7 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 void
 MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno, 
 	MR_Unsigned depth, MR_Trace_Port port, const MR_Label_Layout *layout, 
-	const char *path, int lineno, bool *stop_collecting)
+	const char *path, int lineno, MR_bool *stop_collecting)
 {
 	MR_Char	result;		
 	MR_Word	arguments;
@@ -1489,7 +1491,7 @@ MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
 	/* 
 	** Only pass the arguments list down filter
 	** if required, i.e. if MR_collect_arguments
-	** is set to TRUE. We need to do that in 
+	** is set to MR_TRUE. We need to do that in 
 	** order to not penalize the performance 
 	** of collect in the cases where the argument
 	** list (which might be very big) is not used.

@@ -87,7 +87,7 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *tex
 	char	*msg;
 	char	*name_on_heap;
 	char	*text_on_heap;
-	bool	error;
+	MR_bool	error;
 
 	MR_TRACE_USE_HP(
 		MR_make_aligned_string_copy(name_on_heap, name);
@@ -148,7 +148,7 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	char	*msg;
 	char	*category_on_heap;
 	char	*item_on_heap;
-	bool	error;
+	MR_bool	error;
 	MercuryFile mdb_out;
 
 	MR_trace_help_ensure_init();
@@ -176,7 +176,7 @@ MR_trace_help_cat_item(const char *category, const char *item)
 static void
 MR_trace_help_ensure_init(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 	MR_Word		typeinfo_type;
 	MR_Word		MR_trace_help_system_type_word;
 
@@ -195,6 +195,6 @@ MR_trace_help_ensure_init(void)
 					(MR_TypeInfo) typeinfo_type);
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 					MR_trace_help_system_type);
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }

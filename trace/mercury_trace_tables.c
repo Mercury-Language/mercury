@@ -39,12 +39,12 @@ static	void	MR_process_line_layouts(const MR_Module_File_Layout
 			*file_layout, int line,
 			MR_file_line_callback callback_func, int callback_arg);
 
-static bool MR_parse_trailing_number(char *start, char **end, int *number);
+static MR_bool MR_parse_trailing_number(char *start, char **end, int *number);
 
 void
-MR_register_all_modules_and_procs(FILE *fp, bool verbose)
+MR_register_all_modules_and_procs(FILE *fp, MR_bool verbose)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 
 	if (! done) {
 		if (verbose) {
@@ -53,7 +53,7 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 		}
 
 		MR_trace_init_modules();
-		done = TRUE;
+		done = MR_TRUE;
 		if (verbose) {
 			fprintf(fp, "done.\n");
 			if (MR_module_info_next == 0) {
@@ -92,7 +92,7 @@ static const MR_Module_Layout *
 MR_search_module_info(const char *name)
 {
 	int	slot;
-	bool	found;
+	MR_bool	found;
 
 	MR_bsearch(MR_module_info_next, slot, found,
 		strcmp(MR_module_infos[slot]->MR_ml_name, name));
@@ -130,7 +130,7 @@ MR_process_file_line_layouts(const char *file, int line,
 		{
 			file_layout = MR_module_infos[i]->
 					MR_ml_module_file_layout[j];
-			if (streq(file_layout->MR_mfl_filename, file)) {
+			if (MR_streq(file_layout->MR_mfl_filename, file)) {
 				MR_process_line_layouts(file_layout, line,
 					callback_func, callback_arg);
 			}
@@ -143,7 +143,7 @@ MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 	MR_file_line_callback callback_func, int callback_arg)
 {
 	int			k;
-	bool			found;
+	MR_bool			found;
 
 	MR_bsearch(file_layout->MR_mfl_label_count, k, found,
 		file_layout->MR_mfl_label_lineno[k] - line);
@@ -216,7 +216,7 @@ MR_dump_module_procs(FILE *fp, const char *name)
 	}
 }
 
-bool
+MR_bool
 MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 {
 	char	*dash;
@@ -225,7 +225,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	int	n;
 	int	len;
 	int	double_underscores;
-	bool	found;
+	MR_bool	found;
 
 	spec->MR_proc_module = NULL;
 	spec->MR_proc_name   = NULL;
@@ -243,12 +243,12 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	if (MR_parse_trailing_number(str, &end, &n)) {
 		if (end == str) {
 			/* the string contains only a number */
-			return FALSE;
+			return MR_FALSE;
 		}
 		end--;
 		if (*end == ':') {
 			/* filename:linenumber */
-			return FALSE;
+			return MR_FALSE;
 		} else if (*end == '-') {
 			spec->MR_proc_mode = n;
 
@@ -262,7 +262,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 			if (MR_parse_trailing_number(str, &end, &n)) {
 				if (end == str) {
 					/* the string contains only a number */
-					return FALSE;
+					return MR_FALSE;
 				}
 				end--;
 				if (*end == '/') {
@@ -279,10 +279,10 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 		}
 	}
 	
-	if (strneq(str, "pred*", 5)) {
+	if (MR_strneq(str, "pred*", 5)) {
 		spec->MR_proc_pf = MR_PREDICATE;
 		str += 5;
-	} else if (strneq(str, "func*", 5)) {
+	} else if (MR_strneq(str, "func*", 5)) {
 		spec->MR_proc_pf = MR_FUNCTION;
 		str += 5;
 	}
@@ -316,7 +316,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 
 			spec->MR_proc_module = str;
 
-			return TRUE;
+			return MR_TRUE;
 		} else {
 			end--;
 		}
@@ -324,7 +324,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 
 	/* There was no module qualifier. */
 	spec->MR_proc_name = str;
-	return TRUE;
+	return MR_TRUE;
 }
 
 /* 
@@ -333,10 +333,10 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 ** On return, `*end' points to the start of the trailing number.
 ** If no number was found, `*end' is unchanged. 
 */
-static bool
+static MR_bool
 MR_parse_trailing_number(char *start, char **end, int *number)
 {
-	bool found_digit = FALSE;
+	MR_bool found_digit = MR_FALSE;
 	int power_of_10 = 1;	
 	char c;
 	char *tmp_end;
@@ -345,7 +345,7 @@ MR_parse_trailing_number(char *start, char **end, int *number)
 
 	tmp_end = *end + 1;
 	while (tmp_end > start && MR_isdigit(*(tmp_end - 1))) {
-		found_digit = TRUE;
+		found_digit = MR_TRUE;
 		*number += power_of_10 * (*(tmp_end - 1) - '0');
 		power_of_10 *= 10;
 		tmp_end--;
@@ -389,7 +389,7 @@ MR_search_for_matching_procedures(MR_Proc_Spec *spec)
 
 typedef struct {
 	const MR_Proc_Layout	*matching_entry;
-	bool	 		match_unique;
+	MR_bool	 		match_unique;
 } MR_Match_Info;
 
 static void
@@ -401,17 +401,17 @@ MR_register_match(void *data, const MR_Proc_Layout *entry)
 	if (m->matching_entry == NULL) {
 		m->matching_entry = entry;
 	} else {
-		m->match_unique = FALSE;
+		m->match_unique = MR_FALSE;
 	}
 }
 
 const MR_Proc_Layout *
-MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
+MR_search_for_matching_procedure(MR_Proc_Spec *spec, MR_bool *unique)
 {
 	MR_Match_Info	m;
 
 	m.matching_entry = NULL;
-	m.match_unique = TRUE;
+	m.match_unique = MR_TRUE;
 	MR_process_matching_procedures(spec, MR_register_match, &m);
 	*unique = m.match_unique;
 	return m.matching_entry;
@@ -440,7 +440,7 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 }
 
 #define	match_name(spec, cur)	(((spec)->MR_proc_name == NULL) ||	\
-				streq((spec)->MR_proc_name,		\
+				MR_streq((spec)->MR_proc_name,		\
 					cur->MR_sle_user.MR_user_name))
 
 #define	match_arity(spec, cur)	(((spec)->MR_proc_arity < 0) ||		\

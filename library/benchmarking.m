@@ -154,7 +154,7 @@ extern void ML_report_full_memory_stats(void);
 				ML_memprof_report_entry *table, int next_slot);
 
   static void ML_memory_profile_report(const ML_memprof_report_entry *,
-				int num_entries, bool complete);
+				int num_entries, MR_bool complete);
 
   static int  ML_memory_profile_compare_final(const void *, const void *);
 
@@ -248,7 +248,7 @@ ML_report_stats(void)
 	num_table_entries = ML_memory_profile_top_table(MR_memprof_procs.root,
 		table, MEMORY_PROFILE_SIZE, 0);
 	fprintf(stderr, ""\\nMemory profile by procedure\\n"");
-	ML_memory_profile_report(table, num_table_entries, FALSE);
+	ML_memory_profile_report(table, num_table_entries, MR_FALSE);
 
 	/*
 	** Print out the per-type memory profile (top N entries)
@@ -256,7 +256,7 @@ ML_report_stats(void)
 	num_table_entries = ML_memory_profile_top_table(MR_memprof_types.root,
 		table, MEMORY_PROFILE_SIZE, 0);
 	fprintf(stderr, ""\\nMemory profile by type\\n"");
-	ML_memory_profile_report(table, num_table_entries, FALSE);
+	ML_memory_profile_report(table, num_table_entries, MR_FALSE);
 
 	/*
 	** Print out the overall memory usage.
@@ -311,7 +311,7 @@ ML_report_full_memory_stats(void)
 	fprintf(stderr, ""\\nMemory profile by procedure\\n"");
 	fprintf(stderr, ""%14s %14s  %s\\n"",
 		""Cells"", ""Words"", ""Procedure label"");
-	ML_memory_profile_report(table, num_table_entries, TRUE);
+	ML_memory_profile_report(table, num_table_entries, MR_TRUE);
 
 	/*
 	** Print the by-type memory profile
@@ -324,7 +324,7 @@ ML_report_full_memory_stats(void)
 	fprintf(stderr, ""\\nMemory profile by type\\n"");
 	fprintf(stderr, ""%14s %14s  %s\\n"",
 		""Cells"", ""Words"", ""Procedure label"");
-	ML_memory_profile_report(table, num_table_entries, TRUE);
+	ML_memory_profile_report(table, num_table_entries, MR_TRUE);
 
 	/*
 	** Deallocate space for the table
@@ -494,7 +494,7 @@ ML_memory_profile_fill_table(MR_memprof_record *node,
 */
 static void
 ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
-	bool complete)
+	MR_bool complete)
 {
 	int		i;
 	const char	*name;

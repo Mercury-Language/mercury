@@ -55,6 +55,7 @@
 ** MR_SPLIT_C_FILES
 ** MR_INLINE_ALLOC
 ** MR_PIC_REG
+** MR_HIGHTAGS
 **	See the documentation for
 **		--high-level-code
 **		--high-level-data
@@ -70,8 +71,14 @@
 **		--reserve-tag
 **		--use-minimal-model
 **		--split-c-files
+**		--inline-alloc
 **		--pic-reg
+**		--tags
 **	(respectively) in the mmc help message or the Mercury User's Guide.
+**
+** MR_PIC
+**	The generated object code must be position independent.
+**	See runtime/mercury_goto.h.
 **
 ** MR_USE_SINGLE_PREC_FLOAT:
 **	Use C's `float' rather than C's `double' for the
@@ -155,6 +162,18 @@
 #ifdef PIC_REG
   #define MR_PIC_REG 1
   #undef PIC_REG
+#endif
+#ifdef PIC
+  #if PIC == 0
+    #define MR_PIC 0
+  #else
+    #define MR_PIC 1
+  #endif
+  #undef PIC
+#endif
+#ifdef HIGHTAGS
+  #define MR_HIGHTAGS 1
+  #undef HIGHTAGS
 #endif
 
 /*

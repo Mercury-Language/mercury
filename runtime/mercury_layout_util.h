@@ -88,17 +88,17 @@ extern	int	MR_get_register_number_short(MR_Short_Lval locn);
 */ 
 
 extern	MR_Word	MR_lookup_long_lval(MR_Long_Lval locn,
-			MR_Word *saved_regs, bool *succeeded);
+			MR_Word *saved_regs, MR_bool *succeeded);
 extern	MR_Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
 			MR_Word *saved_regs, MR_Word *base_sp,
 			MR_Word *base_curfr,
-			bool *succeeded);
+			MR_bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval(MR_Short_Lval locn,
-			MR_Word *saved_regs, bool *succeeded);
+			MR_Word *saved_regs, MR_bool *succeeded);
 extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 			MR_Word *saved_regs, MR_Word *base_sp,
 			MR_Word *base_curfr,
-			bool *succeeded);
+			MR_bool *succeeded);
 
 /*
 ** Given information about the location of a variable (var) and a vector giving
@@ -125,18 +125,18 @@ extern	MR_Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 ** be allocated on the Mercury heap.
 */
 
-extern	bool	MR_get_type_and_value(const MR_Label_Layout *label_layout,
+extern	MR_bool	MR_get_type_and_value(const MR_Label_Layout *label_layout,
 			int var, MR_Word *saved_regs, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info, MR_Word *value);
-extern	bool	MR_get_type_and_value_base(const MR_Label_Layout *label_layout,
+extern	MR_bool	MR_get_type_and_value_base(const MR_Label_Layout *label_layout,
 			int var, MR_Word *saved_regs,
 			MR_Word *base_sp, MR_Word *base_curfr,
 			MR_TypeInfo *type_params, MR_TypeInfo *type_info,
 			MR_Word *value);
-extern	bool	MR_get_type(const MR_Label_Layout *label_layout, int var,
+extern	MR_bool	MR_get_type(const MR_Label_Layout *label_layout, int var,
 			MR_Word *saved_regs, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info);
-extern	bool	MR_get_type_base(const MR_Label_Layout *label_layout, int var,
+extern	MR_bool	MR_get_type_base(const MR_Label_Layout *label_layout, int var,
 			MR_Word *saved_regs, MR_Word *base_sp,
 			MR_Word *base_curfr, MR_TypeInfo *type_params,
 			MR_TypeInfo *type_info);

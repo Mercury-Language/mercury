@@ -43,7 +43,7 @@
 		MR_string_const((string), sizeof(string) - 1)
 
 /*
-** bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
+** MR_bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
 **	Return true iff the two Mercury strings s1 and s2 are equal.
 */
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)

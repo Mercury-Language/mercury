@@ -370,13 +370,13 @@ void sys_init_type_info_module_write_out_proc_statics(FILE *fp);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(private_builtin, __Unify__,   type_info,
-	1, 0, ""private_builtin.m"", 0, TRUE);
+	1, 0, ""private_builtin.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(private_builtin, __Compare__, type_info,
-	1, 0, ""private_builtin.m"", 0, TRUE);
+	1, 0, ""private_builtin.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(private_builtin, __Unify__,   typeclass_info,
-	1, 0, ""private_builtin.m"", 0, TRUE);
+	1, 0, ""private_builtin.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(private_builtin, __Compare__, typeclass_info,
-	1, 0, ""private_builtin.m"", 0, TRUE);
+	1, 0, ""private_builtin.m"", 0, MR_TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
@@ -1276,9 +1276,9 @@ void sys_init_heap_pointer_module_write_out_proc_statics(FILE *fp);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(private_builtin, __Unify__,   heap_pointer,
-	0, 0, ""private_builtin.m"", 0, TRUE);
+	0, 0, ""private_builtin.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(private_builtin, __Compare__, heap_pointer,
-	0, 0, ""private_builtin.m"", 0, TRUE);
+	0, 0, ""private_builtin.m"", 0, MR_TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, heap_pointer, 0,

@@ -809,7 +809,7 @@ MADITI_do_nondet_call(void)
 	output_info->output_rel = output_ticket;
 	output_info->output_cursor = cursor;
 	output_info->num_output_args = num_output_args;
-	output_info->cleaned_up = FALSE;
+	output_info->cleaned_up = MR_FALSE;
 	MADITI_saved_output_info = (Word) output_info;
 #ifdef MR_USE_TRAIL
 	MR_trail_function(MADITI_trail_cleanup_call_output,
@@ -1150,7 +1150,7 @@ MADITI_get_output_tuple(int first_reg)
 		&tuple_str_len, &tuple_str);
 	if (rc != ADITI_OK) {
 		DEBUG(printf(""no more output tuples\\n""));
-		found_result = FALSE;
+		found_result = MR_FALSE;
 	} else {
 		DEBUG(printf(""handling tuple %s %ld %d\\n"",
 			tuple_str, tuple_str_len,
@@ -1205,7 +1205,7 @@ MADITI_get_output_tuple(int first_reg)
 		MR_succip = saved_succip;
 		MR_GC_free(output_save_area);
 
-		found_result = TRUE;
+		found_result = MR_TRUE;
 	}
 	save_transient_registers();
 	return found_result;
@@ -1298,7 +1298,7 @@ MADITI_cleanup_call_output(MADITI_output_info *output_info)
 		MR_GC_free(output_info->output_rel);
 
 		/* Make sure we don't do this again. */
-		output_info->cleaned_up = TRUE;
+		output_info->cleaned_up = MR_TRUE;
 	}
 }
 

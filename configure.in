@@ -2372,7 +2372,7 @@ EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
 SHLIB_RPATH_OPT="-Wl,-rpath,"
 SHLIB_RPATH_SEP=" -Wl,-rpath,"
-CFLAGS_FOR_PIC="-fpic -DPIC"
+CFLAGS_FOR_PIC="-fpic -DMR_PIC"
 EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
@@ -2447,7 +2447,7 @@ case "$host" in
 		EXE_RPATH_SEP=" -R"
 		SHLIB_RPATH_OPT="-R"
 		SHLIB_RPATH_SEP=" -R"
-		CFLAGS_FOR_PIC="-fpic -DPIC"	# used only for libgc.{a,so}
+		CFLAGS_FOR_PIC="-fpic -DMR_PIC"	# used only for libgc.{a,so}
 		EXT_FOR_PIC_OBJECTS=o
 		#
 		# Note that despite the above definition of CFLAGS_FOR_PIC,
@@ -2471,7 +2471,7 @@ case "$host" in
 		# passes `-z text' to the linker, which causes it to
 		# report an error if any runtime fixups would be needed.
 		#
-		# If you *do* use `-fpic', you must also use `-DPIC'.
+		# If you *do* use `-fpic', you must also use `-DMR_PIC'.
 		#
 		# See runtime/mercury_goto.h for the code that handles PIC
 		# on SPARCs.

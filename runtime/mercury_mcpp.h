@@ -35,6 +35,8 @@ typedef void (*MR_Cont) (void *);
 // Should these be MR_ qualified?
 #define TRUE 1
 #define FALSE 0
+#define MR_TRUE 1
+#define MR_FALSE 0
 
 
 

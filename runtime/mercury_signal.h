@@ -63,10 +63,10 @@ typedef MR_Code *		MR_signal_action;
 	** 
 	** If the signal handler requires siginfo to be provided (e.g.
 	** it needs access to stored registers), need_info must be 
-	** TRUE.  Note that on some platforms, signal information is
+	** MR_TRUE.  Note that on some platforms, signal information is
 	** provided regardless of the value of need_info.
 	*/
-extern void MR_setup_signal(int sig, MR_Code *handler, bool need_info, 
+extern void MR_setup_signal(int sig, MR_Code *handler, MR_bool need_info, 
 	const char * error_message);
 
 	/*
@@ -74,7 +74,7 @@ extern void MR_setup_signal(int sig, MR_Code *handler, bool need_info,
 	** restarted if the signal is received.
 	*/
 extern void MR_setup_signal_no_restart(int sig, MR_Code *handler,
-	bool need_info, const char * error_message);
+	MR_bool need_info, const char * error_message);
 
 	/*
 	** Get the current action for the given signal.

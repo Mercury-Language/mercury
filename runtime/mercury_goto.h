@@ -193,11 +193,11 @@
   ** set up the correct value of the GOT register (ebx).
   */
 
-  #if (defined(__pic__) || defined(__PIC__)) && !defined(PIC)
-    #define PIC 1
+  #if (defined(__pic__) || defined(__PIC__)) && !defined(MR_PIC)
+    #define MR_PIC 1
   #endif
 
-  #if PIC
+  #if MR_PIC
 
     /*
     ** At each entry point, where we may have been jump to from
@@ -262,7 +262,7 @@
   	goto MR_skip(label);
     #endif
 
-  #endif /* PIC */
+  #endif /* MR_PIC */
 
   /* For Linux-ELF shared libraries, we need to declare that the type of labels
   ** is @function (i.e. code, not data), otherwise the dynamic linker seems
@@ -281,11 +281,11 @@
   ** set up the correct value of the GOT register (l7).
   */
 
-  #if (defined(__pic__) || defined(__PIC__)) && !defined(PIC)
-    #define PIC 1
+  #if (defined(__pic__) || defined(__PIC__)) && !defined(MR_PIC)
+    #define MR_PIC 1
   #endif
 
-  #if PIC
+  #if MR_PIC
 
     /*
     ** At each entry point, where we may have been jump to from
@@ -324,7 +324,7 @@
   	goto MR_skip(label);
     #endif
 
-  #endif /* PIC */
+  #endif /* MR_PIC */
 
   /*
   ** For Solaris 5.5.1, we need to declare that the type of labels is

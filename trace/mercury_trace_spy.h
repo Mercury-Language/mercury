@@ -44,8 +44,8 @@ extern	const char	*MR_spy_when_names[];
 typedef struct MR_Spy_Point_Struct MR_Spy_Point;
 
 struct MR_Spy_Point_Struct {
-	bool			spy_exists;	/* FALSE if deleted */
-	bool			spy_enabled;
+	MR_bool			spy_exists;	/* MR_FALSE if deleted */
+	MR_bool			spy_enabled;
 	MR_Spy_When		spy_when;
 	MR_Spy_Action		spy_action;
 	MR_Spy_Ignore_When	spy_ignore_when;
@@ -70,11 +70,11 @@ extern	int		MR_most_recent_spy_point;
 
 /*
 ** Check whether the event described by the given label layout and port
-** matches any spy points. If yes, return TRUE and set *action to say what
+** matches any spy points. If yes, return MR_TRUE and set *action to say what
 ** action should be executed for the spy point.
 */
 
-extern	bool		MR_event_matches_spy_point(const MR_Label_Layout
+extern	MR_bool		MR_event_matches_spy_point(const MR_Label_Layout
 				*layout, MR_Trace_Port port,
 				MR_Spy_Action *action);
 
@@ -131,10 +131,10 @@ extern	void		MR_print_spy_point(FILE *fp, int i);
 ** Print the set of current spy points (including those that are currently
 ** disabled) to fp in a format that, when sourced by mdb, recreates those
 ** spy points. Any internal errors encountered while trying to do this
-** should be reported to err_fp. Return TRUE iff the debugger's data structures
-** are inconsistent, and the spy points could not be saved.
+** should be reported to err_fp. Return MR_TRUE iff the debugger's data
+** structures are inconsistent, and the spy points could not be saved.
 */
 
-extern	bool		MR_save_spy_points(FILE *fp, FILE *err_fp);
+extern	MR_bool		MR_save_spy_points(FILE *fp, FILE *err_fp);
 
 #endif	/* not MERCURY_TRACE_SPY_H */

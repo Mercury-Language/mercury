@@ -33,10 +33,10 @@ static	void	garbage_collect(MR_Code *saved_success,
 			MR_Word *stack_pointer,
 			MR_Word *max_frame, MR_Word *current_frame);
 static	void	copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
-			bool copy_regs, MR_Word *stack_pointer,
+			MR_bool copy_regs, MR_Word *stack_pointer,
 			MR_Word *current_frame);
 static	void	copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-			bool copy_regs, MR_Word *stack_pointer,
+			MR_bool copy_regs, MR_Word *stack_pointer,
 			MR_Word *current_frame);
 
 #endif
@@ -50,8 +50,8 @@ static	void	garbage_collect_roots(void);
 #ifndef MR_HIGHLEVEL_CODE
 static MR_Code	*saved_success = (MR_Code *) NULL;
 static MR_Word	*saved_success_location = (MR_Word *) NULL;
-static bool	gc_scheduled = FALSE;
-static bool	gc_running = FALSE;
+static MR_bool	gc_scheduled = MR_FALSE;
+static MR_bool	gc_running = MR_FALSE;
 #endif
 
 /* The list of roots */
@@ -282,7 +282,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 #endif
 		*saved_success_location = (MR_Word) saved_success;
 	}
-	gc_scheduled = TRUE;
+	gc_scheduled = MR_TRUE;
 
 	location = proc_layout->MR_sle_succip_locn;
 	type = MR_LONG_LVAL_TYPE(location);
@@ -340,13 +340,13 @@ MR_BEGIN_CODE
 MR_define_entry(mercury__garbage_collect_0_0);
 
         /* record that the collector is running */
-	gc_running = TRUE;
+	gc_running = MR_TRUE;
 
 	MR_save_registers();
 	garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
 	MR_restore_registers();
-	gc_scheduled = FALSE;
-	gc_running = FALSE;
+	gc_scheduled = MR_FALSE;
+	gc_running = MR_FALSE;
 
 	MR_succip = saved_success;
 	MR_proceed();
@@ -372,8 +372,8 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     const MR_Label_Layout	    *label_layout;
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_TypeInfoParams               type_params;
-    bool                            succeeded;
-    bool                            top_frame = TRUE;
+    MR_bool                            succeeded;
+    MR_bool                            top_frame = MR_TRUE;
     MR_MemoryList                   allocated_memory_cells = NULL;
     MR_Word                         *old_hp, *new_hp;
     const MR_Proc_Layout	    *proc_layout;
@@ -539,7 +539,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         }
 	return_label_layout = label->i_layout;
         label_layout = return_label_layout;
-        top_frame = FALSE;
+        top_frame = MR_FALSE;
     } while (label_layout != NULL); /* end for each stack frame... */
 
     /* 
@@ -548,7 +548,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     */ 
     
     while (max_frame > MR_nondet_stack_trace_bottom) {
-	bool registers_valid;
+	MR_bool registers_valid;
 	int frame_size;
 
 	registers_valid = (max_frame == current_frame);
@@ -687,7 +687,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 */
 
 static void
-copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
+copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 	int	locn_num;
@@ -753,7 +753,7 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, bool copy_regs,
 }
 
 static void
-copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, bool copy_regs,
+copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 	int	locn_num;

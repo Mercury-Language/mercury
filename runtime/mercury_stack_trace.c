@@ -21,15 +21,15 @@
 
 static	const char *MR_step_over_nondet_frame(FILE *fp,
 			int level_number, MR_Word *fr);
-static	bool	MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
+static	MR_bool	MR_find_matching_branch(MR_Word *fr, int *branch_ptr);
 static	void	MR_record_temp_redoip(MR_Word *fr);
 static	MR_Code *MR_find_temp_redoip(MR_Word *fr);
 static	void	MR_erase_temp_redoip(MR_Word *fr);
 
 #endif	/* !MR_HIGHLEVEL_CODE */
 
-static	void	MR_dump_stack_record_init(bool include_trace_data,
-			bool include_contexts);
+static	void	MR_dump_stack_record_init(MR_bool include_trace_data,
+			MR_bool include_contexts);
 static	void	MR_dump_stack_record_frame(FILE *fp,
 			const MR_Label_Layout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr, 
@@ -38,12 +38,12 @@ static	void	MR_dump_stack_record_flush(FILE *fp,
 			MR_Print_Stack_Record print_stack_record);
 
 static	void	MR_print_proc_id_internal(FILE *fp,
-			const MR_Proc_Layout *entry, bool spec);
+			const MR_Proc_Layout *entry, MR_bool spec);
 
 static	void	MR_maybe_print_context(FILE *fp,
 			const char *filename, int lineno);
-static	void	MR_maybe_print_parent_context(FILE *fp, bool print_parent,
-			bool verbose, const char *filename, int lineno);
+static	void	MR_maybe_print_parent_context(FILE *fp, MR_bool print_parent,
+			MR_bool verbose, const char *filename, int lineno);
 
 /* see comments in mercury_stack_trace.h */
 MR_Code	*MR_stack_trace_bottom;
@@ -51,7 +51,7 @@ MR_Word	*MR_nondet_stack_trace_bottom;
 
 void
 MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
-	MR_Word *current_frame, bool include_trace_data)
+	MR_Word *current_frame, MR_bool include_trace_data)
 {
 #ifndef	MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
@@ -71,7 +71,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 		layout = label->i_layout;
 		result = MR_dump_stack_from_layout(stderr, layout,
 			det_stack_pointer, current_frame, include_trace_data,
-			TRUE, &MR_dump_stack_record_print);
+			MR_TRUE, &MR_dump_stack_record_print);
 
 		if (result != NULL) {
 			fprintf(stderr, "%s\n", result);
@@ -83,7 +83,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
 	MR_Word *det_stack_pointer, MR_Word *current_frame,
-	bool include_trace_data, bool include_contexts,
+	MR_bool include_trace_data, MR_bool include_contexts,
 	MR_Print_Stack_Record print_stack_record)
 {
 	MR_Stack_Walk_Step_Result	result;
@@ -329,7 +329,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
 {
 	int		frame_size;
 	int		level_number;
-	bool		print_vars;
+	MR_bool		print_vars;
 	const char	*problem;
 
 	MR_do_init_modules();
@@ -338,7 +338,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
 	if (top_layout != NULL && base_sp != NULL && base_curfr != NULL
 		&& MR_address_of_trace_browse_all_on_level != NULL)
 	{
-		print_vars = TRUE;
+		print_vars = MR_TRUE;
 		MR_ensure_room_for_next(MR_nondet_branch_info,
 			MR_Nondet_Branch_Info,
 			MR_INIT_NONDET_BRANCH_ARRAY_SIZE);
@@ -348,7 +348,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
 		MR_nondet_branch_infos[0].branch_topfr = base_curfr;
 		MR_nondet_branch_info_next++;
 	} else {
-		print_vars = FALSE;
+		print_vars = MR_FALSE;
 	}
 
 	/*
@@ -455,7 +455,7 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
 		** Step past all other detstack-living
 		** ancestors on the main branch.
 		*/
-		while (TRUE) {
+		while (MR_TRUE) {
 			result = MR_stack_walk_step(proc_layout, &label_layout,
 					&base_sp, &base_curfr, &problem);
 
@@ -582,7 +582,7 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
 	return NULL;
 }
 
-static bool
+static MR_bool
 MR_find_matching_branch(MR_Word *fr, int *branch_ptr)
 {
 	int	branch;
@@ -590,11 +590,11 @@ MR_find_matching_branch(MR_Word *fr, int *branch_ptr)
 	for (branch = 0; branch < MR_nondet_branch_info_next; branch++) {
 		if (MR_nondet_branch_infos[branch].branch_curfr == fr) {
 			*branch_ptr = branch;
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }
 
 /*
@@ -687,13 +687,13 @@ static	MR_Word			*prev_entry_base_curfr;
 static	const char		*prev_entry_filename;
 static	int			prev_entry_linenumber;
 static	const char		*prev_entry_goal_path;
-static	bool			prev_entry_context_mismatch;
+static	MR_bool			prev_entry_context_mismatch;
 static	int			current_level;
-static	bool			trace_data_enabled;
-static	bool			contexts_enabled;
+static	MR_bool			trace_data_enabled;
+static	MR_bool			contexts_enabled;
 
 static void
-MR_dump_stack_record_init(bool include_trace_data, bool include_contexts)
+MR_dump_stack_record_init(MR_bool include_trace_data, MR_bool include_contexts)
 {
 	prev_entry_layout = NULL;
 	prev_entry_layout_count = 0;
@@ -711,7 +711,7 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Label_Layout *label_layout,
 	const MR_Proc_Layout	*entry_layout;
 	const char		*filename;
 	int			linenumber;
-	bool			must_flush;
+	MR_bool			must_flush;
 
 	entry_layout = label_layout->MR_sll_entry;
 	if (! MR_find_context(label_layout, &filename, &linenumber)
@@ -752,13 +752,13 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Label_Layout *label_layout,
 		prev_entry_filename = filename;
 		prev_entry_linenumber = linenumber;
 		prev_entry_goal_path = MR_label_goal_path(label_layout);
-		prev_entry_context_mismatch = FALSE;
+		prev_entry_context_mismatch = MR_FALSE;
 	} else {
 		prev_entry_layout_count++;
 		if (prev_entry_filename != filename
 			|| prev_entry_linenumber != linenumber)
 		{
-			prev_entry_context_mismatch = TRUE;
+			prev_entry_context_mismatch = MR_TRUE;
 		}
 	}
 
@@ -781,7 +781,7 @@ void
 MR_dump_stack_record_print(FILE *fp, const MR_Proc_Layout *entry_layout,
 	int count, int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 	const char *filename, int linenumber, const char *goal_path,
-	bool context_mismatch)
+	MR_bool context_mismatch)
 {
 	fprintf(fp, "%4d ", start_level);
 
@@ -800,13 +800,13 @@ MR_dump_stack_record_print(FILE *fp, const MR_Proc_Layout *entry_layout,
 	MR_maybe_print_call_trace_info(fp, trace_data_enabled, entry_layout,
 		base_sp, base_curfr);
 	MR_print_proc_id(fp, entry_layout);
-	if (strdiff(filename, "") && linenumber > 0) {
+	if (MR_strdiff(filename, "") && linenumber > 0) {
 		fprintf(fp, " (%s:%d%s)", filename, linenumber,
 			context_mismatch ? " and others" : "");
 	}
 
 	if (trace_data_enabled) {
-		if (strdiff(goal_path, "")) {
+		if (MR_strdiff(goal_path, "")) {
 			fprintf(fp, " %s", goal_path);
 		} else {
 			fprintf(fp, " (empty)");
@@ -816,7 +816,7 @@ MR_dump_stack_record_print(FILE *fp, const MR_Proc_Layout *entry_layout,
 	fprintf(fp, "\n");
 }
 
-bool
+MR_bool
 MR_find_context(const MR_Label_Layout *label, const char **fileptr,
 	int *lineptr)
 {
@@ -827,7 +827,7 @@ MR_find_context(const MR_Label_Layout *label, const char **fileptr,
 
 	proc = label->MR_sll_entry;
 	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc)) {
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	module = proc->MR_sle_module_layout;
@@ -837,16 +837,16 @@ MR_find_context(const MR_Label_Layout *label, const char **fileptr,
 			if (file_layout->MR_mfl_label_layout[j] == label) {
 				*fileptr = file_layout->MR_mfl_filename;
 				*lineptr = file_layout->MR_mfl_label_lineno[j];
-				return TRUE;
+				return MR_TRUE;
 			}
 		}
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }
 
 void
-MR_maybe_print_call_trace_info(FILE *fp, bool include_trace_data,
+MR_maybe_print_call_trace_info(FILE *fp, MR_bool include_trace_data,
 	const MR_Proc_Layout *entry, MR_Word *base_sp, MR_Word *base_curfr)
 {
 	if (include_trace_data) {
@@ -863,7 +863,7 @@ void
 MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 	MR_Word *base_sp, MR_Word *base_curfr)
 {
-	bool	print_details;
+	MR_bool	print_details;
 
 	if (base_sp == NULL || base_curfr == NULL) {
 		return;
@@ -877,7 +877,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 			** For procedures compiled with shallow
 			** tracing, the details will be valid only
 			** if the value of MR_from_full saved in
-			** the appropriate stack slot was TRUE.
+			** the appropriate stack slot was MR_TRUE.
 			*/
 			if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 				print_details = MR_based_stackvar(
@@ -891,10 +891,10 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 			** For procedures compiled with full tracing,
 			** we can always print out the details.
 			*/
-			print_details = TRUE;
+			print_details = MR_TRUE;
 		}
 	} else {
-		print_details = FALSE;
+		print_details = MR_FALSE;
 	}
 
 	if (print_details) {
@@ -924,18 +924,18 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 void
 MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry)
 {
-	MR_print_proc_id_internal(fp, entry, FALSE);
+	MR_print_proc_id_internal(fp, entry, MR_FALSE);
 }
 
 void
 MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry)
 {
-	MR_print_proc_id_internal(fp, entry, TRUE);
+	MR_print_proc_id_internal(fp, entry, MR_TRUE);
 }
 
 static void
 MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry,
-	bool spec)
+	MR_bool spec)
 {
 	if (! MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
 		MR_fatal_error("cannot print procedure id without layout");
@@ -997,11 +997,12 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry,
 }
 
 void
-MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
+MR_print_proc_id_trace_and_context(FILE *fp, MR_bool include_trace_data,
 	MR_Context_Position pos, const MR_Proc_Layout *entry,
 	MR_Word *base_sp, MR_Word *base_curfr,
-	const char *path, const char *filename, int lineno, bool print_parent, 
-	const char *parent_filename, int parent_lineno, int indent)
+	const char *path, const char *filename, int lineno,
+	MR_bool print_parent, const char *parent_filename,
+	int parent_lineno, int indent)
 {
 
 	switch (pos) {
@@ -1019,7 +1020,7 @@ MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
 		case MR_CONTEXT_BEFORE:
 			MR_maybe_print_context(fp, filename, lineno);
 			MR_maybe_print_parent_context(fp, print_parent,
-				FALSE, parent_filename, parent_lineno);
+				MR_FALSE, parent_filename, parent_lineno);
 			fprintf(fp, " ");
 			MR_maybe_print_call_trace_info(fp, include_trace_data,
 				entry, base_sp, base_curfr);
@@ -1040,14 +1041,14 @@ MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
 			}
 			MR_maybe_print_context(fp, filename, lineno);
 			MR_maybe_print_parent_context(fp, print_parent,
-				FALSE, parent_filename, parent_lineno);
+				MR_FALSE, parent_filename, parent_lineno);
 			fprintf(fp, "\n");
 			break;
 
 		case MR_CONTEXT_PREVLINE:
 			MR_maybe_print_context(fp, filename, lineno);
 			MR_maybe_print_parent_context(fp, print_parent,
-				TRUE, parent_filename, parent_lineno);
+				MR_TRUE, parent_filename, parent_lineno);
 			fprintf(fp, "\n%*s ", indent, "");
 			MR_maybe_print_call_trace_info(fp, include_trace_data,
 				entry, base_sp, base_curfr);
@@ -1069,7 +1070,7 @@ MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
 			fprintf(fp, "\n%*s", indent, "");
 			MR_maybe_print_context(fp, filename, lineno);
 			MR_maybe_print_parent_context(fp, print_parent,
-				TRUE, parent_filename, parent_lineno);
+				MR_TRUE, parent_filename, parent_lineno);
 			fprintf(fp, "\n");
 			break;
 
@@ -1081,16 +1082,16 @@ MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
 static void
 MR_maybe_print_context(FILE *fp, const char *filename, int lineno)
 {
-	if (strdiff(filename, "") && lineno != 0) {
+	if (MR_strdiff(filename, "") && lineno != 0) {
 		fprintf(fp, " %s:%d", filename, lineno);
 	}
 }
 
 static void
-MR_maybe_print_parent_context(FILE *fp, bool print_parent, bool verbose,
+MR_maybe_print_parent_context(FILE *fp, MR_bool print_parent, MR_bool verbose,
 	const char *filename, int lineno)
 {
-	if (print_parent && strdiff(filename, "") && lineno != 0) {
+	if (print_parent && MR_strdiff(filename, "") && lineno != 0) {
 		if (verbose) {
 			fprintf(fp, " (from %s:%d)", filename, lineno);
 		} else {

@@ -161,7 +161,7 @@ start_label:
                 y_ptag = MR_tag(y);
 
                 if (x_ptag != y_ptag) {
-                    return_answer(FALSE);
+                    return_answer(MR_FALSE);
                 }
 
                 ptaglayout = &MR_type_ctor_layout(type_ctor_info).layout_du[x_ptag];
@@ -174,7 +174,7 @@ start_label:
                         y_sectag = MR_unmkbody(y_data_value);
 
                         if (x_sectag != y_sectag) {
-                            return_answer(FALSE);
+                            return_answer(MR_FALSE);
                         }
 
                         break;
@@ -184,7 +184,7 @@ start_label:
                         y_sectag = y_data_value[0];
 
                         if (x_sectag != y_sectag) {
-                            return_answer(FALSE);
+                            return_answer(MR_FALSE);
                         }
 
                         break;
@@ -245,7 +245,7 @@ start_label:
   #ifdef  select_compare_code
                             return_answer(result);
   #else
-                            return_answer(FALSE);
+                            return_answer(MR_FALSE);
   #endif
                         }
                     }
@@ -281,7 +281,7 @@ start_label:
                         x_data_value[cur_slot], y_data_value[cur_slot]);
 		    MR_restore_transient_registers();
                     if (! result) {
-                        return_answer(FALSE);
+                        return_answer(MR_FALSE);
                     }
   #endif
                     cur_slot++;
@@ -290,7 +290,7 @@ start_label:
   #ifdef  select_compare_code
                 return_answer(MR_COMPARE_EQUAL);
   #else
-                return_answer(TRUE);
+                return_answer(MR_TRUE);
   #endif
             }
 
@@ -407,14 +407,14 @@ start_label:
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
 		    MR_restore_transient_registers();
                     if (! result) {
-                        return_answer(FALSE);
+                        return_answer(MR_FALSE);
                     }
 #endif
                 }
 #ifdef  select_compare_code
                 return_answer(MR_COMPARE_EQUAL);
 #else
-                return_answer(TRUE);
+                return_answer(MR_TRUE);
 #endif
             }
 
@@ -437,10 +437,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
             if ((MR_Integer) x == (MR_Integer) y) {
                 unify_call_exit_code(integer_unify);
-                return_answer(TRUE);
+                return_answer(MR_TRUE);
             } else {
                 unify_call_fail_code(integer_unify);
-                return_answer(FALSE);
+                return_answer(MR_FALSE);
             }
   #else
             return_answer((MR_Integer) x == (MR_Integer) y);
@@ -468,10 +468,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 if (fx == fy) {
                     unify_call_exit_code(float_unify);
-                    return_answer(TRUE);
+                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(float_unify);
-                    return_answer(FALSE);
+                    return_answer(MR_FALSE);
                 }
   #else
                 return_answer(fx == fy);
@@ -500,10 +500,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 if (result == 0) {
                     unify_call_exit_code(string_unify);
-                    return_answer(TRUE);
+                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(string_unify);
-                    return_answer(FALSE);
+                    return_answer(MR_FALSE);
                 }
   #else
                 return_answer(result == 0);
@@ -527,10 +527,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
             if ((void *) x == (void *) y) {
                 unify_call_exit_code(c_pointer_unify);
-                return_answer(TRUE);
+                return_answer(MR_TRUE);
             } else {
                 unify_call_fail_code(c_pointer_unify);
-                return_answer(FALSE);
+                return_answer(MR_FALSE);
             }
   #else
             return_answer((void *) x == (void *) y);
@@ -554,10 +554,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 if (result == MR_COMPARE_EQUAL) {
                     unify_call_exit_code(typeinfo_unify);
-                    return_answer(TRUE);
+                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(typeinfo_unify);
-                    return_answer(FALSE);
+                    return_answer(MR_FALSE);
                 }
   #else
                 return_answer(result == MR_COMPARE_EQUAL);
@@ -582,10 +582,10 @@ start_label:
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
                 if (result == MR_COMPARE_EQUAL) {
                     unify_call_exit_code(typectorinfo_unify);
-                    return_answer(TRUE);
+                    return_answer(MR_TRUE);
                 } else {
                     unify_call_fail_code(typectorinfo_unify);
-                    return_answer(FALSE);
+                    return_answer(MR_FALSE);
                 }
   #else
                 return_answer(result == MR_COMPARE_EQUAL);

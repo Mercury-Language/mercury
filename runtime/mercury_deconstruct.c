@@ -80,7 +80,7 @@ static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci);
 ** and extras/trailed_update/tr_store.m.
 */
 
-bool
+MR_bool
 MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
     MR_noncanon_handling noncanon)
@@ -94,13 +94,13 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
-        return TRUE;
+        return MR_TRUE;
     }
 
-    return FALSE;
+    return MR_FALSE;
 }
 
-bool
+MR_bool
 MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
     MR_noncanon_handling noncanon)
@@ -114,13 +114,13 @@ MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     if (expand_info.chosen_index_exists) {
         *arg_type_info_ptr = expand_info.chosen_type_info;
         *arg_ptr = expand_info.chosen_value_ptr;
-        return TRUE;
+        return MR_TRUE;
     }
 
-    return FALSE;
+    return MR_FALSE;
 }
 
-bool
+MR_bool
 MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     const char *arg_name, int *arg_num_ptr)
 {
@@ -158,7 +158,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                 ** If so, it must be a constant, and constants never have
                 ** any arguments.
                 */
-                return FALSE;
+                return MR_FALSE;
             }
 
             /*
@@ -167,7 +167,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             */
             for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
                 if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
-                    return FALSE;
+                    return MR_FALSE;
                 }
             }
             
@@ -212,19 +212,20 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             }
 
             if (functor_desc->MR_du_functor_arg_names == NULL) {
-                return FALSE;
+                return MR_FALSE;
             }
 
             for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
                 if (functor_desc->MR_du_functor_arg_names[i] != NULL
-                && streq(arg_name, functor_desc->MR_du_functor_arg_names[i]))
+                && MR_streq(arg_name,
+                        functor_desc->MR_du_functor_arg_names[i]))
                 {
                     *arg_num_ptr = i;
-                    return TRUE;
+                    return MR_TRUE;
                 }
             }
 
-            return FALSE;
+            return MR_FALSE;
 
         case MR_TYPECTOR_REP_EQUIV:
             eqv_type_info = MR_create_type_info(
@@ -247,16 +248,17 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                 functors_notag;
 
             if (notag_functor_desc->MR_notag_functor_arg_name != NULL
-            && streq(arg_name, notag_functor_desc->MR_notag_functor_arg_name))
+            && MR_streq(arg_name,
+                    notag_functor_desc->MR_notag_functor_arg_name))
             {
                 *arg_num_ptr = 0;
-                return TRUE;
+                return MR_TRUE;
             }
 
-            return FALSE;
+            return MR_FALSE;
 
         default:
-            return FALSE;
+            return MR_FALSE;
     }
 }
 

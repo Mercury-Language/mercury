@@ -25,7 +25,7 @@ typedef struct {
     int                     num_extra_args;
     MR_Word                 *arg_values;
     MR_TypeInfo             *arg_type_infos;
-    bool                    can_free_arg_type_infos;
+    MR_bool                    can_free_arg_type_infos;
 } MR_Expand_Args_Fields;
 
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
     int                     arity;
     MR_ConstString          functor;
     MR_Expand_Args_Fields   args;
-    bool                    limit_reached;
+    MR_bool                    limit_reached;
 } MR_Expand_Functor_Args_Limit_Info;
 
 typedef struct {
@@ -53,7 +53,7 @@ typedef struct {
 
 typedef struct {
     int                     arity;
-    bool                    chosen_index_exists;
+    MR_bool                    chosen_index_exists;
     MR_Word                 *chosen_value_ptr;
     MR_TypeInfo             chosen_type_info;
 } MR_Expand_Chosen_Arg_Only_Info;
@@ -107,16 +107,16 @@ extern  void    MR_expand_named_arg_only(MR_TypeInfo type_info,
 ** MR_arg() takes the address of a term, its type, and an
 ** argument position (the first argument being at position 1).
 ** If the given term has an argument at that position, MR_arg
-** returns TRUE and fills in the locations pointed to by the
+** returns MR_TRUE and fills in the locations pointed to by the
 ** argument_ptr and arg_type_info_ptr arguments with the value
 ** and type of the argument at the selected position.
-** If it doesn't, it fails (i.e. returns FALSE).
+** If it doesn't, it fails (i.e. returns MR_FALSE).
 **
 ** You need to wrap MR_{save/restore}_transient_hp() around
 ** calls to this function.
 */
 
-extern  bool    MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
+extern  MR_bool    MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr,
                     MR_noncanon_handling noncanon);
 
@@ -128,7 +128,7 @@ extern  bool    MR_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
 ** calls to this function.
 */
 
-extern  bool    MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
+extern  MR_bool    MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
                     MR_ConstString arg_name, MR_TypeInfo *arg_type_info_ptr,
                     MR_Word **argument_ptr, MR_noncanon_handling noncanon);
 
@@ -137,13 +137,13 @@ extern  bool    MR_named_arg(MR_TypeInfo type_info, MR_Word *term,
 ** and an argument name. If the given term has an argument
 ** with the given name, it succeeds and returns the argument
 ** number (counted starting from 0) of the argument. If it
-** doesn't, it fails (i.e. returns FALSE).
+** doesn't, it fails (i.e. returns MR_FALSE).
 **
 ** You need to wrap MR_{save/restore}_transient_hp() around
 ** calls to this function.
 */
 
-extern  bool    MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
+extern  MR_bool    MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     const char *arg_name, int *arg_num_ptr);
 
 #endif /* MERCURY_DECONSTRUCT_H */

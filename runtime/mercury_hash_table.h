@@ -16,7 +16,7 @@
 #ifndef	MERCURY_HASH_TABLE_H
 #define	MERCURY_HASH_TABLE_H
 
-#include "mercury_std.h"	/* for bool */
+#include "mercury_std.h"	/* for MR_bool */
 #include "mercury_dlist.h"	/* for MR_Dlist */
 
 typedef	struct {
@@ -24,7 +24,7 @@ typedef	struct {
 	MR_Dlist	**MR_ht_store;
 	const void	*(*MR_ht_key)(const void *); /* applied to entries */
 	int		(*MR_ht_hash)(const void *); /* applied to keys */
-	bool		(*MR_ht_equal)(const void *, const void *);
+	MR_bool		(*MR_ht_equal)(const void *, const void *);
 						     /* applied to two keys */
 } MR_Hash_Table;
 
@@ -42,7 +42,7 @@ typedef	struct {
 extern	void		MR_ht_init_table(MR_Hash_Table *);
 extern	const void	*MR_ht_lookup_table(const MR_Hash_Table *,
 				const void *);
-extern	bool		MR_ht_insert_table(const MR_Hash_Table *, void *);
+extern	MR_bool		MR_ht_insert_table(const MR_Hash_Table *, void *);
 extern	MR_Dlist	*MR_ht_get_all_entries(const MR_Hash_Table *);
 extern	void		MR_ht_process_all_entries(const MR_Hash_Table *,
 				void f(const void *));

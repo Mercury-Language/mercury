@@ -782,7 +782,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_pseudo_type_info_is_ground(
                 functor_desc->MR_notag_functor_arg_type);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             break;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -792,11 +792,11 @@ get_functor_info(Univ, FunctorInfo) :-
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             break;
 
         default:
-            SUCCESS_INDICATOR = FALSE;
+            SUCCESS_INDICATOR = MR_FALSE;
             break;
     }
 }").
@@ -830,7 +830,7 @@ get_functor_info(Univ, FunctorInfo) :-
             exp_type_info = MR_pseudo_type_info_is_ground(
                 MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             break;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
@@ -838,11 +838,11 @@ get_functor_info(Univ, FunctorInfo) :-
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             break;
 
         default:
-            SUCCESS_INDICATOR = FALSE;
+            SUCCESS_INDICATOR = MR_FALSE;
             break;
     }
 }").
@@ -872,11 +872,11 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             Enum = (MR_Integer) value;
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             break;
 
         default:
-            SUCCESS_INDICATOR = FALSE;
+            SUCCESS_INDICATOR = MR_FALSE;
             break;
     }
 }").
@@ -916,7 +916,7 @@ get_functor_info(Univ, FunctorInfo) :-
     switch (MR_type_ctor_rep(type_ctor_info)) {
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-            SUCCESS_INDICATOR = TRUE;
+            SUCCESS_INDICATOR = MR_TRUE;
             Ptag = MR_tag(value);
             ptag_layout = &MR_type_ctor_layout(type_ctor_info).layout_du[Ptag];
 
@@ -942,7 +942,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
                     functor_desc = ptag_layout->MR_sectag_alternatives[Sectag];
                     if (functor_desc->MR_du_functor_exist_info != NULL) {
-                        SUCCESS_INDICATOR = FALSE;
+                        SUCCESS_INDICATOR = MR_FALSE;
                         break;
                     }
 
@@ -981,7 +981,7 @@ get_functor_info(Univ, FunctorInfo) :-
             break;
 
         default:
-            SUCCESS_INDICATOR = FALSE;
+            SUCCESS_INDICATOR = MR_FALSE;
             break;
     }
 }").

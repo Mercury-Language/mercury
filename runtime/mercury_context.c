@@ -214,7 +214,7 @@ MR_flounder(void)
 ** block or not.
 */
 static int
-MR_check_pending_contexts(bool block)
+MR_check_pending_contexts(MR_bool block)
 {
 #ifdef	MR_CAN_DO_PENDING_IO
 
@@ -328,7 +328,7 @@ MR_define_entry(MR_do_runnext);
 	MR_LOCK(MR_runqueue_lock, "MR_do_runnext (i)");
 
 	while (1) {
-		if (MR_exit_now == TRUE) {
+		if (MR_exit_now == MR_TRUE) {
 			MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (ii)");
 			MR_destroy_thread(MR_cur_engine());
 		}
@@ -370,7 +370,7 @@ MR_define_entry(MR_do_runnext);
 	}
 
 	while (MR_runqueue_head == NULL) {
-		MR_check_pending_contexts(TRUE); /* block */
+		MR_check_pending_contexts(MR_TRUE); /* block */
 	}
 
 	MR_ENGINE(MR_eng_this_context) = MR_runqueue_head;

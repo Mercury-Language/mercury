@@ -29,7 +29,7 @@
 #define MERCURY_GRADES_H
 
 #include "mercury_std.h"	/* for MR_STRINGIFY and MR_PASTE2 */
-#include "mercury_tags.h"	/* for TAGBITS */
+#include "mercury_tags.h"	/* for MR_TAGBITS */
 
 /*
 ** Here we build up the MR_GRADE macro part at a time,
@@ -174,14 +174,14 @@
   #error "trailing and minimal model tabling are not compatible"
 #endif
 
-#if TAGBITS == 0
+#if MR_TAGBITS == 0
   #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _notags)
-#elif defined(HIGHTAGS)
+#elif defined(MR_HIGHTAGS)
   #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
-  					MR_PASTE2(_hightags, TAGBITS))
+  					MR_PASTE2(_hightags, MR_TAGBITS))
 #else
   #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
-  					MR_PASTE2(_tags, TAGBITS))
+  					MR_PASTE2(_tags, MR_TAGBITS))
 #endif
 
 #ifdef MR_BOXED_FLOAT

@@ -23,7 +23,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 	MR_mercuryfile_init(c_file, 1, mercury_file);
 }
 
-bool
+MR_bool
 MR_trace_is_number(const char *word, int *value)
 {
 	if (MR_isdigit(*word)) {
@@ -35,11 +35,11 @@ MR_trace_is_number(const char *word, int *value)
 		}
 
 		if (*word == '\0') {
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }
 
 void

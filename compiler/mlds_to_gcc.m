@@ -425,9 +425,10 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 		{ need_to_init_entries(Globals) },
 		{ FuncDefns \= [] }
 	->
-		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+		io__write_strings(
+				["\tstatic MR_bool initialised = MR_FALSE;\n",
 				"\tif (initialised) return;\n",
-				"\tinitialised = TRUE;\n\n"]),
+				"\tinitialised = MR_TRUE;\n\n"]),
 		mlds_output_calls_to_init_entry(ModuleName, FuncDefns)
 	;
 		[]
@@ -439,9 +440,10 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 	(
 		{ TypeCtorInfoDefns \= [] }
 	->
-		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+		io__write_strings(
+				["\tstatic MR_bool initialised = MR_FALSE;\n",
 				"\tif (initialised) return;\n",
-				"\tinitialised = TRUE;\n\n"]),
+				"\tinitialised = MR_TRUE;\n\n"]),
 		mlds_output_calls_to_register_tci(ModuleName,
 			TypeCtorInfoDefns)
 	;

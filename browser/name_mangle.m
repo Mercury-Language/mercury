@@ -250,18 +250,18 @@ convert_to_valid_c_identifier_2(String, Name) :-
 :- pred use_asm_labels is semidet.
 :- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
 #ifdef MR_USE_ASM_LABELS
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #else
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 
 :- pred high_level_code is semidet.
 :- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
 #ifdef MR_HIGHLEVEL_CODE
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #else
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
 

@@ -42,7 +42,7 @@
 
 extern	void	MR_dump_stack(MR_Code *success_pointer,
 			MR_Word *det_stack_pointer,
-			MR_Word *current_frame, bool include_trace_data);
+			MR_Word *current_frame, MR_bool include_trace_data);
 
 /*
 ** MR_dump_stack_from_layout:
@@ -62,14 +62,15 @@ typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
-				const char *goal_path, bool context_mismatch);
+				const char *goal_path,
+				MR_bool context_mismatch);
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				const MR_Label_Layout *label_layout,
 				MR_Word *det_stack_pointer,
 				MR_Word *current_frame,
-				bool include_trace_data,
-				bool include_contexts,
+				MR_bool include_trace_data,
+				MR_bool include_contexts,
 				MR_Print_Stack_Record print_stack_record);
 
 /*
@@ -173,11 +174,11 @@ extern	const char *MR_detism_names[];
 /*
 ** MR_find_context attempts to look up the file name and line number
 ** corresponding to a label identified by its layout structure. If successful,
-** it fills in *fileptr and *lineptr accordingly, and returns TRUE; otherwise,
-** it returns FALSE.
+** it fills in *fileptr and *lineptr accordingly, and returns MR_TRUE;
+** otherwise, it returns MR_FALSE.
 */
 
-extern	bool	MR_find_context(const MR_Label_Layout *label,
+extern	MR_bool	MR_find_context(const MR_Label_Layout *label,
 			const char **fileptr, int *lineptr);
 
 /*
@@ -188,7 +189,7 @@ extern	bool	MR_find_context(const MR_Label_Layout *label,
 ** to be non-NULL, since these numbers are stored in stack slots.
 **
 ** MR_maybe_print_call_trace_info calls MR_print_call_trace_info if
-** include_trace_data is TRUE and the other conditions required by
+** include_trace_data is MR_TRUE and the other conditions required by
 ** MR_print_call_trace_info are satisfied.
 */
 
@@ -197,7 +198,7 @@ extern	void	MR_print_call_trace_info(FILE *fp,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 extern	void	MR_maybe_print_call_trace_info(FILE *fp,
-			bool include_trace_data,
+			MR_bool include_trace_data,
 			const MR_Proc_Layout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
@@ -233,10 +234,10 @@ typedef	enum {
 } MR_Context_Position;
 
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
-			bool include_trace_data, MR_Context_Position pos,
+			MR_bool include_trace_data, MR_Context_Position pos,
 			const MR_Proc_Layout *entry,
 			MR_Word *base_sp, MR_Word *base_curfr, const char *path,
-			const char *filename, int lineno, bool print_parent,
+			const char *filename, int lineno, MR_bool print_parent,
 			const char *parent_filename, int parent_lineno,
 			int indent);
 
@@ -248,6 +249,6 @@ extern	void	MR_dump_stack_record_print(FILE *fp,
 			const MR_Proc_Layout *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
-			const char *goal_path, bool context_mismatch);
+			const char *goal_path, MR_bool context_mismatch);
 
 #endif /* MERCURY_STACK_TRACE_H */

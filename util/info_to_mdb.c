@@ -22,11 +22,11 @@
 
 #define	MAXLINELEN	160
 
-static	bool	is_empty(const char *line);
-static	bool	is_all_same_char(const char *line, const char what);
-static	bool	is_command(const char *line, bool *is_concept);
+static	MR_bool	is_empty(const char *line);
+static	MR_bool	is_all_same_char(const char *line, const char what);
+static	MR_bool	is_command(const char *line, MR_bool *is_concept);
 static	void	get_command(const char *line, char *command);
-static	void	print_command_line(const char *line, bool is_concept);
+static	void	print_command_line(const char *line, MR_bool is_concept);
 
 static	char	*get_next_line(FILE *infp);
 static	void	put_line_back(char *line);
@@ -44,8 +44,8 @@ main(int argc, char **argv)
 	char	command[MAXLINELEN];
 	char	next_command[MAXLINELEN];
 	int	slot = 0;
-	bool	is_concept;
-	bool	next_concept;
+	MR_bool	is_concept;
+	MR_bool	next_concept;
 
 	if (argc != 3) {
 		fprintf(stderr,
@@ -70,7 +70,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	while (TRUE) {
+	while (MR_TRUE) {
 		line = get_next_line(infp);
 		while (line != NULL && is_empty(line)) {
 			line = get_next_line(infp);
@@ -139,30 +139,30 @@ main(int argc, char **argv)
 	}
 }
 
-static bool
+static MR_bool
 is_empty(const char *line)
 {
 	int	i = 0;
 
 	while (line[i] != '\0') {
 		if (!MR_isspace(line[i])) {
-			return FALSE;
+			return MR_FALSE;
 		}
 
 		i++;
 	}
 
-	return TRUE;
+	return MR_TRUE;
 }
 
-static bool
+static MR_bool
 is_all_same_char(const char *line, const char what)
 {
 	int	i = 0;
 
 	while (line[i] != '\0') {
 		if (line[i] != what && line[i] != '\n') {
-			return FALSE;
+			return MR_FALSE;
 		}
 
 		i++;
@@ -171,20 +171,20 @@ is_all_same_char(const char *line, const char what)
 	return i > 1;
 }
 
-static bool
-is_command(const char *line, bool *is_concept)
+static MR_bool
+is_command(const char *line, MR_bool *is_concept)
 {
 	int	len;
 
 	len = strlen(line);
 	if ((line[0] == '`') && (line[len-2] == '\'')) {
-		*is_concept = FALSE;
-		return TRUE;
+		*is_concept = MR_FALSE;
+		return MR_TRUE;
 	} else if ((line[0] == '_') && (line[len-2] == '_')) {
-		*is_concept = TRUE;
-		return TRUE;
+		*is_concept = MR_TRUE;
+		return MR_TRUE;
 	} else {
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
@@ -200,7 +200,7 @@ get_command(const char *line, char *command)
 }
 
 static void
-print_command_line(const char *line, bool is_concept)
+print_command_line(const char *line, MR_bool is_concept)
 {
 	int	len;
 	int	i;

@@ -14,7 +14,7 @@
 
 #include "mercury_regs.h"		/* needs to come first */
 #include <stddef.h>			/* for `size_t' */
-#include "mercury_std.h"		/* for `bool' */
+#include "mercury_std.h"		/* for `MR_bool' */
 #include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
@@ -218,13 +218,13 @@ extern	const char	*MR_mdb_out_filename;
 extern	const char	*MR_mdb_err_filename;
 
 /* should mdb be started in a window */
-extern	bool		MR_mdb_in_window;
+extern	MR_bool		MR_mdb_in_window;
 
 /* size of the primary cache */
 extern	size_t		MR_pcache_size;
 
 /* low level debugging */
-extern	bool		MR_check_space;
+extern	MR_bool		MR_check_space;
 extern	MR_Word		*MR_watch_addr;
 extern	MR_Word		*MR_watch_csd_addr;
 extern	int		MR_watch_csd_ignore;
@@ -242,8 +242,8 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
-extern	bool		MR_profiling;
-extern	bool		MR_print_deep_profiling_statistics;
+extern	MR_bool		MR_profiling;
+extern	MR_bool		MR_print_deep_profiling_statistics;
 
 #ifdef  MR_TYPE_CTOR_STATS
 

@@ -45,7 +45,7 @@ static	MR_TypeInfo	MR_trace_browser_persistent_state_type;
 
 static	void		MR_trace_browse_ensure_init(void);
 
-static	bool		MR_trace_is_portray_format(const char *str,
+static	MR_bool		MR_trace_is_portray_format(const char *str,
 				MR_Browse_Format *format);
 
 void
@@ -198,7 +198,7 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 	}
 }
 
-bool
+MR_bool
 MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 		MR_Word flat, MR_Word raw_pretty, MR_Word verbose, 
 		MR_Word pretty, const char *param, const char *value)
@@ -208,7 +208,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 
 	MR_trace_browse_ensure_init();
 
-	if (streq(param, "format") &&
+	if (MR_streq(param, "format") &&
 			MR_trace_is_portray_format(value, &new_format))
 	{
 		MR_TRACE_CALL_MERCURY(
@@ -217,7 +217,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (streq(param, "depth") && MR_trace_is_number(value, &depth))
+	else if (MR_streq(param, "depth") && MR_trace_is_number(value, &depth))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_depth(print, browse, print_all,
@@ -226,7 +226,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (streq(param, "size") && MR_trace_is_number(value, &size))
+	else if (MR_streq(param, "size") && MR_trace_is_number(value, &size))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_size(print, browse, print_all,
@@ -235,7 +235,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (streq(param, "width") && MR_trace_is_number(value, &width))
+	else if (MR_streq(param, "width") && MR_trace_is_number(value, &width))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_width(print, browse, print_all,
@@ -244,7 +244,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (streq(param, "lines") && MR_trace_is_number(value, &lines))
+	else if (MR_streq(param, "lines") && MR_trace_is_number(value, &lines))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_lines(print, browse, print_all,
@@ -255,40 +255,40 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 	}
 	else
 	{
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	MR_trace_browser_persistent_state =
 			MR_make_permanent(MR_trace_browser_persistent_state,
 				MR_trace_browser_persistent_state_type);
-	return TRUE;
+	return MR_TRUE;
 }
 
-static bool
+static MR_bool
 MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
 {
 	*format = MR_BROWSE_DEFAULT_FORMAT;
 
-	if (streq(str, "flat")) {
+	if (MR_streq(str, "flat")) {
 		*format = MR_BROWSE_FORMAT_FLAT;
-		return TRUE;
-	} else if (streq(str, "raw_pretty")) {
+		return MR_TRUE;
+	} else if (MR_streq(str, "raw_pretty")) {
 		*format = MR_BROWSE_FORMAT_RAW_PRETTY;
-		return TRUE;
-	} else if (streq(str, "verbose")) {
+		return MR_TRUE;
+	} else if (MR_streq(str, "verbose")) {
 		*format = MR_BROWSE_FORMAT_VERBOSE;
-		return TRUE;
-	} else if (streq(str, "pretty")) {
+		return MR_TRUE;
+	} else if (MR_streq(str, "pretty")) {
 		*format = MR_BROWSE_FORMAT_PRETTY;
-		return TRUE;
+		return MR_TRUE;
 	}
-	return FALSE;
+	return MR_FALSE;
 }
 
 static void
 MR_trace_browse_ensure_init(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 	MR_Word		typeinfo_type_word;
 	MR_Word		MR_trace_browser_persistent_state_type_word;
 
@@ -308,7 +308,7 @@ MR_trace_browse_ensure_init(void)
 		MR_trace_browser_persistent_state = MR_make_permanent(
 				MR_trace_browser_persistent_state,
 				MR_trace_browser_persistent_state_type);
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }
 

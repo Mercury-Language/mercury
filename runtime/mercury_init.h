@@ -143,7 +143,7 @@ extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer,
 			MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
 			MR_Integer, MR_String, MR_Word);
 		/* output_current_slots/13 */
-extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+extern	MR_bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word,
 			MR_String, MR_String, MR_Integer, MR_Integer,
 			MR_Integer, MR_Word, MR_String, MR_Word);
 		/* found_match/12 */

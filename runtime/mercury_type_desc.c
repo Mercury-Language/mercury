@@ -53,7 +53,7 @@ MR_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 }
 
 void
-MR_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
+MR_type_ctor_and_args(MR_TypeInfo type_info, MR_bool collapse_equivalences,
 	MR_TypeCtorDesc *type_ctor_desc_ptr, MR_Word *arg_type_info_list_ptr)
 {
 	MR_TypeCtorInfo type_ctor_info;

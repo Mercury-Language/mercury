@@ -6,7 +6,7 @@
 
 /*
 ** std.h - "standard" [sic] definitions for C:
-**	bool, TRUE, FALSE, min(), max(), streq(), etc.
+**	MR_bool, MR_TRUE, MR_FALSE, MR_min(), MR_max(), MR_streq(), etc.
 */
 
 #ifndef MERCURY_STD_H
@@ -27,33 +27,10 @@
   #include "safe-ctype.h"
 #endif
 
-#if 0
-#ifndef	reg
-#define	reg		register
-#endif
-#endif
+typedef	char		MR_bool;
 
-#ifdef IN_GCC
-  /*
-  ** We need to make sure that we pick up GCC's definition of bool, 
-  ** to ensure that we don't define `bool' below.  Otherwise we get
-  ** conflicts because some declarations use the <stdbool.h> definition
-  ** of bool (an enum), and some use our definition (a #define for char)
-  */
-  #include "config.h"
-  #include "system.h"
-#endif
-
-#ifndef	bool
-#define	bool		char
-#endif
-
-#ifndef max
-#define	max(a, b)	((a) > (b) ? (a) : (b))
-#endif
-#ifndef min
-#define	min(a, b)	((a) < (b) ? (a) : (b))
-#endif
+#define	MR_max(a, b)	((a) > (b) ? (a) : (b))
+#define	MR_min(a, b)	((a) < (b) ? (a) : (b))
 
 /*
 ** The ANSI C isalnum(), etc. macros require that the argument be cast to
@@ -70,21 +47,17 @@
 #define	MR_isspace(c)		isspace((unsigned char) (c))
 #define	MR_isalnumunder(c)	(isalnum((unsigned char) (c)) || c == '_')
 
-#define streq(s1, s2)		(strcmp(s1, s2) == 0)
-#define strdiff(s1, s2)		(strcmp(s1, s2) != 0)
-#define strtest(s1, s2)		(strcmp(s1, s2))
-#define strneq(s1, s2, n)	(strncmp(s1, s2, n) == 0)
-#define strndiff(s1, s2, n)	(strncmp(s1, s2, n) != 0)
-#define strntest(s1, s2, n)	(strncmp(s1, s2, n))
+#define MR_streq(s1, s2)	(strcmp(s1, s2) == 0)
+#define MR_strdiff(s1, s2)	(strcmp(s1, s2) != 0)
+#define MR_strtest(s1, s2)	(strcmp(s1, s2))
+#define MR_strneq(s1, s2, n)	(strncmp(s1, s2, n) == 0)
+#define MR_strndiff(s1, s2, n)	(strncmp(s1, s2, n) != 0)
+#define MR_strntest(s1, s2, n)	(strncmp(s1, s2, n))
 
-#define	ungetchar(c)		ungetc(c, stdin)
+#define	MR_ungetchar(c)		ungetc(c, stdin)
 
-#ifndef	TRUE
-#define	TRUE		1
-#endif
-#ifndef	FALSE
-#define	FALSE		0
-#endif
+#define	MR_TRUE		1
+#define	MR_FALSE	0
 
 /*
 ** For speed, turn assertions off,
@@ -204,9 +177,9 @@
 /* A macro for declaring functions that never return */
 
 #if __GNUC__
-  #define NO_RETURN __attribute__((noreturn))
+  #define MR_NO_RETURN __attribute__((noreturn))
 #else
-  #define NO_RETURN
+  #define MR_NO_RETURN
 #endif
 
 /*---------------------------------------------------------------------------*/

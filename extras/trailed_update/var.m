@@ -404,13 +404,13 @@ var__rep_is_ground(VarPtr, Result) :-
 :- pragma c_code("
 	ML_var_delayed_conj ML_var_first_goal = {
 		0,
-		FALSE,
+		MR_FALSE,
 		NULL,
 		&ML_var_last_goal
 	};
 	ML_var_delayed_conj ML_var_last_goal = {
 		0,
-		FALSE,
+		MR_FALSE,
 		&ML_var_first_goal,
 		NULL
 	};
@@ -578,14 +578,14 @@ freeze(Var, Pred) :-
 	may_call_mercury,
 "
 	ML_var_freeze_in(TypeInfo_for_T, Var, Pred);
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 ").
 :- pragma c_code(
 	do_freeze(Var::out(any), Pred::in(delayed_goal)) /* semidet */,
 	may_call_mercury,
 "
 	ML_var_freeze_out(TypeInfo_for_T, &Var, Pred);
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 ").
 
 
@@ -659,9 +659,9 @@ var__rep_freeze_in(VarPtr, Pred) :-
 			Pred, XVal, &YVal))
 	{
 		ML_var_init_with_value(TypeInfo_for_T2, YVal, &Y);
-		SUCCESS_INDICATOR = TRUE;
+		SUCCESS_INDICATOR = MR_TRUE;
 	} else {
-		SUCCESS_INDICATOR = FALSE;
+		SUCCESS_INDICATOR = MR_FALSE;
 	}
 }").
 :- pragma c_code(
@@ -674,7 +674,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	Y = ML_var_alias(TypeInfo_for_T2, ML_var_free(TypeInfo_for_T2));
 	p = ML_var_binary_det_pred(TypeInfo_for_T1, Pred, TypeInfo_for_T2, Y);
 	ML_var_freeze_out(TypeInfo_for_T1, &X, p);
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 }").
 :- pragma c_code(
 	freeze(X::out(any), Pred::(pred(in, out) is semidet), Y::out(any)),
@@ -687,7 +687,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	p = ML_var_binary_semidet_pred(TypeInfo_for_T1,
 			Pred, TypeInfo_for_T2, Y);
 	ML_var_freeze_out(TypeInfo_for_T1, &X, p);
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 }").
 
 :- pragma c_code(
@@ -701,7 +701,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	p = ML_var_binary_semidet_pred_any(TypeInfo_for_T1,
 			Pred, TypeInfo_for_T2, Y);
 	ML_var_freeze_out(TypeInfo_for_T1, &X, p);
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 }").
 
 %-----------------------------------------------------------------------------%

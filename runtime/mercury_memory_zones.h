@@ -23,7 +23,7 @@
 #include <stdlib.h>		/* for size_t */
 
 #include "mercury_types.h"	/* for MR_Word */
-#include "mercury_std.h"		/* for bool */
+#include "mercury_std.h"		/* for MR_bool */
 
 
 /* these cannot be changed without lots of modifications elsewhere */
@@ -84,7 +84,7 @@ extern	unsigned long 	MR_num_uses[MR_MAX_RN];
 
 typedef struct MR_MemoryZone_Struct	MR_MemoryZone;
 
-typedef bool	MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
+typedef MR_bool	MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
 			void *context);
 
 struct MR_MemoryZone_Struct {

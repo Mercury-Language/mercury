@@ -489,7 +489,7 @@ void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 
 :- pragma foreign_code("MC++", "
 
-static bool unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
+static MR_bool unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
 {
 	return mercury::builtin::mercury_code::call_rtti_generic_unify_2_p(
 			ti, X, Y);
@@ -885,8 +885,8 @@ void sys_init_copy_module(void);
 #else /* ! MR_HIGHLEVEL_CODE */
 
 #ifdef	MR_DEEP_PROFILING
-MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"", 0, TRUE);
-MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"", 0, TRUE);
+MR_proc_static_user_builtin_empty(copy, 2, 0, ""builtin.m"", 0, MR_TRUE);
+MR_proc_static_user_builtin_empty(copy, 2, 1, ""builtin.m"", 0, MR_TRUE);
 #endif
 
 MR_define_extern_entry(mercury__copy_2_0);
@@ -1037,9 +1037,9 @@ void sys_init_c_pointer_module_write_out_proc_statics(FILE *fp);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(builtin, __Unify__,   c_pointer,
-	0, 0, ""builtin.m"", 0, TRUE);
+	0, 0, ""builtin.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(builtin, __Compare__, c_pointer,
-	0, 0, ""builtin.m"", 0, TRUE);
+	0, 0, ""builtin.m"", 0, MR_TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,

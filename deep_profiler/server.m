@@ -135,7 +135,7 @@ server(TimeOut, Debug, CanonicalClique, Deep) -->
 
 		extern	bool	MP_process_is_detached_server;
 
-		MP_process_is_detached_server = TRUE;
+		MP_process_is_detached_server = MR_TRUE;
 		exit(0);
 	}
 

@@ -1285,11 +1285,11 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 :- pragma foreign_proc("C",
 	semidet_succeed, 
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = TRUE;").
+	"SUCCESS_INDICATOR = MR_TRUE;").
 :- pragma foreign_proc("C",
 	semidet_fail,
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = FALSE;").
+	"SUCCESS_INDICATOR = MR_FALSE;").
 :- pragma foreign_proc("C",
 	cc_multi_equal(X::in, Y::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -1302,11 +1302,11 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 :- pragma foreign_proc("MC++",
 	semidet_succeed, 
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = TRUE;").
+	"SUCCESS_INDICATOR = MR_TRUE;").
 :- pragma foreign_proc("MC++",
 	semidet_fail, 
 	[will_not_call_mercury, thread_safe, promise_pure],
-	"SUCCESS_INDICATOR = FALSE;").
+	"SUCCESS_INDICATOR = MR_FALSE;").
 :- pragma foreign_proc("MC++",
 	cc_multi_equal(X::in, Y::out),
 	[will_not_call_mercury, thread_safe, promise_pure],

@@ -188,9 +188,9 @@ void sys_init_type_desc_module_write_out_proc_statics(FILE *);
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_empty(type_desc, __Unify__,   type_desc, 0, 0,
-	""type_desc.m"", 0, TRUE);
+	""type_desc.m"", 0, MR_TRUE);
 MR_proc_static_compiler_empty(type_desc, __Compare__, type_desc, 0, 0,
-	""type_desc.m"", 0, TRUE);
+	""type_desc.m"", 0, MR_TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(type_desc, type_desc, 0,
@@ -315,7 +315,7 @@ __Compare____type_desc_0_0(
 		result, x, y);
 }
 
-static bool
+static MR_bool
 __Unify____type_desc_0_0(MR_Word x, MR_Word y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
@@ -329,7 +329,7 @@ special___Compare___type_desc_0_0(
 		result, x, y);
 }
 
-static bool
+static MR_bool
 special___Unify___type_desc_0_0(MR_Word x, MR_Word y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
@@ -534,7 +534,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	MR_save_transient_registers();
 
 	type_info = (MR_TypeInfo) TypeDesc;
-	MR_type_ctor_and_args(type_info, TRUE, &type_ctor_desc, &ArgTypes);
+	MR_type_ctor_and_args(type_info, MR_TRUE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
 	MR_restore_transient_registers();
@@ -583,13 +583,13 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 	}
 
 	if (list_length != arity) {
-		SUCCESS_INDICATOR = FALSE;
+		SUCCESS_INDICATOR = MR_FALSE;
 	} else {
 		MR_save_transient_registers();
 		TypeDesc = (MR_Word) MR_make_type(arity, type_ctor_desc,
 			ArgTypes);
 		MR_restore_transient_registers();
-		SUCCESS_INDICATOR = TRUE;
+		SUCCESS_INDICATOR = MR_TRUE;
 	}
 }").
 
@@ -612,7 +612,7 @@ make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
 	MR_save_transient_registers();
 
 	type_info = (MR_TypeInfo) TypeDesc;
-	MR_type_ctor_and_args(type_info, FALSE, &type_ctor_desc, &ArgTypes);
+	MR_type_ctor_and_args(type_info, MR_FALSE, &type_ctor_desc, &ArgTypes);
 	TypeCtorDesc = (MR_Word) type_ctor_desc;
 
 	MR_restore_transient_registers();

@@ -18,11 +18,13 @@ extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
 extern	MR_Code	*MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info);
-extern	void	MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno, 
-			MR_Unsigned depth, MR_Trace_Port port, 
-			const MR_Label_Layout *layout, const char *path, 
-			int lineno, bool *stop_collecting);
-extern	int	MR_get_line_number(MR_Word *saved_regs, const MR_Label_Layout *layout, 
+extern	void	MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr,
+			MR_Unsigned seqno, MR_Unsigned depth,
+			MR_Trace_Port port, const MR_Label_Layout *layout,
+			const char *path, int lineno,
+			MR_bool *stop_collecting);
+extern	int	MR_get_line_number(MR_Word *saved_regs,
+			const MR_Label_Layout *layout, 
 			MR_Trace_Port port);
 
 /*

@@ -28,14 +28,14 @@ ENDINIT
 
 #endif
 
-static	void	call_engine_inner(MR_Code *entry_point) NO_RETURN;
+static	void	call_engine_inner(MR_Code *entry_point) MR_NO_RETURN;
 
 #ifndef MR_USE_GCC_NONLOCAL_GOTOS
   static MR_Code	*engine_done(void);
   static MR_Code	*engine_init_registers(void);
 #endif
 
-bool	MR_debugflag[MR_MAXFLAG];
+MR_bool	MR_debugflag[MR_MAXFLAG];
 
 #ifndef MR_THREAD_SAFE
   MercuryEngine	MR_engine_base;
@@ -60,11 +60,11 @@ MR_init_engine(MercuryEngine *eng)
 
 #if !defined(MR_USE_GCC_NONLOCAL_GOTOS) && !defined(MR_HIGHLEVEL_CODE)
 	{
-		static bool made_engine_done_label = FALSE;
+		static MR_bool made_engine_done_label = MR_FALSE;
 		if (!made_engine_done_label) {
 			MR_make_label("engine_done", MR_LABEL(engine_done),
 				engine_done);
-			made_engine_done_label = TRUE;
+			made_engine_done_label = MR_TRUE;
 		}
 	}
 #endif
@@ -156,15 +156,15 @@ MR_destroy_engine(MercuryEngine *eng)
 
 /*
 ** MR_Word *
-** MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
+** MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
 **
 **	This routine calls a Mercury routine from C.
 **
 **	The called routine should be det/semidet/cc_multi/cc_nondet.
 **
 **	If the called routine returns normally (this includes the case of a
-**	semidet/cc_nondet routine failing, i.e. returning with MR_r1 = FALSE),
-**	then MR_call_engine() will return NULL.
+**	semidet/cc_nondet routine failing, i.e. returning with
+**	MR_r1 = MR_FALSE), then MR_call_engine() will return NULL.
 **
 **	If the called routine exits by throwing an exception, then the
 **	behaviour depends on the `catch_exceptions' flag.
@@ -207,7 +207,7 @@ MR_destroy_engine(MercuryEngine *eng)
 */
 
 MR_Word *
-MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
+MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
 {
 
 	jmp_buf		curr_jmp_buf;
@@ -377,13 +377,13 @@ call_engine_inner(MR_Code *entry_point)
 #ifdef MR_LOWLEVEL_DEBUG
 {
 	/* ensure that we only make the label once */
-	static	bool	initialized = FALSE;
+	static	MR_bool	initialized = MR_FALSE;
 
 	if (!initialized)
 	{
 		MR_make_label("engine_done", MR_LABEL(engine_done),
 			engine_done);
-		initialized = TRUE;
+		initialized = MR_TRUE;
 	}
 }
 #endif
@@ -503,7 +503,7 @@ MR_define_label(engine_done);
 		used_low = high;
 		used_high = LOCALS_SIZE - low;
 		printf("max locals used:  %3d bytes (probably)\n",
-			min(high, LOCALS_SIZE - low));
+			MR_min(high, LOCALS_SIZE - low));
 		printf("(low mark = %d, high mark = %d)\n", low, high);
 	}
 #endif /* MR_LOWLEVEL_DEBUG */

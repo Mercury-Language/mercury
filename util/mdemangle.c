@@ -33,16 +33,17 @@
 static void demangle(const char *name);
 static const char *strip_module_name(char **start_ptr, char *end,
 		const char *trailing_context[]);
-static bool check_for_suffix(char *start, char *position, const char *suffix,
-		int sizeof_suffix, int *mode_num2);
+static MR_bool check_for_suffix(char *start, char *position,
+		const char *suffix, int sizeof_suffix, int *mode_num2);
 static char *fix_mangled_ascii(char *str, char **end);
-static bool fix_mangled_special_case(char *str, char **end);
-static bool find_double_underscore(char **str, char *end);
-static bool cut_at_double_underscore(char **str, char *end);
-static bool cut_trailing_integer(char *str, char **end, int *num);
-static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
-static bool strip_prefix(char **str, const char *prefix);
-static bool strip_leading_integer(char **start_ptr, int *num);
+static MR_bool fix_mangled_special_case(char *str, char **end);
+static MR_bool find_double_underscore(char **str, char *end);
+static MR_bool cut_at_double_underscore(char **str, char *end);
+static MR_bool cut_trailing_integer(char *str, char **end, int *num);
+static MR_bool cut_trailing_underscore_integer(char *str,
+		char **end, int *num);
+static MR_bool strip_prefix(char **str, const char *prefix);
+static MR_bool strip_leading_integer(char **start_ptr, int *num);
 
 /*
 ** Bloody SunOS 4.x doesn't have memmove()...
@@ -57,7 +58,7 @@ static bool strip_leading_integer(char **start_ptr, int *num);
 ** This option indicates whether we should output verbose
 ** explanations of linker error messages.
 */
-bool explain_link_errors = FALSE;
+MR_bool explain_link_errors = MR_FALSE;
 
 /*
 ** This variable gets set if the symbols MR_grade_* or MR_mercury_grade
@@ -81,7 +82,7 @@ main(int argc, char **argv)
 		if (strcmp(argv[1], "-e") == 0 ||
 		    strcmp(argv[1], "--explain-link-errors") == 0)
 		{
-			explain_link_errors = TRUE;
+			explain_link_errors = MR_TRUE;
 			argc--, argv++;
 		} else if (strcmp(argv[1], "--") == 0) {
 			argc--, argv++;
@@ -207,10 +208,12 @@ demangle(const char *orig_name)
 	int mode_num2;
 	int arity;
 	const char *pred_or_func; /* either "predicate" or "function" */
-	bool unused_args = FALSE; /* does this proc have any unused arguments */
-	bool unused_args_extra = FALSE; /* __uab suffix rather than __ua */
+		/* does this proc have any unused arguments */
+	MR_bool unused_args = MR_FALSE;
+		/* __uab suffix rather than __ua */
+	MR_bool unused_args_extra = MR_FALSE;
 	int unused_args_num = 0;
-	bool higher_order = FALSE; /* has this proc been specialized */
+	MR_bool higher_order = MR_FALSE; /* has this proc been specialized */
 	int higher_order_num = 0;
 	int internal = -1;
 	char *name_before_prefixes = NULL;
@@ -364,15 +367,15 @@ demangle(const char *orig_name)
 	
 	if (check_for_suffix(start, position, ua_suffix,
 			sizeof(ua_suffix), &mode_num2)) {
-		unused_args = TRUE;
-		unused_args_extra = FALSE;
+		unused_args = MR_TRUE;
+		unused_args_extra = MR_FALSE;
 		unused_args_num = mode_num;
 		end = position + 1 - (sizeof(ua_suffix) - 1);
 		mode_num = mode_num2 % 10000;
 	} else if (check_for_suffix(start, position, ua_suffix2,
 			sizeof(ua_suffix2), &mode_num2)) {
-		unused_args = TRUE;
-		unused_args_extra = TRUE;
+		unused_args = MR_TRUE;
+		unused_args_extra = MR_TRUE;
 		unused_args_num = mode_num;
 		end = position + 1 - (sizeof(ua_suffix2) - 1);
 		mode_num = mode_num2 % 10000;
@@ -393,7 +396,7 @@ demangle(const char *orig_name)
 	if (check_for_suffix(start, position, ho_suffix,
 			sizeof(ho_suffix), &higher_order_num)) {
 		end = position + 1 - (sizeof(ho_suffix) - 1);
-		higher_order = TRUE;
+		higher_order = MR_TRUE;
 	}
 
 	/*
@@ -761,13 +764,13 @@ strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
 		/*
 		** Check for special cases
 		*/
-		bool stop = FALSE;
+		MR_bool stop = MR_FALSE;
 		for (i = 0; trailing_context[i] != NULL; i++) {
 			if (strncmp(start,
 				trailing_context[i],
 				strlen(trailing_context[i])) == 0)
 			{
-				stop = TRUE;
+				stop = MR_TRUE;
 			}
 		}
 		if (stop) break;
@@ -799,12 +802,12 @@ strip_module_name(char **start_ptr, char *end, const char *trailing_context[])
 	/*
 	** Remove the prefix from a string, if it has 
 	** it. 
-	** Returns TRUE if it has that prefix, and newstr will
+	** Returns MR_TRUE if it has that prefix, and newstr will
 	** then point to the rest of that string.
 	** If the string doesn't have that prefix, newstr will
-	** be unchanged, and the function will return FALSE.
+	** be unchanged, and the function will return MR_FALSE.
 	*/
-static bool 
+static MR_bool 
 strip_prefix(char **str, const char *prefix) 
 {
 	int len;
@@ -813,9 +816,9 @@ strip_prefix(char **str, const char *prefix)
 
 	if (strncmp(*str, prefix, len) == 0) {
 		*str += len;
-		return TRUE;
+		return MR_TRUE;
 	}
-	return FALSE;
+	return MR_FALSE;
 }
 
 	/*
@@ -825,26 +828,26 @@ strip_prefix(char **str, const char *prefix)
 	** and return true; otherwise leave *start_ptr unchanged and
 	** return false.  (The string itself is always left unchanged.)
 	*/
-static bool 
+static MR_bool 
 strip_leading_integer(char **start_ptr, int *num) 
 {
 	char *start = *start_ptr;
 	char save_char;
-	bool got_int;;
+	MR_bool got_int;;
 
 	while(MR_isdigit(*start)) {
 		start++;
 	}
-	if (start == *start_ptr) return FALSE;
+	if (start == *start_ptr) return MR_FALSE;
 	save_char = *start;
 	*start = '\0';
 	got_int = (sscanf(*start_ptr, "%d", num) == 1);
 	*start = save_char;
 	if (got_int) {
 		*start_ptr = start;
-		return TRUE;
+		return MR_TRUE;
 	} else {
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
@@ -855,85 +858,85 @@ strip_leading_integer(char **start_ptr, int *num)
 	** If false is returned, the string will not be cut.
 	** `real_end' is updated with the new end of the string
 	*/
-static bool 
+static MR_bool 
 cut_trailing_integer(char *str, char **real_end, int *num) 
 {
 	char *end = *real_end;
 
 	do { 
-		if (end == str) return FALSE;
+		if (end == str) return MR_FALSE;
 		end--;
 	} while (MR_isdigit(*end));
 
 	if (sscanf(end + 1, "%d", num) != 1) {
-		return FALSE;
+		return MR_FALSE;
 	}
 	*++end = '\0';
 	*real_end = end;
 
-	return TRUE;
+	return MR_TRUE;
 }
 
 	/*
 	** Same as cut_trailing_integer, but move end back past
 	** the underscore as well. If cut_trailing_underscore_integer
-	** returns TRUE, the `real_end' will be moved back before the
-	** underscore and the integer. If it returns FALSE, the
+	** returns MR_TRUE, the `real_end' will be moved back before the
+	** underscore and the integer. If it returns MR_FALSE, the
 	** `real_end' is unchanged.
 	*/
-static bool 
+static MR_bool 
 cut_trailing_underscore_integer(char *str, char **real_end, 
 	int *num) 
 {
 	char *end = *real_end;
 
 	if (!cut_trailing_integer(str, &end, num)) {
-		return FALSE;
+		return MR_FALSE;
 	}
 	if (end == str || *(--end) != '_') {
-		return FALSE;
+		return MR_FALSE;
 	}
 	*end = '\0';
 	*real_end = end;
-	return TRUE;
+	return MR_TRUE;
 }
 
 	/*
 	** Scan for `__' and cut the string at there (replace first
 	** `_' with `\0', return the part of the string after the `__').
-	** Returns TRUE if `__' was found, FALSE otherwise.
+	** Returns MR_TRUE if `__' was found, MR_FALSE otherwise.
 	*/
 
-static bool
+static MR_bool
 cut_at_double_underscore(char **start, char *end) 
 {
 	if (! find_double_underscore(start, end)) {
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	**start = '\0';
 	*start = *start + 2;
-	return TRUE;
+	return MR_TRUE;
 }
 
 	/*
 	** Scan for `__' and return a pointer to the first `_'.
-	** Returns TRUE if `__' was found, FALSE otherwise.
+	** Returns MR_TRUE if `__' was found, MR_FALSE otherwise.
 	*/
-static bool
+static MR_bool
 find_double_underscore(char **start, char *end) 
 {
 	char *str = *start;
 
 	while (*str != '_' || *(str + 1) != '_') {
 		if (str == end) {
-			return FALSE;
+			return MR_FALSE;
 		}
 		str++;
 	}
 
 	*start = str;
-	return TRUE;
+	return MR_TRUE;
 }
 
 	/*
@@ -1002,7 +1005,7 @@ fix_mangled_ascii(char *str, char **real_end)
 	return str;
 }
 
-static bool
+static MR_bool
 fix_mangled_special_case(char *str, char **real_end)
 {
 	static const struct {
@@ -1053,13 +1056,13 @@ fix_mangled_special_case(char *str, char **real_end)
 				leftover_len + 1);
 
 			*real_end = str + unmangled_len + leftover_len;
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
-	return FALSE;
+	return MR_FALSE;
 }
 
-static bool 
+static MR_bool 
 check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2)
 {

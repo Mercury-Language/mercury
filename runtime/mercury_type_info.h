@@ -203,7 +203,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** Macros for accessing pseudo_type_infos.
 **
 ** The MR_TYPE_VARIABLE_* macros should only be called if
-** MR_PSEUDO_TYPEINFO_IS_VARIABLE() returns TRUE.
+** MR_PSEUDO_TYPEINFO_IS_VARIABLE() returns MR_TRUE.
 */
 
 #define MR_PSEUDO_TYPEINFO_IS_VARIABLE(T)                           \
@@ -582,7 +582,7 @@ typedef MR_int_least8_t         MR_TypeCtorRepInt;
     || ((rep) == MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ))
 
 /*
-** Returns TRUE if the type_ctor_info is used to represent
+** Returns MR_TRUE if the type_ctor_info is used to represent
 ** multiple types of different arities. The arity is stored
 ** as the first element of the argument type-info vector.
 ** This is true for higher-order types and tuple types.

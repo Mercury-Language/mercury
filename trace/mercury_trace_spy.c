@@ -94,7 +94,7 @@ static	void	MR_add_line_spy_point_callback(const MR_Label_Layout *label,
 static	int	MR_compare_spied_labels(const void *, const void *);
 static	void	MR_update_enabled_action(MR_Spy_Point *point,
 			MR_Trace_Port port, MR_Spy_Action *action_ptr,
-			bool *enabled_ptr);
+			MR_bool *enabled_ptr);
 static	const char *MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when);
 
 /*
@@ -131,7 +131,7 @@ static int
 MR_search_spy_table_for_proc(const MR_Proc_Layout *entry)
 {
 	int	slot;
-	bool	found;
+	MR_bool	found;
 
 	MR_bsearch(MR_spied_proc_next, slot, found,
 		MR_compare_addr(MR_spied_procs[slot].spy_proc, entry));
@@ -151,7 +151,7 @@ static int
 MR_search_spy_table_for_label(const MR_Label_Layout *label)
 {
 	int	slot;
-	bool	found;
+	MR_bool	found;
 
 	MR_bsearch(MR_spied_label_next, slot, found,
 		MR_compare_addr(MR_spied_labels[slot].spy_label, label));
@@ -162,12 +162,12 @@ MR_search_spy_table_for_label(const MR_Label_Layout *label)
 	}
 }
 
-bool
+MR_bool
 MR_event_matches_spy_point(const MR_Label_Layout *layout,
 	MR_Trace_Port port, MR_Spy_Action *action_ptr)
 {
 	int			slot;
-	bool			enabled;
+	MR_bool			enabled;
 	MR_Spy_Point		*point;
 	MR_Spy_Action		action;
 	const MR_Label_Layout	*parent;
@@ -175,7 +175,7 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 	MR_Word			*base_sp;
 	MR_Word			*base_curfr;
 
-	enabled = FALSE;
+	enabled = MR_FALSE;
 	action = MR_SPY_PRINT;
 
 	if (MR_spied_label_next > 0) {
@@ -274,20 +274,20 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 
 	if (enabled) {
 		*action_ptr = action;
-		return TRUE;
+		return MR_TRUE;
 	} else {
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
 static void
 MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
-	MR_Spy_Action *action_ptr, bool *enabled_ptr)
+	MR_Spy_Action *action_ptr, MR_bool *enabled_ptr)
 {
 	if (point->spy_enabled) {
 		if (point->spy_ignore_count == 0) {
-			*enabled_ptr = TRUE;
-			*action_ptr = max(*action_ptr, point->spy_action);
+			*enabled_ptr = MR_TRUE;
+			*action_ptr = MR_max(*action_ptr, point->spy_action);
 		}
 
 		if (point->spy_ignore_count > 0) {
@@ -346,8 +346,8 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 	/* Insert the spy point at the head of the list for the proc. */
 	point = MR_NEW(MR_Spy_Point);
 	point->spy_when    = when;
-	point->spy_exists  = TRUE;
-	point->spy_enabled = TRUE;
+	point->spy_exists  = MR_TRUE;
+	point->spy_enabled = MR_TRUE;
 	point->spy_action  = action;
 	point->spy_ignore_when  = ignore_when;
 	point->spy_ignore_count = ignore_count;
@@ -436,8 +436,8 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
 
 	point = MR_NEW(MR_Spy_Point);
 	point->spy_when       = MR_SPY_LINENO;
-	point->spy_exists     = TRUE;
-	point->spy_enabled    = TRUE;
+	point->spy_exists     = MR_TRUE;
+	point->spy_enabled    = MR_TRUE;
 	point->spy_action     = action;
 	point->spy_ignore_when  = ignore_when;
 	point->spy_ignore_count = ignore_count;
@@ -616,7 +616,7 @@ MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when)
 	}
 }
 
-bool
+MR_bool
 MR_save_spy_points(FILE *fp, FILE *err_fp)
 {
 	MR_Spy_Point	*point;
@@ -641,7 +641,7 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
 			default:
 				fprintf(err_fp, "internal error: "
 					"unknown spy action\n");
-				return TRUE;
+				return MR_TRUE;
 		}
 
 		if (point->spy_ignore_count > 0) {
@@ -695,7 +695,7 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
 			default:
 				fprintf(err_fp, "mdb: internal error: "
 					"unknown spy when\n");
-				return TRUE;
+				return MR_TRUE;
 		}
 
 		if (!point->spy_enabled) {
@@ -703,5 +703,5 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
 		}
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }

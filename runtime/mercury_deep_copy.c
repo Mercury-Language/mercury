@@ -29,7 +29,7 @@
 				((X) >= lower_limit && (X) <= upper_limit))
 
 #undef  in_traverse_range
-#define in_traverse_range(X)	(FALSE)
+#define in_traverse_range(X)	(MR_FALSE)
 
 #undef	maybeconst
 #define	maybeconst	const

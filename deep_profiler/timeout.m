@@ -70,7 +70,7 @@ extern	void		MP_delete_timeout_files_and_exit_failure(void);
 
 :- pragma foreign_code("C",
 "
-bool	MP_process_is_detached_server = FALSE;
+MR_bool	MP_process_is_detached_server = MR_FALSE;
 char	*MP_timeout_file1;
 char	*MP_timeout_file2;
 char	*MP_timeout_file3;
@@ -182,7 +182,7 @@ MP_delete_timeout_files_and_exit_failure(void)
 			handler = MP_delete_timeout_files_and_exit_failure;
 		}
 
-		MR_setup_signal(MP_signal_numbers[i], handler, FALSE,
+		MR_setup_signal(MP_signal_numbers[i], handler, MR_FALSE,
 			""Mercury deep profiler: cannot setup signal exit"");
 	}
 

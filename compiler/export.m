@@ -118,7 +118,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% MR_declare_entry(<label of called proc>); /* or MR_declare_static */
 	%
 	% #if SEMIDET
-	%   bool
+	%   MR_bool
 	% #elif FUNCTION
 	%   MR_Word
 	% #else
@@ -135,7 +135,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%	MR_Word retval;
 	% #endif
 	% #if MR_THREAD_SAFE
-	% 	MR_Bool must_finalize_engine;
+	% 	MR_bool must_finalize_engine;
 	% #endif 
 	% #if MR_DEEP_PROFILING
 	%	MR_CallSiteDynamic *saved_call_site_addr
@@ -174,7 +174,8 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		/* by the C function call MR_call_engine().       */
 	%	MR_save_transient_registers();
 	%
-	%	(void) MR_call_engine(MR_ENTRY(<label of called proc>), FALSE);
+	%	(void) MR_call_engine(MR_ENTRY(<label of called proc>),
+	%			MR_FALSE);
 	%
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
@@ -187,7 +188,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #if SEMIDET
 	%	if (!MR_r1) {
 	%		MR_restore_regs_from_mem(c_regs);
-	%		return FALSE;
+	%		return MR_FALSE;
 	%	}
 	% #elif FUNCTION
 	%	<copy return value register into retval>
@@ -200,7 +201,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #endif 
 	%	MR_restore_regs_from_mem(c_regs);
 	% #if SEMIDET
-	%	return TRUE;
+	%	return MR_TRUE;
 	% #elif FUNCTION
 	%	return retval;
 	% #endif
@@ -236,7 +237,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
 				"#endif\n",
 				"#if MR_THREAD_SAFE\n",
-				"\tMR_Bool must_finalize_engine;\n", 
+				"\tMR_bool must_finalize_engine;\n", 
 				"#endif\n",
 		"#if MR_DEEP_PROFILING\n",
 		"\tMR_CallSiteDynList **saved_cur_callback;\n",
@@ -257,7 +258,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				InputArgs,
 				"\tMR_save_transient_registers();\n",
 				"\t(void) MR_call_engine(MR_ENTRY(",
-					ProcLabelString, "), FALSE);\n",
+					ProcLabelString, "), MR_FALSE);\n",
 				"\tMR_restore_transient_registers();\n",
 		"#if MR_DEEP_PROFILING\n",
 		"\tMR_current_call_site_dynamic = saved_cur_csd;\n",
@@ -356,15 +357,15 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 		% which means that for Mercury functions the Mercury return
 		% value becomes the last argument, and the C return value
 		% is a bool that is used to indicate success or failure.
-		C_RetType = "bool",
+		C_RetType = "MR_bool",
 		MaybeDeclareRetval = "",
 		string__append_list([
 			"\tif (!MR_r1) {\n",
 			"\t\tMR_restore_regs_from_mem(c_regs);\n",
-			"\treturn FALSE;\n",
+			"\treturn MR_FALSE;\n",
 			"\t}\n"
 				], MaybeFail),
-		MaybeSucceed = "\treturn TRUE;\n",
+		MaybeSucceed = "\treturn MR_TRUE;\n",
 		ArgInfoTypes2 = ArgInfoTypes0
 	; CodeModel = model_non,
 		% we should probably check this earlier, e.g. in make_hlds.m,

@@ -55,9 +55,9 @@
   #define   maybe_max_arity_arg     MAX_ARITY_ARG,
   #define   max_arity_check_start                                       \
                                     if (expand_info.limit_reached) {    \
-                                        SUCCESS_INDICATOR = FALSE;      \
+                                        SUCCESS_INDICATOR = MR_FALSE;   \
                                     } else {                            \
-                                        SUCCESS_INDICATOR = TRUE;
+                                        SUCCESS_INDICATOR = MR_TRUE;
   #define   max_arity_check_end     }
 #else
   #define   maybe_max_arity_arg

@@ -57,9 +57,10 @@
 **
 ** EXPAND_APPLY_LIMIT       If defined, the function will have an extra
 **                          argument, max_arity. If the number of arguments
-**                          exceeds this limit, the function will store FALSE
-**                          in the limit_reached field of expand_info and will
-**                          not fill in the other fields about the arguments.
+**                          exceeds this limit, the function will store
+**                          MR_FALSE in the limit_reached field of expand_info
+**                          and will not fill in the other fields about the
+**                          arguments.
 **                          
 **
 ** Most combinations are allowed, but
@@ -187,7 +188,7 @@
 #ifdef  EXPAND_ONE_ARG
   #define handle_zero_arity_one_arg()                                   \
             do {                                                        \
-                expand_info->chosen_index_exists = FALSE;               \
+                expand_info->chosen_index_exists = MR_FALSE;            \
             } while (0)
 #else   /* EXPAND_ONE_ARG */
   #define handle_zero_arity_one_arg()                                   \
@@ -231,10 +232,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 #ifdef  EXPAND_ARGS_FIELD
-    expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = FALSE;
+    expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = MR_FALSE;
 #endif  /* EXPAND_ARGS_FIELD */
 #ifdef  EXPAND_APPLY_LIMIT
-    expand_info->limit_reached = FALSE;
+    expand_info->limit_reached = MR_FALSE;
 #endif  /* EXPAND_APPLY_LIMIT */
 
     switch(MR_type_ctor_rep(type_ctor_info)) {
@@ -402,7 +403,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_ARGS_FIELD
   #ifdef    EXPAND_APPLY_LIMIT
                 if (expand_info->arity > max_arity) {
-                    expand_info->limit_reached = TRUE;
+                    expand_info->limit_reached = MR_TRUE;
                 } else
   #endif    /* EXPAND_APPLY_LIMIT */
                 {
@@ -411,7 +412,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     expand_info->EXPAND_ARGS_FIELD.num_extra_args = extra_args;
                     expand_info->EXPAND_ARGS_FIELD.arg_values = arg_vector;
                     expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
-                        TRUE;
+                        MR_TRUE;
                     expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
                         MR_GC_NEW_ARRAY(MR_TypeInfo, expand_info->arity);
 
@@ -439,7 +440,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                     for (i = 0; i < expand_info->arity; i++) {
                         if (functor_desc->MR_du_functor_arg_names[i] != NULL
-                            && streq(functor_desc->MR_du_functor_arg_names[i],
+                            && MR_streq(
+                                functor_desc->MR_du_functor_arg_names[i],
                                 chosen_name))
                         {
                             chosen = i;
@@ -450,7 +452,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #endif  /* EXPAND_NAMED_ARG */
 
                 if (0 <= chosen && chosen < expand_info->arity) {
-                    expand_info->chosen_index_exists = TRUE;
+                    expand_info->chosen_index_exists = MR_TRUE;
                     expand_info->chosen_value_ptr =
                         &arg_vector[extra_args + chosen];
                     if (MR_arg_type_may_contain_var(functor_desc, chosen)) {
@@ -466,7 +468,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                                 functor_desc->MR_du_functor_arg_types[chosen]);
                     }
                 } else {
-                    expand_info->chosen_index_exists = FALSE;
+                    expand_info->chosen_index_exists = MR_FALSE;
                 }
 #endif  /* EXPAND_ONE_ARG */
             }
@@ -493,7 +495,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
             expand_info->EXPAND_ARGS_FIELD.arg_values = data_word_ptr;
-            expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = TRUE;
+            expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = MR_TRUE;
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
                 MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos[0] =
@@ -507,7 +509,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #ifdef    EXPAND_NAMED_ARG
             if (MR_type_ctor_layout(type_ctor_info).layout_notag
                     ->MR_notag_functor_arg_name != NULL
-               && streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
+               && MR_streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
                     layout_notag->MR_notag_functor_arg_name))
             {
                 chosen = 0;
@@ -515,7 +517,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #endif    /* EXPAND_NAMED_ARG */
 
             if (chosen == 0) {
-                expand_info->chosen_index_exists = TRUE;
+                expand_info->chosen_index_exists = MR_TRUE;
                 expand_info->chosen_value_ptr = data_word_ptr;
                 expand_info->chosen_type_info =
                     MR_create_type_info(
@@ -523,7 +525,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         MR_type_ctor_layout(type_ctor_info).layout_notag->
                             MR_notag_functor_arg_type);
             } else {
-                expand_info->chosen_index_exists = FALSE;
+                expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
             break;
@@ -549,7 +551,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
             expand_info->EXPAND_ARGS_FIELD.arg_values = data_word_ptr;
-            expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = TRUE;
+            expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos = MR_TRUE;
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
                 MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos[0] =
@@ -562,7 +564,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #ifdef    EXPAND_NAMED_ARG
             if (MR_type_ctor_layout(type_ctor_info).layout_notag
                     ->MR_notag_functor_arg_name != NULL
-               && streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
+               && MR_streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
                     layout_notag->MR_notag_functor_arg_name))
             {
                 chosen = 0;
@@ -570,14 +572,14 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
   #endif    /* EXPAND_NAMED_ARG */
 
             if (chosen == 0) {
-                expand_info->chosen_index_exists = TRUE;
+                expand_info->chosen_index_exists = MR_TRUE;
                 expand_info->chosen_value_ptr = data_word_ptr;
                 expand_info->chosen_type_info =
                 MR_pseudo_type_info_is_ground(
                     MR_type_ctor_layout(type_ctor_info).layout_notag
                         ->MR_notag_functor_arg_type);
             } else {
-                expand_info->chosen_index_exists = FALSE;
+                expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
             break;
@@ -708,7 +710,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_ARGS_FIELD
   #ifdef    EXPAND_APPLY_LIMIT
             if (expand_info->arity > max_arity) {
-                expand_info->limit_reached = TRUE;
+                expand_info->limit_reached = MR_TRUE;
             } else
   #endif    /* EXPAND_APPLY_LIMIT */
             {
@@ -730,12 +732,12 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_Word *arg_vector;
 
                 arg_vector = (MR_Word *) *data_word_ptr;
-                expand_info->chosen_index_exists = TRUE;
+                expand_info->chosen_index_exists = MR_TRUE;
                 expand_info->chosen_value_ptr = &arg_vector[chosen];
                 expand_info->chosen_type_info =
                     MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[chosen + 1];
             } else {
-                expand_info->chosen_index_exists = FALSE;
+                expand_info->chosen_index_exists = MR_FALSE;
             }
 #endif  /* EXPAND_ONE_ARG */
             break;
@@ -836,7 +838,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_ARGS_FIELD
   #ifdef    EXPAND_APPLY_LIMIT
                 if (expand_info->arity > max_arity) {
-                    expand_info->limit_reached = TRUE;
+                    expand_info->limit_reached = MR_TRUE;
                 } else
   #endif    /* EXPAND_APPLY_LIMIT */
                 {
@@ -848,7 +850,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     expand_info->EXPAND_ARGS_FIELD.arg_values =
                         &array->elements[0];
                     expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
-                        TRUE;
+                        MR_TRUE;
                     expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
                         MR_GC_NEW_ARRAY(MR_TypeInfo, array->size);
                     for (i = 0; i < array->size; i++) {
@@ -865,9 +867,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
                     expand_info->chosen_value_ptr = &array->elements[chosen];
                     expand_info->chosen_type_info = params[1];
-                    expand_info->chosen_index_exists = TRUE;
+                    expand_info->chosen_index_exists = MR_TRUE;
                 } else {
-                    expand_info->chosen_index_exists = FALSE;
+                    expand_info->chosen_index_exists = MR_FALSE;
                 }
 #endif  /* EXPAND_ONE_ARG */
             }

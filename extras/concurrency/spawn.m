@@ -118,7 +118,7 @@ call_back_to_mercury(Goal) -->
 	** the child thread has finished it's processing?
 	** By the use of mutvars, or leave it up to user?
 	*/
-	return TRUE;
+	return MR_TRUE;
   }
 
   void *ME_thread_wrapper(void *arg)

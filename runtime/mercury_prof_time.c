@@ -37,7 +37,7 @@ const char		*MR_time_method;
 static	int		MR_itimer_sig;
 static	int		MR_itimer_type;
 
-static	bool		MR_time_profiling_on = FALSE;
+static	MR_bool		MR_time_profiling_on = MR_FALSE;
 
 static	void		MR_checked_setitimer(int which,
 				struct itimerval *value);
@@ -98,14 +98,14 @@ MR_turn_on_time_profiling(MR_time_signal_handler handler)
 					(MR_USEC_PER_SEC /
 					 	MR_CLOCK_TICKS_PER_SECOND);
 
-	MR_time_profiling_on = TRUE;
+	MR_time_profiling_on = MR_TRUE;
 
 	itime.it_value.tv_sec = 0;
 	itime.it_value.tv_usec = prof_sig_interval_in_usecs;
 	itime.it_interval.tv_sec = 0;
 	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
 
-	MR_setup_signal(MR_itimer_sig, handler, FALSE,
+	MR_setup_signal(MR_itimer_sig, handler, MR_FALSE,
 		"cannot install signal handler");
 	MR_checked_setitimer(MR_itimer_type, &itime);
 }

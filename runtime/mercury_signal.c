@@ -53,26 +53,26 @@
   #define	SA_SIGINFO 0
 #endif
 
-static void MR_do_setup_signal(int sig, MR_Code *handler, bool need_info,
-		bool restart, const char *error_message);
+static void MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
+		MR_bool restart, const char *error_message);
 
 void
-MR_setup_signal(int sig, MR_Code *handler, bool need_info, 
+MR_setup_signal(int sig, MR_Code *handler, MR_bool need_info, 
 		const char *error_message)
 {
-	MR_do_setup_signal(sig, handler, need_info, TRUE, error_message);
+	MR_do_setup_signal(sig, handler, need_info, MR_TRUE, error_message);
 }
 
 void
-MR_setup_signal_no_restart(int sig, MR_Code *handler, bool need_info,
+MR_setup_signal_no_restart(int sig, MR_Code *handler, MR_bool need_info,
 		const char *error_message)
 {
-	MR_do_setup_signal(sig, handler, need_info, FALSE, error_message);
+	MR_do_setup_signal(sig, handler, need_info, MR_FALSE, error_message);
 }
 
 void
-MR_do_setup_signal(int sig, MR_Code *handler, bool need_info, bool restart,
-		const char *error_message)
+MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
+		MR_bool restart, const char *error_message)
 {
 	MR_signal_action	act;
 

@@ -1075,10 +1075,10 @@ output_proc_static_data_defn(RttiProcLabel, FileName, LineNumber,
 	io__write_string(",\n\t"),
 	(
 		{ IsInInterface = yes },
-		io__write_string("TRUE")
+		io__write_string("MR_TRUE")
 	;
 		{ IsInInterface = no },
-		io__write_string("FALSE")
+		io__write_string("MR_FALSE")
 	),
 	io__write_string(",\n\t"),
 	io__write_int(list__length(CallSites)),

@@ -415,7 +415,7 @@ static void odbc_transaction_c_code(Word type_info, Word Connection,
 			Word Closure, Word *Results, Word *GotMercuryException,
 			Word *Exception, Word *Status, 
 			Word *Msgs, Word IO0, Word *IO);
-static bool odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
+static MR_bool odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
 
 ").
 
@@ -1031,7 +1031,7 @@ static size_t sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
 		SWORD ibScale, SWORD fNullable);
 static MODBC_AttrType sql_type_to_attribute_type(SWORD sql_type);
 static SWORD attribute_type_to_sql_c_type(MODBC_AttrType AttrType);
-static bool is_variable_length_sql_type(SWORD);
+static MR_bool is_variable_length_sql_type(SWORD);
 void odbc_do_get_data(MODBC_Statement *stat, int column_id);
 void odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id);
 void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
@@ -1765,12 +1765,12 @@ attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
 ** variable length data. SQL_NO_TOTAL, which should be returned if the length
 ** cannot be determined, is not defined by the iODBC header files. 
 */
-static bool 
+static MR_bool 
 is_variable_length_sql_type(SWORD sql_type) {
 
 #ifdef MODBC_MYSQL
 
-	return FALSE;
+	return MR_FALSE;
 
 #else /* ! MODBC_MYSQL */
 
@@ -2325,11 +2325,11 @@ sql_state_to_error("S1", SubClass, Error) :-
 :- pragma c_code("
 
 /*
-** Return TRUE if the last ODBC call succeded.
-** Return FALSE if the ODBC call failed.
+** Return MR_TRUE if the last ODBC call succeded.
+** Return MR_FALSE if the ODBC call failed.
 ** Add any error messages to odbc_message_list.
 */
-static bool
+static MR_bool
 odbc_check(SQLHENV env_handle, SQLHDBC connection_handle, 
 		SQLHSTMT statement_handle, SQLRETURN rc)
 {
@@ -2348,7 +2348,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 
 	/* Check type of error */
 	if (rc == SQL_SUCCESS) { 
-		return TRUE;
+		return MR_TRUE;
 	} else {
 
 		DEBUG(printf(""getting error message for status %i\\n"", rc));
@@ -2382,9 +2382,9 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 		}
 
 		if (rc == SQL_SUCCESS_WITH_INFO) {
-			return TRUE;
+			return MR_TRUE;
 		} else {
-			return FALSE;
+			return MR_FALSE;
 		}
 	}
 }

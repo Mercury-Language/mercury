@@ -1765,7 +1765,7 @@ io__check_err(Stream, Res) -->
 	make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	ML_maybe_make_err_msg(TRUE, Msg0, MR_PROC_LABEL, Msg);
+	ML_maybe_make_err_msg(MR_TRUE, Msg0, MR_PROC_LABEL, Msg);
 }").
 
 :- pragma foreign_proc("MC++", 
@@ -1857,7 +1857,7 @@ io__file_modification_time(File, Result) -->
 		Msg = MR_string_const("""", 0);
 		Status = 1;
 	} else {
-		ML_maybe_make_err_msg(TRUE, ""stat() failed: "",
+		ML_maybe_make_err_msg(MR_TRUE, ""stat() failed: "",
 			MR_PROC_LABEL, Msg);
 		Status = 0;
 	}
@@ -5005,7 +5005,7 @@ io__make_temp(Dir, Prefix, Name) -->
 	} while (fd == -1 && errno == EEXIST &&
 		num_tries < MAX_TEMPNAME_TRIES);
 	if (fd == -1) {
-		ML_maybe_make_err_msg(TRUE, ""error opening temporary file: "",
+		ML_maybe_make_err_msg(MR_TRUE, ""error opening temporary file: "",
 			MR_PROC_LABEL, ErrorMessage);
 		Error = -1;
 	}  else {

@@ -43,7 +43,7 @@ static	int		compare_entry_by_addr(const void *e1, const void *e2);
 static	MR_Entry	*entry_array;
 static	int		entry_array_size;	/* # of entries allocated */
 static	int		entry_array_next;	/* # of entries used      */
-static	bool		entry_array_sorted;
+static	MR_bool		entry_array_sorted;
 
 #endif	/* MR_NEED_ENTRY_LABEL_ARRAY */
 
@@ -59,7 +59,7 @@ static	bool		entry_array_sorted;
 #define	INTERNAL_SIZE	(1 << 16)	/* 64k */
 
 static	const void	*internal_addr(const void *internal);
-static	bool		equal_addr(const void *addr1, const void *addr2);
+static	MR_bool		equal_addr(const void *addr1, const void *addr2);
 static	int		hash_addr(const void *addr);
 
 static	MR_Hash_Table	internal_addr_table = {INTERNAL_SIZE, NULL,
@@ -68,19 +68,19 @@ static	MR_Hash_Table	internal_addr_table = {INTERNAL_SIZE, NULL,
 void 
 MR_do_init_label_tables(void)
 {
-	static	bool	done = FALSE;
+	static	MR_bool	done = MR_FALSE;
 
 	if (!done) {
 #ifdef	MR_NEED_ENTRY_LABEL_ARRAY
 		entry_array_next = 0;
 		entry_array_size = INIT_ENTRY_SIZE;
-		entry_array_sorted = TRUE;
+		entry_array_sorted = MR_TRUE;
 		entry_array = MR_NEW_ARRAY(MR_Entry, entry_array_size);
 #endif
 
 		MR_init_hash_table(internal_addr_table);
 
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }
 
@@ -128,7 +128,7 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
 	entry_array[entry_array_next].e_name = name;
 	entry_array[entry_array_next].e_layout = entry_layout;
 	entry_array_next++;
-	entry_array_sorted = FALSE;
+	entry_array_sorted = MR_FALSE;
 #endif
 }
 
@@ -171,7 +171,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 		qsort(entry_array, entry_array_next, sizeof(MR_Entry),
 			compare_entry_addr);
 
-		entry_array_sorted = TRUE;
+		entry_array_sorted = MR_TRUE;
 	}
 
 	lo = 0;
@@ -262,7 +262,7 @@ internal_addr(const void *internal)
 	}
 }
 
-static bool 
+static MR_bool 
 equal_addr(const void *addr1, const void *addr2)
 {
 	return ((const MR_Code *) addr1) == ((const MR_Code *) addr2);

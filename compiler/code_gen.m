@@ -802,7 +802,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 	%	code to place the output arguments where their caller expects
 	%	code to restore registers from some special slots
 	%	code to deallocate the stack frame
-	%	code to set r1 to TRUE (for semidet procedures only)
+	%	code to set r1 to MR_TRUE (for semidet procedures only)
 	%	a jump back to the caller, including livevals information
 	%	a comment to mark epilogue end
 	%
@@ -1267,7 +1267,8 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		"\t\t\t""", PredName, """,\n",
 		"\t\t\t", ProcStr, ",\n",
 		"\t\t\t", ArityStr, ",\n",
-		"\t\t\t", (PredOrFunc = function -> "TRUE" ; "FALSE"), "\n",
+		"\t\t\t", (PredOrFunc = function -> "MR_TRUE" ; "MR_FALSE"),
+			"\n",
 		"\t\t};\n"
 		], CallStruct),
 

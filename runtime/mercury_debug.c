@@ -20,12 +20,12 @@ static void	MR_print_ordinary_regs(void);
 static void	MR_printdetslot_as_label(const MR_Integer offset);
 
 #ifdef	MR_LOWLEVEL_ADDR_DEBUG
-  #define	MR_PRINT_RAW_ADDRS	TRUE
+  #define	MR_PRINT_RAW_ADDRS	MR_TRUE
 #else
-  #define	MR_PRINT_RAW_ADDRS	FALSE
+  #define	MR_PRINT_RAW_ADDRS	MR_FALSE
 #endif
 
-static	bool	MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
+static	MR_bool	MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
 
 /* debugging messages */
 

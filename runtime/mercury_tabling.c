@@ -455,7 +455,7 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 #define table_type              MR_StringHashTableSlot
 #define table_field             string_slot_ptr
 #define hash(key)               (MR_hash_string((MR_Word) key))
-#define equal_keys(k1, k2)      (strtest(k1, k2) == 0)
+#define equal_keys(k1, k2)      (MR_strtest(k1, k2) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef  key_format
 #undef  key_cast
@@ -520,7 +520,7 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table,
 #endif
 
         if (table->MR_start_table == NULL) {
-                size = max(MR_START_TABLE_INIT_SIZE, diff + 1);
+                size = MR_max(MR_START_TABLE_INIT_SIZE, diff + 1);
                 table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
                                         size + 1);
                 memset(table->MR_start_table + 1, 0,
@@ -534,7 +534,7 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table,
                 MR_TableNode    *new_array;
                 MR_Integer      new_size, i;
 
-                new_size = max(2 * size, diff + 1);
+                new_size = MR_max(2 * size, diff + 1);
                 new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
 
                 new_array[0].MR_integer = new_size;
@@ -1787,7 +1787,7 @@ MR_define_entry(mercury__table_builtin__table_nondet_resume_1_0);
 #endif
         }
 
-        MR_cur_leader->resume_info->changed = TRUE;
+        MR_cur_leader->resume_info->changed = MR_TRUE;
 
 MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
 
@@ -1806,7 +1806,7 @@ MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
                         if (table_list->item->num_committed_ans
                                 != table_list->item->num_ans)
                         {
-                                MR_cur_leader->resume_info->changed = TRUE;
+                                MR_cur_leader->resume_info->changed = MR_TRUE;
 #ifdef  MR_TABLE_DEBUG
                                 if (MR_tabledebug) {
                                         printf("table %p has new answers\n",
@@ -1850,7 +1850,7 @@ MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals
         MR_cur_leader->resume_info->consumer_list =
                 MR_cur_leader->resume_info->cur_subgoal->consumer_list;
 
-        MR_cur_leader->resume_info->changed = FALSE;
+        MR_cur_leader->resume_info->changed = MR_FALSE;
         MR_cur_leader->resume_info->cur_subgoal->num_committed_ans =
                 MR_cur_leader->resume_info->cur_subgoal->num_ans;
 
@@ -1975,7 +1975,7 @@ MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
         if (MR_cur_leader->resume_info->cur_subgoal->num_committed_ans
                 != MR_cur_leader->resume_info->cur_subgoal->num_ans)
         {
-                MR_cur_leader->resume_info->changed = TRUE;
+                MR_cur_leader->resume_info->changed = MR_TRUE;
         }
 
         MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);

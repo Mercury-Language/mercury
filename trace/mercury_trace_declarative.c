@@ -115,7 +115,7 @@
 
 static	MR_Unsigned	MR_edt_max_depth;
 static	MR_Unsigned	MR_edt_last_event;
-static	bool		MR_edt_inside;
+static	MR_bool		MR_edt_inside;
 static	MR_Unsigned	MR_edt_start_seqno;
 
 /*
@@ -126,7 +126,7 @@ static	MR_Unsigned	MR_edt_start_seqno;
 ** should be printed before calling the front end.
 */
 
-static	bool		MR_edt_compiler_flag_warning;
+static	MR_bool		MR_edt_compiler_flag_warning;
 
 /*
 ** This is used as the abstract map from node identifiers to nodes
@@ -212,22 +212,22 @@ MR_trace_decl_set_slot(const MR_Proc_Layout *entry, MR_Word *saved_regs,
 static	MR_Trace_Node
 MR_trace_matching_call(MR_Trace_Node node);
 
-static	bool
+static	MR_bool
 MR_trace_first_disjunct(MR_Event_Info *event_info);
 
-static	bool
+static	MR_bool
 MR_trace_matching_cond(const char *path, MR_Trace_Node node);
 
-static	bool
+static	MR_bool
 MR_trace_matching_neg(const char *path, MR_Trace_Node node);
 
-static	bool
+static	MR_bool
 MR_trace_matching_disj(const char *path, MR_Trace_Node node);
 
-static	bool
+static	MR_bool
 MR_trace_same_construct(const char *p1, const char *p2);
 
-static	bool
+static	MR_bool
 MR_trace_single_component(const char *path);
 
 static	MR_Word
@@ -302,7 +302,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				(unsigned long) event_info->MR_event_number,
 				(unsigned long) MR_edt_last_event);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		return MR_trace_event_internal(cmd, TRUE, event_info);
+		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
 	if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -326,7 +326,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			/*
 			** We are leaving the topmost call.
 			*/
-			MR_edt_inside = FALSE;
+			MR_edt_inside = MR_FALSE;
 		}
 	} else {
 		if (event_info->MR_call_seqno == MR_edt_start_seqno) {
@@ -334,7 +334,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			** The port must be either CALL or REDO;
 			** we are (re)entering the topmost call.
 			*/
-			MR_edt_inside = TRUE;
+			MR_edt_inside = MR_TRUE;
 		} else {
 			/*
 			** Ignore this event---it is outside the
@@ -360,7 +360,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		** modules are effectively assumed correct, so we give
 		** the user a warning.
 		*/
-		MR_edt_compiler_flag_warning = TRUE;
+		MR_edt_compiler_flag_warning = MR_TRUE;
 		return NULL;
 	}
 
@@ -372,7 +372,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		** Such procedures are effectively assumed correct, so
 		** we give the user a warning.
 		*/
-		MR_edt_compiler_flag_warning = TRUE;
+		MR_edt_compiler_flag_warning = MR_TRUE;
 		return NULL;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
@@ -381,7 +381,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
 
-	MR_trace_enabled = FALSE;
+	MR_trace_enabled = MR_FALSE;
 	MR_decl_checkpoint_event(event_info);
 	trace = MR_trace_current_node;
 	switch (event_info->MR_trace_port) {
@@ -449,7 +449,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					event_info, &event_details);
 	}
 
-	MR_trace_enabled = TRUE;
+	MR_trace_enabled = MR_TRUE;
 	return NULL;
 }
 
@@ -458,14 +458,14 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node			node;
 	MR_Word				atom;
-	bool				at_depth_limit;
+	MR_bool				at_depth_limit;
 	const MR_Label_Layout		*layout = event_info->MR_event_sll;
 	MR_Word				proc_rep;
 
 	if (event_info->MR_call_depth == MR_edt_max_depth) {
-		at_depth_limit = TRUE;
+		at_depth_limit = MR_TRUE;
 	} else {
-		at_depth_limit = FALSE;
+		at_depth_limit = MR_FALSE;
 	}
 
 	proc_rep = (MR_Word) layout->MR_sll_entry->MR_sle_proc_rep;
@@ -925,28 +925,28 @@ MR_trace_matching_call(MR_Trace_Node node)
 	return next;
 }
 
-static	bool
+static	MR_bool
 MR_trace_first_disjunct(MR_Event_Info *event_info)
 {
 	const char		*path;
 
 	/*
-	** Return TRUE iff the last component of the path is "d1;".
+	** Return MR_TRUE iff the last component of the path is "d1;".
 	*/
 	path = event_info->MR_event_path;
 	while (*path)
 	{
 		if (MR_string_equal(path, "d1;"))
 		{
-			return TRUE;
+			return MR_TRUE;
 		}
 		path++;
 	}
 
-	return FALSE;
+	return MR_FALSE;
 }
 	
-static	bool
+static	MR_bool
 MR_trace_matching_cond(const char *path, MR_Trace_Node node)
 {
 	MR_Trace_Port		port;
@@ -957,14 +957,14 @@ MR_trace_matching_cond(const char *path, MR_Trace_Node node)
 	);
 	if (port != MR_PORT_COND)
 	{
-		return FALSE;
+		return MR_FALSE;
 	}
 	node_path = MR_trace_node_path(node);
 
 	return MR_trace_same_construct(path, node_path);
 }
 
-static	bool
+static	MR_bool
 MR_trace_matching_neg(const char *path, MR_Trace_Node node)
 {
 	MR_Trace_Port		port;
@@ -974,14 +974,14 @@ MR_trace_matching_neg(const char *path, MR_Trace_Node node)
 		port = (MR_Trace_Port) MR_DD_trace_node_port(node);
 	);
 	if (port != MR_PORT_NEG_ENTER) {
-		return FALSE;
+		return MR_FALSE;
 	}
 	node_path = MR_trace_node_path(node);
 
 	return MR_trace_same_construct(path, node_path);
 }
 
-static	bool
+static	MR_bool
 MR_trace_matching_disj(const char *path, MR_Trace_Node node)
 {
 	MR_Trace_Port		port;
@@ -994,25 +994,25 @@ MR_trace_matching_disj(const char *path, MR_Trace_Node node)
 		node_path = MR_trace_node_path(node);
 		return MR_trace_same_construct(path, node_path);
 	} else {
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
-static	bool
+static	MR_bool
 MR_trace_same_construct(const char *p1, const char *p2)
 {
 	/*
 	** Checks if the two arguments represent goals in the same
 	** construct.  If both strings are identical up to the last
-	** component, return TRUE, otherwise return FALSE.
-	** If the arguments point to identical strings, return TRUE.
+	** component, return MR_TRUE, otherwise return MR_FALSE.
+	** If the arguments point to identical strings, return MR_TRUE.
 	*/
 	while (*p1 == *p2) {
 		if (*p1 == '\0' && *p2 == '\0') {
-			return TRUE;	/* They are identical. */
+			return MR_TRUE;	/* They are identical. */
 		}
 		if (*p1 == '\0' || *p2 == '\0') {
-			return FALSE;	/* Different number of elements. */
+			return MR_FALSE;  /* Different number of elements. */
 		}
 
 		p1++;
@@ -1026,12 +1026,12 @@ MR_trace_same_construct(const char *p1, const char *p2)
 	return MR_trace_single_component(p1) && MR_trace_single_component(p2);
 }
 
-static	bool
+static	MR_bool
 MR_trace_single_component(const char *path)
 {
 	while (*path != ';') {
 		if (*path == '\0') {
-			return FALSE;
+			return MR_FALSE;
 		}
 		path++;
 	}
@@ -1126,7 +1126,7 @@ MR_decl_atom_name(const MR_Proc_Layout *entry)
 static	void
 MR_trace_decl_ensure_init(void)
 {
-	static bool		done = FALSE;
+	static MR_bool		done = MR_FALSE;
 	static MercuryFile	mdb_in;
 	static MercuryFile	mdb_out;
 
@@ -1141,11 +1141,11 @@ MR_trace_decl_ensure_init(void)
 					(MR_Word) &mdb_out,
 					&MR_trace_front_end_state);
 		);
-		done = TRUE;
+		done = MR_TRUE;
 	}
 }
 
-bool
+MR_bool
 MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 		MR_Event_Details *event_details, MR_Code **jumpaddr)
@@ -1162,7 +1162,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		fprintf(MR_mdb_err,
 			"mdb: declarative debugging is only available"
 			" from EXIT, FAIL or EXCP events.\n");
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
@@ -1171,14 +1171,14 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
 				"because this procedure was not\n"
 				"compiled with execution tracing enabled.\n");
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
 				"at compiler generated procedures.\n");
-		return FALSE;
+		return MR_FALSE;
 	}
 
 	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
@@ -1189,7 +1189,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
 				"because this procedure was not\n"
 				"compiled with trace level `decl'.\n");
-		return FALSE;
+		return MR_FALSE;
 	}
 
 #ifdef MR_USE_DECL_STACK_SLOT
@@ -1199,7 +1199,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
 				"because this procedure was not\n"
 				"compiled with stack slots reserved.\n");
-		return FALSE;
+		return MR_FALSE;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
 
@@ -1210,7 +1210,7 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 			fprintf(MR_mdb_err, "mdb: cannot open file `%s' "
 					"for output: %s.\n",
 					outfile, strerror(errno));
-			return FALSE;
+			return MR_FALSE;
 		} else {
 			MR_trace_store_file = out;
 		}
@@ -1225,14 +1225,14 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 			event_info, event_details, jumpaddr);
 
 	if (message == NULL) {
-		return TRUE;
+		return MR_TRUE;
 	} else {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err,
 			"mdb: failed to start collecting events:\n%s\n",
 			message);
 
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
@@ -1253,8 +1253,8 @@ MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = TRUE;
-		return MR_trace_event_internal(cmd, TRUE, event_info);
+		MR_trace_enabled = MR_TRUE;
+		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
 	return jumpaddr;
@@ -1285,14 +1285,14 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	/*
 	** Clear any warnings.
 	*/
-	MR_edt_compiler_flag_warning = FALSE;
+	MR_edt_compiler_flag_warning = MR_FALSE;
 
 	/*
 	** Start collecting the trace from the desired call, with the
 	** desired depth bound.
 	*/
 	MR_edt_last_event = event;
-	MR_edt_inside = FALSE;
+	MR_edt_inside = MR_FALSE;
 	MR_edt_start_seqno = seqno;
 	MR_edt_max_depth = maxdepth;
 	MR_trace_current_node = (MR_Trace_Node) NULL;
@@ -1309,11 +1309,11 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	*/
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
 	cmd->MR_trace_stop_event = 0;
-	cmd->MR_trace_strict = TRUE;
+	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
-	cmd->MR_trace_must_check = FALSE;
+	cmd->MR_trace_must_check = MR_FALSE;
 
-	MR_trace_enabled = TRUE;
+	MR_trace_enabled = MR_TRUE;
 	return NULL;
 }
 
@@ -1322,8 +1322,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
 	MR_Word			response;
-	bool			bug_found;
-	bool			require_subtree;
+	MR_bool			bug_found;
+	MR_bool			require_subtree;
 	MR_Unsigned		bug_event;
 	MR_Unsigned		final_event;
 	MR_Unsigned		topmost_seqno;
@@ -1347,15 +1347,15 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 
 		fclose(MR_trace_store_file);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = TRUE;
-		return MR_trace_event_internal(cmd, TRUE, event_info);
+		MR_trace_enabled = MR_TRUE;
+		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
 	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_DEBUG) {
 		/*
 		** This is a quick and dirty way to debug the front end.
 		*/
-		MR_trace_enabled = TRUE;
+		MR_trace_enabled = MR_TRUE;
 	}
 
 	MR_TRACE_CALL_MERCURY(
@@ -1390,8 +1390,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	** current event, which was the event it was left from.
 	*/
 	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-	MR_trace_enabled = TRUE;
-	return MR_trace_event_internal(cmd, TRUE, event_info);
+	MR_trace_enabled = MR_TRUE;
+	return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 }
 
 static	MR_Code *
@@ -1427,17 +1427,17 @@ MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "direct retry impossible\n");
 		}
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = TRUE;
-		return MR_trace_event_internal(cmd, TRUE, event_info);
+		MR_trace_enabled = MR_TRUE;
+		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
 	cmd->MR_trace_stop_event = bug_event;
 	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
-	cmd->MR_trace_strict = TRUE;
-	cmd->MR_trace_must_check = FALSE;
+	cmd->MR_trace_strict = MR_TRUE;
+	cmd->MR_trace_must_check = MR_FALSE;
 	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-	MR_trace_enabled = TRUE;
+	MR_trace_enabled = MR_TRUE;
 	return jumpaddr;
 }
 

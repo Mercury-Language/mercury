@@ -228,6 +228,13 @@
 #ifdef MR_PIC_REG
   #define PIC_REG 1
 #endif
+/*
+** We dont't do this for PIC/MR_PIC because MR_PIC can be defined by
+** mercury_goto.h. User code should not be using the PIC macro anyway.
+*/
+#ifdef MR_HIGHTAGS
+  #define HIGHTAGS 1
+#endif
 
 /*
 ** Other stuff.

@@ -56,12 +56,12 @@ main -->
 
 :- pragma c_code(test1(_A::in, B::out, C::out), will_not_call_mercury, "
 	B = C = ""test1(in, out, out)"";
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 ").
 
 :- pragma c_code(test1(_A::in, _B::in, C::out), will_not_call_mercury, "
 	C = ""test1(in, in, out)"";
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 "). 
 
 % prefer `di' to `uo'

@@ -62,7 +62,7 @@ static void
 MR_increment_table_entry(MR_memprof_table *table, const char *name,
 	MR_Code *addr, int size)
 {
-	bool			found;
+	MR_bool			found;
 	int			diff;
 	MR_memprof_record	**node_addr;
 	MR_memprof_record	*node;
@@ -70,7 +70,7 @@ MR_increment_table_entry(MR_memprof_table *table, const char *name,
 	/*
 	** Search the tree to find the node with this name.
 	*/
-	found = FALSE;
+	found = MR_FALSE;
 	node_addr = &table->root;
 	while ((node = *node_addr) != NULL) {
 		diff = strcmp(name, node->name);
@@ -79,7 +79,7 @@ MR_increment_table_entry(MR_memprof_table *table, const char *name,
 		} else if (diff > 0) {
 			node_addr = &node->right;
 		} else {
-			found = TRUE;
+			found = MR_TRUE;
 			break;
 		}
 	}

@@ -12,7 +12,7 @@
 #ifndef	MERCURY_MISC_H
 #define	MERCURY_MISC_H
 
-#include "mercury_std.h"	/* for `NO_RETURN' */
+#include "mercury_std.h"	/* for `MR_NO_RETURN' */
 #include <stdlib.h>		/* for `size_t' */
 
 extern	void	MR_warning(const char *msg, ...);
@@ -25,6 +25,6 @@ extern	void	MR_perror(const char *msg);
 	/* For errors from the debugger */
 extern	void	MR_mdb_perror(const char *msg);
 
-extern	void	MR_fatal_error(const char *msg, ...) NO_RETURN;
+extern	void	MR_fatal_error(const char *msg, ...) MR_NO_RETURN;
 
 #endif /* not MERCURY_MISC_H */

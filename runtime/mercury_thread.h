@@ -86,9 +86,9 @@
   ** structure containing a function and an argument. The function will
   ** be called with the given argument in the new thread.
   */
-  MercuryThread	*MR_create_thread(MR_ThreadGoal *);
-  void		MR_destroy_thread(void *eng);
-  extern bool	MR_exit_now;
+  MercuryThread		*MR_create_thread(MR_ThreadGoal *);
+  void			MR_destroy_thread(void *eng);
+  extern MR_bool	MR_exit_now;
 
 	/*
 	** MR_global_lock is a mutex for ensuring that only one non-threadsafe
@@ -136,13 +136,13 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** If there is already a Mercury engine running in the current POSIX
 ** thread then init_thread is just a no-op.
 **
-** Returns TRUE if a Mercury engine was created as a result of this
+** Returns MR_TRUE if a Mercury engine was created as a result of this
 ** call *and* it is the caller's responsibility to finalize it (it is
 ** intended that the caller can store the return value and call
 ** finalize_thread_engine if it is true).
 */
 
-extern	bool	MR_init_thread(MR_when_to_use);
+extern	MR_bool	MR_init_thread(MR_when_to_use);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.

@@ -16,8 +16,7 @@
 #define	MERCURY_BOOTSTRAP_H
 
 /*
-** This stuff is enabled by default,
-** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+** This stuff is required for bootstrapping, and can't be disabled yet.
 */
 
 /*
@@ -27,6 +26,38 @@
 
 #define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
 #define MR_NewTypeCtorInfo_struct  MR_TypeCtorInfo_Struct
+
+/*
+** bool, TRUE and FALSE appear in the generated code.
+** Once the installed compilers no longer generate these, they should
+** be moved into the `#ifndef MR_NO_BACKWARDS_COMPAT' section.
+*/
+#ifdef IN_GCC
+  /*
+  ** We need to make sure that we pick up GCC's definition of bool, 
+  ** to ensure that we don't define `bool' below.  Otherwise we get
+  ** conflicts because some declarations use the <stdbool.h> definition
+  ** of bool (an enum), and some use our definition (a #define for char)
+  */
+  #include "config.h"
+  #include "system.h"
+#endif
+
+#ifndef bool
+#define bool			MR_bool
+#endif
+
+#ifndef TRUE
+#define TRUE			MR_TRUE
+#endif
+#ifndef FALSE
+#define FALSE			MR_FALSE
+#endif
+
+/*
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+*/
 
 #ifndef MR_NO_BACKWARDS_COMPAT
 
@@ -67,6 +98,25 @@ typedef MR_Bool 		Bool;
 #define	list_tail(l)		MR_list_tail(l)
 #define	list_empty()		MR_list_empty()
 #define	list_cons(h, t)		MR_list_cons((h), (t))
+
+/* Stuff from mercury_std.h */
+#define streq(s1, s2)		MR_streq(s1, s2)
+#define strdiff(s1, s2)		MR_strdiff(s1, s2)
+#define strtest(s1, s2)		MR_strtest(s1, s2)
+#define strneq(s1, s2, n)	MR_strneq(s1, s2, n)
+#define strndiff(s1, s2, n)	MR_strndiff(s1, s2, n)
+#define strntest(s1, s2, n)	MR_strntest(s1, s2, n)
+
+#ifndef max
+#define max(a, b)		MR_max(a, b)
+#endif
+#ifndef min
+#define min(a, b)		MR_min(a, b)
+#endif
+
+#ifndef NO_RETURN
+#define NO_RETURN		MR_NO_RETURN
+#endif
 
 #endif	/* !MR_NO_BACKWARDS_COMPAT */
 
@@ -382,6 +432,7 @@ typedef MR_Bool 		Bool;
 
 /* stuff from mercury_tags.h */
 
+#define	TAGBITS			MR_TAGBITS
 #define	WORDBITS		MR_WORDBITS
 
 #define	mktag(t)		MR_mktag(t)

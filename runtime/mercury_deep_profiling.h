@@ -140,9 +140,9 @@ typedef enum {
 } MR_Profile_Encoding_Token;
 
 #define	MR_enter_instrumentation()					\
-	do { MR_inside_deep_profiling_code = TRUE; } while (0)
+	do { MR_inside_deep_profiling_code = MR_TRUE; } while (0)
 #define	MR_leave_instrumentation()					\
-	do { MR_inside_deep_profiling_code = FALSE; } while (0)
+	do { MR_inside_deep_profiling_code = MR_FALSE; } while (0)
 
 #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
   #define MR_init_own_call_port(csd)					\
@@ -328,7 +328,7 @@ extern	MR_CallSiteDynamic		*MR_next_call_site_dynamic;
 extern	MR_CallSiteDynList		**MR_current_callback_site;
 extern	MR_CallSiteDynamic		*MR_root_call_sites[];
 
-extern	volatile bool			MR_inside_deep_profiling_code;
+extern	volatile MR_bool			MR_inside_deep_profiling_code;
 extern	volatile unsigned		MR_quanta_inside_deep_profiling_code;
 extern	volatile unsigned		MR_quanta_outside_deep_profiling_code;
 

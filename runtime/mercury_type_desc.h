@@ -126,8 +126,8 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
 /*
 ** Given type_info, return the MR_TypeCtorDesc describing its outermost type
 ** constructor in *type_ctor_desc_ptr and a list of the typeinfos of its
-** argument types in *arg_type_info_list_ptr. If collapse_equivalences is TRUE,
-** then expand out the equivalences in type_info first.
+** argument types in *arg_type_info_list_ptr. If collapse_equivalences is
+** MR_TRUE, then expand out the equivalences in type_info first.
 **
 ** You need to wrap MR_{save/restore}_transient_registers() around
 ** calls to this function.
@@ -135,7 +135,7 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
 
 
 extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
-				bool collapse_equivalences,
+				MR_bool collapse_equivalences,
 				MR_TypeCtorDesc *type_ctor_desc_ptr,
 				MR_Word *arg_type_info_list_ptr);
 

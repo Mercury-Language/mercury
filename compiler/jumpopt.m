@@ -559,11 +559,11 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				% Attempt to transform code such as
 				%
 				%	if (Cond) L1
-				%	r1 = TRUE
+				%	r1 = MR_TRUE
 				% 	<epilog>
 				%	...
 				% L1:
-				%	r1 = FALSE
+				%	r1 = MR_FALSE
 				%	<epilog>
 				%
 				% into

@@ -410,9 +410,9 @@ lower bounds other than zero are not supported
 
 :- pragma foreign_decl("C", "
 #ifdef MR_HIGHLEVEL_CODE
-  bool MR_CALL mercury__array__do_unify__array_1_0(
+  MR_bool MR_CALL mercury__array__do_unify__array_1_0(
   	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y);
-  bool MR_CALL mercury__array____Unify____array_1_0(
+  MR_bool MR_CALL mercury__array____Unify____array_1_0(
 	MR_Mercury_Type_Info type_info, MR_Array x, MR_Array y);
   void MR_CALL mercury__array__do_compare__array_1_0(MR_Mercury_Type_Info
  	 type_info, MR_Comparison_Result *result, MR_Box x, MR_Box y);
@@ -434,7 +434,7 @@ void sys_init_array_module_builtins(void);
 void sys_init_array_module_builtins_init(void);
 void sys_init_array_module_builtins_init_type_tables(void);
 
-bool MR_CALL
+MR_bool MR_CALL
 mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Box x, MR_Box y)
 {
@@ -442,7 +442,7 @@ mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
 		type_info, (MR_Array) x, (MR_Array) y);
 }
 
-bool MR_CALL
+MR_bool MR_CALL
 mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Array x, MR_Array y)
 {
@@ -470,9 +470,9 @@ mercury__array____Compare____array_1_0(
 
 #ifdef	MR_DEEP_PROFILING
 MR_proc_static_compiler_plain(array, __Unify__,   array, 1, 0,
-	array, array_equal,   2, 0, ""array.m"", 99, TRUE);
+	array, array_equal,   2, 0, ""array.m"", 99, MR_TRUE);
 MR_proc_static_compiler_plain(array, __Compare__, array, 1, 0,
-	array, array_compare, 3, 0, ""array.m"", 99, TRUE);
+	array, array_compare, 3, 0, ""array.m"", 99, MR_TRUE);
 #endif
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
@@ -710,18 +710,18 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 :- pragma foreign_proc("C", bounds_checks,
 		[will_not_call_mercury, promise_pure, thread_safe], "
 #ifdef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #else
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #endif
 ").		
 
 :- pragma foreign_proc("MC++", bounds_checks,
 		[will_not_call_mercury, promise_pure, thread_safe], "
 #if ML_OMIT_ARRAY_BOUNDS_CHECKS
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #else
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #endif
 ").		
 

@@ -231,18 +231,18 @@ X / Y = Z :-
 :- pragma foreign_proc("C", domain_checks,
 		[will_not_call_mercury, promise_pure, thread_safe], "
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #else
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #endif
 ").
 
 :- pragma foreign_proc("MC++", domain_checks,
 		[thread_safe, promise_pure], "
 #if ML_OMIT_MATH_DOMAIN_CHECKS
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 #else
-	SUCCESS_INDICATOR = TRUE;
+	SUCCESS_INDICATOR = MR_TRUE;
 #endif
 ").
 %---------------------------------------------------------------------------%

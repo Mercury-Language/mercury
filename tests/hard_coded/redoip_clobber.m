@@ -57,7 +57,7 @@ bar(X) :- X = 1.
 		MR_fatal_error(""the bug is back"");
 	}
 
-	SUCCESS_INDICATOR = FALSE;
+	SUCCESS_INDICATOR = MR_FALSE;
 ").
 
 main -->

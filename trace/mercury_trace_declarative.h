@@ -23,12 +23,12 @@ extern	MR_Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
 
 /*
 ** The internal (interactive) debugger calls this function to enter
-** declarative debugging mode.  It returns TRUE if successful, and
-** FALSE if there was some problem that prevented this mode from
+** declarative debugging mode.  It returns MR_TRUE if successful, and
+** MR_FALSE if there was some problem that prevented this mode from
 ** being entered.
 */
 
-extern	bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
+extern	MR_bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
 			const char *out, MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);

@@ -24,12 +24,12 @@ static	int		MR_alias_record_next = 0;
 #define	INIT_ALIAS_COUNT	32
 
 static	void		MR_trace_print_alias_num(FILE *fp, int slot,
-				bool mdb_command_format);
+				MR_bool mdb_command_format);
 
 void
 MR_trace_add_alias(char *name, char **words, int word_count)
 {
-	bool	found;
+	MR_bool	found;
 	int	slot;
 	int	i;
 	int	count;
@@ -63,10 +63,10 @@ MR_trace_add_alias(char *name, char **words, int word_count)
 	}
 }
 
-bool
+MR_bool
 MR_trace_remove_alias(const char *name)
 {
-	bool	found;
+	MR_bool	found;
 	int	slot;
 	int	i;
 	int	count;
@@ -74,7 +74,7 @@ MR_trace_remove_alias(const char *name)
 	MR_bsearch(MR_alias_record_next, slot, found,
 		strcmp(MR_alias_records[slot].MR_alias_name, name));
 	if (! found) {
-		return FALSE;
+		return MR_FALSE;
 	} else {
 		count = MR_alias_records[slot].MR_alias_word_count;
 		for (i = 0; i < count; i++) {
@@ -90,15 +90,15 @@ MR_trace_remove_alias(const char *name)
 
 		MR_alias_record_next--;
 
-		return TRUE;
+		return MR_TRUE;
 	}
 }
 
-bool
+MR_bool
 MR_trace_lookup_alias(const char *name,
 	char ***words_ptr, int *word_count_ptr)
 {
-	bool	found;
+	MR_bool	found;
 	int	slot;
 
 	MR_bsearch(MR_alias_record_next, slot, found,
@@ -106,29 +106,29 @@ MR_trace_lookup_alias(const char *name,
 	if (found) {
 		*word_count_ptr = MR_alias_records[slot].MR_alias_word_count;
 		*words_ptr = MR_alias_records[slot].MR_alias_words;
-		return TRUE;
+		return MR_TRUE;
 	} else {
-		return FALSE;
+		return MR_FALSE;
 	}
 }
 
 void
 MR_trace_print_alias(FILE *fp, const char *name)
 {
-	bool	found;
+	MR_bool	found;
 	int	slot;
 
 	MR_bsearch(MR_alias_record_next, slot, found,
 		strcmp(MR_alias_records[slot].MR_alias_name, name));
 	if (found) {
-		MR_trace_print_alias_num(fp, slot, FALSE);
+		MR_trace_print_alias_num(fp, slot, MR_FALSE);
 	} else {
 		fprintf(fp, "There is no such alias.\n");
 	}
 }
 
 void
-MR_trace_print_all_aliases(FILE *fp, bool mdb_command_format)
+MR_trace_print_all_aliases(FILE *fp, MR_bool mdb_command_format)
 {
 	int	slot;
 
@@ -138,7 +138,7 @@ MR_trace_print_all_aliases(FILE *fp, bool mdb_command_format)
 }
 
 static void
-MR_trace_print_alias_num(FILE *fp, int slot, bool mdb_command_format)
+MR_trace_print_alias_num(FILE *fp, int slot, MR_bool mdb_command_format)
 {
 	int	i;
 

@@ -79,29 +79,29 @@ ENDINIT
 		MR_own_exits)
 
 MR_proc_static_user_builtin_empty(integer_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(integer_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(float_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(float_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(string_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(string_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(c_pointer_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(c_pointer_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(typeinfo_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(typeinfo_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(typectorinfo_unify, 2, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 MR_proc_static_user_builtin_empty(typectorinfo_compare, 3, 0,
-	"mercury_ho_call.c", 0, TRUE);
+	"mercury_ho_call.c", 0, MR_TRUE);
 
 #endif
 
@@ -430,7 +430,7 @@ MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 	do {								\
 		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->			\
-			MR_type_ctor_unify_pred, FALSE);		\
+			MR_type_ctor_unify_pred, MR_FALSE);		\
 		MR_restore_transient_registers();			\
 		return (MR_r1);						\
 	} while (0)
@@ -473,7 +473,7 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 	do {								\
 		MR_save_transient_registers();				\
 		(void) MR_call_engine(type_ctor_info->			\
-			MR_type_ctor_compare_pred, FALSE);		\
+			MR_type_ctor_compare_pred, MR_FALSE);		\
 		MR_restore_transient_registers();			\
 		return (MR_r1);						\
 	} while (0)

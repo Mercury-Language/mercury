@@ -48,7 +48,7 @@
 % CODE GENERATION SUMMARY
 %-----------------------------------------------------------------------------%
 %
-% In each procedure, we declare a local variable `bool succeeded'.
+% In each procedure, we declare a local variable `MR_bool succeeded'.
 % This is used to hold the success status of semidet sub-goals.
 % Note that the comments below show local declarations for the
 % `succeeded' variable in all the places where they would be
@@ -62,8 +62,8 @@
 %		On success, fall through.
 %		(May clobber `succeeded'.)
 %	model_semi goal:
-%		On success, set `succeeded' to TRUE and fall through.
-%		On failure, set `succeeded' to FALSE and fall through.
+%		On success, set `succeeded' to MR_TRUE and fall through.
+%		On failure, set `succeeded' to MR_FALSE and fall through.
 %	multi/nondet goal:
 %		On success, call the current success continuation.
 %		On failure, fall through.
@@ -78,7 +78,7 @@
 %	model_semi goal:
 %		<succeeded = Goal>
 %			This means execute Goal, and set `succeeded' to
-%			TRUE if the goal succeeds and FALSE if it fails.
+%			MR_TRUE if the goal succeeds and MR_FALSE if it fails.
 %	model_non goal:
 %		<Goal && CONT()>
 %			This means execute Goal, calling the success
@@ -126,7 +126,7 @@
 %		<succeeded = Goal>
 %	===>
 %		<do Goal>
-%		succeeded = TRUE;
+%		succeeded = MR_TRUE;
 
 %	det goal in nondet context:
 %		<Goal && SUCCEED()>
@@ -137,7 +137,7 @@
 %	semi goal in nondet context:
 %		<Goal && SUCCEED()>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
@@ -190,9 +190,9 @@
 %		}
 %		MR_TRY_COMMIT(ref, {
 %			<Goal && success()>
-%			succeeded = FALSE;
+%			succeeded = MR_FALSE;
 %		}, {
-%			succeeded = TRUE;
+%			succeeded = MR_TRUE;
 %		})
 
 %	model_non in semi context: (using catch/throw)
@@ -203,9 +203,9 @@
 %		}
 %		try {
 %			<Goal && success()>
-%			succeeded = FALSE;
+%			succeeded = MR_FALSE;
 %		} catch (COMMIT) {
-%			succeeded = TRUE;
+%			succeeded = MR_TRUE;
 %		}
 
 %	The above is using C++ syntax. Here COMMIT is an exception type,
@@ -222,10 +222,10 @@
 %			longjmp(ref, 1);
 %		}
 %		if (setjmp(ref)) {
-%			succeeded = TRUE;
+%			succeeded = MR_TRUE;
 %		} else {
 %			<Goal && success()>
-%			succeeded = FALSE;
+%			succeeded = MR_FALSE;
 %		}
 
 %	model_non in semi context: (using GNU C nested functions,
@@ -239,10 +239,10 @@
 %			goto commit;
 %		}
 %		<Goal && success()>
-%		succeeded = FALSE;
+%		succeeded = MR_FALSE;
 %		goto commit_done;
 %	commit:
-%		succeeded = TRUE;
+%		succeeded = MR_TRUE;
 %	commit_done:
 %		;
 
@@ -308,7 +308,7 @@
 %	model_semi goal:
 %		<succeeded = true>
 %	===>
-%		succceeded = TRUE;
+%		succceeded = MR_TRUE;
 
 %	model_non goal
 %		<true && CONT()>
@@ -356,7 +356,7 @@
 %	model_semi Goal in model_non conj:
 %		<Goal && Goals>
 % 	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %
 %		<succeeded = Goal>;
 %		if (succeeded) {
@@ -482,7 +482,7 @@
 %	model_semi goal:
 %		<succeeded = fail>
 %	===>
-%		succeeded = FALSE;
+%		succeeded = MR_FALSE;
 
 %	model_non goal:
 %		<fail && CONT()>
@@ -505,7 +505,7 @@
 %	model_semi Goal:
 %		<do (Goal ; Goals)>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %	
 %		<succeeded = Goal>;
 %		if (!succeeded) {
@@ -517,16 +517,16 @@
 %	model_det Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %
 %		<do Goal>
-%		succeeded = TRUE
+%		succeeded = MR_TRUE
 %		/* <Goals> will never be reached */
 
 %	model_semi Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %
 %		<succeeded = Goal>;
 %		if (!succeeded) {
@@ -545,7 +545,7 @@
 %	model_semi Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
@@ -571,7 +571,7 @@
 %	model_semi Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %	
 %		<succeeded = Cond>
 %		if (succeeded) {
@@ -590,14 +590,14 @@
 %	model_non Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%		bool cond_<N>;
+%		MR_bool cond_<N>;
 %
 %		void then_func() {
-%			cond_<N> = TRUE;
+%			cond_<N> = MR_TRUE;
 %			<Then>
 %		}
 %
-%		cond_<N> = FALSE;
+%		cond_<N> = MR_FALSE;
 %		<Cond && then_func()>
 %		if (!cond_<N>) {
 %			<Else>
@@ -615,16 +615,16 @@
 % model_det negation
 %		<not(Goal)>
 %	===>
-%		bool succeeded;
+%		MR_bool succeeded;
 %		<succeeded = Goal>
 %		/* now ignore the value of succeeded,
-%		   which we know will be FALSE */
+%		   which we know will be MR_FALSE */
 
 % model_semi negation, model_det Goal:
 %		<succeeded = not(Goal)>
 %	===>
 %		<do Goal>
-%		succeeded = FALSE;
+%		succeeded = MR_FALSE;
 
 % model_semi negation, model_semi Goal:
 %		<succeeded = not(Goal)>
@@ -1550,7 +1550,7 @@ ml_gen_wrap_goal(model_semi, model_det, Context,
 	%	<succeeded = Goal>
 	% ===>
 	%	<do Goal>
-	%	succeeded = TRUE
+	%	succeeded = MR_TRUE
 	%
 	ml_gen_set_success(const(true), Context, SetSuccessTrue),
 	{ MLDS_Statements = list__append(MLDS_Statements0, [SetSuccessTrue]) }.
@@ -1573,7 +1573,7 @@ ml_gen_wrap_goal(model_non, model_semi, Context,
 	% semi goal in nondet context:
 	%	<Goal && SUCCEED()>
 	% ===>
-	%	bool succeeded;
+	%	MR_bool succeeded;
 	%
 	%	<succeeded = Goal>
 	%	if (succeeded) SUCCEED()
@@ -1612,7 +1612,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	model_non in semi context: (using try_commit/do_commit)
 		%		<succeeded = Goal>
 		% 	===>
-		%		bool succeeded;
+		%		MR_bool succeeded;
 		%	#ifdef NONDET_COPY_OUT
 		%		<local var decls>
 		%	#endif
@@ -1633,12 +1633,12 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%
 		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
-		%			succeeded = FALSE;
+		%			succeeded = MR_FALSE;
 		%		}, {
 		%	#ifdef NONDET_COPY_OUT
 		%			<copy local vars to output args>
 		%	#endif
-		%			succeeded = TRUE;
+		%			succeeded = MR_TRUE;
 		%		})
 		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
 		%	    }
@@ -2119,13 +2119,13 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _) -->
 	%		struct {
 	%			<user's local_vars decls>
 	%		} MR_locals;
-	%		MR_Bool MR_done = FALSE;
-	%		MR_Bool MR_succeeded = FALSE;
+	%		MR_bool MR_done = MR_FALSE;
+	%		MR_bool MR_succeeded = MR_FALSE;
 	%
-	%		#define FAIL		(MR_done = TRUE)
-	%		#define SUCCEED		(MR_succeeded = TRUE)
-	%		#define SUCCEED_LAST	(MR_succeeded = TRUE, \
-	%					 MR_done = TRUE)
+	%		#define FAIL		(MR_done = MR_TRUE)
+	%		#define SUCCEED		(MR_succeeded = MR_TRUE)
+	%		#define SUCCEED_LAST	(MR_succeeded = MR_TRUE, \
+	%					 MR_done = MR_TRUE)
 	%		#define LOCALS		(&MR_locals)
 	%
 	%		<assign input args>
@@ -2188,9 +2188,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	% and LOCALS macros
 	%
 	{ string__append_list([
-"	#define FAIL		(MR_done = TRUE)\n",
-"	#define SUCCEED		(MR_succeeded = TRUE)\n",
-"	#define SUCCEED_LAST	(MR_succeeded = TRUE, MR_done = TRUE)\n",
+"	#define FAIL		(MR_done = MR_TRUE)\n",
+"	#define SUCCEED		(MR_succeeded = MR_TRUE)\n",
+"	#define SUCCEED_LAST	(MR_succeeded = MR_TRUE, MR_done = MR_TRUE)\n",
 "	#define LOCALS		(&MR_locals)\n"
 		], HashDefines) },
 	{ string__append_list([
@@ -2234,9 +2234,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 			user_target_code(LocalVarsDecls, LocalVarsContext, []),
 			raw_target_code("\n", []),
 			raw_target_code("\t} MR_locals;\n", []),
-			raw_target_code("\tMR_Bool MR_succeeded = FALSE;\n",
+			raw_target_code("\tMR_bool MR_succeeded = MR_FALSE;\n",
 				[]),
-			raw_target_code("\tMR_Bool MR_done = FALSE;\n", []),
+			raw_target_code("\tMR_bool MR_done = MR_FALSE;\n", []),
 			raw_target_code("\n", []),
 			raw_target_code(HashDefines, []),
 			raw_target_code("\n", [])],
@@ -2563,7 +2563,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
-	%		MR_Bool SUCCESS_INDICATOR;
+	%		MR_bool SUCCESS_INDICATOR;
 	%
 	%		<assign input args>
 	%		<obtain global lock>
@@ -2661,7 +2661,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 			[raw_target_code("{\n", [])],
 			HashDefine,
 			ArgDeclsList,
-			[raw_target_code("\tMR_Bool SUCCESS_INDICATOR;\n", []),
+			[raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n", []),
 			raw_target_code("\n", [])],
 			AssignInputsList,
 			[raw_target_code(ObtainLock, []),
@@ -3041,7 +3041,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_semi cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%		bool succeeded;
+		%		MR_bool succeeded;
 		%	
 		%		<succeeded = Cond>
 		%		if (succeeded) {
@@ -3074,14 +3074,14 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_non cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%		bool cond_<N>;
+		%		MR_bool cond_<N>;
 		%
 		%		void then_func() {
-		%			cond_<N> = TRUE;
+		%			cond_<N> = MR_TRUE;
 		%			<Then>
 		%		}
 		%
-		%		cond_<N> = FALSE;
+		%		cond_<N> = MR_FALSE;
 		%		<Cond && then_func()>
 		%		if (!cond_<N>) {
 		%			<Else>
@@ -3156,10 +3156,10 @@ ml_gen_negation(Cond, CodeModel, Context,
 		%		<not(Goal)>
 		%	===>
 		%	{
-		%		bool succeeded;
+		%		MR_bool succeeded;
 		%		<succeeded = Goal>
 		%		/* now ignore the value of succeeded,
-		%		   which we know will be FALSE */
+		%		   which we know will be MR_FALSE */
 		%	}
 		{ CodeModel = model_det },
 		ml_gen_goal(model_semi, Cond, MLDS_Decls, MLDS_Statements)
@@ -3168,7 +3168,7 @@ ml_gen_negation(Cond, CodeModel, Context,
 		%		<succeeded = not(Goal)>
 		%	===>
 		%		<do Goal>
-		%		succeeded = FALSE;
+		%		succeeded = MR_FALSE;
 		{ CodeModel = model_semi, CondCodeModel = model_det },
 		ml_gen_goal(model_det, Cond, CondDecls, CondStatements),
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
@@ -3297,7 +3297,7 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 		%		<Goal ; Goals>
 		%	===>
 		%	{
-		%		bool succeeded;
+		%		MR_bool succeeded;
 		%	
 		%		<succeeded = Goal>;
 		%		if (!succeeded) {

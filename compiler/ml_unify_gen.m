@@ -636,7 +636,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	%		Arg2Type conv_arg2;
 	%		...
 	% #if MODEL_SEMI
-	%		bool succeeded;
+	%		MR_bool succeeded;
 	% #endif
 	%		
 	%		closure = closure_arg; 	/* XXX should add cast */
@@ -840,7 +840,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ Statements1 = [InitClosure | Statements0] },
 
 	%
-	% For semidet code, add the declaration `bool succeeded;'
+	% For semidet code, add the declaration `MR_bool succeeded;'
 	%
 	( { CodeModel = model_semi } ->
 		{ SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context) },

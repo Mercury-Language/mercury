@@ -137,7 +137,7 @@ try_again:
 **              if (in_range(data_value)) {
 **                  const MR_DuFunctorDesc  *functor_desc;
 **                  const MR_DuExistInfo    *exist_info;
-**                  bool                    have_sectag;
+**                  MR_bool                 have_sectag;
 **                  int                     sectag;
 **                  int                     cell_size;
 **                  int                     cur_slot;
@@ -237,7 +237,7 @@ try_again:
 #define MR_DC_decl                                                      \
                     const MR_DuFunctorDesc  *functor_desc;              \
                     const MR_DuExistInfo    *exist_info;                \
-                    bool                    have_sectag;                \
+                    MR_bool                 have_sectag;                \
                     int                     sectag;                     \
                     int                     cell_size;                  \
                     int                     cur_slot;                   \
@@ -307,7 +307,7 @@ try_again:
                 data_value = (MR_Word *) MR_body(data, ptag);
                 if (in_range(data_value)) {
                     MR_DC_decl
-                    have_sectag = TRUE;
+                    have_sectag = MR_TRUE;
                     sectag = data_value[0];
                     MR_DC_functor_desc
                     cell_size = 1 + arity;
@@ -341,7 +341,7 @@ try_again:
                 data_value = (MR_Word *) MR_body(data, ptag);
                 if (in_range(data_value)) {
                     MR_DC_decl
-                    have_sectag = FALSE;
+                    have_sectag = MR_FALSE;
                     sectag = 0;
                     MR_DC_functor_desc
                     cell_size = arity;

@@ -18,7 +18,7 @@
 #ifndef MERCURY_TRACE_SOURCE_H
 #define MERCURY_TRACE_SOURCE_H
 
-#include "mercury_std.h"	/* for bool */
+#include "mercury_std.h"	/* for MR_bool */
 
 /*
 ** This holds the information for one server that the program is
@@ -34,7 +34,7 @@
 typedef struct {
 	char		*server_name;
 	char		*server_cmd;
-	bool		split;
+	MR_bool		split;
 } MR_Trace_Source_Server;
 
 /*
@@ -50,22 +50,22 @@ typedef struct {
 ** 	timeout		Maximum time to wait for the server to start,
 ** 			in seconds.  XXX don't rely on the times being
 ** 			accurate.
-** 	verbose		If TRUE, print out system calls before executing
-** 			them and show their output.  If FALSE the output
+** 	verbose		If MR_TRUE, print out system calls before executing
+** 			them and show their output.  If MR_FALSE the output
 ** 			is redirected to /dev/null.
 **
 ** If successful it returns NULL, otherwise it returns a string describing
 ** the problem.
 */
 const char *MR_trace_source_open_server(MR_Trace_Source_Server *server,
-		const char *window_cmd, int timeout, bool verbose);
+		const char *window_cmd, int timeout, MR_bool verbose);
 
 /*
 ** Attach to an already running server.  If successful it returns NULL,
 ** otherwise it returns a string describing the problem.
 */
 const char *MR_trace_source_attach(MR_Trace_Source_Server *server,
-		int timeout, bool verbose);
+		int timeout, MR_bool verbose);
 
 /*
 ** Synchronise the server with the current source location.  This first
@@ -76,7 +76,7 @@ const char *MR_trace_source_attach(MR_Trace_Source_Server *server,
 */
 const char *MR_trace_source_sync(MR_Trace_Source_Server *server,
 		const char *filename, int lineno, const char *parent_filename,
-		int parent_lineno, bool verbose);
+		int parent_lineno, MR_bool verbose);
 
 /*
 ** Close a server if possible.  If the server appears to be still
@@ -84,7 +84,7 @@ const char *MR_trace_source_sync(MR_Trace_Source_Server *server,
 ** the user has modified the code in the source window, for example.
 */
 const char *MR_trace_source_close(MR_Trace_Source_Server *server,
-		bool verbose);
+		MR_bool verbose);
 
 #endif /* not MERCURY_TRACE_SOURCE_H */
 

@@ -120,8 +120,8 @@
 
  	% Is the following code a test of r1, followed in both continuations
 	% by a semidet proceed? Is the code in both continuations the same,
-	% modulo livevals annotations and the value assigned to r1? Is TRUE
-	% assigned to r1 in the success continuation and FALSE in the failure
+	% modulo livevals annotations and the value assigned to r1? Is MR_TRUE
+	% assigned to r1 in the success continuation and MR_FALSE in the failure
 	% continuation? If the answer is yes to all these questions, return
 	% the code shared by the two continuations.
 

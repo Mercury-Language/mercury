@@ -49,7 +49,7 @@
     MR_TypeInfo type_info;
     MR_TypeInfo arg_type_info;
     MR_Word     *argument_ptr;
-    bool        success;
+    MR_bool        success;
 
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 

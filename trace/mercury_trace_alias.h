@@ -13,7 +13,7 @@
 #ifndef	MERCURY_TRACE_ALIAS_H
 #define MERCURY_TRACE_ALIAS_H
 
-#include "mercury_std.h"	/* for bool */
+#include "mercury_std.h"	/* for MR_bool */
 #include <stdio.h>
 
 typedef struct {
@@ -35,21 +35,21 @@ extern	void		MR_trace_add_alias(char *name, char **words,
 				int word_count);
 
 /*
-** Remove the given alias from the list. Returns FALSE if there is no
-** such alias, and TRUE if there was such an alias and the removal was
+** Remove the given alias from the list. Returns MR_FALSE if there is no
+** such alias, and MR_TRUE if there was such an alias and the removal was
 ** successful.
 */
 
-extern	bool		MR_trace_remove_alias(const char *name);
+extern	MR_bool		MR_trace_remove_alias(const char *name);
 
 /*
-** Looks up whether the given alias exists. If yes, returns TRUE, and
+** Looks up whether the given alias exists. If yes, returns MR_TRUE, and
 ** sets *words_ptr to point to a vector of words forming the alias expansion,
 ** and *word_count_ptr to the number of words in the expansion. If no,
-** returns FALSE.
+** returns MR_FALSE.
 */
 
-extern	bool		MR_trace_lookup_alias(const char *name,
+extern	MR_bool		MR_trace_lookup_alias(const char *name,
 				char ***words_ptr, int *word_count_ptr);
 
 /*
@@ -60,13 +60,13 @@ extern	bool		MR_trace_lookup_alias(const char *name,
 extern	void		MR_trace_print_alias(FILE *fp, const char *name);
 
 /*
-** Print all the aliases to the given file. If mdb_command_format is TRUE,
+** Print all the aliases to the given file. If mdb_command_format is MR_TRUE,
 ** print them in a form that, when sourced from mdb , recreate the aliases.
 ** Otherwise, print the aliases in a format that is nice for humans to read.
 */
 
 extern	void		MR_trace_print_all_aliases(FILE *fp,
-				bool mdb_command_format);
+				MR_bool mdb_command_format);
 
 
 #endif	/* MERCURY_TRACE_ALIAS_H */

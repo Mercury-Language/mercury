@@ -24,32 +24,10 @@
 # and defined by mercury_types.h.
 SUCCESS_INDICATOR
 #-----------------------------------------------------------------------------#
-# These are defined by mercury_std.h
-# XXX we should probably add MR_ prefixes to all of these,
-# especially the str* ones, which violate the ANSI/ISO C standard.
-bool
-TRUE
-FALSE
-strdiff
-streq
-strndiff
-strneq
-strntest
-strtest
-ungetchar
-max
-min
-reg
-NO_RETURN
-#-----------------------------------------------------------------------------#
-# These are configuration parameters that are defined
-# by mercury_conf.h and/or mercury_conf_param.h and/or
-# on the command-line or by scripts/mgnuc.
-# XXX we ought to add MR_ prefixes to all of these.
-# XXX TAG_BITS is defined in mercury_tags.h
+# pid_t is only defined in mercury_conf.h if it is not present
+# in the system headers. I don't think there is a nice way to
+# prefix this without requiring a later version of autoconf (e.g. 2.52).
 pid_t
-PIC
-TAG_BITS
 #-----------------------------------------------------------------------------#
 # These are defined by mercury.h
 # Normally macros should start with capital letters,

@@ -336,10 +336,11 @@ trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
 	% do not have a from-full slot, but their slots 1 through 4 are always
 	% valid; the label handling their redos accesses those slots directly.
 	% Shallow traced procedures do have a from-full slot, and their slots
-	% 1-4 are valid only if the from-full slot is TRUE; the label handling
-	% their redos thus checks this slot to see whether it can (or should)
-	% access the other slots. In shallow-traced model_non procedures
-	% that generate redo events, the from-full flag is always in slot 5.
+	% 1-4 are valid only if the from-full slot is MR_TRUE; the label
+	% handling their redos thus checks this slot to see whether it can
+	% (or should) access the other slots. In shallow-traced model_non
+	% procedures that generate redo events, the from-full flag is always
+	% in slot 5.
 	%
 	% The slots allocated by stages 1 and 2 are only ever referred to
 	% by the runtime system if they are guaranteed to exist. The runtime
@@ -638,10 +639,10 @@ trace__prepare_for_call(TraceCode) -->
 		], ResetDepthStmt),
 		(
 			MaybeFromFullSlot = yes(_),
-			ResetFromFullStmt = "MR_trace_from_full = FALSE;\n"
+			ResetFromFullStmt = "MR_trace_from_full = MR_FALSE;\n"
 		;
 			MaybeFromFullSlot = no,
-			ResetFromFullStmt = "MR_trace_from_full = TRUE;\n"
+			ResetFromFullStmt = "MR_trace_from_full = MR_TRUE;\n"
 		),
 		TraceCode = node([
 			c_code(ResetFromFullStmt, live_lvals_info(set__init))

@@ -421,9 +421,10 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 		{ need_to_init_entries(Globals) },
 		{ FuncDefns \= [] }
 	->
-		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+		io__write_strings(
+				["\tstatic MR_bool initialised = MR_FALSE;\n",
 				"\tif (initialised) return;\n",
-				"\tinitialised = TRUE;\n\n"]),
+				"\tinitialised = MR_TRUE;\n\n"]),
 		mlds_output_calls_to_init_entry(ModuleName, FuncDefns)
 	;
 		[]
@@ -435,9 +436,10 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 	(
 		{ TypeCtorInfoDefns \= [] }
 	->
-		io__write_strings(["\tstatic bool initialised = FALSE;\n",
+		io__write_strings(
+				["\tstatic MR_bool initialised = MR_FALSE;\n",
 				"\tif (initialised) return;\n",
-				"\tinitialised = TRUE;\n\n"]),
+				"\tinitialised = MR_TRUE;\n\n"]),
 		mlds_output_calls_to_register_tci(ModuleName,
 			TypeCtorInfoDefns)
 	;
@@ -1614,7 +1616,8 @@ mlds_output_type_prefix(mercury_array_type(_ElemType)) -->
 	).
 mlds_output_type_prefix(mlds__native_int_type)   --> io__write_string("int").
 mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
-mlds_output_type_prefix(mlds__native_bool_type)  --> io__write_string("bool").
+mlds_output_type_prefix(mlds__native_bool_type)  -->
+	io__write_string("MR_bool").
 mlds_output_type_prefix(mlds__native_char_type)  --> io__write_string("char").
 mlds_output_type_prefix(mlds__foreign_type(_, _, _)) -->
 	{ error("mlds_output_type_prefix: foreign_type") }.
@@ -3141,9 +3144,9 @@ mlds_output_binary_op(Op) -->
 :- mode mlds_output_rval_const(in, di, uo) is det.
 
 mlds_output_rval_const(true) -->
-	io__write_string("TRUE").	% XXX should we use `MR_TRUE'?
+	io__write_string("MR_TRUE").
 mlds_output_rval_const(false) -->
-	io__write_string("FALSE").	% XXX should we use `MR_FALSE'?
+	io__write_string("MR_FALSE").
 mlds_output_rval_const(int_const(N)) -->
 	% we need to cast to (MR_Integer) to ensure
 	% things like 1 << 32 work when `Integer' is 64 bits

@@ -102,7 +102,7 @@
 */
 
 static	void	print_dump_stack(void);
-static	bool	try_munprotect(void *address, void *context);
+static	MR_bool	try_munprotect(void *address, void *context);
 static	char	*explain_context(void *context);
 static	MR_Code	*get_pc_from_context(void *the_context);
 static	MR_Word	*get_sp_from_context(void *the_context);
@@ -110,11 +110,11 @@ static	MR_Word	*get_curfr_from_context(void *the_context);
 
 #define STDERR 2
 
-static bool 
+static MR_bool 
 try_munprotect(void *addr, void *context)
 {
 #if !(defined(MR_HAVE_SIGINFO) || defined(MR_WIN32_VIRTUAL_ALLOC))
-	return FALSE;
+	return MR_FALSE;
 #else
 	MR_Word *    fault_addr;
 	MR_MemoryZone *zone;
@@ -150,14 +150,14 @@ try_munprotect(void *addr, void *context)
 		fprintf(stderr, "address not in any redzone.\n");
 	}
 
-	return FALSE;
+	return MR_FALSE;
 #endif /* MR_HAVE_SIGINFO */
 } 
 
-bool 
+MR_bool 
 MR_null_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 {
-	return FALSE;
+	return MR_FALSE;
 }
 
 /*
@@ -183,11 +183,11 @@ MR_fatal_abort(void *context, const char *main_msg, int dump)
 	_exit(1);
 }
 
-bool 
+MR_bool 
 MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 {
 #ifndef MR_CHECK_OVERFLOW_VIA_MPROTECT
-	return FALSE;
+	return MR_FALSE;
 #else
     MR_Word *new_zone;
     size_t zone_size;
@@ -225,7 +225,7 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 		get_sp_from_context(context),
 		get_curfr_from_context(context));
   #endif
-	return TRUE;
+	return MR_TRUE;
     } else {
 	char buf[2560];
 	if (MR_memdebug) {
@@ -235,10 +235,10 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 	}
 	sprintf(buf, "\nMercury runtime: memory zone %s#%d overflowed\n",
 		zone->name, zone->id);
-	MR_fatal_abort(context, buf, TRUE);
+	MR_fatal_abort(context, buf, MR_TRUE);
     }
 
-    return FALSE;
+    return MR_FALSE;
 #endif
 } 
 
@@ -252,10 +252,10 @@ MR_setup_signals(void)
 */
 #ifndef MR_MSVC_STRUCTURED_EXCEPTIONS
   #ifdef SIGBUS
-	MR_setup_signal(SIGBUS, (MR_Code *) bus_handler, TRUE,
+	MR_setup_signal(SIGBUS, (MR_Code *) bus_handler, MR_TRUE,
 		"cannot set SIGBUS handler");
   #endif
-	MR_setup_signal(SIGSEGV, (MR_Code *) segv_handler, TRUE,
+	MR_setup_signal(SIGSEGV, (MR_Code *) segv_handler, MR_TRUE,
 		"cannot set SIGSEGV handler");
 #endif
 }
@@ -576,7 +576,7 @@ simple_sighandler(int sig)
 static const char *MR_find_exception_name(DWORD exception_code);
 static void MR_explain_exception_record(EXCEPTION_RECORD *rec);
 static void MR_dump_exception_record(EXCEPTION_RECORD *rec);
-static bool MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
+static MR_bool MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
 		void **address_ptr, int *access_mode_ptr);
 
 /*
@@ -761,12 +761,12 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
 
 
 /*
-** Return TRUE iff exception_ptrs indicates an access violation.
-** If TRUE, the dereferenced address_ptr is set to the accessed address and
+** Return MR_TRUE iff exception_ptrs indicates an access violation.
+** If MR_TRUE, the dereferenced address_ptr is set to the accessed address and
 ** the dereferenced access_mode_ptr is set to the desired access
 ** (0 = read, 1 = write)
 */
-static bool
+static MR_bool
 MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
 		void **address_ptr, int *access_mode_ptr)
 {
@@ -774,10 +774,10 @@ MR_exception_record_is_access_violation(EXCEPTION_RECORD *rec,
 		if (rec->NumberParameters >= 2) {
 			(*access_mode_ptr) = (int) rec->ExceptionInformation[0];
 			(*address_ptr) = (void *) rec->ExceptionInformation[1];
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
-	return FALSE;
+	return MR_FALSE;
 }
 
 

@@ -73,7 +73,7 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 **	Return whether it was there before.
 */
 
-bool 
+MR_bool 
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 {
 	MR_Dlist	*ptr;
@@ -95,12 +95,12 @@ MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 		if (MR_tableequal(table)(key,
 				MR_tablekey(table)(MR_dlist_data(ptr))))
 		{
-			return TRUE;
+			return MR_TRUE;
 		}
 	}
 
 	table->MR_ht_store[h] = MR_dlist_addhead(table->MR_ht_store[h], entry);
-	return FALSE;
+	return MR_FALSE;
 }
 
 /*

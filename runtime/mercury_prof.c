@@ -84,7 +84,7 @@ MR_Code *		volatile	MR_prof_current_proc;
 ** Private global variables
 */
 
-static volatile	int		in_profiling_code = FALSE;
+static volatile	int		in_profiling_code = MR_FALSE;
 
 #ifdef MR_MPROF_PROFILE_CALLS
   static FILE 		*MR_prof_decl_fptr = NULL;
@@ -137,7 +137,7 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 	prof_call_node	*node, **node_addr, *new_node;
 	int		 hash_value;
 
-	in_profiling_code = TRUE;
+	in_profiling_code = MR_TRUE;
 
 	hash_value = hash_addr_pair(Callee, Caller);
 
@@ -153,7 +153,7 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 			node_addr = &node->right;
 		} else {
 			node->count++;
-			in_profiling_code = FALSE;
+			in_profiling_code = MR_FALSE;
 			return;
 		}
 	}
@@ -166,7 +166,7 @@ MR_prof_call_profile(MR_Code *Callee, MR_Code *Caller)
 	new_node->right  = NULL;
 	*node_addr = new_node;
 
-	in_profiling_code = FALSE;
+	in_profiling_code = MR_FALSE;
 	return;
 }
 
@@ -195,7 +195,7 @@ prof_handle_tick(int signum)
 		return;
 	}
 
-	in_profiling_code = TRUE;
+	in_profiling_code = MR_TRUE;
 
 	current_proc = MR_prof_current_proc;
 	hash_value = hash_prof_addr(current_proc);
@@ -208,7 +208,7 @@ prof_handle_tick(int signum)
 			node_addr = &node->right;
 		} else {
 			node->count++;
-			in_profiling_code = FALSE;
+			in_profiling_code = MR_FALSE;
 			return;
 		}
 	}
@@ -220,7 +220,7 @@ prof_handle_tick(int signum)
 	new_node->right = NULL;
 	*node_addr = new_node;
 
-	in_profiling_code = FALSE;
+	in_profiling_code = MR_FALSE;
 	return;
 } /* end prof_handle_tick() */
 
@@ -413,7 +413,7 @@ MR_prof_init(void)
 		|| defined(MR_MPROF_PROFILE_MEMORY)
 	MR_checked_atexit(MR_prof_finish);
   #ifdef SIGINT
-	MR_setup_signal(SIGINT, prof_handle_sigint, FALSE,
+	MR_setup_signal(SIGINT, prof_handle_sigint, MR_FALSE,
 		"cannot install signal handler");
   #endif
 #endif
@@ -436,9 +436,9 @@ void
 MR_prof_finish(void)
 {
 	/* ensure this routine only gets run once, even if called twice */
-	static bool done = FALSE;
+	static MR_bool done = MR_FALSE;
 	if (done) return;
-	done = TRUE;
+	done = MR_TRUE;
 
 #ifdef MR_MPROF_PROFILE_CALLS
 	prof_output_addr_pair_table();

@@ -91,14 +91,14 @@ static const char *MR_trace_source_check_display(void);
 ** otherwise returns an error message.
 */
 static const char *MR_trace_source_check_server_cmd(const char *server_cmd,
-		bool verbose);
+		MR_bool verbose);
 
 /*
 ** Checks whether a server with the given name is accessible.  If so,
 ** returns NULL, otherwise returns an error message.
 */
 static const char *MR_trace_source_check_server(const char *server_cmd,
-		const char *server_name, bool verbose);
+		const char *server_name, MR_bool verbose);
 
 /*
 ** Tell the server to jump to the given file and line.  If the server has
@@ -107,16 +107,16 @@ static const char *MR_trace_source_check_server(const char *server_cmd,
 */
 static const char *MR_trace_source_jump(const char *server_cmd,
 		const char *server_name, const char *filename, int lineno,
-		bool verbose);
+		MR_bool verbose);
 
 /*
 ** Send the given key sequence to the vim server.  Returns the status
 ** code of the shell command.
 */
 static int MR_trace_source_send(const char *server_cmd,
-		const char *server_name, const char *keys, bool verbose);
+		const char *server_name, const char *keys, MR_bool verbose);
 
-static int MR_verbose_system_call(const char *system_call, bool verbose);
+static int MR_verbose_system_call(const char *system_call, MR_bool verbose);
 
 static const char *
 MR_trace_source_check_display(void)
@@ -129,7 +129,7 @@ MR_trace_source_check_display(void)
 }
 
 static const char *
-MR_trace_source_check_server_cmd(const char *server_cmd, bool verbose)
+MR_trace_source_check_server_cmd(const char *server_cmd, MR_bool verbose)
 {
 	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 	int		status;
@@ -151,7 +151,7 @@ MR_trace_source_check_server_cmd(const char *server_cmd, bool verbose)
 
 static const char *
 MR_trace_source_check_server(const char *server_cmd, const char *server_name,
-		bool verbose)
+		MR_bool verbose)
 {
 	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 	int		status;
@@ -174,7 +174,7 @@ MR_trace_source_check_server(const char *server_cmd, const char *server_name,
 
 const char *
 MR_trace_source_open_server(MR_Trace_Source_Server *server,
-		const char *window_cmd, int timeout, bool verbose)
+		const char *window_cmd, int timeout, MR_bool verbose)
 {
 	const char 	*real_window_cmd;
 	const char	*real_server_cmd;
@@ -306,7 +306,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 				MR_SOURCE_SERVER_SPLIT_STRING,
 				verbose);
 		if (status != 0) {
-			server->split = FALSE;
+			server->split = MR_FALSE;
 			return "warning: unable to split source window";
 		}
 	}
@@ -316,7 +316,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 
 const char *
 MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
-		bool verbose)
+		MR_bool verbose)
 {
 	const char	*real_server_cmd;
 	const char	*msg;
@@ -353,16 +353,16 @@ MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
 const char *
 MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
 		int lineno, const char *parent_filename, int parent_lineno,
-		bool verbose)
+		MR_bool verbose)
 {
 	const char	*real_server_cmd;
 	const char	*msg;
 	int		status;
-	bool		have_parent;
-	bool		have_current;
+	MR_bool		have_parent;
+	MR_bool		have_current;
 
-	have_parent = strdiff(parent_filename, "") && parent_lineno != 0;
-	have_current = strdiff(filename, "") && lineno != 0;
+	have_parent = MR_strdiff(parent_filename, "") && parent_lineno != 0;
+	have_current = MR_strdiff(filename, "") && lineno != 0;
 
 	if (!have_parent && !have_current) {
 		/* No point continuing. */
@@ -469,7 +469,7 @@ MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
 
 static const char *
 MR_trace_source_jump(const char *server_cmd, const char *server_name,
-		const char *filename, int lineno, bool verbose)
+		const char *filename, int lineno, MR_bool verbose)
 {
 	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 	int		status;
@@ -500,7 +500,7 @@ MR_trace_source_jump(const char *server_cmd, const char *server_name,
 }
 
 const char *
-MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
+MR_trace_source_close(MR_Trace_Source_Server *server, MR_bool verbose)
 {
 	const char	*real_server_cmd;
 	const char	*msg;
@@ -544,7 +544,7 @@ MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
 }
 
 int MR_trace_source_send(const char *server_cmd, const char *server_name,
-		const char *keys, bool verbose)
+		const char *keys, MR_bool verbose)
 {
 	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 
@@ -553,7 +553,7 @@ int MR_trace_source_send(const char *server_cmd, const char *server_name,
 	return MR_verbose_system_call(system_call, verbose);
 }
 
-int MR_verbose_system_call(const char *system_call, bool verbose)
+int MR_verbose_system_call(const char *system_call, MR_bool verbose)
 {
 	if (verbose) {
 		fflush(MR_mdb_out);

@@ -326,7 +326,7 @@ MR_next_offset(void)
 MR_MemoryZone *
 MR_create_zone(const char *name, int id, size_t size,
 	size_t offset, size_t redsize,
-	bool ((*handler)(MR_Word *addr, MR_MemoryZone *zone, void *context)))
+	MR_bool ((*handler)(MR_Word *addr, MR_MemoryZone *zone, void *context)))
 {
 	MR_Word		*base;
 	size_t		total_size;
