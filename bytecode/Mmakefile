@@ -68,7 +68,7 @@ libmbi.so: $(LIBMBI_OBJS)
 #-----------------------------------------------------------------------------#
 
 tags: $(ORIG_CS)
-	ctags $(ORIG_CS)
+	ctags $(ORIG_CS) $(HDR)
 
 .PHONY: check_headers
 check_headers:
