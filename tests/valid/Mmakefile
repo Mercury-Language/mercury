@@ -111,6 +111,7 @@ OTHER_SOURCES= \
 	livevals_seq.m \
 	loop.m \
 	loop_in_disj.m \
+	merge_ground_any.m \
 	middle_rec_labels.m \
 	modes_bug.m \
 	mode_syntax.m \

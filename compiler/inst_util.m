@@ -42,7 +42,7 @@ in the general case.
 :- interface.
 
 :- import_module hlds_module, hlds_data, prog_data, (inst).
-:- import_module list.
+:- import_module list, std_util.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real, module_info,
 				inst, determinism, module_info).
@@ -86,8 +86,8 @@ in the general case.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_merge(inst, inst, module_info, inst, module_info).
-:- mode inst_merge(in, in, in, out, out) is semidet.
+:- pred inst_merge(inst, inst, maybe(type), module_info, inst, module_info).
+:- mode inst_merge(in, in, in, in, out, out) is semidet.
 
 	% inst_merge(InstA, InstB, InstC):
 	%       Combine the insts found in different arms of a
@@ -101,7 +101,7 @@ in the general case.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_data, inst_match, mode_util, det_analysis.
+:- import_module hlds_data, inst_match, mode_util, det_analysis, type_util.
 :- import_module bool, std_util, require, map, list, set, int.
 
 	% Abstractly unify two insts.
@@ -1264,7 +1264,7 @@ allow_unify_bound_any(_) :- true.
 	%       InstB specify a binding (free or bound), it must be
 	%       the same in both.
 
-inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 		% check whether this pair of insts is already in
 		% the merge_insts table
 	module_info_insts(ModuleInfo0, InstTable0),
@@ -1287,7 +1287,9 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
 
 			% merge the insts
-		inst_merge_2(InstA, InstB, ModuleInfo1, Inst0, ModuleInfo2),
+		inst_merge_2(InstA, InstB, MaybeType, ModuleInfo1, Inst0,
+			ModuleInfo2),
+			
 
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
@@ -1305,10 +1307,10 @@ inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		Inst = Inst0
 	).
 
-:- pred inst_merge_2(inst, inst, module_info, inst, module_info).
-:- mode inst_merge_2(in, in, in, out, out) is semidet.
+:- pred inst_merge_2(inst, inst, maybe(type), module_info, inst, module_info).
+:- mode inst_merge_2(in, in, in, in, out, out) is semidet.
 
-inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
+inst_merge_2(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 /*********
 		% would this test improve efficiency??
 	( InstA = InstB ->
@@ -1322,11 +1324,12 @@ inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 		Inst = InstA2,
 		ModuleInfo = ModuleInfo0
 	;
-		inst_merge_3(InstA2, InstB2, ModuleInfo0, Inst, ModuleInfo)
+		inst_merge_3(InstA2, InstB2, MaybeType, ModuleInfo0, Inst,
+			ModuleInfo)
 	).
 
-:- pred inst_merge_3(inst, inst, module_info, inst, module_info).
-:- mode inst_merge_3(in, in, in, out, out) is semidet.
+:- pred inst_merge_3(inst, inst, maybe(type), module_info, inst, module_info).
+:- mode inst_merge_3(in, in, in, in, out, out) is semidet.
 
 % We do not yet allow merging of `free' and `any',
 % except in the case where the any is `mostly_clobbered_any'
@@ -1340,12 +1343,12 @@ inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 % too weak -- it might not be able to detect bugs as well
 % as it can currently.
 
-inst_merge_3(any(UniqA), any(UniqB), M, any(Uniq), M) :-
+inst_merge_3(any(UniqA), any(UniqB), _, M, any(Uniq), M) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(any(Uniq), free, M, any(Uniq), M) :-
+inst_merge_3(any(Uniq), free, _, M, any(Uniq), M) :-
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(any(UniqA), bound(UniqB, ListB), ModInfo, any(Uniq), ModInfo) :-
+inst_merge_3(any(UniqA), bound(UniqB, ListB), _, ModInfo, any(Uniq), ModInfo) :-
 	merge_uniq_bound(UniqA, UniqB, ListB, ModInfo, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1353,16 +1356,16 @@ inst_merge_3(any(UniqA), bound(UniqB, ListB), ModInfo, any(Uniq), ModInfo) :-
 	;
 		bound_inst_list_is_ground_or_any(ListB, ModInfo)
 	).
-inst_merge_3(any(UniqA), ground(UniqB, _), M, any(Uniq), M) :-
+inst_merge_3(any(UniqA), ground(UniqB, _), _, M, any(Uniq), M) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(any(UniqA), abstract_inst(_, _), M, any(Uniq), M) :-
+inst_merge_3(any(UniqA), abstract_inst(_, _), _, M, any(Uniq), M) :-
 	merge_uniq(UniqA, shared, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(free, any(Uniq), M, any(Uniq), M) :-
+inst_merge_3(free, any(Uniq), _, M, any(Uniq), M) :-
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(bound(UniqA, ListA), any(UniqB), ModInfo, any(Uniq), ModInfo) :-
+inst_merge_3(bound(UniqA, ListA), any(UniqB), _, ModInfo, any(Uniq), ModInfo) :-
 	merge_uniq_bound(UniqB, UniqA, ListA, ModInfo, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
@@ -1370,37 +1373,28 @@ inst_merge_3(bound(UniqA, ListA), any(UniqB), ModInfo, any(Uniq), ModInfo) :-
 	;
 		bound_inst_list_is_ground_or_any(ListA, ModInfo)
 	).
-inst_merge_3(ground(UniqA, _), any(UniqB), M, any(Uniq), M) :-
+inst_merge_3(ground(UniqA, _), any(UniqB), _, M, any(Uniq), M) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-inst_merge_3(abstract_inst(_, _), any(UniqB), M, any(Uniq), M) :-
+inst_merge_3(abstract_inst(_, _), any(UniqB), _, M, any(Uniq), M) :-
 	merge_uniq(shared, UniqB, Uniq),
 	% we do not yet allow merge of any with free, except for clobbered anys
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_merge_3(free, free, M, free, M).
-inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
+inst_merge_3(free, free, _, M, free, M).
+inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), MaybeType, ModuleInfo0,
 		bound(Uniq, List), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
-	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
-inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), ModuleInfo,
+	bound_inst_list_merge(ListA, ListB, MaybeType, ModuleInfo0, List,
+		ModuleInfo).
+inst_merge_3(bound(UniqA, ListA), ground(UniqB, _), MaybeType, ModuleInfo0,
 		Result, ModuleInfo) :-
-	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
-	( bound_inst_list_is_ground(ListA, ModuleInfo) ->
-		Result = ground(Uniq, none)
-	;
-		bound_inst_list_is_ground_or_any(ListA, ModuleInfo),
-		Result = any(Uniq)
-	).
-inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
+	inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType,
+		ModuleInfo0, Result, ModuleInfo).
+inst_merge_3(ground(UniqA, _), bound(UniqB, ListB), MaybeType, ModuleInfo0,
 		Result, ModuleInfo) :-
-	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
-	( bound_inst_list_is_ground(ListB, ModuleInfo) ->
-		Result = ground(Uniq, none)
-	;
-		bound_inst_list_is_ground_or_any(ListB, ModuleInfo),
-		Result = any(Uniq)
-	).
+	inst_merge_bound_ground(UniqB, ListB, UniqA, MaybeType,
+		ModuleInfo0, Result, ModuleInfo).
 inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
-		ModuleInfo, ground(Uniq, GroundInstInfo), ModuleInfo) :-
+		_, ModuleInfo, ground(Uniq, GroundInstInfo), ModuleInfo) :-
 	(
 		GroundInstInfoA = higher_order(PredA),
 		GroundInstInfoB = higher_order(PredB)
@@ -1425,9 +1419,12 @@ inst_merge_3(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 	),
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
-		ModuleInfo0, abstract_inst(Name, Args), ModuleInfo) :-
-	inst_list_merge(ArgsA, ArgsB, ModuleInfo0, Args, ModuleInfo).
-inst_merge_3(not_reached, Inst, M, Inst, M).
+		_, ModuleInfo0, abstract_inst(Name, Args), ModuleInfo) :-
+	% We don't know the arguments types of an abstract inst.
+	MaybeTypes = list__duplicate(list__length(ArgsA), no),
+	inst_list_merge(ArgsA, ArgsB, MaybeTypes, ModuleInfo0, Args,
+		ModuleInfo).
+inst_merge_3(not_reached, Inst, _, M, Inst, M).
 
 :- pred merge_uniq(uniqueness, uniqueness, uniqueness).
 :- mode merge_uniq(in, in, out) is det.
@@ -1515,15 +1512,51 @@ merge_inst_uniq(inst_var(_), _, _, Expansions, Expansions, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_list_merge(list(inst), list(inst), module_info, list(inst),
-			module_info).
-:- mode inst_list_merge(in, in, in, out, out) is semidet.
+:- pred inst_merge_bound_ground(uniqueness, list(bound_inst),
+		uniqueness, maybe(type), module_info, inst, module_info).
+:- mode inst_merge_bound_ground(in, in, in, in, in, out, out) is semidet.
 
-inst_list_merge([], [], ModuleInfo, [], ModuleInfo).
-inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo0,
-		[Arg | Args], ModuleInfo) :-
-	inst_merge(ArgA, ArgB, ModuleInfo0, Arg, ModuleInfo1),
-	inst_list_merge(ArgsA, ArgsB, ModuleInfo1, Args, ModuleInfo).
+inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, ModuleInfo0,
+		Result, ModuleInfo) :-
+	( bound_inst_list_is_ground(ListA, ModuleInfo0) ->
+		merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo0, Uniq),
+		Result = ground(Uniq, none),
+		ModuleInfo = ModuleInfo0
+	;
+		bound_inst_list_is_ground_or_any(ListA, ModuleInfo0),
+		% If we know the type, we can give a more accurate result than
+		% just "any".
+		(
+			MaybeType = yes(Type),
+			type_constructors(Type, ModuleInfo0, Constructors),
+			constructors_to_bound_insts(Constructors, UniqB,
+				ModuleInfo0, ListB0),
+			list__sort_and_remove_dups(ListB0, ListB),
+			inst_merge_3(bound(UniqA, ListA),
+				bound(UniqB, ListB), MaybeType,
+				ModuleInfo0, Result, ModuleInfo)
+		;
+			MaybeType = no,
+			merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo0,
+				Uniq),
+			Result = any(Uniq),
+			ModuleInfo = ModuleInfo0
+		)
+	).
+	
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_list_merge(list(inst), list(inst), list(maybe(type)), module_info,
+		list(inst), module_info).
+:- mode inst_list_merge(in, in, in, in, out, out) is semidet.
+
+inst_list_merge([], [], _, ModuleInfo, [], ModuleInfo).
+inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], [MaybeType | MaybeTypes],
+		ModuleInfo0, [Arg | Args], ModuleInfo) :-
+	inst_merge(ArgA, ArgB, MaybeType, ModuleInfo0, Arg, ModuleInfo1),
+	inst_list_merge(ArgsA, ArgsB, MaybeTypes, ModuleInfo1, Args,
+		ModuleInfo).
 
 	% bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo):
 	% The two input lists Xs and Ys must already be sorted.
@@ -1532,10 +1565,10 @@ inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo0,
 	% of the functors of the input lists Xs and Ys.
 
 :- pred bound_inst_list_merge(list(bound_inst), list(bound_inst),
-				module_info, list(bound_inst), module_info).
-:- mode bound_inst_list_merge(in, in, in, out, out) is semidet.
+		maybe(type), module_info, list(bound_inst), module_info).
+:- mode bound_inst_list_merge(in, in, in, in, out, out) is semidet.
 
-bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
+bound_inst_list_merge(Xs, Ys, MaybeType, ModuleInfo0, Zs, ModuleInfo) :-
 	( Xs = [] ->
 		Zs = Ys,
 		ModuleInfo = ModuleInfo0
@@ -1548,19 +1581,21 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
 		X = functor(ConsIdX, ArgsX),
 		Y = functor(ConsIdY, ArgsY),
 		( ConsIdX = ConsIdY ->
-			inst_list_merge(ArgsX, ArgsY, ModuleInfo0,
+			maybe_get_cons_id_arg_types(ModuleInfo0, MaybeType,
+				ConsIdX, list__length(ArgsX), MaybeTypes),
+			inst_list_merge(ArgsX, ArgsY, MaybeTypes, ModuleInfo0,
 					Args, ModuleInfo1),
 			Z = functor(ConsIdX, Args),
 			Zs = [Z | Zs1],
-			bound_inst_list_merge(Xs1, Ys1, ModuleInfo1,
+			bound_inst_list_merge(Xs1, Ys1, MaybeType, ModuleInfo1,
 				Zs1, ModuleInfo)
 		; compare(<, ConsIdX, ConsIdY) ->
 			Zs = [X | Zs1],
-			bound_inst_list_merge(Xs1, Ys, ModuleInfo0,
+			bound_inst_list_merge(Xs1, Ys, MaybeType, ModuleInfo0,
 						Zs1, ModuleInfo)
 		;
 			Zs = [Y | Zs1],
-			bound_inst_list_merge(Xs, Ys1, ModuleInfo0,
+			bound_inst_list_merge(Xs, Ys1, MaybeType, ModuleInfo0,
 						Zs1, ModuleInfo)
 		)
 	).

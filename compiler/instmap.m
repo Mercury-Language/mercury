@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -257,18 +257,18 @@
 	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
 	% Merge the instmap_deltas of different branches of an if-then-else,
 	% disj or switch.
-:- pred merge_instmap_delta(instmap, set(prog_var), instmap_delta,
+:- pred merge_instmap_delta(instmap, set(prog_var), vartypes, instmap_delta,
 		instmap_delta, instmap_delta, module_info, module_info).
-:- mode merge_instmap_delta(in, in, in, in, out, in, out) is det.
+:- mode merge_instmap_delta(in, in, in, in, in, out, in, out) is det.
 
 	% merge_instmap_deltas(Vars, InstMapDeltas,
 	%	MergedInstMapDelta, ModuleInfo0, ModuleInfo)
 	% takes a list of instmap deltas from the branches of an if-then-else,
 	% switch, or disj and merges them. This is used in situations
 	% where the bindings are known to be compatible.
-:- pred merge_instmap_deltas(instmap, set(prog_var), list(instmap_delta),
-		instmap_delta, module_info, module_info).
-:- mode merge_instmap_deltas(in, in, in, out, in, out) is det.
+:- pred merge_instmap_deltas(instmap, set(prog_var), vartypes,
+		list(instmap_delta), instmap_delta, module_info, module_info).
+:- mode merge_instmap_deltas(in, in, in, in, out, in, out) is det.
 
 	% unify_instmap_delta(InitialInstMap, NonLocals,
 	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
@@ -612,8 +612,10 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		ModeInfo2 = ModeInfo0
 	; InstMap0 = reachable(InstMapping0) ->
 		set__to_sorted_list(NonLocals, NonLocalsList),
-		instmap__merge_2(NonLocalsList, InstMapList, ModuleInfo0,
-			InstMapping0, ModuleInfo, InstMapping, ErrorList),
+		mode_info_get_var_types(ModeInfo0, VarTypes),
+		instmap__merge_2(NonLocalsList, InstMapList, VarTypes,	
+			ModuleInfo0, InstMapping0, ModuleInfo, InstMapping,
+			ErrorList),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
 		( ErrorList = [FirstError | _] ->
 			FirstError = Var - _,
@@ -651,18 +653,18 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	%       there are two instmaps in `InstMaps' for which the inst
 	%       the variable is incompatible.
 
-:- pred instmap__merge_2(list(prog_var), list(instmap), module_info,
+:- pred instmap__merge_2(list(prog_var), list(instmap), vartypes, module_info,
 		map(prog_var, inst), module_info, map(prog_var, inst),
 		merge_errors).
-:- mode instmap__merge_2(in, in, in, in, out, out, out) is det.
+:- mode instmap__merge_2(in, in, in, in, in, out, out, out) is det.
 
-instmap__merge_2([], _, ModuleInfo, InstMap, ModuleInfo, InstMap, []).
-instmap__merge_2([Var|Vars], InstMapList, ModuleInfo0, InstMap0,
+instmap__merge_2([], _, _, ModuleInfo, InstMap, ModuleInfo, InstMap, []).
+instmap__merge_2([Var|Vars], InstMapList, VarTypes, ModuleInfo0, InstMap0,
 			ModuleInfo, InstMap, ErrorList) :-
-	instmap__merge_2(Vars, InstMapList, ModuleInfo0, InstMap0,
+	instmap__merge_2(Vars, InstMapList, VarTypes, ModuleInfo0, InstMap0,
 			ModuleInfo1, InstMap1, ErrorList1),
-	instmap__merge_var(InstMapList, Var, ModuleInfo1,
-			Insts, Inst, ModuleInfo, Error),
+	instmap__merge_var(InstMapList, Var, VarTypes ^ det_elem(Var),
+		ModuleInfo1, Insts, Inst, ModuleInfo, Error),
 	( Error = yes ->
 		ErrorList = [Var - Insts | ErrorList1],
 		map__set(InstMap1, Var, not_reached, InstMap)
@@ -677,18 +679,21 @@ instmap__merge_2([Var|Vars], InstMapList, ModuleInfo0, InstMap0,
 	%       there are two instmaps for which the inst of `Var'
 	%       is incompatible.
 
-:- pred instmap__merge_var(list(instmap), prog_var, module_info,
+:- pred instmap__merge_var(list(instmap), prog_var, (type), module_info,
 				list(inst), inst, module_info, bool).
-:- mode instmap__merge_var(in, in, in, out, out, out, out) is det.
+:- mode instmap__merge_var(in, in, in, in, out, out, out, out) is det.
 
-instmap__merge_var([], _, ModuleInfo, [], not_reached, ModuleInfo, no).
-instmap__merge_var([InstMap | InstMaps], Var, ModuleInfo0,
+instmap__merge_var([], _, _, ModuleInfo, [], not_reached, ModuleInfo, no).
+instmap__merge_var([InstMap | InstMaps], Var, Type, ModuleInfo0,
 		InstList, Inst, ModuleInfo, Error) :-
-	instmap__merge_var(InstMaps, Var, ModuleInfo0,
+	instmap__merge_var(InstMaps, Var, Type, ModuleInfo0,
 		InstList0, Inst0, ModuleInfo1, Error0),
 	instmap__lookup_var(InstMap, Var, VarInst),
 	InstList = [VarInst | InstList0],
-	( inst_merge(Inst0, VarInst, ModuleInfo1, Inst1, ModuleInfo2) ->
+	(
+		inst_merge(Inst0, VarInst, yes(Type), ModuleInfo1, Inst1,
+			ModuleInfo2)
+	->
 		Inst = Inst1,
 		ModuleInfo = ModuleInfo2,
 		Error = Error0
@@ -700,28 +705,28 @@ instmap__merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-merge_instmap_deltas(InstMap, NonLocals, InstMapDeltaList, MergedDelta,
-		ModuleInfo0, ModuleInfo) :-
+merge_instmap_deltas(InstMap, NonLocals, VarTypes, InstMapDeltaList,
+		MergedDelta, ModuleInfo0, ModuleInfo) :-
 	(
 		InstMapDeltaList = [],
 		error("merge_instmap_deltas: empty instmap_delta list.")
 	;
 		InstMapDeltaList = [Delta | Deltas],
-		merge_instmap_deltas(InstMap, NonLocals, Delta, Deltas,
-			MergedDelta, ModuleInfo0, ModuleInfo)
+		merge_instmap_deltas(InstMap, NonLocals, VarTypes, Delta,
+			Deltas, MergedDelta, ModuleInfo0, ModuleInfo)
 	).
 
-:- pred merge_instmap_deltas(instmap, set(prog_var), instmap_delta,
+:- pred merge_instmap_deltas(instmap, set(prog_var), vartypes, instmap_delta,
 		list(instmap_delta), instmap_delta, module_info, module_info).
-:- mode merge_instmap_deltas(in, in, in, in, out, in, out) is det.
+:- mode merge_instmap_deltas(in, in, in, in, in, out, in, out) is det.
 
-merge_instmap_deltas(_InstMap, _NonLocals, MergedDelta, [], MergedDelta,
-		ModuleInfo, ModuleInfo).
-merge_instmap_deltas(InstMap, NonLocals, MergedDelta0, [Delta|Deltas],
+merge_instmap_deltas(_InstMap, _NonLocals, _VarTypes, MergedDelta, [],
+		MergedDelta, ModuleInfo, ModuleInfo).
+merge_instmap_deltas(InstMap, NonLocals, VarTypes, MergedDelta0, [Delta|Deltas],
 		MergedDelta, ModuleInfo0, ModuleInfo) :-
-	merge_instmap_delta(InstMap, NonLocals, MergedDelta0, Delta,
+	merge_instmap_delta(InstMap, NonLocals, VarTypes, MergedDelta0, Delta,
 		MergedDelta1, ModuleInfo0, ModuleInfo1),
-	merge_instmap_deltas(InstMap, NonLocals, MergedDelta1, Deltas,
+	merge_instmap_deltas(InstMap, NonLocals, VarTypes, MergedDelta1, Deltas,
 		MergedDelta, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -912,19 +917,19 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
 
 	% Given two instmap deltas, merge them to produce a new instmap_delta.
 
-merge_instmap_delta(_, _, unreachable, InstMapDelta, InstMapDelta) --> [].
-merge_instmap_delta(_, _, reachable(InstMapping), unreachable,
+merge_instmap_delta(_, _, _, unreachable, InstMapDelta, InstMapDelta) --> [].
+merge_instmap_delta(_, _, _, reachable(InstMapping), unreachable,
 				reachable(InstMapping)) --> [].
-merge_instmap_delta(InstMap, NonLocals, reachable(InstMappingA),
+merge_instmap_delta(InstMap, NonLocals, VarTypes, reachable(InstMappingA),
 		reachable(InstMappingB), reachable(InstMapping)) -->
-	merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
+	merge_instmapping_delta(InstMap, NonLocals, VarTypes, InstMappingA,
 		InstMappingB, InstMapping).
 
-:- pred merge_instmapping_delta(instmap, set(prog_var), instmapping,
+:- pred merge_instmapping_delta(instmap, set(prog_var), vartypes, instmapping,
 		instmapping, instmapping, module_info, module_info).
-:- mode merge_instmapping_delta(in, in, in, in, out, in, out) is det.
+:- mode merge_instmapping_delta(in, in, in, in, in, out, in, out) is det.
 
-merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
+merge_instmapping_delta(InstMap, NonLocals, VarTypes, InstMappingA,
 		InstMappingB, InstMapping) -->
 	{ map__keys(InstMappingA, VarsInA) },
 	{ map__keys(InstMappingB, VarsInB) },
@@ -933,18 +938,19 @@ merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
 	{ set__intersect(SetofVars0, NonLocals, SetofVars) },
 	{ map__init(InstMapping0) },
 	{ set__to_sorted_list(SetofVars, ListofVars) },
-	merge_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
+	merge_instmapping_delta_2(ListofVars, InstMap, VarTypes, InstMappingA,
 		InstMappingB, InstMapping0, InstMapping).
 
-:- pred merge_instmapping_delta_2(list(prog_var), instmap, instmapping,
-		instmapping, instmapping, instmapping,
+:- pred merge_instmapping_delta_2(list(prog_var), instmap, vartypes,
+		instmapping, instmapping, instmapping, instmapping,
 		module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, in, in, out, in, out) is det.
+:- mode merge_instmapping_delta_2(in, in, in, in, in, in, out, in, out) is det.
 
-merge_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
+merge_instmapping_delta_2([], _, _, _, _, InstMapping, InstMapping,
 		ModInfo, ModInfo).
-merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
-			InstMapping0, InstMapping, ModuleInfo0, ModuleInfo) :-
+merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes, InstMappingA,
+		InstMappingB, InstMapping0, InstMapping,
+		ModuleInfo0, ModuleInfo) :-
 	( map__search(InstMappingA, Var, InstInA) ->
 		InstA = InstInA
 	;
@@ -955,7 +961,10 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 	;
 		instmap__lookup_var(InstMap, Var, InstB)
 	),
-	( inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfoPrime) ->
+	(
+		inst_merge(InstA, InstB, yes(VarTypes ^ det_elem(Var)),
+			ModuleInfo0, Inst, ModuleInfoPrime)
+	->
 		ModuleInfo1 = ModuleInfoPrime,
 		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
 	;
@@ -965,8 +974,9 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 			[i(VarInt)], Msg),
 		error(Msg)
 	),
-	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
-		InstMapping1, InstMapping, ModuleInfo1, ModuleInfo).
+	merge_instmapping_delta_2(Vars, InstMap, VarTypes, InstMappingA,
+		InstMappingB, InstMapping1, InstMapping,
+		ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

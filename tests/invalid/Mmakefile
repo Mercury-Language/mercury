@@ -54,6 +54,7 @@ SINGLEMODULE_SOURCES= \
 	invalid_typeclass.m \
 	io_in_ite_cond.m \
 	lambda_syntax_error.m \
+	merge_ground_any.m \
 	method_impl.m \
 	missing_det_decls.m \
 	missing_interface_import.m \

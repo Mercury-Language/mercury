@@ -136,6 +136,14 @@
 		list(inst), list(inst)).
 :- mode propagate_types_into_inst_list(in, in, in, in, out) is det.
 
+	% Convert a list of constructors to a list of bound_insts.
+	% Note that the list(bound_inst) is not sorted and may contain
+	% duplicates.
+:- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
+				list(bound_inst)).
+:- mode constructors_to_bound_insts(in, in, in, out) is det.
+
+
 	% Given the mode of a predicate,
 	% work out which arguments are live (might be used again
 	% by the caller of that predicate) and which are dead.
@@ -816,10 +824,6 @@ default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 		PredArgModes0, PredArgModes),
 	PredInstInfo = pred_inst_info(function, PredArgModes, det).
 
-:- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
-				list(bound_inst)).
-:- mode constructors_to_bound_insts(in, in, in, out) is det.
-
 constructors_to_bound_insts([], _, _, []).
 constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 		[BoundInst | BoundInsts]) :-
@@ -1346,7 +1350,7 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 		InstMapDelta4) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	update_module_info(merge_instmap_delta(InstMap0, NonLocals,
-		InstMapDelta3, InstMapDelta4), InstMapDelta).
+		VarTypes, InstMapDelta3, InstMapDelta4), InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, some(Vars, CanRemove, Goal0), _,
 		some(Vars, CanRemove, Goal),
@@ -1441,7 +1445,7 @@ recompute_instmap_delta_disj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
 		VarTypes, InstMap, NonLocals, InstMapDelta1),
 	update_module_info(merge_instmap_delta(InstMap, NonLocals,
-		InstMapDelta0, InstMapDelta1), InstMapDelta).
+		VarTypes, InstMapDelta0, InstMapDelta1), InstMapDelta).
 
 :- pred recompute_instmap_delta_par_conj(bool::in, list(hlds_goal)::in,
 	list(hlds_goal)::out, vartypes::in, instmap::in, set(prog_var)::in,
@@ -1485,7 +1489,7 @@ recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
 		VarTypes, InstMap0, NonLocals, InstMapDelta2),
 	update_module_info(merge_instmap_delta(InstMap0, NonLocals,
-		InstMapDelta1, InstMapDelta2), InstMapDelta).
+		VarTypes, InstMapDelta1, InstMapDelta2), InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 

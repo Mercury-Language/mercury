@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -344,7 +344,7 @@ inst_matches_initial_3(bound(UniqA, ListA), ground(UniqB, none), _,
 	bound_inst_list_is_ground(ListA, Info^module_info),
 	bound_inst_list_matches_uniq(ListA, UniqB, Info^module_info).
 inst_matches_initial_3(bound(UniqA, ListA),
-		ground(UniqB, constrained_inst_var(InstVarB)), _,
+		ground(UniqB, constrained_inst_var(InstVarB)), MaybeType,
 		Info0, Info) :-
 	unique_matches_initial(UniqA, UniqB),
 	ModuleInfo0 = Info0^module_info,
@@ -358,7 +358,8 @@ inst_matches_initial_3(bound(UniqA, ListA),
 	Live = dead,
 	abstractly_unify_inst(Live, bound(UniqA, ListA), ground(UniqB, none),
 		fake_unify, ModuleInfo0, Inst, _Det, ModuleInfo1),
-	update_inst_var_sub(InstVarB, Inst, ModuleInfo1, ModuleInfo, Sub0, Sub),
+	update_inst_var_sub(InstVarB, Inst, MaybeType, ModuleInfo1, ModuleInfo,
+		Sub0, Sub),
 	Info = (Info0^module_info := ModuleInfo)
 		^sub := Sub.
 inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), _, Info, Info) :-
@@ -506,18 +507,19 @@ equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
 	% Update the inst_var_sub that is computed by inst_matches_initial.
 	% The inst_var_sub records what inst should be substituted for each
 	% inst_var that occurs in the called procedure's argument modes.
-:- pred update_inst_var_sub(inst_var, inst, module_info, module_info,
-		maybe(inst_var_sub), maybe(inst_var_sub)).
-:- mode update_inst_var_sub(in, in, in, out, in, out) is semidet.
+:- pred update_inst_var_sub(inst_var, inst, maybe(type), module_info,
+		module_info, maybe(inst_var_sub), maybe(inst_var_sub)).
+:- mode update_inst_var_sub(in, in, in, in, out, in, out) is semidet.
 
-update_inst_var_sub(_, _, ModuleInfo, ModuleInfo, no, no).
-update_inst_var_sub(InstVar, InstA, ModuleInfo0, ModuleInfo,
+update_inst_var_sub(_, _, _, ModuleInfo, ModuleInfo, no, no).
+update_inst_var_sub(InstVar, InstA, MaybeType, ModuleInfo0, ModuleInfo,
 		yes(Sub0), yes(Sub)) :-
 	( map__search(Sub0, InstVar, InstB) ->
 		% If InstVar already has an inst associated with it,
 		% merge the old inst and the new inst.  Fail if this merge
 		% is not possible.
-		inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfo),
+		inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst,
+			ModuleInfo),
 		map__det_update(Sub0, InstVar, Inst, Sub)
 	;
 		ModuleInfo = ModuleInfo0,
@@ -534,15 +536,15 @@ update_inst_var_sub(InstVar, InstA, ModuleInfo0, ModuleInfo,
 
 ground_inst_info_matches_initial(_, none, _, _) --> [].
 ground_inst_info_matches_initial(higher_order(PredInstA),
-		higher_order(PredInstB), _, Type) -->
-	pred_inst_matches_initial(PredInstA, PredInstB, Type).
+		higher_order(PredInstB), _, MaybeType) -->
+	pred_inst_matches_initial(PredInstA, PredInstB, MaybeType).
 ground_inst_info_matches_initial(GroundInstInfoA,
-		constrained_inst_var(InstVarB), UniqB, _) -->
+		constrained_inst_var(InstVarB), UniqB, MaybeType) -->
 	{ Inst = ground(UniqB, GroundInstInfoA) },
 	ModuleInfo0 =^ module_info,
 	Sub0 =^ sub,
-	{ update_inst_var_sub(InstVarB, Inst, ModuleInfo0, ModuleInfo,
-		Sub0, Sub) },
+	{ update_inst_var_sub(InstVarB, Inst, MaybeType, ModuleInfo0,
+		ModuleInfo, Sub0, Sub) },
 	^module_info := ModuleInfo,
 	^sub := Sub.
 
@@ -719,56 +721,6 @@ inst_list_matches_initial([], [], []) --> [].
 inst_list_matches_initial([X|Xs], [Y|Ys], [Type | Types]) -->
 	inst_matches_initial_2(X, Y, Type),
 	inst_list_matches_initial(Xs, Ys, Types).
-
-	% If possible, get the argument types for the cons_id.
-	% We need to pass in the arity rather than using the arity
-	% from the cons_id because the arity in the cons_id will not
-	% include any extra type_info arguments for existentially
-	% quantified types.
-:- pred maybe_get_cons_id_arg_types(module_info, maybe(type), cons_id,
-		arity, list(maybe(type))).
-:- mode maybe_get_cons_id_arg_types(in, in, in, in, out) is det.
-
-maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity, MaybeTypes)
-		:-
-	( ConsId0 = cons(SymName, _) ->
-		( SymName = qualified(_, Name) ->
-			% get_cons_id_non_existential_arg_types
-			% expects an unqualified cons_id.
-			ConsId = cons(unqualified(Name), Arity)
-		;
-			ConsId = ConsId0
-		),
-		(
-			MaybeType = yes(Type),
-
-			% XXX get_cons_id_non_existential_arg_types will fail
-			% for ConsIds with existentially typed arguments.
-			get_cons_id_non_existential_arg_types(ModuleInfo, Type,
-				ConsId, Types),
-			list__length(Types, Arity)
-		->
-			list__map(pred(T::in, yes(T)::out) is det, Types,
-				MaybeTypes)
-		;
-			list__duplicate(Arity, no, MaybeTypes)
-		)
-	;
-		MaybeTypes = []
-	).
-
-:- pred maybe_get_higher_order_arg_types(maybe(type), arity, list(maybe(type))).
-:- mode maybe_get_higher_order_arg_types(in, in, out) is det.
-
-maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
-	(
-		MaybeType = yes(Type),
-		type_is_higher_order(Type, _, _, Types)
-	->
-		list__map(pred(T::in, yes(T)::out) is det, Types, MaybeTypes)
-	;
-		list__duplicate(Arity, no, MaybeTypes)
-	).
 
 %-----------------------------------------------------------------------------%
 

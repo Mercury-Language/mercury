@@ -438,6 +438,20 @@
 :- mode get_unconstrained_tvars(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% If possible, get the argument types for the cons_id.
+	% We need to pass in the arity rather than using the arity
+	% from the cons_id because the arity in the cons_id will not
+	% include any extra type_info arguments for existentially
+	% quantified types.
+:- pred maybe_get_cons_id_arg_types(module_info, maybe(type), cons_id,
+		arity, list(maybe(type))).
+:- mode maybe_get_cons_id_arg_types(in, in, in, in, out) is det.
+
+:- pred maybe_get_higher_order_arg_types(maybe(type), arity, list(maybe(type))).
+:- mode maybe_get_higher_order_arg_types(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1636,5 +1650,44 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 	constraint_list_get_tvars(Constraints, ConstrainedTvars),
 	list__delete_elems(Tvars, ConstrainedTvars, Unconstrained0),
 	list__remove_dups(Unconstrained0, Unconstrained).
+
+%-----------------------------------------------------------------------------%
+
+maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity, MaybeTypes)
+		:-
+	( ConsId0 = cons(SymName, _) ->
+		( SymName = qualified(_, Name) ->
+			% get_cons_id_non_existential_arg_types
+			% expects an unqualified cons_id.
+			ConsId = cons(unqualified(Name), Arity)
+		;
+			ConsId = ConsId0
+		),
+		(
+			MaybeType = yes(Type),
+
+			% XXX get_cons_id_non_existential_arg_types will fail
+			% for ConsIds with existentially typed arguments.
+			get_cons_id_non_existential_arg_types(ModuleInfo, Type,
+				ConsId, Types),
+			list__length(Types, Arity)
+		->
+			MaybeTypes = list__map(func(T) = yes(T), Types)
+		;
+			list__duplicate(Arity, no, MaybeTypes)
+		)
+	;
+		MaybeTypes = []
+	).
+
+maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
+	(
+		MaybeType = yes(Type),
+		type_is_higher_order(Type, _, _, Types)
+	->
+		MaybeTypes = list__map(func(T) = yes(T), Types)
+	;
+		list__duplicate(Arity, no, MaybeTypes)
+	).
 
 %-----------------------------------------------------------------------------%
