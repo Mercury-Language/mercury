@@ -409,21 +409,18 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = foreign_proc(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
+		% Note that we check during add_item_clause that we have
+		% defined a foreign_type which is usable by the back-end
+		% we are compiling on.
 		{ Pragma = foreign_type(ForeignType, _MercuryType, Name) },
-
-		{ ForeignType = il(RefOrVal,
-				ForeignTypeLocation, ForeignTypeName) },
-
-		{ RefOrVal = reference,
-			IsBoxed = yes
-		; RefOrVal = value,
-			IsBoxed = no
-		},
 
 		{ varset__init(VarSet) },
 		{ Args = [] },
-		{ Body = foreign_type(IsBoxed,
-				ForeignTypeName, ForeignTypeLocation) },
+		{ ForeignType = il(ILForeignType),
+			Body = foreign_type(yes(ILForeignType), no)
+		; ForeignType = c(CForeignType),
+			Body = foreign_type(no, yes(CForeignType))
+		},
 		{ Cond = true },
 
 		{ TypeCtor = Name - 0 },
@@ -806,6 +803,11 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 	->
 		add_pragma_type_spec(Pragma, Context, Module0, Module,
 			Info0, Info)
+	;
+		{ Pragma = foreign_type(_, _, Name) }
+	->
+		check_foreign_type(Name, Context, Module0, Module),
+		{ Info = Info0 }	
 	;
 		% don't worry about any pragma decs but c_code, tabling,
 		% type_spec and fact_table here
@@ -1921,9 +1923,22 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 				module_info_set_types(Module0, Types, Module)
 			}
 		;
-			{ Module = Module0 },
-			multiple_def_error(Status, Name, Arity, "type",
-				Context, OrigContext, _)
+			{ merge_foreign_type_bodies(Body, Body_2, NewBody) }
+		->
+			{ hlds_data__set_type_defn(TVarSet_2, Params_2,
+				NewBody, Status, Context, T3) },
+			{ map__det_update(Types0, TypeCtor, T3, Types) },
+			{ module_info_set_types(Module0, Types, Module) }
+		;
+			% otherwise issue an error message if the second
+			% definition wasn't read while reading .opt files. 
+			{ Status = opt_imported }
+		->
+			{ Module = Module0 }
+		;
+			{ module_info_incr_errors(Module0, Module) },
+			multiple_def_error(Status, Name, Arity, "type", Context,
+				OrigContext, _)
 		)
 	;
 		{ map__set(Types0, TypeCtor, T, Types) },
@@ -1998,6 +2013,109 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			[]
 		)
 	).
+
+	% check_foreign_type ensures that if we are generating code for
+	% a specific backend that the foreign type has a representation
+	% on that backend.
+:- pred check_foreign_type(sym_name::in, prog_context::in,
+		module_info::in, module_info::out, io::di, io::uo) is det.
+
+check_foreign_type(Name, Context, Module0, Module) -->
+	{ TypeCtor = Name - 0 },
+	{ module_info_types(Module0, Types) },
+	{ TypeStr = error_util__describe_sym_name_and_arity(Name/0) },
+	( 
+		{ map__search(Types, TypeCtor, Defn) },
+		{ hlds_data__get_type_defn_body(Defn, Body) },
+		{ Body = foreign_type(MaybeIL, MaybeC) }
+	->
+		{ module_info_globals(Module0, Globals) },
+		generating_code(GeneratingCode),
+		( { GeneratingCode = yes } ->
+			io_lookup_bool_option(very_verbose, VeryVerbose),
+			{ VeryVerbose = yes ->
+				VerboseErrorPieces = [
+					nl,
+					words("There are representations for"),
+					words("this type on other back-ends,"),
+					words("but none for this back-end.")
+				]
+			;
+				VerboseErrorPieces = []
+			},
+			{ globals__get_target(Globals, Target) },
+			( { Target = c },
+			    ( { MaybeC = yes(_) },
+				{ Module = Module0 }
+			    ; { MaybeC = no },
+				{ ErrorPieces = [
+				    words("Error: no C pragma"),
+				    words("foreign_type declaration for"),
+				    fixed(TypeStr) | VerboseErrorPieces
+				] },
+				error_util__write_error_pieces(Context,
+					0, ErrorPieces),
+				{ module_info_incr_errors(Module0, Module) }
+			    )
+			; { Target = il },
+			    ( { MaybeIL = yes(_) },
+				{ Module = Module0 }
+			    ; { MaybeIL = no },
+				{ ErrorPieces = [
+				    words("Error: no IL pragma"),
+				    words("foreign_type declaration for"),
+				    fixed(TypeStr) | VerboseErrorPieces
+				] },
+				error_util__write_error_pieces(Context, 0,
+						ErrorPieces),
+				{ module_info_incr_errors(Module0, Module) }
+			    )
+			; { Target = java },
+				{ Module = Module0 }
+			; { Target = asm },
+				{ Module = Module0 }
+			)
+		;
+			{ Module = Module0 }
+		)
+	;
+		{ error("check_foreign_type: unable to find foreign type") }
+	).
+
+	% Do the options imply that we will generate code for a specific
+	% back-end?
+:- pred generating_code(bool::out, io::di, io::uo) is det.
+
+generating_code(bool__not(NotGeneratingCode)) -->
+	io_lookup_bool_option(make_short_interface, MakeShortInterface),
+	io_lookup_bool_option(make_interface, MakeInterface),
+	io_lookup_bool_option(make_private_interface, MakePrivateInterface),
+	io_lookup_bool_option(make_transitive_opt_interface,
+			MakeTransOptInterface),
+	io_lookup_bool_option(generate_source_file_mapping, GenSrcFileMapping),
+	io_lookup_bool_option(generate_dependencies, GenDepends),
+	io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
+	io_lookup_bool_option(typecheck_only, TypeCheckOnly),
+	io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
+	io_lookup_bool_option(output_grade_string, OutputGradeString),
+	{ bool__or_list([MakeShortInterface, MakeInterface,
+			MakePrivateInterface, MakeTransOptInterface,
+			GenSrcFileMapping, GenDepends, ConvertToMercury,
+			TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
+			NotGeneratingCode) }.
+
+:- pred merge_foreign_type_bodies(hlds_type_body::in,
+		hlds_type_body::in, hlds_type_body::out) is semidet.
+
+merge_foreign_type_bodies(foreign_type(MaybeILA, MaybeCA),
+		foreign_type(MaybeILB, MaybeCB),
+		foreign_type(MaybeIL, MaybeC)) :-
+	merge_maybe(MaybeILA, MaybeILB, MaybeIL),
+	merge_maybe(MaybeCA, MaybeCB, MaybeC).
+
+:- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
+merge_maybe(yes(T), no, yes(T)).
+merge_maybe(no, yes(T), yes(T)).
 
 :- pred make_status_abstract(import_status, import_status).
 :- mode make_status_abstract(in, out) is det.

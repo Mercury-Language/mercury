@@ -510,20 +510,28 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 	;
 		{ Pragma = foreign_type(ForeignType, _MercuryType,
 				MercuryTypeSymName) },
-		{ ForeignType = il(RefOrVal, ForeignLocStr, ForeignTypeName) },
 
 		io__write_string(":- pragma foreign_type("),
-		io__write_string("il, "),
+		( { ForeignType = il(_) },
+			io__write_string("il, ")
+		; { ForeignType = c(_) },
+			io__write_string("c, ")
+		),
 		mercury_output_sym_name(MercuryTypeSymName),
 		io__write_string(", "),
-		( { RefOrVal = reference },
-			io__write_string("\"class [")
-		; { RefOrVal = value },
-			io__write_string("\"valuetype [")
-		),
-		io__write_string(ForeignLocStr),
-		io__write_string("]"),
-		{ sym_name_to_string(ForeignTypeName, ".", ForeignTypeStr) },
+		io__write_string(", \""),
+		{ ForeignType = il(il(RefOrVal,
+				ForeignLocStr, ForeignTypeName)),
+			( RefOrVal = reference,
+				RefOrValStr = "class "
+			; RefOrVal = value,
+				RefOrValStr = "valuetype "
+			),
+			sym_name_to_string(ForeignTypeName, ".", NameStr),
+			ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++
+					"]" ++ NameStr
+		; ForeignType = c(c(ForeignTypeStr))
+		},
 		io__write_string(ForeignTypeStr),
 		io__write_string("\").\n")
 	;

@@ -316,11 +316,12 @@
 	% for each of these cases.
 	%
 
-:- type ref_or_val
-	--->	reference
-	;	value.
-
 :- type foreign_language_type
+	--->	il(il_foreign_type)
+	;	c(c_foreign_type)
+	.
+
+:- type il_foreign_type
 	--->	il(
 			ref_or_val,	% An indicator of whether the type is a
 					% reference of value type.
@@ -328,6 +329,15 @@
 					% assembly)
 			sym_name	% The .NET type name
 		).
+
+:- type c_foreign_type
+	--->	c(
+			string		% The C type name
+		).
+
+:- type ref_or_val
+	--->	reference
+	;	value.
 
 %
 % Stuff for tabling pragmas

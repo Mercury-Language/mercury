@@ -663,8 +663,8 @@ mlds_output_pragma_export_type(prefix, mlds__native_float_type) -->
 	io__write_string("MR_Float").
 mlds_output_pragma_export_type(prefix, mlds__native_char_type) -->
 	io__write_string("MR_Char").
-mlds_output_pragma_export_type(prefix, mlds__foreign_type(_, _, _)) -->
-	{ error("mlds_output_pragma_export_type: foreign_type") }.
+mlds_output_pragma_export_type(prefix, mlds__foreign_type(_)) -->
+	io__write_string("MR_Box").
 mlds_output_pragma_export_type(prefix, mlds__class_type(_, _, _)) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__array_type(_)) -->
@@ -1639,8 +1639,13 @@ mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
 mlds_output_type_prefix(mlds__native_bool_type)  -->
 	io__write_string("MR_bool").
 mlds_output_type_prefix(mlds__native_char_type)  --> io__write_string("char").
-mlds_output_type_prefix(mlds__foreign_type(_, _, _)) -->
-	{ error("mlds_output_type_prefix: foreign_type") }.
+mlds_output_type_prefix(mlds__foreign_type(ForeignType)) -->
+	( { ForeignType = c(c(Name)) },
+		io__write_string(Name)
+	; { ForeignType = il(_) },
+		{ unexpected(this_file,
+			"mlds_output_type_prefix: il foreign_type") }
+	).
 mlds_output_type_prefix(mlds__class_type(Name, Arity, ClassKind)) -->
 	( { ClassKind = mlds__enum } ->
 		%
@@ -1809,7 +1814,8 @@ mlds_output_type_suffix(mlds__native_int_type, _) --> [].
 mlds_output_type_suffix(mlds__native_float_type, _) --> [].
 mlds_output_type_suffix(mlds__native_bool_type, _) --> [].
 mlds_output_type_suffix(mlds__native_char_type, _) --> [].
-mlds_output_type_suffix(mlds__foreign_type(_, _, _), _) --> [].
+	% XXX Currently we can't output a type suffix.
+mlds_output_type_suffix(mlds__foreign_type(_), _) --> [].
 mlds_output_type_suffix(mlds__class_type(_, _, _), _) --> [].
 mlds_output_type_suffix(mlds__ptr_type(_), _) --> [].
 mlds_output_type_suffix(mlds__array_type(_), ArraySize) -->

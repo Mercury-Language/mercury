@@ -1251,7 +1251,7 @@ get_java_type_initializer(mlds__native_bool_type) = "false".
 get_java_type_initializer(mlds__native_int_type) = "0".
 get_java_type_initializer(mlds__native_float_type) = "0".
 get_java_type_initializer(mlds__native_char_type) = "0".
-get_java_type_initializer(mlds__foreign_type(_, _, _)) = _ :-
+get_java_type_initializer(mlds__foreign_type(_)) = _ :-
 	unexpected(this_file, 
 		"get_type_initializer: variable has foreign_type"). 
 get_java_type_initializer(mlds__class_type(_, _, _)) = "null".
@@ -1619,7 +1619,7 @@ output_type(mlds__native_int_type)   --> io__write_string("int").
 output_type(mlds__native_float_type) --> io__write_string("double").
 output_type(mlds__native_bool_type) --> io__write_string("boolean").
 output_type(mlds__native_char_type)  --> io__write_string("char").
-output_type(mlds__foreign_type(_, _, _))  -->
+output_type(mlds__foreign_type(_))  -->
 	{ unexpected(this_file, "output_type: foreign_type NYI.") }.
 output_type(mlds__class_type(Name, Arity, ClassKind)) -->
 	( { ClassKind = mlds__enum } ->

@@ -270,7 +270,7 @@ find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
 		Weights = Weights0
 	;
 		% This type does not introduce any functors
-		TypeBody = foreign_type(_, _, _),
+		TypeBody = foreign_type(_, _),
 		Weights = Weights0
 	).
 

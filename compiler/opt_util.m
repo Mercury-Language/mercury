@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1341,7 +1341,7 @@ pragma_c_component_get_rvals_and_lvals(pragma_c_noop,
 
 pragma_c_inputs_get_rvals([], []).
 pragma_c_inputs_get_rvals([I|Inputs], [R|Rvals]) :-
-	I = pragma_c_input(_Name, _Type, R),
+	I = pragma_c_input(_Name, _Type, R, _),
 	pragma_c_inputs_get_rvals(Inputs, Rvals).
 
 	% extract the lvals from the pragma_c_output
@@ -1350,7 +1350,7 @@ pragma_c_inputs_get_rvals([I|Inputs], [R|Rvals]) :-
 
 pragma_c_outputs_get_lvals([], []).
 pragma_c_outputs_get_lvals([O|Outputs], [L|Lvals]) :-
-	O = pragma_c_output(L, _Type, _Name),
+	O = pragma_c_output(L, _Type, _Name, _),
 	pragma_c_outputs_get_lvals(Outputs, Lvals).
 
 % determine all the rvals and lvals referenced by a list of instructions

@@ -202,7 +202,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	% polymorphism__process_generated_pred can't handle calls to
 	% polymorphic procedures after the initial polymorphism pass.
 	%
-	Body \= foreign_type(_, _, _),
+	Body \= foreign_type(_, _),
 
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always

@@ -3005,15 +3005,19 @@ mlds_type_to_ilds_type(_, mlds__native_int_type) = ilds__type([], int32).
 
 mlds_type_to_ilds_type(_, mlds__native_float_type) = ilds__type([], float64).
 
-mlds_type_to_ilds_type(_, mlds__foreign_type(IsBoxed, ForeignType, Assembly))
+mlds_type_to_ilds_type(_, mlds__foreign_type(ForeignType))
 	= ilds__type([], Class) :-
-	sym_name_to_class_name(ForeignType, ForeignClassName),
-	( IsBoxed = yes,
-		Class = class(structured_name(assembly(Assembly),
-				ForeignClassName, []))
-	; IsBoxed = no,
-		Class = valuetype(structured_name(assembly(Assembly),
-				ForeignClassName, []))
+	( ForeignType = il(il(RefOrVal, Assembly, Type)),
+		sym_name_to_class_name(Type, ForeignClassName),
+		( RefOrVal = reference,
+			Class = class(structured_name(assembly(Assembly),
+					ForeignClassName, []))
+		; RefOrVal = value,
+			Class = valuetype(structured_name(assembly(Assembly),
+					ForeignClassName, []))
+		)
+	; ForeignType = c(_),
+		error("mlds_to_il: c foreign type")
 	).
 
 mlds_type_to_ilds_type(ILDataRep, mlds__ptr_type(MLDSType)) =

@@ -300,12 +300,8 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 		)
 	;	eqv_type(type)
 	;	foreign_type(
-			bool,		% is the type already boxed
-			sym_name,	% structured name of foreign type
-					% which represents the mercury type.
-			string		% Location of the definition for this
-					% type (such as assembly or
-					% library name)
+			il	:: maybe(il_foreign_type),
+			c	:: maybe(c_foreign_type)
 		)
 	;	abstract_type.
 

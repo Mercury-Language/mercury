@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -599,20 +599,20 @@ exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
 
 exprn_aux__substitute_lval_in_pragma_c_input(OldLval, NewLval, Out0, Out,
 		N0, N) :-
-	Out0 = pragma_c_input(Name, Type, Rval0),
+	Out0 = pragma_c_input(Name, Type, Rval0, MaybeForeign),
 	exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
 		N0, N),
-	Out = pragma_c_input(Name, Type, Rval).
+	Out = pragma_c_input(Name, Type, Rval, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_pragma_c_output(lval::in, lval::in,
 	pragma_c_output::in, pragma_c_output::out, int::in, int::out) is det.
 
 exprn_aux__substitute_lval_in_pragma_c_output(OldLval, NewLval, Out0, Out,
 		N0, N) :-
-	Out0 = pragma_c_output(Lval0, Type, Name),
+	Out0 = pragma_c_output(Lval0, Type, Name, MaybeForeign),
 	exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
 		N0, N),
-	Out = pragma_c_output(Lval, Type, Name).
+	Out = pragma_c_output(Lval, Type, Name, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_rval_count(lval::in, lval::in,
 	rval::in, rval::out, int::in, int::out) is det.

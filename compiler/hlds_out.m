@@ -2897,7 +2897,7 @@ hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 hlds_out__write_type_body(_Indent, _Tvarset, abstract_type) -->
 	io__write_string(".\n").
 
-hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _, _)) -->
+hlds_out__write_type_body(_Indent, _Tvarset, foreign_type(_, _)) -->
 	{ error("hlds_out__write_type_body: foreign type body found") }.
 
 :- pred hlds_out__write_constructors(int, tvarset, list(constructor),

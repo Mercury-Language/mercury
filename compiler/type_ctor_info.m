@@ -254,7 +254,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		TypeTables = [],
 		NumPtags = -1
 	;
-		TypeBody = foreign_type(_, _, _),
+		TypeBody = foreign_type(_, _),
 		TypeCtorRep = unknown,
 		NumFunctors = -1,
 		FunctorsInfo = no_functors,

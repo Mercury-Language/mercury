@@ -71,7 +71,7 @@
 :- func foreign__non_foreign_type((type)) = exported_type.
 
 	% Given an arbitary mercury type, get the exported_type representation
-	% of that type.
+	% of that type on the current backend.
 :- func foreign__to_exported_type(module_info, (type)) = exported_type.
 
 	% Given a representation of a type determine the string which
@@ -588,13 +588,38 @@ non_foreign_type(Type) = mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
 	module_info_types(ModuleInfo, Types),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
 	(
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(_, ForeignType, _) ->
-			ExportType = foreign(ForeignType)
+		( Body = foreign_type(MaybeIL, MaybeC) ->
+			( Target = c,
+				( MaybeC = yes(c(NameStr)),
+					Name = unqualified(NameStr)
+				; MaybeC = no,
+					unexpected(this_file,
+						"to_exported_type: no C type")
+				)
+			; Target = il, 
+				( MaybeIL = yes(il(_, _, Name))
+				; MaybeIL = no,
+					unexpected(this_file,
+						"to_exported_type: no IL type")
+				)
+			; Target = java,
+				sorry(this_file, "to_exported_type for java")
+			; Target = asm,
+				( MaybeC = yes(c(NameStr)),
+					Name = unqualified(NameStr)
+				; MaybeC = no,
+					unexpected(this_file,
+						"to_exported_type: no C type")
+				)
+			),
+			ExportType = foreign(Name)
 		;
 			ExportType = mercury(Type)
 		)
@@ -605,8 +630,12 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 to_type_string(Lang, ModuleInfo, Type) =
 	to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
 
-to_type_string(c, foreign(_ForeignType)) = _ :-
-	sorry(this_file, "foreign types on a C backend").
+to_type_string(c, foreign(ForeignType)) = Result :-
+	( ForeignType = unqualified(Result0) ->
+		Result = Result0
+	;
+		unexpected(this_file, "to_type_string: qualified C type")
+	).
 to_type_string(csharp, foreign(ForeignType)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
 to_type_string(managed_cplusplus, foreign(ForeignType)) = Result ++ " *":-

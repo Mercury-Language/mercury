@@ -1694,8 +1694,7 @@ build_type(mercury_array_type(_ElemType), _, _, GCC_Type) -->
 	).
 build_type(mercury_type(Type, TypeCategory, _), _, _, GCC_Type) -->
 	build_mercury_type(Type, TypeCategory, GCC_Type).
-build_type(mlds__foreign_type(_, _, _), _, _, _) --> 
-	{ sorry(this_file, "foreign_type not implemented") }.
+build_type(mlds__foreign_type(_), _, _, 'MR_Box') --> [].
 build_type(mlds__native_int_type, _, _, gcc__integer_type_node) --> [].
 build_type(mlds__native_float_type, _, _, gcc__double_type_node) --> [].
 build_type(mlds__native_bool_type, _, _, gcc__boolean_type_node) --> [].

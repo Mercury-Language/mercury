@@ -763,7 +763,7 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
-		{ TypeBody = foreign_type(_, _, _) },
+		{ TypeBody = foreign_type(_, _) },
 		unify_proc__build_call("nyi_foreign_type_unify", [H1, H2],
 				Context, Goal),
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
@@ -819,7 +819,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		% invoked.
 		{ error("trying to create index proc for eqv type") }
 	;
-		{ TypeBody = foreign_type(_, _, _) },
+		{ TypeBody = foreign_type(_, _) },
 		{ error("trying to create index proc for a foreign type") }
 	;
 		{ TypeBody = abstract_type },
@@ -896,7 +896,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
 			Clauses)
 	;
-		{ TypeBody = foreign_type(_, _, _) },
+		{ TypeBody = foreign_type(_, _) },
 		unify_proc__build_call("nyi_foreign_type_compare",
 				[Res, H1, H2], Context, Goal),
 		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,

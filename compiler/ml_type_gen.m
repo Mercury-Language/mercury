@@ -127,7 +127,7 @@ ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
 			Ctors, TagValues, MaybeEqualityMembers)
 	).
 	% XXX Fixme!  Same issues here as for eqv_type/1.
-ml_gen_type_2(foreign_type(_, _, _), _, _, _) --> [].
+ml_gen_type_2(foreign_type(_, _), _, _, _) --> [].
 
 %-----------------------------------------------------------------------------%
 %

@@ -2160,14 +2160,11 @@ ml_type_might_contain_pointers(mlds__native_int_type) = no.
 ml_type_might_contain_pointers(mlds__native_float_type) = no.
 ml_type_might_contain_pointers(mlds__native_bool_type) = no.
 ml_type_might_contain_pointers(mlds__native_char_type) = no.
-ml_type_might_contain_pointers(mlds__foreign_type(_, _, _)) = _ :-
+ml_type_might_contain_pointers(mlds__foreign_type(_)) = _ :-
+	sorry(this_file, "--gc accurate and foreign_type").
 	% It might contain pointers, so it's not safe to return `no',
 	% but it also might not be word-sized, so it's not safe to
-	% return `yes'.  Currently this case should not occur, since
-	% currently `foreign_type' is only used for the IL back-end,
-	% where GC is handled by the target language.
-	unexpected(this_file, "--gc accurate and foreign_type").
-	
+	% return `yes'.
 ml_type_might_contain_pointers(mlds__class_type(_, _, Category)) =
 	(if Category = mlds__enum then no else yes).
 ml_type_might_contain_pointers(mlds__ptr_type(_)) = yes.

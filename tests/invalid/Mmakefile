@@ -52,6 +52,7 @@ SINGLEMODULE_SOURCES= \
 	ext_type_bug.m \
 	exported_mode.m \
 	field_syntax_error.m \
+	foreign_type.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_default_func_1.m \

@@ -225,6 +225,19 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
 				InputTerm)
 		)
 	;
+		Language = c
+	->
+		( 
+			InputTerm = term__functor(term__string(CTypeName),
+				[], _)
+		->
+			Result = ok(c(c(CTypeName)))
+		;
+			Result = error("invalid backend specification term",
+				InputTerm)
+		)
+	;
+
 		Result = error("unsupported language specified, unable to parse backend type", InputTerm)
 	).
 
@@ -235,7 +248,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 	(
 		parse_special_il_type_name(String0, ForeignTypeResult)
 	->
-		ForeignType = ok(ForeignTypeResult)
+		ForeignType = ok(il(ForeignTypeResult))
 	;
 		string__append("class [", String1, String0),
 		string__sub_string_search(String1, "]", Index)
@@ -243,7 +256,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 		string__left(String1, Index, AssemblyName),
 		string__split(String1, Index + 1, _, TypeNameStr),
 		string_to_sym_name(TypeNameStr, ".", TypeSymName),
-		ForeignType = ok(il(reference, AssemblyName, TypeSymName))
+		ForeignType = ok(il(il(reference, AssemblyName, TypeSymName)))
 	;
 		string__append("valuetype [", String1, String0),
 		string__sub_string_search(String1, "]", Index)
@@ -251,7 +264,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 		string__left(String1, Index, AssemblyName),
 		string__split(String1, Index + 1, _, TypeNameStr),
 		string_to_sym_name(TypeNameStr, ".", TypeSymName),
-		ForeignType = ok(il(value, AssemblyName, TypeSymName))
+		ForeignType = ok(il(il(value, AssemblyName, TypeSymName)))
 	;
 		ForeignType = error(
 			"invalid foreign language type description", ErrorTerm)
@@ -260,8 +273,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 	% Parse all the special assembler names for all the builtin types.
 	% See Parition I 'Built-In Types' (Section 8.2.2) for the list
 	% of all builtin types.
-:- pred parse_special_il_type_name(string::in,
-		foreign_language_type::out) is semidet.
+:- pred parse_special_il_type_name(string::in, il_foreign_type::out) is semidet.
 
 parse_special_il_type_name("bool", il(value, "mscorlib",
 			qualified(unqualified("System"), "Boolean"))).

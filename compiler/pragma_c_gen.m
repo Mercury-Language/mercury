@@ -42,9 +42,9 @@
 :- implementation.
 
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_llds.
-:- import_module hlds__instmap.
-:- import_module ll_backend__llds_out, ll_backend__trace.
-:- import_module ll_backend__code_util.
+:- import_module hlds__instmap, hlds__hlds_data, hlds__error_util.
+:- import_module check_hlds__type_util.
+:- import_module ll_backend__llds_out, ll_backend__trace, ll_backend__code_util.
 :- import_module backend_libs__foreign.
 :- import_module libs__options, libs__globals, libs__tree.
 
@@ -677,8 +677,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ make_pragma_decls(Args, ModuleInfo, Decls) },
 	{ make_pragma_decls(OutArgs, ModuleInfo, OutDecls) },
 
-	{ input_descs_from_arg_info(InArgs, InputDescs) },
-	{ output_descs_from_arg_info(OutArgs, OutputDescs) },
+	input_descs_from_arg_info(InArgs, InputDescs),
+	output_descs_from_arg_info(OutArgs, OutputDescs),
 
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_module(PredInfo, ModuleName) },
@@ -1186,7 +1186,8 @@ get_pragma_input_vars([Arg | Args], Inputs, Code) -->
 		code_info__produce_variable(Var, FirstCode, Rval),
 		% code_info__produce_variable_in_reg(Var, FirstCode, Lval),
 		% { Rval = lval(Lval) },
-		{ Input = pragma_c_input(Name, Type, Rval) },
+		get_maybe_foreign_type_name(Type, MaybeForeign),
+		{ Input = pragma_c_input(Name, Type, Rval, MaybeForeign) },
 		get_pragma_input_vars(Args, Inputs1, RestCode),
 		{ Inputs = [Input | Inputs1] },
 		{ Code = tree(FirstCode, RestCode) }
@@ -1196,6 +1197,30 @@ get_pragma_input_vars([Arg | Args], Inputs, Code) -->
 		get_pragma_input_vars(Args, Inputs, Code)
 	).
 
+:- pred get_maybe_foreign_type_name((type)::in, maybe(string)::out,
+		code_info::in, code_info::out) is det.
+
+get_maybe_foreign_type_name(Type, MaybeForeignType) -->
+	code_info__get_module_info(Module),
+	{ module_info_types(Module, Types) },
+	{ 
+		type_to_ctor_and_args(Type, TypeId, _SubTypes),
+		map__search(Types, TypeId, Defn),
+		hlds_data__get_type_defn_body(Defn, Body),
+		Body = foreign_type(_MaybeIL, MaybeC)
+	->
+		( MaybeC = yes(c(Name)),
+			MaybeForeignType = yes(Name)
+		; MaybeC = no,
+			% This is ensured by check_foreign_type in
+			% make_hlds.
+			unexpected(this_file,
+			"get_maybe_foreign_type_name: no c foreign type")
+		)
+	;
+		MaybeForeignType = no
+	}.
+		
 %---------------------------------------------------------------------------%
 
 % pragma_acquire_regs acquires a list of registers in which to place each
@@ -1226,10 +1251,12 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs) -->
 	code_info__release_reg(Reg),
 	( code_info__variable_is_forward_live(Var) ->
 		code_info__set_var_location(Var, Reg),
+		get_maybe_foreign_type_name(OrigType, MaybeForeign),
 		{
 			var_is_not_singleton(MaybeName, Name)
 		->
-			PragmaCOutput = pragma_c_output(Reg, OrigType, Name),
+			PragmaCOutput = pragma_c_output(Reg, OrigType,
+						Name, MaybeForeign),
 			Outputs = [PragmaCOutput | Outputs0]
 		;
 			Outputs = Outputs0
@@ -1247,22 +1274,24 @@ place_pragma_output_args_in_regs([], [_|_], _) -->
 % input_descs_from_arg_info returns a list of pragma_c_inputs, which
 % are pairs of rvals and (C) variables which receive the input value.
 
-:- pred input_descs_from_arg_info(list(c_arg)::in, list(pragma_c_input)::out)
-	is det.
+:- pred input_descs_from_arg_info(list(c_arg)::in, list(pragma_c_input)::out,
+		code_info::in, code_info::out) is det.
 
-input_descs_from_arg_info([], []).
-input_descs_from_arg_info([Arg | Args], Inputs) :-
+input_descs_from_arg_info([], [], CodeInfo, CodeInfo).
+input_descs_from_arg_info([Arg | Args], Inputs, CodeInfo0, CodeInfo) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
 	(
 		var_is_not_singleton(MaybeName, Name)
 	->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		Input = pragma_c_input(Name, OrigType, lval(Reg)),
+		get_maybe_foreign_type_name(OrigType, MaybeForeign,
+				CodeInfo0, CodeInfo1),
+		Input = pragma_c_input(Name, OrigType, lval(Reg), MaybeForeign),
 		Inputs = [Input | Inputs1],
-		input_descs_from_arg_info(Args, Inputs1)
+		input_descs_from_arg_info(Args, Inputs1, CodeInfo1, CodeInfo)
 	;
-		input_descs_from_arg_info(Args, Inputs)
+		input_descs_from_arg_info(Args, Inputs, CodeInfo0, CodeInfo)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1271,22 +1300,26 @@ input_descs_from_arg_info([Arg | Args], Inputs) :-
 % are pairs of names of output registers and (C) variables which hold the
 % output value.
 
-:- pred output_descs_from_arg_info(list(c_arg)::in, list(pragma_c_output)::out)
-	is det.
+:- pred output_descs_from_arg_info(list(c_arg)::in, list(pragma_c_output)::out,
+		code_info::in, code_info::out) is det.
 
-output_descs_from_arg_info([], []).
-output_descs_from_arg_info([Arg | Args], Outputs) :-
+output_descs_from_arg_info([], [], CodeInfo, CodeInfo).
+output_descs_from_arg_info([Arg | Args], Outputs, CodeInfo0, CodeInfo) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
+	output_descs_from_arg_info(Args, Outputs0, CodeInfo0, CodeInfo1),
 	(
 		var_is_not_singleton(MaybeName, Name)
 	->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		Outputs = [pragma_c_output(Reg, OrigType, Name) | Outputs0]
+		get_maybe_foreign_type_name(OrigType, MaybeForeign,
+				CodeInfo1, CodeInfo),
+		Outputs = [pragma_c_output(Reg, OrigType, Name, MaybeForeign) |
+				Outputs0]
 	;
-		Outputs = Outputs0
-	),
-	output_descs_from_arg_info(Args, Outputs0).
+		Outputs = Outputs0,
+		CodeInfo = CodeInfo1
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -1299,4 +1332,10 @@ pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
 	string__append_list(["mercury_save__", MangledModuleName, "__",
 		MangledPredName, "__", ArityStr, "_", ProcNumStr], StructName).
 
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "pragma_c_gen.m".
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
