@@ -457,11 +457,6 @@ char__lower_upper('z', 'Z').
 	SUCCESS_INDICATOR = (Character == Int);
 ").
 
-:- pragma promise_pure(char__to_int/2).
-char__to_int(_, _) :-
-	private_builtin__sorry("char__to_int").
-
-
 % We used unsigned character codes, so the minimum character code
 % is always zero.
 
@@ -474,8 +469,13 @@ char__min_char_value(0).
 	Max = UCHAR_MAX;
 ").
 
-char__max_char_value(_) :-
-	private_builtin__sorry("char__max_char_value").
+:- pragma foreign_proc("MC++",
+		char__max_char_value(_Max::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -245,10 +245,6 @@ X / Y = Z :-
 	SUCCESS_INDICATOR = MR_TRUE;
 #endif
 ").
-
-domain_checks :-
-	private_builtin__sorry("float__domain_checks").
-
 %---------------------------------------------------------------------------%
 %
 % Conversion functions
@@ -269,8 +265,6 @@ float(Int) = Float :-
 "
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
-float__ceiling_to_int(_) = _ :-
-	private_builtin__sorry("float__ceiling_to_int").
 
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
@@ -284,8 +278,6 @@ float__ceiling_to_int(_) = _ :-
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
-float__floor_to_int(_) = _ :-
-	private_builtin__sorry("float__floor_to_int").
 
 	% float__round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
@@ -299,8 +291,6 @@ float__floor_to_int(_) = _ :-
 "
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
-float__round_to_int(_) = _ :-
-	private_builtin__sorry("float__round_to_int").
 
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
@@ -314,8 +304,6 @@ float__round_to_int(_) = _ :-
 "
 	Trunc = System.Convert.ToInt32(X);
 ").
-float__truncate_to_int(_) = _ :-
-	private_builtin__sorry("float__truncate_to_int").
 
 %---------------------------------------------------------------------------%
 %
@@ -411,8 +399,6 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 "
 	H = F.GetHashCode();
 ").
-float__hash(_) = _ :-
-	private_builtin__sorry("float__hash").
 
 %---------------------------------------------------------------------------%
 %
@@ -450,8 +436,7 @@ float__hash(_) = _ :-
 :- pragma foreign_proc("C#", float__max = (Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Max = System.Double.MaxValue;").
-float__max = _ :-
-	private_builtin__sorry("float__max").
+
 
 	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C", float__min = (Min::out),
@@ -460,8 +445,6 @@ float__max = _ :-
 :- pragma foreign_proc("C#", float__min = (Min::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Min = System.Double.MinValue;").
-float__min = _ :=
-	private_builtin__sorry("float__min").
 
 	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C", float__epsilon = (Eps::out),
@@ -470,22 +453,26 @@ float__min = _ :=
 :- pragma foreign_proc("C#", float__epsilon = (Eps::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Eps = System.Double.Epsilon;").
-float__epsilon = _ :-
-	private_builtin__sorry("float__epsilon").
 
 	% Radix of the floating-point representation.
 :- pragma foreign_proc("C", float__radix = (Radix::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Radix = ML_FLOAT_RADIX;").
-float__radix = _ :-
-	private_builtin__sorry("float__radix").
+:- pragma foreign_proc("C#", float__radix = (_Radix::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Radix = 0;
+").
 
 	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MantDig = ML_FLOAT_MANT_DIG;").
-float__mantissa_digits = _ :-
-	private_builtin__sorry("float__mantissa_digits").
+:- pragma foreign_proc("C#", float__mantissa_digits = (_MantDig::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MantDig = 0;
+").
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
@@ -493,8 +480,11 @@ float__mantissa_digits = _ :-
 :- pragma foreign_proc("C", float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MinExp = ML_FLOAT_MIN_EXP;").
-float__min_exponent = _ :-
-	private_builtin__sorry("float__min_exponent").
+:- pragma foreign_proc("C#", float__min_exponent = (_MinExp::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "	
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MinExp = 0;
+").
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
@@ -502,8 +492,13 @@ float__min_exponent = _ :-
 :- pragma foreign_proc("C", float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MaxExp = ML_FLOAT_MAX_EXP;").
-float__max_exponent = _ :-
-	private_builtin__sorry("float__max_exponent").
+
+:- pragma foreign_proc("C#", float__max_exponent = (_MaxExp::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "	
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MaxExp = 0;
+").
+
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -169,8 +169,7 @@ builtin_compare_string(R, S1, S2) :-
 "
 	Res = System::String::Compare(S1, S2);
 ").
-builtin_strcmp(_, _, _) :-
-	sorry("builtin_strcmp").
+	
 
 builtin_unify_float(F, F).
 
@@ -877,18 +876,6 @@ static void init_runtime(void)
 	TypeClassInfo =
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
-
-type_info_from_typeclass_info(_, _, _) :-
-	sorry("type_info_from_typeclass_info").
-
-unconstrained_type_info_from_typeclass_info(_, _, _) :-
-	sorry("unconstrained_type_info_from_typeclass_info").
-
-superclass_from_typeclass_info(_, _, _) :-
-	sorry("superclass_from_typeclass_info").
-
-instance_constraint_from_typeclass_info(_, _, _) :-
-	sorry("instance_constraint_from_typeclass_info").
 
 
 %-----------------------------------------------------------------------------%

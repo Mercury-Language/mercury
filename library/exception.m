@@ -1102,6 +1102,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	throw new mercury.runtime.Exception(T);
 ").
 
+
 :- pragma foreign_proc("C#", 
 	catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
 		[will_not_call_mercury, promise_pure], "

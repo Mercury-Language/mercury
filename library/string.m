@@ -696,7 +696,6 @@ string__from_char_list(CharList, Str) :-
 :- mode string__to_char_list(out, in) is det.
 */
 
-:- pragma promise_pure(string__to_char_list/2).
 :- pragma foreign_proc("C", string__to_char_list(Str::in, CharList::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	MR_ConstString p = Str + strlen(Str);
@@ -744,50 +743,12 @@ string__from_char_list(CharList, Str) :-
 	Str[size] = '\\0';
 }").
 
-:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        MR_Integer length, i; 
-        MR_Word tmp;
-        MR_Word prev;
-
-        length = Str->get_Length();
-      
-        MR_list_nil(prev);
-
-        for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp, __box(Str->get_Chars(i)), prev);
-		prev = tmp;
-        }
-        CharList = tmp;
-}").
-
-:- pragma foreign_proc("MC++", string__to_char_list(Str::out, CharList::in),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-        System::Text::StringBuilder *tmp;
-	MR_Char c;
-       
-        tmp = new System::Text::StringBuilder();
-        while (1) {
-            if (MR_list_is_cons(CharList)) {
-		c = System::Convert::ToChar(MR_list_head(CharList));
-                tmp->Append(c);
-                CharList = MR_list_tail(CharList);
-            } else {
-                break;
-            }
-        }
-        Str = tmp->ToString();
-}").
-
-string__to_char_list(_, _) :-
-	private_builtin__sorry("string__to_char_list").
-
 /*-----------------------------------------------------------------------*/
 
 %
-% We implement from_rev_char_list using list__reverse and
-% from_char_list, but the optimized implementation in C below is there
-% for efficiency since it improves the overall speed of parsing by about 7%.
+% We could implement from_rev_char_list using list__reverse and from_char_list,
+% but the optimized implementation in C below is there for efficiency since
+% it improves the overall speed of parsing by about 7%.
 %
 :- pragma foreign_proc("C", string__from_rev_char_list(Chars::in, Str::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "
@@ -826,6 +787,41 @@ string__to_char_list(_, _) :-
 		Str[--len] = (MR_Char) MR_list_head(list_ptr);
 		list_ptr = MR_list_tail(list_ptr);
 	}
+}").
+
+:- pragma foreign_proc("MC++", string__to_char_list(Str::in, CharList::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "{
+        MR_Integer length, i; 
+        MR_Word tmp;
+        MR_Word prev;
+
+        length = Str->get_Length();
+      
+        MR_list_nil(prev);
+
+        for (i = length - 1; i >= 0; i--) {
+		MR_list_cons(tmp, __box(Str->get_Chars(i)), prev);
+		prev = tmp;
+        }
+        CharList = tmp;
+}").
+
+:- pragma foreign_proc("MC++", string__to_char_list(Str::out, CharList::in),
+		[will_not_call_mercury, promise_pure, thread_safe], "{
+        System::Text::StringBuilder *tmp;
+	MR_Char c;
+       
+        tmp = new System::Text::StringBuilder();
+        while (1) {
+            if (MR_list_is_cons(CharList)) {
+		c = System::Convert::ToChar(MR_list_head(CharList));
+                tmp->Append(c);
+                CharList = MR_list_tail(CharList);
+            } else {
+                break;
+            }
+        }
+        Str = tmp->ToString();
 }").
 
 string__from_rev_char_list(Chars::in, Str::out) :- 
@@ -982,27 +978,6 @@ string__append_list(Lists, string__append_list(Lists)).
 	Str[len] = '\\0';
 }").
 
-:- pragma foreign_proc("C#",
-		string__append_list(Strs::in) = (Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe], "
-{
-        System.Text.StringBuilder tmp = new System.Text.StringBuilder();
-
-	while (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
-		tmp.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
-		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
-	}
-	Str = tmp.ToString();
-}
-").
-
-string__append_list(Strs::in) = (Str::uo) :-
-	( Strs = [X | Xs] ->
-		Str = X ++ append_list(Xs)
-	;
-		Str = ""
-	).
-
 	% Implementation of string__join_list that uses C as this
 	% minimises the amount of garbage created.
 :- pragma foreign_proc("C", string__join_list(Sep::in, Strs::in) = (Str::uo),
@@ -1051,6 +1026,27 @@ string__append_list(Strs::in) = (Str::uo) :-
 }").
 
 :- pragma foreign_proc("C#",
+		string__append_list(Strs::in) = (Str::uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+{
+        System.Text.StringBuilder tmp = new System.Text.StringBuilder();
+
+	while (mercury.runtime.LowLevelData.list_is_cons(Strs)) {
+		tmp.Append(mercury.runtime.LowLevelData.list_get_head(Strs));
+		Strs = mercury.runtime.LowLevelData.list_get_tail(Strs);
+	}
+	Str = tmp.ToString();
+}
+").
+
+string__append_list(Strs::in) = (Str::uo) :-
+	( Strs = [X | Xs] ->
+		Str = X ++ append_list(Xs)
+	;
+		Str = ""
+	).
+
+:- pragma foreign_proc("C#",
 		string__join_list(Sep::in, Strs::in) = (Str::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 {	
@@ -1067,15 +1063,6 @@ string__append_list(Strs::in) = (Str::uo) :-
 
 	Str = tmpStr.ToString();
 }").
-
-string__join_list(_Sep, []) = "".
-string__join_list(Sep, [S | Ss]) = S ++ string__join_list_2(Sep, Ss).
-
-:- func string__join_list_2(string, list(string)) = string.
-
-string__join_list_2(_Sep, []) = "".
-string__join_list_2(Sep, [S | Ss]) =
-	Sep ++ S ++ string__join_list_2(Sep, Ss).
 
 %-----------------------------------------------------------------------------%
 
@@ -1128,9 +1115,6 @@ string__combine_hash(H0, X, H) :-
 "{
 	Index = WholeString->IndexOf(SubString);
 }").
-
-string__sub_string_search(_, _, _) :-
-	private_builtin__sorry("string__sub_string_search").
 
 %-----------------------------------------------------------------------------%
 
@@ -1502,8 +1486,6 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 	[will_not_call_mercury, promise_pure, thread_safe], "
 	SUCCESS_INDICATOR = MR_FALSE;
 ").
-using_sprintf :-
-	private_builtin__sorry("string__using_sprintf").
 		
 
 	% Construct a format string suitable to passing to sprintf.
@@ -1578,8 +1560,6 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	LengthModifier = """";
 }").
-int_length_modifer = _ :-
-	private_builtin__sorry("int_length_modifer").
 
 
 	% Create a string from a float using the format string.
@@ -1598,8 +1578,6 @@ int_length_modifer = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = System.String.Format(FormatStr, Val);
 }").
-format_float(_, _) = _ :-
-	private_builtin__sorry("format_float").
 
 	% Create a string from a int using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1617,8 +1595,6 @@ format_float(_, _) = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = System.String.Format(FormatStr, Val);
 }").
-format_int(_, _) = _ :-
-	private_builtin__sorry("format_int").
 
 	% Create a string from a string using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1634,8 +1610,6 @@ format_int(_, _) = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = System.String.Format(FormatStr, Val);
 }").
-format_string(_, _) = _ :-
-	private_builtin__sorry("format_string").
 
 	% Create a string from a char using the format string.
 	% Note it is the responsibility of the caller to ensure that the
@@ -1653,8 +1627,7 @@ format_string(_, _) = _ :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	Str = System.String.Format(FormatStr, Val);
 }").
-format_char(_, _) = _ :-
-	private_builtin__sorry("format_char").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -1686,10 +1659,6 @@ format_char(_, _) = _ :-
 	FloatString = System::Convert::ToString(FloatVal);
 }").
 
-string__float_to_string(_, _) :-
-	private_builtin__sorry("string__float_to_string").
-
-
 	% Beware that the implementation of string__format depends
 	% on the details of what string__float_to_f_string/2 outputs.
 
@@ -1703,15 +1672,6 @@ string__float_to_string(_, _) :-
 	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
 	strcpy(FloatString, buf);
 }").
-
-:- pragma foreign_proc("MC++",
-	string__float_to_f_string(FloatVal::in, FloatString::out),
-		[will_not_call_mercury, promise_pure, thread_safe], "{
-	FloatString = System::Convert::ToString(FloatVal);
-}").
-
-string__float_to_f_string(_, _) :-
-	private_builtin__sorry("string__float_to_f_string").
 
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
@@ -1732,6 +1692,12 @@ string__float_to_f_string(_, _) :-
 }").
 
 :- pragma foreign_proc("MC++",
+	string__float_to_f_string(FloatVal::in, FloatString::out),
+		[will_not_call_mercury, promise_pure, thread_safe], "{
+	FloatString = System::Convert::ToString(FloatVal);
+}").
+
+:- pragma foreign_proc("MC++",
 	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	SUCCESS_INDICATOR = MR_TRUE;
@@ -1741,9 +1707,6 @@ string__float_to_f_string(_, _) :-
 	     SUCCESS_INDICATOR = MR_FALSE;
 	}
 }").
-
-string__to_float(_, _) :-
-	private_builtin__sorry("string__to_float").
 
 /*-----------------------------------------------------------------------*/
 
@@ -1839,10 +1802,6 @@ string__to_float(_, _) :-
         Str = tmp->ToString();
 }").
 
-:- pragma promise_pure(string__to_int_list/2).
-string__to_int_list(_, _) :-
-	private_builtin__sorry("string__to_int_list").
-
 
 /*-----------------------------------------------------------------------*/
 
@@ -1858,8 +1817,6 @@ string__to_int_list(_, _) :-
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);
 ").
-string__contains_char(_, _) :-
-	private_builtin__sorry("string__contains_char").
 
 /*-----------------------------------------------------------------------*/
 
@@ -1896,8 +1853,6 @@ string__contains_char(_, _) :-
 		Ch = Str->get_Chars(Index);
 	}
 ").
-string__index(_, _, _) :-
-	private_builtin__sorry("string__index").
 
 /*-----------------------------------------------------------------------*/
 
@@ -1911,8 +1866,6 @@ string__index(_, _, _) :-
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Ch = Str->get_Chars(Index);
 ").
-string__unsafe_index(_, _, _) :-
-	private_builtin__sorry("string__unsafe_index").
 
 /*-----------------------------------------------------------------------*/
 
@@ -1962,9 +1915,6 @@ string__unsafe_index(_, _, _) :-
 		SUCCESS_INDICATOR = MR_TRUE;
 	}
 ").
-
-string__set_char(_, _, _, _) :-
-	private_builtin__sorry("string__set_char").
 
 /*
 :- pred string__set_char(char, int, string, string).
@@ -2018,8 +1968,6 @@ string__set_char(_, _, _, _) :-
 		System::Convert::ToString(Ch), 
 		Str0->Substring(Index + 1));
 ").
-string__unsafe_set_char(_, _, _, _) :-
-	private_builtin__sorry("string__unsafe_set_char").
 
 /*
 :- pred string__unsafe_set_char(char, int, string, string).
@@ -2073,10 +2021,6 @@ string__unsafe_set_char(_, _, _, _) :-
 	Length = Str->get_Length();
 ").
 
-:- pragma promise_pure(string__length/2).
-string__length(_, _) :-
-	private_builtin__sorry("string__length").
-
 /*-----------------------------------------------------------------------*/
 
 :- pragma promise_pure(string__append/3).
@@ -2107,9 +2051,6 @@ string__append(S1::out, S2::out, S3::in) :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	SUCCESS_INDICATOR = S3->Equals(System::String::Concat(S1, S2));
 }").
-
-string__append_iii(_, _, _) :-
-	private_builtin__sorry("string__append_iii").
 
 :- pred string__append_ioi(string::in, string::out, string::in) is semidet.
 
@@ -2145,9 +2086,6 @@ string__append_iii(_, _, _) :-
 	}
 }").
 
-string__append_ioi(_, _, _) :-
-	private_builtin__sorry("string__append_ioi").
-
 :- pred string__append_iio(string::in, string::in, string::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -2166,9 +2104,6 @@ string__append_ioi(_, _, _) :-
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	S3 = System::String::Concat(S1, S2);
 }").
-
-string__append_iio(_, _, _) :-
-	private_builtin__sorry("string__append_iio").
 
 :- pred string__append_ooi(string::out, string::out, string::in) is multi.
 
@@ -2212,9 +2147,6 @@ string__append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
 	S1 = S3->Substring(0, S1Len);
 	S2 = S3->Substring(S1Len);
 ").
-
-string__append_ooi_3(_, _, _, _, _) :-
-	private_builtin__sorry("string__append_ooi_3").
 
 /*-----------------------------------------------------------------------*/
 
@@ -2282,8 +2214,7 @@ strchars(I, End, Str) =
 	SubString = Str->Substring(Start, Count);
 }").
 
-string__unsafe_substring(_, _, _, _) :-
-	private_builtin__sorry("string__unsafe_substring").
+
 
 /*
 :- pred string__split(string, int, string, string).
@@ -2338,8 +2269,6 @@ string__unsafe_substring(_, _, _, _) :-
 	}
 }").
 
-string__split(_, _, _, _) :-
-	private_builtin__sorry("string__split").
 
 /*-----------------------------------------------------------------------*/
 
@@ -2485,10 +2414,6 @@ string__split(_, _, _, _) :-
 	Str = System::String::Concat(FirstStr, Rest);
 }").
 
-
-:- pragma promise_pure(string__first_char/3).
-string__first_char(_, _, _) :-
-	private_builtin__sorry("string__first_char").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

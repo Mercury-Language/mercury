@@ -250,12 +250,8 @@ store__init(S) :-
 :- pred store__do_init(store(some_store_type)).
 :- mode store__do_init(uo) is det.
 
-:- pragma foreign_proc("C", store__do_init(S0::uo),
-	[will_not_call_mercury, promise_pure],
-	"/* XXX mention S0 to avoid warning */").
-
-store__do_init(_) :-
-	private_builtin__sorry("store__do_init").
+:- pragma foreign_proc("C", store__do_init(_S0::uo),
+	[will_not_call_mercury, promise_pure], "").
 
 /* 
 Note -- the syntax for the operations on stores
@@ -296,15 +292,6 @@ I wonder whether it is worth it?  Hmm, probably not.
 	S = S0;
 ").
 
-new_mutvar(_, _) -->
-	{ private_builtin__sorry("store__new_mutvar") }.
-
-get_mutvar(_, _) -->
-	{ private_builtin__sorry("store__get_mutvar") }.
-
-set_mutvar(_, _) -->
-	{ private_builtin__sorry("store__set_mutvar") }.
-
 :- pred store__unsafe_new_uninitialized_mutvar(generic_mutvar(T, S),
 						S, S) <= store(S).
 :- mode store__unsafe_new_uninitialized_mutvar(out, di, uo) is det.
@@ -315,9 +302,6 @@ set_mutvar(_, _) -->
 	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	S = S0;
 ").
-
-unsafe_new_uninitialized_mutvar(_) -->
-	{ private_builtin__sorry("unsafe_new_uninitialized_mutvar") }.
 
 store__new_cyclic_mutvar(Func, MutVar) -->
 	store__unsafe_new_uninitialized_mutvar(MutVar),
@@ -333,9 +317,6 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
-
-new_ref(_, _) -->
-	{ private_builtin__sorry("store__new_ref") }.
 
 copy_ref_value(Ref, Val) -->
 	/* XXX need to deep-copy non-atomic types */
@@ -353,9 +334,6 @@ copy_ref_value(Ref, Val) -->
 	Val = * (MR_Word *) Ref;
 	S = S0;
 ").
-
-store__unsafe_ref_value(_, _) -->
-	{ private_builtin__sorry("store__unsafe_ref_value") }.
 
 ref_functor(Ref, Functor, Arity) -->
 	unsafe_ref_value(Ref, Val),
@@ -465,27 +443,11 @@ ref_functor(Ref, Functor, Arity) -->
 ").
 
 :- pragma foreign_proc("C",
-	extract_ref_value(S::di, Ref::in, Val::out),
+	extract_ref_value(_S::di, Ref::in, Val::out),
 		[will_not_call_mercury, promise_pure],
 "
-	/* XXX mention S to avoid warning. */
 	Val = * (MR_Word *) Ref;
 ").
-
-arg_ref(_, _, _) -->
-	{ private_builtin__sorry("store__arg_ref") }.
-
-new_arg_ref(_, _, _) -->
-	{ private_builtin__sorry("store__new_arg_ref") }.
-
-set_ref(_, _) -->
-	{ private_builtin__sorry("store__set_ref") }.
-
-set_ref_value(_, _) -->
-	{ private_builtin__sorry("store__set_ref_value") }.
-
-extract_ref_value(_, _, _) :-
-	private_builtin__sorry("store__extract_ref_value").
 
 %-----------------------------------------------------------------------------%
 
@@ -509,11 +471,96 @@ extract_ref_value(_, _, _) :-
 	S = S0;
 }").
 
-unsafe_arg_ref(_, _, _) -->
-	{ private_builtin__sorry("store__unsafe_arg_ref") }.
-
-unsafe_new_arg_ref(_, _, _) -->
-	{ private_builtin__sorry("store__unsafe_new_arg_ref") }.
-
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("MC++", store__do_init(_S0::uo),
+	[will_not_call_mercury, promise_pure], "").
+
+:- pragma foreign_proc("MC++", new_mutvar(_Val::in, _Mutvar::out,
+		_S0::di, _S::uo), [will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", get_mutvar(_Mutvar::in, _Val::out,
+		_S0::di, _S::uo), [will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", set_mutvar(_Mutvar::in, _Val::in,
+		_S0::di, _S::uo), [will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", unsafe_new_uninitialized_mutvar(
+		_Mutvar::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", new_ref(_Val::di, _Ref::out, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", unsafe_ref_value(_Ref::in, _Val::uo,
+		_S0::di, _S::uo), [will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++", 
+	arg_ref(_Ref::in, _ArgNum::in, _ArgRef::out, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+:- pragma foreign_proc("MC++", 
+	new_arg_ref(_Val::di, _ArgNum::in, _ArgRef::out, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+:- pragma foreign_proc("MC++", 
+	set_ref(_Ref::in, _ValRef::in, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++",	
+	set_ref_value(_Ref::in, _Val::di, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++",
+	extract_ref_value(_S::di, _Ref::in, _Val::out),
+		[will_not_call_mercury, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_proc("MC++",
+	unsafe_arg_ref(_Ref::in, _Arg::in, _ArgRef::out, _S0::di, _S::uo),
+		[will_not_call_mercury, promise_pure],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+:- pragma foreign_proc("MC++",
+	unsafe_new_arg_ref(_Val::di, _Arg::in, _ArgRef::out,
+			_S0::di, _S::uo), [will_not_call_mercury, promise_pure],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+
+

@@ -477,10 +477,9 @@ do_compare__type_desc_0_0(
 	% Prototypes and type definitions.
 
 :- pragma foreign_proc("C",
-	type_of(Value::unused) = (TypeInfo::out),
+	type_of(_Value::unused) = (TypeInfo::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-	/* Value */
 	TypeInfo = TypeInfo_for_T;
 
 	/*
@@ -499,34 +498,25 @@ do_compare__type_desc_0_0(
 }").
 
 :- pragma foreign_proc("C#",
-	type_of(Value::unused) = (TypeInfo::out),
+	type_of(_Value::unused) = (TypeInfo::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	// Value
 	TypeInfo = TypeInfo_for_T;
 ").
 
-type_of(_) = _ :-
-	private_builtin__sorry("type_of").
-
 :- pragma foreign_proc("C", 
-	has_type(Arg::unused, TypeInfo::in),
+	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	/* Arg */
 	TypeInfo_for_T = TypeInfo;
 ").
 
 :- pragma foreign_proc("C#", 
-	has_type(Arg::unused, TypeInfo::in),
+	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	// Arg
 	TypeInfo_for_T = TypeInfo;
 ").
-
-has_type(_, _) :-
-	private_builtin__sorry("has_type").
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma export(type_name(in) = out, "ML_type_name").
@@ -637,8 +627,13 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	TypeCtor = (MR_Word) MR_make_type_ctor_desc(type_info, type_ctor_info);
 }").
 
-type_ctor(_) = _ :-
-	private_builtin__sorry("type_ctor").
+:- pragma foreign_proc("C#",
+	type_ctor(_TypeInfo::in) = (_TypeCtor::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"{
+	mercury.runtime.Errors.SORRY(""foreign code for type_ctor"");
+	_TypeCtor = null;
+}").
 
 :- pragma foreign_proc("C",
 	type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),

@@ -1064,9 +1064,6 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 
 ").
 
-get_registers(_, _, _) :-
-	private_builtin__sorry("get_registers").
-
 :- impure pred check_for_floundering(trail_ptr::in) is det.
 
 :- pragma foreign_proc("C", 
@@ -1087,9 +1084,6 @@ get_registers(_, _, _) :-
 	mercury::runtime::Errors::SORRY(""foreign code for check_for_floundering"");
 #endif
 ").
-
-check_for_floundering(_) :-
-	private_builtin__sorry("check_for_floundering").
 
 %
 % Discard the topmost trail ticket.
@@ -1113,9 +1107,6 @@ check_for_floundering(_) :-
 	mercury::runtime::Errors::SORRY(""foreign code for discard_trail_ticket"");
 #endif
 ").
-
-discard_trail_ticket :-
-	private_builtin__sorry("discard_trail_ticket").
 
 %
 % Swap the heap with the solutions heap
@@ -1149,9 +1140,6 @@ discard_trail_ticket :-
 	** worry about swapping them.  Hence do nothing here.
 	*/
 ").
-
-swap_heap_and_solutions_heap :-
-	private_builtin__sorry("swap_heap_and_solutions_heap").
 
 %
 % partial_deep_copy(SolutionsHeapPtr, OldVal, NewVal):
@@ -1235,9 +1223,6 @@ swap_heap_and_solutions_heap :-
 	NewVal = OldVal;
 ").
 
-partial_deep_copy(_, _, _) :-
-	private_builtin__sorry("partial_deep_copy").
-
 %
 % reset_solutions_heap(SolutionsHeapPtr):
 %	Reset the solutions heap pointer to the specified value,
@@ -1248,7 +1233,7 @@ partial_deep_copy(_, _, _) :-
 
 :- pragma foreign_proc("C", 
 	reset_solutions_heap(SolutionsHeapPtr::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 #ifdef MR_RECLAIM_HP_ON_FAILURE
 	MR_sol_hp = (MR_Word *) SolutionsHeapPtr;
@@ -1257,17 +1242,13 @@ partial_deep_copy(_, _, _) :-
 
 :- pragma foreign_proc("MC++", 
 	reset_solutions_heap(_SolutionsHeapPtr::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	/*
 	** For the IL back-end, we don't have a separate `solutions heap'.
 	** Hence this operation is a NOP.
 	*/
 ").
-
-reset_solutions_heap(_) :-
-	impure private_builtin__imp,
-	private_builtin__sorry("reset_solutions_heap").
 
 %-----------------------------------------------------------------------------%
 
@@ -1372,13 +1353,6 @@ XXX `ui' modes don't work yet
 	Ref[0] = X;
 ").
 
-new_mutvar(_, _) :-
-	private_builtin__sorry("new_mutvar").
-get_mutvar(_, _) :-
-	private_builtin__sorry("get_mutvar").
-set_mutvar(_, _) :-
-	private_builtin__sorry("set_mutvar").
-
 %%% end_module mutvar.
 
 %-----------------------------------------------------------------------------%
@@ -1460,15 +1434,6 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 	cc_multi_equal(X::di, Y::uo),
 	[will_not_call_mercury, thread_safe, promise_pure],
 	"Y = X;").
-
-semidet_succeed :-
-	private_builtin__sorry("semidet_succeed").
-semidet_fail :-
-	private_builtin__sorry("semidet_fail").
-
-:- pragma promise_pure(cc_multi_equal/2).
-cc_multi_equal(_, _) :-
-	private_builtin__sorry("cc_multi_equal").
 
 %-----------------------------------------------------------------------------%
 

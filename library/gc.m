@@ -53,9 +53,9 @@ garbage_collect -->
 	MR_garbage_collect();
 #endif
 ").
-garbage_collect :-
-	impure private_builtin__imp,
-	private_builtin__sorry("garbage_collect").
+:- pragma foreign_proc("MC++", garbage_collect, [will_not_call_mercury], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
