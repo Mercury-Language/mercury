@@ -93,7 +93,6 @@ OTHER_PROGS= \
 	ho_unify \
 	id_type_bug \
 	implied_mode \
-	impure_detism \
 	indexing \
 	inhibit_warn_test \
 	inlining_bug \
@@ -195,6 +194,9 @@ OTHER_PROGS= \
 	vn_float \
 	zero_arity
 
+DEEP_PROF_CAPABLE_PROGS =
+	impure_detism
+
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
 	reserve_tag
@@ -268,10 +270,16 @@ else
 	PROGS3 = $(PROGS2) $(ADITI_PROGS)
 endif
 
-ifeq "$(filter java% il%,$(GRADE))" ""
-	OBJ_PROGS = $(PROGS3) $(RESERVE_TAG_PROGS)
+ifneq "$(filter hl% java% il%,$(GRADE))" ""
+	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS)
 else
-	OBJ_PROGS = $(PROGS3)
+	PROGS4 = $(PROGS3)
+endif
+
+ifeq "$(filter java% il%,$(GRADE))" ""
+	OBJ_PROGS = $(PROGS4) $(RESERVE_TAG_PROGS)
+else
+	OBJ_PROGS = $(PROGS4)
 endif
 
 ifneq "$(findstring profdeep,$(GRADE))$(findstring java,$(GRADE))" ""
