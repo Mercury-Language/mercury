@@ -38,7 +38,7 @@ end
 document_category 600 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `printlevel', `echo', `context',
-             `scroll', `mmc_options', `alias' and `unalias'.
+             `scroll', `mmc_options', `scope', `alias' and `unalias'.
 
 end
 document_category 700 help
@@ -57,7 +57,7 @@ document_category 900 developer
 developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
              `nondet_stack', `stack_regs', `all_regs', `table_io',
-	     `proc_stats' and `label_stats'.
+	     `proc_stats', `label_stats' and `print_optionals'.
 
 end
 document_category 1000 misc
