@@ -169,6 +169,8 @@ unify_proc__request_unify(UnifyId, Requests0, Requests) :-
 
 %-----------------------------------------------------------------------------%
 
+	% XXX these belong in modes.nl
+
 modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 	{ module_info_get_unify_requests(ModuleInfo0, Requests0) },
 	{ unify_proc__get_req_queue(Requests0, RequestQueue0) },
@@ -199,6 +201,8 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 
 modecheck_generate_unification(_UnifyProcId, ModuleInfo, ModuleInfo).
 	% XXX stub only!!!
+	% currently we don't handle complicated unifications in
+	% partially instantiated modes
 /*
 modecheck_generate_unification(UnifyProcId, ModuleInfo0, ModuleInfo) :-
 	module_info_get_unify_requests(ModuleInfo0, Requests0),

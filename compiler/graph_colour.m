@@ -8,7 +8,8 @@
 % The predicate graph_colour__group_elements(set(set(T)), set(set(T))),
 % takes a set of sets each containing elements that touch, and returns
 % a set of sets each containing elements that can be assigned the same
-% colour.
+% colour, ensuring that touching elements have different colours.
+% ("Good" means using as few colours as possible.)
 %
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

@@ -1032,6 +1032,8 @@ mercury_convert_var_name(Name, ConvertedName) :-
 :- pred strip_trailing_primes(string, string, int).
 :- mode strip_trailing_primes(in, out, out) is det.
 
+	% XXX This implementation is O(N*N), but it ought to be O(N)
+
 strip_trailing_primes(Name0, Name, Num) :-
 	( string__remove_suffix(Name0, "'", Name1) ->
 		strip_trailing_primes(Name1, Name, Num0),
