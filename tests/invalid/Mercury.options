@@ -44,6 +44,10 @@ MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-impure_method_impl =	--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
+MCFLAGS-method_impl =		--no-intermodule-optimization \
+				--no-automatic-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-missing_parent_import = --no-intermodule-optimization \
