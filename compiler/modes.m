@@ -1918,17 +1918,11 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		Var, Goals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	(
-		% If the initial inst of the variable matches
+		% If the initial inst of the variable matches_final
 		% the initial inst specified in the pred's mode declaration,
 		% then it's not a call to an implied mode, it's an exact
 		% match with a genuine mode.
-		( inst_matches_binding(VarInst0, InitialInst, ModuleInfo0)
-		; inst_expand(ModuleInfo0, VarInst0, any(_)),
-		  inst_expand(ModuleInfo0, InitialInst, any(_))
-		  % XXX this doesn't handle `any's that are nested inside
-		  % the inst -- we really ought to define a predicate
-		  % like inst_matches_binding but which allows anys to match
-		)
+		inst_matches_final(VarInst0, InitialInst, ModuleInfo0)
 	->
 		Var = Var0,
 		Goals = [] - [],
