@@ -723,7 +723,7 @@ Semantics:
 transform(V_in, V_out, :=(Term)) = (V_out = Term)
 @end example
 
-@item @var{Term} := ^ @var{field1} ^ ... ^ @var{fieldN}
+@item @var{Term} =^ @var{field1} ^ @dots{} ^ @var{fieldN}
 A DCG field selection.
 Unifies @var{Term} with the result of applying the functions
 @var{field1} @dots{} @var{fieldN} to the implicit DCG argument.
@@ -734,7 +734,7 @@ a visible function named @samp{@var{field}/1}.
 
 Semantics:
 @example
-transform(V_in, V_out, Term := ^ field1 ^ @dots{} ^ fieldN) =
+transform(V_in, V_out, Term =^ field1 ^ @dots{} ^ fieldN) =
         (Term = V_in ^ field1 ^ @dots{} ^ fieldN, V_out = V_in)
 @end example
 
@@ -1341,10 +1341,12 @@ If the declaration of the field is in the interface section of the module,
 the corresponding field selection function is also exported from the module.
 
 By default, this function has no declared modes --- the modes are inferred at
-each call to the function.
+each call to the function. However, the modes of this function may be
+explicitly declared, in which case it will have only the declared modes.
 
-An explicit lambda expression must be used to create a higher-order term
-from a field selection function, unless a mode declaration is supplied.
+To create a higher-order term from a field selection function, an
+explicit lambda expression must be used, unless a single mode
+declaration is supplied for the field selection function.
 
 @node Field update
 @subsection Field update
@@ -1365,11 +1367,13 @@ first argument is not the constructor containing the labelled field.
 If the declaration of the field is in the interface section of the module,
 the corresponding field update function is also exported from the module.
 
-By default, this function has no declared modes --- the modes
-are inferred at each call to the function.
+By default, this function has no declared modes --- the modes are inferred at
+each call to the function. However, the modes of this function may be
+explicitly declared, in which case it will have only the declared modes.
 
-An explicit lambda expression must be used to create a higher-order term
-from a field update function, unless a mode declaration is supplied.
+To create a higher-order term from a field update function, an
+explicit lambda expression must be used, unless a single mode
+declaration is supplied for the field update function.
 
 Some fields cannot be updated using field update functions.
 For the constructor @samp{unsettable/2} below, neither field may be updated

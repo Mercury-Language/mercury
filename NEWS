@@ -7,6 +7,11 @@ NEWS since Mercury release 0.9:
   without writing lots of trivial access predicates.
   See the "Field access functions" section of the "Types" chapter
   of the Mercury Language Reference Manual for details.
+
+  Note that the syntax has changed slightly since the version
+  that appeared in the release of the day in early January 2000.
+  `Value =^ field' is now the syntax for DCG field selection,
+  rather than `Value := ^ field'.
  
 * Functions `int:^/2' and `integer:^/2' have been removed.
   Use `int__xor/2' and `integer__xor/2' instead.

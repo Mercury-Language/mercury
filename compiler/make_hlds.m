@@ -5007,12 +5007,15 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 				VarSet0, Subst, Goal, VarSet, Info0, Info)
 	;
 		% check for a DCG field access goal:
-		% get:  Field := ^ field
+		% get:  Field =^ field
 		% set:  ^ field := Field
-		{ Name = unqualified(":=") }
+		{ Name = unqualified(Operator) },
+		( { Operator = "=^" }
+		; { Operator = ":=" }
+		)
 	->
 		{ term__apply_substitution_to_list(Args0, Subst, Args1) },
-		transform_dcg_record_syntax(Args1, Context,
+		transform_dcg_record_syntax(Operator, Args1, Context,
 			VarSet0, Goal, VarSet, Info0, Info)
 	;
 		% check for an Aditi builtin
@@ -5095,38 +5098,32 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
 
-:- inst aditi_update_str =
-	bound(	"aditi_insert"
-	;	"aditi_delete"
-	;	"aditi_bulk_insert"
-	;	"aditi_bulk_delete"
-	;	"aditi_modify"
-	).
+:- inst dcg_record_syntax_op = bound("=^"; ":=").
 
-:- pred transform_dcg_record_syntax(list(prog_term), prog_context,
+:- pred transform_dcg_record_syntax(string, list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset, qual_info, qual_info,
 		io__state, io__state).
-:- mode transform_dcg_record_syntax(in, in, in, out, out,
-		in, out, di, uo) is det.
+:- mode transform_dcg_record_syntax(in(dcg_record_syntax_op),
+		in, in, in, out, out, in, out, di, uo) is det.
 
-transform_dcg_record_syntax(ArgTerms0, Context, VarSet0,
+transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 		Goal, VarSet, Info0, Info) -->
 	{ goal_info_init(Context, GoalInfo) },
 	(
 		{ ArgTerms0 = [LHSTerm, RHSTerm,
 				TermInputTerm, TermOutputTerm] },
 		{
-			LHSTerm = term__functor(term__atom("^"),
-				[FieldNameTerm0], _)
-		->
-			FieldNameTerm = FieldNameTerm0,
-			FieldValueTerm = RHSTerm,
-			AccessType = set
+			Operator = "=^",
+			AccessType = get,
+			FieldNameTerm = RHSTerm,
+			FieldValueTerm = LHSTerm
 		;
-			RHSTerm = term__functor(term__atom("^"),
-				[FieldNameTerm], _),
-			FieldValueTerm = LHSTerm,
-			AccessType = get
+			Operator = ":=",
+			AccessType = set,
+			LHSTerm = term__functor(term__atom("^"),
+				[FieldNameTerm0], _),
+			FieldNameTerm = FieldNameTerm0,
+			FieldValueTerm = RHSTerm
 		}
 	->
 		{ parse_field_name_list(FieldNameTerm, MaybeFieldNames) },
@@ -5168,7 +5165,7 @@ transform_dcg_record_syntax(ArgTerms0, Context, VarSet0,
 		io__set_exit_status(1),
 		prog_out__write_context(Context),
 		io__write_string(
-		"Error: expected `Field := ^ field1 ^ ... ^ fieldN'\n"),
+		"Error: expected `Field =^ field1 ^ ... ^ fieldN'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  or `^ field1 ^ ... ^ fieldN := Field'.\n"),
 		prog_out__write_context(Context),
@@ -5499,6 +5496,14 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- inst aditi_update_str =
+	bound(	"aditi_insert"
+	;	"aditi_delete"
+	;	"aditi_bulk_insert"
+	;	"aditi_bulk_delete"
+	;	"aditi_modify"
+	).
 
 	% See the "Aditi update syntax" section of the
 	% Mercury Language Reference Manual.

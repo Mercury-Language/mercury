@@ -2774,6 +2774,7 @@ mercury_infix_op("--->").
 mercury_infix_op("-->").
 mercury_infix_op(":-").
 mercury_infix_op("::").
+mercury_infix_op(":=").
 mercury_infix_op("where").
 mercury_infix_op("sorted").	/* NU-Prolog */
 mercury_infix_op("else").
@@ -2797,6 +2798,7 @@ mercury_infix_op("==").		/* Prolog (also for constraints, in cfloat.m) */
 mercury_infix_op("\\=").	/* Prolog */
 mercury_infix_op("\\==").	/* Prolog */
 mercury_infix_op("=\\=").	/* Prolog */
+mercury_infix_op("=^").
 mercury_infix_op(">").
 mercury_infix_op(">=").
 mercury_infix_op("<").

@@ -137,6 +137,7 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 ==              xfx             700
 ==>             xfx             1175
 =>              xfy             920
+=^              xfx             650
 >               xfx             700
 >=              xfx             700
 >>              yfx             400

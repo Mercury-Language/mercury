@@ -117,9 +117,9 @@ length_of_string(String) = Length :-
 :- pred dcg_syntax(io__state::di, io__state::uo, foo::in, foo::out) is det.
 
 dcg_syntax(IO0, IO) -->
-	Arg1 := ^ arg1,
+	Arg1 =^ arg1,
 	{ write_arg("DCG ^ arg1", Arg1, IO0, IO1) },
-	Arg4 := ^ arg3 ^ arg4,
+	Arg4 =^ arg3 ^ arg4,
 	{ write_arg("DCG ^ arg3 ^ arg4", Arg4, IO1, IO2) },
 
 	^ arg1 := 8,

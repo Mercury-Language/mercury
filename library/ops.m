@@ -155,6 +155,7 @@ ops__op_table("==", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table("==>", after, xfx, 1175).		% Mercury extension
 ops__op_table("=>", after, xfy, 920).		% Mercury/NU-Prolog extension
 ops__op_table("=\\=", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("=^", after, xfx, 650).		% Mercury extension
 ops__op_table(">", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">=", after, xfx, 700).		% standard ISO Prolog
 ops__op_table(">>", after, yfx, 400).		% standard ISO Prolog
