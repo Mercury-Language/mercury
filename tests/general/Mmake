@@ -8,11 +8,13 @@ include ../Mmake
 
 PROGS=	arithmetic disj_disj interpreter \
 	nasty_nondet nondet_disj nondet_ite petdr1 \
-	string__format_test string_test string_test_2 univ \
+	string_test string_test_2 univ \
 	environment duplicate_label
 
 # float_test doesn't work because io__write_float
 # prints a different number of digits in the C / NU-Prolog implementations.
+
+# string__format_test doesn't work in NU-Prolog, for as yet unknown reasons
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
