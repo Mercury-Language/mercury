@@ -361,6 +361,13 @@ case "$host" in
 		PIC_O=o
 		SO=so
 		;;
+	mips-sgi-irix5.*)
+		AC_MSG_RESULT(yes)
+		LINK_SHARED_OBJ="ld -shared"
+		PIC=
+		PIC_O=o
+		SO=so
+		;;
 	*)
 		AC_MSG_RESULT(no)
 		LINK_SHARED_OBJ="$CC"
