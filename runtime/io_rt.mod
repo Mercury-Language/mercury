@@ -435,6 +435,25 @@ mercury__error_1_0:
 
 /*---------------------------------------------------------------------------*/
 
+/* io__getenv and io__putenv, from io.m */
+
+mercury__io__getenv_2_0:
+	r3 = (Word)getenv((char *)r2);
+	if (!r3)
+	    r1 = FALSE;
+	else
+	    r1 = TRUE;
+	proceed();
+
+mercury__io__putenv_1_0:
+	if (!putenv((char *)r2))
+	    r1 = TRUE;
+	else
+	    r1 = FALSE;
+	proceed();
+
+/*---------------------------------------------------------------------------*/
+
 /* report_stats/0 and type_to_univ/2, from std_util.m */
 
 mercury__report_stats_0_0:
