@@ -76,6 +76,8 @@
 :- mode uo  + in  = in  is det.
 :- mode in  + uo  = in  is det.
 
+:- func int__plus(int, int) = int.
+
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
@@ -86,11 +88,16 @@
 :- mode uo  * in  = in  is semidet.
 :- mode in  * uo  = in  is semidet.
 */
+
+:- func int__times(int, int) = int.
+
 	% subtraction
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
 :- mode uo  - in  = in  is det.
 :- mode in  - uo  = in  is det.
+
+:- func int__minus(int, int) = int.
 
 	% flooring integer division
 	% truncates towards minus infinity, e.g. (-10) // 3 = (-4).
@@ -180,13 +187,19 @@
 	% on this machine.
 :- pred int__max_int(int::out) is det.
 
+:- func int__max_int = int.
+
 	% int__min_int(Max) binds Min to the minimum value of an int
 	% on this machine.
 :- pred int__min_int(int::out) is det.
 
+:- func int__min_int = int.
+
 	% int__bits_per_int(Bits) binds Bits to the number of bits in an int
 	% on this machine.
 :- pred int__bits_per_int(int::out) is det.
+
+:- func int__bits_per_int = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -494,25 +507,6 @@ is(X, X).
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 % 	Functional forms added.
-
-:- interface.
-
-:- func int__plus(int, int) = int.
-
-:- func int__times(int, int) = int.
-
-:- func int__minus(int, int) = int.
-
-:- func int__max_int = int.
-
-:- func int__min_int = int.
-
-:- func int__bits_per_int = int.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 int__plus(X, Y) = X + Y.
 

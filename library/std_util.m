@@ -11,9 +11,6 @@
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
 
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

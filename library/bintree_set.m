@@ -32,6 +32,8 @@
 :- pred bintree_set__list_to_set(list(T), bintree_set(T)).
 :- mode bintree_set__list_to_set(in, out) is det.
 
+:- func bintree_set__list_to_set(list(T)) = bintree_set(T).
+
 	% `bintree_set__sorted_list_to_set(List, Set)' is true iff
 	% `Set' is the set containing only the members of `List'.
 	% `List' must be sorted.
@@ -39,12 +41,16 @@
 :- pred bintree_set__sorted_list_to_set(list(T), bintree_set(T)).
 :- mode bintree_set__sorted_list_to_set(in, out) is det.
 
+:- func bintree_set__sorted_list_to_set(list(T)) = bintree_set(T).
+
 	% `bintree_set__list_to_bintree_set(Set, List)' is true iff
 	% `List' is the list of all the members of `Set', in sorted
 	% order.
 
 :- pred bintree_set__to_sorted_list(bintree_set(T), list(T)).
 :- mode bintree_set__to_sorted_list(in, out) is det.
+
+:- func bintree_set__to_sorted_list(bintree_set(T)) = list(T).
 
 	% `bintree_set__init(Set)' is true iff `Set' is an empty set.
 
@@ -97,6 +103,8 @@
 :- mode bintree_set__insert(di, di, uo) is det.
 :- mode bintree_set__insert(in, in, out) is det.
 
+:- func bintree_set__insert(bintree_set(T), T) = bintree_set(T).
+
 	% `bintree_set__insert_list(Set0, Xs, Set)' is true iff `Set'
 	% is the union of `Set0' and the set containing only the
 	% members of `Xs'.
@@ -104,6 +112,8 @@
 :- pred bintree_set__insert_list(bintree_set(T), list(T), bintree_set(T)).
 :- mode bintree_set__insert_list(di, di, uo) is det.
 :- mode bintree_set__insert_list(in, in, out) is det.
+
+:- func bintree_set__insert_list(bintree_set(T), list(T)) = bintree_set(T).
 
 	% `bintree_set__remove(Set0, X, Set)' is true iff `Set0' contains `X',
 	% and `Set' is the relative complement of `Set0' and the set
@@ -131,12 +141,16 @@
 :- pred bintree_set__delete(bintree_set(T), T, bintree_set(T)).
 :- mode bintree_set__delete(in, in, out) is det.
 
+:- func bintree_set__delete(bintree_set(T), T) = bintree_set(T).
+
 	% `bintree_set__delete_list(Set0, Xs, Set)' is true iff `Set'
 	% is the relative complement of `Set0' and the set containing
 	% only the members of `Xs'.
 
 :- pred bintree_set__delete_list(bintree_set(T), list(T), bintree_set(T)).
 :- mode bintree_set__delete_list(in, in, out) is det.
+
+:- func bintree_set__delete_list(bintree_set(T), list(T)) = bintree_set(T).
 
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
 	% `SetA' and `SetB'.  If the sets are known to be of different
@@ -145,12 +159,16 @@
 :- pred bintree_set__union(bintree_set(T), bintree_set(T), bintree_set(T)).
 :- mode bintree_set__union(in, in, out) is det.
 
+:- func bintree_set__union(bintree_set(T), bintree_set(T)) = bintree_set(T).
+
 	% `set_intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
 
 :- pred bintree_set__intersect(bintree_set(T), bintree_set(T),
 				bintree_set(T)).
 :- mode bintree_set__intersect(in, in, out) is det.
+
+:- func bintree_set__intersect(bintree_set(T), bintree_set(T)) = bintree_set(T).
 
 %--------------------------------------------------------------------------%
 
@@ -268,31 +286,6 @@ bintree_set__intersect(S0, S1, S) :-
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func bintree_set__list_to_set(list(T)) = bintree_set(T).
-
-:- func bintree_set__sorted_list_to_set(list(T)) = bintree_set(T).
-
-:- func bintree_set__to_sorted_list(bintree_set(T)) = list(T).
-
-:- func bintree_set__insert(bintree_set(T), T) = bintree_set(T).
-
-:- func bintree_set__insert_list(bintree_set(T), list(T)) = bintree_set(T).
-
-:- func bintree_set__delete(bintree_set(T), T) = bintree_set(T).
-
-:- func bintree_set__delete_list(bintree_set(T), list(T)) = bintree_set(T).
-
-:- func bintree_set__union(bintree_set(T), bintree_set(T)) = bintree_set(T).
-
-:- func bintree_set__intersect(bintree_set(T), bintree_set(T)) = bintree_set(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 bintree_set__list_to_set(Xs) = BT :-
 	bintree_set__list_to_set(Xs, BT).
