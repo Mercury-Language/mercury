@@ -67,6 +67,7 @@ PROGS=		\
 		string_format_test_3 \
 		string_test \
 		string_test_2 \
+		string_to_float \
 		univ \
 		unreachable \
 		unsafe_uniqueness

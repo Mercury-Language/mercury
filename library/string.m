@@ -1634,6 +1634,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 % The remaining routines are implemented using the C interface.
 
 :- pragma c_header_code("
+#include <ctype.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -1675,12 +1676,19 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 :- pragma foreign_proc("C",
 	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
-	/* use a temporary, since we can't don't know whether FloatVal
-	   is a double or float */
-	double tmp;
-	SUCCESS_INDICATOR = (sscanf(FloatString, ""%lf"", &tmp) == 1);
+	/*
+	** Use a temporary, since we can't don't know whether FloatVal is a
+	** double or float.  The %c checks for any erroneous characters
+	** appearing after the float; if there are then sscanf() will
+	** return 2 rather than 1.
+	*/
+	double tmpf;
+	char   tmpc;
+	SUCCESS_INDICATOR =
+		(!MR_isspace(FloatString[0])) &&
+		(sscanf(FloatString, ""%lf%c"", &tmpf, &tmpc) == 1);
 		/* TRUE if sscanf succeeds, FALSE otherwise */
-	FloatVal = tmp;
+	FloatVal = tmpf;
 }").
 
 :- pragma foreign_proc("MC++",

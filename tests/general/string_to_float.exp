@@ -1,0 +1,7 @@
+string__to_float("1.23") = 1.230000
+string__to_float("x1.23") FAILS
+string__to_float("1.23x") FAILS
+string__to_float("x1.23x") FAILS
+string__to_float(" 1.23") FAILS
+string__to_float("1.23 ") FAILS
+string__to_float(" 1.23 ") FAILS
