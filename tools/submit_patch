@@ -1,0 +1,277 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2002 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# submit_patch:
+#	This implements a "commit server".
+#	It takes as input a log message and a patch.
+#	It checks out the Mercury sources, applies the patch,
+#	and it (by bootchecking in a couple of grades),
+#	and if the tests pass, it commits the patch.
+#	It locks the test directory, so you can submit
+#	multiple patches at once and it will only run
+#	one of them at a time.
+#
+# TODO:
+#	- support committing on a branch
+#	- support testing the native-code back-end
+#	- allow additional options to be passed to configure
+
+usage="\
+Usage: $0 [options] <cvs log message file> <patch file>
+Options:
+	-d <dirname>, --directory <dirname>
+		Run the tests in directory <dirname>.
+	-r <CVSROOT>, --repository <CVSROOT>
+		Use the specified CVS repository for checking out mercury.
+	-g <CVSROOT>, --gcc-repository <CVSROOT>
+		Use the specified CVS repository for checking out GCC.
+	-S <megabytes>, --space <megabytes>
+		Require this amount of free disk space.
+	-b <bootcheck-options>, --bootcheck <bootcheck-options>
+		Bootcheck with the specified options, in addition
+		the standard bootchecks (asm_fast.gc & hlc.gc).
+	-u <email-address>, --user <email-address>
+		Mail the output to the specified user.
+	-c-, --no-commit
+		Do not commit the patch, even if the tests pass.
+	-h, --help
+		Display this usage message.
+"
+
+#---------------------------------------------------------------------------#
+
+# Default option settings
+
+# Name of this patch
+title=$$
+
+# User to mail results to
+user=`whoami`
+
+# Place to run the tests
+test_root=/tmp/$user/mercury
+
+# Disk space needed (in megabytes)
+disk_space_required=300
+
+# CVS Repositories
+gcc_cvsroot=:pserver:guest@gcc.gnu.org:/cvs/gcc
+mercury_cvsroot=/home/mercury1/repository
+if [ -d $mercury_cvsroot ]; then
+	:
+else
+	mercury_cvsroot=:pserver:guest@cvs.mercury.cs.mu.oz.au:$mercury_cvsroot
+fi
+
+# A "#"-separated list of bootchecks to run.
+bootchecks="--grade asm_fast.gc # --grade hlc.gc".
+
+#-----------------------------------------------------------------------------#
+
+obtain_lock() {
+	until mkdir $test_root/lock; do
+		sleep 60
+	done
+	echo "Process $$ on host `hostname -f`" > $test_root/lock/info
+}
+
+release_lock() {
+	rm -f $test_root/lock/info
+	rmdir $test_root/lock
+}
+
+#-----------------------------------------------------------------------------#
+
+die() {
+	msg="
+*** check_patch failed:
+*** $@
+
+Log file in $test_dir/OUTPUT.
+
+Leaving the build directory $test_dir intact in case
+you need to use it to debug the problem.
+You must to remove this directory when you have finished with it.
+"
+	echo "$msg" 1>&2
+	echo "$msg" | mail -s "auto-test ($title) failed" $user
+	release_lock
+	exit 1
+}
+
+succeed() {
+	msg="
+*** check_patch succeeded.
+
+Log file in $test_dir/OUTPUT.
+
+Leaving the build directory $test_dir intact in case you want to
+browse $test_dir/OUTPUT.
+You must to remove this directory when you have finished with it.
+"
+	echo "$msg" 1>&2
+	echo "$msg" | mail -s "auto-test ($title) succeeded" $user
+}
+
+#-----------------------------------------------------------------------------#
+#
+# Parse the options
+#
+
+parse_options() {
+    while [ $# -gt 0 ]; do
+	case "$1" in
+	-t|--title)
+		title="$2"; shift ;;
+	-t*)
+		title="` expr $1 : '-t\(.*\)' `"; ;;
+
+	-d|--directory)
+		test_root="$2"; shift ;;
+	-d*)
+		test_root="` expr $1 : '-d\(.*\)' `"; ;;
+
+	-r|--repository)
+		mercury_cvsroot="$2"; shift ;;
+	-r*)
+		mercury_cvsroot="` expr $1 : '-r\(.*\)' `"; ;;
+
+	-g|--gcc-repository)
+		gcc_cvsroot="$2"; shift ;;
+	-g*)
+		gcc_cvsroot="` expr $1 : '-g\(.*\)' `"; ;;
+
+	-s|--space)
+		disk_space_required="$2"; shift ;;
+	-s*)
+		disk_space_required="` expr $1 : '-s\(.*\)' `"; ;;
+
+	-b|--bootcheck)
+		bootchecks="$bootchecks#$2"; shift ;;
+	-b*)
+		bootchecks="$bootchecks#` expr $1 : '-b\(.*\)' `"; ;;
+
+	-u|--user)
+		user="$2"; shift ;;
+	-u*)
+		user="` expr $1 : '-u\(.*\)' `"; ;;
+
+	-c-|--no-commit)
+		commit=false ;;
+	-c|--commit)
+		commit=true ;;
+
+	-h|--help)
+		echo "$usage";
+		exit 0 ;;
+
+	--)	
+		shift; break ;;
+	-*)
+		echo "$0: unknown option \`$1'" 1>&2
+		echo "$usage" 1>&2
+		exit 1 ;;
+	*)
+		break ;;
+	esac
+	shift
+    done
+
+    if [ $# -ne 2 ]; then
+	echo "$0: wrong number of arguments" 1>&2
+	echo "usage: $0 <log message file> <patch file>" 1>&2
+	echo "Use \`--help' for help." 1>&2
+	exit 1
+    fi
+    logmessage=$1
+    patchfile=$2
+    test_dir=$test_root/test_$title
+}
+
+#-----------------------------------------------------------------------------#
+
+# check we've got a reasonable amount of free disk space -- no point
+# starting if we'll only run out of disk space.
+
+check_disk_space() {
+
+	free=`df -m $test_root/. | awk '
+		NR == 2 && NF > 4 { print $4; exit; }
+		NR == 3 { print $3; }
+	'`
+	echo "Free disk space: $free megabytes"
+	[ "$free" -gt $disk_space_required ] ||
+		die "Insufficient disk space on $test_root"
+}
+
+#-----------------------------------------------------------------------------#
+
+do_cvs_add_remove() {
+	comm -13 ../FILES.old ../FILES.new > ../FILES.added   || die "comm"
+	comm -23 ../FILES.old ../FILES.new > ../FILES.removed || die "comm"
+	if [ -s ../FILES.added ]; then
+		cvs add `cat ../FILES.added` || die "cvs add failed"
+	fi
+	if [ -s ../FILES.removed ]; then
+		cvs remove `cat ../FILES.removed` || die "cvs remove failed"
+	fi
+	return 0
+}
+
+#-----------------------------------------------------------------------------#
+
+do_bootchecks() {
+	old_IFS=$IFS
+	IFS=#
+	for bootcheck in $bootchecks; do
+		IFS=$old_IFS
+		eval tools/bootcheck $bootcheck ||
+			die "tools/bootcheck $bootcheck failed"
+		IFS=#
+	done
+	IFS=$old_IFS
+}
+
+#-----------------------------------------------------------------------------#
+
+main() {
+    parse_options "$@"			|| die "parse_options failed"
+    [ -d $test_root ] || mkdir -p $test_root ||
+					   die "creating dir $test_root failed"
+    obtain_lock				|| die "can't obtain lock"
+    trap 'die "interrupted"' 1 2 3 13 15
+    check_disk_space			|| die "insufficient disk space"
+    mkdir $test_dir			|| die "mkdir $test_dir failed"
+    echo "Testing in directory $test_dir"
+    {
+	cp $patchfile $test_dir/PATCH	|| die "error copying $patchfile"
+	cp $logmessage $test_dir/CVSLOG	|| die "error copying $logmessage"
+	cd $test_dir			|| die "cd $test_dir failed"
+        CVSROOT=$mercury_cvsroot
+	export CVSROOT
+	cvs checkout mercury		|| die "cvs checkout mercury failed"
+	cd mercury			|| die "cd mercury failed"
+	cvs checkout tests		|| die "cvs checkout tests failed"
+	find . | sort > ../FILES.old
+	patch -p0 < ../PATCH		|| die "applying patch failed"
+	find . | sort > ../FILES.new
+	do_cvs_add_remove		|| die "do_cvs_add_remove failed"
+	autoconf			|| die "autoconf failed"
+	sh configure --prefix=$test_dir/install || die "configure failed"
+	make				|| die "make failed"
+	do_bootchecks			|| die "do_bootchecks failed"
+	cvs commit -m"`cat ../CVSLOG`"	|| die "cvs commit failed"
+	cd ..				|| die "cd .."
+	rm -rf mercury			|| die "rm -rf mercury failed"
+    } > $test_dir/OUTPUT 2>&1
+    release_lock
+    succeed
+    exit 0
+}
+#-----------------------------------------------------------------------------#
+main "$@"
+#-----------------------------------------------------------------------------#
