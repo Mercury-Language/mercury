@@ -332,7 +332,7 @@
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
-:- import_module term, varset, std_util, require, assoc_list.
+:- import_module term, varset, std_util, require, assoc_list, prog_out.
 
 %-----------------------------------------------------------------------------%
 
@@ -379,9 +379,11 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo, IO0, IO) :-
 		ModuleInfo = ModuleInfo0,
 		IO = IO0
 	;
+		write_pred_progress_message("% Transforming polymorphism for ",
+			PredId, ModuleInfo0, IO0, IO1),
 		pred_info_procids(PredInfo, ProcIds),
 		polymorphism__process_procs(PredId, ProcIds,
-			ModuleInfo0, ModuleInfo, IO0, IO)
+			ModuleInfo0, ModuleInfo, IO1, IO)
 	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
@@ -1058,10 +1060,31 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
 			PredArgTypes) },
+
+		% Find out which variables are constrained (so that we don't
+		% add type-infos for them.
+	{ pred_info_get_class_context(PredInfo, constraints(UnivCs, ExistCs)) },
+	{ GetConstrainedVars = lambda([ClassConstraint::in, CVars::out] is det,
+		(
+			ClassConstraint = constraint(_, CTypes),
+			term__vars_list(CTypes, CVars)
+		)
+	) },
+	{ list__map(GetConstrainedVars, UnivCs, UnivVars0) },
+	{ list__condense(UnivVars0, UnivConstrainedVars) },
+	{ list__map(GetConstrainedVars, ExistCs, ExistVars0) },
+	{ list__condense(ExistVars0, ExistConstrainedVars) },
+
 	{ term__vars_list(PredArgTypes, PredTypeVars0) },
-	{ list__remove_dups(PredTypeVars0, PredTypeVars) },
-	{ polymorphism__c_code_add_typeinfos(ExtraVars, PredTypeVars,
-			PredTypeVarSet, ExistQVars, ArgInfo0, ArgInfo) },
+	{ list__remove_dups(PredTypeVars0, PredTypeVars1) },
+	{ list__delete_elems(PredTypeVars1, UnivConstrainedVars, 
+		PredTypeVars2) },
+	{ list__delete_elems(PredTypeVars2, ExistConstrainedVars, 
+		PredTypeVars) },
+	{ polymorphism__c_code_add_typeclass_infos(ExtraVars, ExtraVars1,
+			UnivCs, ExistCs, PredTypeVarSet, ArgInfo0, ArgInfo1) },
+	{ polymorphism__c_code_add_typeinfos(ExtraVars1, PredTypeVars,
+			PredTypeVarSet, ExistQVars, ArgInfo1, ArgInfo) },
 
 	%
 	% insert type_info types for all the inserted type_info vars
@@ -1072,7 +1095,14 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 		construct_type(qualified(PrivateBuiltin, "type_info") - 1,
 			[term__variable(TypeVar)], TypeInfoType)) },
 	{ list__map(MakeType, PredTypeVars, TypeInfoTypes) },
-	{ list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes) },
+	{ MakeTypeClass = lambda([_::in, TypeClassInfoType::out] is det,
+		construct_type(qualified(PrivateBuiltin, "typeclass_info") - 0,
+			[], TypeClassInfoType)) },
+	{ list__map(MakeTypeClass, UnivCs, UnivTypes) },
+	{ list__map(MakeTypeClass, ExistCs, ExistTypes) },
+	{ list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes1) },
+	{ list__append(ExistTypes, OrigArgTypes1, OrigArgTypes2) },
+	{ list__append(UnivTypes, OrigArgTypes2, OrigArgTypes) },
 
 	%
 	% plug it all back together
@@ -1081,6 +1111,53 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 			ArgInfo, OrigArgTypes, PragmaCode) - CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
+
+:- pred polymorphism__c_code_add_typeclass_infos(list(var), list(var),
+		list(class_constraint), list(class_constraint), 
+		tvarset, list(maybe(pair(string, mode))),
+		list(maybe(pair(string, mode)))). 
+:- mode polymorphism__c_code_add_typeclass_infos(in, out, in, in, in, 
+		in, out) is det.
+
+polymorphism__c_code_add_typeclass_infos(ExtraVars0, ExtraVars,
+		UnivCs, ExistCs, PredTypeVarSet, ArgInfo0, ArgInfo) :-
+	in_mode(In),
+	out_mode(Out),
+	polymorphism__c_code_add_typeclass_infos_2(ExtraVars0, ExtraVars1,
+		UnivCs, In, PredTypeVarSet, ArgInfo0, ArgInfo1),
+	polymorphism__c_code_add_typeclass_infos_2(ExtraVars1, ExtraVars,
+		ExistCs, Out, PredTypeVarSet, ArgInfo1, ArgInfo).
+
+:- pred polymorphism__c_code_add_typeclass_infos_2(list(var), list(var),
+		list(class_constraint), mode,
+		tvarset, list(maybe(pair(string, mode))),
+		list(maybe(pair(string, mode)))). 
+:- mode polymorphism__c_code_add_typeclass_infos_2(in, out, in, in, in, 
+		in, out) is det.
+
+polymorphism__c_code_add_typeclass_infos_2([], [], [], _, _, 
+		ArgNames, ArgNames).
+polymorphism__c_code_add_typeclass_infos_2([_Var|Vars0], Vars, [C|Cs], Mode,
+		TypeVarSet, ArgNames0, ArgNames) :-
+	polymorphism__c_code_add_typeclass_infos_2(Vars0, Vars, Cs,
+		Mode, TypeVarSet, ArgNames0, ArgNames1),
+	C = constraint(Name0, Types),
+	prog_out__sym_name_to_string(Name0, "__", Name),
+	term__vars_list(Types, TypeVars),
+	GetName = lambda([TVar::in, TVarName::out] is det,
+		(
+			varset__lookup_name(TypeVarSet, TVar, TVarName0),
+			string__append("_", TVarName0, TVarName)
+		)
+	),
+	list__map(GetName, TypeVars, TypeVarNames),
+	string__append_list(["TypeClassInfo_for_", Name|TypeVarNames],
+		C_VarName),
+	ArgNames = [yes(C_VarName - Mode) | ArgNames1].
+
+polymorphism__c_code_add_typeclass_infos_2([], _, [_|_], _, _, _, _) :-
+	error("polymorphism__c_code_add_typeinfos: length mismatch").
+polymorphism__c_code_add_typeclass_infos_2([V|Vs], [V|Vs], [], _, _, As, As).
 
 :- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar),
 		tvarset, existq_tvars, list(maybe(pair(string, mode))),
