@@ -1026,7 +1026,7 @@ data_initializer_to_instrs(init_array(InitList), Type,
 		% To initialize an array, we generate the following
 		% code:
 		% 	ldc <length of array>
-		% 	newarr System::Object
+		% 	newarr <array element type>
 		%	
 		% Then, for each element in the array:
 		%	dup
@@ -1034,7 +1034,7 @@ data_initializer_to_instrs(init_array(InitList), Type,
 		%	... allocation instructions ...
 		%	... initialization instructions ...
 		%	box the value (if necessary)
-		%	stelem System::Object
+		%	stelem <array element type>
 		%
 		% The initialization will leave the array on the stack.
 		%	
