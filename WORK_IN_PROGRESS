@@ -9,8 +9,6 @@ at some time in the future:
   for Microsoft's new .NET common language runtime.
   See <http://www.cs.mu.oz.au/mercury/dotnet.html> and/or
   <http://www.cs.mu.oz.au/mercury/information/dotnet/mercury_and_dotnet.html>.
-  (The first of those two URLs does not yet exist at the time of writing,
-  but should be added shortly.)
 
 * Thread-safe engine.
 
