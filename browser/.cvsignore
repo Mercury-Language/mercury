@@ -3,5 +3,6 @@
 help.h
 debugger_interface.h
 browse.h
+interactive_query.h
 mer_browser.init
 Mercury
