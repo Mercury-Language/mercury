@@ -221,6 +221,13 @@
 :- mode string__hash(in, out) is det.
 %	Compute a hash value for a string.
 
+:- pred string__sub_string_search(string, string, int).
+:- mode string__sub_string_search(in, in, out) is semidet.
+%	string__sub_string_search(String, SubString, Index).
+%	`Index' is the position in `String' where the first occurrence of
+%	`SubString' begins.
+%	Do a brute-force search in the first string for the second string.
+%	XXX Note: not the most efficient algorithm.
 
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
@@ -731,11 +738,39 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
-%	XXXXX when string__to_lower exits, fix %x option.
+string__sub_string_search(String, Substring, Index) :- 
+	string__length(String, StringLength),
+	string__length(Substring, SubstringLength),
+	string__sub_string_search2(String, Substring, StringLength, 
+			SubstringLength, Index).
 
-string__format( Fstring, Poly_list, Ostring ) :-
-	string__to_char_list(Fstring, Clist),
-	string__format_2(Clist, Poly_list, Ostring) .
+
+:- pred string__sub_string_search2(string, string, int, int, int).
+:- mode string__sub_string_search2(in, in, in, in, out) is semidet.
+
+string__sub_string_search2(String0, SString, StrLen0,
+			SStrLen, Index) :-
+	StrLen0 >= SStrLen,
+	(
+		string__prefix(String0, SString)
+	->
+		Index = 0
+	;
+		string__first_char(String0, _, String),
+		StrLen is StrLen0 - 1,
+		string__sub_string_search2(String, SString, StrLen, 
+				SStrLen, Index0),
+		Index is Index0 + 1
+	).
+
+
+%-----------------------------------------------------------------------------%
+
+%	XXXXX when string__to_lower exists, fix %x option.
+
+string__format( Format_string, Poly_list, Out_string ) :-
+	string__to_char_list(Format_string, Format_char_list),
+	string__format_2(Format_char_list, Poly_list, Out_string) .
 
 :- pred	string__format_2(list(char), list(string__poly_type), string).
 :- mode string__format_2(in, in, out) is det.
@@ -760,8 +795,8 @@ string__format_2( [Achar|As], Vars_in, Ostring) :-
 			string__first_char(Ostring, '%', Temp_out)
 		;
 			(
-				string__format_top_convert_variable(As, As_out,
-					Vars_in, Vars_out, String_1)
+				string__format_top_convert_variable(As, Vars_in,
+						As_out, Vars_out, String_1)
 			->
 				string__format_2(As_out, Vars_out, String_2),
 				string__append(String_1, String_2, Ostring)
@@ -774,46 +809,48 @@ string__format_2( [Achar|As], Vars_in, Ostring) :-
 		string__first_char(Ostring, Achar, Temp_out)
 	).
 
-:- pred string__format_top_convert_variable( list(char), list(char), 
-		list(string__poly_type), list(string__poly_type), string).
-:- mode string__format_top_convert_variable(in, out, in, out, out) is semidet.
+:- pred string__format_top_convert_variable( list(char), 
+			list(string__poly_type), list(char),
+			list(string__poly_type), string).
+:- mode string__format_top_convert_variable(in, in, out, out, out) is semidet.
 %
-%    string__format_top_convert_variable( formated string in, out, var in, out,
-%			Out string)
+%    string__format_top_convert_variable( formated string in, var in, formatted
+%			string out, var out, Out string)
 %		Return a string of the formatted variable.
 %
-string__format_top_convert_variable(['%'|Bs], Bs, [], [], "%").
+string__format_top_convert_variable(['%'|Bs], [], Bs, [], "%").
 			% Above rule should not be executed... defensive rule.
-string__format_top_convert_variable( F_chars_in, F_chars_out, 
-			[Var_in|Vars_l_in], Vars_out, Out_string ) :-
-	string__format_takewhile1( F_chars_in, [Conv_char_0|F_chars_out],
+string__format_top_convert_variable( F_chars0, [Var0|Vars_list0],
+			F_chars, Vars_list, OutString ) :-
+	string__format_takewhile1( F_chars0, [Conv_char_0|F_chars],
 			Fmt_info),
 			     %	Seperate formatting info from formatting string.
 			     %	in, out, out
-	string__format_get_optional_args( Fmt_info, Flags, Int_width, 
-			Int_precis, Conv_modify),
+	string__format_get_optional_args( Fmt_info, Flags, Width0, 
+			Precision0, Conv_modify),
 			     %	Parse formatting info.
 			     %	in, out, out, out, out.
-	string__format_read_star( Vars_out, Vars_l_in, Width, Int_width, 
-			Precision0, Int_precis),
+	string__format_read_star(Vars_list0,  Width0, Precision0, Vars_list,
+			Width1, Precision1),
 			     %	Do something if a precision or width was '*'
-			     %  out, in, out, in, out, in
-	string__format_mod_conv_char( Precision0, Var_in, Conv_char_0, 
+			     %  in, in, in, out, out, out
+	string__format_mod_conv_char( Precision1, Var0, Conv_char_0, 
 			Conv_char_1, Precision),
 			     %	Modify(?) conversion character.
 			     %  in, in, in, out, out
-	string__format_do_mod_char( Conv_modify, Conv_char_2, Conv_char_1),
+	string__format_do_mod_char( Conv_modify, Conv_char_1, Conv_char_2),
 			     %	Interperate input conversion modifiers.
-			     %	in, out, in
-	string__format_do_conversion(Conv_char_2, Var_in, Ostring0, Precision,
-			Flags, Move_i0),
+			     %	in, in, out
+	string__format_do_conversion(Conv_char_2, Var0, Precision,
+			Flags, Move_i0, OutString0),
 			     %	Actually convert a Variable to a string
-			     %	in, in, out, in, in, out
-	string__format_add_sign( Ostring2, Ostring0, Flags, Var_in, Move_i0, 
-			Move_i1),
+			     %	in, in, in, in, out, out
+	string__format_add_sign( OutString0, Flags, Var0, Move_i0, 
+			Move_i1, OutString1),
 			     %	Adds an optional '+' or ' ' to string.
-			     %	out, in, in, in, in, out
-	string__format_pad_width( Ostring2, Width, Flags, Out_string, Move_i1).
+			     %	in, in, in, in, out, out
+	string__format_pad_width( OutString1, Width1, Flags, Move_i1,
+			OutString).
 			     %	Ensures that the string is at least width.
 			     %	in, in, in, out, in
 
@@ -826,18 +863,18 @@ string__format_top_convert_variable( F_chars_in, F_chars_out,
 :- pred string__format_mod_conv_char(maybe(int), string__poly_type, char, 
 				char, maybe(int)).
 :- mode string__format_mod_conv_char(in, in, in, out, out) is det.
-string__format_mod_conv_char( Precision0, Poly_var, Conv_c_in,
-				Conv_c_out, Precision) :- 
+string__format_mod_conv_char( Precision0, Poly_var, Conversion_in,
+				Conversion_out, Precision) :- 
 	( Precision0 = yes(Prec0) ->
 		Prec = Prec0
 	;
 		Prec = 0
 	),
-	( Conv_c_in = 'i' ->
-		Conv_c_out = 'd',		% %d = %i
+	( Conversion_in = 'i' ->
+		Conversion_out = 'd',		% %d = %i
 		Precision = Precision0
 	; 
-	Conv_c_in = 'g' ->			%g is either %e of %f
+	Conversion_in = 'g' ->			%g is either %e of %f
 		(Poly_var = f(F) ->
 			string__float_abs(F, Ft),
 			int__pow(10, Prec, P),
@@ -846,17 +883,17 @@ string__format_mod_conv_char( Precision0, Poly_var, Conv_c_in,
 				builtin_float_gt(Ft, 0.0001),
 				builtin_float_gt(Pe, Ft)
 			->
-				Conv_c_out = 'f',
+				Conversion_out = 'f',
 				Precision = yes(0)
 			;
-				Conv_c_out = 'e',
+				Conversion_out = 'e',
 				Precision = Precision0
 			)
 		;
 			error("string__format:  %g without a f(Float).")
 		)
 	;
-	Conv_c_in = 'G' ->		%G is either %E of %f
+	Conversion_in = 'G' ->		%G is either %E of %f
 		(Poly_var = f(F) ->
 			string__float_abs(F, Ft),
 			int__pow(10, Prec, P),
@@ -865,17 +902,17 @@ string__format_mod_conv_char( Precision0, Poly_var, Conv_c_in,
 				builtin_float_gt(Ft, 0.0001),
 				builtin_float_gt(Pe, Ft)
 			->
-				Conv_c_out = 'f',
+				Conversion_out = 'f',
 				Precision = yes(0)
 			;
-				Conv_c_out = 'E',
+				Conversion_out = 'E',
 				Precision = Precision0
 			)
 		;
 			error("string__format:  %G without a f(Float).")
 		)
 	;
-		Conv_c_out = Conv_c_in,
+		Conversion_out = Conversion_in,
 		Precision = Precision0
 	).
 
@@ -885,30 +922,32 @@ string__format_mod_conv_char( Precision0, Poly_var, Conv_c_in,
 %	Another function that would be better off as a switch.
 %
 :- pred string__format_do_mod_char( char, char, char).
-:- mode string__format_do_mod_char( in, out, in) is det.
-string__format_do_mod_char( Char_mods, C_out, C_in) :- 
+:- mode string__format_do_mod_char( in, in, out) is det.
+string__format_do_mod_char( Char_mods, C_in, C_out) :- 
 	(
 		Char_mods = 'h'
 	->
 		C_out = C_in
 	;
-	(	Char_mods = 'l'
+		Char_mods = 'l'
 	->
 		C_out = C_in
 	;
-	(	Char_mods = 'L'
+		Char_mods = 'L'
 	->
 		C_out = C_in
 	;
 		C_out = C_in
-	))).
+	).
 
 %
 %	Change Width or Precision value, if '*' was spcified
 %
-:- pred string__format_read_star( list(string__poly_type), list(string__poly_type), maybe(int), int, maybe(int), int).
-:- mode string__format_read_star( out, in, out, in, out, in) is semidet.
-string__format_read_star( Polys_out, Polys_in, Width, Int_width, Precision, Int_precis) :-
+:- pred string__format_read_star(  list(string__poly_type), int, int,
+		list(string__poly_type), maybe(int), maybe(int)).
+:- mode string__format_read_star( in, in, in, out, out, out) is semidet.
+string__format_read_star( Polys_in, Int_width, Int_precis, Polys_out,
+		Width, Precision) :-
 	(
 		string__special_precision_and_width(Int_width)
 	->
@@ -946,29 +985,29 @@ string__format_read_star( Polys_out, Polys_in, Width, Int_width, Precision, Int_
 %	so that it is more easy to insert width and precision padding and 
 %	optional signs, in the correct place.
 %
-:- pred string__format_do_conversion( char, string__poly_type, string, 
-		maybe(int), list(char), int).
-:- mode string__format_do_conversion( in, in, out, in, in, out)
+:- pred string__format_do_conversion( char, string__poly_type, maybe(int), 
+		list(char), int, string).
+:- mode string__format_do_conversion( in, in, in, in, out, out)
 		is det.
-string__format_do_conversion( Conv_c, Poly_t, Ostring, Precision, Flags,
-		Mv_width) :-
+string__format_do_conversion( Conversion, Poly_t, Precision, Flags, Mv_width,
+		Ostring) :-
 	(
-		string__do_conversion_0(Conv_c, Poly_t, Tstring, Precision, 
-			Flags, TMv_width)
+		string__do_conversion_0(Conversion, Poly_t, Ostring0, 
+				Precision, Flags, Mv_width0)
 	->
-		TMv_width = Mv_width,
-		Ostring = Tstring
+		Mv_width = Mv_width0,
+		Ostring = Ostring0
 	;
-		string__do_conversion_fail(Conv_c)
+		string__do_conversion_fail(Conversion)
 	).
 
 :- pred string__do_conversion_0(char, string__poly_type, string, maybe(int), 
 		list(char), int).
 :- mode string__do_conversion_0(in, in, out, in, in, out) is semidet.
-string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, 
+string__do_conversion_0(Conversion, Poly_t, Ostring, Precision, Flags, 
 		Mv_width) :-
 	(
-	Conv_c = 'd',
+	Conversion = 'd',
 		Poly_t = i(I),
 		string__int_to_string(I, S),
 		string__format_int_precision(S, Ostring, Precision, _),
@@ -981,7 +1020,7 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		)
 			
 	; 
-	Conv_c = 'o',
+	Conversion = 'o',
 		Poly_t = i(I),
 		( I = 0 ->
 			S = "0",
@@ -1000,7 +1039,7 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		),
 		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
 	;
-	Conv_c = 'x' ,
+	Conversion = 'x' ,
 		Poly_t = i(I),
 		( I = 0 ->
 			SS = "0",
@@ -1021,7 +1060,7 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		),
 		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
 	;
-	Conv_c = 'X',
+	Conversion = 'X',
 		Poly_t = i(I),
 		( I = 0 ->
 			SS = "0",
@@ -1041,19 +1080,19 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		),
 		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
 	;
-	Conv_c = 'u' ,
+	Conversion = 'u' ,
 		Poly_t = i(I),
 		int__abs(I, J),
 		string__int_to_string(J, S),
 		string__format_int_precision(S, Ostring, Precision, Mvt),
 		Mv_width = Mvt
 	;		
-	Conv_c = 'c' ,
+	Conversion = 'c' ,
 		Poly_t = c(C),
 		string__char_to_string( C, Ostring),
 		Mv_width = 0
 	;
-	Conv_c = 's' ,
+	Conversion = 's' ,
 		Poly_t = s(S),
 		( Precision = yes(Prec) ->
 			string__split(S, Prec, Ostring, _)
@@ -1062,24 +1101,24 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		),
 		Mv_width = 0
 	;
-	Conv_c = 'f' ,
+	Conversion = 'f' ,
 		Poly_t = f(F),
 		string__float_to_string(F, Fstring),
 		string__format_calc_prec(Fstring, Ostring, Precision),
 		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;	
-	Conv_c = 'e',
+	Conversion = 'e',
 		Poly_t = f(F),
 		string__format_calc_exp(F, Ostring, Precision, 0),
 		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;
-	Conv_c = 'E' ,
+	Conversion = 'E' ,
 		Poly_t = f(F),
 		string__format_calc_exp(F, Otemp, Precision, 0),
 		string__to_upper(Otemp, Ostring),
 		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;
-	Conv_c = 'p' ,
+	Conversion = 'p' ,
 		Poly_t = i(I),
 		string__int_to_string(I, Ostring),
 		((I < 0) -> Mv_width = 1 ; Mv_width = 0)
@@ -1087,9 +1126,9 @@ string__do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 
 :- pred string__do_conversion_fail(char).
 :- mode string__do_conversion_fail(in) is erroneous.
-string__do_conversion_fail(Conv_c) :-
+string__do_conversion_fail(Conversion) :-
 	string__format("%s `%%%c', without a correct poly-variable.", 
-		[s("string__format: statement has used type"), c(Conv_c)],
+		[s("string__format: statement has used type"), c(Conversion)],
 		Error_message),
 	error(Error_message).
 
@@ -1255,36 +1294,34 @@ string__find_index_2([X|Xs], C, Index) :-
 
 %	Add a '+' or ' ' sign, if it is needed in this output.
 %
-:- pred string__format_add_sign( string, string, list(char), string__poly_type,
-			int, int).
-:- mode string__format_add_sign( out, in, in, in, in, out) is det.
+:- pred string__format_add_sign( string, list(char), string__poly_type,
+			int, int, string).
+:- mode string__format_add_sign( in, in, in, in, out, out) is det.
 %			Mvw is the prefix-length in front of the number.
-string__format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
-	T1 is Mvw1 - 1,
+string__format_add_sign( Istring, Flags, _V, MoveWidth0, Movewidth, Ostring) :-
+	MoveWidth1 is MoveWidth0 - 1,
 	(
-		string__index(Istring, T1, '-')
+		string__index(Istring, MoveWidth1, '-')
 	->
 		Ostring = Istring,
-		Mvw2 = Mvw1
+		Movewidth = MoveWidth0
 	;
-		string__split(Istring, Mvw1, Lstring, Rstring),
+		string__split(Istring, MoveWidth0, Lstring, Rstring),
 		(
 			list__member(('+'), Flags)
 		->
 			string__append( "+", Rstring, Astring),
 			string__append( Lstring, Astring, Ostring),
-			Mvw2 is Mvw1 + 1
+			Movewidth is MoveWidth0 + 1
 		;
-			(
-				list__member(' ', Flags)
-			->
-				string__append( " ", Rstring, Astring),
-				string__append( Lstring, Astring, Ostring),
-				Mvw2 is Mvw1 + 1
-			; 
-				Ostring = Istring,
-				Mvw2 = Mvw1
-			)
+			list__member(' ', Flags)
+		->
+			string__append( " ", Rstring, Astring),
+			string__append( Lstring, Astring, Ostring),
+			Movewidth is MoveWidth0 + 1
+		; 
+			Ostring = Istring,
+			Movewidth = MoveWidth0
 		)
 	).
 
@@ -1292,10 +1329,10 @@ string__format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 % This function pads some characters to the left or right of a string that is
 % shorter than it's width.
 %
-:- pred string__format_pad_width( string, maybe(int), list(char), string, int).
-:- mode string__format_pad_width( in, in, in, out, in) is det.
-%		( String in, width, flags, Output string, #Moveables).
-string__format_pad_width( Istring, Width0, Flags, Out_string, Mv_cs) :-
+:- pred string__format_pad_width( string, maybe(int), list(char), int,  string).
+:- mode string__format_pad_width( in, in, in, in, out) is det.
+%		( String in, width, flags, #Moveables, Output string).
+string__format_pad_width( Istring, Width0, Flags, Mv_cs, Out_string) :-
 	string__length(Istring, Len),
 	(
 		Width0 = yes(Width),
@@ -1316,21 +1353,20 @@ string__format_pad_width( Istring, Width0, Flags, Out_string, Mv_cs) :-
 		->
 			string__append(Istring, Pad_string, Out_string)
 		;
-			(
-				list__member('0', Flags)
-			->
-				string__split(Istring, Mv_cs, B4, After),
-				string__append( Pad_string, After, Astring),
-				string__append( B4, Astring, Out_string)
-			;
-				string__append( Pad_string, Istring, Out_string)
-			)
+			list__member('0', Flags)
+		->
+			string__split(Istring, Mv_cs, B4, After),
+			string__append( Pad_string, After, Astring),
+			string__append( B4, Astring, Out_string)
+		;
+			string__append( Pad_string, Istring, Out_string)
 		)
 	;
 		Out_string = Istring
 	).
 
-:- pred string__format_get_optional_args( list(char), list(char), int, int, char).
+:- pred string__format_get_optional_args( list(char), list(char), int, int,
+			char).
 :- mode string__format_get_optional_args( in, out, out, out, out) is det.
 %	string__format_get_optional_args( format info, flags, width, precision, modifier)
 %		format is assumed to be in ANSI C format.
@@ -1352,7 +1388,8 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 	(
 		(A = (-) ; A = (+) ; A = ' ' ; A = '0' ; A = '#' )
 	->
-		string__format_get_optional_args( As, Oflags, Width, Precision, Mods),
+		string__format_get_optional_args( As, Oflags, Width, Precision,
+				Mods),
 		UFlags = [A | Oflags],
 		list__sort_and_remove_dups(UFlags, Flags)
 	;
@@ -1373,7 +1410,8 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 	(	( A = 'h' ; A = 'l' ; A = 'L' )
 	->
 		Mods = A,
-		string__format_get_optional_args( As, Flags, Width, Precision, _)
+		string__format_get_optional_args( As, Flags, Width, 
+			Precision, _)
 	;
 	(	A = ('*')
 	->
@@ -1424,7 +1462,8 @@ string__format_takewhile1( [A|As], Rem, Finf) :-
 		Finf = [A|F]
 	).
 	
-:- pred string__format_string_to_ints(list(char), list(char), list(char), list(char), bool).
+:- pred string__format_string_to_ints(list(char), list(char), list(char),
+		list(char), bool).
 :- mode string__format_string_to_ints(in, out, out, out, in) is det.
 % 			( String in, out, Number1, Number2, seen '.' yet?)
 %		Takes in a char list and splits off the rational number at the 
