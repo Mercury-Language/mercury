@@ -492,6 +492,10 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		ExtraGoals0 = no_extra_goals
 	),
 
+		% This needs to come after make_complicated_sub_unify
+		% because make_complicated_sub_unify may introduce
+		% new variables whose types we need to look-up.
+		%
 	mode_info_get_var_types(!.ModeInfo, VarTypes),
 
 	(
