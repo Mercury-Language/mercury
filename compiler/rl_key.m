@@ -114,6 +114,10 @@ rl_key__remove_useless_info(ModuleInfo,
 	list__map(rl_key__remove_useless_info(ModuleInfo),
 		ArgBounds0, ArgBounds),
 	( 
+		type_is_tuple(Type, _)
+	->
+		Bound = var - Vars
+	;
 		\+ (
 			list__member(ArgBound, ArgBounds),
 			ArgBound \= var - _
@@ -124,7 +128,7 @@ rl_key__remove_useless_info(ModuleInfo,
 		),
 		module_info_types(ModuleInfo, Types),
 		type_to_type_id(Type, TypeId, _),
-		map__lookup(Types, TypeId, TypeDefn),
+		map__search(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body = du_type(Ctors, _, _, _),
 		Ctors = [_]
@@ -1019,7 +1023,7 @@ rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 	->	
 		module_info_types(ModuleInfo, Types),
 		type_to_type_id(Type, TypeId, _),
-		map__lookup(Types, TypeId, TypeDefn),
+		map__search(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		% If there's a user defined equality pred we're in trouble.
 		Body = du_type(Ctors, _, _, no),

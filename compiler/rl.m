@@ -1276,61 +1276,77 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 		Decls = Decls0,
 		ThisType = ":S"
 	;
+		ClassifiedType = tuple_type,
+		rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0,
+			GatheredTypes, RecursiveTypes0, RecursiveTypes,
+			Decls0, Decls, ThisType)
+	;
 		ClassifiedType = pred_type,
 		error("rl__gather_type: pred type")
 	;
 		ClassifiedType = user_type,
-		(
-			type_to_type_id(Type, TypeId, Args),
-		 	type_constructors(Type, ModuleInfo, Ctors)
-		->
-			( set__member(TypeId - Args, Parents) ->
-				set__insert(RecursiveTypes0, TypeId - Args,
-					RecursiveTypes1)
-			;
-				RecursiveTypes1 = RecursiveTypes0
-			),
-			(
-				map__search(GatheredTypes0, TypeId - Args,
-					MangledTypeName0) 
-			->
-				GatheredTypes = GatheredTypes0,
-				Decls = Decls0,
-				MangledTypeName = MangledTypeName0,
-				RecursiveTypes = RecursiveTypes1
-			;
-				set__insert(Parents, TypeId - Args,
-					Parents1),
-				rl__mangle_and_quote_type_name(TypeId,
-					Args, MangledTypeName),
+		% We can't handle abstract types here. magic_util.m
+		% checks that there are none.
+		rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0,
+			GatheredTypes, RecursiveTypes0, RecursiveTypes,
+			Decls0, Decls, ThisType)
+	).
 
-				% Record that we have seen this type
-				% before processing the sub-terms.
-				map__det_insert(GatheredTypes0, TypeId - Args,
-					MangledTypeName, GatheredTypes1),
+:- pred rl__gather_du_type(module_info::in, set(full_type_id)::in,
+		(type)::in, gathered_types::in, gathered_types::out,
+		set(full_type_id)::in, set(full_type_id)::out,
+		string::in, string::out, string::out) is det.
 
-				rl__gather_constructors(ModuleInfo, 
-					Parents1, Ctors, GatheredTypes1, 
-					GatheredTypes, RecursiveTypes1,
-					RecursiveTypes, Decls0, Decls1, 
-					"", CtorDecls),
-
-				% Recursive types are marked by a
-				% second colon before their declaration.
-				( set__member(TypeId - Args, RecursiveTypes) ->
-					RecursiveSpec = ":"
-				;
-					RecursiveSpec = ""
-				),
-				string__append_list(
-					[Decls1, RecursiveSpec, ":",
-					MangledTypeName, "=", CtorDecls, " "],
-					Decls)	
-			),
-			string__append(":T", MangledTypeName, ThisType)
+rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
+		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
+	(
+		type_to_type_id(Type, TypeId, Args),
+		type_constructors(Type, ModuleInfo, Ctors)
+	->
+		( set__member(TypeId - Args, Parents) ->
+			set__insert(RecursiveTypes0, TypeId - Args,
+				RecursiveTypes1)
 		;
-			error("rl__gather_type: type_constructors failed")
-		)
+			RecursiveTypes1 = RecursiveTypes0
+		),
+		(
+			map__search(GatheredTypes0, TypeId - Args,
+				MangledTypeName0) 
+		->
+			GatheredTypes = GatheredTypes0,
+			Decls = Decls0,
+			MangledTypeName = MangledTypeName0,
+			RecursiveTypes = RecursiveTypes1
+		;
+			set__insert(Parents, TypeId - Args, Parents1),
+			rl__mangle_and_quote_type_name(TypeId,
+				Args, MangledTypeName),
+
+			% Record that we have seen this type
+			% before processing the sub-terms.
+			map__det_insert(GatheredTypes0, TypeId - Args,
+				MangledTypeName, GatheredTypes1),
+
+			rl__gather_constructors(ModuleInfo, 
+				Parents1, Ctors, GatheredTypes1, 
+				GatheredTypes, RecursiveTypes1,
+				RecursiveTypes, Decls0, Decls1, 
+				"", CtorDecls),
+
+			% Recursive types are marked by a
+			% second colon before their declaration.
+			( set__member(TypeId - Args, RecursiveTypes) ->
+				RecursiveSpec = ":"
+			;
+				RecursiveSpec = ""
+			),
+			string__append_list([Decls1, RecursiveSpec, ":",
+				MangledTypeName, "=", CtorDecls, " "],
+				Decls)	
+		),
+		string__append(":T", MangledTypeName, ThisType)
+	;
+		error("rl__gather_type: type_constructors failed")
 	).
 
 :- pred rl__gather_constructors(module_info::in, set(full_type_id)::in,
@@ -1349,8 +1365,7 @@ rl__gather_constructors(ModuleInfo, Parents, [Ctor | Ctors],
 	list__length(Args, Arity),
 	rl__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName),
 
-	Snd = lambda([Pair::in, Second::out] is det, Pair = _ - Second),
-	list__map(Snd, Args, ArgTypes),
+	assoc_list__values(Args, ArgTypes),
 	rl__gather_types(ModuleInfo, Parents, ArgTypes, GatheredTypes0, 
 		GatheredTypes1, RecursiveTypes0, RecursiveTypes1, 
 		Decls0, Decls1, "", ArgList),

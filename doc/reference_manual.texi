@@ -317,13 +317,17 @@ A term is either a variable or a functor.
 A functor is an integer, a float, a string, a name, a compound term,
 or a higher-order term.
 
-A compound term is a simple compound term, an operator term,
+A compound term is a simple compound term, a tuple term, an operator term,
 or a parenthesized term.
 
 A simple compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  
+
+A tuple term is a left curly bracket (i.e. an open_curly token)
+followed by a sequence of argument terms separated by commas,
+and a right curly bracket.
 
 An operator term is a term specified using operator notation, as in Prolog.
 Operators can also be formed by enclosing a variable or name between grave
@@ -1040,6 +1044,14 @@ and @code{string}.  (For @code{char}, the standard syntax suffices.)
 These higher-order function and predicate types are used to pass procedure
 addresses and closures to other predicates.  @xref{Higher-order}.
 
+@item Tuple types: @code{@{@}}, @code{@{T@}}, @code{@{T1, T2@}}, @dots{}. 
+A tuple type is equivalent to a discriminated union type
+(@pxref{Discriminated unions}) with declaration
+@example
+:- type @{Arg1, Arg2, @dots{}, ArgN@}
+        ---> @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
+@end example
+
 @item The universal type: @code{univ}.
 The type @code{univ} is defined in the standard library module @code{std_util},
 along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
@@ -1154,7 +1166,9 @@ The following example illustrates this:
 @end example
 
 This defines a type with two constructors, @code{';'/2} and @code{'@{@}'/1},
-whose argument types are all @code{int}.
+whose argument types are all @code{int}. We recommend against using
+constructors named @code{'@{@}'} because of the possibility of confusion
+with the builtin tuple types.
 
 Each discriminated union type definition introduces a distinct type.
 Mercury considers two discriminated union types that have the same bodies

@@ -1327,6 +1327,7 @@ create_instmap_delta([Goal | Rest], IMD) :-
 not_builtin_type(pred_type).
 not_builtin_type(enum_type).
 not_builtin_type(polymorphic_type).
+not_builtin_type(tuple_type).
 not_builtin_type(user_type).
 
 :- pred builtin_type_to_string(builtin_type::in, string::out) is det.
@@ -1336,6 +1337,7 @@ builtin_type_to_string(char_type, 	"char").
 builtin_type_to_string(str_type, 	"string").
 builtin_type_to_string(float_type, 	"float").
 builtin_type_to_string(pred_type, 	"pred").
+builtin_type_to_string(tuple_type,	"any").
 builtin_type_to_string(enum_type, 	"enum").
 builtin_type_to_string(polymorphic_type, "any").
 builtin_type_to_string(user_type, 	"any").

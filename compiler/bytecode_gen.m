@@ -39,7 +39,7 @@
 :- import_module arg_info, call_gen. % XXX for arg passing convention
 :- import_module llds.		% XXX for code_model
 :- import_module code_util.	% XXX for cons_id_to_tag
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, type_util.
 :- import_module passes_aux, mode_util, goal_util, builtin_ops.
 :- import_module globals, tree.
 
@@ -610,10 +610,13 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
 	(
 		ConsId = cons(Functor, Arity),
+		bytecode_gen__get_var_type(ByteInfo, Var, Type),
 		(
-			% Everything other than characters should
+			% Everything other than characters and tuples should
 			% be module qualified.
 			Functor = unqualified(FunctorName),
+			\+ type_is_tuple(Type, _)
+		->
 			string__to_char_list(FunctorName, FunctorList),
 			( FunctorList = [Char] ->
 				ByteConsId = char_const(Char)
@@ -621,8 +624,12 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 				error("bytecode_gen__map_cons_id: unqualified cons_id is not a char_const")
 			)
 		;
-			Functor = qualified(ModuleName, FunctorName),
-			bytecode_gen__get_var_type(ByteInfo, Var, Type),
+			(
+				Functor = unqualified(FunctorName),
+				ModuleName = unqualified("builtin")
+			;
+				Functor = qualified(ModuleName, FunctorName)
+			),
 			code_util__cons_id_to_tag(ConsId,
 				Type, ModuleInfo, ConsTag),
 			bytecode_gen__map_cons_tag(ConsTag, ByteConsTag),

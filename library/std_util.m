@@ -430,6 +430,11 @@
 :- func construct(type_desc, int, list(univ)) = univ.
 :- mode construct(in, in, in) = out is semidet.
 
+	% construct_tuple(Args) = Term
+	%
+	% Returns a tuple whose arguments are given by Args.
+:- func construct_tuple(list(univ)) = univ.
+
 %-----------------------------------------------------------------------------%
 
 	% functor, argument and deconstruct take any type (including univ),
@@ -451,6 +456,7 @@
 	%	  quotation marks
 	%	- for predicates and functions, the string
 	%	  <<predicate>>
+	%	- for tuples, the string {}
 
 	% functor(Data, Functor, Arity)
 	%
@@ -470,8 +476,8 @@
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 -- then
-	% the call fails.  For argument/1 the argument returned has the
-	% type univ, which can store any type.  For arg/1, if the
+	% the call fails.  For argument/2 the argument returned has the
+	% type univ, which can store any type.  For arg/2, if the
 	% argument has the wrong type, then the call fails.
 	% (Both abort if the type of Data is a type with a non-canonical
 	% representation, i.e. one for which there is a user-defined
@@ -1220,12 +1226,13 @@ void sys_init_unify_univ_module(void) {
 ** Values of type `std_util:type_ctor_desc' are not guaranteed to be
 ** represented the same way as values of type `private_builtin:type_ctor_info'.
 ** The representations *are* in fact identical for first order types, but they
-** differ for higher order types. Instead of a type_ctor_desc being a structure
-** containing a pointer to the type_ctor_info for pred/0 or func/0 and an
-** arity, we have a single small encoded integer. This integer is double
-** the arity, plus zero or one; plus zero encodes a predicate, plus one encodes
-** a function.  The maximum arity that can be encoded is given by
-** MR_MAX_HO_ARITY (see below).
+** differ for higher order and tuple types. Instead of a type_ctor_desc
+** being a structure containing a pointer to the type_ctor_info for pred/0
+** or func/0 and an arity, we have a single small encoded integer. This
+** integer is four times the arity, plus zero, one or two; plus zero encodes a
+** tuple, plus one encodes a predicate, plus two encodes a function.
+** The maximum arity that can be encoded is given by MR_MAX_VARIABLE_ARITY
+** (see below).
 ** The C type corresponding to std_util:type_ctor_desc is `MR_TypeCtorInfo'.
 */
 
@@ -1246,51 +1253,64 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 ** number of general purpose registers, since an predicate or function having
 ** more arguments that this would run out of registers when passing the input
 ** arguments, or the output arguments, or both.
+**
+** XXX When tuples were added this was reduced to be the maximum number
+** of general purpose registers, to reduce the probability that the
+** `small' integers for higher-order and tuple types are confused with
+** type_ctor_info pointers. This still allows higher-order terms with
+** 1024 arguments, which is more than ../LIMITATIONS promises.
 */
-#define MR_MAX_HO_ARITY         (2 * MAX_VIRTUAL_REG)
+#define MR_MAX_VARIABLE_ARITY         MAX_VIRTUAL_REG
 
 /*
 ** Constructors for the MR_TypeCtorDesc ADT
 */
+
 #define MR_TYPECTOR_DESC_MAKE_PRED(Arity)                               \
-        ( (MR_TypeCtorDesc) ((Arity) * 2) )
+        ( (MR_TypeCtorDesc) ((Arity) * 4) )
 #define MR_TYPECTOR_DESC_MAKE_FUNC(Arity)                               \
-        ( (MR_TypeCtorDesc) ((Arity) * 2 + 1) )
-#define MR_TYPECTOR_DESC_MAKE_FIRST_ORDER(type_ctor_info)               \
-        ( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),		\
-	  (MR_TypeCtorDesc) type_ctor_info )
+        ( (MR_TypeCtorDesc) ((Arity) * 4 + 1) )
+#define MR_TYPECTOR_DESC_MAKE_TUPLE(Arity)                              \
+        ( (MR_TypeCtorDesc) ((Arity) * 4 + 2) )
+#define MR_TYPECTOR_DESC_MAKE_FIXED_ARITY(type_ctor_info)               \
+        ( MR_CHECK_EXPR_TYPE(type_ctor_info, MR_TypeCtorInfo),          \
+          (MR_TypeCtorDesc) type_ctor_info )
 
 /*
 ** Access macros for the MR_TypeCtor ADT.
 **
-** The MR_TYPECTOR_DESC_GET_HOT_* macros should only be called if
-** MR_TYPECTOR_DESC_IS_HIGHER_ORDER() returns true.
-** The MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO() macro
-** should only be called if MR_TYPECTOR_DESC_IS_HIGHER_ORDER() returns false.
+** The MR_TYPECTOR_DESC_GET_VA_* macros should only be called if
+** MR_TYPECTOR_DESC_IS_VARIABLE_ARITY() returns true.
+** The MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO() macro
+** should only be called if MR_TYPECTOR_DESC_IS_VARIABLE_ARITY() returns false.
 */
-#define MR_TYPECTOR_DESC_IS_HIGHER_ORDER(T)                             \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-          (Unsigned) (T) <= (2 * MR_MAX_HO_ARITY + 1) )
-#define MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(T)              \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-	  (MR_TypeCtorInfo) (T) )
-#define MR_TYPECTOR_DESC_GET_HOT_ARITY(T)                               \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-          (Unsigned) (T) / 2 )
-#define MR_TYPECTOR_DESC_GET_HOT_NAME(T)                                \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-          (ConstString) (((Unsigned) (T) % 2 != 0)         		\
-                ? ""func""                                              \
-                : ""pred"" ))
-#define MR_TYPECTOR_DESC_GET_HOT_MODULE_NAME(T)                         \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
+#define MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)                           \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
+          (Unsigned) (T) <= (4 * MR_MAX_VARIABLE_ARITY + 2) )
+#define MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T)              \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
+          (MR_TypeCtorInfo) (T) )
+#define MR_TYPECTOR_DESC_GET_VA_ARITY(T)                                \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
+          (Unsigned) (T) / 4 )
+#define MR_TYPECTOR_DESC_GET_VA_NAME(T)                                 \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
+          (ConstString) (((Unsigned) (T) % 4 == 0)                      \
+                ? ""pred""                                              \
+                : (((Unsigned) (T) % 4 == 1)                            \
+                    ? ""func""                                          \
+                    : ""{}"" )) )
+#define MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(T)                          \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
           (ConstString) ""builtin"" )
-#define MR_TYPECTOR_DESC_GET_HOT_TYPE_CTOR_INFO(T)                      \
-        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),			\
-          ((Unsigned) (T) % 2 != 0)      				\
-                ? MR_TYPE_CTOR_INFO_HO_FUNC				\
-                : MR_TYPE_CTOR_INFO_HO_PRED )
-		
+#define MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)                       \
+        ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
+          ((Unsigned) (T) % 4 == 0)                                     \
+                ? MR_TYPE_CTOR_INFO_HO_PRED                             \
+                : (((Unsigned) (T) % 4 == 1)                            \
+                   ? MR_TYPE_CTOR_INFO_HO_FUNC                          \
+                   : MR_TYPE_CTOR_INFO_TUPLE ) )
+
 #endif /* ML_TYPECTORDESC_GUARD */
 
 ").
@@ -1384,6 +1404,13 @@ type_name(Type) = TypeName :-
 		 	IsFunc = no
 		),
 		(
+			ModuleName = "builtin", Name = "{}"
+		->
+			type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
+			list__append(ArgTypeNames, ["}"], TypeStrings0),
+			TypeStrings = ["{" | TypeStrings0],
+			string__append_list(TypeStrings, UnqualifiedTypeName)
+		;
 			IsFunc = yes,
 			ArgTypes = [FuncRetType]
 		->
@@ -1472,19 +1499,26 @@ ML_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 	if (MR_TYPE_CTOR_INFO_IS_HO_PRED(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_PRED(
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
-		if (! MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
+		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 			MR_fatal_error(""std_util:ML_make_type_ctor_desc""
 				""- arity out of range."");
 		}
 	} else if (MR_TYPE_CTOR_INFO_IS_HO_FUNC(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FUNC(
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
-		if (! MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
+		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
+			MR_fatal_error(""std_util:ML_make_type_ctor_desc""
+				""- arity out of range."");
+		}
+	} else if (MR_TYPE_CTOR_INFO_IS_TUPLE(type_ctor_info)) {
+		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_TUPLE(
+			MR_TYPEINFO_GET_TUPLE_ARITY(type_info));
+		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 			MR_fatal_error(""std_util:ML_make_type_ctor_desc""
 				""- arity out of range."");
 		}
 	} else {
-		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FIRST_ORDER(
+		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FIXED_ARITY(
 			type_ctor_info);
 	}
 
@@ -1512,8 +1546,9 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	type_ctor_desc = ML_make_type_ctor_desc(type_info, type_ctor_info);
 	*type_ctor_desc_ptr = type_ctor_desc;
 
-	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
-		arity = MR_TYPECTOR_DESC_GET_HOT_ARITY(type_ctor_desc);
+	if (MR_type_ctor_rep_is_variable_arity(type_ctor_info->type_ctor_rep))
+	{
+		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 		*arg_type_info_list_ptr = ML_type_params_vector_to_list(arity,
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info));
 	} else {
@@ -1560,10 +1595,10 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
-	if (MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
-		arity = MR_TYPECTOR_DESC_GET_HOT_ARITY(type_ctor_desc);
+	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
+		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 	} else {
-        type_ctor_info = MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(
+        type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
             type_ctor_desc);
 		arity = type_ctor_info->arity;
 	}
@@ -1614,16 +1649,16 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
-	if (MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
+	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 		TypeCtorModuleName = (String) (Word)
-			MR_TYPECTOR_DESC_GET_HOT_MODULE_NAME(type_ctor_desc);
+			MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
 		TypeCtorName = (String) (Word)
-			MR_TYPECTOR_DESC_GET_HOT_NAME(type_ctor_desc);
-		TypeCtorArity = MR_TYPECTOR_DESC_GET_HOT_ARITY(type_ctor_desc);
+			MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
+		TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 	} else {
         MR_TypeCtorInfo type_ctor_info;
 
-        type_ctor_info = MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(
+        type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
             type_ctor_desc);
 
             /*
@@ -1681,12 +1716,22 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 construct_info.functor_name);
         arity = construct_info.arity;
         Arity = arity;
-        save_transient_registers();
-        TypeInfoList = ML_pseudo_type_info_vector_to_type_info_list(
-            arity,
-            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-            construct_info.arg_pseudo_type_infos);
-        restore_transient_registers();
+
+        if (MR_TYPE_CTOR_INFO_IS_TUPLE(
+                        MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
+        {
+            save_transient_registers();
+            TypeInfoList = ML_type_params_vector_to_list(Arity,
+                    MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
+            restore_transient_registers();
+        } else {
+            save_transient_registers();
+            TypeInfoList = ML_pseudo_type_info_vector_to_type_info_list(
+                arity,
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                construct_info.arg_pseudo_type_infos);
+            restore_transient_registers();
+        }
     }
     SUCCESS_INDICATOR = success;
 }
@@ -1725,6 +1770,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+        case MR_TYPECTOR_REP_TUPLE:
             Ordinal = 0;
             break;
 
@@ -1862,6 +1908,35 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
             }
             break;
 
+        case MR_TYPECTOR_REP_TUPLE:
+            {
+                int     arity, i;
+                MR_Word    arg_list;
+
+                arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+    
+                if (arity == 0) {
+                    new_data = NULL;
+                } else {
+                    incr_hp_msg(new_data, arity, MR_PROC_LABEL,
+                            ""<created by std_util:construct/3>"");
+            
+                    arg_list = ArgList;
+                    for (i = 0; i < arity; i++) {
+                        MR_field(MR_mktag(0), new_data, i) =
+                                MR_field(MR_mktag(0), MR_list_head(arg_list),
+                                UNIV_OFFSET_FOR_DATA);
+                        arg_list = MR_list_tail(arg_list);
+                    }
+
+                    if (! MR_list_is_empty(arg_list)) {
+                        MR_fatal_error(
+                                ""excess arguments in std_util:construct"");
+                    }
+                }
+            }
+            break;
+
         default:
             MR_fatal_error(""bad type_ctor_rep in std_util:construct"");
         }
@@ -1878,6 +1953,54 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
     }
 
     SUCCESS_INDICATOR = success;
+}
+").
+
+construct_tuple(Args) =
+	construct_tuple_2(Args,
+		list__map(univ_type, Args),
+		list__length(Args)).
+
+:- func construct_tuple_2(list(univ), list(type_desc), int) = univ.
+
+:- pragma c_code(construct_tuple_2(Args::in, ArgTypes::in,
+		Arity::in) = (Term::out),
+		will_not_call_mercury, "
+{
+	MR_TypeInfo type_info;
+	MR_Word new_data;
+	MR_Word arg_value;
+	int i;
+
+	/*
+	** Construct a type_info for the tuple.
+	*/
+	type_info = ML_make_type(Arity, MR_TYPECTOR_DESC_MAKE_TUPLE(Arity),
+			ArgTypes);
+
+	/*
+	** Create the tuple.
+	*/
+	if (Arity == 0) {
+		new_data = NULL;
+	} else {
+		incr_hp_msg(new_data, Arity, MR_PROC_LABEL,
+			""<created by std_util:construct_tuple/1>"");
+		for (i = 0; i < Arity; i++) {
+			arg_value = MR_field(MR_mktag(0), MR_list_head(Args),
+					UNIV_OFFSET_FOR_DATA);
+			MR_field(MR_mktag(0), new_data, i) = arg_value;
+			Args = MR_list_tail(Args);
+		}
+	}
+
+	/*
+	** Create a univ.
+	*/
+	incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
+	MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) =
+		(Word) type_info;
+	MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) = new_data;
 }
 ").
 
@@ -1992,6 +2115,14 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
         MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
         break;
 
+    case MR_TYPECTOR_REP_TUPLE:
+        construct_info->functor_name = ""{}"";
+        construct_info->arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+
+        /* Tuple types don't have pseudo-type_infos for the functors. */
+        construct_info->arg_pseudo_type_infos = NULL;
+        break;
+
     case MR_TYPECTOR_REP_INT:
     case MR_TYPECTOR_REP_CHAR:
     case MR_TYPECTOR_REP_FLOAT:
@@ -2055,9 +2186,15 @@ ML_typecheck_arguments(MR_TypeInfo type_info, int arity, Word arg_list,
         list_arg_type_info = (MR_TypeInfo) MR_field(MR_mktag(0),
             MR_list_head(arg_list), UNIV_OFFSET_FOR_TYPEINFO);
 
-        arg_type_info = MR_create_type_info(
-            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
-            arg_pseudo_type_infos[i]);
+        if (MR_TYPE_CTOR_INFO_IS_TUPLE(
+                MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
+        {
+            arg_type_info = MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+        } else {
+            arg_type_info = MR_create_type_info(
+                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                arg_pseudo_type_infos[i]);
+        }
 
         comp = MR_compare_type_info(list_arg_type_info, arg_type_info);
         if (comp != MR_COMPARE_EQUAL) {
@@ -2118,22 +2255,22 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, Word arg_types_list)
     int             i;
 
     /*
-    ** We need to treat higher-order predicates as a special case here.
+    ** We need to treat higher-order and tuple types as a special case here.
     */
 
-    if (MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
-        type_ctor_info = MR_TYPECTOR_DESC_GET_HOT_TYPE_CTOR_INFO(
+    if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
+        type_ctor_info = MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(
             type_ctor_desc);
 
         restore_transient_registers();
         incr_hp_atomic_msg(LVALUE_CAST(Word, new_type_info_arena),
             MR_higher_order_type_info_size(arity),
-	    ""mercury__std_util__ML_make_type"", ""type_info"");
+            ""mercury__std_util__ML_make_type"", ""type_info"");
         save_transient_registers();
         MR_fill_in_higher_order_type_info(new_type_info_arena,
             type_ctor_info, arity, new_type_info_args);
     } else {
-        type_ctor_info = MR_TYPECTOR_DESC_GET_FIRST_ORDER_TYPE_CTOR_INFO(
+        type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
             type_ctor_desc);
 
         if (arity == 0) {
@@ -2143,7 +2280,7 @@ ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, Word arg_types_list)
         restore_transient_registers();
         incr_hp_atomic_msg(LVALUE_CAST(Word, new_type_info_arena),
             MR_first_order_type_info_size(arity),
-	    ""mercury__std_util__ML_make_type"", ""type_info"");
+            ""mercury__std_util__ML_make_type"", ""type_info"");
         save_transient_registers();
         MR_fill_in_first_order_type_info(new_type_info_arena,
             type_ctor_info, new_type_info_args);
@@ -2286,6 +2423,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+        case MR_TYPECTOR_REP_TUPLE:
             functors = 1;
             break;
 
@@ -2378,6 +2516,7 @@ typedef struct ML_Expand_Info_Struct {
     int         num_extra_args;
     Word        *arg_values;
     MR_TypeInfo *arg_type_infos;
+    bool        can_free_arg_type_infos;
     bool        non_canonical_type;
     bool        need_functor;
     bool        need_args;
@@ -2443,6 +2582,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
     expand_info->non_canonical_type = FALSE;
+    expand_info->can_free_arg_type_infos = FALSE;
 
     switch(type_ctor_info->type_ctor_rep) {
 
@@ -2516,6 +2656,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                     int i;
 
                     expand_info->arg_values = arg_vector;
+                    expand_info->can_free_arg_type_infos = TRUE;
                     expand_info->arg_type_infos = MR_GC_NEW_ARRAY(MR_TypeInfo,
                         expand_info->arity);
 
@@ -2554,6 +2695,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
             if (expand_info->need_args) {
                 expand_info->arg_values = data_word_ptr;
+                expand_info->can_free_arg_type_infos = TRUE;
                 expand_info->arg_type_infos = MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
                 expand_info->arg_type_infos[0] = MR_create_type_info(
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
@@ -2578,6 +2720,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
             if (expand_info->need_args) {
                 expand_info->arg_values = data_word_ptr;
+                expand_info->can_free_arg_type_infos = TRUE;
                 expand_info->arg_type_infos = MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
                 expand_info->arg_type_infos[0] =
                     MR_pseudo_type_info_is_ground(type_ctor_info->
@@ -2698,6 +2841,25 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
             expand_info->arg_type_infos = NULL;
             expand_info->arity = 0;
             expand_info->num_extra_args = 0;
+            break;
+
+        case MR_TYPECTOR_REP_TUPLE:
+            expand_info->arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+            expand_info->num_extra_args = 0;
+
+            if (expand_info->need_functor) {
+                MR_make_aligned_string(expand_info->functor, ""{}"");
+            }
+            if (expand_info->need_args) {
+                expand_info->arg_values = (Word *) *data_word_ptr;
+
+                /*
+                ** Type-infos are normally counted from one, but
+                ** the users of this vector count from zero.
+                */
+                expand_info->arg_type_infos =
+                        MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info) + 1;
+            }
             break;
 
         case MR_TYPECTOR_REP_UNIV: {
@@ -2900,7 +3062,9 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
     ** the stuff we want out of it.
     */
 
-    MR_GC_free(expand_info.arg_type_infos);
+    if (expand_info.can_free_arg_type_infos) {
+        MR_GC_free(expand_info.arg_type_infos);
+    }
 
     return success;
 }
@@ -3093,8 +3257,9 @@ det_argument(Type, ArgumentIndex) = Argument :-
     ** all its arguments onto the heap.
     */
 
-    MR_GC_free(expand_info.arg_type_infos);
-
+    if (expand_info.can_free_arg_type_infos) {
+        MR_GC_free(expand_info.arg_type_infos);
+    }
 }").
 
 %-----------------------------------------------------------------------------%

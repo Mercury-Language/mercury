@@ -207,6 +207,9 @@ test_builtins -->
 		% XXX we don't deep copy predicates correctly yet
 	%test_all(newline),
 
+		% test tuples
+	test_all({1, "two", '3', {4, '5', "6"}}),
+
 	newline.
 
 	% Note: testing abstract types is always going to have results

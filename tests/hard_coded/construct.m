@@ -93,9 +93,16 @@ test_construct -->
 	test_construct_2(type_of(poly_four(3, "hello")), "poly_one", 1, [One]),
 	test_construct_2(type_of(poly_four(3, "hello")), "poly_two", 1, [Bye]),
 	test_construct_2(type_of(poly_four(3, "hello")), "poly_four", 2, 
-		[One, Bye]).
+		[One, Bye]),
+	test_construct_2(type_of({1, "two", '3'}), "{}", 3,
+		[univ(4), univ("five"), univ('6')]),
 
-	
+	io__write_string("About to call construct_tuple\n"),
+	{ Tuple = construct_tuple([NumList, EnumList, One, TwoPointOne]) },
+	io__write_string("Constructed tuple: "),
+	io__write(Tuple),
+	io__nl.
+
 :- pred test_construct_2(type_desc::in, string::in, int::in, list(univ)::in,
 	io__state::di, io__state::uo) is det.
 test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
@@ -247,6 +254,9 @@ test_builtins -->
 	
 		% test predicates	
 	test_all(newline), newline,
+
+		% test tuples
+	test_all({1, "a", 'a', {4, 'd'}}), newline,
 
 	newline.
 

@@ -575,7 +575,8 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 	** sense. This is OK, because in that case it will never be used.
 	*/
 
-	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+	if (MR_type_ctor_rep_is_variable_arity(type_ctor_info->type_ctor_rep))
+	{
 		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
 		arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
 			type_info);
@@ -813,6 +814,25 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 */
                 MR_DEBUG_TABLE_INT(table, data);
         #endif
+                break;
+            }
+
+        case MR_TYPECTOR_REP_TUPLE:
+           {
+                MR_Word     *data_value;
+                MR_TypeInfo *arg_type_info_vector;
+                int         arity;
+                int         i;
+
+                data_value = (MR_Word *) data;
+                arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+                arg_type_info_vector =
+                        MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info);
+                for (i = 0; i < arity; i++) {
+                    /* type_infos are counted starting at one */
+                    MR_DEBUG_TABLE_ANY(table, arg_type_info_vector[i + 1],
+                        data_value[i]);
+                }
                 break;
             }
 

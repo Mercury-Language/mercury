@@ -12,6 +12,7 @@ SIMPLE_PROGS = \
 	expand \
 	expand_float \
 	expand_poly \
+	expand_tuple \
 	fib \
 	fib_float \
 	fib_list \

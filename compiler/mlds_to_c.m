@@ -1560,6 +1560,9 @@ mlds_output_mercury_type_prefix(Type, TypeCategory) -->
 		{ TypeCategory = polymorphic_type },
 		io__write_string("MR_Box")
 	;
+		{ TypeCategory = tuple_type },
+		io__write_string("MR_Tuple")
+	;
 		{ TypeCategory = pred_type },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->

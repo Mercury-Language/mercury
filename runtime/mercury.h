@@ -115,6 +115,11 @@ typedef const MR_Closure *MR_ClosurePtr;
 #endif
 
 /*
+** Tuples are always just arrays of polymorphic terms.
+*/
+typedef MR_Box *MR_Tuple;
+
+/*
 ** Typedefs used for the types of RTTI data structures.
 ** Many of these types are defined in mercury_type_info.h,
 ** but the ones which are used only by the MLDS back-end
@@ -132,12 +137,13 @@ typedef MR_Box				MR_BaseTypeclassInfo[];
 
 /*
 ** XXX Currently we hard-code the declarations of the first
-** five of these type-info struct types; this imposes a fixed
+** ten of these type-info struct types; this imposes a fixed
 ** limit of 10 on the arity of types.  (If this is exceeded,
 ** you'll get a parse error in the generated C code, due to
 ** an undeclared type.)
 ** Note that the code for compare and unify in runtime/mercury.c
-** also has a fixed limit of 5 on the arity of types.
+** also has a fixed limit of 5 on the arity of types (other than
+** higher-order and tuple types, which have no limit).
 ** Fortunately types with a high arity tend not to be used very
 ** often, so this is probably OK for now...
 */
@@ -201,6 +207,7 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_c_pointer_0,
 	mercury__builtin__builtin__type_ctor_info_pred_0,
 	mercury__builtin__builtin__type_ctor_info_func_0,
+	mercury__builtin__builtin__type_ctor_info_tuple_0,
 	mercury__array__array__type_ctor_info_array_1,
 	mercury__std_util__std_util__type_ctor_info_univ_0,
 	mercury__std_util__std_util__type_ctor_info_type_desc_0,
@@ -225,6 +232,8 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_character_0
 #define mercury__builtin____type_ctor_info_pred_0 \
 	mercury__builtin__builtin__type_ctor_info_pred_0
+#define mercury__builtin____type_ctor_info_tuple_0 \
+	mercury__builtin__builtin__type_ctor_info_tuple_0
 
 /*
 ** The compiler generates references to this constant.
@@ -361,6 +370,8 @@ bool mercury__builtin____Unify____c_pointer_0_0(
 	MR_C_Pointer x, MR_C_Pointer y); 
 bool mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
 bool mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
+bool mercury__builtin____Unify____tuple_0_0(MR_Type_Info type_info,
+	MR_Tuple x, MR_Tuple y); 
 bool mercury__array____Unify____array_1_0(MR_Type_Info type_info,
 	MR_Array x, MR_Array y);
 bool mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y); 
@@ -392,6 +403,8 @@ void mercury__builtin____Compare____func_0_0(
 	MR_Comparison_Result *result, MR_Func x, MR_Func y);
 void mercury__builtin____Compare____pred_0_0(
 	MR_Comparison_Result *result, MR_Pred x, MR_Pred y); 
+void mercury__builtin____Compare____tuple_0_0(MR_Type_Info type_info,
+	MR_Comparison_Result *result, MR_Tuple x, MR_Tuple y); 
 void mercury__array____Compare____array_1_0(MR_Type_Info type_info,
 	MR_Comparison_Result *result, MR_Array x, MR_Array y);
 void mercury__std_util____Compare____univ_0_0(

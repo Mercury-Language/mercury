@@ -42,11 +42,19 @@
 		lambda_eval_method, list(type)).
 :- mode type_is_higher_order(in, out, out, out) is semidet.
 
+	% Succeed if the given type is a tuple type, returning
+	% the argument types.
+:- pred type_is_tuple(type, list(type)).
+:- mode type_is_tuple(in, out) is semidet.
+
 	% type_id_is_higher_order(TypeId, PredOrFunc) succeeds iff
 	% TypeId is a higher-order predicate or function type.
-
 :- pred type_id_is_higher_order(type_id, pred_or_func, lambda_eval_method).
 :- mode type_id_is_higher_order(in, out, out) is semidet.
+
+	% type_id_is_tuple(TypeId) succeeds iff TypeId is a tuple type.
+:- pred type_id_is_tuple(type_id).
+:- mode type_id_is_tuple(in) is semidet.
 
 	% return true iff there was a `where equality is <predname>'
 	% declaration for the specified type, and return the name of
@@ -111,6 +119,7 @@
 			;	str_type
 			;	float_type
 			;	pred_type
+			;	tuple_type
 			;	enum_type
 			;	polymorphic_type
 			;	user_type.
@@ -170,8 +179,8 @@
 :- pred type_util__type_id_arity(module_info, type_id, arity).
 :- mode type_util__type_id_arity(in, in, out) is det.
 
-	% If the type is a du type, return the list of its constructors.
-
+	% If the type is a du type or a tuple type,
+	% return the list of its constructors.
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
 
@@ -423,6 +432,7 @@ type_is_atomic(Type, ModuleInfo) :-
 type_id_is_atomic(TypeId, ModuleInfo) :-
 	classify_type_id(ModuleInfo, TypeId, BuiltinType),
 	BuiltinType \= polymorphic_type,
+	BuiltinType \= tuple_type,
 	BuiltinType \= pred_type,
 	BuiltinType \= user_type.
 
@@ -474,6 +484,8 @@ classify_type_id(ModuleInfo, TypeId, Type) :-
 		Type = str_type
 	; type_id_is_higher_order(TypeId, _, _) ->
 		Type = pred_type
+	; type_id_is_tuple(TypeId) ->
+		Type = tuple_type
 	; type_id_is_enumeration(TypeId, ModuleInfo) ->
 		Type = enum_type
 	;
@@ -497,6 +509,10 @@ type_is_higher_order(Type, PredOrFunc, EvalMethod, PredArgTypes) :-
 					PredArgTypes, _),
 		PredOrFunc = predicate
 	).
+
+type_is_tuple(Type, ArgTypes) :-
+	type_to_type_id(Type, TypeId, ArgTypes),
+	type_id_is_tuple(TypeId).
 
 	% From the type of a lambda expression, work out how it should
 	% be evaluated.
@@ -541,6 +557,8 @@ type_id_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
 		PorFStr = "func",
 		PredOrFunc = function
 	).
+
+type_id_is_tuple(unqualified("{}") - _).
 
 type_has_user_defined_equality_pred(ModuleInfo, Type, SymName) :-
 	module_info_types(ModuleInfo, TypeTable),
@@ -713,14 +731,24 @@ make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 	% If the type is a du type, return the list of its constructors.
 
 type_constructors(Type, ModuleInfo, Constructors) :-
-	type_to_type_id(Type, TypeId, TypeArgs),
-	module_info_types(ModuleInfo, TypeTable),
-	map__search(TypeTable, TypeId, TypeDefn),
-	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody = du_type(Constructors0, _, _, _),
-	substitute_type_args(TypeParams, TypeArgs, Constructors0,
-		Constructors).
+	( type_is_tuple(Type, TupleArgTypes) ->
+		% tuples are never existentially typed.
+		ExistQVars = [],	
+		ClassConstraints = [],
+		CtorArgs = list__map((func(ArgType) = no - ArgType),
+				TupleArgTypes),
+		Constructors = [ctor(ExistQVars, ClassConstraints,
+				unqualified("{}"), CtorArgs)]
+	;
+		type_to_type_id(Type, TypeId, TypeArgs),
+		module_info_types(ModuleInfo, TypeTable),
+		map__search(TypeTable, TypeId, TypeDefn),
+		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		TypeBody = du_type(Constructors0, _, _, _),
+		substitute_type_args(TypeParams, TypeArgs, Constructors0,
+			Constructors)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -732,6 +760,8 @@ type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 		char__max_char_value(MaxChar),
 		char__min_char_value(MinChar),
 		NumFunctors is MaxChar - MinChar + 1
+	; type_is_tuple(Type, _) ->
+		NumFunctors = 1
 	;
 		type_to_type_id(Type, TypeId, _),
 		module_info_types(ModuleInfo, TypeTable),
@@ -745,6 +775,12 @@ type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 
 type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	(
+		% The argument types of a tuple cons_id are the
+		% arguments of the tuple type.
+		type_is_tuple(VarType, TupleTypeArgs)
+	->
+		ArgTypes = TupleTypeArgs
+	;
 		type_to_type_id(VarType, _, TypeArgs),
 		type_util__do_get_type_and_cons_defn(ModuleInfo, VarType,
 			ConsId, TypeDefn, ConsDefn),
@@ -859,7 +895,12 @@ type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
 	Name \= "type_info",
 	Name \= "type_ctor_info",
 	Name \= "typeclass_info",
-	Name \= "base_typeclass_info".
+	Name \= "base_typeclass_info",
+
+	% We don't handle unary tuples as no_tag types --
+	% they are rare enough that it's not worth
+	% the implementation effort.
+	Name \= "{}".
 
 %-----------------------------------------------------------------------------%
 

@@ -42,6 +42,7 @@ PROGS=	\
 	record_syntax \
 	superclass_call \
 	test_default_func_mode \
+	tuple_instance \
 	typeclass_exist_method \
 	typeclass_exist_method_2 \
 	typeclass_test_5 \

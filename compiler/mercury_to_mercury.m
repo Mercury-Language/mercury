@@ -2580,6 +2580,23 @@ mercury_output_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 		mercury_output_list_args(Xs, VarSet, AppendVarnums),
 		io__write_string("]")
 	;
+		{ Functor = term__atom("{}") },
+		{ Args = [X] }
+	->
+		% A unary tuple is usually a DCG escape,
+		% so add some extra space.
+		io__write_string("{ "),
+		mercury_output_term(X, VarSet, AppendVarnums),
+		io__write_string(" }")
+	;
+		{ Functor = term__atom("{}") },
+		{ Args = [X | Xs] }
+	->
+		io__write_string("{"),
+		mercury_output_term(X, VarSet, AppendVarnums),
+		mercury_output_remaining_terms(Xs, VarSet, AppendVarnums),
+		io__write_string("}")
+	;
 		{ Args = [PrefixArg] },
 		{ Functor = term__atom(FunctorName) },
 		{ mercury_unary_prefix_op(FunctorName) }

@@ -188,7 +188,7 @@
 
 :- implementation.
 
-:- import_module builtin_ops, type_util, special_pred.
+:- import_module builtin_ops, prog_util, type_util, special_pred.
 
 :- import_module char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.
@@ -295,11 +295,18 @@ code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel) :-
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId, _),
-			% All type_ids here should be module qualified,
-			% since builtin types are handled separately in
-			% polymorphism.m.
-			TypeId = qualified(TypeModule, TypeName) - TypeArity
+			% All type_ids other than tuples here should be
+			% module qualified, since builtin types are
+			% handled separately in polymorphism.m.
+			(
+				TypeId = unqualified(TypeName) - _,
+				type_id_is_tuple(TypeId),
+				mercury_public_builtin_module(TypeModule)
+			;
+				TypeId = qualified(TypeModule, TypeName) - _
+			)
 		->
+			TypeId = _ - TypeArity,
 			(
 				ThisModule \= TypeModule,
 				PredName = "__Unify__",
@@ -570,6 +577,13 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	->
 		char__to_int(Char, CharCode),
 		Tag = int_constant(CharCode)
+	;
+		% Tuples do not need a tag. Note that unary tuples are not
+		% treated as no_tag types. There's no reason why they
+		% couldn't be, it's just not worth the effort.
+		type_is_tuple(Type, _)
+	->
+		Tag = unshared_tag(0)
 	;
 			% Use the type to determine the type_id
 		( type_to_type_id(Type, TypeId0, _) ->

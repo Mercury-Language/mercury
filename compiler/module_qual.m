@@ -838,6 +838,9 @@ qualify_type(Type0, Type, Info0, Info) -->
 		; { type_id_is_higher_order(TypeId0, _, _) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
+		; { type_id_is_tuple(TypeId0) } ->
+			{ TypeId = TypeId0 },
+			{ Info1 = Info0 }
 		;
 			{ mq_info_get_types(Info0, Types) },
 			find_unique_match(TypeId0, TypeId, Types,

@@ -271,7 +271,7 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 		( map__search(SpecialPredMap, unify - TypeId, PredId0) ->
 			PredId = PredId0,
 			ModuleInfo1 = ModuleInfo0
-		; 
+		;
 			% We generate unification predicates for most
 			% imported types lazily, so add the declarations
 			% and clauses now.
@@ -501,8 +501,44 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 
 unify_proc__add_lazily_generated_unify_pred(TypeId,
 		PredId, ModuleInfo0, ModuleInfo) :-
-	unify_proc__collect_type_defn(ModuleInfo0, TypeId,
-		Type, TVarSet, TypeBody, Context),
+	(
+		type_id_is_tuple(TypeId) 
+	->
+		TypeId = _ - TupleArity,
+		
+		%
+		% Build a hlds_type_body for the tuple constructor, which will
+		% be used by unify_proc__generate_clause_info.
+		%
+
+		varset__init(TVarSet0),
+		varset__new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
+		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+
+		% Tuple constructors can't be existentially quantified.
+		ExistQVars = [], 
+		ClassConstraints = [],
+
+		MakeUnamedField = (func(ArgType) = no - ArgType),
+		CtorArgs = list__map(MakeUnamedField, TupleArgTypes),
+
+		Ctor = ctor(ExistQVars, ClassConstraints,
+				CtorSymName, CtorArgs),
+
+		CtorSymName = unqualified("{}"),
+		ConsId = cons(CtorSymName, TupleArity),
+		map__from_assoc_list([ConsId - unshared_tag(0)],
+			ConsTagValues),
+		UnifyPred = no,
+		IsEnum = no,
+		TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred),
+		construct_type(TypeId, TupleArgTypes, Type),
+
+		term__context_init(Context)
+	;
+		unify_proc__collect_type_defn(ModuleInfo0, TypeId,
+			Type, TVarSet, TypeBody, Context)
+	),
 
 	% Call make_hlds.m to construct the unification predicate.
 	( can_generate_special_pred_clauses_for_type(TypeId, TypeBody) ->

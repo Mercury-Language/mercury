@@ -824,6 +824,30 @@ ctor_arg_list_to_inst_list([_Name - _Type | Args], Uniq, [Inst | Insts]) :-
 
 propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 	(
+		type_is_tuple(Type, TupleArgTypes)
+	->
+		list__map(
+		    (pred(BoundInst0::in, BoundInst::out) is det :-
+			BoundInst0 = functor(Functor, ArgInsts0),
+			(
+				Functor = cons(unqualified("{}"), _),
+				list__length(ArgInsts0,
+					list__length(TupleArgTypes))
+			->
+				map__init(Subst),
+				propagate_types_into_inst_list(TupleArgTypes,
+					Subst, ModuleInfo, ArgInsts0, ArgInsts)
+			;
+				% The bound_inst's arity does not match the
+				% tuple's arity, so leave it alone. This can
+				% only happen in a user defined bound_inst.
+				% A mode error should be reported if anything
+				% tries to match with the inst.
+				ArgInsts = ArgInsts0
+			),
+			BoundInst = functor(Functor, ArgInsts)
+		    ), BoundInsts0, BoundInsts)
+	;
 		type_to_type_id(Type, TypeId, TypeArgs),
 		TypeId = qualified(TypeModule, _) - _,
 		module_info_types(ModuleInfo, TypeTable),

@@ -143,19 +143,27 @@ special_pred_description(index, "indexing predicate").
 
 special_pred_is_generated_lazily(ModuleInfo, TypeId) :-
 	classify_type_id(ModuleInfo, TypeId, Class),
-	( Class = user_type ; Class = enum_type ),
-	module_info_types(ModuleInfo, Types),
-	map__search(Types, TypeId, TypeDefn),
-	hlds_data__get_type_defn_body(TypeDefn, Body),
-	hlds_data__get_type_defn_status(TypeDefn, Status),
-	special_pred_is_generated_lazily_2(ModuleInfo,
-		TypeId, Body, Status).
+	(
+		Class = tuple_type
+	;
+		( Class = user_type ; Class = enum_type ),
+		module_info_types(ModuleInfo, Types),
+		map__search(Types, TypeId, TypeDefn),
+		hlds_data__get_type_defn_body(TypeDefn, Body),
+		hlds_data__get_type_defn_status(TypeDefn, Status),
+		special_pred_is_generated_lazily_2(ModuleInfo,
+			TypeId, Body, Status)
+	).
 
 special_pred_is_generated_lazily(ModuleInfo, TypeId, Body, Status) :-
 	classify_type_id(ModuleInfo, TypeId, Class),
-	( Class = user_type ; Class = enum_type ),
-	special_pred_is_generated_lazily_2(ModuleInfo,
-		TypeId, Body, Status).
+	(
+		Class = tuple_type
+	;
+		( Class = user_type ; Class = enum_type ),
+		special_pred_is_generated_lazily_2(ModuleInfo,
+			TypeId, Body, Status)
+	).
 
 :- pred special_pred_is_generated_lazily_2(module_info,
 		type_id, hlds_type_body, import_status).

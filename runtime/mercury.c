@@ -80,6 +80,7 @@ static MR_UnifyFunc_0
 
 static MR_UnifyFunc_1
 	mercury__array__do_unify__array_1_0,
+	mercury__builtin__do_unify__tuple_0_0,
 	mercury__private_builtin__do_unify__type_ctor_info_1_0,
 	mercury__private_builtin__do_unify__type_info_1_0,
 	mercury__private_builtin__do_unify__typeclass_info_1_0,
@@ -99,6 +100,7 @@ static MR_CompareFunc_0
 
 static MR_CompareFunc_1
 	mercury__array__do_compare__array_1_0,
+	mercury__builtin__do_compare__tuple_0_0,
 	mercury__private_builtin__do_compare__type_ctor_info_1_0,
 	mercury__private_builtin__do_compare__type_info_1_0,
 	mercury__private_builtin__do_compare__typeclass_info_1_0,
@@ -168,6 +170,7 @@ MR_define_type_ctor_info(builtin, void, 0, MR_TYPECTOR_REP_VOID);
 MR_define_type_ctor_info(builtin, c_pointer, 0, MR_TYPECTOR_REP_C_POINTER);
 MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
 MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_PRED);
+MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
 MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 MR_define_type_ctor_info(std_util, univ, 0, MR_TYPECTOR_REP_UNIV);
 MR_define_type_ctor_info(std_util, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
@@ -199,19 +202,29 @@ mercury__builtin__unify_2_p_0(MR_Type_Info ti, MR_Box x, MR_Box y)
 {
 	MR_TypeInfo		type_info;
 	MR_TypeCtorInfo		type_ctor_info;
+	MR_TypeCtorRep		type_ctor_rep;
 	int			arity;
 	MR_TypeInfoParams	params;
 	MR_Type_Info		*args;
 
 	type_info = (MR_TypeInfo) ti;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
-		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
-		params = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info);
-	} else {
-		arity = type_ctor_info->arity;
-		params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+
+	/*
+	** Tuple and higher-order types do not have a fixed arity,
+	** so they need to be special cased here.
+	*/
+	type_ctor_rep = type_ctor_info->type_ctor_rep;
+	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
+		return mercury__builtin____Unify____tuple_0_0(ti,
+			(MR_Tuple) x, (MR_Tuple) y);
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		return mercury__builtin____Unify____pred_0_0((MR_Pred) x,
+			(MR_Pred) y);
 	}
+
+	arity = type_ctor_info->arity;
+	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	args = (MR_Type_Info *) params;
 
 	switch(arity) {
@@ -247,19 +260,31 @@ mercury__builtin__compare_3_p_0(MR_Type_Info ti, MR_Comparison_Result *res,
 {
 	MR_TypeInfo		type_info;
 	MR_TypeCtorInfo		type_ctor_info;
+	MR_TypeCtorRep		type_ctor_rep;
 	int			arity;
 	MR_TypeInfoParams	params;
 	MR_Type_Info		*args;
 
 	type_info = (MR_TypeInfo) ti;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
-		arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
-		params = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info);
-	} else {
-		arity = type_ctor_info->arity;
-		params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+
+	/*
+	** Tuple and higher-order types do not have a fixed arity,
+	** so they need to be special cased here.
+	*/
+	type_ctor_rep = type_ctor_info->type_ctor_rep;
+	if (type_ctor_rep == MR_TYPECTOR_REP_TUPLE) {
+		mercury__builtin____Compare____tuple_0_0(ti,
+			res, (MR_Tuple) x, (MR_Tuple) y);
+		return;
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		mercury__builtin____Compare____pred_0_0(res,
+			(MR_Pred) x, (MR_Pred) y);
+	    	return;
 	}
+
+	arity = type_ctor_info->arity;
+	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
 	args = (MR_Type_Info *) params;
 
 	switch(arity) {
@@ -381,6 +406,30 @@ bool
 mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y)
 {
 	MR_fatal_error("called unify for `pred' type");
+}
+
+bool
+mercury__builtin____Unify____tuple_0_0(MR_Type_Info ti, MR_Tuple x, MR_Tuple y)
+{
+	int i, arity;
+	bool result;
+	MR_TypeInfo type_info;
+	MR_TypeInfo arg_type_info;
+
+	type_info = (MR_TypeInfo) ti;
+	arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+
+	for (i = 0; i < arity; i++) {
+		/* type_infos are counted starting at one. */
+		arg_type_info =
+			MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+		result = mercury__builtin__unify_2_p_0(
+				(MR_Type_Info) arg_type_info, x[i], y[i]);
+		if (result == FALSE) {
+			return FALSE;
+		}
+	}
+	return TRUE;
 }
 
 bool
@@ -509,6 +558,30 @@ mercury__builtin____Compare____pred_0_0(MR_Comparison_Result *result,
 }
 
 void
+mercury__builtin____Compare____tuple_0_0(MR_Type_Info ti,
+	MR_Comparison_Result *result, MR_Tuple x, MR_Tuple y)
+{
+	int i, arity;
+	MR_TypeInfo type_info;
+	MR_TypeInfo arg_type_info;
+
+	type_info = (MR_TypeInfo) ti;
+	arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+
+	for (i = 0; i < arity; i++) {
+		/* type_infos are counted starting at one. */
+		arg_type_info =
+			MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+		mercury__builtin__compare_3_p_0((MR_Type_Info) arg_type_info,
+				result, x[i], y[i]);
+		if (*result != MR_COMPARE_EQUAL) {
+			return;
+		}
+	}
+	*result = MR_COMPARE_EQUAL;
+}
+
+void
 mercury__array____Compare____array_1_0(
 	MR_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Array x, MR_Array y)
@@ -618,6 +691,14 @@ static bool
 mercury__builtin__do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify for `pred' type");
+}
+
+static bool
+mercury__builtin__do_unify__tuple_0_0(MR_Type_Info type_info,
+		MR_Box x, MR_Box y)
+{
+	return mercury__builtin____Unify____tuple_0_0(
+		type_info, (MR_Tuple) x, (MR_Tuple) y);
 }
 
 static bool
@@ -739,6 +820,15 @@ mercury__builtin__do_compare__pred_0_0(MR_Comparison_Result *result,
 	MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called compare/3 for pred type");
+}
+
+static void
+mercury__builtin__do_compare__tuple_0_0(
+	MR_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
+{
+	mercury__builtin____Compare____tuple_0_0(
+		type_info, result, (MR_Tuple) x, (MR_Tuple) y);
 }
 
 static void

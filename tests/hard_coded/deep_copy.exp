@@ -90,6 +90,9 @@ TESTING BUILTINS
 univ(["hi! I\'m a univ!"] : list:list(string))
 univ(["hi! I\'m a univ!"] : list:list(string))
 univ(["hi! I\'m a univ!"] : list:list(string))
+{1, "two", '3', {4, '5', "6"}}
+{1, "two", '3', {4, '5', "6"}}
+{1, "two", '3', {4, '5', "6"}}
 
 TESTING OTHER TYPES
 var(1)

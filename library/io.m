@@ -1994,6 +1994,14 @@ io__write_ordinary_term(Term, Priority) -->
 		io__write_univ(BracedTerm),
 		io__write_string(" }")
 	;
+		{ Functor = "{}" },
+		{ Args = [BracedHead | BracedTail] }
+	->
+		io__write_char('{'),
+		io__write_arg(BracedHead),
+		io__write_term_args(BracedTail),
+		io__write_char('}')
+	;
 		{ Args = [PrefixArg] },
 		{ ops__lookup_prefix_op(OpTable, Functor,
 			OpPriority, OpAssoc) }

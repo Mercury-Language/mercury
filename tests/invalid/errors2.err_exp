@@ -54,6 +54,11 @@ errors2.m:078:   in argument 1 of call to predicate `from_char_list/2':
 errors2.m:078:   error: undefined symbol `[]/0'.
 errors2.m:078: In clause for predicate `errors2:type_error_8/0':
 errors2.m:078:   error: undefined predicate `from_char_list/2'.
+errors2.m:085: In clause for predicate `errors2:type_error_9/0':
+errors2.m:085:   type error in unification of variable `X'
+errors2.m:085:   and variable `Y'.
+errors2.m:085:   `X' has type `{int, string, character}',
+errors2.m:085:   `Y' has type `{string, character, int}'.
 errors2.m:009: Inferred :- pred bind_type_param(int).
 errors2.m:019: In clause for `unresolved_polymorphism':
 errors2.m:019:   in argument 1 of call to predicate `errors2:bind_type_param/2':

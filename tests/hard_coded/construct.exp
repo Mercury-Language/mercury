@@ -158,6 +158,10 @@ TESTING BUILTINS
 -1 functors in this type
 
 
+1 functors in this type
+0 - {}/4
+
+
 
 TESTING OTHER TYPES
 1 functors in this type
@@ -220,3 +224,7 @@ About to construct poly_two/1
 Constructed: poly_two("goodbye")
 About to construct poly_four/2
 Constructed: poly_four(1, "goodbye")
+About to construct {}/3
+Constructed: {4, "five", '6'}
+About to call construct_tuple
+Constructed tuple: univ({[1, 2, 3], [one, two, three], 1, 2.10000000000000} : {list:list(int), list:list(construct:enum), int, float)})

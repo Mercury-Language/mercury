@@ -108,6 +108,7 @@ PROGS=	\
 	term_io_test \
 	type_to_term_bug \
 	tim_qual1 \
+	tuple_test \
 	user_defined_equality \
 	write \
 	write_reg1

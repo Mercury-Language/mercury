@@ -1260,23 +1260,35 @@ ml_field_names_and_types(Type, ConsId, ArgTypes, Fields) -->
 	%
 	% Lookup the field types for the arguments of this cons_id
 	%
-	=(Info),
-	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
-			_TypeDefn, ConsDefn) },
-	{ ConsDefn = hlds_cons_defn(_, _, Fields0, _, _) },
-	%
-	% Add the fields for any type_infos and/or typeclass_infos
-	% inserted for existentially quantified data types.
-	% For these, we just copy the types from the ArgTypes.
-	%
-	{ NumArgs = list__length(ArgTypes) },
-	{ NumFieldTypes0 = list__length(Fields0) },
-	{ NumExtraTypes = NumArgs - NumFieldTypes0 },
-	{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
-	{ ExtraFields = list__map(func(FieldType) = no - FieldType,
-		ExtraFieldTypes) },
-	{ Fields = list__append(ExtraFields, Fields0) }.
+	{ MakeUnnamedField = (func(FieldType) = no - FieldType) },
+	(
+		{ type_is_tuple(Type, _) },
+		{ list__length(ArgTypes, TupleArity) }
+	->
+		% The argument types for tuples are unbound type variables.
+		{ varset__init(TypeVarSet0) },
+		{ varset__new_vars(TypeVarSet0, TupleArity,
+			TVars, _TypeVarSet) },
+		{ term__var_list_to_term_list(TVars, FieldTypes) },
+		{ Fields = list__map(MakeUnnamedField, FieldTypes) }
+	;
+		=(Info),
+		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+		{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
+				_TypeDefn, ConsDefn) },
+		{ ConsDefn = hlds_cons_defn(_, _, Fields0, _, _) },
+		%
+		% Add the fields for any type_infos and/or typeclass_infos
+		% inserted for existentially quantified data types.
+		% For these, we just copy the types from the ArgTypes.
+		%
+		{ NumArgs = list__length(ArgTypes) },
+		{ NumFieldTypes0 = list__length(Fields0) },
+		{ NumExtraTypes = NumArgs - NumFieldTypes0 },
+		{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
+		{ ExtraFields = list__map(MakeUnnamedField, ExtraFieldTypes) },
+		{ Fields = list__append(ExtraFields, Fields0) }
+	).
 
 :- pred ml_gen_unify_args(cons_id, prog_vars, list(uni_mode), list(prog_type),
 		list(constructor_arg), prog_type, mlds__lval, int, int,

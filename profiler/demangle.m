@@ -490,6 +490,8 @@ fix_mangled_ascii -->
 		insert_prefix(";")
 	; remove_prefix("f_cut") ->
 		insert_prefix("!")
+	; remove_prefix("f_tuple") ->
+		insert_prefix("{}")
 	; remove_prefix("f_") ->
 		fix_mangled_ascii_chars
 	;

@@ -69,6 +69,12 @@
 :- pred builtin_compare_pred(comparison_result::uo, (pred)::in, (pred)::in)
 	is det.
 
+	% These should never be called -- the compiler never
+	% specializes them because the generic compare is just
+	% as good as anything we could put here.
+:- pred builtin_unify_tuple(T::in, T::in) is semidet.
+:- pred builtin_compare_tuple(comparison_result::uo, T::in, T::in) is det.
+
 	% The following pred is used for compare/3
 	% on non-canonical types (types for which there is a
 	% `where equality is ...' declaration).
@@ -148,6 +154,13 @@ builtin_compare_string(R, S1, S2) :-
 		R = (>)
 	).
 
+:- pred builtin_strcmp(int, string, string).
+:- mode builtin_strcmp(out, in, in) is det.
+
+:- pragma c_code(builtin_strcmp(Res::out, S1::in, S2::in),
+	[will_not_call_mercury, thread_safe],
+	"Res = strcmp(S1, S2);").
+
 builtin_unify_float(F, F).
 
 builtin_compare_float(R, F1, F2) :-
@@ -159,12 +172,25 @@ builtin_compare_float(R, F1, F2) :-
 		R = (=)
 	).
 
-:- pred builtin_strcmp(int, string, string).
-:- mode builtin_strcmp(out, in, in) is det.
+builtin_unify_tuple(_, _) :-
+	( semidet_succeed ->
+		% The generic unification function in the runtime
+		% should handle this itself.
+		error("builtin_unify_tuple called")
+	;
+		% the following is never executed
+		semidet_succeed
+	).
 
-:- pragma c_code(builtin_strcmp(Res::out, S1::in, S2::in),
-	[will_not_call_mercury, thread_safe],
-	"Res = strcmp(S1, S2);").
+builtin_compare_tuple(Res, _, _) :-
+	( semidet_succeed ->
+		% The generic comparison function in the runtime
+		% should handle this itself.
+		error("builtin_compare_tuple called")
+	;
+		% the following is never executed
+		Res = (<)
+	).
 
 :- pragma no_inline(builtin_unify_pred/2).
 builtin_unify_pred(_X, _Y) :-

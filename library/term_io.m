@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -234,6 +234,14 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 		io__write_string("{ "),
 		term_io__write_term_2(BracedTerm, VarSet0, N0, VarSet, N),
 		io__write_string(" }")
+	;
+		{ Functor = term__atom("{}") },
+		{ Args = [BracedHead | BracedTail] }
+	->
+		io__write_char('{'),
+		term_io__write_arg_term(BracedHead, VarSet0, N0, VarSet1, N1),
+		term_io__write_term_args(BracedTail, VarSet1, N1, VarSet, N),
+		io__write_char('}')
 	;
 		% the empty functor '' is used for higher-order syntax:
 		% Var(Arg, ...) gets parsed as ''(Var, Arg).  When writing

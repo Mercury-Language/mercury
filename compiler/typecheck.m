@@ -3724,6 +3724,34 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 		ConsInfoList2 = ConsInfoList1
 	),
 
+	%
+	% Check if Functor is a tuple constructor.
+	%
+	(
+		Functor = cons(unqualified("{}"), TupleArity)
+	->
+		%
+		% Make some fresh type variables for the argument types.
+		%
+		varset__init(TupleConsTypeVarSet0),
+		varset__new_vars(TupleConsTypeVarSet0, TupleArity,
+			TupleArgTVars, TupleConsTypeVarSet),
+		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+
+		construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
+			TupleConsType),
+
+		% Tuples can't have existentially typed arguments.
+		TupleExistQVars = [],
+
+		TupleConsInfo = cons_type_info(TupleConsTypeVarSet,
+			TupleExistQVars, TupleConsType,
+			TupleArgTypes, constraints([], [])),
+		ConsInfoList3 = [TupleConsInfo | ConsInfoList2]
+	;
+		ConsInfoList3 = ConsInfoList2
+	),
+
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
@@ -3731,9 +3759,9 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 		builtin_pred_type(TypeCheckInfo, Functor, Arity,
 			PredConsInfoList)
 	->
-		list__append(ConsInfoList2, PredConsInfoList, ConsInfoList3)
+		list__append(ConsInfoList3, PredConsInfoList, ConsInfoList4)
 	;
-		ConsInfoList3 = ConsInfoList2
+		ConsInfoList4 = ConsInfoList3
 	),
 	
 	%
@@ -3746,11 +3774,11 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 			InvalidFieldUpdates0)
 	->
 		list__append(FieldAccessConsInfoList,
-			ConsInfoList3, ConsInfoList),
+			ConsInfoList4, ConsInfoList),
 		InvalidFieldUpdates = InvalidFieldUpdates0
 	;
 		InvalidFieldUpdates = [],
-		ConsInfoList = ConsInfoList3
+		ConsInfoList = ConsInfoList4
 	).
 
 :- pred flip_quantifiers(cons_type_info, cons_type_info).

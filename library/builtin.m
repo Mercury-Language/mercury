@@ -24,6 +24,7 @@
 % TYPES.
 
 % The types `character', `int', `float', and `string',
+% and tuple types `{}', `{T}', `{T1, T2}', ...
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
 % and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
 % are builtin and are implemented using special code in the
@@ -273,6 +274,14 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, pred, 0,
 	mercury__builtin_unify_pred_2_0,
 	mercury__builtin_compare_pred_3_0);
 
+	/*
+	** All tuple types use the following type_ctor_info.
+	*/
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, tuple, 0,
+	MR_TYPECTOR_REP_TUPLE,
+	mercury__builtin_unify_tuple_2_0,
+	mercury__builtin_compare_tuple_3_0);
+
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(void, 0, MR_TYPECTOR_REP_VOID);
 
 #ifdef	NATIVE_GC
@@ -327,6 +336,8 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___type_ctor_info_pred_0, _pred_);
 	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
 		mercury_data___type_ctor_info_func_0, _pred_);
+	MR_INIT_BUILTIN_TYPE_CTOR_INFO(
+		mercury_data___type_ctor_info_tuple_0, _tuple_);
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
 }

@@ -198,6 +198,11 @@ and
 all Vars Goal
 @end example
 
+Terms with functor '@{@}/@var{N}' are treated slightly differently in Mercury
+than in ISO Prolog. ISO Prolog specifies that ``@{1, 2, 3@}'' is parsed as
+@code{'@{@}'(','(1, ','(2, 3)))}. In Mercury, it is parsed as
+@code{'@{@}'(1, 2, 3)}.
+
 Mercury does not (yet) allow users to define their own operators.
 
 @node IO

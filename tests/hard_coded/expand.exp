@@ -109,6 +109,10 @@ expand: functor . arity 2 arguments ["hi! I\'m a univ!", []]
 no arguments
 expand: functor <<predicate>> arity 0 arguments []
 
+{}/4
+argument 4 of functor {} was:{1, 2, 3, 4}
+expand: functor {} arity 4 arguments [1, 'b', "third", {1, 2, 3, 4}]
+
 
 TESTING OTHER TYPES
 var/1

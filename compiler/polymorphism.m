@@ -2419,20 +2419,28 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 	% (i.e. types which are not type variables)
 	%
 	(
-		type_is_higher_order(Type, PredOrFunc, _, TypeArgs)
+		( type_is_higher_order(Type, PredOrFunc, _, TypeArgs0) ->
+			TypeArgs = TypeArgs0,
+			hlds_out__pred_or_func_to_str(PredOrFunc,
+				PredOrFuncStr),
+			TypeId = unqualified(PredOrFuncStr) - 0
+		; type_is_tuple(Type, TypeArgs1) ->
+			TypeArgs = TypeArgs1,
+			TypeId = unqualified("tuple") - 0
+		;
+			fail
+		)
 	->
 		% This occurs for code where a predicate calls a polymorphic
-		% predicate with a known higher-order value of the type
-		% variable.
+		% predicate with a known higher-order or tuple value of the
+		% type variable.
 		% The transformation we perform is basically the same as
 		% in the first-order case below, except that we map
-		% pred/func types to builtin pred/0 or func/0 for the
-		% purposes of creating type_infos.  
+		% pred types to pred/0, func types to func/0 and tuple
+		% types to tuple/0 for the purposes of creating type_infos.  
 		% To allow univ_to_type to check the type_infos
 		% correctly, the actual arity of the pred is added to
 		% the type_info of higher-order types.
-		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		TypeId = unqualified(PredOrFuncStr) - 0,
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			yes, Context, Var, ExtraGoals, Info0, Info)
 	;
@@ -2484,7 +2492,7 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 :- mode polymorphism__construct_type_info(in, in, in, in, in, out, out, 
 	in, out) is det.
 
-polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder, 
+polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrderOrTuple, 
 		Context, Var, ExtraGoals, Info0, Info) :-
 
 	% Create the typeinfo vars for the arguments
@@ -2499,7 +2507,7 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 		TypeId, ModuleInfo, VarSet1, VarTypes1, 
 		BaseVar, BaseGoal, VarSet2, VarTypes2),
 	polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
-		ArgTypeInfoGoals, Type, IsHigherOrder,
+		ArgTypeInfoGoals, Type, IsHigherOrderOrTuple,
 		BaseVar, VarSet2, VarTypes2, [BaseGoal],
 		Var, VarSet, VarTypes, ExtraGoals),
 
@@ -2522,12 +2530,12 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 	out, out, out, out) is det.
 
 polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
-		IsHigherOrder, BaseVar, VarSet0, VarTypes0, ExtraGoals0,
+		IsHigherOrderOrTuple, BaseVar, VarSet0, VarTypes0, ExtraGoals0,
 		Var, VarSet, VarTypes, ExtraGoals) :-
 	% Unfortunately, if we have higher order terms, we
 	% can no longer just optimise them to be the actual
 	% type_ctor_info
-	( IsHigherOrder = yes ->
+	( IsHigherOrderOrTuple = yes ->
 		list__length(ArgTypeInfoVars, PredArity),
 		polymorphism__make_count_var(PredArity,
 			VarSet0, VarTypes0, ArityVar, ArityGoal,
@@ -2641,6 +2649,7 @@ polymorphism__get_category_name(enum_type, "int").
 polymorphism__get_category_name(float_type, "float").
 polymorphism__get_category_name(str_type, "string").
 polymorphism__get_category_name(pred_type, "pred").
+polymorphism__get_category_name(tuple_type, "tuple").
 polymorphism__get_category_name(polymorphic_type, _) :-
 	error("polymorphism__get_category_name: polymorphic type").
 polymorphism__get_category_name(user_type, _) :-

@@ -142,6 +142,9 @@ test_builtins -->
 		% test predicates	
 	test_all(newline), newline,
 
+		% test tuples
+	test_all({1, 'b', "third", {1,2,3,4}}), newline,
+
 	newline.
 
 	% Note: testing abstract types is always going to have results

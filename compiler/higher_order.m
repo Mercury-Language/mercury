@@ -1701,6 +1701,15 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 	special_pred_get_type(PredName, Args, Var),
 	map__lookup(VarTypes, Var, SpecialPredType),
 	SpecialPredType \= term__variable(_),
+
+	% Don't specialize tuple types -- the code to unify
+	% them only exists in the generic unification routine
+	% in the runtime. `private_builtin__builtin_unify_tuple/2'
+	% and `private_builtin__builtin_compare_tuple/3' always abort.
+	% It might be worth inlining complicated unifications of
+	% small tuples (or any other small type).
+	\+ type_is_tuple(SpecialPredType, _),
+
 	Args = [TypeInfoVar | SpecialPredArgs],
 	map__search(PredVars, TypeInfoVar,
 		constant(_TypeInfoConsId, TypeInfoVarArgs)),
@@ -1976,6 +1985,9 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
 	;
 		TypeCategory = pred_type,
 		error("pred type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = tuple_type,
+		error("tuple type in find_builtin_type_with_equivalent_compare")
 	;
 		TypeCategory = enum_type,
 		construct_type(unqualified("int") - 0, [], EqvType),

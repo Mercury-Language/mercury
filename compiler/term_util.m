@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,6 +306,13 @@ find_weights_for_cons(Ctor, TypeId, Params, Weights0, Weights) :-
 	ConsId = cons(SymName, Arity),
 	map__det_insert(Weights0, TypeId - ConsId, WeightInfo, Weights).
 
+:- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
+
+find_weights_for_tuple(Arity, weight(Weight, ArgInfos)) :-
+	% None of the tuple arguments are recursive.
+	Weight = Arity,
+	list__duplicate(Arity, yes, ArgInfos).
+
 :- pred find_and_count_nonrec_args(list(constructor_arg)::in,
 	type_id::in, list(type_param)::in,
 	int::out, list(bool)::out) is det.
@@ -330,6 +337,19 @@ is_arg_recursive(Arg, Id, Params) :-
 	Id = ArgTypeId,
 	list__perm(Params, ArgTypeParams).
 
+:- pred search_weight_table(weight_table::in, type_id::in, cons_id::in,
+		weight_info::out) is semidet.
+
+search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) :-
+	( map__search(WeightMap, TypeId - ConsId, WeightInfo0) ->
+		WeightInfo = WeightInfo0
+	; type_id_is_tuple(TypeId) ->
+		TypeId = _ - Arity,
+		find_weights_for_tuple(Arity, WeightInfo)
+	;
+		fail
+	).
+
 %-----------------------------------------------------------------------------%
 
 % Although the module info is not used in either of these norms, it could
@@ -352,14 +372,14 @@ functor_norm(total, _, ConsId, _Module, Int, Args, Args, Modes, Modes) :-
 	).
 functor_norm(use_map(WeightMap), TypeId, ConsId, _Module, Int,
 		Args, Args, Modes, Modes) :-
-	( map__search(WeightMap, TypeId - ConsId, WeightInfo) ->
+	( search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, _)
 	;
 		Int = 0
 	).
 functor_norm(use_map_and_args(WeightMap), TypeId, ConsId, _Module, Int,
 		Args0, Args, Modes0, Modes) :-
-	( map__search(WeightMap, TypeId - ConsId, WeightInfo) ->
+	( search_weight_table(WeightMap, TypeId, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, UseArgList),
 		(
 			functor_norm_filter_args(UseArgList, Args0, Args1,
@@ -569,6 +589,7 @@ zero_size_type_category(char_type, _, _, yes).
 zero_size_type_category(str_type, _, _, yes).
 zero_size_type_category(float_type, _, _, yes).
 zero_size_type_category(pred_type, _, _, no).
+zero_size_type_category(tuple_type, _, _, no).
 zero_size_type_category(enum_type, _, _, yes).
 zero_size_type_category(polymorphic_type, _, _, no).
 zero_size_type_category(user_type, _, _, no).
