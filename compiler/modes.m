@@ -2452,8 +2452,8 @@ mode_info_add_live_vars(NewLiveVars,
 mode_info_remove_live_vars(OldLiveVars, ModeInfo0, ModeInfo) :-
 	ModeInfo0 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars0),
 	ModeInfo1 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars),
-	( delete_first(LiveVars0, OldLiveVars, LiveVars) ->
-		true
+	( delete_first(LiveVars0, OldLiveVars, LiveVars1) ->
+		LiveVars = LiveVars1
 	;
 		error("mode_info_remove_live_vars: delete_first failed")
 	),
@@ -3309,7 +3309,7 @@ report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mode_context_init(mode_context).
-:- mode mode_context_init(in) is det.
+:- mode mode_context_init(out) is det.
 
 mode_context_init(uninitialized).
 
