@@ -62,6 +62,8 @@
 
 :- implementation.
 
+:- import_module type_spec_2.
+
 main -->
 	{ type_spec([1,2,3], [3,4,5], Result1) },
 	io__write(Result1),
@@ -103,9 +105,12 @@ main -->
 		io__write_string("Succeeded\n")
 	;
 		io__write_string("Failed\n")
+	),
+	( { no_type_spec([1, 2, 3], [1, 2, 3]) } ->
+		io__write_string("Succeeded\n")
+	;
+		io__write_string("Failed\n")
 	).
-
-
 
 type_spec([], [], []).
 type_spec([_ | _], [], []).

@@ -1794,7 +1794,13 @@ mercury_compile__maybe_higher_order(HLDS0, Verbose, Stats, HLDS) -->
 	% --type-specialization implies --user-guided-type-specialization.
 	globals__io_lookup_bool_option(user_guided_type_specialization, Types),
 
-	( { HigherOrder = yes ; Types = yes } ->
+	% Always produce the specialized versions for which
+	% `:- pragma type_spec' declarations exist, because
+	% importing modules might call them.
+	{ module_info_type_spec_info(HLDS0, TypeSpecInfo) },
+	{ TypeSpecInfo = type_spec_info(TypeSpecPreds, _, _, _) },
+
+	( { HigherOrder = yes ; Types = yes ; \+ set__empty(TypeSpecPreds) } ->
 		maybe_write_string(Verbose,
 		"% Specializing higher-order and polymorphic predicates...\n"),
 		maybe_flush_output(Verbose),

@@ -61,7 +61,9 @@ specialize_higher_order(ModuleInfo0, ModuleInfo) -->
 	{ map__init(NewPredMap) },
 	{ map__init(PredVarMap) },
 	{ NewPreds0 = new_preds(NewPredMap, PredVarMap) },
+	{ NextHOid0 = 1 },
 	{ map__init(GoalSizes0) },
+	{ set__init(Requests0) },
 
 	{ module_info_predids(ModuleInfo0, PredIds0) },
 	{ module_info_type_spec_info(ModuleInfo0,
@@ -70,30 +72,50 @@ specialize_higher_order(ModuleInfo0, ModuleInfo) -->
 	%
 	% Make sure the user requested specializations are processed first,
 	% since we don't want to create more versions if one of these
-	% matches.
+	% matches. We need to process these even if specialization is
+	% not being performed in case any of the specialized versions
+	% are called from other modules.
 	%
-	{ set__list_to_set(PredIds0, PredIdSet0) },
-	{ set__difference(PredIdSet0, UserSpecPreds, PredIdSet) },
-	{ set__to_sorted_list(PredIdSet, PredIds) },
+	( { set__empty(UserSpecPreds) } ->
+		{ GoalSizes1 = GoalSizes0 },
+		{ ModuleInfo2 = ModuleInfo0 },
+		{ NewPreds1 = NewPreds0 },
+		{ NextHOid = NextHOid0 },
+		{ UserSpecPredList = [] },
+		{ PredIds = PredIds0 },
+		{ Requests1 = Requests0 }
+	;
+		{ set__list_to_set(PredIds0, PredIdSet0) },
+		{ set__difference(PredIdSet0, UserSpecPreds, PredIdSet) },
+		{ set__to_sorted_list(PredIdSet, PredIds) },
 
-	{ set__init(Requests0) },
-	{ set__to_sorted_list(UserSpecPreds, UserSpecPredList) },
-	{ get_specialization_requests(Params, UserSpecPredList, NewPreds0,
-		Requests0, UserRequests, GoalSizes0, GoalSizes1,
-		ModuleInfo0, ModuleInfo1) },
-	process_requests(Params, UserRequests, Requests1,
-		GoalSizes1, 1, NextHOid, NewPreds0, NewPreds1,
-		ModuleInfo1, ModuleInfo2),
+		{ set__to_sorted_list(UserSpecPreds, UserSpecPredList) },
+		{ UserTypeSpec0 = yes },
+		{ Params0 = ho_params(HigherOrder, TypeSpec,
+			UserTypeSpec0, SizeLimit, unit) },
+		{ get_specialization_requests(Params0, UserSpecPredList,
+			NewPreds0, Requests0, UserRequests,
+			GoalSizes0, GoalSizes1, ModuleInfo0, ModuleInfo1) },
+		process_requests(Params, UserRequests, Requests1,
+			GoalSizes1, NextHOid0, NextHOid, NewPreds0, NewPreds1,
+			ModuleInfo1, ModuleInfo2)
+	),
 
-	%
-	% Process all other specialization until no more requests
-	% are generated.
-	%
-	{ get_specialization_requests(Params, PredIds, NewPreds1,
-		Requests1, Requests, GoalSizes1, GoalSizes,
-		ModuleInfo2, ModuleInfo3) },
-	recursively_process_requests(Params, Requests, GoalSizes,
-		NextHOid, _, NewPreds1, _NewPreds, ModuleInfo3, ModuleInfo4),
+	( { bool__or_list([HigherOrder, TypeSpec, UserTypeSpec], yes) } ->
+
+		%
+		% Process all other specializations until no more requests
+		% are generated.
+		%
+		{ get_specialization_requests(Params, PredIds, NewPreds1,
+			Requests1, Requests, GoalSizes1, GoalSizes,
+			ModuleInfo2, ModuleInfo3) },
+		recursively_process_requests(Params, Requests, GoalSizes,
+			NextHOid, _, NewPreds1, _NewPreds,
+			ModuleInfo3, ModuleInfo4)
+	;
+		{ ModuleInfo4 = ModuleInfo2 }
+	),
 
 	% Remove the predicates which were used to force the production of
 	% user-requested type specializations, since they are not called
@@ -288,6 +310,7 @@ recursively_process_requests(Params, Requests0, GoalSizes, NextHOid0, NextHOid,
 	;	unchanged.	% Do nothing more for this predicate
 
 %-----------------------------------------------------------------------------%
+
 :- pred get_specialization_requests(ho_params::in, list(pred_id)::in,
 	new_preds::in, set(request)::in, set(request)::out, goal_sizes::in,
 	goal_sizes::out, module_info::in, module_info::out) is det.
