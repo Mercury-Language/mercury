@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright @copyright{} 1995 University of Melbourne.
+Copyright (C) 1995 University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -44,7 +44,7 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury User's Guide
-@subtitle Alpha test version, Feb 28th 1995
+@subtitle ALPHA TEST version, March 1995
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
@@ -69,6 +69,9 @@ into another language, under the above conditions for modified versions.
 @end iftex
 
 @node Top,,, (DIR)
+@ifinfo
+@chapter The Mercury User's Guide - ALPHA TEST version, March 1995
+@end ifinfo
 @menu
 * Filenames::       File naming conventions
 * Hello::           Your first Mercury Program

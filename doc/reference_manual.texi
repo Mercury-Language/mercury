@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright @copyright{} 1995 University of Melbourne.
+Copyright (C) 1995 University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -44,7 +44,7 @@ into another language, under the above conditions for modified versions.
 @titlepage
 @c @finalout
 @title The Mercury Language Reference Manual
-@subtitle DRAFT - March, 1995
+@subtitle ALPHA TEST version - March, 1995
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
@@ -66,6 +66,9 @@ into another language, under the above conditions for modified versions.
 @c ---------------------------------------------------------------------------
 
 @node Top,,, (DIR)
+@ifinfo
+@chapter Mercury Language Reference Manual - ALPHA TEST version, March 1995
+@end ifinfo
 @menu
 * Introduction::      A brief introduction to Mercury
 * Syntax::            Mercury's syntax is similar to ISO Prolog
