@@ -303,11 +303,27 @@ peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, Instrs0, Instrs) :-
 	% a `goto' can be deleted if the target of the jump is the very
 	% next instruction.
 	%
-	%	goto label;	=>	label:
-	%     label:
+	%	goto next;	=>	next:
+	%     next:
+	%
+	% anything after a `goto' except a label is dead code and can be
+	% deleted.
+	%
+	%	goto label1;	=>	goto label1;
+	%	...		      label2:
+	%     label2:
 
-peephole__opt_instr_2(goto(Label), _, Instrs, Instrs) :-
-	Instrs = [label(Label) - _ | _].
+peephole__opt_instr_2(goto(Label), Comment, Instrs0, Instrs) :-
+	Instrs0 = [Instr0 - _ | Instrs1],
+	( Instr0 = label(Label1) ->
+		( Label = Label1 ->
+			Instrs = Instrs0	% delete the goto
+		;
+			fail
+		)
+	;
+		Instrs = [goto(Label) - Comment | Instrs1]
+	).
 
 	% a conditional branch over a branch can be replaced
 	% by an inverse conditional branch

@@ -310,6 +310,15 @@
 :- pred code_info__pop_stack(code_tree, code_info, code_info).
 :- mode code_info__pop_stack(out, in, out) is det.
 
+:- pred code_info__maybe_save_hp(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_save_hp(in, out, in, out) is det.
+
+:- pred code_info__maybe_restore_hp(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_restore_hp(in, out, in, out) is det.
+
+:- pred code_info__maybe_pop_stack(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_pop_stack(in, out, in, out) is det.
+
 :- pred code_info__get_globals(globals, code_info, code_info).
 :- mode code_info__get_globals(out, in, out) is det.
 
@@ -1992,6 +2001,27 @@ code_info__remap_variables_2([Var|Vars], Lval0, Lval) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__maybe_save_hp(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__save_hp(Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_restore_hp(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__restore_hp(Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_pop_stack(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__pop_stack(Code)
+	;
+		{ Code = empty }
+	).
+
 code_info__save_hp(Code) -->
 	code_info__push_rval(lval(hp), Code).
 
@@ -2108,12 +2138,10 @@ code_info__generate_failure(Code) -->
 		{ Code = node([ goto(Cont) -
 					"Branch to failure continuation" ]) }
 	;
-		% XXX temporary hack, since det analysis
-		% is wrong for switches
-		{ Code = node([
-			c_code("abort();") - "`fail' in deterministic code"
-		]) }
-		% { error("code_info__generate_failure: missing failure continuation") }
+		{ error("code_info__generate_failure: missing failure continuation") }
+		% { Code = node([
+		% 	c_code("abort();") - "`fail' in deterministic code"
+		% ]) }
 	).
 
 %---------------------------------------------------------------------------%

@@ -25,17 +25,33 @@
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_semi_disj(Goals, GoalsCode) -->
+disj_gen__generate_semi_disj(Goals, Code) -->
+	code_info__get_globals(Globals),
+	{ 
+		globals__lookup_bool_option(Globals,
+			reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_list_may_allocate_heap(Goals)
+	->
+		RestoreHeap = yes
+	;
+		RestoreHeap = no
+	},
+	code_info__maybe_save_hp(RestoreHeap, HPSaveCode),
 	code_info__get_failure_cont(FallThrough),
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode),
-	code_info__remake_with_store_map.
+	code_info__remake_with_store_map,
+	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
+	{ Code = tree(HPSaveCode, tree(GoalsCode, HPRestoreCode)) }.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label, label,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_cases(in, in, in, out, in, out) is det.
 
 disj_gen__generate_semi_cases([], FallThrough, _EndLabel, Code) -->
+		% This only gets executed if the disjunction
+		% was empty, corresponding to an explicit `fail' in the
+		% source code.
 	{ Code = node([
 		goto(FallThrough) - "explicit `fail'"
 	]) }.
@@ -106,19 +122,17 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		]) },
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_globals(Globals),
-		{ globals__lookup_bool_option(Globals,
-			reclaim_heap_on_nondet_failure, ReclaimHeap) },
-		( { ReclaimHeap = yes } ->
-			code_info__save_hp(SaveHeapCode)
-		;	
-			{ SaveHeapCode = empty }
-		),
+		{	globals__lookup_bool_option(Globals,
+				reclaim_heap_on_nondet_failure, yes),
+			code_util__goal_may_allocate_heap(Goal)
+		->
+			ReclaimHeap = yes
+		;
+			ReclaimHeap = no
+		},
+		code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
-		( { ReclaimHeap = yes } ->
-			code_info__restore_hp(RestoreHeapCode)
-		;	
-			{ RestoreHeapCode = empty }
-		),
+		code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__slap_code_info(CodeInfo),
 		code_info__pop_failure_cont_det(_),
 		(
@@ -155,4 +169,3 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-

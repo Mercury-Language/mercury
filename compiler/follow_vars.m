@@ -151,8 +151,8 @@ find_follow_vars_in_goal_2(not(Vars, Goal0), ModuleInfo, FollowVars0,
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
 			FollowVars).
 
-find_follow_vars_in_goal_2(switch(Var, Cases0), 
-		ModuleInfo, FollowVars0, switch(Var, Cases), FollowVars) :-
+find_follow_vars_in_goal_2(switch(Var, Det, Cases0), 
+		ModuleInfo, FollowVars0, switch(Var, Det, Cases), FollowVars) :-
 	find_follow_vars_in_cases(Cases0, ModuleInfo, FollowVars0,
 			Cases, FollowVars).
 

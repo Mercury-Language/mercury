@@ -14,13 +14,13 @@
 					code_tree, code_info, code_info).
 :- mode switch_gen__generate_det_switch(in, in, out, in, out) is det.
 
-:- pred switch_gen__generate_semi_switch(var, list(case),
+:- pred switch_gen__generate_semi_switch(var, category, list(case),
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_semi_switch(in, in, out, in, out) is det.
+:- mode switch_gen__generate_semi_switch(in, in, in, out, in, out) is det.
 
-:- pred switch_gen__generate_non_switch(var, list(case),
+:- pred switch_gen__generate_non_switch(var, category, list(case),
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_non_switch(in, in, out, in, out) is det.
+:- mode switch_gen__generate_non_switch(in, in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -99,118 +99,143 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 
 	% A semideterministic switch contains semideterministic goals.
 
-switch_gen__generate_semi_switch(CaseVar, Cases, Instr) -->
+switch_gen__generate_semi_switch(CaseVar, Det, Cases, Instr) -->
 	code_info__flush_variable(CaseVar, VarCode),
 	code_info__get_variable_register(CaseVar, Lval),
 	code_info__get_next_label(EndLabel),
-	switch_gen__generate_semi_cases(Cases, CaseVar, Lval,
+	switch_gen__generate_semi_cases(Cases, CaseVar, Det, Lval,
 						EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
 	code_info__remake_with_store_map.
 
-:- pred switch_gen__generate_semi_cases(list(case), var, lval, label,
+:- pred switch_gen__generate_semi_cases(list(case), var, category, lval, label,
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_semi_cases(in, in, in, in, out, in, out) is det.
+:- mode switch_gen__generate_semi_cases(in, in, in, in, in, out, in, out)
+	is det.
 
-	% At the end of the switch, we fail because we came across a
-	% tag which was not covered by one of the cases. It is followed
-	% by the end of switch label to which the cases branch.
-switch_gen__generate_semi_cases([], _Var, _Lval, EndLabel, Code) -->
-	code_info__generate_failure(FailCode),
+	% At the end of a locally semidet switch, we fail because we
+	% came across a tag which was not covered by one of the cases.
+	% It is followed by the end of switch label to which the cases
+	% branch.
+
+switch_gen__generate_semi_cases([], _Var, Det, _Lval, EndLabel, Code) -->
+	( { Det = semideterministic } ->
+		code_info__generate_failure(FailCode)
+	;
+		{ FailCode = empty }
+	),
 	{ Code = tree(FailCode, node([ label(EndLabel) -
 		"End of semidet switch" ])) }.
 
 	% A semidet cases consists of a tag-test followed by a semidet
 	% goal and a label for the start of the next case.
-switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
-								CasesCode) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__get_next_label(ThisLab),
-	code_info__get_next_label(ElseLab),
-	unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
-		% generate the case as a deterministic goal
-	code_info__generate_icond_branch(Rval,ThisLab, ElseLab, BranchCode),
-	{ TestCode = tree(
-		tree(FlushCode, BranchCode),
-		node([label(ThisLab) - ""])
-	) },
-		% generate the case as a semi-deterministc goal
-	code_gen__generate_forced_semi_goal(Goal, ThisCode),
-	{ ElseLabel = node([
-		goto(EndLabel) - "skip to the end of the semidet switch",
-		label(ElseLab) - "next case"
-	]) },
+switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Det, Lval,
+				EndLabel, CasesCode) -->
+	(
+		{ Cases = [_|_] ; Det = semideterministic }
+	->
+		code_info__grab_code_info(CodeInfo),
+		code_info__get_next_label(ThisLab),
+		code_info__get_next_label(ElseLab),
+		unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
+			% generate the case as a deterministic goal
+		code_info__generate_icond_branch(Rval,ThisLab, ElseLab,
+			BranchCode),
+		{ TestCode = tree(
+			tree(FlushCode, BranchCode),
+			node([label(ThisLab) - ""])
+		) },
+			% generate the case as a semi-deterministc goal
+		code_gen__generate_forced_semi_goal(Goal, ThisCode),
+		{ ElseLabel = node([
+			goto(EndLabel) -
+				"skip to the end of the semidet switch",
+			label(ElseLab) - "next case"
+		]) },
+		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseLabel) },
 		% If there are more cases, the we need to restore
 		% the expression cache, etc.
-	(
-		{ Cases = [_|_] }
-	->
-		code_info__slap_code_info(CodeInfo)
+		( { Cases = [_|_] } ->
+			code_info__slap_code_info(CodeInfo)
+		;
+			[]
+		)
 	;
-		{ true }
+			% generate the case as a semi-deterministc goal
+		code_gen__generate_forced_semi_goal(Goal, ThisCaseCode)
 	),
 		% generate the rest of the cases.
-	switch_gen__generate_semi_cases(Cases, Var, Lval, EndLabel, CasesCode0),
-	{ CasesCode = tree(tree(TestCode, ThisCode),
-			tree(ElseLabel, CasesCode0)) }.
+	switch_gen__generate_semi_cases(Cases, Var, Det, Lval, EndLabel,
+		CasesCode0),
+	{ CasesCode = tree(ThisCaseCode, CasesCode0) }.
 
 %---------------------------------------------------------------------------%
 
-switch_gen__generate_non_switch(CaseVar, Cases, Instr) -->
+switch_gen__generate_non_switch(CaseVar, Det, Cases, Instr) -->
 	code_info__flush_variable(CaseVar, VarCode),
 	code_info__get_variable_register(CaseVar, Lval),
 	code_info__get_next_label(EndLabel),
-	switch_gen__generate_non_cases(Cases, CaseVar, Lval,
+	switch_gen__generate_non_cases(Cases, CaseVar, Det, Lval,
 						EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
 	code_info__remake_with_store_map.
 
-:- pred switch_gen__generate_non_cases(list(case), var, lval, label,
+:- pred switch_gen__generate_non_cases(list(case), var, category, lval, label,
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_non_cases(in, in, in, in, out, in, out) is det.
+:- mode switch_gen__generate_non_cases(in, in, in, in, in, out, in, out) is det.
 
 	% At the end of the switch, we fail because we came across a
 	% tag which was not covered by one of the cases. It is followed
 	% by the end of switch label to which the cases branch.
-switch_gen__generate_non_cases([], _Var, _Lval, EndLabel, Code) -->
-	{ Code = node([
-		redo - "",
-		label(EndLabel) - "End of nondet switch"
-	]) }.
+switch_gen__generate_non_cases([], _Var, Det, _Lval, EndLabel, Code) -->
+	( { Det = semideterministic } ->
+		code_info__generate_failure(FailCode)
+	;
+		{ FailCode = empty }
+	),
+	{ Code = tree(FailCode, node([ label(EndLabel) -
+		"End of nondet switch" ])) }.
 
 	% A nondet cases consists of a tag-test followed by a semidet
 	% goal and a label for the start of the next case.
-switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
-								CasesCode) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__get_next_label(ThisLab),
-	code_info__get_next_label(ElseLab),
-	unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
-		% generate the case as a deterministic goal
-	code_info__generate_icond_branch(Rval,ThisLab, ElseLab, BranchCode),
-	{ TestCode = tree(
-		tree(FlushCode, BranchCode),
-		node([label(ThisLab) - ""])
-	) },
-		% generate the case as a non-deterministc goal
-	code_gen__generate_forced_non_goal(Goal, ThisCode),
-	{ ElseLabel = node([
-		goto(EndLabel) - "skip to the end of the nondet switch",
-		label(ElseLab) - "next case"
-	]) },
+switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Det, Lval,
+					EndLabel, CasesCode) -->
+	(
+		{ Cases = [_|_] ; Det = semideterministic }
+	->
+		code_info__grab_code_info(CodeInfo),
+		code_info__get_next_label(ThisLab),
+		code_info__get_next_label(ElseLab),
+		unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
+			% generate the case as a deterministic goal
+		code_info__generate_icond_branch(Rval,ThisLab, ElseLab,
+			BranchCode),
+		{ TestCode = tree(
+			tree(FlushCode, BranchCode),
+			node([label(ThisLab) - ""])
+		) },
+			% generate the case as a non-deterministc goal
+		code_gen__generate_forced_non_goal(Goal, ThisCode),
+		{ ElseLabel = node([
+			goto(EndLabel) - "skip to the end of the nondet switch",
+			label(ElseLab) - "next case"
+		]) },
+		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseLabel) },
 		% If there are more cases, the we need to restore
 		% the expression cache, etc.
-	(
-		{ Cases = [_|_] }
-	->
-		code_info__slap_code_info(CodeInfo)
+		( { Cases = [_|_] } ->
+			code_info__slap_code_info(CodeInfo)
+		;
+			[]
+		)
 	;
-		{ true }
+			% generate the case as a non-deterministc goal
+		code_gen__generate_forced_non_goal(Goal, ThisCaseCode)
 	),
 		% generate the rest of the cases.
-	switch_gen__generate_non_cases(Cases, Var, Lval, EndLabel, CasesCode0),
-	{ CasesCode = tree(tree(TestCode, ThisCode),
-			tree(ElseLabel, CasesCode0)) }.
+	switch_gen__generate_non_cases(Cases, Var, Det, Lval, EndLabel,
+		CasesCode0),
+	{ CasesCode = tree(ThisCaseCode, CasesCode0) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

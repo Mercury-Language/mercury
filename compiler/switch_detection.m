@@ -99,64 +99,55 @@ detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal) :-
 			module_info, hlds__goal, instmap).
 :- mode detect_switches_in_goal(in, in, in, in, out, out) is det.
 
-detect_switches_in_goal(Goal0 - GoalInfo0, InstMap0, VarTypes, ModuleInfo,
+detect_switches_in_goal(Goal0 - GoalInfo, InstMap0, VarTypes, ModuleInfo,
 		Goal - GoalInfo, InstMap) :-
-	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
-	detect_switches_in_goal_2(Goal0, GoalInfo0, InstMap0, InstMapDelta,
-		VarTypes, ModuleInfo, Goal, Det),
-	( Det = yes(Category) ->
-		goal_info_set_local_determinism(GoalInfo0, Category, GoalInfo)
-	;
-		GoalInfo = GoalInfo0
-	),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	detect_switches_in_goal_2(Goal0, GoalInfo, InstMap0, InstMapDelta,
+		VarTypes, ModuleInfo, Goal),
 	apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 	% Here we process each of the different sorts of goals.
 
 :- pred detect_switches_in_goal_2(hlds__goal_expr, hlds__goal_info, instmap,
 		instmap, map(var, type), module_info,
-		hlds__goal_expr, maybe(category)).
-:- mode detect_switches_in_goal_2(in, in, in, in, in, in, out, out) is det.
+		hlds__goal_expr).
+:- mode detect_switches_in_goal_2(in, in, in, in, in, in, out) is det.
 
 detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0, _InstMapDelta,
-		VarTypes, ModuleInfo, conj(Goals), no) :-
+		VarTypes, ModuleInfo, conj(Goals)) :-
 	detect_switches_in_conj(Goals0, InstMap0, VarTypes, ModuleInfo,
 		Goals).
 
 detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
-		VarTypes, ModuleInfo, Goal, Det) :-
+		VarTypes, ModuleInfo, Goal) :-
 	( Goals0 = [] ->
-		Goal = disj([]),
-		Det = yes(semideterministic)
+		Goal = disj([])
 	;
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo, 
-			InstMap0, InstMapDelta, VarTypes, ModuleInfo, Goal,
-			Det)
+			InstMap0, InstMapDelta, VarTypes, ModuleInfo, Goal)
 	).
 
 detect_switches_in_goal_2(not(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
-		VarTypes, ModuleInfo, not(Vars, Goal), no) :-
+		VarTypes, ModuleInfo, not(Vars, Goal)) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal).
 
 detect_switches_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), _GoalInfo,
 			InstMap0, _InstMapDelta, VarTypes, ModuleInfo,
-			if_then_else(Vars, Cond, Then, Else), no) :-
+			if_then_else(Vars, Cond, Then, Else)) :-
 	detect_switches_in_goal(Cond0, InstMap0, VarTypes, ModuleInfo, Cond,
 		InstMap1),
 	detect_switches_in_goal(Then0, InstMap1, VarTypes, ModuleInfo, Then),
 	detect_switches_in_goal(Else0, InstMap0, VarTypes, ModuleInfo, Else).
 
 detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
-		VarTypes, ModuleInfo, some(Vars, Goal), no) :-
+		VarTypes, ModuleInfo, some(Vars, Goal)) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal).
 
-detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _, _,
-		call(A,B,C,D,E,F), no).
+detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _, _, call(A,B,C,D,E,F)).
 
-detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, _,
-		unify(A,B,C,D,E), no).
+detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, _, unify(A,B,C,D,E)).
 
 %-----------------------------------------------------------------------------%
 
@@ -169,31 +160,30 @@ detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, _,
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
 		instmap, instmap, map(var, type), module_info,
-		hlds__goal_expr, maybe(category)).
-:- mode detect_switches_in_disj(in, in, in, in, in, in, in, out, out) is det.
+		hlds__goal_expr).
+:- mode detect_switches_in_disj(in, in, in, in, in, in, in, out) is det.
 
 detect_switches_in_disj([], Goals0, _, InstMap, _, VarTypes, ModuleInfo,
-		disj(Goals), no) :-
+		disj(Goals)) :-
 	detect_switches_in_disj_2(Goals0, InstMap, VarTypes, ModuleInfo,
 		Goals).
 	
 detect_switches_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap, InstMapDelta,
-		VarTypes, ModuleInfo, Goal, Det) :-
+		VarTypes, ModuleInfo, Goal) :-
 	(
 		instmap_lookup_var(InstMap, Var, VarInst0),
 		inst_is_bound(ModuleInfo, VarInst0),
 		partition_disj(Goals0, Var, GoalInfo0, VarTypes, ModuleInfo,
-			Cases0, Category)
+			Cases0, Det)
 	->
 		% It might be a good idea to convert switches
 		% with only one case into something simpler
 		detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo,
 			Cases),
-		Goal = switch(Var, Cases),
-		Det = yes(Category)
+		Goal = switch(Var, Det, Cases)
 	;
 		detect_switches_in_disj(Vars, Goals0, GoalInfo0,
-			InstMap, InstMapDelta, VarTypes, ModuleInfo, Goal, Det)
+			InstMap, InstMapDelta, VarTypes, ModuleInfo, Goal)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -29,39 +29,28 @@
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_globals(Options),
-	{ globals__lookup_bool_option(Options,
-			reclaim_heap_on_semidet_failure, ReclaimHeap) },
-	(
-		{ ReclaimHeap = yes }
+	{ 
+		globals__lookup_bool_option(Options,
+				reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_may_allocate_heap(CondGoal)
 	->
-		code_info__save_hp(HPSaveCode)
+		ReclaimHeap = yes
 	;
-		{ HPSaveCode = empty }
-	),
+		ReclaimHeap = no
+	},
+	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
 	code_info__set_failure_cont(ElseLab),
 		% generate the semi-deterministc test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__unset_failure_cont,
 	code_info__grab_code_info(CodeInfo),
-	(
-		{ ReclaimHeap = yes }
-	->
-		code_info__pop_stack(HPPopCode)
-	;
-		{ HPPopCode = empty }
-	),
+	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_gen__generate_forced_det_goal(ThenGoal, ThenGoalCode),
 		% generate code that executes the then condition
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
-	(
-		{ ReclaimHeap = yes }
-	->
-		code_info__restore_hp(HPRestoreCode)
-	;
-		{ HPRestoreCode = empty }
-	),
+	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_det_goal(ElseGoal, ElseGoalCode),
 	code_info__get_next_label(EndLab),
 		% place the label marking the start of the then code,
@@ -88,23 +77,36 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 %---------------------------------------------------------------------------%
 
 ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+	code_info__get_globals(Options),
+	{ 
+		globals__lookup_bool_option(Options,
+				reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_may_allocate_heap(CondGoal)
+	->
+		ReclaimHeap = yes
+	;
+		ReclaimHeap = no
+	},
+	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
 	code_info__push_failure_cont(ElseLab),
-		% generate the semi-deterministc test goal
+		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, CondCode),
 	code_info__pop_failure_cont_det(_),
 	code_info__grab_code_info(CodeInfo),
+	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_gen__generate_forced_semi_goal(ThenGoal, ThenGoalCode),
 	code_info__slap_code_info(CodeInfo),
+	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_semi_goal(ElseGoal, ElseGoalCode),
 	code_info__get_next_label(EndLab),
 	{ TestCode = tree(
-		node([comment("If-then-else") - ""]),
+		HPSaveCode,
 		CondCode
 	) },
 	{ ThenCode = tree(
 		tree(
-			node([comment("then-case") - ""]),
+			HPPopCode,
 			ThenGoalCode
 		),
 		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
@@ -112,7 +114,10 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	{ ElseCode = tree(
 		tree(
 			node([label(ElseLab) - "else case"]),
-			ElseGoalCode
+			tree(
+				HPRestoreCode,
+				ElseGoalCode
+			)
 		),
 		node([label(EndLab) - "end of if-then-else"])
 	) },

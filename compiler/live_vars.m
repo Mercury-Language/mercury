@@ -130,7 +130,7 @@ detect_live_vars_in_goal_2(not(_Vars, Goal0), Liveness0, LiveVars0, ModuleInfo,
 	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
 					ModuleInfo, Liveness, LiveVars).
 
-detect_live_vars_in_goal_2(switch(_Var, Cases0), Liveness0, LiveVars0,
+detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), Liveness0, LiveVars0,
 			ModuleInfo, Liveness, LiveVars) :-
 	detect_live_vars_in_cases(Cases0, Liveness0, LiveVars0,
 				ModuleInfo, Liveness, LiveVars).

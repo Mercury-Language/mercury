@@ -419,9 +419,11 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 					io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, di, uo) is det.
 
-hlds_out__write_goal_2(switch(Var, CasesList), ModuleInfo, VarSet, Indent)
+hlds_out__write_goal_2(switch(Var, Det, CasesList), ModuleInfo, VarSet, Indent)
 		-->
-	io__write_string("( % switch on `"),
+	io__write_string("( % "),
+	hlds_out__write_category(Det), 
+	io__write_string(" switch on `"),
 	mercury_output_var(Var, VarSet),
 	io__write_string("'"),
 	{ Indent1 is Indent + 1 },

@@ -418,12 +418,14 @@ det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	).
 
 	% the category of a switch is the worst of the category of each of
-	% the cases. (Also, if only a subset of the constructors are handled,
+	% the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
-	% in switch_detection.nl and handled via the local_determinism field.)
+	% in switch_detection.nl and handled via the LocalDet field.
 
-det_infer_goal_2(switch(Var, Cases0), MiscInfo, _, _, switch(Var, Cases), D) :-
-	det_infer_switch(Cases0, MiscInfo, Cases, D).
+det_infer_goal_2(switch(Var, LocalDet, Cases0), MiscInfo, _, _,
+		switch(Var, LocalDet, Cases), D) :-
+	det_infer_switch(Cases0, MiscInfo, Cases, D0),
+	max_category(D0, LocalDet, D).
 
 	% look up the category entry associated with the call.
 	% This is the point at which annotations start changing

@@ -273,8 +273,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Deterministic disjunctions are converted
 				% into case statements by the switch
 				% detection pass.
-				% Variable, functor-args-goal
-			;	switch(var, list(case))
+				% Variable, local determinism, cases
+			;	switch(var, category, list(case))
 
 				% Initially only the terms and the context
 				% are know.  Mode analysis fills in the

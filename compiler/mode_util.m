@@ -778,7 +778,7 @@ recompute_instmap_delta(Goal0 - GoalInfo0, Goal - GoalInfo, InstMapDelta) :-
 				instmap_delta).
 :- mode recompute_instmap_delta_2(in, out, out) is det.
 
-recompute_instmap_delta_2(switch(Var, Cases0), switch(Var, Cases),
+recompute_instmap_delta_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
 		InstMapDelta) :-
 	recompute_instmap_delta_cases(Cases0, Cases, InstMapDelta).
 

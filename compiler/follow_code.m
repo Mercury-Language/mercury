@@ -94,8 +94,8 @@ move_follow_code_in_goal_2(disj(Goals0), ModuleInfo, disj(Goals)) :-
 move_follow_code_in_goal_2(not(Vars, Goal0), ModuleInfo, not(Vars, Goal)) :-
 	move_follow_code_in_goal(Goal0, ModuleInfo, Goal).
 
-move_follow_code_in_goal_2(switch(Var, Cases0), 
-					ModuleInfo, switch(Var, Cases)) :-
+move_follow_code_in_goal_2(switch(Var, Det, Cases0), 
+					ModuleInfo, switch(Var, Det, Cases)) :-
 	move_follow_code_in_cases(Cases0, ModuleInfo, Cases).
 
 move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), 
@@ -191,8 +191,8 @@ move_follow_code_move_goals(Goal0 - GoalInfo, FollowGoals, Goal - GoalInfo) :-
 					list(hlds__goal), hlds__goal_expr).
 :- mode move_follow_code_move_goals_2(in, in, out) is semidet.
 
-move_follow_code_move_goals_2(switch(Var, Cases0), FollowGoals,
-						switch(Var, Cases)) :-
+move_follow_code_move_goals_2(switch(Var, Det, Cases0), FollowGoals,
+						switch(Var, Det, Cases)) :-
 	move_follow_code_move_goals_cases(Cases0, FollowGoals, Cases).
 move_follow_code_move_goals_2(disj(Goals0), FollowGoals, disj(Goals)) :-
 	move_follow_code_move_goals_disj(Goals0, FollowGoals, Goals).
@@ -246,7 +246,7 @@ conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 
 move_follow_code_is_branched(Goal - _GoalInfo) :-
 	(
-		Goal = switch(_,_)
+		Goal = switch(_,_,_)
 	->
 		true
 	;

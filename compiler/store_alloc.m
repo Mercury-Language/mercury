@@ -134,8 +134,8 @@ store_alloc_in_goal_2(not(Vars, Goal0), Liveness0, Follow0, ModuleInfo,
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
 					Goal, Liveness, Follow).
 
-store_alloc_in_goal_2(switch(Var, Cases0), Liveness0, Follow0, ModuleInfo,
-					switch(Var, Cases), Liveness, Follow) :-
+store_alloc_in_goal_2(switch(Var, Det, Cases0), Liveness0, Follow0, ModuleInfo,
+				switch(Var, Det, Cases), Liveness, Follow) :-
 	store_alloc_in_cases(Cases0, Liveness0, Follow0, ModuleInfo,
 					Cases, Liveness, Follow).
 
@@ -287,7 +287,7 @@ next_free_reg(N0, Values, N) :-
 :- mode goal_is_branched(in) is semidet.
 
 goal_is_branched(if_then_else(_,_,_,_)).
-goal_is_branched(switch(_,_)).
+goal_is_branched(switch(_,_,_)).
 goal_is_branched(disj(_)).
 
 %-----------------------------------------------------------------------------%
