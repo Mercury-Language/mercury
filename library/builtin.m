@@ -50,10 +50,11 @@
 :- inst mostly_dead == mostly_clobbered.
 
 % The `any' inst used for the constraint solver interface is also builtin.
-% The inst `old' is allowed as a synonym for `any', since some of the
-% literature uses this terminology.
+% The insts `new' and `old' are allowed as synonyms for `free' and `any',
+% respectively, since some of the literature uses this terminology.
 
 :- inst old == any.
+:- inst new == free.
 
 % Higher-order predicate insts `pred(<modes>) is <detism>'
 % and higher-order functions insts `func(<modes>) = <mode> is det'
@@ -105,6 +106,11 @@
 % Solver type modes.
 :- mode ia == any >> any.
 :- mode oa == free >> any.
+
+% The modes `no' and `oo' are allowed as synonyms, since some of the
+% literature uses this terminology.
+:- mode no == new >> old.
+:- mode oo == old >> old.
 
 %-----------------------------------------------------------------------------%
 
