@@ -43,8 +43,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, set, map, term, varset, std_util, require.
+:- import_module int, string, list, set, map, term, varset, std_util, require.
 :- import_module prog_io, type_util, mode_util, quantification.
+:- import_module code_util, unify_proc.
 
 %-----------------------------------------------------------------------------%
 
@@ -68,8 +69,13 @@ polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
 polymorphism__process_preds([], ModuleInfo, ModuleInfo).
 polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
-	polymorphism__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
+	( code_util__predinfo_is_builtin(ModuleInfo0, PredInfo) ->
+		ModuleInfo1 = ModuleInfo0
+	;
+		pred_info_procids(PredInfo, ProcIds),
+		polymorphism__process_procs(PredId, ProcIds, ModuleInfo0,
+			ModuleInfo1)
+	),
 	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
@@ -141,7 +147,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 					ProcInfo, PredInfo) :-
 	% grab the appropriate fields from the pred_info and proc_info
-	pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes),
+	pred_info_arg_types(PredInfo0, ArgTypeVarSet, ArgTypes),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
 	proc_info_headvars(ProcInfo0, HeadVars0),
 	proc_info_variables(ProcInfo0, VarSet0),
@@ -153,13 +159,13 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	% type declaration
 	term__vars_list(ArgTypes, HeadTypeVars0),
 	list__sort(HeadTypeVars0, HeadTypeVars), % remove duplicates
-	polymorphism__make_head_vars(HeadTypeVars, VarSet0, VarTypes0,
+	polymorphism__make_head_vars(HeadTypeVars, ArgTypeVarSet,
+					VarSet0, VarTypes0,
 				ExtraHeadVars, VarSet1, VarTypes1),
-	list__append(HeadVars0, ExtraHeadVars, HeadVars),
+	list__append(ExtraHeadVars, HeadVars0, HeadVars),
 	list__length(ExtraHeadVars, NumExtraVars),
 	list__duplicate(NumExtraVars, ground -> ground, ExtraModes),
-	list__append(ArgModes0, ExtraModes, ArgModes),
-
+	list__append(ExtraModes, ArgModes0, ArgModes),
 
 	( pred_info_is_imported(PredInfo0) ->
 		VarTypes = VarTypes1,
@@ -214,9 +220,75 @@ polymorphism__process_goal_2(
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
-	% XXX handle polymorphic unifications!
-polymorphism__process_goal_2(unify(X, Y, Unification, Mode, Context), GoalInfo,
-		unify(X, Y, Unification, Mode, Context) - GoalInfo) --> [].
+polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
+		Goal) -->
+	(
+		{ Unification = complicated_unify(UniMode, _Category,
+			FollowVars) },
+		{ X = term__variable(XVar) }
+	->
+		=(poly_info(_, VarTypes, _, UnifyProcMap, ModuleInfo)),
+		{ map__lookup(VarTypes, XVar, Type) },
+		( { Type = term__variable(TypeVar) } ->
+			% Convert polymorphic unifications into calls to
+			% 	call(UnifyProcVar, X, Y)
+			% where UnifyProcVar is the higher-order pred var
+			% associated with the type of the variables that
+			% are being unified.
+
+			{ module_info_get_predicate_table(ModuleInfo,
+				PredicateTable) },
+			{ predicate_table_search_name_arity(PredicateTable,
+				"call", 3, [CallPredId]) ->
+				PredId = CallPredId
+			;
+				error("polymorphism.nl: can't find `call/3'")
+			},
+			{ ProcId = 0 },
+			{ map__lookup(UnifyProcMap, TypeVar, UnifyProcVar) },
+			{ SymName = unqualified("call") },
+			{ Args = [term__variable(UnifyProcVar), X, Y] },
+			{ Goal = call(PredId, ProcId, Args, is_builtin,
+					SymName, FollowVars) - GoalInfo }
+
+		; { type_to_type_id(Type, TypeId, _) } ->
+
+			% Convert other complicated unifications into
+			% calls to unification predicates, and then
+			% recursively call polymorphism__process_goal_2
+			% to insert extra arguments if necessary.
+
+			{ module_info_get_unify_pred_map(ModuleInfo,
+				UnifyPredMap) },
+			{ map__lookup(UnifyPredMap, TypeId, PredId) },
+
+			% We handle (in, in) unifications specially - they
+			% are always mode zero
+			(
+				{ UniMode = (XInitial - YInitial -> _Final) },
+				{ inst_is_ground(ModuleInfo, XInitial) },
+				{ inst_is_ground(ModuleInfo, YInitial) }
+			->
+				{ ProcId = 0 }
+			;
+				{ module_info_get_unify_requests(ModuleInfo,
+					UnifyRequests) },
+				{ unify_proc__lookup_num(UnifyRequests,
+					TypeId, UniMode, ProcId) }
+			),
+
+			{ SymName = unqualified("=") },
+			{ Args = [X, Y] },
+			{ Call = call(PredId, ProcId,  Args, not_builtin,
+					SymName, FollowVars) },
+			polymorphism__process_goal_2(Call, GoalInfo, Goal)
+		;
+			{ error("polymorphism: type_to_type_id failed") }
+		)
+	;
+		% ordinary unifications are left unchanged
+		{ Goal = unify(X, Y, Mode, Unification, Context) - GoalInfo }
+	).
 
 	% the rest of the clauses just process goals recursively
 
@@ -291,7 +363,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 			PredTypes),
 		polymorphism__make_vars(PredTypes, UnifyProcMap, VarSet0,
 			VarTypes0, ExtraVars, ExtraGoals, VarSet, VarTypes),
-		list__append(ArgVars0, ExtraVars, ArgVars),
+		list__append(ExtraVars, ArgVars0, ArgVars),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				UnifyProcMap, ModuleInfo)
 	).
@@ -452,21 +524,30 @@ polymorphism__make_vars([Type|Types], UnifyProcMap, VarSet0, VarTypes0,
 	polymorphism__make_vars(Types,  UnifyProcMap, VarSet2, VarTypes2,
 				ExtraVars1, ExtraGoals2, VarSet, VarTypes).
 
-:- pred polymorphism__make_head_vars(list(tvar), varset, map(var, type),
+:- pred polymorphism__make_head_vars(list(tvar), tvarset,
+				varset, map(var, type),
 				list(var), varset, map(var, type)).
-:- mode polymorphism__make_head_vars(in, in, in, out, out, out) is det.
+:- mode polymorphism__make_head_vars(in, in, in, in, out, out, out) is det.
 
-polymorphism__make_head_vars([], VarSet, VarTypes, [], VarSet, VarTypes).
-polymorphism__make_head_vars([TypeVar|TypeVars], VarSet0, VarTypes0,
+polymorphism__make_head_vars([], _, VarSet, VarTypes, [], VarSet, VarTypes).
+polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet,
+				VarSet0, VarTypes0,
 				UnifyProcVars, VarSet, VarTypes) :-
 	varset__new_var(VarSet0, Var, VarSet1),
+	( varset__lookup_name(TypeVarSet, TypeVar, TypeVarName) ->
+		string__append("Unify__", TypeVarName, VarName),
+		varset__name_var(VarSet1, Var, VarName, VarSet2)
+	;
+		VarSet2 = VarSet1
+	),
 	term__context_init(0, Context),
 	Type = term__variable(TypeVar),
 	UnifyPredType = term__functor(term__atom("pred"), [Type, Type],
 					Context),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes1),
 	UnifyProcVars = [Var | UnifyProcVars1],
-	polymorphism__make_head_vars(TypeVars, VarSet1, VarTypes1,
+	polymorphism__make_head_vars(TypeVars, TypeVarSet,
+				VarSet2, VarTypes1,
 				UnifyProcVars1, VarSet, VarTypes).
 
 %---------------------------------------------------------------------------%

@@ -87,9 +87,6 @@
 
 % Inequality.
 
-:- pred \=(T, T).
-:- mode \=(input, input) is semidet.
-
 % The call/N family.  Note that the compiler (make_hlds.nl) will transform
 % goals which are not atoms (e.g. goals which are free variables) into
 % calls to call/1.
@@ -99,23 +96,34 @@
 :- mode call(semidet_pred) is semidet.
 :- mode call(nondet_pred) is nondet.
 
-% Logical connectives.
-% We need to implement mode segments before we can give these predicates
-% useful modes.
+:- pred call(pred(T1, T2), T1, T2).
+:- mode call(in, in, in) is semidet.
 
-:- pred '=>'((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
-:- pred '<='((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
-:- pred '<=>'((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
+% In addition, the following predicate-like constructs are builtin:
+%
+%	:- pred (T = T).
+%	:- pred (T \= T).
+%	:- pred (pred , pred).
+%	:- pred (pred ; pred).
+%	:- pred (\+ pred).
+%	:- pred (not pred).
+%	:- pred (pred -> pred).
+%	:- pred (if pred then pred).
+%	:- pred (if pred then pred else pred).
+%	:- pred (pred => pred).
+%	:- pred (pred <= pred).
+%	:- pred (pred <=> pred).
+%
+%	(pred -> pred ; pred).
+%	some Vars pred
+%	all Vars pred
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- external((\=)/2).
-:- external(call/1).		% currently only implemented for NU-Prolog
-:- external((=>)/2).		% currently only implemented for NU-Prolog
-:- external((<=)/2).		% currently only implemented for NU-Prolog
-:- external((<=>)/2).		% currently only implemented for NU-Prolog
+% All the predicates defined in this module are builtin.
+% The compiler generates code for them inline.
 
 :- end_module mercury_builtin.
 
