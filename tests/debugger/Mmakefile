@@ -122,8 +122,8 @@ mdb_command_test.out: queens mdb_command_test.inp
 
 #-----------------------------------------------------------------------------#
 
-DEPS=		$(ALLPROGS:%=$(deps_subdir)%.dep)
-DEPENDS=	$(ALLPROGS:%=%.depend)
+DEPS=		$(ALLPROGS:%=$(deps_subdir)%.dep) queens.dep
+DEPENDS=	$(ALLPROGS:%=%.depend) queens.depend
 OUTS=		$(PROGS:%=%.out)
 LIBOUTS=	$(LIBPROGS:%=%.out)
 RESS=		$(PROGS:%=%.res) mdb_command_test.res
