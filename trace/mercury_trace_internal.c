@@ -952,7 +952,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = FALSE;
-				MR_print_spy_point(n);
+				MR_print_spy_point(i);
 			}
 
 			if (MR_spy_point_next == 0) {
