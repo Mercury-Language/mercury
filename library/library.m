@@ -22,7 +22,7 @@
 :- import_module io, list, map, multi_map, pqueue, queue, random, relation.
 :- import_module require, set, set_bbbtree, set_ordlist, set_unordlist, stack.
 :- import_module std_util, string, term, term_io, tree234, uniq_array, varset.
-:- import_module store, rbtree, parser, lexer, ops.
+:- import_module store, rbtree, parser, lexer, ops, time.
 
 :- pred library__version(string::out) is det.
 

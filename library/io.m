@@ -707,7 +707,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir, term_io, varset, require.
+:- import_module map, dir, term_io, varset, require, time.
 
 :- type io__state
 	---> 	io__state(

@@ -11,9 +11,9 @@
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
 %
-% It contains the predicates solutions/2, semidet_succeed/0, semidet_fail/0,
-% and report_stats/0; the types univ, unit, maybe(T), pair(T1, T2);
-% and some predicates which operate on those types.
+% It contains the predicates solutions/2, semidet_succeed/0, semidet_fail/0;
+% the types univ, unit, maybe(T), pair(T1, T2); and some predicates which
+% operate on those types.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -86,21 +86,12 @@
 
 %-----------------------------------------------------------------------------%
 
-	% maybe_pred(Pred, X, Y) takes a closure Pred which transfroms an
+	% maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
 	% input semideterministically. If calling the closure with the input
 	% X succeeds, Y is bound to `yes(Z)' where Z is the output of the
 	% call, or to `no' if the call fails.
 :- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
 :- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
-% Declaratively, `report_stats' is the same as `true'.
-% It has the side-effect of reporting some memory and time usage statistics
-% to stdout.  (Technically, every Mercury implementation must offer
-% a mode of invocation which disables this side-effect.)
-
-:- pred report_stats is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -178,44 +169,6 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 :- pragma(c_header_code, "
 
-#include ""timing.h""
-
-").
-
-:- pragma(c_code, report_stats, "
-	int	time_at_prev_stat;
-
-	time_at_prev_stat = time_at_last_stat;
-	time_at_last_stat = get_run_time();
-
-	fprintf(stderr, 
-		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
-		(time_at_last_stat - time_at_prev_stat) / 1000.0,
-		(time_at_last_stat - time_at_start) / 1000.0,
-		((char *) sp - (char *) detstackmin) / 1024.0,
-		((char *) maxfr - (char *) nondstackmin) / 1024.0
-	);
-
-#ifdef CONSERVATIVE_GC
-	fprintf(stderr, 
-		""#GCs: %lu,\\n""
-		""Heap used since last GC: %.3fk, Total used: %.3fk]\\n"",
-		(unsigned long) GC_gc_no,
-		GC_get_bytes_since_gc() / 1024.0,
-		GC_get_heap_size() / 1024.0
-	);
-#else
-	fprintf(stderr, 
-		""Heap: %.3fk]\\n"",
-		((char *) hp - (char *) heapmin) / 1024.0
-	);
-#endif
-").
-
-/*---------------------------------------------------------------------------*/
-
-:- pragma(c_header_code, "
-
 #include ""type_info.h""
 
 int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
@@ -234,21 +187,68 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 {
 	int	i, num_arg_types, comp;
 	Word	unify_pred_1, unify_pred_2;
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	Word	base_type_info_1, base_type_info_2;
+#endif
 
-	/* First compare the addresses of the unify preds in the type_infos */
+	/* First find the addresses of the unify preds in the type_infos */
+
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	base_type_info_1 = field(mktag(0), type_info_1, 0);
+	base_type_info_2 = field(mktag(0), type_info_2, 0);
+
+	if (base_type_info_1 == 0)
+		unify_pred_1 = field(mktag(0), type_info_1,
+				OFFSET_FOR_UNIFY_PRED);
+	else
+		unify_pred_1 = field(mktag(0), base_type_info_1,
+				OFFSET_FOR_UNIFY_PRED);
+
+	if (base_type_info_2 == 0)
+		unify_pred_2 = field(mktag(0), type_info_2,
+				OFFSET_FOR_UNIFY_PRED);
+	else
+		unify_pred_2 = field(mktag(0), base_type_info_2,
+				OFFSET_FOR_UNIFY_PRED);
+#else
 	unify_pred_1 = field(mktag(0), type_info_1, OFFSET_FOR_UNIFY_PRED);
 	unify_pred_2 = field(mktag(0), type_info_2, OFFSET_FOR_UNIFY_PRED);
+#endif
+
+	/* Then compare the addresses of the unify preds in the type_infos */
 	if (unify_pred_1 < unify_pred_2) {
 		return COMPARE_LESS;
 	}
 	if (unify_pred_1 > unify_pred_2) {
 		return COMPARE_GREATER;
 	}
+
 	/*
 	** If the addresses of the unify preds are equal, we don't need to
 	** compare the arity of the types - they must be the same.
 	** But we need to recursively compare the argument types, if any.
 	*/
+
+#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
+	if (base_type_info_1 == 0)
+		return COMPARE_EQUAL;
+	else
+	{
+		num_arg_types = field(mktag(0), base_type_info_1,
+				OFFSET_FOR_COUNT);
+		for (i = 1; i <= num_arg_types; i++) {
+			Word arg_type_info_1 = field(mktag(0),
+						base_type_info_1, i);
+			Word arg_type_info_2 = field(mktag(0),
+						base_type_info_2, i);
+			comp = mercury_compare_type_info(
+					arg_type_info_1, arg_type_info_2);
+			if (comp != COMPARE_EQUAL)
+				return comp;
+		}
+		return COMPARE_EQUAL;
+	}
+#else
 	num_arg_types = field(mktag(0), type_info_1, OFFSET_FOR_COUNT);
 	for (i = 0; i < num_arg_types; i++) {
 		Word arg_type_info_1 = field(mktag(0), type_info_1,
@@ -257,9 +257,11 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 					OFFSET_FOR_ARG_TYPE_INFOS + i);
 		comp = mercury_compare_type_info(
 				arg_type_info_1, arg_type_info_2);
-		if (comp != COMPARE_EQUAL) return comp;
+		if (comp != COMPARE_EQUAL)
+			return comp;
 	}
 	return COMPARE_EQUAL;
+#endif
 }
 
 ").
