@@ -98,7 +98,13 @@ io__write_variable(Variable, VarSet) -->
 :- mode io__write_variable_2(input, input, input, output, output, di, uo).
 
 io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
-	( { varset__lookup_name(VarSet0, Id, Name) } ->
+	(
+		{ varset__lookup_var(VarSet0, Id, Val) }
+	->
+		io__write_term_2(Val, VarSet0, N0, VarSet, N)
+	;
+		{ varset__lookup_name(VarSet0, Id, Name) }
+	->
 		{ N = N0 },
 		{ VarSet = VarSet0 },
 		io__write_string(Name)
@@ -128,6 +134,21 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
 	io__write_variable_2(Id, VarSet0, N0, VarSet, N).
 io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 	(
+		{ Functor = term_atom(".") },
+		{ Args = [ListHead, ListTail] }
+	->
+		io__write_char('['),
+		io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
+		io__write_char(']')
+	;
+		{ Functor = term_atom("{}") },
+		{ Args = [BracedTerm] }
+	->
+		io__write_string("{ "),
+		io__write_term_2(BracedTerm, VarSet0, N0, VarSet, N),
+		io__write_string(" }")
+	;
 		{ Args = [PrefixArg] },
 		io__unary_prefix_op(Functor)
 	->
@@ -169,6 +190,26 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 			{ N = N0,
 			  VarSet = VarSet0 }
 		)
+	).
+
+:- pred io__write_list_tail(term, varset, int, varset, int,
+				io__state, io__state).
+:- mode io__write_list_tail(input, input, input, output, output, di, uo).
+
+io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
+	(
+		{ Term = term_functor(term_atom("."), [ListHead, ListTail], _) }
+	->
+		io__write_string(", "),
+		io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
+		io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
+	;
+		{ Term = term_functor(term_atom("[]"), [], _) }
+	->
+		[]
+	;
+		io__write_string(" | "),
+		io__write_term_2(Term, VarSet0, N0, VarSet, N)
 	).
 
 :- pred io__infix_op(const, io__state, io__state).
