@@ -2048,7 +2048,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		->
 			{ Langs = set__to_sorted_list(LangSet) },
 			list__foldl(write_foreign_dependency_for_il(DepStream,
-				ModuleName), Langs)
+				ModuleName, AllDeps), Langs)
 		;
 			[]
 		),
@@ -2215,14 +2215,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	% (the rule to generate .dll from .cpp is a pattern rule in
 	% scripts/Mmake.rules).
 	% 
-:- pred write_foreign_dependency_for_il(io__output_stream::in, sym_name::in,
-		foreign_language::in, io__state::di, io__state::uo) is det.
-write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
+:- pred write_foreign_dependency_for_il(io__output_stream::in,sym_name::in,
+		list(module_name)::in, foreign_language::in,
+		io__state::di, io__state::uo) is det.
+write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
+		-->
 	( 
 		{ ForeignModuleName = foreign_language_module_name(
 			ModuleName, ForeignLang) },
 		{ ForeignExt = foreign_language_file_extension(ForeignLang) }
 	->
+		module_name_to_file_name(ForeignModuleName, "", no,
+			ForeignModuleNameString),
 		module_name_to_file_name(ForeignModuleName, ForeignExt, no,
 			ForeignFileName),
 		module_name_to_file_name(ModuleName, ".il", no, IlFileName),
@@ -2230,8 +2234,8 @@ write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
 		module_name_to_file_name(ForeignModuleName, ".dll", no,
 			ForeignDllFileName),
 
-		io__write_strings(DepStream, [ForeignDllFileName,
-			" : ", DllFileName]),
+		io__write_strings(DepStream, [
+			ForeignDllFileName, " : ", DllFileName]),
 			% XXX This change doesn't work correctly because
 			% mmake can't find the dlls which don't reside
 			% in the current directory.
@@ -2241,12 +2245,28 @@ write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
 		io__nl(DepStream),
 
 		io__write_strings(DepStream, [
-			ForeignFileName, " : ", IlFileName, "\n\n"])
+			ForeignFileName, " : ", IlFileName, "\n\n"]),
+
+		( { ForeignLang = csharp } ->
+			% Store in the variable
+			% CSHARP_ASSEMBLY_REFS-foreign_code_name
+			% the command line argument to reference all the
+			% dlls the foreign code module references.
+			io__write_strings(DepStream, 
+				["CSHARP_ASSEMBLY_REFS-", 
+					ForeignModuleNameString, "="]),
+			write_dll_dependencies_list(ModuleName,
+				AllDeps, "/r:", DepStream),
+			io__nl(DepStream)
+		;
+			[]
+		)
 	;
 		% This foreign language doesn't generate an external file
 		% so there are no dependencies to generate.
 		[]
 	).
+
 
 maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
@@ -3912,11 +3932,11 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	io__write_string(DepStream, FileName),
 	write_dependencies_list(Modules, Suffix, DepStream).
 
-:- pred write_dll_dependencies_list(module_name,
-		list(module_name), io__output_stream, io__state, io__state).
-:- mode write_dll_dependencies_list(in, in, in, di, uo) is det.
+:- pred write_dll_dependencies_list(module_name, list(module_name),
+		string, io__output_stream, io__state, io__state).
+:- mode write_dll_dependencies_list(in, in, in, in, di, uo) is det.
 
-write_dll_dependencies_list(Module, Modules0, DepStream) -->
+write_dll_dependencies_list(Module, Modules0, Prefix, DepStream) -->
 		% If we are not compiling a module in the mercury
 		% std library then replace all the std library dlls with
 		% one reference to mercury.dll.
@@ -3935,15 +3955,16 @@ write_dll_dependencies_list(Module, Modules0, DepStream) -->
 		),
 		Modules = list__remove_dups(list__map(F, Modules0))
 	},
-	list__foldl(write_dll_dependency(DepStream), Modules).
+	list__foldl(write_dll_dependency(DepStream, Prefix), Modules).
 
-:- pred write_dll_dependency(io__output_stream, module_name,
+:- pred write_dll_dependency(io__output_stream, string, module_name,
 				io__state, io__state).
-:- mode write_dll_dependency(in, in, di, uo) is det.
+:- mode write_dll_dependency(in, in, in, di, uo) is det.
 
-write_dll_dependency(DepStream, Module) -->
+write_dll_dependency(DepStream, Prefix, Module) -->
 	module_name_to_file_name(Module, ".dll", no, FileName),
 	io__write_string(DepStream, " \\\n\t"),
+	io__write_string(DepStream, Prefix),
 	io__write_string(DepStream, FileName).
 
 :- pred write_fact_table_dependencies_list(module_name, list(file_name),
