@@ -242,12 +242,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 
 		% Never write the clauses out verbosely -
 		% Temporarily disable the verbose_dump_hlds option
-	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
-	globals__set_option(verbose_dump_hlds, bool(no)),
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
+	globals__io_set_option(verbose_dump_hlds, bool(no)),
 	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars,
 			Clauses),
 		% Re-enable it
-	globals__set_option(verbose_dump_hlds, bool(Verbose)),
+	globals__io_set_option(verbose_dump_hlds, bool(Verbose)),
 
 	hlds_out__write_procs(Indent, ModuleInfo, PredId, Imported, ProcTable),
 	io__write_string("\n").
@@ -283,7 +283,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
 		),
 		Indent1 is Indent + 1
 	},
-	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
@@ -348,7 +348,7 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	mercury_output_term(Term, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
-	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
@@ -462,7 +462,7 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 	hlds_out__write_goal(B, ModuleInfo, VarSet, Indent1),
 	mercury_output_newline(Indent),
 	io__write_string("else"),
-	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	(
 		{ Verbose = no },
 		{ C = if_then_else(_, _, _, _) - _ }
@@ -488,7 +488,7 @@ hlds_out__write_goal_2(not(Vars, Goal), ModuleInfo, VarSet, Indent) -->
 
 hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
-		globals__lookup_bool_option(verbose_dump_hlds, Verbose),
+		globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 		( { Verbose = yes } ->
 			{ Indent1 is Indent + 1 },
 			io__write_string("( % conjunction"),

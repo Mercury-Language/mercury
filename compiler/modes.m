@@ -90,8 +90,8 @@ a local variable, then report the error [this idea not yet implemented].
 %-----------------------------------------------------------------------------%
 
 modecheck(Module0, Module) -->
-	globals__lookup_bool_option(statistics, Statistics),
-	globals__lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -135,7 +135,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	( { Clauses0 = [] } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
-		globals__lookup_bool_option(very_verbose, VeryVerbose),
+		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
 			hlds_out__write_pred_id(ModuleInfo0, PredId),
@@ -1438,7 +1438,7 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
-        globals__lookup_bool_option(debug_modes, DoCheckPoint,
+        globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
 		IOState0, IOState1),
 	( DoCheckPoint = yes ->
 		mode_checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
@@ -1468,7 +1468,7 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 	io__write_string(Msg),
 	( { Detail = yes } ->
 		io__write_string(":\n"),
-		globals__lookup_bool_option(statistics, Statistics),
+		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 		{ mode_info_get_instmap(ModeInfo, InstMap) },
 		( { InstMap = reachable(InstMapping) } ->

@@ -53,9 +53,9 @@
 			;	tags
 			;	follow_code
 			;	follow_vars
-			;	save_hp
 			;	lazy_code
-			;	reclaim_heap_on_failure
+			;	reclaim_heap_on_semidet_failure
+			;	reclaim_heap_on_nondet_failure
 			;	num_tag_bits
 			;	gc
 			;	compile_to_c
@@ -95,8 +95,8 @@ option_defaults([
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
-	save_hp			-	bool(no),
-	reclaim_heap_on_failure	-	bool(no),
+	reclaim_heap_on_semidet_failure	-	bool(no),
+	reclaim_heap_on_nondet_failure	-	bool(no),
 	num_tag_bits		-	int(2),
 	gc			-	string("none"),
 	compile_to_c		-	bool(no),
@@ -158,8 +158,10 @@ long_option("tags",			tags).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
 long_option("lazy-code",		lazy_code).
-long_option("save-hp",			save_hp).
-long_option("reclaim-heap-on-failure",	reclaim_heap_on_failure).
+long_option("reclaim-heap-on-semidet-failure",
+					reclaim_heap_on_semidet_failure).
+long_option("reclaim-heap-on-nondet-failure",
+					reclaim_heap_on_nondet_failure).
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
@@ -235,8 +237,10 @@ options_help -->
 	io__write_string("\t\tMigrate builtin goals into branched goals\n"),
 	io__write_string("\t--follow-vars\n"),
 	io__write_string("\t\tOptimise the assignment of registers in branched goals\n"),
-	io__write_string("\t--reclaim-heap-on-failure\n"),
+	io__write_string("\t--reclaim-heap-on-semidet-failure\n"),
 	io__write_string("\t\tReclaim heap when semidet code fails\n"),
+	io__write_string("\t--reclaim-heap-on-nondet-failure\n"),
+	io__write_string("\t\tReclaim heap when nondet code fails\n"),
 	io__write_string("\t--gcc-global-registers\n"),
 	io__write_string("\t\tUse GNU C's global register variables extension.\n"),
 	io__write_string("\t--gcc-non-local-gotos\n"),

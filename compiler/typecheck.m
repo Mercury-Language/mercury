@@ -142,8 +142,8 @@
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
-	globals__lookup_bool_option(statistics, Statistics),
-	globals__lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -224,7 +224,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 :- mode write_progress_message(in, in, di, uo) is det.
 
 write_progress_message(PredId, ModuleInfo) -->
-	globals__lookup_bool_option(very_verbose, VeryVerbose),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Type-checking predicate "),
 		hlds_out__write_pred_id(ModuleInfo, PredId),
@@ -381,7 +381,7 @@ report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
 	io__write_string("  Unbound type vars were: "),
 	write_type_var_list(TVars, TVarSet),
 	io__write_string(".\n"),
-	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__io_lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
 		io__write_string("\tbut I can't determine which version should be called,\n"),
@@ -927,7 +927,7 @@ check_warn_too_much_overloading(TypeInfo0, TypeInfo) :-
 
 checkpoint(Msg, T0, T) :-
 	type_info_get_io_state(T0, I0),
-	globals__lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
+	globals__io_lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
 	;	
@@ -942,7 +942,7 @@ checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	globals__lookup_bool_option(statistics, Statistics),
+	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	io__write_string("\n"),
 	{ type_info_get_type_assign_set(T0, TypeAssignSet) },
@@ -2081,7 +2081,7 @@ report_warning_too_much_overloading(TypeInfo) -->
 	write_context_and_pred_id(TypeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  warning: highly ambiguous overloading.\n"),
-	globals__lookup_bool_option(verbose_errors, VerboseErrors),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
 		io__write_string(
@@ -2303,7 +2303,7 @@ write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context) -->
 :- mode write_type_assign_set_msg(in, in, di, uo) is det.
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
-	globals__lookup_bool_option(verbose_errors, VerboseErrors),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		( { TypeAssignSet = [_] } ->
 		    io__write_string("\tThe partial type assignment was:\n")
@@ -2415,7 +2415,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),
-		globals__lookup_bool_option(verbose_errors, VerboseErrors),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		io__write_string("  which doesn't match the expected type.\n"),
 		( { VerboseErrors = yes } ->
 				% XXX improve error message: should output

@@ -309,7 +309,7 @@
 % late-input modes.)
 
 prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
-	globals__lookup_accumulating_option(search_directories, Dirs),
+	globals__io_lookup_accumulating_option(search_directories, Dirs),
 	search_for_file(Dirs, FileName, R),
 	( { R = ok } ->
 		read_all_items(RevMessages, RevItems0, Error0),

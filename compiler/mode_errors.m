@@ -127,7 +127,7 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
-	globals__lookup_bool_option(verbose_errors, VerboseErrors),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		mode_info_write_context(ModeInfo),
 		prog_out__write_context(Context),
@@ -186,7 +186,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 report_mode_error_conj_2([], _, _, _) --> [].
 report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 			VarSet, Context, ModeInfo) -->
-	globals__lookup_bool_option(debug_modes, Debug),
+	globals__io_lookup_bool_option(debug_modes, Debug),
 	( { Debug = yes } ->
 		prog_out__write_context(Context),
 		io__write_string("Floundered goal, waiting on { "),
@@ -196,7 +196,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	;
 		[]
 	),
-	globals__lookup_bool_option(very_verbose, VeryVerbose),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("\t\t"),
 		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
@@ -274,7 +274,7 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("  expected instantiatedness was `"),
 	mercury_output_inst(Inst, InstVarSet),
 	io__write_string("'.\n"),
-	globals__lookup_bool_option(verbose_errors, VerboseErrors),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
 		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),

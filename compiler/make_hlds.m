@@ -35,11 +35,11 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	globals__lookup_bool_option(statistics, Statistics),
+	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module1, Module2) },
-	globals__lookup_bool_option(statistics, Statistics),
+	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
@@ -394,7 +394,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% check that the determinism was specified
 		%
 	{ list__length(Modes, Arity) },
-	globals__lookup_bool_option(warn_missing_det_decls, ShouldWarn),
+	globals__io_lookup_bool_option(warn_missing_det_decls, ShouldWarn),
 	(
 		{ Det = unspecified },
 		{ ShouldWarn = yes }
@@ -517,7 +517,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		%
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(Args, Arity) },
-	globals__lookup_bool_option(very_verbose, VeryVerbose),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Processing clause for pred `"),
 		hlds_out__write_pred_call_id(PredName/Arity),
@@ -589,7 +589,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 :- mode maybe_warn_singletons(in, in, in, in, in, di, uo) is det.
 
 maybe_warn_singletons(VarSet, PredCallId, Args, Body, Context) -->
-	globals__lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
+	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
 		{ term__vars_list(Args, VarList0) },
 		{ vars_in_goal(Body, VarList0, VarList) },

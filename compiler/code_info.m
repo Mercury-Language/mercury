@@ -28,20 +28,15 @@
 
 :- interface.
 
-:- import_module hlds, llds, options.
-:- import_module code_util, tree, set, std_util.
+:- import_module hlds, llds.
+:- import_module code_util, tree, set, std_util, globals.
 
 :- type code_info.
-
-:- type code_option	--->
-		save_hp
-	;	lazy_code.
 
 :- type code_tree	==	tree(list(instruction)).
 
 		% Create a new code_info structure.
-:- pred code_info__init(varset, liveness_info, call_info, bool,
-			map(option, option_data),
+:- pred code_info__init(varset, liveness_info, call_info, bool, globals,
 				pred_id, proc_id, proc_info, category,
 					follow_vars, module_info, code_info).
 :- mode code_info__init(in, in, in, in, in,
@@ -315,11 +310,11 @@
 :- pred code_info__pop_stack(code_tree, code_info, code_info).
 :- mode code_info__pop_stack(out, in, out) is det.
 
-:- pred code_info__get_options(set(code_option), code_info, code_info).
-:- mode code_info__get_options(out, in, out) is det.
+:- pred code_info__get_globals(globals, code_info, code_info).
+:- mode code_info__get_globals(out, in, out) is det.
 
-:- pred code_info__set_options(set(code_option), code_info, code_info).
-:- mode code_info__set_options(in, in, out) is det.
+:- pred code_info__set_globals(globals, code_info, code_info).
+:- mode code_info__set_globals(in, in, out) is det.
 
 :- pred code_info__push_store_map(map(var, lval), code_info, code_info).
 :- mode code_info__push_store_map(in, in, out) is det.
@@ -340,9 +335,7 @@
 
 :- type code_info	--->
 		code_info(
-			int,		% Counter for the number of stack slots
-					% allocated so far. Used to mangage
-					% the stack frame.
+			int,		% The number of stack slots allocated.
 			int,		% Counter for the local labels used
 					% by this procedure.
 			varset,		% The variables in this procedure.
@@ -371,7 +364,7 @@
 			int,		% The number of extra stackslots
 					% that have been pushed during the
 					% procedure
-			set(code_option) % code generation options
+			globals		% code generation options
 	).
 
 :- type register_info	==	map(reg, register_stat).
@@ -393,7 +386,7 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
+code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 					PredId, ProcId, ProcInfo, Category,
 						_FollowVars, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
@@ -404,7 +397,6 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 	stack__init(StoreMapStack0),
 	map__init(StoreMap),
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
-	code_info__make_options(CMDOptions, Options),
 	code_info__max_slot(CallInfo, SlotCount),
 	C = code_info(
 		SlotCount,
@@ -424,29 +416,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 		Category - Category,
 		no,
 		0,
-		Options
-	).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__make_options(map(option, option_data), set(code_option)).
-:- mode code_info__make_options(in, out) is det.
-
-code_info__make_options(CMDOptions, Options) :-
-	set__init(Options0),
-	(
-		map__search(CMDOptions, lazy_code, bool(yes))
-	->
-		set__insert(Options0, lazy_code, Options1)
-	;
-		Options1 = Options0
-	),
-	(
-		map__search(CMDOptions, save_hp, bool(yes))
-	->
-		set__insert(Options1, save_hp, Options)
-	;
-		Options = Options1
+		Globals
 	).
 
 %---------------------------------------------------------------------------%
@@ -2038,6 +2008,14 @@ code_info__stack_variable(Num0, Lval) -->
 :- mode code_info__push_rval(in, out, in, out) is det.
 
 code_info__push_rval(Rval, Code) -->
+	code_info__get_globals(Globals),
+	(
+		{ globals__get_gc_method(Globals, accurate) }
+	->
+		{ error("`push' is incompatible with accurate GC") }
+	;
+		[]
+	),
 	code_info__get_proc_category(Cat),
 	(
 		{ Cat = nondeterministic }
@@ -2412,10 +2390,10 @@ code_info__set_push_count(Q, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
-code_info__get_options(R, CI, CI) :-
+code_info__get_globals(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R).
 
-code_info__set_options(R, CI0, CI) :-
+code_info__set_globals(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 

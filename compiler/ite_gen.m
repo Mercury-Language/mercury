@@ -25,12 +25,14 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module set, tree, list, map, std_util, require.
+:- import_module set, tree, list, map, std_util, require, options, globals.
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
-	code_info__get_options(Options),
+	code_info__get_globals(Options),
+	{ globals__lookup_bool_option(Options,
+			reclaim_heap_on_semidet_failure, ReclaimHeap) },
 	(
-		{ set__member(save_hp, Options) }
+		{ ReclaimHeap = yes }
 	->
 		code_info__save_hp(HPSaveCode)
 	;
@@ -43,7 +45,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__unset_failure_cont,
 	code_info__grab_code_info(CodeInfo),
 	(
-		{ set__member(save_hp, Options) }
+		{ ReclaimHeap = yes }
 	->
 		code_info__pop_stack(HPPopCode)
 	;
@@ -54,7 +56,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
 	(
-		{ set__member(save_hp, Options) }
+		{ ReclaimHeap = yes }
 	->
 		code_info__restore_hp(HPRestoreCode)
 	;
@@ -124,4 +126,3 @@ ite_gen__generate_nondet_ite(_CondGoal, _ThenGoal, _ElseGoal, _Instr) -->
 	{ error("Unimplemented") }.
 
 %---------------------------------------------------------------------------%
-

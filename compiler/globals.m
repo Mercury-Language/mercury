@@ -1,4 +1,5 @@
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module globals.
 
@@ -52,6 +53,16 @@
 :- pred globals__set_tags_method(globals::in, tags_method::in, globals::out)
 	is det.
 
+:- pred globals__lookup_option(globals::in, option::in, option_data::out)
+	is det.
+
+:- pred globals__lookup_bool_option(globals::in, option::in, bool::out) is det.
+:- pred globals__lookup_int_option(globals::in, option::in, int::out) is det.
+:- pred globals__lookup_string_option(globals::in, option::in, string::out)
+	is det.
+:- pred globals__lookup_accumulating_option(globals::in, option::in,
+		list(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for storing a `globals' structure in the
@@ -66,30 +77,31 @@
 :- pred globals__io_get_tags_method(tags_method::out,
 				io__state::di, io__state::uo) is det.
 
-:- pred globals__lookup_bool_option(option::in, bool::out,
-			io__state::di, io__state::uo) is det.
-
-:- pred globals__lookup_int_option(option::in, int::out,
-			io__state::di, io__state::uo) is det.
-
-:- pred globals__lookup_string_option(option::in, string::out,
-			io__state::di, io__state::uo) is det.
-
-:- pred globals__lookup_accumulating_option(option::in, list(string)::out,
-			io__state::di, io__state::uo) is det.
-
-:- pred globals__lookup_option(option::in, option_data::out,
-			io__state::di, io__state::uo) is det.
-
-:- pred globals__set_option(option::in, option_data::in,
-			io__state::di, io__state::uo) is det.
-
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
 	is det.
 
 :- pred globals__io_set_globals(globals::in, io__state::di, io__state::uo)
 	is det.
 
+:- pred globals__io_lookup_option(option::in, option_data::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__io_set_option(option::in, option_data::in,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__io_lookup_bool_option(option::in, bool::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__io_lookup_int_option(option::in, int::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__io_lookup_string_option(option::in, string::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
+			io__state::di, io__state::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -105,7 +117,7 @@ convert_tags_method("none", none).
 convert_tags_method("low", low).
 convert_tags_method("high", high).
 
-	% currently the only global data is the option table
+%-----------------------------------------------------------------------------%
 
 :- type globals
 	--->	globals(
@@ -130,54 +142,49 @@ globals__get_tags_method(globals(_, _, Tags_Method), Tags_Method).
 globals__set_tags_method(globals(A, B, _), Tags_Method,
 	globals(A, B, Tags_Method)).
 
+globals__lookup_option(Globals, Option, OptionData) :-
+	globals__get_options(Globals, OptionTable),
+	map__lookup(OptionTable, Option, OptionData).
+
+%-----------------------------------------------------------------------------%
+
+globals__lookup_bool_option(Globals, Option, Value) :-
+	globals__lookup_option(Globals, Option, OptionData),
+	( OptionData = bool(Bool) ->
+		Value = Bool
+	;
+		error("globals__lookup_bool_option: invalid bool option")
+	).
+
+globals__lookup_string_option(Globals, Option, Value) :-
+	globals__lookup_option(Globals, Option, OptionData),
+	( OptionData = string(String) ->
+		Value = String
+	;
+		error("globals__lookup_string_option: invalid string option")
+	).
+
+globals__lookup_int_option(Globals, Option, Value) :-
+	globals__lookup_option(Globals, Option, OptionData),
+	( OptionData = int(Int) ->
+		Value = Int
+	;
+		error("globals__lookup_int_option: invalid int option")
+	).
+
+globals__lookup_accumulating_option(Globals, Option, Value) :-
+	globals__lookup_option(Globals, Option, OptionData),
+	( OptionData = accumulating(Accumulating) ->
+		Value = Accumulating
+	;
+		error("globals__lookup_accumulating_option: invalid accumulating option")
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, GC_Method, Tags_Method) -->
 	{ globals__init(Options, GC_Method, Tags_Method, Globals) },
-	globals__io_set_globals(Globals).
-
-globals__lookup_option(Option, OptionData) -->
-	globals__io_get_globals(Globals),
-	{ globals__get_options(Globals, OptionTable) },
-	{ map__lookup(OptionTable, Option, OptionData) }.
-
-globals__lookup_bool_option(Option, Value) -->
-	globals__lookup_option(Option, OptionData),
-	{ OptionData = bool(Bool) ->
-		Value = Bool
-	;
-		error("globals__lookup_bool_option: invalid bool option")
-	}.
-
-globals__lookup_int_option(Option, Value) -->
-	globals__lookup_option(Option, OptionData),
-	{ OptionData = int(Int) ->
-		Value = Int
-	;
-		error("globals__lookup_int_option: invalid int option")
-	}.
-
-globals__lookup_accumulating_option(Option, Value) -->
-	globals__lookup_option(Option, OptionData),
-	{ OptionData = accumulating(StringList) ->
-		Value = StringList
-	;
-		error("globals__lookup_accumulating_option: invalid option")
-	}.
-
-globals__lookup_string_option(Option, Value) -->
-	globals__lookup_option(Option, OptionData),
-	{ OptionData = string(String) ->
-		Value = String
-	;
-		error("globals__lookup_string_option: invalid string option")
-	}.
-
-globals__set_option(Option, OptionData) -->
-	globals__io_get_globals(Globals0),
-	{ globals__get_options(Globals0, OptionTable0) },
-	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
-	{ globals__set_options(Globals0, OptionTable, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -202,4 +209,37 @@ globals__io_set_globals(Globals) -->
 	{ type_to_univ(Globals, UnivGlobals) },
 	io__set_globals(UnivGlobals).
 
+%-----------------------------------------------------------------------------%
+
+globals__io_lookup_option(Option, OptionData) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_options(Globals, OptionTable) },
+	{ map__lookup(OptionTable, Option, OptionData) }.
+
+globals__io_set_option(Option, OptionData) -->
+	globals__io_get_globals(Globals0),
+	{ globals__get_options(Globals0, OptionTable0) },
+	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
+	{ globals__set_options(Globals0, OptionTable, Globals) },
+	globals__io_set_globals(Globals).
+
+%-----------------------------------------------------------------------------%
+
+globals__io_lookup_bool_option(Option, Value) -->
+	globals__io_get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, Option, Value) }.
+
+globals__io_lookup_int_option(Option, Value) -->
+	globals__io_get_globals(Globals),
+	{ globals__lookup_int_option(Globals, Option, Value) }.
+
+globals__io_lookup_string_option(Option, Value) -->
+	globals__io_get_globals(Globals),
+	{ globals__lookup_string_option(Globals, Option, Value) }.
+
+globals__io_lookup_accumulating_option(Option, Value) -->
+	globals__io_get_globals(Globals),
+	{ globals__lookup_accumulating_option(Globals, Option, Value) }.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
