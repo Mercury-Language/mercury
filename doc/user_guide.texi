@@ -78,19 +78,14 @@ how to build and debug Mercury programs.
 * Running::         Execution of programs built with the Mercury compiler.
 * Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
 * Libraries::       Creating and using libraries of Mercury modules.
+* Using Aditi::     Executing Mercury predicates using the Aditi
+                    deductive database.
 * Debugging::       The Mercury debugger @samp{mdb}.
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
                     program performance.
 * Invocation::      List of options for the Mercury compiler.
 * Environment::     Environment variables used by the compiler and utilities.
 * C compilers::     How to use a C compiler other than GNU C.
-@ifset aditi 
-* Using Aditi::     Executing Mercury predicates using the Aditi
-                    deductive database.
-@end ifset 
-@c XXX I'd like to put the Aditi section below the Using libraries section
-@c in the menu but texinfo doesn't seem to like `@ifset's in menus.
-@c (complains about the next entry not having an `Up' node)
 @end menu
 @end ifinfo
 
@@ -2362,20 +2357,19 @@ Mercury Language Reference Manual
 @item
 the Aditi web site at <http://www.cs.mu.oz.au/aditi>
 @item
-the file @file{extras/aditi/aditi.m} in the @samp{mercury-extras} distribution
+the documentation supplied with Aditi, especially the file
+@file{$ADITI_HOME/doc/aditi.m}
+@item
+the samples provided with the Aditi distribution in @file{$ADITI_HOME/demos}
 @end itemize
 
 As an alternative to compiling stand-alone programs, you can execute
 queries using the Aditi query shell.
-@c XXX reference.
 
-To compile code which accesses an Aditi database, you will need to install
-the Aditi library in the @samp{extras/aditi} subdirectory of the
-@samp{mercury-extras} distribution. Once you have done that, use the
-Mmakefile in @samp{extras/aditi/samples} as a template, changing the values
-of the variables @samp{MADITI_DIR}, @samp{ADITI_API_INCL_DIR} and
-@samp{ADITI_API_LIB_DIR}. You should then be able to compile as
-normal using Mmake (@pxref{Using Mmake}).
+The Aditi interface library is installed as part of the Aditi
+installation process. To use the Aditi library in your programs, use
+the Mmakefile in @file{$ADITI_HOME/demos/transactions} as a template.
+
 @end ifset
 
 @node Profiling

@@ -5816,11 +5816,9 @@ extensions to the Mercury language:
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
 * Termination analysis::        Support for automatic proofs of termination.
-@ifset aditi
 * Aditi deductive database interface::
                                 Support for bottom-up evaluation of Mercury
                                 predicates.
-@end ifset
 @end menu
 
 @node Fact tables
@@ -6113,8 +6111,8 @@ variables from database predicates, and enforces the restriction that
 top-down Mercury code called from within the database cannot call bottom-up
 code, which is currently impossible for Aditi to handle.
 
-Some useful predicates are defined in @file{extras/aditi/aditi.m} in the
-@samp{mercury-extras} distribution.
+Some useful predicates are defined in @file{$ADITI_HOME/doc/aditi.m}
+in the Aditi distribution.
 
 The Aditi interface currently has the major restriction that recursive or
 imported top-down Mercury predicates or functions cannot be called from
@@ -6235,7 +6233,8 @@ The Aditi deductive database can store the results of procedures within
 a transaction to avoid unnecessary recomputations. This is unrelated to
 the type of memoing described in @ref{Tabled evaluation}.
 @samp{aditi_no_memo} is the default.
-@c XXX this will probably change
+Memoing is not yet implemented, so any @samp{pragma aditi_memo}
+declarations will be ignored.
 
 @example
 :- pragma owner(@var{Name}/@var{Arity}, @var{UserName}).
@@ -6749,8 +6748,8 @@ The basic instructions in Aditi-RL are relational database operations such as
 @item aggregate
 Aggregates are used to compute a value such as a sum over all the solutions
 for a predicate. Aggregates can be computed over Aditi predicates using
-@samp{aditi__aggregate_compute_initial} defined in @file{extras/aditi/aditi.m}
-in the @samp{mercury-extras} distribution.
+@samp{aditi__aggregate_compute_initial} defined in
+@file{$ADITI_HOME/doc/aditi.m} in the Aditi distribution.
 
 @item base relation
 A base relation is a predicate consisting of a set of facts
@@ -6783,8 +6782,8 @@ A transaction is a database operation which is executed atomically. If
 part of a transaction fails, the database reverts to its original state
 before the transaction. For details on how transactions are implemented
 in Mercury, see @cite{Database transactions in a purely declarative logic
-programming language} @ref{[7]} and @file{extras/aditi/aditi.m} in the
-@samp{mercury-extras} distribution.
+programming language} @ref{[7]} and @file{$ADITI_HOME/doc/aditi.m} in the
+Aditi distribution.
 
 @end table
 
