@@ -11,11 +11,12 @@
 
 :- interface.
 
-:- import_module int, list, io.
+:- import_module int, io.
 
 :- type var --->	x ; y ; z.
 :- type term --->	term(int, poly).
 :- type poly --->	poly(var, list(term)) ; const(int).
+:- type list(T) --->	[] ; [T | list(T)].
 
 :- pred main3(poly, io__state, io__state).
 :- mode main3(out, di, uo) is det.
