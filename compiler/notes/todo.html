@@ -34,9 +34,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <p>
 
 <ul>
-<li> fix various bugs in mode inference;
-     in particular need to infer mostly-unique vs unique distinctions,
-     and need to fix it to work properly in the presence of functions.
+<li> fix various bugs in mode inference:
+     need to fix it to work properly in the presence of functions;
+     also need to change normalise_inst so that it handles complicated
+     insts such as `list_skel(any)'.
 
 <li> extend the mode system to allow known aliasing.
      This is needed to make partially instantiated modes and unique modes work.
@@ -70,7 +71,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
   independently of any declarations or imports in the implementation
   section
 
-<li> imports should not be transitive
+<li> use_module should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
 
@@ -218,8 +219,8 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      using accumulators
 	[being worked on by petdr]
 
-<li> deforestation and partial deduction
-	[being worked on by stayl]
+<li> improvements to deforestation / partial deduction
+
 </ul>
 
 <h2> low-level optimizations </h2>
@@ -333,6 +334,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-06-29 05:37:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-09-02 07:02:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
