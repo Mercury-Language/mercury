@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,17 @@
 :- module (inst).
 :- interface.
 
-:- import_module prog_data, hlds_data, hlds_pred, instmap.
+% This module should NOT import hlds*.m.  Any types which are needed in
+% both the insts and in the HLDS should be defined here, rather than
+% in hlds*.m, because insts are part of the parse tree and the parse tree
+% should not depend on the HLDS.
+%
+% XXX Currently we have to import hlds_data for the `cons_id' type.
+%     I think the cons_ids in insts only use a subset of the functors
+%     of the `cons_id' type, and so we could define a new type
+%     `abstract_cons_id' and use that here instead of `cons_id'.
+
+:- import_module prog_data, hlds_data, instmap.
 :- import_module list, std_util, map, io, set.
 
 %-----------------------------------------------------------------------------%

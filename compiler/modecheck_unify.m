@@ -20,8 +20,7 @@
 :- module modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, hlds_data, prog_data, mode_info, (inst), instmap.
-:- import_module map.
+:- import_module hlds_goal, prog_data, mode_info.
 
 	% Modecheck a unification
 :- pred modecheck_unification(prog_var, unify_rhs, unification, unify_context,
@@ -29,19 +28,11 @@
 :- mode modecheck_unification(in, in, in, in, in, out,
 			mode_info_di, mode_info_uo) is det.
 
-	% Work out what kind of unification a var-var unification is.
-:- pred categorize_unify_var_var(inst, inst, inst, inst, is_live, is_live,
-		prog_var, prog_var, instmap, instmap, determinism,
-		unify_context, map(prog_var, type), mode_info, hlds_goal_expr,
-		mode_info).
-:- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in, in, in,
-		in, in, mode_info_di, out, mode_info_uo) is det.
-
 	% Create a unification between the two given variables.
 	% The goal's mode and determinism information is not filled in.
-:- pred modecheck_unify__create_var_var_unification(prog_var, prog_var,
+:- pred modecheck_unify__create_var_var_unification(prog_var, prog_var, type,
 		mode_info, hlds_goal).
-:- mode modecheck_unify__create_var_var_unification(in, in,
+:- mode modecheck_unify__create_var_var_unification(in, in, in,
 		mode_info_ui, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -50,12 +41,13 @@
 :- implementation.
 
 :- import_module llds, prog_util, type_util, module_qual.
-:- import_module hlds_module, hlds_goal, hlds_pred, hlds_out.
+:- import_module hlds_module, hlds_goal, hlds_pred, hlds_data, hlds_out.
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
 :- import_module typecheck, modecheck_call, (inst), quantification, make_hlds.
+:- import_module polymorphism, instmap.
 
-:- import_module bool, list, std_util, int, set, require.
+:- import_module bool, list, map, std_util, int, set, require.
 :- import_module string, assoc_list.
 :- import_module term, varset.
 
@@ -91,7 +83,7 @@ mode_info_make_aliased_insts([V | Vs], [I | Is], ModeInfo0, ModeInfo) :-
 	),
 	mode_info_make_aliased_insts(Vs, Is, ModeInfo2, ModeInfo).
 
-modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo,
+modecheck_unification(X, var(Y), Unification0, UnifyContext, _GoalInfo,
 			Unify, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -133,7 +125,8 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo,
 		mode_info_get_var_types(ModeInfo6, VarTypes),
 		categorize_unify_var_var(InstOfX, Inst, InstOfY, Inst,
 			LiveX, LiveY, X, Y, InstMap0, InstMap1,
-			Det, UnifyContext, VarTypes, ModeInfo6, Unify, ModeInfo)
+			Det, UnifyContext, VarTypes, Unification0, ModeInfo6,
+			Unify, ModeInfo)
 	;
 		set__list_to_set([X, Y], WaitingVars),
 		mode_info_error(WaitingVars, mode_error_unify_var_var(X, Y,
@@ -159,96 +152,6 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_var_types(ModeInfo0, VarTypes0),
 	map__lookup(VarTypes0, X0, TypeOfX),
-	module_info_get_predicate_table(ModuleInfo0, PredTable),
-	list__length(ArgVars0, Arity),
-	mode_info_get_predid(ModeInfo0, ThisPredId),
-	mode_info_get_how_to_check(ModeInfo0, HowToCheckGoal),
-	(
-		%
-		% is the function symbol apply/N or ''/N,
-		% representing a higher-order function call?
-		%
-		% (As an optimization, if HowToCheck = check_unique_modes,
-		% then don't bother checking, since they will have already
-		% been expanded.)
-		%
-		HowToCheckGoal \= check_unique_modes,
-		ConsId0 = cons(unqualified(ApplyName), _),
-		( ApplyName = "apply" ; ApplyName = "" ),
-		Arity >= 1,
-		ArgVars0 = [FuncVar | FuncArgVars]
-	->
-		%
-		% Convert the higher-order function call (apply/N)
-		% into a higher-order predicate call
-		% (i.e., replace `X = apply(F, A, B, C)'
-		% with `call(F, A, B, C, X)')
-		% and then mode-check it.
-		%
-		modecheck_higher_order_func_call(FuncVar, FuncArgVars, X0,
-			GoalInfo0, Goal, ModeInfo0, ModeInfo)
-	;
-		%
-		% is the function symbol a user-defined function, rather
-		% than a functor which represents a data constructor?
-		%
-
-		% As an optimization, if HowToCheck = check_unique_modes,
-		% then don't bother checking, since they will have already
-		% been expanded.
-		HowToCheckGoal \= check_unique_modes,
-
-		% Find the set of candidate predicates which have the
-		% specified name and arity (and module, if module-qualified)
-		ConsId0 = cons(PredName, _),
-		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
-
-		%
-		% We don't do this for compiler-generated predicates;
-		% they are assumed to have been generated with all
-		% functions already expanded.
-		% If we did this check for compiler-generated
-		% predicates, it would cause the wrong behaviour
-		% in the case where there is a user-defined function
-		% whose type is exactly the same as the type of
-		% a constructor.  (Normally that would cause
-		% a type ambiguity error, but compiler-generated
-		% predicates are not type-checked.)
-		%
-
-		\+ code_util__compiler_generated(PredInfo),
-
-		predicate_table_search_func_sym_arity(PredTable,
-			PredName, Arity, PredIds),
-
-		% Check if any of the candidate functions have
-		% argument/return types which subsume the actual
-		% argument/return types of this function call
-
-		pred_info_typevarset(PredInfo, TVarSet),
-		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
-		list__append(ArgTypes0, [TypeOfX], ArgTypes),
-		typecheck__find_matching_pred_id(PredIds, ModuleInfo0,
-			TVarSet, ArgTypes, PredId, QualifiedFuncName)
-	->
-		%
-		% Convert function calls into predicate calls:
-		% replace `X = f(A, B, C)'
-		% with `f(A, B, C, X)'
-		%
-		invalid_proc_id(ProcId),
-		list__append(ArgVars0, [X0], ArgVars),
-		FuncCallUnifyContext = call_unify_context(X0,
-			functor(ConsId0, ArgVars0), UnifyContext),
-		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
-			yes(FuncCallUnifyContext), QualifiedFuncName),
-		%
-		% now modecheck it
-		%
-		modecheck_goal_expr(FuncCall, GoalInfo0, Goal, ModeInfo0, ModeInfo)
-
-	;
-
 	%
 	% We replace any unifications with higher-order pred constants
 	% by lambda expressions.  For example, we replace
@@ -259,18 +162,13 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 	%
 	%       X = lambda [A1::in, A2::out] (list__append(Y, A1, A2))
 	%
-	% We do this because it makes two things easier.
-	% Firstly, we need to check that the lambda-goal doesn't
-	% bind any non-local variables (e.g. `Y' in above example).
-	% This would require a bit of moderately tricky special-case code
-	% if we didn't expand them.
-	% Secondly, the polymorphism pass (polymorphism.m) is a lot easier
-	% if we don't have to handle higher-order pred consts.
-	% If it turns out that the predicate was non-polymorphic,
-	% lambda.m will (I hope) turn the lambda expression
-	% back into a higher-order pred constant again.
+	% Normally this is done by polymorphism__process_unify_functor,
+	% but if we're re-modechecking goals after lambda.m has been run
+	% (e.g. for deforestation), then we may need to do it again here.
+	% Note that any changes to this code here will probably need to be
+	% duplicated there too.
 	%
-
+	(
 		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
 		ConsId0 = cons(PName, _),
@@ -281,93 +179,23 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		Unification0 \= deconstruct(_, code_addr_const(_, _), _, _, _)
 	->
 		%
-		% Create the new lambda-quantified variables
+		% convert the pred term to a lambda expression
 		%
 		mode_info_get_varset(ModeInfo0, VarSet0),
-		make_fresh_vars(PredArgTypes, VarSet0, VarTypes0,
-				LambdaVars, VarSet, VarTypes),
-		list__append(ArgVars0, LambdaVars, Args),
-		mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
-		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
-
-		%
-		% Build up the hlds_goal_expr for the call that will form
-		% the lambda goal
-		%
-
+		mode_info_get_context(ModeInfo0, Context),
+		mode_info_get_predid(ModeInfo0, ThisPredId),
 		module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
 		pred_info_typevarset(ThisPredInfo, TVarSet),
-		map__apply_to_list(Args, VarTypes, ArgTypes),
-		(
-			% If we are redoing mode analysis, use the
-			% pred_id and proc_id found before, to avoid aborting
-			% in get_pred_id_and_proc_id if there are multiple
-			% matching procedures.
-			Unification0 = construct(_, 
-				pred_const(PredId0, ProcId0), _, _)
-		->
-			PredId = PredId0,
-			ProcId = ProcId0
-		;
-			get_pred_id_and_proc_id(PName, PredOrFunc, TVarSet, 
-				ArgTypes, ModuleInfo0, PredId, ProcId)
-		),
-		module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-					PredInfo, ProcInfo),
-
-		% module-qualify the pred name (is this necessary?)
-		pred_info_module(PredInfo, PredModule),
-		unqualify_name(PName, UnqualPName),
-		QualifiedPName = qualified(PredModule, UnqualPName),
-
-		CallUnifyContext = call_unify_context(X0,
-				functor(ConsId0, ArgVars0), UnifyContext),
-		LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
-				yes(CallUnifyContext), QualifiedPName),
-
+		convert_pred_to_lambda_goal(PredOrFunc, X0, ConsId0, PName,
+			ArgVars0, PredArgTypes, TVarSet,
+			Unification0, UnifyContext, GoalInfo0, Context,
+			ModuleInfo0, VarSet0, VarTypes0,
+			Functor0, VarSet, VarTypes),
+		mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
+		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 		%
-		% construct a goal_info for the lambda goal, making sure
-		% to set up the nonlocals field in the goal_info correctly
+		% modecheck this unification in its new form
 		%
-		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__insert_list(NonLocals, LambdaVars, OutsideVars),
-		set__list_to_set(Args, InsideVars),
-		set__intersect(OutsideVars, InsideVars, LambdaNonLocals),
-		goal_info_init(LambdaGoalInfo0),
-		mode_info_get_context(ModeInfo2, Context),
-		goal_info_set_context(LambdaGoalInfo0, Context,
-				LambdaGoalInfo1),
-		goal_info_set_nonlocals(LambdaGoalInfo1, LambdaNonLocals,
-				LambdaGoalInfo),
-		LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
-
-		%
-		% work out the modes of the introduced lambda variables
-		% and the determinism of the lambda goal
-		%
-		proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable,
-					ArgModes)),
-
-		( list__drop(Arity, ArgModes, LambdaModes0) ->
-			LambdaModes = LambdaModes0
-		;
-			error("modecheck_unification: list__drop failed")
-		),
-		proc_info_declared_determinism(ProcInfo, MaybeDet),
-		( MaybeDet = yes(Det) ->
-			LambdaDet = Det
-		;
-			error("Sorry, not implemented: determinism inference for higher-order predicate terms")
-		),
-
-		%
-		% construct the lambda expression, and then go ahead
-		% and modecheck this unification in its new form
-		%
-		instmap_delta_init_reachable(IMDelta),
-		Functor0 = lambda_goal(PredOrFunc, ArgVars0, LambdaVars, 
-				argument_modes(ArgInstTable, LambdaModes),
-				LambdaDet, IMDelta, LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
 				GoalInfo0, Goal, ModeInfo2, ModeInfo)
 	;
@@ -657,14 +485,13 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	% fully module qualify all cons_ids
 	% (except for builtins such as ints and characters).
 	%
-	list__length(ArgVars0, Arity),
 	(
-		ConsId0 = cons(Name, _),
+		ConsId0 = cons(Name, OrigArity),
 		type_to_type_id(TypeOfX, TypeId, _),
 		TypeId = qualified(TypeModule, _) - _
 	->
 		unqualify_name(Name, UnqualName),
-		ConsId = cons(qualified(TypeModule, UnqualName), Arity)
+		ConsId = cons(qualified(TypeModule, UnqualName), OrigArity)
 	;
 		ConsId = ConsId0
 	),
@@ -748,6 +575,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		(
 			inst_expand(InstMap1, InstTable4, ModuleInfo4,
 				InstOfX, InstOfX2),
+			list__length(ArgVars0, Arity),
 			get_arg_insts(InstOfX2, ConsId, Arity, InitialInstsX),
 			inst_expand(InstMap2, InstTable4, ModuleInfo4,
 				Inst, Inst2),
@@ -761,7 +589,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		mode_info_get_var_types(ModeInfo4, VarTypes),
 		categorize_unify_var_functor(InstOfX, Inst, ModeOfXArgs,
 				ModeArgs, X, ConsId, ArgVars0, InstMap1,
-				InstMap2, VarTypes, Det1,
+				InstMap2, VarTypes, UnifyContext, Det1,
 				Unification0, ModeInfo4,
 				Unification1, ModeInfo5),
 		split_complicated_subunifies(InstMap1, InstMap2, Unification1,
@@ -926,7 +754,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
 		modecheck_unify__create_var_var_unification(Var0, Var,
-			ModeInfo2, ExtraGoal),
+			VarType, ModeInfo2, ExtraGoal),
 
 		% insert the new unification at
 		% the start of the extra goals
@@ -945,25 +773,61 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		Vars = [Var0 | Vars1]
 	).
 
-modecheck_unify__create_var_var_unification(Var0, Var, ModeInfo,
-		ExtraGoal - GoalInfo) :-
+modecheck_unify__create_var_var_unification(Var0, Var, Type, ModeInfo,
+		Goal - GoalInfo) :-
 	mode_info_get_context(ModeInfo, Context),
 	mode_info_get_mode_context(ModeInfo, ModeContext),
 	mode_context_to_unify_context(ModeContext, ModeInfo, UnifyContext),
 	UnifyContext = unify_context(MainContext, SubContexts),
 	
 	create_atomic_unification(Var0, var(Var), Context,
-		MainContext, SubContexts, ExtraGoal - GoalInfo0),
-		
-	% compute the goal_info nonlocal vars
-	% for the newly created goal
+		MainContext, SubContexts, Goal0 - GoalInfo0),
+
+	%
+	% compute the goal_info nonlocal vars for the newly created goal
+	% (excluding the type_info vars -- they are added below).
 	% N.B. This may overestimate the set of non-locals,
 	% but that shouldn't cause any problems.
+	%
 	set__list_to_set([Var0, Var], NonLocals),
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
-	goal_info_set_context(GoalInfo1, Context, GoalInfo).
+	goal_info_set_context(GoalInfo1, Context, GoalInfo2),
 
+	%
+	% Look up the map(tvar, type_info_locn) in the proc_info,
+	% since it is needed by polymorphism__unification_typeinfos
+	%
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mode_info_get_predid(ModeInfo, PredId),
+	mode_info_get_procid(ModeInfo, ProcId),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+			_PredInfo, ProcInfo),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoVarMap),
+
+	%
+	% Call polymorphism__unification_typeinfos to add the appropriate
+	% type-info and type-class-info variables to the nonlocals
+	% and to the unification.
+	%
+	(
+		Goal0 = unify(X, Y, Mode, Unification0, FinalUnifyContext)
+	->
+		polymorphism__unification_typeinfos(Type, TypeInfoVarMap,
+			Unification0, GoalInfo2, Unification, GoalInfo),
+		Goal = unify(X, Y, Mode, Unification, FinalUnifyContext)
+	;
+		error("modecheck_unify__create_var_var_unification")
+	).
+				        
 %-----------------------------------------------------------------------------%
+
+	% Work out what kind of unification a var-var unification is.
+:- pred categorize_unify_var_var(inst, inst, inst, inst, is_live, is_live,
+		prog_var, prog_var, instmap, instmap, determinism,
+		unify_context, map(prog_var, type), unification,
+		mode_info, hlds_goal_expr, mode_info).
+:- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in, in, in,
+		in, in, in, mode_info_di, out, mode_info_uo) is det.
 
 % categorize_unify_var_var works out which category a unification
 % between a variable and another variable expression is - whether it is
@@ -971,7 +835,7 @@ modecheck_unify__create_var_var_unification(Var0, Var, ModeInfo,
 
 categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 		InstMapBefore, InstMapAfter, Det, UnifyContext,
-		VarTypes, ModeInfo0, Unify, ModeInfo) :-
+		VarTypes, Unification0, ModeInfo0, Unify, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	(
@@ -1004,6 +868,19 @@ categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 		),
 		ModeInfo = ModeInfo0
 	;
+		%
+		% Check for unreachable unifications
+		%
+		( IX = not_reached ; IY = not_reached )
+	->
+		%
+		% For these, we can generate any old junk here --
+		% we just need to avoid calling modecheck_complicated_unify,
+		% since that might abort.
+		%
+		Unification = simple_test(X, Y),
+		ModeInfo = ModeInfo0
+	;
 		map__lookup(VarTypes, X, Type),
 		(
 			type_is_atomic(Type, ModuleInfo0)
@@ -1011,53 +888,10 @@ categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 			Unification = simple_test(X, Y),
 			ModeInfo = ModeInfo0
 		;
-			determinism_components(Det, CanFail, _),
-			UniMode0 = ((IX - IY) -> (FX - FY)),
-			Unification = complicated_unify(UniMode0, CanFail),
-			mode_info_get_instmap(ModeInfo0, InstMap0),
-			(
-				type_is_higher_order(Type, PredOrFunc, _)
-			->
-				% We do not want to report this as an error
-				% if it occurs in a compiler-generated
-				% predicate - instead, we delay the error
-				% until runtime so that it only occurs if
-				% the compiler-generated predicate gets called.
-				% not_reached is considered bound, so the 
-				% error message would be spurious if the 
-				% instmap is unreachable.
-				mode_info_get_predid(ModeInfo0, PredId),
-				module_info_pred_info(ModuleInfo0, PredId,
-						PredInfo),
-				( 
-				    ( code_util__compiler_generated(PredInfo) 
-				    ; instmap__is_unreachable(InstMap0)
-				    )
-				->
-				    ModeInfo = ModeInfo0
-				;
-				    set__init(WaitingVars),
-				    mode_info_error(WaitingVars,
-			mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
-						ModeInfo0, ModeInfo)
-				)
-			;
-				% Don't request a unification if it's a
-				% X = X unification.
-				\+ ( IX = alias(Key), IY = alias(Key) ),
-				type_to_type_id(Type, TypeId, _)
-			->
-				% YYY Optimise UniMode0 in the case that there
-				%     are no shared inst_keys
-				UniMode0 = UniMode,
-				mode_info_get_context(ModeInfo0, Context),
-				unify_proc__request_unify(TypeId - UniMode, Det,
-					Context, InstTable0, ModuleInfo0, ModuleInfo),
-				mode_info_set_module_info(ModeInfo0, ModuleInfo,
-					ModeInfo)
-			;
-				ModeInfo = ModeInfo0
-			)
+			modecheck_complicated_unify(X, Y,
+				Type, (IX -> FX), (IY -> FY), Det, UnifyContext,
+				Unification0, ModeInfo0,
+				Unification, ModeInfo)
 		)
 	),
 	%
@@ -1100,11 +934,147 @@ categorize_unify_var_var(IX, FX, IY, FY, LiveX, LiveY, X, Y,
 	->
 		Unify = conj([])
 	;
-		ModeOfX = IX - FX,
-		ModeOfY = IY - FY,
-		Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification,
+		UModeOfX = IX - FX,
+		UModeOfY = IY - FY,
+		Unify = unify(X, var(Y), UModeOfX - UModeOfY, Unification,
 				UnifyContext)
 	).
+
+%
+% modecheck_complicated_unify does some extra checks that are needed
+% for mode-checking complicated unifications.
+%
+
+:- pred modecheck_complicated_unify(prog_var, prog_var,
+		type, mode, mode, determinism, unify_context,
+		unification, mode_info, unification, mode_info).
+:- mode modecheck_complicated_unify(in, in, in, in, in, in, in,
+		in, mode_info_di, out, mode_info_uo) is det.
+
+modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
+		Unification0, ModeInfo0, Unification, ModeInfo) :-
+	%
+	% Build up the unification
+	%
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_get_insts(ModuleInfo0, ModeOfX, InitialInstX, FinalInstX),
+	mode_get_insts(ModuleInfo0, ModeOfY, InitialInstY, FinalInstY),
+	UniMode0 = ((InitialInstX - InitialInstY) -> (FinalInstX - FinalInstY)),
+	determinism_components(Det, CanFail, _),
+	( Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) ->
+		UnifyTypeInfoVars = UnifyTypeInfoVars0
+	;
+		error("modecheck_complicated_unify")
+	),
+	Unification = complicated_unify(UniMode0, CanFail, UnifyTypeInfoVars),
+
+	%
+	% check that all the type_info or type_class_info variables used
+	% by the polymorphic unification are ground.
+	%
+	( UnifyTypeInfoVars = [] ->
+		% optimize common case
+		ModeInfo2 = ModeInfo0
+	;
+		list__length(UnifyTypeInfoVars, NumTypeInfoVars),
+		list__duplicate(NumTypeInfoVars, ground(shared, no),
+			ExpectedInsts),
+		mode_info_set_call_context(unify(UnifyContext),
+			ModeInfo0, ModeInfo1),
+		InitialArgNum = 0,
+		modecheck_var_has_inst_list(UnifyTypeInfoVars, ExpectedInsts,
+			InitialArgNum, ModeInfo1, ModeInfo2)
+	),
+
+	mode_info_get_module_info(ModeInfo2, ModuleInfo2),
+	mode_info_get_instmap(ModeInfo2, InstMap),
+	mode_info_get_inst_table(ModeInfo2, InstTable),
+
+	(
+		mode_info_get_errors(ModeInfo2, Errors),
+		Errors \= []
+	->
+		ModeInfo = ModeInfo2
+	;
+		%
+		% Check that we're not trying to do a polymorphic unification
+		% in a mode other than (in, in).
+		% [Actually we also allow `any' insts, since the (in, in)
+		% mode of unification for types which have `any' insts must
+		% also be able to handle (in(any), in(any)) unifications.]
+		%
+		Type = term__variable(_),
+		\+ inst_is_ground_or_any(InitialInstX, InstMap, InstTable,
+			ModuleInfo2)
+	->
+		set__singleton_set(WaitingVars, X),
+		mode_info_error(WaitingVars,
+			mode_error_poly_unify(X, InitialInstX),
+			ModeInfo2, ModeInfo)
+	;
+		Type = term__variable(_),
+		\+ inst_is_ground_or_any(InitialInstY, InstMap, InstTable,
+			ModuleInfo2)
+	->
+		set__singleton_set(WaitingVars, Y),
+		mode_info_error(WaitingVars,
+			mode_error_poly_unify(Y, InitialInstY),
+			ModeInfo2, ModeInfo)
+	;
+
+		%
+		% check that we're not trying to do a higher-order unification
+		%
+		type_is_higher_order(Type, PredOrFunc, _)
+	->
+		% We do not want to report this as an error
+		% if it occurs in a compiler-generated
+		% predicate - instead, we delay the error
+		% until runtime so that it only occurs if
+		% the compiler-generated predicate gets called.
+		% not_reached is considered bound, so the 
+		% error message would be spurious if the 
+		% instmap is unreachable.
+		mode_info_get_predid(ModeInfo2, PredId),
+		module_info_pred_info(ModuleInfo2, PredId,
+				PredInfo),
+		( 
+			( code_util__compiler_generated(PredInfo) 
+			; instmap__is_unreachable(InstMap)
+			)
+		->
+			ModeInfo = ModeInfo2
+		;
+			set__init(WaitingVars),
+			mode_info_error(WaitingVars,
+				mode_error_unify_pred(X, error_at_var(Y),
+						Type, PredOrFunc),
+				ModeInfo2, ModeInfo)
+		)
+	;
+		% Don't request a unification if it's a
+		% X = X unification.
+		\+ ( InitialInstX = alias(Key), InitialInstY = alias(Key) ),
+
+		%
+		% Ensure that we will generate code for the unification
+		% procedure that will be used to implement this complicated
+		% unification.
+		%
+		type_to_type_id(Type, TypeId, _)
+	->
+		% YYY Optimise UniMode0 in the case that there
+		%     are no shared inst_keys
+		UniMode0 = UniMode,
+		mode_info_get_context(ModeInfo2, Context),
+		unify_proc__request_unify(TypeId - UniMode,
+			Det, Context, InstTable, ModuleInfo2, ModuleInfo),
+		mode_info_set_module_info(ModeInfo2, ModuleInfo,
+			ModeInfo)
+	;
+		ModeInfo = ModeInfo2
+	).
+		
 
 % categorize_unify_var_lambda works out which category a unification
 % between a variable and a lambda expression is - whether it is a construction
@@ -1129,7 +1099,7 @@ categorize_unify_var_lambda(IX, FX, ArgModes, X, ArgVars, InstMapBefore,
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
 		ConsId = ConsId1
 	;
-		% the real cons_id will be computed by polymorphism.m;
+		% the real cons_id will be computed by lambda.m;
 		% we just put in a dummy one for now
 		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
@@ -1206,14 +1176,14 @@ categorize_unify_var_lambda(IX, FX, ArgModes, X, ArgVars, InstMapBefore,
 
 :- pred categorize_unify_var_functor(inst, inst, assoc_list(inst, inst),
 		assoc_list(inst, inst), prog_var, cons_id, list(prog_var),
-		instmap, instmap, map(prog_var, type), determinism, unification,
-		mode_info, unification, mode_info).
+		instmap, instmap, map(prog_var, type), unify_context,
+		determinism, unification, mode_info, unification, mode_info).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in, in, in,
-		in, in, mode_info_di, out, mode_info_uo) is det.
+		in, in, in, mode_info_di, out, mode_info_uo) is det.
 
 categorize_unify_var_functor(IX, FX, ModeOfXArgs, ArgModes0, X, NewConsId,
-		ArgVars, InstMapBefore, InstMapAfter, VarTypes, Det,
-		Unification0, ModeInfo0, Unification, ModeInfo) :-
+		ArgVars, InstMapBefore, InstMapAfter, VarTypes, UnifyContext,
+		Det, Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	map__lookup(VarTypes, X, TypeOfX),
@@ -1230,8 +1200,14 @@ categorize_unify_var_functor(IX, FX, ModeOfXArgs, ArgModes0, X, NewConsId,
 		inst_is_free(IX, InstMapBefore, InstTable0, ModuleInfo),
 		inst_is_bound(FX, InstMapAfter, InstTable0, ModuleInfo)
 	->
+		% It's a construction.
 		Unification = construct(X, ConsId, ArgVars, ArgModes),
-		ModeInfo = ModeInfo0
+
+		% For existentially quantified data types,
+		% check that any type_info or type_class_info variables in the
+		% construction are ground.
+		check_type_info_args_are_ground(ArgVars, VarTypes,
+			UnifyContext, ModeInfo0, ModeInfo)
 	;
 		% It's a deconstruction.
 		(
@@ -1284,6 +1260,30 @@ categorize_unify_var_functor(IX, FX, ModeOfXArgs, ArgModes0, X, NewConsId,
 			)
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
+	).
+
+	% Check that any type_info or type_class_info variables
+	% in the argument list are ground.
+:- pred check_type_info_args_are_ground(list(prog_var), map(prog_var, type),
+		unify_context, mode_info, mode_info).
+:- mode check_type_info_args_are_ground(in, in, in,
+		mode_info_di, mode_info_uo) is det.
+
+check_type_info_args_are_ground([], _VarTypes, _UnifyContext) --> [].
+check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
+		-->
+	( 
+		{ map__lookup(VarTypes, ArgVar, ArgType) },
+		{ is_introduced_type_info_type(ArgType) }
+	->
+		mode_info_set_call_context(unify(UnifyContext)),
+		{ InitialArgNum = 0 },
+		modecheck_var_has_inst_list([ArgVar], [ground(shared, no)],
+			InitialArgNum),
+		check_type_info_args_are_ground(ArgVars, VarTypes,
+			UnifyContext)
+	;
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

@@ -311,14 +311,15 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
 	    % But, compiler-generated unify predicates are not guaranteed
-	    % to be type-correct if they call a user-defined equality pred.
+	    % to be type-correct if they call a user-defined equality pred
+	    % or if it is a special pred for an existentially typed data type.
 	    ( code_util__compiler_generated(PredInfo0),
-	      \+ pred_is_user_defined_equality_pred(PredInfo0, ModuleInfo)
+	      \+ special_pred_needs_typecheck(PredInfo0, ModuleInfo)
 	    ; code_util__predinfo_is_builtin(PredInfo0)
 	    )
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(_, _, _, _, Clauses0),
+	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    ( Clauses0 = [] ->
 		pred_info_mark_as_external(PredInfo0, PredInfo)
 	    ;
@@ -331,8 +332,10 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ExistQVars0,
 		    ArgTypes0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, ExplicitVarTypes,
-				_OldInferredVarTypes, HeadVars, Clauses0),
+	    clauses_info_clauses(ClausesInfo0, Clauses0),
+	    clauses_info_headvars(ClausesInfo0, HeadVars),
+	    clauses_info_varset(ClausesInfo0, VarSet),
+	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -346,10 +349,18 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				% of the head vars into the clauses_info
 			map__from_corresponding_lists(HeadVars, ArgTypes0,
 				VarTypes),
-			ClausesInfo = clauses_info(VarSet, VarTypes,
-				VarTypes, HeadVars, Clauses0),
+			clauses_info_set_vartypes(ClausesInfo0, VarTypes,
+				ClausesInfo),
 			pred_info_set_clauses_info(PredInfo0, ClausesInfo,
-				PredInfo),
+				PredInfo1),
+				% We also need to set the head_type_params
+				% field to indicate that all the existentially
+				% quantified tvars in the head of this
+				% pred are indeed bound by this predicate.
+			term__vars_list(ArgTypes0,
+				HeadVarsIncludingExistentials),
+			pred_info_set_head_type_params(PredInfo1,
+				HeadVarsIncludingExistentials, PredInfo),
 			Error = no,
 			Changed = no
 		;
@@ -415,8 +426,9 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				ConstraintProofs, TVarRenaming,
 				ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
-		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
-				InferredVarTypes, HeadVars, Clauses),
+		clauses_info_set_vartypes(ClausesInfo0, InferredVarTypes,
+				ClausesInfo1),
+		clauses_info_set_clauses(ClausesInfo1, Clauses, ClausesInfo),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
 		pred_info_set_constraint_proofs(PredInfo2, ConstraintProofs,
@@ -679,20 +691,31 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
 	list__append(ArgTypesA, TypesA0, TypesA),
 	list__append(ArgTypesB, TypesB0, TypesB).
 
-:- pred pred_is_user_defined_equality_pred(pred_info::in, module_info::in)
+%
+% A compiler-generated predicate only needs type checking if
+%	(a) it is a user-defined equality pred
+% or	(b) it is the unification or comparison predicate for an
+%           existially quantified type.
+%
+% In case (b), we need to typecheck it to fill in the head_type_params
+% field in the pred_info.
+%
+
+:- pred special_pred_needs_typecheck(pred_info::in, module_info::in)
 	is semidet.
 
-pred_is_user_defined_equality_pred(PredInfo, ModuleInfo) :-
+special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	%
-	% check if the predicate is a compiler-generated unification predicate
+	% check if the predicate is a compiler-generated special
+	% predicate
 	%
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, PredArity),
-	special_pred_name_arity(unify, _, PredName, PredArity),
+	special_pred_name_arity(_, _, PredName, PredArity),
 	%
-	% find out which type it is a unification predicate for,
+	% find out which type it is a special predicate for,
 	% and check whether that type is a type for which there is
-	% a user-defined equality predicate.
+	% a user-defined equality predicate, or which is existentially typed.
 	%
 	pred_info_arg_types(PredInfo, ArgTypes),
 	special_pred_get_type(PredName, ArgTypes, Type),
@@ -700,7 +723,12 @@ pred_is_user_defined_equality_pred(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	Body = du_type(_, _, _, yes(_)).
+	Body = du_type(Ctors, _, _, MaybeEqualityPred),
+	(	MaybeEqualityPred = yes(_)
+	;	list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQTVars, _, _, _),
+		ExistQTVars \= []
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -3148,6 +3176,41 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 	;
 		ConsInfoList0 = []
 	),
+
+	% For "existentially typed" functors, whether the functor
+	% is actually existentially typed depends on whether it is
+	% used as a constructor or as a deconstructor.  As a constructor,
+	% it is universally typed, but as a deconstructor, it is
+	% existentially typed.  But type checking and polymorphism need
+	% to know whether it is universally or existentially quantified
+	% _before_ mode analysis has inferred the mode of the unification.
+	% Therefore, we use a special syntax for construction unifications
+	% with existentially quantified functors: instead of just using the
+	% functor name (e.g. "Y = foo(X)", the programmer must use the
+	% special functor name "new foo" (e.g. "Y = 'new foo'(X)").
+	% 
+	% Here we check for occurrences of functor names starting with
+	% "new ".  For these, we look up the original functor in the
+	% constructor symbol table, and for any occurrences of that
+	% functor we flip the quantifiers on the type definition
+	% (i.e. convert the existential quantifiers and constraints
+	% into universal ones).
+	(
+		Functor = cons(Name, Arity),
+		remove_new_prefix(Name, OrigName),
+		OrigFunctor = cons(OrigName, Arity),
+		map__search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
+	->
+		convert_cons_defn_list(TypeCheckInfo, HLDS_ExistQConsDefnList,
+			ExistQuantifiedConsInfoList),
+		list__filter_map(flip_quantifiers, ExistQuantifiedConsInfoList,
+			UnivQuantifiedConsInfoList),
+		list__append(UnivQuantifiedConsInfoList,
+			ConsInfoList0, ConsInfoList1)
+	;
+		ConsInfoList1 = ConsInfoList0
+	),
+
 	% Check if Functor is a constant of one of the builtin atomic
 	% types (string, float, int, character).  If so, insert
 	% the resulting cons_type_info at the start of the list.
@@ -3161,10 +3224,11 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
 			constraints([], [])),
-		ConsInfoList1 = [ConsInfo | ConsInfoList0]
+		ConsInfoList2 = [ConsInfo | ConsInfoList1]
 	;
-		ConsInfoList1 = ConsInfoList0
+		ConsInfoList2 = ConsInfoList1
 	),
+
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
@@ -3172,10 +3236,30 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		builtin_pred_type(TypeCheckInfo, Functor, Arity,
 			PredConsInfoList)
 	->
-		list__append(ConsInfoList1, PredConsInfoList, ConsInfoList)
+		list__append(ConsInfoList2, PredConsInfoList, ConsInfoList)
 	;
-		ConsInfoList = ConsInfoList1
+		ConsInfoList = ConsInfoList2
 	).
+
+:- pred flip_quantifiers(cons_type_info, cons_type_info).
+:- mode flip_quantifiers(in, out) is semidet.
+
+flip_quantifiers(cons_type_info(A, ExistQVars0, C, D, Constraints0),
+		cons_type_info(A, ExistQVars, C, D, Constraints)) :-
+	% Fail if there are no existentially quantifier variables.
+	% We do this because we want to allow the 'new foo' syntax only 
+	% for existentially typed functors, not for ordinary functors.
+	% 
+	ExistQVars0 \= [],
+
+	% convert the existentially quantified type vars into
+	% universally quantified type vars by just discarding
+	% the old list of existentially quantified type vars and
+	% replacing it with an empty list.
+	ExistQVars = [],
+
+	% convert the existential constraints into universal constraints
+	dual_constraints(Constraints0, Constraints).
 
 %-----------------------------------------------------------------------------%
 
@@ -3809,7 +3893,8 @@ type_assign_set_constraint_proofs(type_assign(A, B, C, D, E, _),
 %-----------------------------------------------------------------------------%
 
 	% write out the inferred `pred' or `func' declarations
-	% for a list of predicates.
+	% for a list of predicates.  Don't write out the inferred types
+	% for assertions.
 
 :- pred write_inference_messages(list(pred_id), module_info,
 				io__state, io__state).
@@ -3822,7 +3907,8 @@ write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	(
 		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
-		{ list__member(PredId, ValidPredIds) }
+		{ list__member(PredId, ValidPredIds) },
+		{ \+ pred_info_get_goal_type(PredInfo, assertion) }
 	->
 		write_inference_message(PredInfo)
 	;
@@ -4664,7 +4750,7 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	write_typecheck_info_context(TypeCheckInfo),
 	(
-		{ PredName = unqualified("->"), Arity = 2 }
+		{ PredName = unqualified("->"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `->' without `;'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
@@ -4679,15 +4765,15 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
-		{ PredName = unqualified("else"), Arity = 2 }
+		{ PredName = unqualified("else"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: unmatched `else'.\n")
 	;
-		{ PredName = unqualified("if"), Arity = 2 }
+		{ PredName = unqualified("if"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `if' without `then' or `else'.\n")
 	;
-		{ PredName = unqualified("then"), Arity = 2 }
+		{ PredName = unqualified("then"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `then' without `if' or `else'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,7 +115,7 @@ pd_cost__goal(pragma_c_code(Attributes, _, _, Args, _, _, _) - _, Cost) :-
 
 pd_cost__unify(_, assign(_, _), 0).
 
-pd_cost__unify(_, complicated_unify(_, _), Cost) :-
+pd_cost__unify(_, complicated_unify(_, _, _), Cost) :-
 	pd_cost__stack_flush(Cost).
 
 pd_cost__unify(_, simple_test(_, _), Cost) :-

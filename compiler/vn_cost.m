@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module vn_debug.
+:- import_module builtin_ops, vn_debug.
 :- import_module require, string, std_util, int.
 
 vn_cost__block_cost(Instr, Params, PrintInstr, Cost) -->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,6 +52,7 @@
 
 :- interface.
 
+:- import_module prog_data.
 :- import_module hlds_goal, hlds_module, hlds_pred, hlds_data, instmap.
 :- import_module det_report, det_util, globals.
 :- import_module list, std_util, io.
@@ -125,7 +126,7 @@
 
 :- implementation.
 
-:- import_module prog_data, det_report, purity.
+:- import_module det_report, purity.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.
@@ -931,7 +932,7 @@ det_infer_unify_examines_rep(assign(_, _), no).
 det_infer_unify_examines_rep(construct(_, _, _, _), no).
 det_infer_unify_examines_rep(deconstruct(_, _, _, _, _), yes).
 det_infer_unify_examines_rep(simple_test(_, _), yes).
-det_infer_unify_examines_rep(complicated_unify(_, _), no).
+det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% Some complicated modes of complicated unifications _do_
 	% examine the representation...
 	% but we will catch those by reporting errors in the
@@ -955,7 +956,7 @@ det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail), CanFail).
 det_infer_unify_canfail(assign(_, _), cannot_fail).
 det_infer_unify_canfail(construct(_, _, _, _), cannot_fail).
 det_infer_unify_canfail(simple_test(_, _), can_fail).
-det_infer_unify_canfail(complicated_unify(_, CanFail), CanFail).
+det_infer_unify_canfail(complicated_unify(_, CanFail, _), CanFail).
 
 %-----------------------------------------------------------------------------%
 

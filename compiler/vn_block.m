@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module vn_util, vn_cost, opt_util, opt_debug.
+:- import_module builtin_ops, vn_util, vn_cost, opt_util, opt_debug.
 :- import_module map, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%

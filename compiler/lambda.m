@@ -72,6 +72,9 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module list, map, set.
 
+:- pred lambda__process_module(module_info, module_info).
+:- mode lambda__process_module(in, out) is det.
+
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
@@ -89,10 +92,10 @@
 
 :- implementation.
 
-:- import_module make_hlds, globals, options, term, varset.
+:- import_module hlds_data, make_hlds, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
-:- import_module bool, set, string, std_util, require.
+:- import_module term, varset, bool, set, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(
@@ -117,6 +120,20 @@
 %-----------------------------------------------------------------------------%
 
 	% This whole section just traverses the module structure.
+
+lambda__process_module(ModuleInfo0, ModuleInfo) :-
+	module_info_predids(ModuleInfo0, PredIds),
+	lambda__process_preds(PredIds, ModuleInfo0, ModuleInfo1),
+	% Need update the dependency graph to include the lambda predicates. 
+	module_info_clobber_dependency_info(ModuleInfo1, ModuleInfo).
+
+:- pred lambda__process_preds(list(pred_id), module_info, module_info).
+:- mode lambda__process_preds(in, in, out) is det.
+
+lambda__process_preds([], ModuleInfo, ModuleInfo).
+lambda__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+	lambda__process_pred(PredId, ModuleInfo0, ModuleInfo1),
+	lambda__process_preds(PredIds, ModuleInfo1, ModuleInfo).
 
 lambda__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
@@ -202,10 +219,13 @@ lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 			Unify - GoalInfo) -->
 	( { Y = lambda_goal(PredOrFunc, NonLocalVars, Vars, 
 			Modes, Det, _IMDelta, LambdaGoal0) } ->
-		% for lambda expressions, we must convert the lambda expression
-		% into a new predicate
+		% first, process the lambda goal recursively, in case it
+		% contains some nested lambda expressions.
+		lambda__process_goal(LambdaGoal0, LambdaGoal1),
+
+		% then, convert the lambda expression into a new predicate
 		lambda__process_lambda(PredOrFunc, Vars, Modes, Det, 
-			NonLocalVars, LambdaGoal0, 
+			NonLocalVars, LambdaGoal1, 
 			Unification, Y1, Unification1),
 		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
 	;
@@ -276,10 +296,23 @@ lambda__process_cases([case(ConsId, IMDelta, Goal0) | Cases0],
 
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
-	LambdaInfo0 = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, Markers, POF, PredName, Owner,
-			ModuleInfo0, InstTable),
-	% XXX existentially typed lambda expressions are not yet supported
+	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo0,
+		InstTable),
+
+		% Calculate the constraints which apply to this lambda
+		% expression. 
+		% Note currently we only allow lambda expressions
+		% to have universally quantified constraints.
+	map__keys(TCVarMap, AllConstraints),
+	map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
+	list__map(type_util__vars, LambdaVarTypes, LambdaTypeVarsList),
+	list__condense(LambdaTypeVarsList, LambdaTypeVars),
+	list__filter(lambda__constraint_contains_vars(LambdaTypeVars), 
+		AllConstraints, UnivConstraints),
+	Constraints = constraints(UnivConstraints, []),
+
+	% existentially typed lambda expressions are not yet supported
 	% (see the documentation at top of this file)
 	ExistQVars = [],
 	Modes = argument_modes(_ArgInstTable, ArgModes),
@@ -294,8 +327,21 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Markers, Owner, InstTable, ModuleInfo0, Functor, Unification,
 		ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, Markers, POF, PredName, Owner,
-			ModuleInfo, InstTable).
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo,
+		InstTable).
+
+:- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
+:- mode lambda__constraint_contains_vars(in, in) is semidet.
+
+lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
+	ClassConstraint = constraint(_, ConstraintTypes),
+	list__map(type_util__vars, ConstraintTypes, ConstraintVarsList),
+	list__condense(ConstraintVarsList, ConstraintVars),
+		% Probably not the most efficient way of doing it, but I
+		% wouldn't think that it matters.
+	set__list_to_set(LambdaVars, LambdaVarsSet),
+	set__list_to_set(ConstraintVars, ConstraintVarsSet),
+	set__subset(ConstraintVarsSet, LambdaVarsSet).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		OrigVars, ExtraTypeInfos, LambdaGoal, Unification0, VarSet,
@@ -308,7 +354,7 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		Var = Var0,
 		UniModes1 = UniModes0
 	;
-		error("polymorphism__transform_lambda: weird unification")
+		error("lambda__transform_lambda: weird unification")
 	),
 
 	% Optimize a special case: replace

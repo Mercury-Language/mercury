@@ -339,7 +339,29 @@
 
 	;	complicated_unify(
 			uni_mode,	% The mode of the unification.
-			can_fail	% Whether or not it could possibly fail
+			can_fail,	% Whether or not it could possibly fail
+
+			% When unifying polymorphic types such as
+			% map/2, we need to pass type_info variables
+			% to the unification procedure for map/2
+			% so that it knows how to unify the
+			% polymorphically typed components of the
+			% data structure.  Likewise for comparison
+			% predicates.
+			% This field records which type_info variables
+			% we will need.
+			% This field is set by polymorphism.m.
+			% It is used by quantification.m
+			% when recomputing the nonlocals.
+			% It is also used by modecheck_unify.m,
+			% which checks that the type_info
+			% variables needed are all ground.
+			% It is also checked by simplify.m when
+			% it converts complicated unifications
+			% into procedure calls.
+			list(prog_var)	% The type_info variables needed
+					% by this unification, if it ends up
+					% being a complicated unify.
 		).
 
 	% A unify_context describes the location in the original source
@@ -754,6 +776,13 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_list_determinism(list(hlds_goal), determinism).
 :- mode goal_list_determinism(in, out) is det.
 
+	% Change the contexts of the goal_infos of all the sub-goals
+	% of the given goal. This is used to ensure that error messages
+	% for automatically generated unification procedures have a useful
+	% context.
+:- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
+:- mode set_goal_contexts(in, in, out) is det.
+
 	%
 	% Produce a goal to construct a given constant.
 	% These predicates all fill in the non-locals, instmap_delta
@@ -1148,6 +1177,48 @@ goal_list_determinism(Goals, Determinism) :-
                        det_conjunction_detism(Det0, Det1, Det)
                )),
        list__foldl(ComputeDeterminism, Goals, det, Determinism).
+
+%-----------------------------------------------------------------------------%
+
+set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	set_goal_contexts_2(Context, Goal0, Goal).
+
+:- pred set_goal_contexts_2(prog_context, hlds_goal_expr, hlds_goal_expr).
+:- mode set_goal_contexts_2(in, in, out) is det.
+
+set_goal_contexts_2(Context, conj(Goals0), conj(Goals)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, disj(Goals0, SM), disj(Goals, SM)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, par_conj(Goals0, SM), par_conj(Goals, SM)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0, SM),
+		if_then_else(Vars, Cond, Then, Else, SM)) :-
+	set_goal_contexts(Context, Cond0, Cond),
+	set_goal_contexts(Context, Then0, Then),
+	set_goal_contexts(Context, Else0, Else).
+set_goal_contexts_2(Context, switch(Var, CanFail, Cases0, SM),
+		switch(Var, CanFail, Cases, SM)) :-
+	list__map(
+	    (pred(case(ConsId, IMD, Goal0)::in, case(ConsId, IMD, Goal)::out)
+	    		is det :-
+		set_goal_contexts(Context, Goal0, Goal)
+	    ), Cases0, Cases).
+set_goal_contexts_2(Context, some(Vars, Goal0), some(Vars, Goal)) :-
+	set_goal_contexts(Context, Goal0, Goal).	
+set_goal_contexts_2(Context, not(Goal0), not(Goal)) :-
+	set_goal_contexts(Context, Goal0, Goal).	
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = call(_, _, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = higher_order_call(_, _, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = class_method_call(_, _, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = unify(_, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = pragma_c_code(_, _, _, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
 

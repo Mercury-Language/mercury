@@ -303,7 +303,7 @@
 
 :- implementation.
 
-:- import_module exprn_aux, llds_out, hlds_pred.
+:- import_module builtin_ops, exprn_aux, llds_out, hlds_pred.
 :- import_module int, string, set, require.
 
 opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-

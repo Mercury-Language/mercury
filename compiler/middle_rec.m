@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, prog_data, prog_out.
+:- import_module builtin_ops, hlds_module, hlds_data, prog_data, prog_out.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.

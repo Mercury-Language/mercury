@@ -24,7 +24,7 @@
 
 :- implementation.
 
-:- import_module code_util, opt_util.
+:- import_module builtin_ops, code_util, opt_util.
 :- import_module std_util, map, string, require.
 
 % We first build up a bunch of tables giving information about labels.

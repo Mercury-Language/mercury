@@ -1247,7 +1247,7 @@ magic__interface_pred_info(CPredProcId, PredProcId,
 magic__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
 		PredInfo0, PredInfo, ProcInfo0, ProcInfo) -->
 	magic_info_get_module_info(ModuleInfo0),
-	{ init_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0) },
+	{ create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0) },
 	{ ExistQVars = [] },
 	{ term__context_init(Context) },
 	{ polymorphism__make_type_info_vars(Types, ExistQVars, Context,

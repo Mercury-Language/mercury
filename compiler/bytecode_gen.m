@@ -479,7 +479,7 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var1, ByteVar1),
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	Code = node([test(ByteVar1, ByteVar2)]).
-bytecode_gen__unify(complicated_unify(_, _), _Var, _RHS, _ByteInfo, _Code) :-
+bytecode_gen__unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
 	error("complicated unifications should have been handled by polymorphism.m").
 
 :- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(prog_var)::in,

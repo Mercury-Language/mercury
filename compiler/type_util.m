@@ -54,6 +54,24 @@
 :- pred type_id_is_hand_defined(type_id).
 :- mode type_id_is_hand_defined(in) is semidet.
 
+	% A test for type_info-related types that are introduced by
+	% polymorphism.m.  Mode inference never infers unique modes
+	% for these types, since it would not be useful, and since we
+	% want to minimize the number of different modes that we infer.
+
+:- pred is_introduced_type_info_type(type).
+:- mode is_introduced_type_info_type(in) is semidet.
+
+	% In the forwards mode, this predicate checks for a "new " prefix
+	% at the start of the functor name, and removes it if present;
+	% it fails if there is no such prefix.
+	% In the reverse mode, this predicate prepends such a prefix.
+	% (These prefixes are used for construction unifications
+	% with existentially typed functors.)
+:- pred remove_new_prefix(sym_name, sym_name).
+:- mode remove_new_prefix(in, out) is semidet.
+:- mode remove_new_prefix(out, in) is det.
+
 	% Given a type, determine what sort of type it is.
 
 :- pred classify_type(type, module_info, builtin_type).
@@ -119,6 +137,24 @@
 	% Work out the types of the arguments of a functor.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
+
+	% Given a type and a cons_id, look up the definition of that
+	% constructor; if it is existentially typed, return its definition,
+	% otherwise fail.
+:- pred type_util__get_existq_cons_defn(module_info::in,
+		(type)::in, cons_id::in, ctor_defn::out) is semidet.
+
+	% This type is used to return information about a constructor
+	% definition, extracted from the hlds_type_defn and hlds_cons_defn
+	% data types.
+:- type ctor_defn
+	--->	ctor_defn(
+			tvarset,
+			existq_tvars,
+			list(class_constraint),	% existential constraints
+			list(type),	% functor argument types
+			(type)		% functor result type
+		).
 
 	% Given a list of constructors for a type,
 	% check whether that type is a no_tag type
@@ -251,7 +287,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, require, std_util.
+:- import_module bool, require, std_util, string.
 :- import_module prog_io, prog_io_goal, prog_util.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -270,6 +306,7 @@ type_is_atomic(Type, ModuleInfo) :-
 
 type_util__var(term__variable(Var), Var).
 
+type_id_is_hand_defined(qualified(unqualified("builtin"), "c_pointer") - 0).
 type_id_is_hand_defined(qualified(unqualified("std_util"), "univ") - 0).
 type_id_is_hand_defined(qualified(unqualified("array"), "array") - 1).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
@@ -280,6 +317,21 @@ type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "base_typeclass_info") - 1) :-
 	mercury_private_builtin_module(PrivateBuiltin).
+
+is_introduced_type_info_type(Type) :-
+	sym_name_and_args(Type, TypeName, _),
+	TypeName = qualified(PrivateBuiltin, Name),
+	( Name = "type_info"
+	; Name = "type_ctor_info"
+	; Name = "typeclass_info"
+	; Name = "base_typeclass_info"
+	),
+	mercury_private_builtin_module(PrivateBuiltin).
+
+remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
+	string__append("new ", Name, Name0).
+remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
+	string__append("new ", Name, Name0).
 
 %-----------------------------------------------------------------------------%
 
@@ -434,18 +486,42 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 			)),
 		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(_, _, ArgTypes0, _, _)]),
+			[hlds_cons_defn(_ExistQVars0, _Constraints0, ArgTypes0,
+				_, _)]),
 		ArgTypes0 \= []
 	->
 		module_info_types(ModuleInfo, Types),
 		map__lookup(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
-		term__substitute_corresponding_list(TypeDefnVars, TypeArgs,
-			ArgTypes0, ArgTypes)
+		% XXX handle ExistQVars
+		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
+		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
 	;
 		ArgTypes = []
 	).
+
+	% Given a type and a cons_id, look up the definition of that
+	% constructor; if it is existentially typed, return its definition,
+	% otherwise fail.
+type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+	type_to_type_id(VarType, TypeId, _TypeArgs),
+	module_info_ctors(ModuleInfo, Ctors),
+	% will fail for builtin cons_ids.
+	map__search(Ctors, ConsId, ConsDefns),
+	MatchingCons = lambda([ConsDefn::in] is semidet, (
+			ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+		)),
+	list__filter(MatchingCons, ConsDefns,
+		[hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _)]),
+	ExistQVars \= [],
+	module_info_types(ModuleInfo, Types),
+	map__lookup(Types, TypeId, TypeDefn),
+	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
+	construct_type(TypeId, TypeDefnParams, RetType),
+	CtorDefn = ctor_defn(TypeVarSet, ExistQVars, Constraints,
+		ArgTypes, RetType).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -548,7 +548,7 @@ traverse_goal(_, _, _, unify(Var1, _, _, construct(_, _, Args, _), _), _,
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, _, _, unify(Var, Rhs, _, complicated_unify(_, _), _), _,
+traverse_goal(_, _, _, unify(Var, Rhs, _, complicated_unify(_, _, _), _), _,
 		UseInf0, UseInf) :-
     	% This is here to cover the case where unused arguments is called 
 	% with --error-check-only and polymorphism has not been run.
@@ -1513,7 +1513,7 @@ fixup_unify(InstMapBefore, InstTable, ModuleInfo, UnusedVars, Changed,
 	).
 
 	% These should be transformed into calls by polymorphism.m.
-fixup_unify(_, _, _, _, _, complicated_unify(_, _), _, _) :-
+fixup_unify(_, _, _, _, _, complicated_unify(_, _, _), _, _) :-
 		error("unused_args:fixup_goal : complicated unify").
 
 	% Check if any of the arguments of a deconstruction are unused, if
@@ -1641,8 +1641,9 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs) -->
 		{ pred_info_arity(PredInfo, Arity) },
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		io__set_output_stream(OptStream, OldOutput),	
+		{ proc_id_to_int(ProcId, ModeNum) },
 		mercury_output_pragma_unused_args(PredOrFunc,
-			qualified(Module, Name), Arity, ProcId, UnusedArgs),
+			qualified(Module, Name), Arity, ModeNum, UnusedArgs),
 		io__set_output_stream(OldOutput, _)
 	;
 		[]

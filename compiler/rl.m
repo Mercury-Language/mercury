@@ -74,17 +74,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type index_spec
-	---> index_spec(
-		index_type,
-		list(int)	% which attributes are being indexed on.
-	).
-
-	% Hash indexes?
-:- type index_type
-	--->	unique_B_tree
-	;	non_unique_B_tree.
-
 	% A key range gives an upper and lower bound for the part of the
 	% indexed relation to search. For example, a simple B-tree join
 	% algorithm takes a tuple from first relation and uses it to build
@@ -239,9 +228,6 @@
 		% to the input. To introduce this, the compiler must know that
 		% there are no later references in the code to the input
 		% relation.
-		% I'm not 100% sure that the reference counts maintained
-		% by Aditi can be used in this way - currently we always
-		% do the copy. 
 		% Make sure the output has the given set of indexes, even
 		% if it isn't copied.
 		make_unique(
@@ -542,7 +528,7 @@ rl__instr_relations(sort(output_rel(Output, _), Input, _) - _,
 rl__instr_relations(init(output_rel(Rel, _)) - _, [], [Rel]).
 rl__instr_relations(insert_tuple(output_rel(Output, _), Input, _) - _,
 		[Input], [Output]).
-rl__instr_relations(add_index(output_rel(Rel, _)) - _, [], [Rel]).
+rl__instr_relations(add_index(output_rel(Rel, _)) - _, [Rel], [Rel]).
 rl__instr_relations(clear(Rel) - _, [], [Rel]).
 rl__instr_relations(unset(Rel) - _, [], [Rel]).
 rl__instr_relations(label(_) - _, [], []).

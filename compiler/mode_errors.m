@@ -50,6 +50,9 @@
 			% the predicate variable in a higher-order predicate
 			% or function call didn't have a higher-order
 			% predicate or function inst of the appropriate arity
+	;	mode_error_poly_unify(prog_var, inst)
+			% A variable in a polymorphic unification with unknown
+			% type has inst other than `ground' or `any'.
 	;	mode_error_var_is_live(prog_var)
 			% call to a predicate which will clobber its argument,
 			% but the argument is still live
@@ -191,6 +194,8 @@ report_mode_error(mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
 		Arity), InstTable, ModeInfo) -->
 	report_mode_error_higher_order_pred_var(InstTable, ModeInfo, PredOrFunc,
 		Var, Inst, Arity).
+report_mode_error(mode_error_poly_unify(Var, Inst), InstTable, ModeInfo) -->
+	report_mode_error_poly_unify(InstTable, ModeInfo, Var, Inst).
 report_mode_error(mode_error_var_is_live(Var), _InstTable, ModeInfo) -->
 	report_mode_error_var_is_live(ModeInfo, Var).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), InstTable,
@@ -560,6 +565,37 @@ report_mode_error_higher_order_pred_var(InstTable, ModeInfo, PredOrFunc, Var,
 	),
 	io__write_string(").\n").
 
+:- pred report_mode_error_poly_unify(inst_table, mode_info, prog_var, inst,
+					io__state, io__state).
+:- mode report_mode_error_poly_unify(in, mode_info_ui, in, in, di, uo) is det.
+
+report_mode_error_poly_unify(InstTable, ModeInfo, Var, VarInst) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  in polymorphically-typed unification:\n"),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: variable `"),
+	mercury_output_var(Var, VarSet, no),
+	io__write_string("' has instantiatedness `"),
+	output_inst(VarInst, InstVarSet, InstTable),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  expected instantiatedness was `ground' or `any'.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tWhen unifying two variables whose type will not be known until
+\truntime, the variables must both be ground (or have inst `any').
+\tUnifications of polymorphically-typed variables with partially
+\tinstantiated modes are not allowed.\n")
+	;
+		[]
+	).
+
 :- pred report_mode_error_var_is_live(mode_info, prog_var,
 		io__state, io__state).
 :- mode report_mode_error_var_is_live(mode_info_ui, in, di, uo) is det.
@@ -913,7 +949,15 @@ write_mode_context(higher_order_call(PredOrFunc, ArgNum), Context, _ModuleInfo)
 write_mode_context(call(PredId, ArgNum), Context, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  in "),
-	( { ArgNum = 0 } ->
+	( { ArgNum =< 0 } ->
+		% Argument numbers that are less than or equal to zero
+		% are used for the type_info and typeclass_info arguments
+		% that are introduced by polymorphism.m.
+		% I think argument number equal to zero might also be used
+		% in some other cases when we just don't have any information
+		% about which argument it is.
+		% For both of these, we just say "in call to"
+		% rather than "in argument N of call to".
 		[]
 	;
 		io__write_string("argument "),

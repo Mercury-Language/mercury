@@ -13,7 +13,7 @@
 :- module vn_type.
 
 :- interface.
-:- import_module llds, livemap, options.
+:- import_module llds, builtin_ops, livemap, options.
 :- import_module getopt, map, set, list, std_util.
 
 :- type vn == int.

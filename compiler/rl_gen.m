@@ -324,7 +324,7 @@ rl_gen__scc(SCC0, SCCs, InputMap, SCCCode) -->
 	rl_gen__scc_2(InputMap, OrderedSCC, NonRecRLCode, RecRLCode),
 
 	rl_gen__scc_comment(OrderedSCC, Comment),
-	( { tree__is_empty(RecRLCode) } ->
+	( { tree__tree_of_lists_is_empty(RecRLCode) } ->
 		{ RecLoop = empty }
 	;
 		rl_info_write_message("Generating fixpoint check\n", []),

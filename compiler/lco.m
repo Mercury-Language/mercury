@@ -938,7 +938,7 @@ fix_modes_of_unify(simple_test(_, _),_,_,_,_,_,_,_,_,_,_,_,_) :-
 	error("lco:fix_modes_of_unify: simple_test in unify").
 
 % Should already have been transformed into calls by polymorphism.m.
-fix_modes_of_unify(complicated_unify(_, _),_,_,_,_,_,_,_,_,_,_,_,_) :-
+fix_modes_of_unify(complicated_unify(_, _, _),_,_,_,_,_,_,_,_,_,_,_,_) :-
 	error("lco:fix_modes_of_unify: complicated_unify").
 
 :- pred fix_uni_mode(module_info, instmap, uni_mode, uni_mode,

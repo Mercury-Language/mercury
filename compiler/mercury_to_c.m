@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,8 +178,9 @@ c_gen_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			ClassContext, Context),
 
 		{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-		{ ClausesInfo = clauses_info(VarSet, _VarTypes, _, HeadVars,
-			Clauses) },
+		{ clauses_info_varset(ClausesInfo, VarSet) },
+		{ clauses_info_headvars(ClausesInfo, HeadVars) },
+		{ clauses_info_clauses(ClausesInfo, Clauses) },
 
 		globals__io_lookup_string_option(dump_hlds_options, Verbose),
 		globals__io_set_option(dump_hlds_options, string("")),
@@ -738,7 +739,7 @@ c_gen_unification(construct(_, _, _, _), _Indent, CGenInfo, CGenInfo) -->
 c_gen_unification(deconstruct(_, _, _, _, _), _Indent, CGenInfo, CGenInfo) -->
 	{ sorry(2) },
 	io__write_string(" == ").
-c_gen_unification(complicated_unify(_, _), _Indent, CGenInfo, CGenInfo) -->
+c_gen_unification(complicated_unify(_, _, _), _Indent, CGenInfo, CGenInfo) -->
 	{ sorry(3) },
 	io__write_string(" = ").
 

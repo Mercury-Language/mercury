@@ -39,6 +39,7 @@
 
 :- implementation.
 
+:- import_module builtin_ops.
 :- import_module vn_type, vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
 :- import_module vn_cost, vn_debug, vn_util, vn_verify, vn_filter.
 :- import_module opt_debug, opt_util, peephole, labelopt.

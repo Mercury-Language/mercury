@@ -186,7 +186,7 @@ in the general case.
 
 :- implementation.
 :- import_module hlds_data, inst_match, mode_util, det_analysis.
-:- import_module bool, std_util, require, map, list, set, assoc_list.
+:- import_module bool, std_util, require, map, list, set, int, assoc_list.
 
 :- pred add_new_keys_to_sub(map(inst_key, inst_key), list(inst_key),
 		inst_key, map(inst_key, inst_key)).
@@ -852,7 +852,7 @@ abstractly_unify_inst_functor_2(dead, Real, ground(Uniq, _), ConsId, ArgInsts,
 abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, UnifyInstInfo0,
 			L, Det, UnifyInstInfo) :-
 	abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-		UnifyInstInfo0, L, Det0, UnifyInstInfo),
+		UnifyInstInfo0, 0, L, Det0, UnifyInstInfo),
 	( L = [] ->
 		det_par_conjunction_detism(Det0, erroneous, Det)
 	;
@@ -861,22 +861,37 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, UnifyInstInfo0,
 
 :- pred abstractly_unify_bound_inst_list_2(is_live, list(bound_inst),
 		list(bound_inst), unify_is_real, unify_inst_info,
-		list(bound_inst), determinism, unify_inst_info).
-:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in,
+		int, list(bound_inst), determinism, unify_inst_info).
+:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in, in,
 		out, out, out) is semidet.
 
-abstractly_unify_bound_inst_list_2(_, [], [], _, UI, [], det, UI).
-abstractly_unify_bound_inst_list_2(_, [], [_|_], _, UI, [], semidet, UI).
-abstractly_unify_bound_inst_list_2(_, [_|_], [], _, UI, [], semidet, UI).
-abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UnifyInstInfo0,
-		L, Det, UnifyInstInfo) :-
+abstractly_unify_bound_inst_list_2(_, [], [], _, UI, N, [], Det, UI) :-
+	(
+			% The only time an abstract unification should
+			% be det, is when both of the bound_inst lists
+			% are of length one and have the same cons_ids.
+			%
+			% If N=0, we need to make the determinism det
+			% so that determinism is inferred as erroneous
+			% rather then failure in 
+			% abstractly_unify_bound_inst_list
+		N =< 1
+	->
+		Det = det
+	;
+		Det = semidet
+	).
+abstractly_unify_bound_inst_list_2(_, [], [_|_], _, UI, _, [], semidet, UI).
+abstractly_unify_bound_inst_list_2(_, [_|_], [], _, UI, _, [], semidet, UI).
+abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UI0,
+		N, L, Det, UI) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
-			UnifyInstInfo0, Args, Det1, UnifyInstInfo1),
+			UI0, Args, Det1, UI1),
 		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-				UnifyInstInfo1, L1, Det2, UnifyInstInfo),
+				UI1, N+1, L1, Det2, UI),
 
 		% If the unification of the two cons_ids is guaranteed
 		% not to succeed, don't include it in the list.
@@ -890,12 +905,10 @@ abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UnifyInstInfo0,
 	;
 		( compare(<, ConsIdX, ConsIdY) ->
 			abstractly_unify_bound_inst_list_2(Live,
-				Xs, [Y|Ys], Real, UnifyInstInfo0, L, Det1,
-				UnifyInstInfo)
+				Xs, [Y|Ys], Real, UI0, N+1, L, Det1, UI)
 		;
 			abstractly_unify_bound_inst_list_2(Live,
-				[X|Xs], Ys, Real, UnifyInstInfo0, L, Det1,
-				UnifyInstInfo)
+				[X|Xs], Ys, Real, UI0, N+1, L, Det1, UI)
 		),
 		det_par_conjunction_detism(Det1, semidet, Det)
 	).

@@ -30,12 +30,12 @@
 
 	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
-:- import_module equiv_type, make_hlds, typecheck, purity, modes.
+:- import_module equiv_type, make_hlds, typecheck, purity, polymorphism, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
 :- import_module table_gen.
 :- import_module bytecode_gen, bytecode.
-:- import_module (lambda), polymorphism, termination, higher_order, inlining.
+:- import_module (lambda), termination, higher_order, inlining.
 :- import_module deforest, dnf, unused_args, magic, dead_proc_elim.
 :- import_module accumulator, lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
@@ -45,7 +45,7 @@
 :- import_module continuation_info, stack_layout.
 
 	% miscellaneous compiler modules
-:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
+:- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl, mlds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, passes_aux.
@@ -388,12 +388,8 @@ mercury_compile(Module) -->
 		% the appropriate warnings
 		globals__io_lookup_bool_option(warn_unused_args, UnusedArgs),
 		( { UnusedArgs = yes } ->
-			% Run polymorphism so that the unused argument numbers
-			% read in from `.opt' files are correct.
-			mercury_compile__maybe_polymorphism(HLDS21,
-				Verbose, Stats, HLDS22), 
 			globals__io_set_option(optimize_unused_args, bool(no)),
-			mercury_compile__maybe_unused_args(HLDS22,
+			mercury_compile__maybe_unused_args(HLDS21,
 				Verbose, Stats, _)
 	    	;
 			[]
@@ -717,7 +713,17 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    { HLDS = HLDS4 },
 		    { bool__or(FoundTypeError, FoundTypeclassError,
 		    	FoundError) }
-	        ;
+	        ; { FoundTypeError = yes } ->
+		    %
+		    % XXX it would be nice if we could go on and mode-check
+		    % the predicates which didn't have type errors, but
+		    % we need to run polymorphism before running mode
+		    % analysis, and currently polymorphism may get internal
+		    % errors if any of the predicates are not type-correct.
+		    %
+		    { HLDS = HLDS4 },
+		    { FoundError = yes }
+		;
 		    % only write out the `.opt' file if there are no type errors
 		    % or undefined modes
 		    ( { FoundTypeError = no, FoundUndefModeError = no } ->
@@ -764,27 +770,25 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	( { MakeOptInt = yes } ->
 		intermod__write_optfile(HLDS0, HLDS1),
 
-		% If intermod_unused_args is being performed, run mode and
-		% determinism analysis and polymorphism, then run unused_args
+		% If intermod_unused_args is being performed, run polymorphism,
+		% mode analysis and determinism analysis, then run unused_args
 		% to append the unused argument information to the `.opt.tmp' 
 		% file written above.
 		( { IntermodArgs = yes ; Termination = yes } ->
 			mercury_compile__frontend_pass_2_by_phases(
 				HLDS1, HLDS2, FoundModeError),
 			( { FoundModeError = no } ->
-				mercury_compile__maybe_polymorphism(HLDS2,
-					Verbose, Stats, HLDS3),
 				( { IntermodArgs = yes } ->
 					mercury_compile__maybe_unused_args(
-						HLDS3, Verbose, Stats, HLDS4)
+						HLDS2, Verbose, Stats, HLDS3)
 				;
-					{ HLDS4 = HLDS3 }
+					{ HLDS3 = HLDS2 }
 				),
 				( { Termination = yes } ->
 					mercury_compile__maybe_termination(
-						HLDS4, Verbose, Stats, HLDS)
+						HLDS3, Verbose, Stats, HLDS)
 				;
-					{ HLDS = HLDS4 }
+					{ HLDS = HLDS3 }
 				)
 					
 			;
@@ -835,10 +839,7 @@ mercury_compile__output_trans_opt_file(HLDS25) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
-	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
-
-	mercury_compile__maybe_termination(HLDS26, Verbose, Stats, HLDS28),
+	mercury_compile__maybe_termination(HLDS25, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
 	trans_opt__write_optfile(HLDS28).
@@ -870,33 +871,36 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
+	mercury_compile__maybe_polymorphism(HLDS4, Verbose, Stats, HLDS5), !,
+	mercury_compile__maybe_dump_hlds(HLDS5, "05", "polymorphism"),
+
+	mercury_compile__modecheck(HLDS5, Verbose, Stats, HLDS6,
 		FoundModeError, UnsafeToContinue),
-	mercury_compile__maybe_dump_hlds(HLDS5, "05", "modecheck"),
+	mercury_compile__maybe_dump_hlds(HLDS6, "06", "modecheck"),
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS12 = HLDS5 }
+		{ HLDS12 = HLDS6 }
 	;
-		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
+		mercury_compile__detect_switches(HLDS6, Verbose, Stats, HLDS7),
 		!,
-		mercury_compile__maybe_dump_hlds(HLDS6, "06", "switch_detect"),
+		mercury_compile__maybe_dump_hlds(HLDS7, "07", "switch_detect"),
 		!,
 
-		mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7), !,
-		mercury_compile__maybe_dump_hlds(HLDS7, "07", "cse"), !,
+		mercury_compile__detect_cse(HLDS7, Verbose, Stats, HLDS8), !,
+		mercury_compile__maybe_dump_hlds(HLDS8, "08", "cse"), !,
 
-		mercury_compile__check_determinism(HLDS7, Verbose, Stats, HLDS8,
+		mercury_compile__check_determinism(HLDS8, Verbose, Stats, HLDS9,
 			FoundDetError), !,
-		mercury_compile__maybe_dump_hlds(HLDS8, "08", "determinism"),
+		mercury_compile__maybe_dump_hlds(HLDS9, "09", "determinism"),
 		!,
 
-		mercury_compile__check_unique_modes(HLDS8, Verbose, Stats,
-			HLDS9, FoundUniqError), !,
-		mercury_compile__maybe_dump_hlds(HLDS9, "09", "unique_modes"),
+		mercury_compile__check_unique_modes(HLDS9, Verbose, Stats,
+			HLDS10, FoundUniqError), !,
+		mercury_compile__maybe_dump_hlds(HLDS10, "10", "unique_modes"),
 		!,
 
-		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
+		mercury_compile__check_stratification(HLDS10, Verbose, Stats, 
 			HLDS11, FoundStratError), !,
 		mercury_compile__maybe_dump_hlds(HLDS11, "11",
 			"stratification"), !,
@@ -953,16 +957,16 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__tabling(HLDS24, Verbose, HLDS25),
 	mercury_compile__maybe_dump_hlds(HLDS25, "25", "tabling"), !,
 
-	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
-	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
+	mercury_compile__process_lambdas(HLDS25, Verbose, HLDS26),
+	mercury_compile__maybe_dump_hlds(HLDS26, "26", "lambda"), !,
 
 	%
 	% Uncomment the following code to check that unique mode analysis
-	% works after polymorphism has been run. Currently it does not
+	% works after simplification has been run. Currently it does not
 	% because common.m does not preserve unique mode correctness
 	% (this test fails on about five modules in the compiler and library).
 	% It is important that unique mode analysis work most of the time
-	% after optimizations and polymorphism because deforestation reruns it.
+	% after optimizations because deforestation reruns it.
 	%
 
 	{ HLDS27 = HLDS26 },
@@ -1529,8 +1533,8 @@ mercury_compile__maybe_generate_schemas(ModuleInfo, Verbose) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__tabling(module_info, bool,
-	module_info, io__state, io__state).
+:- pred mercury_compile__tabling(module_info, bool, module_info,
+	io__state, io__state).
 :- mode mercury_compile__tabling(in, in, out, di, uo) is det.
 
 mercury_compile__tabling(HLDS0, Verbose, HLDS) -->
@@ -1538,6 +1542,19 @@ mercury_compile__tabling(HLDS0, Verbose, HLDS) -->
 		"% Transforming tabled predicates..."),
 	maybe_flush_output(Verbose),
 	{ table_gen__process_module(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__process_lambdas(module_info, bool, module_info,
+	io__state, io__state).
+:- mode mercury_compile__process_lambdas(in, in, out, di, uo) is det.
+
+mercury_compile__process_lambdas(HLDS0, Verbose, HLDS) -->
+	maybe_write_string(Verbose,
+		"% Transforming lambda expressions..."),
+	maybe_flush_output(Verbose),
+	{ lambda__process_module(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n").
 
 %-----------------------------------------------------------------------------%
@@ -1556,7 +1573,11 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
-		{ HLDS = HLDS0 }
+		% The --no-polymorphism option really doesn't make much
+		% sense anymore, because the polymorphism pass is necessary
+		% for the proper mode analysis of code using existential
+		% types.
+		{ error("sorry, `--no-polymorphism' is no longer supported") }
 	).
 
 :- pred mercury_compile__maybe_type_ctor_infos(module_info, bool, bool,
@@ -1693,7 +1714,7 @@ mercury_compile__maybe_deforestation(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, "% Deforestation...\n"),
 		maybe_flush_output(Verbose),
 		deforestation(HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n"),
+		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
 		{ HLDS0 = HLDS }
@@ -2147,8 +2168,9 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	Num1 is Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
-:- pred mercury_compile__output_llds(module_name, c_file, set_bbbtree(label),
-	maybe(rl_file), bool, bool, io__state, io__state).
+:- pred mercury_compile__output_llds(module_name, c_file,
+	set_bbbtree(llds__label), maybe(rl_file), bool, bool,
+	io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, in, in, in, in, di, uo) is det.
 
 mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
@@ -2482,7 +2504,7 @@ mercury_compile__link_module_list(Modules) -->
 	    ;
 		TraceOpt = ""
 	    },
-	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
+	    join_module_list(Modules, ".c", ["> ", InitCFileName], MkInitCmd0),
 	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
 	    	MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),

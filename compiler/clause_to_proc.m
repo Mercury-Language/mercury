@@ -109,8 +109,17 @@ copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo) :-
 copy_module_clauses_to_procs_2([], Preds, Preds).
 copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
-	copy_clauses_to_procs(PredInfo0, PredInfo),
-	map__det_update(Preds0, PredId, PredInfo, Preds1),
+	(
+		% don't process typeclass methods, because their proc_infos
+		% are generated already mode-correct
+		pred_info_get_markers(PredInfo0, PredMarkers),
+		check_marker(PredMarkers, class_method)
+	->
+		Preds1 = Preds0
+	;
+		copy_clauses_to_procs(PredInfo0, PredInfo),
+		map__det_update(Preds0, PredId, PredInfo, Preds1)
+	),
 	copy_module_clauses_to_procs_2(PredIds, Preds1, Preds).
 
 
@@ -133,7 +142,8 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
-	ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses),
+	ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses,
+		TI_VarMap, TCI_VarMap),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->
@@ -183,7 +193,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 		map__init(Empty),
 		Goal = disj(GoalList, Empty) - GoalInfo
 	),
-	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc).
+	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal,
+		TI_VarMap, TCI_VarMap, Proc).
 
 :- pred get_purity(hlds_goal, purity).
 :- mode get_purity(in, out) is det.

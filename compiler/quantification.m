@@ -195,7 +195,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	% We need to keep the structure, though, so that mode
 	% analysis doesn't try to reorder through quantifiers.
 	% (Actually it would make sense to allow mode analysis
-	% to do that, but there reference manual says it doesn't,
+	% to do that, but the reference manual says it doesn't,
 	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
 	% an empty quantifier `some([], Goal)'.
 
@@ -333,10 +333,12 @@ implicitly_quantify_goal_2(
 		unify(Var, UnifyRHS, Mode, Unification, UnifyContext)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
+	{ quantification__get_unify_typeinfos(Unification0, TypeInfoVars) },
 	implicitly_quantify_unify_rhs(UnifyRHS0, Unification0, Context,
 		UnifyRHS, Unification),
 	quantification__get_nonlocals(VarsUnifyRHS),
-	{ set__insert(VarsUnifyRHS, Var, GoalVars) },
+	{ set__insert(VarsUnifyRHS, Var, GoalVars0) },
+	{ set__insert_list(GoalVars0, TypeInfoVars, GoalVars) },
 	quantification__update_seen_vars(GoalVars),
 	{ set__intersect(GoalVars, OutsideVars, NonLocalVars1) },
 	{ set__intersect(GoalVars, LambdaOutsideVars, NonLocalVars2) },
@@ -634,10 +636,15 @@ quantification__goal_vars(Goal - _GoalInfo, Set, LambdaSet) :-
 		set(prog_var), set(prog_var), set(prog_var)).
 :- mode quantification__goal_vars_2(in, in, in, out, out) is det.
 
-quantification__goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0,
+quantification__goal_vars_2(unify(A, B, _, Unification, _), Set0, LambdaSet0,
 		Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
-	quantification__unify_rhs_vars(B, Set1, LambdaSet0, Set, LambdaSet).
+	( Unification = complicated_unify(_, _, TypeInfoVars) ->
+		set__insert_list(Set1, TypeInfoVars, Set2)
+	;
+		Set2 = Set1
+	),
+	quantification__unify_rhs_vars(B, Set2, LambdaSet0, Set, LambdaSet).
 
 quantification__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
@@ -715,6 +722,16 @@ quantification__unify_rhs_vars(
 	quantification__goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(LambdaSet0, GoalVars1, LambdaSet).
+
+:- pred quantification__get_unify_typeinfos(unification, list(prog_var)).
+:- mode quantification__get_unify_typeinfos(in, out) is det.
+
+quantification__get_unify_typeinfos(Unification, TypeInfoVars) :-
+	( Unification = complicated_unify(_, _, TypeInfoVars0) ->
+		TypeInfoVars = TypeInfoVars0
+	;
+		TypeInfoVars = []
+	).
 
 %-----------------------------------------------------------------------------%
 

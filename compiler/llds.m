@@ -17,6 +17,8 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
+:- import_module builtin_ops.
+
 :- import_module bool, assoc_list, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -773,57 +775,6 @@
 			% layout information
 	;	functors.
 			% information on functors
-
-:- type unary_op
-	--->	mktag
-	;	tag
-	;	unmktag
-	;	mkbody
-	;	body
-	;	unmkbody
-	;	cast_to_unsigned
-	;	hash_string
-	;	bitwise_complement
-	;	(not).
-
-:- type binary_op
-	--->	(+)	% integer arithmetic
-	;	(-)
-	;	(*)
-	;	(/)	% integer division
-			% assumed to truncate toward zero
-	;	(mod)	% remainder (w.r.t. truncating integer division)
-			% XXX `mod' should be renamed `rem'
-	;	(<<)	% unchecked left shift
-	;	(>>)	% unchecked right shift
-	;	(&)	% bitwise and
-	;	('|')	% bitwise or
-	;	(^)	% bitwise xor
-	;	(and)	% logical and
-	;	(or)	% logical or
-	;	eq	% ==
-	;	ne	% !=
-	;	array_index
-	;	str_eq	% string comparisons
-	;	str_ne
-	;	str_lt
-	;	str_gt
-	;	str_le
-	;	str_ge
-	;	(<)	% integer comparions
-	;	(>)
-	;	(<=)
-	;	(>=)
-	;	float_plus
-	;	float_minus
-	;	float_times
-	;	float_divide
-	;	float_eq
-	;	float_ne
-	;	float_lt
-	;	float_gt
-	;	float_le
-	;	float_ge.
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs

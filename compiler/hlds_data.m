@@ -756,14 +756,10 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 %-----------------------------------------------------------------------------%
 :- interface.
 
-:- type determinism	--->	det
-			;	semidet
-			;	nondet
-			;	multidet
-			;	cc_nondet
-			;	cc_multidet
-			;	erroneous
-			;	failure.
+%
+% Types and procedures for decomposing and analysing determinism.
+% The `determinism' type itself is defined in prog_data.m.
+%
 
 :- type can_fail	--->	can_fail
 			;	cannot_fail.
@@ -896,4 +892,52 @@ determinism_to_code_model(failure,     model_semi).
 	% doing this with graphs or relations...
 :- type superclass_table == multi_map(class_id, subclass_details).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+	%
+	% A table that records all the assertions in the system.
+	% An assertion is a goal that will always evaluate to true,
+	% subject to the constraints imposed by the quantifiers.
+	%
+	% ie :- assertion all [A] some [B] (B > A)
+	% 
+	% The above assertion states that for all possible values of A,
+	% there will exist at least one value, B, such that B is greater
+	% then A.
+	%
+:- type assert_id.
+:- type assertion_table.
+
+:- pred assertion_table_init(assertion_table::out) is det.
+
+:- pred assertion_table_add_assertion(pred_id::in,
+		assertion_table::in, assertion_table::out) is det.
+
+:- pred assertion_table_lookup(assertion_table::in, assert_id::in,
+		pred_id::out) is det.
+
+:- implementation.
+
+:- import_module int.
+
+:- type assert_id == int.
+:- type assertion_table 
+	---> 	assertion_table(assert_id, map(assert_id, pred_id)).
+
+assertion_table_init(assertion_table(0, AssertionMap)) :-
+	map__init(AssertionMap).
+
+assertion_table_add_assertion(Assertion, AssertionTable0, AssertionTable) :-
+	AssertionTable0 = assertion_table(Id, AssertionMap0),
+	map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
+	AssertionTable = assertion_table(Id + 1, AssertionMap).
+
+assertion_table_lookup(AssertionTable, Id, Assertion) :-
+	AssertionTable = assertion_table(_MaxId, AssertionMap),
+	map__lookup(AssertionMap, Id, Assertion).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -15,7 +15,9 @@
 % from the Mercury web site.
 %
 % Basically the transformation is to locate predicates in the following
-% form.
+% form.  The transformation also handles if-then-elses since they can
+% conceptually be treated like a switch, we just need to be a little bit
+% more careful about what happens in the condition.
 %
 % p(X,Ys) :-
 %         minimal(X),
@@ -108,6 +110,8 @@
 
 :- type rec_goal
 	--->	recursive(
+			a_goals,	% Goals inside the condition of an
+					% if/then/else
 			a_goals,	% Decompose, Process
 			a_goal,		% Recursive call
 			a_goals		% Compose calls
@@ -318,6 +322,7 @@ accumulator__rearrange_goal(PredId, ProcId, Goal, InitialInstMap, InstTable,
 	->
 		(
 			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
 					InitialInstMap, InstTable,
 					ModuleInfo, FullyStrict,
 					GoalAList, Rec0),
@@ -325,6 +330,7 @@ accumulator__rearrange_goal(PredId, ProcId, Goal, InitialInstMap, InstTable,
 				% Make sure that the base case doesn't
 				% contain a recursive call.
 			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
 					InitialInstMap, InstTable,
 					ModuleInfo, FullyStrict,
 					GoalBList, _)
@@ -334,6 +340,7 @@ accumulator__rearrange_goal(PredId, ProcId, Goal, InitialInstMap, InstTable,
 			Rec = Rec0
 		;
 			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
 					InitialInstMap, InstTable,
 					ModuleInfo, FullyStrict,
 					GoalBList, Rec0),
@@ -341,6 +348,7 @@ accumulator__rearrange_goal(PredId, ProcId, Goal, InitialInstMap, InstTable,
 				% Make sure that the base case doesn't
 				% contain a recursive call.
 			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
 					InitialInstMap, InstTable,
 					ModuleInfo, FullyStrict,
 					GoalAList, _)
@@ -351,6 +359,96 @@ accumulator__rearrange_goal(PredId, ProcId, Goal, InitialInstMap, InstTable,
 		;
 			fail
 		)
+	;
+		Goal = disj(Goals, _SM) - _GoalInfo,
+		Goals = [GoalA, GoalB],
+		goal_to_conj_list(GoalA, GoalAList),
+		goal_to_conj_list(GoalB, GoalBList)
+	->
+		(
+			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, GoalAList, Rec0),
+
+				% Make sure that the base case doesn't
+				% contain a recursive call.
+			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, GoalBList, _)
+		->
+			Type = disj_rec_base,
+			Base = base(GoalBList),
+			Rec = Rec0
+		;
+			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, GoalBList, Rec0),
+
+				% Make sure that the base case doesn't
+				% contain a recursive call.
+			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, GoalAList, _)
+		->
+			Type = disj_base_rec,
+			Base = base(GoalAList),
+			Rec = Rec0
+		;
+			fail
+		)
+	;
+		Goal = if_then_else(_Vars, If, Then, Else, _SM) - _GoalInfo,
+
+		If = _ - IfGoalInfo,
+		goal_info_get_instmap_delta(IfGoalInfo, IMDelta),
+		instmap__apply_instmap_delta(InitialInstMap, IMDelta,
+				BeforeThenInstMap),
+
+		goal_to_conj_list(If, IfList),
+		goal_to_conj_list(Then, ThenList),
+		goal_to_conj_list(Else, ElseList)
+	->
+		(
+			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, IfList,
+					BeforeThenInstMap, InstTable,
+					ModuleInfo, FullyStrict, ThenList,
+					Rec0),
+
+				% Make sure that the base case doesn't
+				% contain a recursive call.
+			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, ElseList, _)
+		->
+			Type = ite_rec_base,
+			Base = base(ElseList),
+			Rec = Rec0
+		;
+			accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, ElseList, Rec0),
+
+				% Make sure that the base case doesn't
+				% contain a recursive call.
+			\+ accumulator__split_recursive_case(PredId, ProcId,
+					InitialInstMap, [],
+					InitialInstMap, InstTable, ModuleInfo,
+					FullyStrict, ThenList, _)
+		->
+			Type = ite_base_rec,
+			Base = base(ThenList),
+			Rec = Rec0
+		;
+			fail
+		)
+		
 	;
 		fail
 	).
@@ -396,7 +494,7 @@ accumulator__create_accumulator_pred(RecGoal, PredInfo, ProcInfo, HstoAs_Subst,
 :- pred accumulator__acc_proc_info(rec_goal::in, instmap::in, proc_info::in,
 		subst::out, list(type)::out, proc_info::out) is det.
 
-accumulator__acc_proc_info(recursive(DP, _R, C), InstMap0,
+accumulator__acc_proc_info(recursive(PreDP, DP, _R, C), InstMap0,
 		ProcInfo, HstoAs_Subst, NewTypes, NewProcInfo) :-
 
 		% ProcInfo Stuff that must change.
@@ -414,7 +512,7 @@ accumulator__acc_proc_info(recursive(DP, _R, C), InstMap0,
 	proc_info_is_address_taken(ProcInfo, IsAddressTaken),
 	proc_info_inst_table(ProcInfo, InstTable),
 
-	accumulator__extra_vars_for_recursive_call(DP, C, Vars),
+	accumulator__extra_vars_for_recursive_call(PreDP, DP, C, Vars),
 
 	DP = goal(DPGoals, _DPInstMap, _DPInstTable),
 	goal_list_instmap_delta(DPGoals, InstMapDelta),
@@ -537,7 +635,7 @@ calculate_instmap(Goals, InstMap0, InstMap) :-
 		proc_id::in, sym_name::in,
 		hlds_goal::out, hlds_goal::out) is semidet.
 
-accumulator__transform(switch_rec_base, base(BaseGoalList), recursive(DP, R, C),
+accumulator__transform(TopLevel, base(BaseGoalList), recursive(PreDP, DP, R, C),
 		Goal, DoLCO, FullyStrict, ModuleInfo, HeadVars, HstoAs_Subst,
 		NewPredId, NewProcId, NewPredName, OrigGoal, NewGoal) :-
 
@@ -545,7 +643,7 @@ accumulator__transform(switch_rec_base, base(BaseGoalList), recursive(DP, R, C),
 
 	accumulator__orig_base_case(BaseGoalList, OrigBaseGoal),
 
-	accumulator__extra_vars_for_recursive_call(DP, C, Vars),
+	accumulator__extra_vars_for_recursive_call(PreDP, DP, C, Vars),
 	accumulator__orig_recursive_case(DP, R, HeadVars, NewPredId, NewProcId,
 			NewPredName, Vars, Y0stoYs_Subst, OrigRecGoal),
 
@@ -556,19 +654,99 @@ accumulator__transform(switch_rec_base, base(BaseGoalList), recursive(DP, R, C),
 			Vars, HeadVars,
 			Y0stoYs_Subst, HstoAs_Subst, NewRecGoal),
 
+	accumulator__top_level(TopLevel, Goal, OrigBaseGoal, OrigRecGoal,
+			NewBaseGoal, NewRecGoal, OrigGoal, NewGoal).
+
+
+:- pred accumulator__top_level(top_level::in, hlds_goal::in,
+		hlds_goal::in, hlds_goal::in, hlds_goal::in,
+		hlds_goal::in, hlds_goal::out, hlds_goal::out) is det.
+
+accumulator__top_level(switch_base_rec, Goal, OrigBaseGoal, OrigRecGoal,
+		NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
 	(
 		Goal = switch(Var, CanFail, Cases0, StoreMap) - GoalInfo,
-		Cases0 = [case(IdA, InstA, _), case(IdB, InstB, _)]
+		Cases0 = [case(IdA, IMDA, _), case(IdB, IMDB, _)]
 	->
-		OrigCases = [case(IdA, InstA, OrigRecGoal),
-				case(IdB, InstB, OrigBaseGoal)],
+		OrigCases = [case(IdA, IMDA, OrigBaseGoal),
+				case(IdB, IMDB, OrigRecGoal)],
 		OrigGoal = switch(Var, CanFail, OrigCases, StoreMap) - GoalInfo,
 
-		NewCases = [case(IdA, InstA, NewRecGoal),
-				case(IdB, InstB, NewBaseGoal)],
+		NewCases = [case(IdA, IMDA, NewBaseGoal),
+				case(IdB, IMDB, NewRecGoal)],
 		NewGoal = switch(Var, CanFail, NewCases, StoreMap) - GoalInfo
 	;
-		fail
+		error("accumulator__top_level: not the correct top level")
+	).
+accumulator__top_level(switch_rec_base, Goal, OrigBaseGoal, OrigRecGoal,
+		NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
+	(
+		Goal = switch(Var, CanFail, Cases0, StoreMap) - GoalInfo,
+		Cases0 = [case(IdA, IMDA, _), case(IdB, IMDB, _)]
+	->
+		OrigCases = [case(IdA, IMDA, OrigRecGoal),
+				case(IdB, IMDB, OrigBaseGoal)],
+		OrigGoal = switch(Var, CanFail, OrigCases, StoreMap) - GoalInfo,
+
+		NewCases = [case(IdA, IMDA, NewRecGoal),
+				case(IdB, IMDB, NewBaseGoal)],
+		NewGoal = switch(Var, CanFail, NewCases, StoreMap) - GoalInfo
+	;
+		error("accumulator__top_level: not the correct top level")
+	).
+accumulator__top_level(disj_base_rec, Goal, OrigBaseGoal,
+		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
+	(
+		Goal = disj(Goals, StoreMap) - GoalInfo,
+		Goals = [_, _]
+	->
+		OrigGoals = [OrigBaseGoal, OrigRecGoal],
+		OrigGoal = disj(OrigGoals, StoreMap) - GoalInfo,
+
+		NewGoals = [NewBaseGoal, NewRecGoal],
+		NewGoal = disj(NewGoals, StoreMap) - GoalInfo
+	;
+		error("accumulator__top_level: not the correct top level")
+	).
+accumulator__top_level(disj_rec_base, Goal, OrigBaseGoal,
+		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
+	(
+		Goal = disj(Goals, StoreMap) - GoalInfo,
+		Goals = [_, _]
+	->
+		OrigGoals = [OrigRecGoal, OrigBaseGoal],
+		OrigGoal = disj(OrigGoals, StoreMap) - GoalInfo,
+
+		NewGoals = [NewRecGoal, NewBaseGoal],
+		NewGoal = disj(NewGoals, StoreMap) - GoalInfo
+	;
+		error("accumulator__top_level: not the correct top level")
+	).
+accumulator__top_level(ite_base_rec, Goal, OrigBaseGoal,
+		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
+	(
+		Goal = if_then_else(Vars, If, _, _, StoreMap) - GoalInfo
+	->
+		OrigGoal = if_then_else(Vars, If,
+				OrigBaseGoal, OrigRecGoal, StoreMap) - GoalInfo,
+
+		NewGoal = if_then_else(Vars, If,
+				NewBaseGoal, NewRecGoal, StoreMap) - GoalInfo
+	;
+		error("accumulator__top_level: not the correct top level")
+	).
+accumulator__top_level(ite_rec_base, Goal, OrigBaseGoal,
+		OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
+	(
+		Goal = if_then_else(Vars, If, _, _, StoreMap) - GoalInfo
+	->
+		OrigGoal = if_then_else(Vars, If,
+				OrigRecGoal, OrigBaseGoal, StoreMap) - GoalInfo,
+
+		NewGoal = if_then_else(Vars, If,
+				NewRecGoal, NewBaseGoal, StoreMap) - GoalInfo
+	;
+		error("accumulator__top_level: not the correct top level")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -603,10 +781,12 @@ accumulator__update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 	% structure, R.
 	%
 :- pred accumulator__split_recursive_case(pred_id::in, proc_id::in,
+		instmap::in, hlds_goals::in,
 		instmap::in, inst_table::in, module_info::in, bool::in,
 		hlds_goals::in, rec_goal::out) is semidet.
 
 accumulator__split_recursive_case(PredId, ProcId,
+		PreInstMap, PreGoals,
 		InitialInstMap, InstTable, ModuleInfo,
 		FullyStrict, Goals, RecGoal) :-
 	solutions(accumulator__split_goals(Goals, PredId, ProcId), Solns),
@@ -626,11 +806,12 @@ accumulator__split_recursive_case(PredId, ProcId,
 	calculate_instmap(DP, InitialInstMap, InstMapBeforeR),
 	calculate_instmap([R], InstMapBeforeR, InstMapBeforeC),
 
+	Pre		 = goal(PreGoals, PreInstMap, InstTable),
 	DecomposeProcess = goal(DP, InitialInstMap, InstTable),
 	Recursive 	 = goal(R, InstMapBeforeR, InstTable),
 	Compose 	 = goal(C, InstMapBeforeC, InstTable),
 
-	RecGoal = recursive(DecomposeProcess, Recursive, Compose).
+	RecGoal = recursive(Pre, DecomposeProcess, Recursive, Compose).
 
 :- pred accumulator__split_goals(hlds_goals::in, pred_id::in, proc_id::in,
 		split_result::out) is nondet.
@@ -752,15 +933,21 @@ accumulator__vars_to_accumulate(HeadVars, C, ModuleInfo, VarsToAccumulate) :-
 	% value will need to be passed via the introduced recursive
 	% call.  This predicate identifies these variables, Hs.
 	%
-:- pred accumulator__extra_vars_for_recursive_call(a_goals::in,
+:- pred accumulator__extra_vars_for_recursive_call(a_goals::in, a_goals::in,
 		a_goals::in, prog_vars::out) is det.
 
 accumulator__extra_vars_for_recursive_call(
-		goal(DecomposeProcess, _InstMapBeforeDP, _InstTableDP),
-		goal(Compose, _InstMapBeforeCompose, _InstTableC), Vars) :-
+		goal(PreDecomposeProcess, _, _),
+		goal(DecomposeProcess, _, _),
+		goal(Compose, _, _), Vars) :-
+
+	goal_list_nonlocals(PreDecomposeProcess, PreDPNonLocalsSet),
 	goal_list_nonlocals(DecomposeProcess, DPNonLocalsSet),
+	set__union(PreDPNonLocalsSet, DPNonLocalsSet, NonLocals),
+
 	goal_list_nonlocals(Compose, CNonLocalsSet),
-	set__intersect(DPNonLocalsSet, CNonLocalsSet, VarsSet),
+
+	set__intersect(NonLocals, CNonLocalsSet, VarsSet),
 	set__to_sorted_list(VarsSet, Vars).
 
 %-----------------------------------------------------------------------------%
@@ -888,7 +1075,11 @@ accumulator__which_var(NonLocals, HeadVar - CallVar, Var) :-
 
 accumulator__new_base_case(Base, C, Y0stoYs_Subst, HstoAs_Subst, Goal) :-
 	C = goal(Compose, _InstMapBeforeCompose, _InstTableCompose),
-	reverse_subst(Y0stoYs_Subst, YstoY0s_Subst),
+
+	reverse_subst(Y0stoYs_Subst, YstoY0s_Subst0),
+
+	goal_list_nonlocals(Compose, NonLocals),
+	map__select(YstoY0s_Subst0, NonLocals, YstoY0s_Subst),
 
 	goal_util__rename_vars_in_goals(Base, no, YstoY0s_Subst, NewBase),
 	goal_util__rename_vars_in_goals(Compose, no, HstoAs_Subst, NewCompose),
@@ -1272,7 +1463,7 @@ accumulator__check_assoc_unify(assign(L, _R)) -->
 	assoc_info_set_dynamic_set(DynamicSet).
 accumulator__check_assoc_unify(simple_test(_L, _R)) --> 
 	{ fail }.
-accumulator__check_assoc_unify(complicated_unify(_Modes, _Cat)) -->
+accumulator__check_assoc_unify(complicated_unify(_Modes, _Cat, _)) -->
 	{ fail }.	% XXX not sure what this should be.
 
 %-----------------------------------------------------------------------------%
@@ -1512,6 +1703,15 @@ assoc_fact(unqualified("int"), "*", 3, InstMap,
 	mode_is_input(InstMap, InstTable, ModuleInfo, In),
 	mode_is_output(InstMap, InstTable, ModuleInfo, Out).
 
+assoc_fact(unqualified("list"), "append", 3, InstMap,
+		argument_modes(InstTable, [TypeInfoIn, In, In, Out]), 
+		ModuleInfo, [TypeInfo, A, B, C], 
+		[TypeInfo, B, A, C], PossibleStaticVars, yes) :-
+	set__list_to_set([A, B], PossibleStaticVars),
+	mode_is_input(InstMap, InstTable, ModuleInfo, TypeInfoIn),
+	mode_is_input(InstMap, InstTable, ModuleInfo, In),
+	mode_is_output(InstMap, InstTable, ModuleInfo, Out).
+
 /* XXX introducing accumulators for floating point numbers can be bad.
 assoc_fact(unqualified("float"), "+", 3, InstMap,
 		argument_modes(InstTable, [In, In, Out]), ModuleInfo, 
@@ -1527,16 +1727,6 @@ assoc_fact(unqualified("float"), "*", 3, InstMap,
 	mode_is_input(InstMap, InstTable, ModuleInfo, In),
 	mode_is_output(InstMap, InstTable, ModuleInfo, Out).
 */
-
-assoc_fact(unqualified("list"), "append", 3, InstMap,
-		argument_modes(InstTable, [TypeInfoIn, In, In, Out]), 
-		ModuleInfo, [TypeInfo, A, B, C], 
-		[TypeInfo, B, A, C], PossibleStaticVars, yes) :-
-	set__list_to_set([A, B], PossibleStaticVars),
-	mode_is_input(InstMap, InstTable, ModuleInfo, TypeInfoIn),
-	mode_is_input(InstMap, InstTable, ModuleInfo, In),
-	mode_is_output(InstMap, InstTable, ModuleInfo, Out).
-
 /*
 	XXX this no longer works, because set__insert isn't associative.
 
@@ -1544,8 +1734,8 @@ assoc_fact(unqualified("list"), "append", 3, InstMap,
 	use user-defined equality (set__equals), not structural equality 
 	for S.
 
-		p(A, S0, SA), p(B, SA, S) <=>
-			p(B, S0, SB), p(A, SB, S)
+		some [SA] (p(A, S0, SA), p(B, SA, S)) <=>
+			some [SB] (p(B, S0, SB), p(A, SB, S))
 
 	My previous attempt at this transformation handled this case 
 	and I thought the current one did as well.  I was wrong.  I need

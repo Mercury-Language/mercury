@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_pred, hlds_goal.
 :- import_module det_util, prog_data.
 :- import_module io, list.
 
@@ -29,6 +29,8 @@
 		;	ite_cond_cannot_succeed(prog_context)
 		;	negated_goal_cannot_fail(prog_context)
 		;	negated_goal_cannot_succeed(prog_context)
+		;	goal_cannot_succeed(prog_context)
+		;	det_goal_has_no_outputs(prog_context)
 		;	warn_obsolete(pred_id, prog_context)
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
@@ -1006,7 +1008,9 @@ det_msg_get_type(ite_cond_cannot_fail(_), simple_code_warning).
 det_msg_get_type(ite_cond_cannot_succeed(_), simple_code_warning).
 det_msg_get_type(negated_goal_cannot_fail(_), simple_code_warning).
 det_msg_get_type(negated_goal_cannot_succeed(_), simple_code_warning).
-	% XXX this isn't really a simple code warning.
+det_msg_get_type(goal_cannot_succeed(_), simple_code_warning).
+det_msg_get_type(det_goal_has_no_outputs(_), simple_code_warning).
+	% XXX warn_obsolete isn't really a simple code warning.
 	% We should add a separate warning type for this.
 det_msg_get_type(warn_obsolete(_, _), simple_code_warning).
 det_msg_get_type(warn_infinite_recursion(_), simple_code_warning).
@@ -1028,6 +1032,8 @@ det_msg_is_any_mode_msg(ite_cond_cannot_fail(_), all_modes).
 det_msg_is_any_mode_msg(ite_cond_cannot_succeed(_), all_modes).
 det_msg_is_any_mode_msg(negated_goal_cannot_fail(_), all_modes).
 det_msg_is_any_mode_msg(negated_goal_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(goal_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(det_goal_has_no_outputs(_), all_modes).
 det_msg_is_any_mode_msg(warn_obsolete(_, _), all_modes).
 det_msg_is_any_mode_msg(warn_infinite_recursion(_), any_mode).
 det_msg_is_any_mode_msg(duplicate_call(_, _, _), any_mode).
@@ -1085,6 +1091,28 @@ det_report_msg(negated_goal_cannot_fail(Context), _) -->
 det_report_msg(negated_goal_cannot_succeed(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
+det_report_msg(goal_cannot_succeed(Context), _) -->
+	prog_out__write_context(Context),
+	io__write_string("Warning: this goal cannot succeed.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tThe compiler will optimize away this goal, replacing it with `fail'.
+\tTo disable this optimization, use the `--fully-strict' option.\n")
+	;
+		[]
+	).
+det_report_msg(det_goal_has_no_outputs(Context), _) -->
+	prog_out__write_context(Context),
+	io__write_string("Warning: det goal has no outputs.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tThe compiler will optimize away this goal, replacing it with `true'.
+\tTo disable this optimization, use the `--fully-strict' option.\n")
+	;
+		[]
+	).
 det_report_msg(warn_obsolete(PredId, Context), ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: call to obsolete "),

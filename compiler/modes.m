@@ -196,6 +196,16 @@ a variable live if its value will be used later on in the computation.
 :- pred unify_rhs_vars(unify_rhs, list(prog_var)).
 :- mode unify_rhs_vars(in, out) is det.
 
+	%
+	% calculate the argument number offset that needs to be passed to
+	% modecheck_var_list_is_live, modecheck_var_has_inst_list, and
+	% modecheck_set_var_inst_list.  This offset number is calculated
+	% so that real arguments get positive argument numbers and
+	% type_info arguments get argument numbers less than or equal to 0.
+	%
+:- pred compute_arg_offset(pred_info, int).
+:- mode compute_arg_offset(in, out) is det.
+
 	% Given a list of variables and a list of expected liveness, ensure
 	% that the inst of each variable satisfies the corresponding expected
 	% liveness.
@@ -221,9 +231,8 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_force_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_set_var_inst_list(list(prog_var), list(inst), list(inst),
-					list(prog_var), extra_goals,
-					mode_info, mode_info).
-:- mode modecheck_set_var_inst_list(in, in, in, out, out,
+		int, list(prog_var), extra_goals, mode_info, mode_info).
+:- mode modecheck_set_var_inst_list(in, in, in, in, out, out,
 					mode_info_di, mode_info_uo) is det.
 
 	% check that the final insts of the head vars of a lambda
@@ -391,6 +400,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 			;
 				[]
 			),
+
 			%
 			% Mode analysis may have modified the procedure
 			% bodies, since it does some optimizations such
@@ -401,6 +411,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 			% they may therefore produce incorrect results.
 			% Thus we need to restore the old procedure bodies.
 			%
+
 			( { WhatToCheck = check_modes } ->
 				% restore the proc_info goals from the
 				% clauses in the pred_info
@@ -412,6 +423,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 				{ copy_pred_bodies(OldPredTable, PredIds,
 					ModuleInfo3, ModuleInfo4) }
 			),
+
 			{ MaxIterations1 is MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
 				WhatToCheck, MayChangeCalledProc,
@@ -452,14 +464,25 @@ copy_pred_bodies(OldPredTable, PredIds, ModuleInfo0, ModuleInfo) :-
 :- mode copy_pred_body(in, in, in, out) is det.
 copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(OldPredTable, PredId, OldPredInfo),
-	pred_info_procedures(OldPredInfo, OldProcTable),
-	map__keys(OldProcTable, OldProcIds),
-	list__foldl(copy_proc_body(OldProcTable), OldProcIds,
-		ProcTable0, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable).
+	(
+		% don't copy type class methods, because their
+		% proc_infos are generated already mode-correct,
+		% and because copying from the clauses_info doesn't
+		% work for them.
+		pred_info_get_markers(PredInfo0, Markers),
+		check_marker(Markers, class_method)
+	->
+		PredTable = PredTable0
+	;
+		pred_info_procedures(PredInfo0, ProcTable0),
+		map__lookup(OldPredTable, PredId, OldPredInfo),
+		pred_info_procedures(OldPredInfo, OldProcTable),
+		map__keys(OldProcTable, OldProcIds),
+		list__foldl(copy_proc_body(OldProcTable), OldProcIds,
+			ProcTable0, ProcTable),
+		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		map__set(PredTable0, PredId, PredInfo, PredTable)
+	).
 
 % copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable):
 %	copy the body of the specified ProcId from OldProcTable
@@ -486,11 +509,24 @@ modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
 		NumErrors0, NumErrors) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
-	( { pred_info_is_imported(PredInfo0) } ->
-		{ ModuleInfo3 = ModuleInfo0 },
-		{ Changed1 = Changed0 },
-		{ NumErrors1 = NumErrors0 }
-	; { pred_info_is_pseudo_imported(PredInfo0) } ->
+	(
+		(
+			%
+			% don't modecheck imported predicates
+			%
+			( { pred_info_is_imported(PredInfo0) }
+			; { pred_info_is_pseudo_imported(PredInfo0) }
+			)
+		;
+			%
+			% don't modecheck class methods, because they
+			% are generated already mode-correct and with
+			% correct instmap deltas.
+			%
+			{ pred_info_get_markers(PredInfo0, PredMarkers) },
+			{ check_marker(PredMarkers, class_method) }
+		)
+	->
 		{ ModuleInfo3 = ModuleInfo0 },
 		{ Changed1 = Changed0 },
 		{ NumErrors1 = NumErrors0 }
@@ -721,7 +757,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 		% we use the context of the mode declaration.
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
-	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
+	clauses_info_clauses(ClausesInfo, ClauseList),
 	( ClauseList = [FirstClause | _] ->
 		FirstClause = clause(_, _, Context)
 	;
@@ -808,12 +844,14 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	mode_info_get_inst_table(ModeInfo0, InstTable),
+	mode_info_get_var_types(ModeInfo0, VarTypes),
 	instmap__lookup_vars(HeadVars, InstMap, VarFinalInsts1),
 	% YYY Check for non-legitimate aliasing here.
+	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
 
 	( InferModes = yes ->
-		normalise_insts(VarFinalInsts1, InstMap, InstTable, ModuleInfo,
-			VarFinalInsts2),
+		normalise_insts(VarFinalInsts1, ArgTypes, InstMap, InstTable,
+			ModuleInfo, VarFinalInsts2),
 		%
 		% make sure we set the final insts of any variables which
 		% we assumed were dead to `clobbered'.
@@ -1019,10 +1057,19 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	mode_info_lock_vars(if_then_else, InnerNonLocals),
 	mode_info_add_live_vars(B_Vars),
 	modecheck_goal(A0, A),
+	mode_info_dcg_get_instmap(InstMapA),
 	mode_info_remove_live_vars(B_Vars),
 	mode_info_unlock_vars(if_then_else, InnerNonLocals),
-	modecheck_goal(B0, B),
-	mode_info_dcg_get_instmap(InstMapB),
+	( { instmap__is_reachable(InstMapA) } ->
+		modecheck_goal(B0, B),
+		mode_info_dcg_get_instmap(InstMapB)
+	;
+		% We should not mode-analyse the goal, since it is unreachable.
+		% Instead we optimize the goal away, so that later passes
+		% won't complain about it not having mode information.
+		{ true_goal(B) },
+		{ InstMapB = InstMapA }
+	),
 	mode_info_set_instmap(InstMap0),
 	modecheck_goal(C0, C),
 	mode_info_dcg_get_instmap(InstMapC),
@@ -1048,7 +1095,9 @@ modecheck_goal_expr(some(Vs, G0), GoalInfo0, some(Vs, G)) -->
 
 modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "call", GoalInfo0),
+	{ prog_out__sym_name_to_string(PredName, PredNameString) },
+	{ string__append("call ", PredNameString, CallString) },
+	mode_checkpoint(enter, CallString, GoalInfo0),
 	mode_info_set_call_context(call(PredId)),
 	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
@@ -1065,7 +1114,7 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 				InstMap0, Goal),
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "call", GoalInfo0).
+	mode_checkpoint(exit, CallString, GoalInfo0).
 
 modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
 		GoalInfo0, Goal) -->
@@ -1260,7 +1309,17 @@ modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals]) -->
 	{ goal_get_nonlocals(Goal0, NonLocals) },
 	mode_info_remove_live_vars(NonLocals),
 	modecheck_goal(Goal0, Goal),
-	modecheck_conj_list_no_delay(Goals0, Goals).
+	mode_info_dcg_get_instmap(InstMap),
+	( { instmap__is_unreachable(InstMap) } ->
+		% We should not mode-analyse the remaining goals, since they
+		% are unreachable.  Instead we optimize them away, so that
+		% later passes won't complain about them not having mode
+		% information.
+		mode_info_remove_goals_live_vars(Goals0),
+		{ Goals  = [] }
+	;
+		modecheck_conj_list_no_delay(Goals0, Goals)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1421,6 +1480,10 @@ modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
 	mode_info_set_delay_info(DelayInfo),
 	mode_info_dcg_get_instmap(InstMap),
 	( { instmap__is_unreachable(InstMap) } ->
+		% We should not mode-analyse the remaining goals, since they
+		% are unreachable.  Instead we optimize them away, so that
+		% later passes won't complain about them not having mode
+		% information.
 		mode_info_remove_goals_live_vars(Goals1),
 		{ Goals2  = [] },
 		{ ImpurityErrors = ImpurityErrors2 }
@@ -1458,7 +1521,7 @@ check_for_impurity_error(Goal, ImpurityErrors0, ImpurityErrors) -->
 	{ mode_info_get_predid(ModeInfo0, PredId) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-	{ ClausesInfo = clauses_info(_,_,_,HeadVars,_) },
+	{ clauses_info_headvars(ClausesInfo, HeadVars) },
 	(   { no_non_headvar_unification_goals(DelayedGoals, HeadVars) } ->
 		{ ImpurityErrors = ImpurityErrors0 }
 	;
@@ -1551,11 +1614,23 @@ modecheck_case_list([Case0 | Cases0], Var,
 	mode_info_dcg_get_instmap(InstMap1),
 	{ compute_instmap_delta(InstMap0, InstMap1, IMDelta) },
 
-	modecheck_goal(Goal0, Goal1),
-	mode_info_dcg_get_instmap(InstMap),
+		% modecheck this case (if it is reachable)
+	mode_info_dcg_get_instmap(InstMap2),
+	( { instmap__is_reachable(InstMap2) } ->
+		modecheck_goal(Goal0, Goal1),
+		mode_info_dcg_get_instmap(InstMap)
+	;
+		% We should not mode-analyse the goal, since it is unreachable.
+		% Instead we optimize the goal away, so that later passes
+		% won't complain about it not having mode information.
+		{ true_goal(Goal1) },
+		{ InstMap = InstMap2 }
+	),
+
 	% Don't lose the information added by the functor test above.
 	% { fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
 	{ Goal1 = Goal },
+
 	mode_info_set_instmap(InstMap0),
 	modecheck_case_list(Cases0, Var, Cases, InstMaps).
 
@@ -1612,6 +1687,21 @@ get_all_conjunct_nonlocals([G|Gs], NonLocals0, NonLocals) :-
 	set__union(GoalNonLocals, NonLocals0, NonLocals1),
 	get_all_conjunct_nonlocals(Gs, NonLocals1, NonLocals).
 
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% calculate the argument number offset that needs to be passed to
+	% modecheck_var_list_is_live, modecheck_var_has_inst_list, and
+	% modecheck_set_var_inst_list.  This offset number is calculated
+	% so that real arguments get positive argument numbers and
+	% type_info arguments get argument numbers less than or equal to 0.
+	%
+compute_arg_offset(PredInfo, ArgOffset) :-
+	pred_info_arity(PredInfo, OrigArity),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	list__length(ArgTypes, CurrentArity),
+	ArgOffset = OrigArity - CurrentArity.
 
 %-----------------------------------------------------------------------------%
 
@@ -1690,11 +1780,11 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts,
-			Vars, Goals) -->
+modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
+		Vars, Goals) -->
 	(
 		modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
-			no_extra_goals, 0, Vars1, Goals1)
+			no_extra_goals, ArgOffset, Vars1, Goals1)
 	->
 		{ Vars = Vars1, Goals = Goals1 }
 	;
@@ -2038,7 +2128,7 @@ handle_implied_mode(Var0, InstMapBefore, VarInst0, InitialInst0, Var,
 
 			% Construct the code to do the unification
 			modecheck_unify__create_var_var_unification(Var0, Var,
-				ModeInfo, ExtraGoal),
+				VarType, ModeInfo, ExtraGoal),
 
 			% append the goals together in the appropriate order:
 			% ExtraGoals0, then NewUnify

@@ -28,8 +28,7 @@
 	;	expand_silently		% Expansion
 	;	expand_noisily.		% alias(IK, Expansion)
 
-:- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
-:- import_module instmap, rl.
+:- import_module hlds_goal, hlds_data, prog_data, (inst), instmap.
 :- import_module bool, std_util, list, io, varset, term.
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
@@ -90,7 +89,7 @@
 :- mode mercury_output_pragma_c_code(in, in, in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
-		int, proc_id, list(int), io__state, io__state) is det.
+		int, mode_num, list(int), io__state, io__state) is det.
 :- mode mercury_output_pragma_unused_args(in, in, in, in, in, di, uo) is det.
 
 	% Write an Aditi index specifier.
@@ -221,6 +220,7 @@
 :- implementation.
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
+:- import_module purity, term_util.
 :- import_module globals, options, termination.
 
 :- import_module assoc_list, char, int, string, set, lexer, require.
@@ -380,9 +380,9 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 		mercury_output_pragma_decl(Pred, Arity, predicate, "no_inline")
 	;
 		{ Pragma = unused_args(PredOrFunc, PredName,
-			Arity, ProcId, UnusedArgs) },
+			Arity, ModeNum, UnusedArgs) },
 		mercury_output_pragma_unused_args(PredOrFunc,
-			PredName, Arity, ProcId, UnusedArgs)
+			PredName, Arity, ModeNum, UnusedArgs)
 	;
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_output_pragma_fact_table(Pred, Arity, FileName)
@@ -427,7 +427,12 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 					   "promise_pure")
 	;
 		{ Pragma = termination_info(PredOrFunc, PredName, 
-			Modes, MaybeArgSizeInfo, MaybeTerminationInfo) },
+			Modes, MaybePragmaArgSizeInfo,
+			MaybePragmaTerminationInfo) },
+		{ add_context_to_arg_size_info(MaybePragmaArgSizeInfo, Context,
+			MaybeArgSizeInfo) },
+		{ add_context_to_termination_info(MaybePragmaTerminationInfo,
+			Context, MaybeTerminationInfo) },
 		termination__write_pragma_termination_info(PredOrFunc,
 			PredName, Modes, Context,
 			MaybeArgSizeInfo, MaybeTerminationInfo)
@@ -443,6 +448,13 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 		mercury_output_pragma_decl(Pred, Arity, predicate,
 			"check_termination")
 	).
+
+mercury_output_item(assertion(Goal, VarSet), _, _) -->
+	io__write_string(":- assertion "),
+	{ Indent = 1 },
+	mercury_output_newline(Indent),
+	mercury_output_goal(Goal, VarSet, Indent),
+	io__write_string(".\n").
 
 mercury_output_item(nothing, _, _) --> [].
 mercury_output_item(typeclass(Constraints, ClassName, Vars, Methods, 
@@ -1905,13 +1917,29 @@ mercury_output_goal_2(fail, _, _) -->
 mercury_output_goal_2(true, _, _) -->
 	io__write_string("true").
 
-	% Implication and equivalence should have been transformed out
-	% by now
-mercury_output_goal_2(implies(_G1,_G2), _VarSet, _Indent) -->
-	{ error("mercury_to_mercury: implies/2 in mercury_output_goal")}.
+mercury_output_goal_2(implies(G1,G2), VarSet, Indent) -->
+	{ Indent1 is Indent + 1 },
+	io__write_string("("),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G1, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("=>"),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G2, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
-mercury_output_goal_2(equivalent(_G1,_G2), _VarSet, _Indent) -->
-	{ error("mercury_to_mercury: equivalent/2 in mercury_output_goal")}.
+mercury_output_goal_2(equivalent(G1,G2), VarSet, Indent) -->
+	{ Indent1 is Indent + 1 },
+	io__write_string("("),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G1, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string("<=>"),
+	mercury_output_newline(Indent1),
+	mercury_output_goal(G2, VarSet, Indent1),
+	mercury_output_newline(Indent),
+	io__write_string(")").
 
 mercury_output_goal_2(some(Vars, Goal), VarSet, Indent) -->
 	( { Vars = [] } ->
@@ -2051,7 +2079,8 @@ mercury_output_disj(Goal, VarSet, Indent) -->
 		mercury_output_goal(Goal, VarSet, Indent1)
 	).
 
-:- pred mercury_output_par_conj(goal, prog_varset, int, io__state, io__state).
+:- pred mercury_output_par_conj(goal, prog_varset, int,
+		io__state, io__state).
 :- mode mercury_output_par_conj(in, in, in, di, uo) is det.
 
 mercury_output_par_conj(Goal, VarSet, Indent) -->
@@ -2396,7 +2425,7 @@ mercury_output_type_subst(VarSet, Var - Type) -->
 %-----------------------------------------------------------------------------%
 
 mercury_output_pragma_unused_args(PredOrFunc, SymName,
-		Arity, ProcId, UnusedArgs) -->
+		Arity, ModeNum, UnusedArgs) -->
 	io__write_string(":- pragma unused_args("),
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(", "),
@@ -2404,8 +2433,7 @@ mercury_output_pragma_unused_args(PredOrFunc, SymName,
 	io__write_string(", "),
 	io__write_int(Arity),
 	io__write_string(", "),
-	{ proc_id_to_int(ProcId, ProcInt) },
-	io__write_int(ProcInt),
+	io__write_int(ModeNum),
 	io__write_string(", ["),
 	mercury_output_int_list(UnusedArgs),
 	io__write_string("]).\n").
@@ -2956,6 +2984,7 @@ mercury_unary_prefix_op("::").
 mercury_unary_prefix_op("?-").
 mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
+mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("end_module").

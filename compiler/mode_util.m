@@ -190,12 +190,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred normalise_insts(list(inst), instmap, inst_table, module_info,
-		list(inst)).
-:- mode normalise_insts(in, in, in, in, out) is det.
+:- pred normalise_insts(list(inst), list(type), instmap, inst_table,
+		module_info, list(inst)).
+:- mode normalise_insts(in, in, in, in, in, out) is det.
 
-:- pred normalise_inst(inst, instmap, inst_table, module_info, inst).
-:- mode normalise_inst(in, in, in, in, out) is det.
+:- pred normalise_inst(inst, (type), instmap, inst_table, module_info, inst).
+:- mode normalise_inst(in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -236,7 +236,7 @@
 
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list, bag.
-:- import_module prog_util, type_util, unify_proc.
+:- import_module prog_util, prog_io, type_util, unify_proc.
 :- import_module inst_match, inst_util, det_analysis, term.
 
 %-----------------------------------------------------------------------------%
@@ -2124,12 +2124,12 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		),
 		ModuleInfo = ModuleInfo2
 	;
-		Unification0 = complicated_unify(_, CanFail)
+		Unification0 = complicated_unify(_, CanFail, TIVars)
 	->
 		Det = Det1,
 		ComplUniMode = ((InitialInstX - InitialInstY) ->
 					(UnifyInst - UnifyInst)),
-		Unification = complicated_unify(ComplUniMode, CanFail),
+		Unification = complicated_unify(ComplUniMode, CanFail, TIVars),
 		goal_info_get_context(GoalInfo, Context),
 		recompute_info_get_vartypes(RI0, VarTypes),
 		map__lookup(VarTypes, Var, Type),
@@ -2151,7 +2151,7 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	compute_instmap_delta(InstMap0, InstMap, InstMapDelta),
 	recompute_info_set_module_info(ModuleInfo, RI0, RI1),
 	recompute_info_set_inst_table(InstTable, RI1, RI2),
-	( GoalChanged = yes ->
+	( GoalChanged = bool:yes ->
 		recompute_info_set_goal_changed(RI2, RI)
 	;
 		RI = RI2
@@ -2315,28 +2315,41 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_insts([], _, _, _, []).
-normalise_insts([Inst0|Insts0], InstMap, InstTable, ModuleInfo, [Inst|Insts]) :-
-	normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, Inst),
-	normalise_insts(Insts0, InstMap, InstTable, ModuleInfo, Insts).
+normalise_insts([], [], _, _, _, []).
+normalise_insts([Inst0|Insts0], [Type|Types], InstMap, InstTable, ModuleInfo,
+		[Inst|Insts]) :-
+	normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, Inst),
+	normalise_insts(Insts0, Types, InstMap, InstTable, ModuleInfo, Insts).
+normalise_insts([], [_|_], _, _, _, _) :-
+	error("normalise_insts: length mismatch").
+normalise_insts([_|_], [], _, _, _, _) :-
+	error("normalise_insts: length mismatch").
 
 	% This is a bit of a hack.
 	% The aim is to avoid non-termination due to the creation
 	% of ever-expanding insts.
 	% XXX should also normalise partially instantiated insts.
 
-normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
+normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
 	inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst),
 	( Inst = bound(_, _) ->
 		(
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
-			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo)
+			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(unique, no)
 		;
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
 			inst_is_mostly_unique(Inst, InstMap, InstTable,
-					ModuleInfo)
+					ModuleInfo),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(mostly_unique, no)
 		;

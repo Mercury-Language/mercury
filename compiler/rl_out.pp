@@ -829,20 +829,22 @@ rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 	)) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
 rl_out__generate_instr(add_index(output_rel(Rel, Indexes)) - _, Code) -->
-	rl_out__add_indexes_to_rel(Rel, Indexes, IndexCodes),
-	{ Code = node(IndexCodes) }.
+	rl_out__add_indexes_to_rel(may_have_index, Rel, Indexes, Code).
 rl_out__generate_instr(clear(Rel) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
 	{ Code = node([rl_PROC_clear(Addr)]) }.
 rl_out__generate_instr(init(output_rel(Rel, Indexes)) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
 	rl_out_info_get_relation_schema_offset(Rel, SchemaOffset),
-	rl_out__add_indexes_to_rel(Rel, Indexes, IndexCodes),
-	{ Code = node([
-		rl_PROC_unsetrel(Addr),
-		rl_PROC_createtemprel(Addr, SchemaOffset) |
+	rl_out__add_indexes_to_rel(does_not_have_index,
+		Rel, Indexes, IndexCodes),
+	{ Code = 
+		tree(node([
+			rl_PROC_unsetrel(Addr),
+			rl_PROC_createtemprel(Addr, SchemaOffset)
+		]),
 		IndexCodes
-	]) }.
+	) }.
 rl_out__generate_instr(insert_tuple(Output, Input, Exprn) - _, Code) -->
 	rl_out__generate_stream(Input, InputStream),
 	rl_out_info_get_output_relation_schema_offset(Output,
@@ -904,17 +906,25 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 			rl_PROC_var_list_nil
 		])
 	) }.
-rl_out__generate_instr(make_unique(OutputRel, InputRel) - Comment,
-		Code) -->
-	% This should eventually do something like:
-	% 	if (num_references(InputRel) == 1) {
+rl_out__generate_instr(make_unique(OutputRel, Input) - Comment, Code) -->
+	% 	if (one_reference(InputRel)) {
 	% 		OutputRel = ref(InputRel)
 	% 	} else {
 	% 		OutputRel = copy(InputRel)
 	%	}
-	% At the moment reference counting doesn't work, so we always copy.
-	rl_out__generate_instr(copy(OutputRel, InputRel) - Comment,
-		Code).
+	rl_out_info_get_relation_addr(Input, InputAddr),
+	{ CondCode = node([rl_PROC_one_reference(InputAddr)]) },
+
+	{ OutputRel = output_rel(Output, _) },
+	rl_out__generate_instr(ref(Output, Input) - Comment, ThenCode0),
+	% We may not need to generate this instruction - rl_sort.m
+	% has enough information to work out whether this is actually needed.
+	rl_out__generate_instr(add_index(OutputRel) - Comment, ThenCode1),
+	{ ThenCode = tree(ThenCode0, ThenCode1) },
+
+	rl_out__generate_instr(copy(OutputRel, Input) - Comment, ElseCode),
+
+	rl_out__generate_ite(CondCode, ThenCode, ElseCode, Code).
 rl_out__generate_instr(call(ProcName, Inputs, OutputRels, SaveRels) - _,
 		Code) -->
 
@@ -932,7 +942,8 @@ rl_out__generate_instr(call(ProcName, Inputs, OutputRels, SaveRels) - _,
 	rl_out_info_assign_const(string(ProcNameStr), ProcNameConst),
 	rl_out_info_return_tmp_vars(SaveTmpVars, SaveClearCode),
 	rl_out_info_return_tmp_vars(OverlapTmpVars, OverlapClearCode),
-	rl_out__add_indexes_to_rels(OutputRels, IndexCode),
+	rl_out__add_indexes_to_rels(does_not_have_index,
+		OutputRels, IndexCode),
 	{ Code =
 		tree(SaveCode,
 		tree(node([rl_PROC_call(ProcNameConst)]), 
@@ -1153,27 +1164,54 @@ rl_out__index_attr_to_string(Attr, Str) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_out__add_indexes_to_rels(list(output_rel)::in, byte_tree::out,
+:- type check_index
+	--->	may_have_index
+	;	does_not_have_index
+	.
+
+:- pred rl_out__add_indexes_to_rels(check_index::in,
+		list(output_rel)::in, byte_tree::out,
 		rl_out_info::in, rl_out_info::out) is det.
 	
-rl_out__add_indexes_to_rels([], empty) --> [].
-rl_out__add_indexes_to_rels([output_rel(Output, Indexes) | Outputs],
-		IndexCode) -->
-	rl_out__add_indexes_to_rel(Output, Indexes, Instrs),
-	rl_out__add_indexes_to_rels(Outputs, IndexCode1),
-	{ IndexCode = tree(node(Instrs), IndexCode1) }.
+rl_out__add_indexes_to_rels(_, [], empty) --> [].
+rl_out__add_indexes_to_rels(CheckIndex,
+		[output_rel(Output, Indexes) | Outputs], IndexCode) -->
+	rl_out__add_indexes_to_rel(CheckIndex, Output, Indexes, IndexCode0),
+	rl_out__add_indexes_to_rels(CheckIndex, Outputs, IndexCode1),
+	{ IndexCode = tree(IndexCode0, IndexCode1) }.
 
-:- pred rl_out__add_indexes_to_rel(relation_id::in, list(index_spec)::in,
-		list(bytecode)::out, rl_out_info::in, rl_out_info::out) is det.
+:- pred rl_out__add_indexes_to_rel(check_index::in, relation_id::in,
+		list(index_spec)::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__add_indexes_to_rel(_, [], []) --> [].
-rl_out__add_indexes_to_rel(Output, [Index | Indexes],
-		[IndexInstr | IndexInstrs]) -->
+rl_out__add_indexes_to_rel(_, _, [], empty) --> [].
+rl_out__add_indexes_to_rel(CheckIndex, Output,
+		[Index | Indexes], IndexCode) -->
 	rl_out_info_get_relation_addr(Output, OutputAddr),
 	{ rl_out__index_spec_to_string(Index, IndexStr) },
 	rl_out_info_assign_const(string(IndexStr), IndexConst),
-	{ IndexInstr = rl_PROC_addindextorel(OutputAddr, IndexConst) },
-	rl_out__add_indexes_to_rel(OutputAddr, Indexes, IndexInstrs).
+
+	(
+		{ CheckIndex = may_have_index },
+		% Generate code to test whether the index already exists
+		% before adding it.
+		{ CondCode = node([
+			rl_PROC_has_index(OutputAddr, IndexConst)
+		]) },
+		{ ThenCode = empty },
+		{ ElseCode = node([
+			rl_PROC_addindextorel(OutputAddr, IndexConst)
+		]) },
+		rl_out__generate_ite(CondCode, ThenCode, ElseCode, IndexCode0)
+	;
+		{ CheckIndex = does_not_have_index },
+		{ IndexCode0 = node([
+			rl_PROC_addindextorel(OutputAddr, IndexConst)
+		]) }
+	),
+	rl_out__add_indexes_to_rel(CheckIndex,
+		OutputAddr, Indexes, IndexCode1),
+	{ IndexCode = tree(IndexCode0, IndexCode1) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1208,13 +1246,14 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 			TmpVar, TmpClearCode),
 
 		{ LockSpec = 0 },	% default lock spec
-		rl_out__add_indexes_to_rel(Output, Indexes, IndexInstrs),
+		rl_out__add_indexes_to_rel(does_not_have_index,
+			Output, Indexes, IndexInstrs),
 		rl_out_info_get_next_materialise_id(Id),
 		{ Code = 
 			tree(node([
-				rl_PROC_createtemprel(TmpVar, SchemaOffset) |
-				IndexInstrs
+				rl_PROC_createtemprel(TmpVar, SchemaOffset)
 			]),
+			tree(IndexInstrs,
 			tree(node([
 				rl_PROC_materialise(Id)
 			]),
@@ -1230,7 +1269,7 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 				rl_PROC_setrel(OutputAddr, TmpVar)
 			]),
 			TmpClearCode
-		)))) }
+		))))) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1480,7 +1519,7 @@ rl_out__generate_compare_exprn(Spec, Schema, ExprnNum) -->
 rl_out__generate_key_range(Range, RangeExprn) -->
 	rl_out_info_get_module_info(ModuleInfo),
 	{ rl_exprn__generate_key_range(ModuleInfo, Range, ExprnCode,
-		NumParams, Output1Schema, Output2Schema, TermDepth) },
+		NumParams, Output1Schema, Output2Schema, TermDepth, Decls) },
 	rl_out__schema_to_string(Output1Schema, Output1SchemaOffset),
 	rl_out__schema_to_string(Output2Schema, Output2SchemaOffset),
 
@@ -1490,7 +1529,7 @@ rl_out__generate_key_range(Range, RangeExprn) -->
 	{ StackSize is TermDepth * 2 + 10 },
 	rl_out__package_exprn(ExprnCode, NumParams, generate2,
 		Output1SchemaOffset, Output2SchemaOffset, StackSize,
-		[], RangeExprn).
+		Decls, RangeExprn).
 	
 :- pred rl_out__package_exprn(list(bytecode)::in, int::in, exprn_mode::in,
 		int::in, int::in, int::in, list(type)::in, int::out,
