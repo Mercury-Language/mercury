@@ -996,8 +996,8 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 
 	Term = functor(cons(PredName2, 0), []),
 
-		% XXX should this be:
-		% Inst = bound(unique, [functor(ConsId, [])]) ?
+		% Since constructors in bound insts cannot be module
+		% qualified, remove the qualifier here.
 	unqualify_name(PredName2, PredName3),
 	Inst = bound(unique, [functor(cons(unqualified(PredName3), 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),

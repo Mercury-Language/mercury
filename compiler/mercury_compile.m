@@ -175,22 +175,6 @@ process_module_2(ModuleName) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Some of the following predicates use NU-Prolog hacks to avoid
-	% running out of memory.
-
-#if NU_PROLOG
-:- type mc ---> mc.
-:- type ref.
-:- pred putprop(mc, mc, T).
-:- mode putprop(in, in, in) is det.
-:- pred getprop(mc, mc, T, ref).
-:- mode getprop(in, in, out, out) is det.
-:- pred erase(ref).
-:- mode erase(in) is det.
-#endif
-
-%-----------------------------------------------------------------------------%
-
 	% Given a fully expanded module (i.e. a module name and a list
 	% of all the items in the module and any of its imports),
 	% compile it.
@@ -298,14 +282,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 		{ module_info_incr_errors(HLDS0, HLDS1) }
 	;	
 		{ HLDS1 = HLDS0 }
-	),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS1 - Proceed), fail }.
-mercury_compile__pre_hlds_pass(_, HLDS1, Proceed) -->
-	{ getprop(mc, mc, HLDS1 - Proceed, Ref), erase(Ref) },
-#endif
-	{ true }.
+	).
 
 :- pred mercury_compile__module_qualify_items(item_list, item_list, string,
 		bool, bool, int, bool, bool, io__state, io__state).
@@ -446,15 +423,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			)
 		)
 	    )
-	),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS - FoundError), fail }.
-mercury_compile__frontend_pass(_, HLDS, FoundError) -->
-	{ getprop(mc, mc, HLDS - FoundError, Ref), erase(Ref) },
-#endif
-
-	{ true }.
+	).
 
 :- pred mercury_compile__frontend_pass_2(module_info, module_info,
 	bool, io__state, io__state).
@@ -632,14 +601,6 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	mercury_compile__maybe_followvars(HLDS59, Verbose, Stats, HLDS62),
 	mercury_compile__maybe_dump_hlds(HLDS62, "62", "followvars"),
 
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS62), fail }.
-mercury_compile__backend_pass_by_phases(_, _, _) -->
-	{ getprop(mc, mc, HLDS62, Ref), erase(Ref) },
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
-#endif
-
 	mercury_compile__compute_stack_vars(HLDS62, Verbose, Stats, HLDS65),
 	mercury_compile__maybe_dump_hlds(HLDS65, "65", "stackvars"),
 
@@ -647,14 +608,6 @@ mercury_compile__backend_pass_by_phases(_, _, _) -->
 	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"),
 
 	maybe_report_sizes(HLDS68),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS68), fail }.
-mercury_compile__backend_pass_by_phases(_, _, _) -->
-	{ getprop(mc, mc, HLDS68, Ref), erase(Ref) },
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
-#endif
 
 	{ HLDS90 = HLDS68 },
 	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"),
@@ -664,14 +617,6 @@ mercury_compile__backend_pass_by_phases(_, _, _) -->
 
 	{ HLDS99 = HLDS95 },
 	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"),
-
-#if NU_PROLOG
-	{ putprop(mc, mc, HLDS99 - LLDS1), fail }.
-mercury_compile__backend_pass_by_phases(_, HLDS99, LLDS) -->
-	{ getprop(mc, mc, HLDS99 - LLDS1, Ref), erase(Ref) },
-	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
-#endif
 
 	mercury_compile__maybe_do_optimize(LLDS1, Verbose, Stats, LLDS).
 
@@ -1088,7 +1033,7 @@ mercury_compile__maybe_transform_dnf(HLDS0, Verbose, Stats, HLDS) -->
 	( { Aditi = yes } ->
 		maybe_write_string(Verbose, "% Disjunctive normal form transformation..."),
 		maybe_flush_output(Verbose),
-		{ dnf__transform_module(HLDS0, no, HLDS) },
+		{ dnf__transform_module(HLDS0, no, no, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;

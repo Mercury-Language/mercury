@@ -58,10 +58,6 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 .PHONY: depend
 depend : mercury_compile.depend
 
-# we need to make sure the .pp files get converted to .m before
-# we do the make depend
-mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
-
 .PHONY: all
 all : mercury nuprolog sicstus
 
@@ -99,8 +95,8 @@ ints		: mercury_compile.ints
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(MTAGS) *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
-	$(MTAGS) *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+tags		: $(MTAGS) $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
 
 mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
 	awk -f `vpath_find source_stats.awk` \
@@ -121,11 +117,6 @@ cs: $(mercury_compile.cs) mercury_compile_init.c
 #-----------------------------------------------------------------------------#
 
 clean:
-	for file in *.pp; do \
-		if [ "$$file" != "*.pp" ]; then \
-			rm -f `basename $$file .pp`.m; \
-		fi \
-	done
 
 realclean:
 	rm -f tags mercury_compile.stats

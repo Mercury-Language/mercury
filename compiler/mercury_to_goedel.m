@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: goedel_to_mercury.m.
+% File: mercury_to_goedel.m.
 % Main author: fjh.
 
 % This program converts Mercury source code into Goedel.

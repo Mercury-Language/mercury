@@ -70,7 +70,7 @@
 :- import_module type_util, mode_util, std_util, int, set.
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
-:- import_module code_aux, middle_rec.
+:- import_module passes_aux, code_aux, middle_rec.
 :- import_module prog_data, instmap.
 
 %---------------------------------------------------------------------------%
@@ -108,17 +108,6 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 		generate_pred_code(ModuleInfo0, ModuleInfo1, PredId,
 					PredInfo, ProcIds, Predicates0) 
 	),
-#if NU_PROLOG
-	{ module_info_get_shapes(ModuleInfo1, Shape_Table) },
-	{ putprop(codegen, codegen, Predicates0 - Shape_Table ), fail }.
-generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds], 
-			Predicates) -->
-	{ getprop(codegen, codegen, Predicates0 - Shape_Table, Ref),
-	  erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-	{ module_info_set_shapes(ModuleInfo0, Shape_Table, ModuleInfo1) },
-#endif
 	{ list__append(Predicates0, Predicates1, Predicates) },
 		% and generate the code for the rest of the predicates
 	generate_pred_list_code(ModuleInfo1, ModuleInfo, PredIds, Predicates1).
@@ -137,11 +126,7 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 		hlds_out__write_pred_id(ModuleInfo0, PredId),
 		io__write_string("\n"),
 		globals__io_lookup_bool_option(statistics, Statistics),
-		( { Statistics = yes } ->
-			io__report_stats
-		;
-			[]
-		)
+		maybe_report_stats(Statistics)
 	;
 		[]
 	),

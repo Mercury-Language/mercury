@@ -47,18 +47,7 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
 	{ NovnRepeat is AllRepeat - VnRepeat },
 	optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
 	optimize__repeat(VnRepeat, yes, Instrs1, Instrs2),
-	optimize__nonrepeat(Instrs2, Instrs),
-#if NU_PROLOG
-	{ putprop(opt, opt, Instrs) },
-	{ fail }.
-optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
-		   c_procedure(Name, Arity, Mode, Instrs)) -->
-	{ getprop(opt, opt, Instrs, Ref) },
-	{ erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-	{ true }.
+	optimize__nonrepeat(Instrs2, Instrs).
 
 %-----------------------------------------------------------------------------%
 
@@ -202,17 +191,7 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 		Mod = yes
 	},
 	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#if NU_PROLOG
-	{ putprop(opt, opt, Instrs - Mod) },
-	{ fail }.
-optimize__repeated(Instrs0, _, _, _, Instrs, Mod) -->
-	{ getprop(opt, opt, Instrs - Mod, Ref) },
-	{ erase(Ref) },
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics),
-#endif
-	{ true }.
+	maybe_report_stats(Statistics).
 
 :- pred optimize__nonrepeat(list(instruction), list(instruction),
 	io__state, io__state).

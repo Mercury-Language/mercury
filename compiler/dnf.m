@@ -6,7 +6,8 @@
 %
 % A module for transforming procedure bodies into disjunctive normal form.
 % This transformation is necessary for the application of several deductive
-% database type transformation algorithms.
+% database type transformation algorithms, and is also helpful when one
+% wants to produce Prolog code with good performance.
 %
 % Author: zs.
 %
@@ -31,6 +32,11 @@
 % specified predicates. This allows e.g. the magic set transformation to
 % consider all goals that do not refer to database predicates to be atomic.
 %
+% dnf__transform_proc transforms one procedure into dnf. dnf__transform_module
+% transforms either all procedures in the module (if the second argument is
+% set to 'yes'), or just the procedures belonging to predicates with the
+% 'dnf' marker.
+%
 %-----------------------------------------------------------------------------%
 
 :- module dnf.
@@ -39,8 +45,8 @@
 
 :- import_module hlds_module, hlds_pred, set.
 
-:- pred dnf__transform_module(module_info::in, maybe(set(pred_proc_id))::in,
-	module_info::out) is det.
+:- pred dnf__transform_module(module_info::in, bool::in,
+	maybe(set(pred_proc_id))::in, module_info::out) is det.
 
 :- pred dnf__transform_proc(proc_info::in, pred_info::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
@@ -57,20 +63,27 @@
 
 	% Traverse the module structure.
 
-dnf__transform_module(ModuleInfo0, MaybeNonAtomic, ModuleInfo1) :-
+dnf__transform_module(ModuleInfo0, TransformAll, MaybeNonAtomic, ModuleInfo1) :-
 	module_info_predids(ModuleInfo0, PredIds),
-	dnf__transform_preds(PredIds, MaybeNonAtomic, ModuleInfo0, ModuleInfo1).
+	dnf__transform_preds(PredIds, TransformAll, MaybeNonAtomic,
+		ModuleInfo0, ModuleInfo1).
 
-:- pred dnf__transform_preds(list(pred_id)::in, maybe(set(pred_proc_id))::in,
-	module_info::in, module_info::out) is det.
+:- pred dnf__transform_preds(list(pred_id)::in, bool::in,
+	maybe(set(pred_proc_id))::in, module_info::in, module_info::out) is det.
 
-dnf__transform_preds([], _MaybeNonAtomic, ModuleInfo, ModuleInfo).
-dnf__transform_preds([PredId | PredIds0], MaybeNonAtomic,
+dnf__transform_preds([], _, _, ModuleInfo, ModuleInfo).
+dnf__transform_preds([PredId | PredIds0], TransformAll, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_get_marker_list(PredInfo, Markers),
-	( list__member(request(dnf), Markers) ->
+	(
+		(
+			TransformAll = yes
+		;
+			module_info_preds(ModuleInfo0, PredTable),
+			map__lookup(PredTable, PredId, PredInfo),
+			pred_info_get_marker_list(PredInfo, Markers),
+			list__member(request(dnf), Markers)
+		)
+	->
 		dnf__transform_pred(PredId, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo1, NewPredIds),
 		list__append(NewPredIds, PredIds0, PredIds1)
@@ -78,7 +91,8 @@ dnf__transform_preds([PredId | PredIds0], MaybeNonAtomic,
 		PredIds1 = PredIds0,
 		ModuleInfo1 = ModuleInfo0
 	),
-	dnf__transform_preds(PredIds1, MaybeNonAtomic, ModuleInfo1, ModuleInfo).
+	dnf__transform_preds(PredIds1, TransformAll, MaybeNonAtomic,
+		ModuleInfo1, ModuleInfo).
 
 :- pred dnf__transform_pred(pred_id::in, maybe(set(pred_proc_id))::in,
 	module_info::in, module_info::out, list(pred_id)::out) is det.
