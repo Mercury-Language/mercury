@@ -1559,10 +1559,21 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	mode_info_var_list_is_live(ArgVars, ModeInfo0, LiveArgs),
 	InstY = bound([functor(Name, InstArgs)]),
 	(
-		% the occur check: X = f(X) will always fail
-		list__member(X, ArgVars)
+		% The occur check: X = f(X) is considered a mode error
+		% unless X is ground.  (Actually it wouldn't be that
+		% hard to generate code for it - it always fails! -
+		% but it's most likely to be a programming error,
+		% so it's better to report it.)
+
+		list__member(X, ArgVars),
+		\+ inst_is_ground(ModuleInfo0, InstX)
 	->
-		ModeInfo1 = ModeInfo0,
+		set__list_to_set([X], WaitingVars),
+		mode_info_error(WaitingVars,
+			mode_error_unify_var_functor(X, Name, Args,
+							InstX, InstArgs),
+			ModeInfo0, ModeInfo1
+		),
 		Inst = not_reached
 	;
 		abstractly_unify_inst_functor(LiveX, InstX, Name,
