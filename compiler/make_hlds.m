@@ -285,17 +285,21 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		{ Pragma = memo(Name, Arity) },
 		add_pred_marker(Module0, "memo", Name, Arity, Context,
-			[request(memo)], Module1),
+			[request(memo)], [], Module1),
 		add_stratified_pred(Module1, "memo", Name, Arity, Context, 
 			Module)
 	;
 		{ Pragma = inline(Name, Arity) },
 		add_pred_marker(Module0, "inline", Name, Arity, Context,
-			[request(inline)], Module)
+			[request(inline)], [request(no_inline)], Module)
+	;
+		{ Pragma = no_inline(Name, Arity) },
+		add_pred_marker(Module0, "no_inline", Name, Arity, Context,
+			[request(no_inline)], [request(inline)], Module)
 	;
 		{ Pragma = obsolete(Name, Arity) },
 		add_pred_marker(Module0, "obsolete", Name, Arity, Context,
-			[request(obsolete)], Module)
+			[request(obsolete)], [], Module)
 	;
 		{ Pragma = export(Name, PredOrFunc, Modes, C_Function) },
 		{ module_info_get_predicate_table(Module0, PredTable) },
@@ -507,22 +511,42 @@ add_stratified_pred(Module0, PragmaName, Name, Arity, Context, Module) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pred_marker(module_info, string, sym_name, arity,
-	term__context, list(marker_status), module_info, io__state, io__state).
-:- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
+	% add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Context, 
+	% 	Markers, ConflictMarkers, ModuleInfo, IO0, IO)
+	% Adds Markers to the marker list of pred with give Name and
+	% Arity, updating the ModuleInfo. If the pred does not exist,
+	% or the pred already has a marker in ConflictMarkers, report
+	% an error.
 
-add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
+:- pred add_pred_marker(module_info, string, sym_name, arity,
+	term__context, list(marker_status), list(marker_status), 
+	module_info, io__state, io__state).
+:- mode add_pred_marker(in, in, in, in, in, in, in, out, di, uo) is det.
+
+add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers,
+		ConflictMarkers, Module) --> 
 	{ module_info_get_predicate_table(Module0, PredTable0) },
 	(
 		{ predicate_table_search_sym_arity(PredTable0, Name, 
 			Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ pragma_set_markers(Preds0, PredIds, Markers, Preds) },
+		{ pragma_add_markers(Preds0, PredIds, Markers, Preds) },
 		{ predicate_table_set_preds(PredTable0, Preds, 
 			PredTable) },
 		{ module_info_set_predicate_table(Module0, PredTable, 
-			Module) }
+			Module1) },
+		{ pragma_check_markers(Preds, PredIds, ConflictMarkers, 
+			Conflict) },
+		(
+			{ Conflict = yes }
+		->
+			pragma_conflict_error(Name, Arity, Context,
+				PragmaName),
+			{ module_info_incr_errors(Module1, Module) }
+		;
+			{ Module = Module1 }
+		)
 	;
 		{ string__append_list(
 			["`:- pragma ", PragmaName, "' declaration"],
@@ -1003,7 +1027,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 		{ module_info_get_predicate_table(Module1, PredicateTable0) },
 		{ clauses_info_init(Arity, ClausesInfo) },
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
-				Cond, Context, ClausesInfo, Status, no, none,	
+				Cond, Context, ClausesInfo, Status, [], none,	
 				PredOrFunc, PredInfo0) },
 		(
 			{ predicate_table_search_pf_m_n_a(PredicateTable0,
@@ -1183,7 +1207,7 @@ add_special_pred_decl(SpecialPredId,
 	clauses_info_init(Arity, ClausesInfo0),
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
-		Context, ClausesInfo0, Status, no, none, predicate, PredInfo0),
+		Context, ClausesInfo0, Status, [], none, predicate, PredInfo0),
 	ArgLives = no,
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
 		ArgLives, yes(Det), Context, PredInfo, _),
@@ -1331,7 +1355,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local, no, none, PredOrFunc, PredInfo0),
+		Context, ClausesInfo, local, [], none, PredOrFunc, PredInfo0),
 	pred_info_set_marker_list(PredInfo0, [request(infer_type)], PredInfo),
 	(
 		\+ predicate_table_search_pf_sym_arity(PredicateTable0,
@@ -1715,34 +1739,56 @@ pragma_get_var_names([P|PragmaVars], [yes(N)|Names]) :-
 
 %---------------------------------------------------------------------------%
 
-	% For each pred_id in the list, set the given markers
-	% in the corresponding pred_info.
+	% For each pred_id in the list, check that the given markers are
+	% present in the list of conflicting markers in the corresponding 
+	% pred_info.
+	% The bool indicates whether there was a conflicting marker
+	% present.
 
-:- pred pragma_set_markers(pred_table, list(pred_id), list(marker_status),
+:- pred pragma_check_markers(pred_table, list(pred_id), list(marker_status),
+	bool).
+:- mode pragma_check_markers(in, in, in, out) is det.
+
+pragma_check_markers(_, [], _, no).
+pragma_check_markers(PredTable, [PredId | PredIds], ConflictList, 
+		WasConflict) :-
+	map__lookup(PredTable, PredId, PredInfo),
+	pred_info_get_marker_list(PredInfo, MarkerList),
+	pragma_check_markers(PredTable, PredIds, ConflictList, WasConflicts0),
+	( list__delete_elems(ConflictList, MarkerList, ConflictList) ->
+		WasConflict = WasConflicts0
+	;
+		WasConflict = yes
+	).
+
+	% For each pred_id in the list, add the given markers to the
+	% list of markers in the corresponding pred_info.
+
+:- pred pragma_add_markers(pred_table, list(pred_id), list(marker_status),
 	pred_table).
-:- mode pragma_set_markers(in, in, in, out) is det.
+:- mode pragma_add_markers(in, in, in, out) is det.
 
-pragma_set_markers(PredTable, [], _, PredTable).
-pragma_set_markers(PredTable0, [PredId | PredIds], Markers, PredTable) :-
+pragma_add_markers(PredTable, [], _, PredTable).
+pragma_add_markers(PredTable0, [PredId | PredIds], Markers, PredTable) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_get_marker_list(PredInfo0, MarkerList0),
-	pragma_set_markers_2(Markers, MarkerList0, MarkerList),
+	pragma_add_markers_2(Markers, MarkerList0, MarkerList),
 	pred_info_set_marker_list(PredInfo0, MarkerList, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable1),
-	pragma_set_markers(PredTable1, PredIds, Markers, PredTable).
+	pragma_add_markers(PredTable1, PredIds, Markers, PredTable).
 
-:- pred pragma_set_markers_2(list(marker_status), list(marker_status),
+:- pred pragma_add_markers_2(list(marker_status), list(marker_status),
 	list(marker_status)).
-:- mode pragma_set_markers_2(in, in, out) is det.
+:- mode pragma_add_markers_2(in, in, out) is det.
 
-pragma_set_markers_2([], MarkerList, MarkerList).
-pragma_set_markers_2([Marker | Markers], MarkerList0, MarkerList) :-
+pragma_add_markers_2([], MarkerList, MarkerList).
+pragma_add_markers_2([Marker | Markers], MarkerList0, MarkerList) :-
 	( list__member(Marker, MarkerList0) ->
 		MarkerList1 = MarkerList0
 	;
 		MarkerList1 = [Marker | MarkerList0]
 	),
-	pragma_set_markers_2(Markers, MarkerList1, MarkerList).
+	pragma_add_markers_2(Markers, MarkerList1, MarkerList).
 
 %---------------------------------------------------------------------------%
 
@@ -3233,6 +3279,22 @@ unqualified_pred_error(PredName, Arity, Context) -->
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  should have been qualified by prog_io.m.\n").
+
+:- pred pragma_conflict_error(sym_name, int, term__context, string,
+				io__state, io__state).
+:- mode pragma_conflict_error(in, in, in, in, di, uo) is det.
+
+pragma_conflict_error(Name, Arity, Context, PragmaName) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: `:- pragma "),
+	io__write_string(PragmaName),
+	io__write_string("' declaration conflicts with\n"),
+	prog_out__write_context(Context),
+	io__write_string("  previous pragma for "),
+	hlds_out__write_pred_call_id(Name/Arity),
+	io__write_string(".\n").
+
 
 %-----------------------------------------------------------------------------%
 %	module_add_pragma_fact_table(PredName, Arity, FileName, 

@@ -2505,6 +2505,7 @@ There are several uses for @code{pragma} declarations:
                                 from Mercury code, and vice versa.
 * Inlining::                    Calls to Mercury predicates can be inlined
                                 by the compiler to improve efficiency.
+* Preventing Inlining::         Inlining can be avoided when undesirable.
 @c * Tabling::                     Mercury predicates can be evaluated
 @c                                 using a three different forms of tabled
 @c                                 evaluation.
@@ -2770,6 +2771,22 @@ Mercury implementation, cross-module inlining is not yet supported, so
 if a predicate for which there is an @samp{inline} pragma is called
 from a module other than the one it is defined in, the compiler will
 ignore the hint.
+
+@node Preventing Inlining
+@section Preventing Inlining
+
+A declaration of the form
+
+@example
+:- pragma no_inline(@var{Name}/@var{Arity}).
+@end example
+
+@noindent
+ensures the compiler will not inline this predicate.  This may be used
+simply for performance concerns (inlining can cause unwanted code bloat
+in some cases) or to prevent possibly dangerous inlining when using
+low-level C code.
+
 
 @c @node Tabling
 @c @section Tabling

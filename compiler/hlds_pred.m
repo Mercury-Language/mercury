@@ -197,6 +197,10 @@
 				% Since the transformation affects *other*
 				% predicates, the `done' status is not
 				% meaningful
+	;	no_inline	% Requests that this be predicate not be 
+				% inlined.
+				% Used for pragma(no_inline).
+				% Conflicts with `inline' marker.
 	;	dnf		% Requests that this predicate be transformed
 				% into disjunctive normal form.
 				% Used for pragma(memo).
@@ -216,7 +220,7 @@
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 	condition, term__context, clauses_info, import_status,
-	bool, goal_type, pred_or_func, pred_info).
+	list(marker_status), goal_type, pred_or_func, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, out)
 	is det.
 
@@ -314,8 +318,14 @@
 	% to inline a predicate even if there was no pragma(inline, ...)
 	% declaration for that predicate.
 
-:- pred pred_info_is_inlined(pred_info).
-:- mode pred_info_is_inlined(in) is semidet.
+:- pred pred_info_requested_inlining(pred_info).
+:- mode pred_info_requested_inlining(in) is semidet.
+
+	% Succeeds if there was a `:- pragma(no_inline, ...)' declaration
+	% for this predicate.
+
+:- pred pred_info_requested_no_inlining(pred_info).
+:- mode pred_info_requested_no_inlining(in) is semidet.
 
 :- pred pred_info_get_marker_list(pred_info, list(marker_status)).
 :- mode pred_info_get_marker_list(in, out) is det.
@@ -395,15 +405,10 @@ invalid_proc_id(-1).
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
-		ClausesInfo, Status, Inline, GoalType, PredOrFunc, PredInfo) :-
+		ClausesInfo, Status, Markers, GoalType, PredOrFunc, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
-	( Inline = yes ->
-		Markers = [request(inline)]
-	;
-		Markers = []
-	),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
 		GoalType, Markers, PredOrFunc).
@@ -543,9 +548,13 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, N).
 
-pred_info_is_inlined(PredInfo0) :-
+pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_marker_list(PredInfo0, Markers),
 	list__member(request(inline), Markers).
+
+pred_info_requested_no_inlining(PredInfo0) :-
+	pred_info_get_marker_list(PredInfo0, Markers),
+	list__member(request(no_inline), Markers).
 
 pred_info_get_marker_list(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, _).

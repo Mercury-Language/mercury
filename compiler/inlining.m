@@ -27,6 +27,9 @@
 	%
 	% 	* procedures which have a `:- pragma inline(name/arity).'
 	%
+	% It will not inline procedures which have a 
+	% 	`:- pragma no_inline(name/arity).'
+	%
 	% If inlining a procedure takes the total number of variables over
 	% a given threshold (from a command-line option), then the procedure
 	% is not inlined - note that this means that some calls to a
@@ -280,7 +283,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		InlinedProcs0, InlinedProcs) -->
 	{ set__insert(InlinedProcs0, proc(PredId, ProcId), InlinedProcs) },
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	( { pred_info_is_inlined(PredInfo) } ->
+	( { pred_info_requested_inlining(PredInfo) } ->
 		[]
 	;
 		write_proc_progress_message("% Inlining ", PredId, ProcId,
@@ -600,9 +603,15 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	),
 
+	% don't inlining anything we have been specifically requested
+	% not to inline.
+
+	\+ pred_info_requested_no_inlining(PredInfo),
+
 	% OK, we could inline it - but should we?  Apply our heuristic.
+
 	(
-		pred_info_is_inlined(PredInfo)
+		pred_info_requested_inlining(PredInfo)
 	;
 		set__member(proc(PredId, ProcId), InlinedProcs)
 	).

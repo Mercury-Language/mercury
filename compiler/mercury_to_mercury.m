@@ -293,6 +293,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "inline")
 	;
+		{ Pragma = no_inline(Pred, Arity) },
+		mercury_output_pragma_decl(Pred, Arity, "no_inline")
+	;
 		{ Pragma = unused_args(PredOrFunc, PredName,
 			Arity, ProcId, UnusedArgs) },
 		mercury_output_pragma_unused_args(PredOrFunc,

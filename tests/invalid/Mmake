@@ -17,6 +17,7 @@ SOURCES= \
 	external.m \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
+	inline_conflict.m \
 	io_in_ite_cond.m \
 	missing_det_decls.m \
 	modes_erroneous.m \

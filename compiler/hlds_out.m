@@ -499,6 +499,7 @@ hlds_out__write_marker_status(done(Marker)) -->
 hlds_out__marker_name(infer_type, "infer_type").
 hlds_out__marker_name(infer_modes, "infer_modes").
 hlds_out__marker_name(inline, "inline").
+hlds_out__marker_name(no_inline, "no_inline").
 hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").

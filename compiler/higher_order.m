@@ -829,13 +829,7 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_higher_order_args(Types0, 1, HOArgs, Types),
 	pred_info_context(PredInfo0, Context),
-	(
-		pred_info_is_inlined(PredInfo0)
-	->
-		Inline = yes
-	;
-		Inline = no
-	),
+	pred_info_get_marker_list(PredInfo0, MarkerList),
 	pred_info_get_goal_type(PredInfo0, GoalType),
 	Name = qualified(PredModule, PredName),
 	varset__init(EmptyVarSet),
@@ -846,7 +840,7 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
 		EmptyVarTypes, [], []),
 	pred_info_init(PredModule, Name, Arity, Tvars,
-		Types, true, Context, ClausesInfo, local, Inline, GoalType,
+		Types, true, Context, ClausesInfo, local, MarkerList, GoalType,
 		PredOrFunc, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),

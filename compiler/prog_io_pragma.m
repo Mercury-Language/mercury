@@ -224,6 +224,13 @@ parse_pragma_type(ModuleName, "inline", PragmaTerms,
 			Pragma = inline(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type(ModuleName, "no_inline", PragmaTerms,
+				ErrorTerm, _VarSet, Result) :-
+	parse_simple_pragma(ModuleName, "no_inline",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = no_inline(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 parse_pragma_type(ModuleName, "memo", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
 	parse_simple_pragma(ModuleName, "memo",

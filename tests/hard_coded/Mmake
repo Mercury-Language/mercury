@@ -33,6 +33,7 @@ PROGS=	\
 	ho_univ_to_type \
 	name_mangling \
 	no_fully_strict \
+	no_inline \
 	pragma_c_code \
 	pragma_inline \
 	qual_adv_test \

@@ -108,6 +108,9 @@
 			;	inline(sym_name, int)
 				% Predname, Arity
 
+			;	no_inline(sym_name, int)
+				% Predname, Arity
+
 			;	obsolete(sym_name, int)
 				% Predname, Arity
 
