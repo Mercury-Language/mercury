@@ -3091,12 +3091,28 @@ case $FULLARCH in
 		# for other OSs too)
 		case $COMPILER in
 		gcc)
-			LD_STATIC_FLAGS="-static \
-				-Wl-defsym -Wl_DYNAMIC=0"
+			LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
 			;;
 		lcc)
-			LD_STATIC_FLAGS="-static \
-				-Wl,-defsym -Wl,_DYNAMIC=0"
+			# for lcc 4.1, we need to use "-Wl,".
+			# for lcc 4.2, we need to use "-Wl" without the comma,
+			# like we do for gcc.
+			AC_MSG_CHECKING(whether lcc requires comma after -Wl)
+			LD_STATIC_FLAGS="-static -Wl-defsym -Wl_DYNAMIC=0"
+			rm -f conftest*
+			echo "int main() { return 0; }" > conftest.c
+			if
+				echo $CC $LD_STATIC_FLAGS conftest.c \
+					>&AC_FD_CC 2>&1 &&
+				$CC $LD_STATIC_FLAGS conftest.c \
+					>&AC_FD_CC 2>&1
+			then
+				AC_MSG_RESULT(no)
+			else
+				AC_MSG_RESULT(yes)
+			        LD_STATIC_FLAGS="-static -Wl,-defsym -Wl,_DYNAMIC=0"
+			fi
+			rm -f conftest*
 			;;
 		esac
 		;;
@@ -3113,6 +3129,11 @@ case $FULLARCH in
 		esac
 		;;
 esac
+# we can't put the call to MSG_CHECKING at the start of the case statement
+# above, because of the nested check in the lcc case.  So we just put it
+# here immediately before the MSG_RESULT call.
+AC_MSG_CHECKING(options for static linking)
+AC_MSG_RESULT($LD_STATIC_FLAGS)
 case "$LD_STATIC_FLAGS" in "")
 	AC_MSG_WARN(
 [\`mmc --linkage static' and \`ml --static' not implemented with
