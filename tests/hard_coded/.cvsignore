@@ -38,6 +38,7 @@ ho_order
 ho_solns
 ho_univ_to_type
 impossible_unify
+integer_test
 minint_bug
 mode_choice
 name_mangling
@@ -53,6 +54,7 @@ purity
 qual_adv_test
 qual_basic_test
 qual_is_test
+rational_test
 relation_test
 remove_file
 reorder_di

@@ -42,7 +42,6 @@ PROGS=		array_test \
 		float_test \
 		frameopt_mkframe_bug \
 		higher_order \
-		integer_test \
 		intermod_type \
 		liveness \
 		liveness2 \
@@ -53,7 +52,6 @@ PROGS=		array_test \
 		parse_list \
 		petdr1 \
 		prune_switch \
-		rational_test \
 		semidet_map \
 		set_test \
 		string_format_test \
