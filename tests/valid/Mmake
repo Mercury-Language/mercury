@@ -29,6 +29,7 @@ SOURCES= \
 	indexing.m \
 	intermod_lambda.m \
 	lambda_inference.m\
+	lambda_instmap_bug.m \
 	lambda_quant.m \
 	lambda_switch.m \
 	lambda_type.m \
