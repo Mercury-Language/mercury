@@ -25,7 +25,7 @@
 	%	of type `list(T)', denoted `[Head | Tail]'.
 	%	
 
-% :- type list(T) ---> [] | [T | list(T)].
+% :- type list(T) ---> [] ; [T | list(T)].
 
 	% The definition of `list(T)' is actually in mercury_builtin.m because
 	% the implementation of type_to_term/3 and term_to_type/3 means
@@ -761,15 +761,6 @@ list__perm([X|Xs], Ys) :-
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 
-	% list__apply(Cs, Bs) takes a list of closures with one
-	% output argument Cs, and calls the closures, returning
-	% the resulting bindings in Bs.
-:- pred list__apply(list(pred(T)), list(T)).
-:- mode list__apply(list_skel_in(pred(out) is det), out) is det.
-:- mode list__apply(list_skel_in(pred(out) is semidet), out) is semidet.
-:- mode list__apply(list_skel_in(pred(out) is multi), out) is multi.
-:- mode list__apply(list_skel_in(pred(out) is nondet), out) is nondet.
-
 :- implementation.
 
 list__map(_, [],  []).
@@ -797,10 +788,5 @@ list__foldr(_, [], Acc, Acc).
 list__foldr(P, [H|T], Acc0, Acc) :-
 	list__foldr(P, T, Acc0, Acc1),
 	call(P, H, Acc1, Acc).
-
-list__apply([], []).
-list__apply([C|Cs], [B|Bs]) :-
-	call(C, B),
-	list__apply(Cs, Bs).
 
 %-----------------------------------------------------------------------------%
