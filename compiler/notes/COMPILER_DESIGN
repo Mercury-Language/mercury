@@ -37,7 +37,8 @@ The action is co-ordinated from mercury_compile.m.
 
 The command-line options are defined in the module options.m.
 mercury_compile.pp calls library/getopt.m, passing the predicates
-defined in options.m as arguments, to parse them.  The results are
+defined in options.m as arguments, to parse them.  It then invokes
+handle_options.m to postprocess the option set.  The results are
 stored in the io__state, using the type globals defined in globals.m.
 
 1. Parsing
@@ -183,8 +184,13 @@ The remaining HLDS-to-HLDS transformations are optimizations:
 
 	Not yet working.
 
-* issue warnings about and remove unused arguments from predicates,
-  e.g. type_infos (unused_args.m)
+* issue warnings about unused arguments from predicates, and create
+  specialized versions without them (unused_args.m); type_infos are
+  often unused
+
+* elimination of dead procedures (dead_proc_elim.m); inlining, higher-order
+  specialization and the elimination of unused args can make procedures dead
+  even the user doesn't
 
 * removal of excess assignment unifications (excess.m)
 
@@ -227,7 +233,7 @@ for high-level optimizations (but which is not yet used).
 
 * code generation
 
-	For code generation itself, the main module is code_gen.m. 
+	For code generation itself, the main module is code_gen.pp. 
 	It handles conjunctions and negations, but calls sub-modules
 	to do most of the other work:
 
@@ -274,7 +280,7 @@ They are:
 
 * optimization of stack frame allocation/deallocation (frameopt.m)
 
-* dead code removal (labelopt.m)
+* dead code and dead label removal (labelopt.m)
 
 * value numbering
 
