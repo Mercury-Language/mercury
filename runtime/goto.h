@@ -42,8 +42,14 @@
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
 
+	/* The dummy label and the asm statement referencing it below
+	   prevent gcc from making some over-zealous optimizations which
+	   can result in incorrect code. */
   #define BEGIN_MODULE(module_name)	\
-	static void module_name(void) { {
+	static void module_name(void) {	\
+		__asm__("" : : "g"(&& paste(module_name, _dummy_label))); \
+		paste(module_name,_dummy_label): \
+		{
   /* initialization code for module goes here */
   #define BEGIN_CODE } return; {
   /* body of module goes here */
@@ -74,7 +80,7 @@
        but this way is better because it doesn't generate any code.
     */
     #define init_entry(label)	\
-	__asm__("" :: "g"(&&label)); \
+	__asm__("" : : "g"(&&label)); \
 	make_entry(stringify(label), label)
 
     #define ENTRY(label) 	(&label)
