@@ -7,8 +7,8 @@ EXTRA_MLLIBS	= -ltk8.0 -ltcl8.0 -lMesaGLU -lMesaGL -L/usr/X11R6/lib -lX11 \
 			-lXmu -lXext -ldl
 
 # Specify the location of the `mercury_tcltk' and `mercury_opengl' packages.
-MERCURY_TCLTK_DIR   = ../mercury_tcltk
-MERCURY_OPENGL_DIR  = ../mercury_opengl
+MERCURY_TCLTK_DIR   = ../../mercury_tcltk
+MERCURY_OPENGL_DIR  = ../../mercury_opengl
 
 # Tell mmake to use the `mercury_tcltk' and `mercury_opengl' libraries.
 VPATH           = $(MERCURY_OPENGL_DIR):$(MERCURY_TCLTK_DIR):$(MMAKE_VPATH)
