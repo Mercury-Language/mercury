@@ -133,7 +133,6 @@ main_target: $(MAIN_TARGET)
 .o.pic_o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
 	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
-	$(RM_C) $*.c
 
 %.dir/*.o: %.m
 	rm -f $@
