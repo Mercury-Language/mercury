@@ -49,6 +49,9 @@ maintainer-clean:
 realclean:
 	$(MMAKE) realclean
 
+uninstall:
+	$(MMAKE) uninstall
+
 .DEFAULT:
 	$(MMAKE) $@
 
