@@ -225,12 +225,12 @@ install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
 	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
-# libmercury.split.a is a version of libmercury.a that has been compiled
+# library.split.a is a version of libmercury.a that has been compiled
 # with `--split-c-files'.
 .PHONY: install_split_library
-install_split_library: libmercury.split.a
+install_split_library: library.split.a
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmercury.split.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
+	cp `vpath_find library.split.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
 
 .PHONY: install_nuprolog
 install_nuprolog: install_library_nu install_interpreter_nu
