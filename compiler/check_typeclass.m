@@ -663,7 +663,17 @@ produce_auxiliary_procs(ClassVars, Markers0,
 
 	Cond = true,
 	map__init(Proofs),
-	add_marker(Markers0, class_instance_method, Markers),
+	add_marker(Markers0, class_instance_method, Markers1),
+	( InstancePredDefn = name(_) ->
+		% For instance methods which are defined using the named
+		% syntax (e.g. "pred(...) is ...") rather than the clauses
+		% syntax, we record an additional marker; the only effect
+		% of this marker is that we output slightly different
+		% error messages for such predicates.
+		add_marker(Markers1, named_class_instance_method, Markers)
+	;
+		Markers = Markers1
+	),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -817,11 +817,10 @@ mode_info_write_context(ModeInfo) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_predid(ModeInfo, PredId) },
 	{ mode_info_get_procid(ModeInfo, ProcId) },
-	{ module_info_preds(ModuleInfo, Preds) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ pred_info_procedures(PredInfo, Procs) },
+	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ pred_info_get_markers(PredInfo, PredMarkers) },
 	{ proc_info_declared_argmodes(ProcInfo, Modes0) },
 	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	{ pred_info_name(PredInfo, Name0) },
@@ -835,7 +834,7 @@ mode_info_write_context(ModeInfo) -->
 				MaybeDet, Context),
 	io__write_string("':\n"),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
-	write_mode_context(ModeContext, Context, ModuleInfo).
+	write_mode_context(ModeContext, Context, PredMarkers, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -883,20 +882,21 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, prog_context, module_info,
-				io__state, io__state).
-:- mode write_mode_context(in, in, in, di, uo) is det.
+:- pred write_mode_context(mode_context, prog_context, pred_markers,
+		module_info, io__state, io__state).
+:- mode write_mode_context(in, in, in, in, di, uo) is det.
 
-write_mode_context(uninitialized, _Context, _ModuleInfo) -->
+write_mode_context(uninitialized, _Context, _Markers, _ModuleInfo) -->
 	[].
 
-write_mode_context(call(CallId, ArgNum), Context, _ModuleInfo) -->
+write_mode_context(call(CallId, ArgNum), Context, Markers, _ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  in "),
-	hlds_out__write_call_arg_id(CallId, ArgNum),
+	hlds_out__write_call_arg_id(CallId, ArgNum, Markers),
 	io__write_string(":\n").
 
-write_mode_context(unify(UnifyContext, _Side), Context, _ModuleInfo) -->
+write_mode_context(unify(UnifyContext, _Side), Context, _Markers,
+		_ModuleInfo) -->
 	hlds_out__write_unify_context(UnifyContext, Context).
 
 %-----------------------------------------------------------------------------%

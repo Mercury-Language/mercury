@@ -371,6 +371,15 @@
 				% This predicate was automatically
 				% generated for the implementation of
 				% a class method for an instance.
+	;	named_class_instance_method
+				% This predicate was automatically
+				% generated for the implementation of
+				% a class method for an instance,
+				% and the instance was defined using the
+				% named syntax (e.g. "pred(...) is ...")
+				% rather than the clause syntax.
+				% (For such predicates, we output slightly
+				% different error messages.)
 
 	;	(impure)	% Requests that no transformation that would
 				% be inappropriate for impure code be

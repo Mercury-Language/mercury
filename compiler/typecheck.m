@@ -2705,12 +2705,16 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
 	pred_info_get_class_context(PredInfo, ClassContext),
+	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+			CompleteArgTypes),
 	(
 		IsPredOrFunc = predicate,
-		PredArity >= FuncArity
+		PredArity >= FuncArity,
+		% we don't support first-class polymorphism,
+		% so you can't take the address of an existentially
+		% quantified predicate
+		PredExistQVars = []
 	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-			CompleteArgTypes),
 		(
 			list__split_list(FuncArity, CompleteArgTypes,
 				ArgTypes, PredTypeParams)
@@ -2744,10 +2748,13 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 	;
 		IsPredOrFunc = function,
 		PredAsFuncArity is PredArity - 1,
-		PredAsFuncArity >= FuncArity
+		PredAsFuncArity >= FuncArity,
+		% We don't support first-class polymorphism,
+		% so you can't take the address of an existentially
+		% quantified function.  You can however call such
+		% a function, so long as you pass *all* the parameters.
+		( PredExistQVars = [] ; PredAsFuncArity = FuncArity )
 	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-					CompleteArgTypes),
 		(
 			list__split_list(FuncArity, CompleteArgTypes,
 				FuncArgTypes, FuncTypeParams),
@@ -3295,6 +3302,17 @@ typecheck_info_get_called_predid(TypeCheckInfo, TypeCheckInfo ^ call_id).
 
 %-----------------------------------------------------------------------------%
 
+:- pred typecheck_info_get_pred_markers(typecheck_info, pred_markers).
+:- mode typecheck_info_get_pred_markers(in, out) is det.
+
+typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) :-
+	typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
+	typecheck_info_get_predid(TypeCheckInfo, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, PredMarkers).
+
+%-----------------------------------------------------------------------------%
+
 :- pred typecheck_info_set_called_predid(call_id, typecheck_info,
 			typecheck_info).
 :- mode typecheck_info_set_called_predid(in, typecheck_info_di,
@@ -3629,12 +3647,6 @@ typecheck_info_set_pred_import_status(TypeCheckInfo, Status,
 typecheck_info_get_ctor_list(TypeCheckInfo, Functor, Arity,
 		ConsInfoList, InvalidFieldUpdates) :-
 	(
-		builtin_apply_type(TypeCheckInfo, Functor, Arity,
-			ApplyConsInfoList)
-	->
-		ConsInfoList = ApplyConsInfoList,
-		InvalidFieldUpdates = []
-	;
 		%
 		% If we're typechecking the clause added for
 		% a field access function for which the user
@@ -3784,11 +3796,23 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 			InvalidFieldUpdates0)
 	->
 		list__append(FieldAccessConsInfoList,
-			ConsInfoList4, ConsInfoList),
+			ConsInfoList4, ConsInfoList5),
 		InvalidFieldUpdates = InvalidFieldUpdates0
 	;
 		InvalidFieldUpdates = [],
-		ConsInfoList = ConsInfoList4
+		ConsInfoList5 = ConsInfoList4
+	),
+
+	%
+	% Check for higher-order function calls
+	%
+	(
+		builtin_apply_type(TypeCheckInfo, Functor, Arity,
+			ApplyConsInfoList)
+	->
+		ConsInfoList = list__append(ConsInfoList5, ApplyConsInfoList)
+	;
+		ConsInfoList = ConsInfoList5
 	).
 
 :- pred flip_quantifiers(cons_type_info, cons_type_info).
@@ -5186,6 +5210,7 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 :- mode report_error_var(typecheck_info_no_io, in, in, in, di, uo) is det.
 
 report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -5193,7 +5218,8 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 	{ get_type_stuff(TypeAssignSet0, VarId, TypeStuffList) },
 	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: "),
 	( { TypeStuffList = [SingleTypeStuff] } ->
@@ -5231,6 +5257,7 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 :- mode report_error_arg_var(typecheck_info_no_io, in, in, di, uo) is det.
 
 report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -5238,7 +5265,8 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 	{ get_arg_type_stuff(ArgTypeAssignSet0, VarId, ArgTypeStuffList) },
 	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: "),
 	( { ArgTypeStuffList = [SingleArgTypeStuff] } ->
@@ -5531,12 +5559,14 @@ report_error_pred_num_args(TypeCheckInfo,
 			in, in, di, uo) is det.
 
 report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	{ typecheck_info_get_unify_context(TypeCheckInfo, UnifyContext) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	%
 	% check for some special cases, so that we can give
@@ -5779,17 +5809,17 @@ language_builtin("aditi_bulk_delete", 4).
 language_builtin("aditi_bulk_modify", 3).
 language_builtin("aditi_bulk_modify", 4).
 
-:- pred write_call_context(prog_context, call_id, int, unify_context,
-				io__state, io__state).
-:- mode write_call_context(in, in, in, in, di, uo) is det.
+:- pred write_call_context(prog_context, pred_markers,
+		call_id, int, unify_context, io__state, io__state).
+:- mode write_call_context(in, in, in, in, in, di, uo) is det.
 
-write_call_context(Context, CallId, ArgNum, UnifyContext) -->
+write_call_context(Context, PredMarkers, CallId, ArgNum, UnifyContext) -->
 	( { ArgNum = 0 } ->
 		hlds_out__write_unify_context(UnifyContext, Context)
 	;
 		prog_out__write_context(Context),
 		io__write_string("  in "),
-		hlds_out__write_call_arg_id(CallId, ArgNum),
+		hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers),
 		io__write_string(":\n")
 	).
 

@@ -1563,6 +1563,7 @@ intermod__should_output_marker((semipure), no).
 	% There is no pragma required for generated class methods.
 intermod__should_output_marker(class_method, no).
 intermod__should_output_marker(class_instance_method, no).
+intermod__should_output_marker(named_class_instance_method, no).
 	% The warning for calls to local obsolete predicates should appear
 	% once in the defining module, not in importing modules.
 intermod__should_output_marker(obsolete, no).

@@ -49,6 +49,7 @@ SINGLEMODULE_SOURCES= \
 	inst_list_dup.m \
 	io_in_ite_cond.m \
 	lambda_syntax_error.m \
+	method_impl.m \
 	missing_det_decls.m \
 	missing_interface_import.m \
 	modes_erroneous.m \

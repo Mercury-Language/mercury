@@ -87,8 +87,13 @@
 :- mode hlds_out__simple_call_id_to_string(in, out) is det.
 
 	% Write "argument %i of call to pred_or_func `foo/n'".
-:- pred hlds_out__write_call_arg_id(call_id, int, io__state, io__state).
-:- mode hlds_out__write_call_arg_id(in, in, di, uo) is det.
+	% The pred_markers argument is used to tell if the calling
+	% predicate is a type class method implementation; if so,
+	% we omit the "call to" part, since the user didn't write
+	% any explicit call.
+:- pred hlds_out__write_call_arg_id(call_id, int, pred_markers,
+		io__state, io__state).
+:- mode hlds_out__write_call_arg_id(in, in, in, di, uo) is det.
 
 :- pred hlds_out__write_pred_or_func(pred_or_func, io__state, io__state).
 :- mode hlds_out__write_pred_or_func(in, di, uo) is det.
@@ -400,7 +405,7 @@ hlds_out__write_generic_call_id(
 	io__write_strings(["`", Name, "' of "]),
 	hlds_out__write_simple_call_id(CallId).
 
-hlds_out__write_call_arg_id(CallId, ArgNum) -->
+hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers) -->
 	( { ArgNum =< 0 } ->
 		% Argument numbers that are less than or equal to zero
 		% are used for the type_info and typeclass_info arguments
@@ -416,12 +421,26 @@ hlds_out__write_call_arg_id(CallId, ArgNum) -->
 		io__write_string(" of ")
 	),	
 	(
-		{ CallId = generic_call(GenericCall) },
-		\+ { GenericCall = class_method(_, _) },
-		\+ { GenericCall = aditi_builtin(aditi_call(_, _, _, _), _) }
+		(
+			% The text printed for generic calls other than
+			% `aditi_call' and `class__method' does not need
+			% the "call to" prefix ("in call to higher-order
+			% call" is redundant, it's much better to just say
+			% "in higher-order call").
+			{ CallId = generic_call(GenericCall) },
+			\+ { GenericCall = class_method(_, _) },
+			\+ { GenericCall = aditi_builtin(aditi_call(_, _,
+				_, _), _) }
+		;
+			% For calls from type class instance implementations
+			% that were defined using the named syntax rather
+			% than the clause syntax, we also omit the "call to",
+			% since in that case there was no explicit call in
+			% the user's source code.
+			{ check_marker(PredMarkers,
+				named_class_instance_method) }
+		)
 	->
-		% The text printed for generic calls other than `aditi_call'
-		% and `class__method' does not need the "call to" prefix.
 		[]
 	;
 		io__write_string("call to ")
@@ -545,7 +564,15 @@ hlds_out__write_unify_main_context(First, head_result, Context, no) -->
 
 hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no) -->
 	hlds_out__start_in_message(First, Context),
-	hlds_out__write_call_arg_id(CallId, ArgNum),
+	% The markers argument below is used only for type class method
+	% implementations defined using the named syntax rather than
+	% the clause syntax, and the bodies of such procedures should
+	% only contain a single call, so we shouldn't get unifications
+	% nested inside calls.  Hence we can safely initialize the
+	% markers to empty here.  (Anyway the worst possible consequence
+	% is slightly sub-optimal text for an error message.)
+	{ init_markers(Markers) },
+	hlds_out__write_call_arg_id(CallId, ArgNum, Markers),
 	io__write_string(":\n").
 
 :- pred hlds_out__write_unify_sub_contexts(bool, unify_sub_contexts,
@@ -833,6 +860,8 @@ hlds_out__marker_name(dnf, "dnf").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(class_method, "class_method").
 hlds_out__marker_name(class_instance_method, "class_instance_method").
+hlds_out__marker_name(named_class_instance_method,
+		"named_class_instance_method").
 hlds_out__marker_name((impure), "impure").
 hlds_out__marker_name((semipure), "semipure").
 hlds_out__marker_name(promised_pure, "promise_pure").
