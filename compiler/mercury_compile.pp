@@ -896,9 +896,8 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 		mercury_compile__modecheck(HLDS1, HLDS2, FoundModeError),
 		mercury_compile__maybe_dump_hlds(HLDS2, "2", "modecheck"),
 
-		% mercury_compile__polymorphism(HLDS2, HLDS3),
-		% mercury_compile__maybe_dump_hlds(HLDS3, "3", "polymorphism"),
-		{ HLDS3 = HLDS2 },
+		mercury_compile__polymorphism(HLDS2, HLDS3),
+		mercury_compile__maybe_dump_hlds(HLDS3, "3", "polymorphism"),
 
 		mercury_compile__detect_switches(HLDS3, HLDS4),
 		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),

@@ -66,6 +66,7 @@
 		;	mod_comments
 	% Code generation options
 		;	lazy_code
+		;	polymorphism
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	generate_dependencies
@@ -161,6 +162,7 @@ option_defaults_2(output_option, [
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
+	polymorphism		-	bool(no),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
@@ -222,6 +224,7 @@ short_option('m', 			modecheck).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
 short_option('O', 			c_optimize).
+short_option('p', 			polymorphism).
 short_option('P', 			convert_to_mercury).
 short_option('S', 			statistics).
 short_option('s', 			grade).
@@ -232,6 +235,7 @@ short_option('V', 			very_verbose).
 short_option('w', 			warn_singleton_vars).
 short_option('z', 			inlining).
 
+long_option("polymorphism",		polymorphism).
 long_option("grade",			grade).
 long_option("c-optimize",		c_optimize).
 long_option("debug",			debug).
@@ -365,11 +369,14 @@ options_help -->
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 
 	io__write_string("\nCode generation options\n"),
+	io__write_string("\t-p, --polymorphism\n"),
+	io__write_string("\t\tHandle test unifications for variables of polymorphic types.\n"),
 	io__write_string("\t-s {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t--grade {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t\tSelect the compilation model.  This is a convenient way of\n"),
-	io__write_string("\t\tselecting a setting for the --c-optimize, --gcc-global-registers,\n"),
-	io__write_string("\t\t--gcc-non-local-gotos, and --debug options simultaneously.\n"),
+	io__write_string("\t\tselecting a setting for the --c-optimize,\n"),
+	io__write_string("\t\t--gcc-global-registers, --gcc-non-local-gotos,\n"),
+	io__write_string("\t\tand --debug options simultaneously.\n"),
 
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
