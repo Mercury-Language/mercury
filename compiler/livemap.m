@@ -145,7 +145,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live([Rval | Rvals], Livevals1, Livevals),
+		livemap__make_live_in_rvals([Rval | Rvals], Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -200,7 +200,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 	;
 		Uinstr0 = computed_goto(Rval, Labels),
 		set__init(Livevals1),
-		livemap__make_live([Rval], Livevals1, Livevals2),
+		livemap__make_live_in_rvals([Rval], Livevals1, Livevals2),
 		livemap__insert_label_livevals(Labels, Livemap0,
 			Livevals2, Livevals),
 		Livemap = Livemap0,
@@ -222,7 +222,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 			Livevals3 = Livevals1
 		;
 			Found = no,
-			livemap__make_live([Rval], Livevals1, Livevals2),
+			livemap__make_live_in_rvals([Rval], Livevals1, Livevals2),
 			( CodeAddr = label(Label) ->
 				livemap__insert_label_livevals([Label],
 					Livemap0, Livevals2, Livevals3)
@@ -250,33 +250,33 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live([Rval | Rvals], Livevals1, Livevals),
+		livemap__make_live_in_rvals([Rval | Rvals], Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = mark_hp(Lval),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live(Rvals, Livevals0, Livevals),
+		livemap__make_live_in_rvals(Rvals, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = restore_hp(Rval),
-		livemap__make_live([Rval], Livevals0, Livevals),
+		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = store_ticket(Lval),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live(Rvals, Livevals0, Livevals),
+		livemap__make_live_in_rvals(Rvals, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = restore_ticket(Rval),
-		livemap__make_live([Rval], Livevals0, Livevals),
+		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -344,45 +344,52 @@ livemap__special_code_addr(do_nondet_closure, no).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- pred livemap__make_live_in_rvals(list(rval), lvalset, lvalset).
+:- mode livemap__make_live_in_rvals(in, in, out) is det.
+
+livemap__make_live_in_rvals([], Live, Live).
+livemap__make_live_in_rvals([Rval | Rvals], Live0, Live) :-
+	livemap__make_live_in_rval(Rval, Live0, Live1),
+	livemap__make_live_in_rvals(Rvals, Live1, Live).
+
 	% Set all lvals found in this rval to live, with the exception of
 	% fields, since they are treated specially (the later stages consider
 	% them to be live even if they are not explicitly in the live set).
 
-:- pred livemap__make_live(list(rval), lvalset, lvalset).
-:- mode livemap__make_live(in, in, out) is det.
+:- pred livemap__make_live_in_rval(rval, lvalset, lvalset).
+:- mode livemap__make_live_in_rval(in, in, out) is det.
 
-livemap__make_live([], Livevals, Livevals).
-livemap__make_live([Rval | Rvals], Livevals0, Livevals) :-
-	(
-		Rval = lval(Lval),
-		( Lval = field(_, _, _) ->
-			Livevals1 = Livevals0
-		;
-			set__insert(Livevals0, Lval, Livevals1)
-		),
-		opt_util__lval_access_rvals(Lval, AccessRvals),
-		livemap__make_live(AccessRvals, Livevals1, Livevals2)
+livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
+	% XXX maybe we should treat mem_refs the same way as field refs
+	( Lval = field(_, _, _) ->
+		Live1 = Live0
 	;
-		% All terms inside creates in the optimizer must be static
-		Rval = create(_, _, _, _),
-		Livevals2 = Livevals0
-	;
-		Rval = mkword(_, Rval1),
-		livemap__make_live([Rval1], Livevals0, Livevals2)
-	;
-		Rval = const(_),
-		Livevals2 = Livevals0
-	;
-		Rval = unop(_, Rval1),
-		livemap__make_live([Rval1], Livevals0, Livevals2)
-	;
-		Rval = binop(_, Rval1, Rval2),
-		livemap__make_live([Rval1, Rval2], Livevals0, Livevals2)
-	;
-		Rval = var(_),
-		error("var rval should not propagate to the optimizer")
+		set__insert(Live0, Lval, Live1)
 	),
-	livemap__make_live(Rvals, Livevals2, Livevals).
+	opt_util__lval_access_rvals(Lval, AccessRvals),
+	livemap__make_live_in_rvals(AccessRvals, Live1, Live).
+livemap__make_live_in_rval(create(_, _, _, _), Live, Live).
+	% All terms inside creates in the optimizer must be static.
+livemap__make_live_in_rval(mkword(_, Rval), Live0, Live) :-
+	livemap__make_live_in_rval(Rval, Live0, Live).
+livemap__make_live_in_rval(const(_), Live, Live).
+livemap__make_live_in_rval(unop(_, Rval), Live0, Live) :-
+	livemap__make_live_in_rval(Rval, Live0, Live).
+livemap__make_live_in_rval(binop(_, Rval1, Rval2), Live0, Live) :-
+	livemap__make_live_in_rval(Rval1, Live0, Live1),
+	livemap__make_live_in_rval(Rval2, Live1, Live).
+livemap__make_live_in_rval(var(_), _, _) :-
+	error("var rval should not propagate to the optimizer").
+livemap__make_live_in_rval(mem_addr(MemRef), Live0, Live) :-
+	livemap__make_live_in_mem_ref(MemRef, Live0, Live).
+
+:- pred livemap__make_live_in_mem_ref(mem_ref, lvalset, lvalset).
+:- mode livemap__make_live_in_mem_ref(in, in, out) is det.
+
+livemap__make_live_in_mem_ref(stackvar_ref(_), Live, Live).
+livemap__make_live_in_mem_ref(framevar_ref(_), Live, Live).
+livemap__make_live_in_mem_ref(heap_ref(Rval, _, _), Live0, Live) :-
+	livemap__make_live_in_rval(Rval, Live0, Live).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -671,6 +671,16 @@ opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(temp(_, _), no).
+opt_util__lval_refers_stackvars(mem_ref(Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
+
+:- pred opt_util__mem_ref_refers_stackvars(mem_ref, bool).
+:- mode opt_util__mem_ref_refers_stackvars(in, out) is det.
+
+opt_util__mem_ref_refers_stackvars(stackvar_ref(_), yes).
+opt_util__mem_ref_refers_stackvars(framevar_ref(_), yes).
+opt_util__mem_ref_refers_stackvars(heap_ref(Rval, _, _), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 
 opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).
@@ -678,15 +688,17 @@ opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
 opt_util__rval_refers_stackvars(create(_, Rvals, _, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
-opt_util__rval_refers_stackvars(mkword(_, Baserval), Refers) :-
-	opt_util__rval_refers_stackvars(Baserval, Refers).
+opt_util__rval_refers_stackvars(mkword(_, Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
 opt_util__rval_refers_stackvars(const(_), no).
-opt_util__rval_refers_stackvars(unop(_, Baserval), Refers) :-
-	opt_util__rval_refers_stackvars(Baserval, Refers).
-opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
-	opt_util__rval_refers_stackvars(Baserval1, Refers1),
-	opt_util__rval_refers_stackvars(Baserval2, Refers2),
+opt_util__rval_refers_stackvars(unop(_, Rval), Refers) :-
+	opt_util__rval_refers_stackvars(Rval, Refers).
+opt_util__rval_refers_stackvars(binop(_, Rval1, Rval2), Refers) :-
+	opt_util__rval_refers_stackvars(Rval1, Refers1),
+	opt_util__rval_refers_stackvars(Rval2, Refers2),
 	bool__or(Refers1, Refers2, Refers).
+opt_util__rval_refers_stackvars(mem_addr(MemRef), Refers) :-
+	opt_util__mem_ref_refers_stackvars(MemRef, Refers).
 
 opt_util__rvals_refer_stackvars([], no).
 opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
@@ -1328,6 +1340,8 @@ opt_util__touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
 	bool__or(Touch1, Touch2, Touch).
 opt_util__touches_nondet_ctrl_lval(lvar(_), no).
 opt_util__touches_nondet_ctrl_lval(temp(_, _), no).
+opt_util__touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
 
 :- pred opt_util__touches_nondet_ctrl_rval(rval, bool).
 :- mode opt_util__touches_nondet_ctrl_rval(in, out) is det.
@@ -1345,6 +1359,16 @@ opt_util__touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval1, Touch1),
 	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
 	bool__or(Touch1, Touch2, Touch).
+opt_util__touches_nondet_ctrl_rval(mem_addr(MemRef), Touch) :-
+	opt_util__touches_nondet_ctrl_mem_ref(MemRef, Touch).
+
+:- pred opt_util__touches_nondet_ctrl_mem_ref(mem_ref, bool).
+:- mode opt_util__touches_nondet_ctrl_mem_ref(in, out) is det.
+
+opt_util__touches_nondet_ctrl_mem_ref(stackvar_ref(_), no).
+opt_util__touches_nondet_ctrl_mem_ref(framevar_ref(_), no).
+opt_util__touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _), Touch) :-
+	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
 
 %-----------------------------------------------------------------------------%
 
@@ -1364,6 +1388,7 @@ opt_util__lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
 opt_util__lval_access_rvals(temp(_, _), []).
 opt_util__lval_access_rvals(lvar(_), _) :-
 	error("lvar detected in opt_util__lval_access_rvals").
+opt_util__lval_access_rvals(mem_ref(Rval), [Rval]).
 
 %-----------------------------------------------------------------------------%
 
@@ -1412,6 +1437,8 @@ opt_util__lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
 	list__append(Lvals1, Lvals2, Lvals).
 opt_util__lvals_in_lval(lvar(_), []).
 opt_util__lvals_in_lval(temp(_, _), []).
+opt_util__lvals_in_lval(mem_ref(Rval), Lvals) :-
+	opt_util__lvals_in_rval(Rval, Lvals).
 
 opt_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	opt_util__lvals_in_lval(Lval, Lvals).
@@ -1427,6 +1454,17 @@ opt_util__lvals_in_rval(binop(_, Rval1, Rval2), Lvals) :-
 	opt_util__lvals_in_rval(Rval1, Lvals1),
 	opt_util__lvals_in_rval(Rval2, Lvals2),
 	list__append(Lvals1, Lvals2, Lvals).
+opt_util__lvals_in_rval(mem_addr(MemRef), Lvals) :-
+	opt_util__lvals_in_mem_ref(MemRef, Lvals).
+
+	% XXX
+:- pred opt_util__lvals_in_mem_ref(mem_ref, list(lval)).
+:- mode opt_util__lvals_in_mem_ref(in, out) is det.
+
+opt_util__lvals_in_mem_ref(stackvar_ref(_), []).
+opt_util__lvals_in_mem_ref(framevar_ref(_), []).
+opt_util__lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
+	opt_util__lvals_in_rval(Rval, Lvals).
 
 %-----------------------------------------------------------------------------%
 

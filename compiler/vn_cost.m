@@ -260,6 +260,11 @@ vn_cost__lval_cost(Lval, Params, Cost) :-
 	;
 		Lval = lvar(_),
 		error("lvar found in lval_cost")
+	;
+		Lval = mem_ref(Rval),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		vn_type__costof_heapref(Params, HeaprefCost),
+		Cost is RvalCost + HeaprefCost
 	).
 
 vn_cost__rval_cost(Rval, Params, Cost) :-
@@ -292,6 +297,26 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		vn_cost__rval_cost(Rval2, Params, RvalCost2),
 		vn_type__costof_intops(Params, OpsCost),
 		Cost is RvalCost1 + RvalCost2 + OpsCost
+	;
+		Rval = mem_addr(MemRef),
+		vn_cost__mem_ref_cost(MemRef, Params, Cost)
+	).
+
+:- pred vn_cost__mem_ref_cost(mem_ref, vn_params, int).
+:- mode vn_cost__mem_ref_cost(in, in, out) is det.
+
+vn_cost__mem_ref_cost(MemRef, Params, Cost) :-
+	(
+		MemRef = stackvar_ref(_),
+		vn_type__costof_intops(Params, Cost)
+	;
+		MemRef = framevar_ref(_),
+		vn_type__costof_intops(Params, Cost)
+	;
+		MemRef = heap_ref(Rval, _, _),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		vn_type__costof_intops(Params, OpsCost),
+		Cost is RvalCost + OpsCost
 	).
 
 %-----------------------------------------------------------------------------%

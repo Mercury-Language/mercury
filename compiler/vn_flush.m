@@ -694,6 +694,24 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			Instrs2),
 		Rval = binop(Binop, Rval1, Rval2),
 		list__append(Instrs1, Instrs2, Instrs)
+	;
+		Vnrval = vn_stackvar_addr(N),
+		Rval = mem_addr(stackvar_ref(N)),
+		VnTables = VnTables0,
+		Templocs = Templocs0,
+		Instrs = []
+	;
+		Vnrval = vn_framevar_addr(N),
+		Rval = mem_addr(framevar_ref(N)),
+		VnTables = VnTables0,
+		Templocs = Templocs0,
+		Instrs = []
+	;
+		Vnrval = vn_heap_addr(SubVn1, Tag, Field),
+		vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden, Rval1,
+			VnTables0, VnTables, Templocs0, Templocs, Params,
+			Instrs),
+		Rval = mem_addr(heap_ref(Rval1, Tag, Field))
 	).
 
 %-----------------------------------------------------------------------------%
@@ -897,6 +915,15 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 				MaybeRval2 = no,
 				error("two 'no's in flush_hp_incr")
 			)
+		;
+			Vnrval = vn_stackvar_addr(_),
+			error("stackvar_addr in calculation of new hp")
+		;
+			Vnrval = vn_framevar_addr(_),
+			error("framevar_addr in calculation of new hp")
+		;
+			Vnrval = vn_heap_addr(_, _, _),
+			error("heap_addr in calculation of new hp")
 		),
 		( Srcs = [SrcPrime | _] ->
 			Src = SrcPrime
@@ -947,6 +974,12 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 	(
 		Vnlval = vn_reg(Type, Num),
 		Lval = reg(Type, Num),
+		VnTables = VnTables0,
+		Templocs = Templocs0,
+		AccessInstrs = []
+	;
+		Vnlval = vn_temp(Type, Num),
+		Lval = temp(Type, Num),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		AccessInstrs = []
@@ -1027,11 +1060,11 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Lval = field(Tag, Rval1, Rval2),
 		list__append(AccessInstrs1, AccessInstrs2, AccessInstrs)
 	;
-		Vnlval = vn_temp(Type, Num),
-		Lval = temp(Type, Num),
-		VnTables = VnTables0,
-		Templocs = Templocs0,
-		AccessInstrs = []
+		Vnlval = vn_mem_ref(Vn),
+		vn_flush__vn(Vn, [src_access(Vnlval) | Srcs], Forbidden, Rval,
+			VnTables0, VnTables,
+			Templocs0, Templocs, Params, AccessInstrs),
+		Lval = mem_ref(Rval)
 	).
 
 %-----------------------------------------------------------------------------%

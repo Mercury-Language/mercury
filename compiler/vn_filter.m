@@ -283,6 +283,8 @@ vn_filter__replace_in_lval(field(Tag, Rval1, Rval2), Temp, Defn,
 vn_filter__replace_in_lval(lvar(_), _, _, _) :-
 	error("found lvar in vn_filter__replace_in_lval").
 vn_filter__replace_in_lval(temp(T, N), _, _, temp(T, N)).
+vn_filter__replace_in_lval(mem_ref(Rval0), Temp, Defn, mem_ref(Rval)) :-
+	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 
 :- pred vn_filter__replace_in_rval(rval, lval, rval, rval).
 :- mode vn_filter__replace_in_rval(in, in, in, out) is det.
@@ -307,6 +309,17 @@ vn_filter__replace_in_rval(binop(Binop, Rval1, Rval2), Temp, Defn,
 		binop(Binop, Rval3, Rval4)) :-
 	vn_filter__replace_in_rval(Rval1, Temp, Defn, Rval3),
 	vn_filter__replace_in_rval(Rval2, Temp, Defn, Rval4).
+vn_filter__replace_in_rval(mem_addr(MemRef0), Temp, Defn, mem_addr(MemRef)) :-
+	vn_filter__replace_in_mem_ref(MemRef0, Temp, Defn, MemRef).
+
+:- pred vn_filter__replace_in_mem_ref(mem_ref, lval, rval, mem_ref).
+:- mode vn_filter__replace_in_mem_ref(in, in, in, out) is det.
+
+vn_filter__replace_in_mem_ref(stackvar_ref(N), _, _, stackvar_ref(N)).
+vn_filter__replace_in_mem_ref(framevar_ref(N), _, _, framevar_ref(N)).
+vn_filter__replace_in_mem_ref(heap_ref(Rval0, Tag, N), Temp, Defn,
+		heap_ref(Rval, Tag, N)) :-
+	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 
 :- pred vn_filter__instrs_free_of_lval(list(instruction), lval).
 :- mode vn_filter__instrs_free_of_lval(in, in) is semidet.

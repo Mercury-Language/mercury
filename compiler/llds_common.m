@@ -284,7 +284,21 @@ llds_common__process_rval(Rval0, Info0, Info, Rval) :-
 		llds_common__process_rval(Left0, Info0, Info1, Left),
 		llds_common__process_rval(Right0, Info1, Info, Right),
 		Rval = binop(Binop, Left, Right)
+	;
+		Rval0 = mem_addr(MemRef0),
+		llds_common__process_mem_ref(MemRef0, Info0, Info, MemRef),
+		Rval = mem_addr(MemRef)
 	).
+
+:- pred llds_common__process_mem_ref(mem_ref, common_info, common_info,
+	mem_ref).
+:- mode llds_common__process_mem_ref(in, in, out, out) is det.
+
+llds_common__process_mem_ref(stackvar_ref(N), Info, Info, stackvar_ref(N)).
+llds_common__process_mem_ref(framevar_ref(N), Info, Info, framevar_ref(N)).
+llds_common__process_mem_ref(heap_ref(Rval0, Tag, N), Info0, Info,
+		heap_ref(Rval, Tag, N)) :-
+	llds_common__process_rval(Rval0, Info0, Info, Rval).
 
 :- pred llds_common__process_rvals(list(rval), common_info, common_info,
 	list(rval)).

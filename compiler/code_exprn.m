@@ -570,6 +570,17 @@ code_exprn__add_rval_reg_dependencies(unop(_Op, Rval)) -->
 code_exprn__add_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 	code_exprn__add_rval_reg_dependencies(Rval0),
 	code_exprn__add_rval_reg_dependencies(Rval1).
+code_exprn__add_rval_reg_dependencies(mem_addr(MemRef)) -->
+	code_exprn__add_mem_ref_reg_dependencies(MemRef).
+
+:- pred code_exprn__add_mem_ref_reg_dependencies(mem_ref,
+	exprn_info, exprn_info).
+:- mode code_exprn__add_mem_ref_reg_dependencies(in, in, out) is det.
+
+code_exprn__add_mem_ref_reg_dependencies(stackvar_ref(_)) --> [].
+code_exprn__add_mem_ref_reg_dependencies(framevar_ref(_)) --> [].
+code_exprn__add_mem_ref_reg_dependencies(heap_ref(Rval, _, _)) -->
+	code_exprn__add_rval_reg_dependencies(Rval).
 
 :- pred code_exprn__add_arg_reg_dependencies(list(maybe(rval)),
 						exprn_info, exprn_info).
@@ -632,6 +643,17 @@ code_exprn__rem_rval_reg_dependencies(unop(_Op, Rval)) -->
 code_exprn__rem_rval_reg_dependencies(binop(_Op, Rval0, Rval1)) -->
 	code_exprn__rem_rval_reg_dependencies(Rval0),
 	code_exprn__rem_rval_reg_dependencies(Rval1).
+code_exprn__rem_rval_reg_dependencies(mem_addr(MemRef)) -->
+	code_exprn__rem_mem_ref_reg_dependencies(MemRef).
+
+:- pred code_exprn__rem_mem_ref_reg_dependencies(mem_ref,
+	exprn_info, exprn_info).
+:- mode code_exprn__rem_mem_ref_reg_dependencies(in, in, out) is det.
+
+code_exprn__rem_mem_ref_reg_dependencies(stackvar_ref(_)) --> [].
+code_exprn__rem_mem_ref_reg_dependencies(framevar_ref(_)) --> [].
+code_exprn__rem_mem_ref_reg_dependencies(heap_ref(Rval, _, _)) -->
+	code_exprn__rem_rval_reg_dependencies(Rval).
 
 :- pred code_exprn__rem_arg_reg_dependencies(list(maybe(rval)),
 						exprn_info, exprn_info).

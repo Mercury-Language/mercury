@@ -297,21 +297,41 @@ exprn_aux__vars_in_rval(binop(_, Rval0, Rval1), Vars) :-
 	exprn_aux__vars_in_rval(Rval0, Vars0),
 	exprn_aux__vars_in_rval(Rval1, Vars1),
 	list__append(Vars0, Vars1, Vars).
+exprn_aux__vars_in_rval(mem_addr(MemRef), Vars) :-
+	exprn_aux__vars_in_mem_ref(MemRef, Vars).
 
-exprn_aux__vars_in_lval(Lval, Vars) :-
-	(
-		Lval = lvar(Var)
-	->
-		Vars = [Var]
-	;
-		Lval = field(_, Rval0, Rval1)
-	->
-		exprn_aux__vars_in_rval(Rval0, Vars0),
-		exprn_aux__vars_in_rval(Rval1, Vars1),
-		list__append(Vars0, Vars1, Vars)
-	;
-		Vars = []
-	).
+exprn_aux__vars_in_lval(reg(_, _), []).
+exprn_aux__vars_in_lval(temp(_, _), []).
+exprn_aux__vars_in_lval(succip, []).
+exprn_aux__vars_in_lval(maxfr, []).
+exprn_aux__vars_in_lval(curfr, []).
+exprn_aux__vars_in_lval(hp, []).
+exprn_aux__vars_in_lval(sp, []).
+exprn_aux__vars_in_lval(stackvar(_), []).
+exprn_aux__vars_in_lval(framevar(_), []).
+exprn_aux__vars_in_lval(succip(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(redoip(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(succfr(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(prevfr(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(field(_, Rval0, Rval1), Vars) :-
+	exprn_aux__vars_in_rval(Rval0, Vars0),
+	exprn_aux__vars_in_rval(Rval1, Vars1),
+	list__append(Vars0, Vars1, Vars).
+exprn_aux__vars_in_lval(mem_ref(Rval), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
+exprn_aux__vars_in_lval(lvar(Var), [Var]).
+
+:- pred exprn_aux__vars_in_mem_ref(mem_ref, list(var)).
+:- mode exprn_aux__vars_in_mem_ref(in, out) is det.
+
+exprn_aux__vars_in_mem_ref(stackvar_ref(_), []).
+exprn_aux__vars_in_mem_ref(framevar_ref(_), []).
+exprn_aux__vars_in_mem_ref(heap_ref(Rval, _, _), Vars) :-
+	exprn_aux__vars_in_rval(Rval, Vars).
 
 :- pred exprn_aux__vars_in_args(list(maybe(rval)), list(var)).
 :- mode exprn_aux__vars_in_args(in, out) is det.
@@ -334,7 +354,7 @@ exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
 	(
 		Rval0 = lval(Lval0),
 		exprn_aux__substitute_lval_in_lval(OldLval, NewLval,
-								Lval0, Lval),
+			Lval0, Lval),
 		Rval = lval(Lval)
 	;
 		Rval0 = var(_Var),
@@ -342,28 +362,50 @@ exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
 	;
 		Rval0 = create(Tag, Rvals0, Unique, Num),
 		exprn_aux__substitute_lval_in_args(OldLval, NewLval,
-						Rvals0, Rvals),
+			Rvals0, Rvals),
 		Rval = create(Tag, Rvals, Unique, Num)
 	;
 		Rval0 = mkword(Tag, Rval1),
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval1,
-			Rval2),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval1, Rval2),
 		Rval = mkword(Tag, Rval2)
 	;
 		Rval0 = const(_Const),
 		Rval = Rval0
 	;
 		Rval0 = unop(Unop, Rval1),
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval1,
-			Rval2),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval1, Rval2),
 		Rval = unop(Unop, Rval2)
 	;
 		Rval0 = binop(Binop, Rval1, Rval2),
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval1,
-			Rval3),
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval2,
-			Rval4),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval1, Rval3),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval2, Rval4),
 		Rval = binop(Binop, Rval3, Rval4)
+	;
+		Rval0 = mem_addr(MemRef0),
+		exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval,
+			MemRef0, MemRef),
+		Rval = mem_addr(MemRef)
+	).
+
+:- pred exprn_aux__substitute_lval_in_mem_ref(lval, lval, mem_ref, mem_ref).
+:- mode exprn_aux__substitute_lval_in_mem_ref(in, in, in, out) is det.
+
+exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef) :-
+	(
+		MemRef0 = stackvar_ref(N),
+		MemRef = stackvar_ref(N)
+	;
+		MemRef0 = framevar_ref(N),
+		MemRef = framevar_ref(N)
+	;
+		MemRef0 = heap_ref(Rval0, Tag, N),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		MemRef = heap_ref(Rval, Tag, N)
 	).
 
 :- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
@@ -375,15 +417,76 @@ exprn_aux__substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
 	->
 		Lval = NewLval
 	;
-		Lval0 = field(Tag, Rval0, Rval1)
-	->
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0,
-			Rval2),
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval1,
-			Rval3),
-		Lval = field(Tag, Rval2, Rval3)
+		exprn_aux__substitute_lval_in_lval_2(OldLval, NewLval,
+			Lval0, Lval)
+	).
+
+:- pred exprn_aux__substitute_lval_in_lval_2(lval, lval, lval, lval).
+:- mode exprn_aux__substitute_lval_in_lval_2(in, in, in, out) is det.
+
+exprn_aux__substitute_lval_in_lval_2(OldLval, NewLval, Lval0, Lval) :-
+	(
+		Lval0 = reg(T, N),
+		Lval = reg(T, N)
 	;
-		Lval = Lval0
+		Lval0 = succip,
+		Lval = succip
+	;
+		Lval0 = maxfr,
+		Lval = maxfr
+	;
+		Lval0 = curfr,
+		Lval = curfr
+	;
+		Lval0 = hp,
+		Lval = hp
+	;
+		Lval0 = sp,
+		Lval = sp
+	;
+		Lval0 = temp(T, N),
+		Lval = temp(T, N)
+	;
+		Lval0 = stackvar(N),
+		Lval = stackvar(N)
+	;
+		Lval0 = framevar(N),
+		Lval = framevar(N)
+	;
+		Lval0 = succip(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = succip(Rval)
+	;
+		Lval0 = redoip(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = redoip(Rval)
+	;
+		Lval0 = succfr(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = succfr(Rval)
+	;
+		Lval0 = prevfr(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = prevfr(Rval)
+	;
+		Lval0 = field(Tag, Rval1, Rval2),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval1, Rval3),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval2, Rval4),
+		Lval = field(Tag, Rval3, Rval4)
+	;
+		Lval0 = mem_ref(Rval0),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
+		Lval = mem_ref(Rval)
+	;
+		Lval0 = lvar(N),
+		Lval = lvar(N)
 	).
 
 :- pred exprn_aux__substitute_lval_in_args(lval, lval,
@@ -395,8 +498,8 @@ exprn_aux__substitute_lval_in_args(OldLval, NewLval, [M0 | Ms0], [M | Ms]) :-
 	(
 		M0 = yes(Rval0)
 	->
-		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0,
-			Rval),
+		exprn_aux__substitute_lval_in_rval(OldLval, NewLval,
+			Rval0, Rval),
 		M = yes(Rval)
 	;
 		M = M0
@@ -412,7 +515,7 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 		(
 			Rval0 = lval(Lval0),
 			exprn_aux__substitute_rval_in_lval(OldRval, NewRval,
-						Lval0, Lval),
+				Lval0, Lval),
 			Rval = lval(Lval)
 		;
 			Rval0 = var(_),
@@ -420,7 +523,7 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 		;
 			Rval0 = create(Tag, Rvals0, Unique, Num),
 			exprn_aux__substitute_rval_in_args(OldRval, NewRval,
-							Rvals0, Rvals),
+				Rvals0, Rvals),
 			Rval = create(Tag, Rvals, Unique, Num)
 		;
 			Rval0 = mkword(Tag, Rval1),
@@ -442,7 +545,29 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
 				Rval2, Rval4),
 			Rval = binop(Binop, Rval3, Rval4)
+		;
+			Rval0 = mem_addr(MemRef1),
+			exprn_aux__substitute_rval_in_mem_ref(OldRval, NewRval,
+				MemRef1, MemRef2),
+			Rval = mem_addr(MemRef2)
 		)
+	).
+
+:- pred exprn_aux__substitute_rval_in_mem_ref(rval, rval, mem_ref, mem_ref).
+:- mode exprn_aux__substitute_rval_in_mem_ref(in, in, in, out) is det.
+
+exprn_aux__substitute_rval_in_mem_ref(OldRval, NewRval, MemRef0, MemRef) :-
+	(
+		MemRef0 = stackvar_ref(N),
+		MemRef = stackvar_ref(N)
+	;
+		MemRef0 = framevar_ref(N),
+		MemRef = framevar_ref(N)
+	;
+		MemRef0 = heap_ref(Rval0, Tag, N),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		MemRef = heap_ref(Rval, Tag, N)
 	).
 
 :- pred exprn_aux__substitute_rval_in_lval(rval, rval, lval, lval).
@@ -450,15 +575,67 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 
 exprn_aux__substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
 	(
-		Lval0 = field(Tag, Rval0, Rval1)
-	->
-		exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0,
-			Rval2),
-		exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval1,
-			Rval3),
-		Lval = field(Tag, Rval2, Rval3)
+		Lval0 = reg(T, N),
+		Lval = reg(T, N)
 	;
-		Lval = Lval0
+		Lval0 = succip,
+		Lval = succip
+	;
+		Lval0 = maxfr,
+		Lval = maxfr
+	;
+		Lval0 = curfr,
+		Lval = curfr
+	;
+		Lval0 = hp,
+		Lval = hp
+	;
+		Lval0 = sp,
+		Lval = sp
+	;
+		Lval0 = temp(T, N),
+		Lval = temp(T, N)
+	;
+		Lval0 = stackvar(N),
+		Lval = stackvar(N)
+	;
+		Lval0 = framevar(N),
+		Lval = framevar(N)
+	;
+		Lval0 = succip(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = succip(Rval)
+	;
+		Lval0 = redoip(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = redoip(Rval)
+	;
+		Lval0 = succfr(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = succfr(Rval)
+	;
+		Lval0 = prevfr(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = prevfr(Rval)
+	;
+		Lval0 = field(Tag, Rval1, Rval2),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval1, Rval3),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval2, Rval4),
+		Lval = field(Tag, Rval3, Rval4)
+	;
+		Lval0 = mem_ref(Rval0),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
+		Lval = mem_ref(Rval)
+	;
+		Lval0 = lvar(N),
+		Lval = lvar(N)
 	).
 
 :- pred exprn_aux__substitute_rval_in_args(rval, rval,
@@ -470,8 +647,8 @@ exprn_aux__substitute_rval_in_args(OldRval, NewRval, [M0 | Ms0], [M | Ms]) :-
 	(
 		M0 = yes(Rval0)
 	->
-		exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0,
-			Rval),
+		exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+			Rval0, Rval),
 		M = yes(Rval)
 	;
 		M = M0
@@ -606,13 +783,15 @@ exprn_aux__rval_addrs(const(Const), CodeAddrs, DataAddrs) :-
 		CodeAddrs = [],
 		DataAddrs = []
 	).
-exprn_aux__rval_addrs(unop(_Op, Rval), CodeAddrs, DataAddrs) :-
+exprn_aux__rval_addrs(unop(_, Rval), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
-exprn_aux__rval_addrs(binop(_BinOp, Rval1, Rval2), CodeAddrs, DataAddrs) :-
+exprn_aux__rval_addrs(binop(_, Rval1, Rval2), CodeAddrs, DataAddrs) :-
 	exprn_aux__rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
 	exprn_aux__rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
 	list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
 	list__append(DataAddrs1, DataAddrs2, DataAddrs).
+exprn_aux__rval_addrs(mem_addr(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__mem_ref_addrs(Rval, CodeAddrs, DataAddrs).
 
 	% give an lval, return a list of the code and data addresses
 	% that are referenced by that lval
@@ -640,6 +819,8 @@ exprn_aux__lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
 	list__append(DataAddrs1, DataAddrs2, DataAddrs).
 exprn_aux__lval_addrs(lvar(_Var), [], []).
 exprn_aux__lval_addrs(temp(_, _), [], []).
+exprn_aux__lval_addrs(mem_ref(Rval), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
 
 	% give a list of rvals, return a list of the code and data addresses
 	% that are referenced by those rvals
@@ -660,6 +841,14 @@ exprn_aux__lval_list_addrs([Lval | Lvals], CodeAddrs, DataAddrs) :-
 	exprn_aux__lval_list_addrs(Lvals, CodeAddrs1, DataAddrs1),
 	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
 	list__append(DataAddrs0, DataAddrs1, DataAddrs).
+
+:- pred exprn_aux__mem_ref_addrs(mem_ref, list(code_addr), list(data_addr)).
+:- mode exprn_aux__mem_ref_addrs(in, out, out) is det.
+
+exprn_aux__mem_ref_addrs(stackvar_ref(_), [], []).
+exprn_aux__mem_ref_addrs(framevar_ref(_), [], []).
+exprn_aux__mem_ref_addrs(heap_ref(Rval, _, _), CodeAddrs, DataAddrs) :-
+	exprn_aux__rval_addrs(Rval, CodeAddrs, DataAddrs).
 
 	% give a list of maybe(rval), return a list of the code and data
 	% addresses that are reference by that list

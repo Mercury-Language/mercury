@@ -463,7 +463,18 @@ middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
 		Rval = binop(_, Rval1, Rval2),
 		middle_rec__find_used_registers_rval(Rval1, Used0, Used1),
 		middle_rec__find_used_registers_rval(Rval2, Used1, Used)
+	;
+		Rval = mem_addr(MemRef),
+		middle_rec__find_used_registers_mem_ref(MemRef, Used0, Used)
 	).
+
+:- pred middle_rec__find_used_registers_mem_ref(mem_ref, set(int), set(int)).
+:- mode middle_rec__find_used_registers_mem_ref(in, di, uo) is det.
+
+middle_rec__find_used_registers_mem_ref(stackvar_ref(_), Used, Used).
+middle_rec__find_used_registers_mem_ref(framevar_ref(_), Used, Used).
+middle_rec__find_used_registers_mem_ref(heap_ref(Rval, _, _), Used0, Used) :-
+	middle_rec__find_used_registers_rval(Rval, Used0, Used).
 
 :- pred middle_rec__find_used_registers_maybe_rvals(list(maybe(rval)),
 	set(int), set(int)).

@@ -311,6 +311,12 @@
 				% field(Tag, Address, FieldNum)
 				% selects a field of a compound term
 
+	/* values somewhere in memory */
+
+	;	mem_ref(rval)	% a word in the heap, in the det stack or
+				% in the nondet stack. The rval should have
+				% originally come from a mem_addr rval.
+
 	/* pseudo-values */
 
 	;	lvar(var).	% the location of the specified variable
@@ -353,7 +359,17 @@
 		% mkword returns a tagged pointer
 	;	const(rval_const)
 	;	unop(unary_op, rval)
-	;	binop(binary_op, rval, rval).
+	;	binop(binary_op, rval, rval)
+	;	mem_addr(mem_ref).
+		% The addess of a word in the heap, the det stack or
+		% the nondet stack.
+
+:- type mem_ref
+	--->	stackvar_ref(int)		% stack slot number
+	;	framevar_ref(int)		% stack slot number
+	;	heap_ref(rval, int, int).	% the cell pointer,
+						% the tag to subtract,
+						% and the field number
 
 :- type rval_const
 	--->	true
@@ -527,6 +543,7 @@ llds__lval_type(prevfr(_), data_ptr).
 llds__lval_type(field(_, _, _), word).
 llds__lval_type(lvar(_), _) :-
 	error("lvar unexpected in llds__lval_type").
+llds__lval_type(mem_ref(_), word).
 
 llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
@@ -552,6 +569,7 @@ llds__rval_type(unop(UnOp, _), Type) :-
 	llds__unop_return_type(UnOp, Type).
 llds__rval_type(binop(BinOp, _, _), Type) :-
 	llds__binop_return_type(BinOp, Type).
+llds__rval_type(mem_addr(_), data_ptr).
 
 llds__const_type(true, bool).
 llds__const_type(false, bool).

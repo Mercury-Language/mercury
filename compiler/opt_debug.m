@@ -130,6 +130,9 @@
 :- pred opt_debug__dump_rvals(list(rval), string).
 :- mode opt_debug__dump_rvals(in, out) is det.
 
+:- pred opt_debug__dump_mem_ref(mem_ref, string).
+:- mode opt_debug__dump_mem_ref(in, out) is det.
+
 :- pred opt_debug__dump_const(rval_const, string).
 :- mode opt_debug__dump_const(in, out) is det.
 
@@ -470,6 +473,9 @@ opt_debug__dump_reg(f, N, Str) :-
 opt_debug__dump_vnlval(vn_reg(Type, Num), Str) :-
 	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["vn_reg(", R_str, ")"], Str).
+opt_debug__dump_vnlval(vn_temp(Type, Num), Str) :-
+	opt_debug__dump_reg(Type, Num, R_str),
+	string__append_list(["vn_temp(", R_str, ")"], Str).
 opt_debug__dump_vnlval(vn_stackvar(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["vn_stackvar(", N_str, ")"], Str).
@@ -504,9 +510,9 @@ opt_debug__dump_vnlval(vn_field(T, N, F), Str) :-
 	string__int_to_string(F, F_str),
 	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
 		F_str, ")"], Str).
-opt_debug__dump_vnlval(vn_temp(Type, Num), Str) :-
-	opt_debug__dump_reg(Type, Num, R_str),
-	string__append_list(["vn_temp(", R_str, ")"], Str).
+opt_debug__dump_vnlval(vn_mem_ref(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["vn_mem_ref(", N_str, ")"], Str).
 
 opt_debug__dump_vnrval(vn_origlval(Vnlval), Str) :-
 	opt_debug__dump_vnlval(Vnlval, Lval_str),
@@ -534,6 +540,18 @@ opt_debug__dump_vnrval(vn_binop(O, N1, N2), Str) :-
 	string__int_to_string(N2, N2_str),
 	string__append_list(["vn_binop(", O_str, ", ", N1_str, ", ",
 		N2_str, ")"], Str).
+opt_debug__dump_vnrval(vn_stackvar_addr(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["vn_stackvar_addr(", N_str, ")"], Str).
+opt_debug__dump_vnrval(vn_framevar_addr(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["vn_framevar_addr(", N_str, ")"], Str).
+opt_debug__dump_vnrval(vn_heap_addr(B, T, N), Str) :-
+	string__int_to_string(B, B_str),
+	string__int_to_string(T, T_str),
+	string__int_to_string(N, N_str),
+	string__append_list(["vn_heap_addr(", B_str, ", ", T_str, ", ",
+		N_str, ")"], Str).
 
 opt_debug__dump_lval(reg(Type, Num), Str) :-
 	opt_debug__dump_reg(Type, Num, R_str),
@@ -577,6 +595,9 @@ opt_debug__dump_lval(lvar(_), Str) :-
 opt_debug__dump_lval(temp(Type, Num), Str) :-
 	opt_debug__dump_reg(Type, Num, R_str),
 	string__append_list(["temp(", R_str, ")"], Str).
+opt_debug__dump_lval(mem_ref(R), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__append_list(["mem_ref(", R_str, ")"], Str).
 
 opt_debug__dump_rval(lval(Lval), Str) :-
 	opt_debug__dump_lval(Lval, Lval_str),
@@ -613,12 +634,28 @@ opt_debug__dump_rval(binop(O, N1, N2), Str) :-
 	opt_debug__dump_rval(N2, N2_str),
 	string__append_list(["binop(", O_str, ", ", N1_str, ", ",
 		N2_str, ")"], Str).
+opt_debug__dump_rval(mem_addr(M), Str) :-
+	opt_debug__dump_mem_ref(M, M_str),
+	string__append_list(["mem_addr(", M_str, ")"], Str).
 
 opt_debug__dump_rvals([], "").
 opt_debug__dump_rvals([Rval | Rvals], Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	opt_debug__dump_rvals(Rvals, S_str),
 	string__append_list([R_str, ", ", S_str], Str).
+
+opt_debug__dump_mem_ref(stackvar_ref(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["stackvar_ref(", N_str, ")"], Str).
+opt_debug__dump_mem_ref(framevar_ref(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["framevar_ref(", N_str, ")"], Str).
+opt_debug__dump_mem_ref(heap_ref(R, T, N), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__int_to_string(T, T_str),
+	string__int_to_string(N, N_str),
+	string__append_list(["heap_ref(", R_str, ", ", T_str, ", ",
+		N_str, ")"], Str).
 
 opt_debug__dump_const(true, "true").
 opt_debug__dump_const(false, "false").

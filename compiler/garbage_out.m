@@ -387,6 +387,8 @@ garbage_out__write_liveval(lvar(_)) -->
 	{ error("garbage_out: Unexpected 'lval/1' lval") }.
 garbage_out__write_liveval(temp(_, _)) -->
 	{ error("garbage_out: Unexpected 'temp/1' lval") }.
+garbage_out__write_liveval(mem_ref(_)) -->
+	{ error("garbage_out: Unexpected 'mem_ref/1' lval") }.
 
 %-----------------------------------------------------------------------------%
 % We no longer care what the shape_ids are, as we don't need them. When we

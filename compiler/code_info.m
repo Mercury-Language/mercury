@@ -2790,6 +2790,7 @@ code_info__get_shape_num(lval(temp(_, _)), unwanted).
 code_info__get_shape_num(lval(reg(_, _)), unwanted).
 code_info__get_shape_num(lval(stackvar(_)), unwanted).
 code_info__get_shape_num(lval(framevar(_)), unwanted).
+code_info__get_shape_num(lval(mem_ref(_)), unwanted).		% XXX
 code_info__get_shape_num(ticket, ticket).
 
 %---------------------------------------------------------------------------%

@@ -1318,7 +1318,6 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-
 output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
@@ -1332,6 +1331,22 @@ output_rval_decls(create(_Tag, ArgVals, _, Label), FirstIndent, LaterIndent,
 		output_const_term_decl(ArgVals, CreateLabel, no, FirstIndent,
 			LaterIndent, N1, N)
 	).
+output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
+		N0, N, DeclSet0, DeclSet) -->
+	output_mem_ref_decls(MemRef, FirstIndent, LaterIndent,
+		N0, N, DeclSet0, DeclSet).
+
+:- pred output_mem_ref_decls(mem_ref, string, string, int, int,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_mem_ref_decls(in, in, in, in, out, in, out, di, uo) is det.
+
+output_mem_ref_decls(stackvar_ref(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_mem_ref_decls(framevar_ref(_), _, _, N, N, DeclSet, DeclSet) --> [].
+output_mem_ref_decls(heap_ref(Rval, _, _), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used to compute the names used for
@@ -1578,6 +1593,10 @@ output_lval_decls(hp, _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(sp, _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(lvar(_), _, _, N, N, DeclSet, DeclSet) --> [].
 output_lval_decls(temp(_, _), _, _, N, N, DeclSet, DeclSet) --> [].
+output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
 
 % output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
 % extern symbols, etc. that need to be declared before
@@ -2365,7 +2384,7 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(Tag, _Args, _Unique, LabelNum)) -->
+output_rval(create(Tag, _Args, _Unique, CellNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	% XXX we should change the definition of mkword()
@@ -2374,10 +2393,31 @@ output_rval(create(Tag, _Args, _Unique, LabelNum)) -->
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),
-	io__write_int(LabelNum),
+	io__write_int(CellNum),
 	io__write_string(")").
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
+output_rval(mem_addr(MemRef)) -->
+	(
+		{ MemRef = stackvar_ref(N) },
+		io__write_string("(const Word *) &detstackvar("),
+		io__write_int(N),
+		io__write_string(")")
+	;
+		{ MemRef = framevar_ref(N) },
+		io__write_string("(const Word *) &framevar("),
+		io__write_int(N),
+		io__write_string(")")
+	;
+		{ MemRef = heap_ref(Rval, Tag, FieldNum) },
+		io__write_string("(const Word *) &field("),
+		output_tag(Tag),
+		io__write_string(", "),
+		output_rval(Rval),
+		io__write_string(", "),
+		io__write_int(FieldNum),
+		io__write_string(")")
+	).
 
 :- pred output_unary_op(unary_op, io__state, io__state).
 :- mode output_unary_op(in, di, uo) is det.
@@ -2552,6 +2592,10 @@ output_lval(temp(Type, Num)) -->
 		io__write_string("tempf"),
 		io__write_int(Num)
 	).
+output_lval(mem_ref(Rval)) -->
+	io__write_string("XXX("),
+	output_rval(Rval),
+	io__write_string(")").
 
 %-----------------------------------------------------------------------------%
 

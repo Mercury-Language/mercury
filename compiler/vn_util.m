@@ -38,6 +38,7 @@
 :- import_module opt_util.
 
 vn_util__find_specials(vn_reg(_, _), []).
+vn_util__find_specials(vn_temp(_, _), []).
 vn_util__find_specials(vn_stackvar(_), []).
 vn_util__find_specials(vn_framevar(_), []).
 vn_util__find_specials(vn_succip, [vn_succip]).
@@ -50,7 +51,7 @@ vn_util__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn_util__find_specials(vn_hp, [vn_hp]).
 vn_util__find_specials(vn_sp, [vn_sp]).
 vn_util__find_specials(vn_field(_, _, _), []).
-vn_util__find_specials(vn_temp(_, _), []).
+vn_util__find_specials(vn_mem_ref(_), []).
 
 vn_util__convert_to_vnlval_and_insert([], Liveset, Liveset).
 vn_util__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
@@ -103,9 +104,6 @@ vn_util__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 :- pred vn_util__find_sub_vns(vnrval, list(vn)).
 :- mode vn_util__find_sub_vns(in, out) is det.
-
-:- pred vn_util__find_sub_vns_vnlval(vnlval, list(vn)).
-:- mode vn_util__find_sub_vns_vnlval(in, out) is det.
 
 	% Find all lvals inside a given rval.
 
@@ -172,6 +170,29 @@ vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables) :-
 		vn_util__rval_to_vn(Rval2, SubVn2, VnTables1, VnTables2),
 		vn_util__vnrval_to_vn(vn_binop(Binop, SubVn1, SubVn2), Vn,
 			VnTables2, VnTables)
+	;
+		Rval = mem_addr(MemRef),
+		vn_util__mem_ref_to_vn(MemRef, Vn, VnTables0, VnTables)
+	).
+
+:- pred vn_util__mem_ref_to_vn(mem_ref, vn, vn_tables, vn_tables).
+% :- mode vn_util__mem_ref_to_vn(in, out, di, uo) is det.
+:- mode vn_util__mem_ref_to_vn(in, out, in, out) is det.
+
+vn_util__mem_ref_to_vn(MemRef, Vn, VnTables0, VnTables) :-
+	(
+		MemRef = stackvar_ref(Slot), 
+		vn_util__vnrval_to_vn(vn_stackvar_addr(Slot), Vn,
+			VnTables0, VnTables)
+	;
+		MemRef = framevar_ref(Slot), 
+		vn_util__vnrval_to_vn(vn_framevar_addr(Slot), Vn,
+			VnTables0, VnTables)
+	;
+		MemRef = heap_ref(Rval, Tag, Field), 
+		vn_util__rval_to_vn(Rval, SubVn, VnTables0, VnTables1),
+		vn_util__vnrval_to_vn(vn_heap_addr(SubVn, Tag, Field), Vn,
+			VnTables1, VnTables)
 	).
 
 :- pred vn_util__vnrval_to_vn(vnrval, vn, vn_tables, vn_tables).
@@ -658,6 +679,9 @@ vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables1),
 		vn_util__rval_to_vn(Rval2, Vn2, VnTables1, VnTables),
 		Vnlval = vn_field(Tag, Vn1, Vn2)
+	; Lval = mem_ref(Rval1) ->
+		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_mem_ref(Vn1)
 	; Lval = succfr(Rval1) ->
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_succfr(Vn1)
@@ -676,8 +700,11 @@ vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 
 % If you to add to this list to fix a determinism error,
 % check vn_util__lval_to_vnlval above as well.
+% vn_util__lval_to_vnlval should have code to handle every lval
+% that is mapped to "no" by vn_util__no_access_lval_to_vnlval.
 
 vn_util__no_access_lval_to_vnlval(reg(T, N),		yes(vn_reg(T, N))).
+vn_util__no_access_lval_to_vnlval(temp(T, N),		yes(vn_temp(T, N))).
 vn_util__no_access_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
 vn_util__no_access_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
 vn_util__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
@@ -689,12 +716,13 @@ vn_util__no_access_lval_to_vnlval(prevfr(_),		no).
 vn_util__no_access_lval_to_vnlval(succfr(_),		no).
 vn_util__no_access_lval_to_vnlval(hp,			yes(vn_hp)).
 vn_util__no_access_lval_to_vnlval(sp,			yes(vn_sp)).
+vn_util__no_access_lval_to_vnlval(mem_ref(_),		no).
 vn_util__no_access_lval_to_vnlval(field(_, _, _),	no).
-vn_util__no_access_lval_to_vnlval(temp(T, N),		yes(vn_temp(T, N))).
 vn_util__no_access_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
 
 vn_util__no_access_vnlval_to_lval(vn_reg(T, N),		yes(reg(T, N))).
+vn_util__no_access_vnlval_to_lval(vn_temp(T, N),	yes(temp(T, N))).
 vn_util__no_access_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
 vn_util__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn_util__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
@@ -707,10 +735,11 @@ vn_util__no_access_vnlval_to_lval(vn_succip(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn_util__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
 vn_util__no_access_vnlval_to_lval(vn_field(_, _, _),	no).
-vn_util__no_access_vnlval_to_lval(vn_temp(T, N),	yes(temp(T, N))).
+vn_util__no_access_vnlval_to_lval(vn_mem_ref(_),	no).
 
 /* one of these preds should be eliminated XXX */
 vn_util__vnlval_access_vns(vn_reg(_, _), []).
+vn_util__vnlval_access_vns(vn_temp(_, _), []).
 vn_util__vnlval_access_vns(vn_stackvar(_), []).
 vn_util__vnlval_access_vns(vn_framevar(_), []).
 vn_util__vnlval_access_vns(vn_succip, []).
@@ -723,30 +752,18 @@ vn_util__vnlval_access_vns(vn_succip(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_hp, []).
 vn_util__vnlval_access_vns(vn_sp, []).
 vn_util__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn_util__vnlval_access_vns(vn_temp(_, _), []).
+vn_util__vnlval_access_vns(vn_mem_ref(Vn), [Vn]).
 
 vn_util__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
-	vn_util__find_sub_vns_vnlval(Vnlval, SubVns).
+	vn_util__vnlval_access_vns(Vnlval, SubVns).
 vn_util__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
 vn_util__find_sub_vns(vn_const(_), []).
 vn_util__find_sub_vns(vn_create(_, _, _, _), []).
 vn_util__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
 vn_util__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
-
-vn_util__find_sub_vns_vnlval(vn_reg(_, _), []).
-vn_util__find_sub_vns_vnlval(vn_stackvar(_), []).
-vn_util__find_sub_vns_vnlval(vn_framevar(_), []).
-vn_util__find_sub_vns_vnlval(vn_succip, []).
-vn_util__find_sub_vns_vnlval(vn_maxfr, []).
-vn_util__find_sub_vns_vnlval(vn_curfr, []).
-vn_util__find_sub_vns_vnlval(vn_succfr(Vn), [Vn]).
-vn_util__find_sub_vns_vnlval(vn_prevfr(Vn), [Vn]).
-vn_util__find_sub_vns_vnlval(vn_redoip(Vn), [Vn]).
-vn_util__find_sub_vns_vnlval(vn_succip(Vn), [Vn]).
-vn_util__find_sub_vns_vnlval(vn_hp, []).
-vn_util__find_sub_vns_vnlval(vn_sp, []).
-vn_util__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn_util__find_sub_vns_vnlval(vn_temp(_, _), []).
+vn_util__find_sub_vns(vn_stackvar_addr(_), []).
+vn_util__find_sub_vns(vn_framevar_addr(_), []).
+vn_util__find_sub_vns(vn_heap_addr(SubVn, _, _), [SubVn]).
 
 vn_util__is_const_expr(Vn, IsConst, VnTables) :-
 	vn_table__lookup_defn(Vn, Vnrval, "vn_util__is_const_expr", VnTables),
@@ -770,6 +787,15 @@ vn_util__is_const_expr(Vn, IsConst, VnTables) :-
 		vn_util__is_const_expr(Vn1, IsConst1, VnTables),
 		vn_util__is_const_expr(Vn2, IsConst2, VnTables),
 		bool__and(IsConst1, IsConst2, IsConst)
+	;
+		Vnrval = vn_stackvar_addr(_),
+		IsConst = no
+	;
+		Vnrval = vn_framevar_addr(_),
+		IsConst = no
+	;
+		Vnrval = vn_heap_addr(_, _, _),
+		IsConst = no
 	).
 
 vn_util__find_lvals_in_rval(Rval, Lvals) :-
@@ -798,6 +824,9 @@ vn_util__find_lvals_in_rval(Rval, Lvals) :-
 		vn_util__find_lvals_in_rval(Rval1, Lvals1),
 		vn_util__find_lvals_in_rval(Rval2, Lvals2),
 		list__append(Lvals1, Lvals2, Lvals)
+	;
+		Rval = mem_addr(MemRef),
+		vn_util__find_lvals_in_mem_ref(MemRef, Lvals)
 	).
 
 vn_util__find_lvals_in_rvals([], []).
@@ -805,6 +834,15 @@ vn_util__find_lvals_in_rvals([Rval | Rvals], Lvals) :-
 	vn_util__find_lvals_in_rval(Rval, Lvals1),
 	vn_util__find_lvals_in_rvals(Rvals, Lvals2),
 	list__append(Lvals1, Lvals2, Lvals).
+
+:- pred vn_util__find_lvals_in_mem_ref(mem_ref, list(lval)).
+:- mode vn_util__find_lvals_in_mem_ref(in, out) is det.
+
+	% XXX
+vn_util__find_lvals_in_mem_ref(stackvar_ref(_), []).
+vn_util__find_lvals_in_mem_ref(framevar_ref(_), []).
+vn_util__find_lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
+	vn_util__find_lvals_in_rval(Rval, Lvals).
 
 vn_util__is_vn_shared(Vn, Vnrval, Uses0, VnTables) :-
 	vn_util__is_const_expr(Vn, no, VnTables),
@@ -878,6 +916,7 @@ vn_util__choose_cheapest_loc_2([], Stack0, Heap0, BestLoc) :-
 	).
 
 vn_util__classify_loc_cost(vn_reg(_, _), 0).
+vn_util__classify_loc_cost(vn_temp(_, _), 0).
 vn_util__classify_loc_cost(vn_stackvar(_), 1).
 vn_util__classify_loc_cost(vn_framevar(_), 1).
 vn_util__classify_loc_cost(vn_succip, 0).
@@ -890,7 +929,7 @@ vn_util__classify_loc_cost(vn_succip(_), 1).
 vn_util__classify_loc_cost(vn_hp, 0).
 vn_util__classify_loc_cost(vn_sp, 0).
 vn_util__classify_loc_cost(vn_field(_, _, _), 2).
-vn_util__classify_loc_cost(vn_temp(_, _), 0).
+vn_util__classify_loc_cost(vn_mem_ref(_), 2).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1038,6 +1077,16 @@ vn_util__record_use(Vn, Src, VnTables0, VnTables) :-
 				VnTables1, VnTables2),
 			vn_util__record_use(SubVn2, src_vn(Vn),
 				VnTables2, VnTables)
+		;
+			Vnrval = vn_stackvar_addr(_),
+			VnTables = VnTables1
+		;
+			Vnrval = vn_framevar_addr(_),
+			VnTables = VnTables1
+		;
+			Vnrval = vn_heap_addr(SubVn, _, _),
+			vn_util__record_use(SubVn, src_vn(Vn),
+				VnTables1, VnTables)
 		)
 	;
 		VnTables = VnTables1

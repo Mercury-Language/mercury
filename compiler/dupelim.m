@@ -211,6 +211,8 @@ dupelim__replace_labels_lval(field(Tag, Base0, Offset0), Replmap,
 	dupelim__replace_labels_rval(Offset0, Replmap, Offset).
 dupelim__replace_labels_lval(lvar(Var), _, lvar(Var)).
 dupelim__replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
+dupelim__replace_labels_lval(mem_ref(Rval0), Replmap, mem_ref(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 
 :- pred dupelim__replace_labels_rval(rval, map(label, label), rval).
 % :- mode dupelim__replace_labels_rval(di, in, uo) is det.
@@ -231,6 +233,18 @@ dupelim__replace_labels_rval(binop(Op, LRval0, RRval0), Replmap,
 		binop(Op, LRval, RRval)) :-
 	dupelim__replace_labels_rval(LRval0, Replmap, LRval),
 	dupelim__replace_labels_rval(RRval0, Replmap, RRval).
+dupelim__replace_labels_rval(mem_addr(MemRef0), Replmap, mem_addr(MemRef)) :-
+	dupelim__replace_labels_mem_ref(MemRef0, Replmap, MemRef).
+
+:- pred dupelim__replace_labels_mem_ref(mem_ref, map(label, label), mem_ref).
+% :- mode dupelim__replace_labels_rval(di, in, uo) is det.
+:- mode dupelim__replace_labels_mem_ref(in, in, out) is det.
+
+dupelim__replace_labels_mem_ref(stackvar_ref(N), _, stackvar_ref(N)).
+dupelim__replace_labels_mem_ref(framevar_ref(N), _, framevar_ref(N)).
+dupelim__replace_labels_mem_ref(heap_ref(Rval0, Tag, N), Replmap,
+		heap_ref(Rval, Tag, N)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 
 :- pred dupelim__replace_labels_rval_const(rval_const, map(label, label),
 	rval_const).

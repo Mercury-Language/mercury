@@ -642,6 +642,20 @@ vn_order__find_links(Vn, Sink, VnTables0, VnTables,
 				Succmap0, Succmap1, Predmap0, Predmap1),
 			vn_order__find_links(SubVn2, Sink, VnTables1, VnTables,
 				Succmap1, Succmap, Predmap1, Predmap)
+		;
+			Vnrval = vn_stackvar_addr(_),
+			Succmap = Succmap0,
+			Predmap = Predmap0,
+			VnTables = VnTables0
+		;
+			Vnrval = vn_framevar_addr(_),
+			Succmap = Succmap0,
+			Predmap = Predmap0,
+			VnTables = VnTables0
+		;
+			Vnrval = vn_heap_addr(SubVn, _, _),
+			vn_order__find_links(SubVn, Sink, VnTables0, VnTables,
+				Succmap0, Succmap, Predmap0, Predmap)
 		)
 	).
 
