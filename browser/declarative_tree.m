@@ -207,9 +207,10 @@ trace_get_i_bug(wrap(Store), dynamic(BugRef),
 	% since one EXIT event could belong to multiple children if it is in 
 	% a call which is backtracked over and each of these children could
 	% have different parents.  We return the last interface event of the
-	% parent CALL event as the parent.  This is okay since trace_parent is
-	% only used when an explicit subtree is generated which is above the
-	% previous subtree, so it doesn't really matter which parent we pick.
+	% parent CALL event as the parent.  This is okay since
+	% trace_last_parent is only used when an explicit subtree is generated
+	% which is above the previous subtree, so it doesn't really matter
+	% which parent we pick.
 	%
 :- pred trace_last_parent(wrap(S)::in, edt_node(R)::in, edt_node(R)::out) 
 	is semidet <= annotated_trace(S, R).
@@ -268,23 +269,23 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 	(
 		Node = fail(PrecId, CallId, _, _),
 		not_at_depth_limit(Store, CallId),
-		missing_answer_children(Store, PrecId, CallId, [], Children)
+		stratum_children(Store, PrecId, CallId, [], Children)
 	;
 		Node = exit(PrecId, CallId, _, Atom, _, _),
 		not_at_depth_limit(Store, CallId),
 		(
 			missing_answer_special_case(Atom)
 		->
-			missing_answer_children(Store, PrecId, CallId, [], 
+			stratum_children(Store, PrecId, CallId, [], 
 				Children)
 		;
-			wrong_answer_children(Store, PrecId, CallId, [], 
-				Children)
+			contour_children(normal, Store, PrecId, CallId, 
+				[], Children)
 		)
 	;
 		Node = excp(PrecId, CallId, _, _, _),
 		not_at_depth_limit(Store, CallId),
-		unexpected_exception_children(Store, PrecId, CallId, [],
+		contour_children(exception, Store, PrecId, CallId, [],
 			Children)
 	).
 
@@ -309,7 +310,7 @@ trace_weight(Store, NodeId, Weight, ExcessWeight) :-
 	%
 	% We include all the events between the final event and the last
 	% REDO before the final event, plus all the events between previous
-	% EXITs and REDOs and the initial CALL.  For EXIT and EXCP events
+	% EXITs and REDOs and the initial CALL.  For EXIT events
 	% this is an over approximation, but we can't know which events
 	% will be included in descendent contours when those descendent
 	% events are in unmaterialized portions of the annotated trace.
@@ -340,7 +341,7 @@ node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
 			NewRecordDups = yes
 		;
 			Final = excp(_, CallId, RedoId, _, FinalEvent),
-			NewRecordDups = RecordDups
+			NewRecordDups = yes
 		)
 	->
 		(
@@ -360,23 +361,16 @@ node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
 				NewRecordDups, DupFactor + 1, 
 				NewPrevDupEvents, DupEvents)
 		;
-			det_trace_node_from_id(Store, CallId, Call),
+			call_node_from_id(Store, CallId, Call),
+			CallEvent = Call ^ call_event,
+			Events = PrevEvents + FinalEvent - CallEvent + 1,
 			(
-				CallEvent = Call ^ call_event
-			->
-				Events = PrevEvents + FinalEvent - CallEvent 
-					+ 1,
-				(
-					NewRecordDups = yes,
-					DupEvents = PrevDupEvents + DupFactor *
-						(FinalEvent - CallEvent + 1)
-				;
-					NewRecordDups = no,
-					DupEvents = 0
-				)
+				NewRecordDups = yes,
+				DupEvents = PrevDupEvents + DupFactor *
+					(FinalEvent - CallEvent + 1)
 			;
-				throw(internal_error("node_events",
-					"not a CALL"))
+				NewRecordDups = no,
+				DupEvents = 0
 			)
 		)
 	;
@@ -398,37 +392,54 @@ not_at_depth_limit(Store, Ref) :-
 	call_node_from_id(Store, Ref, CallNode),
 	CallNode ^ call_at_max_depth = no.
 
-:- pred wrong_answer_children(S, R, R, list(edt_node(R)), list(edt_node(R)))
-		<= annotated_trace(S, R).
-:- mode wrong_answer_children(in, in, in, in, out) is det.
+:- type contour_type
+			% The contour ends with an EXIT event.
+	--->	normal
+			% The contour ends with an EXCP event.
+	;	exception.
 
-wrong_answer_children(Store, NodeId, StartId, Ns0, Ns) :-
+:- pred contour_children(contour_type::in, S::in, R::in, R::in, 
+	list(edt_node(R))::in, list(edt_node(R))::out)  is det
+	<= annotated_trace(S, R).
+
+contour_children(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 	(
 		NodeId = StartId
 	->
 		Ns = Ns0
 	;
-		wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns)
+		contour_children_2(ContourType, Store, NodeId, StartId, 
+			Ns0, Ns)
 	).
 
-:- pred wrong_answer_children_2(S, R, R, list(edt_node(R)),
-	list(edt_node(R))) <= annotated_trace(S, R).
-:- mode wrong_answer_children_2(in, in, in, in, out) is det.
+:- pred contour_children_2(contour_type::in, S::in, R::in, R::in, 
+	list(edt_node(R))::in, list(edt_node(R))::out)  is det
+	<= annotated_trace(S, R).
 
-wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
+contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _, _)
-		; Node = neg(_, _, _)
-		; Node = cond(_, _, failed)
+		( 
+			Node = call(_, _, _, _, _, _, _, _, _)
+		; 
+			%
+			% A non-failed NEGE could be encountered when gathering
+			% the children of an exception node, since the
+			% exception may have been thrown inside the negation.
+			%
+			(
+				ContourType = normal,
+				Node = neg(_, _, _)
+			;
+				ContourType = exception,
+				Node = neg(_, _, failed)
+			)
+		; 
+			Node = cond(_, _, failed)
 		)
 	->
-		throw(internal_error("wrong_answer_children_2",
+		throw(internal_error("contour_children_2",
 			"unexpected start of contour"))
-	;
-		Node = excp(_, _, _, _, _)
-	->
-		throw(unimplemented_feature("code that catches exceptions"))
 	;
 		Node = exit(_, _, _, _, _, _)
 	->
@@ -457,7 +468,7 @@ wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 		call_node_from_id(Store, CallId, Call),
 		NestedStartId = Call ^ call_preceding,
-		missing_answer_children(Store, NodeId, NestedStartId, Ns0, Ns1)
+		stratum_children(Store, NodeId, NestedStartId, Ns0, Ns1)
 	;
 		Node = neg_fail(Prec, NestedStartId)
 	->
@@ -468,7 +479,8 @@ wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			% tell whether the call was in a negated context or
 			% backtracked over, so we have to assume the former.
 			%
-		wrong_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
+		contour_children(ContourType, Store, Prec, 
+			NestedStartId, Ns0, Ns1)
 	;
 		( Node = else(Prec, NestedStartId)
 		; Node = neg_succ(Prec, NestedStartId)
@@ -477,7 +489,34 @@ wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 			% There is a nested context.
 			%
-		missing_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
+		stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
+	; 
+		Node = excp(_, CallId, _, _, _)
+	->
+			%
+			% If the contour ends in an exception, then add this
+			% exception to the list of contour children and 
+			% continue along the contour, since in this case we are
+			% only interested in nodes that caused the exception to
+			% be thrown. 
+			%
+			% If the contour ends with an exit then the exception
+			% must have been caught by a try/2 or try_all/3 or
+			% similar.  In this case we want to add all the exits
+			% of the call that threw the exception to the list of
+			% children since one of the generated solutions may
+			% be incorrect.
+			%
+		(
+			ContourType = exception,
+			Ns1 = [dynamic(NodeId) | Ns0]
+		;
+			ContourType = normal,	
+			call_node_from_id(Store, CallId, Call),
+			NestedStartId = Call ^ call_preceding,
+			stratum_children(Store, NodeId, NestedStartId, 
+				Ns0, Ns1)
+		)
 	;
 			%
 			% This handles the following cases:
@@ -494,26 +533,26 @@ wrong_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 		Ns1 = Ns0
 	),
 	Next = step_left_in_contour(Store, Node),
-	wrong_answer_children(Store, Next, StartId, Ns1, Ns).
+	contour_children(ContourType, Store, Next, StartId, Ns1, Ns).
 
-:- pred missing_answer_children(S, R, R, list(edt_node(R)), list(edt_node(R)))
+:- pred stratum_children(S, R, R, list(edt_node(R)), list(edt_node(R)))
 		<= annotated_trace(S, R).
-:- mode missing_answer_children(in, in, in, in, out) is det.
+:- mode stratum_children(in, in, in, in, out) is det.
 
-missing_answer_children(Store, NodeId, StartId, Ns0, Ns) :-
+stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
 	(
 		NodeId = StartId
 	->
 		Ns = Ns0
 	;
-		missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns)
+		stratum_children_2(Store, NodeId, StartId, Ns0, Ns)
 	).
 
-:- pred missing_answer_children_2(S, R, R, list(edt_node(R)), list(edt_node(R)))
+:- pred stratum_children_2(S, R, R, list(edt_node(R)), list(edt_node(R)))
 	<= annotated_trace(S, R).
-:- mode missing_answer_children_2(in, in, in, in, out) is det.
+:- mode stratum_children_2(in, in, in, in, out) is det.
 
-missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
+stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
 		( Node = call(_, _, _, _, _, _, _, _, _)
@@ -521,15 +560,12 @@ missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 		; Node = cond(_, _, failed)
 		)
 	->
-		throw(internal_error("missing_answer_children_2",
+		throw(internal_error("stratum_children_2",
 			"unexpected start of contour"))
-	;
-		Node = excp(_, _, _, _, _)
-	->
-		throw(unimplemented_feature("code that catches exceptions"))
 	;
 		( Node = exit(_, _, _, _, _, _)
 		; Node = fail(_, _, _, _)
+		; Node = excp(_, _, _, _, _)
 		)
 	->
 			%
@@ -542,7 +578,7 @@ missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 			% There is a nested successful context.
 			%
-		wrong_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
+		contour_children(normal, Store, Prec, NestedStartId, Ns0, Ns1)
 	;
 		( Node = else(Prec, NestedStartId)
 		; Node = neg_succ(Prec, NestedStartId)
@@ -551,7 +587,7 @@ missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 			%
 			% There is a nested failed context.
 			%
-		missing_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
+		stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
 	;
 			%
 			% This handles the following cases:
@@ -562,103 +598,7 @@ missing_answer_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 		Ns1 = Ns0
 	),
 	Next = step_in_stratum(Store, Node),
-	missing_answer_children(Store, Next, StartId, Ns1, Ns).
-
-:- pred unexpected_exception_children(S, R, R, list(edt_node(R)),
-		list(edt_node(R))) <= annotated_trace(S, R).
-:- mode unexpected_exception_children(in, in, in, in, out) is det.
-
-unexpected_exception_children(Store, NodeId, StartId, Ns0, Ns) :-
-	(
-		NodeId = StartId
-	->
-		Ns = Ns0
-	;
-		unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns)
-	).
-
-:- pred unexpected_exception_children_2(S, R, R, list(edt_node(R)),
-	list(edt_node(R))) <= annotated_trace(S, R).
-:- mode unexpected_exception_children_2(in, in, in, in, out) is det.
-
-unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns) :-
-	det_trace_node_from_id(Store, NodeId, Node),
-	(
-		( Node = call(_, _, _, _, _, _, _, _, _)
-		; Node = neg(_, _, failed)
-		; Node = cond(_, _, failed)
-		)
-	->
-		throw(internal_error("unexpected_exception_children_2",
-			"unexpected start of contour"))
-	;
-		( Node = exit(_, _, _, _, _, _)
-		; Node = excp(_, _, _, _, _)
-		)
-	->
-			%
-			% Add a child for this node.
-			%
-		Ns1 = [dynamic(NodeId) | Ns0]
-	;
-		Node = fail(_, CallId, _, _)
-	->
-			%
-			% Fail events can be reached here if there
-			% were events missing due to a parent being
-			% shallow traced.  In this case, we can't tell
-			% whether the call was in a negated context
-			% or backtracked over, so we have to assume
-			% the former.
-			%
-			% Fail events can also be reached here if the
-			% parent was a variant of solutions/2.
-			%
-			% If this really is in a negated context, the start of
-			% the context would be just before the entry to this
-			% failed call, modulo any det/semidet code which
-			% succeeded.
-			%
-		call_node_from_id(Store, CallId, Call),
-		NestedStartId = Call ^ call_preceding,
-		missing_answer_children(Store, NodeId, NestedStartId, Ns0, Ns1)
-	;
-		Node = neg_fail(Prec, NestedStartId)
-	->
-			%
-			% There is a nested context.  Neg_fail events can be
-			% reached here if there were events missing due to a
-			% parent being shallow traced.  In this case, we can't
-			% tell whether the call was in a negated context or
-			% backtracked over, so we have to assume the former.
-			%
-		wrong_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
-	;
-		( Node = else(Prec, NestedStartId)
-		; Node = neg_succ(Prec, NestedStartId)
-		)
-	->
-			%
-			% There is a nested context.
-			%
-		missing_answer_children(Store, Prec, NestedStartId, Ns0, Ns1)
-	;
-			%
-			% This handles the following cases:
-			% redo, switch, first_disj, later_disj, and
-			% then.  Also handles neg and cond when the
-			% status is anything other than failed.
-			%
-			% Redo events can be reached here if there
-			% were missing events due to a shallow tracing.
-			% In this case, we have to scan over the entire
-			% previous contour, since there is no way to
-			% tell how much of it was backtracked over.
-			%
-		Ns1 = Ns0
-	),
-	Next = step_left_in_contour(Store, Node),
-	unexpected_exception_children(Store, Next, StartId, Ns1, Ns).
+	stratum_children(Store, Next, StartId, Ns1, Ns).
 
 %-----------------------------------------------------------------------------%
 %

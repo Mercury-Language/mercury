@@ -23,6 +23,7 @@ DECLARATIVE_PROGS=		\
 	dependency2		\
 	divide_and_query1	\
 	empty_command		\
+	exceptions		\
 	explicit_subtree	\
 	failed_cond		\
 	family			\
@@ -248,6 +249,11 @@ divide_and_query1.out: divide_and_query1 divide_and_query1.inp
 
 empty_command.out: empty_command empty_command.inp
 	$(MDB) ./empty_command < empty_command.inp > empty_command.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+exceptions.out: exceptions exceptions.inp
+	$(MDB_STD) ./exceptions < exceptions.inp \
+		> exceptions.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 explicit_subtree.out: explicit_subtree explicit_subtree.$(DEBUG_INP)

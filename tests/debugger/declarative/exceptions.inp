@@ -1,0 +1,35 @@
+register --quiet
+context none
+echo on
+break q
+c
+f
+delete *
+dd -d1000
+n
+y
+y
+y
+y
+y
+break r
+c
+f
+delete *
+dd -d1000
+n
+n
+y
+y
+y
+y
+y
+break v
+c
+f
+dd -d1000
+n
+y
+y
+y
+quit -y

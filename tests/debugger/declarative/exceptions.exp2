@@ -1,0 +1,79 @@
+      E1:     C1 CALL pred exceptions.main/2-0 (cc_multi) exceptions.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> break q
+ 0: + stop  interface pred exceptions.q/2-0 (cc_multi)
+mdb> c
+      E2:     C2 CALL pred exceptions.q/2-0 (cc_multi)
+mdb> f
+      E3:     C2 EXIT pred exceptions.q/2-0 (cc_multi)
+mdb> delete *
+ 0: E stop  interface pred exceptions.q/2-0 (cc_multi)
+mdb> dd -d1000
+q(yes(univ_cons("Error")), [1, 2, 3])
+Valid? n
+p(1)
+Valid? y
+p(2)
+Valid? y
+p(3)
+Valid? y
+Call p(_)
+Throws "Error"
+Expected? y
+Found incorrect contour:
+try_all(p, yes(univ_cons("Error")), [1, 2, 3])
+q(yes(univ_cons("Error")), [1, 2, 3])
+Is this a bug? y
+      E3:     C2 EXIT pred exceptions.q/2-0 (cc_multi)
+mdb> break r
+ 0: + stop  interface pred exceptions.r/1-0 (semidet)
+mdb> c
+      E4:     C3 CALL pred exceptions.r/1-0 (semidet)
+mdb> f
+      E5:     C3 FAIL pred exceptions.r/1-0 (semidet)
+mdb> delete *
+ 0: E stop  interface pred exceptions.r/1-0 (semidet)
+mdb> dd -d1000
+Call r(_)
+No solutions.
+Complete? n
+t({yes(univ_cons("Error")), [4, 5, 6]})
+Valid? n
+s(4)
+Valid? y
+s(5)
+Valid? y
+s(6)
+Valid? y
+Call s(_)
+Throws "Error"
+Expected? y
+Found incorrect contour:
+try_all(s, yes(univ_cons("Error")), [4, 5, 6])
+t({yes(univ_cons("Error")), [4, 5, 6]})
+Is this a bug? y
+      E6:     C4 EXIT pred exceptions.t/1-0 (cc_multi)
+mdb> break v
+ 0: + stop  interface pred exceptions.v/1-0 (nondet)
+mdb> c
+no
+      E7:     C5 CALL pred exceptions.v/1-0 (nondet)
+mdb> f
+      E8:     C5 EXCP pred exceptions.v/1-0 (nondet) c2;
+mdb> dd -d1000
+Call v(_)
+Throws "Error"
+Expected? n
+y(1)
+Valid? y
+Call u(_)
+Throws "Error"
+Expected? y
+Found unhandled exception:
+v(_)
+"Error"
+Is this a bug? y
+      E8:     C5 EXCP pred exceptions.v/1-0 (nondet) c2;
+mdb> quit -y
