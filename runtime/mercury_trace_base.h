@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -126,6 +126,14 @@ extern	void	MR_trace_report_raw(int fd);
 */
 
 extern	void	MR_tracing_not_enabled(void);
+
+/*
+** These functions allow library/exceptions.m to tell the debuggers
+** which exception has been thrown.
+*/
+
+extern	void	MR_trace_set_exception_value(Word exception);
+extern	Word	MR_trace_get_exception_value(void);
 
 /*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,

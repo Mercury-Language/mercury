@@ -1,0 +1,15 @@
+echo on
+register --quiet
+break p
+break q
+continue
+finish
+print exception
+continue
+finish
+browse exception
+set depth 9
+set size 99
+ls
+quit
+continue

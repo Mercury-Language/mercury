@@ -1267,6 +1267,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	if (MR_trace_enabled) {
 		Code *MR_jumpaddr;
+		MR_trace_set_exception_value(exception);
 		save_transient_registers();
 		MR_jumpaddr = MR_trace_throw(MR_succip, MR_sp, MR_curfr);
 		restore_transient_registers();

@@ -176,6 +176,8 @@ static	void	MR_trace_set_level_and_report(int ancestor_level,
 			bool detailed);
 static	void	MR_trace_print_var(Word type_info, Word value);
 static	void	MR_trace_browse_var(Word type_info, Word value);
+static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
+		MR_Browser browser);
 
 static	const char *MR_trace_read_help_text(void);
 static	bool	MR_trace_is_number(const char *word, int *value);
@@ -422,6 +424,30 @@ MR_trace_browse_var(Word type_info, Word value)
 {
 	/* XXX should use MR_mdb_in and MR_mdb_out */
 	MR_trace_browse(type_info, value);
+}
+
+static const char *
+MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser)
+{
+	Word		type_info;
+	Word		value;
+	Word		exception;
+
+	if (event_info->MR_trace_port != MR_PORT_EXCEPTION) {
+		return "command only available from EXCP ports";
+	}
+
+	exception = MR_trace_get_exception_value();
+	if (exception == (Word) NULL) {
+		return "missing exception value";
+	}
+
+	type_info = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_TYPEINFO);
+	value = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_DATA);
+
+	(*browser)(type_info, value);
+
+	return (const char *) NULL;
 }
 
 static void
@@ -833,8 +859,11 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			const char	*problem;
 			int		n;
 
-			if streq(words[1], "*") {
+			if (streq(words[1], "*")) {
 				problem = MR_trace_browse_all(MR_mdb_out,
+					MR_trace_print_var);
+			} else if (streq(words[1], "exception")) {
+				problem = MR_trace_browse_exception(event_info,
 					MR_trace_print_var);
 			} else if (MR_trace_is_number(words[1], &n)) {
 				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
@@ -861,7 +890,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			const char	*problem;
 			int		n;
 
-			if (MR_trace_is_number(words[1], &n)) {
+			if (streq(words[1], "exception")) {
+				problem = MR_trace_browse_exception(event_info,
+					MR_trace_browse_var);
+			} else if (MR_trace_is_number(words[1], &n)) {
 				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 				var_spec.MR_var_spec_number = n;
 				problem = MR_trace_browse_one(NULL, var_spec,

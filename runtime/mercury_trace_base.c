@@ -299,6 +299,20 @@ MR_trace_report_raw(int fd)
 	}
 }
 
+static	Word		MR_trace_exception_value = (Word) NULL;
+
+void
+MR_trace_set_exception_value(Word exception)
+{
+	MR_trace_exception_value = exception;
+}
+
+Word
+MR_trace_get_exception_value(void)
+{
+	return MR_trace_exception_value;
+}
+
 #ifdef	MR_TRACE_HISTOGRAM
 
 void

@@ -22,6 +22,7 @@ DEBUGGER_PROGS=	\
 	browse_pretty			\
 	browser_test			\
 	debugger_regs			\
+	exception_value			\
 	exception_vars			\
 	existential_type_classes	\
 	implied_instance		\
@@ -89,6 +90,13 @@ browser_test.out: browser_test browser_test.inp
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
+
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+exception_value.out: exception_value exception_value.inp
+	$(MDB) ./exception_value < exception_value.inp 2>&1 | \
+		sed 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			> exception_value.out 2>&1
 
 # The exception_vars test is supposed to return a non-zero
 # exit status, since it exits by throwing an exception.
