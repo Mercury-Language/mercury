@@ -1075,23 +1075,21 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 % the generic data structures before and after the actual code generation,
 % which is delegated to goal-specific predicates.
 
-code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
+code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
 		% Make any changes to liveness before Goal
-	{ goal_is_atomic(Goal) ->
+	( goal_is_atomic(Goal) ->
 		IsAtomic = yes
 	;
 		IsAtomic = no
-	},
-	code_info__pre_goal_update(GoalInfo, IsAtomic),
-	code_info__get_instmap(Instmap),
-	(
-		{ instmap__is_reachable(Instmap) }
-	->
-		{ goal_info_get_code_model(GoalInfo, CodeModel) },
+	),
+	code_info__pre_goal_update(GoalInfo, IsAtomic, !CI),
+	code_info__get_instmap(Instmap, !CI),
+	( instmap__is_reachable(Instmap) ->
+		goal_info_get_code_model(GoalInfo, CodeModel),
 
 			% sanity check: code of some code models
 			% should occur only in limited contexts
-		{
+		(
 			CodeModel = model_det
 		;
 			CodeModel = model_semi,
@@ -1107,9 +1105,10 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			;
 				error("nondet model in det/semidet context")
 			)
-		},
+		),
 
-		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode),
+		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode,
+			!CI),
 
 			% If the predicate's evaluation method is memo,
 			% loopcheck or minimal model, the goal generated
@@ -1119,29 +1118,31 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			% retries across this procedure to reset the call table
 			% entry to uninitialized, effectively removing the
 			% call table entry.
+			%
+			% If tracing is not enabled, then CallTableVar isn't
+			% guaranteed to have a stack slot.
 		(
-			{ goal_info_get_features(GoalInfo, Features) },
-			{ set__member(call_table_gen, Features) },
-			code_info__get_proc_info(ProcInfo),
-			{ proc_info_get_call_table_tip(ProcInfo,
-				MaybeCallTableVar) },
-				% MaybeCallTableVar will be `no' unless
-				% tracing is enabled.
-			{ MaybeCallTableVar = yes(CallTableVar) }
+			goal_info_get_features(GoalInfo, Features),
+			set__member(call_table_gen, Features),
+			code_info__get_proc_info(ProcInfo, !CI),
+			proc_info_get_call_table_tip(ProcInfo,
+				MaybeCallTableVar),
+			MaybeCallTableVar = yes(CallTableVar),
+			code_info__get_maybe_trace_info(yes(_), !CI)
 		->
 			code_info__save_variables_on_stack([CallTableVar],
-				SaveCode),
-			{ Code = tree(GoalCode, SaveCode) }
+				SaveCode, !CI),
+			Code = tree(GoalCode, SaveCode)
 		;
-			{ Code = GoalCode }
+			Code = GoalCode
 		),
 
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
-		code_info__set_instmap(Instmap),
-		code_info__post_goal_update(GoalInfo)
+		code_info__set_instmap(Instmap, !CI),
+		code_info__post_goal_update(GoalInfo, !CI)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 %---------------------------------------------------------------------------%

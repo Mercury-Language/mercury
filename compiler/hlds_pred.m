@@ -2101,9 +2101,8 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% the live_vars pass; it is invalid
 					% before then.
  			call_table_tip	:: maybe(prog_var),
-					% If the tracing is enabled and the
- 					% procedure's evaluation method is
- 					% memo, loopcheck or minimal, this
+					% If the procedure's evaluation method
+					% is memo, loopcheck or minimal, this
  					% slot identifies the variable that
  					% holds the tip of the call table.
  					% Otherwise, this field will be set to
@@ -2126,7 +2125,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% variable, the code generator of the
 					% relevant backend must record this
 					% fact in a place accessible to the
-					% debugger.
+					% debugger, if debugging is enabled.
  			maybe_table_info :: maybe(proc_table_info),
 					% If set, it means that procedure
 					% has been subject to a tabling
