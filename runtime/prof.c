@@ -142,7 +142,7 @@ static void checked_signal(int sig, void (*disp)(int))
 	errno = 0;
 	if ( signal(sig, disp) == SIG_ERR ) {
 		fprintf(stderr,
-			"Mercury runtime: Cannot redirect signal: %s\n",
+			"Mercury runtime: cannot install signal handler: %s\n",
 			strerror(errno));
 		exit(1);
 	}
@@ -158,7 +158,7 @@ static void checked_signal(int sig, void (*disp)(int))
 **	prof_init_time_profile:
 **		Writes the value of HZ (no. of ticks per second.) at the start
 **		of the file 'Prof.Counts'.
-**		Then sets up the profiling timer and start's it up. 
+**		Then sets up the profiling timer and starts it up. 
 **		At the moment it is after every X ticks of the clock.
 **		SYSTEM SPECIFIC CODE
 */
@@ -224,7 +224,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
 **	prof_time_profile:
 **		Signal handler to be called when ever a SIGPROF is received.
 **		Saves the current code address into a hash table.  If the
-**		address already exists, it increments it's count.
+**		address already exists, it increments its count.
 */
 
 void prof_time_profile(int signum)
@@ -232,7 +232,7 @@ void prof_time_profile(int signum)
         prof_time_node *node, **node_addr, *new_node;
         int hash_value;
 
-	/* Ignore any signal's we get in this function. */
+	/* Ignore any signals we get in this function. */
 	checked_signal(SIGPROF, SIG_IGN);
 
         hash_value = hash_prof_addr(prof_current_proc);
