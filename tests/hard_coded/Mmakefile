@@ -7,7 +7,7 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
+ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	bidirectional \
@@ -44,7 +44,6 @@ PROGS=	\
 	expand \
 	export_test \
 	factt \
-	factt_non \
 	float_field \
 	float_map \
 	float_reg \
@@ -114,6 +113,17 @@ PROGS=	\
 	user_defined_equality \
 	write \
 	write_reg1
+
+# factt_non does not work in the hl* grades (e.g. hlc.gc),
+# because the code for nondet fact tables assumes that
+# we're using the LLDS back-end.
+ifeq "$(findstring hl,$(GRADE))" ""
+FACTT_NON_PROGS = factt_non
+else
+FACTT_NON_PROGS =
+endif
+
+PROGS = $(ORDINARY_PROGS) $(FACTT_NON_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.

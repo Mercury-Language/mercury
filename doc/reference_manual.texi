@@ -6139,8 +6139,13 @@ linked with the other object files when @samp{mmake @var{main_module}}
 is invoked.
 
 The main limitation of the @samp{fact_table} pragma is that
+in the current implementation,
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
+
+Another limitation is that the @samp{--high-level-code} back-end does
+not support @samp{pragma fact_table} for procedures with determinism
+@samp{nondet} or @samp{multi}.
 
 @node Tabled evaluation
 @section Tabled evaluation
