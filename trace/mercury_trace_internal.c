@@ -828,7 +828,7 @@ MR_trace_internal_create_mdb_window(void)
 		** XXX Some versions of xterm (such as that distributed
 		** with XFree86 3.3.6) give a warning about this (but it
 		** still works). The latest version distributed with
-		** XFree86 4 does not given a warning.
+		** XFree86 4 does not give a warning.
 		*/
 		sprintf(xterm_arg, "-SXX%d", master_fd);
 
