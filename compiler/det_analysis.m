@@ -44,7 +44,7 @@
 
 :- implementation.
 :- import_module list, map, set, prog_io, prog_out, hlds_out, std_util.
-:- import_module globals, options, io.
+:- import_module globals, options, io, mercury_to_mercury, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -290,12 +290,28 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 report_determinism_error(PredId, ModeId, Category, DeclaredCategory,
 		ModuleInfo) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ proc_info_context(ProcInfo, Context) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
+
 	prog_out__write_context(Context),
-	io__write_string("Error: determinism declaration not satisfied.\n"),
+	io__write_string("In `"),
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		{ varset__init(InstVarSet) },	% XXX inst var names
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string("':\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  Error: determinism declaration not satisfied.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Declared `"),
 	hlds_out__write_category(DeclaredCategory),
@@ -314,9 +330,25 @@ report_determinism_warning(PredId, ModeId, Category, DeclaredCategory,
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ proc_info_context(ProcInfo, Context) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ proc_info_argmodes(ProcInfo, ArgModes) },
+
+	prog_out__write_context(Context),
+	io__write_string("In `"),
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		io__write_string("("),
+		{ varset__init(InstVarSet) },	% XXX inst var names
+		mercury_output_mode_list(ArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string("':\n"),
+
 	prog_out__write_context(Context),
 	io__write_string(
-		"Warning: determinism declaration could be stricter.\n"
+		"  Warning: determinism declaration could be stricter.\n"
 	),
 	prog_out__write_context(Context),
 	io__write_string("  Declared `"),
