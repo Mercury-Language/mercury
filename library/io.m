@@ -6401,7 +6401,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	MR_list_nil(Args);
 		// We don't get the 0th argument: it is the executable name
 	while (--i > 0) {
-		MR_string_list_cons(Args, arg_vector[i], Args);
+		MR_list_cons(Args, arg_vector[i], Args);
 	}
 	MR_update_io(IO0, IO);
 ").

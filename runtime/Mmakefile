@@ -286,6 +286,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 # assembly of their own.  We put the runtime and library dlls into a single
 # assembly called `mercury'
 MS_CL_NOASM=:noAssembly
+MS_CSCFLAGS=/t:module
 
 # We need to build the following DLLs for the .NET runtime
 DOTNET_DLLS=mercury_il.dll mercury_mcpp.dll
