@@ -10,21 +10,15 @@
 MAIN_TARGET=trace
 
 MERCURY_DIR=..
+LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.trace.params
 
 #-----------------------------------------------------------------------------#
 
-M_ENV		= MERCURY_ALL_C_INCL_DIRS="\
-			-I$(BROWSER_DIR) \
-			-I$(LIBRARY_DIR) \
-			-I$(RUNTIME_DIR) \
-			-I$(BOEHM_GC_DIR) \
-			-I$(BOEHM_GC_DIR)/include \
-		  "
-CFLAGS	= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
-MGNUC		= $(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS	= --no-ansi
+CFLAGS		+= -I$(BROWSER_DIR) -g $(DLL_CFLAGS) \
+			-DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+MGNUCFLAGS	+= --no-ansi
 
 #-----------------------------------------------------------------------------#
 
@@ -87,16 +81,8 @@ OBJ_CHECKS	= $(OBJS:%=%.obj_check)
 
 LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
 			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
-LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
-		` case "$(GRADE)" in 					\
-		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
-		    *.par*.gc*)		echo "-lpar_gc" ;;		\
-		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
-		    *.gc*)		echo "-lgc" ;;			\
-		  esac							\
-		` 							\
-		$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)		\
-		$(READLINE_LIBRARIES)
+LDLIBS		= -l$(BROWSER_LIB_NAME) $(MLLIBS) $(SOCKET_LIBRARY) \
+			$(NSL_LIBRARY) $(DL_LIBRARY) $(READLINE_LIBRARIES)
 THREADLIBS	= \
 		` case "$(GRADE)" in					\
 		    *.par*) echo "-lpthread" ;;				\

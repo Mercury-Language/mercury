@@ -1,5 +1,6 @@
 #-----------------------------------------------------------------------------#
 
+include ../Mmake.common
 -include ../Mmake.params
 
 main_target: check

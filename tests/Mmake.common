@@ -1,5 +1,14 @@
 #-----------------------------------------------------------------------------#
 
+# Set up to test a particular workspace.
+ifdef WORKSPACE
+
+# Make sure we don't get the installed versions of the libraries.
+LINK_STATIC = yes
+include $(WORKSPACE)/Mmake.workspace
+
+endif
+
 #
 # Note: Mmake lets you override MCFLAGS for a particular file by setting
 # MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular

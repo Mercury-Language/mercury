@@ -177,6 +177,7 @@ run_query(Options, Program) -->
 		else
 			{ true }
 		),
+		cleanup_query(Options),
 		io__set_environment_var("MERCURY_OPTIONS", MERCURY_OPTIONS)
 	else
 		print("Unable to unset MERCURY_OPTIONS environment variable")
@@ -411,50 +412,37 @@ compile_file(Options, Succeeded) -->
 	%		for inferring the type etc. of query/N
 	%	-O0 --no-c-optimize
 	%		to improve compilation speed
+	%	--no-verbose-make
+	%		don't show which files are being made
+	%	--output-compile-error-lines 10000
+	%		output all errors
 	%	--no-warn-det-decls-too-lax
 	%	--no-warn-simple-code
 	%		to avoid spurious warnings in the automatically
 	%		generated parts of the query predicate
+	%	--link-flags --allow-undefined
+	%		needed to allow the query to reference
+	%		symbols defined in the program
 	%
 	{ string__append_list([
 		"mmc --grade ", grade_option, " ",
-		"--infer-all ",
+		"--infer-all --no-verbose-make ",
 		"--pic-reg ", "-O0 --no-c-optimize ",
 		"--no-warn-simple-code --no-warn-det-decls-too-lax ",
-		"-c ", Options,
-		" query.m"], Command) },
-	invoke_system_command(Command, Succeeded0),
-	( { Succeeded0 = yes } ->
-		% Figure out the location of the object file,
-		% which will depend on whether --use-subdirs was specified.
-		% XXX This code doesn't properly handle the case when the
-		% option is later overridden, e.g. if the options are
-		% `--use-subdirs --no-use-subdirs'.  But that case
-		% is not very likely to occur in practice...
-		{ string__sub_string_search(Options, "--use-subdirs", _) ->
-			QueryObject = "Mercury/os/query.o"
-		;
-			QueryObject = "query.o"
-		},
-			
-		% We use the following options:
-		%	--make-shared-lib
-		%		needed so we can dynamically load in the
-		%		code
-		%	--allow-undefined
-		%		needed to allow the query to reference
-		%		symbols defined in the program
-		%	--trace
-		{ string__append_list([
-			"ml --grade ", grade_option,
-			" --trace",
-			" --allow-undefined",
-			" --make-shared-lib ", Options,
-			" -o libquery.so ", QueryObject], Command2) },
-		invoke_system_command(Command2, Succeeded)
-	;
-		{ Succeeded = no }
-	).
+		"--output-compile-error-lines 10000 ",
+		"--link-flags --allow-undefined ", Options,
+		" --make libquery.so"], Command) },
+	invoke_system_command(Command, Succeeded).
+
+:- pred cleanup_query(options, state, state).
+:- mode cleanup_query(in, di, uo) is det.
+
+cleanup_query(Options) -->
+	invoke_system_command(
+		string__append_list(["mmc --grade ", grade_option, " ",
+			Options, " --make query.realclean"]),
+		_),
+	io__remove_file("query.m", _).
 
 :- func grade_option = string.
 %

@@ -51,8 +51,8 @@ NONWORKING_DECLARATIVE_PROGS=	\
 	ite_2			\
 	solutions
 
-MCFLAGS = --trace decl
-MLFLAGS = --trace
+MCFLAGS += --trace decl
+MLFLAGS += --trace
 
 MCFLAGS-deep_sub=--trace deep
 MCFLAGS-dependency=--trace rep

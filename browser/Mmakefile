@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2001 The University of Melbourne.
+# Copyright (C) 1998-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -16,11 +16,10 @@
 # compile the modules in this directory in debug grades as well.
 
 MERCURY_DIR=..
+LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=library
-
-VPATH=$(LIBRARY_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -28,34 +27,11 @@ VPATH=$(LIBRARY_DIR)
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params.
 
-M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="\
-			-I$(TRACE_DIR) \
-			-I$(LIBRARY_DIR) \
-			-I$(RUNTIME_DIR) \
-			-I$(BOEHM_GC_DIR) \
-			-I$(BOEHM_GC_DIR)/include \
-		"
-
-MCD	=	$(M_ENV) $(MC) --generate-dependencies
-MCI	=	$(M_ENV) $(MC) --make-interface
-MCPI	=	$(M_ENV) $(MC) --make-private-interface
-MCSI	=	$(M_ENV) $(MC) --make-short-interface
-MCOI	=	$(M_ENV) $(MC) --make-opt-int
-MCTOI	=	$(M_ENV) $(MC) --make-trans-opt
-MCG	=	$(M_ENV) $(MC) --compile-to-c
-MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
-MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(DLL_CFLAGS)
-LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
-LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
-		` case "$(GRADE)" in 					\
-		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
-		    *.par*.gc*)		echo "-lpar_gc" ;;		\
-		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
-		    *.gc*)		echo "-lgc" ;;			\
-		  esac							\
-		`
+CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
+MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
+		$(READLINE_LIBRARIES)
 
 # XXX Smart recompilation currently doesn't work when the module
 # name doesn't match the file name, so disable warnings about it
@@ -67,6 +43,8 @@ MCFLAGS += --no-warn-smart-recompilation
 MCFLAGS-mdb.declarative_user = --no-deforestation
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+LN	=	ln
 
 #-----------------------------------------------------------------------------#
 
@@ -135,25 +113,13 @@ ss: $(mdb.ss)
 library: lib$(BROWSER_LIB_NAME).$A lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 library: $(BROWSER_LIB_NAME).init
 
-lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A : $(mdb.os)
+lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A : libmdb.$A
 	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
-	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A \
-		$(mdb.os)
-	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(LN) libmdb.$A lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).$A
 
-RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
-RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-
-lib$(BROWSER_LIB_NAME).so : $(mdb.pic_os)
-	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED)				\
-		-o lib$(BROWSER_LIB_NAME).so				\
-		$(mdb.pic_os)						\
-		$(RPATH_1)$(RPATH_2)					\
-		$(LDFLAGS) $(LDLIBS)					\
-		$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)		\
-		$(READLINE_LIBRARIES)					\
-		$(SHARED_LIBS)
+lib$(BROWSER_LIB_NAME).so : libmdb.so
+	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).so
+	$(LN) libmdb.so lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).so
 
 $(BROWSER_LIB_NAME).init: $(deps_subdir)mdb.dep mdb.init
 	cp mdb.init $(BROWSER_LIB_NAME).init

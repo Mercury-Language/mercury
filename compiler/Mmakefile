@@ -7,6 +7,7 @@
 # Mmake - this is Mmake file for building the Mercury compiler 
 
 MERCURY_DIR=..
+LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury
@@ -30,52 +31,10 @@ GCC_MAIN_LIBS =
 GCC_BACKEND_LIBS =
 endif
 
-# Specify which compilers to use to compile the compiler.
-# Don't change these without good reason - if you want to
-# do a temporary change, change ../Mmake.params
-
-M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
-		MERCURY_ALL_C_INCL_DIRS="\
-			-I$(BROWSER_DIR) \
-			-I$(TRACE_DIR) \
-			-I$(LIBRARY_DIR) \
-			-I$(RUNTIME_DIR) \
-			-I$(BOEHM_GC_DIR) \
-			-I$(BOEHM_GC_DIR)/include \
-		"
-SMC	=	$(MC) --search-directory $(BROWSER_DIR)
-MCD	=	$(M_ENV) $(SMC) --generate-dependencies
-MCI	=	$(M_ENV) $(SMC) --make-interface
-MCPI	=	$(M_ENV) $(SMC) --make-private-interface
-MCSI	=	$(M_ENV) $(SMC) --make-short-interface
-MCOI	=	$(M_ENV) $(SMC) --make-optimization-interface
-MCTOI	=	$(M_ENV) $(SMC) --make-transitive-optimization-interface
-MCG	=	$(M_ENV) $(SMC) --compile-to-c
-MCE	=	$(M_ENV) $(SMC) --errorcheck-only
-MCS	=	$(M_ENV) $(SMC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
-MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-C2INIT =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
-		MERCURY_TRACE_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init" \
-		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
-ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--shared --no-main --mercury-libs none
-MLLIBS  =	../main.$O \
-		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
-		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
-		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
-		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A ` \
-		    case $(GRADE) in \
-			*.par*.gc*.prof*) \
-				echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
-			*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
-			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
-			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
-		    esac \
-		` \
-		$(GCC_BACKEND_LIBS) \
-		$(MATH_LIB)
-MTAGS	=	$(SCRIPTS_DIR)/mtags
-MTAGSFLAGS =	$(EXTRA_MTAGSFLAGS)
+MCFLAGS +=	-I $(BROWSER_DIR)
+ALL_MLLIBS =	../main.$O $(MLLIBS) $(EXTRA_MLLIBS) \
+			$(GCC_BACKEND_LIBS) $(MATH_LIB)
+MLFLAGS +=	--no-main --shared
 
 #
 # Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
@@ -187,7 +146,7 @@ PP_DATE_FILES = $(PREPROCESSED_MODULES:%=$(dates_subdir)%.pp_date)
 regenerate_preprocessed_files:
 	-[ -d ./$(dates_subdir) ] || mkdir -p ./$(dates_subdir)
 	touch $(PREPROCESSED_FILES)
-	$(MMAKE) $(PREPROCESSED_M_FILES)
+	MMAKE_DIR=$(SCRIPTS_DIR) $(MMAKE) $(PREPROCESSED_M_FILES)
 
 # The `.m' files for the preprocessed modules depend on the `.pp_date' files.
 $(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date

@@ -1,4 +1,3 @@
-echo on
 print *
 
 print *
@@ -41,7 +40,6 @@ print *
 #
 # Test interactive queries.
 #
-mmc_options --use-subdirs
 query interactive list
 append(X, Y, ['a', 'b', 'c']).
 qperm([1,2,3], List).

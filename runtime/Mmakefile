@@ -9,21 +9,14 @@
 MAIN_TARGET=runtime
 
 MERCURY_DIR=..
+LINK_BOEHM_GC_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 -include Mmake.runtime.params
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS	= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
-
-MGNUC		= MERCURY_ALL_C_INCL_DIRS=" \
-			-I$(RUNTIME_DIR) \
-			-I$(BOEHM_GC_DIR) \
-			-I$(BOEHM_GC_DIR)/include \
-			" \
-		  $(SCRIPTS_DIR)/mgnuc 
-MGNUCFLAGS	= --no-ansi
-MOD2C		= $(SCRIPTS_DIR)/mod2c
+CFLAGS	+= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+MGNUCFLAGS	+= --no-ansi
 
 #-----------------------------------------------------------------------------#
 
@@ -190,14 +183,8 @@ OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
 LDFLAGS		= -L$(BOEHM_GC_DIR)
-LDLIBS		= \
-		` case "$(GRADE)" in 					\
-		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
-		    *.par*.gc*)		echo "-lpar_gc" ;;		\
-		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
-		    *.gc*)		echo "-lgc" ;;			\
-		  esac							\
-		`
+LDLIBS		= $(SHARED_GC_LIBS)
+
 THREADLIBS	= \
 		` case "$(GRADE)" in					\
 		    *.par*) echo "-lpthread" ;;				\

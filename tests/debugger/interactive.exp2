@@ -169,6 +169,7 @@ No (more) solutions.
 <stdin>:001:   argument has type `int',
 <stdin>:001:   constant `"foo"' has type `string'.
 For more information, try recompiling with `-E'.
+** Error making `query.c'.
 qperm([1,2,"foo"], List).
 Compilation error(s) occurred.
 ?- <stdin>:026: Inferred :- pred query((list:list(int))).
@@ -183,6 +184,7 @@ Compilation error(s) occurred.
 <stdin>:026:   mode error: variable `HeadVar__2' has instantiatedness `free',
 <stdin>:026:   expected instantiatedness was `ground'.
 For more information, try recompiling with `-E'.
+** Error making `query.c'.
 qperm(List, [1]).
 Compilation error(s) occurred.
 ?- quit.

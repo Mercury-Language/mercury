@@ -13,43 +13,14 @@
 EXTRA_LDFLAGS =
 EXTRA_LDLIBS =
 #-----------------------------------------------------------------------------#
-
+ 
 MERCURY_DIR=..
+LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury
 
 VPATH=.
-
-#-----------------------------------------------------------------------------#
-
-# We need to compile the library with --strict-sequential for two reasons:
-# (1) Otherwise Mercury code that is compiled with --strict-sequential
-#     might do the wrong thing, because the standard library wasn't compiled
-#     with --strict-sequential.  (We could make it a separate grade, but
-#     that's not worth it.)
-# (2) The code for get_determinism in library/exception.m relies on it
-#     (in particular it relies on --no-reorder-disj).
-MCFLAGS += --strict-sequential
-
-# Generate dependencies for use by `mmc --make'.
-MCFLAGS += --generate-mmc-deps
-
-# Modules which use user-guided type specialization need to be
-# compiled with these flags to make sure all calls
-# to the builtin comparison routines are inlined.
-TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
-MCFLAGS-list += $(TYPE_SPEC_FLAGS)
-MCFLAGS-map += $(TYPE_SPEC_FLAGS)
-MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set += $(TYPE_SPEC_FLAGS)
-MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
-
-#-----------------------------------------------------------------------------#
-
-# Bug workarounds.
-
-MCFLAGS-std_util += --no-halt-at-warn
 
 #-----------------------------------------------------------------------------#
 
@@ -79,43 +50,46 @@ CHECK_TERM_OPTS =
 
 endif
 
-M_ENV	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="\
-			-I$(TRACE_DIR) \
-			-I$(RUNTIME_DIR) \
-			-I$(BOEHM_GC_DIR) \
-			-I$(BOEHM_GC_DIR)/include \
-		"
-MCD	=	$(M_ENV) $(MC) --generate-dependencies $(INTERMODULE_OPTS)
-MCI	=	$(M_ENV) $(MC) --make-interface $(INTERMODULE_OPTS) \
-			$(ENABLE_TERM_OPTS)
-MCPI	=	$(M_ENV) $(MC) --make-private-interface $(INTERMODULE_OPTS) \
-			$(ENABLE_TERM_OPTS)
-MCSI	=	$(M_ENV) $(MC) --make-short-interface $(INTERMODULE_OPTS) \
-			$(ENABLE_TERM_OPTS)
-MCOI	=	$(M_ENV) $(MC) --make-opt-int $(INTERMODULE_OPTS) \
-			$(ENABLE_TERM_OPTS)
-MCTOI	=	$(M_ENV) $(MC) --make-trans-opt $(INTERMODULE_OPTS) \
-			$(ENABLE_TERM_OPTS)
-MCG	=	$(M_ENV) $(MC) --compile-to-c --trace minimum \
-			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
-MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
-			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
-MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(DLL_CFLAGS)
-LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
-ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
-LDLIBS	=	-l$(RT_LIB_NAME) \
-		` case "$(GRADE)" in 					\
-		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
-		    *.par*.gc*)		echo "-lpar_gc" ;;		\
-		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
-		    *.gc*)		echo "-lgc" ;;			\
-		  esac							\
-		`
-ALL_LDLIBS =	$(LDLIBS) $(EXTRA_LDLIBS)
+# We need to compile the library with --strict-sequential for two reasons:
+# (1) Otherwise Mercury code that is compiled with --strict-sequential
+#     might do the wrong thing, because the standard library wasn't compiled
+#     with --strict-sequential.  (We could make it a separate grade, but
+#     that's not worth it.)
+# (2) The code for get_determinism in library/exception.m relies on it
+#     (in particular it relies on --no-reorder-disj).
+#
+# We compile the files in the library directory with --trace minimum by
+# default, which has no effect in non-debugging grades and causes the
+# library to be shallow traced, not deep traced, in debugging grades.
+# This is probably what most users want, and it makes it much easier to
+# maintain the expected output of the debugging test cases in debugging grades.
+#
+# Always generate dependencies for use by `mmc --make'.
+MCFLAGS += --strict-sequential --trace minimum --generate-mmc-deps \
+		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
+
+# Modules which use user-guided type specialization need to be
+# compiled with these flags to make sure all calls
+# to the builtin comparison routines are inlined.
+TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
+MCFLAGS-list += $(TYPE_SPEC_FLAGS)
+MCFLAGS-map += $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234 += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set += $(TYPE_SPEC_FLAGS)
+MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
+
+# Bug workarounds.
+MCFLAGS-std_util += --no-halt-at-warn
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
+MLFLAGS	+=	-R$(FINAL_INSTALL_MERC_LIB_DIR) \
+		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+LN	=	ln
 
 #-----------------------------------------------------------------------------#
 
@@ -266,22 +240,13 @@ lib_std: $(os_subdir)tree234.$O
 lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 lib_std: $(STD_LIB_NAME).init
 
-lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : $(library.os)
+lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A : liblibrary.$A
 	rm -f lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
-	$(AR) $(ALL_ARFLAGS) \
-		$(AR_LIBFILE_OPT)lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A \
-		$(library.os)
-	$(RANLIB) lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
+	$(LN) liblibrary.$A lib$(STD_LIB_NAME)$(DLL_DEF_LIB).$A
 
-RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
-RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
-
-lib$(STD_LIB_NAME).so : $(library.pic_os)
-	$(LINK_SHARED_OBJ) $(ERROR_UNDEFINED) 				\
-		-o lib$(STD_LIB_NAME).so $(library.pic_os)		\
-		$(RPATH_1)$(RPATH_2)					\
-		$(ALL_LDFLAGS) $(ALL_LDLIBS)				\
-		$(SHARED_LIBS)
+lib$(STD_LIB_NAME).so : liblibrary.so
+	rm -f lib$(STD_LIB_NAME).so
+	$(LN) liblibrary.so lib$(STD_LIB_NAME).so
 
 endif
 

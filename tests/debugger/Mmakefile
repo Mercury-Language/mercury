@@ -63,8 +63,8 @@ MCFLAGS-tabled_read_decl = --trace-table-io-decl
 # The optimization level also affects stack frame sizes.
 MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
 
-MCFLAGS = --trace deep
-MLFLAGS = --trace
+MCFLAGS += --trace deep
+MLFLAGS += --trace
 
 # We need to use shared libraries for interactive queries to work.
 # The following is necessary for shared libraries to work on Linux.
@@ -72,10 +72,11 @@ GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
 
 # Since the `interactive' test case requires the use of shared libraries,
-# this means it won't work properly if MERCURY_LIBS is set to point
-# to static libraries (as is done by tools/bootcheck and tools/lmc).
-# So we only enable it if MERCURY_LIBS is not set.
-ifeq "$(origin MERCURY_LIBS)" "undefined"
+# this means it won't work properly if the static libraries are linked
+# (as is done by tools/bootcheck and tools/lmc).
+# So we only enable it if LINK_STATIC is not set.
+LINK_STATIC ?= no
+ifeq ($(LINK_STATIC),no)
 	RETRY_PROGS := $(RETRY_PROGS) interactive
 endif
 
@@ -299,13 +300,24 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 # to have been built.
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
-INTERACTIVE_INP = interactive.inp.subdirs
+USE_SUBDIRS_OPT = --use-subdirs
 else
-INTERACTIVE_INP = interactive.inp.nosubdirs
+USE_SUBDIRS_OPT =
 endif
 
-interactive.out.orig: interactive $(INTERACTIVE_INP) $(interactive.ints)
-	$(MDB) ./interactive < $(INTERACTIVE_INP) > interactive.out.orig 2>&1
+# We need $(...) style command substitution for the rule below.
+# (MC_MAKE_FLAGS can contain `...` style command substitution,
+# which can't be nested).
+SHELL=/usr/local/bin/bash
+
+interactive.out.orig: interactive interactive.inp $(interactive.ints)
+	echo "echo on" > interactive.inp.tmp
+	echo mmc_options $(USE_SUBDIRS_OPT) \
+			$$(echo $(MC_MAKE_FLAGS) $(ALL_MCFLAGS)) \
+			--trace minimum >> interactive.inp.tmp
+	cat interactive.inp >> interactive.inp.tmp
+	$(MDB) ./interactive < interactive.inp.tmp > interactive.out.orig 2>&1
+	rm -f interactive.inp.tmp
 
 # We pipe the output through sed to avoid differences for `--use-subdirs',
 # and to remove some spurious warnings that `gcc' and `ld' issue.
@@ -315,7 +327,7 @@ interactive.out.orig: interactive $(INTERACTIVE_INP) $(interactive.ints)
 interactive.out: interactive.out.orig
 	cat interactive.out.orig | \
 		sed \
-		    -e '/mdb> mmc_options --use-subdirs/d' \
+		    -e '/mdb> mmc_options/d' \
 		    -e '/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,$$/N' \
 		    -e 's/In file included from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_trace_base.h:[0-9]*,.//' \
 		    -e '/                 from \/home\/mercury\/public\/.a\/lib\/mercury\/inc\/mercury_wrapper.h:[0-9]*,$$/N' \

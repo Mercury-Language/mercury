@@ -19,6 +19,7 @@
 #-----------------------------------------------------------------------------#
 
 MERCURY_DIR=..
+LINK_BOEHM_GC_ONLY=yes
 include ../Mmake.common
 
 # Primary targets:

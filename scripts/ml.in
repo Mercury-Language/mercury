@@ -80,7 +80,7 @@ DL_LIBRARY="@DL_LIBRARY@"
 # Likewise for -lreadline -l{termcap,curses,ncurses}
 READLINE_LIBRARIES="@READLINE_LIBRARIES@"
 
-# If you change these, you will also need to change Mmake.common.in,
+# If you change these, you will also need to change Mmake.workspace,
 # scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
 # and tools/linear.
 RT_LIB_NAME=mer_rt

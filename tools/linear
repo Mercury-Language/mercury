@@ -44,7 +44,7 @@ Options:
 "
 
 # If you change this, you will also need to change scripts/ml.in,
-# scripts/c2init.in, Mmake.common.in, tools/bootcheck, tools/binary
+# scripts/c2init.in, Mmake.workspace, tools/bootcheck, tools/binary
 # and tools/binary_step.
 STD_LIB_NAME=mer_std
 

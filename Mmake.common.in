@@ -19,13 +19,16 @@
 
 include $(MERCURY_DIR)/VERSION
 
+WORKSPACE=$(MERCURY_DIR)
+include $(MERCURY_DIR)/Mmake.workspace
+
 #-----------------------------------------------------------------------------#
 
-# Specify the Mercury compiler to use for bootstrapping
-MC			= @BOOTSTRAP_MC@
+# Specify the Mercury compiler to use for bootstrapping.
+MC		= @BOOTSTRAP_MC@
 
-# Specify the compilation model to use for compiling the compiler
-GRADE			= @GRADE@
+# Specify the compilation model to use for compiling the compiler.
+GRADE		= @GRADE@
 
 # Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
 EXT_FOR_EXE	= @EXT_FOR_EXE@
@@ -36,7 +39,7 @@ EXT_FOR_EXE	= @EXT_FOR_EXE@
 # or as `a' if it doesn't.
 EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
-# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs
+# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs.
 USE_DLLS		= @USE_DLLS@
 
 # Specify any special flags to pass to the C compiler when creating objects
@@ -113,15 +116,6 @@ SHARED_LIBS		= @SHARED_LIBS@
 INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
 FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 
-SCRIPTS_DIR = $(MERCURY_DIR)/scripts
-RUNTIME_DIR = $(MERCURY_DIR)/runtime
-LIBRARY_DIR = $(MERCURY_DIR)/library
-TRACE_DIR = $(MERCURY_DIR)/trace
-BROWSER_DIR = $(MERCURY_DIR)/browser
-BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
-COMPILER_DIR = $(MERCURY_DIR)/compiler
-UTIL_DIR = $(MERCURY_DIR)/util
-
 # By default, GRADESTRING is defined as the result of invoking
 # `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
 # But when installing the standard library, the compiler will not yet
@@ -133,22 +127,8 @@ UTIL_DIR = $(MERCURY_DIR)/util
 # compiler itself should be done by setting GRADE, not GRADEFLAGS.
 GRADESTRING		= $(GRADE)
 
-# The names of the various libraries.
-# The archives and shared object objects have a "lib" prefix and a ".a" or
-# ".so" (or ".dll") suffix around these names; the initialization files
-# have just a ".init" suffix. (The trace library does not have a .init file,
-# since it contains no Mercury code.)
-#
-# If you change these, you will also need to change scripts/ml.in,
-# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
-# and tools/linear.
-RT_LIB_NAME = mer_rt
-STD_LIB_NAME = mer_std
-TRACE_LIB_NAME = mer_trace
-BROWSER_LIB_NAME = mer_browser
-
 # Options to pass to the Mercury compiler
-MCFLAGS	= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
+MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule

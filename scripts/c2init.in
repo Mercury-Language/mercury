@@ -25,7 +25,7 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
-# If you change these, you will also need to change Mmake.common.in,
+# If you change these, you will also need to change Mmake.workspace
 # scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
 # tools/linear.
 RT_LIB_NAME=mer_rt

@@ -1,0 +1,156 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2002 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# Mmake.workspace - build a program or library using the current workspace,
+# not an installed library.
+#
+# The variable WORKSPACE must be set externally.
+# 
+# If the variable LINK_STATIC is set to `yes', the names of the `.a' files
+# for the Mercury libraries will be included in MLLIBS, otherwise
+# `-l' options will be included.
+#
+# Setting LINK_BOEHM_GC_ONLY to `yes' causes only the boehm_gc directory
+# to be included in MLFLAGS, MLLIBS and CFLAGS.
+
+# Setting LINK_RUNTIME_ONLY to `yes' causes only the boehm_gc and runtime
+# directories to be included in MLFLAGS, MLLIBS and CFLAGS.
+
+# Setting LINK_STDLIB_ONLY to `yes' causes only the boehm_gc, runtime
+# and library directories to be included in MLFLAGS, MLLIBS and CFLAGS.
+
+#-----------------------------------------------------------------------------#
+LINK_STATIC ?= no
+LINK_BOEHM_GC_ONLY ?= no
+LINK_RUNTIME_ONLY ?= no
+LINK_STDLIB_ONLY ?= no
+
+SCRIPTS_DIR = $(WORKSPACE)/scripts
+RUNTIME_DIR = $(WORKSPACE)/runtime
+LIBRARY_DIR = $(WORKSPACE)/library
+TRACE_DIR = $(WORKSPACE)/trace
+BROWSER_DIR = $(WORKSPACE)/browser
+BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
+COMPILER_DIR = $(WORKSPACE)/compiler
+UTIL_DIR = $(WORKSPACE)/util
+
+# The names of the various libraries.
+# The archives and shared object objects have a "lib" prefix and a ".a" or
+# ".so" (or ".dll") suffix around these names; the initialization files
+# have just a ".init" suffix. (The trace library does not have a .init file,
+# since it contains no Mercury code.)
+#
+# If you change these, you will also need to change scripts/ml.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME = mer_rt
+STD_LIB_NAME = mer_std
+TRACE_LIB_NAME = mer_trace
+BROWSER_LIB_NAME = mer_browser
+
+MC =		$(SCRIPTS_DIR)/mmc
+MGNUC =		$(SCRIPTS_DIR)/mgnuc
+ML =		$(SCRIPTS_DIR)/ml
+C2INIT =	MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+MTAGS =		$(SCRIPTS_DIR)/mtags
+MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
+
+VPATH =		$(LIBRARY_DIR)
+
+MCFLAGS += 	--no-mercury-stdlib-dir -I$(LIBRARY_DIR)
+MGNUCFLAGS +=	--no-mercury-stdlib-dir
+C2INITFLAGS += 	--trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init
+C2INITARGS +=	$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
+		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
+MLFLAGS +=	--no-mercury-stdlib-dir
+
+#
+# MC_MAKE_FLAGS contains flags to be used by `mmc --make'.
+# This will also include flags to pass to ml.
+#
+MC_MAKE_FLAGS += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
+		--init-file $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
+		--init-file $(RUNTIME_DIR)/$(RT_LIB_NAME).init
+
+#
+# Work out the C include directories.
+#
+C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
+ifneq ($(LINK_BOEHM_GC_ONLY),yes)
+C_INCL_DIRS +=	-I$(RUNTIME_DIR)
+ifneq ($(LINK_RUNTIME_ONLY),yes)
+C_INCL_DIRS +=	-I$(LIBRARY_DIR)
+ifneq ($(LINK_STDLIB_ONLY),yes)
+C_INCL_DIRS +=	-I$(BROWSER_DIR) -I$(TRACE_DIR)
+endif
+endif
+endif
+CFLAGS +=	$(C_INCL_DIRS)
+MC_MAKE_FLAGS += $(patsubst -I%,--c-include-directory %,$(C_INCL_DIRS))
+
+#
+# Work out which libraries to link with.
+#
+STATIC_GC_LIBS =						\
+	`							\
+	    case $(GRADE) in					\
+		*.par*.gc*.prof*) echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
+		*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
+		*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
+		*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
+	    esac						\
+	`
+SHARED_GC_LIBS =						\
+	`							\
+	    case $(GRADE) in					\
+		*.par*.gc*.prof*) echo -lpar_gc_prof ;;		\
+		*.par*.gc*)	echo -libpar_gc ;;		\
+		*.gc*.prof*)	echo -lgc_prof ;;		\
+		*.gc*)		echo -lgc ;;			\
+	    esac						\
+	`
+
+ifeq ($(LINK_STATIC),yes)
+
+STATIC_LIBS := $(STATIC_GC_LIBS)
+ifneq ($(LINK_BOEHM_GC_ONLY),yes)
+STATIC_LIBS := $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A $(STATIC_LIBS)
+ifneq ($(LINK_RUNTIME_ONLY),yes)
+STATIC_LIBS := $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A $(STATIC_LIBS)
+ifneq ($(LINK_STDLIB_ONLY),yes)
+STATIC_LIBS := $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A $(STATIC_LIBS)
+endif
+endif
+endif
+
+MLLIBS +=	$(STATIC_LIBS)
+MC_MAKE_FLAGS += $(patsubst %,--link-object %,$(STATIC_LIBS))
+
+else # LINK_STATIC != yes
+
+NON_STATIC_LIBS := $(SHARED_GC_LIBS)
+NON_STATIC_LIB_DIRS := -L$(BOEHM_GC_DIR) -R$(BOEHM_GC_DIR)
+ifneq ($(LINK_BOEHM_GC_ONLY),yes)
+NON_STATIC_LIBS := -l$(RT_LIB_NAME) $(NON_STATIC_LIBS)
+NON_STATIC_LIB_DIRS := -L$(RUNTIME_DIR) -R$(RUNTIME_DIR) $(NON_STATIC_LIB_DIRS)
+ifneq ($(LINK_RUNTIME_ONLY),yes)
+NON_STATIC_LIBS := -l$(STD_LIB_NAME) $(NON_STATIC_LIBS)
+NON_STATIC_LIB_DIRS := -L$(LIBRARY_DIR) -R$(LIBRARY_DIR) $(NON_STATIC_LIB_DIRS)
+ifneq ($(LINK_STDLIB_ONLY),yes)
+NON_STATIC_LIBS := -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME) $(NON_STATIC_LIBS)
+NON_STATIC_LIB_DIRS := -L$(TRACE_DIR) -R$(TRACE_DIR) -L$(BROWSER_DIR) \
+			-R$(BROWSER_DIR) $(NON_STATIC_LIB_DIRS)
+endif
+endif
+endif
+
+MLFLAGS +=	$(NON_STATIC_LIB_DIRS)
+MLLIBS +=	$(NON_STATIC_LIBS)
+MC_MAKE_FLAGS += $(patsubst -R%,--link-flags -R%,$(NON_STATIC_LIB_DIRS)) \
+			$(NON_STATIC_LIBS)
+
+endif # LINK_STATIC != yes
+
