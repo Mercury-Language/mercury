@@ -467,12 +467,15 @@ output_c_label_decl(Label, ProcsPerFunc) -->
 		io__write_string(");\n")
 	;
 		{ Label = local(_) },
+		% if we are splitting procs between functions, then
+		% every procedure could be referred to by a procedure
+		% in a different function, so make them static, not local
 		( { ProcsPerFunc = 0 } ->
 			io__write_string("Declare_local("),
 			output_label(Label),
 			io__write_string(");\n")
 		;
-			io__write_string("Define_extern_entry("),
+			io__write_string("Declare_static("),
 			output_label(Label),
 			io__write_string(");\n")
 		)
@@ -1181,13 +1184,13 @@ output_label_defn(local(ProcLabel)) -->
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
 	% if we are splitting procs between functions, then
 	% every procedure could be referred to by a procedure
-	% in a different function, so don't make them local
+	% in a different function, so make them static, not local
 	( { ProcsPerFunc = 0 } ->
 		io__write_string("Define_local("),
 		output_proc_label(ProcLabel),
 		io__write_string("_l);")	% l for "local".
 	;
-		io__write_string("Define_entry("),
+		io__write_string("Define_static("),
 		output_proc_label(ProcLabel),
 		io__write_string(");")
 	).
