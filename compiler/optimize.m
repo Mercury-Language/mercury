@@ -35,7 +35,7 @@
 
 optimize__main([], []) --> [].
 optimize__main([Proc0|Procs0], [Proc|Procs]) -->
-	optimize__proc(Proc0, Proc),
+	optimize__proc(Proc0, Proc), !,
 	optimize__main(Procs0, Procs).
 
 optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),

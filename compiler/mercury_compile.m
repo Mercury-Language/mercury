@@ -114,7 +114,7 @@ strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
 
 process_module_list([]) --> [].
 process_module_list([Module | Modules]) -->
-	process_module(Module),
+	process_module(Module), !,
 	process_module_list(Modules).
 
 	% Open the file and process it.
@@ -142,7 +142,7 @@ process_module_2(ModuleName) -->
 	maybe_write_string(Verbose, "% Parsing `"),
 	maybe_write_string(Verbose, ModuleName),
 	maybe_write_string(Verbose, ".m' and imported interfaces...\n"),
-	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error),
+	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error), !,
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
 
@@ -196,9 +196,9 @@ process_module_2(ModuleName) -->
 mercury_compile(Module, FactDeps) -->
 	{ Module = module_imports(ModuleName, _, _, _, _) },
 	mercury_compile__pre_hlds_pass(Module, FactDeps, HLDS1, UndefTypes,
-						UndefModes, Errors1),
+						UndefModes, Errors1), !,
 	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
-						UndefModes, Errors2),
+						UndefModes, Errors2), !,
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
@@ -221,7 +221,7 @@ mercury_compile(Module, FactDeps) -->
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
-		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
+		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
 		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
 		( { HighLevelC = yes } ->
 			{ string__append(ModuleName, ".c", C_File) },
@@ -235,7 +235,7 @@ mercury_compile(Module, FactDeps) -->
 				[]
 			)
 		;
-			mercury_compile__backend_pass(HLDS50, HLDS70, LLDS),
+			mercury_compile__backend_pass(HLDS50, HLDS70, LLDS), !,
 			mercury_compile__output_pass(HLDS70, LLDS,
 				ModuleName, _CompileErrors)
 		)
@@ -259,9 +259,9 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 
 	{ ModuleImports0 = module_imports(Module, LongDeps,
 					ShortDeps, Items0, _) },
-	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps),
+	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps), !,
 	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
-					Stats, _, UndefTypes0, UndefModes0),
+					Stats, _, UndefTypes0, UndefModes0), !,
 		% Items from optimization interfaces are needed before
 		% equivalence types are expanded, but after module
 		% qualification.
@@ -269,16 +269,16 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 							Items1, no) },
 		% Errors in .opt files result in software errors.
 	mercury_compile__maybe_grab_optfiles(ModuleImports1, Verbose,
-					 ModuleImports2, IntermodError),
+					 ModuleImports2, IntermodError), !,
 	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
 	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
-					Items, CircularTypes, EqvMap),
+					Items, CircularTypes, EqvMap), !,
 	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
 	mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
-				HLDS0, UndefTypes2, UndefModes2, FoundError),
+				HLDS0, UndefTypes2, UndefModes2, FoundError), !,
 	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
-	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
+	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"), !,
 
 	% Only stop on syntax errors in .opt files.
 	( { FoundError = yes ; IntermodError = yes } ->
@@ -379,7 +379,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS1, HLDS3, FoundTypeError),
+	    typecheck(HLDS1, HLDS3, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -400,7 +400,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    ;
 		( { FoundTypeError = no } ->
 		    mercury_compile__maybe_write_optfile(MakeOptInt,
-		    		HLDS3, HLDS4),
+		    		HLDS3, HLDS4), !,
 		    ( { MakeOptInt = no } ->
 			%
 			% We can't continue after an undefined insts/mode
@@ -506,28 +506,30 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		{ HLDS12 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
+		!,
 		mercury_compile__maybe_dump_hlds(HLDS6, "6", "switch_detect"),
+		!,
 
-		mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7),
-		mercury_compile__maybe_dump_hlds(HLDS7, "7", "cse"),
+		mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7), !,
+		mercury_compile__maybe_dump_hlds(HLDS7, "7", "cse"), !,
 
 		mercury_compile__check_determinism(HLDS7, Verbose, Stats, HLDS8,
-			FoundDetError),
-		mercury_compile__maybe_dump_hlds(HLDS8, "8", "determinism"),
+			FoundDetError), !,
+		mercury_compile__maybe_dump_hlds(HLDS8, "8", "determinism"), !,
 
 		mercury_compile__check_unique_modes(HLDS8, Verbose, Stats,
-			HLDS9, FoundUniqError),
-		mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"),
+			HLDS9, FoundUniqError), !,
+		mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"), !,
 		
 		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
-			HLDS10, FoundStratError),
+			HLDS10, FoundStratError), !,
 		mercury_compile__maybe_dump_hlds(HLDS10, "10",
-			"stratification"),
+			"stratification"), !,
 
 		globals__io_lookup_bool_option(warn_simple_code, Warn),
 		mercury_compile__simplify(HLDS10, Warn, no,
-			Verbose, Stats, HLDS11),
-		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"),
+			Verbose, Stats, HLDS11), !,
+		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"), !,
 
 		%
 		% work out whether we encountered any errors
@@ -550,7 +552,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 				make_optimization_interface, MakeOptInt),
 			{ Intermod = yes, MakeOptInt = no ->
 				intermod__adjust_pred_import_status(HLDS11,
-					HLDS12)
+					HLDS12), !
 			;
 				HLDS12 = HLDS11
 			}
@@ -585,47 +587,50 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28),
-	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"),
+	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28), !,
+	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"), !,
 
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
-	mercury_compile__maybe_dump_hlds(HLDS29, "29", "base_type_infos"),
+	!,
+	mercury_compile__maybe_dump_hlds(HLDS29, "29", "base_type_infos"), !,
 
 	mercury_compile__maybe_base_type_layouts(HLDS29, Verbose, Stats,HLDS30),
-	mercury_compile__maybe_dump_hlds(HLDS30, "30", "base_type_layouts"),
+	!,
+	mercury_compile__maybe_dump_hlds(HLDS30, "30", "base_type_layouts"), !,
 
 	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
+	!,
 
 	% stage number 31 is used by mercury_compile__maybe_bytecodes
 
-	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS32),
-	mercury_compile__maybe_dump_hlds(HLDS32, "32", "higher_order"),
+	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS32), !,
+	mercury_compile__maybe_dump_hlds(HLDS32, "32", "higher_order"), !,
 
-	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34),
-	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
+	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34), !,
+	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"), !,
 
 	% dnf transformations should be after inlining
 	% magic sets transformations should be before constraints
-	mercury_compile__maybe_transform_dnf(HLDS34, Verbose, Stats, HLDS38),
-	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"),
+	mercury_compile__maybe_transform_dnf(HLDS34, Verbose, Stats, HLDS38), !,
+	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"), !,
 
-	mercury_compile__maybe_constraints(HLDS38, Verbose, Stats, HLDS40),
-	mercury_compile__maybe_dump_hlds(HLDS40, "40", "constraint"),
+	mercury_compile__maybe_constraints(HLDS38, Verbose, Stats, HLDS40), !,
+	mercury_compile__maybe_dump_hlds(HLDS40, "40", "constraint"), !,
 
-	mercury_compile__maybe_unused_args(HLDS40, Verbose, Stats, HLDS43),
-	mercury_compile__maybe_dump_hlds(HLDS43, "43", "unused_args"),
+	mercury_compile__maybe_unused_args(HLDS40, Verbose, Stats, HLDS43), !,
+	mercury_compile__maybe_dump_hlds(HLDS43, "43", "unused_args"), !,
 
-	mercury_compile__maybe_dead_procs(HLDS43, Verbose, Stats, HLDS46),
-	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"),
+	mercury_compile__maybe_dead_procs(HLDS43, Verbose, Stats, HLDS46), !,
+	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"), !,
 
-	mercury_compile__maybe_lco(HLDS46, Verbose, Stats, HLDS47),
-	mercury_compile__maybe_dump_hlds(HLDS47, "47", "lco"),
+	mercury_compile__maybe_lco(HLDS46, Verbose, Stats, HLDS47), !,
+	mercury_compile__maybe_dump_hlds(HLDS47, "47", "lco"), !,
 
 	% map_args_to_regs affects the interface to a predicate,
 	% so it must be done in one phase immediately before code generation
 
-	mercury_compile__map_args_to_regs(HLDS47, Verbose, Stats, HLDS49),
-	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"),
+	mercury_compile__map_args_to_regs(HLDS47, Verbose, Stats, HLDS49), !,
+	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"), !,
 
 	{ HLDS50 = HLDS49 },
 	mercury_compile__maybe_dump_hlds(HLDS49, "50", "middle_pass").
@@ -657,34 +662,35 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_followcode(HLDS50, Verbose, Stats, HLDS52),
-	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"),
+	mercury_compile__maybe_followcode(HLDS50, Verbose, Stats, HLDS52), !,
+	mercury_compile__maybe_dump_hlds(HLDS52, "52", "followcode"), !,
 
-	mercury_compile__simplify(HLDS52, no, yes, Verbose, Stats, HLDS53),
-	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
+	mercury_compile__simplify(HLDS52, no, yes, Verbose, Stats, HLDS53), !,
+	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"), !,
 
-	mercury_compile__maybe_saved_vars(HLDS53, Verbose, Stats, HLDS56),
-	mercury_compile__maybe_dump_hlds(HLDS56, "56", "savedvars"),
+	mercury_compile__maybe_saved_vars(HLDS53, Verbose, Stats, HLDS56), !,
+	mercury_compile__maybe_dump_hlds(HLDS56, "56", "savedvars"), !,
 
-	mercury_compile__compute_liveness(HLDS56, Verbose, Stats, HLDS59),
-	mercury_compile__maybe_dump_hlds(HLDS59, "59", "liveness"),
+	mercury_compile__compute_liveness(HLDS56, Verbose, Stats, HLDS59), !,
+	mercury_compile__maybe_dump_hlds(HLDS59, "59", "liveness"), !,
 
-	mercury_compile__compute_stack_vars(HLDS59, Verbose, Stats, HLDS65),
-	mercury_compile__maybe_dump_hlds(HLDS65, "65", "stackvars"),
+	mercury_compile__compute_stack_vars(HLDS59, Verbose, Stats, HLDS65), !,
+	mercury_compile__maybe_dump_hlds(HLDS65, "65", "stackvars"), !,
 
-	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68),
-	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"),
+	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68), !,
+	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"), !,
 
 	maybe_report_sizes(HLDS68),
 
 	{ HLDS90 = HLDS68 },
-	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"),
+	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"), !,
 
 	mercury_compile__generate_code(HLDS90, Verbose, Stats, HLDS95, LLDS1),
-	mercury_compile__maybe_dump_hlds(HLDS95, "95", "codegen"),
+	!,
+	mercury_compile__maybe_dump_hlds(HLDS95, "95", "codegen"), !,
 
 	{ HLDS99 = HLDS95 },
-	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"),
+	mercury_compile__maybe_dump_hlds(HLDS99, "99", "final"), !,
 
 	mercury_compile__maybe_do_optimize(LLDS1, Verbose, Stats, LLDS).
 
@@ -724,7 +730,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 			[]
 		),
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
-			PredInfo, ModuleInfo0, ModuleInfo1, Code1)
+			PredInfo, ModuleInfo0, ModuleInfo1, Code1), !
 	),
 	mercury_compile__backend_pass_by_preds_2(PredIds,
 		ModuleInfo1, ModuleInfo, Code2),
