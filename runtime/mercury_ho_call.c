@@ -474,7 +474,7 @@ MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 
 #define return_answer(answer)						\
 	do {								\
-		MR_restore_transient_registers();			\
+		MR_save_transient_registers();				\
 		return (answer);					\
 	} while (0)
 

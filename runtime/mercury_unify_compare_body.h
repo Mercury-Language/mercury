@@ -659,7 +659,7 @@ start_label:
                     (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
                 MR_restore_transient_registers();
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-                if (result == MR_COMPARE_EQUAL) {
+                if (result) {
                     unify_call_exit_code(typectordesc_unify);
                 } else {
                     unify_call_fail_code(typectordesc_unify);
