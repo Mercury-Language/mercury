@@ -579,19 +579,21 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 :- pred write_origin(wrap(S)::in, subterm_origin(edt_node(R))::in,
 	io__state::di, io__state::uo) is det <= annotated_trace(S, R).
 
-write_origin(wrap(Store), Origin) -->
-	( { Origin = output(dynamic(NodeId), ArgPos, TermPath) } ->
-		{ exit_node_from_id(Store, NodeId, ExitNode) },
-		{ ProcName = ExitNode ^ exit_atom ^ proc_name },
-		io__write_string("output("),
-		io__write_string(ProcName),
-		io__write_string(", "),
-		io__write(ArgPos),
-		io__write_string(", "),
-		io__write(TermPath),
-		io__write_string(")")
+write_origin(wrap(Store), Origin, !IO) :-
+	(Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
+		exit_node_from_id(Store, NodeId, ExitNode),
+		ProcId = get_proc_id_from_layout(
+			ExitNode ^ exit_atom ^ proc_layout),
+		ProcName = get_proc_name(ProcId),
+		io__write_string("output(", !IO),
+		io__write_string(ProcName, !IO),
+		io__write_string(", ", !IO),
+		io__write(ArgPos, !IO),
+		io__write_string(", ", !IO),
+		io__write(TermPath, !IO),
+		io__write_string(")", !IO)
 	;
-		io__write(Origin)
+		io__write(Origin, !IO)
 	).
 
 :- pragma foreign_code("C",

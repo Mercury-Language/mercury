@@ -1076,7 +1076,7 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
 :- pred trace_atom_subterm_is_ground(trace_atom, arg_pos, term_path).
 :- mode trace_atom_subterm_is_ground(in, in, in) is semidet.
 
-trace_atom_subterm_is_ground(atom(_, _, _, Args), ArgPos, _) :-
+trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
 	select_arg_at_pos(ArgPos, Args, ArgInfo),
 	ArgInfo = arg_info(_, _, MaybeArg),
 	MaybeArg = yes(_).

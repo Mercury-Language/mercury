@@ -337,7 +337,7 @@ browse_decl_bug_arg(Bug, ArgNum, User0, User) -->
 	is cc_multi.
 
 browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
-	{ Atom = atom(_, _, _, Args0) },
+	{ Atom = atom(_, Args0) },
 	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
 	(
 		{ list__index1(Args, ArgNum, ArgInfo) },
@@ -369,7 +369,7 @@ print_atom_arguments(Atom, From, To, User0) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 print_atom_argument(Atom, ArgNum, User0, OK) -->
-	{ Atom = atom(_, _, _, Args0) },
+	{ Atom = atom(_, Args0) },
 	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
 	(
 		{ list__index1(Args, ArgNum, ArgInfo) },
@@ -676,20 +676,27 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom) -->
 :- pred write_decl_atom(user_state::in, string::in, browse_caller_type::in,
 	some_decl_atom::in, io__state::di, io__state::uo) is cc_multi.
 
-write_decl_atom(User, Indent, CallerType, DeclAtom) -->
-	io__write_string(User ^ outstr, Indent),
-	{ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) },
-	{ TraceAtom = atom(PredOrFunc, _, Functor, Args0) },
-	{ Which = chosen_head_vars_presentation },
-	{ maybe_filter_headvars(Which, Args0, Args1) },
-	{ list__map(trace_atom_arg_to_univ, Args1, Args) },
+write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
+	io__write_string(User ^ outstr, Indent, !IO),
+	unravel_decl_atom(DeclAtom, TraceAtom, IoActions),
+	TraceAtom = atom(ProcLabel, Args0),
+	ProcId = get_proc_id_from_layout(ProcLabel),
+	(
+		ProcId = proc(_, PredOrFunc, _, Functor, _, _)
+	;
+		ProcId = uci_proc(_, _, _, Functor, _, _), 
+		PredOrFunc = predicate
+	),
+	Which = chosen_head_vars_presentation,
+	maybe_filter_headvars(Which, Args0, Args1),
+	list__map(trace_atom_arg_to_univ, Args1, Args),
 		%
 		% Call the term browser to print the atom (or part of it
 		% up to a size limit) as a goal.
 		%
 	browse__print_synthetic(Functor, Args, is_function(PredOrFunc),
-		User ^ outstr, CallerType, User ^ browser),
-	write_io_actions(User, IoActions).
+		User ^ outstr, CallerType, User ^ browser, !IO),
+	write_io_actions(User, IoActions, !IO).
 
 :- pred trace_atom_arg_to_univ(trace_atom_arg::in, univ::out) is det.
 

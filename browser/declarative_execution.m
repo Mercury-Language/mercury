@@ -21,7 +21,7 @@
 :- import_module mdb__util.
 :- import_module mdbcomp__program_representation.
 
-:- import_module list, std_util, string, io, bool.
+:- import_module list, std_util, io, bool.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
@@ -175,16 +175,12 @@
 
 :- type trace_atom
 	--->	atom(
-			pred_or_func		:: pred_or_func,
-
-			module_name		::string,
-						% The module in which the 
-						% procedure was declared.
-			
-			proc_name		:: string,
-						% Procedure name.
-						%
-
+			proc_layout		:: proc_layout,
+						% Info about the
+						% procedure like its name
+						% and module and whether it is
+						% a function or a predicate.
+						
 			atom_args		:: list(trace_atom_arg)
 						% The arguments, including the
 						% compiler-generated ones.
@@ -192,6 +188,46 @@
 						% handle partially instantiated
 						% data structures.
 		).
+ 
+	% A module name should consist of a base name and a list of the names
+	% of the enclosing modules. For now, we have them all in one string.
+:- type module_name	== string.
+
+:- type special_pred_id
+	--->	unify
+	;	index
+	;	compare.
+
+:- type proc_id
+	--->	proc(
+			module_name,	% defining module
+			pred_or_func,
+			module_name,	% declaring module
+			string,		% name
+			int,		% arity
+			int		% mode number
+		)
+	;	uci_proc(
+			module_name,	% defining module
+			special_pred_id,% indirectly defines pred name
+			module_name,	% type module
+			string,		% type name
+			int,		% type arity
+			int		% mode number
+		).
+
+	% Should be a foreign type, MR_Proc_Layout *. This is a
+	% temporary workaround: we can't do compare_representation
+	% on foreign types yet.
+:- type proc_layout. 
+
+:- func get_proc_id_from_layout(proc_layout) = proc_id.
+
+:- func get_proc_name(proc_id) = string.
+
+:- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
+
+%-----------------------------------------------------------------------------%
 
 	% If the following type is modified, some of the macros in
 	% trace/mercury_trace_declarative.h may need to be updated.
@@ -351,10 +387,181 @@
 	is det.
 
 %-----------------------------------------------------------------------------%
-
+	
 :- implementation.
+
 :- import_module mdb__declarative_debugger.
 :- import_module int, map, exception, store.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_type("C", proc_layout, "const MR_Proc_Layout *",
+	[can_pass_as_mercury_type, stable]).
+
+get_proc_id_from_layout(Layout) = ProcId :-
+	( proc_layout_is_uci(Layout) ->
+		proc_layout_get_uci_fields(Layout, TypeName, TypeModule,
+			DefModule, PredName, TypeArity, ModeNum),
+		( PredName = "__Unify__" ->
+			SpecialId = unify
+		; PredName = "__Index__" ->
+			SpecialId = index
+		; PredName = "__Compare__" ->
+			SpecialId = compare
+		;
+			error("get_proc_id_from_layout: bad special_pred_id")
+		),
+		ProcId = uci_proc(DefModule, SpecialId, TypeModule, TypeName, 
+			TypeArity, ModeNum)
+	;
+		proc_layout_get_non_uci_fields(Layout, PredOrFunc,
+			DeclModule, DefModule, PredName, Arity, ModeNum),
+		ProcId = proc(DefModule, PredOrFunc, DeclModule, PredName, 
+			Arity, ModeNum)
+	).
+
+get_proc_name(proc(_, _, _, ProcName, _, _)) = ProcName.
+get_proc_name(uci_proc(_, _, _, ProcName , _, _)) = ProcName. 
+
+:- pred proc_layout_is_uci(proc_layout::in) is semidet.
+
+:- pragma foreign_proc("C",
+	proc_layout_is_uci(Layout::in),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	if (MR_PROC_ID_IS_UCI(Layout->MR_sle_proc_id)) {
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
+
+:- pred proc_layout_get_uci_fields(proc_layout::in, string::out,
+	string::out, string::out, string::out, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+	proc_layout_get_uci_fields(Layout::in, TypeName::out, TypeModule::out,
+		DefModule::out, PredName::out, TypeArity::out, ModeNum::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	const MR_UCI_Proc_Id	*proc_id;
+
+	proc_id = &Layout->MR_sle_uci;
+
+	/* The casts are there to cast away const without warnings */
+	TypeName   = (MR_String) (MR_Integer) proc_id->MR_uci_type_name;
+	TypeModule = (MR_String) (MR_Integer) proc_id->MR_uci_type_module;
+	DefModule  = (MR_String) (MR_Integer) proc_id->MR_uci_def_module;
+	PredName   = (MR_String) (MR_Integer) proc_id->MR_uci_pred_name;
+	TypeArity  = proc_id->MR_uci_type_arity;
+	ModeNum    = proc_id->MR_uci_mode;
+").
+
+:- pred proc_layout_get_non_uci_fields(proc_layout::in, pred_or_func::out,
+	string::out, string::out, string::out, int::out, int::out) is det.
+
+:- pragma foreign_proc("C",
+	proc_layout_get_non_uci_fields(Layout::in, PredOrFunc::out,
+		DeclModule::out, DefModule::out, PredName::out,
+		Arity::out, ModeNum::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	const MR_User_Proc_Id	*proc_id;
+
+	proc_id = &Layout->MR_sle_user;
+
+	/* The casts are there to cast away const without warnings */
+	PredOrFunc = proc_id->MR_user_pred_or_func;
+	DeclModule = (MR_String) (MR_Integer) proc_id->MR_user_decl_module;
+	DefModule  = (MR_String) (MR_Integer) proc_id->MR_user_def_module;
+	PredName   = (MR_String) (MR_Integer) proc_id->MR_user_name;
+	Arity      = proc_id->MR_user_arity;
+	ModeNum    = proc_id->MR_user_mode;
+").
+
+:- pragma foreign_proc("C",
+	get_all_modes_for_layout(Layout::in) = (Layouts::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+	"
+	const MR_Module_Layout	*module;
+	const MR_Proc_Layout	*proc;
+	int			i;
+	MR_Word			list;
+	MR_bool			match;
+	const MR_Proc_Layout	*selected_proc;
+
+	selected_proc = Layout;
+
+	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(selected_proc)) {
+		MR_fatal_error(
+			""get_all_modes_for_layout: selected_proc"");
+	}
+
+	module = selected_proc->MR_sle_module_layout;
+	list = MR_list_empty();
+	for (i = 0; i < module->MR_ml_proc_count; i++) {
+		proc = module->MR_ml_procs[i];
+		if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(selected_proc)) {
+			MR_fatal_error(
+				""get_all_modes_for_layout: proc"");
+		}
+
+		if (MR_PROC_LAYOUT_IS_UCI(selected_proc)
+			&& MR_PROC_LAYOUT_IS_UCI(proc))
+		{
+			const MR_UCI_Proc_Id	*proc_id;
+			const MR_UCI_Proc_Id	*selected_proc_id;
+
+			proc_id = &proc->MR_sle_uci;
+			selected_proc_id = &selected_proc->MR_sle_uci;
+
+			if (MR_streq(proc_id->MR_uci_type_name,
+				selected_proc_id->MR_uci_type_name)
+			&& MR_streq(proc_id->MR_uci_type_module,
+				selected_proc_id->MR_uci_type_module)
+			&& MR_streq(proc_id->MR_uci_pred_name,
+				selected_proc_id->MR_uci_pred_name)
+			&& (proc_id->MR_uci_type_arity ==
+				selected_proc_id->MR_uci_type_arity))
+			{
+				match = MR_TRUE;
+			} else {
+				match = MR_FALSE;
+			}
+		} else if (!MR_PROC_LAYOUT_IS_UCI(selected_proc)
+			&& !MR_PROC_LAYOUT_IS_UCI(proc))
+		{
+			const MR_User_Proc_Id	*proc_id;
+			const MR_User_Proc_Id	*selected_proc_id;
+
+			proc_id = &proc->MR_sle_user;
+			selected_proc_id = &selected_proc->MR_sle_user;
+
+			if ((proc_id->MR_user_pred_or_func ==
+				selected_proc_id->MR_user_pred_or_func)
+			&& MR_streq(proc_id->MR_user_decl_module,
+				selected_proc_id->MR_user_decl_module)
+			&& MR_streq(proc_id->MR_user_name,
+				selected_proc_id->MR_user_name)
+			&& (proc_id->MR_user_arity ==
+				selected_proc_id->MR_user_arity))
+			{
+				match = MR_TRUE;
+			} else {
+				match = MR_FALSE;
+			}
+		} else {
+			match = MR_FALSE;
+		}
+
+		if (match) {
+			list = MR_int_list_cons((MR_Integer) proc, list);
+		}
+	}
+
+	Layouts = list;
+	").
 
 %-----------------------------------------------------------------------------%
 
@@ -978,13 +1185,11 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 null_trace_node_id(_) :-
 	private_builtin__sorry("null_trace_node_id").
 
-
-:- func construct_trace_atom(pred_or_func, string, string, int) = trace_atom.
-:- pragma export(construct_trace_atom(in, in, in, in) = out,
+:- func construct_trace_atom(proc_layout, int) = trace_atom.
+:- pragma export(construct_trace_atom(in, in) = out,
 		"MR_DD_construct_trace_atom").
 
-construct_trace_atom(PredOrFunc, ModuleName, Functor, Arity) = Atom :-
-	Atom = atom(PredOrFunc, ModuleName, Functor, Args),
+construct_trace_atom(ProcLabel, Arity) = atom(ProcLabel, Args) :-
 	list__duplicate(Arity, dummy_arg_info, Args).
 
 	% add_trace_atom_arg_value(Atom0, ArgNum, HldsNum, ProgVis, Val):
@@ -996,8 +1201,8 @@ construct_trace_atom(PredOrFunc, ModuleName, Functor, Arity) = Atom :-
 :- pragma export(add_trace_atom_arg_value(in, in, in, in, in) = out,
 		"MR_DD_add_trace_atom_arg_value").
 
-add_trace_atom_arg_value(atom(C, M, F, Args0), ArgNum, HldsNum, ProgVis, Val)
-		= atom(C, M, F, Args) :-
+add_trace_atom_arg_value(atom(P, Args0), ArgNum, HldsNum, ProgVis, Val)
+		= atom(P, Args) :-
 	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, yes(Val)),
 	list__replace_nth_det(Args0, ArgNum, Arg, Args).
 
@@ -1007,8 +1212,8 @@ add_trace_atom_arg_value(atom(C, M, F, Args0), ArgNum, HldsNum, ProgVis, Val)
 :- pragma export(add_trace_atom_arg_no_value(in, in, in, in) = out,
 		"MR_DD_add_trace_atom_arg_no_value").
 
-add_trace_atom_arg_no_value(atom(C, M, F, Args0), ArgNum, HldsNum, ProgVis)
-		= atom(C, M, F, Args) :-
+add_trace_atom_arg_no_value(atom(P, Args0), ArgNum, HldsNum, ProgVis)
+		= atom(P, Args) :-
 	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, no),
 	list__replace_nth_det(Args0, ArgNum, Arg, Args).
 
@@ -1174,7 +1379,7 @@ select_arg_at_pos(ArgPos, Args0, Arg) :-
 	list__index1_det(Args, N, Arg).
 
 absolute_arg_num(any_head_var(ArgNum), _, ArgNum).
-absolute_arg_num(user_head_var(N), atom(_, _, _, Args), ArgNum) :-
+absolute_arg_num(user_head_var(N), atom(_, Args), ArgNum) :-
 	head_var_num_to_arg_num(Args, N, 1, ArgNum).
 
 :- pred head_var_num_to_arg_num(list(trace_atom_arg)::in, int::in, int::in,

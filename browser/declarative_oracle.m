@@ -305,9 +305,11 @@ query_oracle_list(_, [], []).
 query_oracle_list(OS, [Q | Qs0], As) :-
 	query_oracle_list(OS, Qs0, As0),
 	Atom = get_decl_question_atom(Q),
-	(	
-		% is the atom in a trusted module?
-		set__member(Atom ^ module_name, OS ^ trusted_modules)
+	(
+		% do we trust the correctness of the procedure?
+		ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
+		ProcId = proc(Module, _, _, _, _, _),
+		member(Module, OS ^ trusted_modules)
 	->
 		As = [truth_value(get_decl_question_node(Q), yes) | As0]
 	;
@@ -387,8 +389,20 @@ assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 
 assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
-	tree234_cc__set(Map0, Atom, Truth, Map),
+	% insert all modes of the predicate/function
+	foldl(add_atom_to_ground_map(Truth, Atom),
+		get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout),
+		Map0, Map),
 	set_kb_ground_map(KB0, Map, KB).
+
+:- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in, 
+	proc_layout::in, map_cc(final_decl_atom, decl_truth)::in,
+	map_cc(final_decl_atom, decl_truth)::out) is cc_multi.
+
+add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, Map0, Map) :-
+	tree234_cc.set(Map0, final_decl_atom(
+		atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
+		FinalAtom ^ final_io_actions), Truth, Map).
 
 assert_oracle_kb(missing_answer(_, Call, _), truth_value(_, Truth), KB0, KB) :-
 	get_kb_complete_map(KB0, Map0),
