@@ -1,5 +1,5 @@
 merge_ground_any.m:013: In clause for `pass(in, in(merge_ground_any:hpair(ground, any)), out(merge_ground_any:hpair(ground, any)))':
 merge_ground_any.m:013:   mode error: argument 5 did not get sufficiently instantiated.
 merge_ground_any.m:013:   Final instantiatedness of `X' was `bound(merge_ground_any:'+'(ground, ground) ; merge_ground_any:'-'(ground, any))',
-merge_ground_any.m:013:   expected final instantiatedness was `merge_ground_any:hpair(ground, any)'.
+merge_ground_any.m:013:   expected final instantiatedness was `bound(merge_ground_any:'-'(ground, any))'.
 For more information, try recompiling with `-E'.
