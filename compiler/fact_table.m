@@ -258,9 +258,9 @@ check_fact_type_and_mode(Types0, [Term | Terms], Context0, OutputStream, Result)
 			{ Types0 = [Type | Types] },
 			{ Type = term__functor(term__atom("string"), _, _) }
 		->
-			io__write_string(OutputStream, "\""),
+			io__write_string(OutputStream, """"),
 			io__write_string(OutputStream, String),
-			io__write_string(OutputStream, "\", "),
+			io__write_string(OutputStream, """, "),
 			check_fact_type_and_mode(Types, Terms, Context0, 
 				OutputStream, Result)
 		;
@@ -719,4 +719,4 @@ write_fact_table_functions(_OutputStream) --> []. % not finished yet.
 %------------------------------------------------------------------------------%
 
 fact_table_generate_c_code(_PredName, _PragmaVars, C_Code) :-
-	C_Code = "fprintf(stderr, \"Fact Tables not yet working\\n\");".
+	C_Code = "fprintf(stderr, ""Fact Tables not yet working\\n"");".
