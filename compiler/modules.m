@@ -771,6 +771,7 @@ mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").
 mercury_std_library_module("char").
 mercury_std_library_module("construct").
+mercury_std_library_module("cord").
 mercury_std_library_module("counter").
 mercury_std_library_module("deconstruct").
 mercury_std_library_module("dir").

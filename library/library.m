@@ -32,7 +32,7 @@
 % The modules intended for application programmers.
 :- import_module array, array2d, assoc_list, bag, benchmarking.
 :- import_module bimap, bintree, bintree_set, bitmap, bool, bt_array, builtin.
-:- import_module char, construct, counter, deconstruct, dir.
+:- import_module char, construct, cord, counter, deconstruct, dir.
 :- import_module enum, eqvclass, exception.
 :- import_module float, gc, getopt, graph, group, hash_table.
 :- import_module int, integer, io, lexer, list, map, math, multi_map, ops.
