@@ -91,17 +91,16 @@ $(SUBDIR)trans_opts/%.trans_opt : $(SUBDIR)trans_opt_dates/%.trans_opt_date
 $(SUBDIR)deps/%.dep: %.m
 	$(MCD) $(MCDFLAGS) $<
 
-# When creating the dependencies, we need to create the int3s
+# When creating the dependencies, we need to create the `dates' directory
 # in order to get things started.  This should not be necessary,
-# but there seem to be some bugs in GNU Make with regard to
-# the combination of rule chaining and subdirectories.
-# I have sent off a bug report to the GNU Make maintainers (18 March 1998).
+# but there is a bug in GNU Make with regard to directory caching.
+# I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
 %.depend : %.m
 	$(MCD) $(MCDFLAGS) $<
 	-rm -f $(SUBDIR)cs/$*_init.c
-	$(MMAKE) $(MAKEOVERRIDES) $(MMAKEFLAGS) $*.int3s
+	[ -d Mercury/dates ] || mkdir Mercury/dates
 
 %.doit : $(SUBDIR)deps/%.dep
 	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
