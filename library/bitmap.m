@@ -98,6 +98,14 @@
     %
 :- func get(bitmap, int) = bool.
 :- mode get(bitmap_ui, in) = out is det.
+:- mode get(in, in) = out is det.
+
+    % Unsafe versions of the above: if the index is out of range
+    % then behaviour is undefined and bad things are likely to happen.
+    %
+:- func unsafe_get(bitmap, int) = bool.
+:- mode unsafe_get(bitmap_ui, in) = out is det.
+:- mode unsafe_get(in, in) = out is det.
 
     % Create a new copy of a bitmap.
     %
@@ -269,6 +277,10 @@ unsafe_is_clear(BM, I) :-
 % ---------------------------------------------------------------------------- %
 
 get(BM, I) = ( if is_clear(BM, I) then no else yes ).
+
+%------------------------------------------------------------------------------%
+
+unsafe_get(BM, I) = ( if unsafe_is_clear(BM, I) then no else yes ).
 
 % ---------------------------------------------------------------------------- %
 
