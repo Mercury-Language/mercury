@@ -991,7 +991,7 @@ mlds_output_maybe_gc_trace_code(Indent, Name, Maybe_GC_TraceCode,
 		% XXX this value for FuncInfo is bogus
 		% However, this output is only for debugging anyway,
 		% so it doesn't really matter.
-		{ FuncInfo = func_info(Name) },
+		{ FuncInfo = func_info(Name, mlds__func_signature([], [])) },
 		mlds_output_statement(Indent, FuncInfo, GC_TraceCode),
 		io__write_string("#endif\n")
 	).
@@ -1276,8 +1276,8 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 		func_params, function_body, io__state, io__state).
 :- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
 
-mlds_output_func(Indent, Name, Context, Signature, FunctionBody) -->
-	mlds_output_func_decl(Indent, Name, Context, Signature),
+mlds_output_func(Indent, Name, Context, Params, FunctionBody) -->
+	mlds_output_func_decl(Indent, Name, Context, Params),
 	(
 		{ FunctionBody = external },
 		io__write_string(";\n")
@@ -1290,7 +1290,8 @@ mlds_output_func(Indent, Name, Context, Signature, FunctionBody) -->
 
 		mlds_maybe_output_time_profile_instr(Context, Indent + 1, Name),
 
-		{ FuncInfo = func_info(Name) },
+		{ Signature = mlds__get_func_signature(Params) },
+		{ FuncInfo = func_info(Name, Signature) },
 		mlds_output_statement(Indent + 1, FuncInfo, Body),
 
 		mlds_indent(Context, Indent),
@@ -1965,7 +1966,7 @@ mlds_output_abstractness(concrete) --> [].
 %
 
 :- type func_info
-	--->	func_info(mlds__qualified_entity_name).
+	--->	func_info(mlds__qualified_entity_name, mlds__func_signature).
 
 :- pred mlds_output_statements(indent, func_info, list(mlds__statement),
 		io__state, io__state).
@@ -1993,7 +1994,7 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
-		{ FuncInfo = func_info(FuncName) },
+		{ FuncInfo = func_info(FuncName, _) },
 		{ FuncName = qual(ModuleName, _) },
 
 		% output forward declarations for any nested functions
@@ -2156,9 +2157,23 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 	% function call/return
 	%
 mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
-	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
+	{ Call = call(Signature, FuncRval, MaybeObject, CallArgs,
 		Results, IsTailCall) },
-	{ CallerFuncInfo = func_info(Name) },
+	{ CallerFuncInfo = func_info(CallerName, CallerSignature) },
+
+	% 
+	% We need to enclose the generated code inside an extra pair
+	% of curly braces, in case we generate more than one statement
+	% (e.g. because we generate extra statements for profiling
+	% or for tail call optimization) and the generated code is
+	% e.g. inside an if-then-else.
+	% 
+	mlds_indent(Indent),
+	io__write_string("{\n"),
+
+	mlds_maybe_output_call_profile_instr(Context,
+			Indent + 1, FuncRval, CallerName),
+
 	%
 	% Optimize general tail calls.
 	% We can't really do much here except to insert `return'
@@ -2169,19 +2184,21 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	% then this would result in code that is not legal ANSI C
 	% (although it _is_ legal in GNU C and in C++),
 	% so for that case, we put the return statement after
-	% the call -- see below.  We need to enclose it inside
-	% an extra pair of curly braces in case this `call'
-	% is e.g. inside an if-then-else.
+	% the call -- see below.
 	%
-	mlds_indent(Indent),
-	io__write_string("{\n"),
-
-	mlds_maybe_output_call_profile_instr(Context,
-			Indent + 1, FuncRval, Name),
-
+	% Note that it's only safe to add such a return statement if
+	% the calling procedure has the same argument types as the callee.
+	% (Calls where the types are different can be marked as tail calls
+	% if they are known to never return.)
+	%
 	mlds_indent(Context, Indent + 1),
-
-	( { IsTailCall = tail_call, Results \= [] } ->
+	{ Signature = mlds__func_signature(_, RetTypes) },
+	{ CallerSignature = mlds__func_signature(_, CallerRetTypes) },
+	(
+		{ IsTailCall = tail_call },
+		{ Results \= [] },
+		{ RetTypes = CallerRetTypes }
+	->
 		io__write_string("return ")
 	;
 		[]
@@ -2206,12 +2223,16 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	io__write_list(CallArgs, ", ", mlds_output_rval),
 	io__write_string(");\n"),
 
-	( { IsTailCall = tail_call, Results = [] } ->
+	(
+		{ IsTailCall = tail_call },
+		{ Results = [] },
+		{ RetTypes = CallerRetTypes }
+	->
 		mlds_indent(Context, Indent + 1),
 		io__write_string("return;\n")
 	;
 		mlds_maybe_output_time_profile_instr(Context,
-				Indent + 1, Name)
+				Indent + 1, CallerName)
 	),
 	mlds_indent(Indent),
 	io__write_string("}\n").
@@ -2534,7 +2555,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 
-	{ FuncInfo = func_info(FuncName) },
+	{ FuncInfo = func_info(FuncName, _FuncSignature) },
 	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
 			FuncName, MaybeCtorName),
 
