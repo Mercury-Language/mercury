@@ -36,7 +36,7 @@ main -->
 	io__write_string("\nGoodbye.\n").
 
 :- pred eliza__main_loop(list(string), eliza__state, io__state, io__state).
-:- mode eliza__main_loop(in, in, di, uo) is det.
+:- mode eliza__main_loop(in, di, di, uo) is det.
 eliza__main_loop(Prev, StateIn) -->
 	eliza__read_line(Line0, Ok),
 	( { Ok = yes } ->
@@ -73,7 +73,7 @@ eliza__main_loop(Prev, StateIn) -->
 	% Initialise the state by reading in the initial message
 	% database.
 
-:- pred eliza__initial_state(eliza__state :: out) is det.
+:- pred eliza__initial_state(eliza__state :: uo) is det.
 eliza__initial_state(state(ResMsg,RepMsg)) :-
 	repeat_messages(RepMsg),
 	response_messages(ResMsg).
@@ -82,7 +82,7 @@ eliza__initial_state(state(ResMsg,RepMsg)) :-
 	% a new one will come up next time.
 
 :- pred eliza__get_repeat(string, eliza__state, eliza__state).
-:- mode eliza__get_repeat(out, in, out) is det.
+:- mode eliza__get_repeat(out, di, uo) is det.
 eliza__get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
 	( RepIn = [Msg | Rest] ->
 	    MsgOut = Msg,
@@ -95,13 +95,13 @@ eliza__get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
 	% a new one will come up next time.
 
 :- pred eliza__get_response(message_type, message, eliza__state, eliza__state).
-:- mode eliza__get_response(in, out, in, out) is det.
+:- mode eliza__get_response(in, out, di, uo) is det.
 eliza__get_response(Type, MsgOut, state(ResIn, Rep), state(ResOut, Rep)) :-
 	eliza__get_response2(Type, MsgOut, ResIn, ResOut).
 
 :- pred eliza__get_response2(message_type, message,
 		response_state, response_state).
-:- mode eliza__get_response2(in, out, in, out) is det.
+:- mode eliza__get_response2(in, out, di, uo) is det.
 eliza__get_response2(_Type, _MsgOut, [], []) :-
 	error("Error: Cannot match message type.\n").
 eliza__get_response2(Type, MsgOut,
@@ -109,9 +109,10 @@ eliza__get_response2(Type, MsgOut,
 		[Type2 - Msgs3 | RestOut]) :-
 	( Type = Type2 ->
 	    ( Msgs2 = [MsgOut1 | MsgOutRest] ->
+		copy(MsgOut1, MsgOut2),
 		MsgOut = MsgOut1,
 		RestOut = RestIn,
-		list__append(MsgOutRest, [MsgOut], Msgs3)
+		list__append(MsgOutRest, [MsgOut2], Msgs3)
 	    ;
 		error("Error: Empty response list.\n") 
 	    )
@@ -231,7 +232,7 @@ eliza__words_to_strings([X | Xs], [Y | Ys]) :-
 
 :- pred eliza__generate_repeat(eliza__state, eliza__state,
 		io__state, io__state).
-:- mode eliza__generate_repeat(in, out, di, uo) is det.
+:- mode eliza__generate_repeat(di, uo, di, uo) is det.
 eliza__generate_repeat(StateIn, StateOut) -->
 	{ eliza__get_repeat(Msg, StateIn, StateOut) },
 	io__write_string(Msg),
@@ -242,7 +243,7 @@ eliza__generate_repeat(StateIn, StateOut) -->
 :- pred eliza__generate_response(list(string),
 		eliza__state, eliza__state,
 		io__state, io__state).
-:- mode eliza__generate_response(in, in, out, di, uo) is det.
+:- mode eliza__generate_response(in, di, uo, di, uo) is det.
 eliza__generate_response(Words, StateIn, StateOut) -->
 
 	% Find out what sort of message we are dealing with.
@@ -415,7 +416,7 @@ two_way_conjugates([
 	"I'm" - "you're"
 	]).
 
-:- pred repeat_messages(repeat_state :: out) is det.
+:- pred repeat_messages(repeat_state :: uo) is det.
 repeat_messages([
  	"Why did you repeat yourself?",
 	"Do you expect a different answer by repeating yourself?",
@@ -423,7 +424,7 @@ repeat_messages([
 	"Please don't repeat yourself!" 
 	]).
 
-:- pred response_messages(response_state :: out) is det.
+:- pred response_messages(response_state :: uo) is det.
 response_messages(
 	[
 	can_you - [
