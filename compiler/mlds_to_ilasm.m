@@ -195,13 +195,12 @@ generate_c_code(MLDS) -->
 		"extern ""C"" int _fltused=0;\n",
 		"\n"]),
 
-		% XXX This is a bit of a hack.  We should probably handle the
-		% class name much more elegantly than this.
-	( { ClassName = ["mercury" | _] } ->
-		io__write_string("namespace mercury {\n")
-	;
-		[]
-	),
+	{ Namespace = get_class_namespace(ClassName) },
+
+	io__write_list(Namespace, "\n", 
+		(pred(N::in, di, uo) is det -->
+			io__format("namespace %s {", [s(N)])
+	)),
 
 	generate_foreign_header_code(mercury_module_name_to_mlds(ModuleName),
 		ForeignCode),
@@ -225,11 +224,12 @@ generate_c_code(MLDS) -->
 
 	io__write_string("};\n"),
 
-	( { ClassName = ["mercury" | _] } ->
-		io__write_string("}\n")
-	;
-		[]
-	),
+		% Close the namespace braces.
+	io__write_list(Namespace, "\n", 
+		(pred(_N::in, di, uo) is det -->
+			io__write_string("}")
+	)),
+
 
 	io__nl.
 
@@ -661,9 +661,8 @@ write_il_simple_type_as_managed_cpp_type('*'(Type)) -->
 
 :- pred write_managed_cpp_class_name(structured_name::in, io__state::di,
 	io__state::uo) is det.
-write_managed_cpp_class_name(ClassName0) -->
-	{ ClassName = drop_assemblies_from_class_name(ClassName0) },
-	io__write_list(ClassName, "::", io__write_string).
+write_managed_cpp_class_name(structured_name(_Assembly, DottedName)) -->
+	io__write_list(DottedName, "::", io__write_string).
 
 :- pred write_il_type_as_managed_cpp_type(ilds__type::in,
 	io__state::di, io__state::uo) is det.
@@ -693,13 +692,6 @@ write_il_arg_as_managed_cpp_type(Type - MaybeId) -->
 		{ sorry(this_file, "unnamed arguments in method parameters") }
 	).
 
-
-:- func drop_assemblies_from_class_name(structured_name) = 
-	structured_name.
-
-drop_assemblies_from_class_name([]) = [].
-drop_assemblies_from_class_name([A | Rest]) = 
-	( ( A = "mscorlib" ; A = "mercury" ) -> Rest ; [A | Rest] ).
 
 :- func this_file = string.
 this_file = "mlds_to_ilasm.m".

@@ -53,10 +53,18 @@
 
 % -------------------------------------------------------------------------
 
-:- type structured_name == list(ilds__id).
+	% if an assembly name is empty it is a reference to a local type
+	% in the same assembly. 
 
+:- type structured_name ---> 
+		structured_name(assembly_name, namespace_qual_name).
+
+:- type assembly_name == ilds__id. 
+:- type namespace_qual_name == list(ilds__id). 
+
+	
 	% A namespace qualified class name is a structured name.
-	% Foo::Bar::Baz is ["Foo", "Bar", "Baz"]
+	% [Foo]Foo::Bar::Baz is structured_name("Foo", ["Foo", "Bar", "Baz"])
 :- type class_name == structured_name.
 
 	% A member of a class 
@@ -325,6 +333,42 @@
 
 :- type label == string.
 
+
+	% Utility functions and predicates.
+
+	% Get the namespace portion of a class name.
+
+:- func get_class_namespace(ilds__class_name) = ilds__namespace_qual_name.
+
+	% Add an extra identifier to the end of an IL class name, e.g.
+	% append Foo to [mercury]mercury.runtime to make
+	% [mercury]mercury.runtime.Foo
+
+:- func append_class_name(ilds__class_name, ilds__namespace_qual_name) =
+	ilds__class_name.
+
 :- implementation.
+
+:- import_module error_util.
+
+get_class_namespace(structured_name(_, FullName)) = NamespaceName :-
+	( 
+		list__last(FullName, Last),
+		list__remove_suffix(FullName, [Last], NamespaceName0)
+	->
+		NamespaceName0 = NamespaceName
+	;
+			% This class has no name whatsoever.
+		unexpected(this_file, "get_class_namespace: list__drop failed")
+	).
+
+append_class_name(structured_name(Assembly, ClassName), ExtraClass) =
+		structured_name(Assembly, NewClassName) :-
+	list__append(ClassName, ExtraClass, NewClassName).
+
+
+
+:- func this_file = string.
+this_file = "ilds.m".
 
 :- end_module ilds.

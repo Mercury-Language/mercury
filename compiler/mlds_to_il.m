@@ -109,9 +109,8 @@
 	maybe(mlds__func_sequence_num), ilds__class_name, ilds__id).
 :- mode mangle_mlds_proc_label(in, in, out, out) is det.
 
-	% Turn an MLDS module name into a class_name name.	
-:- func mlds_module_name_to_class_name(mlds_module_name) =
-		ilds__class_name.
+	% Turn an MLDS module name into a class_name name
+:- func mlds_module_name_to_class_name(mlds_module_name) = ilds__class_name.
 
 	% Return the class_name for the generic class.
 :- func il_generic_class_name = ilds__class_name.
@@ -142,6 +141,7 @@
 :- type il_info ---> il_info(
 		% file-wide attributes (all static)
 	module_name 	:: mlds_module_name,	% the module name
+	assembly_name 	:: assembly_name,	% the module name
 	imports 	:: mlds__imports,	% the imports
 	file_c_code	:: bool,		% file contains c_code
 		% class-wide attributes (all accumulate)
@@ -171,7 +171,9 @@
 generate_il(MLDS, ILAsm, ContainsCCode, IO, IO) :-
 	MLDS = mlds(MercuryModuleName, _ForeignCode, Imports, Defns),
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
-	il_info_init(ModuleName, Imports, Info0),
+	SymName = mlds_module_name_to_sym_name(ModuleName),
+	mlds_to_il__sym_name_to_string(SymName, AssemblyName),
+	il_info_init(ModuleName, AssemblyName, Imports, Info0),
 
 		% Generate code for all the methods in this module.
 	list__foldl(generate_method_defn, Defns, Info0, Info1),
@@ -187,21 +189,20 @@ generate_il(MLDS, ILAsm, ContainsCCode, IO, IO) :-
 	list__map(generate_other_decls(ModuleName), Defns, OtherDeclsList),
 	list__condense(OtherDeclsList, OtherDecls),
 
-	SymName = mlds_module_name_to_sym_name(ModuleName),
 	ClassName = mlds_module_name_to_class_name(ModuleName),
-	mlds_to_il__sym_name_to_string(SymName, MStr),
 
 		% Make this module an assembly unless it is in the standard
 		% library.  Standard library modules all go in the one
 		% assembly in a separate step during the build (using
 		% AL.EXE).  
-	( 
+
+	(
 		SymName = qualified(unqualified("mercury"), _)
 	->
 		ThisAssembly = [],
 		AssemblerRefs = Imports
 	;
-		ThisAssembly = [assembly(MStr)],
+		ThisAssembly = [assembly(AssemblyName)],
 			% If not in the library, but we have C code,
 			% declare the __c_code module as an assembly we
 			% reference
@@ -233,12 +234,12 @@ generate_il(MLDS, ILAsm, ContainsCCode, IO, IO) :-
 	MethodDecls = [AllocDoneField, CCtor | ClassDecls],
 
 		% The class that corresponds to this MLDS module.
-	MainClass = [class([public], MStr, extends_nothing, implements([]),
-		MethodDecls)],
+	MainClass = [class([public], AssemblyName, extends_nothing,
+			implements([]), MethodDecls)],
 
 		% A namespace to contain all the other declarations that
 		% are created as a result of this MLDS code.
-	MainNamespace = [namespace([MStr], OtherDecls)],
+	MainNamespace = [namespace([AssemblyName], OtherDecls)],
 	ILAsm = list__condense(
 		[ExternAssemblies, ThisAssembly, MainClass, MainNamespace]).
 
@@ -466,8 +467,7 @@ generate_other_decls(ModuleName, MLDSDefn, Decls) :-
 	MLDSDefn = mlds__defn(EntityName, _Context, _DeclFlags, Entity), 
 	term__type_to_term(MLDSDefn, MLDSDefnTerm),
 	( EntityName = type(TypeName, _Arity),
-		list__append(ClassName, [TypeName],
-			FullClassName),
+		FullClassName = append_class_name(ClassName, [TypeName]),
 		( 
 			Entity = mlds__class(ClassDefn) 
 		->
@@ -1782,12 +1782,13 @@ mlds_type_to_ilds_type(mlds__cont_type(_ArgTypes)) = ilds__type([], int32).
 
 mlds_type_to_ilds_type(mlds__class_type(Class, _Arity, _Kind)) = ILType :-
 	Class = qual(MldsModuleName, MldsClassName),
-	ClassName = mlds_module_name_to_class_name(MldsModuleName),
+	structured_name(Assembly, ClassName) = 
+		mlds_module_name_to_class_name(MldsModuleName),
 	list__append(ClassName, [MldsClassName], FullClassName),
-	ILType = ilds__type([], class(FullClassName)).
+	ILType = ilds__type([], class(
+		structured_name(Assembly, FullClassName))).
 
-mlds_type_to_ilds_type(mlds__commit_type) =
-	ilds__type([], class(["mercury", "runtime", "Commit"])).
+mlds_type_to_ilds_type(mlds__commit_type) = il_commit_type.
 
 mlds_type_to_ilds_type(mlds__generic_env_ptr_type) = il_envptr_type.
 
@@ -2037,9 +2038,15 @@ mlds_to_il__sym_name_to_string_2(qualified(ModuleSpec,Name), Separator) -->
 mlds_to_il__sym_name_to_string_2(unqualified(Name), _) -->
         [Name].
 
-mlds_module_name_to_class_name(MldsModuleName) = ClassName :-
+mlds_module_name_to_class_name(MldsModuleName) = 
+		structured_name(AssemblyName, ClassName) :-
 	SymName = mlds_module_name_to_sym_name(MldsModuleName),
-	sym_name_to_class_name(SymName, ClassName).
+	sym_name_to_class_name(SymName, ClassName),
+	( ClassName = [A0 | _] ->
+		AssemblyName = A0
+	;
+		AssemblyName = ""
+	).
 
 :- pred sym_name_to_class_name(sym_name, list(ilds__id)).
 :- mode sym_name_to_class_name(in, out) is det.
@@ -2197,7 +2204,8 @@ get_fieldref(FieldNum, FieldType, ClassType, FieldRef) :-
 		->
 			ClassName = ClassTypeName0
 		;
-			ClassName = ["invalid_field_access_class"]
+			ClassName = structured_name("", 
+				["invalid_field_access_class"])
 			% unexpected(this_file, "not a class for field access")
 		),
 		( 
@@ -2345,7 +2353,7 @@ il_array_type = ilds__type([], '[]'(il_generic_type, [])).
 %
 
 :- func il_conversion_class_name = ilds__class_name.
-il_conversion_class_name = ["mercury", "runtime", "Convert"].
+il_conversion_class_name = mercury_runtime_name(["Convert"]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2359,7 +2367,7 @@ il_exception_type = ilds__type([], il_exception_simple_type).
 il_exception_simple_type = class(il_exception_class_name).
 
 :- func il_exception_class_name = ilds__class_name.
-il_exception_class_name = ["mercury", "runtime", "Exception"].
+il_exception_class_name = mercury_runtime_name(["Exception"]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2373,7 +2381,7 @@ il_envptr_type = ilds__type([], il_envptr_simple_type).
 il_envptr_simple_type = class(il_envptr_class_name).
 
 :- func il_envptr_class_name = ilds__class_name.
-il_envptr_class_name = ["mercury", "runtime", "Environment"].
+il_envptr_class_name = mercury_runtime_name(["Environment"]).
 
 
 %-----------------------------------------------------------------------------%
@@ -2388,14 +2396,27 @@ il_commit_type = ilds__type([], il_commit_simple_type).
 il_commit_simple_type = class(il_commit_class_name).
 
 :- func il_commit_class_name = ilds__class_name.
-il_commit_class_name = ["mercury", "runtime", "Commit"].
+il_commit_class_name = mercury_runtime_name(["Commit"]).
+
+%-----------------------------------------------------------------------------
+
+	% qualifiy a name with "[mercury]mercury.runtime."
+:- func mercury_runtime_name(ilds__namespace_qual_name) = ilds__class_name.
+mercury_runtime_name(Name) = 
+	append_class_name(mercury_runtime_class_name, Name).
+
+:- func mercury_runtime_class_name = ilds__class_name.
+mercury_runtime_class_name = structured_name("mercury",
+	["mercury", "runtime"]).
+
+%-----------------------------------------------------------------------------
 
 %-----------------------------------------------------------------------------
 
 	% qualifiy a name with "[mscorlib]System."
-:- func il_system_name(ilds__class_name) = ilds__class_name.
-il_system_name(Name) = 
-	[il_system_assembly_name, il_system_namespace_name | Name].
+:- func il_system_name(ilds__namespace_qual_name) = ilds__class_name.
+il_system_name(Name) = structured_name(il_system_assembly_name, 
+		[il_system_namespace_name | Name]).
 
 :- func il_system_assembly_name = string.
 il_system_assembly_name = "mscorlib".
@@ -2412,8 +2433,8 @@ il_system_namespace_name = "System".
 mlds_to_il__generate_extern_assembly(Imports, Decls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
 		ClassName = mlds_module_name_to_class_name(Import),
-		ClassName = [TopLevel | _],
-		Decl = extern_assembly(TopLevel, [])
+		ClassName = structured_name(Assembly, _),
+		Decl = extern_assembly(Assembly, [])
 	),
 	list__filter_map(Gen, Imports, Decls0),
 	list__sort_and_remove_dups(Decls0, Decls).
@@ -2440,7 +2461,7 @@ make_method_defn(InstrTree) = MethodDecls :-
 	% When we move to high-level data it will need to be generalized
 	% to intialize any class.
 
-:- pred make_constructor(list(ilds__id), mlds__class_defn,
+:- pred make_constructor(ilds__class_name, mlds__class_defn,
 	ilasm__classdecl).
 :- mode make_constructor(in, in, out) is det.
 make_constructor(ClassName, mlds__class_defn(_,  _Imports, Inherits, 
@@ -2467,7 +2488,7 @@ make_constructor(ClassName, mlds__class_defn(_,  _Imports, Inherits,
 	% XXX This should really be generated at a higher level	
 	% XXX For now we only call the constructor if it is an env_ptr
 	%     or commit type.
-:- pred call_field_constructor(list(ilds__id), mlds__defn, list(instr)).
+:- pred call_field_constructor(ilds__class_name, mlds__defn, list(instr)).
 :- mode call_field_constructor(in, in, out) is det.
 call_field_constructor(ObjClassName, MLDSDefn, Instrs) :-
 	MLDSDefn = mlds__defn(EntityName, Context, _DeclFlags, Entity), 
@@ -2565,7 +2586,8 @@ runtime_initialization_instrs = [
 	].
 
 :- func runtime_init_module_name = ilds__class_name.
-runtime_init_module_name = ["mercury", "private_builtin__c_code"].
+runtime_init_module_name = 
+	structured_name("mercury", ["mercury", "private_builtin__c_code"]).
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").
@@ -2575,11 +2597,11 @@ runtime_init_method_name = id("init_runtime").
 % Predicates for manipulating il_info.
 %
 
-:- pred il_info_init(mlds_module_name, mlds__imports, il_info).
-:- mode il_info_init(in, in, out) is det.
+:- pred il_info_init(mlds_module_name, assembly_name, mlds__imports, il_info).
+:- mode il_info_init(in, in, in, out) is det.
 
-il_info_init(ModuleName, Imports,
-	il_info(ModuleName, Imports, no,
+il_info_init(ModuleName, AssemblyName, Imports,
+	il_info(ModuleName, AssemblyName, Imports, no,
 		empty, empty, [], no, no,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature)) :-
@@ -2593,11 +2615,11 @@ il_info_init(ModuleName, Imports,
 :- mode il_info_new_method(in, in, in, in, out) is det.
 
 il_info_new_method(ILArgs, ILSignature, MethodName,
-	il_info(ModuleName, Imports, FileCCode,
+	il_info(ModuleName, AssemblyName,Imports, FileCCode,
 		AllocInstrs, InitInstrs, ClassDecls, HasMain, ClassCCode,
 		__Locals, _InstrTree, _LabelCounter, _BlockCounter, MethodCCode,
 		_Args, _Name, _Signature),
-	il_info(ModuleName, Imports, NewFileCCode,
+	il_info(ModuleName, AssemblyName,Imports, NewFileCCode,
 		AllocInstrs, InitInstrs, ClassDecls, HasMain, NewClassCCode,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		ILArgs, MethodName, ILSignature)) :-
