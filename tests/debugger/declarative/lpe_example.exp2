@@ -1,0 +1,59 @@
+       1:      1  1 CALL pred lpe_example:main/2-0 (det) lpe_example.m:8
+mdb> echo on
+Command echo enabled.
+mdb> break p
+Registering debuggable procedures... done.
+There is one debuggable module, with 4 procedures.
+ 0: + stop  interface pred lpe_example:p/2-0 (nondet)
+mdb> continue
+       2:      2  2 CALL pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> finish
+      10:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> dd
+atom("p", [univ(1 : int), univ(13 : int)])
+Valid? no
+atom("q", [univ(3 : int)])
+Valid? yes
+atom("r", [univ(3 : int), univ(13 : int)])
+Valid? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(13 : int)]))
+      10:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> continue
+      11:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> finish
+      15:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> dd
+atom("p", [univ(1 : int), univ(23 : int)])
+Valid? no
+atom("r", [univ(3 : int), univ(23 : int)])
+Valid? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(23 : int)]))
+      15:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> continue
+      16:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> finish
+      20:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> dd
+atom("p", [univ(1 : int), univ(3 : int)])
+Valid? no
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(3 : int)]))
+      20:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> continue
+      21:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> finish
+      22:      2  2 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> dd
+Call atom("p", [univ(1 : int)])
+Solutions:
+	atom("p", [univ(1 : int), univ(13 : int)])
+	atom("p", [univ(1 : int), univ(23 : int)])
+	atom("p", [univ(1 : int), univ(3 : int)])
+Complete? no
+Incorrect node found:
+missing_answer(atom("p", [univ(1 : int)]), [atom("p", [univ(1 : int), univ(13 : int)]), atom("p", [univ(1 : int), univ(23 : int)]), atom("p", [univ(1 : int), univ(3 : int)])])
+      22:      2  2 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17
+mdb> continue
+[3, 13, 23]

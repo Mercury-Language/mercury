@@ -1,0 +1,59 @@
+       1:      1  1 CALL pred lpe_example:main/2-0 (det) lpe_example.m:8
+mdb> echo on
+Command echo enabled.
+mdb> break p
+Registering debuggable procedures... done.
+There are 67 debuggable modules, with a total of 3205 procedures.
+ 0: + stop  interface pred lpe_example:p/2-0 (nondet)
+mdb> continue
+       3:      3  3 CALL pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> finish
+      11:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> dd
+atom("p", [univ(1 : int), univ(13 : int)])
+Valid? no
+atom("q", [univ(3 : int)])
+Valid? yes
+atom("r", [univ(3 : int), univ(13 : int)])
+Valid? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(13 : int)]))
+      11:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> continue
+      12:      3  3 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> finish
+      16:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> dd
+atom("p", [univ(1 : int), univ(23 : int)])
+Valid? no
+atom("r", [univ(3 : int), univ(23 : int)])
+Valid? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(23 : int)]))
+      16:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> continue
+      17:      3  3 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> finish
+      21:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> dd
+atom("p", [univ(1 : int), univ(3 : int)])
+Valid? no
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(3 : int)]))
+      21:      3  3 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> continue
+      22:      3  3 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> finish
+      23:      3  3 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> dd
+Call atom("p", [univ(1 : int)])
+Solutions:
+	atom("p", [univ(1 : int), univ(13 : int)])
+	atom("p", [univ(1 : int), univ(23 : int)])
+	atom("p", [univ(1 : int), univ(3 : int)])
+Complete? no
+Incorrect node found:
+missing_answer(atom("p", [univ(1 : int)]), [atom("p", [univ(1 : int), univ(13 : int)]), atom("p", [univ(1 : int), univ(23 : int)]), atom("p", [univ(1 : int), univ(3 : int)])])
+      23:      3  3 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17 (std_util.m:592)
+mdb> continue
+[3, 13, 23]

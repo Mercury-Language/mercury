@@ -5,7 +5,7 @@ mdb> dd
 mdb: declarative debugging is only available from EXIT or FAIL events.
 mdb> break queen
 Registering debuggable procedures... done.
-There are 67 debuggable modules, with a total of 3210 procedures.
+There is one debuggable module, with 9 procedures.
  0: + stop  interface pred queens:queen/2-0 (nondet)
 mdb> continue
        5:      3  2 CALL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)

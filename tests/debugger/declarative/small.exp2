@@ -1,0 +1,19 @@
+       1:      1  1 CALL pred small:main/2-0 (det) small.m:7
+mdb> echo on
+Command echo enabled.
+mdb> break p
+Registering debuggable procedures... done.
+There is one debuggable module, with 2 procedures.
+ 0: + stop  interface pred small:p/1-0 (det)
+mdb> continue
+       2:      2  2 CALL pred small:p/1-0 (det) small.m:14 (small.m:8)
+mdb> finish
+       3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
+mdb> dd
+atom("p", [univ(42 : int)])
+Valid? no
+Incorrect node found:
+wrong_answer(atom("p", [univ(42 : int)]))
+       3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
+mdb> continue
+42

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -185,8 +185,15 @@ handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 		<= execution_tree(S, R).
 :- mode confirm_bug(in, in, out, di, uo) is det.
 
-confirm_bug(_, Bug, yes) -->
-	io__write(Bug),		% XXX this doesn't work very well.
+confirm_bug(Store, e_bug(Node), yes) -->
+	io__write_string("Incorrect node found:\n"),
+	{ edt_root(wrap(Store), Node, Question) },
+	io__write(Question),
+	io__nl.
+confirm_bug(Store, i_bug(Node), yes) -->
+	io__write_string("Inadmissible call:\n"),
+	{ edt_root(wrap(Store), Node, Question) },
+	io__write(Question),
 	io__nl.
 
 	% Export a monomorphic version of diagnosis_state_init/4, to
