@@ -34,7 +34,7 @@
 			unify_main_context, unify_sub_contexts, hlds__goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
-:- pred add_new_proc(pred_info, int, list(mode), maybe(determinism),
+:- pred add_new_proc(pred_info, arity, list(mode), maybe(determinism),
 			term__context, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, out, out) is det.
 
@@ -2323,7 +2323,13 @@ undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
 	io__write_string(Description),
 	io__write_string(" for "),
 	hlds_out__write_call_id(PredOrFunc, Name/Arity),
-	io__write_string(" without preceding pred declaration\n").
+	io__write_string(" without preceding `"),
+	(	{ PredOrFunc = predicate },
+		io__write_string("pred")
+	;	{ PredOrFunc = function },
+		io__write_string("func")
+	), !,
+	io__write_string("' declaration\n").
 
 :- pred unspecified_det_warning(sym_name, arity, pred_or_func, term__context, 
 				io__state, io__state).
