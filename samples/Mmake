@@ -7,11 +7,11 @@
 # samples/Mmake - this is the main part of the Makefile
 # for building the Mercury sample programs.
 
-# To build these programs, first install the Mercury compiler, then
-# type `mmake depend; mmake'.
+# To build these programs, first install the Mercury compiler,
+# type `mmake depend', and then type `mmake'.
 
 PROGS=	hello cat calculator sort eliza ultra_sub \
-	all_solutions committed_choice
+	all_solutions committed_choice interpreter
 
 DEPENDS=$(PROGS:%=%.depend)
 
