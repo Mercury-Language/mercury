@@ -18,7 +18,8 @@ main -->
 
 :- pred c_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma(c_code, c_write_string(Message::in, IO0::di, IO::uo), "
+:- pragma(c_code, c_write_string(Message::in, IO0::di, IO::uo),
+will_not_call_mercury, "
         printf(""%s"", Message);
         IO = IO0;
 ").
@@ -27,7 +28,8 @@ main -->
 
 :- pred append_strings(string::in, string::in, string::out) is det.
 :- pragma inline(append_strings/3).
-:- pragma c_code(non_recursive, append_strings(S1::in, S2::in, S3::out), "{
+:- pragma c_code(append_strings(S1::in, S2::in, S3::out),
+will_not_call_mercury, "{
         size_t len_1, len_2;
 	Word tmp;
 	len_1 = strlen(S1);
