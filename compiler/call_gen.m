@@ -503,7 +503,9 @@ call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
 	),
 	{ list__length(OutVars, NOutVars) },
 	{ SetupCode = tree(CopyCode, node([
-			assign(reg(r(2)), const(int_const(NOutVars))) -
+			assign(reg(r(2)), const(int_const(0))) -
+				"Assign number of immediate input arguments",
+			assign(reg(r(3)), const(int_const(NOutVars))) -
 				"Assign number of output arguments"
 		])
 	) },

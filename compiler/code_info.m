@@ -2281,25 +2281,6 @@ code_info__add_variable_to_register(Var, Reg) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__add_variables_to_register(set(var), reg,
-						code_info, code_info).
-:- mode code_info__add_variables_to_register(in, in, in, out) is det.
-
-code_info__add_variables_to_register(Vars0, Reg) -->
-	{ set__to_sorted_list(Vars0, Vars) },
-	code_info__add_variables_to_register_2(Vars, Reg).
-
-:- pred code_info__add_variables_to_register_2(list(var), reg,
-						code_info, code_info).
-:- mode code_info__add_variables_to_register_2(in, in, in, out) is det.
-
-code_info__add_variables_to_register_2([], _Reg) --> [].
-code_info__add_variables_to_register_2([Var|Vars], Reg) -->
-	code_info__add_variable_to_register(Var, Reg),
-	code_info__add_variables_to_register_2(Vars, Reg).
-
-%---------------------------------------------------------------------------%
-
 code_info__add_lvalue_to_variable(Lval, Var) -->
 	code_info__get_variables(Variables0),
 	(
@@ -2311,25 +2292,6 @@ code_info__add_lvalue_to_variable(Lval, Var) -->
 	),
 	{ map__set(Variables0, Var, evaluated(Lvals), Variables) },
 	code_info__set_variables(Variables).
-
-%---------------------------------------------------------------------------%
-
-:- pred code_info__add_lvalues_to_variable(set(lval), var,
-						code_info, code_info).
-:- mode code_info__add_lvalues_to_variable(in, in, in, out) is det.
-
-code_info__add_lvalues_to_variable(Lvals0, Var) -->
-	{ set__to_sorted_list(Lvals0, Lvals) },
-	code_info__add_lvalues_to_variable_2(Lvals, Var).
-
-:- pred code_info__add_lvalues_to_variable_2(list(lval), var,
-						code_info, code_info).
-:- mode code_info__add_lvalues_to_variable_2(in, in, in, out) is det.
-
-code_info__add_lvalues_to_variable_2([], _Var) --> [].
-code_info__add_lvalues_to_variable_2([Lval|Lvals], Var) -->
-	code_info__add_lvalue_to_variable(Lval, Var),
-	code_info__add_lvalues_to_variable_2(Lvals, Var).
 
 %---------------------------------------------------------------------------%
 
@@ -2781,54 +2743,6 @@ code_info__apply_instmap_delta(Delta) -->
 
 %---------------------------------------------------------------------------%
 
-% XXX Is this code dead?
-
-:- pred code_info__generate_livevals(code_tree, code_info, code_info).
-:- mode code_info__generate_livevals(out, in, out) is det.
-
-
-code_info__generate_livevals(Code) -->
-	code_info__get_live_variables(LiveVars),
-	code_info__generate_livevals_2(LiveVars, LiveVals0),
-	code_info__get_pushed_values(Pushed),
-	{ code_info__generate_livevals_3(Pushed, LiveVals0, LiveVals) },
-	{ Code = node([livevals(LiveVals) - ""]) }.
-
-:- pred code_info__generate_livevals_2(list(var), bintree_set(lval),
-						code_info, code_info).
-:- mode code_info__generate_livevals_2(in, out, in, out) is det.
-
-code_info__generate_livevals_2([], Vals) -->
-	{ bintree_set__init(Vals) }.
-code_info__generate_livevals_2([V|Vs], Vals) -->
-	code_info__generate_livevals_2(Vs, Vals1),
-	(
-		code_info__get_variables(Variables),
-		{ map__search(Variables, V, evaluated(Vals0)) }
-	->
-		{ set__to_sorted_list(Vals0, ValsList) },
-		{ bintree_set__sorted_list_to_set(ValsList, Vals2) },
-		{ bintree_set__union(Vals1, Vals2, Vals) }
-	;
-		{ Vals = Vals1 }
-	).
-
-:- pred code_info__generate_livevals_3(stack(lval), bintree_set(lval),
-							bintree_set(lval)).
-:- mode code_info__generate_livevals_3(in, in, out) is det.
-
-code_info__generate_livevals_3(Stack0, Vals0, Vals) :-
-	(
-		stack__pop(Stack0, Top, Stack1)
-	->
-		bintree_set__insert(Vals0, Top, Vals1),
-		code_info__generate_livevals_3(Stack1, Vals1, Vals)
-	;
-		Vals = Vals0
-	).
-
-%---------------------------------------------------------------------------%
-
 	% XXX this pred will need to be rewritten to lookup variable shapes
 code_info__generate_stack_livelvals(LiveVals) -->
 	code_info__get_live_variables(LiveVars),
@@ -2914,9 +2828,6 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__get_stackslot_count(int, code_info, code_info).
 :- mode code_info__get_stackslot_count(out, in, out) is det.
 
-:- pred code_info__set_stackslot_count(int, code_info, code_info).
-:- mode code_info__set_stackslot_count(in, in, out) is det.
-
 :- pred code_info__get_registers(register_info, code_info, code_info).
 :- mode code_info__get_registers(out, in, out) is det.
 
@@ -2973,9 +2884,9 @@ code_info__variable_type(Var, Type) -->
 code_info__get_stackslot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
 
-code_info__set_stackslot_count(A, CI0, CI) :-
-	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
+% code_info__set_stackslot_count(A, CI0, CI) :-
+% 	CI0 =code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S),
+% 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
 code_info__get_label_count(B, CI, CI) :-
 	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
