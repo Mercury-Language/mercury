@@ -58,20 +58,23 @@ main_target: $(MAIN_TARGET)
 .m.optdate:
 	$(MCOI) $(MCOIFLAGS) $<
 
-# do not remove the whitespace in the following four rules!
+# Be very careful about changing the following rules.
+# The `@:' is a silent do-nothing command.
+# It is used to force GNU Make to recheck the timestamp
+# on the target file.  (It is a pity that GNU Make doesn't
+# have a way of handling these sorts of rules in a nicer manner.)
 
 .date.int:
-	
+	@:
 
 .date.int2:
-	
+	@:
 
 .date3.int3:
-	
+	@:
 
 .optdate.opt:
-	
-
+	@:
 
 .m.garb:
 	$(MCG) -s $(GRADE) --garbage-collection accurate $(MCGFLAGS) $<
