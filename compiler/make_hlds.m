@@ -941,21 +941,79 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 				{ Module = Module0 }
 			)
 		;
+			{ predicate_table_insert(PredicateTable0, PredInfo0, 
+					PredId, PredicateTable1) },
 			( 
 				{ code_util__predinfo_is_builtin(Module1, 
 						PredInfo0) }
 			->
-				{ pred_info_mark_as_external(PredInfo0,
-						PredInfo) }
+				{ add_builtin(PredId, PredInfo0, PredInfo) },
+				{ predicate_table_get_preds(PredicateTable1,
+					Preds1) },
+				{ map__set(Preds1, PredId, PredInfo, Preds) },
+				{ predicate_table_set_preds(PredicateTable1,
+					Preds, PredicateTable) }
 			;
-				{ PredInfo = PredInfo0 }
+				{ PredicateTable = PredicateTable1 }
 			),
-			{ predicate_table_insert(PredicateTable0, PredInfo, 
-					_PredId, PredicateTable) },
 			{ module_info_set_predicate_table(Module1, 
 					PredicateTable, Module) }
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_builtin(pred_id, pred_info, pred_info).
+:- mode add_builtin(in, in, out) is det.
+
+	% For a builtin predicate, say foo/2, we add a clause
+	%
+	%	foo(H1, H2) :- foo(H1, H2).
+	%
+	% This does not generate an infinite loop!
+	% Instead, the compiler will generate the usual builtin inline code
+	% for foo/2 in the body.  The reason for generating this
+	% forwarding code stub is so that things work correctly if
+	% you take the address of the predicate.
+
+add_builtin(PredId, PredInfo0, PredInfo) :-
+		%
+		% lookup some useful info: Module, Name, Context, HeadVars
+		%
+	pred_info_module(PredInfo0, Module),
+	pred_info_name(PredInfo0, Name),
+	pred_info_context(PredInfo0, Context),
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	ClausesInfo0 = clauses_info(VarSet, VarTypes0, VarTypes1,
+					HeadVars, _ClauseList0),
+
+		%
+		% construct the pseudo-recursive call to Module:Name(HeadVars)
+		%
+	SymName = qualified(Module, Name),
+	ModeId = 0, % mode checking will figure it out
+	hlds__is_builtin_make_builtin(yes, yes, IsBuiltin),
+	MaybeUnifyContext = no,
+	Call = call(PredId, ModeId, HeadVars, IsBuiltin, MaybeUnifyContext,
+			SymName),
+
+		%
+		% construct a clause containing that pseudo-recursive call
+		%
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	Goal = Call - GoalInfo,
+	Clause = clause([], Goal, Context),
+
+		%
+		% put the clause we just built into the pred_info
+		%
+	ClauseList = [Clause],
+	ClausesInfo = clauses_info(VarSet, VarTypes0, VarTypes1,
+					HeadVars, ClauseList),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
+
+%-----------------------------------------------------------------------------%
 
 :- pred add_special_pred_list(list(special_pred_id),
 			module_info, tvarset, type, type_id, hlds__type_body,

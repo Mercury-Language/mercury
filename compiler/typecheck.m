@@ -262,8 +262,10 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		IOState0, IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
-	    % there's no need to typecheck them.
-	    code_util__compiler_generated(PredInfo0)
+	    % there's no need to typecheck them.  Same for builtins.
+	    ( code_util__compiler_generated(PredInfo0)
+	    ; code_util__predinfo_is_builtin(ModuleInfo, PredInfo0)
+	    )
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(_, _, _, _, Clauses0),
