@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map.
+:- import_module list, int, std_util, term, map, uniq_array.
 
 :- pred test_ops(io__state::di, io__state::uo) is det.
 :- pred test_builtins(io__state::di, io__state::uo) is det.
@@ -149,6 +149,9 @@ test_other -->
 
 		% a no tag type 
 	io__write(qwerty(4)), newline,
+
+	{ uniq_array__from_list([1,2,3,4], UniqArray) },
+	io__write(UniqArray), newline,
 
 	newline.
 
