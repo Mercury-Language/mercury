@@ -202,7 +202,8 @@ so that the compiler does the right thing for options such as
 
 	<dd>
 	quantification.m handles implicit quantification and computes
-	the set of non-local variables for each sub-goal
+	the set of non-local variables for each sub-goal.
+    This is done in transform in make_hlds.m
 
 <dt> checking typeclass instances (check_typeclass.m)
 	<dd>
@@ -258,9 +259,30 @@ so that the compiler does the right thing for options such as
 	operations on it.  It also calls post_typecheck.m to
 	complete the handling of predicate
 	overloading for cases which typecheck.m is unable to handle,
-	to check for unbound type variables,
-	and to copy the clauses to the proc_infos in
-	preparation for mode analysis.
+	and to check for unbound type variables.
+
+<dt> polymorphism transformation
+
+	<dd>
+	polymorphism.m handles introduction of type_info arguments for
+	polymorphic predicates and introduction of typeclass_info arguments
+	for typeclass-constrained predicates.
+	This phase needs to come before mode analysis so that mode analysis
+	can properly reorder code involving existential types.
+	(It also needs to come before simplification so that simplify.m's
+	optimization of goals with no output variables doesn't do the
+	wrong thing for goals whose only output is the type_info for 
+	an existentially quantified type parameter.)
+	<p>
+	This phase also converts function calls into predicate calls,
+	converts higher-order predicate terms into lambda expressions,
+	and copies the clauses to the proc_infos in preparation for
+	mode analysis.
+	<p>
+	The polymorphism.m module also exports some utility routines that
+	are used by other modules.  These include some routines for generating
+	code to create type_infos, which are used by simplify.m and magic.m
+	when those modules introduce new calls to polymorphic procedures.
 
 <dt> mode analysis
 
@@ -272,10 +294,9 @@ so that the compiler does the right thing for options such as
 	  that specifies the changes in instantiatedness of each
 	  variable over that goal.
 	<li> modecheck_unify.m is the sub-module which analyses
-	  unification goals. It also converts higher-order pred terms
-	  into lambda expressions and module qualifies data constructors.
+	  unification goals.
+	  It also module qualifies data constructors.
 	<li> modecheck_call.m is the sub-module which analyses calls.
-	  It also converts function calls into predicate calls.
 
 		<p>
 
@@ -354,12 +375,13 @@ so that the compiler does the right thing for options such as
 	that they should not have been included in the program in the first
 	place.  (That's why this pass needs to be part of semantic analysis:
 	because it can report warnings.)
+	simplify.m converts complicated unifications into procedure calls.
 	simplify.m calls common.m which looks for (a) construction unifications
 	that construct a term that is the same as one that already exists,
 	or (b) repeated calls to a predicate with the same inputs, and replaces
 	them with assignment unifications.
 	simplify.m also attempts to partially evaluate calls to builtin
-	procedures if the inputs are all constants (see const_prop.m).
+	procedures if the inputs are all constants (see const_prop.m),
 
 </dl>
 
@@ -373,17 +395,11 @@ defined in mercury_builtin.m and the addition of some scaffolding structure.
 
 <p>
 
-The next two passes of this stage are code simplifications.
+The next pass of this stage is a code simplification, namely
+removal of lambda expressions (lambda.m):
 
 <ul>
-<li> introduction of type_info arguments for polymorphic predicates, 
-  introduction of typeclass_info arguments for typeclass-constrained predicates
-  and transformation of complicated unifications into predicate calls
-  (polymorphism.m)
-
-<li> removal of lambda expressions (lambda.m) <br>
-	<p>
-
+<li>
 	lambda.m converts lambda expressions into higher-order predicate
         terms referring to freshly introduced separate predicates.
 	This pass needs to come after unique_modes.m to ensure that
@@ -392,10 +408,7 @@ The next two passes of this stage are code simplifications.
 	doesn't handle higher-order predicate constants.
 </ul>
 
-<p>
-  
-To improve efficiency, the above two passes are actually combined into 
-one - polymorphism.m calls calls lambda__transform_lambda directly.
+(Is there any good reason why lambda.m comes after table_gen.m?)
 
 <p>
 
@@ -840,6 +853,12 @@ completed.
 <h2> MISCELLANEOUS </h2>
 
 	<dl>
+	<dt> builtin_ops:
+		<dd>
+		This module defines the types unary_op and binary_op
+		which are used by several of the different back-ends:
+		bytecode.m, llds.m, and mlds.m.
+
 	<dt> det_util:
 		<dd>
 		This module contains utility predicates needed by the parts
@@ -927,6 +946,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-06-16 02:13:24 $ by $Author: petdr $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-13 04:47:16 $ by $Author: dmo $@cs.mu.oz.au. <br>
 </body>
 </html>
