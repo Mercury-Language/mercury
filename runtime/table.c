@@ -16,7 +16,6 @@
 #define	HASHDEBUG
 
 #include	<stdio.h>
-#include	<assert.h>
 #include	"std.h"
 #include	"dlist.h"
 #include	"table.h"
