@@ -239,19 +239,9 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					TypeInfoMap),
 		Info0 = poly_info(VarSet1, VarTypes1, TypeVarSet0,
 					TypeInfoMap, ModuleInfo0),
-		polymorphism__process_goal(Goal0, Goal1, Info0, Info),
-		Info = poly_info(VarSet2, VarTypes2, TypeVarSet, _, ModuleInfo),
-		% if we introduced any new head variables, we need to
-		% fix up the quantification (non-local variables)
-		( ExtraHeadVars = [] ->
-			Goal = Goal1,
-			VarTypes = VarTypes2,
-			VarSet = VarSet2
-		;
-			implicitly_quantify_clause_body(HeadVars, Goal1,
-				VarSet2, VarTypes2, Goal, VarSet, VarTypes,
-				_Warnings)
-		)
+		polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
+		polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
+		Info = poly_info(VarSet, VarTypes, TypeVarSet, _, ModuleInfo)
 	),
 
 	% set the new values of the fields in proc_info and pred_info
@@ -383,7 +373,8 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
 		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
-		polymorphism__process_goal(LambdaGoal0, LambdaGoal),
+		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
+		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
 		polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals,
 				LambdaGoal, Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
@@ -478,6 +469,33 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				TypeInfoMap, ModuleInfo)
 	).
+
+:- pred polymorphism__fixup_quantification(hlds__goal, hlds__goal,
+		poly_info, poly_info).
+:- mode polymorphism__fixup_quantification(in, out, in, out) is det.
+
+%
+% If the predicate we are processing is a polymorphic predicate, we
+% may need to fix up the quantification (non-local variables)
+%
+
+polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
+	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
+			ModuleInfo),
+	map__values(TypeVarMap, ExtraHeadVars),
+	( ExtraHeadVars = [] ->
+		Goal = Goal0,
+		VarTypes = VarTypes0,
+		VarSet = VarSet0
+	;
+		Goal0 = _ - GoalInfo0,
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		set__list_to_set(ExtraHeadVars, NewOutsideVars),
+		set__union(NewOutsideVars, NonLocals, OutsideVars),
+		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
+	),
+	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarMap, ModuleInfo).
 
 :- pred polymorphism__process_lambda(list(var), list(mode), determinism,
 		set(var), hlds__goal, unification, unify_rhs, unification,
