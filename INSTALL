@@ -9,7 +9,7 @@
 #
 # Step 1.  Run `configure'.  (Just type `sh configure'.)
 #
-#	   By default, the files will be installed in /usr/local/mercury-0.4.
+#	   By default, the files will be installed in /usr/local/mercury-0.5.
 #	   If you want the files to be installed someplace else,
 #	   use the `--prefix <directory>' option to `configure'.
 #
@@ -20,12 +20,12 @@
 #	   This step will also take a long time.
 #
 # Step 4.  Check the permissions on the installed files.
-#	   Add /usr/local/mercury-0.4/bin to your PATH, and
-#	   add /usr/local/mercury-0.4/info to your INFOPATH.
+#	   Add /usr/local/mercury-0.5/bin to your PATH, and
+#	   add /usr/local/mercury-0.5/info to your INFOPATH.
 #	   You can also add a WWW link to the Mercury documentation in
-#	   /usr/local/mercury-0.4/lib/mercury/html to your WWW home page,
+#	   /usr/local/mercury-0.5/lib/mercury/html to your WWW home page,
 #	   and you may want to print out a hard-copy of the documentation
-#	   from the DVI files in /usr/local/mercury-0.4/lib/mercury/doc.
+#	   from the DVI files in /usr/local/mercury-0.5/lib/mercury/doc.
 #
 # Step 5.  Run `make clean'
 #
@@ -73,7 +73,7 @@ make install
 # You may eventually want to uninstall this version of Mercury
 # (to free up disk space so you can install the next version ;-).
 # If you installed in the default location, you can simply
-# use `rm -rf /usr/local/mercury-0.4' to uninstall.
+# use `rm -rf /usr/local/mercury-0.5' to uninstall.
 # If you installed in a location such as `/usr/local' that also
 # contains other files which you do not want removed, then
 # run the command `make uninstall' in this directory.
