@@ -346,6 +346,11 @@ case $HOST in
 			;;
 		esac
 		;;
+	mars)
+		CONFIG_OPTS=""
+		INSTALL_MCFLAGS="$INSTALL_MCFLAGS --use-subdirs"
+		TEST_MCFLAGS="$TEST_MCFLAGS --use-subdirs"
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
