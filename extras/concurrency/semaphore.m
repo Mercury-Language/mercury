@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -155,18 +155,20 @@
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 		MR_schedule(ctxt);
 			/* yield() */
-		MR_save_context(MR_ENGINE(this_context));
-		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_1;
-		MR_schedule(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(MR_eng_this_context));
+		MR_ENGINE(MR_eng_this_context)->resume =
+			&&signal_skip_to_the_end_1;
+		MR_schedule(MR_ENGINE(MR_eng_this_context));
 		MR_runnext();
 signal_skip_to_the_end_1:
 	} else {
 		sem->count++;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 			/* yield() */
-		MR_save_context(MR_ENGINE(this_context));
-		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_2;
-		MR_schedule(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(MR_eng_this_context));
+		MR_ENGINE(MR_eng_this_context)->resume =
+			&&signal_skip_to_the_end_2;
+		MR_schedule(MR_ENGINE(MR_eng_this_context));
 		MR_runnext();
 signal_skip_to_the_end_2:
 	}
@@ -199,10 +201,11 @@ signal_skip_to_the_end_2:
 		sem->count--;
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
 	} else {
-		MR_save_context(MR_ENGINE(this_context));
-		MR_ENGINE(this_context)->resume = &&wait_skip_to_the_end;
-		MR_ENGINE(this_context)->next = sem->suspended;
-		sem->suspended = MR_ENGINE(this_context);
+		MR_save_context(MR_ENGINE(MR_eng_this_context));
+		MR_ENGINE(MR_eng_this_context)->resume =
+			&&wait_skip_to_the_end;
+		MR_ENGINE(MR_eng_this_context)->next = sem->suspended;
+		sem->suspended = MR_ENGINE(MR_eng_this_context);
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
 		MR_runnext();
 wait_skip_to_the_end:
