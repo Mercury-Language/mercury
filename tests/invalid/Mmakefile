@@ -144,6 +144,13 @@ MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization
 MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization
 MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization
 MCFLAGS-any_mode	=	--infer-types
+
+# XXX This test should work with --intermodule-optimization, but
+# the compiler doesn't know whether items imported from `.opt' files
+# were imported in the interface or the implementation. The error
+# is reported correctly when building the `.opt' file.
+MCFLAGS-assert_in_interface =	--no-intermodule-optimization
+
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
