@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -618,8 +618,10 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
-		# Only delete the stable rotds.
+		# Delete older stable rotds and anything stable tar files 
+		# with the same version.
 	    rm -f $STABLE/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-*-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
@@ -627,9 +629,9 @@ case $status in
 	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
-		# Only delete the stable rotds.
 	    rsh $BETA_FTPHOST "\
-	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
@@ -637,8 +639,8 @@ case $status in
 	    $LN $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-tests-$version.tar.gz" &&
 
-		# Only delete the stable rotds.
 	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    rm -f $BETA_WEBDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
