@@ -688,8 +688,8 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 	).
 code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
-code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
-	{ error("Negation in deterministic code is not yet implemented.") }.
+code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
+	code_gen__generate_negation_general(model_det, Goal, Instr).
 code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Instr) -->
@@ -1046,14 +1046,14 @@ code_gen__generate_negation(Goal, Code) -->
 		]) },
 		{ Code = tree(Code0, tree(Code1, TestCode)) }
 	;
-		code_gen__generate_negation_general(Goal, Code)
+		code_gen__generate_negation_general(model_semi, Goal, Code)
 	).
 
-:- pred code_gen__generate_negation_general(hlds__goal, code_tree,
+:- pred code_gen__generate_negation_general(code_model, hlds__goal, code_tree,
 					code_info, code_info).
-:- mode code_gen__generate_negation_general(in, out, in, out) is det.
+:- mode code_gen__generate_negation_general(in, in, out, in, out) is det.
 
-code_gen__generate_negation_general(Goal, Code) -->
+code_gen__generate_negation_general(CodeModel, Goal, Code) -->
 	code_info__get_globals(Globals),
 	{ Goal = _NotGoal - GoalInfo },
 	{ goal_info_cont_lives(GoalInfo, Lives) },
@@ -1081,7 +1081,11 @@ code_gen__generate_negation_general(Goal, Code) -->
 		% mode-correct, it won't have any output vars, and so
 		% it will be semi-det.
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
-	code_info__generate_under_failure(FailCode),
+	( { CodeModel = model_det } ->
+		{ FailCode = empty }
+	;
+		code_info__generate_under_failure(FailCode)
+	),
 	code_info__restore_failure_cont(RestoreContCode),
 	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
 	{ Code = tree(tree(tree(ModContCode, SaveHeapCode), GoalCode),
