@@ -1033,6 +1033,13 @@ string__append_list(Lists, string__append_list(Lists)).
 }
 ").
 
+string__append_list(Strs::in) = (Str::uo) :-
+	( Strs = [X | Xs] ->
+		Str = X ++ append_list(Xs)
+	;
+		Str = ""
+	).
+
 :- pragma foreign_proc("C#",
 		string__join_list(_Sep::in, _Strs::in) = (_Str::uo),
 		[will_not_call_mercury, thread_safe], "{
