@@ -177,19 +177,19 @@ MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 
 # intermod_lambda.m needs inter-module optimization
-intermod_lambda.c:
+$(cs_subdir)intermod_lambda.c:
 	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_lambda2.m
 	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_lambda2.m
 	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
 		intermod_lambda.m
 
-intermod_quote.c:
+$(cs_subdir)intermod_quote.c:
 	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_quote2.m
 	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_quote2.m
 	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
 		intermod_quote.m
 
-intermod_test.c:
+$(cs_subdir)intermod_test.c:
 	$(MCI) $(GRADEFLAGS) $(MCIFLAGS) intermod_test2.m
 	$(MCOI) $(GRADEFLAGS) $(MCOIFLAGS) intermod_test2.m
 	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) --intermodule-optimization \
