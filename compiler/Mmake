@@ -68,7 +68,7 @@ mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 
 #-----------------------------------------------------------------------------#
 
-conf.m: conf.m.in ../config.status
+conf.m: conf.m.in # XXX ../config.status - problems with bootstrapping
 	cd ..; CONFIG_FILES=compiler/conf.m CONFIG_HEADERS= ./config.status
 
 #-----------------------------------------------------------------------------#
