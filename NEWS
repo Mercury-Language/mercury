@@ -127,6 +127,16 @@ Changes to the Mercury standard library:
 * We've added function versions of many of the predicates in the
   Mercury standard library.
 
+  One small drawback of this change is that it is not completely
+  backwards compatible; in certain circumstances, there is a potential
+  ambiguity between a function call and a partially applied predicate,
+  and for some occurrences of this the compiler may not be able to
+  resolve the ambiguity unless the user provides additional type
+  declarations (or the like).  But such cases should be quite rare,
+  and when they do occur the fix is easy, so we thought the clear
+  advantages of using a functional syntax were well worth this minor
+  glitch in backwards compatibility.
+
 * The following predicates have been replaced by functions with
   the same names, and will be removed in a future release.
 
