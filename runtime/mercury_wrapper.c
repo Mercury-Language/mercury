@@ -1319,6 +1319,12 @@ mercury_runtime_terminate(void)
 
 	(*MR_library_finalizer)();
 
+	/*
+	** Restore the registers before calling MR_trace_final()  
+	** as MR_trace_final() expect them to be valid.
+	*/
+	restore_registers(); 
+
 	MR_trace_final();
 
 	if (MR_profiling) MR_prof_finish();
