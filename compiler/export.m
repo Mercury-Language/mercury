@@ -7,8 +7,6 @@
 % This module defines predicates to produce the functions which are
 % exported to C via a pragma(export, ...) declaration.
 
-% XXX We don't handle floats or strings properly.
-
 % Main authors: dgj.
 
 %-----------------------------------------------------------------------------%
@@ -38,7 +36,7 @@
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds, llds_out.
-:- import_module library, map, int, std_util, assoc_list.
+:- import_module library, map, int, std_util, assoc_list, require.
 
 export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
@@ -94,14 +92,15 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	proc_info_headvars(ProcInfo, HeadVars), 
 	proc_info_vartypes(ProcInfo, VarTypes),
-	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, HeadArgInfos),
+	make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
+		ArgInfoTypes),
 
-	get_argument_declarations(HeadArgInfos, VarTypes, ArgDecls),
+	get_argument_declarations(ArgInfoTypes, ArgDecls),
 
 		% work out which arguments are input, and which are output,
 		% and copy to/from the mercury registers.
-	get_input_args(ArgInfos, 0, InputArgs),
-	copy_output_args(ArgInfos, 0, OutputArgs),
+	get_input_args(ArgInfoTypes, 0, InputArgs),
+	copy_output_args(ArgInfoTypes, 0, OutputArgs),
 	
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	get_proc_label(ProcLabel, ProcLabelString),
@@ -131,26 +130,39 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	export__to_c(Preds, ExportedProcs, Module, TheRest),
 	ExportedProcsCode = [Code|TheRest].
 
-:- pred get_argument_declarations(assoc_list(var, arg_info), map(var, type), 
-	string).
-:- mode get_argument_declarations(in, in, out) is det.
 
-get_argument_declarations([], _, "void").
-get_argument_declarations([X|Xs], VarTypes, Result) :-
-	get_argument_declarations_2([X|Xs], VarTypes, 0, Result).
+	% Match the arg_info with the type of the corresponding variable
+:- pred make_arg_info_type_list(list(var), list(arg_info), map(var, type), 
+		assoc_list(arg_info, type)).
+:- mode make_arg_info_type_list(in, in, in, out) is det.
+make_arg_info_type_list([], [], _VarTypes, []).
+make_arg_info_type_list([_|_], [], _VarTypes, []) :-
+	error("list length mismatch in make_var_arg_info_type_list/4").
+make_arg_info_type_list([], [_|_], _VarTypes, []) :-
+	error("list length mismatch in make_var_arg_info_type_list/4").
+make_arg_info_type_list([V|Vs], [A|As], VarTypes, [AT|ATs]) :-
+	map__lookup(VarTypes, V, Type),
+	AT =  A - Type,
+	make_arg_info_type_list(Vs, As, VarTypes, ATs).
 
-:- pred get_argument_declarations_2(assoc_list(var, arg_info), map(var, type), 
-	int, string).
-:- mode get_argument_declarations_2(in, in, in, out) is det.
 
-get_argument_declarations_2([], _, _, "").
-get_argument_declarations_2([V|Vs], VarTypes, Num0, Result) :-
-	V = Var - ArgInfo,
+:- pred get_argument_declarations(assoc_list(arg_info, type), string).
+:- mode get_argument_declarations(in, out) is det.
+
+get_argument_declarations([], "void").
+get_argument_declarations([X|Xs], Result) :-
+	get_argument_declarations_2([X|Xs], 0, Result).
+
+:- pred get_argument_declarations_2(assoc_list(arg_info, type), int, string).
+:- mode get_argument_declarations_2(in, in, out) is det.
+
+get_argument_declarations_2([], _, "").
+get_argument_declarations_2([AT|ATs], Num0, Result) :-
+	AT = ArgInfo - Type,
 	ArgInfo = arg_info(_Loc, Mode),
 	Num is Num0 + 1,
 	string__int_to_string(Num, NumString),
 	string__append("Mercury__argument", NumString, ArgName),
-	map__lookup(VarTypes, Var, Type),
 	export__term_to_type_string(Type, TypeString0),
 	(
 		Mode = top_out
@@ -161,30 +173,30 @@ get_argument_declarations_2([V|Vs], VarTypes, Num0, Result) :-
 		string__append(TypeString0, " ", TypeString)
 	),
 	(
-		Vs = []
+		ATs = []
 	->
 		string__append(TypeString, ArgName, Result)
 	;
-		get_argument_declarations_2(Vs, VarTypes, Num, TheRest),
+		get_argument_declarations_2(ATs, Num, TheRest),
 		string__append_list([TypeString, ArgName, ", ", TheRest], 
 			Result)
 	).
 
-:- pred get_input_args(list(arg_info), int, string).
+:- pred get_input_args(assoc_list(arg_info, type), int, string).
 :- mode get_input_args(in, in, out) is det.
 
-	% XXX We don't handle floats and strings properly.
-
 get_input_args([], _, "").
-get_input_args([A|ArgInfos], Num0, Result) :-
-	A = arg_info(Register, Mode),
+get_input_args([AT|ATs], Num0, Result) :-
+	AT = ArgInfo - Type,
+	ArgInfo = arg_info(Register, Mode),
 	Num is Num0 + 1,
 	(
 		Mode = top_in,
 
 		string__int_to_string(Register, RegString),
 		string__int_to_string(Num, NumString),
-		string__append("Mercury__argument", NumString, ArgName),
+		string__append("Mercury__argument", NumString, ArgName0),
+		convert_type_to_mercury(ArgName0, Type, ArgName),
 
 		( 
 				% XXX We should handle floats
@@ -195,13 +207,8 @@ get_input_args([A|ArgInfos], Num0, Result) :-
 		;
 			string__append("r", RegString, RegName)
 		),
-		string__append_list([ 	"\t",
-					RegName,
-					" = ",
-					ArgName,
-					";\n"
-					],
-					InputArg)
+		string__append_list(["\t", RegName, " = ", ArgName, ";\n" ],
+			InputArg)
 	;
 		Mode = top_out,
 		InputArg = ""
@@ -209,17 +216,18 @@ get_input_args([A|ArgInfos], Num0, Result) :-
 		Mode = top_unused,
 		InputArg = ""
 	),
-	get_input_args(ArgInfos, Num, TheRest),
+	get_input_args(ATs, Num, TheRest),
 	string__append(InputArg, TheRest, Result).
+	
 
-:- pred copy_output_args(list(arg_info), int, string).
+
+:- pred copy_output_args(assoc_list(arg_info, type), int, string).
 :- mode copy_output_args(in, in, out) is det.
 
-	% XXX We don't handle floats and strings properly.
-
 copy_output_args([], _, "").
-copy_output_args([A|ArgInfos], Num0, Result) :-
-	A = arg_info(Register, Mode),
+copy_output_args([AT|ATs], Num0, Result) :-
+	AT = ArgInfo - Type,
+	ArgInfo = arg_info(Register, Mode),
 	Num is Num0 + 1,
 	(
 		Mode = top_in,
@@ -232,28 +240,63 @@ copy_output_args([A|ArgInfos], Num0, Result) :-
 		string__int_to_string(Register, RegString),
 
 		( 
-				% XXX We should handle floats
+				% XXX We should handle float registers
 				% XXX This magic number can't be good
 			Register > 32 
 		->
-			string__append_list(["r(", RegString, ")"], RegName)
+			string__append_list(["r(", RegString, ")"], RegName0)
 		;
-			string__append("r", RegString, RegName)
+			string__append("r", RegString, RegName0)
 		),
-		string__append_list([
-					"\t*",
-					ArgName,
-					" = ",
-					RegName,
-					";\n"
-					],
-					OutputArg)
+		convert_type_from_mercury(RegName0, Type, RegName),
+		string__append_list(["\t*", ArgName, " = ", RegName, ";\n" ],
+			OutputArg)
 	;
 		Mode = top_unused,
 		OutputArg = ""
 	),
-	copy_output_args(ArgInfos, Num, TheRest),
+	copy_output_args(ATs, Num, TheRest),
 	string__append(OutputArg, TheRest, Result).
+	
+
+	% Convert an rval (represented as a string), from a C type to
+	% a mercury C type. (ie. convert strings and floats to words).
+:- pred convert_type_to_mercury(string, type, string).
+:- mode convert_type_to_mercury(in, in, out) is det.
+
+convert_type_to_mercury(Rval, Type, ConvertedRval) :-	
+	(
+        	Type = term__functor(term__atom("string"), [], _)
+	->
+		string__append("(Word) ", Rval, ConvertedRval)
+	;
+        	Type = term__functor(term__atom("float"), [], _)
+	->
+		string__append_list(["float_to_word(", Rval, ")" ],
+			ConvertedRval)
+	;
+		ConvertedRval = Rval
+	).
+
+	% Convert an rval (represented as a string), from a mercury C type to
+	% a C type. (ie. convert words to strings and floats if required).
+:- pred convert_type_from_mercury(string, type, string).
+:- mode convert_type_from_mercury(in, in, out) is det.
+
+convert_type_from_mercury(Rval, Type, ConvertedRval) :-	
+	(
+        	Type = term__functor(term__atom("string"), [], _)
+	->
+		string__append("(String) ", Rval, ConvertedRval)
+	;
+        	Type = term__functor(term__atom("float"), [], _)
+	->
+		string__append_list(["word_to_float(", Rval, ")" ],
+			ConvertedRval)
+	;
+		ConvertedRval = Rval
+	).
+
 
 export__produce_header_file(Module, ModuleName) -->
 	{ module_info_get_pragma_exported_procs(Module, ExportedProcs) },
@@ -315,10 +358,11 @@ export__produce_header_file_2(Preds, [E|ExportedProcs], Module) -->
 
 	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgInfos, 
-		HeadArgInfos) },
 
-	{ get_argument_declarations(HeadArgInfos, VarTypes, ArgDecls) },
+	{ make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
+		HeadArgInfoTypes) },
+
+	{ get_argument_declarations(HeadArgInfoTypes, ArgDecls) },
 
 		% output the function header
 	io__write_string("void\n"),
@@ -344,3 +388,4 @@ export__term_to_type_string(Type, Result) :-
 	;
 		Result = "Word"
 	).
+
