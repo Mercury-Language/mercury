@@ -158,7 +158,7 @@ install_mercury: install_ints install_mods install_library
 
 .PHONY: install_ints
 install_ints: $(library.ints)
-	[ -d $(INSTALL_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
+	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
 	for file in `vpath_find $(library.ints)`; do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
 		cp $$file $$target.tmp; \
