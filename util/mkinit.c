@@ -228,7 +228,7 @@ static const char aditi_header[] =
 	"static int MR_do_load_aditi_rl_code(void);\n"
 	;
 
-static const char mercury_funcs[] =
+static const char mercury_funcs1[] =
 	"\n"
 	"#ifdef MR_HIGHLEVEL_CODE\n"
 	"  extern void MR_CALL %s(void);\n"
@@ -292,7 +292,9 @@ static const char mercury_funcs[] =
 	"	libmercury_impure_ptr = _impure_ptr;\n"
 	"  #endif\n"
 	"#endif\n"
-	"\n"
+	"\n";
+
+static const char mercury_funcs2[] =
 	"	MR_address_of_mercury_init_io = mercury_init_io;\n"
 	"	MR_address_of_init_modules = init_modules;\n"
 	"	MR_address_of_init_modules_type_tables = init_modules_type_tables;\n"
@@ -362,7 +364,7 @@ static const char mercury_funcs[] =
 	"#endif\n"
 	;
 
-static const char mercury_funcs2[] =
+static const char mercury_funcs3[] =
 	"\n"
 	"	mercury_runtime_init(argc, argv);\n"
 	"	return;\n"
@@ -828,8 +830,8 @@ output_main(void)
 		aditi_load_func = "NULL";
 	}
 	
-	printf(mercury_funcs, hl_entry_point, entry_point,
-		aditi_load_func, hl_entry_point, entry_point);
+	printf(mercury_funcs1, hl_entry_point, entry_point);
+	printf(mercury_funcs2, aditi_load_func, hl_entry_point, entry_point);
 
 	printf("	MR_runtime_flags = \"");
 	for (list_tmp = runtime_flags;
@@ -854,7 +856,7 @@ output_main(void)
 	}
 	printf("\";\n");
 
-	fputs(mercury_funcs2, stdout);
+	fputs(mercury_funcs3, stdout);
 
 	if (output_main_func) {
 		fputs(main_func, stdout);
