@@ -148,13 +148,13 @@ add_item_decl(func(VarSet, FuncName, TypesAndModes, RetTypeAndMode, MaybeDet,
 add_item_decl(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond), Context,
 		Status, Module0, Status, Module) -->
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
-		Context, function, Module).
+		Context, predicate, Module).
 
 add_item_decl(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet, Cond),
 		Context, Status, Module0, Status, Module) -->
 	{ list__append(Modes, [RetMode], Modes1) },
 	module_add_mode(Module0, VarSet, FuncName, Modes1,
-		MaybeDet, Cond, Context, predicate, Module).
+		MaybeDet, Cond, Context, function, Module).
 
 add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 	(
