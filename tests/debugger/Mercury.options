@@ -5,8 +5,8 @@ MLFLAGS-completion = --runtime-flags --force-readline
 
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
-MCFLAGS-tabled_read = --trace-table-io --trace-table-io-all
-MCFLAGS-tabled_read_unitize = --trace-table-io --trace-table-io-all
+MCFLAGS-tabled_read = --trace-table-io-all
+MCFLAGS-tabled_read_unitize = --trace-table-io-all
 MCFLAGS-tabled_read_decl = --trace-table-io-decl --trace-table-io-all
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
