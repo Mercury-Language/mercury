@@ -108,7 +108,9 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 extern int sys_nerr;
 extern char *sys_errlist[];
 
-char *strerror(int errnum) {
+char *
+strerror(int errnum)
+{
 	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
 		return sys_errlist[errnum];
 	} else {
@@ -124,7 +126,7 @@ char *strerror(int errnum) {
 
 /* utility routines for opening and closing files */
 
-static FILE*
+static FILE *
 checked_fopen(const char *filename, const char *message, const char *mode)
 {
 	FILE *file;
@@ -139,7 +141,8 @@ checked_fopen(const char *filename, const char *message, const char *mode)
 	return file;
 }
 
-static void checked_fclose(FILE* file, const char *filename)
+static void
+checked_fclose(FILE *file, const char *filename)
 {
 	errno = 0;
 	if (fclose(file) != 0) {
@@ -152,24 +155,37 @@ static void checked_fclose(FILE* file, const char *filename)
 
 #ifdef	PROFILE_TIME
 
-static void checked_setitimer(int which, struct itimerval *value)
+static void
+checked_setitimer(int which, struct itimerval *value)
 {
 	errno = 0;
-	if ( setitimer(which, value, NULL) != 0 ) {
-		fprintf(stderr,
-			"Mercury runtime: cannot set timer for profiling: %s\n",
-			strerror(errno));
+	if (setitimer(which, value, NULL) != 0) {
+		perror("Mercury runtime: cannot set timer for profiling");
 		exit(1);
 	}
 }
 
-static void checked_signal(int sig, void (*disp)(int))
+static void
+checked_signal(int sig, void (*handler)(int))
 {
+#ifdef HAVE_SIGACTION
+	struct sigaction	act;
+	act.sa_flags = SA_RESTART;
+	if (sigemptyset(&act.sa_mask) != 0) {
+		perror("Mercury runtime: cannot set clear signal mask");
+		exit(1);
+	}
+	act.sa_handler = handler;
+#endif /* HAVE_SIGACTION */
 	errno = 0;
-	if ( signal(sig, disp) == SIG_ERR ) {
-		fprintf(stderr,
-			"Mercury runtime: cannot install signal handler: %s\n",
-			strerror(errno));
+
+#ifdef HAVE_SIGACTION
+	if (sigaction(sig, &act, NULL) != 0)
+#else
+	if (signal(sig, handler) == SIG_ERR)
+#endif /* HAVE_SIGACTION */
+	{
+		perror("Mercury runtime: cannot install signal handler");
 		exit(1);
 	}
 }
@@ -189,7 +205,8 @@ static void checked_signal(int sig, void (*disp)(int))
 **		SYSTEM SPECIFIC CODE
 */
 
-void prof_init_time_profile()
+void
+prof_init_time_profile()
 {
 	FILE 	*fptr;
 	struct itimerval itime;
@@ -218,7 +235,8 @@ void prof_init_time_profile()
 **		address pair already exists then it increments a count.
 */
 
-void prof_call_profile(Code *Callee, Code *Caller)
+void
+prof_call_profile(Code *Callee, Code *Caller)
 {
         prof_call_node *node, **node_addr, *new_node;
 	int hash_value;
@@ -227,7 +245,7 @@ void prof_call_profile(Code *Callee, Code *Caller)
 
         node_addr = &addr_pair_table[hash_value];
         while ((node = *node_addr) != NULL) {
-                if ( (node->Callee == Callee) && (node->Caller == Caller) ) {
+                if (node->Callee == Callee && node->Caller == Caller) {
                         node->count++;
                         return;
                 }
@@ -253,7 +271,8 @@ void prof_call_profile(Code *Callee, Code *Caller)
 **		address already exists, it increments its count.
 */
 
-void prof_time_profile(int signum)
+void
+prof_time_profile(int signum)
 {
         prof_time_node *node, **node_addr, *new_node;
         int hash_value;
@@ -265,7 +284,7 @@ void prof_time_profile(int signum)
 
         node_addr = &addr_table[hash_value];
         while ((node = *node_addr) != NULL) {
-                if ( (node->Addr == prof_current_proc) ) {
+                if (node->Addr == prof_current_proc) {
                         node->count++;
 			checked_signal(SIGPROF, prof_time_profile);
                         return;
@@ -290,7 +309,8 @@ void prof_time_profile(int signum)
 **		Turns off the time profiling.
 */
 
-void prof_turn_off_time_profiling()
+void
+prof_turn_off_time_profiling()
 {
 	struct itimerval itime;
 
@@ -312,7 +332,8 @@ void prof_turn_off_time_profiling()
 **		Caller then callee followed by count.
 */
 
-void prof_output_addr_pair_table(void)
+void
+prof_output_addr_pair_table(void)
 {
 	FILE *fptr;
 	int  i;
@@ -341,7 +362,8 @@ void prof_output_addr_pair_table(void)
 **		This is called from insert_entry() in label.c.
 */
 
-void prof_output_addr_decls(const char *name, const Code *address)
+void
+prof_output_addr_decls(const char *name, const Code *address)
 {
 	if (!declfptr) {
 		declfptr = checked_fopen("Prof.Decl", "create", "w");
@@ -359,7 +381,8 @@ void prof_output_addr_decls(const char *name, const Code *address)
 **		the file "Prof.Counts"
 */
 
-void prof_output_addr_table()
+void
+prof_output_addr_table()
 {
 	FILE *fptr;
 	int  i;
