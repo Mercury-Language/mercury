@@ -1136,7 +1136,7 @@ the database over a network, you would need declarations such as
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) = bound( [] ; [Inst | listskel] ).
+:- inst listskel(Inst) = bound( [] ; [Inst | listskel(Inst)] ).
 @end example
 
 @noindent
@@ -1430,7 +1430,7 @@ only destructive-input and unique-output modes work.
 
 The Mercury compiler does not (yet) reuse @samp{dead}
 values.  The only destructive update in the current implementation occurs
-in the library modules for I/O and arrays.  We do however plan to
+in library modules, e.g. for I/O and arrays.  We do however plan to
 implement structure reuse and compile-time garbage collection
 in the very near future.
 
