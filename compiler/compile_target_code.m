@@ -158,12 +158,12 @@
 
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
-:- import_module hlds__error_util.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module libs__trace_params.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 
 :- import_module char, dir, getopt, int, require, string.
