@@ -3,6 +3,8 @@
 ** that gcc can't inline it.
 */
 
+#include "dummy.h"
+
 void dummy_function_call(void)
 {
 }
