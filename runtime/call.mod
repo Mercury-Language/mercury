@@ -230,6 +230,9 @@ mercury__index_2_0_i1:
 }
 
 mercury__compare_3_0:
+mercury__compare_3_1:
+mercury__compare_3_2:
+mercury__compare_3_3:
 {
 	Word type_info;
 	Code *compare_pred;
