@@ -54,7 +54,7 @@
 :- type var2pvar	==	map(var, prog_var).
 
 :- type parser(T) == pred(term, maybe1(T)).
-:- mode parser    :: pred(in, out) is det.
+:- mode parser == (pred(in, out) is det).
 
 :- pred add_context(maybe1(item)::in, prog_context::in,
 	maybe_item_and_context::out) is det.
