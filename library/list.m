@@ -372,6 +372,14 @@
 :- pred list__filter_map(pred(X, Y), list(X), list(Y)).
 :- mode list__filter_map(pred(in, out) is semidet, in, out) is det.
 
+	% list__filter_map(Transformer, List, TrueList, FalseList) takes
+	% a predicate with one input argument and one output argument.
+	% It is called with each element of List. If a call succeeds,
+	% then the output is included in TrueList; otherwise, the failing
+	% input is included in FalseList.
+:- pred list__filter_map(pred(X, Y), list(X), list(Y), list(X)).
+:- mode list__filter_map(pred(in, out) is semidet, in, out, out) is det.
+
 	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
 	% list containing the same elements as Unsorted, where Sorted is
 	% a sorted list, with respect to the ordering defined by the predicate
@@ -892,6 +900,16 @@ list__filter_map(P, [H0|T0], L) :-
 	),
 	list__filter_map(P, T0, L1).
 
+list__filter_map(_, [], [], []).
+list__filter_map(P, [H0|T0], L, M) :-
+        ( call(P, H0, H) ->
+                L = [H|L1],
+		M = M1
+        ;
+                L = L1,
+		M = [H0|M1]
+        ),
+        list__filter_map(P, T0, L1, M1).
 
 list__sort_and_remove_dups(P, L0, L) :-
 	list__sort(P, L0, L1),
