@@ -35,12 +35,18 @@ DIFF_OPTS=-c
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.exp' file, and if that
 # doesn't succeed, and there is a `.exp2' file, then we try matching
-# against that too.
+# against that too.  If neither succeed, the shorter of the two diffs
+# is put into the `.res' file.
 #
 %.res: %.exp %.out
 	-rm -f $@
+	-rm -f $*.res2
 	diff $(DIFF_OPTS) $*.exp $*.out > $@ || \
-		{ [ -f $*.exp2 ] && diff $(DIFF_OPTS) $*.exp2 $*.out > $@; }
+		if test -f $*.exp2; then	\
+			diff $(DIFF_OPTS) $*.exp2 $*.out > $*.res2; \
+			test `wc -l < $@` -lt `wc -l < $*.res2` || \
+				cp $*.res2 $@; \
+		fi
 
 #-----------------------------------------------------------------------------#
 
@@ -56,6 +62,7 @@ clean_exp:
 
 clean_res:
 	rm -f *.res
+	rm -f *.res2
 
 #
 # The `foo' targets make `foo_local' in the current directory before
