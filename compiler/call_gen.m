@@ -48,7 +48,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require, bintree_set.
+:- import_module tree, list, map, std_util, require, bintree_set, int.
 :- import_module prog_io, arg_info, type_util, mode_util, unify_proc.
 :- import_module shapes.
 
@@ -240,10 +240,10 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm] }
+			{ Args = [PredTerm|OutArgs] }
 		->
 			call_gen__generate_higher_call(deterministic,
-				PredTerm, Code)
+				PredTerm, OutArgs, Code)
 		;
 			{ error("call_gen__generate_det_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -277,10 +277,10 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm] }
+			{ Args = [PredTerm|OutArgs] }
 		->
 			call_gen__generate_higher_call(semideterministic,
-				PredTerm, Code)
+				PredTerm, OutArgs, Code)
 		;
 			{ error("call_gen__generate_semi_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -297,10 +297,10 @@ call_gen__generate_nondet_builtin(PredId, _ProcId, Args, Code) -->
 		{ PredName = "call" }
 	->
 		(
-			{ Args = [PredTerm] }
+			{ Args = [PredTerm|OutArgs] }
 		->
 			call_gen__generate_higher_call(nondeterministic,
-				PredTerm, Code)
+				PredTerm, OutArgs, Code)
 		;
 			{ error("call_gen__generate_non_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -490,11 +490,11 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_higher_call(category, var, code_tree,
+:- pred call_gen__generate_higher_call(category, var, list(var), code_tree,
 						code_info, code_info).
-:- mode call_gen__generate_higher_call(in, in, out, in, out) is det.
+:- mode call_gen__generate_higher_call(in, in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(PredDet, Var, Code) -->
+call_gen__generate_higher_call(PredDet, Var, OutVars, Code) -->
 	call_gen__save_variables(SaveCode),
 	code_info__clear_reserved_registers,
 	code_info__generate_stack_livevals(LiveVals0),
@@ -510,6 +510,12 @@ call_gen__generate_higher_call(PredDet, Var, Code) -->
 			assign(reg(r(1)), RVal) - "Copy pred-term"
 		])}
 	),
+	{ list__length(OutVars, NOutVars) },
+	{ SetupCode = tree(CopyCode, node([
+			assign(reg(r(2)), const(int_const(NOutVars))) -
+				"Assign number of output arguments"
+		])
+	) },
 	code_info__get_next_label(ReturnLabel),
 	(
 		{ PredDet = deterministic },
@@ -545,8 +551,27 @@ call_gen__generate_higher_call(PredDet, Var, Code) -->
 		]) }
 	),
 	{ Code = tree(tree(SaveCode, VarCode),
-		tree(CopyCode, CallCode)) },
-	call_gen__rebuild_registers([]).
+		tree(SetupCode, CallCode)) },
+	(
+		{ PredDet = semideterministic }
+	->
+		{ FirstArg = 2 }
+	;
+		{ FirstArg = 1 }
+	),
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArgs) },
+	call_gen__rebuild_registers(OutArgs).
+
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__outvars_to_outargs(list(var), int, assoc_list(var,arg_info)).
+:- mode call_gen__outvars_to_outargs(in, in, out) is det.
+
+call_gen__outvars_to_outargs([], _N, []).
+call_gen__outvars_to_outargs([V|Vs], N0, [V - Arg|ArgInfos]) :-
+	Arg = arg_info(N0, top_out),
+	N1 is N0 + 1,
+	call_gen__outvars_to_outargs(Vs, N1, ArgInfos).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

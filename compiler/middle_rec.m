@@ -120,7 +120,9 @@ middle_rec__gen_det(Goal, Instrs) -->
 
 		{ tree__flatten(RecCode, RecListList) },
 		{ list__condense(RecListList, RecList) },
-		{ middle_rec__split_rec_code(RecList, BeforeList, AfterList) },
+		{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
+		{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
+								BeforeList) },
 
 		{ tree__flatten(BaseCode, BaseListList) },
 		{ list__condense(BaseListList, BaseList) },
@@ -130,7 +132,7 @@ middle_rec__gen_det(Goal, Instrs) -->
 
 		code_info__get_next_label(Loop1Label),
 		code_info__get_next_label(Loop2Label),
-		{ list__append(BeforeList, AfterList, RecCodeList) },
+		{ list__append(BeforeList0, AfterList, RecCodeList) },
 
 		{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
 		code_info__get_total_stackslot_count(StackSlots),
@@ -247,6 +249,24 @@ middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
 		middle_rec__split_rec_code(Instrs1, Before1, After),
 		Before = [Instr0 | Before1]
 	).
+
+%---------------------------------------------------------------------------%
+
+:- pred middle_rec__add_counter_to_livevals(list(instruction), lval,
+						list(instruction)).
+:- mode middle_rec__add_counter_to_livevals(in, in, out) is det.
+
+middle_rec__add_counter_to_livevals([], _Lval, []).
+middle_rec__add_counter_to_livevals([I0|Is0], Lval, [I|Is]) :-
+	(
+		I0 = livevals(Lives0) - Comment
+	->
+		bintree_set__insert(Lives0, Lval, Lives),
+		I = livevals(Lives) - Comment
+	;
+		I = I0
+	),
+	middle_rec__add_counter_to_livevals(Is0, Lval, Is).
 
 %---------------------------------------------------------------------------%
 
