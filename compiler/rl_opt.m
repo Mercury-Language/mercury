@@ -83,7 +83,20 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 		maybe_write_string(VeryVerbose, "..."),
 		maybe_flush_output(VeryVerbose),
 
-		{ Flags0 = [merge_output_projections] },
+		% The `merge_output_projections' flag enables
+		% the merging of multiple projections of a single
+		% relation into a single instruction, reducing the
+		% number of passes over the input relation.
+		% It is disabled because for small relations
+		% it significantly worsens performance.
+		% The problem is that it is much faster to make
+		% multiple passes over the input relation than
+		% to materialise all the outputs of the projections.
+		% If this pass were run again after stream detection,
+		% the merging could be done if all outputs are materialised
+		% anyway.
+		%{ Flags0 = [merge_output_projections] },
+		{ Flags0 = [] },
 		{ OptIndex = yes ->
 			Flags = [add_uniondiff | Flags0]
 		;

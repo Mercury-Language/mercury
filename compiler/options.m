@@ -257,6 +257,7 @@
 		;	type_specialization
 		;	user_guided_type_specialization
 		;	higher_order_size_limit
+		;	introduce_accumulators
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
 		;	constant_propagation
@@ -605,6 +606,7 @@ option_defaults_2(optimization_option, [
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
+	introduce_accumulators -	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -942,6 +944,7 @@ long_option("user-guided-type-specialization",
 long_option("user-guided-type-specialisation",
 					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
+long_option("introduce-accumulators",	introduce_accumulators).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
@@ -1996,6 +1999,9 @@ options_help_hlds_hlds_optimization -->
 		"\t`--optimize-higher-order' and `--type-specialization'.",
 		"\tGoal size is measured as the number of calls, unifications",
 		"\tand branched goals.",
+		"--introduce-accumulators",
+		"\tAttempt to introduce accumulating variables into",
+		"\tprocedures, so as to make them tail recursive.",
 		"--optimize-constructor-last-call",
 		"\tEnable the optimization of ""last"" calls that are followed by",
 		"\tconstructor application.",

@@ -1310,7 +1310,7 @@ mercury_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 mercury_output_type_defn_2(abstract_type(Name, Args), VarSet, Context) -->
 	io__write_string(":- type "),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
-	mercury_output_term(TypeTerm, VarSet, no),
+	mercury_output_term(TypeTerm, VarSet, no, next_to_graphic_token),
 	io__write_string(".\n").
 
 mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
@@ -1318,7 +1318,7 @@ mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no),
 	io__write_string(" == "),
-	mercury_output_term(Body, VarSet, no),
+	mercury_output_term(Body, VarSet, no, next_to_graphic_token),
 	io__write_string(".\n").
 
 mercury_output_type_defn_2(du_type(Name, Args, Ctors, MaybeEqualityPred),
@@ -1594,7 +1594,7 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 		mercury_output_bracketed_sym_name(FuncName)
 	),
 	io__write_string(" = "),
-	mercury_output_term(RetType, VarSet, no),
+	mercury_output_term(RetType, VarSet, no, next_to_graphic_token),
 	mercury_output_class_context(ClassContext, ExistQVars, VarSet),
 	mercury_output_det_annotation(MaybeDet),
 	io__write_string(Separator).
@@ -1878,12 +1878,12 @@ mercury_output_func_clause(VarSet, PredName, Args, Result, Body, _Context) -->
 		[]
 	),
 	io__write_string(" = "),
-	mercury_output_term(Result, VarSet, no),
 	(
 		{ Body = true - _Context0 }
 	->
-		[]
+		mercury_output_term(Result, VarSet, no, next_to_graphic_token)
 	;
+		mercury_output_term(Result, VarSet, no),
 		io__write_string(" :-\n\t"),
 		mercury_output_goal(Body, VarSet, 1)
 	),
@@ -2011,7 +2011,7 @@ mercury_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
 mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	mercury_output_term(A, VarSet, no),
 	io__write_string(" = "),
-	mercury_output_term(B, VarSet, no).
+	mercury_output_term(B, VarSet, no, next_to_graphic_token).
 
 
 :- pred mercury_output_call(sym_name, list(prog_term), prog_varset, int,
@@ -2031,7 +2031,7 @@ mercury_output_call(Name, Term, VarSet, _Indent) -->
 		{ Name = unqualified(PredName) },
 		{ term__context_init(Context0) },
 		mercury_output_term(term__functor(term__atom(PredName),
-			Term, Context0), VarSet, no)
+			Term, Context0), VarSet, no, next_to_graphic_token)
 	).
 
 :- pred mercury_output_disj(goal, prog_varset, int, io__state, io__state).

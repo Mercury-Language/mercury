@@ -766,7 +766,7 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, AppendVarnums,
 			AppendVarnums),
 		io__write_string(" = "),
 		mercury_output_term(term__variable(RetVal), VarSet,
-			AppendVarnums)
+			AppendVarnums, next_to_graphic_token)
 	;
 		{ PredOrFunc = predicate },
 		hlds_out__write_qualified_functor(ModuleName,
@@ -1253,7 +1253,7 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 	;
 		{ PredName = unqualified(Name) },
 		hlds_out__write_functor(term__atom(Name), ArgVars, VarSet,
-			AppendVarnums)
+			AppendVarnums, next_to_graphic_token)
 	),
 	io__write_string(Follow),
 	( { string__contains_char(Verbose, 'l') } ->
@@ -1541,7 +1541,7 @@ hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), _, ModuleInfo, VarSet, _,
 		AppendVarnums),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
 		io__write_string(" TYPE_QUAL_OP "),
-		mercury_output_term(Type, TVarSet, no)
+		mercury_output_term(Type, TVarSet, no, next_to_graphic_token)
 	;
 		[]
 	).
@@ -1586,7 +1586,8 @@ hlds_out__write_unify_rhs_3(
 	),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
 		io__write_string(" TYPE_QUAL_OP "),
-		mercury_output_term(Type, TVarSet, AppendVarnums)
+		mercury_output_term(Type, TVarSet, AppendVarnums,
+			next_to_graphic_token)
 	;
 		[]
 	),
@@ -1644,7 +1645,8 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		;
 			{ SymName = unqualified(Name) },
 			hlds_out__write_functor(term__atom(Name),
-				ArgVars, VarSet, AppendVarnums)
+				ArgVars, VarSet, AppendVarnums,
+				next_to_graphic_token)
 		)
 	;
 		{ ConsId = int_const(Int) },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,11 +142,36 @@
 :- mode goal_util__if_then_else_to_disjunction(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% goal_util__can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
+	%
+	% Goals can be reordered if
+	% - the goals are independent
+	% - the goals are not impure
+	% - any possible change in termination behaviour is allowed
+	% 	according to the semantics options.
+	%
+:- pred goal_util__can_reorder_goals(module_info::in, bool::in, 
+		inst_table::in, instmap::in, hlds_goal::in,
+		instmap::in, hlds_goal::in) is semidet.
+
+	% goal_util__reordering_maintains_termination(ModuleInfo,
+	%		 FullyStrict, Goal1, Goal2)
+	%
+	% Succeeds if any possible change in termination behaviour from
+	% reordering the goals is allowed according to the semantics options.
+	% The information computed by termination analysis is used when
+	% making this decision.
+	%
+:- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
+		hlds_goal::in, hlds_goal::in) is semidet.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_data, mode_util, code_aux, prog_data.
+:- import_module hlds_data, mode_util, code_aux, prog_data, purity.
 :- import_module code_aux, det_analysis, inst_match, type_util, (inst).
 :- import_module int, std_util, string, assoc_list, require, varset.
 
@@ -865,6 +890,94 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 
 	goal_info_init(CombinedNonLocals, CombinedDelta, 
 		CombinedDetism, CombinedInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+
+goal_util__can_reorder_goals(ModuleInfo, FullyStrict, InstTable,
+		InstmapBeforeEarlierGoal, EarlierGoal,
+		InstmapBeforeLaterGoal, LaterGoal) :-
+
+	EarlierGoal = _ - EarlierGoalInfo,
+	LaterGoal = _ - LaterGoalInfo,
+
+		% Impure goals cannot be reordered.
+	\+ goal_info_is_impure(EarlierGoalInfo),
+	\+ goal_info_is_impure(LaterGoalInfo),
+
+	goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
+		EarlierGoal, LaterGoal),
+
+	%
+	% Don't reorder the goals if the later goal depends
+	% on the outputs of the current goal.
+	%
+	\+ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
+			InstmapBeforeEarlierGoal, InstTable, ModuleInfo),
+
+	%
+	% Don't reorder the goals if the later goal changes the 
+	% instantiatedness of any of the non-locals of the earlier
+	% goal. This is necessary if the later goal clobbers any 
+	% of the non-locals of the earlier goal, and avoids rerunning
+	% full mode analysis in other cases.
+	%
+	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal, 
+			InstmapBeforeLaterGoal, InstTable, ModuleInfo).
+
+
+goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
+		EarlierGoal, LaterGoal) :-
+	EarlierGoal = _ - EarlierGoalInfo,
+	LaterGoal = _ - LaterGoalInfo,
+
+	goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
+	determinism_components(EarlierDetism, EarlierCanFail, _),
+	goal_info_get_determinism(LaterGoalInfo, LaterDetism),
+	determinism_components(LaterDetism, LaterCanFail, _),
+
+		% If --fully-strict was specified, don't convert 
+		% (can_loop, can_fail) into (can_fail, can_loop). 
+	( 
+		FullyStrict = yes, 
+		\+ code_aux__goal_cannot_loop(ModuleInfo, EarlierGoal)
+	->
+		LaterCanFail = cannot_fail
+	;
+		true
+	),
+		% Don't convert (can_fail, can_loop) into 
+		% (can_loop, can_fail), since this could worsen 
+		% the termination properties of the program.
+	( EarlierCanFail = can_fail ->
+		code_aux__goal_cannot_loop(ModuleInfo, LaterGoal)
+	;
+		true
+	).
+
+	%
+	% If the earlier goal changes the instantiatedness of a variable
+	% that is used in the later goal, then the later goal depends on
+	% the earlier goal.
+	%
+	% This code does work on the alias branch.
+	%
+:- pred goal_depends_on_earlier_goal(hlds_goal::in, hlds_goal::in,
+		instmap::in, inst_table::in, module_info::in) is semidet.
+
+goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
+		InstMapBeforeEarlierGoal, InstTable, ModuleInfo) :-
+	goal_info_get_instmap_delta(EarlierGoalInfo, EarlierInstMapDelta),
+	instmap__apply_instmap_delta(InstMapBeforeEarlierGoal,
+			EarlierInstMapDelta, InstMapAfterEarlierGoal),
+
+	instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
+			InstTable, ModuleInfo, EarlierChangedVars),
+
+	goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
+	set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
+	not set__empty(Intersection).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

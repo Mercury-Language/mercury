@@ -104,6 +104,16 @@
 :- pred instmap__vars_list(instmap, list(prog_var)).
 :- mode instmap__vars_list(in, out) is det.
 
+	%
+	% instmap_changed_vars(IMA, IMB, IT, MI, CV)
+	%
+	% Given an earlier instmap, IMA, and a later instmap, IMB,
+	% determine what variables, CV, have had their instantiatedness
+	% information changed.
+	%
+:- pred instmap_changed_vars(instmap::in, instmap::in, inst_table::in,
+		module_info::in, set(prog_var)::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Given an instmap and a variable, determine the inst of
@@ -374,6 +384,35 @@ instmap__vars(Instmap, Vars) :-
 instmap__vars_list(unreachable, []).
 instmap__vars_list(reachable(InstMapping, _), VarsList) :-
 	map__keys(InstMapping, VarsList).
+
+%-----------------------------------------------------------------------------%
+
+instmap_changed_vars(InstMapA, InstMapB, InstTable, ModuleInfo, ChangedVars) :-
+	instmap__vars_list(InstMapB, VarsB),
+	changed_vars_2(VarsB, InstMapA, InstMapB,
+			InstTable, ModuleInfo, ChangedVars).
+
+:- pred changed_vars_2(prog_vars::in, instmap::in, instmap::in,
+		inst_table::in, module_info::in, set(prog_var)::out) is det.
+
+changed_vars_2([], _InstMapA, _InstMapB, _InstTbl, _ModuleInfo, ChangedVars) :-
+	set__init(ChangedVars).
+changed_vars_2([VarB|VarBs], InstMapA, InstMapB,
+		InstTable, ModuleInfo, ChangedVars) :-
+	changed_vars_2(VarBs, InstMapA, InstMapB, InstTable,
+			ModuleInfo, ChangedVars0),
+
+	instmap__lookup_var(InstMapA, VarB, InitialInst),
+	instmap__lookup_var(InstMapB, VarB, FinalInst),
+
+	(
+		inst_matches_final(InitialInst, InstMapA,
+				FinalInst, InstMapB, InstTable, ModuleInfo)
+	->
+		ChangedVars = ChangedVars0
+	;
+		set__insert(ChangedVars0, VarB, ChangedVars)
+	).
 
 %-----------------------------------------------------------------------------%
 
