@@ -1,5 +1,5 @@
 [morphine 1]: 
-Copyright (C) 1999 INRIA/INSA de Rennes.
+Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 **************************************************
 ******** Non regression test for Morphine *********
 **************************************************
@@ -265,7 +265,7 @@ browser> browser> Commands are:
 	quit           -- quit browser
 SICStus Prolog style commands are:
 	p              -- print
-	< [n]          -- set depth (default is 10)
+	< [n]          -- set depth (default is 3)
 	^ [path]       -- cd [path]
 	?              -- help
 	h              -- help
@@ -284,7 +284,7 @@ browser> Commands are:
 	quit           -- quit browser
 SICStus Prolog style commands are:
 	p              -- print
-	< [n]          -- set depth (default is 10)
+	< [n]          -- set depth (default is 3)
 	^ [path]       -- cd [path]
 	?              -- help
 	h              -- help
@@ -303,7 +303,7 @@ browser> Commands are:
 	quit           -- quit browser
 SICStus Prolog style commands are:
 	p              -- print
-	< [n]          -- set depth (default is 10)
+	< [n]          -- set depth (default is 3)
 	^ [path]       -- cd [path]
 	?              -- help
 	h              -- help
