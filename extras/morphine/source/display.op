@@ -140,7 +140,7 @@ print_displayed_attributes_Op :-
 	print_line_attribute(arity, 	arity,	ArityFlag),
 	print_line_attribute(mode_number, mode_number, ModeNumFlag),
 	print_line_attribute(goal_path, goal_path, GoalPathFlag),
- 	print_line_number(line_number, line_number, LineNumberFlag),
+ 	print_line_attribute(line_number, line_number, LineNumberFlag),
 	write_trace('\n'),
 	print_line_attribute(listvar, listvar, ListVarFlag),
 	!.	
