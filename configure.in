@@ -1517,9 +1517,9 @@ fi
 
 AC_ARG_ENABLE(all-grades,
 [  --enable-all-grades     install all the different versions of the library],
-enable_all_grades=yes,enable_all_grades=no)
+enable_all_grades="$enableval",enable_all_grades=no)
 
-if test $enable_all_grades = yes; then
+if test "$enable_all_grades" = yes; then
 	LIBGRADES="$ALL_LIBGRADES"
 else
 	LIBGRADES="$BEST_GRADE"
@@ -1544,7 +1544,7 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
 
 # add `.tr' (--trailing) grades
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
-if test $enable_all_grades = yes; then
+if test "$enable_all_grades" = yes; then
 	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
 	LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
 	if test $mercury_cv_profiling = yes; then
@@ -1566,8 +1566,8 @@ AC_SUBST(LIBGRADES)
 #
 AC_ARG_ENABLE(decl-debug,
 [  --enable-decl-debug     enable the declarative debugger],
-mercury_cv_enable_decl_debug=yes,mercury_cv_enable_decl_debug=no)
-if test $mercury_cv_enable_decl_debug = "yes"; then
+mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=no)
+if test "$mercury_cv_enable_decl_debug" = "yes"; then
 	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
 fi
 #-----------------------------------------------------------------------------#
