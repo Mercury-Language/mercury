@@ -113,12 +113,12 @@
 :- implementation.
 
 :- import_module (assertion), code_util, typecheck, clause_to_proc.
-:- import_module mode_util, inst_match, (inst), prog_util.
+:- import_module mode_util, inst_match, (inst), prog_util, error_util.
 :- import_module mercury_to_mercury, prog_out, hlds_out, type_util.
 :- import_module globals, options.
 
 :- import_module map, set, assoc_list, bool, std_util, term, require, int.
-:- import_module varset.
+:- import_module string, varset.
 
 %-----------------------------------------------------------------------------%
 %			Check for unbound type variables
@@ -184,14 +184,8 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 	% the types of some Aditi predicates may not be known before.
 	%
 	pred_info_get_markers(PredInfo, Markers),
-	pred_info_arg_types(PredInfo, ArgTypes),
-	( check_marker(Markers, aditi) ->
-		list__filter(type_is_aditi_state, ArgTypes, AditiStateTypes),
-		( AditiStateTypes = [], ReportErrs = yes ->
-			report_no_aditi_state(PredInfo, IOState2, IOState)
-		;
-			IOState = IOState2
-		)
+	( ReportErrs = yes, check_marker(Markers, aditi) ->
+		check_aditi_state(ModuleInfo, PredInfo, IOState2, IOState)
 	;
 		IOState = IOState2
 	).
@@ -596,6 +590,17 @@ post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 	% 
 post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
+	{ pred_info_get_markers(PredInfo0, Markers) },
+	(
+		{ check_marker(Markers, base_relation) },
+		{ pred_info_module(PredInfo0, ModuleName) },
+		{ module_info_name(ModuleInfo, ModuleName) }
+	->
+		check_aditi_state(ModuleInfo, PredInfo0)
+	;
+		[]
+	),
+
 	% Make sure the var-types field in the clauses_info is
 	% valid for imported predicates.
 	% Unification procedures have clauses generated, so
@@ -719,21 +724,114 @@ unbound_inst_var_error(PredId, ProcInfo, ModuleInfo) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred check_aditi_state(module_info, pred_info, io__state, io__state).
+:- mode check_aditi_state(in, in, di, uo) is det.
+
+check_aditi_state(ModuleInfo, PredInfo) -->
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
+	{ list__filter(type_is_aditi_state, ArgTypes, AditiStateTypes) },
+	( { AditiStateTypes = [] } ->
+		report_no_aditi_state(PredInfo)
+	;
+		{ pred_info_procids(PredInfo, ProcIds) },
+		list__foldl(
+			check_aditi_state_modes(ModuleInfo,
+				PredInfo, ArgTypes),
+			ProcIds)
+	).
+
+	% If the procedure has declared modes, check that there
+	% is an input `aditi__state' argument.
+:- pred check_aditi_state_modes(module_info, pred_info, list(type),
+		proc_id, io__state, io__state).
+:- mode check_aditi_state_modes(in, in, in, in, di, uo) is det.
+
+check_aditi_state_modes(ModuleInfo, PredInfo, ArgTypes, ProcId) -->
+	{ pred_info_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
+	(
+		{ MaybeArgModes = yes(ArgModes) },
+		{ AditiUi = aditi_ui_mode },
+		{ mode_get_insts(ModuleInfo, AditiUi, AditiUiInitialInst, _) },
+		(
+			{ check_aditi_state_modes_2(ModuleInfo, ArgTypes,
+				ArgModes, AditiUiInitialInst) }
+		->
+			[]
+		;
+			{ proc_info_context(ProcInfo, Context) },
+			report_no_input_aditi_state(PredInfo, Context)
+		)
+	;
+		% XXX Handling procedures for which modes are inferred
+		% is a little tricky, because if the procedure doesn't
+		% directly or indirectly call any base relations, a mode
+		% of `unused' for the `aditi__state' argument may be inferred.
+		% In the worst case, a runtime error will be reported
+		% if the predicate is called outside of a transaction.
+		{ MaybeArgModes = no }
+	).
+
+:- pred check_aditi_state_modes_2(module_info, list(type), list(mode), (inst)).
+:- mode check_aditi_state_modes_2(in, in, in, in) is semidet.
+
+check_aditi_state_modes_2(ModuleInfo, [Type | Types], [Mode | Modes],
+		InitialAditiStateInst) :-
+	( 
+		type_is_aditi_state(Type),
+		mode_get_insts(ModuleInfo, Mode, InitialInst, _),
+		% Mode analysis will check the final inst.
+		inst_matches_initial(InitialInst, InitialAditiStateInst,
+			ModuleInfo)
+	;
+		check_aditi_state_modes_2(ModuleInfo, Types, Modes,
+			InitialAditiStateInst)
+	).
+
 :- pred report_no_aditi_state(pred_info, io__state, io__state).
 :- mode report_no_aditi_state(in, di, uo) is det.
 
 report_no_aditi_state(PredInfo) -->
 	io__set_exit_status(1),
 	{ pred_info_context(PredInfo, Context) },
-	prog_out__write_context(Context),
-	{ pred_info_module(PredInfo, Module) },
-	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arity(PredInfo, Arity) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	io__write_string("Error: `:- pragma aditi' declaration for "),
-	hlds_out__write_simple_call_id(PredOrFunc,
-		qualified(Module, Name), Arity),
-	io__write_string("  without an `aditi:state' argument.\n").
+	{ report_aditi_pragma(PredInfo, PredErrorPieces) },
+	{ list__append(PredErrorPieces,
+		[words("without an `aditi__state' argument.")], ErrorPieces) },
+	error_util__write_error_pieces(Context, 0, ErrorPieces).
+
+:- pred report_no_input_aditi_state(pred_info, prog_context,
+		io__state, io__state).
+:- mode report_no_input_aditi_state(in, in, di, uo) is det.
+
+report_no_input_aditi_state(PredInfo, Context) -->
+	io__set_exit_status(1),
+	{ report_aditi_pragma(PredInfo, PredErrorPieces) },
+	{ list__append(PredErrorPieces,
+		[words(
+		"without an `aditi__state' argument with mode `aditi_ui'.")],
+		ErrorPieces) },
+	error_util__write_error_pieces(Context, 0, ErrorPieces).
+
+:- pred report_aditi_pragma(pred_info, list(format_component)).
+:- mode report_aditi_pragma(in, out) is det.
+
+report_aditi_pragma(PredInfo, ErrorPieces) :-
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_get_markers(PredInfo, Markers),
+	( check_marker(Markers, base_relation) ->
+		Pragma = "base_relation"
+	;
+		Pragma = "aditi"
+	),
+	string__append_list(["`:- pragma ", Pragma, "'"], PragmaStr),
+	CallId = PredOrFunc - qualified(Module, Name)/Arity,
+	hlds_out__simple_call_id_to_string(CallId, CallIdStr),
+	ErrorPieces = [fixed("Error:"), fixed(PragmaStr),
+			words("declaration for"), fixed(CallIdStr)].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

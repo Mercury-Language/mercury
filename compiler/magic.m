@@ -429,11 +429,26 @@ magic__process_base_relation(PredId0, ProcId0) -->
 	magic_info_get_module_info(ModuleInfo0),
 	{ module_info_pred_proc_info(ModuleInfo0, PredProcId,
 		PredInfo0, ProcInfo0) },
-
-	% Remove aditi:states, convert arguments to output.
 	{ pred_info_arg_types(PredInfo0, TVarSet, ExistQVars, ArgTypes0) },
 	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
 	{ proc_info_headvars(ProcInfo0, HeadVars0) },
+
+	magic_info_set_error_pred_proc_id(CPredProcId),
+	{ set__init(ErrorVars) },
+	magic_info_set_error_vars(ErrorVars),
+
+	(
+		{ pred_info_module(PredInfo0, ModuleName) },
+		{ module_info_name(ModuleInfo0, ModuleName) }
+	->
+		{ pred_info_context(PredInfo0, Context) },
+		magic_util__check_args(HeadVars0, ArgModes0, ArgTypes0,
+			Context, arg_number)
+	;
+		[]
+	),
+
+	% Remove aditi:states, convert arguments to output.
 	{ type_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes) },
 	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes1) },
 	{ list__map(magic_util__mode_to_output_mode(ModuleInfo0),
@@ -529,6 +544,9 @@ magic__separate_proc(PredId, ProcId) -->
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 		PredInfo0, ProcInfo0) },
 	magic_info_set_curr_pred_proc_id(proc(PredId, ProcId)),
+	magic_info_set_error_pred_proc_id(proc(PredId, ProcId)),
+	{ set__init(ErrorVars) },
+	magic_info_set_error_vars(ErrorVars),
 
 	% 
 	% Create a new pred_info for the procedure.
@@ -594,6 +612,9 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 	magic_info_get_module_info(ModuleInfo0),
 	{ module_info_pred_proc_info(ModuleInfo0, AditiPredProcId,
 		PredInfo0, ProcInfo0) },
+	magic_info_set_error_pred_proc_id(CPredProcId),
+	{ set__init(ErrorVars) },
+	magic_info_set_error_vars(ErrorVars),
 
 	magic__preprocess_proc(CPredProcId, PredInfo0,
 		ProcInfo0, ProcInfo1),
