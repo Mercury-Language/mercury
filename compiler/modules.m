@@ -849,7 +849,7 @@ make_private_interface(SourceFileName, ModuleName, Items0) -->
 	% and use these to qualify all items in the interface as much as
 	% possible. Then write out the .int and .int2 files.
 make_interface(SourceFileName, ModuleName, Items0) -->
-	{ get_interface(Items0, no, InterfaceItems0) },
+	{ get_interface(Items0, InterfaceItems0) },
 		% 
 		% Get the .int3 files for imported modules
 		%
@@ -906,7 +906,7 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 	% This qualifies everything as much as it can given the
 	% information in the current module and writes out the .int3 file.
 make_short_interface(ModuleName, Items0) -->
-	{ get_interface(Items0, no, InterfaceItems0) },
+	{ get_interface(Items0, InterfaceItems0) },
 		% assertions are also stripped since they should
 		% only be written to .opt files,
 	{ strip_assertions(InterfaceItems0, InterfaceItems1) },
@@ -1062,7 +1062,7 @@ check_for_no_exports(Items, ModuleName) -->
 	( { ExportWarning = no } ->
 		[]
 	;
-		{ get_interface(Items, no, InterfaceItems) },
+		{ get_interface(Items, InterfaceItems) },
 		check_int_for_no_exports(InterfaceItems, ModuleName)
 	).
 
@@ -1218,7 +1218,7 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 			ImpUsedModules0, ImpUsedModules),
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
-	{ get_interface(Items0, no, InterfaceItems) },
+	{ get_interface(Items0, InterfaceItems) },
 	{ get_children(InterfaceItems, PublicChildren) },
 	{ init_module_imports(SourceFileName, ModuleName, Items0,
 		PublicChildren, FactDeps, Module0) },
@@ -3482,7 +3482,7 @@ init_dependencies(FileName, Error, Globals, ModuleName - Items,
 		ImplImportDeps, ImplUseDeps),
 	list__append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
-	get_interface(Items, no, InterfaceItems),
+	get_interface(Items, InterfaceItems),
 	get_dependencies(InterfaceItems, InterfaceImportDeps0,
 		InterfaceUseDeps0),
 	add_implicit_imports(InterfaceItems, Globals,
@@ -4315,24 +4315,22 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 
 	% Given a module (well, a list of items), extract the interface
 	% part of that module, i.e. all the items between `:- interface'
-	% and `:- implementation'. If IncludeImported is yes, also
-	% include all items after a `:- imported'. This is useful for
-	% making the .int file.
+	% and `:- implementation'.
 	% The bodies of instance definitions are removed because
 	% the instance methods have not yet been module qualified.
-:- pred get_interface(item_list, bool, item_list).
-:- mode get_interface(in, in, out) is det.
+:- pred get_interface(item_list, item_list).
+:- mode get_interface(in, out) is det.
 
-get_interface(Items0, IncludeImported, Items) :-
-	get_interface_2(Items0, no, IncludeImported, [], RevItems),
+get_interface(Items0, Items) :-
+	get_interface_2(Items0, no, [], RevItems),
 	list__reverse(RevItems, Items).
 
-:- pred get_interface_2(item_list, bool, bool, item_list, item_list).
-:- mode get_interface_2(in, in, in, in, out) is det.
+:- pred get_interface_2(item_list, bool, item_list, item_list).
+:- mode get_interface_2(in, in, in, out) is det.
 
-get_interface_2([], _, _, Items, Items).
+get_interface_2([], _, Items, Items).
 get_interface_2([Item - Context | Rest], InInterface0,
-				IncludeImported, Items0, Items) :-
+				Items0, Items) :-
 	( Item = module_defn(_, interface) ->
 		Items1 = Items0,
 		InInterface1 = yes
@@ -4342,13 +4340,12 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		; Defn = used(_)
 		)
 	->
-		% module_qual.m needs the :- imported declaration.
-		( IncludeImported = yes, InInterface0 = yes ->
-			Items1 = [Item - Context | Items0]
-		;
-			Items1 = Items0
-		),
-		InInterface1 = InInterface0
+		% This should never happen;
+		% `:- imported' and `:- used' declarations should only
+		% get inserted *after* get_interface is called.
+		error("get_interface: `:- imported' or `:- used' declaration")
+		% Items1 = Items0,
+		% InInterface1 = InInterface0
 	;
 		Item = module_defn(_, implementation) 
 	->
@@ -4367,7 +4364,7 @@ get_interface_2([Item - Context | Rest], InInterface0,
 		),
 		InInterface1 = InInterface0
 	),
-	get_interface_2(Rest, InInterface1, IncludeImported, Items1, Items).
+	get_interface_2(Rest, InInterface1, Items1, Items).
 
 	% Given a module interface (well, a list of items), extract the
 	% short interface part of that module, i.e. the exported
