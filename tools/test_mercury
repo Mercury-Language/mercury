@@ -157,7 +157,8 @@ autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
-mmake clean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
+mmake depend $PARALLEL || { false; exit 1; }
 tools/bootcheck -r -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
