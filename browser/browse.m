@@ -640,8 +640,9 @@ browser_term_to_string(BrowserTerm, MaxSize, MaxDepth, Str) :-
 		MaxDepth, CurDepth, Str).
 
 	% Note: When the size limit is reached, we simply display
-	% further subterms compressed. We don't just stop printing.
-	% XXX: Is this reasonable?
+	% further subterms compressed.  This is consistent with the
+	% User's Guide, which describes the size limit as a "suggested
+	% maximum".
 :- pred browser_term_to_string_2(browser_term::in, int::in, int::in, int::out,
 	int::in, int::in, string::out) is cc_multi.
 
