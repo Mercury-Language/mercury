@@ -100,6 +100,7 @@
 		;	optimize
 		;	optimize_peep
 		;	optimize_jumps
+		;	optimize_fulljumps
 		;	optimize_labels
 		;	optimize_dups
 		;	optimize_value_number
@@ -212,9 +213,10 @@ option_defaults_2(optimization_option, [
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
-	optimize_value_number	-	bool(no),
+	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1),
@@ -326,6 +328,8 @@ long_option("optimize-peep",		optimize_peep).
 long_option("optimise-peep",		optimize_peep).
 long_option("optimize-jumps",		optimize_jumps).
 long_option("optimise-jumps",		optimize_jumps).
+long_option("optimize-fulljumps",	optimize_fulljumps).
+long_option("optimise-fulljumps",	optimize_fulljumps).
 long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
@@ -483,6 +487,8 @@ options_help -->
 	io__write_string("\t\tDisable local peephole optimisations.\n"),
 	io__write_string("\t--no-optimize-jumps\n"),
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
+	io__write_string("\t--no-optimize-fulljumps\n"),
+	io__write_string("\t\tDisable elimination of jumps to ordinary code.\n"),
 	io__write_string("\t--no-optimize-labels\n"),
 	io__write_string("\t\tDisable elimination of dead labels and code\n"),
 	io__write_string("\t--no-optimize-dups\n"),
@@ -522,8 +528,8 @@ options_help -->
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--common-struct\n"),
 	io__write_string("\t\tEnable optimisation of common term structures.\n"),
-	io__write_string("\t--common-goal\n"),
-	io__write_string("\t\tEnable optimisation of common goal.\n"),
+	io__write_string("\t--no-common-goal\n"),
+	io__write_string("\t\tDisable optimisation of common goals.\n"),
 	io__write_string("\t--procs-per-c-function <n>\n"),
 	io__write_string("\t\tDon't put the code for more than <n> Mercury\n"),
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
@@ -532,7 +538,7 @@ options_help -->
 	io__write_string("\t\tSetting <n> to the special value zero has the effect of\n"),
 	io__write_string("\t\tputting all the procedures in a single function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
-	io__write_string("\t\tseverely stress the C compiler.\n"),
+	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 

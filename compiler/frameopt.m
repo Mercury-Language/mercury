@@ -295,8 +295,20 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 			Uinstr0 = incr_sp(_),
 			error("incr_sp in frameopt__build_sets")
 		;
-			Uinstr0 = decr_sp(_),
-			error("decr_sp in frameopt__build_sets")
+			Uinstr0 = decr_sp(N),
+			(
+				opt_util__skip_comments(Instrs0, Instrs1),
+				Instrs1 = [incr_sp(N) - _ | Instrs2]
+			->
+				% This can happen when jumpopt copies the
+				% procedure prolog from a tailcall.
+				frameopt__build_sets(Instrs2, FrameSize,
+					Livemap, no, SetupFrame0, SetupSuccip0,
+					FrameSet0, FrameSet,
+					SuccipSet0, SuccipSet)
+			;
+				error("decr_sp in frameopt__build_sets")
+			)
 		)
 	).
 

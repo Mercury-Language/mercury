@@ -640,6 +640,9 @@ vn__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		( Vnlval = vn_field(_, _, _)
 		; Vnlval = vn_redoip(_)
 		; Vnlval = vn_framevar(_)
+		; Vnlval = vn_curfr
+		; Vnlval = vn_maxfr
+		; Vnlval = vn_succip
 		)
 	->
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),

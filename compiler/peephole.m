@@ -381,3 +381,15 @@ peephole__match(modframe(Redoip), Comment,
 peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
 	list__append(Between, Remain, Instrs).
+
+	% If an incr_sp follows a decr_sp of the same amount, then the two
+	% cancel out. The optimization that creates these opportunities
+	% (full jumpopt) should not put any instructions between the incr_sp
+	% and the decr_sp, so looking for such would be redundant.
+	%
+	%	decr_sp N 	=>	<...>
+	%	incr_sp N
+
+peephole__match(decr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [incr_sp(N) - _ | Instrs].
