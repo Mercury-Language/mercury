@@ -196,7 +196,7 @@ typedef	enum {
 	MR_CONTEXT_BEFORE,
 	MR_CONTEXT_AFTER,
 	MR_CONTEXT_PREVLINE,
-	MR_CONTEXT_NEXTLINE,
+	MR_CONTEXT_NEXTLINE
 } MR_Context_Position;
 
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,

@@ -356,8 +356,8 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	if (cur_offset != ArenaSize) {
 		char	msg[256];
 
-		sprintf(msg, ""internal error in creating string table;\n""
-			""cur_offset = %ld, ArenaSize = %ld\n"",
+		sprintf(msg, ""internal error in creating string table;\\n""
+			""cur_offset = %ld, ArenaSize = %ld\\n"",
 			(long) cur_offset, (long) ArenaSize);
 		fatal_error(msg);
 	}

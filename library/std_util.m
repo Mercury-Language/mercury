@@ -1004,12 +1004,19 @@ Declare_entry(mercury____Index___std_util__univ_0_0);
 Declare_entry(mercury____Compare___std_util__univ_0_0);
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_functors_univ_0_struct
-	mercury_data_std_util__type_ctor_functors_univ_0;
+const struct mercury_data_std_util__type_ctor_functors_univ_0_struct {
+	Integer f1;
+} mercury_data_std_util__type_ctor_functors_univ_0 = {
+	MR_TYPE_CTOR_FUNCTORS_UNIV
+};
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_layout_univ_0_struct
-	mercury_data_std_util__type_ctor_layout_univ_0;
+const struct mercury_data_std_util__type_ctor_layout_univ_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_std_util__type_ctor_layout_univ_0 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_UNIV_VALUE))
+};
 
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data_std_util__type_ctor_info_univ_0 = {
@@ -1023,22 +1030,6 @@ mercury_data_std_util__type_ctor_info_univ_0 = {
 	MR_string_const(""std_util"", 8),
 	MR_string_const(""univ"", 4),
 	MR_RTTI_VERSION
-};
-
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_layout_univ_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_std_util__type_ctor_layout_univ_0 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_UNIV_VALUE))
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_std_util__type_ctor_functors_univ_0_struct {
-	Integer f1;
-} mercury_data_std_util__type_ctor_functors_univ_0 = {
-	MR_TYPE_CTOR_FUNCTORS_UNIV
 };
 
 MR_MODULE_STATIC_OR_EXTERN

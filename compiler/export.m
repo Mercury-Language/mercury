@@ -134,7 +134,8 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		/* by the C function call MR_call_engine().       */
 	%	save_transient_registers();
 	%	{
-	%	Declare_entry(<label of called proc>);
+	%		/* The Declare_entry may not be necessary	  */
+	%       Declare_entry(<label of called proc>);
 	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
 	%	}
 	%		/* restore the registers which may have been      */
@@ -178,9 +179,10 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
 	( Exported = yes ->
-		DeclareString = "Declare_entry"
+		string__append_list(["Declare_entry", "(",
+				ProcLabelString, ");\n"], DeclareString)
 	;
-		DeclareString = "Declare_static"
+		DeclareString = ""
 	),
 
 	string__append_list([	"\n",
@@ -195,9 +197,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
-				"\t{\n\t", DeclareString, "(",
-				ProcLabelString,
-				");\n",
+				"\t{\n\t",
+				DeclareString,
 				"\t(void) MR_call_engine(ENTRY(",
 				ProcLabelString,
 				"), FALSE);\n\t}\n",

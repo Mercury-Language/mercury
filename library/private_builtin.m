@@ -868,7 +868,7 @@ unused :-
 			table_allocate_bytes(sizeof(MR_Subgoal));
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
-			printf(""setting up table %p -> %p\n"",
+			printf(""setting up table %p -> %p\\n"",
 				(MR_Subgoal **) T0, subgoal);
 		}
 #endif
@@ -886,7 +886,7 @@ unused :-
 		subgoal->consumer_list_tail = &subgoal->consumer_list;
 #ifdef	MR_TABLE_DEBUG
 		if (MR_maxfr != MR_curfr) {
-			fatal_error(""MR_maxfr != MR_curfr at table setup\n"");
+			fatal_error(""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
 		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
@@ -999,6 +999,9 @@ unused :-
 	local_vars("
 #ifdef MR_USE_MINIMAL_MODEL
 		MR_AnswerList	cur_node;
+#else
+		/* ensure local var struct is non-empty */
+		char	bogus;
 #endif
 	"),
 	first_code("

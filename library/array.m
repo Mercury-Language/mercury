@@ -276,11 +276,20 @@ Define_extern_entry(mercury____Index___array__array_1_0);
 Define_extern_entry(mercury____Compare___array__array_1_0);
 
 MR_MODULE_STATIC_OR_EXTERN 
-const struct mercury_data_array__type_ctor_functors_array_1_struct
-	mercury_data_array__type_ctor_functors_array_1;
+const struct mercury_data_array__type_ctor_layout_array_1_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_array__type_ctor_layout_array_1 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
+};
+
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_layout_array_1_struct
-	mercury_data_array__type_ctor_layout_array_1;
+const struct mercury_data_array__type_ctor_functors_array_1_struct {
+	Integer f1;
+} mercury_data_array__type_ctor_functors_array_1 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data_array__type_ctor_info_array_1 = {
 	(Integer) 1,
@@ -295,20 +304,6 @@ mercury_data_array__type_ctor_info_array_1 = {
 	MR_RTTI_VERSION
 };
 
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_layout_array_1_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_array__type_ctor_layout_array_1 = {
-	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		MR_mkbody(MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE))
-};
-
-MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_array__type_ctor_functors_array_1_struct {
-	Integer f1;
-} mercury_data_array__type_ctor_functors_array_1 = {
-	MR_TYPE_CTOR_FUNCTORS_SPECIAL
-};
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);

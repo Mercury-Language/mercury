@@ -337,7 +337,7 @@ case $all_libs in static)
 			# boehm_gc/dyn_load.c.
 			# (We might eventually need similar treatment
 			# for other OSs too)
-			MAYBE_STATIC_OPT="-static -Wl,-defsym,_DYNAMIC=0"
+			MAYBE_STATIC_OPT="-static -Wl-defsym -Wl_DYNAMIC=0"
 			;;
 		*)
 			MAYBE_STATIC_OPT=-static
