@@ -11,6 +11,8 @@
 %
 %-----------------------------------------------------------------------------%
 
+?- prompt(_, '').	% turn off that silly '|:' interactive input prompt.
+
 % Translate various NU-Prolog-isms into Sicstus Prolog.
 
 nuprolog :-
@@ -428,6 +430,11 @@ call(G0, X) :-
 call(G0, X, Y) :-
 	G0 =.. L0,
 	append(L0, [X, Y], L),
+	G =.. L,
+	call(G).
+call(G0, X, Y, Z) :-
+	G0 =.. L0,
+	append(L0, [X, Y, Z], L),
 	G =.. L,
 	call(G).
 
