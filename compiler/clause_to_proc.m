@@ -24,6 +24,9 @@
 	% we select the clauses for that mode, disjoin them together,
 	% and save this in the proc_info.
 
+:- pred copy_module_clauses_to_procs(list(pred_id), module_info, module_info).
+:- mode copy_module_clauses_to_procs(in, in, out) is det.
+
 :- pred copy_clauses_to_procs(pred_info, pred_info).
 :- mode copy_clauses_to_procs(in, out) is det.
 
@@ -86,6 +89,22 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 	;
 		PredInfo = PredInfo0
 	).
+
+copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo) :-
+	module_info_preds(ModuleInfo0, Preds0),
+	copy_module_clauses_to_procs_2(PredIds, Preds0, Preds),
+	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
+
+:- pred copy_module_clauses_to_procs_2(list(pred_id), pred_table, pred_table).
+:- mode copy_module_clauses_to_procs_2(in, in, out) is det.
+
+copy_module_clauses_to_procs_2([], Preds, Preds).
+copy_module_clauses_to_procs_2([PredId | PredIds], Preds0, Preds) :-
+	map__lookup(Preds0, PredId, PredInfo0),
+	copy_clauses_to_procs(PredInfo0, PredInfo),
+	map__det_update(Preds0, PredId, PredInfo, Preds1),
+	copy_module_clauses_to_procs_2(PredIds, Preds1, Preds).
+
 
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	pred_info_procedures(PredInfo0, Procs0),

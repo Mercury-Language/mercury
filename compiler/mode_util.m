@@ -23,14 +23,24 @@
 :- pred mode_get_insts(module_info, mode, inst, inst).
 :- mode mode_get_insts(in, in, out, out) is det.
 
+	% a mode is considered input if the initial inst is bound
 :- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(in, in) is semidet.
 
+	% a mode is considered output if the initial inst is free
+	% and the final inst is bound
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(in, in) is semidet.
 
+	% a mode is considered unused if both initial and final insts are free
 :- pred mode_is_unused(module_info, mode).
 :- mode mode_is_unused(in, in) is semidet.
+
+/*
+** Predicates to test various properties of insts.
+** Note that `not_reached' insts are considered to satisfy
+** all of these predicates except inst_is_clobbered.
+*/
 
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
@@ -247,6 +257,7 @@ mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
 
 :- inst_is_clobbered(_, X) when X.		% NU-Prolog indexing.
 
+inst_is_clobbered(_, not_reached) :- fail.
 inst_is_clobbered(_, any(mostly_clobbered)).
 inst_is_clobbered(_, any(clobbered)).
 inst_is_clobbered(_, ground(clobbered, _)).
@@ -321,6 +332,7 @@ inst_is_ground(ModuleInfo, Inst) :-
 
 :- inst_is_ground_2(_, X, _, _) when X.		% NU-Prolog indexing.
 
+inst_is_ground_2(_, not_reached, _, _).
 inst_is_ground_2(ModuleInfo, bound(_, List), _, Expansions) :-
 	bound_inst_list_is_ground_2(List, ModuleInfo, Expansions).
 inst_is_ground_2(_, ground(_, _), _, _).
@@ -352,6 +364,7 @@ inst_is_unique(ModuleInfo, Inst) :-
 
 :- inst_is_unique_2(_, X, _, _) when X.		% NU-Prolog indexing.
 
+inst_is_unique_2(_, not_reached, _, _).
 inst_is_unique_2(ModuleInfo, bound(unique, List), _, Expansions) :-
 	bound_inst_list_is_unique_2(List, ModuleInfo, Expansions).
 inst_is_unique_2(_, any(unique), _, _).
@@ -385,6 +398,7 @@ inst_is_mostly_unique(ModuleInfo, Inst) :-
 
 :- inst_is_mostly_unique_2(_, X, _, _) when X.		% NU-Prolog indexing.
 
+inst_is_mostly_unique_2(_, not_reached, _, _).
 inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), _, Expansions)
 		:-
 	bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
@@ -425,6 +439,7 @@ inst_is_not_partly_unique(ModuleInfo, Inst) :-
 
 :- inst_is_not_partly_unique_2(_, X, _, _) when X.	% NU-Prolog indexing.
 
+inst_is_not_partly_unique_2(_, not_reached, _, _).
 inst_is_not_partly_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
 	bound_inst_list_is_not_partly_unique_2(List, ModuleInfo, Expansions).
 inst_is_not_partly_unique_2(_, free, _, _).
@@ -461,6 +476,7 @@ inst_is_not_fully_unique(ModuleInfo, Inst) :-
 
 :- inst_is_not_fully_unique_2(_, X, _, _) when X.	% NU-Prolog indexing.
 
+inst_is_not_fully_unique_2(_, not_reached, _, _).
 inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
 	bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
 inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List), _,

@@ -110,14 +110,23 @@
 :- pred report_mode_error(mode_error, mode_info, io__state, io__state).
 :- mode report_mode_error(in, mode_info_no_io, di, uo) is det.
 
-:- pred report_warning_no_modes(pred_id, pred_info, module_info,
+	% report an error for a predicate with no mode declarations
+	% unless mode inference is enabled and the predicate is local.
+
+:- pred maybe_report_error_no_modes(pred_id, pred_info, module_info,
 				io__state, io__state).
-:- mode report_warning_no_modes(in, in, in, di, uo) is det.
+:- mode maybe_report_error_no_modes(in, in, in, di, uo) is det.
 
 	% initialize the mode_context.
 
 :- pred mode_context_init(mode_context).
 :- mode mode_context_init(out) is det.
+
+	% write out the inferred `mode' declarations for a list of pred_ids.
+
+:- pred write_mode_inference_messages(list(pred_id), module_info,
+				io__state, io__state).
+:- mode write_mode_inference_messages(in, in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -708,12 +717,96 @@ write_mode_context(unify(UnifyContext, _Side), Context) -->
 
 %-----------------------------------------------------------------------------%
 
-report_warning_no_modes(PredId, PredInfo, ModuleInfo) -->
+maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo) -->
+	{ pred_info_import_status(PredInfo, ImportStatus) },
+	( { ImportStatus = local } ->
+		globals__io_lookup_bool_option(infer_modes, InferModesOpt),
+		( { InferModesOpt = yes } ->
+			[]
+		;
+			io__set_exit_status(1),
+			{ pred_info_context(PredInfo, Context) },
+			prog_out__write_context(Context),
+			io__write_string("Error: no mode declaration for "),
+			hlds_out__write_pred_id(ModuleInfo, PredId),
+			io__write_string(".\n"),
+			globals__io_lookup_bool_option(verbose_errors,
+				VerboseErrors),
+			( { VerboseErrors = yes } ->
+				prog_out__write_context(Context),
+				io__write_string(
+			"  (Use `--infer-modes' to enable mode inference.)\n")
+			;
+				[]
+			)
+		)
+	;
+		io__set_exit_status(1),
+		{ pred_info_context(PredInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("Error: no mode declaration for exported\n"),
+		prog_out__write_context(Context),
+		io__write_string("  "),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		io__write_string(".\n")
+	
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% write out the inferred `mode' declarations for a list of pred_ids.
+
+write_mode_inference_messages([], _) --> [].
+write_mode_inference_messages([PredId | PredIds], ModuleInfo) -->
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_get_marker_list(PredInfo, Markers) },
+	( { list__member(request(infer_modes), Markers) } ->
+		{ pred_info_procedures(PredInfo, Procs) },
+		{ map__keys(Procs, ProcIds) },
+		write_mode_inference_messages_2(ProcIds, Procs, PredInfo)
+	;
+		[]
+	),
+	write_mode_inference_messages(PredIds, ModuleInfo).
+
+	% write out the inferred `mode' declarations for a list of
+	% proc_ids
+
+:- pred write_mode_inference_messages_2(list(proc_id), proc_table, pred_info,
+				io__state, io__state).
+:- mode write_mode_inference_messages_2(in, in, in, di, uo) is det.
+
+write_mode_inference_messages_2([], _, _) --> [].
+write_mode_inference_messages_2([ProcId | ProcIds], Procs, PredInfo) -->
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	write_mode_inference_message(PredInfo, ProcInfo),
+	write_mode_inference_messages_2(ProcIds, Procs, PredInfo).
+
+	% write out the inferred `mode' declaration
+	% for a single function or predicate.
+
+:- pred write_mode_inference_message(pred_info, proc_info,
+				io__state, io__state).
+:- mode write_mode_inference_message(in, in, di, uo) is det.
+
+write_mode_inference_message(PredInfo, ProcInfo) -->
+	{ pred_info_name(PredInfo, PredName) },
+	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
+	{ varset__init(VarSet) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ MaybeDet = no },
 	prog_out__write_context(Context),
-	io__write_string("Warning: no modes for "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string("\n").
+	io__write_string("Inferred "),
+	(	{ PredOrFunc = predicate },
+		mercury_output_pred_mode_decl(VarSet, Name, Modes,
+				MaybeDet, Context)
+	;	{ PredOrFunc = function },
+		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
+		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
+				MaybeDet, Context)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

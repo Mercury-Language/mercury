@@ -418,6 +418,8 @@ hlds_out__write_marker_status(done(Marker)) -->
 
 hlds_out__write_marker(infer_type) -->
 	io__write_string("infer_type").
+hlds_out__write_marker(infer_modes) -->
+	io__write_string("infer_modes").
 hlds_out__write_marker(inline) -->
 	io__write_string("inline").
 hlds_out__write_marker(dnf) -->

@@ -126,6 +126,11 @@
 				% for undeclared predicates.
 				% The `done' status could be meaningful,
 				% but it is currently not used.
+	;	infer_modes	% Requests mode inference for the predicate
+				% These markers are inserted by make_hlds
+				% for undeclared predicates.
+				% The `done' status could be meaningful,
+				% but it is currently not used.
 	;	obsolete	% Requests warnings if this predicate is used.
 				% Used for pragma(obsolete).
 				% The `done' status is not meaningful.

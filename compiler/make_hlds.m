@@ -1070,8 +1070,8 @@ module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
 module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 			PredOrFunc, ModuleInfo) -->
 		% Lookup the pred declaration in the predicate table.
-		% (if it's not there, print an error message and insert
-		% a dummy declaration for the predicate.)
+		% (if it's not there, call maybe_undefined_pred_error
+		% and insert an implicit declaration for the predicate.)
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(Args, Arity) },
@@ -1092,7 +1092,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 	),
 		% Lookup the pred_info for this pred,
 		% add the clause to the clauses_info in the pred_info,
-		% and save the pred_info.
+		% if there are no modes add an `infer_modes' marker,
+		% and then save the pred_info.
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
@@ -1118,7 +1119,19 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		clauses_info_add_clause(Clauses0, ModeIds, ClauseVarSet, Args,
 				Body, Context, Goal, VarSet, Clauses, Warnings),
 		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo1),
-		pred_info_set_goal_type(PredInfo1, clauses, PredInfo),
+		pred_info_set_goal_type(PredInfo1, clauses, PredInfo2),
+		%
+		% check if there are no modes for the predicate,
+		% and if so, set the `infer_modes' flag for that predicate
+		%
+		( ModeIds = [] ->
+			pred_info_get_marker_list(PredInfo2, Markers0),
+			Markers = [request(infer_modes) | Markers0],
+			pred_info_set_marker_list(PredInfo2, Markers,
+				PredInfo)
+		;
+			PredInfo = PredInfo2
+		),
 		map__set(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable1, Preds,
 			PredicateTable),
