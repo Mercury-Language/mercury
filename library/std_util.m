@@ -112,10 +112,9 @@
 
 :- external(report_stats/0).
 :- external(type_to_univ/2).
-/*
 :- external(gc_call/1).		% currently only implemented for NU-Prolog
 :- external(solutions/2).	% currently only implemented for NU-Prolog
-*/
+:- external(compare/3).		% currently only implemented for NU-Prolog
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-

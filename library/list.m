@@ -71,7 +71,6 @@
 :- mode list__length(input_list_skel, out) is det.
 *****/
 :- mode list__length(in, out) is det.
-:- mode list__length(output_list_skel, in) is det.
 :- mode list__length(in, in) is semidet.	% implied
 
 :- pred list__condense(list(list(T)), list(T)).
@@ -290,22 +289,9 @@ list__member(Element, List, SubList) :-
 	SubList = [Element | _],
 	list__append(_, SubList, List).
 
-:- pred length(list(_T), int).
-:- mode length(in, in) is semidet.     % implied
-:- mode length(in, out) is det.                % implied
-:- mode length(input_list_skel, out) is det.
-:- mode length(output_list_skel, in) is det.
-
-list__length(L, N) :-
-	length(L, N).
-
-:- external(length/2).
-
-/******
-
-Note - it is not possible to write a version of
-length/1 in pure Mercury that works in both directions
-unless you make it semidet rather than det.
+% Note - it is not possible to write a version of
+% list__length/1 in pure Mercury that works in both directions
+% unless you make it semidet rather than det.
 
 list__length(L, N) :-
 	list__length_2(L, 0, N).
@@ -318,8 +304,6 @@ list__length_2([], N, N).
 list__length_2([_ | L1], N0, N) :-
 	N1 is N0 + 1,
 	list__length_2(L1, N1, N).
-
-*****/
 
 list__reverse(L0, L) :-
 	list__reverse_2(L0, [], L).

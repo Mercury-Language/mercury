@@ -111,13 +111,11 @@
 
 :- implementation.
 
-/*
-:- external("NU-Prolog", (\=)/2).
-:- external("NU-Prolog", call/1).
-:- external("NU-Prolog", (=>)/2).
-:- external("NU-Prolog", (<=)/2).
-:- external("NU-Prolog", (<=>)/2).
-*/
+:- external((\=)/2).
+:- external(call/1).		% currently only implemented for NU-Prolog
+:- external((=>)/2).		% currently only implemented for NU-Prolog
+:- external((<=)/2).		% currently only implemented for NU-Prolog
+:- external((<=>)/2).		% currently only implemented for NU-Prolog
 
 :- end_module mercury_builtin.
 

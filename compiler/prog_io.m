@@ -646,11 +646,6 @@ process_clause(ok(Name, Args), VarSet, Body,
 		ok(clause(VarSet, Name, Args, Body))).
 process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
 
-:- pred join_error(bool, bool, bool).
-:- mode join_error(in, in, out) is det.
-join_error(yes, _, yes).
-join_error(no, Error, Error).
-
 %-----------------------------------------------------------------------------%
 
 	% Parse a goal.
