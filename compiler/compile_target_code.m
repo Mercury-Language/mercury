@@ -903,12 +903,14 @@ link(ErrorStream, LinkTargetType, ModuleName,
 	;
 		( { LinkTargetType = shared_library } ->
 			{ SharedLibOpt = "--make-shared-lib " },
+			{ LDFlagsOpt = ld_libflags },
 			globals__io_lookup_string_option(
 				shared_library_extension, SharedLibExt),
 			module_name_to_lib_file_name("lib", ModuleName,
 				SharedLibExt, yes, OutputFileName)
 		;
 			{ SharedLibOpt = "" },
+			{ LDFlagsOpt = ld_flags },
 			globals__io_lookup_string_option(
 				executable_file_extension, ExeExt),
 			module_name_to_file_name(ModuleName, ExeExt,
@@ -925,6 +927,9 @@ link(ErrorStream, LinkTargetType, ModuleName,
 		globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
 		{ join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },
+		globals__io_lookup_accumulating_option(LDFlagsOpt,
+				LDFlagsList),
+		{ join_string_list(LDFlagsList, "", "", " ", LDFlags) },
 		globals__io_lookup_accumulating_option(
 				link_library_directories,
 				LinkLibraryDirectoriesList),
@@ -934,11 +939,15 @@ link(ErrorStream, LinkTargetType, ModuleName,
 				LinkLibrariesList),
 		{ join_string_list(LinkLibrariesList, "-l", "", " ",
 				LinkLibraries) },
+
+		% Note that LDFlags may contain `-l' options
+		% so it should come after Objects.
 		{ string__append_list(
 			["ml --grade ", Grade, " ", SharedLibOpt,
 			Target_Debug_Opt, TraceOpt, StdLibOpt, LinkFlags,
-			" -o ", OutputFileName, " ", Objects, " ", 
-			LinkLibraryDirectories, " ", LinkLibraries],
+			LinkLibraryDirectories,
+			" -- -o ", OutputFileName, " ", Objects, " ",
+			LDFlags, " ", LinkLibraries],
 			LinkCmd) },
 		invoke_shell_command(ErrorStream, verbose_commands,
 			LinkCmd, Succeeded),

@@ -5860,13 +5860,32 @@ is @samp{.class}.
 Specify the name of the final executable.
 (The default executable name is the same as the name of the
 first module on the command line, but without the @samp{.m} extension.)
+This option is ignored by @samp{mmc --make}.
 
 @sp 1
 @item --link-flags @var{options}
+@itemx --ml-flags @var{options}
 @findex --link-flags
+@findex --ml-flags
 @cindex Link options
 @cindex Linker options
 Specify options to be passed to @samp{ml}, the Mercury linker.
+
+@sp 1
+@item --ld-flags @var{options}
+@findex --ld-flags
+Specify options to be passed to the command
+invoked by ml to link an executable.
+Use @code{ml --print-link-command} to find out
+which command is used.
+
+@sp 1
+@item --ld-libflags @var{options}
+@findex --ld-libflags
+Specify options to be passed to the command
+invoked by ml to link a shared library.
+Use @code{ml --print-shared-lib-link-command}
+to find out which command is used.
 
 @sp 1
 @item -L @var{directory}

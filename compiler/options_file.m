@@ -757,6 +757,8 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	;	ml_flags
 	;	ml_objs
 	;	ml_libs
+	;	ld_flags
+	;	ld_libflags
 	;	c2init_args
 	;	libraries
 	;	lib_dirs
@@ -764,10 +766,14 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 
 :- func options_variable_types = list(options_variable_type).
 
+	% `LIBRARIES' should come before `MLLIBS' (Mercury libraries
+	% depend on C libraries, but C libraries typically do not
+	% depend on Mercury libraries).
 options_variable_types =
 	[grade_flags, mmc_flags, c_flags, java_flags,
-	ilasm_flags, csharp_flags, mcpp_flags, ml_flags, ml_objs,
-	ml_libs, c2init_args, libraries, lib_dirs].
+	ilasm_flags, csharp_flags, mcpp_flags,
+	ml_objs, lib_dirs, ml_flags, ld_flags,
+	libraries, ml_libs, c2init_args].
 
 :- func options_variable_name(options_variable_type) = string.
 
@@ -781,6 +787,8 @@ options_variable_name(csharp_flags) = "MS_CSC_FLAGS".
 options_variable_name(ml_flags) = "MLFLAGS".
 options_variable_name(ml_objs) = "MLOBJS".
 options_variable_name(ml_libs) = "MLLIBS".
+options_variable_name(ld_flags) = "LDFLAGS".
+options_variable_name(ld_libflags) = "LD_LIBFLAGS".
 options_variable_name(c2init_args) = "C2INITARGS".
 options_variable_name(libraries) = "LIBRARIES".
 options_variable_name(lib_dirs) = "LIB_DIRS".
@@ -797,6 +805,8 @@ options_variable_type_is_target_specific(csharp_flags) = yes.
 options_variable_type_is_target_specific(ml_flags) = yes.
 options_variable_type_is_target_specific(ml_objs) = yes.
 options_variable_type_is_target_specific(ml_libs) = yes.
+options_variable_type_is_target_specific(ld_flags) = yes.
+options_variable_type_is_target_specific(ld_libflags) = yes.
 options_variable_type_is_target_specific(c2init_args) = yes.
 options_variable_type_is_target_specific(libraries) = yes.
 options_variable_type_is_target_specific(lib_dirs) = no.
@@ -832,8 +842,8 @@ convert_to_mmc_options(VariableType - VariableValue) = OptionsStrings :-
 	% one mmc option per word in a variable's value, or just a single
 	% mmc option.
 	% The value of CFLAGS is converted into a single `--cflags' option.
-	% The value of MLOBJS is converted into as multiple
-	% `--link-object' options.
+	% The value of MLOBJS is converted into multiple `--link-object'
+	% options.
 :- type split_into_words
 	--->	split
 	;	not_split
@@ -850,7 +860,9 @@ mmc_option_type(mcpp_flags) = option(not_split, "--mcpp-flags").
 mmc_option_type(csharp_flags) = option(not_split, "--csharp-flags").
 mmc_option_type(ml_flags) = option(not_split, "--link-flags").
 mmc_option_type(ml_objs) = option(split, "--link-object").
-mmc_option_type(ml_libs) = option(not_split, "--link-flags").
+mmc_option_type(ml_libs) = mmc_flags.
+mmc_option_type(ld_flags) = option(not_split, "--ld-flags").
+mmc_option_type(ld_libflags) = option(not_split, "--ld-libflags").
 mmc_option_type(c2init_args) = option(split, "--init-file").
 mmc_option_type(libraries) = option(split, "--mercury-library").
 mmc_option_type(lib_dirs) = option(split, "--mercury-library-directory").

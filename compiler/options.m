@@ -514,6 +514,8 @@
 	% Link options
 		;	output_file_name
 		;	link_flags
+		;	ld_flags
+		;	ld_libflags
 		;	link_library_directories
 		;	link_libraries
 		;	link_objects
@@ -1039,6 +1041,8 @@ option_defaults_2(link_option, [
 					% string, we use the name of the first
 					% module on the command line
 	link_flags		-	accumulating([]),
+	ld_flags		-	accumulating([]),
+	ld_libflags		-	accumulating([]),
 	link_library_directories -	accumulating([]),
 	link_libraries		-	accumulating([]),
 	link_objects		-	accumulating([]),
@@ -1618,6 +1622,9 @@ long_option("csharp-flags",		csharp_flags).
 % link options
 long_option("output-file",		output_file_name).
 long_option("link-flags",		link_flags).
+long_option("ml-flags",			link_flags).
+long_option("ld-flags",			ld_flags).
+long_option("ld-libflags",		ld_libflags).
 long_option("library-directory",	link_library_directories).
 long_option("library",			link_libraries).
 long_option("link-object",		link_objects).
@@ -3325,8 +3332,19 @@ options_help_link -->
 		"\tSpecify the name of the final executable.",
 		"\t(The default executable name is the same as the name",
 		"\tof the first module on the command line.)",
-		"--link-flags <options>",
-		"\tSpecify options to be passed to the linker.",
+		"\tThis option is ignored by `mmc --make'.",
+		"--link-flags <options>, --ml-flags <options>",
+		"\tSpecify options to be passed to ml, the Mercury linker.",
+		"--ld-flags <options>",
+		"\tSpecify options to be passed to the linker command",
+		"\tinvoked by ml to link an executable.",
+		"\tUse `ml --print-link-command' to find out which",
+		"\tcommand is used.",
+		"--ld-libflags <options>",
+		"\tSpecify options to be passed to the linker command",
+		"\tinvoked by ml to link a shared library.",
+		"\tUse `ml --print-shared-lib-link-command' to find out",
+		"\twhich command is used.",
 		"-L <directory>, --library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for libraries.",

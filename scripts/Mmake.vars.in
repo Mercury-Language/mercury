@@ -121,6 +121,8 @@ ECHO_MERCURY_OPTIONS = { \
 	echo MLFLAGS += '$(ALL_MLFLAGS)'; \
 	echo MLLIBS += '$(ALL_MLLIBS)'; \
 	echo MLOBJS += '$(ALL_MLOBJS)'; \
+	echo LDFLAGS += '$(ALL_LDFLAGS)'; \
+	echo LD_LIBFLAGS += '$(ALL_LD_LIBFLAGS)'; \
 	echo EXTRA_LIBRARIES += '$(EXTRA_LIBRARIES)'; \
 	echo EXTRA_LIB_DIRS += '$(EXTRA_LIB_DIRS)'; \
 	}
