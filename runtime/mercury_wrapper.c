@@ -879,9 +879,9 @@ MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(all_done, do_interpreter);
 
 BEGIN_MODULE(interpreter_module)
 	init_entry(do_interpreter);
-	init_label(global_success);
-	init_label(global_fail);
-	init_label(all_done);
+	init_label_sl(global_success);
+	init_label_sl(global_fail);
+	init_label_sl(all_done);
 BEGIN_CODE
 
 Define_entry(do_interpreter);

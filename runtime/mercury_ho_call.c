@@ -96,12 +96,12 @@ BEGIN_MODULE(call_module)
 
 	init_entry(mercury__unify_2_0);
 	init_entry(mercury__index_2_0);
-	init_label(mercury__index_2_0_i1);
+	init_label_sl(mercury__index_2_0_i1);
 	init_entry(mercury__compare_3_0);
 	init_entry(mercury__compare_3_1);
 	init_entry(mercury__compare_3_2);
 	init_entry(mercury__compare_3_3);
-	init_label(mercury__compare_3_0_i1);
+	init_label_sl(mercury__compare_3_0_i1);
 BEGIN_CODE
 
 Define_entry(do_call_det_closure);

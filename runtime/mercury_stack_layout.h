@@ -190,11 +190,11 @@ typedef struct {
  const struct mercury_data__stack_layout__##l##_struct {		\
 	const Word * f1;						\
 	Integer f2;							\
-	const Word * f3;						\
+	Integer f3;							\
  } mercury_data__stack_layout__##l = {					\
 	(const Word *) &mercury_data__stack_layout__##e,		\
-	(Integer) -1,		/* Unknown number of live values */	\
-	(const Word *) NULL	/* No list of live valeus */		\
+	(Integer) -1,		/* Unknown label number */		\
+	(Integer) 0		/* No live values */			\
  };
 #else
  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)        
@@ -221,11 +221,11 @@ typedef struct {
  const struct mercury_data__stack_layout__##e##_i##x##_struct {		\
 	const Word * f1;						\
 	Integer f2;							\
-	const Word * f3;						\
+	Integer f3;							\
  } mercury_data__stack_layout__##e##_i##x = {				\
 	(const Word *) &mercury_data__stack_layout__##e,		\
-	(Integer) -1,		/* Unknown number of live values */	\
-	(const Word *) NULL	/* No list of live valeus */		\
+	(Integer) -1,		/* Unknown label number */		\
+	(Integer) 0		/* No live values */			\
  };
 #else
  #define MR_MAKE_STACK_LAYOUT_INTERNAL(l, x)        

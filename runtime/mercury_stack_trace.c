@@ -51,6 +51,19 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 		determinism = entry_layout->MR_sle_detism;
 
+		/* 
+		** A negative determinism means handwritten code has
+		** been reached.  Usually this means we have reached
+		** "global_success", so we should stop dumping the stack.
+		**
+		** Otherwise it means we have reached some handwritten
+		** code that has no further information about the stack
+		** frame.  In this case, we also stop dumping the stack.
+		*/
+
+		if (determinism < 0) {
+			break;
+		}
 		if (MR_DETISM_DET_STACK(determinism)) {
 			fprintf(stderr, "\t%s\n", label->e_name);
 			if (type == MR_LVAL_TYPE_STACKVAR) {
@@ -61,11 +74,11 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 			}
 			det_stack_pointer = det_stack_pointer - 
 				entry_layout->MR_sle_stack_slots;
-		} else if (determinism != -1) {
+		} else {
 			fprintf(stderr, "\t%s\n", label->e_name);
 			success_pointer = bt_succip(current_frame);
 			current_frame = bt_succfr(current_frame);
 		}
-	} while (determinism != -1);
+	} while (TRUE);
 #endif /* MR_STACK_TRACE */
 }
