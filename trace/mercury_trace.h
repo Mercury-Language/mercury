@@ -63,9 +63,12 @@ extern	const char *MR_trace_retry(MR_Event_Info *event_info,
 ** If MR_trace_cmd == MR_CMD_GOTO, the event handler will stop at the next
 ** event whose event number is equal to or greater than MR_trace_stop_event.
 **
+** If MR_trace_cmd == MR_CMD_NEXT, the event handler will stop at the next
+** event at depth MR_trace_stop_depth.
+**
 ** If MR_trace_cmd == MR_CMD_FINISH, the event handler will stop at the next
-** event that specifies the procedure invocation whose call number is in
-** MR_trace_stop_seqno and whose port is EXIT or FAIL or EXCEPTION.
+** event at depth MR_trace_stop_depth and whose port is EXIT or FAIL or
+** EXCEPTION.
 **
 ** If MR_trace_cmd == MR_CMD_RESUME_FORWARD, the event handler will stop at
 ** the next event of any call whose port is *not* REDO or FAIL or EXCEPTION.
@@ -88,6 +91,7 @@ extern	const char *MR_trace_retry(MR_Event_Info *event_info,
 
 typedef enum {
 	MR_CMD_GOTO,
+	MR_CMD_NEXT,
 	MR_CMD_FINISH,
 	MR_CMD_RESUME_FORWARD,
 	MR_CMD_EXCP,
@@ -105,8 +109,17 @@ typedef enum {
 
 typedef struct {
 	MR_Trace_Cmd_Type	MR_trace_cmd;	
-	Unsigned		MR_trace_stop_depth;	/* if MR_CMD_FINISH */
-	Unsigned		MR_trace_stop_event;	/* if MR_CMD_GOTO   */
+				/*
+				** The MR_trace_stop_depth field is meaningful
+				** if MR_trace_cmd is MR_CMD_NEXT or
+				** MR_CMD_FINISH.
+				*/
+	Unsigned		MR_trace_stop_depth;
+				/*
+				** The MR_trace_stop_event field is meaningful
+				** if MR_trace_cmd is MR_CMD_GOTO  
+				*/
+	Unsigned		MR_trace_stop_event;
 	MR_Trace_Print_Level	MR_trace_print_level;
 	bool			MR_trace_strict;
 

@@ -132,6 +132,26 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 #endif	/* MR_TRACE_HISTOGRAM */
 
 	switch (MR_trace_ctrl.MR_trace_cmd) {
+		case MR_CMD_GOTO:
+			if (MR_trace_event_number >=
+					MR_trace_ctrl.MR_trace_stop_event)
+			{
+				port = (MR_Trace_Port) layout->MR_sll_port;
+				return MR_trace_event(&MR_trace_ctrl, TRUE,
+						layout, port, seqno, depth);
+			} else {
+				goto check_stop_print;
+			}
+
+		case MR_CMD_NEXT:
+			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
+				goto check_stop_print;
+			} else {
+				return MR_trace_event(&MR_trace_ctrl,
+					TRUE, layout, port,
+					seqno, depth);
+			}
+
 		case MR_CMD_FINISH:
 			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
 				goto check_stop_print;
@@ -145,17 +165,6 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 						TRUE, layout, port,
 						seqno, depth);
 				}
-			}
-
-		case MR_CMD_GOTO:
-			if (MR_trace_event_number >=
-					MR_trace_ctrl.MR_trace_stop_event)
-			{
-				port = (MR_Trace_Port) layout->MR_sll_port;
-				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth);
-			} else {
-				goto check_stop_print;
 			}
 
 		case MR_CMD_RESUME_FORWARD:

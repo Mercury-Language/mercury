@@ -1818,8 +1818,24 @@ the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
+@item next [-NSans] [@var{num}]
+Continues execution until it reaches the next event of
+the @var{num}'th ancestor of the call to which the current event refers.
+The default value of @var{num} is zero,
+which means skipping to the next event of the current call.
+Reports an error if execution is already at the end of the specified call.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
 @item finish [-NSans] [@var{num}]
-Continues execution until it reaches a final (EXIT or FAIL) port of
+Continues execution until it reaches a final (EXIT, FAIL or EXCP) port of
 the @var{num}'th ancestor of the call to which the current event refers.
 The default value of @var{num} is zero,
 which means skipping to the end of the current call.

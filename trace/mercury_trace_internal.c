@@ -610,6 +610,37 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("forward", "goto");
 		}
+	} else if (streq(words[0], "next")) {
+		Unsigned	depth = event_info->MR_call_depth;
+		int		stop_depth;
+		int		n;
+
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "next"))
+		{
+			; /* the usage message has already been printed */
+			return KEEP_INTERACTING;
+		} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+		{
+			stop_depth = depth - n;
+		} else if (word_count == 1) {
+			stop_depth = depth;
+		} else {
+			MR_trace_usage("forward", "next");
+			return KEEP_INTERACTING;
+		}
+
+		if (depth == stop_depth &&
+			MR_port_is_final(event_info->MR_trace_port))
+		{
+			MR_trace_do_noop();
+		} else {
+			cmd->MR_trace_cmd = MR_CMD_NEXT;
+			cmd->MR_trace_stop_depth = stop_depth;
+			return STOP_INTERACTING;
+		}
 	} else if (streq(words[0], "finish")) {
 		Unsigned	depth = event_info->MR_call_depth;
 		int		stop_depth;
@@ -2449,6 +2480,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "queries", "io_query" },
 	{ "forward", "step" },
 	{ "forward", "goto" },
+	{ "forward", "next" },
 	{ "forward", "finish" },
 	{ "forward", "exception" },
 	{ "forward", "return" },
