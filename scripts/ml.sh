@@ -6,7 +6,7 @@ GRADE=none
 case "$1" in
 	-s*)
 		GRADE=` expr $1 : '-s\(.*\)' `
-		shift;;
+		shift ;;
 esac
 
 LIBDIR_OPTS="-L$LIBDIR/$GRADE/@FULLARCH@ -lmer"
@@ -19,7 +19,7 @@ case "`hostname`" in
 	munta.cs.mu.oz.au)
 		GCC=/usr/local/gcc/bin/gcc ;;
 	*)
-		GCC=gcc
+		GCC=${GCC:-gcc}
 esac
 
 exec $GCC "$@" $LIBDIR_OPTS

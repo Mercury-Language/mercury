@@ -12,7 +12,7 @@ options=
 
 while true; do
 	case "$1" in
-		-u|-o|-F)
+		-e|-u|-o|-F)
 			options="$options $1 $2"
 			shift 2
 			;;
@@ -26,7 +26,11 @@ done
 
 objlist=
 for obj in $LIBRARY_OBJS; do
-	objlist="$objlist $NULIBDIR/$obj"
+	if echo "$@" | grep "$obj" > /dev/null; then
+		true
+	else
+		objlist="$objlist $NULIBDIR/$obj"
+	fi
 done
 
 exec nc $options $objlist "$@"
