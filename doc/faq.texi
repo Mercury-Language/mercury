@@ -211,14 +211,12 @@ This limitation will go away in the future.
 @item
 @emph{I'm getting an error from the C compiler:}
 @example
-foo.c:45: redeclaration of `mercury_const_3'
-foo.c:37: `mercury_const_3' previously declared here
+foo.c:45: constant is not computable at load time
 @end example
-@emph{Is this a bug?}
 @sp 1
 
-Yes, this is a known bug in the Mercury compiler (sorry!).
-The work-around is to compile with the @samp{--no-static-ground-terms} option.
+You're using an old version of @samp{gcc}. 
+Check that the version of @samp{gcc} in your PATH is version 2.6.3 or later.
 
 @end enumerate
 
