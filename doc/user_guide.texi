@@ -1135,7 +1135,7 @@ The executables of Mercury programs
 by default do not invoke the Mercury debugger
 even if some or all of their modules were compiled with some form of tracing,
 and even if the grade of the executable is a debugging grade,
-This is similar to the behavior of executables
+This is similar to the behaviour of executables
 created by the implementations of other languages;
 for example the executable of a C program compiled with @samp{-g}
 does not automatically invoke gdb or dbx etc when it is executed.
@@ -1213,14 +1213,14 @@ The effect of a break point depends on the state of the break point.
 If the state of the break point is @samp{stop},
 execution will stop and user interaction will start
 at any event within the procedure that matches the invocation conditions,
-unless the current debugger command has specifically disabled this behavior
+unless the current debugger command has specifically disabled this behaviour
 (see the concept @samp{strict commands} below).
 @sp 1
 @item
 If the state of the break point is @samp{print},
 the debugger will print any event within the procedure
 that matches the invocation conditions,
-unless the current debugger command has specifically disabled this behavior
+unless the current debugger command has specifically disabled this behaviour
 (see the concept @samp{print level} below).
 @end itemize
 @sp 1
@@ -1948,7 +1948,7 @@ engineer's toolkit.
 To enable profiling, your program must be built with profiling enabled.
 This can be done by passing the @samp{-p} (@samp{--profiling}) option
 to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
-seperately).  If you are using Mmake, then
+separately).  If you are using Mmake, then
 you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
 e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
 For more information about the different grades, see
@@ -2976,7 +2976,7 @@ call counts for an identical run of your program need to be gathered
 using @samp{--profiling} or @samp{--profile-calls}.
 XXX this doesn't work, because the code addresses change.
 The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
-to gather timing information and call counts in seperate runs,
+to gather timing information and call counts in separate runs,
 rather than just using @samp{--profiling} to gather them both at once,
 is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
@@ -3201,7 +3201,7 @@ levels higher than that give better optimization, but take longer,
 and are subject to the law of diminishing returns.  The difference in
 the quality of the generated code between optimization level 5 and
 optimization level 6 is very small, but using level 6 may increase
-compiation time and memory requirements dramatically.
+compilation time and memory requirements dramatically.
 
 Note that if you want the compiler to perform cross-module
 optimizations, then you must enable them separately;
@@ -3226,7 +3226,7 @@ predicates or functions imported from other modules.
 @itemx --transitive-intermodule-optimization
 Use the information stored in @file{@var{module}.trans_opt} files
 to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
-are differents to the @file{@var{module}.opt} files as @samp{.trans_opt}
+are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
 @samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
@@ -3400,7 +3400,7 @@ low-level intermediate code from our high-level data structure.
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
-Note that auxiliarity data structures created by the compiler
+Note that auxiliary data structures created by the compiler
 for purposes such as debugging
 will still be created as static constants.
 
@@ -3793,7 +3793,7 @@ to differ as much as possible modulo this size.
 @c @item -d @var{debugflag}
 @c Sets a low-level debugging flag.
 @c These flags are consulted only if
-@c the runtime was compiled with the approriate definitions;
+@c the runtime was compiled with the appropriate definitions;
 @c most of them depend on MR_LOWLEVEL_DEBUG.
 @c For the meanings of the debugflag parameters,
 @c see process_options() in mercury_wrapper.c
