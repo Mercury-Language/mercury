@@ -74,8 +74,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.parse.
-
-:- import_module term_rep.
+:- import_module mdb.term_rep.
 
 :- import_module std_util, char, string, bool, int, deconstruct, getopt, list.
 

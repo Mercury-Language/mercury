@@ -62,7 +62,7 @@
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.browser_info.
 
-:- import_module term_rep.
+:- import_module mdb.term_rep.
 
 :- import_module io, list, std_util, string.
 

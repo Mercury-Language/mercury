@@ -15,7 +15,7 @@
 % and don't care about it's actual value.
 %
 
-:- module term_rep.
+:- module mdb.term_rep.
 
 :- interface.
 

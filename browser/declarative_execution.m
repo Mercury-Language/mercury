@@ -19,10 +19,11 @@
 :- interface.
 
 :- import_module mdb__util.
+:- import_module mdb.term_rep.
 :- import_module mdbcomp__prim_data.
 :- import_module mdbcomp__program_representation.
 
-:- import_module list, std_util, io, bool, term_rep.
+:- import_module list, std_util, io, bool.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
