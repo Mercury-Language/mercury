@@ -851,7 +851,7 @@ generate_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0, VarSet,
 	;
 		VarTypes = VarTypes0,
 		VarSet = VarSet0,
-		generate_call("table_mark_as_succeeded", [TableVar], det,
+		generate_call("table_simple_mark_as_succeeded", [TableVar], det,
 			impure, [], Module, Goal),
 		TableInfo = TableInfo0
 	).
