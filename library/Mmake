@@ -28,7 +28,7 @@ MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
 		MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql \
-				$(library.qls) $(NU_LIBRARY_QLS)`" \
+				$(library.qls) $(NU_LIBRARY_QLS) portray.ql`" \
 		$(SCRIPTS_DIR)/msl
 
 MCD	=	MERCURY_INT_DIR=. \
@@ -140,7 +140,7 @@ library.nu library.nu.debug: $(NU_LIBRARY_NOS)
 library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no portray.no
-library.sicstus.debug: portray.ql
+library.sicstus library.sicstus.debug: portray.ql
 
 sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) portray.ql: sicstus_compile
 
