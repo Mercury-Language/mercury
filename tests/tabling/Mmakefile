@@ -37,6 +37,8 @@ NONDET_NONLOOP_PROGS = \
 	generator_in_commit \
 	mday \
 	repeat \
+	rotate \
+	rotate2 \
 	seq \
 	seq2 \
 	seq3 \
