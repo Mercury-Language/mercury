@@ -171,9 +171,23 @@ tar:
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/conf.h
 	-rm -f Mmake.common
-	cd .. && (mv mercury mercury-$(VERSION); \
-		tar -cf - mercury-$(VERSION) | gzip -9 > mercury-$(VERSION).tar.gz; \
-		mv mercury-$(VERSION) mercury)
+	# Package up the mercury directory and the tests directory, 
+	# but with some subdirectories excluded, into a gzipped tar
+	# archive that will unpack into mercury-$(VERSION).
+	cd .. && (							\
+		mv mercury mercury-$(VERSION);				\
+		mv tests mercury-$(VERSION)/tests;			\
+		mkdir stuff-to-exclude;					\
+		mv mercury-$(VERSION)/trial	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/bytecode	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/lp_solve	stuff-to-exclude;	\
+		tar -cf - mercury-$(VERSION) |				\
+			gzip -9 > mercury-$(VERSION).tar.gz;		\
+		mv stuff-to-exclude/* mercury-$(VERSION);		\
+		rmdir stuff-to-exclude;					\
+		mv mercury-$(VERSION)/tests tests;			\
+		mv mercury-$(VERSION) mercury				\
+	)
 
 version:
 	@echo $(VERSION)
