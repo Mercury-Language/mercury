@@ -9,3 +9,6 @@ higher_order_func_test
 func_test
 free_free_mode
 float_rounding_bug
+string_loop
+no_fully_strict
+cc_nondet_disj
