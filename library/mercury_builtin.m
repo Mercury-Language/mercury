@@ -150,15 +150,6 @@
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
 
-	% A temporary hack until we implement call/N (N>1) properly
-	% The way this works is magic ;-)
-
-call(Pred, T) :-
-	call(call(Pred, T)).
-
-call(Pred, T1, T2) :-
-	call(call(Pred, T1, T2)).
-
 builtin_unify_int(X, X).
 
 builtin_unify_string(S, S).
