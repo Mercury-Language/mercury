@@ -148,7 +148,7 @@ in an HLDS goal.
 	  does the final step of figuring out which pred_id to use
 	  for a call to an overloaded predicate.
 
-	  It use the following sub-modules:
+	  It uses the following sub-modules:
 		mode_info.m (the main data structure for mode analysis)
 		delay_info.m (a sub-component of the mode_info data
 			structure used for storing the information
@@ -286,6 +286,8 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			branched structure with the variable target locations
 			for the following call, so we can generate
 			efficient code by putting variables in the right spot.
+			This module is not called from mercury_compile.m;
+			it is called from store_alloc.m.
 		allocating the store map (store_alloc.m)
 			Allocates locations for variables at the end of
 			branched goals.  Annotates the goal_info for
@@ -307,6 +309,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 		unify_gen.m (unifications)
 		switch_gen.m (switches), which has sub-modules
 			dense_switch.m
+			lookup_switch.m
 			string_switch.m
 			tag_switch.m
 
@@ -315,8 +318,6 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 	The code generation modules make use of
 		code_info.m
 			The main data structure for the code generator
-		code_aux.m
-			Various preds which use code_info
 		code_exprn.m
 			This defines the exprn_info type, which is 
 			a sub-component of the code_info data structure
@@ -327,6 +328,9 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			Various preds which use exprn_info
 		code_util.m
 			Some miscellaneous preds used for code generation
+		code_aux.m
+			Some miscellaneous preds which, unlike those in
+			code_util, use code_info
 
 The result of code generation is the Low Level Data Structure (llds.m).
 The code is generated as a tree of code fragments which is then
@@ -405,7 +409,19 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
 
 6. Output C code
 
-Final generation of C code is done in llds_out.m.
+* base_type_info.m generates the base_type_info structures that list the
+  unification, index and compare predicates associated with each declared
+  type constructor. These are added to the LLDS.
+
+* base_type_layout.m generates the base_type_layout structures that give
+  information on how to interpret values of a given type. The base_type_layout
+  structure of each declared type constructor are added to the LLDS.
+
+* llds_common.m extracts static terms from the main body of the LLDS, and
+  puts them at the front. If a static term originally appeared several times,
+  it will now appear as a single tatic term with multiple references to it.
+
+* Final generation of C code is done in llds_out.m.
 
 -----------------------------------------------------------------------------
 
