@@ -12,6 +12,8 @@ conservative garbage collector distributed by Hans Boehm - see the file
 README in that directory for copyright information about those files.
 A couple of files (scripts/fullarch, runtime/timing.c) are derived from
 code that is copyright by the Free Software Foundation, Inc.
+The program `html2texi' in the doc directory is copyright by CERN; see
+the copyright notice at the end of that file.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -23,8 +25,9 @@ process will install INFO, HTML, and DVI versions in the locations specified
 in the file Mmake.common - by default these locations are /usr/local/info,
 /usr/local/lib/mercury/html, and /usr/local/lib/mercury/doc respectively.
 
-For more information about Mercury, see http://www.cs.mu.oz.au/~zs/mercury,
-or send mail to fjh@cs.mu.oz.au, zs@cs.mu.oz.au and/or conway@cs.mu.oz.au.
+For more information about Mercury, see the Mercury WWW home page at
+http://www.cs.mu.oz.au/~zs/mercury.html, or send mail to
+fjh@cs.mu.oz.au, zs@cs.mu.oz.au and/or conway@cs.mu.oz.au. 
 To subscribe to the Mercury mailing list, send mail to fjh@cs.mu.oz.au.
 
 Please send bug reports, enhancement requests, suggestions for improvements
