@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -274,9 +274,8 @@ magic_util__construct_db_call(ModuleInfo, PredId, ProcId,
 
 %-----------------------------------------------------------------------------%
 
-magic_util__adjust_index(ArgTypes0, index_spec(IndexType, Attrs0),
+magic_util__adjust_index(ArgTypes, index_spec(IndexType, Attrs0),
 		index_spec(IndexType, Attrs)) :-
-	strip_prog_contexts(ArgTypes0, ArgTypes),
 	construct_type(qualified(unqualified("aditi"), "state") - 0,
 		[], StateType),
 	( list__nth_member_search(ArgTypes, StateType, StateIndex) ->

@@ -456,6 +456,8 @@ case $COMPILER in gcc)
 				ARCH_OPTS="$ARCH_OPTS -O0" ;;
 			*" table_builtin.c "*|*" modules.dir/table_builtin"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O0" ;;
+			*" random.c "*|*" random.dir/random"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O0" ;;
 			esac ;;
 		sparc*)
 			case "$*" in

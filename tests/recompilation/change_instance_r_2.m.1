@@ -1,0 +1,20 @@
+:- module change_instance_r_2.
+
+:- interface.
+
+:- import_module change_instance_r.
+
+:- type bar == int.
+
+:- type baz == int.
+
+:- instance io(baz).
+
+:- implementation.
+
+:- import_module io.
+
+:- instance io(int) where [
+	pred(output/3) is io__write_int
+].	
+

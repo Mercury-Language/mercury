@@ -522,7 +522,7 @@ Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql},
+@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql}, @samp{.used},
 @ifset aditi
 @samp{.schema},
 @end ifset
@@ -3387,6 +3387,11 @@ Disable warnings for modules that do not start with a
 Disable warnings for modules whose @samp{:- module} declaration
 does not match the module's file name.
 
+@sp 1
+@item --no-warn-smart-recompilation
+@findex --no-warn-smart-recompilation
+Disable warnings from the smart recompilation system.
+
 @end table
 
 @node Verbosity options
@@ -3413,6 +3418,12 @@ Output very verbose progress messages.
 @findex --verbose-error-messages
 Explain error messages.  Asks the compiler to give you a more
 detailed explanation of any errors it finds in your program.
+
+@sp 1
+@item --verbose-recompilation
+@findex --verbose-recompilation
+When using @samp{--smart-recompilation}, output messages
+explaining why a module needs to be recompiled.
 
 @sp 1
 @item -S
@@ -3621,6 +3632,13 @@ string and print it on the standard output.
 @node Auxiliary output options
 @section Auxiliary output options
 @table @code
+@item --smart-recompilation
+@findex --smart-recompilation
+When compiling, write program dependency information
+to be used to avoid unnecessary recompilations if an
+imported module's interface changes in a way which does
+not invalidate the compiled code.
+
 @item --no-assume-gmake
 @findex --no-assume-gmake
 @findex --assume-gmake

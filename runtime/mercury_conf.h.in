@@ -160,6 +160,7 @@
 **	HAVE_DLCLOSE   		we have the dlclose() function.
 **	HAVE_DLSYM   		we have the dlsym() function.
 **	HAVE_DLERROR   		we have the dlerror() function.
+**	HAVE_STAT 		we have the stat() function.
 **	HAVE_FSTAT 		we have the fstat() function.
 **	HAVE_FDOPEN 		we have the fdopen() function.
 **	HAVE_FILENO 		we have the fileno() function.
@@ -181,6 +182,7 @@
 #undef	HAVE_DLCLOSE
 #undef	HAVE_DLSYM
 #undef	HAVE_DLERROR
+#undef	HAVE_STAT
 #undef	HAVE_FSTAT
 #undef	HAVE_FDOPEN
 #undef	HAVE_FILENO

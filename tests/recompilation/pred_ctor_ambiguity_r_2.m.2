@@ -1,0 +1,15 @@
+:- module pred_ctor_ambiguity_r_2.
+
+:- interface.
+
+:- type foo
+	--->	a
+	;	b(int).
+
+:- pred c(float::in, float::out) is det.
+
+:- implementation.
+
+:- import_module float.
+
+c(X, X + 1.0).

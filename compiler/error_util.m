@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, prog_data.
-:- import_module assoc_list, io, list, std_util.
+:- import_module assoc_list, char, io, list, std_util.
 
 	% Given a context, a starting indentation level and a list of words,
 	% print an error message that looks like this:
@@ -57,8 +57,17 @@
 :- pred error_util__list_to_pieces(list(string)::in,
 		list(format_component)::out) is det.
 
+	% Convert a list of lists of format_components into a list of
+	% format_components separated by commas, with the last two
+	% elements separated by `and'.
+:- func error_util__component_lists_to_pieces(list(list(format_component))) =
+		list(format_component).
+
 	% Display the given error message.
 :- pred write_error_pieces(prog_context::in, int::in,
+	list(format_component)::in, io__state::di, io__state::uo) is det.
+
+:- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
 	list(format_component)::in, io__state::di, io__state::uo) is det.
 
 	% Report a warning, and set the exit status to error if the
@@ -85,6 +94,16 @@
 :- pred error_util__describe_several_call_sites(module_info::in,
 	assoc_list(pred_proc_id, prog_context)::in,
 	list(format_component)::out) is det.
+
+:- func error_util__describe_sym_name(sym_name) = string.
+
+:- func error_util__describe_sym_name_and_arity(sym_name_and_arity) =
+			string.
+
+	% Append a punctuation character to a message, avoiding unwanted
+	% line splitting between the message and the punctuation.
+:- func error_util__append_punctuation(list(format_component), char) =
+		list(format_component).
 
 	% report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
 	%
@@ -115,7 +134,7 @@
 
 :- implementation.
 
-:- import_module prog_out, globals, options.
+:- import_module prog_out, prog_util, globals, options.
 :- import_module bool, io, list, term, char, string, int, require.
 
 error_util__list_to_pieces([], []).
@@ -127,6 +146,16 @@ error_util__list_to_pieces([Elem1, Elem2, Elem3 | Elems], Pieces) :-
 	error_util__list_to_pieces([Elem2, Elem3 | Elems], Pieces1),
 	Pieces = [fixed(Piece1) | Pieces1].
 
+error_util__component_lists_to_pieces([]) = [].
+error_util__component_lists_to_pieces([Components]) = Components.
+error_util__component_lists_to_pieces([Components1, Components2]) =
+		list__condense([Components1, [words("and")], Components2]).
+error_util__component_lists_to_pieces(
+		[Components1, Components2, Components3 | Components]) =
+	list__append(append_punctuation(Components1, ','),
+		error_util__component_lists_to_pieces(
+			[Components2, Components3 | Components])).
+
 report_warning(Context, Indent, Components) -->
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
@@ -137,6 +166,10 @@ report_warning(Context, Indent, Components) -->
 	write_error_pieces(Context, Indent, Components).
 
 write_error_pieces(Context, Indent, Components) -->
+	write_error_pieces_maybe_with_context(yes(Context),
+		Indent, Components).
+
+write_error_pieces_maybe_with_context(MaybeContext, Indent, Components) -->
 	{
 			% The fixed characters at the start of the line are:
 			% filename
@@ -145,45 +178,62 @@ write_error_pieces(Context, Indent, Components) -->
 			% :
 			% space
 			% indent
-		term__context_file(Context, FileName),
-		term__context_line(Context, LineNumber),
-		string__length(FileName, FileNameLength),
-		string__int_to_string(LineNumber, LineNumberStr),
-		string__length(LineNumberStr, LineNumberStrLength0),
-		( LineNumberStrLength0 < 3 ->
-			LineNumberStrLength = 3
+		(
+			MaybeContext = yes(Context),
+			term__context_file(Context, FileName),
+			term__context_line(Context, LineNumber),
+			string__length(FileName, FileNameLength),
+			string__int_to_string(LineNumber, LineNumberStr),
+			string__length(LineNumberStr, LineNumberStrLength0),
+			( LineNumberStrLength0 < 3 ->
+				LineNumberStrLength = 3
+			;
+				LineNumberStrLength = LineNumberStrLength0
+			),
+			ContextLength = FileNameLength + 1 +
+					LineNumberStrLength + 2
 		;
-			LineNumberStrLength = LineNumberStrLength0
+			MaybeContext = no,
+			ContextLength = 0
 		),
-		Remain is 79 - (FileNameLength + 1 +
-			LineNumberStrLength + 2 + Indent),
+		Remain is 79 - (ContextLength + Indent),
 		convert_components_to_word_list(Components, [], [], Words),
 		group_words(yes, Words, Remain, Lines)
 	},
-	write_lines(Lines, Context, Indent).
+	write_lines(Lines, MaybeContext, Indent).
 
-:- pred write_lines(list(list(string))::in, prog_context::in, int::in,
+:- pred write_lines(list(list(string))::in, maybe(prog_context)::in, int::in,
 	io__state::di, io__state::uo) is det.
 
 write_lines([], _, _) --> [].
-write_lines([Line | Lines], Context, Indent) -->
-	prog_out__write_context(Context),
+write_lines([Line | Lines], MaybeContext, Indent) -->
+	(
+		{ MaybeContext = yes(Context) },
+		prog_out__write_context(Context)
+	;
+		{ MaybeContext = no }
+	),
 	{ string__pad_left("", ' ', Indent, IndentStr) },
 	io__write_string(IndentStr),
 	write_line(Line),
 	{ Indent2 is Indent + 2 },
-	write_nonfirst_lines(Lines, Context, Indent2).
+	write_nonfirst_lines(Lines, MaybeContext, Indent2).
 
-:- pred write_nonfirst_lines(list(list(string))::in, prog_context::in, int::in,
-	io__state::di, io__state::uo) is det.
+:- pred write_nonfirst_lines(list(list(string))::in, maybe(prog_context)::in,
+	int::in, io__state::di, io__state::uo) is det.
 
 write_nonfirst_lines([], _, _) --> [].
-write_nonfirst_lines([Line | Lines], Context, Indent) -->
-	prog_out__write_context(Context),
+write_nonfirst_lines([Line | Lines], MaybeContext, Indent) -->
+	(
+		{ MaybeContext = yes(Context) },
+		prog_out__write_context(Context)
+	;
+		{ MaybeContext = no }
+	),
 	{ string__pad_left("", ' ', Indent, IndentStr) },
 	io__write_string(IndentStr),
 	write_line(Line),
-	write_nonfirst_lines(Lines, Context, Indent).
+	write_nonfirst_lines(Lines, MaybeContext, Indent).
 
 :- pred write_line(list(string)::in, io__state::di, io__state::uo) is det.
 
@@ -414,6 +464,36 @@ error_util__describe_one_call_site(Module, PPId - Context, Piece) :-
 error_util__describe_several_call_sites(Module, Sites, Pieces) :-
 	list__map(error_util__describe_one_call_site(Module), Sites, Pieces0),
 	error_util__list_to_pieces(Pieces0, Pieces).
+
+error_util__describe_sym_name_and_arity(SymName / Arity) =
+		string__append_list(["`", SymNameString,
+			"/", string__int_to_string(Arity), "'"]) :-
+	sym_name_to_string(SymName, SymNameString).
+
+error_util__describe_sym_name(SymName) =
+		string__append_list(["`", SymNameString, "'"]) :-
+	sym_name_to_string(SymName, SymNameString).
+
+
+error_util__append_punctuation([], _) = _ :-
+	error(
+	"error_util__append_punctuation: appending punctuation after nothing").
+error_util__append_punctuation([Piece0], Punc) = [Piece] :-
+	% Avoid unwanted line splitting between the message
+	% and the punctuation.
+	(
+		Piece0 = words(String),
+		Piece = words(string__append(String, char_to_string(Punc)))
+	;
+		Piece0 = fixed(String),
+		Piece = fixed(string__append(String, char_to_string(Punc)))
+	;
+		Piece0 = nl,
+		error(
+	"error_util__append_punctutation: appending punctuation after newline")
+	).
+error_util__append_punctuation([Piece1, Piece2 | Pieces], Punc) =
+	[Piece1 | error_util__append_punctuation([Piece2 | Pieces], Punc)].
 
 %-----------------------------------------------------------------------------%
 

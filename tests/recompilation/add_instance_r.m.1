@@ -1,0 +1,17 @@
+:- module add_instance_r.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module add_instance_r_2.
+
+main -->
+	{ init_foo(X) },
+	output(X),
+	io__nl.
+

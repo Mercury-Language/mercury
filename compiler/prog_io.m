@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,19 +55,22 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io_util.
-:- import_module bool, varset, term, list, io. 
+:- import_module prog_data, prog_io_util, timestamp.
+:- import_module bool, varset, term, list, io, std_util. 
 
 %-----------------------------------------------------------------------------%
 
 % This module (prog_io) exports the following predicates:
 
-	% prog_io__read_module(FileName, DefaultModuleName, Search, Error,
-	%				ActualModuleName, Messages, Program)
+	% prog_io__read_module(FileName, DefaultModuleName, Search,
+	%		ReturnTimestamp, Error, ActualModuleName,
+	%		Messages, Program, MaybeModuleTimestamp)
 	% Reads and parses the module in file `FileName',
 	% using the default module name `DefaultModuleName'.
-	% If Search is yes, search directories given by the option
+	% If Search is `yes', search directories given by the option
 	% search_directories.
+	% If ReturnTimestamp is `yes', attempt to return the 
+	% modification timestamp in MaybeModuleTimestamp.
 	% Error is `fatal' if the file coudn't be opened, `yes'
 	% if a syntax error was detected, and `no' otherwise.
 	% ActualModuleName is the module name specified in the
@@ -84,10 +87,17 @@
 :- type file_name == string.
 :- type dir_name == string.
 
-:- pred prog_io__read_module(file_name, module_name, bool,
+:- pred prog_io__read_module(file_name, module_name, bool, bool,
 		module_error, module_name, message_list, item_list,
-		io__state, io__state).
-:- mode prog_io__read_module(in, in, in, out, out, out, out, di, uo) is det.
+		maybe(io__res(timestamp)), io__state, io__state).
+:- mode prog_io__read_module(in, in, in, in, out, out, out, out,
+		out, di, uo) is det.
+
+:- pred prog_io__read_module_if_changed(file_name, module_name, bool,
+		timestamp, module_error, module_name, message_list,
+		item_list, maybe(io__res(timestamp)), io__state, io__state).
+:- mode prog_io__read_module_if_changed(in, in, in, in,
+		out, out, out, out, out, di, uo) is det.
 
 	% Same as prog_io__read_module, but use intermod_directories
 	% instead of search_directories when searching for the file.
@@ -186,21 +196,31 @@
 :- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, prog_out.
 :- import_module globals, options, (inst).
+:- import_module recompilation, recompilation_version.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
-:- import_module assoc_list.
+:- import_module assoc_list, map, time.
 
 %-----------------------------------------------------------------------------%
 
-prog_io__read_module(FileName, DefaultModuleName, Search,
-		Error, ModuleName, Messages, Items) -->
+prog_io__read_module(FileName, DefaultModuleName, Search, ReturnTimestamp,
+		Error, ModuleName, Messages, Items, MaybeModuleTimestamp) -->
 	prog_io__read_module_2(FileName, DefaultModuleName, Search,
-		search_directories, Error, ModuleName, Messages, Items).
+		search_directories, no, ReturnTimestamp, Error, ModuleName,
+		Messages, Items, MaybeModuleTimestamp).
 
-prog_io__read_opt_file(FileName, DefaultModuleName, Search, 
+prog_io__read_module_if_changed(FileName, DefaultModuleName, Search,
+		OldTimestamp, Error, ModuleName, Messages,
+		Items, MaybeModuleTimestamp) -->
+	prog_io__read_module_2(FileName, DefaultModuleName, Search,
+		search_directories, yes(OldTimestamp), yes, Error, ModuleName,
+		Messages, Items, MaybeModuleTimestamp).
+
+prog_io__read_opt_file(FileName, DefaultModuleName, Search,
 		Error, Messages, Items) -->
 	prog_io__read_module_2(FileName, DefaultModuleName, Search, 
-		intermod_directories, Error, ModuleName, Messages, Items),
+		intermod_directories, no, no, Error,
+		ModuleName, Messages, Items, _),
 	check_module_has_expected_name(FileName,
 		DefaultModuleName, ModuleName).
 
@@ -230,13 +250,14 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName) -->
 % late-input modes.)
 
 :- pred prog_io__read_module_2(file_name, module_name, bool, option,
-		module_error, module_name, message_list, item_list,
-		io__state, io__state).
-:- mode prog_io__read_module_2(in, in, in, in, out, out, out, out,
-		di, uo) is det.
+	maybe(timestamp), bool, module_error, module_name, message_list,
+	item_list, maybe(io__res(timestamp)), io__state, io__state).
+:- mode prog_io__read_module_2(in, in, in, in, in, in, out, out, out, out,
+	out, di, uo) is det.
 
-prog_io__read_module_2(FileName, DefaultModuleName, Search,
-		SearchOpt, Error, ModuleName, Messages, Items) -->
+prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
+		MaybeOldTimestamp, ReturnTimestamp, Error,
+		ModuleName, Messages, Items, MaybeModuleTimestamp) -->
 	( 
 		{ Search = yes }
 	->
@@ -246,11 +267,45 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search,
 		{ dir__this_directory(CurrentDir) },
 		{ Dirs = [CurrentDir] }
 	),
+	io__input_stream(OldInputStream),
 	search_for_file(Dirs, FileName, R),
 	( { R = yes } ->
-		read_all_items(DefaultModuleName, ModuleName,
-			Messages, Items, Error),
-		io__seen
+		( { ReturnTimestamp = yes } ->
+			io__input_stream_name(InputStreamName),
+			io__file_modification_time(InputStreamName,
+				TimestampResult),
+			(
+				{ TimestampResult = ok(Timestamp) },
+				{ MaybeModuleTimestamp = yes(
+					ok(time_t_to_timestamp(Timestamp))) }
+			;
+				{ TimestampResult = error(IOError) },
+				{ MaybeModuleTimestamp = yes(error(IOError)) }
+			)
+		;
+			{ MaybeModuleTimestamp = no }
+		),
+		(
+			{ MaybeOldTimestamp = yes(OldTimestamp) },
+			{ MaybeModuleTimestamp = yes(ok(OldTimestamp)) }
+		->
+			%
+			% XXX Currently smart recompilation won't work
+			% if ModuleName \= DefaultModuleName.
+			% In that case, smart recompilation will
+			% be disabled and prog_io__read_module should
+			% never be passed an old timestamp.
+			%
+			{ ModuleName = DefaultModuleName },
+			{ Items = [] },
+			{ Error = no },
+			{ Messages = [] }
+		;
+			read_all_items(DefaultModuleName, ModuleName,
+				Messages, Items, Error)
+		),
+		io__seen,
+		io__set_input_stream(OldInputStream, _)
 	;
 		io__progname_base("prog_io.m", Progname),
 		{
@@ -261,7 +316,8 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search,
 		  Messages = [Message - Term],
 		  Error = fatal,
 		  Items = [],
-		  ModuleName = DefaultModuleName
+		  ModuleName = DefaultModuleName,
+		  MaybeModuleTimestamp = no
 		}
 	).
 
@@ -626,8 +682,36 @@ read_items_loop_2(error(M, T), ModuleName, SourceFileName,
  	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 			Msgs, Items, Error).
 
-read_items_loop_2(ok(Item, Context), ModuleName0, SourceFileName0,
+read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 			Msgs0, Items0, Error0, Msgs, Items, Error) -->
+
+	( { Item0 = nothing(yes(Warning)) } ->
+		{ Warning = item_warning(MaybeOption, Msg, Term) },
+		( { MaybeOption = yes(Option) } ->
+			globals__io_lookup_bool_option(Option, Warn)
+		;
+			{ Warn = yes }
+		),
+		( { Warn = yes } ->
+			{ add_warning(Msg, Term, Msgs0, Msgs1) },
+
+			globals__io_lookup_bool_option(halt_at_warn, Halt),
+			{ Halt = yes ->
+				Error1 = yes
+			;
+				Error1 = Error0
+			}
+		;
+			{ Error1 = Error0 },
+			{ Msgs1 = Msgs0 }
+		),
+		{ Item = nothing(no) }
+	;
+		{ Error1 = Error0 },
+		{ Msgs1 = Msgs0 },
+		{ Item = Item0 }
+	),
+
 	% if the next item was a valid item, check whether it was
 	% a declaration that affects the current parsing context --
 	% i.e. either a `module'/`end_module' declaration or a
@@ -655,7 +739,7 @@ read_items_loop_2(ok(Item, Context), ModuleName0, SourceFileName0,
 		ModuleName = ModuleName0,
 		Items1 = [Item - Context | Items0]
 	},
- 	read_items_loop(ModuleName, SourceFileName, Msgs0, Items1, Error0,
+ 	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 			Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
@@ -752,7 +836,7 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 :- pred process_pred_clause(maybe_functor, prog_varset, goal, maybe1(item)).
 :- mode process_pred_clause(in, in, in, out) is det.
 process_pred_clause(ok(Name, Args0), VarSet, Body,
-		ok(pred_clause(VarSet, Name, Args, Body))) :-
+		ok(clause(VarSet, predicate, Name, Args, Body))) :-
 	list__map(term__coerce, Args0, Args).
 process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
 	term__coerce(Term0, Term).
@@ -761,9 +845,9 @@ process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
 		maybe1(item)).
 :- mode process_func_clause(in, in, in, in, out) is det.
 process_func_clause(ok(Name, Args0), Result0, VarSet, Body,
-		ok(func_clause(VarSet, Name, Args, Result, Body))) :-
-	list__map(term__coerce, Args0, Args),
-	term__coerce(Result0, Result).
+		ok(clause(VarSet, function, Name, Args, Body))) :-
+	list__append(Args0, [Result0], Args1),
+	list__map(term__coerce, Args1, Args).
 process_func_clause(error(ErrMessage, Term0), _, _, _,
 		error(ErrMessage, Term)) :-
 	term__coerce(Term0, Term).
@@ -1033,9 +1117,18 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
 	% backwards compatibility.  We now issue a warning that they
 	% are deprecated.  We should eventually drop support for them
 	% entirely.
-process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Attributes,
+process_decl(_ModuleName, _VarSet, "when", [Goal, _Cond], Attributes,
 		Result) :-
-	Result0 = ok(nothing),
+	( Goal = term__functor(_, _, Context0) ->
+		Context = Context0
+	;
+		term__context_init(Context)
+	),
+	dummy_term_with_context(Context, DummyTerm),
+	Result0 = ok(nothing(yes(item_warning(no,
+			"NU-Prolog `when' declarations are deprecated",
+			DummyTerm	
+		)))),
 	check_no_attributes(Result0, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
@@ -1053,6 +1146,53 @@ process_decl(ModuleName, VarSet, "typeclass", Args, Attributes, Result):-
 process_decl(ModuleName, VarSet, "instance", Args, Attributes, Result):-
 	parse_instance(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
+
+process_decl(ModuleName, VarSet0, "version_numbers",
+		[VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
+		Attributes, Result) :-
+	parse_module_specifier(ModuleNameTerm, ModuleNameResult),
+	(
+		VersionNumberTerm = term__functor(
+			term__integer(VersionNumber), [], _),
+		VersionNumber = version_numbers_version_number
+	->
+		(
+			ModuleNameResult = ok(ModuleName)
+		->
+			recompilation_version__parse_version_numbers(
+				VersionNumbersTerm, Result0),
+			(
+				Result0 = ok(VersionNumbers),
+				varset__coerce(VarSet0, VarSet),
+				Result1 = module_defn(VarSet,
+					version_numbers(ModuleName,
+						VersionNumbers)),
+				check_no_attributes(ok(Result1),
+					Attributes, Result)
+			;
+				Result0 = error(A, B),
+				Result = error(A, B)
+			)
+		;
+			Result = error(
+				"invalid module name in `:- version_numbers'",
+				ModuleNameTerm)
+		)
+	;
+
+		( VersionNumberTerm = term__functor(_, _, Context) ->
+			Msg =
+"interface file needs to be recreated, the version numbers are out of date",
+			dummy_term_with_context(Context, DummyTerm),
+			Warning = item_warning(yes(warn_smart_recompilation),
+					Msg, DummyTerm),
+			Result = ok(nothing(yes(Warning)))
+		;
+			Result = error(
+			"invalid version number in `:- version_numbers'",
+				VersionNumberTerm)
+		)
+	).
 
 :- pred parse_decl_attribute(string, list(term), decl_attribute, term).
 :- mode parse_decl_attribute(in, in, out, out) is semidet.
@@ -1128,10 +1268,11 @@ parse_type_decl(ModuleName, VarSet, TypeDecl, Result) :-
 		% (don't bother at the moment, since we ignore
 		% conditions anyhow :-)
 
-:- pred make_type_defn(varset, condition, type_defn, item).
+:- pred make_type_defn(varset, condition, processed_type_body, item).
 :- mode make_type_defn(in, in, in, out) is det.
 
-make_type_defn(VarSet0, Cond, TypeDefn, type_defn(VarSet, TypeDefn, Cond)) :-
+make_type_defn(VarSet0, Cond, processed_type_body(Name, Args, TypeDefn),
+		type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
 :- pred make_external(varset, sym_name_specifier, item).
@@ -1163,7 +1304,7 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	% a representation of the declaration.
 
 :- pred parse_type_decl_type(module_name, string, list(term), condition,
-				maybe1(type_defn)).
+				maybe1(processed_type_body)).
 :- mode parse_type_decl_type(in, in, in, out, out) is semidet.
 
 parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
@@ -1342,31 +1483,39 @@ get_condition(B, Body, Condition) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type processed_type_body
+	---> processed_type_body(
+		sym_name,
+		list(type_param),
+		type_defn
+	).
+
 	% This is for "Head = Body" (undiscriminated union) definitions.
-:- pred process_uu_type(module_name, term, term, maybe1(type_defn)).
+:- pred process_uu_type(module_name, term, term, maybe1(processed_type_body)).
 :- mode process_uu_type(in, in, in, out) is det.
 process_uu_type(ModuleName, Head, Body, Result) :-
 	check_for_errors(ModuleName, Head, Body, Result0),
 	process_uu_type_2(Result0, Body, Result).
 
-:- pred process_uu_type_2(maybe_functor, term, maybe1(type_defn)).
+:- pred process_uu_type_2(maybe_functor, term, maybe1(processed_type_body)).
 :- mode process_uu_type_2(in, in, out) is det.
 process_uu_type_2(error(Error, Term), _, error(Error, Term)).
-process_uu_type_2(ok(Name, Args0), Body0, ok(uu_type(Name, Args, List))) :-
+process_uu_type_2(ok(Name, Args0), Body,
+		ok(processed_type_body(Name, Args, uu_type(List)))) :-
 	list__map(term__coerce, Args0, Args),
-	term__coerce(Body0, Body),
-	sum_to_list(Body, List).
+	sum_to_list(Body, List0),
+	list__map(convert_type, List0, List).
 
 %-----------------------------------------------------------------------------%
 
 	% This is for "Head == Body" (equivalence) definitions.
-:- pred process_eqv_type(module_name, term, term, maybe1(type_defn)).
+:- pred process_eqv_type(module_name, term, term, maybe1(processed_type_body)).
 :- mode process_eqv_type(in, in, in, out) is det.
 process_eqv_type(ModuleName, Head, Body, Result) :-
 	check_for_errors(ModuleName, Head, Body, Result0),
 	process_eqv_type_2(Result0, Body, Result).
 
-:- pred process_eqv_type_2(maybe_functor, term, maybe1(type_defn)).
+:- pred process_eqv_type_2(maybe_functor, term, maybe1(processed_type_body)).
 :- mode process_eqv_type_2(in, in, out) is det.
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
 process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
@@ -1381,8 +1530,8 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 				Body0)
 	;
 		list__map(term__coerce, Args0, Args),
-		term__coerce(Body0, Body),
-		Result = ok(eqv_type(Name, Args, Body))
+		convert_type(Body0, Body),
+		Result = ok(processed_type_body(Name, Args, eqv_type(Body)))
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1393,14 +1542,14 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 	% TypeHead.
 	% This is for "Head ---> Body" (constructor) definitions.
 :- pred process_du_type(module_name, term, term, maybe1(maybe(equality_pred)),
-			maybe1(type_defn)).
+			maybe1(processed_type_body)).
 :- mode process_du_type(in, in, in, in, out) is det.
 process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
 	check_for_errors(ModuleName, Head, Body, Result0),
 	process_du_type_2(ModuleName, Result0, Body, EqualityPred, Result).
 
 :- pred process_du_type_2(module_name, maybe_functor, term,
-			maybe1(maybe(equality_pred)), maybe1(type_defn)).
+		maybe1(maybe(equality_pred)), maybe1(processed_type_body)).
 :- mode process_du_type_2(in, in, in, in, out) is det.
 process_du_type_2(_, error(Error, Term), _, _, error(Error, Term)).
 process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
@@ -1474,8 +1623,8 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		;
 			(
 				MaybeEqualityPred = ok(EqualityPred),
-				Result = ok(du_type(Functor, Args, Constrs,
-							EqualityPred))
+				Result = ok(processed_type_body(Functor, Args,
+					du_type(Constrs, EqualityPred)))
 			;
 				MaybeEqualityPred = error(Error, Term),
 				Result = error(Error, Term)
@@ -1492,17 +1641,18 @@ process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 
-:- pred process_abstract_type(module_name, term, maybe1(type_defn)).
+:- pred process_abstract_type(module_name, term, maybe1(processed_type_body)).
 :- mode process_abstract_type(in, in, out) is det.
 process_abstract_type(ModuleName, Head, Result) :-
 	dummy_term(Body),
 	check_for_errors(ModuleName, Head, Body, Result0),
 	process_abstract_type_2(Result0, Result).
 
-:- pred process_abstract_type_2(maybe_functor, maybe1(type_defn)).
+:- pred process_abstract_type_2(maybe_functor, maybe1(processed_type_body)).
 :- mode process_abstract_type_2(in, out) is det.
 process_abstract_type_2(error(Error, Term), error(Error, Term)).
-process_abstract_type_2(ok(Functor, Args0), ok(abstract_type(Functor, Args))) :-
+process_abstract_type_2(ok(Functor, Args0),
+		ok(processed_type_body(Functor, Args, abstract_type))) :-
 	list__map(term__coerce, Args0, Args).
 
 %-----------------------------------------------------------------------------%
@@ -1648,8 +1798,9 @@ process_pred_2(ok(F, As0), PredType, VarSet0, MaybeDet, Cond, ExistQVars,
 	        	get_purity(Attributes0, Purity, Attributes),
 			varset__coerce(VarSet0, TVarSet),
 			varset__coerce(VarSet0, IVarSet),
-			Result0 = ok(pred(TVarSet, IVarSet, ExistQVars, F,
-				As, MaybeDet, Cond, Purity, ClassContext)),
+			Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
+				predicate, F, As, MaybeDet, Cond, Purity,
+				ClassContext)),
 			check_no_attributes(Result0, Attributes, Result)
 		;
 			Result = error("some but not all arguments have modes",
@@ -1914,9 +2065,10 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 				get_purity(Attributes0, Purity, Attributes),
 				varset__coerce(VarSet0, TVarSet),
 				varset__coerce(VarSet0, IVarSet),
-				Result0 = ok(func(TVarSet, IVarSet, ExistQVars,
-					F, As, ReturnType, MaybeDet, Cond,
-					Purity, ClassContext)),
+				list__append(As, [ReturnType], Args),
+				Result0 = ok(pred_or_func(TVarSet, IVarSet,
+					ExistQVars, function, F, Args,
+					MaybeDet, Cond, Purity, ClassContext)),
 				check_no_attributes(Result0, Attributes,
 					Result)
 			)
@@ -1965,7 +2117,8 @@ process_pred_mode(ok(F, As0), PredMode, VarSet0, MaybeDet, Cond, Result) :-
 	->
 		list__map(constrain_inst_vars_in_mode, As1, As),
 		varset__coerce(VarSet0, VarSet),
-		Result = ok(pred_mode(VarSet, F, As, MaybeDet, Cond))
+		Result = ok(pred_or_func_mode(VarSet, predicate, F, As,
+				MaybeDet, Cond))
 	;
 		Result = error("syntax error in predicate mode declaration",
 				PredMode)
@@ -1985,8 +2138,9 @@ process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
 		( convert_mode(RetMode0, RetMode1) ->
 			constrain_inst_vars_in_mode(RetMode1, RetMode),
 			varset__coerce(VarSet0, VarSet),
-			Result = ok(func_mode(VarSet, F, As, RetMode, MaybeDet,
-					Cond))
+			list__append(As, [RetMode], ArgModes),
+			Result = ok(pred_or_func_mode(VarSet, function, F,
+					ArgModes, MaybeDet, Cond))
 		;
 			Result = error(
 		"syntax error in return mode of function mode declaration",
@@ -2101,14 +2255,15 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
 
 	% Parse a `:- inst <Head> ---> <Body>.' definition.
 	%
-:- pred convert_inst_defn(module_name, term, term, maybe1(inst_defn)).
+:- pred convert_inst_defn(module_name, term, term, maybe1(processed_inst_body)).
 :- mode convert_inst_defn(in, in, in, out) is det.
 convert_inst_defn(ModuleName, Head, Body, Result) :-
 	parse_implicitly_qualified_term(ModuleName,
 		Head, Body, "inst definition", R),
 	convert_inst_defn_2(R, Head, Body, Result).
 
-:- pred convert_inst_defn_2(maybe_functor, term, term, maybe1(inst_defn)).
+:- pred convert_inst_defn_2(maybe_functor, term, term,
+		maybe1(processed_inst_body)).
 :- mode convert_inst_defn_2(in, in, in, out) is det.
 
 convert_inst_defn_2(error(M, T), _, _, error(M, T)).
@@ -2150,8 +2305,9 @@ convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 				convert_inst(Body, ConvertedBody)
 			->
 				list__map(term__coerce_var, Args, InstArgs),
-				Result = ok(eqv_inst(Name, InstArgs,
-					ConvertedBody))
+				Result = ok(
+					processed_inst_body(Name, InstArgs,
+						eqv_inst(ConvertedBody)))
 			;
 				Result = error("syntax error in inst body",
 					Body)
@@ -2161,14 +2317,23 @@ convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 		Result = error("inst parameters must be variables", Head)
 	).
 
-:- pred convert_abstract_inst_defn(module_name, term, maybe1(inst_defn)).
+:- type processed_inst_body
+	---> processed_inst_body(
+		sym_name,
+		list(inst_var),
+		inst_defn
+	).
+
+:- pred convert_abstract_inst_defn(module_name, term,
+		maybe1(processed_inst_body)).
 :- mode convert_abstract_inst_defn(in, in, out) is det.
 convert_abstract_inst_defn(ModuleName, Head, Result) :-
 	parse_implicitly_qualified_term(ModuleName, Head, Head,
 		"inst definition", R),
 	convert_abstract_inst_defn_2(R, Head, Result).
 
-:- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
+:- pred convert_abstract_inst_defn_2(maybe_functor, term,
+		maybe1(processed_inst_body)).
 :- mode convert_abstract_inst_defn_2(in, in, out) is det.
 convert_abstract_inst_defn_2(error(M, T), _, error(M, T)).
 convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
@@ -2186,16 +2351,18 @@ convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
 				Head)
 		;
 			list__map(term__coerce_var, Args, InstArgs),
-			Result = ok(abstract_inst(Name, InstArgs))
+			Result = ok(processed_inst_body(Name, InstArgs,
+					abstract_inst))
 		)
 	;
 		Result = error("inst parameters must be variables", Head)
 	).
 
-:- pred make_inst_defn(varset, condition, inst_defn, item).
+:- pred make_inst_defn(varset, condition, processed_inst_body, item).
 :- mode make_inst_defn(in, in, in, out) is det.
 
-make_inst_defn(VarSet0, Cond, InstDefn, inst_defn(VarSet, InstDefn, Cond)) :-
+make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
+		inst_defn(VarSet, Name, Params, InstDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
@@ -2241,14 +2408,23 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
 	( Op = "==" ; Op = "::" ).
 
-:- pred convert_mode_defn(module_name, term, term, maybe1(mode_defn)).
+:- type processed_mode_body
+	---> processed_mode_body(
+		sym_name,
+		list(inst_var),
+		mode_defn
+	).
+
+:- pred convert_mode_defn(module_name, term, term,
+		maybe1(processed_mode_body)).
 :- mode convert_mode_defn(in, in, in, out) is det.
 convert_mode_defn(ModuleName, Head, Body, Result) :-
 	parse_implicitly_qualified_term(ModuleName, Head, Head,
 		"mode definition", R),
 	convert_mode_defn_2(R, Head, Body, Result).
 
-:- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
+:- pred convert_mode_defn_2(maybe_functor, term, term,
+		maybe1(processed_mode_body)).
 :- mode convert_mode_defn_2(in, in, in, out) is det.
 convert_mode_defn_2(error(M, T), _, _, error(M, T)).
 convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
@@ -2279,8 +2455,8 @@ convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
 				convert_mode(Body, ConvertedBody)
 			->
 				list__map(term__coerce_var, Args, InstArgs),
-				Result = ok(eqv_mode(Name, InstArgs,
-					ConvertedBody))
+				Result = ok(processed_mode_body(Name,
+					InstArgs, eqv_mode(ConvertedBody)))
 			;
 				% catch-all error message - we should do
 				% better than this
@@ -2316,15 +2492,13 @@ convert_type_and_mode(Term, Result) :-
 		Result = type_only(Type)
 	).
 
-:- pred make_mode_defn(varset, condition, mode_defn, item).
+:- pred make_mode_defn(varset, condition, processed_mode_body, item).
 :- mode make_mode_defn(in, in, in, out) is det.
-make_mode_defn(VarSet0, Cond, ModeDefn, mode_defn(VarSet, ModeDefn, Cond)) :-
+make_mode_defn(VarSet0, Cond, processed_mode_body(Name, Params, ModeDefn),
+		mode_defn(VarSet, Name, Params, ModeDefn, Cond)) :-
 	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
-
-:- type parser(T) == pred(term, maybe1(T)).
-:- mode parser    :: pred(in, out) is det.
 
 :- type maker(T1, T2) == pred(T1, T2).
 :- mode maker         :: pred(in, out) is det.
@@ -2349,34 +2523,6 @@ make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet0, T,
 	varset__coerce(VarSet0, VarSet),
 	call(MakeSymListPred, T, SymList),
 	call(MakeModuleDefnPred, SymList, ModuleDefn).
-
-%-----------------------------------------------------------------------------%
-
-	% Parse a comma-separated list (misleading described as
-	% a "conjunction") of things.
-
-:- pred parse_list(parser(T), term, maybe1(list(T))).
-:- mode parse_list(parser, in, out) is det.
-parse_list(Parser, Term, Result) :-
-	conjunction_to_list(Term, List),
-	parse_list_2(List, Parser, Result).
-
-:- pred parse_list_2(list(term), parser(T), maybe1(list(T))).
-:- mode parse_list_2(in, parser, out) is det.
-parse_list_2([], _, ok([])).
-parse_list_2([X|Xs], Parser, Result) :-
-	call(Parser, X, X_Result),
-	parse_list_2(Xs, Parser, Xs_Result),
-	combine_list_results(X_Result, Xs_Result, Result).
-
-	% If a list of things contains multiple errors, then we only
-	% report the first one.
-
-:- pred combine_list_results(maybe1(T), maybe1(list(T)), maybe1(list(T))).
-:- mode combine_list_results(in, in, out) is det.
-combine_list_results(error(Msg, Term), _, error(Msg, Term)).
-combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
-combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 %-----------------------------------------------------------------------------%
 
@@ -2903,7 +3049,7 @@ make_op_specifier(X, sym(X)).
 :- pred parse_type(term, maybe1(type)).
 :- mode parse_type(in, out) is det.
 parse_type(T0, ok(T)) :-
-	term__coerce(T0, T).
+	convert_type(T0, T).
 
 :- pred convert_constructor_arg_list(module_name,
 		list(term), list(constructor_arg)).
@@ -2924,11 +3070,6 @@ convert_constructor_arg_list(ModuleName, [Term | Terms], [Arg | Args]) :-
 		Arg = no - Type
 	),
 	convert_constructor_arg_list(ModuleName, Terms, Args).
-
-:- pred convert_type(term, type).
-:- mode convert_type(in, out) is det.
-convert_type(T0, T) :-
-	term__coerce(T0, T).
 
 %-----------------------------------------------------------------------------%
 

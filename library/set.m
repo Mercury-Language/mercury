@@ -247,6 +247,10 @@
 :- func set__filter_map(func(T1) = T2, set(T1)) = set(T2).
 :- mode set__filter_map(func(in) = out is semidet, in) = out is det.
 
+:- pred set__fold(pred(T1, T2, T2), set(T1), T2, T2).
+:- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
+:- mode set__fold(pred(in, di, uo) is det, in, di, uo) is det.
+
 :- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
 
 	% set__divide(Pred, Set, TruePart, FalsePart):
@@ -430,10 +434,13 @@ set__map(F, S1) = S2 :-
 	S2 = set__list_to_set(list__map(F, set__to_sorted_list(S1))).
 
 set__filter(P, S1) = S2 :-
-	S2 = set__list_to_set(list__filter(P, set__to_sorted_list(S1))).
+	S2 = set__sorted_list_to_set(list__filter(P, set__to_sorted_list(S1))).
 
 set__filter_map(PF, S1) = S2 :-
 	S2 = set__list_to_set(list__filter_map(PF, set__to_sorted_list(S1))).
+
+set__fold(F, S) -->
+	list__foldl(F, set__to_sorted_list(S)).
 
 set__fold(F, S, A) = B :-
 	B = list__foldl(F, set__to_sorted_list(S), A).

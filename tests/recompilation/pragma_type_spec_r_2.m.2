@@ -1,0 +1,16 @@
+:- module pragma_type_spec_r_2.
+
+:- interface.
+
+:- import_module list.
+
+:- func f(list(T), list(T)) = list(T).
+:- pragma type_spec(f/2, T = foo).
+
+:- type foo == int.
+
+:- implementation.
+
+f([], Bs) = Bs.
+f([H | T], Bs) = [H | f(T, Bs)].
+

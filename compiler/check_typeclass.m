@@ -53,12 +53,13 @@
 :- import_module bool, io.
 
 :- pred check_typeclass__check_instance_decls(module_info, qual_info,
-	module_info, bool, io__state, io__state).
-:- mode check_typeclass__check_instance_decls(in, in, out, out, di, uo) is det.
+	module_info, qual_info, bool, io__state, io__state).
+:- mode check_typeclass__check_instance_decls(in, in, out, out,
+	out, di, uo) is det.
 
 :- implementation.
 
-:- import_module prog_data, prog_out.
+:- import_module prog_data, prog_out, prog_util.
 :- import_module hlds_pred, hlds_data, hlds_goal, hlds_out.
 :- import_module type_util, typecheck, mode_util, inst_match.
 :- import_module base_typeclass_info.
@@ -73,13 +74,13 @@
 :- type error_messages == list(error_message).
 
 check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
-		ModuleInfo, FoundError, IO0, IO) :-
+		ModuleInfo, QualInfo, FoundError, IO0, IO) :-
 	module_info_classes(ModuleInfo0, ClassTable),
 	module_info_instances(ModuleInfo0, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
 	list_map_foldl2(check_one_class(ClassTable), InstanceList0,
 		InstanceList, check_tc_info([], ModuleInfo0, QualInfo0),
-		check_tc_info(Errors, ModuleInfo1, _QualInfo),
+		check_tc_info(Errors, ModuleInfo1, QualInfo),
 		IO0, IO1),
 	(
 		Errors = []

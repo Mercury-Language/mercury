@@ -1,0 +1,18 @@
+:- module lambda_mode_r_2.
+
+:- interface.
+
+:- type foo
+	--->	a
+	;	b(int).
+
+:- pred init_foo(foo::foo_out) is det.
+
+:- mode foo_out == free >> foo.
+:- mode foo_in == ground >> ground.
+:- inst foo == ground.
+
+:- implementation.
+
+init_foo(a).
+

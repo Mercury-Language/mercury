@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,6 +48,9 @@
 
 :- type var2pvar	==	map(var, prog_var).
 
+:- type parser(T) == pred(term, maybe1(T)).
+:- mode parser    :: pred(in, out) is det.
+
 :- pred add_context(maybe1(item), prog_context, maybe_item_and_context).
 :- mode add_context(in, in, out) is det.
 
@@ -80,6 +83,9 @@
 :- pred parse_pred_or_func_and_args(term(_T), pred_or_func, sym_name,
 		list(term(_T))).
 :- mode parse_pred_or_func_and_args(in, out, out, out) is semidet.
+
+:- pred convert_type(term(T), type).
+:- mode convert_type(in, out) is det.
 
 :- pred convert_mode_list(list(term), list(mode)).
 :- mode convert_mode_list(in, out) is semidet.
@@ -116,6 +122,15 @@
 
 :- pred sum_to_list(term(T), list(term(T))).
 :- mode sum_to_list(in, out) is det.
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of things.
+
+:- pred parse_list(parser(T), term, maybe1(list(T))).
+:- mode parse_list(parser, in, out) is det.
+
+:- pred map_parser(parser(T), list(term), maybe1(list(T))).
+:- mode map_parser(parser, in, out) is det.
 
 % The following /3, /4 and /5 predicates are to be used for reporting
 % warnings to stderr.  This is preferable to using io__write_string, as
@@ -221,6 +236,25 @@ parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
 parse_list_of_vars(term__functor(term__atom("."), [Head, Tail], _), [V|Vs]) :-
 	Head = term__variable(V),
 	parse_list_of_vars(Tail, Vs).
+
+convert_type(T0, T) :-
+	term__coerce(strip_prog_context(T0), T).
+
+	% Strip out the prog_context fields, replacing them with empty
+	% prog_context (as obtained by term__context_init/1)
+	% in a type or list of types. 
+	%
+	% This is necessary to allow maps indexed by class constraints.
+	% Also, the version number computation for smart recompilation
+	% relies on being able to unify program items, which won't
+	% work if the types in the items contain context information.
+:- func strip_prog_context(term(T)) = term(T).	
+
+strip_prog_context(term__variable(V)) = term__variable(V).
+strip_prog_context(term__functor(F, As, _)) = 
+		term__functor(F,
+			list__map(strip_prog_context, As),
+			term__context_init).
 
 convert_mode_list([], []).
 convert_mode_list([H0|T0], [H|T]) :-
@@ -479,6 +513,27 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 	;
 		List = [Term|List0]
 	).
+
+parse_list(Parser, Term, Result) :-
+	conjunction_to_list(Term, List),
+	map_parser(Parser, List, Result).
+
+map_parser(_, [], ok([])).
+map_parser(Parser, [X|Xs], Result) :-
+	call(Parser, X, X_Result),
+	map_parser(Parser, Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+	% If a list of things contains multiple errors, then we only
+	% report the first one.
+:- pred combine_list_results(maybe1(T), maybe1(list(T)), maybe1(list(T))).
+:- mode combine_list_results(in, in, out) is det.
+
+combine_list_results(error(Msg, Term), _, error(Msg, Term)).
+combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
+combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
+
+%-----------------------------------------------------------------------------%
 
 report_warning(Message) -->
 	io__stderr_stream(StdErr),

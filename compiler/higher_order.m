@@ -2811,10 +2811,7 @@ find_class_context(ModuleInfo, [Type | Types], [Mode | Modes],
 :- pred maybe_add_constraint(list(class_constraint)::in,
 		class_constraint::in, list(class_constraint)::out) is det.
 
-maybe_add_constraint(Constraints0, Constraint0, Constraints) :-
-	Constraint0 = constraint(ClassName, Types0),
-	strip_prog_contexts(Types0, Types),
-	Constraint = constraint(ClassName, Types),
+maybe_add_constraint(Constraints0, Constraint, Constraints) :-
 	(
 		% Remove duplicates.
 		\+ list__member(Constraint, Constraints0)

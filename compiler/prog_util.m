@@ -131,6 +131,17 @@
 
 %-----------------------------------------------------------------------------%
 
+	% adjust_func_arity(PredOrFunc, FuncArity, PredArity).
+	%
+	% We internally store the arity as the length of the argument
+	% list including the return value, which is one more than the
+	% arity of the function reported in error messages.
+:- pred adjust_func_arity(pred_or_func, int, int).
+:- mode adjust_func_arity(in, in, out) is det.
+:- mode adjust_func_arity(in, out, in) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
 	%	Line, Counter, SymName).
 	%
@@ -226,6 +237,11 @@ construct_qualified_term(unqualified(Name), Args, Context, Term) :-
 construct_qualified_term(SymName, Args, Term) :-
 	term__context_init(Context),
 	construct_qualified_term(SymName, Args, Context, Term).
+
+%-----------------------------------------------------------------------------%
+
+adjust_func_arity(predicate, Arity, Arity).
+adjust_func_arity(function, Arity - 1, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

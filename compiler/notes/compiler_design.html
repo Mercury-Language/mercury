@@ -1049,6 +1049,38 @@ bytecode interpreter has not yet been written.
 <hr>
 <!---------------------------------------------------------------------------->
 
+<h3> SMART RECOMPILATION </h3>
+
+<p>
+
+The Mercury compiler can record program dependency information
+to avoid unnecessary recompilations when an imported module's
+interface changes in a way which does not invalidate previously
+compiled code.
+
+<ul>
+<li> recompilation.m contains types used by the other smart
+  recompilation modules.
+
+<li> recompilation_version.m generates version numbers for program items
+  in interface files.
+
+<li> recompilation_usage.m works out which program items were used
+  during a compilation.
+
+<li> recompilation_check.m is called before recompiling a module.
+  It uses the information written by recompilation_version.m and
+  recompilation_usage.m to work out whether the recompilation is
+  actually needed.
+
+<li> timestamp.m contains an ADT representing timestamps used
+  by smart recompilation.
+</ul>
+
+<p>
+<hr>
+<!---------------------------------------------------------------------------->
+
 <h3> MISCELLANEOUS </h3>
 
 	<dl>
@@ -1125,6 +1157,6 @@ bytecode interpreter has not yet been written.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-05-31 05:59:56 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-06-27 05:04:36 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

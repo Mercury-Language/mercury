@@ -24,7 +24,7 @@
 
 :- module io.
 :- interface.
-:- import_module char, string, std_util, list.
+:- import_module char, string, std_util, list, time.
 
 %-----------------------------------------------------------------------------%
 
@@ -970,6 +970,15 @@
 	% on some systems, the file previously named `NewFileName' will be
 	% deleted and replaced with the file previously named `OldFileName'.
 
+:- pred io__file_modification_time(string, io__res(time_t),
+		io__state, io__state).
+:- mode io__file_modification_time(in, out, di, uo) is det.
+	% io__file_modification_time(FileName, TimeResult)
+	% finds the last modification time of the given file.
+	% This predicate will only work on systems which provide
+	% the POSIX C library function stat(). On other systems the
+	% returned result will always be bound to error/1.
+
 %-----------------------------------------------------------------------------%
 
 % Memory management predicates.
@@ -1657,6 +1666,49 @@ io__check_err(Stream, Res) -->
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
 
+io__file_modification_time(File, Result) -->
+	io__file_modification_time_2(File, Status, Msg, Time),
+	{ Status = 1 ->
+		Result = ok(Time)
+	;
+		Result = error(io_error(Msg))
+	}.
+
+:- pred io__file_modification_time_2(string, int, string, time_t,
+		io__state, io__state).
+:- mode io__file_modification_time_2(in, out, out, out, di, uo) is det.
+
+:- pragma foreign_proc("C", io__file_modification_time_2(FileName::in,
+		Status::out, Msg::out, Time::out, IO0::di, IO::uo),
+		[will_not_call_mercury, thread_safe],
+"{
+#ifdef HAVE_STAT
+	struct stat s;
+	if (stat(FileName, &s) == 0) {
+		/* XXX This assumes that a time_t will fit into an MR_Word. */
+		Time = s.st_mtime;
+		Msg = MR_string_const("""", 0);
+		Status = 1;
+	} else {
+		ML_maybe_make_err_msg(TRUE, ""stat() failed: "",
+			MR_PROC_LABEL, Msg);
+		Status = 0;
+	}
+#else
+	Status = 0;
+	Msg = MR_make_string_const(
+	""io__file_modification_time not available on this platform"");
+#endif
+	update_io(IO0, IO);
+
+}").
+
+:- pragma foreign_proc("MC++", io__file_modification_time_2(_FileName::in,
+		_Status::out, _Msg::out, _Time::out, _IO0::di, _IO::uo),
+		[will_not_call_mercury, thread_safe],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
 
 %-----------------------------------------------------------------------------%
 

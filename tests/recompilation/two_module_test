@@ -1,0 +1,26 @@
+#!/bin/sh
+# Run a test which compiles a two module test case,
+# changes one of the modules, then tries to recompile.
+#
+
+. ./test_functions
+
+if [ $# != 3 ]
+then
+	echo "** usage: two_module_test test_should_fail module1 module2"
+	exit 1
+fi
+
+test_should_fail=$1
+module1=$2
+module2=$3
+
+test_module "$module1" "$module2"
+mmake_depend 
+mmake_test 1 false
+update_module "$module2" 2
+mmake_test 2 $test_should_fail
+check_err_file "$module1" 2
+check_err_file "$module2" 2
+cleanup_test
+

@@ -1,0 +1,14 @@
+:- module add_type_re_2.
+
+:- interface.
+
+:- type foo
+	--->	a
+	;	b(int).
+
+:- pred init_foo(foo::out) is det.
+
+:- implementation.
+
+init_foo(a).
+

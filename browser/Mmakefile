@@ -57,6 +57,11 @@ LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		  esac							\
 		`
 
+# XXX Smart recompilation currently doesn't work when the module
+# name doesn't match the file name, so disable warnings about it
+# not working in this directory.
+MCFLAGS += --no-warn-smart-recompilation
+
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#

@@ -3685,6 +3685,12 @@ typecheck_info_set_pred_import_status(TypeCheckInfo, Status,
 
 %-----------------------------------------------------------------------------%
 
+	%
+	% Note: changes here may require changes to
+	% post_typecheck__resolve_unify_functor,
+	% intermod__module_qualify_unify_rhs,
+	% recompilation_usage__find_matching_constructors
+	% and recompilation_check__check_functor_ambiguities.
 :- pred typecheck_info_get_ctor_list(typecheck_info, cons_id, int, 
 			list(cons_type_info), list(invalid_field_update)).
 :- mode typecheck_info_get_ctor_list(typecheck_info_ui,
@@ -3783,9 +3789,7 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 		Arity = 0,
 		builtin_atomic_type(Functor, BuiltInTypeName)
 	->
-		term__context_init("<builtin>", 0, Context),
-		ConsType = term__functor(term__atom(BuiltInTypeName), [],
-				Context),
+		construct_type(unqualified(BuiltInTypeName) - 0, [], ConsType),
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
 			constraints([], [])),
@@ -4399,13 +4403,13 @@ convert_cons_defn_list(TypeCheckInfo, [X|Xs], [Y|Ys]) :-
 
 convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	HLDS_ConsDefn = hlds_cons_defn(ExistQVars, ExistConstraints, Args,
-				TypeId, Context),
+				TypeId, _),
 	assoc_list__values(Args, ArgTypes),
 	typecheck_info_get_types(TypeCheckInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
-	construct_type(TypeId, ConsTypeParams, Context, ConsType),
+	construct_type(TypeId, ConsTypeParams, ConsType),
 	UnivConstraints = [],
 	Constraints = constraints(UnivConstraints, ExistConstraints),
 	ConsTypeInfo = cons_type_info(ConsTypeVarSet, ExistQVars,
@@ -5527,25 +5531,6 @@ maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 		io__write_string("' has not been imported).\n")
 	;
 		io__write_string(".\n")
-	).
-
-:- pred visible_module(module_name, module_info).
-:- mode visible_module(out, in) is multi.
-
-visible_module(VisibleModule, ModuleInfo) :-
-	module_info_name(ModuleInfo, ThisModule),
-	module_info_get_imported_module_specifiers(ModuleInfo, ImportedModules),
-	%
-	% the visible modules are the current module, any
-	% imported modules, and any ancestor modules.
-	%
-	(
-		VisibleModule = ThisModule
-	;
-		set__member(VisibleModule, ImportedModules)
-	;
-		get_ancestors(ThisModule, ParentModules),
-		list__member(VisibleModule, ParentModules)
 	).
 
 :- pred report_error_func_instead_of_pred(typecheck_info, pred_or_func,

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,6 +38,9 @@
 **	Given a C string literal and its length, returns a Mercury string.
 */
 #define MR_string_const(string, len) ((MR_String) string)
+
+#define MR_make_string_const(string) \
+		MR_string_const((string), sizeof(string) - 1)
 
 /*
 ** bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):

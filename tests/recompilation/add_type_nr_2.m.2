@@ -1,0 +1,16 @@
+:- module add_type_nr_2.
+
+:- interface.
+
+:- type foo
+	--->	a
+	;	b(int).
+
+:- type bar == int.
+
+:- pred init(foo::out) is det.
+
+:- implementation.
+
+init(a).
+

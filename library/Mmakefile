@@ -47,7 +47,11 @@ MCFLAGS-set_ordlist += $(TYPE_SPEC_FLAGS)
 
 ifeq ($(LIBRARY_INTERMODULE),yes)
 
-INTERMODULE_OPTS = --transitive-intermodule-optimization
+# XXX Smart recompilation doesn't work with `--intermodule-optimization'.
+# We still want to generate version numbers in the interface files, so
+# just disable the warnings here.
+INTERMODULE_OPTS = --transitive-intermodule-optimization \
+			--no-warn-smart-recompilation
 ENABLE_TERM_OPTS = --enable-termination
 CHECK_TERM_OPTS =
 # If you want to actually check termination for the library, then you need

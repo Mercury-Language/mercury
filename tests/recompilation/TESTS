@@ -1,0 +1,27 @@
+# This is a shell script fragment to define variables containing
+# the names of the tests. This is sourced by runtests and by the
+# commands for the realclean target in the Mmakefile. 
+
+TESTS_SHOULD_SUCCEED="\
+	add_constructor_r \
+	add_instance_r \
+	add_instance_2_r \
+	add_type_nr \
+	change_class_r \
+	change_instance_r \
+	change_mode_r \
+	field_r \
+	func_overloading_nr \
+	func_overloading_r \
+	lambda_mode_r \
+	nested_module_r \
+	no_version_numbers_r \
+	pragma_type_spec_r \
+	pred_ctor_ambiguity_r \
+	pred_overloading_r"
+
+TESTS_SHOULD_FAIL="\
+	add_type_re \
+	remove_type_re \
+	type_qual_re"
+

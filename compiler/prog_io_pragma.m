@@ -24,7 +24,7 @@
 
 :- import_module globals, prog_io, prog_io_goal, prog_util.
 :- import_module term_util, term_errors.
-:- import_module int, map, string, std_util, bool, require.
+:- import_module int, map, string, std_util, bool, require, set.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
@@ -800,7 +800,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm,
 		    	),
 		   	Result = ok(pragma(type_spec(PredName,
 				SpecializedName, Arity, MaybePredOrFunc,
-				MaybeModes, TypeSubn, TVarSet)))
+				MaybeModes, TypeSubn, TVarSet, set__init)))
 		    ;
 			Result = error(
 	"expected type substitution in `:- pragma type_spec' declaration",
@@ -1477,6 +1477,6 @@ convert_type_spec_pair(Term, TypeSpec) :-
 	Term = term__functor(term__atom("="), [TypeVarTerm, SpecTypeTerm0], _),
 	TypeVarTerm = term__variable(TypeVar0),
 	term__coerce_var(TypeVar0, TypeVar),
-	term__coerce(SpecTypeTerm0, SpecType),
+	convert_type(SpecTypeTerm0, SpecType),
 	TypeSpec = TypeVar - SpecType.
 

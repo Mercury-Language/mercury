@@ -87,6 +87,20 @@
 :- type maybe_error(T) ---> ok(T) ; error(string).
 :- inst maybe_error(I) ---> ok(I) ; error(ground).
 
+	% map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).
+	% map_maybe(_, no, no).
+	%
+:- pred map_maybe(pred(T, U), maybe(T), maybe(U)).
+:- mode map_maybe(pred(in, out) is det, in, out) is det.
+:- mode map_maybe(pred(in, out) is semidet, in, out) is semidet.
+:- mode map_maybe(pred(in, out) is multi, in, out) is multi.
+:- mode map_maybe(pred(in, out) is nondet, in, out) is nondet.
+
+	% map_maybe(F, yes(Value)) = yes(F(Value)).
+	% map_maybe(_, no) = no.
+	%
+:- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
+
 %-----------------------------------------------------------------------------%
 
 % The "unit" type - stores no information at all.
@@ -635,6 +649,12 @@
 :- import_module require, set, int, string, bool.
 
 %-----------------------------------------------------------------------------%
+
+map_maybe(_, no, no).
+map_maybe(P, yes(T0), yes(T)) :- P(T0, T).
+
+map_maybe(_, no) = no.
+map_maybe(F, yes(T)) = yes(F(T)).
 
 /****
 	Is this really useful?

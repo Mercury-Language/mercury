@@ -2287,15 +2287,6 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
 :- pred pred_args_to_func_args(list(T), list(T), T).
 :- mode pred_args_to_func_args(in, out, out) is det.
 
-	% adjust_func_arity(PredOrFunc, FuncArity, PredArity).
-	%
-	% We internally store the arity as the length of the argument
-	% list including the return value, which is one more than the
-	% arity of the function reported in error messages.
-:- pred adjust_func_arity(pred_or_func, int, int).
-:- mode adjust_func_arity(in, in, out) is det.
-:- mode adjust_func_arity(in, out, in) is det.
-
 	% Get the last two arguments from the list, failing if there
 	% aren't at least two arguments.
 :- pred get_state_args(list(T), list(T), T, T).
@@ -2338,9 +2329,6 @@ pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
 	;
 		error("pred_args_to_func_args: function missing return value?")
 	).
-
-adjust_func_arity(predicate, Arity, Arity).
-adjust_func_arity(function, Arity - 1, Arity).
 
 get_state_args(Args0, Args, State0, State) :-
 	list__reverse(Args0, RevArgs0),

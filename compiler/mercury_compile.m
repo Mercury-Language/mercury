@@ -73,10 +73,12 @@
 :- import_module mercury_to_mercury, hlds_data.
 :- import_module layout, dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, trace_params, passes_aux.
+:- import_module recompilation, recompilation_usage, recompilation_check.
+:- import_module timestamp.
 
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, set_bbbtree, term, varset.
+:- import_module library, getopt, set_bbbtree, term, varset, assoc_list.
 :- import_module gc.
 
 %-----------------------------------------------------------------------------%
@@ -416,7 +418,7 @@ process_arg(Arg, ModulesToLink) -->
 			generate_file_dependencies(FileName),
 			{ ModulesToLink = [] }
 		;
-			process_file_name(FileName, ModulesToLink)
+			process_module(file(FileName), ModulesToLink)
 		)
 	;
 		% If it doesn't end in `.m', then we assume it is
@@ -431,45 +433,118 @@ process_arg(Arg, ModulesToLink) -->
 			generate_module_dependencies(ModuleName),
 			{ ModulesToLink = [] }
 		;
-			process_module_name(ModuleName, ModulesToLink)
+			process_module(module(ModuleName), ModulesToLink)
 		)
 	).
 
-:- pred process_module_name(module_name, list(string), io__state, io__state).
-:- mode process_module_name(in, out, di, uo) is det.
+:- type file_or_module
+	--->	file(file_name)
+	;	module(module_name)
+	.
 
-process_module_name(ModuleName, ModulesToLink) -->
+:- pred read_module(file_or_module, bool, module_name, file_name,
+		maybe(timestamp), item_list, module_error,
+		read_modules, read_modules, io__state, io__state).
+:- mode read_module(in, in, out, out, out, out, out, in, out, di, uo) is det.
+
+read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
+		MaybeTimestamp, Items, Error, ReadModules0, ReadModules) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing module `"),
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
 	maybe_write_string(Verbose, ModuleNameString),
 	maybe_write_string(Verbose, "' and imported interfaces...\n"),
-	read_mod(ModuleName, ".m", "Reading module", yes, Items, Error,
-		FileName),
+	(
+		% Avoid rereading the module if it was already read
+		% by recompilation_version.m.
+		{ find_read_module(ReadModules0, ModuleName, ".m",
+			ReturnTimestamp, Items0, MaybeTimestamp0,
+			Error0, FileName0) }
+	->
+		{ map__delete(ReadModules0, ModuleName - ".m", ReadModules) },
+		{ FileName = FileName0 },
+		{ Items = Items0 },
+		{ Error = Error0 },
+		{ MaybeTimestamp = MaybeTimestamp0 }
+	;
+		{ ReadModules = ReadModules0 },
+		read_mod(ModuleName, ".m", "Reading module", yes,
+			ReturnTimestamp, Items, Error, FileName,
+			MaybeTimestamp)
+	),
 	globals__io_lookup_bool_option(statistics, Stats),
-	maybe_report_stats(Stats),
-	process_module(ModuleName, FileName, Items, Error, ModulesToLink).
-
-:- pred process_file_name(file_name, list(string), io__state, io__state).
-:- mode process_file_name(in, out, di, uo) is det.
-
-process_file_name(FileName, ModulesToLink) -->
+	maybe_report_stats(Stats).
+read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
+		MaybeTimestamp, Items, Error, ReadModules0, ReadModules) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing file `"),
 	maybe_write_string(Verbose, FileName),
 	maybe_write_string(Verbose, "' and imported interfaces...\n"),
-	read_mod_from_file(FileName, ".m", "Reading file", yes, Items, Error,
-		ModuleName),
+
+	{ file_name_to_module_name(FileName, DefaultModuleName) },
+	(
+		% Avoid rereading the module if it was already read
+		% by recompilation_version.m.
+		{ find_read_module(ReadModules0, DefaultModuleName, ".m",
+			ReturnTimestamp, Items0, MaybeTimestamp0, Error0, _) }
+	->
+		{ map__delete(ReadModules0, ModuleName - ".m", ReadModules) },
+		{ ModuleName = DefaultModuleName },
+		{ Items = Items0 },
+		{ Error = Error0 },
+		{ MaybeTimestamp = MaybeTimestamp0 }
+	;
+		{ ReadModules = ReadModules0 },
+		read_mod_from_file(FileName, ".m", "Reading file", yes,
+			ReturnTimestamp, Items, Error, ModuleName,
+			MaybeTimestamp),
+
+		%
+		% XXX If the module name doesn't match the file name
+		% the compiler won't be able to find the `.used'
+		% file (the name of the `.used' file is derived from
+		% the module name not the file name).
+		% This will be fixed when mmake functionality
+		% is moved into the compiler.
+		%
+		globals__io_lookup_bool_option(smart_recompilation, Smart),
+		( { Smart = yes, ModuleName \= DefaultModuleName } ->
+			globals__io_lookup_bool_option(
+				warn_smart_recompilation, Warn),
+			globals__io_lookup_bool_option(
+				halt_at_warn, Halt),
+			( { Warn = yes } ->
+				io__write_string(
+		"Warning: module name does not match file name:\n"),
+				io__write_string("  "),
+				io__write_string(FileName),
+				io__write_string(" contains module `"),
+				prog_out__write_sym_name(ModuleName),	
+				io__write_string(".\n"),
+				io__write_string(
+		"  Smart recompilation will not work with this module.\n"),
+				( { Halt = yes } ->
+					io__set_exit_status(1)
+				;
+					[]
+				)
+			;
+				[]	
+			),
+			globals__io_set_option(smart_recompilation, bool(no))
+		;
+			[]
+		)
+	),
+
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
-	{ string__append(FileName, ".m", SourceFileName) },
-	process_module(ModuleName, SourceFileName, Items, Error, ModulesToLink).
+	{ string__append(FileName, ".m", SourceFileName) }.
 
-:- pred process_module(module_name, file_name, item_list, module_error,
-			list(string), io__state, io__state).
-:- mode process_module(in, in, in, in, out, di, uo) is det.
+:- pred process_module(file_or_module, list(string), io__state, io__state).
+:- mode process_module(in, out, di, uo) is det.
 
-process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
+process_module(FileOrModule, ModulesToLink) -->
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(make_short_interface,
@@ -477,29 +552,132 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	globals__io_lookup_bool_option(make_private_interface,
 						MakePrivateInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
-	( { Error = fatal } ->
-		{ ModulesToLink = [] }
-	; { Error = yes, HaltSyntax = yes } ->
-		{ ModulesToLink = [] }
-	; { MakeInterface = yes } ->
-		split_into_submodules(ModuleName, Items, SubModuleList),
-		list__foldl(make_interface(FileName), SubModuleList),
-		{ ModulesToLink = [] }
-	; { MakeShortInterface = yes } ->
-		split_into_submodules(ModuleName, Items, SubModuleList),
-		list__foldl(make_short_interface, SubModuleList),
-		{ ModulesToLink = [] }
-	; { MakePrivateInterface = yes } ->
-		split_into_submodules(ModuleName, Items, SubModuleList),
-		list__foldl(make_private_interface(FileName), SubModuleList),
-		{ ModulesToLink = [] }
-	; { ConvertToMercury = yes } ->
-		module_name_to_file_name(ModuleName, ".ugly", yes,
-					OutputFileName),
-		convert_to_mercury(ModuleName, OutputFileName, Items),
+	globals__io_lookup_bool_option(generate_item_version_numbers,
+		GenerateVersionNumbers),
+	( 
+		{ MakeInterface = yes ->
+			ProcessModule = make_interface,
+			ReturnTimestamp = GenerateVersionNumbers
+		; MakeShortInterface = yes ->
+			ProcessModule = make_short_interface,
+			ReturnTimestamp = no
+		; MakePrivateInterface = yes ->
+			ProcessModule = make_private_interface,
+			ReturnTimestamp = GenerateVersionNumbers
+		;
+			fail
+		}
+	->
+		read_module(FileOrModule, ReturnTimestamp, ModuleName,
+			FileName, MaybeTimestamp, Items, Error, map__init, _),
+		( { halt_at_module_error(HaltSyntax, Error) } ->
+			[]
+		;
+			split_into_submodules(ModuleName,
+				Items, SubModuleList),
+			list__foldl(
+				(pred(SubModule::in, di, uo) is det -->
+					ProcessModule(FileName, MaybeTimestamp,
+						SubModule)
+				),
+				SubModuleList)
+		),
 		{ ModulesToLink = [] }
 	;
-		split_into_submodules(ModuleName, Items, SubModuleList),
+		{ ConvertToMercury = yes }
+	->
+		read_module(FileOrModule, no, ModuleName, _, _,
+			Items, Error, map__init, _),
+			
+		( { halt_at_module_error(HaltSyntax, Error) } ->
+			[]
+		;
+			module_name_to_file_name(ModuleName, ".ugly", yes,
+					OutputFileName),
+			convert_to_mercury(ModuleName, OutputFileName, Items)
+		),
+		{ ModulesToLink = [] }
+	;
+		globals__io_lookup_bool_option(smart_recompilation, Smart),
+		( { Smart = yes } ->
+			{
+				FileOrModule = module(ModuleName)
+			;
+				FileOrModule = file(FileName),
+				% XXX This won't work if the module name
+				% doesn't match the file name -- such
+				% modules will always be recompiled.
+				%
+				% This problem will be fixed when mmake
+				% functionality is moved into the compiler.
+				% The file_name->module_name mapping
+				% will be explicitly recorded.
+				file_name_to_module_name(FileName, ModuleName)
+			},
+
+			globals__io_get_globals(Globals),
+			{ find_smart_recompilation_target_files(
+				Globals, FindTargetFiles) },
+			recompilation_check__should_recompile(ModuleName,
+				FindTargetFiles, ModulesToRecompile0,
+				ReadModules),
+			{
+				ModulesToRecompile0 = some([_ | _]),
+				globals__get_target(Globals, asm)
+			->
+				% 
+				% With `--target asm', if one module
+				% needs to be recompiled, all need to be
+				% recompiled because they are all compiled
+				% into a single object file.
+				%
+				ModulesToRecompile = (all)
+			;
+				ModulesToRecompile = ModulesToRecompile0
+			}
+		;
+			{ map__init(ReadModules) },
+			{ ModulesToRecompile = (all) }
+		),
+		( { ModulesToRecompile = some([]) } ->
+			% XXX Currently smart recompilation is disabled
+			% if mmc is linking the executable because it
+			% doesn't know how to check whether all the
+			% necessary intermediate files are present
+			% and up-to-date.
+			{ ModulesToLink = [] }
+		;
+			process_module_2(FileOrModule, ModulesToRecompile,
+				ReadModules, ModulesToLink)
+		)
+	).
+
+:- pred process_module_2(file_or_module, modules_to_recompile,
+		read_modules, list(string), io__state, io__state).
+:- mode process_module_2(in, in, in, out, di, uo) is det.
+
+process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
+		ModulesToLink) -->
+	read_module(FileOrModule, yes, ModuleName, FileName,
+		MaybeTimestamp, Items, Error, ReadModules0, ReadModules),
+	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
+	( { halt_at_module_error(HaltSyntax, Error) } ->
+		{ ModulesToLink = [] }
+	;
+		split_into_submodules(ModuleName, Items, SubModuleList0),
+		{ MaybeModulesToRecompile = some(ModulesToRecompile) ->
+			list__filter(
+				(pred((SubModule - _)::in) is semidet :-
+					list__member(SubModule,
+						ModulesToRecompile)
+				),
+				SubModuleList0, SubModuleList)
+		;
+				SubModuleList = SubModuleList0	
+		},
+		{ assoc_list__keys(SubModuleList, NestedSubModules0) },
+		{ list__delete_all(NestedSubModules0,
+			ModuleName, NestedSubModules) },
 		(
 			{ any_mercury_builtin_module(ModuleName) }
 		->
@@ -509,19 +687,24 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 			% there should never be part of an execution trace
 			% anyway; they are effectively language primitives.
 			% (They may still be parts of stack traces.)
-			globals__io_lookup_bool_option(trace_stack_layout, TSL),
+			globals__io_lookup_bool_option(trace_stack_layout,
+				TSL),
 			globals__io_get_trace_level(TraceLevel),
 
 			globals__io_set_option(trace_stack_layout, bool(no)),
 			globals__io_set_trace_level_none,
 
-			compile_all_submodules(FileName, SubModuleList,
+			compile_all_submodules(FileName,
+				ModuleName - NestedSubModules,
+				MaybeTimestamp, ReadModules, SubModuleList,
 				ModulesToLink),
 
 			globals__io_set_option(trace_stack_layout, bool(TSL)),
 			globals__io_set_trace_level(TraceLevel)
 		;
-			compile_all_submodules(FileName, SubModuleList,
+			compile_all_submodules(FileName,
+				ModuleName - NestedSubModules,
+				MaybeTimestamp, ReadModules, SubModuleList,
 				ModulesToLink)
 		)
 	).
@@ -537,34 +720,46 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	%
 	% i.e. compile nested modules to a single C file.
 
-:- pred compile_all_submodules(string, list(pair(module_name, item_list)),
-		list(string), io__state, io__state).
-:- mode compile_all_submodules(in, in, out, di, uo) is det.
+:- pred compile_all_submodules(string, pair(module_name, list(module_name)),
+	maybe(timestamp), read_modules, list(pair(module_name, item_list)),
+	list(string), io__state, io__state).
+:- mode compile_all_submodules(in, in, in, in, in, out, di, uo) is det.
 
-compile_all_submodules(FileName, SubModuleList, ModulesToLink) -->
-	list__foldl(compile(FileName), SubModuleList),
+compile_all_submodules(FileName, NestedSubModules, MaybeTimestamp,
+		ReadModules, SubModuleList, ModulesToLink) -->
+	list__foldl(
+		compile(FileName, NestedSubModules,
+			MaybeTimestamp, ReadModules),
+		SubModuleList),
 	list__map_foldl(module_to_link, SubModuleList, ModulesToLink).
 
-:- pred make_interface(file_name, pair(module_name, item_list),
-			io__state, io__state).
-:- mode make_interface(in, in, di, uo) is det.
+:- pred make_interface(file_name, maybe(timestamp),
+		pair(module_name, item_list), io__state, io__state).
+:- mode make_interface(in, in, in, di, uo) is det.
 
-make_interface(SourceFileName, ModuleName - Items) -->
-	make_interface(SourceFileName, ModuleName, Items).
+make_interface(SourceFileName, MaybeTimestamp, ModuleName - Items) -->
+	make_interface(SourceFileName, ModuleName, MaybeTimestamp, Items).
 
-:- pred make_short_interface(pair(module_name, item_list),
-				io__state, io__state).
-:- mode make_short_interface(in, di, uo) is det.
+:- pred make_short_interface(file_name, maybe(timestamp),
+		pair(module_name, item_list), io__state, io__state).
+:- mode make_short_interface(in, in, in, di, uo) is det.
 
-make_short_interface(ModuleName - Items) -->
-	make_short_interface(ModuleName, Items).
+make_short_interface(SourceFileName, _, ModuleName - Items) -->
+	make_short_interface(SourceFileName, ModuleName, Items).
 
-:- pred make_private_interface(file_name, pair(module_name, item_list),
-				io__state, io__state).
-:- mode make_private_interface(in, in, di, uo) is det.
+:- pred make_private_interface(file_name, maybe(timestamp),
+		pair(module_name, item_list), io__state, io__state).
+:- mode make_private_interface(in, in, in, di, uo) is det.
 
-make_private_interface(SourceFileName, ModuleName - Items) -->
-	make_private_interface(SourceFileName, ModuleName, Items).
+make_private_interface(SourceFileName, MaybeTimestamp, ModuleName - Items) -->
+	make_private_interface(SourceFileName, ModuleName,
+		MaybeTimestamp, Items).
+
+:- pred halt_at_module_error(bool, module_error).
+:- mode halt_at_module_error(in, in) is semidet.
+
+halt_at_module_error(_, fatal).
+halt_at_module_error(HaltSyntax, yes) :- HaltSyntax = yes.
 
 :- pred module_to_link(pair(module_name, item_list), string,
 			io__state, io__state).
@@ -572,6 +767,52 @@ make_private_interface(SourceFileName, ModuleName - Items) -->
 
 module_to_link(ModuleName - _Items, ModuleToLink) -->
 	module_name_to_file_name(ModuleName, "", no, ModuleToLink).
+
+%-----------------------------------------------------------------------------%
+
+	% Return a closure which will work out what the target files
+	% are for a module, so recompilation_check.m can check that
+	% they are up-to-date which deciding whether compilation is
+	% necessary.
+	% Note that `--smart-recompilation' only works with
+	% `--target-code-only', which is always set when the
+	% compiler is invoked by mmake. Using smart recompilation
+	% without using mmake is not a sensible thing to do.
+	% handle_options.m will disable smart recompilation if
+	% `--target-code-only' is not set.
+:- pred find_smart_recompilation_target_files(globals,
+		find_target_file_names).
+:- mode find_smart_recompilation_target_files(in,
+		out(find_target_file_names)) is det.
+
+find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
+	globals__get_target(Globals, CompilationTarget),
+	(
+		CompilationTarget = c,
+		globals__lookup_bool_option(Globals, split_c_files, yes)
+	->
+		FindTargetFiles =
+		    (pred(ModuleName::in, [FileName]::out, di, uo) is det -->
+			% We don't know how many chunks there should
+			% be, so just check the first.
+			{ Chunk = 0 },
+			object_extension(Obj),
+			module_name_to_split_c_file_name(ModuleName, Chunk,
+				Obj, FileName)
+		)
+	;
+		( CompilationTarget = c, TargetSuffix = ".c"
+		; CompilationTarget = il, TargetSuffix = ".il"
+		; CompilationTarget = java, TargetSuffix = ".java"
+		; CompilationTarget = asm, TargetSuffix = ".s"
+		),
+		FindTargetFiles =
+		    (pred(ModuleName::in, [FileName]::out, di, uo) is det -->
+			% XXX Should we check the generated header files?
+			module_name_to_file_name(ModuleName, TargetSuffix,
+				no, FileName)
+		    )
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -588,23 +829,32 @@ module_to_link(ModuleName - _Items, ModuleToLink) -->
 	% The initial arrangement has the stage numbers increasing by three
 	% so that new stages can be slotted in without too much trouble.
 
-:- pred compile(file_name, pair(module_name, item_list), io__state, io__state).
-:- mode compile(in, in, di, uo) is det.
+:- pred compile(file_name, pair(module_name, list(module_name)),
+	maybe(timestamp), read_modules, pair(module_name, item_list),
+	io__state, io__state).
+:- mode compile(in, in, in, in, in, di, uo) is det.
 
-compile(SourceFileName, ModuleName - Items) -->
+compile(SourceFileName, RootModuleName - NestedSubModules0,
+		MaybeTimestamp, ReadModules, ModuleName - Items) -->
 	check_for_no_exports(Items, ModuleName),
-	grab_imported_modules(SourceFileName, ModuleName, Items,
-		Module, Error2),
+	grab_imported_modules(SourceFileName, ModuleName, ReadModules,
+		MaybeTimestamp, Items, Module, Error2),
 	( { Error2 \= fatal } ->
-		mercury_compile(Module)
+		{ ModuleName = RootModuleName ->
+			NestedSubModules = NestedSubModules0
+		;
+			NestedSubModules = []
+		},
+		mercury_compile(Module, NestedSubModules)
 	;
 		[]
 	).
 
-:- pred mercury_compile(module_imports, io__state, io__state).
-:- mode mercury_compile(in, di, uo) is det.
+:- pred mercury_compile(module_imports, list(module_name),
+		io__state, io__state).
+:- mode mercury_compile(in, in, di, uo) is det.
 
-mercury_compile(Module) -->
+mercury_compile(Module, NestedSubModules) -->
 	{ module_imports_get_module_name(Module, ModuleName) },
 	% If we are only typechecking or error checking, then we should not
 	% modify any files, this includes writing to .d files.
@@ -612,7 +862,8 @@ mercury_compile(Module) -->
 	globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
 	{ bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile) },
 	mercury_compile__pre_hlds_pass(Module, DontWriteDFile,
-		HLDS1, QualInfo, UndefTypes, UndefModes, Errors1),
+		HLDS1, QualInfo, MaybeTimestamps, UndefTypes, UndefModes,
+		Errors1),
 	mercury_compile__frontend_pass(HLDS1, QualInfo, UndefTypes,
 		UndefModes, HLDS20, Errors2),
 	( { Errors1 = no }, { Errors2 = no } ->
@@ -658,15 +909,27 @@ mercury_compile(Module) -->
 		globals__io_lookup_bool_option(target_code_only, 
 				TargetCodeOnly),
 
+		%
+		% Remove any existing `.used' file before writing the
+		% output file file. This avoids leaving the old `used'
+		% file lying around if compilation is interrupted after
+		% the new output file is written but before the new
+		% `.used' file is written.
+		%
+		module_name_to_file_name(ModuleName, ".used", no,
+			UsageFileName),
+		io__remove_file(UsageFileName, _),
+
 		% magic sets can report errors.
 		{ module_info_num_errors(HLDS50, NumErrors) },
 		( { NumErrors = 0 } ->
 		    mercury_compile__maybe_generate_rl_bytecode(HLDS50,
 				Verbose, MaybeRLFile),
 		    ( { AditiOnly = yes } ->
-			[]
+		    	{ HLDS = HLDS50 }
 		    ; { Target = il } ->
-			mercury_compile__mlds_backend(HLDS50, MLDS),
+			{ HLDS = HLDS50 },
+			mercury_compile__mlds_backend(HLDS, MLDS),
 			( { TargetCodeOnly = yes } ->
 				mercury_compile__mlds_to_il_assembler(MLDS)
 			;
@@ -677,7 +940,8 @@ mercury_compile(Module) -->
 					HasMain)
 			)
 		    ; { Target = java } ->
-			mercury_compile__mlds_backend(HLDS50, MLDS),
+			{ HLDS = HLDS50 },
+			mercury_compile__mlds_backend(HLDS, MLDS),
 			mercury_compile__mlds_to_java(MLDS),
 			( { TargetCodeOnly = yes } ->
 				[]
@@ -686,7 +950,8 @@ mercury_compile(Module) -->
 			)
 		    ; { Target = asm } ->
 		    	% compile directly to assembler using the gcc back-end
-			mercury_compile__mlds_backend(HLDS50, MLDS),
+			{ HLDS = HLDS50 },
+			mercury_compile__mlds_backend(HLDS, MLDS),
 			mercury_compile__maybe_mlds_to_gcc(MLDS,
 				ContainsCCode),
 			( { TargetCodeOnly = yes } ->
@@ -723,7 +988,8 @@ mercury_compile(Module) -->
 				)
 			)
 		    ; { HighLevelCode = yes } ->
-			mercury_compile__mlds_backend(HLDS50, MLDS),
+			{ HLDS = HLDS50 },
+			mercury_compile__mlds_backend(HLDS, MLDS),
 			mercury_compile__mlds_to_high_level_c(MLDS),
 			( { TargetCodeOnly = yes } ->
 				[]
@@ -737,11 +1003,13 @@ mercury_compile(Module) -->
 					C_File, O_File, _CompileOK)
 			)
 		    ;
-			mercury_compile__backend_pass(HLDS50, HLDS70,
+			mercury_compile__backend_pass(HLDS50, HLDS,
 				DeepProfilingStructures, GlobalData, LLDS),
-			mercury_compile__output_pass(HLDS70, GlobalData, LLDS,
+			mercury_compile__output_pass(HLDS, GlobalData, LLDS,
 				MaybeRLFile, ModuleName, _CompileErrors)
-		    )
+		    ),
+		    recompilation_usage__write_usage_file(HLDS,
+		    	NestedSubModules, MaybeTimestamps)
 		;
 		    	% If the number of errors is > 0, make sure that
 			% the compiler exits with a non-zero exit
@@ -774,13 +1042,14 @@ mercury_compile__mlds_has_main(MLDS) =
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, bool,
-		module_info, qual_info, bool, bool, bool,
-		io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, out,
+		module_info, qual_info, maybe(module_timestamps),
+		bool, bool, bool, io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, out, out,
 		di, uo) is det.
 
 mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
-		HLDS1, QualInfo, UndefTypes, UndefModes, FoundError) -->
+		HLDS1, QualInfo, MaybeTimestamps,
+		UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
@@ -801,11 +1070,16 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 		MaybeTransOptDeps, ModuleImports1, IntermodError),
 
 	{ module_imports_get_items(ModuleImports1, Items1) },
-	mercury_compile__module_qualify_items(Items1, Items2, Module, Verbose,
-				Stats, MQInfo, _, UndefTypes0, UndefModes0),
+	{ MaybeTimestamps = ModuleImports1 ^ maybe_timestamps },
 
-	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
-				Items, CircularTypes, EqvMap),
+	mercury_compile__module_qualify_items(Items1, Items2, Module, Verbose,
+				Stats, MQInfo0, _, UndefTypes0, UndefModes0),
+
+	{ mq_info_get_recompilation_info(MQInfo0, RecompInfo0) },
+	mercury_compile__expand_equiv_types(Module, Items2, Verbose, Stats,
+				Items, CircularTypes, EqvMap,
+				RecompInfo0, RecompInfo),
+	{ mq_info_set_recompilation_info(MQInfo0, RecompInfo, MQInfo) }, 
 	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
 
 	mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, 
@@ -919,7 +1193,7 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
 				_IndirectImports, _PublicChildren, _FactDeps,
-				_ForeignCode, _Items, _Error) },
+				_ForeignCode, _Items, _Error, _Timestamps) },
 			{ list__condense([Ancestors, InterfaceImports,
 				ImplementationImports], TransOptFiles) },
 			trans_opt__grab_optfiles(Imports1, TransOptFiles,
@@ -932,16 +1206,18 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 
 	{ bool__or(Error1, Error2, Error) }.
 
-:- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
-	bool, eqv_map, io__state, io__state).
-:- mode mercury_compile__expand_equiv_types(in, in, in, out,
-	out, out, di, uo) is det.
+:- pred mercury_compile__expand_equiv_types(module_name, item_list,
+	bool, bool, item_list, bool, eqv_map, maybe(recompilation_info),
+	maybe(recompilation_info), io__state, io__state).
+:- mode mercury_compile__expand_equiv_types(in, in, in, in, out,
+	out, out, in, out, di, uo) is det.
 
-mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
-		Items, CircularTypes, EqvMap) -->
+mercury_compile__expand_equiv_types(ModuleName, Items0, Verbose, Stats,
+		Items, CircularTypes, EqvMap, RecompInfo0, RecompInfo) -->
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	equiv_type__expand_eqv_types(Items0, Items, CircularTypes, EqvMap),
+	equiv_type__expand_eqv_types(ModuleName, Items0, Items, CircularTypes,
+		EqvMap, RecompInfo0, RecompInfo),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
@@ -977,7 +1253,7 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 :- mode mercury_compile__frontend_pass(in, in, in, in, out, out, di, uo)
 	is det.
 
-mercury_compile__frontend_pass(HLDS1, QualInfo, FoundUndefTypeError,
+mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 		FoundUndefModeError, HLDS, FoundError) -->
 	%
 	% We can't continue after an undefined type error, since
@@ -996,9 +1272,11 @@ mercury_compile__frontend_pass(HLDS1, QualInfo, FoundUndefTypeError,
 		
 	    maybe_write_string(Verbose, 
 		"% Checking typeclass instances...\n"),
-	    check_typeclass__check_instance_decls(HLDS1, QualInfo, HLDS2,
-		FoundTypeclassError),
+	    check_typeclass__check_instance_decls(HLDS1, QualInfo0, HLDS2,
+		QualInfo, FoundTypeclassError),
 	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"),
+	    { make_hlds__set_module_recompilation_info(QualInfo,
+	    	HLDS2, HLDS2a) },
 
 	    globals__io_lookup_bool_option(intermodule_optimization, Intermod),
 	    globals__io_lookup_bool_option(use_opt_files, UseOptFiles),
@@ -1009,17 +1287,17 @@ mercury_compile__frontend_pass(HLDS1, QualInfo, FoundUndefTypeError,
 		% to speed up compilation. This must be done after
 		% typeclass instances have been checked, since that
 		% fills in which pred_ids are needed by instance decls.
-		{ dead_pred_elim(HLDS2, HLDS2a) },
-		mercury_compile__maybe_dump_hlds(HLDS2a, "02a",
+		{ dead_pred_elim(HLDS2a, HLDS2b) },
+		mercury_compile__maybe_dump_hlds(HLDS2b, "02b",
 				"dead_pred_elim")
 	    ;
-		{ HLDS2a = HLDS2 }
+		{ HLDS2b = HLDS2a }
 	    ),
 
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2a, HLDS3, FoundTypeError),
+	    typecheck(HLDS2b, HLDS3, FoundTypeError),
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),

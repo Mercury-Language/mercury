@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -460,7 +460,7 @@ term_list_append_term(List0, Term, List) :-
 :- mode process_dcg_clause(in, in, in, in, in, out) is det.
 
 process_dcg_clause(ok(Name, Args0), VarSet, Var0, Var, Body,
-		ok(pred_clause(VarSet, Name, Args, Body))) :-
+		ok(clause(VarSet, predicate, Name, Args, Body))) :-
 	list__map(term__coerce, Args0, Args1),
 	list__append(Args1, [term__variable(Var0),
 		term__variable(Var)], Args).

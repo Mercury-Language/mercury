@@ -1,0 +1,25 @@
+:- module lambda_mode_r.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module lambda_mode_r_2.
+
+main -->
+	{ P =
+	    (pred(X :: foo_in, di, uo) is det -->
+		io__write(X),
+		io__nl
+	    ) },
+	{ init_foo(F) },
+	P(F).
+
+:- pred output_foo(foo::in, io__state::di, io__state::uo) is det.
+	
+output_foo(X) --> io__write(X), io__nl.
+

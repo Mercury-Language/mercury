@@ -1,0 +1,27 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+clean_local:
+
+realclean_local:
+	. ./TESTS; \
+	for module in $$TESTS_SHOULD_SUCCEED $$TESTS_SHOULD_FAIL; do \
+		rm -rf $$module.m $${module}_2.m ;\
+	done
+
+# Smart recompilation doesn't yet work with --intermodule-optimization.
+EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
+			--verbose-recompilation
+
+# This module tests recompilation of a module which depends on a module
+# for which no version numbers have been computed.
+MCFLAGS-no_version_numbers_r_2 = --no-smart-recompilation
+
+#-----------------------------------------------------------------------------#

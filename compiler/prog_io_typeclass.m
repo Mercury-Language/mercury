@@ -32,9 +32,9 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, hlds_pred.
+:- import_module prog_io, prog_io_goal, prog_util, hlds_pred.
 :- import_module term, varset.
-:- import_module string, std_util, require, type_util.
+:- import_module int, string, std_util, require, type_util, set.
 
 parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		%XXX should return an error if we get more than one arg,
@@ -220,21 +220,13 @@ list_term_to_term_list(Methods, MethodList) :-
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
 	(
-		Item = pred(A, B, C, D, E, F, G, H, I)
+		Item = pred_or_func(A, B, C, D, E, F, G, H, I, J)
 	->
-		Result = ok(pred(A, B, C, D, E, F, G, H, I, Context))
+		Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, Context))
 	;
-		Item = func(A, B, C, D, E, F, G, H, I, J)
+		Item = pred_or_func_mode(A, B, C, D, E, F)
 	->
-		Result = ok(func(A, B, C, D, E, F, G, H, I, J, Context))
-	;
-		Item = pred_mode(A, B, C, D, E)
-	->
-		Result = ok(pred_mode(A, B, C, D, E, Context))
-	;
-		Item = func_mode(A, B, C, D, E, F)
-	->
-		Result = ok(func_mode(A, B, C, D, E, F, Context))
+		Result = ok(pred_or_func_mode(A, B, C, D, E, F, Context))
 	;
 		Result = error("Only pred, func and mode declarations allowed in class interface", Term)
 	).
@@ -344,8 +336,7 @@ parse_class_constraint(_ModuleName, Constraint, Result) :-
 		% we need to enforce the invariant that types in type class
 		% constraints do not contain any info in their prog_context
 		% fields
-		list__map(term__coerce, Args0, Args1),
-		strip_prog_contexts(Args1, Args),
+		list__map(convert_type, Args0, Args),
 		Result = ok(constraint(ClassName, Args))
 	;
 		Result = error("expected atom as class name", Constraint)
@@ -434,7 +425,7 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		MaybeClassName = ok(ClassName, TermTypes0),
 			% check that the type in the name of the instance 
 			% decl is a functor with vars as args
-		list__map(term__coerce, TermTypes0, TermTypes),
+		list__map(convert_type, TermTypes0, TermTypes),
 		IsFunctorAndVarArgs = lambda([Type::in] is semidet,
 			(
 					% Is the top level functor an atom?
@@ -643,18 +634,12 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 		parse_item(DefaultModuleName, VarSet, MethodTerm, Result0),
 		(
 			Result0 = ok(Item, Context),
-			(
-				Item = pred_clause(_VarNames, ClassMethodName,
-					HeadArgs, _ClauseBody),
-				PredOrFunc = predicate,
-				ArityInt = list__length(HeadArgs)
-			;
-				Item = func_clause(_VarNames, ClassMethodName,
-					FuncArgs, _Result, _ClauseBody),
-				ArityInt = list__length(FuncArgs),
-				PredOrFunc = function
-			)
+			Item = clause(_VarNames, PredOrFunc,
+				ClassMethodName, HeadArgs,
+				_ClauseBody)
 		->
+			adjust_func_arity(PredOrFunc, ArityInt,
+					list__length(HeadArgs)),
 			Result = ok(instance_method(PredOrFunc,
 					ClassMethodName,
 					clauses([Item]),

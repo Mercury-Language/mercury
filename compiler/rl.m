@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1178,9 +1178,8 @@ rl__schemas_to_strings_2(_, _, _, [], TypeDecls, TypeDecls,
 		SchemaStrings0, SchemaStrings) :-
 	list__reverse(SchemaStrings0, SchemaStrings).
 rl__schemas_to_strings_2(ModuleInfo, GatheredTypes0, RecursiveTypes0,
-		[Schema0 | Schemas], TypeDecls0, TypeDecls,
+		[Schema | Schemas], TypeDecls0, TypeDecls,
 		SchemaStrings0, SchemaStrings) :-
-	strip_prog_contexts(Schema0, Schema),
 	set__init(Parents0),
 	rl__gather_types(ModuleInfo, Parents0, Schema,
 		GatheredTypes0, GatheredTypes1,
@@ -1191,11 +1190,10 @@ rl__schemas_to_strings_2(ModuleInfo, GatheredTypes0, RecursiveTypes0,
 		Schemas, TypeDecls1, TypeDecls,
 		[SchemaString | SchemaStrings0], SchemaStrings).
 
-rl__schema_to_string(ModuleInfo, Types0, SchemaString) :-
+rl__schema_to_string(ModuleInfo, Types, SchemaString) :-
 	map__init(GatheredTypes0),
 	set__init(RecursiveTypes0),
 	set__init(Parents0),
-	strip_prog_contexts(Types0, Types),
 	rl__gather_types(ModuleInfo, Parents0, Types,
 		GatheredTypes0, _, RecursiveTypes0, _, "", Decls,
 		"", SchemaString0),

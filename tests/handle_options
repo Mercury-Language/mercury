@@ -15,6 +15,10 @@ Options:
 		Pass \`--target <target>' as an option to \`mmake check'.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
+	-e, --generate-missing-exp-files
+		If any missing \`.exp' or \`.err_exp' files are missing,
+		generate them rather than reporting an error.
+		Currently only works in the recompilation directory.
 "
 
 targetopt=""
@@ -29,6 +33,7 @@ mflag=""
 cflag=""
 lflag=""
 gflag=""
+generate_missing_exp_files=false
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -67,6 +72,9 @@ while [ $# -gt 0 ]; do
 
 	-t|--target)
 		target_opt="--target '$2'"; shift ;;
+
+	-e|--generate-missing-exp-files)
+		generate_missing_exp_files=true ;;
 
 	--)	
 		shift; break ;;

@@ -1,0 +1,24 @@
+
+This directory contains tests for the `--smart-recompilation' option.
+The output with `--verbose-recompilation' is checked to make sure
+that recompilation occurs when expected.
+
+Most of the tests consist of two modules, a main module and a module
+imported from the main module. The `.1' or `.2' after
+the file name is a version number.
+The tests are run as follows:
+	Compile the program using the `.1' versions of each module.
+	Check the expected output.
+	Update the imported module to version `.2'.
+	Check the expected output.	
+	Check that the `.err' files contain the correct
+	`--verbose-recompilation' messages.
+
+Tests with names ending in `_nr' result in no recompilation
+of the main module after the change to the imported module.
+
+Tests with names ending in `_r' should recompile the main module.
+
+Tests with names ending in `_re' should recompile the main module,
+reporting an error in the recompilation.
+

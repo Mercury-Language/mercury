@@ -141,14 +141,11 @@
 :- mode type_util__var(in, out) is semidet.
 :- mode type_util__var(out, in) is det.
 
-	% Given a type_id, a list of argument types and maybe a context,
+	% Given a type_id and a list of argument types, 
 	% construct a type.
 
 :- pred construct_type(type_id, list(type), (type)).
 :- mode construct_type(in, in, out) is det.
-
-:- pred construct_type(type_id, list(type), prog_context, (type)).
-:- mode construct_type(in, in, in, out) is det.
 
 :- pred construct_higher_order_type(pred_or_func, lambda_eval_method,
 		list(type), (type)).
@@ -416,12 +413,6 @@
 % Useful for applying a variable renaming to a list of variables.
 :- pred apply_partial_map_to_list(list(T), map(T, T), list(T)).
 :- mode apply_partial_map_to_list(in, in, out) is det.
-
-% strip out the prog_context fields, replacing them with empty
-% prog_context (as obtained by term__context_init/1)
-% in a type or list of types
-:- pred strip_prog_contexts(list(term(T))::in, list(term(T))::out) is det.
-:- pred strip_prog_context(term(T)::in, term(T)::out) is det.
 
 	% cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
 	%	Returns the number of arguments of specified constructor id,
@@ -711,15 +702,11 @@ type_to_type_id(Type, SymName - Arity, Args) :-
 	).
 
 construct_type(TypeId, Args, Type) :-
-	term__context_init(Context),
-	construct_type(TypeId, Args, Context, Type).
-
-construct_type(TypeId, Args, Context, Type) :-
 	( type_id_is_higher_order(TypeId, PredOrFunc, EvalMethod) ->
 		construct_higher_order_type(PredOrFunc, EvalMethod, Args, Type)
 	;
 		TypeId = SymName - _,
-		construct_qualified_term(SymName, Args, Context, Type)
+		construct_qualified_term(SymName, Args, Type)
 	).
 
 construct_higher_order_type(PredOrFunc, EvalMethod, ArgTypes, Type) :-
@@ -734,17 +721,15 @@ construct_higher_order_type(PredOrFunc, EvalMethod, ArgTypes, Type) :-
 	).
 
 construct_higher_order_pred_type(EvalMethod, ArgTypes, Type) :-
-	term__context_init(Context),
 	construct_qualified_term(unqualified("pred"),
-		ArgTypes, Context, Type0),
+		ArgTypes, Type0),
 	qualify_higher_order_type(EvalMethod, Type0, Type).
 
 construct_higher_order_func_type(EvalMethod, ArgTypes, RetType, Type) :-
-	term__context_init(Context),
-	construct_qualified_term(unqualified("func"),
-		ArgTypes, Context, Type0),
+	construct_qualified_term(unqualified("func"), ArgTypes, Type0),
 	qualify_higher_order_type(EvalMethod, Type0, Type1),
-	Type = term__functor(term__atom("="), [Type1, RetType], Context).
+	Type = term__functor(term__atom("="), [Type1, RetType],
+			term__context_init).
 
 :- pred qualify_higher_order_type(lambda_eval_method, (type), (type)).
 :- mode qualify_higher_order_type(in, in, out) is det.
@@ -1512,10 +1497,7 @@ apply_rec_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 
 apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types1),
-	% we need to maintain the invariant that types in class constraints
-	% do not have any information in their prog_context fields
-	strip_prog_contexts(Types1, Types),
+	term__apply_rec_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_constraints(Subst,
@@ -1607,17 +1589,6 @@ apply_partial_map_to_list([X|Xs], PartialMap, [Y|Ys]) :-
 		Y = X
 	),
 	apply_partial_map_to_list(Xs, PartialMap, Ys).
-
-%-----------------------------------------------------------------------------%
-
-strip_prog_contexts(Terms, StrippedTerms) :-
-	list__map(strip_prog_context, Terms, StrippedTerms).
-	
-strip_prog_context(term__variable(V), term__variable(V)).
-strip_prog_context(term__functor(F, As0, _C0),
-		term__functor(F, As, C)) :-
-	term__context_init(C),
-	strip_prog_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
 

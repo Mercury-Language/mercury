@@ -1241,22 +1241,19 @@ intermod__write_type(TypeId - TypeDefn) -->
 	{ TypeId = Name - _Arity },
 	(
 		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
-		mercury_output_type_defn(VarSet,
-			du_type(Name, Args, Ctors,
-				MaybeEqualityPred),
-			Context)
+		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
 	;
 		{ Body = uu_type(_) },
 		{ error("uu types not implemented") }
 	;
 		{ Body = eqv_type(EqvType) },
-		mercury_output_type_defn(VarSet,
-			eqv_type(Name, Args, EqvType), Context)
+		{ TypeBody = eqv_type(EqvType) }
 	;
 		{ Body = abstract_type },
-		mercury_output_type_defn(VarSet,
-			abstract_type(Name, Args), Context)
-	).
+		{ TypeBody = abstract_type }
+	),
+	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
+		Context).
 
 :- pred intermod__write_modes(module_info::in,
 		io__state::di, io__state::uo) is det.
@@ -1278,11 +1275,9 @@ intermod__write_mode(ModuleName, ModeId, ModeDefn) -->
 		{ SymName = qualified(ModuleName, _) },
 		{ ImportStatus = local }
 	->
-		mercury_output_mode_defn(
-			Varset,
-			eqv_mode(SymName, Args, Mode),
-			Context
-		)
+		mercury_output_item(
+			mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
+			Context)
 	;
 		[]
 	).
@@ -1310,19 +1305,14 @@ intermod__write_inst(ModuleName, InstId, InstDefn) -->
 	->
 		(
 			{ Body = eqv_inst(Inst2) },
-			mercury_output_inst_defn(
-					Varset,
-					eqv_inst(SymName, Args, Inst2),
-					Context
-			)
+			{ InstBody = eqv_inst(Inst2) }
 		;
 			{ Body = abstract_inst },
-			mercury_output_inst_defn(
-					Varset,
-					abstract_inst(SymName, Args),
-					Context
-			)
-		)
+			{ InstBody = abstract_inst }
+		),
+		mercury_output_item(
+			inst_defn(Varset, SymName, Args, InstBody, true),
+			Context)
 	;
 		[]
 	).
@@ -1652,7 +1642,7 @@ intermod__write_type_spec_pragmas(ModuleInfo, PredId) -->
 	( { multi_map__search(PragmaMap, PredId, TypeSpecPragmas) } ->
 		list__foldl(
 		    ( pred(Pragma::in, di, uo) is det -->
-			( { Pragma = type_spec(_, _, _, _, _, _, _) } ->
+			( { Pragma = type_spec(_, _, _, _, _, _, _, _) } ->
 				{ AppendVarnums = yes },
 				mercury_output_pragma_type_spec(Pragma,
 					AppendVarnums)
@@ -2097,7 +2087,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .opt files for imported and ancestor modules.
 		%
 	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
-					ImplementationDeps0, _, _, _, _, _, _) },
+				ImplementationDeps0, _, _, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
@@ -2154,10 +2144,12 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .int, and .int2 files needed by the .opt files.
 		% (XXX do we also need to read in .int0 files here?)
 		%
-	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
-				Module2, Module3),
-	process_module_indirect_imports(NewIndirectDeps, ".int2",
-				Module3, Module),
+	{ map__init(ReadModules) },
+	process_module_long_interfaces(ReadModules,
+			must_be_qualified, NewDeps, ".int",
+			[], NewIndirectDeps, Module2, Module3),
+	process_module_indirect_imports(ReadModules, NewIndirectDeps, ".int2",
+			Module3, Module),
 
 		%
 		% Figure out whether anything went wrong

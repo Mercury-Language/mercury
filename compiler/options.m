@@ -63,12 +63,12 @@
 		;	warn_duplicate_calls
 		;	warn_missing_module_name
 		;	warn_wrong_module_name
-		;	warn_smart_recompilation	% not yet used.
+		;	warn_smart_recompilation
 	% Verbosity options
 		;	verbose
 		;	very_verbose
 		;	verbose_errors
-		;	verbose_recompilation		% not yet used.
+		;	verbose_recompilation
 		;	statistics
 		;	debug_types
 		;	debug_modes
@@ -95,11 +95,11 @@
 		;	aditi_only
 		;	output_grade_string
 	% Auxiliary output options
-		;	smart_recompilation		% not yet used.
+		;	smart_recompilation
 
 				% This option is used to control output
 				% of version numbers in interface files.
-				% It is implied by smart_recompilation,
+				% It is implied by --smart-recompilation,
 				% and cannot be set explicitly by the user.
 		;	generate_item_version_numbers
 		;	assume_gmake
@@ -1669,7 +1669,9 @@ options_help_warning -->
 		"\ta `:- module' declaration.",
 		"--no-warn-wrong-module-name",
 		"\tDisable warnings for modules whose `:- module'",
-		"\tdeclaration does not match the module's file name."
+		"\tdeclaration does not match the module's file name.",
+		"--no-warn-smart-recompilation",
+		"\tDisable warnings from the smart recompilation system."
 	]).
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
@@ -1684,6 +1686,9 @@ options_help_verbosity -->
 		"-E, --verbose-error-messages",
 		"\tExplain error messages.  Asks the compiler to give you a more",
 		"\tdetailed explanation of any errors it finds in your program.",
+		"--verbose-recompilation",
+		"\tWhen using `--smart-recompilation', output messages\n",
+		"\texplaining why a module needs to be recompiled.",
 		"-S, --statistics",
 		"\tOutput messages about the compiler's time/space usage.",
 		"\tAt the moment this option implies `--no-trad-passes', so you get",
@@ -1774,6 +1779,11 @@ options_help_output -->
 options_help_aux_output -->
 	io__write_string("\nAuxiliary Output Options:\n"),
 	write_tabbed_lines([
+		"--smart-recompilation",
+		"\tWhen compiling, write program dependency information",
+		"\tto be used to avoid unnecessary recompilations if an",
+		"\timported module's interface changes in a way which does",
+		"\tnot invalidate the compiled code.",
 		"--no-assume-gmake",
 		"\tWhen generating `.dep' files, generate Makefile",
 		"\tfragments that use only the features of standard make;",

@@ -1,0 +1,190 @@
+#
+# Shell functions used to run the recompilation tests.
+#
+
+#
+# Set variables `main_module' and `modules' describing the test being run.
+# Copy in the initial versions of the test files.
+#
+test_module () {
+	if [ $# = 0 ]
+	then
+		echo "usage: test_module main_module other_modules"
+		exit 1
+	fi
+
+	main_module=$1
+	modules="$*"
+	echo Testing $main_module
+
+	for module in $modules
+	do
+		rm -f $module.m
+		cp $module.m.1 $module.m
+
+		# The module.m.<n> files are the only ones
+		# that should be edited.
+		chmod -w $module.m
+	done
+
+	# XXX Avoid producing output files with the same timestamp
+	# as the input source file. The up-to-date check for the output
+	# file in recompilation_check.m checks that the output file's
+	# timestamp is strictly greater than the input file's, so it
+	# will recompile if they are the same.
+	#
+	# This won't be a problem in practice, unless for some reason
+	# a user decides to have mmake invoked by their editor
+	# automatically after each edit. If a file takes less
+	# than a second to compile, recompiling it all the time
+	# won't be noticeable. The recompilation will affect
+	# the `--verbose-recompilation' messages, so we need to
+	# avoid it here.
+	sleep 1
+}
+
+#
+# Simulate a user editing the file.
+#
+update_module () {
+	if [ $# != 2 ]
+	then
+		echo "usage: update_module module_name version"
+		exit 1
+	fi
+
+	module=$1
+	module_version=$2
+
+	# GNU make only considers a file out of date if a dependency's
+	# timestamp is strictly greater than the file's timestamp.
+	# We need to make sure that the `.c' file is out of date with
+	# respect to the `.m' file.
+	sleep 1
+
+	cp -f $module.m.$module_version $module.m
+	chmod -w $module.m
+
+	# See comment in test_module().
+	sleep 1
+}
+
+mmake_depend () {
+	eval mmake $mmakeopts $main_module.depend || exit 1
+}
+
+#
+# Compare the output file with the expected output file,
+# generating the expected output file if it doesn't exist
+# and the --generate-missing-exp-files option was given
+# to runtests.
+#
+compare_files () {
+	if [ $# != 2 ]
+	then
+		echo "** usage: compare_files expected_file result_file"
+		exit 1
+	fi
+	
+	exp_file=$1
+	res_file=$2
+
+	if [ -f $exp_file ]
+	then
+		if diff ${DIFF_OPTS-"-c"} $exp_file \
+				$res_file >> $main_module.res
+		then
+			:
+		else
+			echo "** Error: $exp_file and $res_file differ."
+			exit 1
+		fi
+	else
+		if [ $generate_missing_exp_files = true ]
+		then
+			echo "** WARNING: generating $exp_file"
+			cp $res_file $exp_file
+		else
+			echo "** Error: $exp_file not found"
+			exit 1
+		fi
+	fi
+}
+
+#
+# Build the test, then run it and compare the output.
+#
+mmake_test () {
+	if [ $# != 2 ]
+	then
+		echo "** usage: mmake_test output_file_version should_fail"
+		exit 1
+	fi
+
+	output_file_version=$1
+	mmake_should_fail=$2
+
+	case $mmake_should_fail in
+	    true)	
+		#
+		# If the compilation is supposed to fail then the mmake
+		# output should be suppressed to avoid making it harder
+		# to find genuine failures in the nightly test logs.
+		#
+		eval mmake $mmakeopts $main_module > $failing_make_output 2>&1
+		;;
+	    false)
+		eval mmake $mmakeopts $main_module
+		;;
+	esac
+
+	case $? in
+	    0)
+		case $mmake_should_fail in
+		    true)
+			echo \
+	"** Error: mmake $mmakeopts $main_module succeeded where it should fail"
+			exit 1
+			;;
+		esac
+
+		./$main_module > $main_module.out
+		compare_files $main_module.exp.$output_file_version \
+				$main_module.out 
+		;;
+	    *)
+		case $mmake_should_fail in
+		    false)
+			echo "** Error: mmake $mmakeopts $main_module failed"
+			exit 1
+			;;
+		esac
+		;;
+	esac
+}
+
+check_err_file () {
+	if [ $# != 2 ]
+	then	
+		echo "** usage: check_err_file module message_file_version"
+	fi
+
+	module=$1
+	error_file_version=$2	
+
+	compare_files $module.err_exp.$error_file_version $module.err
+}
+
+cleanup_test () {
+	case $cleanup in
+	true)
+		eval mmake $mmakeopts $main_module.realclean
+
+		for module in $modules
+		do
+			rm -f $module.m
+		done
+		;;
+	esac
+}
+

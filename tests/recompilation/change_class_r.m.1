@@ -1,0 +1,17 @@
+:- module change_class_r.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module change_class_r_2.
+
+main -->
+	{ init_foo(X) },
+	output(X),
+	io__nl.
+

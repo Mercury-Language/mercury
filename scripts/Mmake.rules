@@ -196,17 +196,14 @@ endif
 
 # C back-end
 $(cs_subdir)%.c : %.m
-	rm -f $(cs_subdir)$*.c
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
 
 # Aditi-RL back-end
 $(rlos_subdir)%.rlo : %.m
-	rm -f $(rlos_subdir)$*.rlo
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
 
 # .NET back-end
 $(ils_subdir)%.il : %.m
-	rm -f $(ils_subdir)$*.il
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
 
 # These rules are only available in *il* backends, because we'd like to avoid
@@ -214,13 +211,11 @@ $(ils_subdir)%.il : %.m
 # IL to generate a DLL if we are in a non-IL grade.
 ifeq ($(findstring il,$(GRADE)),il)        
 $(os_subdir)%.dll : %.cpp
-	rm -f $(os_subdir)$*.dll
 	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
 		-I$(MERC_DLL_DIR) $(ALL_MS_CLFLAGS) $< -link -noentry \
 		mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 
 $(os_subdir)%.dll : %.il
-	rm -f $(os_subdir)$*.dll
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
 endif
 

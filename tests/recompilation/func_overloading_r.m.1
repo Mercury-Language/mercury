@@ -1,0 +1,22 @@
+:- module func_overloading_r.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module func_overloading_r_2.
+
+:- type t
+	--->	f(t2).
+
+main -->
+	output(f(1)).
+
+:- pred output(t::in, io__state::di, io__state::uo) is det.
+	
+output(X) --> io__write(X), io__nl.
+

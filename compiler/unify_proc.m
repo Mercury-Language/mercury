@@ -135,6 +135,7 @@ module_info::in, proc_id::out, module_info::out) is det.
 :- import_module quantification, clause_to_proc, term, varset.
 :- import_module modes, mode_util, inst_match, instmap, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
+:- import_module recompilation.
 
 :- import_module tree, map, set, queue, int, string, require, assoc_list.
 
@@ -237,21 +238,35 @@ unify_proc__search_mode_num(ModuleInfo, TypeId, UniMode, Determinism, ProcId) :-
 
 unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		ModuleInfo0, ModuleInfo) :-
+	UnifyId = TypeId - UnifyMode,
+
+	%
+	% Generating a unification procedure for a type uses its body.
+	%
+	module_info_get_maybe_recompilation_info(ModuleInfo0, MaybeRecompInfo0),
+	( MaybeRecompInfo0 = yes(RecompInfo0) ->
+		recompilation__record_used_item(type_body, 
+			TypeId, TypeId, RecompInfo0, RecompInfo),
+		module_info_set_maybe_recompilation_info(ModuleInfo0,
+			yes(RecompInfo), ModuleInfo1)
+	;
+		ModuleInfo1 = ModuleInfo0
+	),
+
 	%
 	% check if this unification has already been requested, or
 	% if the proc is hand defined.
 	%
-	UnifyId = TypeId - UnifyMode,
 	(
 		(
-			unify_proc__search_mode_num(ModuleInfo0, TypeId,
+			unify_proc__search_mode_num(ModuleInfo1, TypeId,
 				UnifyMode, Determinism, _)
 		; 
 			TypeId = TypeName - _TypeArity,
 			TypeName = qualified(TypeModuleName, _),
-			module_info_name(ModuleInfo0, ModuleName),
+			module_info_name(ModuleInfo1, ModuleName),
 			ModuleName = TypeModuleName,
-			module_info_types(ModuleInfo0, TypeTable),
+			module_info_types(ModuleInfo1, TypeTable),
 			map__search(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody = abstract_type
@@ -259,22 +274,22 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 			type_id_has_hand_defined_rtti(TypeId)
 		)
 	->
-		ModuleInfo = ModuleInfo0
+		ModuleInfo = ModuleInfo1
 	;
 		%
 		% lookup the pred_id for the unification procedure
 		% that we are going to generate
 		%
-		module_info_get_special_pred_map(ModuleInfo0, SpecialPredMap),
+		module_info_get_special_pred_map(ModuleInfo1, SpecialPredMap),
 		( map__search(SpecialPredMap, unify - TypeId, PredId0) ->
 			PredId = PredId0,
-			ModuleInfo1 = ModuleInfo0
+			ModuleInfo2 = ModuleInfo1
 		;
 			% We generate unification predicates for most
 			% imported types lazily, so add the declarations
 			% and clauses now.
 			unify_proc__add_lazily_generated_unify_pred(TypeId,
-				PredId, ModuleInfo0, ModuleInfo1)
+				PredId, ModuleInfo1, ModuleInfo2)
 		),
 
 		% convert from `uni_mode' to `list(mode)'
@@ -290,17 +305,17 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
 		unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives,
-			yes(Determinism), Context, ModuleInfo1,
-			ProcId, ModuleInfo2),
+			yes(Determinism), Context, ModuleInfo2,
+			ProcId, ModuleInfo3),
 
 		%
 		% save the proc_id for this unify_proc_id
 		%
-		module_info_get_proc_requests(ModuleInfo2, Requests0),
+		module_info_get_proc_requests(ModuleInfo3, Requests0),
 		unify_proc__get_unify_req_map(Requests0, UnifyReqMap0),
 		map__set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
 		unify_proc__set_unify_req_map(Requests0, UnifyReqMap, Requests),
-		module_info_set_proc_requests(ModuleInfo2, Requests,
+		module_info_set_proc_requests(ModuleInfo3, Requests,
 			ModuleInfo)
 	).
 

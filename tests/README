@@ -38,6 +38,9 @@ hard_coded
 	hard-coded in a hand-written `.exp' file, rather having the
 	`.exp' file be generated automatically using NU-Prolog.
 
+recompilation
+	This directory contains tests of the smart recompilation system.
+
 valid
 	This directory is for test cases that are not complete
 	programs. We just check that the files compile.

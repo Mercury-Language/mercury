@@ -19,8 +19,8 @@
 %
 :- interface.
 
-:- import_module prog_data.
-:- import_module bool, list, io.
+:- import_module prog_data, recompilation.
+:- import_module bool, list, std_util, io.
 
 	% module_qualify_items(Items0, Items, ModuleName, ReportUndefErrors,
 	%			MQ_Info, NumErrors, UndefTypes, UndefModes):
@@ -71,6 +71,10 @@
 :- pred mq_info_get_need_qual_flag(mq_info::in, need_qualifier::out) is det.
 :- pred mq_info_get_partial_qualifier_info(mq_info::in,
 		partial_qualifier_info::out) is det.
+:- pred mq_info_get_recompilation_info(mq_info::in,
+		maybe(recompilation_info)::out) is det.
+:- pred mq_info_set_recompilation_info(mq_info::in,
+		maybe(recompilation_info)::in, mq_info::out) is det.
 
 	% The type partial_qualifier_info holds info need for computing which
 	% partial quantifiers are visible -- see get_partial_qualifiers/3.
@@ -107,10 +111,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module type_util, prog_io, prog_out.
+:- import_module type_util, prog_io, prog_out, hlds_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
 :- import_module (inst), instmap.
-:- import_module int, map, require, set, std_util, string, term, varset.
+:- import_module hlds_data.	% for cons_id.
+
+:- import_module int, map, require, set, string, term, varset.
 :- import_module assoc_list.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
@@ -181,7 +187,8 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 			this_module::module_name,  
 				% must uses of the current item be 
 				% explicitly module qualified.
-			need_qual_flag::need_qualifier	
+			need_qual_flag::need_qualifier,
+			maybe_recompilation_info::maybe(recompilation_info)
 	).
 
 :- type partial_qualifier_info --->
@@ -216,20 +223,29 @@ collect_mq_info([Item - _ | Items], Info0, Info) :-
 
 :- pred collect_mq_info_2(item::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_2(pred_clause(_,_,_,_), Info, Info).
-collect_mq_info_2(func_clause(_,_,_,_,_), Info, Info).
-collect_mq_info_2(type_defn(_, TypeDefn, _), Info0, Info) :-
-	add_type_defn(TypeDefn, Info0, Info).
-collect_mq_info_2(inst_defn(_, InstDefn, _), Info0, Info) :-
-	add_inst_defn(InstDefn, Info0, Info).
-collect_mq_info_2(mode_defn(_, ModeDefn, _), Info0, Info) :-
-	add_mode_defn(ModeDefn, Info0, Info).
+collect_mq_info_2(clause(_,_,_,_,_), Info, Info).
+collect_mq_info_2(type_defn(_, SymName, Params, _, _), Info0, Info) :-
+	list__length(Params, Arity),
+	mq_info_get_types(Info0, Types0),
+	mq_info_get_need_qual_flag(Info0, NeedQualifier),
+	id_set_insert(NeedQualifier, SymName - Arity, Types0, Types),
+	mq_info_set_types(Info0, Types, Info).
+collect_mq_info_2(inst_defn(_, SymName, Params, _, _), Info0, Info) :-
+	list__length(Params, Arity),
+	mq_info_get_insts(Info0, Insts0),
+	mq_info_get_need_qual_flag(Info0, NeedQualifier),
+	id_set_insert(NeedQualifier, SymName - Arity, Insts0, Insts),
+	mq_info_set_insts(Info0, Insts, Info).
+collect_mq_info_2(mode_defn(_, SymName, Params, _, _), Info0, Info) :-
+	list__length(Params, Arity),
+	mq_info_get_modes(Info0, Modes0),
+	mq_info_get_need_qual_flag(Info0, NeedQualifier),
+	id_set_insert(NeedQualifier, SymName - Arity, Modes0, Modes),
+	mq_info_set_modes(Info0, Modes, Info).
 collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
-collect_mq_info_2(pred(_,__,_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(func(_,_,__,_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
-collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred_or_func(_,_,__,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
 collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
 	process_assert(Goal, SymNames, Success),
@@ -257,59 +273,14 @@ collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
 		mq_info_set_unused_interface_modules(Info0,
 				UnusedInterfaceModules, Info)
 	).
-collect_mq_info_2(nothing, Info, Info).
-collect_mq_info_2(typeclass(_, Name, Vars, _, _), Info0, Info) :-
-	add_typeclass_defn(Name, Vars, Info0, Info).
-collect_mq_info_2(instance(_,_,_,_,_,_), Info, Info).
-
-
-% Predicates to add the type, inst, mode and typeclass ids visible
-% in this module to the mq_info.
-
-:- pred add_type_defn(type_defn::in, mq_info::in, mq_info::out) is det.
-
-add_type_defn(TypeDefn, Info0, Info) :-
-	(	TypeDefn = du_type(SymName, Params, _, _EqualityPred)
-	;	TypeDefn = uu_type(SymName, Params, _)
-	;	TypeDefn = eqv_type(SymName, Params, _)
-	;	TypeDefn = abstract_type(SymName, Params)
-	),
-	list__length(Params, Arity),
-	mq_info_get_types(Info0, Types0),
-	mq_info_get_need_qual_flag(Info0, NeedQualifier),
-	id_set_insert(NeedQualifier, SymName - Arity, Types0, Types),
-	mq_info_set_types(Info0, Types, Info).
-
-:- pred add_inst_defn(inst_defn::in, mq_info::in, mq_info::out) is det.
-
-add_inst_defn(InstDefn, Info0, Info) :-
-	(	InstDefn = eqv_inst(SymName, Params, _)
-	;	InstDefn = abstract_inst(SymName, Params)
-	),
-	list__length(Params, Arity),
-	mq_info_get_insts(Info0, Insts0),
-	mq_info_get_need_qual_flag(Info0, NeedQualifier),
-	id_set_insert(NeedQualifier, SymName - Arity, Insts0, Insts),
-	mq_info_set_insts(Info0, Insts, Info).
-
-:- pred add_mode_defn(mode_defn::in, mq_info::in, mq_info::out) is det.
-
-add_mode_defn(eqv_mode(SymName, Params, _), Info0, Info) :-
-	list__length(Params, Arity),
-	mq_info_get_modes(Info0, Modes0),
-	mq_info_get_need_qual_flag(Info0, NeedQualifier),
-	id_set_insert(NeedQualifier, SymName - Arity, Modes0, Modes),
-	mq_info_set_modes(Info0, Modes, Info).
-
-:- pred add_typeclass_defn(sym_name::in, list(tvar)::in, 
-	mq_info::in, mq_info::out) is det.
-
-add_typeclass_defn(SymName, Params, Info0, Info) :-
+collect_mq_info_2(nothing(_), Info, Info).
+collect_mq_info_2(typeclass(_, SymName, Params, _, _), Info0, Info) :-
 	list__length(Params, Arity),
 	mq_info_get_classes(Info0, Classes0),
 	mq_info_get_need_qual_flag(Info0, NeedQualifier),
 	id_set_insert(NeedQualifier, SymName - Arity, Classes0, Classes),
 	mq_info_set_classes(Info0, Classes, Info).
+collect_mq_info_2(instance(_,_,_,_,_,_), Info, Info).
 
 	% process_module_defn:
 	%
@@ -353,6 +324,7 @@ process_module_defn(import(Imports), Info0, Info) :-
 	add_imports(Imports, Info0, Info).
 process_module_defn(use(Imports), Info0, Info) :-
 	add_imports(Imports, Info0, Info).
+process_module_defn(version_numbers(_, _), Info, Info).
 
 :- pred add_module_defn(module_name, mq_info, mq_info).
 :- mode add_module_defn(in, in, out) is det.
@@ -523,69 +495,61 @@ do_module_qualify_items([Item0 | Items0], [Item | Items], Info0, Info) -->
 		mq_info::in, mq_info::out, bool::out,
 		io__state::di, io__state::uo) is det.
 
-module_qualify_item(pred_clause(A,B,C,D) - Con, pred_clause(A,B,C,D) - Con,
+module_qualify_item(clause(A,B,C,D,E) - Con, clause(A,B,C,D,E) - Con,
 			Info, Info, yes) --> [].
 
-module_qualify_item(func_clause(A,B,C,D,E) - Con, func_clause(A,B,C,D,E) - Con,
-			Info, Info, yes) --> [].
+module_qualify_item(type_defn(A, SymName, Params, TypeDefn0, C) - Context,
+		type_defn(A, SymName, Params, TypeDefn, C) - Context,
+		Info0, Info, yes) --> 
+	{ list__length(Params, Arity) },
+	{ mq_info_set_error_context(Info0,
+		type(SymName - Arity) - Context, Info1) },
+	qualify_type_defn(TypeDefn0, TypeDefn, Info1, Info).  
 
-module_qualify_item(type_defn(A, TypeDefn0, C) - Context,
-		type_defn(A, TypeDefn, C) - Context, Info0, Info, yes) --> 
-	qualify_type_defn(TypeDefn0, TypeDefn, Info0, Info, Context).  
+module_qualify_item(inst_defn(A, SymName, Params, InstDefn0, C) - Context,
+		inst_defn(A, SymName, Params, InstDefn, C) - Context,
+		Info0, Info, yes) --> 
+	{ list__length(Params, Arity) },
+	{ mq_info_set_error_context(Info0,
+		inst(SymName - Arity) - Context, Info1) },
+	qualify_inst_defn(InstDefn0, InstDefn, Info1, Info).
 
-module_qualify_item(inst_defn(A, InstDefn0, C) - Context,
-		inst_defn(A, InstDefn, C) - Context, Info0, Info, yes) --> 
-	qualify_inst_defn(InstDefn0, InstDefn, Info0, Info, Context).
-
-module_qualify_item(mode_defn(A, ModeDefn0, C) - Context,
-		mode_defn(A, ModeDefn, C) - Context, Info0, Info, yes) -->
-	qualify_mode_defn(ModeDefn0, ModeDefn, Info0, Info, Context).
+module_qualify_item(mode_defn(A, SymName, Params, ModeDefn0, C) - Context,
+		mode_defn(A, SymName, Params, ModeDefn, C) - Context,
+		Info0, Info, yes) -->
+	{ list__length(Params, Arity) },
+	{ mq_info_set_error_context(Info0,
+		mode(SymName - Arity) - Context, Info1) },
+	qualify_mode_defn(ModeDefn0, ModeDefn, Info1, Info).
 
 module_qualify_item(module_defn(A, ModuleDefn) - Context,
 		module_defn(A, ModuleDefn) - Context, Info0, Info, Continue) -->
 	{ update_import_status(ModuleDefn, Info0, Info, Continue) }.
 
 module_qualify_item(
-		pred(A, IVs, B, SymName, TypesAndModes0, C, D, E,
-			Constraints0) - Context,
-		pred(A, IVs, B, SymName, TypesAndModes,  C, D, E,
-			Constraints) - Context,
+		pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes0,
+			C, D, E, Constraints0) - Context,
+		pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes,
+			C, D, E, Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
-	{ mq_info_set_error_context(Info0, pred(SymName - Arity) - Context,
-								Info1) },
+	{ mq_info_set_error_context(Info0,
+		pred_or_func(PredOrFunc, SymName - Arity) - Context,
+		Info1) },
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info2),
 	qualify_class_constraints(Constraints0, Constraints, Info2, Info).
 
 module_qualify_item(
-		func(A, IVs, B, SymName, TypesAndModes0, TypeAndMode0, F, G, H,
-			Constraints0) - Context,
-		func(A, IVs, B, SymName, TypesAndModes, TypeAndMode, F, G, H,
-			Constraints) - Context,
+		pred_or_func_mode(A, PredOrFunc, SymName, Modes0,
+			C, D) - Context,
+	 	pred_or_func_mode(A, PredOrFunc, SymName, Modes,
+			C, D) - Context,
 		Info0, Info, yes) -->
-	{ list__length(TypesAndModes0, Arity) },
-	{ mq_info_set_error_context(Info0, func(SymName - Arity) - Context,
-								Info1) },
-	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info2),
-	qualify_type_and_mode(TypeAndMode0, TypeAndMode, Info2, Info3),
-	qualify_class_constraints(Constraints0, Constraints, Info3, Info).
-
-module_qualify_item(pred_mode(A, SymName, Modes0, C, D) - Context,
-		 	pred_mode(A, SymName, Modes, C, D) - Context,
-			Info0, Info, yes) -->
 	{ list__length(Modes0, Arity) },
-	{ mq_info_set_error_context(Info0, pred_mode(SymName - Arity) - Context,
-								 Info1) },
+	{ mq_info_set_error_context(Info0,
+		pred_or_func_mode(PredOrFunc, SymName- Arity) - Context,
+		Info1) },
 	qualify_mode_list(Modes0, Modes, Info1, Info).
-
-module_qualify_item(func_mode(A, SymName, Modes0, Mode0, C, D) - Context, 
-		func_mode(A, SymName, Modes, Mode, C, D) - Context,
-		Info0, Info, yes) -->
-	{ list__length(Modes0, Arity) },
-	{ mq_info_set_error_context(Info0, func_mode(SymName - Arity) - Context,
-								 Info1) },
-	qualify_mode_list(Modes0, Modes, Info1, Info2),
-	qualify_mode(Mode0, Mode, Info2, Info).
 
 module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 						Info0, Info, yes) -->
@@ -593,7 +557,7 @@ module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 	qualify_pragma(Pragma0, Pragma, Info1, Info).
 module_qualify_item(assertion(G, V) - Context, assertion(G, V) - Context,
 						Info, Info, yes) --> [].
-module_qualify_item(nothing - Context, nothing - Context,
+module_qualify_item(nothing(A) - Context, nothing(A) - Context,
 						Info, Info, yes) --> [].
 module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 			Context, 
@@ -614,10 +578,11 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 		{ Interface = concrete(Methods) }
 	).
 
-module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet,
-		ModName) - Context, 
-		instance(Constraints, Name, Types, Body, VarSet, ModName) -
-			Context, 
+module_qualify_item(
+		instance(Constraints0, Name0, Types0, Body0, VarSet,
+			ModName) - Context, 
+		instance(Constraints, Name, Types, Body, VarSet,
+			ModName) - Context, 
 		Info0, Info, yes) -->
 	{ list__length(Types0, Arity) },
 	{ Id = Name0 - Arity },
@@ -648,6 +613,7 @@ update_import_status(end_module(_), Info, Info, yes).
 update_import_status(export(_), Info, Info, yes).
 update_import_status(import(_), Info, Info, yes).
 update_import_status(use(_), Info, Info, yes).
+update_import_status(version_numbers(_, _), Info, Info, yes).
 update_import_status(include_module(_), Info0, Info, yes) :-
 	% The sub-module might make use of *any* of the imported modules.
 	% There's no way for us to tell which ones.
@@ -658,39 +624,22 @@ update_import_status(include_module(_), Info0, Info, yes) :-
 
 	% Qualify the constructors or other types in a type definition.	
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
-	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_type_defn(du_type(SymName, Params, Ctors0, MaybeEqualityPred0),
-		du_type(SymName, Params, Ctors, MaybeEqualityPred),
-		Info0, Info, Context) -->
-	{ list__length(Params, Arity) },
-	{ mq_info_set_error_context(Info0, type(SymName - Arity) - Context,
-								Info1) },
-	qualify_constructors(Ctors0, Ctors, Info1, Info),
+qualify_type_defn(du_type(Ctors0, MaybeEqualityPred0),
+		du_type(Ctors, MaybeEqualityPred), Info0, Info) -->
+	qualify_constructors(Ctors0, Ctors, Info0, Info),
 
 	% User-defined equality pred names will be converted into
 	% predicate calls and then module-qualified after type analysis
 	% (during mode analysis).  That way they get full type overloading
 	% resolution, etc.  Thus we don't module-qualify them here.
 	{ MaybeEqualityPred = MaybeEqualityPred0 }.
-
-qualify_type_defn(uu_type(SymName, Params, Types0),
-		uu_type(SymName, Params, Types), Info0, Info, Context) -->
-	{ list__length(Params, Arity) },
-	{ mq_info_set_error_context(Info0, type(SymName - Arity) - Context,
-								Info1) },
-	qualify_type_list(Types0, Types, Info1, Info).	
-
-qualify_type_defn(eqv_type(SymName, Params, Type0),
-		eqv_type(SymName, Params, Type),
-		Info0, Info, Context) -->
-	{ list__length(Params, Arity) },
-	{ mq_info_set_error_context(Info0, type(SymName - Arity) - Context,
-								Info1) },
-	qualify_type(Type0, Type, Info1, Info).	
-
-qualify_type_defn(abstract_type(SymName, Params),
-		abstract_type(SymName, Params), Info, Info, _) --> [].
+qualify_type_defn(uu_type(Types0), uu_type(Types), Info0, Info) -->
+	qualify_type_list(Types0, Types, Info0, Info).	
+qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info) -->
+	qualify_type(Type0, Type, Info0, Info).	
+qualify_type_defn(abstract_type, abstract_type, Info, Info) --> [].
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
@@ -705,28 +654,18 @@ qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], Info0, Info) -->
 
 	% Qualify the inst parameters of an inst definition.
 :- pred qualify_inst_defn(inst_defn::in, inst_defn::out, mq_info::in,
-	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_inst_defn(eqv_inst(SymName, Params, Inst0),
-		eqv_inst(SymName, Params, Inst), Info0, Info, Context) -->
-	{ list__length(Params, Arity) },
-	{ mq_info_set_error_context(Info0, inst(SymName - Arity) - Context,
-								Info1) },
-	qualify_inst(Inst0, Inst, Info1, Info).	
-
-qualify_inst_defn(abstract_inst(SymName, Params),
-	 abstract_inst(SymName, Params), Info, Info, _) --> [].
+qualify_inst_defn(eqv_inst(Inst0), eqv_inst(Inst), Info0, Info) -->
+	qualify_inst(Inst0, Inst, Info0, Info).	
+qualify_inst_defn(abstract_inst, abstract_inst, Info, Info) --> [].
 
 	% Qualify the mode parameter of an equivalence mode definition.
 :- pred qualify_mode_defn(mode_defn::in, mode_defn::out, mq_info::in,
-	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_mode_defn(eqv_mode(SymName, Params, Mode0),
-		eqv_mode(SymName, Params, Mode), Info0, Info, Context) -->
-	{ list__length(Params, Arity) },
-	{ mq_info_set_error_context(Info0, mode(SymName - Arity) - Context,
-								Info1) },
-	qualify_mode(Mode0, Mode, Info1, Info).	
+qualify_mode_defn(eqv_mode(Mode0), eqv_mode(Mode), Info0, Info) -->
+	qualify_mode(Mode0, Mode, Info0, Info).	
 
 	% Qualify a list of items of the form Type::Mode, as in a
 	% predicate declaration.
@@ -853,8 +792,16 @@ qualify_inst_name(typed_inst(_, _), _, _, _) -->
 qualify_bound_inst_list([], [], Info, Info) --> [].
 qualify_bound_inst_list([functor(ConsId, Insts0) | BoundInsts0],
 		 [functor(ConsId, Insts) | BoundInsts], Info0, Info) -->
-	qualify_inst_list(Insts0, Insts, Info0, Info1),
-	qualify_bound_inst_list(BoundInsts0, BoundInsts, Info1, Info).
+	{ ConsId = cons(Name, Arity) ->
+		Id = Name - Arity,
+		update_recompilation_info(
+			recompilation__record_used_item(functor, Id, Id),
+			Info0, Info1)
+	;
+		Info1 = Info0
+	},
+	qualify_inst_list(Insts0, Insts, Info1, Info2),
+	qualify_bound_inst_list(BoundInsts0, BoundInsts, Info2, Info).
 
 :- pred qualify_constructor_arg_list(list(constructor_arg)::in,
 	list(constructor_arg)::out, mq_info::in, mq_info::out,
@@ -961,8 +908,9 @@ qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 	qualify_mode_list(Modes0, Modes, Info0, Info).
 qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
-qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G),
-		type_spec(A, B, C, D, MaybeModes, Subst, G), Info0, Info) -->
+qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
+		type_spec(A, B, C, D, MaybeModes, Subst, G, H),
+		Info0, Info) -->
 	(
 		{ MaybeModes0 = yes(Modes0) }
 	->
@@ -1078,10 +1026,12 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% There is no need to qualify the method name, since that is
 	% done when the item is parsed.
 qualify_class_method(
-		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			MaybeDet, Cond, Purity, ClassContext0, Context), 
-		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			MaybeDet, Cond, Purity, ClassContext, Context), 
+		pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
+			Name, TypesAndModes0, MaybeDet, Cond, Purity,
+			ClassContext0, Context), 
+		pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
+			Name, TypesAndModes, MaybeDet, Cond, Purity,
+			ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -1089,34 +1039,13 @@ qualify_class_method(
 	qualify_class_constraints(ClassContext0, ClassContext, 
 		MQInfo1, MQInfo).
 qualify_class_method(
-		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			ReturnMode0, MaybeDet, Cond, Purity, ClassContext0,
-			Context), 
-		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			ReturnMode, MaybeDet, Cond, Purity, ClassContext,
-			Context), 
-		MQInfo0, MQInfo
-		) -->
-	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
-		MQInfo0, MQInfo1),
-	qualify_type_and_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo2),
-	qualify_class_constraints(ClassContext0, ClassContext, 
-		MQInfo2, MQInfo).
-qualify_class_method(
-		pred_mode(Varset, Name, Modes0, MaybeDet, Cond, Context), 
-		pred_mode(Varset, Name, Modes, MaybeDet, Cond, Context), 
+		pred_or_func_mode(Varset, PredOrFunc, Name, Modes0,
+			MaybeDet, Cond, Context), 
+		pred_or_func_mode(Varset, PredOrFunc, Name, Modes,
+			MaybeDet, Cond, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo).
-qualify_class_method(
-		func_mode(Varset, Name, Modes0, ReturnMode0, MaybeDet, Cond,
-			Context), 
-		func_mode(Varset, Name, Modes, ReturnMode, MaybeDet, Cond,
-			Context), 
-		MQInfo0, MQInfo
-		) -->
-	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo1),
-	qualify_mode(ReturnMode0, ReturnMode, MQInfo1, MQInfo).
 
 :- pred qualify_instance_body(sym_name::in, instance_body::in, 
 	instance_body::out) is det. 
@@ -1170,9 +1099,9 @@ add_module_qualifier(DefaultModule, qualified(SymModule, SymName),
 find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 
 	% Find all IDs which match the current id.
-	{ Id0 = SymName - Arity },
+	{ Id0 = SymName0 - Arity },
 	{ mq_info_get_modules(Info0, Modules) },
-	{ id_set_search_sym_arity(Ids, SymName, Arity, Modules,
+	{ id_set_search_sym_arity(Ids, SymName0, Arity, Modules,
 		MatchingModules) },
 
 	( { MatchingModules = [] } ->
@@ -1187,9 +1116,13 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		)
 	; { MatchingModules = [Module] } ->
 		% A unique match for this ID.
-		{ unqualify_name(SymName, IdName) },
+		{ unqualify_name(SymName0, IdName) },
 		{ Id = qualified(Module, IdName) - Arity },
-		{ mq_info_set_module_used(Info0, Module, Info) }
+		{ mq_info_set_module_used(Info0, Module, Info1) },
+		{ ItemType = convert_simple_item_type(TypeOfId) },
+		{ update_recompilation_info(
+			recompilation__record_used_item(ItemType, Id0, Id),
+			Info1, Info) }
 	;
 		% There are multiple matches.
 		{ Id = Id0 },
@@ -1203,6 +1136,29 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 			{ Info = Info0 }
 		)
 	).
+
+:- pred update_recompilation_info(pred(recompilation_info, recompilation_info),
+		mq_info, mq_info).
+:- mode update_recompilation_info(pred(in, out) is det, in, out) is det.
+
+update_recompilation_info(Pred, Info0, Info) :-
+	mq_info_get_recompilation_info(Info0, MaybeRecompInfo0),
+	(
+		MaybeRecompInfo0 = yes(RecompInfo0),
+		Pred(RecompInfo0, RecompInfo),
+		mq_info_set_recompilation_info(Info0, yes(RecompInfo), Info)
+	;
+		MaybeRecompInfo0 = no,
+		Info = Info0
+	).
+
+:- func convert_simple_item_type(id_type) = item_type.
+:- mode convert_simple_item_type(in) = out is det.
+
+convert_simple_item_type(type_id) = (type).
+convert_simple_item_type(mode_id) = (mode).
+convert_simple_item_type(inst_id) = (inst).
+convert_simple_item_type(class_id) = (typeclass).
 				
 %------------------------------------------------------------------------------
 
@@ -1220,10 +1176,8 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		type(id) 
 	;	inst(id)
 	;	mode(id)
-	;	pred(id)
-	;	func(id)
-	; 	pred_mode(id)
-	;	func_mode(id)
+	;	pred_or_func(pred_or_func, id)
+	; 	pred_or_func_mode(pred_or_func, id)
 	;	(pragma)
 	;	lambda_expr
 	;	clause_mode_annotation
@@ -1313,18 +1267,18 @@ write_error_context2(mode(Id)) -->
 write_error_context2(inst(Id)) -->
 	io__write_string("definition of inst "),
 	write_id(Id).
-write_error_context2(pred(Id)) -->
-	io__write_string("definition of predicate "),
-	write_id(Id).
-write_error_context2(pred_mode(Id)) -->
-	io__write_string("mode declaration for predicate "),
-	write_id(Id).
-write_error_context2(func(Id)) -->
-	io__write_string("definition of function "),
-	write_id(Id).
-write_error_context2(func_mode(Id)) -->
-	io__write_string("mode declaration for function "),
-	write_id(Id).
+write_error_context2(pred_or_func(PredOrFunc, SymName - Arity)) -->
+	io__write_string("definition of "),
+	io__write(PredOrFunc),
+	io__write_string(" "),
+	{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+	write_id(SymName - OrigArity).
+write_error_context2(pred_or_func_mode(PredOrFunc, SymName - Arity)) -->
+	io__write_string("mode declaration for "),
+	io__write(PredOrFunc),
+	io__write_string(" "),
+	{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+	write_id(SymName - OrigArity).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").
 write_error_context2(clause_mode_annotation) -->
@@ -1452,10 +1406,19 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info0) :-
 	get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
 	set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
 	id_set_init(Empty),
+	globals__lookup_bool_option(Globals, smart_recompilation,
+		SmartRecompilation),
+	(
+		SmartRecompilation = no,
+		MaybeRecompInfo = no
+	;
+		SmartRecompilation = yes,
+		MaybeRecompInfo = yes(init_recompilation_info(ModuleName))
+	),
 	Info0 = mq_info(ImportedModules, Empty, Empty, Empty, Empty,
 			Empty, InterfaceModules0, local, 0, no, no,
 			ReportErrors, ErrorContext, ModuleName,
-			may_be_unqualified).
+			may_be_unqualified, MaybeRecompInfo).
 
 :- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
@@ -1486,6 +1449,7 @@ mq_info_get_mode_error_flag(MQInfo, MQInfo^mode_error_flag).
 mq_info_get_report_error_flag(MQInfo, MQInfo^report_error_flag).
 mq_info_get_error_context(MQInfo, MQInfo^error_context).
 mq_info_get_need_qual_flag(MQInfo, MQInfo^need_qual_flag).
+mq_info_get_recompilation_info(Info, Info ^ maybe_recompilation_info).
 
 :- pred mq_info_set_imported_modules(mq_info::in, set(module_name)::in,
 		mq_info::out) is det.
@@ -1518,6 +1482,8 @@ mq_info_set_type_error_flag(MQInfo, MQInfo^type_error_flag := yes).
 mq_info_set_mode_error_flag(MQInfo, MQInfo^mode_error_flag := yes).
 mq_info_set_error_context(MQInfo, Context, MQInfo^error_context := Context).
 mq_info_set_need_qual_flag(MQInfo, Flag, MQInfo^need_qual_flag := Flag).
+mq_info_set_recompilation_info(Info, RecompInfo,
+		Info ^ maybe_recompilation_info := RecompInfo).
 
 :- pred mq_info_incr_errors(mq_info::in, mq_info::out) is det.
 
@@ -1525,13 +1491,19 @@ mq_info_incr_errors(MQInfo, MQInfo^num_errors := (MQInfo^num_errors +1)).
 
 :- pred mq_info_set_error_flag(mq_info::in, id_type::in, mq_info::out) is det.
 
-mq_info_set_error_flag(Info0, type_id, Info) :-
+mq_info_set_error_flag(Info0, IdType, Info) :-
+	mq_info_set_error_flag_2(Info0, IdType, Info).
+
+:- pred mq_info_set_error_flag_2(mq_info::in,
+		id_type::in, mq_info::out) is det.
+
+mq_info_set_error_flag_2(Info0, type_id, Info) :-
 	mq_info_set_type_error_flag(Info0, Info).
-mq_info_set_error_flag(Info0, mode_id, Info) :-
+mq_info_set_error_flag_2(Info0, mode_id, Info) :-
 	mq_info_set_mode_error_flag(Info0, Info).
-mq_info_set_error_flag(Info0, inst_id, Info) :-
+mq_info_set_error_flag_2(Info0, inst_id, Info) :-
 	mq_info_set_mode_error_flag(Info0, Info).
-mq_info_set_error_flag(Info0, class_id, Info) :-
+mq_info_set_error_flag_2(Info0, class_id, Info) :-
 	mq_info_set_type_error_flag(Info0, Info).
 
 	% If the current item is in the interface, remove its module 

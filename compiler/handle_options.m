@@ -94,7 +94,16 @@ handle_options(MaybeError, Args, Link) -->
 			GenerateIL, GenerateJava,
 			CompileOnly, AditiOnly],
 			NotLink) },
-		{ bool__not(NotLink, Link) }
+		{ bool__not(NotLink, Link) },
+		globals__io_lookup_bool_option(smart_recompilation, Smart),
+		( { Smart = yes, Link = yes } ->
+			% XXX Currently smart recompilation doesn't check
+			% that all the files needed to link are present
+			% and up-to-date, so disable it.
+			disable_smart_recompilation("linking")
+		;
+			[]	
+		)
 	).
 
 :- pred dump_arguments(list(string), io__state, io__state).
@@ -345,6 +354,59 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% we need to build all `.opt' or `.trans_opt' files.
 	option_implies(intermodule_optimization, use_opt_files, bool(no)),
 	option_implies(transitive_optimization, use_trans_opt_files, bool(no)),
+
+	option_implies(smart_recompilation, generate_item_version_numbers,
+			bool(yes)),
+	
+	%
+	% Disable `--smart-recompilation' for compilation options
+	% which either do not produce a compiled output file or
+	% for which smart recompilation will not work.
+	%
+	option_implies(generate_dependencies, smart_recompilation, bool(no)),
+	option_implies(convert_to_mercury, smart_recompilation, bool(no)),
+	option_implies(make_private_interface, smart_recompilation, bool(no)),
+	option_implies(make_interface, smart_recompilation, bool(no)),
+	option_implies(make_short_interface, smart_recompilation, bool(no)),
+	option_implies(output_grade_string, smart_recompilation, bool(no)),
+	option_implies(make_optimization_interface,
+		smart_recompilation, bool(no)),
+	option_implies(make_transitive_opt_interface,
+		smart_recompilation, bool(no)),
+	option_implies(errorcheck_only, smart_recompilation, bool(no)),
+	option_implies(typecheck_only, smart_recompilation, bool(no)),
+
+	% `--aditi-only' is only used by the Aditi query shell,
+	% for queries which should only be compiled once.
+	% recompilation_check.m currently doesn't check whether
+	% the `.rlo' file is up to date (with `--no-aditi-only' the
+	% Aditi-RL bytecode is embedded in the `.c' file.
+	option_implies(aditi_only, smart_recompilation, bool(no)),
+
+	% We never use version number information in `.int3',
+	% `.opt' or `.trans_opt'  files.
+	option_implies(make_short_interface, generate_item_version_numbers,
+		bool(no)),
+
+	% XXX Smart recompilation does not yet work with inter-module
+	% optimization, but we still want to generate version numbers
+	% in interface files for users of a library compiled with
+	% inter-module optimization but not using inter-module
+	% optimization themselves.
+	globals__io_lookup_bool_option(smart_recompilation, Smart),
+	maybe_disable_smart_recompilation(Smart, intermodule_optimization, yes,
+		"`--intermodule-optimization'"),
+	maybe_disable_smart_recompilation(Smart, use_opt_files, yes,
+		"`--use-opt-files'"),
+
+	% XXX Smart recompilation does not yet work with
+	% `--no-target-code-only'. With `--no-target-code-only'
+	% it becomes difficult to work out what all the target
+	% files are and check whether they are up-to-date.
+	% By default, mmake always enables `--target-code-only' and
+	% processes the target code file itself, so this isn't a problem.
+	maybe_disable_smart_recompilation(Smart, target_code_only, no,
+		"`--no-target-code-only'"),
 
 	option_implies(very_verbose, verbose, bool(yes)),
 
@@ -744,6 +806,47 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
 	( { SourceOptionValue = no } ->
 		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
+	;
+		[]
+	).
+
+	% Smart recompilation does not yet work with all
+	% options (in particular `--intermodule-optimization'
+	% and `--no-target-code-only'). Disable smart recompilation
+	% if such an option is set, maybe issuing a warning.
+:- pred maybe_disable_smart_recompilation(bool::in, option::in, bool::in,
+		string::in, io__state::di, io__state::uo) is det.
+
+maybe_disable_smart_recompilation(Smart, ConflictingOption,
+		ValueToDisableSmart, OptionDescr) -->
+	globals__io_lookup_bool_option(ConflictingOption, Value),
+	(
+		{ Smart = yes },
+		{ Value = ValueToDisableSmart }
+	->
+		disable_smart_recompilation(OptionDescr)
+	;
+		[]
+	).
+
+:- pred disable_smart_recompilation(string::in,
+		io__state::di, io__state::uo) is det.
+
+disable_smart_recompilation(OptionDescr) -->
+	globals__io_set_option(smart_recompilation, bool(no)),
+	globals__io_lookup_bool_option(warn_smart_recompilation,
+		WarnSmart),
+	( { WarnSmart = yes } ->
+		io__write_string(
+	"Warning: smart recompilation does not yet work with "),
+		io__write_string(OptionDescr),
+		io__write_string(".\n"),
+		globals__io_lookup_bool_option(halt_at_warn, Halt),
+		( { Halt = yes } ->
+			io__set_exit_status(1)
+		;
+			[]
+		)
 	;
 		[]
 	).
