@@ -2912,24 +2912,38 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
-	io__write_string("  mode error in conjunction.\n"),
-	io__write_string("\tFloundered goals were:\n"),
-	report_mode_error_conj_2(Errors, VarSet, Context).
+	io__write_string("  mode error in conjunction. The next "),
+	{ length(Errors, NumErrors) },
+	io__write_int(NumErrors),
+	io__write_string(" error messages\n"),
+	prog_out__write_context(Context),
+	io__write_string("  indicate possible causes of this error.\n"),
+	report_mode_error_conj_2(Errors, VarSet, Context, ModeInfo).
 
 :- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
-				io__state, io__state).
-:- mode report_mode_error_conj_2(in, in, in, di, uo).
+				mode_info, io__state, io__state).
+:- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo).
 
-report_mode_error_conj_2([], _, _) --> [].
-report_mode_error_conj_2([delayed_goal(Vars, _Error, Goal) | Rest],
-			VarSet, Context) -->
-	io__write_string("\t\t% waiting on { "),
+report_mode_error_conj_2([], _, _, _) --> [].
+report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
+			VarSet, Context, ModeInfo) -->
+	prog_out__write_context(Context),
+	io__write_string("Floundered goal, waiting on { "),
 	mercury_output_vars(Vars, VarSet),
 	io__write_string(" } :\n"),
-	io__write_string("\t\t"),
-	mercury_output_hlds_goal(Goal, VarSet, 2),
-	io__write_string(".\n"),
-	report_mode_error_conj_2(Rest, VarSet, Context).
+	lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
+		io__write_string("\t\t"),
+		mercury_output_hlds_goal(Goal, VarSet, 2),
+		io__write_string(".\n")
+	;
+		[]
+	),
+	{ Error = mode_error_info(_, ModeError, Context, ModeContext) },
+	{ mode_info_set_context(Context, ModeInfo, ModeInfo1) },
+	{ mode_info_set_mode_context(ModeContext, ModeInfo1, ModeInfo2) },
+	report_mode_error(ModeError, ModeInfo2),
+	report_mode_error_conj_2(Rest, VarSet, Context, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3093,7 +3107,6 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-	{ term__context_init(0, Context) },
 	{ Term = term__functor(Name, Args, Context) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
@@ -3111,14 +3124,17 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
 	io__write_term(VarSet, Term),
-	io__write_string("' has instantiatedness `"),
-	io__write_constant(Name),
 	( { Args \= [] } ->
+		io__write_string("'\n"),
+		prog_out__write_context(Context),
+		io__write_string("  has instantiatedness `"),
+		io__write_constant(Name),
 		io__write_string("("),
 		mercury_output_inst_list(ArgInsts, InstVarSet),
 		io__write_string(")")
 	;
-		[]
+		io__write_string("' has instantiatedness `"),
+		io__write_constant(Name)
 	),
 	io__write_string("'.\n").
 
