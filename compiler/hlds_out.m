@@ -131,6 +131,13 @@
 		string, io__state, io__state).
 :- mode hlds_out__write_goal(in, in, in, in, in, in, di, uo) is det.
 
+	% hlds_out__write_goal_list is used to write both disjunctions and
+	% parallel conjunctions.
+
+:- pred hlds_out__write_goal_list(list(hlds_goal), module_info, prog_varset,
+		bool, int, string, vartypes, io__state, io__state).
+:- mode hlds_out__write_goal_list(in, in, in, in, in, in, in, di, uo) is det.
+
 	% print out a functor and its arguments
 
 :- pred hlds_out__write_functor(const, list(prog_var), prog_varset, bool,
@@ -505,6 +512,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_get_constraint_proofs(PredInfo, Proofs) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_head_type_params(PredInfo, HeadTypeParams) },
+	{ pred_info_get_indexes(PredInfo, Indexes) },
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'C') } ->
 		% Information about predicates is dumped if 'C'
@@ -530,7 +538,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		( { MarkerList = [] } ->
 			[]
 		;
-			io__write_string("% markers:"),
+			io__write_string("% markers: "),
 			hlds_out__write_marker_list(MarkerList),
 			io__write_string("\n")
 		),
@@ -540,6 +548,14 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			hlds_out__write_constraint_proofs(Indent, TVarSet,
 				Proofs),
 			io__write_string("\n")
+		),
+		( { Indexes = [] } ->
+			[]
+		;
+			io__write_string("% indexes: "),
+			io__write_list(Indexes, ", ",
+				mercury_output_index_spec),
+			io__nl
 		)
 	;
 		[]
@@ -550,7 +566,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	;
 		{ AppendVarnums = no }
 	),
-	( { string__contains_char(Verbose, 'C') } ->
+
+	( { string__contains_char(Verbose, 'C'), Clauses \= [] } ->
 		( { HeadTypeParams \= [] } ->
 			io__write_string(
 				"% head_type_params:\n"),
@@ -589,7 +606,6 @@ hlds_out__marker_name(infer_modes, "infer_modes").
 hlds_out__marker_name(inline, "inline").
 hlds_out__marker_name(no_inline, "no_inline").
 hlds_out__marker_name(dnf, "dnf").
-hlds_out__marker_name(magic, "magic").
 hlds_out__marker_name(obsolete, "obsolete").
 hlds_out__marker_name(class_method, "class_method").
 hlds_out__marker_name((impure), "impure").
@@ -598,6 +614,16 @@ hlds_out__marker_name(promised_pure, "promise_pure").
 hlds_out__marker_name(terminates, "terminates").
 hlds_out__marker_name(check_termination, "check_termination").
 hlds_out__marker_name(does_not_terminate, "does_not_terminate").
+hlds_out__marker_name(aditi, "aditi").
+hlds_out__marker_name(aditi_interface, "aditi_interface").
+hlds_out__marker_name(base_relation, "base_relation").
+hlds_out__marker_name(generate_inline, "generate_inline").
+hlds_out__marker_name(aditi_memo, "aditi_memo").
+hlds_out__marker_name(aditi_no_memo, "aditi_no_memo").
+hlds_out__marker_name(naive, "naive").
+hlds_out__marker_name(psn, "psn").
+hlds_out__marker_name(supp_magic, "supp_magic").
+hlds_out__marker_name(context, "context").
 
 hlds_out__write_marker(Marker) -->
 	{ hlds_out__marker_name(Marker, Name) },
@@ -1640,13 +1666,6 @@ hlds_out__write_conj(Goal1, Goals1, ModuleInfo, VarSet, AppendVarnums,
 		hlds_out__write_goal_a(Goal1, ModuleInfo, VarSet,
 			AppendVarnums, Indent, Follow, TypeQual)
 	).
-
-	% hlds_out__write_goal_list is used to write both disjunctions and
-	% parallel conjunctions.
-
-:- pred hlds_out__write_goal_list(list(hlds_goal), module_info, prog_varset,
-		bool, int, string, vartypes, io__state, io__state).
-:- mode hlds_out__write_goal_list(in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_goal_list(GoalList, ModuleInfo, VarSet, AppendVarnums, Indent,
 		Separator, TypeQual) -->

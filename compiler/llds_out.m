@@ -17,16 +17,18 @@
 
 :- interface.
 
-:- import_module llds, prog_data, hlds_data.
-:- import_module set_bbbtree, bool, io.
+:- import_module llds, prog_data, hlds_data, rl_file.
+:- import_module set_bbbtree, bool, io, std_util.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
 	% into one or more .c files, depending on the setting of the
 	% --split-c-files option. The second argument gives the set of
-	% labels that have layout structures.
+	% labels that have layout structures. The third gives the Aditi-RL
+	% code for the module.
 
-:- pred output_llds(c_file, set_bbbtree(label), io__state, io__state).
-:- mode output_llds(in, in, di, uo) is det.
+:- pred output_llds(c_file, set_bbbtree(label), maybe(rl_file),
+		io__state, io__state).
+:- mode output_llds(in, in, in, di, uo) is det.
 
 	% Convert an lval to a string description of that lval.
 
@@ -121,6 +123,12 @@
 :- pred llds_out__make_init_name(module_name, string).
 :- mode llds_out__make_init_name(in, out) is det.
 
+	% Returns the name of the Aditi-RL code constant
+	% for a given module.
+
+:- pred llds_out__make_rl_data_name(module_name, string).
+:- mode llds_out__make_rl_data_name(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -164,7 +172,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %-----------------------------------------------------------------------------%
 
-output_llds(C_File, StackLayoutLabels) -->
+output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo,
@@ -172,7 +180,7 @@ output_llds(C_File, StackLayoutLabels) -->
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_split_c_file_init(ModuleName, Modules, Datas,
-			StackLayoutLabels),
+			StackLayoutLabels, MaybeRLFile),
 		output_split_user_c_codes(UserCCodes, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, 1, Num1),
 		output_split_c_exports(Exports, ModuleName,
@@ -184,7 +192,8 @@ output_llds(C_File, StackLayoutLabels) -->
 		output_split_comp_gen_c_modules(Modules, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, Num4, _Num)
 	;
-		output_single_c_file(C_File, no, StackLayoutLabels)
+		output_single_c_file(C_File, no,
+			StackLayoutLabels, MaybeRLFile)
 	).
 
 :- pred output_split_user_c_codes(list(user_c_code)::in,
@@ -196,7 +205,7 @@ output_split_user_c_codes([UserCCode | UserCCodes], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[UserCCode], [], [], [], []) },
-	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
 	output_split_user_c_codes(UserCCodes, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
@@ -210,7 +219,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[], [Export], [], [], []) },
-	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
 	output_split_c_exports(Exports, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
@@ -223,7 +232,7 @@ output_split_comp_gen_c_vars([], _, _, _, Num, Num) --> [].
 output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], []) },
-	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
 	output_split_comp_gen_c_vars(Vars, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
@@ -236,7 +245,7 @@ output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
 output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], []) },
-	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
 	output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
@@ -250,16 +259,18 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[], [], [], [], [Module]) },
-	output_single_c_file(CFile, yes(Num0), StackLayoutLabels),
+	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
 	{ Num1 is Num0 + 1 },
 	output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_c_file_init(module_name, list(comp_gen_c_module),
-	list(comp_gen_c_data), set_bbbtree(label), io__state, io__state).
-:- mode output_split_c_file_init(in, in, in, in, di, uo) is det.
+	list(comp_gen_c_data), set_bbbtree(label), maybe(rl_file),
+	io__state, io__state).
+:- mode output_split_c_file_init(in, in, in, in, in, di, uo) is det.
 
-output_split_c_file_init(ModuleName, Modules, Datas, StackLayoutLabels) -->
+output_split_c_file_init(ModuleName, Modules, Datas,
+		StackLayoutLabels, MaybeRLFile) -->
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
@@ -275,16 +286,13 @@ output_split_c_file_init(ModuleName, Modules, Datas, StackLayoutLabels) -->
 			"** version ", Version, ".\n",
 			"** Do not edit.\n",
 			"*/\n"]),
-		io__write_string("/*\n"),
-		io__write_string("INIT "),
-		output_init_name(ModuleName),
-		io__write_string("\n"),
-		io__write_string("ENDINIT\n"),
-		io__write_string("*/\n\n"),
+
+		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
+		output_rl_file(ModuleName, MaybeRLFile),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -309,10 +317,10 @@ output_c_file_mercury_headers -->
 	).
 
 :- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
-	io__state, io__state).
-:- mode output_single_c_file(in, in, in, di, uo) is det.
+	maybe(rl_file), io__state, io__state).
+:- mode output_single_c_file(in, in, in, in, di, uo) is det.
 
-output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
+output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		UserCCode, Exports, Vars, Datas, Modules) },
 	( { SplitFiles = yes(Num) } ->
@@ -337,12 +345,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
-			io__write_string("/*\n"),
-			io__write_string("INIT "),
-			output_init_name(ModuleName),
-			io__write_string("\n"),
-			io__write_string("ENDINIT\n"),
-			io__write_string("*/\n\n")
+			output_init_comment(ModuleName)
 		),
 		output_c_file_mercury_headers,
 
@@ -367,6 +370,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels) -->
 			output_c_module_init_list(ModuleName, Modules, Datas,
 				StackLayoutLabels)
 		),
+		output_rl_file(ModuleName, MaybeRLFile),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -531,6 +535,28 @@ output_c_data_init_list([Data | Datas]) -->
 	),
 	output_c_data_init_list(Datas).
 
+	% Output a comment to tell mkinit what functions to
+	% call from <module>_init.c.
+:- pred output_init_comment(module_name, io__state, io__state).
+:- mode output_init_comment(in, di, uo) is det.
+
+output_init_comment(ModuleName) -->
+	io__write_string("/*\n"),
+	io__write_string("INIT "),
+	output_init_name(ModuleName),
+	io__write_string("\n"),
+	globals__io_lookup_bool_option(aditi, Aditi),
+	( { Aditi = yes } ->
+		{ llds_out__make_rl_data_name(ModuleName, RLName) },
+		io__write_string("ADITI_DATA "),
+		io__write_string(RLName),
+		io__write_string("\n")
+	;
+		[]
+	),
+	io__write_string("ENDINIT\n"),
+	io__write_string("*/\n\n").
+
 :- pred output_init_name(module_name, io__state, io__state).
 :- mode output_init_name(in, di, uo) is det.
 
@@ -542,6 +568,11 @@ llds_out__make_init_name(ModuleName, InitName) :-
 	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
 	string__append_list(["mercury__", MangledModuleName, "__init"],
 		InitName).
+
+llds_out__make_rl_data_name(ModuleName, RLDataConstName) :-
+	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+	string__append("mercury__aditi_rl_data__", MangledModuleName,
+		RLDataConstName).
 
 :- pred output_bunch_name(module_name, string, int, io__state, io__state).
 :- mode output_bunch_name(in, in, in, di, uo) is det.
@@ -2387,6 +2418,9 @@ need_code_addr_decls(do_nondet_closure, yes) --> [].
 need_code_addr_decls(do_det_class_method, yes) --> [].
 need_code_addr_decls(do_semidet_class_method, yes) --> [].
 need_code_addr_decls(do_nondet_class_method, yes) --> [].
+need_code_addr_decls(do_det_aditi_call, yes) --> [].
+need_code_addr_decls(do_semidet_aditi_call, yes) --> [].
+need_code_addr_decls(do_nondet_aditi_call, yes) --> [].
 need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
@@ -2434,6 +2468,12 @@ output_code_addr_decls(do_semidet_class_method) -->
 	io__write_string("Declare_entry(do_call_semidet_class_method);\n").
 output_code_addr_decls(do_nondet_class_method) -->
 	io__write_string("Declare_entry(do_call_nondet_class_method);\n").
+output_code_addr_decls(do_det_aditi_call) -->
+	io__write_string("Declare_entry(do_det_aditi_call);\n").
+output_code_addr_decls(do_semidet_aditi_call) -->
+	io__write_string("Declare_entry(do_semidet_aditi_call);\n").
+output_code_addr_decls(do_nondet_aditi_call) -->
+	io__write_string("Declare_entry(do_nondet_aditi_call);\n").
 output_code_addr_decls(do_not_reached) -->
 	io__write_string("Declare_entry(do_not_reached);\n").
 
@@ -2653,6 +2693,18 @@ output_goto(do_nondet_class_method, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_nondet_class_method),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
+output_goto(do_det_aditi_call, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_det_aditi_call),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_semidet_aditi_call, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_semidet_aditi_call),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
+output_goto(do_nondet_aditi_call, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(do_nondet_aditi_call),\n\t\t"),
+	output_label_as_code_addr(CallerLabel),
+	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2732,6 +2784,12 @@ output_code_addr(do_semidet_class_method) -->
 	io__write_string("ENTRY(do_call_semidet_class_method)").
 output_code_addr(do_nondet_class_method) -->
 	io__write_string("ENTRY(do_call_nondet_class_method)").
+output_code_addr(do_det_aditi_call) -->
+	io__write_string("ENTRY(do_det_aditi_call)").
+output_code_addr(do_semidet_aditi_call) -->
+	io__write_string("ENTRY(do_semidet_aditi_call)").
+output_code_addr(do_nondet_aditi_call) -->
+	io__write_string("ENTRY(do_nondet_aditi_call)").
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 
@@ -3809,6 +3867,53 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 		Labels1 = Labels0
 	),
 	gather_labels_from_instrs(Instrs, Labels1, Labels).
+
+%-----------------------------------------------------------------------------%
+
+	% Currently the `.rlo' files are stored as static data in the
+	% executable. It may be better to store them in separate files
+	% in a known location and load them at runtime.
+:- pred output_rl_file(module_name, maybe(rl_file), io__state, io__state).
+:- mode output_rl_file(in, in, di, uo) is det.
+
+output_rl_file(ModuleName, MaybeRLFile) -->
+	globals__io_lookup_bool_option(aditi, Aditi),
+	( { Aditi = no } ->
+		[]
+	;
+		io__write_string("\n\n/* Aditi-RL code for this module. */\n"),
+		{ llds_out__make_rl_data_name(ModuleName, RLDataConstName) },
+		io__write_string("const char "),
+		io__write_string(RLDataConstName),
+		io__write_string("[] = {"),
+		(
+			{ MaybeRLFile = yes(RLFile) },
+			rl_file__write_binary(output_rl_byte, RLFile, Length),
+			io__write_string("0};\n")
+		;
+			{ MaybeRLFile = no },
+			io__write_string("};\n"),
+			{ Length = 0 }
+		),
+
+		% Store the length of the data in 
+		% mercury__aditi_rl_data__<module>__length.
+
+		{ string__append(RLDataConstName, "__length",
+			RLDataConstLength) },
+		io__write_string("const int "),
+		io__write_string(RLDataConstLength),
+		io__write_string(" = "),
+		io__write_int(Length),
+		io__write_string(";\n\n")
+	).
+
+:- pred output_rl_byte(int, io__state, io__state).
+:- mode output_rl_byte(in, di, uo) is det.
+
+output_rl_byte(Byte) -->
+	io__write_int(Byte),
+	io__write_string(", ").
 
 %-----------------------------------------------------------------------------%
 

@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, hlds_pred, term_util, term_errors.
+:- import_module prog_io, prog_io_goal, hlds_pred, term_util, term_errors, rl.
 :- import_module int, map, string, std_util, bool, require.
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
@@ -494,42 +494,143 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
 	(
 	    PragmaTerms = [PredAndArityTerm, FileNameTerm]
 	->
+	    parse_pred_name_and_arity(ModuleName, "fact_table",
+	    	PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
-		PredAndArityTerm = term__functor(term__atom("/"), 
-			[PredNameTerm, ArityTerm], _)
-	    ->
-	    	(
-		    parse_implicitly_qualified_term(ModuleName,
-		    	    PredNameTerm, PredAndArityTerm,
-			    "pragma fact_table declaration", ok(PredName, [])),
-		    ArityTerm = term__functor(term__integer(Arity), [], _)
+		NameArityResult = ok(PredName, Arity),
+		(
+		    FileNameTerm = term__functor(term__string(FileName), [], _)
 		->
-		    (
-			FileNameTerm = 
-				term__functor(term__string(FileName), [], _)
-		    ->
-			Result = ok(pragma(fact_table(PredName, Arity, 
-				FileName)))
-		    ;
-			Result = error(
-			    "expected string for fact table filename",
-			    FileNameTerm)
-		    )
+		    Result = ok(pragma(fact_table(PredName, Arity, FileName)))
 		;
-		    Result = error(
-		    "expected predname/arity for `pragma fact_table(..., ...)'",
-		    	PredAndArityTerm)
+		    Result = error("expected string for fact table filename",
+			    FileNameTerm)
 		)
 	    ;
-		Result = error(
-		    "expected predname/arity for `pragma fact_table(..., ...)'",
-		    PredAndArityTerm)
+		NameArityResult = error(ErrorMsg, _),
+		Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
 	    Result = 
 		error(
 	"wrong number of arguments in pragma fact_table(..., ...) declaration",
 		ErrorTerm)
+	).
+
+parse_pragma_type(ModuleName, "aditi", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "base_relation", PragmaTerms, 
+		ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "base_relation",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = base_relation(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_index", PragmaTerms,
+		ErrorTerm, _, Result) :-
+	( PragmaTerms = [PredNameArityTerm, IndexTypeTerm, AttributesTerm] ->
+	    parse_pred_name_and_arity(ModuleName, "aditi_index",
+	    	PredNameArityTerm, ErrorTerm, NameArityResult),
+	    (
+	        NameArityResult = ok(PredName, PredArity),
+		(
+		    IndexTypeTerm = term__functor(term__atom(IndexTypeStr),
+		    		[], _),
+		    (
+			IndexTypeStr = "unique_B_tree",
+			IndexType = unique_B_tree
+		    ;
+			IndexTypeStr = "non_unique_B_tree",
+		    	IndexType = non_unique_B_tree
+		    )
+		->
+		    convert_int_list(AttributesTerm, AttributeResult),
+		    (
+			AttributeResult = ok(Attributes),
+			Result = ok(pragma(aditi_index(PredName, PredArity,
+			    		index_spec(IndexType, Attributes))))
+		    ;
+			AttributeResult = error(_, AttrErrorTerm),
+			Result = error(
+	"expected attribute list for `:- pragma aditi_index(...)' declaration", 
+				AttrErrorTerm)	
+		    )
+	    	;
+		    Result = error(
+	"expected index type for `:- pragma aditi_index(...)' declaration",
+	    			IndexTypeTerm)	
+	        )
+	    ;
+		NameArityResult = error(NameErrorMsg, NameErrorTerm),
+		Result = error(NameErrorMsg, NameErrorTerm)
+	    )
+	;
+	    Result = error(
+"wrong number of arguments in pragma aditi_index(..., ..., ...) declaration",
+		ErrorTerm)
+	).
+
+parse_pragma_type(ModuleName, "naive", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "naive",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = naive(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "psn", PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "psn",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = psn(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_memo",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi_memo",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi_memo(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "aditi_no_memo",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "aditi_no_memo",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = aditi_no_memo(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "supp_magic", 
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "supp_magic",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = supp_magic(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "context", 
+		PragmaTerms, ErrorTerm, _, Result) :-
+	parse_simple_pragma(ModuleName, "context",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = context(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "owner",
+		PragmaTerms, ErrorTerm, _, Result) :-
+	( PragmaTerms = [SymNameAndArityTerm, OwnerTerm] ->
+	    ( OwnerTerm = term__functor(term__atom(Owner), [], _) ->
+		parse_simple_pragma(ModuleName, "owner",
+			lambda([Name::in, Arity::in, Pragma::out] is det,
+				Pragma = owner(Name, Arity, Owner)),
+			[SymNameAndArityTerm], ErrorTerm, Result)
+	    ;
+	        string__append_list(["expected owner name for
+			`pragma owner(...)' declaration"], ErrorMsg),
+	        Result = error(ErrorMsg, OwnerTerm)
+	    )
+	;
+	    string__append_list(["wrong number of arguments in
+	    	`pragma owner(...)' declaration"], ErrorMsg),
+	    Result = error(ErrorMsg, ErrorTerm)
 	).
 
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm,
@@ -645,29 +746,15 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 
 parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 				PragmaTerms, ErrorTerm, Result) :-
-       (
-            PragmaTerms = [PredAndArityTerm]
-       ->
+	( PragmaTerms = [PredAndArityTerm] ->
+	    parse_pred_name_and_arity(ModuleName, PragmaType,
+		PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
-                PredAndArityTerm = term__functor(term__atom("/"), 
-	    		[PredNameTerm, ArityTerm], _)
-	    ->
-		(
-		    parse_implicitly_qualified_term(ModuleName,
-		    	PredNameTerm, ErrorTerm, "", ok(PredName, [])),
-		    ArityTerm = term__functor(term__integer(Arity), [], _)
-		->
-		    call(MakePragma, PredName, Arity, Pragma),
-		    Result = ok(pragma(Pragma))
-		;
-		    string__append_list(
-			["expected predname/arity for `pragma ",
-			 PragmaType, "(...)' declaration"], ErrorMsg),
-	    	    Result = error(ErrorMsg, PredAndArityTerm)
-		)
+	    	NameArityResult = ok(PredName, Arity),
+		call(MakePragma, PredName, Arity, Pragma),
+		Result = ok(pragma(Pragma))
 	    ;
-	        string__append_list(["expected predname/arity for `pragma ",
-			 PragmaType, "(...)' declaration"], ErrorMsg),
+		NameArityResult = error(ErrorMsg, _),
 	        Result = error(ErrorMsg, PredAndArityTerm)
 	    )
 	;
@@ -675,6 +762,34 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 		 PragmaType, "(...)' declaration"], ErrorMsg),
 	    Result = error(ErrorMsg, ErrorTerm)
        ).
+
+:- pred parse_pred_name_and_arity(module_name, string, term, term,
+		maybe2(sym_name, arity)).
+:- mode parse_pred_name_and_arity(in, in, in, in, out) is det.
+
+parse_pred_name_and_arity(ModuleName, PragmaType, PredAndArityTerm,
+		ErrorTerm, Result) :-
+    (
+	PredAndArityTerm = term__functor(term__atom("/"), 
+		[PredNameTerm, ArityTerm], _)
+    ->
+	(
+	    parse_implicitly_qualified_term(ModuleName,
+		PredNameTerm, ErrorTerm, "", ok(PredName, [])),
+	    ArityTerm = term__functor(term__integer(Arity), [], _)
+	->
+	    Result = ok(PredName, Arity)
+	;
+	    string__append_list(
+		["expected predname/arity for `pragma ",
+		 PragmaType, "(...)' declaration"], ErrorMsg),
+	    Result = error(ErrorMsg, PredAndArityTerm)
+	)
+    ;
+	string__append_list(["expected predname/arity for `pragma ",
+		 PragmaType, "(...)' declaration"], ErrorMsg),
+	Result = error(ErrorMsg, PredAndArityTerm)
+    ).
 
 %-----------------------------------------------------------------------------%
 

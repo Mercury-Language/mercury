@@ -60,6 +60,10 @@
 :- pred prog_out__write_module_list(list(module_name), io__state, io__state).
 :- mode prog_out__write_module_list(in, di, uo) is det.
 
+:- pred prog_out__write_list(list(T), pred(T, io__state, io__state),
+		io__state, io__state).
+:- mode prog_out__write_list(in, pred(in, di, uo) is det, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -210,22 +214,27 @@ prog_out__write_module_spec(ModuleSpec) -->
 
 %-----------------------------------------------------------------------------%
 
-prog_out__write_module_list([Import1, Import2, Import3 | Imports]) --> 
+prog_out__write_module_list(Modules) -->
+	prog_out__write_list(Modules, write_module).
+
+:- pred write_module(module_name::in, io__state::di, io__state::uo) is det.
+
+write_module(Module) -->
 	io__write_string("`"),
-	prog_out__write_sym_name(Import1),
-	io__write_string("', "),
-	write_module_list([Import2, Import3 | Imports]).
-prog_out__write_module_list([Import1, Import2]) -->
-	io__write_string("`"),
-	prog_out__write_sym_name(Import1),
-	io__write_string("' and `"),
-	prog_out__write_sym_name(Import2),
+	prog_out__write_sym_name(Module),
 	io__write_string("'").
-prog_out__write_module_list([Import]) -->
-	io__write_string("`"),
-	prog_out__write_sym_name(Import),
-	io__write_string("'").
-prog_out__write_module_list([]) -->
+
+prog_out__write_list([Import1, Import2, Import3 | Imports], Writer) --> 
+	call(Writer, Import1),
+	io__write_string(", "),
+	prog_out__write_list([Import2, Import3 | Imports], Writer).
+prog_out__write_list([Import1, Import2], Writer) -->
+	call(Writer, Import1),
+	io__write_string(" and "),
+	call(Writer, Import2).
+prog_out__write_list([Import], Writer) -->
+	call(Writer, Import).
+prog_out__write_list([], _) -->
 	{ error("prog_out__write_module_list") }.
 
 %-----------------------------------------------------------------------------%

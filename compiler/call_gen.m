@@ -114,7 +114,27 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 
 		% Make the call.
 	code_info__get_module_info(ModuleInfo),
-	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
+
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_get_markers(PredInfo, Markers) },
+	( { check_marker(Markers, aditi_interface) } ->
+		% For a call to an Aditi procedure, just pass all the
+		% arguments to do_*_aditi_call, which is defined in
+		% extras/aditi/aditi.m.
+		{
+			CodeModel = model_det,
+			Address = do_det_aditi_call
+		;
+			CodeModel = model_semi,
+			Address = do_semidet_aditi_call
+		;
+			CodeModel = model_non,
+			Address = do_nondet_aditi_call
+		}
+	;
+		code_info__make_entry_label(ModuleInfo,
+			PredId, ModeId, yes, Address)
+	),
 	code_info__get_next_label(ReturnLabel),
 	{ call_gen__call_comment(CodeModel, CallComment) },
 	{ CallCode = node([

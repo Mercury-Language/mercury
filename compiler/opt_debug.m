@@ -767,6 +767,9 @@ opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
 opt_debug__dump_code_addr(do_det_class_method, "do_det_class_method").
 opt_debug__dump_code_addr(do_semidet_class_method, "do_semidet_class_method").
 opt_debug__dump_code_addr(do_nondet_class_method, "do_nondet_class_method").
+opt_debug__dump_code_addr(do_det_aditi_call, "do_det_aditi_call").
+opt_debug__dump_code_addr(do_semidet_aditi_call, "do_semidet_aditi_call").
+opt_debug__dump_code_addr(do_nondet_aditi_call, "do_nondet_aditi_call").
 opt_debug__dump_code_addr(do_not_reached, "do_not_reached").
 
 opt_debug__dump_code_addrs([], "").

@@ -61,6 +61,8 @@
 	% Do the stuff needed to initialize the proc_infos so that
 	% a pred is ready for mode checking (copy clauses from the
 	% clause_info to the proc_info, etc.)
+	% Also check that all predicates with an `aditi' marker have
+	% an `aditi:state' argument.
 	%
 :- pred post_typecheck__finish_pred(module_info, pred_id, pred_info, pred_info,
 		io__state, io__state).
@@ -78,10 +80,10 @@
 :- implementation.
 
 :- import_module typecheck, clause_to_proc, mode_util, inst_match.
-:- import_module mercury_to_mercury, prog_out, hlds_out, term.
+:- import_module mercury_to_mercury, prog_out, hlds_out, type_util.
 :- import_module globals, options.
 
-:- import_module map, set, assoc_list, bool, std_util.
+:- import_module map, set, assoc_list, bool, std_util, term.
 
 %-----------------------------------------------------------------------------%
 %			Check for unbound type variables
@@ -114,13 +116,13 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, PredInfo, ModuleInfo,
 			[], Errs, Set0, Set),
 	( Errs = [] ->
 		PredInfo = PredInfo0,
-		IOState = IOState1
+		IOState2 = IOState1
 	;
 		%
 		% report the warning
 		%
 		report_unresolved_type_warning(Errs, PredId, PredInfo0,
-				ModuleInfo, VarSet, IOState1, IOState),
+				ModuleInfo, VarSet, IOState1, IOState2),
 
 		%
 		% bind all the type variables in `Set' to `void' ...
@@ -129,6 +131,27 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, PredInfo, ModuleInfo,
 		bind_type_vars_to_void(Set, Context, VarTypesMap0, VarTypesMap),
 		ClausesInfo = clauses_info(VarSet, B, VarTypesMap, HeadVars, E),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
+	),
+
+	%
+	% Check that all Aditi predicates have an `aditi__state' argument.
+	% This must be done after typechecking because of type inference --
+	% the types of some Aditi predicates may not be known before.
+	%
+	pred_info_get_markers(PredInfo, Markers),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	( check_marker(Markers, aditi) ->
+		list__filter(type_is_aditi_state, ArgTypes, AditiStateTypes),
+		( AditiStateTypes = [] ->
+			report_no_aditi_state(PredInfo, IOState2, IOState)
+		; AditiStateTypes = [_, _ | _] ->
+			report_multiple_aditi_states(PredInfo,
+				IOState2, IOState)
+		;
+			IOState = IOState2
+		)
+	;
+		IOState = IOState2
 	).
 
 :- pred check_type_bindings_2(assoc_list(prog_var, (type)), list(tvar),
@@ -342,6 +365,7 @@ post_typecheck__propagate_types_into_modes(ModuleInfo, PredId, PredInfo0,
 	{ pred_info_arg_types(PredInfo0, ArgTypes) },
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ pred_info_procids(PredInfo0, ProcIds) },
+
 	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds, ArgTypes,
 			Procs0, Procs),
 	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }.
@@ -393,5 +417,43 @@ unbound_inst_var_error(PredId, ProcInfo, ModuleInfo) -->
 	io__write_string("  error: unbound inst variable(s).\n"),
 	prog_out__write_context(Context),
 	io__write_string("  (Sorry, polymorphic modes are not supported.)\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_no_aditi_state(pred_info, io__state, io__state).
+:- mode report_no_aditi_state(in, di, uo) is det.
+
+report_no_aditi_state(PredInfo) -->
+	io__set_exit_status(1),
+	{ pred_info_context(PredInfo, Context) },
+	prog_out__write_context(Context),
+	{ pred_info_module(PredInfo, Module) },
+	{ pred_info_name(PredInfo, Name) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	io__write_string("Error: `:- pragma aditi' declaration for "),
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(" "),
+	hlds_out__write_pred_call_id(qualified(Module, Name)/Arity),
+	io__write_string("  without an `aditi:state' argument.\n").
+
+:- pred report_multiple_aditi_states(pred_info, io__state, io__state).
+:- mode report_multiple_aditi_states(in, di, uo) is det.
+
+report_multiple_aditi_states(PredInfo) -->
+	io__set_exit_status(1),
+	{ pred_info_context(PredInfo, Context) },
+	prog_out__write_context(Context),
+	{ pred_info_module(PredInfo, Module) },
+	{ pred_info_name(PredInfo, Name) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	io__write_string("Error: `:- pragma aditi' declaration for "),
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(" "),
+	hlds_out__write_pred_call_id(qualified(Module, Name)/Arity),
+	io__nl,
+	prog_out__write_context(Context),
+	io__write_string("  with multiple `aditi:state' arguments.\n").
 
 %-----------------------------------------------------------------------------%

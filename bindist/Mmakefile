@@ -90,6 +90,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	fi
 	cp -r ../samples $(MERCURY_VERSION)/samples
 	cp -r ../extras $(MERCURY_VERSION)/extras
+	# Aditi isn't ready for distribution yet.
+	rm -rf $(MERCURY_VERSION)/extras/aditi
 	if [ -d ../tests ]; then					\
 		cp -r ../tests $(MERCURY_VERSION)/tests;		\
 	else								\

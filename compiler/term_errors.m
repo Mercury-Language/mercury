@@ -145,16 +145,13 @@ term_errors__report_term_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
 		{ Pieces0 = [words("Termination of")] },
-		{ term_errors__describe_one_proc_name(PPId, Module, PredName) },
+		{ error_util__describe_one_proc_name(Module, PPId, PredName) },
 		{ list__append(Pieces0, [fixed(PredName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
 		{ Pieces0 = [words("Termination of the mutually recursive procedures")] },
-		{ term_errors__describe_several_proc_names(SCC, Module, Context,
-			ProcNames) },
-		{ list__map(lambda([PN::in, FPN::out] is det,
-			(FPN = fixed(PN))),
-			ProcNames, ProcNamePieces) },
+		{ error_util__describe_several_proc_names(Module, SCC,
+			ProcNamePieces) },
 		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
@@ -188,17 +185,14 @@ term_errors__report_arg_size_errors(SCC, Errors, Module) -->
 	{ get_context_from_scc(SCC, Module, Context) },
 	( { SCC = [PPId] } ->
 		{ Pieces0 = [words("Termination constant of")] },
-		{ term_errors__describe_one_proc_name(PPId, Module, ProcName) },
+		{ error_util__describe_one_proc_name(Module, PPId, ProcName) },
 		{ list__append(Pieces0, [fixed(ProcName)], Pieces1) },
 		{ Single = yes(PPId) }
 	;
 		{ Pieces0 = [words("Termination constants"),
 			words("of the mutually recursive procedures")] },
-		{ term_errors__describe_several_proc_names(SCC, Module,
-			Context, ProcNames) },
-		{ list__map(lambda([PN::in, FPN::out] is det,
-			(FPN = fixed(PN))),
-			ProcNames, ProcNamePieces) },
+		{ error_util__describe_several_proc_names(Module, SCC,
+			ProcNamePieces) },
 		{ list__append(Pieces0, ProcNamePieces, Pieces1) },
 		{ Single = no }
 	),
@@ -280,12 +274,12 @@ term_errors__description(inf_call(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module,
+		error_util__describe_one_proc_name(Module, CallerPPId,
 			ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("with an unbounded increase"),
 		words("in the size of the input arguments.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
@@ -298,12 +292,12 @@ term_errors__description(can_loop_proc_called(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module,
+		error_util__describe_one_proc_name(Module, CallerPPId,
 			ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("which could not be proven to terminate.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -320,12 +314,12 @@ term_errors__description(horder_args(CallerPPId, CalleePPId), Single, Module,
 		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module,
+		error_util__describe_one_proc_name(Module, CallerPPId,
 			ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("with one or more higher order arguments.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -337,12 +331,12 @@ term_errors__description(inf_termination_const(CallerPPId, CalleePPId),
 		Piece1 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(CallerPPId, Module,
+		error_util__describe_one_proc_name(Module, CallerPPId,
 			ProcName),
 		Piece1 = fixed(ProcName)
 	),
 	Piece2 = words("calls"),
-	term_errors__describe_one_proc_name(CalleePPId, Module, CalleePiece),
+	error_util__describe_one_proc_name(Module, CalleePPId, CalleePiece),
 	Pieces3 = [words("which has a termination constant of infinity.")],
 	Pieces = [Piece1, Piece2, fixed(CalleePiece) | Pieces3].
 
@@ -356,7 +350,7 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		;
 			% XXX this should never happen (but it does)
 			% error("not_subset outside this SCC"),
-			term_errors__describe_one_proc_name(ProcPPId, Module,
+			error_util__describe_one_proc_name(Module, ProcPPId,
 				PPIdPiece),
 			Pieces1 = [words("The set of"),
 				words("output supplier variables of"),
@@ -364,7 +358,7 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 		)
 	;
 		Single = no,
-		term_errors__describe_one_proc_name(ProcPPId, Module,
+		error_util__describe_one_proc_name(Module, ProcPPId,
 			PPIdPiece),
 		Pieces1 = [words("The set of output supplier variables of"),
 			fixed(PPIdPiece)]
@@ -385,7 +379,7 @@ term_errors__description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
 
 term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	( CallSites = [DirectCall] ->
-		term_errors__describe_one_call_site(DirectCall, Module, Site),
+		error_util__describe_one_call_site(Module, DirectCall, Site),
 		Pieces = [words("At the recursive call to"),
 			fixed(Site),
 			words("the arguments are"),
@@ -393,10 +387,8 @@ term_errors__description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
 	;
 		Pieces1 = [words("In the recursive cycle"),
 			words("through the calls to")],
-		term_errors__describe_several_call_sites(CallSites, Module,
-			Sites),
-		list__map(lambda([S::in, FS::out] is det, (FS = fixed(S))),
-			Sites, SitePieces),
+		error_util__describe_several_call_sites(Module, CallSites,
+			SitePieces),
 		Pieces2 = [words("the arguments are"),
 			words("not guaranteed to decrease in size.")],
 		list__condense([Pieces1, SitePieces, Pieces2], Pieces)
@@ -428,7 +420,7 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		Piece2 = words("It")
 	;
 		Single = no,
-		term_errors__describe_one_pred_name(PredId, Module,
+		error_util__describe_one_pred_name(Module, PredId,
 			Piece2Nodot),
 		string__append(Piece2Nodot, ".", Piece2Str),
 		Piece2 = fixed(Piece2Str)
@@ -474,105 +466,4 @@ term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
 	).
 
 %----------------------------------------------------------------------------%
-
-:- pred term_errors__describe_one_pred_name(pred_id::in, module_info::in,
-	string::out) is det.
-
-	% The code of this predicate duplicates the functionality of
-	% hlds_out__write_pred_id. Changes here should be made there as well.
-
-term_errors__describe_one_pred_name(PredId, Module, Piece) :-
-	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_module(PredInfo, ModuleName),
-	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, Arity),
-	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	(
-		PredOrFunc = predicate,
-		PredOrFuncPart = "predicate ",
-		OrigArity = Arity
-	;
-		PredOrFunc = function,
-		PredOrFuncPart = "function ",
-		OrigArity is Arity - 1
-	),
-	string__int_to_string(OrigArity, ArityPart),
-	string__append_list([
-		PredOrFuncPart,
-		ModuleNameString,
-		":",
-		PredName,
-		"/",
-		ArityPart
-		], Piece).
-
-:- pred term_errors__describe_one_proc_name(pred_proc_id::in, module_info::in,
-	string::out) is det.
-
-term_errors__describe_one_proc_name(proc(PredId, ProcId), Module, Piece) :-
-	term_errors__describe_one_pred_name(PredId, Module, PredPiece),
-	proc_id_to_int(ProcId, ProcIdInt),
-	string__int_to_string(ProcIdInt, ProcIdPart),
-	string__append_list([
-		PredPiece,
-		" mode ",
-		ProcIdPart
-		], Piece).
-
-:- pred term_errors__describe_several_proc_names(list(pred_proc_id)::in,
-	module_info::in, prog_context::in, list(string)::out) is det.
-
-term_errors__describe_several_proc_names([], _, _, []).
-term_errors__describe_several_proc_names([PPId | PPIds], Module,
-		Context, Pieces) :-
-	term_errors__describe_one_proc_name(PPId, Module, Piece0),
-	( PPIds = [] ->
-		Pieces = [Piece0]
-	; PPIds = [LastPPId] ->
-		term_errors__describe_one_proc_name(LastPPId, Module,
-			LastPiece),
-		Pieces = [Piece0, "and", LastPiece]
-	;
-		string__append(Piece0, ",", Piece),
-		term_errors__describe_several_proc_names(PPIds, Module,
-			Context, Pieces1),
-		Pieces = [Piece | Pieces1]
-	).
-
-:- pred term_errors__describe_one_call_site(pair(pred_proc_id,
-	prog_context)::in, module_info::in, string::out) is det.
-
-term_errors__describe_one_call_site(PPId - Context, Module, Piece) :-
-	term_errors__describe_one_proc_name(PPId, Module, ProcName),
-	term__context_file(Context, FileName),
-	term__context_line(Context, LineNumber),
-	string__int_to_string(LineNumber, LineNumberPart),
-	string__append_list([
-		ProcName,
-		" at ",
-		FileName,
-		":",
-		LineNumberPart
-		], Piece).
-
-:- pred term_errors__describe_several_call_sites(assoc_list(pred_proc_id,
-	prog_context)::in, module_info::in, list(string)::out) is det.
-
-term_errors__describe_several_call_sites([], _, []).
-term_errors__describe_several_call_sites([Site | Sites], Module, Pieces) :-
-	term_errors__describe_one_call_site(Site, Module, Piece0),
-	( Sites = [] ->
-		Pieces = [Piece0]
-	; Sites = [LastSite] ->
-		term_errors__describe_one_call_site(LastSite, Module,
-			LastPiece),
-		Pieces = [Piece0, "and", LastPiece]
-	;
-		string__append(Piece0, ",", Piece),
-		term_errors__describe_several_call_sites(Sites, Module,
-			Pieces1),
-		Pieces = [Piece | Pieces1]
-	).
-
 %----------------------------------------------------------------------------%

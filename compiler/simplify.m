@@ -40,6 +40,10 @@
 	module_info, module_info, proc_info, proc_info, io__state, io__state).
 :- mode simplify__proc(in, in, in, in, out, in, out, di, uo) is det.
 
+:- pred simplify__proc_2(list(simplification), pred_id, proc_id, module_info,
+		module_info, proc_info, proc_info, set(det_msg)).
+:- mode simplify__proc_2(in, in, in, in, out, in, out, out) is det.
+
 :- pred simplify__process_goal(hlds_goal, hlds_goal,
 		simplify_info, simplify_info).
 :- mode simplify__process_goal(in, out, in, out) is det.
@@ -93,8 +97,8 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 	;
 		Simplifications = Simplifications0
 	},
-	simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo0,
-		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs),
+	{ simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo0,
+		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) },
 	( { MaybeMsgs = yes(Msgs0 - Msgs1) } ->
 		{ set__union(Msgs0, Msgs1, Msgs2) },
 		{ set__to_sorted_list(Msgs2, Msgs) },
@@ -106,53 +110,45 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 
 :- pred simplify__procs(list(simplification), pred_id, list(proc_id),
 		module_info, module_info, pred_info, pred_info,
-		maybe(pair(set(det_msg))), maybe(pair(set(det_msg))),
-		io__state, io__state).
+		maybe(pair(set(det_msg))), maybe(pair(set(det_msg)))).
 :- mode simplify__procs(in, in, in, in, out, in, out,
-		in, out, di, uo) is det.
+		in, out) is det.
 
 simplify__procs(_, _, [], ModuleInfo, ModuleInfo, PredInfo, PredInfo,
-		Msgs, Msgs) --> [].
+		Msgs, Msgs). 
 simplify__procs(Simplifications, PredId, [ProcId | ProcIds], ModuleInfo0,
-		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) -->
-	{ pred_info_procedures(PredInfo0, Procs0) },
-	{ map__lookup(Procs0, ProcId, Proc0) },	
+		ModuleInfo, PredInfo0, PredInfo, MaybeMsgs0, MaybeMsgs) :-
+	pred_info_procedures(PredInfo0, Procs0),
+	map__lookup(Procs0, ProcId, Proc0),
 	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
-			ModuleInfo1, Proc0, Proc, Msgs1),
-	{ map__det_update(Procs0, ProcId, Proc, Procs) },
-	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo1) },
-	{ set__to_sorted_list(Msgs1, Msgs2) },
-	{ list__filter(lambda([Msg::in] is semidet,
+		ModuleInfo1, Proc0, Proc, Msgs1),
+	map__det_update(Procs0, ProcId, Proc, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo1),
+	set__to_sorted_list(Msgs1, Msgs2),
+	list__filter(lambda([Msg::in] is semidet,
 		det_msg_is_any_mode_msg(Msg, any_mode)),
-		Msgs2, AnyModeMsgs1, AllModeMsgs1) },
-	{ set__sorted_list_to_set(AnyModeMsgs1, AnyModeMsgs2) },
-	{ set__sorted_list_to_set(AllModeMsgs1, AllModeMsgs2) },
-	{ MaybeMsgs0 = yes(AnyModeMsgs0 - AllModeMsgs0) ->
+		Msgs2, AnyModeMsgs1, AllModeMsgs1),
+	set__sorted_list_to_set(AnyModeMsgs1, AnyModeMsgs2),
+	set__sorted_list_to_set(AllModeMsgs1, AllModeMsgs2),
+	( MaybeMsgs0 = yes(AnyModeMsgs0 - AllModeMsgs0) ->
 		set__union(AnyModeMsgs0, AnyModeMsgs2, AnyModeMsgs),
 		set__intersect(AllModeMsgs0, AllModeMsgs2, AllModeMsgs),
 		MaybeMsgs1 = yes(AllModeMsgs - AnyModeMsgs)
 	;
 		MaybeMsgs1 = yes(AnyModeMsgs2 - AllModeMsgs2)
-	},
+	),
 	simplify__procs(Simplifications, PredId, ProcIds, ModuleInfo1, 
 		ModuleInfo, PredInfo1, PredInfo, MaybeMsgs1, MaybeMsgs).
 
 simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		Proc0, Proc)  -->
 	write_pred_progress_message("% Simplifying ", PredId, ModuleInfo0),
-	simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
-			ModuleInfo, Proc0, Proc, _).
-
-:- pred simplify__proc_2(list(simplification), pred_id, proc_id, module_info,
-		module_info, proc_info, proc_info, set(det_msg),
-		io__state, io__state).
-:- mode simplify__proc_2(in, in, in, in, out, in, out, 
-		out, di, uo) is det.
+	{ simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0,
+			ModuleInfo, Proc0, Proc, _) }.
 
 simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
-		ProcInfo0, ProcInfo, Msgs, State0, State) :-
-
-	globals__io_get_globals(Globals, State0, State),
+		ProcInfo0, ProcInfo, Msgs) :-
+	module_info_globals(ModuleInfo0, Globals),
 	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
@@ -668,7 +664,7 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		%
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
-			_PredInfo1, ProcInfo1),
+			PredInfo1, ProcInfo1),
 		proc_info_headvars(ProcInfo1, HeadVars),
 		proc_info_argmodes(ProcInfo1, ArgModes),
 		simplify_info_get_common_info(Info1, CommonInfo1),
@@ -680,7 +676,10 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		% should always terminate if they have a finite number
 		% of answers. 
 		%
-		\+ proc_info_eval_method(ProcInfo, eval_minimal)	
+		\+ proc_info_eval_method(ProcInfo, eval_minimal),
+
+		% Don't warn about Aditi relations.
+		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
 	->	
 		goal_info_get_context(GoalInfo0, Context2),
 		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),

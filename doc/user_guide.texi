@@ -12,6 +12,9 @@ END-INFO-DIR-ENTRY
 @end ifinfo
 @end ignore
 
+@c Uncomment the line below to enable documentation of the Aditi interface.
+@c @set aditi
+
 @c @smallbook
 @c @cropmarks
 @finalout
@@ -86,6 +89,13 @@ how to build and debug Mercury programs.
 * Environment::     Environment variables used by the compiler and utilities
 * C compilers::     How to use a C compiler other than GNU C
 * Using Prolog::    Building and debugging Mercury programs with Prolog
+@ifset aditi 
+* Using Aditi::     Executing Mercury predicates using the Aditi
+                    deductive database
+@end ifset 
+@c XXX I'd like to put the Aditi section below the Using libraries section
+@c in the menu but texinfo doesn't seem to like `@ifset's in menus.
+@c (complains about the next entry not having an `Up' node)
 @end menu
 @end ifinfo
 
@@ -161,6 +171,11 @@ As usual, @file{.c} files are C source code,
 @file{.ql} files are SICStus Prolog object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
+
+@ifset aditi
+Files ending in @file{.rlo} are Aditi-RL bytecode files, which are
+executed by the Aditi deductive database system (@pxref{Using Aditi}).
+@end ifset
 
 @node Using mmc
 @chapter Using the Mercury compiler
@@ -447,6 +462,9 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @samp{.int3}, @samp{.opt}, @samp{.trans_opt},
 @samp{.date}, @samp{.date0}, @samp{.date3}, @samp{.optdate},
 @samp{.trans_opt_date},
+@ifset aditi
+@samp{.rlo},
+@end ifset
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}},
@@ -1802,6 +1820,38 @@ Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
 End-of-file on the debugger's input is considered a quit command.
 @end table
 
+@ifset aditi
+@node Using Aditi
+@chapter Using Aditi
+
+The Mercury compiler allows compilation of predicates for execution
+using the Aditi deductive database. There are several sources of useful
+information:
+
+@itemize @bullet
+@item
+the ``Aditi deductive database interface'' section in 
+Mercury Language Reference Manual (listed under
+``Implementation dependent pragmas'' in the ``Pragmas'' chapter)
+@item
+the Aditi Reference Manual (doesn't exist yet) @c XXX
+@item
+the file @file{extras/aditi/aditi.m} in the @samp{mercury-extras} distribution
+@end itemize
+
+As an alternative to compiling stand-alone programs, you can execute
+queries using the Aditi query shell.
+@c XXX reference.
+
+To compile code which accesses an Aditi database, you will need to install
+the Aditi library in the @samp{extras/aditi} subdirectory of the
+@samp{mercury-extras} distribution. Once you have done that, use the
+Mmakefile in @samp{extras/aditi/samples} as a template, changing the values
+of the variables @samp{MADITI_DIR}, @samp{ADITI_API_INCL_DIR} and
+@samp{ADITI_API_LIB_DIR}. You should then be able to compile as
+normal using Mmake (@pxref{Using Mmake}).
+@end ifset
+
 @node Profiling
 @chapter Profiling
 
@@ -2294,6 +2344,24 @@ Output detailed debugging traces of the optimization process.
 Output detailed debugging traces of the value numbering optimization pass.
 The different bits in the number argument of this option control the
 printing of different types of tracing messages.
+
+@sp 1
+@item --debug-pd
+Output detailed debugging traces of the partial
+deduction and deforestation process.
+
+@ifset aditi
+@sp 1
+@item --debug-rl-gen
+Output detailed debugging traces of Aditi-RL code generation
+(@pxref{Using Aditi}).
+
+@sp 1
+@item --debug-rl-opt
+Output detailed debugging traces of Aditi-RL optimization
+(@pxref{Using Aditi}).
+@end ifset
+@c aditi
 @end table
 
 @node Output options
@@ -2397,6 +2465,14 @@ Generate C code in @file{@var{module}.c}, but not object code.
 Generate C code in @file{@var{module}.c}
 and object code in @file{@var{module}.o}
 but do not attempt to link the named modules.
+
+@ifset aditi
+@sp 1
+@item --aditi-only
+Write Aditi-RL bytecode to @file{@var{module}.rlo} and do not compile to C
+(@pxref{Using Aditi}).
+@end ifset
+@c aditi
 
 @sp 1
 @item --output-grade-string
@@ -2526,6 +2602,30 @@ M - mode and inst information,
 P - path information,
 T - type and typeclass information,
 U - unify predicates.
+
+@ifset aditi
+@sp 1
+@item --dump-rl
+Output a human readable form of the internal compiler representation
+of the generated Aditi-RL code to @file{@var{module}.rl_dump}
+(@pxref{Using Aditi}).
+
+@sp 1
+@item --dump-rl-bytecode
+Output a human readable representation of the generated Aditi-RL
+bytecodes @file{@var{module}.rla}. Aditi-RL bytecodes are directly
+executed by the Aditi system (@pxref{Using Aditi}).
+
+@sp 1
+@item --generate-schemas
+Output schema strings for Aditi base relations to
+@file{@var{module}.base_schema} and for Aditi derived
+relations to @file{@var{module}.derived_schema}. A schema
+string is a representation of the types of the attributes
+of a relation (@pxref{Using Aditi}).
+
+@end ifset
+@c aditi
 
 @end table
 
@@ -2989,6 +3089,9 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
 * Object-level (C -> object code) optimization options::
+@ifset aditi
+* Aditi-RL optimization options::
+@end ifset
 @end menu
 
 @node Overall optimization options
@@ -3372,6 +3475,38 @@ but may significantly increase code size.
 This option has no effect if @samp{--gc conservative}
 is not set or if the C compiler is not GNU C.
 
+@ifset aditi
+@node Aditi-RL optimization options
+@subsection Aditi-RL optimization options
+
+These optimizations are applied to the Aditi-RL code produced
+for predicates with @samp{:- pragma aditi(@dots{})} declarations
+(@pxref{Using Aditi}).
+
+@table @code
+@item --optimize-rl
+Enable the optimizations of Aditi-RL procedures described below.
+
+@sp 1
+@item --optimize-rl-cse
+Optimize common subexpressions in Aditi-RL procedures.
+
+@sp 1
+@item --optimize-rl-invariants
+Optimize loop invariants in Aditi-RL procedures.
+
+@sp 1
+@item --optimize-rl-index
+Use indexing to optimize access to relations in Aditi-RL procedures.
+
+@sp 1
+@item --detect-rl-streams
+Detect cases where intermediate results in Aditi-RL procedures
+do not need to be materialised.
+@end table
+@end ifset
+@c aditi
+
 @end table
 
 @node Miscellaneous options
@@ -3406,6 +3541,31 @@ Print a usage message.
 @c This option is now obsolete.  In the past it was used to avoid
 @c NU-Prolog's "Panic: growing stacks has required shifting the heap"
 @c message.
+
+@sp 1
+@item --filenames-from-stdin
+Read then compile a newline terminated module name or file name from the
+standard input. Repeat this until EOF is reached. (This allows a program
+or user to interactively compile several modules without the overhead of
+process creation for each one.)
+
+@ifset aditi
+@sp 1
+@item --aditi
+Enable Aditi compilation.  You need to enable this option if you
+are making use of the Aditi deductive database interface (@pxref{Using Aditi}).
+
+@sp 1
+@item --aditi-user
+Specify the Aditi login of the owner of the predicates in any Aditi RL
+files produced if no @samp{:- pragma owner(@dots{})} declaration is given.
+The owner field is used along with module, name and arity to identify
+predicates, and is also used for security checks. Defaults to the value
+of the @samp{USER} environment variable. If @samp{USER} is not set,
+@samp{--aditi-user} defaults to the string ``guest''.
+
+@end ifset
+@c aditi
 @end table
 
 @node Link options

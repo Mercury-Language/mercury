@@ -81,6 +81,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
 :- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
 :- import_module io, list, map.
 
@@ -116,6 +117,17 @@
 :- pred inlining__get_type_substitution(list(type), list(type),
 		head_type_params, list(tvar), map(tvar, type)).
 :- mode inlining__get_type_substitution(in, in, in, in, out) is det.
+
+	% inlining__rename_goal(CalledProcHeadVars, CallArgs,
+	%	CallerVarSet0, CalleeVarSet, CallerVarSet,
+	%	CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
+	%	VarRenaming, CalledGoal, RenamedGoal).
+:- pred inlining__rename_goal(list(prog_var), list(prog_var), prog_varset,
+		prog_varset, prog_varset, map(prog_var, type),
+		map(prog_var, type), map(prog_var, type),
+		map(prog_var, prog_var), hlds_goal, hlds_goal). 
+:- mode inlining__rename_goal(in, in, in, in, out,
+		in, in, out, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -193,7 +205,11 @@ inlining(ModuleInfo0, ModuleInfo) -->
 	{ list__condense(SCCs, PredProcs) },
 	{ set__init(InlinedProcs0) },
 	inlining__do_inlining(PredProcs, NeededMap, Params, InlinedProcs0,
-		ModuleInfo1, ModuleInfo).
+		ModuleInfo1, ModuleInfo2),
+
+		% The dependency graph is now out of date and 
+		% needs to be rebuilt.
+	{ module_info_clobber_dependency_info(ModuleInfo2, ModuleInfo) }.
 
 :- pred inlining__do_inlining(list(pred_proc_id), needed_map, inline_params,
 		set(pred_proc_id), module_info, module_info,
@@ -253,7 +269,11 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 		\+ {
 			CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
 			proc_info_interface_code_model(ProcInfo, model_non)
-		}
+		},
+
+		% Don't inline memoed Aditi predicates.
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ \+ check_marker(Markers, aditi_memo) }
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
 			InlinedProcs0, InlinedProcs)
@@ -322,9 +342,8 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 		% It also stores some necessary information that is not
 		% updated.
 
-:- type inline_info	--->
-
-	inline_info(
+:- type inline_info	
+	---> inline_info(
 		int,			% variable threshold for inlining
 		set(pred_proc_id),	% inlined procs
 		module_info,		% module_info
@@ -333,6 +352,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% for this predicate (the caller,
 					% not the callee).  These are the
 					% ones that must not be bound.
+		pred_markers,		% markers for the current predicate
 
 			% the following fields are updated as a result
 			% of inlining
@@ -345,7 +365,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% stored.
 		bool			% Did we change the determinism
 					% of any subgoal?
-		).
+	).
 
 :- pred inlining__in_predproc(pred_proc_id, set(pred_proc_id), inline_params,
 		module_info, module_info, io__state, io__state).
@@ -364,6 +384,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 	pred_info_get_univ_quant_tvars(PredInfo0, UnivQTVars),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
+	pred_info_get_markers(PredInfo0, Markers),
 
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, VarSet0),
@@ -373,12 +394,12 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	DetChanged0 = no,
 
 	InlineInfo0 = inline_info(
-		VarThresh, InlinedProcs, ModuleInfo0, UnivQTVars,
+		VarThresh, InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
-	InlineInfo = inline_info(_, _, _, _, VarSet, VarTypes, TypeVarSet, 
+	InlineInfo = inline_info(_, _, _, _, _, VarSet, VarTypes, TypeVarSet, 
 		TypeInfoVarMap, DetChanged),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
@@ -445,14 +466,13 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
 
 	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo,
-		HeadTypeParams,
-		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		DetChanged0),
+		HeadTypeParams, Markers,
+		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
 
 	% should we inline this call?
 	(
 		inlining__should_inline_proc(PredId, ProcId, Builtin,
-				InlinedProcs, ModuleInfo),
+				InlinedProcs, Markers, ModuleInfo),
 			% okay, but will we exceed the number-of-variables
 			% threshold?
 		varset__vars(VarSet0, ListOfVars),
@@ -493,7 +513,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		DetChanged = DetChanged0
 	),
 	InlineInfo = inline_info(
-		VarThresh, InlinedProcs, ModuleInfo, HeadTypeParams,
+		VarThresh, InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
 
 inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
@@ -522,7 +542,6 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_vartypes(ProcInfo, CalleeVarTypes0),
 	proc_info_varset(ProcInfo, CalleeVarSet),
-	varset__vars(CalleeVarSet, CalleeListOfVars),
 	proc_info_typeinfo_varmap(ProcInfo, CalleeTypeInfoVarMap0),
 
 	% Substitute the appropriate types into the type
@@ -583,12 +602,9 @@ inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 	),
 
 	% Now rename apart the variables in the called goal.
-
-	map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
-	goal_util__create_variables(CalleeListOfVars, VarSet0,
-		VarTypes1, Subn0, CalleeVarTypes, CalleeVarSet,
-		VarSet, VarTypes, Subn),
-	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal),
+	inlining__rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
+		VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
+		CalledGoal, Goal),
 
 	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0, 
 		TypeRenaming, TypeSubn, Subn, CalleeTypeInfoVarMap1),
@@ -628,6 +644,16 @@ inlining__get_type_substitution(HeadTypes, ArgTypes,
 			error("inlining.m: type unification failed")
 		)
 	).
+
+inlining__rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
+		VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
+		CalledGoal, Goal) :-
+	map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
+	varset__vars(CalleeVarSet, CalleeListOfVars),
+	goal_util__create_variables(CalleeListOfVars, VarSet0,
+		VarTypes1, Subn0, CalleeVarTypes, CalleeVarSet,
+		VarSet, VarTypes, Subn),
+	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -682,11 +708,11 @@ inlining__inlining_in_conj([Goal0 | Goals0], Goals) -->
 	% is a conjunction of builtins.
 
 :- pred inlining__should_inline_proc(pred_id, proc_id, builtin_state,
-	set(pred_proc_id), module_info).
-:- mode inlining__should_inline_proc(in, in, in, in, in) is semidet.
+	set(pred_proc_id), pred_markers, module_info).
+:- mode inlining__should_inline_proc(in, in, in, in, in, in) is semidet.
 
 inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
-		ModuleInfo) :-
+		CallingPredMarkers, ModuleInfo) :-
 
 	% don't inline builtins, the code generator will handle them
 
@@ -717,6 +743,17 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 	% not to inline.
 
 	\+ pred_info_requested_no_inlining(PredInfo),
+
+	% Don't inline Aditi procedures into non-Aditi procedures,
+	% since this could result in joins being performed by
+	% backtracking rather than by more efficient methods in
+	% the database.
+
+	pred_info_get_markers(PredInfo, CalledPredMarkers),
+	\+ (
+		\+ check_marker(CallingPredMarkers, aditi),
+		check_marker(CalledPredMarkers, aditi)
+	),
 
 	% OK, we could inline it - but should we?  Apply our heuristic.
 

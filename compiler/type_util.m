@@ -44,6 +44,9 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func).
 :- mode type_id_is_higher_order(in, out) is semidet.
 
+:- pred type_is_aditi_state(type).
+:- mode type_is_aditi_state(in) is semidet.
+
 	% A test for types that are defined by hand (not including
 	% the builtin types).  Don't generate base_type_*
 	% for these types.
@@ -319,6 +322,10 @@ type_id_is_higher_order(SymName - Arity, PredOrFunc) :-
 		Arity = 2,
 		PredOrFunc = function
 	).
+
+type_is_aditi_state(Type) :-
+        type_to_type_id(Type,
+		qualified(unqualified("aditi"), "state") - 0, []).
 
 :- pred type_id_is_enumeration(type_id, module_info).
 :- mode type_id_is_enumeration(in, in) is semidet.

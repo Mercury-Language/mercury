@@ -401,6 +401,9 @@ livemap__special_code_addr(do_nondet_closure, no).
 livemap__special_code_addr(do_det_class_method, no).
 livemap__special_code_addr(do_semidet_class_method, no).
 livemap__special_code_addr(do_nondet_class_method, no).
+livemap__special_code_addr(do_det_aditi_call, no).
+livemap__special_code_addr(do_semidet_aditi_call, no).
+livemap__special_code_addr(do_nondet_aditi_call, no).
 livemap__special_code_addr(do_not_reached, no).
 
 %-----------------------------------------------------------------------------%

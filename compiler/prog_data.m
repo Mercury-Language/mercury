@@ -18,9 +18,8 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_pred, (inst), purity, term_util.
-:- import_module varset, term.
-:- import_module list, map, term, std_util.
+:- import_module hlds_data, hlds_pred, (inst), purity, rl, term_util.
+:- import_module list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -146,6 +145,45 @@
 
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
+
+	;	aditi(sym_name, arity)
+			% Predname, Arity
+
+	;	base_relation(sym_name, arity)
+			% Predname, Arity
+			%
+			% Eventually, these should only occur in 
+			% automatically generated database interface 
+			% files, but for now there's no such thing, 
+			% so they can occur in user programs.
+
+	;	aditi_index(sym_name, arity, index_spec)
+			% PredName, Arity, IndexType, Attributes
+			%
+			% Specify an index on a base relation.
+
+	;	naive(sym_name, arity)
+			% Predname, Arity
+			% Use naive evaluation.
+
+	;	psn(sym_name, arity)
+			% Predname, Arity
+			% Use predicate semi-naive evaluation.
+
+	;	aditi_memo(sym_name, arity)
+			% Predname, Arity
+
+	;	aditi_no_memo(sym_name, arity)
+			% Predname, Arity
+
+	;	supp_magic(sym_name, arity)
+			% Predname, Arity
+
+	;	context(sym_name, arity)
+			% Predname, Arity
+
+	;	owner(sym_name, arity, string)
+			% PredName, Arity, String.
 
 	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
 				maybe(list(mode)))

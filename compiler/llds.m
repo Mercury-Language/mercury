@@ -765,6 +765,9 @@
 	;	do_det_class_method
 	;	do_semidet_class_method
 	;	do_nondet_class_method
+	;	do_det_aditi_call
+	;	do_semidet_aditi_call
+	;	do_nondet_aditi_call
 	;	do_not_reached.		% We should never jump to this address.
 
 	% A proc_label is a label used for the entry point to a procedure.

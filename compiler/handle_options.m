@@ -82,11 +82,13 @@ handle_options(MaybeError, Args, Link) -->
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(compile_to_c, CompileToC),
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
+		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 		{ bool__or_list([GenerateDependencies, MakeInterface,
 			MakePrivateInterface, MakeShortInterface,
 			MakeOptimizationInt, MakeTransOptInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
-			ErrorcheckOnly, CompileToC, CompileOnly], NotLink) },
+			ErrorcheckOnly, CompileToC, CompileOnly, AditiOnly],
+			NotLink) },
 		{ bool__not(NotLink, Link) }
 	).
 
@@ -420,6 +422,24 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% is only available while generating the dependencies.
 	option_implies(generate_module_order, generate_dependencies,
 		bool(yes)),
+
+	% --aditi-only implies --aditi.
+	option_implies(aditi_only, aditi, bool(yes)),
+
+	% Set --aditi-user to the value of $USER if it is not set already.
+	% If $USER is not set, use the string "guest".
+	globals__io_lookup_string_option(aditi_user, User0),
+	( { User0 = "" } ->
+		io__get_environment_var("USER", MaybeUser),
+		( { MaybeUser = yes(User1) } ->
+			{ User = User1 }
+		;
+			{ User = "guest" }
+		),
+		globals__io_set_option(aditi_user, string(User))
+	;
+		[]
+	),
 
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for

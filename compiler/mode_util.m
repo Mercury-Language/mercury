@@ -165,6 +165,12 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Partition a list of arguments into inputs and others.
+:- pred partition_args(module_info, list(mode), list(T), list(T), list(T)).
+:- mode partition_args(in, in, in, out, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% Construct a mode corresponding to the standard `in',
 	% `out', or `uo' mode.
 :- pred in_mode((mode)::out) is det.
@@ -1571,6 +1577,24 @@ make_std_mode(Name, Args, Mode) :-
 	mercury_public_builtin_module(MercuryBuiltin),
 	QualifiedName = qualified(MercuryBuiltin, Name),
 	Mode = user_defined_mode(QualifiedName, Args).
+
+%-----------------------------------------------------------------------------%
+
+partition_args(_, [], [_|_], _, _) :-
+        error("partition_args").
+partition_args(_, [_|_], [], _, _) :-
+	error("partition_args").
+partition_args(_, [], [], [], []).
+partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
+		InputArgs, OutputArgs) :-
+	partition_args(ModuleInfo, ArgModes, Args, InputArgs1, OutputArgs1),
+	( mode_is_input(ModuleInfo, ArgMode) ->
+		InputArgs = [Arg | InputArgs1],
+		OutputArgs = OutputArgs1
+	;
+		InputArgs = InputArgs1,
+		OutputArgs = [Arg | OutputArgs1]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

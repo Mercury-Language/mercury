@@ -20,7 +20,8 @@ main_target: $(MAIN_TARGET)
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .nu .o .pic_o \
 		.i .s .pic_s \
-		.ql .pl
+		.ql .pl \
+		.rlo
 
 #-----------------------------------------------------------------------------#
 #
@@ -169,6 +170,10 @@ $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 $(cs_subdir)%.c : %.m
 	rm -f $(cs_subdir)$*.c
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
+
+$(rlos_subdir)%.rlo : %.m
+	rm -f $(rlos_subdir)$*.c
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
 
 # If we are removing the .c files, we need to tell Make that we're
 # generating the .o files directly from the .m files, but

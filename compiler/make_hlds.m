@@ -61,7 +61,7 @@
 :- import_module make_tags, quantification, (inst), term, varset.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
-:- import_module fact_table, purity, goal_util, term_util, export, llds.
+:- import_module fact_table, purity, goal_util, term_util, export, llds, rl.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module getopt, assoc_list, term_io.
@@ -206,14 +206,16 @@ add_item_decl_pass_1(func(TypeVarSet, InstVarSet, ExistQVars, FuncName,
 
 add_item_decl_pass_1(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond),
 		Context, Status, Module0, Status, Module) -->
+	{ Status = item_status(ImportStatus, _) },
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
-		Context, predicate, _, Module).
+		ImportStatus, Context, predicate, _, Module).
 
 add_item_decl_pass_1(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 		Cond), Context, Status, Module0, Status, Module) -->
 	{ list__append(Modes, [RetMode], Modes1) },
+	{ Status = item_status(ImportStatus, _) },
 	module_add_mode(Module0, VarSet, FuncName, Modes1,
-		MaybeDet, Cond, Context, function, _, Module).
+		MaybeDet, Cond, ImportStatus, Context, function, _, Module).
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
@@ -342,16 +344,16 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Module = Module0 }
 	;
 		{ Pragma = inline(Name, Arity) },
-		add_pred_marker(Module0, "inline", Name, Arity, Context,
-			inline, [no_inline], Module)
+		add_pred_marker(Module0, "inline", Name, Arity, ImportStatus,
+			Context, inline, [no_inline], Module)
 	;
 		{ Pragma = no_inline(Name, Arity) },
-		add_pred_marker(Module0, "no_inline", Name, Arity, Context,
-			no_inline, [inline], Module)
+		add_pred_marker(Module0, "no_inline", Name, Arity,
+			ImportStatus, Context, no_inline, [inline], Module)
 	;
 		{ Pragma = obsolete(Name, Arity) },
-		add_pred_marker(Module0, "obsolete", Name, Arity, Context,
-			obsolete, [], Module)
+		add_pred_marker(Module0, "obsolete", Name, Arity, ImportStatus,
+			Context, obsolete, [], Module)
 	;
 		% Handle pragma import decls later on (when we process
 		% clauses and pragma c_code).
@@ -382,9 +384,61 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = fact_table(_, _, _) },
 		{ Module = Module0 }
 	;
+		{ Pragma = aditi(PredName, Arity) },
+		maybe_enable_aditi_compilation(Status, Context,
+			Module0, Module1),
+		add_pred_marker(Module1, "aditi", PredName, Arity,
+			ImportStatus, Context, aditi, [], Module2),
+		add_stratified_pred(Module2, "aditi", PredName, Arity, Context, 
+			Module)
+	;
+		{ Pragma = base_relation(PredName, Arity) },
+		maybe_enable_aditi_compilation(Status, Context,
+			Module0, Module1),
+		add_pred_marker(Module1, "aditi", PredName, Arity,
+			ImportStatus, Context, aditi, [], Module2),
+		add_pred_marker(Module2, "base_relation", PredName, Arity,
+			ImportStatus, Context, base_relation, [], Module3),
+		module_mark_as_external(PredName, Arity, Context,
+			Module3, Module)
+	;
+		{ Pragma = aditi_index(PredName, Arity, Index) },
+		add_base_relation_index(Module0, PredName, Arity, Index,
+			ImportStatus, Context, Module)
+	;
+		{ Pragma = naive(PredName, Arity) },
+		add_pred_marker(Module0, "naive", PredName, Arity,
+			ImportStatus, Context, naive, [psn], Module)
+	;
+		{ Pragma = psn(PredName, Arity) },
+		add_pred_marker(Module0, "psn", PredName, Arity,
+			ImportStatus, Context, psn, [naive], Module)
+	;
+		{ Pragma = aditi_memo(Name, Arity) },
+		add_pred_marker(Module0, "aditi_memo", Name, Arity,
+			ImportStatus, Context, aditi_memo,
+			[aditi_no_memo], Module)
+	;
+		{ Pragma = aditi_no_memo(PredName, Arity) },
+		add_pred_marker(Module0, "aditi_no_memo", PredName, Arity,
+			ImportStatus, Context, aditi_no_memo,
+			[aditi_memo], Module)
+	;
+		{ Pragma = supp_magic(PredName, Arity) },
+		add_pred_marker(Module0, "supp_magic", PredName, Arity, 
+			ImportStatus, Context, supp_magic, [context], Module)
+	;
+		{ Pragma = context(PredName, Arity) },
+		add_pred_marker(Module0, "context", PredName, Arity, 
+			ImportStatus, Context, context, [supp_magic], Module)
+	;
+		{ Pragma = owner(PredName, Arity, Owner) },
+		set_pred_owner(Module0, PredName, Arity, Owner, ImportStatus,
+			Context, Module)
+	;
 		{ Pragma = promise_pure(Name, Arity) },
-		add_pred_marker(Module0, "promise_pure", Name, Arity, Context,
-				promised_pure, [], Module)
+		add_pred_marker(Module0, "promise_pure", Name, Arity,
+			ImportStatus, Context, promised_pure, [], Module)
 	;
 		{ Pragma = termination_info(PredOrFunc, SymName, ModeList, 
 			MaybeArgSizeInfo, MaybeTerminationInfo) },
@@ -394,17 +448,17 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		{ Pragma = terminates(Name, Arity) },
 		add_pred_marker(Module0, "terminates", Name, Arity,
-			Context, terminates,
+			ImportStatus, Context, terminates,
 			[check_termination, does_not_terminate], Module)
 	;
 		{ Pragma = does_not_terminate(Name, Arity) },
 		add_pred_marker(Module0, "does_not_terminate", Name, Arity,
-			Context, does_not_terminate,
+			ImportStatus, Context, does_not_terminate,
 			[check_termination, terminates], Module)
 	;
 		{ Pragma = check_termination(Name, Arity) },
 		add_pred_marker(Module0, "check_termination", Name, Arity, 
-			Context, check_termination, 
+			ImportStatus, Context, check_termination, 
 			[terminates, does_not_terminate], 
 			Module)
 	).
@@ -472,6 +526,37 @@ module_defn_update_import_status(used,
 		item_status(imported, must_be_qualified)).
 module_defn_update_import_status(opt_imported, 
 		item_status(opt_imported, must_be_qualified)).
+
+%-----------------------------------------------------------------------------%
+
+	% If there are local, exported or opt_imported Aditi procedures
+	% enable Aditi compilation. opt_imported procedures which are not
+	% specialised will be made imported by dead_proc_elim.m, and
+	% having Aditi compilation enabled for them will be harmless.
+:- pred maybe_enable_aditi_compilation(item_status, term__context,
+		module_info, module_info, io__state, io__state).
+:- mode maybe_enable_aditi_compilation(in, in, in, out, di, uo) is det.
+
+maybe_enable_aditi_compilation(Status, Context, Module0, Module) -->
+	{ Status = item_status(ItemStatus, _) },
+	( { ItemStatus \= imported } ->
+		globals__io_lookup_bool_option(aditi, Aditi),
+		( { Aditi = no } ->
+			prog_out__write_context(Context),
+			io__write_string("Error: compilation of Aditi procedures\n"),
+			prog_out__write_context(Context),
+			io__write_string("  requires the `--aditi' option.\n"),
+			io__set_exit_status(1),
+			{ module_info_incr_errors(Module0, Module) }
+		;
+			% There are local Aditi procedures - enable Aditi
+			% code generation.
+			{ module_info_set_do_aditi_compilation(Module0,
+				Module) }
+		)
+	;
+		{ Module = Module0 }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -546,7 +631,7 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 			{ TypeLayout = yes }
 		->
 			module_add_pragma_tabled(Type, Name, Arity, PredOrFunc,
-				Mode, Context, Module0, Module)
+				Mode, Status, Context, Module0, Module)
 		;
 			{ module_info_incr_errors(Module0, Module) },
 			prog_out__write_context(Context),
@@ -733,53 +818,223 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList, MaybeArgSizeInfo,
 
 %-----------------------------------------------------------------------------%
 
-	% add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Context, 
-	% 	Marker, ConflictMarkers, ModuleInfo, IO0, IO)
+:- pred add_stratified_pred(module_info, string, sym_name, arity,
+	term__context, module_info, io__state, io__state).
+:- mode add_stratified_pred(in, in, in, in, in, out, di, uo) is det.
+
+add_stratified_pred(Module0, PragmaName, Name, Arity, Context, Module) -->
+	{ module_info_get_predicate_table(Module0, PredTable0) },
+	(
+		{ predicate_table_search_sym_arity(PredTable0, Name, 
+			Arity, PredIds) }
+	->
+		{ module_info_stratified_preds(Module0, StratPredIds0) },
+		{ set__insert_list(StratPredIds0, PredIds, StratPredIds) },
+		{ module_info_set_stratified_preds(Module0, StratPredIds, 
+			Module) }
+	;
+		{ string__append_list(
+			["`:- pragma ", PragmaName, "' declaration"],
+			Description) },
+		undefined_pred_or_func_error(Name, Arity, Context,
+			Description),
+		{ module_info_incr_errors(Module0, Module) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Status,
+	%	Context, Marker, ConflictMarkers, ModuleInfo, IO0, IO)
+	%
 	% Adds Marker to the marker list of the pred(s) with give Name and
 	% Arity, updating the ModuleInfo. If the named pred does not exist,
 	% or the pred already has a marker in ConflictMarkers, report
 	% an error.
 :- pred add_pred_marker(module_info, string, sym_name, arity,
-	prog_context, marker, list(marker), module_info,
+	import_status, prog_context, marker, list(marker), module_info,
 	io__state, io__state).
-:- mode add_pred_marker(in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode add_pred_marker(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
-add_pred_marker(Module0, PragmaName, Name, Arity, Context, Marker,
+add_pred_marker(Module0, PragmaName, Name, Arity, Status, Context, Marker,
 		ConflictMarkers, Module) --> 
-	{ module_info_get_predicate_table(Module0, PredTable0) },
-	% check that the pragma is module qualified.
-	(
-		{ Name = unqualified(_) }
-	->
-		{ error("add_pred_marker: unqualified name") }
-	; % else if
-		{ predicate_table_search_sym_arity(PredTable0, Name, 
-			Arity, PredIds) }
-	->
+	( { marker_must_be_exported(Marker) } ->
+		{ MustBeExported = yes }
+	;
+		{ MustBeExported = no }
+	),	
+	do_add_pred_marker(Module0, PragmaName, Name, Arity, Status,
+		MustBeExported, Context, add_marker_pred_info(Marker),
+		Module1, PredIds),
+	{ module_info_preds(Module1, Preds) },
+	{ pragma_check_markers(Preds, PredIds, ConflictMarkers, Conflict) },
+	( { Conflict = yes } ->
+		pragma_conflict_error(Name, Arity, Context,
+			PragmaName),
+		{ module_info_incr_errors(Module1, Module) }
+	;
+		{ Module = Module1 }
+	).
+
+:- pred set_pred_owner(module_info, sym_name, arity, string, import_status,
+	prog_context, module_info, io__state, io__state).
+:- mode set_pred_owner(in, in, in, in, in, in, out, di, uo) is det.
+
+set_pred_owner(Module0, Name, Arity, Owner, Status, Context, Module) -->
+	{ SetOwner =
+	    lambda([PredInfo0::in, PredInfo::out] is det, (
+		pred_info_set_aditi_owner(PredInfo0, Owner, PredInfo)
+	)) },
+	{ MarkerMustBeExported = yes },
+	do_add_pred_marker(Module0, "owner", Name, Arity, Status,
+		MarkerMustBeExported, Context, SetOwner, Module, _).
+
+:- pred add_base_relation_index(module_info, sym_name, arity, index_spec,
+	import_status, prog_context, module_info, io__state, io__state).
+:- mode add_base_relation_index(in, in, in, in, in, in, out, di, uo) is det.
+
+add_base_relation_index(Module0, Name, Arity, Index, Status,
+		Context, Module) -->
+	{ AddIndex =
+		lambda([PredInfo0::in, PredInfo::out] is det, (
+			pred_info_get_indexes(PredInfo0, Indexes0),
+			Indexes = [Index | Indexes0],
+			pred_info_set_indexes(PredInfo0, Indexes, PredInfo)
+		)) },
+	{ MarkerMustBeExported = yes }, 
+	do_add_pred_marker(Module0, "aditi_index", Name, Arity, Status,
+		MarkerMustBeExported, Context, AddIndex, Module, PredIds),
+	{ Index = index_spec(_, Attrs) },
+	list__foldl(check_index_attribute(Name, Arity, Context), Attrs),
+	list__foldl(check_index_attribute_pred(Module, Name,
+		Arity, Context, Attrs), PredIds).
+
+	% Check that the index attributes are legal for the predicate's arity.
+:- pred check_index_attribute(sym_name, arity, term__context, int,
+		io__state, io__state).
+:- mode check_index_attribute(in, in, in, in, di, uo) is det.
+
+check_index_attribute(Name, Arity, Context, Attr) -->
+	( { Attr > 0, Attr =< Arity } ->
+		[]
+	;
+		prog_out__write_context(Context),
+		io__write_string(
+			"In `:- pragma aditi_index(...)' declaration for `"),
+		hlds_out__write_pred_call_id(Name/Arity),
+		io__write_string("':\n"),
+		prog_out__write_context(Context),
+		io__write_string("  attribute "),
+		io__write_int(Attr),
+		io__write_string(" is out of range.\n"),
+		io__set_exit_status(1)
+	).
+
+	% Check that a relation with an index specified is a base relation
+	% and that the indexed attributes do not include aditi__states.
+:- pred check_index_attribute_pred(module_info, sym_name, arity, term__context,
+		list(int), pred_id, io__state, io__state).
+:- mode check_index_attribute_pred(in, in, in, in, in, in, di, uo) is det.
+
+check_index_attribute_pred(ModuleInfo, Name, Arity, Context, Attrs, PredId) -->
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_get_markers(PredInfo, Markers) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	( { check_marker(Markers, base_relation) } ->
+		[]
+	;
+		prog_out__write_context(Context),
+		io__write_string(
+			"Error: `:- pragma aditi_index(...)' declaration"),
+		io__nl,
+		prog_out__write_context(Context),
+		io__write_string("  for "),
+		hlds_out__write_call_id(PredOrFunc, Name/Arity),
+		io__write_string(" without preceding\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  `:- pragma base_relation(...)' declaration.\n"),
+		io__set_exit_status(1)
+	),
+
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
+	{ AttrIsAditiState = 
+		lambda([Attr::in] is semidet, (
+			list__index0(ArgTypes, Attr, ArgType),
+			type_is_aditi_state(ArgType)
+		)) },
+	{ list__filter(AttrIsAditiState, Attrs, AditiStateAttrs) },	
+	
+	( { AditiStateAttrs = [AditiStateAttr | _] } ->
+		% Indexing on aditi__state attributes is pretty silly,
+		% since they're removed by magic.m.
+		prog_out__write_context(Context),
+		io__write_string(
+			"In `:- pragma aditi_index(...)' declaration for "),
+		hlds_out__write_call_id(PredOrFunc, Name/Arity),
+		io__write_string(":\n"),
+		prog_out__write_context(Context),
+		io__write_string("  attribute "),
+		io__write_int(AditiStateAttr),
+		io__write_string(" is an aditi__state.\n"),
+		io__set_exit_status(1)
+	;
+		[]
+	).
+
+:- type add_marker_pred_info == pred(pred_info, pred_info).
+:- inst add_marker_pred_info = (pred(in, out) is det).
+
+:- pred do_add_pred_marker(module_info, string, sym_name, arity,
+	import_status, bool, term__context, add_marker_pred_info,
+	module_info, list(pred_id), io__state, io__state).
+:- mode do_add_pred_marker(in, in, in, in, in, in, in,
+	in(add_marker_pred_info), out, out, di, uo) is det.
+
+do_add_pred_marker(Module0, PragmaName, Name, Arity, Status,
+		MustBeExported, Context, UpdatePredInfo, Module, PredIds) --> 
+	( { get_matching_pred_ids(Module0, Name, Arity, PredIds0) } ->
+		{ PredIds = PredIds0 },
+		{ module_info_get_predicate_table(Module0, PredTable0) },
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ pragma_add_marker(Preds0, PredIds, Marker, Preds) },
+
+		{ pragma_add_marker(Preds0, PredIds, UpdatePredInfo,
+			Status, MustBeExported, Preds, WrongStatus) },
+		(
+			{ WrongStatus = yes }
+		->
+			pragma_status_error(Name, Arity, Context, PragmaName),
+			{ module_info_incr_errors(Module0, Module1) }
+		;
+			{ Module1 = Module0 }
+		),
+			
 		{ predicate_table_set_preds(PredTable0, Preds, 
 			PredTable) },
-		{ module_info_set_predicate_table(Module0, PredTable, 
-			Module1) },
-		{ pragma_check_markers(Preds, PredIds, ConflictMarkers, 
-			Conflict) },
-		(
-			{ Conflict = yes }
-		->
-			pragma_conflict_error(Name, Arity, Context,
-				PragmaName),
-			{ module_info_incr_errors(Module1, Module) }
-		;
-			{ Module = Module1 }
-		)
+		{ module_info_set_predicate_table(Module1, PredTable, 
+			Module) }
 	;
+		{ PredIds = [] },
 		{ string__append_list(["`", PragmaName, "' pragma"],
 				      Description) },
 		undefined_pred_or_func_error(Name, Arity, Context,
 			Description),
 		{ module_info_incr_errors(Module0, Module) }
 	).
+	
+:- pred get_matching_pred_ids(module_info, sym_name, arity, list(pred_id)).
+:- mode get_matching_pred_ids(in, in, in, out) is semidet.
+		
+get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
+	module_info_get_predicate_table(Module0, PredTable0),
+	% check that the pragma is module qualified.
+	(
+		Name = unqualified(_)
+	->
+		error("get_matching_pred_ids: unqualified name")
+	;
+		predicate_table_search_sym_arity(PredTable0, Name, 
+			Arity, PredIds)
+	).	
 
 %-----------------------------------------------------------------------------%
 
@@ -1259,7 +1514,7 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 		{ MaybeModes = yes(Modes) }
 	->
 		module_add_mode(Module1, InstVarSet, PredName, Modes, MaybeDet,
-			Cond, Context, predicate, PredProcId, Module),
+			Cond, Status, Context, predicate, PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
 		{ Module = Module1 },
@@ -1298,7 +1553,8 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 	->
 		{ list__append(Modes, [RetMode], Modes1) },
 		module_add_mode(Module1, InstVarSet, FuncName, Modes1,
-			MaybeDet, Cond, Context, function, PredProcId, Module),
+			MaybeDet, Cond, Status, Context, function,
+			PredProcId, Module),
 		{ MaybePredProcId = yes(PredProcId) }
 	;
 		{ Module = Module1 },
@@ -1429,16 +1685,19 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 	;
 		{ Method = pred_mode(VarSet, PredName, Modes, MaybeDet, 
 			Cond, Context) },
+		{ Status = item_status(ImportStatus, _) },
 		module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, 
-			Cond, Context, predicate, PredIdProcId, Module),
+			Cond, ImportStatus, Context, predicate,
+			PredIdProcId, Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	;
 		{ Method = func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet,
 			Cond, Context) },
 		{ list__append(Modes, [RetMode], Modes1) },
+		{ Status = item_status(ImportStatus, _) },
 		module_add_mode(Module0, VarSet, FuncName, Modes1,
-			MaybeDet, Cond, Context, function, PredIdProcId, 
-			Module),
+			MaybeDet, Cond, ImportStatus, Context, function,
+			PredIdProcId, Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	).
 
@@ -1570,11 +1829,12 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 				add_marker(TheMarkers0, M, TheMarkers)
 			)) },
 		{ list__foldl(AddMarker, MarkersList, Markers0, Markers) },
+		globals__io_lookup_string_option(aditi_user, Owner),
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet,
 				ExistQVars, Types,
 				Cond, Context, ClausesInfo, Status, Markers,
 				none, PredOrFunc, ClassContext, Proofs,
-				PredInfo0) },
+				Owner, PredInfo0) },
 		(
 			{ predicate_table_search_pf_m_n_a(PredicateTable0,
 				PredOrFunc, MNameOfPred, PName, Arity,
@@ -1754,11 +2014,12 @@ add_special_pred_decl(SpecialPredId,
 		% XXX this context might not be empty
 	ClassContext = constraints([], []),
 	ExistQVars = [],
+	module_info_globals(Module0, Globals),
+	globals__lookup_string_option(Globals, aditi_user, Owner),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ExistQVars,
 		ArgTypes, Cond, Context, ClausesInfo0, Status, Markers,
-		none, predicate, ClassContext, Proofs, PredInfo0),
+		none, predicate, ClassContext, Proofs, Owner, PredInfo0),
 	ArgLives = no,
-	module_info_globals(Module0, Globals),
 	globals__get_args_method(Globals, ArgsMethod),
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
 		ArgLives, yes(Det), Context, ArgsMethod, PredInfo, _),
@@ -1815,16 +2076,17 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 	% Add a mode declaration for a predicate.
 
 :- pred module_add_mode(module_info, inst_varset, sym_name, list(mode),
-		maybe(determinism), condition, prog_context, pred_or_func,
-		pair(pred_id, proc_id), module_info, io__state, io__state).
-:- mode module_add_mode(in, in, in, in, in, in, in, in, out, out, 
+		maybe(determinism), condition, import_status, prog_context,
+		pred_or_func, pair(pred_id, proc_id), module_info, 
+		io__state, io__state).
+:- mode module_add_mode(in, in, in, in, in, in, in, in, in, out, out, 
 		di, uo) is det.
 
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
 module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
-			MContext, PredOrFunc, PredProcId, ModuleInfo) -->
+		Status, MContext, PredOrFunc, PredProcId, ModuleInfo) -->
 
 		% Lookup the pred or func declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), optionally print a
@@ -1846,9 +2108,9 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	;
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
 			MContext, "mode declaration"),
-		{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, MContext,
-				PredOrFunc,
+		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+				ModuleName, PredName, Arity, Status,
+				MContext, PredOrFunc,
 				PredId, PredicateTable1) }
 	),
 
@@ -1896,13 +2158,13 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	% for that predicate; the real types will be inferred by
 	% type inference.
 
-:- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
-		prog_context, pred_or_func, pred_id, predicate_table).
-:- mode preds_add_implicit(in, in, in, in, in, in, out, out) is det.
+:- pred preds_add_implicit(module_info, predicate_table, module_name,
+		sym_name, arity, import_status, prog_context,
+		pred_or_func, pred_id, predicate_table).
+:- mode preds_add_implicit(in, in, in, in, in, in, in, in, out, out) is det.
 
-preds_add_implicit(PredicateTable0,
-			ModuleName, PredName, Arity, Context, PredOrFunc,
-			PredId, PredicateTable) :-
+preds_add_implicit(ModuleInfo, PredicateTable0, ModuleName, PredName, Arity,
+		Status, Context, PredOrFunc, PredId, PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars("T", Arity, TVarSet0, TypeVars, TVarSet),
 	term__var_list_to_term_list(TypeVars, Types),
@@ -1916,9 +2178,11 @@ preds_add_implicit(PredicateTable0,
 		% Existential types must be declared, they won't be inferred.
 	ExistQVars = [],
 	init_markers(Markers0),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_string_option(Globals, aditi_user, Owner),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ExistQVars,
-		Types, Cond, Context, ClausesInfo, local, Markers0, none,
-		PredOrFunc, ClassContext, Proofs, PredInfo0),
+		Types, Cond, Context, ClausesInfo, Status, Markers0, none,
+		PredOrFunc, ClassContext, Proofs, Owner, PredInfo0),
 	add_marker(Markers0, infer_type, Markers),
 	pred_info_set_markers(PredInfo0, Markers, PredInfo),
 	(
@@ -2010,8 +2274,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
 			Context, "clause"),
-		{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, Context,
+		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+				ModuleName, PredName, Arity, Status, Context,
 				PredOrFunc,
 				PredId, PredicateTable1) }
 	),
@@ -2167,8 +2431,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 	;
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
 			Context, "`:- pragma import' declaration"),
-		{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, Context,
+		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+				ModuleName, PredName, Arity, Status, Context,
 				PredOrFunc, PredId, PredicateTable1) }
 	),
 		%
@@ -2471,8 +2735,8 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 	;
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
 			Context, "`:- pragma c_code' declaration"),
-		{ preds_add_implicit(PredicateTable0,
-			ModuleName, PredName, Arity, Context,
+		{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+			ModuleName, PredName, Arity, Status, Context,
 			PredOrFunc, PredId, PredicateTable1) }
 	),
 		% Lookup the pred_info for this pred,
@@ -2558,13 +2822,13 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 
 :- pred module_add_pragma_tabled(eval_method, sym_name, int, 
 		maybe(pred_or_func), maybe(list(mode)), 
-		prog_context, module_info, module_info, 
+		import_status, prog_context, module_info, module_info, 
 		io__state, io__state).
-:- mode module_add_pragma_tabled(in, in, in, in, in, in, in, out, 
+:- mode module_add_pragma_tabled(in, in, in, in, in, in, in, in, out, 
 	di, uo) is det. 
 	
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc, 
-		MaybeModes,  Context, ModuleInfo0, ModuleInfo) --> 
+		MaybeModes, Status, Context, ModuleInfo0, ModuleInfo) --> 
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
  	{ eval_method_to_string(EvalMethod, EvalMethodS) },
 		
@@ -2589,8 +2853,8 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 				Message1) },
 			maybe_undefined_pred_error(PredName, Arity, 
 				PredOrFunc, Context, Message1),
-			{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, Context,
+			{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+				ModuleName, PredName, Arity, Status, Context,
 				PredOrFunc, PredId, PredicateTable1) },
 			{ module_info_set_predicate_table(ModuleInfo0,
 				PredicateTable1, ModuleInfo1) },
@@ -2609,8 +2873,8 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 				Message1) },
 			maybe_undefined_pred_error(PredName, Arity, 
 				predicate, Context, Message1),
-			{ preds_add_implicit(PredicateTable0,
-				ModuleName, PredName, Arity, Context,
+			{ preds_add_implicit(ModuleInfo0, PredicateTable0,
+				ModuleName, PredName, Arity, Status, Context,
 				predicate, PredId, PredicateTable1) },
 			{ module_info_set_predicate_table(ModuleInfo0,
 				PredicateTable1, ModuleInfo1) },
@@ -2806,17 +3070,45 @@ pragma_check_markers(PredTable, [PredId | PredIds], ConflictList,
 	% For each pred_id in the list, add the given markers to the
 	% list of markers in the corresponding pred_info.
 
-:- pred pragma_add_marker(pred_table, list(pred_id), marker, pred_table).
-:- mode pragma_add_marker(in, in, in, out) is det.
+:- pred pragma_add_marker(pred_table, list(pred_id), add_marker_pred_info,
+		import_status, bool, pred_table, bool).
+:- mode pragma_add_marker(in, in, in(add_marker_pred_info),
+		in, in, out, out) is det.
 
-pragma_add_marker(PredTable, [], _, PredTable).
-pragma_add_marker(PredTable0, [PredId | PredIds], Marker, PredTable) :-
+pragma_add_marker(PredTable, [], _, _, _, PredTable, no). 
+pragma_add_marker(PredTable0, [PredId | PredIds], UpdatePredInfo, Status,
+		MustBeExported, PredTable, WrongStatus) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
+	call(UpdatePredInfo, PredInfo0, PredInfo),
+	(
+		pred_info_is_exported(PredInfo),
+		MustBeExported = yes,
+		Status \= exported
+	->
+		WrongStatus0 = yes
+	;
+		WrongStatus0 = no
+	),
+	map__det_update(PredTable0, PredId, PredInfo, PredTable1),
+	pragma_add_marker(PredTable1, PredIds, UpdatePredInfo, Status,
+		MustBeExported, PredTable, WrongStatus1),
+	bool__or(WrongStatus0, WrongStatus1, WrongStatus).
+
+:- pred add_marker_pred_info(marker, pred_info, pred_info).
+:- mode add_marker_pred_info(in, in, out) is det.
+
+add_marker_pred_info(Marker, PredInfo0, PredInfo) :-
 	pred_info_get_markers(PredInfo0, Markers0),
 	add_marker(Markers0, Marker, Markers),
-	pred_info_set_markers(PredInfo0, Markers, PredInfo),
-	map__det_update(PredTable0, PredId, PredInfo, PredTable1),
-	pragma_add_marker(PredTable1, PredIds, Marker, PredTable).
+	pred_info_set_markers(PredInfo0, Markers, PredInfo).
+
+	% Succeed if a marker for an exported procedure must also
+	% be exported.
+:- pred marker_must_be_exported(marker).
+:- mode marker_must_be_exported(in) is semidet.
+
+marker_must_be_exported(aditi).
+marker_must_be_exported(base_relation).
 
 %---------------------------------------------------------------------------%
 
@@ -4629,6 +4921,21 @@ unqualified_pred_error(PredName, Arity, Context) -->
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  should have been qualified by prog_io.m.\n").
+
+:- pred pragma_status_error(sym_name, int, prog_context, string,
+				io__state, io__state).
+:- mode pragma_status_error(in, in, in, in, di, uo) is det.
+
+pragma_status_error(Name, Arity, Context, PragmaName) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: `:- pragma "),
+	io__write_string(PragmaName),
+	io__write_string("' declaration for exported\n"),
+	prog_out__write_context(Context),
+	io__write_string("predicate or function "),
+	hlds_out__write_pred_call_id(Name/Arity),
+	io__write_string(" must also be exported.\n").
 
 :- pred pragma_conflict_error(sym_name, int, prog_context, string,
 				io__state, io__state).

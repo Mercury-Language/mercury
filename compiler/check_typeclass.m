@@ -59,7 +59,7 @@
 
 :- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module typecheck, int, globals, make_hlds, error_util. 
+:- import_module typecheck, int, globals, options, make_hlds, error_util. 
 :- import_module base_typeclass_info, string, hlds_goal, set, prog_out.
 :- import_module mercury_to_mercury, varset, term.
 
@@ -481,6 +481,8 @@ produce_auxiliary_procs(ClassVars,
 	Cond = true,
 	map__init(Proofs),
 	init_markers(Markers),
+	module_info_globals(ModuleInfo0, Globals),
+	globals__lookup_string_option(Globals, aditi_user, User),
 
 		% We have to add the actual clause after we have added the
 		% procs because we need a list of proc numbers for which the
@@ -494,10 +496,9 @@ produce_auxiliary_procs(ClassVars,
 
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
 		ExistQVars, ArgTypes, Cond, Context, DummyClausesInfo, Status,
-		Markers, none, PredOrFunc, ClassContext, Proofs,
+		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
 
-	module_info_globals(ModuleInfo0, Globals),
 	globals__get_args_method(Globals, ArgsMethod),
 
 		% Add procs with the expected modes and determinisms

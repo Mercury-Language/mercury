@@ -92,7 +92,11 @@ generate_pred_list_code(ModuleInfo0, ModuleInfo, [PredId | PredIds],
 		% extract a list of all the procedure ids for this
 		% predicate and generate code for them
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	( { ProcIds = [] } ->
+	(
+		{ ProcIds = []
+		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		}
+	->
 		{ Predicates0 = [] },
 		{ ModuleInfo1 = ModuleInfo0 } 
 	;

@@ -686,7 +686,26 @@ qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
 qualify_pragma(fact_table(SymName, Arity, FileName),
-	fact_table(SymName, Arity, FileName), Info, Info) --> [].
+		fact_table(SymName, Arity, FileName), Info, Info) --> [].
+qualify_pragma(aditi(SymName, Arity), aditi(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(base_relation(SymName, Arity), base_relation(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(aditi_index(SymName, Arity, Index),
+		aditi_index(SymName, Arity, Index), Info, Info) --> [].
+qualify_pragma(supp_magic(SymName, Arity), supp_magic(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(context(SymName, Arity), context(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(aditi_memo(A, B), aditi_memo(A, B), Info, Info) --> [].
+qualify_pragma(aditi_no_memo(SymName, Arity), aditi_no_memo(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(naive(SymName, Arity), naive(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(psn(SymName, Arity), psn(SymName, Arity),
+		Info, Info) --> [].
+qualify_pragma(owner(SymName, Arity, Owner), owner(SymName, Arity, Owner),
+		Info, Info) --> [].
 qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
 		Info, Info) --> [].
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term), 

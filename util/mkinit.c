@@ -32,6 +32,13 @@
 #define	MAXLINE		256	/* maximum number of characters per line */
 				/* (characters after this limit are ignored) */
 
+/* --- used to collect Aditi data constant names --- */
+
+typedef struct String_List_struct {
+		char *data;
+		struct String_List_struct *next;
+	} String_List;
+
 /* --- global variables --- */
 
 static const char *progname = NULL;
@@ -43,11 +50,15 @@ static int num_files;
 static char **files;
 static bool output_main_func = TRUE;
 static bool c_files_contain_extra_inits = FALSE;
+static bool aditi = FALSE;
 static bool need_initialization_code = FALSE;
 static bool need_tracing = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
+
+	/* List of names of Aditi-RL code constants. */
+static String_List *rl_data = NULL;
 
 /* --- code fragments to put in the output file --- */
 static const char header1[] = 
@@ -191,6 +202,8 @@ static const char main_func[] =
 	"}\n"
 	;
 
+static const char aditi_rl_data_str[] = "mercury__aditi_rl_data__";
+
 static const char if_need_to_init[] = 
 	"#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"
 	;
@@ -201,12 +214,15 @@ static	void usage(void);
 static	void output_headers(void);
 static	void output_sub_init_functions(void);
 static	void output_main_init_function(void);
+static	void output_aditi_load_function(void);
 static	void output_main(void);
-static	void process_file(char *filename);
-static	void process_c_file(char *filename);
+static	void process_file(const char *filename);
+static	void process_c_file(const char *filename);
 static	void process_init_file(const char *filename);
 static	void output_init_function(const char *func_name);
+static	void add_rl_data(char *data);
 static	int getline(FILE *file, char *line, int line_max);
+static	void *checked_malloc(size_t size);
 
 /*---------------------------------------------------------------------------*/
 
@@ -248,6 +264,11 @@ main(int argc, char **argv)
 	output_headers();
 	output_sub_init_functions();
 	output_main_init_function();
+	
+	if (aditi) {
+		output_aditi_load_function();
+	}
+
 	output_main();
 
 	if (num_errors > 0) {
@@ -266,8 +287,12 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:iltw:x")) != EOF) {
+	while ((c = getopt(argc, argv, "ac:iltw:x")) != EOF) {
 		switch (c) {
+		case 'a':
+			aditi = TRUE;
+			break;
+
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
 				usage();
@@ -308,7 +333,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-		"Usage: mkinit [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
+"Usage: mkinit [-a] [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
 	exit(1);
 }
 
@@ -390,7 +415,7 @@ output_main(void)
 /*---------------------------------------------------------------------------*/
 
 static void 
-process_file(char *filename)
+process_file(const char *filename)
 {
 	int len = strlen(filename);
 	/*
@@ -418,14 +443,10 @@ process_file(char *filename)
 }
 
 static void
-process_c_file(char *filename)
+process_c_file(const char *filename)
 {
 	char func_name[1000];
-
 	char *position;
-
-	/* remove the trailing ".c" */
-	filename[strlen(filename) - 2] = '\0';	
 
 	/* remove the directory name, if any */
 	if ((position = strrchr(filename, '/')) != NULL) {
@@ -443,11 +464,30 @@ process_c_file(char *filename)
 		strncat(func_name, filename, position - filename);
 		filename = position + 1;
 	}
-	strcat(func_name, "__");
-	strcat(func_name, filename);
+	/*
+	** The trailing stuff after the last `.' should just be the `c' suffix.
+	*/
+
 	strcat(func_name, "__init");
 
 	output_init_function(func_name);
+
+	if (aditi) {
+		char *rl_data_name;
+		int module_name_size;
+		int mercury_len;
+
+		mercury_len = strlen("mercury__");
+		module_name_size =
+		    strlen(func_name) - mercury_len - strlen("__init");
+		rl_data_name = checked_malloc(module_name_size +
+			strlen(aditi_rl_data_str) + 1);
+		strcpy(rl_data_name, aditi_rl_data_str);
+		strncat(rl_data_name, func_name + mercury_len,
+			module_name_size);
+		add_rl_data(rl_data_name);
+
+	}
 }
 
 static void 
@@ -455,9 +495,12 @@ process_init_file(const char *filename)
 {
 	const char * const	init_str = "INIT ";
 	const char * const	endinit_str = "ENDINIT ";
+	const char * const	aditi_init_str = "ADITI_DATA ";
 	const int		init_strlen = strlen(init_str);
 	const int		endinit_strlen = strlen(endinit_str);
+	const int		aditi_init_strlen = strlen(aditi_init_str);
 	char			line[MAXLINE];
+	char *			rl_data_name;
 	FILE *			cfile;
 
 	cfile = fopen(filename, "r");
@@ -469,23 +512,35 @@ process_init_file(const char *filename)
 	}
 
 	while (getline(cfile, line, MAXLINE) > 0) {
-		if (strncmp(line, init_str, init_strlen) == 0) {
-			int	j;
+	    if (strncmp(line, init_str, init_strlen) == 0) {
+		int	j;
 
-			for (j = init_strlen;
-			     MR_isalnum(line[j]) || line[j] == '_';
-			     j++)
-			{
-				/* VOID */
-			}
-			line[j] = '\0';
-
-			output_init_function(line+init_strlen);
+		for (j = init_strlen;
+			MR_isalnum(line[j]) || line[j] == '_'; j++)
+		{
+			/* VOID */
 		}
+		line[j] = '\0';
 
-		if (strncmp(line, endinit_str, endinit_strlen) == 0) {
-			break;
+		output_init_function(line + init_strlen);
+	    } else if (aditi 
+		    && strncmp(line, aditi_init_str, aditi_init_strlen) == 0) {
+		int j;
+	
+		for (j = aditi_init_strlen;
+			MR_isalnum(line[j]) || line[j] == '_'; j++)
+		{
+			/* VOID */
 		}
+		line[j] = '\0';
+
+		rl_data_name = checked_malloc(
+				strlen(line + aditi_init_strlen) + 1);
+		strcpy(rl_data_name, line + aditi_init_strlen);
+		add_rl_data(rl_data_name);
+	    } else if (strncmp(line, endinit_str, endinit_strlen) == 0) {
+		break;
+	    }
 	}
 
 	fclose(cfile);
@@ -513,6 +568,87 @@ output_init_function(const char *func_name)
 
 /*---------------------------------------------------------------------------*/
 
+	/*
+	** Load the Aditi-RL for each module into the database.
+	** mercury__load_aditi_rl_code() is called by aditi__connect/6
+	** in extras/aditi/aditi.m.
+	*/
+static void
+output_aditi_load_function(void)
+{
+	int len;
+	int filenum;
+	char filename[1000];
+	int num_rl_modules;
+	String_List *node;
+
+	printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
+	printf("** currently connected database.\n*/\n");
+	printf("#include \"aditi_clnt.h\"\n");
+
+	/*
+	** Declare all the RL data constants.
+	** Each RL data constant is named mercury___aditi_rl_data__<module>.
+	*/
+	for (node = rl_data; node != NULL; node = node->next) {
+		printf("extern const char %s[];\n", node->data);
+		printf("extern const int %s__length;\n", node->data);
+	}
+
+	printf("int mercury__load_aditi_rl_code(void)\n{\n"),
+
+	/* Build an array containing the addresses of the RL data constants. */
+	printf("\tstatic const char *rl_data[] = {\n\t\t");
+	for (node = rl_data; node != NULL; node = node->next) {
+		printf("%s,\n\t\t", node->data);
+	}
+	printf("NULL};\n");
+
+	/* Build an array containing the lengths of the RL data constants. */
+	printf("\tstatic const int * const rl_data_lengths[] = {\n\t\t");
+	num_rl_modules = 0;
+	for (node = rl_data; node != NULL; node = node->next) {
+		num_rl_modules++;
+		printf("&%s__length,\n\t\t", node->data);
+	}
+	printf("0};\n");
+	
+	printf("\tconst int num_rl_modules = %d;\n", num_rl_modules);
+	printf("\tint status;\n");
+	printf("\tint i;\n\n");
+
+	/*
+	** Output code to load the Aditi-RL for each module in turn.
+	*/
+	printf("\tfor (i = 0; i < num_rl_modules; i++) {\n");
+	printf("\t\tif (*rl_data_lengths[i] != 0\n");
+
+	/* The ADITI_NAME macro puts a prefix on the function name. */
+	printf("\t\t    && (status = ADITI_NAME(load_immed)"
+		"(*rl_data_lengths[i],\n");
+	printf("\t\t\t\trl_data[i])) != ADITI_OK) {\n");
+	printf("\t\t\treturn status;\n");
+	printf("\t\t}\n");
+	printf("\t}\n");
+	printf("\treturn ADITI_OK;\n");
+	printf("}\n");
+}
+
+/*---------------------------------------------------------------------------*/
+
+static void
+add_rl_data(char *data)
+{
+	String_List *new_node;
+
+	new_node = checked_malloc(sizeof(String_List));
+	new_node->data = data;
+	new_node->next = rl_data;
+	rl_data = new_node;
+}
+
+/*---------------------------------------------------------------------------*/
+
 static int 
 getline(FILE *file, char *line, int line_max)
 {
@@ -532,6 +668,19 @@ getline(FILE *file, char *line, int line_max)
 
 	line[num_chars] = '\0';
 	return num_chars;
+}
+
+/*---------------------------------------------------------------------------*/
+
+static void *
+checked_malloc(size_t size)
+{
+	void *mem;
+	if ((mem = malloc(size)) == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		exit(1);
+	}
+	return mem;
 }
 
 /*---------------------------------------------------------------------------*/

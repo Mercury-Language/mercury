@@ -5,10 +5,10 @@
 %-----------------------------------------------------------------------------%
 
 :- module dependency_graph.
-% Main author: bromage, conway.
+% Main author: bromage, conway, stayl.
 
 % The dependency_graph records which procedures depend on which other
-% procedures.  It is defined as a relation (see hlds.m) R where xRy
+% procedures.  It is defined as a relation (see hlds_module.m) R where xRy
 % means that the definition of x depends on the definition of y.
 %
 % The other important structure is the dependency_ordering which is
@@ -18,7 +18,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds_module, io.
+:- import_module hlds_module, hlds_pred.
+:- import_module list, io.
 
 :- pred module_info_ensure_dependency_info(module_info, module_info).
 :- mode module_info_ensure_dependency_info(in, out) is det.
@@ -33,17 +34,34 @@
 						io__state, io__state).
 :- mode dependency_graph__write_prof_dependency_graph(in, out, di, uo) is det.
 
+	% Given the list of predicates in a strongly connected component
+	% of the dependency graph, a list of the higher SCCs in the module
+	% and a module_info, find out which members of the SCC can be
+	% called from outside the SCC.
+:- pred dependency_graph__get_scc_entry_points(list(pred_proc_id), 
+		dependency_ordering, module_info, list(pred_proc_id)).
+:- mode dependency_graph__get_scc_entry_points(in, in, in, out) is det.
+
+	% Create the Aditi dependency ordering. This contains all the Aditi
+	% SCCs in the original program. The difference is that SCCs which 
+	% are only called from one other SCC and are not called through
+	% negation or aggregation are merged into the parent SCC. This makes
+	% the low-level RL optimizations more effective while maintaining
+	% stratification. 
+:- pred module_info_ensure_aditi_dependency_info(module_info, module_info).
+:- mode module_info_ensure_aditi_dependency_info(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module mode_util, globals, options, code_util.
+:- import_module hlds_goal, hlds_data, prog_data.
+:- import_module mode_util, globals, options, code_util, goal_util.
 :- import_module llds, llds_out, mercury_to_mercury.
 :- import_module term, varset.
 :- import_module int, bool, term, require, string.
-:- import_module list, map, set, std_util.
-:- import_module varset, relation.
+:- import_module map, multi_map, set, std_util.
+:- import_module varset, relation, eqvclass.
 
 %-----------------------------------------------------------------------------%
 
@@ -520,6 +538,455 @@ dependency_graph__output_label(ModuleInfo, PredId, ProcId) -->
         ;
                 { error("dependency_graph__output_label: label not of type local or imported or exported\n") }
         ).
+
+%-----------------------------------------------------------------------------%
+
+dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
+		ModuleInfo, EntryPoints) :-
+	list__filter(dependency_graph__is_entry_point(HigherSCCs, ModuleInfo),
+		SCC, EntryPoints).
+
+:- pred dependency_graph__is_entry_point(list(list(pred_proc_id))::in, 
+		module_info::in, pred_proc_id::in) is semidet.
+
+dependency_graph__is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
+	(
+		% Is the predicate exported?
+		PredProcId = proc(PredId, _ProcId),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_is_exported(PredInfo)
+	;
+		% Is the predicate called from a higher SCC?
+		module_info_dependency_info(ModuleInfo, DepInfo),
+		hlds_dependency_info_get_dependency_graph(DepInfo,
+			DepGraph),
+
+		relation__lookup_element(DepGraph, PredProcId, PredProcIdKey),
+		relation__lookup_to(DepGraph, PredProcIdKey, CallingKeys),
+		set__member(CallingKey, CallingKeys),
+		relation__lookup_key(DepGraph, CallingKey, 
+			CallingPred),
+		list__member(HigherSCC, HigherSCCs),
+		list__member(CallingPred, HigherSCC)
+	).
+
+%-----------------------------------------------------------------------------%
+
+module_info_ensure_aditi_dependency_info(ModuleInfo0, ModuleInfo) :-
+	module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1),
+	module_info_dependency_info(ModuleInfo1, DepInfo0),
+	hlds_dependency_info_get_maybe_aditi_dependency_ordering(DepInfo0, 
+		MaybeAditiInfo),
+	( MaybeAditiInfo = yes(_) ->
+		ModuleInfo = ModuleInfo1
+	;	
+		hlds_dependency_info_get_dependency_ordering(DepInfo0, 
+			DepOrdering),
+		aditi_scc_info_init(ModuleInfo1, AditiInfo0),
+		dependency_graph__build_aditi_scc_info(DepOrdering, 
+			AditiInfo0, AditiInfo),
+		dependency_graph__merge_aditi_sccs(AditiInfo, AditiOrdering),
+		hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
+			AditiOrdering, DepInfo),
+		module_info_set_dependency_info(ModuleInfo1, 
+			DepInfo, ModuleInfo)
+	).
+
+:- pred dependency_graph__build_aditi_scc_info(dependency_ordering::in, 
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+dependency_graph__build_aditi_scc_info([]) --> [].
+dependency_graph__build_aditi_scc_info([SCC | SCCs]) -->
+	aditi_scc_info_get_module_info(ModuleInfo),
+	(
+		{ list__member(PredProcId, SCC) },
+		{ PredProcId = proc(PredId, _) },
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ check_marker(Markers, aditi) }
+	->
+		aditi_scc_info_add_scc(SCC, SCCs, SCCid),
+		list__foldl(dependency_graph__process_aditi_pred_proc_id(SCCid),
+			SCC)
+	;
+		[]
+	),
+	dependency_graph__build_aditi_scc_info(SCCs).	
+
+:- pred dependency_graph__process_aditi_pred_proc_id(scc_id::in, 
+	pred_proc_id::in, aditi_scc_info::in, aditi_scc_info::out) is det.
+
+dependency_graph__process_aditi_pred_proc_id(SCCid, PredProcId) -->
+	aditi_scc_info_get_module_info(ModuleInfo),
+	{ module_info_pred_proc_info(ModuleInfo, PredProcId, 
+		PredInfo, ProcInfo) },
+	dependency_graph__process_aditi_proc_info(SCCid, PredInfo, ProcInfo).
+
+:- pred dependency_graph__process_aditi_proc_info(scc_id::in, pred_info::in, 
+	proc_info::in, aditi_scc_info::in, aditi_scc_info::out) is det.
+
+dependency_graph__process_aditi_proc_info(CurrSCC, PredInfo, ProcInfo) -->
+	( { pred_info_is_exported(PredInfo) } ->
+		aditi_scc_info_add_no_merge_scc(CurrSCC)
+	;
+		[]
+	),
+	{ proc_info_goal(ProcInfo, Goal) },
+	process_aditi_goal(Goal).
+
+%-----------------------------------------------------------------------------%
+
+	% Go over the goal finding predicates called through negation
+	% or aggregation. The SCCs containing those predicates cannot
+	% be merged into the current SCC.
+:- pred process_aditi_goal(hlds_goal::in, aditi_scc_info::in,
+		aditi_scc_info::out) is det.
+
+process_aditi_goal(Goal) -->
+	 { multi_map__init(MMap0) },
+	process_aditi_goal(no, Goal, MMap0, _).
+
+:- pred process_aditi_goal(bool::in, hlds_goal::in,
+	multi_map(prog_var, pred_proc_id)::in, 
+	multi_map(prog_var, pred_proc_id)::out,
+	aditi_scc_info::in, aditi_scc_info::out) is det.
+
+process_aditi_goal(IsNeg, conj(Goals) - _, Map0, Map) -->
+	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
+process_aditi_goal(_IsNeg, par_conj(_, _) - _, _, _) -->
+	{ error("process_aditi_goal - par_conj") }.
+process_aditi_goal(IsNeg, disj(Goals, _) - _, Map0, Map) -->
+	list__foldl2(process_aditi_goal(IsNeg), Goals, Map0, Map).
+process_aditi_goal(IsNeg, switch(_, _, Cases, _) - _, Map0, Map) -->
+	{ NegCallsInCases = 
+	    lambda([Case::in, M0::in, M::out, AInfo0::in, AInfo::out] is det, (
+		Case = case(_ConsId, Goal),
+		process_aditi_goal(IsNeg, Goal, M0, M, AInfo0, AInfo)
+	    )) },
+	list__foldl2(NegCallsInCases, Cases, Map0, Map).
+process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else, _) - _, 
+		Map0, Map) -->
+	process_aditi_goal(yes, Cond, Map0, Map1),
+	process_aditi_goal(IsNeg, Then, Map1, Map2),
+	process_aditi_goal(IsNeg, Else, Map2, Map).
+process_aditi_goal(IsNeg, some(_, Goal) - _, Map0, Map) -->
+	process_aditi_goal(IsNeg, Goal, Map0, Map).
+process_aditi_goal(_IsNeg, not(Goal) - _, Map0, Map) -->
+	process_aditi_goal(yes, Goal, Map0, Map).
+process_aditi_goal(IsNeg, call(PredId, ProcId, Args, _, _, _) - _, 
+		Map0, Map) -->
+	aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, Map0, Map).
+
+process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, 
+		Map0, Map) -->
+	( { Unify = construct(_, pred_const(PredId, ProcId), _, _) } ->
+		aditi_scc_info_add_closure(Var, 
+			proc(PredId, ProcId), Map0, Map)
+	;
+		{ Map = Map0 }
+	).
+process_aditi_goal(_IsNeg, higher_order_call(_, _, _, _, _, _) - _, 
+		Map, Map) --> [].
+process_aditi_goal(_IsNeg, class_method_call(_, _, _, _, _, _) - _, 
+		Map, Map) --> [].
+process_aditi_goal(_IsNeg, pragma_c_code(_, _, _, _, _, _, _) - _,
+		Map, Map) --> [].
+
+%-----------------------------------------------------------------------------%
+
+:- pred dependency_graph__merge_aditi_sccs(aditi_scc_info::in,
+		aditi_dependency_ordering::out) is det.
+
+dependency_graph__merge_aditi_sccs(Info, Ordering) :-
+	Info = aditi_scc_info(_, _PredSCC, SCCPred, _, SCCRel, NoMerge, _),
+	( relation__tsort(SCCRel, SCCTsort) ->
+		eqvclass__init(EqvSCCs0),
+		set__init(MergedSCCs),
+		% Make all the SCCs known to the equivalence class.	
+		AddElement = lambda([Elem::in, Eqv0::in, Eqv::out] is det, (
+				eqvclass__new_element(Eqv0, Elem, Eqv)	
+			)),
+		list__foldl(AddElement, SCCTsort, EqvSCCs0, EqvSCCs),
+		dependency_graph__merge_aditi_sccs_2(SCCTsort, EqvSCCs, 
+			MergedSCCs, NoMerge, SCCRel, SCCPred, [], Ordering)
+	;
+		error("dependency_graph__merge_aditi_sccs: SCC dependency relation is cyclic")
+	).
+
+:- pred dependency_graph__merge_aditi_sccs_2(list(scc_id)::in,
+	eqvclass(scc_id)::in, set(scc_id)::in, set(scc_id)::in,
+	relation(scc_id)::in, scc_pred_map::in, 
+	aditi_dependency_ordering::in, aditi_dependency_ordering::out) is det.
+
+dependency_graph__merge_aditi_sccs_2([], _, _, _, _, _, Ordering, Ordering).
+dependency_graph__merge_aditi_sccs_2([SCCid | SCCs0], EqvSCCs0, 
+		MergedSCCs0, NoMergeSCCs, SCCRel, 
+		SCCPreds, Ordering0, Ordering) :-
+	( set__member(SCCid, MergedSCCs0) ->
+			% This SCC has been merged into its parent.
+		Ordering1 = Ordering0,
+		EqvSCCs = EqvSCCs0,
+		SCCs = SCCs0
+	;
+		dependency_graph__get_called_scc_ids(SCCid, SCCRel,
+			CalledSCCs),
+		map__lookup(SCCPreds, SCCid, SCC0 - EntryPoints),
+		dependency_graph__do_merge_aditi_sccs(SCCid, CalledSCCs, 
+			NoMergeSCCs, SCCs0, SCCs, SCCPreds, SCCRel, 
+			EqvSCCs0, EqvSCCs, 
+			aditi_scc([SCC0], EntryPoints), SCC),
+		Ordering1 = [SCC | Ordering0]
+	),
+	dependency_graph__merge_aditi_sccs_2(SCCs, EqvSCCs, MergedSCCs0,
+		NoMergeSCCs, SCCRel, SCCPreds, Ordering1, Ordering).
+
+	% Find the SCCs called from a given SCC.
+:- pred dependency_graph__get_called_scc_ids(scc_id::in, relation(scc_id)::in,
+		set(scc_id)::out) is det.
+
+dependency_graph__get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
+	relation__lookup_element(SCCRel, SCCid, SCCidKey),
+	relation__lookup_from(SCCRel, SCCidKey, CalledSCCKeys),
+	set__to_sorted_list(CalledSCCKeys, CalledSCCKeyList),
+	list__map(relation__lookup_key(SCCRel), CalledSCCKeyList, CalledSCCs),
+	set__list_to_set(CalledSCCs, CalledSCCSet).
+
+	% Go over the list of SCCs finding all those which 
+	% can be merged into a given SCC.
+:- pred dependency_graph__do_merge_aditi_sccs(scc_id::in, set(scc_id)::in, 
+		set(scc_id)::in, list(scc_id)::in, list(scc_id)::out, 
+		scc_pred_map::in, relation(scc_id)::in, 
+		eqvclass(scc_id)::in, eqvclass(scc_id)::out, 
+		aditi_scc::in, aditi_scc::out) is det.
+
+dependency_graph__do_merge_aditi_sccs(_, _, _, [], [], 
+		_, _, Eqv, Eqv, SubModule, SubModule).
+dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs, NoMergeSCCs,
+		[LowerSCCid | LowerSCCs0], LowerSCCs, SCCPreds, SCCRel, 
+		EqvSCCs0, EqvSCCs, SubModule0, SubModule) :-
+	(
+		set__member(LowerSCCid, CalledSCCs), 
+		\+ set__member(LowerSCCid, NoMergeSCCs) 
+	->
+		relation__lookup_element(SCCRel, LowerSCCid, LowerSCCKey),
+		relation__lookup_to(SCCRel, LowerSCCKey, CallingSCCKeys),
+		set__to_sorted_list(CallingSCCKeys, CallingSCCKeyList),
+		list__map(relation__lookup_key(SCCRel), 
+			CallingSCCKeyList, CallingSCCs),
+		( eqvclass__same_eqvclass_list(EqvSCCs0, CallingSCCs) ->
+
+			%
+			% All the calling SCCs have been merged (or 
+			% there was only one to start with) so we
+			% can safely merge this one in as well.
+			%
+			eqvclass__new_equivalence(EqvSCCs0, CurrSCCid, 
+				LowerSCCid, EqvSCCs1),
+			map__lookup(SCCPreds, LowerSCCid, LowerSCC),
+			LowerSCC = LowerSCCPreds - _,
+
+			%
+			% The entry-points of the combined SCC cannot include
+			% the entry-points of the lower SCC, since that 
+			% would mean that the lower SCC was called from
+			% multiple places and could not be merged.
+			%
+			SubModule0 = aditi_scc(CurrSCCPreds0, EntryPoints),
+			SubModule1 = aditi_scc([LowerSCCPreds | CurrSCCPreds0], 
+					EntryPoints),
+
+			%
+			% Add the SCCs called by the newly merged SCC 
+			% to those we are attempting to merge.
+			%
+			dependency_graph__get_called_scc_ids(LowerSCCid, 
+				SCCRel, LowerCalledSCCs),
+			set__union(CalledSCCs, LowerCalledSCCs, CalledSCCs1),
+
+			dependency_graph__do_merge_aditi_sccs(CurrSCCid,
+				CalledSCCs1, NoMergeSCCs, LowerSCCs0, 
+				LowerSCCs, SCCPreds, SCCRel, EqvSCCs1, EqvSCCs, 
+				SubModule1, SubModule)
+		;	
+			dependency_graph__do_merge_aditi_sccs(CurrSCCid,
+				CalledSCCs, NoMergeSCCs, LowerSCCs0, 
+				LowerSCCs1, SCCPreds, SCCRel, 
+				EqvSCCs0, EqvSCCs, SubModule0, SubModule),
+			LowerSCCs = [LowerSCCid | LowerSCCs1]	
+		)
+	;
+		dependency_graph__do_merge_aditi_sccs(CurrSCCid, CalledSCCs, 
+			NoMergeSCCs, LowerSCCs0, LowerSCCs1, SCCPreds, SCCRel, 
+			EqvSCCs0, EqvSCCs, SubModule0, SubModule),
+		LowerSCCs = [LowerSCCid | LowerSCCs1]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- type aditi_scc_info
+	---> aditi_scc_info(
+		module_info,
+		map(pred_proc_id, scc_id),
+		scc_pred_map,
+		set(pred_proc_id),		% all local Aditi preds
+		relation(scc_id),
+		set(scc_id),			% SCCs which can't be merged
+						% into their parents.
+		scc_id				% current SCC.
+	).
+
+		% For each SCC, a list of all preds in SCC, and a list
+		% of entry-points of the SCC.
+:- type scc_pred_map ==	map(scc_id, pair(list(pred_proc_id))).
+
+:- type scc_id == int.
+
+:- type scc == list(pred_proc_id).
+
+:- pred aditi_scc_info_init(module_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_init(ModuleInfo, AditiInfo) :- 
+	map__init(PredSCC),
+	map__init(SCCPred),
+	set__init(AditiPreds),
+	relation__init(SCCDep),
+	set__init(NoMergeSCCs),
+	AditiInfo = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, 
+			AditiPreds, SCCDep, NoMergeSCCs, 0).
+
+:- pred aditi_scc_info_get_module_info(module_info::out,
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_get_module_info(Module, Info, Info) :-
+	Info = aditi_scc_info(Module, _, _, _, _, _, _).
+
+:- pred aditi_scc_info_add_no_merge_scc(scc_id::in,
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_add_no_merge_scc(SCCid, Info0, Info) :-
+	Info0 = aditi_scc_info(A, B, C, D, E, NoMerge0, G),
+	set__insert(NoMerge0, SCCid, NoMerge),
+	Info = aditi_scc_info(A, B, C, D, E, NoMerge, G).
+
+:- pred aditi_scc_info_add_scc(list(pred_proc_id)::in, 
+		dependency_ordering::in, scc_id::out,
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_add_scc(SCC, HigherSCCs, SCCid, Info0, Info) :-
+	Info0 = aditi_scc_info(ModuleInfo, PredSCC0, SCCPred0, AditiPreds0, 
+			SCCRel0, NoMerge, LastSCC),
+	SCCid is LastSCC + 1,
+	dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
+		ModuleInfo, EntryPoints),
+	map__det_insert(SCCPred0, SCCid, SCC - EntryPoints, SCCPred),
+	AddToMap = 
+	    lambda([PredProcId::in, PS0::in, PS::out] is det, (
+		map__det_insert(PS0, PredProcId, SCCid, PS)
+	    )),
+	list__foldl(AddToMap, SCC, PredSCC0, PredSCC),
+	relation__add_element(SCCRel0, SCCid, _, SCCRel),
+	set__insert_list(AditiPreds0, SCC, AditiPreds),	
+	Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
+			SCCRel, NoMerge, SCCid).
+
+:- pred aditi_scc_info_handle_call(bool::in, pred_id::in, proc_id::in,
+		list(prog_var)::in, multi_map(prog_var, pred_proc_id)::in, 
+		multi_map(prog_var, pred_proc_id)::out, 
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, 
+		Map, Map, Info0, Info) :-
+	Info0 = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
+			SCCRel0, NoMerge0, SCCid),
+	PredProcId = proc(PredId, ProcId),
+	( set__member(PredProcId, AditiPreds) ->
+		map__lookup(PredSCC, PredProcId, CalledSCCid),
+		( CalledSCCid = SCCid ->
+			SCCRel1 = SCCRel0,
+			NoMerge1 = NoMerge0
+		;
+			relation__add_values(SCCRel0, SCCid, CalledSCCid,
+				SCCRel1),
+			( IsNeg = yes ->
+				set__insert(NoMerge0, CalledSCCid, NoMerge1)
+			;
+				NoMerge1 = NoMerge0
+			)
+		),
+		handle_higher_order_args(Args, no, SCCid, Map, PredSCC,
+			SCCRel1, SCCRel, NoMerge1, NoMerge),
+		Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred, AditiPreds, 
+			SCCRel, NoMerge, SCCid)
+	;
+		( hlds_pred__is_aditi_aggregate(ModuleInfo, PredId) ->
+			handle_higher_order_args(Args, yes, SCCid, Map,
+				PredSCC, SCCRel0, SCCRel, NoMerge0, NoMerge),
+			Info = aditi_scc_info(ModuleInfo, PredSCC, SCCPred,
+				AditiPreds, SCCRel, NoMerge, SCCid)
+		;
+			Info = Info0
+		)
+	).
+
+	% An SCC cannot be merged into its parents if one of its
+	% procedures is called as an aggregate query.
+:- pred handle_higher_order_args(list(prog_var)::in, bool::in, scc_id::in,
+	multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
+	relation(scc_id)::in, relation(scc_id)::out,
+	set(scc_id)::in, set(scc_id)::out) is det.
+	
+handle_higher_order_args([], _, _, _, _, SCCRel, SCCRel, NoMerge, NoMerge).
+handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC, 
+		SCCRel0, SCCRel, NoMerge0, NoMerge) :-
+	( multi_map__search(Map, Arg, PredProcIds) ->
+		list__foldl2(handle_higher_order_arg(PredSCC, IsAgg, SCCid),
+			PredProcIds, SCCRel0, SCCRel1, NoMerge0, NoMerge1)
+	;
+		SCCRel1 = SCCRel0, 
+		NoMerge1 = NoMerge0
+	),
+	handle_higher_order_args(Args, IsAgg, SCCid, Map, PredSCC, 
+		SCCRel1, SCCRel, NoMerge1, NoMerge).
+
+:- pred handle_higher_order_arg(map(pred_proc_id, scc_id)::in, bool::in,
+		scc_id::in, pred_proc_id::in,
+		relation(scc_id)::in, relation(scc_id)::out,
+		set(scc_id)::in, set(scc_id)::out) is det.
+
+handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
+		SCCRel0, SCCRel, NoMerge0, NoMerge) :-
+	( map__search(PredSCC, PredProcId, CalledSCCid) ->
+		% Make sure anything called through an
+		% aggregate is not merged into the current 
+		% sub-module.
+		( IsAgg = yes ->
+			set__insert(NoMerge0, CalledSCCid, NoMerge)
+		;
+			NoMerge = NoMerge0
+		),
+		( CalledSCCid = SCCid ->
+			SCCRel = SCCRel0
+		;	
+			relation__add_values(SCCRel0, SCCid,
+				CalledSCCid, SCCRel)
+		)
+	;
+		NoMerge = NoMerge0, 
+		SCCRel = SCCRel0
+	).
+
+:- pred aditi_scc_info_add_closure(prog_var::in, pred_proc_id::in, 
+		multi_map(prog_var, pred_proc_id)::in, 
+		multi_map(prog_var, pred_proc_id)::out,
+		aditi_scc_info::in, aditi_scc_info::out) is det.
+
+aditi_scc_info_add_closure(Var, PredProcId, Map0, Map, Info, Info) :-
+	Info = aditi_scc_info(_, _, _, AditiPreds, _, _, _),
+	( set__member(PredProcId, AditiPreds) ->
+		multi_map__set(Map0, Var, PredProcId, Map)
+	;
+		Map = Map0
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

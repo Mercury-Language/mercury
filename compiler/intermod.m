@@ -1077,24 +1077,53 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 
 intermod__write_pragmas(_, _, [], _) --> [].
 intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
-	(
-		% Since the inferred declarations are output, these
-		% don't need to be done in the importing module.
-		% Also purity is output as part of the pred/func decl.
-		% There is no pragma required for generated class methods.
-		( { Marker = infer_type }
-		; { Marker = infer_modes }
-		; { Marker = (impure) }
-		; { Marker = (semipure) }
-		; { Marker = class_method }
-		)
-	->
-		[]
-	;
+	{ intermod__should_output_marker(Marker, ShouldOutput) },
+	( { ShouldOutput = yes } ->
 		{ hlds_out__marker_name(Marker, Name) },
 		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name)
+	;
+		[]
 	),
 	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
+
+	% Is a pragma declaration required in the `.opt' file for
+	% a predicate with the given marker.
+:- pred intermod__should_output_marker(marker::in, bool::out) is det.
+
+	% Since the inferred declarations are output, these
+	% don't need to be done in the importing module.
+intermod__should_output_marker(infer_type, no).
+intermod__should_output_marker(infer_modes, no).
+	% Purity is output as part of the pred/func decl.
+intermod__should_output_marker((impure), no).
+intermod__should_output_marker((semipure), no).
+	% There is no pragma required for generated class methods.
+intermod__should_output_marker(class_method, no).
+	% The warning for calls to local obsolete predicates should appear
+	% once in the defining module, not in importing modules.
+intermod__should_output_marker(obsolete, no).
+intermod__should_output_marker(inline, yes).
+intermod__should_output_marker(no_inline, yes).
+intermod__should_output_marker(dnf, yes).
+intermod__should_output_marker(aditi, yes).
+intermod__should_output_marker(base_relation, yes).
+intermod__should_output_marker(aditi_memo, yes).
+intermod__should_output_marker(aditi_no_memo, yes).
+intermod__should_output_marker(naive, yes).
+intermod__should_output_marker(psn, yes).
+intermod__should_output_marker(supp_magic, yes).
+intermod__should_output_marker(context, yes).
+intermod__should_output_marker(promised_pure, yes).
+intermod__should_output_marker(terminates, yes).
+intermod__should_output_marker(does_not_terminate, yes).
+	% Termination should only be checked in the defining module.
+intermod__should_output_marker(check_termination, no).
+intermod__should_output_marker(generate_inline, _) :-
+	% This marker should only occur after the magic sets transformation.
+	error("intermod__should_output_marker: generate_inline").
+intermod__should_output_marker(aditi_interface, _) :-
+	% This marker should only occur after the magic sets transformation.
+	error("intermod__should_output_marker: aditi_interface").
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 

@@ -237,6 +237,7 @@ tar: README INSTALL
 		mv mercury/trial	stuff-to-exclude;		\
 		mv mercury/bytecode	stuff-to-exclude;		\
 		mv mercury/lp_solve	stuff-to-exclude;		\
+		mv mercury/extras/aditi stuff-to-exclude;		\
 		mv mercury/extras	mercury-extras-$(VERSION);	\
 		mv mercury		mercury-compiler-$(VERSION);	\
 		mv tests		mercury-tests-$(VERSION);	\
@@ -249,6 +250,7 @@ tar: README INSTALL
 		mv mercury-compiler-$(VERSION)	mercury;		\
 		mv mercury-extras-$(VERSION)	mercury/extras;		\
 		mv mercury-tests-$(VERSION)	tests;			\
+		mv stuff-to-exclude/aditi	mercury/extras/aditi;	\
 		mv stuff-to-exclude/*		mercury;		\
 		rmdir stuff-to-exclude;					\
 	)

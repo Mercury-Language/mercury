@@ -306,12 +306,34 @@
 :- module polymorphism.
 :- interface.
 
-:- import_module hlds_module, hlds_pred, prog_data, special_pred.
-:- import_module io.
+:- import_module hlds_goal, hlds_module, hlds_pred, prog_data, special_pred.
+:- import_module io, list, term.
 
 :- pred polymorphism__process_module(module_info, module_info,
 			io__state, io__state).
 :- mode polymorphism__process_module(in, out, di, uo) is det.
+
+% Given a list of types, create a list of variables to hold the type_info
+% for those types, and create a list of goals to initialize those type_info
+% variables to the appropriate type_info structures for the types.
+% Update the varset and vartypes accordingly.
+
+:- pred polymorphism__make_type_info_vars(list(type), existq_tvars,
+	term__context, list(prog_var), list(hlds_goal), poly_info, poly_info).
+:- mode polymorphism__make_type_info_vars(in, in, in, out, out, in, out) is det.
+
+:- type poly_info.
+
+	% Extract some fields from a pred_info and proc_info for use
+	% by the polymorphism transformation.
+:- pred init_poly_info(module_info, pred_info, proc_info, poly_info).
+:- mode init_poly_info(in, in, in, out) is det.
+
+	% Update the fields in a pred_info and proc_info with
+	% the values in a poly_info.
+:- pred poly_info_extract(poly_info, pred_info, pred_info,
+		proc_info, proc_info, module_info).
+:- mode poly_info_extract(in, in, out, in, out, out) is det.
 
 	% unsafe_type_cast and unsafe_promise_unique are polymorphic
 	% builtins which do not need their type_infos. unsafe_type_cast
@@ -360,14 +382,13 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, llds, (lambda).
-:- import_module type_util, mode_util, quantification, instmap, prog_io.
+:- import_module hlds_data, llds, (lambda), prog_io.
+:- import_module type_util, mode_util, quantification, instmap, prog_out.
 :- import_module code_util, unify_proc, prog_util, make_hlds.
-:- import_module term, varset.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
-:- import_module bool, int, string, list, set, map.
-:- import_module std_util, require, assoc_list, prog_out.
+:- import_module bool, int, string, set, map.
+:- import_module term, varset, std_util, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
 
@@ -386,8 +407,12 @@ polymorphism__process_module(ModuleInfo0, ModuleInfo, IO0, IO) :-
 				IO0, IO),
 	module_info_preds(ModuleInfo1, Preds1),
 	map__keys(Preds1, PredIds1),
+
 	polymorphism__fixup_preds(PredIds1, ModuleInfo1, ModuleInfo2),
-	polymorphism__expand_class_method_bodies(ModuleInfo2, ModuleInfo).
+	polymorphism__expand_class_method_bodies(ModuleInfo2, ModuleInfo3),
+
+	% Need update the dependency graph to include the lambda predicates. 
+	module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo).
 
 :- pred polymorphism__process_preds(list(pred_id), module_info, module_info,
 			io__state, io__state).
@@ -404,12 +429,27 @@ polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 
 polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
 	(
-		polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity) 
+		(
+			% Leave Aditi aggregates alone, since
+			% calls to them must be monomorphic. This avoids
+			% unnecessarily creating type_infos in Aditi code,
+			% since they will just be stripped out later.
+			% The input to an aggregate must be a closure holding
+			% the address of an Aditi procedure. The
+			% monomorphism of Aditi procedures is checked by
+			% magic.m.
+			% Other Aditi procedures should still be processed
+			% to remove complicated unifications and
+			% lambda expressions.
+			hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
+		;
+			pred_info_module(PredInfo, PredModule),
+			pred_info_name(PredInfo, PredName),
+			pred_info_arity(PredInfo, PredArity),
+			polymorphism__no_type_info_builtin(PredModule,
+				PredName, PredArity) 
+		)
 	->
 		ModuleInfo = ModuleInfo0,
 		IO = IO0
@@ -591,18 +631,11 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo0, ModuleInfo0,
 	%
 	% set the new values of the fields in proc_info and pred_info
 	%
-	Info = poly_info(VarSet, VarTypes, TypeVarSet,
-				TypeInfoMap, TypeClassInfoMap,
-				_Proofs, _PredName, ModuleInfo),
 	proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
-	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo5),
-	proc_info_set_typeinfo_varmap(ProcInfo5, TypeInfoMap, ProcInfo6),
-	proc_info_set_typeclass_info_varmap(ProcInfo6, TypeClassInfoMap,
-		ProcInfo),
-	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
+	proc_info_set_argmodes(ProcInfo2, ArgModes, ProcInfo3),
+	poly_info_extract(Info, PredInfo0, PredInfo,
+		ProcInfo3, ProcInfo, ModuleInfo).
 
 % XXX the following code ought to be rewritten to handle
 % existential/universal type_infos and type_class_infos
@@ -1340,6 +1373,12 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 			% some builtins don't need the type_info
 			polymorphism__no_type_info_builtin(PredModule,
 				PredName, PredArity)
+		;
+			% Leave Aditi relations alone, since they must
+			% be monomorphic. This is checked by magic.m.
+			hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		;
+			hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
 		)
 	->
 		ArgVars = ArgVars0,
@@ -1602,7 +1641,8 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 		NonLocalTypeInfos, LambdaGoal, Unification0, Functor,
 		Unification, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			TCVarMap, _Proofs, PredName, ModuleInfo0),
+			TCVarMap, _Proofs, PredName, ModuleInfo0,
+			Markers, Owner),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -1618,7 +1658,7 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals, NonLocalTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+		Markers, Owner, ModuleInfo0, Functor, Unification, ModuleInfo),
 	poly_info_set_module_info(ModuleInfo, PolyInfo0, PolyInfo).
 
 :- pred polymorphism__constraint_contains_vars(list(tvar), class_constraint).
@@ -1714,7 +1754,8 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 	ClassId = class_id(ClassName, ClassArity),
 
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0, 
-		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
+		TypeClassInfoMap0, Proofs, PredName, ModuleInfo,
+		Markers, Owner),
 
 	(
 		map__search(TypeClassInfoMap0, Constraint, Location)
@@ -1829,7 +1870,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 
 			Info1 = poly_info(VarSet1, VarTypes1, TypeVarSet, 
 				TypeInfoMap0, TypeClassInfoMap0, Proofs, 
-				PredName, ModuleInfo),
+				PredName, ModuleInfo, Markers, Owner),
 
 				% Make the typeclass_info for the subclass
 			polymorphism__make_typeclass_info_var(
@@ -2095,10 +2136,6 @@ maybe_insert_var(yes(Var), Vars, [Var | Vars]).
 % for those types, and create a list of goals to initialize those type_info
 % variables to the appropriate type_info structures for the types.
 % Update the varset and vartypes accordingly.
-
-:- pred polymorphism__make_type_info_vars(list(type), existq_tvars,
-	prog_context, list(prog_var), list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__make_type_info_vars(in, in, in, out, out, in, out) is det.
 
 polymorphism__make_type_info_vars([], _, _, [], [], Info, Info).
 polymorphism__make_type_info_vars([Type | Types], ExistQVars, Context,
@@ -2988,112 +3025,137 @@ delete_nth([X|Xs], N0, Result) :-
 						% polymorphism.m
 
 			string,			% pred name
-			module_info
+			module_info,
+			pred_markers,		% from the pred_info
+			aditi_owner
 		).
-
-:- pred init_poly_info(module_info, pred_info, proc_info, poly_info).
-:- mode init_poly_info(in, in, in, out) is det.
 
 init_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
 	pred_info_name(PredInfo, PredName),
 	pred_info_typevarset(PredInfo, TypeVarSet),
 	pred_info_get_constraint_proofs(PredInfo, Proofs),
+	pred_info_get_markers(PredInfo, Markers),
+	pred_info_get_aditi_owner(PredInfo, Owner),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__init(TypeInfoMap),
 	map__init(TypeClassInfoMap),
 	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet,
-				TypeInfoMap, TypeClassInfoMap,
-				Proofs, PredName, ModuleInfo).
+			TypeInfoMap, TypeClassInfoMap,
+			Proofs, PredName, ModuleInfo, Markers, Owner).
+
+poly_info_extract(Info, PredInfo0, PredInfo,
+                ProcInfo0, ProcInfo, ModuleInfo) :-
+	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap,
+		TypeclassInfoLocations, _Proofs, _Name, ModuleInfo, _, _),
+
+	% set the new values of the fields in proc_info and pred_info
+	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
+	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoMap, ProcInfo3),
+	proc_info_set_typeclass_info_varmap(ProcInfo3, TypeclassInfoLocations,
+		ProcInfo),
+	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo).
 
 :- pred poly_info_get_varset(poly_info, prog_varset).
 :- mode poly_info_get_varset(in, out) is det.
 
 poly_info_get_varset(PolyInfo, VarSet) :-
-	PolyInfo = poly_info(VarSet, _, _, _, _, _, _, _).
+	PolyInfo = poly_info(VarSet, _, _, _, _, _, _, _, _, _).
 
 :- pred poly_info_get_var_types(poly_info, map(prog_var, type)).
 :- mode poly_info_get_var_types(in, out) is det.
 
 poly_info_get_var_types(PolyInfo, VarTypes) :-
-	PolyInfo = poly_info(_, VarTypes, _, _, _, _, _, _).
+	PolyInfo = poly_info(_, VarTypes, _, _, _, _, _, _, _, _).
 
 :- pred poly_info_get_typevarset(poly_info, tvarset).
 :- mode poly_info_get_typevarset(in, out) is det.
 
 poly_info_get_typevarset(PolyInfo, TypeVarSet) :-
-	PolyInfo = poly_info(_, _, TypeVarSet, _, _, _, _, _).
+	PolyInfo = poly_info(_, _, TypeVarSet, _, _, _, _, _, _, _).
 
 :- pred poly_info_get_type_info_map(poly_info, map(tvar, type_info_locn)).
 :- mode poly_info_get_type_info_map(in, out) is det.
 
 poly_info_get_type_info_map(PolyInfo, TypeInfoMap) :-
-	PolyInfo = poly_info(_, _, _, TypeInfoMap, _, _, _, _).
+	PolyInfo = poly_info(_, _, _, TypeInfoMap, _, _, _, _, _, _).
 
 :- pred poly_info_get_typeclass_info_map(poly_info,
 					map(class_constraint, prog_var)).
 :- mode poly_info_get_typeclass_info_map(in, out) is det.
 
 poly_info_get_typeclass_info_map(PolyInfo, TypeClassInfoMap) :-
-	PolyInfo = poly_info(_, _, _, _, TypeClassInfoMap, _, _, _).
+	PolyInfo = poly_info(_, _, _, _, TypeClassInfoMap, _, _, _, _, _).
 
 :- pred poly_info_get_proofs(poly_info,
 				map(class_constraint, constraint_proof)).
 :- mode poly_info_get_proofs(in, out) is det.
 
 poly_info_get_proofs(PolyInfo, Proofs) :-
-	PolyInfo = poly_info(_, _, _, _, _, Proofs, _, _).
+	PolyInfo = poly_info(_, _, _, _, _, Proofs, _, _, _, _).
 
 :- pred poly_info_get_pred_name(poly_info, string).
 :- mode poly_info_get_pred_name(in, out) is det.
 
 poly_info_get_pred_name(PolyInfo, PredName) :-
-	PolyInfo = poly_info(_, _, _, _, _, _, PredName, _).
+	PolyInfo = poly_info(_, _, _, _, _, _, PredName, _, _, _).
 
 :- pred poly_info_get_module_info(poly_info, module_info).
 :- mode poly_info_get_module_info(in, out) is det.
 
 poly_info_get_module_info(PolyInfo, ModuleInfo) :-
-	PolyInfo = poly_info(_, _, _, _, _, _, _, ModuleInfo).
+	PolyInfo = poly_info(_, _, _, _, _, _, _, ModuleInfo, _, _).
 
+:- pred poly_info_get_markers(poly_info, pred_markers).
+:- mode poly_info_get_markers(in, out) is det.
+
+poly_info_get_markers(PolyInfo, Markers) :-
+	PolyInfo = poly_info(_, _, _, _, _, _, _, _, Markers, _).
+
+:- pred poly_info_get_aditi_owner(poly_info, aditi_owner).
+:- mode poly_info_get_aditi_owner(in, out) is det.
+
+poly_info_get_aditi_owner(PolyInfo, Owner) :-
+	PolyInfo = poly_info(_, _, _, _, _, _, _, _, _, Owner).
 
 :- pred poly_info_set_varset(prog_varset, poly_info, poly_info).
 :- mode poly_info_set_varset(in, in, out) is det.
 
 poly_info_set_varset(VarSet, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(_, B, C, D, E, F, G, H),
-	PolyInfo = poly_info(VarSet, B, C, D, E, F, G, H).
+	PolyInfo0 = poly_info(_, B, C, D, E, F, G, H, I, J),
+	PolyInfo = poly_info(VarSet, B, C, D, E, F, G, H, I, J).
 
 :- pred poly_info_set_varset_and_types(prog_varset, map(prog_var, type),
 					poly_info, poly_info).
 :- mode poly_info_set_varset_and_types(in, in, in, out) is det.
 
 poly_info_set_varset_and_types(VarSet, VarTypes, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(_, _, C, D, E, F, G, H),
-	PolyInfo = poly_info(VarSet, VarTypes, C, D, E, F, G, H).
+	PolyInfo0 = poly_info(_, _, C, D, E, F, G, H, I, J),
+	PolyInfo = poly_info(VarSet, VarTypes, C, D, E, F, G, H, I, J).
 
 :- pred poly_info_set_typevarset(tvarset, poly_info, poly_info).
 :- mode poly_info_set_typevarset(in, in, out) is det.
 
 poly_info_set_typevarset(TypeVarSet, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, _, D, E, F, G, H),
-	PolyInfo = poly_info(A, B, TypeVarSet, D, E, F, G, H).
+	PolyInfo0 = poly_info(A, B, _, D, E, F, G, H, I, J),
+	PolyInfo = poly_info(A, B, TypeVarSet, D, E, F, G, H, I, J).
 
 :- pred poly_info_set_type_info_map(map(tvar, type_info_locn),
 					poly_info, poly_info).
 :- mode poly_info_set_type_info_map(in, in, out) is det.
 
 poly_info_set_type_info_map(TypeInfoMap, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, _, E, F, G, H),
-	PolyInfo = poly_info(A, B, C, TypeInfoMap, E, F, G, H).
+	PolyInfo0 = poly_info(A, B, C, _, E, F, G, H, I, J),
+	PolyInfo = poly_info(A, B, C, TypeInfoMap, E, F, G, H, I, J).
 
 :- pred poly_info_set_typeclass_info_map(map(class_constraint, prog_var),
 					poly_info, poly_info).
 :- mode poly_info_set_typeclass_info_map(in, in, out) is det.
 
 poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, _, F, G, H),
-	PolyInfo = poly_info(A, B, C, D, TypeClassInfoMap, F, G, H).
+	PolyInfo0 = poly_info(A, B, C, D, _, F, G, H, I, J),
+	PolyInfo = poly_info(A, B, C, D, TypeClassInfoMap, F, G, H, I, J).
 
 
 :- pred poly_info_set_proofs(map(class_constraint, constraint_proof),
@@ -3101,15 +3163,15 @@ poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo0, PolyInfo) :-
 :- mode poly_info_set_proofs(in, in, out) is det.
 
 poly_info_set_proofs(Proofs, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, E, _, G, H),
-	PolyInfo = poly_info(A, B, C, D, E, Proofs, G, H).
+	PolyInfo0 = poly_info(A, B, C, D, E, _, G, H, I, J),
+	PolyInfo = poly_info(A, B, C, D, E, Proofs, G, H, I, J).
 
 :- pred poly_info_set_module_info(module_info, poly_info, poly_info).
 :- mode poly_info_set_module_info(in, in, out) is det.
 
 poly_info_set_module_info(ModuleInfo, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, E, F, G, _),
-	PolyInfo = poly_info(A, B, C, D, E, F, G, ModuleInfo).
+	PolyInfo0 = poly_info(A, B, C, D, E, F, G, _, I, J),
+	PolyInfo = poly_info(A, B, C, D, E, F, G, ModuleInfo, I, J).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

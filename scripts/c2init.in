@@ -19,6 +19,8 @@ Help="\
 Name:	c2init - Create Mercury initialization file.
 Usage:	c2init [options] *.c *.init ...
 Options: 
+	-a, --aditi
+		Generate a function to upload Aditi-RL data to a database.
 	-c <n>, --max-calls <n>
 		Break up the initialization into groups of at most <n> function
 		calls.  (Default value of <n> is 40.)
@@ -75,12 +77,17 @@ init_opt=""
 trace_opt=""
 library_opt=""
 extra_inits_opt=""
+aditi_opt=""
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
 
 while true; do
 	case "$1" in
+	-a|--aditi)
+		aditi_opt="-a"; shift;;	
+	-a-|--no-aditi)
+		aditi_opt=""; shift;;	
 	-c|--max-calls)
 		maxcalls="$2"; shift;;
 
@@ -142,10 +149,12 @@ case "$trace_opt" in
 esac
 
 case $# in
-	0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt $library_opt \
-		-w"$defentry" $extra_inits_opt $MERCURY_MOD_LIB_MODS
+	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
+		$library_opt -w"$defentry" $extra_inits_opt \
+		$MERCURY_MOD_LIB_MODS
 	   ;;
-	*) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt $library_opt \
-		-w"$defentry" $extra_inits_opt "$@" $MERCURY_MOD_LIB_MODS
+	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
+		$library_opt -w"$defentry" $extra_inits_opt "$@" \
+		$MERCURY_MOD_LIB_MODS
 	   ;;
 esac

@@ -954,6 +954,11 @@ dupelim__replace_labels_code_addr(do_semidet_class_method, _,
 	do_semidet_class_method).
 dupelim__replace_labels_code_addr(do_nondet_class_method, _,
 	do_nondet_class_method).
+dupelim__replace_labels_code_addr(do_det_aditi_call, _, do_det_aditi_call).
+dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
+		do_semidet_aditi_call).
+dupelim__replace_labels_code_addr(do_nondet_aditi_call, _,
+		do_nondet_aditi_call).
 dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred dupelim__replace_labels_label_list(list(label)::in,

@@ -72,6 +72,8 @@
 		;	debug_opt
 		;	debug_vn	% vn = value numbering
 		;	debug_pd	% pd = partial deduction/deforestation
+		;	debug_rl_gen
+		;	debug_rl_opt
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -86,6 +88,7 @@
 		;	errorcheck_only
 		;	compile_to_c
 		;	compile_only
+		;	aditi_only
 		;	output_grade_string
 	% Auxiliary output options
 		;	assume_gmake
@@ -105,6 +108,10 @@
 		;	dump_hlds
 		;	dump_hlds_alias
 		;	dump_hlds_options
+		;	verbose_dump_hlds
+		;	generate_schemas
+		;	dump_rl
+		;	dump_rl_bytecode
 	% Language semantics options
 		;	reorder_conj
 		;	reorder_disj
@@ -193,7 +200,6 @@
 		;	cflags_for_gotos
 		;	c_debug
 		;	c_include_directory
-		;	aditi
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
 				% fact table data array
@@ -276,6 +282,12 @@
 		;	optimize_vnrepeat
 		;	pred_value_number
 		;	vn_fudge
+	%	- RL
+		;	optimize_rl
+		;	optimize_rl_cse
+		;	optimize_rl_invariants
+		;	optimize_rl_index
+		;	detect_rl_streams
 	%	- C
 		;	use_macro_for_redo_fail
 		;	emit_c_loops
@@ -294,7 +306,10 @@
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
+		;	filenames_from_stdin
 		;	use_subdirs
+		;	aditi
+		;	aditi_user
 		;	help.
 
 :- implementation.
@@ -359,7 +374,9 @@ option_defaults_2(verbosity_option, [
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0),
-	debug_pd		-	bool(no)
+	debug_pd		-	bool(no),
+	debug_rl_gen		-	bool(no),
+	debug_rl_opt		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -376,6 +393,7 @@ option_defaults_2(output_option, [
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
 	compile_only		-	bool(no),
+	aditi_only		-	bool(no),
 	output_grade_string	-	bool(no)
 ]).
 option_defaults_2(aux_output_option, [
@@ -396,7 +414,11 @@ option_defaults_2(aux_output_option, [
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
 	dump_hlds_alias		-	string(""),
-	dump_hlds_options	-	string("")
+	dump_hlds_options	-	string(""),
+	verbose_dump_hlds	-	string(""),
+	dump_rl			-	bool(no),
+	dump_rl_bytecode	-	bool(no),
+	generate_schemas	-	bool(no)
 ]).
 option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
@@ -499,7 +521,6 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	aditi			-	bool(no),
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90)
 ]).
@@ -602,7 +623,13 @@ option_defaults_2(optimization_option, [
 	procs_per_c_function	-	int(1),
 	everything_in_one_c_function -	special,
 	c_optimize		-	bool(no),
-	inline_alloc		-	bool(no)
+	inline_alloc		-	bool(no),
+% RL
+	optimize_rl		- 	bool(no),
+	optimize_rl_cse		-	bool(no),
+	optimize_rl_invariants	-	bool(no),
+	optimize_rl_index	-	bool(no),
+	detect_rl_streams	-	bool(no)
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -618,11 +645,14 @@ option_defaults_2(link_option, [
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	heap_space		-	int(0),
+	filenames_from_stdin	-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
 				-	bool(yes),
 	use_subdirs		-	bool(no),
+	aditi			-	bool(no),
+	aditi_user		-	string(""),
 	help 			-	bool(no)
 ]).
 
@@ -685,6 +715,8 @@ long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
 long_option("debug-pd",			debug_pd).
+long_option("debug-rl-gen",		debug_rl_gen).
+long_option("debug-rl-opt",		debug_rl_opt).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -715,6 +747,7 @@ long_option("errorcheck-only",		errorcheck_only).
 long_option("compile-to-c",		compile_to_c).
 long_option("compile-to-C",		compile_to_c).
 long_option("compile-only",		compile_only).
+long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
 
 % aux output options
@@ -737,6 +770,10 @@ long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
+long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-rl",			dump_rl).
+long_option("dump-rl-bytecode",		dump_rl_bytecode).
+long_option("generate-schemas",		generate_schemas).
 
 % language semantics options
 long_option("reorder-conj",		reorder_conj).
@@ -938,6 +975,13 @@ long_option("optimise-vnrepeat",	optimize_vnrepeat).
 long_option("pred-value-number",	pred_value_number).
 long_option("vn-fudge",			vn_fudge).
 
+% RL optimizations
+long_option("optimize-rl",		optimize_rl).
+long_option("optimize-rl-cse",		optimize_rl_cse).
+long_option("optimize-rl-invariants",	optimize_rl_invariants).
+long_option("optimize-rl-index",	optimize_rl_index).
+long_option("detect-rl-streams", 	detect_rl_streams).
+
 % LLDS->C optimizations
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("emit-c-loops",		emit_c_loops).
@@ -965,7 +1009,10 @@ long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
 					use_search_directories_for_intermod).	
+long_option("filenames-from-stdin",	filenames_from_stdin).
 long_option("use-subdirs",		use_subdirs).	
+long_option("aditi",			aditi).
+long_option("aditi-user",		aditi_user).
 
 %-----------------------------------------------------------------------------%
 
@@ -1239,6 +1286,7 @@ options_help -->
 	options_help_hlds_hlds_optimization,
 	options_help_hlds_llds_optimization,
 	options_help_llds_llds_optimization,
+	options_help_rl_rl_optimization,
 	options_help_output_optimization,
 	options_help_object_optimization,
 	options_help_link,
@@ -1332,6 +1380,12 @@ options_help_verbosity -->
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
 		"\tdeduction and deforestation process."
+/***** ADITI is not yet useful 
+		"--debug-rl-gen",
+		"\tOutput detailed debugging traces of Aditi-RL code generation.",
+		"--debug-rl-opt",
+		"\tOutput detailed debugging traces of Aditi-RL optimization."
+*****/
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -1387,6 +1441,11 @@ options_help_output -->
 		"-c, --compile-only",
 		"\tGenerate C code in `<module>.c' and object code in `<module>.o'",
 		"\tbut do not attempt to link the named modules.",
+/***** ADITI is not yet useful.
+		"--aditi-only"),
+		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
+		"\tdo not compile to C.",
+*****/
 		"\t--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
@@ -1458,6 +1517,22 @@ options_help_aux_output -->
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",
 		"\t(see the Mercury User's Guide for details)."
+/***** ADITI is not yet useful.
+		"--dump-rl",
+		"\tOutput a human readable form of the compiler's internal",
+		"\trepresentation of the generated Aditi-RL code to",
+		"\t`<module>.rl_dump'.",
+		"--dump-rl-bytecode",
+		"\tOutput a human readable representation of the generated",
+		"\tAditi-RL bytecodes to `<module>.rla'.",
+		"\tAditi-RL bytecodes are directly executed by the Aditi system.",
+		"--generate-schemas",
+		"\tOutput schema strings for Aditi base relations",
+		"\tto `<module>.base_schema' and for Aditi derived",
+		"\trelations to `<module>.derived_schema'.",
+		"\tA schema string is a representation of the types",
+		"\tof a relation."
+*****/
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
@@ -1971,6 +2046,29 @@ options_help_llds_llds_optimization -->
 		"\tExtend value numbering to entire predicates."
 	]).
 
+:- pred options_help_rl_rl_optimization(io__state::di, io__state::uo) is det.
+
+options_help_rl_rl_optimization -->
+	[].
+/***** ADITI is not yet useful
+	io__write_string("\n    Aditi-RL optimizations:\n"),
+	write_tabbed_lines([
+		"--optimize-rl",
+		"\tEnable the optimizations of Aditi-RL procedures",
+		"\tdescribed below.",
+		"--optimize-rl-cse",
+		"\tOptimize common subexpressions in Aditi-RL procedures.",
+		"\t--optimize-rl-invariants",
+		"\tOptimize loop invariants in Aditi-RL procedures.",
+		"\t--optimize-rl-index",
+		"\tUse indexing to optimize access to relations in Aditi-RL".
+		"\tprocedures.",
+		"\t--detect-rl-streams",
+		"\tDetect cases where intermediate results in Aditi-RL",
+		"\tprocedures do not need to be materialised."
+	]).
+*****/
+
 :- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
 
 options_help_output_optimization -->
@@ -2054,7 +2152,27 @@ options_help_misc -->
 		"\tdirectories given by `--intermod-directory'.",
 		"--use-subdirs",
 		"\tGenerate intermediate files in a `Mercury' subdirectory,",
-		"\trather than generating them in the current directory."
+		"\trather than generating them in the current directory.",
+		"--filenames-from-stdin",
+		"\tRead then compile a newline terminated module name or",
+		"\tfile name from the standard input. Repeat this until EOF",
+		"\tis reached. (This allows a program or user to interactively",
+		"\tcompile several modules without the overhead of process",
+		"\tcreation for each one.)"
+/***** ADITI is not yet useful.
+		"--aditi",
+		"\tEnable Aditi compilation. You need to enable this",
+		"\toption if you are making use of the Aditi deductive",
+		"\tdatabase interface.",
+		"--aditi-user",
+		"\tSpecify the Aditi login of the owner of the predicates",
+		"\tin any Aditi RL files produced. The owner field is",
+		"\tused along with module, name and arity to identify",
+		"\tpredicates, and is also used for security checks.",
+		"\tDefaults to the value of the `USER' environment",
+		"\tvariable. If `$USER' is not set, `--aditi-user'",
+		"\tdefaults to the string ""guest"".".
+*****/
 	]).
 
 :- pred write_tabbed_lines(list(string), io__state, io__state).

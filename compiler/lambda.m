@@ -79,10 +79,10 @@
 		list(mode), determinism, list(prog_var), set(prog_var),
 		hlds_goal, unification, prog_varset, map(prog_var, type),
 		class_constraints, tvarset, map(tvar, type_info_locn),
-		map(class_constraint, prog_var), module_info, unify_rhs,
-		unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
-		in, in, in, in, in, out, out, out) is det.
+		map(class_constraint, prog_var), pred_markers, aditi_owner,
+		module_info, unify_rhs, unification, module_info).
+:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in,
+		in, in, in, in, in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -106,8 +106,10 @@
 			map(class_constraint, prog_var),
 						% from the proc_info
 						% (typeclass_infos)
+			pred_markers,		% from the pred_info
 			pred_or_func,
 			string,			% pred/func name
+			aditi_owner,
 			module_info
 		).
 
@@ -157,7 +159,9 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	pred_info_name(PredInfo0, PredName),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
+	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, Constraints0),
+	pred_info_get_aditi_owner(PredInfo0, Owner),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
@@ -166,10 +170,11 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		TVarMap0, TCVarMap0, PredOrFunc, PredName, ModuleInfo0),
+		TVarMap0, TCVarMap0, Markers, PredOrFunc, 
+		PredName, Owner, ModuleInfo0),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
 	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, ModuleInfo),
+		TVarMap, TCVarMap, _, _, _, _, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
@@ -270,7 +275,7 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, POF, PredName, ModuleInfo0),
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo0),
 	% XXX existentially typed lambda expressions are not yet supported
 	% (see the documentation at top of this file)
 	ExistQVars = [],
@@ -281,14 +286,15 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+		Markers, Owner, ModuleInfo0, Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-			TVarMap, TCVarMap, POF, PredName, ModuleInfo).
+		TVarMap, TCVarMap, Markers, POF, PredName, Owner, ModuleInfo).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		OrigVars, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
-		ModuleInfo0, Functor, Unification, ModuleInfo) :-
+		Markers, Owner, ModuleInfo0, Functor,
+		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
 	->
@@ -423,6 +429,39 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		list__append(ArgModes1, Modes, AllArgModes),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
+		( 
+			% Pass through the aditi markers for 
+			% aggregate query closures.
+			% XXX we should differentiate between normal
+			% top-down closures and aggregate query closures,
+			% possibly by using a different type for aggregate
+			% queries. Currently all nondet lambda expressions
+			% within Aditi predicates are treated as aggregate
+			% inputs.
+			determinism_components(Detism, _, at_most_many),
+			check_marker(Markers, aditi)
+		->
+			markers_to_marker_list(Markers, MarkerList0),
+			list__filter(
+			    lambda([Marker::in] is semidet, 
+				% Pass through only Aditi markers.
+				% Don't pass through `context' markers, since
+				% they are useless for non-recursive predicates
+				% such as the created predicate.
+				( Marker = aditi
+				; Marker = dnf
+				; Marker = psn
+				; Marker = naive
+				; Marker = supp_magic
+				; Marker = aditi_memo
+				; Marker = aditi_no_memo
+				)),
+				MarkerList0, MarkerList),
+			marker_list_to_markers(MarkerList, LambdaMarkers)
+		;
+			init_markers(LambdaMarkers)
+		),
+
 		% Choose an args_method which is always directly callable
 		% from do_call_*_closure even if the inputs don't preceed
 		% the outputs in the declaration. mercury_ho_call.c requires
@@ -442,10 +481,10 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			AllArgModes, Detism, LambdaGoal, LambdaContext,
 			TVarMap, TCVarMap, ArgsMethod, ProcInfo),
 
-		init_markers(Markers),
 		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
-			ArgTypes, true, LambdaContext, local, Markers,
-			PredOrFunc, Constraints, ProcInfo, ProcId, PredInfo),
+			ArgTypes, true, LambdaContext, local, LambdaMarkers,
+			PredOrFunc, Constraints, Owner, ProcInfo,
+			ProcId, PredInfo),
 
 		% save the new predicate in the predicate table
 
