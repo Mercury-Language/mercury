@@ -23,6 +23,18 @@ VPATH=.
 MCFLAGS-int = --no-halt-at-warn
 
 #-----------------------------------------------------------------------------#
+#
+# XXX The MLDS back-end has a bug which causes problems when inlining
+# pragma c_code into nondet procedures.  This works around those problems.
+#
+
+ifneq "$(findstring hlc,$(GRADE))" ""
+    MCFLAGS-benchmarking = --no-inlining
+    MCFLAGS-std_util = --no-inlining
+    MCFLAGS-term_io = --no-inlining
+endif
+
+#-----------------------------------------------------------------------------#
 
 # If we're going to generate both `.o' files and `.pic_o' files, then
 # don't remove the intermediate `.c' files.
