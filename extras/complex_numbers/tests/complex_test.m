@@ -9,9 +9,9 @@
 :- implementation.
 :- import_module float.
 :- import_module complex_numbers.
-:- import_module complex_numbers__complex, complex_numbers__imag.
-:- import_module complex_numbers__complex_imag, complex_numbers__imag_complex.
-:- import_module complex_numbers__float_imag, complex_numbers__imag_float.
+:- import_module complex_numbers.complex, complex_numbers.imag.
+:- import_module complex_numbers.complex_imag, complex_numbers.imag_complex.
+:- import_module complex_numbers.float_imag, complex_numbers.imag_float.
 
 main -->
 	print("tests of (complex op complex)"), nl,

@@ -25,7 +25,7 @@
 %------------------------------------------------------------------------------%
 :- interface.
 
-:- import_module list, complex_numbers, complex_numbers__complex.
+:- import_module list, complex_numbers, complex_numbers.complex.
 
 :- pred fft(list(complex), list(complex)).
 :- mode fft(in, out) is det.
@@ -38,8 +38,8 @@
 fft(Ins, Outs) :-
 		% First put the list into bit-reversed order.
 	bit_rev(Ins, Shuffle),
-	list__length(Shuffle, NInt),
-	int__log2(NInt, R),
+	list.length(Shuffle, NInt),
+	int.log2(NInt, R),
 	N = float(NInt),
 		% Now recombine the component transforms
 	combine(N, 1.0, R, Shuffle, Outs).
@@ -53,7 +53,7 @@ bit_rev([X1,X2|Xs], List) :-
 	split([X1,X2|Xs], List1, List2),
 	bit_rev(List1, List3),
 	bit_rev(List2, List4),
-	list__append(List3, List4, List).
+	list.append(List3, List4, List).
 
 :- pred split(list(T), list(T), list(T)).
 :- mode split(in, out, out) is det.
@@ -83,7 +83,7 @@ combine(N, K, R, Ins, Outs) :-
 		combine(N, K2, R1, Ss0, Ss),
 			% Now perform the 'butterfly'
 		xform(Fs, Ss, complex(1.0), w(K, N), Rs0, Rs1),
-		list__append(Rs0, Rs1, Outs)
+		list.append(Rs0, Rs1, Outs)
 	).
 
 :- pred xform(list(complex), list(complex), complex, complex,
