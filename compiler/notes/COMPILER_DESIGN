@@ -41,7 +41,7 @@ The action is co-ordinated from mercury_compile.m.
 0. Option handling
 
 The command-line options are defined in the module options.m.
-mercury_compile.pp calls library/getopt.m, passing the predicates
+mercury_compile.m calls library/getopt.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set.  The results are
 stored in the io__state, using the type globals defined in globals.m.
@@ -151,14 +151,17 @@ in an HLDS goal.
 	  It checks that the code is mode-correct, reordering it
 	  if necessary, and annotates each goal with a delta-instmap
 	  that specifies the changes in instantiatedness of each
-	  variable over that goal.  It also converts higher-order
-	  pred terms into lambda expressions.  Modes of lambda
-	  expressions are module qualified during mode analysis.
+	  variable over that goal.
+	- modecheck_unify.m is the sub-module which analyses
+	  unification goals. It also converts higher-order pred terms
+	  into lambda expressions.  Modes of lambda expressions are
+	  module qualified during this pass.
+	- modecheck_call.m is the sub-module which analyses calls.
 	  It also converts function calls into predicate calls, and
 	  does the final step of figuring out which pred_id to use
 	  for a call to an overloaded predicate.
 
-	  It uses the following sub-modules:
+	  The following sub-modules are used:
 		mode_info.m (the main data structure for mode analysis)
 		delay_info.m (a sub-component of the mode_info data
 			structure used for storing the information
@@ -178,6 +181,8 @@ in an HLDS goal.
 	- mode_util.m contains miscellaneous useful predicates dealing
 	  with modes (many of these are used by lots of later stages
 	  of the compiler)
+	- mode_debug.m contains utility code for tracing the actions
+	  of the mode checker.
 
 * indexing and determinism analysis
  
@@ -311,7 +316,7 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 
 * code generation
 
-	For code generation itself, the main module is code_gen.pp. 
+	For code generation itself, the main module is code_gen.m. 
 	It handles conjunctions and negations, but calls sub-modules
 	to do most of the other work:
 
