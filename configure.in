@@ -1628,6 +1628,37 @@ if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
 	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
 fi
 #-----------------------------------------------------------------------------#
+AC_PATH_PROG(AS,as)
+AC_MSG_CHECKING(whether the assembler does full preprocessing)
+
+AC_CACHE_VAL(mercury_cv_asm_does_full_preprocessing, [
+if test "$AS" != ""; then
+	# check that it really works
+	cat > conftest.s << EOF
+
+# define foo(x) \
+	/* foo */
+
+	foo(x)
+EOF
+	if 
+		echo $AS conftest.s >&AC_FD_CC 2>&1 &&
+		$AS conftest.s </dev/null >&AC_FD_CC 2>&1 
+	then
+		mercury_cv_asm_does_full_preprocessing="yes"
+	else
+		AS="gcc -c -x assembler-with-cpp"
+		mercury_cv_asm_does_full_preprocessing="no"
+		AC_MSG_RESULT(no)	
+	fi
+	rm -f conftest*
+else
+	AS="gcc -c -x assembler-with-cpp"
+fi
+])
+AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
+AC_DEFINE(AS)
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
 AC_TRY_RUN([
