@@ -337,8 +337,8 @@
 	;		do_nondet_closure.
 
 :- type proc_label
-	--->	proc(string, string, int, int)
-		%	 module, predicate name, predicate arity, mode #
+	--->	proc(string, pred_or_func, string, int, int)
+		%	 module, predicate/function, name, arity, mode #
 	;	special_proc(string, string, sym_name, int, int).
 		%	module, pred name, type name, type arity, mode #
 

@@ -234,8 +234,10 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		ProcLabel = special_proc(ModuleName, PredName, TypeName,
 				Arity, ProcId)
 	;
-		predicate_arity(ModuleInfo, PredId, Arity),
-		ProcLabel = proc(ModuleName, PredName, Arity, ProcId)
+		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+		pred_info_arity(PredInfo, Arity),
+		ProcLabel = proc(ModuleName, PredOrFunc, PredName, Arity,
+				ProcId)
 	).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-

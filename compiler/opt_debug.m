@@ -722,10 +722,10 @@ opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
 	opt_debug__dump_label_pairs(Labels, L_str),
 	string__append_list([" ", L1_str, "-", L2_str, L_str], Str).
 
-opt_debug__dump_proclabel(proc(Module, Pred, Arity, Mode), Str) :-
+opt_debug__dump_proclabel(proc(Module, _PredOrFunc, Name, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
-	string__append_list([Module, "_", Pred, "_", A_str, "_", M_str], Str).
+	string__append_list([Module, "_", Name, "_", A_str, "_", M_str], Str).
 opt_debug__dump_proclabel(special_proc(Module, Pred, Type, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),

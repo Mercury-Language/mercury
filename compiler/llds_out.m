@@ -78,7 +78,7 @@
 :- implementation.
 
 :- import_module shapes, export.
-:- import_module exprn_aux, prog_data, prog_out.
+:- import_module exprn_aux, prog_data, prog_out, hlds_pred.
 :- import_module bool, int, char, string, set, std_util.
 :- import_module require, globals, options.
 :- import_module library.	% for the version number.
@@ -751,7 +751,8 @@ output_instruction_and_comment(Instr, Comment, DeclSet, PrintComments,
 output_instruction(Instr) -->
 	{ set__init(DeclSet) },
 	{ set__init(ContLabelSet) },
-	{ ProfInfo = local(proc("DEBUG", "DEBUG", 0, 0)) - ContLabelSet },
+	{ ProfInfo = local(proc("DEBUG", predicate, "DEBUG", 0, 0))
+			- ContLabelSet },
 	output_instruction(Instr, DeclSet, ProfInfo).
 
 :- pred output_instruction(instr, decl_set, pair(label, set(label)),
@@ -1977,9 +1978,15 @@ output_proc_label(ProcLabel) -->
 	{ get_proc_label(ProcLabel, ProcLabelString) },
 	io__write_string(ProcLabelString).
 
-get_proc_label(proc(Module, Pred, Arity, ModeNum0),ProcLabelString) :-
-	get_label_name(Module, Pred, Arity, LabelName),
-	string__int_to_string(Arity, ArityString),
+get_proc_label(proc(Module, PredOrFunc, Name, Arity, ModeNum0),
+		ProcLabelString) :-
+	get_label_name(Module, PredOrFunc, Name, Arity, LabelName),
+	( PredOrFunc = function ->
+		OrigArity is Arity - 1
+	;
+		OrigArity = Arity
+	),
+	string__int_to_string(OrigArity, ArityString),
 	ModeNum is ModeNum0 mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
 	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
@@ -1989,7 +1996,7 @@ get_proc_label(proc(Module, Pred, Arity, ModeNum0),ProcLabelString) :-
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
 get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 				ModeNum0), ProcLabelString) :-
-	get_label_name(Module, PredName, TypeArity, LabelName),
+	get_label_name(Module, predicate, PredName, TypeArity, LabelName),
 	llds_out__sym_name_mangle(TypeName0, TypeName),
 	string__int_to_string(TypeArity, TypeArityString),
 	ModeNum is ModeNum0 mod 10000,		% strip off the priority
@@ -1998,21 +2005,10 @@ get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
-%	llds_out__output_label_name/5 writes a name to standard out.  Depending
-%	on the name of the label module and arity, the module name may also
-%	be written as a qualifier.
+:- pred get_label_name(string, pred_or_func, string, int, string).
+:- mode get_label_name(in, in, in, in, out) is det.
 
-:- pred llds_out__output_label_name(string, string, int, io__state, io__state).
-:- mode llds_out__output_label_name(in, in, in, di, uo) is det.
-
-llds_out__output_label_name(Module, Name, Arity) -->
-	{ get_label_name(Module, Name, Arity, LabelName) },
-	io__write_string(LabelName).
-
-:- pred get_label_name(string, string, int, string).
-:- mode get_label_name(in, in, in, out) is det.
-
-get_label_name(Module0, Name0, Arity, LabelName) :-
+get_label_name(Module0, PredOrFunc, Name0, Arity, LabelName) :-
 	get_label_prefix(Prefix),
 	(
 		( 
@@ -2021,19 +2017,25 @@ get_label_name(Module0, Name0, Arity, LabelName) :-
 			Name0 = "main",
 			Arity = 2
 		;
-			string__append("__", _, Name0)
+			string__prefix("__", Name0)
 		)
 		% The conditions above define which labels are printed without
 		% module qualification.  XXX Changes to runtime/* are necessary
 		% to allow `mercury_builtin' labels to be qualified/
 		% overloaded.
 	->
-		llds_out__name_mangle(Name0, Name),
-		string__append(Prefix, Name, LabelName)
+		llds_out__name_mangle(Name0, LabelName0)
 	;
-		make_qualified_name(Module0, Name0, LabelName0),
-		string__append(Prefix, LabelName0, LabelName)
-	).
+		make_qualified_name(Module0, Name0, LabelName0)
+	),
+	(
+		PredOrFunc = function,
+		string__append("fn__", LabelName0, LabelName1)
+	;
+		PredOrFunc = predicate,
+		LabelName1 = LabelName0
+	),
+	string__append(Prefix, LabelName1, LabelName).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.

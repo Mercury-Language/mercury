@@ -1234,10 +1234,11 @@ opt_util__format_label(exported(ProcLabel), Str) :-
 :- pred opt_util__format_proclabel(proc_label, string).
 :- mode opt_util__format_proclabel(in, out) is det.
 
-opt_util__format_proclabel(proc(_Module, Pred, Arity, Mode), Str) :-
+opt_util__format_proclabel(proc(_Module, _PredOrFunc, Name, Arity, Mode), Str)
+		:-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
-	string__append_list([Pred, "/", ArityStr, " mode ", ModeStr], Str).
+	string__append_list([Name, "/", ArityStr, " mode ", ModeStr], Str).
 opt_util__format_proclabel(special_proc(_Module, Pred, Type0, Arity, Mode),
 		Str) :-
 	string__int_to_string(Arity, ArityStr),
