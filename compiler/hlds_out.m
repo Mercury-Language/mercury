@@ -5,10 +5,21 @@
 
 % Main author: conway
 
+%-----------------------------------------------------------------------------%
+
+:- module hlds_out.
+:- interface.
+:- import_module int, io, hlds.
+
 % print out an hlds structure.
 
-:- pred hlds_out__write_hlds(int, moduleinfo, io_state, io_state).
+:- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
 :- mode hlds_out__write_hlds(input, input, input, output).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module term_io, require.
 
 hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_header(Indent, Module),
@@ -31,7 +42,7 @@ hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_modes(Indent1, ModeTable),
 	hlds_out__write_footer(Indent, Module).
 
-:- pred hlds_out__write_header(int, moduleinfo, io_state, io_state).
+:- pred hlds_out__write_header(int, module_info, io__state, io__state).
 :- mode hlds_out__write_header(input, input, input, output).
 
 hlds_out__write_header(Indent, Module) -->
@@ -44,7 +55,7 @@ hlds_out__write_header(Indent, Module) -->
 	hlds_out__write_indent(Indent1),
 	io__write_string("module(\n").
 
-:- pred hlds_out__write_footer(int, moduleinfo, io_state, io_state).
+:- pred hlds_out__write_footer(int, module_info, io__state, io__state).
 :- mode hlds_out__write_footer(input, input, input, output).
 
 hlds_out__write_footer(Indent, Module) -->
@@ -56,7 +67,7 @@ hlds_out__write_footer(Indent, Module) -->
 	io__write_string(Name),
 	io__write_string(".\n").
 
-:- pred hlds_out__write_preds(int, pred_table, io_state, io_state).
+:- pred hlds_out__write_preds(int, pred_table, io__state, io__state).
 :- mode hlds_out__write_preds(input, input, input, output).
 
 hlds_out__write_preds(Indent, PredTable) -->
@@ -71,7 +82,7 @@ hlds_out__write_preds(Indent, PredTable) -->
 	io__write_string("]\n").
 
 :- pred hlds_out__write_preds_2(int, list(PredId), pred_table,
-			io_state, io_state).
+			io__state, io__state).
 :- mode hlds_out__write_preds_2(input, input, input, input, output).
 
 hlds_out__write_preds_2(Indent, PredIds0, PredTable) --> 
@@ -100,7 +111,7 @@ hlds_out__write_preds_2(Indent, PredIds0, PredTable) -->
 		hlds_out__write_preds_2(Indent, PredIds, PredTable)
 	).
 
-:- pred hlds_out__write_pred(int, pred_id, pred_info, io_state, io_state).
+:- pred hlds_out__write_pred(int, pred_id, pred_info, io__state, io__state).
 :- mode hlds_out__write_pred(input, input, input, input, output).
 
 hlds_out__write_pred(Indent, PredId, PredInfo) -->
@@ -138,7 +149,7 @@ hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_clauses(int, list(clause), io_state, io_state).
+:- pred hlds_out__write_clauses(int, list(clause), io__state, io__state).
 :- mode hlds_out__write_clauses(input, input, input, output).
 
 hlds_out__write_clauses(Indent, Clauses0) -->
@@ -164,7 +175,7 @@ hlds_out__write_clauses(Indent, Clauses0) -->
 		hlds_out__write_clauses(Indent, Clauses)
 	).
 
-:- pred hlds_out__write_clause(int, clause, io_state, io_state).
+:- pred hlds_out__write_clause(int, clause, io__state, io__state).
 :- mode hlds_out__write_clause(input, input, input, output).
 
 hlds_out__write_clause(Indent, Clause) -->
@@ -183,8 +194,7 @@ hlds_out__write_clause(Indent, Clause) -->
 	io__write_string("clause(\n"),
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Modes for which this clause applies:\n\t\t"),
-	hlds_out__write_intlist(Indent1, Modes),
-	io__write_string("\n"),
+	hlds_out__write_anything(Indent1, Modes),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
@@ -199,7 +209,7 @@ hlds_out__write_clause(Indent, Clause) -->
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
 	io__write_string("% The head variables of this clause\n"),
-	hlds_out__write_intlist(Indent1, HeadVars),
+	hlds_out__write_anything(Indent1, HeadVars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
@@ -208,7 +218,7 @@ hlds_out__write_clause(Indent, Clause) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_intlist(int, list(int), io_state, io_state).
+:- pred hlds_out__write_intlist(int, list(int), io__state, io__state).
 :- mode hlds_out__write_intlist(input, input, input, output).
 
 hlds_out__write_intlist(Indent, IntList) -->
@@ -224,7 +234,7 @@ hlds_out__write_intlist(Indent, IntList) -->
 		io__write_string("]")
 	).
 
-:- pred hlds_out__write_intlist_2(list(int), io_state, io_state).
+:- pred hlds_out__write_intlist_2(list(int), io__state, io__state).
 :- mode hlds_out__write_intlist_2(input, input, output).
 
 hlds_out__write_intlist_2(Ns0) -->
@@ -245,7 +255,7 @@ hlds_out__write_intlist_2(Ns0) -->
 		hlds_out__write_intlist_2(Ns)
 	).
 
-:- pred hlds_out__write_hlds__goal(int, hlds__goal, io_state, io_state).
+:- pred hlds_out__write_hlds__goal(int, hlds__goal, io__state, io__state).
 :- mode hlds_out__write_hlds__goal(input, input, input, output).
 
 hlds_out__write_hlds__goal(Indent, GoalExprn - GoalInfo) -->
@@ -255,7 +265,7 @@ hlds_out__write_hlds__goal(Indent, GoalExprn - GoalInfo) -->
 	io__write_string("-\n"),
 	hlds_out__write_goalinfo(Indent1, GoalInfo).
 
-:- pred hlds_out__write_goal(int, hlds__goal_expr, io_state, io_state).
+:- pred hlds_out__write_goal(int, hlds__goal_expr, io__state, io__state).
 :- mode hlds_out__write_goal(input, input, input, output).
 
 hlds_out__write_goal(Indent, conj(Goals)) -->
@@ -301,7 +311,7 @@ hlds_out__write_goal(Indent, switch(VarId, Cases, FollowVars)) -->
 	io__write_string("switch(\n"),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_indent(Indent1),
-	io__write_int(VarId),
+	io__write_anything(VarId),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_cases(Indent1, Cases),
@@ -338,14 +348,14 @@ hlds_out__write_goal(Indent, some(Vars, G)) -->
 hlds_out__write_goal(Indent, all(Vars, G)) -->
 	io__write_anything(all(Vars, G)).
 
-:- pred hlds_out__write_argtypes(int, list(term), io_state, io_state).
+:- pred hlds_out__write_argtypes(int, list(term), io__state, io__state).
 :- mode hlds_out__write_argtypes(input, input, input, output).
 
 hlds_out__write_argtypes(Indent, ArgTypes) -->
 	hlds_out__write_termlist(Indent, ArgTypes),
 	io__write_string("\n").
 
-:- pred hlds_out__write_builtin(int, is_builtin, io_state, io_state).
+:- pred hlds_out__write_builtin(int, is_builtin, io__state, io__state).
 :- mode hlds_out__write_builtin(input, input, input, output).
 
 hlds_out__write_builtin(Indent, is_builtin) -->
@@ -355,7 +365,7 @@ hlds_out__write_builtin(Indent, not_builtin) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("not_builtin").
 	
-:- pred hlds_out__write_cases(int, cases, io_state, io_state).
+:- pred hlds_out__write_cases(int, Cases, io__state, io__state).
 :- mode hlds_out__write_cases(input, input, input, output).
 
 hlds_out__write_cases(Indent, X) -->
@@ -363,7 +373,7 @@ hlds_out__write_cases(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_followvars(int, followvars, io_state, io_state).
+:- pred hlds_out__write_followvars(int, follow_vars, io__state, io__state).
 :- mode hlds_out__write_followvars(input, input, input, output).
 
 hlds_out__write_followvars(Indent, X) -->
@@ -371,7 +381,7 @@ hlds_out__write_followvars(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_goalinfo(int, goal_info, io_state, io_state).
+:- pred hlds_out__write_goalinfo(int, hlds__goal_info, io__state, io__state).
 :- mode hlds_out__write_goalinfo(input, input, input, output).
 
 hlds_out__write_goalinfo(Indent, X) -->
@@ -379,7 +389,7 @@ hlds_out__write_goalinfo(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_conj_goals(int, list(hlds__goal), io_state, io_state).
+:- pred hlds_out__write_conj_goals(int, list(hlds__goal), io__state, io__state).
 :- mode hlds_out__write_conj_goals(input, input, input, output).
 
 hlds_out__write_conj_goals(Indent, Goals0) -->
@@ -400,7 +410,7 @@ hlds_out__write_conj_goals(Indent, Goals0) -->
 		hlds_out__write_conj_goals(Indent, Goals)
 	).
 
-:- pred hlds_out__write_disj_goals(int, list(hlds__goal), io_state, io_state).
+:- pred hlds_out__write_disj_goals(int, list(hlds__goal), io__state, io__state).
 :- mode hlds_out__write_disj_goals(input, input, input, output).
 
 hlds_out__write_disj_goals(Indent, Goals0) -->
@@ -421,7 +431,7 @@ hlds_out__write_disj_goals(Indent, Goals0) -->
 		hlds_out__write_disj_goals(Indent, Goals)
 	).
 
-:- pred hlds_out__write_insts(int, inst_table, io_state, io_state).
+:- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
 :- mode hlds_out__write_insts(input, input, input, output).
 
 hlds_out__write_insts(Indent, X) -->
@@ -429,7 +439,7 @@ hlds_out__write_insts(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_modes(int, mode_table, io_state, io_state).
+:- pred hlds_out__write_modes(int, mode_table, io__state, io__state).
 :- mode hlds_out__write_modes(input, input, input, output).
 
 hlds_out__write_modes(Indent, X) -->
@@ -437,7 +447,15 @@ hlds_out__write_modes(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_predid(int, pred_id, io_state, io_state).
+:- pred hlds_out__write_mode_list(int, list(mode), io__state, io__state).
+:- mode hlds_out__write_mode_list(input, input, input, output).
+
+hlds_out__write_mode_list(Indent, X) -->
+	hlds_out__write_indent(Indent),
+	io__write_anything(X),
+	io__write_string("\n").
+
+:- pred hlds_out__write_predid(int, pred_id, io__state, io__state).
 :- mode hlds_out__write_predid(input, input, input, output).
 
 hlds_out__write_predid(Indent, X) -->
@@ -445,7 +463,7 @@ hlds_out__write_predid(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_predmodeid(int, pred_mode_id, io_state, io_state).
+:- pred hlds_out__write_predmodeid(int, pred_mode_id, io__state, io__state).
 :- mode hlds_out__write_predmodeid(input, input, input, output).
 
 hlds_out__write_predmodeid(Indent, X) -->
@@ -453,7 +471,7 @@ hlds_out__write_predmodeid(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_procs(int, pred_id, proc_table, io_state, io_state).
+:- pred hlds_out__write_procs(int, pred_id, proc_table, io__state, io__state).
 :- mode hlds_out__write_procs(input, input, input, input, output).
 
 hlds_out__write_procs(Indent, PredId, ProcTable) -->
@@ -473,7 +491,7 @@ hlds_out__write_procs(Indent, PredId, ProcTable) -->
 	).
 
 :- pred hlds_out__write_procs_2(int, pred_id, list(pred_mode_id),
-					proc_table, io_state, io_state).
+					proc_table, io__state, io__state).
 :- mode hlds_out__write_procs_2(input, input, input, input, input, output).
 
 hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) --> 
@@ -503,7 +521,7 @@ hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) -->
 	).
 
 :- pred hlds_out__write_proc(int, pred_id, pred_mode_id, proc_info,
-							io_state, io_state).
+							io__state, io__state).
 :- mode hlds_out__write_proc(input, input, input, input, input, output).
 
 hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
@@ -516,8 +534,8 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 			HeadVars,
 			HeadModes,
 			Goal,
-			_ModeContext
-			%%% CallInfo
+			_ModeContext,
+			_CallInfo
 		),
 		Indent1 is Indent + 1
 	},
@@ -546,7 +564,7 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Argument Variables\n"),
-	hlds_out__write_intlist(Indent1, HeadVars),
+	hlds_out__write_anything(Indent1, HeadVars),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent1),
 	io__write_string("% Argument Modes\n"),
@@ -566,7 +584,7 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_term(int, term, io_state, io_state).
+:- pred hlds_out__write_term(int, term, io__state, io__state).
 :- mode hlds_out__write_term(input, input, input, output).
 
 hlds_out__write_term(Indent, term_functor(Const, Terms, Context)) -->
@@ -579,18 +597,16 @@ hlds_out__write_term(Indent, term_functor(Const, Terms, Context)) -->
 	hlds_out__write_termlist(Indent1, Terms),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_indent(Indent1),
-	io__write_int(Context),
-	io__write_string("\n"),
+	hlds_out__write_anything(Indent1, Context),
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 hlds_out__write_term(Indent, term_variable(VarId)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("term_variable("),
-	io__write_int(VarId),
+	io__write_anything(VarId),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_termlist(int, list(term), io_state, io_state).
+:- pred hlds_out__write_termlist(int, list(term), io__state, io__state).
 :- mode hlds_out__write_termlist(input, input, input, output).
 
 hlds_out__write_termlist(Indent, Terms) -->
@@ -608,7 +624,7 @@ hlds_out__write_termlist(Indent, Terms) -->
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_termlist_2(int, list(term), io_state, io_state).
+:- pred hlds_out__write_termlist_2(int, list(term), io__state, io__state).
 :- mode hlds_out__write_termlist_2(input, input, input, output).
 
 hlds_out__write_termlist_2(Indent, Terms0) -->
@@ -634,7 +650,7 @@ hlds_out__write_termlist_2(Indent, Terms0) -->
 		hlds_out__write_termlist_2(Indent, Terms)
 	).
 
-:- pred hlds_out__write_const(int, list(const), io_state, io_state).
+:- pred hlds_out__write_const(int, const, io__state, io__state).
 :- mode hlds_out__write_const(input, input, input, output).
 
 hlds_out__write_const(Indent, term_atom(Str)) -->
@@ -653,7 +669,7 @@ hlds_out__write_const(Indent, term_string(Str)) -->
 	io__write_string(Str),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_types(int, list(type), io_state, io_state).
+:- pred hlds_out__write_types(int, type_table, io__state, io__state).
 :- mode hlds_out__write_types(input, input, input, output).
 
 hlds_out__write_types(Indent, X) -->
@@ -661,67 +677,78 @@ hlds_out__write_types(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_unification(int, unification, io_state, io_state).
+:- pred hlds_out__write_unification(int, unification, io__state, io__state).
 :- mode hlds_out__write_unification(input, input, input, output).
 
 hlds_out__write_unification(Indent, construct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("construct(\n"),
 	{ Indent1 is Indent + 1 },
-	io__write_int(VarId),
+	io__write_anything(VarId),
 	hlds_out__write_consid(Indent1, ConsId),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_intlist(Indent1, Vars),
+	hlds_out__write_anything(Indent1, Vars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_modes(Indent1, Modes),
+	hlds_out__write_mode_list(Indent1, Modes),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, deconstruct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("deconstruct(\n"),
 	{ Indent1 is Indent + 1 },
-	io__write_int(VarId),
+	io__write_anything(VarId),
 	hlds_out__write_consid(Indent1, ConsId),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_intlist(Indent1, Vars),
+	hlds_out__write_anything(Indent1, Vars),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
-	hlds_out__write_modes(Indent1, Modes),
+	hlds_out__write_mode_list(Indent1, Modes),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, assign(VarId0, VarId1)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("assign("),
-	io__write_int(VarId0),
+	io__write_anything(VarId0),
 	io__write_string(", "),
-	io__write_int(VarId1),
+	io__write_anything(VarId1),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, simple_test(VarId0, VarId1)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("simple_test("),
-	io__write_int(VarId0),
+	io__write_anything(VarId0),
 	io__write_string(", "),
-	io__write_int(VarId1),
+	io__write_anything(VarId1),
 	io__write_string(")\n").
 hlds_out__write_unification(Indent, complicated_unify(Mode, VarId0, VarId1)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("complicated_unify(\n"),
-	hlds_out__write_mode(Indent, Mode),
+	{ Mode = (Mode1 - Mode2) },
+	hlds_out__write_mode(Indent, Mode1),
+	io__write_string(" - "),
+	hlds_out__write_mode(Indent, Mode2),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent),
-	io__write_int(VarId0),
+	io__write_anything(VarId0),
 	io__write_string("\n"),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
 	hlds_out__write_indent(Indent),
-	io__write_int(VarId1),
+	io__write_anything(VarId1),
 	io__write_string("\n"),
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_unimode(int, unify_mode, io_state, io_state).
+:- pred hlds_out__write_anything(int, _, io__state, io__state).
+:- mode hlds_out__write_anything(input, input, io__state, io__state).
+
+hlds_out__write_anything(Indent, X) -->
+	hlds_out__write_indent(Indent),
+	io__write_anything(X),
+	io__write_string("\n").
+
+:- pred hlds_out__write_unimode(int, unify_mode, io__state, io__state).
 :- mode hlds_out__write_unimode(input, input, input, output).
 
 hlds_out__write_unimode(Indent, X) -->
@@ -729,8 +756,10 @@ hlds_out__write_unimode(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-:- pred hlds_out__write_varset(int, varset, io_state, io_state).
+:- pred hlds_out__write_varset(int, varset, io__state, io__state).
 :- mode hlds_out__write_varset(input, input, input, output).
+
+	% XXX this violates modularity - varset is an adt.
 
 hlds_out__write_varset(Indent, varset(Id, VarNames, VarTerms)) -->
 	hlds_out__write_indent(Indent),
@@ -752,7 +781,7 @@ hlds_out__write_varset(Indent, varset(Id, VarNames, VarTerms)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
-:- pred hlds_out__write_varnames(int, map(var, string), io_state, io_state).
+:- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
 :- mode hlds_out__write_varnames(input, input, input, output).
 
 hlds_out__write_varnames(Indent, VarNames) -->
@@ -772,7 +801,7 @@ hlds_out__write_varnames(Indent, VarNames) -->
 	).
 
 :- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
-							io_state, io_state).
+							io__state, io__state).
 :- mode hlds_out__write_varnames_2(input, input, input, output).
 
 hlds_out__write_varnames_2(Indent, VarNameList0) -->
@@ -787,7 +816,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 	then
 		{Indent1 is Indent + 1},
 		hlds_out__write_indent(Indent1),
-		io__write_int(VarId),
+		io__write_anything(VarId),
 		io__write_string(" - "),
 		io__write_string(Name),
 		io__write_string("\n")
@@ -797,7 +826,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 			Indent1 is Indent + 1
 		},
 		hlds_out__write_indent(Indent1),
-		io__write_int(VarId),
+		io__write_anything(VarId),
 		io__write_string(" - "),
 		io__write_string(Name),
 		io__write_string("\n"),
@@ -805,7 +834,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 		hlds_out__write_varnames_2(Indent, VarNameList)
 	).
 
-:- pred hlds_out__write_varterms(int, map(var, term), io_state, io_state).
+:- pred hlds_out__write_varterms(int, map(var, term), io__state, io__state).
 :- mode hlds_out__write_varterms(input, input, input, output).
 
 hlds_out__write_varterms(Indent, VarTerms) -->
@@ -818,13 +847,14 @@ hlds_out__write_varterms(Indent, VarTerms) -->
 	else
 		hlds_out__write_indent(Indent),
 		io__write_string("[\n"),
-		{Indent1 is Indent + 1},
+		{ Indent1 is Indent + 1 },
 		hlds_out__write_varterms_2(Indent1, VarTermList),
 		hlds_out__write_indent(Indent),
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_varterms_2(int, list(pair(var, term)), io_state, io_state).
+:- pred hlds_out__write_varterms_2(int, list(pair(var, term)),
+					io__state, io__state).
 :- mode hlds_out__write_varterms_2(input, input, input, output).
 
 hlds_out__write_varterms_2(Indent, VarTermList0) -->
@@ -840,7 +870,7 @@ hlds_out__write_varterms_2(Indent, VarTermList0) -->
 		{Indent1 is Indent + 1},
 		{Indent2 is Indent1 + 1},
 		hlds_out__write_indent(Indent1),
-		io__write_int(VarId),
+		io__write_anything(VarId),
 		io__write_string(" - "),
 		hlds_out__write_term(Indent2, Term)
 	else
@@ -850,51 +880,71 @@ hlds_out__write_varterms_2(Indent, VarTermList0) -->
 			Indent2 is Indent1 + 1
 		},
 		hlds_out__write_indent(Indent1),
-		io__write_int(VarId),
+		io__write_anything(VarId),
 		io__write_string(" - "),
 		hlds_out__write_term(Indent2, Term),
 		io__write_string(",\n"),
 		hlds_out__write_varterms_2(Indent, VarTermList)
 	).
 
+:- pred hlds_out__write_vartypes(int, map(var, type), io__state, io__state).
+:- mode hlds_out__write_vartypes(input, input, di, uo).
+
 hlds_out__write_vartypes(Indent, X) -->
 	hlds_out__write_indent(Indent),
 	io__write_anything(X),
 	io__write_string("\n").
+
+:- pred hlds_out__write_modelist(int, list(mode), io__state, io__state).
+:- mode hlds_out__write_modelist(input, input, di, uo).
 
 hlds_out__write_modelist(Indent, X) -->
 	hlds_out__write_indent(Indent),
 	io__write_anything(X),
 	io__write_string("\n").
 
-hlds_out__write_category(Indent, deterministic) -->
+:- pred hlds_out__write_category(int, category, io__state, io__state).
+:- mode hlds_out__write_category(input, input, di, uo).
+
+:- hlds_out__write_category(_, X, _, _) when X.	% NU-Prolog indexing.
+
+hlds_out__write_category(Indent, deterministic(_)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("deterministic\n").
-hlds_out__write_category(Indent, semideterministic) -->
+hlds_out__write_category(Indent, semideterministic(_)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("semideterministic\n").
-hlds_out__write_category(Indent, nondeterministic) -->
+hlds_out__write_category(Indent, nondeterministic(_)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("nondeterministic\n").
 hlds_out__write_category(Indent, unspecified) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("unspecified\n").
 
-hlds_out__write_indent(X, Iostate0, Iostate) :-
+:- pred hlds_out__write_indent(int, io__state, io__state).
+:- mode hlds_out__write_indent(input, di, uo).
+
+hlds_out__write_indent(X) -->
 	(if
-		X = 0
+		{ X = 0 }
 	then
-		Iostate = Iostate0
+		[]
 	else
-		X1 is X - 1,
-		io__write_string("  ", Iostate0, Iostate1),
-		hlds_out__write_indent(X1, Iostate1, Iostate)
+		{ X1 is X - 1 },
+		io__write_string("  "),
+		hlds_out__write_indent(X1)
 	).
+
+:- pred hlds_out__write_mode(int, mode, io__state, io__state).
+:- mode hlds_out__write_mode(input, input, di, uo).
 
 hlds_out__write_mode(Indent, X) -->
 	hlds_out__write_indent(Indent),
 	io__write_anything(X),
 	io__write_string("\n").
+
+:- pred hlds_out__write_consid(int, cons_id, io__state, io__state).
+:- mode hlds_out__write_consid(input, input, di, uo).
 
 hlds_out__write_consid(Indent, X) -->
 	hlds_out__write_indent(Indent),

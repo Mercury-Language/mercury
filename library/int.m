@@ -50,7 +50,8 @@
 :- type int__simple_expr --->	(int + int)
 			;	(int * int)
 			;	(int - int)
-			;	(int / int).
+			;	(int mod int)
+			;	(int // int).
 
 :- pred is(int :: output, int__simple_expr :: input) is det.
 

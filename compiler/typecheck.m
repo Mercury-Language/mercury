@@ -129,7 +129,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, varset, prog_out, string, require.
+:- import_module list, map, varset, prog_out, string, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -139,14 +139,14 @@ typecheck(Module0, Module, FoundError) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	{ report_stats }, 
-	io__write_string("Checking for undefined types...\n"),
+	io__write_string("% Checking for undefined types...\n"),
 	{ report_stats }, 
 	check_undefined_types(Module0, Module1),
 	{ report_stats }, 
-	io__write_string("Checking for circularly defined types...\n"),
+	io__write_string("% Checking for circularly defined types...\n"),
 	check_circular_types(Module1, Module2),
 	{ report_stats }, 
-	io__write_string("Type-checking clauses...\n"),
+	io__write_string("% Type-checking clauses...\n"),
 	check_pred_types(Module2, Module, FoundError),
 	{ report_stats },
 	io__set_output_stream(OldStream, _).
@@ -180,7 +180,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	( { Clauses0 = [] } ->
 		[]
 	;
-		io__write_string("Type-checking predicate "),
+		io__write_string("% Type-checking predicate "),
 		write_pred_id(PredId),
 		io__write_string("\n")
 		    %%% { report_stats }
@@ -1139,7 +1139,8 @@ find_undef_pred_types([], _Preds, _TypeDefns) --> [].
 find_undef_pred_types([PredId | PredIds], Preds, TypeDefns) -->
 	{ map__search(Preds, PredId, PredDefn) },
 	{ predinfo_arg_types(PredDefn, _VarSet, ArgTypes) },
-	find_undef_type_list(ArgTypes, pred(PredId), TypeDefns),
+	{ predinfo_context(PredDefn, Context) },
+	find_undef_type_list(ArgTypes, pred(PredId) - Context, TypeDefns),
 	find_undef_pred_types(PredIds, Preds, TypeDefns).
 
 	% Find any undefined types used in the bodies of other type
@@ -1152,8 +1153,8 @@ find_undef_type_bodies([], _) --> [].
 find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
 	{ map__search(TypeDefns, TypeId, HLDS_TypeDefn) },
 		% XXX abstract hlds__type_defn/5
-	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
-	find_undef_type_body(TypeBody, type(TypeId), TypeDefns),
+	{ HLDS_TypeDefn = hlds__type_defn(_, _, TypeBody, _, Context) },
+	find_undef_type_body(TypeBody, type(TypeId) - Context, TypeDefns),
 	find_undef_type_bodies(TypeIds, TypeDefns).
 
 	% Find any undefined types used in the given type definition.
@@ -1239,24 +1240,28 @@ make_type_id(term_string(_), _, unqualified("<error>") - 0) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type error_context ---> type(type_id) ; pred(pred_id).
+:- type error_context == pair(error_context_2, term__context).
+:- type error_context_2 ---> type(type_id) ; pred(pred_id).
 
 	% Output an error message about an undefined type
 	% in the specified context.
 
 :- pred report_undef_type(type_id, error_context, io__state, io__state).
 :- mode report_undef_type(input, error_context, di, uo).
-report_undef_type(TypeId, ErrorContext) -->
-	io__write_string("Undefined type "),
-	write_type_id(TypeId),
-	io__write_string(" used in definition of "),
+report_undef_type(TypeId, ErrorContext - Context) -->
+	prog_out__write_context(Context),
+	io__write_string("In definition of "),
 	write_error_context(ErrorContext),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("error: undefined type "),
+	write_type_id(TypeId),
 	io__write_string(".\n").
 
 	% Output a description of the context where an undefined type was
 	% used.
 
-:- pred write_error_context(error_context, io__state, io__state).
+:- pred write_error_context(error_context_2, io__state, io__state).
 :- mode write_error_context(input, di, uo).
 
 write_error_context(pred(PredId)) -->
@@ -1574,11 +1579,9 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 :- mode report_error_unif(input, input, input, input, input, input, di, uo).
 
 report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
+	write_context_and_predid(Context, PredId),
 	prog_out__write_context(Context),
-	io__write_string("type error in clause for predicate `"),
-	write_pred_id(PredId),
-	io__write_string("':\n"),
-	io__write_string("error in unification of `"),
+	io__write_string("type error in unification of `"),
 	io__write_term(VarSet, X),
 	io__write_string("' and `"),
 	io__write_term(VarSet, Y),
@@ -1593,9 +1596,9 @@ report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
 	( { TypeAssignSet = [_] } ->
-	    io__write_string("The partial type assignment was:\n")
+	    io__write_string("\tThe partial type assignment was:\n")
 	;
-	    io__write_string("The possible partial type assignments were:\n")
+	    io__write_string("\tThe possible partial type assignments were:\n")
 	),
 	write_type_assign_set(TypeAssignSet, VarSet).
 
@@ -1606,6 +1609,7 @@ write_type_assign_set_msg(TypeAssignSet, VarSet) -->
 
 write_type_assign_set([], _) --> [].
 write_type_assign_set([TypeAssign | TypeAssigns], VarSet) -->
+	io__write_string("\t"),
 	write_type_assign(TypeAssign, VarSet),
 	write_type_assign_set(TypeAssigns, VarSet).
 
@@ -1672,17 +1676,18 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 
 report_error_var(PredId, Context, VarSet, VarId, TypeStuffList, Type,
 			TypeAssignSet0) -->
+	write_context_and_predid(Context, PredId),
 	prog_out__write_context(Context),
-	io__write_string("type error in clause for predicate `"),
-	write_pred_id(PredId),
-	io__write_string("':\n"),
+	io__write_string("type error: "),
 	io__write_string("variable `"),
 	io__write_variable(VarId, VarSet),
 	( { TypeStuffList = [SingleTypeStuff] } ->
 		{ SingleTypeStuff = type_stuff(VType, TVarSet, TBinding) },
 		io__write_string("' has type `"),
 		write_type_b(VType, TVarSet, TBinding),
-		io__write_string("', expected type was `"),
+		io__write_string("',\n"),
+		prog_out__write_context(Context),
+		io__write_string("expected type was `"),
 		write_type_b(Type, TVarSet, TBinding),
 		io__write_string("'.\n")
 	;
@@ -1719,11 +1724,10 @@ write_type_stuff_list_2([type_stuff(T, TVarSet, TBinding) | Ts]) -->
 :- mode report_error_undef_pred(input, input, input, di, uo).
 
 report_error_undef_pred(CallingPredId, Context, PredId) -->
+	write_context_and_predid(Context, CallingPredId),
 	prog_out__write_context(Context),
-	io__write_string("undefined predicate `"),
+	io__write_string("error: undefined predicate `"),
 	write_pred_id(PredId),
-	io__write_string("' used in clause for predicate `"),
-	write_pred_id(CallingPredId),
 	io__write_string("'.\n").
 
 :- pred report_error_undef_cons(pred_id, term__context, const, int, 
@@ -1731,13 +1735,12 @@ report_error_undef_pred(CallingPredId, Context, PredId) -->
 :- mode report_error_undef_cons(input, input, input, input, di, uo).
 
 report_error_undef_cons(PredId, Context, Functor, Arity) -->
+	write_context_and_predid(Context, PredId),
 	prog_out__write_context(Context),
-	io__write_string("undefined symbol `"),
+	io__write_string("error: undefined symbol `"),
 	io__write_constant(Functor),
 	io__write_string("/"),
 	io__write_int(Arity),
-	io__write_string("' used in clause for predicate `"),
-	write_pred_id(PredId),
 	io__write_string("'.\n").
 
 :- pred report_error_cons(pred_id, term__context, varset, const, list(term),
@@ -1747,16 +1750,25 @@ report_error_undef_cons(PredId, Context, Functor, Arity) -->
 
 report_error_cons(PredId, Context, VarSet, Functor, Args, Type,
 			TypeAssignSet) -->
+	write_context_and_predid(Context, PredId),
 	prog_out__write_context(Context),
-	io__write_string("type error in clause for predicate `"),
-	write_pred_id(PredId),
-	io__write_string("':\n"),
-	io__write_string("term `"),
+	io__write_string("type error: term `"),
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX
 	io__write_string("'.\n"),
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_context_and_predid(term__context, pred_id, io__state, io__state).
+:- mode write_context_and_predid(input, input, di, uo).
+
+write_context_and_predid(Context, PredId) -->
+	prog_out__write_context(Context),
+	io__write_string("In clause for predicate `"),
+	write_pred_id(PredId),
+	io__write_string("':\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1766,12 +1778,11 @@ report_error_cons(PredId, Context, VarSet, Functor, Args, Type,
 
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	{ typeinfo_get_context(TypeInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("type ambiguity in clause for predicate "),
 	{ typeinfo_get_predid(TypeInfo, PredId) },
-	write_pred_id(PredId),
-	io__write_string(".\n"),
-	io__write_string("possible type assignments include:\n"),
+	write_context_and_predid(Context, PredId),
+	prog_out__write_context(Context),
+	io__write_string("error: ambiguous overloading causes type ambiguity.\n"),
+	io__write_string("\tpossible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },
@@ -1790,6 +1801,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 		map__search(VarTypes2, V, T2),
 		not (T1 = T2)
 	} ->
+		io__write_string("\t"),
 		io__write_variable(V, VarSet),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
@@ -1800,6 +1812,8 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 		{ type_assign_get_type_bindings(TypeAssign2, TypeBindings2) },
 		write_type_b(T2, TVarSet2, TypeBindings2),
 		io__write_string("\n")
+	;
+		[]
 	),
 	report_ambiguity_error_2(Vs, VarSet, TypeAssign1, TypeAssign2).
 

@@ -55,16 +55,26 @@
 :- implementation.
 :- import_module list, int.
 
-:- type string == list(int).
+:- pred string__to_int_list(string, list(int)).
+:- mode string__to_int_list(input, output).
+:- mode string__to_int_list(output, input).
+
+/*
+:- external("NU-Prolog", string__to_int_list).
+*/
 
 string__append(A, B, C) :-
-	append(A, B, C).
+	string__to_int_list(A, LA),
+	string__to_int_list(B, LB),
+	string__to_int_list(C, LC),
+	append(LA, LB, LC).
 
 string__prefix(String, Prefix) :-
 	string__append(Prefix, _, String).
 
 :- string__char_to_string(Char,String) when Char or String.
-string__char_to_string(Char, [Code]) :-
+string__char_to_string(Char, String) :-
+	string__to_int_list(String, [Code]),
 	char_to_int(Char, Code).
 
 string__int_to_string(N, Str) :-
@@ -102,7 +112,10 @@ digit_to_string(7, "7").
 digit_to_string(8, "8").
 digit_to_string(9, "9").
 
-string__first_char([CharCode|String], Char, String) :-
+string__first_char(String0, Char, String) :-
+	string__to_int_list(String0, List0),
+	List0 = [CharCode | List],
+	string__to_int_list(String, List),
 	char_to_int(Char, CharCode).
 
 string__capitalize_first(S0, S) :-

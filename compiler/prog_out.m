@@ -75,7 +75,7 @@ prog_out__write_context(Context) -->
 		[]
 	;
 		io__write_string(FileName),
-		io__write_string(" "),
+		io__write_string(":"),
 		io__write_int(LineNumber),
 		io__write_string(": ")
 	).
@@ -91,6 +91,14 @@ prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
 prog_out__write_sym_name(unqualified(Name)) -->
 	io__write_string(Name).
 
+	% write out a module specifier
+
+:- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
+:- mode prog_out__write_module_spec(input, input, output).
+
+prog_out__write_module_spec(ModuleSpec) -->
+	io__write_string(ModuleSpec).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -98,6 +106,8 @@ prog_out__write_sym_name(unqualified(Name)) -->
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+/*****************************
 
 	% write out a whole module
 
@@ -157,11 +167,6 @@ prog_out__write_item(mode(_VarSet, Name, Args, _Condition)) -->
 	io__write_anything(Args),
 	io__write_string(".\n").
 
-	% write out a module specifier
-
-prog_out__write_module_spec(ModuleSpec) -->
-	io__write_string(ModuleSpec).
-
 	% write out the arguments to a functor:
 	% if there are no arguments, then don't write anything,
 	% otherwise enclose them in parentheses and separate them with commas.
@@ -210,16 +215,14 @@ prog_out__write_mode(_VarSet, Mode) -->		% XXX
 	io__write_anything(Mode),
 	io__write_string(".\n").
 
-/*
- * Please note that this code is the property of
- * the University of Melbourne and is Copyright 1985, 1986, 1987, 1988 by it.
- * 
- * All rights are reserved.
- *
- * Author: Philip Dart, 1988
- *		Based on a theme by Lawrence Byrd and Lee Naish.
- *	Fixed again by Lee Naish 9/88
- */
+% Please note that this code is the property of
+% the University of Melbourne and is Copyright 1985, 1986, 1987, 1988 by it.
+% 
+% All rights are reserved.
+%
+% Author: Philip Dart, 1988
+%		Based on a theme by Lawrence Byrd and Lee Naish.
+%	Fixed again by Lee Naish 9/88
 
 % May bear some vague resemblance to some code written by Lawrence Byrd
 % at Edinburgh a long time ago.
@@ -444,3 +447,4 @@ prog_out__op_adj(1,  fx, 1).
 prog_out__op_adj(1,  yf, 0).
 prog_out__op_adj(1,  fy, 0).
 
+******************************/

@@ -146,10 +146,11 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
 		VarSet, TermList) :-
 	map__init(Subst0),
-	varset__merge_2(0, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
+	term__init_var_supply(N),
+	varset__merge_2(N, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-:- pred varset__merge_2(variable, variable, map(variable, string),
+:- pred varset__merge_2(var_supply, var_supply, map(variable, string),
 	map(variable, term), varset, substitution, varset, substitution).
 :- mode varset__merge_2(input, input, input, input, input, input,
 	output, output).
@@ -160,15 +161,15 @@ varset__merge_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		Subst0 = Subst
 	;
 		varset__new_var(VarSet0, VarId, VarSet1),
+		term__create_var(N, VarN, N1),
 		(if some [Name]
-			map__search(Names, N, Name)
+			map__search(Names, VarN, Name)
 		then
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
 		else
 			VarSet2 = VarSet1
 		),
 		map__insert(Subst0, VarN, term_variable(VarId), Subst1),
-		term__create_var(N, VarN, N1),
 		varset__merge_2(N1, Max, Names, Vals, VarSet2, Subst1,
 				VarSet, Subst)
 	).

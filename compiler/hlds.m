@@ -477,6 +477,9 @@ moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 :- pred predinfo_procedures(pred_info, proc_table).
 :- mode predinfo_procedures(input, output).
 
+:- pred predinfo_context(pred_info, term__context).
+:- mode predinfo_context(input, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -503,6 +506,9 @@ predinfo_set_clauses(PredInfo0, Clauses, PredInfo) :-
 
 predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _Cond, _Clauses, _Procs, _).
+
+predinfo_context(PredInfo, Context) :-
+	PredInfo = predicate(_, _, _, _, _, Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
