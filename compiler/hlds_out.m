@@ -444,8 +444,8 @@ hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
 			hlds_out__write_conj(Goals, ModuleInfo, VarSet,
 				Indent1),
-			io__write_string(")"),
-			mercury_output_newline(Indent)
+			mercury_output_newline(Indent),
+			io__write_string(")")
 		;
 			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent),
 			hlds_out__write_conj(Goals, ModuleInfo, VarSet, Indent)

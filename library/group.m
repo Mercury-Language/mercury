@@ -105,11 +105,11 @@ group__insert(G0, S, G) :-
 
 :- pred group__insert_elements(list(T), group__key,
 				map(T, group__key), map(T, group__key)).
-:- mode group__insert_elements(in, in, in, out).
+:- mode group__insert_elements(in, in, in, out) is det.
 
 group__insert_elements([], _GK, Es, Es).
 group__insert_elements([I|Is], GK, Es0, Es) :-
-	map__insert(Es0, I, GK, Es1),
+	map__set(Es0, I, GK, Es1),
 	group__insert_elements(Is, GK, Es1, Es).
 
 group__group(G, E, S) :-
@@ -146,7 +146,7 @@ group__remove_group(G0, GK, S, G) :-
 	group__set_elements(G1, Es, G).
 
 :- pred group__remove_elements(list(T), map(T, group__key), map(T, group__key)).
-:- mode group__remove_elements(in, in, out).
+:- mode group__remove_elements(in, in, out) is det.
 
 group__remove_elements([], Es, Es).
 group__remove_elements([I|Is], Es0, Es) :-

@@ -156,7 +156,7 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
 		{ atom_to_operator(OpStr, Op) },
 		{ Args = [ X, Y, Var ] }
 	->
-		code_info__cashe_expression(Var, binop(Op, var(X), var(Y)))
+		code_info__cache_expression(Var, binop(Op, var(X), var(Y)))
 	;
 		{ error("Unknown builtin predicate") }
 	).

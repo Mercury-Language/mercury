@@ -28,21 +28,22 @@ switch_gen__generate_det_switch(CaseVar, Cases, Instr) -->
 	code_info__get_variable_register(CaseVar, Lval),
 	{ VarCode = node(Code0) },
 	code_info__get_next_label(EndLabel),
-	switch_gen__generate_det_cases(Cases, Lval, EndLabel, CasesCode),
+	switch_gen__generate_det_cases(Cases, CaseVar, 
+					Lval, EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
 	code_info__remake_code_info.
 
-:- pred switch_gen__generate_det_cases(list(case), lval, label,
+:- pred switch_gen__generate_det_cases(list(case), var, lval, label,
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_det_cases(in, in, in, out, in, out) is det.
+:- mode switch_gen__generate_det_cases(in, in, in, in, out, in, out) is det.
 
-switch_gen__generate_det_cases([], _Lval, EndLabel, Code) -->
+switch_gen__generate_det_cases([], _Var, _Lval, EndLabel, Code) -->
 	{ Code = node([label(EndLabel) - " End of switch"]) }.
-switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Lval, EndLabel,
+switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__get_next_label(ElseLab),
 	code_info__grab_code_info(CodeInfo),
-	code_info__cons_id_to_abstag(Cons, Tag),
+	code_info__cons_id_to_abstag(Var, Cons, Tag),
 	(
 		{ Tag = simple(TagNum0) }
 	->
@@ -65,7 +66,7 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Lval, EndLabel,
 	]) },
 		% generate the rest of the cases.
 	code_info__slap_code_info(CodeInfo),
-	switch_gen__generate_det_cases(Cases, Lval, EndLabel, CasesCode0),
+	switch_gen__generate_det_cases(Cases, Var, Lval, EndLabel, CasesCode0),
 	{ CasesCode = tree(tree(TestCode, ThisCode),
 			tree(ElseLabel, CasesCode0)) }.
 
@@ -76,25 +77,26 @@ switch_gen__generate_semi_switch(CaseVar, Cases, Instr) -->
 	code_info__get_variable_register(CaseVar, Lval),
 	{ VarCode = node(Code0) },
 	code_info__get_next_label(EndLabel),
-	switch_gen__generate_semi_cases(Cases, Lval, EndLabel, CasesCode),
+	switch_gen__generate_semi_cases(Cases, CaseVar, Lval,
+						EndLabel, CasesCode),
 	{ Instr = tree(VarCode, CasesCode) },
 	code_info__remake_code_info.
 
-:- pred switch_gen__generate_semi_cases(list(case), lval, label,
+:- pred switch_gen__generate_semi_cases(list(case), var, lval, label,
 					code_tree, code_info, code_info).
-:- mode switch_gen__generate_semi_cases(in, in, in, out, in, out) is det.
+:- mode switch_gen__generate_semi_cases(in, in, in, in, out, in, out) is det.
 
-switch_gen__generate_semi_cases([], _Lval, EndLabel, Code) -->
+switch_gen__generate_semi_cases([], _Var, _Lval, EndLabel, Code) -->
 	code_info__get_fall_through(FallThrough),
 	{ Code = node([
 		goto(FallThrough) - "fail",
 		label(EndLabel) - "End of switch"
 	]) }.
-switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Lval, EndLabel,
+switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
 	code_info__get_next_label(ElseLab),
-	code_info__cons_id_to_abstag(Cons, Tag),
+	code_info__cons_id_to_abstag(Var, Cons, Tag),
 	(
 		{ Tag = simple(TagNum0) }
 	->
@@ -116,7 +118,7 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Lval, EndLabel,
 		label(ElseLab) - "next case"
 	]) },
 		% If there are more cases, the we need to restore
-		% the expression cashe, etc.
+		% the expression cache, etc.
 	(
 		{ Cases = [_|_] }
 	->
@@ -125,7 +127,7 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Lval, EndLabel,
 		{ true }
 	),
 		% generate the rest of the cases.
-	switch_gen__generate_semi_cases(Cases, Lval, EndLabel, CasesCode0),
+	switch_gen__generate_semi_cases(Cases, Var, Lval, EndLabel, CasesCode0),
 	{ CasesCode = tree(tree(TestCode, ThisCode),
 			tree(ElseLabel, CasesCode0)) }.
 

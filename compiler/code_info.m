@@ -19,7 +19,7 @@
 %	o  Evaluation of arguments in construction and deconstruction
 %		unifications is lazy. This means that arguments in a
 %		`don't care' mode are ignored, and that assignments
-%		are cashed.
+%		are cached.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -93,24 +93,24 @@
 :- pred code_info__clear_reserved_registers(code_info, code_info).
 :- mode code_info__clear_reserved_registers(in, out) is det.
 
-		% Generate all cashed expressions
-:- pred code_info__flush_expression_cashe(list(instruction),
+		% Generate all cached expressions
+:- pred code_info__flush_expression_cache(list(instruction),
 						code_info, code_info).
-:- mode code_info__flush_expression_cashe(out, in, out) is det.
+:- mode code_info__flush_expression_cache(out, in, out) is det.
 
-		% Flush a single cashed expression
+		% Flush a single cached expression
 :- pred code_info__flush_variable(var, list(instruction), code_info, code_info).
 :- mode code_info__flush_variable(in, out, in, out) is det.
 
-		% Enter the expression for a variable into the cashe
-:- pred code_info__cashe_expression(var, rval, code_info, code_info).
-:- mode code_info__cashe_expression(in, in, in, out) is det.
+		% Enter the expression for a variable into the cache
+:- pred code_info__cache_expression(var, rval, code_info, code_info).
+:- mode code_info__cache_expression(in, in, in, out) is det.
 
-		% Enter an expression and variable into the cashe
+		% Enter an expression and variable into the cache
 		% with a specific target
-:- pred code_info__cashe_expression_with_target(var, rval, lval,
+:- pred code_info__cache_expression_with_target(var, rval, lval,
 							code_info, code_info).
-:- mode code_info__cashe_expression_with_target(in, in, in, in, out) is det.
+:- mode code_info__cache_expression_with_target(in, in, in, in, out) is det.
 
 		% Generate code to swap a live value out of the given
 		% register, and place the value for the given variable
@@ -166,8 +166,9 @@
 :- pred code_info__variable_register(var, lval, code_info, code_info).
 :- mode code_info__variable_register(in, out, in, out) is semidet.
 
-:- pred code_info__cons_id_to_abstag(cons_id, abstag, code_info, code_info).
-:- mode code_info__cons_id_to_abstag(in, out, in, out) is det.
+:- pred code_info__cons_id_to_abstag(var, cons_id, abstag,
+							code_info, code_info).
+:- mode code_info__cons_id_to_abstag(in, in, out, in, out) is det.
 
 :- pred code_info__get_stackslot_count(int, code_info, code_info).
 :- mode code_info__get_stackslot_count(out, in, out) is det.
@@ -261,7 +262,7 @@
 
 :- type variable_stat	--->	unused
 			;	evaluated(set(lval))
-			;	cashed(rval, target_register).
+			;	cached(rval, target_register).
 
 :- type fall_through	--->	none
 			;	label(label).
@@ -426,18 +427,18 @@ code_info__clear_reserved_registers_2([R - S|Rs0], Rs) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__flush_expression_cashe(Code) -->
+code_info__flush_expression_cache(Code) -->
 	code_info__get_variables(Variables0),
 	{ map__keys(Variables0, VarList) },
-	code_info__flush_exp_cashe_2(VarList, Code).
+	code_info__flush_exp_cache_2(VarList, Code).
 
-:- pred code_info__flush_exp_cashe_2(list(var), list(instruction),
+:- pred code_info__flush_exp_cache_2(list(var), list(instruction),
 						code_info, code_info).
-:- mode code_info__flush_exp_cashe_2(in, out, in, out) is det.
+:- mode code_info__flush_exp_cache_2(in, out, in, out) is det.
 
-code_info__flush_exp_cashe_2([], []) --> [].
-code_info__flush_exp_cashe_2([Var|Vars], Code) -->
-	code_info__flush_exp_cashe_2(Vars, Code0),
+code_info__flush_exp_cache_2([], []) --> [].
+code_info__flush_exp_cache_2([Var|Vars], Code) -->
+	code_info__flush_exp_cache_2(Vars, Code0),
 	code_info__flush_variable(Var, Code1),
 	{ list__append(Code1, Code0, Code) }.
 
@@ -446,7 +447,7 @@ code_info__flush_exp_cashe_2([Var|Vars], Code) -->
 code_info__flush_variable(Var, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
-		{ VarStat = cashed(Exprn, Target) }
+		{ VarStat = cached(Exprn, Target) }
 	->
 		code_info__target_to_lvalue(Target, Exprn, TargetReg),
 			% Generate code to evaluate the expression.
@@ -501,7 +502,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 			{ Code = [] }
 		)
 	;
-		{ VarStat = cashed(Exprn, target(TargetReg1)) }
+		{ VarStat = cached(Exprn, target(TargetReg1)) }
 	->
 		(
 			{ TargetReg \= TargetReg1 }
@@ -521,7 +522,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		),
 		{ list__append(Code0, Code1, Code) }
 	;
-		{ VarStat = cashed(Exprn, none) }
+		{ VarStat = cached(Exprn, none) }
 	->
 		code_info__generate_expression(Exprn, TargetReg, Code0),
 			% Mark the target register.
@@ -615,7 +616,7 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 		{ Result = lval(Lval0) },
 		{ Code = [] }
 	;
-		{ VarStat = cashed(Exprn, Target) }
+		{ VarStat = cached(Exprn, Target) }
 	->
 		code_info__target_to_lvalue(Target, Exprn, TargetReg),
 		code_info__generate_expression(Exprn, TargetReg, Code),
@@ -693,7 +694,7 @@ code_info__evaluated_expression(var(Var), Lval) -->
 	->
 		{ Lval = Lval0 }
 	;
-		{ VarStat = cashed(Exprn,_) }
+		{ VarStat = cached(Exprn,_) }
 	->
 		code_info__evaluated_expression(Exprn, Lval),
 		code_info__add_lvalue_to_variable(Lval, Var)
@@ -721,16 +722,16 @@ code_info__select_lvalue(Lvals, Target, Lval) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__cashe_expression(Var, Exprn) -->
+code_info__cache_expression(Var, Exprn) -->
 	code_info__get_variables(Variables0),
-	{ map__set(Variables0, Var, cashed(Exprn, none), Variables) },
+	{ map__set(Variables0, Var, cached(Exprn, none), Variables) },
 	code_info__set_variables(Variables).
 
 %---------------------------------------------------------------------------%
 
-code_info__cashe_expression_with_target(Var, Exprn, TargetReg) -->
+code_info__cache_expression_with_target(Var, Exprn, TargetReg) -->
 	code_info__get_variables(Variables0),
-	{ map__set(Variables0, Var, cashed(Exprn, target(TargetReg)),
+	{ map__set(Variables0, Var, cached(Exprn, target(TargetReg)),
 								Variables) },
 	code_info__set_variables(Variables).
 
@@ -803,14 +804,14 @@ code_info__save_variable_on_stack(Var, Code) -->
 					var(Var), stackvar(Slot1), Code),
 		code_info__add_lvalue_to_variable(stackvar(Slot1), Var)
 	;
-		{ VarStat = cashed(Exprn, none) }
+		{ VarStat = cached(Exprn, none) }
 	->
 		code_info__get_variable_slot(Var, Slot1),
 		code_info__generate_expression(Exprn,
 						stackvar(Slot1), Code),
 		code_info__add_lvalue_to_variable(stackvar(Slot1), Var)
 	;
-		{ VarStat = cashed(Exprn, target(TargetReg)) }
+		{ VarStat = cached(Exprn, target(TargetReg)) }
 	->
 		code_info__generate_expression(Exprn, TargetReg, Code0),
 		code_info__add_lvalue_to_variable(TargetReg, Var),
@@ -896,9 +897,9 @@ code_info__set_variable_register(Var, Reg) -->
 code_info__reset_variable_target(Var, Lval) -->
 	code_info__get_variables(Variables0),
 	{ map__search(Variables0, Var, VarStat) },
-	{ VarStat = cashed(Exprn, _) },
+	{ VarStat = cached(Exprn, _) },
 	{ map__set(Variables0, Var,
-				cashed(Exprn, target(Lval)), Variables) },
+				cached(Exprn, target(Lval)), Variables) },
 	code_info__set_variables(Variables).
 
 %---------------------------------------------------------------------------%
@@ -953,7 +954,7 @@ code_info__reenter_lvals(Var, [L|Ls]) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__cons_id_to_abstag(_ConsId, AbsTag) -->
+code_info__cons_id_to_abstag(_Var, _ConsId, AbsTag) -->
 	{ AbsTag = simple(3) }. % XXX stub
 
 %---------------------------------------------------------------------------%
@@ -1093,7 +1094,13 @@ code_info__remake_code_info -->
 
 code_info__remake_code_info_2([]) --> [].
 code_info__remake_code_info_2([V - S|VSs]) -->
-	code_info__add_lvalue_to_variable(stackvar(S), V),
+	(
+		code_info__variable_is_live(V)
+	->
+		code_info__add_lvalue_to_variable(stackvar(S), V)
+	;
+		{ true }
+	),
 	code_info__remake_code_info_2(VSs).
 
 %---------------------------------------------------------------------------%
@@ -1147,7 +1154,7 @@ code_info__variable_dependencies(_Var, unused, V, V) --> [].
 code_info__variable_dependencies(Var, evaluated(Lvals), V0, V) -->
 	{ set__to_sorted_list(Lvals, LvalList) },
 	code_info__lvalues_dependencies(Var, LvalList, V0, V).
-code_info__variable_dependencies(Var, cashed(Exprn, _), V0, V) -->
+code_info__variable_dependencies(Var, cached(Exprn, _), V0, V) -->
 	code_info__expression_dependencies(Var, Exprn, V0, V).
 
 %---------------------------------------------------------------------------%

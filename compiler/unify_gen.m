@@ -49,7 +49,7 @@
 %---------------------------------------------------------------------------%
 
 unify_gen__generate_assignment(VarA, VarB, empty) -->
-	code_info__cashe_expression(VarA, var(VarB)).
+	code_info__cache_expression(VarA, var(VarB)).
 
 %---------------------------------------------------------------------------%
 
@@ -69,7 +69,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 
 
 unify_gen__generate_construction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Tag, AbsTag),
+	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
 	(
 		{ AbsTag = simple(TagNum0) }
 	->
@@ -80,7 +80,7 @@ unify_gen__generate_construction(Var, Tag, Args, Modes, Code) -->
 		{ First = 1 }
 	),
 	{ unify_gen__generate_cons_args(Args, RVals) },
-	code_info__cashe_expression(Var, create(AbsTag, RVals)),
+	code_info__cache_expression(Var, create(AbsTag, RVals)),
 	code_info__flush_variable(Var, CodeA),
 	code_info__get_variable_register(Var, Lval),
 	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
@@ -112,7 +112,7 @@ unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 %---------------------------------------------------------------------------%
 
 unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Tag, AbsTag),
+	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
 	(
 		{ AbsTag = simple(TagNum0) }
 	->
@@ -133,7 +133,7 @@ unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, Code) -->
 %---------------------------------------------------------------------------%
 
 unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
-	code_info__cons_id_to_abstag(Tag, AbsTag),
+	code_info__cons_id_to_abstag(Var, Tag, AbsTag),
 	(
 		{ AbsTag = simple(TagNum0) }
 	->
@@ -266,9 +266,9 @@ unify_gen__generate_sub_assign(lval(Lval), ref(Var), Code) -->
 		])
 	) }.
 unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
-	code_info__cashe_expression(Var, lval(Rval)).
+	code_info__cache_expression(Var, lval(Rval)).
 unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
-	code_info__cashe_expression(Lvar, var(Rvar)).
+	code_info__cache_expression(Lvar, var(Rvar)).
 
 %---------------------------------------------------------------------------%
 
