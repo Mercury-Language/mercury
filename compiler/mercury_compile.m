@@ -33,6 +33,7 @@
 :- import_module equiv_type, make_hlds, typecheck, purity, polymorphism, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module stratify, simplify.
+:- import_module pprint.
 
 	% high-level HLDS transformations
 :- import_module check_typeclass, intermod, trans_opt, table_gen, (lambda).
@@ -3957,10 +3958,8 @@ mercury_compile__dump_mlds(DumpFile, MLDS) -->
 	maybe_flush_output(Verbose),
 	io__tell(DumpFile, Res),
 	( { Res = ok } ->
-		% XXX the following doesn't work, due to performance bugs
-		% in pprint:
-		%	pprint__write(80, pprint__to_doc(MLDS)),
-		io__print(MLDS), io__nl,
+		pprint__write(80, pprint__to_doc(MLDS)),
+		io__nl,
 		io__told,
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
