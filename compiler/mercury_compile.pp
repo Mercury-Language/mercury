@@ -880,7 +880,7 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 
 #if NU_PROLOG
 	{ putprop(mc, mc, HLDS2 - FoundSemanticError - FoundTypeError), fail }.
-mercury_compile(module(_, _, _, _, _)) -->
+mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 	{ getprop(mc, mc, HLDS2 - FoundSemanticError - FoundTypeError, Ref),
 	erase(Ref) },
 #endif
@@ -891,7 +891,17 @@ mercury_compile(module(_, _, _, _, _)) -->
 
 		mercury_compile__detect_switches(HLDS3, HLDS4),
 
-		mercury_compile__inlining(HLDS4, HLDS5),
+		(
+			{ FoundSyntaxError = no,
+			  FoundSemanticError = no,
+			  FoundTypeError = no,
+			  FoundModeError = no
+			}
+		->
+			mercury_compile__maybe_do_inlining(HLDS4, HLDS5)
+		;
+			{ HLDS4 = HLDS5 }
+		),
 
 		mercury_compile__maybe_migrate_followcode(HLDS5, HLDS6),
 
@@ -1156,11 +1166,11 @@ mercury_compile__compute_liveness(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred mercury_compile__inlining(module_info, module_info,
+:- pred mercury_compile__maybe_do_inlining(module_info, module_info,
 						io__state, io__state).
-:- mode mercury_compile__inlining(in, out, di, uo) is det.
+:- mode mercury_compile__maybe_do_inlining(in, out, di, uo) is det.
 
-mercury_compile__inlining(HLDS0, HLDS) -->
+mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(inlining, Inlining),
 	(
 		{ Inlining = yes }

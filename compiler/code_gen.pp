@@ -183,34 +183,51 @@ generate_proc_list_code(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
 	{ pred_info_procedures(PredInfo, ProcInfos) },
 		% locate the proc_info structure for this mode of the predicate
 	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
-		% and find out if it is deterministic/etc
-	{ proc_info_interface_determinism(ProcInfo, Category) },
-		% now generate the code for this.
-	generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Category,
-		Requests0, Instr, Requests1, SUsed),
-		% turn the code tree into a list
-	{ tree__flatten(Instr, InstrList) },
-		% now the code is a list of code-fragments(==list(instr)),
-		% so we need to do a level of unwinding to get a flat list.
-	{ list__condense(InstrList, Instructions0) },
+	globals__io_lookup_bool_option(inlining, Inlining),
 	(
-		{ SUsed = yes(SlotNum) }
+			% if the proc is inlined and not exported
+		{ Inlining = yes },
+		{ \+ pred_info_is_exported(PredInfo) },
+		{ proc_info_goal(ProcInfo, Goal) },
+		{ code_aux__contains_only_builtins(Goal) },
+		{ code_aux__goal_is_flat(Goal) }
 	->
-		{ code_gen__add_saved_succip(Instructions0,
-						SlotNum, Instructions) }
+		generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
+			Requests0, Procedures, Requests)
 	;
-		{ Instructions = Instructions0 }
-	),
-		% get the name and arity of this predicate
-	{ predicate_name(ModuleInfo, PredId, Name) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
-		% construct a c_procedure structure will all the information
-	{ Procedure = c_procedure(Name, Arity, ProcId, Instructions) },
-		% and do the same thing for all the rest of the procedures
-		% for this predicate.
-	generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
-		Requests1, Procedures0, Requests),
-	{ Procedures = [Procedure | Procedures0] }.
+			% find out if the proc is deterministic/etc
+		{ proc_info_interface_determinism(ProcInfo, Category) },
+			% now generate the code for this.
+		generate_category_code(ModuleInfo, PredId, ProcId,
+			ProcInfo, Category, Requests0, Instr, Requests1, SUsed),
+			% turn the code tree into a list
+		{ tree__flatten(Instr, InstrList) },
+			% now the code is a list of
+			% code-fragments(==list(instr)),
+			% so we need to do a level of
+			% unwinding to get a flat list.
+		{ list__condense(InstrList, Instructions0) },
+		(
+			{ SUsed = yes(SlotNum) }
+		->
+			{ code_gen__add_saved_succip(Instructions0,
+						SlotNum, Instructions) }
+		;
+			{ Instructions = Instructions0 }
+		),
+			% get the name and arity of this predicate
+		{ predicate_name(ModuleInfo, PredId, Name) },
+		{ predicate_arity(ModuleInfo, PredId, Arity) },
+			% construct a c_procedure structure
+			% will all the information
+		{ Procedure = c_procedure(Name, Arity, ProcId, Instructions) },
+			% and do the same thing for all
+			% the rest of the procedures
+			% for this predicate.
+		generate_proc_list_code(ModuleInfo, PredId, PredInfo, ProcIds,
+			Requests1, Procedures0, Requests),
+		{ Procedures = [Procedure | Procedures0] }
+	).
 
 %
 % Generate code for the predicate (PredId,Mode).
