@@ -77,7 +77,7 @@ ENDINIT
 #ifdef MR_DEBUG_AGC_SMALL_HEAP
   size_t	MR_heap_size =			  52;
 #else
-  size_t	MR_heap_size =		       32768; /* 16 Mb */
+  size_t	MR_heap_size =		       32768; /* 32 Mb */
 #endif
 size_t		MR_detstack_size =		4096;
 size_t		MR_nondstack_size =	 	 256;
