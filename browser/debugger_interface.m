@@ -42,8 +42,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 % The stuff defined below is similar to types goal_path and trace_port
 % defined in modules compiler/hlds_goal.m and compiler/trace.m.
 % This enumeration must be EXACTLY the same as the MR_trace_port enum in
-% runtime/mercury_trace.h, and in the same order, since the code assumes
-% the representation is the same.
+% runtime/mercury_trace_base.h, and in the same order, since the code
+% assumes the representation is the same.
 
 :- type trace_port_type
 	--->	call
