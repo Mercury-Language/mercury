@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "std.h"
+#include "mercury_std.h"
 
 static void demangle(char *name);
 static bool check_for_suffix(char *start, char *position, const char *suffix,

@@ -25,7 +25,7 @@
 #include	<errno.h>
 #include	"getopt.h"
 #include	"mercury_conf.h"
-#include	"std.h"
+#include	"mercury_std.h"
 
 /* --- adjustable limits --- */
 #define	MAXCALLS	40	/* maximum number of calls per function */
