@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -84,6 +84,10 @@
 :- pred queue__list_to_queue(list(T)::in, queue(T)::out) is det.
 :- func queue__list_to_queue(list(T)) = queue(T).
 
+	% A synonym for queue.list_to_queue/1.
+	%
+:- func queue__from_list(list(T)) = queue(T).
+
 	% `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is
 	% the same queue as `Queue0' with all occurences of `Elem' removed
 	% from it.
@@ -157,6 +161,8 @@ queue__length(On - Off, Length) :-
 	Length = LengthOn + LengthOff.
 
 queue__list_to_queue(List, [] - List).
+
+queue__from_list(List) = [] - List.
 
 queue__delete_all(On0 - Off0, Elem, On - Off) :-
 	list__delete_all(On0, Elem, On1),

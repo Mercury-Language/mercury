@@ -129,7 +129,10 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
-* We've added the function pqueue.from_assoc_list/1 ad a synonym
+* We've add the function queue.from_list/1 as a synonym for
+  queue.list_to_queue/1.
+
+* We've added the function pqueue.from_assoc_list/1 as a synonym
   for pqueue.assoc_list_to_pqueue/1.
 
 * We've added functions set.from_list/1 and set.from_sorted_list/1
@@ -316,6 +319,12 @@ Changes to the Mercury standard library:
 * We've added some functions, rational.int/1, rational.from_integer/1,
   rational.from_integers/2 and rational.reciprocal/1 to rational.m
   The function rational.rational_from_integers/2 has been deprecated.
+
+* A new module `term_to_xml' has been added to the standard library.  This
+  module contains predicates to write arbitrary Mercury terms to an output
+  stream as XML.  Automatic generation of DTDs for Mercury types is also
+  supported.  Once a Mercury term is in XML it can be converted to many other
+  formats such as HTML or XUL using an appropriate stylesheet.
 
 Changes to the Mercury compiler:
 
@@ -758,12 +767,6 @@ Changes to the Mercury standard library:
 * We've added random__random/5, which produces a random integer in a
   given range, and random__randcount/3, which returns the number of
   distinct random numbers that can be generated.
-
-* A new module `term_to_xml' has been added to the standard library.  This
-  module contains predicates to write arbitrary Mercury terms to an output
-  stream as XML.  Automatic generation of DTDs for Mercury types is also
-  supported.  Once a Mercury term is in XML it can be converted to many other
-  formats such as HTML or XUL using an appropriate stylesheet.
 
 Changes to the extras distribution:
 
