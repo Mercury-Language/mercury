@@ -682,7 +682,8 @@ term__univ_to_term(Univ, Term) :-
 			error(Message)
 		)
 	;
-		deconstruct(Univ, FunctorString, _FunctorArity, FunctorArgs),
+		deconstruct(univ_value(Univ), FunctorString, _FunctorArity,
+			FunctorArgs),
 		term__univ_list_to_term_list(FunctorArgs, TermArgs),
 		Term = term__functor(term__atom(FunctorString), TermArgs,
 			Context)
