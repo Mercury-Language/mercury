@@ -1129,7 +1129,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	mode_info_set_delay_info(DelayInfo1),
 	mode_info_add_goals_live_vars(Goals0),
 
-	modecheck_conj_list_2(Goals0, [], Goals, ImpurityErrors),
+	modecheck_conj_list_2(Goals0, [], Goals, RevImpurityErrors),
 
 	=(ModeInfo3),
 	{ mode_info_get_errors(ModeInfo3, NewErrors) },
@@ -1150,13 +1150,15 @@ modecheck_conj_list(Goals0, Goals) -->
 	),
 	% we only report impurity errors if there were no other errors
 	( { DelayedGoals = [] } ->
-		% XXX perhaps we should report all the impurity errors,
-		% rather than just the first one
-		( { ImpurityErrors = [FirstImpurityError | _Rest] } ->
-			mode_info_add_error(FirstImpurityError)
-	      	;
-			[]
-	      	)	       
+		%
+		% report all the impurity errors
+		% (making sure we report the errors in the correct order)
+		%
+		{ list__reverse(RevImpurityErrors, ImpurityErrors) },
+		=(ModeInfo4),
+		{ mode_info_get_errors(ModeInfo4, Errors4) },
+		{ list__append(Errors4, ImpurityErrors, Errors5) },
+		mode_info_set_errors(Errors5)
 	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
 		mode_info_add_error(Error)
 	;
