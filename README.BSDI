@@ -4,8 +4,8 @@ I had problems with `ar' not handling long filenames.
 (The error message was "ar: libmercury.a: invalid file type".) 
 If you get a similar error, try the following patch.
 
---- library/Mmake	Sat Jul 15 14:54:49 1995
-+++ /home/mulga/pgrad/fjh/mercury/src/mercury-0.3/library/Mmake	Mon Sep  4 04:13:18 1995
+--- library/Mmakefile	Sat Jul 15 14:54:49 1995
++++ /home/mulga/pgrad/fjh/mercury/src/mercury-0.3/library/Mmakefile	Mon Sep  4 04:13:18 1995
 @@ -109,7 +109,10 @@
  libmercury : libmercury.a libmercury.$(SO) library.init
  
