@@ -602,7 +602,7 @@ set_win(Win, Window) -->
 	extern Word	curse_cursor;
 ").
 
-:- pragma c_header_code("
+:- pragma c_code("
 	Word		curse_cursor;
 ").
 
@@ -628,7 +628,7 @@ set_win(Win, Window) -->
 	extern Word	curse_store;
 ").
 
-:- pragma c_header_code("
+:- pragma c_code("
 	Word		curse_store;
 ").
 
