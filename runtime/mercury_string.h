@@ -9,10 +9,10 @@
 #ifndef MERCURY_STRING_H
 #define MERCURY_STRING_H
 
+#include "mercury_heap.h"	/* for MR_incr_hp_atomic */
+
 #include <string.h>	/* for strcmp() etc. */
 #include <stdarg.h>
-
-#include "mercury_heap.h"	/* for MR_incr_hp_atomic */
 
 /*
 ** Mercury characters are given type `MR_Char', which is a typedef for `char'.
@@ -120,7 +120,7 @@
 	} while(0)
 
 /*
-** do_hash_string(int & hash, MR_Word string):
+** MR_do_hash_string(int & hash, MR_Word string):
 **	Given a Mercury string `string', set `hash' to the hash value
 **	for that string.  (`hash' must be an lvalue.)
 **

@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef ALPHA_REGS_H
-#define ALPHA_REGS_H
+#ifndef MR_MACHDEPS_ALPHA_REGS_H
+#define MR_MACHDEPS_ALPHA_REGS_H
 
 /*
 ** Machine registers MR_mr0 - MR_mr36 for the Alpha architecture.
@@ -97,4 +97,4 @@ register	MR_Word	MR_mr6 __asm__("$15");	/* the frame pointer (fp) */
 #define	MR_mr36	MR_fake_reg[36]
 #define	MR_mr37	MR_fake_reg[37]
 
-#endif /* not ALPHA_REGS_H */
+#endif /* not MR_MACHDEPS_ALPHA_REGS_H */

@@ -3,8 +3,8 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
-#ifndef MIPS_REGS_H
-#define MIPS_REGS_H
+#ifndef MR_MACHDEPS_MIPS_REGS_H
+#define MR_MACHDEPS_MIPS_REGS_H
 
 /*
 ** Machine registers MR_mr0 - MR_mr36 for the MIPS architecture.
@@ -85,4 +85,4 @@ register	MR_Word	MR_mr7 __asm__("s7");
 #define	MR_mr36	MR_fake_reg[36]
 #define	MR_mr37	MR_fake_reg[37]
 
-#endif /* not MIPS_REGS_H */
+#endif /* not MR_MACHDEPS_MIPS_REGS_H */

@@ -78,8 +78,8 @@ extern	int	mercury_terminate(void);
 
 #include "mercury_regs.h"	/* must come before system headers */
 #include "mercury_goto.h"	/* for MR_declare_entry */
-#include "mercury_types.h"	/* for `MR_Word' */
-#include "mercury_wrapper.h"	/* for do_init_modules,
+#include "mercury_types.h"	/* for MR_Word */
+#include "mercury_wrapper.h"	/* for MR_do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),

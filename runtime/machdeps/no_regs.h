@@ -3,8 +3,8 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
-#ifndef NO_REGS_H
-#define NO_REGS_H
+#ifndef MR_MACHDEPS_NO_REGS_H
+#define MR_MACHDEPS_NO_REGS_H
 
 /*
 ** Portable version.
@@ -85,4 +85,4 @@
 #define	MR_mr36	MR_fake_reg[36]
 #define	MR_mr37	MR_fake_reg[37]
 
-#endif /* not NO_REGS_H */
+#endif /* not MR_MACHDEPS_NO_REGS_H */

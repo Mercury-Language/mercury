@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef PA_REGS_H
-#define PA_REGS_H
+#ifndef MR_MACHDEPS_PA_REGS_H
+#define MR_MACHDEPS_PA_REGS_H
 
 /*
 ** Machine registers MR_mr0 - MR_mr36 for the HP-PA architecture.
@@ -85,4 +85,4 @@ register	MR_Word	MR_mr7 __asm__("%r13");
 #define	MR_mr36	MR_fake_reg[36]
 #define	MR_mr37	MR_fake_reg[37]
 
-#endif /* not PA_REGS_H */
+#endif /* not MR_MACHDEPS_PA_REGS_H */

@@ -918,7 +918,7 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 		entry_layout = return_label_layout->MR_sll_entry;
 		if (!MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)
 		    && MR_redoip_slot(current_frame) ==
-			MR_ENTRY(exception_handler_do_fail))
+			MR_ENTRY(MR_exception_handler_do_fail))
 		{
 			return NULL;
 		}
@@ -1077,7 +1077,7 @@ MR_define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	** (Register r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_det]"",
-		MR_MODEL_DET_HANDLER, r3, MR_ENTRY(do_fail));
+		MR_MODEL_DET_HANDLER, r3, MR_ENTRY(MR_do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
@@ -1128,7 +1128,7 @@ MR_define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	** (Register r3 holds the Handler closure.)
 	*/
 	MR_create_exception_handler(""builtin_catch/3 [model_semi]"",
-		MR_MODEL_SEMI_HANDLER, r3, MR_ENTRY(do_fail));
+		MR_MODEL_SEMI_HANDLER, r3, MR_ENTRY(MR_do_fail));
 	
 	/*
 	** Now call `Goal(Result)'.
@@ -1189,7 +1189,7 @@ MR_define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 		MR_LABEL(mercury__exception__builtin_catch_3_5_i3));
 #else
 	MR_create_exception_handler(""builtin_catch/3 [model_nondet]"",
-		MR_MODEL_NON_HANDLER, r3, MR_ENTRY(do_fail));
+		MR_MODEL_NON_HANDLER, r3, MR_ENTRY(MR_do_fail));
 #endif
 	
 
@@ -1255,7 +1255,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
 	/*
 	** Search the nondet stack for an exception handler,
-	** i.e. a frame whose redoip is `exception_handler_do_fail'
+	** i.e. a frame whose redoip is `MR_exception_handler_do_fail'
 	** (one created by `builtin_catch').
 	** N.B.  We search down the `succfr' chain, not the `prevfr' chain;
 	** this ensures that we only find handlers installed by our callers,
@@ -1265,7 +1265,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	orig_curfr = MR_curfr;
 	while (MR_redoip_slot(MR_curfr)
-			!= MR_ENTRY(exception_handler_do_fail))
+			!= MR_ENTRY(MR_exception_handler_do_fail))
 	{
 		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {

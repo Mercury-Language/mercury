@@ -3,8 +3,8 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
-#ifndef I386_REGS_H
-#define I386_REGS_H
+#ifndef MR_MACHDEPS_I386_REGS_H
+#define MR_MACHDEPS_I386_REGS_H
 
 /*
 ** Machine registers MR_mr0 - MR_mr36 for the Intel 386 architecture.
@@ -144,4 +144,4 @@ register	MR_Word	MR_mr1 __asm__("edi");	/* succip */
 #define	MR_mr36	MR_fake_reg[36]
 #define	MR_mr37	MR_fake_reg[37]
 
-#endif /* not I386_REGS_H */
+#endif /* not MR_MACHDEPS_I386_REGS_H */

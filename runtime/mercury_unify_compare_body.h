@@ -455,9 +455,9 @@ start_label:
 
                 /* First compare the type_infos */
                 type_info_x = (MR_TypeInfo) MR_field(MR_mktag(0), x,
-                        UNIV_OFFSET_FOR_TYPEINFO);
+                        MR_UNIV_OFFSET_FOR_TYPEINFO);
                 type_info_y = (MR_TypeInfo) MR_field(MR_mktag(0), y,
-                        UNIV_OFFSET_FOR_TYPEINFO);
+                        MR_UNIV_OFFSET_FOR_TYPEINFO);
                 MR_save_transient_registers();
                 result = MR_compare_type_info(type_info_x, type_info_y);
                 MR_restore_transient_registers();
@@ -475,8 +475,8 @@ start_label:
                 */
 
                 type_info = type_info_x;
-                x = MR_field(MR_mktag(0), x, UNIV_OFFSET_FOR_DATA);
-                y = MR_field(MR_mktag(0), y, UNIV_OFFSET_FOR_DATA);
+                x = MR_field(MR_mktag(0), x, MR_UNIV_OFFSET_FOR_DATA);
+                y = MR_field(MR_mktag(0), y, MR_UNIV_OFFSET_FOR_DATA);
                 goto start_label;
             }
 

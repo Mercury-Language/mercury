@@ -12,6 +12,7 @@
 #ifndef	MERCURY_WRAPPER_H
 #define	MERCURY_WRAPPER_H
 
+#include "mercury_regs.h"		/* needs to come first */
 #include <stddef.h>			/* for `size_t' */
 #include "mercury_std.h"		/* for `bool' */
 #include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' etc */

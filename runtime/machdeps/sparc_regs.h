@@ -4,8 +4,8 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef SPARC_REGS_H
-#define SPARC_REGS_H
+#ifndef MR_MACHDEPS_SPARC_REGS_H
+#define MR_MACHDEPS_SPARC_REGS_H
 
 /*
 ** Machine registers MR_mr0 - MR_mr36 for the SPARC architecture.
@@ -115,4 +115,4 @@ register	MR_Word	MR_mr9 __asm__("l4");
 
 #endif
 
-#endif /* not SPARC_REGS_H */
+#endif /* not MR_MACHDEPS_SPARC_REGS_H */

@@ -13,6 +13,9 @@
 #ifndef MERCURY_H
 #define MERCURY_H
 
+/* Everything in this file is specific to the high-level-code back-end */
+#ifdef MR_HIGHLEVEL_CODE
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Header files to include
@@ -446,5 +449,7 @@ void MR_CALL mercury__private_builtin____Compare____base_typeclass_info_1_0(
 	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y);
 
 /*---------------------------------------------------------------------------*/
+
+#endif /* MR_HIGHLEVEL_CODE */
 
 #endif /* not MERCURY_H */

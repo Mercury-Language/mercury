@@ -128,7 +128,7 @@ MR_define_entry(mercury__do_call_closure);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(do_call_closure), so that the call gets recorded
+	** MR_LABEL(MR_do_call_closure), so that the call gets recorded
 	** as having come from our caller.
 	*/
 	MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
@@ -189,7 +189,7 @@ MR_define_entry(mercury__do_call_class_method);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(do_call_class_method), so that the call gets recorded
+	** MR_LABEL(MR_do_call_class_method), so that the call gets recorded
 	** as having come from our caller.
 	*/
 	MR_tailcall(destination, MR_prof_ho_caller_proc);

@@ -21,7 +21,7 @@ ENDINIT
 **	processes options (which are specified via an environment variable).
 **
 **	It also defines mercury_runtime_main(), which invokes
-**	MR_call_engine(do_interpreter), which invokes main/2.
+**	MR_call_engine(MR_do_interpreter), which invokes main/2.
 **
 **	It also defines mercury_runtime_terminate(), which performs
 **	various cleanups that are needed to terminate cleanly.
@@ -251,9 +251,9 @@ static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
-  static void do_interpreter(void);
+  static void MR_do_interpreter(void);
 #else
-  MR_declare_entry(do_interpreter);
+  MR_declare_entry(MR_do_interpreter);
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -310,7 +310,7 @@ mercury_runtime_init(int argc, char **argv)
 	MR_trace_enabled = FALSE;
 
 #ifdef MR_NEED_INITIALIZATION_AT_START
-	do_init_modules();
+	MR_do_init_modules();
 #endif
 
 	(*MR_address_of_mercury_init_io)();
@@ -439,7 +439,7 @@ MR_do_init_modules_type_tables(void)
 		/*
 		** Some system-defined types have the code to register
 		** their type_ctor_infos in the initialization function
-		** invoked by do_init_modules.
+		** invoked by MR_do_init_modules.
 		*/
 
 		MR_do_init_modules();
@@ -984,10 +984,10 @@ mercury_runtime_main(void)
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
 #ifdef MR_HIGHLEVEL_CODE
-		do_interpreter();
+		MR_do_interpreter();
 #else
 		MR_debugmsg0("About to call engine\n");
-		(void) MR_call_engine(MR_ENTRY(do_interpreter), FALSE);
+		(void) MR_call_engine(MR_ENTRY(MR_do_interpreter), FALSE);
 		MR_debugmsg0("Returning from MR_call_engine()\n");
 #endif
 	}
@@ -1242,19 +1242,19 @@ do_interpreter(void)
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
-MR_define_extern_entry(do_interpreter);
+MR_define_extern_entry(MR_do_interpreter);
 MR_declare_label(global_success);
 MR_declare_label(global_fail);
 MR_declare_label(all_done);
 
 MR_BEGIN_MODULE(interpreter_module)
-	MR_init_entry_ai(do_interpreter);
+	MR_init_entry_ai(MR_do_interpreter);
 	MR_init_label_ai(global_success);
 	MR_init_label_ai(global_fail);
 	MR_init_label_ai(all_done);
 MR_BEGIN_CODE
 
-MR_define_entry(do_interpreter);
+MR_define_entry(MR_do_interpreter);
 	MR_incr_sp(4);
 	MR_stackvar(1) = (MR_Word) MR_hp;
 	MR_stackvar(2) = (MR_Word) MR_succip;

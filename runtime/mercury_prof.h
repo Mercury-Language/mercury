@@ -42,7 +42,7 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 
 /*
 ** This variable holds the address of the calling procedure
-** for a call to do_call_closure or do_call_class_method.
+** for a call to MR_do_call_closure or MR_do_call_class_method.
 */
 
 #ifdef PROFILE_CALLS

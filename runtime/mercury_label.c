@@ -18,10 +18,10 @@
 
 #include	"mercury_label.h"
 
-#include	"mercury_hash_table.h"	/* for `MR_Hash_Table' and its ops */
+#include	"mercury_hash_table.h"	/* for MR_Hash_Table and its ops */
 #include	"mercury_prof.h"	/* for prof_output_addr_decl() */
-#include	"mercury_engine.h"	/* for `MR_progdebug' */
-#include	"mercury_wrapper.h"	/* for do_init_modules() */
+#include	"mercury_engine.h"	/* for MR_progdebug */
+#include	"mercury_wrapper.h"	/* for MR_do_init_modules() */
 
 /*
 ** We record information about entry labels in an array that
@@ -165,7 +165,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 	int	i;
 
 	MR_do_init_label_tables();
-	do_init_modules();
+	MR_do_init_modules();
 
 	if (!entry_array_sorted) {
 		qsort(entry_array, entry_array_next, sizeof(MR_Entry),

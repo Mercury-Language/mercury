@@ -257,8 +257,8 @@ enum MR_HandlerCodeModel {
 /*
 ** Define a struct for the framevars that we use in an exception handler
 ** nondet stack frame.  This struct gets allocated on the nondet stack
-** using mkpragmaframe(), with a special redoip of
-** `exception_handler_do_fail'.
+** using MR_mkpragmaframe(), with a special redoip of
+** `MR_exception_handler_do_fail'.
 */
 typedef struct MR_Exception_Handler_Frame_struct {
 	/*
@@ -307,14 +307,14 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	do {								      \
 		/*							      \
 		** Create a handler on the stack with the special redoip      \
-		** of `exception_handler_do_fail' (we'll look for this        \
+		** of `MR_exception_handler_do_fail' (we'll look for this     \
 		** redoip when unwinding the nondet stack in		      \
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
 		*/							      \
 		MR_mkpragmaframe((name), 0,				      \
 			MR_Exception_Handler_Frame_struct,		      \
-			MR_ENTRY(exception_handler_do_fail));		      \
+			MR_ENTRY(MR_exception_handler_do_fail));	      \
 		/* record the handler's code model */			      \
 		MR_EXCEPTION_FRAMEVARS->code_model = (handler_code_model);    \
 		/* save the handler's closure */			      \
