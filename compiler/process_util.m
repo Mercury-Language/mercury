@@ -191,9 +191,14 @@ setup_signal_handlers_2(_::out, _::di, _::uo) :-
 	IO = IO0;
 	MC_signalled = MR_FALSE;
 
+	/*
+	** XXX There is no guarantee that the memory allocated by
+	** MR_incr_hp_msg() will be sufficiently aligned to hold
+	** a value of type MR_signal_action.
+	*/
 	MR_incr_hp_msg(SigintHandler,
 		MR_bytes_to_words(sizeof(MR_signal_action)),
-		MR_PROC_LABEL, ""make.util.signal_action/0"");
+		MR_PROC_LABEL, ""libs.process_util.signal_action/0"");
 
 	/*
 	** mdb sets up a SIGINT handler, so we should restore
@@ -239,6 +244,46 @@ restore_signal_handlers_2(_::in, _::di, _::uo) :-
 	MC_SETUP_SIGNAL_HANDLER(SIGQUIT, SIG_DFL);
 #endif
 }").
+
+	% Restore all signal handlers to default values in the child
+	% so that the child will be killed by the signals the parent
+	% is catching.
+:- pred setup_child_signal_handlers(io__state::di, io__state::uo) is det.
+
+setup_child_signal_handlers -->
+	( { SIG_DFL = sig_dfl } ->
+		restore_signal_handlers(yes(SIG_DFL))
+	;
+		[]
+	).
+
+:- func sig_dfl = signal_action is semidet.
+
+sig_dfl = SIG_DFL :-
+	( have_signal_handlers(1) ->
+		SIG_DFL = sig_dfl_2
+	;
+		fail
+	).
+
+:- func sig_dfl_2 = signal_action.
+
+sig_dfl_2 = (_::out) :- error("process_util__sig_dfl_2 called").
+
+:- pragma foreign_proc("C", sig_dfl_2 = (Result::out),
+		[will_not_call_mercury, promise_pure],
+"
+	/*
+	** XXX There is no guarantee that the memory allocated by
+	** MR_incr_hp_msg() will be sufficiently aligned to hold
+	** a value of type MR_signal_action.
+	*/
+	MR_incr_hp_msg(Result,
+		MR_bytes_to_words(sizeof(MR_signal_action)),
+		MR_PROC_LABEL, ""libs.process_util.signal_action/0"");
+	MR_init_signal_action((MR_signal_action *) Result,
+		SIG_DFL, MR_FALSE, MR_TRUE);
+").
 
 :- pred check_for_signal(int::out, int::out,
 		io__state::di, io__state::uo) is det.
@@ -329,7 +374,7 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 	} else if (child_pid == 0) {	/* child */
 		MR_Integer exit_status;
 
-		MC_call_io_pred(Pred, &exit_status);
+		MC_call_child_process_io_pred(Pred, &exit_status);
 		exit(exit_status);
 	} else {			/* parent */
 		int child_status;
@@ -365,6 +410,7 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 				** to be ignored on some systems (e.g. Linux).
 				*/
 				kill(child_pid, SIGTERM);
+				break;
 			    }
 			} else {
 			    /*
@@ -398,12 +444,14 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 #endif /* ! MC_CAN_FORK */
 }").
 
-	% call_io_pred(P, ExitStatus).
-:- pred call_io_pred(io_pred::in(io_pred), int::out,
+	% call_child_process_io_pred(P, ExitStatus).
+:- pred call_child_process_io_pred(io_pred::in(io_pred), int::out,
 		io__state::di, io__state::uo) is det.
-:- pragma export(call_io_pred(in(io_pred), out, di, uo), "MC_call_io_pred").
+:- pragma export(call_child_process_io_pred(in(io_pred), out, di, uo),
+		"MC_call_child_process_io_pred").
 
-call_io_pred(P, Status) -->
+call_child_process_io_pred(P, Status) -->
+	setup_child_signal_handlers,
 	P(Success),
 	{ Status = ( Success = yes -> 0 ; 1 ) }.
 
