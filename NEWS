@@ -35,10 +35,10 @@ Changes to the Mercury standard library:
   systems which support IEEE floating point arithmetic.
 
 * The determinisms of the following predicates in the `std_util'
-  module have been changed from cc_nondet to cc_multi: arg_cc/3 and
-  limited_deconstruct_cc/3 (formerly limited_deconstruct_cc/5).  The
-  success or failure of these predicates is now encoded in a maybe
-  type.
+  module have been changed from cc_nondet to cc_multi: arg_cc/3,
+  argument_cc/3 and limited_deconstruct_cc/3 (formerly
+  limited_deconstruct_cc/5).  The success or failure of these
+  predicates is now encoded in a maybe type.
 
 * The incorrect cc_nondet modes of the following predicates in
   the `deconstruct' module have been removed: arg/4, limited_deconstruct/6.

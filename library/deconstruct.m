@@ -42,6 +42,10 @@
 :- inst do_not_allow ---> do_not_allow.
 :- inst canonicalize ---> canonicalize.
 :- inst include_details_cc ---> include_details_cc.
+:- inst canonicalize_or_do_not_allow
+	--->	do_not_allow
+	;	canonicalize.
+
 
 	% functor, argument and deconstruct and their variants take any type
 	% (including univ), and return representation information for that type.
@@ -122,6 +126,7 @@
 :- some [ArgT] pred arg(T, noncanon_handling, int, ArgT).
 :- mode arg(in, in(do_not_allow), in, out) is semidet.
 :- mode arg(in, in(canonicalize), in, out) is semidet.
+:- mode arg(in, in(canonicalize_or_do_not_allow), in, out) is semidet.
 
 	% See the documentation of std_util__arg_cc
 :- pred arg_cc(T, int, std_util__maybe_arg).
