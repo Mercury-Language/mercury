@@ -556,6 +556,17 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			CseInfo = CseInfo0,
 			MaybeUnify = MaybeUnify0
 		;
+		%
+		% if the variable was bound, but the deconstruction wasn't
+		% similar, then stop searching
+		%
+			Term = term__functor(_, _, _)
+		->
+			Goals = [Goal0 - GoalInfo | Goals0],
+			Substitution = Substitution2,
+			CseInfo = CseInfo0,
+			MaybeUnify = no
+		;
 			find_bind_var_for_cse(Goals0, Substitution2, Var,
 				MaybeUnify0, CseInfo0, CseInfo,
 				Goals1, Substitution, MaybeUnify),
