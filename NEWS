@@ -1,3 +1,5 @@
+XXX include `tests' directory in release; remove `trial' directory.
+
 Work in progress
 ----------------
 
@@ -27,10 +29,19 @@ DRAFT NEWS for Mercury release 0.7
   You can now write `P(X)' as an alternative to `call(P, X)'
   or `F(X)' as an alternative for `apply(F, X)'.
 
+* The C interface is now fully implemented.
+
+  The C interface now handles Mercury functions properly --
+  previously it only handled predicates, not functions. 
+  Also, exporting semidet predicates or functions to C now works
+  (see `samples/c_interface/c_calls_mercury.m' for some examples).
+
 * We now support cross-module optimizations.
 
   The `--intermodule-optimization' option enables cross-module inlining
   and cross-module specialization of higher-order predicates.
+  Also `--intermod-unused-args' enables cross-module elimination of
+  unused arguments.
 
 * We've continued to improve the quality of the code we generate.
 
@@ -75,7 +86,12 @@ DRAFT NEWS for Mercury release 0.7
   details such as documentation on the new predicates.
 
   - We've finally implemented a generic `io__write' predicate.
-    (Coming soon: replacements for Prolog's arg/3 and functor/3...)
+
+  - The std_util.m module now contains predicates for traversing
+    terms of arbitrary type: arg/3, det_arg/3, functor/3, and
+    expand/4.  These are similar to Prolog's arg/3, functor/3,
+    and '=..'.  (There is as yet no method for _constructing_
+    terms of arbitrary type, however.)
 
   - We have a new module called time.m XXX to make benchmarking easier.
     The predicate report_stats, which used to be in std_util, is now
