@@ -12,13 +12,15 @@
 % the contents of registers, and manages the cached expressions for
 % variables. These predicates are:
 %
-%	code_exprn__init_state(Arguments, Varset, ExprnInfo)
+%	code_exprn__init_state(Arguments, Varset, Opts, ExprnInfo)
 %		which produces an initial state of the ExprnInfo given
 %		an association list of variables and lvalues. The initial
 %		state places the given variables at their corresponding
 %		locations. The Varset parameter contains a mapping from
-%		variables to names which is used when code is generated
-%		to provide meaningful comments.
+%		variables to names, which is used when code is generated
+%		to provide meaningful comments. Opts gives the table of
+%		options; this is used to decide what expressions are
+%		considered constants.
 %
 %	code_exprn__clobber_regs(CriticalVars, ExprnInfo0, ExprnInfo)
 %		which modifies the state ExprnInfo0 to produce ExprnInfo
@@ -75,7 +77,8 @@
 
 :- type exprn_info.
 
-:- pred code_exprn__init_state(assoc_list(var, rval), varset, option_table, exprn_info).
+:- pred code_exprn__init_state(assoc_list(var, rval), varset, option_table,
+	exprn_info).
 :- mode code_exprn__init_state(in, in, in, out) is det.
 
 :- pred code_exprn__clobber_regs(list(var), exprn_info, exprn_info).
@@ -124,7 +127,7 @@
 :- implementation.
 
 :- import_module exprn_aux.
-:- import_module bool, map, bag, set, require, int, term, string, getopt.
+:- import_module bool, map, bag, set, require, int, term, string.
 
 :- type var_stat	--->
 		evaled(set(rval))
@@ -138,17 +141,18 @@
 			var_map,	% what each variable stands for
 			bag(reg),	% the 'in use' markers for regs
 			set(reg),	% extra markers for acquired regs
-			option_table
+			exprn_opts	% options needed for constant checks
 		).
 
 %------------------------------------------------------------------------------%
 
-code_exprn__init_state(Initializations, Varset, Opts, ExprnInfo) :-
+code_exprn__init_state(Initializations, Varset, Options, ExprnInfo) :-
 	map__init(Vars0),
 	bag__init(Regs0),
 	code_exprn__init_state_2(Initializations, Vars0, Vars, Regs0, Regs),
 	set__init(Acqu),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opts).
+	exprn_aux__init_exprn_opts(Options, ExprnOpts),
+	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, ExprnOpts).
 
 :- pred code_exprn__init_state_2(assoc_list(var, rval), var_map, var_map,
 							bag(reg), bag(reg)).
@@ -512,10 +516,6 @@ code_exprn__rem_arg_reg_dependencies([M|Ms]) -->
 
 code_exprn__var_becomes_dead(Var) -->
 	code_exprn__get_vars(Vars0),
-	code_exprn__get_options(Options),
-	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ map__search(Vars0, Var, Stat) }
 	->
@@ -526,9 +526,10 @@ code_exprn__var_becomes_dead(Var) -->
 			{ Stat = evaled(Rvals0) },
 			{ set__to_sorted_list(Rvals0, RvalList0) },
 			code_exprn__rem_rval_list_reg_dependencies(RvalList0),
+			code_exprn__get_options(ExprnOpts),
 			(
 				{ code_exprn__member_expr_is_constant(RvalList0,
-						Vars0,  NLG, ASM, SGT, Rval7) }
+						Vars0, ExprnOpts, Rval7) }
 			->
 				{ Rval0 = Rval7 }
 			;
@@ -539,8 +540,8 @@ code_exprn__var_becomes_dead(Var) -->
 		code_exprn__set_vars(Vars1),
 		code_exprn__update_dependent_vars(Var, Rval0)
 	;
-		% When we make the code generator tighter we can
-		% reinstate this sanity check. In particular,
+		% XXX When we make the code generator tighter,
+		% we can reinstate this sanity check. In particular,
 		% code_info needs to know which args (etc) have
 		% been explicitly killed off during the generation
 		% of the goal.
@@ -645,6 +646,18 @@ code_exprn__select_rval(Rs, Rval) :-
 		error("code_exprn__select_rval: cosmic rays strike again")
 	).
 
+:- pred code_exprn__select_reg(list(rval), rval).
+:- mode code_exprn__select_reg(in, out) is semidet.
+
+code_exprn__select_reg([R|Rs], Rval) :-
+	(
+		R = lval(reg(_))
+	->
+		Rval = R
+	;
+		code_exprn__select_reg(Rs, Rval)
+	).
+
 :- pred code_exprn__select_simple_const(list(rval), rval).
 :- mode code_exprn__select_simple_const(in, out) is semidet.
 
@@ -674,106 +687,69 @@ code_exprn__select_stackvar([R|Rs], Rval) :-
 		code_exprn__select_stackvar(Rs, Rval)
 	).
 
-:- pred code_exprn__select_reg(list(rval), rval).
-:- mode code_exprn__select_reg(in, out) is semidet.
-
-code_exprn__select_reg([R|Rs], Rval) :-
-	(
-		R = lval(reg(_))
-	->
-		Rval = R
-	;
-		code_exprn__select_reg(Rs, Rval)
-	).
-
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__expr_is_constant(rval, var_map, bool, bool, bool, rval).
-:- mode code_exprn__expr_is_constant(in, in, in, in, in, out) is semidet.
+:- pred code_exprn__expr_is_constant(rval, var_map, exprn_opts, rval).
+:- mode code_exprn__expr_is_constant(in, in, in, out) is semidet.
 
-code_exprn__expr_is_constant(const(Const), _Vars,
-				NonLocalGotos, AsmLabels, _SGT, Rval) :-
-	(
-		Const = address_const(CodeAddress)
-	->
-		(
-			CodeAddress = label(_)
-		->
-			true
-		;
-			CodeAddress = succip
-		->
-			fail
-		;
-			(
-				NonLocalGotos = no
-			;
-				AsmLabels = yes
-			)
-		)
-	;
-		Const = float_const(_)
-	->
-		% Floating point constants are currently boxed by default;
-		% the memory allocation means that they are not constant
-		% expressions.
-		fail
-	;
-		true
-	),
-	Rval = const(Const).
+code_exprn__expr_is_constant(const(Const), _Vars, ExprnOpts, const(Const)) :-
+	exprn_aux__const_is_constant(Const, ExprnOpts, yes).
 
-code_exprn__expr_is_constant(unop(Op, Expr0), Vars, NLG, ASM, SGT, unop(Op, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, SGT, Expr).
+code_exprn__expr_is_constant(unop(Op, Expr0), Vars, ExprnOpts,
+		unop(Op, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, ExprnOpts, Expr).
 
-code_exprn__expr_is_constant(binop(Op, Expr1, Expr2), Vars,
-					NLG, ASM, SGT, binop(Op, Expr3, Expr4)) :-
-	code_exprn__expr_is_constant(Expr1, Vars, NLG, ASM, SGT, Expr3),
-	code_exprn__expr_is_constant(Expr2, Vars, NLG, ASM, SGT, Expr4).
+code_exprn__expr_is_constant(binop(Op, Expr1, Expr2), Vars, ExprnOpts,
+		binop(Op, Expr3, Expr4)) :-
+	code_exprn__expr_is_constant(Expr1, Vars, ExprnOpts, Expr3),
+	code_exprn__expr_is_constant(Expr2, Vars, ExprnOpts, Expr4).
 
-code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, NLG, ASM, SGT, mkword(Tag, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, SGT, Expr).
+code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, ExprnOpts,
+		mkword(Tag, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, ExprnOpts, Expr).
 
-code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars,
-				NLG, ASM, SGT, create(Tag, Args, Label)) :-
-	SGT = yes,
-	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, SGT, Args).
+code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars, ExprnOpts,
+		create(Tag, Args, Label)) :-
+	ExprnOpts = nlg_asm_sgt(_, _, yes),
+	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
 
-code_exprn__expr_is_constant(var(Var), Vars, NLG, ASM, SGT, Rval) :-
+code_exprn__expr_is_constant(var(Var), Vars, ExprnOpts, Rval) :-
 	map__search(Vars, Var, Stat),
 	(
 		Stat = cached(Rval0),
-		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval)
+		code_exprn__expr_is_constant(Rval0, Vars, ExprnOpts, Rval)
 	;
 		Stat = evaled(Rvals),
 		set__to_sorted_list(Rvals, RvalList),
-		code_exprn__member_expr_is_constant(RvalList, Vars, NLG, ASM, SGT, Rval)
+		code_exprn__member_expr_is_constant(RvalList, Vars, ExprnOpts,
+			Rval)
 	).
 
 :- pred code_exprn__args_are_constant(list(maybe(rval)), var_map,
-					bool, bool, bool, list(maybe(rval))).
-:- mode code_exprn__args_are_constant(in, in, in, in, in, out) is semidet.
+					exprn_opts, list(maybe(rval))).
+:- mode code_exprn__args_are_constant(in, in, in, out) is semidet.
 
-code_exprn__args_are_constant([], _Vars, _NLG, _ASM, _SGT, []).
-code_exprn__args_are_constant([Arg0 | Args0], Vars, NLG, ASM, SGT, [Arg | Args]) :-
+code_exprn__args_are_constant([], _Vars, _ExprnOpts, []).
+code_exprn__args_are_constant([Arg0 | Args0], Vars, ExprnOpts, [Arg | Args]) :-
 	% if any of the fields are 'no' then we cannot treat the
 	% term as a constant.
 	Arg0 = yes(Rval0),
-	code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval),
+	code_exprn__expr_is_constant(Rval0, Vars, ExprnOpts, Rval),
 	Arg = yes(Rval),
-	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, SGT, Args).
+	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
 
 :- pred code_exprn__member_expr_is_constant(list(rval), var_map,
-							bool, bool, bool, rval).
-:- mode code_exprn__member_expr_is_constant(in, in, in, in, in, out) is semidet.
+							exprn_opts, rval).
+:- mode code_exprn__member_expr_is_constant(in, in, in, out) is semidet.
 
-code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, NLG, ASM, SGT, Rval) :-
+code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, ExprnOpts, Rval) :-
 	(
-		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval1)
+		code_exprn__expr_is_constant(Rval0, Vars, ExprnOpts, Rval1)
 	->
 		Rval = Rval1
 	;
-		code_exprn__member_expr_is_constant(Rvals0, Vars, NLG, ASM, SGT, Rval)
+		code_exprn__member_expr_is_constant(Rvals0, Vars, ExprnOpts,
+			Rval)
 	).
 
 %------------------------------------------------------------------------------%
@@ -807,13 +783,9 @@ code_exprn__place_var(Var, Lval, Code) -->
 	->
 		{ Stat = Stat0 }
 	;
-		code_exprn__get_varset(VarSet),
-		{ varset__lookup_name(VarSet, Var, Name) ->
-			string__append("variable not found - ", Name, Msg),
-			error(Msg)
-		;
-			error("variable not found")
-		}
+		code_exprn__get_var_name(Var, Name),
+		{ string__append_list(["variable ", Name, " not found"], Msg) },
+		{ error(Msg) }
 	),
 	code_exprn__place_var_2(Stat, Var, Lval, Code).
 
@@ -823,21 +795,18 @@ code_exprn__place_var(Var, Lval, Code) -->
 
 code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
-	code_exprn__get_options(Options),
-	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ exprn_aux__vars_in_rval(Exprn0, []) }
 	->
 		{ error("code_exprn__place_var: cached exprn with no vars!") }
 	;
+		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__expr_is_constant(Exprn0, Vars0,
-						NLG, ASM, SGT, Exprn) }
+						ExprnOpts, Exprn) }
 	->
 			% move stuff out of the way
-			% We don't care about the renamed exprn
-			% because it is a constant
+			% Since Exprn is a constant, it can't refer
+			% to the variable(s) being moved out of Lval.
 		code_exprn__clear_lval(Lval, Exprn, _Exprn, ClearCode),
 			% reserve the register
 		code_exprn__add_lval_reg_dependencies(Lval),
@@ -850,7 +819,7 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		]) }
 	;
 		% if the variable already has its value stored in the
-		% right place, we don't need to generated any code
+		% right place, we don't need to generate any code
 		{ Exprn0 = var(Var1) },
 		code_exprn__get_vars(Vars0),
 		{ map__search(Vars0, Var1, Stat0) },
@@ -872,18 +841,19 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		code_exprn__rem_rval_reg_dependencies(Exprn1),
 		{ exprn_aux__substitute_vars_in_rval(VarLocList,
 					Exprn1, Exprn2) },
-		(
-			{ Exprn2 = create(_, _, _) }
-		->
-			% XXX why is this necessary?
-			code_exprn__get_var_rvals(Var, Rvals7),
-			{ set__to_sorted_list(Rvals7, RvalList7) },
-			{ code_exprn__select_rval(RvalList7, Exprn3) },
-			{ exprn_aux__substitute_vars_in_rval(VarLocList,
-						Exprn3, Exprn) }
-		;
-			{ Exprn = Exprn2 }
-		),
+%		(
+%			{ Exprn2 = create(_, _, _) }
+%		->
+%			% XXX why is this necessary?
+%			code_exprn__get_var_rvals(Var, Rvals7),
+%			{ set__to_sorted_list(Rvals7, RvalList7) },
+%			{ code_exprn__select_rval(RvalList7, Exprn3) },
+%			{ exprn_aux__substitute_vars_in_rval(VarLocList,
+%						Exprn3, Exprn) }
+%		;
+%			{ Exprn = Exprn2 }
+%		),
+		{ Exprn = Exprn2 },
 		code_exprn__add_rval_reg_dependencies(Exprn),
 		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
 		{ Stat = evaled(Rvals) },
@@ -898,10 +868,6 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 
 code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
-	code_exprn__get_options(Options),
-	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ set__member(lval(Lval), Rvals0) }
 	->
@@ -930,8 +896,9 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
+		code_exprn__get_options(ExprnOpts),
 		{ code_exprn__member_expr_is_constant(RvalList0,
-				Vars0, NLG, ASM, SGT, Rval0) }
+				Vars0, ExprnOpts, Rval0) }
 	->
 			% move stuff out of the way
 		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),
@@ -982,6 +949,14 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 
 %------------------------------------------------------------------------------%
 
+	% Move whatever is in Lval out of the way.
+	% It is possible that the value we want to put into Lval
+	% may need to refer to the value being moved out of Lval,
+	% e.g. as the base register of a field reference.
+	% To handle these correctly, we allow the caller to tell us
+	% the Rval0 that will go into Lval, and we adjust it as necessary
+	% before returning it as Rval.
+
 :- pred code_exprn__clear_lval(lval, rval, rval,
 				code_tree, exprn_info, exprn_info).
 :- mode code_exprn__clear_lval(in, in, out, out, in, out) is det.
@@ -1016,24 +991,24 @@ code_exprn__relocate_lval([V - Stat0|Rest0], OldVal,
 				NewVal, [V - Stat|Rest]) -->
 	(
 		{ Stat0 = cached(Exprn0) },
-		{ exprn_aux__rval_contains_lval(Exprn0, OldVal) }
-	->
-		code_exprn__rem_rval_reg_dependencies(Exprn0),
-		{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal,
+		(
+			{ exprn_aux__rval_contains_lval(Exprn0, OldVal) }
+		->
+			code_exprn__rem_rval_reg_dependencies(Exprn0),
+			{ exprn_aux__substitute_lval_in_rval(OldVal, NewVal,
 							Exprn0, Exprn) },
-		code_exprn__add_rval_reg_dependencies(Exprn),
-		{ Stat = cached(Exprn) }
+			code_exprn__add_rval_reg_dependencies(Exprn),
+			{ Stat = cached(Exprn) }
+		;
+			{ Stat = Stat0 }
+		)
 	;
-		{ Stat0 = evaled(Rvals0) }
-	->
+		{ Stat0 = evaled(Rvals0) },
 		{ set__to_sorted_list(Rvals0, RvalsList0) },
 		code_exprn__relocate_lval_2(RvalsList0, OldVal,
 							NewVal, RvalsList),
 		{ set__sorted_list_to_set(RvalsList, Rvals) },
 		{ Stat = evaled(Rvals) }
-	;
-		% Stat0 = cached(_), \+ contains
-		{ Stat = Stat0 }
 	),
 	code_exprn__relocate_lval(Rest0, OldVal, NewVal, Rest).
 
@@ -1073,7 +1048,8 @@ code_exprn__construct_code(Lval, VarName, Rval0, Code) :-
 					"Construct constant"
 			])
 		;
-			string__append("Allocating heap for ", VarName, Comment),
+			string__append("Allocating heap for ", VarName,
+							Comment),
 			Code0 = node([
 				incr_hp(Lval, yes(Tag), const(int_const(Arity)))
 					- Comment
@@ -1096,6 +1072,7 @@ code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) :-
 	(
 		R = yes(Rval)
 	->
+		% XXX the "" is a bug
 		code_exprn__construct_code(
 			field(Tag, lval(Lval), const(int_const(N0))),
 							"", Rval, Code0)
@@ -1250,6 +1227,8 @@ code_exprn__unlock_reg(Reg) -->
 
 %------------------------------------------------------------------------------%
 
+	% This predicate treats variable names the way mercury_output_var does.
+
 :- pred code_exprn__get_var_name(var, string, exprn_info, exprn_info).
 :- mode code_exprn__get_var_name(in, out, in, out) is det.
 
@@ -1260,9 +1239,9 @@ code_exprn__get_var_name(Var, Name) -->
 	->
 		{ VarName = Name }
 	;
-		{ term__var_to_int(Var, Int) },
-		{ string__int_to_string(Int, IntString) },
-		{ string__append("variable number ", IntString, Name) }
+		{ term__var_to_int(Var, Id) },
+		{ string__int_to_string(Id, Num) },
+		{ string__append("V_", Num, Name) }
 	).
 
 %------------------------------------------------------------------------------%
@@ -1291,11 +1270,8 @@ code_exprn__get_var_name(Var, Name) -->
 :- pred code_exprn__set_acquired(set(reg), exprn_info, exprn_info).
 :- mode code_exprn__set_acquired(in, in, out) is det.
 
-:- pred code_exprn__get_options(option_table, exprn_info, exprn_info).
+:- pred code_exprn__get_options(exprn_opts, exprn_info, exprn_info).
 :- mode code_exprn__get_options(out, in, out) is det.
-
-:- pred code_exprn__set_options(option_table, exprn_info, exprn_info).
-:- mode code_exprn__set_options(in, in, out) is det.
 
 code_exprn__get_varset(Varset, ExprnInfo, ExprnInfo) :-
 	ExprnInfo = exprn_info(Varset, _Vars, _Regs, _Acqu, _Opt).
@@ -1327,10 +1303,6 @@ code_exprn__set_acquired(Acqu, ExprnInfo0, ExprnInfo) :-
 
 code_exprn__get_options(Opt, ExprnInfo, ExprnInfo) :-
 	ExprnInfo = exprn_info(_Varset, _Vars, _Regs, _Acqu, Opt).
-
-code_exprn__set_options(Opt, ExprnInfo0, ExprnInfo) :-
-	ExprnInfo0 = exprn_info(Varset, Vars, Regs, Acqu, _Opt),
-	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu, Opt).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

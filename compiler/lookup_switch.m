@@ -52,7 +52,7 @@
 :- type rval_map == map(var, list(pair(int, rval))).
 
 :- pred lookup_switch__is_lookup_switch(var, cases_list, hlds__goal_info,
-		can_fail, int, code_model, int, int, can_fail, can_fail, 
+		can_fail, int, code_model, int, int, can_fail, can_fail,
 		list(var), case_consts, maybe(set(var)),
 		code_info, code_info).
 :- mode lookup_switch__is_lookup_switch(in, in, in, in, in, in, out, out,
@@ -72,7 +72,7 @@
 
 :- import_module set, code_gen, type_util, map, tree, int, std_util, require.
 :- import_module dense_switch, bool, assoc_list, globals, options, mode_util.
-:- import_module getopt, prog_io.
+:- import_module exprn_aux, getopt, prog_io.
 
 :- pred lookup_switch__bits_per_word(int::out) is det.
 
@@ -89,7 +89,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 			CaseValues, MLiveness) -->
 		% Since lookup switches rely on static ground terms to
 		% work efficiently, there is no point in using a lookup
-		% switch is static-ground-terms are not enabled. Well,
+		% switch if static-ground-terms are not enabled. Well,
 		% actually, it is possible that they might be a win in
 		% some circumstances, but it would take a pretty complex
 		% heuristic to get it right, so, lets just use a simple
@@ -243,72 +243,42 @@ lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 	{ lookup_switch__code_is_empty(Code) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
-	{ getopt__lookup_bool_option(Options, asm_labels, ASM) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, SGT) },
-	{ lookup_switch__rval_is_constant(Rval, NLG, ASM, SGT) },
+	{ exprn_aux__init_exprn_opts(Options, ExprnOpts) },
+	{ lookup_switch__rval_is_constant(Rval, ExprnOpts) },
 	lookup_switch__get_case_rvals(Vars, Rvals).
 
 %---------------------------------------------------------------------------%
 
-	% lookup_switch__rval_is_constant(Rval, NLG, ASM, SGT) is
-	% true iff Rval is a constant where NLG is `yes' if we are
-	% compiling with nonlocal gotos enabled, ASM is `yes' if we
-	% are compiling with asm labels enabled, and SGT is `yes' if
-	% we a compiling with static ground terms enabled.
-:- pred lookup_switch__rval_is_constant(rval, bool, bool, bool).
-:- mode lookup_switch__rval_is_constant(in, in, in, in) is semidet.
+	% lookup_switch__rval_is_constant(Rval, ExprnOpts) is
+	% true iff Rval is a constant. This depends on the options governing
+	% nonlocal gotos, asm labels enabled, and static ground terms.
+:- pred lookup_switch__rval_is_constant(rval, exprn_opts).
+:- mode lookup_switch__rval_is_constant(in, in) is semidet.
 
 	% Based on code_exprn__rval_is_constant, but differs in
 	% that it doesn't happen with respect to the expresion cache.
 
-lookup_switch__rval_is_constant(const(Const), NLG, ASM, _SGT) :-
-	(
-		Const = address_const(CodeAddress)
-	->
-		(
-			CodeAddress = label(_)
-		->
-			true
-		;
-			CodeAddress = succip
-		->
-			fail
-		;
-			(
-				NLG = no
-			;
-				ASM = yes
-			)
-		)
-	;
-		Const = float_const(_)
-	->
-		% floats get boxed, so are not consts since the boxing
-		% process contains a memory allocation
-		fail
-	;
-		true
-	).
-lookup_switch__rval_is_constant(unop(_, Exprn), NLG, ASM, SGT) :-
-	lookup_switch__rval_is_constant(Exprn, NLG, ASM, SGT).
-lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), NLG, ASM, SGT) :-
-	lookup_switch__rval_is_constant(Exprn0, NLG, ASM, SGT),
-	lookup_switch__rval_is_constant(Exprn1, NLG, ASM, SGT).
-lookup_switch__rval_is_constant(mkword(_, Exprn0), NLG, ASM, SGT) :-
-	lookup_switch__rval_is_constant(Exprn0, NLG, ASM, SGT).
-lookup_switch__rval_is_constant(create(_, Args, _), NLG, ASM, SGT) :-
-	SGT = yes,
-	lookup_switch__rvals_are_constant(Args, NLG, ASM, SGT).
+lookup_switch__rval_is_constant(const(Const), ExprnOpts) :-
+	exprn_aux__const_is_constant(Const, ExprnOpts, yes).
+lookup_switch__rval_is_constant(unop(_, Exprn), ExprnOpts) :-
+	lookup_switch__rval_is_constant(Exprn, ExprnOpts).
+lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
+	lookup_switch__rval_is_constant(Exprn0, ExprnOpts),
+	lookup_switch__rval_is_constant(Exprn1, ExprnOpts).
+lookup_switch__rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
+	lookup_switch__rval_is_constant(Exprn0, ExprnOpts).
+lookup_switch__rval_is_constant(create(_, Args, _), ExprnOpts) :-
+	ExprnOpts = nlg_asm_sgt(_, _, yes),
+	lookup_switch__rvals_are_constant(Args, ExprnOpts).
 
-:- pred lookup_switch__rvals_are_constant(list(maybe(rval)), bool, bool, bool).
-:- mode lookup_switch__rvals_are_constant(in, in, in, in) is semidet.
+:- pred lookup_switch__rvals_are_constant(list(maybe(rval)), exprn_opts).
+:- mode lookup_switch__rvals_are_constant(in, in) is semidet.
 
-lookup_switch__rvals_are_constant([], _, _, _).
-lookup_switch__rvals_are_constant([MRval|MRvals], NLG, ASM, SGT) :-
+lookup_switch__rvals_are_constant([], _).
+lookup_switch__rvals_are_constant([MRval|MRvals], ExprnOpts) :-
 	MRval = yes(Rval),
-	lookup_switch__rval_is_constant(Rval, NLG, ASM, SGT),
-	lookup_switch__rvals_are_constant(MRvals, NLG, ASM, SGT).
+	lookup_switch__rval_is_constant(Rval, ExprnOpts),
+	lookup_switch__rvals_are_constant(MRvals, ExprnOpts).
 
 %---------------------------------------------------------------------------%
 

@@ -2510,14 +2510,6 @@ code_info__slap_code_info(C0, C1, C) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__make_assignment_comment(var, lval, string,
-							code_info, code_info).
-:- mode code_info__make_assignment_comment(in, in, out, in, out) is det.
-
-code_info__make_assignment_comment(Var, _Lval, Comment) -->
-	code_info__variable_to_string(Var, Name),
-	{ string__append("Assigning from ", Name, Comment) }.
-
 code_info__variable_to_string(Var, VarName) -->
 	code_info__get_varset(Varset),
 	(
@@ -2525,9 +2517,9 @@ code_info__variable_to_string(Var, VarName) -->
 	->
 		{ VarName = Name }
 	;
-		{ term__var_to_int(Var, Int) },
-		{ string__int_to_string(Int, IntString) },
-		{ string__append("variable number ", IntString, VarName) }
+		{ term__var_to_int(Var, Id) },
+		{ string__int_to_string(Id, Num) },
+		{ string__append("V_", Num, VarName) }
 	).
 
 %---------------------------------------------------------------------------%

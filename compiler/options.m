@@ -473,14 +473,170 @@ long_option("optimize-higher-order",	optimize_higher_order).
 :- pred special_handler(option, special_data, option_table, option_table).
 :- mode special_handler(in, in, in, out) is semidet.
 
-special_handler(opt_level, int(N), OptionTable0, OptionTable) :-
-	( N > 3 ->
-		map__set(OptionTable0, optimize_value_number,
-			bool(yes), OptionTable)
+special_handler(opt_level, int(N0), OptionTable0, OptionTable) :-
+	( N0 > 5 ->
+		N = 5
+	; N0 < 0 ->
+		N = 0
 	;
-		map__set(OptionTable0, optimize_value_number,
-			bool(no), OptionTable)
-	).
+		N = N0
+	),
+	opt_level(N, OptionSettingsList),
+	override_options(OptionSettingsList, OptionTable0, OptionTable).
+
+:- pred override_options(list(pair(option, option_data)),
+	option_table, option_table).
+:- mode override_options(in, in, out) is det.
+
+override_options([], OptionTable, OptionTable).
+override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
+	map__set(OptionTable0, Option, Value, OptionTable1),
+	override_options(Settings, OptionTable1, OptionTable).
+
+:- pred opt_level(int::in, list(pair(option, option_data))::out) is semidet.
+
+opt_level(0, [
+	c_optimize		-	bool(no),
+	optimize		-	bool(no),
+	optimize_repeat		-	int(0),
+	optimize_vnrepeat	-	int(0),
+	static_ground_terms	-	bool(no),
+	smart_indexing		-	bool(no),
+	middle_rec		-	bool(no),
+	inlining		-	bool(no),
+	specialize		-	bool(no),
+	common_struct		-	bool(no),
+	constraint_propagation	-	bool(no)
+]).
+opt_level(1, [
+	c_optimize		-	bool(yes),
+	optimize		-	bool(yes),
+	optimize_dead		-	bool(no),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(no),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(no),
+	optimize_copyprop	-	bool(no),
+	optimize_value_number	-	bool(no),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(no),
+	optimize_higher_order	-	bool(no),
+	optimize_repeat		-	int(1),
+	optimize_vnrepeat	-	int(0),
+	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
+	middle_rec		-	bool(yes),
+	inlining		-	bool(no),
+	specialize		-	bool(no),
+	common_struct		-	bool(yes),
+	constraint_propagation	-	bool(no)
+]).
+opt_level(2, [
+	c_optimize		-	bool(yes),
+	optimize		-	bool(yes),
+	optimize_dead		-	bool(no),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(no),
+	optimize_copyprop	-	bool(no),
+	optimize_value_number	-	bool(no),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(no),
+	optimize_higher_order	-	bool(no),
+	optimize_repeat		-	int(3),
+	optimize_vnrepeat	-	int(0),
+	pred_value_number	-	bool(no),
+	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
+	middle_rec		-	bool(yes),
+	inlining		-	bool(yes),
+	specialize		-	bool(yes),
+	common_struct		-	bool(yes),
+	constraint_propagation	-	bool(no)
+]).
+opt_level(3, [
+	c_optimize		-	bool(yes),
+	optimize		-	bool(yes),
+	optimize_dead		-	bool(yes),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(yes),
+	optimize_copyprop	-	bool(yes),
+	optimize_value_number	-	bool(yes),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(yes),
+	optimize_higher_order	-	bool(yes),
+	optimize_repeat		-	int(4),
+	optimize_vnrepeat	-	int(1),
+	pred_value_number	-	bool(no),
+	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
+	middle_rec		-	bool(yes),
+	inlining		-	bool(yes),
+	specialize		-	bool(yes),
+	common_struct		-	bool(yes),
+	constraint_propagation	-	bool(no)
+]).
+opt_level(4, [
+	c_optimize		-	bool(yes),
+	optimize		-	bool(yes),
+	optimize_dead		-	bool(yes),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(yes),
+	optimize_copyprop	-	bool(yes),
+	optimize_value_number	-	bool(yes),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(yes),
+	optimize_higher_order	-	bool(yes),
+	optimize_repeat		-	int(4),
+	optimize_vnrepeat	-	int(1),
+	pred_value_number	-	bool(yes),
+	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
+	middle_rec		-	bool(yes),
+	inlining		-	bool(yes),
+	specialize		-	bool(yes),
+	common_struct		-	bool(yes),
+	constraint_propagation	-	bool(no)	% yes when it works
+]).
+opt_level(5, [
+	c_optimize		-	bool(yes),
+	optimize		-	bool(yes),
+	optimize_dead		-	bool(yes),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(yes),
+	optimize_copyprop	-	bool(yes),
+	optimize_value_number	-	bool(yes),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_unused_args	-	bool(yes),
+	optimize_higher_order	-	bool(yes),
+	optimize_repeat		-	int(5),
+	optimize_vnrepeat	-	int(2),
+	pred_value_number	-	bool(yes),
+	static_ground_terms	-	bool(yes),
+	smart_indexing		-	bool(yes),
+	middle_rec		-	bool(yes),
+	inlining		-	bool(yes),
+	specialize		-	bool(yes),
+	common_struct		-	bool(yes),
+	constraint_propagation	-	bool(no)	% yes when it works
+]).
 
 options_help -->
 	io__write_string("\t-?, -h, --help\n"),

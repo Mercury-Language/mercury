@@ -9,7 +9,15 @@
 :- interface.
 
 :- import_module llds.
-:- import_module list, std_util, assoc_list.
+:- import_module list, std_util, bool, assoc_list.
+
+:- type exprn_opts	--->	nlg_asm_sgt(bool, bool, bool).
+
+:- pred exprn_aux__init_exprn_opts(option_table, exprn_opts).
+:- mode exprn_aux__init_exprn_opts(in, out) is det.
+
+:- pred exprn_aux__const_is_constant(rval_const, exprn_opts, bool).
+:- mode exprn_aux__const_is_constant(in, in, out) is det.
 
 :- pred exprn_aux__rval_contains_lval(rval, lval).
 :- mode exprn_aux__rval_contains_lval(in, in) is semidet.
@@ -55,7 +63,46 @@
 %------------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, getopt, options.
+
+exprn_aux__init_exprn_opts(Options, ExprnOpts) :-
+	getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
+	getopt__lookup_bool_option(Options, asm_labels, ASM),
+	getopt__lookup_bool_option(Options, static_ground_terms, SGT),
+	ExprnOpts = nlg_asm_sgt(NLG, ASM, SGT).
+
+	% Floating point values cannot be considered constants because
+	% they must be stored on the heap.
+
+exprn_aux__const_is_constant(true, _, yes).
+exprn_aux__const_is_constant(false, _, yes).
+exprn_aux__const_is_constant(int_const(_), _, yes).
+exprn_aux__const_is_constant(float_const(_), _, no).
+exprn_aux__const_is_constant(string_const(_), _, yes).
+exprn_aux__const_is_constant(address_const(CodeAddress), ExprnOpts, IsConst) :-
+	exprn_aux__addr_is_constant(CodeAddress, ExprnOpts, IsConst).
+
+:- pred exprn_aux__addr_is_constant(code_addr, exprn_opts, bool).
+:- mode exprn_aux__addr_is_constant(in, in, out) is det.
+
+exprn_aux__addr_is_constant(succip, _, no).
+exprn_aux__addr_is_constant(do_redo, _, no).
+exprn_aux__addr_is_constant(do_fail, _, no).
+exprn_aux__addr_is_constant(do_succeed(_), _, no).
+exprn_aux__addr_is_constant(label(_), _, yes).
+exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
+	ExprnOpts = nlg_asm_sgt(NonLocalGotos, AsmLabels, _SGT),
+	(
+		(
+			NonLocalGotos = no
+		;
+			AsmLabels = yes
+		)
+	->
+		IsConst = yes
+	;
+		IsConst = no
+	).
 
 exprn_aux__rval_contains_lval(lval(Lval0), Lval) :-
 	exprn_aux__lval_contains_lval(Lval0, Lval).
