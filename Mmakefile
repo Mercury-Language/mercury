@@ -282,16 +282,16 @@ INSTALL: .INSTALL.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
 
 ifeq ("$(LYNX)","")
-TEXT_TO_HTML = cat
+HTML_TO_TEXT = cat
 else
-TEXT_TO_HTML = TERM=vt100 lynx -dump
+HTML_TO_TEXT = TERM=vt100 lynx -dump
 endif
 
 WORK_IN_PROGRESS: compiler/notes/work_in_progress.html
-	$(TEXT_TO_HTML) compiler/notes/work_in_progress.html > WORK_IN_PROGRESS
+	$(HTML_TO_TEXT) compiler/notes/work_in_progress.html > WORK_IN_PROGRESS
 
 TODO: compiler/notes/todo.html
-	$(TEXT_TO_HTML) compiler/notes/todo.html > TODO
+	$(HTML_TO_TEXT) compiler/notes/todo.html > TODO
 
 mercury-compiler.spec: .mercury-compiler.spec.in VERSION
 	version_with_underscores=`echo $(VERSION) | sed 's/-/_/g'`; \

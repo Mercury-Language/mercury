@@ -444,7 +444,7 @@ esac
 AC_SUBST(TEXI2DVI)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(LYNX,lynx)
-AC_SUBST(lynx)
+AC_SUBST(LYNX)
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(DVIPS,dvips)
 AC_SUBST(DVIPS)
