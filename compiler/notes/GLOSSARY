@@ -1,9 +1,9 @@
 
-HLDS: The "High Level Data Structure".  See hlds.nl.
+HLDS: The "High Level Data Structure".  See hlds.m.
 
 moduleinfo: Another name for the HLDS.
 
-LLDS: The "Low Level Data Structure".  See llds.nl.
+LLDS: The "Low Level Data Structure".  See llds.m.
 
 inst: instantiatedness.  Indicates whether a variable is free, partially
       bound, or ground.
@@ -23,7 +23,7 @@ procinfo: the structure in HLDS which contains
 predinfo: the structure in HLDS which contains information about
 	a predicate.
 
-codeinfo: a structure used by codegen.nl
+codeinfo: a structure used by codegen.m
 
 switch: a disjunction which does a case analysis on the toplevel
 	functor of some variable.

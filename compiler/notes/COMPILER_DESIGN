@@ -1,38 +1,48 @@
 This file contains various notes about the design of the compiler.
+The top-level of the compiler is in the file mercury_compile.m.
 The overall structure for the compiler is as follows:
 
 1. lexical analysis & stage 1 parsing - convert strings to terms
-   (lexer.nl, parser.nl).
+   (lexer.m, parser.m).
 
 2. stage 2 parsing - convert terms to declarations, clauses, etc.
    result of this stage has a one-to-one correspondence with
    the source code
-   (prog_io.nl)
+   (prog_io.m)
 
 3. simplify - convert parse tree to simplified high-level data structure
    (including conversion to superhomogeneous form) and construct symbol
-   tables (make_hlds.nl); also handle imports and exports (done in
-   mercury_compile.nl)
+   tables (make_hlds.m); also handle imports and exports (done in
+   mercury_compile.m)
 
 4. type checking, overloading resolution & module name resolution
    fully qualify all names
-   (typecheck.nl)
+   (typecheck.m)
 
-5. mode analysis (modes.nl),
-   switch detection (switch_detection.nl),
-   determinism analysis (det_analysis.nl)
+5. mode analysis (modes.m),
+   common goal hoisting (cse_detection.m)
+	(this is here because it needs to be done before switch_detection
+	so that we can do deep indexing)
+   switch detection (switch_detection.m),
+   determinism analysis (det_analysis.m)
 
 6. code generation.  This comprises several subpasses:
-	recognization of builtins (builtins.nl),
-	migration of builtins following branched structures (followvars.nl),
-	allocation of stack slots (stack_alloc.nl)
+	recognization of builtins (builtins.m),
+	migration of builtins following branched structures (followvars.m),
+	allocation of stack slots (store_alloc.m)
 	allocation of variable targets following branched structures
-		(followvars.nl)
-	code generation (codegen.nl).
+		(followvars.m)
+	code generation (codegen.m).
 
-7. peephole optimization (peephole.nl).
+7. various LLDS-to-LLDS optimizations (optimize.m), including
+	optimization of jumps to jumps (jumpopt.m)
+	elimination of duplicate code sequences (dupelim.m)
+	optimization of stack frame allocation/deallocation (frameopt.m)
+	dead code removal (labelopt.m)
+	value numbering (value_number.m, vn_*.m)
+	peephole optimization (peephole.m)
 
-8. output final code (llds.nl).
+8. output final code (llds.m).
 
 Structure reuse optimization : we should have a pass after mode
 analysis (or at the same time?) which annotates the hlds with reuse
@@ -52,7 +62,7 @@ constraints (not yet implemented).
 
 Switch constructs: any builtins after a switch up to the next call
 or the end of the clause are moved into the arms of the switch
-(this is done in followvars.nl).
+(this is done in followvars.m).
 This means that if there are N branches, then those builtins
 will get duplicated N times.  We will rely a post-code-generation
 optimization pass (or gcc :-) to factorize any duplicate code at the end
