@@ -361,7 +361,7 @@ lib%.install_grades:
 		*.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
-			$(MMAKE) GRADE=$$grade lib$*.depend || \
+			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
@@ -382,7 +382,7 @@ lib%.install_split_grades:
 		tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
-			$(MMAKE) GRADE=$$grade lib$*.depend || \
+			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
 				exit 1; \
