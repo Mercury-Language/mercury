@@ -97,20 +97,20 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, Follow0, ModuleInfo,
 	set__difference(Liveness2, PostDeaths, Liveness3),
 	store_alloc_in_goal_2(Goal0, Liveness3, Follow0, ModuleInfo,
 						Goal, Liveness4, Follow),
+	% If any variables magically become live in the PostBirths,
+	% then they have to mundanely become live somewhere else,
+	% so we don't need to allocate anything for them.
+	set__union(Liveness4, PostBirths, Liveness),
 	(
 		goal_is_branched(Goal)
 	->
-		set__to_sorted_list(Liveness4, LiveVarList),
+		set__to_sorted_list(Liveness, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, Follow, StoreMap),
 		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo)
 	;
 		goal_info_set_store_map(GoalInfo0, no, GoalInfo)
-	),
+	).
 		
-	% If any variables magically become live in the PostBirths,
-	% then they have to mundanely become live somewhere else,
-	% so we don't need to allocate anything for them.
-	set__union(Liveness4, PostBirths, Liveness).
 
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
@@ -182,6 +182,7 @@ store_alloc_in_conj([], Liveness, Follow, _M, [], Liveness, Follow).
 store_alloc_in_conj([Goal0|Goals0], Liveness0, Follow0, ModuleInfo,
 					[Goal|Goals], Liveness, Follow) :-
 	(
+			% XXX should be threading the instmap
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->

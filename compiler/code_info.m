@@ -433,7 +433,15 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	stack__init(PushedVals0),
 	map__init(StoreMap),
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
-	code_info__max_slot(CallInfo, SlotCount),
+	code_info__max_slot(CallInfo, SlotCount0),
+		% XXX HACK
+	(
+		Category = nondeterministic
+	->
+		SlotCount is SlotCount0 + 1
+	;
+		SlotCount = SlotCount0
+	),
 	C = code_info(
 		SlotCount,
 		0,

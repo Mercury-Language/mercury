@@ -254,9 +254,9 @@ detect_live_vars_in_disj([], ExtraLives, Liveness, LiveSets,
 detect_live_vars_in_disj([Goal0|Goals0], ExtraLives0, Liveness0, LiveSets0,
 			Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category,ModuleInfo, ExtraLives1, _Liveness1, LiveSets1),
+			Category,ModuleInfo, ExtraLives1, Liveness, LiveSets1),
 	detect_live_vars_in_disj(Goals0, ExtraLives1, Liveness0, LiveSets1,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+			Category, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.
@@ -273,9 +273,9 @@ detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], ExtraLives0, Liveness0,
 		LiveSets0, Category, ModuleInfo,
 			ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category,ModuleInfo, ExtraLives1, _Liveness1, LiveSets1),
+			Category,ModuleInfo, ExtraLives1, Liveness, LiveSets1),
 	detect_live_vars_in_cases(Goals0, ExtraLives1, Liveness0, LiveSets1,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+			Category, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.

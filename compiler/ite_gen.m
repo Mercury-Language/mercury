@@ -41,6 +41,8 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
 	code_info__push_failure_cont(known(ElseLab)),
+		% Grab the instmap
+	code_info__get_instmap(InstMap),
 		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__pop_failure_cont,
@@ -50,6 +52,8 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% generate code that executes the then condition
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
+		% restore the instmap
+	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
 	code_gen__generate_forced_det_goal(ElseGoal, ElseGoalCode),
 	code_info__get_next_label(EndLab),
