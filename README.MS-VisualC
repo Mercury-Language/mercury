@@ -13,7 +13,11 @@ CONFIGURATION
 
 To use MSVC to build the compiler issue the following configure command.
 
-CC='CL /nologo' CPP='CL /nologo /E' ./configure
+CC='CL /nologo' CPP='CL /nologo /E' ./configure [--with-msvcrt]
+
+Pass the --with-msvcrt flag to configure, and the resulting Mercury
+executables built with the install of Mercury will be linked with MS
+Visual C runtime, instead of the standard libC runtime.
 
 Also ensure that the environment variable TMPDIR exists and is set to
 ".".  This avoids problems with mixing cygwin and windows paths.

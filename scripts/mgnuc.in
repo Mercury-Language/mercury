@@ -328,6 +328,17 @@ case $thread_safe in
 	false)		THREAD_OPTS="" ;;
 esac
 
+# Set the correct flags if we're to use the MS Visual C runtime.
+use_msvcrt=@USE_MSVCRT@
+if test $use_msvcrt = "yes"; then
+	case $thread_safe in
+		true)	MSVCRT_OPTS="" ;;
+		false)	MSVCRT_OPTS="/DGC_NOT_DLL" ;;
+	esac
+else
+	MSVCRT_OPTS=""
+fi
+
 case $gc_method in
 	accurate)	GC_OPTS="-DMR_NATIVE_GC" ;;
 	boehm)		GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
@@ -567,7 +578,7 @@ esac
 
 
 ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
-		$HLC_OPTS $HLD_OPTS $GCC_OPTS $GC_OPTS $DEFINE_OPTS \
+		$HLC_OPTS $HLD_OPTS $GCC_OPTS $MSVCRT_OPTS $GC_OPTS $DEFINE_OPTS \
 		$STACK_TRACE_OPTS $TRACE_OPTS $DECL_DEBUG_OPTS \
 		$LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \

@@ -256,6 +256,14 @@ case $use_thread_libs.$make_shared_lib in
 	false.*)	THREAD_LIBS="" ;;
 esac
 
+# Set the correct flags if we're to use the MS Visual C runtime.
+use_msvcrt=@USE_MSVCRT@
+if test $use_msvcrt = "yes"; then
+	MSVCRT_OPTS="/MD" # enable linking with the MS Visual C runtime
+else
+	MSVCRT_OPTS=""
+fi
+
 case $make_shared_lib in
     true)
 	LINKER="$LINK_SHARED_OBJ"
@@ -365,7 +373,7 @@ case "$MKFIFO" in
     none) demangle=false ;;
 esac
 
-LINKER_PRE_FLAGS="$UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
+LINKER_PRE_FLAGS="$MSVCRT_OPTS $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS"
 LINKER_POST_FLAGS="@LINK_OPT_SEP@ $DEBUG_FLAG $LIBDIR_OPTS $RPATH_OPT_LIST $LIBS"
 
 case $verbose in
