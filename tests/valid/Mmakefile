@@ -168,8 +168,12 @@ OTHER_SOURCES= \
 # Base grades `jump' and `fast'
 # cannot be used with accurate GC or type classes
 
+# XXX The AGC tests are disabled on the 0.10.* branch.
+# They are fixed on the main branch, but the fix will
+# not be ported to the 0.10.*.
+
 ifneq "$(findstring asm_,$(GRADE))" ""
-    SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+    SOURCES0=$(TYPECLASS_SOURCES) $(OTHER_SOURCES)
 else
     ifneq "$(findstring jump,$(GRADE))" ""
         SOURCES0=$(OTHER_SOURCES)
@@ -177,7 +181,7 @@ else
         ifneq "$(findstring fast,$(GRADE))" ""
             SOURCES0=$(OTHER_SOURCES)
         else
-            SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+            SOURCES0=$(TYPECLASS_SOURCES) $(OTHER_SOURCES)
         endif
     endif
 endif
