@@ -81,15 +81,16 @@ If goal is
 	(d) a unification
 		Check that the unification doesn't attempt to unify
 		two free variables (or in general two free sub-terms)
-		unless one of them is dead. (Also we ought to split
-		unifications up if necessary to avoid complicated
-		sub-unifications.)
+		unless one of them is dead.  Split unifications
+		up if necessary to avoid complicated sub-unifications.
+		We also figure out at this point whether or not each
+		unification can fail.
 	(e) a predicate call
 		Check that there is a mode declaration for the
 		predicate which matches the current instantiation of
 		the arguments.  (Also handle calls to implied modes.)
 		If the called predicate is one for which we must infer
-		the modes, then a new mode for the called predicate
+		the modes, then create a new mode for the called predicate
 		whose initial insts are the result of normalising
 		the current inst of the arguments.
 	(f) an if-then-else
@@ -114,11 +115,14 @@ a variable live if its value will be used later on in the computation.
 
 ******************************************/
 
-% XXX we need to allow unification of free with free even when both
+% XXX we ought to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 
-%     dead (causes problems handling e.g. `same_length').
-% XXX break unifications into "micro-unifications"
-% XXX would even the above fixes be enough?
+%     dead (causes problems handling e.g. `list__same_length').
+
+% XXX we ought to break unifications into "micro-unifications", because
+%     some code can't be scheduled without splitting up unifications.
+%     For example, `p(X) :- X = f(A, B), B is A + 1.', where
+%     p is declared as `:- mode p(bound(f(ground,free))->ground).'.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
