@@ -488,13 +488,14 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
 		typecheck_info_get_final_info(TypeCheckInfo4, TypeVarSet, 
-				InferredVarTypes0),
+				InferredVarTypes0, InferredTypeConstraints,
+				ConstraintProofs),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
 				InferredVarTypes, HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
-		record_class_constraint_proofs(PredInfo2, TypeCheckInfo4,
+		pred_info_set_constraint_proofs(PredInfo2, ConstraintProofs,
 			PredInfo3),
 		( Inferring = no ->
 			PredInfo = PredInfo3,
@@ -503,8 +504,28 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			map__apply_to_list(HeadVars, InferredVarTypes,
 				ArgTypes),
 			pred_info_set_arg_types(PredInfo3, TypeVarSet,
-				ArgTypes, PredInfo),
-			( identical_up_to_renaming(ArgTypes0, ArgTypes) ->
+				ArgTypes, PredInfo4),
+			pred_info_get_class_context(PredInfo0,
+				OldTypeConstraints),
+			pred_info_set_class_context(PredInfo4,
+				InferredTypeConstraints, PredInfo),
+			(
+				% if the argument types and the type
+				% constraints are identical up to renaming,
+				% then nothing has changed
+				% (the call to same_length is just an
+				% optimization -- catch the easy cases first)
+				list__same_length(OldTypeConstraints,
+					InferredTypeConstraints),
+				same_structure(OldTypeConstraints,
+					InferredTypeConstraints,
+					ConstrainedTypes0, ConstrainedTypes),
+				list__append(ConstrainedTypes0, ArgTypes0,
+					TypesList0),
+				list__append(ConstrainedTypes, ArgTypes,
+					TypesList),
+				identical_up_to_renaming(TypesList0, TypesList)
+			->
 				Changed = no
 			;
 				Changed = yes
@@ -521,6 +542,24 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		typecheck_info_get_io_state(TypeCheckInfo4, IOState)
 	    )
 	).
+
+:- pred same_structure(list(class_constraint)::in, list(class_constraint)::in,
+		list(type)::out, list(type)::out) is semidet.
+
+% check if two sets of type class constraints have the same structure
+% (i.e. they specify the same list of type classes with the same arities)
+% and if so, concatenate the argument types for all the type classes
+% in each set of type class constraints and return them.
+
+same_structure([], [], [], []).
+same_structure([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
+		TypesA, TypesB) :-
+	ConstraintA = constraint(ClassName, ArgTypesA),
+	ConstraintB = constraint(ClassName, ArgTypesB),
+	list__same_length(ArgTypesA, ArgTypesB),
+	same_structure(ConstraintsA, ConstraintsB, TypesA0, TypesB0),
+	list__append(ArgTypesA, TypesA0, TypesA),
+	list__append(ArgTypesB, TypesB0, TypesB).
 
 :- pred pred_is_user_defined_equality_pred(pred_info::in, module_info::in)
 	is semidet.
@@ -2522,15 +2561,22 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_get_final_info(typecheck_info, tvarset, map(var, type)).
-:- mode typecheck_info_get_final_info(in, out, out) is det.
+:- pred typecheck_info_get_final_info(typecheck_info, tvarset, map(var, type),
+		list(class_constraint),
+		map(class_constraint, constraint_proof)).
+:- mode typecheck_info_get_final_info(in, out, out, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes) :-
+typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes,
+		NewTypeConstraints, NewConstraintProofs) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
 		type_assign_get_typevarset(TypeAssign, OldTypeVarSet),
 		type_assign_get_var_types(TypeAssign, VarTypes0),
 		type_assign_get_type_bindings(TypeAssign, TypeBindings),
+		type_assign_get_typeclass_constraints(TypeAssign,
+			TypeConstraints),
+		type_assign_get_constraint_proofs(TypeAssign,
+			ConstraintProofs),
 		map__keys(VarTypes0, Vars),
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
 
@@ -2578,11 +2624,26 @@ typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes) :-
 		copy_type_var_names(TypeVarNames, TSubst, NewTypeVarSet1,
 			NewTypeVarSet),
 		%
-		% Finally, rename the types to use the new typevarset
-		% type variables.
+		% Finally, rename the types and type class constraints
+		% to use the new typevarset type variables.
 		%
 		term__apply_variable_renaming_to_list(Types, TSubst, NewTypes),
-		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes)
+		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes),
+		list__map(rename_class_constraint(TSubst), TypeConstraints,
+			NewTypeConstraints),
+		( map__is_empty(ConstraintProofs) ->
+			% optimize simple case
+			NewConstraintProofs = ConstraintProofs
+		;
+			map__keys(ConstraintProofs, ProofKeysList),
+			map__values(ConstraintProofs, ProofValuesList),
+			list__map(rename_class_constraint(TSubst),
+				ProofKeysList, NewProofKeysList),
+			list__map(rename_constraint_proof(TSubst),
+				ProofValuesList, NewProofValuesList),
+			map__from_corresponding_lists(NewProofKeysList,
+				NewProofValuesList, NewConstraintProofs)
+		)
 	;
 		error("internal error in typecheck_info_get_vartypes")
 	).
@@ -2614,6 +2675,28 @@ copy_type_var_names([OldTypeVar - Name | Rest], TypeSubst, NewTypeVarSet0,
 		NewTypeVarSet1 = NewTypeVarSet0
 	),
 	copy_type_var_names(Rest, TypeSubst, NewTypeVarSet1, NewTypeVarSet).
+
+:- pred rename_class_constraint(map(tvar, tvar), class_constraint,
+				class_constraint).
+:- mode rename_class_constraint(in, in, out) is det.
+
+% apply a type variable renaming to a class constraint
+
+rename_class_constraint(TSubst, constraint(ClassName, ArgTypes0),
+			constraint(ClassName, ArgTypes)) :-
+	term__apply_variable_renaming_to_list(ArgTypes0, TSubst, ArgTypes).
+
+:- pred rename_constraint_proof(map(tvar, tvar), constraint_proof,
+				constraint_proof).
+:- mode rename_constraint_proof(in, in, out) is det.
+
+% apply a type variable renaming to a class constraint proof
+
+rename_constraint_proof(_TSubst, apply_instance(Instance, Num),
+				apply_instance(Instance, Num)).
+rename_constraint_proof(TSubst, superclass(ClassConstraint0),
+			superclass(ClassConstraint)) :-
+	rename_class_constraint(TSubst, ClassConstraint0, ClassConstraint).
 
 %-----------------------------------------------------------------------------%
 
@@ -2824,10 +2907,6 @@ typecheck_info_add_type_assign_constraints(NewConstraints, TypecheckInfo0,
 :- pred typecheck_constraints(bool, typecheck_info, typecheck_info).
 :- mode typecheck_constraints(in, typecheck_info_di, typecheck_info_uo) is det.
 
-	% XXX if we're inferring, don't bother checking the constraints at this
-	% XXX stage. Fix this up. Handling inference isn't actually that
-	% XXX difficult: you just collect the constraint set, perform context
-	% XXX reduction, and that is the class context of the pred.
 typecheck_constraints(yes, TypeCheckInfo, TypeCheckInfo).
 typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
 		% get the declared constraints
@@ -3174,27 +3253,6 @@ apply_class_rules_2([C|Cs], AllConstraints, ClassTable, TVarSet,
 	apply_class_rules_2(NewCs, NewConstraints, ClassTable,
 		NewTVarSet, Proofs1, Proofs, Constraints, Changed2),
 	bool__or(Changed1, Changed2, Changed).
-
-%-----------------------------------------------------------------------------%
-
-:- pred record_class_constraint_proofs(pred_info, typecheck_info,
-	pred_info).
-:- mode record_class_constraint_proofs(in, typecheck_info_ui, out) is det.
-
-record_class_constraint_proofs(PredInfo0, TypeCheckInfo, PredInfo) :-
-	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
-	(
-		TypeAssignSet = [TypeAssign]
-	->
-		type_assign_get_constraint_proofs(TypeAssign, Proofs),
-		pred_info_set_constraint_proofs(PredInfo0, Proofs,
-			PredInfo)
-	;
-			% If there's not exactly one type_assign, don't
-			% bother recording the proofs since an error has
-			% occured, and will have been noted elsewhere
-		PredInfo = PredInfo0
-	).
 
 %-----------------------------------------------------------------------------%
 

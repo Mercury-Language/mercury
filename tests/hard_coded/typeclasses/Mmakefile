@@ -12,6 +12,7 @@ PROGS=	\
 	ho_map \
 	implied_instance \
 	implied_instance_poly \
+	inference_test \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
 	multi_parameter \
@@ -28,11 +29,11 @@ PROGS=	\
 # find exactly how to trigger the bug. Oh well...
 
 # we do not yet pass the following tests:
-#	implied_instance
-#	implied_instance_poly
 #       typeclass_test_5.m (this is really a WISHLIST item)
 #
-#
+
+
+MCFLAGS-inference_test = --infer-all
 
 #-----------------------------------------------------------------------------#
 
