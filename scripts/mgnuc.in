@@ -167,12 +167,13 @@ esac
 
 # check that special grades are only used with gcc
 case $COMPILER in
-	gcc) ;;
+	gcc)	;;
 	*)	case $GRADE in
-			debug|none)
+			debug|none)	;;
+			*)
 		echo "$0: For compilers other than GNU C, the only" 1>&2
-		echo "$0: grades allowed are `debug' and `none'" 1>&2
-			;;
+		echo "$0: grades allowed are \`debug' and \`none'" 1>&2
+					;;
 		esac
 esac
 
