@@ -873,29 +873,51 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				% only if it was allocated, i.e. only if
 				% MR_trace_from_full was true on entry.
 				%
+				% Note that to avoid duplicating label names,
+				% we need to generate two different copies
+				% of this with different labels; this is
+				% needed for semidet code, which will get one
+				% copy in the success epilogue and one copy
+				% in the failure epilogue
+				%
 				{ FromFullSlotLval =
 					llds__stack_slot_num_to_lval(
 						CodeModel, FromFullSlot) },
 				code_info__get_next_label(SkipLabel),
+				code_info__get_next_label(SkipLabelCopy),
 				{ PruneTraceTicketCode = node([
 					if_val(unop(not,
 						lval(FromFullSlotLval)),
 						label(SkipLabel)) - "",
 					prune_ticket - "prune retry ticket",
 					label(SkipLabel) - ""
+				]) },
+				{ PruneTraceTicketCodeCopy = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabelCopy)) - "",
+					prune_ticket - "prune retry ticket",
+					label(SkipLabelCopy) - ""
 				]) }
 			;
 				{ PruneTraceTicketCode = node([
 					prune_ticket - "prune retry ticket"
-				]) }
+				]) },
+				{ PruneTraceTicketCodeCopy = PruneTraceTicketCode }
 			)
 		;
-			{ PruneTraceTicketCode = empty }
+			{ PruneTraceTicketCode = empty },
+			{ PruneTraceTicketCodeCopy = empty }
 		),
 
 		{ RestoreDeallocCode =
 			tree(RestoreSuccipCode,
 			tree(PruneTraceTicketCode,
+			     DeallocCode))
+		},
+		{ RestoreDeallocCodeCopy =
+			tree(RestoreSuccipCode,
+			tree(PruneTraceTicketCodeCopy,
 			     DeallocCode))
 		},
 
@@ -941,7 +963,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			]) },
 			{ AllSuccessCode =
 				tree(TraceExitCode,
-				tree(RestoreDeallocCode,
+				tree(RestoreDeallocCodeCopy,
 				     SuccessCode))
 			}
 		;
@@ -954,7 +976,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			]) },
 			{ AllSuccessCode =
 				tree(TraceExitCode,
-				tree(RestoreDeallocCode,
+				tree(RestoreDeallocCodeCopy,
 				     SuccessCode))
 			}
 		;
