@@ -255,6 +255,14 @@ case $COMPILER in gcc)
 	esac ;;
 esac
 
+case "$FULLARCH" in sparc-sun-solaris*)
+	case "$grade" in none)
+		case "$*" in *-fpic*)
+			ARCH_OPTS="$ARCH_OPTS -fPIC" ;;
+		esac ;;
+	esac ;;
+esac
+
 case $assemble in true)
 	case $verbose in true)
 		echo $AS $AS_OPTS "$@" ;;
