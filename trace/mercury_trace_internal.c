@@ -3394,7 +3394,7 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				break;
 
 			case 's':
-				if (*close) {
+				if (*close_window) {
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
 				}
@@ -3403,7 +3403,7 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 				break;
 
 			case 'n':
-				if (*close) {
+				if (*close_window) {
 					MR_trace_usage(cat, item);
 					return MR_FALSE;
 				}
