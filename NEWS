@@ -200,3 +200,7 @@ DRAFT NEWS for Mercury release 0.7
     option-lookup predicates: getopt__lookup_accumulating_option/3 and
     getopt__lookup_maybe_string_option/3.
 
+  - We've added string__foldl to the library. It has the same semantics as
+    (string__to_char_list(String, Chars), list__foldl(Pred, Chars, Acc0, Acc))
+    but is implemented more efficiently.
+

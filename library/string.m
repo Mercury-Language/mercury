@@ -190,6 +190,21 @@
 %	Calls error/1 if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
+:- pred string__foldl(pred(char, T, T), string, T, T).
+:- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode string__foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode string__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode string__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
+:- mode string__foldl(pred(in, in, out) is multi, in, in, out) is multi.
+%	string__foldl(Closure, String, Acc0, Acc):
+%	`Closure' is an accumulator predicate which is to be called for each
+%	character of the string `String' in turn. The initial value of the
+%	accumulator is `Acc0' and the final value is `Acc'.
+%	(string__foldl is equivalent to
+%		string__to_char_list(String, Chars),
+%		list__foldl(Closure, Chars, Acc0, Acc)
+%	but is implemented more efficiently.)
+
 :- pred string__split(string, int, string, string).
 :- mode string__split(in, in, out, out) is det.
 %	string__split(String, Count, LeftSubstring, RightSubstring):
@@ -430,6 +445,32 @@ string__index_det(String, Int, Char) :-
 		Char = Char0
 	;
 		error("string__index_det: index out of range")
+	).
+
+string__foldl(Closure, String, Acc0, Acc) :-
+	string__length(String, Length),
+	string__foldl2(Closure, String, 0, Length, Acc0, Acc).
+
+:- pred string__foldl2(pred(char, T, T), string, int, int, T, T).
+:- mode string__foldl2(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode string__foldl2(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode string__foldl2(pred(in, in, out) is semidet, in, in, in, in, out)
+		is semidet.
+:- mode string__foldl2(pred(in, in, out) is nondet, in, in, in, in, out)
+		is nondet.
+:- mode string__foldl2(pred(in, in, out) is multi, in, in, in, in, out)
+		is multi.
+
+string__foldl2(Closure, String, N, Max, Acc0, Acc) :-
+	(
+		N >= Max
+	->
+		Acc = Acc0
+	;
+		string__unsafe_index(String, N, Char),
+		call(Closure, Char, Acc0, Acc1),
+		N1 is N + 1,
+		string__foldl2(Closure, String, N1, Max, Acc1, Acc)
 	).
 
 string__left(String, Count, LeftString) :-
@@ -1589,6 +1630,15 @@ string__special_precision_and_width(-1).
 		SUCCESS_INDICATOR = TRUE;
 		Ch = Str[Index];
 	}
+").
+
+/*-----------------------------------------------------------------------*/
+
+:- pred string__unsafe_index(string, int, char).
+:- mode string__unsafe_index(in, in, out) is det.
+
+:- pragma(c_code, string__unsafe_index(Str::in, Index::in, Ch::out), "
+	Ch = Str[Index];
 ").
 
 /*-----------------------------------------------------------------------*/

@@ -407,13 +407,8 @@ term_io__quote_string(S) -->
 	term_io__write_escaped_string(S),
 	io__write_char('"').
 
-term_io__write_escaped_string(S0) -->
-	( { string__first_char(S0, Char, S1) } ->
-		term_io__write_escaped_char(Char),
-		term_io__write_escaped_string(S1)
-	;
-		[]
-	).
+term_io__write_escaped_string(String) -->
+	string__foldl(term_io__write_escaped_char, String).
 
 term_io__quote_single_char(Char) -->
 	term_io__write_escaped_char(Char).
