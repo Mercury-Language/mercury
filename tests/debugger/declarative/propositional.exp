@@ -11,26 +11,28 @@ mdb> continue
 mdb> finish
       11:      2  2 EXIT pred propositional:a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> dd
-atom("a", [])
+a
 Valid? no
-atom("c", [])
+c
 Valid? yes
 Incorrect node found:
-wrong_answer(atom("a", []))
+a
+Is this a bug? yes
       11:      2  2 EXIT pred propositional:a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> continue
       12:      5  2 CALL pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> finish
       22:      5  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> dd
-atom("b", [])
+b
 Valid? no
-atom("f", [])
+f
 Valid? no
-atom("i", [])
+i
 Valid? yes
 Incorrect node found:
-wrong_answer(atom("f", []))
+f
+Is this a bug? yes
       22:      5  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> continue
 yes

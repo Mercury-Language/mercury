@@ -9,63 +9,71 @@ mdb> continue
 mdb> finish
       15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-atom("p", [univ('a' : character), univ(30 : int)])
+p('a', 30)
 Valid? no
-atom("q", [univ('a' : character), univ('a' : character)])
+q('a', 'a')
 Valid? yes
-atom("r", [univ('a' : character), univ(10 : int)])
+r('a', 10)
 Valid? yes
-atom("s", [univ(10 : int), univ(30 : int)])
+s(10, 30)
 Valid? yes
 Incorrect node found:
-wrong_answer(atom("p", [univ('a' : character), univ(30 : int)]))
+p('a', 30)
+Is this a bug? yes
       15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
       20:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-atom("p", [univ('a' : character), univ(31 : int)])
+p('a', 31)
 Valid? no
 Incorrect node found:
-wrong_answer(atom("p", [univ('a' : character), univ(31 : int)]))
+p('a', 31)
+Is this a bug? yes
       22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
       27:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-atom("p", [univ('a' : character), univ(32 : int)])
+p('a', 32)
 Valid? no
-atom("q", [univ('a' : character), univ('b' : character)])
+q('a', 'b')
 Valid? yes
-Call atom("r", [univ('b' : character)])
-Solutions:
+Call r('b', _)
+No solutions.
 Complete? yes
-Call atom("q", [univ('b' : character)])
-Solutions:
+Call q('b', _)
+No solutions.
 Complete? yes
 Incorrect node found:
-wrong_answer(atom("p", [univ('a' : character), univ(32 : int)]))
+p('a', 32)
+Is this a bug? yes
       39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
       44:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> finish
       47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-Call atom("p", [univ('a' : character)])
+Call p('a', _)
 Solutions:
-	atom("p", [univ('a' : character), univ(30 : int)])
-	atom("p", [univ('a' : character), univ(31 : int)])
-	atom("p", [univ('a' : character), univ(32 : int)])
+	p('a', 30)
+	p('a', 31)
+	p('a', 32)
 Complete? no
-Call atom("q", [univ('a' : character)])
+Call q('a', _)
 Solutions:
-	atom("q", [univ('a' : character), univ('a' : character)])
-	atom("q", [univ('a' : character), univ('b' : character)])
+	q('a', 'a')
+	q('a', 'b')
 Complete? yes
 Incorrect node found:
-missing_answer(atom("p", [univ('a' : character)]), [atom("p", [univ('a' : character), univ(30 : int)]), atom("p", [univ('a' : character), univ(31 : int)]), atom("p", [univ('a' : character), univ(32 : int)])])
+Call p('a', _)
+Solutions:
+	p('a', 30)
+	p('a', 31)
+	p('a', 32)
+Is this a bug? yes
       47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> continue
 no

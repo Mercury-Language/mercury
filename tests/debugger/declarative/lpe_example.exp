@@ -9,55 +9,63 @@ mdb> continue
 mdb> finish
       10:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> dd
-atom("p", [univ(1 : int), univ(13 : int)])
+p(1, 13)
 Valid? no
-atom("q", [univ(3 : int)])
+q(3)
 Valid? yes
-atom("r", [univ(3 : int), univ(13 : int)])
+r(3, 13)
 Valid? yes
 Incorrect node found:
-wrong_answer(atom("p", [univ(1 : int), univ(13 : int)]))
+p(1, 13)
+Is this a bug? yes
       10:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> continue
       11:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> finish
       15:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> dd
-atom("p", [univ(1 : int), univ(23 : int)])
+p(1, 23)
 Valid? no
-atom("r", [univ(3 : int), univ(23 : int)])
+r(3, 23)
 Valid? yes
 Incorrect node found:
-wrong_answer(atom("p", [univ(1 : int), univ(23 : int)]))
+p(1, 23)
+Is this a bug? yes
       15:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> continue
       16:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> finish
       20:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> dd
-atom("p", [univ(1 : int), univ(3 : int)])
+p(1, 3)
 Valid? no
 Incorrect node found:
-wrong_answer(atom("p", [univ(1 : int), univ(3 : int)]))
+p(1, 3)
+Is this a bug? yes
       20:      2  2 EXIT pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> continue
       21:      2  2 REDO pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> finish
       22:      2  2 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> dd
-Call atom("p", [univ(1 : int)])
+Call p(1, _)
 Solutions:
-	atom("p", [univ(1 : int), univ(13 : int)])
-	atom("p", [univ(1 : int), univ(23 : int)])
-	atom("p", [univ(1 : int), univ(3 : int)])
+	p(1, 13)
+	p(1, 23)
+	p(1, 3)
 Complete? no
-Call atom("r", [univ(3 : int)])
+Call r(3, _)
 Solutions:
-	atom("r", [univ(3 : int), univ(13 : int)])
-	atom("r", [univ(3 : int), univ(23 : int)])
+	r(3, 13)
+	r(3, 23)
 Complete? yes
 Incorrect node found:
-missing_answer(atom("p", [univ(1 : int)]), [atom("p", [univ(1 : int), univ(13 : int)]), atom("p", [univ(1 : int), univ(23 : int)]), atom("p", [univ(1 : int), univ(3 : int)])])
+Call p(1, _)
+Solutions:
+	p(1, 13)
+	p(1, 23)
+	p(1, 3)
+Is this a bug? yes
       22:      2  2 FAIL pred lpe_example:p/2-0 (nondet) lpe_example.m:17
 mdb> continue
 [3, 13, 23]

@@ -92,20 +92,24 @@
 		)
 	.
 
-	% If either of the following two types are modified, some of
+:- type trace_atom
+	--->	atom(
+				% Procedure name.
+				%
+			string,
+
+				% Arguments.
+				% XXX this representation will not be
+				% able to handle partially instantiated
+				% data structures.
+				%
+			list(maybe(univ))
+		).
+
+	% If the following two type is modified, some of
 	% the macros in trace/mercury_trace_declarative.h may need
 	% to be updated.
 	%
-:- type trace_atom
-	--->	atom(
-			string,			% Procedure name.
-			list(univ)		% Arguments.
-			% XXX we also need to store some information about
-			% where the arguments come from, since they will
-			% not necessarily be in the right order or all
-			% present (we do not store unbound variables).
-		).
-
 :- type goal_status
 	--->	succeeded
 	;	failed
@@ -716,6 +720,21 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 	[will_not_call_mercury, thread_safe],
 	"Id = (Word) NULL;"
 ).
+
+
+:- func construct_trace_atom(string, int) = trace_atom.
+:- pragma export(construct_trace_atom(in, in) = out,
+		"MR_DD_construct_trace_atom").
+
+construct_trace_atom(Functor, Arity) = atom(Functor, Args) :-
+	list__duplicate(Arity, no, Args).
+
+:- func add_trace_atom_arg(trace_atom, int, univ) = trace_atom.
+:- pragma export(add_trace_atom_arg(in, in, in) = out,
+		"MR_DD_add_trace_atom_arg").
+
+add_trace_atom_arg(atom(F, Args0), Num, Val) = atom(F, Args) :-
+	list__replace_nth_det(Args0, Num, yes(Val), Args).
 
 %-----------------------------------------------------------------------------%
 

@@ -11,48 +11,50 @@ mdb> continue
 mdb> finish
      161:      3  2 FAIL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> dd
-Call atom("queen", [univ([1, 2, 3, 4, 5] : list:list(int))])
-Solutions:
+Call queen([1, 2, 3, 4, 5], _)
+No solutions.
 Complete? no
-Call atom("qperm", [univ([1, 2, 3, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
-Solutions:
+Call qperm([1, 2, 3, 4, 5], _)
+No solutions.
 Complete? no
-atom("qdelete", [univ(1 : int), univ([1, 2, 3, 4, 5] : list:list(int)), univ([2, 3, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(1, [1, 2, 3, 4, 5], [2, 3, 4, 5])
 Valid? yes
-atom("qdelete", [univ(2 : int), univ([1, 2, 3, 4, 5] : list:list(int)), univ([1, 3, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(2, [1, 2, 3, 4, 5], [1, 3, 4, 5])
 Valid? yes
-Call atom("qperm", [univ([1, 3, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
-Solutions:
+Call qperm([1, 3, 4, 5], _)
+No solutions.
 Complete? no
-atom("qdelete", [univ(1 : int), univ([1, 3, 4, 5] : list:list(int)), univ([3, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(1, [1, 3, 4, 5], [3, 4, 5])
 Valid? yes
-atom("qdelete", [univ(3 : int), univ([1, 3, 4, 5] : list:list(int)), univ([1, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(3, [1, 3, 4, 5], [1, 4, 5])
 Valid? yes
-Call atom("qperm", [univ([1, 4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
-Solutions:
+Call qperm([1, 4, 5], _)
+No solutions.
 Complete? no
-atom("qdelete", [univ(1 : int), univ([1, 4, 5] : list:list(int)), univ([4, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(1, [1, 4, 5], [4, 5])
 Valid? yes
-atom("qdelete", [univ(4 : int), univ([1, 4, 5] : list:list(int)), univ([1, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(4, [1, 4, 5], [1, 5])
 Valid? yes
-Call atom("qperm", [univ([1, 5] : list:list(int)), univ(int : private_builtin:type_info(int))])
-Solutions:
+Call qperm([1, 5], _)
+No solutions.
 Complete? no
-atom("qdelete", [univ(1 : int), univ([1, 5] : list:list(int)), univ([5] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(1, [1, 5], [5])
 Valid? yes
-atom("qdelete", [univ(5 : int), univ([1, 5] : list:list(int)), univ([1] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(5, [1, 5], [1])
 Valid? yes
-Call atom("qperm", [univ([1] : list:list(int)), univ(int : private_builtin:type_info(int))])
-Solutions:
+Call qperm([1], _)
+No solutions.
 Complete? no
-atom("qdelete", [univ(1 : int), univ([1] : list:list(int)), univ([] : list:list(int)), univ(int : private_builtin:type_info(int))])
+qdelete(1, [1], [])
 Valid? yes
-Call atom("qdelete", [univ([1] : list:list(int)), univ(int : private_builtin:type_info(int))])
+Call qdelete(_, [1], _)
 Solutions:
-	atom("qdelete", [univ(1 : int), univ([1] : list:list(int)), univ([] : list:list(int)), univ(int : private_builtin:type_info(int))])
+	qdelete(1, [1], [])
 Complete? yes
 Incorrect node found:
-missing_answer(atom("qperm", [univ([1] : list:list(int)), univ(int : private_builtin:type_info(int))]), [])
+Call qperm([1], _)
+No solutions.
+Is this a bug? yes
      161:      3  2 FAIL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> continue
 No solution

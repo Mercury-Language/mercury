@@ -19,6 +19,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 DECLARATIVE_PROGS=		\
 	aadebug			\
 	app			\
+	args			\
 	backtrack		\
 	big			\
 	gcf			\
@@ -74,6 +75,9 @@ aadebug.out: aadebug aadebug.inp
 
 app.out: app app.inp
 	$(MDB) ./app < app.inp > app.out 2>&1
+
+args.out: args args.inp
+	$(MDB) ./args < args.inp > args.out 2>&1
 
 backtrack.out: backtrack backtrack.inp
 	$(MDB) ./backtrack < backtrack.inp > backtrack.out 2>&1

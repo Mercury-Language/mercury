@@ -138,15 +138,10 @@ diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
 handle_analyser_response(_, no_suspects, no_bug_found, D, D) -->
 	[].
 
-handle_analyser_response(Store, bug_found(Bug), Response, D, D) -->
-	confirm_bug(Store, Bug, Confirmed),
-	{
-		Confirmed = yes,
-		Response = bug_found
-	;
-		Confirmed = no,
-		Response = no_bug_found
-	}.
+handle_analyser_response(Store, bug_found(Bug), Response, Diagnoser0,
+		Diagnoser) -->
+
+	confirm_bug(Store, Bug, Response, Diagnoser0, Diagnoser).
 
 handle_analyser_response(Store, oracle_queries(Queries), Response,
 		Diagnoser0, Diagnoser) -->
@@ -181,20 +176,33 @@ handle_oracle_response(_, no_oracle_answers, no_bug_found, D, D) -->
 handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 	io__write_string("Diagnosis aborted.\n").
 
-:- pred confirm_bug(S, decl_bug(edt_node(R)), bool, io__state, io__state)
+:- pred confirm_bug(S, decl_bug(edt_node(R)), diagnoser_response,
+		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
 		<= execution_tree(S, R).
-:- mode confirm_bug(in, in, out, di, uo) is det.
+:- mode confirm_bug(in, in, out, in, out, di, uo) is det.
 
-confirm_bug(Store, e_bug(Node), yes) -->
-	io__write_string("Incorrect node found:\n"),
+confirm_bug(Store, Bug, Response, Diagnoser0, Diagnoser) -->
+	{
+		Bug = e_bug(Node),
+		Message = "Incorrect node found:\n"
+	;
+		Bug = i_bug(Node),
+		Message = "Inadmissible call node found:\n"
+	},
+	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
 	{ edt_root(wrap(Store), Node, Question) },
-	io__write(Question),
-	io__nl.
-confirm_bug(Store, i_bug(Node), yes) -->
-	io__write_string("Inadmissible call:\n"),
-	{ edt_root(wrap(Store), Node, Question) },
-	io__write(Question),
-	io__nl.
+	oracle_confirm_bug(Message, Question, Confirmation, Oracle0, Oracle),
+	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser) },
+	{
+		Confirmation = confirm_bug,
+		Response = bug_found
+	;
+		Confirmation = overrule_bug,
+		Response = no_bug_found
+	;
+		Confirmation = abort_diagnosis,
+		Response = no_bug_found
+	}.
 
 	% Export a monomorphic version of diagnosis_state_init/4, to
 	% make it easier to call from C code.

@@ -17,10 +17,10 @@
 ** MR_trace_current_level returns this information, while enquiry function
 ** MR_trace_current_level_details returns information about this level.
 **
-** The five functions MR_trace_var_count, MR_trace_list_vars,
-** MR_trace_return_var_info, MR_trace_browse_one and MR_trace_browse_all
-** all work in the context established by the MR_trace_init_point_vars and
-** possibly MR_trace_set_level.
+** The six functions MR_trace_var_count, MR_trace_list_vars,
+** MR_trace_return_var_info, MR_trace_headvar_num, MR_trace_browse_one
+** and MR_trace_browse_all all work in the context established by the
+** MR_trace_init_point_vars and possibly MR_trace_set_level.
 **
 ** This context may say that there is no information available about
 ** the variables live at the current location (this is possible if the
@@ -77,13 +77,21 @@ extern	int		MR_trace_var_count(void);
 extern	const char	*MR_trace_list_vars(FILE *out);
 
 /*
-** Return the name, type and value of the specified variable in the specified
-** locations, except those which are NULL.  Variable number n must be
-** in the range 1..MR_trace_var_count().
+** Return as a side effect the name, type and value of the specified
+** variable in the specified locations, except those which are NULL.
+** Variable number n must be in the range 1..MR_trace_var_count().
 */
 
 extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
 				Word *type_info_ptr, Word *value_ptr);
+
+/*
+** If the variable specified by n is a head variable, then store
+** its argument position in *num and return NULL, otherwise return
+** an error.
+*/
+
+extern	const char	*MR_trace_headvar_num(int n, int *num);
 
 /*
 ** Print the (names and) values of the specified variables.

@@ -15,7 +15,7 @@ mdb> continue
 mdb> finish -n
       16:      5  5 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
 mdb> dd
-atom("app", [univ([4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([4, 5], [6, 7, 8], [4, 5, 6, 7, 8])
 Valid? yes
       16:      5  5 EXIT pred app:app/3-0 (det) app.m:26 (app.m:28)
 mdb> continue
@@ -25,43 +25,45 @@ mdb> continue
 mdb> continue
       19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
 mdb> dd
-atom("app", [univ([1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
 Valid? no
 Incorrect node found:
-wrong_answer(atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))]))
+app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
+Is this a bug? yes
       19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
 mdb> continue
 append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
-      24:    443  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
+      24:    584  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> finish -n
-      71:    443  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+      71:    584  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> dd
-atom("app", [univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
-atom("app", [univ([0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
+app([0, 1, 2, 3, 4, 5], [6, 7, 8], [0, 1, 2, 3, 4, 5, 6, 7, 8])
 Valid? no
 Incorrect node found:
-wrong_answer(atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))]))
-      71:    443  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+app([3, 4, 5], [6, 7, 8], [3, 4, 5, 6, 7, 8])
+Is this a bug? yes
+      71:    584  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> continue
 append([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8]).

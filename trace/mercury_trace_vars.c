@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -111,6 +111,8 @@ static	int	MR_trace_compare_var_details(const void *arg1,
 static	void	MR_trace_browse_var(FILE *out, MR_Var_Details *var,
 			MR_Browser browser);
 static	int	MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
+static	const char *
+		MR_trace_valid_var_number(int var_number);
 
 #define	MR_INIT_VAR_DETAIL_COUNT	20
 #define	MR_TRACE_PADDED_VAR_NAME_LENGTH	23
@@ -559,17 +561,16 @@ const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
 	Word *type_info_ptr, Word *value_ptr)
 {
-	const MR_Var_Details *details;
+	const MR_Var_Details	*details;
+	const char		*problem;
 
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
-	if (var_number < 1) {
-		return "invalid variable number";
-	}
-	if (var_number > MR_point.MR_point_var_count) {
-		return "there aren't that many variables";
+	problem = MR_trace_valid_var_number(var_number);
+	if (problem != NULL) {
+		return problem;
 	}
 
 	details = &MR_point.MR_point_vars[var_number - 1];
@@ -588,23 +589,47 @@ MR_trace_return_var_info(int var_number, const char **name_ptr,
 }
 
 const char *
+MR_trace_headvar_num(int var_number, int *arg_pos)
+{
+	const MR_Var_Details	*details;
+	const char		*problem;
+
+	if (MR_point.MR_point_problem != NULL) {
+		return MR_point.MR_point_problem;
+	}
+
+	problem = MR_trace_valid_var_number(var_number);
+	if (problem != NULL) {
+		return problem;
+	}
+
+	details = &MR_point.MR_point_vars[var_number - 1];
+
+	if (!details->MR_var_is_headvar) {
+		return "not a head variable";
+	}
+
+	*arg_pos = details->MR_var_num_suffix;
+	return NULL;
+}
+
+const char *
 MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 	bool must_be_unique)
 {
-	int	i;
-	bool	found;
+	int		i;
+	bool		found;
+	const char	*problem;
 
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
 	if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
-		if (var_spec.MR_var_spec_number < 1) {
-			return "invalid variable number";
-		}
-		if (var_spec.MR_var_spec_number > MR_point.MR_point_var_count)
-		{
-			return "there aren't that many variables";
+		problem = MR_trace_valid_var_number(
+					var_spec.MR_var_spec_number);
+		if (problem != NULL) {
+			return problem;
 		}
 		MR_trace_browse_var(out, &MR_point.MR_point_vars
 			[var_spec.MR_var_spec_number - 1], browser);
@@ -711,4 +736,17 @@ MR_trace_print_var_name(FILE *out, MR_Var_Details *var)
 	}
 
 	return len;
+}
+
+static	const char *
+MR_trace_valid_var_number(int var_number)
+{
+	if (var_number < 1) {
+		return "invalid variable number";
+	}
+	if (var_number > MR_point.MR_point_var_count) {
+		return "there aren't that many variables";
+	}
+
+	return NULL;
 }

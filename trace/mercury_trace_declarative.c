@@ -37,6 +37,7 @@
 #include "mercury_trace_internal.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
+#include "mercury_trace_vars.h"
 #include "mercury_layout_util.h"
 #include "mercury_deep_copy.h"
 #include "mercury_stack_trace.h"
@@ -202,7 +203,8 @@ static	bool
 MR_trace_single_component(const char *path);
 
 static	Word
-MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs);
+MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs,
+		MR_Trace_Port port);
 
 static	ConstString
 MR_decl_atom_name(const MR_Stack_Layout_Entry *entry);
@@ -376,7 +378,8 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	Word				atom;
 	const MR_Stack_Layout_Label	*layout = event_info->MR_event_sll;
 
-	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs);
+	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
+			MR_PORT_CALL);
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_call_node(
 					(Word) prev, atom,
@@ -400,7 +403,8 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 	Word			atom;
 
 	atom = MR_decl_make_atom(event_info->MR_event_sll,
-				event_info->MR_saved_regs);
+				event_info->MR_saved_regs,
+				MR_PORT_EXIT);
 
 #ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
@@ -902,18 +906,62 @@ MR_trace_single_component(const char *path)
 }
 
 static	Word
-MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs)
+MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs,
+		MR_Trace_Port port)
 {
-	ConstString		name;
-	Word			args;
-	Word			atom;
+	ConstString			name;
+	Word				arity;
+	Word				atom;
+	int				i;
+	const MR_Stack_Layout_Vars	*vars;
+	int				arg_count;
+	Word				*type_params;
+	const MR_Stack_Layout_Entry	*entry = layout->MR_sll_entry;
 
-	name = MR_decl_atom_name(layout->MR_sll_entry);
-	args = MR_decl_atom_args(layout, saved_regs);
+	MR_trace_init_point_vars(layout, saved_regs, port);
 
-	MR_TRACE_USE_HP(
-		MR_trace_atom(atom, name, args);
+	name = MR_decl_atom_name(entry);
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+		arity = (Word) entry->MR_sle_comp.MR_comp_arity;
+	} else {
+		arity = (Word) entry->MR_sle_user.MR_user_arity;
+	}
+	MR_TRACE_CALL_MERCURY(
+		atom = MR_DD_construct_trace_atom((String) name, arity);
 	);
+
+	arg_count = MR_trace_var_count();
+	for (i = 1; i <= arg_count; i++) {
+		Word		arg;
+		Word		arg_type;
+		Word		arg_value;
+		int		arg_pos;
+		const char	*problem;
+
+		problem = MR_trace_return_var_info(i, NULL, &arg_type,
+					&arg_value);
+		if (problem != NULL) {
+			fatal_error(problem);
+		}
+
+		problem = MR_trace_headvar_num(i, &arg_pos);
+		if (problem != NULL) {
+			fatal_error(problem);
+		}
+
+		MR_TRACE_USE_HP(
+			tag_incr_hp(arg, MR_mktag(0), 2);
+		);
+		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_TYPEINFO) =
+				arg_type;
+		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_DATA) =
+				arg_value;
+
+		MR_TRACE_CALL_MERCURY(
+			atom = MR_DD_add_trace_atom_arg(atom,
+						(Word) arg_pos, arg);
+		);
+	}
 
 	return atom;
 }
@@ -938,61 +986,6 @@ MR_decl_atom_name(const MR_Stack_Layout_Entry *entry)
 	}
 
 	return name;
-}
-
-static	Word
-MR_decl_atom_args(const MR_Stack_Layout_Label *layout, Word *saved_regs)
-{
-	int				i;
-	Word				arglist;
-	Word				tail;
-	Word				head;
-	const MR_Stack_Layout_Vars	*vars;
-	int				arg_count;
-	Word				*base_sp;
-	Word				*base_curfr;
-	Word				*type_params;
-	Word				arg_type;
-	Word				arg_value;
-
-	MR_TRACE_USE_HP(
-		arglist = MR_list_empty();
-	);
-
-	vars = &layout->MR_sll_var_info;
-	if (!MR_has_valid_var_count(vars)) {
-		fprintf(MR_mdb_err, "mdb: no info about live variables.\n");
-	}
-
-	if (!MR_has_valid_var_info(vars)) {
-		/* there are no live variables */
-
-		return arglist;
-	}
-
-	arg_count = MR_all_desc_var_count(vars);
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-	type_params = MR_materialize_typeinfos_base(vars, saved_regs, 
-			base_sp, base_curfr);
-
-	MR_TRACE_USE_HP(
-		for (i = arg_count - 1; i >= 0; i--) {
-			MR_get_type_and_value_base(vars, i, saved_regs,
-					base_sp, base_curfr, type_params,
-					&arg_type, &arg_value);
-
-			tail = arglist;
-			tag_incr_hp(head, MR_mktag(0), 2);
-			MR_field(MR_mktag(0), head, UNIV_OFFSET_FOR_TYPEINFO) =
-					arg_type;
-			MR_field(MR_mktag(0), head, UNIV_OFFSET_FOR_DATA) =
-					arg_value;
-			arglist = MR_list_cons(head, tail);
-		}
-	);
-
-	return arglist;
 }
 
 static	void

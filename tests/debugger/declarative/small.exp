@@ -9,10 +9,11 @@ mdb> continue
 mdb> finish
        3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
 mdb> dd
-atom("p", [univ(42 : int)])
+p(42)
 Valid? no
 Incorrect node found:
-wrong_answer(atom("p", [univ(42 : int)]))
+p(42)
+Is this a bug? yes
        3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
 mdb> continue
 42

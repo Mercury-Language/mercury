@@ -9,25 +9,26 @@ mdb> continue
 mdb> finish
       18:      2  2 EXIT pred neg_conj:p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
 mdb> dd
-atom("p", [univ(0 : int)])
+p(0)
 Valid? no
-atom("q", [univ(0 : int), univ(0 : int)])
+q(0, 0)
 Valid? yes
-Call atom("r", [univ(0 : int)])
-Solutions:
+Call r(0)
+No solutions.
 Complete? yes
-atom("q", [univ(0 : int), univ(1 : int)])
+q(0, 1)
 Valid? yes
-Call atom("r", [univ(1 : int)])
-Solutions:
+Call r(1)
+No solutions.
 Complete? yes
-Call atom("q", [univ(0 : int)])
+Call q(0, _)
 Solutions:
-	atom("q", [univ(0 : int), univ(0 : int)])
-	atom("q", [univ(0 : int), univ(1 : int)])
+	q(0, 0)
+	q(0, 1)
 Complete? yes
 Incorrect node found:
-wrong_answer(atom("p", [univ(0 : int)]))
+p(0)
+Is this a bug? yes
       18:      2  2 EXIT pred neg_conj:p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
 mdb> continue
 yes.

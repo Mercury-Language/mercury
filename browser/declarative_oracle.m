@@ -25,13 +25,21 @@
 :- module mdb__declarative_oracle.
 :- interface.
 :- import_module mdb__declarative_debugger.
-:- import_module list, io.
+:- import_module list, io, string.
 
-	% A response that the oracle gives to the caller.
+	% A response that the oracle gives to a query about the
+	% truth of an EDT node.
 	%
 :- type oracle_response
 	--->	oracle_answers(list(decl_answer))
 	;	no_oracle_answers
+	;	abort_diagnosis.
+
+	% A response that the oracle gives when asked to confirm a bug.
+	%
+:- type oracle_confirmation
+	--->	confirm_bug
+	;	overrule_bug
 	;	abort_diagnosis.
 
 	% The oracle state.  This is threaded around the declarative
@@ -54,11 +62,19 @@
 		oracle_state, io__state, io__state).
 :- mode query_oracle(in, out, in, out, di, uo) is det.
 
+	% Confirm that the node found is indeed an e_bug or an i_bug.
+	% The first argument is a message from the caller to be
+	% prefixed to the question.
+	%
+:- pred oracle_confirm_bug(string, decl_question, oracle_confirmation,
+		oracle_state, oracle_state, io__state, io__state).
+:- mode oracle_confirm_bug(in, in, out, in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module mdb__declarative_user, mdb__util.
-:- import_module bool, std_util, map, set.
+:- import_module bool, std_util, map, set, require.
 
 query_oracle(Queries, Response, Oracle0, Oracle) -->
 	{ get_oracle_kb(Oracle0, KB0) },
@@ -87,6 +103,26 @@ query_oracle(Queries, Response, Oracle0, Oracle) -->
 		{ Response = oracle_answers(Answers) },
 		{ Oracle = Oracle0 }
 	).
+
+oracle_confirm_bug(Message, Question, Confirmation, Oracle0, Oracle) -->
+	{ get_oracle_user(Oracle0, User0) },
+	user_confirm_bug(Message, Question, UserResponse, User0, User),
+	{ set_oracle_user(Oracle0, User, Oracle) },
+	{
+		UserResponse = user_answer(_ - yes),
+		Confirmation = confirm_bug
+	;
+		UserResponse = user_answer(_ - no),
+		Confirmation = overrule_bug
+	;
+		UserResponse = no_user_answer,
+		error("oracle_confirm_bug: no user answer")
+	;
+		UserResponse = abort_diagnosis,
+		Confirmation = abort_diagnosis
+	}.
+
+%-----------------------------------------------------------------------------%
 		
 :- type oracle_state
 	--->	oracle(

@@ -15,7 +15,7 @@
 :- module mdb__declarative_user.
 :- interface.
 :- import_module mdb__declarative_debugger.
-:- import_module list, io.
+:- import_module list, io, string.
 
 :- type user_response
 	--->	user_answer(decl_answer)
@@ -36,9 +36,11 @@
 		io__state, io__state).
 :- mode query_user(in, out, in, out, di, uo) is det.
 
-% :- pred confirm_user(list(decl_answer), user_response, user_state, user_state,
-%		io__state, io__state).
-% :- mode confirm_user(in, out, in, out, di, uo) is det.
+	% Confirm that the node found is indeed an e_bug or an i_bug.
+	%
+:- pred user_confirm_bug(string, decl_question, user_response, user_state,
+		user_state, io__state, io__state).
+:- mode user_confirm_bug(in, in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,7 +129,6 @@ reverse_and_append([], Bs, Bs).
 reverse_and_append([A | As], Bs, Cs) :-
 	reverse_and_append(As, [A | Bs], Cs).
 
-
 %-----------------------------------------------------------------------------%
 
 :- type user_command
@@ -154,7 +155,22 @@ user_help_message(user(_, OutStr)) -->
 		"\ts\tskip\t\tskip this question\n",
 		"\tr\trestart\t\task the skipped questions again\n",
 %		"\tb\tbrowse\t\tbrowse the atom\n",
-		"\ta\tabort\t\tabort this diagnosis session\n",
+		"\ta\tabort\t\t",
+			"abort this diagnosis session and return to mdb\n",
+		"\th, ?\thelp\t\tthis help message\n"
+	]).
+
+:- pred user_confirm_bug_help(user_state, io__state, io__state).
+:- mode user_confirm_bug_help(in, di, uo) is det.
+
+user_confirm_bug_help(user(_, OutStr)) -->
+	io__write_strings(OutStr, [
+		"Answer one of:\n",
+		"\ty\tyes\t\tconfirm that the suspect is a bug\n",
+		"\tn\tno\t\tdo not accept that the suspect is a bug\n",
+%		"\tb\tbrowse\t\tbrowse the suspect\n",
+		"\ta\tabort\t\t",
+			"abort this diagnosis session and return to mdb\n",
 		"\th, ?\thelp\t\tthis help message\n"
 	]).
 
@@ -163,7 +179,8 @@ user_help_message(user(_, OutStr)) -->
 :- mode get_command(in, out, in, out, di, uo) is det.
 
 get_command(Prompt, Command, User, User) -->
-	util__trace_getline(Prompt, Result),
+	{ User = user(InStr, OutStr) },
+	util__trace_getline(Prompt, Result, InStr, OutStr),
 	( { Result = ok(String) },
 		{ string__to_char_list(String, Line) },
 		{
@@ -175,13 +192,12 @@ get_command(Prompt, Command, User, User) -->
 		}
 	; { Result = error(Error) },
 		{ io__error_message(Error, Msg) },
-		io__write_string(Msg),
-		io__nl,
+		io__write_string(OutStr, Msg),
+		io__nl(OutStr),
 		{ Command = abort }
 	; { Result = eof },
 		{ Command = abort }
 	).
-
 
 :- pred command_chars(list(char), user_command).
 :- mode command_chars(in, out) is semidet.
@@ -198,6 +214,38 @@ command_chars(['?' | _], help).
 
 %-----------------------------------------------------------------------------%
 
+user_confirm_bug(Message, Question, Response, User0, User) -->
+	{ User0 = user(_, OutStr) },
+	io__write_string(OutStr, Message),
+	write_decl_question(Question, User0),
+	get_command("Is this a bug? ", Command, User0, User1),
+	(
+		{ Command = yes }
+	->
+		{ Response = user_answer(Question - yes) },
+		{ User = User1 }
+	;
+		{ Command = no }
+	->
+		{ Response = user_answer(Question - no) },
+		{ User = User1 }
+	;
+		{ Command = abort }
+	->
+		{ Response = abort_diagnosis },
+		{ User = User1 }
+	;
+		{ Command = browse }
+	->
+		browse_edt_node(Question, User1, User2),
+		user_confirm_bug(Message, Question, Response, User2, User)
+	;
+		user_confirm_bug_help(User1),
+		user_confirm_bug(Message, Question, Response, User1, User)
+	).
+
+%-----------------------------------------------------------------------------%
+
 	% Display the node in user readable form on the current
 	% output stream.
 	%
@@ -211,19 +259,55 @@ write_decl_question(wrong_answer(Atom), User) -->
 write_decl_question(missing_answer(Call, Solns), User) -->
 	{ User = user(_, OutStr) },
 	write_decl_atom(OutStr, "Call ", Call),
-	io__write_string(OutStr, "Solutions:\n"),
-	list__foldl(write_decl_atom(OutStr, "\t"), Solns).
+	(
+		{ Solns = [] }
+	->
+		io__write_string(OutStr, "No solutions.\n")
+	;
+		io__write_string(OutStr, "Solutions:\n"),
+		list__foldl(write_decl_atom(OutStr, "\t"), Solns)
+	).
 
 :- pred write_decl_atom(io__output_stream, string, decl_atom,
 		io__state, io__state).
 :- mode write_decl_atom(in, in, in, di, uo) is det.
 
-write_decl_atom(OutStr, Indent, Atom) -->
+write_decl_atom(OutStr, Indent, atom(Functor, Args)) -->
 	io__write_string(OutStr, Indent),
 
-		% XXX this looks horrible, but works for now.  We should
-		% call the browser to print this.
+		% XXX We should call the browser to print this.  But
+		% that can wait until the browser has more flexible
+		% term display facilities.
 		%
-	io__write(OutStr, Atom),
-	io__nl.
+	io__write_string(OutStr, Functor),
+	(
+		{ Args = [] }
+	;
+		{ Args = [Arg | Args0] },
+		io__write_char(OutStr, '('),
+		write_decl_atom_arg(OutStr, Arg),
+		write_decl_atom_args(OutStr, Args0),
+		io__write_char(OutStr, ')')
+	),
+	io__nl(OutStr).
+
+:- pred write_decl_atom_args(io__output_stream, list(maybe(univ)),
+		io__state, io__state).
+:- mode write_decl_atom_args(in, in, di, uo) is det.
+
+write_decl_atom_args(_, []) -->
+	[].
+write_decl_atom_args(OutStr, [Arg | Args]) -->
+	io__write_string(OutStr, ", "),
+	write_decl_atom_arg(OutStr, Arg),
+	write_decl_atom_args(OutStr, Args).
+
+:- pred write_decl_atom_arg(io__output_stream, maybe(univ),
+		io__state, io__state).
+:- mode write_decl_atom_arg(in, in, di, uo) is det.
+
+write_decl_atom_arg(OutStr, yes(Arg)) -->
+	io__print(OutStr, Arg).
+write_decl_atom_arg(OutStr, no) -->
+	io__write_char(OutStr, '_').
 
