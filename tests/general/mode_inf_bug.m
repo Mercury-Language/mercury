@@ -14,7 +14,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module int, list, bool, char, time.
+:- import_module int, list, bool, char.
 
 main --> test1, test2.
 
@@ -37,7 +37,7 @@ write_s(S) --> io__write_string(S).
 
 %% Description: Speed tests for meta predicates.
 
-%% RCS: $Id: mode_inf_bug.m,v 1.3 1997-03-04 04:06:31 fjh Exp $
+%% RCS: $Id: mode_inf_bug.m,v 1.4 1997-08-09 03:36:26 fjh Exp $
 
 %%% Simple test predicate --------------------------------------------
 :- mode is_a(in) is semidet.
