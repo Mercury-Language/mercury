@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@ ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -356,7 +356,7 @@ ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
 		fatal_error(""tr_array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
