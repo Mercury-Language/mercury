@@ -922,11 +922,11 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ SymName = qualified(Module, Name) },
 	{ pred_info_get_marker_list(PredInfo, Markers) },
-	intermod__write_pragmas(SymName, Arity, Markers),
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc),
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma(c_code, ...) separately
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
 		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
@@ -940,10 +940,11 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	intermod__write_preds(ModuleInfo, PredIds).
 
 :- pred intermod__write_pragmas(sym_name::in, int::in, list(marker_status)::in,
-				io__state::di, io__state::uo) is det.
+		pred_or_func::in, io__state::di, io__state::uo) is det.
 
-intermod__write_pragmas(_, _, []) --> [].
-intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
+intermod__write_pragmas(_, _, [], _) --> [].
+intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers], PredOrFunc)
+		-->
 	(
 		{ MarkerStatus = request(Marker) }
 	;
@@ -958,11 +959,11 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 		)
 	->
 		{ hlds_out__marker_name(Marker, Name) },
-		mercury_output_pragma_decl(SymName, Arity, Name)
+		mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name)
 	;
 		[]
 	),
-	intermod__write_pragmas(SymName, Arity, Markers).
+	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 

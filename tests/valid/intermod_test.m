@@ -26,3 +26,9 @@ p(X) :-
 :- mode local(pred(int_mode) is det, out) is det.
 
 local(Pred, Int) :- call(Pred, Int).
+
+:- pred local_2(pred(int), int).
+:- mode local_2(pred(int_mode) is det, out) is det.
+
+local_2(Pred, plusone(Int)) :- call(Pred, Int).
+
