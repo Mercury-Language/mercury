@@ -346,9 +346,13 @@ maybe-base-CFLAGS-undefined =
 maybe-target-CFLAGS- = $(CFLAGS-$@)
 maybe-target-CFLAGS-undefined =
 
+# Note we strip any trailing `_init.c' from `$@' so we get the appropriate
+# "base" name, regardless of whether this variable ends up being used as
+# an argument of a `c2init' rule or an `ml' rule.
 TARGET_MLFLAGS = \
-  $(maybe-target-MLFLAGS-$(findstring undefined,$(origin MLFLAGS-$@)))
-maybe-target-MLFLAGS- = $(MLFLAGS-$@)
+  $(maybe-target-MLFLAGS-$(findstring undefined,\
+		$(origin MLFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-target-MLFLAGS- = $(MLFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-MLFLAGS-undefined =
 
 TARGET_MLOBJS = \
