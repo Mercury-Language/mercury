@@ -46,7 +46,6 @@ SOURCES= \
 	typeclass_test_2.m \
 	typeclass_test_3.m \
 	typeclass_test_4.m \
-	typeclass_test_7.m \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
@@ -58,6 +57,7 @@ SOURCES= \
 #	parent.undeclared_child.m
 #	freefree.m 	(need bromage's aliasing stuff)
 #	no_exports.m	(this is really a WISHLIST item)
+#	typeclass_test_7.m (the fix is on the `existential_types' cvs branch)
 #
 # we do a very bad job on the following tests:
 #	typeclass_test_4.m (awful error message)
