@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000, 2003 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003-2004 The University of Melbourne.
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -33,8 +33,8 @@
 
 :- type widget.
 
-:- type config	--->
-		active(bool)
+:- type config
+	--->	active(bool)
 	;	active_background(string)
 	;	active_foreground(string)
 	;	active_relief(string)
@@ -95,11 +95,10 @@
 	;	winposition(int, int)
 	;	winsize(int, int)
 	;	wrap(bool)
-	;	wrap_length(int)
-	.
+	;	wrap_length(int).
 
-:- inst config	= bound((
-		active(ground)
+:- inst config
+	--->	active(ground)
 	;	active_background(ground)
 	;	active_foreground(ground)
 	;	active_relief(ground)
@@ -160,17 +159,13 @@
 	;	winposition(ground, ground)
 	;	winsize(ground, ground)
 	;	wrap(ground)
-	;	wrap_length(ground)
-	)).
+	;	wrap_length(ground).
 
 :- type orientation
 	--->	horiz
-	;	vert
-	.
+	;	vert.
 
-:- inst toplevel = bound((
-		window(ground)
-	)).
+:- inst toplevel ---> window(ground).
 
 % A constant to access the root window in the Tk hierarchy,
 % comp. John K. Ousterhout, Tcl and the Tk Toolkit, 1994, p.151.
@@ -181,15 +176,14 @@
 :- func root_window = widget.
 :- mode root_window = out(toplevel) is det.	
 
-:- inst window = bound((
-		window(ground)
-	;	frame(ground)
-	)).
+:- inst window 
+	--->	window(ground)
+	;	frame(ground).
 
-:- inst button = bound(button(ground)).
+:- inst button ---> button(ground).
 
-:- inst button_config = bound((
-		active(ground)
+:- inst button_config 
+	--->	active(ground)
 	;	active_foreground(ground)
 	;	active_background(ground)
 	;	anchor(ground)
@@ -213,15 +207,14 @@
 	;	text_variable(ground)
 	;	underline(ground)
 	;	width(ground)
-	;	wrap_length(ground)
-	)).
+	;	wrap_length(ground).
 
-:- inst canvas = bound(canvas(ground)).
+:- inst canvas ---> canvas(ground).
 
-:- inst entry = bound(entry(ground)).
+:- inst entry ---> entry(ground).
 
-:- inst entry_config = bound((
-		active(ground)
+:- inst entry_config
+	--->	active(ground)
 	;	background(ground)
 	;	border_width(ground)
 	;	cursor(ground)
@@ -244,15 +237,14 @@
 	;	select_foreground(ground)
 	;	show(ground)
 	;	take_focus(ground)
-	;	width(ground)
-	)).
+	;	width(ground).
 
-:- inst label = bound(label(ground)).
+:- inst label ---> label(ground).
 
-:- inst listbox = bound(listbox(ground)).
+:- inst listbox ---> listbox(ground).
 
-:- inst listbox_config = bound((
-		background(ground)
+:- inst listbox_config
+	--->	background(ground)
 	;	border_width(ground)
 	;	cursor(ground)
 	;	export_selection(ground)
@@ -268,15 +260,14 @@
 	;	select_border_width(ground)
 	;	select_foreground(ground)
 	;	take_focus(ground)
-	;	width(ground)
-	)).
+	;	width(ground).
 
-:- inst radiobutton = bound(radiobutton(ground)).
+:- inst radiobutton ---> radiobutton(ground).
 
-:- inst scrollbar = bound(scrollbar(ground)).
+:- inst scrollbar ---> scrollbar(ground).
 
-:- inst scrollbar_config = bound((
-		active_background(ground)
+:- inst scrollbar_config
+	--->	active_background(ground)
 	;	active_relief(ground)
 	;	background(ground)
 	;	border_width(ground)
@@ -295,13 +286,12 @@
 	;	select_foreground(ground)
 	;	take_focus(ground)
 	;	trough_color(ground)
-	;	width(ground)
-	)).
+	;	width(ground).
 
-:- inst text = bound(text(ground)).
+:- inst text ---> text(ground).
 
-:- inst text_config = bound((
-		active(ground)
+:- inst text_config
+	--->	active(ground)
 	;	background(ground)
 	;	border_width(ground)
 	;	cursor(ground)
@@ -325,8 +315,7 @@
 	;	select_foreground(ground)
 	;	take_focus(ground)
 	;	width(ground)
-	;	wrap(ground)
-	)).
+	;	wrap(ground).
 
 :- type anchor
 	--->	n ; ne ; e ; se ; s ; sw ; w ; nw ; c .
@@ -440,14 +429,14 @@
 	:- pred delete_all(tcl_interp, widget, io__state, io__state).
 	:- mode delete_all(in, in(listbox), di, uo) is det.
 
-:- inst menubutton = bound(menubutton(ground)).
+:- inst menubutton ---> menubutton(ground).
 
 :- pred menubutton(tcl_interp, list(config), widget, widget,
 		io__state, io__state).
 :- mode menubutton(in, in(list_skel(config)), in(window), out(menubutton),
 		di, uo) is det.
 
-:- inst menu = bound(menu(ground)).
+:- inst menu ---> menu(ground).
 
 :- pred menu(tcl_interp, list(config), widget, widget, io__state, io__state).
 :- mode menu(in, in(list_skel(config)), in(menubutton), out(menu),
