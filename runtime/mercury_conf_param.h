@@ -37,7 +37,7 @@
 */
 
 /*
-** MR_Code generation options:
+** Code generation options:
 **
 ** MR_HIGHLEVEL_CODE
 ** MR_HIGHLEVEL_DATA
@@ -218,6 +218,15 @@
 ** Settings of configuration parameters which can be passed on
 ** the command line, but which are also implied by other parameters.
 */
+
+/*
+** MR_HIGHLEVEL_CODE implies BOXED_FLOAT,
+** since unboxed float is currently not yet implemented for the MLDS back-end.
+** XXX we really ought to fix that...
+*/
+#ifdef MR_HIGHLEVEL_CODE
+  #define BOXED_FLOAT
+#endif
 
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */
 #ifdef MR_LOWLEVEL_DEBUG
