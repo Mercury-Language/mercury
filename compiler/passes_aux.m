@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,17 +146,8 @@ about unbound type variables.
 
 :- pred report_error(string::in, io__state::di, io__state::uo) is det.
 
-	% Invoke a shell script.
-:- pred invoke_shell_command(string::in, bool::out,
-	io__state::di, io__state::uo) is det.
-
-	% Invoke an executable.
-:- pred invoke_system_command(string::in, bool::out,
-	io__state::di, io__state::uo) is det.
-
 :- pred maybe_report_sizes(module_info::in, io__state::di, io__state::uo)
 	is det.
-
 
 :- pred report_pred_proc_id(module_info, pred_id, proc_id, 
 		maybe(prog_context), prog_context, io__state, io__state).
@@ -166,6 +157,24 @@ about unbound type variables.
 				io__state, io__state).
 :- mode report_pred_name_mode(in, in, in, di, uo) is det.
 	
+%-----------------------------------------------------------------------------%
+
+:- type quote_char
+	--->	forward		% '
+	;	double.		% "
+
+	% Invoke a shell script.
+:- pred invoke_shell_command(string::in, bool::out,
+	io__state::di, io__state::uo) is det.
+
+	% Invoke an executable.
+:- pred invoke_system_command(string::in, bool::out,
+	io__state::di, io__state::uo) is det.
+
+	% Make a command string, which needs to be invoked in a shell
+	% environment.
+:- pred make_command_string(string::in, quote_char::in, string::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -404,13 +413,7 @@ passes_aux__handle_errors(WarnCnt, ErrCnt, ModuleInfo1, ModuleInfo8,
 	).
 
 invoke_shell_command(Command0, Succeeded) -->
-	{
-		use_win32
-	->
-		string__append_list(["sh -c '", Command0, " '"], Command)
-	;
-		Command = Command0
-	},
+	{ make_command_string(Command0, forward, Command) },
 	invoke_system_command(Command, Succeeded).
 
 invoke_system_command(Command, Succeeded) -->
@@ -433,6 +436,20 @@ invoke_system_command(Command, Succeeded) -->
 	;	
 		report_error("unable to invoke system command."),
 		{ Succeeded = no }
+	).
+
+make_command_string(String0, QuoteType, String) :-
+	( use_win32 ->
+		(
+			QuoteType = forward,
+			Quote = " '"
+		;
+			QuoteType = double,
+			Quote = " \""
+		),
+		string__append_list(["sh -c ", Quote, String0, Quote], String)
+	;
+		String = String0
 	).
 
 	% Are we compiling in a win32 environment?
