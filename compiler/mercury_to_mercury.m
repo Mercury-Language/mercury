@@ -1066,10 +1066,6 @@ mercury_infix_op(";").
 mercury_infix_op("->").
 mercury_infix_op(",").
 mercury_infix_op("to").		/* NU-Prolog */
-mercury_infix_op("all").		
-mercury_infix_op("gAll").	/* NU-Prolog */
-mercury_infix_op("some").		
-mercury_infix_op("gSome").	/* NU-Prolog */
 mercury_infix_op("<=").
 mercury_infix_op("<=>").
 mercury_infix_op("=>").
