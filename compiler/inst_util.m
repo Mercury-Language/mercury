@@ -352,7 +352,7 @@ abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
 abstractly_unify_inst_3(dead, ground(UniqX, yes(PredInst)), any(UniqY), Real, M,
 				ground(Uniq, yes(PredInst)), semidet, M) :-
 	allow_unify_bound_any(Real),
-	unify_uniq(live, Real, semidet, UniqX, UniqY, Uniq).
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, _Real, M,
 				ground(Uniq, yes(PredInst)), det, M).
