@@ -45,20 +45,21 @@ int		r3val = -1;
 
 /* constraints solver */
 #ifdef CONSTRAINTS
-int *mercury_solver_sp;
-int *mercury_solver_sp_old;
-int solver_ticket_stack_size = SOLVER_STACK_SIZE;
+int		*mercury_solver_sp;
+int		*mercury_solver_sp_old;
+int		solver_ticket_stack_size = SOLVER_STACK_SIZE;
 #endif
 
 bool		check_space = FALSE;
+
 static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 
-static int	repcounter;
+static	int	repcounter;
 
-/* misc. */
-
+/* timing */
+int		time_at_last_stat;
 static	int	start_time;
 static	int	finish_time;
 
@@ -79,13 +80,15 @@ int		mercury_exit_status = 0;
 ** Hence the statically linked init file saves the addresses of those
 ** procedures in the following global variables.
 */
-void (*address_of_mercury_init_io)(void);
-void (*address_of_init_modules)(void);
+
+void	(*address_of_mercury_init_io)(void);
+void	(*address_of_init_modules)(void);
 #ifdef CONSERVATIVE_GC
-void (*address_of_init_gc)(void);
+void	(*address_of_init_gc)(void);
 #endif
-Code *library_entry_point;	/* normally io:run/0 (mercury__io__run_0_0) */
-Code *program_entry_point;	/* normally main/2 (mercury__main_2_0) */
+
+Code	*library_entry_point;	/* normally io:run/0 (mercury__io__run_0_0) */
+Code	*program_entry_point;	/* normally main/2 (mercury__main_2_0) */
 
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
@@ -618,8 +621,8 @@ void run_code(void)
 	nondstackmax = nondstackmin;
 #endif
 
-        if (use_own_timer)
-		start_time = get_run_time();
+	time_at_last_stat = get_run_time();
+	start_time = time_at_last_stat;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++)
 	{

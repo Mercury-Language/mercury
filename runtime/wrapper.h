@@ -30,4 +30,6 @@ extern	int		r3val;
 
 extern	bool		check_space;
 
+extern	int		time_at_last_stat;
+
 #endif
