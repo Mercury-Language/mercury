@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -44,6 +44,7 @@
 :- import_module hlds_module, hlds_pred, llds_out, trace, tree.
 :- import_module code_util.
 :- import_module options, globals.
+
 :- import_module bool, string, int, assoc_list, set, map, require, term.
 
 % The code we generate for an ordinary (model_det or model_semi) pragma_c_code
@@ -571,6 +572,14 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 
 make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 		ProcLabelHashDef, ProcLabelHashUndef) :-
+	ProcLabelHashDef = pragma_c_raw_code(string__append_list([
+		"#define\tMR_PROC_LABEL\t",
+		make_proc_label_string(ModuleInfo, PredId, ProcId), "\n"])),
+	ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n").
+
+:- func make_proc_label_string(module_info, pred_id, proc_id) = string.
+
+make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
 	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no,
 		CodeAddr),
 	( CodeAddr = imported(ProcLabel) ->
@@ -579,10 +588,7 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 		llds_out__get_label(ProcLabel, yes, ProcLabelString)
 	;
 		error("unexpected code_addr in make_proc_label_hash_define")
-	),
-	ProcLabelHashDef = pragma_c_raw_code(string__append_list([
-		"#define\tMR_PROC_LABEL\t", ProcLabelString, "\n"])),
-	ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n").
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -615,6 +621,12 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	code_info__get_proc_id(CallerProcId),
 	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
 		ProcLabelDefine, ProcLabelUndef) },
+
+	%
+	% Generate a unique prefix for the C labels that we will define
+	%
+	{ ProcLabelString = make_proc_label_string(ModuleInfo,
+		PredId, ProcId) },
 
 	%
 	% Get a list of input and output arguments
@@ -712,19 +724,27 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	Succeed	 = "\tMR_succeed();\n",
 	SucceedDiscard = "\tMR_succeed_discard();\n",
 
-	CallDef1 = "#define\tSUCCEED     \tgoto MR_call_success\n",
-	CallDef2 = "#define\tSUCCEED_LAST\tgoto MR_call_success_last\n",
+	CallDef1 = "#define\tSUCCEED     \tgoto MR_call_success_"
+		++ ProcLabelString ++ "\n",
+	CallDef2 = "#define\tSUCCEED_LAST\tgoto MR_call_success_last_"
+		++ ProcLabelString ++ "\n",
 	CallDef3 = "#define\tFAIL\tMR_fail()\n",
 
-	CallSuccessLabel     = "MR_call_success:\n",
-	CallLastSuccessLabel = "MR_call_success_last:\n",
+	CallSuccessLabel     = "MR_call_success_"
+		++ ProcLabelString ++ ":\n",
+	CallLastSuccessLabel = "MR_call_success_last_"
+		++ ProcLabelString ++ ":\n",
 
-	RetryDef1 = "#define\tSUCCEED     \tgoto MR_retry_success\n",
-	RetryDef2 = "#define\tSUCCEED_LAST\tgoto MR_retry_success_last\n",
+	RetryDef1 = "#define\tSUCCEED     \tgoto MR_retry_success_"
+		++ ProcLabelString ++ "\n",
+	RetryDef2 = "#define\tSUCCEED_LAST\tgoto MR_retry_success_last_"
+		++ ProcLabelString ++ "\n",
 	RetryDef3 = "#define\tFAIL\tMR_fail()\n",
 
-	RetrySuccessLabel     = "MR_retry_success:\n",
-	RetryLastSuccessLabel = "MR_retry_success_last:\n",
+	RetrySuccessLabel     = "MR_retry_success_"
+		++ ProcLabelString ++ ":\n",
+	RetryLastSuccessLabel = "MR_retry_success_last_"
+		++ ProcLabelString ++ ":\n",
 
 	Undef1 = "#undef\tSUCCEED\n",
 	Undef2 = "#undef\tSUCCEED_LAST\n",
@@ -839,12 +859,16 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 				"Start of the shared block"
 		]),
 
-		SharedDef1 = "#define\tSUCCEED     \tgoto MR_shared_success\n",
-		SharedDef2 = "#define\tSUCCEED_LAST\tgoto MR_shared_success_last\n",
+		SharedDef1 = "#define\tSUCCEED     \tgoto MR_shared_success_"
+			++ ProcLabelString ++ "\n",
+		SharedDef2 = "#define\tSUCCEED_LAST\tgoto MR_shared_success_last_"
+			++ ProcLabelString ++ "\n",
 		SharedDef3 = "#define\tFAIL\tMR_fail()\n",
 
-		SharedSuccessLabel     = "MR_shared_success:\n",
-		SharedLastSuccessLabel = "MR_shared_success_last:\n",
+		SharedSuccessLabel     = "MR_shared_success_"
+			++ ProcLabelString ++ ":\n",
+		SharedLastSuccessLabel = "MR_shared_success_last_"
+			++ ProcLabelString ++ ":\n",
 
 		llds_out__get_label(SharedLabel, yes, LabelStr),
 		string__format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
