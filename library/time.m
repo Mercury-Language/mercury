@@ -216,6 +216,9 @@
 :- pragma foreign_type(il, time_t_rep, "valuetype [mscorlib]System.DateTime")
 	where comparison is compare_time_t_reps.
 
+:- pragma foreign_type("Java", time_t_rep, "java.util.Date")
+	where comparison is compare_time_t_reps.
+
 :- pred compare_time_t_reps(comparison_result::uo,
 		time_t_rep::in, time_t_rep::in) is det.
 compare_time_t_reps(Result, X, Y) :-
@@ -253,27 +256,24 @@ time__clock(Result, IO0, IO) :-
 }").
 */
 
+% XXX Java implementation still to come, will require some native code.
+
 %-----------------------------------------------------------------------------%
 
 %:- func time__clocks_per_sec = int.
 
-time__clocks_per_sec = Val :-
-	time__c_clocks_per_sec(Val).
-
-:- pred time__c_clocks_per_sec(int).
-:- mode time__c_clocks_per_sec(out) is det.
-
-:- pragma foreign_proc("C", time__c_clocks_per_sec(Ret::out),
+:- pragma foreign_proc("C", time__clocks_per_sec = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
 }").
-:- pragma foreign_proc("C#", time__c_clocks_per_sec(Ret::out),
+:- pragma foreign_proc("C#", time__clocks_per_sec = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
+% XXX Java implementation still to come, will require some native code.
 
 %-----------------------------------------------------------------------------%
 
@@ -312,6 +312,8 @@ time__times(Tms, Result, IO0, IO) :-
 	MR_update_io(IO0, IO);
 }").
 
+% XXX Java implementation still to come, will require some native code.
+
 %-----------------------------------------------------------------------------%
 
 time__clk_tck = Ret :-
@@ -339,12 +341,15 @@ time__clk_tck = Ret :-
 	Ret = -1;
 #endif
 }").
+time__c_clk_tck = -1.	% default is to throw an exception.
+
 :- pragma foreign_proc("C#", time__clk_tck = (Ret::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	// TicksPerSecond is guaranteed to be 10,000,000
 	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
+% XXX Java implementation still to come, will require some native code.
 
 %-----------------------------------------------------------------------------%
 
@@ -375,6 +380,12 @@ time__time(Result, IO0, IO) :-
 "{
 	Ret = System.DateTime.UtcNow;
 }").
+:- pragma foreign_proc("Java",
+	time__c_time(Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	Ret = new java.util.Date();
+").
 
 :- pred time__time_t_is_invalid(time_t_rep).
 :- mode time__time_t_is_invalid(in) is semidet.
@@ -391,7 +402,12 @@ time__time(Result, IO0, IO) :-
 "{
 	SUCCESS_INDICATOR = false;
 }").
-
+:- pragma foreign_proc("Java",
+	time__time_t_is_invalid(_Val::in),
+	[will_not_call_mercury, promise_pure],
+"
+	succeeded = false;
+").
 
 
 %-----------------------------------------------------------------------------%
@@ -418,6 +434,12 @@ time__difftime(time_t(T1), time_t(T0)) = Diff :-
 	span = T1 - T0;
 	Diff = span.TotalSeconds;
 }").
+:- pragma foreign_proc("Java",
+	time__c_difftime(T1::in, T0::in, Diff::out),
+	[will_not_call_mercury, promise_pure],
+"
+	Diff = (double) (T1.getTime() - T0.getTime()) / 1000;
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -483,6 +505,55 @@ time__localtime(time_t(Time)) = TM :-
 		N = 0;
 	}
 }").
+:- pragma foreign_proc("Java",
+	time__c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
+	[will_not_call_mercury, promise_pure],
+"
+	java.util.GregorianCalendar gc = new java.util.GregorianCalendar();
+
+	gc.setTime(Time);
+	Yr = gc.get(java.util.Calendar.YEAR) - 1900;
+	Mnt = gc.get(java.util.Calendar.MONTH);
+	MD = gc.get(java.util.Calendar.DAY_OF_MONTH);
+	Hrs = gc.get(java.util.Calendar.HOUR_OF_DAY);
+	Min = gc.get(java.util.Calendar.MINUTE);
+	Sec = gc.get(java.util.Calendar.SECOND);
+	YD = gc.get(java.util.Calendar.DAY_OF_YEAR) - 1;
+
+	switch (gc.get(java.util.Calendar.DAY_OF_WEEK)) {
+		case java.util.Calendar.SUNDAY:
+			WD = 0;
+			break;
+		case java.util.Calendar.MONDAY:
+			WD = 1;
+			break;
+		case java.util.Calendar.TUESDAY:
+			WD = 2;
+			break;
+		case java.util.Calendar.WEDNESDAY:
+			WD = 3;
+			break;
+		case java.util.Calendar.THURSDAY:
+			WD = 4;
+			break;
+		case java.util.Calendar.FRIDAY:
+			WD = 5;
+			break;
+		case java.util.Calendar.SATURDAY:
+			WD = 6;
+			break;
+		default:
+			throw new RuntimeException(
+				""invalid DAY_OF_WEEK in time__c_local_time"");
+	}
+
+	if (gc.getTimeZone().inDaylightTime(Time)) {
+		N = 1;
+	} else {
+		N = 0;
+	}
+"). % time__c_local_time
 
 
 %:- func time__gmtime(time_t) = tm.
@@ -539,6 +610,53 @@ time__gmtime(time_t(Time)) = TM :-
 	// UTC time can never have daylight savings.
 	N = 0;
 }").
+:- pragma foreign_proc("Java",
+	time__c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
+	[will_not_call_mercury, promise_pure],
+"
+	java.util.GregorianCalendar gc =
+			new java.util.GregorianCalendar(
+			java.util.SimpleTimeZone.getTimeZone(""GMT""));
+
+	gc.setTime(Time);
+	Yr = gc.get(java.util.Calendar.YEAR) - 1900;
+	Mnt = gc.get(java.util.Calendar.MONTH);
+	MD = gc.get(java.util.Calendar.DAY_OF_MONTH);
+	Hrs = gc.get(java.util.Calendar.HOUR_OF_DAY);
+	Min = gc.get(java.util.Calendar.MINUTE);
+	Sec = gc.get(java.util.Calendar.SECOND);
+	YD = gc.get(java.util.Calendar.DAY_OF_YEAR) - 1;
+
+	switch (gc.get(java.util.Calendar.DAY_OF_WEEK)) {
+		case java.util.Calendar.SUNDAY:
+			WD = 0;
+			break;
+		case java.util.Calendar.MONDAY:
+			WD = 1;
+			break;
+		case java.util.Calendar.TUESDAY:
+			WD = 2;
+			break;
+		case java.util.Calendar.WEDNESDAY:
+			WD = 3;
+			break;
+		case java.util.Calendar.THURSDAY:
+			WD = 4;
+			break;
+		case java.util.Calendar.FRIDAY:
+			WD = 5;
+			break;
+		case java.util.Calendar.SATURDAY:
+			WD = 6;
+			break;
+		default:
+			throw new RuntimeException(
+				""invalid DAY_OF_WEEK in time__c_gmtime"");
+	}
+
+	N = 0;
+"). % time__c_gmtime
 
 :- func int_to_maybe_dst(int) = maybe(dst).
 
@@ -598,6 +716,44 @@ time__mktime(TM) = time_t(Time) :-
 		new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
 	Time = local_time.ToUniversalTime();
 }").
+:- pragma foreign_proc("Java",
+	time__c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+		_YD::in, _WD::in, N::in, Time::out),
+	[will_not_call_mercury, promise_pure],
+"
+	java.util.GregorianCalendar gc = new java.util.GregorianCalendar(
+			Yr + 1900, Mnt, MD, Hrs, Min, Sec);
+
+	Time = gc.getTime();
+
+	// Correct for DST:  This is only an issue when it is possible for the
+	// same 'time' to occur twice due to daylight savings ending.
+	// (In Melbourne, 2:00am-2:59am occur twice when leaving DST)
+
+	// If the time we constructed is not in daylight savings time, but
+	// it should be, we need to subtract the DSTSavings.
+	if (N == 1 && gc.getTimeZone().inDaylightTime(Time) == false) {
+		Time.setTime(Time.getTime() -
+				((java.util.SimpleTimeZone) gc.getTimeZone()).
+				getDSTSavings());
+		if (gc.getTimeZone().inDaylightTime(Time) == false) {
+			throw new RuntimeException(
+				""time__mktime: failed to correct for DST"");
+		}
+	}
+
+	// If the time we constructed is in daylight savings time, but
+	// should not be, we need to add the DSTSavings.
+	if (N == 0 && gc.getTimeZone().inDaylightTime(Time) == true) {
+		Time.setTime(Time.getTime() +
+				((java.util.SimpleTimeZone) gc.getTimeZone()).
+				getDSTSavings());
+		if (gc.getTimeZone().inDaylightTime(Time) == true) {
+			throw new RuntimeException(
+				""time__mktime: failed to correct for DST"");
+		}
+	}
+").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
