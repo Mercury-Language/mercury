@@ -19,6 +19,11 @@ map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
-		error("map__lookup: key not found")
+		map__lookup_error(Map, K, V)
 	).
+
+% map__lookup_error is a separate predicate because it is handy
+% to be able to set a spy point on it...
+map__lookup_error(_Map, _K, _V) :-
+	error("map__lookup: key not found").
 
