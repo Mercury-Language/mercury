@@ -394,7 +394,7 @@ set_bbbtree__equal(SetA, SetB) :-
 set_bbbtree__insert(Set0, X, Set) :-
 	set_bbbtree__def_ratio(Ratio),
 	set_bbbtree__insert_r(Set0, X, Set1, Ratio),
-	copy(Set1, Set).
+	unsafe_promise_unique(Set1, Set).
 
 /* Uncomment this once destructive input and unique modes are fixed and detele
    the one above.
@@ -488,7 +488,7 @@ set_bbbtree__delete(Set0, X, Set) :-
 	;
 		Set2 = Set0
 	),
-	copy(Set2, Set).
+	unsafe_promise_unique(Set2, Set).
 
 %------------------------------------------------------------------------------%
 
@@ -890,7 +890,7 @@ set_bbbtree__build_node(X, L, R, Tree) :-
 	set_bbbtree__size(R, RSize),
 	N is 1 + LSize + RSize,
 	Tree0 = tree(X, N, L, R),
-	copy(Tree0, Tree).
+	unsafe_promise_unique(Tree0, Tree).
 
 %------------------------------------------------------------------------------%
 

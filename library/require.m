@@ -47,9 +47,12 @@ require(Goal, Message) :-
 
 /* error/1, from require.m */
 
-:- pragma(c_header_code, "#include <stdio.h>").
+:- pragma c_header_code("#include <stdio.h>").
 
-:- pragma(c_code, error(Message::in), "
+% Hopefully error/1 won't be called often (!), so no point inlining it.
+:- pragma no_inline(error/1). 
+
+:- pragma c_code(error(Message::in), "
 	fflush(stdout);
 	fprintf(stderr, ""Software error: %s\\n"", Message);
 	exit(1);

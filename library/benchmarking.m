@@ -49,14 +49,14 @@
 
 :- implementation.
 
-:- pragma(c_header_code, "
+:- pragma c_header_code("
 
 #include <stdio.h>
-#include ""timing.h""
+#include ""mercury_timing.h""
 
 ").
 
-:- pragma(c_code, report_stats, "
+:- pragma c_code(report_stats, will_not_call_mercury, "
 	int	time_at_prev_stat;
 
 	time_at_prev_stat = time_at_last_stat;
@@ -89,7 +89,7 @@
 :- external(benchmark_det/5).
 :- external(benchmark_nondet/5).
 
-:- pragma(c_code, "
+:- pragma c_code("
 
 /*
 INIT mercury_benchmarking_init_benchmark

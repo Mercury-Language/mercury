@@ -468,8 +468,8 @@ maybe_pred(Pred, X, Y) :-
 ** user wishes.  This is basically a generalization of solutions/2.
 */
  
-#include ""imp.h""
-#include ""deep_copy.h""
+#include ""mercury_imp.h""
+#include ""mercury_deep_copy.h""
 
 Declare_entry(do_call_nondet_closure);
 Declare_entry(do_call_det_closure);
@@ -594,9 +594,9 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 	temp = (Word) heap_zone;				\
 	heap_zone = solutions_heap_zone;			\
 	LVALUE_CAST(Word, solutions_heap_zone) = temp;		\
-	temp = (Word) hp;					\
-	hp = solutions_heap_pointer;				\
-	LVALUE_CAST(Word, solutions_heap_pointer) = temp;	\
+	temp = (Word) MR_hp;					\
+	MR_hp = MR_sol_hp;				\
+	LVALUE_CAST(Word, MR_sol_hp) = temp;		\
     } while (0)
  
 /*
@@ -615,21 +615,33 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 #define sofar_fv		(framevar(3))
 #define element_type_info_fv	(framevar(4))
 #define collection_type_info_fv	(framevar(5))
+#ifdef MR_USE_TRAIL
+  #define saved_trail_ticket_fv	(framevar(6))
+  #define num_framevars		7
+#else
+  #define num_framevars		6
+#endif
 
 	/*
-	** Create a nondet frame with 6 slots and set the failure continuation.
-	** The six frame slots are used to hold heap states and the
+	** Create a nondet frame and set the failure continuation.
+	** The frame slots are used to hold heap and trail states and the
 	** collector pred and the collection, and type infos for copying
 	** each solution, and for copying the collection back to the heap
 	** when we're done.
 	*/
-	mkframe(""builtin_aggregate"", 6,
+	mkframe(""builtin_aggregate"", num_framevars,
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
  
 	/* save heap states */
- 	saved_solhp_fv = (Word) solutions_heap_pointer; 
+ 	saved_solhp_fv = (Word) MR_sol_hp; 
  	mark_hp(saved_hp_fv);
-	/* setup the (other) framevars */
+
+#ifdef MR_USE_TRAIL
+	/* save trail state */
+	MR_store_ticket(saved_trail_ticket_fv);
+#endif
+
+	/* save arguments into framevars */
 	collector_pred_fv = r4;
 	sofar_fv = r5;
 	element_type_info_fv = r1;
@@ -651,13 +663,16 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 
 	/* we found a solution (in r1) */
 
-	/* XXX we should check for delayed non-linear constraints here */
+#ifdef MR_USE_TRAIL
+	/* check for outstanding delayed goals (``floundering'') */
+	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
+#endif
 
 	/* swap heaps so we build on solution heap */
 	swap_heap_and_solutions_heap();
  
 	/*
-	** deep copy solution to the solutions heap, up to the saved_hp
+	** deep copy solution to the solutions heap, up to the saved_hp.
 	** Note that we need to save/restore the hp register, if it
 	** is transient, before/after calling deep_copy().
 	*/
@@ -694,6 +709,15 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	/* reset heap */
 	restore_hp(saved_hp_fv);
 
+#ifdef MR_USE_TRAIL
+	/*
+	** Reset the trail.  This is necessary to undo any updates performed
+	** by the called goal before it failed, and to avoid leaking memory
+	** on the trail.
+	*/
+	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
+#endif
+
 	/*
 	** deep_copy() the result to the mercury heap, copying
 	** everything between where we started on the solutions
@@ -710,7 +734,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	builtin_aggregate_output = copied_collection;
 
  	/* reset solutions heap to where it was before call to solutions  */
- 	solutions_heap_pointer = (Word *) saved_solhp_fv;
+ 	MR_sol_hp = (Word *) saved_solhp_fv;
  	
 	/* discard the frame we made */
 	succeed_discard();
@@ -722,6 +746,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 #undef sofar_fv
 #undef element_type_info_fv
 #undef collection_type_info_fv
+#undef num_framevars
 
 #else
 
@@ -735,13 +760,24 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 
 #define collector_pred_fv	(framevar(0))
 #define sofar_fv		(framevar(1))
+#ifdef MR_USE_TRAIL
+  #define saved_trail_ticket_fv	(framevar(2))
+  #define num_framevars		3
+#else
+  #define num_framevars		2
+#endif
 
 	/* create a nondet stack frame with two slots, to hold the collector
 	   pred and the collection, and set the failure continuation */
-	mkframe(""builtin_aggregate"", 2,
+	mkframe(""builtin_aggregate"", num_framevars,
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
 
-	/* setup the framevars */
+#ifdef MR_USE_TRAIL
+	/* save trail state */
+	MR_store_ticket(saved_trail_ticket_fv);
+#endif
+
+	/* save our arguments in framevars */
 	collector_pred_fv = r4;
 	sofar_fv = r5;
  
@@ -757,7 +793,10 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	/* we found a solution (in r1) */
 
-	/* XXX we should check for delayed non-linear constraints here */
+#ifdef MR_USE_TRAIL
+	/* check for outstanding delayed goals (``floundering'') */
+	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
+#endif
 
 	/* setup for calling the collector closure */
 	r4 = r1;	/* put solution to be collected where we need it */
@@ -783,12 +822,23 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
 Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	/* no more solutions */
 
+
+#ifdef MR_USE_TRAIL
+	/*
+	** Reset the trail.  This is necessary to undo any updates performed
+	** by the called goal before it failed, and to avoid leaking memory
+	** on the trail.
+	*/
+	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
+#endif
+
 	/* return the collection and discard the frame we made */
 	builtin_aggregate_output = sofar_fv;
  	succeed_discard();
  
 #undef collector_pred_fv
 #undef sofar_fv
+#undef num_framevars
 
 #endif
  
@@ -884,7 +934,7 @@ univ(X) = Univ :- type_to_univ(X, Univ).
 
 :- pragma c_header_code("
 
-#include ""type_info.h""
+#include ""mercury_type_info.h""
 
 int	ML_compare_type_info(Word type_info_1, Word type_info_2);
 
@@ -1016,7 +1066,7 @@ ML_compare_type_info(Word t1, Word t2)
 **	are defined in runtime/type_info.h.
 */
 
-#include ""type_info.h""
+#include ""mercury_type_info.h""
 
 
 ").

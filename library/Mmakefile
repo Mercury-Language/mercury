@@ -61,7 +61,7 @@ MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 LDLIBS	=	-lmer							\
 		` case "$(GRADE)" in 					\
-		    *.gc*.prof)	echo "-lgc_prof" ;;			\
+		    *.gc*.prof*) echo "-lgc_prof" ;;			\
 		    *.gc*)	echo "-lgc" ;;				\
 		  esac							\
 		`

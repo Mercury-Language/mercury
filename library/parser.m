@@ -59,7 +59,7 @@ parser__read_term(Result) -->
 
 parser__read_term(FileName, Result) -->
 	lexer__get_token_list(Tokens),
-	( { Tokens = [] } ->
+	( { Tokens = token_nil } ->
 		{ Result = eof }
 	;
 		{ parser__init_state(FileName, Tokens, ParserState0) },
@@ -85,7 +85,7 @@ parser__check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
 	;
 		% find the token that caused the error
 		(
-			ErrorTokens = [ErrorTok - ErrorTokLineNum| _]
+			ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _)
 		->
 			lexer__token_to_string(ErrorTok, TokString),
 			string__append_list( ["Syntax error at ", TokString,
@@ -93,7 +93,7 @@ parser__check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
 			LineNum = ErrorTokLineNum
 		;
 			(
-				Tokens = [_FirstTok - FirstTokLineNum | _]
+				Tokens = token_cons(_, FirstTokLineNum, _)
 			->
 				LineNum = FirstTokLineNum
 			;
@@ -110,7 +110,7 @@ parser__check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 	->
 		Result = error(Message, LineNum)
 	;
-		LeftOverTokens = [Token - LineNum | _]
+		LeftOverTokens = token_cons(Token, LineNum, _)
 	->
 		lexer__token_to_string(Token, TokString),
 		string__append("Syntax error: unexpected ", TokString,
@@ -123,7 +123,8 @@ parser__check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 :- pred parser__check_for_bad_token(token_list, string, int).
 :- mode parser__check_for_bad_token(in, out, out) is semidet.
 
-parser__check_for_bad_token([Token - LineNum | Tokens], Message, LineNum) :-
+parser__check_for_bad_token(token_cons(Token, LineNum, Tokens),
+		Message, LineNum) :-
 	( Token = io_error(IO_Error) ->
 		io__error_message(IO_Error, IO_ErrorMessage),
 		string__append("I/O error: ", IO_ErrorMessage, Message)
@@ -665,7 +666,7 @@ parser__get_token(Token) -->
 parser__get_token(Token, Context,
 		parser__state(FileName, OpTable, VarSet, Tokens0, Names),
 		parser__state(FileName, OpTable, VarSet, Tokens, Names)) :-
-	Tokens0 = [Token - Context | Tokens].
+	Tokens0 = token_cons(Token, Context, Tokens).
 
 :- pred parser__unget_token(token, token_context, parser__state, parser__state).
 :- mode parser__unget_token(in, in, in, out) is det.
@@ -685,7 +686,7 @@ parser__peek_token(Token) -->
 
 parser__peek_token(Token, Context) -->
 	=(parser__state(_, _, _, Tokens, _)),
-	{ Tokens = [Token - Context | _] }.
+	{ Tokens = token_cons(Token, Context, _) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -703,8 +704,7 @@ parser__add_var(VarName, Var,
 		VarSet = VarSet0,
 		Names = Names0
 	;
-		varset__new_var(VarSet0, Var, VarSet1),
-		varset__name_var(VarSet1, Var, VarName, VarSet),
+		varset__new_named_var(VarSet0, VarName, Var, VarSet),
 		map__det_insert(Names0, VarName, Var, Names)
 	).
 

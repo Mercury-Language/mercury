@@ -121,7 +121,7 @@
 :- pred set__remove(set(T), T, set(T)).
 :- mode set__remove(in, in, out) is semidet.
 
-	% `set__remove_list(Set0, Xs, Set)' is true iff Xs does not
+	% `set__remove_list(Set0, Xs, Set)' is true iff `Xs' does not
 	% contain any duplicates, `Set0' contains every member of `Xs',
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only the members of `Xs'.
@@ -129,14 +129,20 @@
 :- pred set__remove_list(set(T), list(T), set(T)).
 :- mode set__remove_list(in, in, out) is semidet.
 
+	% `set__remove_least(Set0, Elem, Set)' is true iff
+	% `Set0' is not empty, `Elem' is the smallest element in `Set0'
+	% (with elements ordered using the standard ordering given
+	% by compare/3), and `Set' is the set containing all the
+	% elements of `Set0' except `Elem'.
+
 :- pred set__remove_least(set(T), T, set(T)).
 :- mode set__remove_least(in, out, out) is semidet.
 
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
 	% `SetA' and `SetB'.  If the sets are known to be of different
 	% sizes, then for efficiency make `SetA' the larger of the two.
-	% (The current implementation, using sorted lists with duplicates
-	% removed is not sensitive to the ordering of the input arguments
+	% (The current implementation using sorted lists with duplicates
+	% removed is not sensitive to the ordering of the input arguments,
 	% but other set implementations may be, so observing this convention
 	% will make it less likely that you will encounter problems if
 	% the implementation is changed.)
