@@ -62,6 +62,9 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+breakpoints.out: breakpoints breakpoints.inp
+	$(MDB) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
+
 browser_test.out: browser_test browser_test.inp
 	$(MDB) ./browser_test < browser_test.inp > browser_test.out 2>&1
 
