@@ -37,7 +37,7 @@ static	void	call_engine_inner(Code *entry_point);
   MR_MAKE_STACK_LAYOUT_ENTRY(engine_done)
 #endif
 
-bool	debugflag[MAXFLAG];
+bool	MR_debugflag[MR_MAXFLAG];
 
 #ifndef MR_THREAD_SAFE
   MercuryEngine	MR_engine_base;
@@ -459,7 +459,7 @@ dump_prev_locations(void)
 	int i, pos;
 
 #if !defined(MR_DEBUG_GOTOS)
-	if (tracedebug) 
+	if (MR_tracedebug) 
 #endif
 	{
 		printf("previous %d locations:\n", NUM_PREV_FPS);
@@ -485,7 +485,7 @@ call_engine_inner(Code *entry_point)
 	fp = (Func *) entry_point;
 
 #if !defined(MR_DEBUG_GOTOS)
-if (!tracedebug) {
+if (!MR_tracedebug) {
 	for (;;)
 	{
 		fp = (Func *) (*fp)();

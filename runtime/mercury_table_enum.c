@@ -13,14 +13,21 @@
 #define ELEMENT(Table, Key) ((Word**)&((Table)[Key]))
 
 /*
-**  MR_int_index_lookup_or_add() : This function maintains a simple indexed 
-**	table of size Range.  
+**  MR_int_index_lookup_or_add() : This function maintains a simple indexed
+**	table of size Range.
 */
-TrieNode 
-MR_int_index_lookup_or_add(TrieNode t, Integer key, Integer range)
+
+TrieNode
+MR_int_index_lookup_or_add(TrieNode t, Integer range, Integer key)
 {
 	Word *table = *t;		/* Deref table */
-	
+
+#ifdef	MR_TABLE_DEBUG
+	if (key >= range) {
+		fatal_error("MR_int_index_lookup_or_add: key out of range");
+	}
+#endif
+
 	if (table == NULL) {
 		*t = table = table_allocate(sizeof(Word *) * range);
 		memset(table, 0, sizeof(Word *) * range);
@@ -28,4 +35,3 @@ MR_int_index_lookup_or_add(TrieNode t, Integer key, Integer range)
 
 	return ELEMENT(table, key);
 }
-

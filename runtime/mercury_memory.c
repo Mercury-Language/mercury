@@ -202,7 +202,7 @@ init_memory(void)
 	init_zones();
 	setup_signals();
 
-	if (memdebug) debug_memory();
+	if (MR_memdebug) debug_memory();
 } /* end init_memory() */
 
 #ifdef	CONSERVATIVE_GC
