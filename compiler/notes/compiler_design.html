@@ -577,10 +577,14 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   <li>
   pd_util.m contains various utility predicates.
   </ul>
-
+ 
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
   often unused.
+
+<li> delay_construct.m pushes construction unifications to the right in
+  semidet conjunctions, in an effort to reduce the probability that it will
+  need to be executed.
 
 <li> unneeded_code.m looks for goals whose results are either not needed
   at all, or needed in some branches of computation but not others. Provided
@@ -1190,6 +1194,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-01-19 01:50:32 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-04-24 03:39:43 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

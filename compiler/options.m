@@ -342,6 +342,7 @@
 		;	constant_propagation
 		;	excess_assign
 		;	optimize_saved_vars
+		;	delay_construct
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
@@ -729,6 +730,7 @@ option_defaults_2(optimization_option, [
 	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
 	optimize_saved_vars	-	bool(no),
+	delay_construct		-	bool(no),
 	prev_code		-	bool(no),
 	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
@@ -1125,6 +1127,8 @@ long_option("optimise-constant-propagation", constant_propagation).
 long_option("optimize-constant-propagation", constant_propagation).
 long_option("optimize-saved-vars",	optimize_saved_vars).
 long_option("optimise-saved-vars",	optimize_saved_vars).
+long_option("delay-construct",		delay_construct).
+long_option("delay-constructs",		delay_construct).
 long_option("prev-code",		prev_code).
 long_option("follow-code",		follow_code).
 long_option("constraint-propagation",	constraint_propagation).
@@ -1531,6 +1535,7 @@ opt_level(3, _, [
 % and increases the inlining thresholds
 
 opt_level(4, _, [
+	delay_construct		-	bool(yes),
 	lazy_code		-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	inline_simple_threshold	-	int(8),
@@ -2436,6 +2441,9 @@ options_help_hlds_hlds_optimization -->
 		"--optimize-duplicate-calls",
 		"\tOptimize away multiple calls to a predicate",
 		"\twith the same input arguments.",
+		"--delay-constructs",
+		"\tReorder goals to move construction unifications after",
+		"\tprimitive goals that can fail.",
 		"--optimize-saved-vars",
 		"\tReorder goals to minimize the number of variables",
 		"\tthat have to be saved across calls.",

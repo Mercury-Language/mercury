@@ -38,7 +38,7 @@
 :- import_module check_typeclass, intermod, trans_opt, table_gen, (lambda).
 :- import_module type_ctor_info, termination, higher_order, accumulator.
 :- import_module inlining, deforest, dnf, magic, dead_proc_elim.
-:- import_module unused_args, unneeded_code, lco.
+:- import_module delay_construct, unused_args, unneeded_code, lco.
 
 	% the LLDS back-end
 :- import_module saved_vars, liveness.
@@ -1150,11 +1150,13 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_do_inlining(HLDS33, Verbose, Stats, HLDS34),
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
 
-	mercury_compile__maybe_deforestation(HLDS34, 
-			Verbose, Stats, HLDS36),
+	mercury_compile__maybe_deforestation(HLDS34, Verbose, Stats, HLDS36),
 	mercury_compile__maybe_dump_hlds(HLDS36, "36", "deforestation"),
 
-	mercury_compile__maybe_unused_args(HLDS36, Verbose, Stats, HLDS39),
+	mercury_compile__maybe_delay_construct(HLDS36, Verbose, Stats, HLDS37),
+	mercury_compile__maybe_dump_hlds(HLDS37, "37", "delay_construct"),
+
+	mercury_compile__maybe_unused_args(HLDS37, Verbose, Stats, HLDS39),
 	mercury_compile__maybe_dump_hlds(HLDS39, "39", "unused_args"),
 
 	mercury_compile__maybe_unneeded_code(HLDS39, Verbose, Stats, HLDS40),
@@ -2014,6 +2016,25 @@ add_aditi_procs(HLDS0, PredId, AditiPreds0, AditiPreds) :-
 		list__foldl(AddProc, ProcIds, AditiPreds0, AditiPreds)
 	;
 		AditiPreds = AditiPreds0
+	).
+
+:- pred mercury_compile__maybe_delay_construct(module_info::in,
+	bool::in, bool::in, module_info::out, io__state::di, io__state::uo)
+	is det.
+
+mercury_compile__maybe_delay_construct(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(delay_construct, DelayConstruct),
+	( { DelayConstruct = yes } ->
+		maybe_write_string(Verbose,
+			"% Delaying construction unifications ...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_proc_io(delay_construct_proc),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
 	).
 
 :- pred mercury_compile__maybe_unused_args(module_info, bool, bool, module_info,
