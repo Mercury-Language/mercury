@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000,2002-2003 The University of Melbourne.
+** Copyright (C) 2000,2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,25 +50,26 @@ static	MR_TypeClassDeclInfo	*MR_do_register_type_class_decl(
 					MR_TypeClassDecl type_class_decl);
 
 #define	type_names_match(tc1, module_name, type_name, arity)		\
-	( MR_streq(MR_type_ctor_name(tc1), type_name)			\
-	&& MR_streq(MR_type_ctor_module_name(tc1), module_name)		\
-	&& tc1->MR_type_ctor_arity == arity)
+	( MR_streq(MR_type_ctor_name(tc1), (type_name))			\
+	&& MR_streq(MR_type_ctor_module_name(tc1), (module_name))	\
+	&& (tc1)->MR_type_ctor_arity == (arity))
 
 #define	type_names_match_ctor(tc1, tc2)					\
 	( MR_streq(MR_type_ctor_name(tc1), MR_type_ctor_name(tc2))	\
 	&& MR_streq(MR_type_ctor_module_name(tc1),			\
 		MR_type_ctor_module_name(tc2))				\
-	&& tc1->MR_type_ctor_arity == tc2->MR_type_ctor_arity )
+	&& (tc1)->MR_type_ctor_arity == (tc2)->MR_type_ctor_arity )
 
 #define	class_names_match(tc_id1, module_name, class_name, arity)	\
-	( MR_streq(tc_id1->MR_tc_id_name, class_name)			\
-	&& MR_streq(tc_id1->MR_tc_id_module_name, module_name)		\
-	&& tc_id1->MR_tc_id_arity == arity)
+	( MR_streq(tc_id1->MR_tc_id_name, (class_name))			\
+	&& MR_streq(tc_id1->MR_tc_id_module_name, (module_name))	\
+	&& tc_id1->MR_tc_id_arity == (arity))
 
 #define	class_names_match_id(tc_id1, tc_id2)				\
-	( MR_streq(tc_id1->MR_tc_id_name, tc_id2->MR_tc_id_name)	\
-	&& MR_streq(tc_id1->MR_tc_id_module_name, tc_id2->MR_tc_id_module_name)\
-	&& tc_id1->MR_tc_id_arity == tc_id2->MR_tc_id_arity)
+	( MR_streq((tc_id1)->MR_tc_id_name, (tc_id2)->MR_tc_id_name)	\
+	&& MR_streq((tc_id1)->MR_tc_id_module_name,			\
+		(tc_id2)->MR_tc_id_module_name)				\
+	&& (tc_id1)->MR_tc_id_arity == (tc_id2)->MR_tc_id_arity)
 
 void
 MR_register_type_ctor_info(MR_TypeCtorInfo type_ctor_info)
