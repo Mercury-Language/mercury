@@ -70,3 +70,8 @@ bindist.build_vars: bindist.build_vars.in
 	$(MERCURY_DIR)/config.status
 
 #-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f bindist.configure bindist.build_vars
+
+#-----------------------------------------------------------------------------#
