@@ -96,9 +96,14 @@
 :- pred string__float_to_string(float, string).
 :- mode string__float_to_string(in, uo) is det.
 %	Convert an float to a string.
-%	The resulting float will be in the form that it was printed using
-%	the format string "%#.<prec>g" where <prec> is the required precision
-%	needed to represent the string.
+%	In the current implementation the resulting float will be in the
+%	form that it was printed using the format string "%#.<prec>g".
+%	<prec> will be in the range p to (p+2)
+%	where p = floor(mantissa_digits * log2(base_radix) / log2(10)).
+%	The precision chosen from this range will be such to allow a
+%	successful decimal -> binary conversion of the float.
+
+
 
 :- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
@@ -2787,24 +2792,37 @@ string__float_to_string_2(Prec, Float) = String :-
 		( string__to_float(Tmp, Float) ->
 			String = Tmp
 		;
-			String = float_to_string_2(Prec + 1, Float)
+			String = string__float_to_string_2(Prec + 1, Float)
 		)
 	).
 
-	% We assume that on non-C backends that we are using double
-	% precision floats.
+	% XXX For efficiency reasons we assume that on non-C backends that
+	% we are using double precision floats, however the commented out
+	% code provides a general mechanism for calculating the required
+	% precision.
 :- func min_precision = int.
 min_precision = 15.
+% min_precision =
+%	floor_to_int(float(mantissa_digits) * log2(float(radix)) / log2(10.0)).
 
 :- func max_precision = int.
-max_precision = 17.
+max_precision = min_precision + 2.
 
+% 
 % string__lowlevel_float_to_string differs from string__float_to_string in
-% that it must be implemented in a foreign language as this is the predicate
-% string__format uses to get the initial string representation of a float.
-% Also while its output must represent the float to sufficient precision, it
-% doesn't need to be in *exactly* the same format as if was formated with
-% "%#.<prec>g".
+% that it must be implemented without calling string__format (e.g. by
+% invoking some foreign language routine to do the conversion) as this is
+% the predicate string__format uses to get the initial string
+% representation of a float.
+%
+% The string returned must match one of the following regular expression:
+% 	^[+-]?[0-9]*\.?[0-9]+((e|E)[0-9]+)?$
+% 	^[nN][aA][nN]$
+% 	^[+-]?[iI][nN][fF][iI][nN][iI][tT][yY]$
+% 	^[+-]?[iI][nN][fF]$
+% and the string returned must have sufficient precision for representing
+% the float.
+%
 :- pred string__lowlevel_float_to_string(float, string).
 :- mode string__lowlevel_float_to_string(in, uo) is det.
 
