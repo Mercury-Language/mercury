@@ -1,0 +1,14 @@
+echo on
+register --quiet
+break p
+break q
+continue
+finish
+dd
+no
+yes
+retry
+continue
+finish
+dd
+quit -y

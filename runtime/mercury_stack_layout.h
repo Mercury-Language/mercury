@@ -580,6 +580,19 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 ** require padding.) The labels are sorted on line number.
 */
 
+/*
+** The trace level that the module was compiled with.  If this enum is
+** modified, then the corresponding function in compiler/trace_params.m
+** must be updated.
+*/
+typedef enum {
+	MR_TRACE_LEVEL_NONE,
+	MR_TRACE_LEVEL_SHALLOW,
+	MR_TRACE_LEVEL_DEEP,
+	MR_TRACE_LEVEL_DECL,
+	MR_TRACE_LEVEL_DECL_REP
+} MR_Trace_Level;
+
 typedef struct MR_Module_File_Layout_Struct {
 	MR_String		MR_mfl_filename;
 	MR_Integer		MR_mfl_label_count;
@@ -596,6 +609,7 @@ typedef	struct MR_Module_Layout_Struct {
 	MR_Stack_Layout_Entry	**MR_ml_procs;
 	MR_Integer		MR_ml_filename_count;
 	MR_Module_File_Layout	**MR_ml_module_file_layout;
+	MR_Trace_Level		MR_ml_trace_level;
 } MR_Module_Layout;
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

@@ -119,6 +119,16 @@ static	bool		MR_edt_inside;
 static	MR_Unsigned	MR_edt_start_seqno;
 
 /*
+** The declarative debugger ignores modules that were not compiled with
+** the required information.  However, this may result in incorrect
+** assumptions being made about the code, so the debugger gives a warning
+** if this happens.  The following flag indicates whether a warning
+** should be printed before calling the front end.
+*/
+
+static	bool		MR_edt_compiler_flag_warning;
+
+/*
 ** This is used as the abstract map from node identifiers to nodes
 ** in the data structure passed to the front end.  It should be
 ** incremented each time the data structure is destructively
@@ -283,6 +293,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Unsigned		depth;
 	MR_Trace_Node		trace;
 	MR_Event_Details	event_details;
+	MR_Trace_Level		trace_level;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -344,13 +355,27 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return NULL;
 	}
 
+	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
+	if (trace_level == MR_TRACE_LEVEL_DEEP) {
+		/*
+		** We ignore events from modules that were not compiled
+		** with the necessary information.  Procedures in those
+		** modules are effectively assumed correct, so we give
+		** the user a warning.
+		*/
+		MR_edt_compiler_flag_warning = TRUE;
+		return NULL;
+	}
+
 #ifdef MR_USE_DECL_STACK_SLOT
 	if (entry->MR_sle_maybe_decl_debug < 1) {
 		/*
 		** If using reserved stack slots, we ignore any event
 		** for a procedure that does not have a slot reserved.
-		** Such procedures are effectively assumed correct.
+		** Such procedures are effectively assumed correct, so
+		** we give the user a warning.
 		*/
+		MR_edt_compiler_flag_warning = TRUE;
 		return NULL;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
@@ -1141,6 +1166,7 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 	FILE			*out;
 	MR_Unsigned		depth_limit;
 	const char		*message;
+	MR_Trace_Level		trace_level;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1155,6 +1181,17 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
 				"at compiler generated procedures.\n");
+		return FALSE;
+	}
+
+	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
+	if (trace_level != MR_TRACE_LEVEL_DECL &&
+		trace_level != MR_TRACE_LEVEL_DECL_REP)
+	{
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
+				"because this procedure was not\n"
+				"compiled with trace level `decl'.\n");
 		return FALSE;
 	}
 
@@ -1252,6 +1289,11 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	}
 
 	/*
+	** Clear any warnings.
+	*/
+	MR_edt_compiler_flag_warning = FALSE;
+
+	/*
 	** Start collecting the trace from the desired call, with the
 	** desired depth bound.
 	*/
@@ -1298,6 +1340,13 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	*/
 	MR_trace_enabled = TRUE;
 #endif
+
+	if (MR_edt_compiler_flag_warning) {
+		fprintf(MR_mdb_err, "Warning: some modules were compiled with"
+				" a trace level lower than `decl'.\n"
+				"This may result in calls being omitted from"
+				" the debugging tree.\n");
+	}
 
 	MR_TRACE_CALL_MERCURY(
 		MR_DD_decl_diagnosis(MR_trace_node_store, root, &response,
