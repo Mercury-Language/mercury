@@ -49,8 +49,17 @@
 typedef	int		MR_bool;
 typedef	char		MR_small_bool;
 
+/*
+** The values of MR_TRUE and MR_FALSE should correspond with the representation
+** of the Mercury standard library type bool.bool, so that they can be used as
+** values for bool arguments of exported Mercury procs.
+*/
+
 #define	MR_TRUE		1
 #define	MR_FALSE	0
+
+#define MR_YES		MR_TRUE
+#define MR_NO		MR_FALSE
 
 #define	MR_max(a, b)	((a) > (b) ? (a) : (b))
 #define	MR_min(a, b)	((a) < (b) ? (a) : (b))

@@ -49,6 +49,12 @@
 # If you want to track down some low level bug, you can ask this script to
 # execute the Mercury compiler under gdb by setting the environment variable
 # MMC_UNDER_GDB to the string "true".
+#
+# If you want to link in the shared versions of the Mercury libraries then set
+# the environment variable MMC_USE_SHARED_LIBS to the extension for shared
+# libraries on your system.  You also still need to pass "--mercury-linkage
+# shared" to your workspace mmc script.
+#
 
 if test ! -d $WORKSPACE
 then
@@ -63,21 +69,28 @@ else
 fi
 export MERCURY_COMPILER
 
-if test -s $WORKSPACE/boehm_gc/libgc.a
+if test "$MMC_USE_SHARED_LIBS" != ""
 then
-	gclib="$WORKSPACE/boehm_gc/libgc.a"
-elif test -s $WORKSPACE/boehm_gc/libpar_gc.a
+	O="$MMC_USE_SHARED_LIBS"
+else
+	O="a"
+fi
+
+if test -s $WORKSPACE/boehm_gc/libgc.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libpar_gc.a"
-elif test -s $WORKSPACE/boehm_gc/libgc_prof.a
+	gclib="$WORKSPACE/boehm_gc/libgc.$O"
+elif test -s $WORKSPACE/boehm_gc/libpar_gc.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libgc_prof.a"
+	gclib="$WORKSPACE/boehm_gc/libpar_gc.$O"
+elif test -s $WORKSPACE/boehm_gc/libgc_prof.$O
+then
+	gclib="$WORKSPACE/boehm_gc/libgc_prof.$O"
 else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object
-$WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/browser/libmer_mdbcomp.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
+LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.$O --link-object
+$WORKSPACE/browser/libmer_browser.$O --link-object $WORKSPACE/browser/libmer_mdbcomp.$O --link-object $WORKSPACE/library/libmer_std.$O --link-object $WORKSPACE/runtime/libmer_rt.$O --link-object $gclib -lm @TRACE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
 
 INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browser.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 

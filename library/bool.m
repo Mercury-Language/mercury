@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -57,6 +57,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+% 
+% Important:
+% The representation of bool values should correspond with the definitions of
+% MR_TRUE and MR_FALSE in runtime/mercury_std.h.
+%
 
 :- instance enum(bool) where [
 	to_int(Bool) = bool_to_int(Bool),

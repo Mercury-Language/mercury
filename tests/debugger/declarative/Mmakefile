@@ -164,205 +164,262 @@ include Mercury.options
 #-----------------------------------------------------------------------------#
 
 aadebug.out: aadebug aadebug.inp
-	$(MDB_STD) ./aadebug < aadebug.inp > aadebug.out 2>&1
+	$(MDB_STD) ./aadebug < aadebug.inp > aadebug.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 app.out: app app.inp
-	$(MDB_STD) ./app < app.inp > app.out 2>&1
+	$(MDB_STD) ./app < app.inp > app.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 args.out: args args.inp
-	$(MDB_STD) ./args < args.inp > args.out 2>&1
+	$(MDB_STD) ./args < args.inp > args.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 backtrack.out: backtrack backtrack.inp
-	$(MDB) ./backtrack < backtrack.inp > backtrack.out 2>&1
+	$(MDB) ./backtrack < backtrack.inp > backtrack.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 big.out: big big.inp
-	$(MDB_STD) ./big < big.inp > big.out 2>&1
+	$(MDB_STD) ./big < big.inp > big.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 binary_search.out: binary_search binary_search.$(DEBUG_INP)
 	$(MDB_STD) ./binary_search < binary_search.$(DEBUG_INP) \
-		> binary_search.out 2>&1
+		> binary_search.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 browse_arg.out: browse_arg browse_arg.inp
-	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1
+	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 builtin_call_rep.out: builtin_call_rep builtin_call_rep.inp
 	$(MDB_STD) ./builtin_call_rep  < builtin_call_rep.inp \
-		> builtin_call_rep.out 2>&1
+		> builtin_call_rep.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 catch.out: catch catch.inp
 	$(MDB_STD) ./catch < catch.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-		> catch.out 2>&1
+		> catch.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 closure_dependency.out: closure_dependency closure_dependency.$(DEBUG_INP)
 	$(MDB_STD) ./closure_dependency  < closure_dependency.$(DEBUG_INP) \
-		> closure_dependency.out 2>&1
+		> closure_dependency.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 comp_gen.out: comp_gen comp_gen.inp
-	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1
+	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 confirm_abort.out: confirm_abort confirm_abort.inp
-	$(MDB) ./confirm_abort < confirm_abort.inp > confirm_abort.out 2>&1
+	$(MDB) ./confirm_abort < confirm_abort.inp > confirm_abort.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 deep_warning.out: deep_warning deep_warning.inp
-	$(MDB) ./deep_warning < deep_warning.inp > deep_warning.out 2>&1
+	$(MDB) ./deep_warning < deep_warning.inp > deep_warning.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 dependency.out: dependency dependency.inp
-	$(MDB) ./dependency < dependency.inp > dependency.out 2>&1
+	$(MDB) ./dependency < dependency.inp > dependency.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 dependency2.out: dependency2 dependency2.inp
-	$(MDB) ./dependency2 < dependency2.inp > dependency2.out 2>&1
+	$(MDB) ./dependency2 < dependency2.inp > dependency2.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 empty_command.out: empty_command empty_command.inp
-	$(MDB) ./empty_command < empty_command.inp > empty_command.out 2>&1
+	$(MDB) ./empty_command < empty_command.inp > empty_command.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 explicit_subtree.out: explicit_subtree explicit_subtree.$(DEBUG_INP)
 	$(MDB_STD) ./explicit_subtree < explicit_subtree.$(DEBUG_INP) \
-		> explicit_subtree.out 2>&1
+		> explicit_subtree.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 family.out: family family.inp
-	$(MDB) ./family < family.inp > family.out 2>&1
+	$(MDB) ./family < family.inp > family.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 failed_cond.out: failed_cond failed_cond.inp
-	$(MDB_STD) ./failed_cond < failed_cond.inp > failed_cond.out 2>&1
+	$(MDB_STD) ./failed_cond < failed_cond.inp > failed_cond.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 filter.out: filter filter.inp
-	$(MDB_STD) ./filter < filter.inp > filter.out 2>&1
+	$(MDB_STD) ./filter < filter.inp > filter.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 find_origin.out: find_origin find_origin.$(DECLDEBUG_INP)
 	$(MDB_STD) ./find_origin < find_origin.$(DECLDEBUG_INP) \
-		> find_origin.out 2>&1
+		> find_origin.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 func_call.out: func_call func_call.inp
-	$(MDB) ./func_call < func_call.inp > func_call.out 2>&1
+	$(MDB) ./func_call < func_call.inp > func_call.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 gcf.out: gcf gcf.inp
-	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1
+	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 higher_order.out: higher_order higher_order.inp
-	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1
+	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 ho2.out: ho2 ho2.inp
-	$(MDB) ./ho2 < ho2.inp > ho2.out 2>&1
+	$(MDB) ./ho2 < ho2.inp > ho2.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 ho3.out: ho3 ho3.inp
-	$(MDB) ./ho3 < ho3.inp > ho3.out 2>&1
+	$(MDB) ./ho3 < ho3.inp > ho3.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 ho4.out: ho4 ho4.inp
-	$(MDB) ./ho4 < ho4.inp > ho4.out 2>&1
+	$(MDB) ./ho4 < ho4.inp > ho4.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 ho5.out: ho5 ho5.inp
 	$(MDB) ./ho5 < ho5.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-		> ho5.out 2>&1
+		> ho5.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 if_then_else.out: if_then_else if_then_else.inp
-	$(MDB_STD) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
+	$(MDB_STD) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 ignore.out: ignore ignore.$(DEBUG_INP)
 	$(MDB_STD) ./ignore < ignore.$(DEBUG_INP) \
-		> ignore.out 2>&1
+		> ignore.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 inadmissible.out: inadmissible inadmissible.inp
 	$(MDB_STD) ./inadmissible < inadmissible.inp \
-		> inadmissible.out 2>&1
+		> inadmissible.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 input_term_dep.out: input_term_dep input_term_dep.inp
 	$(MDB_STD) ./input_term_dep < input_term_dep.inp \
-		> input_term_dep.out 2>&1
+		> input_term_dep.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 io_stream_test.out: io_stream_test io_stream_test.inp
 	$(MDB_STD) ./io_stream_test < io_stream_test.inp \
-		> io_stream_test.out 2>&1
+		> io_stream_test.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 ite_2.out: ite_2 ite_2.inp
-	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1
+	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 lpe_example.out: lpe_example lpe_example.inp
-	$(MDB) ./lpe_example < lpe_example.inp > lpe_example.out 2>&1
+	$(MDB) ./lpe_example < lpe_example.inp > lpe_example.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 mapinit.out: mapinit mapinit.inp
-	$(MDB) ./mapinit < mapinit.inp > mapinit.out 2>&1
+	$(MDB) ./mapinit < mapinit.inp > mapinit.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 mismatch_on_call.out: mismatch_on_call mismatch_on_call.$(DEBUG_INP)
 	$(MDB_STD) ./mismatch_on_call < mismatch_on_call.$(DEBUG_INP) \
-		> mismatch_on_call.out 2>&1
+		> mismatch_on_call.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 neg_conj.out: neg_conj neg_conj.inp
-	$(MDB) ./neg_conj < neg_conj.inp > neg_conj.out 2>&1
+	$(MDB) ./neg_conj < neg_conj.inp > neg_conj.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 negation.out: negation negation.inp
-	$(MDB) ./negation < negation.inp > negation.out 2>&1
+	$(MDB) ./negation < negation.inp > negation.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 oracle_db.out: oracle_db oracle_db.inp
-	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1
+	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 output_term_dep.out: output_term_dep output_term_dep.inp
 	$(MDB_STD) ./output_term_dep < output_term_dep.inp	\
-			> output_term_dep.out 2>&1
+			> output_term_dep.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 pd.out: pd pd.inp
-	$(MDB) ./pd < pd.inp > pd.out 2>&1
+	$(MDB) ./pd < pd.inp > pd.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 propositional.out: propositional propositional.inp
-	$(MDB_STD) ./propositional < propositional.inp > propositional.out 2>&1
+	$(MDB_STD) ./propositional < propositional.inp > \
+	propositional.out 2>&1 || { grep . $@ /dev/null; exit 1; }
 
 queens.out: queens queens.inp
-	$(MDB) ./queens < queens.inp > queens.out 2>&1
+	$(MDB) ./queens < queens.inp > queens.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 remember_modes.out: remember_modes remember_modes.inp
 	$(MDB_STD) ./remember_modes < remember_modes.inp \
-			> remember_modes.out 2>&1
+			> remember_modes.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 revise.out: revise revise.inp
-	$(MDB) ./revise < revise.inp > revise.out 2>&1
+	$(MDB) ./revise < revise.inp > revise.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 revise_2.out: revise_2 revise_2.inp
-	$(MDB) ./revise_2 < revise_2.inp > revise_2.out 2>&1
+	$(MDB) ./revise_2 < revise_2.inp > revise_2.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 shallow.out: shallow shallow.inp
-	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
+	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 small.out: small small.inp
-	$(MDB) ./small < small.inp > small.out 2>&1
+	$(MDB) ./small < small.inp > small.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 solutions.out: solutions solutions.$(DECLDEBUG_INP)
 	$(MDB) ./solutions < solutions.$(DECLDEBUG_INP) 2>&1 | \
 		sed -e 's/std_util.m:[0-9]*/std_util.m:NNNN/g' \
-		> solutions.out 2>&1
+		> solutions.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 special_term_dep.out: special_term_dep special_term_dep.inp
 	$(MDB_STD) ./special_term_dep < special_term_dep.inp \
-		> special_term_dep.out 2>&1
+		> special_term_dep.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 skip.out: skip skip.inp
-	$(MDB_STD) ./skip < skip.inp > skip.out 2>&1
+	$(MDB_STD) ./skip < skip.inp > skip.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
-		> tabled_read_decl.out 2>&1
+		> tabled_read_decl.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 throw.out: throw throw.inp
 	$(MDB) ./throw < throw.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
-		sed -e '/EXCP/s/).*/)/' > throw.out 2>&1
+		sed -e '/EXCP/s/).*/)/' > throw.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 trust.out: trust trust.inp
-	$(MDB_STD) ./trust < trust.inp > trust.out 2>&1
+	$(MDB_STD) ./trust < trust.inp > trust.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 unsafe_cast.out: unsafe_cast unsafe_cast.inp
-	$(MDB) ./unsafe_cast < unsafe_cast.inp > unsafe_cast.out 2>&1
+	$(MDB) ./unsafe_cast < unsafe_cast.inp > unsafe_cast.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \
-			> untraced_subgoal.out 2>&1
+			> untraced_subgoal.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
 
 #-----------------------------------------------------------------------------#

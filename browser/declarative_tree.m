@@ -1455,9 +1455,9 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
 	#ifdef MR_EXEC_TRACE
-		TracingOn = ML_bool_return_yes();
+		TracingOn = MR_YES;
 	#else
-		TracingOn = ML_bool_return_no();
+		TracingOn = MR_NO;
 	#endif
 ").
 
