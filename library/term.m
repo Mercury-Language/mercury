@@ -18,19 +18,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type term		--->	term__functor(const, list(term), term__context)
-			;	term__variable(var).
-:- type const 		--->	term__atom(string)
-			;	term__integer(int)
-			;	term__string(string)
-			;	term__float(float).
 :- type comparison	--->	(>)
 			;	(<)
 			;	(=).
 
 :- type var.
 :- type var_supply.
-:- type term__context.
 
 %-----------------------------------------------------------------------------%
 
@@ -199,6 +192,11 @@
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
+	% Unify_proc__generate_du_type_to_term_clauses
+	% requires the use of an initialized term__context. It
+	% directly constructs an initialized term__context
+	% without calling term__context_init to avoid the
+	% prob of including the term module in everything.
 
 :- pred term__context_init(term__context).
 :- mode term__context_init(out) is det.
@@ -304,11 +302,6 @@ term__subterm(term__functor(_, Args, _), SubTerm) :-
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the term__context data structure.
-	% At the moment, the only context we store is the line
-	% number.
-
-:- type term__context	--->	term__context(string, int).
-				% file, line number.
 
 	% Given a term context, return the source line number.
 

@@ -309,71 +309,80 @@ mercury__unify_2_0:
 	tailcall(unify_pred, LABEL(mercury__unify_2_0));
 }
 
-mercury__read_2_0:
+mercury__term_to_type_2_0:
 {
+	/* we get called as 'term_to_type(TypeInfo, Term, X)' */
+	/* in the mode 'term_to_type(in, in, out) is semidet'. */
+	/* r1 will hold the success/failure indication */
+	/* r2 holds the type_info for term */
+	/* r3 holds the term */
+	/* r4 will hold the result for X */
+
 	Word type_info;
-	Code *read_pred;
+	Code *term_to_type_pred;
 	Word term;
 	int i, type_arity;
 
-	/* we get called as 'read(TypeInfo, Term, X)' */
-	/* in the mode 'read(in, in, out) is det'. */
-	type_info = r1;
-	term = r2;
-	/* r3 will hold the result */
+	type_info = r2;
+	term = r3;
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
-	read_pred = (Code *) field(0, type_info, OFFSET_FOR_READ_PRED);
-		/* address of the read pred for this type */
+	term_to_type_pred =
+		(Code *) field(0, type_info, OFFSET_FOR_TERM_TO_TYPE_PRED);
+		/* address of the term_to_type pred for this type */
 
 	save_registers();
 
-	/* we call 'ReadPred(...TypeInfos..., Term, X)' */
+	/* we call 'TermToTypePred(...TypeInfos..., Term, X)' */
 	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) =
+		virtual_reg(i + 1) =
 			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
 	}
-	virtual_reg(type_arity + 1) = term;
-	/* virtual_reg(type_arity + 2) will hold the result */
+	virtual_reg(type_arity + 2) = term;
+	/* virtual_reg(type_arity + 3) will hold the result */
 
 	restore_registers();
 
 	push(succip);
 	push(type_arity);
-	call(read_pred, LABEL(mercury__read_2_0_i1),
-		LABEL(mercury__read_2_0));
+	call(term_to_type_pred, LABEL(mercury__term_to_type_2_0_i1),
+		LABEL(mercury__term_to_type_2_0));
 }
-mercury__read_2_0_i1:
+mercury__term_to_type_2_0_i1:
 {
+	/* r1 already contains the truth result of the semidet pred
+	** mercury__term_to_type_2_0 so r1 does not have to be updated. */
+
 	int type_arity;
 	
 	type_arity = pop();
 	succip = pop();
 	save_registers();
-	r3 = virtual_reg(type_arity + 2);
+	r4 = virtual_reg(type_arity + 3);
 	proceed();
 }
 
-mercury__write_2_0:
+mercury__type_to_term_2_0:
 {
 	Word type_info;
-	Code *write_pred;
+	Code *type_to_term_pred;
 	Word x;
 	int i, type_arity;
 
-	/* we get called as 'write(TypeInfo, X, Term)' */
-	/* in the mode 'write(in, in, out) is det'. */
+	/* we get called as 'type_to_term(TypeInfo, X, Term)' */
+	/* in the mode 'type_to_term(in, in, out) is det'. */
 	type_info = r1;
 	x = r2;
 	/* r3 will hold the result */
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
-	write_pred = (Code *) field(0, type_info, OFFSET_FOR_WRITE_PRED);
-		/* address of the write pred for this type */
+	type_to_term_pred =
+		(Code *) field(0, type_info, OFFSET_FOR_TYPE_TO_TERM_PRED);
+		/* address of the type_to_term pred for this type */
 
 	save_registers();
 
-	/* we call 'WritePred(...TypeInfos..., X, Term)' */
+	/* we call 'TypeToTermPred(...TypeInfos..., X, Term)' */
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i) =
 			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
@@ -385,10 +394,10 @@ mercury__write_2_0:
 
 	push(succip);
 	push(type_arity);
-	call(write_pred, LABEL(mercury__write_2_0_i1),
-		LABEL(mercury__write_2_0));
+	call(type_to_term_pred, LABEL(mercury__type_to_term_2_0_i1),
+		LABEL(mercury__type_to_term_2_0));
 }
-mercury__write_2_0_i1:
+mercury__type_to_term_2_0_i1:
 {
 	int type_arity;
 	

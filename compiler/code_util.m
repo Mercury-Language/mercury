@@ -116,18 +116,25 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		% field in pred_info.
 		% Instead we use some nasty hacks:
 		% for __Index__(...TypeInfos..., T, int)
+		% and __Type_To_Term__(...TypeInfos..., T, term)
 		% we use the type of the second last argument,
 		% and for __Compare__(...TypeInfos..., comparison_result, T, T)
-		% and __Unify__(...TypeInfos..., T, T) we use the
+		% __Unify__(...TypeInfos..., T, T), and
+		% __Term_To_Type__(...TypeInfos..., term, T) we use the
 		% type of the last argument.
 		(
-			PredName = "__Index__",
+			( PredName = "__Index__"
+			; PredName = "__Type_To_Term__"
+			),
 			list__reverse(ArgTypes, [_, Type | _]),
 			type_to_type_id(Type, TypeId0, _)
 		->
 			TypeId = TypeId0
 		;
-			( PredName = "__Unify__" ; PredName = "__Compare__" ),
+			( PredName = "__Unify__"
+			; PredName = "__Compare__"
+			; PredName = "__Term_To_Type__"
+			),
 			list__reverse(ArgTypes, [Type | _]),
 			type_to_type_id(Type, TypeId0, _)
 		->
@@ -232,8 +239,8 @@ code_util__compiler_generated(PredInfo) :-
     ( PredName = "__Unify__", PredArity = 2
     ; PredName = "__Compare__", PredArity = 3
     ; PredName = "__Index__", PredArity = 2
-    ; PredName = "__Read__", PredArity = 2
-    ; PredName = "__Write__", PredArity = 2
+    ; PredName = "__Term_To_Type__", PredArity = 2
+    ; PredName = "__Type_To_Term__", PredArity = 2
     ).
 
 %-----------------------------------------------------------------------------%

@@ -59,6 +59,10 @@
 			;	eof
 			;	error(io__error).
 
+:- type io__read_result(T)	--->	ok(T)
+				;	eof
+				;	error(string, int).
+
 :- type io__error.	% Use io__error_message to decode it.
 
 	% Poly-type
@@ -114,19 +118,18 @@
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
 
-:- pred io__read_anything(io__res(_T), io__state, io__state).
-:- mode io__read_anything(in, di, uo) is det.
-%		Reads its argument to the current output stream.
-%		The argument may be of any type. 
+:- pred io__read_anything(io__read_result(T), io__state, io__state).
+:- mode io__read_anything(out, di, uo) is det.
+%		Reads its argument from the current input stream.
+%		The argument may be of (almost) any type. 
 %		The term read had better be of the right type!
-%		This is a hack!
 
-:- pred io__read_anything(io__input_stream, io__res(_T), io__state, io__state).
+:- pred io__read_anything(io__input_stream, io__read_result(T),
+							io__state, io__state).
 :- mode io__read_anything(in, out, di, uo) is det.
 %		Reads its argument to the specified stream.
-%		The argument may be of any type.
+%		The argument may be of (almost) any type.
 %		The term read had better be of the right type!
-%		This is a hack!
 
 :- pred io__ignore_whitespace(io__res, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
@@ -194,15 +197,15 @@
 :- mode io__write_many(in, in, di, uo) is det.
 %	writes a polyglot to a specified stream.
 
-:- pred io__write_anything(_T, io__state, io__state).
+:- pred io__write_anything(T, io__state, io__state).
 :- mode io__write_anything(in, di, uo) is det.
 %		Writes it's argument to the current output stream.
-%		The argument may be of any type.  This is a hack!
+%		The argument may be of (almost) any type.
 
-:- pred io__write_anything(io__output_stream, _T, io__state, io__state).
+:- pred io__write_anything(io__output_stream, T, io__state, io__state).
 :- mode io__write_anything(in, in, di, uo) is det.
 %		Writes it's argument to the specified stream.
-%		The argument may be of any type.  This is a hack!
+%		The argument may be of (almost) any type.
 
 :- pred io__flush_output(io__state, io__state).
 :- mode io__flush_output(di, uo) is det.
@@ -480,7 +483,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, dir, require.
+:- import_module map, dir, term_io, varset, require.
 
 :- type io__state
 	---> 	io__state(
@@ -565,8 +568,6 @@
 */
 
 :- external(io__progname/4).
-:- external(io__read_anything/3).
-:- external(io__read_anything/4).
 :- external(io__read_char_code/4).
 :- external(io__putback_char/4).
 :- external(io__write_char/3).
@@ -577,8 +578,6 @@
 :- external(io__write_string/4).
 :- external(io__write_float/3).
 :- external(io__write_float/4).
-:- external(io__write_anything/3).
-:- external(io__write_anything/4).
 :- external(io__flush_output/2).
 :- external(io__flush_output/3).
 :- external(io__stdin_stream/3).
@@ -710,6 +709,27 @@ io__putback_char(Char) -->
 	io__input_stream(Stream),
 	io__putback_char(Stream, Char).
 
+io__read_anything(X) -->
+	term_io__read_term(ReadResult),
+	(	{ ReadResult = term(_VarSet, Term) },
+		( { term_to_type(Term, Type) } ->
+			{ X = ok(Type) }
+		;
+			{ X = error("io__read_anything : the term read was not a valid type", 0) }
+		)
+	;
+		{ ReadResult = eof },
+		{ X = eof }
+	;
+		{ ReadResult = error(String, Int) },
+		{ X = error(String, Int) }
+	).
+
+io__read_anything(Stream, X) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__read_anything(X),
+	io__set_output_stream(OrigStream, _Stream).
+
 io__ignore_whitespace(Result) -->
 	io__input_stream(Stream),
 	io__ignore_whitespace(Stream, Result).
@@ -771,6 +791,18 @@ io__write_many( Stream, [ s(S) | Rest ]) -->
 io__write_many( Stream, [ f(F) | Rest ]) -->
 	io__write_float(Stream, F),
 	io__write_many(Stream, Rest).
+
+io__write_anything(X) -->
+	{ type_to_term(X, Term) },
+	{ varset__init(VarSet) },
+	term_io__write_term(VarSet, Term).
+
+io__write_anything(Stream, X) -->
+	{ type_to_term(X, Term) },
+	{ varset__init(VarSet) },
+	io__set_input_stream(Stream, OrigStream),
+	term_io__write_term(VarSet, Term),
+	io__set_input_stream(OrigStream, _Stream).
 
 %-----------------------------------------------------------------------------%
 

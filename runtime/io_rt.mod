@@ -138,6 +138,8 @@ Declare_entry(mercury__main_2_0);
 Declare_entry(mercury__unify_2_0);
 Declare_entry(mercury__compare_3_0);
 Declare_entry(mercury__index_3_0);
+Declare_entry(mercury__term_to_type_2_0);
+Declare_entry(mercury__type_to_term_2_0);
 
 BEGIN_MODULE(io_module)
 BEGIN_CODE
@@ -197,12 +199,6 @@ mercury__io__write_float_3_0:
 	update_io(r2, r3);
 	proceed();
 
-mercury__io__write_anything_3_0:
-	fprintf(mercury_current_output->file,
-		"<write_anything not implemented>\n");
-	update_io(r2, r3);
-	proceed();
-
 mercury__io__flush_output_2_0:
 	fflush(mercury_current_output->file);
 	update_io(r1, r2);
@@ -230,12 +226,6 @@ mercury__io__write_float_4_0:
 	update_io(r3, r4);
 	proceed();
 
-mercury__io__write_anything_4_0:
-	fprintf(((MercuryFile*)r1)->file,
-		"<write_anything not implemented>\n");
-	update_io(r3, r4);
-	proceed();
-
 mercury__io__flush_output_3_0:
 	fflush(((MercuryFile*)r1)->file);
 	update_io(r2, r3);
@@ -257,15 +247,13 @@ mercury____Index___io__stream_0_0:
 	r2 = -1;
 	proceed();
 
-/********************************/
-mercury____Read___io__stream_0_0:
-	/* don't know what to put here yet. */
-	fatal_error("cannot read io__stream");
+mercury____Term_To_Type___io__stream_0_0:
+	/* don't know what to put here. */
+	fatal_error("cannot convert term to type io__stream");
 
-mercury____Write___io__stream_0_0:
-	/* don't know what to put here yet. */
-	fatal_error("cannot write io__stream");
-/********************************/
+mercury____Type_To_Term___io__stream_0_0:
+	/* don't know what to put here. */
+	fatal_error("cannot covert type io__stream to term");
 
 mercury__io__stdin_stream_3_0:
 	r1 = (Word) &mercury_stdin;
@@ -417,10 +405,10 @@ mercury__io__call_system_code_4_0:
 mercury____Unify___io__external_state_0_0:
 mercury____Compare___io__external_state_0_0:
 mercury____Index___io__external_state_0_0:
-mercury____Read___io__external_state_0_0:
-mercury____Write___io__external_state_0_0:
+mercury____Term_To_Type___io__external_state_0_0:
+mercury____Type_To_Term___io__external_state_0_0:
 	/* the unique mode system should prevent these */
-	fatal_error("cannot unify/compare/index/read/write io__external_state");
+	fatal_error("cannot unify/compare/index/term_to_type/type_to_term io__external_state");
 
 /*---------------------------------------------------------------------------*/
 
@@ -591,15 +579,13 @@ mercury____Index___univ_0_0:
 	r2 = -1;
 	proceed();
 
-/********************************/
-mercury____Read___univ_0_0:
-	/* don't know what to put here yet. */
-	fatal_error("cannot read univ");
-	
-mercury____Write___univ_0_0:
-	/* don't know what to put here yet. */
-	fatal_error("cannot write univ");
-/********************************/
+mercury____Term_To_Type___univ_0_0:
+	/* don't know what to put here. */
+	fatal_error("cannot convert univ type to term");
+
+mercury____Type_To_Term___univ_0_0:
+	/* don't know what to put here. */
+	fatal_error("cannot convert type univ to term");
 
 /* semidet_succeed and semidet_fail, from std_util.m */
 

@@ -17,6 +17,7 @@
 
 :- module mercury_builtin.
 :- interface.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -183,6 +184,13 @@
 
 :- pred compare(comparison_result::out, T::in, T::in) is det.
 
+:- pred term_to_type(term :: in, T :: out) is semidet.
+
+:- pred det_term_to_type(term :: in, T :: out) is det.
+
+:- pred type_to_term(T :: in, term :: out) is det.
+
+
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.
 
@@ -191,16 +199,22 @@
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
 :- pred builtin_compare_int(comparison_result::out, int::in, int::in) is det.
+:- pred builtin_term_to_type_int(term :: in, int :: out) is semidet.
+:- pred builtin_type_to_term_int(int :: in, term :: out) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
 :- pred builtin_index_string(string::in, int::out) is det.
 :- pred builtin_compare_string(comparison_result::out, string::in, string::in)
 	is det.
+:- pred builtin_term_to_type_string(term :: in, string :: out) is semidet.
+:- pred builtin_type_to_term_string(string :: in, term :: out) is det.
 
 :- pred builtin_unify_float(float::in, float::in) is semidet.
 :- pred builtin_index_float(float::in, int::out) is det.
 :- pred builtin_compare_float(comparison_result::out, float::in, float::in)
 	is det.
+:- pred builtin_term_to_type_float(term :: in, float :: out) is semidet.
+:- pred builtin_type_to_term_float(float :: in, term :: out) is det.
 
 :- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
 :- pred builtin_index_pred((pred)::in, int::out) is det.
@@ -220,10 +234,31 @@
 :- pred >(int, int).
 :- mode >(in, in) is semidet.
 
+% The types term and const should be defined in term.m, but we define them here
+% since they're need for implementation of term_to_type/2 and type_to_term/2.
+
+:- type term		--->	term__functor(const, list(term), term__context)
+			;	term__variable(var).
+:- type const		--->	term__atom(string)
+			;	term__integer(int)
+			;	term__string(string)
+			;	term__float(float).
+
+% The type list should be defined in list.m, but we define it here since
+% it's need for the implementation of term_to_type/2 and type_to_term/2.
+
+:- type list(T) ---> [] ; [T | list(T)].
+
+        % At the moment, the only context we store is the line
+        % number.
+
+:- type term__context	--->	term__context(string, int).
+				% file, line number.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, std_util, float.
+:- import_module require, std_util, float, list.
 
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
@@ -240,6 +275,16 @@
 :- external(unify/2).
 :- external(index/2).
 :- external(compare/3).
+:- external(term_to_type/2).
+:- external(type_to_term/2).
+
+det_term_to_type(Term, X) :-
+	( term_to_type(Term, X1) ->
+		X = X1
+	;
+		error("det_term_to_type failed as term doesn't represent a valid ground value of the appropriate type")
+	).
+
 
 builtin_unify_int(X, X).
 
@@ -253,6 +298,12 @@ builtin_compare_int(R, X, Y) :-
 	;
 		R = (>)
 	).
+
+builtin_term_to_type_int(term__functor(term__integer(Int), _TermList, _Context),
+									Int).
+
+builtin_type_to_term_int(Int, term__functor(term__integer(Int), [], Context)) :-
+	term__context_init(Context).
 
 builtin_unify_string(S, S).
 
@@ -268,6 +319,14 @@ builtin_compare_string(R, S1, S2) :-
 		R = (>)
 	).
 
+builtin_term_to_type_string(
+	term__functor(term__string(String), _TermList, _Context), String).
+
+builtin_type_to_term_string(
+		String, term__functor(term__string(String), [], Context)) :- 
+        term__context_init(Context).
+
+
 builtin_unify_float(F, F).
 
 builtin_index_float(_, -1).
@@ -280,6 +339,13 @@ builtin_compare_float(R, F1, F2) :-
 	;
 		R = (=)
 	).
+
+builtin_term_to_type_float(term__functor(
+			term__float(Float), _TermList, _Context), Float).
+
+builtin_type_to_term_float(
+		Float, term__functor(term__float(Float), [], Context)) :-
+	term__context_init(Context).
 
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.

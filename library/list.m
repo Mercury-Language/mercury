@@ -23,7 +23,9 @@
 	%	or an element `Head' of type `T' followed by a tail `Tail'
 	%	of type `list(T)', denoted `[Head | Tail]'.
 	%	
-:- type list(T) ---> [] ; [T | list(T)].
+
+	% The definition list is actually in mercury_builtin.m because
+	% it is required to implement 'type_to_term' and 'term_to_type'
 
 %-----------------------------------------------------------------------------%
 

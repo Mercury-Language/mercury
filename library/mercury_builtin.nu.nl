@@ -28,6 +28,68 @@ builtin_float_lt(X, Y) :- X < Y.
 builtin_float_ge(X, Y) :- X >= Y.
 builtin_float_gt(X, Y) :- X > Y.
 
+term_to_type(term__functor(Const, Args, _Context), Type) :-
+	term_to_type_2(Const, Args, Type).
+
+term_to_type_2(term__integer(Int), [], Int).
+
+term_to_type_2(term__string(String), [], String).
+
+term_to_type_2(term__float(Float), [], Float).
+
+term_to_type_2(term__atom(NameString), Args, Type) :-
+	length(Args, NumArgs),
+	name(NameAtom, NameString),
+	functor(Type1, NameAtom, NumArgs),
+	term_to_type_args(Args, Type1, 1, Type).
+
+
+term_to_type_args([], Type, _ArgNum, Type).
+
+term_to_type_args([Arg | Args], Type1, ArgNum, Type) :-
+	term_to_type(Arg, ArgType),
+	arg(ArgNum, Type1, ArgType),
+	NextArgNum is ArgNum + 1,
+	term_to_type_args(Args, Type1, NextArgNum, Type).
+
+
+type_to_term(Type, Term) :-
+	Context = term__context("", 0),
+	(
+		integer(Type)
+	->
+		Term = term__functor(term__integer(Type), [], Context)
+	;
+		% Because string a treated as a list of ints all list of ints
+		% are converted back to strings.
+		Type = [Int | _Ints],
+		integer(Int)
+	->
+		Term = term__functor(term__string(Type), [], Context)
+	;
+		float(Type)
+	->
+		Term = term__functor(term__float(Type), [], Context)
+	;
+		functor(Type, FunctorAtom, Arity),
+		name(FunctorAtom, FunctorString),
+		type_to_term_args(Type, Arity, 1, Args),
+		Term = term__functor(term__atom(FunctorString), Args, Context)
+	).
+
+
+type_to_term_args(Type, Arity, ArgNum, Terms) :-
+	 ( ArgNum > Arity ->
+	 	Terms = []
+	;
+		arg(ArgNum, Type, ArgType),
+		type_to_term(ArgType, Term),
+		NextArgNum is ArgNum + 1,
+		Terms = [Term | Terms1],
+		type_to_term_args(Type, Arity, NextArgNum, Terms1)
+	).
+
+
 	% dynamic_environment_hack/2 is a mechanism for
 	% storing any environment variables which are
 	% set during the course of the program.  This is

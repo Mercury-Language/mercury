@@ -16,7 +16,8 @@
 % so that it takes one additional argument for every type variable in the
 % predicate's type declaration.  The argument is a type_info structure,
 % which contains higher-order predicate variables for each of the builtin
-% polymorphic operations (currently unification, compare/3, and index/2).
+% polymorphic operations (currently unification, compare/3, index/2,
+% term_to_type/2 and type_to_term/2).
 %
 % The type_info structure is laid out as follows:
 %
@@ -25,7 +26,9 @@
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
-%	word 4+		<the type_infos for the type params>
+%	word 4		<term_to_type/2 predicate for type>
+%	word 5		<type_to_term/2 predicate for type>
+%	word 6+		<the type_infos for the type params>
 %
 % For example, we translate
 %
@@ -43,8 +46,9 @@
 %
 %	p(X, TypeInfo) :-
 %		q([X], type_info(1, list_unify, list_index, list_compare,
-%				TypeInfo)),
-%		r(0, type_info(0, int_unify, int_index, int_compare)).
+%			list_term_to_type, list_type_to_term, TypeInfo)),
+%		r(0, type_info(0, int_unify, int_index, int_compare,
+%			int_term_to_type, type_to_term)).
 %
 % (except that both the input and output of the transformation are
 % actually in super-homogeneous form).
@@ -299,12 +303,12 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		{ special_pred_name_arity(SpecialPredId, PredName0, 
 						_, Arity) },
 		=(poly_info(_, VarTypes, _, _TypeInfoMap, ModuleInfo)),
-		% XXX this is a bit of a kludge: for read/2, the argument
-		% which specifies the type is the second-last, for all
+		% XXX this is a bit of a kludge: for term_to_type/2, the
+		% argument which specifies the type is the second-last, for all
 		% the others special predicates it is the last argument.
 		% There is similar code in code_util.m -
 		% they should both be fixed after benyi commits his changes.
-		( { SpecialPredId = read } ->
+		( { SpecialPredId = term_to_type } ->
 			{ list__reverse(ArgVars0, [XVar | _]) }
 		;
 			{ list__reverse(ArgVars0, [_, XVar | _]) }
@@ -638,6 +642,8 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		%				'__Unify__'<list/1>,
 		%				'__Index__'<list/1>,
 		%				'__Compare__'<list/1>,
+		%				'__Term_To_Type__'<list/1>,
+		%				'__Type_To_Term__'<list/1>,
 		%				TypeInfo
 		%			),
 		%			[X]
@@ -646,7 +652,9 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		%			type_info(0,
 		%				builtin_unify_int,
 		%				builtin_index_int,
-		%				builtin_compare_int
+		%				builtin_compare_int,
+		%				builtin_term_to_type_int,
+		%				builtin_type_to_term_int
 		%			),
 		%			0
 		%		).
@@ -666,7 +674,9 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		% variables for this type:
 		%	SpecialPred1 = __Unify__<type>,
 		%	SpecialPred2 = __Index__<type>,
-		%	SpecialPred3 = __Compare__<type>.
+		%	SpecialPred3 = __Compare__<type>,
+		%	SpecialPred4 = __Term_To_Type__<type>,
+		%	SpecialPred5 = __Type_To_Term__<type>.
 
 		special_pred_list(SpecialPreds),
 		polymorphism__get_special_proc_list(SpecialPreds, Type,
