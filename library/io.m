@@ -1893,6 +1893,13 @@ io__set_environment_var(Var, Value) -->
 
 % memory management predicates
 
+% The implementation of io__report_stats/2 in terms of the non-logical
+% report_stats/0 causes problems with --optimize-duplicate-calls.
+% So we need to prevent inlining.  (If/when we support `impure' declarations,
+% it would probably be better to declare `report_stats' as `impure'.)
+
+:- pragma no_inline(io__report_stats/2).
+
 io__report_stats -->
 	{ report_stats }.
 
