@@ -557,11 +557,21 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 	;	
 		Binop = eq,
 		(
+						% e==e => true
 			Vn1 = Vn2
 		->
 			Vnrval = vn_const(true),
 			VnTables = VnTables0
 		;
+						% otherwise, c1==c2 => false
+						% (true case handled above)
+			Vnrval1 = vn_const(_C1),
+			Vnrval2 = vn_const(_C2)
+		->
+			Vnrval = vn_const(false),
+			VnTables = VnTables0
+		;
+						% tag(mktag(e))==e => true
 			Vnrval1 = vn_unop(tag, WordVn),
 			Vnrval2 = vn_unop(mktag, Tag),
 			vn_table__lookup_defn(WordVn, WordVnrval,
@@ -576,11 +586,21 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 	;	
 		Binop = ne,
 		(
+						% e!=e => false
 			Vn1 = Vn2
 		->
 			Vnrval = vn_const(false),
 			VnTables = VnTables0
 		;
+						% otherwise, c1!=c2 => true
+						% (false case handled above)
+			Vnrval1 = vn_const(_C1),
+			Vnrval2 = vn_const(_C2)
+		->
+			Vnrval = vn_const(true),
+			VnTables = VnTables0
+		;
+						% tag(mktag(e))!=e => false
 			Vnrval1 = vn_unop(tag, WordVn),
 			Vnrval2 = vn_unop(mktag, Tag),
 			vn_table__lookup_defn(WordVn, WordVnrval,
@@ -594,43 +614,53 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 		)
 	;
 		Binop = (>=),
-		vn_util__const_if_equal_vns(Vn1, Vn2, true, Vnrval),
+		vn_util__simplify_int_compare_op(>=, Vn1, Vnrval1, Vn2, Vnrval2,
+			true, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (<=),
-		vn_util__const_if_equal_vns(Vn1, Vn2, true, Vnrval),
+		vn_util__simplify_int_compare_op(=<, Vn1, Vnrval1, Vn2, Vnrval2,
+			true, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (>),
-		vn_util__const_if_equal_vns(Vn1, Vn2, false, Vnrval),
+		vn_util__simplify_int_compare_op(>, Vn1, Vnrval1, Vn2, Vnrval2,
+			false, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (<),
-		vn_util__const_if_equal_vns(Vn1, Vn2, false, Vnrval),
+		vn_util__simplify_int_compare_op(<, Vn1, Vnrval1, Vn2, Vnrval2,
+			false, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_eq),
-		vn_util__const_if_equal_vns(Vn1, Vn2, true, Vnrval),
+		vn_util__simplify_float_compare_op(float_eq, Vn1, Vnrval1,
+			Vn2, Vnrval2, true, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_ge),
-		vn_util__const_if_equal_vns(Vn1, Vn2, true, Vnrval),
+		vn_util__simplify_float_compare_op(>=, Vn1, Vnrval1,
+			Vn2, Vnrval2, true, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_le),
-		vn_util__const_if_equal_vns(Vn1, Vn2, true, Vnrval),
+		vn_util__simplify_float_compare_op(=<, Vn1, Vnrval1,
+			Vn2, Vnrval2, true, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_ne),
-		vn_util__const_if_equal_vns(Vn1, Vn2, false, Vnrval),
+		vn_util__simplify_float_compare_op(float_ne, Vn1, Vnrval1,
+			Vn2, Vnrval2, false, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_gt),
-		vn_util__const_if_equal_vns(Vn1, Vn2, false, Vnrval),
+		vn_util__simplify_float_compare_op(>=, Vn1, Vnrval1,
+			Vn2, Vnrval2, false, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (float_lt),
-		vn_util__const_if_equal_vns(Vn1, Vn2, false, Vnrval),
+		vn_util__simplify_float_compare_op(=<, Vn1, Vnrval1,
+			Vn2, Vnrval2, false, Vnrval),
 		VnTables = VnTables0
 	;
 		Binop = (str_eq),
@@ -691,6 +721,56 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			fail
 		)
 	).
+
+:- pred vn_util__simplify_int_compare_op(pred(int, int),
+		vn, vnrval, vn, vnrval, rval_const, vnrval).
+:- mode vn_util__simplify_int_compare_op(pred(in, in) is semidet,
+		in, in, in, in, in, out) is semidet.
+
+vn_util__simplify_int_compare_op(ComparePred, Vn1, Vnrval1, Vn2, Vnrval2,
+		ResultIfEqual, Vnrval) :-
+	(
+		Vnrval1 = vn_const(int_const(C1)),
+		Vnrval2 = vn_const(int_const(C2))
+	->
+		(
+			call(ComparePred, C1, C2)
+		->
+			Vnrval = vn_const(true)
+		;
+			Vnrval = vn_const(false)
+		)
+	;
+		vn_util__const_if_equal_vns(Vn1, Vn2, ResultIfEqual, Vnrval)
+	).
+
+:- pred vn_util__simplify_float_compare_op(pred(float, float),
+		vn, vnrval, vn, vnrval, rval_const, vnrval).
+:- mode vn_util__simplify_float_compare_op(pred(in, in) is semidet,
+		in, in, in, in, in, out) is semidet.
+
+vn_util__simplify_float_compare_op(ComparePred, Vn1, Vnrval1, Vn2, Vnrval2,
+		ResultIfEqual, Vnrval) :-
+	(
+		Vnrval1 = vn_const(float_const(C1)),
+		Vnrval2 = vn_const(float_const(C2))
+	->
+		(
+			call(ComparePred, C1, C2)
+		->
+			Vnrval = vn_const(true)
+		;
+			Vnrval = vn_const(false)
+		)
+	;
+		vn_util__const_if_equal_vns(Vn1, Vn2, ResultIfEqual, Vnrval)
+	).
+
+:- pred float_eq(float::in, float::in) is semidet.
+float_eq(X, X).
+
+:- pred float_ne(float::in, float::in) is semidet.
+float_ne(X, Y) :- X \= Y.
 
 :- pred vn_util__const_if_equal_vns(vn, vn, rval_const, vnrval).
 :- mode vn_util__const_if_equal_vns(in, in, in, out) is semidet.
