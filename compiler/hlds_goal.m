@@ -687,6 +687,15 @@
 :- pred goal_get_nonlocals(hlds_goal, set(prog_var)).
 :- mode goal_get_nonlocals(in, out) is det.
 
+:- pred goal_add_feature(hlds_goal, goal_feature, hlds_goal).
+:- mode goal_add_feature(in, in, out) is det.
+
+:- pred goal_remove_feature(hlds_goal, goal_feature, hlds_goal).
+:- mode goal_remove_feature(in, in, out) is det.
+
+:- pred goal_has_feature(hlds_goal, goal_feature).
+:- mode goal_has_feature(in, in) is semidet.
+
 :- type goal_feature
 	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
@@ -715,6 +724,12 @@
 				% determinism analysis say that the
 				% nondeterminism inside the some() should be
 				% exposed to the environment outside.
+	;	preserve_backtrack_into
+				% Determinism analysis should preserve
+				% backtracking into goals marked with this
+				% feature, even if their determinism puts an
+				% at_most_zero upper bound on the number of
+				% solutions they have.
 	;	tailcall.	% This goal represents a tail call. This marker
 				% is used by deep profiling.
 
@@ -1274,6 +1289,15 @@ goal_info_has_feature(GoalInfo, Feature) :-
 
 goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals).
+
+goal_add_feature(Goal - GoalInfo0, Feature, Goal - GoalInfo) :-
+	goal_info_add_feature(GoalInfo0, Feature, GoalInfo).
+
+goal_remove_feature(Goal - GoalInfo0, Feature, Goal - GoalInfo) :-
+	goal_info_remove_feature(GoalInfo0, Feature, GoalInfo).
+
+goal_has_feature(_Goal - GoalInfo, Feature) :-
+	goal_info_has_feature(GoalInfo, Feature).
 
 %-----------------------------------------------------------------------------%
 %

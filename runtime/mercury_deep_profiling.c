@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -119,12 +119,27 @@ int	MR_deep_prof_call_builtin_old = 0;
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
 void
-MR_deep_assert_failed(const char *cond, const char *filename, int linenumber)
+MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcStatic *ps,
+	const char *cond, const char *filename, int linenumber)
 {
 	char	buf[1024];
+	char	bufcsd[1024];
+	char	bufps[1024];
 
-	sprintf(buf, "Deep profiling assertion failed, %s:%d\n%s\n",
-		filename, linenumber, cond);
+	if (csd != NULL) {
+		sprintf(bufcsd, ", csd %p\n", csd);
+	} else {
+		strcpy(bufcsd, "");
+	}
+
+	if (ps != NULL) {
+		sprintf(bufps, ", ps %p\n", ps);
+	} else {
+		strcpy(bufps, "");
+	}
+
+	sprintf(buf, "Deep profiling assertion failed, %s:%d\n%s%s%s\n",
+		filename, linenumber, cond, bufcsd, bufps);
 	MR_fatal_error(buf);
 }
 
@@ -354,7 +369,8 @@ MR_write_out_profiling_tree(void)
 
 	MR_write_out_proc_static(fp,
 		(MR_ProcStatic *) &MR_main_parent_proc_static);
-	MR_deep_assert(MR_address_of_write_out_proc_statics != NULL);
+	MR_deep_assert(NULL, NULL,
+		MR_address_of_write_out_proc_statics != NULL);
 	(*MR_address_of_write_out_proc_statics)(fp);
 
 	if (fseek(fp, 0L, SEEK_SET) != 0) {
@@ -745,7 +761,7 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 	MR_deep_num_csd_nodes++;
 #endif
 
-	MR_deep_assert(csd->MR_csd_callee_ptr != NULL);
+	MR_deep_assert(csd, NULL, csd->MR_csd_callee_ptr != NULL);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
 	fprintf(debug_fp, "call_site_dynamic %p: callee proc_dynamic %p\n",
@@ -1017,7 +1033,7 @@ MR_write_num(FILE *fp, unsigned long num)
 	fprintf(debug_fp, "num: %ld\n", num);
 #endif
 
-	MR_deep_assert((int) num >= 0);
+	MR_deep_assert(NULL, NULL, (int) num >= 0);
 
 	i = 0;
 	do {
@@ -1043,7 +1059,7 @@ MR_write_fixed_size_int(FILE *fp, unsigned long num)
 	fprintf(debug_fp, "fixed_size_int: %ld\n", num);
 #endif
 
-	MR_deep_assert((int) num >= 0);
+	MR_deep_assert(NULL, NULL, (int) num >= 0);
 
 	for (i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
 		putc(num & ((1 << 8) - 1), fp);

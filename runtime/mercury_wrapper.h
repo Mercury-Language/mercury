@@ -229,8 +229,24 @@ extern	size_t		MR_pcache_size;
 /* low level debugging */
 extern	MR_bool		MR_check_space;
 extern	MR_Word		*MR_watch_addr;
-extern	MR_Word		*MR_watch_csd_addr;
-extern	int		MR_watch_csd_ignore;
+extern	MR_CallSiteDynamic
+			*MR_watch_csd_addr;
+extern	MR_bool		MR_watch_csd_started;
+extern	char		*MR_watch_csd_start_name;
+
+extern	unsigned long	MR_lld_cur_call;
+extern	MR_bool		MR_lld_print_enabled;
+extern	MR_bool		MR_lld_print_name_enabled;
+extern	MR_bool		MR_lld_print_csd_enabled;
+extern	MR_bool		MR_lld_print_region_enabled;
+
+extern	char		*MR_lld_start_name;
+extern	unsigned	MR_lld_start_block;
+extern	unsigned long	MR_lld_start_until;
+extern	unsigned long	MR_lld_csd_until;
+extern	unsigned long	MR_lld_print_min;
+extern	unsigned long	MR_lld_print_max;
+extern	char		*MR_lld_print_more_min_max;
 
 /* timing */
 extern	int		MR_time_at_start;
@@ -263,6 +279,9 @@ extern	void		MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 #endif
 
 /* This is used by compiler/mlds_to_gcc.m. */
-const char *MR_make_argv(const char *, char **, char ***, int *);
+const char	*MR_make_argv(const char *, char **, char ***, int *);
+
+void		MR_setup_call_intervals(char **more_str_ptr,
+			unsigned long *min_ptr, unsigned long *max_ptr);
 
 #endif /* not MERCURY_WRAPPER_H */

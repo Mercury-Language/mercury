@@ -106,13 +106,73 @@ MR_bool		MR_mdb_in_window = MR_FALSE;
 /* use readline() in the debugger even if the input stream is not a tty */
 MR_bool		MR_force_readline = MR_FALSE;
 
+/*
+** Low level debugging options.
+**
+** If MR_watch_addr is not NULL, then the some of the low level debugging
+** messages will print the value it points to.
+**
+** If MR_watch_csd_addr is not NULL, then the some of the low level debugging
+** messages will print the MR_CallSiteDynamic structure it points to. Since
+** this structure is typically in memory that not part of the address space of
+** the program at startup, this printing will be inhibited until
+** MR_watch_csd_started is set to true, which will happen when you call a
+** procedure whose entry label matches the string in MR_watch_csd_start_name.
+**
+** If the low level debugging of calls is enabled, MR_lld_cur_call is the
+** sequence number of the last call executed by the program.
+**
+** Getting low level debugging messages from *every* call, *every* heap
+** allocation etc usually results in an avalanche of data that buries the
+** information you are looking for, and often runs filesystems out of space.
+** Therefore we inhibit these messages unless any one of three conditions
+** apply. We implement this by making MR_lld_print_enabled, which controls
+** the printing of these messages, the logical OR of MR_lld_print_name_enabled,
+** MR_lld_print_csd_enabled and MR_lld_print_region_enabled, which are flags
+** implementing the three conditions. (We rely on these flags being 0 or 1
+** (i.e. MR_FALSE or MR_TRUE) so we can implement logical OR as bitwise OR,
+** which is faster.)
+**
+** One condition is MR_lld_start_block calls starting with a call to a
+** predicate whose entry label matches MR_lld_start_name. Another is
+** MR_lld_start_block calls starting with a call at which the value of the
+** MR_next_call_site_dynamic global variable matches the value in
+** MR_watch_csd_addr. The third is calls whose sequence number is in a range
+** specified by MR_lld_print_more_min_max, which should point to a string
+** containing a comma-separated list of integer intervals (the last interval
+** may be open ended).
+**
+** MR_lld_start_until and MR_lld_csd_until give the end call numbers of the 
+** blocks printed for the first two conditions. MR_lld_print_{min,max} give the
+** boundaries of the (current or next) block for the third condition.
+*/
+
+MR_Word		*MR_watch_addr = NULL;
+MR_CallSiteDynamic
+		*MR_watch_csd_addr = NULL;
+MR_bool		MR_watch_csd_started = MR_FALSE;
+char		*MR_watch_csd_start_name = NULL;
+
+unsigned long	MR_lld_cur_call = 0;
+MR_bool		MR_lld_print_enabled = MR_FALSE;
+MR_bool		MR_lld_print_name_enabled = MR_FALSE;
+MR_bool		MR_lld_print_csd_enabled = MR_FALSE;
+MR_bool		MR_lld_print_region_enabled = MR_FALSE;
+
+char		*MR_lld_start_name = NULL;
+unsigned	MR_lld_start_block = 100;	/* by default, print stuff */
+						/* for a block of 100 calls */
+unsigned long	MR_lld_start_until = (unsigned long) -1;
+
+unsigned long	MR_lld_csd_until = (unsigned long) -1;
+
+unsigned long	MR_lld_print_min = (unsigned long) -1;
+unsigned long	MR_lld_print_max = 0;
+char		*MR_lld_print_more_min_max = NULL;
+
 /* other options */
 
 MR_bool		MR_check_space = MR_FALSE;
-MR_Word		*MR_watch_addr = NULL;
-MR_Word		*MR_watch_csd_addr = NULL;
-int		MR_watch_csd_ignore = 0;
-
 static	MR_bool	benchmark_all_solns = MR_FALSE;
 static	MR_bool	use_own_timer = MR_FALSE;
 static	int	repeats = 1;
@@ -952,6 +1012,12 @@ process_options(int argc, char **argv)
 #endif
 			} else if (MR_streq(MR_optarg, "b")) {
 				MR_nondstackdebug = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "B")) {
+				if (sscanf(MR_optarg+1, "%u",
+					&MR_lld_start_block) != 1)
+				{
+					usage();
+				}
 			} else if (MR_streq(MR_optarg, "c")) {
 				MR_calldebug    = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "d")) {
@@ -972,20 +1038,30 @@ process_options(int argc, char **argv)
 				MR_heapdebug    = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "H")) {
 				MR_hashdebug    = MR_TRUE;
+			} else if (MR_optarg[0] == 'i') {
+				MR_lld_print_more_min_max =
+					strdup(MR_optarg + 1);
+				MR_setup_call_intervals(
+					&MR_lld_print_more_min_max,
+					&MR_lld_print_min, &MR_lld_print_max);
 			} else if (MR_optarg[0] == 'I') {
-				int	ignore;
-
-				if (sscanf(MR_optarg+1, "%u", &ignore) != 1) {
-					usage();
-				}
-
-				MR_watch_csd_ignore = ignore;
+				MR_watch_csd_start_name = strdup(MR_optarg+1);
+			} else if (MR_optarg[0] == 'j') {
+				MR_lld_start_name = strdup(MR_optarg+1);
 			} else if (MR_streq(MR_optarg, "m")) {
-				MR_memdebug     = MR_TRUE;
+				MR_memdebug       = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "o")) {
+				MR_ordregdebug    = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "p")) {
 				MR_progdebug    = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "P")) {
+				MR_calldebug      = MR_TRUE;
+				MR_gotodebug      = MR_TRUE;
+				MR_finaldebug     = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "r")) {
-				MR_sregdebug    = MR_TRUE;
+				MR_sregdebug      = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "R")) {
+				MR_anyregdebug    = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "s")) {
 				MR_detstackdebug  = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "S")) {
@@ -1015,11 +1091,19 @@ process_options(int argc, char **argv)
 					}
 				}
 
+				MR_anyregdebug = MR_TRUE;
 				if (MR_optarg[0] == 'w') {
 					MR_watch_addr = (MR_Word *) addr;
 				} else {
-					MR_watch_csd_addr = (MR_Word *) addr;
+					MR_watch_csd_addr =
+						(MR_CallSiteDynamic *) addr;
 				}
+
+				/*
+				** The watch code is called only from the
+				** debug messages controlled by MR_calldebug.
+				*/
+				MR_calldebug = MR_TRUE;
 			} else {
 				usage();
 			}
@@ -1109,6 +1193,10 @@ process_options(int argc, char **argv)
 		} /* end switch */
 	} /* end while */
 
+	if (MR_lld_print_min > 0 || MR_lld_start_name != NULL) {
+		MR_lld_print_enabled = 0;
+	}
+
 	if (MR_optind != argc) {
 		printf("The MERCURY_OPTIONS environment variable contains "
 			"the word `%s'\n"
@@ -1131,6 +1219,44 @@ usage(void)
 	fflush(stdout);
 	exit(1);
 } /* end usage() */
+
+/*
+** Get the next interval from *more_str_ptr, which should point to a string
+** containing a comma-separated list of integer intervals. The last interval
+** may be open ended.
+*/
+
+void
+MR_setup_call_intervals(char **more_str_ptr,
+	unsigned long *min_ptr, unsigned long *max_ptr)
+{
+	char		*more_str;
+	unsigned long	min, max;
+	int		n;
+
+	more_str = *more_str_ptr;
+
+	/* Relying on the return value from sscanf() with %n is
+	   non-portable, so we need to call sscanf() twice here. */
+	if (sscanf(more_str, "%lu-%lu", &min, &max) == 2) {
+		sscanf(more_str, "%lu-%lu%n", &min, &max, &n);
+		more_str += n;
+		if (more_str[0] == ',') {
+			more_str++;
+		}
+	} else if (sscanf(more_str, "%lu-", &min) == 1) {
+		more_str = NULL;
+		max = (unsigned long) -1;
+	} else {
+		more_str = NULL;
+		min = 0;
+		max = (unsigned long) -1;
+	}
+
+	*more_str_ptr = more_str;
+	*min_ptr = min;
+	*max_ptr = max;
+}
 
 /*---------------------------------------------------------------------------*/
 

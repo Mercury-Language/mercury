@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,7 +12,7 @@
 ** MR_PROCNAME:			The name of the procedure whose body this is.
 ** MR_FAIL_PORT or MR_EXIT_PORT:
 ** 				Says which field to increment and whether the
-**				procedure is has detism det or failure.
+**				procedure has detism det or failure.
 ** MR_VERSION_AC or MR_VERSION_SR:
 ** 				Says whether the procedure whose body this is
 **				is intended for use with or without
@@ -35,7 +35,7 @@
 	MR_enter_instrumentation();
 
 	csd = (MR_CallSiteDynamic *) MiddleCSD;
-	MR_deep_assert(csd == MR_current_call_site_dynamic);
+	MR_deep_assert(csd, NULL, csd == MR_current_call_site_dynamic);
 
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
 	/* increment exit/fail count */
@@ -48,15 +48,15 @@
     #endif
   #endif
 
-	MR_deep_assert(csd->MR_csd_callee_ptr != NULL);
+	MR_deep_assert(csd, NULL, csd->MR_csd_callee_ptr != NULL);
 	ps = csd->MR_csd_callee_ptr->MR_pd_proc_static;
-	MR_deep_assert(ps != NULL);
+	MR_deep_assert(csd, ps, ps != NULL);
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
 	/* decrement activation count */
 	ps->MR_ps_activation_count--;
-	MR_deep_assert(ps->MR_ps_activation_count >= 0);
+	MR_deep_assert(csd, ps, ps->MR_ps_activation_count >= 0);
     #else
 	MR_fatal_error(MR_PROCNAME ": MR_USE_ACTIVATION_COUNTS not enabled");
     #endif

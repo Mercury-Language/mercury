@@ -290,9 +290,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
 	child_csd = pd->MR_pd_call_site_ptr_ptrs[N];
 
@@ -331,9 +331,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
 	type_info = (MR_TypeInfo) TypeInfo;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -381,9 +381,9 @@
 	MR_enter_instrumentation();
 	closure = (MR_Closure *) Closure;
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
   #ifdef MR_DEEP_PROFILING_KEY_USES_ID
 	void_key = (void *) (closure->MR_closure_layout);
@@ -432,9 +432,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
 	void_key = (void *)
 		MR_typeclass_info_class_method(TypeClassInfo, MethodNum);
@@ -473,9 +473,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
 	MR_current_callback_site = (MR_CallSiteDynList **)
 		&(pd->MR_pd_call_site_ptr_ptrs[CSN]);
@@ -505,9 +505,9 @@
   #endif
 
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 
 	child_csd = pd->MR_pd_call_site_ptr_ptrs[CSN];
 
@@ -544,9 +544,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	Count = ps->MR_ps_activation_count;
@@ -572,9 +572,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	Ptr = (MR_Word) ps->MR_ps_outermost_activation_ptr;
@@ -598,9 +598,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	ps->MR_ps_activation_count = 0;
@@ -624,9 +624,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	ps->MR_ps_outermost_activation_ptr = NULL;
@@ -649,9 +649,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	ps->MR_ps_activation_count = Count;
@@ -675,9 +675,9 @@
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd != NULL);
+	MR_deep_assert(csd, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
 
 	ps->MR_ps_outermost_activation_ptr = (MR_ProcDynamic *) Ptr;

@@ -22,6 +22,15 @@
 # pass -g to the C compiler and to the linker by setting the environment
 # variable MMC_CDEBUG to the string "true".
 #
+# You can also ask the script to enable low level debugging of the generated
+# code by setting the environment variable MMC_LOWLEVEL_DEBUG to the string
+# "true".
+#
+# You can ask for additional C flags to compile with by setting the environment
+# variable MMC_ADDED_CFLAGS to those flags. Setting up this environment
+# variable one can be more convenient than repeatedly supplying
+# "--cflag <flag>" arguments on the command line.
+#
 # If you want to track down some low level bug, you can ask this script to
 # execute the Mercury compiler under gdb by setting the environment variable
 # MMC_UNDER_GDB to the string "true".
@@ -55,6 +64,18 @@ then
 	CDEBUG_FLAGS="--link-flags -g --cflags -g"
 else
 	CDEBUG_FLAGS=""
+fi
+
+if test "$MMC_LOWLEVEL_DEBUG" != ""
+then
+	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_LOWLEVEL_DEBUG"
+else
+	CDEBUG_FLAGS=""
+fi
+
+if test "$MMC_ADDED_CFLAGS" != ""
+then
+	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags \"$MMC_ADDED_CFLAGS\""
 fi
 
 C_FLAGS="--c-include-directory $WORKSPACE/trace --c-include-directory $WORKSPACE/library --c-include-directory $WORKSPACE/library/Mercury/mihs --c-include-directory $WORKSPACE/runtime --c-include-directory $WORKSPACE/boehm_gc --c-include-directory $WORKSPACE/boehm_gc/include"

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -38,9 +38,9 @@
   #endif
 
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
-	MR_deep_assert(ps != NULL);
+	MR_deep_assert(csd, ps, ps != NULL);
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS

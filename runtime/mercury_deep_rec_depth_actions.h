@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,7 +23,7 @@
 	do {								\
 		MR_CallSiteDynamic	*inner_csd;			\
 									\
-		MR_deep_assert(csn <= ps->MR_ps_num_call_sites);	\
+		MR_deep_assert(NULL, ps, csn <= ps->MR_ps_num_call_sites);\
 		inner_csd = pd->MR_pd_call_site_ptr_ptrs[csn];		\
 									\
 		if (inner_csd != NULL) {				\
@@ -37,7 +37,7 @@
 	do {								\
 		MR_CallSiteDynamic	*inner_csd;			\
 									\
-		MR_deep_assert(csn <= ps->MR_ps_num_call_sites);	\
+		MR_deep_assert(NULL, ps, csn <= ps->MR_ps_num_call_sites);\
 		inner_csd = pd->MR_pd_call_site_ptr_ptrs[csn];		\
 									\
 		if (inner_csd != NULL) {				\
@@ -48,7 +48,7 @@
 			inner_csd->MR_csd_own.inc_field += inner_count;	\
 			inner_csd->MR_csd_depth_count = outer_count;	\
 		} else {						\
-			MR_deep_assert(outer_count == 0);		\
+			MR_deep_assert(inner_csd, ps, outer_count == 0);\
 		}							\
 	} while (0)
 

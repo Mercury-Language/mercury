@@ -40,7 +40,7 @@
 	MR_enter_instrumentation();
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
-	if (MR_calldebug) {
+	if (MR_calldebug && MR_lld_print_enabled) {
 		MR_print_deep_prof_vars(stdout, MR_PROCNAME);
 	}
   #endif
@@ -71,7 +71,7 @@
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
-	MR_deep_assert(ps->MR_ps_activation_count == 0
+	MR_deep_assert(csd, ps, ps->MR_ps_activation_count == 0
 		|| ps->MR_ps_outermost_activation_ptr != NULL);
 
       #ifdef MR_DEEP_PROFILING_STATISTICS

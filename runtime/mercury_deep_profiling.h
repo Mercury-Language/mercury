@@ -301,15 +301,15 @@ typedef enum {
 	} while (0)
 
 #ifdef	MR_DEEP_CHECKS
-  #define MR_deep_assert(cond)						\
+  #define MR_deep_assert(csd, ps, cond)					\
  	do {								\
 		if (!(cond)) {						\
-			MR_deep_assert_failed(MR_STRINGIFY(cond),	\
+			MR_deep_assert_failed(csd, ps, MR_STRINGIFY(cond),\
 				__FILE__, __LINE__);			\
 		}							\
 	} while (0)
 #else
-  #define MR_deep_assert(cond)						\
+  #define MR_deep_assert(csd, ps, cond)					\
   	((void) 0)
 #endif
 
@@ -347,7 +347,8 @@ extern	int	MR_deep_prof_call_builtin_old;
 
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
-extern	void	MR_deep_assert_failed(const char *cond,
+extern	void	MR_deep_assert_failed(const MR_CallSiteDynamic *csd,
+			const MR_ProcStatic *ps, const char *cond,
 			const char *filename, int linenumber);
 extern	void	MR_setup_callback(void *entry);
 extern	void	MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ptr);

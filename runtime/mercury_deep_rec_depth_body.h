@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -33,11 +33,11 @@
 
 	MR_enter_instrumentation();
 	csd = (MR_CallSiteDynamic *) CSD;
-	MR_deep_assert(csd == MR_current_call_site_dynamic);
+	MR_deep_assert(csd, NULL, csd == MR_current_call_site_dynamic);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(pd != NULL);
+	MR_deep_assert(csd, NULL, pd != NULL);
 	ps = pd->MR_pd_proc_static;
-	MR_deep_assert(ps != NULL);
+	MR_deep_assert(csd, ps, ps != NULL);
 
 	MR_REC_DEPTH_BODY
 

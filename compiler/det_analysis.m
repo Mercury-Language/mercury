@@ -839,11 +839,32 @@ det_infer_disj([], _InstMap0, _SolnContext, _DetInfo, CanFail, MaxSolns,
 	determinism_components(Detism, CanFail, MaxSolns).
 det_infer_disj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, CanFail0,
 		MaxSolns0, [Goal | Goals1], Detism, Msgs) :-
-	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
-			Goal, Detism1, Msgs1),
+	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo, Goal, Detism1,
+		Msgs1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
+	Goal = _ - GoalInfo,
+	% If a disjunct cannot succeed but is marked with the
+	% preserve_backtrack_into feature, treat it as being able to succeed
+	% when computing the max number of solutions of the disjunction as a
+	% whole, *provided* that some earlier disjuct could succeed. The idea
+	% is that ( marked failure ; det ) should be treated as det, since all
+	% backtracking is local within it, while disjunctions of the form
+	% ( det ; marked failure ) should be treated as multi, since we want
+	% to be able to backtrack to the second disjunct from *outside*
+	% the disjunction. This is useful for program transformation that want
+	% to get control on exits to and redos into model_non procedures.
+	% Deep profiling is one such transformation.
+	(
+		MaxSolns0 \= at_most_zero,
+		MaxSolns1 = at_most_zero,
+		goal_info_has_feature(GoalInfo, preserve_backtrack_into)
+	->
+		AdjMaxSolns1 = at_most_one
+	;
+		AdjMaxSolns1 = MaxSolns1
+	),
 	det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
-	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
+	det_disjunction_maxsoln(MaxSolns0, AdjMaxSolns1, MaxSolns2),
 	% if we're in a single-solution context,
 	% convert `at_most_many' to `at_most_many_cc'
 	( SolnContext = first_soln, MaxSolns2 = at_most_many ->

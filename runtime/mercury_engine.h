@@ -36,6 +36,11 @@
 
 extern	MR_bool	MR_debugflag[];
 
+/*
+** These #defines, except MR_MAXFLAG, should not be used anywhere
+** except in the immediately following block of #defines.
+*/
+
 #define	MR_PROGFLAG		0
 #define	MR_GOTOFLAG		1
 #define	MR_CALLFLAG		2
@@ -51,9 +56,61 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_TABLESTACKFLAG	12
 #define	MR_UNBUFFLAG		13
 #define	MR_AGC_FLAG 		14
-#define	MR_DETAILFLAG		15
-#define	MR_MAXFLAG		16
+#define	MR_ORDINARY_REG_FLAG	15
+#define	MR_ANY_REG_FLAG 	16
+#define	MR_DETAILFLAG		17
+#define	MR_MAXFLAG		18
 /* MR_DETAILFLAG should be the last real flag */
+
+/*
+** The macros control different kinds of low level debugging messages.
+** Usually, their values are all false.
+**
+** MR_progdebug controls whether we want to get several mostly explicitly
+** programmed diagnostics.
+**
+** MR_sregdebug controls whether we want to print the values of the special
+** registers (e.g. those that point to the stack) at some diagnostic points.
+**
+** MR_ordregdebug controls whether we want to print the values of the ordinary
+** registers (e.g. r1, r2 etc) at some diagnostic points.
+**
+** MR_anyregdebug controls whether we want to print the values of the any
+** registers, either special or ordinary, at some diagnostic points.
+**
+** MR_gotodebug controls whether we should generate diagnostics at gotos.
+**
+** MR_calldebug controls whether we should generate diagnostics when control
+** crosses procedure boundaries, i.e. calls, exits, redos and fails.
+**
+** MR_detstackdebug and MR_nondstackdebug control whether we should generate
+** diagnostics when incrementing and decrementing the pointers to the
+** respective stacks.
+**
+** MR_heapdebug controls whether we should generate diagnostics when we
+** allocate memory on the heap.
+**
+** MR_tabledebug controls whether we should generate diagnostics for tabling
+** operations. MR_tablestackdebug control whether these should include the
+** contents of stack segments manipulated by minimal model tabling.
+** MR_hashdebug controls whether these should include details of hash table
+** accesses.
+**
+** MR_agcdebug controls whether we should generate diagnostics for accurate
+** gc operations.
+**
+** MR_detaildebug controls whether we want more or less detail in some
+** diagnostics.
+**
+** MR_unbufdebug controls whether the runtime will make stdout and stderr
+** unbuffered.
+**
+** MR_memdebug controls whether we want to get diagnostics on the setup of
+** memory zones.
+**
+** MR_finaldebug controls whether we want to get diagnostics showing how
+** execution reaches the end of the program.
+*/
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
 #define	MR_gotodebug		MR_debugflag[MR_GOTOFLAG]
@@ -69,8 +126,10 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_hashdebug		MR_debugflag[MR_TABLEHASHFLAG]
 #define	MR_tablestackdebug	MR_debugflag[MR_TABLESTACKFLAG]
 #define	MR_unbufdebug		MR_debugflag[MR_UNBUFFLAG]
-#define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 #define	MR_agc_debug		MR_debugflag[MR_AGC_FLAG]
+#define	MR_ordregdebug		MR_debugflag[MR_ORDINARY_REG_FLAG]
+#define	MR_anyregdebug		MR_debugflag[MR_ANY_REG_FLAG]
+#define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 	/* 
 	** MR_setjmp and MR_longjmp are wrappers around setjmp and longjmp 

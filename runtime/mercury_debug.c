@@ -16,7 +16,18 @@
 
 /*--------------------------------------------------------------------*/
 
+#ifdef	MR_DEEP_PROFILING
+static void	MR_check_watch_csd_start(MR_Code *proc);
+static MR_bool	MR_csds_are_different(MR_CallSiteDynamic *csd1,
+			MR_CallSiteDynamic *csd2);
+static void	MR_assign_csd(MR_CallSiteDynamic *csd1,
+			MR_CallSiteDynamic *csd2);
+#endif
+
+static void	MR_count_call(MR_Code *proc);
 static void	MR_print_ordinary_regs(void);
+static void	MR_do_watches(void);
+static MR_bool	MR_proc_matches_name(MR_Code *proc, const char *name);
 static void	MR_printdetslot_as_label(const MR_Integer offset);
 
 #ifdef	MR_LOWLEVEL_ADDR_DEBUG
@@ -36,6 +47,10 @@ MR_mkframe_msg(const char *predname)
 {
 	MR_restore_transient_registers();
 
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\nnew choice point for procedure %s\n", predname);
 	printf("new  fr: "); MR_printnondstack(MR_curfr);
 	printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
@@ -53,6 +68,12 @@ MR_succeed_msg(void)
 {
 	MR_restore_transient_registers();
 
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\nsucceeding from procedure\n");
 	printf("curr fr: "); MR_printnondstack(MR_curfr);
 	printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
@@ -67,6 +88,12 @@ void
 MR_succeeddiscard_msg(void)
 {
 	MR_restore_transient_registers();
+
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
 
 	printf("\nsucceeding from procedure\n");
 	printf("curr fr: "); MR_printnondstack(MR_curfr);
@@ -83,6 +110,12 @@ MR_fail_msg(void)
 {
 	MR_restore_transient_registers();
 
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\nfailing from procedure\n");
 	printf("curr fr: "); MR_printnondstack(MR_curfr);
 	printf("fail fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
@@ -95,6 +128,12 @@ MR_redo_msg(void)
 {
 	MR_restore_transient_registers();
 
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\nredo from procedure\n");
 	printf("curr fr: "); MR_printnondstack(MR_curfr);
 	printf("redo fr: "); MR_printnondstack(MR_maxfr);
@@ -104,10 +143,25 @@ MR_redo_msg(void)
 void 
 MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 {
-	printf("\ncalling      "); MR_printlabel(stdout, proc);
-	printf("continuation "); MR_printlabel(stdout, succ_cont);
-	if (MR_sregdebug) {
-		MR_printregs("registers at call");
+	MR_count_call(proc);
+
+#ifdef	MR_DEEP_PROFILING
+	MR_check_watch_csd_start(proc);
+#endif	/* MR_DEEP_PROFILING */
+
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
+	printf("\ncall %lu: ", MR_lld_cur_call);
+	MR_printlabel(stdout, proc);
+	printf("cont ");
+	MR_printlabel(stdout, succ_cont);
+
+	if (MR_anyregdebug) {
+		MR_printregs("at call:");
 	}
 
 #ifdef	MR_DEEP_PROFILING
@@ -120,10 +174,25 @@ MR_tailcall_msg(/* const */ MR_Code *proc)
 {
 	MR_restore_transient_registers();
 
-	printf("\ntail calling "); MR_printlabel(stdout, proc);
-	printf("continuation "); MR_printlabel(stdout, MR_succip);
-	if (MR_sregdebug) {
-		MR_printregs("registers at tailcall");
+	MR_count_call(proc);
+
+#ifdef	MR_DEEP_PROFILING
+	MR_check_watch_csd_start(proc);
+#endif	/* MR_DEEP_PROFILING */
+
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
+	printf("\ntail call %lu: ", MR_lld_cur_call);
+	MR_printlabel(stdout, proc);
+	printf("cont ");
+	MR_printlabel(stdout, MR_succip);
+
+	if (MR_anyregdebug) {
+		MR_printregs("at tailcall:");
 	}
 
 #ifdef	MR_DEEP_PROFILING
@@ -134,9 +203,15 @@ MR_tailcall_msg(/* const */ MR_Code *proc)
 void 
 MR_proceed_msg(void)
 {
+	MR_do_watches();
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\nreturning from determinate procedure\n");
-	if (MR_sregdebug) {
-		MR_printregs("registers at proceed");
+	if (MR_anyregdebug) {
+		MR_printregs("at proceed:");
 	}
 
 #ifdef	MR_DEEP_PROFILING
@@ -147,6 +222,10 @@ MR_proceed_msg(void)
 void 
 MR_cr1_msg(MR_Word val0, const MR_Word *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("put value %9lx at ", (long) (MR_Integer) val0);
 	MR_printheap(addr);
 }
@@ -154,6 +233,10 @@ MR_cr1_msg(MR_Word val0, const MR_Word *addr)
 void 
 MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("put values %9lx,%9lx at ",	
 		(long) (MR_Integer) val0, (long) (MR_Integer) val1);
 	MR_printheap(addr);
@@ -162,6 +245,10 @@ MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
 void 
 MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 #ifdef MR_CONSERVATIVE_GC
 	printf("allocated %ld words at %p\n", (long) val, addr);
 #else
@@ -173,6 +260,10 @@ MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 void 
 MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("increment sp by %ld from ", (long) (MR_Integer) val);
 	MR_printdetstack(addr);
 }
@@ -180,6 +271,10 @@ MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
 void 
 MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("decrement sp by %ld from ", (long) (MR_Integer) val);
 	MR_printdetstack(addr);
 }
@@ -191,6 +286,10 @@ MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 void 
 MR_goto_msg(/* const */ MR_Code *addr)
 {
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
 	printf("\ngoto ");
 	MR_printlabel(stdout, addr);
 }
@@ -198,8 +297,12 @@ MR_goto_msg(/* const */ MR_Code *addr)
 void 
 MR_reg_msg(void)
 {
-	int	i;
+	int		i;
 	MR_Integer	x;
+
+	if (!MR_lld_print_enabled) {
+		return;
+	}
 
 	for(i=1; i<=8; i++) {
 		x = (MR_Integer) MR_get_reg(i);
@@ -223,6 +326,59 @@ MR_reg_msg(void)
 #ifdef MR_LOWLEVEL_DEBUG
 
 /* debugging printing tools */
+
+static void
+MR_count_call(MR_Code *proc)
+{
+	MR_lld_cur_call++;
+	if (!MR_lld_print_region_enabled) {
+		if (MR_lld_cur_call == MR_lld_print_min) {
+			MR_lld_print_region_enabled = MR_TRUE;
+			printf("entering printed region\n");
+			printf("min %lu, max %lu, more <%s>\n",
+				MR_lld_print_min, MR_lld_print_max,
+				MR_lld_print_more_min_max);
+		}
+	} else {
+		if (MR_lld_cur_call == MR_lld_print_max) {
+			MR_lld_print_region_enabled = MR_FALSE;
+			MR_setup_call_intervals(&MR_lld_print_more_min_max,
+				&MR_lld_print_min, &MR_lld_print_max);
+			printf("leaving printed region\n");
+			printf("min %lu, max %lu, more <%s>\n",
+				MR_lld_print_min, MR_lld_print_max,
+				MR_lld_print_more_min_max);
+		
+		}
+	}
+
+	if (MR_proc_matches_name(proc, MR_lld_start_name)) {
+		MR_lld_print_name_enabled = MR_TRUE;
+		MR_lld_start_until = MR_lld_cur_call + MR_lld_start_block;
+		printf("entering printed name block %s\n", MR_lld_start_name);
+	} else if (MR_lld_cur_call == MR_lld_start_until) {
+		MR_lld_print_name_enabled = MR_FALSE;
+		printf("leaving printed name block\n");
+	}
+
+#ifdef	MR_DEEP_PROFILING
+	if (MR_watch_csd_addr == MR_next_call_site_dynamic
+		&& MR_watch_csd_addr != NULL)
+	{
+		MR_lld_print_csd_enabled = MR_TRUE;
+		MR_lld_csd_until = MR_lld_cur_call + MR_lld_start_block;
+		MR_watch_csd_started = MR_TRUE;
+		printf("entering printed csd block %p\n", MR_watch_csd_addr);
+	} else if (MR_lld_cur_call == MR_lld_csd_until) {
+		MR_lld_print_csd_enabled = MR_FALSE;
+		printf("leaving printed csd block\n");
+	}
+#endif
+
+	/* the bitwise ORs implement logical OR */
+	MR_lld_print_enabled = MR_lld_print_region_enabled
+		| MR_lld_print_name_enabled | MR_lld_print_csd_enabled;
+}
 
 void 
 MR_printint(MR_Word n)
@@ -309,26 +465,16 @@ MR_printregs(const char *msg)
 
 	printf("\n%s\n", msg);
 
-	printf("%-9s", "succip:");  MR_printlabel(stdout, MR_succip);
-	printf("%-9s", "curfr:");   MR_printnondstack(MR_curfr);
-	printf("%-9s", "maxfr:");   MR_printnondstack(MR_maxfr);
-	printf("%-9s", "hp:");      MR_printheap(MR_hp);
-	printf("%-9s", "sp:");      MR_printdetstack(MR_sp);
-
-	MR_print_ordinary_regs();
-
-	if (MR_watch_addr != NULL) {
-		printf("watch addr %p: 0x%lx %ld\n", MR_watch_addr,
-			(long) *MR_watch_addr, (long) *MR_watch_addr);
+	if (MR_sregdebug) {
+		printf("%-9s", "succip:");  MR_printlabel(stdout, MR_succip);
+		printf("%-9s", "curfr:");   MR_printnondstack(MR_curfr);
+		printf("%-9s", "maxfr:");   MR_printnondstack(MR_maxfr);
+		printf("%-9s", "hp:");      MR_printheap(MR_hp);
+		printf("%-9s", "sp:");      MR_printdetstack(MR_sp);
 	}
 
-	if (MR_watch_csd_addr != NULL) {
-		if (MR_watch_csd_ignore == 0) {
-			MR_print_deep_prof_var(stdout, "watch_csd",
-				(MR_CallSiteDynamic *) MR_watch_csd_addr);
-		} else {
-			MR_watch_csd_ignore--;
-		}
+	if (MR_ordregdebug) {
+		MR_print_ordinary_regs();
 	}
 }
 
@@ -353,6 +499,164 @@ MR_print_ordinary_regs(void)
 
 		printf("%ld %lx\n", (long) value, (long) value);
 	}
+}
+
+#ifdef	MR_DEEP_PROFILING
+
+static struct MR_CallSiteDynamic_Struct	MR_watched_csd_last_value =
+{
+	/* MR_csd_callee_ptr */ NULL,
+	{ 
+  #ifdef MR_DEEP_PROFILING_PORT_COUNTS
+    #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
+	/* MR_own_calls */ 0,
+    #else
+	/* calls are computed from the other fields */
+    #endif
+	/* MR_own_exits */ 0,
+	/* MR_own_fails */ 0,
+	/* MR_own_redos */ 0,
+  #endif
+  #ifdef MR_DEEP_PROFILING_TIMING
+	/* MR_own_quanta */ 0,
+  #endif
+  #ifdef MR_DEEP_PROFILING_MEMORY
+	/* MR_own_allocs */ 0,
+	/* MR_own_words */ 0,
+  #endif
+	},
+	/* MR_csd_depth_count */ 0
+};
+
+static void
+MR_check_watch_csd_start(MR_Code *proc)
+{
+#if 0
+	if (MR_watch_csd_start_name == NULL) {
+		return;
+	}
+
+	if (MR_proc_matches_name(proc, MR_watch_csd_start_name)) {
+		if (MR_watch_csd_addr == MR_next_call_site_dynamic) {
+			/*
+			** Optimize future checks and make
+			** MR_watch_csd_addr static.
+			*/
+			MR_watch_csd_started = MR_TRUE;
+			MR_watch_csd_start_name = NULL;
+		}
+	}
+#endif
+}
+
+static MR_bool
+MR_csds_are_different(MR_CallSiteDynamic *csd1, MR_CallSiteDynamic *csd2)
+{
+	MR_ProfilingMetrics *pm1;
+	MR_ProfilingMetrics *pm2;
+
+	if (csd1->MR_csd_callee_ptr != csd2->MR_csd_callee_ptr)
+		return MR_TRUE;
+
+	pm1 = &csd1->MR_csd_own;
+	pm2 = &csd2->MR_csd_own;
+
+  #ifdef MR_DEEP_PROFILING_PORT_COUNTS
+    #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
+	if (pm1->MR_own_calls != pm2->MR_own_calls)
+		return MR_TRUE;
+    #endif
+	if (pm1->MR_own_exits != pm2->MR_own_exits)
+		return MR_TRUE;
+	if (pm1->MR_own_fails != pm2->MR_own_fails)
+		return MR_TRUE;
+	if (pm1->MR_own_redos != pm2->MR_own_redos)
+		return MR_TRUE;
+  #endif
+  #ifdef MR_DEEP_PROFILING_TIMING
+	if (pm1->MR_own_quanta != pm2->MR_own_quanta)
+		return MR_TRUE;
+  #endif
+  #ifdef MR_DEEP_PROFILING_MEMORY
+	if (pm1->MR_own_allocs != pm2->MR_own_allocs)
+		return MR_TRUE;
+	if (pm1->MR_own_words != pm2->MR_own_words)
+		return MR_TRUE;
+  #endif
+
+	if (csd1->MR_csd_depth_count != csd2->MR_csd_depth_count)
+		return MR_TRUE;
+
+	return MR_FALSE;
+};
+
+static void
+MR_assign_csd(MR_CallSiteDynamic *csd1, MR_CallSiteDynamic *csd2)
+{
+	csd1->MR_csd_callee_ptr = csd2->MR_csd_callee_ptr;
+
+  #ifdef MR_DEEP_PROFILING_PORT_COUNTS
+    #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
+	csd1->MR_csd_own.MR_own_calls = csd2->MR_csd_own.MR_own_calls;
+    #endif
+	csd1->MR_csd_own.MR_own_exits = csd2->MR_csd_own.MR_own_exits;
+	csd1->MR_csd_own.MR_own_fails = csd2->MR_csd_own.MR_own_fails;
+	csd1->MR_csd_own.MR_own_redos = csd2->MR_csd_own.MR_own_redos;
+  #endif
+  #ifdef MR_DEEP_PROFILING_TIMING
+	/* MR_own_quanta */ 0,
+	csd1->MR_csd_own.MR_own_quanta = csd2->MR_csd_own.MR_own_quanta;
+  #endif
+  #ifdef MR_DEEP_PROFILING_MEMORY
+	csd1->MR_csd_own.MR_own_allocs = csd2->MR_csd_own.MR_own_allocs;
+	csd1->MR_csd_own.MR_own_words = csd2->MR_csd_own.MR_own_words;
+  #endif
+
+	csd1->MR_csd_depth_count = csd2->MR_csd_depth_count;
+};
+
+#endif	/* MR_DEEP_PROFILING */
+
+static void
+MR_do_watches(void)
+{
+	if (MR_watch_addr != NULL) {
+		printf("watch addr %p: 0x%lx %ld\n", MR_watch_addr,
+			(long) *MR_watch_addr, (long) *MR_watch_addr);
+	}
+
+#ifdef	MR_DEEP_PROFILING
+	if (MR_watch_csd_addr != NULL) {
+		if (MR_watch_csd_started) {
+			if (MR_csds_are_different(&MR_watched_csd_last_value,
+				MR_watch_csd_addr))
+			{
+				MR_assign_csd(&MR_watched_csd_last_value,
+					MR_watch_csd_addr);
+				printf("current call: %lu\n", MR_lld_cur_call);
+				MR_print_deep_prof_var(stdout, "watch_csd",
+					MR_watch_csd_addr);
+			}
+		}
+	}
+#endif	/* MR_DEEP_PROFILING */
+}
+
+static MR_bool
+MR_proc_matches_name(MR_Code *proc, const char *name)
+{
+#ifdef	MR_NEED_ENTRY_LABEL_ARRAY
+	MR_Entry	*entry;
+
+	entry = MR_prev_entry_by_addr(proc);
+	if (entry != NULL && entry->e_addr == proc && entry->e_name != NULL) {
+		if (MR_streq(entry->e_name, name)) {
+			return MR_TRUE;
+		}
+	}
+
+#endif	/* MR_NEED_ENTRY_LABEL_ARRAY */
+	return MR_FALSE;
 }
 
 #endif /* defined(MR_DEBUG_GOTOS) */

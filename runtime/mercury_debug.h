@@ -137,9 +137,9 @@
 #define	MR_print_deep_prof_vars(fp, msg)				\
 	do {								\
 		fprintf(fp, "%s\n", msg);				\
-		MR_print_deep_prof_var(fp, "current_call_site_dynamic", \
+		MR_print_deep_prof_var(fp, "curcsd", 			\
 			MR_current_call_site_dynamic);			\
-		MR_print_deep_prof_var(fp, "next_call_site_dynamic",	\
+		MR_print_deep_prof_var(fp, "nextcsd",			\
 			MR_next_call_site_dynamic);			\
 	} while (0)
 
