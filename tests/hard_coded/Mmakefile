@@ -67,7 +67,6 @@ ORDINARY_PROGS=	\
 	ho_univ_to_type \
 	impossible_unify \
 	impure_prune \
-	inline_nondet_pragma_c \
 	integer_test \
 	merge_and_remove_dups \
 	minint_bug \
@@ -76,7 +75,6 @@ ORDINARY_PROGS=	\
 	name_mangling \
 	no_fully_strict \
 	no_inline \
-	nondet_c \
 	nondet_ctrl_vn \
 	nullary_ho_func \
 	pragma_c_code \
@@ -141,7 +139,16 @@ else
 BACKEND_PROGS =
 endif
 
-PROGS = $(ORDINARY_PROGS) $(BACKEND_PROGS)
+# The MLDS back-end doesn't support nondet C in trailing grades
+ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
+NONDET_C_PROGS =
+else
+NONDET_C_PROGS = \
+	inline_nondet_pragma_c \
+	nondet_c
+endif
+
+PROGS = $(ORDINARY_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
