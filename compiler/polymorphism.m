@@ -641,13 +641,9 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	poly_info_get_type_info_map(PolyInfo1, TypeInfoMap1),
 	map__keys(TypeInfoMap1, ExistConstrainedTVars),
 
-		% the above call inserts entries into the typeinfo map
-		% which we don't want, so we must reset it
-	map__init(TypeInfoMap2),
-	poly_info_set_type_info_map(TypeInfoMap2, PolyInfo1, PolyInfo2),
 	polymorphism__make_typeclass_info_head_vars(UnivConstraints,
-		UnivHeadTypeClassInfoVars, PolyInfo2, PolyInfo3),
-	poly_info_get_type_info_map(PolyInfo3, TypeInfoMap3),
+		UnivHeadTypeClassInfoVars, PolyInfo1, PolyInfo2),
+	poly_info_get_type_info_map(PolyInfo2, TypeInfoMap3),
 	map__keys(TypeInfoMap3, UnivConstrainedTVars),
 
 	list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
@@ -665,7 +661,7 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 		UnconstrainedUnivTVars = UnconstrainedTVars,
 		UnconstrainedExistTVars = [],
 		ExistHeadTypeInfoVars = [],
-		PolyInfo4 = PolyInfo3
+		PolyInfo3 = PolyInfo2
 	;
 		list__delete_elems(UnconstrainedTVars, ExistQVars,
 			UnconstrainedUnivTVars),
@@ -673,10 +669,10 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 			UnconstrainedExistTVars),
 		polymorphism__make_head_vars(UnconstrainedExistTVars,
 			ArgTypeVarSet, ExistHeadTypeInfoVars,
-			PolyInfo3, PolyInfo4)
+			PolyInfo2, PolyInfo3)
 	),
 	polymorphism__make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
-		UnivHeadTypeInfoVars, PolyInfo4, PolyInfo5),
+		UnivHeadTypeInfoVars, PolyInfo3, PolyInfo4),
 	list__append(UnivHeadTypeInfoVars, ExistHeadTypeInfoVars,
 		ExtraHeadTypeInfoVars),
 
@@ -709,15 +705,21 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	%
 	ToLocn = lambda([TheVar::in, TheLocn::out] is det,
 			TheLocn = type_info(TheVar)),
+
 	list__map(ToLocn, UnivHeadTypeInfoVars, UnivTypeLocns),
 	map__det_insert_from_corresponding_lists(TypeInfoMap3,
-		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap6),
-	poly_info_set_type_info_map(TypeInfoMap6, PolyInfo5, PolyInfo6),
+		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap4),
+
+	list__map(ToLocn, ExistHeadTypeInfoVars, ExistTypeLocns),
+	map__det_insert_from_corresponding_lists(TypeInfoMap4,
+		UnconstrainedExistTVars, ExistTypeLocns, TypeInfoMap5),
+
+	poly_info_set_type_info_map(TypeInfoMap5, PolyInfo4, PolyInfo5),
 
 	% Make a map of the locations of the typeclass_infos
 	map__from_corresponding_lists(UnivConstraints,
 			UnivHeadTypeClassInfoVars, TypeClassInfoMap),
-	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo6, PolyInfo).
+	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo5, PolyInfo).
 
 
 % XXX the following code ought to be rewritten to handle
@@ -776,6 +778,8 @@ polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 		ExistConstraints, ExistQVarsForCall, Context,
 		ExistTypeClassVars, ExtraTypeClassGoals,
 		Info0, Info1),
+	polymorphism__update_typeclass_infos(ExistConstraints,
+		ExistTypeClassVars, Info1, Info2),
 	polymorphism__assign_var_list(
 		ExistTypeClassInfoHeadVars, ExistTypeClassVars,
 		ExtraTypeClassUnifyGoals),
@@ -797,7 +801,7 @@ polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 	term__apply_substitution_to_list(UnconstrainedTVarTerms,
 		TypeSubst, ActualTypes),
 	polymorphism__make_type_info_vars(ActualTypes, UnivQTVars, Context,
-		TypeInfoVars, ExtraTypeInfoGoals, Info1, Info),
+		TypeInfoVars, ExtraTypeInfoGoals, Info2, Info),
 	polymorphism__assign_var_list(TypeInfoHeadVars, TypeInfoVars,
 		ExtraTypeInfoUnifyGoals),
 	list__condense([[Goal0],
@@ -1595,11 +1599,6 @@ polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 % Constraints which are already in the TypeClassInfoMap are assumed to
 % have already had their typeclass_infos initialized; for them, we
 % just return the variable in the TypeClassInfoMap.
-%
-% If the called predicate is a class method, and we know which instance
-% it is, then instead of creating a type_info variable for the type class
-% instance, we just return the pred_proc_id for that instance.
-% Otherwise we return the original pred_proc_id unchanged.
 
 :- pred polymorphism__make_typeclass_info_vars(list(class_constraint),
 	existq_tvars, term__context,
