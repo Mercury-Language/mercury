@@ -272,7 +272,7 @@ typecheck_clause_list([Clause0|Clauses0], HeadVars, ArgTypes,
 
 :- pred typecheck_clause(clause, list(var), list(type), clause,
 			type_info, type_info).
-:- mode typecheck_clause(input, input, input, output, 
+:- mode typecheck_clause(input, input, input, output,
 			typeinfo_di, typeinfo_uo).
 
 typecheck_clause(Clause, HeadVars, ArgTypes, Clause) -->
@@ -301,12 +301,7 @@ typecheck_finish_clause(TypeInfo0, TypeInfo) :-
 	( TypeAssignSet = [TypeAssign] ->
 			% XXX we should only report an unresolved polymorphism
 			% error if there weren't any other errors in the clause
-		type_assign_get_type_bindings(TypeAssign, TypeBindings),
-		type_assign_get_typevarset(TypeAssign, TVarSet),
-		typeinfo_get_head_type_params(TypeInfo0, HeadTypeParams),
-		varset__vars(TVarSet, TVars),
-		check_type_bindings(TVars, TVarSet, TypeBindings,
-			HeadTypeParams, TypeInfo0, TypeInfo)
+		check_type_bindings(TypeAssign, TypeInfo0, TypeInfo)
 	; TypeAssignSet = [TypeAssign1, TypeAssign2 | _] ->
 			% XXX we should only report an ambiguity error if
 			% there weren't any other errors in the clause
@@ -320,67 +315,109 @@ typecheck_finish_clause(TypeInfo0, TypeInfo) :-
 		TypeInfo = TypeInfo0
 	).
 
-:- pred check_type_bindings(list(var), tvarset, tsubst, headtypes,
-				type_info, type_info).
-:- mode check_type_bindings(input, input, input, input,
-				typeinfo_di, typeinfo_uo).
+:- pred check_type_bindings(type_assign, type_info, type_info).
+:- mode check_type_bindings(input, typeinfo_di, typeinfo_uo).
 
-check_type_bindings([], _, _, _) --> [].
-check_type_bindings([TVar | TVars], TypeVarSet, TypeBindings, HeadTypeParams)
-		--> 
-	( { member(TVar, HeadTypeParams) } ->
-		[]
+check_type_bindings(TypeAssign, TypeInfo0, TypeInfo) :-
+	typeinfo_get_head_type_params(TypeInfo0, HeadTypeParams),
+	type_assign_get_type_bindings(TypeAssign, TypeBindings),
+	type_assign_get_typevarset(TypeAssign, TVarSet),
+	varset__vars(TVarSet, TVars),
+	check_type_bindings_2(TVars, TypeBindings, HeadTypeParams, ErrorVars),
+	( ErrorVars = [] ->
+		TypeInfo = TypeInfo0
 	;
-		{ term__apply_rec_substitution(term_variable(TVar),
-			TypeBindings, Type) },
+		report_unresolved_type_error(ErrorVars, TVarSet, TypeInfo0,
+			TypeInfo)
+	).
+
+:- pred check_type_bindings_2(list(var), tsubst, headtypes, list(var)).
+:- mode check_type_bindings_2(input, input, input, output).
+
+check_type_bindings_2([], _, _, []).
+check_type_bindings_2([TVar | TVars], TypeBindings, HeadTypeParams, L) :-
+	( member(TVar, HeadTypeParams) ->
+		L = L1
+	;
+		term__apply_rec_substitution(term_variable(TVar),
+			TypeBindings, Type),
 		(
-			{ Type = term_variable(T) },
-			{ \+ member(T, HeadTypeParams) }
+			Type = term_variable(T),
+			\+ member(T, HeadTypeParams)
 		->
-			report_unresolved_type_error(TVar, TypeVarSet)
+			L = [TVar | L1]
 		;
-			[]
+			L = L1
 		)
 	),
-	check_type_bindings(TVars, TypeVarSet, TypeBindings, HeadTypeParams).
+	check_type_bindings_2(TVars, TypeBindings, HeadTypeParams, L1).
 
 	% report an error - uninstantiated type parameter
-:- pred report_unresolved_type_error(var, tvarset, type_info, type_info).
-:- mode report_unresolved_type_error(input, input, typeinfo_di, typeinfo_uo).
+:- pred report_unresolved_type_error(list(var), tvarset, type_info, type_info).
+:- mode report_unresolved_type_error(in, in, typeinfo_di, typeinfo_uo).
 
-report_unresolved_type_error(TVar, TVarSet, TypeInfo0, TypeInfo) :-
-	typeinfo_get_predid(TypeInfo0, PredId),
-	typeinfo_get_context(TypeInfo0, Context),
+report_unresolved_type_error(TVars, TVarSet, TypeInfo0, TypeInfo) :-
 	typeinfo_get_io_state(TypeInfo0, IOState0),
-	report_unresolved_type_error_2(PredId, Context, TVar, TVarSet,
+	report_unresolved_type_error_2(TypeInfo0, TVars, TVarSet,
 		IOState0, IOState),
 	typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 	typeinfo_set_found_error(TypeInfo1, yes, TypeInfo).
 
-:- pred report_unresolved_type_error_2(pred_id, term__context, var, tvarset,
+:- pred report_unresolved_type_error_2(type_info, list(var), tvarset,
 					io__state, io__state).
-:- mode report_unresolved_type_error_2(input, input, input, input, di, uo).
+:- mode report_unresolved_type_error_2(typeinfo_no_io, input, input, di, uo).
 
-report_unresolved_type_error_2(PredId, Context, TVar, TVarSet) -->
-	write_context_and_predid(Context, PredId),
+report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
+	write_typeinfo_context(TypeInfo),
+	{ typeinfo_get_context(TypeInfo, Context) },
+	io__write_string("Type error: unresolved polymorphism.\n"),
 	prog_out__write_context(Context),
-	io__write_string("Type error: unresolved polymorphism.\n\t"),
-	io__write_string("The body of the clause contains a call to a polymorphic predicate,\n\t"),
-	io__write_string("but I can't determine which version should be called,\n\t"),
-	io__write_string("because the type variable `"),
-	io__write_variable(TVar, TVarSet),
-	io__write_string("' didn't get bound.\n\t"),
+	io__write_string("Unbound type vars were: "),
+	write_type_var_list(TVars, TVarSet),
+	io__write_string(".\n"),
+	lookup_option(verbose, bool(Verbose)),
+	( { Verbose = yes } ->
+		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
+		io__write_string("\tbut I can't determine which version should be called,\n"),
+		io__write_string("\tbecause the type variables listed above didn't get bound.\n")
+	;
+		[]
+	),
 		% XXX improve error message
-	io__write_string("(I ought to tell you which call caused the error, but I'm afraid you'll\n\t"),
-	io__write_string("have to work it out yourself.  My apologies.)\n").
+	io__write_string("\t(I ought to tell you which call caused the error, but I'm afraid\n"),
+	io__write_string("\tyou'll have to work it out yourself.  My apologies.)\n").
+
+:- pred write_type_var_list(list(var), varset, io__state, io__state).
+:- mode write_type_var_list(in, in, di, uo).
+
+write_type_var_list([], _) -->
+	io__write_string("<none>").
+write_type_var_list([V|Vs], VarSet) -->
+	io__write_variable(V, VarSet),
+	write_type_var_list_2(Vs, VarSet).
+
+:- pred write_type_var_list_2(list(var), varset, io__state, io__state).
+:- mode write_type_var_list_2(in, in, di, uo).
+
+write_type_var_list_2([], _) --> [].
+write_type_var_list_2([V|Vs], VarSet) -->
+	io__write_string(", "),
+	io__write_variable(V, VarSet),
+	write_type_var_list_2(Vs, VarSet).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_goal(hlds__goal, type_info, type_info).
 :- mode typecheck_goal(input, typeinfo_di, typeinfo_uo).
 
-typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
-	(typecheck_goal_2(Goal, TypeInfo0, TypeInfo)).
+typecheck_goal(Goal - GoalInfo, TypeInfo0, TypeInfo) :-
+	% XXX prog_io.nl and make_hlds.nl don't set up the
+	%     goalinfo context, so we have to just use the clause
+	%     context
+	% goalinfo_context(GoalInfo, Context),
+	% typeinfo_set_context(Context, TypeInfo0, TypeInfo1),
+	TypeInfo1 = TypeInfo0,
+	typecheck_goal_2(Goal, TypeInfo1, TypeInfo).
 
 :- pred typecheck_goal_2(hlds__goal_expr, type_info, type_info).
 :- mode typecheck_goal_2(input, typeinfo_di, typeinfo_uo).
@@ -410,7 +447,8 @@ typecheck_goal_2(all(_Vs, G)) -->
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
 	%%% checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
-typecheck_goal_2(unify(A, B, _Mode, _Info, Context)) -->
+typecheck_goal_2(unify(A, B, _Mode, _Info, UnifyContext)) -->
+		% XXX handle UnifyContext
 	%%% checkpoint("unify"),
 	typecheck_unification(A, B).
 
@@ -433,7 +471,8 @@ typecheck_goal_list([Goal | Goals]) -->
 
 typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		% look up the called predicate's arg types
-	typeinfo_get_preds(TypeInfo0, Preds),
+	typeinfo_set_called_predid(TypeInfo0, PredId, TypeInfo1),
+	typeinfo_get_preds(TypeInfo1, Preds),
 	( % if some [PredInfo]
 		map__search(Preds, PredId, PredInfo)
 	->
@@ -445,30 +484,28 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 			% a non-polymorphic predicate)
 		( varset__is_empty(PredTypeVarSet) ->
 			PredArgTypes = PredArgTypes0,
-			TypeInfo1 = TypeInfo0
+			TypeInfo2 = TypeInfo1
 		;
-			rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0,
-					TypeInfo1, PredArgTypes)
+			rename_apart(TypeInfo1, PredTypeVarSet, PredArgTypes0,
+					TypeInfo2, PredArgTypes)
 		),
 			% unify the types of the call arguments with the
 			% called predicates' arg types
-		typecheck_term_has_type_list(Args, PredArgTypes, TypeInfo1,
+		typecheck_term_has_type_list(Args, PredArgTypes, 0, TypeInfo2,
 				TypeInfo)
 	;
-		typeinfo_get_io_state(TypeInfo0, IOState0),
-		typeinfo_get_predid(TypeInfo0, CallingPredId),
-		typeinfo_get_context(TypeInfo0, Context),
+		typeinfo_get_io_state(TypeInfo1, IOState0),
 		typeinfo_get_pred_name_index(TypeInfo0, PredNameIndex),
 		predicate_name(PredId, PredName),
 		( map__contains(PredNameIndex, PredName) ->
-			report_error_pred_num_args(CallingPredId, Context,
-				PredId, IOState0, IOState)
+			report_error_pred_num_args(TypeInfo1, PredId,
+				IOState0, IOState)
 		;
-			report_error_undef_pred(CallingPredId, Context, PredId,
+			report_error_undef_pred(TypeInfo1, PredId,
 				IOState0, IOState)
 		),
-		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfoB1),
-		typeinfo_set_found_error(TypeInfoB1, yes, TypeInfo)
+		typeinfo_set_io_state(TypeInfo1, IOState, TypeInfo2),
+		typeinfo_set_found_error(TypeInfo2, yes, TypeInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -555,14 +592,12 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 			[], TypeAssignSet),
 	(
 		TypeAssignSet = [],
-		(not TypeAssignSet0 = [])
+		TypeAssignSet0 \= []
 	->
 		typeinfo_get_io_state(TypeInfo0, IOState0),
-		typeinfo_get_context(TypeInfo0, Context),
-		typeinfo_get_predid(TypeInfo0, PredId),
 		typeinfo_get_varset(TypeInfo0, VarSet),
 		get_type_stuff(TypeAssignSet0, VarId, TypeStuffList),
-		report_error_var(PredId, Context, VarSet, VarId, TypeStuffList,
+		report_error_var(TypeInfo0, VarSet, VarId, TypeStuffList,
 				Type, TypeAssignSet0, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
@@ -640,28 +675,32 @@ type_assign_var_has_type(TypeAssign0, HeadTypeParams, VarId, Type,
 
 %-----------------------------------------------------------------------------%
 	
-:- pred typecheck_term_has_type_list(list(term), list(type), 
+:- pred typecheck_term_has_type_list(list(term), list(type), int,
 					type_info, type_info).
-:- mode typecheck_term_has_type_list(input, input, typeinfo_di, typeinfo_uo).
+:- mode typecheck_term_has_type_list(input, input, input,
+				typeinfo_di, typeinfo_uo).
 
-typecheck_term_has_type_list([], []) --> [].
-typecheck_term_has_type_list([Arg | Args], [Type | Types]) -->
-	typecheck_term_has_type(Arg, Type),
-	typecheck_term_has_type_list(Args, Types).
+typecheck_term_has_type_list([], [], _) --> [].
+typecheck_term_has_type_list([Arg | Args], [Type | Types], N) -->
+	{ N1 is N + 1 },
+	typecheck_term_has_type(Arg, Type, N1),
+	typecheck_term_has_type_list(Args, Types, N1).
 
-:- pred typecheck_term_has_type(term, type, type_info, type_info).
-:- mode typecheck_term_has_type(input, input, typeinfo_di, typeinfo_uo).
+:- pred typecheck_term_has_type(term, type, int, type_info, type_info).
+:- mode typecheck_term_has_type(input, input, input, typeinfo_di, typeinfo_uo).
 
-typecheck_term_has_type(term_variable(Var), Type, TypeInfo0, TypeInfo) :-
+typecheck_term_has_type(term_variable(Var), Type, N, TypeInfo0, TypeInfo) :-
+		% XXX save N
 	typecheck_var_has_type(Var, Type, TypeInfo0, TypeInfo).
 
-typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
+typecheck_term_has_type(term_functor(F, As, _), Type, N, TypeInfo0, TypeInfo) :-
 	length(As, Arity),
 	typeinfo_get_ctor_list(TypeInfo0, F, Arity, ConsDefnList),
 	( ConsDefnList = [] ->
 	    typeinfo_get_io_state(TypeInfo0, IOState0),
-	    typeinfo_get_predid(TypeInfo0, PredId),
-	    report_error_undef_cons(PredId, C, F, Arity, IOState0, IOState),
+	    typeinfo_get_called_predid(TypeInfo0, CalledPredId),
+	    report_error_undef_cons(TypeInfo0, CalledPredId, N, F, Arity,
+		IOState0, IOState),
 	    typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 	    typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
@@ -670,12 +709,13 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 			TypeInfo0, [], TypeAssignSet),
 	    (
 		TypeAssignSet = [],
-		(\+ TypeAssignSet0 = [])
+		TypeAssignSet0 \= []
 	    ->
 		typeinfo_get_io_state(TypeInfo0, IOState0),
-		typeinfo_get_predid(TypeInfo0, PredId),
+	        typeinfo_get_called_predid(TypeInfo0, CalledPredId),
 		typeinfo_get_varset(TypeInfo0, VarSet),
-		report_error_cons(PredId, C, VarSet, F, As, Type,
+		report_error_cons(TypeInfo0, CalledPredId, N,
+					VarSet, F, As, Type,
 					TypeAssignSet0, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
@@ -816,22 +856,26 @@ type_assign_term_has_type(term_functor(F, Args, _Context), Type, TypeAssign,
 :- pred checkpoint(string, type_info, type_info).
 :- mode checkpoint(input, typeinfo_di, typeinfo_uo).
 
-/***
-checkpoint(_, T, T).
-****/
 checkpoint(Msg, T0, T) :-
 	typeinfo_get_io_state(T0, I0),
-	checkpoint_2(Msg, T0, I0, I),
+		% we should use a different option
+	lookup_option(very_verbose, bool(DoCheckPoint), I0, I1),
+	( DoCheckPoint = yes ->
+		checkpoint_2(Msg, T0, I1, I)
+	;	
+		I = I1
+	),
 	typeinfo_set_io_state(T0, I, T).
 
 :- pred checkpoint_2(string, type_info, io__state, io__state).
-:- mode checkpoint_2(input, typeinfo_ui, di, uo).
+:- mode checkpoint_2(input, typeinfo_no_io, di, uo).
 
 checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	%%% { report_stats },
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	maybe_report_stats(VeryVerbose),
 	io__write_string("\n"),
 	{ typeinfo_get_type_assign_set(T0, TypeAssignSet) },
 	{ typeinfo_get_varset(T0, VarSet) },
@@ -852,11 +896,9 @@ typecheck_unification(X, Y, TypeInfo0, TypeInfo) :-
 		[], TypeAssignSet),
 		% XXX report errors properly!!
 	( TypeAssignSet = [], TypeAssignSet0 \= [] ->
-		typeinfo_get_predid(TypeInfo0, PredId),
-		typeinfo_get_context(TypeInfo0, Context),
 		typeinfo_get_varset(TypeInfo0, VarSet),
 		typeinfo_get_io_state(TypeInfo0, IOState0),
-		report_error_unif(PredId, Context, VarSet, X, Y,
+		report_error_unif(TypeInfo0, VarSet, X, Y,
 				TypeAssignSet0, IOState0, IOState1),
 		typeinfo_set_io_state(TypeInfo0, IOState1, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo)
@@ -1243,7 +1285,8 @@ check_undefined_types(Module, Module) -->
 	{ moduleinfo_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
-	io__report_stats,
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	maybe_report_stats(VeryVerbose),
 	{ moduleinfo_preds(Module, Preds) },
 	{ moduleinfo_predids(Module, PredIds) },
 	find_undef_pred_types(PredIds, Preds, TypeDefns).
@@ -1538,17 +1581,43 @@ is_builtin_pred_type(QualifiedName - _Arity) :-
 :- type tsubst		==	map(var, type).
 
 :- type type_info 	--->	typeinfo(
-					io__state,	% The io state
-					pred_table,	% Global symbol table
-					type_table,	% Global symbol table
-					cons_table,	% Global symbol table
-					pred_id,	% Context information
-					term__context,	% Context information
-					pred_name_index,% Global symbol table
-					varset,		% Variable names
-					type_assign_set,% What we are computing
-					bool,	% did we find any type errors?
-					headtypes	% Head type params
+						% The io state
+					io__state,
+
+						% The global symbol tables
+					module_info,
+
+						% The pred_id of the pred
+						% being called (if any)
+					pred_id,
+
+						% The argument number within
+						% a pred call 
+					int,		
+
+						% The pred we're checking
+					pred_id,
+
+						% The context of the goal
+						% we're checking
+					term__context,
+
+						% Unused garbage.
+					int,	
+
+						% Variable names
+					varset,	
+						% This is the main piece of
+						% information that we are
+						% computing and which gets
+						% updated as we go along
+					type_assign_set,
+
+						% did we find any type errors?
+					bool,
+
+						% Head type params
+					headtypes
 				).
 
 	% The normal inst of a type_info struct: ground, with
@@ -1571,7 +1640,7 @@ is_builtin_pred_type(QualifiedName - _Arity) :-
 	% Some fiddly modes used when we want to extract
 	% the io_state from a typeinfo struct and then put it back again.
 
-:- inst type_info_no_io	=	bound_unique(
+:- inst typeinfo_no_io	=	bound_unique(
 					typeinfo(
 						dead, ground,
 						ground, ground, ground, ground,
@@ -1580,8 +1649,9 @@ is_builtin_pred_type(QualifiedName - _Arity) :-
 					)
 				).
 
-:- mode typeinfo_get_io_state :: uniq_type_info -> type_info_no_io.
-:- mode typeinfo_set_io_state :: type_info_no_io -> dead.
+:- mode typeinfo_get_io_state 	:: uniq_type_info -> typeinfo_no_io.
+:- mode typeinfo_no_io 		:: typeinfo_no_io -> typeinfo_no_io.
+:- mode typeinfo_set_io_state 	:: typeinfo_no_io -> dead.
 
 %-----------------------------------------------------------------------------%
 
@@ -1592,13 +1662,10 @@ is_builtin_pred_type(QualifiedName - _Arity) :-
 
 typeinfo_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, TypeInfo) :-
-	moduleinfo_preds(ModuleInfo, Preds),
-	moduleinfo_pred_name_index(ModuleInfo, PredNameIndex),
-	moduleinfo_types(ModuleInfo, Types),
-	moduleinfo_ctors(ModuleInfo, Ctors),
+	term__context_init(0, Context),
 	map__init(TypeBindings),
 	TypeInfo = typeinfo(
-		IOState, Preds, Types, Ctors, PredId, Context, PredNameIndex,
+		IOState, ModuleInfo, PredId, 0, PredId, Context, 0,
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
 		no, HeadTypeParams
 	).
@@ -1623,21 +1690,55 @@ typeinfo_set_io_state( typeinfo(_,B,C,D,E,F,G,H,I,J,K), IOState,
 :- pred typeinfo_get_preds(type_info, pred_table).
 :- mode typeinfo_get_preds(input, output).
 
-typeinfo_get_preds(typeinfo(_,Preds,_,_,_,_,_,_,_,_,_), Preds).
+typeinfo_get_preds(typeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
+	moduleinfo_preds(ModuleInfo, Preds).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_pred_name_index(type_info, map(string, list(pred_id))).
+:- mode typeinfo_get_pred_name_index(input, output).
+
+typeinfo_get_pred_name_index(typeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_,_), 
+		PredNameIndex) :-
+	moduleinfo_pred_name_index(ModuleInfo, PredNameIndex).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typeinfo_get_types(type_info, type_table).
 :- mode typeinfo_get_types(input, output).
 
-typeinfo_get_types(typeinfo(_,_,Types,_,_,_,_,_,_,_,_), Types).
+typeinfo_get_types(typeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Types) :-
+	moduleinfo_types(ModuleInfo, Types).
 
 %-----------------------------------------------------------------------------%
 
 :- pred typeinfo_get_ctors(type_info, cons_table).
 :- mode typeinfo_get_ctors(input, output).
 
-typeinfo_get_ctors(typeinfo(_,_,_,Ctors,_,_,_,_,_,_,_), Ctors).
+typeinfo_get_ctors(typeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Ctors) :-
+	moduleinfo_ctors(ModuleInfo, Ctors).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_called_predid(type_info, pred_id).
+:- mode typeinfo_get_called_predid(input, output).
+
+typeinfo_get_called_predid(typeinfo(_,_,PredId,_,_,_,_,_,_,_,_), PredId).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_set_called_predid(type_info, pred_id, type_info).
+:- mode typeinfo_set_called_predid(typeinfo_di, input, typeinfo_uo).
+
+typeinfo_set_called_predid(typeinfo(A,B,_     ,D,E,F,G,H,I,J,K), PredId,
+			   typeinfo(A,B,PredId,D,E,F,G,H,I,J,K)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_arg_num(type_info, int).
+:- mode typeinfo_get_arg_num(input, output).
+
+typeinfo_get_arg_num(typeinfo(_,_,_,ArgNum,_,_,_,_,_,_,_), ArgNum).
 
 %-----------------------------------------------------------------------------%
 
@@ -1660,14 +1761,6 @@ typeinfo_get_context(typeinfo(_,_,_,_,_,Context,_,_,_,_,_), Context).
 
 typeinfo_set_context(Context, typeinfo(A,B,C,D,E,_,G,H,I,J,K),
 			typeinfo(A,B,C,D,E,Context,G,H,I,J,K)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred typeinfo_get_pred_name_index(type_info, map(string, list(pred_id))).
-:- mode typeinfo_get_pred_name_index(input, output).
-
-typeinfo_get_pred_name_index(typeinfo(_,_,_,_,_,_,PredNameIndex,_,_,_,_), 
-		PredNameIndex).
 
 %-----------------------------------------------------------------------------%
 
@@ -1874,13 +1967,12 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_unif(pred_id, term__context, varset, term, term,
+:- pred report_error_unif(type_info, varset, term, term,
 			type_assign_set, io__state, io__state).
-:- mode report_error_unif(input, input, input, input, input, input, di, uo).
+:- mode report_error_unif(typeinfo_no_io, input, input, input, input, di, uo).
 
-report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
+report_error_unif(TypeInfo, VarSet, X, Y, TypeAssignSet) -->
+	write_typeinfo_context(TypeInfo),
 	io__write_string("type error in unification of `"),
 	io__write_term(VarSet, X),
 	io__write_string("' and `"),
@@ -1979,16 +2071,16 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_var(pred_id, term__context, varset, var,
+:- pred report_error_var(type_info, varset, var,
 			list(type_stuff), type, type_assign_set,
 			io__state, io__state).
-:- mode report_error_var(input, input, input, input, input, input, input,
+:- mode report_error_var(typeinfo_no_io, input, input, input, input, input,
 			di, uo).
 
-report_error_var(PredId, Context, VarSet, VarId, TypeStuffList, Type,
+report_error_var(TypeInfo, VarSet, VarId, TypeStuffList, Type,
 			TypeAssignSet0) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
+	write_typeinfo_context(TypeInfo),
+	{ typeinfo_get_context(TypeInfo, Context) },
 	io__write_string("type error: "),
 	io__write_string("variable `"),
 	io__write_variable(VarId, VarSet),
@@ -2005,12 +2097,13 @@ report_error_var(PredId, Context, VarSet, VarId, TypeStuffList, Type,
 		io__write_string("' has overloaded type { `"),
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
+		prog_out__write_context(Context),
 		io__write_string("which doesn't match the expected type.\n"),
 			% XXX improve error message: should output
 			% the expected type.
-		io__write_string("(I ought to tell you what the expected type was,\n"),
-		io__write_string("but it might be different for each overloading,\n"),
-		io__write_string("so I won't try.  My apologies.)\n")
+		io__write_string("\t(I ought to tell you what the expected type was,\n"),
+		io__write_string("\tbut it might be different for each overloading,\n"),
+		io__write_string("\tso I won't try.  My apologies.)\n")
 	),
 	write_type_assign_set_msg(TypeAssignSet0, VarSet).
 
@@ -2033,35 +2126,35 @@ write_type_stuff_list_2([type_stuff(T, TVarSet, TBinding) | Ts]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_undef_pred(pred_id, term__context, pred_id,
-			io__state, io__state).
-:- mode report_error_undef_pred(input, input, input, di, uo).
+:- pred report_error_undef_pred(type_info,  pred_id, io__state, io__state).
+:- mode report_error_undef_pred(typeinfo_no_io, input, di, uo).
 
-report_error_undef_pred(CallingPredId, Context, PredId) -->
-	write_context_and_predid(Context, CallingPredId),
-	prog_out__write_context(Context),
+report_error_undef_pred(TypeInfo, PredId) -->
+	write_typeinfo_context(TypeInfo),
 	io__write_string("error: undefined predicate `"),
 	write_pred_id(PredId),
 	io__write_string("'.\n").
 
-:- pred report_error_pred_num_args(pred_id, term__context, pred_id,
-			io__state, io__state).
-:- mode report_error_pred_num_args(input, input, input, di, uo).
+:- pred report_error_pred_num_args(type_info, pred_id, io__state, io__state).
+:- mode report_error_pred_num_args(typeinfo_no_io, input, di, uo).
 
-report_error_pred_num_args(CallingPredId, Context, PredId) -->
-	write_context_and_predid(Context, CallingPredId),
-	prog_out__write_context(Context),
+report_error_pred_num_args(TypeInfo, PredId) -->
+	write_typeinfo_context(TypeInfo),
 	io__write_string("error: wrong number of arguments in call to pred `"),
 	{ predicate_name(PredId, PredName) },
 	io__write_string(PredName),
 	io__write_string("'.\n").
 
-:- pred report_error_undef_cons(pred_id, term__context, const, int, 
-			io__state, io__state).
-:- mode report_error_undef_cons(input, input, input, input, di, uo).
+:- pred report_error_undef_cons(type_info, pred_id, int, const, int,
+				io__state, io__state).
+:- mode report_error_undef_cons(typeinfo_no_io, input, input, input, input,
+				di, uo).
 
-report_error_undef_cons(PredId, Context, Functor, Arity) -->
-	write_context_and_predid(Context, PredId),
+report_error_undef_cons(TypeInfo, CallingPredId, ArgNum,
+		Functor, Arity) -->
+	write_context_and_pred_id(TypeInfo),
+	{ typeinfo_get_context(TypeInfo, Context) },
+	write_call_context(Context, CallingPredId, ArgNum),
 	prog_out__write_context(Context),
 	io__write_string("error: undefined symbol `"),
 	io__write_constant(Functor),
@@ -2069,14 +2162,27 @@ report_error_undef_cons(PredId, Context, Functor, Arity) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred report_error_cons(pred_id, term__context, varset, const, list(term),
-			type, type_assign_set, io__state, io__state).
-:- mode report_error_cons(input, input, input, input, input, input, input,
-			di, uo).
+:- pred write_call_context(term__context, pred_id, int, io__state, io__state).
+:- mode write_call_context(input, input, input, di, uo).
 
-report_error_cons(PredId, Context, VarSet, Functor, Args, Type,
-			TypeAssignSet) -->
-	write_context_and_predid(Context, PredId),
+write_call_context(Context, PredId, ArgNum) -->
+	prog_out__write_context(Context),
+	io__write_string("in argument "),
+	io__write_int(ArgNum),
+	io__write_string(" of call to pred `"),
+	write_pred_id(PredId),
+	io__write_string("':\n").
+
+:- pred report_error_cons(type_info, pred_id, int, varset, const, list(term),
+			type, type_assign_set, io__state, io__state).
+:- mode report_error_cons(typeinfo_no_io, input, input, input, input, input,
+			input, input, di, uo).
+
+report_error_cons(TypeInfo, CallingPredId, ArgNum,
+			VarSet, Functor, Args, Type, TypeAssignSet) -->
+	write_context_and_pred_id(TypeInfo),
+	{ typeinfo_get_context(TypeInfo, Context) },
+	write_call_context(Context, CallingPredId, ArgNum),
 	prog_out__write_context(Context),
 	io__write_string("type error: term `"),
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
@@ -2087,10 +2193,20 @@ report_error_cons(PredId, Context, VarSet, Functor, Args, Type,
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_context_and_predid(term__context, pred_id, io__state, io__state).
-:- mode write_context_and_predid(input, input, di, uo).
+:- pred write_typeinfo_context(type_info, io__state, io__state).
+:- mode write_typeinfo_context(typeinfo_no_io, di, uo).
 
-write_context_and_predid(Context, PredId) -->
+write_typeinfo_context(TypeInfo) -->
+	write_context_and_pred_id(TypeInfo),
+	{ typeinfo_get_context(TypeInfo, Context) },
+	prog_out__write_context(Context).
+
+:- pred write_context_and_pred_id(type_info, io__state, io__state).
+:- mode write_context_and_pred_id(typeinfo_no_io, di, uo).
+
+write_context_and_pred_id(TypeInfo) -->
+	{ typeinfo_get_context(TypeInfo, Context) },
+	{ typeinfo_get_predid(TypeInfo, PredId) },
 	prog_out__write_context(Context),
 	io__write_string("In clause for predicate `"),
 	write_pred_id(PredId),
@@ -2103,10 +2219,7 @@ write_context_and_predid(Context, PredId) -->
 :- mode report_ambiguity_error(input, input, input, di, uo).
 
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
-	{ typeinfo_get_context(TypeInfo, Context) },
-	{ typeinfo_get_predid(TypeInfo, PredId) },
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
+	write_typeinfo_context(TypeInfo),
 	io__write_string("error: ambiguous overloading causes type ambiguity.\n"),
 	io__write_string("\tpossible type assignments include:\n"),
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
