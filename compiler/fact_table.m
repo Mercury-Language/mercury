@@ -2158,8 +2158,7 @@ fact_table_hash(HashSize, Key, HashVal) :-
 		% XXX This method of hashing floats may not work cross-compiling
 		% between architectures that have different floating-point
 		% representations.
-		float__hash(Float, N0),
-		int__abs(N0, N),
+		int__abs(float__hash(Float), N),
 		Ns = [N]
 	;
 		error("fact_table_hash: unsupported type in key")
