@@ -13,9 +13,10 @@
 % applications.  This library aims for ease of use over efficiency.
 %
 % All drawing is done to a backing pixmap and the user must explicitly call
-% easyx.flush/3 to make visible any changes since the last call to
-% easyx.flush/3.  Repainting after exposure events is handled automatically,
-% although resizing the window does require the user to redraw.
+% easyx.flush/3 or easyx.sync/3 to make visible any changes since the last
+% call to easyx.flush/3 or easyx.sync/3.  Repainting after exposure events is
+% handled automatically, although resizing the window does require the user
+% to redraw.
 %
 % An abstract coordinate space is used, but in keeping with Xlib, the
 % origin of the coordinate space is at the top-left of a window, with
@@ -40,7 +41,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module std_util.
-:- use_module xlib.
 
 
 
@@ -76,6 +76,14 @@
     % updates what is on the screen.)
     %
 :- pred flush(window::in, io::di, io::uo) is det.
+
+    % sync(Window, !IO)
+    % Like flush/3, but this predicate blocks until the X server has
+    % finished rendering.  Also, any pending events in the input queue
+    % are discarded.  This is a better choice than flush/3 for low-
+    % latency applications such as real-time games.
+    %
+:- pred sync(window::in, io::di, io::uo) is det.
 
     % clear_window(Window, !IO)
     % Clear the window using the current colour.
@@ -382,6 +390,7 @@
 :- import_module math.
 :- import_module store.
 :- import_module string.
+:- use_module xlib.
 
 
 
@@ -535,6 +544,14 @@ flush(Window, !IO) :-
     restore_from_backing_pixmap(Window, !IO),
     store.get_mutvar(Window^display, Display, !IO),
     impure xlib.flush(Display).
+
+
+:- pragma promise_pure(sync/3).
+
+sync(Window, !IO) :-
+    restore_from_backing_pixmap(Window, !IO),
+    store.get_mutvar(Window^display, Display, !IO),
+    impure xlib.sync(Display).
 
 %-----------------------------------------------------------------------------%
 

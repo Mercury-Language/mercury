@@ -270,9 +270,9 @@ play(Window, Colours, !Paddle, !Objects, !Rnd, !IO) :-
     Drawing = paddle_drawing(!.Paddle) ++ objects_drawing(Black, !.Objects),
 
     easyx.draw(Window, Drawing, !IO),
-    easyx.flush(Window, !IO),
+    easyx.sync(Window, !IO),
 
-    u_sleep(20000, !IO),
+    u_sleep(10000, !IO),
 
     process_events(Window, Quit, !Paddle, !IO),
 

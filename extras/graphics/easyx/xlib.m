@@ -274,7 +274,7 @@
 :- pragma foreign_proc("C", sync(DisplayPtr::in),
     [will_not_call_mercury, thread_safe],
     "
-        XSync(DisplayPtr, 0 /* Don't discard pending events */);
+        XSync(DisplayPtr, 1 /* Discard pending events */);
     ").
 
 %-----------------------------------------------------------------------------%
