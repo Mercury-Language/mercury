@@ -172,7 +172,6 @@ static	void	MR_insert_line_at_tail(const char *line);
 
 static	void	MR_trace_event_print_internal_report(
 			MR_Event_Info *event_info);
-static	void	MR_trace_print_port(MR_Trace_Port port);
 
 static	bool	MR_trace_valid_command(const char *word);
 
@@ -2192,87 +2191,14 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
-	fprintf(MR_mdb_out, "%8ld: %6ld %2ld ",
+	fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s",
 		(long) event_info->MR_event_number,
 		(long) event_info->MR_call_seqno,
-		(long) event_info->MR_call_depth);
+		(long) event_info->MR_call_depth,
+		MR_port_names[event_info->MR_trace_port);
 
-	MR_trace_print_port(event_info->MR_trace_port);
 	MR_print_proc_id(MR_mdb_out, event_info->MR_event_sll->MR_sll_entry,
 			event_info->MR_event_path, NULL, NULL);
-}
-
-static void
-MR_trace_print_port(MR_Trace_Port port)
-{
-	const char *port_name;
-	switch (port) {
-		case MR_PORT_CALL:
-			port_name = "CALL";
-			break;
-
-		case MR_PORT_EXIT:
-			port_name = "EXIT";
-			break;
-
-		case MR_PORT_REDO:
-			port_name = "REDO";
-			break;
-
-		case MR_PORT_FAIL:
-			port_name = "FAIL";
-			break;
-
-		case MR_PORT_COND:
-			port_name = "COND";
-			break;
-
-		case MR_PORT_THEN:
-			port_name = "THEN";
-			break;
-
-		case MR_PORT_ELSE:
-			port_name = "ELSE";
-			break;
-
-		case MR_PORT_NEG_ENTER:
-			port_name = "NEGE";
-			break;
-
-		case MR_PORT_NEG_SUCCESS:
-			port_name = "NEGS";
-			break;
-
-		case MR_PORT_NEG_FAILURE:
-			port_name = "NEGF";
-			break;
-
-		case MR_PORT_DISJ:
-			port_name = "DISJ";
-			break;
-
-		case MR_PORT_SWITCH:
-			port_name = "SWTC";
-			break;
-
-		case MR_PORT_PRAGMA_FIRST:
-			port_name = "FRST";
-			break;
-
-		case MR_PORT_PRAGMA_LATER:
-			port_name = "LATR";
-			break;
-
-		case MR_PORT_EXCEPTION:
-			port_name = "EXCP";
-			break;
-
-		default:
-			port_name = "????";
-			fatal_error("MR_trace_event_internal called "
-					"with bad port");
-	}
-	fprintf(MR_mdb_out, "%s ", port_name);
 }
 
 typedef struct

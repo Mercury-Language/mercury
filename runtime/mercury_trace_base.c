@@ -102,6 +102,25 @@ int		MR_trace_histogram_hwm  = 0;
 
 #endif
 
+const char	*MR_port_names[] =
+{
+	"CALL",
+	"EXIT",
+	"REDO",
+	"FAIL",
+	"COND",
+	"THEN",
+	"ELSE",
+	"NEGE",
+	"NEGS",
+	"NEGF",
+	"DISJ",
+	"SWTC",
+	"FRST",
+	"LATR",
+	"EXCP",
+};
+
 Code *
 MR_trace_struct(const MR_Trace_Call_Info *trace_call_info)
 {

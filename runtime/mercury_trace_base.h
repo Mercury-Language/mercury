@@ -20,8 +20,9 @@
 #include "mercury_std.h"
 
 /*
-** This enum should EXACTLY match the definition of the `trace_port_type' type
-** in browser/debugger_interface.
+** This enum should EXACTLY match the definition of the `trace_port_type'
+** type in browser/debugger_interface, and the port names list in the
+** C source file of this module.
 */
 
 typedef	enum {
@@ -41,6 +42,8 @@ typedef	enum {
 	MR_PORT_PRAGMA_LATER,
 	MR_PORT_EXCEPTION
 } MR_Trace_Port;
+
+extern	const char 			*MR_port_names[];
 
 #define MR_trace_incr_seq()		((Word) ++MR_trace_call_seqno)
 #define MR_trace_incr_depth()		((Word) ++MR_trace_call_depth)
