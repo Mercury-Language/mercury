@@ -2,19 +2,20 @@
  * The call.mod module provides the functionality for doing higher order
  * calls. The following constraints apply to higher order calls:
  *
- *	It is assumed that closures contain no output arguments.
- *
  *	Predicates called from a closure must have all their input
  *	arguments before all their output arguments.
  *
  *	Closures contain only input arguments.
  *
- *	Invocations of call/N consist of a closure giving ALL the
- *	input arguments followed by N-1 output arguments which are
- *	returned in registers 1 -- (N-1) or 2 -- N for semidet preds.
+ *	Invocations of call/(1+M+N) consist of a closure giving some of the
+ *	input arguments followed M further input arguments, followed by
+ *	N output arguments which are returned in registers 1 -- N
+ *	or 2 -- N+1 for semidet preds.
  *
  *	The input arguments to do_call_[semidet_]closure are the closure
- *	in r1, and the number of output arguments to expect in r2.
+ *	in r1, the number of additional input arguments in r2, the number
+ *	of output arguments to expect in r3, and the additional input arguments
+ *	in r4..r(M+3).
  */
 
 #include "imp.h"
@@ -88,18 +89,18 @@ do_call_semidet_closure:
 
 	save_registers();
 
-	if (num_in_args < 3) {
+	if (num_in_args < 2) {
 		for (i=1; i<=num_extra_args;i++) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
 		}
-	} else if (num_in_args > 3) {
+	} else if (num_in_args > 2) {
 		for (i=num_extra_args; i>0; i--) {
-			virtual_reg(i+num_in_args) = virtual_reg(i+3);
+			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
 		}
-	} /* else do nothing because i == 3 */
+	} /* else do nothing because i == 2 */
 
 	for(i=1; i <= num_in_args; i++) 
-		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
 	restore_registers();
 	call(field(0, closure, 1), LABEL(do_semidet_closure_return));
 }
