@@ -117,8 +117,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_globals(Globals),
 		{	globals__lookup_bool_option(Globals,
-				reclaim_heap_on_nondet_failure, yes),
-			code_util__goal_may_allocate_heap(Goal)
+				reclaim_heap_on_nondet_failure, yes)
 		->
 			ReclaimHeap = yes
 		;
