@@ -209,7 +209,7 @@ output_instruction(proceed) -->
 
 output_instruction(label(Label)) -->
 	output_label(Label),
-	io__write_string(":;").
+	io__write_string(":\n\t;").
 	
 output_instruction(goto(Label)) -->
 	io__write_string("\t"),
