@@ -18,6 +18,8 @@
 #include "memory.h"
 #include "misc.h"
 
+#ifdef MR_USE_TRAIL
+
 MemoryZone	*MR_trail_zone;
 MR_TrailEntry	*MR_trail_ptr_var;
 Unsigned	MR_ticket_counter_var;
@@ -33,8 +35,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 	    	if (MR_get_trail_entry_kind(MR_trail_ptr) == MR_func_entry) {
 		    (*MR_get_trail_entry_untrail_func(MR_trail_ptr))(
 				MR_get_trail_entry_datum(MR_trail_ptr),
-				reason
-		    );
+				reason);
 		}
 	    }
 	    break;
@@ -47,8 +48,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 	    	if (MR_get_trail_entry_kind(MR_trail_ptr) == MR_func_entry) {
 		    (*MR_get_trail_entry_untrail_func(MR_trail_ptr))(
 				MR_get_trail_entry_datum(MR_trail_ptr),
-				reason
-		    );
+				reason);
 		} else {
 		    *MR_get_trail_entry_address(MR_trail_ptr) =
 				MR_get_trail_entry_value(MR_trail_ptr);
@@ -61,5 +61,6 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
     }
 }
 
-/*---------------------------------------------------------------------------*/
+#endif
 
+/*---------------------------------------------------------------------------*/
