@@ -558,9 +558,11 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		predicate_table_search_sym_arity(PredicateTable,
 			PredName, Arity, PredIdList)
 	->
+		% handle the case of a non-overloaded predicate specially
+		% (so that we can optimize the case of a non-overloaded,
+		% non-polymorphic predicate)
 		( PredIdList = [PredId0] ->
 			PredId = PredId0,
-			TypeInfo3 = TypeInfo1,
 
 			predicate_table_get_preds(PredicateTable, Preds),
 			map__lookup(Preds, PredId, PredInfo),
@@ -575,32 +577,25 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 				% a non-polymorphic predicate)
 			( varset__is_empty(PredTypeVarSet) ->
 				typecheck_var_has_type_list(Args, PredArgTypes,
-						0, TypeInfo3, TypeInfo)
+						0, TypeInfo1, TypeInfo)
 			;
 				typecheck_var_has_polymorphic_type_list(
 					Args, PredTypeVarSet, PredArgTypes,
-				TypeInfo3, TypeInfo)
+				TypeInfo1, TypeInfo)
 			)
 		;
-	%%%%%%%%
-	%%  If the 'default' module name were available, it would be best to
-	%%  try and qualify the predicate name with that module name, before
-	%%  reporting an overloading error.  This is to ensure that a 
-	%%  modification to an imported module won't mysteriously cause another
-	%%  module to break.  This would relax the overloading system a little.
-	%%
-	%%	sym_name_get_module_name(PredName, "", ""),
-	%%	qualify_sym_name(ModuleName, PredName, PredName0),
-	%%	predicate_table_search_sym_arity(PredicateTable,
-	%%		PredName0, Arity, [PredId0])
-	%%->
-	%%	PredId = PredId0
-	%%%%%%%%	
-			type_info_get_io_state(TypeInfo1, IOState0),
-			report_error_overloading_unqual_pred(TypeInfo1,
-					PredCallId, IOState0, IOState),
-			type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
-			type_info_set_found_error(TypeInfo2, yes, TypeInfo),
+			typecheck_call_overloaded_pred(PredIdList, Args,
+				TypeInfo1, TypeInfo),
+			%
+			% In general, we can't figure out which predicate it
+			% is until after we have resolved any overloading,
+			% which may require type-checking the entire clause.
+			% Hence, for the moment, we just record an invalid
+			% pred_id in the HLDS.  This will be rectified by
+			% modes.m during mode-checking; at that point,
+			% enough information is available to determine
+			% which predicate it is.
+			%
 			invalid_pred_id(PredId)
 		)
 	;
@@ -625,9 +620,50 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 :- mode typecheck_find_arities(in, in, out) is det.
 
 typecheck_find_arities(_ModuleInfo, [], []).
-typecheck_find_arities(ModuleInfo, [PredId | PredIds], [Arity | Aritis]) :-
+typecheck_find_arities(ModuleInfo, [PredId | PredIds], [Arity | Arities]) :-
 	predicate_arity(ModuleInfo, PredId, Arity),
-	typecheck_find_arities(ModuleInfo, PredIds, Aritis).
+	typecheck_find_arities(ModuleInfo, PredIds, Arities).
+
+
+:- pred typecheck_call_overloaded_pred(list(pred_id), list(var),
+				type_info, type_info).
+:- mode typecheck_call_overloaded_pred(in, in,
+				type_info_di, type_info_uo) is det.
+
+typecheck_call_overloaded_pred(PredIdList, Args, TypeInfo0, TypeInfo) :-
+	%
+	% let the new arg_type_assign_set be the cross-product
+	% of the current type_assign_set and the set of possible
+	% lists of argument types for the overloaded predicate,
+	% suitable renamed apart
+	%
+	type_info_get_module_info(TypeInfo0, ModuleInfo),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	predicate_table_get_preds(PredicateTable, Preds),
+	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+	get_overloaded_pred_arg_types(PredIdList, Preds,
+			TypeAssignSet0, [], ArgsTypeAssignSet),
+	%
+	% then unify the types of the call arguments with the
+	% called predicates' arg types
+	%
+	typecheck_var_has_arg_type_list(Args, 0,
+				ArgsTypeAssignSet, TypeInfo0, TypeInfo).
+	
+:- pred get_overloaded_pred_arg_types(list(pred_id), pred_table,
+		type_assign_set, args_type_assign_set, args_type_assign_set).
+:- mode get_overloaded_pred_arg_types(in, in, in, in, out) is det.
+
+get_overloaded_pred_arg_types([], _Preds,
+		_TypeAssignSet0, ArgsTypeAssignSet, ArgsTypeAssignSet).
+get_overloaded_pred_arg_types([PredId | PredIds], Preds,
+		TypeAssignSet0, ArgsTypeAssignSet0, ArgsTypeAssignSet) :-
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+	rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
+				ArgsTypeAssignSet0, ArgsTypeAssignSet1),
+	get_overloaded_pred_arg_types(PredIds, Preds,
+		TypeAssignSet0, ArgsTypeAssignSet1, ArgsTypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -646,20 +682,22 @@ typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredArgTypes,
 					TypeInfo0, TypeInfo) :-
 	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
 	rename_apart(TypeAssignSet0, PredTypeVarSet, PredArgTypes,
-				ArgsTypeAssignSet),
+				[], ArgsTypeAssignSet),
 	typecheck_var_has_arg_type_list(Args, 0,
 				ArgsTypeAssignSet, TypeInfo0, TypeInfo).
 
 :- pred rename_apart(type_assign_set, tvarset, list(type),
-                        args_type_assign_set).
-:- mode rename_apart(in, in, in, out) is det.
+                        args_type_assign_set, args_type_assign_set).
+:- mode rename_apart(in, in, in, in, out) is det.
 
-rename_apart([], _, _, []).
+rename_apart([], _, _, ArgTypeAssigns, ArgTypeAssigns).
 rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredArgTypes0,
-                [TypeAssign - PredArgTypes | TypeAssigns]) :-
+		ArgTypeAssigns0, ArgTypeAssigns) :-
         type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
                         TypeAssign, PredArgTypes),
-        rename_apart(TypeAssigns0, PredTypeVarSet, PredArgTypes0, TypeAssigns).
+        ArgTypeAssigns1 = [TypeAssign - PredArgTypes | ArgTypeAssigns0],
+        rename_apart(TypeAssigns0, PredTypeVarSet, PredArgTypes0,
+			ArgTypeAssigns1, ArgTypeAssigns).
 
 :- pred type_assign_rename_apart(type_assign, tvarset, list(type),
 			type_assign, list(type)).
@@ -2850,22 +2888,5 @@ identical_types(Type1, Type2) :-
 	type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
 	TypeSubst = TypeSubst0.
 	
-%-----------------------------------------------------------------------------%
-
-:- pred report_error_overloading_unqual_pred(type_info, pred_call_id, 
-			io__state, io__state).
-:- mode report_error_overloading_unqual_pred(in, in, di, uo) is det.
-
-report_error_overloading_unqual_pred(TypeInfo, PredCallId) -->
-	write_type_info_context(TypeInfo),
-	{ type_info_get_context(TypeInfo, Context) },
-	io__write_string("Sorry, not implemented: predicate overloading. \n"),
-	prog_out__write_context(Context),
-	io__write_string("  Call to "),
-	hlds_out__write_pred_call_id(PredCallId),
-	io__write_string(" matches to more than one predicate.\n"),
-	prog_out__write_context(Context),
-	io__write_string("  An explicit module qualifier may help.\n").
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

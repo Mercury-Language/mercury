@@ -588,14 +588,18 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId, _, Args0, _, Context, PredName, Follow),
+modecheck_goal_2(call(PredId0, _, Args0, _, Context, PredName, Follow),
 		GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "call"),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
 	=(ModeInfo0),
+
+	% do the last step of type-checking
+	{ resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0,
+		PredId) },
+
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
@@ -1633,14 +1637,14 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 			PredArity, PredIds),
 
 		% Check if there any of the candidate predicates are functions,
-		% and have argument/return types which subsumes the actual
+		% and have argument/return types which subsume the actual
 		% argument/return types of this function call
 		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
 		pred_info_typevarset(PredInfo, TVarSet),
 		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 		list__append(ArgTypes0, [TypeOfX], ArgTypes),
-		find_matching_function(PredIds, ModuleInfo0, TVarSet, ArgTypes,
-			PredId)
+		find_matching_pred_id(PredIds, function, ModuleInfo0, TVarSet,
+			ArgTypes, PredId)
 	->
 		%
 		% Convert function calls into predicate calls:
@@ -1931,18 +1935,67 @@ modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
 		Unification = Unification0
 	).
 
-:- pred find_matching_function(list(pred_id), module_info, tvarset, list(type),
+:- pred resolve_pred_overloading(pred_id, list(var), sym_name, mode_info,
 				pred_id).
-:- mode find_matching_function(in, in, in, in, out) is semidet.
+:- mode resolve_pred_overloading(in, in, in, mode_info_ui, out) is det.
+	%
+	% In the case of a call to an overloaded predicate, typecheck.m
+	% does not figure out the correct pred_id.  We must do that here.
+	%
+resolve_pred_overloading(PredId0, Args0, PredName, ModeInfo0, PredId) :-
+	( invalid_pred_id(PredId0) ->
+		%
+		% Find the set of candidate pred_ids for predicates which
+		% have the specified name and arity
+		%
+		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+		module_info_get_predicate_table(ModuleInfo0, PredTable),
+		( predicate_table_search_sym(PredTable, PredName, PredIds0) ->
+			PredIds = PredIds0
+		;
+			PredIds = []
+		),
 
-find_matching_function([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
-		ThePredId) :-
+		%
+		% Check if there any of the candidate pred_ids are
+		% for predicates (not for functions),
+		% and have argument/return types which subsume the actual
+		% argument/return types of this function call
+		%
+		mode_info_get_predid(ModeInfo0, ThisPredId),
+		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
+		pred_info_typevarset(PredInfo, TVarSet),
+		mode_info_get_var_types(ModeInfo0, VarTypes0),
+		map__apply_to_list(Args0, VarTypes0, ArgTypes),
+		(
+			find_matching_pred_id(PredIds, predicate, ModuleInfo0,
+				TVarSet, ArgTypes, PredId1)
+		->
+			PredId = PredId1
+		;
+			% if there is no matching predicate for this call,
+			% then this predicate must have a type error which
+			% should have been caught by typecheck.m
+			error("modes.m: type error in pred call: no matching pred")
+		)
+	;
+		PredId = PredId0
+	).
+
+:- pred find_matching_pred_id(list(pred_id), pred_or_func, module_info,
+				tvarset, list(type), pred_id).
+:- mode find_matching_pred_id(in, in, in, in, in, out) is semidet.
+
+find_matching_pred_id([PredId | PredIds], MatchPredOrFunc, ModuleInfo,
+		TVarSet, ArgTypes, ThePredId) :-
 	(
 		%
-		% check that this "predicate" is really a function
+		% check that this pred_id is for the right category
+		% (predicate or function)
 		%
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
-		pred_info_get_is_pred_or_func(PredInfo, function),
+		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+		PredOrFunc = MatchPredOrFunc,
 
 		%
 		% lookup the argument types of the candidate predicate
@@ -1972,9 +2025,21 @@ find_matching_function([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
 		% would have reported an ambiguity error, so this must be
 		% the *only* matching predicate)
 		%
-		ThePredId = PredId
+		% XXX BUG! The above comment is wrong. We need to check for
+		% ambiguity here and if necessary report a compile error.
+		%
+		(
+			find_matching_pred_id(PredIds, MatchPredOrFunc,
+				ModuleInfo, TVarSet, ArgTypes, _OtherPredId)
+		->
+			% XXX this should report an error properly, not
+			% via error/1
+			error("Type error in predicate call: unresolvable predicate overloading.  You need to use an explicit module qualifier.  Compile with -V to find out where.")
+		;
+			ThePredId = PredId
+		)
 	;
-		find_matching_function(PredIds, ModuleInfo,
+		find_matching_pred_id(PredIds, MatchPredOrFunc, ModuleInfo,
 				TVarSet, ArgTypes, ThePredId)
 	).
 
