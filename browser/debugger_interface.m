@@ -286,6 +286,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 		% This is commented out because collected_type is unknown at  
 		% compile time since it is defined by users in the dynamically
 		% linked collect module.
+	% sent if the execution is not terminated after a collect request
+	;	execution_continuing
+	% sent if the execution is terminated after a collect request
+	;	execution_terminated
 	.
 
 

@@ -183,9 +183,11 @@ static void	MR_get_variable_name(Word debugger_request, String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
 static void	MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, 
 			Word, Word, String, String, String, Integer, Integer, 
-			Integer, String, Word, Word *), Unsigned seqno, 
-			Unsigned depth,	MR_Trace_Port port, 
-			const MR_Stack_Layout_Label *layout, const char *path);
+			Integer, String, Word, Word *, Char *), Unsigned seqno, 
+			Unsigned depth, MR_Trace_Port port, 
+			const MR_Stack_Layout_Label *layout, const char *path, 
+			bool *stop_collecting);
+static void	MR_send_collect_result(void);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -435,14 +437,8 @@ MR_trace_final_external(void)
 			break;
 
 		case MR_collecting:
-			MR_TRACE_CALL_MERCURY(
-				(*send_collect_result_ptr)(
-					MR_collecting_variable, 
-					(Word) &MR_debugger_socket_out));
-			#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
-		       	MR_TRACE_CALL_MERCURY(
-				ML_CL_unlink_collect(collect_lib_maybe_handle));
-			#endif
+			MR_send_collect_result();
+			MR_send_message_to_socket("execution_terminated");
 			break;
 
 		default:
@@ -464,9 +460,10 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static void	(*initialize_ptr)(Word *);
 	static void    	(*filter_ptr)(Integer, Integer, Integer, Word,
 				Word, String, String, String, Integer,
-				Integer, Integer, String, Word, Word *);
+				Integer, Integer, String, Word, Word *, Char *);
 	static void	(*get_collect_var_type_ptr)(Word *);
 	static bool    	collect_linked = FALSE;
+	bool    	stop_collecting = FALSE;
 	Integer		debugger_request_type;
 	Integer		live_var_number;
 	Word		debugger_request;
@@ -534,9 +531,15 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			** arguments = MR_make_var_list(layout, saved_regs);
 			*/
 			MR_COLLECT_filter(*filter_ptr, seqno, depth, port,
-				layout, path);
-			goto done;
+				layout, path, &stop_collecting);
 
+			if (stop_collecting) {
+				MR_send_collect_result();
+				MR_send_message_to_socket("execution_continuing");
+				break;
+			} else {
+				goto done;
+			}
 		case MR_reading_request:
 			break;
 
@@ -811,9 +814,16 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					** filter once here.
 					*/
 					MR_COLLECT_filter(*filter_ptr, seqno, depth,
-						 port, layout, path);
+						port, layout, path, &stop_collecting);
 					
-					goto done;
+					if (stop_collecting) {
+						MR_send_collect_result();
+						MR_send_message_to_socket(
+							"execution_continuing");
+						break;
+					} else {
+						goto done;
+					}
 				} else {
 					MR_send_message_to_socket(
 						"collect_not_linked");
@@ -1428,10 +1438,13 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 */
 static void
 MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word, 
-	String, String, String, Integer, Integer, Integer, String, Word, Word *), 
-       	Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
-	const MR_Stack_Layout_Label *layout, const char *path)
-{		
+	String, String, String, Integer, Integer, Integer, String, Word, Word *,
+        Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
+	const MR_Stack_Layout_Label *layout, const char *path, 
+	bool *stop_collecting)
+{
+	Char	result;		
+
 	MR_TRACE_CALL_MERCURY((*filter_ptr)(
 		MR_trace_event_number,
 		seqno,
@@ -1446,7 +1459,21 @@ MR_COLLECT_filter(void (*filter_ptr)(Integer, Integer, Integer, Word, Word,
 		layout->MR_sll_entry->MR_sle_detism,
 		(String) path,
 		MR_collecting_variable,
-		&MR_collecting_variable));
+		&MR_collecting_variable,
+		&result));
+	*stop_collecting = (result == 'y');
 }
 
+static void
+MR_send_collect_result(void)
+{
+	MR_TRACE_CALL_MERCURY(
+		(*send_collect_result_ptr)(
+			MR_collecting_variable, 
+			(Word) &MR_debugger_socket_out));
+#if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
+	MR_TRACE_CALL_MERCURY(
+       		ML_CL_unlink_collect(collect_lib_maybe_handle));
+#endif
+}
 #endif /* MR_USE_EXTERNAL_DEBUGGER */

@@ -18,25 +18,31 @@
 %		1) a `collected_type' which is the type of the collecting 
 %		   variable that will contain the result of the monitoring
 %		   activity.
-%		2) The predicate initialize/1 which initializes this 
+%		2) The predicate initialize/1 which initializes the 
 %		   collecting variable. initialize/1 should have the
 %		   following declarations:
 %			:- pred initialize(collected_type).
 %			:- mode initialize(out) is det.
-%		3) the predicate filter/3 which updates this collecting 
-%		   variable at each execution event. filter/3 should have the 
-%		   following declarations:
-%			:- pred filter(event, collected_type, collected_type).
-%			:- mode filter(in, di, uo) is det.
-%		4) and eventually the mode definition of the second and the 
-%		   third arguments of filter/3: `acc_in' and `acc_out'. Those
+%		3) The predicate filter/4 which updates the collecting  
+%		   variable at each execution event. filter/4 also outputs  
+%		   a variable that indicates whether to stop collecting.  
+%		   If this variable is set to `stop', the collect process  
+%		   stops; if it is set to `continue', it continues. If this  
+%		   variable is always set to `continue', the collecting will 
+%		   process until the last event is reached. filter/4 should 
+%		   follow the following declarations:
+%			:- pred filter(event, collected_type, collected_type,
+%				stop_or_continue).
+%			:- mode filter(in, di, uo, out) is det.
+%		4) And eventually the mode definition of the second and the 
+%		   third arguments of filter/4: `acc_in' and `acc_out'. Those
 %		   mode have `di' and `uo' respectively as default values.
 %
 % 	Then, this file is used to generate the Mercury module `collect.m',
 % 	which is compiled and dynamically linked with the current execution.
 % 	When a `collect' request is made from the external debugger, a variable
 % 	of type collected_type is first initialized (with initialize/1) and
-% 	then updated (with filter/3) for all the events of the remaining
+% 	then updated (with filter/4) for all the events of the remaining
 % 	execution. When the end of the execution is reached, the last value of
 % 	the collecting variable is send to the debugger.
 
