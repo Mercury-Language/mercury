@@ -14,7 +14,8 @@ MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
-LIB_FILES	= bin doc html inc ints lib modules $(NUPROLOG) $(SICSTUS)
+LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules \
+		  $(NUPROLOG) $(SICSTUS)
 
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		  $(INSTALL_PREFIX)/bin/mdemangle \

@@ -18,8 +18,7 @@ INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
 INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/ml scripts/mmake scripts/mprof \
-			scripts/mdb scripts/mkfifo_using_mknod \
-			scripts/mdbrc
+			scripts/mdb scripts/mkfifo_using_mknod
 
 SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
 			scripts/msp scripts/sicstus_conv
@@ -28,7 +27,9 @@ NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
 
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
-LIB_PARTS		= bin doc html inc ints lib mdb mmake modules
+INSTALL_MDB_EXTRAS	= scripts/mdbrc
+
+LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
 LIB_NUPROLOG_PARTS	= @NUPROLOG@
 LIB_SICSTUS_PARTS	= @SICSTUS@
 
@@ -47,7 +48,7 @@ all:
 
 .PHONY: install
 install: install_lib install_info install_man install_scripts install_mmake \
-		install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+		install_mdb install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
@@ -113,6 +114,11 @@ install_scripts:
 install_mmake: 
 	test -d $(INSTALL_LIBDIR)/mmake || mkdir -p $(INSTALL_LIBDIR)/mmake
 	cp $(INSTALL_MMAKE_EXTRAS) $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_mdb
+install_mdb: 
+	test -d $(INSTALL_LIBDIR)/mdb || mkdir -p $(INSTALL_LIBDIR)/mdb
+	cp $(INSTALL_MDB_EXTRAS) $(INSTALL_LIBDIR)/mdb
 
 .PHONY: install_util
 install_util: 
