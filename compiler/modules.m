@@ -972,7 +972,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 		;
 			% output files intended for use by the user
 			( string__prefix(Ext, ".c_dump")
-			; string__prefix(Ext, ".h_dump")
+			; string__prefix(Ext, ".mih_dump")
 			)
 		}
 	->
