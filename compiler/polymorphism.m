@@ -666,13 +666,16 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
 	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
-	map__apply_to_list(NonLocalTypeVars, TypeVarMap, ExtraNonLocals),
+	solutions(lambda([TypeInfoVar::out] is nondet, (
+			list__member(Var, NonLocalTypeVars),
+			map__search(TypeVarMap, Var, TypeInfoVar)
+		)), ExtraNonLocals),
 	( ExtraNonLocals = [] ->
 		Goal = Goal0,
 		VarTypes = VarTypes0,
 		VarSet = VarSet0
 	;
-		set__list_to_set(ExtraNonLocals, NewOutsideVars),
+		set__sorted_list_to_set(ExtraNonLocals, NewOutsideVars),
 		set__union(NewOutsideVars, NonLocals, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings)
