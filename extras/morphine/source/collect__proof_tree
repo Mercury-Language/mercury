@@ -10,7 +10,8 @@
 % Note that it only works if the internal events have been generated in 
 % the trace. Also, the Morphine parameter collect_arg should be set to `yes'.
 %
-% Bug: not/1 is not handled (I should do something at `neg_*' events to fix that).
+% Bug: not/1 is not handled (I should do something at `neg_*' events to fix 
+% that).
 %
  
 :- import_module list, string, require, map, stack, term, std_util.
@@ -51,7 +52,6 @@
 	   ).
 
 :- type collected_type ---> pb(string) ; ct(proof_tree).
-	
 
 :- type call_path == pair(call_number, goal_path_string).
 
@@ -63,7 +63,7 @@
 	leaf(call_number, predicate)
     ;   tree(call_number, predicate, list(proof_tree)).
 
-:- type proof_tree_table == map(call_number, proof_tree).
+:- type proof_tree_table == map(call_number, list(proof_tree)).
 
 %-----------------------------------------------------------------------%
 
@@ -79,13 +79,13 @@ initialize(ct(CallStack, "", GpDetStack, GpNonDetStack, GoalSuccTable, [],
 
 filter(Event, Acc0, Acc, continue) :-
 	Acc0 = ct(CallStack0, GoalPath0, GpDetStack0, GpNonDetStack0, 
-	        GoalSuccT0, AllSolList0, ProofT0),
+		GoalSuccT0, AllSolList0, ProofT0),
 	Port = port(Event),
 	CurrentCN = call(Event),
 	Arg = arguments(Event),
 	CurrentPred = p(proc_name(Event), proc_arity(Event), Arg),
 	update_goal_path(Event, GoalPath0, GoalPath, GpDetStack0, GpDetStack, 
-	        GpNonDetStack0, GpNonDetStack),
+		GpNonDetStack0, GpNonDetStack),
 	update_call_stack(Port, CurrentCN, CallStack0, CallStack),
 	( 
 		Port = call
@@ -103,7 +103,7 @@ filter(Event, Acc0, Acc, continue) :-
 		stack__top_det(CallStack, FatherCN),
 		map__det_remove(GoalSuccT0, FatherCN, CNListF0, GoalSuccT1),
 		list__merge_and_remove_dups([CurrentCN - GoalPath], CNListF0,
-		        CNListF),
+			CNListF),
 		map__det_insert(GoalSuccT1, FatherCN, CNListF, GoalSuccT),
 		%
 		% Update the proof tree Table. To do that, we retrieve the
@@ -116,81 +116,110 @@ filter(Event, Acc0, Acc, continue) :-
 		% we remove the goal path from that list of call_path
 		%
 		list__map(remove_goal_path, ListCP, ListCN),
-		( ListCN = [] ->
-			( map__update(ProofT0, CurrentCN, 
-				leaf(CurrentCN, CurrentPred), ProofT1) ->
-				ProofT = ProofT1
-			;
-			        map__det_insert(ProofT0, CurrentCN, 
-				        leaf(CurrentCN, CurrentPred), ProofT)
-		        ) 
+
+		(  ListCN = [] ->
+			% The current goal is a success leaf 
+			% (i.e., it has no child)
+			ProofTreeCGoal = leaf(CurrentCN, CurrentPred)
 		;
-			list__map(map__lookup(ProofT0), ListCN, ListTrees),
-			( map__update(ProofT0, CurrentCN, 
-				tree(CurrentCN, CurrentPred, ListTrees), 
-				ProofT1) ->
-				ProofT = ProofT1
+			list__map(map__lookup(ProofT0), ListCN, ListListTrees),
+			% If the goal is an all sol pred, ListListTrees should
+			% contain the list of the solution of the goal it
+			% calls; otherwise, it should contain the list of its
+			% children solutions
+			list__condense(ListListTrees, ListTrees),
+			ProofTreeCGoal = 
+				tree(CurrentCN, CurrentPred, ListTrees)
+		),
+		( map__search(ProofT0, CurrentCN, ProofTL0) ->
+			( member(FatherCN, AllSolList0) ->
+				append([ProofTreeCGoal], ProofTL0, ProofTL),
+				map__set(ProofT0, CurrentCN, ProofTL, ProofT)
 			;
-			        map__det_insert(ProofT0, CurrentCN, 
-				    tree(CurrentCN, CurrentPred, ListTrees), 
-				    ProofT)
+				% If a goal is not called from an all solution
+				% predicate, we only keep the current solution
+				map__set(ProofT0, CurrentCN, 
+					[ProofTreeCGoal], ProofT)
 			)
+		;
+			map__set(ProofT0, CurrentCN, [ProofTreeCGoal], ProofT)
 		),
 		AllSolList = AllSolList0
 	;
 		Port = fail
 	->
-		stack__top_det(CallStack, FatherCN),
+		stack__top_det(CallStack0, FatherCN),
 		( member(FatherCN, AllSolList0) -> 
-		        % for all solutions predicates (such as std_util__solutions/2)
-		        % we must not remove the previous solutions of the goal.
-		        % Indeed, the all solutions predicates call the goal they
-		        % search all the solution of until it fails; therefore that 
-		        % would mean that we would always remove those solutions.
-		        GoalSuccT = GoalSuccT0,
+			% for all sol procs (such as std_util__solutions/2)
+			% we must not remove the previous solutions of 
+			% the goal. Indeed, all solutions predicates 
+			% call the goal they search all the solution of 
+			% until it fails; therefore that would mean that we 
+			% would always remove those solutions.
+			GoalSuccT = GoalSuccT0,
 			ProofT = ProofT0
 		;
-		        map__lookup(GoalSuccT0, CurrentCN, SuccList),
+			map__lookup(GoalSuccT0, CurrentCN, SuccList),
 			remove_proof_trees(ProofT0, SuccList, ProofT),
 			map__lookup(GoalSuccT0, FatherCN, SuccListFather0),
-			list__filter(remove_current_cn(CurrentCN), SuccListFather0, 
-		                SuccListFather),
+			list__filter(remove_current_cn(CurrentCN), 
+				SuccListFather0, SuccListFather),
 			map__det_update(GoalSuccT0, FatherCN, SuccListFather, 
-		                GoalSuccT)
+				GoalSuccT)
 		),
 		AllSolList = AllSolList0
 	;
-	        ( Port = disj ; Port = ite_else )
+		( Port = disj ; Port = ite_else )
 	->
-	        %
+		%
 		% We need to remove the solutions of the previous (failing
 		% branch) disjunction, i.e., we remove form the successors
-		% tables all the branches from the father goal to the 
-		% goal of the previous disjunction. We also have to remove
-		% the proof trees of those goals.
+		% tables all the branches from the father goal of the 
+		% previous disjunction. We also have to remove the proof 
+		% trees of those goals.
 		%
 		% We also need to remove the solutions produced in the if 
 		% branch for the same reasons as above (actually, it is 
 		% natural since `if A then B else C' <=> `A, !, B ; C'.).
 		%
-		( Port = disj ->
-		        remove_sol_failing_branch(GoalPath, CurrentCN,
-		                GoalSuccT0, GoalSuccT, ProofT0, ProofT)
+		stack__top_det(CallStack, FatherCN),
+		( member(FatherCN, AllSolList0) ->
+		    GoalSuccT = GoalSuccT0,
+		    ProofT = ProofT0
 		;
-		        remove_sol_if_branch(GoalPath, CurrentCN,
-		                GoalSuccT0, GoalSuccT, ProofT0, ProofT)
+		    ( Port = disj ->
+			remove_sol_disj_branch(GoalPath, CurrentCN,
+				GoalSuccT0, GoalSuccT, ProofT0, ProofT)
+		    ;
+			remove_sol_then_branch(GoalPath, CurrentCN,
+				GoalSuccT0, GoalSuccT, ProofT0, ProofT)
+		    )
 		),
 		AllSolList = AllSolList0
 	;
-                % Bug XXX I probably should do something at ports  
-	        % neg_enter, neg_success, and neg_failure.
-	        %
+		Port = redo
+	->
+		% Deterministic proc won't produce any fail event on 
+		% backtraking; thefore we need to remove solutions here too.
+		stack__top_det(CallStack0, FatherCN),
+		( member(FatherCN, AllSolList0) ->
+		    GoalSuccT = GoalSuccT0,
+		    ProofT = ProofT0
+		;
+		    remove_sol_at_redo_port(CurrentCN, FatherCN, 
+			    GoalSuccT0, GoalSuccT, ProofT0, ProofT)
+		),
+		AllSolList = AllSolList0
+	;
+		% Bug XXX I probably should do something at ports  
+		% neg_enter, neg_success, and neg_failure.
+		%
  		GoalSuccT = GoalSuccT0,
 		ProofT = ProofT0,
 		AllSolList = AllSolList0
 	),
 	Acc = ct(CallStack, GoalPath, GpDetStack, GpNonDetStack, 
-	        GoalSuccT, AllSolList, ProofT).
+		GoalSuccT, AllSolList, ProofT).
 
 
 :- pred is_a_all_solutions_predicate(string::in) is semidet.
@@ -215,80 +244,150 @@ is_a_all_solutions_predicate("std_util__do_while").
 remove_goal_path(CallNumber - _GoalPath, CallNumber).
 	
 
-:- pred remove_sol_failing_branch(goal_path_string, call_number, 
+:- pred remove_sol_at_redo_port(call_number, call_number,
 	goal_successors_table, goal_successors_table,
 	proof_tree_table, proof_tree_table).
-:- mode remove_sol_failing_branch(in, in, in, out, in, out) is det.
-remove_sol_failing_branch(GoalPath, CurrentCN, GoalSuccT0, GoalSuccT, 
+:- mode remove_sol_at_redo_port(in, in, in, out, in, out) is det.
+remove_sol_at_redo_port(CurrentCN, FatherCN, GoalSuccT0, GoalSuccT, 
+    ProofT0, ProofT) :-
+	% Get the successors list of the father of the current goal.
+	map__lookup(GoalSuccT0, FatherCN, SuccList),
+	list__filter(call_number_is_bigger(CurrentCN), SuccList, NewSuccList),
+	map__det_update(GoalSuccT0, FatherCN, NewSuccList, GoalSuccT),
+	% We also remove the corresponding proof trees
+	list__delete_elems(SuccList, NewSuccList, FailList),
+	remove_proof_trees(ProofT0, FailList, ProofT).
+
+:- pred call_number_is_bigger(call_number, call_path).
+:- mode call_number_is_bigger(in, in) is semidet.
+call_number_is_bigger(CN1, CN2 - _GoalPath2) :-
+	CN1 > CN2.
+
+
+:- pred remove_sol_disj_branch(goal_path_string, call_number, 
+	goal_successors_table, goal_successors_table,
+	proof_tree_table, proof_tree_table).
+:- mode remove_sol_disj_branch(in, in, in, out, in, out) is det.
+remove_sol_disj_branch(GoalPath, CurrentCN, GoalSuccT0, GoalSuccT, 
 	ProofT0, ProofT) :-
-	( if get_goal_path_previous_disj(GoalPath, GoalPathPrevDisj) then 
-                % Get the succesors list of the father of the current goal.
-                map__lookup(GoalSuccT0, CurrentCN, SuccList),
+	( if get_goal_path_previous_disj(GoalPath, GoalPathPrev) then 
+		% Get the successors list of the father of the current goal.
+		map__lookup(GoalSuccT0, CurrentCN, SuccList),
 		% From this list of successors, we want to remove all the 
-		% call_path that were in the previous disjunction; to do 
+		% call_path that were in the previous disjunction, as well as 
+		% the solutions that were produced after; to do 
 		% that, we use the goal path information.
-		list__filter(remove_this_goal_path(GoalPathPrevDisj), 
-	                SuccList, NewSuccList),
-	        map__det_update(GoalSuccT0, CurrentCN, NewSuccList, GoalSuccT),
+		list__filter(goal_path_is_after(GoalPathPrev), 
+			SuccList, NewSuccList),
+		map__det_update(GoalSuccT0, CurrentCN, NewSuccList, GoalSuccT),
 		% We also remove the corresponding proof trees
 		list__delete_elems(SuccList, NewSuccList, FailList),
 		remove_proof_trees(ProofT0, FailList, ProofT)
 	  else
-                GoalSuccT = GoalSuccT0,
+		GoalSuccT = GoalSuccT0,
 		ProofT = ProofT0
 	).
 
-:- pred remove_sol_if_branch(goal_path_string, call_number, 
+:- pred remove_sol_then_branch(goal_path_string, call_number, 
 	goal_successors_table, goal_successors_table,
 	proof_tree_table, proof_tree_table).
-:- mode remove_sol_if_branch(in, in, in, out, in, out) is det.
-remove_sol_if_branch(GoalPath, CurrentCN, GoalSuccT0, GoalSuccT, 
+:- mode remove_sol_then_branch(in, in, in, out, in, out) is det.
+remove_sol_then_branch(GoalPath, CurrentCN, GoalSuccT0, GoalSuccT, 
 	ProofT0, ProofT) :-
 	( if string__remove_suffix(GoalPath, "e;", GoalPathIfBranch) then
-                % Get the succesors list of the current of the current goal.
-                map__lookup(GoalSuccT0, CurrentCN, SuccList),
+		append(GoalPathIfBranch, "t;", GoalPathThenBranch),
+		% Get the succesors list of the current of the current goal.
+		map__lookup(GoalSuccT0, CurrentCN, SuccList),
 		% From this list of successors, we want to remove all the 
-		% call_path that were in the previous disjunction; to do 
+		% call_path that were in the then branch, as well as 
+		% the solutions that were produced after; to do 
 		% that, we use the goal path information.
-		list__filter(remove_this_goal_path(GoalPathIfBranch), 
-	                SuccList, NewSuccList),
-	        map__det_update(GoalSuccT0, CurrentCN, NewSuccList, GoalSuccT),
+		list__filter(goal_path_is_after(GoalPathThenBranch), 
+			SuccList, NewSuccList),
+		map__det_update(GoalSuccT0, CurrentCN, NewSuccList, GoalSuccT),
 		% We also remove the corresponding proof trees
 		list__delete_elems(SuccList, NewSuccList, FailList),
 		remove_proof_trees(ProofT0, FailList, ProofT)
 	  else
-                error("Not an ite_else event")
+		error("Not an ite_else event")
 	).
 
 
-:- pred remove_proof_trees(proof_tree_table, list(call_path), proof_tree_table).
+:- pred remove_proof_trees(proof_tree_table, list(call_path), 
+	proof_tree_table).
 :- mode remove_proof_trees(in, in, out) is det.
 remove_proof_trees(ProofT0, [], ProofT0).
 remove_proof_trees(ProofT0, [CN-_|Tail], ProofT) :-
 	map__det_remove(ProofT0, CN, _, ProofT1),
 	remove_proof_trees(ProofT1, Tail, ProofT).
 
-:- pred remove_this_goal_path(goal_path_string,  call_path).
-:- mode remove_this_goal_path(in, in) is semidet.
-% We check whether Path1 is a sub path of Path2
-remove_this_goal_path(Path1, _ - Path2) :-
-	string__append(Path1, _, Path2).
+
+% goal_path_is_after(Path1, _ - Path2) is true iff Path1
+% occurs <<after>> Path2 in the goal. 
+%
+% The idea is that when we enter the branch of a disjunction,
+% we need to remove all the solutions that were produced after
+% as well as the solutions that were produced in the previous disjunction.
+%
+% Ex: goal_path_is_after("d3;c4;d3;d3", _ - "d3;c4;d2;t")
+%     goal_path_is_after("d3;e;c6;d9", _ - "d4;e;")
+:- pred goal_path_is_after(goal_path_string, call_path).
+:- mode goal_path_is_after(in, in) is semidet.
+goal_path_is_after(GoalPath1, _CN2 - GoalPath2) :-
+	string__words(is_semi_column, GoalPath1) = ListPath1,
+	string__words(is_semi_column, GoalPath2) = ListPath2,
+	goal_path_is_after2(ListPath1, ListPath2).
+	       
+:- pred is_semi_column(char::in) is semidet.
+is_semi_column(';').
+
+:- pred goal_path_is_after2(list(string)::in, list(string)::in) is semidet.
+goal_path_is_after2([Path1|Tail1], [Path2|Tail2]) :-
+	( Path1 = Path2 ->
+		goal_path_is_after2(Tail1, Tail2)
+	    ;
+		atomic_path_is_after(Path1, Path2)
+	).
+
+:- pred atomic_path_is_after(string::in, string::in) is semidet.
+% atomic_path_is_after(Path1, Path2) succeeds iff Path1 < Path2
+atomic_path_is_after(Path1, Path2) :- 
+	(
+		Path2 = "" 
+	->
+		% "s2;d2;d4;" is after "s2;d2;"
+		true
+	;
+		append(L, Int1Str, Path1),
+		append(L, Int2Str, Path2),
+		( L = "c" ; L = "d"),
+		string__det_to_int(Int1Str) = Int1,
+		string__det_to_int(Int2Str) = Int2
+	->
+		Int1 > Int2
+	;
+		( Path1 = "e" ; Path1 = "t"), Path2 = "?"
+	).
+
 
 :- pred remove_current_cn(call_number,  call_path).
 :- mode remove_current_cn(in, in) is semidet.
 remove_current_cn(N1, N2 - _) :-
 	not (N1 = N2).
 
+
 :- pred get_goal_path_previous_disj(goal_path_string, goal_path_string).
 :- mode get_goal_path_previous_disj(in, out) is semidet.
-% Takes a goal path of the form "<path>, di" (where i>0), and outputs the 
-% goal path "<path>, di-1" if i>1, fails otherwise
+% Takes a goal path of the form "<path>;di;" (where i>0), and outputs the 
+% goal path "<path>;di-1;" if i>1, fails otherwise
 get_goal_path_previous_disj(GoalPath, GoalPathPrev) :-
 	reverse_string(GoalPath, GoalPathRev),
-	( if string__sub_string_search(GoalPathRev, "d", Index0) then
-                Index = Index0 
-	  else
-                error("No disjunctions is find in this string")
+	( if 
+		string__sub_string_search(GoalPathRev, "d", Index1)
+	  then
+		Index = Index1 
+	  else 
+		error("No disjunction is found in this string")
 	),
 	string__split(GoalPathRev, Index, NRevStr0, GoalPathTailRev),
 	% remove the ";" 
@@ -298,13 +397,12 @@ get_goal_path_previous_disj(GoalPath, GoalPathPrev) :-
 	reverse_string(GoalPathTailRev, GoalPathTail),
 	reverse_string(NRevStr, NStr),
 	( if string__to_int(NStr, N0) then
-                NPrev is N0 - 1
+		NPrev is N0 - 1
 	  else
-                error("Should be an integer")
+		error("Should be an integer")
 	),
 	string__int_to_string(NPrev, NPrevStr),
 	string__append_list([GoalPathTail, NPrevStr, ";"], GoalPathPrev).
-
 
 :- pred reverse_string(string, string).
 :- mode reverse_string(in, out) is det.
@@ -325,10 +423,10 @@ reverse_string(String, StringRev) :-
 						% To get rigth goal path
 						% at redo ports.
     ) is det.
-        % For efficiency, this should be interwined inside filter. I did not
-        % do that for the sake of clarity and reusability.
-        % Hopefully, the deforestration optimisation should be able to
-        % work here.
+	% For efficiency, this should be interwined inside filter. I did not
+	% do that for the sake of clarity and reusability.
+	% Hopefully, the deforestration optimisation should be able to
+	% work here.
 update_goal_path(Event, GoalPath0, GoalPath, DetStack0, DetStack, 
     NonDetStack0, NonDetStack) :-
 	Port = port(Event),
@@ -344,7 +442,7 @@ update_goal_path(Event, GoalPath0, GoalPath, DetStack0, DetStack,
 	->
 		stack__pop_det(DetStack0, GoalPath, DetStack),
 		( nondet_or_multi(Det) ->
-		        % Only nondet and multi proc have redo ports
+			% Only nondet and multi proc have redo ports
 			stack__push(NonDetStack0, GoalPath, NonDetStack)
 		;
 			NonDetStack = NonDetStack0
@@ -360,7 +458,7 @@ update_goal_path(Event, GoalPath0, GoalPath, DetStack0, DetStack,
 		stack__pop_det(DetStack0, GoalPath, DetStack),
 		NonDetStack = NonDetStack0
 	;
-	        % At internal events, the goal path is available
+		% At internal events, the goal path is available
 		GoalPath = goal_path(Event),
 		NonDetStack = NonDetStack0,
 		DetStack = DetStack0
@@ -372,7 +470,7 @@ nondet_or_multi(7). % multi
 
 
 :- pred update_call_stack(trace_port_type, call_number, stack(call_number), 
-        stack(call_number)).
+	stack(call_number)).
 :- mode update_call_stack(in, in, in, out) is det.
 
 update_call_stack(Port, Current, CallStack0, CallStack) :-
@@ -385,14 +483,14 @@ update_call_stack(Port, Current, CallStack0, CallStack) :-
 	->
 		stack__pop_det(CallStack0, _, CallStack)
 	;
-	        CallStack = CallStack0
+		CallStack = CallStack0
 	).
 
 
 post_process(ct(_, _, _, _, _, _, ProofTreeTable), ProofTree) :-
-	( map__to_assoc_list(ProofTreeTable, [1 - ProofTree0 | _]) ->
-	        ProofTree = ct(ProofTree0)
+	( map__to_assoc_list(ProofTreeTable, [1 - [ProofTree0] | _]) ->
+		ProofTree = ct(ProofTree0)
 	    ;
-	        % Should not occur
-	        ProofTree = pb("map__to_assoc_list failed \n") 
+		% Should not occur
+		ProofTree = pb("map__to_assoc_list failed \n") 
 	).
