@@ -19,7 +19,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, map, set, std_util.
+:- import_module bool, io, list, map, set, std_util, term.
 
 	% Check that the argument types and modes are legal for
 	% an Aditi relation.
@@ -130,7 +130,6 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.

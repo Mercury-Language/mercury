@@ -67,8 +67,6 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.
-:- import_module ll_backend__code_aux.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__dependency_graph.
 

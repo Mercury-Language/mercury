@@ -26,7 +26,7 @@
 :- module extra_typeinfo.
 :- interface.
 
-:- import_module io.
+:- import_module io, list.
 
 :- typeclass foo(T) where [
 	pred foo_pred(T::in) is semidet
@@ -40,7 +40,7 @@
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module std_util.
 
 main -->
 	{ L1 = [[1,2,3], [4,5,6]] },

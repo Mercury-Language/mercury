@@ -16,6 +16,7 @@
 :- import_module libs.
 :- import_module parse_tree.
 :- import_module transform_hlds.	% is this needed?
+:- import_module ll_backend.		% export.m uses ll_backend.arg_info.
 
 % modules that provide functionality used by several different back-ends
 :- include_module base_typeclass_info.

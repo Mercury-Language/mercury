@@ -3,7 +3,7 @@
 :- module deforest_loop.
 :- interface.
 
-:- import_module float.
+:- import_module float, list.
 
 	% Lights are modelled as points.
 :- type light

@@ -5,7 +5,7 @@
 
 :- interface.
 
-:- import_module set, std_util.
+:- import_module list, set, std_util.
 
 :- type instr == pair(instruction, string).
 
@@ -18,8 +18,6 @@
 :- mode detect_streams(in, in, out) is det.
 
 :- implementation.
-
-:- import_module list.
 
 detect_streams(Streams, Instrs0, Instrs) :-
 

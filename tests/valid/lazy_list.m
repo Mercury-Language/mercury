@@ -13,10 +13,11 @@
 %---------------------------------------------------------------------------%
 
 :- module lazy_list.
-:- import_module int, list.
-:- import_module std_util.
 
 :- interface.
+
+:- import_module int, list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -4,11 +4,11 @@
 
 :- interface.
 
+:- import_module list.
+
 :- pred bug(int::in, list(T)::in) is semidet.
 
 :- implementation.
-
-:- import_module list.
 
 bug(NextInputArgNum, InputArgs) :-
 	list__drop(NextInputArgNum, InputArgs, [_|_]).

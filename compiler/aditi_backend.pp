@@ -75,6 +75,9 @@
 	% aditi_backend__rl_exprn uses backend_libs__builtin_ops.
 :- import_module backend_libs.
 
+	% aditi_backend__magic uses ll_backend__saved_vars.
+:- import_module ll_backend.
+
 :- end_module aditi_backend.
 
 %-----------------------------------------------------------------------------%

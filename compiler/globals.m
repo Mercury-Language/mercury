@@ -229,8 +229,6 @@
 
 :- implementation.
 
-:- import_module ll_backend__exprn_aux.
-
 :- import_module map, std_util, require, string.
 
 convert_target(String, Target) :-

@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module io, list.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module int, list, prolog.
+:- import_module int, prolog.
 
 main --> main3(_).
 

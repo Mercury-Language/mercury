@@ -2,6 +2,8 @@
 
 :- interface.
 
+:- import_module list, char, map.
+
 :- type catalog  ---> catalog(publicId -> systemId).
 
 :- type [] ---> [].
@@ -26,7 +28,7 @@
 
 :- implementation.
 
-:- import_module char, int, list, map, std_util, string.
+:- import_module int, std_util, string.
 
 :- type entry
         --->    dtd(publicId, systemId)

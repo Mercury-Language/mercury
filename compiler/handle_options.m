@@ -72,10 +72,8 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module check_hlds__unify_proc.
 :- import_module libs__trace_params.
-:- import_module parse_tree__prog_data.
+:- import_module parse_tree.
 :- import_module parse_tree__prog_io_util.
 
 :- import_module char, dir, int, string, map, set, library.

@@ -1325,7 +1325,8 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		{ Body = foreign_type(_, IsSolverType) },
 		{ TypeBody = abstract_type(IsSolverType) }
 	),
-	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
+	mercury_output_item(
+		type_defn(VarSet, Name, Args, TypeBody, true),
 		Context),
 
 	(
@@ -1336,26 +1337,28 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 				MaybeJava) }
 	->
 		( { MaybeIL = yes(ILForeignType - ILUserEqComp) },
-			mercury_output_item(pragma(
-				foreign_type(il(ILForeignType), VarSet,
-					Name, Args, ILUserEqComp)),
+			mercury_output_item(
+				type_defn(VarSet, Name, Args,
+					foreign_type(il(ILForeignType),
+						ILUserEqComp), true),
 				Context)
 		; { MaybeIL = no },
 			[]
 		),
 		( { MaybeC = yes(CForeignType - CUserEqComp) },
-			mercury_output_item(pragma(
-				foreign_type(c(CForeignType), VarSet,
-					Name, Args, CUserEqComp)),
+			mercury_output_item(
+				type_defn(VarSet, Name, Args,
+					foreign_type(c(CForeignType),
+						CUserEqComp), true),
 				Context)
 		; { MaybeC = no },
 			[]
 		),
 		( { MaybeJava = yes(JavaForeignType - JavaUserEqComp) },
-			mercury_output_item(pragma(
-				foreign_type(
-					java(JavaForeignType),
-					VarSet, Name, Args, JavaUserEqComp)),
+			mercury_output_item(
+				type_defn(VarSet, Name, Args,
+					foreign_type(java(JavaForeignType),
+						JavaUserEqComp), true),
 				Context)
 		; { MaybeJava = no },
 			[]
@@ -2232,8 +2235,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% make_hlds know the opt_imported stuff is coming.
 		%
 	{ module_imports_get_items(Module0, Items0) },
-	{ make_pseudo_decl(opt_imported, OptImportedDecl) },
-	{ list__append(Items0, [OptImportedDecl | OptItems], Items1) },
+	{ Items1 = Items0 ++ [make_pseudo_decl(opt_imported) | OptItems] },
 	{ module_imports_set_items(Module0, Items1, Module1) },
 
 		%
@@ -2268,8 +2270,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 			list__condense(list__map(get_ancestors, OptFiles)),
 			ModuleName) },
 	process_module_private_interfaces(ReadModules, Int0Files,
-			[], AncestorImports1, [], AncestorImports2,
-			Module2, Module3),
+			make_pseudo_decl(opt_imported),
+			make_pseudo_decl(opt_imported),
+			[], AncestorImports1,
+			[], AncestorImports2, Module2, Module3),
 
 		%
 		% Figure out which .int files are needed by the .opt files
@@ -2288,9 +2292,17 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		%
 	{ map__init(ReadModules) },
 	process_module_long_interfaces(ReadModules, must_be_qualified, NewDeps,
-			".int", [], NewIndirectDeps, Module3, Module4),
-	process_module_short_interfaces_transitively(ReadModules,
-			NewIndirectDeps, ".int2", Module4, Module),
+			".int",
+			make_pseudo_decl(opt_imported),
+			make_pseudo_decl(opt_imported),
+			[], NewIndirectDeps, [], NewImplIndirectDeps,
+			Module3, Module4),
+	process_module_short_interfaces_and_implementations_transitively(
+			ReadModules, NewIndirectDeps ++ NewImplIndirectDeps,
+			".int2",
+			make_pseudo_decl(opt_imported),
+			make_pseudo_decl(opt_imported),
+			Module4, Module),
 
 		%
 		% Figure out whether anything went wrong

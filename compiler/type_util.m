@@ -551,7 +551,7 @@
 :- mode maybe_get_higher_order_arg_types(in, in, out) is det.
 
 :- type polymorphism_cell
-	--->	type_info_cell
+	--->	type_info_cell(type_ctor)
 	;	typeclass_info_cell.
 
 :- func cell_cons_id(polymorphism_cell) = cons_id.
@@ -1331,10 +1331,10 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
 		ConsId = cons(Name, OrigArity),
 		InstConsId = ConsId
 	;
-		ConsId0 = type_info_cell_constructor
+		ConsId0 = type_info_cell_constructor(CellCtor)
 	->
-		ConsId = type_info_cell_constructor,
-		InstConsId = cell_inst_cons_id(type_info_cell,
+		ConsId = ConsId0,
+		InstConsId = cell_inst_cons_id(type_info_cell(CellCtor),
 			list__length(Args))
 	;
 		ConsId0 = typeclass_info_cell_constructor
@@ -2040,14 +2040,14 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-cell_cons_id(type_info_cell) = type_info_cell_constructor.
+cell_cons_id(type_info_cell(Ctor)) = type_info_cell_constructor(Ctor).
 cell_cons_id(typeclass_info_cell) = typeclass_info_cell_constructor.
 
 cell_inst_cons_id(Which, Arity) = InstConsId :-
 	% Soon neither of these function symbols will exist,
 	% even with fake arity, but they do not need to.
 	(
-		Which = type_info_cell,
+		Which = type_info_cell(_),
 		Symbol = "type_info"
 	;
 		Which = typeclass_info_cell,
@@ -2056,7 +2056,7 @@ cell_inst_cons_id(Which, Arity) = InstConsId :-
 	PrivateBuiltin = mercury_private_builtin_module,
 	InstConsId = cons(qualified(PrivateBuiltin, Symbol), Arity).
 
-cell_type_name(type_info_cell) = "type_info".
+cell_type_name(type_info_cell(_)) = "type_info".
 cell_type_name(typeclass_info_cell) = "typeclass_info".
 
 %-----------------------------------------------------------------------------%

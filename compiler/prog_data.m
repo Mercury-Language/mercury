@@ -257,16 +257,6 @@
 			% VarNames, Foreign Code Implementation Info
 		)
 
-	;	foreign_type(
-			type_lang	:: foreign_language_type,
-			type_tvarset	:: tvarset,
-			type_name	:: sym_name,
-			type_params	:: list(type_param),
-			type_unifycompare :: maybe(unify_compare)
-			% ForeignType, TVarSet, MercuryTypeName,
-			% MercuryTypeParams, UnifyAndCompare
-		)
-
 	;	foreign_import_module(
 			imp_lang	:: foreign_language,
 			imp_module	:: module_name
@@ -1021,7 +1011,9 @@
 :- type type_defn	
 	--->	du_type(list(constructor), is_solver_type, maybe(unify_compare))
 	;	eqv_type(type)
-	;	abstract_type(is_solver_type).
+	;	abstract_type(is_solver_type)
+	;	foreign_type(foreign_language_type, maybe(unify_compare))
+	.
 
 :- type constructor	
 	--->	ctor(
@@ -1234,6 +1226,14 @@
 		% `:- use_module', and items from `.opt'
 		% and `.int2' files. It also records from which
 		% section the module was imported.
+	;	abstract_imported
+		% This is used internally by the compiler,
+		% to identify items which originally
+		% came from the implementation section
+		% of an interface file; usually type
+		% declarations (especially equivalence types)
+		% which should be used in code generation
+		% but not in type checking.
 	;	opt_imported
 		% This is used internally by the compiler,
 		% to identify items which originally
@@ -1267,10 +1267,22 @@
 	--->	implementation
 	;	interface.
 
+	% An import_locn is used to describe the place where an item was
+	% imported from.
 :- type import_locn
-	--->	implementation
+	--->
+		% The item is from a module imported in the implementation.
+		implementation
+
+		% The item is from a module imported in the interface.
 	;	interface
-	;	ancestor.
+
+		% The item is from a module imported by an ancestor.
+	;	ancestor
+
+		% The item is from the private interface of an ancestor module.
+	;	ancestor_private_interface
+	.
 
 :- type sym_list	
 	--->	sym(list(sym_specifier))

@@ -569,7 +569,7 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
 	->
 		( VarTypeCtorName = "type_info" ->
 			(
-				ConsId = type_info_cell_constructor,
+				ConsId = type_info_cell_constructor(_),
 				Args = [TypeCtorInfoVar | ArgTypeInfoVars]
 			->
 				record_known_type_info(Var, TypeCtorInfoVar,

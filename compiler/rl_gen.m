@@ -41,8 +41,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
-:- import_module ll_backend__code_aux.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.

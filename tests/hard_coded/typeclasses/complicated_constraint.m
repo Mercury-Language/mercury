@@ -1,6 +1,6 @@
 :- module complicated_constraint.
 :- interface.
-:- import_module io.
+:- import_module io, list.
 
 :- typeclass printable(A) where [
 	pred p(A::in, io__state::di, io__state::uo) is det
@@ -17,7 +17,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module list, int.
+:- import_module int.
 
 :- instance printable(int) where [
 	pred(p/3) is io__write_int

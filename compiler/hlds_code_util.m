@@ -55,7 +55,7 @@ cons_id_to_tag(type_ctor_info_const(M,T,A), _, _) =
 		type_ctor_info_constant(M,T,A).
 cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _) =
 		base_typeclass_info_constant(M,C,N).
-cons_id_to_tag(type_info_cell_constructor, _, _) = unshared_tag(0).
+cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
 cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
 cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _) =
 		tabling_pointer_constant(PredId,ProcId).

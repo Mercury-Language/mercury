@@ -5,11 +5,10 @@
 % or mode is chosen.
 :- module tim_qual1.
 
-:- import_module io.
-
 :- interface.
 
 :- import_module tim_qual2, tim_qual3.
+:- import_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

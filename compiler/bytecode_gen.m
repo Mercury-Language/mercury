@@ -760,7 +760,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
 			Instance)
 	;
-		ConsId = type_info_cell_constructor,
+		ConsId = type_info_cell_constructor(_),
 		ByteConsId = type_info_cell_constructor
 	;
 		ConsId = typeclass_info_cell_constructor,

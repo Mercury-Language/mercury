@@ -306,6 +306,12 @@
 :- pred instmap_delta_to_assoc_list(instmap_delta, assoc_list(prog_var, inst)).
 :- mode instmap_delta_to_assoc_list(in, out) is det.
 
+	% Apply the specified procedure to all insts in an instmap_delta.
+:- pred instmap_delta_map_foldl(pred(prog_var, inst, inst, T, T),
+		instmap_delta, instmap_delta, T, T).
+:- mode instmap_delta_map_foldl((pred(in, in, out, in, out) is det),
+		in, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -359,6 +365,11 @@ instmap__from_assoc_list(AL, reachable(Instmapping)) :-
 
 instmap_delta_from_assoc_list(AL, reachable(Instmapping)) :-
 	map__from_assoc_list(AL, Instmapping).
+
+instmap_delta_map_foldl(_, unreachable, unreachable, T, T).
+instmap_delta_map_foldl(P, reachable(Instmapping0), reachable(Instmapping),
+		T0, T) :-
+	map__map_foldl(P, Instmapping0, Instmapping, T0, T).
 
 %-----------------------------------------------------------------------------%
 

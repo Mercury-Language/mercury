@@ -1758,6 +1758,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_maybe_declared_argmodes(proc_info::in,
 	maybe(list(mode))::out) is det.
 
+:- pred proc_info_set_maybe_declared_argmodes(maybe(list(mode))::in,
+	proc_info::in, proc_info::out) is det.
+
 :- pred proc_info_declared_argmodes(proc_info::in, list(mode)::out) is det.
 
 :- pred proc_info_is_address_taken(proc_info::in, is_address_taken::out)
@@ -2196,6 +2199,8 @@ proc_info_set_varset(VS, ProcInfo, ProcInfo ^ prog_varset := VS).
 proc_info_set_vartypes(VT, ProcInfo, ProcInfo ^ var_types := VT).
 proc_info_set_headvars(HV, ProcInfo, ProcInfo ^ head_vars := HV).
 proc_info_set_argmodes(AM, ProcInfo, ProcInfo ^ actual_head_modes := AM).
+proc_info_set_maybe_declared_argmodes(AM, ProcInfo,
+	ProcInfo ^ maybe_declared_head_modes := AM).
 proc_info_set_inst_varset(IV, ProcInfo, ProcInfo ^ inst_varset := IV).
 proc_info_set_maybe_arglives(CL, ProcInfo,
 	ProcInfo ^ head_var_caller_liveness := CL).

@@ -24,6 +24,7 @@
 
 :- interface.
 
+:- import_module check_hlds.
 :- import_module hlds.
 :- import_module libs.
 :- import_module parse_tree.

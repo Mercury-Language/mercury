@@ -4,6 +4,8 @@
 
 :- interface.
 
+:- import_module io, list.
+
 :- typeclass c(T) where [].
 
 :- instance c(int) where [].
@@ -42,13 +44,11 @@
 :- type multi2  ---> some [T1,T2,T3] multi2(T1, T2, T3) 
 			=> (c2(T1, T2), c3(T1, T3)).
 
-:- import_module io.
-
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module std_util.
 
 main -->
 	io__write_string("Writing copies of terms:\n"),

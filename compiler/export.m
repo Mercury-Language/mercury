@@ -81,8 +81,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__arg_info.
-:- import_module ll_backend__code_gen.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__modules.
 
 :- import_module term, varset.

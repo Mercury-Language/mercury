@@ -552,45 +552,6 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		mercury_output_pragma_foreign_code(Attributes, Pred,
 			PredOrFunc, Vars, VarSet, PragmaCode)
 	;
-		{ Pragma = foreign_type(ForeignType, TVarSet,
-				MercuryTypeSymName, MercuryTypeArgs,
-				MaybeEqCompare) },
-
-		io__write_string(":- pragma foreign_type("),
-		( { ForeignType = il(_) },
-			io__write_string("il, ")
-		; { ForeignType = c(_) },
-			io__write_string("c, ")
-		; { ForeignType = java(_) },
-			io__write_string("java, ")
-		),
-		{ construct_qualified_term(MercuryTypeSymName,
-			MercuryTypeArgs, MercuryType) },
-		mercury_output_term(MercuryType, TVarSet, no),
-		io__write_string(", \""),
-		{ ForeignType = il(il(RefOrVal,
-				ForeignLocStr, ForeignTypeName)),
-			( RefOrVal = reference,
-				RefOrValStr = "class "
-			; RefOrVal = value,
-				RefOrValStr = "valuetype "
-			),
-			sym_name_to_string(ForeignTypeName, ".", NameStr),
-			ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++
-					"]" ++ NameStr
-		; ForeignType = c(c(ForeignTypeStr))
-		; ForeignType = java(java(ForeignTypeStr))
-		},
-		io__write_string(ForeignTypeStr),
-		io__write_string("\")"),
-		( { MaybeEqCompare = yes(_) } ->
-			io__write_string(" ")
-		;
-			[]
-		),
-		mercury_output_equality_compare_preds(MaybeEqCompare),
-		io__write_string(".\n")
-	;
 		{ Pragma = import(Pred, PredOrFunc, ModeList, Attributes,
 			C_Function) },
 		mercury_format_pragma_import(Pred, PredOrFunc, ModeList,
@@ -1598,7 +1559,7 @@ mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
 	),
 	add_format(", instance number %d (%s)>",
 		[i(InstanceNum), s(InstanceString)]).
-mercury_format_cons_id(type_info_cell_constructor, _) -->
+mercury_format_cons_id(type_info_cell_constructor(_), _) -->
 	add_string("<type_info_cell_constructor>").
 mercury_format_cons_id(typeclass_info_cell_constructor, _) -->
 	add_string("<typeclass_info_cell_constructor>").
@@ -1728,12 +1689,12 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_type_defn(tvarset, sym_name, list(type_param),
-		type_defn, prog_context, io__state, io__state).
+:- pred mercury_output_type_defn(tvarset, sym_name,
+	list(type_param), type_defn, prog_context, io__state, io__state).
 :- mode mercury_output_type_defn(in, in, in, in, in, di, uo) is det.
 
-mercury_output_type_defn(VarSet, Name, Args, abstract_type(IsSolverType),
-		Context) -->
+mercury_output_type_defn(VarSet, Name, Args,
+		abstract_type(IsSolverType), Context) -->
 	mercury_output_begin_type_decl(IsSolverType),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no, next_to_graphic_token),
@@ -1761,6 +1722,36 @@ mercury_output_type_defn(VarSet, Name, Args,
 	),
 	mercury_output_equality_compare_preds(MaybeEqCompare),
 	io__write_string("\n\t.\n").
+
+mercury_output_type_defn(TVarSet, Name, Args,
+		foreign_type(ForeignType, MaybeEqCompare), _Context) -->
+	io__write_string(":- pragma foreign_type("),
+	( { ForeignType = il(_) }, io__write_string("il, ")
+	; { ForeignType = c(_) }, io__write_string("c, ")
+	; { ForeignType = java(_) }, io__write_string("java, ")
+	),
+	{ construct_qualified_term(Name, Args, MercuryType) },
+	mercury_output_term(MercuryType, TVarSet, no),
+	io__write_string(", \""),
+	{ ForeignType = il(il(RefOrVal, ForeignLocStr, ForeignTypeName)),
+		( RefOrVal = reference, RefOrValStr = "class "
+		; RefOrVal = value, RefOrValStr = "valuetype "
+		),
+		sym_name_to_string(ForeignTypeName, ".", NameStr),
+		ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++
+				"]" ++ NameStr
+	; ForeignType = c(c(ForeignTypeStr))
+	; ForeignType = java(java(ForeignTypeStr))
+	},
+	io__write_string(ForeignTypeStr),
+	io__write_string("\")"),
+	( { MaybeEqCompare = yes(_) } ->
+		io__write_string(" ")
+	;
+		[]
+	),
+	mercury_output_equality_compare_preds(MaybeEqCompare),
+	io__write_string(".\n").
 
 :- pred mercury_output_begin_type_decl(is_solver_type, io__state, io__state).
 :- mode mercury_output_begin_type_decl(in, di, uo) is det.

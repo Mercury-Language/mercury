@@ -21,6 +21,7 @@ MULTIMODULE_PROGS= \
 	ho_default_func_2.sub \
 	import_in_parent \
 	imported_mode \
+	missing_interface_import2 \
 	missing_parent_import \
 	partial_implied_mode \
 	sub_c \

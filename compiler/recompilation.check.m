@@ -687,9 +687,8 @@ check_imported_module(Term, Info0, Info) -->
 		{ Recorded = bool__no },
 		read_mod_if_changed(ImportedModuleName, Suffix,
 			"Reading interface file for module",
-			yes, RecordedTimestamp, Items0, Error,
-			FileName, MaybeNewTimestamp),
-		{ strip_off_interface_decl(Items0, Items) }
+			yes, RecordedTimestamp, Items, Error,
+			FileName, MaybeNewTimestamp)
 	),
 	{
 		MaybeNewTimestamp = yes(NewTimestamp),
@@ -705,7 +704,9 @@ check_imported_module(Term, Info0, Info) -->
 		),
 		(
 			MaybeUsedItemsTerm = yes(UsedItemsTerm),
-			Items = [VersionNumberItem | OtherItems],
+			Items = [InterfaceItem, VersionNumberItem
+					| OtherItems],
+			InterfaceItem = module_defn(_, interface) - _,
 			VersionNumberItem = module_defn(_,
 				version_numbers(_, VersionNumbers)) - _
 		->
@@ -1135,6 +1136,7 @@ check_type_defn_ambiguity_with_functor(NeedQualifier,
 			TypeCtor, du_type(Ctors, _, _)) -->
 	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
 		Ctors).
+check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _)) --> [].
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
 		constructor::in, recompilation_check_info::in,

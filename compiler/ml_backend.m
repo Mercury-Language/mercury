@@ -28,6 +28,7 @@
 :- import_module libs.
 :- import_module parse_tree.
 :- import_module transform_hlds. % is this needed?
+:- import_module aditi_backend. % need aditi_backend.rl_file
 
 %-----------------------------------------------------------------------------%
 

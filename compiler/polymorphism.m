@@ -354,8 +354,6 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
@@ -2773,7 +2771,13 @@ polymorphism__get_category_name(base_typeclass_info_type) = no.
 
 polymorphism__init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar,
 		TypeInfoGoal, !VarSet, !VarTypes) :-
-	ConsId = cell_cons_id(type_info_cell),
+	( type_to_ctor_and_args(Type, Ctor, _) ->
+		Cell = type_info_cell(Ctor)
+	;
+		error(
+	"polymorphism__init_type_info_var: type_to_ctor_and_args failed")
+	),
+	ConsId = cell_cons_id(Cell),
 	TypeInfoTerm = functor(ConsId, no, ArgVars),
 
 	% introduce a new variable
@@ -2805,7 +2809,7 @@ polymorphism__init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cell_inst_cons_id(type_info_cell, NumArgVars),
+	InstConsId = cell_inst_cons_id(Cell, NumArgVars),
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),

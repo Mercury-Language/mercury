@@ -50,7 +50,8 @@
 		% class instance, a string encoding the type
 		% names and arities of the arguments to the
 		% instance declaration
-	;	type_info_cell_constructor
+	;	type_info_cell_constructor(type_ctor)
+		% module name, type name, type arity
 	;	typeclass_info_cell_constructor
 	;	tabling_pointer_const(pred_id, proc_id)
 		% The address of the static variable
@@ -201,7 +202,7 @@ cons_id_arity(type_ctor_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
-cons_id_arity(type_info_cell_constructor, _) :-
+cons_id_arity(type_info_cell_constructor(_), _) :-
 	error("cons_id_arity: can't get arity of type_info_cell_constructor").
 cons_id_arity(typeclass_info_cell_constructor, _) :-
 	error("cons_id_arity: can't get arity of typeclass_info_cell_constructor").
@@ -219,7 +220,7 @@ cons_id_maybe_arity(float_const(_), yes(0)).
 cons_id_maybe_arity(pred_const(_, _, _), no) .
 cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
-cons_id_maybe_arity(type_info_cell_constructor, no) .
+cons_id_maybe_arity(type_info_cell_constructor(_), no) .
 cons_id_maybe_arity(typeclass_info_cell_constructor, no) .
 cons_id_maybe_arity(tabling_pointer_const(_, _), no).
 cons_id_maybe_arity(deep_profiling_proc_static(_), no).
@@ -302,6 +303,10 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 :- pred hlds_data__set_type_defn_body(hlds_type_defn, hlds_type_body,
 			hlds_type_defn).
 :- mode hlds_data__set_type_defn_body(in, in, out) is det.
+
+:- pred hlds_data__set_type_defn_tvarset(hlds_type_defn, tvarset,
+			hlds_type_defn).
+:- mode hlds_data__set_type_defn_tvarset(in, in, out) is det.
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
@@ -591,6 +596,8 @@ hlds_data__get_type_defn_need_qualifier(Defn, Defn ^ type_defn_need_qualifier).
 hlds_data__get_type_defn_context(Defn, Defn ^ type_defn_context).
 
 hlds_data__set_type_defn_body(Defn, Body, Defn ^ type_defn_body := Body).
+hlds_data__set_type_defn_tvarset(Defn, TVarSet,
+		Defn ^ type_defn_tvarset := TVarSet).
 hlds_data__set_type_defn_status(Defn, Status,
 		Defn ^ type_defn_import_status := Status).
 

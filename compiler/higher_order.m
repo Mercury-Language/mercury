@@ -713,7 +713,7 @@ is_interesting_cons_id(Params, type_ctor_info_const(_, _, _)) =
 	Params ^ user_type_spec.
 is_interesting_cons_id(Params, base_typeclass_info_const(_, _, _, _)) =
 	Params ^ user_type_spec.
-is_interesting_cons_id(Params, type_info_cell_constructor) =
+is_interesting_cons_id(Params, type_info_cell_constructor(_)) =
 	Params ^ user_type_spec.
 is_interesting_cons_id(Params, typeclass_info_cell_constructor) =
 	Params ^ user_type_spec.

@@ -9,11 +9,9 @@
 :- module unused_float_box_test.
 :- interface.
 
-:- import_module io.
+:- import_module io, list, std_util.
 
 :- pred main(io__state::di, io__state::uo) is det.
-
-:- import_module std_util.
 
 :- type my_functor_tag_info
         --->    my_functor_integer(int)
@@ -29,7 +27,7 @@
 :- pred my_get_functor_info(my_univ::in, my_functor_tag_info::out) is semidet.
 
 :- implementation.
-:- import_module list, int.
+:- import_module int.
 
 main -->
 	wipe_stack(200),

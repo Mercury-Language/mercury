@@ -1,7 +1,8 @@
 :- module string_test.
-:- import_module io.
 
 :- interface.
+
+:- import_module io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.

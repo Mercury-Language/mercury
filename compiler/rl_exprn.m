@@ -513,7 +513,7 @@ rl_exprn__set_term_arg_cons_id_code(type_ctor_info_const(_, _, _),
 rl_exprn__set_term_arg_cons_id_code(base_typeclass_info_const(_, _, _, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
-rl_exprn__set_term_arg_cons_id_code(type_info_cell_constructor,
+rl_exprn__set_term_arg_cons_id_code(type_info_cell_constructor(_),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(typeclass_info_cell_constructor,
@@ -1166,7 +1166,7 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 		{ ConsId = base_typeclass_info_const(_, _, _, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - base_typeclass_info_const") }
 	; 
-		{ ConsId = type_info_cell_constructor },
+		{ ConsId = type_info_cell_constructor(_) },
 		% XXX for now we ignore these and hope it doesn't matter.
 		{ Code = empty }
 	; 

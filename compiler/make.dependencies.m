@@ -483,7 +483,7 @@ indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
 		{ Info = Info1 }
 	;
 		foldl3_maybe_stop_at_error(Info1 ^ keep_going,
-			union_deps(find_transitive_interface_imports),
+			union_deps(find_transitive_implementation_imports),
 			set__to_sorted_list(DirectImports), IndirectSuccess,
 			set__init, IndirectImports0, Info1, Info),
 		{ IndirectImports = set__difference(

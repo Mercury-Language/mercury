@@ -30,7 +30,7 @@
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, io, std_util.
+:- import_module bool, list, io, std_util, term.
 
 % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
 %		InvalidTypes, InvalidModes):
@@ -368,7 +368,7 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		!.Status = item_status(IStat, _),
 		(
 			( status_defined_in_this_module(IStat, yes)
-			; IStat = imported(ancestor)
+			; IStat = imported(ancestor_private_interface)
 			)
 		->
 			module_add_imported_module_specifiers(Specifiers,
@@ -442,8 +442,8 @@ add_item_decl_pass_2(module_defn(_VarSet, ModuleDefn), _Context,
 		true
 	).
 
-add_item_decl_pass_2(type_defn(VarSet, Name, Args, TypeDefn, Cond), Context,
-		!Status, !Module, !IO) :-
+add_item_decl_pass_2(type_defn(VarSet, Name, Args, TypeDefn, Cond),
+		Context, !Status, !Module, !IO) :-
 	module_add_type_defn(VarSet, Name, Args, TypeDefn,
 		Cond, Context, !.Status, !Module, !IO).
 
@@ -482,14 +482,6 @@ add_item_decl_pass_2(pragma(Pragma), Context, !Status, !Module, !IO) :-
 		% Handle pragma foreign procs later on (when we process
 		% clauses).
 		Pragma = foreign_proc(_, _, _, _, _, _)
-	;
-		% Note that we check during process_type_defn that we have
-		% defined a foreign_type which is usable by the back-end
-		% we are compiling on.
-		Pragma = foreign_type(ForeignType, TVarSet, Name, Args,
-			UserEqComp),
-		add_pragma_foreign_type(Context, !.Status, ForeignType,
-			TVarSet, Name, Args, UserEqComp, !Module, !IO)
 	;
 		% Handle pragma tabled decls later on (when we process
 		% clauses).
@@ -687,6 +679,8 @@ module_defn_update_import_status(used(Section),
 		item_status(imported(Section), must_be_qualified)).
 module_defn_update_import_status(opt_imported,
 		item_status(opt_imported, must_be_qualified)).
+module_defn_update_import_status(abstract_imported,
+		item_status(abstract_imported, must_be_qualified)).
 
 %-----------------------------------------------------------------------------%
 
@@ -950,69 +944,6 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 		undefined_pred_or_func_error(Name, Arity, Context,
 			"`:- pragma export' declaration"),
 		{ module_info_incr_errors(Module0, Module) }
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred add_pragma_foreign_type(prog_context::in, item_status::in,
-	foreign_language_type::in, tvarset::in, sym_name::in,
-	list(type_param)::in, maybe(unify_compare)::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
-
-add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual),
-		ForeignType, TVarSet, Name, Args, UserEqComp, !Module, !IO) :-
-	IsSolverType = non_solver_type,
-	( ForeignType = il(ILForeignType),
-		Body = foreign_type(
-			foreign_type_body(yes(ILForeignType - UserEqComp),
-			no, no), IsSolverType)
-	; ForeignType = c(CForeignType),
-		Body = foreign_type(foreign_type_body(no,
-				yes(CForeignType - UserEqComp), no),
-				IsSolverType)
-	; ForeignType = java(JavaForeignType),
-		Body = foreign_type(foreign_type_body(no, no,
-				yes(JavaForeignType - UserEqComp)),
-				IsSolverType)
-	),
-	Cond = true,
-
-	Arity = list__length(Args),
-	TypeCtor = Name - Arity,
-	module_info_types(!.Module, Types),
-	TypeStr = error_util__describe_sym_name_and_arity(Name / Arity),
-	( map__search(Types, TypeCtor, OldDefn) ->
-		hlds_data__get_type_defn_status(OldDefn, OldStatus),
-		hlds_data__get_type_defn_body(OldDefn, OldBody),
-		(
-			OldBody = abstract_type(_),
-			status_is_exported_to_non_submodules(OldStatus, no),
-			status_is_exported_to_non_submodules(ImportStatus, yes)
-		->
-			ErrorPieces = [
-				words("Error: pragma foreign_type "),
-				fixed(TypeStr),
-				words(
-		"must have the same visibility as the type declaration.")
-			],
-			error_util__write_error_pieces(Context, 0,
-				ErrorPieces, !IO),
-			module_info_incr_errors(!Module)
-		;
-			module_info_contains_foreign_type(!Module),
-			module_add_type_defn_2(TVarSet, Name, Args, Body, Cond,
-				Context, item_status(ImportStatus, NeedQual),
-				!Module, !IO)
-		)
-	;
-		ErrorPieces = [
-			words("Error: type "),
-			fixed(TypeStr),
-			words("defined as foreign_type without being declared.")
-		],
-		error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
-		module_info_incr_errors(!Module)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2168,26 +2099,13 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context) -->
 :- mode module_add_type_defn(in, in, in, in, in,
 		in, in, in, out, di, uo) is det.
 
-module_add_type_defn(TVarSet, Name, Args, TypeDefn, Cond, Context,
+module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		item_status(Status0, NeedQual), !Module, !IO) :-
 	globals__io_get_globals(Globals, !IO),
 	list__length(Args, Arity),
 	TypeCtor = Name - Arity,
-	convert_type_defn(TypeDefn, TypeCtor, Globals, Body),
-	module_add_type_defn_2(TVarSet, Name, Args, Body, Cond,
-		Context, item_status(Status0, NeedQual), !Module, !IO).
-
-:- pred module_add_type_defn_2(tvarset, sym_name, list(type_param),
-		hlds_type_body, condition, prog_context, item_status,
-		module_info, module_info, io__state, io__state).
-:- mode module_add_type_defn_2(in, in, in, in, in,
-		in, in, in, out, di, uo) is det.
-
-module_add_type_defn_2(TVarSet, Name, Args, Body0, _Cond, Context,
-		item_status(Status0, NeedQual), !Module, !IO) :-
+	convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
 	module_info_types(!.Module, Types0),
-	list__length(Args, Arity),
-	TypeCtor = Name - Arity,
 	(
 		(
 			Body0 = abstract_type(_)
@@ -2240,6 +2158,39 @@ module_add_type_defn_2(TVarSet, Name, Args, Body0, _Cond, Context,
 	hlds_data__set_type_defn(TVarSet, Args, Body, Status,
 		NeedQual, Context, T),
 	(
+		MaybeOldDefn = no,
+		Body = foreign_type(_, _)
+	->
+		TypeStr = error_util__describe_sym_name_and_arity(
+				Name / Arity),
+		ErrorPieces = [
+			words("Error: type "),
+			fixed(TypeStr),
+			words("defined as foreign_type without being declared.")
+		],
+		error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+		module_info_incr_errors(!Module)
+	;
+		MaybeOldDefn = yes(OldDefn1),
+		Body = foreign_type(_, _),
+		hlds_data__get_type_defn_status(OldDefn1, OldStatus1),
+		hlds_data__get_type_defn_body(OldDefn1, OldBody1),
+		OldBody1 = abstract_type(_),
+		status_is_exported_to_non_submodules(OldStatus1, no),
+		status_is_exported_to_non_submodules(Status0, yes)
+	->
+		TypeStr = error_util__describe_sym_name_and_arity(
+				Name / Arity),
+		ErrorPieces = [
+			words("Error: pragma foreign_type "),
+			fixed(TypeStr),
+			words(
+		"must have the same visibility as the type declaration.")
+		],
+		error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+		module_info_incr_errors(!Module)
+	;
+
 		% if there was an existing non-abstract definition for the type
 		MaybeOldDefn = yes(T2),
 		hlds_data__get_type_defn_tvarset(T2, TVarSet_2),
@@ -2253,6 +2204,11 @@ module_add_type_defn_2(TVarSet, Name, Args, Body0, _Cond, Context,
 		globals__io_get_target(Target, !IO),
 		globals__io_lookup_bool_option(make_optimization_interface,
 			MakeOptInt, !IO),
+		( Body = foreign_type(_, _) ->
+			module_info_contains_foreign_type(!Module)
+		;
+			true
+		),
 	  	(
 			% then if this definition was abstract, ignore it
 			% (but update the status of the old defn if necessary)
@@ -2340,6 +2296,8 @@ module_add_type_defn_2(TVarSet, Name, Args, Body0, _Cond, Context,
 			true
 		)
 	).
+
+%-----------------------------------------------------------------------------%
 
 	% We do not have syntax for adding `solver' annotations to
 	% `:- pragma foreign_type' declarations, so foreign_type bodies
@@ -2698,6 +2656,18 @@ convert_type_defn(du_type(Body, IsSolverType, EqualityPred), TypeCtor, Globals,
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type(IsSolverType), _, _,
 		abstract_type(IsSolverType)).
+convert_type_defn(foreign_type(ForeignType, UserEqComp), _, _,
+		foreign_type(Body, non_solver_type)) :-
+	( ForeignType = il(ILForeignType),
+		Body = foreign_type_body(yes(ILForeignType - UserEqComp),
+				no, no)
+	; ForeignType = c(CForeignType),
+		Body = foreign_type_body(no,
+				yes(CForeignType - UserEqComp), no)
+	; ForeignType = java(JavaForeignType),
+		Body = foreign_type_body(no, no,
+				yes(JavaForeignType - UserEqComp))
+	).
 
 :- pred ctors_add(list(constructor), type_ctor, tvarset, need_qualifier,
 		partial_qualifier_info, prog_context, import_status,
@@ -8141,7 +8111,12 @@ process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
 	term__apply_variable_renaming(Type1, TVarRenaming, Type2),
 
 	% Expand equivalence types.
-	equiv_type__replace_in_type(Type2, TVarSet1, EqvMap, Type, TVarSet)
+	% We don't need to record the expanded types for smart recompilation
+	% because at the moment no recompilation.item_id can depend on a
+	% clause item.
+	RecordExpanded = no,
+	equiv_type__replace_in_type(EqvMap, Type2, Type, TVarSet1, TVarSet,
+		RecordExpanded, _)
 	},
 	update_var_types(VarTypes0, Var, Type, Context, VarTypes),
 	{ Info = Info0 ^ qual_info := qual_info(EqvMap, TVarSet, TVarRenaming,

@@ -20,6 +20,8 @@
 
 :- include_module dependency_graph. % XXX imports llds (for profiling labels)
 
+:- include_module equiv_type_hlds.
+
 :- include_module table_gen.
 
 :- include_module (lambda).

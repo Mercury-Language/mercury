@@ -48,14 +48,16 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 			UnifyCompareResult = ok(MaybeUserEqCompare),
 			(
 				MaybeUserEqCompare = yes(_),
-				Result0 = ok(Pragma)
+				Result0 = ok(Item0)
 			->
 				(
-					Pragma = pragma(foreign_type(A,
-							B, C, D, _))
+					Item0 = type_defn(_, _, _, _, _),
+					foreign_type(Type, _) =
+						Item0 ^ td_ctor_defn
 				->
-					Result = ok(pragma(foreign_type(A,
-						B, C, D, MaybeUserEqCompare)))
+					Result = ok(Item0 ^ td_ctor_defn :=
+						foreign_type(Type,
+							MaybeUserEqCompare))
 				;
 					Result = error(
 				"unexpected `where equality/comparison is'",
@@ -112,17 +114,17 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 					MercuryTypeTerm, ErrorTerm,
 					MaybeTypeDefnHead),
 				(
-					MaybeTypeDefnHead = ok(
-						MercuryTypeSymName,
-						MercuryArgs0),
+					MaybeTypeDefnHead =
+						ok(MercuryTypeSymName,
+							MercuryArgs0),
 					varset__coerce(VarSet, TVarSet),
 					MercuryArgs = list__map(term__coerce,
-						MercuryArgs0),
-					Result = ok(pragma(
-						foreign_type(ForeignType,
-							TVarSet,
-							MercuryTypeSymName,
-							MercuryArgs, no))) 
+							MercuryArgs0),
+					Result = ok(type_defn(TVarSet,
+						MercuryTypeSymName,
+						MercuryArgs,
+						foreign_type(ForeignType, no),
+						true)) 
 				;
 					MaybeTypeDefnHead =
 						error(String, Term),
@@ -132,14 +134,15 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
 				MaybeForeignType = error(String, Term),
 				Result = error(String, Term)
 			)
-		;   
-			Result = error("invalid foreign language in " ++
-				"`:- pragma foreign_type' declaration",
-				LangTerm)
+		;
+			Result = error(
+	"invalid foreign language in `:- pragma foreign_type' declaration",
+			LangTerm)
 		)
 	;
-		Result = error("wrong number of arguments in " ++
-			"`:- pragma foreign_type' declaration", ErrorTerm)
+		Result = error(
+	"wrong number of arguments in `:- pragma foreign_type' declaration",
+			ErrorTerm)
 	).
 
 parse_pragma_type(ModuleName, "foreign_decl", PragmaTerms, ErrorTerm,

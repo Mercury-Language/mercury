@@ -331,7 +331,7 @@ hlds_out__cons_id_to_string(pred_const(_, _, _), "<pred>").
 hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
-hlds_out__cons_id_to_string(type_info_cell_constructor,
+hlds_out__cons_id_to_string(type_info_cell_constructor(_),
 	"<type_info_cell_constructor>").
 hlds_out__cons_id_to_string(typeclass_info_cell_constructor,
 	"<typeclass_info_cell_constructor>").
@@ -355,7 +355,7 @@ hlds_out__write_cons_id(type_ctor_info_const(_, _, _)) -->
 	io__write_string("<type_ctor_info>").
 hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
-hlds_out__write_cons_id(type_info_cell_constructor) -->
+hlds_out__write_cons_id(type_info_cell_constructor(_)) -->
 	io__write_string("<type_info_cell_constructor>").
 hlds_out__write_cons_id(typeclass_info_cell_constructor) -->
 	io__write_string("<typeclass_info_cell_constructor>").
@@ -2504,7 +2504,7 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_string(Instance),
 		io__write_string(")")
 	;
-		{ ConsId = type_info_cell_constructor },
+		{ ConsId = type_info_cell_constructor(_) },
 		hlds_out__write_functor(
 			term__atom("type_info_cell_constructor"),
 			ArgVars, VarSet, AppendVarnums, next_to_graphic_token)
@@ -2732,6 +2732,8 @@ hlds_out__write_import_status(imported(interface)) -->
 	io__write_string("imported in the interface").
 hlds_out__write_import_status(imported(implementation)) -->
 	io__write_string("imported in the implementation").
+hlds_out__write_import_status(imported(ancestor_private_interface)) -->
+	io__write_string("imported from an ancestor's private interface").
 hlds_out__write_import_status(imported(ancestor)) -->
 	io__write_string("imported by an ancestor").
 hlds_out__write_import_status(external(interface)) -->

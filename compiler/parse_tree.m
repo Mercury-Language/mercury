@@ -17,6 +17,7 @@
 :- import_module libs.
 :- import_module hlds. % XXX for hlds_data__cons_id
 :- import_module backend_libs. % XXX for `foreign'
+:- import_module recompilation.
 
 % The parse tree data type itself.
 :- include_module prog_data.

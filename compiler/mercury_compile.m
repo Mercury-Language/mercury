@@ -62,6 +62,7 @@
 :- import_module check_hlds__check_typeclass.
 :- import_module transform_hlds__intermod.
 :- import_module transform_hlds__trans_opt.
+:- import_module transform_hlds__equiv_type_hlds.
 :- import_module transform_hlds__table_gen.
 :- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info.
@@ -1286,7 +1287,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 		HLDS1, QualInfo, MaybeTimestamps, UndefTypes, UndefModes,
 		Errors1),
 	mercury_compile__frontend_pass(HLDS1, QualInfo, UndefTypes,
-		UndefModes, HLDS20, Errors2),
+		UndefModes, Errors1, HLDS20, Errors2),
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
@@ -1747,14 +1748,12 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__frontend_pass(module_info, qual_info, bool, bool,
-		module_info, bool, io__state, io__state).
-% :- mode mercury_compile__frontend_pass(di, in, in, in, uo, out, di, uo)
-%	is det.
-:- mode mercury_compile__frontend_pass(in, in, in, in, out, out, di, uo)
+		bool, module_info, bool, io__state, io__state).
+:- mode mercury_compile__frontend_pass(in, in, in, in, in, out, out, di, uo)
 	is det.
 
 mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
-		FoundUndefModeError, HLDS, FoundError) -->
+		FoundUndefModeError, FoundError0, HLDS, FoundError) -->
 	%
 	% We can't continue after an undefined type error, since
 	% typecheck would get internal errors
@@ -1851,8 +1850,10 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 		    { bool__or(FoundTypeError, FoundTypeclassError,
 		    	FoundError) }
 	        ; 
-		    { FoundTypeError = yes ; FoundPostTypecheckError = yes 
-		    	; FoundTypeclassError = yes } 
+		    { FoundTypeError = yes
+		    ; FoundPostTypecheckError = yes 
+		    ; FoundTypeclassError = yes
+		    } 
 		->
 		    %
 		    % XXX it would be nice if we could go on and mode-check
@@ -1864,9 +1865,11 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 		    { HLDS = HLDS4 },
 		    { FoundError = yes }
 		;
-		    % only write out the `.opt' file if there are no type errors
-		    % or undefined modes
-		    ( { FoundTypeError = no, FoundUndefModeError = no } ->
+		    % only write out the `.opt' file if there are no errors
+		    (
+		            { FoundError0 = no },
+			    { FoundUndefModeError = no }
+		    ->
 			    mercury_compile__maybe_write_optfile(MakeOptInt,
 		    		    HLDS4, HLDS5)
 		    ;
@@ -1885,10 +1888,9 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 			    %
 			    mercury_compile__frontend_pass_2_by_phases(HLDS5,
 			    		HLDS, FoundModeOrDetError),
-			    { bool__or(FoundTypeError, FoundModeOrDetError,
-					FoundError0) },
-			    { bool__or(FoundError0, FoundTypeclassError,
-				FoundError) }
+			    { FoundError = FoundTypeError
+			    			`or` FoundModeOrDetError
+						`or` FoundTypeclassError }
 		    )
 		)
 	    )
@@ -2097,6 +2099,9 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	mercury_compile__process_lambdas(HLDS25, Verbose, HLDS26),
 	mercury_compile__maybe_dump_hlds(HLDS26, "26", "lambda"),
 
+	mercury_compile__expand_equiv_types_hlds(HLDS26, Verbose, HLDS27),
+	mercury_compile__maybe_dump_hlds(HLDS26, "27", "equiv_types"),
+
 	%
 	% Uncomment the following code to check that unique mode analysis
 	% works after simplification has been run. Currently it does not
@@ -2106,7 +2111,6 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	% after optimizations because deforestation reruns it.
 	%
 
-	{ HLDS27 = HLDS26 },
 	%mercury_compile__check_unique_modes(HLDS26, Verbose, Stats,
 	%		HLDS27, FoundUniqError),
 	%
@@ -2952,6 +2956,19 @@ mercury_compile__process_lambdas(HLDS0, Verbose, HLDS) -->
 		"% Transforming lambda expressions..."),
 	maybe_flush_output(Verbose),
 	{ lambda__process_module(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_compile__expand_equiv_types_hlds(module_info, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__expand_equiv_types_hlds(in, in, out, di, uo) is det.
+
+mercury_compile__expand_equiv_types_hlds(HLDS0, Verbose, HLDS) -->
+	maybe_write_string(Verbose,
+		"% Fully expanding equivalence types..."),
+	maybe_flush_output(Verbose),
+	{ equiv_type_hlds__replace_in_hlds(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n").
 
 %-----------------------------------------------------------------------------%

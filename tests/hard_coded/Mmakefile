@@ -54,6 +54,7 @@ ORDINARY_PROGS=	\
 	existential_types_test \
 	expand \
 	export_test \
+	export_test2 \
 	failure_unify \
 	field_syntax \
 	float_field \

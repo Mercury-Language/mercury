@@ -17,7 +17,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_info.
 
-:- import_module list, string.
+:- import_module io, list, string.
 
 :- pred pd_debug__do_io(pred(io__state, io__state)::pred(di, uo) is det,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
@@ -60,7 +60,7 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, io, set, std_util.
+:- import_module bool, set, std_util.
 
 pd_debug__do_io(Pred) -->
 	pd_debug__do_output(DoOutput),

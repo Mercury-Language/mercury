@@ -1,7 +1,8 @@
 :- module pragma_source_file.
-:- import_module list, int.
 
 :- interface.
+
+:- import_module list, int.
 
 :- pred my_append(list(int), list(int), list(int)).
 :- mode my_append(in, in, out) is det.

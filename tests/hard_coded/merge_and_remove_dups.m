@@ -9,11 +9,13 @@
 
 :- interface.
 
+:- import_module io.
+
 :- pred main(io:state::di, io:state::uo) is det.
 
 :- implementation.
 
-:- import_module list, io.
+:- import_module list.
 
 main -->
         { List1 = [1,2,3],

@@ -73,7 +73,6 @@
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
-:- import_module ll_backend__llds.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.

@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module list, io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
@@ -17,8 +17,6 @@
 :- mode main1(out) is det.
 
 :- implementation.
-
-:- import_module list.
 
 main --> main3(_).
 

@@ -507,7 +507,7 @@ dependency_graph__add_arcs_in_cons(type_ctor_info_const(_, _, _),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
 		_Caller, !DepGraph).
-dependency_graph__add_arcs_in_cons(type_info_cell_constructor,
+dependency_graph__add_arcs_in_cons(type_info_cell_constructor(_),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(typeclass_info_cell_constructor,
 		_Caller, !DepGraph).

@@ -45,7 +45,7 @@
 :- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, set, list, map, std_util, assoc_list, counter.
+:- import_module bool, set, list, map, std_util, assoc_list, counter, term.
 
 :- implementation.
 
@@ -61,7 +61,7 @@
 :- import_module ll_backend__var_locn.
 :- import_module parse_tree__prog_out.
 
-:- import_module term, varset.
+:- import_module varset.
 :- import_module set, stack.
 :- import_module string, require, char, bimap, int.
 

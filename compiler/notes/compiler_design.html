@@ -689,6 +689,26 @@ removal of lambda expressions (lambda.m):
 
 (Is there any good reason why lambda.m comes after table_gen.m?)
 
+
+<p>
+
+Expansion of equivalence types (equiv_type_hlds.m)
+
+<ul>
+<li>
+	This pass expands equivalences which are not meant to
+	be visible to the user of imported modules.  This
+	is necessary for the IL back-end and in some cases
+	for `:- pragma export' involving foreign types on
+	the C back-end.
+
+	<p>
+
+	It's also needed by the MLDS->C back-end, for
+	--high-level-data, and for cases involving abstract
+	equivalence types which are defined as "float".
+</ul>
+
 <p>
 
 The next pass is termination analysis. The various modules involved are:
@@ -1501,6 +1521,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2003-10-20 07:29:18 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-12-01 15:56:05 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

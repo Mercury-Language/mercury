@@ -37,7 +37,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, io, bool, std_util.
+:- import_module list, io, bool, std_util, term.
 
 	% post_typecheck__finish_preds(PredIds, ReportTypeErrors,
 	%	NumErrors, FoundTypeError, Module0, Module)

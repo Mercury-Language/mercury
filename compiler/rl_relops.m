@@ -108,7 +108,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
-:- import_module ll_backend__code_aux.
 
 :- import_module int, map, require, set.
 
