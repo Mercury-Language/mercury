@@ -1,6 +1,7 @@
 Uncaught exception:
 Software Error: oops
 Stack dump follows:
-   0       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
-   1       pred require:error/1-0 (erroneous) (require.m:NNNN)
-   2       pred no_fully_strict:main/2-0 (det) (no_fully_strict.m:12)
+   0       pred exception:throw_impl/1-0 (erroneous) (exception.m:NNNN)
+   1       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
+   2       pred require:error/1-0 (erroneous) (require.m:NNNN)
+   3       pred no_fully_strict:main/2-0 (det) (no_fully_strict.m:12)

@@ -1,5 +1,6 @@
 Uncaught exception:
 "<exception thrown from main>"
 Stack dump follows:
-   0       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
-   1       pred test_uncaught_exception:main/2-0 (cc_multi) (test_uncaught_exception.m:25)
+   0       pred exception:throw_impl/1-0 (erroneous) (exception.m:NNNN)
+   1       pred exception:throw/1-0 (erroneous) (exception.m:NNNN)
+   2       pred test_uncaught_exception:main/2-0 (cc_multi) (test_uncaught_exception.m:25)
