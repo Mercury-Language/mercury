@@ -75,9 +75,13 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 	if $(MC) $(MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
 	then false; else true; fi
 
+# Some tests have more than one possible valid output, so
+# we allow the test to pass if it matches *either* the .err_exp
+# or the .err_exp2 file. 
 %.err_res: %.err %.err_exp
 	-rm -f $@
-	diff -c $*.err_exp $*.err > $@
+	diff -c $*.err_exp $*.err > $@ || \
+		{ [ -f $*.err_exp2 ] && diff -c $*.err_exp2 $*.err > $@; }
 
 all:	check
 
