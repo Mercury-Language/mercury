@@ -162,6 +162,40 @@
 :- mode uniq_array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
 %-----------------------------------------------------------------------------%
+:- implementation.
+
+% Everything beyond here is not intended as part of the public interface,
+% and will not appear in the Mercury Library Reference Manual.
+
+%-----------------------------------------------------------------------------%
+:- interface.
+
+	% The following predicates have to be declared in the interface,
+	% otherwise dead code elimination will remove them.
+	% But they're an implementation detail; user code should just
+	% use the generic versions.
+
+	% unify/2 for uniq_arrays
+
+:- pred uniq_array_equal(uniq_array(T), uniq_array(T)).
+:- mode uniq_array_equal(in, in) is semidet.
+
+	% compare/3 for uniq_arrays
+
+:- pred uniq_array_compare(comparison_result, uniq_array(T), uniq_array(T)).
+:- mode uniq_array_compare(out, in, in) is det.
+
+	% type_to_term/2 for uniq_arrays
+
+:- pred uniq_array_to_term(uniq_array(T), term).
+:- mode uniq_array_to_term(in, out) is det.
+
+	% term_to_type/3 for uniq_arrays
+
+:- pred uniq_array_from_term(term, uniq_array(T)).
+:- mode uniq_array_from_term(in, out) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module std_util.
@@ -224,10 +258,10 @@ const struct mercury_data_uniq_array__base_type_functors_uniq_array_1_struct {
 
 #endif
 
-Declare_entry(mercury__uniq_array__equal_2_0);
-Declare_entry(mercury__uniq_array__compare_3_0);
-Declare_entry(mercury__uniq_array__to_term_2_0);
-Declare_entry(mercury__uniq_array__from_term_2_0);
+Declare_entry(mercury__uniq_array__uniq_array_equal_2_0);
+Declare_entry(mercury__uniq_array__uniq_array_compare_3_0);
+Declare_entry(mercury__uniq_array__uniq_array_to_term_2_0);
+Declare_entry(mercury__uniq_array__uniq_array_from_term_2_0);
 
 BEGIN_MODULE(uniq_array_module)
 	init_entry(mercury____Unify___uniq_array__uniq_array_1_0);
@@ -239,7 +273,7 @@ BEGIN_CODE
 
 Define_entry(mercury____Unify___uniq_array__uniq_array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__uniq_array__equal_2_0),
+	tailcall(ENTRY(mercury__uniq_array__uniq_array_equal_2_0),
 		ENTRY(mercury____Unify___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____Index___uniq_array__uniq_array_1_0);
@@ -248,17 +282,17 @@ Define_entry(mercury____Index___uniq_array__uniq_array_1_0);
 
 Define_entry(mercury____Compare___uniq_array__uniq_array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__uniq_array__compare_3_0),
+	tailcall(ENTRY(mercury__uniq_array__uniq_array_compare_3_0),
 		ENTRY(mercury____Compare___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____TermToType___uniq_array__uniq_array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__uniq_array__from_term_2_0),
+	tailcall(ENTRY(mercury__uniq_array__uniq_array_from_term_2_0),
 		ENTRY(mercury____TermToType___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____TypeToTerm___uniq_array__uniq_array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__uniq_array__to_term_2_0),
+	tailcall(ENTRY(mercury__uniq_array__uniq_array_to_term_2_0),
 		ENTRY(mercury____TypeToTerm___uniq_array__uniq_array_1_0));
 
 END_MODULE
@@ -279,10 +313,7 @@ void sys_init_uniq_array_module(void) {
 
 	% unify/2 for uniq_arrays
 
-:- pred uniq_array__equal(uniq_array(T), uniq_array(T)).
-:- mode uniq_array__equal(in, in) is semidet.
-
-uniq_array__equal(Array1, Array2) :-
+uniq_array_equal(Array1, Array2) :-
 	uniq_array__size(Array1, Size),
 	uniq_array__size(Array2, Size),
 	uniq_array__equal_elements(0, Size, Array1, Array2).
@@ -300,13 +331,9 @@ uniq_array__equal_elements(N, Size, Array1, Array2) :-
 		uniq_array__equal_elements(N1, Size, Array1, Array2)
 	).
 
-
 	% compare/3 for uniq_arrays
 
-:- pred uniq_array__compare(comparison_result, uniq_array(T), uniq_array(T)).
-:- mode uniq_array__compare(out, in, in) is det.
-
-uniq_array__compare(Result, Array1, Array2) :-
+uniq_array_compare(Result, Array1, Array2) :-
 	uniq_array__size(Array1, Size1),
 	uniq_array__size(Array2, Size2),
 	compare(SizeResult, Size1, Size2),
@@ -339,10 +366,7 @@ uniq_array__compare_elements(N, Size, Array1, Array2, Result) :-
 
 	% type_to_term for uniq_arrays
 
-:- pred uniq_array__to_term(uniq_array(T), term).
-:- mode uniq_array__to_term(in, out) is det.
-
-uniq_array__to_term(Array, Term) :-
+uniq_array_to_term(Array, Term) :-
 	uniq_array__to_list(Array, List),
 	type_to_term(List, ListTerm),
 	term__context_init(Context),
@@ -351,10 +375,7 @@ uniq_array__to_term(Array, Term) :-
 
 	% term_to_type for uniq_arrays
 
-:- pred uniq_array__from_term(term, uniq_array(T)).
-:- mode uniq_array__from_term(in, out) is semidet.
-
-uniq_array__from_term(Term, Array) :-
+uniq_array_from_term(Term, Array) :-
 	Term = term__functor(term__atom("uniq_array"), [ListTerm], _),
 	term_to_type(ListTerm, List),
 	uniq_array__from_list(List, Array).
