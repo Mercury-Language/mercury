@@ -25,7 +25,8 @@ DEBUGGER_PROGS=	\
 	queens
 
 MCFLAGS = --trace deep
-C2INITFLAGS = -t
+MLFLAGS = --trace
+C2INITFLAGS = --trace
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
