@@ -282,16 +282,6 @@
 :- pred opt_util__rvals_free_of_lval(list(rval), lval).
 :- mode opt_util__rvals_free_of_lval(in, in) is semidet.
 
-	% Return the set of lvals referenced in an rval.
-
-:- pred opt_util__lvals_in_rval(rval, list(lval)).
-:- mode opt_util__lvals_in_rval(in, out) is det.
-
-	% Return the set of lvals referenced in an lval.
-
-:- pred opt_util__lvals_in_lval(lval, list(lval)).
-:- mode opt_util__lvals_in_lval(in, out) is det.
-
 	% Count the number of hp increments in a block of code.
 
 :- pred opt_util__count_incr_hp(list(instruction), int).
@@ -1544,59 +1534,6 @@ opt_util__rval_free_of_lval(unop(_, Rval), Forbidden) :-
 opt_util__rval_free_of_lval(binop(_, Rval1, Rval2), Forbidden) :-
 	opt_util__rval_free_of_lval(Rval1, Forbidden),
 	opt_util__rval_free_of_lval(Rval2, Forbidden).
-
-%-----------------------------------------------------------------------------%
-
-opt_util__lvals_in_lval(reg(_, _), []).
-opt_util__lvals_in_lval(stackvar(_), []).
-opt_util__lvals_in_lval(framevar(_), []).
-opt_util__lvals_in_lval(succip, []).
-opt_util__lvals_in_lval(maxfr, []).
-opt_util__lvals_in_lval(curfr, []).
-opt_util__lvals_in_lval(succip(Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_lval(redoip(Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_lval(succfr(Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_lval(prevfr(Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_lval(hp, []).
-opt_util__lvals_in_lval(sp, []).
-opt_util__lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
-	opt_util__lvals_in_rval(Rval1, Lvals1),
-	opt_util__lvals_in_rval(Rval2, Lvals2),
-	list__append(Lvals1, Lvals2, Lvals).
-opt_util__lvals_in_lval(lvar(_), []).
-opt_util__lvals_in_lval(temp(_, _), []).
-opt_util__lvals_in_lval(mem_ref(Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-
-opt_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
-	opt_util__lvals_in_lval(Lval, Lvals).
-opt_util__lvals_in_rval(var(_), _) :-
-	error("found var in opt_util__lvals_in_rval").
-opt_util__lvals_in_rval(create(_, _, _, _, _), []).
-opt_util__lvals_in_rval(mkword(_, Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_rval(const(_), []).
-opt_util__lvals_in_rval(unop(_, Rval), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
-opt_util__lvals_in_rval(binop(_, Rval1, Rval2), Lvals) :-
-	opt_util__lvals_in_rval(Rval1, Lvals1),
-	opt_util__lvals_in_rval(Rval2, Lvals2),
-	list__append(Lvals1, Lvals2, Lvals).
-opt_util__lvals_in_rval(mem_addr(MemRef), Lvals) :-
-	opt_util__lvals_in_mem_ref(MemRef, Lvals).
-
-	% XXX
-:- pred opt_util__lvals_in_mem_ref(mem_ref, list(lval)).
-:- mode opt_util__lvals_in_mem_ref(in, out) is det.
-
-opt_util__lvals_in_mem_ref(stackvar_ref(_), []).
-opt_util__lvals_in_mem_ref(framevar_ref(_), []).
-opt_util__lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
-	opt_util__lvals_in_rval(Rval, Lvals).
 
 %-----------------------------------------------------------------------------%
 

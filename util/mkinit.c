@@ -133,7 +133,7 @@ static const char mercury_funcs[] =
 	"	MR_library_initializer = ML_io_init_state;\n"
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
 	"	MR_library_trace_browser = ENTRY(mercury__io__print_3_0);\n"
-	"#ifdef MR_USE_DEBUGGER\n"
+	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
 	"	MR_DI_output_current = ML_DI_output_current;\n"
 	"	MR_DI_found_match = ML_DI_found_match;\n"
 	"	MR_DI_read_request_from_socket = ML_DI_read_request_from_socket;\n"

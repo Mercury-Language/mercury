@@ -145,7 +145,7 @@
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module prog_data, globals, passes_aux.
+:- import_module prog_data, trace, globals, passes_aux.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module varset, string.
@@ -164,7 +164,13 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	initial_deadness(ProcInfo1, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
-	set__init(ResumeVars0),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, generate_trace, Trace),
+	( Trace = yes ->
+		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+	;
+		set__init(ResumeVars0)
+	),
 	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 

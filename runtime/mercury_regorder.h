@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1995, 1997 The University of Melbourne.
+** Copyright (C) 1994-1995, 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,6 +55,11 @@
 #define r31		count_usage(R_RN(31), mr35)
 #define r32		count_usage(R_RN(32), mr36)
 
+/*
+** If you modify the following block, make sure that you update
+** the definitions of MR_NUM_SPECIAL_REG and MR_MAX_SPECIAL_REG_MR.
+*/
+
 #define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
 #define succip		MR_succip
 #define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
@@ -73,6 +78,12 @@
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+
+/* the number of special, non rN registers */
+#define MR_NUM_SPECIAL_REG	10
+
+/* the maximum mrN number of special, non rN registers */
+#define	MR_MAX_SPECIAL_REG_MR	39
 
 #define VIRTUAL_REG_MAP_BODY	{ \
 	2, \

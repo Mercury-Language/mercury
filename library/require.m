@@ -58,6 +58,7 @@ require(Goal, Message) :-
 :- pragma c_code(error(Message::in), "
 	fflush(stdout);
 	fprintf(stderr, ""Software error: %s\\n"", Message);
+	MR_trace_report(stderr);
 	MR_dump_stack(MR_succip, MR_sp, MR_curfr);
 	exit(1);
 #ifndef USE_GCC_NONLOCAL_GOTOS

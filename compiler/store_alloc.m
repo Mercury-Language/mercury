@@ -37,7 +37,7 @@
 :- implementation.
 
 :- import_module follow_vars, liveness, hlds_goal, llds.
-:- import_module options, globals, goal_util, mode_util, instmap.
+:- import_module options, globals, goal_util, mode_util, instmap, trace.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module bool, int, require, term.
 
@@ -68,7 +68,12 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 		proc_info_goal(ProcInfo0, Goal2)
 	),
 	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
-	set__init(ResumeVars0),
+	globals__lookup_bool_option(Globals, generate_trace, Trace),
+	( Trace = yes ->
+		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+	;
+		set__init(ResumeVars0)
+	),
 	globals__lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
 	proc_info_stack_slots(ProcInfo0, StackSlots),
 	StackSlotsInfo = stack_slot_info(ApplyFollowVars, NumRealRRegs,

@@ -501,15 +501,15 @@ MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 2);
 MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__std_util__builtin_aggregate_4_0, 3);
 
 BEGIN_MODULE(builtin_aggregate_module)
-	init_entry(mercury__std_util__builtin_aggregate_4_0);
-	init_entry(mercury__std_util__builtin_aggregate_4_1);
-	init_entry(mercury__std_util__builtin_aggregate_4_2);
-	init_entry(mercury__std_util__builtin_aggregate_4_3);
-	init_entry(mercury__std_util__builtin_aggregate_4_4);
-	init_entry(mercury__std_util__builtin_aggregate_4_5);
-	init_label(mercury__std_util__builtin_aggregate_4_0_i1);
-	init_label(mercury__std_util__builtin_aggregate_4_0_i2);
-	init_label(mercury__std_util__builtin_aggregate_4_0_i3);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_1);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_2);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_3);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_4);
+	init_entry_sl(mercury__std_util__builtin_aggregate_4_5);
+	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i1);
+	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i2);
+	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i3);
 BEGIN_CODE
 
 /*
@@ -1211,14 +1211,14 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__type_info_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__type_info_0_0);
 
 BEGIN_MODULE(unify_univ_module)
-	init_entry(mercury____Unify___std_util__univ_0_0);
-	init_entry(mercury____Index___std_util__univ_0_0);
-	init_entry(mercury____Compare___std_util__univ_0_0);
-	init_label(mercury____Compare___std_util__univ_0_0_i1);
+	init_entry_sl(mercury____Unify___std_util__univ_0_0);
+	init_entry_sl(mercury____Index___std_util__univ_0_0);
+	init_entry_sl(mercury____Compare___std_util__univ_0_0);
+	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
 
-	init_entry(mercury____Unify___std_util__type_info_0_0);
-	init_entry(mercury____Index___std_util__type_info_0_0);
-	init_entry(mercury____Compare___std_util__type_info_0_0);
+	init_entry_sl(mercury____Unify___std_util__type_info_0_0);
+	init_entry_sl(mercury____Index___std_util__type_info_0_0);
+	init_entry_sl(mercury____Compare___std_util__type_info_0_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
 {

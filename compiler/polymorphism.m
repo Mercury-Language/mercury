@@ -295,7 +295,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
 :- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module (inst), hlds_out, base_typeclass_info, passes_aux.
+:- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
 :- import_module term, varset, std_util, require, assoc_list.
@@ -554,7 +554,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% process any polymorphic calls inside the goal
 	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
-	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
+	polymorphism__fixup_quantification(Goal1, Goal, _, Info1, Info),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				TypeInfoMap, TypeclassInfoLocations,
 				_Proofs, _PredName, ModuleInfo),
@@ -752,10 +752,11 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
-		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
+		polymorphism__fixup_quantification(LambdaGoal1,
+				LambdaGoal, NonLocalTypeInfos),
 		polymorphism__process_lambda(PredOrFunc, Vars, Modes,
-				Det, ArgVars, LambdaGoal, Unification,
-				Y1, Unification1),
+				Det, ArgVars, NonLocalTypeInfos, LambdaGoal,
+				Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
 	;
@@ -961,8 +962,8 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 	).
 
 :- pred polymorphism__fixup_quantification(hlds_goal, hlds_goal,
-		poly_info, poly_info).
-:- mode polymorphism__fixup_quantification(in, out, in, out) is det.
+		set(var), poly_info, poly_info).
+:- mode polymorphism__fixup_quantification(in, out, out, in, out) is det.
 
 %
 % If the predicate we are processing is a polymorphic predicate,
@@ -971,36 +972,18 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 % so that it includes the type-info variables in the non-locals set.
 %
 
-polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
+polymorphism__fixup_quantification(Goal0, Goal, NewOutsideVars, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
 			TypeClassVarMap, Proofs, PredName, ModuleInfo),
 	( map__is_empty(TypeVarMap) ->
+		set__init(NewOutsideVars),
 		Info = Info0,
 		Goal = Goal0
 	;
-		%
-		% A type-info variable may be non-local to a goal if any of 
-		% the ordinary non-local variables for that goal are
-		% polymorphically typed with a type that depends on that
-		% type-info variable.
-		%
-		% In addition, a typeclass-info may be non-local to a goal if
-		% any of the non-local variables for that goal are
-		% polymorphically typed and are constrained by the typeclass
-		% constraints for that typeclass-info variable
-		%
+		goal_util__extra_nonlocal_typeinfos(TypeVarMap,
+			VarTypes0, Goal0, NewOutsideVars),
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__to_sorted_list(NonLocals, NonLocalsList),
-		map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
-		term__vars_list(NonLocalsTypes, NonLocalTypeVars),
-			% Find all the type-infos and typeclass-infos that are
-			% non-local
-		solutions_set(lambda([Var::out] is nondet, (
-				list__member(TheVar, NonLocalTypeVars),
-				map__search(TypeVarMap, TheVar, Location),
-				type_info_locn_var(Location, Var)
-			)), NewOutsideVars),
 		set__union(NewOutsideVars, NonLocals, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
@@ -1009,14 +992,15 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
-		list(mode), determinism, list(var), hlds_goal, unification,
-		unify_rhs, unification, poly_info, poly_info).
-:- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
+		list(mode), determinism, list(var), set(var),
+		hlds_goal, unification, unify_rhs, unification,
+		poly_info, poly_info).
+:- mode polymorphism__process_lambda(in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
 polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
-		LambdaGoal, Unification0, Functor, Unification,
-		PolyInfo0, PolyInfo) :-
+		NonLocalTypeInfos, LambdaGoal, Unification0, Functor,
+		Unification, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			TCVarMap, Proofs, PredName, ModuleInfo0),
 
@@ -1030,9 +1014,9 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 		AllConstraints, Constraints),
 
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
-		OrigNonLocals, LambdaGoal, Unification0, VarSet, VarTypes,
-		Constraints, TVarSet, TVarMap, TCVarMap, ModuleInfo0, Functor,
-		Unification, ModuleInfo),
+		OrigNonLocals, NonLocalTypeInfos, LambdaGoal, Unification0,
+		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
+		ModuleInfo0, Functor, Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			TCVarMap, Proofs, PredName, ModuleInfo).
 

@@ -239,12 +239,18 @@
 :- pred code_exprn__set_follow_vars(follow_vars, exprn_info, exprn_info).
 :- mode code_exprn__set_follow_vars(in, in, out) is det.
 
+%	code_exprn__max_reg_in_use(MaxReg)
+%		Returns the number of the highest numbered rN register in use.
+
+:- pred code_exprn__max_reg_in_use(exprn_info, int).
+:- mode code_exprn__max_reg_in_use(in, out) is det.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module exprn_aux, tree.
+:- import_module code_util, exprn_aux, tree.
 :- import_module bool, bag, require, int, term, string, std_util.
 
 :- type var_stat	--->	evaled(set(rval))
@@ -1766,6 +1772,55 @@ code_exprn__maybe_get_var_name(yes(Var), Name) -->
 code_exprn__get_var_name(Var, Name) -->
 	code_exprn__get_varset(Varset),
 	{ varset__lookup_name(Varset, Var, Name) }.
+
+%------------------------------------------------------------------------------%
+
+code_exprn__max_reg_in_use(ExprnInfo, Max) :-
+	code_exprn__get_vars(Vars, ExprnInfo, _),
+	map__to_assoc_list(Vars, VarStats),
+	assoc_list__values(VarStats, Stats),
+	code_exprn__max_reg_in_use_vars(Stats, 0, Max1),
+	code_exprn__get_regs(InUseRegs, ExprnInfo, _),
+	bag__to_list_without_duplicates(InUseRegs, IRegs),
+	code_exprn__max_reg_in_use_lvals(IRegs, Max1, Max2),
+	code_exprn__get_acquired(Acquired, ExprnInfo, _),
+	set__to_sorted_list(Acquired, ARegs),
+	code_exprn__max_reg_in_use_lvals(ARegs, Max2, Max).
+
+:- pred code_exprn__max_reg_in_use_vars(list(var_stat), int, int).
+:- mode code_exprn__max_reg_in_use_vars(in, in, out) is det.
+
+code_exprn__max_reg_in_use_vars([], Max, Max).
+code_exprn__max_reg_in_use_vars([Stat | Stats], Max0, Max) :-
+	(
+		Stat = evaled(RvalSet),
+		set__to_sorted_list(RvalSet, Rvals),
+		code_exprn__max_reg_in_use_rvals(Rvals, Max0, Max1)
+	;
+		Stat = cached(Rval),
+		code_exprn__max_reg_in_use_rvals([Rval], Max0, Max1)
+	),
+	code_exprn__max_reg_in_use_vars(Stats, Max1, Max).
+
+:- pred code_exprn__max_reg_in_use_rvals(list(rval), int, int).
+:- mode code_exprn__max_reg_in_use_rvals(in, in, out) is det.
+
+code_exprn__max_reg_in_use_rvals(Rvals, Max0, Max) :-
+	list__map(code_util__lvals_in_rval, Rvals, LvalLists),
+	list__condense(LvalLists, Lvals),
+	code_exprn__max_reg_in_use_lvals(Lvals, Max0, Max).
+
+:- pred code_exprn__max_reg_in_use_lvals(list(lval), int, int).
+:- mode code_exprn__max_reg_in_use_lvals(in, in, out) is det.
+
+code_exprn__max_reg_in_use_lvals(Lvals, Max0, Max) :-
+	list__filter_map(code_exprn__lval_is_r_reg, Lvals, RegNumbers),
+	list__foldl(int__max, RegNumbers, Max0, Max).
+
+:- pred code_exprn__lval_is_r_reg(lval, int).
+:- mode code_exprn__lval_is_r_reg(in, out) is semidet.
+
+code_exprn__lval_is_r_reg(reg(r, N), N).
 
 %------------------------------------------------------------------------------%
 

@@ -26,7 +26,7 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, term, varset.
+:- import_module library, getopt, term, set_bbbtree, varset.
 
 	% the main compiler passes (in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
@@ -997,13 +997,13 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ globals__lookup_bool_option(Globals, basic_stack_layout,
-		BasicStackLayout) },
-	( { BasicStackLayout = yes } ->
+	{ globals__lookup_bool_option(Globals, agc_stack_layout,
+		AgcStackLayout) },
+	( { AgcStackLayout = yes } ->
 		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
 		write_proc_progress_message(
-		   "% Generating stack layout continuation information for ",
+			"% Generating call continuation information for ",
 				PredId, ProcId, ModuleInfo5),
 		{ continuation_info__process_instructions(PredProcId,
 			Instructions, ContInfo2, ContInfo3) },
@@ -1631,14 +1631,14 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 
 mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
 		Stats, ModuleInfo) -->
-	globals__io_lookup_bool_option(agc_stack_layout, StackLayout),
-	( { StackLayout = yes } ->
+	globals__io_lookup_bool_option(agc_stack_layout, AgcStackLayout),
+	( { AgcStackLayout = yes } ->
 		maybe_write_string(Verbose,
-			"% Generating stack layout continuation information..."),
+			"% Generating call continuation information..."),
 		maybe_flush_output(Verbose),
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0, ContInfo0,
-			ContInfo) },
+		{ continuation_info__process_llds(LLDS0,
+			ContInfo0, ContInfo) },
 		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
 			ModuleInfo) },
 		maybe_write_string(Verbose, " done.\n"),
@@ -1664,10 +1664,12 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
 	{ BasicStackLayout = yes ->
-		stack_layout__generate_llds(HLDS1, HLDS, StackLayouts),
+		stack_layout__generate_llds(HLDS1, HLDS,
+			StackLayouts, StackLayoutLabelMap),
 		list__append(StackLayouts, BaseTypeLayouts, StaticData0)
 	;
 		HLDS = HLDS1,
+		set_bbbtree__init(StackLayoutLabelMap),
 		StaticData0 = BaseTypeLayouts
 	},
 
@@ -1677,7 +1679,8 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
 	mercury_compile__chunk_llds(HLDS, LLDS1, AllData, CommonData,
 		LLDS2, NumChunks),
-	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
+	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabelMap,
+		Verbose, Stats),
 
 	export__produce_header_file(HLDS, ModuleName),
 
@@ -1791,18 +1794,19 @@ mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
 	Num1 is Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModName, Num1, Modules).
 
-:- pred mercury_compile__output_llds(module_name, c_file, bool, bool,
-	io__state, io__state).
-:- mode mercury_compile__output_llds(in, in, in, in, di, uo) is det.
+:- pred mercury_compile__output_llds(module_name, c_file, set_bbbtree(label),
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__output_llds(in, in, in, in, in, di, uo) is det.
 
-mercury_compile__output_llds(ModuleName, LLDS, Verbose, Stats) -->
+mercury_compile__output_llds(ModuleName, LLDS, StackLayoutLabels,
+		Verbose, Stats) -->
 	maybe_write_string(Verbose,
 		"% Writing output to `"),
 	module_name_to_file_name(ModuleName, ".c", yes, FileName),
 	maybe_write_string(Verbose, FileName),
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
-	output_c_file(LLDS),
+	output_c_file(LLDS, StackLayoutLabels),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_flush_output(Verbose),
 	maybe_report_stats(Stats).

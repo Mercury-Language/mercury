@@ -65,10 +65,6 @@ size_t		pcache_size =    8192;
 
 /* other options */
 
-int		r1val = -1;
-int		r2val = -1;
-int		r3val = -1;
-
 bool		check_space = FALSE;
 
 static	bool	benchmark_all_solns = FALSE;
@@ -443,7 +439,7 @@ process_options(int argc, char **argv)
 	unsigned long size;
 	int c;
 
-	while ((c = getopt(argc, argv, "acC:d:hLlP:pr:s:tT:w:xz:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acC:d:D:hLlP:pr:s:tT:w:xz:")) != EOF)
 	{
 		switch (c)
 		{
@@ -510,6 +506,21 @@ process_options(int argc, char **argv)
 				usage();
 
 			use_own_timer = FALSE;
+			break;
+
+		case 'D':
+			MR_trace_enabled = TRUE;
+
+			if (streq(optarg, "i"))
+				MR_trace_handler = MR_TRACE_INTERNAL;
+#ifdef	MR_USE_EXTERNAL_DEBUGGER
+			else if (streq(optarg, "e"))
+				MR_trace_handler = MR_TRACE_EXTERNAL;
+#endif
+
+			else
+				usage();
+
 			break;
 
 		case 'h':
@@ -647,24 +658,6 @@ process_options(int argc, char **argv)
 
 			break;
 
-		case '1':	
-			if (sscanf(optarg, "%d", &r1val) != 1)
-				usage();
-
-			break;
-
-		case '2':	
-			if (sscanf(optarg, "%d", &r2val) != 1)
-				usage();
-
-			break;
-
-		case '3':	
-			if (sscanf(optarg, "%d", &r3val) != 1)
-				usage();
-
-			break;
-
 		default:	
 			usage();
 
@@ -698,6 +691,10 @@ usage(void)
 		"-dm \t\tdebug memory allocation\n"
 		"-dG \t\tdebug garbage collection\n"
 		"-dd \t\tdetailed debug\n"
+		"-Di \t\tdebug the program using the internal debugger\n"
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+		"-De \t\tdebug the program using the external debugger\n"
+#endif
 		"-sh<n> \t\tallocate n kb for the heap\n"
 		"-sd<n> \t\tallocate n kb for the det stack\n"
 		"-sn<n> \t\tallocate n kb for the nondet stack\n"
@@ -718,9 +715,7 @@ usage(void)
 #endif
 		"-r<n> \t\trepeat n times\n"
 		"-w<name> \tcall predicate with given name (default: main/2)\n"
-		"-1<x> \t\tinitialize register r1 with value x\n"
-		"-2<x> \t\tinitialize register r2 with value x\n"
-		"-3<x> \t\tinitialize register r3 with value x\n");
+		);
 	fflush(stdout);
 	exit(1);
 } /* end usage() */

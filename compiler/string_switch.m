@@ -303,27 +303,16 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		{ LabelCode = node([
 			label(Label) - Comment
 		]) },
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ Goal = _ - GoalInfo },
-			{ goal_info_get_goal_path(GoalInfo, Path) },
-			trace__generate_event_code(switch(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
+		code_info__grab_code_info(CodeInfo),
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
 		->
-			code_gen__generate_goal(CodeModel, Goal, GoalCode),
-			code_info__generate_branch_end(CodeModel, StoreMap,
-				SaveCode)
+			[]
 		;
-			code_info__grab_code_info(CodeInfo),
-			code_gen__generate_goal(CodeModel, Goal, GoalCode),
-			code_info__generate_branch_end(CodeModel, StoreMap,
-				SaveCode),
 			code_info__slap_code_info(CodeInfo)
 		),
 		{ FinishCode = node([

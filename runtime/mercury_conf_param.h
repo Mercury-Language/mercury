@@ -90,7 +90,7 @@
 /*
 ** Debugging options:
 **
-** MR_USE_DEBUGGER:
+** MR_USE_EXTERNAL_DEBUGGER:
 **	Make MR_trace() use an external process debugger
 **	(with communication done via a socket interface)
 **	rather than using the debugger that is part of

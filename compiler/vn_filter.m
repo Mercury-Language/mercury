@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module opt_util.
+:- import_module code_util, opt_util.
 :- import_module require, std_util.
 
 	% Look for assignments to temp variables. If possible and profitable,
@@ -38,7 +38,7 @@ vn_filter__block([Instr0 | Instrs0], Instrs) :-
 		Instr0 = Uinstr0 - _,
 		Uinstr0 = assign(Temp, Defn),
 		Temp = temp(_, _),
-		opt_util__lvals_in_rval(Defn, Deps),
+		code_util__lvals_in_rval(Defn, Deps),
 		vn_filter__can_substitute(Instrs0, Temp, Defn, Deps,
 			Instrs1)
 	->
@@ -73,7 +73,7 @@ vn_filter__can_substitute([Instr0 | Instrs0], Temp, Defn, Deps, Instrs) :-
 	Instr0 = Uinstr0 - Comment,
 	(
 		vn_filter__user_instr(Uinstr0, yes(Rval)),
-		opt_util__lvals_in_rval(Rval, Lvals),
+		code_util__lvals_in_rval(Rval, Lvals),
 		list__delete_first(Lvals, Temp, OtherLvals)
 	->
 		% We don't want to perform the subsitution
@@ -81,7 +81,7 @@ vn_filter__can_substitute([Instr0 | Instrs0], Temp, Defn, Deps, Instrs) :-
 		\+ list__member(Temp, OtherLvals),
 		\+ (
 			vn_filter__defining_instr(Uinstr0, yes(Lval)),
-			opt_util__lvals_in_lval(Lval, AccessLvals),
+			code_util__lvals_in_lval(Lval, AccessLvals),
 			list__member(Temp, AccessLvals)
 		),
 		vn_filter__replace_in_user_instr(Uinstr0, Temp, Defn, Uinstr1),
@@ -99,7 +99,7 @@ vn_filter__can_substitute([Instr0 | Instrs0], Temp, Defn, Deps, Instrs) :-
 		->
 			fail
 		;
-			opt_util__lvals_in_lval(Lval, AccessLvals),
+			code_util__lvals_in_lval(Lval, AccessLvals),
 			list__delete_first(AccessLvals, Temp, OtherAccessLvals)
 		->
 			\+ list__member(Temp, OtherAccessLvals),

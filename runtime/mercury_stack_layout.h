@@ -10,6 +10,10 @@
 /*
 ** mercury_stack_layout.h -
 **	Definitions for the stack layout data structures. 
+**
+** NOTE: The constants and data-structures used here need to be kept in
+** sync with the ones generated in the compiler. If you change anything here,
+** you may need to change compiler/stack_layout.m as well.
 */
 
 /*
@@ -49,7 +53,8 @@ typedef	Word MR_Determinism;
 
 #define MR_DETISM_FIRST_SOLN(d)		(((d) & 8) != 0)
 
-#define MR_DETISM_DET_CODE_MODEL(d)	(((d) & 1) == 0)
+#define MR_DETISM_DET_STACK(d)		(!MR_DETISM_AT_MOST_MANY(d) \
+					|| MR_DETISM_FIRST_SOLN(d))
 
 /*
 ** Definitions for "MR_Live_Lval"
@@ -112,7 +117,7 @@ typedef enum {
 ** The data is encoded such that low values (less than
 ** TYPELAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
 ** represent data variables, and are pointers to a 2 word cell, 
-** containing a type_info and an instantiation represention.
+** containing a pseudo type_info and an instantiation represention.
 **
 ** This data is generated in compiler/stack_layout.m, which must be kept
 ** in sync with the constants defined here.
@@ -130,7 +135,7 @@ typedef enum {
 } MR_Lval_NonVar;
 
 typedef struct { 
-	Word	type;	/* contains a type_info */
+	Word	*pseudo_type_info;
 	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
 
@@ -140,10 +145,10 @@ typedef struct {
 		((MR_Lval_NonVar) T)
 
 #define MR_LIVE_TYPE_GET_VAR_TYPE(T)   			\
-		((Word) ((MR_Var_Shape_Info *) T)->type)
+		(((MR_Var_Shape_Info *) T)->pseudo_type_info)
 
 #define MR_LIVE_TYPE_GET_VAR_INST(T)   			\
-		((Word) ((MR_Var_Shape_Info *) T)->inst)
+		(((MR_Var_Shape_Info *) T)->inst)
 
 /*
 ** Macros to support hand-written C code.
@@ -151,9 +156,10 @@ typedef struct {
 
 /*
 ** Define a stack layout for a label that you know very little about.
-** It's just a generic entry label, no useful information, except
+** It is just a generic entry label, no useful information, except
 ** the code address for the label.
 */ 
+
 #ifdef MR_USE_STACK_LAYOUTS
  #define MR_MAKE_STACK_LAYOUT_ENTRY(l) 					\
  const struct mercury_data__stack_layout__##l##_struct {		\
@@ -178,6 +184,7 @@ typedef struct {
 ** The only useful information in this structure is the code address
 ** and the reference to the entry for this label.
 */ 
+
 #ifdef MR_USE_STACK_LAYOUTS
  #define MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(l, e)			\
  const struct mercury_data__stack_layout__##l##_struct {		\
@@ -208,6 +215,7 @@ typedef struct {
 ** The only useful information in this structure is the code address
 ** and the reference to the entry for this label.
 */ 
+
 #ifdef MR_USE_STACK_LAYOUTS
  #define MR_MAKE_STACK_LAYOUT_INTERNAL(e, x)				\
  const struct mercury_data__stack_layout__##e##_i##x##_struct {		\
@@ -227,18 +235,25 @@ typedef struct {
 ** Structs and macros to support stack layouts.
 */
 
-typedef	struct MR_stack_layout_var_struct {
+typedef	struct MR_Stack_Layout_Var_Struct {
 	MR_Live_Lval		MR_slv_locn;
 	MR_Live_Type		MR_slv_live_type;
-} MR_stack_layout_var;
+} MR_Stack_Layout_Var;
 
-typedef	struct MR_stack_layout_vars_struct {
-	MR_stack_layout_var	*MR_slvs_pairs;
+typedef	struct MR_Stack_Layout_Vars_Struct {
+	MR_Stack_Layout_Var	*MR_slvs_pairs;
 	String			*MR_slvs_names;
-	Word			*MR_slvs_tvars;
-} MR_stack_layout_vars;
+	Integer			MR_slvs_tvar_count;
+	MR_Live_Lval		*MR_slvs_tvars;
+} MR_Stack_Layout_Vars;
 
-typedef	struct MR_stack_layout_entry_struct {
+#define	MR_name_if_present(vars, i)					\
+				((vars->MR_slvs_names != NULL		\
+				&& vars->MR_slvs_names[(i)] != NULL)	\
+				? vars->MR_slvs_names[(i)]		\
+				: "")
+
+typedef	struct MR_Stack_Layout_Entry_Struct {
 	Code			*MR_sle_code_addr;
 	MR_Determinism		MR_sle_detism;
 	Integer			MR_sle_stack_slots;
@@ -251,20 +266,19 @@ typedef	struct MR_stack_layout_entry_struct {
 	Integer			MR_sle_arity;
 	Integer			MR_sle_mode;
 	/* the fields from here onwards are present only with trace layouts */
-	Integer			MR_sle_in_arg_count;
-	MR_stack_layout_vars	MR_sle_in_arg_info;
-	Integer			MR_sle_out_arg_count;
-	MR_stack_layout_vars	MR_sle_out_arg_info;
-} MR_stack_layout_entry;
+	struct MR_Stack_Layout_Label_Struct
+				*MR_sle_call_label;
+} MR_Stack_Layout_Entry;
 
-typedef	struct MR_stack_layout_label_struct {
-	MR_stack_layout_entry	*MR_sll_entry;
+typedef	struct MR_Stack_Layout_Label_Struct {
+	MR_Stack_Layout_Entry	*MR_sll_entry;
+	Integer			MR_sll_label_num;
 	Integer			MR_sll_var_count;
 	/* the last field is present only if MR_sll_var_count > 0 */
-	MR_stack_layout_vars	MR_sll_var_info;
-} MR_stack_layout_label;
+	MR_Stack_Layout_Vars	MR_sll_var_info;
+} MR_Stack_Layout_Label;
 
-/* The following macros support obsolete code. */
+/* The following macros support obsolete code (and probably don't work). */
 #define MR_ENTRY_STACK_LAYOUT_GET_LABEL_ADDRESS(s)		\
 		((Code *) field(0, (s), 0))
 
@@ -282,4 +296,3 @@ typedef	struct MR_stack_layout_label_struct {
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_STACK_LAYOUT_H */
-

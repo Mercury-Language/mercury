@@ -7,6 +7,7 @@
 #include	"mercury_imp.h"
 #include	"mercury_dlist.h"
 #include	"mercury_regs.h"
+#include	"mercury_trace.h"
 #include	"mercury_misc.h"
 
 #include	<stdio.h>
@@ -468,6 +469,7 @@ resizemem(void *p, size_t size)
 void 
 fatal_error(const char *message) {
 	fprintf(stderr, "Mercury runtime: %s\n", message);
+	MR_trace_report(stderr);
 	exit(1);
 }
 

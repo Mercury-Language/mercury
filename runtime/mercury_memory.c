@@ -80,6 +80,7 @@
 #endif
 
 #include "mercury_imp.h"
+#include "mercury_trace.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -701,6 +702,7 @@ fatal_abort(void *context, const char *main_msg, int dump)
 	context_msg = explain_context(context);
 	write(STDERR, main_msg, strlen(main_msg));
 	write(STDERR, context_msg, strlen(context_msg));
+	MR_trace_report_raw(STDERR);
 
 	if (dump) {
 		print_dump_stack();
@@ -900,6 +902,7 @@ complex_sighandler(int sig, struct sigcontext_struct sigcontext)
   #endif
 	fprintf(stderr, "address involved: %p\n", address);
 
+	MR_trace_report(stderr);
 	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
@@ -990,6 +993,7 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
 			(void *) info->si_addr);
 	} /* end if */
 
+	MR_trace_report(stderr);
 	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
@@ -1063,6 +1067,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 		explain_segv(info, context);
 	}
 
+	MR_trace_report(stderr);
 	print_dump_stack();
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");

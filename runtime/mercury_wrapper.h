@@ -91,10 +91,6 @@ extern	size_t		trail_zone_size;
 /* size of the primary cache */
 extern	size_t		pcache_size;
 
-extern	int		r1val;
-extern	int		r2val;
-extern	int		r3val;
-
 extern	bool		check_space;
 
 /* timing */

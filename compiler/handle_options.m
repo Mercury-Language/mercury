@@ -262,12 +262,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --generate-trace requires 
 	% 	- disabling optimizations that would change 
 	% 	  the trace being generated
-	%	- enabling excess_assign to exclude junk vars from the trace
-	%	  (and to ensure consistent paths across optimization levels)
+	%	- enabling some low level optimizations to ensure consistent
+	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
 	globals__io_lookup_bool_option(generate_trace, Trace),
 	( { Trace = yes } ->
+			% The following options modify the structure
+			% of the program, which makes it difficult to
+			% relate the trace to the source code (although
+			% it can be easily related to the transformed HLDS).
 		globals__io_set_option(inline_simple, bool(no)),
 		globals__io_set_option(inline_single_use, bool(no)),
 		globals__io_set_option(inline_compound_threshold, int(0)),
@@ -276,7 +280,29 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
 			bool(no)),
+
+			% The following option prevents useless variables
+			% from cluttering the trace. Its explicit setting
+			% removes a source of variability in the goal paths
+			% reported by tracing.
 		globals__io_set_option(excess_assign, bool(yes)),
+			% The explicit setting of the following option
+			% removes a source of variability in the goal paths
+			% reported by tracing.
+		globals__io_set_option(follow_code, bool(yes)),
+			% The following option selects a special-case
+			% code generator that cannot (yet) implement tracing.
+		globals__io_set_option(middle_rec, bool(no)),
+			% Tracing inserts C code into the generated LLDS.
+			% Value numbering cannot optimize such LLDS code.
+			% (If it tried, it would get it wrong due to the
+			% absence of liveness annotations on the introduced
+			% labels.) We turn value numbering off now so that
+			% we don't have to discover this fact anew
+			% for each procedure.
+		globals__io_set_option(optimize_value_number, bool(no)),
+			% The following options cause the info required
+			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
 		globals__io_set_option(typeinfo_liveness, bool(yes))
 	;

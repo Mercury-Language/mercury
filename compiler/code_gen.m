@@ -152,7 +152,6 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 	pred_info_procedures(PredInfo, ProcInfos),
 		% locate the proc_info structure for this mode of the predicate
 	map__lookup(ProcInfos, ProcId, ProcInfo),
-		% find out if the proc is deterministic/etc
 	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0, Globals,
 		ContInfo0, CellCount0, ContInfo1, CellCount1, Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
@@ -187,7 +186,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% get the goal for this procedure
 	proc_info_goal(ProcInfo, Goal),
 		% get the information about this procedure that we need.
-	proc_info_varset(ProcInfo, VarInfo),
+	proc_info_varset(ProcInfo, VarSet),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_stack_slots(ProcInfo, StackSlots),
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst),
@@ -207,21 +206,23 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		SaveSuccip = no
 	),
 		% initialise the code_info structure 
-	code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
+	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, ContInfo0, CodeInfo0),
+		ModuleInfo, CellCount0, CodeInfo0),
 		% generate code for the procedure
 	globals__lookup_bool_option(Globals, generate_trace, Trace),
-	( Trace = yes ->
+	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
+	(
+		Trace = yes
+	->
 		trace__setup(CodeInfo0, CodeInfo1)
 	;
 		CodeInfo1 = CodeInfo0
 	),
-	generate_category_code(CodeModel, Goal, CodeTree, FrameInfo,
-		CodeInfo1, CodeInfo),
+	generate_category_code(CodeModel, Goal, ProcInfo, CodeTree,
+		MaybeTraceCallLabel, FrameInfo, CodeInfo1, CodeInfo),
 		% extract the new continuation_info and cell count
-	code_info__get_continuation_info(ContInfo1, CodeInfo, _CodeInfo1),
-	code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2),
+	code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo1),
 
 		% turn the code tree into a list
 	tree__flatten(CodeTree, FragmentList),
@@ -238,13 +239,12 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		Instructions = Instructions0
 	),
 	( BasicStackLayout = yes ->
-		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
-			ProcLabel),
-		continuation_info__add_proc_layout_info(proc(PredId, ProcId),
+		code_info__get_layout_info(LayoutInfo, CodeInfo, _CodeInfo2),
+		continuation_info__add_proc_info(proc(PredId, ProcId),
 			ProcLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			ContInfo1, ContInfo)
+			MaybeTraceCallLabel, LayoutInfo, ContInfo0, ContInfo)
 	;
-		ContInfo = ContInfo1
+		ContInfo = ContInfo0
 	),
 
 		% get the name and arity of this predicate
@@ -253,11 +253,57 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% construct a c_procedure structure with all the information
 	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
 
-:- pred generate_category_code(code_model, hlds_goal, code_tree, frame_info,
-				code_info, code_info).
-:- mode generate_category_code(in, in, out, out, in, out) is det.
+%---------------------------------------------------------------------------%
 
-generate_category_code(model_det, Goal, Code, FrameInfo) -->
+	% Generate_category_code generates code for an entire procedure.
+	% Its algorithm has three or four main stages:
+	%
+	%	- generate code for the body goal
+	%	- generate code for the procedure entry
+	%	- generate code for the procedure exit
+	%	- generate code for the procedure fail (if needed)
+	%
+	% The first three tasks are forwarded to other procedures.
+	% The fourth task, if needed, is done by generate_category_code.
+	%
+	% The only caller of generate_category_code, generate_proc_code,
+	% has set up the code generator state to reflect what the machine
+	% state will be on entry to the procedure. Ensuring that the
+	% machine state at exit will conform to the expectation
+	% of the caller is the job of code_gen__generate_exit.
+	%
+	% The reason why we generate the entry code after the body is that
+	% information such as the total number of stack slots needed,
+	% which is needed in the procedure entry prologue, cannot be
+	% conveniently obtained before generating the body, since the
+	% code generator may allocate temporary variables to hold values
+	% such as saved heap and trail pointers.
+	%
+	% Code_gen__generate_entry cannot depend on the code generator
+	% state, since when it is invoked this state is not appropriate
+	% for the procedure entry. Nor can it change the code generator state,
+	% since that would confuse code_gen__generate_exit.
+	%
+	% Generating CALL trace events is done by generate_category_code,
+	% since only on entry to generate_category_code is the code generator
+	% state set up right. Generating EXIT trace events is done by
+	% code_gen__generate_exit. Generating FAIL trace events is done
+	% by generate_category_code, since this requires modifying how
+	% we generate code for the body of the procedure (failures must
+	% now branch to a different place). Since FAIL trace events are
+	% part of the failure continuation, generate_category_code takes
+	% care of the failure continuation as well. (Model_det procedures
+	% of course have no failure continuation. Model_non procedures have
+	% a failure continuation, but in the absence of tracing this
+	% continuation needs no code. Only model_semi procedures need code
+	% for the failure continuation at all times.)
+
+:- pred generate_category_code(code_model, hlds_goal, proc_info, code_tree,
+	maybe(label), frame_info, code_info, code_info).
+:- mode generate_category_code(in, in, in, out, out, out, in, out) is det.
+
+generate_category_code(model_det, Goal, ProcInfo, Code,
+		MaybeTraceCallLabel, FrameInfo) -->
 		% generate the code for the body of the clause
 	(
 		code_info__get_globals(Globals),
@@ -265,6 +311,7 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		middle_rec__match_and_generate(Goal, MiddleRecCode)
 	->
 		{ Code = MiddleRecCode },
+		{ MaybeTraceCallLabel = no },
 		{ FrameInfo = frame(0, no, no) }
 	;
 		% make a new failure cont (not model_non);
@@ -272,96 +319,166 @@ generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		% but is a place holder
 		code_info__manufacture_failure_cont(no),
 
-		code_gen__generate_goal(model_det, Goal, BodyCode),
-		code_info__get_instmap(Instmap),
-
-		code_gen__generate_prolog(model_det, Goal, FrameInfo,
-			PrologCode),
-		(
-			{ instmap__is_reachable(Instmap) }
-		->
-			code_gen__generate_epilog(model_det,
-				FrameInfo, EpilogCode)
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			code_info__get_module_info(ModuleInfo),
+			{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
+				% Protect these vars from being forgotten,
+				% so they will be around for the exit trace.
+			code_info__push_resume_point_vars(ResumeVars),
+			trace__generate_external_event_code(call, TraceInfo,
+				TraceCallLabel, _TypeInfos, TraceCallCode),
+			{ MaybeTraceCallLabel = yes(TraceCallLabel) }
 		;
-			{ EpilogCode = empty }
+			{ TraceCallCode = empty },
+			{ MaybeTraceCallLabel = no }
 		),
-
-		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
+		code_gen__generate_goal(model_det, Goal, BodyCode),
+		code_gen__generate_entry(model_det, Goal, FrameInfo,
+			EntryCode),
+		code_gen__generate_exit(model_det, FrameInfo, _, ExitCode),
+		{ Code =
+			tree(EntryCode,
+			tree(TraceCallCode,
+			tree(BodyCode,
+			     ExitCode)))
+		}
 	).
 
-generate_category_code(model_semi, Goal, Code, FrameInfo) -->
+generate_category_code(model_semi, Goal, ProcInfo, Code,
+		MaybeTraceCallLabel, FrameInfo) -->
 		% make a new failure cont (not model_non)
 	code_info__manufacture_failure_cont(no),
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
+	{ FailCode = node([
+		assign(reg(r, 1), const(false)) - "Fail",
+		livevals(FailureLiveRegs) - "",
+		goto(succip) - "Return from procedure call"
+	]) },
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		code_info__get_module_info(ModuleInfo),
+		{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
+		code_info__make_known_failure_cont(ResumeVars, orig_and_stack,
+			no, SetupCode),
+		code_info__push_resume_point_vars(ResumeVars),
+		trace__generate_external_event_code(call, TraceInfo,
+			TraceCallLabel, _TypeInfos, TraceCallCode),
+		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
+		code_gen__generate_goal(model_semi, Goal, BodyCode),
+		code_gen__generate_entry(model_semi, Goal, FrameInfo,
+			EntryCode),
+		code_gen__generate_exit(model_semi, FrameInfo,
+			RestoreDeallocCode, ExitCode),
+		code_info__pop_resume_point_vars,
+		code_info__restore_failure_cont(ResumeCode),
+		code_info__set_forward_live_vars(ResumeVars),
+		trace__generate_external_event_code(fail, TraceInfo, _, _,
+			TraceFailCode),
+		{ Code =
+			tree(EntryCode,
+			tree(SetupCode,
+			tree(TraceCallCode,
+			tree(BodyCode,
+			tree(ExitCode,
+			tree(ResumeCode,
+			tree(TraceFailCode,
+			tree(RestoreDeallocCode,
+			     FailCode))))))))
+		}
+	;
+		{ MaybeTraceCallLabel = no },
+		code_gen__generate_goal(model_semi, Goal, BodyCode),
+		code_gen__generate_entry(model_semi, Goal, FrameInfo,
+			EntryCode),
+		code_gen__generate_exit(model_semi, FrameInfo,
+			RestoreDeallocCode, ExitCode),
+		code_info__restore_failure_cont(ResumeCode),
+		{ Code =
+			tree(EntryCode,
+			tree(BodyCode,
+			tree(ExitCode,
+			tree(ResumeCode,
+			tree(RestoreDeallocCode,
+			     FailCode)))))
+		}
+	).
 
-		% generate the code for the body of the clause
-	code_gen__generate_goal(model_semi, Goal, BodyCode),
-	code_gen__generate_prolog(model_semi, Goal, FrameInfo, PrologCode),
-	code_gen__generate_epilog(model_semi, FrameInfo, EpilogCode),
-	{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }.
-
-generate_category_code(model_non, Goal, Code, FrameInfo) -->
+generate_category_code(model_non, Goal, ProcInfo, Code,
+		MaybeTraceCallLabel, FrameInfo) -->
 		% make a new failure cont (yes, it is model_non)
 	code_info__manufacture_failure_cont(yes),
 		% we must arrange the tracing of failure out of this proc
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ set__init(ResumeVars) },
-		code_info__make_known_failure_cont(ResumeVars, stack_only, yes,
-			SetupCode),
-
-			% generate the code for the body of the clause
+		code_info__get_module_info(ModuleInfo),
+		{ trace__fail_vars(ModuleInfo, ProcInfo, ResumeVars) },
+		code_info__make_known_failure_cont(ResumeVars, orig_and_stack,
+			yes, SetupCode),
 		code_info__push_resume_point_vars(ResumeVars),
+		trace__generate_external_event_code(call, TraceInfo,
+			TraceCallLabel, _TypeInfos, TraceCallCode),
+		{ MaybeTraceCallLabel = yes(TraceCallLabel) },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_prolog(model_non, Goal, FrameInfo,
+		code_gen__generate_entry(model_non, Goal, FrameInfo,
 			PrologCode),
-		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
-		{ MainCode = tree(PrologCode, tree(BodyCode, EpilogCode)) },
+		code_gen__generate_exit(model_non, FrameInfo, _, EpilogCode),
 
 		code_info__pop_resume_point_vars,
 		code_info__restore_failure_cont(RestoreCode),
-		trace__generate_event_code(fail, TraceInfo, TraceEventCode),
+		code_info__set_forward_live_vars(ResumeVars),
+		trace__generate_external_event_code(fail, TraceInfo, _, _,
+			TraceFailCode),
 		code_info__generate_failure(FailCode),
 		{ Code =
-			tree(MainCode,
+			tree(PrologCode,
 			tree(SetupCode,
+			tree(TraceCallCode,
+			tree(BodyCode,
+			tree(EpilogCode,
 			tree(RestoreCode,
-			tree(TraceEventCode,
-			     FailCode))))
+			tree(TraceFailCode,
+			     FailCode)))))))
 		}
 	;
-			% generate the code for the body of the clause
+		{ MaybeTraceCallLabel = no },
 		code_gen__generate_goal(model_non, Goal, BodyCode),
-		code_gen__generate_prolog(model_non, Goal, FrameInfo,
+		code_gen__generate_entry(model_non, Goal, FrameInfo,
 			PrologCode),
-		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
-		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
+		code_gen__generate_exit(model_non, FrameInfo, _, EpilogCode),
+		{ Code =
+			tree(PrologCode,
+			tree(BodyCode,
+			     EpilogCode))
+		}
 	).
 
 %---------------------------------------------------------------------------%
 
-	% Generate the prolog for a procedure.
+	% Generate the prologue for a procedure.
 	%
-	% The prolog will contain
+	% The prologue will contain
 	%
-	%	a comment to mark prolog start
+	%	a comment to mark prologue start
 	%	a comment explaining the stack layout
 	%	the procedure entry label
 	%	code to allocate a stack frame
 	%	code to fill in some special slots in the stack frame
-	%	a comment to mark prolog end
+	%	a comment to mark prologue end
 	%
-	% At the moment the only special slot is the succip slot.
+	% At the moment the only special slots are the succip slot, and
+	% the slots holding the call number and call depth for tracing.
 	%
 	% Not all frames will have all these components. For example, the code
 	% to allocate a stack frame will be missing if the procedure doesn't
 	% need a stack frame, and if the procedure is nondet, then the code
 	% to fill in the succip slot is subsumed by the mkframe.
 
-:- pred code_gen__generate_prolog(code_model, hlds_goal, frame_info, code_tree, 
-	code_info, code_info).
-:- mode code_gen__generate_prolog(in, in, out, out, in, out) is det.
+:- pred code_gen__generate_entry(code_model, hlds_goal, frame_info,
+	code_tree, code_info, code_info).
+:- mode code_gen__generate_entry(in, in, out, out, in, out) is det.
 
-code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
+code_gen__generate_entry(CodeModel, Goal, FrameInfo, PrologCode) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
@@ -399,38 +516,9 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 	),
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) },
-		trace__generate_event_code(call, TraceInfo, TraceEventCode),
-		{ TraceCode = tree(TraceFillCode, TraceEventCode) }
+		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) }
 	;
-		{ TraceCode = empty }
-	),
-
-		% Generate live value information and put
-		% it into the continuation info if we are doing
-		% execution tracing.
-	code_info__get_globals(Globals),
-	(
-		{ globals__lookup_bool_option(Globals, trace_stack_layout,
-			yes) }
-	->
-		code_info__get_arginfo(ArgModes),
-		code_info__get_headvars(HeadVars),
-		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes,
-			Args) },
-		{ code_gen__select_args_with_mode(Args, top_in, InVars,
-			InLvals) },
-
-		code_gen__generate_var_infos(InVars, InLvals, VarInfos),
-		code_gen__generate_typeinfos_on_entry(InVars, InLvals,
-			TypeInfos),
-		
-		code_info__get_continuation_info(ContInfo0),
-		{ continuation_info__add_proc_entry_info(proc(PredId, ProcId),
-			VarInfos, TypeInfos, ContInfo0, ContInfo) },
-		code_info__set_continuation_info(ContInfo)
-	;
-		[]
+		{ TraceFillCode = empty }
 	),
 
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
@@ -492,53 +580,46 @@ code_gen__generate_prolog(CodeModel, Goal, FrameInfo, PrologCode) -->
 		tree(LabelCode,
 		tree(AllocCode,
 		tree(SaveSuccipCode,
-		tree(TraceCode,
+		tree(TraceFillCode,
 		     EndComment)))))
 	}.
 
 %---------------------------------------------------------------------------%
 
-	% Generate the epilog for a procedure.
+	% Generate the success epilogue for a procedure.
 	%
-	% The epilog will contain
+	% The success epilogue will contain
 	%
-	%	a comment to mark epilog start
+	%	a comment to mark epilogue start
 	%	code to place the output arguments where their caller expects
-	%	the success continuation
-	%	the faulure continuation (for semidet procedures only)
-	%	a comment to mark epilog end.
-	%
-	% The success continuation will contain
-	%
 	%	code to restore registers from some special slots
 	%	code to deallocate the stack frame
 	%	code to set r1 to TRUE (for semidet procedures only)
 	%	a jump back to the caller, including livevals information
+	%	a comment to mark epilogue end
 	%
-	% The failure continuation will contain
+	% The parts of this that restore registers and deallocate the stack
+	% frame are also part of the failure epilog, which is handled by
+	% our caller; this is why we return RestoreDeallocCode.
 	%
-	%	code that sets up the failure resumption point
-	%	code to restore registers from some special slots
-	%	code to deallocate the stack frame
-	%	code to set r1 to FALSE
-	%	a jump back to the caller, including livevals information
-	%
-	% At the moment the only special slot is the succip slot.
+	% At the moment the only special slots are the succip slot, and
+	% the slots holding the call number and call depth for tracing.
 	%
 	% Not all frames will have all these components. For example, for
 	% nondet procedures we don't deallocate the stack frame before
 	% success.
 	%
-	% Epilogs for procedures defined by nondet pragma C codes do not
+	% Epilogues for procedures defined by nondet pragma C codes do not
 	% follow the rules above. For such procedures, the normal functions
-	% of the epilog are handled when traversing the pragma C code goal;
-	% we need only #undef a macro defined by the procedure prolog.
+	% of the epilogue are handled when traversing the pragma C code goal;
+	% we need only #undef a macro defined by the procedure prologue.
 
-:- pred code_gen__generate_epilog(code_model, frame_info, code_tree,
+:- pred code_gen__generate_exit(code_model, frame_info, code_tree, code_tree,
 	code_info, code_info).
-:- mode code_gen__generate_epilog(in, in, out, in, out) is det.
+:- mode code_gen__generate_exit(in, in, out, out, in, out) is det.
 
-code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
+code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, EpilogCode)
+		-->
 	{ StartComment = node([
 		comment("Start of procedure epilogue") - ""
 	]) },
@@ -554,6 +635,7 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 				will_not_call_mercury, no)
 				- ""
 		]) },
+		{ RestoreDeallocCode = empty },	% always empty for nondet code
 		{ EpilogCode =
 			tree(StartComment,
 			tree(UndefCode,
@@ -592,51 +674,25 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 			]) }
 		),
 		{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
+
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			trace__generate_event_code(exit, TraceInfo,
-				SuccessTraceCode),
-			( { CodeModel = model_semi } ->
-				trace__generate_event_code(fail, TraceInfo,
-					FailureTraceCode)
-			;
-				{ FailureTraceCode = empty }
-			)
+			trace__generate_external_event_code(exit, TraceInfo,
+				_, TypeInfoDatas, TraceExitCode),
+			{ assoc_list__values(TypeInfoDatas, TypeInfoLvals) }
 		;
-			{ SuccessTraceCode = empty },
-			{ FailureTraceCode = empty }
+			{ TraceExitCode = empty },
+			{ TypeInfoLvals = [] }
 		),
-			% Generate live value information and put
-			% it into the continuation info if we are doing
-			% execution tracing.
-		{ code_gen__select_args_with_mode(Args, top_out, OutVars,
-			OutLvals) },
-		code_info__get_globals(Globals),
-		(
-			{ globals__lookup_bool_option(Globals,
-				trace_stack_layout, yes) }
-		->
-			code_gen__generate_var_infos(OutVars, OutLvals,
-				VarInfos),
-			code_gen__generate_typeinfos_on_exit(OutVars,
-				TypeInfos),
-			code_info__get_continuation_info(ContInfo0),
-			code_info__get_pred_id(PredId),
-			code_info__get_proc_id(ProcId),
-			{ continuation_info__add_proc_exit_info(
-				proc(PredId, ProcId), VarInfos, TypeInfos,
-				ContInfo0, ContInfo) },
-			code_info__set_continuation_info(ContInfo),
 
-				% Make sure typeinfos are in livevals(...)
-				% so that value numbering doesn't mess
-				% with them.
-			{ assoc_list__values(TypeInfos, ExtraLvals) },
-			{ list__append(ExtraLvals, OutLvals, LiveArgLvals) }
-		;
-			{ LiveArgLvals = OutLvals }
-		),
+			% Find out which locations should be mentioned
+			% in the success path livevals(...) annotation,
+			% so that value numbering doesn't optimize them away.
+		{ code_gen__select_args_with_mode(Args, top_out, _OutVars,
+			OutLvals) },
+		{ list__append(TypeInfoLvals, OutLvals, LiveArgLvals) },
 		{ set__list_to_set(LiveArgLvals, LiveArgs) },
+
 		(
 			{ CodeModel = model_det },
 			{ SuccessCode = node([
@@ -644,14 +700,12 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 				goto(succip) - "Return from procedure call"
 			]) },
 			{ AllSuccessCode =
-				tree(SuccessTraceCode,
+				tree(TraceExitCode,
 				tree(RestoreDeallocCode,
 				     SuccessCode))
-			},
-			{ AllFailureCode = empty }
+			}
 		;
 			{ CodeModel = model_semi },
-			code_info__restore_failure_cont(ResumeCode),
 			{ set__insert(LiveArgs, reg(r, 1), SuccessLiveRegs) },
 			{ SuccessCode = node([
 				assign(reg(r, 1), const(true)) - "Succeed",
@@ -659,21 +713,9 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 				goto(succip) - "Return from procedure call"
 			]) },
 			{ AllSuccessCode =
-				tree(SuccessTraceCode,
+				tree(TraceExitCode,
 				tree(RestoreDeallocCode,
 				     SuccessCode))
-			},
-			{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
-			{ FailureCode = node([
-				assign(reg(r, 1), const(false)) - "Fail",
-				livevals(FailureLiveRegs) - "",
-				goto(succip) - "Return from procedure call"
-			]) },
-			{ AllFailureCode =
-				tree(ResumeCode,
-				tree(FailureTraceCode,
-				tree(RestoreDeallocCode,
-				     FailureCode)))
 			}
 		;
 			{ CodeModel = model_non },
@@ -683,102 +725,17 @@ code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
 					- "Return from procedure call"
 			]) },
 			{ AllSuccessCode =
-				tree(SuccessTraceCode,
+				tree(TraceExitCode,
 				     SuccessCode)
-			},
-			{ AllFailureCode = empty }
+			}
 		),
 		{ EpilogCode =
 			tree(StartComment,
 			tree(FlushCode,
 			tree(AllSuccessCode,
-			tree(AllFailureCode,
-			     EndComment))))
+			     EndComment)))
 		}
 	).
-
-%---------------------------------------------------------------------------%
-
-	% Generate the list of lval - live_value_type pairs for the
-	% the given variables.
-
-:- pred code_gen__generate_var_infos(list(var), list(lval),
-		list(var_info), code_info, code_info).
-:- mode code_gen__generate_var_infos(in, in, out, in, out) is det.
-code_gen__generate_var_infos(Vars, Lvals, VarInfos) -->
-		% Add the variable names, insts, types and lvals.
-	code_info__get_varset(VarSet),
-	code_info__get_instmap(InstMap),
-	{ map__from_corresponding_lists(Vars, Lvals, VarLvalMap) },
-	=(CodeInfo),
-	{ MakeVarInfo = lambda([Var::in, VarInfo::out] is det, (
-		map__lookup(VarLvalMap, Var, Lval),
-		code_info__variable_type(Var, Type, CodeInfo, _),
-		instmap__lookup_var(InstMap, Var, Inst),
-		LiveType = var(Type, Inst),
-		varset__lookup_name(VarSet, Var, "V_", Name),
-		VarInfo = var_info(Lval, LiveType, Name)
-	)) }, 
-	{ list__map(MakeVarInfo, Vars, VarInfos) }.
-
-
-	% Generate the tvar - lval pairs for the typeinfos of the
-	% given variables on entry to the procedure (we find the
-	% lval location by looking in the input registers).
-	
-:- pred code_gen__generate_typeinfos_on_entry(list(var), list(lval),
-		assoc_list(tvar, lval), code_info, code_info).
-:- mode code_gen__generate_typeinfos_on_entry(in, in, out, in, out) is det.
-code_gen__generate_typeinfos_on_entry(Vars, Lvals, TypeInfos) -->
-
-	code_gen__find_typeinfos_for_vars(Vars, TVars, TypeInfoVars),
-
-		% Find the locations of the TypeInfoVars.
-	{ map__from_corresponding_lists(Vars, Lvals, VarLvalMap) },
-	{ map__apply_to_list(TypeInfoVars, VarLvalMap, TypeInfoLvals) },
-	{ assoc_list__from_corresponding_lists(TVars, TypeInfoLvals,
-		TypeInfos) }.
-
-	% Generate the tvar - lval pairs for the typeinfos of the
-	% given variables on exit from the procedure (we use code_exprn
-	% to find the lvals).
-
-:- pred code_gen__generate_typeinfos_on_exit(list(var), assoc_list(var, lval),
-		code_info, code_info).
-:- mode code_gen__generate_typeinfos_on_exit(in, out, in, out) is det.
-code_gen__generate_typeinfos_on_exit(Vars, TypeInfos) -->
-
-	code_gen__find_typeinfos_for_vars(Vars, TVars, TypeInfoVars),
-
-		% Find the locations of the TypeInfoVars.
-	code_info__variable_locations(VarLocs),
-	{ map__apply_to_list(TypeInfoVars, VarLocs, TypeInfoLvalSets) },
-	{ FindSingleLval = lambda([Set::in, Lval::out] is det, (
-		(
-			set__remove_least(Set, Value, _),
-			Value = lval(Lval0)
-		->
-			Lval = Lval0
-		;
-			error("code_gen__generate_typeinfos_on_exit: typeinfo var not available")
-		))) },
-	{ list__map(FindSingleLval, TypeInfoLvalSets, TypeInfoLvals) },
-	{ assoc_list__from_corresponding_lists(TVars, TypeInfoLvals,
-		TypeInfos) }.
-
-:- pred code_gen__find_typeinfos_for_vars(list(var), list(tvar), list(var),
-		code_info, code_info).
-:- mode code_gen__find_typeinfos_for_vars(in, out, out, in, out) is det.
-code_gen__find_typeinfos_for_vars(Vars, TypeVars, TypeInfoVars) -->
-		% Find the TypeInfo variables
-	list__map_foldl(code_info__variable_type, Vars, Types),
-	{ list__map(type_util__vars, Types, TypeVarsList) },
-	{ list__condense(TypeVarsList, TypeVars0) },
-	{ list__sort_and_remove_dups(TypeVars0, TypeVars) },
-        code_info__get_proc_info(ProcInfo),
-	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
-	{ list__map(type_info_locn_var, TypeInfoLocns, TypeInfoVars) }.
 
 %---------------------------------------------------------------------------%
 
@@ -801,12 +758,12 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		{ goal_info_get_code_model(GoalInfo, CodeModel) },
 		(
 			{ CodeModel = model_det },
-			code_gen__generate_det_goal_2(Goal, GoalInfo, Code0)
+			code_gen__generate_det_goal_2(Goal, GoalInfo, Code)
 		;
 			{ CodeModel = model_semi },
 			( { ContextModel \= model_det } ->
 				code_gen__generate_semi_goal_2(Goal, GoalInfo,
-					Code0)
+					Code)
 			;
 				{ error("semidet model in det context") }
 			)
@@ -814,7 +771,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			{ CodeModel = model_non },
 			( { ContextModel = model_non } ->
 				code_gen__generate_non_goal_2(Goal, GoalInfo,
-					Code0)
+					Code)
 			;
 				{ error("nondet model in det/semidet context") }
 			)
@@ -822,17 +779,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
 		code_info__set_instmap(Instmap),
-		code_info__post_goal_update(GoalInfo),
-		code_info__get_globals(Options),
-		(
-			{ globals__lookup_bool_option(Options, lazy_code, yes) }
-		->
-			{ Code1 = empty }
-		;
-			{ error("Eager code unavailable") }
-%%%			code_info__generate_eager_flush(Code1)
-		),
-		{ Code = tree(Code0, Code1) }
+		code_info__post_goal_update(GoalInfo)
 	;
 		{ Code = empty }
 	),
@@ -1255,8 +1202,8 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 	(
 		Instrn0 = livevals(LiveVals0),
 		Instrns0 \= [goto(succip) - _ | _]
-		% XXX we should also test for tailcalls
-		% once we start generating them directly
+		% XXX We should also test for tailcalls
+		% if we ever start generating them directly.
 	->
 		set__insert(LiveVals0, stackvar(StackLoc), LiveVals1),
 		Instrn = livevals(LiveVals1)

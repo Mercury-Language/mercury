@@ -18,13 +18,12 @@ void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 		Word *current_frame)
 {
-	Label *label;
-	MR_Live_Lval location;
-	MR_stack_layout_label *layout;
-	MR_stack_layout_entry *entry_layout;
-	MR_Lval_Type type;
-	int number, determinism;
-
+	Label			*label;
+	MR_Live_Lval		location;
+	MR_Stack_Layout_Label	*layout;
+	MR_Stack_Layout_Entry	*entry_layout;
+	MR_Lval_Type		type;
+	int			number, determinism;
 
 #ifndef MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
@@ -37,7 +36,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 			fatal_error("internal label not found");
 		}
 
-		layout = (MR_stack_layout_label *) label->e_layout;
+		layout = (MR_Stack_Layout_Label *) label->e_layout;
 		entry_layout = layout->MR_sll_entry;
 		
 		label = lookup_label_addr(
@@ -52,7 +51,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 		determinism = entry_layout->MR_sle_detism;
 
-		if (MR_DETISM_DET_CODE_MODEL(determinism)) {
+		if (MR_DETISM_DET_STACK(determinism)) {
 			fprintf(stderr, "\t%s\n", label->e_name);
 			if (type == MR_LVAL_TYPE_STACKVAR) {
 				success_pointer = (Code *) field(0, 
@@ -70,4 +69,3 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 	} while (determinism != -1);
 #endif /* MR_STACK_TRACE */
 }
-

@@ -18,13 +18,13 @@
 :- interface.
 
 :- import_module llds, prog_data, hlds_data.
-:- import_module bool, io.
+:- import_module set_bbbtree, bool, io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.
 
-:- pred output_c_file(c_file, io__state, io__state).
-:- mode output_c_file(in, di, uo) is det.
+:- pred output_c_file(c_file, set_bbbtree(label), io__state, io__state).
+:- mode output_c_file(in, in, di, uo) is det.
 
 	% Convert an lval to a string description of that lval.
 
@@ -135,16 +135,17 @@
 		;	data_addr(data_addr)
 		;	pragma_c_struct(string).
 
-output_c_file(C_File) -->
+output_c_file(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
-		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo)
+		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo,
+			StackLayoutLabels)
 	;
-		output_single_c_file(C_File, no)
+		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
 
 :- pred make_directory(string, io__state, io__state).
@@ -156,15 +157,17 @@ make_directory(DirName) -->
 	io__call_system(Command, _Result).
 
 :- pred output_c_file_list(list(c_module), int, module_name,
-			list(c_header_code), io__state, io__state).
-:- mode output_c_file_list(in, in, in, in, di, uo) is det.
+	list(c_header_code), set_bbbtree(label), io__state, io__state).
+:- mode output_c_file_list(in, in, in, in, in, di, uo) is det.
 
-output_c_file_list([], _, _, _) --> [].
-output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines) -->
+output_c_file_list([], _, _, _, _) --> [].
+output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines,
+		StackLayoutLabels) -->
 	output_single_c_file(c_file(ModuleName, C_HeaderLines, [Module]),
-		yes(Num)),
+		yes(Num), StackLayoutLabels),
 	{ Num1 is Num + 1 },
-	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines).
+	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines,
+		StackLayoutLabels).
 
 :- pred output_c_file_init(module_name, list(c_module), io__state, io__state).
 :- mode output_c_file_init(in, in, di, uo) is det.
@@ -205,11 +208,12 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_single_c_file(c_file, maybe(int), io__state, io__state).
-:- mode output_single_c_file(in, in, di, uo) is det.
+:- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
+	io__state, io__state).
+:- mode output_single_c_file(in, in, in, di, uo) is det.
 
-output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles) 
-		-->
+output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
+		StackLayoutLabels) -->
 	( { SplitFiles = yes(Num) } ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
@@ -245,7 +249,7 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles)
 		{ gather_c_file_labels(Modules, Labels) },
 		{ set__init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
-		output_c_module_list(Modules, DeclSet),
+		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
@@ -424,18 +428,21 @@ output_bunch_name(ModuleName, Number) -->
 	io__write_string("_bunch_"),
 	io__write_int(Number).
 
-:- pred output_c_module_list(list(c_module), decl_set, io__state, io__state).
-:- mode output_c_module_list(in, in, di, uo) is det.
+:- pred output_c_module_list(list(c_module), set_bbbtree(label), decl_set,
+	io__state, io__state).
+:- mode output_c_module_list(in, in, in, di, uo) is det.
 
-output_c_module_list([], _) --> [].
-output_c_module_list([M | Ms], DeclSet0) -->
-	output_c_module(M, DeclSet0, DeclSet),
-	output_c_module_list(Ms, DeclSet).
+output_c_module_list([], _, _) --> [].
+output_c_module_list([M | Ms], StackLayoutLabels, DeclSet0) -->
+	output_c_module(M, StackLayoutLabels, DeclSet0, DeclSet),
+	output_c_module_list(Ms, StackLayoutLabels, DeclSet).
 
-:- pred output_c_module(c_module, decl_set, decl_set, io__state, io__state).
-:- mode output_c_module(in, in, out, di, uo) is det.
+:- pred output_c_module(c_module, set_bbbtree(label), decl_set, decl_set,
+	io__state, io__state).
+:- mode output_c_module(in, in, in, out, di, uo) is det.
 
-output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
+output_c_module(c_module(ModuleName, Procedures), StackLayoutLabels,
+		DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
 	io__write_string("\n"),
@@ -443,7 +450,7 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
 	io__write_string(ModuleName),
 	io__write_string(")\n"),
 	{ gather_c_module_labels(Procedures, Labels) },
-	output_c_label_init_list(Labels),
+	output_c_label_init_list(Labels, StackLayoutLabels),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
@@ -452,7 +459,7 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
 	io__write_string("END_MODULE\n").
 
 output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
-		_Refs), DeclSet0, DeclSet) -->
+		_Refs), _, DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
@@ -471,7 +478,7 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 		0, _),
 	{ set__insert(DeclSet1, DataAddr, DeclSet) }.
 
-output_c_module(c_code(C_Code, Context), DeclSet, DeclSet) -->
+output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -485,7 +492,7 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet) -->
 	io__write_string("\n"),
 	output_reset_line_num.
 
-output_c_module(c_export(PragmaExports), DeclSet, DeclSet) -->
+output_c_module(c_export(PragmaExports), _, DeclSet, DeclSet) -->
 	output_exported_c_functions(PragmaExports).
 
 	% output_c_header_include_lines reverses the list of c header lines
@@ -522,6 +529,7 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).
 :- mode output_exported_c_functions(in, di, uo) is det.
+
 output_exported_c_functions([]) --> [].
 output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
@@ -568,36 +576,53 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 	output_label(Label),
 	io__write_string(");\n").
 
-:- pred output_c_label_init_list(list(label), io__state, io__state).
-:- mode output_c_label_init_list(in, di, uo) is det.
+:- pred output_c_label_init_list(list(label), set_bbbtree(label),
+	io__state, io__state).
+:- mode output_c_label_init_list(in, in, di, uo) is det.
 
-output_c_label_init_list([]) --> [].
-output_c_label_init_list([Label | Labels]) -->
-	output_c_label_init(Label),
-	output_c_label_init_list(Labels).
+output_c_label_init_list([], _) --> [].
+output_c_label_init_list([Label | Labels], StackLayoutLabels) -->
+	output_c_label_init(Label, StackLayoutLabels),
+	output_c_label_init_list(Labels, StackLayoutLabels).
 
-:- pred output_c_label_init(label, io__state, io__state).
-:- mode output_c_label_init(in, di, uo) is det.
+:- pred output_c_label_init(label, set_bbbtree(label), io__state, io__state).
+:- mode output_c_label_init(in, in, di, uo) is det.
 
-output_c_label_init(Label) -->
+output_c_label_init(Label, StackLayoutLabels) -->
 	(
 		{ Label = exported(_) },
-		io__write_string("\tinit_entry("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_entry_sl(")
+		;
+			io__write_string("\tinit_entry(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = local(_) },
-		io__write_string("\tinit_entry("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_entry_sl(")
+		;
+			io__write_string("\tinit_entry(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = c_local(_) },
-		io__write_string("\tinit_local("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_local_sl(")
+		;
+			io__write_string("\tinit_local(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = local(_, _) },
-		io__write_string("\tinit_label("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_label_sl(")
+		;
+			io__write_string("\tinit_label(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	).

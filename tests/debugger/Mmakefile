@@ -6,24 +6,42 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-mdemangle_test.out: mdemangle_test.inp
-	mdemangle < mdemangle_test.inp > mdemangle_test.out 2>&1
+DEBUGGER_PROGS=	\
+	debugger_regs	\
+	interpreter	\
+	queens
 
-pretty_print_test.out: pretty_print_test.ugly
-	cp pretty_print_test.ugly pretty_print_test.out
+MCFLAGS = --generate-trace
+
+# Not all grades can be used with stack layouts
+#
+ifeq ($(GRADE),jump) 
+	PROGS=
+else
+	ifeq ($(GRADE),fast)
+		PROGS=
+	else
+		PROGS=$(DEBUGGER_PROGS)
+	endif
+endif
 
 #-----------------------------------------------------------------------------#
 
-PROGS =
+debugger_regs.out: debugger_regs debugger_regs.inp
+	mdb ./debugger_regs < debugger_regs.inp > debugger_regs.out
 
-OTHER_TESTS = mdemangle_test pretty_print_test
+interpreter.out: interpreter interpreter.inp
+	mdb ./interpreter interpreter.m < interpreter.inp > interpreter.out
+
+queens.out: queens queens.inp
+	mdb ./queens < queens.inp > queens.out
 
 #-----------------------------------------------------------------------------#
 
 DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out) $(OTHER_TESTS:%=%.out)
-RESS=	$(PROGS:%=%.res) $(OTHER_TESTS:%=%.res)
+OUTS=	$(PROGS:%=%.out)
+RESS=	$(PROGS:%=%.res)
 MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#

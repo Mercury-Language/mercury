@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -115,15 +115,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	code_info__maybe_discard_hp(MaybeHpSlot),
 
 		% Generate the then branch
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfoThen) } ->
-		{ ThenGoal = _ - ThenGoalInfo },
-		{ goal_info_get_goal_path(ThenGoalInfo, ThenPath) },
-		trace__generate_event_code(ite_then(ThenPath), TraceInfoThen,
-			ThenTraceCode)
-	;
-		{ ThenTraceCode = empty }
-	),
+	trace__maybe_generate_internal_event_code(ThenGoal, ThenTraceCode),
 	code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
 	code_info__generate_branch_end(CodeModel, StoreMap, ThenSaveCode),
 
@@ -135,14 +127,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
 
 		% Generate the else branch
-	( { MaybeTraceInfo = yes(TraceInfoElse) } ->
-		{ ElseGoal = _ - ElseGoalInfo },
-		{ goal_info_get_goal_path(ElseGoalInfo, ElsePath) },
-		trace__generate_event_code(ite_else(ElsePath), TraceInfoElse,
-			ElseTraceCode)
-	;
-		{ ElseTraceCode = empty }
-	),
+	trace__maybe_generate_internal_event_code(ElseGoal, ElseTraceCode),
 	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
 	code_info__generate_branch_end(CodeModel, StoreMap, ElseSaveCode),
 
@@ -272,15 +257,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	),
 
 		% Generate the then branch
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfoThen) } ->
-		{ ThenGoal = _ - ThenGoalInfo },
-		{ goal_info_get_goal_path(ThenGoalInfo, ThenPath) },
-		trace__generate_event_code(ite_then(ThenPath), TraceInfoThen,
-			ThenTraceCode)
-	;
-		{ ThenTraceCode = empty }
-	),
+	trace__maybe_generate_internal_event_code(ThenGoal, ThenTraceCode),
 	code_gen__generate_goal(model_non, ThenGoal, ThenCode),
 	code_info__generate_branch_end(model_non, StoreMap, ThenSaveCode),
 
@@ -292,14 +269,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		RestoreTicketCode),
 
 		% Generate the else branch
-	( { MaybeTraceInfo = yes(TraceInfoElse) } ->
-		{ ElseGoal = _ - ElseGoalInfo },
-		{ goal_info_get_goal_path(ElseGoalInfo, ElsePath) },
-		trace__generate_event_code(ite_else(ElsePath), TraceInfoElse,
-			ElseTraceCode)
-	;
-		{ ElseTraceCode = empty }
-	),
+	trace__maybe_generate_internal_event_code(ElseGoal, ElseTraceCode),
 	code_gen__generate_goal(model_non, ElseGoal, ElseCode),
 	code_info__generate_branch_end(model_non, StoreMap, ElseSaveCode),
 

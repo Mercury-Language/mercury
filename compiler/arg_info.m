@@ -23,7 +23,7 @@
 :- module arg_info.
 :- interface. 
 :- import_module hlds_module, hlds_pred, llds, globals, prog_data.
-:- import_module bool, list.
+:- import_module bool, list, assoc_list, term.
 
 :- pred generate_arg_info(module_info, module_info).
 :- mode generate_arg_info(in, out) is det.
@@ -45,12 +45,19 @@
 :- pred arg_info__ho_call_args_method(globals, args_method).
 :- mode arg_info__ho_call_args_method(in, out) is det.
 
+	% Given a list of the head variables and their argument information,
+	% return a list giving the input variables and their initial locations.
+:- pred arg_info__build_input_arg_list(assoc_list(var, arg_info),
+	assoc_list(var, rval)).
+:- mode arg_info__build_input_arg_list(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module map, int, mode_util, require.
+:- import_module code_util, mode_util.
+:- import_module std_util, map, int, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -224,6 +231,21 @@ arg_info__args_method_is_ho_callable(_, compact, yes).
 arg_info__args_method_is_ho_callable(_, simple, no).
 
 arg_info__ho_call_args_method(_, compact).
+
+%---------------------------------------------------------------------------%
+
+arg_info__build_input_arg_list([], []).
+arg_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
+	Arg = arg_info(Loc, Mode),
+	(
+		Mode = top_in
+	->
+		code_util__arg_loc_to_register(Loc, Reg),
+		VarArgs = [V - lval(Reg) | VarArgs0]
+	;
+		VarArgs = VarArgs0
+	),
+	arg_info__build_input_arg_list(Rest0, VarArgs0).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -147,6 +147,16 @@
 	int, int).
 :- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
 
+	% These predicates return the set of lvals referenced in an rval
+	% and an lval respectively. Lvals referenced indirectly through
+	% lvals of the form var(_) are not counted.
+
+:- pred code_util__lvals_in_rval(rval, list(lval)).
+:- mode code_util__lvals_in_rval(in, out) is det.
+
+:- pred code_util__lvals_in_lval(lval, list(lval)).
+:- mode code_util__lvals_in_lval(in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -868,3 +878,56 @@ code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 		int__min(Min0, Min1, Min),
 		int__max(Max0, Max1, Max)
 	).
+
+%-----------------------------------------------------------------------------%
+
+code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
+	code_util__lvals_in_lval(Lval, Lvals).
+code_util__lvals_in_rval(var(_), []).
+code_util__lvals_in_rval(create(_, _, _, _, _), []).
+code_util__lvals_in_rval(mkword(_, Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_rval(const(_), []).
+code_util__lvals_in_rval(unop(_, Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_rval(binop(_, Rval1, Rval2), Lvals) :-
+	code_util__lvals_in_rval(Rval1, Lvals1),
+	code_util__lvals_in_rval(Rval2, Lvals2),
+	list__append(Lvals1, Lvals2, Lvals).
+code_util__lvals_in_rval(mem_addr(MemRef), Lvals) :-
+	code_util__lvals_in_mem_ref(MemRef, Lvals).
+
+code_util__lvals_in_lval(reg(_, _), []).
+code_util__lvals_in_lval(stackvar(_), []).
+code_util__lvals_in_lval(framevar(_), []).
+code_util__lvals_in_lval(succip, []).
+code_util__lvals_in_lval(maxfr, []).
+code_util__lvals_in_lval(curfr, []).
+code_util__lvals_in_lval(succip(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_lval(redoip(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_lval(succfr(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_lval(prevfr(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+code_util__lvals_in_lval(hp, []).
+code_util__lvals_in_lval(sp, []).
+code_util__lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
+	code_util__lvals_in_rval(Rval1, Lvals1),
+	code_util__lvals_in_rval(Rval2, Lvals2),
+	list__append(Lvals1, Lvals2, Lvals).
+code_util__lvals_in_lval(lvar(_), []).
+code_util__lvals_in_lval(temp(_, _), []).
+code_util__lvals_in_lval(mem_ref(Rval), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+
+:- pred code_util__lvals_in_mem_ref(mem_ref, list(lval)).
+:- mode code_util__lvals_in_mem_ref(in, out) is det.
+
+code_util__lvals_in_mem_ref(stackvar_ref(_), []).
+code_util__lvals_in_mem_ref(framevar_ref(_), []).
+code_util__lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
+	code_util__lvals_in_rval(Rval, Lvals).
+
+%-----------------------------------------------------------------------------%

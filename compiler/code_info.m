@@ -41,7 +41,7 @@
 :- implementation.
 
 :- import_module code_util, code_exprn, prog_out.
-:- import_module type_util, mode_util, options.
+:- import_module arg_info, type_util, mode_util, options.
 
 :- import_module set, varset, stack.
 :- import_module string, require, char, bimap, tree, int.
@@ -68,8 +68,8 @@
 		% Create a new code_info structure.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int /* cell number */, continuation_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in,
+	int /* cell number */, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
 	out) is det.
 
 		% Get the variables for the current procedure.
@@ -118,13 +118,9 @@
 :- pred code_info__get_globals(globals, code_info, code_info).
 :- mode code_info__get_globals(out, in, out) is det.
 
-:- pred code_info__get_continuation_info(continuation_info, 
+:- pred code_info__get_layout_info(map(label, internal_layout_info), 
 		code_info, code_info).
-:- mode code_info__get_continuation_info(out, in, out) is det.
-
-:- pred code_info__set_continuation_info(continuation_info, 
-		code_info, code_info).
-:- mode code_info__set_continuation_info(in, in, out) is det.
+:- mode code_info__get_layout_info(out, in, out) is det.
 
 :- pred code_info__get_maybe_trace_info(maybe(trace_info),
 		code_info, code_info).
@@ -185,6 +181,10 @@
 	code_info, code_info).
 :- mode code_info__set_temps_in_use(in, in, out) is det.
 
+:- pred code_info__set_layout_info(map(label, internal_layout_info), 
+		code_info, code_info).
+:- mode code_info__set_layout_info(in, in, out) is det.
+
 :- pred code_info__get_zombies(set(var), code_info, code_info).
 :- mode code_info__get_zombies(out, in, out) is det.
 
@@ -240,10 +240,10 @@
 			map(lval, slot_contents),
 					% The temp locations in use on the stack
 					% and what they contain (for gc).
-			continuation_info,	
+			map(label, internal_layout_info),	
 					% Information on which values
-					% are live at continuation
-					% points, for accurate gc.
+					% are live and where at which labels,
+					% for tracing and/or accurate gc.
 			set(var),	% Zombie variables; variables that have
 					% been killed but are protected by a
 					% resume point.
@@ -287,11 +287,11 @@
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, Requests, FollowVars,
-		ModuleInfo, CellCount, Shapes, C) :-
+		ModuleInfo, CellCount, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
-	code_info__build_input_arg_list(Args, ArgList),
+	arg_info__build_input_arg_list(Args, ArgList),
 	globals__get_options(Globals, Options),
 	code_exprn__init_state(ArgList, Varset, StackSlots, FollowVars,
 		Options, ExprnInfo),
@@ -300,6 +300,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	set__init(AvailSlots0),
 	map__init(TempsInUse0),
 	set__init(Zombies0),
+	map__init(Shapes),
 	code_info__max_var_slot(StackSlots, VarSlotCount0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	(
@@ -333,24 +334,6 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		0,
 		no
 	).
-
-	% XXX This should be in arg_info.m.
-:- pred code_info__build_input_arg_list(assoc_list(var, arg_info),
-	assoc_list(var, rval)).
-:- mode code_info__build_input_arg_list(in, out) is det.
-
-code_info__build_input_arg_list([], []).
-code_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
-	Arg = arg_info(Loc, Mode),
-	(
-		Mode = top_in
-	->
-		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - lval(Reg) | VarArgs0]
-	;
-		VarArgs = VarArgs0
-	),
-	code_info__build_input_arg_list(Rest0, VarArgs0).
 
 %---------------------------------------------------------------------------%
 
@@ -422,7 +405,7 @@ code_info__get_temps_in_use(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
 		_, _, _).
 
-code_info__get_continuation_info(R, CI, CI) :-
+code_info__get_layout_info(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
 		_, _, _).
 
@@ -475,10 +458,10 @@ code_info__get_maybe_trace_info(V, CI, CI) :-
 %	Q		map(lval, slot_contents),
 %					% The temp locations in use on the stack
 %					% and what they contain (for gc).
-%	R		continuation_info,	
+%	R		map(label, internal_layout_info),	
 %					% Information on which values
-%					% are live at continuation
-%					% points, for accurate gc.
+%					% are live and where at which labels,
+%					% for tracing and/or accurate gc.
 %	S		set(var),	% Zombie variables; variables that have
 %					% been killed but are protected by a
 %					% resume point.
@@ -581,7 +564,7 @@ code_info__set_temps_in_use(Q, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V).
 
-code_info__set_continuation_info(R, CI0, CI) :-
+code_info__set_layout_info(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		_, S, T, U, V),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
@@ -730,6 +713,10 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 
 :- pred code_info__succip_is_used(code_info, code_info).
 :- mode code_info__succip_is_used(in, out) is det.
+
+:- pred code_info__add_layout_for_label(label, internal_layout_info,
+	code_info, code_info).
+:- mode code_info__add_layout_for_label(in, in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -967,11 +954,10 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_fail_stack(J, C3, C4),
 	code_info__get_max_temp_slot_count(PC, C1, _),
 	code_info__set_max_temp_slot_count(PC, C4, C5),
-	code_info__get_continuation_info(ContInfo, C1, _),
-	code_info__set_continuation_info(ContInfo, C5, C6),
+	code_info__get_layout_info(LayoutInfo, C1, _),
+	code_info__set_layout_info(LayoutInfo, C5, C6),
 	code_info__get_cell_count(CellCount, C1, _),
 	code_info__set_cell_count(CellCount, C6, C).
-
 
 code_info__apply_instmap_delta(Delta) -->
 	code_info__get_instmap(InstMap0),
@@ -1013,6 +999,15 @@ code_info__get_next_cell_number(N) -->
 
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
+
+code_info__add_layout_for_label(Label, LayoutInfo) -->
+	code_info__get_layout_info(Internals0),
+	( { map__contains(Internals0, Label) } ->
+		{ error("adding layout for already known label") }
+	;
+		{ map__det_insert(Internals0, Label, LayoutInfo, Internals) },
+		code_info__set_layout_info(Internals)
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2504,6 +2499,11 @@ code_info__save_maxfr(MaxfrSlot, Code) -->
 	code_info, code_info).
 :- mode code_info__produce_variable_in_reg(in, out, out, in, out) is det.
 
+:- pred code_info__produce_variable_in_reg_or_stack(var, code_tree, rval,
+	code_info, code_info).
+:- mode code_info__produce_variable_in_reg_or_stack(in, out, out, in, out)
+	is det.
+
 :- pred code_info__materialize_vars_in_rval(rval, rval, code_tree, code_info,
 	code_info).
 :- mode code_info__materialize_vars_in_rval(in, out, out, in, out) is det.
@@ -2561,6 +2561,9 @@ code_info__save_maxfr(MaxfrSlot, Code) -->
 	code_info, code_info).
 :- mode code_info__save_variables_on_stack(in, out, in, out) is det.
 
+:- pred code_info__max_reg_in_use(int, code_info, code_info).
+:- mode code_info__max_reg_in_use(out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -2568,11 +2571,6 @@ code_info__save_maxfr(MaxfrSlot, Code) -->
 :- pred code_info__place_vars(assoc_list(var, set(rval)), code_tree,
 	code_info, code_info).
 :- mode code_info__place_vars(in, out, in, out) is det.
-
-:- pred code_info__produce_variable_in_reg_or_stack(var, code_tree, rval,
-	code_info, code_info).
-:- mode code_info__produce_variable_in_reg_or_stack(in, out, out, in, out)
-	is det.
 
 code_info__variable_locations(Locations) -->
 	code_info__get_exprn_info(Exprn),
@@ -2785,6 +2783,10 @@ code_info__save_variables_on_stack([Var | Vars], Code) -->
 	code_info__save_variable_on_stack(Var, FirstCode),
 	code_info__save_variables_on_stack(Vars, RestCode),
 	{ Code = tree(FirstCode, RestCode) }.
+
+code_info__max_reg_in_use(Max) -->
+	code_info__get_exprn_info(Exprn),
+	{ code_exprn__max_reg_in_use(Exprn, Max) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

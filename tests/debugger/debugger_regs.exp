@@ -1,7 +1,7 @@
-       1:      1  1  CALL DET   debugger_regs:main/2-0 
-mtrace>        2:      2  2   CALL DET   debugger_regs:data/41-0 
-mtrace>        3:      2  2   EXIT DET   debugger_regs:data/41-0 
-mtrace> mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+       1:      1  1 CALL DET   debugger_regs:main/2-0 
+mtrace>        2:      2  2 CALL DET   debugger_regs:data/41-0 
+mtrace>        3:      2  2 EXIT DET   debugger_regs:data/41-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
           HeadVar__2           		a0
           HeadVar__3           		a1
           HeadVar__4           		a2
@@ -42,7 +42,7 @@ mtrace> mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
           HeadVar__39          		d7
           HeadVar__40          		d8
           HeadVar__41          		d9
-a0a1a2a3a4a5a6a7a8a9
+mtrace> a0a1a2a3a4a5a6a7a8a9
 b0b1b2b3b4b5b6b7b8b9
 c0c1c2c3c4c5c6c7c8c9
 d0d1d2d3d4d5d6d7d8d9

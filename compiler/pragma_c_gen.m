@@ -532,16 +532,10 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
 	code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
 
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		trace__generate_event_code(disj([disj(1)]), TraceInfo,
-			FirstTraceCode),
-		trace__generate_event_code(disj([disj(2)]), TraceInfo,
-			LaterTraceCode)
-	;
-		{ FirstTraceCode = empty },
-		{ LaterTraceCode = empty }
-	),
+	trace__maybe_generate_pragma_event_code(nondet_pragma_first,
+		FirstTraceCode),
+	trace__maybe_generate_pragma_event_code(nondet_pragma_later,
+		LaterTraceCode),
 
 	{ FirstDisjunctCode =
 		tree(SaveHeapCode,

@@ -32,25 +32,36 @@
 ** Therefore we want to do it only if we're debugging,
 ** or if we need the label address for profiling or
 ** accurate garbage collection.
+**
+** The versions of the macros below with the _sl suffix assume that the label
+** that they are applied to has a stack layout record; the versions without
+** do not. This governs whether they try to pass the address of this record
+** to insert_entry().
 */
 
 #if defined(MR_INSERT_LABELS)
-  #define	make_label(n, a, l)	make_entry(n, a, l)
+  #define make_label(n, a, l)		make_entry(n, a, l)
+  #define make_label_sl(n, a, l)	make_entry_sl(n, a, l)
 #else
-  #define	make_label(n, a, l)	/* nothing */
+  #define make_label(n, a, l)		/* nothing */
+  #define make_label_sl(n, a, l)	/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_local(n, a, l)	make_entry(n, a, l)
+  #define make_local(n, a, l)		make_entry(n, a, l)
+  #define make_local_sl(n, a, l)	make_entry_sl(n, a, l)
 #else 
-  #define make_local(n, a, l)	/* nothing */
+  #define make_local(n, a, l)		/* nothing */
+  #define make_local_sl(n, a, l)	/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS) \
 		|| defined(MR_CHOOSE_ENTRY_POINT)
-  #define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
+  #define make_entry(n, a, l)		insert_entry(n, a, NULL)
+  #define make_entry_sl(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
 #else
-  #define make_entry(n, a, l)	/* nothing */
+  #define make_entry(n, a, l)		/* nothing */
+  #define make_entry_sl(n, a, l)	/* nothing */
 #endif
 
 
@@ -471,6 +482,9 @@
     #define init_entry(label)	\
 	PRETEND_ADDRESS_IS_USED(&&label); \
 	make_entry(stringify(label), label, label)
+    #define init_entry_sl(label)	\
+	PRETEND_ADDRESS_IS_USED(&&label); \
+	make_entry_sl(stringify(label), label, label)
 
     #define ENTRY(label) 	(&label)
     #define STATIC(label) 	(&label)
@@ -498,6 +512,9 @@
     #define init_entry(label)	\
 	make_entry(stringify(label), &&label, label);	\
 	entry(label) = &&label
+    #define init_entry_sl(label)	\
+	make_entry_sl(stringify(label), &&label, label);	\
+	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
     #define STATIC(label) 	(entry(label))
 
@@ -514,13 +531,17 @@
 	label:	\
 	{
   #define init_local(label)	make_local(stringify(label), &&label, label)
+  #define init_local_sl(label)	make_local_sl(stringify(label), &&label, label)
   #define Define_label(label)	Define_local(label)
   #define Declare_label(label)	/* no declaration required */
   #ifdef MR_INSERT_LABELS
    #define init_label(label)	\
 	make_label(stringify(label), &&entry(label), label)
+   #define init_label_sl(label)	\
+	make_label_sl(stringify(label), &&entry(label), label)
   #else
    #define init_label(label)	make_label(stringify(label), &&label, label)
+   #define init_label_sl(label)	make_label_sl(stringify(label), &&label, label)
   #endif
 
   #define LOCAL(label)		(&&entry(label))
@@ -560,6 +581,7 @@
 	}			\
 	static Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label, label)
+  #define init_entry_sl(label)	make_entry_sl(stringify(label), label, label)
 
   #define Declare_local(label)	static Code *label(void)
   #define Define_local(label)	\
@@ -567,6 +589,7 @@
 	}			\
 	static Code* label(void) {
   #define init_local(label)	make_local(stringify(label), label, label)
+  #define init_local_sl(label)	make_local_sl(stringify(label), label, label)
 
   #define Declare_label(label)	static Code *label(void)
   #define Define_label(label)	\
@@ -574,6 +597,7 @@
 	}			\
 	static Code* label(void) {
   #define init_label(label)	make_label(stringify(label), label, label)
+  #define init_label_sl(label)	make_label_sl(stringify(label), label, label)
 
   #define ENTRY(label) 		(label)
   #define STATIC(label) 	(label)
