@@ -3882,8 +3882,11 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 		AsmDecls = []
 	),
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		AsmName = mlds_module_name_to_assembly_name(
-				Import ^ import_name),
+		( Import = mercury_import(ImportName)
+		; Import = foreign_import(ForeignImportName),
+			ForeignImportName = il_assembly_name(ImportName)
+		),
+		AsmName = mlds_module_name_to_assembly_name(ImportName),
 		( AsmName = assembly(Assembly),
 			Assembly \= "mercury",
 			Decl = [extern_assembly(Assembly, AsmDecls)]
