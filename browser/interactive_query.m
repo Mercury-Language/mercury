@@ -425,9 +425,18 @@ compile_file(Options, Succeeded) -->
 		" query.m"], Command) },
 	invoke_system_command(Command, Succeeded0),
 	( { Succeeded0 = yes } ->
+		% We use the following options:
+		%	--make-shared-lib
+		%		needed so we can dynamically load in the
+		%		code
+		%	--allow-undefined
+		%		needed to allow the query to reference
+		%		symbols defined in the program
+		%	--trace
 		{ string__append_list([
 			"ml --grade ", grade_option,
 			" --trace",
+			" --allow-undefined",
 			" --make-shared-lib ", Options,
 			" -o libquery.so query.o"], Command2) },
 		invoke_system_command(Command2, Succeeded)
