@@ -996,7 +996,7 @@ mercury_compile__maybe_unused_args(HLDS0, HLDS) -->
 :- mode mercury_compile__maybe_eliminate_dead_procs(in, out, di, uo) is det.
 
 mercury_compile__maybe_eliminate_dead_procs(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(optimize_dead, Dead),
+	globals__io_lookup_bool_option(optimize_dead_procs, Dead),
 	( { Dead = yes } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Eliminating dead procedures...\n"),
@@ -1348,7 +1348,9 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	maybe_write_string(Verbose, C_File),
 	maybe_write_string(Verbose, "':\n"),
 	globals__io_lookup_string_option(cc, CC),
-	globals__io_lookup_string_option(cflags, CFLAGS),
+	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
+	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
+
 	globals__io_lookup_string_option(c_include_directory, C_INCL),
 	{ C_INCL = "" ->
 		InclOpt = ""
@@ -1480,10 +1482,11 @@ mercury_compile__link_module_list(Modules) -->
 		MakeLibCmdList) },
 	    { string__append_list(MakeLibCmdList, MakeLibCmd) },
 	    invoke_system_command(MakeLibCmd, MakeLibCmdOK),
-	    { Objects = [OutputFileBase, ".a"] }
+	    { string__append(OutputFileBase, ".a", Objects) }
         ;
 	    { MakeLibCmdOK = yes },
-	    { join_module_list(Modules, ".o ", [], Objects) }
+	    { join_module_list(Modules, ".o ", [], ObjectsList) },
+	    { string__append_list(ObjectsList, Objects) }
         ),
 	( { MakeLibCmdOK = no } ->
 	    report_error("creation of object file library failed.")
@@ -1509,11 +1512,28 @@ mercury_compile__link_module_list(Modules) -->
 		;
 	            maybe_write_string(Verbose, "% Linking...\n"),
 		    globals__io_lookup_string_option(grade, Grade),
-		    globals__io_lookup_string_option(link_flags, LinkFlags),
+		    globals__io_lookup_accumulating_option(link_flags,
+				LinkFlagsList),
+		    { join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },
+		    globals__io_lookup_accumulating_option(
+				link_library_directories,
+				LinkLibraryDirectoriesList),
+		    { join_string_list(LinkLibraryDirectoriesList, "-L", "",
+				" ", LinkLibraryDirectories) },
+		    globals__io_lookup_accumulating_option(link_libraries,
+				LinkLibrariesList),
+		    { join_string_list(LinkLibrariesList, "-l", "", " ",
+				LinkLibraries) },
+		    globals__io_lookup_accumulating_option(link_objects,
+				LinkObjectsList),
+		    { join_string_list(LinkObjectsList, "", "", " ",
+				LinkObjects) },
 		    { string__append_list(
-			["ml --grade ", Grade, LinkFlags, " ",
+			["ml --grade ", Grade, " ", LinkFlags,
 			" -o ", OutputFile, " ",
-			OutputFileBase, "_init.o " | Objects],
+			OutputFileBase, "_init.o ", Objects, " ",
+			LinkObjects, " ",
+			LinkLibraryDirectories, " ", LinkLibraries],
 			LinkCmd) },
 		    invoke_system_command(LinkCmd, LinkCmdOK),
 		    maybe_report_stats(Statistics),
@@ -1524,6 +1544,19 @@ mercury_compile__link_module_list(Modules) -->
 		    )
 		)
 	    )
+	).
+
+:- pred join_string_list(list(string), string, string, string, string).
+:- mode join_string_list(in, in, in, in, out) is det.
+
+join_string_list([], _Prefix, _Suffix, _Separator, "").
+join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
+	( Strings = [] ->
+		string__append_list([Prefix, String, Suffix], Result)
+	;
+		join_string_list(Strings, Prefix, Suffix, Separator, Result0),
+		string__append_list([Prefix, String, Suffix, Separator,
+			Result0], Result)
 	).
 
 :- pred join_module_list(list(string), string, list(string), list(string)).

@@ -9,9 +9,6 @@
 
 % This defines the stuff necessary so that getopt.m
 % can parse the command-line options.
-% When we implement higher-order preds, this and
-% getopt.m should be rewritten to use them.
-% Currently the interface dependencies are very hairy.
 
 % IMPORTANT NOTE: any changes to the options should be
 % reflected in both the help message produced below,
@@ -33,15 +30,15 @@
 
 :- type option	
 	% Warning options
-		--->	warn_singleton_vars
+		--->	inhibit_warnings
+		;	halt_at_warn
+		;	halt_at_syntax_errors
+		;	warn_singleton_vars
 		;	warn_overlapping_scopes
 		;	warn_missing_det_decls
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
 		;	warn_unused_args
-		;	inhibit_warnings
-		;	halt_at_warn
-		;	halt_at_syntax_errors
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -65,17 +62,15 @@
 		;	show_dependency_graph
 		;	dump_hlds
 		;	verbose_dump_hlds
+	% Compilation Model options
+		;	grade
+		;	gcc_non_local_gotos
+		;	gcc_global_registers
+		;	asm_labels
+		;	gc
 		;	profiling
-		;	output_file_name
-	% Code generation options
-		;	trad_passes
-		;	highlevel_c
-		;	lazy_code
-		;	polymorphism
-		;	reclaim_heap_on_semidet_failure
-		;	reclaim_heap_on_nondet_failure
-		;	use_macro_for_redo_fail
-		;	simple_neg
+		;	debug
+		;	debug_data
 		;	tags
 		;	num_tag_bits
 		;	conf_low_tag_bits
@@ -89,59 +84,71 @@
 				% error message if the user specifies
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
-		;	num_real_r_regs
-		;	excess_assign
-		;	prev_code
-		;	follow_code
-		;	follow_vars
 		;	args
-		;	gc
+	% Code generation options
+		;	trad_passes
+		;	highlevel_c
+		;	polymorphism
+		;	reclaim_heap_on_semidet_failure
+		;	reclaim_heap_on_nondet_failure
+		;	lazy_code
+		;	use_macro_for_redo_fail
+		;	num_real_r_regs
 		;	cc
 		;	cflags
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	c_include_directory
-		;	link_flags
-		;	gcc_non_local_gotos
-		;	gcc_global_registers
-		;	asm_labels
-		;	emit_c_loops
-	% Optimisation Options
+	% Optimization Options
+		;	opt_level
+	%	- HLDS
+		;	inlining
+%%% unused:	;	specialize
+		;	common_struct
+		;	common_goal
+		;	constraint_propagation
+		;	optimize_unused_args
+		;	optimize_higher_order
+		;	excess_assign
+		;	follow_code
+		;	prev_code
+		;	optimize_dead_procs
+	%	- HLDS->LLDS
+		;	smart_indexing
+		;	  req_density
+		;	  dense_switch_size
+		;	  lookup_switch_size
+		;	  string_switch_size
+		;	  tag_switch_size
+		;	static_ground_terms
+		;	middle_rec
+		;	simple_neg
+		;	follow_vars
+	%	- LLDS
 		;	optimize
-		;	optimize_dead
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_fulljumps
 		;	optimize_labels
 		;	optimize_dups
-		;	optimize_copyprop
+%%% unused:	;	optimize_copyprop
 		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_delay_slot
-		;	optimize_unused_args
-		;	optimize_higher_order
 		;	optimize_repeat
 		;	optimize_vnrepeat
 		;	pred_value_number
-		;	static_ground_terms
-		;	smart_indexing
-		;	req_density
-		;	dense_switch_size
-		;	lookup_switch_size
-		;	string_switch_size
-		;	tag_switch_size
-		;	middle_rec
-		;	inlining
-		;	specialize
-		;	common_struct
-		;	common_goal
-		;	c_optimize
-		;	debug
-		;	grade
+	%	- C
+		;	emit_c_loops
 		;	procs_per_c_function
 		;	split_c_files
-		;	constraint_propagation
-		;	opt_level
+		;	c_optimize
+	% Link options
+		;	output_file_name
+		;	link_flags
+		;	link_library_directories
+		;	link_libraries
+		;	link_objects
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -157,8 +164,11 @@
 	--->	warning_option
 	;	verbosity_option
 	;	output_option
+	;	aux_output_option
+	;	compilation_model_option
 	;	code_gen_option
 	;	optimization_option
+	;	link_option
 	;	miscellaneous_option.
 
 option_defaults(Option, Default) :-
@@ -170,15 +180,15 @@ option_defaults(Option, Default) :-
 
 option_defaults_2(warning_option, [
 		% Warning Options
+	inhibit_warnings	-	bool(no),
+	halt_at_warn		-	bool(no),
+	halt_at_syntax_errors	-	bool(no),
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
-	warn_unused_args	-	bool(no),
-	inhibit_warnings	-	bool(no),
-	halt_at_warn		-	bool(no),
-	halt_at_syntax_errors	-	bool(no)
+	warn_unused_args	-	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -199,37 +209,30 @@ option_defaults_2(output_option, [
 	typecheck_only		-	bool(no),
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
-	compile_only		-	bool(no),
+	compile_only		-	bool(no)
+]).
+option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	show_dependency_graph	-	bool(no),
-	dump_hlds		-	accumulating([]),
-	verbose_dump_hlds	-	bool(no),
 	line_numbers		-	bool(no),
 	auto_comments		-	bool(no),
-	profiling		-	bool(no),
-	output_file_name	-	string("")
-					% if the output_file_name is an empty
-					% string, we use the name of the first
-					% module on the command line
+	dump_hlds		-	accumulating([]),
+	verbose_dump_hlds	-	bool(no)
 ]).
-option_defaults_2(code_gen_option, [
-		% Code Generation Options
+option_defaults_2(compilation_model_option, [
+		% Compilation model options (ones that affect binary
+		% compatibility).
+	grade			-	string("asm_fast.gc"),
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
+	gcc_non_local_gotos	-	bool(yes),
+	gcc_global_registers	-	bool(yes),
+	asm_labels		-	bool(yes),
+	gc			-	string("conservative"),
+	profiling		-	bool(no),
+	debug			-	bool(no),
 	tags			-	string("low"),
-	polymorphism		-	bool(yes),
-	highlevel_c		-	bool(no),
-	excess_assign		-	bool(no),
-		% excess_assign is disabled by default since it
-		% breaks the C interface (`pragma(c_code,...)').
-		% When that problem is fixed, it should be re-enabled.
-	prev_code		-	bool(no),
-	follow_code		-	bool(yes),
-	follow_vars		-	bool(yes),
-	args			-	string("simple"),
-	lazy_code		-	bool(yes),
-	reclaim_heap_on_semidet_failure	-	bool(yes),
-	reclaim_heap_on_nondet_failure	-	bool(yes),
-	use_macro_for_redo_fail	-	bool(no),
-	simple_neg		-	bool(yes),
 	num_tag_bits		-	int(-1),
 					% -1 is a special value which means
 					% use the value of conf_low_tag_bits
@@ -238,75 +241,103 @@ option_defaults_2(code_gen_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
+	args			-	string("simple")
+]).
+option_defaults_2(code_gen_option, [
+		% Code Generation Options
+	trad_passes		-	bool(yes),
+	polymorphism		-	bool(yes),
+	highlevel_c		-	bool(no),
+	lazy_code		-	bool(yes),
+	reclaim_heap_on_semidet_failure	-	bool(yes),
+	reclaim_heap_on_nondet_failure	-	bool(yes),
+	use_macro_for_redo_fail	-	bool(no),
 	num_real_r_regs		-	int(5),
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	gc			-	string("conservative"),
 	cc			-	string("gcc"),
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	cflags			-	string(""),
+	cflags			-	accumulating([]),
 	cflags_for_regs		-	string(""),
 	cflags_for_gotos	-	string(""),
 					% the `mc' script will override the
 					% above two defaults with values
 					% determined at configuration time
-	c_include_directory	-	string(""),
+	c_include_directory	-	string("")
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	link_flags		-	string(""),
-	gcc_non_local_gotos	-	bool(yes),
-	gcc_global_registers	-	bool(yes),
-	asm_labels		-	bool(yes),
-	emit_c_loops		-	bool(yes)
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
-	debug			-	bool(no),
-	c_optimize		-	bool(yes),
-	grade			-	string("asm_fast.gc"),
-					% the `mc' script will override the
-					% above default with a value determined
-					% at configuration time
-	optimize		-	bool(yes),
-	optimize_dead		-	bool(no),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(no),
-	optimize_copyprop	-	bool(yes),
-	optimize_value_number	-	bool(no),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
+	opt_level		-	int_special,
+% HLDS
+	inlining		-	bool(yes),
+%%%	specialize		-	bool(yes),
+	common_struct		-	bool(yes),
+	common_goal		-	bool(yes),
+	constraint_propagation	-	bool(no),
+	excess_assign		-	bool(no),
+		% excess_assign is disabled by default since it
+		% breaks the C interface (`pragma(c_code,...)').
+		% When that problem is fixed, it should be re-enabled.
+	prev_code		-	bool(no),
+	follow_code		-	bool(yes),
 	optimize_unused_args	-	bool(no),
+		% unused_args is disabled by default since it is broken
+		% (see David Kemp's bug report)
 	optimize_higher_order	-	bool(yes),
-	optimize_repeat		-	int(3),
-	optimize_vnrepeat	-	int(1),
-	pred_value_number	-	bool(no),
-	static_ground_terms	-	bool(yes),
+	optimize_dead_procs	-	bool(no),
+
+% HLDS -> LLDS
 	smart_indexing		-	bool(yes),
 	req_density		-	int(25),
 	dense_switch_size	-	int(4),
 	lookup_switch_size	-	int(4),
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(3),
+	static_ground_terms	-	bool(yes),
 	middle_rec		-	bool(yes),
-	inlining		-	bool(yes),
-	specialize		-	bool(yes),
-	common_struct		-	bool(yes),
-	common_goal		-	bool(yes),
+	simple_neg		-	bool(yes),
+	follow_vars		-	bool(yes),
+
+% LLDS
+	optimize		-	bool(yes),
+	optimize_peep		-	bool(yes),
+	optimize_jumps		-	bool(yes),
+	optimize_fulljumps	-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(no),
+%%%	optimize_copyprop	-	bool(yes),
+	optimize_value_number	-	bool(no),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	optimize_repeat		-	int(3),
+	optimize_vnrepeat	-	int(1),
+	pred_value_number	-	bool(no),
+
+% LLDS -> C
+	emit_c_loops		-	bool(yes),
 	procs_per_c_function	-	int(1),
 	split_c_files		-	bool(no),
-	constraint_propagation	-	bool(no),
-	opt_level		-	int_special
+	c_optimize		-	bool(yes)
+]).
+option_defaults_2(link_option, [
+		% Link Options
+	output_file_name	-	string(""),
+					% if the output_file_name is an empty
+					% string, we use the name of the first
+					% module on the command line
+	link_flags		-	accumulating([]),
+	link_library_directories -	accumulating([]),
+	link_libraries		-	accumulating([]),
+	link_objects		-	accumulating([])
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
-	trad_passes		-	bool(yes),
 	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
 	search_directories 	-	accumulating(["."]),
@@ -314,7 +345,6 @@ option_defaults_2(miscellaneous_option, [
 ]).
 
 	% please keep this in alphabetic order
-% short_option('b', 			builtin_module).
 short_option('c', 			compile_only).
 short_option('C', 			compile_to_c).
 short_option('d', 			dump_hlds).
@@ -323,15 +353,15 @@ short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
 short_option('G', 			convert_to_goedel).
 short_option('h', 			help).
-short_option('H', 			heap_space).
 short_option('i', 			make_interface).
 short_option('I', 			search_directories).
-short_option('l', 			line_numbers).
+short_option('l', 			link_libraries).
+short_option('L', 			link_library_directories).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
+short_option('n', 			line_numbers).
 short_option('o', 			output_file_name).
 short_option('O', 			opt_level).
-% short_option('p', 			polymorphism).
 short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
 short_option('s', 			grade).
@@ -340,56 +370,68 @@ short_option('T', 			debug_types).
 short_option('t', 			typecheck_only).
 short_option('v', 			verbose).
 short_option('V', 			very_verbose).
-% short_option('x', 			smart_indexing).
 short_option('w', 			inhibit_warnings).
-% short_option('z', 			inlining).
 short_option('?', 			help).
 
-long_option("polymorphism",		polymorphism).
-long_option("grade",			grade).
-long_option("c-optimise",		c_optimize).
-long_option("c-optimize",		c_optimize).
-long_option("debug",			debug).
-long_option("verbose",			verbose).
-long_option("very-verbose",		very_verbose).
-long_option("verbose-error-messages",	verbose_errors).
-long_option("statistics",		statistics).
-long_option("dump-hlds",		dump_hlds).
-long_option("verbose-dump-hlds",	verbose_dump_hlds).
-long_option("trad-passes",		trad_passes).
-long_option("builtin-module",		builtin_module).
-long_option("show-dependency-graph",	show_dependency_graph).
-long_option("make-interface",		make_interface).
-long_option("heap-space",		heap_space).
-long_option("search-directory",		search_directories).
-long_option("convert-to-mercury", 	convert_to_mercury).
-long_option("convert-to-Mercury", 	convert_to_mercury).
-long_option("pretty-print", 		convert_to_mercury).
-long_option("convert-to-goedel", 	convert_to_goedel).
-long_option("convert-to-Goedel", 	convert_to_goedel).
-long_option("help",			help).
-long_option("line-numbers",		line_numbers).
+% warning options
+long_option("inhibit-warnings",		inhibit_warnings).
+long_option("halt-at-warn",		halt_at_warn).
+long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
 long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("warn-overlapping-scopes",	warn_overlapping_scopes).
 long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
-long_option("inhibit-warnings",		inhibit_warnings).
-long_option("halt-at-warn",		halt_at_warn).
-long_option("halt-at-syntax-errors",	halt_at_syntax_errors).
-long_option("typecheck-only",		typecheck_only).
-long_option("errorcheck-only",		errorcheck_only).
+
+% verbosity options
+long_option("verbose",			verbose).
+long_option("very-verbose",		very_verbose).
+long_option("verbose-error-messages",	verbose_errors).
+long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("vndebug",			vndebug).
+
+% output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
+long_option("make-interface",		make_interface).
+long_option("convert-to-mercury", 	convert_to_mercury).
+long_option("convert-to-Mercury", 	convert_to_mercury).
+long_option("pretty-print", 		convert_to_mercury).
+long_option("convert-to-goedel", 	convert_to_goedel).
+long_option("convert-to-Goedel", 	convert_to_goedel).
+long_option("typecheck-only",		typecheck_only).
+long_option("errorcheck-only",		errorcheck_only).
+long_option("compile-to-c",		compile_to_c).
+long_option("compile-to-C",		compile_to_c).
+long_option("compile-only",		compile_only).
+
+% aux output options
+long_option("auto-comments",		auto_comments).
+long_option("line-numbers",		line_numbers).
+long_option("show-dependency-graph",	show_dependency_graph).
+long_option("dump-hlds",		dump_hlds).
+long_option("verbose-dump-hlds",	verbose_dump_hlds).
+
+% compilation model options
+long_option("grade",			grade).
+long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
+long_option("gcc-global-registers",	gcc_global_registers).
+long_option("asm-labels",		asm_labels).
+long_option("gc",			gc).
+long_option("garbage-collection",	gc).
+long_option("profiling",		profiling).
+long_option("debug",			debug).
 long_option("tags",			tags).
-long_option("excess-assign",		excess_assign).
-long_option("prev-code",		prev_code).
-long_option("follow-code",		follow_code).
-long_option("follow-vars",		follow_vars).
+long_option("num-tag-bits",		num_tag_bits).
+long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
+long_option("arg-convention",		args).
+
+% code generation options
+long_option("polymorphism",		polymorphism).
+long_option("trad-passes",		trad_passes).
 long_option("lazy-code",		lazy_code).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
@@ -400,31 +442,50 @@ long_option("reclaim-heap-on-semidet-failure",
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
-long_option("simple_neg",		simple_neg).
-long_option("num-tag-bits",		num_tag_bits).
-long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("num-real-r-regs",		num_real_r_regs).
-long_option("gc",			gc).
-long_option("garbage-collection",	gc).
-long_option("compile-to-c",		compile_to_c).
-long_option("compile-to-C",		compile_to_c).
-long_option("compile-only",		compile_only).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
-long_option("link-flags",		link_flags).
-long_option("output-file",		output_file_name).
 long_option("c-include-directory",	c_include_directory).
-long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
-long_option("gcc-global-registers",	gcc_global_registers).
-long_option("asm-labels",		asm_labels).
-long_option("emit-c-loops",		emit_c_loops).
-long_option("auto-comments",		auto_comments).
-long_option("optimize",			optimize).
-long_option("optimise",			optimize).
-long_option("optimize-dead",		optimize_dead).
-long_option("optimise-dead",		optimize_dead).
+
+% optimization options
+
+long_option("opt-level",		opt_level).
+long_option("optimization-level",	opt_level).
+long_option("optimisation-level",	opt_level).
+
+% HLDS->HLDS optimizations
+long_option("inlining",			inlining).
+%%% long_option("specialize",		specialize).
+long_option("common-struct",		common_struct).
+long_option("common-goal",		common_goal).
+long_option("excess-assign",		excess_assign).
+long_option("prev-code",		prev_code).
+long_option("follow-code",		follow_code).
+long_option("constraint-propagation",	constraint_propagation).
+long_option("optimize-unused-args",	optimize_unused_args).
+long_option("optimise-unused-args",	optimize_unused_args).
+long_option("optimize-higher-order",	optimize_higher_order).
+long_option("optimise-higher-order",	optimize_higher_order).
+long_option("optimize-dead-procs",	optimize_dead_procs).
+long_option("optimise-dead-procs",	optimize_dead_procs).
+
+% HLDS->LLDS optimizations
+long_option("smart-indexing",		smart_indexing).
+long_option("req-density",		req_density).
+long_option("dense-switch-size",	dense_switch_size).
+long_option("lookup-switch-size",	lookup_switch_size).
+long_option("string-switch-size",	string_switch_size).
+long_option("tag-switch-size",		tag_switch_size).
+long_option("static-ground-terms",	static_ground_terms).
+long_option("middle-rec",		middle_rec).
+long_option("simple_neg",		simple_neg).
+long_option("follow-vars",		follow_vars).
+
+% LLDS optimizations
+long_option("llds-optimize",		optimize).
+long_option("llds-optimise",		optimize).
 long_option("optimize-peep",		optimize_peep).
 long_option("optimise-peep",		optimize_peep).
 long_option("optimize-jumps",		optimize_jumps).
@@ -435,8 +496,8 @@ long_option("optimize-labels",		optimize_labels).
 long_option("optimise-labels",		optimize_labels).
 long_option("optimize-dups",		optimize_dups).
 long_option("optimise-dups",		optimize_dups).
-long_option("optimize-copyprop",	optimize_copyprop).
-long_option("optimise-copyprop",	optimize_copyprop).
+%%% long_option("optimize-copyprop",	optimize_copyprop).
+%%% long_option("optimise-copyprop",	optimize_copyprop).
 long_option("optimize-value-number",	optimize_value_number).
 long_option("optimise-value-number",	optimize_value_number).
 long_option("optimize-frames",		optimize_frames).
@@ -447,28 +508,29 @@ long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
 long_option("optimize-vnrepeat",	optimize_vnrepeat).
 long_option("optimise-vnrepeat",	optimize_vnrepeat).
-long_option("profiling",		profiling).
 long_option("pred-value-number",	pred_value_number).
-long_option("static-ground-terms",	static_ground_terms).
-long_option("smart-indexing",		smart_indexing).
-long_option("req-density",		req_density).
-long_option("dense-switch-size",	dense_switch_size).
-long_option("lookup-switch-size",	lookup_switch_size).
-long_option("string-switch-size",	string_switch_size).
-long_option("tag-switch-size",		tag_switch_size).
-long_option("middle-rec",		middle_rec).
-long_option("inlining",			inlining).
-long_option("specialize",		specialize).
-long_option("common-struct",		common_struct).
-long_option("common-goal",		common_goal).
-long_option("split-c-files",		split_c_files).
-long_option("split-C-files",		split_c_files).
+
+% LLDS->C optimizations
+long_option("emit-c-loops",		emit_c_loops).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
-long_option("constraint-propagation",	constraint_propagation).
-long_option("opt-level",		opt_level).
-long_option("optimize-unused-args",	optimize_unused_args).
-long_option("optimize-higher-order",	optimize_higher_order).
+long_option("split-c-files",		split_c_files).
+long_option("split-C-files",		split_c_files).
+long_option("c-optimise",		c_optimize).
+long_option("c-optimize",		c_optimize).
+
+% link options
+long_option("output-file",		output_file_name).
+long_option("link-flags",		link_flags).
+long_option("library-directory",	link_library_directories).
+long_option("library",			link_libraries).
+long_option("link-object",		link_objects).
+
+% misc options
+long_option("help",			help).
+long_option("heap-space",		heap_space).
+long_option("builtin-module",		builtin_module).
+long_option("search-directory",		search_directories).
 
 :- pred special_handler(option, special_data, option_table, option_table).
 :- mode special_handler(in, in, in, out) is semidet.
@@ -504,20 +566,20 @@ opt_level(0, [
 	smart_indexing		-	bool(no),
 	middle_rec		-	bool(no),
 	inlining		-	bool(no),
-	specialize		-	bool(no),
+%%%	specialize		-	bool(no),
 	common_struct		-	bool(no),
 	constraint_propagation	-	bool(no)
 ]).
 opt_level(1, [
 	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead		-	bool(no),
+	optimize_dead_procs	-	bool(no),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(no),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
-	optimize_copyprop	-	bool(no),
+%%%	optimize_copyprop	-	bool(no),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
@@ -529,20 +591,20 @@ opt_level(1, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(no),
-	specialize		-	bool(no),
+%%%	specialize		-	bool(no),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
 opt_level(2, [
 	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead		-	bool(no),
+	optimize_dead_procs	-	bool(no),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(no),
-	optimize_copyprop	-	bool(no),
+%%%	optimize_copyprop	-	bool(no),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
@@ -555,20 +617,20 @@ opt_level(2, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	specialize		-	bool(yes),
+%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
 opt_level(3, [
 	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead		-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
-	optimize_copyprop	-	bool(yes),
+%%%	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
@@ -581,20 +643,20 @@ opt_level(3, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	specialize		-	bool(yes),
+%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
 opt_level(4, [
 	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead		-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
-	optimize_copyprop	-	bool(yes),
+%%%	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
@@ -607,20 +669,20 @@ opt_level(4, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	specialize		-	bool(yes),
+%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)	% yes when it works
 ]).
 opt_level(5, [
 	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead		-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_dups		-	bool(yes),
-	optimize_copyprop	-	bool(yes),
+%%%	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(yes),
@@ -633,7 +695,7 @@ opt_level(5, [
 	smart_indexing		-	bool(yes),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	specialize		-	bool(yes),
+%%%	specialize		-	bool(yes),
 	common_struct		-	bool(yes),
 	constraint_propagation	-	bool(no)	% yes when it works
 ]).
@@ -643,6 +705,18 @@ options_help -->
 	io__write_string("\t\tPrint this usage message.\n"),
 
 	io__write_string("\nWarning Options:\n"),
+	io__write_string("\t-w, --inhibit-warnings\n"),
+	io__write_string("\t\tDisable all warning messages.\n"),
+	io__write_string("\t--halt-at-warn\n"),
+	io__write_string("\t\tThis option causes the compiler to treat all \n"),
+	io__write_string("\t\twarnings as if they were errors.  This means that\n"),
+	io__write_string("\t\tif any warning is issued, the compiler will not\n"),
+	io__write_string("\t\tgenerate code --- instead, it will return a\n"),
+	io__write_string("\t\tnon-zero exit status.\n"),
+	io__write_string("\t--halt-at-syntax-errors\n"),
+	io__write_string("\t\tThis option causes the compiler to halt immediately\n"),
+	io__write_string("\t\tafter syntax checking and not do any semantic checking\n"),
+	io__write_string("\t\tif it finds any syntax errors in the program.\n"),
 	io__write_string("\t--no-warn-singleton-variables\n"),
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t--no-warn-overlapping-scopes\n"),
@@ -658,18 +732,6 @@ options_help -->
 	io__write_string("\t--warn-unused-args\n"),
 	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
 
-	io__write_string("\t-w, --inhibit-warnings\n"),
-	io__write_string("\t\tDisable all warning messages.\n"),
-	io__write_string("\t--halt-at-warn\n"),
-	io__write_string("\t\tThis option causes the compiler to treat all \n"),
-	io__write_string("\t\twarnings as if they were errors.  This means that\n"),
-	io__write_string("\t\tif any warning is issued, the compiler will not\n"),
-	io__write_string("\t\tgenerate code --- instead, it will return a\n"),
-	io__write_string("\t\tnon-zero exit status.\n"),
-	io__write_string("\t--halt-at-syntax-errors\n"),
-	io__write_string("\t\tThis option causes the compiler to halt immediately\n"),
-	io__write_string("\t\tafter syntax checking and not do any semantic checking\n"),
-	io__write_string("\t\tif it finds any syntax errors in the program.\n"),
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
@@ -725,8 +787,8 @@ options_help -->
 	io__write_string("\n Auxiliary Output Options:\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
-	io__write_string("\t\t(This option works best when used in conjunction\n"),
-	io__write_string("\t\twith the `--no-optimize' option.)\n"),
+	io__write_string("\t\t(The code may be easier to understand if you also\n"),
+	io__write_string("\t\tuse the `--no-llds-optimize' option.)\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tOnly works with the -G and -P options.\n"),
@@ -739,10 +801,6 @@ options_help -->
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
-	io__write_string("\t-o <filename>, --output-file <filename>\n"),
-	io__write_string("\t\tSpecify the name of the final executable.\n"),
-	io__write_string("\t\t(The default executable name is the same as the name\n"),
-	io__write_string("\t\tof the first module on the command line.)\n"),
 
 	io__write_string("\nCompilation model options:\n"),
 	io__write_string("\tThe following compilation options affect the generated\n"),
@@ -785,6 +843,18 @@ options_help -->
 	io__write_string("\t\t\t\t\tother grades use `--gc none'.)\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use\n"),
 	io__write_string("\t\t(default: conservative).  `accurate' GC is not yet implemented.\n"),
+	io__write_string("\t--profiling\t\t"),
+	io__write_string("\t(grades: any grade ending in `.prof')\n"),
+	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
+	io__write_string("\t\tgenerated code, and also output some profiling\n"),
+	io__write_string("\t\tinformation (the static call graph) to the file\n"),
+	io__write_string("\t\t`<module>.prof'.\n"),
+	io__write_string("\t--debug\t\t\t"),
+	io__write_string("\t(grades: debug)\n"),
+	io__write_string("\t\tEnable debugging.\n"),
+	io__write_string("\t\tDebugging support is currently extremely primitive.\n"),
+	io__write_string("\t\tWe recommend that you use instead use `mnp' or `msp'.\n"),
+	io__write_string("\t\tSee the Mercury User's Guide for details.\n"),
 	io__write_string("\t--tags {none, low, high}"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tSpecify whether to use the low bits or the high bits of \n"),
@@ -800,20 +870,18 @@ options_help -->
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
-	io__write_string("\t--profiling\t\t"),
-	io__write_string("\t(grades: any grade ending in `.prof')\n"),
-	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),
-	io__write_string("\t\tgenerated code, and also output some profiling\n"),
-	io__write_string("\t\tinformation (the static call graph) to the file\n"),
-	io__write_string("\t\t`<module>.prof'.\n"),
-	io__write_string("\t--debug\t\t\t"),
-	io__write_string("\t(grades: debug)\n"),
-	io__write_string("\t\tEnable debugging.\n"),
-	io__write_string("\t\tDebugging support is currently extremely primitive.\n"),
-	io__write_string("\t\tWe recommend that you use instead use `mnp' or `msp'.\n"),
-	io__write_string("\t\tSee the Mercury User's Guide for details.\n"),
+	io__write_string("\t--args {simple, compact}\n"),
+	io__write_string("\t\tUse the specified argument passing convention\n"),
+	io__write_string("\t\tin the generated low-level C code. With the `simple'\n"),
+	io__write_string("\t\tconvention, the <n>th argument is passed in or out\n"),
+	io__write_string("\t\tusing register r<n>. With the `compact' convention,\n"),
+	io__write_string("\t\tthe <n>th input argument is passed using register r<n>,\n"),
+	io__write_string("\t\tand the <n>th output argument is returned using\n"),
+	io__write_string("\t\tregister r<n>. The compact convention generally leads to\n"),
+	io__write_string("\t\tmore efficient code. However, currently only the simple\n"),
+	io__write_string("\t\tconvention is supported.\n"),
 
-	io__write_string("\nCode generation options\n"),
+	io__write_string("\nCode generation options:\n"),
 	io__write_string("\t--no-trad-passes\n"),
 	io__write_string("\t\tThe default --trad-passes completely processes each predicate\n"),
 	io__write_string("\t\tbefore going on to the next predicate.\n"),
@@ -824,24 +892,6 @@ options_help -->
 	% io__write_string("\t\tDon't handle polymorphic types.\n"),
 	% io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
 	% io__write_string("\t\tpolymorphism from working except in special cases.)\n"),
-	io__write_string("\t--excess-assign\n"),
-	io__write_string("\t\tRemove excess assignment unifications.\n"),
-	io__write_string("\t--prev-code\n"),
-	io__write_string("\t\tMigrate into the start of branched goals.\n"),
-	io__write_string("\t--no-follow-code\n"),
-	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
-	io__write_string("\t--no-follow-vars\n"),
-	io__write_string("\t\tDon't optimise the assignment of registers in branched goals.\n"),
-	io__write_string("\t--args {simple, compact}\n"),
-	io__write_string("\t\tUse the specified argument passing convention\n"),
-	io__write_string("\t\tin the generated low-level C code. With the simple\n"),
-	io__write_string("\t\tconvention, the <n>th argument is passed in or out\n"),
-	io__write_string("\t\tusing register r<n>. With the compact convention,\n"),
-	io__write_string("\t\tthe <n>th input argument is passed using register r<n>,\n"),
-	io__write_string("\t\tand the <n>th output argument is returned using\n"),
-	io__write_string("\t\tregister r<n>. This generally leads to more efficient\n"),
-	io__write_string("\t\tcode. However, currently only the simple convention\n"),
-	io__write_string("\t\tis supported.\n"),
 	io__write_string("\t--no-reclaim-heap-on-nondet-failure\n"),
 	io__write_string("\t\tDon't reclaim heap on backtracking in nondet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-semidet-failure\n"),
@@ -849,51 +899,48 @@ options_help -->
 	io__write_string("\t--use-macro-for-redo-fail\n"),
 	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
 	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
-	io__write_string("\t--no-simple-neg\n"),
-	io__write_string("\t\tDon't generate simplified code for simple negations.\n"),
-	io__write_string("\t--no-emit-c-loops\n"),
-	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler.\n"),
-	io__write_string("\t--link-flags <options>\n"),
-	io__write_string("\t\tSpecify options to be passed to the linker.\n"),
 
-	io__write_string("\nOptimization Options\n"),
-	io__write_string("\t--no-optimize\n"),
-	io__write_string("\t\tDisable the optimisation passes.\n"),
-	io__write_string("\t--optimize-dead\n"),
-	io__write_string("\t\tEnable dead predicate elimination.\n"),
-	io__write_string("\t--no-optimize-peep\n"),
-	io__write_string("\t\tDisable local peephole optimisations.\n"),
-	io__write_string("\t--no-optimize-jumps\n"),
-	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
-	io__write_string("\t--no-optimize-fulljumps\n"),
-	io__write_string("\t\tDisable elimination of jumps to ordinary code.\n"),
-	io__write_string("\t--no-optimize-labels\n"),
-	io__write_string("\t\tDisable elimination of dead labels and code.\n"),
-	io__write_string("\t--optimize-dups\n"),
-	io__write_string("\t\tEnable elimination of duplicate code.\n"),
-	% io__write_string("\t--optimize-copyprop\n"),
-	% io__write_string("\t\tEnable the copy propagation optimization.\n"),
-	io__write_string("\t--optimize-value-number\n"),
-	io__write_string("\t\tPerform value numbering on extended basic blocks.\n"),
-	io__write_string("\t--no-optimize-frames\n"),
-	io__write_string("\t\tDisable stack frame optimizations.\n"),
-	io__write_string("\t--no-optimize-delay-slot\n"),
-	io__write_string("\t\tDisable branch delay slot optimizations.\n"),
-	io__write_string("\t--optimize-repeat <n>\n"),
-	io__write_string("\t\tIterate most optimizations at most <n> times (default: 3).\n"),
-	io__write_string("\t--optimize-vnrepeat <n>\n"),
-	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n"),
-	% io__write_string("\t--pred-value-number\n"),
-	% io__write_string("\t\tExtend value numbering to entire predicates\n"),
-	io__write_string("\t--no-static-ground-terms\n"),
-	io__write_string("\t\tDisable the optimization of constructing constant ground terms\n"),
-	io__write_string("\t\tat compile time and storing them as static constants.\n"),
+	io__write_string("\nOptimization Options:\n"),
+	io__write_string("\t-O <n>, --opt-level <n>, --optimization-level <n>\n"),
+	io__write_string("\t\tSet optimization level to <n>.\n"),
+	io__write_string("\t\tOptimization level 0 means no optimization\n"),
+	io__write_string("\t\twhile optimization level 5 means full optimization.\n"),
+	% io__write_string("\t\tFor a full description of each optimization level,\n"),
+	% io__write_string("\t\tsee the Mercury User's Guide.\n"),
+
+	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),
+	io__write_string("\t--no-inlining\n"),
+	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
+	io__write_string("\t--no-common-struct\n"),
+	io__write_string("\t\tDisable optimization of common term structures.\n"),
+	io__write_string("\t--no-common-goal\n"),
+	io__write_string("\t\tDisable optimization of common goals.\n"),
+	io__write_string("\t\tAt the moment this optimization\n"),
+	io__write_string("\t\tdetects only common deconstruction unifications.\n"),
+	io__write_string("\t\tDisabling this optimization reduces the class of predicates\n"),
+	io__write_string("\t\tthat the compiler considers to be deterministic.\n"),
+	% io__write_string("\t--constraint-propagation\n"),
+	% io__write_string("\t\tEnable the C-tranformation.  (Doesn't work.)\n"),
+	io__write_string("\t--prev-code\n"),
+	io__write_string("\t\tMigrate into the start of branched goals.\n"),
+	io__write_string("\t--no-follow-code\n"),
+	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
+	io__write_string("\t--excess-assign\n"),
+	io__write_string("\t\tRemove excess assignment unifications.\n"),
+	io__write_string("\t--no-optimize-unused-args\n"),
+	io__write_string("\t\tDisable removal of unused predicate arguments.\n"),
+	io__write_string("\t\tThis will cause the compiler to generate less\n"),
+	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
+	io__write_string("\t--no-optimize-higher-order\n"),
+	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+
+	io__write_string("\n    Medium-level (HLDS->LLDS) optimizations:\n"),
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate switches as a simple if-then-else chains;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
@@ -912,22 +959,51 @@ options_help -->
 	io__write_string("\t--tag-switch-size <n>\n"),
 	io__write_string("\t\tThe number of alternatives in a tag switch\n"),
 	io__write_string("\t\tmust be at least this number (default: 8).\n"),
+	io__write_string("\t--no-static-ground-terms\n"),
+	io__write_string("\t\tDisable the optimization of constructing constant ground terms\n"),
+	io__write_string("\t\tat compile time and storing them as static constants.\n"),
 	io__write_string("\t--no-middle-rec\n"),
 	io__write_string("\t\tDisable the middle recursion optimization.\n"),
-	io__write_string("\t--no-inlining\n"),
-	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
-	% io__write_string("\t--no-specialize\n"),
-	% io__write_string("\t\tDisable the specialization of procedures.\n"),
-	io__write_string("\t--no-common-struct\n"),
-	io__write_string("\t\tDisable optimisation of common term structures.\n"),
-	io__write_string("\t--no-common-goal\n"),
-	io__write_string("\t\tDisable optimisation of common goals.\n"),
-	io__write_string("\t\tAt the moment this optimisation\n"),
-	io__write_string("\t\tdetects only common deconstruction unifications.\n"),
-	io__write_string("\t\tDisabling this optimisation reduces the class of predicates\n"),
-	io__write_string("\t\tthat the compiler considers to be deterministic.\n"),
+	io__write_string("\t--no-simple-neg\n"),
+	io__write_string("\t\tDon't generate simplified code for simple negations.\n"),
+	io__write_string("\t--no-follow-vars\n"),
+	io__write_string("\t\tDon't optimize the assignment of registers in branched goals.\n"),
+
+	io__write_string("\n    Low-level (LLDS->LLDS) optimizations:\n"),
+	io__write_string("\t--no-llds-optimize\n"),
+	io__write_string("\t\tDisable the low-level optimization passes.\n"),
+	io__write_string("\t--optimize-dead-procs\n"),
+	io__write_string("\t\tEnable dead predicate elimination.\n"),
+	io__write_string("\t--no-optimize-peep\n"),
+	io__write_string("\t\tDisable local peephole optimizations.\n"),
+	io__write_string("\t--no-optimize-jumps\n"),
+	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
+	io__write_string("\t--no-optimize-fulljumps\n"),
+	io__write_string("\t\tDisable elimination of jumps to ordinary code.\n"),
+	io__write_string("\t--no-optimize-labels\n"),
+	io__write_string("\t\tDisable elimination of dead labels and code.\n"),
+	io__write_string("\t--optimize-dups\n"),
+	io__write_string("\t\tEnable elimination of duplicate code.\n"),
+%%%	io__write_string("\t--optimize-copyprop\n"),
+%%%	io__write_string("\t\tEnable the copy propagation optimization.\n"),
+	io__write_string("\t--optimize-value-number\n"),
+	io__write_string("\t\tPerform value numbering on extended basic blocks.\n"),
+	io__write_string("\t--no-optimize-frames\n"),
+	io__write_string("\t\tDisable stack frame optimizations.\n"),
+	io__write_string("\t--no-optimize-delay-slot\n"),
+	io__write_string("\t\tDisable branch delay slot optimizations.\n"),
+	io__write_string("\t--optimize-repeat <n>\n"),
+	io__write_string("\t\tIterate most optimizations at most <n> times (default: 3).\n"),
+	io__write_string("\t--optimize-vnrepeat <n>\n"),
+	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n"),
+	% io__write_string("\t--pred-value-number\n"),
+	% io__write_string("\t\tExtend value numbering to entire predicates\n"),
+
+	io__write_string("\n    Output-level (LLDS->C) optimizations:\n"),
+	io__write_string("\t--no-emit-c-loops\n"),
+	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
 	io__write_string("\t--procs-per-c-function <n>\n"),
-	io__write_string("\t\tDon't put the code for more than <n> Mercury\n"),
+	io__write_string("\t\tPut the code for up to <n> Mercury\n"),
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
 	io__write_string("\t\tvalue of <n> is one.  Increasing <n> can produce\n"),
 	io__write_string("\t\tslightly more efficient code, but makes compilation slower.\n"),
@@ -942,22 +1018,24 @@ options_help -->
 	io__write_string("\t\tlink time, and intermediate disk space requirements,\n"),
 	io__write_string("\t\tbut in return reduces the size of the final\n"),
 	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
-	% io__write_string("\t--constraint-propagation\n"),
-	% io__write_string("\t\tEnable the C-tranformation.  (Doesn't work.)\n"),
-	io__write_string("\t--no-optimize-unused-args\n"),
-	io__write_string("\t\tDisable removal of unused predicate arguments.\n"),
-	io__write_string("\t\tThis will cause the compiler to generate less\n"),
-	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
-	io__write_string("\t--no-optimize-higher-order\n"),
-	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+	io__write_string("\t\tThis option is only useful with `--procs-per-c-function 1'.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
-	io__write_string("\t-O <n>, --opt-level <n>\n"),
-	io__write_string("\t\tSet optimization level to <n>.\n"),
-	io__write_string("\t\tOptimimization level 0 means no optimization\n"),
-	io__write_string("\t\twhile optimimization level 5 means full optimization.\n"),
-	% io__write_string("\t\tFor a full description of each optimization level,\n"),
-	% io__write_string("\t\tsee the printed documentation.\n"),
+
+	io__write_string("\nLink Options:\n"),
+	io__write_string("\t-o <filename>, --output-file <filename>\n"),
+	io__write_string("\t\tSpecify the name of the final executable.\n"),
+	io__write_string("\t\t(The default executable name is the same as the name\n"),
+	io__write_string("\t--link-flags <options>\n"),
+	io__write_string("\t\tSpecify options to be passed to the linker.\n"),
+	io__write_string("\t-L <directory>, --library-directory <directory>\n"),
+	io__write_string("\t\tAppend <directory> to the list of directories in which\n"),
+	io__write_string("\t\tto search for libraries.\n"),
+	io__write_string("\t-l <library>, --library <library>\n"),
+	io__write_string("\t\tLink with the specified library.\n"),
+	io__write_string("\t--link-object <object-file>\n"),
+	io__write_string("\t\tLink with the specified object file.\n"),
+	io__write_string("\t\tof the first module on the command line.)\n"),
 
 	io__write_string("\nMiscellaneous Options:\n"),
 	% io__write_string("\t-H <n>, --heap-space <n>\n"),
