@@ -26,18 +26,48 @@
 	;	model_semi		% just functional
 	;	model_non.		% not functional
 
-:- type c_file	
-	--->	c_file(
-			module_name,
-			c_header_info,
-			list(c_module)
-		).
+% c_interface_info holds information used when generating
+% code that uses the C interface.
+:- type c_interface_info
+	---> c_interface_info(
+		module_name,
+		% info about stuff imported from C:
+		c_header_info,
+		c_body_info,
+		% info about stuff exported to C:
+		c_export_decls,
+		c_export_defns
+	).
 
 :- type c_header_info 	==	list(c_header_code).	% in reverse order
 :- type c_body_info 	==	list(c_body_code).	% in reverse order
 
 :- type c_header_code	==	pair(string, term__context).
 :- type c_body_code	==	pair(string, term__context).
+
+:- type c_export_defns == list(c_export).
+:- type c_export_decls == list(c_export_decl).
+
+:- type c_export_decl
+	---> c_export_decl(
+		string,		% return type
+		string,		% function name
+		string		% argument declarations
+	).
+
+	% the code for `pragma export' is generated directly as strings
+	% by export.m.
+:- type c_export	==	string.
+
+%
+% The type `c_file' is the actual LLDS.
+%
+:- type c_file	
+	--->	c_file(
+			module_name,
+			c_header_info,
+			list(c_module)
+		).
 
 :- type c_module
 		% a bunch of low-level C code
@@ -79,10 +109,6 @@
 		).
 
 :- type llds_proc_id	==	int.
-
-	% the code for `pragma export' is generated directly as strings
-	% by export.m.
-:- type c_export	==	string.
 
 	% we build up instructions as trees and then flatten
 	% the tree to get a list.

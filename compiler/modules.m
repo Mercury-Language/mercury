@@ -210,6 +210,15 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Given a module (well, a list of items), split it into
+	% its constituent sub-modules, in top-down order.
+
+:- pred split_into_submodules(module_name, item_list,
+				list(pair(module_name, item_list))).
+:- mode split_into_submodules(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% grab_imported_modules(ModuleName, Items, Module, Error)
 	%	Given a module name and the list of items in that module,
 	%	read in the private interface files for all the parent modules,
@@ -2833,6 +2842,79 @@ get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Given a module (well, a list of items), split it into
+	% its constituent sub-modules, in top-down order.
+
+split_into_submodules(ModuleName, Items0, ModuleList) :-
+	split_into_submodules_2(ModuleName, Items0, Items, ModuleList),
+	require(unify(Items, []), "modules.m: items after end_module").
+
+:- pred split_into_submodules_2(module_name, item_list, item_list,
+				list(pair(module_name, item_list))).
+:- mode split_into_submodules_2(in, in, out, out) is det.
+
+split_into_submodules_2(ModuleName, Items0, Items, ModuleList) :-
+	split_into_submodules_3(ModuleName, Items0, ThisModuleItems,
+		Items, SubModuleList),
+	ModuleList = [ModuleName - ThisModuleItems | SubModuleList].
+
+:- pred split_into_submodules_3(module_name, item_list, item_list, item_list,
+				list(pair(module_name, item_list))).
+:- mode split_into_submodules_3(in, in, out, out, out) is det.
+
+split_into_submodules_3(_ModuleName, [], [], [], []).
+split_into_submodules_3(ModuleName, [Item | Items1],
+		ThisModuleItems, OtherItems, SubModules) :-
+	(
+		%
+		% check for a `module' declaration, which signals
+		% the start of a nested module
+		%
+		Item = module_defn(VarSet, module(SubModuleName)) - Context
+	->
+		%
+		% parse in the items for the nested submodule
+		%
+		split_into_submodules_2(SubModuleName, Items1,
+			Items2, SubModules0),
+		%
+		% parse in the remaining items for this module
+		%
+		split_into_submodules_3(ModuleName, Items2,
+			ThisModuleItems0, Items3, SubModules1),
+		%
+		% replace the nested submodule with an `include_module'
+		% declaration
+		%
+		IncludeSubMod = module_defn(VarSet,
+			include_module([SubModuleName])) - Context,
+		ThisModuleItems = [IncludeSubMod | ThisModuleItems0],
+		OtherItems = Items3,
+		list__append(SubModules0, SubModules1, SubModules)
+	;
+		%
+		% check for a matching `end_module' declaration
+		%
+		Item = module_defn(_VarSet, end_module(ModuleName)) - _Context
+	->
+		%
+		% if so, thats the end of this module
+		%
+		ThisModuleItems = [],
+		OtherItems = Items1,
+		SubModules = []
+	;
+		%
+		% otherwise just parse the remaining items for this
+		% module and then put the current item back onto the
+		% front of the item list for this module
+		%
+		split_into_submodules_3(ModuleName, Items1,
+			ThisModuleItems0, Items2, SubModules),
+		ThisModuleItems = [Item | ThisModuleItems0],
+		OtherItems = Items2
+	).
+			
 	% Given a module (well, a list of items), extract the interface
 	% part of that module, i.e. all the items between `:- interface'
 	% and `:- implementation'. If IncludeImported is yes, also

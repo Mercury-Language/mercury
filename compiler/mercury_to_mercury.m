@@ -540,6 +540,14 @@ mercury_output_module_defn(_VarSet, ModuleDefn, _Context) -->
 		io__write_string(":- include_module "),
 		mercury_write_module_spec_list(IncludedModules),
 		io__write_string(".\n")
+	; { ModuleDefn = module(Module) } ->
+		io__write_string(":- module "),
+		mercury_output_bracketed_sym_name(Module),
+		io__write_string(".\n")
+	; { ModuleDefn = end_module(Module) } ->
+		io__write_string(":- end_module "),
+		mercury_output_bracketed_sym_name(Module),
+		io__write_string(".\n")
 	;
 		% XXX unimplemented
 		io__write_string("% unimplemented module declaration\n")

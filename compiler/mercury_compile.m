@@ -183,11 +183,14 @@ process_module_2(ModuleName) -->
 	; { Error = yes, HaltSyntax = yes } ->
 		[]
 	; { MakeInterface = yes } ->
-		make_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		list__foldl(make_interface, SubModuleList)
 	; { MakeShortInterface = yes } ->
-		make_short_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		list__foldl(make_short_interface, SubModuleList)
 	; { MakePrivateInterface = yes } ->
-		make_private_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		list__foldl(make_private_interface, SubModuleList)
 	; { ConvertToMercury = yes } ->
 		module_name_to_file_name(ModuleName, ".ugly", yes,
 					OutputFileName),
@@ -195,13 +198,38 @@ process_module_2(ModuleName) -->
 	; { ConvertToGoedel = yes } ->
 		convert_to_goedel(ModuleName, Items0)
 	;
-		grab_imported_modules(ModuleName, Items0, Module, Error2),
-		( { Error2 \= fatal } ->
-			mercury_compile(Module)
-		;
-			[]
-		)
+		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		list__foldl(compile, SubModuleList)
+
+		% XXX it would be better to do something like
+		%
+		%	list__map_foldl(compile_to_llds, SubModuleList,
+		%		LLDS_FragmentList),
+		%	merge_llds_fragments(LLDS_FragmentList, LLDS),
+		%	output_pass(LLDS_FragmentList)
+		%
+		% i.e. compile nested modules to a single C file.
 	).
+
+:- pred make_interface(pair(module_name, item_list), io__state, io__state).
+:- mode make_interface(in, di, uo) is det.
+
+make_interface(Module - Items) -->
+	make_interface(Module, Items).
+
+:- pred make_short_interface(pair(module_name, item_list),
+				io__state, io__state).
+:- mode make_short_interface(in, di, uo) is det.
+
+make_short_interface(Module - Items) -->
+	make_short_interface(Module, Items).
+
+:- pred make_private_interface(pair(module_name, item_list),
+				io__state, io__state).
+:- mode make_private_interface(in, di, uo) is det.
+
+make_private_interface(Module - Items) -->
+	make_private_interface(Module, Items).
 
 %-----------------------------------------------------------------------------%
 
@@ -217,6 +245,17 @@ process_module_2(ModuleName) -->
 	%
 	% The initial arrangement has the stage numbers increasing by three
 	% so that new stages can be slotted in without too much trouble.
+
+:- pred compile(pair(module_name, item_list), io__state, io__state).
+:- mode compile(in, di, uo) is det.
+
+compile(ModuleName - Items0) -->
+	grab_imported_modules(ModuleName, Items0, Module, Error2),
+	( { Error2 \= fatal } ->
+		mercury_compile(Module)
+	;
+		[]
+	).
 
 :- pred mercury_compile(module_imports, io__state, io__state).
 :- mode mercury_compile(in, di, uo) is det.
@@ -1700,6 +1739,30 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+%
+% Gather together the information from the HLDS that is
+% used for the C interface.  This stuff mostly just gets
+% passed directly to the LLDS unchanged, but we do do
+% a bit of code generation -- for example, we call
+% export__get_pragma_exported_procs here, which does the
+% generation of C code for `pragma export' declarations.
+%
+
+:- pred get_c_interface_info(module_info, c_interface_info).
+:- mode get_c_interface_info(in, out) is det.
+
+get_c_interface_info(HLDS, C_InterfaceInfo) :-
+	module_info_name(HLDS, ModuleName),
+	module_info_get_c_header(HLDS, C_HeaderCode),
+	module_info_get_c_body_code(HLDS, C_BodyCode),
+	export__get_c_export_decls(HLDS, C_ExportDecls),
+	export__get_c_export_defns(HLDS, C_ExportDefns),
+	C_InterfaceInfo = c_interface_info(ModuleName,
+		C_HeaderCode, C_BodyCode, C_ExportDecls, C_ExportDefns).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 % The LLDS output pass
 
 :- pred mercury_compile__output_pass(module_info, list(c_procedure),
@@ -1722,17 +1785,20 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 		set_bbbtree__init(StackLayoutLabelMap),
 		StaticData0 = BaseTypeLayouts
 	},
+	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 
 	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
 
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
-	mercury_compile__chunk_llds(HLDS, LLDS1, AllData, CommonData,
-		LLDS2, NumChunks),
+	mercury_compile__chunk_llds(C_InterfaceInfo, LLDS1, AllData,
+		CommonData, LLDS2, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabelMap,
 		Verbose, Stats),
 
-	export__produce_header_file(HLDS, ModuleName),
+	{ C_InterfaceInfo = c_interface_info(_ModuleName,
+		_C_headerCode, _C_BodyCode, C_ExportDecls, _C_ExportDefns) },
+	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
@@ -1744,19 +1810,19 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__chunk_llds(module_info, list(c_procedure),
+:- pred mercury_compile__chunk_llds(c_interface_info, list(c_procedure),
 	list(c_module), list(c_module), c_file, int, io__state, io__state).
 % :- mode mercury_compile__chunk_llds(in, di, di, uo, out, di, uo) is det.
 :- mode mercury_compile__chunk_llds(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
+mercury_compile__chunk_llds(C_InterfaceInfo, Procedures, BaseTypeData,
+		CommonDataModules,
 		c_file(ModuleName, C_HeaderCode, ModuleList), NumChunks) -->
-	{ module_info_name(HLDS, ModuleName) },
+	{ C_InterfaceInfo = c_interface_info(ModuleName,
+		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
 	{ llds_out__sym_name_mangle(ModuleName, MangledModName) },
 	{ string__append(MangledModName, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{ module_info_get_c_header(HLDS, C_HeaderCode0) },
-	{ module_info_get_c_body_code(HLDS, C_BodyCode0) },
 	{ get_c_body_code(C_BodyCode0, C_BodyCode) },
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
@@ -1767,8 +1833,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
 			ProcModules) }
 	),
-	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
-	maybe_add_header_file_include(PragmaExports, ModuleName, C_HeaderCode0,
+	maybe_add_header_file_include(C_ExportDecls, ModuleName, C_HeaderCode0,
 		C_HeaderCode1),
 	globals__io_get_trace_level(TraceLevel),
 	( { TraceLevel = interface ; TraceLevel = full } ->
@@ -1779,20 +1844,20 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 		{ C_HeaderCode = C_HeaderCode1 }
 	),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
-		ProcModules, [c_export(PragmaExports)]], ModuleList) },
+		ProcModules, [c_export(C_ExportDefns)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 
-:- pred maybe_add_header_file_include(list(c_export), module_name,
+:- pred maybe_add_header_file_include(c_export_decls, module_name,
 	c_header_info, c_header_info, io__state, io__state).
 :- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
 
-maybe_add_header_file_include(PragmaExports, ModuleName, 
+maybe_add_header_file_include(C_ExportDecls, ModuleName, 
 		C_HeaderCode0, C_HeaderCode) -->
 	(
-		{ PragmaExports = [] },
+		{ C_ExportDecls = [] },
 		{ C_HeaderCode = C_HeaderCode0 }
 	;
-		{ PragmaExports = [_|_] },
+		{ C_ExportDecls = [_|_] },
 		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
                 globals__io_lookup_bool_option(split_c_files, SplitFiles),
                 { 

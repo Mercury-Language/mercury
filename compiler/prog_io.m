@@ -588,14 +588,14 @@ read_items_loop_2(ok(Item, Context), ModuleName0, SourceFileName0,
 	; Item = module_defn(_VarSet, module(NestedModuleName)) ->
 		ModuleName = NestedModuleName,
 		SourceFileName = SourceFileName0,
-		Items1 = Items0
+		Items1 = [Item - Context | Items0]
 	; Item = module_defn(_VarSet, end_module(NestedModuleName)) ->
 		root_module_name(RootModuleName),
 		sym_name_get_module_name(NestedModuleName, RootModuleName,
 			ParentModuleName),
 		ModuleName = ParentModuleName,
 		SourceFileName = SourceFileName0,
-		Items1 = Items0
+		Items1 = [Item - Context | Items0]
 	;
 		SourceFileName = SourceFileName0,
 		ModuleName = ModuleName0,
@@ -894,7 +894,15 @@ process_decl(DefaultModuleName, VarSet, "include_module", [ModuleNames],
 	).
 
 process_decl(DefaultModuleName, VarSet, "end_module", [ModuleName], Result) :-
-	parse_module_name(DefaultModuleName, ModuleName, R),
+	%
+	% The name in an `end_module' declaration not inside the
+	% scope of the module being ended, so the default module name
+	% here is the parent of the previous default module name.
+	%
+	root_module_name(RootModuleName),
+	sym_name_get_module_name(DefaultModuleName, RootModuleName,
+		ParentOfDefaultModuleName),
+	parse_module_name(ParentOfDefaultModuleName, ModuleName, R),
 	(	
 		R = ok(ModuleNameSym), 
 		Result = ok(module_defn(VarSet, end_module(ModuleNameSym)))
