@@ -98,4 +98,50 @@ mercury__builtin_solutions_2_0_i2:
 	r3 = framevar(0);
 	succeed_discard();
 
+/* XXXXXXXX The above 40 lines are a copy of the 40 below, with different 
+	label names.  The intention is to erase the above 40 some-time in the
+	future.
+	dylan  26/9/95
+*/
+
+mercury__std_util__builtin_solutions_2_0:
+mercury__std_util__builtin_solutions_2_1:
+
+/*
+** The following algorithm is very straight-forward implementation
+** but only works with `--gc conservative'.
+** Since with conservative gc, we don't reclaim any memory on failure,
+** but instead leave it to the garbage collector, there is no need to
+** make deep copies of the solutions.  This is a `copy-zero' implementation ;-)
+*/
+
+#ifndef CONSERVATIVE_GC
+	fatal_error("solutions/2 only implemented for conservative GC");
+#endif
+
+	/* create a nondet stack frame with one slot, to hold the list
+	   of solutions, and set the failure continuation */
+	mkframe("builtin_solutions", 1,
+		LABEL(mercury__std_util__builtin_solutions_2_0_i2));
+	framevar(0) = list_empty();
+
+	/* call the higher-order pred closure that we were passed in r2 */
+	r1 = r2;
+	r2 = (Word) 0;	/* the closure has no input arguments */
+	r3 = (Word) 1;	/* the closure has one argument */
+	call_nondet_closure(LABEL(mercury__std_util__builtin_solutions_2_0_i1),
+			LABEL(mercury__std_util__builtin_solutions_2_0));
+
+mercury__std_util__builtin_solutions_2_0_i1:
+	/* we found a solution */
+	/* insert it into the list, and then look for the next one */
+	framevar(0) = list_cons(r1, framevar(0));
+	redo();
+
+mercury__std_util__builtin_solutions_2_0_i2:
+	/* no more solutions */
+	/* put the list in r3, discard the frame we made, and return */
+	r3 = framevar(0);
+	succeed_discard();
+
 END_MODULE
