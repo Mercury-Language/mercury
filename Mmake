@@ -13,7 +13,7 @@ include Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = scripts util runtime boehm_gc library compiler doc profiler
+SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
 
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
@@ -76,7 +76,7 @@ scripts:
 	cd scripts && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
-runtime: scripts
+runtime: scripts boehm_gc
 	cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: boehm_gc
@@ -84,7 +84,7 @@ boehm_gc: scripts
 	cd boehm_gc && $(SUBDIR_MMAKE)
 
 .PHONY: library
-library: dep_library scripts
+library: dep_library scripts runtime boehm_gc
 	cd library && $(SUBDIR_MMAKE)
 
 .PHONY: compiler

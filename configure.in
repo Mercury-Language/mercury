@@ -708,7 +708,8 @@ case "$host" in
 		SO=so
 		;;
 	mips-sgi-irix5.*)
-		LINK_SHARED_OBJ="ld -shared"
+		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
+			-show_quickstart_info -rdata_shared"
 		PIC=
 		PIC_O=o
 		# shared libraries only work for reg.gc or none.gc
