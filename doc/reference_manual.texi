@@ -4435,7 +4435,7 @@ As illustrated by the example, the values for @samp{MLFLAGS} and
 @samp{MLLIBS} variables are similar to those taken by the Unix linker.
 
 For more information, see the ``Libraries'' chapter of the
-Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
+Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 @node Passing data to and from C
 @section Passing data to and from C
