@@ -954,10 +954,12 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_fail_stack(J, C3, C4),
 	code_info__get_max_temp_slot_count(PC, C1, _),
 	code_info__set_max_temp_slot_count(PC, C4, C5),
+	code_info__get_avail_temp_slots(TS, C1, _),
+	code_info__set_avail_temp_slots(TS, C5, C6),
 	code_info__get_layout_info(LayoutInfo, C1, _),
-	code_info__set_layout_info(LayoutInfo, C5, C6),
+	code_info__set_layout_info(LayoutInfo, C6, C7),
 	code_info__get_cell_count(CellCount, C1, _),
-	code_info__set_cell_count(CellCount, C6, C).
+	code_info__set_cell_count(CellCount, C7, C).
 
 code_info__apply_instmap_delta(Delta) -->
 	code_info__get_instmap(InstMap0),
@@ -2322,6 +2324,13 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
 
+	% Same as reset_and_discard_ticket, but don't release the temp slot.
+	% Used for cases where the temp slot might still be needed again
+	% on backtracking and thus can't be reused in the code that follows.
+:- pred code_info__reset_and_pop_ticket(lval, reset_trail_reason,
+					code_tree, code_info, code_info).
+:- mode code_info__reset_and_pop_ticket(in, in, out, in, out) is det.
+
 :- pred code_info__discard_ticket(lval, code_tree, code_info, code_info).
 :- mode code_info__discard_ticket(in, out, in, out) is det.
 
@@ -2336,6 +2345,11 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
 :- mode code_info__maybe_reset_and_discard_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__maybe_reset_and_pop_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_and_pop_ticket(in, in, out, in, out)
+	is det.
 
 :- pred code_info__maybe_discard_ticket(maybe(lval), code_tree,
 	code_info, code_info).
@@ -2406,6 +2420,13 @@ code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
 		discard_ticket - "Pop ticket stack"
 	]) }.
 
+code_info__reset_and_pop_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) -
+			"Restore trail (but don't release this stack slot)",
+		discard_ticket - "Pop ticket stack"
+	]) }.
+
 code_info__discard_ticket(TicketSlot, Code) -->
 	code_info__release_temp_slot(TicketSlot),
 	{ Code = node([discard_ticket - "Pop ticket stack"]) }.
@@ -2429,6 +2450,15 @@ code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) -->
 code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
 	( { MaybeTicketSlot = yes(TicketSlot) } ->
 		code_info__reset_and_discard_ticket(TicketSlot, Reason, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_reset_and_pop_ticket(MaybeTicketSlot, Reason, Code)
+		-->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__reset_and_pop_ticket(TicketSlot, Reason,
+			Code)
 	;
 		{ Code = empty }
 	).

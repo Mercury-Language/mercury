@@ -8,7 +8,7 @@
 
 % author: fjh
 
-:- module tests.
+:- module var_test.
 
 :- interface.
 

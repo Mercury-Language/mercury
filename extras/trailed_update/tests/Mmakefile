@@ -31,7 +31,7 @@ MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
-PROGS	=	interpreter vqueens
+PROGS	=	var_test func_trail_test func_trail_test_2
 
 DEPENDS =	$(PROGS:%=%.depend)
 CS	=	$(PROGS:%=%.c)
@@ -49,11 +49,6 @@ $(PROGS): ../libtrailed_update.a
 
 #-----------------------------------------------------------------------------#
 
-interpreter.out: interpreter interpreter.inp
-	./interpreter interpreter.m < interpreter.inp > interpreter.out
-
-#-----------------------------------------------------------------------------#
-
 .PHONY: depend
 depend: $(DEPENDS)
 
@@ -61,12 +56,7 @@ depend: $(DEPENDS)
 all: $(PROGS)
 
 .PHONY: check
-# XXX the test of `interpreter' is disabled,
-# since it fails in grade asm_fast.tr.
-# (It fails due to a bug in value numbering which causes
-# parts of the Mercury library to be miscompiled.)
-check: vqueens.res
-# check: $(RESS)
+check: $(RESS)
 
 .PHONY: cs
 cs: $(CS)
