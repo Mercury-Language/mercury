@@ -7246,8 +7246,8 @@ between C functions which are called from Mercury.  For example:
 :- pred initialise_complicated_structure(complicated_c_structure::uo) is det.
 
 % Perform a calculation on the C structure.
-:- pred do_calculation(int::in, complicated_structure::di, 
-        complicated_structure::uo) is det.
+:- pred do_calculation(int::in, complicated_c_structure::di, 
+        complicated_c_structure::uo) is det.
 
 :- implementation.
 
@@ -7264,7 +7264,7 @@ between C functions which are called from Mercury.  For example:
         [may_call_mercury],
         "Structure = init_struct();").
 
-:- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo,
+:- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo),
         [may_call_mercury],
         "Structure = perform_calculation(Value, Structure0);").
 @end example
