@@ -269,7 +269,7 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 :- mode output_alphabet_headers(di, uo) is det.
 
 output_alphabet_headers -->
-	io__write_string("\n\n\naplhabetic listing:\n\n").
+	io__write_string("\n\n\nalphabetic listing:\n\n").
 
 
 :- pred output_alphabet_listing(map(string, int), io__state, io__state).

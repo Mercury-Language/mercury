@@ -3,7 +3,7 @@ PROFILING
 1. BUILDING PROFILED APPLICATIONS
 
 To build an application with profiling turned on you need to make sure
-the followin conditions hold about the library files (boehm_gc, runtime
+the following conditions hold about the library files (boehm_gc, runtime
 and library).
 
 The runtime and library libraries must be built with profiling enabled.
