@@ -45,6 +45,41 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 fi
 
 #-----------------------------------------------------------------------------#
+# Work out the default arguments to configure when reconfiguring,
+# for example when installing a binary distribution.
+# Strip out --no-create and --no-recursion added by config.status.
+# Remove any --prefix and --enable-reconfigure arguments passed by
+# mercury_config.
+# Also quote any args containing shell metacharacters.
+#
+# NOTE: Some macros, e.g. AC_CHECK_PROG, overwrite the argument list,
+# so this must come before any uses of those macros.
+
+prefix_arg=false
+RECONFIGURE_ARGS=
+for arg
+do
+    if test $prefix_arg = true
+    then
+        prefix_arg=false
+    else
+        case "$arg" in
+            --no-create | --no-recursion) ;;
+            --prefix) prefix_arg=true ;;
+            --prefix=*) ;;
+            --enable-reconfigure=*) ;;
+            *" "*|*"	"*|*[[\[\]\~\#\$\^\&\*\(\)\{\}\\\|\;\<\>\?]]*)
+		# The argument needs to be quoted.
+                RECONFIGURE_ARGS="$RECONFIGURE_ARGS '$arg'"
+                ;;
+            *)
+                RECONFIGURE_ARGS="$RECONFIGURE_ARGS $arg"
+                ;;
+       esac
+    fi
+done
+AC_SUBST(RECONFIGURE_ARGS)
+#-----------------------------------------------------------------------------#
 remake_dependencies=false
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
@@ -67,7 +102,6 @@ case "$PREFIX" in
 	exit 1
 	;;
 esac
-
 
 # Using `cygpath -m' gives a path that works under both
 # Cygwin and native Windows, without causing quoting
@@ -94,37 +128,6 @@ case "$host" in
 		AC_MSG_WARN(*** Read README.BSDI before proceeding!)
 		;;
 esac
-#-----------------------------------------------------------------------------#
-# Work out the default arguments to configure when reconfiguring,
-# for example when installing a binary distribution.
-# Strip out --no-create and --no-recursion added by config.status.
-# Remove any --prefix and --enable-reconfigure arguments passed by
-# mercury_config.
-# Also quote any args containing shell metacharacters.
-prefix_arg=false
-RECONFIGURE_ARGS=
-for arg
-do
-    if test $prefix_arg = true
-    then
-        prefix_arg=false
-    else
-        case "$arg" in
-            --no-create | --no-recursion) ;;
-            --prefix) prefix_arg=true ;;
-            --prefix=*) ;;
-            --enable-reconfigure=*) ;;
-            *" "*|*"	"*|*[[\[\]\~\#\$\^\&\*\(\)\{\}\\\|\;\<\>\?]]*)
-		# The argument needs to be quoted.
-                RECONFIGURE_ARGS="$RECONFIGURE_ARGS '$arg'"
-                ;;
-            *)
-                RECONFIGURE_ARGS="$RECONFIGURE_ARGS $arg"
-                ;;
-       esac
-    fi
-done
-AC_SUBST(RECONFIGURE_ARGS)
 #-----------------------------------------------------------------------------#
 
 # Don't document this -- it's only used by the mercury_config script

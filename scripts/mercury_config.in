@@ -129,6 +129,9 @@ mkdir $TMPDIR/bindist || exit 1
 touch $TMPDIR/scripts/Mercury.config.bootstrap.in || exit 1
 touch $TMPDIR/Mmake.common.in $TMPDIR/bindist/bindist.INSTALL.in || exit 1
 touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
+mkdir $TMPDIR/tools || exit 1
+touch $TMPDIR/tools/lmc.in || exit 1
+touch $TMPDIR/tools/dotime.in || exit 1
 
 cd $TMPDIR
 case $# in
