@@ -1,5 +1,4 @@
 echo on
-goto 2
-finish
+exception
 print *
 continue

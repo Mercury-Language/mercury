@@ -1,0 +1,12 @@
+       1:      1  1 CALL pred exception_cmd:main/2-0 (det) exception_cmd.m:12
+mdb> echo on
+Command echo enabled.
+mdb> exception
+       4:      2  2 EXCP pred exception_cmd:test/2-0 (det) exception_cmd.m:18 (exception_cmd.m:12)
+mdb> print *
+       HeadVar__1             	42
+mdb> continue
+Uncaught exception:
+Software Error: oops
+Last trace event was event #5.
+Last trace event before the unhandled exception was event #3.

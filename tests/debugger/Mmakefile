@@ -22,6 +22,7 @@ DEBUGGER_PROGS=	\
 	browse_pretty			\
 	browser_test			\
 	debugger_regs			\
+	exception_cmd			\
 	exception_value			\
 	exception_vars			\
 	existential_type_classes	\
@@ -100,7 +101,16 @@ exception_value.out: exception_value exception_value.inp
 
 # The exception_vars test is supposed to return a non-zero
 # exit status, since it exits by throwing an exception.
-# Likewise for the polymorphic_output test case.
+# Likewise for the exception_cmd and polymorphic_output test cases.
+exception_cmd.out: exception_cmd exception_cmd.inp
+	if $(MDB) ./exception_cmd < exception_cmd.inp		\
+		> exception_cmd.out 2>&1;			\
+	then							\
+		false;						\
+	else							\
+		true;						\
+	fi
+
 exception_vars.out: exception_vars exception_vars.inp
 	if $(MDB) ./exception_vars < exception_vars.inp		\
 		> exception_vars.out 2>&1;			\
@@ -109,6 +119,7 @@ exception_vars.out: exception_vars exception_vars.inp
 	else							\
 		true;						\
 	fi
+
 polymorphic_output.out: polymorphic_output polymorphic_output.inp
 	if $(MDB) ./polymorphic_output < polymorphic_output.inp	\
 		> polymorphic_output.out 2>&1;			\
