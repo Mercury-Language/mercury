@@ -40,15 +40,15 @@
 %
 % into
 %
-%	:- pred p(T1, pred(T1, T1)).
-%	:- pred q(T2, pred(T2, T2)).
-%	:- pred r(T3, pred(T2, T2)).
+%	:- pred p(type_info(T1), T1).
+%	:- pred q(type_info(T2), T2).
+%	:- pred r(type_info(T3), T3).
 %
 %	p(X, TypeInfo) :-
-%		q([X], type_info(1, list_unify, list_index, list_compare,
-%			list_term_to_type, list_type_to_term, TypeInfo)),
-%		r(0, type_info(0, int_unify, int_index, int_compare,
-%			int_term_to_type, type_to_term)).
+%		q(type_info(1, list_unify, list_index, list_compare,
+%			list_term_to_type, list_type_to_term, TypeInfo), [X]),
+%		r(type_info(0, int_unify, int_index, int_compare,
+%			int_term_to_type, int_type_to_term), 0).
 %
 % (except that both the input and output of the transformation are
 % actually in super-homogeneous form).
