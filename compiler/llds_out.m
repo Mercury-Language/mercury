@@ -262,7 +262,7 @@
 
 :- implementation.
 
-:- import_module rtti, rtti_out, options.
+:- import_module rtti, rtti_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 :- import_module c_util.
@@ -398,7 +398,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
-		output_c_data_init_list_decls(Datas),
+		output_debugger_init_list_decls(Datas),
 		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
@@ -419,7 +419,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 
 output_c_file_mercury_headers -->
 	globals__io_get_trace_level(TraceLevel),
-	( { TraceLevel \= none } ->
+	( { trace_level_is_none(TraceLevel) = no } ->
 		io__write_string("#include ""mercury_imp.h""\n"),
 		io__write_string("#include ""mercury_trace_base.h""\n")
 	;
@@ -541,17 +541,27 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 		io__write_string("#endif\n\n")
 	),
 
+	io__write_string("/* suppress gcc -Wmissing-decls warnings */\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("(void);"),
-	io__write_string("/* suppress gcc -Wmissing-decls warning */\n"),
+	io__write_string("(void);\n"),
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_type_tables(void);\n"),
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_debugger(void);\n"),
+	io__write_string("\n"),
+
 	io__write_string("void "),
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
-	io__write_string("\tif (!done) {\n"),
-	io__write_string("\t\tdone = TRUE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
 
 	output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
 		"always", 0),
@@ -566,8 +576,40 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	),
 
 	output_c_data_init_list(Datas),
-	io__write_string("\t}\n"),
+		% The call to the debugger initialization function
+		% is for bootstrapping; once the debugger has been modified
+		% to call do_init_modules_debugger() and all debuggable
+		% object files created before this change have been
+		% overwritten, it can be deleted.
+	io__write_string("\t"),
+	output_init_name(ModuleName),
+	io__write_string("_debugger();\n"),
 	io__write_string("}\n\n"),
+
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_type_tables(void)\n"),
+	io__write_string("{\n"),
+	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
+	output_type_tables_init_list(Datas, SplitFiles),
+	io__write_string("}\n\n"),
+
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_debugger(void)\n"),
+	io__write_string("{\n"),
+	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
+	output_debugger_init_list(Datas),
+	io__write_string("}\n\n"),
+
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n"),
 	io__write_string(
@@ -634,13 +676,44 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
-	% Output declarations for each module layout defined in this module
-	% (there should only be one, of course).
-:- pred output_c_data_init_list_decls(list(comp_gen_c_data)::in,
+	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
+	% for each type_ctor_info defined in this module.
+
+:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_data_init_list_decls([]) --> [].
-output_c_data_init_list_decls([Data | Datas]) -->
+output_c_data_init_list([]) --> [].
+output_c_data_init_list([Data | Datas]) -->
+	( { Data = rtti_data(RttiData) } ->
+		rtti_out__init_rtti_data_if_nec(RttiData)
+	;
+		[]
+	),
+	output_c_data_init_list(Datas).
+
+	% Output code to register each type_ctor_info defined in this module.
+
+:- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
+	bool::in, io__state::di, io__state::uo) is det.
+
+output_type_tables_init_list([], _) --> [].
+output_type_tables_init_list([Data | Datas], SplitFiles) -->
+	(
+		{ Data = rtti_data(RttiData) }
+	->
+		rtti_out__register_rtti_data_if_nec(RttiData, SplitFiles)
+	;
+		[]
+	),
+	output_type_tables_init_list(Datas, SplitFiles).
+
+	% Output declarations for each module layout defined in this module
+	% (there should only be one, of course).
+:- pred output_debugger_init_list_decls(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_debugger_init_list_decls([]) --> [].
+output_debugger_init_list_decls([Data | Datas]) -->
 	(
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
@@ -651,24 +724,18 @@ output_c_data_init_list_decls([Data | Datas]) -->
 	;
 		[]
 	),
-	output_c_data_init_list_decls(Datas).
+	output_debugger_init_list_decls(Datas).
 
-	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
-	% for each type_ctor_info defined in this module.
-	% Also output calls to MR_register_module_layout()
+	% Output calls to MR_register_module_layout()
 	% for each module layout defined in this module
 	% (there should only be one, of course).
 
-:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
+:- pred output_debugger_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_data_init_list([]) --> [].
-output_c_data_init_list([Data | Datas]) -->
+output_debugger_init_list([]) --> [].
+output_debugger_init_list([Data | Datas]) -->
 	(
-		{ Data = rtti_data(RttiData) }
-	->
-		rtti_out__init_rtti_data_if_nec(RttiData)
-	;
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
@@ -680,7 +747,7 @@ output_c_data_init_list([Data | Datas]) -->
 	;
 		[]
 	),
-	output_c_data_init_list(Datas).
+	output_debugger_init_list(Datas).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
@@ -1055,7 +1122,7 @@ output_stack_layout_decl(Label, DeclSet0, DeclSet) -->
 get_proc_label(exported(ProcLabel)) = ProcLabel.
 get_proc_label(local(ProcLabel)) = ProcLabel.
 get_proc_label(c_local(ProcLabel)) = ProcLabel.
-get_proc_label(local(ProcLabel, _)) = ProcLabel.
+get_proc_label(local(_, ProcLabel)) = ProcLabel.
 
 :- func get_defining_module_name(proc_label) = module_name.
 get_defining_module_name(proc(ModuleName, _, _, _, _, _)) = ModuleName.
@@ -1215,7 +1282,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		:-
 	(
 		(
-			Instr = call(_, label(ContLabel), _, _, _)
+			Instr = call(_, label(ContLabel), _, _, _, _)
 		;
 			Instr = mkframe(_, label(ContLabel))
 		;
@@ -1319,7 +1386,8 @@ output_instruction_decls(block(_TempR, _TempF, Instrs),
 output_instruction_decls(assign(Lval, Rval), DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(call(Target, ContLabel, _,_,_), DeclSet0, DeclSet) -->
+output_instruction_decls(call(Target, ContLabel, _, _, _, _),
+		DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
@@ -1581,7 +1649,7 @@ output_instruction(assign(Lval, Rval), _) -->
 	output_rval_as_type(Rval, Type),
 	io__write_string(";\n").
 
-output_instruction(call(Target, ContLabel, LiveVals, _, _), ProfInfo) -->
+output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	output_call(Target, ContLabel, CallerLabel),
 	output_gc_livevals(LiveVals).
@@ -3353,9 +3421,9 @@ output_label_as_code_addr(c_local(ProcLabel)) -->
 	io__write_string("LABEL("),
 	output_label(c_local(ProcLabel)),
 	io__write_string(")").
-output_label_as_code_addr(local(ProcLabel, N)) -->
+output_label_as_code_addr(local(N, ProcLabel)) -->
 	io__write_string("LABEL("),
-	output_label(local(ProcLabel, N)),
+	output_label(local(N, ProcLabel)),
 	io__write_string(")").
 
 :- pred output_label_list(list(label), io__state, io__state).
@@ -3406,9 +3474,9 @@ output_label_defn(c_local(ProcLabel)) -->
 	io__write_string("Define_local("),
 	output_label(c_local(ProcLabel)),
 	io__write_string(");\n").
-output_label_defn(local(ProcLabel, Num)) -->
+output_label_defn(local(Num, ProcLabel)) -->
 	io__write_string("Define_label("),
-	output_label(local(ProcLabel, Num)),
+	output_label(local(Num, ProcLabel)),
 	io__write_string(");\n").
 
 % Note that the suffixes _l and _iN used to be interpreted by mod2c,
@@ -3433,7 +3501,7 @@ llds_out__get_label(local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
 llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
-llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
+llds_out__get_label(local(Num, ProcLabel), AddPrefix, LabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
 	string__int_to_string(Num, NumStr),
 	string__append("_i", NumStr, NumSuffix),

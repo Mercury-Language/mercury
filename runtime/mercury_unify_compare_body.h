@@ -65,7 +65,7 @@ start_label:
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_VAR:
-            fatal_error("found type_ctor_rep MR_TYPECTOR_REP_EQUIV_VAR");
+            MR_fatal_error("found type_ctor_rep MR_TYPECTOR_REP_EQUIV_VAR");
 
         case MR_TYPECTOR_REP_NOTAG:
             save_transient_hp();
@@ -509,17 +509,17 @@ start_label:
             }
 
         case MR_TYPECTOR_REP_VOID:
-            fatal_error(attempt_msg "terms of type `void'");
+            MR_fatal_error(attempt_msg "terms of type `void'");
 
         case MR_TYPECTOR_REP_PRED:
-            fatal_error(attempt_msg "higher-order terms");
+            MR_fatal_error(attempt_msg "higher-order terms");
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
-            fatal_error(attempt_msg "typeclass_infos");
+            MR_fatal_error(attempt_msg "typeclass_infos");
 
         case MR_TYPECTOR_REP_UNKNOWN:
-            fatal_error(attempt_msg "terms of unknown type");
+            MR_fatal_error(attempt_msg "terms of unknown type");
 
         default:
-            fatal_error(attempt_msg "terms of unknown representation");
+            MR_fatal_error(attempt_msg "terms of unknown representation");
     }

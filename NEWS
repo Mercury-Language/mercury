@@ -66,6 +66,13 @@ Changes to the Mercury language:
 
 Changes to the standard library:
 
+* We've added new predicates map__foldl2, tree234__foldl2 and
+  std_util__aggregate2.
+
+* We've added function versions of std_util__solutions,
+  std_util__solutions_set, std_util__aggregate, map__search,
+  map__insert and map__update.
+
 * We've added a pretty printing module, `pprint', to the standard library.
 
 * We've added a new function to the Mercury standard library:

@@ -41,3 +41,9 @@ GC_MALLOC.
 
 Define GC_DEBUG before including gc.h for additional checking.
 
+BEWARE:
+Don't store the last pointer to objects allocated with GC_MALLOC()
+etc. in malloc()'d memory or in thread-local storage, since by default
+the collector doesn't scan those areas, and so will prematurely
+collect objects that are only reachable via those areas.
+

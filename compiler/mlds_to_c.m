@@ -472,21 +472,14 @@ mlds_output_pragma_export_decl(ModuleName, Indent, PragmaExport) -->
 
 mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
 	{ PragmaExport = ml_pragma_export(_C_name, MLDS_Name, MLDS_Signature,
-			Context, IsFunc) },
+			Context) },
 	mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport),
 	io__write_string("\n"),
 	mlds_indent(Context, Indent),
 	io__write_string("{\n"),
 	mlds_indent(Context, Indent),
-	(
-		{ IsFunc = yes },
-		mlds_output_pragma_export_func_defn_body(ModuleName, MLDS_Name,
-				MLDS_Signature)
-	;
-		{ IsFunc = no },
-		mlds_output_pragma_export_defn_body(ModuleName, MLDS_Name,
-				MLDS_Signature)
-	),
+	mlds_output_pragma_export_defn_body(ModuleName, MLDS_Name,
+				MLDS_Signature),
 	io__write_string("}\n").
 
 :- pred mlds_output_pragma_export_func_name(mlds_module_name, indent,
@@ -494,15 +487,7 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
 :- mode mlds_output_pragma_export_func_name(in, in, in, di, uo) is det.
 
 mlds_output_pragma_export_func_name(ModuleName, Indent,
-		ml_pragma_export(C_name, _MLDS_Name, Signature0, Context,
-			IsFunc)) -->
-	(
-		{ IsFunc = yes }
-	->
-		{ Signature = det_func_signature(Signature0) }
-	;
-		{ Signature = Signature0 }
-	),
+		ml_pragma_export(C_name, _MLDS_Name, Signature, Context)) -->
 	{ Name = qual(ModuleName, export(C_name)) },
 	mlds_indent(Context, Indent),
 	mlds_output_func_decl_ho(Indent, Name, Context, Signature,
@@ -549,8 +534,7 @@ mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
 	
 
 	%
-	% Output the definition body for a pragma export when it is
-	% *NOT* a det function whose last arg is top_out.
+	% Output the definition body for a pragma export
 	%
 :- pred mlds_output_pragma_export_defn_body(mlds_module_name,
 		mlds__qualified_entity_name, func_params, io__state, io__state).
@@ -576,47 +560,6 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 			mlds_output_name_with_cast(ModuleName)),
 	io__write_string(");\n").
 
-
-	%
-	% Output the definition body for a pragma export when it is
-	% det function whose last arg is top_out.
-	%
-:- pred mlds_output_pragma_export_func_defn_body(mlds_module_name,
-		mlds__qualified_entity_name, func_params,
-		io__state, io__state).
-:- mode mlds_output_pragma_export_func_defn_body(in, in, in, di, uo) is det.
-
-mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
-	{ ExportedSignature = det_func_signature(Signature) },
-	{ ExportedSignature = mlds__func_params(_ExpParameters, ExpRetTypes) },
-	{ Signature = mlds__func_params(Parameters, _RetTypes) },
-
-	( { ExpRetTypes = [ExpRetType0] } ->
-		{ ExpRetType = ExpRetType0 }
-	;
-		{ error("mlds_output_pragma_export_func_defn_body") }
-	),
-
-		% Define a variable to hold the function result.
-	io__write_string("\t"),
-	mlds_output_type_prefix(ExpRetType),
-	io__write_string(" arg"),
-	mlds_output_type_suffix(ExpRetType),
-	io__write_string(";\n"),
-
-		% Call the MLDS function.
-	io__write_string("\t"),
-	mlds_output_fully_qualified_name(FuncName),
-	io__write_string("("),
-	write_func_args(ModuleName, Parameters),
-	io__write_string(");\n"),
-
-		% return the function result.
-	io__write_string("\t"),
-	io__write_string("return ("),
-	mlds_output_pragma_export_type(prefix, ExpRetType),
-	mlds_output_pragma_export_type(suffix, ExpRetType),
-	io__write_string(") arg;\n").
 
 	%
 	% Write out the arguments to the MLDS function.  Note the last
@@ -1945,7 +1888,7 @@ mlds_output_stmt(Indent, _FuncInfo, return(Results), _) -->
 		io__write_char(' '),
 		mlds_output_rval(Rval)
 	;
-		{ error("mld_output_stmt: multiple return values") }
+		{ error("mlds_output_stmt: multiple return values") }
 	),
 	io__write_string(";\n").
 	
@@ -2189,6 +2132,9 @@ mlds_output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _) -->
 	%
 	% heap management
 	%
+mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _) -->
+	{ error("mlds_to_c.m: sorry, delete_object not implemented") }.
+
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	{ NewObject = new_object(Target, MaybeTag, Type, MaybeSize,
 		MaybeCtorName, Args, ArgTypes) },

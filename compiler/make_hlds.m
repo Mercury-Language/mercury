@@ -40,10 +40,10 @@
 			qual_info, bool, bool, io__state, io__state).
 :- mode parse_tree_to_hlds(in, in, in, out, out, out, out, di, uo) is det.
 
-:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
-		maybe(list(is_live)), maybe(determinism),
+:- pred add_new_proc(pred_info, inst_varset, arity, list(mode),
+		maybe(list(mode)), maybe(list(is_live)), maybe(determinism),
 		prog_context, is_address_taken, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
+:- mode add_new_proc(in, in, in, in, in, in, in, in, in, out, out) is det.
 
 	% add_special_pred_for_real(SpecialPredId, ModuleInfo0, TVarSet,
 	% 	Type, TypeId, TypeBody, TypeContext, TypeStatus, ModuleInfo).
@@ -113,6 +113,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	maybe_report_stats(Statistics),
 	add_item_list_decls_pass_2(Items,
 		item_status(local, may_be_unqualified), Module1, Module2),
+
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module2, Module3) },
@@ -451,11 +452,8 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 				ModeNum, UnusedArgs, Context, Module0, Module)
 		)
 	;
-		{ Pragma = type_spec(Name, SpecName, Arity, PorF,
-			MaybeModes, TypeSubst, VarSet) },
-		add_pragma_type_spec(Pragma, Name, SpecName, Arity, PorF,
-			MaybeModes, TypeSubst, VarSet,
-			Context, Module0, Module)
+		{ Pragma = type_spec(_, _, _, _, _, _, _) },
+		add_pragma_type_spec(Pragma, Context, Module0, Module)
 	;
 		% Handle pragma fact_table decls later on (when we process
 		% clauses).
@@ -875,15 +873,12 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pragma_type_spec(pragma_type, sym_name, sym_name, arity,
-		maybe(pred_or_func), maybe(list(mode)), assoc_list(tvar, type),
-		tvarset, term__context, module_info, module_info,
-		io__state, io__state).
-:- mode add_pragma_type_spec(in, in, in, in, in, in, in,
-		in, in, in, out, di, uo) is det.
+:- pred add_pragma_type_spec(pragma_type, term__context,
+		module_info, module_info, io__state, io__state).
+:- mode add_pragma_type_spec(in(type_spec), in, in, out, di, uo) is det.
 
-add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
-		MaybeModes, SpecSubst, VarSet, Context, Module0, Module) -->
+add_pragma_type_spec(Pragma, Context, Module0, Module) -->
+	{ Pragma = type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _) },
 	{ module_info_get_predicate_table(Module0, Preds) },
 	(
 		{ MaybePredOrFunc = yes(PredOrFunc) ->
@@ -896,8 +891,7 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 		},
 		{ PredIds \= [] }
 	->
-		list__foldl2(add_pragma_type_spec_2(Pragma, SymName, SpecName,
-			Arity, SpecSubst, MaybeModes, VarSet, Context),
+		list__foldl2(add_pragma_type_spec_2(Pragma, Context),
 			PredIds, Module0, Module)
 	;
 		undefined_pred_or_func_error(SymName, Arity, Context,
@@ -905,20 +899,18 @@ add_pragma_type_spec(Pragma, SymName, SpecName, Arity, MaybePredOrFunc,
 		{ module_info_incr_errors(Module0, Module) }
 	).
 
-:- pred add_pragma_type_spec_2(pragma_type, sym_name, sym_name, arity,
-	assoc_list(tvar, type), maybe(list(mode)), tvarset,
-	prog_context, pred_id, module_info, module_info, io__state, io__state).
-:- mode add_pragma_type_spec_2(in, in, in, in, in, in, in, in,
-	in, in, out, di, uo) is det.
+:- pred add_pragma_type_spec_2(pragma_type, prog_context, pred_id,
+		module_info, module_info, io__state, io__state).
+:- mode add_pragma_type_spec_2(in(type_spec), in, in, in, out, di, uo) is det.
 
-add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
-		Subst, MaybeModes, TVarSet0, Context, PredId,
-		ModuleInfo0, ModuleInfo) -->
+add_pragma_type_spec_2(Pragma0, Context, PredId, ModuleInfo0, ModuleInfo) -->
+	{ Pragma0 = type_spec(SymName, SpecName, Arity, _,
+			MaybeModes, Subst, TVarSet0) },
 	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
 	handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 		TVarSet, Types, ExistQVars, ClassContext, SubstOk,
 		ModuleInfo0, ModuleInfo1),
-	( { SubstOk = yes } ->
+	( { SubstOk = yes(RenamedSubst) } ->
 	    { pred_info_procedures(PredInfo0, Procs0) },
 	    handle_pragma_type_spec_modes(SymName, Arity, Context,
 	    	MaybeModes, ProcIds, Procs0, Procs, ModesOk,
@@ -1010,6 +1002,9 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 			SpecMap = SpecMap0
 		),
 
+		Pragma = type_spec(SymName, SpecName, Arity,
+				yes(PredOrFunc), MaybeModes,
+				map__to_assoc_list(RenamedSubst), TVarSet), 
 		multi_map__set(PragmaMap0, PredId, Pragma, PragmaMap),
 		TypeSpecInfo = type_spec_info(ProcsToSpec,
 			ForceVersions, SpecMap, PragmaMap),
@@ -1032,7 +1027,7 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 	% of the current implementation, so it only results in a warning.
 :- pred handle_pragma_type_spec_subst(prog_context, assoc_list(tvar, type),
 	tvarset, pred_info, tvarset, list(type), existq_tvars,
-	class_constraints, bool, module_info, module_info,
+	class_constraints, maybe(tsubst), module_info, module_info,
 	io__state, io__state).
 :- mode handle_pragma_type_spec_subst(in, in, in, in, out, out, out, out, out,
 		in, out, di, uo) is det.
@@ -1116,7 +1111,7 @@ handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 				TypeSubst, Types),
 			apply_rec_subst_to_constraints(TypeSubst,
 				ClassContext0, ClassContext),
-			SubstOk = yes,
+			SubstOk = yes(TypeSubst),
 			ModuleInfo = ModuleInfo0
 			}
 		    ;
@@ -1284,9 +1279,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
 		->
 			{ map__lookup(Procs0, ProcId, ProcInfo) },
 			{ map__init(Procs1) },
-			{ hlds_pred__initial_proc_id(NewProcId) },
-			{ map__det_insert(Procs1, NewProcId,
-				ProcInfo, Procs) },
+			{ map__det_insert(Procs1, ProcId, ProcInfo, Procs) },
 			{ ProcIds = [ProcId] },
 			{ ModesOk = yes },
 			{ ModuleInfo = ModuleInfo0 }
@@ -1728,7 +1721,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body),
 		)
 	).
 
-:- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds_mode_body).
+:- pred mode_name_args(mode_defn, sym_name, list(inst_var), hlds_mode_body).
 :- mode mode_name_args(in, out, out, out) is det.
 
 mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
@@ -1750,6 +1743,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
+	{ TypeId = Name - Arity },
 	{ Body = abstract_type ->
 		make_status_abstract(Status0, Status1)
 	;
@@ -1758,18 +1752,19 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	{ 
 		% the type is exported if *any* occurrence is exported,
 		% even a previous abstract occurrence
-		map__search(Types0, Name - Arity, OldDefn)
+		map__search(Types0, TypeId, OldDefn)
 	->
 		hlds_data__get_type_defn_status(OldDefn, OldStatus),
-		combine_status(Status1, OldStatus, Status)
+		combine_status(Status1, OldStatus, Status),
+		MaybeOldDefn = yes(OldDefn)
 	;
+		MaybeOldDefn = no,
 		Status = Status1 
 	},
 	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status, Context, T) },
-	{ TypeId = Name - Arity },
 	(
 		% if there was an existing non-abstract definition for the type
-		{ map__search(Types0, TypeId, T2) },
+		{ MaybeOldDefn = yes(T2) },
 		{ hlds_data__get_type_defn_tvarset(T2, TVarSet_2) },
 		{ hlds_data__get_type_defn_tparams(T2, Params_2) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
@@ -1819,7 +1814,26 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 				Ctors0, Ctors),
 			{ module_info_set_ctors(Module0, Ctors, Module1) },
 			{ module_info_set_ctor_field_table(Module1,
-				CtorFields, Module2) }
+				CtorFields, Module1a) },
+			globals__io_lookup_bool_option(unboxed_no_tag_types,
+				AllowNoTagTypes),
+
+			{
+				AllowNoTagTypes = yes,
+				type_constructors_are_no_tag_type(ConsList,
+					Name, CtorArgType)
+			->
+				NoTagType = no_tag_type(Args,
+					Name, CtorArgType),
+				module_info_no_tag_types(Module1a,
+					NoTagTypes0),
+				map__set(NoTagTypes0, TypeId, NoTagType,
+					NoTagTypes),
+				module_info_set_no_tag_types(Module1a,
+					NoTagTypes, Module2)
+			;
+				Module2 = Module1a
+			}
 		;
 			{ Module2 = Module0 }
 		),
@@ -3141,7 +3155,10 @@ add_special_pred_decl_for_real(SpecialPredId,
 		ArgTypes, Cond, Context, ClausesInfo0, Status, Markers,
 		none, predicate, ClassContext, Proofs, Owner, PredInfo0),
 	ArgLives = no,
-	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
+	varset__init(InstVarSet),
+		% Should not be any inst vars here so it's ok to use a 
+		% fresh inst_varset.
+	add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, yes(ArgModes),
 		ArgLives, yes(Det), Context, address_is_not_taken, PredInfo,
 		_),
 
@@ -3201,13 +3218,15 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 		Status = Status1
 	).
 
-add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives, 
-		MaybeDet, Context, IsAddressTaken, PredInfo, ModeId) :-
+add_new_proc(PredInfo0, InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo,
+		ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_arg_types(PredInfo0, ArgTypes),
 	next_mode_id(Procs0, MaybeDet, ModeId),
 	proc_info_init(Arity, ArgTypes, ArgModes, MaybeDeclaredArgModes,
-		MaybeArgLives, MaybeDet, Context, IsAddressTaken, NewProc),
+		MaybeArgLives, MaybeDet, Context, IsAddressTaken, NewProc0),
+	proc_info_set_inst_varset(NewProc0, InstVarSet, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -3225,7 +3244,7 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
-module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
+module_add_mode(ModuleInfo0, InstVarSet, PredName, Modes, MaybeDet, _Cond,
 		Status, MContext, PredOrFunc, IsClassMethod, PredProcId,
 		ModuleInfo) -->
 
@@ -3258,19 +3277,20 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 
-	module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
-		PredInfo, ProcId),
+	module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
+		MContext, PredInfo, ProcId),
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo) },
 	{ PredProcId = PredId - ProcId }.
 
-:- pred module_do_add_mode(pred_info, arity, list(mode), maybe(determinism),
-		prog_context, pred_info, proc_id, io__state, io__state).
-:- mode module_do_add_mode(in, in, in, in, in, out, out, di, uo) is det.
+:- pred module_do_add_mode(pred_info, inst_varset, arity, list(mode),
+		maybe(determinism), prog_context, pred_info, proc_id,
+		io__state, io__state).
+:- mode module_do_add_mode(in, in, in, in, in, in, out, out, di, uo) is det.
 
-module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
+module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet, MContext,
 		PredInfo, ProcId) -->
 		% check that the determinism was specified
 	(
@@ -3301,8 +3321,9 @@ module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
 
 		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
-	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-		MaybeDet, MContext, address_is_not_taken, PredInfo, ProcId) }.
+	{ add_new_proc(PredInfo0, InstVarSet, Arity, Modes, yes(Modes),
+		ArgLives, MaybeDet, MContext, address_is_not_taken, PredInfo,
+		ProcId) }.
 
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration

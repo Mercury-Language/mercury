@@ -1497,7 +1497,13 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	hlds_out__write_unify_rhs_2(B, ModuleInfo, VarSet, InstVarSet,
 		AppendVarnums, Indent, Follow, VarType, TypeQual),
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
-	( { string__contains_char(Verbose, 'u') } ->
+	(
+		{
+			string__contains_char(Verbose, 'u') 
+		;
+			string__contains_char(Verbose, 'p')
+		}
+	->
 		(
 			% don't output bogus info if we haven't been through
 			% mode analysis yet
@@ -1763,8 +1769,12 @@ hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, _, _, _),
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
 
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
-		CanFail), ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums,
-		Indent) -->
+		CanFail, CanCGC),
+		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% Compile time garbage collect: "),
+	io__write(CanCGC),
+	io__nl,
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	mercury_output_var(Var, ProgVarSet, AppendVarnums),
@@ -2831,6 +2841,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
+	{ proc_info_get_call_table_tip(Proc, MaybeCallTableTip) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -2875,6 +2886,14 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		io__write_string("% address is taken\n")
 	;
 		io__write_string("% address is not taken\n")
+	),
+
+	( { MaybeCallTableTip = yes(CallTableTip) } ->
+		io__write_string("% call table tip: "),
+		mercury_output_var(CallTableTip, VarSet, AppendVarnums),
+		io__write_string("\n")
+	;
+		[]
 	),
 
 	hlds_out__write_indent(Indent),

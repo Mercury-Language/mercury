@@ -560,9 +560,10 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, Goal, Varset0, Varset,
 		Typemap0, Typemap, Replacements) :-
 	(
 		GoalExpr0 = unify(_, Term, Umode, Unif0, Ucontext),
-		Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail)
+		Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
 	->
-		Unif = deconstruct(Var, Consid, Args, Submodes, CanFail),
+		Unif = deconstruct(Var, Consid, Args,
+				Submodes, CanFail, CanCGC),
 		( Term = functor(_, _) ->
 			GoalExpr1 = unify(Var, Term, Umode, Unif, Ucontext)
 		;
@@ -605,9 +606,9 @@ create_parallel_subterms([OFV | OFV0], Context, UnifyContext, Varset0, Varset,
 find_similar_deconstruct(OldUnifyGoal, NewUnifyGoal, Context, Replacements) :-
 	(
 		OldUnifyGoal = unify(_OT1, _OT2, _OM, OldUnifyInfo, OC) - _,
-		OldUnifyInfo = deconstruct(_OV, OF, OFV, _OUM, _OCF),
+		OldUnifyInfo = deconstruct(_OV, OF, OFV, _OUM, _OCF, _OCGC),
 		NewUnifyGoal = unify(_NT1, _NT2, _NM, NewUnifyInfo, _NC) - _,
-		NewUnifyInfo = deconstruct(_NV, NF, NFV, _NUM, _NCF)
+		NewUnifyInfo = deconstruct(_NV, NF, NFV, _NUM, _NCF, _NCGC)
 	->
 		OF = NF,
 		list__length(OFV, OFVC),

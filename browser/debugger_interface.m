@@ -44,14 +44,6 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	% encoded as specified in ../runtime/mercury_stack_layout.h
 	% and ../compiler/stack_layout.m.
 
-% This enumeration must be EXACTLY the same as the MR_PredFunc enum in
-% runtime/mercury_stack_layout.h, and in the same order, since the code
-% assumes the representation is the same.
-
-:- type pred_or_func
-	--->	predicate
-	;	function.
-
 
 % Depending whether the Opium side is requesting for a user defined procedure
 % or a compiler generated one, the event has not exactly the same structure.

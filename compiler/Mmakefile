@@ -21,6 +21,7 @@ VPATH=$(LIBRARY_DIR) $(BROWSER_DIR)
 
 M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
 		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(BROWSER_DIR) \
 			-I$(TRACE_DIR) \
 			-I$(LIBRARY_DIR) \
 			-I$(RUNTIME_DIR) \
@@ -37,7 +38,8 @@ MCTOI	=	$(M_ENV) $(SMC) --make-transitive-optimization-interface
 MCG	=	$(M_ENV) $(SMC) --compile-to-c
 MCS	=	$(M_ENV) $(SMC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-C2INIT =	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
+C2INIT =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
+		MERCURY_TRACE_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--mercury-libs none

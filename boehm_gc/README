@@ -151,7 +151,7 @@ with ALL_INTERIOR_POINTERS and to use GC_malloc_ignore_off_page if
 you get collector warnings from allocations of very large objects.
 See README.debugging for details.
 
-  Note that pointers inside memory allocated by the standard "malloc" are not
+  WARNING: pointers inside memory allocated by the standard "malloc" are not
 seen by the garbage collector.  Thus objects pointed to only from such a
 region may be prematurely deallocated.  It is thus suggested that the
 standard "malloc" be used only for memory regions, such as I/O buffers, that
@@ -161,13 +161,17 @@ are correctly recognized.  (Note that GC_malloc_uncollectable has semantics
 similar to standard malloc, but allocates objects that are traced by the
 collector.)
 
-  The collector does not always know how to find pointers in data
+  WARNING: the collector does not always know how to find pointers in data
 areas that are associated with dynamic libraries.  This is easy to
 remedy IF you know how to find those data areas on your operating
 system (see GC_add_roots).  Code for doing this under SunOS, IRIX 5.X and 6.X,
 HP/UX, Alpha OSF/1, Linux, and win32 is included and used by default.  (See
 README.win32 for win32 details.)  On other systems pointers from dynamic
 library data areas may not be considered by the collector.
+If you're writing a program that depends on the collector scanning
+dynamic library data areas, it may be a good idea to include at least
+one call to GC_is_visible() to ensure that those areas are visible
+to the collector.
 
   Note that the garbage collector does not need to be informed of shared
 read-only data.  However if the shared library mechanism can introduce
@@ -185,7 +189,13 @@ a minor performance penalty, and hence is no longer the default.
 
   The allocator/collector can also be configured for thread-safe operation.
 (Full signal safety can also be achieved, but only at the cost of two system
-calls per malloc, which is usually unacceptable.)
+calls per malloc, which is usually unacceptable.) 
+WARNING: the collector does not guarantee to scan thread-local storage
+(e.g. of the kind accessed with pthread_getspecific()).  The collector
+does scan thread stacks, though, so generally the best solution is to
+ensure that any pointers stored in thread-local storage are also
+stored on the thread's stack for the duration of their lifetime.
+
 
 INSTALLATION AND PORTABILITY
 

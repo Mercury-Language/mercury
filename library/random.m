@@ -65,7 +65,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, map.
+:- import_module int, array.
 
 :- type random__supply		==	int.	% I(j)
 
@@ -90,7 +90,7 @@ random__randmax(M1, Rs, Rs) :-
 %---------------------------------------------------------------------------%
 
 	% The random permutation is implemented via a "sampling without
-	% replacement" method. In init_record, we build up a map in which
+	% replacement" method. In init_record, we build up an array in which
 	% every integer in the range 0 .. Length - 1 is mapped to the
 	% corresponding element in the list.  The sampling stage
 	% iterates from Length - 1 down to 0. The invariant being
@@ -102,20 +102,11 @@ random__randmax(M1, Rs, Rs) :-
 	% Next is not generated again by swapping it with the image of I-1.
 
 random__permutation(List0, List, RS0, RS) :-
-	map__init(Samples0),
-	init_record(List0, 0, Samples0, Len, Samples),
+	Samples = array(List0),
+	Len = array__size(Samples),
 	perform_sampling(Len, Samples, [], List, RS0, RS).
 
-:- pred init_record(list(T)::in, int::in, map(int, T)::in, 
-		int::out, map(int, T)::out) is det.
-
-init_record([], N, Record, N, Record).
-init_record([X|Xs], N0, Record0, N, Record) :-
-	map__det_insert(Record0, N0, X, Record1),
-	N1 = N0 + 1,
-	init_record(Xs, N1, Record1, N, Record).
-
-:- pred perform_sampling(int::in, map(int, T)::in,
+:- pred perform_sampling(int::in, array(T)::array_di,
 	list(T)::in, list(T)::out,
 	random__supply::mdi, random__supply::muo) is det.
 
@@ -126,12 +117,14 @@ perform_sampling(I, Record0, Order0, Order, RS0, RS) :-
 	;
 		I1 = I - 1,
 		random__random(Random, RS0, RS1),
-		Index = Random mod I,
-		map__lookup(Record0, Index, Next),
-		map__lookup(Record0, I1, MaxImage),
+		% we know that Random >= 0, so it's safe to use rem
+		% rather than mod, and rem is typically more efficient
+		Index = Random rem I,
+		array__lookup(Record0, Index, Next),
+		array__lookup(Record0, I1, MaxImage),
 		Order1 = [Next | Order0],
-		map__det_update(Record0, Index, MaxImage, Record1),
-		map__det_update(Record1, I1, Next, Record2),
+		array__set(Record0, Index, MaxImage, Record1),
+		array__set(Record1, I1, Next, Record2),
 		perform_sampling(I1, Record2, Order1, Order, RS1, RS)
 	).
 

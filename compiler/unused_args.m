@@ -265,7 +265,8 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		),
 
 		proc_info_goal(ProcInfo, Goal - _),
-		traverse_goal(ModuleInfo, Goal, VarDep3, VarDep),
+		Info = traverse_info(ModuleInfo, VarTypes),
+		traverse_goal(Info, Goal, VarDep3, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
 		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
 		OptProcs1 = OptProcs0
@@ -378,49 +379,56 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 	% Traversal of goal structure, building up dependencies for all
 	% variables. 
 
-:- pred traverse_goal(module_info::in, hlds_goal_expr::in,
+:- type traverse_info
+	--->	traverse_info(
+			module_info :: module_info,
+			vartypes :: vartypes
+		).
+
+:- pred traverse_goal(traverse_info::in, hlds_goal_expr::in,
 				var_dep::in, var_dep::out) is det.
 
 % handle conjunction
-traverse_goal(ModuleInfo, conj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(Info, conj(Goals), UseInf0, UseInf) :-
+	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle parallel conjunction
-traverse_goal(ModuleInfo, par_conj(Goals, _SM), UseInf0, UseInf) :-
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(Info, par_conj(Goals, _SM), UseInf0, UseInf) :-
+	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle disjunction
-traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(Info, disj(Goals, _), UseInf0, UseInf) :-
+	traverse_list_of_goals(Info, Goals, UseInf0, UseInf).
 
 % handle switch
-traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
+traverse_goal(Info, switch(Var, _, Cases, _), UseInf0, UseInf) :-
 	set_var_used(Var, UseInf0, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
+	traverse_list_of_goals(Info, Goals, UseInf1, UseInf).
 
 % handle predicate call
-traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _),
+traverse_goal(Info, call(PredId, ProcId, Args, _, _, _),
 						UseInf0, UseInf) :-
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _Pred, Proc),
+	module_info_pred_proc_info(Info^module_info, PredId, ProcId, _Pred,
+		Proc),
 	proc_info_headvars(Proc, HeadVars),
 	add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars,
 		UseInf0, UseInf).
 
 % handle if then else
-traverse_goal(ModuleInfo, if_then_else(_, Cond - _, Then - _, Else - _, _),
+traverse_goal(Info, if_then_else(_, Cond - _, Then - _, Else - _, _),
 			UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Cond, UseInf0, UseInf1),
-	traverse_goal(ModuleInfo, Then, UseInf1, UseInf2),
-	traverse_goal(ModuleInfo, Else, UseInf2, UseInf).
+	traverse_goal(Info, Cond, UseInf0, UseInf1),
+	traverse_goal(Info, Then, UseInf1, UseInf2),
+	traverse_goal(Info, Else, UseInf2, UseInf).
 
 % handle negation
-traverse_goal(ModuleInfo, not(Goal - _), UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(Info, not(Goal - _), UseInf0, UseInf) :-
+	traverse_goal(Info, Goal, UseInf0, UseInf).
 
 % handle quantification
-traverse_goal(ModuleInfo, some(_, _, Goal - _), UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(Info, some(_, _, Goal - _), UseInf0, UseInf) :-
+	traverse_goal(Info, Goal, UseInf0, UseInf).
 
 % we assume that higher-order predicate calls use all variables involved
 traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
@@ -454,10 +462,11 @@ traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
 
-traverse_goal(ModuleInfo,
-		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
+traverse_goal(Info,
+		unify(Var1, _, _, 
+			deconstruct(_, _, Args, Modes, CanFail, _), _),
 		UseInf0, UseInf) :-
-	partition_deconstruct_args(ModuleInfo, Args,
+	partition_deconstruct_args(Info, Args,
 		Modes, InputVars, OutputVars),
 		% The deconstructed variable is used if any of the
 		% variables, that the deconstruction binds are used.
@@ -536,23 +545,27 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 			
 	% Partition the arguments to a deconstruction into inputs
 	% and outputs.
-:- pred partition_deconstruct_args(module_info::in, list(prog_var)::in,
+:- pred partition_deconstruct_args(traverse_info::in, list(prog_var)::in,
 		list(uni_mode)::in, list(prog_var)::out,
 		list(prog_var)::out) is det.
 
-partition_deconstruct_args(ModuleInfo, ArgVars, ArgModes,
-		InputVars, OutputVars) :-
+partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 	(
 		ArgVars = [Var | Vars], ArgModes = [Mode | Modes]
 	->
-		partition_deconstruct_args(ModuleInfo,
-			Vars, Modes, InputVars1, OutputVars1),
+		partition_deconstruct_args(Info, Vars, Modes, InputVars1,
+			OutputVars1),
 		Mode = ((InitialInst1 - InitialInst2) ->
 			(FinalInst1 - FinalInst2)),
 
+		map__lookup(Info^vartypes, Var, Type),
+
 		% If the inst of the argument of the LHS is changed,
 		% the argument is input.
-		( inst_matches_binding(InitialInst1, FinalInst1, ModuleInfo) ->
+		(
+			inst_matches_binding(InitialInst1, FinalInst1,
+				Type, Info^module_info)
+		->
 			InputVars = InputVars1
 		;
 			InputVars = [Var | InputVars1]
@@ -560,7 +573,10 @@ partition_deconstruct_args(ModuleInfo, ArgVars, ArgModes,
 
 		% If the inst of the argument of the RHS is changed,
 		% the argument is output.
-		( inst_matches_binding(InitialInst2, FinalInst2, ModuleInfo) ->
+		(
+			inst_matches_binding(InitialInst2, FinalInst2,
+				Type, Info^module_info)
+		->
 			OutputVars = OutputVars1
 		;
 			OutputVars = [Var | OutputVars1]
@@ -599,13 +615,13 @@ list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
 	list_case_to_list_goal(Cases, Goals).
 
 
-:- pred traverse_list_of_goals(module_info::in, list(hlds_goal)::in,
+:- pred traverse_list_of_goals(traverse_info::in, list(hlds_goal)::in,
 					var_dep::in, var_dep::out) is det.
 
 traverse_list_of_goals(_, [], UseInf, UseInf).
-traverse_list_of_goals(ModuleInfo, [Goal - _ | Goals], UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf1),
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).  
+traverse_list_of_goals(Info, [Goal - _ | Goals], UseInf0, UseInf) :-
+	traverse_goal(Info, Goal, UseInf0, UseInf1),
+	traverse_list_of_goals(Info, Goals, UseInf1, UseInf).  
 
 
 %-------------------------------------------------------------------------------
@@ -1353,7 +1369,7 @@ fixup_unify(_, UnusedVars, no, Unify, Unify) :-
 	\+ list__member(LVar, UnusedVars).
 	
 fixup_unify(ModuleInfo, UnusedVars, Changed, Unify, Unify) :-
-	Unify =	deconstruct(LVar, _, ArgVars, ArgModes, CanFail),
+	Unify =	deconstruct(LVar, _, ArgVars, ArgModes, CanFail, _CanCGC),
 	\+ list__member(LVar, UnusedVars),
 	(
 			% are any of the args unused, if so we need to 	

@@ -95,6 +95,7 @@
 			map(prog_var, type),	% from the proc_info
 			class_constraints,	% from the pred_info
 			tvarset,		% from the proc_info
+			inst_varset,		% from the proc_info
 			map(tvar, type_info_locn),	
 						% from the proc_info 
 						% (typeinfos)
@@ -178,15 +179,16 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
+	proc_info_inst_varset(ProcInfo0, InstVarSet0),
 	MustRecomputeNonLocals0 = no,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		TVarMap0, TCVarMap0, Markers, PredOrFunc, 
+		InstVarSet0, TVarMap0, TCVarMap0, Markers, PredOrFunc, 
 		PredName, Owner, ModuleInfo0, MustRecomputeNonLocals0),
 	lambda__process_goal(Goal0, Goal1, Info0, Info1),
 	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, _, _, ModuleInfo,
+		_, TVarMap, TCVarMap, _, _, _, _, ModuleInfo,
 		MustRecomputeNonLocals),
 
 	% check if we need to requantify
@@ -304,8 +306,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo0, MustRecomputeNonLocals0),
+		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
+		Owner, ModuleInfo0, MustRecomputeNonLocals0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -393,21 +395,32 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			list__member(InitialVar, Vars)
 		),
 
-		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
-		determinism_to_code_model(Detism, CodeModel),
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
 			% and semidet is not compatible with nondet,
 			% since the calling conventions are different.
-			% But if we're using the LLDS back-end
+			% If we're using the LLDS back-end
 			% (i.e. not --high-level-code),
 			% det is compatible with nondet.
-		( CodeModel = Call_CodeModel
-		; CodeModel = model_non, Call_CodeModel = model_det,
-			module_info_globals(ModuleInfo0, Globals),
-			globals__lookup_bool_option(Globals,
-				highlevel_code, no)
+			% If we're using the MLDS back-end,
+			% then predicates and functions have different
+			% calling conventions.
+		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
+		determinism_to_code_model(Detism, CodeModel),
+		module_info_globals(ModuleInfo0, Globals),
+		globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+		(
+			HighLevelCode = no,
+			( CodeModel = Call_CodeModel
+			; CodeModel = model_non, Call_CodeModel = model_det
+			)
+		;
+			HighLevelCode = yes,
+			pred_info_get_is_pred_or_func(Call_PredInfo, Call_PredOrFunc),
+			PredOrFunc = Call_PredOrFunc,
+			CodeModel = Call_CodeModel
 		),
+			
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
 		list__length(InitialVars, NumInitialVars),
@@ -527,8 +540,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
-		proc_info_create(VarSet, VarTypes, AllArgVars,
-			AllArgModes, Detism, LambdaGoal, LambdaContext,
+		proc_info_create(VarSet, VarTypes, AllArgVars, AllArgModes,
+			InstVarSet, Detism, LambdaGoal, LambdaContext,
 			TVarMap, TCVarMap, address_is_taken, ProcInfo),
 
 		set__init(Assertions),
@@ -553,8 +566,8 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,
 		construct_dynamically, cell_is_unique, RLExprnId),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
-		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo, MustRecomputeNonLocals).
+		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
+		Owner, ModuleInfo, MustRecomputeNonLocals).
 
 :- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
 :- mode lambda__constraint_contains_vars(in, in) is semidet.

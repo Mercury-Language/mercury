@@ -69,7 +69,8 @@ saved_vars_proc_no_io(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 	implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstMap0,
+	proc_info_inst_varset(ProcInfo0, InstVarSet),
+	recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet, InstMap0,
 		ModuleInfo0, ModuleInfo),
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, "\n"),

@@ -225,6 +225,8 @@
 		)
 	.
 
+:- func generic_call_pred_or_func(generic_call) = pred_or_func.
+
 	% Builtin Aditi operations. 
 :- type aditi_builtin
 	--->
@@ -411,6 +413,12 @@
 	;	modes_are_ok
 	.
 
+	% `yes' iff the cell is available for compile time garbage collection.
+	% Compile time garbage collection is when the compiler
+	% recognises that a memory cell is no longer needed and can be
+	% safely deallocated (ie by inserting an explicit call to free).
+:- type can_cgc == bool.
+
 :- type unification
 		% A construction unification is a unification with a functor
 		% or lambda expression which binds the LHS variable,
@@ -477,8 +485,11 @@
 					% e.g. [X] in the above example.
 			list(uni_mode), % The lists of modes of the argument
 					% sub-unifications.
-			can_fail	% Whether or not the unification
+			can_fail,	% Whether or not the unification
 					% could possibly fail.
+			can_cgc		% Can compile time GC this cell,
+					% ie explicitly deallocate it
+					% after the deconstruction.
 		)
 
 		% Y = X where the top node of Y is output,
@@ -643,8 +654,14 @@
 	--->	constraint	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
-	    ;	(impure)	% This goal is impure.  See hlds_pred.m.
-	    ;	(semipure).	% This goal is semipure.  See hlds_pred.m.
+	;	(impure)	% This goal is impure.  See hlds_pred.m.
+	;	(semipure)	% This goal is semipure.  See hlds_pred.m.
+	;	call_table_gen.	% This goal generates the variable that
+				% represents the call table tip. If debugging
+				% is enabled, the code generator needs to save
+				% the value of this variable in its stack slot
+				% as soon as it is generated; this marker
+				% tells the code generator when this happens.
 
 	% see compiler/notes/allocation.html for what these alternatives mean
 :- type resume_point	--->	resume_point(set(prog_var), resume_locs)
@@ -676,9 +693,11 @@
 			;	ite_then
 			;	ite_else
 			;	neg
-			;	exist
+			;	exist(maybe_cut)
 			;	first
 			;	later.
+
+:- type maybe_cut	--->	cut ; no_cut.
 
 :- type goal_path == list(goal_path_step).
 
@@ -1597,6 +1616,15 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	instmap_delta_init_reachable(InstMapDelta0),
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo).
+
+generic_call_pred_or_func(higher_order(_, PredOrFunc, _)) = PredOrFunc.
+generic_call_pred_or_func(class_method(_, _, _, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+generic_call_pred_or_func(aditi_builtin(_, CallId)) =
+	simple_call_id_pred_or_func(CallId).
+
+:- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
+simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

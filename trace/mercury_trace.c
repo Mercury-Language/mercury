@@ -47,6 +47,7 @@
 #include "mercury_trace_internal.h"
 #include "mercury_trace_external.h"
 #include "mercury_trace_spy.h"
+#include "mercury_trace_util.h"
 
 #include <stdio.h>
 
@@ -59,13 +60,35 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
 	TRUE	/* must check */
 };
 
-Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout);
-static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
+MR_Code 	*MR_trace_real(const MR_Stack_Layout_Label *layout);
+static	MR_Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth);
+			MR_Trace_Port port, MR_Unsigned seqno,
+			MR_Unsigned depth);
+static	const MR_Stack_Layout_Label *MR_unwind_stacks_for_retry(
+			const MR_Stack_Layout_Label *top_layout,
+			int ancestor_level, MR_Word **base_sp_ptr,
+			MR_Word **base_curfr_ptr, MR_Word **base_maxfr_ptr,
+			const char **problem);
+static	const char *MR_undo_updates_of_maxfr(const MR_Stack_Layout_Entry
+			*level_layout, MR_Word *sp, MR_Word *curfr,
+			MR_Word **maxfr_ptr);
 static	MR_Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
-			MR_Word *saved_regs, MR_uint_least16_t var_num,
-			bool *succeeded);
+			MR_Word *saved_regs,
+			MR_Word *base_sp, MR_Word *base_curfr,
+			MR_uint_least16_t var_num, bool *succeeded);
+
+#ifdef	MR_USE_MINIMAL_MODEL
+static	MR_Retry_Result MR_check_minimal_model_calls(MR_Event_Info *event_info,
+			int ancestor_level, MR_Word *target_maxfr,
+			const char **problem);
+#endif
+
+static	void	MR_init_call_table_array(void);
+static	void	MR_maybe_record_call_table(const MR_Stack_Layout_Entry
+			*level_layout, MR_Word *sp, MR_Word *curfr);
+static	void	MR_reset_call_table_array(void);
+static	void	MR_abandon_call_table_array(void);
 
 /*
 ** Reserve room for event counts for this many depths initially.
@@ -79,12 +102,12 @@ static	MR_Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 ** compiled code whenever an event to be traced occurs.
 */
 
-Code *
+MR_Code *
 MR_trace_real(const MR_Stack_Layout_Label *layout)
 {
-	MR_Integer		maybe_from_full;
-	Unsigned	seqno;
-	Unsigned	depth;
+	MR_Integer	maybe_from_full;
+	MR_Unsigned	seqno;
+	MR_Unsigned	depth;
 	MR_Spy_Action	action;
 	bool		match;
 	MR_Trace_Port	port;
@@ -98,15 +121,15 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 			return NULL;
 		}
 
-		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
-		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+		seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);
 	} else {
 		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
 			return NULL;
 		}
 
-		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
-		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+		seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
 	}
 
 	MR_trace_event_number++;
@@ -147,6 +170,7 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
 				goto check_stop_print;
 			} else {
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl,
 					TRUE, layout, port,
 					seqno, depth);
@@ -164,6 +188,23 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 					return MR_trace_event(&MR_trace_ctrl,
 						TRUE, layout, port,
 						seqno, depth);
+				}
+			}
+
+		case MR_CMD_FAIL:
+			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
+				goto check_stop_print;
+			} else {
+				port = (MR_Trace_Port) layout->MR_sll_port;
+
+				if (port == MR_PORT_FAIL ||
+					port == MR_PORT_EXCEPTION)
+				{
+					return MR_trace_event(&MR_trace_ctrl,
+						TRUE, layout, port,
+						seqno, depth);
+				} else {
+					goto check_stop_print;
 				}
 			}
 
@@ -282,11 +323,11 @@ check_stop_print:
 ** MR_trace_event().
 */
 
-static Code *
+static MR_Code *
 MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
 {
-	Unsigned	seqno;
-	Unsigned	depth;
+	MR_Unsigned	seqno;
+	MR_Unsigned	depth;
 	MR_Trace_Port	port;
 
 	/* restore the original MR_trace_func_ptr value */
@@ -300,11 +341,11 @@ MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
 	restore_transient_registers();
 
 	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
-		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
-		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+		seqno = (MR_Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (MR_Unsigned) MR_call_depth_stackvar(MR_sp);
 	} else {
-		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
-		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+		seqno = (MR_Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
 	}
 	port = (MR_Trace_Port) layout->MR_sll_port;
 
@@ -327,12 +368,12 @@ MR_trace_interrupt_handler(void)
 	MR_trace_func_ptr = MR_trace_interrupt;
 }
 
-static Code *
+static MR_Code *
 MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth)
+	MR_Unsigned seqno, MR_Unsigned depth)
 {
-	Code		*jumpaddr;
+	MR_Code		*jumpaddr;
 	MR_Event_Info	event_info;
 	MR_Word		*saved_regs = event_info.MR_saved_regs;
 	int		max_r_num;
@@ -392,12 +433,22 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	return jumpaddr;
 }
 
-const char *
+/*****************************************************************************/
+
+/* The initial size of arrays of argument values. */
+#define	MR_INIT_ARG_COUNT	20
+
+MR_Retry_Result
 MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
-	Code **jumpaddr)
+	int ancestor_level, const char **problem, MR_Code **jumpaddr)
 {
-	const MR_Stack_Layout_Entry	*entry;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
+	MR_Word				*base_maxfr;
+	const MR_Stack_Layout_Label	*top_layout;
+	const MR_Stack_Layout_Label	*return_label_layout;
 	const MR_Stack_Layout_Label	*call_label;
+	const MR_Stack_Layout_Entry	*level_layout;
 	const MR_Stack_Layout_Vars	*input_args;
 	MR_Word				*args;
 	int				arg_max;
@@ -405,23 +456,52 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Word				arg_value;
 	int				i;
 	bool				succeeded;
-	const char			*message;
-	MR_Word 				*saved_regs;
+	MR_Word 			*saved_regs;
+#ifdef	MR_USE_MINIMAL_MODEL
+	MR_Retry_Result			result;
+#endif
+
+	args = NULL;
+	MR_init_call_table_array();
 
 	saved_regs = event_info->MR_saved_regs;
-	entry = event_info->MR_event_sll->MR_sll_entry;
-	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-		message = "Cannot perform retry, because this procedure "
-			"was not compiled with\nexecution tracing enabled.";
-		return message;
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, saved_regs);
+#endif
+
+	top_layout = event_info->MR_event_sll;
+	*problem = NULL;
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
+	base_maxfr = MR_saved_maxfr(saved_regs);
+	return_label_layout = MR_unwind_stacks_for_retry(top_layout,
+			ancestor_level, &base_sp, &base_curfr, &base_maxfr,
+			problem);
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, saved_regs);
+#endif
+
+	if (return_label_layout == NULL) {
+		if (*problem == NULL) {
+			*problem = "MR_unwind_stacks_for_retry failed "
+					"without reporting a problem";
+		}
+
+		goto report_problem;
 	}
 
-	call_label = entry->MR_sle_call_label;
+	level_layout = return_label_layout->MR_sll_entry;
+	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+		*problem = "that procedure does not have debugging information";
+		goto report_problem;
+	}
+
+	call_label = level_layout->MR_sle_call_label;
 	input_args = &call_label->MR_sll_var_info;
 	if (input_args->MR_slvs_var_count < 0) {
-		message = "Cannot perform retry because information about "
+		*problem = "Cannot perform retry because information about "
 		          "the input arguments is not available.";
-		return message;
+		goto report_problem;
 	}
 
 	/*
@@ -432,19 +512,18 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	** no native garbage collection can be triggered.
 	*/
 
-	args = NULL;
 	arg_max = 0;
 
 	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
-		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
-				saved_regs,
+		arg_value = MR_trace_find_input_arg(return_label_layout,
+				saved_regs, base_sp, base_curfr,
 				input_args->MR_slvs_var_nums[i],
 				&succeeded);
 
 		if (! succeeded) {
-			message = "Cannot perform retry because the values of "
-				  "some input arguments are missing.";
-			return message;
+			*problem = "Cannot perform retry because the values "
+				  "of some input arguments are missing.";
+			goto report_problem;
 		}
 
 		if (i < MR_long_desc_var_count(input_args)) {
@@ -464,42 +543,81 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		}
 	}
 
-	MR_trace_call_seqno = event_info->MR_call_seqno - 1;
-	MR_trace_call_depth = event_info->MR_call_depth - 1;
+#ifdef	MR_USE_MINIMAL_MODEL
 
-	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+	result = MR_check_minimal_model_calls(event_info, ancestor_level,
+			base_maxfr, problem);
+
+	switch (result) {
+	case MR_RETRY_OK_DIRECT:
+		/* we just go on to the code below */
+		break;
+
+	case MR_RETRY_OK_FINISH_FIRST:
+	case MR_RETRY_OK_FAIL_FIRST:
+		MR_abandon_call_table_array();
+		return result;
+
+	case MR_RETRY_ERROR:
+	default:
+		if (*problem == NULL) {
+			*problem = "MR_check_minimal_model_calls failed "
+					"without reporting problem";
+		}
+
+		goto report_problem;
+	}
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	/*
+	** At this point, we are now sure that we can carry out the retry
+	** operation directly. Before we were sure, we couldn't modify the
+	** environment (i.e. the stacks, the saved registers, and the relevant
+	** call tables). Now, however, we can set up the environment to make
+	** it reflect its state at the time of the entry to the retried call.
+	*/
+
+	MR_saved_sp(saved_regs) = base_sp;
+	MR_saved_curfr(saved_regs) = base_curfr;
+	MR_saved_maxfr(saved_regs) = base_maxfr;
+
+	if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
 		MR_Long_Lval	location;
 		MR_Word		*this_frame;
 
-		/*
-		** We are at a final port, so both curfr and maxfr
-		** must already have been reset to their original values.
-		** We only need to set up the succip register for the "call",
-		** and then remove this frame from the det stack.
-		*/
-
-		location = entry->MR_sle_succip_locn;
+		location = level_layout->MR_sle_succip_locn;
 		if (MR_LONG_LVAL_TYPE(location) != MR_LONG_LVAL_TYPE_STACKVAR)
 		{
 			MR_fatal_error("illegal location for stored succip");
 		}
 
 		this_frame = MR_saved_sp(saved_regs);
+#ifdef	MR_DEBUG_RETRY
+		MR_print_succip_reg(stdout, saved_regs);
+		MR_print_stack_regs(stdout, saved_regs);
+#endif
 		MR_saved_succip(saved_regs) = (MR_Word *)
 				MR_based_stackvar(this_frame,
 				MR_LONG_LVAL_NUMBER(location));
-		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
+		MR_saved_sp(saved_regs) -= level_layout->MR_sle_stack_slots;
+#ifdef	MR_DEBUG_RETRY
+		MR_print_succip_reg(stdout, saved_regs);
+		MR_print_stack_regs(stdout, saved_regs);
+#endif
 		MR_trace_event_number = MR_event_num_stackvar(this_frame);
+		MR_trace_call_seqno = MR_call_num_stackvar(this_frame) - 1;
+		MR_trace_call_depth = MR_call_depth_stackvar(this_frame) - 1;
 
 #ifdef	MR_USE_TRAIL
-		if (entry->MR_sle_maybe_trail >= 0) {
+		if (level_layout->MR_sle_maybe_trail >= 0) {
 			MR_Word	ticket_counter;
 			MR_Word	trail_ptr;
 
 			trail_ptr = MR_based_stackvar(this_frame,
-					entry->MR_sle_maybe_trail);
+					level_layout->MR_sle_maybe_trail);
 			ticket_counter = MR_based_stackvar(this_frame,
-					entry->MR_sle_maybe_trail+1);
+					level_layout->MR_sle_maybe_trail+1);
 			MR_reset_ticket(trail_ptr, MR_retry);
 			MR_discard_tickets_to(ticket_counter);
 		} else {
@@ -509,29 +627,31 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	} else {
 		MR_Word	*this_frame;
 
-		/*
-		** We are at a final port, so sp must already have been reset
-		** to its original value. We only need to set up the succip
-		** and curfr registers for the "call", and remove this frame,
-		** and any other frames above it, from the nondet stack.
-		*/
-
 		this_frame = MR_saved_curfr(saved_regs);
-
+#ifdef	MR_DEBUG_RETRY
+		MR_print_succip_reg(stdout, saved_regs);
+		MR_print_stack_regs(stdout, saved_regs);
+#endif
 		MR_saved_succip(saved_regs) = MR_succip_slot(this_frame);
 		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
 		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
+#ifdef	MR_DEBUG_RETRY
+		MR_print_succip_reg(stdout, saved_regs);
+		MR_print_stack_regs(stdout, saved_regs);
+#endif
 		MR_trace_event_number = MR_event_num_framevar(this_frame);
+		MR_trace_call_seqno = MR_call_num_framevar(this_frame) - 1;
+		MR_trace_call_depth = MR_call_depth_framevar(this_frame) - 1;
 
 #ifdef	MR_USE_TRAIL
-		if (entry->MR_sle_maybe_trail >= 0) {
+		if (level_layout->MR_sle_maybe_trail >= 0) {
 			MR_Word	ticket_counter;
 			MR_Word	trail_ptr;
 
 			trail_ptr = MR_based_framevar(this_frame,
-					entry->MR_sle_maybe_trail);
+					level_layout->MR_sle_maybe_trail);
 			ticket_counter = MR_based_framevar(this_frame,
-					entry->MR_sle_maybe_trail+1);
+					level_layout->MR_sle_maybe_trail+1);
 			MR_reset_ticket(trail_ptr, MR_retry);
 			MR_discard_tickets_to(ticket_counter);
 		} else {
@@ -544,12 +664,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		saved_reg(saved_regs, i) = args[i];
 	}
 
-	if (args != NULL) {
-		free(args);
-	}
-
 	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);
-	*jumpaddr = entry->MR_sle_code_addr;
+	*jumpaddr = level_layout->MR_sle_code_addr;
 
 	/*
 	** Overriding MR_trace_call_seqno etc is not enough, because
@@ -561,13 +677,129 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	event_details->MR_call_depth = MR_trace_call_depth;
 	event_details->MR_event_number = MR_trace_event_number;
 
+	if (args != NULL) {
+		MR_free(args);
+	}
+
+	MR_reset_call_table_array();
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, saved_regs);
+#endif
+	return MR_RETRY_OK_DIRECT;
+
+report_problem:
+	if (args != NULL) {
+		MR_free(args);
+	}
+
+	MR_abandon_call_table_array();
+	return MR_RETRY_ERROR;
+}
+
+/*
+** This function figures out the state of the stacks (i.e. the values of sp,
+** curfr and maxfr) just after entry to the procedure specified by the given
+** ancestor level, and returns the proc layout for the specified procedure.
+** It also finds the list of call table tips that must be reset on a retry
+** of that ancestor.
+**
+** If it finds that it cannot do its job, it returns NULL and sets *problem
+** to point to a string giving the reason for its failure.
+*/
+
+static const MR_Stack_Layout_Label *
+MR_unwind_stacks_for_retry(const MR_Stack_Layout_Label *top_layout,
+	int ancestor_level, MR_Word **sp_ptr, MR_Word **curfr_ptr,
+	MR_Word **maxfr_ptr, const char **problem)
+{
+	MR_Stack_Walk_Step_Result       result;
+	const MR_Stack_Layout_Entry	*level_layout;
+	const MR_Stack_Layout_Label	*return_label_layout;
+	int				i;
+
+	if (ancestor_level < 0) {
+		*problem = "no such stack frame";
+		return NULL;
+	}
+
+	return_label_layout = top_layout;
+	level_layout = top_layout->MR_sll_entry;
+	*problem = MR_undo_updates_of_maxfr(level_layout,
+			*sp_ptr, *curfr_ptr, maxfr_ptr);
+
+	if (*problem != NULL) {
+		return NULL;
+	}
+
+	MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
+
+	for (i = 0; i < ancestor_level; i++) {
+		result = MR_stack_walk_step(level_layout, &return_label_layout,
+				sp_ptr, curfr_ptr, problem);
+		if (result != STEP_OK) {
+			if (*problem == NULL) {
+				*problem = "not that many ancestors";
+			}
+
+			return NULL;
+		}
+
+		level_layout = return_label_layout->MR_sll_entry;
+		*problem = MR_undo_updates_of_maxfr(level_layout,
+				*sp_ptr, *curfr_ptr, maxfr_ptr);
+
+		if (*problem != NULL) {
+			return NULL;
+		}
+
+		MR_maybe_record_call_table(level_layout, *sp_ptr, *curfr_ptr);
+	}
+
+	return return_label_layout;
+}
+
+static const char *
+MR_undo_updates_of_maxfr(const MR_Stack_Layout_Entry *level_layout,
+	MR_Word *level_sp, MR_Word *level_curfr, MR_Word **maxfr_ptr)
+{
+	if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
+		/*
+		** The code of a procedure that lives on the det stack
+		** never updates curfr, but may update maxfr by pushing
+		** a temporary nondet frame. If it does so, and the
+		** procedure is traced, the original value of maxfr 
+		** will be saved in a stack slot.
+		*/
+
+		if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+			return "an intervening stack frame "
+				"has no debugging information";
+		} else if (level_layout->MR_sle_maybe_maxfr > 0) {
+			*maxfr_ptr = (MR_Word *) MR_based_stackvar(level_sp,
+				level_layout->MR_sle_maybe_maxfr);
+#if MR_DEBUG_RETRY
+			fprintf(stdout, "resetting maxfr to ");
+			MR_print_nondstackptr(stdout, *maxfr_ptr);
+			fprintf(stdout, "\n");
+#endif
+		} /* else we need do nothing */
+	} else {
+		/*
+		** When we finish setting up the stack frame of a
+		** procedure that lives on the nondet stack,
+		** maxfr == curfr.
+		*/
+
+		*maxfr_ptr = level_curfr;
+	}
+
 	return NULL;
 }
 
-
 static MR_Word
 MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, MR_Word *saved_regs,
-	MR_uint_least16_t var_num, bool *succeeded)
+	MR_Word *base_sp, MR_Word *base_curfr, MR_uint_least16_t var_num,
+	bool *succeeded)
 {
 	const MR_Stack_Layout_Vars	*vars;
 	int				i;
@@ -583,17 +815,308 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, MR_Word *saved_regs,
 			if (i < MR_long_desc_var_count(vars)) {
 				return MR_lookup_long_lval_base(
 					MR_long_desc_var_locn(vars, i),
-					saved_regs, MR_saved_sp(saved_regs),
-					MR_saved_curfr(saved_regs), succeeded);
+					saved_regs, base_sp, base_curfr,
+					succeeded);
 			} else {
 				return MR_lookup_short_lval_base(
 					MR_short_desc_var_locn(vars, i),
-					saved_regs, MR_saved_sp(saved_regs),
-				MR_saved_curfr(saved_regs), succeeded);
+					saved_regs, base_sp, base_curfr,
+					succeeded);
 			}
 		}
 	}
 
 	*succeeded = FALSE;
 	return 0;
+}
+
+/*****************************************************************************/
+
+#ifdef	MR_USE_MINIMAL_MODEL
+
+/*
+** MR_check_minimal_model_calls scans the nondet stack region about to be
+** discarded by the retry operation, searching for the stack frames of
+** procedures whose evaluation method is minimal model.
+**
+** In grades that do enable minimal model tabling, redoip hijacking is
+** disabled, so the fact that the redoip slot of a nondet stack frame points
+** to a label within a given procedure means that the frame was created by that
+** procedure.
+**
+** If we ever get here, the redoip slot of the home frame of every model_non
+** procedure compiled with debugging ought to point to a label in its own code,
+** not to a label in the runtime system.
+*/
+
+#define	INIT_RECORD_ARRAY_SIZE		10
+
+typedef	struct {
+	MR_Subgoal	*record_subgoal;
+	MR_Subgoal	*record_leader;
+	bool		found_leader_generator;
+} MR_Minimal_Model_Record;
+
+static MR_Retry_Result
+MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
+	MR_Word *target_maxfr, const char **problem)
+{
+	const MR_Stack_Layout_Label	*label_layout;
+	const MR_Stack_Layout_Entry	*proc_layout;
+	MR_Word				*top_maxfr;
+	MR_Word				*cur_maxfr;
+	MR_Code				*redoip;
+	MR_TrieNode			trienode;
+	MR_Subgoal			*subgoal;
+	MR_Subgoal			*leader;
+	MR_Minimal_Model_Record		*record_ptrs;
+	int				record_ptr_max;
+	int				record_ptr_next;
+	int				frame_size;
+	int				cur_gen;
+	MR_Internal			*label;
+	int				i;
+	bool				any_missing_generators;
+
+	top_maxfr = MR_saved_maxfr(event_info->MR_saved_regs);
+	cur_gen = MR_gen_next - 1;
+
+	for (cur_maxfr = top_maxfr;
+		cur_maxfr > target_maxfr;
+		cur_maxfr = MR_prevfr_slot(cur_maxfr))
+	{
+		frame_size = cur_maxfr - MR_prevfr_slot(cur_maxfr);
+		if (frame_size == MR_NONDET_TEMP_SIZE) {
+			/*
+			** These frames represent auxiliary frames of model_non
+			** procedures. We will traverse the main frame of every
+			** such procedure as well, and we can do everything we
+			** need to do then, so we can ignore these frames.
+			*/
+
+			continue;
+		} else if (frame_size == MR_DET_TEMP_SIZE) {
+			/*
+			** These frames represent auxiliary frames of model_det
+			** or model_semi procedures, which call a model_non
+			** procedure inside a commit. We should queue the
+			** associated commit stack entry for resetting,
+			** but the future of the commit stack is in flux
+			** at the moment (it has some design-level bugs),
+			** so for now we just note the need for future work
+			** here XXX.
+			*/
+
+			continue;
+		}
+
+		/*
+		** The remaining frames represent the main frames of model_non
+		** procedures.
+		*/
+
+		redoip = MR_prevfr_slot(cur_maxfr);
+		label = MR_lookup_internal_by_addr(redoip);
+		if (label == NULL) {
+			*problem = "reached unknown label ";
+			return MR_RETRY_ERROR;
+		}
+
+		if (label->i_layout == NULL) {
+			*problem = "reached label without debugging info";
+			return MR_RETRY_ERROR;
+		}
+
+		label_layout = label->i_layout;
+		proc_layout = label_layout->MR_sll_entry;
+
+		if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
+			*problem = "reached label without debugging info";
+			return MR_RETRY_ERROR;
+		}
+
+		if (MR_sle_eval_method(proc_layout) != MR_EVAL_METHOD_MINIMAL)
+		{
+			continue;
+		}
+
+		if (proc_layout->MR_sle_maybe_call_table <= 0) {
+			fatal_error("minimal model procedure "
+					"has no call table slot");
+		}
+
+		trienode = (MR_TrieNode) MR_based_framevar(cur_maxfr, 
+					proc_layout->MR_sle_maybe_call_table);
+		subgoal = trienode->MR_subgoal;
+		if (subgoal->leader != NULL) {
+			leader = subgoal->leader;
+		} else {
+			leader = subgoal;
+		}
+
+		MR_ensure_room_for_next(record_ptr, MR_Minimal_Model_Record,
+			INIT_RECORD_ARRAY_SIZE);
+
+		record_ptrs[record_ptr_next].record_subgoal = subgoal;
+		record_ptrs[record_ptr_next].record_leader = leader;
+		record_ptrs[record_ptr_next].found_leader_generator = FALSE;
+		record_ptr_next++;
+
+		if (cur_maxfr == MR_gen_stack[cur_gen].generator_frame) {
+			for (i = 0; i < record_ptr_next; i++) {
+				if (record_ptrs[i].record_leader == subgoal) {
+					record_ptrs[i].found_leader_generator
+						= TRUE;
+				}
+			}
+
+			cur_gen--;
+		}
+	}
+
+	any_missing_generators = FALSE;
+	for (i = 0; i < record_ptr_next; i++) {
+		if (! record_ptrs[i].found_leader_generator) {
+			any_missing_generators = TRUE;
+		}
+	}
+
+	if (any_missing_generators) {
+		*problem = "retry would interfere with minimal model tabling";
+		return MR_RETRY_ERROR;
+	} else if (record_ptr_next > 0) {
+		if (event_info->MR_trace_port == MR_PORT_EXCEPTION
+		&& ancestor_level == 0)
+		{
+			*problem = "cannot retry minimal model procedure "
+				"from the exception port";
+			return MR_RETRY_ERROR;
+		}
+
+		label_layout = event_info->MR_event_sll;
+		proc_layout = label_layout->MR_sll_entry;
+
+		if (MR_sle_eval_method(proc_layout) == MR_EVAL_METHOD_MINIMAL) {
+			return MR_RETRY_OK_FAIL_FIRST;
+		} else {
+			return MR_RETRY_OK_FINISH_FIRST;
+		}
+	} else {
+		return MR_RETRY_OK_DIRECT;
+	}
+}
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+/*****************************************************************************/
+
+/*
+** The rest of this file implements the mechanism that the retry command uses
+** to reset the call tables of any calls being retried over.
+**
+** Each execution of MR_trace_retry is required to make the following
+** sequence of calls on this submodule:
+**
+**	one call to MR_init_call_table_array
+**	zero or more calls to MR_maybe_record_call_table
+**	one call to either
+**		MR_reset_call_table_array (if the direct retry is successful)
+**		MR_abandon_call_table_array (if it is not)
+*/
+
+static	MR_TrieNode	*MR_call_table_ptrs;
+static	int		MR_call_table_ptr_max;
+static	int		MR_call_table_ptr_next;
+
+#define	INIT_CALL_TABLE_ARRAY_SIZE	10
+
+static void
+MR_init_call_table_array(void)
+{
+	MR_call_table_ptr_next = 0;
+}
+
+static void
+MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
+	MR_Word *sp, MR_Word *curfr)
+{
+	MR_TrieNode	call_table;
+
+	if (! MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
+		/*
+		** The exec trace seems to have disappeared since the call
+		** to MR_undo_updates_of_maxfr ...
+		*/
+
+		MR_fatal_error("proc layout without exec trace "
+				"in MR_maybe_record_call_table");
+	}
+
+	switch (MR_sle_eval_method(level_layout)) {
+
+	case MR_EVAL_METHOD_NORMAL:
+		/* nothing to do */
+		return;
+
+	case MR_EVAL_METHOD_MEMO:
+	case MR_EVAL_METHOD_LOOP_CHECK:
+		if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
+			call_table = (MR_TrieNode) MR_based_stackvar(sp, 
+				level_layout->MR_sle_maybe_call_table);
+		} else {
+			call_table = (MR_TrieNode) MR_based_framevar(curfr, 
+				level_layout->MR_sle_maybe_call_table);
+		}
+
+		if (call_table != NULL) {
+			MR_ensure_room_for_next(MR_call_table_ptr, MR_TrieNode,
+				INIT_CALL_TABLE_ARRAY_SIZE);
+
+			MR_call_table_ptrs[MR_call_table_ptr_next] =
+				call_table;
+			MR_call_table_ptr_next++;
+		}
+
+		return;
+
+	case MR_EVAL_METHOD_MINIMAL:
+		/*
+		** We want to process all the minimal model calls whose
+		** stack frames are in the part of the nondet stack to be
+		** removed by the retry operation, not just those which are
+		** direct ancestors of the current call. Such calls are
+		** therefore processed in MR_check_minimal_model_calls,
+		** not here.
+		*/
+
+		return;
+	}
+
+	MR_fatal_error(
+		"unknown evaluation method in MR_maybe_record_call_table");
+}
+
+static void
+MR_reset_call_table_array(void)
+{
+	int	i;
+
+	for (i = 0; i < MR_call_table_ptr_next; i++) {
+#ifdef	MR_DEBUG_RETRY
+		printf("resetting call table ptr %d (%x)\n",
+			(MR_Integer) MR_call_table_ptrs[i],
+			(MR_Integer) MR_call_table_ptrs[i]);
+#endif
+		MR_call_table_ptrs[i]->MR_integer = 0;
+	}
+
+	MR_abandon_call_table_array();
+}
+
+static void
+MR_abandon_call_table_array(void)
+{
+	if (MR_call_table_ptrs != NULL) {
+		MR_free(MR_call_table_ptrs);
+	}
 }

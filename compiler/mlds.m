@@ -628,9 +628,7 @@
 		string,			% Exported name
 		mlds__qualified_entity_name, % MLDS name for exported entity
 		mlds__func_params,	% MLDS function parameters
-		mlds__context,
-		bool			% is a det function with the
-					% final args mode top_out.
+		mlds__context
 	).
 
 
@@ -829,6 +827,10 @@ XXX Full exception handling support is not yet implemented.
 	%
 	% heap management
 	%
+
+	;	delete_object(mlds__lval)
+			% Compile time garbage collect (ie explicitly
+			% deallocate) the memory used by the lval.
 
 		% XXX the following is still quite tentative
 			% new_object(Target, Tag, Type,
@@ -1074,8 +1076,11 @@ XXX Full exception handling support is not yet implemented.
 :- type mlds__unary_op
 	--->	box(mlds__type)
 	;	unbox(mlds__type)
-	;	cast(mlds__type) % XXX it might be worthwhile adding the 
-				 % type that we cast from.
+			% cast(MLDSType):
+			% Coerce the type of the rval to be MLDSType.
+			% XXX it might be worthwhile adding the 
+			% type that we cast from.
+	;	cast(mlds__type)
 	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const

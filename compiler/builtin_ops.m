@@ -25,7 +25,6 @@
 	;	tag
 	;	unmktag
 	;	mkbody
-	;	body
 	;	unmkbody
 	;	cast_to_unsigned
 	;	hash_string
@@ -49,6 +48,7 @@
 	;	(or)	% logical or
 	;	eq	% ==
 	;	ne	% !=
+	;	body
 	;	array_index
 	;	str_eq	% string comparisons
 	;	str_ne

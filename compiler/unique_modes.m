@@ -194,10 +194,12 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap0),
 	instmap__lookup_var(InstMap0, Var, Inst0),
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_is_reachable(DeltaInstMap),
 		instmap_delta_search_var(DeltaInstMap, Var, Inst),
-		\+ inst_matches_final(Inst, Inst0, ModuleInfo)
+		\+ inst_matches_final(Inst, Inst0, Type, ModuleInfo)
 	->
 		ChangedVars = [Var | ChangedVars1],
 		select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo,
@@ -396,14 +398,15 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	%
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
-	=(ModeInfo),
-	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
+	=(ModeInfo0),
+	{ select_live_vars(NonLocalsList, ModeInfo0, LiveNonLocals) },
 	make_var_list_mostly_uniq(LiveNonLocals),
 	%
 	% But nothing is forward-live for the negated goal, since
 	% if the goal succeeds then execution will immediately backtrack.
 	% So we need to set the live variables set to empty here.
 	%
+	=(ModeInfo),
 	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
 	mode_info_set_live_vars([]),
 	%
@@ -615,8 +618,9 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 				InitialInsts),
 	modecheck_var_has_inst_list(ArgVars, InitialInsts, ArgOffset,
-				ModeInfo0, ModeInfo1),
-	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+				InstVarSub, ModeInfo0, ModeInfo1),
+	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts0),
+	inst_list_apply_substitution(FinalInsts0, InstVarSub, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
 		ArgOffset, NewArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
 	( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->

@@ -76,11 +76,13 @@ extern	void		(*MR_library_finalizer)(void);
 extern	void		(*MR_io_stderr_stream)(MR_Word *);
 extern	void		(*MR_io_stdout_stream)(MR_Word *);
 extern	void		(*MR_io_stdin_stream)(MR_Word *);
-extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
-extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
+extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Box);
+extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Box);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
+extern	void		(*address_of_init_modules_type_tables)(void);
+extern	void		(*address_of_init_modules_debugger)(void);
 
 #ifdef CONSERVATIVE_GC
 extern	void		(*address_of_init_gc)(void);
@@ -152,6 +154,8 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 extern	void		do_init_modules(void);
+extern	void		do_init_modules_type_tables(void);
+extern	void		do_init_modules_debugger(void);
 
 extern	const char	*progname;
 extern	int		mercury_argc;

@@ -257,7 +257,8 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 		% Infer the determinism of the goal
 	proc_info_goal(Proc0, Goal0),
 	proc_info_get_initial_instmap(Proc0, ModuleInfo0, InstMap0),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo),
+	proc_info_vartypes(Proc0, VarTypes),
+	det_info_init(ModuleInfo0, VarTypes, PredId, ProcId, Globals, DetInfo),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 			Goal, Detism1, Msgs),
 
@@ -900,7 +901,7 @@ det_type_has_user_defined_equality_pred(DetInfo, Type) :-
 :- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
 det_infer_unify_examines_rep(assign(_, _), no).
 det_infer_unify_examines_rep(construct(_, _, _, _, _, _, _), no).
-det_infer_unify_examines_rep(deconstruct(_, _, _, _, _), yes).
+det_infer_unify_examines_rep(deconstruct(_, _, _, _, _, _), yes).
 det_infer_unify_examines_rep(simple_test(_, _), yes).
 det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% Some complicated modes of complicated unifications _do_
@@ -922,7 +923,7 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 :- pred det_infer_unify_canfail(unification, can_fail).
 :- mode det_infer_unify_canfail(in, out) is det.
 
-det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail), CanFail).
+det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail, _), CanFail).
 det_infer_unify_canfail(assign(_, _), cannot_fail).
 det_infer_unify_canfail(construct(_, _, _, _, _, _, _), cannot_fail).
 det_infer_unify_canfail(simple_test(_, _), can_fail).

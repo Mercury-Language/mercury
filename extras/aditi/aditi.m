@@ -1434,7 +1434,7 @@ aditi__init_posn(posn(1, 0, 0)).
 		"MADITI__read_attr_from_string").
 
 aditi__read_attr_from_string(String, MaxPos, Thing, Posn0, Posn, Status) :-
-	io__read_from_string("Aditi tuple", String,
+	io__read_from_string_with_int_instead_of_char("Aditi tuple", String,
 		MaxPos, Result, Posn0, Posn),
 	( Result = ok(Thing0) ->
 		Thing = Thing0,

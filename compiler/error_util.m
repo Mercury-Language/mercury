@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,10 +96,27 @@
 		io__state, io__state).
 :- mode report_error_num_args(in, in, in, di, uo) is det.
 
+
+	% sorry(ModuleName, Message)
+	% Call error/1 with a "Sorry, not implemented" message.
+	%
+	% Use this for features that should be implemented (or at
+	% least could be implemented).
+	%
+:- pred sorry(string::in, string::in) is erroneous.
+
+	% unexpected(ModuleName, Message)
+	% Call error/1 with an "Unexpected" message.
+	%
+	% Use this to handle cases which are not expected to arise (i.e.
+	% bugs).
+	%
+:- pred unexpected(string::in, string::in) is erroneous.
+
 :- implementation.
 
 :- import_module prog_out, globals, options.
-:- import_module bool, io, list, term, char, string, int.
+:- import_module bool, io, list, term, char, string, int, require.
 
 error_util__list_to_pieces([], []).
 error_util__list_to_pieces([Elem], [words(Elem)]).
@@ -435,4 +452,19 @@ report_error_right_num_args([Arity | Arities]) -->
 		io__write_string(", ")
 	),
 	report_error_right_num_args(Arities).
+
+
+
+	% Call error/1 with a "Sorry, not implemented" message.
+	%
+sorry(Module, What) :-
+	string__format("%s: Sorry, not implemented: %s",
+		[s(Module), s(What)], ErrorMessage),
+	error(ErrorMessage).
+
+unexpected(Module, What) :-
+	string__format("%s: Unexpected: %s", 
+		[s(Module), s(What)], ErrorMessage),
+	error(ErrorMessage).
+
 

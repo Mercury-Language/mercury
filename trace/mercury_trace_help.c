@@ -102,7 +102,7 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *tex
 	);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-				MR_trace_help_system_type);
+			MR_trace_help_system_type);
 
 	return (error ? msg : NULL);
 }

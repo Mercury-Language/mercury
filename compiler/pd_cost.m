@@ -128,7 +128,7 @@ pd_cost__unify(NonLocals, construct(Var, _, Args, _, _, _, _), Cost) :-
 		Cost = 0
 	).
 
-pd_cost__unify(NonLocals, deconstruct(_, _, Args, _, CanFail), Cost) :-
+pd_cost__unify(NonLocals, deconstruct(_, _, Args, _, CanFail, _), Cost) :-
 	( CanFail = can_fail ->
 		pd_cost__simple_test(Cost0)
 	;

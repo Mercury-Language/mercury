@@ -103,6 +103,9 @@
 :- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)).
 :- mode code_util__goal_list_may_allocate_heap(in) is semidet.
 
+:- pred code_util__goal_may_alloc_temp_frame(hlds_goal).
+:- mode code_util__goal_may_alloc_temp_frame(in) is semidet.
+
 	% Negate a condition.
 	% This is used mostly just to make the generated code more readable.
 
@@ -269,7 +272,7 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
 
 code_util__make_internal_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = local(ProcLabel, LabelNum).
+	Label = local(LabelNum, ProcLabel).
 
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
@@ -376,7 +379,7 @@ code_util__proc_label_from_code_addr(CodeAddr, ProcLabel) :-
 		CodeAddr = imported(ProcLabel)
 	).
 
-code_util__extract_proc_label_from_label(local(ProcLabel, _), ProcLabel).
+code_util__extract_proc_label_from_label(local(_, ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(c_local(ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(local(ProcLabel), ProcLabel).
 code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
@@ -445,52 +448,160 @@ code_util__compiler_generated(PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-	% This code may _look_ nondeterministic, but it's really semidet,
-	% and Mercury is smart enough to know this.
+code_util__goal_may_allocate_heap(Goal) :-
+	code_util__goal_may_allocate_heap(Goal, yes).
 
-code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
-	code_util__goal_may_allocate_heap_2(Goal).
+code_util__goal_list_may_allocate_heap(Goals) :-
+	code_util__goal_list_may_allocate_heap(Goals, yes).
 
-:- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr).
-:- mode code_util__goal_may_allocate_heap_2(in) is semidet.
+:- pred code_util__goal_may_allocate_heap(hlds_goal::in, bool::out) is det.
 
-code_util__goal_may_allocate_heap_2(generic_call(_, _, _, _)).
-code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _)) :-
-	Builtin \= inline_builtin.
-code_util__goal_may_allocate_heap_2(
-		unify(_, _, _, construct(_,_,Args,_,_,_,_), _)) :-
-	Args = [_|_].
-code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal)) :-
-	code_util__goal_may_allocate_heap(Goal).
-code_util__goal_may_allocate_heap_2(not(Goal)) :-
-	code_util__goal_may_allocate_heap(Goal).
-code_util__goal_may_allocate_heap_2(conj(Goals)) :-
-	code_util__goal_list_may_allocate_heap(Goals).
-code_util__goal_may_allocate_heap_2(disj(Goals, _)) :-
-	code_util__goal_list_may_allocate_heap(Goals).
-code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases, _)) :-
-	code_util__cases_may_allocate_heap(Cases).
-code_util__goal_may_allocate_heap_2(if_then_else(_Vars, A, B, C, _)) :-
-	(
-		code_util__goal_may_allocate_heap(A)
-	;	
-		code_util__goal_may_allocate_heap(B)
+code_util__goal_may_allocate_heap(Goal - _GoalInfo, May) :-
+	code_util__goal_may_allocate_heap_2(Goal, May).
+
+:- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out)
+	is det.
+
+code_util__goal_may_allocate_heap_2(generic_call(_, _, _, _), yes).
+code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _), May) :-
+	( Builtin = inline_builtin ->
+		May = no
 	;
-		code_util__goal_may_allocate_heap(C)
+		May = yes
+	).
+code_util__goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
+	( Unification = construct(_,_,Args,_,_,_,_), Args = [_|_] ->
+		May = yes
+	;
+		May = no
+	).
+	% We cannot safely say that a C code fragment does not allocate memory
+	% without knowing all the #defined macros that expand to incr_hp and
+	% variants thereof.
+code_util__goal_may_allocate_heap_2(pragma_foreign_code(_,_,_,_,_,_,_,_), yes).
+code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
+	code_util__goal_may_allocate_heap(Goal, May).
+code_util__goal_may_allocate_heap_2(not(Goal), May) :-
+	code_util__goal_may_allocate_heap(Goal, May).
+code_util__goal_may_allocate_heap_2(conj(Goals), May) :-
+	code_util__goal_list_may_allocate_heap(Goals, May).
+code_util__goal_may_allocate_heap_2(par_conj(_, _), yes).
+code_util__goal_may_allocate_heap_2(disj(Goals, _), May) :-
+	code_util__goal_list_may_allocate_heap(Goals, May).
+code_util__goal_may_allocate_heap_2(switch(_Var, _Det, Cases, _), May) :-
+	code_util__cases_may_allocate_heap(Cases, May).
+code_util__goal_may_allocate_heap_2(if_then_else(_Vars, C, T, E, _), May) :-
+	( code_util__goal_may_allocate_heap(C, yes) ->
+		May = yes
+	; code_util__goal_may_allocate_heap(T, yes) ->
+		May = yes
+	;
+		code_util__goal_may_allocate_heap(E, May)
+	).
+code_util__goal_may_allocate_heap_2(bi_implication(G1, G2), May) :-
+	( code_util__goal_may_allocate_heap(G1, yes) ->
+		May = yes
+	;
+		code_util__goal_may_allocate_heap(G2, May)
 	).
 
-:- pred code_util__cases_may_allocate_heap(list(case)).
-:- mode code_util__cases_may_allocate_heap(in) is semidet.
+:- pred code_util__goal_list_may_allocate_heap(list(hlds_goal)::in, bool::out)
+	is det.
 
-code_util__cases_may_allocate_heap([case(_, Goal) | _]) :-
-	code_util__goal_may_allocate_heap(Goal).
-code_util__cases_may_allocate_heap([_ | Cases]) :-
-	code_util__cases_may_allocate_heap(Cases).
+code_util__goal_list_may_allocate_heap([], no).
+code_util__goal_list_may_allocate_heap([Goal | Goals], May) :-
+	( code_util__goal_may_allocate_heap(Goal, yes) ->
+		May = yes
+	;
+		code_util__goal_list_may_allocate_heap(Goals, May)
+	).
 
-code_util__goal_list_may_allocate_heap([Goal | _]) :-
-	code_util__goal_may_allocate_heap(Goal).
-code_util__goal_list_may_allocate_heap([_ | Goals]) :-
-	code_util__goal_list_may_allocate_heap(Goals).
+:- pred code_util__cases_may_allocate_heap(list(case)::in, bool::out) is det.
+
+code_util__cases_may_allocate_heap([], no).
+code_util__cases_may_allocate_heap([case(_, Goal) | Cases], May) :-
+	( code_util__goal_may_allocate_heap(Goal, yes) ->
+		May = yes
+	;
+		code_util__cases_may_allocate_heap(Cases, May)
+	).
+
+%-----------------------------------------------------------------------------%
+
+code_util__goal_may_alloc_temp_frame(Goal) :-
+	code_util__goal_may_alloc_temp_frame(Goal, yes).
+
+:- pred code_util__goal_may_alloc_temp_frame(hlds_goal::in, bool::out) is det.
+
+code_util__goal_may_alloc_temp_frame(Goal - _GoalInfo, May) :-
+	code_util__goal_may_alloc_temp_frame_2(Goal, May).
+
+:- pred code_util__goal_may_alloc_temp_frame_2(hlds_goal_expr::in, bool::out)
+	is det.
+
+code_util__goal_may_alloc_temp_frame_2(generic_call(_, _, _, _), no).
+code_util__goal_may_alloc_temp_frame_2(call(_, _, _, _, _, _), no).
+code_util__goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
+	% We cannot safely say that a C code fragment does not allocate
+	% temporary nondet frames without knowing all the #defined macros
+	% that expand to mktempframe and variants thereof. The performance
+	% impact of being too conservative is probably not too bad.
+code_util__goal_may_alloc_temp_frame_2(pragma_foreign_code(_,_,_,_,_,_,_,_),
+		yes).
+code_util__goal_may_alloc_temp_frame_2(some(_Vars, _, Goal), May) :-
+	Goal = _ - GoalInfo,
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	( CodeModel = model_non ->
+		May = yes
+	;
+		code_util__goal_may_alloc_temp_frame(Goal, May)
+	).
+code_util__goal_may_alloc_temp_frame_2(not(Goal), May) :-
+	code_util__goal_may_alloc_temp_frame(Goal, May).
+code_util__goal_may_alloc_temp_frame_2(conj(Goals), May) :-
+	code_util__goal_list_may_alloc_temp_frame(Goals, May).
+code_util__goal_may_alloc_temp_frame_2(par_conj(Goals, _), May) :-
+	code_util__goal_list_may_alloc_temp_frame(Goals, May).
+code_util__goal_may_alloc_temp_frame_2(disj(Goals, _), May) :-
+	code_util__goal_list_may_alloc_temp_frame(Goals, May).
+code_util__goal_may_alloc_temp_frame_2(switch(_Var, _Det, Cases, _), May) :-
+	code_util__cases_may_alloc_temp_frame(Cases, May).
+code_util__goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E, _), May) :-
+	( code_util__goal_may_alloc_temp_frame(C, yes) ->
+		May = yes
+	; code_util__goal_may_alloc_temp_frame(T, yes) ->
+		May = yes
+	;
+		code_util__goal_may_alloc_temp_frame(E, May)
+	).
+code_util__goal_may_alloc_temp_frame_2(bi_implication(G1, G2), May) :-
+	( code_util__goal_may_alloc_temp_frame(G1, yes) ->
+		May = yes
+	;
+		code_util__goal_may_alloc_temp_frame(G2, May)
+	).
+
+:- pred code_util__goal_list_may_alloc_temp_frame(list(hlds_goal)::in,
+	bool::out) is det.
+
+code_util__goal_list_may_alloc_temp_frame([], no).
+code_util__goal_list_may_alloc_temp_frame([Goal | Goals], May) :-
+	( code_util__goal_may_alloc_temp_frame(Goal, yes) ->
+		May = yes
+	;
+		code_util__goal_list_may_alloc_temp_frame(Goals, May)
+	).
+
+:- pred code_util__cases_may_alloc_temp_frame(list(case)::in, bool::out)
+	is det.
+
+code_util__cases_may_alloc_temp_frame([], no).
+code_util__cases_may_alloc_temp_frame([case(_, Goal) | Cases], May) :-
+	( code_util__goal_may_alloc_temp_frame(Goal, yes) ->
+		May = yes
+	;
+		code_util__cases_may_alloc_temp_frame(Cases, May)
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -553,7 +553,7 @@ parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 		maybe1(instance_method)).
 :- mode term_to_instance_method(in, in, in, out) is det.
 
-term_to_instance_method(ModuleName, VarSet, MethodTerm, Result) :-
+term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 	(
 		MethodTerm = term__functor(term__atom("is"), [ClassMethodTerm,
 						InstanceMethod], TermContext)
@@ -618,7 +618,19 @@ term_to_instance_method(ModuleName, VarSet, MethodTerm, Result) :-
 				MethodTerm)
 		)
 	;
-		parse_item(ModuleName, VarSet, MethodTerm, Result0),
+		% For the clauses in an instance declaration,
+		% the default module name for the clause heads
+		% is the module name of the class that this is an
+		% instance declaration for, but we don't necessarily
+		% know what module that is at this point, since the
+		% class name hasn't been fully qualified yet.
+		% So here we give the special module name ""
+		% as the default, which means that there is no default.
+		% (If the module qualifiers in the clauses don't match
+		% the module name of the class, we will pick that up later,
+		% in check_typeclass.m.)
+		DefaultModuleName = unqualified(""),
+		parse_item(DefaultModuleName, VarSet, MethodTerm, Result0),
 		(
 			Result0 = ok(Item, Context),
 			(
@@ -635,10 +647,15 @@ term_to_instance_method(ModuleName, VarSet, MethodTerm, Result) :-
 		->
 			Result = ok(instance_method(PredOrFunc,
 					ClassMethodName,
-					% XXX FIXME handle multiple clauses
 					clauses([Item]),
 					ArityInt, Context))
 		;
+			Result0 = error(ErrorMsg, ErrorTerm)
+		->
+			Result = error(ErrorMsg, ErrorTerm)
+		;
+			% catch-all error message for a syntactically valid item
+			% which is not a clause
 			Result = error("expected clause or `pred(<Name> / <Arity>) is <InstanceName>' or `func(<Name> / <Arity>) is <InstanceName>')",
 				MethodTerm)
 		)

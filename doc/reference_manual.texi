@@ -376,118 +376,99 @@ lower or equal to that of the operator.
 For example, ``yfx'' indicates a left-associative infix operator, 
 while ``xfy'' indicates a right-associative infix operator.
 
-@multitable @columnfractions .25 .2 .2 .2
+@example
 
-@item Operator @tab Category @tab Specifier @tab Priority
+Operator          Category  Specifier Priority
 
-@item @code{^} @tab after @tab xfy @tab 99
-@item @code{^} @tab before @tab fx @tab 100
-@item @code{**} @tab after @tab xfy @tab 200
-@item @code{-} @tab before @tab fx @tab 200
-@item @code{\} @tab before @tab fx @tab 200
-@item @code{*} @tab after @tab yfx @tab 400
-@item @code{//} @tab after @tab yfx @tab 400
-@item @code{/} @tab after @tab yfx @tab 400
-@item @code{<<} @tab after @tab yfx @tab 400
-@item @code{>>} @tab after @tab yfx @tab 400
-@item @code{div} @tab after @tab yfx @tab 400
-@item @code{mod} @tab after @tab xfx @tab 400
-@item @code{rem} @tab after @tab xfx @tab 400
-@item @code{++} @tab after @tab xfy @tab 500
-@item @code{+} @tab after @tab yfx @tab 500
-@item @code{+} @tab before @tab fx @tab 500
-@item @code{--} @tab after @tab yfx @tab 500
-@item @code{-} @tab after @tab yfx @tab 500
-@item @code{/\} @tab after @tab yfx @tab 500
-@item @code{\/} @tab after @tab yfx @tab 500
-@item @code{aditi_bottom_up} @tab before @tab fx @tab 500
-@item @code{aditi_top_down} @tab before @tab fx @tab 500
-@item @code{.} @tab after @tab xfy @tab 600
-@item @code{:} @tab after @tab yfx @tab 600
-@item @code{:=} @tab after @tab xfx @tab 650
-@item @code{=^} @tab after @tab xfx @tab 650
-@item @code{<} @tab after @tab xfx @tab 700
-@item @code{=..} @tab after @tab xfx @tab 700
-@item @code{=:=} @tab after @tab xfx @tab 700
-@item @code{=<} @tab after @tab xfx @tab 700
-@item @code{==} @tab after @tab xfx @tab 700
-@item @code{=\=} @tab after @tab xfx @tab 700
-@item @code{=} @tab after @tab xfx @tab 700
-@item @code{>=} @tab after @tab xfx @tab 700
-@item @code{>} @tab after @tab xfx @tab 700
-@item @code{@@<} @tab after @tab xfx @tab 700
-@item @code{@@=<} @tab after @tab xfx @tab 700
-@item @code{@@>=} @tab after @tab xfx @tab 700
-@item @code{@@>} @tab after @tab xfx @tab 700
-@item @code{\==} @tab after @tab xfx @tab 700
-@item @code{\=} @tab after @tab xfx @tab 700
-@item @code{~=} @tab after @tab xfx @tab 700
-@item @code{is} @tab after @tab xfx @tab 701
-@item @code{and} @tab after @tab xfy @tab 720
-@item @code{or} @tab after @tab xfy @tab 740
-@item @code{func} @tab before @tab fx @tab 800
-@item @code{impure} @tab before @tab fy @tab 800
-@item @code{pred} @tab before @tab fx @tab 800
-@item @code{semipure} @tab before @tab fy @tab 800
-@item @code{\+} @tab before @tab fy @tab 900
-@item @code{not} @tab before @tab fy @tab 900
-@item @code{when} @tab after @tab xfx @tab 900
-@item @code{~} @tab before @tab fy @tab 900
-@item @code{<=>} @tab after @tab xfy @tab 920
-@item @code{<=} @tab after @tab xfy @tab 920
-@item @code{=>} @tab after @tab xfy @tab 920
-@item @code{all} @tab before @tab fxy @tab 950
-@item @code{lambda} @tab before @tab fxy @tab 950
-@item @code{some} @tab before @tab fxy @tab 950
-@item @code{,} @tab after @tab xfy @tab 1000
-@item @code{&} @tab after @tab xfy @tab 1025
-@item @code{->} @tab after @tab xfy @tab 1050
-@item @code{;} @tab after @tab xfy @tab 1100
-@item @code{then} @tab after @tab xfx @tab 1150
-@item @code{if} @tab before @tab fx @tab 1160
-@item @code{else} @tab after @tab xfy @tab 1170
-@item @code{::} @tab after @tab xfx @tab 1175
-@item @code{==>} @tab after @tab xfx @tab 1175
-@item @code{where} @tab after @tab xfx @tab 1175
-@item @code{--->} @tab after @tab xfy @tab 1179
-@item @code{type} @tab before @tab fx @tab 1180
-@item @code{end_module} @tab before @tab fx @tab 1199
-@c @item @code{export_adt} @tab before @tab fx @tab 1199
-@c @item @code{export_cons} @tab before @tab fx @tab 1199
-@c @item @code{export_module} @tab before @tab fx @tab 1199
-@c @item @code{export_op} @tab before @tab fx @tab 1199
-@c @item @code{export_pred} @tab before @tab fx @tab 1199
-@c @item @code{export_sym} @tab before @tab fx @tab 1199
-@c @item @code{export_type} @tab before @tab fx @tab 1199
-@c @item @code{import_adt} @tab before @tab fx @tab 1199
-@c @item @code{import_cons} @tab before @tab fx @tab 1199
-@item @code{import_module} @tab before @tab fx @tab 1199
-@c @item @code{import_op} @tab before @tab fx @tab 1199
-@c @item @code{import_pred} @tab before @tab fx @tab 1199
-@c @item @code{import_sym} @tab before @tab fx @tab 1199
-@c @item @code{import_type} @tab before @tab fx @tab 1199
-@item @code{include_module} @tab before @tab fx @tab 1199
-@item @code{instance} @tab before @tab fx @tab 1199
-@item @code{inst} @tab before @tab fx @tab 1199
-@item @code{mode} @tab before @tab fx @tab 1199
-@item @code{module} @tab before @tab fx @tab 1199
-@item @code{pragma} @tab before @tab fx @tab 1199
-@item @code{promise} @tab before @tab fx @tab 1199
-@item @code{rule} @tab before @tab fx @tab 1199
-@item @code{typeclass} @tab before @tab fx @tab 1199
-@c @item @code{use_adt} @tab before @tab fx @tab 1199
-@c @item @code{use_cons} @tab before @tab fx @tab 1199
-@item @code{use_module} @tab before @tab fx @tab 1199
-@c @item @code{use_op} @tab before @tab fx @tab 1199
-@c @item @code{use_pred} @tab before @tab fx @tab 1199
-@c @item @code{use_sym} @tab before @tab fx @tab 1199
-@c @item @code{use_type} @tab before @tab fx @tab 1199
-@item @code{-->} @tab after @tab xfx @tab 1200
-@item @code{:-} @tab after @tab xfx @tab 1200
-@item @code{:-} @tab before @tab fx @tab 1200
-@item @code{?-} @tab before @tab fx @tab 1200
+^                 after     xfy       99
+^                 before    fx        100
+**                after     xfy       200
+-                 before    fx        200
+\                 before    fx        200
+*                 after     yfx       400
+//                after     yfx       400
+/                 after     yfx       400
+<<                after     yfx       400
+>>                after     yfx       400
+div               after     yfx       400
+mod               after     xfx       400
+rem               after     xfx       400
+++                after     xfy       500
++                 after     yfx       500
++                 before    fx        500
+--                after     yfx       500
+-                 after     yfx       500
+/\                after     yfx       500
+\/                after     yfx       500
+aditi_bottom_up   before    fx        500
+aditi_top_down    before    fx        500
+.                 after     xfy       600
+:                 after     yfx       600
+:=                after     xfx       650
+=^                after     xfx       650
+<                 after     xfx       700
+=..               after     xfx       700
+=:=               after     xfx       700
+=<                after     xfx       700
+==                after     xfx       700
+=\=               after     xfx       700
+=                 after     xfx       700
+>=                after     xfx       700
+>                 after     xfx       700
+@@<                after     xfx       700
+@@=<               after     xfx       700
+@@>=               after     xfx       700
+@@>                after     xfx       700
+\==               after     xfx       700
+\=                after     xfx       700
+~=                after     xfx       700
+is                after     xfx       701
+and               after     xfy       720
+or                after     xfy       740
+func              before    fx        800
+impure            before    fy        800
+pred              before    fx        800
+semipure          before    fy        800
+\+                before    fy        900
+not               before    fy        900
+when              after     xfx       900
+~                 before    fy        900
+<=>               after     xfy       920
+<=                after     xfy       920
+=>                after     xfy       920
+all               before    fxy       950
+lambda            before    fxy       950
+some              before    fxy       950
+,                 after     xfy       1000
+&                 after     xfy       1025
+->                after     xfy       1050
+;                 after     xfy       1100
+then              after     xfx       1150
+if                before    fx        1160
+else              after     xfy       1170
+::                after     xfx       1175
+==>               after     xfx       1175
+where             after     xfx       1175
+--->              after     xfy       1179
+type              before    fx        1180
+end_module        before    fx        1199
+import_module     before    fx        1199
+include_module    before    fx        1199
+instance          before    fx        1199
+inst              before    fx        1199
+mode              before    fx        1199
+module            before    fx        1199
+pragma            before    fx        1199
+promise           before    fx        1199
+rule              before    fx        1199
+typeclass         before    fx        1199
+use_module        before    fx        1199
+-->               after     xfx       1200
+:-                after     xfx       1200
+:-                before    fx        1200
+?-                before    fx        1200
 
-@end multitable
+@end example
 
 @node Items
 @section Items
@@ -1574,7 +1555,7 @@ If the declaration of the field is in the interface section of the module,
 the corresponding field selection function is also exported from the module.
 
 By default, this function has no declared modes --- the modes are inferred at
-each call to the function. However, the modes of this function may be
+each call to the function. However, the type and modes of this function may be
 explicitly declared, in which case it will have only the declared modes.
 
 To create a higher-order term from a field selection function, an
@@ -1601,7 +1582,7 @@ If the declaration of the field is in the interface section of the module,
 the corresponding field update function is also exported from the module.
 
 By default, this function has no declared modes --- the modes are inferred at
-each call to the function. However, the modes of this function may be
+each call to the function. However, the type and modes of this function may be
 explicitly declared, in which case it will have only the declared modes.
 
 To create a higher-order term from a field update function, an
@@ -1629,9 +1610,9 @@ Type and mode declarations for compiler-generated field access functions
 for fields of constructors local to a module may be placed in the interface
 section of the module. This allows the implementation of a type to be hidden
 while still allowing client modules to use record syntax to manipulate values
-of the type. Supplying a single mode declaration also allows higher-order
-terms to be created from a field access function without using explicit
-lambda expressions.
+of the type. Supplying a type declaration and a single mode declaration also
+allows higher-order terms to be created from a field access function without
+using explicit lambda expressions.
 
 Declarations for field access functions for fields occurring in the interface
 section of a module must also occur in the interface section.
@@ -3678,14 +3659,14 @@ of method definitions that it can contain:
 :- typeclass foo(T) where [
 	func method1(T, T) = int,
 	func method2(T) = int,
-	pred method3(T::in, int::out) is det
-	pred method4(T::in, io__state::di, io__state::uo) is det
+	pred method3(T::in, int::out) is det,
+	pred method4(T::in, io__state::di, io__state::uo) is det,
 	func method5(bool, T) = T
 ].
 
 :- instance foo(int) where [
 	% method defined by naming the implementation
-	func(method1/1) is (+),
+	func(method1/2) is (+),
 
 	% method defined by a fact
 	method2(X) = X + 1,
@@ -6139,8 +6120,13 @@ linked with the other object files when @samp{mmake @var{main_module}}
 is invoked.
 
 The main limitation of the @samp{fact_table} pragma is that
+in the current implementation,
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
+
+Another limitation is that the @samp{--high-level-code} back-end does
+not support @samp{pragma fact_table} for procedures with determinism
+@samp{nondet} or @samp{multi}.
 
 @node Tabled evaluation
 @section Tabled evaluation

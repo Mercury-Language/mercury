@@ -113,10 +113,10 @@
 ** be switched back into interactive mode.
 */
 
-static	Unsigned	MR_edt_max_depth;
-static	Unsigned	MR_edt_last_event;
+static	MR_Unsigned	MR_edt_max_depth;
+static	MR_Unsigned	MR_edt_last_event;
 static	bool		MR_edt_inside;
-static	Unsigned	MR_edt_start_seqno;
+static	MR_Unsigned	MR_edt_start_seqno;
 
 /*
 ** This is used as the abstract map from node identifiers to nodes
@@ -125,7 +125,7 @@ static	Unsigned	MR_edt_start_seqno;
 ** updated, before being passed to Mercury code again.
 */
 
-static	Unsigned	MR_trace_node_store;
+static	MR_Unsigned	MR_trace_node_store;
 
 /*
 ** The front end state is stored here in between calls to it.
@@ -231,24 +231,25 @@ static	MR_Word
 MR_decl_atom_args(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs);
 
 static	const char *
-MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
+MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
+		MR_Unsigned maxdepth,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-		MR_Event_Details *event_details, Code **jumpaddr);
+		MR_Event_Details *event_details, MR_Code **jumpaddr);
 
-static	Code *
-MR_trace_restart_decl_debug(Unsigned event, Unsigned seqno,
+static	MR_Code *
+MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 		MR_Event_Details *event_details);
 
-static	Code *
+static	MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details);
 
 static	void
 MR_decl_diagnosis_test(MR_Trace_Node root);
 
-static	Code *
-MR_decl_handle_bug_found(Unsigned event, MR_Trace_Cmd_Info *cmd,
+static	MR_Code *
+MR_decl_handle_bug_found(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details);
 
 static	MR_String
@@ -257,7 +258,7 @@ MR_trace_node_path(MR_Trace_Node node);
 static	MR_Trace_Port
 MR_trace_node_port(MR_Trace_Node node);
 
-static	Unsigned
+static	MR_Unsigned
 MR_trace_node_seqno(MR_Trace_Node node);
 
 static	MR_Trace_Node
@@ -275,11 +276,11 @@ MR_decl_checkpoint_event_imp(const char *str, MR_Event_Info *event_info);
 static	void
 MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node);
 
-Code *
+MR_Code *
 MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
 	MR_Stack_Layout_Entry 	*entry;
-	Unsigned		depth;
+	MR_Unsigned		depth;
 	MR_Trace_Node		trace;
 	MR_Event_Details	event_details;
 
@@ -584,7 +585,7 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 #endif
 
 	MR_TRACE_CALL_MERCURY(
-		redo = MR_DD_call_node_get_last_interface( (MR_Word) call);
+		redo = MR_DD_call_node_get_last_interface((MR_Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
 					(MR_Word) prev, (MR_Word) call,
 					(MR_Word) redo,
@@ -600,7 +601,7 @@ MR_trace_decl_excp(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 	MR_Trace_Node		call;
-	Word			last_interface;
+	MR_Word			last_interface;
 
 #ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
@@ -1023,6 +1024,7 @@ static	MR_Word
 MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 		MR_Trace_Port port)
 {
+	MR_PredFunc			pred_or_func;
 	MR_ConstString			name;
 	MR_Word				arity;
 	MR_Word				atom;
@@ -1037,11 +1039,15 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 	name = MR_decl_atom_name(entry);
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		arity = entry->MR_sle_comp.MR_comp_arity;
+		pred_or_func = MR_PREDICATE;
 	} else {
 		arity = entry->MR_sle_user.MR_user_arity;
+		pred_or_func = entry->MR_sle_user.MR_user_pred_or_func;
 	}
 	MR_TRACE_CALL_MERCURY(
-		atom = MR_DD_construct_trace_atom((MR_String) name,
+		atom = MR_DD_construct_trace_atom(
+				(MR_Word) pred_or_func,
+				(MR_String) name,
 				(MR_Word) arity);
 	);
 
@@ -1128,11 +1134,12 @@ MR_trace_decl_ensure_init(void)
 bool
 MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details,
-		Code **jumpaddr)
+		MR_Code **jumpaddr)
 {
+	MR_Retry_Result		result;
 	MR_Stack_Layout_Entry 	*entry;
 	FILE			*out;
-	Unsigned		depth_limit;
+	MR_Unsigned		depth_limit;
 	const char		*message;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
@@ -1198,14 +1205,14 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 	}
 }
 
-static	Code *
-MR_trace_restart_decl_debug(Unsigned event, Unsigned seqno,
+static	MR_Code *
+MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 		MR_Event_Details *event_details)
 {
-	Unsigned		depth_limit;
+	MR_Unsigned		depth_limit;
 	const char		*message;
-	Code			*jumpaddr;
+	MR_Code			*jumpaddr;
 
 	depth_limit = MR_edt_max_depth + MR_EDT_DEPTH_STEP_SIZE;
 	message = MR_trace_start_collecting(event, seqno, depth_limit,
@@ -1223,18 +1230,25 @@ MR_trace_restart_decl_debug(Unsigned event, Unsigned seqno,
 }
 
 static	const char *
-MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
+MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
+		MR_Unsigned maxdepth,
 		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-		MR_Event_Details *event_details, Code **jumpaddr)
+		MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
-	const char		*message;
+	const char		*problem;
+	MR_Retry_Result		retry_result;
 
 	/*
 	** Go back to an event before the topmost call.
 	*/
-	message = MR_trace_retry(event_info, event_details, jumpaddr);
-	if (message != NULL) {
-		return message;
+	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
+			jumpaddr);
+	if (retry_result != MR_RETRY_OK_DIRECT) {
+		if (retry_result == MR_RETRY_ERROR) {
+			return problem;
+		} else {
+			return "internal error: direct retry impossible";
+		}
 	}
 
 	/*
@@ -1267,16 +1281,16 @@ MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
 	return NULL;
 }
 
-static	Code *
+static	MR_Code *
 MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
 	MR_Word			response;
 	bool			bug_found;
 	bool			require_subtree;
-	Unsigned		bug_event;
-	Unsigned		final_event;
-	Unsigned		topmost_seqno;
+	MR_Unsigned		bug_event;
+	MR_Unsigned		final_event;
+	MR_Unsigned		topmost_seqno;
 
 #if 0
 	/*
@@ -1321,22 +1335,38 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	return MR_trace_event_internal(cmd, TRUE, event_info);
 }
 
-static	Code *
-MR_decl_handle_bug_found(Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
+static	MR_Code *
+MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
-	const char		*message;
-	Code			*jumpaddr;
+	const char		*problem;
+	MR_Retry_Result		retry_result;
+	MR_Code			*jumpaddr;
 
 	/*
 	** Perform a retry to get to somewhere before the
 	** bug event.  Then set the command to go to the bug
 	** event and return to interactive mode.
 	*/
-	message = MR_trace_retry(event_info, event_details, &jumpaddr);
-	if (message != NULL) {
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
+	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
+#endif
+	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
+			&jumpaddr);
+#ifdef	MR_DEBUG_RETRY
+	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
+	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
+	MR_print_r_regs(stdout, event_info->MR_saved_regs);
+#endif
+	if (retry_result != MR_RETRY_OK_DIRECT) {
 		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
+		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n");
+		if (retry_result == MR_RETRY_ERROR) {
+			fprintf(MR_mdb_err, "%s\n", problem);
+		} else {
+			fprintf(MR_mdb_err, "direct retry impossible\n");
+		}
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		MR_trace_enabled = TRUE;
 		return MR_trace_event_internal(cmd, TRUE, event_info);
@@ -1390,10 +1420,10 @@ MR_trace_node_port(MR_Trace_Node node)
 	return port;
 }
 
-static	Unsigned
+static	MR_Unsigned
 MR_trace_node_seqno(MR_Trace_Node node)
 {
-	Unsigned		seqno;
+	MR_Unsigned		seqno;
 
 	MR_trace_node_store++;
 	MR_TRACE_CALL_MERCURY(

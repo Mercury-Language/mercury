@@ -237,11 +237,11 @@ vn_block__handle_instr(assign(Lval, Rval),
 		Specials = LeftSpecials
 	),
 	set__insert_list(Liveset0, Specials, Liveset).
-vn_block__handle_instr(call(Proc, Return, Info, Context, CallModel),
+vn_block__handle_instr(call(Proc, Return, Info, Context, GoalPath, CallModel),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn_block__new_ctrl_node(vn_call(Proc, Return, Info, Context,
-		CallModel), Livemap, Params, VnTables0, VnTables,
+		GoalPath, CallModel), Livemap, Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(mkframe(NondetFrameInfo, Redoip), Livemap, Params,
 		VnTables0, VnTables, Liveset0, Liveset,
@@ -418,7 +418,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		C = C0,
 		Parallels = []
 	;
-		VnInstr = vn_call(_, _, _, _, _),
+		VnInstr = vn_call(_, _, _, _, _, _),
 		vn_block__record_at_call(VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
 		C = C0,
@@ -731,9 +731,9 @@ vn_block__record_label(Label, Livemap, Params, VnTables0, VnTables,
 			C = C0,
 			Parallels = []
 		;
-			( Label = local(ProcLabel, _) ->
+			( Label = local(_, ProcLabel) ->
 				counter__allocate(N, C0, C),
-				NewLabel = local(ProcLabel, N),
+				NewLabel = local(N, ProcLabel),
 				Parallels = [parallel(Label, NewLabel,
 					ParEntries)]
 			;
@@ -924,7 +924,7 @@ vn_block__is_ctrl_instr(comment(_), no).
 vn_block__is_ctrl_instr(livevals(_), yes).
 vn_block__is_ctrl_instr(block(_, _, _), no).
 vn_block__is_ctrl_instr(assign(_, _), no).
-vn_block__is_ctrl_instr(call(_, _, _, _, _), yes).
+vn_block__is_ctrl_instr(call(_, _, _, _, _, _), yes).
 vn_block__is_ctrl_instr(mkframe(_, _), yes).
 vn_block__is_ctrl_instr(label(_), yes).
 vn_block__is_ctrl_instr(goto(_), yes).

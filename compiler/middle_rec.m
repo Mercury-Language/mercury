@@ -318,7 +318,7 @@ middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 middle_rec__split_rec_code([], _, _) :-
 	error("did not find call in middle_rec__split_rec_code").
 middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
-	( Instr0 = call(_, _, _, _, _) - _ ->
+	( Instr0 = call(_, _, _, _, _, _) - _ ->
 		(
 			opt_util__skip_comments(Instrs1, Instrs2),
 			Instrs2 = [Instr2 | Instrs3],
@@ -395,7 +395,7 @@ middle_rec__find_used_registers_instr(block(_, _, Instrs), Used0, Used) :-
 middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
-middle_rec__find_used_registers_instr(call(_, _, _, _, _), Used, Used).
+middle_rec__find_used_registers_instr(call(_, _, _, _, _, _), Used, Used).
 middle_rec__find_used_registers_instr(mkframe(_, _), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
 middle_rec__find_used_registers_instr(goto(_), Used, Used).

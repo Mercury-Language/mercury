@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,11 +17,11 @@
 #define	MERCURY_HASH_TABLE_H
 
 #include "mercury_std.h"	/* for bool */
-#include "mercury_dlist.h"	/* for List */
+#include "mercury_dlist.h"	/* for MR_Dlist */
 
 typedef	struct {
 	int		MR_ht_size;
-	List		**MR_ht_store;
+	MR_Dlist	**MR_ht_store;
 	const void	*(*MR_ht_key)(const void *); /* applied to entries */
 	int		(*MR_ht_hash)(const void *); /* applied to keys */
 	bool		(*MR_ht_equal)(const void *, const void *);
@@ -39,12 +39,13 @@ typedef	struct {
 #define	MR_tablehash(table)		(*(table->MR_ht_hash))
 #define	MR_tableequal(table)		(*(table->MR_ht_equal))
 
-extern	void	MR_ht_init_table(MR_Hash_Table *);
-extern	void	*MR_ht_lookup_table(const MR_Hash_Table *, const void *);
-extern	bool	MR_ht_insert_table(const MR_Hash_Table *, void *);
-extern	List	*MR_ht_get_all_entries(const MR_Hash_Table *);
-extern	void	MR_ht_process_all_entries(const MR_Hash_Table *,
-			void f(const void *));
-extern	int	MR_ht_str_to_int(const char *);
+extern	void		MR_ht_init_table(MR_Hash_Table *);
+extern	const void	*MR_ht_lookup_table(const MR_Hash_Table *,
+				const void *);
+extern	bool		MR_ht_insert_table(const MR_Hash_Table *, void *);
+extern	MR_Dlist	*MR_ht_get_all_entries(const MR_Hash_Table *);
+extern	void		MR_ht_process_all_entries(const MR_Hash_Table *,
+				void f(const void *));
+extern	int		MR_ht_str_to_int(const char *);
 
 #endif /* not MERCURY_HASH_TABLE_H */

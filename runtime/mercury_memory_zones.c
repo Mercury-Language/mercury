@@ -281,7 +281,7 @@ unget_zone(MemoryZone *zone)
 		/* VOID */
 	}
 	if (tmp == NULL) {
-		fatal_error("memory zone not found!");
+		MR_fatal_error("memory zone not found!");
 	}
 	if (prev == NULL) {
 		used_memory_zones = used_memory_zones->next;
@@ -343,7 +343,7 @@ create_zone(const char *name, int id, size_t size,
 	if (base == NULL) {
 		char buf[2560];
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
-		fatal_error(buf);
+		MR_fatal_error(buf);
 	}
 
 	return construct_zone(name, id, base, size, offset, redsize, handler);
@@ -358,7 +358,7 @@ construct_zone(const char *name, int id, MR_Word *base,
 	size_t		total_size;
 
 	if (base == NULL) {
-		fatal_error("construct_zone called with NULL pointer");
+		MR_fatal_error("construct_zone called with NULL pointer");
 	}
 
 	zone = get_zone();
@@ -397,7 +397,7 @@ construct_zone(const char *name, int id, MR_Word *base,
 		sprintf(buf, "unable to set %s#%d redzone\n"
 			"base=%p, redzone=%p",
 			zone->name, zone->id, zone->bottom, zone->redzone);
-		fatal_error(buf);
+		MR_fatal_error(buf);
 	}
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
@@ -412,7 +412,7 @@ construct_zone(const char *name, int id, MR_Word *base,
 			"base=%p, hardmax=%p top=%p",
 			zone->name, zone->id, zone->bottom, zone->hardmax,
 			zone->top);
-		fatal_error(buf);
+		MR_fatal_error(buf);
 	}
 #endif	/* MR_PROTECTPAGE */
 
@@ -432,7 +432,7 @@ reset_redzone(MemoryZone *zone)
 		sprintf(buf, "unable to reset %s#%d redzone\n"
 			"base=%p, redzone=%p",
 			zone->name, zone->id, zone->bottom, zone->redzone);
-		fatal_error(buf);
+		MR_fatal_error(buf);
 	}
 #endif	/* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 }

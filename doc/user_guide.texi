@@ -921,7 +921,7 @@ EXTRA_LIBRARIES-foo = mylib4foo
 * GNU Emacs interface::
 * Tracing of Mercury programs::
 * Preparing a program for debugging::
-* Selecting trace events::
+* Tracing optimized code::
 * Mercury debugger invocation::
 * Mercury debugger concepts::
 * Debugger commands::
@@ -1440,62 +1440,11 @@ MCFLAGS-foo = --trace deep
 MCFLAGS-bar = --trace shallow
 @end example
 
-@node Selecting trace events
-@section Selecting trace events
+@node Tracing optimized code
+@section Tracing optimized code
 
-@c XXX anybody got a better title for this section?
-
-In preparing a Mercury program for debugging,
-the Mercury compiler provides two options that you can use
-to say that you are not interested in certain kinds of events,
-and that the compiler should therefore not generate code for those events.
-This makes the executable smaller and faster.
-
-The first of these options is @samp{--no-trace-internal}.
-If you specify this when you compile a module,
-you will not get any internal events
-from predicates and functions defined in that module,
-even if the trace level is @samp{deep};
-you will only get external events.
-These are sufficient to tell you what a predicate or function does,
-i.e. what outputs it computes from what inputs.
-They do not tell you how it computed those outputs,
-i.e. what path control took through the predicate or function,
-but that is sometimes of no particular interest.
-In any case, much of the time you can deduce the path
-from the events that result from
-calls made by the predicate or function in question.
-
-The second of these options is @samp{--no-trace-redo},
-which can be specified independently of @samp{--no-trace-internal}.
-If you specify this when you compile a module,
-you will not get any redo events
-from predicates and functions defined in that module.
-If you are not interested in how backtracking arrives
-at a program point where forward execution can resume after a failure,
-this is an entirely reasonable thing to do.
-In any case, with sufficient thought and a memory of previous events
-you can reconstruct the sequence of redo events
-that would normally be present between the fail event
-and the event that represents the resumption of forward execution.
-This sequence has a redo event
-for every call to a procedure that can succeed more than once
-that occurred after the call to the procedure
-in which the resumption event occurs,
-provided that that call has not failed yet,
-and in reverse chronological order.
-
-Normally, when it compiles a module with a trace level other than @samp{none},
-the compiler will include in the module's object file
-information about all the call return sites in that module.
-This information allows the debugger to print stack dumps,
-as well as the values of variables in ancestors of current call.
-However, if you specify the @samp{--no-trace-return} option,
-the compiler will not include this information in the object file,
-reducing its size but losing the above functionality.
-
-@c XXX should we document --stack-trace-higher-order
-@c it has not really been tested yet
+@c XXX we should consider where to document --suppress-trace
+@c and --stack-trace-higher-order
 
 By default, all trace levels other than @samp{none}
 turn off all compiler optimizations
@@ -1835,8 +1784,8 @@ the strictness of the command.
 By default, this command is strict, and it uses the default print level.
 @sp 1
 @item finish [-NSans] [@var{num}]
-Continues execution until it reaches a final (EXIT, FAIL or EXCP) port of
-the @var{num}'th ancestor of the call to which the current event refers.
+Continues execution until it reaches a final (EXIT, FAIL or EXCP) port
+of the @var{num}'th ancestor of the call to which the current event refers.
 The default value of @var{num} is zero,
 which means skipping to the end of the current call.
 Reports an error if execution is already at the desired port.
@@ -1849,6 +1798,27 @@ and @samp{-N} or @samp{--nostrict} specify
 the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
+@c The documentation of fail is commented out, because the implementation does
+@c not yet do this right thing when the procedure call we want to get to the
+@c FAIL port of is inside a commit.
+@c @sp 1
+@c @item fail [-NSans] [@var{num}]
+@c Continues execution until it reaches a FAIL or EXCP port
+@c of the @var{num}'th ancestor of the call to which the current event refers.
+@c The default value of @var{num} is zero,
+@c which means skipping to the end of the current call.
+@c Reports an error if execution is already at the desired port,
+@c or if the determinism of the selected call
+@c does not guarantee that it will eventually fail.
+@c @sp 1
+@c The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@c @samp{-a} or @samp{--all} specify the print level to use
+@c for the duration of the command,
+@c while the options @samp{-S} or @samp{--strict}
+@c and @samp{-N} or @samp{--nostrict} specify
+@c the strictness of the command.
+@c @sp 1
+@c By default, this command is strict, and it uses the default print level.
 @sp 1
 @item exception [-NSans]
 Continues the program until execution reaches an exception event.
@@ -1997,25 +1967,34 @@ For example, if @var{num} is 1, it restarts the parent of the current call.
 Prints the names of all the known variables in the current environment,
 together with an ordinal number for each variable.
 @sp 1
-@item print @var{name}
-@itemx print @var{num}
+@item print [-fpv] @var{name}
+@itemx print [-fpv] @var{num}
 Prints the value of the variable in the current environment
 with the given name, or with the given ordinal number.
 This is a non-interactive version of the @samp{browse}
 command (see below).  Various settings
 which affect the way that terms are printed out
 (including e.g. the maximum term depth) can be set using
-the @samp{set} command in the browser.
+the @samp{set} command.
 @sp 1
-@item print *
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] *
 Prints the values of all the known variables in the current environment.
 @sp 1
-@item print exception
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item print [-fpv] exception
 Prints the value of the exception at an EXCP port.
 Reports an error if the current event does not refer to such a port.
 @sp 1
-@item browse @var{name}
-@itemx browse @var{num}
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
+@item browse [-fpv] @var{name}
+@itemx browse [-fpv] @var{num}
 Invokes an interactive term browser to browse the value of the
 variable in the current environment with the given ordinal number or
 with the given name.
@@ -2027,14 +2006,20 @@ may be controlled.
 The displayed terms may also be clipped to fit
 within a single screen.
 @sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@sp 1
 For further documentation on the interactive term browser,
 invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
 @sp 1
-@item browse exception
+@item browse [-fpv] exception
 Invokes the interactive term browser to browse
 the value of the exception at an EXCP port.
 Reports an error if the current event does not refer to such a port.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 @sp 1
 @item stack [-d]
 Prints the names of the ancestors of the call
@@ -2106,6 +2091,52 @@ Prints the current event.
 This is useful if the details of the event,
 which were printed when control arrived at the event,
 have since scrolled off the screen.
+@sp 1
+@item set [-APBfpv] @var{param} @var{value}
+Updates the configuration parameters of the browser.
+The parameters that can be configured are
+@samp{format}, @samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@sp 1
+@itemize @bullet
+@item
+@samp{format} can be set to @samp{flat}, @samp{pretty} or @samp{verbose}
+to change the output style of the browser.
+@sp 1
+@item
+@samp{depth} is the maximum depth to which subterms will be displayed.
+@sp 1
+@item
+@samp{size} is the suggested maximum number of functors to display.
+Beyond this limit, the browser will abbreviate the output.
+@sp 1
+@item
+@samp{width} is the width of the screen in characters.
+@sp 1
+@item
+@samp{lines} is the maximum number of lines of one term to display.
+@end itemize
+@sp 1
+The browser maintains separate configuration parameters
+for the three commands @samp{print *}, @samp{print @var{var}},
+and @samp{browse @var{var}}.
+A single @samp{set} command can modify the parameters
+for more than one of these;
+the options @samp{-A} or @samp{--print-all}, @samp{-P} or @samp{--print},
+and @samp{-B} or @samp{--browse}
+select which commands will be affected by the change.
+If none of these options is given,
+the default is to affect all commands.
+@sp 1
+The browser also maintains separate configuration parameters
+for the three different output formats.
+This applies to all parameters except for the format itself.
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose}
+select which formats will be affected by the change.
+If none of these options is given,
+the default is to affect all formats.
+In the case that the format itself is being set,
+these options are ignored.
 @end table
 @sp 1
 @node Breakpoint commands
@@ -3096,17 +3127,6 @@ The @var{level} should be one of
 @samp{none}, @samp{shallow}, @samp{deep}, and @samp{default}.
 See @ref{Debugging}.
 
-@item --no-trace-internal
-Do not generate code for internal events even if the trace level is deep.
-
-@item --no-trace-return
-Do not generate trace information for call return sites.
-Prevents the printing of the values of variables in ancestors
-of the current call.
-
-@item --no-trace-redo
-Do not generate code for REDO events.
-
 @item --trace-optimized
 Do not disable optimizations that can change the trace.
 
@@ -3625,6 +3645,14 @@ implementors.  It causes the generated code to become very big and very
 inefficient, and slows down compilation a lot.
 
 @sp 1
+@item @code{--target-debug}
+Enable debugging of the generated target code.
+If the target language is C, this has the same effect as
+@samp{--c-debug} (see below).
+If the target language is IL, this causes the compiler to
+pass @samp{/debug} to the IL assembler.
+
+@sp 1
 @item --no-trad-passes
 The default @samp{--trad-passes} completely processes each predicate
 before going on to the next predicate.
@@ -3825,7 +3853,11 @@ This option significantly increases compilation time,
 link time, and intermediate disk space requirements,
 but in return reduces the size of the final
 executable, typically by about 10-20%.
-This option is only useful with @samp{--procs-per-c-function 1}.
+This option is only useful with @samp{--procs-per-c-function 1},
+so this option automatically sets @samp{--procs-per-c-function 1}.
+
+The @samp{--high-level-code} back-end does not support
+@samp{--split-c-files}.
 
 N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
 not be placed in the @samp{MCFLAGS} variable.  Instead, use the

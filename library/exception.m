@@ -507,13 +507,13 @@ wrap_exception(Exception, exception(Exception)).
 
 	void mercury__exception__builtin_throw_1_p_0(MR_Univ exception);
 	void mercury__exception__builtin_catch_model_det(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output);
 	bool mercury__exception__builtin_catch_model_semi(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output);
 	void mercury__exception__builtin_catch_model_non(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output,
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 		MR_NestedCont cont
@@ -530,44 +530,46 @@ wrap_exception(Exception, exception(Exception)).
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_goal_det(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+ML_call_goal_det(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result)
 {
 	typedef void FuncType(void *, MR_Box *);
 	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
+		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result);
 }
 
 static bool
-ML_call_goal_semi(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+ML_call_goal_semi(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result)
 {
 	typedef bool FuncType(void *, MR_Box *);
 	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
+		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	return (*code)((void *) closure, result);
 }
 
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 
 static void
-ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
-	MR_NestedCont cont)
+ML_call_goal_non(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result, MR_NestedCont cont)
 {
 	typedef void FuncType(void *, MR_Box *, MR_NestedCont);
 	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
+		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result, cont);
 }
 
 #else
 
 static void
-ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
-	MR_Cont cont, void *cont_env)
+ML_call_goal_non(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result, MR_Cont cont, void *cont_env)
 {
 	typedef void FuncType(void *, MR_Box *, MR_Cont, void *);
 	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
+		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result, cont, cont_env);
 }
 
@@ -576,12 +578,12 @@ ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_handler_det(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
-	MR_Box *result)
+ML_call_handler_det(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Univ exception, MR_Box *result)
 {
 	typedef void FuncType(void *, MR_Box, MR_Box *);
 	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
+		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, (MR_Box) exception, result);
 }
 
@@ -615,7 +617,7 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 }
 
 void
-mercury__exception__builtin_catch_model_det(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
 	ML_ExceptionHandler this_handler;
@@ -643,7 +645,7 @@ mercury__exception__builtin_catch_model_det(MR_Type_Info type_info,
 }
 
 bool
-mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
 	ML_ExceptionHandler this_handler;
@@ -675,7 +677,7 @@ mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 
 void
-mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
 	MR_NestedCont cont)
 {
@@ -755,7 +757,7 @@ ML_catch_success_cont(void *env_ptr) {
 }
 
 void
-mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
 	MR_Cont cont, void *cont_env)
 {
@@ -884,9 +886,9 @@ void mercury_sys_init_exceptions(void) { return; }
 			""being omitted from the trace.\\n"", (msg));	\\
 	} while (0)
 
-static Code *
-MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
-	Word *current_frame)
+static MR_Code *
+MR_trace_throw(MR_Code *success_pointer, MR_Word *det_stack_pointer,
+	MR_Word *current_frame)
 {
 	const MR_Internal		*label;
 	const MR_Stack_Layout_Label	*return_label_layout;
@@ -903,7 +905,7 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 
 	while (return_label_layout != NULL) {
 		const MR_Stack_Layout_Entry	*entry_layout;
-		Code 				*MR_jumpaddr;
+		MR_Code 			*MR_jumpaddr;
 		MR_Stack_Walk_Step_Result	result;
 		const char			*problem;
 
@@ -951,7 +953,7 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 #define swap_heaps()							\\
 {									\\
 	/* save the current heap */					\\
-	Word *swap_heaps_temp_hp = MR_hp;				\\
+	MR_Word *swap_heaps_temp_hp = MR_hp;				\\
 	MemoryZone *swap_heaps_temp_hp_zone = MR_heap_zone;		\\
 									\\
 	/* set heap to solutions heap */				\\
@@ -1224,17 +1226,17 @@ Define_label(mercury__exception__builtin_catch_3_5_i3);
 */
 Define_entry(mercury__exception__builtin_throw_1_0);
 {
-	Word exception = r1;
-	Word handler;
+	MR_Word exception = r1;
+	MR_Word handler;
 	enum MR_HandlerCodeModel catch_code_model;
-	Word *orig_curfr;
-	Unsigned exception_event_number = MR_trace_event_number;
+	MR_Word *orig_curfr;
+	MR_Unsigned exception_event_number = MR_trace_event_number;
 
 	/*
 	** let the debugger trace exception throwing
 	*/
 	if (MR_trace_enabled) {
-		Code *MR_jumpaddr;
+		MR_Code *MR_jumpaddr;
 		MR_trace_set_exception_value(exception);
 		save_transient_registers();
 		MR_jumpaddr = MR_trace_throw(MR_succip, MR_sp, MR_curfr);
@@ -1256,7 +1258,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	while (MR_redoip_slot(MR_curfr) != ENTRY(exception_handler_do_fail)) {
 		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {
-			Word *save_succip;
+			MR_Word *save_succip;
 			/*
 			** There was no exception handler.
 			** 
@@ -1349,7 +1351,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** the real heap will leave all the pointers in the correct place.
 	*/
 {
-	Word * saved_solns_heap_ptr;
+	MR_Word * saved_solns_heap_ptr;
 
 	/* switch to the solutions heap */
 	if (MR_heap_zone == MR_EXCEPTION_FRAMEVARS->heap_zone) {
@@ -1436,7 +1438,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 			*(MR_ENGINE(e_jmp_buf)));
 #endif
 
-		MR_ENGINE(e_exception) = (Word *) exception;
+		MR_ENGINE(e_exception) = (MR_Word *) exception;
 		save_registers();
 		longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 	}
@@ -1461,7 +1463,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 			ENTRY(mercury__exception__builtin_throw_1_0));
 	}
 	MR_incr_sp_push_msg(1, ""builtin_throw/1"");
-	MR_stackvar(1) = (Word) MR_succip;
+	MR_stackvar(1) = (MR_Word) MR_succip;
 	call(ENTRY(mercury__do_call_closure), 
 		LABEL(mercury__exception__builtin_throw_1_0_i1),
 		ENTRY(mercury__exception__builtin_throw_1_0));
@@ -1471,7 +1473,7 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 	/* we've just returned from mercury__do_call_closure */
 	r2 = r1;
 	r1 = TRUE;
-	MR_succip = (Code *) MR_stackvar(1);
+	MR_succip = (MR_Code *) MR_stackvar(1);
 	MR_decr_sp_pop_msg(1);
 	proceed(); /* return to the caller of `builtin_catch' */
 

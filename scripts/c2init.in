@@ -21,6 +21,7 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
+MERCURY_TRACE_LIB_DIR=${MERCURY_TRACE_LIB_DIR=@LIBDIR@/modules}
 MKINIT=${MERCURY_MKINIT=mkinit}
 
 # maximum number of calls to put in a single function
@@ -81,7 +82,8 @@ Options:
 $grade_usage
 
 Environment variables:
-	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
+	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
+	MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS, MERCURY_MKINIT.
 "
 
 while true; do
@@ -138,6 +140,8 @@ while true; do
 	shift
 done
 
+set -x
+
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
 
@@ -151,30 +155,31 @@ case $stack_trace in
 		init_opt="-i" ;;
 esac
 
+MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
+		$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
+		$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init"}
+
+MERCURY_TRACE_LIB_MODS=${MERCURY_TRACE_LIB_MODS="\
+		$MERCURY_TRACE_LIB_DIR/$BROWSER_LIB_NAME.init"}
+
 case "$trace_opt" in
 	-t)
 		init_opt="-i"
-		MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
-				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
-				$MERCURY_MOD_LIB_DIR/$BROWSER_LIB_NAME.init \
-			"}
+		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS\
+			$MERCURY_TRACE_LIB_MODS"
 		;;
 	*)
-		MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
-				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
-			"}
+		MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
 		;;
 esac
 
 case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
+		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
-		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_MOD_LIB_MODS
+		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
 	   ;;
 esac

@@ -61,7 +61,7 @@ typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
 				int count, int level,
 				MR_Word *base_sp, MR_Word * base_curfr,
 				const char *filename, int linenumber,
-				bool context_mismatch);
+				const char *goal_path, bool context_mismatch);
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				const MR_Stack_Layout_Label *label_layout,
@@ -165,13 +165,23 @@ extern	bool	MR_find_context(const MR_Stack_Layout_Label *label,
 			const char **fileptr, int *lineptr);
 
 /*
-** If the procedure has trace layout information and the relevant one of
-** base_sp and base_curfr is not NULL, MR_print_call_trace_info prints
-** the call event number, call sequence number and call depth of the call
-** stored in the stack frame of the procedure.
+** MR_print_call_trace_info prints the call event number, call sequence number
+** and call depth of the call stored in the stack frame of the procedure
+** identified by the given proc layout. It requires the procedure to have
+** trace layout information, and the relevant one of base_sp and base_curfr
+** to be non-NULL, since these numbers are stored in stack slots.
+**
+** MR_maybe_print_call_trace_info calls MR_print_call_trace_info if
+** include_trace_data is TRUE and the other conditions required by
+** MR_print_call_trace_info are satisfied.
 */
 
 extern	void	MR_print_call_trace_info(FILE *fp,
+			const MR_Stack_Layout_Entry *entry,
+			MR_Word *base_sp, MR_Word *base_curfr);
+
+extern	void	MR_maybe_print_call_trace_info(FILE *fp,
+			bool include_trace_data,
 			const MR_Stack_Layout_Entry *entry,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
@@ -208,7 +218,7 @@ typedef	enum {
 } MR_Context_Position;
 
 extern	void	MR_print_proc_id_trace_and_context(FILE *fp,
-			MR_Context_Position pos,
+			bool include_trace_data, MR_Context_Position pos,
 			const MR_Stack_Layout_Entry *entry,
 			MR_Word *base_sp, MR_Word *base_curfr, const char *path,
 			const char *filename, int lineno, bool print_parent,
@@ -223,6 +233,6 @@ extern	void	MR_dump_stack_record_print(FILE *fp,
 			const MR_Stack_Layout_Entry *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
-			bool context_mismatch);
+			const char *goal_path, bool context_mismatch);
 
 #endif /* MERCURY_STACK_TRACE_H */

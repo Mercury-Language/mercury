@@ -414,25 +414,25 @@ is(X, X).
 
 
 :- pragma c_code(int__max_int(Max::out), will_not_call_mercury, "
-	if (sizeof(Integer) == sizeof(int))
+	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
-	else if (sizeof(Integer) == sizeof(long))
+	else if (sizeof(MR_Integer) == sizeof(long))
 		Max = LONG_MAX;
 	else
 		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
 :- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
-	if (sizeof(Integer) == sizeof(int))
+	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
-	else if (sizeof(Integer) == sizeof(long))
+	else if (sizeof(MR_Integer) == sizeof(long))
 		Min = LONG_MIN;
 	else
 		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
 :- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "
-	Bits = sizeof(Integer) * CHAR_BIT;
+	Bits = sizeof(MR_Integer) * CHAR_BIT;
 ").
 
 %-----------------------------------------------------------------------------%

@@ -23,7 +23,6 @@
 
 #define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
 
-
 #ifndef MR_NO_BACKWARDS_COMPAT
 
 /* 

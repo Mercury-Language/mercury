@@ -21,28 +21,45 @@
 :- interface.
 
 :- import_module io, std_util.
+:- import_module mdb__browser_info.
 
-	% an abstract data type that holds persistent browser settings,
-	% e.g. the maximum print depth
-:- type browser_state.
-
-	% initialize the browser state with default values
-:- pred browse__init_state(browser_state).
-:- mode browse__init_state(out) is det.
-
-	% The interactive term browser.
+	% The interactive term browser.  The caller type will be `browse', and
+	% the default format for the `browse' caller type will be used.
+	%
 :- pred browse__browse(T, io__input_stream, io__output_stream,
-			browser_state, browser_state, io__state, io__state).
+			browser_persistent_state, browser_persistent_state,
+			io__state, io__state).
 :- mode browse__browse(in, in, in, in, out, di, uo) is det.
 
+	% As above, except that the supplied format will override the default.
+	%
+:- pred browse__browse_format(T, io__input_stream, io__output_stream,
+			portray_format, browser_persistent_state,
+			browser_persistent_state, io__state, io__state).
+:- mode browse__browse_format(in, in, in, in, in, out, di, uo) is det.
+
+	% The browser interface for the external debugger.  The caller type
+	% will be `browse', and the default format will be used.
+	%
 :- pred browse__browse_external(T, io__input_stream, io__output_stream,
-			browser_state, browser_state, io__state, io__state).
+			browser_persistent_state, browser_persistent_state,
+			io__state, io__state).
 :- mode browse__browse_external(in, in, in, in, out, di, uo) is det.
 
-	% The non-interactive term browser.
-:- pred browse__print(T, io__output_stream, browser_state,
+	% The non-interactive term browser.  The caller type should be either
+	% `print' or `print_all'.  The default portray format for that
+	% caller type is used.
+	%
+:- pred browse__print(T, io__output_stream, browse_caller_type,
+			browser_persistent_state, io__state, io__state).
+:- mode browse__print(in, in, in, in, di, uo) is det.
+
+	% As above, except that the supplied format will override the default.
+	%
+:- pred browse__print_format(T, io__output_stream, browse_caller_type,
+			portray_format, browser_persistent_state,
 			io__state, io__state).
-:- mode browse__print(in, in, in, di, uo) is det.
+:- mode browse__print_format(in, in, in, in, in, di, uo) is det.
 
 	% Estimate the total term size, in characters,
 	% We count the number of characters in the functor,
@@ -67,6 +84,7 @@
 
 :- import_module mdb__parse, mdb__util, mdb__frame.
 :- import_module string, list, parser, require, std_util, int, char, pprint.
+:- import_module bool.
 
 %---------------------------------------------------------------------------%
 %
@@ -74,17 +92,16 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__init_state(out),
-	"ML_BROWSE_init_state").
 :- pragma export(browse__browse(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse").
-:- pragma export(browse__print(in, in, in, di, uo),
-	"ML_BROWSE_print").
-:- pragma export(browse__browser_state_type(out),
-	"ML_BROWSE_browser_state_type").
-
+:- pragma export(browse__browse_format(in, in, in, in, in, out, di, uo),
+	"ML_BROWSE_browse_format").
 :- pragma export(browse__browse_external(in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse_external").
+:- pragma export(browse__print(in, in, in, in, di, uo),
+	"ML_BROWSE_print").
+:- pragma export(browse__print_format(in, in, in, in, in, di, uo),
+	"ML_BROWSE_print_format").
 
 %---------------------------------------------------------------------------%
 % If the term browser is called from the internal debugger, input is
@@ -107,101 +124,39 @@
 	;	external.
 
 %---------------------------------------------------------------------------%
-
-browse__init_state(State) :-
-	% We need to supply an object to initialize the state,
-	% but this object won't be used, since the first call
-	% to browse__browse will overwrite it.  So we just supply
-	% a dummy object -- it doesn't matter what its type or value is.
-	DummyObject = "",
-	type_to_univ(DummyObject, Univ),
-	default_depth(DefaultDepth),
-	MaxTermSize = 10,
-	DefaultFormat = verbose,
-	ClipX = 79,
-	ClipY = 25,
-	State = browser_state(Univ, DefaultDepth, MaxTermSize, [],
-			DefaultFormat, ClipX, ClipY).
-
-
-% return the type_info for a browser_state type
-:- pred browse__browser_state_type(type_desc).
-:- mode browse__browser_state_type(out) is det.
-
-browse__browser_state_type(Type) :-
-	browse__init_state(State),
-	Type = type_of(State).
-
-%---------------------------------------------------------------------------%
 %
 % Non-interactive display
 %
 
-browse__print(Term, OutputStream, State0) -->
-	{ set_term(Term, State0, State) },
+browse__print(Term, OutputStream, Caller, State) -->
+	browse__print_common(Term, OutputStream, Caller, no, State).
+
+browse__print_format(Term, OutputStream, Caller, Format, State) -->
+	browse__print_common(Term, OutputStream, Caller, yes(Format), State).
+
+:- pred browse__print_common(T, io__output_stream, browse_caller_type,
+		maybe(portray_format), browser_persistent_state,
+		io__state, io__state).
+:- mode browse__print_common(in, in, in, in, in, di, uo) is det.
+
+browse__print_common(Term, OutputStream, Caller, MaybeFormat, State) -->
+	{ browser_info__init(Term, MaybeFormat, State, Info) },
 	io__set_output_stream(OutputStream, OldStream),
-	browse__print(State),
-	io__set_output_stream(OldStream, _).
-
-:- pred browse__print(browser_state, io__state, io__state).
-:- mode browse__print(in, di, uo) is det.
-
-browse__print(State) -->
+	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
 	%
-	% io__write handles the special cases such as lists,
-	% operators, etc. better, so we prefer to use it if we
-	% can.  However, io__write doesn't have a depth or size limit,
-	% so we need to check the size first; if the term is small
-	% enough, we use io__write (actually io__write_univ), otherwise
-	% we use portray_fmt(..., flat).
+	% We assume that the variable name has been printed on the
+	% first part of the line.  If the format is something other than
+	% `flat', then we need to start on the next line.
 	%
-	{ get_term(State, Univ) },
-	{ max_print_size(MaxSize) },
-	{ term_size_left_from_max(Univ, MaxSize, RemainingSize) },
-	( { RemainingSize >= 0 } ->
-		io__write_univ(Univ),
+	(
+		{ Format = flat }
+	->
+		[]
+	;
 		io__nl
-	;
-		portray_fmt(internal, State, flat)
-	).
-
-:- pred browse__print_external(browser_state, io__state, io__state).
-:- mode browse__print_external(in, di, uo) is det.
-
-browse__print_external(State) -->
-	portray_fmt(external, State, flat).
-
-	% The maximum estimated size for which we use `io__write'.
-:- pred max_print_size(int::out) is det.
-max_print_size(60).
-
-	% Estimate the total term size, in characters.
-	% We count the number of characters in the functor,
-	% plus two characters for each argument: "(" and ")"
-	% for the first, and ", " for each of the rest,
-	% plus the sizes of the arguments themselves.
-	% This is only approximate since it doesn't take into
-	% account all the special cases such as operators.
-:- pred term_size(univ::in, int::out) is det.
-term_size(Univ, TotalSize) :-
-	deconstruct(Univ, Functor, Arity, Args),
-	string__length(Functor, FunctorSize),
-	list__map(term_size, Args, ArgSizes),
-	AddSizes = (pred(X::in, Y::in, Z::out) is det :- Z = X + Y),
-	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
-	TotalSize = TotalArgsSize + FunctorSize.
-
-term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
-	( MaxSize < 0 ->
-		RemainingSize = MaxSize
-	;
-		deconstruct(Univ, Functor, Arity, Args),
-		string__length(Functor, FunctorSize),
-		PrincipalSize = FunctorSize + Arity * 2,
-		MaxArgsSize = MaxSize - PrincipalSize,
-		list__foldl(term_size_left_from_max,
-			Args, MaxArgsSize, RemainingSize)
-	).
+	),
+	portray(internal, Caller, no, Info),
+	io__set_output_stream(OldStream, _).
 
 %---------------------------------------------------------------------------%
 %
@@ -210,31 +165,40 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 
 browse__browse(Object, InputStream, OutputStream, State0, State) -->
 	browse_common(internal, Object, InputStream, OutputStream, 
-		State0, State).
+		no, State0, State).
+
+browse__browse_format(Object, InputStream, OutputStream, Format,
+		State0, State) -->
+
+	browse_common(internal, Object, InputStream, OutputStream,
+		yes(Format), State0, State).
 
 browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
 	browse_common(external, Object, InputStream, OutputStream, 
-		State0, State).
-
+		no, State0, State).
 
 :- pred browse_common(debugger, T, io__input_stream, io__output_stream,
-			browser_state, browser_state, io__state, io__state).
-:- mode browse_common(in, in, in, in, in, out, di, uo) is det.
+		maybe(portray_format), browser_persistent_state,
+		browser_persistent_state, io__state, io__state).
+:- mode browse_common(in, in, in, in, in, in, out, di, uo) is det.
 
-browse_common(Debugger, Object, InputStream, OutputStream, State0, State) -->
-	{ type_to_univ(Object, Univ) },
-	{ set_term(Univ, State0, State1) },
+browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
+		State0, State) -->
+	
+	{ browser_info__init(Object, MaybeFormat, State0, Info0) },
 	io__set_input_stream(InputStream, OldInputStream),
 	io__set_output_stream(OutputStream, OldOutputStream),
 	% startup_message,
-	browse_main_loop(Debugger, State1, State),
+	browse_main_loop(Debugger, Info0, Info),
 	io__set_input_stream(OldInputStream, _),
-	io__set_output_stream(OldOutputStream, _).
+	io__set_output_stream(OldOutputStream, _),
+	{ State = Info ^ state }.
 
-:- pred browse_main_loop(debugger, browser_state, browser_state, 
-	io__state, io__state).
+:- pred browse_main_loop(debugger, browser_info, browser_info, 
+		io__state, io__state).
 :- mode browse_main_loop(in, in, out, di, uo) is det.
-browse_main_loop(Debugger, State0, State) -->
+
+browse_main_loop(Debugger, Info0, Info) -->
 	(
 		{ Debugger = internal },
 		{ prompt(Prompt) },
@@ -251,10 +215,10 @@ browse_main_loop(Debugger, State0, State) -->
 		;
 			{ Debugger = internal }
 		),
-		{ State = State0 }
+		{ Info = Info0 }
 	;
-		run_command(Debugger, Command, State0, State1),
-		browse_main_loop(Debugger, State1, State)
+		run_command(Debugger, Command, Info0, Info1),
+		browse_main_loop(Debugger, Info1, Info)
 	).
 
 :- pred startup_message(debugger::in, io__state::di, io__state::uo) is det.
@@ -266,71 +230,55 @@ startup_message(Debugger) -->
 prompt("browser> ").
 
 
-:- pred run_command(debugger, command, browser_state, browser_state,
-	io__state, io__state).
+:- pred run_command(debugger, command, browser_info, browser_info,
+		io__state, io__state).
 :- mode run_command(in, in, in, out, di, uo) is det.
-run_command(Debugger, Command, State, NewState) -->
+
+run_command(Debugger, Command, Info0, Info) -->
+	% XXX The commands `set', `ls' and `print' should allow the format
+	% to be specified by an option.  In each case we instead pass `no' to
+	% the respective handler.
 	( { Command = unknown } ->
 		write_string_debugger(Debugger, 
 			"Error: unknown command or syntax error.\n"),
 		write_string_debugger(Debugger, "Type \"help\" for help.\n"),
-		{ NewState = State }
+		{ Info = Info0 }
 	; { Command = help } ->
 		help(Debugger),
-		{ NewState = State }
+		{ Info = Info0 }
 	; { Command = set } ->
-		show_settings(Debugger, State),
-		{ NewState = State }
+		show_settings(Debugger, Info0, no),
+		{ Info = Info0 }
 	; { Command = set(Setting) } ->
-		( { Setting = depth(MaxDepth) } ->
-			{ set_depth(MaxDepth, State, NewState) }
-		; { Setting = size(MaxSize) } ->
-			{ set_size(MaxSize, State, NewState) }
-		; { Setting = clipx(X) } ->
-			{ set_clipx(X, State, NewState) }
-		; { Setting = clipy(Y) } ->
-			{ set_clipy(Y, State, NewState) }
-		; { Setting = format(Fmt) } ->
-			{ set_fmt(Fmt, State, NewState) }
-		;
-			write_string_debugger(Debugger, 
-				"error: unknown setting.\n"),
-			{ NewState = State }
-		)
+		{ set_browse_param(Setting, Info0, Info) }
 	; { Command = ls } ->
-		portray(Debugger, State),
-		{ NewState = State }
+		portray(Debugger, browse, no, Info0),
+		{ Info = Info0 }
 	; { Command = ls(Path) } ->
-		portray_path(Debugger, State, Path),
-		{ NewState = State }
+		portray_path(Debugger, browse, no, Info0, Path),
+		{ Info = Info0 }
 	; { Command = cd } ->
-		{ set_path(root_rel([]), State, NewState) }
+		{ set_path(root_rel([]), Info0, Info) }
 	; { Command = cd(Path) } ->
-		{ get_dirs(State, Pwd) },
-		{ get_term(State, Univ) },
-		{ change_dir(Pwd, Path, NewPwd) },
-		( { deref_subterm(Univ, NewPwd, _SubUniv) } ->
-			{ set_path(Path, State, NewState) }
+		{ change_dir(Info0 ^ dirs, Path, NewPwd) },
+		( { deref_subterm(Info0 ^ term, NewPwd, _SubUniv) } ->
+			{ Info = Info0 ^ dirs := NewPwd }
 		;
 			write_string_debugger(Debugger, 
 				"error: cannot change to subterm\n"),
-			{ NewState = State }
+			{ Info = Info0 }
 		)
 	; { Command = print } ->
-		( { Debugger = internal} ->
-			browse__print(State)
-		;
-			browse__print_external(State)
-		),
-		{ NewState = State }
+		portray(Debugger, print, no, Info0),
+		{ Info = Info0 }
 	; { Command = pwd } ->
-		{ get_dirs(State, Path) },
-		write_path(Debugger, Path),
+		write_path(Debugger, Info0 ^ dirs),
 		nl_debugger(Debugger),
-		{ NewState = State }
+		{ Info = Info0 }
 	;	
-		write_string_debugger(Debugger, "command not yet implemented\n"),
-		{ NewState = State }
+		write_string_debugger(Debugger,
+				"command not yet implemented\n"),
+		{ Info = Info0 }
 	),
 	( { Debugger = external } ->
 		send_term_to_socket(browser_end_command)
@@ -338,10 +286,20 @@ run_command(Debugger, Command, State, NewState) -->
 		{ true }
 	).
 
+:- pred set_browse_param(setting, browser_info, browser_info).
+:- mode set_browse_param(in, in, out) is det.
+
+set_browse_param(Setting, Info0, Info) :-
+	%
+	% XXX We can't yet give options to the `set' command.
+	%
+	No = bool__no,
+	browser_info__set_param(No, No, No, No, No, No, Setting, Info0 ^ state,
+			NewState),
+	Info = Info0 ^ state := NewState.
+
 :- pred help(debugger::in, io__state::di, io__state::uo) is det.
 help(Debugger) -->
-	{ default_depth(Default) },
-	{ string__int_to_string(Default, DefaultStr) },
 	{ string__append_list([
 "Commands are:\n",
 "\tls [path]      -- list subterm (expanded)\n",
@@ -353,13 +311,13 @@ help(Debugger) -->
 "\tquit           -- quit browser\n",
 "SICStus Prolog style commands are:\n",
 "\tp              -- print\n",
-"\t< [n]          -- set depth (default is ", DefaultStr, ")\n",
-"\t^ [path]       -- cd [path]\n",
+"\t< n            -- set depth\n",
+"\t^ [path]       -- cd [path] (default is root)\n",
 "\t?              -- help\n",
 "\th              -- help\n",
 "\n",
 "-- settings:\n",
-"--    size; depth; path; format (flat pretty verbose); clipx; clipy\n",
+"--    size; depth; path; format (flat pretty verbose); width; lines\n",
 "--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
 "\n"],
 		HelpMessage) },
@@ -370,92 +328,94 @@ help(Debugger) -->
 % Various pretty-print routines
 %
 
-:- pred portray(debugger, browser_state, io__state, io__state).
-:- mode portray(in, in, di, uo) is det.
-portray(Debugger, State) -->
-	{ get_fmt(State, Fmt) },
+:- pred portray(debugger, browse_caller_type, maybe(portray_format),
+		browser_info, io__state, io__state).
+:- mode portray(in, in, in, in, di, uo) is det.
+
+portray(Debugger, Caller, MaybeFormat, Info) -->
+	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
+	{ browser_info__get_format_params(Info, Caller, Format, Params) },
 	(
-		{ Fmt = flat },
-		portray_flat(Debugger, State)
+		{ deref_subterm(Info ^ term, Info ^ dirs, SubUniv) }
+	->
+		(
+			{ Format = flat },
+			portray_flat(Debugger, SubUniv, Params)
+		;
+			{ Format = pretty },
+			portray_pretty(Debugger, SubUniv, Params)
+		;
+			{ Format = verbose },
+			portray_verbose(Debugger, SubUniv, Params)
+		)
 	;
-		{ Fmt = pretty },
-		portray_pretty(Debugger, State)
+		write_string_debugger(Debugger, "error: no such subterm")
+	),
+	nl_debugger(Debugger).
+
+
+:- pred portray_path(debugger, browse_caller_type, maybe(portray_format),
+		browser_info, path, io__state, io__state).
+:- mode portray_path(in, in, in, in, in, di, uo) is det.
+
+portray_path(Debugger, Caller, MaybeFormat, Info0, Path) -->
+	{ set_path(Path, Info0, Info) },
+	portray(Debugger, Caller, MaybeFormat, Info).
+
+:- pred portray_flat(debugger, univ, format_params, io__state, io__state).
+:- mode portray_flat(in, in, in, di, uo) is det.
+
+portray_flat(Debugger, Univ, Params) -->
+	%
+	% io__write handles the special cases such as lists,
+	% operators, etc. better, so we prefer to use it if we
+	% can.  However, io__write doesn't have a depth or size limit,
+	% so we need to check the size first; if the term is small
+	% enough, we use io__write (actually io__write_univ), otherwise
+	% we use term_to_string/4.
+	%
+	% XXX this ignores the maximum number of lines
+	%
+	{ max_print_size(MaxSize) },
+	{ term_size_left_from_max(Univ, MaxSize, RemainingSize) },
+	( { RemainingSize >= 0 } ->
+		io__write_univ(Univ)
 	;
-		{ Fmt = verbose },
-		portray_verbose(Debugger, State)
+		{ term_to_string(Univ, Params ^ size, Params ^ depth, Str) },
+		write_string_debugger(Debugger, Str)
 	).
 
+:- pred portray_verbose(debugger, univ, format_params, io__state, io__state).
+:- mode portray_verbose(in, in, in, di, uo) is det.
 
-:- pred portray_path(debugger, browser_state, path, io__state, io__state).
-:- mode portray_path(in, in, in, di, uo) is det.
-portray_path(Debugger, State, Path) -->
-	{ set_path(Path, State, NewState) },
-	portray(Debugger, NewState).
+portray_verbose(Debugger, Univ, Params) -->
+	{ term_to_string_verbose(Univ, Params ^ size, Params ^ depth,
+			Params ^ width, Params ^ lines, Str) },
+	write_string_debugger(Debugger, Str).
 
-:- pred portray_fmt(debugger, browser_state, portray_format, 
-	io__state, io__state).
-:- mode portray_fmt(in, in, in, di, uo) is det.
-portray_fmt(Debugger, State, Format) -->
-	(
-		{ Format = flat },
-		portray_flat(Debugger, State)
+:- pred portray_pretty(debugger, univ, format_params, io__state, io__state).
+:- mode portray_pretty(in, in, in, di, uo) is det.
+
+portray_pretty(Debugger, Univ, Params) -->
+	{ term_to_string_pretty(Univ, Params ^ width, Params ^ depth, Str) },
+	write_string_debugger(Debugger, Str).
+
+
+	% The maximum estimated size for which we use `io__write'.
+:- pred max_print_size(int::out) is det.
+max_print_size(60).
+
+term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
+	( MaxSize < 0 ->
+		RemainingSize = MaxSize
 	;
-		{ Format = pretty },
-		portray_pretty(Debugger, State)
-	;
-		{ Format = verbose },
-		portray_verbose(Debugger, State)
+		deconstruct(Univ, Functor, Arity, Args),
+		string__length(Functor, FunctorSize),
+		PrincipalSize = FunctorSize + Arity * 2,
+		MaxArgsSize = MaxSize - PrincipalSize,
+		list__foldl(term_size_left_from_max,
+			Args, MaxArgsSize, RemainingSize)
 	).
-
-	% XXX: could abstract out the code common to the following preds.
-:- pred portray_flat(debugger, browser_state, io__state, io__state).
-:- mode portray_flat(in, in, di, uo) is det.
-portray_flat(Debugger, State) -->
-	{ get_term(State, Univ) },
-	{ get_size(State, MaxSize) },
-	{ get_depth(State, MaxDepth) },
-	{ get_dirs(State, Dir) },
-	( { deref_subterm(Univ, Dir, SubUniv) } ->
-		{ term_to_string(SubUniv, MaxSize, MaxDepth, Str) },
-		write_string_debugger(Debugger, Str)
-	;
-		write_string_debugger(Debugger, "error: no such subterm")
-	),
-	nl_debugger(Debugger).
-
-:- pred portray_verbose(debugger, browser_state, io__state, io__state).
-:- mode portray_verbose(in, in, di, uo) is det.
-portray_verbose(Debugger, State) -->
-	{ get_size(State, MaxSize) },
-	{ get_depth(State, MaxDepth) },
-	{ get_term(State, Univ) },
-	{ get_dirs(State, Dir) },
-	{ get_clipx(State, X) },
-	{ get_clipy(State, Y) },
-	( { deref_subterm(Univ, Dir, SubUniv) } ->
-		{ term_to_string_verbose(SubUniv, MaxSize,
-			MaxDepth, X, Y, Str) },
-		write_string_debugger(Debugger, Str)
-	;
-		write_string_debugger(Debugger, "error: no such subterm")
-	),
-	nl_debugger(Debugger).
-
-
-:- pred portray_pretty(debugger, browser_state, io__state, io__state).
-:- mode portray_pretty(in, in, di, uo) is det.
-portray_pretty(Debugger, State) -->
-	{ get_clipx(State, Width) },
-	{ get_depth(State, MaxDepth) },
-	{ get_term(State, Univ) },
-	{ get_dirs(State, Dir) },
-	( { deref_subterm(Univ, Dir, SubUniv) } ->
-		{ term_to_string_pretty(SubUniv, Width, MaxDepth, Str) },
-		write_string_debugger(Debugger, Str)
-	;
-		write_string_debugger(Debugger, "error: no such subterm")
-	),
-	nl_debugger(Debugger).
 
 %---------------------------------------------------------------------------%
 %
@@ -716,86 +676,16 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 	).
 
 %---------------------------------------------------------------------------%
-%
-% The definition of the browser_state type and its access routines.
-%
 
-:- type browser_state
-	--->	browser_state(
-			univ,	% term to browse (as univ)
-			int,	% depth of tree
-			int,	% max nodes printed
-			list(dir),	% root rel `present working directory'
-			portray_format,	% format for ls.
-			int,	% X clipping for verbose display
-			int	% Y clipping for verbose display
-		).
-
-	% access predicates
-
-:- pred get_term(browser_state, univ).
-:- mode get_term(in, out) is det.
-get_term(browser_state(Univ, _Depth, _Size, _Path, _Fmt, _X, _Y), Univ).
-
-:- pred get_depth(browser_state, int).
-:- mode get_depth(in, out) is det.
-get_depth(browser_state(_Univ, Depth, _Size, _Path, _Fmt, _X, _Y), Depth).
-
-:- pred get_size(browser_state, int).
-:- mode get_size(in, out) is det.
-get_size(browser_state(_Univ, _Depth, Size, _Path, _Fmt, _X, _Y), Size).
-
-:- pred get_clipx(browser_state, int).
-:- mode get_clipx(in, out) is det.
-get_clipx(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, X, _Y), X).
-
-:- pred get_clipy(browser_state, int).
-:- mode get_clipy(in, out) is det.
-get_clipy(browser_state(_Univ, _Depth, _Size, _Path, _Fmt, _X, Y), Y).
-
-:- pred get_dirs(browser_state, list(dir)).
-:- mode get_dirs(in, out) is det.
-get_dirs(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y), Dirs).
-
-:- pred get_path(browser_state, path).
+:- pred get_path(browser_info, path).
 :- mode get_path(in, out) is det.
-get_path(browser_state(_Univ, _Depth, _Size, Dirs, _Fmt, _X, _Y),
-	root_rel(Dirs)).
+get_path(Info, root_rel(Info ^ dirs)).
 
-:- pred get_fmt(browser_state, portray_format).
-:- mode get_fmt(in, out) is det.
-get_fmt(browser_state(_Univ, _Depth, _Size, _Path, Fmt, _X, _Y), Fmt).
-
-:- pred set_depth(int, browser_state, browser_state).
-:- mode set_depth(in, in, out) is det.
-set_depth(NewMaxDepth, State, NewState) :-
-	State = browser_state(Univ, _MaxDepth, MaxSize, Dirs, Fmt, X, Y),
-	NewState = browser_state(Univ, NewMaxDepth, MaxSize, Dirs, Fmt, X, Y).
-
-:- pred set_size(int, browser_state, browser_state).
-:- mode set_size(in, in, out) is det.
-set_size(NewMaxSize, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, _MaxSize, Dirs, Fmt, X, Y),
-	NewState = browser_state(Univ, MaxDepth, NewMaxSize, Dirs, Fmt, X, Y).
-
-:- pred set_clipx(int, browser_state, browser_state).
-:- mode set_clipx(in, in, out) is det.
-set_clipx(NewX, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, _X, Y),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, NewX, Y).
-
-:- pred set_clipy(int, browser_state, browser_state).
-:- mode set_clipy(in, in, out) is det.
-set_clipy(NewY, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, _Y),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, NewY).
-
-:- pred set_path(path, browser_state, browser_state).
+:- pred set_path(path, browser_info, browser_info).
 :- mode set_path(in, in, out) is det.
-set_path(NewPath, State, NewState) :-
-	State = browser_state(Univ, MaxDepth, MaxSize, Dirs, Fmt, X, Y),
-	change_dir(Dirs, NewPath, NewDirs),
-	NewState = browser_state(Univ, MaxDepth, MaxSize, NewDirs, Fmt, X, Y).
+set_path(NewPath, Info0, Info) :-
+	change_dir(Info0 ^ dirs, NewPath, NewDirs),
+	Info = Info0 ^ dirs := NewDirs.
 
 :- pred change_dir(list(dir), path, list(dir)).
 :- mode change_dir(in, in, out) is det.
@@ -809,50 +699,53 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
 	),
 	simplify_dirs(NewDirs, RootRelDirs).
 
-:- pred set_fmt(portray_format, browser_state, browser_state).
-:- mode set_fmt(in, in, out) is det.
-set_fmt(NewFmt, browser_state(Univ, Depth, Size, Path, _OldFmt, X, Y),
-	browser_state(Univ, Depth, Size, Path, NewFmt, X, Y)).
-
-:- pred set_term(T, browser_state, browser_state).
+:- pred set_term(T, browser_info, browser_info).
 :- mode set_term(in, in, out) is det.
-set_term(Term, State0, State) :-
+set_term(Term, Info0, Info) :-
 	type_to_univ(Term, Univ),
-	set_univ(Univ, State0, State1),
+	set_univ(Univ, Info0, Info1),
 	% Display from the root term.
 	% This avoid errors due to dereferencing non-existent subterms.
-	set_path(root_rel([]), State1, State).
+	set_path(root_rel([]), Info1, Info).
 
-:- pred set_univ(univ, browser_state, browser_state).
+:- pred set_univ(univ, browser_info, browser_info).
 :- mode set_univ(in, in, out) is det.
-set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y),
-	browser_state(NewUniv, Dep, Siz, Path, Fmt, X, Y)).
+set_univ(NewUniv, Info, Info ^ term := NewUniv).
 
 %---------------------------------------------------------------------------%
 %
 % Display predicates.
 %
 
-:- pred show_settings(debugger, browser_state, io__state, io__state).
-:- mode show_settings(in, in, di, uo) is det.
-show_settings(Debugger, State) -->
-	{ State = browser_state(_Univ, MaxDepth, MaxSize,
-		CurPath, Fmt, X, Y) },
+:- pred show_settings(debugger, browser_info, maybe(portray_format),
+		io__state, io__state).
+:- mode show_settings(in, in, in, di, uo) is det.
+
+show_settings(Debugger, Info, MaybeFormat) -->
+	{ browser_info__get_format(Info, browse, MaybeFormat, Format) },
+	{ browser_info__get_format_params(Info, browse, Format, Params) },
 	write_string_debugger(Debugger, "Max depth is: "), 
-		write_int_debugger(Debugger, MaxDepth), 
+		write_int_debugger(Debugger, Params ^ depth), 
 		nl_debugger(Debugger),
 	write_string_debugger(Debugger, "Max size is: "), 
-		write_int_debugger(Debugger, MaxSize), 
+		write_int_debugger(Debugger, Params ^ size), 
 		nl_debugger(Debugger),
 	write_string_debugger(Debugger, "X clip is: "), 
-		write_int_debugger(Debugger, X), 
+		write_int_debugger(Debugger, Params ^ width), 
 		nl_debugger(Debugger),
 	write_string_debugger(Debugger, "Y clip is: "), 
-		write_int_debugger(Debugger, Y), nl_debugger(Debugger),
+		write_int_debugger(Debugger, Params ^ lines),
+		nl_debugger(Debugger),
 	write_string_debugger(Debugger, "Current path is: "),
-		write_path(Debugger, CurPath), nl_debugger(Debugger),
+		write_path(Debugger, Info ^ dirs),
+		nl_debugger(Debugger),
+	{ browser_info__get_format(Info, browse, no, LsFormat) },
+	write_string_debugger(Debugger, "Ls format is "),
+		print_format_debugger(Debugger, LsFormat),
+		nl_debugger(Debugger),
+	{ browser_info__get_format(Info, print, no, PrintFormat) },
 	write_string_debugger(Debugger, "Print format is "),
-		print_format_debugger(Debugger, Fmt),
+		print_format_debugger(Debugger, PrintFormat),
 		nl_debugger(Debugger).
 
 :- pred string_to_path(string, path).

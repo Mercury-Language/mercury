@@ -15,9 +15,10 @@
 #include "mercury_debug.h"
 #include <stdio.h>
 
-static	void	MR_dump_stack_record_init(bool include_contexts);
+static	void	MR_dump_stack_record_init(bool include_trace_data,
+			bool include_contexts);
 static	void	MR_dump_stack_record_frame(FILE *fp,
-			const MR_Stack_Layout_Label *,
+			const MR_Stack_Layout_Label *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr, 
 			MR_Print_Stack_Record print_stack_record);
 static	void	MR_dump_stack_record_flush(FILE *fp, 
@@ -68,8 +69,9 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
-	MR_Word *det_stack_pointer, MR_Word *current_frame, bool include_trace_data,
-	bool include_contexts, MR_Print_Stack_Record print_stack_record)
+	MR_Word *det_stack_pointer, MR_Word *current_frame,
+	bool include_trace_data, bool include_contexts,
+	MR_Print_Stack_Record print_stack_record)
 {
 	MR_Stack_Walk_Step_Result	result;
 	const MR_Stack_Layout_Entry	*entry_layout;
@@ -82,7 +84,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 	MR_Word				*old_trace_curfr;
 
 	do_init_modules();
-	MR_dump_stack_record_init(include_contexts);
+	MR_dump_stack_record_init(include_trace_data, include_contexts);
 
 	stack_trace_sp = det_stack_pointer;
 	stack_trace_curfr = current_frame;
@@ -102,30 +104,16 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 			MR_dump_stack_record_flush(fp, print_stack_record);
 			return problem;
 		} else if (result == STEP_ERROR_AFTER) {
-			if (include_trace_data) {
-				MR_dump_stack_record_frame(fp,
-					prev_label_layout,
-					old_trace_sp, old_trace_curfr, 
-					print_stack_record);
-			} else {
-				MR_dump_stack_record_frame(fp,
-					prev_label_layout,
-					NULL, NULL, print_stack_record);
-			}
+			MR_dump_stack_record_frame(fp, prev_label_layout,
+				old_trace_sp, old_trace_curfr, 
+				print_stack_record);
 
 			MR_dump_stack_record_flush(fp, print_stack_record);
 			return problem;
 		} else {
-			if (include_trace_data) {
-				MR_dump_stack_record_frame(fp,
-					prev_label_layout,
-					old_trace_sp, old_trace_curfr, 
-					print_stack_record);
-			} else {
-				MR_dump_stack_record_frame(fp,
-					prev_label_layout,
-					NULL, NULL, print_stack_record);
-			}
+			MR_dump_stack_record_frame(fp, prev_label_layout,
+				old_trace_sp, old_trace_curfr, 
+				print_stack_record);
 		}
 	} while (cur_label_layout != NULL);
 
@@ -296,18 +284,21 @@ static	MR_Word				*prev_entry_base_sp;
 static	MR_Word				*prev_entry_base_curfr;
 static	const char			*prev_entry_filename;
 static	int				prev_entry_linenumber;
+static	const char			*prev_entry_goal_path;
 static	bool				prev_entry_context_mismatch;
 static	int				current_level;
+static	bool				trace_data_enabled;
 static	bool				contexts_enabled;
 
 static void
-MR_dump_stack_record_init(bool include_contexts)
+MR_dump_stack_record_init(bool include_trace_data, bool include_contexts)
 {
 	prev_entry_layout = NULL;
 	prev_entry_layout_count = 0;
 	prev_entry_start_level = 0;
 	current_level = 0;
 	contexts_enabled = include_contexts;
+	trace_data_enabled = include_trace_data;
 }
 
 static void
@@ -337,17 +328,16 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 		(entry_layout != prev_entry_layout) ||
 
 		/*
-		** We cannot merge two calls even to the same procedure.
+		** We cannot merge two calls even to the same procedure
 		** if we are printing trace data, since this will differ
 		** between the calls.
 		**
 		** Note that it is not possible for two calls to the same
 		** procedure to differ on whether the procedure has trace
-		** layout data or not; this is why we don't have to test
-		** prev_entry_base_sp and prev_entry_base_curfr.
+		** layout data or not.
 		*/
 
-		((base_sp != NULL) || (base_curfr != NULL));
+		trace_data_enabled;
 
 	if (must_flush) {
 		MR_dump_stack_record_flush(fp, print_stack_record);
@@ -359,6 +349,7 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Label *label_layout,
 		prev_entry_base_curfr = base_curfr;
 		prev_entry_filename = filename;
 		prev_entry_linenumber = linenumber;
+		prev_entry_goal_path = MR_label_goal_path(label_layout);
 		prev_entry_context_mismatch = FALSE;
 	} else {
 		prev_entry_layout_count++;
@@ -380,20 +371,21 @@ MR_dump_stack_record_flush(FILE *fp, MR_Print_Stack_Record print_stack_record)
 			prev_entry_layout_count, prev_entry_start_level,
 			prev_entry_base_sp, prev_entry_base_curfr,
 			prev_entry_filename, prev_entry_linenumber,
-			prev_entry_context_mismatch);
+			prev_entry_goal_path, prev_entry_context_mismatch);
 	}
 }
 
 void
 MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	int count, int start_level, MR_Word *base_sp, MR_Word *base_curfr,
-	const char *filename, int linenumber, bool context_mismatch)
+	const char *filename, int linenumber, const char *goal_path,
+	bool context_mismatch)
 {
 	fprintf(fp, "%4d ", start_level);
 
 	if (count > 1) {
 		fprintf(fp, " %3d* ", count);
-	} else if ((base_sp == NULL) && (base_curfr == NULL)) {
+	} else if (! trace_data_enabled) {
 		fprintf(fp, "%5s ", "");
 	} else {
 		/*
@@ -403,11 +395,20 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 		*/
 	}
 
-	MR_print_call_trace_info(fp, entry_layout, base_sp, base_curfr);
+	MR_maybe_print_call_trace_info(fp, trace_data_enabled, entry_layout,
+		base_sp, base_curfr);
 	MR_print_proc_id(fp, entry_layout);
 	if (strdiff(filename, "") && linenumber > 0) {
 		fprintf(fp, " (%s:%d%s)", filename, linenumber,
 			context_mismatch ? " and others" : "");
+	}
+
+	if (trace_data_enabled) {
+		if (strdiff(goal_path, "")) {
+			fprintf(fp, " %s", goal_path);
+		} else {
+			fprintf(fp, " (empty)");
+		}
 	}
 
 	fprintf(fp, "\n");
@@ -443,62 +444,79 @@ MR_find_context(const MR_Stack_Layout_Label *label, const char **fileptr,
 }
 
 void
+MR_maybe_print_call_trace_info(FILE *fp, bool include_trace_data,
+	const MR_Stack_Layout_Entry *entry,
+	MR_Word *base_sp, MR_Word *base_curfr)
+{
+	if (include_trace_data) {
+		MR_print_call_trace_info(fp, entry, base_sp, base_curfr);
+	}
+}
+
+/*
+** Note that MR_print_call_trace_info is more permissive than its documentation
+** in the header file.
+*/
+
+void
 MR_print_call_trace_info(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	MR_Word *base_sp, MR_Word *base_curfr)
 {
 	bool	print_details;
 
-	if (base_sp != NULL && base_curfr != NULL) {
-		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			MR_Integer maybe_from_full =
-				entry->MR_sle_maybe_from_full;
-			if (maybe_from_full > 0) {
-				/*
-				** For procedures compiled with shallow
-				** tracing, the details will be valid only
-				** if the value of MR_from_full saved in
-				** the appropriate stack slot was TRUE.
-			    	*/
-				if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-					print_details = MR_based_stackvar(
-						base_sp, maybe_from_full);
-				} else {
-					print_details = MR_based_framevar(
-						base_curfr, maybe_from_full);
-				}
-			} else {
-				/*
-				** For procedures compiled with full tracing,
-				** we can always print out the details.
-				*/
-				print_details = TRUE;
-			}
-		} else {
-			print_details = FALSE;
-		}
+	if (base_sp == NULL || base_curfr == NULL) {
+		return;
+	}
 
-		if (print_details) {
+	if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		MR_Integer maybe_from_full =
+			entry->MR_sle_maybe_from_full;
+		if (maybe_from_full > 0) {
+			/*
+			** For procedures compiled with shallow
+			** tracing, the details will be valid only
+			** if the value of MR_from_full saved in
+			** the appropriate stack slot was TRUE.
+			*/
 			if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-				fprintf(fp, "%7lu %7lu %4lu ",
-					(unsigned long)
-					MR_event_num_stackvar(base_sp) + 1,
-					(unsigned long)
-					MR_call_num_stackvar(base_sp),
-					(unsigned long)
-					MR_call_depth_stackvar(base_sp));
+				print_details = MR_based_stackvar(
+					base_sp, maybe_from_full);
 			} else {
-				fprintf(fp, "%7lu %7lu %4lu ",
-					(unsigned long)
-					MR_event_num_framevar(base_curfr) + 1,
-					(unsigned long)
-					MR_call_num_framevar(base_curfr),
-					(unsigned long)
-					MR_call_depth_framevar(base_curfr));
+				print_details = MR_based_framevar(
+					base_curfr, maybe_from_full);
 			}
 		} else {
-			/* ensure that the remaining columns line up */
-			fprintf(fp, "%21s", "");
+			/*
+			** For procedures compiled with full tracing,
+			** we can always print out the details.
+			*/
+			print_details = TRUE;
 		}
+	} else {
+		print_details = FALSE;
+	}
+
+	if (print_details) {
+		if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+			fprintf(fp, "%7lu %7lu %4lu ",
+				(unsigned long)
+				MR_event_num_stackvar(base_sp) + 1,
+				(unsigned long)
+				MR_call_num_stackvar(base_sp),
+				(unsigned long)
+				MR_call_depth_stackvar(base_sp));
+		} else {
+			fprintf(fp, "%7lu %7lu %4lu ",
+				(unsigned long)
+				MR_event_num_framevar(base_curfr) + 1,
+				(unsigned long)
+				MR_call_num_framevar(base_curfr),
+				(unsigned long)
+				MR_call_depth_framevar(base_curfr));
+		}
+	} else {
+		/* ensure that the remaining columns line up */
+		fprintf(fp, "%21s", "");
 	}
 }
 
@@ -519,12 +537,12 @@ MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	bool spec)
 {
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		fatal_error("cannot print procedure id without layout");
+		MR_fatal_error("cannot print procedure id without layout");
 	}
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
 		if (spec) {
-			fatal_error("cannot generate specifications "
+			MR_fatal_error("cannot generate specifications "
 				"for compiler generated procedures");
 		}
 
@@ -549,7 +567,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
 		{
 			fprintf(fp, "func");
 		} else {
-			fatal_error("procedure is not pred or func");
+			MR_fatal_error("procedure is not pred or func");
 		}
 
 		if (spec) {
@@ -578,8 +596,9 @@ MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
 }
 
 void
-MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
-	const MR_Stack_Layout_Entry *entry, MR_Word *base_sp, MR_Word *base_curfr,
+MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
+	MR_Context_Position pos, const MR_Stack_Layout_Entry *entry,
+	MR_Word *base_sp, MR_Word *base_curfr,
 	const char *path, const char *filename, int lineno, bool print_parent, 
 	const char *parent_filename, int parent_lineno, int indent)
 {
@@ -587,8 +606,8 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 	switch (pos) {
 		case MR_CONTEXT_NOWHERE:
 			fprintf(fp, " ");
-			MR_print_call_trace_info(fp, entry,
-				base_sp, base_curfr);
+			MR_maybe_print_call_trace_info(fp, include_trace_data,
+				entry, base_sp, base_curfr);
 			MR_print_proc_id(fp, entry);
 			if (strlen(path) > 0) {
 				fprintf(fp, " %s", path);
@@ -601,8 +620,8 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 			MR_maybe_print_parent_context(fp, print_parent,
 				FALSE, parent_filename, parent_lineno);
 			fprintf(fp, " ");
-			MR_print_call_trace_info(fp, entry,
-				base_sp, base_curfr);
+			MR_maybe_print_call_trace_info(fp, include_trace_data,
+				entry, base_sp, base_curfr);
 			MR_print_proc_id(fp, entry);
 			if (strlen(path) > 0) {
 				fprintf(fp, " %s", path);
@@ -612,8 +631,8 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 
 		case MR_CONTEXT_AFTER:
 			fprintf(fp, " ");
-			MR_print_call_trace_info(fp, entry,
-				base_sp, base_curfr);
+			MR_maybe_print_call_trace_info(fp, include_trace_data,
+				entry, base_sp, base_curfr);
 			MR_print_proc_id(fp, entry);
 			if (strlen(path) > 0) {
 				fprintf(fp, " %s", path);
@@ -629,8 +648,8 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 			MR_maybe_print_parent_context(fp, print_parent,
 				TRUE, parent_filename, parent_lineno);
 			fprintf(fp, "\n%*s ", indent, "");
-			MR_print_call_trace_info(fp, entry,
-				base_sp, base_curfr);
+			MR_maybe_print_call_trace_info(fp, include_trace_data,
+				entry, base_sp, base_curfr);
 			MR_print_proc_id(fp, entry);
 			if (strlen(path) > 0) {
 				fprintf(fp, " %s", path);
@@ -640,8 +659,8 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 
 		case MR_CONTEXT_NEXTLINE:
 			fprintf(fp, " ");
-			MR_print_call_trace_info(fp, entry,
-				base_sp, base_curfr);
+			MR_maybe_print_call_trace_info(fp, include_trace_data,
+				entry, base_sp, base_curfr);
 			MR_print_proc_id(fp, entry);
 			if (strlen(path) > 0) {
 				fprintf(fp, " %s", path);
@@ -654,7 +673,7 @@ MR_print_proc_id_trace_and_context(FILE *fp, MR_Context_Position pos,
 			break;
 
 		default:
-			fatal_error("invalid MR_Context_Position");
+			MR_fatal_error("invalid MR_Context_Position");
 	}
 }
 

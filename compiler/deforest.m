@@ -122,8 +122,9 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 		{ proc_info_get_initial_instmap(ProcInfo3,
 			ModuleInfo2, InstMap0) },
 		{ proc_info_vartypes(ProcInfo3, VarTypes) },
-		{ recompute_instmap_delta(yes, Goal3, Goal,
-			VarTypes, InstMap0, ModuleInfo2, ModuleInfo3) },
+		{ proc_info_inst_varset(ProcInfo3, InstVarSet) },
+		{ recompute_instmap_delta(yes, Goal3, Goal, VarTypes,
+			InstVarSet, InstMap0, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),

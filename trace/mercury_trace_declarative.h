@@ -15,7 +15,7 @@
 ** MR_trace_decl_debug for each event.  
 */
 
-extern	Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
+extern	MR_Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info);
 
 /*
@@ -27,7 +27,7 @@ extern	Code	*MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd,
 
 extern	bool	MR_trace_start_decl_debug(const char *out,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, Code **jumpaddr);
+			MR_Event_Details *event_details, MR_Code **jumpaddr);
 
 /*
 ** The following macros are provided to help C code manipulate the

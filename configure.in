@@ -92,7 +92,8 @@ if test "$BOOTSTRAP_MC" != ""; then
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC --object-file-extension "o" conftest \
+	 	 $BOOTSTRAP_MC --object-file-extension "o" \
+			 --link-flags "--static" conftest \
 		 	</dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
@@ -224,7 +225,7 @@ AC_C_CROSS
 AC_RETSIGTYPE
 #-----------------------------------------------------------------------------#
 # Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
-AC_HAVE_LIBRARY(m,[MATH_LIB=-lm],[MATH_LIB=])
+AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 AC_SUBST(MATH_LIB)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for use of a Microsoft compiler)

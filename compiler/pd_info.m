@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -680,7 +680,7 @@ pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
 	goal_info_get_nonlocals(OldGoalInfo, OldNonLocals0),
 	set__to_sorted_list(OldNonLocals0, OldNonLocalsList),
 	pd_info__check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming, 
-		OldInstMap, NewInstMap, exact, Exact),
+		OldInstMap, NewInstMap, NewVarTypes, exact, Exact),
 		
 	MaybeVersion = version(Exact, PredProcId, Version, 
 		OldNewRenaming, TypeRenaming).
@@ -690,21 +690,25 @@ pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
 	% Check that all the insts in the old version are at least as
 	% general as the insts in the new version.
 :- pred pd_info__check_insts(module_info::in, list(prog_var)::in,
-		map(prog_var, prog_var)::in, instmap::in, instmap::in,
-		version_is_exact::in, version_is_exact::out) is semidet.
+	map(prog_var, prog_var)::in, instmap::in, instmap::in, vartypes::in,
+	version_is_exact::in, version_is_exact::out) is semidet.
 
-pd_info__check_insts(_, [], _, _, _, Exact, Exact).
+pd_info__check_insts(_, [], _, _, _, _, Exact, Exact).
 pd_info__check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
-		NewInstMap, ExactSoFar0, ExactSoFar) :-
+		NewInstMap, VarTypes, ExactSoFar0, ExactSoFar) :-
 	instmap__lookup_var(OldInstMap, OldVar, OldVarInst),
 	map__lookup(VarRenaming, OldVar, NewVar),
 	instmap__lookup_var(NewInstMap, NewVar, NewVarInst),
-	inst_matches_initial(NewVarInst, OldVarInst, ModuleInfo),
+	map__lookup(VarTypes, NewVar, Type),
+	inst_matches_initial(NewVarInst, OldVarInst, Type, ModuleInfo),
 	( ExactSoFar0 = exact ->
 		% Does inst_matches_initial(Inst1, Inst2, M) and
 		% inst_matches_initial(Inst2, Inst1, M) imply that Inst1
 		% and Inst2 are interchangable? 
-		( inst_matches_initial(OldVarInst, NewVarInst, ModuleInfo) ->
+		(
+			inst_matches_initial(OldVarInst, NewVarInst, Type,
+				ModuleInfo)
+		->
 			ExactSoFar1 = exact
 		;
 			ExactSoFar1 = more_general
@@ -713,7 +717,7 @@ pd_info__check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 		ExactSoFar1 = more_general
 	),
 	pd_info__check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
-		NewInstMap, ExactSoFar1, ExactSoFar).
+		NewInstMap, VarTypes, ExactSoFar1, ExactSoFar).
 
 %-----------------------------------------------------------------------------%
 
@@ -744,11 +748,12 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
 	{ proc_info_typeclass_info_varmap(ProcInfo, TCVarMap) },
+	{ proc_info_inst_varset(ProcInfo, InstVarSet) },
 	% XXX handle the extra typeinfo arguments for
 	% --typeinfo-liveness properly.
 	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
-		VarSet, Markers, Owner, address_is_not_taken,
+		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
 		ModuleInfo0, ModuleInfo, PredProcId) },
 	pd_info_set_module_info(ModuleInfo).
 

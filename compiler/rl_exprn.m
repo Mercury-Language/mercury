@@ -1150,7 +1150,7 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 		{ error("rl_exprn__unify: unsupported cons_id - tabling_pointer_const") }
 	).
 		
-rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail),
+rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),
 		GoalInfo, Fail, Code) -->
 	rl_exprn_info_lookup_var(Var, VarLoc),
 	rl_exprn_info_lookup_var_type(Var, Type),

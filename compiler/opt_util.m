@@ -780,7 +780,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			opt_util__block_refers_stackvars(Instrs0, Need)
 		)
 	;
-		Uinstr0 = call(_, _, _, _, _),
+		Uinstr0 = call(_, _, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = mkframe(_, _),
@@ -983,7 +983,7 @@ opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).
 opt_util__can_instr_branch_away(block(_, _, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
-opt_util__can_instr_branch_away(call(_, _, _, _, _), yes).
+opt_util__can_instr_branch_away(call(_, _, _, _, _, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _), no).
 opt_util__can_instr_branch_away(label(_), no).
 opt_util__can_instr_branch_away(goto(_), yes).
@@ -1050,7 +1050,7 @@ opt_util__can_instr_fall_through(livevals(_), yes).
 opt_util__can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
 	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
-opt_util__can_instr_fall_through(call(_, _, _, _, _), no).
+opt_util__can_instr_fall_through(call(_, _, _, _, _, _), no).
 opt_util__can_instr_fall_through(mkframe(_, _), yes).
 opt_util__can_instr_fall_through(label(_), yes).
 opt_util__can_instr_fall_through(goto(_), no).
@@ -1096,7 +1096,7 @@ opt_util__can_use_livevals(comment(_), no).
 opt_util__can_use_livevals(livevals(_), no).
 opt_util__can_use_livevals(block(_, _, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
-opt_util__can_use_livevals(call(_, _, _, _, _), yes).
+opt_util__can_use_livevals(call(_, _, _, _, _, _), yes).
 opt_util__can_use_livevals(mkframe(_, _), no).
 opt_util__can_use_livevals(label(_), no).
 opt_util__can_use_livevals(goto(_), yes).
@@ -1159,7 +1159,7 @@ opt_util__instr_labels_2(livevals(_), [], []).
 opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
-opt_util__instr_labels_2(call(Target, Ret, _, _, _), [], [Target, Ret]).
+opt_util__instr_labels_2(call(Target, Ret, _, _, _, _), [], [Target, Ret]).
 opt_util__instr_labels_2(mkframe(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
 opt_util__instr_labels_2(goto(Addr), [], [Addr]).
@@ -1192,7 +1192,7 @@ opt_util__possible_targets(livevals(_), []).
 opt_util__possible_targets(block(_, _, _), _) :-
 	error("block in possible_targets").
 opt_util__possible_targets(assign(_, _), []).
-opt_util__possible_targets(call(_, ReturnAddr, _, _, _), Labels) :-
+opt_util__possible_targets(call(_, ReturnAddr, _, _, _, _), Labels) :-
 	( ReturnAddr = label(Label) ->
 		Labels = [Label]
 	;
@@ -1267,7 +1267,7 @@ opt_util__instr_rvals_and_lvals(livevals(_), [], []).
 opt_util__instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
-opt_util__instr_rvals_and_lvals(call(_, _, _, _, _), [], []).
+opt_util__instr_rvals_and_lvals(call(_, _, _, _, _, _), [], []).
 opt_util__instr_rvals_and_lvals(mkframe(_, _), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
 opt_util__instr_rvals_and_lvals(goto(_), [], []).
@@ -1402,7 +1402,7 @@ opt_util__count_temps_instr(block(_, _, _), R, R, F, F).
 opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
-opt_util__count_temps_instr(call(_, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(call(_, _, _, _, _, _), R, R, F, F).
 opt_util__count_temps_instr(mkframe(_, _), R, R, F, F).
 opt_util__count_temps_instr(label(_), R, R, F, F).
 opt_util__count_temps_instr(goto(_), R, R, F, F).
@@ -1470,7 +1470,7 @@ opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
 % that uses a temp var without defining it.
 opt_util__count_temps_rval(_, R, R, F, F).
 
-opt_util__format_label(local(ProcLabel, _), Str) :-
+opt_util__format_label(local(_, ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
 opt_util__format_label(c_local(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
@@ -1756,8 +1756,8 @@ opt_util__replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
 		Lval = Lval0,
 		Rval = Rval0
 	).
-opt_util__replace_labels_instr(call(Target, Return0, LiveInfo, Context, CM),
-		ReplMap, _, call(Target, Return, LiveInfo, Context, CM)) :-
+opt_util__replace_labels_instr(call(Target, Return0, LiveInfo, CXT, GP, CM),
+		ReplMap, _, call(Target, Return, LiveInfo, CXT, GP, CM)) :-
 	opt_util__replace_labels_code_addr(Return0, ReplMap, Return).
 opt_util__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
 		ReplData, mkframe(NondetFrameInfo, Redoip)) :-

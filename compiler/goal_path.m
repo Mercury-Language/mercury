@@ -42,18 +42,19 @@ goal_path__fill_slots(Proc0, ModuleInfo, Proc) :-
 
 fill_goal_slots(Expr0 - Info0, Path0, SlotInfo, Expr - Info) :-
 	goal_info_set_goal_path(Info0, Path0, Info),
-	fill_expr_slots(Expr0, Path0, SlotInfo, Expr).
+	fill_expr_slots(Expr0, Info, Path0, SlotInfo, Expr).
 
-:- pred fill_expr_slots(hlds_goal_expr::in, goal_path::in, slot_info::in,
-	hlds_goal_expr::out) is det.
+:- pred fill_expr_slots(hlds_goal_expr::in, hlds_goal_info::in, goal_path::in,
+	slot_info::in, hlds_goal_expr::out) is det.
 
-fill_expr_slots(conj(Goals0), Path0, SlotInfo, conj(Goals)) :-
+fill_expr_slots(conj(Goals0), _, Path0, SlotInfo, conj(Goals)) :-
 	fill_conj_slots(Goals0, Path0, 0, SlotInfo, Goals).
-fill_expr_slots(par_conj(Goals0, SM), Path0, SlotInfo, par_conj(Goals, SM)) :-
+fill_expr_slots(par_conj(Goals0, SM), _, Path0, SlotInfo,
+		par_conj(Goals, SM)) :-
 	fill_conj_slots(Goals0, Path0, 0, SlotInfo, Goals).
-fill_expr_slots(disj(Goals0, B), Path0, SlotInfo, disj(Goals, B)) :-
+fill_expr_slots(disj(Goals0, B), _, Path0, SlotInfo, disj(Goals, B)) :-
 	fill_disj_slots(Goals0, Path0, 0, SlotInfo, Goals).
-fill_expr_slots(switch(Var, B, Cases0, D), Path0, SlotInfo,
+fill_expr_slots(switch(Var, B, Cases0, D), _, Path0, SlotInfo,
 		switch(Var, B, Cases, D)) :-
 	SlotInfo = slot_info(VarTypes, ModuleInfo),
 	map__lookup(VarTypes, Var, Type),
@@ -66,21 +67,30 @@ fill_expr_slots(switch(Var, B, Cases0, D), Path0, SlotInfo,
 		NumCases = -1
 	),
 	fill_switch_slots(Cases0, Path0, 0, NumCases, SlotInfo, Cases).
-fill_expr_slots(not(Goal0), Path0, SlotInfo, not(Goal)) :-
+fill_expr_slots(not(Goal0), _, Path0, SlotInfo, not(Goal)) :-
 	fill_goal_slots(Goal0, [neg | Path0], SlotInfo, Goal).
-fill_expr_slots(some(A, B, Goal0), Path0, SlotInfo, some(A, B, Goal)) :-
-	fill_goal_slots(Goal0, [exist | Path0], SlotInfo, Goal).
-fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), Path0, SlotInfo,
+fill_expr_slots(some(A, B, Goal0), OuterInfo, Path0, SlotInfo,
+		some(A, B, Goal)) :-
+	Goal0 = _ - InnerInfo,
+	goal_info_get_code_model(OuterInfo, OuterModel),
+	goal_info_get_code_model(InnerInfo, InnerModel),
+	( InnerModel = OuterModel ->
+		MaybeCut = no_cut
+	;
+		MaybeCut = cut
+	),
+	fill_goal_slots(Goal0, [exist(MaybeCut) | Path0], SlotInfo, Goal).
+fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), _, Path0, SlotInfo,
 		if_then_else(A, Cond, Then, Else, E)) :-
 	fill_goal_slots(Cond0, [ite_cond | Path0], SlotInfo, Cond),
 	fill_goal_slots(Then0, [ite_then | Path0], SlotInfo, Then),
 	fill_goal_slots(Else0, [ite_else | Path0], SlotInfo, Else).
-fill_expr_slots(call(A,B,C,D,E,F), _Path0, _Slot, call(A,B,C,D,E,F)).
-fill_expr_slots(generic_call(A,B,C,D), _Path0, _Slot, generic_call(A,B,C,D)).
-fill_expr_slots(unify(A,B,C,D,E), _Path0, _Slot, unify(A,B,C,D,E)).
-fill_expr_slots(pragma_foreign_code(A,B,C,D,E,F,G,H), _Path0, _Slot,
+fill_expr_slots(call(A,B,C,D,E,F), _, _, _, call(A,B,C,D,E,F)).
+fill_expr_slots(generic_call(A,B,C,D), _, _, _, generic_call(A,B,C,D)).
+fill_expr_slots(unify(A,B,C,D,E), _, _, _, unify(A,B,C,D,E)).
+fill_expr_slots(pragma_foreign_code(A,B,C,D,E,F,G,H), _, _, _,
 		pragma_foreign_code(A,B,C,D,E,F,G,H)).
-fill_expr_slots(bi_implication(_, _), _, _, _) :-
+fill_expr_slots(bi_implication(_, _), _, _, _, _) :-
 	% these should have been expanded out by now
 	error("fill_expr_slots: unexpected bi_implication").
 

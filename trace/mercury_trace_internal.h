@@ -8,7 +8,7 @@
 #define	MERCURY_TRACE_INTERNAL_H
 
 #include "mercury_conf.h"	/* for MR_USE_DECLARATIVE_DEBUGGER */
-#include "mercury_types.h"	/* for Code */
+#include "mercury_types.h"	/* for MR_Code */
 #include "mercury_trace.h"	/* for MR_Event_Info, etc. */
 #include "mercury_std.h"	/* for bool */
 
@@ -36,11 +36,11 @@ extern	MR_Trace_Mode	MR_trace_decl_mode;
 
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
-extern	Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
+extern	MR_Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
 			bool interactive, MR_Event_Info *event_info);
 
 
-extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
+extern	MR_Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info);
 
 /*

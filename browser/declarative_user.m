@@ -45,18 +45,19 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_execution, mdb__browse, mdb__util.
+:- import_module mdb__browser_info, mdb__browse, mdb__util.
+:- import_module mdb__declarative_execution.
 :- import_module std_util, char, string, bool, int.
 
 :- type user_state
 	--->	user(
 			instr	:: io__input_stream,
 			outstr	:: io__output_stream,
-			browser	:: browser_state
+			browser	:: browser_persistent_state
 		).
 
 user_state_init(InStr, OutStr, User) :-
-	browse__init_state(Browser),
+	browser_info__init_persistent_state(Browser),
 	User = user(InStr, OutStr, Browser).
 
 %-----------------------------------------------------------------------------%
@@ -156,7 +157,7 @@ browse_decl_bug(Bug, ArgNum, User0, User) -->
 :- mode browse_atom_argument(in, in, in, out, di, uo) is det.
 
 browse_atom_argument(Atom, ArgNum, User0, User) -->
-	{ Atom = atom(_, Args) },
+	{ Atom = atom(_, _, Args) },
 	(
 		{ list__index1(Args, ArgNum, MaybeArg) },
 		{ MaybeArg = yes(Arg) }
@@ -385,7 +386,7 @@ write_decl_atom(User, Indent, Atom) -->
 :- pred check_decl_atom_size(string, decl_atom).
 :- mode check_decl_atom_size(in, in) is semidet.
 
-check_decl_atom_size(Indent, atom(Functor, Args)) :-
+check_decl_atom_size(Indent, atom(_, Functor, Args)) :-
 	decl_atom_size_limit(RemSize0),
 	string__length(Indent, I),
 	string__length(Functor, F),
@@ -413,17 +414,27 @@ decl_atom_size_limit(79).
 :- pred write_decl_atom_limited(decl_atom, user_state, io__state, io__state).
 :- mode write_decl_atom_limited(in, in, di, uo) is det.
 
-write_decl_atom_limited(atom(Functor, Args), User) -->
+write_decl_atom_limited(atom(PredOrFunc, Functor, Args), User) -->
+	write_decl_atom_category(User^outstr, PredOrFunc),
 	io__write_string(User^outstr, Functor),
 	io__nl(User^outstr),
 	foldl(print_decl_atom_arg(User), Args).
+
+:- pred write_decl_atom_category(io__output_stream, pred_or_func, io__state,
+		io__state).
+:- mode write_decl_atom_category(in, in, di, uo) is det.
+
+write_decl_atom_category(OutStr, predicate) -->
+	io__write_string(OutStr, "pred ").
+write_decl_atom_category(OutStr, function) -->
+	io__write_string(OutStr, "func ").
 
 :- pred print_decl_atom_arg(user_state, maybe(univ), io__state, io__state).
 :- mode print_decl_atom_arg(in, in, di, uo) is det.
 
 print_decl_atom_arg(User, yes(Arg)) -->
 	io__write_string(User^outstr, "\t"),
-	browse__print(univ_value(Arg), User^outstr, User^browser).
+	browse__print(univ_value(Arg), User^outstr, print_all, User^browser).
 print_decl_atom_arg(User, no) -->
 	io__write_string(User^outstr, "\t_\n").
 
@@ -431,29 +442,29 @@ print_decl_atom_arg(User, no) -->
 		io__state, io__state).
 :- mode write_decl_atom_direct(in, in, di, uo) is det.
 
-write_decl_atom_direct(OutStr, atom(Functor, Args)) -->
+write_decl_atom_direct(OutStr, atom(PredOrFunc, Functor, Args)) -->
 	io__write_string(OutStr, Functor),
 	(
 		{ Args = [] }
 	;
-		{ Args = [Arg | Args0] },
+		{ Args = [FirstArg | ArgsRest] },
 		io__write_char(OutStr, '('),
-		write_decl_atom_arg(OutStr, Arg),
-		write_decl_atom_args(OutStr, Args0),
-		io__write_char(OutStr, ')')
+		(
+			{ PredOrFunc = predicate },
+			io__write_list(OutStr, Args, ", ",
+					write_decl_atom_arg(OutStr)),
+			io__write_char(OutStr, ')')
+		;
+			{ PredOrFunc = function },
+			{ get_inputs_and_result(FirstArg, ArgsRest, Inputs,
+					Result) },
+			io__write_list(OutStr, Inputs, ", ",
+					write_decl_atom_arg(OutStr)),
+			io__write_string(OutStr, ") = "),
+			write_decl_atom_arg(OutStr, Result)
+		)
 	),
 	io__nl(OutStr).
-
-:- pred write_decl_atom_args(io__output_stream, list(maybe(univ)),
-		io__state, io__state).
-:- mode write_decl_atom_args(in, in, di, uo) is det.
-
-write_decl_atom_args(_, []) -->
-	[].
-write_decl_atom_args(OutStr, [Arg | Args]) -->
-	io__write_string(OutStr, ", "),
-	write_decl_atom_arg(OutStr, Arg),
-	write_decl_atom_args(OutStr, Args).
 
 :- pred write_decl_atom_arg(io__output_stream, maybe(univ),
 		io__state, io__state).
@@ -463,4 +474,11 @@ write_decl_atom_arg(OutStr, yes(Arg)) -->
 	io__print(OutStr, Arg).
 write_decl_atom_arg(OutStr, no) -->
 	io__write_char(OutStr, '_').
+
+:- pred get_inputs_and_result(T, list(T), list(T), T).
+:- mode get_inputs_and_result(in, in, out, out) is det.
+
+get_inputs_and_result(A, [], [], A).
+get_inputs_and_result(A1, [A2 | As], [A1 | Inputs0], Result) :-
+	get_inputs_and_result(A2, As, Inputs0, Result).
 

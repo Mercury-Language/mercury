@@ -138,7 +138,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 #define MR_HIGHER_ORDER_TYPEINFO_STRUCT(NAME, ARITY)			\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
-	MR_Integer             MR_ti_higher_order_arity;			\
+	MR_Integer          MR_ti_higher_order_arity;			\
 	MR_TypeInfo         MR_ti_higher_order_arg_typeinfos[ARITY];	\
     }
 
@@ -152,7 +152,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 #define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
-	MR_Integer             MR_pti_higher_order_arity;			\
+	MR_Integer          MR_pti_higher_order_arity;			\
 	MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
     }
 
@@ -354,7 +354,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define UNIV_OFFSET_FOR_DATA            1
 
 #define	MR_unravel_univ(univ, typeinfo, value)                      \
-    do {							                                \
+    do {                                                            \
         typeinfo = (MR_TypeInfo) MR_field(MR_mktag(0), (univ),      \
                         UNIV_OFFSET_FOR_TYPEINFO);                  \
         value = MR_field(MR_mktag(0), (univ),                       \
@@ -364,9 +364,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_define_univ_fields(univ, typeinfo, value)                \
     do {                                                            \
         MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_TYPEINFO)     \
-            = (Word) (typeinfo);                                    \
+            = (MR_Word) (typeinfo);                                 \
         MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_DATA)         \
-            = (Word) (value);                                       \
+            = (MR_Word) (value);                                    \
     } while (0)
 
 /*---------------------------------------------------------------------------*/
@@ -396,9 +396,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** added to it.
 */
 #define MR_typeclass_info_arg_typeclass_info(tci, n)                \
-    (((Word *)(tci))[(n)])
+    (((MR_Word *)(tci))[(n)])
 #define MR_typeclass_info_unconstrained_type_info(tci, n)           \
-    (((Word *)(tci))[(n)])
+    (((MR_Word *)(tci))[(n)])
 
 /*
 ** The following have the same definitions. This is because
@@ -782,7 +782,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
   */
   typedef	void        *MR_ProcAddr;
 #else
-  typedef	MR_Code 	*MR_ProcAddr;
+  typedef	MR_Code     *MR_ProcAddr;
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -1154,4 +1154,4 @@ extern  void        MR_deallocate(MR_MemoryList allocated_memory_cells);
 
 /*---------------------------------------------------------------------------*/
 
-#endif /* not MERCURY_TYPEINFO_H */
+#endif /* not MERCURY_TYPE_INFO_H */

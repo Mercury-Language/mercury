@@ -76,7 +76,7 @@
 
 :- import_module hlds_module, hlds_out, builtin_ops.
 :- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
-:- import_module rtti.
+:- import_module rtti, error_util.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
 
@@ -128,32 +128,45 @@ ml_gen_unification(construct(Var, ConsId, Args, ArgModes,
 	{ require(unify(CodeModel, model_det),
 		"ml_code_gen: construct not det") },
 	{ MaybeAditiRLExprnID = yes(_) ->
-		sorry("Aditi closures")
-	;
-		true
-	},
-	{ HowToConstruct = reuse_cell(_) ->
-		sorry("cell reuse")
+		sorry(this_file, "Aditi closures")
 	;
 		true
 	},
 	ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements).
-ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail),
+
+ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
 		{ CanFail = can_fail },
 		{ require(unify(CodeModel, model_semi),
 			"ml_code_gen: can_fail deconstruct not semidet") },
 		ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
-			MLDS_Decls, MLDS_Statements)
+			MLDS_Decls, MLDS_Unif_Statements)
 	;
 		{ CanFail = cannot_fail },
 		{ require(unify(CodeModel, model_det),
 			"ml_code_gen: cannot_fail deconstruct not det") },
 		ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
-			MLDS_Decls, MLDS_Statements)
-	).
+			MLDS_Decls, MLDS_Unif_Statements)
+	),
+	(
+		%
+		% Note that we can deallocate a cell even if the
+		% unification fails, it is the responsibility of the
+		% structure reuse phase to ensure that this is safe.
+		%
+		{ CanCGC = yes },
+		ml_gen_var(Var, VarLval),
+		{ MLDS_Stmt = atomic(delete_object(VarLval)) },
+		{ MLDS_CGC_Statements = [mlds__statement(MLDS_Stmt,
+				mlds__make_context(Context)) ] }
+	;
+		{ CanCGC = no },
+		{ MLDS_CGC_Statements = [] }
+	),
+	{ MLDS_Statements = MLDS_Unif_Statements `list__append`
+			MLDS_CGC_Statements }.
 
 ml_gen_unification(complicated_unify(_, _, _), _, _, [], []) -->
 	% simplify.m should convert these into procedure calls
@@ -397,11 +410,11 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	;
 		{ EvalMethod = (aditi_bottom_up) },
 		% XXX not yet implemented
-		{ sorry("`aditi_bottom_up' closures") }
+		{ sorry(this_file, "`aditi_bottom_up' closures") }
 	;
 		{ EvalMethod = (aditi_top_down) },
 		% XXX not yet implemented
-		{ sorry("`aditi_top_down' closures") }
+		{ sorry(this_file, "`aditi_top_down' closures") }
 	),
 
 	%
@@ -453,7 +466,7 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% generate a `new_object' statement (or static constant)
 	% for the closure
 	%
-	ml_gen_new_object(Tag, CtorName, Var, ExtraArgRvals, ExtraArgTypes,
+	ml_gen_new_object(no, Tag, CtorName, Var, ExtraArgRvals, ExtraArgTypes,
 			ArgVars, ArgModes, HowToConstruct, Context,
 			MLDS_Decls, MLDS_Statements).
 
@@ -542,7 +555,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		_PredInfo, ProcInfo) },
+		PredInfo, ProcInfo) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
 	{ proc_info_argmodes(ProcInfo, ProcArgModes) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
@@ -583,7 +597,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
 		list__length(WrapperHeadVars)) },
 	{ WrapperParams0 = ml_gen_params(ModuleInfo, WrapperHeadVarNames,
-		WrapperBoxedArgTypes, WrapperArgModes, CodeModel) },
+		WrapperBoxedArgTypes, WrapperArgModes, PredOrFunc, CodeModel) },
 
 	% then insert the `closure_arg' parameter
 	{ ClosureArg = data(var("closure_arg")) - mlds__generic_type },
@@ -594,8 +608,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	% also compute the lvals for the parameters,
 	% and local declarations for any --copy-out output parameters
 	ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
-		WrapperArgModes, CodeModel, Context,
-		WrapperHeadVarDecls, WrapperHeadVarLvals),
+		WrapperArgModes, PredOrFunc, CodeModel, Context,
+		WrapperHeadVarDecls, WrapperHeadVarLvals, WrapperCopyOutLvals),
 
 	%
 	% generate code to declare and initialize the closure pointer.
@@ -674,19 +688,17 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 
 	%
 	% For semidet code, add the declaration `bool succeeded;'
-	% and the `return succeeded;' statement.
 	%
 	( { CodeModel = model_semi } ->
 		{ SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context) },
-		{ Decls2 = [SucceededVarDecl | Decls1] },
-		ml_gen_test_success(Succeeded),
-		{ ReturnStmt = return([Succeeded]) },
-		{ ReturnStatement = mlds__statement(ReturnStmt, MLDS_Context) },
-		{ Statements = list__append(Statements1, [ReturnStatement]) }
+		{ Decls2 = [SucceededVarDecl | Decls1] }
 	;
-		{ Decls2 = Decls1 },
-		{ Statements = Statements1 }
+		{ Decls2 = Decls1 }
 	),
+
+	% Add an appropriate `return' statement
+	ml_append_return_statement(CodeModel, WrapperCopyOutLvals, Context,
+		Statements1, Statements),
 
 	%
 	% Insert the local declarations of the wrapper's output arguments,
@@ -725,8 +737,8 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 		Names = [Name | Names1]
 	).
 
-	% ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes, CodeModel,
-	%		LocalVarDefns, HeadVarLvals):
+	% ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes,
+	%		PredOrFunc, CodeModel, LocalVarDefns, HeadVarLvals):
 	%	Generate lvals for the specified head variables
 	%	passed in the specified modes.
 	%	Also generate local definitions for output variables,
@@ -734,16 +746,19 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 	%	rather than passed by reference.
 	%
 :- pred ml_gen_wrapper_arg_lvals(list(var_name), list(prog_type), list(mode),
-		code_model, prog_context, list(mlds__defn), list(mlds__lval),
+		pred_or_func, code_model, prog_context,
+		list(mlds__defn), list(mlds__lval), list(mlds__lval),
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_wrapper_arg_lvals(in, in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_wrapper_arg_lvals(in, in, in, in, in, in, out, out, out, in, out)
+		is det.
 
-ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
-		Defns, Lvals) -->
+ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
+		Defns, Lvals, CopyOutLvals) -->
 	(
 		{ Names = [], Types = [], Modes = [] }
 	->
 		{ Lvals = [] },
+		{ CopyOutLvals = [] },
 		{ Defns = [] }
 	;
 		{ Names = [Name | Names1] },
@@ -751,12 +766,15 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 		{ Modes = [Mode | Modes1] }
 	->
 		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1,
-			CodeModel, Context, Defns1, Lvals1),
+			PredOrFunc, CodeModel, Context,
+			Defns1, Lvals1, CopyOutLvals1),
 		ml_qualify_var(Name, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		( { mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) } ->
+		{ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) },
+		( { ArgMode = top_in } ->
 			{ Lval = VarLval },
+			{ CopyOutLvals = CopyOutLvals1 },
 			{ Defns = Defns1 }
 		;
 			%
@@ -764,7 +782,21 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 			%
 			ml_gen_info_get_globals(Globals),
 			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
-			( { CopyOut = yes } ->
+			(
+				{
+					CopyOut = yes
+				;
+					% for model_det functions,
+					% output mode function results
+					% are mapped to MLDS return values
+					PredOrFunc = function,
+					CodeModel = model_det,
+					ArgMode = top_out,
+					Types1 = [],
+					\+ type_util__is_dummy_argument_type(
+						Type)
+				}
+			->
 				%
 				% output arguments are copied out,
 				% so we need to generate a local declaration
@@ -772,8 +804,11 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 				%
 				{ Lval = VarLval },
 				( { type_util__is_dummy_argument_type(Type) } ->
+					{ CopyOutLvals = CopyOutLvals1 },
 					{ Defns = Defns1 }
 				;
+					{ CopyOutLvals = [Lval |
+						CopyOutLvals1] },
 					ml_gen_local_for_output_arg(Name, Type,
 						Context, Defn),
 					{ Defns = [Defn | Defns1] }
@@ -785,6 +820,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
 				%
 				ml_gen_type(Type, MLDS_Type),
 				{ Lval = mem_ref(lval(VarLval), MLDS_Type) },
+				{ CopyOutLvals = CopyOutLvals1 },
 				{ Defns = Defns1 }
 			)
 		),
@@ -861,9 +897,9 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 		ExtraRvals = [],
 		ExtraArgTypes = []
 	},
-	ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraArgTypes,
-			ArgVars, ArgModes, HowToConstruct, Context,
-			MLDS_Decls, MLDS_Statements).
+	ml_gen_new_object(yes(ConsId), Tag, CtorName, Var,
+			ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
+			HowToConstruct, Context, MLDS_Decls, MLDS_Statements).
 
 	%
 	% ml_gen_new_object:
@@ -873,14 +909,15 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	%	additional constants to insert at the start of the
 	%	argument list.
 	%
-:- pred ml_gen_new_object(mlds__tag, ctor_name, prog_var, list(mlds__rval),
-		list(mlds__type), prog_vars, list(uni_mode), how_to_construct,
+:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, ctor_name, prog_var,
+		list(mlds__rval), list(mlds__type), prog_vars,
+		list(uni_mode), how_to_construct,
 		prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, out, out, in, out)
-		is det.
+:- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, in, out, out,
+		in, out) is det.
 
-ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
+ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		ArgVars, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
@@ -984,9 +1021,53 @@ ml_gen_new_object(Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		{ MLDS_Decls = list__append(BoxConstDefns, [ConstDefn]) },
 		{ MLDS_Statements = [AssignStatement] }
 	;
-		{ HowToConstruct = reuse_cell(_) },
-		{ sorry("cell reuse") }
+		{ HowToConstruct = reuse_cell(CellToReuse) },
+		{ CellToReuse = cell_to_reuse(ReuseVar, ReuseConsId, _) },
+
+		{ MaybeConsId = yes(ConsId0) ->
+			ConsId = ConsId0
+		;
+			error("ml_gen_new_object: unknown cons id")
+		},
+
+		ml_variable_type(ReuseVar, ReuseType),
+		ml_cons_id_to_tag(ReuseConsId, ReuseType, ReuseConsIdTag),
+		{ ml_tag_offset_and_argnum(ReuseConsIdTag,
+				ReusePrimaryTag, _ReuseOffSet, _ReuseArgNum) },
+
+		ml_cons_id_to_tag(ConsId, Type, ConsIdTag),
+		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(ConsIdTag,
+				PrimaryTag, OffSet, ArgNum) },
+
+		ml_gen_var(Var, Var1Lval),
+		ml_gen_var(ReuseVar, Var2Lval),
+		{ ReusePrimaryTag = PrimaryTag ->
+			Var2Rval = lval(Var2Lval)
+		;
+			Var2Rval = mkword(PrimaryTag,
+					binop(body, lval(Var2Lval),
+					ml_gen_mktag(ReusePrimaryTag)))
+		},
+
+		{ MLDS_Statement = ml_gen_assign(Var1Lval, Var2Rval, Context) },
+
+		%
+		% For each field in the construction unification we need
+		% to generate an rval.
+		% XXX we do more work then we need to here, as some of
+		% the cells may already contain the correct values.
+		%
+		ml_gen_unify_args(ConsId, ArgVars, ArgModes, ArgTypes,
+				Fields, Type, VarLval, OffSet,
+				ArgNum, PrimaryTag, Context, MLDS_Statements0),
+
+		{ MLDS_Decls = [] },
+		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
 	).
+
+:- func ml_gen_mktag(int) = mlds__rval.
+ml_gen_mktag(Tag) = unop(std_unop(mktag), const(int_const(Tag))).
 
 :- pred ml_gen_box_const_rval_list(list(mlds__type), list(mlds__rval),
 		prog_context, mlds__defns, list(mlds__rval),
@@ -1033,8 +1114,15 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		%
 		% Generate a local static constant for this float
 		%
-		ml_gen_info_new_conv_var(SequenceNum),
-		{ string__format("float_%d", [i(SequenceNum)], ConstName) },
+		ml_gen_info_new_const(SequenceNum),
+		=(MLDSGenInfo),
+		{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+		{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+		{ pred_id_to_int(PredId, PredIdNum) },
+		{ proc_id_to_int(ProcId, ProcIdNum) },
+		{ string__format("float_%d_%d_%d",
+			[i(PredIdNum), i(ProcIdNum), i(SequenceNum)],
+			ConstName) },
 		{ Initializer = init_obj(Rval) },
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, Type,
 			Initializer, Context) },
@@ -1066,16 +1154,41 @@ ml_gen_static_const_arg_list([], [_|_], _) -->
 	{ error("ml_gen_static_const_arg_list: length mismatch") }.
 
 	% Generate the name of the local static constant
-	% for a given variable.
+	% for a given variable.  To ensure that the names
+	% are unique, we qualify them with the pred_id and
+	% proc_id numbers, as well as a sequence number.
+	% This is needed to allow ml_elim_nested.m to hoist
+	% such constants out to top level.
 	%
 :- pred ml_gen_static_const_name(prog_var, mlds__var_name,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_static_const_name(in, out, in, out) is det.
 ml_gen_static_const_name(Var, ConstName) -->
+	ml_gen_info_new_const(SequenceNum),
+	ml_gen_info_set_const_num(Var, SequenceNum),
+	ml_format_static_const_name(Var, SequenceNum, ConstName).
+
+:- pred ml_lookup_static_const_name(prog_var, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_lookup_static_const_name(in, out, in, out) is det.
+ml_lookup_static_const_name(Var, ConstName) -->
+	ml_gen_info_lookup_const_num(Var, SequenceNum),
+	ml_format_static_const_name(Var, SequenceNum, ConstName).
+
+:- pred ml_format_static_const_name(prog_var, const_seq, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_format_static_const_name(in, in, out, in, out) is det.
+
+ml_format_static_const_name(Var, SequenceNum, ConstName) -->
 	=(MLDSGenInfo),
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ pred_id_to_int(PredId, PredIdNum) },
+	{ proc_id_to_int(ProcId, ProcIdNum) },
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ VarName = ml_gen_var_name(VarSet, Var) },
-	{ string__format("const_%s", [s(VarName)], ConstName) }.
+	{ string__format("const_%d_%d_%d_%s", [i(PredIdNum), i(ProcIdNum),
+		i(SequenceNum), s(VarName)], ConstName) }.
 
 	% Generate an rval containing the address of the local static constant
 	% for a given variable.
@@ -1084,7 +1197,7 @@ ml_gen_static_const_name(Var, ConstName) -->
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_static_const_addr(in, out, in, out) is det.
 ml_gen_static_const_addr(Var, ConstAddrRval) -->
-	ml_gen_static_const_name(Var, ConstName),
+	ml_lookup_static_const_name(Var, ConstName),
 	ml_qualify_var(ConstName, ConstLval),
 	{ ConstAddrRval = mem_addr(ConstLval) }.
 
@@ -1100,20 +1213,6 @@ ml_gen_static_const_defn(ConstName, ConstType, Initializer, Context) =
 	DeclFlags = ml_static_const_decl_flags,
 	MLDS_Context = mlds__make_context(Context),
 	MLDS_Defn = mlds__defn(Name, MLDS_Context, DeclFlags, Defn).
-
-	% Return the declaration flags appropriate for an
-	% initialized local static constant.
-	%
-:- func ml_static_const_decl_flags = mlds__decl_flags.
-ml_static_const_decl_flags = MLDS_DeclFlags :-
-	Access = private,
-	PerInstance = one_copy,
-	Virtuality = non_virtual,
-	Finality = overridable,
-	Constness = const,
-	Abstractness = concrete,
-	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-		Virtuality, Finality, Constness, Abstractness).
 
 :- pred ml_cons_name(cons_id, ctor_name, ml_gen_info, ml_gen_info).
 :- mode ml_cons_name(in, out, in, out) is det.
@@ -1230,19 +1329,75 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-			VarLval, 0, 1, UnsharedTag, Context, MLDS_Statements)
+				VarLval, OffSet, ArgNum,
+				UnsharedTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
-			VarLval, 1, 1, PrimaryTag, Context, MLDS_Statements)
+				VarLval, OffSet, ArgNum,
+				PrimaryTag, Context, MLDS_Statements)
 	;
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ MLDS_Statements = [] } % if this is det, then nothing happens
 	).
+
+	% Calculate the integer offset used to reference the first field
+	% of a structure for lowlevel data or the first argument number
+	% to access the field using the highlevel data representation.
+	% Abort if the tag indicates that the data doesn't have any
+	% fields.
+:- pred ml_tag_offset_and_argnum(cons_tag::in, tag_bits::out,
+		int::out, int::out) is det.
+
+ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
+	(
+		Tag = unshared_tag(UnsharedTag),
+		TagBits = UnsharedTag,
+		OffSet = 0,
+		ArgNum = 1
+	;
+		Tag = shared_remote_tag(PrimaryTag, _SecondaryTag),
+		TagBits = PrimaryTag,
+		OffSet = 1,
+		ArgNum = 1
+	;
+		Tag = string_constant(_String),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = int_constant(_Int),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = float_constant(_Float),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = pred_closure_tag(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = code_addr_constant(_, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = type_ctor_info_constant(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = base_typeclass_info_constant(_, _, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = tabling_pointer_constant(_, _),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = no_tag,
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = shared_local_tag(_Bits1, _Num1),
+		error("ml_tag_offset_and_argnum")
+	).
+
 
 	% Given a type and a cons_id, and also the types of the actual
 	% arguments of that cons_id in some particular use of it,
@@ -1639,3 +1794,9 @@ ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
 	;
 		error("ml_gen_field_id: invalid type")
 	).
+
+
+:- func this_file = string.
+this_file = "ml_unify_gen.m".
+
+:- end_module ml_unify_gen.

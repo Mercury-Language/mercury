@@ -20,7 +20,7 @@
 :- interface.
 
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
-:- import_module hlds_data.
+:- import_module hlds_data, hlds_pred.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
 
@@ -120,8 +120,8 @@
 	% the one to take IMA to IMB.  However this predicate should
 	% transform more easily to the alias branch.
 	%
-:- pred instmap_changed_vars(instmap::in, instmap::in, module_info::in,
-		set(prog_var)::out) is det.
+:- pred instmap_changed_vars(instmap::in, instmap::in, vartypes::in,
+		module_info::in, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -250,8 +250,8 @@
 	% is true if none of the vars in the set Vars could have become more
 	% instantiated when InstmapDelta is applied to Instmap.
 :- pred instmap__no_output_vars(instmap, instmap_delta, set(prog_var),
-		module_info).
-:- mode instmap__no_output_vars(in, in, in, in) is semidet.
+		vartypes, module_info).
+:- mode instmap__no_output_vars(in, in, in, in, in) is semidet.
 
 	% merge_instmap_delta(InitialInstMap, NonLocals,
 	%	InstMapDeltaA, InstMapDeltaB, ModuleInfo0, ModuleInfo)
@@ -396,23 +396,27 @@ instmap_delta_changed_vars(reachable(InstMapping), ChangedVars) :-
 
 %-----------------------------------------------------------------------------%
 
-instmap_changed_vars(InstMapA, InstMapB, ModuleInfo, ChangedVars) :-
+instmap_changed_vars(InstMapA, InstMapB, VarTypes, ModuleInfo, ChangedVars) :-
 	instmap__vars_list(InstMapB, VarsB),
-	changed_vars_2(VarsB, InstMapA, InstMapB, ModuleInfo, ChangedVars).
+	changed_vars_2(VarsB, InstMapA, InstMapB, VarTypes, ModuleInfo,
+		ChangedVars).
 
-:- pred changed_vars_2(prog_vars::in, instmap::in,
-		instmap::in, module_info::in, set(prog_var)::out) is det.
+:- pred changed_vars_2(prog_vars::in, instmap::in, instmap::in, vartypes::in,
+		module_info::in, set(prog_var)::out) is det.
 
-changed_vars_2([], _InstMapA, _InstMapB, _ModuleInfo, ChangedVars) :-
+changed_vars_2([], _InstMapA, _InstMapB, _Types, _ModuleInfo, ChangedVars) :-
 	set__init(ChangedVars).
-changed_vars_2([VarB|VarBs], InstMapA, InstMapB, ModuleInfo, ChangedVars) :-
-	changed_vars_2(VarBs, InstMapA, InstMapB, ModuleInfo, ChangedVars0),
+changed_vars_2([VarB|VarBs], InstMapA, InstMapB, VarTypes, ModuleInfo,
+		ChangedVars) :-
+	changed_vars_2(VarBs, InstMapA, InstMapB, VarTypes, ModuleInfo,
+		ChangedVars0),
 
 	instmap__lookup_var(InstMapA, VarB, InitialInst),
 	instmap__lookup_var(InstMapB, VarB, FinalInst),
+	map__lookup(VarTypes, VarB, Type),
 
 	(
-		inst_matches_final(InitialInst, FinalInst, ModuleInfo)
+		inst_matches_final(InitialInst, FinalInst, Type, ModuleInfo)
 	->
 		ChangedVars = ChangedVars0
 	;
@@ -872,17 +876,18 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-instmap__no_output_vars(_, unreachable, _, _).
-instmap__no_output_vars(InstMap0, reachable(InstMapDelta), Vars, M) :-
+instmap__no_output_vars(_, unreachable, _, _, _).
+instmap__no_output_vars(InstMap0, reachable(InstMapDelta), Vars, VT, M) :-
 	set__to_sorted_list(Vars, VarList),
-	instmap__no_output_vars_2(VarList, InstMap0, InstMapDelta, M).
+	instmap__no_output_vars_2(VarList, InstMap0, InstMapDelta, VT, M).
 
 :- pred instmap__no_output_vars_2(list(prog_var), instmap, instmapping,
-		module_info).
-:- mode instmap__no_output_vars_2(in, in, in, in) is semidet.
+		vartypes, module_info).
+:- mode instmap__no_output_vars_2(in, in, in, in, in) is semidet.
 
-instmap__no_output_vars_2([], _, _, _).
-instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
+instmap__no_output_vars_2([], _, _, _, _).
+instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, VarTypes,
+		ModuleInfo) :-
 	% We use `inst_matches_binding' to check that the new inst
 	% has only added information or lost uniqueness,
 	% not bound anything.
@@ -897,8 +902,10 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMapDelta, ModuleInfo) :-
 	;
 		Inst = Inst0
 	),
-	inst_matches_binding(Inst, Inst0, ModuleInfo),
-	instmap__no_output_vars_2(Vars, InstMap0, InstMapDelta, ModuleInfo).
+	map__lookup(VarTypes, Var, Type),
+	inst_matches_binding(Inst, Inst0, Type, ModuleInfo),
+	instmap__no_output_vars_2(Vars, InstMap0, InstMapDelta, VarTypes,
+		ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

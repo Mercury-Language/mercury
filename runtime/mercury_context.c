@@ -1,5 +1,5 @@
 /*
-INIT mercury_scheduler_wrapper
+INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
@@ -197,7 +197,7 @@ destroy_context(MR_Context *c)
 void 
 flounder(void)
 {
-	fatal_error("computation floundered");
+	MR_fatal_error("computation floundered");
 }
 
 /*
@@ -239,7 +239,7 @@ check_pending_contexts(MR_Bool block)
 	max_id++;
 
 	if (max_id == 0) {
-		fatal_error("no fd's set!");
+		MR_fatal_error("no fd's set!");
 	}
 
 	if (block) {
@@ -251,7 +251,7 @@ check_pending_contexts(MR_Bool block)
 	}
 
 	if (err < 0) {
-		fatal_error("select failed!");
+		MR_fatal_error("select failed!");
 	}
 
 	n_ids = 0;
@@ -273,7 +273,7 @@ check_pending_contexts(MR_Bool block)
 
 #else	/* !MR_CAN_DO_PENDING_IO */
 
-	fatal_error("select() unavailable!");
+	MR_fatal_error("select() unavailable!");
 
 #endif
 }
@@ -350,7 +350,7 @@ Define_entry(do_runnext);
 #else /* !MR_THREAD_SAFE */
 {
 	if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
-		fatal_error("empty runqueue!");
+		MR_fatal_error("empty runqueue!");
 	}
 
 	while (MR_runqueue_head == NULL) {
@@ -370,7 +370,7 @@ Define_entry(do_runnext);
 
 END_MODULE
 
-void mercury_scheduler_wrapper(void); /* suppress gcc warning */
-void mercury_scheduler_wrapper(void) {
+void mercury_sys_init_scheduler_wrapper(void); /* suppress gcc warning */
+void mercury_sys_init_scheduler_wrapper(void) {
 	scheduler_module();
 }

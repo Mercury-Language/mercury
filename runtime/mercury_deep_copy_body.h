@@ -292,7 +292,7 @@ try_again:
                 break;
 
             default:
-                fatal_error("copy(): unknown sectag_locn");
+                MR_fatal_error("copy(): unknown sectag_locn");
 
             } /* end switch on sectag_locn */
         }
@@ -331,7 +331,7 @@ try_again:
         ** The current version of the RTTI gives all equivalence types
         ** the EQUIV type_ctor_rep, not EQUIV_VAR.
         */
-        fatal_error("unexpected EQUIV_VAR type_ctor_rep");
+        MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
         break;
 
     case MR_TYPECTOR_REP_INT:  /* fallthru */
@@ -522,7 +522,7 @@ try_again:
         break;
 
     case MR_TYPECTOR_REP_VOID:
-        fatal_error("Cannot copy a void type");
+        MR_fatal_error("Cannot copy a void type");
         break;
 
     case MR_TYPECTOR_REP_ARRAY:
@@ -577,7 +577,7 @@ try_again:
                 ** `c_pointer' type that points to memory allocated
                 ** on the Mercury heap.
                 */
-                fatal_error("Cannot copy a c_pointer type");
+                MR_fatal_error("Cannot copy a c_pointer type");
             } else {
                 new_data = data;
             }
@@ -595,7 +595,7 @@ try_again:
         ** Tyson hasn't yet moved the code for copying saved heap pointers
         ** here.
         */
-        fatal_error("Sorry, not implemented: copying saved heap pointers");
+        MR_fatal_error("Sorry, not implemented: copying saved heap pointers");
         break;
 
     case MR_TYPECTOR_REP_CURFR: /* fallthru */
@@ -612,7 +612,7 @@ try_again:
 
     case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
     default:
-        fatal_error("Unknown layout type in deep copy");
+        MR_fatal_error("Unknown layout type in deep copy");
         break;
     }
 

@@ -37,7 +37,8 @@
 :- implementation.
 
 :- import_module follow_vars, liveness, hlds_goal, llds, prog_data.
-:- import_module options, globals, goal_util, mode_util, instmap, trace.
+:- import_module options, globals, trace_params, trace.
+:- import_module goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module bool, int, require.
 
@@ -73,7 +74,7 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	),
 	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
-	( TraceLevel \= none ->
+	( trace_level_is_none(TraceLevel) = no ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)

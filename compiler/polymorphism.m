@@ -2280,8 +2280,8 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	RLExprnId = no,
 	BaseUnification = construct(BaseVar, ConsId, [], [],
 			construct_dynamically, cell_is_shared, RLExprnId),
-	BaseUnifyMode = (free -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	BaseUnifyMode = (free -> ground(shared, none)) -
+			(ground(shared, none) -> ground(shared, none)),
 	BaseUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	BaseUnify = unify(BaseVar, BaseTypeClassInfoTerm, BaseUnifyMode,
@@ -2289,7 +2289,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 		% create a goal_info for the unification
 	set__list_to_set([BaseVar], NonLocals),
-	instmap_delta_from_assoc_list([BaseVar - ground(shared, no)],
+	instmap_delta_from_assoc_list([BaseVar - ground(shared, none)],
 		InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, BaseGoalInfo),
 
@@ -2308,14 +2308,14 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 		% create the construction unification to initialize the
 		% variable
-	UniMode = (free - ground(shared, no) ->
-		   ground(shared, no) - ground(shared, no)),
+	UniMode = (free - ground(shared, none) ->
+		   ground(shared, none) - ground(shared, none)),
 	list__length(NewArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars,
 		UniModes, construct_dynamically, cell_is_unique, RLExprnId),
-	UnifyMode = (free -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free -> ground(shared, none)) -
+			(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(NewVar, TypeClassInfoTerm, UnifyMode,
@@ -2325,7 +2325,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	goal_info_init(GoalInfo0),
 	set__list_to_set([NewVar | NewArgVars], TheNonLocals),
 	goal_info_set_nonlocals(GoalInfo0, TheNonLocals, GoalInfo1),
-	list__duplicate(NumArgVars, ground(shared, no), ArgInsts),
+	list__duplicate(NumArgVars, ground(shared, none), ArgInsts),
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
@@ -2715,15 +2715,15 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
-	UniMode = (free - ground(shared, no) ->
-		   ground(shared, no) - ground(shared, no)),
+	UniMode = (free - ground(shared, none) ->
+		   ground(shared, none) - ground(shared, none)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	RLExprnId = no,
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes,
 			construct_dynamically, cell_is_unique, RLExprnId),
-	UnifyMode = (free -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free -> ground(shared, none)) -
+			(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -2731,7 +2731,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 
 	% create a goal_info for the unification
 	set__list_to_set([TypeInfoVar | ArgVars], NonLocals),
-	list__duplicate(NumArgVars, ground(shared, no), ArgInsts),
+	list__duplicate(NumArgVars, ground(shared, none), ArgInsts),
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
@@ -2777,8 +2777,8 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeId,
 	RLExprnId = no,
 	Unification = construct(TypeCtorInfoVar, ConsId, [], [],
 			construct_dynamically, cell_is_shared, RLExprnId),
-	UnifyMode = (free -> ground(shared, no)) -
-			(ground(shared, no) -> ground(shared, no)),
+	UnifyMode = (free -> ground(shared, none)) -
+			(ground(shared, none) -> ground(shared, none)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeCtorInfoVar, TypeInfoTerm, UnifyMode,
@@ -2786,7 +2786,7 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeId,
 
 	% create a goal_info for the unification
 	set__list_to_set([TypeCtorInfoVar], NonLocals),
-	instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, no)],
+	instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
 		InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
 
@@ -2919,7 +2919,7 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		% type_info argument even though its declaration is
 		% polymorphic.
 	set__list_to_set([TypeClassInfoVar, IndexVar, TypeInfoVar], NonLocals),
-	instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, no)],
+	instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, none)],
 		InstmapDelta),
 	goal_info_init(NonLocals, InstmapDelta, det, GoalInfo),
 

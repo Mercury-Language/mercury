@@ -468,10 +468,10 @@
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
 		list(prog_var), instmap, string, tvarset, vartypes,
 		class_constraints, type_info_varmap, typeclass_info_varmap,
-		prog_varset, pred_markers, aditi_owner, is_address_taken,
-		module_info, module_info, pred_proc_id).
+		prog_varset, inst_varset, pred_markers, aditi_owner,
+		is_address_taken, module_info, module_info, pred_proc_id).
 :- mode hlds_pred__define_new_pred(in, out, in, out, in, in, in, in, in,
-		in, in, in, in, in, in, in, out, out) is det.
+		in, in, in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
@@ -1132,7 +1132,7 @@ clauses_info_set_typeclass_info_varmap(CI, X,
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, Markers, Owner, IsAddressTaken,
+		VarSet0, InstVarSet, Markers, Owner, IsAddressTaken,
 		ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
@@ -1184,8 +1184,9 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		TermInfo = no
 	),
 
-	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism, Goal0,
-		Context, TVarMap, TCVarMap, IsAddressTaken, ProcInfo0),
+	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, InstVarSet,
+		Detism, Goal0, Context, TVarMap, TCVarMap, IsAddressTaken,
+		ProcInfo0),
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
 	set__init(Assertions),
@@ -1234,18 +1235,19 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_set(maybe(determinism), prog_varset, vartypes,
-	list(prog_var), list(mode), maybe(list(is_live)), hlds_goal,
-	prog_context, stack_slots, determinism, bool, list(arg_info),
-	liveness_info, type_info_varmap, typeclass_info_varmap,
-	maybe(arg_size_info), maybe(termination_info), is_address_taken,
-	proc_info).
-:- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
-	in, in, in, in, out) is det.
+	list(prog_var), list(mode), inst_varset, maybe(list(is_live)), 
+	hlds_goal, prog_context, stack_slots, determinism, bool,
+	list(arg_info), liveness_info, type_info_varmap,
+	typeclass_info_varmap, maybe(arg_size_info),
+	maybe(termination_info), is_address_taken, proc_info).
+:- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in,
+		in, in, in, in, in, in, in, out) is det.
 
 :- pred proc_info_create(prog_varset, vartypes, list(prog_var),
-	list(mode), determinism, hlds_goal, prog_context,
+	list(mode), inst_varset, determinism, hlds_goal, prog_context,
 	type_info_varmap, typeclass_info_varmap, is_address_taken, proc_info).
-:- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, out) is det.
+:- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, in, out)
+	is det.
 
 :- pred proc_info_set_body(proc_info, prog_varset, vartypes,
 		list(prog_var), hlds_goal, type_info_varmap,
@@ -1294,6 +1296,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- pred proc_info_set_argmodes(proc_info, list(mode), proc_info).
 :- mode proc_info_set_argmodes(in, in, out) is det.
+
+:- pred proc_info_inst_varset(proc_info, inst_varset).
+:- mode proc_info_inst_varset(in, out) is det.
+
+:- pred proc_info_set_inst_varset(proc_info, inst_varset, proc_info).
+:- mode proc_info_set_inst_varset(in, in, out) is det.
 
 :- pred proc_info_arglives(proc_info, module_info, list(is_live)).
 :- mode proc_info_arglives(in, in, out) is det.
@@ -1396,6 +1404,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_rl_exprn_id(proc_info, rl_exprn_id, proc_info).
 :- mode proc_info_set_rl_exprn_id(in, in, out) is det.
 
+:- pred proc_info_get_need_maxfr_slot(proc_info, bool).
+:- mode proc_info_get_need_maxfr_slot(in, out) is det.
+
+:- pred proc_info_set_need_maxfr_slot(proc_info, bool, proc_info).
+:- mode proc_info_set_need_maxfr_slot(in, in, out) is det.
+
+:- pred proc_info_get_call_table_tip(proc_info, maybe(prog_var)).
+:- mode proc_info_get_call_table_tip(in, out) is det.
+
+:- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
+:- mode proc_info_set_call_table_tip(in, in, out) is det.
+
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
 	% those type variables. (find all typeinfos for variables in V).
@@ -1480,13 +1500,11 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- type proc_info
 	--->	procedure(
-			declared_detism	:: maybe(determinism),
-					% _declared_ determinism
-					% or `no' if there was no detism decl
 			prog_varset	:: prog_varset,
 			var_types	:: vartypes,
 			head_vars	:: list(prog_var),
 			actual_head_modes :: list(mode),
+			inst_varset :: inst_varset,
 			head_var_caller_liveness :: maybe(list(is_live)),
 					% Liveness (in the mode analysis sense)
 					% of the arguments in the caller; says
@@ -1499,6 +1517,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% if there was no mode declaration).
 			stack_slots	:: stack_slots,
 					% stack allocations
+			declared_detism	:: maybe(determinism),
+					% _declared_ determinism
+					% or `no' if there was no detism decl
 			inferred_detism	:: determinism,
 			can_process	:: bool,
 					% no if we must not process this
@@ -1545,13 +1566,54 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% must be considered as having its
 					% address taken, since it is possible
 					% that some other module may do so.
-			maybe_aditi_rl_id :: maybe(rl_exprn_id)
+			maybe_aditi_rl_id :: maybe(rl_exprn_id),
 					% For predicates with an
 					% `aditi_top_down' marker, which are
 					% executed top-down on the Aditi side
 					% of the connection, we generate an RL
 					% expression, for which this is an
 					% identifier. See rl_update.m.
+ 			need_maxfr_slot	:: bool,
+					% True iff tracing is enabled, this
+ 					% is a procedure that lives on the det
+ 					% stack, and the code of this procedure
+ 					% may create a frame on the det stack.
+ 					% (Only in these circumstances do we
+ 					% need to reserve a stack slot to hold
+ 					% the value of maxfr at the call, for
+ 					% use in implementing retry.)
+ 					%
+ 					% This slot is used only with the LLDS
+					% backend XXX. Its value is set during
+					% the live_vars pass; it is invalid
+					% before then.
+ 			call_table_tip	:: maybe(prog_var)
+					% If the tracing is enabled and the
+ 					% procedure's evaluation method is
+ 					% memo, loopcheck or minimal, this
+ 					% slot identifies the variable that
+ 					% holds the tip of the call table.
+ 					% Otherwise, this field will be set to
+ 					% `no'.
+					%
+					% Tabled procedures record, in the
+					% data structure identified by this
+					% variable, that the call is active.
+					% When performing a retry across
+					% such a procedure, we must reset
+					% the state of the call; if we don't,
+					% the retried call will find the
+					% active call and report an infinite
+					% loop error.
+					%
+					% Such resetting of course requires
+					% the debugger to know whether the
+					% procedure has reached the call table
+					% tip yet. Therefore when binding this
+					% variable, the code generator of the
+					% relevant backend must record this
+					% fact in a place accessible to the
+					% debugger.
 		).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1566,6 +1628,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
+	varset__init(InstVarSet),
 	map__from_corresponding_lists(HeadVars, Types, BodyTypes),
 	InferredDet = erroneous,
 	map__init(StackSlots),
@@ -1578,33 +1641,36 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	map__init(TCVarsMap),
 	RLExprn = no,
 	NewProc = procedure(
-		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
-		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
-		ArgInfo, InitialLiveness, TVarsMap, TCVarsMap, eval_normal,
-		no, no, DeclaredModes, IsAddressTaken, RLExprn
+		BodyVarSet, BodyTypes, HeadVars, Modes, InstVarSet,
+		MaybeArgLives, ClauseBody, MContext, StackSlots, MaybeDet,
+		InferredDet, CanProcess, ArgInfo, InitialLiveness, TVarsMap,
+		TCVarsMap, eval_normal, no, no, DeclaredModes, IsAddressTaken,
+		RLExprn, no, no
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
-		HeadLives, Goal, Context, StackSlots, InferredDetism,
-		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, ArgSizes,
-		Termination, IsAddressTaken, ProcInfo) :-
+		InstVarSet, HeadLives, Goal, Context, StackSlots, 
+		InferredDetism, CanProcess, ArgInfo, Liveness, TVarMap,
+		TCVarsMap, ArgSizes, Termination, IsAddressTaken,
+		ProcInfo) :-
 	RLExprn = no,
 	ProcInfo = procedure(
-		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
-		HeadLives, Goal, Context, StackSlots, InferredDetism,
-		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, eval_normal, 
-		ArgSizes, Termination, no, IsAddressTaken, RLExprn).
+		BodyVarSet, BodyTypes, HeadVars,
+		HeadModes, InstVarSet, HeadLives, Goal, Context,
+		StackSlots, DeclaredDetism, InferredDetism, CanProcess, ArgInfo,
+		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
+		Termination, no, IsAddressTaken, RLExprn, no, no).
 
-proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
-		Context, TVarMap, TCVarsMap, IsAddressTaken, ProcInfo) :-
+proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet, Detism,
+		Goal, Context, TVarMap, TCVarsMap, IsAddressTaken, ProcInfo) :-
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
 	RLExprn = no,
-	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
-		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
-		Liveness, TVarMap, TCVarsMap, eval_normal, no, no, no, 
-		IsAddressTaken, RLExprn).
+	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes,
+		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
+		yes(Detism), Detism, yes, [], Liveness, TVarMap, TCVarsMap,
+		eval_normal, no, no, no, IsAddressTaken, RLExprn, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
@@ -1674,6 +1740,7 @@ proc_info_varset(ProcInfo, ProcInfo^prog_varset).
 proc_info_vartypes(ProcInfo, ProcInfo^var_types).
 proc_info_headvars(ProcInfo, ProcInfo^head_vars).
 proc_info_argmodes(ProcInfo, ProcInfo^actual_head_modes).
+proc_info_inst_varset(ProcInfo, ProcInfo^inst_varset).
 proc_info_maybe_arglives(ProcInfo, ProcInfo^head_var_caller_liveness).
 proc_info_goal(ProcInfo, ProcInfo^body).
 proc_info_context(ProcInfo, ProcInfo^proc_context).
@@ -1690,11 +1757,14 @@ proc_info_get_maybe_termination_info(ProcInfo, ProcInfo^maybe_termination).
 proc_info_maybe_declared_argmodes(ProcInfo, ProcInfo^maybe_declared_head_modes).
 proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
 proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
+proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
+proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
 
 proc_info_set_varset(ProcInfo, VS, ProcInfo^prog_varset := VS).
 proc_info_set_vartypes(ProcInfo, VT, ProcInfo^var_types := VT).
 proc_info_set_headvars(ProcInfo, HV, ProcInfo^head_vars := HV).
 proc_info_set_argmodes(ProcInfo, AM, ProcInfo^actual_head_modes := AM).
+proc_info_set_inst_varset(ProcInfo, IV, ProcInfo^inst_varset := IV).
 proc_info_set_maybe_arglives(ProcInfo, CL,
 	ProcInfo^head_var_caller_liveness := CL).
 proc_info_set_goal(ProcInfo, G, ProcInfo^body := G).
@@ -1715,6 +1785,8 @@ proc_info_set_maybe_termination_info(ProcInfo, MT,
 	ProcInfo^maybe_termination := MT).
 proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
 proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
+proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
+proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
@@ -1803,11 +1875,13 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
 	IsInstChanged = lambda([VarMode::in, Var::out] is semidet, (
 		VarMode = Var - Mode,
+		map__lookup(VarTypes, Var, Type),
 		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-		\+ inst_matches_binding(Inst1, Inst2, ModuleInfo)
+		\+ inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
 	)),
 	list__filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
@@ -1815,11 +1889,13 @@ proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
 		UnchangedInstHeadVars) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
+	proc_info_vartypes(ProcInfo, VarTypes),
 	assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
 	IsInstUnchanged = lambda([VarMode::in, Var::out] is semidet, (
 		VarMode = Var - Mode,
+		map__lookup(VarTypes, Var, Type),
 		mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-		inst_matches_binding(Inst1, Inst2, ModuleInfo)
+		inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
 	)),
 	list__filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 

@@ -48,4 +48,16 @@
 
 extern	bool	MR_trace_is_number(const char *word, int *value);
 
+/*
+** These functions print the values of sets of Mercury abstract machine
+** registers. Their main use is low level debugging, including debugging
+** the debugger itself.
+*/
+
+extern	void	MR_print_stack_regs(FILE *fp, MR_Word *saved_regs);
+extern	void	MR_print_heap_regs(FILE *fp, MR_Word *saved_regs);
+extern	void	MR_print_tabling_regs(FILE *fp, MR_Word *saved_regs);
+extern	void	MR_print_succip_reg(FILE *fp, MR_Word *saved_regs);
+extern	void	MR_print_r_regs(FILE *fp, MR_Word *saved_regs);
+
 #endif /* MERCURY_TRACE_UTIL_H */

@@ -22,7 +22,7 @@ CFLAGS	= -I$(RUNTIME_DIR) -O0
 
 PROGS=mkinit mdemangle info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
-
+SRC=$(PROGS:%=%.c)
 
 GETOPT_SRC=$(RUNTIME_DIR)/GETOPT/getopt.c $(RUNTIME_DIR)/GETOPT/getopt1.c
 
@@ -32,6 +32,9 @@ all:	$(PROGS)
 
 .c:
 	$(MGNUC) $(GRADEFLAGS) $(ALL_MGNUCFLAGS) -o $@ $< $(GETOPT_SRC)
+
+tags:
+	ctags $(SRC)
 
 #-----------------------------------------------------------------------------#
 

@@ -169,12 +169,13 @@ static void	MR_read_request_from_socket(
 			MR_Integer *debugger_request_type_ptr);
 	
 static bool	MR_found_match(const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
+			MR_Trace_Port port, MR_Unsigned seqno,
+			MR_Unsigned depth,
 			/* XXX registers */
 			const char *path, MR_Word search_data);
 static void	MR_output_current_slots(const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth, 
-			const char *path);
+			MR_Trace_Port port, MR_Unsigned seqno,
+			MR_Unsigned depth, const char *path);
 static void	MR_output_current_vars(MR_Word var_list, MR_Word string_list);
 static void	MR_output_current_nth_var(MR_Word var);
 static void	MR_output_current_live_var_names(MR_Word var_names_list, 
@@ -190,7 +191,7 @@ static void	MR_dump_stack_record_print_to_socket(FILE *fp,
 			const MR_Stack_Layout_Entry *entry_layout, int count,
 			int start_level, MR_Word *base_sp, MR_Word *base_curfr,
 			const char *filename, int linenumber,
-			bool context_mismatch);
+			const char *goal_path, bool context_mismatch);
 static void	MR_get_list_modules_to_import(MR_Word debugger_request, 
 			MR_Integer *modules_list_length_ptr,
 			MR_Word *modules_list_ptr);
@@ -201,10 +202,12 @@ static void	MR_get_object_file_name(MR_Word debugger_request,
 static void	MR_get_variable_name(MR_Word debugger_request,
 			MR_String *var_name_ptr);
 static void	MR_trace_browse_one_external(MR_Var_Spec which_var);
-static void	MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, 
-			MR_Word, MR_Word, MR_String, MR_String, MR_String, MR_Integer, MR_Integer, 
-			MR_Word, MR_Integer, MR_String, MR_Word, MR_Word *, MR_Char *), Unsigned seqno, 
-			Unsigned depth, MR_Trace_Port port, 
+static void	MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer,
+			MR_Integer, MR_Word, MR_Word, MR_String, MR_String,
+			MR_String, MR_Integer, MR_Integer, MR_Word, MR_Integer,
+			MR_String, MR_Word, MR_Word *, MR_Char *),
+			MR_Unsigned seqno, MR_Unsigned depth,
+			MR_Trace_Port port, 
 			const MR_Stack_Layout_Label *layout, const char *path, 
 			bool *stop_collecting);
 static void	MR_send_collect_result(void);
@@ -470,35 +473,39 @@ MR_trace_final_external(void)
 	*/
 }
 
-Code *
+MR_Code *
 MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
-	static MR_Word	search_data;
-	static void	(*initialize_ptr)(MR_Word *);
-	static void    	(*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
-				MR_Word, MR_String, MR_String, MR_String, MR_Integer,
-				MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word, MR_Word *, MR_Char *);
-	static void	(*get_collect_var_type_ptr)(MR_Word *);
-	static bool    	collect_linked = FALSE;
-	bool    	stop_collecting = FALSE;
+	static	MR_Word		search_data;
+	static	void		(*initialize_ptr)(MR_Word *);
+	static	void    	(*filter_ptr)(MR_Integer, MR_Integer,
+					MR_Integer, MR_Word, MR_Word,
+					MR_String, MR_String, MR_String,
+					MR_Integer, MR_Integer, MR_Word,
+					MR_Integer, MR_String, MR_Word,
+					MR_Word *, MR_Char *);
+	static	void		(*get_collect_var_type_ptr)(MR_Word *);
+	static	bool    	collect_linked = FALSE;
+	bool    		stop_collecting = FALSE;
 	MR_Integer		debugger_request_type;
-	MR_Word		debugger_request;
-	MR_Word		var_list;
-	MR_Word		var_names_list;
-	MR_Word		type_list;
-	MR_Word		var;
-	Code		*jumpaddr = NULL;
+	MR_Word			debugger_request;
+	MR_Word			var_list;
+	MR_Word			var_names_list;
+	MR_Word			type_list;
+	MR_Word			var;
+	MR_Code			*jumpaddr = NULL;
 	MR_Event_Details	event_details;
-	const char	*message;
-        bool		include_trace_data = TRUE;
+	const char		*message;
+        bool			include_trace_data = TRUE;
 	const MR_Stack_Layout_Label *layout = event_info->MR_event_sll;
-	Unsigned	seqno = event_info->MR_call_seqno;
-	Unsigned	depth = event_info->MR_call_depth;
-	MR_Trace_Port	port = event_info->MR_trace_port;
-	const char	*path = event_info->MR_event_path;
-	MR_Word		*saved_regs = event_info->MR_saved_regs;
+	MR_Unsigned		seqno = event_info->MR_call_seqno;
+	MR_Unsigned		depth = event_info->MR_call_depth;
+	MR_Trace_Port		port = event_info->MR_trace_port;
+	const char		*path = event_info->MR_event_path;
+	MR_Word			*saved_regs = event_info->MR_saved_regs;
 	MR_Integer		modules_list_length;
-	MR_Word		modules_list;
+	MR_Word			modules_list;
+	MR_Retry_Result		retry_result;
 	static MR_String	MR_object_file_name;
 
 	MR_trace_enabled = FALSE;
@@ -618,9 +625,9 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_RETRY\n");
 				}
-				message = MR_trace_retry(event_info, 
-					&event_details, &jumpaddr);
-				if (message == NULL) {
+				retry_result = MR_trace_retry(event_info, 
+					&event_details, 0, &message, &jumpaddr);
+				if (retry_result == MR_RETRY_OK_DIRECT) {
 					MR_send_message_to_socket("ok");
 					cmd->MR_trace_cmd = MR_CMD_GOTO;
 					cmd->MR_trace_stop_event = 
@@ -900,7 +907,8 @@ done:
 
 static void
 MR_output_current_slots(const MR_Stack_Layout_Label *layout,
-	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
+	MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
+	const char *path)
 {
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		MR_TRACE_CALL_MERCURY(
@@ -995,7 +1003,7 @@ MR_read_request_from_socket(
  
 static bool
 MR_found_match(const MR_Stack_Layout_Label *layout,
-	MR_Trace_Port port, Unsigned seqno, Unsigned depth,
+	MR_Trace_Port port, MR_Unsigned seqno, MR_Unsigned depth,
 	/* XXX live vars */
 	const char *path, MR_Word search_data)
 {
@@ -1281,8 +1289,9 @@ MR_get_var_number(MR_Word debugger_request)
 static void
 MR_dump_stack_record_print_to_socket(FILE *fp, 
 	const MR_Stack_Layout_Entry *entry_layout, int count, int start_level, 
-	MR_Word *base_sp, MR_Word *base_curfr, const char *filename, int linenumber,
-	bool context_mismatch)
+	MR_Word *base_sp, MR_Word *base_curfr,
+	const char *filename, int linenumber,
+	const char *goal_path, bool context_mismatch)
 {
 	MR_send_message_to_socket_format("level(%d).\n", start_level);
 	MR_print_proc_id_to_socket(entry_layout, NULL, base_sp, base_curfr);
@@ -1451,6 +1460,7 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 	const char	*problem;
 
 	problem = MR_trace_browse_one(NULL, var_spec, MR_trace_browse_external,
+			MR_BROWSE_CALLER_BROWSE, MR_BROWSE_DEFAULT_FORMAT,
 			TRUE);
 
 	if (problem != NULL) {
@@ -1464,9 +1474,10 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 ** and dynamically link with the execution.
 */
 static void
-MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_Word, 
-	MR_String, MR_String, MR_String, MR_Integer, MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word, 
-	MR_Word *, MR_Char *), Unsigned seqno, Unsigned depth, MR_Trace_Port port, 
+MR_COLLECT_filter(void (*filter_ptr)(MR_Integer, MR_Integer, MR_Integer,
+	MR_Word, MR_Word, MR_String, MR_String, MR_String, MR_Integer,
+	MR_Integer, MR_Word, MR_Integer, MR_String, MR_Word, MR_Word *,
+	MR_Char *), MR_Unsigned seqno, MR_Unsigned depth, MR_Trace_Port port, 
 	const MR_Stack_Layout_Label *layout, const char *path, 
 	bool *stop_collecting)
 {

@@ -315,6 +315,13 @@
 		type_spec_info, module_info).
 :- mode module_info_set_type_spec_info(in, in, out) is det.
 
+:- pred module_info_no_tag_types(module_info, no_tag_type_table).
+:- mode module_info_no_tag_types(in, out) is det.
+
+:- pred module_info_set_no_tag_types(module_info,
+		no_tag_type_table, module_info).
+:- mode module_info_set_no_tag_types(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info, pred_table).
@@ -498,9 +505,15 @@
 		do_aditi_compilation ::		do_aditi_compilation,
 					% are there any local Aditi predicates
 					% for which Aditi-RL must be produced.
-		type_spec_info ::		type_spec_info
+		type_spec_info ::		type_spec_info,
 					% data used for user-guided type
 					% specialization.
+		no_tag_type_table ::		no_tag_type_table
+					% Information about no tag
+					% types. This information is
+					% also in the type_table,
+					% but lookups in this table
+					% will be much faster.
 	).
 
 	% A predicate which creates an empty module
@@ -535,9 +548,11 @@ module_info_init(Name, Items, Globals, QualifierInfo, ModuleInfo) :-
 	assertion_table_init(AssertionTable),
 	map__init(FieldNameTable),
 
+	map__init(NoTagTypes),
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
 		[], StratPreds, UnusedArgInfo, 0, ImportedModules,
-		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo),
+		IndirectlyImportedModules, no_aditi_compilation,
+		TypeSpecInfo, NoTagTypes),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -606,9 +621,10 @@ module_info_get_imported_module_specifiers(MI,
 	MI ^ sub_info ^ imported_module_specifiers).
 module_info_get_indirectly_imported_module_specifiers(MI,
 	MI ^ sub_info ^ indirectly_imported_module_specifiers).
-module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_get_do_aditi_compilation(MI,
 	MI ^ sub_info ^ do_aditi_compilation).
+module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
+module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 
 %-----------------------------------------------------------------------------%
 
@@ -647,10 +663,12 @@ module_add_indirectly_imported_module_specifiers(Modules, MI,
 		set__insert_list(
 			MI ^ sub_info ^ indirectly_imported_module_specifiers,
 			Modules)).
-module_info_set_type_spec_info(MI, NewVal,
-	MI ^ sub_info ^ type_spec_info := NewVal).
 module_info_set_do_aditi_compilation(MI,
 	MI ^ sub_info ^ do_aditi_compilation := do_aditi_compilation).
+module_info_set_type_spec_info(MI, NewVal,
+	MI ^ sub_info ^ type_spec_info := NewVal).
+module_info_set_no_tag_types(MI, NewVal,
+	MI ^ sub_info ^ no_tag_type_table := NewVal).
 
 %-----------------------------------------------------------------------------%
 

@@ -30,6 +30,7 @@
 #include "mercury_trace_external.h"
 
 #include "mdb.browse.h"
+#include "mdb.browser_info.h"
 #include "mdb.interactive_query.h"
 #ifdef MR_HIGHLEVEL_CODE
   #include "mercury.std_util.h"
@@ -39,10 +40,13 @@
 
 #include <stdio.h>
 
-static	MR_Word		MR_trace_browser_state;
-static	MR_TypeInfo	MR_trace_browser_state_type;
+static	MR_Word		MR_trace_browser_persistent_state;
+static	MR_TypeInfo	MR_trace_browser_persistent_state_type;
 
 static	void		MR_trace_browse_ensure_init(void);
+
+static	bool		MR_trace_is_portray_format(const char *str,
+				MR_Browse_Format *format);
 
 static void
 MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
@@ -51,7 +55,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 }
 
 void
-MR_trace_browse(MR_Word type_info, MR_Word value)
+MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
 	MercuryFile mdb_in, mdb_out;
 
@@ -60,16 +64,27 @@ MR_trace_browse(MR_Word type_info, MR_Word value)
 	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
-	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_browse(type_info, value,
-			(MR_Word) &mdb_in, (MR_Word) &mdb_out,
-			MR_trace_browser_state, &MR_trace_browser_state);
-	);
-	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				MR_trace_browser_state_type);
+	if (format != MR_BROWSE_DEFAULT_FORMAT) {
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_browse_format(type_info, value,
+				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
+				(MR_Word) format,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	} else {
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_browse(type_info, value,
+				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	MR_trace_browser_persistent_state =
+			MR_make_permanent(MR_trace_browser_persistent_state,
+				MR_trace_browser_persistent_state_type);
 }
 
-	
 /*
 ** MR_trace_browse_external() is the same as MR_trace_browse() except it 
 ** uses debugger_socket_in and debugger_socket_out to read program-readable 
@@ -80,7 +95,8 @@ MR_trace_browse(MR_Word type_info, MR_Word value)
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
 void
-MR_trace_browse_external(MR_Word type_info, MR_Word value)
+MR_trace_browse_external(MR_Word type_info, MR_Word value,
+		MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
 	MR_trace_browse_ensure_init();
 
@@ -88,16 +104,19 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value)
 		ML_BROWSE_browse_external(type_info, value,
 			(MR_Word) &MR_debugger_socket_in, 
 			(MR_Word) &MR_debugger_socket_out,
-			MR_trace_browser_state, &MR_trace_browser_state);
+			MR_trace_browser_persistent_state,
+			&MR_trace_browser_persistent_state);
 	);
-	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				MR_trace_browser_state_type);
+	MR_trace_browser_persistent_state =
+			MR_make_permanent(MR_trace_browser_persistent_state,
+				MR_trace_browser_persistent_state_type);
 }
 
 #endif
 
 void
-MR_trace_print(MR_Word type_info, MR_Word value)
+MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
+		MR_Browse_Format format)
 {
 	MercuryFile mdb_out;
 
@@ -105,10 +124,105 @@ MR_trace_print(MR_Word type_info, MR_Word value)
 
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
-	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_print(type_info, value, (MR_Word) &mdb_out,
-			MR_trace_browser_state);
-	);
+	if (format != MR_BROWSE_DEFAULT_FORMAT) {
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_print_format(type_info, value,
+				(MR_Word) &mdb_out, (MR_Word) caller,
+				(MR_Word) format,
+				MR_trace_browser_persistent_state);
+		);
+	} else {
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_print(type_info, value,
+				(MR_Word) &mdb_out, (MR_Word) caller,
+				MR_trace_browser_persistent_state);
+		);
+	}
+}
+
+bool
+MR_trace_set_browser_param(MR_Bool print, MR_Bool browse, MR_Bool print_all,
+		MR_Bool flat, MR_Bool pretty, MR_Bool verbose,
+		const char *param, const char *value)
+{
+	int			depth, size, width, lines;
+	MR_Browse_Format	new_format;
+
+	MR_trace_browse_ensure_init();
+
+	if (streq(param, "format") &&
+			MR_trace_is_portray_format(value, &new_format))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_format(print, browse, print_all,
+				new_format, MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else if (streq(param, "depth") && MR_trace_is_number(value, &depth))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_depth(print, browse, print_all,
+				flat, pretty, verbose, depth,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else if (streq(param, "size") && MR_trace_is_number(value, &size))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_size(print, browse, print_all,
+				flat, pretty, verbose, size,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else if (streq(param, "width") && MR_trace_is_number(value, &width))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_width(print, browse, print_all,
+				flat, pretty, verbose, width,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else if (streq(param, "lines") && MR_trace_is_number(value, &lines))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_lines(print, browse, print_all,
+				flat, pretty, verbose, lines,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else
+	{
+		return FALSE;
+	}
+
+	MR_trace_browser_persistent_state =
+			MR_make_permanent(MR_trace_browser_persistent_state,
+				MR_trace_browser_persistent_state_type);
+	return TRUE;
+}
+
+static bool
+MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
+{
+	*format = MR_BROWSE_DEFAULT_FORMAT;
+
+	if (streq(str, "flat")) {
+		*format = MR_BROWSE_FORMAT_FLAT;
+		return TRUE;
+	} else if (streq(str, "pretty")) {
+		*format = MR_BROWSE_FORMAT_PRETTY;
+		return TRUE;
+	} else if (streq(str, "verbose")) {
+		*format = MR_BROWSE_FORMAT_VERBOSE;
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static void
@@ -116,24 +230,24 @@ MR_trace_browse_ensure_init(void)
 {
 	static	bool	done = FALSE;
 	MR_Word		typeinfo_type_word;
-	MR_Word		MR_trace_browser_state_type_word;
+	MR_Word		MR_trace_browser_persistent_state_type_word;
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
 			ML_get_type_info_for_type_info(&typeinfo_type_word);
-			ML_BROWSE_browser_state_type(
-				&MR_trace_browser_state_type_word);
-			MR_trace_browser_state_type = (MR_TypeInfo)
-				MR_trace_browser_state_type_word;
-			ML_BROWSE_init_state(&MR_trace_browser_state);
+			ML_BROWSE_browser_persistent_state_type(
+				&MR_trace_browser_persistent_state_type_word);
+			ML_BROWSE_init_persistent_state(
+				&MR_trace_browser_persistent_state);
 		);
 
-		MR_trace_browser_state_type = (MR_TypeInfo) MR_make_permanent(
-					(MR_Word) MR_trace_browser_state_type,
-					(MR_TypeInfo) typeinfo_type_word);
-		MR_trace_browser_state = MR_make_permanent(
-					MR_trace_browser_state,
-					MR_trace_browser_state_type);
+		MR_trace_browser_persistent_state_type =
+			(MR_TypeInfo) MR_make_permanent(
+				MR_trace_browser_persistent_state_type_word,
+				(MR_TypeInfo) typeinfo_type_word);
+		MR_trace_browser_persistent_state = MR_make_permanent(
+				MR_trace_browser_persistent_state,
+				MR_trace_browser_persistent_state_type);
 		done = TRUE;
 	}
 }

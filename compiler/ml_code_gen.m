@@ -83,6 +83,25 @@
 % means that in the situation described by [situation],
 % for the the specified [construct] we will generate the specified [code].
 
+% There is one other important thing which can be considered part of the
+% calling convention for the code that we generate for each goal.
+% If static ground term optimization is enabled, then for the terms
+% marked as static by mark_static_terms.m, we will generate static consts.
+% These static consts can refer to other static consts defined earlier.
+% We need to be careful about the scopes of variables to ensure that
+% for any term that mark_static_terms.m marks as static, the C constants
+% representing the arguments of that term are in scope at the point
+% where that term is constructed.  Basically this means that
+% all the static consts generated inside a goal must be hoist out to
+% the top level scope for that goal, except for goal types where
+% goal_expr_mark_static_terms (in mark_static_terms.m) returns the
+% same static_info unchanged, i.e. branched goals and negations.
+%
+% Handling static constants also requires that the calls to ml_gen_goal
+% for each subgoal must be done in the right order, so that the
+% const_num_map in the ml_gen_info holds the right sequence numbers
+% for the constants in scope.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for wrapping goals
@@ -106,12 +125,10 @@
 %	semi goal in nondet context:
 %		<Goal && SUCCEED()>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
-%	}
 
 %-----------------------------------------------------------------------------%
 %
@@ -244,6 +261,10 @@
 %			<Goal && success()>
 %		}
 
+% Note that for all of these versions, we must hoist any static declarations
+% generated for <Goal> out to the top level; this is needed so that such
+% declarations remain in scope for any following goals.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for empty conjunctions (`true')
@@ -289,12 +310,12 @@
 %		<Goals>
 
 % If the first goal is model_semidet, then there are two cases:
-% if the disj as a whole is semidet, things are simple, and
-% if the disj as a whole is model_non, then we do the same as
+% if the conj as a whole is semidet, things are simple, and
+% if the conj as a whole is model_non, then we do the same as
 % for the semidet case, except that we also (ought to) declare
 % a local `succeeded' variable.
 %
-%	model_semi Goal in model_semi disj:
+%	model_semi Goal in model_semi conj:
 %		<succeeded = (Goal, Goals)>
 % 	===>
 %		<succeeded = Goal>;
@@ -302,17 +323,22 @@
 %			<Goals>;
 %		}
 %
-%	model_semi Goal in model_non disj:
+%	model_semi Goal in model_non conj:
 %		<Goal && Goals>
 % 	===>
-%	{
 %		bool succeeded;
 %
 %		<succeeded = Goal>;
 %		if (succeeded) {
 %			<Goals>;
 %		}
-%	}
+%
+% The actual code generation scheme we use is slightly
+% different to that: we hoist any declarations generated
+% for <Goals> to the outer scope, rather than keeping
+% them inside the `if', so that they remain in
+% scope for any later goals which follow this.
+% This is needed for declarations of static consts.
 
 % For model_non goals, there are a couple of different
 % ways that we could generate code, depending on whether
@@ -325,7 +351,6 @@
 %	model_non Goal (optimized for readability)
 %		<Goal, Goals>
 % 	===>
-%	{
 %		entry_func() {
 %			<Goal && succ_func()>;
 %		}
@@ -334,7 +359,6 @@
 %		}
 %
 %		entry_func();
-%	}
 %
 % The more efficient method generates the goals in
 % reverse order, so it's less readable, but it has fewer
@@ -344,13 +368,11 @@
 %	model_non Goal (optimized for efficiency):
 %		<Goal, Goals>
 % 	===>
-%	{
 %		succ_func() {
 %			<Goals && SUCCEED()>;
 %		}
 %
 %		<Goal && succ_func()>;
-%	}
 %
 % The more efficient method is the one we actually use.
 %
@@ -360,7 +382,6 @@
 %	model_non goals (optimized for readability):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label0_func() {
 %			<Goal1 && label1_func()>;
 %		}
@@ -375,12 +396,10 @@
 %		}
 %
 %		label0_func();
-%	}
 %
 %	model_non goals (optimized for efficiency):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label1_func() {
 %			label2_func() {
 %				label3_func() {
@@ -391,7 +410,6 @@
 %			<Goal2 && label2_func()>;
 %		}
 %		<Goal1 && label1_func()>;
-%	}
 %
 % Note that it might actually make more sense to generate
 % conjunctions of nondet goals like this:
@@ -399,7 +417,6 @@
 %	model_non goals (optimized for efficiency, alternative version):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
-%	{
 %		label3_func() {
 %			<Goals && SUCCEED()>;
 %		}
@@ -411,13 +428,21 @@
 %		}
 %
 %		<Goal1 && label1_func()>;
-%	}
 %
 % This would avoid the undesirable deep nesting that we sometimes get
 % with our current scheme.  However, if we're eliminating nested
 % functions, as is normally the case, then after the ml_elim_nested
 % transformation all the functions and variables have been hoisted
 % to the top level, so there is no difference between these two.
+%
+% As with semidet conjunctions, we hoist declarations
+% out so that they remain in scope for any following goals.
+% This is needed for declarations of static consts.
+% However, we want to keep the declarations of non-static
+% variables local, since accessing local variables is more
+% efficient that accessing variables in the environment
+% from a nested function.  So we only hoist declarations
+% of static constants.
 
 %-----------------------------------------------------------------------------%
 %
@@ -450,32 +475,27 @@
 %	model_semi Goal:
 %		<do (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>;
 %		if (!succeeded) {
 %			<do Goals>;
 %		}
-%	}
 
 % model_semi disj:
 
 %	model_det Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %
 %		<do Goal>
 %		succeeded = TRUE
 %		/* <Goals> will never be reached */
-%	}
 
 %	model_semi Goal:
 %		<succeeded = (Goal ; Goals)>
 %	===>
-%	{
 %		bool succeeded;
 %
 %		<succeeded = Goal>;
@@ -495,13 +515,11 @@
 %	model_semi Goal:
 %		<(Goal ; Goals) && SUCCEED()>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
 %		if (succeeded) SUCCEED();
 %		<Goals && SUCCEED()>
-%	}
 %
 %	model_non Goal:
 %		<(Goal ; Goals) && SUCCEED()>
@@ -517,7 +535,6 @@
 %	model_semi Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%	{
 %		bool succeeded;
 %	
 %		<succeeded = Cond>
@@ -526,7 +543,6 @@
 %		} else {
 %			<Else>
 %		}
-%	}
 
 %	/*
 %	** XXX The following transformation does not do as good a job of GC
@@ -538,7 +554,6 @@
 %	model_non Cond:
 %		<(Cond -> Then ; Else)>
 %	===>
-%	{
 %		bool cond_<N>;
 %
 %		void then_func() {
@@ -551,7 +566,10 @@
 %		if (!cond_<N>) {
 %			<Else>
 %		}
-%	}
+%	except that we hoist any declarations generated
+%	for <Cond> to the top of the scope, so that they
+%	are in scope for the <Then> goal
+%	(this is needed for declarations of static consts)
 
 %-----------------------------------------------------------------------------%
 %
@@ -561,12 +579,10 @@
 % model_det negation
 %		<not(Goal)>
 %	===>
-%	{
 %		bool succeeded;
 %		<succeeded = Goal>
 %		/* now ignore the value of succeeded,
 %		   which we know will be FALSE */
-%	}
 
 % model_semi negation, model_det Goal:
 %		<succeeded = not(Goal)>
@@ -605,7 +621,7 @@
 %-----------------------------------------------------------------------------%
 
 
-% XXX This is still not yet complete.
+% XXX This back-end is still not yet complete.
 %
 % Done:
 %	- function prototypes
@@ -623,15 +639,39 @@
 %			- deconstructions
 %		- switches
 %		- commits
-%		- most cases of `pragma c_code'
+%		- `pragma c_code'
 %	- RTTI
-% TODO:
-%	- complicated `pragma c_code'
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
-%	...
+%
+% BUGS:
+%	- XXX parameter passing problem for abstract equivalence types
+%         that are defined as float (or anything which doesn't map to `Word')
+%	- XXX setjmp() and volatile: local variables in functions that
+%	      call setjmp() need to be declared volatile
+%	- XXX problem with unboxed float on DEC Alphas.
+%
+% TODO:
+%	- XXX define compare & unify preds for array and RTTI types
+%	- XXX need to generate correct layout information for closures
+%	      so that tests/hard_coded/copy_pred works.
+%	- XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
+%
+% UNIMPLEMENTED FEATURES:
+%	- test --det-copy-out
+%	- fix --gcc-nested-functions (need forward declarations for
+%	  nested functions)
+%	- support debugging (with mdb)
+%	- support genuine parallel conjunction
+%	- support fact tables
+%	- support --split-c-files
+%	- support aditi
+%	- support trailing
+%	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
+%	- generate better code for switches
+%	- allow inlining of `pragma c_code' goals (see inlining.m)
 %	- generate local declarations for the `succeeded' variable;
 %	  this would help in nondet code, because it would avoid
 %	  the need to access the outermost function's `succeeded'
@@ -738,28 +778,22 @@ ml_gen_pragma_export_proc(ModuleInfo,
 		MLDS_Name, MLDS_ModuleName),
 	MLDS_FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 	MLDS_Context = mlds__make_context(ProgContext),
-
-	(
-		is_output_det_function(ModuleInfo, PredId, ProcId)
-	->
-		IsOutDetFunc = yes
-	;
-		IsOutDetFunc = no
-	),
-
 	ML_Defn = ml_pragma_export(C_Name, qual(MLDS_ModuleName, MLDS_Name),
-			MLDS_FuncParams, MLDS_Context, IsOutDetFunc).
+			MLDS_FuncParams, MLDS_Context).
 
 
 	%
-	% Test to see if the procedure is of the following form
-	%   :- func <name>(...) = V::out is det.
-	% as these need to handled specially.
+	% Test to see if the procedure is 
+	% a model_det function whose function result has an output mode
+	% (whose type is not a dummy argument type like io__state),
+	% and if so, bind RetVar to the procedure's return value.
+	% These procedures need to handled specially: for such functions,
+	% we map the Mercury function result to an MLDS return value.
 	%
-:- pred is_output_det_function(module_info, pred_id, proc_id).
-:- mode is_output_det_function(in, in, in) is semidet.
+:- pred is_output_det_function(module_info, pred_id, proc_id, prog_var).
+:- mode is_output_det_function(in, in, in, out) is semidet.
 
-is_output_det_function(ModuleInfo, PredId, ProcId) :-
+is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
 			ProcInfo),
 	
@@ -768,9 +802,11 @@ is_output_det_function(ModuleInfo, PredId, ProcId) :-
 
 	proc_info_argmodes(ProcInfo, Modes),
 	pred_info_arg_types(PredInfo, ArgTypes),
+	proc_info_headvars(ProcInfo, ArgVars),
 	modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
 	pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
 	pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+	pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
 
 	RetArgMode = top_out,
 	\+ type_util__is_dummy_argument_type(RetArgType).
@@ -944,13 +980,29 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 
+	% Set up the initial success continuation, if any.
+	% Also figure out which output variables are returned by
+	% value (rather than being passed by reference) and remove
+	% them from the byref_output_vars field in the ml_gen_info.
 	( CodeModel = model_non ->
-		% set up the initial success continuation
-		ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars,
-			MLDSGenInfo0, MLDSGenInfo2)
+		ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
+			MLDSGenInfo0, MLDSGenInfo1)
 	;
-		NondetCopiedOutputVars = [],
-		MLDSGenInfo2 = MLDSGenInfo0
+		(
+			is_output_det_function(ModuleInfo, PredId, ProcId,
+				ResultVar)
+		->
+			CopiedOutputVars = [ResultVar],
+			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+				ByRefOutputVars0),
+			list__delete_all(ByRefOutputVars0,
+				ResultVar, ByRefOutputVars),
+			ml_gen_info_set_byref_output_vars(ByRefOutputVars,	
+				MLDSGenInfo0, MLDSGenInfo1)
+		;
+			CopiedOutputVars = [],
+			MLDSGenInfo1 = MLDSGenInfo0
+		)
 	),
 
 	% This would generate all the local variables at the top of the
@@ -959,23 +1011,29 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	% 		VarTypes, HeadVars, ModuleInfo),
 	% But instead we now generate them locally for each goal.
 	% We just declare the `succeeded' var here,
-	% plus, if --nondet-copy-out is enabled,
-	% locals for the output arguments.
+	% plus locals for any output arguments that are returned by value
+	% (e.g. if --nondet-copy-out is enabled, or for det function return
+	% values).
 	MLDS_Context = mlds__make_context(Context),
-	( NondetCopiedOutputVars = [] ->
+	( CopiedOutputVars = [] ->
 		% optimize common case
 		OutputVarLocals = []
 	;
 		proc_info_varset(ProcInfo, VarSet),
 		proc_info_vartypes(ProcInfo, VarTypes),
-		OutputVarLocals = ml_gen_local_var_decls(VarSet, VarTypes,
-			MLDS_Context, ModuleInfo, NondetCopiedOutputVars)
+		% note that for headvars we must use the types from
+		% the procedure interface, not from the procedure body
+		HeadVarTypes = map__from_corresponding_lists(HeadVars,
+			ArgTypes),
+		OutputVarLocals = ml_gen_local_var_decls(VarSet,
+			map__overlay(VarTypes, HeadVarTypes),
+			MLDS_Context, ModuleInfo, CopiedOutputVars)
 	),
 	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
 			OutputVarLocals],
-	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
+	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 			MLDS_Decls0, MLDS_Statements,
-			MLDSGenInfo2, MLDSGenInfo),
+			MLDSGenInfo1, MLDSGenInfo),
 	ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
 	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
 	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
@@ -995,9 +1053,9 @@ ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars) -->
 		% for the output variables and then pass them to the
 		% continuation, rather than passing them by reference.
 		=(MLDSGenInfo0),
-		{ ml_gen_info_get_output_vars(MLDSGenInfo0,
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
 			NondetCopiedOutputVars) },
-		ml_gen_info_set_output_vars([])
+		ml_gen_info_set_byref_output_vars([])
 	;
 		{ NondetCopiedOutputVars = [] }
 	),
@@ -1052,11 +1110,11 @@ ml_gen_local_var_decl(VarSet, VarTypes, Context, ModuleInfo, Var, MLDS_Defn) :-
 	% Generate the code for a procedure body.
 	%
 :- pred ml_gen_proc_body(code_model, list(prog_var), list(prog_type),
-		hlds_goal, mlds__defns, mlds__statements,
+		list(prog_var), hlds_goal, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_proc_body(in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_proc_body(in, in, in, in, in, out, out, in, out) is det.
 
-ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
+ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 		MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_context(GoalInfo, Context) },
@@ -1071,8 +1129,12 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	% or unification/compare procedures for equivalence types --
 	% the parameters types may not match the types of the head variables.
 	% In such cases, we need to box/unbox/cast them to the right type.
+	% We also grab the original (uncast) lvals for the copied output
+	% variables (if any) here, since for the return statement that
+	% we append below, we want the original vars, not their cast versions.
 	%
-	ml_gen_convert_headvars(HeadVars, ArgTypes, Context,
+	ml_gen_var_list(CopiedOutputVars, CopiedOutputVarOriginalLvals),
+	ml_gen_convert_headvars(HeadVars, ArgTypes, CopiedOutputVars, Context,
 		ConvDecls, ConvInputStatements, ConvOutputStatements),
 	(
 		{ ConvDecls = [] },
@@ -1104,16 +1166,8 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	%
 	% Finally append an appropriate `return' statement, if needed.
 	%
-	( { CodeModel = model_semi } ->
-		ml_gen_test_success(Succeeded),
-		{ ReturnStmt = return([Succeeded]) },
-		{ ReturnStatement = mlds__statement(ReturnStmt,
-			mlds__make_context(Context)) },
-		{ MLDS_Statements = list__append(MLDS_Statements1,
-			[ReturnStatement]) }
-	;
-		{ MLDS_Statements = MLDS_Statements1 }
-	).
+	ml_append_return_statement(CodeModel, CopiedOutputVarOriginalLvals,
+		Context, MLDS_Statements1, MLDS_Statements).
 
 %
 % In certain cases -- for example existentially typed procedures,
@@ -1122,13 +1176,14 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 % In such cases, we need to box/unbox/cast them to the right type.
 % This procedure handles that.
 %
-:- pred ml_gen_convert_headvars(list(prog_var), list(prog_type), prog_context,
+:- pred ml_gen_convert_headvars(list(prog_var), list(prog_type),
+		list(prog_var), prog_context,
 		mlds__defns, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_convert_headvars(in, in, in, out, out, out, in, out) is det.
+:- mode ml_gen_convert_headvars(in, in, in, in, out, out, out, in, out) is det.
 
-ml_gen_convert_headvars([], [], _, [], [], []) --> [].
-ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
+ml_gen_convert_headvars([], [], _, _, [], [], []) --> [].
+ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes], CopiedOutputVars,
 		Context, Decls, InputStatements, OutputStatements) -->
 	ml_variable_type(Var, BodyType),
 	(
@@ -1141,8 +1196,8 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		{ map__is_empty(Subst) }
 	->
 		% just recursively process the remaining arguments
-		ml_gen_convert_headvars(Vars, HeadTypes, Context,
-				Decls, InputStatements, OutputStatements)
+		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
+			Context, Decls, InputStatements, OutputStatements)
 	;
 		%
 		% generate the lval for the head variable
@@ -1170,15 +1225,20 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		%
 		% Recursively process the remaining arguments
 		%
-		ml_gen_convert_headvars(Vars, HeadTypes, Context,
-				Decls1, InputStatements1, OutputStatements1),
+		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
+			Context, Decls1, InputStatements1, OutputStatements1),
 
 		%
 		% Add the code to convert this input or output.
 		%
 		=(MLDSGenInfo2),
-		{ ml_gen_info_get_output_vars(MLDSGenInfo2, OutputVars) },
-		{ list__member(Var, OutputVars) ->
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo2,
+			ByRefOutputVars) },
+		{
+			( list__member(Var, ByRefOutputVars)
+			; list__member(Var, CopiedOutputVars)
+			)
+		->
 			InputStatements = InputStatements1,
 			OutputStatements = list__append(OutputStatements1,
 				ConvOutputStatements)
@@ -1189,9 +1249,9 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes],
 		},
 		{ list__append(ConvDecls, Decls1, Decls) }
 	).
-ml_gen_convert_headvars([], [_|_], _, _, _, _) -->
+ml_gen_convert_headvars([], [_|_], _, _, _, _, _) -->
 	{ error("ml_gen_convert_headvars: length mismatch") }.
-ml_gen_convert_headvars([_|_], [], _, _, _, _) -->
+ml_gen_convert_headvars([_|_], [], _, _, _, _, _) -->
 	{ error("ml_gen_convert_headvars: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
@@ -1349,12 +1409,10 @@ ml_gen_wrap_goal(model_non, model_semi, Context,
 	% semi goal in nondet context:
 	%	<Goal && SUCCEED()>
 	% ===>
-	% {
 	%	bool succeeded;
 	%
 	%	<succeeded = Goal>
 	%	if (succeeded) SUCCEED()
-	% }
 	%
 	ml_gen_test_success(Succeeded),
 	ml_gen_call_current_success_cont(Context, CallCont),
@@ -1383,6 +1441,7 @@ ml_gen_wrap_goal(model_semi, model_non, _, _, _) -->
 ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
+	{ goal_info_get_context(GoalInfo, GoalContext) },
 
 	( { GoalCodeModel = model_non, CodeModel = model_semi } ->
 
@@ -1434,7 +1493,13 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
 			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_goal(model_non, Goal, GoalDecls, GoalStatements),
+		% hoist any static constant declarations for Goal
+		% out to the top level
+		{ list__filter(ml_decl_is_static_const, GoalDecls,
+			GoalStaticDecls, GoalOtherDecls) },
+		{ GoalStatement = ml_gen_block(GoalOtherDecls,
+			GoalStatements, GoalContext) },
 		ml_gen_info_pop_success_cont,
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
 		ml_gen_set_success(const(true), Context, SetSuccessTrue),
@@ -1446,7 +1511,8 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Decls = list__append([CommitRefDecl,
+			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
 		{ MLDS_Statements = [TryCommitStatement] },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
@@ -1496,7 +1562,13 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
 			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_goal(model_non, Goal, GoalDecls, GoalStatements),
+		% hoist any static constant declarations for Goal
+		% out to the top level
+		{ list__filter(ml_decl_is_static_const, GoalDecls,
+			GoalStaticDecls, GoalOtherDecls) },
+		{ GoalStatement = ml_gen_block(GoalOtherDecls,
+			GoalStatements, GoalContext) },
 		ml_gen_info_pop_success_cont,
 
 		{ TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
@@ -1504,7 +1576,8 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Decls = list__append([CommitRefDecl,
+			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
 		{ MLDS_Statements = [TryCommitStatement] },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
@@ -1538,8 +1611,9 @@ ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 	( { NondetCopyOut = yes } ->
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-		{ ml_gen_info_get_output_vars(MLDSGenInfo0, OutputVars) },
-		{ VarsToCopy = set__intersect(set__list_to_set(OutputVars),
+		{ ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+			ByRefOutputVars) },
+		{ VarsToCopy = set__intersect(set__list_to_set(ByRefOutputVars),
 			NonLocals) },
 		ml_gen_make_locals_for_output_args(
 			set__to_sorted_list(VarsToCopy), Context,
@@ -1871,8 +1945,27 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 			raw_target_code("\t\tif (MR_succeeded) {\n")],
 			AssignOutputsList
 	]) },
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_string_option(Globals, target, Target) },
 	( { CodeModel = model_non } ->
-		ml_gen_call_current_success_cont(Context, CallCont)
+
+		% For IL code, we can't call continutations because
+		% there is no syntax for calling managed function
+		% pointers in managed C++.  Instead we
+		% have to call back into IL and make the continuation
+		% call in IL.  This is called an "indirect" success
+		% continuation call.
+		
+		(
+			{ Target = "il" }
+		->
+			ml_gen_call_current_success_cont_indirectly(Context,
+				CallCont)
+		;
+			ml_gen_call_current_success_cont(Context, CallCont)
+		)
 	;
 		{ error("ml_gen_nondet_pragma_c_code: unexpected code model") }
 	),
@@ -2487,7 +2580,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_semi cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%	{
 		%		bool succeeded;
 		%	
 		%		<succeeded = Cond>
@@ -2496,7 +2588,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%		} else {
 		%			<Else>
 		%		}
-		%	}
 		{ CondCodeModel = model_semi },
 		ml_gen_goal(model_semi, Cond, CondDecls, CondStatements),
 		ml_gen_test_success(Succeeded),
@@ -2522,7 +2613,6 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	model_non cond:
 		%		<(Cond -> Then ; Else)>
 		%	===>
-		%	{
 		%		bool cond_<N>;
 		%
 		%		void then_func() {
@@ -2535,17 +2625,33 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%		if (!cond_<N>) {
 		%			<Else>
 		%		}
-		%	}
+		%	except that we hoist any declarations generated
+		%	for <Cond> to the top of the scope, so that they
+		%	are in scope for the <Then> goal
+		%	(this is needed for declarations of static consts)
+
 
 		{ CondCodeModel = model_non },
 
-		% generate the `cond_<N>' var
+		% generate the `cond_<N>' var and the code to initialize it to false
 		ml_gen_info_new_cond_var(CondVar),
 		{ MLDS_Context = mlds__make_context(Context) },
 		{ CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context) },
+		ml_gen_set_cond_var(CondVar, const(false), Context,
+			SetCondFalse),
+
+		% allocate a name for the `then_func'
+		ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval),
+
+		% generate <Cond && then_func()>
+		ml_get_env_ptr(EnvPtrRval),
+		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval,
+			[], []) },
+		ml_gen_info_push_success_cont(SuccessCont),
+		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
+		ml_gen_info_pop_success_cont,
 
 		% generate the `then_func'
-		ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval),
 		/* push nesting level */
 		{ Then = _ - ThenGoalInfo },
 		{ goal_info_get_context(ThenGoalInfo, ThenContext) },
@@ -2558,15 +2664,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		ml_gen_nondet_label_func(ThenFuncLabel, ThenContext,
 			ThenFuncBody, ThenFunc),
 
-		% generate the main body
-		ml_gen_set_cond_var(CondVar, const(false), Context,
-			SetCondFalse),
-		ml_get_env_ptr(EnvPtrRval),
-		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval,
-			[], []) },
-		ml_gen_info_push_success_cont(SuccessCont),
-		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
-		ml_gen_info_pop_success_cont,
+		% generate `if (!cond_<N>) { <Else> }'
 		ml_gen_test_cond_var(CondVar, CondSucceeded),
 		ml_gen_goal(CodeModel, Else, ElseStatement),
 		{ IfStmt = if_then_else(unop(std_unop(not), CondSucceeded),
@@ -2574,7 +2672,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		{ IfStatement = mlds__statement(IfStmt, MLDS_Context) },
 
 		% package it all up in the right order
-		{ MLDS_Decls = [CondVarDecl, ThenFunc | CondDecls] },
+		{ MLDS_Decls = list__append([CondVarDecl | CondDecls], [ThenFunc]) },
 		{ MLDS_Statements = list__append(
 			[SetCondFalse | CondStatements], [IfStatement]) }
 	).

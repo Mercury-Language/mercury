@@ -102,7 +102,10 @@
 % Actually the description above is slightly over-simplified: not all local
 % variables need to be put in the environment struct.  Only those local
 % variables which are referenced by nested functions need to be
-% put in the environment struct.
+% put in the environment struct.  Also, if none of the nested functions
+% refer to the locals in the outer function, we don't need to create
+% an environment struct at all, we just need to hoist the definitions
+% of the nested functions out to the top level.
 %
 % The `env_ptr' variables generated here serve as definitions for
 % the (previously dangling) references to such variables that
@@ -129,55 +132,77 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, std_util, string, require.
+:- import_module bool, int, list, std_util, string, require.
+
+:- import_module ml_code_util.
+
 % the following imports are needed for mangling pred names
 :- import_module hlds_pred, prog_data, prog_out.
+
+:- import_module globals, options.
 
 	% Eliminated nested functions for the whole MLDS.
 	%
 ml_elim_nested(MLDS0, MLDS) -->
+	globals__io_get_globals(Globals),
 	{ MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0) },
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	{ OuterVars = [] },
 	{ DefnsList = list__map(
-		ml_elim_nested_defns(MLDS_ModuleName, OuterVars),
+		ml_elim_nested_defns(MLDS_ModuleName, Globals, OuterVars),
 		Defns0) },
 	{ Defns = list__condense(DefnsList) }.
 
 	% Hoist out any nested function occurring in a single mlds__defn.
 	% Return a list of mlds__defns that contains no nested functions.
 	%
-:- func ml_elim_nested_defns(mlds_module_name, outervars, mlds__defn) =
-	list(mlds__defn).
-ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
+:- func ml_elim_nested_defns(mlds_module_name, globals, outervars,
+		mlds__defn) = list(mlds__defn).
+ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	( DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)) ->
 		EnvName = ml_env_name(Name),
 			% XXX this should be optimized to generate 
 			% EnvTypeName from just EnvName
-		ml_create_env(EnvName, [], Context, ModuleName,
+		ml_create_env(EnvName, [], Context, ModuleName, Globals,
 			_EnvTypeDefn, EnvTypeName, _EnvDecls, _InitEnv),
+		
+		globals__get_target(Globals, Target),
+		( Target = il ->
+			EnvPtrTypeName = EnvTypeName
+		;
+			EnvPtrTypeName = mlds__ptr_type(EnvTypeName)
+		),
 
 		%
 		% traverse the function body, finding (and removing)
 		% any nested functions, and fixing up any references
-		% to the arguments or to local variables which
-		% occur in nested functions
+		% to the arguments or to local variables or local
+		% static constants which occur in nested functions
 		%
-		ElimInfo0 = elim_info_init(ModuleName, OuterVars, EnvTypeName),
+		ElimInfo0 = elim_info_init(ModuleName, OuterVars, EnvTypeName,
+			EnvPtrTypeName),
 		Params = mlds__func_params(Arguments, _RetValues),
 		ml_maybe_add_args(Arguments, FuncBody0, ModuleName,
 			Context, ElimInfo0, ElimInfo1),
 		flatten_statement(FuncBody0, FuncBody1, ElimInfo1, ElimInfo),
-		elim_info_finish(ElimInfo, NestedFuncs0, LocalVars),
+		elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
 		%
-		% if there were no nested functions, then we're done
+		% Split the locals that we need to process
+		% into local variables and local static constants
+		%
+		list__filter(ml_decl_is_static_const, Locals,
+			LocalStatics, LocalVars),
+
+		%
+		% if there were no nested functions, then we just
+		% hoist the local static constants
 		%
 		( NestedFuncs0 = [] ->
 			FuncBody = FuncBody1,
-			HoistedDefns = []
+			HoistedDefns = LocalStatics
 		;
 			%
 			% Create a struct to hold the local variables,
@@ -186,36 +211,64 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 			% functions
 			%
 			ml_create_env(EnvName, LocalVars, Context, ModuleName,
-				EnvTypeDefn, _EnvTypeName, EnvDecls, InitEnv),
-			list__map(ml_insert_init_env(EnvTypeName, ModuleName),
-				NestedFuncs0, NestedFuncs),
+				Globals, EnvTypeDefn, _EnvTypeName, EnvDecls,
+				InitEnv),
+			list__map_foldl(
+				ml_insert_init_env(EnvTypeName, ModuleName,
+					Globals), NestedFuncs0, NestedFuncs,
+					no, InsertedEnv),
 
-			%
-			% If the function's arguments are referenced by
-			% nested functions, then we need to copy them to
-			% local variables in the environment structure.
-			%
-			ml_maybe_copy_args(Arguments, FuncBody0, ModuleName,
-				EnvTypeName, Context, _ArgsToCopy, 
-				CodeToCopyArgs),
+			% Hoist out the local statics and the nested functions
+			HoistedDefns0 = list__append(LocalStatics, NestedFuncs),
 
+			% 
+			% It's possible that none of the nested
+			% functions reference the arguments or locals of
+			% the parent function.  In that case, there's no
+			% need to create an environment, we just need to 
+			% flatten the functions.
 			%
-			% insert the definition and initialization of the
-			% environment struct variable at the start of the
-			% top-level function's body
+			% Note that we don't generate the
+			% env_ptr_args in this module (instead they are
+			% generated when the nested functions are
+			% generated).  This means that we don't avoid
+			% generating these arguments.  This is not
+			% really a big problem, since the code
+			% that generates these arguments needs them.
 			%
-			FuncBody = ml_block(EnvDecls,
-				list__append([InitEnv | CodeToCopyArgs], 
-					[FuncBody1]),
-				Context),
-			%
-			% hoist the nested functions out, by
-			% inserting the environment struct type
-			% and the previously nested functions
-			% at the start of the list of definitions,
-			% followed by the new version of the top-level function
-			%
-			HoistedDefns = [EnvTypeDefn | NestedFuncs]
+			( InsertedEnv = yes ->
+				%
+				% If the function's arguments are
+				% referenced by nested functions, then
+				% we need to copy them to local
+				% variables in the environment
+				% structure.
+				%
+				ml_maybe_copy_args(Arguments, FuncBody0,
+					ModuleName, EnvTypeName, EnvPtrTypeName,
+					Context, _ArgsToCopy, CodeToCopyArgs),
+
+				%
+				% insert the definition and
+				% initialization of the environment
+				% struct variable at the start of the
+				% top-level function's body
+				%
+				FuncBody = ml_block(EnvDecls,
+					list__append(
+						[InitEnv | CodeToCopyArgs], 
+						[FuncBody1]), Context),
+				%
+				% insert the environment struct type
+				% at the start of the list of hoisted definitions
+				% (preceding the previously nested functions
+				% and static constants in HoistedDefns0),
+				%
+				HoistedDefns = [EnvTypeDefn | HoistedDefns0]
+			;
+				FuncBody = FuncBody1,
+				HoistedDefns = HoistedDefns0
+			)
 		),
 		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
@@ -227,7 +280,7 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 
 	%
 	% Add any arguments which are used in nested functions
-	% to the local_vars field in the elim_info.
+	% to the local_data field in the elim_info.
 	%
 :- pred ml_maybe_add_args(mlds__arguments, mlds__statement,
 		mlds_module_name, mlds__context, elim_info, elim_info).
@@ -237,10 +290,10 @@ ml_maybe_add_args([], _, _, _) --> [].
 ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	(
 		{ Arg = data(var(VarName)) - _Type },
-		{ ml_should_add_local_var(ModuleName, VarName, [], [FuncBody]) }
+		{ ml_should_add_local_data(ModuleName, VarName, [], [FuncBody]) }
 	->
 		{ ml_conv_arg_to_var(Context, Arg, ArgToCopy) },
-		elim_info_add_local_var(ArgToCopy)
+		elim_info_add_local_data(ArgToCopy)
 	;
 		[]
 	),
@@ -251,18 +304,18 @@ ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	% to the environment struct.
 	%
 :- pred ml_maybe_copy_args(mlds__arguments, mlds__statement,
-		mlds_module_name, mlds__type, mlds__context, 
+		mlds_module_name, mlds__type, mlds__type, mlds__context, 
 		mlds__defns, mlds__statements).
-:- mode ml_maybe_copy_args(in, in, in, in, in, out, out) is det.
+:- mode ml_maybe_copy_args(in, in, in, in, in, in, out, out) is det.
 
-ml_maybe_copy_args([], _, _, _, _, [], []).
-ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
-		ArgsToCopy, CodeToCopyArgs) :-
-	ml_maybe_copy_args(Args, FuncBody, ModuleName, ClassType, Context,
-			ArgsToCopy0, CodeToCopyArgs0),
+ml_maybe_copy_args([], _, _, _, _, _, [], []).
+ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, EnvPtrTypeName,
+		Context, ArgsToCopy, CodeToCopyArgs) :-
+	ml_maybe_copy_args(Args, FuncBody, ModuleName, ClassType,
+		EnvPtrTypeName,	Context, ArgsToCopy0, CodeToCopyArgs0),
 	(
 		Arg = data(var(VarName)) - FieldType,
-		ml_should_add_local_var(ModuleName, VarName, [], [FuncBody])
+		ml_should_add_local_data(ModuleName, VarName, [], [FuncBody])
 	->
 		ml_conv_arg_to_var(Context, Arg, ArgToCopy),
 
@@ -274,11 +327,11 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 		QualVarName = qual(ModuleName, VarName),
 		EnvModuleName = ml_env_module_name(ClassType),
 		FieldName = named_field(qual(EnvModuleName, VarName),
-			mlds__ptr_type(ClassType)),
+			EnvPtrTypeName),
 		Tag = yes(0),
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
-			mlds__ptr_type(ClassType)),
+			EnvPtrTypeName),
 		ArgRval = lval(var(QualVarName)),
 		AssignToEnv = assign(EnvArgLval, ArgRval),
 		CodeToCopyArg = mlds__statement(atomic(AssignToEnv), Context),
@@ -303,11 +356,11 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 	%	env_ptr = &env;
 	%
 :- pred ml_create_env(mlds__class_name, list(mlds__defn), mlds__context,
-		mlds_module_name, mlds__defn, mlds__type,
+		mlds_module_name, globals, mlds__defn, mlds__type,
 		list(mlds__defn), mlds__statement).
-:- mode ml_create_env(in, in, in, in, out, out, out, out) is det.
+:- mode ml_create_env(in, in, in, in, in, out, out, out, out) is det.
 
-ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
+ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		EnvTypeDefn, EnvTypeName, EnvDecls, InitEnv) :-
 	%
 	% generate the following type:
@@ -342,12 +395,29 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	% initialize the `env_ptr' with the address of `env'
 	%
 	EnvVar = qual(ModuleName, "env"),
-	EnvVarAddr = mem_addr(var(EnvVar)),
-	ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
-		EnvPtrVarDecl, InitEnv),
+	globals__get_target(Globals, Target),
+		% IL uses classes instead of structs, so the code
+		% generated needs to be a little different.
+		% XXX Perhaps if we used value classes this could go
+		% away.
+	( Target = il ->
+		EnvVarAddr = lval(var(EnvVar)),
+		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
+			 Globals, EnvPtrVarDecl, InitEnv0),
+		NewObj = mlds__statement(
+				atomic(new_object(var(EnvVar), 
+					no, EnvTypeName, no, yes(""), [], [])),
+				Context),
+		InitEnv = mlds__statement(block([], 
+			[NewObj, InitEnv0]), Context),
+		EnvDecls = [EnvVarDecl, EnvPtrVarDecl]
+	;
+		EnvVarAddr = mem_addr(var(EnvVar)),
+		ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
+			Globals, EnvPtrVarDecl, InitEnv),
+		EnvDecls = [EnvVarDecl, EnvPtrVarDecl]
+	).
 
-	% group those two declarations together
-	EnvDecls = [EnvVarDecl, EnvPtrVarDecl].
 
 	% ml_insert_init_env:
 	%	If the definition is a nested function definition, and it's
@@ -365,24 +435,29 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName,
 	%		<Body>
 	%	}
 	%
-:- pred ml_insert_init_env(mlds__type, mlds_module_name,
-		mlds__defn, mlds__defn).
-:- mode ml_insert_init_env(in, in, in, out) is det.
-ml_insert_init_env(TypeName, ModuleName, Defn0, Defn) :-
+	% If we perform this transformation, set Init to "yes",
+	% otherwise leave it unchanged.
+	%
+:- pred ml_insert_init_env(mlds__type, mlds_module_name, globals,
+		mlds__defn, mlds__defn, bool, bool).
+:- mode ml_insert_init_env(in, in, in, in, out, in, out) is det.
+ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		DefnBody0 = mlds__function(PredProcId, Params, yes(FuncBody0)),
 		statement_contains_var(FuncBody0, qual(ModuleName, "env_ptr"))
 	->
 		EnvPtrVal = lval(var(qual(ModuleName, "env_ptr_arg"))),
-		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName,
+		ml_init_env(TypeName, EnvPtrVal, Context, ModuleName, Globals,
 			EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
 				[InitEnvPtr, FuncBody0]), Context),
 		DefnBody = mlds__function(PredProcId, Params, yes(FuncBody)),
-		Defn = mlds__defn(Name, Context, Flags, DefnBody)
+		Defn = mlds__defn(Name, Context, Flags, DefnBody),
+		Init = yes
 	;
-		Defn = Defn0
+		Defn = Defn0,
+		Init = Init0
 	).
 
 	% Create the environment pointer and initialize it:
@@ -391,10 +466,11 @@ ml_insert_init_env(TypeName, ModuleName, Defn0, Defn) :-
 	%	env_ptr = <EnvPtrVal>;
 	%
 :- pred ml_init_env(mlds__type, mlds__rval,
-		mlds__context, mlds_module_name, mlds__defn, mlds__statement).
-:- mode ml_init_env(in, in, in, in, out, out) is det.
+		mlds__context, mlds_module_name, globals,
+		mlds__defn, mlds__statement).
+:- mode ml_init_env(in, in, in, in, in, out, out) is det.
 
-ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName,
+ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 		EnvPtrVarDecl, InitEnvPtr) :-
 	%
 	% generate the following variable declaration:
@@ -403,7 +479,16 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName,
 	%
 	EnvPtrVarName = data(var("env_ptr")),
 	EnvPtrVarFlags = env_decl_flags,
-	EnvPtrVarType = mlds__ptr_type(EnvTypeName),
+	globals__get_target(Globals, Target),
+		% IL uses classes instead of structs, so the type
+		% is a little different.
+		% XXX Perhaps if we used value classes this could go
+		% away.
+	( Target = il ->
+		EnvPtrVarType = EnvTypeName
+	;
+		EnvPtrVarType = mlds__ptr_type(EnvTypeName)
+	),
 	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer),
 	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
 		EnvPtrVarDefnBody),
@@ -660,7 +745,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		% If that wasn't the case, we'd need code something
 		% like this:
 		/***************
-		{ LocalVars = elim_info_get_local_vars(ElimInfo) },
+		{ LocalVars = elim_info_get_local_data(ElimInfo) },
 		{ OuterVars0 = elim_info_get_outer_vars(ElimInfo) },
 		{ OuterVars = [LocalVars | OuterVars0] },
 		{ FlattenedDefns = ml_elim_nested_defns(ModuleName,
@@ -685,10 +770,10 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		{ ModuleName = elim_info_get_module_name(ElimInfo) },
 		(
 			{ Name = data(var(VarName)) },
-			{ ml_should_add_local_var(ModuleName, VarName,
+			{ ml_should_add_local_data(ModuleName, VarName,
 				FollowingDefns, FollowingStatements) }
 		->
-			elim_info_add_local_var(Defn0),
+			elim_info_add_local_data(Defn0),
 			{ Defns = [] }
 		;
 			{ Defns = [Defn0] }
@@ -706,14 +791,29 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 	).
 
 	%
-	% check for a nested function definition
-	% that references this variable
+	% Succeed iff we should add the definition of this variable
+	% to the local_data field of the ml_elim_info, meaning that
+	% it should be added to the environment struct
+	% (if it's a variable) or hoisted out to the top level
+	% (if it's a static const).
 	%
-:- pred ml_should_add_local_var(mlds_module_name, mlds__var_name,
+	% This checks for a nested function definition
+	% or static initializer that references the variable.
+	% This is conservative; we only need to hoist out
+	% static variables if they are referenced by
+	% static initializers which themselves need to be
+	% hoisted because they are referenced from a nested
+	% function.  But checking the last part of that
+	% is tricky, so currently we just hoist more
+	% of the static consts than we strictly need to.
+	% Perhaps it would be simpler to just hoist *all*
+	% static consts.
+	%
+:- pred ml_should_add_local_data(mlds_module_name, mlds__var_name,
 		mlds__defns, mlds__statements).
-:- mode ml_should_add_local_var(in, in, in, in) is semidet.
+:- mode ml_should_add_local_data(in, in, in, in) is semidet.
 
-ml_should_add_local_var(ModuleName, VarName,
+ml_should_add_local_data(ModuleName, VarName,
 		FollowingDefns, FollowingStatements) :-
 	QualVarName = qual(ModuleName, VarName),
 	(
@@ -722,9 +822,16 @@ ml_should_add_local_var(ModuleName, VarName,
 		statements_contains_defn(FollowingStatements,
 			FollowingDefn)
 	),
-	FollowingDefn = mlds__defn(_, _, _,
-		mlds__function(_, _, _)),
-	defn_contains_var(FollowingDefn, QualVarName).
+	(
+		FollowingDefn = mlds__defn(_, _, _,
+			mlds__function(_, _, _)),
+		defn_contains_var(FollowingDefn, QualVarName)
+	;
+		FollowingDefn = mlds__defn(_, _, _,
+			mlds__data(_, Initializer)),
+		ml_decl_is_static_const(FollowingDefn),
+		initializer_contains_var(Initializer, QualVarName)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -748,6 +855,8 @@ fixup_atomic_stmt(comment(C), comment(C)) --> [].
 fixup_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval)) -->
 	fixup_lval(Lval0, Lval),
 	fixup_rval(Rval0, Rval).
+fixup_atomic_stmt(delete_object(Lval0), delete_object(Lval)) -->
+	fixup_lval(Lval0, Lval).
 fixup_atomic_stmt(new_object(Target0, MaybeTag, Type, MaybeSize, MaybeCtorName,
 			Args0, ArgTypes),
 		new_object(Target, MaybeTag, Type, MaybeSize, MaybeCtorName,
@@ -860,8 +969,9 @@ fixup_lval(var(Var0), VarLval) -->
 fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 	ThisVar = qual(ThisVarModuleName, ThisVarName),
 	ModuleName = elim_info_get_module_name(ElimInfo),
-	LocalVars = elim_info_get_local_vars(ElimInfo),
+	Locals = elim_info_get_local_data(ElimInfo),
 	ClassType = elim_info_get_env_type_name(ElimInfo),
+	EnvPtrVarType = elim_info_get_env_ptr_type_name(ElimInfo),
 	(
 		%
 		% Check for references to local variables
@@ -869,17 +979,18 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 		% and replace them with `env_ptr->foo'.
 		%
 		ThisVarModuleName = ModuleName,
-		IsLocal = (pred(VarType::out) is nondet :-
-			list__member(Var, LocalVars),
+		IsLocalVar = (pred(VarType::out) is nondet :-
+			list__member(Var, Locals),
 			Var = mlds__defn(data(var(ThisVarName)), _, _, 
-				data(VarType, _))
+				data(VarType, _)),
+			\+ ml_decl_is_static_const(Var)
 			),
-		solutions(IsLocal, [FieldType])
+		solutions(IsLocalVar, [FieldType])
 	->
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvModuleName = ml_env_module_name(ClassType),
 		FieldName = named_field(qual(EnvModuleName, ThisVarName),
-			mlds__ptr_type(ClassType)),
+			EnvPtrVarType),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
 	;
@@ -900,7 +1011,7 @@ just hoist all local variables out to the outermost function.
 		% for `env.foo'.)
 		%
 		ThisVarModuleName = ModuleName,
-		list__member(Var, LocalVars),
+		list__member(Var, Locals),
 		Var = mlds__defn(data(var(ThisVarName)), _, _, _)
 	->
 		Env = var(qual(ModuleName, "env")),
@@ -1297,7 +1408,7 @@ lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 :- type elim_info
 	--->	elim_info(
 				% The name of the current module.
-			mlds_module_name,
+			module_name :: mlds_module_name,
 
 				% The lists of local variables for
 				% each of the containing functions,
@@ -1308,20 +1419,27 @@ lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 				% Currently we assume that any variables
 				% can safely be hoisted to the outermost
 				% function, so this field is not needed.
-			outervars,
+			outer_vars :: outervars,
 
 				% The list of nested function definitions
 				% that we must hoist out.
 				% This list is stored in reverse order.
-			list(mlds__defn),
+			nested_funcs :: list(mlds__defn),
 
 				% The list of local variables that we must
 				% put in the environment structure
 				% This list is stored in reverse order.
-			list(mlds__defn),
+			local_data :: list(mlds__defn),
 				
 				% Type of the introduced environment struct
-			mlds__type
+			env_type_name :: mlds__type,
+
+				% Type of the introduced environment struct
+				% pointer.  This might not just be just
+				% a pointer to the env_type_name (in the
+				% IL backend we don't necessarily use a
+				% pointer).
+			env_ptr_type_name :: mlds__type
 	).
 
 	% The lists of local variables for
@@ -1329,39 +1447,40 @@ lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 	% innermost first
 :- type outervars == list(list(mlds__defn)).
 
-:- func elim_info_init(mlds_module_name, outervars, mlds__type) = elim_info.
-elim_info_init(ModuleName, OuterVars, EnvTypeName) =
-	elim_info(ModuleName, OuterVars, [], [], EnvTypeName).
+:- func elim_info_init(mlds_module_name, outervars, mlds__type, mlds__type)
+	= elim_info.
+elim_info_init(ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName) =
+	elim_info(ModuleName, OuterVars, [], [], EnvTypeName, EnvPtrTypeName).
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
-elim_info_get_module_name(elim_info(ModuleName, _, _, _, _)) = ModuleName.
+elim_info_get_module_name(ElimInfo) = ElimInfo ^ module_name.
 
 :- func elim_info_get_outer_vars(elim_info) = outervars.
-elim_info_get_outer_vars(elim_info(_, OuterVars, _, _, _)) = OuterVars.
+elim_info_get_outer_vars(ElimInfo) = ElimInfo ^ outer_vars.
 
-:- func elim_info_get_local_vars(elim_info) = list(mlds__defn).
-elim_info_get_local_vars(elim_info(_, _, _, LocalVars, _)) = LocalVars.
+:- func elim_info_get_local_data(elim_info) = list(mlds__defn).
+elim_info_get_local_data(ElimInfo) = ElimInfo ^ local_data.
 
 :- func elim_info_get_env_type_name(elim_info) = mlds__type.
-elim_info_get_env_type_name(elim_info(_, _, _, _, EnvTypeName)) = EnvTypeName.
+elim_info_get_env_type_name(ElimInfo) = ElimInfo ^ env_type_name.
+
+:- func elim_info_get_env_ptr_type_name(elim_info) = mlds__type.
+elim_info_get_env_ptr_type_name(ElimInfo) = ElimInfo ^ env_ptr_type_name.
 
 :- pred elim_info_add_nested_func(mlds__defn, elim_info, elim_info).
 :- mode elim_info_add_nested_func(in, in, out) is det.
-elim_info_add_nested_func(NestedFunc, elim_info(A, B, NestedFuncs0, D, E),
-		elim_info(A, B, NestedFuncs, D, E)) :-
-	NestedFuncs = [NestedFunc | NestedFuncs0].
+elim_info_add_nested_func(NestedFunc, ElimInfo, 
+	ElimInfo ^ nested_funcs := [NestedFunc | ElimInfo ^ nested_funcs]).
 
-:- pred elim_info_add_local_var(mlds__defn, elim_info, elim_info).
-:- mode elim_info_add_local_var(in, in, out) is det.
-elim_info_add_local_var(LocalVar, elim_info(A, B, C, LocalVars0, E),
-		elim_info(A, B, C, LocalVars, E)) :-
-	LocalVars = [LocalVar | LocalVars0].
+:- pred elim_info_add_local_data(mlds__defn, elim_info, elim_info).
+:- mode elim_info_add_local_data(in, in, out) is det.
+elim_info_add_local_data(LocalVar, ElimInfo,
+	ElimInfo ^ local_data := [LocalVar | ElimInfo ^ local_data]).
 
 :- pred elim_info_finish(elim_info, list(mlds__defn), list(mlds__defn)).
 :- mode elim_info_finish(in, out, out) is det.
-elim_info_finish(elim_info(_ModuleName, _OuterVars, RevFuncs, RevLocalVars, _),
-		Funcs, LocalVars) :-
-	Funcs = list__reverse(RevFuncs),
-	LocalVars = list__reverse(RevLocalVars).
+elim_info_finish(ElimInfo, Funcs, Locals) :-
+	Funcs = list__reverse(ElimInfo ^ nested_funcs),
+	Locals = list__reverse(ElimInfo ^ local_data).
 
 %-----------------------------------------------------------------------------%

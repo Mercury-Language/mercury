@@ -33,19 +33,19 @@ typedef struct MR_AllocRecord_Struct		MR_AllocRecord;
 struct MR_IntHashTableSlot_Struct {
 	MR_IntHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_Integer			key;
+	MR_Integer		key;
 };
 
 struct MR_FloatHashTableSlot_Struct {
 	MR_FloatHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_Float			key;
+	MR_Float		key;
 };
 
 struct MR_StringHashTableSlot_Struct {
 	MR_StringHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_String			key;
+	MR_ConstString		key;
 };
 
 typedef	union {
@@ -103,12 +103,12 @@ struct MR_AllocRecord_Struct {
 */
 
 struct MR_HashTable_Struct {
-	MR_Integer			size;
-	MR_Integer			threshold;
-	MR_Integer			value_count;
+	MR_Integer		size;
+	MR_Integer		threshold;
+	MR_Integer		value_count;
 	MR_HashTableSlotPtr	*hash_table;
 	MR_HashTableSlotPtr	freespace;
-	MR_Integer			freeleft;
+	MR_Integer		freeleft;
 	MR_AllocRecord		*allocrecord;
 };
 
@@ -287,8 +287,8 @@ static	MR_Unsigned	MR_table_hash_insert_probes = 0;
 #define	MR_GENERIC_HASH_LOOKUP_OR_ADD					      \
 	MR_HashTable	*table;						      \
 	table_type	*slot;						      \
-	MR_Integer		abs_hash;					      \
-	MR_Integer		home;						      \
+	MR_Integer	abs_hash;					      \
+	MR_Integer	home;						      \
 	DECLARE_PROBE_COUNT						      \
 									      \
 	debug_key_msg(key, key_format, key_cast);			      \
@@ -445,10 +445,10 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 }
 
 MR_TrieNode
-MR_string_hash_lookup_or_add(MR_TrieNode t, MR_String key)
+MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 {
 #define	key_format		"%s"
-#define	key_cast		char *
+#define	key_cast		const char *
 #define	table_type		MR_StringHashTableSlot
 #define	table_field		string_slot_ptr
 #define	hash(key)		(MR_hash_string((MR_Word) key))
@@ -481,7 +481,8 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 
 #ifdef	MR_TABLE_DEBUG
 	if (key >= range) {
-		fatal_error("MR_int_fix_index_lookup_or_add: key out of range");
+		MR_fatal_error(
+			"MR_int_fix_index_lookup_or_add: key out of range");
 	}
 #endif
 
@@ -501,7 +502,8 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 #define	MR_START_TABLE_INIT_SIZE	1024
 
 MR_TrieNode
-MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer key)
+MR_int_start_index_lookup_or_add(MR_TrieNode table,
+	MR_Integer start, MR_Integer key)
 {
 	MR_Integer	diff, size;
 
@@ -509,7 +511,8 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer
 
 #ifdef	MR_TABLE_DEBUG
 	if (key < start) {
-		fatal_error("MR_int_start_index_lookup_or_add: small too key");
+		MR_fatal_error(
+			"MR_int_start_index_lookup_or_add: small too key");
 	}
 #endif
 
@@ -526,7 +529,7 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer
 
 	if (diff >= size) {
 		MR_TableNode	*new_array;
-		MR_Integer		new_size, i;
+		MR_Integer	new_size, i;
 
 		new_size = max(2 * size, diff + 1);
 		new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
@@ -596,7 +599,7 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 MR_TrieNode
 MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
 {
-	fatal_error("tabling of typeclass_infos not yet implemented");
+	MR_fatal_error("tabling of typeclass_infos not yet implemented");
 	return NULL;
 }
 
@@ -641,8 +644,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 const MR_DuExistInfo    *exist_info;
                 MR_TypeInfo             arg_type_info;
                 int                     ptag;
-                MR_Word                    sectag;
-                MR_Word                    *arg_vector;
+                MR_Word                 sectag;
+                MR_Word                 *arg_vector;
                 int                     meta_args;
                 int                     i;
 
@@ -667,7 +670,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                     arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                     break;
                 default:
-                    fatal_error("MR_table_type(): unknown sectag_locn");
+                    MR_fatal_error("MR_table_type(): unknown sectag_locn");
                 }
 
                 MR_DEBUG_TABLE_ENUM(table,
@@ -768,7 +771,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             ** The current version of the RTTI gives all equivalence types
             ** the EQUIV type_ctor_rep, not EQUIV_VAR.
             */
-            fatal_error("unexpected EQUIV_VAR type_ctor_rep");
+            MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -796,7 +799,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 */
         #if 0
                 MR_closure  closure;
-                MR_Word        num_hidden_args;
+                MR_Word     num_hidden_args;
                 int         i;
 
                 closure = (MR_Closure *) data;
@@ -850,11 +853,11 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             }
 
         case MR_TYPECTOR_REP_VOID:
-            fatal_error("Cannot table a void type");
+            MR_fatal_error("Cannot table a void type");
             break;
 
         case MR_TYPECTOR_REP_C_POINTER:
-            fatal_error("Attempt to table a C_POINTER");
+            MR_fatal_error("Attempt to table a C_POINTER");
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -862,7 +865,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
-            fatal_error("Attempt to table a type_class_info");
+            MR_fatal_error("Attempt to table a type_class_info");
             break;
 
         case MR_TYPECTOR_REP_ARRAY:
@@ -870,7 +873,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_TypeInfo     new_type_info;
                 MR_MemoryList   allocated_memory_cells = NULL;
                 MR_ArrayType    *array;
-                MR_Integer         array_size;
+                MR_Integer      array_size;
                 int             i;
 
                 array = (MR_ArrayType *) data;
@@ -890,40 +893,40 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             }
 
         case MR_TYPECTOR_REP_SUCCIP:
-            fatal_error("Attempt to table a saved succip");
+            MR_fatal_error("Attempt to table a saved succip");
             break;
 
         case MR_TYPECTOR_REP_HP:
-            fatal_error("Attempt to table a saved hp");
+            MR_fatal_error("Attempt to table a saved hp");
             break;
 
         case MR_TYPECTOR_REP_CURFR:
-            fatal_error("Attempt to table a saved curfr");
+            MR_fatal_error("Attempt to table a saved curfr");
             break;
 
         case MR_TYPECTOR_REP_MAXFR:
-            fatal_error("Attempt to table a saved maxfr");
+            MR_fatal_error("Attempt to table a saved maxfr");
             break;
 
         case MR_TYPECTOR_REP_REDOFR:
-            fatal_error("Attempt to table a saved redofr");
+            MR_fatal_error("Attempt to table a saved redofr");
             break;
 
         case MR_TYPECTOR_REP_REDOIP:
-            fatal_error("Attempt to table a saved redoip");
+            MR_fatal_error("Attempt to table a saved redoip");
             break;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
-            fatal_error("Attempt to table a saved trail pointer");
+            MR_fatal_error("Attempt to table a saved trail pointer");
             break;
 
         case MR_TYPECTOR_REP_TICKET:
-            fatal_error("Attempt to table a saved ticket");
+            MR_fatal_error("Attempt to table a saved ticket");
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
         default:
-            fatal_error("Unknown layout tag in table_any");
+            MR_fatal_error("Unknown layout tag in table_any");
             break;
     }
 
@@ -991,7 +994,7 @@ save_state(MR_SavedState *saved_state,
 	restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
-	fatal_error("sorry, not implemented: "
+	MR_fatal_error("sorry, not implemented: "
 		"minimal model tabling with --high-level-code");
   #else
 	saved_state->succ_ip = MR_succip;
@@ -1062,7 +1065,7 @@ save_state(MR_SavedState *saved_state,
 	** The trail handler will be thoroughly confused by such a sequence.
 	*/
 
-	fatal_error("Sorry, not implemented: "
+	MR_fatal_error("Sorry, not implemented: "
 		"can't have both minimal model tabling and trailing");
   #endif
 
@@ -1075,7 +1078,7 @@ save_state(MR_SavedState *saved_state,
 			MR_gen_next, MR_cut_next);
 
     #ifdef MR_HIGHLEVEL_CODE
-		fatal_error("sorry, not implemented: "
+		MR_fatal_error("sorry, not implemented: "
 			"minimal model tabling with --high-level-code");
     #else
 		printf("non region from ");
@@ -1131,7 +1134,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 
   #ifdef MR_HIGHLEVEL_CODE
 
-	fatal_error("sorry, not implemented: "
+	MR_fatal_error("sorry, not implemented: "
 		"minimal model tabling with --high-level-code");
 
   #else
@@ -1474,8 +1477,8 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	MR_Subgoal	*subgoal;
 	MR_Consumer	*consumer;
 	MR_ConsumerList	listnode;
-	MR_Integer		cur_gen;
-	MR_Integer		cur_cut;
+	MR_Integer	cur_gen;
+	MR_Integer	cur_cut;
 	MR_Word		*fr;
 	MR_Word		*prev_fr;
 	MR_Word		*stop_addr;

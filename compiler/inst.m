@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 %     `abstract_cons_id' and use that here instead of `cons_id'.
 
 :- import_module prog_data, hlds_data.
-:- import_module list, std_util.
+:- import_module list, map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,9 +34,9 @@
 	;		free(type)
 	;		bound(uniqueness, list(bound_inst))
 				% The list(bound_inst) must be sorted
-	;		ground(uniqueness, maybe(pred_inst_info))
-				% The pred_inst_info is used for
-				% higher-order pred modes
+	;		ground(uniqueness, ground_inst_info)
+				% The ground_inst_info holds extra information
+				% about the ground inst.
 	;		not_reached
 	;		inst_var(inst_var)
 				% A defined_inst is possibly recursive
@@ -65,8 +65,18 @@
 					% on backtracking, so we will need to
 					% restore the old value on backtracking
 
+	% The ground_inst_info type gives extra information about ground insts.
+:- type ground_inst_info
+	--->	higher_order(pred_inst_info)
+			% The ground inst is higher-order.
+	;	constrained_inst_var(inst_var)
+			% The ground inst is an inst variable that is
+			% constrained to be ground.
+	;	none.
+			% No extra information is available.
+
 	% higher-order predicate terms are given the inst
-	%	`ground(shared, yes(PredInstInfo))'
+	%	`ground(shared, higher_order(PredInstInfo))'
 	% where the PredInstInfo contains the extra modes and the determinism
 	% for the predicate.  Note that the higher-order predicate term
 	% itself must be ground.
@@ -88,6 +98,8 @@
 	).
 
 :- type bound_inst	--->	functor(cons_id, list(inst)).
+
+:- type inst_var_sub == map(inst_var, inst).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

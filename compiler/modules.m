@@ -1426,7 +1426,8 @@ add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
 		UseDeps = UseDeps1
 	).
 
-:- pred contains_tabling_pragma(item_list).
+:- pred contains_tabling_pragma(item_list::in) is semidet.
+
 contains_tabling_pragma([Item|Items]) :-
 	(
 		Item = pragma(Pragma) - _Context,
@@ -4078,7 +4079,7 @@ split_into_submodules_3(ModuleName, [Item | Items1],
 			InInterface0, ThisModuleItems0, Items3, SubModules1),
 
 		%
-		% combine the sub-module declarations from the prevous two
+		% combine the sub-module declarations from the previous two
 		% steps
 		%
 		{ list__foldl(add_submodule, SubModules0, SubModules1,

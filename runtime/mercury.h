@@ -28,6 +28,7 @@
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"	/* for the `MR_Closure' type */
 #include "mercury_bootstrap.h"
+#include "mercury_memory.h"	/* for memory allocation routines */
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"
@@ -82,6 +83,13 @@ typedef const MR_Closure *MR_ClosurePtr;
 /*
 ** Define some names for types that differ depending
 ** on whether --high-level-data is enabled.
+** These types all correspond to Mercury data types.
+** Some of the have `Mercury_' in their name, to distinguish
+** them from the corresponding C data type.
+** E.g. `MR_Mercury_Type_Info' (below) is the abstract type that the
+** Mercury compiler generates for a type_info argument, whereas
+** `MR_TypeInfo' (defined in runtime/mercury_type_info.h) is the
+** concrete C type that is used by the C code in the runtime.
 */
 #ifdef MR_HIGHLEVEL_DATA
   typedef MR_Integer /* really `enum mercury__builtin__comparison_result_0' */
@@ -93,9 +101,12 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef struct mercury__array__array_1_s * MR_Array;
   typedef struct mercury__std_util__univ_0_s * MR_Univ;
   typedef struct mercury__std_util__type_desc_0_s * MR_Type_Desc;
-  typedef struct mercury__private_builtin__type_info_1_s * MR_Type_Info;
-  typedef struct mercury__private_builtin__type_ctor_info_1_s * MR_Type_Ctor_Info;
-  typedef struct mercury__private_builtin__typeclass_info_1_s * MR_TypeClass_Info;
+  typedef struct mercury__private_builtin__type_info_1_s *
+  	MR_Mercury_Type_Info;
+  typedef struct mercury__private_builtin__type_ctor_info_1_s *
+  	MR_Mercury_Type_Ctor_Info;
+  typedef struct mercury__private_builtin__typeclass_info_1_s *
+  	MR_Mercury_TypeClass_Info;
   typedef struct mercury__private_builtin__base_typeclass_info_1_s *
   	MR_Base_TypeClass_Info;
 #else
@@ -108,10 +119,10 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef MR_Word MR_Array;
   typedef MR_Word MR_Univ;
   typedef MR_Word MR_Type_Desc;
-  typedef MR_Word MR_Type_Info;
-  typedef MR_Word MR_Type_Ctor_Info;
-  typedef MR_Word MR_TypeClass_Info;
-  typedef MR_Word MR_Base_TypeClass_Info;
+  typedef MR_Word MR_Mercury_Type_Info;
+  typedef MR_Word MR_Mercury_Type_Ctor_Info;
+  typedef MR_Word MR_Mercury_TypeClass_Info;
+  typedef MR_Word MR_Mercury_Base_TypeClass_Info;
 #endif
 
 /*
@@ -351,14 +362,14 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 ** Function declarations
 */
 
-bool mercury__builtin__unify_2_p_0(MR_Type_Info, MR_Box, MR_Box);
-void mercury__builtin__compare_3_p_0(MR_Type_Info,
+bool mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box);
+void mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
-void mercury__builtin__compare_3_p_1(MR_Type_Info,
+void mercury__builtin__compare_3_p_1(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
-void mercury__builtin__compare_3_p_2(MR_Type_Info,
+void mercury__builtin__compare_3_p_2(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
-void mercury__builtin__compare_3_p_3(MR_Type_Info,
+void mercury__builtin__compare_3_p_3(MR_Mercury_Type_Info,
 	MR_Comparison_Result *, MR_Box, MR_Box);
 
 bool mercury__builtin____Unify____int_0_0(MR_Integer x, MR_Integer y); 
@@ -370,22 +381,25 @@ bool mercury__builtin____Unify____c_pointer_0_0(
 	MR_C_Pointer x, MR_C_Pointer y); 
 bool mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
 bool mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
-bool mercury__builtin____Unify____tuple_0_0(MR_Type_Info type_info,
+bool mercury__builtin____Unify____tuple_0_0(MR_Mercury_Type_Info type_info,
 	MR_Tuple x, MR_Tuple y); 
-bool mercury__array____Unify____array_1_0(MR_Type_Info type_info,
+bool mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Array x, MR_Array y);
 bool mercury__std_util____Unify____univ_0_0(MR_Univ x, MR_Univ y); 
 bool mercury__std_util____Unify____type_desc_0_0(
 	MR_Type_Desc x, MR_Type_Desc y); 
 bool mercury__private_builtin____Unify____type_ctor_info_1_0(
-	MR_Type_Info type_info, MR_Type_Ctor_Info x, MR_Type_Ctor_Info y); 
+	MR_Mercury_Type_Info type_info,
+	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y); 
 bool mercury__private_builtin____Unify____type_info_1_0(
-	MR_Type_Info type_info, MR_Type_Info x, MR_Type_Info y); 
+	MR_Mercury_Type_Info type_info,
+	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y); 
 bool mercury__private_builtin____Unify____typeclass_info_1_0(
-	MR_Type_Info type_info, MR_TypeClass_Info x, MR_TypeClass_Info y); 
+	MR_Mercury_Type_Info type_info,
+	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y); 
 bool mercury__private_builtin____Unify____base_typeclass_info_1_0(
-	MR_Type_Info type_info, MR_Base_TypeClass_Info x,
-	MR_Base_TypeClass_Info y); 
+	MR_Mercury_Type_Info type_info, MR_Mercury_Base_TypeClass_Info x,
+	MR_Mercury_Base_TypeClass_Info y); 
 
 void mercury__builtin____Compare____int_0_0(
 	MR_Comparison_Result *result, MR_Integer x, MR_Integer y);
@@ -403,26 +417,26 @@ void mercury__builtin____Compare____func_0_0(
 	MR_Comparison_Result *result, MR_Func x, MR_Func y);
 void mercury__builtin____Compare____pred_0_0(
 	MR_Comparison_Result *result, MR_Pred x, MR_Pred y); 
-void mercury__builtin____Compare____tuple_0_0(MR_Type_Info type_info,
+void mercury__builtin____Compare____tuple_0_0(MR_Mercury_Type_Info type_info,
 	MR_Comparison_Result *result, MR_Tuple x, MR_Tuple y); 
-void mercury__array____Compare____array_1_0(MR_Type_Info type_info,
+void mercury__array____Compare____array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Comparison_Result *result, MR_Array x, MR_Array y);
 void mercury__std_util____Compare____univ_0_0(
 	MR_Comparison_Result *result, MR_Univ x, MR_Univ y);
 void mercury__std_util____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y);
 void mercury__private_builtin____Compare____type_ctor_info_1_0(
-	MR_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Type_Ctor_Info x, MR_Type_Ctor_Info y);
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Mercury_Type_Ctor_Info x, MR_Mercury_Type_Ctor_Info y);
 void mercury__private_builtin____Compare____type_info_1_0(
-	MR_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Type_Info x, MR_Type_Info y);
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Mercury_Type_Info x, MR_Mercury_Type_Info y);
 void mercury__private_builtin____Compare____typeclass_info_1_0(
-	MR_Type_Info type_info, MR_Comparison_Result *result,
-	MR_TypeClass_Info x, MR_TypeClass_Info y);
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y);
 void mercury__private_builtin____Compare____base_typeclass_info_1_0(
-	MR_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Base_TypeClass_Info x, MR_Base_TypeClass_Info y);
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y);
 
 /*---------------------------------------------------------------------------*/
 

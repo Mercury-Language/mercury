@@ -115,8 +115,8 @@ MR_compare_addr(const void *address1, const void *address2)
 	** So instead we need to cast the pointers to integers
 	** and compare the integers.
 	*/
-	Unsigned num1 = (Unsigned) address1;
-	Unsigned num2 = (Unsigned) address2;
+	MR_Unsigned num1 = (MR_Unsigned) address1;
+	MR_Unsigned num2 = (MR_Unsigned) address2;
 	return (num1 > num2 ? 1 : num1 == num2 ? 0 : -1);
 }
 

@@ -67,16 +67,16 @@ goal_expr_mark_static_terms(par_conj(Goals0, SM), par_conj(Goals, SM),
 	conj_mark_static_terms(Goals0, Goals, SI0, SI).
 
 goal_expr_mark_static_terms(disj(Goals0, B), disj(Goals, B), SI0, SI0) :-
-	% we rever to the original static_info at the end of branched goals
+	% we revert to the original static_info at the end of branched goals
 	disj_mark_static_terms(Goals0, Goals, SI0).
 
 goal_expr_mark_static_terms(switch(A, B, Cases0, D), switch(A, B, Cases, D),
 		SI0, SI0) :-
-	% we rever to the original static_info at the end of branched goals
+	% we revert to the original static_info at the end of branched goals
 	cases_mark_static_terms(Cases0, Cases, SI0).
 
 goal_expr_mark_static_terms(not(Goal0), not(Goal), SI0, SI0) :-
-	% we rever to the original static_info at the end of the negation
+	% we revert to the original static_info at the end of the negation
 	goal_mark_static_terms(Goal0, Goal, SI0, _SI).
 
 goal_expr_mark_static_terms(some(A, B, Goal0), some(A, B, Goal), SI0, SI) :-
@@ -167,7 +167,7 @@ unification_mark_static_terms(Unification0, Unification,
 		)
 	;
 		Unification0 = deconstruct(_Var, _ConsId, _ArgVars, _UniModes,
-			_CanFail),
+			_CanFail, _CanCGC),
 		Unification = Unification0,
 		StaticVars = StaticVars0
 /*****************

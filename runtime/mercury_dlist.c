@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995, 1997, 1999 The University of Melbourne.
+** Copyright (C) 1995, 1997, 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,15 +17,15 @@
 **	Make an empty list.
 */
 
-List *
-makelist0(void)
+MR_Dlist *
+MR_dlist_makelist0(void)
 {
-	reg	List	*list;
+	reg	MR_Dlist	*list;
 
-	list = MR_GC_NEW(List);
-	ldata(list) = NULL;
-	next(list) = list;
-	prev(list) = list;
+	list = MR_GC_NEW(MR_Dlist);
+	MR_dlist_data(list) = NULL;
+	MR_dlist_next(list) = list;
+	MR_dlist_prev(list) = list;
 	
 	return list;
 }
@@ -34,14 +34,14 @@ makelist0(void)
 **	Make a list with the argument is its only element.
 */
 
-List *
-list_makelist(void * data)
+MR_Dlist *
+MR_dlist_makelist(const void *data)
 {
-	reg	List	*list;
+	reg	MR_Dlist	*list;
 
 	MR_assert(data != NULL);
-	list = makelist0();
-	addhead(list, data);
+	list = MR_dlist_makelist0();
+	MR_dlist_addhead(list, data);
 	return list;
 }
 
@@ -49,25 +49,25 @@ list_makelist(void * data)
 **	Add some data to the head of a list.
 */
 
-List *
-list_addhead(List *list, void *data)
+MR_Dlist *
+MR_dlist_addhead(MR_Dlist *list, const void *data)
 {
-	reg	List	*item;
+	reg	MR_Dlist	*item;
 
 	if (list == NULL) {
-		list = makelist0();
+		list = MR_dlist_makelist0();
 	}
 
-	item = MR_GC_NEW(List);
-	ldata(item) = data;
-	llength(list)++;
+	item = MR_GC_NEW(MR_Dlist);
+	MR_dlist_data(item) = data;
+	MR_dlist_length(list)++;
 
 	/* item's pointers	*/
-	next(item) = next(list);
-	prev(item) = list;
+	MR_dlist_next(item) = MR_dlist_next(list);
+	MR_dlist_prev(item) = list;
 	/* neighbours' pointers	*/
-	next(prev(item)) = item;
-	prev(next(item)) = item;
+	MR_dlist_next(MR_dlist_prev(item)) = item;
+	MR_dlist_prev(MR_dlist_next(item)) = item;
 
 	return list;
 }
@@ -76,25 +76,25 @@ list_addhead(List *list, void *data)
 **	Add some data to the tail of a list.
 */
 
-List *
-list_addtail(List *list, void *data)
+MR_Dlist *
+MR_dlist_addtail(MR_Dlist *list, const void *data)
 {
-	reg	List	*item;
+	reg	MR_Dlist	*item;
 
 	if (list == NULL) {
-		list = makelist0();
+		list = MR_dlist_makelist0();
 	}
 
-	item = MR_GC_NEW(List);
-	ldata(item) = data;
-	llength(list)++;
+	item = MR_GC_NEW(MR_Dlist);
+	MR_dlist_data(item) = data;
+	MR_dlist_length(list)++;
 
 	/* item's pointers	*/
-	next(item) = list;
-	prev(item) = prev(list);
+	MR_dlist_next(item) = list;
+	MR_dlist_prev(item) = MR_dlist_prev(list);
 	/* neighbours' pointers	*/
-	next(prev(item)) = item;
-	prev(next(item)) = item;
+	MR_dlist_next(MR_dlist_prev(item)) = item;
+	MR_dlist_prev(MR_dlist_next(item)) = item;
 
 	return list;
 }
@@ -104,34 +104,37 @@ list_addtail(List *list, void *data)
 **	list2 is not meaningful after the operation, it is freed.
 */
 
-List *
-addlist(List *list1, List *list2)
+MR_Dlist *
+MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
 {
 	if (list1 == NULL) {
-		list1 = makelist0();
+		list1 = MR_dlist_makelist0();
 	}
 
 	if (list2 == NULL) {
-		list2 = makelist0();
+		list2 = MR_dlist_makelist0();
 	}
 
-	if (llength(list2) > 0) {
-		if (llength(list1) == 0) {
-			ldata(list1) = ldata(list2);
+	if (MR_dlist_length(list2) > 0) {
+		if (MR_dlist_length(list1) == 0) {
+			MR_dlist_data(list1) = MR_dlist_data(list2);
 			/* pointers from header	*/
-			next(list1) = next(list2);
-			prev(list1) = prev(list2);
+			MR_dlist_next(list1) = MR_dlist_next(list2);
+			MR_dlist_prev(list1) = MR_dlist_prev(list2);
 			/* pointers to header	*/
-			prev(next(list1)) = list1;
-			next(prev(list1)) = list1;
+			MR_dlist_prev(MR_dlist_next(list1)) = list1;
+			MR_dlist_next(MR_dlist_prev(list1)) = list1;
 		} else {
-			llength(list1) = llength(list1) + llength(list2);
+			MR_dlist_length(list1) = MR_dlist_length(list1)
+					+ MR_dlist_length(list2);
 			/* end of list 1 to start of list 2	*/
-			next(prev(list1)) = next(list2);
-			prev(next(list2)) = prev(list1);
+			MR_dlist_next(MR_dlist_prev(list1)) =
+					MR_dlist_next(list2);
+			MR_dlist_prev(MR_dlist_next(list2)) =
+					MR_dlist_prev(list1);
 			/* end of list 2 to start of list 1	*/
-			next(prev(list2)) = list1;
-			prev(list1) = prev(list2);
+			MR_dlist_next(MR_dlist_prev(list2)) = list1;
+			MR_dlist_prev(list1) = MR_dlist_prev(list2);
 		}
 	}
 
@@ -145,21 +148,21 @@ addlist(List *list1, List *list2)
 **	but only the data pointers of the second are used.
 */
 
-List *
-addndlist(List *list1, List *list2)
+MR_Dlist *
+MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2)
 {
-	reg	List	*ptr;
+	reg	MR_Dlist	*ptr;
 
 	if (list1 == NULL) {
-		list1 = makelist0();
+		list1 = MR_dlist_makelist0();
 	}
 
 	if (list2 == NULL) {
-		list2 = makelist0();
+		list2 = MR_dlist_makelist0();
 	}
 
-	for_list (ptr, list2) {
-		addtail(list1, ldata(ptr));
+	MR_for_dlist (ptr, list2) {
+		MR_dlist_addtail(list1, MR_dlist_data(ptr));
 	}
 
 	return list1;
@@ -170,20 +173,20 @@ addndlist(List *list1, List *list2)
 */
 
 void 
-list_insert_before(List *list, List *where, void *data)
+MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
-	reg	List	*item;
+	reg	MR_Dlist	*item;
 
-	item = MR_GC_NEW(List);
-	ldata(item) = data;
-	llength(list)++;
+	item = MR_GC_NEW(MR_Dlist);
+	MR_dlist_data(item) = data;
+	MR_dlist_length(list)++;
 
 	/* item's pointers */
-	next(item) = where;
-	prev(item) = prev(where);
+	MR_dlist_next(item) = where;
+	MR_dlist_prev(item) = MR_dlist_prev(where);
 	/* neighbour's pointers */
-	next(prev(item)) = item;
-	prev(next(item)) = item;
+	MR_dlist_next(MR_dlist_prev(item)) = item;
+	MR_dlist_prev(MR_dlist_next(item)) = item;
 }
 
 /*
@@ -191,20 +194,20 @@ list_insert_before(List *list, List *where, void *data)
 */
 
 void 
-list_insert_after(List *list, List *where, void *data)
+MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
-	reg	List	*item;
+	reg	MR_Dlist	*item;
 
-	item = MR_GC_NEW(List);
-	ldata(item) = data;
-	llength(list)++;
+	item = MR_GC_NEW(MR_Dlist);
+	MR_dlist_data(item) = data;
+	MR_dlist_length(list)++;
 
 	/* item's pointers */
-	next(item) = next(where);
-	prev(item) = where;
+	MR_dlist_next(item) = MR_dlist_next(where);
+	MR_dlist_prev(item) = where;
 	/* neighbour's pointers */
-	next(prev(item)) = item;
-	prev(next(item)) = item;
+	MR_dlist_next(MR_dlist_prev(item)) = item;
+	MR_dlist_prev(MR_dlist_next(item)) = item;
 
 	return;
 }
@@ -214,13 +217,13 @@ list_insert_after(List *list, List *where, void *data)
 */
 
 int 
-length(const List *list)
+MR_dlist_maybe_null_length(const MR_Dlist *list)
 {
 	if (list == NULL) {
 		return 0;
 	}
 
-	return llength(list);
+	return MR_dlist_length(list);
 }
 
 /*
@@ -229,7 +232,7 @@ length(const List *list)
 */
 
 void 
-dlist_delete(List *list, List *item, void (* func)(void *))
+MR_dlist_delete(MR_Dlist *list, MR_Dlist *item, void (* func)(const void *))
 {
 	if (list == NULL) {
 		return;
@@ -240,12 +243,12 @@ dlist_delete(List *list, List *item, void (* func)(void *))
 	}
 
 	if (func != NULL) {
-		func(ldata(item));
+		func(MR_dlist_data(item));
 	}
 
-	llength(list)--;
-	next(prev(item)) = next(item);
-	prev(next(item)) = prev(item);
+	MR_dlist_length(list)--;
+	MR_dlist_next(MR_dlist_prev(item)) = MR_dlist_next(item);
+	MR_dlist_prev(MR_dlist_next(item)) = MR_dlist_prev(item);
 
 	MR_GC_free(item);
 
@@ -259,22 +262,22 @@ dlist_delete(List *list, List *item, void (* func)(void *))
 */
 
 void 
-oldlist(List *list, void (* func)(void *))
+MR_dlist_oldlist(MR_Dlist *list, void (* func)(const void *))
 {
-	reg	List	*ptr;
-	reg	List	*item;
+	reg	MR_Dlist	*ptr;
+	reg	MR_Dlist	*item;
 
 	if (list == NULL) {
 		return;
 	}
 
-	ptr = next(list);
+	ptr = MR_dlist_next(list);
 	while (ptr != list) {
 		item = ptr;
-		ptr = next(ptr);
+		ptr = MR_dlist_next(ptr);
 
 		if (func != NULL) {
-			func(ldata(item));
+			func(MR_dlist_data(item));
 		}
  
 		MR_GC_free(item);

@@ -141,7 +141,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel, SeenAlloc,
 	( Uinstr0 = if_val(Test, TrueAddr) ->
 		( ( TrueAddr = do_redo ; TrueAddr = do_fail ) ->
 			counter__allocate(N0, C0, C1),
-			MaybeBeforeLabel = yes(local(ProcLabel, N0))
+			MaybeBeforeLabel = yes(local(N0, ProcLabel))
 		;
 			MaybeBeforeLabel = no,
 			C1 = C0
@@ -152,7 +152,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel, SeenAlloc,
 			C2 = C1
 		;
 			counter__allocate(N1, C1, C2),
-			FalseLabel = local(ProcLabel, N1),
+			FalseLabel = local(N1, ProcLabel),
 			MaybeNewFalseLabel = yes(FalseLabel)
 		),
 		FalseAddr = label(FalseLabel),
@@ -179,7 +179,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel, SeenAlloc,
 	; Uinstr0 = incr_hp(_, _, _, _) ->
 		( SeenAlloc = yes ->
 			counter__allocate(N0, C0, C1),
-			NewLabel = local(ProcLabel, N0),
+			NewLabel = local(N0, ProcLabel),
 			value_number__prepare_for_vn(Instrs0, ProcLabel,
 				yes, ContainsReconstruction,
 				AllocSet0, BreakSet, C1, C, Instrs1),
@@ -219,10 +219,10 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel, SeenAlloc,
 		)
 	->
 		counter__allocate(N0, C0, C1),
-		BeforeLabel = local(ProcLabel, N0),
+		BeforeLabel = local(N0, ProcLabel),
 		BeforeInstr = label(BeforeLabel) - "vn stack ctrl before label",
 		counter__allocate(N1, C1, C2),
-		AfterLabel = local(ProcLabel, N1),
+		AfterLabel = local(N1, ProcLabel),
 		AfterInstr = label(AfterLabel) - "vn stack ctrl after label",
 		value_number__prepare_for_vn(Instrs0, ProcLabel, yes,
 			ContainsReconstruction, AllocSet, BreakSet0,
@@ -245,7 +245,7 @@ value_number__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
 		ProcLabel, C0, C, Instrs) :-
 	( Test = binop(and, Test1, Test2) ->
 		counter__allocate(N0, C0, C1),
-		NewLabel = local(ProcLabel, N0),
+		NewLabel = local(N0, ProcLabel),
 		NewAddr = label(NewLabel),
 		value_number__breakup_complex_if(Test1, NewAddr, FalseAddr,
 			NewAddr, ProcLabel, C1, C2, Instrs1),
@@ -254,7 +254,7 @@ value_number__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
 		list__append(Instrs1, [label(NewLabel) - "" | Instrs2], Instrs)
 	; Test = binop(or, Test1, Test2) ->
 		counter__allocate(N0, C0, C1),
-		NewLabel = local(ProcLabel, N0),
+		NewLabel = local(N0, ProcLabel),
 		NewAddr = label(NewLabel),
 		value_number__breakup_complex_if(Test1, TrueAddr, NewAddr,
 			NewAddr, ProcLabel, C1, C2, Instrs1),
@@ -1118,7 +1118,7 @@ value_number__boundary_instr(assign(Lval,_), Boundary) :-
 	;
 		Boundary = no
 	).
-value_number__boundary_instr(call(_, _, _, _, _), yes).
+value_number__boundary_instr(call(_, _, _, _, _, _), yes).
 value_number__boundary_instr(mkframe(_, _), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).

@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds, globals.
+:- import_module llds, trace_params.
 :- import_module list, set, bool, counter.
 
 	% Take an instruction list and optimize jumps. This includes jumps
@@ -239,10 +239,9 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		TraceLevel, CheckedNondetTailCallInfo0,
 		CheckedNondetTailCallInfo, Instrs) :-
 	Instr0 = Uinstr0 - Comment0,
-	string__append(Comment0, " (redirected return)", Redirect),
 	(
 		Uinstr0 = call(Proc, label(RetLabel), LiveInfos, Context,
-			CallModel)
+			GoalPath, CallModel)
 	->
 		(
 			% Look for det style tailcalls. We look for this
@@ -252,12 +251,13 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			( CallModel = det ; CallModel = semidet ),
 			map__search(Procmap, RetLabel, Between0),
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			opt_util__filter_out_livevals(Between0, Between1),
 			list__append(Between1, [livevals(Livevals) - "",
-				goto(Proc) - Redirect], NewInstrs),
+				goto(Proc) - redirect_comment(Comment0)],
+				NewInstrs),
 			RemainInstrs = Instrs0,
 			CheckedNondetTailCallInfo1 = CheckedNondetTailCallInfo0
 		;
@@ -265,11 +265,12 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			CallModel = semidet,
 			map__search(Forkmap, RetLabel, Between),
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			list__append(Between, [livevals(Livevals) - "",
-				goto(Proc) - Redirect], NewInstrs),
+				goto(Proc) - redirect_comment(Comment0)],
+				NewInstrs),
 			RemainInstrs = Instrs0,
 			CheckedNondetTailCallInfo1 = CheckedNondetTailCallInfo0
 		;
@@ -279,7 +280,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			NewInstrs = [
@@ -290,7 +291,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				assign(curfr, lval(succfr(lval(curfr))))
 					- "setup curfr on return from tailcall",
 				livevals(Livevals) - "",
-				goto(Proc) - Redirect
+				goto(Proc) - redirect_comment(Comment0)
 			],
 			RemainInstrs = Instrs0,
 			CheckedNondetTailCallInfo1 = CheckedNondetTailCallInfo0
@@ -303,11 +304,11 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Succmap, RetLabel, BetweenIncl),
 			BetweenIncl = [livevals(_) - _, goto(_) - _],
 			PrevInstr = livevals(Livevals),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			counter__allocate(LabelNum, Counter0, Counter1),
-			NewLabel = local(ProcLabel, LabelNum),
+			NewLabel = local(LabelNum, ProcLabel),
 			NewInstrs = [
 				if_val(binop(ne, lval(curfr), lval(maxfr)),
 					label(NewLabel))
@@ -319,7 +320,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				assign(curfr, lval(succfr(lval(curfr))))
 					- "setup curfr on return from tailcall",
 				livevals(Livevals) - "",
-				goto(Proc) - Redirect,
+				goto(Proc) - redirect_comment(Comment0),
 				label(NewLabel) - "non tail call",
 				Instr0
 			],
@@ -328,7 +329,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr),
-			TraceLevel = none,
+			trace_level_is_none(TraceLevel) = yes,
 			not set__member(RetLabel, LayoutLabels)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
@@ -338,8 +339,9 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				RemainInstrs = Instrs0
 			;
 				NewInstrs = [call(Proc, label(DestLabel),
-					LiveInfos, Context, CallModel)
-					- Redirect],
+					LiveInfos, Context, GoalPath,
+					CallModel)
+					- redirect_comment(Comment0)],
 				RemainInstrs = Instrs0
 			),
 			CheckedNondetTailCallInfo1 = CheckedNondetTailCallInfo0
@@ -626,6 +628,9 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		TraceLevel, CheckedNondetTailCallInfo1,
 		CheckedNondetTailCallInfo, Instrs9),
 	list__append(NewInstrs, Instrs9, Instrs).
+
+:- func redirect_comment(string) = string.
+redirect_comment(Comment0) = string__append(Comment0, " (redirected return)").
 
 % We avoid generating statements that redefine the value of a location
 % by comparing its old contents for non-equality with zero.

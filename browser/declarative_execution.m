@@ -105,6 +105,8 @@
 
 :- type trace_atom
 	--->	atom(
+			pred_or_func,
+
 				% Procedure name.
 				%
 			string,
@@ -493,7 +495,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 	[will_not_call_mercury, thread_safe],
 	"
 		Node = Id;
-		SUCCESS_INDICATOR = (Id != (Word) NULL);
+		SUCCESS_INDICATOR = (Id != (MR_Word) NULL);
 	"
 ).
 
@@ -848,22 +850,23 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 :- pragma c_code(
 	null_trace_node_id(Id::out),
 	[will_not_call_mercury, thread_safe],
-	"Id = (Word) NULL;"
+	"Id = (MR_Word) NULL;"
 ).
 
 
-:- func construct_trace_atom(string, int) = trace_atom.
-:- pragma export(construct_trace_atom(in, in) = out,
+:- func construct_trace_atom(pred_or_func, string, int) = trace_atom.
+:- pragma export(construct_trace_atom(in, in, in) = out,
 		"MR_DD_construct_trace_atom").
 
-construct_trace_atom(Functor, Arity) = atom(Functor, Args) :-
+construct_trace_atom(PredOrFunc, Functor, Arity) = Atom :-
+	Atom = atom(PredOrFunc, Functor, Args),
 	list__duplicate(Arity, no, Args).
 
 :- func add_trace_atom_arg(trace_atom, int, univ) = trace_atom.
 :- pragma export(add_trace_atom_arg(in, in, in) = out,
 		"MR_DD_add_trace_atom_arg").
 
-add_trace_atom_arg(atom(F, Args0), Num, Val) = atom(F, Args) :-
+add_trace_atom_arg(atom(C, F, Args0), Num, Val) = atom(C, F, Args) :-
 	list__replace_nth_det(Args0, Num, yes(Val), Args).
 
 %-----------------------------------------------------------------------------%
@@ -949,7 +952,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
 
 :- pragma c_code(node_id_to_key(Id::in, Key::out),
 		[will_not_call_mercury, thread_safe],
-		"Key = (Integer) Id;").
+		"Key = (MR_Integer) Id;").
 
 :- pred convert_node(trace_node(trace_node_id), trace_node(trace_node_key)).
 :- mode convert_node(in, out) is det.

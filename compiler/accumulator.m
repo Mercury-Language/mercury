@@ -376,11 +376,13 @@ attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
 		DoLCO, FullyStrict, PredInfo, ProcInfo0, ModuleInfo0,
 		Warnings, ProcInfo, ModuleInfo) :-
 	(
+		proc_info_vartypes(ProcInfo0, VarTypes0),
 		identify_out_and_out_prime(Id, Rec, HeadVars,
-				InitialInstMap, ModuleInfo0, Out, OutPrime,
-				HeadToCallSubst, CallToHeadSubst),
+				InitialInstMap, VarTypes0, ModuleInfo0, Out,
+				OutPrime, HeadToCallSubst, CallToHeadSubst),
 
-		stage1(Id, M, C, DoLCO, FullyStrict, ModuleInfo0, Sets),
+		stage1(Id, M, C, DoLCO, FullyStrict, VarTypes0, ModuleInfo0,
+			Sets),
 
 		stage2(Id, C, Sets, OutPrime, Out, ModuleInfo0, ProcInfo0,
 				VarSet - VarTypes, Accs, BaseCase, BasePairs,
@@ -624,11 +626,11 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
 	% variables which are produced prior to the recursive call.
 	%
 :- pred identify_out_and_out_prime(goal_id::in, hlds_goals::in, prog_vars::in,
-		instmap::in, module_info::in, prog_vars::out,
+		instmap::in, vartypes::in, module_info::in, prog_vars::out,
 		prog_vars::out, subst::out, subst::out) is det.
 
-identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, ModuleInfo,
-		Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
+identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, VarTypes,
+		ModuleInfo, Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
 	(
 		list__take(K, Rec, InitialGoals),
 		list__drop(K-1, Rec, FinalGoals),
@@ -643,8 +645,8 @@ identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, ModuleInfo,
 		instmap__apply_instmap_delta(InstMapBeforeRest,
 				InstMapDelta, InstMapAfterRest),
 
-		instmap_changed_vars(InstMapBeforeRest,
-				InstMapAfterRest, ModuleInfo, ChangedVars),
+		instmap_changed_vars(InstMapBeforeRest, InstMapAfterRest,
+			VarTypes, ModuleInfo, ChangedVars),
 
 		assoc_list__from_corresponding_lists(HeadVars, Args, HeadArg0),
 
@@ -690,11 +692,11 @@ identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, ModuleInfo,
 	% so on.
 	%
 :- pred stage1(goal_id::in, int::in, goal_store::in, bool::in, bool::in,
-		module_info::in, sets::out) is semidet.
+		vartypes::in, module_info::in, sets::out) is semidet.
 
-stage1(N - K, M, GoalStore, DoLCO, FullyStrict, ModuleInfo, Sets) :-
+stage1(N - K, M, GoalStore, DoLCO, FullyStrict, VarTypes, ModuleInfo, Sets) :-
 	sets_init(Sets0),
-	stage1_2(N - (K+1), K, M, GoalStore, FullyStrict, ModuleInfo,
+	stage1_2(N - (K+1), K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo,
 			Sets0, Sets1),
 	Sets1 = sets(Before, Assoc, ConstructAssoc, Construct, Update, Reject),
 	Sets = sets(Before `set__union` set_upto(N, (K-1)), Assoc,
@@ -728,9 +730,10 @@ stage1(N - K, M, GoalStore, DoLCO, FullyStrict, ModuleInfo, Sets) :-
 	% goal belongs to.
 	%
 :- pred stage1_2(goal_id::in, int::in, int::in, goal_store::in,
-		bool::in, module_info::in, sets::in, sets::out) is det.
+	bool::in, vartypes::in, module_info::in, sets::in, sets::out) is det.
 
-stage1_2(N - I, K, M, GoalStore, FullyStrict, ModuleInfo, Sets0, Sets) :-
+stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo,
+		Sets0, Sets) :-
 	(
 		I > M
 	->
@@ -738,46 +741,46 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, ModuleInfo, Sets0, Sets) :-
 	;
 		(
 			before(N - I, K, GoalStore, Sets0,
-					FullyStrict, ModuleInfo)
+					FullyStrict, VarTypes, ModuleInfo)
 		->
 			stage1_2(N - (I+1), K, M, GoalStore,
-				FullyStrict, ModuleInfo,
+				FullyStrict, VarTypes, ModuleInfo,
 				Sets0^before :=
 					set__insert(Sets0^before, N - I),
 				Sets)
 		;
 			assoc(N - I, K, GoalStore, Sets0,
-					FullyStrict, ModuleInfo)
+					FullyStrict, VarTypes, ModuleInfo)
 		->
 			stage1_2(N - (I+1), K, M, GoalStore,
-				FullyStrict, ModuleInfo,
+				FullyStrict, VarTypes, ModuleInfo,
 				Sets0^assoc :=
 					set__insert(Sets0^assoc, N - I),
 				Sets)
 		;
 			construct(N - I, K, GoalStore, Sets0,
-					FullyStrict, ModuleInfo)
+					FullyStrict, VarTypes, ModuleInfo)
 		->
 			stage1_2(N - (I+1), K, M, GoalStore,
-				FullyStrict, ModuleInfo,
+				FullyStrict, VarTypes, ModuleInfo,
 				Sets0^construct :=
 					set__insert(Sets0^construct, N - I),
 				Sets)
 		;
 			construct_assoc(N - I, K, GoalStore, Sets0,
-					FullyStrict, ModuleInfo)
+					FullyStrict, VarTypes, ModuleInfo)
 		->
 			stage1_2(N - (I+1), K, M, GoalStore,
-				FullyStrict, ModuleInfo,
+				FullyStrict, VarTypes, ModuleInfo,
 				Sets0^construct_assoc :=
 					set__insert(Sets0^construct_assoc, N-I),
 				Sets)
 		;
 			update(N - I, K, GoalStore, Sets0,
-					FullyStrict, ModuleInfo)
+					FullyStrict, VarTypes, ModuleInfo)
 		->
 			stage1_2(N - (I+1), K, M, GoalStore,
-				FullyStrict, ModuleInfo,
+				FullyStrict, VarTypes, ModuleInfo,
 				Sets0^update :=
 					set__insert(Sets0^update, N - I),
 				Sets)
@@ -824,17 +827,17 @@ set_upto(N, K) = Set :-
 	% before the recursive call (member of the before set).
 	%
 :- pred before(goal_id::in, int::in, goal_store::in, sets::in,
-		bool::in, module_info::in) is semidet.
+		bool::in, vartypes::in, module_info::in) is semidet.
 
 before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
-		FullyStrict, ModuleInfo) :-
+		FullyStrict, VarTypes, ModuleInfo) :-
 	goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
 	(
 		member_lessthan_goalid(GoalStore, N - I, N - J,
 				EarlierGoal - EarlierInstMap),
-		not goal_util__can_reorder_goals(ModuleInfo, FullyStrict,
-				EarlierInstMap, EarlierGoal,
-				LaterInstMap, LaterGoal)
+		not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+			FullyStrict, EarlierInstMap, EarlierGoal,
+			LaterInstMap, LaterGoal)
 	)
 	=>
 	(
@@ -848,19 +851,19 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 	% set) AND the goal is associative.
 	%  
 :- pred assoc(goal_id::in, int::in, goal_store::in, sets::in, bool::in,
-		module_info::in) is semidet.
+		vartypes::in, module_info::in) is semidet.
 
 assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
-		FullyStrict, ModuleInfo) :-
+		FullyStrict, VarTypes, ModuleInfo) :-
 	goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
 	LaterGoal = call(PredId, ProcId, Args, _, _, _) - _,
 	is_associative(PredId, ProcId, ModuleInfo, Args, _),
 	(
 		member_lessthan_goalid(GoalStore, N - I, _N - J,
 				EarlierGoal - EarlierInstMap),
-		not goal_util__can_reorder_goals(ModuleInfo, FullyStrict,
-				EarlierInstMap, EarlierGoal,
-				LaterInstMap, LaterGoal)
+		not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+			FullyStrict, EarlierInstMap, EarlierGoal,
+			LaterInstMap, LaterGoal)
 	)
 	=>
 	(
@@ -874,19 +877,19 @@ assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 	% set) AND the goal is construction unification.
 	%
 :- pred construct(goal_id::in, int::in, goal_store::in, sets::in,
-		bool::in, module_info::in) is semidet.
+		bool::in, vartypes::in, module_info::in) is semidet.
 
 construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
-		FullyStrict, ModuleInfo) :-
+		FullyStrict, VarTypes, ModuleInfo) :-
 	goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
 	LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
 	Unify = construct(_, _, _, _, _, _, _),
 	(
 		member_lessthan_goalid(GoalStore, N - I, _N - J,
 				EarlierGoal - EarlierInstMap),
-		not goal_util__can_reorder_goals(ModuleInfo, FullyStrict,
-				EarlierInstMap, EarlierGoal,
-				LaterInstMap, LaterGoal)
+		not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+			FullyStrict, EarlierInstMap, EarlierGoal,
+			LaterInstMap, LaterGoal)
 	)
 	=>
 	(
@@ -906,16 +909,16 @@ construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
 	% construction unification depends on.
 	%
 :- pred construct_assoc(goal_id::in, int::in, goal_store::in, sets::in,
-		bool::in, module_info::in) is semidet.
+		bool::in, vartypes::in, module_info::in) is semidet.
 
 construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
-		_, _, _), FullyStrict, ModuleInfo) :-
+		_, _, _), FullyStrict, VarTypes, ModuleInfo) :-
 	goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
 	LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
 	Unify = construct(_, ConsId, _, _, _, _, _),
 
-	goal_store__all_ancestors(GoalStore, N - I, ModuleInfo, FullyStrict,
-			Ancestors),
+	goal_store__all_ancestors(GoalStore, N - I, VarTypes, ModuleInfo,
+		FullyStrict, Ancestors),
 
 	set__singleton_set(Assoc `intersect` Ancestors, AssocId),
 	goal_store__lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
@@ -925,9 +928,9 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 	(
 		member_lessthan_goalid(GoalStore, N - I, _N - J,
 				EarlierGoal - EarlierInstMap),
-		not goal_util__can_reorder_goals(ModuleInfo, FullyStrict,
-				EarlierInstMap, EarlierGoal,
-				LaterInstMap, LaterGoal)
+		not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+			FullyStrict, EarlierInstMap, EarlierGoal,
+			LaterInstMap, LaterGoal)
 	)
 	=>
 	(
@@ -942,19 +945,19 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 	% set) AND the goal updates some state.
 	%  
 :- pred update(goal_id::in, int::in, goal_store::in, sets::in, bool::in,
-		module_info::in) is semidet.
+		vartypes::in, module_info::in) is semidet.
 
 update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
-		FullyStrict, ModuleInfo) :-
+		FullyStrict, VarTypes, ModuleInfo) :-
 	goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
 	LaterGoal = call(PredId, ProcId, Args, _, _, _) - _,
 	is_update(PredId, ProcId, ModuleInfo, Args, _),
 	(
 		member_lessthan_goalid(GoalStore, N - I, _N - J,
 				EarlierGoal - EarlierInstMap),
-		not goal_util__can_reorder_goals(ModuleInfo, FullyStrict,
-				EarlierInstMap, EarlierGoal,
-				LaterInstMap, LaterGoal)
+		not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+			FullyStrict, EarlierInstMap, EarlierGoal,
+			LaterInstMap, LaterGoal)
 	)
 	=>
 	(
@@ -1189,7 +1192,8 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
 
 	Accs = set__to_sorted_list(InitAccs) `append` UpdateAccOut,
 
-	divide_base_case(UpdateOut, Out, GoalStore, ModuleInfo,
+	VarSetVarTypesPair = _ - VarTypes,
+	divide_base_case(UpdateOut, Out, GoalStore, VarTypes, ModuleInfo,
 			UpdateBase, AssocBase, OtherBase),
 
 	BaseCase = base(UpdateBase, AssocBase, OtherBase).
@@ -1430,15 +1434,15 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, Substs0, Types0,
 	% and A will contain the same goal_id.
 	%
 :- pred divide_base_case(prog_vars::in, prog_vars::in, goal_store::in,
-		module_info::in, set(goal_id)::out,
+		vartypes::in, module_info::in, set(goal_id)::out,
 		set(goal_id)::out, set(goal_id)::out) is det.
 
-divide_base_case(UpdateOut, Out, C, ModuleInfo,
+divide_base_case(UpdateOut, Out, C, VarTypes, ModuleInfo,
 		UpdateBase, AssocBase, OtherBase) :-
 	list__delete_elems(Out, UpdateOut, AssocOut),
 
-	list__map(related(C, ModuleInfo), UpdateOut, UpdateBaseList),
-	list__map(related(C, ModuleInfo), AssocOut, AssocBaseList),
+	list__map(related(C, VarTypes, ModuleInfo), UpdateOut, UpdateBaseList),
+	list__map(related(C, VarTypes, ModuleInfo), AssocOut, AssocBaseList),
 	UpdateBase = set__power_union(set__list_to_set(UpdateBaseList)),
 	AssocBase = set__power_union(set__list_to_set(AssocBaseList)),
 
@@ -1446,8 +1450,8 @@ divide_base_case(UpdateOut, Out, C, ModuleInfo,
 	set__to_sorted_list(Set, List),
 
 	list__map((pred(GoalId::in, Ancestors::out) is det :-
-			goal_store__all_ancestors(C, GoalId, ModuleInfo,
-					no, Ancestors)
+			goal_store__all_ancestors(C, GoalId, VarTypes,
+				ModuleInfo, no, Ancestors)
 		), List, OtherBaseList),
 	
 	OtherBase = set__list_to_set(List) `union`
@@ -1460,24 +1464,25 @@ divide_base_case(UpdateOut, Out, C, ModuleInfo,
 	% Return all the goal_ids, Ids, which are needed to initialize
 	% the variable, V, from the goal store, GS.
 	%
-:- pred related(goal_store::in, module_info::in, prog_var::in,
+:- pred related(goal_store::in, vartypes::in, module_info::in, prog_var::in,
 		set(goal_id)::out) is det.
 
-related(GS, ModuleInfo, Var, Related) :-
+related(GS, VarTypes, ModuleInfo, Var, Related) :-
 	solutions((pred(Key::out) is nondet :-
 			goal_store__member(GS, Key, Goal - InstMap0),
 			Key = base - _,
 			Goal = _GoalExpr - GoalInfo,
 			goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 			apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-			instmap_changed_vars(InstMap0, InstMap, ModuleInfo,
-					ChangedVars),
+			instmap_changed_vars(InstMap0, InstMap, VarTypes,
+				ModuleInfo, ChangedVars),
 			set__singleton_set(ChangedVars, Var)
 		), Ids),
 	(
 		Ids = [Id]
 	->
-		goal_store__all_ancestors(GS, Id, ModuleInfo, no, Ancestors),
+		goal_store__all_ancestors(GS, Id, VarTypes, ModuleInfo, no,
+			Ancestors),
 		list__filter((pred((base - _)::in) is semidet),
 				set__to_sorted_list(set__insert(Ancestors, Id)),
 				RelatedList),
@@ -1577,6 +1582,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 	proc_info_headvars(OrigProcInfo, HeadVars0),
 	proc_info_argmodes(OrigProcInfo, HeadModes0),
 
+	proc_info_inst_varset(OrigProcInfo, InstVarSet),
 	proc_info_inferred_determinism(OrigProcInfo, Detism),
 	proc_info_goal(OrigProcInfo, Goal),
 	proc_info_context(OrigProcInfo, Context),
@@ -1600,16 +1606,16 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 		% when it should be any integer.
 		% However this will no longer handle partially
 		% instantiated data structures.
-	Inst = ground(shared, no),
+	Inst = ground(shared, none),
 	inst_lists_to_mode_list([Inst], [Inst], Mode),
 	list__duplicate(list__length(Accs), list__det_head(Mode), AccModes),
 	HeadModes = AccModes `append` HeadModes0,
 
 	list__map(map__lookup(VarTypes), Accs, AccTypes),
 
-	proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
-	                Context, TVarMap, TCVarsMap, IsAddressTaken,
-			AccProcInfo).
+	proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
+		Detism, Goal, Context, TVarMap, TCVarsMap, IsAddressTaken,
+		AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1843,7 +1849,8 @@ acc_unification(Out - Acc, Goal) :-
 	Context = unify_context(explicit, []),
 	Expr = unify(Out, var(Acc), UniMode, assign(Out,Acc), Context),
 	set__list_to_set([Out,Acc], NonLocalVars),
-	instmap_delta_from_assoc_list([Out - ground(shared, no)], InstMapDelta),
+	instmap_delta_from_assoc_list([Out - ground(shared, none)],
+		InstMapDelta),
 
 	goal_info_init(NonLocalVars, InstMapDelta, det, Info),
 					   

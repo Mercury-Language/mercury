@@ -309,7 +309,7 @@ opt_debug__dump_ctrl_list([N - VnInstr | Ctrllist], Str) :-
 
 opt_debug__dump_vninstr(vn_livevals(_), Str) :-
 	string__append_list(["livevals(...)"], Str).
-opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _, _), Str) :-
+opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
@@ -803,7 +803,6 @@ opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
 opt_debug__dump_unop(unmktag, "unmktag").
 opt_debug__dump_unop(mkbody, "mkbody").
-opt_debug__dump_unop(body, "body").
 opt_debug__dump_unop(unmkbody, "unmkbody").
 opt_debug__dump_unop(not, "not").
 opt_debug__dump_unop(hash_string, "hash_string").
@@ -864,7 +863,7 @@ opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
 	opt_debug__dump_code_addrs(Addrs, A2_str),
 	string__append_list([" ", A_str, A2_str], Str).
 
-opt_debug__dump_label(local(ProcLabel, N), Str) :-
+opt_debug__dump_label(local(N, ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, P_str),
 	string__int_to_string(N, N_str),
 	string__append_list([P_str, "_", N_str], Str).
@@ -933,7 +932,7 @@ opt_debug__dump_instr(assign(Lval, Rval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["assign(", L_str, ", ", R_str, ")"], Str).
-opt_debug__dump_instr(call(Proc, Ret, _, _, _), Str) :-
+opt_debug__dump_instr(call(Proc, Ret, _, _, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).

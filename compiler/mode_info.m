@@ -385,6 +385,8 @@
 	% execution point, since those variables will *already* have
 	% been marked as mostly_unique rather than unique.)
 
+			instvarset :: inst_varset,
+
 			last_checkpoint_insts :: assoc_list(prog_var, inst),
 	% This field is used by the checkpoint code when debug_modes is on.
 	% It has the instmap that was current at the last mode checkpoint,
@@ -445,6 +447,7 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_inst_varset(ProcInfo, InstVarSet),
 
 	LiveVarsList = [LiveVars],
 	NondetLiveVarsList = [LiveVars],
@@ -455,7 +458,7 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
-		ErrorList, LiveVarsList, NondetLiveVarsList, [], [],
+		ErrorList, LiveVarsList, NondetLiveVarsList, InstVarSet, [], [],
 		Changed, HowToCheck, MayChangeProc, CheckingExtraGoals
 	).
 
@@ -470,6 +473,8 @@ mode_info_get_io_state(ModeInfo, IOState) :-
 mode_info_set_io_state(ModeInfo, IOState0, ModeInfo^io_state := IOState) :-
 	% XXX
 	unsafe_promise_unique(IOState0, IOState).
+
+%-----------------------------------------------------------------------------%
 
 mode_info_get_preds(ModeInfo, Preds) :-
 	module_info_preds(ModeInfo^module_info, Preds).
@@ -573,7 +578,7 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 
 %-----------------------------------------------------------------------------%
 
-	% We keep track of the live variables and the nondet-live variables
+			% We keep track of the live variables and the nondet-live variables
 	% a bag, represented as a list of sets of vars.
 	% This allows us to easily add and remove sets of variables.
 	% It's probably not maximally efficient.
@@ -656,11 +661,7 @@ mode_info_get_liveness_2([LiveVarsSet | LiveVarsList], LiveVars0, LiveVars) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Since we don't yet handle polymorphic modes, the inst varset
-	% is always empty.
-
-mode_info_get_instvarset(_ModeInfo, InstVarSet) :-
-	varset__init(InstVarSet).
+mode_info_get_instvarset(ModeInfo, ModeInfo^instvarset).
 
 mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
 	mode_info_get_var_types(ModeInfo, VarTypes),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,8 +61,9 @@
 :- pred det_no_output_vars(set(prog_var), instmap, instmap_delta, det_info).
 :- mode det_no_output_vars(in, in, in, in) is semidet.
 
-:- pred det_info_init(module_info, pred_id, proc_id, globals, det_info).
-:- mode det_info_init(in, in, in, in, out) is det.
+:- pred det_info_init(module_info, vartypes, pred_id, proc_id, globals,
+		det_info).
+:- mode det_info_init(in, in, in, in, in, out) is det.
 
 :- pred det_info_get_module_info(det_info, module_info).
 :- mode det_info_get_module_info(in, out) is det.
@@ -84,6 +85,9 @@
 
 :- pred det_info_set_module_info(det_info, module_info, det_info).
 :- mode det_info_set_module_info(in, in, out) is det.
+
+:- func vartypes(det_info) = vartypes.
+:- func 'vartypes:='(det_info, vartypes) = det_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,32 +156,35 @@ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
-	instmap__no_output_vars(InstMap, InstMapDelta, Vars, ModuleInfo).
+	instmap__no_output_vars(InstMap, InstMapDelta, Vars, DetInfo^vartypes,
+		ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- type det_info	--->	det_info(
-					module_info,
-					pred_id,	% the id of the proc
-					proc_id, 	% currently processed
-					bool,		% --reorder-conj
-					bool,		% --reorder-disj
-					bool		% --fully-strict
-				).
+:- type det_info	
+	--->	det_info(
+		module_info :: module_info,
+		vartypes :: vartypes,
+		pred_id :: pred_id,	% the id of the proc
+		proc_id :: proc_id, 	% currently processed
+		reorder_conj :: bool,	% --reorder-conj
+		reorder_disj :: bool,	% --reorder-disj
+		fully_strict :: bool	% --fully-strict
+	).
 
-det_info_init(ModuleInfo, PredId, ProcId, Globals, DetInfo) :-
+det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo) :-
 	globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
 	globals__lookup_bool_option(Globals, reorder_disj, ReorderDisj),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
-	DetInfo = det_info(ModuleInfo, PredId, ProcId,
+	DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
 		ReorderConj, ReorderDisj, FullyStrict).
 
-det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _), ModuleInfo).
-det_info_get_pred_id(det_info(_, PredId, _, _, _, _), PredId).
-det_info_get_proc_id(det_info(_, _, ProcId, _, _, _), ProcId).
-det_info_get_reorder_conj(det_info(_, _, _, ReorderConj, _, _), ReorderConj).
-det_info_get_reorder_disj(det_info(_, _, _, _, ReorderDisj, _), ReorderDisj).
-det_info_get_fully_strict(det_info(_, _, _, _, _, FullyStrict), FullyStrict).
+det_info_get_module_info(DetInfo, DetInfo^module_info).
+det_info_get_pred_id(DetInfo, DetInfo^pred_id).
+det_info_get_proc_id(DetInfo, DetInfo^proc_id).
+det_info_get_reorder_conj(DetInfo, DetInfo^reorder_conj).
+det_info_get_reorder_disj(DetInfo, DetInfo^reorder_disj).
+det_info_get_fully_strict(DetInfo, DetInfo^fully_strict).
 
-det_info_set_module_info(det_info(_, B, C, D, E, F), ModuleInfo,
-		det_info(ModuleInfo, B, C, D, E, F)).
+det_info_set_module_info(DetInfo, ModuleInfo,
+		DetInfo^module_info := ModuleInfo).

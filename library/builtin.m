@@ -366,6 +366,23 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___type_ctor_info_tuple_0, _tuple_);
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
+
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_int_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_float_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_character_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_string_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_pred_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_func_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_tuple_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_void_0);
 }
 
 #endif /* ! HIGHLEVEL_CODE */
@@ -405,8 +422,8 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 :- pragma c_header_code("
 #ifdef MR_HIGHLEVEL_CODE
-  void mercury__builtin__copy_2_p_0(MR_Type_Info, MR_Box, MR_Box *);
-  void mercury__builtin__copy_2_p_1(MR_Type_Info, MR_Box, MR_Box *);
+  void mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box *);
+  void mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info, MR_Box, MR_Box *);
 #endif
 ").
 
@@ -415,7 +432,7 @@ aliasing, and in particular the lack of support for `ui' modes.
 #ifdef MR_HIGHLEVEL_CODE
 
 void
-mercury__builtin__copy_2_p_0(MR_Type_Info type_info,
+mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
 	MR_Box value, MR_Box * copy)
 {
 	MR_Word val = (MR_Word) value;
@@ -423,7 +440,7 @@ mercury__builtin__copy_2_p_0(MR_Type_Info type_info,
 }
 
 void
-mercury__builtin__copy_2_p_1(MR_Type_Info type_info, MR_Box x, MR_Box * y)
+mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info, MR_Box x, MR_Box * y)
 {
 	mercury__builtin__copy_2_p_0(type_info, x, y);
 }
@@ -455,7 +472,7 @@ Define_entry(mercury__copy_2_0);
 fallthru(ENTRY(mercury__copy_2_1), ENTRY(mercury__copy_2_0))
 Define_entry(mercury__copy_2_1);
 {
-	Word value, copy, type_info;
+	MR_Word value, copy, type_info;
 
 	type_info = r1;
 	value = r2;
@@ -558,9 +575,13 @@ void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void) {
 	unify_c_pointer_module();
+
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_builtin__type_ctor_info_c_pointer_0,
 		builtin__c_pointer_0_0);
+
+	MR_register_type_ctor_info(
+		&mercury_data_builtin__type_ctor_info_c_pointer_0);
 }
 
 #endif /* ! MR_HIGHLEVEL_CODE */

@@ -150,15 +150,17 @@ simplify__proc(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 simplify__proc_2(Simplifications, PredId, ProcId, ModuleInfo0, ModuleInfo,
 		ProcInfo0, ProcInfo, Msgs) :-
 	module_info_globals(ModuleInfo0, Globals),
-	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals,
+		DetInfo0),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_varset(ProcInfo0, VarSet0),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_inst_varset(ProcInfo0, InstVarSet0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_goal(ProcInfo0, Goal0),
 
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, TVarMap, Info0),
+		VarSet0, InstVarSet0, TVarMap, Info0),
 	simplify__process_goal(Goal0, Goal, Info0, Info),
 	
 	simplify_info_get_varset(Info, VarSet),
@@ -222,7 +224,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, InstMap0, ModuleInfo3, ModuleInfo4),
+			VarTypes, Info3^inst_varset, InstMap0, ModuleInfo3,
+			ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
@@ -473,7 +476,9 @@ simplify__enforce_invariant(GoalInfo0, GoalInfo, Info0, Info) :-
 
 simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	simplify_info_get_instmap(Info0, InstMap0),
-	simplify__conj(Goals0, [], Goals, GoalInfo0, Info0, Info1),
+	simplify__excess_assigns_in_conj(GoalInfo0,
+		Goals0, Goals1, Info0, Info1a),
+	simplify__conj(Goals1, [], Goals, GoalInfo0, Info1a, Info1),
 	simplify_info_set_instmap(Info1, InstMap0, Info2),
 	( Goals = [] ->
 		goal_info_get_context(GoalInfo0, Context),
@@ -1558,18 +1563,11 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 		),
 		list__reverse(RevGoals, Goals)
 	    ;
-		simplify__excess_assigns(Goal1, ConjInfo,
-			Goals0, Goals1, RevGoals0, RevGoals1,
-			GoalNeeded, Info1, Info2),
-		( GoalNeeded = yes ->
-			simplify__conjoin_goal_and_rev_goal_list(Goal1,
-				RevGoals1, RevGoals2)
-		;
-			RevGoals2 = RevGoals1
-		),
-		simplify_info_update_instmap(Info2, Goal1, Info3),
-		simplify__conj(Goals1, RevGoals2, Goals,
-			ConjInfo, Info3, Info)
+		simplify__conjoin_goal_and_rev_goal_list(Goal1,
+			RevGoals0, RevGoals1),
+		simplify_info_update_instmap(Info1, Goal1, Info2),
+		simplify__conj(Goals0, RevGoals1, Goals,
+			ConjInfo, Info2, Info)
 	    )
 	).
 
@@ -1607,26 +1605,18 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals0, RevGoals, GoalNeeded, Info0, Info) :-
 	(
 		simplify_do_excess_assigns(Info0),
-		Goal0 = unify(_, _, _, Unif, _) - _,
-		goal_info_get_nonlocals(ConjInfo, NonLocals),
-		Unif = assign(LeftVar, RightVar),
-		( \+ set__member(LeftVar, NonLocals) ->
-			LocalVar = LeftVar, ReplacementVar = RightVar
-		; \+ set__member(RightVar, NonLocals) ->
-			LocalVar = RightVar, ReplacementVar = LeftVar
-		;
-			fail
-		)
+		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
+		map__init(Subn0),
+		goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn)
 	->
 		GoalNeeded = no,
-		map__init(Subn0),
-		map__det_insert(Subn0, LocalVar, ReplacementVar, Subn),
 		goal_util__rename_vars_in_goals(Goals0, no,
 			Subn, Goals),
 		goal_util__rename_vars_in_goals(RevGoals0, no,
 			Subn, RevGoals),
 		simplify_info_get_varset(Info0, VarSet0),
-		varset__delete_var(VarSet0, LocalVar, VarSet),
+		map__keys(Subn0, RemovedVars),
+		varset__delete_vars(VarSet0, RemovedVars, VarSet),
 		simplify_info_set_varset(Info0, VarSet, Info)
 	;
 		GoalNeeded = yes,
@@ -1634,6 +1624,98 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals = RevGoals0,
 		Info = Info0
 	).
+
+
+:- pred simplify__excess_assigns_in_conj(hlds_goal_info::in,
+		list(hlds_goal)::in, list(hlds_goal)::out,
+		simplify_info::in, simplify_info::out) is det.
+
+simplify__excess_assigns_in_conj(ConjInfo, Goals0, Goals,
+		Info0, Info) :-
+	( simplify_do_excess_assigns(Info0) ->
+		goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
+		map__init(Subn0),
+		simplify__find_excess_assigns_in_conj(ConjNonLocals,
+			Goals0, [], RevGoals, Subn0, Subn1),
+		( map__is_empty(Subn1) ->
+			Goals = Goals0,
+			Info = Info0
+		;
+			renaming_transitive_closure(Subn1, Subn),
+			list__reverse(RevGoals, Goals1),
+			MustSub = no,
+			goal_util__rename_vars_in_goals(Goals1, MustSub,
+				Subn, Goals),
+			simplify_info_get_varset(Info0, VarSet0),
+			map__keys(Subn0, RemovedVars),
+			varset__delete_vars(VarSet0, RemovedVars, VarSet),
+			simplify_info_set_varset(Info0, VarSet, Info)
+		)
+	;
+		Goals = Goals0,
+		Info = Info0
+	).
+
+:- type var_renaming == map(prog_var, prog_var).
+
+:- pred simplify__find_excess_assigns_in_conj(set(prog_var)::in,
+	list(hlds_goal)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+	var_renaming::in, var_renaming::out) is det.
+
+simplify__find_excess_assigns_in_conj(_, [], RevGoals, RevGoals,
+			Subn, Subn).
+simplify__find_excess_assigns_in_conj(ConjNonLocals, [Goal | Goals],
+			RevGoals0, RevGoals, Subn0, Subn) :-
+	( goal_is_excess_assign(ConjNonLocals, Goal, Subn0, Subn1) ->
+		RevGoals1 = RevGoals0,
+		Subn2 = Subn1
+	;
+		RevGoals1 = [Goal | RevGoals0],
+		Subn2 = Subn0
+	),
+	simplify__find_excess_assigns_in_conj(ConjNonLocals, Goals,
+		RevGoals1, RevGoals, Subn2, Subn).
+
+:- pred goal_is_excess_assign(set(prog_var)::in, hlds_goal::in,
+	var_renaming::in, var_renaming::out) is semidet.
+
+goal_is_excess_assign(ConjNonLocals, Goal0, Subn0, Subn) :-
+	Goal0 = unify(_, _, _, Unif, _) - _,
+	Unif = assign(LeftVar0, RightVar0),
+
+	%
+	% Check if we've already substituted
+	% one or both of the variables.
+	%
+	find_renamed_var(Subn0, LeftVar0, LeftVar),
+	find_renamed_var(Subn0, RightVar0, RightVar),
+	( \+ set__member(LeftVar, ConjNonLocals) ->
+		map__det_insert(Subn0, LeftVar, RightVar, Subn)
+	; \+ set__member(RightVar, ConjNonLocals) ->
+		map__det_insert(Subn0, RightVar, LeftVar, Subn)
+	;
+		fail
+	).
+
+:- pred find_renamed_var(var_renaming, prog_var, prog_var).
+:- mode find_renamed_var(in, in, out) is det.
+
+find_renamed_var(Subn, Var0, Var) :-
+	( map__search(Subn, Var0, Var1) ->
+		find_renamed_var(Subn, Var1, Var)
+	;
+		Var = Var0
+	).
+
+	% Collapse chains of renamings.
+:- pred renaming_transitive_closure(var_renaming, var_renaming).
+:- mode renaming_transitive_closure(in, out) is det.
+
+renaming_transitive_closure(VarRenaming0, VarRenaming) :-
+	map__map_values(
+		(pred(_::in, Value0::in, Value::out) is det :-
+			find_renamed_var(VarRenaming0, Value0, Value)
+		), VarRenaming0, VarRenaming).
 
 %-----------------------------------------------------------------------------%
 
@@ -1730,7 +1812,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
 	UnifyContext = unify_context(explicit, []),
 	Unification = deconstruct(Var, ConsId,
-		ArgVars, UniModes, can_fail),
+		ArgVars, UniModes, can_fail, no),
 	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
 		UniMode, Unification, UnifyContext),
 	set__singleton_set(NonLocals, Var),
@@ -1936,7 +2018,7 @@ simplify__contains_multisoln_goal(Goals) :-
 					% Info about common subexpressions.
 			instmap		::	instmap,
 			varset		::	prog_varset,
-			var_types	::	map(prog_var, type),
+			inst_varset	::	inst_varset,
 			requantify	::	bool,
 					% Does the goal need requantification.
 			recompute_atomic ::	bool,
@@ -1955,23 +2037,26 @@ simplify__contains_multisoln_goal(Goals) :-
 		).
 
 simplify_info_init(DetInfo, Simplifications0, InstMap,
-		VarSet, VarTypes, TVarMap, Info) :-
+		VarSet, InstVarSet, TVarMap, Info) :-
 	common_info_init(CommonInfo),
 	set__init(Msgs),
 	set__list_to_set(Simplifications0, Simplifications),
 	Info = simplify_info(DetInfo, Msgs, Simplifications, CommonInfo,
-			InstMap, VarSet, VarTypes, no, no, no, 0, 0, TVarMap). 
+		InstMap, VarSet, InstVarSet, no, no, no, 0, 0, TVarMap). 
 
 	% Reinitialise the simplify_info before reprocessing a goal.
 :- pred simplify_info_reinit(set(simplification)::in, instmap::in,
 		simplify_info::in, simplify_info::out) is det.
 
-simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
-	Info0 = simplify_info(DetInfo, Msgs, _, _, _,
-		VarSet, VarTypes, _, _, _, CostDelta, _, TVarMap),
-	common_info_init(Common),
-	Info = simplify_info(DetInfo, Msgs, Simplifications, Common, InstMap0,
-		VarSet, VarTypes, no, no, no, CostDelta, 0, TVarMap).
+simplify_info_reinit(Simplifications, InstMap0) -->
+	{ common_info_init(Common) },
+	^simplifications := Simplifications,
+	^common_info := Common,
+	^instmap := InstMap0,
+	^requantify := no,
+	^recompute_atomic := no,
+	^rerun_det := no,
+	^lambdas := 0.
 
 	% exported for common.m
 :- interface.
@@ -1979,9 +2064,9 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 :- import_module prog_data.
 :- import_module set.
 
-:- pred simplify_info_init(det_info, list(simplification), instmap,
-		prog_varset, vartypes, type_info_varmap, simplify_info).
-:- mode simplify_info_init(in, in, in, in, in, in, out) is det.
+:- pred simplify_info_init(det_info::in, list(simplification)::in, instmap::in,
+		prog_varset::in, inst_varset::in, 
+		type_info_varmap::in, simplify_info::out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_msgs(simplify_info::in, set(det_msg)::out) is det.
@@ -2013,7 +2098,7 @@ simplify_info_get_simplifications(SI, SI^simplifications).
 simplify_info_get_common_info(SI, SI^common_info).
 simplify_info_get_instmap(SI, SI^instmap).
 simplify_info_get_varset(SI, SI^varset).
-simplify_info_get_var_types(SI, SI^var_types).
+simplify_info_get_var_types(SI, SI^det_info^vartypes).
 simplify_info_requantify(SI) :-
 	SI^requantify = yes.
 simplify_info_recompute_atomic(SI) :-
@@ -2081,7 +2166,7 @@ simplify_info_set_simplifications(SI, Simp, SI^simplifications := Simp).
 simplify_info_set_instmap(SI, InstMap, SI^instmap := InstMap). 
 simplify_info_set_common_info(SI, Common, SI^common_info := Common). 
 simplify_info_set_varset(SI, VarSet, SI^varset := VarSet). 
-simplify_info_set_var_types(SI, VarTypes, SI^var_types := VarTypes).
+simplify_info_set_var_types(SI, VarTypes, SI^det_info^vartypes := VarTypes).
 simplify_info_set_requantify(SI, SI^requantify := yes).
 simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
 simplify_info_set_rerun_det(SI, SI^rerun_det := yes).

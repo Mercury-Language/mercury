@@ -43,7 +43,7 @@ create_thread(MR_ThreadGoal *goal)
 #endif
 
 	if (err != 0)
-		fatal_error("error creating thread");
+		MR_fatal_error("error creating thread");
 
 	return thread;
 }
@@ -66,7 +66,7 @@ create_thread_2(void *goal0)
 
 #endif /* MR_THREAD_SAFE */
 
-void
+MR_Bool
 init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
@@ -77,8 +77,8 @@ init_thread(MR_when_to_use when_to_use)
 		** that is initialized in this thread.  If so we just
 		** return, there's nothing for us to do.
 		*/
-	if (pthread_getspecific(MR_engine_base_key)) {
-		return;
+	if (MR_GETSPECIFIC(MR_engine_base_key)) {
+		return FALSE;
 	}
 #endif
 	eng = create_engine();
@@ -108,14 +108,33 @@ init_thread(MR_when_to_use when_to_use)
 			(void) MR_call_engine(ENTRY(do_runnext), FALSE);
 
 			destroy_engine(eng);
-			return;
+			return FALSE;
 
 		case MR_use_now :
-			return;
+			return TRUE;
 		
 		default:
-			fatal_error("init_thread was passed a bad value");
+			MR_fatal_error("init_thread was passed a bad value");
 	}
+}
+
+/* 
+** Release resources associated with this thread.
+*/
+void
+finalize_thread_engine(void)
+{
+#ifdef MR_THREAD_SAFE
+	MercuryEngine *eng;
+
+	eng = MR_GETSPECIFIC(MR_engine_base_key);
+	pthread_setspecific(MR_engine_base_key, NULL);
+	/*
+	** XXX calling destroy_engine(eng) here appears to segfault.
+	** This should probably be investigated and fixed.
+	*/
+	finalize_engine(eng);
+#endif
 }
 
 #ifdef	MR_THREAD_SAFE

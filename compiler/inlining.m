@@ -388,6 +388,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 					% type variables to variables
 					% where their type_info is
 					% stored.
+		bool,			% Did we do any inlining in the proc?
 		bool,			% Does the goal need to be
 					% requantified?
 		bool			% Did we change the determinism
@@ -419,18 +420,20 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_typeinfo_varmap(ProcInfo0, TypeInfoVarMap0),
 
+	DidInlining0 = no,
 	Requantify0 = no,
 	DetChanged0 = no,
 
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		Requantify0, DetChanged0),
+		DidInlining0, Requantify0, DetChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
 	InlineInfo = inline_info(_, _, _, _, _, _, VarSet, VarTypes,
-		TypeVarSet, TypeInfoVarMap, Requantify, DetChanged),
+		TypeVarSet, TypeInfoVarMap, DidInlining, Requantify,
+		DetChanged),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
 
@@ -439,19 +442,29 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_set_typeinfo_varmap(ProcInfo2, TypeInfoVarMap, ProcInfo3),
 	proc_info_set_goal(ProcInfo3, Goal, ProcInfo4),
 
+	(
+		DidInlining = yes,
+		recompute_instmap_delta_proc(yes, ProcInfo4, ProcInfo5,
+			ModuleInfo0, ModuleInfo1)
+	;
+		DidInlining = no,
+		ProcInfo5 = ProcInfo4,
+		ModuleInfo1 = ModuleInfo0
+	),
+
 	globals__io_get_globals(Globals, IoState0, IoState),
 	(
 		Requantify = yes,
-		requantify_proc(ProcInfo4, ProcInfo)
+		requantify_proc(ProcInfo5, ProcInfo)
 	;
 		Requantify = no,
-		ProcInfo = ProcInfo4
+		ProcInfo = ProcInfo5
 	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
 		% If the determinism of some sub-goals has changed,
 		% then we re-run determinism analysis, because
@@ -459,11 +472,11 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		% the procedure may lead to more efficient code.
 	(
 		DetChanged = yes,	
-		det_infer_proc(PredId, ProcId, ModuleInfo1, ModuleInfo,
+		det_infer_proc(PredId, ProcId, ModuleInfo2, ModuleInfo,
 			Globals, _, _, _)
 	;
 		DetChanged = no,
-		ModuleInfo = ModuleInfo1
+		ModuleInfo = ModuleInfo2
 	).
 
 %-----------------------------------------------------------------------------%
@@ -507,7 +520,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0,
-		Requantify0, DetChanged0),
+		DidInlining0, Requantify0, DetChanged0),
 
 	% should we inline this call?
 	(
@@ -549,6 +562,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 			% on this proc.
 		goal_info_get_determinism(GoalInfo0, Determinism0),
 		goal_info_get_determinism(GoalInfo, Determinism),
+		DidInlining = yes,
 		( Determinism0 = Determinism ->
 			DetChanged = DetChanged0
 		;
@@ -561,12 +575,13 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		VarTypes = VarTypes0,
 		TypeVarSet = TypeVarSet0,
 		TypeInfoVarMap = TypeInfoVarMap0,
+		DidInlining = DidInlining0,
 		Requantify = Requantify0,
 		DetChanged = DetChanged0
 	),
 	InlineInfo = inline_info(VarThresh, HighLevelCode,
 		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
-		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap,
+		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
 		Requantify, DetChanged).
 
 inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,

@@ -58,20 +58,20 @@ CHECKOUT_OPTS=-A
 case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O5 ;;
-	kryten) 	OPTIMIZE=-O1 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
-	rimmer) 	OPTIMIZE=-O1 ;;
-	quicksilver) 	OPTIMIZE=-O3 ;;
+	quicksilver) 	OPTIMIZE=-O0 ;;
 	hg) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
-	munta)		OPTIMIZE=-O0 ;;
+	ender)		OPTIMIZE=-O3 ;;
+	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
+	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
 
-# on hg, the file system we're using does not support links
-case $HOST in
-	hg)		LN="cp -r"; LN_S="cp -r" ;;
-	*)		LN="ln"; LN_S="ln -s" ;;
-esac
+# on some systems, the file system we're using does not support links
+#case $HOST in
+#	hg)		LN="cp -r"; LN_S="cp -r" ;;
+#	*)		LN="ln"; LN_S="ln -s" ;;
+#esac
 
 # flags for building the compiler
 INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
@@ -134,7 +134,6 @@ PARALLEL=
 case $HOST in
 	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
 	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
-	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
@@ -145,7 +144,7 @@ esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg)
+	hg|ender)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -210,15 +209,11 @@ case $HOST in
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
 		CONFIG_OPTS="--without-readline" ;;
-	munta)		
-		# On munta, we need to disable the external debugger,
-		# because it uses sockets, and munta doesn't have
-		# the static versions of the socket libraries
-		# installed.  Likewise for the -non_shared version
-		# of the dl library.  Unfortunately our configure script
-		# doesn't detect these problems, so we need to pass these
-		# options manually.
-		CONFIG_OPTS="--disable-extern-debug --disable-dynamic-link" ;;
+	ender)
+		# Test out these options, to make sure they continue
+		# to work
+		CONFIG_OPTS="--enable-all-hlc-grades \
+			--enable-new-mercuryfile-struct" ;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -347,7 +342,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|kryten|taifun)
+	hg|quicksilver|hydra|ender|kryten|taifun)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -457,12 +452,6 @@ case $HOST in
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"
 		;;
-	munta)
-		GRADES="reg.gc asm_fast asm_fast.gc
-			reg.gc.prof asm_fast.gc.prof"
-		# Don't bother with these, otherwise it would take forever...
-		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
-		;;
 	hydra)
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
@@ -472,7 +461,13 @@ case $HOST in
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-			asm_fast.gc.par hlc.gc"
+			asm_fast.par.gc hlc.gc"
+		;;
+	ender)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			hlc.gc hlc.par.gc hlc.gc.prof hlc.gc.memprof"
 		;;
 	quicksilver)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
@@ -543,15 +538,20 @@ esac
 
 # For the Linux systems, we need to distinguish them based
 # on the version of GNU libc.
+# Also we distinguish them based on what optimization level
+# they were compiled with.
 case $HOST in
 	hg)	
-		fullname=i686-pc-linux-libc2.1-gnu
+		fullname=i686-pc-linux-libc2.1-gnu-O4
 		;;
 	quicksilver)	
-		fullname=i586-pc-linux-libc2.1-gnu
+		fullname=i586-pc-linux-libc2.1-gnu-O0
 		;;
 	hydra)	
-		fullname=i686-pc-linux-libc2.0-gnu
+		fullname=i686-pc-linux-libc2.1-gnu-O2
+		;;
+	ender)	
+		fullname=i686-pc-linux-libc2.1-gnu-O3
 		;;
 	*)
 		fullname=$fullarch

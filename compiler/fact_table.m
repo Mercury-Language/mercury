@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -568,24 +568,24 @@ write_fact_table_header(PredName, PredInfo, FileName, FactArgInfos,
 #define MERCURY_FACT_TABLE_HASH_TABLES
 
 struct fact_table_hash_table_s {
-	Integer size;		/* size of the hash table */
+	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_s *table;	/* the actual table */
 };
 
 struct fact_table_hash_table_f {
-	Integer size;		/* size of the hash table */
+	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_f *table;	/* the actual table */
 };
 
 struct fact_table_hash_table_i {
-	Integer size;		/* size of the hash table */
+	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_i *table;	/* the actual table */
 };
 
 /* hash table for string keys */
 struct fact_table_hash_entry_s {
-	ConstString key;  /* lookup key */
-	const Word *index; /* index into fact table data array 		     */
+	MR_ConstString key;   /* lookup key */
+	const MR_Word *index; /* index into fact table data array	     */
 		          /* or pointer to hash table for next argument      */
 #if TAGBITS < 2
 	short type;	  /* 0 if entry empty, 1 if entry is a pointer to the*/
@@ -597,8 +597,8 @@ struct fact_table_hash_entry_s {
 
 /* hash table for float keys */
 struct fact_table_hash_entry_f {
-	Float key;
-	const Word *index;
+	MR_Float key;
+	const MR_Word *index;
 #if TAGBITS < 2
 	short type;
 #endif
@@ -607,8 +607,8 @@ struct fact_table_hash_entry_f {
 
 /* hash table for int keys */
 struct fact_table_hash_entry_i {
-	Integer key;
-	const Word *index;
+	MR_Integer key;
+	const MR_Word *index;
 #if TAGBITS < 2
 	short type;
 #endif
@@ -619,12 +619,12 @@ struct fact_table_hash_entry_i {
 #if TAGBITS >= 2
 	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   MR_mkword(MR_mktag(t), MR_mkbody(i))
 	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) MR_mkword(MR_mktag(t), p)
-	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((Word)((p).index))
+	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((MR_Word)((p).index))
 	#define FACT_TABLE_HASH_INDEX(w)            MR_unmkbody(w)
 	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,MR_tag(w))
 #else
-	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const Word *) i), (t)
-	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const Word *) p), (t)
+	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const MR_Word *) i), (t)
+	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const MR_Word *) p), (t)
 	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       ((p).type)
 	#define FACT_TABLE_HASH_INDEX(w)            (w)
 	#define FACT_TABLE_HASH_POINTER(w)          (w)
@@ -654,7 +654,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 			StructContents1, Result),
 		{
 			IsOutput = yes,
-			string__format("\tConstString V_%d;\n", [i(I)], 
+			string__format("\tMR_ConstString V_%d;\n", [i(I)], 
 				StructContents0),
 			string__append(StructContents0, StructContents1, 
 				StructContents)
@@ -2401,7 +2401,7 @@ write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode) -->
 	% Write out the size of the fact table.
 	{ make_fact_table_identifier(PredName, Identifier) },
 	io__write_strings([
-		"const Integer mercury__",
+		"const MR_Integer mercury__",
 		Identifier,
 		"_fact_table_num_facts = "]),
 	io__write_int(NumFacts),
@@ -2409,7 +2409,7 @@ write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode) -->
 
 	{ string__append_list(
 		[
-			"extern const Integer mercury__",
+			"extern const MR_Integer mercury__",
 			Identifier,
 			"_fact_table_num_facts;\n"
 		],
@@ -2536,14 +2536,14 @@ BEGIN_MODULE(%s_module)
 BEGIN_CODE
 Define_entry(%s);
 	MR_mkframe(""%s/%d"", 1, LABEL(%s_i1));
-	MR_framevar(1) = (Integer) 0;
+	MR_framevar(1) = (MR_Integer) 0;
 	GOTO(LABEL(%s_i1));
 Define_label(%s_i1);
 	if (MR_framevar(1) >= %s) MR_fail();
 	{
 		/* declare argument vars */
 %s
-		Word ind = MR_framevar(1), tmp;
+		MR_Word ind = MR_framevar(1), tmp;
 		/* lookup fact table */
 %s
 		/* save output args to registers */
@@ -2739,11 +2739,11 @@ generate_semidet_in_out_code(PredName, PragmaVars, ProcID, ArgTypes,
 
 generate_decl_code(Name, ProcID, DeclCode) :-
 	DeclCodeTemplate = "
-			Integer hashval, hashsize;
-			Word ind;
+			MR_Integer hashval, hashsize;
+			MR_Word ind;
 			void *current_table;
 			char keytype = '\\0';
-			Word current_key, tmp;
+			MR_Word current_key, tmp;
 
 			/*
 			** Initialise current_table to the top level hash table
@@ -2884,7 +2884,7 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 				hashval = (*p + 31 * hashval) %% hashsize;
 		}
 
-		current_key = (Word)%s;
+		current_key = (MR_Word) %s;
 
 		/* lookup the hash table */
 		%s
@@ -2919,7 +2919,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
 		do {
 			if (FACT_TABLE_HASH_ENTRY_TYPE(%s) != 0 && %s)
 			{
-				ind = (Word) %s.index;
+				ind = (MR_Word) %s.index;
 				goto found_%s_%d;
 			}
 		} while ((hashval = %s.next) != -1);
@@ -2990,18 +2990,19 @@ generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 	    ( Type = term__functor(term__atom("string"), [], _) ->
 		mode_get_insts(ModuleInfo, Mode, _, FinalInst),
 		( inst_is_not_partly_unique(ModuleInfo, FinalInst) ->
-		    % Cast ConstString -> Word -> String to avoid 
+		    % Cast MR_ConstString -> MR_Word -> MR_String to avoid 
 		    % gcc warning "assignment discards `const'".
 		    Template = 
-			"\t\tmake_aligned_string(%s, (String) (Word) %s);\n",
+			"\t\tmake_aligned_string(%s, (MR_String) (MR_Word) %s);\n",
 		    string__format(Template, [s(VarName), s(TableEntry)],
 		    	C_Code0)
 		;
 		    % Unique modes need to allow destructive update so we
 		    % need to make a copy of the string on the heap.
 		    Template = 
-"		incr_hp_atomic(tmp, (strlen(%s) + sizeof(Word)) / sizeof(Word));
-		%s = (String) tmp;
+"		incr_hp_atomic(tmp, (strlen(%s) + sizeof(MR_Word))
+			/ sizeof(MR_Word));
+		%s = (MR_String) tmp;
 		strcpy(%s, %s);
 ",
 		    string__format(Template, [s(TableEntry), s(VarName),
@@ -3365,8 +3366,8 @@ Define_entry(%s);
 %s
 		if (hashval == -1) MR_succeed_discard();
 		MR_framevar(1) = hashval;
-		MR_framevar(2) = (Word) current_table;
-		MR_framevar(3) = (Word) keytype;
+		MR_framevar(2) = (MR_Word) current_table;
+		MR_framevar(3) = (MR_Word) keytype;
 		MR_framevar(4) = current_key;
 		MR_succeed();
 	failure_code_%s:
@@ -3376,8 +3377,8 @@ Define_label(%s_i1);
 	{
 		/* create argument vars */
 %s
-		Integer hashval = MR_framevar(1);
-		Word ind;
+		MR_Integer hashval = MR_framevar(1);
+		MR_Word ind;
 		void *current_table = (void *) MR_framevar(2);
 		char keytype = (char) MR_framevar(3);
 

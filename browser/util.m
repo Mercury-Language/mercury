@@ -34,6 +34,14 @@
 	;	nondet_pragma_later
 	.
 
+% This enumeration must be EXACTLY the same as the MR_PredFunc enum in
+% runtime/mercury_stack_layout.h, and in the same order, since the code
+% assumes the representation is the same.
+
+:- type pred_or_func
+	--->	predicate
+	;	function.
+
 :- type goal_path_string == string.
 
 	% Get user input via the same method used by the internal

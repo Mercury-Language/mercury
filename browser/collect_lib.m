@@ -120,7 +120,7 @@ link_collect(ObjectFile, Filter, Initialize, SendResult, GetCollectType,
 :- pred set_to_null_pointer(c_pointer::out) is det.
 :- pragma c_code(set_to_null_pointer(Pointer::out),
 		[will_not_call_mercury, thread_safe],
-		"(Pointer = (Word) NULL)").
+		"(Pointer = (MR_Word) NULL)").
  
 %------------------------------------------------------------------------------%
 

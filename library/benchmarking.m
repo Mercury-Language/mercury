@@ -616,15 +616,15 @@ repeat(N) :-
 */
 
 :- pragma c_header_code("
-	extern volatile Word ML_benchmarking_dummy_word;
+	extern volatile MR_Word ML_benchmarking_dummy_word;
 ").
 :- pragma c_code("
-	volatile Word ML_benchmarking_dummy_word;
+	volatile MR_Word ML_benchmarking_dummy_word;
 ").
 
 :- impure pred do_nothing(T::in) is det.
 :- pragma c_code(do_nothing(X::in), [will_not_call_mercury, thread_safe], "
-	ML_benchmarking_dummy_word = (Word) X;
+	ML_benchmarking_dummy_word = (MR_Word) X;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -638,7 +638,7 @@ repeat(N) :-
 :- pragma inline(new_int_reference/2).
 :- pragma c_code(new_int_reference(X::in, Ref::out), will_not_call_mercury, "
 	incr_hp(Ref, 1);
-	*(Integer *)Ref = X;
+	* (MR_Integer *) Ref = X;
 ").
 
 :- impure pred incr_ref(int_reference::in) is det.
@@ -649,13 +649,13 @@ incr_ref(Ref) :-
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
 :- pragma c_code(ref_value(Ref::in, X::out), will_not_call_mercury, "
-	X = *(Integer *) Ref;
+	X = * (MR_Integer *) Ref;
 ").
 
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
 :- pragma c_code(update_ref(Ref::in, X::in), will_not_call_mercury, "
-	*(Integer *) Ref = X;
+	* (MR_Integer *) Ref = X;
 ").
 
 %-----------------------------------------------------------------------------%

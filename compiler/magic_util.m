@@ -808,12 +808,13 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 	(
 		{ SuppCall = call(SuppPredId, SuppProcId, _, _, _, _) - _ },
 		{ mode_get_insts(ModuleInfo, InputMode, Inst, _) },
-		{ Inst = ground(_, yes(PredInstInfo)) }
+		{ Inst = ground(_, higher_order(PredInstInfo)) }
 	->
 		% Find the mode of the unification.
 		{ PredInstInfo = pred_inst_info(_, LambdaModes, _) },
 		{ LambdaInst = ground(shared, 
-			yes(pred_inst_info(predicate, LambdaModes, nondet))) },
+			higher_order(pred_inst_info(predicate, LambdaModes,
+				nondet))) },
 		{ UnifyMode = (free -> LambdaInst) -
 				(LambdaInst -> LambdaInst) },
 		{ mode_util__modes_to_uni_modes(LambdaModes, LambdaModes,
@@ -1060,7 +1061,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 			% instantiated. Any arguments that are partially
 			% instantiated in the initial instmap for the
 			% procedure will be reported there.
-			Mode = (ground(shared, no) -> ground(shared, no))
+			Mode = (ground(shared, none) -> ground(shared, none))
 		)
 	    )) },
 	{ list__map(GetSuppMode, SuppOutputArgs, SuppOutputModes) },
@@ -1077,6 +1078,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 
 	magic_info_get_module_info(ModuleInfo0),
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo0, InstMap) },
+	{ proc_info_inst_varset(ProcInfo, InstVarSet) },
 	{ pred_info_get_aditi_owner(PredInfo, Owner) },
 	{ pred_info_get_markers(PredInfo, Markers0) },
 	{ AddMarkers = lambda([Marker::in, Ms0::in, Ms::out] is det,
@@ -1094,7 +1096,7 @@ magic_util__create_supp_call(Goals, MagicVars, SuppOutputArgs, Context,
 	{ unqualify_name(NewName, NewPredName) },
 	{ hlds_pred__define_new_pred(SuppGoal, SuppCall, SuppArgs, ExtraArgs,
 		InstMap, NewPredName, TVarSet, VarTypes, ClassConstraints,
-		TVarMap, TCVarMap, VarSet, Markers, Owner,
+		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
 		address_is_not_taken, ModuleInfo0, ModuleInfo, _) },
 	{ ExtraArgs = [] ->
 		true
