@@ -242,14 +242,25 @@ all:	objs
 # some regression tests only failed with particular options enabled
 # (please keep these lists sorted)
 
+# When compiling using the installed libraries, setting GRADEFLAGS may
+# may cause mgnuc to look for the `.mih' files for a non-installed grade.
+# test_mercury runs the tests using the installed libraries, so GRADEFLAGS
+# won't be set, but test_mercury runs the tests in at least one `.tr' grade
+# on all machines, so it isn't a problem.
+ifneq ($(WORKSPACE),)
+GRADEFLAGS-complex_failure	= --use-trail
+GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
+endif
+
+# The `agc*' tests currently aren't run in grades for which `.mih'
+# files are created, and no header files are generated in `il' grades,
+# so it's OK to set GRADEFLAGS for these tests.
 GRADEFLAGS-agc_graph		= --gc accurate
 GRADEFLAGS-agc_ho_pred		= --gc accurate
 GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
-GRADEFLAGS-complex_failure	= --use-trail
-GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 GRADEFLAGS-foreign_type_spec	= --grade il
 GRADEFLAGS-foreign_type_spec.foreign	= --grade il
 
