@@ -24,12 +24,10 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
-	--copy-boehm-gc
+	-g, --copy-boehm-gc
 		Copy the bohem_gc directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
-	-R
-		Implies both --copy-runtime and --copy-boehm-gc.
 	-p, --copy-profiler
 		Copy the profiler directory instead of linking it.
 		This is sometimes necessary for bootstrapping
@@ -112,11 +110,7 @@ while [ $# -gt 0 ]; do
 	-r|--copy-runtime)
 		copy_runtime=true ;;
 
-	--copy-boehm-gc)
-		copy_boehm_gc=true ;;
-
-	-R)
-		copy_runtime=true
+	-g|--copy-boehm-gc)
 		copy_boehm_gc=true ;;
 
 	-s|--sicstus)
