@@ -10,4 +10,6 @@
 
 :- implementation.
 
+:- type foo ---> foo.
+
 :- import_module intermod_lambda2.
