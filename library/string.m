@@ -1102,7 +1102,7 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 
 	
 %
-%	This precision output-modification predicate handles ints.
+%	This precision output-modification predicate handles floats.
 %
 :- pred string__format_calc_prec(string, string, int).
 :- mode string__format_calc_prec(in, out, in) is det.
@@ -1260,7 +1260,7 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 		string__format_int_from_char_list( Numl1, Width),
 		string__format_int_from_char_list( Numl2, Prec),
 		string__format_get_optional_args( Bs, Flags, _, Ptemp, Mods),
-		(Num2 = [] ->
+		(Numl2 = [] ->
 			Precision = Ptemp
 		;
 			Precision = Prec
