@@ -467,14 +467,6 @@ if your code uses lists.
 In Mercury, less-than-or-equal to is written as @samp{=<} not
 as @samp{<=}, which is used for reverse implication.
 
-@item Where is the documentation for the Mercury standard library?
-
-``Use the source, Luke!''
-
-Unfortunately the only documentation for the library is the comments
-in the source code.  Have a look at the source code in the library
-directory in the Mercury distribution.
-
 @item I followed the instructions in the user's guide, but it still didn't work.  What do I do next?
 
 Send mail to mercury-bugs@@cs.mu.oz.au, and we'll try to solve your problem.
