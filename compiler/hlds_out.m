@@ -100,8 +100,8 @@ hlds_out__write_preds_2(Indent, PredIds0, PredTable) -->
 		hlds_out__write_preds_2(Indent, PredIds, PredTable)
 	).
 
-:- pred hlds_out__write_pred(int, pred_info, io_state, io_state).
-:- mode hlds_out__write_pred(input, input, input, output).
+:- pred hlds_out__write_pred(int, pred_id, pred_info, io_state, io_state).
+:- mode hlds_out__write_pred(input, input, input, input, output).
 
 hlds_out__write_pred(Indent, PredId, PredInfo) -->
 	{
@@ -800,7 +800,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 hlds_out__write_varterms(Indent, VarTerms) -->
 	{ map__to_assoc_list(VarNames, VarTermList) },
 	(if
-		{ VarNameList = [] }
+		{ VarTermList = [] }
 	then
 		hlds_out__write_indent(Indent),
 		io__write_string("[]\n")
