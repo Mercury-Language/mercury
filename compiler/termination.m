@@ -96,7 +96,7 @@
 :- import_module bool, std_util, list.
 :- import_module map, int, char, string, relation.
 :- import_module require, bag, set, term.
-:- import_module varset.
+:- import_module varset, svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -514,6 +514,14 @@ report_termination_errors(SCC, Errors, !Module, !IO) :-
 		list__filter(IsNonImported, SCC, NonImportedPPIds),
 		NonImportedPPIds = [_ | _],
 
+		% Don't emit non-termination warnings for the compiler
+		% generated wrapper predicates for solver type initialisation
+		% predicates.  If they don't terminate there's nothing the user
+		% can do about it anyway - the problem is with the
+		% initialisation predicate specified by the user, not the
+		% wrapper.
+		list__all_false(is_solver_init_wrapper_pred(!.Module), SCC),
+
 		% Only output warnings of non-termination for direct
 		% errors.  If there are no direct errors then output
 		% the indirect errors - this is better than giving
@@ -544,6 +552,18 @@ report_termination_errors(SCC, Errors, !Module, !IO) :-
 	;
 		true
 	).
+
+	% Succeeds iff the given PPId is a compiler generated wrapper
+	% predicate for a solver type initialisation predicate.
+	%
+:- pred is_solver_init_wrapper_pred(module_info::in, pred_proc_id::in)
+	is semidet.
+
+is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_origin(PredInfo, PredOrigin),
+	PredOrigin = special_pred(SpecialPredId - _),
+	SpecialPredId = initialise.
 
 %----------------------------------------------------------------------------%
 
@@ -683,18 +703,28 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module, !ProcTable) :-
 
 set_generated_terminates([], _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
-	map__lookup(!.ProcTable, ProcId, ProcInfo0),
-	proc_info_headvars(ProcInfo0, HeadVars),
-	special_pred_id_to_termination(SpecialPredId, HeadVars,
-		ArgSize, Termination),
-	proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
-	proc_info_set_maybe_termination_info(yes(Termination),
-		ProcInfo1, ProcInfo),
-	map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
+	%
+	% We don't need to do anything special for solver type initialisation 
+	% predicates.  Leaving it up to the analyser may result in better
+	% argument size information anyway.
+	% 
+	( SpecialPredId \= initialise -> 
+		map__lookup(!.ProcTable, ProcId, ProcInfo0),
+		proc_info_headvars(ProcInfo0, HeadVars),
+		special_pred_id_to_termination(SpecialPredId, HeadVars,
+			ArgSize, Termination),
+		proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0,
+			ProcInfo1),
+		proc_info_set_maybe_termination_info(yes(Termination),
+			ProcInfo1, ProcInfo),
+		svmap__det_update(ProcId, ProcInfo, !ProcTable)
+	;
+		true
+	),
 	set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
 
-	% XXX The ArgSize arguments for unify, compare and initialise
-	% are not necessarily correct since these may be user-defined.
+	% XXX The ArgSize argument for unify predicates may not be correct
+	% in the case where the type has user-defined equality.
 	%
 :- pred special_pred_id_to_termination(special_pred_id::in,
 	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
@@ -711,10 +741,9 @@ special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
 	ArgSize = finite(0, OutList),
 	Termination = cannot_loop.
-special_pred_id_to_termination(initialise, HeadVars, ArgSize, Termination) :-
-	term_util__make_bool_list(HeadVars, [yes], OutList),
-	ArgSize = finite(0, OutList),
-	Termination = cannot_loop.
+special_pred_id_to_termination(initialise, _, _, _) :-
+	unexpected(this_file, "special_pred_id_to_termination/4 " ++
+		"initialise predicate").
 
 % The list of proc_ids must refer to builtin predicates.  This predicate
 % sets the termination information of builtin predicates.
