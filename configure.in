@@ -2417,7 +2417,7 @@ esac
 
 AC_ARG_WITH(default-grade,
     AC_HELP_STRING([--with-default-grade=GRADE],
-                   [Have the built compiler default to using GRADE instead of the default asm_fast.gc]),
+                   [Have the built compiler default to using GRADE]),
     [case "$withval" in
       # Handle `--with-default-grade' (no `=GRADE') and
       # `--without-default-grade' flags.
