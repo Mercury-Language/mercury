@@ -55,7 +55,16 @@ then
 	exit 1
 fi
 
-if test ! -d "$1" -o ! -d "$2"
+case "$1" in
+	/*)	arg1="$1" ;;
+	*)	arg1=`/bin/pwd`/"$1" ;;
+esac
+case "$2" in
+	/*)	arg2="$2" ;;
+	*)	arg2=`/bin/pwd`/"$2" ;;
+esac
+
+if test ! -d "$arg1" -o ! -d "$arg2"
 then
 	echo "$usage"
 	exit 1
@@ -75,20 +84,19 @@ trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 0" 0
 trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 1" 1 2 3 15
 
 (
-	cvsfiles $1
-	cvsfiles $2
-	if test -f $1/NEWFILES
+	cvsfiles $arg1
+	cvsfiles $arg2
+	if test -f $arg1/NEWFILES
 	then
-		cat $1/NEWFILES
+		cat $arg1/NEWFILES
 	fi
-	if test -f $2/NEWFILES
+	if test -f $arg2/NEWFILES
 	then
-		cat $2/NEWFILES
+		cat $arg2/NEWFILES
 	fi
 	for extra in "$extras"
 	do
-		extra=`echo $extra | sed -e 's/^ *//'`
-		if test -f "$1/$extra" -o -f "$2/$extra"
+		if test -f $arg1/$extra -o -f $arg2/$extra
 		then
 			echo $extra
 		fi
@@ -96,60 +104,62 @@ trap "/bin/rm -f $filelist $dirlist > /dev/null 2>&1; exit 1" 1 2 3 15
 ) | sort -u > $filelist
 
 (
-	cvsdirs $1
-	cvsdirs $2
-	if test -f $1/NEWDIRS
+	cvsdirs $arg1
+	cvsdirs $arg2
+	if test -f $arg1/NEWDIRS
 	then
-		cat $1/NEWDIRS
+		cat $arg1/NEWDIRS
 	fi
-	if test -f $2/NEWDIRS
+	if test -f $arg2/NEWDIRS
 	then
-		cat $2/NEWDIRS
+		cat $arg2/NEWDIRS
 	fi
 ) | sort -u > $dirlist
 
 for file in `cat $filelist`
 do
-	if test -f "$1/$file" -a -f "$2/$file"
+	if test -f "$arg1/$file" -a -f "$arg2/$file"
 	then
-		diff $diffopts "$1/$file" "$2/$file"
-	elif test -f "$1/$file"
+		(cd $arg2 ; diff $diffopts "$arg1/$file" "$file")
+	elif test -f "$arg1/$file"
 	then
-		echo "old file $1/$file"
-		cat "$1/$file"
-	elif test -f "$2/$file"
+		# echo "old file $arg1/$file"
+		# cat "$arg1/$file"
+		(cd $arg1 ; diff $diffopts "$file" /dev/null)
+	elif test -f "$arg2/$file"
 	then
-		echo "new file $2/$file"
-		cat "$2/$file"
+		# echo "new file $arg2/$file"
+		# cat "$arg2/$file"
+		(cd $arg2 ; diff $diffopts /dev/null "$file")
 	else
-		echo "neither $1/$file nor $2/$file exist"
+		echo "neither $arg1/$file nor $arg2/$file exist"
 	fi
 done
 
 for dir in `cat $dirlist`
 do
-	if test -d "$1/$dir/CVS" -a -d "$2/$dir/CVS"
+	if test -d "$arg1/$dir/CVS" -a -d "$arg2/$dir/CVS"
 	then
-		cvdd -p "$pathname/$dir" $extraopts $diffopts "$1/$dir" "$2/$dir"
-	elif test -d "$1/$dir/CVS"
+		cvdd -p "$pathname/$dir" $extraopts $diffopts "$arg1/$dir" "$arg2/$dir"
+	elif test -d "$arg1/$dir/CVS"
 	then
-		echo "old dir $1/$dir"
-		if test -f "$1/$dir/NEWDIRFILES"
+		echo "old dir $arg1/$dir"
+		if test -f "$arg1/$dir/NEWDIRFILES"
 		then
-			more `cat $1/$dir/NEWDIRFILES`
+			more `cat $arg1/$dir/NEWDIRFILES`
 		else
-			more $1/$dir/*
+			more $arg1/$dir/*
 		fi
-	elif test -d "$2/$dir/CVS"
+	elif test -d "$arg2/$dir/CVS"
 	then
-		echo "new dir $2/$dir"
-		if test -f "$2/$dir/NEWDIRFILES"
+		echo "new dir $arg2/$dir"
+		if test -f "$arg2/$dir/NEWDIRFILES"
 		then
-			more `cat $2/$dir/NEWDIRFILES`
+			more `cat $arg2/$dir/NEWDIRFILES`
 		else
-			more $2/$dir/*
+			more $arg2/$dir/*
 		fi
 	else
-		echo "neither $1/$dir nor $2/$dir are under CVS control"
+		echo "neither $arg1/$dir nor $arg2/$dir are under CVS control"
 	fi
 done
