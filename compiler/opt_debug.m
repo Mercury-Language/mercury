@@ -172,6 +172,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module llds_out.
 :- import_module set, map, string.
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
@@ -255,9 +257,6 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_call_closure(_, Ret, _), Str) :-
-	opt_debug__dump_code_addr(Ret, R_str),
-	string__append_list(["call_closure(", R_str, ")"], Str).
 opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
@@ -603,7 +602,7 @@ opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
 opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 
 opt_debug__dump_binop(Op, String) :-
-	llds__binary_op_to_string(Op, String).
+	llds_out__binary_op_to_string(Op, String).
 
 opt_debug__dump_maybe_rvals([], _, "").
 opt_debug__dump_maybe_rvals([MR | MRs], N, Str) :-
@@ -635,6 +634,9 @@ opt_debug__dump_code_addr(do_succeed(Last), Str) :-
 	).
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
+opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
+opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
+opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").
 
 opt_debug__dump_code_addrs([], "").
 opt_debug__dump_code_addrs([Addr | Addrs], Str) :-
@@ -699,11 +701,6 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(call_closure(CodeModel, Ret, _), Str) :-
-	opt_debug__dump_code_model(CodeModel, F_str),
-	opt_debug__dump_code_addr(Ret, R_str),
-	string__append_list(["call_closure(", F_str, ", ", R_str, ", ...)"],
-		Str).
 opt_debug__dump_instr(mkframe(Name, Size, Redoip), Str) :-
 	string__int_to_string(Size, S_str),
 	opt_debug__dump_code_addr(Redoip, R_str),

@@ -204,15 +204,6 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 				FDS, [], no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			Uinstr0 = call_closure(_, ReturnAddr, _),
-			frameopt__targeting_code_addr(ReturnAddr,
-				yes, FrameSet0, FrameSet1),
-			frameopt__targeting_code_addr(ReturnAddr,
-				yes, SuccipSet0, SuccipSet1),
-			frameopt__build_sets(Instrs0, FrameSize, Livemap,
-				FDS, [], no, no,
-				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
-		;
 			Uinstr0 = mkframe(_, _, Target),
 			frameopt__targeting_code_addr(Target,
 				SetupFrame0, FrameSet0, FrameSet1),
@@ -473,6 +464,45 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap, FillDelaySlot,
 		Target = do_fail,
 		( SetupFrame0 = no ->
 			error("fail without stack frame in frameopt__setup_if")
+		;
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		)
+	;
+		Target = do_det_closure,
+		( SetupFrame0 = yes ->
+			error("det_closure without teardown in frameopt__setup_if")
+		;
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		)
+	;
+		Target = do_semidet_closure,
+		( SetupFrame0 = yes ->
+			error("det_closure without teardown in frameopt__setup_if")
+		;
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				FillDelaySlot, [], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		)
+	;
+		Target = do_nondet_closure,
+		( SetupFrame0 = yes ->
+			error("det_closure without teardown in frameopt__setup_if")
 		;
 			opt_util__rval_refers_stackvars(Rval, Use),
 			frameopt__setup_use(Use,
@@ -751,15 +781,6 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
 			Uinstr0 = call(_, _, _, _),
-			frameopt__generate_setup(SetupFrame0, yes,
-				SetupSuccip0, yes, FrameSize, SetupCode),
-			frameopt__doit(Instrs0, FrameSize, [], no, no,
-				FrameSet, SuccipSet, Livemap, TeardownMap,
-				InsertMap0, InsertMap, ProcLabel,
-				FDS, N0, N, Instrs1),
-			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
-		;
-			Uinstr0 = call_closure(_, _, _),
 			frameopt__generate_setup(SetupFrame0, yes,
 				SetupSuccip0, yes, FrameSize, SetupCode),
 			frameopt__doit(Instrs0, FrameSize, [], no, no,

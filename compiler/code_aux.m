@@ -83,7 +83,7 @@
 
 :- implementation.
 
-:- import_module hlds_module.
+:- import_module hlds_module, llds_out.
 :- import_module bool, set, term, type_util, std_util, assoc_list, require.
 
 code_aux__contains_only_builtins(Goal - _GoalInfo) :-
@@ -243,7 +243,7 @@ code_aux__explain_call_info(CallInfo, VarSet, Explanation) :-
 code_aux__explain_call_info_2([], _, String, String).
 code_aux__explain_call_info_2([Var - Lval | Rest], VarSet, String0, String) :-
 	code_aux__explain_call_info_2(Rest, VarSet, String0, String1),
-	( llds__lval_to_string(Lval, LvalString0) ->
+	( llds_out__lval_to_string(Lval, LvalString0) ->
 		LvalString = LvalString0
 	;
 		LvalString = "some lval"

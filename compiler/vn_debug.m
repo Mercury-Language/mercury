@@ -95,7 +95,8 @@
 
 :- implementation.
 
-:- import_module llds, globals, options, opt_debug, string, int, std_util.
+:- import_module llds, llds_out, globals, options, opt_debug.
+:- import_module string, int, std_util.
 
 vn_debug__tuple_msg(Intermediate, Instrs, Tuple) -->
 	vn_debug__tuple_msg_flag(Flag),

@@ -771,9 +771,6 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = call(_, _, _, _),
 		Need = no
 	;
-		Uinstr0 = call_closure(_, _, _),
-		Need = no
-	;
 		Uinstr0 = mkframe(_, _, _),
 		Need = no
 	;
@@ -955,7 +952,6 @@ opt_util__can_instr_branch_away(livevals(_), no).
 opt_util__can_instr_branch_away(block(_, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _, _, _), yes).
-opt_util__can_instr_branch_away(call_closure(_, _, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _, _), no).
 opt_util__can_instr_branch_away(modframe(_), no).
 opt_util__can_instr_branch_away(label(_), no).
@@ -979,7 +975,6 @@ opt_util__can_instr_fall_through(block(_, Instrs), FallThrough) :-
 	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _, _), no).
-opt_util__can_instr_fall_through(call_closure(_, _, _), no).
 opt_util__can_instr_fall_through(mkframe(_, _, _), yes).
 opt_util__can_instr_fall_through(modframe(_), yes).
 opt_util__can_instr_fall_through(label(_), yes).
@@ -1019,7 +1014,6 @@ opt_util__can_use_livevals(livevals(_), no).
 opt_util__can_use_livevals(block(_, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
 opt_util__can_use_livevals(call(_, _, _, _), yes).
-opt_util__can_use_livevals(call_closure(_, _, _), yes).
 opt_util__can_use_livevals(mkframe(_, _, _), no).
 opt_util__can_use_livevals(modframe(_), no).
 opt_util__can_use_livevals(label(_), no).
@@ -1060,7 +1054,6 @@ opt_util__instr_labels_2(block(_, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
 opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
-opt_util__instr_labels_2(call_closure(_, Ret, _), [], [Ret]).
 opt_util__instr_labels_2(mkframe(_, _, Addr), [], [Addr]).
 opt_util__instr_labels_2(modframe(Addr), [], [Addr]).
 opt_util__instr_labels_2(label(_), [], []).
@@ -1089,7 +1082,6 @@ opt_util__instr_rvals_and_lvals(block(_, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
-opt_util__instr_rvals_and_lvals(call_closure(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(mkframe(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(modframe(_), [], []).
 opt_util__instr_rvals_and_lvals(label(_), [], []).
@@ -1158,6 +1150,9 @@ opt_util__livevals_addr(succip, yes).
 opt_util__livevals_addr(do_succeed(_), yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
+opt_util__livevals_addr(do_det_closure, yes).
+opt_util__livevals_addr(do_semidet_closure, yes).
+opt_util__livevals_addr(do_nondet_closure, yes).
 
 opt_util__count_temps_instr_list([], N, N).
 opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], N0, N) :-
@@ -1171,7 +1166,6 @@ opt_util__count_temps_instr(assign(Lval, Rval), N0, N) :-
 	opt_util__count_temps_lval(Lval, N0, N1),
 	opt_util__count_temps_rval(Rval, N1, N).
 opt_util__count_temps_instr(call(_, _, _, _), N, N).
-opt_util__count_temps_instr(call_closure(_, _, _), N, N).
 opt_util__count_temps_instr(mkframe(_, _, _), N, N).
 opt_util__count_temps_instr(modframe(_), N, N).
 opt_util__count_temps_instr(label(_), N, N).

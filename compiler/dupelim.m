@@ -147,9 +147,6 @@ dupelim__replace_labels_instr(assign(Lval0, Rval0), Replmap,
 dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
 		Replmap, call(Target, Return, LiveInfo, CM)) :-
 	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
-dupelim__replace_labels_instr(call_closure(Target, Return0, LiveInfo),
-		Replmap, call_closure(Target, Return, LiveInfo)) :-
-	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
 dupelim__replace_labels_instr(mkframe(Name, Size, Redoip0), Replmap,
 		mkframe(Name, Size, Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, Replmap, Redoip).
@@ -259,6 +256,9 @@ dupelim__replace_labels_code_addr(succip, _, succip).
 dupelim__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
 dupelim__replace_labels_code_addr(do_redo, _, do_redo).
 dupelim__replace_labels_code_addr(do_fail, _, do_fail).
+dupelim__replace_labels_code_addr(do_det_closure, _, do_det_closure).
+dupelim__replace_labels_code_addr(do_semidet_closure, _, do_semidet_closure).
+dupelim__replace_labels_code_addr(do_nondet_closure, _, do_nondet_closure).
 
 :- pred dupelim__replace_labels_label_list(list(label), map(label, label),
 	list(label)).

@@ -379,7 +379,6 @@ middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
 middle_rec__find_used_registers_instr(call(_, _, _, _), Used, Used).
-middle_rec__find_used_registers_instr(call_closure(_, _, _), Used, Used).
 middle_rec__find_used_registers_instr(mkframe(_, _, _), Used, Used).
 middle_rec__find_used_registers_instr(modframe(_), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).

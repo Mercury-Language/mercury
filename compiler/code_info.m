@@ -2028,6 +2028,15 @@ code_info__generate_failure_cont_2([C0|Cs], Map0, Map, Code) -->
 		{ CodeAddr0 = do_fail },
 		{ ThisContCode = empty },
 		{ Map1 = Map0}
+	;
+		{ CodeAddr0 = do_det_closure },
+		{ error("what is do_det_closure/0 doing in a failure continuation?") }
+	;
+		{ CodeAddr0 = do_semidet_closure },
+		{ error("what is do_semidet_closure/0 doing in a failure continuation?") }
+	;
+		{ CodeAddr0 = do_nondet_closure },
+		{ error("what is do_nondet_closure/0 doing in a failure continuation?") }
 	),
 	{ Code = tree(ThisContCode, RestCode) },
 	code_info__generate_failure_cont_2(Cs, Map1, Map, RestCode).

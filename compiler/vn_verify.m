@@ -298,10 +298,6 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = call_closure(_, _, _),
-		NoDeref = NoDeref0,
-		Tested = Tested0
-	;
 		Instr = mkframe(_, _, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
@@ -436,11 +432,11 @@ vn_verify__tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
 
 vn_verify__tags_cond(Cond, NoDeref0, NoDeref, Tested0, Tested) :-
 	(
-		Cond = binop(Binop, Rval1, Rval2)
-		% ( Binop = eq ; Binop = (<) ; Binop = (>)
-		% ; Binop = ne ; Binop = (<=) ; Binop = (>=) )
+		Cond = binop(Binop, Rval1, Rval2),
+		( Binop = eq ; Binop = (<) ; Binop = (>)
+		; Binop = ne ; Binop = (<=) ; Binop = (>=) )
 	->
-		( Binop = eq ; Binop = ne ),
+		% ( Binop = eq ; Binop = ne ),
 		( vn_verify__tags_is_base(Rval1, Base1) ->
 			set__insert(NoDeref0, Base1, NoDeref1)
 		;

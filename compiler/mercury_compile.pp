@@ -35,10 +35,10 @@
 :- import_module (lambda), polymorphism, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
-:- import_module code_gen, optimize, export, llds.
+:- import_module code_gen, optimize, export, llds_out.
 
 	% miscellaneous compiler modules
-:- import_module hlds_module, hlds_pred, prog_data, prog_util, hlds_out.
+:- import_module prog_data, prog_util, hlds_module, hlds_pred, hlds_out, llds.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, garbage_out, shapes.
 :- import_module options, globals, passes_aux.

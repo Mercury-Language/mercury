@@ -1232,9 +1232,8 @@ code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 % Add the succip to the livevals before and after calls.
-% Traverses the list of instructions looking for livevals, calls and
-% call closures, adding succip in the stackvar number given as an
-% argument.
+% Traverses the list of instructions looking for livevals and calls,
+% adding succip in the stackvar number given as an argument.
 
 :- pred code_gen__add_saved_succip(list(instruction), int, list(instruction)).
 :- mode code_gen__add_saved_succip(in, in, out) is det.
@@ -1256,11 +1255,6 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn  = call(Target, ReturnLabel, 
 			[live_lvalue(stackvar(StackLoc), succip) | LiveVals0], 
 			CM)
-	;
-		Instrn0 = call_closure(CodeModel, ReturnLabel, LiveVals0)
-	->
-		Instrn  = call_closure(CodeModel, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip) | LiveVals0])
 	;
 		Instrn = Instrn0
 	),

@@ -339,8 +339,7 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 		{ value_number__push_incr_sp_forw(Instrs2, Instrs3) },
 		{ value_number__push_livevals_back(Instrs3, Instrs4) },
 		{ value_number__convert_back_modframe(Instrs4, Instrs5) },
-		% { vn_filter__block(Instrs5, Instrs6) },
-		{ Instrs6 = Instrs5 },
+		{ vn_filter__block(Instrs5, Instrs6) },
 		{ bimap__init(TeardownMap) },
 		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, no, _) },
 
@@ -978,7 +977,6 @@ value_number__boundary_instr(livevals(_), no).
 value_number__boundary_instr(block(_, _), no).
 value_number__boundary_instr(assign(_,_), no).
 value_number__boundary_instr(call(_, _, _, _), yes).
-value_number__boundary_instr(call_closure(_, _, _), yes).
 value_number__boundary_instr(mkframe(_, _, _), yes).
 value_number__boundary_instr(modframe(_), yes).
 value_number__boundary_instr(label(_), yes).

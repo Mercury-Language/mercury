@@ -626,9 +626,33 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		])
 	) },
 	code_info__get_next_label(ReturnLabel),
+	(
+		{ CodeModel = model_det },
+		{ CallModel = det },
+		{ RuntimeAddr = do_det_closure }
+	;
+		{ CodeModel = model_semi },
+		{ CallModel = semidet },
+		{ RuntimeAddr = do_semidet_closure }
+	;
+		% XXX for the time being,
+		% assume a nondet closure call cannot be a tail call
+		{ CodeModel = model_non },
+		code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
+		(
+			{ IsKnown = known(_) },
+			{ FailureMap = [_ - do_fail|_] }
+		->
+			{ TailCallable = yes }
+		;
+			{ TailCallable = no }
+		),
+		{ CallModel = nondet(TailCallable) },
+		{ RuntimeAddr = do_nondet_closure }
+	),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
-		call_closure(CodeModel, label(ReturnLabel), OutLiveVals)
+		call(RuntimeAddr, label(ReturnLabel), OutLiveVals, CallModel)
 			- "setup and call higher order pred",
 		label(ReturnLabel) - "Continuation label"
 	]) },

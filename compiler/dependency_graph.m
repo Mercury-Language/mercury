@@ -38,7 +38,7 @@
 :- implementation.
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module mode_util, globals, options, code_info.
-:- import_module llds, mercury_to_mercury.
+:- import_module llds, llds_out, mercury_to_mercury.
 :- import_module int, term, require, string.
 :- import_module list, map, set, std_util.
 :- import_module varset, relation.

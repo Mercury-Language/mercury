@@ -4,8 +4,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% This module defines predicates to produce the functions which are exported to
-% C via a pragma(export, ...) declaration.
+% This module defines predicates to produce the functions which are
+% exported to C via a pragma(export, ...) declaration.
 
 % XXX We don't handle floats or strings properly.
 
@@ -17,8 +17,8 @@
 
 :- interface.
 
-:- import_module io, hlds_module, hlds_pred, llds, string.
-:- import_module code_gen, code_util, library, map, int, std_util, assoc_list.
+:- import_module hlds_module.
+:- import_module io, list, string, term.
 
 	% From the module_info, get a list of functions, each of which allows
 	% a call to be made to a Mercury procedure from C
@@ -37,12 +37,14 @@
 
 :- implementation.
 
+:- import_module code_gen, code_util, hlds_pred, llds, llds_out.
+:- import_module library, map, int, std_util, assoc_list.
+
 export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
 	module_info_get_predicate_table(Module, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	export__to_c(Preds, ExportedProcs, Module, ExportedProcsCode).
-
 
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
@@ -129,7 +131,6 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	export__to_c(Preds, ExportedProcs, Module, TheRest),
 	ExportedProcsCode = [Code|TheRest].
 
-
 :- pred get_argument_declarations(assoc_list(var, arg_info), map(var, type), 
 	string).
 :- mode get_argument_declarations(in, in, out) is det.
@@ -211,7 +212,6 @@ get_input_args([A|ArgInfos], Num0, Result) :-
 	get_input_args(ArgInfos, Num, TheRest),
 	string__append(InputArg, TheRest, Result).
 
-
 :- pred copy_output_args(list(arg_info), int, string).
 :- mode copy_output_args(in, in, out) is det.
 
@@ -254,7 +254,6 @@ copy_output_args([A|ArgInfos], Num0, Result) :-
 	),
 	copy_output_args(ArgInfos, Num, TheRest),
 	string__append(OutputArg, TheRest, Result).
-
 
 export__produce_header_file(Module, ModuleName) -->
 	{ module_info_get_pragma_exported_procs(Module, ExportedProcs) },

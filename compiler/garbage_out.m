@@ -4,17 +4,17 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: garbage_out.m
-% Main author: trd 
+% Main author: trd
 %
 % This module creates the label table information and outputs it, for
 % use by the link tool. It then appends the shape table to the end of
 % this.
 %
 % We traverse the llds, and grab all the continuation labels and their
-% corresponding shape information. 
+% corresponding shape information.
 %
 % We don't yet handle some of the optimizations that mercury can throw
-% at us - eg middle recursion optimization removes the stack frame 
+% at us - eg middle recursion optimization removes the stack frame
 % altogether. We also use io__write_anything, which is a bit dodgy,
 % and is a real hack.
 %
@@ -28,8 +28,8 @@
 :- import_module int, list, io.
 
 :- type garbage_output --->	garbage_output(
-					cont_list, 
-					shape_table, 
+					cont_list,
+					shape_table,
 					abs_exports
 				).
 
@@ -38,7 +38,7 @@
 :- type gc_label_info 	--->	gc_label_info(
 					code_addr,
 					det,
-					num_slots, 
+					num_slots,
 					list(liveinfo)
 				).
 
@@ -50,7 +50,7 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% PUBLIC PREDICATES: 
+% PUBLIC PREDICATES:
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -59,9 +59,9 @@
 
 :- implementation.
 
+:- import_module prog_data, type_util, shapes, llds_out.
 :- import_module string, assoc_list, map, std_util, require.
 :- import_module term, term_io, varset.
-:- import_module prog_data, type_util, shapes.
 
 %-----------------------------------------------------------------------------%
 % Out main predicate, it just collects and outputs the garbage.
@@ -88,7 +88,7 @@ garbage_out__do_garbage_out(ShapeInfo, c_file(Name, _C_Header, Modules)) -->
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% LOCAL PREDICATES: 
+% LOCAL PREDICATES:
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -133,22 +133,18 @@ garbage_out__create_cont_list_2([P |Ps], CList) :-
 garbage_out__proc_instr_list([], Cs, Cs).
 garbage_out__proc_instr_list([I - _Comment | Is ], Cs0, Cout) :-
 	garbage_out__proc_instr(I, Cs0, Cs1),
-	garbage_out__proc_instr_list(Is, Cs1, Cout). 
+	garbage_out__proc_instr_list(Is, Cs1, Cout).
 
 %-----------------------------------------------------------------------------%
 % Process an instruction - find the gc_live_info and prepend it if it is a
-% call, otherwise ignore it. 
+% call, otherwise ignore it.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__proc_instr(instr, cont_list,  cont_list).
 :- mode garbage_out__proc_instr(in, in, out) is det.
 
-garbage_out__proc_instr(I, Cs, Cout) :- 
+garbage_out__proc_instr(I, Cs, Cout) :-
 	(
-		(
-			I = call(_Target, Contn, LiveInfo0, _)
-		;
-			I = call_closure(_, Contn, LiveInfo0)
-		)
+		I = call(_Target, Contn, LiveInfo0, _)
 	->
 		garbage_out__remove_fields(LiveInfo0, LiveInfo1),
 		garbage_out__get_det(LiveInfo1, none, Det),
@@ -160,7 +156,7 @@ garbage_out__proc_instr(I, Cs, Cout) :-
 	).
 
 %-----------------------------------------------------------------------------%
-% Strip the (erroneously present) fields(...) from the liveinfo. 
+% Strip the (erroneously present) fields(...) from the liveinfo.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__remove_fields(list(liveinfo), list(liveinfo)).
 :- mode garbage_out__remove_fields(in, out) is det.
@@ -178,7 +174,7 @@ garbage_out__remove_fields([L|Ls], Ms) :-
 
 %-----------------------------------------------------------------------------%
 % Find the determinism of this label by looking for framevars or stackvars
-% or succip. If there is no succip, then we assume nondet. 
+% or succip. If there is no succip, then we assume nondet.
 % XXX Should deal with this properly - commits must be detected also.
 %-----------------------------------------------------------------------------%
 
@@ -235,11 +231,11 @@ garbage_out__get_det([L | Ls], OldD, NewDet) :-
 %-----------------------------------------------------------------------------%
 % Actually write the garbage information.
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__output(cont_list, shape_table, abs_exports, 
+:- pred garbage_out__output(cont_list, shape_table, abs_exports,
 				io__state, io__state).
 :- mode garbage_out__output(in, in, in, di, uo) is det.
 
-garbage_out__output(List, Shapes, Abs_Exports) --> 
+garbage_out__output(List, Shapes, Abs_Exports) -->
 	garbage_out__write_cont_list(List),
 	garbage_out__write_shape_table(Shapes),
 	{ map__to_assoc_list(Abs_Exports, Abs_Exports_List) },
@@ -292,7 +288,7 @@ garbage_out__maybe_write_comma([]) --> { true }.
 garbage_out__maybe_write_comma([_ | _]) --> io__write_string(",").
 
 %-----------------------------------------------------------------------------%
-% Perhaps write a comma and a space 
+% Perhaps write a comma and a space
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__maybe_write_comma_space(list(T), io__state, io__state).
 :- mode garbage_out__maybe_write_comma_space(in, di, uo) is det.
@@ -306,7 +302,7 @@ garbage_out__maybe_write_comma_space([_ | _]) --> io__write_string(", ").
 :- pred garbage_out__write_code_addr(code_addr, io__state, io__state).
 :- mode garbage_out__write_code_addr(in, di, uo) is det.
 garbage_out__write_code_addr(L) -->
-	( 
+	(
 		{ L = label(Label) }
 	->
 		output_label(Label)
@@ -314,15 +310,14 @@ garbage_out__write_code_addr(L) -->
 		{ error("garbage_out : Unexpected code_addr type") }
 	).
 
-
 %-----------------------------------------------------------------------------%
 % Write the liveinfo list (a list of lvals and corresponding
 % shape numbers).
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__write_liveinfo_list(list(liveinfo), io__state, io__state). 
-:- mode garbage_out__write_liveinfo_list(in, di, uo) is det. 
+:- pred garbage_out__write_liveinfo_list(list(liveinfo), io__state, io__state).
+:- mode garbage_out__write_liveinfo_list(in, di, uo) is det.
 garbage_out__write_liveinfo_list([]) --> { true }.
-garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) --> 
+garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) -->
 	garbage_out__write_liveval(L),
 	io__write_string(" - "),
 	shapes__write_shape_num(S),
@@ -346,15 +341,15 @@ garbage_out__write_liveval(succfr(_)) --> io__write_string("succfr").
 garbage_out__write_liveval(prevfr(_)) --> io__write_string("prevfr").
 garbage_out__write_liveval(curfr) --> io__write_string("curfr").
 garbage_out__write_liveval(maxfr) --> io__write_string("maxfr").
-garbage_out__write_liveval(stackvar(X)) --> 
+garbage_out__write_liveval(stackvar(X)) -->
 	io__write_string("stackvar("),
 	io__write_int(X),
 	io__write_string(")").
-garbage_out__write_liveval(framevar(X)) --> 
+garbage_out__write_liveval(framevar(X)) -->
 	io__write_string("framevar("),
 	io__write_int(X),
 	io__write_string(")").
-garbage_out__write_liveval(reg(X)) --> 
+garbage_out__write_liveval(reg(X)) -->
 	(
 		{ X = r(Y) }
 	->
@@ -369,19 +364,19 @@ garbage_out__write_liveval(reg(X)) -->
 		{ error("garbage_out: Unexpected reg type, not f/1 or r/1") }
 	),
 	io__write_string(")").
-garbage_out__write_liveval(field(_,_,_)) --> 
+garbage_out__write_liveval(field(_,_,_)) -->
 	{ error("garbage_out: Unexpected 'field/3' lval") }.
-garbage_out__write_liveval(lvar(_)) --> 
+garbage_out__write_liveval(lvar(_)) -->
 	{ error("garbage_out: Unexpected 'lval/1' lval") }.
-garbage_out__write_liveval(temp(_)) --> 
+garbage_out__write_liveval(temp(_)) -->
 	{ error("garbage_out: Unexpected 'temp/1' lval") }.
 
 
 %-----------------------------------------------------------------------------%
 % We no longer care what the shape_ids are, as we don't need them. When we
 % get to putting all the modules together, we can find a shape merely
-% by knowing which module it belongs to, and what shape it is. Exported 
-% abstract types will have to have a map from shape_id to 
+% by knowing which module it belongs to, and what shape it is. Exported
+% abstract types will have to have a map from shape_id to
 % pair(module,shape_num), but that happens later.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__write_shape_table(shape_table, io__state, io__state).
@@ -395,12 +390,12 @@ garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 %-----------------------------------------------------------------------------%
 % Write out the list of shapes.
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__write_shapes(list(pair(shape_num, shape)), 
+:- pred garbage_out__write_shapes(list(pair(shape_num, shape)),
 					io__state, io__state).
 :- mode garbage_out__write_shapes(in, di, uo) is det.
 
 garbage_out__write_shapes([]) --> { true }.
-garbage_out__write_shapes([ShapeNum - Shape | Shapes]) --> 
+garbage_out__write_shapes([ShapeNum - Shape | Shapes]) -->
 	io__write_string("shapeinfo("),
 	shapes__write_shape_num(ShapeNum),
 	io__write_string(", "),
@@ -454,18 +449,18 @@ garbage_out__write_shape(equivalent(ShapeNum)) -->
 %-----------------------------------------------------------------------------%
 % Write a shape_tag. A shape tag is either a constant tag, or
 % a simple tag, consisting of a list of arguments of that functor,
-% or a complicated tag, which consists of a list of lists of 
+% or a complicated tag, which consists of a list of lists of
 % functor arguments, since all those functors share the same tag.
 % If it is complicated, we write out a list of simple shape tags,
 % eg complicated([simple([32,65,11]), simple([11])) etc.
-% XXX is it possible for a simple or a complicated to have an empty 
+% XXX is it possible for a simple or a complicated to have an empty
 % list? Should be check for this?
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__write_shape_tag(shape_tag, io__state, io__state).
 :- mode garbage_out__write_shape_tag(in, di, uo) is det.
-garbage_out__write_shape_tag(constant) --> 
+garbage_out__write_shape_tag(constant) -->
 	io__write_string("constant").
-garbage_out__write_shape_tag(simple(Shape_List)) --> 
+garbage_out__write_shape_tag(simple(Shape_List)) -->
 	io__write_string("simple(["),
 	garbage_out__write_shape_list(Shape_List),
 	io__write_string("])").
@@ -495,7 +490,7 @@ garbage_out__write_complicated([Simple | Complicateds]) -->
 % abstract types. For abstract types, we need the type_id so we can
 % find the actually definition in the type table at some later stage.
 % For polymorphics, we will handle at run time, so we don't really care
-% what the types are. For something like bintree(K, V), we get the type_id 
+% what the types are. For something like bintree(K, V), we get the type_id
 % bintree/2, but the parameter is always treated as polymorphic, even
 % if we knew it, because the module system hides bintree from us. Possibly
 % at some later date we should write the arguments, so that bintree(int, int)
@@ -513,7 +508,7 @@ garbage_out__write_type(Type) -->
 %-----------------------------------------------------------------------------%
 % Write out the shape list.
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__write_shape_list(list(pair(shape_num, shape_id)), 
+:- pred garbage_out__write_shape_list(list(pair(shape_num, shape_id)),
 					io__state, io__state).
 :- mode garbage_out__write_shape_list(in, di, uo) is det.
 garbage_out__write_shape_list([]) --> {true}.
@@ -523,7 +518,7 @@ garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
 	garbage_out__write_shape_list(Shape_List).
 
 %-----------------------------------------------------------------------------%
-% Write a list of integers. 
+% Write a list of integers.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__write_int_list(list(shape_num), io__state, io__state).
 :- mode garbage_out__write_int_list(in, di, uo) is det.

@@ -124,10 +124,6 @@ exprn_aux__const_is_constant(address_const(CodeAddress), ExprnOpts, IsConst) :-
 :- pred exprn_aux__addr_is_constant(code_addr, exprn_opts, bool).
 :- mode exprn_aux__addr_is_constant(in, in, out) is det.
 
-exprn_aux__addr_is_constant(succip, _, no).
-exprn_aux__addr_is_constant(do_redo, _, no).
-exprn_aux__addr_is_constant(do_fail, _, no).
-exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(label(_), _, yes).
 exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
 	ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
@@ -146,6 +142,13 @@ exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
 	;
 		IsConst = yes
 	).
+exprn_aux__addr_is_constant(succip, _, no).
+exprn_aux__addr_is_constant(do_succeed(_), _, no).
+exprn_aux__addr_is_constant(do_redo, _, no).
+exprn_aux__addr_is_constant(do_fail, _, no).
+exprn_aux__addr_is_constant(do_det_closure, _, no).
+exprn_aux__addr_is_constant(do_semidet_closure, _, no).
+exprn_aux__addr_is_constant(do_nondet_closure, _, no).
 
 %------------------------------------------------------------------------------%
 

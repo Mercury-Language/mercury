@@ -103,9 +103,6 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = call(_, _, _, _),
 		Cost = 0
 	;
-		Uinstr = call_closure(_, _, _),
-		Cost = 0
-	;
 		Uinstr = mkframe(_, _, _),
 		Cost = 0
 	;
