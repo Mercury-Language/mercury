@@ -76,7 +76,11 @@ binary_distribution: bindist.configure bindist.build_vars
 	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
 	cp $(UTILS) $(MERCURY_VERSION)/util
 	test -d $(MERCURY_VERSION)/cgi || mkdir $(MERCURY_VERSION)/cgi
-	cp $(CGI_PROG) $(MERCURY_VERSION)/cgi
+	if test "$(ENABLE_DEEP_PROFILER)" = "yes"; then		\
+		cp $(CGI_PROG) $(MERCURY_VERSION)/cgi;		\
+	else							\
+		true;						\
+	fi
 	test -d $(MERCURY_VERSION)/vim || mkdir $(MERCURY_VERSION)/vim
 	cp -R $(VIM_FILES) $(MERCURY_VERSION)/vim
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)
