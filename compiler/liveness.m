@@ -227,15 +227,14 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 		DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, !IO),
 
 	initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
-		_, Goal1),
+	detect_liveness_in_goal(Goal0, Goal1, Liveness0, _, LiveInfo),
 
 	maybe_write_progress_message("\nafter liveness",
 		DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, !IO),
 
 	initial_deadness(!.ProcInfo, LiveInfo, ModuleInfo, Deadness0),
-	detect_deadness_in_goal(Goal1, Deadness0, Liveness0, LiveInfo,
-		_, Goal2),
+	detect_deadness_in_goal(Goal1, Goal2, Deadness0, _,
+		Liveness0, LiveInfo),
 	maybe_write_progress_message("\nafter deadness",
 		DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, !IO),
 
@@ -246,7 +245,7 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 		globals__lookup_bool_option(Globals, delay_death, DelayDeath),
 		DelayDeath = yes
 	->
-		delay_death_proc_body(Goal2, VarSet, Liveness0, Goal3),
+		delay_death_proc_body(Goal2, Goal3, VarSet, Liveness0),
 		maybe_write_progress_message("\nafter delay death",
 			DebugLiveness, PredIdInt, Goal3, VarSet, ModuleInfo,
 			!IO)
@@ -260,8 +259,8 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 	;
 		set__init(ResumeVars0)
 	),
-	detect_resume_points_in_goal(Goal3, Liveness0, LiveInfo,
-		ResumeVars0, Goal, _),
+	detect_resume_points_in_goal(Goal3, Goal, Liveness0, _,
+		LiveInfo, ResumeVars0),
 	maybe_write_progress_message("\nafter resume point",
 		DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, !IO),
 	proc_info_set_goal(Goal, !ProcInfo),
@@ -285,11 +284,11 @@ maybe_write_progress_message(Message, DebugLiveness, PredIdInt,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_goal(hlds_goal::in, set(prog_var)::in,
-	live_info::in, set(prog_var)::out, hlds_goal::out) is det.
+:- pred detect_liveness_in_goal(hlds_goal::in, hlds_goal::out,
+	set(prog_var)::in, set(prog_var)::out, live_info::in) is det.
 
-detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
-		Liveness, Goal - GoalInfo) :-
+detect_liveness_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo,
+		Liveness0, Liveness, LiveInfo) :-
 
 		% work out which variables get born in this goal
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
@@ -309,7 +308,6 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 		set__difference(TypeInfos, Liveness0, NewTypeInfos),
 		set__union(Births1, NewTypeInfos, Births)
 	),
-	set__union(Liveness0, Births, Liveness),
 	( goal_is_atomic(Goal0) ->
 		PreDeaths = Empty,
 		PreBirths = Births,
@@ -319,14 +317,16 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 	;
 		PreDeaths = Empty,
 		PreBirths = Empty,
-		detect_liveness_in_goal_2(Goal0, Liveness0, CompletedNonLocals,
-			LiveInfo, ActualLiveness, Goal),
+		detect_liveness_in_goal_2(Goal0, Goal,
+			Liveness0, ActualLiveness, CompletedNonLocals,
+			LiveInfo),
 		set__intersect(CompletedNonLocals, ActualLiveness,
 			NonLocalLiveness),
 		set__union(NonLocalLiveness, Liveness0, FinalLiveness),
 		set__difference(FinalLiveness, Liveness, PostDeaths),
 		set__difference(Liveness, FinalLiveness, PostBirths)
 	),
+	set__union(Liveness0, Births, Liveness),
 		% We initialize all the fields in order to obliterate any
 		% annotations left by a previous invocation of this module.
 	goal_info_initialize_liveness_info(GoalInfo0, PreBirths, PostBirths,
@@ -336,41 +336,40 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
 
 	% Here we process each of the different sorts of goals.
 
-:- pred detect_liveness_in_goal_2(hlds_goal_expr::in,
-	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::out, hlds_goal_expr::out) is det.
+:- pred detect_liveness_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+	set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
+	live_info::in) is det.
 
-detect_liveness_in_goal_2(conj(Goals0), Liveness0, _, LiveInfo,
-		Liveness, conj(Goals)) :-
-	detect_liveness_in_conj(Goals0, Liveness0, LiveInfo, Liveness, Goals).
+detect_liveness_in_goal_2(conj(Goals0), conj(Goals), !Liveness, _, LiveInfo) :-
+	detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo).
 
-detect_liveness_in_goal_2(par_conj(Goals0), Liveness0, NonLocals, LiveInfo,
-		Liveness, par_conj(Goals)) :-
+detect_liveness_in_goal_2(par_conj(Goals0), par_conj(Goals), !Liveness,
+		NonLocals, LiveInfo) :-
 	set__init(Union0),
-	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union0, Union, Goals),
-	set__union(Liveness0, Union, Liveness).
+	detect_liveness_in_par_conj(Goals0, Goals, !.Liveness, NonLocals,
+		LiveInfo, Union0, Union),
+	set__union(Union, !Liveness).
 
-detect_liveness_in_goal_2(disj(Goals0), Liveness0, NonLocals, LiveInfo,
-		Liveness, disj(Goals)) :-
+detect_liveness_in_goal_2(disj(Goals0), disj(Goals), !Liveness,
+		NonLocals, LiveInfo) :-
 	set__init(Union0),
-	detect_liveness_in_disj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union0, Union, Goals),
-	set__union(Liveness0, Union, Liveness).
+	detect_liveness_in_disj(Goals0, Goals, !.Liveness, NonLocals,
+		LiveInfo, Union0, Union),
+	set__union(Union, !Liveness).
 
-detect_liveness_in_goal_2(switch(Var, Det, Cases0), Liveness0, NonLocals,
-		LiveInfo, Liveness, switch(Var, Det, Cases)) :-
-	detect_liveness_in_cases(Cases0, Liveness0, NonLocals, LiveInfo,
-		Liveness0, Liveness, Cases).
+detect_liveness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
+		!Liveness, NonLocals, LiveInfo) :-
+	detect_liveness_in_cases(Cases0, Cases, !.Liveness, NonLocals,
+		LiveInfo, !Liveness).
 
-detect_liveness_in_goal_2(not(Goal0), Liveness0, _, LiveInfo,
-		Liveness, not(Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
+detect_liveness_in_goal_2(not(Goal0), not(Goal), !Liveness, _, LiveInfo) :-
+	detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
 
 detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-		Liveness0, NonLocals, LiveInfo, Liveness,
-		if_then_else(Vars, Cond, Then, Else)) :-
-	detect_liveness_in_goal(Cond0, Liveness0, LiveInfo, LivenessCond, Cond),
+		if_then_else(Vars, Cond, Then, Else),
+		Liveness0, Liveness, NonLocals, LiveInfo) :-
+	detect_liveness_in_goal(Cond0, Cond, Liveness0, LivenessCond,
+		LiveInfo),
 
 	%
 	% If the condition cannot succeed, any variables which become live
@@ -383,12 +382,12 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		LivenessThen = LivenessCond,
 		Then1 = Then0
 	;
-		detect_liveness_in_goal(Then0, LivenessCond, LiveInfo,
-			LivenessThen, Then1)
+		detect_liveness_in_goal(Then0, Then1,
+			LivenessCond, LivenessThen, LiveInfo)
 	),
 
-	detect_liveness_in_goal(Else0, Liveness0, LiveInfo, LivenessElse,
-		Else1),
+	detect_liveness_in_goal(Else0, Else1, Liveness0, LivenessElse,
+		LiveInfo),
 
 	set__union(LivenessThen, LivenessElse, Liveness),
 	set__intersect(Liveness, NonLocals, NonLocalLiveness),
@@ -399,9 +398,9 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 	add_liveness_after_goal(Then1, ResidueThen, Then),
 	add_liveness_after_goal(Else1, ResidueElse, Else).
 
-detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, _, LiveInfo,
-		Liveness, some(Vars, CanRemove, Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
+detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal), !Liveness, _, LiveInfo) :-
+	detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
 
 detect_liveness_in_goal_2(generic_call(_, _, _, _), _, _, _, _, _) :-
 	error("higher-order-call in detect_liveness_in_goal_2").
@@ -421,13 +420,13 @@ detect_liveness_in_goal_2(shorthand(_), _, _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_conj(list(hlds_goal)::in, set(prog_var)::in,
-	live_info::in, set(prog_var)::out, list(hlds_goal)::out) is det.
+:- pred detect_liveness_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, set(prog_var)::out, live_info::in) is det.
 
-detect_liveness_in_conj([], Liveness, _LiveInfo, Liveness, []).
-detect_liveness_in_conj([Goal0 | Goals0], Liveness0, LiveInfo, Liveness,
-		[Goal | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness1, Goal),
+detect_liveness_in_conj([], [], !Liveness, _LiveInfo).
+detect_liveness_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness,
+		LiveInfo) :-
+	detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo),
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
@@ -438,158 +437,154 @@ detect_liveness_in_conj([Goal0 | Goals0], Liveness0, LiveInfo, Liveness,
 		% included the original Goals0 in Goals, then the liveness
 		% fields in Goals would remain uninitialized. Removing goals
 		% following a goal that cannot succeed works.
-		Goals = [],
-		Liveness = Liveness1
+		Goals = []
 	;
-		detect_liveness_in_conj(Goals0, Liveness1, LiveInfo,
-			Liveness, Goals)
+		detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_disj(list(hlds_goal)::in,
+:- pred detect_liveness_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, set(prog_var)::out, list(hlds_goal)::out) is det.
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_liveness_in_disj([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, []).
-detect_liveness_in_disj([Goal0 | Goals0], Liveness, NonLocals, LiveInfo,
-		Union0, Union, [Goal | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, LiveInfo, Liveness1, Goal1),
-	set__union(Union0, Liveness1, Union1),
-	detect_liveness_in_disj(Goals0, Liveness, NonLocals, LiveInfo,
-		Union1, Union, Goals),
-	set__intersect(Union, NonLocals, NonLocalUnion),
+detect_liveness_in_disj([], [], _Liveness, _NonLocals, _LiveInfo, !Union).
+detect_liveness_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, NonLocals,
+		LiveInfo, !Union) :-
+	detect_liveness_in_goal(Goal0, Goal1, Liveness0, Liveness1, LiveInfo),
+	set__union(Liveness1, !Union),
+	detect_liveness_in_disj(Goals0, Goals, Liveness0, NonLocals, LiveInfo,
+		!Union),
+	set__intersect(!.Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_cases(list(case)::in,
+:- pred detect_liveness_in_cases(list(case)::in, list(case)::out,
 	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, set(prog_var)::out, list(case)::out) is det.
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_liveness_in_cases([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, []).
-detect_liveness_in_cases([case(Cons, Goal0) | Goals0], Liveness, NonLocals,
-		LiveInfo, Union0, Union, [case(Cons, Goal) | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, LiveInfo, Liveness1, Goal1),
-	set__union(Union0, Liveness1, Union1),
-	detect_liveness_in_cases(Goals0, Liveness, NonLocals, LiveInfo,
-		Union1, Union, Goals),
-	set__intersect(Union, NonLocals, NonLocalUnion),
+detect_liveness_in_cases([], [], _Liveness, _NonLocals, _LiveInfo, !Union).
+detect_liveness_in_cases([case(Cons, Goal0) | Goals0],
+		[case(Cons, Goal) | Goals], Liveness0, NonLocals, LiveInfo,
+		!Union) :-
+	detect_liveness_in_goal(Goal0, Goal1, Liveness0, Liveness1, LiveInfo),
+	set__union(Liveness1, !Union),
+	detect_liveness_in_cases(Goals0, Goals, Liveness0, NonLocals, LiveInfo,
+		!Union),
+	set__intersect(!.Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_par_conj(list(hlds_goal)::in,
+:- pred detect_liveness_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, set(prog_var)::out, list(hlds_goal)::out) is det.
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_liveness_in_par_conj([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, []).
-detect_liveness_in_par_conj([Goal0 | Goals0], Liveness0, NonLocals, LiveInfo,
-		Union0, Union, [Goal | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness1, Goal1),
-	set__union(Union0, Liveness1, Union1),
-	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union1, Union, Goals),
-	set__intersect(Union, NonLocals, NonLocalUnion),
+detect_liveness_in_par_conj([], [], _Liveness, _NonLocals, _LiveInfo, !Union).
+detect_liveness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Liveness0,
+		NonLocals, LiveInfo, !Union) :-
+	detect_liveness_in_goal(Goal0, Goal1, Liveness0, Liveness1, LiveInfo),
+	set__union(Liveness1, !Union),
+	detect_liveness_in_par_conj(Goals0, Goals, Liveness0, NonLocals,
+		LiveInfo, !Union),
+	set__intersect(!.Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Goal).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_goal(hlds_goal::in,
-	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::out, hlds_goal::out) is det.
+:- pred detect_deadness_in_goal(hlds_goal::in, hlds_goal::out,
+	set(prog_var)::in, set(prog_var)::out, set(prog_var)::in, 
+	live_info::in) is det.
 
-detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, Liveness0, LiveInfo,
-		Deadness, Goal - GoalInfo) :-
+detect_deadness_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Deadness,
+		!.Liveness, LiveInfo) :-
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
 	goal_info_get_pre_births(GoalInfo0, PreBirths0),
 	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
 	goal_info_get_post_births(GoalInfo0, PostBirths0),
 
-	set__difference(Deadness0, PostBirths0, Deadness1),
-	set__union(Deadness1, PostDeaths0, Deadness2),
+	set__difference(!.Deadness, PostBirths0, !:Deadness),
+	set__union(PostDeaths0, !Deadness),
 
-	set__difference(Liveness0, PreDeaths0, Liveness1),
-	set__union(Liveness1, PreBirths0, Liveness2),
+	set__difference(!.Liveness, PreDeaths0, !:Liveness),
+	set__union(PreBirths0, !Liveness),
 
 	set__init(Empty),
 	( goal_is_atomic(Goal0) ->
 		liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
 			_BaseNonLocals, CompletedNonLocals),
-		set__intersect(Liveness2, CompletedNonLocals, LiveNonLocals),
-		set__difference(LiveNonLocals, Deadness2, NewPostDeaths),
-		set__union(Deadness2, NewPostDeaths, Deadness3),
+		set__intersect(!.Liveness, CompletedNonLocals, LiveNonLocals),
+		set__difference(LiveNonLocals, !.Deadness, NewPostDeaths),
+		set__union(NewPostDeaths, !Deadness),
 		Goal = Goal0
 	;
 		NewPostDeaths = Empty,
-		detect_deadness_in_goal_2(Goal0, GoalInfo0,
-			Deadness2, Liveness2, LiveInfo, Deadness3, Goal)
+		detect_deadness_in_goal_2(Goal0, Goal, GoalInfo0,
+			!Deadness, !.Liveness, LiveInfo)
 	),
 	set__union(PostDeaths0, NewPostDeaths, PostDeaths),
 	goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo),
 
-	set__difference(Deadness3, PreBirths0, Deadness4),
-	set__union(Deadness4, PreDeaths0, Deadness).
+	set__difference(!.Deadness, PreBirths0, !:Deadness),
+	set__union(PreDeaths0, !Deadness).
 
 	% Here we process each of the different sorts of goals.
 
-:- pred detect_deadness_in_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::out, hlds_goal_expr::out) is det.
+:- pred detect_deadness_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+	hlds_goal_info::in, set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, live_info::in) is det.
 
-detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, Liveness0, LiveInfo,
-		Deadness, conj(Goals)) :-
-	detect_deadness_in_conj(Goals0, Deadness0, Liveness0, LiveInfo,
-		Goals, Deadness).
+detect_deadness_in_goal_2(conj(Goals0), conj(Goals), _, !Deadness, Liveness0,
+		LiveInfo) :-
+	detect_deadness_in_conj(Goals0, Goals, !Deadness, Liveness0, LiveInfo).
 
-detect_deadness_in_goal_2(par_conj(Goals0), GoalInfo, Deadness0, Liveness0,
-		LiveInfo, Deadness, par_conj(Goals)) :-
+detect_deadness_in_goal_2(par_conj(Goals0), par_conj(Goals), GoalInfo,
+		!Deadness, Liveness0, LiveInfo) :-
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
+		_, CompletedNonLocals),
+	set__init(Union0),
+	detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
+		CompletedNonLocals, LiveInfo, Union0, Union),
+	set__union(Union, !Deadness).
+
+detect_deadness_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, !Deadness,
+		Liveness0, LiveInfo) :-
 	set__init(Union0),
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		_, CompletedNonLocals),
-	detect_deadness_in_par_conj(Goals0, Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union0, Union, Goals),
-	set__union(Union, Deadness0, Deadness).
+	detect_deadness_in_disj(Goals0, Goals, !.Deadness, Liveness0,
+		CompletedNonLocals, LiveInfo, Union0, Union, _),
+	!:Deadness = Union.
 
-detect_deadness_in_goal_2(disj(Goals0), GoalInfo, Deadness0, Liveness0,
-		LiveInfo, Deadness, disj(Goals)) :-
+detect_deadness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
+		GoalInfo, !Deadness, Liveness0, LiveInfo) :-
 	set__init(Union0),
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		_, CompletedNonLocals),
-	detect_deadness_in_disj(Goals0, Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union0, Deadness, Goals, _).
+	detect_deadness_in_cases(Var, Cases0, Cases, !.Deadness, Liveness0,
+		CompletedNonLocals, LiveInfo, Union0, Union, _),
+	!:Deadness = Union.
 
-detect_deadness_in_goal_2(switch(Var, Det, Cases0), GoalInfo, Deadness0,
-		Liveness0, LiveInfo, Deadness, switch(Var, Det, Cases)) :-
-	set__init(Union0),
-	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
-		_, CompletedNonLocals),
-	detect_deadness_in_cases(Var, Cases0, Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union0, Deadness, Cases, _).
-
-detect_deadness_in_goal_2(not(Goal0), _, Deadness0, Liveness0, LiveInfo,
-		Deadness, not(Goal)) :-
-	detect_deadness_in_goal(Goal0, Deadness0, Liveness0,
-		LiveInfo, Deadness, Goal).
+detect_deadness_in_goal_2(not(Goal0), not(Goal), _, !Deadness, Liveness0,
+		LiveInfo) :-
+	detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
 
 detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-		GoalInfo, Deadness0, Liveness0, LiveInfo, Deadness,
-		if_then_else(Vars, Cond, Then, Else)) :-
+		if_then_else(Vars, Cond, Then, Else), GoalInfo,
+		Deadness0, Deadness, Liveness0, LiveInfo) :-
 	update_liveness_goal(Cond0, LiveInfo, Liveness0, LivenessCond),
 
-	detect_deadness_in_goal(Else0, Deadness0, Liveness0, LiveInfo,
-		DeadnessElse, Else1),
-	detect_deadness_in_goal(Then0, Deadness0, LivenessCond, LiveInfo,
-		DeadnessThen, Then),
-	detect_deadness_in_goal(Cond0, DeadnessThen, Liveness0, LiveInfo,
-		DeadnessCond, Cond1),
+	detect_deadness_in_goal(Else0, Else1, Deadness0, DeadnessElse,
+		Liveness0, LiveInfo),
+	detect_deadness_in_goal(Then0, Then, Deadness0, DeadnessThen,
+		LivenessCond, LiveInfo),
+	detect_deadness_in_goal(Cond0, Cond1, DeadnessThen, DeadnessCond,
+		Liveness0, LiveInfo),
 
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		_, CompletedNonLocals),
@@ -640,11 +635,10 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 			CompletedNonLocalDeadness, yes, Else1, Else)
 	).
 
-detect_deadness_in_goal_2(some(Vars, CanRemove, Goal0), _,
-		Deadness0, Liveness0, LiveInfo, Deadness,
-		some(Vars, CanRemove, Goal)) :-
-	detect_deadness_in_goal(Goal0, Deadness0, Liveness0, LiveInfo,
-		Deadness, Goal).
+detect_deadness_in_goal_2(some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal), _,
+		!Deadness, Liveness0, LiveInfo) :-
+	detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
 
 detect_deadness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _, _) :-
 	error("higher-order-call in detect_deadness_in_goal_2").
@@ -664,42 +658,42 @@ detect_deadness_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_conj(list(hlds_goal)::in,
-	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	list(hlds_goal)::out, set(prog_var)::out) is det.
+:- pred detect_deadness_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
+	live_info::in) is det.
 
-detect_deadness_in_conj([], Deadness, _, _LiveInfo, [], Deadness).
-detect_deadness_in_conj([Goal0 | Goals0], Deadness0, Liveness0, LiveInfo,
-		[Goal | Goals], Deadness) :-
+detect_deadness_in_conj([], [], !Deadness, _, _LiveInfo).
+detect_deadness_in_conj([Goal0 | Goals0], [Goal | Goals], !Deadness,
+		Liveness0, LiveInfo) :-
 	Goal0 = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
 	( instmap_delta_is_unreachable(InstmapDelta) ->
 		Goals = Goals0,
-		detect_deadness_in_goal(Goal0, Deadness0, Liveness0, LiveInfo,
-			Deadness, Goal)
+		detect_deadness_in_goal(Goal0, Goal, !Deadness,
+			Liveness0, LiveInfo)
 	;
 		update_liveness_goal(Goal0, LiveInfo, Liveness0, LivenessGoal),
-		detect_deadness_in_conj(Goals0, Deadness0, LivenessGoal,
-			LiveInfo, Goals, Deadness1),
-		detect_deadness_in_goal(Goal0, Deadness1, Liveness0,
-			LiveInfo, Deadness, Goal)
+		detect_deadness_in_conj(Goals0, Goals, !Deadness,
+			LivenessGoal, LiveInfo),
+		detect_deadness_in_goal(Goal0, Goal, !Deadness,
+			Liveness0, LiveInfo)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_disj(list(hlds_goal)::in,
+:- pred detect_deadness_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	set(prog_var)::in, set(prog_var)::in, set(prog_var)::in,
 	live_info::in, set(prog_var)::in, set(prog_var)::out,
-	list(hlds_goal)::out, set(prog_var)::out) is det.
+	set(prog_var)::out) is det.
 
-detect_deadness_in_disj([], _Deadness0, _Liveness0, CompletedNonLocals,
-		_LiveInfo, Union, Union, [], CompletedNonLocalUnion) :-
-	set__intersect(Union, CompletedNonLocals, CompletedNonLocalUnion).
-detect_deadness_in_disj([Goal0 | Goals0], Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union0, Union, [Goal | Goals],
+detect_deadness_in_disj([], [], _Deadness0, _Liveness0, CompletedNonLocals,
+		_LiveInfo, !Union, CompletedNonLocalUnion) :-
+	set__intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
+detect_deadness_in_disj([Goal0 | Goals0], [Goal | Goals], Deadness0, Liveness0,
+		CompletedNonLocals, LiveInfo, !Union,
 		CompletedNonLocalUnion) :-
-	detect_deadness_in_goal(Goal0, Deadness0, Liveness0, LiveInfo,
-		DeadnessGoal, Goal1),
+	detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
+		Liveness0, LiveInfo),
 	Goal1 = _ - GoalInfo1,
 	goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
 	( instmap_delta_is_reachable(InstmapDelta1) ->
@@ -708,33 +702,32 @@ detect_deadness_in_disj([Goal0 | Goals0], Deadness0, Liveness0,
 		InstmapReachable = no
 	),
 	union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable,
-		Union0, Union1),
-	detect_deadness_in_disj(Goals0, Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union1, Union, Goals,
+		!Union),
+	detect_deadness_in_disj(Goals0, Goals, Deadness0, Liveness0,
+		CompletedNonLocals, LiveInfo, !Union,
 		CompletedNonLocalUnion),
 	add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
 		InstmapReachable, Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_cases(prog_var::in, list(case)::in,
+:- pred detect_deadness_in_cases(prog_var::in, list(case)::in, list(case)::out,
 	set(prog_var)::in, set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, set(prog_var)::out, list(case)::out,
-	set(prog_var)::out) is det.
+	set(prog_var)::in, set(prog_var)::out, set(prog_var)::out) is det.
 
-detect_deadness_in_cases(SwitchVar, [], _Deadness0, _Liveness,
-		CompletedNonLocals, _LiveInfo, Union0, Union, [],
+detect_deadness_in_cases(SwitchVar, [], [], _Deadness0, _Liveness,
+		CompletedNonLocals, _LiveInfo, !Union,
 		CompletedNonLocalUnion) :-
 		% If the switch variable does not become dead in a case,
 		% it must be put in the pre-death set of that case.
-	set__insert(Union0, SwitchVar, Union),
-	set__intersect(Union, CompletedNonLocals, CompletedNonLocalUnion).
+	set__insert(!.Union, SwitchVar, !:Union),
+	set__intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
 detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
-		Deadness0, Liveness0, CompletedNonLocals, LiveInfo,
-		Union0, Union, [case(Cons, Goal) | Goals],
+		[case(Cons, Goal) | Goals], Deadness0, Liveness0,
+		CompletedNonLocals, LiveInfo, !Union,
 		CompletedNonLocalUnion) :-
-	detect_deadness_in_goal(Goal0, Deadness0, Liveness0, LiveInfo,
-		DeadnessGoal, Goal1),
+	detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
+		Liveness0, LiveInfo),
 	Goal1 = _ - GoalInfo1,
 	goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
 	( instmap_delta_is_reachable(InstmapDelta1) ->
@@ -743,29 +736,29 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
 		InstmapReachable = no
 	),
 	union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable,
-		Union0, Union1),
-	detect_deadness_in_cases(SwitchVar, Goals0, Deadness0, Liveness0,
-		CompletedNonLocals, LiveInfo, Union1, Union, Goals,
+		!Union),
+	detect_deadness_in_cases(SwitchVar, Goals0, Goals, Deadness0,
+		Liveness0, CompletedNonLocals, LiveInfo, !Union,
 		CompletedNonLocalUnion),
 	add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
 		InstmapReachable, Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_par_conj(list(hlds_goal)::in,
+:- pred detect_deadness_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	set(prog_var)::in, set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, set(prog_var)::out, list(hlds_goal)::out) is det.
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_deadness_in_par_conj([], _Deadness0, _Liveness0, _NonLocals, _LiveInfo,
-		Union, Union, []).
-detect_deadness_in_par_conj([Goal0 | Goals0], Deadness0, Liveness0, NonLocals,
-		LiveInfo, Union0, Union, [Goal | Goals]) :-
-	detect_deadness_in_goal(Goal0, Deadness0, Liveness0, LiveInfo,
-		Deadness1, Goal1),
-	set__union(Union0, Deadness1, Union1),
-	detect_deadness_in_par_conj(Goals0, Deadness0, Liveness0, NonLocals,
-		LiveInfo, Union1, Union, Goals),
-	set__intersect(Union, NonLocals, NonLocalUnion),
+detect_deadness_in_par_conj([], [], _Deadness0, _Liveness0, _NonLocals,
+		_LiveInfo, !Union).
+detect_deadness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Deadness0,
+		Liveness0, NonLocals, LiveInfo, !Union) :-
+	detect_deadness_in_goal(Goal0, Goal1, Deadness0, Deadness1,
+		Liveness0, LiveInfo),
+	set__union(Deadness1, !Union),
+	detect_deadness_in_par_conj(Goals0, Goals, Deadness0,
+		Liveness0, NonLocals, LiveInfo, !Union),
+	set__intersect(!.Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Deadness1, Residue),
 	add_deadness_before_goal(Goal1, Residue, Goal).
 
@@ -835,53 +828,51 @@ add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
 :- pred update_liveness_goal(hlds_goal::in, live_info::in,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
-update_liveness_goal(GoalExpr - GoalInfo, LiveInfo, Liveness0, Liveness) :-
+update_liveness_goal(GoalExpr - GoalInfo, LiveInfo, !Liveness) :-
 	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
 	goal_info_get_pre_births(GoalInfo, PreBirths),
 	goal_info_get_post_deaths(GoalInfo, PostDeaths),
 	goal_info_get_post_births(GoalInfo, PostBirths),
 
-	set__difference(Liveness0, PreDeaths, Liveness1),
-	set__union(Liveness1, PreBirths, Liveness2),
-	update_liveness_expr(GoalExpr, GoalInfo, LiveInfo,
-		Liveness2, Liveness3),
-	set__difference(Liveness3, PostDeaths, Liveness4),
-	set__union(Liveness4, PostBirths, Liveness5),
+	Liveness0 = !.Liveness,
+	set__difference(!.Liveness, PreDeaths, !:Liveness),
+	set__union(PreBirths, !Liveness),
+	update_liveness_expr(GoalExpr, GoalInfo, LiveInfo, !Liveness),
+	set__difference(!.Liveness, PostDeaths, !:Liveness),
+	set__union(PostBirths, !Liveness),
 
-	set__divide_by_set(Liveness0, Liveness5, OldLiveness, NewLiveness0),
+	set__divide_by_set(Liveness0, !.Liveness, OldLiveness, NewLiveness0),
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		_, CompletedNonLocals),
 	set__intersect(NewLiveness0, CompletedNonLocals, NewLiveness),
-	set__union(OldLiveness, NewLiveness, Liveness).
+	set__union(OldLiveness, NewLiveness, !:Liveness).
 
 :- pred update_liveness_expr(hlds_goal_expr::in, hlds_goal_info::in,
 	live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-update_liveness_expr(call(_, _, _, _, _, _), _, _, Liveness, Liveness).
-update_liveness_expr(generic_call(_, _, _, _), _, _, Liveness, Liveness).
-update_liveness_expr(unify(_, _, _, _, _), _, _, Liveness, Liveness).
-update_liveness_expr(foreign_proc(_, _, _, _, _, _), _, _, Liveness, Liveness).
-update_liveness_expr(conj(Goals), _, LiveInfo, Liveness0, Liveness) :-
-	update_liveness_conj(Goals, LiveInfo, Liveness0, Liveness).
-update_liveness_expr(par_conj(Goals), _, LiveInfo, Liveness0, Liveness) :-
+update_liveness_expr(call(_, _, _, _, _, _), _, _, !Liveness).
+update_liveness_expr(generic_call(_, _, _, _), _, _, !Liveness).
+update_liveness_expr(unify(_, _, _, _, _), _, _, !Liveness).
+update_liveness_expr(foreign_proc(_, _, _, _, _, _), _, _, !Liveness).
+update_liveness_expr(conj(Goals), _, LiveInfo, !Liveness) :-
+	update_liveness_conj(Goals, LiveInfo, !Liveness).
+update_liveness_expr(par_conj(Goals), _, LiveInfo, !Liveness) :-
 		% XXX do these need special treatment?
-	update_liveness_conj(Goals, LiveInfo, Liveness0, Liveness).
-update_liveness_expr(disj(Goals), _GoalInfo, LiveInfo,
-		Liveness0, Liveness) :-
+	update_liveness_conj(Goals, LiveInfo, !Liveness).
+update_liveness_expr(disj(Goals), _GoalInfo, LiveInfo, !Liveness) :-
 	( find_reachable_goal(Goals, Goal) ->
-		update_liveness_goal(Goal, LiveInfo, Liveness0, Liveness)
+		update_liveness_goal(Goal, LiveInfo, !Liveness)
 	;
-		Liveness = Liveness0
+		true
 	).
-update_liveness_expr(switch(_, _, Cases), _GoalInfo, LiveInfo,
-		Liveness0, Liveness) :-
+update_liveness_expr(switch(_, _, Cases), _GoalInfo, LiveInfo, !Liveness) :-
 	( find_reachable_case(Cases, Goal) ->
-		update_liveness_goal(Goal, LiveInfo, Liveness0, Liveness)
+		update_liveness_goal(Goal, LiveInfo, !Liveness)
 	;
-		Liveness = Liveness0
+		true
 	).
 update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
-		Liveness0, Liveness) :-
+		!Liveness) :-
 	Else = _ - ElseGoalInfo,
 	goal_info_get_instmap_delta(ElseGoalInfo, ElseInstmapDelta),
 	Cond = _ - CondGoalInfo,
@@ -891,30 +882,30 @@ update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
 	(
 		instmap_delta_is_reachable(ElseInstmapDelta)
 	->
-		update_liveness_goal(Else, LiveInfo, Liveness0, Liveness)
+		update_liveness_goal(Else, LiveInfo, !Liveness)
 	;
 		instmap_delta_is_reachable(CondInstmapDelta),
 		instmap_delta_is_reachable(ThenInstmapDelta)
 	->
-		update_liveness_goal(Cond, LiveInfo, Liveness0, Liveness1),
-		update_liveness_goal(Then, LiveInfo, Liveness1, Liveness)
+		update_liveness_goal(Cond, LiveInfo, !Liveness),
+		update_liveness_goal(Then, LiveInfo, !Liveness)
 	;
-		Liveness = Liveness0
+		true
 	).
-update_liveness_expr(not(Goal), _, LiveInfo, Liveness0, Liveness) :-
-	update_liveness_goal(Goal, LiveInfo, Liveness0, Liveness).
-update_liveness_expr(some(_, _, Goal), _, LiveInfo, Liveness0, Liveness) :-
-	update_liveness_goal(Goal, LiveInfo, Liveness0, Liveness).
+update_liveness_expr(not(Goal), _, LiveInfo, !Liveness) :-
+	update_liveness_goal(Goal, LiveInfo, !Liveness).
+update_liveness_expr(some(_, _, Goal), _, LiveInfo, !Liveness) :-
+	update_liveness_goal(Goal, LiveInfo, !Liveness).
 update_liveness_expr(shorthand(_), _, _, _, _) :-
 	error("update_liveness_expr: shorthand").
 
 :- pred update_liveness_conj(list(hlds_goal)::in, live_info::in,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
-update_liveness_conj([], _, Liveness, Liveness).
-update_liveness_conj([Goal | Goals], LiveInfo, Liveness0, Liveness) :-
-	update_liveness_goal(Goal, LiveInfo, Liveness0, Liveness1),
-	update_liveness_conj(Goals, LiveInfo, Liveness1, Liveness).
+update_liveness_conj([], _, !Liveness).
+update_liveness_conj([Goal | Goals], LiveInfo, !Liveness) :-
+	update_liveness_goal(Goal, LiveInfo, !Liveness),
+	update_liveness_conj(Goals, LiveInfo, !Liveness).
 
 :- pred find_reachable_goal(list(hlds_goal)::in, hlds_goal::out) is semidet.
 
@@ -959,44 +950,46 @@ find_reachable_case([case(_, Goal) | Cases], ReachableGoal) :-
 % without the type(class)info variables describing its type being live there as
 % well.
 
-:- pred delay_death_proc_body(hlds_goal::in, prog_varset::in, set(prog_var)::in,
-	hlds_goal::out) is det.
+:- pred delay_death_proc_body(hlds_goal::in, hlds_goal::out, prog_varset::in,
+	set(prog_var)::in) is det.
 
-delay_death_proc_body(Goal0, VarSet, BornVars0, Goal) :-
-	delay_death_goal(Goal0, BornVars0, set__init, VarSet,
-		Goal1, _, DelayedDead),
+delay_death_proc_body(Goal0, Goal, VarSet, BornVars0) :-
+	delay_death_goal(Goal0, Goal1, BornVars0, _, set__init, DelayedDead,
+		VarSet),
 	Goal1 = GoalExpr - GoalInfo1,
 	goal_info_get_post_deaths(GoalInfo1, PostDeaths1),
 	set__union(PostDeaths1, DelayedDead, PostDeaths),
 	goal_info_set_post_deaths(GoalInfo1, PostDeaths, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
-:- pred delay_death_goal(hlds_goal::in, set(prog_var)::in, set(prog_var)::in,
-	prog_varset::in,
-	hlds_goal::out, set(prog_var)::out, set(prog_var)::out) is det.
+:- pred delay_death_goal(hlds_goal::in, hlds_goal::out,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
 
-delay_death_goal(GoalExpr0 - GoalInfo0, BornVars0, DelayedDead0, VarSet,
-		GoalExpr - GoalInfo, BornVars, DelayedDead) :-
+delay_death_goal(GoalExpr0 - GoalInfo0, GoalExpr - GoalInfo,
+		!BornVars, !DelayedDead, VarSet) :-
 	goal_info_get_pre_births(GoalInfo0, PreBirths),
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
+	BornVars0 = !.BornVars,
 
-	set__union(BornVars0, PreBirths, BornVars1),
+	set__union(PreBirths, !BornVars),
 	set__divide(var_is_named(VarSet), PreDeaths0,
 		PreDelayedDead, UnnamedPreDeaths),
-	set__union(DelayedDead0, PreDelayedDead, DelayedDead1),
+	set__union(PreDelayedDead, !DelayedDead),
 	goal_info_set_pre_deaths(GoalInfo0, UnnamedPreDeaths, GoalInfo1),
 
-	delay_death_goal_expr(GoalExpr0, GoalInfo1, BornVars1, DelayedDead1,
-		VarSet, GoalExpr, GoalInfo2, BornVars2, DelayedDead2),
+	delay_death_goal_expr(GoalExpr0, GoalExpr, GoalInfo1, GoalInfo2,
+		!BornVars, !DelayedDead, VarSet),
 
 	goal_info_get_post_births(GoalInfo2, PostBirths),
 	goal_info_get_post_deaths(GoalInfo2, PostDeaths2),
 
-	set__union(BornVars2, PostBirths, BornVars),
+	set__union(PostBirths, !BornVars),
 	set__divide(var_is_named(VarSet), PostDeaths2,
 		PostDelayedDead, UnnamedPostDeaths),
-	set__union(DelayedDead2, PostDelayedDead, DelayedDead3),
-	set__divide_by_set(BornVars0, DelayedDead3, DelayedDead, ToBeKilled),
+	set__union(PostDelayedDead, !DelayedDead),
+	set__divide_by_set(BornVars0, !.DelayedDead, !:DelayedDead,
+		ToBeKilled),
 	set__union(UnnamedPostDeaths, ToBeKilled, PostDeaths),
 	goal_info_set_post_deaths(GoalInfo2, PostDeaths, GoalInfo).
 
@@ -1005,158 +998,134 @@ delay_death_goal(GoalExpr0 - GoalInfo0, BornVars0, DelayedDead0, VarSet,
 var_is_named(VarSet, Var) :-
 	varset__search_name(VarSet, Var, _).
 
-:- pred delay_death_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
-	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
-	hlds_goal_expr::out, hlds_goal_info::out,
-	set(prog_var)::out, set(prog_var)::out) is det.
+:- pred delay_death_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
+	hlds_goal_info::in, hlds_goal_info::out,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
 
-delay_death_goal_expr(GoalExpr0, GoalInfo0, BornVars0, DelayedDead0, VarSet,
-		GoalExpr, GoalInfo, BornVars, DelayedDead) :-
+delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
 	(
-		GoalExpr0 = call(_, _, _, _, _, _),
-		GoalExpr = GoalExpr0,
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0,
-		DelayedDead = DelayedDead0
+		!.GoalExpr = call(_, _, _, _, _, _)
 	;
-		GoalExpr0 = generic_call(_, _, _, _),
-		GoalExpr = GoalExpr0,
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0,
-		DelayedDead = DelayedDead0
+		!.GoalExpr = generic_call(_, _, _, _)
 	;
-		GoalExpr0 = unify(_, _, _, _, _),
-		GoalExpr = GoalExpr0,
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0,
-		DelayedDead = DelayedDead0
+		!.GoalExpr = unify(_, _, _, _, _)
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
-		GoalExpr = GoalExpr0,
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0,
-		DelayedDead = DelayedDead0
+		!.GoalExpr = foreign_proc(_, _, _, _, _, _)
 	;
-		GoalExpr0 = conj(Goals0),
-		delay_death_conj(Goals0, BornVars0, DelayedDead0, VarSet,
-			Goals, BornVars, DelayedDead),
-		GoalExpr = conj(Goals),
-		GoalInfo = GoalInfo0
+		!.GoalExpr = conj(Goals0),
+		delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead,
+			VarSet),
+		!:GoalExpr = conj(Goals)
 	;
-		GoalExpr0 = par_conj(Goals0),
-		delay_death_conj(Goals0, BornVars0, DelayedDead0, VarSet,
-			Goals, BornVars, DelayedDead),
-		GoalExpr = par_conj(Goals),
-		GoalInfo = GoalInfo0
+		!.GoalExpr = par_conj(Goals0),
+		delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead,
+			VarSet),
+		!:GoalExpr = par_conj(Goals)
 	;
-		GoalExpr0 = disj(Goals0),
-		delay_death_disj(Goals0, BornVars0, DelayedDead0, VarSet,
-			GoalDeaths, MaybeBornVarsDelayedDead),
+		!.GoalExpr = disj(Goals0),
+		delay_death_disj(Goals0, GoalDeaths,
+			!.BornVars, !.DelayedDead, VarSet,
+			MaybeBornVarsDelayedDead),
 		(
-			MaybeBornVarsDelayedDead = yes(BornVars - DelayedDead),
+			MaybeBornVarsDelayedDead =
+				yes(!:BornVars - !:DelayedDead),
 			Goals = list__map(
-				kill_excess_delayed_dead_goal(DelayedDead),
+				kill_excess_delayed_dead_goal(!.DelayedDead),
 				GoalDeaths),
-			GoalExpr = disj(Goals),
-			GoalInfo = GoalInfo0
+			!:GoalExpr = disj(Goals)
 		;
-			MaybeBornVarsDelayedDead = no,
+			MaybeBornVarsDelayedDead = no
 			% Empty disjunctions represent the goal `fail',
 			% so we process them as if they were primitive goals.
-			GoalExpr = GoalExpr0,
-			GoalInfo = GoalInfo0,
-			BornVars = BornVars0,
-			DelayedDead = DelayedDead0
 		)
 	;
-		GoalExpr0 = switch(Var, CanFail, Cases0),
-		delay_death_cases(Cases0, BornVars0, DelayedDead0, VarSet,
-			CaseDeaths, MaybeBornVarsDelayedDead),
+		!.GoalExpr = switch(Var, CanFail, Cases0),
+		delay_death_cases(Cases0, CaseDeaths,
+			!.BornVars, !.DelayedDead, VarSet,
+			MaybeBornVarsDelayedDead),
 		(
-			MaybeBornVarsDelayedDead = yes(BornVars - DelayedDead),
+			MaybeBornVarsDelayedDead =
+				yes(!:BornVars - !:DelayedDead),
 			Cases = list__map(
-				kill_excess_delayed_dead_case(DelayedDead),
+				kill_excess_delayed_dead_case(!.DelayedDead),
 				CaseDeaths),
-			GoalExpr = switch(Var, CanFail, Cases),
-			GoalInfo = GoalInfo0
+			!:GoalExpr = switch(Var, CanFail, Cases)
 		;
 			MaybeBornVarsDelayedDead = no,
 			error("delay_death_goal_expr: empty switch")
 		)
 	;
-		GoalExpr0 = not(Goal0),
-		delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-			Goal, _BornVars, DelayedDead),
-		GoalExpr = not(Goal),
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0
+		!.GoalExpr = not(Goal0),
+		delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead,
+			VarSet),
+		!:GoalExpr = not(Goal)
 	;
-		GoalExpr0 = if_then_else(QuantVars, Cond0, Then0, Else0),
-		delay_death_goal(Cond0, BornVars0, DelayedDead0, VarSet,
-			Cond, BornVarsCond, DelayedDeadCond),
-		delay_death_goal(Then0, BornVarsCond, DelayedDeadCond, VarSet,
-			Then1, BornVarsThen, DelayedDeadThen),
-		delay_death_goal(Else0, BornVars0, DelayedDead0, VarSet,
-			Else1, BornVarsElse, DelayedDeadElse),
+		!.GoalExpr = if_then_else(QuantVars, Cond0, Then0, Else0),
+		BornVars0 = !.BornVars,
+		DelayedDead0 = !.DelayedDead,
+		delay_death_goal(Cond0, Cond, BornVars0, BornVarsCond,
+			DelayedDead0, DelayedDeadCond, VarSet),
+		delay_death_goal(Then0, Then1, BornVarsCond, BornVarsThen,
+			DelayedDeadCond, DelayedDeadThen, VarSet),
+		delay_death_goal(Else0, Else1, BornVars0, BornVarsElse,
+			DelayedDead0, DelayedDeadElse, VarSet),
 		set__intersect(BornVarsThen, BornVarsElse, BornVars),
 		set__intersect(DelayedDeadThen, DelayedDeadElse, DelayedDead),
 		Then = kill_excess_delayed_dead_goal(DelayedDead,
 			Then1 - DelayedDeadThen),
+		!:BornVars = BornVars,
+		!:DelayedDead = DelayedDead,
 		Else = kill_excess_delayed_dead_goal(DelayedDead,
 			Else1 - DelayedDeadElse),
-		GoalExpr = if_then_else(QuantVars, Cond, Then, Else),
-		GoalInfo = GoalInfo0
+		!:GoalExpr = if_then_else(QuantVars, Cond, Then, Else)
 	;
-		GoalExpr0 = some(QuantVars, CanRemove, Goal0),
-		delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-			Goal, _BornVars, DelayedDead),
-		GoalExpr = some(QuantVars, CanRemove, Goal),
-		GoalInfo = GoalInfo0,
-		BornVars = BornVars0
+		!.GoalExpr = some(QuantVars, CanRemove, Goal0),
+		delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead,
+			VarSet),
+		!:GoalExpr = some(QuantVars, CanRemove, Goal)
 	;
-		GoalExpr0 = shorthand(_),
+		!.GoalExpr = shorthand(_),
 		error("delay_death_goal_expr: shorthand")
 	).
 
-:- pred delay_death_conj(list(hlds_goal)::in,
-	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
-	list(hlds_goal)::out, set(prog_var)::out, set(prog_var)::out) is det.
+:- pred delay_death_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
 
-delay_death_conj([], BornVars, DelayedDead, _, [], BornVars, DelayedDead).
-delay_death_conj([Goal0 | Goals0], BornVars0, DelayedDead0, VarSet,
-		[Goal | Goals], BornVars, DelayedDead) :-
-	delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-		Goal, BornVars1, DelayedDead1),
-	delay_death_conj(Goals0, BornVars1, DelayedDead1, VarSet,
-		Goals, BornVars, DelayedDead).
+delay_death_conj([], [], !BornVars, !DelayedDead, _).
+delay_death_conj([Goal0 | Goals0], [Goal | Goals], !BornVars, !DelayedDead,
+		VarSet) :-
+	delay_death_goal(Goal0, Goal, !BornVars, !DelayedDead, VarSet),
+	delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet).
 
-:- pred delay_death_par_conj(list(hlds_goal)::in,
-	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
-	list(hlds_goal)::out, set(prog_var)::out, set(prog_var)::out) is det.
+:- pred delay_death_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, set(prog_var)::out,
+	set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
 
-delay_death_par_conj([], BornVars, DelayedDead, _, [], BornVars, DelayedDead).
-delay_death_par_conj([Goal0 | Goals0], BornVars0, DelayedDead0, VarSet,
-		[Goal | Goals], BornVars, DelayedDead) :-
-	delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-		Goal, BornVarsGoal, DelayedDeadGoal),
-	delay_death_par_conj(Goals0, BornVars0, DelayedDead0, VarSet,
-		Goals, BornVarsGoals, DelayedDeadGoals),
+delay_death_par_conj([], [], !BornVars, !DelayedDead, _).
+delay_death_par_conj([Goal0 | Goals0], [Goal | Goals],
+		BornVars0, BornVars, DelayedDead0, DelayedDead, VarSet) :-
+	delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
+		DelayedDead0, DelayedDeadGoal, VarSet),
+	delay_death_par_conj(Goals0, Goals, BornVars0, BornVarsGoals,
+		DelayedDead0, DelayedDeadGoals, VarSet),
 	set__union(BornVarsGoal, BornVarsGoals, BornVars),
 	set__union(DelayedDeadGoal, DelayedDeadGoals, DelayedDead).
 
 :- pred delay_death_disj(list(hlds_goal)::in,
-	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
 	assoc_list(hlds_goal, set(prog_var))::out,
+	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
 	maybe(pair(set(prog_var)))::out) is det.
 
-delay_death_disj([], _, _, _, [], no).
-delay_death_disj([Goal0 | Goals0], BornVars0, DelayedDead0, VarSet,
-		[Goal - DelayedDeadGoal | Goals],
+delay_death_disj([], [], _, _, _, no).
+delay_death_disj([Goal0 | Goals0], [Goal - DelayedDeadGoal | Goals],
+		BornVars0, DelayedDead0, VarSet,
 		yes(BornVars - DelayedDead)) :-
-	delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-		Goal, BornVarsGoal, DelayedDeadGoal),
-	delay_death_disj(Goals0, BornVars0, DelayedDead0, VarSet,
-		Goals, MaybeBornVarsDelayedDead),
+	delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
+		DelayedDead0, DelayedDeadGoal, VarSet),
+	delay_death_disj(Goals0, Goals, BornVars0, DelayedDead0, VarSet,
+		MaybeBornVarsDelayedDead),
 	(
 		MaybeBornVarsDelayedDead =
 			yes(BornVarsGoals - DelayedDeadGoals),
@@ -1168,19 +1137,19 @@ delay_death_disj([Goal0 | Goals0], BornVars0, DelayedDead0, VarSet,
 		DelayedDead = DelayedDeadGoal
 	).
 
-:- pred delay_death_cases(list(case)::in,
+:- pred delay_death_cases(list(case)::in, assoc_list(case, set(prog_var))::out,
 	set(prog_var)::in, set(prog_var)::in, prog_varset::in,
-	assoc_list(case, set(prog_var))::out, maybe(pair(set(prog_var)))::out)
-	is det.
+	maybe(pair(set(prog_var)))::out) is det.
 
-delay_death_cases([], _, _, _, [], no).
-delay_death_cases([case(ConsId, Goal0) | Cases0], BornVars0, DelayedDead0,
-		VarSet, [case(ConsId, Goal) - DelayedDeadGoal | Cases],
+delay_death_cases([], [], _, _, _, no).
+delay_death_cases([case(ConsId, Goal0) | Cases0],
+		[case(ConsId, Goal) - DelayedDeadGoal | Cases],
+		BornVars0, DelayedDead0, VarSet,
 		yes(BornVars - DelayedDead)) :-
-	delay_death_goal(Goal0, BornVars0, DelayedDead0, VarSet,
-		Goal, BornVarsGoal, DelayedDeadGoal),
-	delay_death_cases(Cases0, BornVars0, DelayedDead0, VarSet,
-		Cases, MaybeBornVarsDelayedDead),
+	delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
+		DelayedDead0, DelayedDeadGoal, VarSet),
+	delay_death_cases(Cases0, Cases, BornVars0, DelayedDead0, VarSet,
+		MaybeBornVarsDelayedDead),
 	(
 		MaybeBornVarsDelayedDead =
 			yes(BornVarsCases - DelayedDeadCases),
@@ -1222,59 +1191,59 @@ kill_excess_delayed_dead_case(FinalDelayedDead,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_resume_points_in_goal(hlds_goal::in, set(prog_var)::in,
-	live_info::in, set(prog_var)::in, hlds_goal::out, set(prog_var)::out)
-	is det.
+:- pred detect_resume_points_in_goal(hlds_goal::in, hlds_goal::out,
+	set(prog_var)::in, set(prog_var)::out, live_info::in,
+	set(prog_var)::in) is det.
 
-detect_resume_points_in_goal(Goal0 - GoalInfo0, Liveness0, LiveInfo,
-		ResumeVars0, Goal - GoalInfo0, Liveness) :-
+detect_resume_points_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo0,
+		!Liveness, LiveInfo, ResumeVars0) :-
 	goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
 	goal_info_get_pre_births(GoalInfo0, PreBirths0),
 	goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
 	goal_info_get_post_births(GoalInfo0, PostBirths0),
 
-	set__difference(Liveness0, PreDeaths0, Liveness1),
-	set__union(Liveness1, PreBirths0, Liveness2),
+	set__difference(!.Liveness, PreDeaths0, !:Liveness),
+	set__union(PreBirths0, !Liveness),
 
-	detect_resume_points_in_goal_2(Goal0, GoalInfo0, Liveness2, LiveInfo,
-		ResumeVars0, Goal, Liveness3),
+	detect_resume_points_in_goal_2(Goal0, Goal, !Liveness, GoalInfo0,
+		LiveInfo, ResumeVars0),
 
-	set__difference(Liveness3, PostDeaths0, Liveness4),
-	set__union(Liveness4, PostBirths0, Liveness).
+	set__difference(!.Liveness, PostDeaths0, !:Liveness),
+	set__union(PostBirths0, !Liveness).
 
-:- pred detect_resume_points_in_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-	set(prog_var)::in, live_info::in, set(prog_var)::in,
-	hlds_goal_expr::out, set(prog_var)::out) is det.
+:- pred detect_resume_points_in_goal_2(hlds_goal_expr::in, hlds_goal_expr::out,
+	set(prog_var)::in, set(prog_var)::out, hlds_goal_info::in,
+	live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_goal_2(conj(Goals0), _, Liveness0, LiveInfo,
-		ResumeVars0, conj(Goals), Liveness) :-
-	detect_resume_points_in_conj(Goals0, Liveness0, LiveInfo, ResumeVars0,
-		Goals, Liveness).
+detect_resume_points_in_goal_2(conj(Goals0), conj(Goals), !Liveness, _,
+		LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_conj(Goals0, Goals, !Liveness,
+		LiveInfo, ResumeVars0).
 
-detect_resume_points_in_goal_2(par_conj(Goals0), _, Liveness0, LiveInfo,
-		ResumeVars0, par_conj(Goals), Liveness) :-
-	detect_resume_points_in_par_conj(Goals0, Liveness0, LiveInfo,
-		ResumeVars0, Goals, Liveness).
+detect_resume_points_in_goal_2(par_conj(Goals0), par_conj(Goals), !Liveness, _,
+		LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_par_conj(Goals0, Goals, !Liveness,
+		LiveInfo, ResumeVars0).
 
-detect_resume_points_in_goal_2(disj(Goals0), GoalInfo, Liveness0, LiveInfo,
-		ResumeVars0, disj(Goals), Liveness) :-
+detect_resume_points_in_goal_2(disj(Goals0), disj(Goals), !Liveness, GoalInfo,
+		LiveInfo, ResumeVars0) :-
 	goal_info_get_code_model(GoalInfo, CodeModel),
 	( CodeModel = model_non ->
-		detect_resume_points_in_non_disj(Goals0, Liveness0, LiveInfo,
-			ResumeVars0, Goals, Liveness, _)
+		detect_resume_points_in_non_disj(Goals0, Goals, !Liveness,
+			LiveInfo, ResumeVars0, _)
 	;
-		detect_resume_points_in_pruned_disj(Goals0, Liveness0, LiveInfo,
-			ResumeVars0, Goals, Liveness, _)
+		detect_resume_points_in_pruned_disj(Goals0, Goals, !Liveness,
+			LiveInfo, ResumeVars0, _)
 	).
 
-detect_resume_points_in_goal_2(switch(Var, CF, Cases0), _, Liveness0,
-		LiveInfo, ResumeVars0, switch(Var, CF, Cases), Liveness) :-
-	detect_resume_points_in_cases(Cases0, Liveness0, LiveInfo, ResumeVars0,
-		Cases, Liveness).
+detect_resume_points_in_goal_2(switch(Var, CF, Cases0), switch(Var, CF, Cases),
+		!Liveness, _, LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_cases(Cases0, Cases, !Liveness,
+		LiveInfo, ResumeVars0).
 
 detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-		GoalInfo0, Liveness0, LiveInfo, ResumeVars0,
-		if_then_else(Vars, Cond, Then, Else), LivenessThen) :-
+		if_then_else(Vars, Cond, Then, Else), Liveness0, LivenessThen,
+		GoalInfo0, LiveInfo, ResumeVars0) :-
 
 	% compute the set of variables that may be needed at the start
 	% of the else part and attach this set to the condition
@@ -1286,12 +1255,12 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		% ResumeVars0 should already have been completed.
 	set__union(CondResumeVars1, ResumeVars0, CondResumeVars),
 
-	detect_resume_points_in_goal(Cond0, Liveness0, LiveInfo,
-		CondResumeVars, Cond1, LivenessCond),
-	detect_resume_points_in_goal(Then0, LivenessCond, LiveInfo,
-		ResumeVars0, Then, LivenessThen),
-	detect_resume_points_in_goal(Else0, Liveness0, LiveInfo,
-		ResumeVars0, Else, LivenessElse),
+	detect_resume_points_in_goal(Cond0, Cond1, Liveness0, LivenessCond,
+		LiveInfo, CondResumeVars),
+	detect_resume_points_in_goal(Then0, Then, LivenessCond, LivenessThen,
+		LiveInfo, ResumeVars0),
+	detect_resume_points_in_goal(Else0, Else, Liveness0, LivenessElse,
+		LiveInfo, ResumeVars0),
 
 	% Figure out which entry labels we need at the resumption point.
 	% By minimizing the number of labels we use, we also minimize
@@ -1325,22 +1294,22 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 
 	require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
 
-detect_resume_points_in_goal_2(some(Vars, CanRemove, Goal0), _, Liveness0,
-		LiveInfo, ResumeVars0, some(Vars, CanRemove, Goal),
-		Liveness) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
-					Goal, Liveness).
+detect_resume_points_in_goal_2(some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal), !Liveness, _,
+		LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_goal(Goal0, Goal, !Liveness,
+		LiveInfo, ResumeVars0).
 
-detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
-		not(Goal), Liveness) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
-		_, Liveness),
+detect_resume_points_in_goal_2(not(Goal0), not(Goal), Liveness0, Liveness, _,
+		LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_goal(Goal0, _, Liveness0, Liveness,
+		LiveInfo, ResumeVars0),
 	liveness__maybe_complete_with_typeinfos(LiveInfo, Liveness,
 		CompletedLiveness),
 		% ResumeVars0 should already have been completed.
 	set__union(CompletedLiveness, ResumeVars0, ResumeVars1),
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars1,
-		Goal1, _Liveness),
+	detect_resume_points_in_goal(Goal0, Goal1, Liveness0, _Liveness,
+		LiveInfo, ResumeVars1),
 
 	% Figure out which entry labels we need at the resumption point.
 	% By minimizing the number of labels we use, we also minimize
@@ -1358,33 +1327,33 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
-detect_resume_points_in_goal_2(Goal @ generic_call(_, _, _, _), _,
-		Liveness, _, _, Goal, Liveness).
+detect_resume_points_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
+		!Liveness, _, _, _).
 
-detect_resume_points_in_goal_2(Goal @ call(_, _, _, _, _, _), _,
-		Liveness, _, _, Goal, Liveness).
+detect_resume_points_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal,
+		!Liveness, _, _, _).
 
-detect_resume_points_in_goal_2(Goal @ unify(_, _, _, _, _), _,
-		Liveness, _, _, Goal, Liveness).
+detect_resume_points_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
+		!Liveness, _, _, _).
 
-detect_resume_points_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), _,
-		Liveness, _, _, Goal, Liveness).
+detect_resume_points_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
+		!Liveness, _, _, _).
 
 detect_resume_points_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("detect_resume_points_in_goal_2: unexpected shorthand").
 
-:- pred detect_resume_points_in_conj(list(hlds_goal)::in, set(prog_var)::in,
-	live_info::in, set(prog_var)::in,
-	list(hlds_goal)::out, set(prog_var)::out) is det.
+:- pred detect_resume_points_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, set(prog_var)::out,
+	live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_conj([], Liveness, _, _, [], Liveness).
-detect_resume_points_in_conj([Goal0 | Goals0], Liveness0, LiveInfo,
-		ResumeVars0, [Goal | Goals], Liveness) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
-		Goal, Liveness1),
-	detect_resume_points_in_conj(Goals0, Liveness1, LiveInfo, ResumeVars0,
-		Goals, Liveness).
+detect_resume_points_in_conj([], [], !Liveness, _, _).
+detect_resume_points_in_conj([Goal0 | Goals0], [Goal | Goals],
+		!Liveness, LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_goal(Goal0, Goal, !Liveness,
+		LiveInfo, ResumeVars0),
+	detect_resume_points_in_conj(Goals0, Goals, !Liveness,
+		LiveInfo, ResumeVars0).
 
 	% There are only two differences in the handling of pruned disjs
 	% versus nondet disjs. First, for nondet disjunctions we always
@@ -1402,37 +1371,38 @@ detect_resume_points_in_conj([Goal0 | Goals0], Liveness0, LiveInfo,
 	% needed by a non-last disjunct.
 
 :- pred detect_resume_points_in_non_disj(list(hlds_goal)::in,
-	set(prog_var)::in, live_info::in, set(prog_var)::in,
-	list(hlds_goal)::out, set(prog_var)::out, set(prog_var)::out) is det.
+	list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out,
+	live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
 detect_resume_points_in_non_disj([], _, _, _, _, _, _) :-
 	error("empty nondet disjunction").
-detect_resume_points_in_non_disj([Goal0 | Goals0], Liveness0, LiveInfo,
-		ResumeVars0, [Goal | Goals], Liveness, Needed) :-
+detect_resume_points_in_non_disj([Goal0 | Goals0], [Goal | Goals],
+		Liveness0, Liveness, LiveInfo, ResumeVars0, Needed) :-
 	(
 		% If there are any more disjuncts, then this disjunct
 		% establishes a resumption point.
 		Goals0 = [_ | _]
 	->
-		detect_resume_points_in_non_disj(Goals0, Liveness0, LiveInfo,
-			ResumeVars0, Goals, LivenessRest, NeededRest),
-		detect_resume_points_in_non_last_disjunct(Goal0, no,
-			Liveness0, LivenessRest, LiveInfo, ResumeVars0, Goal,
+		detect_resume_points_in_non_disj(Goals0, Goals,
+			Liveness0, LivenessRest, LiveInfo,
+			ResumeVars0, NeededRest),
+		detect_resume_points_in_non_last_disjunct(Goal0, Goal, no,
+			Liveness0, LivenessRest, LiveInfo, ResumeVars0,
 			Liveness, NeededRest, Needed)
 	;
-		detect_resume_points_in_last_disjunct(Goal0, Liveness0,
-			LiveInfo, ResumeVars0, Goal, Liveness, Needed),
+		detect_resume_points_in_last_disjunct(Goal0, Goal,
+			Liveness0, Liveness, LiveInfo, ResumeVars0, Needed),
 		Goals = Goals0
 	).
 
 :- pred detect_resume_points_in_pruned_disj(list(hlds_goal)::in,
-	set(prog_var)::in, live_info::in, set(prog_var)::in,
-	list(hlds_goal)::out, set(prog_var)::out, set(prog_var)::out) is det.
+	list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out,
+	live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_resume_points_in_pruned_disj([], Liveness, _, _, [], Liveness, Needed) :-
+detect_resume_points_in_pruned_disj([], [], !Liveness, _, _, Needed) :-
 	set__init(Needed).
-detect_resume_points_in_pruned_disj([Goal0 | Goals0], Liveness0, LiveInfo,
-		ResumeVars0, [Goal | Goals], Liveness, Needed) :-
+detect_resume_points_in_pruned_disj([Goal0 | Goals0], [Goal | Goals],
+		Liveness0, Liveness, LiveInfo, ResumeVars0, Needed) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism0),
 	determinism_components(Detism0, CanFail0, _),
@@ -1445,31 +1415,32 @@ detect_resume_points_in_pruned_disj([Goal0 | Goals0], Liveness0, LiveInfo,
 		CanFail0 = can_fail,
 		Goals0 = [_ | _]
 	->
-		detect_resume_points_in_pruned_disj(Goals0, Liveness0, LiveInfo,
-			ResumeVars0, Goals, LivenessRest, NeededRest),
-		detect_resume_points_in_non_last_disjunct(Goal0, yes,
-			Liveness0, LivenessRest, LiveInfo, ResumeVars0, Goal,
+		detect_resume_points_in_pruned_disj(Goals0, Goals,
+			Liveness0, LivenessRest, LiveInfo,
+			ResumeVars0, NeededRest),
+		detect_resume_points_in_non_last_disjunct(Goal0, Goal, yes,
+			Liveness0, LivenessRest, LiveInfo, ResumeVars0,
 			Liveness, NeededRest, Needed)
 	;
-		detect_resume_points_in_last_disjunct(Goal0, Liveness0,
-			LiveInfo, ResumeVars0, Goal, Liveness, Needed),
+		detect_resume_points_in_last_disjunct(Goal0, Goal,
+			Liveness0, Liveness, LiveInfo, ResumeVars0, Needed),
 		Goals = Goals0
 	).
 
-:- pred detect_resume_points_in_non_last_disjunct(hlds_goal::in, bool::in,
-	set(prog_var)::in, set(prog_var)::in, live_info::in,
-	set(prog_var)::in, hlds_goal::out, set(prog_var)::out,
+:- pred detect_resume_points_in_non_last_disjunct(hlds_goal::in,hlds_goal::out,
+	bool::in, set(prog_var)::in, set(prog_var)::in, live_info::in,
+	set(prog_var)::in, set(prog_var)::out,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
-		Liveness0, LivenessRest, LiveInfo, ResumeVars0, Goal,
+detect_resume_points_in_non_last_disjunct(Goal0, Goal, MayUseOrigOnly,
+		Liveness0, LivenessRest, LiveInfo, ResumeVars0,
 		Liveness, NeededRest, Needed) :-
 	% we must save a variable across this disjunct if it is
 	% needed in a later disjunct or in an enclosing resume point
 
 	set__union(NeededRest, ResumeVars0, ResumeVars1),
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo,
-		ResumeVars1, Goal1, Liveness),
+	detect_resume_points_in_goal(Goal0, Goal1, Liveness0, Liveness,
+		LiveInfo, ResumeVars1),
 
 	% Figure out which entry labels we need at the resumption point.
 	% By minimizing the number of labels we use, we also minimize
@@ -1502,50 +1473,49 @@ detect_resume_points_in_non_last_disjunct(Goal0, MayUseOrigOnly,
 
 	require_equal(Liveness, LivenessRest, "disjunction", LiveInfo).
 
-:- pred detect_resume_points_in_last_disjunct(hlds_goal::in,
-	set(prog_var)::in, live_info::in, set(prog_var)::in,
-	hlds_goal::out, set(prog_var)::out, set(prog_var)::out) is det.
+:- pred detect_resume_points_in_last_disjunct(hlds_goal::in, hlds_goal::out,
+	set(prog_var)::in, set(prog_var)::out, live_info::in,
+	set(prog_var)::in, set(prog_var)::out) is det.
 
-detect_resume_points_in_last_disjunct(Goal0, Liveness0, LiveInfo,
-		ResumeVars0, Goal, Liveness, CompletedNeeded) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo,
-		ResumeVars0, Goal, Liveness),
+detect_resume_points_in_last_disjunct(Goal0, Goal, Liveness0, Liveness,
+		LiveInfo, ResumeVars0, CompletedNeeded) :-
+	detect_resume_points_in_goal(Goal0, Goal, Liveness0, Liveness,
+		LiveInfo, ResumeVars0),
 	Goal = _ - GoalInfo,
 	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
 	set__difference(Liveness0, PreDeaths, Needed),
 	liveness__maybe_complete_with_typeinfos(LiveInfo, Needed,
 		CompletedNeeded).
 
-:- pred detect_resume_points_in_cases(list(case)::in, set(prog_var)::in,
-	live_info::in, set(prog_var)::in,
-	list(case)::out, set(prog_var)::out) is det.
+:- pred detect_resume_points_in_cases(list(case)::in, list(case)::out,
+	set(prog_var)::in, set(prog_var)::out,
+	live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_cases([], Liveness, _, _, [], Liveness).
-detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0], Liveness0,
-		LiveInfo, ResumeVars0,
-		[case(ConsId, Goal) | Cases], LivenessFirst) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
-		Goal, LivenessFirst),
+detect_resume_points_in_cases([], [], !Liveness, _, _).
+detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0],
+		[case(ConsId, Goal) | Cases], Liveness0, LivenessFirst,
+		LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_goal(Goal0, Goal, Liveness0, LivenessFirst,
+		LiveInfo, ResumeVars0),
 	( Cases0 = [_ | _] ->
-		detect_resume_points_in_cases(Cases0, Liveness0, LiveInfo,
-			ResumeVars0, Cases, LivenessRest),
-		require_equal(LivenessFirst, LivenessRest, "switch",
-			LiveInfo)
+		detect_resume_points_in_cases(Cases0, Cases,
+			Liveness0, LivenessRest, LiveInfo, ResumeVars0),
+		require_equal(LivenessFirst, LivenessRest, "switch", LiveInfo)
 	;
 		Cases = Cases0
 	).
 
 :- pred detect_resume_points_in_par_conj(list(hlds_goal)::in,
-	set(prog_var)::in, live_info::in, set(prog_var)::in,
-	list(hlds_goal)::out, set(prog_var)::out) is det.
+	list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out,
+	live_info::in, set(prog_var)::in) is det.
 
-detect_resume_points_in_par_conj([], Liveness, _, _, [], Liveness).
-detect_resume_points_in_par_conj([Goal0 | Goals0], Liveness0, LiveInfo,
-		ResumeVars0, [Goal | Goals], LivenessFirst) :-
-	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
-		Goal, LivenessFirst),
-	detect_resume_points_in_par_conj(Goals0, Liveness0, LiveInfo,
-		ResumeVars0, Goals, _LivenessRest).
+detect_resume_points_in_par_conj([], [], !Liveness, _, _).
+detect_resume_points_in_par_conj([Goal0 | Goals0], [Goal | Goals],
+		Liveness0, LivenessFirst, LiveInfo, ResumeVars0) :-
+	detect_resume_points_in_goal(Goal0, Goal, Liveness0, LivenessFirst,
+		LiveInfo, ResumeVars0),
+	detect_resume_points_in_par_conj(Goals0, Goals,
+		Liveness0, _LivenessRest, LiveInfo, ResumeVars0).
 
 :- pred require_equal(set(prog_var)::in, set(prog_var)::in, string::in,
 	live_info::in) is det.
@@ -1613,17 +1583,16 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 :- pred initial_liveness_2(list(prog_var)::in, list(mode)::in, list(type)::in,
 	module_info::in, set(prog_var)::in, set(prog_var)::out) is semidet.
 
-initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
-initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
-		Liveness0, Liveness) :-
+initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
+initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-
 	(
 		mode_to_arg_mode(ModuleInfo, M, T, top_in)
 	->
-		set__insert(Liveness0, V, Liveness1)
+		set__insert(!.Liveness, V, !:Liveness)
 	;
-		Liveness1 = Liveness0
+		true
 	),
-	initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
+	initial_liveness_2(Vs, Ms, Ts, ModuleInfo, !Liveness).
 
 %-----------------------------------------------------------------------------%
 
@@ -1685,9 +1654,9 @@ add_deadness_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 :- pred find_value_giving_occurrences(list(prog_var)::in, live_info::in,
 	instmap_delta::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-find_value_giving_occurrences([], _, _, ValueVars, ValueVars).
+find_value_giving_occurrences([], _, _, !ValueVars).
 find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
-		ValueVars0, ValueVars) :-
+		!ValueVars) :-
 	VarTypes = LiveInfo ^ vartypes,
 	map__lookup(VarTypes, Var, Type),
 	(
@@ -1695,12 +1664,12 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ModuleInfo = LiveInfo ^ module_info,
 		mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
 	->
-		set__insert(ValueVars0, Var, ValueVars1)
+		set__insert(!.ValueVars, Var, !:ValueVars)
 	;
-		ValueVars1 = ValueVars0
+		true
 	),
 	find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta,
-		ValueVars1, ValueVars).
+		!ValueVars).
 
 %-----------------------------------------------------------------------------%
 

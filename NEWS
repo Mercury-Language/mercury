@@ -25,10 +25,10 @@ Changes to the Mercury standard library:
   arbitrary terms to XML documents. Two new modules, set_tree234 and
   set_ctree234, have been added to provide operations on sets with better
   worst-case behavior (but worse constant factors) than the current
-  implementation. Eight new modules, svarray, sveqvclass, svmap, svbimap,
-  svset, svbag, svqueue and svvarset now provide more convenient ways to update
-  arrays, equivalence classes, maps, bimaps, sets, bags, queues and varsets
-  in code that uses state variables.
+  implementation. Nine new modules, svarray, sveqvclass, svmap, svbimap,
+  svset, svbag, svqueue, svrelation and svvarset now provide more convenient
+  ways to update arrays, equivalence classes, maps, bimaps, sets, bags,
+  queues, relations and varsets in code that uses state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file
