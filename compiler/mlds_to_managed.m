@@ -308,29 +308,33 @@ generate_method_code(Lang, _ModuleName,
 		io__nl,
 
 		io__write_string("{\n"),
-		write_statement(Lang, Statement),
+		write_statement(Lang, Inputs, Statement),
 		io__write_string("}\n")
 	;
 		[]
 	).
 
-:- pred write_statement(foreign_language::in(managed_lang), mlds__statement::in,
+:- pred write_statement(foreign_language::in(managed_lang), 
+		mlds__arguments::in, mlds__statement::in,
 		io__state::di, io__state::uo) is det.
-write_statement(Lang, statement(Statement, Context)) -->
+write_statement(Lang, Args, statement(Statement, Context)) -->
 	( 
-		{ Statement = atomic(outline_foreign_proc(Lang, _,
-			_Lvals, Code)) }
+			% XXX petdr
+		{ Statement = atomic(outline_foreign_proc(Lang, OutlineArgs,
+				_Lvals, Code)) }
 	->
+		list__foldl(write_outline_arg_init(Lang), OutlineArgs),
 		output_context(Lang, get_prog_context(Context)),
 		io__write_string(Code),
 		io__nl,
-		output_reset_context(Lang)
+		output_reset_context(Lang),
+		list__foldl(write_outline_arg_final(Lang), OutlineArgs)
 	;
 		{ Statement = block(Defns, Statements) }
 	->
 		io__write_list(Defns, "", write_defn_decl(Lang)),
 		io__write_string("{\n"),
-		io__write_list(Statements, "", write_statement(Lang)),
+		io__write_list(Statements, "", write_statement(Lang, Args)),
 		io__write_string("\n}\n")
 	;
 		{ Statement = return(Rvals) }
@@ -353,6 +357,115 @@ write_statement(Lang, statement(Statement, Context)) -->
 		{ functor(Statement, SFunctor, _Arity) },
 		{ sorry(this_file, "foreign code output for " ++ SFunctor) }
 	).
+
+:- pred write_outline_arg_init(foreign_language::in(managed_lang),
+		outline_arg::in, io::di, io::uo) is det.
+
+write_outline_arg_init(Lang, in(Type, VarName, Rval)) -->
+	write_parameter_type(Lang, Type),
+	io__write_string(" "),
+	io__write_string(VarName),
+	io__write_string(" = "),
+	write_rval(Lang, Rval),
+	io__write_string(";\n").
+write_outline_arg_init(Lang, out(Type, VarName, _Lval)) -->
+	write_parameter_type(Lang, Type),
+	io__write_string(" "),
+	io__write_string(VarName),
+	% In C# give output variables a default value to avoid warnings.
+	( { Lang = csharp } ->
+		io__write_string(" = "),
+		write_parameter_initializer(Lang, Type)
+	;
+		[]
+	),
+	io__write_string(";\n").
+write_outline_arg_init(_Lang, unused) --> [].
+
+:- pred write_outline_arg_final(foreign_language::in(managed_lang),
+		outline_arg::in, io::di, io::uo) is det.
+
+write_outline_arg_final(_Lang, in(_, _, _)) --> [].
+write_outline_arg_final(Lang, out(_Type, VarName, Lval)) -->
+	write_lval(Lang, Lval),
+	io__write_string(" = "),
+	io__write_string(VarName),
+	io__write_string(";\n").
+write_outline_arg_final(_Lang, unused) --> [].
+
+
+:- pred write_declare_and_assign_local(foreign_language::in(managed_lang),
+		mlds__argument::in, io::di, io::uo) is det.
+
+write_declare_and_assign_local(Lang, argument(Name, Type, _GcCode)) -->
+	{ Name = data(var(VarName0)) ->
+		VarName = VarName0
+	;
+		unexpected(this_file, "not a variable name")
+	},
+
+	% A pointer type is an output type.
+	( { Type = mlds__ptr_type(OutputType) } ->
+		( { is_anonymous_variable(VarName) } ->
+			[]
+		;
+			write_parameter_type(Lang, OutputType),
+			io__write_string(" "),
+			write_mlds_var_name_for_local(VarName),
+
+			% In C# give output types a default value to
+			% avoid warnings.
+			( { Lang = csharp } ->
+				io__write_string(" = "),
+				write_parameter_initializer(Lang,
+						OutputType)
+			;
+				[]
+			),
+
+			io__write_string(";\n")
+		)
+	;
+		write_parameter_type(Lang, Type),
+		io__write_string(" "),
+		write_mlds_var_name_for_local(VarName),
+		io__write_string(" = "),
+		write_mlds_var_name_for_parameter(VarName),
+		io__write_string(";\n")
+	).
+
+:- pred write_assign_local_to_output(foreign_language::in(managed_lang),
+		mlds__argument::in, io::di, io::uo) is det.
+
+write_assign_local_to_output(Lang, argument(Name, Type, _GcCode)) -->
+	{ Name = data(var(VarName0)) ->
+		VarName = VarName0
+	;
+		unexpected(this_file, "not a variable name")
+	},
+
+		% A pointer type is an output type.
+	( 
+		{ Type = mlds__ptr_type(_OutputType) },
+		{ not is_anonymous_variable(VarName) }
+	->
+		( { Lang = csharp },
+			[]
+		; { Lang = managed_cplusplus },
+			io__write_string("*")
+		),
+		write_mlds_var_name_for_parameter(VarName),
+		io__write_string(" = "),
+		write_mlds_var_name_for_local(VarName),
+		io__write_string(";\n")
+	;
+		[]
+	).
+
+:- pred is_anonymous_variable(var_name::in) is semidet.
+
+is_anonymous_variable(var_name(Name, _)) :-
+	string__prefix(Name, "_").
 
 %------------------------------------------------------------------------------%
 
@@ -480,8 +593,11 @@ write_lval(Lang, field(_, Rval, offset(OffSet), _, _)) -->
 	write_rval(Lang, OffSet),
 	io__write_string("]").
 write_lval(Lang, mem_ref(Rval, _)) -->
-		% XXX This looks wrong for C#
-	io__write_string("*"),
+	( { Lang = managed_cplusplus },
+		io__write_string("*")
+	; { Lang = csharp },
+		[]
+	),
 	write_rval(Lang, Rval).
 write_lval(_Lang, var(Var, _VarType)) -->
 	{ Var = qual(_, VarName) },
@@ -534,6 +650,17 @@ write_input_arg_as_foreign_type(Lang, Arg) -->
 	;
 		{ error("found a variable in a list") }
 	).
+
+:- pred write_parameter_initializer(foreign_language, mlds__type, io, io).
+:- mode write_parameter_initializer(in(managed_lang), in, di, uo) is det.
+
+write_parameter_initializer(managed_cplusplus, _Type) -->
+	{ unexpected(this_file, "initializer for MC++") }.
+write_parameter_initializer(csharp, Type) -->
+	get_il_data_rep(DataRep),
+	{ ILType = mlds_type_to_ilds_type(DataRep, Type) },
+	{ ILType = type(_, ILSimpleType) },
+	write_csharp_initializer(ILSimpleType).
 
 :- pred write_il_ret_type_as_foreign_type(foreign_language::in(managed_lang),
 		ret_type::in, io__state::di, io__state::uo) is det.
@@ -604,8 +731,8 @@ write_il_simple_type_as_foreign_type(csharp, refany) -->
 	io__write_string("mercury.MR_RefAny").
 write_il_simple_type_as_foreign_type(csharp, class(ClassName)) --> 
 	write_class_name(csharp, ClassName).
-write_il_simple_type_as_foreign_type(csharp, valuetype(_ClassName)) --> 
-	{ sorry(this_file, "value classes") }.
+write_il_simple_type_as_foreign_type(csharp, valuetype(ClassName)) --> 
+	write_class_name(csharp, ClassName).
 write_il_simple_type_as_foreign_type(csharp, interface(_ClassName)) --> 
 	{ sorry(this_file, "interfaces") }.
 write_il_simple_type_as_foreign_type(csharp, '[]'(Type, Bounds)) --> 
@@ -668,7 +795,6 @@ write_il_simple_type_as_foreign_type(managed_cplusplus, class(ClassName)) -->
 		write_class_name(managed_cplusplus, ClassName),
 		io__write_string(" *")
 	).
-		% XXX this is not the right syntax
 write_il_simple_type_as_foreign_type(managed_cplusplus,
 		valuetype(ClassName)) --> 
 	io__write_string("__value class "),
@@ -691,6 +817,36 @@ write_il_simple_type_as_foreign_type(managed_cplusplus, '*'(Type)) -->
 	write_il_type_as_foreign_type(managed_cplusplus, Type),
 	io__write_string(" *").
 
+:- pred write_csharp_initializer(simple_type::in, io::di, io::uo) is det.
+
+write_csharp_initializer(int8) --> io__write_string("0").
+write_csharp_initializer(int16) --> io__write_string("0").
+write_csharp_initializer(int32) --> io__write_string("0").
+write_csharp_initializer(int64) --> io__write_string("0").
+write_csharp_initializer(uint8) --> io__write_string("0").
+write_csharp_initializer(uint16) --> io__write_string("0").
+write_csharp_initializer(uint32) --> io__write_string("0").
+write_csharp_initializer(uint64) --> io__write_string("0").
+write_csharp_initializer(native_int) --> io__write_string("0").
+write_csharp_initializer(native_uint) --> io__write_string("0").
+write_csharp_initializer(float32) --> io__write_string("0.0").
+write_csharp_initializer(float64) --> io__write_string("0.0").
+write_csharp_initializer(native_float) --> io__write_string("0.0").
+write_csharp_initializer(bool) --> io__write_string("false").
+write_csharp_initializer(char) --> io__write_string("'\\0'").
+write_csharp_initializer(string) --> io__write_string("null").
+write_csharp_initializer(object) --> io__write_string("null").
+write_csharp_initializer(refany) --> io__write_string("null").
+write_csharp_initializer(class(_ClassName)) --> io__write_string("null").
+write_csharp_initializer(interface(_ClassName)) --> io__write_string("null").
+write_csharp_initializer('[]'(_Type, _Bounds)) --> io__write_string("null").
+write_csharp_initializer('&'(_Type)) --> io__write_string("null").
+write_csharp_initializer('*'(_Type)) --> io__write_string("null").
+write_csharp_initializer(valuetype(ClassName)) --> 
+	io__write_string("new "),
+	write_class_name(csharp, ClassName),
+	io__write_string("()").
+
 :- pred write_class_name(foreign_language::in(managed_lang),
 		structured_name::in, io__state::di, io__state::uo) is det.
 write_class_name(Lang, structured_name(_Asm, DottedName, NestedClasses)) -->
@@ -704,7 +860,12 @@ write_class_name(Lang, structured_name(_Asm, DottedName, NestedClasses)) -->
 :- pred write_mlds_var_name_for_local(mlds__var_name::in,
 		io__state::di, io__state::uo) is det.
 
-write_mlds_var_name_for_local(var_name(Name, MaybeNum)) -->
+write_mlds_var_name_for_local(var_name(Name, _MaybeNum)) -->
+	io__write_string(Name).
+
+:- pred write_mlds_var_name_for_parameter(mlds__var_name::in,
+	io__state::di, io__state::uo) is det.
+write_mlds_var_name_for_parameter(var_name(Name, MaybeNum)) -->
 	io__write_string(Name),
 	( { MaybeNum = yes(Num) } ->
 		io__write_string("_"),
@@ -712,11 +873,6 @@ write_mlds_var_name_for_local(var_name(Name, MaybeNum)) -->
 	;
 		[]
 	).
-
-:- pred write_mlds_var_name_for_parameter(mlds__var_name::in,
-	io__state::di, io__state::uo) is det.
-write_mlds_var_name_for_parameter(var_name(Name, _)) -->
-	io__write_string(Name).
 
 :- func this_file = string.
 this_file = "mlds_to_managed.m".
