@@ -52,7 +52,7 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' ~mercury/.path`"
 PATH="/home/mercury/public/mercury-0.5/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-0.6/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"

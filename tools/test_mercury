@@ -15,7 +15,7 @@ case $# in
 	*)	echo "Usage: $0 host arch fullarch c_compiler" 1>&2; exit 1 ;;
 esac
 
-PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' ~mercury/.path`"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
