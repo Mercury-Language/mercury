@@ -528,6 +528,9 @@ vn__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 	; Lval = redoip(Rval1) ->
 		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_redoip(Vn1)
+	; Lval = succip(Rval1) ->
+		vn__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_succip(Vn1)
 	;
 		error("unexpected lval in vn__lval_to_vnlval")
 	).

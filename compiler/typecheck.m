@@ -235,7 +235,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	    code_util__compiler_generated(PredInfo0)
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
+	    ClausesInfo0 = clauses_info(_, _, _, Clauses0),
 	    ( Clauses0 = [] ->
 		pred_info_mark_as_external(PredInfo0, PredInfo)
 	    ;

@@ -430,14 +430,14 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 					Type_Table, S_Tab0, S_Tab),
 		A = simple(Shapes_Ids) 
 	;
-		C_Tag = complicated_tag(X, Y),
+		C_Tag = complicated_tag(X, _Y),
 		shapes__tag_match(Bits, X) 
 	->
 		shapes__lookup_complicated_info( [Ctor | Rest], TagVals, 
 			Bits, Ls, Type_Table, S_Tab0, S_Tab),
 		A = complicated(Ls)
 	;
-		C_Tag = complicated_constant_tag(X, Y),
+		C_Tag = complicated_constant_tag(X, _Y),
 		shapes__tag_match(Bits, X) 
 	->
 		A = constant,

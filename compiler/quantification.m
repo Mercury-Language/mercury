@@ -266,9 +266,6 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars),
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(lambda_goal(LambdaVars0, Modes, Det, Goal0),
 				lambda_goal(LambdaVars, Modes, Det, Goal)) -->
-	% Quantified variables cannot be pushed inside a lambda goal,
-	% so we insert the quantified vars into the outside vars set,
-	% and initialize the new quantified vars set to be empty.
 	quantification__get_outside(OutsideVars0),
 	{ set__list_to_set(LambdaVars0, QVars) },
 	{ set__intersect(OutsideVars0, QVars, RenameVars) },
@@ -286,10 +283,13 @@ implicitly_quantify_unify_rhs(lambda_goal(LambdaVars0, Modes, Det, Goal0),
 		{ set__union(OtherVars, Vars1, Vars2) },
 		{ set__to_sorted_list(Vars2, LambdaVars) }
 	),
+		% Quantified variables cannot be pushed inside a lambda goal,
+		% so we insert the quantified vars into the outside vars set,
+		% and initialize the new quantified vars set to be empty.
 	quantification__get_quant_vars(QuantVars0),
 	{ set__union(OutsideVars0, QuantVars0, OutsideVars1) },
 		% Add the lambda vars as outside vars, since they are
-		% wrt the goal inside the lambda
+		% outside of the lambda goal
 	{ set__insert_list(OutsideVars1, LambdaVars, OutsideVars) },
 	{ set__init(QuantVars) },
 	quantification__set_outside(OutsideVars),

@@ -26,9 +26,9 @@
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
 
-:- pred unravel_unification(term, term, unify_main_context,
+:- pred unravel_unification(term, term, term__context, unify_main_context,
 				unify_sub_contexts, varset, hlds__goal, varset).
-:- mode unravel_unification(in, in, in, in, in, out, out) is det.
+:- mode unravel_unification(in, in, in, in, in, in, out, out) is det.
 
 :- pred create_atomic_unification(var, unify_rhs, term__context,
 			unify_main_context, unify_sub_contexts, hlds__goal).
@@ -1012,9 +1012,8 @@ warn_singletons_in_unify(X, lambda_goal(LambdaVars, _Modes, _Det, LambdaGoal),
 	% warn if X (the variable we're unifying the lambda expression with)
 	% is singleton
 	%
-	{ set__to_sorted_list(LambdaNonLocals, Vars) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	warn_singletons([X | Vars], NonLocals, VarSet, Context, CallPredId),
+	warn_singletons([X], NonLocals, VarSet, Context, CallPredId),
 
 	%
 	% warn if the lambda-goal contains singletons
@@ -1116,7 +1115,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 		Context, Goal, VarSet, ClausesInfo) :-
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList0),
 	varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
-	transform(Subst, HeadVars, Args, Body, VarSet1, Goal, VarSet),
+	transform(Subst, HeadVars, Args, Body, VarSet1, Context, Goal, VarSet),
 		% XXX we should avoid append - this gives O(N*N)
 	list__append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
@@ -1124,13 +1123,13 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 %-----------------------------------------------------------------------------
 
 :- pred transform(substitution, list(var), list(term), goal, varset,
-			hlds__goal, varset).
-:- mode transform(in, in, in, in, in, out, out) is det.
+			term__context, hlds__goal, varset).
+:- mode transform(in, in, in, in, in, in, out, out) is det.
 
-transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
+transform(Subst, HeadVars, Args0, Body, VarSet0, Context, Goal, VarSet) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
-	insert_arg_unifications(HeadVars, Args, head, Goal1, VarSet1,
+	insert_arg_unifications(HeadVars, Args, Context, head, Goal1, VarSet1,
 		Goal2, VarSet2),
 	map__init(Empty),
 	implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
@@ -1150,34 +1149,36 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 :- mode transform_goal(in, in, in, out, out) is det.
 
 transform_goal(Goal0 - Context, VarSet0, Subst, Goal1 - GoalInfo1, VarSet) :-
-	transform_goal_2(Goal0, VarSet0, Subst, Goal1 - GoalInfo0, VarSet),
+	transform_goal_2(Goal0, Context, VarSet0, Subst,
+			Goal1 - GoalInfo0, VarSet),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1).
 
-:- pred transform_goal_2(goal_expr, varset, substitution, hlds__goal, varset).
-:- mode transform_goal_2(in, in, in, out, out) is det.
+:- pred transform_goal_2(goal_expr, term__context, varset, substitution,
+			hlds__goal, varset).
+:- mode transform_goal_2(in, in, in, in, out, out) is det.
 
-transform_goal_2(fail, VarSet, _, disj([]) - GoalInfo, VarSet) :-
+transform_goal_2(fail, _, VarSet, _, disj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
-transform_goal_2(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
+transform_goal_2(true, _, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
 	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
 	% This code is not used - it is actually done in negation.m.
-transform_goal_2(all(Vars0, Goal0), VarSet0, Subst,
+transform_goal_2(all(Vars0, Goal0), _, VarSet0, Subst,
 		not(some(Vars, not(Goal) - GoalInfo) - GoalInfo) - GoalInfo,
 		VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal_2(some(Vars0, Goal0), VarSet0, Subst,
+transform_goal_2(some(Vars0, Goal0), _, VarSet0, Subst,
 		some(Vars, Goal) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal_2(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
+transform_goal_2(if_then_else(Vars0, A0, B0, C0), _, VarSet0, Subst,
 		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(A0, VarSet0, Subst, A, VarSet1),
@@ -1185,50 +1186,49 @@ transform_goal_2(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 	transform_goal(C0, VarSet2, Subst, C, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal_2(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
-	term__context_init(Context),
+transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
+		Goal, VarSet) :-
 	transform_goal_2(if_then_else(Vars0, A0, B0, true - Context),
-			Subst, VarSet0, Goal, VarSet).
+			Context, Subst, VarSet0, Goal, VarSet).
 
-transform_goal_2(not(A0), VarSet0, Subst,
+transform_goal_2(not(A0), _, VarSet0, Subst,
 		not(A) - GoalInfo, VarSet) :-
 	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal_2((A0,B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2((A0,B0), _, VarSet0, Subst, Goal, VarSet) :-
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_conj(A0, Subst, L0, VarSet1, L, VarSet),
 	goal_info_init(GoalInfo),
 	conj_list_to_goal(L, GoalInfo, Goal).
 
-transform_goal_2((A0;B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2((A0;B0), _, VarSet0, Subst, Goal, VarSet) :-
 	get_disj(B0, Subst, [], VarSet0, L0, VarSet1),
 	get_disj(A0, Subst, L0, VarSet1, L, VarSet),
 	goal_info_init(GoalInfo),
 	disj_list_to_goal(L, GoalInfo, Goal).
 
-transform_goal_2(implies(P, Q), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(implies(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 		% `P => Q' is defined as `not (P, not Q)'
 		% This code is not used - it is actually done in negation.m.
-	term__context_init(Context),
 	TransformedGoal = not( (P, not(Q) - Context) - Context ),
-	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
+	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
+		Goal, VarSet).
 
-transform_goal_2(equivalent(P, Q), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 		% `P <=> Q' is defined as `(P => Q), (Q => P)'
 		% This code is not used - it is actually done in negation.m.
-	term__context_init(Context),
 	TransformedGoal = (implies(P, Q) - Context, implies(Q, P) - Context),
-	transform_goal_2(TransformedGoal, VarSet0, Subst, Goal, VarSet).
+	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
+		Goal, VarSet).
 
-transform_goal_2(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(call(Goal0), Context, VarSet0, Subst, Goal, VarSet) :-
 
 	( Goal0 = term__functor(term__atom("\\="), [LHS, RHS], _Context) ->
 
 			% `LHS \= RHS' is defined as `not (RHS = RHS)'
-		term__context_init(Context),
-		transform_goal_2(not(unify(LHS, RHS) - Context), VarSet0,
-				Subst, Goal, VarSet)
+		transform_goal_2(not(unify(LHS, RHS) - Context), Context,
+				VarSet0, Subst, Goal, VarSet)
 	;
 		% fill unused slots with any old junk 
 		ModeId = 0,
@@ -1261,14 +1261,15 @@ transform_goal_2(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 							SymName, Follow) -
 				GoalInfo,
 		goal_info_init(GoalInfo),
-		insert_arg_unifications(HeadVars, Args, call(PredCallId),
+		insert_arg_unifications(HeadVars, Args,
+			Context, call(PredCallId),
 			Goal2, VarSet1, Goal, VarSet)
 	).
 
-transform_goal_2(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
 	term__apply_substitution(B0, Subst, B),
-	unravel_unification(A, B, explicit, [], VarSet0, Goal, VarSet).
+	unravel_unification(A, B, Context, explicit, [], VarSet0, Goal, VarSet).
 
 %-----------------------------------------------------------------------------
 
@@ -1289,11 +1290,12 @@ transform_goal_2(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 			unify_sub_contexts
 		).
 
-:- pred insert_arg_unifications(list(var), list(term), arg_context,
+:- pred insert_arg_unifications(list(var), list(term),
+				term__context, arg_context,
 				hlds__goal, varset, hlds__goal, varset).
-:- mode insert_arg_unifications(in, in, in, in, in, out, out) is det.
+:- mode insert_arg_unifications(in, in, in, in, in, in, out, out) is det.
 
-insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
+insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 			Goal, VarSet) :-
 	( HeadVars = [] ->
 		Goal = Goal0,
@@ -1301,46 +1303,49 @@ insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 	;
 		Goal0 = _ - GoalInfo,
 		goal_to_conj_list(Goal0, List0),
-		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
-			List0, VarSet0, List, VarSet),
+		insert_arg_unifications_2(HeadVars, Args, Context, ArgContext,
+			0, List0, VarSet0, List, VarSet),
 		conj_list_to_goal(List, GoalInfo, Goal)
 	).
 
-:- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
+:- pred insert_arg_unifications_2(list(var), list(term),
+				term__context, arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
-:- mode insert_arg_unifications_2(in, in, in, in, in, in, out, out) is det.
+:- mode insert_arg_unifications_2(in, in, in, in, in, in, in, out, out) is det.
 
-:- insert_arg_unifications_2(A, B, _, _, _, _, _, _) when A and B.
+:- insert_arg_unifications_2(A, B, _, _, _, _, _, _, _) when A and B.
 
-insert_arg_unifications_2([], [_|_], _, _, _, _, _, _) :-
+insert_arg_unifications_2([], [_|_], _, _, _, _, _, _, _) :-
 	error("insert_arg_unifications_2: length mismatch").
-insert_arg_unifications_2([_|_], [], _, _, _, _, _, _) :-
+insert_arg_unifications_2([_|_], [], _, _, _, _, _, _, _) :-
 	error("insert_arg_unifications_2: length mismatch").
-insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
-insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
-				List, VarSet) :-
+insert_arg_unifications_2([], [], _, _, _, List, VarSet, List, VarSet).
+insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
+			List0, VarSet0, List, VarSet) :-
 	N1 is N0 + 1,
 		% skip unifications of the form `X = X'
 	( Arg = term__variable(Var) ->
-		insert_arg_unifications_2(Vars, Args, Context, N1,
+		insert_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet0, List, VarSet)
 	;
-		arg_context_to_unify_context(Context, N1,
+		arg_context_to_unify_context(ArgContext, N1,
 				UnifyMainContext, UnifySubContext),
-		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
-				UnifySubContext, VarSet0, Goal, VarSet1),
+		unravel_unification(term__variable(Var), Arg, Context,
+				UnifyMainContext, UnifySubContext,
+				VarSet0, Goal, VarSet1),
 		goal_to_conj_list(Goal, ConjList),
 		list__append(ConjList, List1, List),
-		insert_arg_unifications_2(Vars, Args, Context, N1,
+		insert_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet1, List1, VarSet)
 	).
 
-:- pred append_arg_unifications(list(var), list(term), arg_context,
+:- pred append_arg_unifications(list(var), list(term),
+				term__context, arg_context,
 				hlds__goal, varset, hlds__goal, varset).
-:- mode append_arg_unifications(in, in, in, in, in, out, out) is det.
+:- mode append_arg_unifications(in, in, in, in, in, in, out, out) is det.
 
-append_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
+append_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 			Goal, VarSet) :-
 	( HeadVars = [] ->
 		Goal = Goal0,
@@ -1348,38 +1353,40 @@ append_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 	;
 		Goal0 = _ - GoalInfo,
 		goal_to_conj_list(Goal0, List0),
-		append_arg_unifications_2(HeadVars, Args, ArgContext, 0,
-			List0, VarSet0, List, VarSet),
+		append_arg_unifications_2(HeadVars, Args, Context, ArgContext,
+			0, List0, VarSet0, List, VarSet),
 		conj_list_to_goal(List, GoalInfo, Goal)
 	).
 
-:- pred append_arg_unifications_2(list(var), list(term), arg_context, int,
+:- pred append_arg_unifications_2(list(var), list(term),
+				term__context, arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
-:- mode append_arg_unifications_2(in, in, in, in, in, in, out, out) is det.
+:- mode append_arg_unifications_2(in, in, in, in, in, in, in, out, out) is det.
 
-:- append_arg_unifications_2(A, B, _, _, _, _, _, _) when A and B.
+:- append_arg_unifications_2(A, B, _, _, _, _, _, _, _) when A and B.
 
-append_arg_unifications_2([], [_|_], _, _, _, _, _, _) :-
+append_arg_unifications_2([], [_|_], _, _, _, _, _, _, _) :-
 	error("append_arg_unifications_2: length mismatch").
-append_arg_unifications_2([_|_], [], _, _, _, _, _, _) :-
+append_arg_unifications_2([_|_], [], _, _, _, _, _, _, _) :-
 	error("append_arg_unifications_2: length mismatch").
-append_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
-append_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
-				List, VarSet) :-
+append_arg_unifications_2([], [], _, _, _, List, VarSet, List, VarSet).
+append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
+			List0, VarSet0, List, VarSet) :-
 	N1 is N0 + 1,
 		% skip unifications of the form `X = X'
 	( Arg = term__variable(Var) ->
-		append_arg_unifications_2(Vars, Args, Context, N1,
+		append_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List0, VarSet0, List, VarSet)
 	;
-		arg_context_to_unify_context(Context, N1,
+		arg_context_to_unify_context(ArgContext, N1,
 				UnifyMainContext, UnifySubContext),
-		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
-				UnifySubContext, VarSet0, Goal, VarSet1),
+		unravel_unification(term__variable(Var), Arg,
+				Context, UnifyMainContext, UnifySubContext,
+				VarSet0, Goal, VarSet1),
 		goal_to_conj_list(Goal, ConjList),
 		list__append(List0, ConjList, List1),
-		append_arg_unifications_2(Vars, Args, Context, N1,
+		append_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
 				List1, VarSet1, List, VarSet)
 	).
 
@@ -1431,9 +1438,8 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
 
 	% `X = Y' needs no unravelling.
 
-unravel_unification(term__variable(X), term__variable(Y), MainContext,
+unravel_unification(term__variable(X), term__variable(Y), Context, MainContext,
 			SubContext, VarSet0, Goal, VarSet) :-
-	term__context_init(Context),
 	create_atomic_unification(X, var(Y), Context, MainContext, SubContext,
 		Goal),
 	VarSet0 = VarSet.
@@ -1447,8 +1453,9 @@ unravel_unification(term__variable(X), term__variable(Y), MainContext,
 	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term__variable(X), term__functor(F, Args, Context),
-			MainContext, SubContext, VarSet0, Goal, VarSet) :-
+unravel_unification(term__variable(X), term__functor(F, Args, FunctorContext),
+			Context, MainContext, SubContext, VarSet0,
+			Goal, VarSet) :-
 	(
 		% handle lambda expressions
 		F = term__atom("lambda"),
@@ -1474,16 +1481,17 @@ unravel_unification(term__variable(X), term__functor(F, Args, Context),
 		list__length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
-		append_arg_unifications(HeadVars, Args, ArgContext,
+		append_arg_unifications(HeadVars, Args,
+					FunctorContext, ArgContext,
 					Goal0, VarSet1, Goal, VarSet)
 	).
 
 	% Handle `f(...) = X' in the same way as `X = f(...)'.
 
-unravel_unification(term__functor(F, As, C), term__variable(Y), MC, SC,
-			VarSet0, Goal, VarSet) :-
-	unravel_unification(term__variable(Y), term__functor(F, As, C), MC, SC,
-			VarSet0, Goal, VarSet).
+unravel_unification(term__functor(F, As, FC), term__variable(Y),
+			C, MC, SC, VarSet0, Goal, VarSet) :-
+	unravel_unification(term__variable(Y), term__functor(F, As, FC),
+			C, MC, SC, VarSet0, Goal, VarSet).
 
 	% If we find a unification of the form `f1(...) = f2(...)',
 	% then we replace it with `Tmp = f1(...), Tmp = f2(...)',
@@ -1493,14 +1501,15 @@ unravel_unification(term__functor(F, As, C), term__variable(Y), MC, SC,
 
 unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 			term__functor(RightF, RightAs, RightC),
-			MainContext, SubContext, VarSet0, Goal, VarSet) :-
+			Context, MainContext, SubContext, VarSet0,
+			Goal, VarSet) :-
 	varset__new_var(VarSet0, TmpVar, VarSet1),
 	unravel_unification(
 		term__variable(TmpVar), term__functor(LeftF, LeftAs, LeftC),
-		MainContext, SubContext, VarSet1, Goal0, VarSet2),
+		Context, MainContext, SubContext, VarSet1, Goal0, VarSet2),
 	unravel_unification(
 		term__variable(TmpVar), term__functor(RightF, RightAs, RightC),
-		MainContext, SubContext, VarSet2, Goal1, VarSet),
+		Context, MainContext, SubContext, VarSet2, Goal1, VarSet),
 	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),

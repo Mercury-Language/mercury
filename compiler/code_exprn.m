@@ -921,7 +921,6 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ set__insert(Rvals1, lval(Lval), Rvals) },
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
-		{ string__append("Assigning from ", VarName, Comment) },
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
@@ -968,7 +967,6 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ set__insert(Rvals1, lval(Lval), Rvals) },
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
-		{ string__append("Assigning from ", VarName, Comment) },
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	),
 	code_exprn__get_vars(Vars1),

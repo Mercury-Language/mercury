@@ -1487,7 +1487,6 @@ modecheck_unification(X, var(Y), _Unification0, _UnifyContext, _GoalInfo,
 		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
 		modecheck_set_var_inst(Y, Inst, ModeInfo2, ModeInfo),
 			% return any old garbage
-		Det = det,
 		Unification = assign(X, Y),
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
@@ -1758,11 +1757,6 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
-		( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
-			ModeArgs = ModeArgs0
-		;
-			error("get_mode_of_args failed")
-		),
 		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
 		( bind_args(Inst, ArgVars0, ModeInfo2, ModeInfo3) ->
 			ModeInfo = ModeInfo3
@@ -1817,11 +1811,6 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		ModeOfX = (InstOfX -> Inst),
 		ModeOfY = (InstOfY -> Inst),
 		Mode = ModeOfX - ModeOfY,
-		( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
-			ModeArgs = ModeArgs0
-		;
-			error("get_mode_of_args failed")
-		),
 		modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
 		( bind_args(Inst, ArgVars0, ModeInfo2, ModeInfo3) ->
 			ModeInfo = ModeInfo3
