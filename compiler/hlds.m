@@ -86,7 +86,11 @@
 							% the :- mode decl,
 							% not the clause.	
 					call_info,	% stack allocations
-					category	% _inferred_ det'ism
+					category,	% _inferred_ det'ism
+					list(arg_info)	% information about
+							% the arguments
+							% derived from the
+							% modes etc
 				).
 
 %%% :- export_type category.
@@ -152,13 +156,19 @@
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
-:- type cons_id		--->	cons(string, int)	% name, arity
-			;	int_const(int)
-			;	string_const(string)
-			;	float_const(float).
+:- type cons_id		--->	cons(string, int).
+				% name, arity
 
 %%% :- export_type cons_table.
 :- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
+
+%-----------------------------------------------------------------------------%
+
+:- type arg_info	--->	arginfo(
+					lval,	% stored location
+					bool,	% mode is input
+					bool	% mode is output
+				).
 
 %-----------------------------------------------------------------------------%
 
@@ -554,33 +564,6 @@ moduleinfo_incr_warnings(ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Various predicates for accessing the cons_id type.
-
-:- interface.
-
-:- pred make_functor_cons_id(const, int, cons_id).
-:- mode make_functor_cons_id(in, in, out) is det.
-
-:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
-:- mode make_cons_id(input, input, input, output) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
-make_functor_cons_id(term_integer(Int), _, int_const(Int)).
-make_functor_cons_id(term_string(String), _, string_const(String)).
-make_functor_cons_id(term_float(Float), _, float_const(Float)).
-
-make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
-make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 	% Various predicates for accessing the information stored in the
 	% pred_id and pred_info data structures.
 
@@ -733,7 +716,8 @@ procinfo_init(Modes, Det, MContext, NewProc) :-
 	map__init(CallInfo),
 	NewProc = procedure(
 		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
-		conj([]) - GoalInfo, MContext, CallInfo, Category
+		conj([]) - GoalInfo, MContext, CallInfo, Category, []
+		% XXX [] == empty arginfo....
 	).
 
 determinism_to_category(det, deterministic).
@@ -746,31 +730,38 @@ determinism_to_category(nondet, nondeterministic).
 determinism_to_category(unspecified, deterministic).
 
 procinfo_declared_determinism(ProcInfo, Determinism) :-
-	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _).
 procinfo_variables(ProcInfo, VarSet) :-
-	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _).
 procinfo_vartypes(ProcInfo, VarTypes) :-
-	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _).
 procinfo_headvars(ProcInfo, HeadVars) :-
-	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _).
 procinfo_argmodes(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _).
 procinfo_goal(ProcInfo, Goal) :-
-	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _).
 procinfo_context(ProcInfo, Context) :-
-	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _).
 procinfo_callinfo(ProcInfo, CallInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _).
 procinfo_inferred_determinism(ProcInfo, Category) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category, _).
+procinfo_arginfo(ProcInfo, ArgInfo) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, ArgInfo).
+
 
 procinfo_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category).
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J).
 
 procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I),
-	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I).
+	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J),
+	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J).
+
+procinfo_set_arginfo(ProcInfo0, ArgInfo, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
