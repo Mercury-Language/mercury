@@ -423,6 +423,19 @@ mercury____Write___io__external_state_0_0:
 
 /*---------------------------------------------------------------------------*/
 
+/* copy/2, from mercury_builtin.m
+	:- pred copy(T, T).
+	:- mode copy(ui, uo) is det.
+	:- mode copy(in, uo) is det.
+*/
+
+mercury__copy_2_0:
+mercury__copy_2_1:
+	r3 = r2;
+	proceed();
+
+/*---------------------------------------------------------------------------*/
+
 /* error/1, from require.m */
 
 mercury__error_1_0:
@@ -476,10 +489,12 @@ mercury__report_stats_0_0:
 
 /*
 	:- pred type_to_univ(T, univ).
+	:- mode type_to_univ(di, uo) is det.
 	:- mode type_to_univ(in, out) is det.
 	:- mode type_to_univ(out, in) is semidet.
 */
 mercury__type_to_univ_2_0:
+mercury__type_to_univ_2_1:
 	/*
 	 *  Forward mode - convert from type to univ.
 	 *  On entry r1 contains type_info for type T,
@@ -494,7 +509,7 @@ mercury__type_to_univ_2_0:
 		/* store the input argument in the second field */
 	proceed();
 
-mercury__type_to_univ_2_1:
+mercury__type_to_univ_2_2:
 	/*
 	 *  Backward mode - convert from univ to type.
 	 *  On entry r2 contains type_info for type T,
