@@ -299,7 +299,7 @@ set_kb_exceptions_map(KB, M, KB ^ kb_exceptions_map := M).
 %-----------------------------------------------------------------------------%
 
 :- pred query_oracle_list(oracle_state::in, list(decl_question(T))::in,
-		list(decl_answer(T))::out) is cc_multi.
+	list(decl_answer(T))::out) is cc_multi.
 
 query_oracle_list(_, [], []).
 query_oracle_list(OS, [Q | Qs0], As) :-
@@ -307,7 +307,7 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 	Atom = get_decl_question_atom(Q),
 	(	
 		% is the atom in a trusted module?
-		member(Atom ^ module_name, OS ^ trusted_modules)
+		set__member(Atom ^ module_name, OS ^ trusted_modules)
 	->
 		As = [truth_value(get_decl_question_node(Q), yes) | As0]
 	;
@@ -321,8 +321,8 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 		)
 	).	
 
-:- pred query_oracle_kb(oracle_kb, decl_question(T), maybe(decl_answer(T))).
-:- mode query_oracle_kb(in, in, out) is cc_multi.
+:- pred query_oracle_kb(oracle_kb::in, decl_question(T)::in,
+	maybe(decl_answer(T))::out) is cc_multi.
 
 query_oracle_kb(KB, Question, Result) :-
 	Question = wrong_answer(Node, Atom),
