@@ -125,7 +125,7 @@ AC_MSG_CHECKING(whether to pass -L/usr/local/lib to the linker)
 if test -d /usr/local/lib/.; then
 	AC_MSG_RESULT(yes)
 	ALL_LOCAL_C_LIB_DIRS=/usr/local/lib
-	ALL_LOCAL_C_LIB_DIR_MMC_OPTS=-L/usr/local/lib
+	ALL_LOCAL_C_LIB_DIR_MMC_OPTS="-L/usr/local/lib -R/usr/local/lib"
 else
 	AC_MSG_RESULT(no)
 	ALL_LOCAL_C_LIB_DIRS=
