@@ -728,7 +728,31 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			% returns false, i.e. it didn't print a message.
 		)
 	),
-	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
+	% check that `main/2' cannot fail
+	( 
+		{ pred_info_name(PredInfo, "main") },
+		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_is_exported(PredInfo) },
+		{
+		  determinism_components(InferredDetism, can_fail, _)
+		;
+		  MaybeDetism = yes(DeclaredDeterminism),
+		  determinism_components(DeclaredDeterminism, can_fail, _)
+		}
+	->
+		{ proc_info_context(ProcInfo, Context) },
+		prog_out__write_context(Context),
+			% The error message is actually a lie -
+			% main/2 can also be `erroneous'.  But mentioning
+			% that would probably just confuse people.
+		io__write_string(
+			"Error: main/2 must be `det' or `multidet'.\n"),
+		{ module_info_incr_errors(ModuleInfo1,
+			ModuleInfo2) }
+	;
+		{ ModuleInfo2 = ModuleInfo1 }
+	),
+	global_checking_pass_2(Rest, ModuleInfo2, ModuleInfo).
 
 :- pred report_determinism_problem(pred_id, proc_id, module_info, string,
 	determinism, determinism, io__state, io__state).
