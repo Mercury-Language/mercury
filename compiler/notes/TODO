@@ -20,3 +20,5 @@ module system & seperate compilation
 
 report line numbers in error messages; better error handling
 
+implement user-defined operators
+
