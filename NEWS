@@ -14,8 +14,9 @@ NEWS for Mercury release 0.5
 
 * We now check for backtracking over unique modes.
   (This may potentially break some programs using unique modes in ways
-  that the compiler can't prove are safe; if you have any trouble
-  with this, we'll be happy to help you.)
+  that the compiler can't prove are safe.  In such cases, replacing
+  `multi' with `cc_multi' should solve the problem.  If you have any
+  trouble with this, we'll be happy to help you.)
   We have also added "mostly unique" modes, which provide support
   for backtrackable destructive update.
   See the Mercury language reference manual.
@@ -53,3 +54,7 @@ NEWS for Mercury release 0.5
   - Corrected a lot of typos in the documentation.
   - Fixed quite a few bugs.
 
+* Parts of the library module `std_util' have been moved into separate
+  modules `assoc_list' and `bool'; if you have existing code which
+  used those parts of `std_util', you may need to add `import_module'
+  declarations to import `assoc_list' and/or `bool'.
