@@ -21,9 +21,10 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-ft] batchname"
+usage="Usage: makebatch [-jN] [-fot] batchname"
 jfactor=-j1
 runtests=""
+objects=""
 failed="notwanted"
 
 while test $# -gt 0
@@ -39,6 +40,9 @@ do
 		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-o|--object-files)
+		objects="-k" ;;
 
 	-t|--no-test-suite)
 		runtests="-t" ;;
@@ -116,7 +120,7 @@ do
 
 	cp Mmake.stage.params batch/$batch.params.$n
 	echo starting bootcheck of version $n
-	if tools/bootcheck -r $jfactor $runtests > batch/$batch.out.$n 2>&1
+	if tools/bootcheck -r $jfactor $runtests $objects > batch/$batch.out.$n 2>&1
 	then
 		echo bootcheck of version $n succeeded
 		echo bootcheck succeeded > batch/$batch.out.$n
@@ -143,6 +147,20 @@ do
 			echo bootcheck of version $n failed
 		fi
 	fi
+
+	if test "$objects" = "-k"
+	then
+		echo saving object files
+		mkdir -p batch/objs/$batch.library.$n
+		/bin/rm -fr batch/objs/$batch.library.$n/*
+		cp stage2/library/*.o batch/objs/$batch.library.$n
+		gzip batch/objs/$batch.library.$n/*
+		mkdir -p batch/objs/$batch.compiler.$n
+		/bin/rm -fr batch/objs/$batch.compiler.$n/*
+		cp stage2/compiler/*.o batch/objs/$batch.compiler.$n
+		gzip batch/objs/$batch.compiler.$n/*
+	fi
+
 	n=`expr $n + 1`
 	echo $n > batch/$batch.checkpoint
 done
