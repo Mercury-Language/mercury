@@ -94,7 +94,7 @@ static	prof_time_node	*addr_table[TIME_TABLE_SIZE] = {NULL};
 /*
 **	prof_init_time_profile:
 **		Writes the value of HZ (no. of ticks per second.) at the start
-**		of the file 'addr.out'.
+**		of the file 'Prof.Counts'.
 **		Then sets up the profiling timer and start's it up. 
 **		At the moment it is after every X ticks of the clock.
 **		SYSTEM SPECIFIC CODE
@@ -107,9 +107,9 @@ void prof_init_time_profile()
 
 	/* output the value of HZ */
 	errno = 0;
-	if ( !(fptr = fopen("addr.out", "w")) ) {
+	if ( !(fptr = fopen("Prof.Counts", "w")) ) {
 		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't open",
-			"the file 'addr.out'!", strerror(errno));
+			"the file 'Prof.Counts'!", strerror(errno));
 		exit(1);
 	}
 
@@ -252,7 +252,7 @@ void prof_turn_off_time_profiling()
 
 /*
 **	prof_output_addr_pair_table :
-**		Writes the hash table to a file called "addrpair.out".
+**		Writes the hash table to a file called "Prof.CallPair".
 **		Caller then callee followed by count.
 */
 
@@ -262,7 +262,7 @@ void prof_output_addr_pair_table(void)
 	int  i;
 	prof_call_node *current;
 	errno = 0;
-	if ( (fptr = fopen("addrpair.out", "w")) ) {
+	if ( (fptr = fopen("Prof.CallPair", "w")) ) {
 		for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 			current = addr_pair_table[i];
 			while (current) {
@@ -274,7 +274,7 @@ void prof_output_addr_pair_table(void)
 	}
 	else {
 		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
-			"create addrpair.out", strerror(errno));
+			"create Prof.CallPair", strerror(errno));
 		exit(1);
 	}
 
@@ -285,7 +285,7 @@ void prof_output_addr_pair_table(void)
 /*
 **	prof_output_addr_decls:
 **		Ouputs the main predicate labels as well as their machine
-**		addresses to a file called "addrdecl.out".
+**		addresses to a file called "Prof.Decl".
 **		At the moment I think the best place to insert this call
 **		is in the insert_entry call in label.c
 */
@@ -297,12 +297,12 @@ void prof_output_addr_decls(const char *name, const Code *address)
 	}
 	else {
 		errno = 0;
-		if ( (declfptr = fopen("addrdecl.out", "w") ) ) {
+		if ( (declfptr = fopen("Prof.Decl", "w") ) ) {
 			fprintf(declfptr, "%p\t%s\n", address, name);
 		}
 		else {
 			fprintf(stderr, "%s %s\n%s\n", "Mercury runtime:",
-			       "Couldn't create addrdecl.out", strerror(errno));
+			       "Couldn't create Prof.Decl", strerror(errno));
 			exit(1);
 		}
 	}
@@ -316,7 +316,7 @@ void prof_output_addr_decls(const char *name, const Code *address)
 /*
 **	prof_output_addr_table:
 **		Outputs the addresses saved whenever SIGPROF is received to
-**		the file "addr.out"
+**		the file "Prof.Counts"
 */
 
 void prof_output_addr_table()
@@ -326,7 +326,7 @@ void prof_output_addr_table()
 	prof_time_node *current;
 
 	errno = 0;
-	if ( (fptr = fopen("addr.out", "a")) ) {
+	if ( (fptr = fopen("Prof.Counts", "a")) ) {
 		for (i = 0; i < TIME_TABLE_SIZE ; i++) {
 			current = addr_table[i];
 			while (current) {
@@ -338,7 +338,7 @@ void prof_output_addr_table()
 	}
 	else {
 		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
-				"create addrpair.out", strerror(errno));
+				"create Prof.Counts", strerror(errno));
 		exit(1);
 	}
 }
