@@ -7,10 +7,9 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-# uncomment the following lines to test the performance
+# uncomment the following line to test the performance
 # of the benchmarks (with I/O suppressed)
 # C2INITFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
-# MLFLAGS=-- -static
 
 #-----------------------------------------------------------------------------#
 
@@ -41,6 +40,7 @@ EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
 SS=	$(PROGS:%=%.s)
 CS=	$(PROGS:%=%.c)
+TIMES=	$(PROGS:%=%.time)
 
 dep:	$(DEPS)
 
@@ -58,9 +58,19 @@ ss:	$(SS)
 
 all:	$(PROGS)
 
+times:	$(TIMES)
+
 dir.%:	$(PROGS) $(SS)
 	-mkdir $@
 	cp $(PROGS) $(SS) $@
 	cp BenchEntry $@
+
+clean_exes:	
+	rm -f $(PROGS)
+
+%.time: %
+	{ count=`awk '/$*/ { print $$2; exit; }' < BenchRepeatCounts`; \
+	echo "$$count	"; \
+	MERCURY_OPTIONS="-t -r$$count" ./repeat_time 3 ./$*; } 2>&1 | tee $@
 
 #-----------------------------------------------------------------------------#
