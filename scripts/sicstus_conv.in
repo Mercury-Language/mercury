@@ -28,7 +28,7 @@ for file in "$@"; do
 		/\\f/s///g
 		/\\t/s//	/g
 		/\\n/s//\
-		/g
+/g
 		/\\v/s///g
 		' $file > $base.pl
 done

@@ -84,11 +84,9 @@ main_target: $(MAIN_TARGET)
 		-e 's/$$/ portray ]./' \
 		> $@
 
-# the --compile-to-c is only temporary
-
 .m.c:
 	rm -f $*.c
-	$(MCG) -s $(GRADE) --compile-to-c $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
 
 # the next rule should be needed only in runtime in a short while
 
