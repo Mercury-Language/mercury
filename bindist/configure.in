@@ -58,6 +58,7 @@ fi
 AC_SUBST(GNU_MAKE)
 #-----------------------------------------------------------------------------#
 INSTALL_SICSTUS=
+SICSTUS=
 SP=
 echo "looking for SICStus Prolog..."
 AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
@@ -66,6 +67,7 @@ if test "$SP" != ""; then
 			$SP 2>&1`" in
 		SICStus*)
 			INSTALL_SICSTUS=install_sicstus
+			SICSTUS=sicstus
 			;;
 	esac
 fi
@@ -75,8 +77,10 @@ else
 	echo "found SICStus Prolog: $SP"
 fi
 AC_SUBST(INSTALL_SICSTUS)
+AC_SUBST(SICSTUS)
 #-----------------------------------------------------------------------------#
 INSTALL_NUPROLOG=
+NUPROLOG=
 NP=
 
 echo "looking for NU-Prolog..."
@@ -85,6 +89,7 @@ if test "$NP" != ""; then
 	case "`$NP < /dev/null 2>&1`" in
 		NU-Prolog*)
 			INSTALL_NUPROLOG=install_nuprolog
+			NUPROLOG=nuprolog
 			;;
 	esac
 fi
@@ -93,6 +98,7 @@ if test "$INSTALL_NUPROLOG" = ""; then
 else
 	echo "found NU-Prolog: $NP"
 fi
+AC_SUBST(NUPROLOG)
 AC_SUBST(INSTALL_NUPROLOG)
 #-----------------------------------------------------------------------------#
 echo "looking for a way to create named pipes..."

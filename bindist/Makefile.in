@@ -26,6 +26,8 @@ NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
 
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
+LIB_PARTS		= bin doc html inc ints lib modules \
+			@NUPROLOG@ @SICSTUS@
 
 #-----------------------------------------------------------------------------#
 
@@ -46,7 +48,7 @@ install_lib:
 	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
 	echo "Installing lib in $(INSTALL_LIBDIR)..."
 	LIB_TAR_FILE=`pwd`/lib.tar.gz; cd $(INSTALL_LIBDIR); \
-		zcat $$LIB_TAR_FILE | tar -xf -
+		zcat $$LIB_TAR_FILE | tar -xf - $(LIB_PARTS)
 	echo "Done."
 
 .PHONY: install_info
