@@ -271,6 +271,8 @@ lower bounds other than zero are not supported
 
 :- pragma c_code("
 
+#ifndef MR_HIGHLEVEL_CODE
+
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
 Declare_entry(mercury__array__array_equal_2_0);
@@ -313,6 +315,8 @@ void sys_init_array_module_builtins(void) {
 		mercury_data_array__type_ctor_info_array_1,
 		array__array_1_0);
 }
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
 
@@ -371,6 +375,11 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pragma c_header_code("
+#include ""mercury_library_types.h""	/* for MR_ArrayType */
+#include ""mercury_misc.h""		/* for fatal_error() */
+").
 
 :- pragma c_header_code("
 MR_ArrayType *ML_make_array(Integer size, Word item);

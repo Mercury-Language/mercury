@@ -400,6 +400,23 @@ aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_header_code("#include ""mercury_deep_copy.h""").
 
 :- pragma c_code("
+
+#ifdef MR_HIGHLEVEL_CODE
+
+void
+mercury__builtin__copy_2_p_0(Word type_info, MR_Box value, MR_Box * copy)
+{
+	*copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
+}
+
+void
+mercury__builtin__copy_2_p_1(Word type_info, MR_Box x, MR_Box * y)
+{
+	mercury__builtin__copy_2_p_0(type_info, x, y);
+}
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
 
@@ -444,6 +461,7 @@ void sys_init_copy_module(void) {
 	copy_module();
 }
 
+#endif /* ! MR_HIGHLEVEL_CODE */
 ").
 
 %-----------------------------------------------------------------------------%
@@ -451,6 +469,8 @@ void sys_init_copy_module(void) {
 % The type c_pointer can be used by predicates which use the C interface.
 
 :- pragma c_code("
+
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,
 	MR_TYPECTOR_REP_C_POINTER,
@@ -502,6 +522,8 @@ void sys_init_unify_c_pointer_module(void) {
 		mercury_data_builtin__type_ctor_info_c_pointer_0,
 		builtin__c_pointer_0_0);
 }
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
 

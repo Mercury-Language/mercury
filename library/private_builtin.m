@@ -280,6 +280,8 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 :- pragma c_code("
 
+#ifndef MR_HIGHLEVEL_CODE
+
 	/*
 	** For most purposes, type_ctor_info can be treated just like
 	** type_info.  The code that handles type_infos can also handle
@@ -383,6 +385,8 @@ void sys_init_type_info_module(void) {
 	    mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
 	    private_builtin__typeclass_info_1_0);
 }
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
 
@@ -1106,6 +1110,8 @@ unused :-
 :- implementation.
 
 :- pragma c_header_code("
+
+#include ""mercury_misc.h""	/* for fatal_error(); */
 
 extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_int_0;

@@ -207,9 +207,15 @@
 % the C interface, since Mercury doesn't allow different code for different
 % modes.
 
-% The enumeration constants in this enum must be in the same order as the
-% functors in the Mercury type `determinism' defined above.
 :- pragma c_header_code("
+/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
+#ifndef ML_DETERMINISM_GUARD
+#define ML_DETERMINISM_GUARD
+	/*
+	** The enumeration constants in this enum must be in the same
+	** order as the functors in the Mercury type `determinism'
+	** defined above.
+	*/
 	typedef enum {
 		ML_DET,
 		ML_SEMIDET,
@@ -220,6 +226,7 @@
 		ML_ERRONEOUS,
 		ML_FAILURE
 	} ML_Determinism;
+#endif
 ").
 
 :- pragma c_code(

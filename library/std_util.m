@@ -935,6 +935,9 @@ det_univ_to_type(Univ, X) :-
 */
 
 #include ""mercury_type_info.h""
+#include ""mercury_heap.h""	/* for incr_hp_msg() etc. */
+#include ""mercury_misc.h""	/* for fatal_error() */
+#include ""mercury_string.h""	/* for MR_make_aligned_string() */
 
 ").
 
@@ -987,6 +990,8 @@ det_univ_to_type(Univ, X) :-
 ").
 
 :- pragma c_code("
+
+#ifndef MR_HIGHLEVEL_CODE
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_info, 0,
 	MR_TYPECTOR_REP_C_POINTER);
@@ -1158,6 +1163,8 @@ void sys_init_unify_univ_module(void) {
 		std_util__type_info_0_0);
 }
 
+#endif /* ! MR_HIGHLEVEL_CODE */
+
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1168,6 +1175,9 @@ void sys_init_unify_univ_module(void) {
 
 :- pragma c_header_code("
 
+/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
+#ifndef ML_CONSTRUCT_INFO_GUARD
+#define ML_CONSTRUCT_INFO_GUARD
 typedef struct ML_Construct_Info_Struct {
 	int arity;
 	Word *functor_descriptor;
@@ -1176,6 +1186,7 @@ typedef struct ML_Construct_Info_Struct {
 	Word secondary_tag;
 	ConstString functor_name;
 } ML_Construct_Info;
+#endif
 
 int	ML_get_num_functors(Word type_info); 
 Word 	ML_copy_argument_typeinfos(int arity, Word type_info,
@@ -2059,6 +2070,9 @@ ML_get_num_functors(Word type_info)
 	 * (that is, they should not be relied on to remain unchanged).
 	 */
 
+/* The `#ifndef ... #define ... #endif' guards against multiple inclusion */
+#ifndef	ML_EXPAND_INFO_GUARD
+#define	ML_EXPAND_INFO_GUARD
 typedef struct ML_Expand_Info_Struct {
 	ConstString functor;
 	int arity;
@@ -2069,6 +2083,7 @@ typedef struct ML_Expand_Info_Struct {
 	bool need_functor;
 	bool need_args;
 } ML_Expand_Info;
+#endif
 
 	/* Prototypes */
 

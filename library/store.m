@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -304,6 +304,8 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma c_header_code("
 	#include ""mercury_type_info.h""
+	#include ""mercury_heap.h""
+	#include ""mercury_misc.h""	/* for fatal_error() */
 
 	/* ML_arg() is defined in std_util.m */
 	bool ML_arg(Word term_type_info, Word *term, Word argument_index,

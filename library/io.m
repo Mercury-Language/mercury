@@ -2647,6 +2647,9 @@ io__get_io_output_stream_type(Type) -->
 #include ""mercury_init.h""
 #include ""mercury_wrapper.h""
 #include ""mercury_type_info.h""
+#include ""mercury_library_types.h""
+#include ""mercury_heap.h""
+#include ""mercury_misc.h""
 
 #include <stdio.h>
 #include <stdlib.h>

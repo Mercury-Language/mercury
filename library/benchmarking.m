@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,6 +60,7 @@
 :- pragma c_header_code("
 
 #include ""mercury_timing.h""
+#include ""mercury_heap.h""
 
 extern void ML_report_stats(void);
 
