@@ -4019,7 +4019,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".mhs = "),
 	( { Target = c ; Target = asm } ->
-		write_dependencies_list(Modules, ".mh", DepStream)
+		write_compact_dependencies_list(Modules,
+				"", ".mh", Basis, DepStream)
 	;
 		[]
 	),
