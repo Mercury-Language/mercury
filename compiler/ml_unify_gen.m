@@ -746,10 +746,20 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ WrapperFuncBody = ml_gen_block(Decls, Statements, Context) },
 	ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
 		WrapperFuncRval),
-	ml_gen_label_func(WrapperFuncName, WrapperParams, Context,
+	ml_gen_wrapper_func(WrapperFuncName, WrapperParams, Context,
 		WrapperFuncBody, WrapperFunc),
 	{ WrapperFuncType = mlds__func_type(WrapperParams) },
 	ml_gen_info_add_extra_defn(WrapperFunc).
+
+:- pred ml_gen_wrapper_func(ml_label_func, mlds__func_params, prog_context,
+		mlds__statement, mlds__defn, ml_gen_info, ml_gen_info).
+:- mode ml_gen_wrapper_func(in, in, in, in, out, in, out) is det.
+
+ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, Func) -->
+	ml_gen_label_func(FuncLabel, FuncParams, Context, Statement, Func0),
+	{ Func0 = mlds__defn(Name, Ctxt, DeclFlags, Defn) },
+	{ Func = mlds__defn(Name, Ctxt, set_per_instance(DeclFlags, one_copy),
+			Defn) }.
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds__var_name).
 ml_gen_wrapper_head_var_names(Num, Max) = Names :-
