@@ -313,6 +313,10 @@ time__clk_tck = Ret :-
 	Ret = -1;
 #endif
 }").
+time__c_clk_tck = _ :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	private_builtin__sorry("time__c_clk_tck").
 
 %-----------------------------------------------------------------------------%
 
