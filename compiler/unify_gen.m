@@ -236,7 +236,7 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 				lval(field(0, OldClosure, Zero)))
 				- "get number of arguments",
 			incr_hp(NewClosureReg,
-				binop(+, OldClosure,
+				binop(+, lval(NumOldArgsReg),
 				NumNewArgsPlusTwo_Rval))
 				- "allocate new closure",
 			assign(field(0, lval(NewClosureReg), Zero),
@@ -258,8 +258,8 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 				- "repeat the loop?",
 			label(LoopEnd) - "end of loop"
 		]) },
-		{ unify_gen__generate_extra_closure_args(CallArgs,
-			LoopCounterReg, NewClosureReg, Code3) },
+		unify_gen__generate_extra_closure_args(CallArgs,
+			LoopCounterReg, NewClosureReg, Code3),
 		{ Code = tree(Code1, tree(Code2, Code3)) },
 		{ Value = lval(NewClosureReg) }
 	;
@@ -277,21 +277,25 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 	),
 	code_info__cache_expression(Var, Value).
 
-:- pred unify_gen__generate_extra_closure_args(list(var), lval, lval, code_tree).
-:- mode unify_gen__generate_extra_closure_args(in, in, in, out) is det.
+:- pred unify_gen__generate_extra_closure_args(list(var), lval, lval,
+					code_tree, code_info, code_info).
+:- mode unify_gen__generate_extra_closure_args(in, in, in,
+					out, in, out) is det.
 
-unify_gen__generate_extra_closure_args([], _, _, empty).
+unify_gen__generate_extra_closure_args([], _, _, empty) --> [].
 unify_gen__generate_extra_closure_args([Var | Vars], LoopCounterReg,
-				NewClosureReg, tree(Code1, Code2)) :-
-	One = const(int_const(1)),
-	Code1 = node([
+				NewClosureReg, Code) -->
+	code_info__produce_variable(Var, Code0, Value),
+	{ One = const(int_const(1)) },
+	{ Code1 = node([
 		assign(LoopCounterReg,
 			binop(+, lval(LoopCounterReg), One))
 			- "increment argument counter",
 		assign(field(0, lval(NewClosureReg), lval(LoopCounterReg)),
-			var(Var))
+			Value)
 			- "set new argument field"
-	]),
+	]) },
+	{ Code = tree(tree(Code0, Code1), Code2) },
 	unify_gen__generate_extra_closure_args(Vars, LoopCounterReg,
 		NewClosureReg, Code2).
 
@@ -458,32 +462,6 @@ unify_gen__generate_det_unify_args_2([L|Ls], [R|Rs], [M|Ms], Code) -->
 
 %---------------------------------------------------------------------------%
 
-	% Generate code to perform a list of semideterministic sub-
-	% unifications for the arguments of a [de]construction.
-:- pred unify_gen__generate_semi_unify_args(list(uni_val), list(uni_val),
-			list(uni_mode), code_tree, code_info, code_info).
-:- mode unify_gen__generate_semi_unify_args(in, in, in, out, in, out) is det.
-
-unify_gen__generate_semi_unify_args(Ls, Rs, Ms, Code) -->
-	( unify_gen__generate_semi_unify_args_2(Ls, Rs, Ms, Code0) ->
-	    { Code = Code0 }
-	;
-	    { error("unify_gen__generate_semi_unify_args: length mismatch") }
-	).
-
-:- pred unify_gen__generate_semi_unify_args_2(list(uni_val), list(uni_val),
-			list(uni_mode), code_tree, code_info, code_info).
-:- mode unify_gen__generate_semi_unify_args_2(in, in, in, out, in, out)
-	is semidet.
-
-unify_gen__generate_semi_unify_args_2([], [], [], empty) --> [].
-unify_gen__generate_semi_unify_args_2([L|Ls], [R|Rs], [M|Ms], Code) -->
-	unify_gen__generate_semi_sub_unify(L, R, M, CodeA),
-	unify_gen__generate_semi_unify_args_2(Ls, Rs, Ms, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
-
-%---------------------------------------------------------------------------%
-
 	% Generate a subunification between two [field|variable].
 
 :- pred unify_gen__generate_det_sub_unify(uni_val, uni_val, uni_mode, code_tree,
@@ -540,11 +518,10 @@ unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
 		{ mode_is_input(ModuleInfo, (RI -> RF)) }
 	->
-		% This shouldn't happen, since the transformation to
-		% super-homogeneous form should avoid tests in the arguments
+		% This shouldn't happen, since mode analysis should
+		% avoid creating any tests in the arguments
 		% of a construction or deconstruction unification.
-		{ error("test in arg of [de]construction - tell fjh to fix that bug in make_hlds.nl") },
-		unify_gen__generate_sub_test(L, R, Code)
+		{ error("test in arg of [de]construction") }
 	;
 			% Input - Output== assignment ->
 		{ mode_is_input(ModuleInfo, (LI -> LF)) },
@@ -607,31 +584,6 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 	;
 		{ true }
 	).
-
-%---------------------------------------------------------------------------%
-
-:- pred unify_gen__generate_sub_test(uni_val, uni_val, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_sub_test(in, in, out, in, out) is det.
-
-	% Generate code to evaluate the two arguments of a sub-test
-	% and compare them. XXX strings?
-unify_gen__generate_sub_test(UnivalX, UnivalY, Code) -->
-	unify_gen__evaluate_uni_val(UnivalX, RvalX, CodeX),
-	unify_gen__evaluate_uni_val(UnivalY, RvalY, CodeY),
-	code_info__generate_test_and_fail(
-		binop(eq, RvalX, RvalY), TestCode),
-	{ Code = tree(tree(CodeX, CodeY), TestCode) }.
-
-:- pred unify_gen__evaluate_uni_val(uni_val, rval, code_tree,
-					code_info, code_info).
-:- mode unify_gen__evaluate_uni_val(in, out, out, in, out) is det.
-
-	% Lvalue - do nothing
-unify_gen__evaluate_uni_val(lval(Lval), lval(Lval), empty) --> [].
-	% Var - cached, so flush it.
-unify_gen__evaluate_uni_val(ref(Var), Rval, Code) -->
-	code_info__produce_variable(Var, Code, Rval).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
