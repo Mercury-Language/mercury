@@ -4979,7 +4979,8 @@ For examples of the use of this interface, see the modules
 @subsection Choice points
 
 A ``choice point'' is a point in the computation to
-which execution might backtrack.  The ``current''
+which execution might backtrack when a goal fails or
+throws an exception.  The ``current''
 choice point is the one that was most recently
 encountered; that is also the one to which execution
 will branch if the current computation fails.
@@ -5012,7 +5013,7 @@ void MR_trail_value(Word *@var{address}, Word @var{value});
 
 Ensures that if future execution backtracks to the
 current choice point, then @var{value} will be placed in @var{address}.
-
+@sp 1
 @item @bullet{} @code{MR_trail_current_value()}
 Prototype:
 @example
@@ -5033,14 +5034,13 @@ will be restored.
 
 For more complicated uses of trailing, you can store the address
 of a C function on the trail and have the Mercury runtime call your
-function back whenever future execution backtracks to the current choice point,
-or whenever that choice point is pruned, either because execution
-commits to never backtracking over that point, or because an
-exception was thrown, or possibly during garbage collection.
+function back whenever future execution backtracks to the current choice point
+or earlier, or whenever that choice point is pruned, because execution
+commits to never backtracking over that point,
+or whenever that choice point is garbage collected.
 
-Note that currently Mercury does not support exception handling,
-and the garbage collector in the current Mercury implementation
-does not garbage-collect the trail; these two cases are mentioned
+Note the garbage collector in the current Mercury implementation
+does not garbage-collect the trail; this case is mentioned
 only so that we can cater for possible future extensions.
 
 @table @b
@@ -5050,6 +5050,7 @@ Prototype:
 typedef enum @{
         MR_undo,
         MR_exception,
+        MR_retry,
         MR_commit,
         MR_solve,
         MR_gc
@@ -5065,9 +5066,15 @@ A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
 adds an entry to the function trail.
 The Mercury implementation ensures that
 if future execution ever backtracks to current choicepoint,
-then @code{(*@var{untrail_func})(@var{value}, MR_undo)} will be called.
-It also ensures that if the current choice point is pruned because
-execution commits to never backtracking to it,
+or backtracks past the current choicepoint to some earlier choicepoint,
+then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
+where @var{reason} will be @samp{MR_undo} if the backtracking was due to
+a goal failing, @samp{MR_exception} if the backtracking was due to
+a goal throwing an exception, or @samp{MR_retry} if the backtracking
+was due to the use of the "retry" command in mdb, the Mercury debugger,
+or any similar user request in a debugger.
+The Mercury implementation also ensures that if the current choice point is
+pruned because execution commits to never backtracking to it,
 then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
 It also ensures that if execution requires that the current goal be
 solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
@@ -5077,15 +5084,15 @@ to a solution and prune away the alternative solutions; @code{MR_solve}
 is used for ``soft'' commits, i.e. when we must commit to a solution
 but do not prune away all the alternatives.)
 
-MR_exception and MR_gc are currently not used ---
-they are reserved for future use.
+MR_gc is currently not used ---
+it is reserved for future use.
 
 @end table
 
 Typically if the @var{untrail_func} is called with @var{reason} being
-@samp{MR_undo} or @samp{MR_exception}, then it should undo the effects
-of the update(s) specified by @var{value}, and the free any resources
-associated with that trail entry.  If it is called with @var{reason}
+@samp{MR_undo}, @samp{MR_exception}, or @samp{MR_retry}, then it should undo
+the effects of the update(s) specified by @var{value}, and the free any
+resources associated with that trail entry.  If it is called with @var{reason}
 being @samp{MR_commit} or @samp{MR_solve}, then it not undo the update(s);
 instead, it may check for floundering (see the next section).
 In the @samp{MR_commit} case it may, in some cases, be possible to
@@ -5143,23 +5150,36 @@ redundant trailing.
 
 @table @b
 @item @bullet{} @code{MR_ChoicepointId}
-@itemx @bullet{} @code{MR_current_choicepoint_id()}
-@itemx @bullet{} @code{MR_null_choicepoint_id()}
-Prototypes:
+Declaration:
 @example
 typedef @dots{} MR_ChoicepointId;
-MR_ChoicepointId MR_current_choicepoint_id(void);
-MR_ChoicepointId MR_null_choicepoint_id(void);
 @end example
 
 The type @code{MR_ChoicepointId} is an abstract type used
 to hold the identity of a choice point.  Values of this
-type can be compared using C's @samp{==} operator.
+type can be compared using C's @samp{==} operator
+or using @samp{MR_choicepoint_newer()}.
+@sp 1
+@item @bullet{} @code{MR_current_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_current_choicepoint_id(void);
+@end example
 
 @code{MR_current_choicepoint_id()} returns a value indicating
 the identity of the most recent choice point; that is, the
 point to which execution would backtrack if the current computation
 failed.
+The value remains meaningful if the choicepoint is pruned
+away by a commit, but is not meaningful after backtracking
+past the point where the choicepoint was created (since
+choicepoint ids may be reused after backtracking).
+@sp 1
+@item @bullet{} @code{MR_null_choicepoint_id()}
+Prototype:
+@example
+MR_ChoicepointId MR_null_choicepoint_id(void);
+@end example
 
 @code{MR_null_choicepoint_id()} returns a ``null'' value that is
 distinct from any value ever returned by @code{MR_current_choicepoint_id}.
@@ -5167,6 +5187,18 @@ distinct from any value ever returned by @code{MR_current_choicepoint_id}.
 is a macro that is guaranteed to be suitable for use as a
 static initializer, so that it can for example be used to
 provide the initial value of a C global variable.)
+@sp 1
+@item @bullet{} @code{MR_choicepoint_newer()}
+Prototype:
+@example
+bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
+@end example
+
+@code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
+@samp{x} is newer than (i.e. was created more recently than) the
+choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
+older than any non-null ChoicepointId.  If either of the choice points
+have been backtracked over, the behaviour is undefined.
 
 @end table
 
@@ -5180,15 +5212,18 @@ for the initial value of this @samp{prev_choicepoint} field.)
 When you are about to modify your mutable data structure,
 you can then call @code{MR_current_choicepoint_id()} again and
 compare the result from that call with the value saved in
-the @samp{prev_choicepoint} field in the data structure. 
-If they are different, then you must trail the update,
-and update the prev_choicepoint field with the new value;
+the @samp{prev_choicepoint} field in the data structure
+using @code{MR_choicepoint_newer()}.
+If the current choicepoint is newer, then you must trail the update,
+and update the @samp{prev_choicepoint} field with the new value;
 furthermore, you must also take care that on backtracking the
 previous value of the @samp{prev_choicepoint} field in your data
 structure is restored to its previous value, by trailing that update too.
-But if @code{MR_current_choice_id()} and the @code{prev_choicepoint} field
-are equal, then you can safely perform the update to your data
-structure without trailing it.
+But if @code{MR_current_choice_id()} is not newer than the
+@code{prev_choicepoint} field, then you can safely perform
+the update to your data structure without trailing it.
+
+For an example, see the sample module below.
 
 Note that there is a cost to this -- you have to include
 an extra field in your data structure for each part of
@@ -5198,6 +5233,80 @@ or not to trail it, and if you do need to trail the update,
 then you have an extra field that you need to trail.
 Whether or not the benefits from avoiding redundant trailing
 outweigh these costs will depend on your application.
+
+@example
+:- module trailing_example.
+:- interface.
+
+:- type int_ref.
+
+    % Create a new int_ref with the specified value.
+:- pred new_int_ref(int_ref::uo, int::in) is det.
+
+    % update_int_ref(Ref0, Ref, OldVal, NewVal):
+    % Ref0 has value OldVal and Ref has value NewVal.
+:- pred update_int_ref(int_ref::mdi, int_ref::muo,
+        int::out, int::in) is det.
+
+:- implementation.
+
+:- type int_ref ---> int_ref(c_pointer).
+
+:- pragma import(new_int_ref(uo, in),
+	"new_int_ref").
+:- pragma import(update_int_ref(mdi, muo, out, in),
+	"update_int_ref").
+
+:- pragma c_header_code("
+typedef Word Mercury_IntRef;
+void new_int_ref(Mercury_IntRef *ref, Integer value);
+void update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
+    Integer *old_value, Integer new_value);
+").
+
+:- pragma c_code("
+typedef struct @{
+    MR_ChoicepointId prev_choicepoint;
+    Integer data;
+@} C_IntRef;
+
+void
+new_int_ref(Mercury_IntRef *ref, Integer value)
+@{
+    C_IntRef *x = malloc(sizeof(C_IntRef));
+    x->prev_choicepoint = MR_current_choicepoint_id();
+    x->data = value;
+    *ref = (Mercury_IntRef) x;
+@}
+
+void
+update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
+    Integer *old_value, Integer new_value)
+@{
+    C_IntRef *x = (C_IntRef *) ref0;
+    *old_value = x->data;
+
+    /* check whether we need to trail this update */
+    if (MR_choicepoint_newer(MR_current_choicepoint_id(),
+        x->prev_choicepoint))
+    @{
+        /* trail both x->data and x->prev_choicepoint,
+	   since we're about to update them both*/
+        assert(sizeof(x->data) == sizeof(Word));
+        assert(sizeof(x->prev_choicepoint) == sizeof(Word));
+        MR_trail_current_value((Word *)&x->data);
+        MR_trail_current_value((Word *)&x->prev_choicepoint);
+
+        /* update x->prev_choicepoint to indicate that
+           x->data's previous value has been trailed
+           at this choice point */
+        x->prev_choicepoint = MR_current_choicepoint_id();
+    @}
+    x->data = new_value;
+    *ref = ref0;
+@}
+").
+@end example
 
 @c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
 @c 

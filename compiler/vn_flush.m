@@ -269,6 +269,11 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [discard_ticket - ""]
 	;
+		Vn_instr = vn_prune_ticket,
+		VnTables = VnTables0,
+		Templocs = Templocs0,
+		Instrs = [prune_ticket - ""]
+	;
 		Vn_instr = vn_mark_ticket_stack(Vnlval),
 		vn_flush__access_path(Vnlval, [src_ctrl(N)], [], Lval,
 			VnTables0, VnTables1, Templocs0, Templocs, Params,
@@ -279,10 +284,10 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instr = mark_ticket_stack(Lval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
-		Vn_instr = vn_discard_tickets_to(Vn),
+		Vn_instr = vn_prune_tickets_to(Vn),
 		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
 			Templocs0, Templocs, Params, FlushInstrs),
-		Instr = discard_tickets_to(Rval) - "",
+		Instr = prune_tickets_to(Rval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_incr_sp(Incr, Msg),

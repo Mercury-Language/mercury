@@ -305,6 +305,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
+		Uinstr0 = prune_ticket,
+		Livevals = Livevals0,
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		DontValueNumber = DontValueNumber0
+	;
 		Uinstr0 = mark_ticket_stack(Lval),
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
@@ -313,7 +319,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = discard_tickets_to(Rval),
+		Uinstr0 = prune_tickets_to(Rval),
 		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,

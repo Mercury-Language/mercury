@@ -337,12 +337,13 @@ opt_debug__dump_vninstr(vn_reset_ticket(Vn, _Reason), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	string__append_list(["reset_ticket(", Vn_str, ", _)"], Str).
 opt_debug__dump_vninstr(vn_discard_ticket, "discard_ticket").
+opt_debug__dump_vninstr(vn_prune_ticket, "prune_ticket").
 opt_debug__dump_vninstr(vn_mark_ticket_stack(Vnlval), Str) :-
 	opt_debug__dump_vnlval(Vnlval, V_str),
 	string__append_list(["mark_ticket_stack(", V_str, ")"], Str).
-opt_debug__dump_vninstr(vn_discard_tickets_to(Vn), Str) :-
+opt_debug__dump_vninstr(vn_prune_tickets_to(Vn), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
-	string__append_list(["discard_tickets_to(", Vn_str, ", _)"], Str).
+	string__append_list(["prune_tickets_to(", Vn_str, ", _)"], Str).
 opt_debug__dump_vninstr(vn_incr_sp(N, _), Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["incr_sp(", N_str, ")"], Str).
@@ -990,12 +991,13 @@ opt_debug__dump_instr(reset_ticket(Rval, _Reason), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	string__append_list(["reset_ticket(", R_str, ", _)"], Str).
 opt_debug__dump_instr(discard_ticket, "discard_ticket").
+opt_debug__dump_instr(prune_ticket, "prune_ticket").
 opt_debug__dump_instr(mark_ticket_stack(Lval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	string__append_list(["mark_ticket_stack(", L_str, ")"], Str).
-opt_debug__dump_instr(discard_tickets_to(Rval), Str) :-
+opt_debug__dump_instr(prune_tickets_to(Rval), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
-	string__append_list(["discard_tickets_to(", R_str, ")"], Str).
+	string__append_list(["prune_tickets_to(", R_str, ")"], Str).
 opt_debug__dump_instr(incr_sp(Size, _), Str) :-
 	string__int_to_string(Size, S_str),
 	string__append_list(["incr_sp(", S_str, ")"], Str).

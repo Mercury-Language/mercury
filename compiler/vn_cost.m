@@ -168,11 +168,14 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = discard_ticket,
 		Cost = 0
 	;
+		Uinstr = prune_ticket,
+		Cost = 0
+	;
 		Uinstr = mark_ticket_stack(Lval),
 		vn_cost__lval_cost(Lval, Params, LvalCost),
 		Cost = LvalCost
 	;
-		Uinstr = discard_tickets_to(Rval),
+		Uinstr = prune_tickets_to(Rval),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost = RvalCost
 	;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1999 The University of Melbourne.
+** Copyright (C) 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -124,6 +124,8 @@ struct MR_context_struct {
 		/* saved MR_trail_ptr for this context */
 	MR_ChoicepointId context_ticket_counter;
 		/* saved MR_ticket_counter for this context */
+	MR_ChoicepointId context_ticket_high_water;
+		/* saved MR_ticket_high_water for this context */
 #endif
 
 	Word		*context_hp;
@@ -349,6 +351,8 @@ Declare_entry(do_runnext);
 		    MR_trail_ptr = load_context_c->context_trail_ptr;	\
 		    MR_ticket_counter =					\
 				load_context_c->context_ticket_counter;	\
+		    MR_ticket_high_water =				\
+			     load_context_c->context_ticket_high_water;	\
 	    	)							\
 		MR_ENGINE(context).detstack_zone =			\
 				load_context_c->detstack_zone;		\
@@ -384,6 +388,8 @@ Declare_entry(do_runnext);
 		    save_context_c->context_trail_ptr = MR_trail_ptr;	\
 		    save_context_c->context_ticket_counter =		\
 						MR_ticket_counter;	\
+		    save_context_c->context_ticket_high_water =		\
+						MR_ticket_high_water;	\
 		)							\
 		save_context_c->detstack_zone =				\
 				MR_ENGINE(context).detstack_zone;	\

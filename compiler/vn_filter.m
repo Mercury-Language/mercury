@@ -150,8 +150,9 @@ vn_filter__user_instr(free_heap(Rval), yes(Rval)).
 vn_filter__user_instr(store_ticket(_), no).
 vn_filter__user_instr(reset_ticket(Rval, _Reason), yes(Rval)).
 vn_filter__user_instr(discard_ticket, no).
+vn_filter__user_instr(prune_ticket, no).
 vn_filter__user_instr(mark_ticket_stack(_), no).
-vn_filter__user_instr(discard_tickets_to(Rval), yes(Rval)).
+vn_filter__user_instr(prune_tickets_to(Rval), yes(Rval)).
 vn_filter__user_instr(incr_sp(_, _), no).
 vn_filter__user_instr(decr_sp(_), no).
 vn_filter__user_instr(pragma_c(_, _, _, _, _, _), _):-
@@ -216,10 +217,12 @@ vn_filter__replace_in_user_instr(reset_ticket(Rval0, Reason), Temp, Defn,
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(discard_ticket, _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
+vn_filter__replace_in_user_instr(prune_ticket, _, _, _) :-
+	error("non-user instruction in vn_filter__replace_in_user_instr").
 vn_filter__replace_in_user_instr(mark_ticket_stack(_), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
-vn_filter__replace_in_user_instr(discard_tickets_to(Rval0), Temp, Defn,
-		discard_tickets_to(Rval)) :-
+vn_filter__replace_in_user_instr(prune_tickets_to(Rval0), Temp, Defn,
+		prune_tickets_to(Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_user_instr(incr_sp(_, _), _, _, _) :-
 	error("non-user instruction in vn_filter__replace_in_user_instr").
@@ -261,8 +264,9 @@ vn_filter__defining_instr(free_heap(_), no).
 vn_filter__defining_instr(store_ticket(Lval), yes(Lval)).
 vn_filter__defining_instr(reset_ticket(_, _), no).
 vn_filter__defining_instr(discard_ticket, no).
+vn_filter__defining_instr(prune_ticket, no).
 vn_filter__defining_instr(mark_ticket_stack(Lval), yes(Lval)).
-vn_filter__defining_instr(discard_tickets_to(_), no).
+vn_filter__defining_instr(prune_tickets_to(_), no).
 vn_filter__defining_instr(incr_sp(_, _), no).
 vn_filter__defining_instr(decr_sp(_), no).
 vn_filter__defining_instr(pragma_c(_, _, _, _, _, _), _):-
@@ -324,10 +328,12 @@ vn_filter__replace_in_defining_instr(reset_ticket(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(discard_ticket, _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
+vn_filter__replace_in_defining_instr(prune_ticket, _, _, _) :-
+	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(mark_ticket_stack(Lval0), Temp, Defn,
 		mark_ticket_stack(Lval)) :-
 	vn_filter__replace_in_lval(Lval0, Temp, Defn, Lval).
-vn_filter__replace_in_defining_instr(discard_tickets_to(_), _, _, _) :-
+vn_filter__replace_in_defining_instr(prune_tickets_to(_), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").
 vn_filter__replace_in_defining_instr(incr_sp(_, _), _, _, _) :-
 	error("non-def instruction in vn_filter__replace_in_defining_instr").

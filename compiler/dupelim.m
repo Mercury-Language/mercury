@@ -342,13 +342,16 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = discard_ticket,
 		Instr = Instr1
 	;
+		Instr1 = prune_ticket,
+		Instr = Instr1
+	;
 		Instr1 = mark_ticket_stack(Lval1),
 		standardize_lval(Lval1, Lval),
 		Instr = mark_ticket_stack(Lval)
 	;
-		Instr1 = discard_tickets_to(Rval1),
+		Instr1 = prune_tickets_to(Rval1),
 		standardize_rval(Rval1, Rval),
-		Instr = discard_tickets_to(Rval)
+		Instr = prune_tickets_to(Rval)
 	;
 		Instr1 = incr_sp(_, _),
 		Instr = Instr1
@@ -627,15 +630,19 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
+		Instr1 = prune_ticket,
+		Instr2 = Instr1,
+		Instr = Instr1
+	;
 		Instr1 = mark_ticket_stack(Lval1),
 		Instr2 = mark_ticket_stack(Lval2),
 		most_specific_lval(Lval1, Lval2, Lval),
 		Instr = mark_ticket_stack(Lval)
 	;
-		Instr1 = discard_tickets_to(Rval1),
-		Instr2 = discard_tickets_to(Rval2),
+		Instr1 = prune_tickets_to(Rval1),
+		Instr2 = prune_tickets_to(Rval2),
 		most_specific_rval(Rval1, Rval2, Rval),
-		Instr = discard_tickets_to(Rval)
+		Instr = prune_tickets_to(Rval)
 	;
 		Instr1 = incr_sp(_, _),
 		Instr2 = Instr1,

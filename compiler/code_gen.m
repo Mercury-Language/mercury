@@ -724,17 +724,17 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			TraceSlotInfo = trace_slot_info(_, _, yes(_)),
 			CodeModel \= model_non
 		->
-			DiscardTraceTicketCode = node([
-				discard_ticket - "discard retry ticket"
+			PruneTraceTicketCode = node([
+				prune_ticket - "prune retry ticket"
 			])
 		;
-			DiscardTraceTicketCode = empty
+			PruneTraceTicketCode = empty
 		},
 
 		{ RestoreDeallocCode =
 			tree(RestoreSuccipCode,
 			tree(DeallocCode,
-			     DiscardTraceTicketCode))
+			     PruneTraceTicketCode))
 		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),

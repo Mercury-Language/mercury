@@ -859,45 +859,17 @@ XXX Full exception handling support is not yet implemented.
 
 	%
 	% trail management
+	% For documentation, see the corresponding LLDS instructions
+	% in llds.m.
 	%
 :- type trail_op
-
 	--->	store_ticket(mlds__lval)
-			% Allocate a new "ticket" and store it in the lval.
-
 	;	reset_ticket(mlds__rval, mlds__reset_trail_reason)
-			% The rval must specify a ticket allocated with
-			% `store_ticket' and not yet invalidated or
-			% deallocated.
-			% If undo_reason is `undo' or `exception', restore
-			% any mutable global state to the state it was in when
-			% the ticket was obtained with store_ticket();
-			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit' or `solve', leave the state
-			% unchanged, just check that it is safe to commit
-			% to this solution (i.e. that there are no outstanding
-			% delayed goals -- this is the "floundering" check).
-			% Note that we do not discard trail entries after
-			% commits, because that would in general be unsafe.
-			%
-			% Any invalidated ticket is useless and should
-			% be deallocated with either `discard_ticket'
-			% or `discard_tickets_to'.
-
 	;	discard_ticket
-			% Deallocates the most-recently allocated ticket.
-
+	;	prune_ticket
 	;	mark_ticket_stack(mlds__lval)
-			% Tell the trail sub-system to store a ticket counter
-			% (for later use in discard_tickets_upto)
-			% in the specified lval.
-
-	;	discard_tickets_to(mlds__rval)
-			% The rval must be a ticket counter obtained via
-			% `mark_ticket_stack' and not yet invalidated.
-			% Deallocates any trail tickets allocated after
-			% the corresponding call to mark_ticket_stack.
-			% Invalidates any later ticket counters.
+	;	prune_tickets_to(mlds__rval)
+% 	;	discard_tickets_to(mlds__rval)	% used only by the library
 	.
 
 %-----------------------------------------------------------------------------%

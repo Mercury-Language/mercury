@@ -2489,22 +2489,20 @@ code_info__maybe_restore_trail_info(MaybeTrailSlots,
 		{ RestoreCode = empty }
 	;
 		{ MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot) },
-		{ CommitTrailCode = node([
+		{ CommitCode = node([
 			reset_ticket(lval(TrailPtrSlot), commit)
-				- "discard trail entries and restore trail ptr"
+				- "discard trail entries and restore trail ptr",
+			prune_tickets_to(lval(CounterSlot))
+				- "restore ticket counter (but not high water mark)"
 		]) },
-		{ RestoreTrailCode = node([
+		{ RestoreCode = node([
 			reset_ticket(lval(TrailPtrSlot), undo)
-				- "apply trail entries and restore trail ptr"
-		]) },
-		{ RestoreCounterCode = node([
-			discard_tickets_to(lval(CounterSlot))
-				- "restore the ticket counter"
+				- "apply trail entries and restore trail ptr",
+			discard_ticket
+				- "restore ticket counter and high water mark"
 		]) },
 		code_info__release_temp_slot(CounterSlot),
-		code_info__release_temp_slot(TrailPtrSlot),
-		{ CommitCode = tree(CommitTrailCode, RestoreCounterCode) },
-		{ RestoreCode = tree(RestoreTrailCode, RestoreCounterCode) }
+		code_info__release_temp_slot(TrailPtrSlot)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2702,6 +2700,15 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__release_ticket(lval, code_info, code_info).
 :- mode code_info__release_ticket(in, in, out) is det.
 
+:- pred code_info__reset_and_prune_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
+:- mode code_info__reset_and_prune_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__reset_prune_and_release_ticket(lval, reset_trail_reason,
+	code_tree, code_info, code_info).
+:- mode code_info__reset_prune_and_release_ticket(in, in, out, in, out)
+	is det.
+
 :- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason,
 	code_tree, code_info, code_info).
 :- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
@@ -2721,6 +2728,15 @@ code_info__pickup_zombies(Zombies) -->
 
 :- pred code_info__maybe_release_ticket(maybe(lval), code_info, code_info).
 :- mode code_info__maybe_release_ticket(in, in, out) is det.
+
+:- pred code_info__maybe_reset_and_prune_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_and_prune_ticket(in, in, out, in, out) is det.
+
+:- pred code_info__maybe_reset_prune_and_release_ticket(maybe(lval),
+	reset_trail_reason, code_tree, code_info, code_info).
+:- mode code_info__maybe_reset_prune_and_release_ticket(in, in, out, in, out)
+	is det.
 
 :- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
 	reset_trail_reason, code_tree, code_info, code_info).
@@ -2803,6 +2819,19 @@ code_info__reset_ticket(TicketSlot, Reason, Code) -->
 code_info__release_ticket(TicketSlot) -->
 	code_info__release_temp_slot(TicketSlot).
 
+code_info__reset_and_prune_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
+		prune_ticket - "Prune ticket stack"
+	]) }.
+
+code_info__reset_prune_and_release_ticket(TicketSlot, Reason, Code) -->
+	{ Code = node([
+		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
+		prune_ticket - "Prune ticket stack"
+	]) },
+	code_info__release_temp_slot(TicketSlot).
+
 code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
 	{ Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
@@ -2839,6 +2868,22 @@ code_info__maybe_release_ticket(MaybeTicketSlot) -->
 		code_info__release_ticket(TicketSlot)
 	;
 		[]
+	).
+
+code_info__maybe_reset_and_prune_ticket(MaybeTicketSlot, Reason, Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__reset_and_prune_ticket(TicketSlot, Reason, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot, Reason,
+		Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__reset_prune_and_release_ticket(TicketSlot, Reason,
+			Code)
+	;
+		{ Code = empty }
 	).
 
 code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->

@@ -83,8 +83,9 @@
 			;	vn_store_ticket(vnlval)
 			;	vn_reset_ticket(vn, reset_trail_reason)
 			;	vn_discard_ticket
+			;	vn_prune_ticket
 			;	vn_mark_ticket_stack(vnlval)
-			;	vn_discard_tickets_to(vn)
+			;	vn_prune_tickets_to(vn)
 			;	vn_incr_sp(int, string)
 			;	vn_decr_sp(int).
 

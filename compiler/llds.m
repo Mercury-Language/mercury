@@ -314,10 +314,14 @@
 
 	;	store_ticket(lval)
 			% Allocate a new "ticket" and store it in the lval.
+			%
+			% Operational semantics:
+			% 	MR_ticket_counter = ++MR_ticket_high_water;
+			% 	lval = MR_trail_ptr;
 
 	;	reset_ticket(rval, reset_trail_reason)
 			% The rval must specify a ticket allocated with
-			% `store_ticket' and not yet invalidated or
+			% `store_ticket' and not yet invalidated, pruned or
 			% deallocated.
 			% If reset_trail_reason is `undo', `exception', or
 			% `retry', restore any mutable global state to the
@@ -332,24 +336,58 @@
 			% Note that we do not discard trail entries after
 			% commits, because that would in general be unsafe.
 			%
-			% Any invalidated ticket is useless and should
-			% be deallocated with either `discard_ticket'
-			% or `discard_tickets_to'.
+			% Any invalidated ticket which has not yet been
+			% backtracked over should be pruned with
+			% `prune_ticket' or `prune_tickets_to'.
+			% Any invalidated ticket which has been backtracked
+			% over is useless and should be deallocated with
+			% `discard_ticket'.
+			%
+			% Operational semantics:
+			% 	MR_untrail_to(rval, reset_trail_reason);
+
+	;	prune_ticket
+			% Invalidates the most-recently allocated ticket.
+			%
+			% Operational semantics:
+			%	--MR_ticket_counter;
 
 	;	discard_ticket
 			% Deallocates the most-recently allocated ticket.
+			%
+			% Operational semantics:
+			%	MR_ticket_high_water = --MR_ticket_counter;
 
 	;	mark_ticket_stack(lval)
 			% Tell the trail sub-system to store a ticket counter
-			% (for later use in discard_tickets_upto)
+			% (for later use in prune_tickets_to)
 			% in the specified lval.
+			%
+			% Operational semantics:
+			%	lval = MR_ticket_counter;
 
-	;	discard_tickets_to(rval)
+	;	prune_tickets_to(rval)
+			% The rval must be a ticket counter obtained via
+			% `mark_ticket_stack' and not yet invalidated.
+			% Prunes any trail tickets allocated after
+			% the corresponding call to mark_ticket_stack.
+			% Invalidates any later ticket counters.
+			%
+			% Operational semantics:
+			%	MR_ticket_counter = rval;
+
+%	;	discard_tickets_to(rval)	% this is only used in
+						% the hand-written code in
+						% library/exception.m
 			% The rval must be a ticket counter obtained via
 			% `mark_ticket_stack' and not yet invalidated.
 			% Deallocates any trail tickets allocated after
 			% the corresponding call to mark_ticket_stack.
 			% Invalidates any later ticket counters.
+			%
+			% Operational semantics:
+			%	MR_ticket_counter = rval;
+			%	MR_ticket_high_water = MR_ticket_counter;
 
 	;	incr_sp(int, string)
 			% Increment the det stack pointer. The string is

@@ -90,6 +90,7 @@ typedef struct {
 		Word *saved_maxfr;
 		MR_IF_USE_TRAIL(Word *saved_trail_ptr;)
 		MR_IF_USE_TRAIL(Word *saved_ticket_counter;)
+		MR_IF_USE_TRAIL(Word *saved_ticket_high_water;)
 
 #if NUM_REAL_REGS > 0
 		Word regs[NUM_REAL_REGS];
@@ -133,6 +134,8 @@ typedef struct {
 				MR_trail_ptr);				\
 		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_counter =	\
 				MR_ticket_counter);			\
+		MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_high_water =	\
+				MR_ticket_high_water);			\
 		if (setjmp((setjmp_env)->env)) {			\
 			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
 			restore_regs_from_mem((setjmp_env)->regs);	\
@@ -144,6 +147,8 @@ typedef struct {
 					(setjmp_env)->saved_trail_ptr);	\
 			MR_IF_USE_TRAIL(MR_ticket_counter = 		\
 				(setjmp_env)->saved_ticket_counter);	\
+			MR_IF_USE_TRAIL(MR_ticket_high_water = 		\
+				(setjmp_env)->saved_ticket_high_water);	\
 			goto longjmp_label;				\
 		}							\
 	    } while (0)

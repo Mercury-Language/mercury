@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1995, 1997-1999 The University of Melbourne.
+** Copyright (C) 1994-1995, 1997-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -113,6 +113,8 @@
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+#define MR_ticket_high_water	 \
+		count_usage(MR_TICKET_HIGH_WATER_RN, MR_ticket_high_water_var)
 
 /*
 ** the number of "very special" registers, i.e. special registers that can
@@ -259,6 +261,8 @@
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
+#define MR_ticket_high_water	 \
+		count_usage(MR_TICKET_HIGH_WATER_RN, MR_ticket_high_water_var)
 #define MR_gen_next	LVALUE_CAST(Integer,	\
 			count_usage(MR_GEN_NEXT_RN, mr(41)))
 #define MR_gen_stack	LVALUE_CAST(struct MR_GeneratorStackFrameStruct *, \

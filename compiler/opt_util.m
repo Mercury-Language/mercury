@@ -877,6 +877,9 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = discard_ticket,
 		opt_util__block_refers_stackvars(Instrs0, Need)
 	;
+		Uinstr0 = prune_ticket,
+		opt_util__block_refers_stackvars(Instrs0, Need)
+	;
 		Uinstr0 = mark_ticket_stack(Lval),
 		opt_util__lval_refers_stackvars(Lval, Use),
 		( Use = yes ->
@@ -885,7 +888,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			opt_util__block_refers_stackvars(Instrs0, Need)
 		)
 	;
-		Uinstr0 = discard_tickets_to(Rval),
+		Uinstr0 = prune_tickets_to(Rval),
 		opt_util__rval_refers_stackvars(Rval, Use),
 		( Use = yes ->
 			Need = yes
@@ -1019,8 +1022,9 @@ opt_util__can_instr_branch_away(free_heap(_), no).
 opt_util__can_instr_branch_away(store_ticket(_), no).
 opt_util__can_instr_branch_away(reset_ticket(_, _), no).
 opt_util__can_instr_branch_away(discard_ticket, no).
+opt_util__can_instr_branch_away(prune_ticket, no).
 opt_util__can_instr_branch_away(mark_ticket_stack(_), no).
-opt_util__can_instr_branch_away(discard_tickets_to(_), no).
+opt_util__can_instr_branch_away(prune_tickets_to(_), no).
 opt_util__can_instr_branch_away(incr_sp(_, _), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 opt_util__can_instr_branch_away(init_sync_term(_, _), no).
@@ -1084,8 +1088,9 @@ opt_util__can_instr_fall_through(free_heap(_), yes).
 opt_util__can_instr_fall_through(store_ticket(_), yes).
 opt_util__can_instr_fall_through(reset_ticket(_, _), yes).
 opt_util__can_instr_fall_through(discard_ticket, yes).
+opt_util__can_instr_fall_through(prune_ticket, yes).
 opt_util__can_instr_fall_through(mark_ticket_stack(_), yes).
-opt_util__can_instr_fall_through(discard_tickets_to(_), yes).
+opt_util__can_instr_fall_through(prune_tickets_to(_), yes).
 opt_util__can_instr_fall_through(incr_sp(_, _), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
@@ -1129,8 +1134,9 @@ opt_util__can_use_livevals(free_heap(_), no).
 opt_util__can_use_livevals(store_ticket(_), no).
 opt_util__can_use_livevals(reset_ticket(_, _), no).
 opt_util__can_use_livevals(discard_ticket, no).
+opt_util__can_use_livevals(prune_ticket, no).
 opt_util__can_use_livevals(mark_ticket_stack(_), no).
-opt_util__can_use_livevals(discard_tickets_to(_), no).
+opt_util__can_use_livevals(prune_tickets_to(_), no).
 opt_util__can_use_livevals(incr_sp(_, _), no).
 opt_util__can_use_livevals(decr_sp(_), no).
 opt_util__can_use_livevals(init_sync_term(_, _), no).
@@ -1191,8 +1197,9 @@ opt_util__instr_labels_2(free_heap(_), [], []).
 opt_util__instr_labels_2(store_ticket(_), [], []).
 opt_util__instr_labels_2(reset_ticket(_, _), [], []).
 opt_util__instr_labels_2(discard_ticket, [], []).
+opt_util__instr_labels_2(prune_ticket, [], []).
 opt_util__instr_labels_2(mark_ticket_stack(_), [], []).
-opt_util__instr_labels_2(discard_tickets_to(_), [], []).
+opt_util__instr_labels_2(prune_tickets_to(_), [], []).
 opt_util__instr_labels_2(incr_sp(_, _), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
 opt_util__instr_labels_2(init_sync_term(_, _), [], []).
@@ -1249,8 +1256,9 @@ opt_util__possible_targets(free_heap(_), []).
 opt_util__possible_targets(store_ticket(_), []).
 opt_util__possible_targets(reset_ticket(_, _), []).
 opt_util__possible_targets(discard_ticket, []).
+opt_util__possible_targets(prune_ticket, []).
 opt_util__possible_targets(mark_ticket_stack(_), []).
-opt_util__possible_targets(discard_tickets_to(_), []).
+opt_util__possible_targets(prune_tickets_to(_), []).
 opt_util__possible_targets(incr_sp(_, _), []).
 opt_util__possible_targets(decr_sp(_), []).
 opt_util__possible_targets(init_sync_term(_, _), []).
@@ -1297,8 +1305,9 @@ opt_util__instr_rvals_and_lvals(free_heap(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(store_ticket(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(reset_ticket(Rval, _Reason), [Rval], []).
 opt_util__instr_rvals_and_lvals(discard_ticket, [], []).
+opt_util__instr_rvals_and_lvals(prune_ticket, [], []).
 opt_util__instr_rvals_and_lvals(mark_ticket_stack(Lval), [], [Lval]).
-opt_util__instr_rvals_and_lvals(discard_tickets_to(Rval), [Rval], []).
+opt_util__instr_rvals_and_lvals(prune_tickets_to(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_, _), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
 opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
@@ -1439,9 +1448,10 @@ opt_util__count_temps_instr(store_ticket(Lval), R0, R, F0, F) :-
 opt_util__count_temps_instr(reset_ticket(Rval, _Reason), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(discard_ticket, R, R, F, F).
+opt_util__count_temps_instr(prune_ticket, R, R, F, F).
 opt_util__count_temps_instr(mark_ticket_stack(Lval), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(discard_tickets_to(Rval), R0, R, F0, F) :-
+opt_util__count_temps_instr(prune_tickets_to(Rval), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(incr_sp(_, _), R, R, F, F).
 opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
@@ -1871,6 +1881,7 @@ opt_util__replace_labels_instr(reset_ticket(Rval0, Reason), ReplMap, ReplData,
 		Rval = Rval0
 	).
 opt_util__replace_labels_instr(discard_ticket, _, _, discard_ticket).
+opt_util__replace_labels_instr(prune_ticket, _, _, prune_ticket).
 opt_util__replace_labels_instr(mark_ticket_stack(Lval0), ReplMap, ReplData,
 		mark_ticket_stack(Lval)) :-
 	(
@@ -1880,8 +1891,8 @@ opt_util__replace_labels_instr(mark_ticket_stack(Lval0), ReplMap, ReplData,
 		ReplData = no,
 		Lval = Lval0
 	).
-opt_util__replace_labels_instr(discard_tickets_to(Rval0), ReplMap, ReplData,
-		discard_tickets_to(Rval)) :-
+opt_util__replace_labels_instr(prune_tickets_to(Rval0), ReplMap, ReplData,
+		prune_tickets_to(Rval)) :-
 	(
 		ReplData = yes,
 		opt_util__replace_labels_rval(Rval0, ReplMap, Rval)

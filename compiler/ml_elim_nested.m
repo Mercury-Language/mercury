@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -767,9 +767,10 @@ fixup_trail_op(store_ticket(Lval0), store_ticket(Lval)) -->
 fixup_trail_op(reset_ticket(Rval0, Reason), reset_ticket(Rval, Reason)) -->
 	fixup_rval(Rval0, Rval).
 fixup_trail_op(discard_ticket, discard_ticket) --> [].
+fixup_trail_op(prune_ticket, prune_ticket) --> [].
 fixup_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval)) -->
 	fixup_lval(Lval0, Lval).
-fixup_trail_op(discard_tickets_to(Rval0), discard_tickets_to(Rval)) -->
+fixup_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval)) -->
 	fixup_rval(Rval0, Rval).
 
 :- pred fixup_rvals(list(mlds__rval), list(mlds__rval), elim_info, elim_info).
@@ -1181,9 +1182,10 @@ trail_op_contains_var(store_ticket(Lval), Name) :-
 trail_op_contains_var(reset_ticket(Rval, _Reason), Name) :-
 	rval_contains_var(Rval, Name).
 trail_op_contains_var(discard_ticket, _Name) :- fail.
+trail_op_contains_var(prune_ticket, _Name) :- fail.
 trail_op_contains_var(mark_ticket_stack(Lval), Name) :-
 	lval_contains_var(Lval, Name).
-trail_op_contains_var(discard_tickets_to(Rval), Name) :-
+trail_op_contains_var(prune_tickets_to(Rval), Name) :-
 	rval_contains_var(Rval, Name).
 
 :- pred rvals_contains_var(list(mlds__rval), mlds__var).

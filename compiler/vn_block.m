@@ -341,6 +341,12 @@ vn_block__handle_instr(discard_ticket,
 	vn_block__new_ctrl_node(vn_discard_ticket, Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
+vn_block__handle_instr(prune_ticket,
+		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
+		SeenIncr, SeenIncr, Tuple0, Tuple) :-
+	vn_block__new_ctrl_node(vn_prune_ticket, Livemap,
+		Params, VnTables0, VnTables,
+		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(mark_ticket_stack(Lval),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -348,11 +354,11 @@ vn_block__handle_instr(mark_ticket_stack(Lval),
 	vn_block__new_ctrl_node(vn_mark_ticket_stack(Vnlval), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(discard_tickets_to(Rval),
+vn_block__handle_instr(prune_tickets_to(Rval),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
-	vn_block__new_ctrl_node(vn_discard_tickets_to(Vn), Livemap,
+	vn_block__new_ctrl_node(vn_prune_tickets_to(Vn), Livemap,
 		Params, VnTables1, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(incr_sp(N, Msg),
@@ -508,6 +514,13 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
+		VnInstr = vn_prune_ticket,
+		VnTables = VnTables0,
+		Liveset = Liveset0,
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
 		VnInstr = vn_mark_ticket_stack(Vnlval),
 		( vn_table__search_desired_value(Vnlval, Vn_prime, VnTables0) ->
 			Vn = Vn_prime,
@@ -522,7 +535,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		VnInstr = vn_discard_tickets_to(_),
+		VnInstr = vn_prune_tickets_to(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -925,8 +938,9 @@ vn_block__is_ctrl_instr(free_heap(_), yes).
 vn_block__is_ctrl_instr(store_ticket(_), yes).
 vn_block__is_ctrl_instr(reset_ticket(_, _), yes).
 vn_block__is_ctrl_instr(discard_ticket, yes).
+vn_block__is_ctrl_instr(prune_ticket, yes).
 vn_block__is_ctrl_instr(mark_ticket_stack(_), yes).
-vn_block__is_ctrl_instr(discard_tickets_to(_), yes).
+vn_block__is_ctrl_instr(prune_tickets_to(_), yes).
 vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
 vn_block__is_ctrl_instr(init_sync_term(_, _), no).

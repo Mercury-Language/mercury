@@ -1022,6 +1022,9 @@ print_register_usage_counts(void)
 			case MR_TICKET_COUNTER_RN:
 				printf("MR_ticket_counter");
 				break;
+			case MR_TICKET_HIGH_WATER_RN:
+				printf("MR_ticket_high_water");
+				break;
 			case MR_SOL_HP_RN:
 				printf("MR_sol_hp");
 				break;

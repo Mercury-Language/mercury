@@ -1273,12 +1273,15 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_discard_ticket,
 			VnTables1 = VnTables0
 		;
+			VnInstr = vn_prune_ticket,
+			VnTables1 = VnTables0
+		;
 			VnInstr = vn_mark_ticket_stack(Vnlval),
 			vn_util__vnlval_access_vns(Vnlval, Vns),
 			vn_util__record_use_list(Vns, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;
-			VnInstr = vn_discard_tickets_to(Vn),
+			VnInstr = vn_prune_tickets_to(Vn),
 			vn_util__record_use(Vn, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;

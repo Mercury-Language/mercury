@@ -1075,7 +1075,7 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 	** were allocated by MR_create_exception_handler().
 	*/
 #ifdef MR_USE_TRAIL
-	MR_discard_ticket();
+	MR_prune_ticket();
 #endif
 	MR_succeed_discard();
 
@@ -1126,7 +1126,11 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 	** back to our caller.
 	*/
 #ifdef MR_USE_TRAIL
-	MR_discard_ticket();
+	if (r1) {
+		MR_prune_ticket();
+	} else {
+		MR_discard_ticket();
+	}
 #endif
 	MR_succeed_discard();
 

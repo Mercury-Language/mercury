@@ -628,11 +628,14 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 		% of the accumulator from the solutions heap
 		% back onto the ordinary heap, and then we can
 		% reset the solutions heap pointer.
+		% We also need to discard the trail ticket
+		% created by get_registers/3.
 		% /* Accumulator := MutVar */
 		impure get_mutvar(Mutvar, Accumulator1),
 		impure partial_deep_copy(SolutionsHeapPtr, Accumulator1,
 			Accumulator),
-		impure reset_solutions_heap(SolutionsHeapPtr)
+		impure reset_solutions_heap(SolutionsHeapPtr),
+		impure discard_trail_ticket
 	).
 
 % The code for do_while/4 is essentially the same as the code for
@@ -668,7 +671,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	),
 	impure get_mutvar(Mutvar, Accumulator1),
 	impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
-	impure reset_solutions_heap(SolutionsHeapPtr).
+	impure reset_solutions_heap(SolutionsHeapPtr),
+	impure discard_trail_ticket.
 
 :- type heap_ptr ---> heap_ptr(c_pointer).
 :- type trail_ptr ---> trail_ptr(c_pointer).
@@ -676,6 +680,9 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 %
 % Save the state of the Mercury heap and trail registers,
 % for later use in partial_deep_copy/3 and reset_solutions_heap/1.
+% Note that this allocates a trail ticket;
+% you need to dispose of it properly when you're finished with it,
+% e.g. by calling discard_trail_ticket/0.
 %
 :- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
 	is det.
@@ -704,6 +711,17 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 #ifdef MR_USE_TRAIL
 	/* check for outstanding delayed goals (``floundering'') */
 	MR_reset_ticket(TrailPtr, MR_solve);
+#endif
+").
+
+%
+% Discard the topmost trail ticket.
+%
+:- impure pred discard_trail_ticket is det.
+:- pragma c_code(discard_trail_ticket, [will_not_call_mercury],
+"
+#ifdef MR_USE_TRAIL
+	MR_discard_ticket();
 #endif
 ").
 

@@ -359,12 +359,16 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
+		Instr = prune_ticket,
+		NoDeref = NoDeref0,
+		Tested = Tested0
+	;
 		Instr = mark_ticket_stack(Lval),
 		vn_verify__tags_lval(Lval, NoDeref0),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = discard_tickets_to(Rval),
+		Instr = prune_tickets_to(Rval),
 		vn_verify__tags_rval(Rval, NoDeref0),
 		NoDeref = NoDeref0,
 		Tested = Tested0

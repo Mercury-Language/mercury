@@ -1120,8 +1120,9 @@ value_number__boundary_instr(free_heap(_), no).
 value_number__boundary_instr(store_ticket(_), no).
 value_number__boundary_instr(reset_ticket(_, _), no).
 value_number__boundary_instr(discard_ticket, no).
+value_number__boundary_instr(prune_ticket, no).
 value_number__boundary_instr(mark_ticket_stack(_), no).
-value_number__boundary_instr(discard_tickets_to(_), no).
+value_number__boundary_instr(prune_tickets_to(_), no).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(init_sync_term(_, _), no).
