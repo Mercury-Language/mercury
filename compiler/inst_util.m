@@ -516,8 +516,6 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives,
 :- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, in,
 			out, out, out) is semidet.
 
-	% XXX need to handle `any' insts
-
 abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, M,
 			not_reached, erroneous, M).
 
@@ -528,6 +526,12 @@ abstractly_unify_inst_functor_2(live, free, ConsId, Args0, ArgLives, _Real,
 	inst_list_is_ground_or_any_or_dead(Args0, ArgLives, ModuleInfo0),
 	maybe_make_shared_inst_list(Args0, ArgLives, ModuleInfo0,
 			Args, ModuleInfo).
+
+abstractly_unify_inst_functor_2(live, any(Uniq), ConsId, ArgInsts,
+		ArgLives, Real, M0, Inst, Det, M) :-
+	make_any_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real, M0,
+		AnyArgInsts, Det, M),
+	Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
 
 abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), ConsId, Args,
 			ArgLives, Real, M0, bound(Uniq, List), Det, M) :-
@@ -549,6 +553,11 @@ abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, M,
 
 abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, M,
 			bound(unique, [functor(ConsId, Args)]), det, M).
+
+abstractly_unify_inst_functor_2(dead, any(Uniq), ConsId, ArgInsts,
+		_ArgLives, Real, M0, Inst, Det, M) :-
+	make_any_inst_list(ArgInsts, dead, Uniq, Real, M0, AnyArgInsts, Det, M),
+	Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
 
 abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), ConsId, Args,
 			_ArgLives, Real, M0, bound(Uniq, List), Det, M) :-
@@ -1069,6 +1078,26 @@ make_any_inst_list([Inst0 | Insts0], Live, Uniq, Real, ModuleInfo0,
 		Inst, Det1, ModuleInfo1),
 	make_any_inst_list(Insts0, Live, Uniq, Real, ModuleInfo1,
 		Insts, Det2, ModuleInfo),
+	det_par_conjunction_detism(Det1, Det2, Det).
+
+:- pred make_any_inst_list_lives(list(inst), is_live, list(is_live),
+			uniqueness, unify_is_real,
+			module_info, list(inst), determinism, module_info).
+:- mode make_any_inst_list_lives(in, in, in, in, in, in, out, out, out)
+				is semidet.
+
+make_any_inst_list_lives([], _, _, _, _, ModuleInfo, [], det, ModuleInfo).
+make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
+		Uniq, Real, ModuleInfo0, [Inst | Insts], Det, ModuleInfo) :-
+	( Live = live, ArgLive = live ->
+		BothLive = live
+	;
+		BothLive = dead
+	),
+	make_any_inst(Inst0, BothLive, Uniq, Real, ModuleInfo0,
+		Inst, Det1, ModuleInfo1),
+	make_any_inst_list_lives(Insts0, Live, ArgLives, Uniq, Real,
+		ModuleInfo1, Insts, Det2, ModuleInfo),
 	det_par_conjunction_detism(Det1, Det2, Det).
 
 %-----------------------------------------------------------------------------%
