@@ -345,6 +345,10 @@ Changes to the Mercury standard library:
   unsafe_dump_tableaus/0 in extras/clpr/dump.m; and debug_freeze/3
   and debug_freeze/4 in extras/trailed_update/var.m.
 
+* The interface to the predicate term__compare/4 was found to be error-prone,
+  and so we are phasing it out; it is declared with `pragma obsolete'
+  in this version, so any use of it will now result in a warning, and
+  the predicate will be removed entirely in some future version.
 
 Changes to the Mercury implementation:
 **************************************
