@@ -109,8 +109,8 @@ binary_distribution: bindist.configure bindist.build_vars
 	gzip ../$(MERCURY_VERSION).tar
 	rm -rf $(MERCURY_VERSION)
 
-bindist.configure: bindist.configure.in
-	autoconf bindist.configure.in > bindist.configure
+bindist.configure: bindist.configure.in ../aclocal.m4
+	autoconf -l.. bindist.configure.in > bindist.configure
 
 bindist.build_vars: bindist.build_vars.in
 	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \

@@ -225,6 +225,8 @@ esac
 AC_SUBST(SOCKET_LIBRARY)
 
 #-----------------------------------------------------------------------------#
+MERCURY_CHECK_READLINE
+#-----------------------------------------------------------------------------#
 AC_OUTPUT(Makefile scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/c2init scripts/sicstus_conv

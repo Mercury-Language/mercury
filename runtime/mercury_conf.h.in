@@ -260,6 +260,15 @@
 */
 #undef  MR_USE_EXTERNAL_DEBUGGER
 
+/*
+** MR_NO_USE_READLINE
+**	Set this if you want to prevent the debugger from using the GNU
+**	readline library for the command-line prompt.
+**	The autoconfiguration script sets this if it can't find a termcap
+**	library.
+*/
+#undef  MR_NO_USE_READLINE
+
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_conf_param.h"

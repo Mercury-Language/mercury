@@ -92,10 +92,22 @@ New library packages in the Mercury extras distribution:
 Changes to the Mercury implementation:
 **************************************
 
-* The debugger now includes support for interactive queries.
+* The Mercury debugger (mdb) now includes support for interactive queries.
 
   See the "Interactive query commands" subsection of the "Debugger commands"
   section of the "Debugging" chapter of the Mercury User's Guide for details.
+
+* The Mercury debugger (mdb) now optionally supports command-line editing
+  and command-line history.
+
+  This support uses the GNU Readline library.  For the source distribution,
+  the Mercury configure script will detect whether readline has been
+  installed and will only enable the command-line editing and history
+  support if readline has been installed.  For the binary distribution,
+  if the binary distribution was built with readline, then you will
+  need to install GNU readline in order to use the debugger.
+
+  For information on where to obtain GNU Readline, see the INSTALL file.
 
 * We've removed the support for using a Prolog debugger on Mercury programs.
 

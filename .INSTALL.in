@@ -5,7 +5,14 @@
 # You need GNU C (2.7.2 or later -- 2.6.3 might work too, but it is known
 # to have problems compiling Mercury on some architectures, e.g. SPARC)
 # and GNU Make (3.69 or later).  Make sure that they are somewhere in
-# your PATH.
+# your PATH.  It's also helpful if you have GNU Readline installed
+# in one of the standard locations (normally /usr/local or /usr),
+# but this is not essential.
+#
+# The source distributions for GNU C, GNU Make, and GNU Readline are
+# available from <ftp://ftp.gnu.org/gnu/>.  Binaries for these are
+# included in almost all Linux distributions and also in the Cygwin
+# distribution for Windows (see README.MS-Windows).
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #
