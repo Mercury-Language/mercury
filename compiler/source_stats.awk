@@ -1,10 +1,7 @@
-<<<<<<< source_stats.awk
-=======
 #  Usage: awk -f source_stats.awk *.nl
 #
 #  This computes some simple statistics about Mercury source code.
 
->>>>>>> 1.2
 { lines++; }
 
 /^[ 	]*$/		{ blank++; next; }
