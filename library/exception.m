@@ -21,10 +21,9 @@
 :- interface.
 :- import_module std_util, list, io, store.
 
-%
-% throw(Exception):
-%	Throw the specified exception.
-%
+	% throw(Exception):
+	%	Throw the specified exception.
+
 :- pred throw(T).
 :- mode throw(in) is erroneous.
 
@@ -42,40 +41,44 @@
 	--->	succeeded(ground)
 	;	exception(ground).
 
-%
-% try(Goal, Result):
-%    Operational semantics:
-%	Call Goal(R).
-%	If Goal(R) fails, succeed with Result = failed.
-%	If Goal(R) succeeds, succeed with Result = succeeded(R).
-%	If Goal(R) throws an exception E, succeed with Result = exception(E).
-%    Declarative semantics:
-%       try(Goal, Result) <=>
-%               ( Goal(R), Result = succeeded(R)
-%               ; not Goal(_), Result = failed
-%               ; Result = exception(_)
-%		).
-%
+	% try(Goal, Result):
+	%
+	% Operational semantics:
+	%	Call Goal(R).
+	%	If Goal(R) fails, succeed with Result = failed.
+	%	If Goal(R) succeeds, succeed with Result = succeeded(R).
+	%	If Goal(R) throws an exception E, succeed with
+	%		Result = exception(E).
+	%
+	% Declarative semantics:
+	%       try(Goal, Result) <=>
+	%               ( Goal(R), Result = succeeded(R)
+	%               ; not Goal(_), Result = failed
+	%               ; Result = exception(_)
+	%		).
+
 :- pred try(pred(T),		    exception_result(T)).
 :- mode try(pred(out) is det,       out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is semidet,   out)              is cc_multi.
 :- mode try(pred(out) is cc_multi,  out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is cc_nondet, out)              is cc_multi.
 
-%
-% try_io(Goal, Result, IO_0, IO):
-%    Operational semantics:
-%	Call Goal(R, IO_0, IO_1).
-%	If it succeeds, succeed with Result = succeeded(R) and IO = IO_1.
-%	If it throws an exception E, succeed with Result = exception(E)
-%	and with the final IO state being whatever state resulted
-%	from the partial computation from IO_0.
-%    Declarative semantics:
-%	try_io(Goal, Result, IO_0, IO) <=>
-%		( Goal(R, IO_0, IO), Result = succeeded(R)
-%		; Result = exception(_)
-%		).
-%
+	% try_io(Goal, Result, IO_0, IO):
+	%
+	% Operational semantics:
+	%	Call Goal(R, IO_0, IO_1).
+	%	If it succeeds, succeed with Result = succeeded(R)
+	%		and IO = IO_1.
+	%	If it throws an exception E, succeed with Result = exception(E)
+	%		and with the final IO state being whatever state
+	%		resulted from the partial computation from IO_0.
+	%
+	% Declarative semantics:
+	%	try_io(Goal, Result, IO_0, IO) <=>
+	%		( Goal(R, IO_0, IO), Result = succeeded(R)
+	%		; Result = exception(_)
+	%		).
+
 :- pred try_io(pred(T, io, io),
 	exception_result(T), io, io).
 :- mode try_io(pred(out, di, uo) is det,
@@ -83,10 +86,10 @@
 :- mode try_io(pred(out, di, uo) is cc_multi,
 	out(cannot_fail), di, uo) is cc_multi.
 
-%
-% try_store(Goal, Result, Store_0, Store):
-%    Just like try_io, but for stores rather than io__states.
-%
+	% try_store(Goal, Result, Store_0, Store):
+	%
+	% Just like try_io, but for stores rather than io__states.
+
 :- pred try_store(pred(T, store(S), store(S)),
 	exception_result(T), store(S), store(S)).
 :- mode try_store(pred(out, di, uo) is det,
@@ -94,28 +97,31 @@
 :- mode try_store(pred(out, di, uo) is cc_multi,
 	out(cannot_fail), di, uo) is cc_multi.
 
-%
-% try_all(Goal, ResultList):
-%    Operational semantics:
-%	Try to find all solutions to Goal(R), using backtracking.
-%	Collect the solutions found in the ResultList, until
-%	the goal either throws an exception or fails.
-%	If it throws an exception, put that exception at the end of
-%	the ResultList.
-%    Declaratively:
-%       try_all(Goal, ResultList) <=>
-%		(if
-%			list__reverse(ResultList, [Last | AllButLast]),
-%			Last = exception(_)
-%		then
-%			all [M] (list__member(M, AllButLast) =>
-%				(M = succeeded(R), Goal(R))),
-%		else
-%			all [M] (list__member(M, ResultList) =>
-%				(M = succeeded(R), Goal(R))),
-%			all [R] (Goal(R) =>
-%				list__member(succeeded(R), ResultList)),
-%		).
+	% try_all(Goal, ResultList):
+	%
+	% Operational semantics:
+	%	Try to find all solutions to Goal(R), using backtracking.
+	%	Collect the solutions found in the ResultList, until
+	%	the goal either throws an exception or fails.
+	%	If it throws an exception, put that exception at the end of
+	%	the ResultList.
+	%
+	% Declaratively:
+	%       try_all(Goal, ResultList) <=>
+	%		(if
+	%			list__reverse(ResultList,
+	%				[Last | AllButLast]),
+	%			Last = exception(_)
+	%		then
+	%			all [M] (list__member(M, AllButLast) =>
+	%				(M = succeeded(R), Goal(R))),
+	%		else
+	%			all [M] (list__member(M, ResultList) =>
+	%				(M = succeeded(R), Goal(R))),
+	%			all [R] (Goal(R) =>
+	%				list__member(succeeded(R),
+	%					ResultList)),
+	%		).
 
 :- pred try_all(pred(T), list(exception_result(T))).
 :- mode try_all(pred(out) is det,     out(try_all_det))     is cc_multi.
@@ -129,13 +135,14 @@
 :- inst try_all_multi ---> [cannot_fail | try_all_nondet].
 :- inst try_all_nondet == list_skel(cannot_fail).
 
-%
-% incremental_try_all(Goal, AccumulatorPred, Acc0, Acc):
-%    Same as
-%	try_all(Goal, Results),
-%	std_util__unsorted_aggregate(Results, AccumulatorPred, Acc0, Acc)
-%    except that operationally, the execution of try_all
-%    and std_util__unsorted_aggregate is interleaved.
+	% incremental_try_all(Goal, AccumulatorPred, Acc0, Acc):
+	%
+	% Same as
+	%	try_all(Goal, Results),
+	%	std_util__unsorted_aggregate(Results, AccumulatorPred,
+	%		Acc0, Acc)
+	% except that operationally, the execution of try_all
+	% and std_util__unsorted_aggregate is interleaved.
 
 :- pred incremental_try_all(pred(T), pred(exception_result(T), A, A), A, A).
 :- mode incremental_try_all(pred(out) is nondet,
@@ -143,33 +150,46 @@
 :- mode incremental_try_all(pred(out) is nondet,
 	pred(in, in, out) is det, in, out) is cc_multi.
 
-%
-% rethrow(ExceptionResult):
-%	Rethrows the specified exception result
-%	(which should be of the form `exception(_)',
-%	not `succeeded(_)' or `failed'.).
-%
+	% rethrow(ExceptionResult):
+	% Rethrows the specified exception result (which should be
+	% of the form `exception(_)', not `succeeded(_)' or `failed'.).
+
 :- pred rethrow(exception_result(T)).
 :- mode rethrow(in(bound(exception(ground)))) is erroneous.
 
 :- func rethrow(exception_result(T)) = _.
 :- mode rethrow(in(bound(exception(ground)))) = out is erroneous.
 
-%
-% finally(P, PRes, Cleanup, CleanupRes, IO0, IO).
-%	Call P and ensure that Cleanup is called afterwards,
-%	no matter whether P succeeds or throws an exception.
-%	PRes is bound to the output of P.
-%	CleanupRes is bound to the output of Cleanup.
-%	A exception thrown by P will be rethrown after Cleanup
-%	is called, unless Cleanup throws an exception.
-%	This predicate performs the same function as the `finally'
-%	clause (`try {...} finally {...}') in languages such as Java.
+	% finally(P, PRes, Cleanup, CleanupRes, IO0, IO).
+	% Call P and ensure that Cleanup is called afterwards,
+	% no matter whether P succeeds or throws an exception.
+	% PRes is bound to the output of P.
+	% CleanupRes is bound to the output of Cleanup.
+	% A exception thrown by P will be rethrown after Cleanup
+	% is called, unless Cleanup throws an exception.
+	% This predicate performs the same function as the `finally'
+	% clause (`try {...} finally {...}') in languages such as Java.
+
 :- pred finally(pred(T, io, io), T, pred(io__res, io, io), io__res, io, io).
 :- mode finally(pred(out, di, uo) is det, out,
 	pred(out, di, uo) is det, out, di, uo) is det.
 :- mode finally(pred(out, di, uo) is cc_multi, out,
 	pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
+
+	% throw_if_near_stack_limits checks if the program is near
+	% the limits of the Mercury stacks, and throws an exception
+	% (near_stack_limits) if this is the case.
+	%
+	% This predicate works only in low level C grades; in other grades,
+	% it never throws an exception.
+	%
+	% The predicate is impure instead of semipure because its effect
+	% depends not only on the execution of other impure predicates,
+	% but all calls.
+
+:- type near_stack_limits ---> near_stack_limits.
+
+:- impure pred throw_if_near_stack_limits is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2422,5 +2442,45 @@ report_uncaught_exception_2(Exception, unit, !IO) :-
 		io__nl(StdErr, !IO)
 	),
 	io__flush_output(StdErr, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma no_inline(throw_if_near_stack_limits/0).
+
+throw_if_near_stack_limits :-
+	( impure now_near_stack_limits ->
+		throw(near_stack_limits)
+	;
+		true
+	).
+
+:- impure pred now_near_stack_limits is semidet.
+:- pragma no_inline(now_near_stack_limits/0).
+
+:- pragma foreign_proc("C",
+	now_near_stack_limits,
+	[will_not_call_mercury],
+"
+#ifdef	MR_HIGHLEVEL_CODE
+	/*
+	** In high level code grades, I don't know of any portable way
+	** to check whether we are near the limits of the C stack.
+	*/
+	SUCCESS_INDICATOR = MR_FALSE;
+#else
+	int	slack = 1024;
+
+	if (((MR_maxfr + slack) < MR_CONTEXT(MR_ctxt_nondetstack_zone)->top)
+		&& ((MR_sp + slack) < MR_CONTEXT(MR_ctxt_detstack_zone)->top))
+	{
+		SUCCESS_INDICATOR = MR_FALSE;
+	} else {
+		SUCCESS_INDICATOR = MR_TRUE;
+	}
+#endif
+").
+
+now_near_stack_limits :-
+	fail.
 
 %-----------------------------------------------------------------------------%
