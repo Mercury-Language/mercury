@@ -333,16 +333,23 @@ extern	const char
 ** MR_turn_off_debug saves the current values of the variables controlling 
 ** debugging (execution tracing and diagnostics) in the structure provided by
 ** the caller, and then turns them off. MR_turn_debug_back_on restores the
-** saved values from the structure.
+** saved values from the structure. If include_counter_vars is set, they also
+** save and restore the global variables containing the event and sequence
+** number counters and the call depth.
 */
 
 typedef struct {
-	MR_bool	MR_sds_trace_enabled;
-	MR_bool	MR_sds_io_tabling_enabled;
-	MR_bool	MR_sds_debugflags[MR_MAXFLAG];
+	MR_bool		MR_sds_trace_enabled;
+	MR_bool		MR_sds_io_tabling_enabled;
+	MR_bool		MR_sds_debugflags[MR_MAXFLAG];
+	MR_bool		MR_sds_include_counter_vars;
+	MR_Unsigned	MR_sds_trace_call_seqno;
+	MR_Unsigned	MR_sds_trace_call_depth;
+	MR_Unsigned	MR_sds_trace_event_number;
 } MR_SavedDebugState;
 
-extern	void	MR_turn_off_debug(MR_SavedDebugState *saved_state);
+extern	void	MR_turn_off_debug(MR_SavedDebugState *saved_state,
+			MR_bool include_counter_vars);
 extern	void	MR_turn_debug_back_on(MR_SavedDebugState *saved_state);
 
 /*

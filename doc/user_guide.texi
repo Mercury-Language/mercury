@@ -3268,6 +3268,13 @@ In minimal model grades,
 prints the contents of the frames on the possible negated context stack.
 In other grades, it reports an error.
 @sp 1
+@item mm_stacks
+@kindex mm_stacks (mdb command)
+In minimal model grades,
+prints the contents of the frames on the generator stack,
+the cut stack and the possible negated context stack.
+In other grades, it reports an error.
+@sp 1
 @item nondet_stack [-d] [@var{num}]
 @kindex nondet_stack (mdb command)
 Prints the contents of the frames on the nondet stack.
@@ -3286,6 +3293,11 @@ that point to the det and nondet stacks.
 @item all_regs
 @kindex all_regs (mdb command)
 Prints the contents of all the virtual machine registers.
+@sp 1
+@item debug_vars
+@kindex debug_vars (mdb command)
+Prints the values of the variables used by the debugger
+to record event numbers, call sequence numbers and call depths.
 @sp 1
 @item proc_stats
 @kindex proc_stats (mdb command)

@@ -67,9 +67,10 @@ end
 document_category 1100 developer
 developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
-             `nondet_stack', `stack_regs', `all_regs', `proc_stats',
-             `label_stats', `print_optionals', `unhide_events', `dd_dd',
-             `table', `type_ctor', `class_decl', `all_type_ctors' and
-	     `all_class_decls'.
+             `flag', `subgoal', `consumer', `gen_stack', `cut_stack,
+             `pneg_stack', `mm_stacks', `nondet_stack', `stack_regs',
+             `all_regs', `debug_vars', `proc_stats', `label_stats',
+             `print_optionals', `unhide_events', `dd_dd', `table',
+             `type_ctor', `class_decl', `all_type_ctors' and `all_class_decls'.
 
 end

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001, 2003 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -77,21 +77,25 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 /*
 ** MR_dump_nondet_stack:
 **	This function dumps the control slots of the nondet stack.
+**	If limit_addr is nonnull, dumps only frames above limit_addr.
 **	If limit is nonzero, dumps at most limit frames.
 **	The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack(FILE *fp, int limit, MR_Word *maxfr);
+extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int limit,
+			MR_Word *maxfr);
 
 /*
 ** MR_dump_nondet_stack_from_layout:
 **	This function dumps the nondet stack.
+**	If limit_addr is nonnull, dumps only frames above limit_addr.
 **	If limit is nonzero, dumps at most limit frames.
 **	The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, int limit,
-			MR_Word *maxfr, const MR_Label_Layout *label_layout,
+extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
+			MR_Word *limit_addr, int limit, MR_Word *maxfr,
+			const MR_Label_Layout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*

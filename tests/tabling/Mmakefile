@@ -19,6 +19,9 @@ SIMPLE_PROGS = \
 	unused_args
 
 NONDET_PROGS = \
+	combine \
+	completed_consumer_in_solutions \
+	consumer_in_commit \
 	coup \
 	coup_det_frame \
 	coup_no_commit \
@@ -29,19 +32,20 @@ NONDET_PROGS = \
 	seq \
 	seq2 \
 	seq3 \
+	seq4 \
 	sg \
 	tc_loop \
 	tc_minimal
 
 # We don't yet pass the following minimal model tests. The reason is that
 # they contain interactions between tabling and constructs that function
-# as commited or negated contexts.
+# as committed or negated contexts.
 #
-#	consumer_in_commit
 #	consumer_in_solutions
-#	combine
+#
+# We don't yet pass the following minimal model tests for undetermined reasons.
+#
 #	coup2
-#	seq4
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2003 The University of Melbourne.
+** Copyright (C) 1994-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -63,8 +63,9 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_PRINT_LOCN_FLAG 		17
 #define	MR_LLD_DEBUG_ENABLED_FLAG 	18
 #define	MR_NOT_NEAREST_FLAG 		19
-#define	MR_DETAILFLAG			20
-#define	MR_MAXFLAG			21
+#define	MR_DEBUG_SLOTS_FLAG		20
+#define	MR_DETAILFLAG			21
+#define	MR_MAXFLAG			22
 /* MR_DETAILFLAG should be the last real flag */
 
 /*
@@ -125,6 +126,10 @@ extern	MR_bool	MR_debugflag[];
 ** MR_not_nearest_flag, if set, tells minimal model tabling to save stack
 ** segments only to the nearest generator, not to the nearest common ancestor
 ** of the consumer being suspended and its generator.
+**
+** MR_debug_slots_flag controls whether dumps of nondet stack frames will
+** print the values of the fixed stack slots used by the debugger, in the
+** stack frames of procedures compiled with debugging.
 */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -147,6 +152,7 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_printlocndebug	MR_debugflag[MR_PRINT_LOCN_FLAG]
 #define	MR_lld_debug_enabled	MR_debugflag[MR_LLD_DEBUG_ENABLED_FLAG]
 #define	MR_not_nearest_flag	MR_debugflag[MR_NOT_NEAREST_FLAG]
+#define	MR_debug_slots_flag	MR_debugflag[MR_DEBUG_SLOTS_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 typedef struct {

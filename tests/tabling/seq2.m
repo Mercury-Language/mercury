@@ -20,20 +20,25 @@ main -->
 	io__write(Solns),
 	io__write_string("\n").
 
-:- pred p(int).
-:- mode p(out) is nondet.
+:- pred p(int::out) is nondet.
 
 :- pragma minimal_model(p/1).
 
 p(X) :-
 	(
 		p(Y),
-		0 =< Y, Y < 10,
-		X is -Y - 1
+		between(0, Y, 9),
+		X = -Y - 1
 	;
 		p(Y),
-		-10 < Y, Y =< 10,
-		X is -Y + 1
+		between(-9, Y, 0),
+		X = -Y + 1
 	;
 		X = 0
 	).
+
+:- pred between(int::in, int::in, int::in) is semidet.
+
+between(A, B, C) :-
+	A =< B,
+	B =< C.

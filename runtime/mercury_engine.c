@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -62,6 +62,7 @@ MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG] = {
 	{ "printlocn",	MR_PRINT_LOCN_FLAG },
 	{ "enabled",	MR_LLD_DEBUG_ENABLED_FLAG },
 	{ "notnearest",	MR_NOT_NEAREST_FLAG },
+	{ "debugslots",	MR_DEBUG_SLOTS_FLAG },
 	{ "detail",	MR_DETAILFLAG }
 };
 

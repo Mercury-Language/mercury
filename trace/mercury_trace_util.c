@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000-2002 The University of Melbourne.
+** Copyright (C) 2000-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -147,5 +147,22 @@ MR_print_r_regs(FILE *fp, MR_Word *saved_regs)
 	fprintf(fp, "r5 = %ld (%lx)\n",
 		(long) MR_saved_reg(saved_regs, 5),
 		(long) MR_saved_reg(saved_regs, 5));
+#endif
+}
+
+void
+MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details)
+{
+#ifndef MR_HIGHLEVEL_CODE
+	fprintf(fp, "from event details:\n");
+	fprintf(fp, "call event %d, call seq %d, depth %d\n",
+		event_details->MR_event_number,
+		event_details->MR_call_seqno,
+		event_details->MR_call_depth);
+	fprintf(fp, "from global vars:\n");
+	fprintf(fp, "call event %d, call seq %d, depth %d\n",
+		MR_trace_event_number,
+		MR_trace_call_seqno,
+		MR_trace_call_depth);
 #endif
 }

@@ -439,9 +439,11 @@ static	MR_TraceCmdFunc	MR_trace_cmd_consumer;
 static	MR_TraceCmdFunc	MR_trace_cmd_gen_stack;
 static	MR_TraceCmdFunc	MR_trace_cmd_cut_stack;
 static	MR_TraceCmdFunc	MR_trace_cmd_pneg_stack;
+static	MR_TraceCmdFunc	MR_trace_cmd_mm_stacks;
 static	MR_TraceCmdFunc	MR_trace_cmd_nondet_stack;
 static	MR_TraceCmdFunc	MR_trace_cmd_stack_regs;
 static	MR_TraceCmdFunc	MR_trace_cmd_all_regs;
+static	MR_TraceCmdFunc	MR_trace_cmd_debug_vars;
 static	MR_TraceCmdFunc	MR_trace_cmd_table_io;
 static	MR_TraceCmdFunc	MR_trace_cmd_proc_stats;
 static	MR_TraceCmdFunc	MR_trace_cmd_label_stats;
@@ -659,7 +661,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	** do any I/O tabling.
 	*/
 
-	MR_turn_off_debug(&MR_saved_debug_state);
+	MR_turn_off_debug(&MR_saved_debug_state, MR_FALSE);
 
 	MR_trace_internal_ensure_init();
 
@@ -674,9 +676,9 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	** to allow them to be modified by MR_trace_retry().
 	*/
 
+	event_details.MR_event_number = MR_trace_event_number;
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
-	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
 		event_info->MR_saved_regs, event_info->MR_trace_port,
@@ -692,11 +694,11 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	} while (res == KEEP_INTERACTING);
 
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
-			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+		(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
 
 #ifdef	MR_TRACE_CHECK_INTEGRITY
 	cmd->MR_trace_must_check = cmd->MR_trace_must_check
-			|| cmd->MR_trace_check_integrity;
+		|| cmd->MR_trace_check_integrity;
 #endif
 
 	MR_trace_call_seqno = event_details.MR_call_seqno;
@@ -3463,6 +3465,39 @@ MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_mm_stacks(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+#ifdef	MR_USE_MINIMAL_MODEL
+
+	if (word_count == 1) {
+		MR_bool	saved_tabledebug;
+
+		MR_trace_init_modules();
+		saved_tabledebug = MR_tabledebug;
+		MR_tabledebug = MR_TRUE;
+		MR_print_gen_stack(MR_mdb_out);
+		fprintf(MR_mdb_out, "\n");
+		MR_print_cut_stack(MR_mdb_out);
+		fprintf(MR_mdb_out, "\n");
+		MR_print_pneg_stack(MR_mdb_out);
+		MR_tabledebug = saved_tabledebug;
+	} else {
+		MR_trace_usage("developer", "pneg_stack");
+	}
+
+#else	/* MR_USE_MINIMAL_MODEL */
+
+	fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
+		"only in minimal model grades.\n");
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_nondet_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
@@ -3503,12 +3538,12 @@ MR_trace_cmd_nondet_stack_2(MR_Event_Info *event_info, int limit,
 		int	saved_level;
 
 		saved_level = MR_trace_current_level();
-		MR_dump_nondet_stack_from_layout(MR_mdb_out, limit,
+		MR_dump_nondet_stack_from_layout(MR_mdb_out, NULL, limit,
 			MR_saved_maxfr(saved_regs), layout,
 			MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 		MR_trace_set_level(saved_level, MR_print_optionals);
 	} else {
-		MR_dump_nondet_stack(MR_mdb_out, limit,
+		MR_dump_nondet_stack(MR_mdb_out, NULL, limit,
 			MR_saved_maxfr(saved_regs));
 	}
 }
@@ -3551,6 +3586,20 @@ MR_trace_cmd_all_regs(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #endif
 	} else {
 		MR_trace_usage("developer", "all_regs");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_debug_vars(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	if (word_count == 1) {
+		MR_print_debug_vars(MR_mdb_out, event_details);
+	} else {
+		MR_trace_usage("developer", "debug_vars");
 	}
 
 	return KEEP_INTERACTING;
@@ -6927,11 +6976,15 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "developer", "pneg_stack", MR_trace_cmd_pneg_stack,
 		NULL, MR_trace_null_completer },
+	{ "developer", "mm_stacks", MR_trace_cmd_mm_stacks,
+		NULL, MR_trace_null_completer },
 	{ "developer", "nondet_stack", MR_trace_cmd_nondet_stack,
 		MR_trace_stack_cmd_args, MR_trace_null_completer },
 	{ "developer", "stack_regs", MR_trace_cmd_stack_regs,
 		NULL, MR_trace_null_completer },
 	{ "developer", "all_regs", MR_trace_cmd_all_regs,
+		NULL, MR_trace_null_completer },
+	{ "developer", "debug_vars", MR_trace_cmd_debug_vars,
 		NULL, MR_trace_null_completer },
 	{ "developer", "proc_stats", MR_trace_cmd_proc_stats,
 		NULL, MR_trace_filename_completer },

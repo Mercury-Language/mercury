@@ -466,7 +466,8 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
 }
 
 void
-MR_turn_off_debug(MR_SavedDebugState *saved_state)
+MR_turn_off_debug(MR_SavedDebugState *saved_state,
+	MR_bool include_counter_vars)
 {
 	int	i;
 
@@ -479,6 +480,11 @@ MR_turn_off_debug(MR_SavedDebugState *saved_state)
 		saved_state->MR_sds_debugflags[i] = MR_debugflag[i];
 		MR_debugflag[i] = MR_FALSE;
 	}
+
+	saved_state->MR_sds_include_counter_vars = include_counter_vars;
+	saved_state->MR_sds_trace_call_seqno = MR_trace_call_seqno;
+	saved_state->MR_sds_trace_call_depth = MR_trace_call_depth;
+	saved_state->MR_sds_trace_event_number = MR_trace_event_number;
 }
 
 void
@@ -491,6 +497,12 @@ MR_turn_debug_back_on(MR_SavedDebugState *saved_state)
 
 	for (i = 0; i < MR_MAXFLAG ; i++) {
 		MR_debugflag[i] = saved_state->MR_sds_debugflags[i];
+	}
+
+	if (saved_state->MR_sds_include_counter_vars) {
+		MR_trace_call_seqno = saved_state->MR_sds_trace_call_seqno;
+		MR_trace_call_depth = saved_state->MR_sds_trace_call_depth;
+		MR_trace_event_number = saved_state->MR_sds_trace_event_number;
 	}
 }
 

@@ -24,7 +24,7 @@
 static  MR_Word *nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2);
 static  void    save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
                     const char *who, const char *what,
-                    MR_bool can_print_stack_detail);
+                    const MR_Label_Layout *top_layout);
 static  void    restore_state(MR_SavedState *saved_state, const char *who,
                     const char *what);
 static  void    extend_consumer_stacks(MR_Subgoal *leader,
@@ -407,6 +407,7 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
 ** suspensions and resumptions of derivations.
 */
 
+#define SUSPEND_LABEL(name) MR_PASTE3(MR_SUSPEND_ENTRY, _, name)
 #define RESUME_LABEL(name)  MR_PASTE3(MR_RESUME_ENTRY, _, name)
 
 /*
@@ -458,7 +459,7 @@ nearest_common_ancestor(MR_Word *fr1, MR_Word *fr2)
 
 static void
 save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
-    const char *who, const char *what, MR_bool can_print_stack_detail)
+    const char *who, const char *what, const MR_Label_Layout *top_layout)
 {
     MR_Word *common_ancestor_fr;
     MR_Word *start_non;
@@ -467,6 +468,11 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     MR_restore_transient_registers();
 
     if (MR_not_nearest_flag) {
+        /*
+        ** This can yield incorrect results, as documented in mday_sld.tex
+        ** in papers/tabling2. It is included here only to allow demonstrations
+        ** of *why* this is incorrect.
+        */
         common_ancestor_fr = generator_fr;
     } else {
         common_ancestor_fr = nearest_common_ancestor(MR_curfr, generator_fr);
@@ -479,6 +485,7 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     saved_state->MR_ss_cur_fr = MR_curfr;
     saved_state->MR_ss_max_fr = MR_maxfr;
     saved_state->MR_ss_common_ancestor_fr = common_ancestor_fr;
+    saved_state->MR_ss_top_layout = top_layout;
 
     /* we copy from start_non to MR_maxfr, both inclusive */
     saved_state->MR_ss_non_stack_real_start = start_non;
@@ -533,12 +540,8 @@ save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
     }
 
     if (MR_tablestackdebug) {
-        if (can_print_stack_detail) {
-            MR_dump_nondet_stack_from_layout(stdout, 0, MR_maxfr,
-                MR_subgoal_debug_cur_proc->MR_sle_call_label, MR_sp, MR_curfr);
-        } else {
-            MR_dump_nondet_stack(stdout, 0, MR_maxfr);
-        }
+        MR_dump_nondet_stack_from_layout(stdout, start_non, 0, MR_maxfr,
+            top_layout, MR_sp, MR_curfr);
     }
   #endif /* MR_TABLE_DEBUG */
 
@@ -589,8 +592,9 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
     }
 
     if (MR_tablestackdebug) {
-        MR_dump_nondet_stack_from_layout(stdout, 0, MR_maxfr, NULL,
-            MR_sp, MR_curfr);
+        MR_dump_nondet_stack_from_layout(stdout,
+            saved_state->MR_ss_non_stack_real_start, 0, MR_maxfr,
+            saved_state->MR_ss_top_layout, MR_sp, MR_curfr);
     }
   #endif /* MR_TABLE_DEBUG */
 
@@ -604,8 +608,9 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 ** When A becomes a follower of another subgoal B, the responsibility for
 ** scheduling A's consumers passes to B's generator. Since by definition
 ** B's nondet stack frame is lower in the stack than A's generator's,
-** we need to extend the stack segments of A's consumers to also include
-** the parts of the stacks between the generator of B and the generator of A.
+** nca(consumer, B) will in general be lower than nca(consumer, A)
+** (where nca = nearest common ancestor). The consumer's saved state
+** goes down to nca(consumer, A); we need to extend it to nca(consumer, B).
 */
 
 static void
@@ -615,6 +620,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
     MR_Word         *arena_start;
     MR_Word         arena_size;
     MR_Word         extension_size;
+    MR_Word         *old_common_ancestor_fr;
     MR_Word         *new_common_ancestor_fr;
     MR_Word         *saved_fr;
     MR_Word         *real_fr;
@@ -624,87 +630,123 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
 
     cons_saved_state = &consumer->MR_cns_saved_state;
 
+    old_common_ancestor_fr = cons_saved_state->MR_ss_common_ancestor_fr;
+    new_common_ancestor_fr = nearest_common_ancestor(old_common_ancestor_fr,
+        leader->MR_sg_generator_fr);
+
 #ifdef  MR_TABLE_DEBUG
-    if (MR_tablestackdebug) {
-        printf("\nextending saved consumer stacks\n");
+    if (MR_tabledebug) {
+        printf("extending saved state of consumer %s for %s\n",
+            MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
+        printf("common ancestors: old ");
+        MR_printnondstackptr(old_common_ancestor_fr);
+        printf(", new ");
+        MR_printnondstackptr(new_common_ancestor_fr);
+        printf("\nold saved state:\n");
         print_saved_state(stdout, cons_saved_state);
     }
 #endif  /* MR_TABLE_DEBUG */
 
-    new_common_ancestor_fr = nearest_common_ancestor(
-        cons_saved_state->MR_ss_common_ancestor_fr,
-        leader->MR_sg_generator_fr);
     cons_saved_state->MR_ss_common_ancestor_fr = new_common_ancestor_fr;
 
-    arena_start = MR_table_detfr_slot(leader->MR_sg_generator_fr) + 1;
+    arena_start = MR_table_detfr_slot(new_common_ancestor_fr) + 1;
     extension_size = cons_saved_state->MR_ss_det_stack_real_start
         - arena_start;
-    arena_size  = extension_size
-        + cons_saved_state->MR_ss_det_stack_block_size;
 
-#if 0
-    if (arena_size != 0) {
-        assert(arena_start + arena_size == cons_saved_state->MR_ss_s_p - 1);
-    }
-#endif
-
-    arena_block = MR_table_allocate_words(arena_size);
-
-    MR_table_copy_words(arena_block, arena_start, extension_size);
-    MR_table_copy_words(arena_block + extension_size,
-        cons_saved_state->MR_ss_det_stack_saved_block,
-        cons_saved_state->MR_ss_det_stack_block_size);
+    if (extension_size > 0) {
+        arena_size  = extension_size
+            + cons_saved_state->MR_ss_det_stack_block_size;
 
 #ifdef  MR_TABLE_DEBUG
-    if (MR_tabledebug) {
-        printf("extending det stack of consumer %s for %s\n",
-            MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
-        printf("start: old %p, new %p\n",
-            cons_saved_state->MR_ss_det_stack_real_start, arena_start);
-        printf("size:  old %d, new %d\n",
-            cons_saved_state->MR_ss_det_stack_block_size, arena_size);
-        printf("block: old %p, new %p\n",
-            cons_saved_state->MR_ss_det_stack_saved_block, arena_block);
-    }
+        if (MR_tabledebug) {
+            printf("assert: det arena_start ");
+            MR_printdetstackptr(arena_start);
+            printf(" + %d = ", arena_size);
+            MR_printdetstackptr(cons_saved_state->MR_ss_s_p);
+            printf(" + 1: diff %d\n",
+                (arena_start + arena_size)
+                - (cons_saved_state->MR_ss_s_p + 1));
+        }
+#endif
+
+        if (arena_size != 0) {
+            assert(arena_start + arena_size
+                == cons_saved_state->MR_ss_s_p + 1);
+        }
+
+        arena_block = MR_table_allocate_words(arena_size);
+
+        MR_table_copy_words(arena_block, arena_start, extension_size);
+        MR_table_copy_words(arena_block + extension_size,
+            cons_saved_state->MR_ss_det_stack_saved_block,
+            cons_saved_state->MR_ss_det_stack_block_size);
+
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+            printf("extending det stack of consumer %s for %s\n",
+                MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
+            printf("start: old %p, new %p\n",
+                cons_saved_state->MR_ss_det_stack_real_start, arena_start);
+            printf("size:  old %d, new %d\n",
+                cons_saved_state->MR_ss_det_stack_block_size, arena_size);
+            printf("block: old %p, new %p\n",
+                cons_saved_state->MR_ss_det_stack_saved_block, arena_block);
+        }
 #endif  /* MR_TABLE_DEBUG */
 
-    cons_saved_state->MR_ss_det_stack_saved_block = arena_block;
-    cons_saved_state->MR_ss_det_stack_block_size = arena_size;
-    cons_saved_state->MR_ss_det_stack_real_start = arena_start;
+        cons_saved_state->MR_ss_det_stack_saved_block = arena_block;
+        cons_saved_state->MR_ss_det_stack_block_size = arena_size;
+        cons_saved_state->MR_ss_det_stack_real_start = arena_start;
+    }
 
-    arena_start = leader->MR_sg_generator_fr + 1;
+    arena_start = MR_prevfr_slot(new_common_ancestor_fr) + 1;
     extension_size = cons_saved_state->MR_ss_non_stack_real_start
         - arena_start;
-    arena_size  = extension_size
-        + cons_saved_state->MR_ss_non_stack_block_size;
-
-#if 0
-    assert(arena_start + arena_size == cons_saved_state->MR_max_fr);
-#endif
-
-    arena_block = MR_table_allocate_words(arena_size);
-
-    MR_table_copy_words(arena_block, arena_start, extension_size);
-    MR_table_copy_words(arena_block + extension_size,
-        cons_saved_state->MR_ss_non_stack_saved_block,
-        cons_saved_state->MR_ss_non_stack_block_size);
+    if (extension_size > 0) {
+        arena_size  = extension_size
+            + cons_saved_state->MR_ss_non_stack_block_size;
 
 #ifdef  MR_TABLE_DEBUG
-    if (MR_tabledebug) {
-        printf("extending non stack of suspension %s for %s\n",
-            MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
-        printf("start: old %p, new %p\n",
-            cons_saved_state->MR_ss_non_stack_real_start, arena_start);
-        printf("size:  old %d, new %d\n",
-            cons_saved_state->MR_ss_non_stack_block_size, arena_size);
-        printf("block: old %p, new %p\n",
-            cons_saved_state->MR_ss_non_stack_saved_block, arena_block);
-    }
+        if (MR_tabledebug) {
+            printf("assert: non arena_start ");
+            MR_printnondstackptr(arena_start);
+            printf(" + %d = ", arena_size);
+            MR_printnondstackptr(cons_saved_state->MR_ss_max_fr);
+            printf(" + 1: diff %d\n",
+                (arena_start + arena_size)
+                - (cons_saved_state->MR_ss_max_fr + 1));
+        }
+#endif
+
+        if (arena_size != 0) {
+            assert(arena_start + arena_size
+                == cons_saved_state->MR_ss_max_fr + 1);
+        }
+
+        arena_block = MR_table_allocate_words(arena_size);
+
+        MR_table_copy_words(arena_block, arena_start, extension_size);
+        MR_table_copy_words(arena_block + extension_size,
+            cons_saved_state->MR_ss_non_stack_saved_block,
+            cons_saved_state->MR_ss_non_stack_block_size);
+
+#ifdef  MR_TABLE_DEBUG
+        if (MR_tabledebug) {
+            printf("extending non stack of suspension %s for %s\n",
+                MR_consumer_addr_name(consumer), MR_subgoal_addr_name(leader));
+            printf("start: old %p, new %p\n",
+                cons_saved_state->MR_ss_non_stack_real_start, arena_start);
+            printf("size:  old %d, new %d\n",
+                cons_saved_state->MR_ss_non_stack_block_size, arena_size);
+            printf("block: old %p, new %p\n",
+                cons_saved_state->MR_ss_non_stack_saved_block, arena_block);
+        }
 #endif  /* MR_TABLE_DEBUG */
 
-    cons_saved_state->MR_ss_non_stack_saved_block = arena_block;
-    cons_saved_state->MR_ss_non_stack_block_size = arena_size;
-    cons_saved_state->MR_ss_non_stack_real_start = arena_start;
+        cons_saved_state->MR_ss_non_stack_saved_block = arena_block;
+        cons_saved_state->MR_ss_non_stack_block_size = arena_size;
+        cons_saved_state->MR_ss_non_stack_real_start = arena_start;
+    }
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tablestackdebug) {
@@ -713,6 +755,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
     }
 #endif  /* MR_TABLE_DEBUG */
 
+    /* XXX we should be doing this only for the newly added segment */
     saved_fr = cons_saved_state->MR_ss_non_stack_saved_block +
         cons_saved_state->MR_ss_non_stack_block_size - 1;
     real_fr = cons_saved_state->MR_ss_non_stack_real_start +
@@ -775,9 +818,8 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-        printf("making %s follow %s\n",
-                MR_subgoal_addr_name(this_follower),
-                MR_subgoal_addr_name(leader));
+        printf("\nmaking %s follow %s\n",
+            MR_subgoal_addr_name(this_follower), MR_subgoal_addr_name(leader));
     }
 #endif  /* MR_TABLE_DEBUG */
 
@@ -936,14 +978,15 @@ mercury__table_builtin__table_nondet_suspend_2_p_0(
 
 #else   /* ! MR_HIGHLEVEL_CODE */
 
-#ifndef  MR_USE_MINIMAL_MODEL
-
 MR_define_extern_entry(MR_SUSPEND_ENTRY);
 MR_define_extern_entry(MR_RESUME_ENTRY);
+
 MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
 MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY, MR_DETISM_NON, 0, -1,
     MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
+
+#ifndef  MR_USE_MINIMAL_MODEL
 
 MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
     MR_init_entry_sl(MR_SUSPEND_ENTRY);
@@ -965,12 +1008,11 @@ MR_END_MODULE
 
 MR_Subgoal      *MR_cur_leader;
 
+MR_define_extern_entry(MR_table_nondet_commit);
+
 MR_declare_entry(MR_do_trace_redo_fail);
 MR_declare_entry(MR_table_nondet_commit);
 
-MR_define_extern_entry(MR_SUSPEND_ENTRY);
-
-MR_define_extern_entry(MR_RESUME_ENTRY);
 MR_declare_label(RESUME_LABEL(ChangeLoop));
 MR_declare_label(RESUME_LABEL(ReachedFixpoint));
 MR_declare_label(RESUME_LABEL(LoopOverSubgoals));
@@ -979,13 +1021,8 @@ MR_declare_label(RESUME_LABEL(ReturnAnswer));
 MR_declare_label(RESUME_LABEL(RedoPoint));
 MR_declare_label(RESUME_LABEL(RestartPoint));
 
-MR_define_extern_entry(MR_table_nondet_commit);
-
-MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY, MR_DETISM_NON, 0, -1,
-    MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
-
-MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY, MR_DETISM_NON, 0, -1,
-    MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
+MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
+    SUSPEND_LABEL(Call), MR_SUSPEND_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
     RESUME_LABEL(ChangeLoop), MR_RESUME_ENTRY);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
@@ -1004,6 +1041,7 @@ MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
     MR_init_entry_sl(MR_SUSPEND_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_SUSPEND_ENTRY);
+    MR_init_label_sl(SUSPEND_LABEL(Call));
 
     MR_init_entry_sl(MR_RESUME_ENTRY);
     MR_INIT_PROC_LAYOUT_ADDR(MR_RESUME_ENTRY);
@@ -1035,6 +1073,16 @@ MR_define_entry(MR_SUSPEND_ENTRY);
     ** answers is in table_nondet_resume.
     */
 
+    /*
+    ** This frame is not used in table_nondet_suspend, but it is copied
+    ** to the suspend list as part of the saved nondet stack fragment,
+    ** and it *will* be used when table_nondet_resume copies back the
+    ** nondet stack fragment. The framevar slot is for use by
+    ** table_nondet_resume.
+    */
+    MR_mkframe(MR_STRINGIFY(MR_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
+
+MR_define_label(SUSPEND_LABEL(Call));
 {
     MR_SubgoalPtr   subgoal;
     MR_Consumer     *consumer;
@@ -1047,15 +1095,6 @@ MR_define_entry(MR_SUSPEND_ENTRY);
     MR_Word         *stop_addr;
     MR_Word         offset;
     MR_Word         *clobber_addr;
-
-    /*
-    ** This frame is not used in table_nondet_suspend, but it is copied
-    ** to the suspend list as part of the saved nondet stack fragment,
-    ** and it *will* be used when table_nondet_resume copies back the
-    ** nondet stack fragment. The framevar slot is for use by
-    ** table_nondet_resume.
-    */
-    MR_mkframe(MR_STRINGIFY(MR_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
 
     subgoal = (MR_SubgoalPtr) MR_r1;
     MR_register_suspension(subgoal);
@@ -1073,7 +1112,8 @@ MR_define_entry(MR_SUSPEND_ENTRY);
 
     MR_save_transient_registers();
     save_state(&(consumer->MR_cns_saved_state), subgoal->MR_sg_generator_fr,
-        "suspension", "consumer", MR_TRUE);
+        "suspension", "consumer",
+        (const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(SUSPEND_LABEL(Call)));
     MR_restore_transient_registers();
 
     cur_gen = MR_gen_next - 1;
@@ -1101,27 +1141,39 @@ MR_define_entry(MR_SUSPEND_ENTRY);
                 ** generator corresponding to this consumer.
                 */
 
-                *clobber_addr = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
   #ifdef  MR_TABLE_DEBUG
                 if (MR_tablestackdebug) {
                     printf("completing redoip of frame at ");
                     MR_printnondstackptr(fr);
                     printf(" (in saved copy)\n");
+                    printf("  old contents was %p\n",
+                        (MR_Word *) *clobber_addr);
                 }
   #endif    /* MR_TABLE_DEBUG */
+                *clobber_addr = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
 
-                consumer->MR_cns_saved_state.MR_ss_gen_next = cur_gen + 1;
   #ifdef  MR_TABLE_DEBUG
                 if (MR_tabledebug) {
-                    printf("saved gen_next set to %d\n", cur_gen + 1);
+                    printf("saved gen_next set to %d from %d\n",
+                        cur_gen + 1,
+                        consumer->MR_cns_saved_state.MR_ss_gen_next);
+                    /* XXX if next assignment is not idempotent */
+                    if (consumer->MR_cns_saved_state.MR_ss_gen_next
+                        != cur_gen + 1)
+                    {
+                        MR_print_gen_stack(stdout);
+                        MR_print_cut_stack(stdout);
+                    }
                 }
   #endif    /* MR_TABLE_DEBUG */
+                consumer->MR_cns_saved_state.MR_ss_gen_next = cur_gen + 1;
             } else {
                 /*
                 ** This is the nondet stack frame of some other generator.
                 */
 
   #if 0
+                /* reenable XXX */
                 assert(MR_prevfr_slot(fr) != (stop_addr - 1));
   #endif
 
@@ -1261,7 +1313,7 @@ MR_define_entry(MR_RESUME_ENTRY);
         MR_save_transient_registers();
         save_state(&(MR_cur_leader->MR_sg_resume_info->MR_ri_leader_state),
             MR_cur_leader->MR_sg_generator_fr, "resumption", "generator",
-            MR_FALSE);
+            NULL);
         MR_restore_transient_registers();
 
 #ifdef  MR_TABLE_DEBUG

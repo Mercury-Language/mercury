@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -398,9 +398,12 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 ** live value information as well to these macros.
 */ 
 
+#define	MR_LAYOUT_FROM_LABEL(label)					\
+	MR_PASTE2(mercury_data__label_layout__, label)
+
 #define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
 	MR_Label_Layout_No_Var_Info					\
-	MR_PASTE2(mercury_data__label_layout__, label) = {		\
+	MR_LAYOUT_FROM_LABEL(label) = {					\
 		(MR_Proc_Layout *) &					\
 			MR_PASTE2(mercury_data__proc_layout__, entry),	\
 		-1,							\

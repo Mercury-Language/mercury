@@ -148,6 +148,12 @@ MR_trace_real(const MR_Label_Layout *layout)
         depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
     }
 
+#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_TABLE_DEBUG)
+    if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {
+        MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
+    }
+#endif
+
     if (layout->MR_sll_hidden && !MR_trace_unhide_events) {
         return NULL;
     }
@@ -441,12 +447,6 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
     /* This also saves the regs in MR_fake_regs. */
     MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
-
-#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_TABLE_DEBUG)
-    if (port == MR_PORT_CALL) {
-        MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
-    }
-#endif
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
     if (MR_trace_handler == MR_TRACE_EXTERNAL) {

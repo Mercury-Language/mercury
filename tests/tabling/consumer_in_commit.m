@@ -14,8 +14,11 @@
 :- import_module std_util.
 
 main --> 
-	{ solutions(p, Solns) },
-	io__write(Solns),
+	{ solutions(p, SolnsP) },
+	io__write(SolnsP),
+	io__write_string("\n"),
+	{ solutions(q, SolnsQ) },
+	io__write(SolnsQ),
 	io__write_string("\n").
 
 :- pred p(int).

@@ -159,7 +159,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
         old_trace_curfr = stack_trace_curfr;
 
         result = MR_stack_walk_step(entry_layout, &cur_label_layout,
-                        &stack_trace_sp, &stack_trace_curfr, &problem);
+            &stack_trace_sp, &stack_trace_curfr, &problem);
         if (result == MR_STEP_ERROR_BEFORE) {
             MR_dump_stack_record_flush(fp, print_stack_record);
             return problem;
@@ -167,11 +167,11 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
             MR_dump_stack_record_frame(fp, prev_label_layout,
                 old_trace_sp, old_trace_curfr, print_stack_record);
 
-                MR_dump_stack_record_flush(fp, print_stack_record);
-                return problem;
+            MR_dump_stack_record_flush(fp, print_stack_record);
+            return problem;
         } else {
-                MR_dump_stack_record_frame(fp, prev_label_layout,
-                    old_trace_sp, old_trace_curfr, print_stack_record);
+            MR_dump_stack_record_frame(fp, prev_label_layout,
+                old_trace_sp, old_trace_curfr, print_stack_record);
         }
 
         frames_dumped_so_far++;
@@ -302,11 +302,13 @@ MR_stack_walk_succip_layout(MR_Code *success,
 /**************************************************************************/
 
 void
-MR_dump_nondet_stack(FILE *fp, int limit, MR_Word *base_maxfr)
+MR_dump_nondet_stack(FILE *fp, MR_Word *limit_addr, int limit,
+        MR_Word *base_maxfr)
 {
 #ifndef MR_HIGHLEVEL_CODE
 
-    MR_dump_nondet_stack_from_layout(fp, limit, base_maxfr, NULL, NULL, NULL);
+    MR_dump_nondet_stack_from_layout(fp, limit_addr, limit, base_maxfr,
+            NULL, NULL, NULL);
 
 #else   /* !MR_HIGHLEVEL_CODE */
 
@@ -318,8 +320,9 @@ MR_dump_nondet_stack(FILE *fp, int limit, MR_Word *base_maxfr)
 #ifdef MR_HIGHLEVEL_CODE
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
-    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr, int limit,
+    MR_Word *base_maxfr, const MR_Label_Layout *top_layout,
+    MR_Word *base_sp, MR_Word *base_curfr)
 {
     MR_fatal_error("MR_dump_nondet_stack_from_layout in high level grade");
 }
@@ -392,15 +395,18 @@ static int                      MR_nondet_branch_info_max = 0;
 #define MR_INIT_NONDET_BRANCH_ARRAY_SIZE        10
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
-    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
+MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr, int limit,
+    MR_Word *base_maxfr, const MR_Label_Layout *top_layout,
+    MR_Word *base_sp, MR_Word *base_curfr)
 {
-    int             frame_size;
-    int             level_number;
-    MR_bool         print_vars;
-    const char      *problem;
-    int             frames_traversed_so_far;
-    int             branch;
+    int                     frame_size;
+    int                     level_number;
+    MR_bool                 print_vars;
+    const char              *problem;
+    int                     frames_traversed_so_far;
+    int                     branch;
+    const MR_Label_Layout   *label_layout;
+    const MR_Proc_Layout    *proc_layout;
 
     MR_do_init_modules();
 
@@ -428,6 +434,11 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     while (base_maxfr >= MR_nondet_stack_trace_bottom) {
         if (limit > 0 && frames_traversed_so_far >= limit) {
             fprintf(fp, "<more stack frames snipped>\n");
+            return;
+        }
+
+        if (limit_addr != NULL && base_maxfr < limit_addr) {
+            fprintf(fp, "<reached limit of dumped region>\n");
             return;
         }
 
@@ -459,8 +470,6 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
             MR_print_nondstackptr(fp, base_maxfr);
             fprintf(fp, ": ordinary, %d words", frame_size);
             if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
-                const MR_Label_Layout *label_layout;
-
                 fprintf(fp, ", ");
                 label_layout = MR_nondet_branch_infos[branch].branch_layout;
                 MR_print_proc_id(fp, label_layout->MR_sll_entry);
@@ -482,6 +491,30 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
             MR_print_detstackptr(fp, MR_table_detfr_slot(base_maxfr));
             fprintf(fp, "\n");
 #endif
+            if (print_vars && MR_find_matching_branch(base_maxfr, &branch)) {
+                label_layout = MR_nondet_branch_infos[branch].branch_layout;
+                proc_layout = label_layout->MR_sll_entry;
+                if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)
+                    && MR_debug_slots_flag)
+                {
+                    fprintf(fp, " debug:  ");
+                    fprintf(fp, "call event ");
+                    MR_print_nondstackptr(fp,
+                        &MR_event_num_framevar(base_maxfr));
+                    fprintf(fp, " => %d, ",
+                        MR_event_num_framevar(base_maxfr) + 1);
+                    fprintf(fp, "call seq ");
+                    MR_print_nondstackptr(fp,
+                        &MR_call_num_framevar(base_maxfr));
+                    fprintf(fp, " => %d, ",
+                        MR_call_num_framevar(base_maxfr)),
+                    fprintf(fp, "depth ");
+                    MR_print_nondstackptr(fp,
+                        &MR_call_depth_framevar(base_maxfr));
+                    fprintf(fp, " => %d\n",
+                        MR_call_depth_framevar(base_maxfr));
+                }
+            }
 
             level_number++;
             if (print_vars && base_maxfr > MR_nondet_stack_trace_bottom) {
@@ -539,7 +572,7 @@ MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
 
         MR_SavedDebugState  saved_debug_state;
 
-        MR_turn_off_debug(&saved_debug_state);
+        MR_turn_off_debug(&saved_debug_state, MR_TRUE);
         /* XXX we ignore the return value */
         (*MR_address_of_trace_browse_all_on_level) (dump_fp, top_layout,
                 base_sp, base_curfr, level_number, MR_TRUE);
@@ -1124,8 +1157,14 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 {
     MR_bool print_details;
 
-    if (base_sp == NULL || base_curfr == NULL) {
-        return;
+    if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+        if (base_sp == NULL) {
+            return;
+        }
+    } else {
+        if (base_curfr == NULL) {
+            return;
+        }
     }
 
     if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1166,7 +1205,6 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
             event_num = MR_event_num_framevar(base_curfr) + 1;
             call_num = MR_call_num_framevar(base_curfr);
             depth = MR_call_depth_framevar(base_curfr);
-
         }
 
         if (MR_standardize_event_details) {

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -79,6 +79,9 @@ typedef struct {
 
 	MR_Integer		MR_ss_pneg_next;
 	MR_PNegStackFrame	*MR_ss_pneg_stack_saved_block;
+
+	/* to make it possible to generate more detailed debugging output */
+	const MR_Label_Layout	*MR_ss_top_layout;
 } MR_SavedState;
 
 /* The state of a consumer subgoal */

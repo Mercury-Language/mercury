@@ -51,9 +51,11 @@ consumer             xyzzy xyzzy xyzzy xyzzy xyzzy
 gen_stack            xyzzy xyzzy xyzzy xyzzy xyzzy
 cut_stack            xyzzy xyzzy xyzzy xyzzy xyzzy
 pneg_stack           xyzzy xyzzy xyzzy xyzzy xyzzy
+mm_stacks            xyzzy xyzzy xyzzy xyzzy xyzzy
 nondet_stack         xyzzy xyzzy xyzzy xyzzy xyzzy
 stack_regs           xyzzy xyzzy xyzzy xyzzy xyzzy
 all_regs             xyzzy xyzzy xyzzy xyzzy xyzzy
+debug_vars           xyzzy xyzzy xyzzy xyzzy xyzzy
 proc_stats           xyzzy xyzzy xyzzy xyzzy xyzzy
 label_stats          xyzzy xyzzy xyzzy xyzzy xyzzy
 print_optionals      xyzzy xyzzy xyzzy xyzzy xyzzy

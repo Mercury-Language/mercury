@@ -19,16 +19,20 @@ main -->
 :- pred b(int::out) is multi.
 :- pred c(int::out) is multi.
 :- pred d(int::out) is nondet.
+:- pred e(int::out) is nondet.
 
 :- pragma minimal_model(d/1).
+:- pragma minimal_model(e/1).
 
 a(A) :-
 	d(B),
-	d(C),
+	e(C),
 	A = B * 10 + C.
 
 d(A) :-
-	b(A),
+	b(A).
+
+e(A) :-
 	c(A).
 
 b(3).

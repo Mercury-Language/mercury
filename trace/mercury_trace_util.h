@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000-2002 The University of Melbourne.
+** Copyright (C) 1998,2000-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,7 @@
 #include "mercury_types.h"		/* for MR_Word etc */
 #include "mercury_library_types.h"	/* for MercuryFile */
 #include <stdio.h>			/* for FILE        */
+#include "mercury_trace.h"		/* for MR_Event_Details */
 
 /*
 ** When using the heap pointer, we need to restore it, in case it is
@@ -90,5 +91,6 @@ extern	void	MR_print_heap_regs(FILE *fp, MR_Word *saved_regs);
 extern	void	MR_print_tabling_regs(FILE *fp, MR_Word *saved_regs);
 extern	void	MR_print_succip_reg(FILE *fp, MR_Word *saved_regs);
 extern	void	MR_print_r_regs(FILE *fp, MR_Word *saved_regs);
+extern	void	MR_print_debug_vars(FILE *fp, MR_Event_Details *event_details);
 
 #endif /* MERCURY_TRACE_UTIL_H */

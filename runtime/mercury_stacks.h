@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -468,6 +468,21 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
 /* DEFINITIONS FOR GENERATOR STACK FRAMES */
 
+/*
+** The generator stack has one entry for each call to a minimal model tabled
+** procedure that is (a) acting as the generator for its subgoal and (b) is
+** in the active state. The MR_gen_frame field points to the home nondet stack
+** frame of the generator, and the MR_gen_subgoal field points to the
+** generator's data structure.
+**
+** In systems such as XSB, each choice point has a flag saying whether it is
+** an active generator or not, and if yes, where its subgoal's tabling
+** information is stored. In Mercury, the equivalent test checks whether
+** the generator stack has an entry whose MR_gen_frame field matches the
+** address of the nondet stack frame. This approach that minimizes the
+** performance impact of minimal model evaluation on non-tabled procedures.
+*/
+
 struct MR_GenStackFrameStruct {
 	MR_Word			*MR_gen_frame;
 	MR_SubgoalPtr		MR_gen_subgoal;
@@ -483,6 +498,35 @@ extern	void			MR_print_any_gen_stack(FILE *fp,
 					MR_GenStackFrame *gen_block);
 
 /* DEFINITIONS FOR CUT STACK FRAMES */
+
+/*
+** The cut stack has one entry for each commit goal currently active.
+** (A commit goal is an existential quantification that has a different
+** determinism than the goal being quantified over.) We use the cut stack
+** to prevent generators in the quantified being left active but incomplete
+** when the commit goal succeeds. We need to clean up any such generators
+** because otherwise, consumers will be depend on the generator to find all
+** the answers to the generator's subgoal, but the generator will never
+** compute any more answers, since it will never be backtracked into.
+** The MR_cut_generators field of a cut stack entry contains the list of
+** generators that are inside the corresponding commit and not inside
+** some nested commit.
+**
+** The MR_cut_frame field specifies the address of the nondet stack frame
+** (it should be a temp frame) used by the commit to get control on the
+** failure of the quantified goal. The MR_cut_gen_next field records
+** the value of MR_gen_next (the size of the generator stack) when the
+** commit goal started. When the quantified goal succeeds, the commit cuts
+** away the nondet stack frame at and above MR_cut_frame; we must also throw
+** away the generator stack entries that act as markers on the discarded nondet
+** stack frames. This means the generator stack entries at index
+** MR_cut_gen_next and above.
+**
+** The MR_cut_depth field records the depth of the cut stack entry in
+** the interleaving of the cut stack and pneg stack entries dictated by
+** the nesting of committed choice and possibly negated contexts currently
+** active.
+*/
 
 typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
 struct MR_CutGeneratorListNode {
@@ -507,6 +551,30 @@ extern	void			MR_print_any_cut_stack(FILE *fp,
 					MR_CutStackFrame *cut_block);
 
 /* DEFINITIONS FOR PNEG STACK FRAMES */
+
+/*
+** The pneg stack has one entry for each possibly negated context currently
+** active. (Possibly negated contexts include the conditions of if-then-elses
+** as well negated goals.) The MR_pneg_consumers field of a pneg stack entry
+** records all the consumers that are inside the corresponding possibly negated
+** context and not inside any nested possibly negated context. When the goal
+** in the possibly negated context fails, we check whether any of these
+** consumers are waiting for more answers from their generator. If yes,
+** then the failure is an artifact of the tabling implementation, and
+** committing to the else branch of the if-then-else or continuing after the
+** negated goal would be incorrect, so we abort the program.
+**
+** The MR_pneg_frame field specifies the address of the nondet stack frame
+** (it should be a temp frame) used by the negation or if-then-else to get
+** control on the failure of the possibly negated goal. The MR_pneg_gen_next
+** field records the value of MR_gen_next (the size of the generator stack)
+** when the possibly negated goal started. Currently, neither field is used.
+**
+** The MR_pneg_depth field records the depth of the pneg stack entry in
+** the interleaving of the cut stack and pneg stack entries dictated by
+** the nesting of committed choice and possibly negated contexts currently
+** active.
+*/
 
 struct MR_PNegConsumerListNodeStruct {
 	MR_Subgoal		*MR_pneg_consumer_ptr;

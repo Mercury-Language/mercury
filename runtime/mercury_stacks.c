@@ -1,12 +1,12 @@
 /*
-** Copyright (C) 1998-2001, 2003 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** This file contains code for printing statistics about stack frame sizes,
-** and for manipulating the generator stack and the cut stack.
+** and for manipulating the generator stack, the cut stack and the pneg stack.
 **
 ** The generator stack has one entry for each call to a minimal model tabled
 ** procedure that is (a) acting as the generator for its subgoal and (b) is
@@ -131,6 +131,11 @@ static	void	MR_print_pneg_stack_entry(FILE *fp, MR_Integer i,
 
 /***************************************************************************/
 
+/*
+** Record that the nondet stack frame at address frame_addr is now the
+** generator for subgoal.
+*/
+
 void
 MR_push_generator(MR_Word *frame_addr, MR_SubgoalPtr subgoal)
 {
@@ -147,6 +152,10 @@ MR_push_generator(MR_Word *frame_addr, MR_SubgoalPtr subgoal)
 #endif
 }
 
+/*
+** Return the subgoal of the topmost generator on the nondet stack.
+*/
+
 MR_Subgoal *
 MR_top_generator_table(void)
 {
@@ -160,6 +169,10 @@ MR_top_generator_table(void)
 
 	return MR_gen_stack[MR_gen_next - 1].MR_gen_subgoal;
 }
+
+/*
+** Record the deletion of the topmost generator on the nondet stack.
+*/
 
 void
 MR_pop_generator(void)
@@ -187,7 +200,7 @@ MR_print_any_gen_stack(FILE *fp, MR_Integer gen_next,
 {
 	MR_Integer	i;
 
-	fprintf(fp, "gen stack size: %d:\n", (int) gen_next);
+	fprintf(fp, "gen stack size: %d\n", (int) gen_next);
 	for (i = gen_next - 1; i >= 0; i--) {
 		MR_print_gen_stack_entry(fp, i, &MR_gen_stack[i]);
 	}
@@ -205,6 +218,10 @@ MR_print_gen_stack_entry(FILE *fp, MR_Integer i, MR_GenStackFrame *p)
 }
 
 /***************************************************************************/
+
+/*
+** Record the entering of a committed choice context.
+*/
 
 void
 MR_commit_mark(void)
@@ -227,6 +244,15 @@ MR_commit_mark(void)
 	MR_save_transient_registers();
 }
 
+/*
+** Record the leaving of a committed choice context, and clean up the
+** generators that were created within the context that are still active.
+** We need to clean them up because otherwise, consumers will be depend on this
+** generator to find all the answers to the generator's subgoal, but the
+** generation will never compute any more answers, since it will never be
+** backtracked into.
+*/
+
 void
 MR_commit_cut(void)
 {
@@ -243,19 +269,14 @@ MR_commit_cut(void)
 			(long) MR_cut_stack[MR_cut_next].MR_cut_gen_next,
 			(long) MR_gen_next);
 
-		if (MR_gen_next != MR_cut_stack[MR_cut_next].MR_cut_gen_next) {
-			if (MR_gen_next <=
-				MR_cut_stack[MR_cut_next].MR_cut_gen_next)
-			{
-				printf("MR_gen_next %ld, MR_cut_next %ld, "
-					"MR_cut_stack[MR_cut_next].gen_next "
-					"%ld\n",
-					(long) MR_gen_next,
-					(long) MR_cut_next,
-					(long) MR_cut_stack[MR_cut_next].
-						MR_cut_gen_next);
-				MR_fatal_error("GEN_NEXT ASSERTION FAILURE");
-			}
+		if (MR_gen_next < MR_cut_stack[MR_cut_next].MR_cut_gen_next) {
+			printf("MR_gen_next %ld, MR_cut_next %ld, "
+				"MR_cut_stack[MR_cut_next].gen_next %ld\n",
+				(long) MR_gen_next,
+				(long) MR_cut_next,
+				(long) MR_cut_stack[MR_cut_next].
+					MR_cut_gen_next);
+			MR_fatal_error("GEN_NEXT ASSERTION FAILURE");
 		}
 	}
 #endif
@@ -269,6 +290,11 @@ MR_commit_cut(void)
 	MR_cut_stack[MR_cut_next].MR_cut_generators = NULL;
 	MR_gen_next = MR_cut_stack[MR_cut_next].MR_cut_gen_next;
 }
+
+/*
+** Record the creation of a generator, for possible cleanup later by
+** MR_commit_cut.
+*/
 
 void
 MR_register_generator_ptr(MR_SubgoalPtr subgoal)
@@ -333,7 +359,7 @@ MR_print_any_cut_stack(FILE *fp, MR_Integer cut_next,
 {
 	MR_Integer	i;
 
-	fprintf(fp, "cut stack size: %d:\n", (int) cut_next);
+	fprintf(fp, "cut stack size: %d\n", (int) cut_next);
 	for (i = cut_next - 1; i >= 0; i--) {
 		MR_print_cut_stack_entry(fp, i, &cut_block[i]);
 	}
@@ -347,20 +373,26 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
 
 	fprintf(fp, "cut %ld = <", (long) i);
 	MR_print_nondstackptr(fp, p->MR_cut_frame);
-	fprintf(fp, ", %d>:", p->MR_cut_gen_next);
+	fprintf(fp, ">, cut_gen_next %d, ", (int) p->MR_cut_gen_next);
+	fprintf(fp, "pneg+cut stack depth %d\n", (int) p->MR_cut_depth);
 
+	fprintf(fp, "registered generators:");
 	gen_list = p->MR_cut_generators;
-	while (gen_list != NULL) {
-		if (gen_list->MR_cut_generator_ptr == NULL) {
-			fprintf(fp, " <NULL>");
-		} else {
-			subgoal_debug = MR_lookup_subgoal_debug_addr(
-				gen_list->MR_cut_generator_ptr);
-			fprintf(fp, " <%s>",
-				MR_subgoal_debug_name(subgoal_debug));
-		}
+	if (gen_list == NULL) {
+		fprintf(fp, " none");
+	} else {
+		while (gen_list != NULL) {
+			if (gen_list->MR_cut_generator_ptr == NULL) {
+				fprintf(fp, " <NULL>");
+			} else {
+				subgoal_debug = MR_lookup_subgoal_debug_addr(
+					gen_list->MR_cut_generator_ptr);
+				fprintf(fp, " <%s>",
+					MR_subgoal_debug_name(subgoal_debug));
+			}
 
-		gen_list = gen_list->MR_cut_next_generator;
+			gen_list = gen_list->MR_cut_next_generator;
+		}
 	}
 
 	fprintf(fp, "\n");
@@ -471,7 +503,7 @@ MR_pneg_enter_else(void)
 void
 MR_print_pneg_stack(FILE *fp)
 {
-	MR_print_pneg_stack_entry(fp, MR_pneg_next, MR_pneg_stack);
+	MR_print_any_pneg_stack(fp, MR_pneg_next, MR_pneg_stack);
 }
 
 void
@@ -480,7 +512,7 @@ MR_print_any_pneg_stack(FILE *fp, MR_Integer pneg_next,
 {
 	MR_Integer	i;
 
-	fprintf(fp, "pneg stack size: %d:\n", (int) pneg_next);
+	fprintf(fp, "pneg stack size: %d\n", (int) pneg_next);
 	for (i = MR_pneg_next - 1; i >= 0; i--) {
 		MR_print_pneg_stack_entry(fp, i, &pneg_block[i]);
 	}
@@ -491,24 +523,26 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
 {
 	MR_PNegConsumerList	l;
 
-	fprintf(fp, "pneg stack entry %d:\n", (int) i);
-	fprintf(fp, "gen next: %d\n", (int) p->MR_pneg_gen_next);
-	fprintf(fp, "frame: ");
+	fprintf(fp, "pneg %d = <", (int) i);
 	MR_print_nondstackptr(fp, p->MR_pneg_frame);
-	fprintf(fp, "\npneg+cut stack depth %d:\n", (int) p->MR_pneg_depth);
+	fprintf(fp, ">, pneg_gen_next %d, ", (int) p->MR_pneg_gen_next);
+	fprintf(fp, "pneg+cut stack depth %d\n", (int) p->MR_pneg_depth);
 
+	fprintf(fp, "registered consumers: ");
 	if (p->MR_pneg_consumers == NULL) {
-		fprintf(fp, "no consumers\n");
+		fprintf(fp, " none");
 	} else {
 		int	n;
 
 		for (n = 1, l = p->MR_pneg_consumers; l != NULL;
 			l = l->MR_pneg_next_consumer, n++)
 		{
-			fprintf(fp, "consumer %d: %s\n", n,
+			fprintf(fp, " <%d: %s>", n,
 				MR_subgoal_addr_name(l->MR_pneg_consumer_ptr));
 		}
 	}
+
+	fprintf(fp, "\n");
 }
 
 /***************************************************************************/
