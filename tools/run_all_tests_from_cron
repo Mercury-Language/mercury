@@ -38,7 +38,7 @@ case $HOST in
 esac
 
 case $HOST in
-	kryten|taifun) 	mail="rsh munta /bin/mail" ;;
+	kryten|taifun) 	mail="rsh mundook /bin/mail" ;;
 	hydra)		mail=/usr/bin/mail ;;
 	*)		mail=/bin/mail ;;
 esac
