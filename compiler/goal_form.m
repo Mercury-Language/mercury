@@ -5,7 +5,7 @@
 %---------------------------------------------------------------------------%
 %
 % A module that provides functions that check whether goals fulfill
-% particular criteria
+% particular criteria.
 %
 % Main authors: conway, zs.
 %
