@@ -479,7 +479,7 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
                 ** We will handle this call to a model_non
                 ** procedure when the sweep in
                 ** MR_dump_nondet_stack_from_layout reaches it.
-                ** For now, we only put into the table.
+                ** For now, we only put it into the table.
                 */
                 break;
             } else if (base_sp == NULL) {
