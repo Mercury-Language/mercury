@@ -532,7 +532,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
 					HeadVars, PredOrFunc),
 	( { Goal = conj([]) - _GoalInfo } ->
-		[]
+		io__write_string(".\n")
 	;
 		io__write_string(" :-\n"),
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
