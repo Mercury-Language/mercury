@@ -2514,10 +2514,6 @@ There are several uses for @code{pragma} declarations:
                                 from Mercury code, and vice versa.
 * Inlining::                    Pragmas can be used to suggest or prevent
                                 procedure inlining.
-@c * Tabling::                     Mercury predicates can be evaluated
-@c                                 using a three different forms of tabled
-@c                                 evaluation.
-@c
 * Obsolescence::		Library developers can declare old versions
 				of predicates or functions to be obsolete.
 * Source file name::		The @samp{source_file} pragma and
@@ -2525,6 +2521,10 @@ There are several uses for @code{pragma} declarations:
 				for preprocessors and other tools that
 				generate Mercury code.
 @end menu
+@c * Tabling::                     Mercury predicates can be evaluated
+@c                                 using a three different forms of tabled
+@c                                 evaluation.
+@c
 
 @node C interface
 @section C interface
