@@ -593,8 +593,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, integer, std_util, int, float, array, require.
-:- use_module term_io, type_desc, rtti_implementation.
+:- import_module array, bool, float, int, integer, require, std_util.
+:- use_module rtti_implementation, term_io, type_desc.
 
 string__replace(Str, Pat, Subst, Result) :-
 	sub_string_search(Str, Pat, Index),
@@ -4310,7 +4310,7 @@ list_tail_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 
 
 :- pred term_args_to_revstrings(deconstruct__noncanon_handling,
-	ops__table, list(T), revstrings, revstrings).
+	ops__table, list(univ), revstrings, revstrings).
 :- mode term_args_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode term_args_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode term_args_to_revstrings(in(include_details_cc), in, in, in, out)
@@ -4327,7 +4327,7 @@ term_args_to_revstrings(NonCanon, OpsTable, [X|Xs], !Rs) :-
 
 
 :- pred arg_to_revstrings(deconstruct__noncanon_handling,
-	ops__table, T, revstrings, revstrings).
+	ops__table, univ, revstrings, revstrings).
 :- mode arg_to_revstrings(in(do_not_allow), in, in, in, out) is det.
 :- mode arg_to_revstrings(in(canonicalize), in, in, in, out) is det.
 :- mode arg_to_revstrings(in(include_details_cc), in, in, in, out) is cc_multi.
@@ -4335,7 +4335,7 @@ term_args_to_revstrings(NonCanon, OpsTable, [X|Xs], !Rs) :-
 
 arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 	Priority = comma_priority(OpsTable),
-	value_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs).
+	value_to_revstrings(NonCanon, OpsTable, Priority, univ_value(X), !Rs).
 
 
 

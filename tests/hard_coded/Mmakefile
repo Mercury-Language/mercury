@@ -153,6 +153,7 @@ ORDINARY_PROGS=	\
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
+	string_string \
 	string_strip \
 	string_suffix_bug \
 	system_sort \
