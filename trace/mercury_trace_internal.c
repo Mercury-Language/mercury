@@ -140,6 +140,10 @@ MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
+typedef enum {
+	MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
+} MR_MultiMatch;
+
 static	void	MR_trace_internal_ensure_init(void);
 static	void	MR_trace_internal_init_from_env(void);
 static	void	MR_trace_internal_init_from_local(void);
@@ -158,8 +162,9 @@ static	void	MR_print_succip_reg(MR_Word *saved_regs);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
-static	bool	MR_trace_options_when_action(MR_Spy_When *when,
-			MR_Spy_Action *action, char ***words, int *word_count,
+static	bool	MR_trace_options_when_action_multi(MR_Spy_When *when,
+			MR_Spy_Action *action, MR_MultiMatch *multi_match,
+			char ***words, int *word_count,
 			const char *cat, const char *item);
 static	bool	MR_trace_options_quiet(bool *verbose,
 			char ***words, int *word_count,
@@ -956,6 +961,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_Proc_Spec	spec;
 		MR_Spy_When	when;
 		MR_Spy_Action	action;
+		MR_MultiMatch	multi_match;
 		const char	*file;
 		int		line;
 		int		breakline;
@@ -982,8 +988,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 		when = MR_SPY_INTERFACE;
 		action = MR_SPY_STOP;
-		if (! MR_trace_options_when_action(&when, &action,
-				&words, &word_count, "breakpoint", "break"))
+		multi_match = MR_MULTIMATCH_ASK;
+		if (! MR_trace_options_when_action_multi(&when, &action,
+				&multi_match, &words, &word_count,
+				"breakpoint", "break"))
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 2 && streq(words[1], "here")) {
@@ -1009,6 +1017,16 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				slot = MR_add_proc_spy_point(when, action,
 					matches.match_procs[0], NULL);
 				MR_print_spy_point(slot);
+			} else if (multi_match == MR_MULTIMATCH_ALL) {
+				int	i;
+
+				for (i = 0; i < matches.match_proc_next; i++) {
+					slot = MR_add_proc_spy_point(
+						when, action,
+						matches.match_procs[i],
+						NULL);
+					MR_print_spy_point(slot);
+				}
 			} else {
 				char	buf[80];
 				int	i;
@@ -1024,6 +1042,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					MR_print_proc_id_for_debugger(
 						MR_mdb_out,
 						matches.match_procs[i]);
+				}
+
+				if (multi_match == MR_MULTIMATCH_ONE) {
+					return KEEP_INTERACTING;
 				}
 
 				sprintf(buf, "\nWhich do you want to put "
@@ -1853,25 +1875,28 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 	return TRUE;
 }
 
-static struct MR_option MR_trace_when_action_opts[] =
+static struct MR_option MR_trace_when_action_multi_opts[] =
 {
 	{ "all",	FALSE,	NULL,	'a' },
 	{ "entry",	FALSE,	NULL,	'e' },
 	{ "interface",	FALSE,	NULL,	'i' },
 	{ "print",	FALSE,	NULL,	'P' },
 	{ "stop",	FALSE,	NULL,	'S' },
+	{ "select-all",	FALSE,	NULL,	'A' },
+	{ "select-one",	FALSE,	NULL,	'O' },
 	{ NULL,		FALSE,	NULL,	0 }
 };
 
 static bool
-MR_trace_options_when_action(MR_Spy_When *when, MR_Spy_Action *action,
-	char ***words, int *word_count, const char *cat, const char *item)
+MR_trace_options_when_action_multi(MR_Spy_When *when, MR_Spy_Action *action,
+	MR_MultiMatch *multi_match, char ***words, int *word_count,
+	const char *cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
 	while ((c = MR_getopt_long(*word_count, *words, "PSaei",
-			MR_trace_when_action_opts, NULL)) != EOF)
+			MR_trace_when_action_multi_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -1885,6 +1910,14 @@ MR_trace_options_when_action(MR_Spy_When *when, MR_Spy_Action *action,
 
 			case 'i':
 				*when = MR_SPY_INTERFACE;
+				break;
+
+			case 'A':
+				*multi_match = MR_MULTIMATCH_ALL;
+				break;
+
+			case 'O':
+				*multi_match = MR_MULTIMATCH_ONE;
 				break;
 
 			case 'P':
