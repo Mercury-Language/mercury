@@ -45,7 +45,10 @@ depend: odbc_test.depend
 
 #-----------------------------------------------------------------------------#
 
-MGNUCFLAGS=-D$(MODBC_DRIVER) -D$(MODBC_DB) -I$(ODBC_INCL_DIR)
+# `--no-ansi' is needed because the ODBC header files include C++-style
+# "//" comments.  `--no-ansi' allows recognition of C++-style "//" comments,
+# presuming you have gcc version 2.7.1 or greater.
+MGNUCFLAGS=--no-ansi -D$(MODBC_DRIVER) -D$(MODBC_DB) -I$(ODBC_INCL_DIR)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
