@@ -17,9 +17,15 @@
 # directory "mercury/runtime", hence the second link.
 #
 
+
+MAIN_TARGET=links
+
+
 links:		
-		ln -s library mercury
-		(cd library && ln -s ../runtime runtime)
+		-ln -s -f library mercury
+		-(cd library && ln -s -f ../runtime runtime)
+
+realclean_local: clean
 
 clean:
 		rm -f mercury library/runtime
