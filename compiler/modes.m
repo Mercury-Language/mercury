@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2287,7 +2287,7 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
 		_, ProcInfo) },
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	( { EvalMethod \= eval_normal } ->
+	( { eval_method_uses_table(EvalMethod) = yes } ->
 		{ proc_info_context(ProcInfo, Context) },
 		{ eval_method_to_string(EvalMethod, EvalMethodS) },
 		globals__io_lookup_bool_option(verbose_errors, 

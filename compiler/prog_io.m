@@ -1917,13 +1917,6 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 		"function result has mode, but function arguments don't",
 					FuncTerm)
 			;
-				ReturnType = type_only(_),
-				MaybeDet = yes(_)
-			->
-				Result = error(
-"function declaration specifies a determinism but does not specify the mode",
-					FuncTerm)
-			;
 				% note: impure or semipure functions are not
 				% allowed
 				Purity = (pure),

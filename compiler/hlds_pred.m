@@ -1585,6 +1585,9 @@ compute_arg_modes(ModuleInfo, Vars, InitialInstMap, FinalInstMap, Modes,
 :- pred proc_info_is_address_taken(proc_info, is_address_taken).
 :- mode proc_info_is_address_taken(in, out) is det.
 
+:- pred proc_info_set_address_taken(proc_info, is_address_taken, proc_info).
+:- mode proc_info_set_address_taken(in, in, out) is det.
+
 :- pred proc_info_get_rl_exprn_id(proc_info, maybe(rl_exprn_id)).
 :- mode proc_info_get_rl_exprn_id(in, out) is det.
 
@@ -2077,6 +2080,12 @@ proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
 		P, Q, R, S, T, U, V).
 
+proc_info_set_address_taken(ProcInfo0, T, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, _, U, V),
+	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, T, U, V).
+
 proc_info_set_inst_table(ProcInfo0, U, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
 		P, Q, R, S, T, _, V),
@@ -2106,7 +2115,7 @@ proc_info_get_typeinfo_vars_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 	( 
 		map__search(VarTypeMap, Var, Type)
 	->
-		type_util__vars(Type, TypeVars),
+		type_util__real_vars(Type, TypeVars),
 		(
 			% Optimize common case
 			TypeVars = []
@@ -2493,6 +2502,11 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 :- pred eval_method_need_stratification(eval_method).
 :- mode eval_method_need_stratification(in) is semidet.
 
+	% Return true if the given evaluation method uses a table.
+	% If so, the back-end must generate a declaration for the
+	% variable to hold the table.
+:- func eval_method_uses_table(eval_method) = bool.
+
 	% Return the change a given evaluation method can do to a given 
 	% determinism.
 :- pred eval_method_change_determinism(eval_method, determinism, 
@@ -2521,6 +2535,11 @@ eval_method_to_string(eval_loop_check,		"loop_check").
 eval_method_to_string(eval_minimal, 		"minimal_model").
 	
 eval_method_need_stratification(eval_minimal).
+
+eval_method_uses_table(eval_normal) = no.
+eval_method_uses_table(eval_memo) = yes.
+eval_method_uses_table(eval_loop_check) = yes.
+eval_method_uses_table(eval_minimal) = yes.
 
 eval_method_change_determinism(eval_normal, Detism, Detism).
 eval_method_change_determinism(eval_memo, Detism, Detism).

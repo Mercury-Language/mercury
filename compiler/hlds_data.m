@@ -236,6 +236,10 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			hlds_type_defn).
 :- mode hlds_data__set_type_defn_status(in, in, out) is det.
 
+:- pred hlds_data__set_type_defn_body(hlds_type_defn, hlds_type_body,
+			hlds_type_defn).
+:- mode hlds_data__set_type_defn_body(in, in, out) is det.
+
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
 	% eqv_type = equivalence type (a type defined to be equivalent
@@ -382,6 +386,8 @@ hlds_data__get_type_defn_body(hlds_type_defn(_, _, Body, _, _), Body).
 hlds_data__get_type_defn_status(hlds_type_defn(_, _, _, Status, _), Status).
 hlds_data__get_type_defn_context(hlds_type_defn(_, _, _, _, Context), Context).
 
+hlds_data__set_type_defn_body(hlds_type_defn(A, B, _, D, E), Body,
+				hlds_type_defn(A, B, Body, D, E)).
 hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status, 
 				hlds_type_defn(A, B, C, Status, E)).
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -219,7 +219,7 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], Module0,
 	proc_info_eval_method(ProcInfo, EvalMethod),
 
 	(
-		EvalMethod \= eval_normal
+		eval_method_uses_table(EvalMethod) = yes
 	->
 		table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo,
 			PredInfo, Module0, Module1)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,14 +90,14 @@
 %		bool succeeded;
 %
 %		<do Goal>
-%		succeeded = TRUE
+%		succeeded = TRUE;
 %	}
 
 %	det goal in nondet context:
 %		<Goal && SUCCEED()>
 %	===>
 %		<do Goal>
-%		SUCCEED()
+%		SUCCEED();
 
 %	semi goal in nondet context:
 %		<Goal && SUCCEED()>
@@ -106,7 +106,7 @@
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
-%		if (succeeded) SUCCEED()
+%		if (succeeded) SUCCEED();
 %	}
 
 %-----------------------------------------------------------------------------%
@@ -564,10 +564,11 @@
 %		- switches
 %		- commits
 % TODO:
-%	- type_infos
-%	- c_code pragmas
+%	- `pragma export'
+%	- RTTI (base_type_functors, base_type_layout)
 %	- typeclass_infos and class method calls
-%	- type declarations for user-defined types
+%	- high level data representation
+%	  (i.e. generate MLDS type declarations for user-defined types)
 %	...
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
@@ -606,9 +607,7 @@
 :- import_module passes_aux.
 :- import_module instmap, inst_table.
 
-:- import_module string.
-:- import_module list, map, set.
-:- import_module require, std_util.
+:- import_module bool, string, list, map, set, require, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -767,7 +766,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		Defns0, Defns) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	(
-		EvalMethod \= eval_normal
+		eval_method_uses_table(EvalMethod) = yes
 	->
 		ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 			MLDS_PredLabel, _MLDS_PredModule),
@@ -822,10 +821,10 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	%
 	proc_info_headvars(ProcInfo, HeadVars),
 	Goal0 = GoalExpr - GoalInfo0,
-	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals0),
 	set__list_to_set(HeadVars, HeadVarsSet),
 	set__intersect(HeadVarsSet, NonLocals0, NonLocals),
-	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+	goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 	Goal = GoalExpr - GoalInfo,
 
 	goal_info_get_context(GoalInfo, Context),
@@ -999,7 +998,7 @@ goal_local_vars(Goal) = LocalVars :-
 	goal_util__goal_vars(Goal, GoalVars),
 	% delete the non-locals
 	Goal = _ - GoalInfo,
-	goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocalVars),
 	set__difference(GoalVars, NonLocalVars, LocalVars).
 
 :- func union_of_direct_subgoal_locals(hlds_goal) = set(prog_var).
@@ -1305,23 +1304,200 @@ ml_gen_goal_expr(pragma_c_code(Attributes,
                         PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
                         C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
         ;
-                { PragmaImpl = nondet( _, _, _, _, _, _, _, _, _) },
-		{ sorry("nondet pragma c_code") }
-		/*
                 { PragmaImpl = nondet(
-                        Fields, FieldsContext, First, FirstContext,
-                        Later, LaterContext, Treat, Shared, SharedContext) },
+                        LocalVarsDecls, LocalVarsContext,
+			FirstCode, FirstContext, LaterCode, LaterContext,
+			_Treatment, SharedCode, SharedContext) },
                 ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
                         PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-                        Fields, FieldsContext, First, FirstContext,
-                        Later, LaterContext, Treat, Shared, SharedContext,
-                        MLDS_Decls, MLDS_Statements)
-		*/
+			OuterContext, LocalVarsDecls, LocalVarsContext,
+			FirstCode, FirstContext, LaterCode, LaterContext,
+			SharedCode, SharedContext, MLDS_Decls, MLDS_Statements)
         ).
 
 ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% these should have been expanded out by now
 	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
+
+:- pred ml_gen_nondet_pragma_c_code(code_model, pragma_c_code_attributes,
+		pred_id, proc_id, list(prog_var),
+		pragma_c_code_arg_info, list(prog_type), prog_context,
+		string, maybe(prog_context), string, maybe(prog_context),
+		string, maybe(prog_context), string, maybe(prog_context),
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_nondet_pragma_c_code(in, in, in, in, in, in, in, in,
+		in, in, in, in, in, in, in, in, out, out, in, out) is det.
+
+	% For model_non pragma c_code,
+	% we generate code of the following form:
+	%
+	%	{
+	% 		<declaration of one local variable for each arg>
+	%		struct {
+	%			<user's local_vars decls>
+	%		} MR_locals;
+	%		bool MR_done = FALSE;
+	%		bool MR_succeeded = FALSE;
+	%
+	%		#define FAIL		(MR_done = TRUE)
+	%		#define SUCCEED		(MR_succeeded = TRUE)
+	%		#define SUCCEED_LAST	(MR_succeeded = TRUE, \
+	%					 MR_done = TRUE)
+	%		#define LOCALS		(&MR_locals)
+	%
+	%		<assign input args>
+	%		<obtain global lock>
+	%		<user's first_code C code>
+	%		while (true) {
+	%			<user's shared_code C code>
+	%			<release global lock>
+	%			if (MR_succeeded) {
+	%				<assign output args>
+	%				CONT();
+	%			}
+	%			if (MR_done) break;
+	%			<obtain global lock>
+	%			<user's later_code C code>
+	%		}
+	%
+	%		#undef FAIL
+	%		#undef SUCCEED
+	%		#undef SUCCEED_LAST
+	%		#undef LOCALS
+	%	}
+	%		
+ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
+		PredId, _ProcId, ArgVars, ArgDatas0, OrigArgTypes, Context,
+		LocalVarsDecls, _LocalVarsContext, FirstCode, _FirstContext,
+		LaterCode, _LaterContext, SharedCode, _SharedContext,
+		MLDS_Decls, MLDS_Statements) -->
+	{ ArgDatas0 = pragma_c_code_arg_info(InstTable, ArgDatas) },
+
+	%
+	% Combine all the information about the each arg
+	%
+	{ ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes,
+		ArgList) },
+
+	%
+	% Generate <declaration of one local variable for each arg>
+	%
+	{ ml_gen_pragma_c_decls(ArgList, ArgDeclsList) },
+
+	%
+	% Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
+	% and LOCALS macros
+	%
+	{ string__append_list([
+"	#define FAIL		(MR_done = TRUE)\n",
+"	#define SUCCEED		(MR_succeeded = TRUE)\n",
+"	#define SUCCEED_LAST	(MR_succeeded = TRUE, MR_done = TRUE)\n",
+"	#define LOCALS		(&MR_locals)\n"
+		], HashDefines) },
+	{ string__append_list([
+			"	#undef	FAIL\n",
+			"	#undef	SUCCEED\n",
+			"	#undef	SUCCEED_LAST\n",
+			"	#undef	LOCALS\n"
+		], HashUndefs) },
+
+	% The modes of the C code should not depend on the
+	% aliasing information in the instmap.
+	{ instmap__init_reachable(InstMap) },
+
+	%
+	% Generate code to set the values of the input variables.
+	%
+	list__map_foldl(ml_gen_pragma_c_input_arg(InstMap, InstTable),
+		ArgList, AssignInputsList),
+
+	%
+	% Generate code to assign the values of the output variables.
+	%
+	list__map_foldl(ml_gen_pragma_c_output_arg(InstMap, InstTable),
+		ArgList, AssignOutputsList),
+
+	%
+	% Generate code fragments to obtain and release the global lock
+	% (this is used for ensuring thread safety in a concurrent
+	% implementation)
+	% XXX we should only generate these if the `parallel' option
+	% was enabled
+	%
+	=(MLDSGenInfo),
+	{ thread_safe(Attributes, ThreadSafe) },
+	{ ThreadSafe = thread_safe ->
+		ObtainLock = "",
+		ReleaseLock = ""
+	;
+		ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_name(PredInfo, Name),
+		llds_out__quote_c_string(Name, MangledName),
+		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ObtainLock),
+		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
+			MangledName, """);\n"], ReleaseLock)
+	},
+
+	%
+	% Put it all together
+	%
+	{ string__append_list(ArgDeclsList, ArgDecls) },
+	{ string__append_list(AssignInputsList, AssignInputsCode) },
+	{ string__append_list(AssignOutputsList, AssignOutputsCode) },
+	{ string__append_list([
+			"{\n",
+			ArgDecls,
+			"\tstruct {\n",
+			LocalVarsDecls, "\n",
+			"\t} MR_locals;\n",
+			"\tbool MR_succeeded = FALSE;\n",
+			"\tbool MR_done = FALSE;\n",
+			"\n",
+			HashDefines,
+			"\n",
+			AssignInputsCode,
+			ObtainLock,
+			"\t{\n",
+			FirstCode,
+			"\n\t;}\n",
+			"\twhile (1) {\n",
+			"\t\t{\n",
+			SharedCode,
+			"\n\t\t;}\n",
+			ReleaseLock,
+			"\t\tif (MR_succeeded) {\n",
+			AssignOutputsCode],
+		Starting_C_Code) },
+	( { CodeModel = model_non } ->
+		ml_gen_call_current_success_cont(Context, CallCont)
+	;
+		{ error("ml_gen_nondet_pragma_c_code: unexpected code model") }
+	),
+	{ string__append_list([
+			"\t\t}\n",
+			"\t\tif (MR_done) break;\n",
+			ObtainLock,
+			"\t\t{\n",
+			LaterCode,
+			"\n\t\t;}\n",
+			"\t}\n",
+			"\n",
+			HashUndefs,
+			"}\n"],
+		Ending_C_Code) },
+	{ Starting_C_Code_Stmt = target_code(lang_C, Starting_C_Code) },
+	{ Starting_C_Code_Statement = mlds__statement(
+		atomic(Starting_C_Code_Stmt), mlds__make_context(Context)) },
+	{ Ending_C_Code_Stmt = target_code(lang_C, Ending_C_Code) },
+	{ Ending_C_Code_Statement = mlds__statement(
+		atomic(Ending_C_Code_Stmt), mlds__make_context(Context)) },
+	{ MLDS_Statements = [
+		Starting_C_Code_Statement,
+		CallCont,
+		Ending_C_Code_Statement] },
+	{ MLDS_Decls = [] }.
 
 :- pred ml_gen_ordinary_pragma_c_code(code_model, pragma_c_code_attributes,
 		pred_id, proc_id, list(prog_var), pragma_c_code_arg_info,
@@ -1330,7 +1506,8 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 :- mode ml_gen_ordinary_pragma_c_code(in, in, in, in, in, in, 
 		in, in, in, out, out, in, out) is det.
 
-	% We generate code of the following form:
+	% For ordinary (not model_non) pragma c_code,
+	% we generate code of the following form:
 	%
 	% model_det pragma_c_code:
 	%
@@ -1357,6 +1534,8 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	%		if (SUCCESS_INDICATOR) {
 	%			<assign output args>
 	%		}
+	%		
+	%		#undef SUCCESS_INDICATOR
 	%	}
 	%		
 	% Note that we generate this code directly as
@@ -1447,12 +1626,12 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 		ml_success_lval(SucceededLval),
 		{ ml_gen_c_code_for_rval(lval(SucceededLval), SucceededVar) },
 		{ DefineSuccessIndicator = string__format(
-			"#define SUCCESS_INDICATOR = %s\n",
+			"\t#define SUCCESS_INDICATOR %s\n",
 			[s(SucceededVar)]) },
 		{ MaybeAssignOutputsCode = string__format(
-			"\tif (SUCCESS_INDICATOR) {\n%s\n\t}",
+			"\tif (SUCCESS_INDICATOR) {\n%s\n\t}\n",
 			[s(AssignOutputsCode)]) },
-		{ UndefSuccessIndicator = "#undef SUCCESS_INDICATOR" },
+		{ UndefSuccessIndicator = "\t#undef SUCCESS_INDICATOR\n" },
 		{ string__append_list([
 				"{\n",
 				ArgDecls,

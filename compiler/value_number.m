@@ -20,9 +20,9 @@
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
 
-:- pred value_number_main(list(instruction), set(label), list(instruction),
-	io__state, io__state).
-:- mode value_number_main(in, in, out, di, uo) is det.
+:- pred value_number_main(list(instruction), contains_reconstruction,
+		set(label), list(instruction), io__state, io__state).
+:- mode value_number_main(in, in, in, out, di, uo) is det.
 
 	% The main value numbering pass introduces references to temporary
 	% variables whose values need be preserved only within an extended
@@ -51,12 +51,13 @@
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
 
-value_number_main(Instrs0, LayoutLabelSet, Instrs) -->
+value_number_main(Instrs0, ContainsReconstruction, LayoutLabelSet, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel,
 		LabelInstr, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
 	{ value_number__prepare_for_vn([LabelInstr | Instrs1], ProcLabel,
-		no, AllocSet, BreakSet, N0, N, Instrs2) },
+		no, ContainsReconstruction, AllocSet, BreakSet,
+		N0, N, Instrs2) },
 	{ labelopt__build_useset(Instrs2, LayoutLabelSet, UseSet) },
 	{ livemap__build(Instrs2, MaybeLiveMap) },
 	(
@@ -117,16 +118,26 @@ value_number_main(Instrs0, LayoutLabelSet, Instrs) -->
 	% Operations on a cell which is explicitly freed by a free_heap 
 	% instruction should not be reordered with the free_heap.
 	% We put labels before and after to avoid this.
+	%
+	% If the instruction list destructively updates a cell, we need
+	% to be careful not to recorder extractions of fields of the
+	% updated cell with the update. To do this, we put labels
+	% before and after `assign' instructions for which the destination
+	% is a `field' lval. The test for this case below is a bit too
+	% conservative -- we could mark the assignments which need to be
+	% treated this way during code generation.
 
-:- pred value_number__prepare_for_vn(list(instruction), proc_label,
-	bool, set(label), set(label), int, int, list(instruction)).
-:- mode value_number__prepare_for_vn(in, in, in, out, out, in, out, out) is det.
+:- pred value_number__prepare_for_vn(list(instruction), proc_label, bool,
+	contains_reconstruction, set(label), set(label),
+	int, int, list(instruction)).
+:- mode value_number__prepare_for_vn(in, in, in, in,
+	out, out, in, out, out) is det.
 
-value_number__prepare_for_vn([], _, _, AllocSet, BreakSet, N, N, []) :-
+value_number__prepare_for_vn([], _, _, _, AllocSet, BreakSet, N, N, []) :-
 	set__init(AllocSet),
 	set__init(BreakSet).
-value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
-		SeenAlloc, AllocSet, BreakSet, N0, N, Instrs) :-
+value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel, SeenAlloc,
+		ContainsReconstruction, AllocSet, BreakSet, N0, N, Instrs) :-
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = if_val(Test, TrueAddr) ->
 		( ( TrueAddr = do_redo ; TrueAddr = do_fail ) ->
@@ -148,8 +159,9 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 		FalseAddr = label(FalseLabel),
 		value_number__breakup_complex_if(Test, TrueAddr, FalseAddr,
 			FalseAddr, ProcLabel, N2, N3, IfInstrs),
-		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			SeenAlloc, AllocSet, BreakSet0, N3, N, Instrs1),
+		value_number__prepare_for_vn(Instrs0, ProcLabel, SeenAlloc,
+			ContainsReconstruction, AllocSet, BreakSet0,
+			N3, N, Instrs1),
 		( MaybeNewFalseLabel = yes(NewFalseLabel) ->
 			FalseInstr = label(NewFalseLabel) - "vn false label",
 			list__append(IfInstrs, [FalseInstr | Instrs1], Instrs2)
@@ -170,13 +182,15 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 			N1 is N0 + 1,
 			NewLabel = local(ProcLabel, N0),
 			value_number__prepare_for_vn(Instrs0, ProcLabel,
-				yes, AllocSet0, BreakSet, N1, N, Instrs1),
+				yes, ContainsReconstruction,
+				AllocSet0, BreakSet, N1, N, Instrs1),
 			set__insert(AllocSet0, NewLabel, AllocSet),
 			LabelInstr = label(NewLabel) - "vn incr divide label",
 			Instrs = [LabelInstr, Instr0 | Instrs1]
 		;
-			value_number__prepare_for_vn(Instrs0, ProcLabel,
-				yes, AllocSet, BreakSet, N0, N, Instrs1),
+			value_number__prepare_for_vn(Instrs0, ProcLabel, yes,
+				ContainsReconstruction, AllocSet, BreakSet,
+				N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		)
 	;
@@ -194,6 +208,10 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				Target = prevfr(_)
 			;
 				Target = succfr(_)
+			;
+				Target = field(_, _, _),
+				ContainsReconstruction =
+					contains_reconstruction
 			)
 		;
 			Uinstr0 = mkframe(_, _)
@@ -207,14 +225,16 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 		N2 is N1 + 1,
 		AfterLabel = local(ProcLabel, N1),
 		AfterInstr = label(AfterLabel) - "vn stack ctrl after label",
-		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			yes, AllocSet, BreakSet0, N2, N, Instrs1),
+		value_number__prepare_for_vn(Instrs0, ProcLabel, yes,
+			ContainsReconstruction, AllocSet, BreakSet0,
+			N2, N, Instrs1),
 		set__insert(BreakSet0, BeforeLabel, BreakSet1),
 		set__insert(BreakSet1, AfterLabel, BreakSet),
 		Instrs = [BeforeInstr, Instr0, AfterInstr | Instrs1]
 	;
-		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			SeenAlloc, AllocSet, BreakSet, N0, N, Instrs1),
+		value_number__prepare_for_vn(Instrs0, ProcLabel, SeenAlloc,
+			ContainsReconstruction, AllocSet,
+			BreakSet, N0, N, Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	).
 

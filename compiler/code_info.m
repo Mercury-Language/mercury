@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -236,54 +236,71 @@
 :- type code_info	--->
 	code_info(
 		% STATIC fields
-		globals,	% For the code generation options.
-		module_info,	% The module_info structure - you just
+		globals :: globals,
+				% For the code generation options.
+		module_info :: module_info,
+				% The module_info structure - you just
 				% never know when you might need it.
-		pred_id,	% The id of the current predicate.
-		proc_id,	% The id of the current procedure.
-		proc_info,	% The proc_info for the this procedure.
-		prog_varset,	% The variables in this procedure.
-		int,		% The number of stack slots allocated.
+		pred_id :: pred_id,
+				% The id of the current predicate.
+		proc_id :: proc_id,
+				% The id of the current procedure.
+		proc_info :: proc_info,
+				% The proc_info for the this procedure.
+		varset :: prog_varset,
+				% The variables in this procedure.
+		var_slot_count :: int,
+				% The number of stack slots allocated.
 				% for storing variables.
 				% (Some extra stack slots are used
 				% for saving and restoring registers.)
-		maybe(trace_info),
+		maybe_trace_info :: maybe(trace_info),
 				% Information about which stack slots
 				% the call sequence number and depth
 				% are stored in, provided tracing is
 				% switched on.
 
 		% LOCATION DEPENDENT fields
-		set(prog_var),	% Variables that are forward live
+		forward_live_vars :: set(prog_var),
+				% Variables that are forward live
 				% after this goal.
- 		instmap,	% Current insts of the live variables.
-		set(prog_var),	% Zombie variables; variables that are not
+ 		instmap :: instmap,
+				% Current insts of the live variables.
+		zombies :: set(prog_var),
+				% Zombie variables; variables that are not
 				% forward live but which are protected by
 				% an enclosing resume point.
-		exprn_info,	% A map storing the information about
+		exprn_info :: exprn_info,
+				% A map storing the information about
 				% the status of each known variable.
 				% (Known vars = forward live vars + zombies)
-		set(lval),	% The set of temporary locations currently in
+		temps_in_use :: set(lval),
+				% The set of temporary locations currently in
 				% use. These lvals must be all be keys in the
 				% map of temporary locations ever used, which
 				% is one of the persistent fields below. Any
 				% keys in that map which are not in this set
 				% are free for reuse.
-		fail_info,	% Information about how to manage failures.
+		fail_info :: fail_info,
+				% Information about how to manage failures.
 
 		% PERSISTENT fields
- 		int,		% Counter for the local labels used
+ 		next_label_num :: int,
+				% Counter for the local labels used
 				% by this procedure.
-		int,		% Counter for cells in this proc.
-		bool,		% do we need to store succip?
-		map(label, internal_layout_info),
+		next_cell_num :: int,
+				% Counter for cells in this proc.
+		store_succip :: bool,
+				% do we need to store succip?
+		label_info :: map(label, internal_layout_info),
 				% Information on which values
 				% are live and where at which labels,
 				% for tracing. Accurate gc 
-		int,		% The maximum number of extra
+		stackslot_max :: int,
+				% The maximum number of extra
 				% temporary stackslots that have been
 				% used during the procedure.
-		map(lval, slot_contents),
+		temp_contents :: map(lval, slot_contents),
 				% The temporary locations that have ever been
 				% used on the stack, and what they contain.
 				% Once we have used a stack slot to store
@@ -294,11 +311,12 @@
 				% which would make it impossible to describe
 				% to gc what the slot contains after the end
 				% of the branched control structure.
-		list(comp_gen_c_data),
+		comp_gen_c_data :: list(comp_gen_c_data),
 				% Static data structures created for this
 				% procedure which do not need to be scanned
 				% by llds_common.
-		int		% At each call to MR_trace, we compute the
+		max_reg_used :: int
+				% At each call to MR_trace, we compute the
 				% highest rN register number that contains
 				% a useful value. This slot contains the
 				% maximum of these highest values. Therefore
@@ -393,185 +411,81 @@ code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
 
 %---------------------------------------------------------------------------%
 
-code_info__get_globals(SA, CI, CI) :-
-	CI  = code_info(SA, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_globals(CI^globals, CI, CI).
 
-code_info__get_module_info(SB, CI, CI) :-
-	CI  = code_info(_, SB, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_module_info(CI^module_info, CI, CI).
 
-code_info__get_pred_id(SC, CI, CI) :-
-	CI  = code_info(_, _, SC, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_pred_id(CI^pred_id, CI, CI).
 
-code_info__get_proc_id(SD, CI, CI) :-
-	CI  = code_info(_, _, _, SD, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_proc_id(CI^proc_id, CI, CI).
 
-code_info__get_proc_info(SE, CI, CI) :-
-	CI  = code_info(_, _, _, _, SE, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_proc_info(CI^proc_info, CI, CI).
 
-code_info__get_varset(SF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, SF, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_varset(CI^varset, CI, CI).
 
-code_info__get_var_slot_count(SG, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, SG, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_var_slot_count(CI^var_slot_count, CI, CI).
 
-code_info__get_maybe_trace_info(SH, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, SH,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_maybe_trace_info(CI^maybe_trace_info, CI, CI).
 
-code_info__get_forward_live_vars(LA, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		LA, _, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_forward_live_vars(CI^forward_live_vars, CI, CI).
 
-code_info__get_instmap(LB, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, LB, _, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_instmap(CI^instmap, CI, CI).
 
-code_info__get_zombies(LC, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, LC, _, _, _, _, _, _, _, _, _, _, _).
+code_info__get_zombies(CI^zombies, CI, CI).
 
-code_info__get_exprn_info(LD, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, LD, _, _, _, _, _, _, _, _, _, _).
+code_info__get_exprn_info(CI^exprn_info, CI, CI).
 
-code_info__get_temps_in_use(LE, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, LE, _, _, _, _, _, _, _, _, _).
+code_info__get_temps_in_use(CI^temps_in_use, CI, CI).
 
-code_info__get_fail_info(LF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, LF, _, _, _, _, _, _, _, _).
+code_info__get_fail_info(CI^fail_info, CI, CI).
 
-code_info__get_label_count(PA, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, PA, _, _, _, _, _, _, _).
+code_info__get_label_count(CI^next_label_num, CI, CI).
 
-code_info__get_cell_count(PB, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, PB, _, _, _, _, _, _).
+code_info__get_cell_count(CI^next_cell_num, CI, CI).
 
-code_info__get_succip_used(PC, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, PC, _, _, _, _, _).
+code_info__get_succip_used(CI^store_succip, CI, CI).
 
-code_info__get_layout_info(PD, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, PD, _, _, _, _).
+code_info__get_layout_info(CI^label_info, CI, CI).
 
-code_info__get_max_temp_slot_count(PE, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, PE, _, _, _).
+code_info__get_max_temp_slot_count(CI^stackslot_max, CI, CI).
 
-code_info__get_temp_content_map(PF, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, PF, _, _).
+code_info__get_temp_content_map(CI^temp_contents, CI, CI).
 
-code_info__get_non_common_static_data(PG, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, PG, _).
+code_info__get_non_common_static_data(CI^comp_gen_c_data, CI, CI).
 
-code_info__get_max_reg_in_use_at_trace(PH, CI, CI) :-
-	CI  = code_info(_, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _, _, _, _, _, PH).
+code_info__get_max_reg_in_use_at_trace(CI^max_reg_used, CI, CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__set_maybe_trace_info(SH, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, _,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_maybe_trace_info(TI, CI, CI^maybe_trace_info := TI).
 
-code_info__set_forward_live_vars(LA, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		_,  LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_forward_live_vars(LV, CI, CI^forward_live_vars := LV).
 
-code_info__set_instmap(LB, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, _,  LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_instmap(IM, CI, CI^instmap := IM).
 
-code_info__set_zombies(LC, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, _,  LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_zombies(Zs, CI, CI^zombies := Zs).
 
-code_info__set_exprn_info(LD, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, _,  LE, LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_exprn_info(EI, CI, CI^exprn_info := EI).
 
-code_info__set_temps_in_use(LE, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, _,  LF, PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_temps_in_use(TI, CI, CI^temps_in_use := TI).
 
-code_info__set_fail_info(LF, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, _,  PA, PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_fail_info(FI, CI, CI^fail_info := FI).
 
-code_info__set_label_count(PA, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, _,  PB, PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_label_count(LC, CI, CI^next_label_num := LC).
 
-code_info__set_cell_count(PB, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, _,  PC, PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_cell_count(CC, CI, CI^next_cell_num := CC).
 
-code_info__set_succip_used(PC, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, _,  PD, PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_succip_used(SU, CI, CI^store_succip := SU).
 
-code_info__set_layout_info(PD, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, _,  PE, PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_layout_info(LI, CI, CI^label_info := LI).
 
-code_info__set_max_temp_slot_count(PE, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, _,  PF, PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_max_temp_slot_count(TM, CI, CI^stackslot_max := TM).
 
-code_info__set_temp_content_map(PF, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, _ , PG, PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_temp_content_map(CM, CI, CI^temp_contents := CM).
 
-code_info__set_non_common_static_data(PG, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, _ , PH),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_non_common_static_data(CG, CI, CI^comp_gen_c_data := CG).
 
-code_info__set_max_reg_in_use_at_trace(PH, CI0, CI) :-
-	CI0 = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, _ ),
-	CI  = code_info(SA, SB, SC, SD, SE, SF, SG, SH,
-		LA, LB, LC, LD, LE, LF, PA, PB, PC, PD, PE, PF, PG, PH).
+code_info__set_max_reg_in_use_at_trace(MR, CI, CI^max_reg_used := MR).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

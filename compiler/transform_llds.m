@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,8 +90,9 @@ transform_c_procedure_list([P0 | P0s], [P | Ps]) -->
 :- pred transform_c_procedure(c_procedure, c_procedure, io__state, io__state).
 :- mode transform_c_procedure(in, out, di, uo) is det.
 
-transform_c_procedure(c_procedure(Name, Arity, PredProcId, Instructions0),
-		c_procedure(Name, Arity, PredProcId, Instructions)) -->
+transform_c_procedure(
+		c_procedure(Name, Arity, PredProcId, Instructions0, Recons),
+		c_procedure(Name, Arity, PredProcId, Instructions, Recons)) -->
 	transform_instructions(Instructions0, Instructions).
 
 %-----------------------------------------------------------------------------%

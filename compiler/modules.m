@@ -2814,23 +2814,22 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 				LibInstallIntsTargetName),
 	{ InstallIntsRuleBody =
 "		for file in $$files; do \\
-			target=$(INSTALL_INT_DIR)/`basename $$file`; \\
-			if cmp -s $$file $$target; then \\
+			target=""$(INSTALL_INT_DIR)/`basename $$file`""; \\
+			if cmp -s ""$$file"" ""$$target""; then \\
 				echo \"$$target unchanged\"; \\
 			else \\
 				echo \"installing $$target\"; \\
-				cp $$file $$target; \\
+				cp ""$$file"" ""$$target""; \\
 			fi; \\
 		done
 		# The following is needed to support the `--use-subdirs' option
 		# We try using `ln -s', but if that fails, then we just use `cp'.
 		for ext in int int2 int3 opt trans_opt; do \\
-			dir=$${ext}s; \\
-			rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \\
-			ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \\
-				mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \\
-				cp $(INSTALL_INT_DIR)/*.$$ext \\
-					$(INSTALL_INT_DIR)/Mercury/$$dir; \\
+			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
+			rm -f ""$$dir""; \\
+			ln -s .. ""$$dir"" || { \\
+				{ [ -d ""$$dir"" ] || mkdir ""$$dir""; } && \\
+				cp ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\
 			} || exit 1; \\
 		done\n\n" },
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,7 +112,8 @@ trans_opt__write_optfile(Module) -->
 		% file should go here.
 
 		{ module_info_predids(Module, PredIds) },
-		trans_opt__write_preds(PredIds, Module),
+		list__foldl(termination__write_pred_termination_info(Module),
+			PredIds),
 
 		io__set_output_stream(OldStream, _),
 		io__close_output(Stream),
@@ -122,61 +123,6 @@ trans_opt__write_optfile(Module) -->
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".trans_opt_date")
 	).
-	
-:- pred trans_opt__write_preds(list(pred_id), module_info, 
-	io__state, io__state).
-:- mode trans_opt__write_preds(in, in, di, uo) is det.
-trans_opt__write_preds([], _) --> [].
-trans_opt__write_preds([PredId | PredIds], Module) -->
-	{ module_info_preds(Module, PredTable) },
-	{ module_info_type_spec_info(Module, TypeSpecInfo) },
-	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-
-	( 	
-		{ pred_info_is_exported(PredInfo) },
-		\+ { code_util__predinfo_is_builtin(PredInfo) },
-		\+ { code_util__compiler_generated(PredInfo) },
-		% XXX These should be allowed, but the predicate
-		% declaration for the specialized predicate is not produced 
-		% before the termination pragmas are read in, resulting
-		% in an undefined predicate error.
-		\+ { set__member(PredId, TypeSpecForcePreds) }
-	->
-		% All predicates to write predicate info into the .trans_opt 
-		% file should go here.
-
-		{ pred_info_procedures(PredInfo, ProcTable) },
-		{ map__keys(ProcTable, ProcIds) },
-		trans_opt__write_procs(ProcIds, PredId, PredInfo)
-	;
-		[]
-	),
-	trans_opt__write_preds(PredIds, Module).
-	
-:- pred trans_opt__write_procs(list(proc_id), pred_id, pred_info, 
-	io__state, io__state).
-:- mode trans_opt__write_procs(in, in, in, di, uo) is det.
-
-trans_opt__write_procs([], _, _) --> [].
-trans_opt__write_procs([ProcId | ProcIds], PredId, PredInfo) -->
-	{ pred_info_procedures(PredInfo, ProcTable) },
-	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	{ pred_info_name(PredInfo, PredName) },
-	{ pred_info_module(PredInfo, ModuleName) },
-	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	{ pred_info_context(PredInfo, Context) },
-	{ SymName = qualified(ModuleName, PredName) },
-	{ proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize) },
-	{ proc_info_get_maybe_termination_info(ProcInfo, Termination) },
-	{ proc_info_declared_argmodes(ProcInfo, ArgModes) },
-
-	% All predicates to write procedure items into the .trans_opt file
-	% should go here.
-	termination__write_pragma_termination_info(PredOrFunc, SymName,
-		ArgModes, Context, ArgSize, Termination),
-	
-	trans_opt__write_procs(ProcIds, PredId, PredInfo).
 
 %-----------------------------------------------------------------------------%
 	% Read in and process the transitive optimization interfaces.

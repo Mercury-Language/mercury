@@ -66,12 +66,13 @@
 :- pred type_util__remove_aditi_state(list(type), list(T), list(T)).
 :- mode type_util__remove_aditi_state(in, in, out) is det.
 
-	% A test for types that are defined by hand (not including
-	% the builtin types).  Don't generate type_ctor_*
-	% for these types.
+	% A test for types that are defined in Mercury, but whose definitions
+	% are `lies', i.e. they are not sufficiently accurate for RTTI
+	% structures describing the types. Since the RTTI will be hand defined,
+	% the compiler shouldn't generate RTTI for these types.
 
-:- pred type_id_is_hand_defined(type_id).
-:- mode type_id_is_hand_defined(in) is semidet.
+:- pred type_id_has_hand_defined_rtti(type_id).
+:- mode type_id_has_hand_defined_rtti(in) is semidet.
 
 	% A test for type_info-related types that are introduced by
 	% polymorphism.m.  Mode inference never infers unique modes
@@ -223,6 +224,13 @@
 :- pred type_util__vars(type, list(tvar)).
 :- mode type_util__vars(in, out) is det.
 
+	% Return a list of the type variables of a type,
+	% ignoring any type variables if the variable in
+	% question is a type-info
+
+:- pred type_util__real_vars(type, list(tvar)).
+:- mode type_util__real_vars(in, out) is det.
+
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
@@ -367,18 +375,14 @@ type_is_atomic(Type, ModuleInfo) :-
 
 type_util__var(term__variable(Var), Var).
 
-type_id_is_hand_defined(qualified(unqualified("builtin"), "c_pointer") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "univ") - 0).
-type_id_is_hand_defined(qualified(unqualified("std_util"), "type_info") - 0).
-type_id_is_hand_defined(qualified(unqualified("array"), "array") - 1).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "type_ctor_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
-type_id_is_hand_defined(qualified(PrivateBuiltin, "base_typeclass_info") - 1) :-
-	mercury_private_builtin_module(PrivateBuiltin).
+type_id_has_hand_defined_rtti(qualified(PB, "type_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "type_ctor_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
+type_id_has_hand_defined_rtti(qualified(PB, "base_typeclass_info") - 1) :-
+	mercury_private_builtin_module(PB).
 
 is_introduced_type_info_type(Type) :-
 	sym_name_and_args(Type, TypeName, _),
@@ -931,9 +935,8 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 	% XXX Instead of just failing if the functors' name/arity is different,
 	% we should check here if these types have been defined
 	% to be equivalent using equivalence types.  But this
-	% is difficult because (1) it causes typevarset synchronization
-	% problems, and (2) the relevant variables TypeInfo, TVarSet0, TVarSet
-	% haven't been passed in to here.
+	% is difficult because the relevant variable
+	% TypeTable hasn't been passed in to here.
 
 /*******
 	...
@@ -956,16 +959,15 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 
 replace_eqv_type(Functor, Arity, Args, EqvType) :-
 
-	% XXX magically_obtain(TypeTable, TVarSet0, TVarSet)
+	% XXX magically_obtain(TypeTable)
 
 	make_type_id(Functor, Arity, TypeId),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds_type_defn(TypeVarSet, TypeParams0,
-			eqv_type(EqvType0), _Condition, Context, _Status),
-	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
-			TVarSet, [EqvType1, TypeParams1]),
-	type_param_to_var_list(TypeParams1, TypeParams),
-	term__substitute_corresponding(EqvType1, TypeParams, AsX,
+	get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = eqv_type(EqvType0),
+	get_type_defn_tparams(TypeDefn, TypeParams0),
+	type_param_to_var_list(TypeParams0, TypeParams),
+	term__substitute_corresponding(EqvType0, TypeParams, AsX,
 		EqvType).
 
 ******/
@@ -998,6 +1000,14 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 
 type_util__vars(Type, Tvars) :-
 	term__vars(Type, Tvars).
+
+type_util__real_vars(Type, Tvars) :-
+	( is_introduced_type_info_type(Type) ->
+		% for these types, we don't add the type parameters
+		Tvars = []
+	;
+		type_util__vars(Type, Tvars)
+	).
 
 %-----------------------------------------------------------------------------%
 

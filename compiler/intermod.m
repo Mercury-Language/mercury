@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,6 +127,8 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			HigherOrderSizeLimit, Deforestation,
 			IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_instances(IntermodInfo1,
+			IntermodInfo2) },
+		{ intermod__gather_types(IntermodInfo2,
 			IntermodInfo) },
 		intermod__write_intermod_info(IntermodInfo),
 		{ intermod_info_get_module_info(ModuleInfo1,
@@ -148,10 +150,12 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			set(module_name),	% modules to import
 			set(pred_id), 		% preds to output clauses for
 			set(pred_id),	 	% preds to output decls for
-			list(pair(class_id, hlds_instance_defn)),
+			assoc_list(class_id, hlds_instance_defn),
 						% instances declarations
 						% to write
-			unit,
+			assoc_list(type_id, hlds_type_defn),
+						% type declarations
+						% to write
 			unit,
 			module_info,
 			bool,			% do the c_header_codes for
@@ -170,7 +174,8 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	map__init(VarTypes),
 	varset__init(TVarSet),
 	Instances = [],
-	IntermodInfo = info(Modules, Procs, ProcDecls, Instances, unit,
+	Types = [],
+	IntermodInfo = info(Modules, Procs, ProcDecls, Instances, Types,
 			unit, ModuleInfo, no, VarTypes, TVarSet).
 			
 %-----------------------------------------------------------------------------%
@@ -929,6 +934,65 @@ intermod__qualify_instance_method(ModuleInfo, ClassProcId - InstanceMethod0,
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred intermod__gather_types(intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_types -->
+	intermod_info_get_module_info(ModuleInfo),
+	{ module_info_types(ModuleInfo, Types) },
+	map__foldl(intermod__gather_types_2, Types).
+
+:- pred intermod__gather_types_2(type_id::in,
+	hlds_type_defn::in, intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_types_2(TypeId, TypeDefn0, Info0, Info) :-
+	intermod_info_get_module_info(ModuleInfo, Info0, Info1),
+	module_info_name(ModuleInfo, ModuleName),
+	(
+	    intermod__should_write_type(ModuleName, TypeId, TypeDefn0)
+	->
+	    (
+		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
+		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0),
+		MaybeUserEq0 = yes(UserEq0)
+	    ->
+		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
+		map__lookup(SpecialPreds, unify - TypeId, UnifyPredId),
+		module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
+		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
+		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
+			TVarSet, UserEq0, UserEq, UserEqPredId),
+		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq)),
+		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
+
+		% XXX If the predicate is exported to sub-modules, it
+		% won't be written to the `.opt' file. See the comments
+		% for intermod__add_proc.
+		% This doesn't cause problems because if there are
+		% sub-modules, nothing gets written to the `.opt' file.
+		intermod__add_proc(UserEqPredId, _, Info1, Info2)
+	    ;	
+		Info2 = Info1,
+		TypeDefn = TypeDefn0
+	    ),
+	    intermod_info_get_types(Types0, Info2, Info3),
+	    intermod_info_set_types([TypeId - TypeDefn | Types0], Info3, Info)
+	;
+	    Info = Info1
+	).
+
+:- pred intermod__should_write_type(module_name::in,
+		type_id::in, hlds_type_defn::in) is semidet.
+
+intermod__should_write_type(ModuleName, TypeId, TypeDefn) :-
+	hlds_data__get_type_defn_status(TypeDefn, ImportStatus),
+	TypeId = Name - _Arity,
+	Name = qualified(ModuleName, _),
+	( ImportStatus = local
+	; ImportStatus = abstract_exported
+	).
+
+%-----------------------------------------------------------------------------%
 	% Output module imports, types, modes, insts and predicates
 
 :- pred intermod__write_intermod_info(intermod_info::in,
@@ -971,7 +1035,7 @@ intermod__write_intermod_info(IntermodInfo0) -->
 		io__state::uo) is det.
 
 intermod__write_intermod_info_2(IntermodInfo) -->
-	{ IntermodInfo = info(_, Preds0, PredDecls0, Instances, _, _,
+	{ IntermodInfo = info(_, Preds0, PredDecls0, Instances, Types, _,
 				ModuleInfo, WriteHeader, _, _) },
 	{ set__to_sorted_list(Preds0, Preds) }, 
 	{ set__to_sorted_list(PredDecls0, PredDecls) },
@@ -988,7 +1052,7 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 		[]
 	),
 
-	intermod__write_types(ModuleInfo),
+	intermod__write_types(Types),
 	intermod__write_insts(ModuleInfo),
 	intermod__write_modes(ModuleInfo),
 	intermod__write_classes(ModuleInfo),
@@ -1030,50 +1094,38 @@ intermod__write_c_header([Header - _ | Headers]) -->
         intermod__write_c_header(Headers),
         mercury_output_pragma_c_header(Header).
 
-:- pred intermod__write_types(module_info::in,
+:- pred intermod__write_types(assoc_list(type_id, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
 
-intermod__write_types(ModuleInfo) -->
-	{ module_info_name(ModuleInfo, ModuleName) },
-	{ module_info_types(ModuleInfo, Types) },
-	map__foldl(intermod__write_type(ModuleName), Types).
+intermod__write_types(Types) -->
+	list__foldl(intermod__write_type, Types).
 
-:- pred intermod__write_type(module_name::in, type_id::in,
-		hlds_type_defn::in, io__state::di, io__state::uo) is det.
+:- pred intermod__write_type(pair(type_id, hlds_type_defn)::in,
+		io__state::di, io__state::uo) is det.
 
-intermod__write_type(ModuleName, TypeId, TypeDefn) -->
-	{ hlds_data__get_type_defn_status(TypeDefn, ImportStatus) },
+intermod__write_type(TypeId - TypeDefn) -->
+	{ hlds_data__get_type_defn_tvarset(TypeDefn, VarSet) },
+	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
+	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
+	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	{ TypeId = Name - _Arity },
 	(
-		{ Name = qualified(ModuleName, _) },
-		{ ImportStatus = local
-		; ImportStatus = abstract_exported
-		}
-	->
-		{ hlds_data__get_type_defn_tvarset(TypeDefn, VarSet) },
-		{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
-		{ hlds_data__get_type_defn_body(TypeDefn, Body) },
-		{ hlds_data__get_type_defn_context(TypeDefn, Context) },
-		(
-			{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
-			mercury_output_type_defn(VarSet,
-				du_type(Name, Args, Ctors,
-					MaybeEqualityPred),
-				Context)
-		;
-			{ Body = uu_type(_) },
-			{ error("uu types not implemented") }
-		;
-			{ Body = eqv_type(EqvType) },
-			mercury_output_type_defn(VarSet,
-				eqv_type(Name, Args, EqvType), Context)
-		;
-			{ Body = abstract_type },
-			mercury_output_type_defn(VarSet,
-				abstract_type(Name, Args), Context)
-		)
+		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
+		mercury_output_type_defn(VarSet,
+			du_type(Name, Args, Ctors,
+				MaybeEqualityPred),
+			Context)
 	;
-		[]
+		{ Body = uu_type(_) },
+		{ error("uu types not implemented") }
+	;
+		{ Body = eqv_type(EqvType) },
+		mercury_output_type_defn(VarSet,
+			eqv_type(Name, Args, EqvType), Context)
+	;
+		{ Body = abstract_type },
+		mercury_output_type_defn(VarSet,
+			abstract_type(Name, Args), Context)
 	).
 
 :- pred intermod__write_modes(module_info::in,
@@ -1611,8 +1663,8 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 :- pred intermod_info_get_instances(
 			assoc_list(class_id, hlds_instance_defn)::out, 
 			intermod_info::in, intermod_info::out) is det.
-%:- pred intermod_info_get_modes(set(mode_id)::out, 
-%			intermod_info::in, intermod_info::out) is det.
+:- pred intermod_info_get_types(assoc_list(type_id, hlds_type_defn)::out, 
+			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_get_insts(set(inst_id)::out, 
 %			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_module_info(module_info::out,
@@ -1630,6 +1682,7 @@ intermod_info_get_pred_decls(ProcDecls) -->
 					=(info(_,_,ProcDecls,_,_,_,_,_,_,_)).
 intermod_info_get_instances(Instances) -->
 		=(info(_,_,_,Instances,_,_,_,_,_,_)).
+intermod_info_get_types(Types)		--> =(info(_,_,_,_,Types,_,_,_,_,_)).
 %intermod_info_get_modes(Modes)		--> =(info(_,_,_,_,Modes,_,_,_,_,_)).
 %intermod_info_get_insts(Insts)		--> =(info(_,_,_,_,_,Insts,_,_,_,_)).
 intermod_info_get_module_info(Module)	--> =(info(_,_,_,_,_,_,Module,_,_,_)).
@@ -1646,8 +1699,8 @@ intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
 :- pred intermod_info_set_instances(
 			assoc_list(class_id, hlds_instance_defn)::in, 
 			intermod_info::in, intermod_info::out) is det.
-%:- pred intermod_info_set_modes(set(mode_id)::in, 
-%			intermod_info::in, intermod_info::out) is det.
+:- pred intermod_info_set_types(assoc_list(type_id, hlds_type_defn)::in, 
+			intermod_info::in, intermod_info::out) is det.
 %:- pred intermod_info_set_insts(set(inst_id)::in, 
 %			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_module_info(module_info::in,
@@ -1671,9 +1724,9 @@ intermod_info_set_pred_decls(ProcDecls, info(A,B,_,D,E,F,G,H,I,J),
 intermod_info_set_instances(Instances, info(A,B,C,_,E,F,G,H,I,J),
 				info(A,B,C, Instances, E,F,G,H,I,J)).
 
-%intermod_info_set_modes(Modes, info(A,B,C,D,_,F,G,H,I,J),
-%				info(A,B,C,D, Modes, F,G,H,I,J)).
-%
+intermod_info_set_types(Types, info(A,B,C,D, _, F,G,H,I,J),
+				info(A,B,C,D, Types, F,G,H,I,J)).
+
 %intermod_info_set_insts(Insts, info(A,B,C,D,E,_,G,H,I,J),
 %				info(A,B,C,D,E, Insts, G,H,I,J)).
 
@@ -1709,7 +1762,8 @@ intermod__adjust_pred_import_status(Module0, Module, IO0, IO) :-
 	globals__lookup_int_option(Globals, higher_order_size_limit,
 		HigherOrderSizeLimit),
 	intermod__gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
-		Deforestation, Info0, Info),
+		Deforestation, Info0, Info1),
+	intermod__gather_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module),
 	maybe_write_string(VVerbose, " done\n", IO2, IO).
 
@@ -1740,14 +1794,8 @@ adjust_type_status(ModuleInfo0, ModuleInfo) :-
 
 adjust_type_status_2(TypeId - TypeDefn0, TypeId - TypeDefn,
 		ModuleInfo0, ModuleInfo) :-
-	hlds_data__get_type_defn_status(TypeDefn0, Status),
-	(
-		module_info_name(ModuleInfo0, ModuleName),
-		TypeId = qualified(ModuleName, _) - _,
-		( Status = local
-		; Status = abstract_exported
-		)
-	->
+	module_info_name(ModuleInfo0, ModuleName),
+	( intermod__should_write_type(ModuleName, TypeId, TypeDefn0) ->
 		hlds_data__set_type_defn_status(TypeDefn0, exported, TypeDefn),
 		fixup_special_preds(TypeId, ModuleInfo0, ModuleInfo)
 	;

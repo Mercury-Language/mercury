@@ -37,8 +37,8 @@
 % Similarly, a lambda expression may not bind any of the type_infos for
 % those variables; that is, none of the non-local variables
 % should be existentially typed (from the perspective of the lambda goal).
-% When we run the polymorphism.m pass before mode checking, this will
-% be checked by mode analysis.  XXX But currently it is not checked.
+% Now that we run the polymorphism.m pass before mode checking, this is
+% also checked by mode analysis.
 %
 % It might be OK to allow the parameters of the lambda goal to be
 % existentially typed, but currently that is not supported.
@@ -376,10 +376,15 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, ArgModes, Detism,
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
 			% and semidet is not compatible with nondet,
-			% since the arguments go in different registers.
-			% But det is compatible with nondet.
+			% since the calling conventions are different.
+			% But if we're using the LLDS back-end
+			% (i.e. not --high-level-code),
+			% det is compatible with nondet.
 		( CodeModel = Call_CodeModel
-		; CodeModel = model_non, Call_CodeModel = model_det
+		; CodeModel = model_non, Call_CodeModel = model_det,
+			module_info_globals(ModuleInfo0, Globals),
+			globals__lookup_bool_option(Globals,
+				highlevel_code, no)
 		),
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo,
@@ -397,10 +402,17 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, ArgModes, Detism,
 		PredId = PredId0,
 		ProcId = ProcId0,
 		PredName = PredName0,
-		ModuleInfo = ModuleInfo0,
 		NumArgVars = NumInitialVars,
-		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes, 
-			ModuleInfo, UniModes)
+		mode_util__modes_to_uni_modes(CurriedArgModes, CurriedArgModes,
+			ModuleInfo0, UniModes),
+		%
+		% we need to mark the procedure as having had its
+		% address taken
+		%
+		proc_info_set_address_taken(Call_ProcInfo, address_is_taken,
+			Call_NewProcInfo),
+		module_info_set_pred_proc_info(ModuleInfo0, PredId, ProcId,
+			Call_PredInfo, Call_NewProcInfo, ModuleInfo)
 	;
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate

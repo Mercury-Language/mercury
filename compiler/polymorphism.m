@@ -2485,41 +2485,6 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			no, Context, Var, ExtraGoals, Info0, Info)
 	;
-		Type = term__variable(TypeVar),
-		poly_info_get_type_info_map(Info0, TypeInfoMap0),
-		map__search(TypeInfoMap0, TypeVar, TypeInfoLocn)
-	->
-		% This occurs for code where a predicate calls a polymorphic
-		% predicate with a bound but unknown value of the type variable.
-		% For example, in
-		%
-		%	:- pred p(T1).
-		%	:- pred q(T2).
-		%
-		%	p(X) :- q(X).
-		%
-		% we know that `T2' is bound to `T1', and we translate it into
-		%
-		%	:- pred p(TypeInfo(T1), T1).
-		%	:- pred q(TypeInfo(T2), T2).
-		%
-		%	p(TypeInfo, X) :- q(TypeInfo, X).
-
-		(
-				% If the typeinfo is available in a variable,
-				% just use it
-			TypeInfoLocn = type_info(TypeInfoVar),
-			Var = TypeInfoVar,
-			ExtraGoals = [],
-			Info = Info0
-		;
-				% If the typeinfo is in a typeclass_info, first
-				% extract it, then use it
-			TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
-			extract_type_info(TypeVar, TypeClassInfoVar,
-				Index, ExtraGoals, Var, Info0, Info)
-		)
-	;
 	%
 	% Now handle the cases of types which are not known statically
 	% (i.e. type variables)

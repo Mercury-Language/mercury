@@ -1811,7 +1811,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			;
 				{ Body = uu_type(_) }
 			;
-				{ type_id_is_hand_defined(TypeId) }
+				{ type_id_has_hand_defined_rtti(TypeId) }
 			)
 		->
 			{ special_pred_list(SpecialPredIds) },
@@ -2246,12 +2246,28 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 		DeclStatus = Status
 	},
 	{ TypesAndModes = types_and_modes(ArgInstTable, TMs) },
-	{ split_types_and_modes(TMs, Types, MaybeModes) },
-	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
+	{ split_types_and_modes(TMs, Types, MaybeModes0) },
+	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode0) },
 	{ list__append(Types, [RetType], Types1) },
 	add_new_pred(Module0, TypeVarSet, ExistQVars, FuncName, Types1, Cond,
 		Purity, ClassContext, Markers, Context, DeclStatus, NeedQual,
 		function, Module1),
+	{
+		% If there are no modes, but there is a determinism
+		% declared, assume the function has the default modes.
+		(MaybeModes0 = no ; MaybeRetMode0 = no),
+		MaybeDet = yes(_)
+	->
+		list__length(Types, Arity),
+		in_mode(InMode),
+		list__duplicate(Arity, InMode, InModes),
+		MaybeModes = yes(InModes),
+		out_mode(OutMode),
+		MaybeRetMode = yes(OutMode)
+	;
+		MaybeModes = MaybeModes0,
+		MaybeRetMode = MaybeRetMode0
+	},
 	(
 		{ MaybeModes = yes(Modes) },
 		{ MaybeRetMode = yes(RetMode) }
@@ -5056,12 +5072,15 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 				VarSet0, Subst, Goal, VarSet, Info0, Info)
 	;
 		% check for a DCG field access goal:
-		% get:  Field := ^ field
+		% get:  Field =^ field
 		% set:  ^ field := Field
-		{ Name = unqualified(":=") }
+		{ Name = unqualified(Operator) },
+		( { Operator = "=^" }
+		; { Operator = ":=" }
+		)
 	->
 		{ term__apply_substitution_to_list(Args0, Subst, Args1) },
-		transform_dcg_record_syntax(Args1, Context,
+		transform_dcg_record_syntax(Operator, Args1, Context,
 			VarSet0, Goal, VarSet, Info0, Info)
 	;
 		% check for an Aditi builtin
@@ -5144,38 +5163,32 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
 
-:- inst aditi_update_str =
-	bound(	"aditi_insert"
-	;	"aditi_delete"
-	;	"aditi_bulk_insert"
-	;	"aditi_bulk_delete"
-	;	"aditi_modify"
-	).
+:- inst dcg_record_syntax_op = bound("=^"; ":=").
 
-:- pred transform_dcg_record_syntax(list(prog_term), prog_context,
+:- pred transform_dcg_record_syntax(string, list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset, qual_info, qual_info,
 		io__state, io__state).
-:- mode transform_dcg_record_syntax(in, in, in, out, out,
-		in, out, di, uo) is det.
+:- mode transform_dcg_record_syntax(in(dcg_record_syntax_op),
+		in, in, in, out, out, in, out, di, uo) is det.
 
-transform_dcg_record_syntax(ArgTerms0, Context, VarSet0,
+transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 		Goal, VarSet, Info0, Info) -->
 	{ goal_info_init(Context, GoalInfo) },
 	(
 		{ ArgTerms0 = [LHSTerm, RHSTerm,
 				TermInputTerm, TermOutputTerm] },
 		{
-			LHSTerm = term__functor(term__atom("^"),
-				[FieldNameTerm0], _)
-		->
-			FieldNameTerm = FieldNameTerm0,
-			FieldValueTerm = RHSTerm,
-			AccessType = set
+			Operator = "=^",
+			AccessType = get,
+			FieldNameTerm = RHSTerm,
+			FieldValueTerm = LHSTerm
 		;
-			RHSTerm = term__functor(term__atom("^"),
-				[FieldNameTerm], _),
-			FieldValueTerm = LHSTerm,
-			AccessType = get
+			Operator = ":=",
+			AccessType = set,
+			LHSTerm = term__functor(term__atom("^"),
+				[FieldNameTerm0], _),
+			FieldNameTerm = FieldNameTerm0,
+			FieldValueTerm = RHSTerm
 		}
 	->
 		{ parse_field_name_list(FieldNameTerm, MaybeFieldNames) },
@@ -5217,7 +5230,7 @@ transform_dcg_record_syntax(ArgTerms0, Context, VarSet0,
 		io__set_exit_status(1),
 		prog_out__write_context(Context),
 		io__write_string(
-		"Error: expected `Field := ^ field1 ^ ... ^ fieldN'\n"),
+		"Error: expected `Field =^ field1 ^ ... ^ fieldN'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  or `^ field1 ^ ... ^ fieldN := Field'.\n"),
 		prog_out__write_context(Context),
@@ -5548,6 +5561,14 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- inst aditi_update_str =
+	bound(	"aditi_insert"
+	;	"aditi_delete"
+	;	"aditi_bulk_insert"
+	;	"aditi_bulk_delete"
+	;	"aditi_modify"
+	).
 
 	% See the "Aditi update syntax" section of the
 	% Mercury Language Reference Manual.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -129,6 +129,11 @@
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
+
+	% Test whether the goal contains a reconstruction
+	% (a construction where the `cell_to_reuse' field is `yes(_)').
+:- pred goal_contains_reconstruction(hlds_goal).
+:- mode goal_contains_reconstruction(in) is semidet.
 
 	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
 	% i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
@@ -792,6 +797,8 @@ cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 
 goal_expr_calls(conj(Goals), PredProcId) :-
 	goals_calls(Goals, PredProcId).
+goal_expr_calls(par_conj(Goals, _), PredProcId) :-
+	goals_calls(Goals, PredProcId).
 goal_expr_calls(disj(Goals, _), PredProcId) :-
 	goals_calls(Goals, PredProcId).
 goal_expr_calls(switch(_, _, Goals, _), PredProcId) :-
@@ -850,6 +857,8 @@ cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
 
 goal_expr_calls_pred_id(conj(Goals), PredId) :-
 	goals_calls_pred_id(Goals, PredId).
+goal_expr_calls_pred_id(par_conj(Goals, _), PredId) :-
+	goals_calls_pred_id(Goals, PredId).
 goal_expr_calls_pred_id(disj(Goals, _), PredId) :-
 	goals_calls_pred_id(Goals, PredId).
 goal_expr_calls_pred_id(switch(_, _, Goals, _), PredId) :-
@@ -868,6 +877,43 @@ goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
 	goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
+%-----------------------------------------------------------------------------%
+ 
+goal_contains_reconstruction(_Goal - _) :-
+	% This will only succeed on the alias branch with structure reuse.
+	semidet_fail.
+	%goal_expr_contains_reconstruction(Goal).
+
+:- pred goal_expr_contains_reconstruction(hlds_goal_expr).
+:- mode goal_expr_contains_reconstruction(in) is semidet.
+
+goal_expr_contains_reconstruction(conj(Goals)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(disj(Goals, _)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(par_conj(Goals, _)) :-
+	goals_contain_reconstruction(Goals).
+goal_expr_contains_reconstruction(switch(_, _, Cases, _)) :-
+	list__member(Case, Cases),
+	Case = case(_, _, Goal),
+ 	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else, _)) :-
+ 	goals_contain_reconstruction([Cond, Then, Else]).
+goal_expr_contains_reconstruction(not(Goal)) :-
+	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(some(_, _, Goal)) :-
+	goal_contains_reconstruction(Goal).
+goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
+	Unify = construct(_, _, _, _, Reuse, _, _),
+	Reuse = yes(_).
+
+:- pred goals_contain_reconstruction(list(hlds_goal)).
+:- mode goals_contain_reconstruction(in) is semidet.
+
+goals_contain_reconstruction(Goals) :-
+	list__member(Goal, Goals),
+	goal_contains_reconstruction(Goal).
+ 
 %-----------------------------------------------------------------------------%
 
 	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,

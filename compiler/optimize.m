@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,7 +40,8 @@ optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
 	optimize_main(Procs0, GlobalData, Procs).
 
 optimize__proc(CProc0, GlobalData, CProc) -->
-	{ CProc0 = c_procedure(Name, Arity, PredProcId, Instrs0) },
+	{ CProc0 = c_procedure(Name, Arity, PredProcId,
+			Instrs0, ContainsReconstruction) },
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	opt_debug__msg(DebugOpt, "before optimization"),
 	opt_debug__dump_instrs(DebugOpt, Instrs0),
@@ -60,26 +61,28 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 	},
 	( { ValueNumber = yes } ->
 		{ NovnRepeat is AllRepeat - VnRepeat },
-		optimize__repeat(NovnRepeat, no,  LayoutLabelSet,
-			Instrs0, Instrs1),
+		optimize__repeat(NovnRepeat, no, ContainsReconstruction,
+			LayoutLabelSet, Instrs0, Instrs1),
 		optimize__middle(Instrs1, no, LayoutLabelSet, Instrs2),
-		optimize__repeat(VnRepeat, yes, LayoutLabelSet,
-			Instrs2, Instrs3)
+		optimize__repeat(VnRepeat, yes, ContainsReconstruction,
+			LayoutLabelSet, Instrs2, Instrs3)
 	;
-		optimize__repeat(AllRepeat, no,  LayoutLabelSet,
-			Instrs0, Instrs1),
+		optimize__repeat(AllRepeat, no, ContainsReconstruction,
+			LayoutLabelSet, Instrs0, Instrs1),
 		optimize__middle(Instrs1, yes, LayoutLabelSet, Instrs3)
 	),
 	optimize__last(Instrs3, LayoutLabelSet, Instrs),
-	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs) }.
+	{ CProc = c_procedure(Name, Arity, PredProcId, Instrs,
+			ContainsReconstruction) }.
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize__repeat(int::in, bool::in, set(label)::in,
-	list(instruction)::in, list(instruction)::out,
+:- pred optimize__repeat(int::in, bool::in, contains_reconstruction::in,
+	set(label)::in, list(instruction)::in, list(instruction)::out,
 	io__state::di, io__state::uo) is det.
 
-optimize__repeat(Iter0, DoVn, LayoutLabelSet, Instrs0, Instrs) -->
+optimize__repeat(Iter0, DoVn, ContainsReconstruction,
+		LayoutLabelSet, Instrs0, Instrs) -->
 	(
 		{ Iter0 > 0 }
 	->
@@ -89,11 +92,11 @@ optimize__repeat(Iter0, DoVn, LayoutLabelSet, Instrs0, Instrs) -->
 		;
 			{ Final = no }
 		),
-		optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet,
-			Instrs1, Mod),
+		optimize__repeated(Instrs0, DoVn, ContainsReconstruction,
+			Final, LayoutLabelSet, Instrs1, Mod),
 		( { Mod = yes } ->
-			optimize__repeat(Iter1, DoVn, LayoutLabelSet,
-				Instrs1, Instrs)
+			optimize__repeat(Iter1, DoVn, ContainsReconstruction,
+				LayoutLabelSet, Instrs1, Instrs)
 		;
 			{ Instrs = Instrs1 }
 		)
@@ -104,11 +107,13 @@ optimize__repeat(Iter0, DoVn, LayoutLabelSet, Instrs0, Instrs) -->
 	% We short-circuit jump sequences before normal peepholing
 	% to create more opportunities for use of the tailcall macro.
 
-:- pred optimize__repeated(list(instruction)::in, bool::in, bool::in,
+:- pred optimize__repeated(list(instruction)::in, bool::in,
+	contains_reconstruction::in, bool::in,
 	set(label)::in, list(instruction)::out, bool::out,
 	io__state::di, io__state::uo) is det.
 
-optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
+optimize__repeated(Instrs0, DoVn, ContainsReconstruction,
+		Final, LayoutLabelSet, Instrs, Mod) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	{ opt_util__find_first_label(Instrs0, Label) },
@@ -123,7 +128,8 @@ optimize__repeated(Instrs0, DoVn, Final, LayoutLabelSet, Instrs, Mod) -->
 		;
 			[]
 		),
-		value_number_main(Instrs0, LayoutLabelSet, Instrs1),
+		value_number_main(Instrs0, ContainsReconstruction,
+			LayoutLabelSet, Instrs1),
 		( { Instrs1 = Instrs0 } ->
 			[]
 		;

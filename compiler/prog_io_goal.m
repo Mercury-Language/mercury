@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,17 @@
 	% of their corresponding modes, and a determinism.  The syntax
 	% of a higher-order func expression is
 	% 	`(func(Var1::Mode1, ..., VarN::ModeN) = (VarN1::ModeN1) is Det
-	%		:- Goal)'.
+	%		:- Goal)'
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1) is Det :- Goal)'
+	% 		where the modes are assumed to be `in' for the
+	% 		function arguments and `out' for the result
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1) :- Goal)'
+	% 		where the modes are assumed as above, and the
+	% 		determinism is assumed to be det
+	% or
+	% 	`(func(Var1, ..., VarN) = (VarN1). '
 	%
 :- pred parse_func_expression(term, lambda_eval_method, list(prog_term),
 		list(mode), determinism).
@@ -324,16 +334,33 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	standard_det(DetString, Det),
 	parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
 	FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
-	parse_pred_expr_args(FuncArgsList, Args0, Modes0),
-	parse_lambda_arg(RetTerm, RetArg, RetMode),
-	list__append(Args0, [RetArg], Args),
-	list__append(Modes0, [RetMode], Modes).
+
+	( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
+		parse_lambda_arg(RetTerm, RetArg, RetMode),
+		list__append(Args0, [RetArg], Args),
+		list__append(Modes0, [RetMode], Modes)
+	;
+		%
+		% the argument modes default to `in',
+		% the return mode defaults to `out'
+		%
+		in_mode(InMode),
+		out_mode(OutMode),
+		list__length(FuncArgsList, NumArgs),
+		list__duplicate(NumArgs, InMode, Modes0),
+		RetMode = OutMode,
+		list__append(Modes0, [RetMode], Modes),
+		list__append(FuncArgsList, [RetTerm], Args1),
+		list__map(term__coerce, Args1, Args)
+	).
+
+
 parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	%
 	% parse a func expression with unspecified modes and determinism
 	%
 	FuncTerm = term__functor(term__atom("="),
-		[FuncEvalArgsTerm, RetArg], _),
+		[FuncEvalArgsTerm, RetTerm], _),
 	parse_lambda_eval_method(FuncEvalArgsTerm, EvalMethod, FuncArgsTerm),
 	FuncArgsTerm = term__functor(term__atom("func"), Args0, _),
 	%
@@ -348,7 +375,7 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	RetMode = OutMode,
 	Det = det,
 	list__append(Modes0, [RetMode], Modes),
-	list__append(Args0, [RetArg], Args1),
+	list__append(Args0, [RetTerm], Args1),
 	list__map(term__coerce, Args1, Args).
 
 parse_lambda_eval_method(Term0, EvalMethod, Term) :-
