@@ -3178,7 +3178,7 @@ typedef enum @{
 
 void MR_trail_function(
         void (*@var{untrail_func})(Word, MR_untrail_reason),
-        Word @var{value}
+        void *@var{value}
 );
 @end example
 @noindent

@@ -124,7 +124,7 @@ typedef enum {
 */
 #define MR_USE_TAGGED_TRAIL ((1<<TAGBITS) > MR_LAST_TRAIL_ENTRY_KIND)
 
-typedef void MR_untrail_func_type(Word datum, MR_untrail_reason);
+typedef void MR_untrail_func_type(void *datum, MR_untrail_reason);
 
 typedef struct {
 #if !(MR_USE_TAGGED_TRAIL)
@@ -137,7 +137,7 @@ typedef struct {
 		} MR_val;
 		struct {
 			MR_untrail_func_type *MR_untrail_func;
-			Word MR_datum;
+			void *MR_datum;
 		} MR_func;
 	} MR_union;
 } MR_TrailEntry;
@@ -176,7 +176,7 @@ typedef struct {
 
   /*
   ** void MR_store_value_trail_entry(
-  **		MR_trail_entry *entry, MR_untrail_func *func, Word datum);
+  **		MR_trail_entry *entry, Word *address, Word value);
   */
   #define MR_store_value_trail_entry(entry, address, value)		\
 	  do {								\
@@ -188,7 +188,7 @@ typedef struct {
 
   /*
   ** void MR_store_function_trail_entry(
-  **		MR_trail_entry * func, MR_untrail_func entry, Word datum);
+  **		MR_trail_entry * func, MR_untrail_func entry, void *datum);
   */
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
@@ -218,8 +218,8 @@ typedef struct {
 	  } while (0)
 
   /*
-  ** void MR_store_value_trail_entry_kind(
-  **		MR_trail_entry *entry, MR_untrail_func *func, Word datum);
+  ** void MR_store_function_trail_entry_kind(
+  **		MR_trail_entry *entry, MR_untrail_func *func, void *datum);
   */
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
@@ -236,7 +236,7 @@ typedef struct {
 	((entry)->MR_union.MR_val.MR_value)
 
 /*
-** Word MR_get_trail_entry_datum(const MR_trail_entry *);
+** void * MR_get_trail_entry_datum(const MR_trail_entry *);
 */
 #define MR_get_trail_entry_datum(entry) \
 	((entry)->MR_union.MR_func.MR_datum)
@@ -294,8 +294,8 @@ extern Unsigned MR_ticket_counter_var;
 	MR_trail_value((address), *(address))
 
 /*
-** void MR_trail_function(void (*untrail_func)(Word, MR_untrail_reason),
-**		Word value);
+** void MR_trail_function(void (*untrail_func)(void *, MR_untrail_reason),
+**		void *datum);
 **
 ** Make sure that when the current execution is
 ** backtracked over, (*untrail_func)(value, MR_undo) is called.
