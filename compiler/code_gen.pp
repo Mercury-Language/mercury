@@ -607,8 +607,12 @@ code_gen__generate_semi_epilog(Instr) -->
 	code_info__failure_cont(FailCont),
 	{ code_gen__output_args(Args, LiveArgs0) },
 	{ bintree_set__insert(LiveArgs0, reg(r(1)), LiveArgs) },
-	{ LiveValCode = node([
+	{ SLiveValCode = node([
 		livevals(LiveArgs) - ""
+	]) },
+	{ bintree_set__singleton_set(LiveArg, reg(r(1))) },
+	{ FLiveValCode = node([
+		livevals(LiveArg) - ""
 	]) },
 	{ FailCont = known(FallThrough0) ->
 		FallThrough = FallThrough0
@@ -649,7 +653,7 @@ code_gen__generate_semi_epilog(Instr) -->
 	) },
 	{ ExitCode = tree(
 		tree(
-			tree(Success, LiveValCode),
+			tree(Success, SLiveValCode),
 			node([ goto(succip) - "Return from procedure call" ])
 		),
 		tree(
@@ -657,7 +661,7 @@ code_gen__generate_semi_epilog(Instr) -->
 				label(FallThrough) - "FallThrough"
 			]),
 			tree(
-				tree(Failure, LiveValCode),
+				tree(Failure, FLiveValCode),
 				node([ goto(succip) - "Return from procedure call" ])
 			)
 		)

@@ -46,6 +46,9 @@
 :- pred bintree_set__init(bintree_set(_T)).
 :- mode bintree_set__init(out) is det.
 
+:- pred bintree_set__singleton_set(bintree_set(T), T).
+:- mode bintree_set__singleton_set(out, in) is det.
+
 	% `bintree_set__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
 
@@ -166,6 +169,10 @@ assoc_unit([X | Xs], [X - unit | Ys]) :-
 
 bintree_set__init(Set) :-
 	bintree__init(Set).
+
+bintree_set__singleton_set(Set, Elem) :-
+	bintree__init(Set0),
+	bintree__set(Set0, Elem, unit, Set).
 
 bintree_set__equal(SetA, SetB) :-
 	bintree__keys(SetA, SortedElements),
