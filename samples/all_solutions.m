@@ -1,12 +1,6 @@
 % An example program to illustrate the use of all-solutions predicates
 % in Mercury.
 
-% Note that the current implementation of solutions/2 is incomplete -
-% it only works if the predicate passed is monomorphic (doesn't have
-% any type parameters).  Also mode and determinism checking of higher-order
-% predicates are not yet implemented, so if you pass an incorrect argument
-% to solutions/2, you will probably get a core dump.
-
 :- module all_solutions.
 :- interface.
 :- import_module io.
