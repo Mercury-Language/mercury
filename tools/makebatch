@@ -13,20 +13,25 @@
 #
 # The output goes in $batch.mercury_compile.$n.gz; the size of the versions
 # are put in $batch.sizes. If a bootcheck fails, the bootcheck output goes
-# in $batch.out.$n.
+# in $batch.out.$n; the compiler will be thrown away unless the -f flag is
+# given.
 #
 # The file $batch.checkpoint records which version is to be built next.
 # Reinvoking makebatch while this file exist will cause it to start from
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-t] batchname"
+usage="Usage: makebatch [-jN] [-ft] batchname"
 jfactor=-j1
 runtests=""
+failed="notwanted"
 
 while test $# -gt 0
 do
 	case $1 in
+
+	-f|--failed-compilers)
+		failed="wanted" ;;
 
 	-j|--jobs)
 		jfactor="-j$2" ; shift ;;
@@ -121,7 +126,22 @@ do
 		/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
 		gzip batch/$batch.mercury_compile.$n
 	else
-		echo bootcheck of version $n failed
+		if test "$failed" = "wanted"
+		then
+			if test -x stage2/compiler/mercury_compile
+			then
+				echo bootcheck of version $n failed but produced compiler
+				mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$n
+				size batch/$batch.mercury_compile.$n | tail -1 >> batch/$batch.sizes
+				/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
+				gzip batch/$batch.mercury_compile.$n
+
+			else
+				echo bootcheck of version $n failed and did not produce compiler
+			fi
+		else
+			echo bootcheck of version $n failed
+		fi
 	fi
 	n=`expr $n + 1`
 	echo $n > batch/$batch.checkpoint
