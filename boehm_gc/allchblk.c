@@ -204,8 +204,6 @@ unsigned char flags;  /* IGNORE_OFF_PAGE or 0 */
 	        WARN("Needed to allocated blacklisted block at %ld\n",
 		     (word)hbp);
 #endif
-	        WARN("Needed to allocate blacklisted block at %ld\n",
-		     (word)hbp);
 	        thishbp = hbp;
 	        size_avail = orig_avail;
 	      } else if (size_avail == 0
