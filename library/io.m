@@ -4309,6 +4309,14 @@ mercury_close(MercuryFile* mf)
 static void
 mercury_close(MR_MercuryFile mf)
 {
+	if (mf->reader) {
+		mf->reader->Close();
+		mf->reader = NULL;
+	}
+	if (mf->writer) {
+		mf->writer->Close();
+		mf->writer = NULL;
+	}
 	mf->stream->Close();
 	mf->stream = NULL;
 }
