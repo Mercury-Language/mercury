@@ -175,4 +175,9 @@
 */
 #define MR_FULLARCH "unknown"
 
+/*
+** Should we build the Mercury libraries as Windows DLLs?
+*/
+#undef USE_DLLS
+
 #endif /* CONF_H */

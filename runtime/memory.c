@@ -29,7 +29,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef __CYGWIN32__
+#ifdef USE_DLLS
   #include "libmer_dll.h"
 #endif
 #include "regs.h"	/* must come first, due to global register vars */

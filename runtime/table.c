@@ -15,7 +15,7 @@
 
 #define	HASHDEBUG
 
-#ifdef __CYGWIN32__
+#ifdef USE_DLLS
   #include	"libmer_dll.h"
 #endif
 
