@@ -4,7 +4,7 @@
 
 TCLTK_VERSION = 8.0
 
-EXTRA_MLLIBS = -ltk$(TCLTK_VERSION) -ltcl$(TCLTK_VERSION) -lGLU -lGL \ 
+EXTRA_MLLIBS = -ltk$(TCLTK_VERSION) -ltcl$(TCLTK_VERSION) -lGLU -lGL \
 		-L/usr/X11R6/lib -lX11 -lXmu -lXext -ldl -lSM -lXt -lXi
 
 # Specify the location of the `mercury_tcltk', `mtogl'  and 
