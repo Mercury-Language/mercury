@@ -27,7 +27,7 @@
 :- pred generate_arg_info(module_info, module_info).
 :- mode generate_arg_info(in, out) is det.
 
-:- pred arg_info__unify_arg_info(category, list(arg_info)).
+:- pred arg_info__unify_arg_info(code_model, list(arg_info)).
 :- mode arg_info__unify_arg_info(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -89,8 +89,8 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 
 make_arg_infos(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, ArgModes),
-	proc_info_interface_determinism(ProcInfo0, Determinism),
-	( Determinism = semideterministic ->
+	proc_info_interface_code_model(ProcInfo0, CodeModel),
+	( CodeModel = model_semi ->
 		StartingRegister = 2
 	;
 		StartingRegister = 1
@@ -117,11 +117,9 @@ make_arg_infos_list([Mode | Modes], RegNum, ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
-arg_info__unify_arg_info(deterministic,
-				[arg_info(1, top_in), arg_info(2, top_in)]).
-arg_info__unify_arg_info(semideterministic,
-				[arg_info(2, top_in), arg_info(3, top_in)]).
-arg_info__unify_arg_info(nondeterministic, _X) :-
+arg_info__unify_arg_info(model_det, [arg_info(1, top_in), arg_info(2, top_in)]).
+arg_info__unify_arg_info(model_semi, [arg_info(2, top_in), arg_info(3, top_in)]).
+arg_info__unify_arg_info(model_non, _X) :-
 	error("arg_info: nondet unify!").
 
 %---------------------------------------------------------------------------%

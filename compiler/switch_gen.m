@@ -5,7 +5,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: switch_gen.m
-% Authors: conway, fjh
+% Authors: conway, fjh, zs
 %
 % This module handles the generation of code for switches, which are
 % disjunctions that do not require backtracking.  Switches are detected
@@ -37,7 +37,7 @@
 
 :- import_module hlds, code_info.
 
-:- pred switch_gen__generate_switch(category, var, category, list(case),
+:- pred switch_gen__generate_switch(code_model, var, can_fail, list(case),
 	code_tree, code_info, code_info).
 :- mode switch_gen__generate_switch(in, in, in, in, out, in, out) is det.
 
@@ -45,14 +45,6 @@
 
 :- type extended_case ---> case(int, cons_tag, cons_id, hlds__goal).
 :- type cases_list == list(extended_case).
-
-%	switch_gen__generate_switch(Det, Var, LocalDet, Cases, Code):
-%		Generate code for a switch statement.
-%		Det is the determinism of the context.
-%		LocalDet is the determinism of the switch itself,
-%		ignoring the determism of the goals in the cases.
-%		I.e. LocalDet is `det' if the switch covers all cases and
-%		`semidet' otherwise.
 
 %---------------------------------------------------------------------------%
 
@@ -72,8 +64,9 @@
 %---------------------------------------------------------------------------%
 
 	% Choose which method to use to generate the switch.
+	% CanFail says whether the switch covers all cases.
 
-switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
+switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
 	code_info__get_next_label(EndLabel, no),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
@@ -90,11 +83,11 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 		{ NumCases > DenseSize },
 		{ globals__lookup_int_option(Globals, req_density,
 			ReqDensity) },
-		dense_switch__is_dense_switch(CaseVar, TaggedCases, LocalDet,
-			ReqDensity, FirstVal, LastVal, LocalDet1)
+		dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail,
+			ReqDensity, FirstVal, LastVal, CanFail1)
 	->
 		dense_switch__generate(TaggedCases,
-			FirstVal, LastVal, CaseVar, Det, LocalDet1,
+			FirstVal, LastVal, CaseVar, CodeModel, CanFail1,
 			EndLabel, Code)
 	;
 		{ Indexing = yes },
@@ -104,8 +97,8 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 			StringSize) },
 		{ NumCases > StringSize }
 	->
-		string_switch__generate(TaggedCases, CaseVar, Det,
-			LocalDet, EndLabel, Code)
+		string_switch__generate(TaggedCases, CaseVar, CodeModel,
+			CanFail, EndLabel, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = tag_switch },
@@ -115,14 +108,14 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 		{ NumCases > TagSize }
 	->
 		tag_switch__generate(TaggedCases,
-			CaseVar, Det, LocalDet, EndLabel, Code)
+			CaseVar, CodeModel, CanFail, EndLabel, Code)
 	;
 		% To generate a switch, first we flush the
 		% variable on whose tag we are going to switch, then we
 		% generate the cases for the switch.
 
 		switch_gen__generate_all_cases(TaggedCases,
-			CaseVar, Det, LocalDet, EndLabel, Code)
+			CaseVar, CodeModel, CanFail, EndLabel, Code)
 	),
 	code_info__remake_with_store_map.
 
@@ -205,14 +198,14 @@ switch_gen__priority(address_constant(_, _), 6).
 	% their case goals.
 
 :- pred switch_gen__generate_all_cases(list(extended_case), var,
-	category, category, label, code_tree, code_info, code_info).
+	code_model, can_fail, label, code_tree, code_info, code_info).
 :- mode switch_gen__generate_all_cases(in, in, in, in, in, out, in, out) is det.
 
-switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
+switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, _Rval),
 	(
-		{ Det = deterministic },
-		{ LocalDet = deterministic },
+		{ CodeModel = model_det },
+		{ CanFail = cannot_fail },
 		{ Cases = [Case1, Case2] }
 	->
 		{ Case1 = case(_, _, Cons1, Goal1) },
@@ -221,11 +214,11 @@ switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
 		unify_gen__generate_tag_test(Var, Cons1, TestCode),
 		code_info__pop_failure_cont,
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(Det, Goal1, Case1Code),
+		code_gen__generate_forced_goal(CodeModel, Goal1, Case1Code),
 
 		{ Case2 = case(_, _, _Cons2, Goal2) },
 		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_goal(Det, Goal2, Case2Code),
+		code_gen__generate_forced_goal(CodeModel, Goal2, Case2Code),
 
 		{ tree__flatten(TestCode, TestListList) },
 		{ list__condense(TestListList, TestList) },
@@ -247,21 +240,21 @@ switch_gen__generate_all_cases(Cases, Var, Det, LocalDet, EndLabel, Code) -->
 						"End of switch" ]))))
 		}
 	;
-		switch_gen__generate_cases(Cases, Var, Det, LocalDet,
+		switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
 			EndLabel, CasesCode),
 		{ Code = tree(VarCode, CasesCode) }
 	).
 
 :- pred switch_gen__generate_cases(list(extended_case), var,
-	category, category, label, code_tree, code_info, code_info).
+	code_model, can_fail, label, code_tree, code_info, code_info).
 :- mode switch_gen__generate_cases(in, in, in, in, in, out, in, out) is det.
 
 	% At the end of a locally semidet switch, we fail because we
 	% came across a tag which was not covered by one of the cases.
 	% It is followed by the end of switch label to which the cases
 	% branch.
-switch_gen__generate_cases([], _Var, _Det, LocalDet, EndLabel, Code) -->
-	( { LocalDet = semideterministic } ->
+switch_gen__generate_cases([], _Var, _CodeModel, CanFail, EndLabel, Code) -->
+	( { CanFail = can_fail } ->
 		code_info__generate_failure(FailCode)
 	;
 		{ FailCode = empty }
@@ -271,17 +264,17 @@ switch_gen__generate_cases([], _Var, _Det, LocalDet, EndLabel, Code) -->
 
 	% A case consists of a tag-test followed by a 
 	% goal and a label for the start of the next case.
-switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, Det, LocalDet, 
-					EndLabel, CasesCode) -->
+switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
+				CanFail, EndLabel, CasesCode) -->
 	(
-		{ Cases = [_|_] ; LocalDet = semideterministic }
+		{ Cases = [_|_] ; CanFail = can_fail }
 	->
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ElseLabel, no),
 		code_info__push_failure_cont(known(ElseLabel)),
 		unify_gen__generate_tag_test(Var, Cons, TestCode),
 		code_info__pop_failure_cont,
-		code_gen__generate_forced_goal(Det, Goal, ThisCode),
+		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode),
 		{ ElseCode = node([
 			goto(label(EndLabel), label(EndLabel)) -
 				"skip to the end of the switch",
@@ -296,9 +289,9 @@ switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, Det, LocalDet,
 			[]
 		)
 	;
-		code_gen__generate_forced_goal(Det, Goal, ThisCaseCode)
+		code_gen__generate_forced_goal(CodeModel, Goal, ThisCaseCode)
 	),
 		% generate the rest of the cases.
-	switch_gen__generate_cases(Cases, Var, Det, LocalDet, EndLabel,
+	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, EndLabel,
 		CasesCode0),
 	{ CasesCode = tree(ThisCaseCode, CasesCode0) }.

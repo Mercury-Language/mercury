@@ -119,15 +119,15 @@ add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Status, Module0,
 		Status, Module) -->
 	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module).
 
-add_item_decl(pred(VarSet, PredName, TypesAndModes, Det, Cond), Context,
+add_item_decl(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond), Context,
 		Status, Module0, Status, Module) -->
-	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond,
-		Context, Status, Module).
+	module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet,
+		Cond, Context, Status, Module).
 
-add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Status,
+add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
 		Module0, Status, Module) -->
-	module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context,
-		Module).
+	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
+		Context, Module).
 
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		Status, Module) -->
@@ -458,13 +458,13 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 %---------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-		determinism, condition, term__context, import_status,
+		maybe(determinism), condition, term__context, import_status,
 		module_info,
 		io__state, io__state).
 :- mode module_add_pred(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
-		Status, Module) -->
+module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
+		Context, Status, Module) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status,
 		Module1),
@@ -472,8 +472,8 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 		% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	->
-		module_add_mode(Module1, VarSet, PredName, Modes, Det, Cond,
-			Context, Module)
+		module_add_mode(Module1, VarSet, PredName, Modes, MaybeDet,
+			Cond, Context, Module)
 	;
 		{ Module = Module1 }
 	).
@@ -592,8 +592,8 @@ add_special_pred_decl(SpecialPredId,
 		Context, ClausesInfo0, Status, PredInfo0),
 
 	pred_info_procedures(PredInfo0, Procs0),
-	next_mode_id(Procs0, Det, ModeId),
-	proc_info_init(Arity, ArgModes, Det, Context, NewProc),
+	next_mode_id(Procs0, yes(Det), ModeId),
+	proc_info_init(Arity, ArgModes, yes(Det), Context, NewProc),
 	map__set(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 
@@ -611,22 +611,22 @@ add_special_pred_decl(SpecialPredId,
 
 	% Add a mode declaration for a predicate.
 
-:- pred module_add_mode(module_info, varset, sym_name, list(mode), determinism,
-			condition, term__context, module_info,
-			io__state, io__state).
+:- pred module_add_mode(module_info, varset, sym_name, list(mode),
+		maybe(determinism), condition, term__context, module_info,
+		io__state, io__state).
 :- mode module_add_mode(in, in, in, in, in, in, in, out, di, uo) is det.
 
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
-module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
-			ModuleInfo) -->
-		%
+module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
+			MContext, ModuleInfo) -->
+
 		% Lookup the pred declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), print an
 		% error message and insert a dummy declaration for the
 		% predicate.
-		% 
+
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(Modes, Arity) },
@@ -646,16 +646,14 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 				PredId, PredicateTable1) }
 		
 	),
-		%
+
 		% Lookup the pred_info for this predicate
-		%
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
-		%
+
 		% check that the determinism was specified
-		%
 	(
-		{ Det = unspecified }
+		{ MaybeDet = no }
 	->
 		( { pred_info_is_exported(PredInfo0) } ->
 			unspecified_det_error(PredName, Arity, MContext)
@@ -671,14 +669,12 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 	;
 		[]
 	),
-		%
 		% add the mode declaration to the proc_info for this procedure.
-		%
 	{ pred_info_procedures(PredInfo0, Procs0) },
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
-	{ next_mode_id(Procs0, Det, ModeId) },
-	{ proc_info_init(Arity, Modes, Det, MContext, NewProc) },
+	{ next_mode_id(Procs0, MaybeDet, ModeId) },
+	{ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) },
 	{ map__set(Procs0, ModeId, NewProc, Procs) },
 	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
@@ -724,13 +720,25 @@ preds_add_implicit(PredicateTable0,
 	% we should probably store the next available ModeId rather
 	% than recomputing it all the time.
 
-:- pred next_mode_id(proc_table, determinism, proc_id).
+:- pred next_mode_id(proc_table, maybe(determinism), proc_id).
 :- mode next_mode_id(in, in, out) is det.
 
-next_mode_id(Procs, Det, ModeId) :-
+next_mode_id(Procs, MaybeDet, ModeId) :-
 	map__to_assoc_list(Procs, List),
 	list__length(List, ModeId0),
-	determinism_priority(Det, Priority),
+	(
+		MaybeDet = no,
+		determinism_priority_unspecified(Priority)
+	;
+		MaybeDet = yes(Det),
+		determinism_priority(Det, Priority)
+	),
+	determinism_priority_step(Step),
+	( ModeId >= Step ->
+		error("too many modes per predicate")
+	;
+		true
+	),
 	ModeId is ModeId0 + Priority.
 
 	% If we can call a predicate in either of two different modes,
@@ -749,8 +757,18 @@ determinism_priority(semidet, 0).
 determinism_priority(failure, 0).
 determinism_priority(det, 10000).
 determinism_priority(erroneous, 10000).
-determinism_priority(unspecified, 20000).
 determinism_priority(nondet, 30000).
+determinism_priority(multidet, 30000).
+
+:- pred determinism_priority_unspecified(int).
+:- mode determinism_priority_unspecified(out) is det.
+
+determinism_priority_unspecified(20000).
+
+:- pred determinism_priority_step(int).
+:- mode determinism_priority_step(out) is det.
+
+determinism_priority_step(10000).
 
 %-----------------------------------------------------------------------------%
 
@@ -760,9 +778,7 @@ determinism_priority(nondet, 30000).
 
 module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 			ModuleInfo) -->
-		%
 		% print out a progress message
-		%
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(Args, Arity) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -773,11 +789,9 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 	;
 		[]
 	),
-		%
 		% Lookup the pred declaration in the predicate table.
 		% (if it's not there, print an error message and insert
 		% a dummy declaration for the predicate.)
-		%
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
@@ -794,11 +808,9 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 				ModuleName, PredName, Arity, Context,
 				PredId, PredicateTable1) }
 	),
-		%
 		% Lookup the pred_info for this pred,
 		% add the clause to the clauses_info in the pred_info,
 		% and save the pred_info.
-		%
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
@@ -817,9 +829,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 	} ),
-		%
 		% Warn about singleton variables in the clauses.
-		%
 	maybe_warn_singletons(VarSet, PredName/Arity, Args, Body, Context).
 
 %-----------------------------------------------------------------------------%
@@ -1391,7 +1401,7 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
 	map__init(Follow),
-	UnifyInfo = complicated_unify(UMode, nondeterministic, Follow),
+	UnifyInfo = complicated_unify(UMode, can_fail, Follow),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.

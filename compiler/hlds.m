@@ -91,7 +91,7 @@
 :- implementation.
 
 :- type proc_info	--->	procedure(
-					determinism,	% _declared_ determism
+					maybe(determinism),% _declared_ det'ism
 					varset,		% variable names
 					map(var, type),	% variable types
 					list(var),	% head vars
@@ -101,7 +101,8 @@
 							% the :- mode decl,
 							% not the clause.	
 					call_info,	% stack allocations
-					category,	% _inferred_ det'ism
+					determinism,	% _inferred_ det'ism
+					code_model,	% selected code model
 					list(arg_info),	% information about
 							% the arguments
 							% derived from the
@@ -112,15 +113,27 @@
 
 :- interface.
 
-:- type category	--->	deterministic		% functional & total
-			;	semideterministic	% just functional
-			;	nondeterministic.	% neither
+:- type can_fail	--->	can_fail ; cannot_fail.
+
+:- type soln_count	--->	at_most_zero ; at_most_one ; at_most_many.
+
+:- type code_model	--->	model_det		% functional & total
+			;	model_semi		% just functional
+			;	model_non.		% not functional
+
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
 :- type liveness_info   ==      set(var).	% The live variables
 
 :- type liveness        --->    live
                         ;       dead.
+
+:- pred determinism_components(determinism, can_fail, soln_count).
+:- mode determinism_components(in, out, out) is det.
+:- mode determinism_components(out, in, in) is det.
+
+:- pred determinism_to_code_model(determinism, code_model).
+:- mode determinism_to_code_model(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -148,6 +161,20 @@
 :- mode special_pred_list(out) is det.
 
 :- implementation.
+
+determinism_components(det,       cannot_fail, at_most_one).
+determinism_components(semidet,   can_fail,    at_most_one).
+determinism_components(multidet,  cannot_fail, at_most_many).
+determinism_components(nondet,    can_fail,    at_most_many).
+determinism_components(erroneous, cannot_fail, at_most_zero).
+determinism_components(failure,   can_fail,    at_most_zero).
+
+determinism_to_code_model(det,       model_det).
+determinism_to_code_model(semidet,   model_semi).
+determinism_to_code_model(nondet,    model_non).
+determinism_to_code_model(multidet,  model_non).
+determinism_to_code_model(erroneous, model_det).
+determinism_to_code_model(failure,   model_semi).
 
 special_pred_list([unify, index, compare]).
 
@@ -375,7 +402,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% into case statements by the switch
 				% detection pass.
 				% Variable, local determinism, cases
-			;	switch(var, category, list(case))
+			;	switch(var, can_fail, list(case))
 
 				% A unification.
 				% Initially only the terms and the context
@@ -425,7 +452,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Y = f(X) where the top node of Y is input,
 				% written Y == f(X).
 			;	deconstruct(var, cons_id, list(var),
-						list(uni_mode), category)
+						list(uni_mode), can_fail)
 					% Var, Functor, ArgVars, ArgModes, Det
 
 				% Y = X where the top node of Y is output,
@@ -444,7 +471,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% generated unification predicate for that
 				% type & mode.
 			;	complicated_unify(uni_mode,
-						category, follow_vars).
+						can_fail, follow_vars).
 
 :- type unify_context	--->	unify_context(
 					unify_main_context,
@@ -464,8 +491,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
-		category,	% the `local' determinism of the goal
-		category, 	% the overall determinism of the goal
+		determinism,	% the `local' determinism of the goal
+		determinism, 	% the overall determinism of the goal
 		instmap_delta,
 		term__context,
 		set(var),	% the non-local vars in the goal
@@ -1380,20 +1407,24 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 
 :- interface.
 
-:- pred proc_info_init(int, list(mode), determinism, term__context, proc_info).
+:- pred proc_info_init(int, list(mode), maybe(determinism), term__context,
+	proc_info).
 :- mode proc_info_init(in, in, in, in, out) is det.
 
-:- pred determinism_to_category(determinism, category).
-:- mode determinism_to_category(in, out) is det.
-
-:- pred proc_info_declared_determinism(proc_info, determinism).
+:- pred proc_info_declared_determinism(proc_info, maybe(determinism)).
 :- mode proc_info_declared_determinism(in, out) is det.
 
-:- pred proc_info_interface_determinism(proc_info, category).
+:- pred proc_info_inferred_determinism(proc_info, determinism).
+:- mode proc_info_inferred_determinism(in, out) is det.
+
+:- pred proc_info_code_model(proc_info, code_model).
+:- mode proc_info_code_model(in, out) is det.
+
+:- pred proc_info_interface_determinism(proc_info, determinism).
 :- mode proc_info_interface_determinism(in, out) is det.
 
-:- pred proc_info_inferred_determinism(proc_info, category).
-:- mode proc_info_inferred_determinism(in, out) is det.
+:- pred proc_info_interface_code_model(proc_info, code_model).
+:- mode proc_info_interface_code_model(in, out) is det.
 
 :- pred proc_info_variables(proc_info, varset).
 :- mode proc_info_variables(in, out) is det.
@@ -1441,8 +1472,11 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 				hlds__goal, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, out) is det.
 
-:- pred proc_info_set_inferred_determinism(proc_info, category, proc_info).
+:- pred proc_info_set_inferred_determinism(proc_info, determinism, proc_info).
 :- mode proc_info_set_inferred_determinism(in, in, out) is det.
+
+:- pred proc_info_set_code_model(proc_info, code_model, proc_info).
+:- mode proc_info_set_code_model(in, in, out) is det.
 
 :- pred proc_info_set_goal(proc_info, hlds__goal, proc_info).
 :- mode proc_info_set_goal(in, in, out) is det.
@@ -1468,115 +1502,146 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 :- implementation.
 
 	% Some parts of the procedure aren't known yet.  We initialize
-	% them to any old garbage which we will later throw away
+	% them to any old garbage which we will later throw away.
 
-proc_info_init(Arity, Modes, Det, MContext, NewProc) :-
+	% If the source code doesn't specify any determinism annotation,
+	% inferred determinism gets initialized to `deterministic'.
+	% This is what `det_analysis.m' wants.  If it turns out
+	% that the procedure wasn't deterministic, then det_analysis.m
+	% provide the correct inferred determinism for it.
+
+proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	map__init(BodyTypes),
 	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
-	determinism_to_category(Det, Category),
+	(
+		MaybeDet = no,
+		Det = det,
+		CodeModel = model_det
+	;
+		MaybeDet = yes(DeclDet),
+		Det = DeclDet,
+		determinism_to_code_model(DeclDet, CodeModel)
+	),
 	map__init(CallInfo),
 	set__init(Liveness),
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
 	map__init(FollowVars),
 	NewProc = procedure(
-		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
-		ClauseBody, MContext, CallInfo, Category, ArgInfo,
+		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes,
+		ClauseBody, MContext, CallInfo, Det, CodeModel, ArgInfo,
 		Liveness, FollowVars
 	).
 
-	% This predicate (and the types it operates on) are
-	% misnamed.  It should be category_to_determinism.
-
-determinism_to_category(det, deterministic).
-determinism_to_category(semidet, semideterministic).
-determinism_to_category(nondet, nondeterministic).
-determinism_to_category(erroneous, deterministic).
-determinism_to_category(failure, semideterministic).
-	% If the source code doesn't specify any determinism annotation,
-	% inferred determinism gets initialized to `deterministic'.
-	% This is what `det_analysis.m' wants.  If it turns out
-	% that the procedure wasn't deterministic, then det_analysis.m
-	% provide the correct inferred determinism for it.
-determinism_to_category(unspecified, deterministic).
-
-proc_info_interface_determinism(ProcInfo, Category) :-
-	proc_info_declared_determinism(ProcInfo, Determinism),
-	( Determinism = unspecified ->
-		proc_info_inferred_determinism(ProcInfo, Category)
+proc_info_interface_determinism(ProcInfo, Determinism) :-
+	proc_info_declared_determinism(ProcInfo, MaybeDeterminism),
+	(
+		MaybeDeterminism = no,
+		proc_info_inferred_determinism(ProcInfo, Determinism)
 	;
-		determinism_to_category(Determinism, Category)
+		MaybeDeterminism = yes(Determinism)
 	).
 
+proc_info_interface_code_model(ProcInfo, CodeModel) :-
+	proc_info_interface_determinism(ProcInfo, Determinism),
+	determinism_to_code_model(Determinism, CodeModel).
+
 proc_info_declared_determinism(ProcInfo, Determinism) :-
-	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _, _, _, _).
 proc_info_variables(ProcInfo, VarSet) :-
-	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _, _, _, _).
 proc_info_vartypes(ProcInfo, VarTypes) :-
-	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _, _, _, _).
 proc_info_headvars(ProcInfo, HeadVars) :-
-	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _, _, _, _).
 proc_info_argmodes(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _, _, _, _).
 proc_info_goal(ProcInfo, Goal) :-
-	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _, _, _, _).
 proc_info_context(ProcInfo, Context) :-
-	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _, _, _, _).
 proc_info_call_info(ProcInfo, CallInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _, _, _).
-proc_info_inferred_determinism(ProcInfo, Category) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _, _, _, _).
+proc_info_inferred_determinism(ProcInfo, Determinism) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, Determinism, _, _, _, _).
+proc_info_code_model(ProcInfo, CodeModel) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, CodeModel, _, _, _).
 proc_info_arg_info(ProcInfo, ArgInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, ArgInfo, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, ArgInfo, _, _).
 proc_info_liveness_info(ProcInfo, Liveness) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, Liveness, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, Liveness, _).
 proc_info_follow_vars(ProcInfo, Follow) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, Follow).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, Follow).
+
+% :- type proc_info	--->	procedure(
+% 				A	maybe(determinism),% _declared_ det'ism
+% 				B	varset,		% variable names
+% 				C	map(var, type),	% variable types
+% 				D	list(var),	% head vars
+% 				E	list(mode), 	% modes of args
+% 				F	hlds__goal,	% Body
+% 				G	term__context,	% The context of
+% 							% the :- mode decl,
+% 							% not the clause.	
+% 				H	call_info,	% stack allocations
+% 				I	determinism,	% _inferred_ det'ism
+% 				J	code_model,	% selected code model
+% 				K	list(arg_info),	% information about
+% 							% the arguments
+% 							% derived from the
+% 							% modes etc
+% 				L	liveness_info,	% the initial liveness
+% 				M	follow_vars	% initial followvars
+% 				).
+
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
-	ProcInfo0 = procedure(DeclaredDet, _, _, _, ArgModes, _, Context,
-		CallInfo, InferredDet, ArgInfo, Liveness, Follow),
-	ProcInfo = procedure(DeclaredDet, VarSet, VarTypes, HeadVars, ArgModes,
-		Goal, Context, CallInfo, InferredDet, ArgInfo, Liveness,
-		Follow).
+	ProcInfo0 = procedure(A, _, _, _, E, _, G,
+		H, I, J, K, L, M),
+	ProcInfo = procedure(A, VarSet, VarTypes, HeadVars, E, Goal, G,
+		H, I, J, K, L, M).
 
 proc_info_set_varset(ProcInfo0, VarSet, ProcInfo) :-
-	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L),
-	ProcInfo = procedure(A, VarSet, C, D, E, F, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, VarSet, C, D, E, F, G, H, I, J, K, L, M).
 
 proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L),
-	ProcInfo = procedure(A, B, C, HeadVars, E, F, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, B, C, HeadVars, E, F, G, H, I, J, K, L, M).
 
 proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L),
-	ProcInfo = procedure(A, B, C, D, ArgModes, F, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, B, C, D, ArgModes, F, G, H, I, J, K, L, M).
 
-proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J, K, L).
+proc_info_set_inferred_determinism(ProcInfo0, Determinism, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, Determinism, J, K, L, M).
+
+proc_info_set_code_model(ProcInfo0, CodeModel, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, CodeModel, K, L, M).
 
 proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L),
-	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J, K, L, M).
 
 proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, _, I, J, K, L),
-	ProcInfo = procedure(A, B, C, D, E, F, G, CallInfo, I, J, K, L).
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, _, I, J, K, L, M),
+	ProcInfo = procedure(A, B, C, D, E, F, G, CallInfo, I, J, K, L, M).
 
 proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo, K, L).
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _, L, M),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, ArgInfo, L, M).
 
-proc_info_set_liveness_info(ProcInfo0, K, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _, L),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K, L).
+proc_info_set_liveness_info(ProcInfo0, Liveness, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _, M),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K, Liveness, M).
 
-proc_info_set_follow_vars(ProcInfo0, L, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K, L).
+proc_info_set_follow_vars(ProcInfo0, Follow, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, _),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K, L, Follow).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -1591,12 +1656,12 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
 
 proc_info_set_variables(ProcInfo0, Vars, ProcInfo) :-
-	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L),
-	ProcInfo = procedure(A, Vars, C, D, E, F, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, Vars, C, D, E, F, G, H, I, J, K, L, M).
 
 proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, _, D, E, F, G, H, I, J, K, L),
-	ProcInfo = procedure(A, B, Vars, D, E, F, G, H, I, J, K, L).
+	ProcInfo0 = procedure(A, B, _, D, E, F, G, H, I, J, K, L, M),
+	ProcInfo = procedure(A, B, Vars, D, E, F, G, H, I, J, K, L, M).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1629,19 +1694,26 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 					hlds__goal_info).
 :- mode goal_info_set_post_delta_liveness(in, in, out) is det.
 
-:- pred goal_info_determinism(hlds__goal_info, category).
-:- mode goal_info_determinism(in, out) is det.
+:- pred goal_info_get_code_model(hlds__goal_info, code_model).
+:- mode goal_info_get_code_model(in, out) is det.
 
-:- pred goal_info_set_determinism(hlds__goal_info, category, hlds__goal_info).
+:- pred goal_info_get_determinism(hlds__goal_info, determinism).
+:- mode goal_info_get_determinism(in, out) is det.
+
+:- pred goal_info_set_determinism(hlds__goal_info, determinism,
+	hlds__goal_info).
 :- mode goal_info_set_determinism(in, in, out) is det.
 
 	% The `internal' determinism is the determinism _before_ we
 	% prune nondet goals that don't have any output variables.
 
-:- pred goal_info_get_internal_determinism(hlds__goal_info, category).
+:- pred goal_info_get_internal_code_model(hlds__goal_info, code_model).
+:- mode goal_info_get_internal_code_model(in, out) is det.
+
+:- pred goal_info_get_internal_determinism(hlds__goal_info, determinism).
 :- mode goal_info_get_internal_determinism(in, out) is det.
 
-:- pred goal_info_set_internal_determinism(hlds__goal_info, category,
+:- pred goal_info_set_internal_determinism(hlds__goal_info, determinism,
 					hlds__goal_info).
 :- mode goal_info_set_internal_determinism(in, in, out) is det.
 
@@ -1655,13 +1727,12 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 	% of the non-local variables whose instantiatedness
 	% changed.
 
-:- type instmap_delta == instmap.
+:- type instmap_delta	==	instmap.
 
-:- type instmap
-	--->	reachable(instmapping)
-	;	unreachable.
+:- type instmap		--->	reachable(instmapping)
+			;	unreachable.
 
-:- type instmapping == map(var, inst).
+:- type instmapping	==	map(var, inst).
 
 :- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.
@@ -1705,15 +1776,15 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 :- implementation.
 
 goal_info_init(GoalInfo) :-
-	LocalDet = deterministic,
-	Det = nondeterministic,
+	InternalDetism = det,
+	ExternalDetism = det,
 	set__init(Births),
 	set__init(Deaths),
 	DeltaLiveness = Births - Deaths,
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
 	term__context_init(Context),
-	GoalInfo = goal_info(DeltaLiveness, LocalDet, Det,
+	GoalInfo = goal_info(DeltaLiveness, InternalDetism, ExternalDetism,
 			InstMapDelta, Context, NonLocals, DeltaLiveness, no).
 
 goal_info_pre_delta_liveness(GoalInfo, DeltaLiveness) :-
@@ -1730,14 +1801,22 @@ goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H),
 	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H).
 
-goal_info_get_internal_determinism(GoalInfo, LocalDeterminism) :-
-	GoalInfo = goal_info(_, LocalDeterminism, _, _, _, _, _, _).
+goal_info_get_internal_code_model(GoalInfo, CodeModel) :-
+	goal_info_get_internal_determinism(GoalInfo, Determinism),
+	determinism_to_code_model(Determinism, CodeModel).
 
-goal_info_set_internal_determinism(GoalInfo0, LocalDeterminism, GoalInfo) :-
+goal_info_get_internal_determinism(GoalInfo, Determinism) :-
+	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _).
+
+goal_info_set_internal_determinism(GoalInfo0, Determinism, GoalInfo) :-
 	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H),
-	GoalInfo = goal_info(A, LocalDeterminism, C, D, E, F, G, H).
+	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H).
 
-goal_info_determinism(GoalInfo, Determinism) :-
+goal_info_get_code_model(GoalInfo, CodeModel) :-
+	goal_info_get_determinism(GoalInfo, Determinism),
+	determinism_to_code_model(Determinism, CodeModel).
+
+goal_info_get_determinism(GoalInfo, Determinism) :-
 	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _).
 
 goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-

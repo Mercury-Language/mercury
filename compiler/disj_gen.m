@@ -198,8 +198,8 @@ disj_gen__sort_cases(Goals0, Goals) :-
 disj_gen__sort_cases_2([], [], []).
 disj_gen__sort_cases_2([Goal0 - GoalInfo0 | Goals0], CanFail, CannotFail) :-
 	disj_gen__sort_cases_2(Goals0, CanFail0, CannotFail0),
-	goal_info_determinism(GoalInfo0, Category),
-	( Category = deterministic ->
+	goal_info_get_code_model(GoalInfo0, CodeModel),
+	( CodeModel = model_det ->
 		CannotFail = [Goal0 - GoalInfo0 | CannotFail0],
 		CanFail = CanFail0
 	;

@@ -21,15 +21,15 @@
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
 :- pred mercury_output_pred_type(varset, sym_name, list(type),
-		determinism, term__context, io__state, io__state).
+		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_pred_type(in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_mode_decl(varset, sym_name, list(mode), determinism,
-			term__context, io__state, io__state).
+:- pred mercury_output_mode_decl(varset, sym_name, list(mode),
+		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_mode_decl(in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_mode_subdecl(varset, sym_name, list(mode), determinism,
-			term__context, io__state, io__state).
+:- pred mercury_output_mode_subdecl(varset, sym_name, list(mode),
+		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_mode_subdecl(in, in, in, in, in, di, uo) is det.
 
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
@@ -143,9 +143,9 @@ mercury_output_item(pred(VarSet, PredName, TypesAndModes, Det, _Cond), Context)
 	maybe_output_line_number(Context),
 	mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context).
 
-mercury_output_item(mode(VarSet, PredName, Modes, Det, _Cond), Context) -->
+mercury_output_item(mode(VarSet, PredName, Modes, MaybeDet, _Cond), Context) -->
 	maybe_output_line_number(Context),
-	mercury_output_mode_decl(VarSet, PredName, Modes, Det, Context).
+	mercury_output_mode_decl(VarSet, PredName, Modes, MaybeDet, Context).
 
 mercury_output_item(module_defn(VarSet, ModuleDefn), Context) -->
 	maybe_output_line_number(Context),
@@ -438,22 +438,22 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_pred_decl(varset, sym_name, list(type_and_mode),
-		determinism, term__context, io__state, io__state).
+		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_pred_decl(in, in, in, in, in, di, uo) is det.
 
-mercury_output_pred_decl(VarSet, PredName, TypesAndModes, Det, Context) -->
+mercury_output_pred_decl(VarSet, PredName, TypesAndModes, MaybeDet, Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	mercury_output_pred_type(VarSet, PredName, Types, Det, Context),
+	mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, Context),
 	(
 		{ MaybeModes = yes(Modes) },
 		{ Modes \= [] }
 	->
-		mercury_output_mode_decl(VarSet, PredName, Modes, Det, Context)
+		mercury_output_mode_decl(VarSet, PredName, Modes, MaybeDet, Context)
 	;
 		[]
 	).
 
-mercury_output_pred_type(VarSet, PredName, Types, Det, _Context) -->
+mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, _Context) -->
 	io__write_string(":- pred "),
 	(
 		{ Types = [Type | Rest] }
@@ -465,7 +465,7 @@ mercury_output_pred_type(VarSet, PredName, Types, Det, _Context) -->
 		io__write_string(")")
 	;
 		mercury_output_bracketed_sym_name(PredName),
-		mercury_output_det_annotation(Det)
+		mercury_output_det_annotation(MaybeDet)
 	),
 
 	% We need to handle is/2 specially, because it's used for
@@ -481,7 +481,7 @@ mercury_output_pred_type(VarSet, PredName, Types, Det, _Context) -->
 		{ PredName = unqualified("is") },
 		{ list__length(Types, 2) }
 	->
-		mercury_output_det_annotation(Det)
+		mercury_output_det_annotation(MaybeDet)
 	;
 		[]
 	),
@@ -501,7 +501,7 @@ mercury_output_remaining_terms([Term | Terms], VarSet) -->
 
 	% Output a mode declaration for a predicate.
 
-mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
+mercury_output_mode_decl(VarSet, PredName, Modes, MaybeDet, _Context) -->
 	io__write_string(":- mode "),
 	(
 		{ Modes \= [] }
@@ -513,10 +513,10 @@ mercury_output_mode_decl(VarSet, PredName, Modes, Det, _Context) -->
 	;
 		mercury_output_bracketed_sym_name(PredName)
 	),
-	mercury_output_det_annotation(Det),
+	mercury_output_det_annotation(MaybeDet),
 	io__write_string(".\n").
 
-mercury_output_mode_subdecl(VarSet, PredName, Modes, Det, _Context) -->
+mercury_output_mode_subdecl(VarSet, PredName, Modes, MaybeDet, _Context) -->
 	(
 		{ Modes \= [] }
 	->
@@ -527,15 +527,17 @@ mercury_output_mode_subdecl(VarSet, PredName, Modes, Det, _Context) -->
 	;
 		mercury_output_bracketed_sym_name(PredName)
 	),
-	mercury_output_det_annotation(Det).
+	mercury_output_det_annotation(MaybeDet).
 
-:- pred mercury_output_det_annotation(determinism, io__state, io__state).
+:- pred mercury_output_det_annotation(maybe(determinism), io__state, io__state).
 :- mode mercury_output_det_annotation(in, di, uo) is det.
 
-mercury_output_det_annotation(Det) -->
-	( { Det = unspecified } ->
+mercury_output_det_annotation(MaybeDet) -->
+	(
+		{ MaybeDet = no },
 		[]
 	;
+		{ MaybeDet = yes(Det) },
 		io__write_string(" is "),
 		mercury_output_det(Det)
 	).
@@ -549,12 +551,12 @@ mercury_output_det(semidet) -->
 	io__write_string("semidet").
 mercury_output_det(nondet) -->
 	io__write_string("nondet").
+mercury_output_det(multidet) -->
+	io__write_string("multidet").
 mercury_output_det(failure) -->
 	io__write_string("failure").
 mercury_output_det(erroneous) -->
 	io__write_string("erroneous").
-mercury_output_det(unspecified) -->
-	io__write_string("unspecified").
 
 :- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_bracketed_sym_name(in, di, uo) is det.

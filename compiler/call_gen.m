@@ -43,7 +43,7 @@
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is det.
 
-:- pred call_gen__generate_complicated_unify(var, var, uni_mode, category,
+:- pred call_gen__generate_complicated_unify(var, var, uni_mode, can_fail,
 					code_tree, code_info, code_info).
 :- mode call_gen__generate_complicated_unify(in, in, in, in, out, in, out)
 	is det.
@@ -100,8 +100,8 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_interface_determinism(ProcInfo, Determinism) },
-	( { Determinism = semideterministic } ->
+	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+	( { CodeModel = model_semi } ->
 		call_gen__generate_semidet_call_2(PredId, ProcId, Arguments,
 			Code)
 	;
@@ -267,7 +267,7 @@ call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
 			{ assoc_list__from_corresponding_lists(ArgInfo1,
 						OtherArgs, Immediates) },
 			{ call_gen__partition_args(Immediates, In, Out) },
-			call_gen__generate_higher_call(deterministic,
+			call_gen__generate_higher_call(model_det,
 				PredTerm, In, Out, Code)
 		;
 			{ error("call_gen__generate_non_builtin: invalid call") }
@@ -311,7 +311,7 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 			{ assoc_list__from_corresponding_lists(ArgInfo1,
 						OtherArgs, Immediates) },
 			{ call_gen__partition_args(Immediates, In, Out) },
-			call_gen__generate_higher_call(semideterministic,
+			call_gen__generate_higher_call(model_semi,
 				PredTerm, In, Out, Code)
 		;
 			{ error("call_gen__generate_non_builtin: invalid call") }
@@ -338,7 +338,7 @@ call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code) -->
 			{ assoc_list__from_corresponding_lists(ArgInfo1,
 						OtherArgs, Immediates) },
 			{ call_gen__partition_args(Immediates, In, Out) },
-			call_gen__generate_higher_call(nondeterministic,
+			call_gen__generate_higher_call(model_non,
 				PredTerm, In, Out, Code)
 		;
 			{ error("call_gen__generate_non_builtin: invalid call") }
@@ -387,8 +387,10 @@ call_gen__partition_args_2([arg_info(_Loc,Mode) - V|Rest], Outs) :-
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
-	{ arg_info__unify_arg_info(Det, ArgInfo) },
+call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
+	{ determinism_components(Det, CanFail, at_most_one) },
+	{ determinism_to_code_model(Det, CodeModel) },
+	{ arg_info__unify_arg_info(CodeModel, ArgInfo) },
 	{ Arguments = [Var1, Var2] },
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
@@ -447,7 +449,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 		]) }
 	),
 	(
-		{ Det = semideterministic }
+		{ CanFail = can_fail }
 	->
 		code_info__get_next_label(ContLab, no),
 		code_info__generate_failure(FailCode),
@@ -579,11 +581,11 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_higher_call(category, var, list(var), list(var), code_tree,
+:- pred call_gen__generate_higher_call(code_model, var, list(var), list(var), code_tree,
 						code_info, code_info).
 :- mode call_gen__generate_higher_call(in, in, in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
+call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 	code_info__set_succip_used(yes),
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
@@ -614,7 +616,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 	) },
 	code_info__get_next_label(ReturnLabel, yes),
 	(
-		{ PredDet = deterministic },
+		{ CodeModel = model_det },
 		{ CallCode = node([
 			livevals(LiveVals) - "",
 			call_closure(no, label(ReturnLabel), OutLiveVals) -
@@ -622,7 +624,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
-		{ PredDet = semideterministic },
+		{ CodeModel = model_semi },
 		{ TryCallCode = node([
 			livevals(LiveVals) - "",
 			call_closure(yes, label(ReturnLabel), OutLiveVals) -
@@ -637,7 +639,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 		{ CallCode = tree(TryCallCode, CheckReturnCode) }
 	;
-		{ PredDet = nondeterministic },
+		{ CodeModel = model_non },
 		{ CallCode = node([
 			livevals(LiveVals) - "",
 			call_closure(no, label(ReturnLabel),
@@ -649,7 +651,7 @@ call_gen__generate_higher_call(PredDet, Var, InVars, OutVars, Code) -->
 	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
 		tree(SetupCode, CallCode)) },
 	(
-		{ PredDet = semideterministic }
+		{ CodeModel = model_semi }
 	->
 		{ FirstArg = 2 }
 	;

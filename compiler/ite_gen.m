@@ -160,8 +160,8 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__push_failure_cont(known(ElseLab)),
 	code_info__generate_nondet_saves(SaveCode),
 	{ CondGoal = _ - GoalInfo },
-	{ goal_info_determinism(GoalInfo, CondDeterminism) },
-	{ CondDeterminism = nondeterministic ->
+	{ goal_info_get_code_model(GoalInfo, CondModel) },
+	{ CondModel = model_non ->
 		ModRedoipCode = node([
 			modframe(label(ElseLab)) - "Set failure continuation"
 		])
@@ -170,7 +170,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_gen__generate_non_goal(CondGoal, CondCode),
 	code_info__pop_failure_cont,
-	( { CondDeterminism = nondeterministic } ->
+	( { CondModel = model_non } ->
 		% XXX bug
 		code_info__restore_failure_cont(RestoreRedoipCode)
 	;

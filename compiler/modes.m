@@ -584,7 +584,7 @@ handle_extra_goals(MainGoal, ExtraGoals, NonLocals0, Args0, Args,
 		Goal = conj(GoalList)
 	).
 
-	% Return Result = yes if the called predicate never succeeds.
+	% Return Result = yes if the called predicate is known to never succeed.
 
 :- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
 :- mode mode_info_never_succeeds(mode_info_ui, in, in, out) is det.
@@ -596,17 +596,18 @@ mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result) :-
 	pred_info_procedures(PredInfo, Procs),
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_declared_determinism(ProcInfo, DeclaredDeterminism),
-	determinism_never_succeeds(DeclaredDeterminism, Result).
-
-:- pred determinism_never_succeeds(determinism, bool).
-:- mode determinism_never_succeeds(in, out) is det.
-
-determinism_never_succeeds(erroneous, yes).
-determinism_never_succeeds(failure, yes).
-determinism_never_succeeds(det, no).
-determinism_never_succeeds(semidet, no).
-determinism_never_succeeds(nondet, no).
-determinism_never_succeeds(unspecified, no).
+	(
+		DeclaredDeterminism = no,
+		Result = no
+	;
+		DeclaredDeterminism = yes(Determinism),
+		determinism_components(Determinism, _, HowMany),
+		( HowMany = at_most_zero ->
+			Result = yes
+		;
+			Result = no
+		)
+	).
 
 :- pred goal_get_nonlocals(hlds__goal, set(var)).
 :- mode goal_get_nonlocals(in, out) is det.
@@ -2339,9 +2340,9 @@ categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, Det, VarTypes,
 			mode_get_insts(ModuleInfo0, ModeX, IX, FX),
 			mode_get_insts(ModuleInfo0, ModeY, IY, FY),
 			map__init(Follow),
-			determinism_to_category(Det, Determinism),
+			determinism_components(Det, CanFail, _),
 			UniMode = ((IX - IY) -> (FX - FY)),
-			Unification = complicated_unify(UniMode, Determinism,
+			Unification = complicated_unify(UniMode, CanFail,
 				Follow),
 			(
 				Type = term__functor(term__atom("pred"), _, _)
@@ -2408,19 +2409,19 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 			InitialInst = bound([_]),
 			FinalInst = bound([_])
 		->
-			Det = deterministic,
+			CanFail = cannot_fail,
 			ModeInfo = ModeInfo0
 		;
-			% If the type has only one constructor, then the
-			% unification must be deterministic
+			% If the type has only one constructor,
+			% then the unification cannot fail
 			type_constructors(TypeX, ModuleInfo, Constructors),
 			Constructors = [_]
 		->
-			Det = deterministic,
+			CanFail = cannot_fail,
 			ModeInfo = ModeInfo0
 		;
-			% Otherwise, it's semidet
-			Det = semideterministic,
+			% Otherwise, it can fail
+			CanFail = can_fail,
 			( TypeX = term__functor(term__atom("pred"), _, _) ->
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
@@ -2430,7 +2431,7 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 				ModeInfo = ModeInfo0
 			)
 		),
-		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)
+		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
 	).
 
 %-----------------------------------------------------------------------------%

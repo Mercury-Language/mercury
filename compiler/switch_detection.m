@@ -211,10 +211,10 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap, InstMapDelta,
 :- type cases == map(cons_id, list(hlds__goal)).
 
 :- pred partition_disj(list(hlds__goal), var, hlds__goal_info, map(var, type),
-		module_info, list(case), category).
+		module_info, list(case), can_fail).
 :- mode partition_disj(in, in, in, in, in, out, out) is semidet.
 
-partition_disj(Goals0, Var, GoalInfo, VarTypes, ModuleInfo, CaseList, Det) :-
+partition_disj(Goals0, Var, GoalInfo, VarTypes, ModuleInfo, CaseList, Fail) :-
 	map__init(Cases0),
 	partition_disj_2(Goals0, Var, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
@@ -223,9 +223,9 @@ partition_disj(Goals0, Var, GoalInfo, VarTypes, ModuleInfo, CaseList, Det) :-
 	( 
 		switch_covers_all_cases(CasesAssocList, Type,  ModuleInfo)
 	->
-		Det = deterministic
+		Fail = cannot_fail
 	;
-		Det = semideterministic
+		Fail = can_fail
 	),
 	fix_case_list(CasesAssocList, GoalInfo, CaseList).
 
@@ -291,14 +291,14 @@ find_bind_var([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 			Term),
 		(
 			Term = term__functor(_Name, _Args, _Context),
-			UnifyInfo0 = deconstruct(Var1, Functor, F, G, _Det)
+			UnifyInfo0 = deconstruct(Var1, Functor, F, G, _)
 		->
 			MaybeFunctor = yes(Functor),
 				% The deconstruction unification now becomes
 				% deterministic, since the test will get
 				% carried out in the switch.
 			UnifyInfo = deconstruct(Var1, Functor, F, G,
-					deterministic),
+					cannot_fail),
 			Goal = unify(A, B, C, UnifyInfo, E),
 			Goals = Goals0,
 			Substitution = Substitution2

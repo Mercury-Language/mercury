@@ -86,16 +86,16 @@
 			; 	mode_defn(varset, mode_defn, condition)
 			; 	module_defn(varset, module_defn)
 			; 	pred(varset, sym_name, list(type_and_mode),
-					determinism, condition)
-				%      VarNames, PredName, ArgTypes,
+					maybe(determinism), condition)
+				%       VarNames, PredName, ArgTypes,
 				%	Deterministicness, Cond
 			/***** OBSOLETE
 			; 	rule(varset, sym_name, list(type), condition)
-				%      VarNames, PredName, ArgTypes, Cond
+				%       VarNames, PredName, ArgTypes, Cond
 			*******/
 			; 	mode(varset, sym_name, list(mode),
-					determinism, condition)
-				%      VarNames, PredName, ArgModes,
+					maybe(determinism), condition)
+				%       VarNames, PredName, ArgModes,
 				%	Deterministicness, Cond
 			;	nothing.
 				% used for items that should be ignored
@@ -109,9 +109,9 @@
 :- type determinism	--->	det
 			;	semidet
 			;	nondet
+			;	multidet
 			;	erroneous
-			;	failure
-			;	unspecified.
+			;	failure.
 
 %-----------------------------------------------------------------------------%
 
@@ -1411,18 +1411,19 @@ parse_type_decl_type("==", [H,B], Condition, R) :-
 	% a representation of the declaration.
 :- pred parse_type_decl_pred(varset, term, maybe1(item)).
 :- mode parse_type_decl_pred(in, in, out) is det.
+
 parse_type_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
-	get_determinism(Body, Body2, Determinism),
-	process_type_decl_pred(Determinism, VarSet, Body2, Condition, R).
+	get_determinism(Body, Body2, MaybeDeterminism),
+	process_type_decl_pred(MaybeDeterminism, VarSet, Body2, Condition, R).
 
-:- pred process_type_decl_pred(maybe1(determinism), varset, term, condition,
-				maybe1(item)).
+:- pred process_type_decl_pred(maybe1(maybe(determinism)), varset, term,
+				condition, maybe1(item)).
 :- mode process_type_decl_pred(in, in, in, in, out) is det.
 
 process_type_decl_pred(error(Term, Reason), _, _, _, error(Term, Reason)).
-process_type_decl_pred(ok(Determinism), VarSet, Body, Condition, R) :-
-	process_pred(VarSet, Body, Determinism, Condition, R).
+process_type_decl_pred(ok(MaybeDeterminism), VarSet, Body, Condition, R) :-
+	process_pred(VarSet, Body, MaybeDeterminism, Condition, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1445,16 +1446,18 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 	% a representation of the declaration.
 :- pred parse_mode_decl_pred(varset, term, maybe1(item)).
 :- mode parse_mode_decl_pred(in, in, out) is det.
+
 parse_mode_decl_pred(VarSet, Pred, Result) :-
 	get_condition(Pred, Body, Condition),
-	get_determinism(Body, Body2, Determinism),
-	parse_mode_decl_pred_2(Determinism, VarSet, Body2, Condition, Result).
+	get_determinism(Body, Body2, MaybeDeterminism),
+	parse_mode_decl_pred_2(MaybeDeterminism, VarSet, Body2,
+		Condition, Result).
 
-:- pred parse_mode_decl_pred_2(maybe1(determinism), varset, term, condition,
-				maybe1(item)).
+:- pred parse_mode_decl_pred_2(maybe1(maybe(determinism)), varset, term,
+				condition, maybe1(item)).
 :- mode parse_mode_decl_pred_2(in, in, in, in, out) is det.
-parse_mode_decl_pred_2(ok(Det), VarSet, Body, Condition, R) :-
-	process_mode(VarSet, Body, Det, Condition, R).
+parse_mode_decl_pred_2(ok(MaybeDet), VarSet, Body, Condition, R) :-
+	process_mode(VarSet, Body, MaybeDet, Condition, R).
 parse_mode_decl_pred_2(error(Term, Reason), _, _, _, error(Term, Reason)).
 		% just pass the error up (after conversion to the right type)
 
@@ -1465,8 +1468,9 @@ parse_mode_decl_pred_2(error(Term, Reason), _, _, _, error(Term, Reason)).
 	% and binds Term to the other part of Term0. If Term0 does not
 	% contain a determinism, then Determinism is bound to `unspecified'.
 
-:- pred get_determinism(term, term, maybe1(determinism)).
+:- pred get_determinism(term, term, maybe1(maybe(determinism))).
 :- mode get_determinism(in, out, out) is det.
+
 get_determinism(B, Body, Determinism) :-
 	( %%% some [Body1, Determinism1, Context]
 		B = term__functor(term__atom("is"), [Body1, Determinism1],
@@ -1480,13 +1484,13 @@ get_determinism(B, Body, Determinism) :-
 			standard_det(Determinism2, Determinism3)
 		    )
 		->
-			Determinism = ok(Determinism3)
+			Determinism = ok(yes(Determinism3))
 		;
 			Determinism = error("invalid category", Determinism1)
 		)
 	;
 		Body = B,
-		Determinism = ok(unspecified)
+		Determinism = ok(no)
 	).
 
 :- pred standard_det(string, determinism).
@@ -1733,20 +1737,21 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 
 	% parse a `:- pred p(...)' declaration
 
-:- pred process_pred(varset, term, determinism, condition, maybe1(item)).
+:- pred process_pred(varset, term, maybe(determinism), condition, maybe1(item)).
 :- mode process_pred(in, in, in, in, out) is det.
-process_pred(VarSet, PredType, Det, Cond, Result) :-
-	parse_qualified_term(PredType, "`:- pred' declaration", R),
-	process_pred_2(R, PredType, VarSet, Det, Cond, Result).
 
-:- pred process_pred_2(maybe_functor, term, varset, determinism, condition,
-			maybe1(item)).
+process_pred(VarSet, PredType, MaybeDet, Cond, Result) :-
+	parse_qualified_term(PredType, "`:- pred' declaration", R),
+	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Result).
+
+:- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
+			condition, maybe1(item)).
 :- mode process_pred_2(in, in, in, in, in, out) is det.
-process_pred_2(ok(F, As0), PredType, VarSet, Det, Cond, Result) :-
+process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Result) :-
 	( %%% some [As]
 		convert_type_and_mode_list(As0, As)
 	->
-		Result = ok(pred(VarSet, F, As, Det, Cond))
+		Result = ok(pred(VarSet, F, As, MaybeDet, Cond))
 	;
 		Result = error("Syntax error in :- pred declaration", PredType)
 	).
@@ -1754,20 +1759,22 @@ process_pred_2(error(M, T), _, _, _, _, error(M, T)).
 
 	% parse a `:- mode p(...)' declaration
 
-:- pred process_mode(varset, term, determinism, condition, maybe1(item)).
+:- pred process_mode(varset, term, maybe(determinism), condition, maybe1(item)).
 :- mode process_mode(in, in, in, in, out) is det.
-process_mode(VarSet, PredMode, Det, Cond, Result) :-
-	parse_qualified_term(PredMode, "`:- mode' declaration", R),
-	process_mode_2(R, PredMode, VarSet, Det, Cond, Result).
 
-:- pred process_mode_2(maybe_functor, term, varset, determinism, condition,
-			maybe1(item)).
+process_mode(VarSet, PredMode, MaybeDet, Cond, Result) :-
+	parse_qualified_term(PredMode, "`:- mode' declaration", R),
+	process_mode_2(R, PredMode, VarSet, MaybeDet, Cond, Result).
+
+:- pred process_mode_2(maybe_functor, term, varset, maybe(determinism),
+			condition, maybe1(item)).
 :- mode process_mode_2(in, in, in, in, in, out) is det.
-process_mode_2(ok(F, As0), PredMode, VarSet, Det, Cond, Result) :-
+
+process_mode_2(ok(F, As0), PredMode, VarSet, MaybeDet, Cond, Result) :-
 	( %%% some [As]
 		convert_mode_list(As0, As)
 	->
-		Result = ok(mode(VarSet, F, As, Det, Cond))
+		Result = ok(mode(VarSet, F, As, MaybeDet, Cond))
 	;
 		Result = error("Syntax error in predicate mode declaration",
 				PredMode)

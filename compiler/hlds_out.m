@@ -53,8 +53,14 @@
 				io__state, io__state).
 :- mode hlds_out__write_unify_context(in, in, di, uo) is det.
 
-:- pred hlds_out__write_category(category, io__state, io__state).
-:- mode hlds_out__write_category(in, di, uo) is det.
+:- pred hlds_out__write_determinism(determinism, io__state, io__state).
+:- mode hlds_out__write_determinism(in, di, uo) is det.
+
+:- pred hlds_out__write_can_fail(can_fail, io__state, io__state).
+:- mode hlds_out__write_can_fail(in, di, uo) is det.
+
+:- pred hlds_out__write_code_model(code_model, io__state, io__state).
+:- mode hlds_out__write_code_model(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -260,8 +266,9 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
+	% XXX zs: this "no" was "unspecified", which I suspect is wrong.
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
-		unspecified, Context),
+		no, Context),
 	{ pred_info_is_imported(PredInfo) ->
 		Imported = yes
 	;
@@ -406,9 +413,9 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		;
 			[]
 		),
-		io__write_string("% determinism: "),
-		{ goal_info_determinism(GoalInfo, Category) },
-		hlds_out__write_category(Category),
+		io__write_string("% code model: "),
+		{ goal_info_get_code_model(GoalInfo, CodeModel) },
+		hlds_out__write_code_model(CodeModel),
 		mercury_output_newline(Indent)
 	;
 		[]
@@ -449,10 +456,10 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 					io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, di, uo) is det.
 
-hlds_out__write_goal_2(switch(Var, Det, CasesList), ModuleInfo, VarSet, Indent)
+hlds_out__write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet, Indent)
 		-->
 	io__write_string("( % "),
-	hlds_out__write_category(Det), 
+	hlds_out__write_can_fail(CanFail), 
 	io__write_string(" switch on `"),
 	mercury_output_var(Var, VarSet),
 	io__write_string("'"),
@@ -798,7 +805,7 @@ hlds_out__write_procs_2([ProcId | ProcIds], ModuleInfo, Indent, PredId,
 
 hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	{ proc_info_declared_determinism(Proc, DeclaredDeterminism) },
-	{ proc_info_inferred_determinism(Proc, Category) },
+	{ proc_info_inferred_determinism(Proc, InferredDeterminism) },
 	{ proc_info_variables(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ proc_info_argmodes(Proc, HeadModes) },
@@ -813,7 +820,7 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	io__write_string(" of "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(" ("),
-	hlds_out__write_category(Category),
+	hlds_out__write_determinism(InferredDeterminism),
 	io__write_string("):\n"),
 
 	hlds_out__write_indent(Indent),
@@ -901,12 +908,30 @@ hlds_out__write_vartypes(Indent, X) -->
 	io__write_anything(X),
 	io__write_string("\n").
 
-hlds_out__write_category(deterministic) -->
+hlds_out__write_determinism(det) -->
 	io__write_string("det").
-hlds_out__write_category(semideterministic) -->
+hlds_out__write_determinism(semidet) -->
 	io__write_string("semidet").
-hlds_out__write_category(nondeterministic) -->
+hlds_out__write_determinism(nondet) -->
 	io__write_string("nondet").
+hlds_out__write_determinism(multidet) -->
+	io__write_string("multidet").
+hlds_out__write_determinism(erroneous) -->
+	io__write_string("erroneous").
+hlds_out__write_determinism(failure) -->
+	io__write_string("failure").
+
+hlds_out__write_can_fail(can_fail) -->
+	io__write_string("can_fail").
+hlds_out__write_can_fail(cannot_fail) -->
+	io__write_string("cannot_fail").
+
+hlds_out__write_code_model(model_det) -->
+	io__write_string("model_det").
+hlds_out__write_code_model(model_semi) -->
+	io__write_string("model_semi").
+hlds_out__write_code_model(model_non) -->
+	io__write_string("model_non").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo) is det.

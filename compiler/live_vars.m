@@ -66,16 +66,17 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_interface_determinism(ProcInfo0, Category),
+	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
 	detect_initial_live_vars(ProcInfo0, ModuleInfo0, Liveness0),
 	set__init(LiveSets0),
 	set__init(ExtraLives0),
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category,ModuleInfo0, _ExtraLives, _Liveness, LiveSets),
+			CodeModel, ModuleInfo0, _ExtraLives, _Liveness,
+			LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
-	live_vars__allocate_call_info(ColourList, Category, CallInfo),
+	live_vars__allocate_call_info(ColourList, CodeModel, CallInfo),
 
 	proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo),
 
@@ -93,12 +94,12 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 % delta annotations.
 
 :- pred detect_live_vars_in_goal(hlds__goal, set(var),
-		liveness_info, set(set(var)), category, module_info,
-				set(var), liveness_info, set(set(var))).
+		liveness_info, set(set(var)), code_model, module_info,
+		set(var), liveness_info, set(set(var))).
 :- mode detect_live_vars_in_goal(in, in, in, in, in, in, out, out, out) is det.
 
 detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
-		LiveSets0, Category, ModuleInfo,
+		LiveSets0, CodeModel, ModuleInfo,
 			ExtraLives, Liveness, LiveSets) :-
 	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
@@ -108,18 +109,17 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 	set__union(Liveness1, PreBirths, Liveness2),
 	set__difference(Liveness2, PostDeaths, Liveness3),
 
-	goal_info_get_internal_determinism(GoalInfo, GoalCategory),
+	goal_info_get_internal_code_model(GoalInfo, GoalModel),
 	detect_live_vars_in_goal_2(Goal0, ExtraLives0, Liveness3, LiveSets0,
-				GoalCategory, ModuleInfo, ExtraLives1,
-							Liveness4, LiveSets1),
+		GoalModel, ModuleInfo, ExtraLives1, Liveness4, LiveSets1),
 
 	(
 		(
-			Category = deterministic
+			CodeModel = model_det
 		;
-			Category = semideterministic
+			CodeModel = model_semi
 		),
-		GoalCategory = nondeterministic
+		GoalModel = model_non
 	->
 		ExtraLives = ExtraLives0
 	;
@@ -146,53 +146,53 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 	% have been referenced and will be referenced again.
 
 :- pred detect_live_vars_in_goal_2(hlds__goal_expr, set(var), liveness_info,
-			set(set(var)), category, module_info,
+			set(set(var)), code_model, module_info,
 			set(var), liveness_info, set(set(var))).
 :- mode detect_live_vars_in_goal_2(in, in, in, in, in, in, out, out, out) is det.
 
 detect_live_vars_in_goal_2(conj(Goals0), ExtraLives0, Liveness0, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_conj(Goals0, ExtraLives0, Liveness0, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(disj(Goals0), ExtraLives0, Liveness0, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	set__insert(LiveSets0, Liveness0, LiveSets1),
 	detect_live_vars_in_disj(Goals0, ExtraLives0, Liveness0, LiveSets1,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), ExtraLives0, Liveness0,
-		LiveSets0, Category, ModuleInfo,
+		LiveSets0, CodeModel, ModuleInfo,
 			ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_cases(Cases0, ExtraLives0, Liveness0, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
-		ExtraLives0, Liveness0, LiveSets0, Category,
+		ExtraLives0, Liveness0, LiveSets0, CodeModel,
 			ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	set__insert(LiveSets0, Liveness0, LiveSets0A),
 	detect_live_vars_in_goal(Cond0, ExtraLives0, Liveness0, LiveSets0A,
-			Category,ModuleInfo, ExtraLives1, Liveness1, LiveSets1),
+		CodeModel, ModuleInfo, ExtraLives1, Liveness1, LiveSets1),
 	detect_live_vars_in_goal(Then0, ExtraLives1, Liveness1, LiveSets1,
-			Category,ModuleInfo,ExtraLives2, _Liveness2, LiveSets2),
+		CodeModel, ModuleInfo,ExtraLives2, _Liveness2, LiveSets2),
 	detect_live_vars_in_goal(Else0, ExtraLives2, Liveness0, LiveSets2,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(not(Goal0), ExtraLives0, Liveness0, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	set__insert(LiveSets0, Liveness0, LiveSets1),
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets1,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgTerms, Builtin, _SymName, _Follow),
 		ExtraLives0, Liveness, LiveSets0,
-		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
 		is_builtin__is_inline(Builtin)
 	->
@@ -205,7 +205,7 @@ detect_live_vars_in_goal_2(
 		set__union(LiveVars0, ExtraLives0, LiveVars),
 		set__insert(LiveSets0, LiveVars, LiveSets),
 		(
-			Category = nondeterministic
+			CodeModel = model_non
 		->
 			ExtraLives = LiveVars
 		;
@@ -214,7 +214,7 @@ detect_live_vars_in_goal_2(
 	).
 
 detect_live_vars_in_goal_2(unify(_,_,_,D,_), ExtraLives0, Liveness, LiveSets0,
-		Category, _ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, _ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
 		D = complicated_unify(_, _, _)
 	->
@@ -223,7 +223,7 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), ExtraLives0, Liveness, LiveSets0,
 		set__union(Liveness, ExtraLives0, LiveVars),
 		set__insert(LiveSets0, LiveVars, LiveSets),
 		(
-			Category = nondeterministic
+			CodeModel = model_non
 		->
 			ExtraLives = LiveVars
 		;
@@ -236,64 +236,66 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), ExtraLives0, Liveness, LiveSets0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_conj(list(hlds__goal), set(var), liveness_info, set(set(var)),
-					category, module_info, set(var), liveness_info, set(set(var))).
+:- pred detect_live_vars_in_conj(list(hlds__goal), set(var), liveness_info,
+	set(set(var)), code_model, module_info, set(var),
+	liveness_info, set(set(var))).
 :- mode detect_live_vars_in_conj(in, in, in, in, in, in, out, out, out) is det.
 
 detect_live_vars_in_conj([], ExtraLives, Liveness, LiveVars,
-		_Category, _ModuleInfo, ExtraLives, Liveness, LiveVars).
+		_CodeModel, _ModuleInfo, ExtraLives, Liveness, LiveVars).
 detect_live_vars_in_conj([Goal0|Goals0], ExtraLives0, Liveness0, LiveVars0,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveVars) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveVars) :-
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
 		detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0,
-			LiveVars0, Category, ModuleInfo,
+			LiveVars0, CodeModel, ModuleInfo,
 				ExtraLives, Liveness, LiveVars)
 	;
 		detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0,
-			LiveVars0, Category, ModuleInfo,
+			LiveVars0, CodeModel, ModuleInfo,
 				ExtraLives1, Liveness1, LiveVars1),
 		detect_live_vars_in_conj(Goals0, ExtraLives1, Liveness1,
-			LiveVars1, Category, ModuleInfo,
+			LiveVars1, CodeModel, ModuleInfo,
 				ExtraLives, Liveness, LiveVars)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_disj(list(hlds__goal), set(var), liveness_info, set(set(var)),
-					category, module_info, set(var), liveness_info,
-						set(set(var))).
+:- pred detect_live_vars_in_disj(list(hlds__goal), set(var), liveness_info,
+	set(set(var)), code_model, module_info, set(var), liveness_info,
+	set(set(var))).
 :- mode detect_live_vars_in_disj(in, in, in, in, in, in, out, out, out) is det.
 
 detect_live_vars_in_disj([], ExtraLives, Liveness, LiveSets,
-			_Category, _ModuleInfo, ExtraLives, Liveness, LiveSets).
+		_CodeModel, _ModuleInfo, ExtraLives, Liveness, LiveSets).
 detect_live_vars_in_disj([Goal0|Goals0], ExtraLives0, Liveness0, LiveSets0,
-			Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category,ModuleInfo, ExtraLives1, Liveness, LiveSets1),
+		CodeModel,ModuleInfo, ExtraLives1, Liveness, LiveSets1),
 	detect_live_vars_in_disj(Goals0, ExtraLives1, Liveness0, LiveSets1,
-			Category, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.
+
 %-----------------------------------------------------------------------------%
 
 :- pred detect_live_vars_in_cases(list(case), set(var), liveness_info,
-		set(set(var)), category, module_info,
-			set(var), liveness_info, set(set(var))).
+		set(set(var)), code_model, module_info,
+		set(var), liveness_info, set(set(var))).
 :- mode detect_live_vars_in_cases(in, in, in, in, in, in, out, out, out) is det.
 
 detect_live_vars_in_cases([], ExtraLives, Liveness, LiveSets,
-			_Category, _ModuleInfo, ExtraLives, Liveness, LiveSets).
+		_CodeModel, _ModuleInfo, ExtraLives, Liveness, LiveSets).
 detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], ExtraLives0, Liveness0,
-		LiveSets0, Category, ModuleInfo,
+		LiveSets0, CodeModel, ModuleInfo,
 			ExtraLives, Liveness, LiveSets) :-
 	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
-			Category,ModuleInfo, ExtraLives1, Liveness, LiveSets1),
+		CodeModel, ModuleInfo, ExtraLives1, Liveness, LiveSets1),
 	detect_live_vars_in_cases(Goals0, ExtraLives1, Liveness0, LiveSets1,
-			Category, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
+		CodeModel, ModuleInfo, ExtraLives, _Liveness2, LiveSets).
 	% set__union(Liveness1, Liveness2, Liveness).
 	% This predicate call is unnecessary because the post-deaths and
 	% pre-births sets *should* be taking care of everything.
@@ -358,30 +360,32 @@ find_output_vars_2([Var - arg_info(_, Mode)|Rest], OutVars0, OutVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred live_vars__allocate_call_info(list(set(var)), category, map(var, lval)).
+:- pred live_vars__allocate_call_info(list(set(var)), code_model,
+	map(var, lval)).
 :- mode live_vars__allocate_call_info(in, in, out) is det.
 
-live_vars__allocate_call_info(ColourList, Category, CallInfo) :-
+live_vars__allocate_call_info(ColourList, CodeModel, CallInfo) :-
 	map__init(CallInfo0),
 	(
-		Category = nondeterministic
+		CodeModel = model_non
 	->
 		First = 0
 	;
 		First = 1
 	),
-	live_vars__allocate_call_info_2(ColourList, First, Category,
+	live_vars__allocate_call_info_2(ColourList, First, CodeModel,
 							CallInfo0, CallInfo).
 
-:- pred live_vars__allocate_call_info_2(list(set(var)), int, category,
+:- pred live_vars__allocate_call_info_2(list(set(var)), int, code_model,
 						map(var, lval), map(var, lval)).
 :- mode live_vars__allocate_call_info_2(in, in, in, in, out) is det.
 
-live_vars__allocate_call_info_2([], _N, _Cat, CallInfo, CallInfo).
-live_vars__allocate_call_info_2([Vars|VarSets], N0, Cat, CallInfo0, CallInfo) :-
+live_vars__allocate_call_info_2([], _N, _CodeModel, CallInfo, CallInfo).
+live_vars__allocate_call_info_2([Vars|VarSets], N0, CodeModel,
+		CallInfo0, CallInfo) :-
 	set__to_sorted_list(Vars, VarList),
 	(
-		Cat = nondeterministic
+		CodeModel = model_non
 	->
 		Slot = framevar(N0)
 	;
@@ -389,10 +393,11 @@ live_vars__allocate_call_info_2([Vars|VarSets], N0, Cat, CallInfo0, CallInfo) :-
 	),
 	live_vars__allocate_call_info_3(VarList, Slot, CallInfo0, CallInfo1),
 	N1 is N0 + 1,
-	live_vars__allocate_call_info_2(VarSets, N1, Cat, CallInfo1, CallInfo).
+	live_vars__allocate_call_info_2(VarSets, N1, CodeModel,
+		CallInfo1, CallInfo).
 
 :- pred live_vars__allocate_call_info_3(list(var), lval,
-						map(var, lval), map(var, lval)).
+					map(var, lval), map(var, lval)).
 :- mode live_vars__allocate_call_info_3(in, in, in, out) is det.
 
 live_vars__allocate_call_info_3([], _Slot, CallInfo, CallInfo).

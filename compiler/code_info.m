@@ -38,7 +38,7 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(varset, liveness_info, call_info, bool, globals,
-			pred_id, proc_id, proc_info, category,
+			pred_id, proc_id, proc_info, code_model,
 			instmap, follow_vars, module_info, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
 			is det.
@@ -350,7 +350,7 @@
 					% after this goal
 			stack(map(var, lval)),
 					% Store Map - where to put things
-			category,	% The category of the current procedure
+			code_model,	% The model of the current procedure
 			instmap,	% insts of variables
 			pair(int),	% The current and maximum (respectively)
 					% number of extra temporary stackslots
@@ -365,7 +365,7 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
-					PredId, ProcId, ProcInfo, Category,
+					PredId, ProcId, ProcInfo, CodeModel,
 					Requests, _FollowVars, ModuleInfo, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
@@ -380,7 +380,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
 	code_info__max_slot(CallInfo, SlotCount0),
 	(
-		Category = nondeterministic
+		CodeModel = model_non
 	->
 		SlotCount is SlotCount0 + 1
 	;
@@ -401,7 +401,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		ModuleInfo,
 		Liveness,
 		StoreMapStack,
-		Category,
+		CodeModel,
 		Requests,
 		0 - 0,
 		Globals,
@@ -977,9 +977,9 @@ code_info__restore_redoip(Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__stack_variable(Num, Lval) -->
-	code_info__get_proc_category(Cat),
+	code_info__get_proc_model(CodeModel),
 	(
-		{ Cat = nondeterministic }
+		{ CodeModel = model_non }
 	->
 		{ Num1 is Num - 1 },		% framevars start at zero
 		{ Lval = framevar(Num1) }
@@ -1379,8 +1379,8 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
 :- mode code_info__set_liveness_info(in, in, out) is det.
 
-:- pred code_info__get_proc_category(category, code_info, code_info).
-:- mode code_info__get_proc_category(out, in, out) is det.
+:- pred code_info__get_proc_model(code_model, code_info, code_info).
+:- mode code_info__get_proc_model(out, in, out) is det.
 
 :- pred code_info__get_push_count(int, code_info, code_info).
 :- mode code_info__get_push_count(out, in, out) is det.
@@ -1500,7 +1500,7 @@ code_info__set_store_map(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R, S),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S).
 
-code_info__get_proc_category(O, CI, CI) :-
+code_info__get_proc_model(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _).
 
 code_info__get_instmap(P, CI, CI) :-

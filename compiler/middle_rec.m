@@ -33,15 +33,15 @@
 
 middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 	Goal = GoalExpr - GoalInfo,
-	GoalExpr = switch(Var, Category, [Case1, Case2]),
-	Category = deterministic,	% we are in trouble if this fails
+	GoalExpr = switch(Var, CanFail, [Case1, Case2]),
+	CanFail = cannot_fail,		% we are in trouble if this fails
 	Case1 = case(ConsId1, Goal1),
 	Case2 = case(ConsId2, Goal2),
 	(
 		code_aux__contains_only_builtins(Goal1),
 		code_aux__contains_simple_recursive_call(Goal2, CodeInfo, _)
 	->
-		Switch = switch(Var, deterministic, [
+		Switch = switch(Var, cannot_fail, [
 			case(ConsId1, Goal1),
 			case(ConsId2, Goal2)
 		]) - GoalInfo
@@ -49,7 +49,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 		code_aux__contains_only_builtins(Goal2),
 		code_aux__contains_simple_recursive_call(Goal1, CodeInfo, _)
 	->
-		Switch = switch(Var, deterministic, [
+		Switch = switch(Var, cannot_fail, [
 			case(ConsId2, Goal2),
 			case(ConsId1, Goal1)
 		]) - GoalInfo
@@ -59,7 +59,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 
 middle_rec__gen_det(Goal, Instrs) -->
 	(
-		{ Goal = switch(Var, deterministic, [Case1, Case2])
+		{ Goal = switch(Var, cannot_fail, [Case1, Case2])
 			- SwitchGoalInfo},
 		{ Case1 = case(NonrecConsId, Base) },
 		{ Case2 = case(_RecConsId, Recursive) }

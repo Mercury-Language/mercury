@@ -20,19 +20,19 @@
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
-	% and whether the switch is still locally det or not
+	% and whether the switch is not covers all cases or not
 	% (we may convert locally semidet switches into locally det
-	% switches by adding extra cases whose body is just `fail'.)
+	% switches by adding extra cases whose body is just `fail').
 
-:- pred dense_switch__is_dense_switch(var, cases_list, category, int,
-	int, int, category, code_info, code_info).
+:- pred dense_switch__is_dense_switch(var, cases_list, can_fail, int,
+	int, int, can_fail, code_info, code_info).
 :- mode dense_switch__is_dense_switch(in, in, in, in, out, out, out, in, out)
 	is semidet.
 
 	% Generate code for a switch using a dense jump table.
 
 :- pred dense_switch__generate(cases_list, int, int,
-	var, category, category, label, code_tree, code_info, code_info).
+	var, code_model, can_fail, label, code_tree, code_info, code_info).
 :- mode dense_switch__generate(in, in, in, in, in, in, in,
 	out, in, out) is det.
 
@@ -42,8 +42,8 @@
 
 :- import_module code_gen, type_util, map, tree, int, std_util, require.
 
-dense_switch__is_dense_switch(CaseVar, TaggedCases, LocalDet0, ReqDensity,
-		FirstVal, LastVal, LocalDet) -->
+dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
+		FirstVal, LastVal, CanFail) -->
 	{
 		list__length(TaggedCases, NumCases),
 		NumCases > 2,
@@ -56,7 +56,7 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, LocalDet0, ReqDensity,
 		dense_switch__calc_density(NumCases, Range, Density),
 		Density > ReqDensity
 	},
-	( { LocalDet0 = semideterministic } ->
+	( { CanFail0 = can_fail } ->
 		% For semidet switches, we normally need to check that
 		% the variable is in range before we index into the jump table.
 		% However, if the range of the type is sufficiently small,
@@ -70,16 +70,16 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, LocalDet0, ReqDensity,
 			{ dense_switch__calc_density(NumCases, TypeRange, DetDensity) },
 			{ DetDensity > ReqDensity }
 		->
-			{ LocalDet = deterministic },
+			{ CanFail = cannot_fail },
 			{ FirstVal = 0 },
 			{ LastVal is TypeRange - 1 }
 		;
-			{ LocalDet = LocalDet0 },
+			{ CanFail = CanFail0 },
 			{ FirstVal = FirstCaseVal },
 			{ LastVal = LastCaseVal }
 		)
 	;
-		{ LocalDet = LocalDet0 },
+		{ CanFail = CanFail0 },
 		{ FirstVal = FirstCaseVal },
 		{ LastVal = LastCaseVal }
 	).
@@ -128,7 +128,7 @@ dense_switch__type_range(enum_type, Type, TypeRange) -->
 
 %---------------------------------------------------------------------------%
 
-dense_switch__generate(Cases, StartVal, EndVal, Var, Det, LocalDet,
+dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 		EndLabel, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
@@ -142,16 +142,18 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, Det, LocalDet,
 		% If the switch is not locally deterministic, we need to
 		% check that the value of the variable lies within the
 		% appropriate range
-	( { LocalDet = semideterministic } ->
+	(
+		{ CanFail = can_fail },
 		{ Difference is EndVal - StartVal },
 		code_info__generate_test_and_fail(
 			binop(<=, unop(cast_to_unsigned, Index),
 				const(int_const(Difference))), RangeCheck)
 	;
+		{ CanFail = cannot_fail },
 		{ RangeCheck = empty }
 	),
 		% Now generate the jump table and the cases
-	dense_switch__generate_cases(Cases, StartVal, EndVal, Det, EndLabel,
+	dense_switch__generate_cases(Cases, StartVal, EndVal, CodeModel, EndLabel,
 			Labels, CasesCode),
 	{ DoJump = node([
 		computed_goto(Index, Labels)
@@ -161,11 +163,11 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, Det, LocalDet,
 	{ Code = tree(tree(VarCode, RangeCheck), tree(DoJump, CasesCode)) }.
 
 :- pred dense_switch__generate_cases(cases_list, int, int,
-	category, label, list(label), code_tree, code_info, code_info).
+	code_model, label, list(label), code_tree, code_info, code_info).
 :- mode dense_switch__generate_cases(in, in, in, in, in, out, out,
 	in, out) is det.
 
-dense_switch__generate_cases(Cases0, NextVal, EndVal, Det, EndLabel,
+dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel, EndLabel,
 		Labels, Code) -->
 	(
 		{ NextVal > EndVal }
@@ -174,7 +176,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, Det, EndLabel,
 		{ Labels = [] }
 	;
 		code_info__get_next_label(ThisLabel, no),
-		dense_switch__generate_case(Cases0, NextVal, Det,
+		dense_switch__generate_case(Cases0, NextVal, CodeModel,
 					Cases1, ThisCode, Comment),
 		{ ThisCaseCode = tree(
 			node([ label(ThisLabel) - Comment ]),
@@ -185,20 +187,20 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, Det, EndLabel,
 		) },
 			% generate the rest of the cases.
 		{ NextVal1 is NextVal + 1 },
-		dense_switch__generate_cases(Cases1, NextVal1, EndVal, Det,
-					EndLabel, Labels1, OtherCasesCode),
+		dense_switch__generate_cases(Cases1, NextVal1, EndVal,
+				CodeModel, EndLabel, Labels1, OtherCasesCode),
 		{ Labels = [ThisLabel | Labels1] },
 		{ Code = tree(ThisCaseCode, OtherCasesCode) }
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred dense_switch__generate_case(cases_list, int, category,
+:- pred dense_switch__generate_case(cases_list, int, code_model,
 	cases_list, code_tree, string, code_info, code_info).
 :- mode dense_switch__generate_case(in, in, in, out, out, out, in, out)
 	is det.
 
-dense_switch__generate_case(Cases0, NextVal, Det, Cases, Code, Comment) -->
+dense_switch__generate_case(Cases0, NextVal, CodeModel, Cases, Code, Comment) -->
 	(
 		{ Cases0 = [Case | Cases1] },
 		{ Case = case(_, int_constant(NextVal), _, Goal) }
@@ -210,11 +212,11 @@ dense_switch__generate_case(Cases0, NextVal, Det, Cases, Code, Comment) -->
 		->
 			{ Comment = "case of dense switch" },
 			code_info__grab_code_info(CodeInfo),
-			code_gen__generate_forced_goal(Det, Goal, Code),
+			code_gen__generate_forced_goal(CodeModel, Goal, Code),
 			code_info__slap_code_info(CodeInfo)
 		;
 			{ Comment = "last case of dense switch" },
-			code_gen__generate_forced_goal(Det, Goal, Code)
+			code_gen__generate_forced_goal(CodeModel, Goal, Code)
 		),
 		{ Cases = Cases1 }
 	;
