@@ -4046,7 +4046,7 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	write_dependencies_list(Modules, Suffix, DepStream).
 
 	% Generate the list of .NET DLLs which could be referred to by this
-	% module (including the module itself.  
+	% module (including the module itself).
 	% If we are compiling a module within the standard library we should
 	% reference the runtime DLLs and all other library DLLs.  If we are
 	% outside the library we should just reference mercury.dll (which will
