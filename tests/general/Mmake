@@ -55,10 +55,8 @@ PROGS=		array_test \
 		univ \
 		unreachable \
 		\
-		nondet_ite_2
-
-# The following test cases do not yet work:
-#		space		# seg faults, except at -O6; reason unknown
+		nondet_ite_2 \
+		space
 
 # mode_inf_bug needs to be compiled with `--infer-all'.
 MCFLAGS-mode_inf_bug = --infer-all
