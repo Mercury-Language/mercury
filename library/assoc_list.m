@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,6 +55,12 @@
 :- mode assoc_list__values(in, out) is det.
 
 :- func assoc_list__values(assoc_list(K, V)) = list(V).
+
+	% Return the two lists contain respectively the first and second member
+	% of each pair in the assoc_list.
+
+:- pred assoc_list__keys_and_values(assoc_list(K, V), list(K), list(V)).
+:- mode assoc_list__keys_and_values(in, out, out) is det.
 
 	% Find the first element of the association list that matches
 	% the given key, and return the associated value.
@@ -122,6 +128,10 @@ assoc_list__keys([K - _ | KVs], [K | Ks]) :-
 assoc_list__values([], []).
 assoc_list__values([_ - V | KVs], [V | Vs]) :-
 	assoc_list__values(KVs, Vs).
+
+assoc_list__keys_and_values([], [], []).
+assoc_list__keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
+	assoc_list__keys_and_values(KVs, Ks, Vs).
 
 assoc_list__search([K - V | KVs], Key, Value) :-
 	( K = Key ->

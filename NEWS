@@ -20,6 +20,7 @@ Changes to the standard library:
   call "univ_value(Univ)" to extract the value before calling deconstruct.
   (Doing that also works in Mercury 0.9 and Mercury 0.10.)
 
+* We've addes some new library predicates: assoc_list__keys_and_values.
 
 NEWS since Mercury release 0.9:
 -------------------------------
