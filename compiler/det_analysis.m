@@ -437,10 +437,12 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
 		Msgs = []
 	).
 
-det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det),
+det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det,
+			IsPredOrFunc),
 		GoalInfo, _InstMap0, SolnContext,
 		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		higher_order_call(PredVar, ArgVars, Types, Modes, Det),
+		higher_order_call(PredVar, ArgVars, Types, Modes, Det,
+			IsPredOrFunc),
 		Det, Msgs) :-
 	determinism_components(Det, _, NumSolns),
 	(

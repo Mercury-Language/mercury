@@ -518,8 +518,8 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 	InlineInfo = inline_info(VarThresh, InlinedProcs, ModuleInfo,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
 
-inlining__inlining_in_goal(higher_order_call(A, B, C, D, E) - GoalInfo,
-		higher_order_call(A, B, C, D, E) - GoalInfo) --> [].
+inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
+		higher_order_call(A, B, C, D, E, F) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].

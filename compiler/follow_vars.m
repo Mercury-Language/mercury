@@ -156,9 +156,11 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ArgsMethod, ModuleInfo,
 		Goal, FollowVars).
 
 find_follow_vars_in_goal_2(
-		higher_order_call(PredVar, Args, Types, Modes, Det),
+		higher_order_call(PredVar, Args, Types, Modes, Det,
+			IsPredOrFunc),
 		ArgsMethod, ModuleInfo, _FollowVars0,
-		higher_order_call(PredVar, Args, Types, Modes, Det),
+		higher_order_call(PredVar, Args, Types, Modes, Det,
+			IsPredOrFunc),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
 	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,

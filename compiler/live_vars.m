@@ -216,7 +216,8 @@ build_live_sets_in_goal_2(some(_Vs, Goal0), Liveness0, ResumeVars0, LiveSets0,
 		ResumeVars = ResumeVars0
 	).
 
-build_live_sets_in_goal_2(higher_order_call(_, ArgVars, Types, Modes, Det),
+build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars,
+				Types, Modes, Det, _IsPredOrFunc),
 		Liveness, ResumeVars0, LiveSets0,
 		GoalInfo, ModuleInfo, ProcInfo,
 		Liveness, ResumeVars, LiveSets) :-

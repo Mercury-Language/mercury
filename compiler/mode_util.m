@@ -1109,8 +1109,8 @@ recompute_instmap_delta_2(Atomic, some(Vars, Goal0), _, some(Vars, Goal),
 		InstMap, InstMapDelta) -->
 	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta).
 
-recompute_instmap_delta_2(_, higher_order_call(A, Vars, B, Modes, C), _,
-		higher_order_call(A, Vars, B, Modes, C),
+recompute_instmap_delta_2(_, higher_order_call(A, Vars, B, Modes, C, D), _,
+		higher_order_call(A, Vars, B, Modes, C, D),
 		_InstMap, InstMapDelta) -->
 	=(ModuleInfo),
 	{ instmap_delta_from_mode_list(Vars, Modes,

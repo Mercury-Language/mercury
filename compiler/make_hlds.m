@@ -1993,7 +1993,7 @@ warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
-warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _),
+warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
@@ -2525,7 +2525,7 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 			Modes = [],
 			Det = erroneous,
 			Call = higher_order_call(PredVar, RealHeadVars,
-					Types, Modes, Det)
+					Types, Modes, Det, predicate)
 		;
 			% initialize some fields to junk
 			invalid_pred_id(PredId),

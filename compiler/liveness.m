@@ -258,7 +258,7 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, _, LiveInfo,
 		Liveness, some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_), _, _, _, _, _) :-
+detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
@@ -434,7 +434,7 @@ detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, LiveInfo,
 		Deadness, some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, LiveInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_), _, _, _, _, _) :-
+detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
@@ -629,8 +629,8 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
-detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E), _, Liveness, _, _,
-		higher_order_call(A,B,C,D,E), Liveness).
+detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E,F), _, Liveness,
+		_, _, higher_order_call(A,B,C,D,E,F), Liveness).
 
 detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 		call(A,B,C,D,E,F), Liveness).

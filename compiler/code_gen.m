@@ -711,7 +711,7 @@ code_gen__generate_det_goal_2(disj(Goals, StoreMap), _GoalInfo, Instr) -->
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
 	code_gen__generate_negation(model_det, Goal, Instr).
 code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
-		Modes, Det),
+		Modes, Det, _PredOrFunc),
 		GoalInfo, Instr) -->
 	call_gen__generate_higher_order_call(model_det, PredVar, Args,
 		Types, Modes, Det, GoalInfo, Instr).
@@ -799,7 +799,7 @@ code_gen__generate_semi_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(model_semi, Goal, Code).
 code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det), GoalInfo, Code) -->
+		Det, _PredOrFunc), GoalInfo, Code) -->
 	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
 		Types, Modes, Det, GoalInfo, Code).
 code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
@@ -999,7 +999,7 @@ code_gen__generate_non_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
 code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
 code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det),
+		Det, _PredOrFunc),
 		GoalInfo, Code) -->
 	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
 		Modes, Det, GoalInfo, Code).

@@ -452,7 +452,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 			PredId, ModeId),
 		Context).
 
-det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
+det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
 		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),

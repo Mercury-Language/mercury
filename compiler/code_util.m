@@ -540,7 +540,7 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 :- pred code_util__goal_may_allocate_heap_2(hlds_goal_expr).
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
-code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _)).
+code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _, _)).
 code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _)) :-
 	Builtin \= inline_builtin.
 code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
@@ -742,7 +742,7 @@ code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 			GoalExpr = call(_, _, _, BuiltinState, _, _),
 			BuiltinState \= inline_builtin
 		;
-			GoalExpr = higher_order_call(_, _, _, _, _)
+			GoalExpr = higher_order_call(_, _, _, _, _, _)
 		)
 	->
 		true
@@ -769,7 +769,8 @@ code_util__count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
 code_util__count_recursive_calls_2(some(_, Goal), PredId, ProcId, Min, Max) :-
 	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
-code_util__count_recursive_calls_2(higher_order_call(_,_, _, _, _), _, _, 0, 0).
+code_util__count_recursive_calls_2(higher_order_call(_, _,_, _, _, _), _, _,
+		0, 0).
 code_util__count_recursive_calls_2(pragma_c_code(_,_,_,_, _, _, _, _), _, _,
 		0, 0).
 code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),

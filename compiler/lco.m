@@ -80,8 +80,8 @@ lco_in_goal_2(some(Vars, Goal0), ModuleInfo, some(Vars, Goal)) :-
 
 lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
 
-lco_in_goal_2(higher_order_call(A,B,C,D,E), _ModuleInfo,
-		higher_order_call(A,B,C,D,E)).
+lco_in_goal_2(higher_order_call(A,B,C,D,E,F), _ModuleInfo,
+		higher_order_call(A,B,C,D,E,F)).
 
 lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
 

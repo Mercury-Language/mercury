@@ -173,8 +173,8 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	mode_checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
-		higher_order_call(A, B, C, D, E),
-		higher_order_call(A, B, C, D, E)) -->
+		higher_order_call(A, B, C, D, E, F),
+		higher_order_call(A, B, C, D, E, F)) -->
 	mode_checkpoint(enter, "higher-order call"),
 	mode_checkpoint(exit, "higher-order call").
 

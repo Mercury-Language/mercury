@@ -215,7 +215,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _),
+		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -441,7 +441,7 @@ dnf__is_considered_atomic_expr(GoalExpr, MaybeNonAtomic) :-
 :- pred dnf__is_atomic_expr(hlds_goal_expr::in, bool::out) is det.
 
 dnf__is_atomic_expr(conj(_), no).
-dnf__is_atomic_expr(higher_order_call(_, _, _, _, _), yes).
+dnf__is_atomic_expr(higher_order_call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(switch(_, _, _, _), no).
 dnf__is_atomic_expr(unify(_, _, _, _, _), yes).

@@ -106,7 +106,7 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		saved_vars_in_goal(SubGoal0, SlotInfo0, SubGoal, SlotInfo),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _),
+		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
@@ -265,7 +265,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
-			Goal0Expr = higher_order_call(_, _, _, _, _),
+			Goal0Expr = higher_order_call(_, _, _, _, _, _),
 			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),

@@ -475,10 +475,10 @@ unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	unique_modes__check_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det),
-		_GoalInfo0, Goal) -->
+unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
+		PredOrFunc), _GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "higher-order call"),
-	mode_info_set_call_context(higher_order_call(predicate)),
+	mode_info_set_call_context(higher_order_call(PredOrFunc)),
 	{ determinism_components(Det, _, at_most_zero) ->
 		NeverSucceeds = yes
 	;
@@ -486,7 +486,8 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det),
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
 	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
-	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det) },
+	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det,
+			PredOrFunc) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "higher-order call").
 

@@ -767,9 +767,10 @@ modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
-modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _),
+modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
 		GoalInfo0, Goal) -->
-	modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal).
+	modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0,
+		Goal).
 
 modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->

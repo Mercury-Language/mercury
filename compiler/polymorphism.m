@@ -353,8 +353,8 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 	% since the type-infos are added when the closures are
 	% constructed, not when they are called.  (Or at least I
 	% think we don't... -fjh.)
-polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E),
-		GoalInfo, higher_order_call(A, B, C, D, E) - GoalInfo)
+polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E, F),
+		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo)
 		--> [].
 
 polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,

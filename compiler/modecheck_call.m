@@ -35,9 +35,9 @@
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_pred_call(var, list(var), hlds_goal_info,
-		hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_pred_call(in, in, in, out,
+:- pred modecheck_higher_order_pred_call(var, list(var), pred_or_func,
+		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
+:- mode modecheck_higher_order_pred_call(in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_func_call(var, list(var), var, hlds_goal_info,
@@ -54,17 +54,19 @@
 :- import_module clause_to_proc, inst_match, make_hlds.
 :- import_module map, list, bool, std_util, set.
 
-modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order predicate call"),
-	mode_info_set_call_context(higher_order_call(predicate)),
+modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
+		-->
+	mode_checkpoint(enter, "higher-order call"),
+	mode_info_set_call_context(higher_order_call(PredOrFunc)),
 	=(ModeInfo0),
 
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	modecheck_higher_order_call(predicate, PredVar, Args0,
+	modecheck_higher_order_call(PredOrFunc, PredVar, Args0,
 			Types, Modes, Det, Args, ExtraGoals),
 
 	=(ModeInfo),
-	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det) },
+	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det,
+			PredOrFunc) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
 			[PredVar | Args0], [PredVar | Args],
 			InstMap0, ModeInfo, Goal) },
@@ -83,7 +85,8 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 			Types, Modes, Det, Args, ExtraGoals),
 
 	=(ModeInfo),
-	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det) },
+	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det,
+				function) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
 				[FuncVar | Args1], [FuncVar | Args],
 				InstMap0, ModeInfo, Goal) },

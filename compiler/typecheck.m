@@ -799,8 +799,8 @@ typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name),
 		call(PredId, Mode, Args, Builtin, Context, Name)) -->
 	checkpoint("call"),
 	typecheck_call_pred(Name, Args, PredId).
-typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E),
-		higher_order_call(PredVar, Args, C, D, E)) -->
+typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E, F),
+		higher_order_call(PredVar, Args, C, D, E, F)) -->
 	checkpoint("higher-order call"),
 	typecheck_higher_order_call(PredVar, Args).
 typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),

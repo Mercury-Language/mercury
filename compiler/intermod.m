@@ -380,8 +380,8 @@ intermod__traverse_goal(
 		{ DoWrite = yes }
 	).
 
-intermod__traverse_goal(higher_order_call(A,B,C,D,E) - Info,
-			higher_order_call(A,B,C,D,E) - Info, yes) --> [].
+intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
+			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
 
 intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 		switch(A, B, Cases, D) - Info, DoWrite) -->

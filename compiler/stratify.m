@@ -227,8 +227,9 @@ first_order_check_goal(call(CPred, CProc, _Args, BuiltinState, _Contex, _Sym),
 		{ Module = Module0 }
 	).
 first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, 
-	_Det), GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
-	Module0, Module) --> 
+			_Det, _PredOrFunc),
+		GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
+		Module0, Module) --> 
 	{ goal_info_get_context(GInfo, Context) },
 	emit_message(ThisPredProcId, Context,
 		"higher order call may introduce a non-stratified loop",
@@ -390,7 +391,8 @@ higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
 		{ Module = Module0 }
 	).
 	
-higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det), 
+higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
+			_PredOrFunc), 
 		GoalInfo, Negated, _WholeScc, ThisPredProcId, HighOrderLoops, 
 		Error, Module0, Module) -->
 	(
@@ -823,8 +825,8 @@ check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0, Calls,
 	set__insert(Calls0, proc(CPred, CProc), Calls).
 
 	% record that the higher order call was made
-check_goal1(higher_order_call(_Var, _Vars, _Types, _Modes, _Det), Calls, Calls, 
-		HasAT, HasAT, _, yes).
+check_goal1(higher_order_call(_Var, _Vars, _Types, _Modes, _Det, _PredOrFUnc),
+		Calls, Calls, HasAT, HasAT, _, yes).
 
 check_goal1(conj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
@@ -919,8 +921,8 @@ get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0,
 		Calls) :- 
 	Calls = [proc(CPred, CProc) | Calls0].
 
-get_called_procs(higher_order_call(_Var, _Vars, _Types, _Modes, _Det), Calls, 
-	Calls).
+get_called_procs(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
+		_PredOrFunc), Calls, Calls).
 
 
 get_called_procs(conj(Goals), Calls0, Calls) :-

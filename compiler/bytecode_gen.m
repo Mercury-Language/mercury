@@ -156,7 +156,7 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	(
 		GoalExpr = higher_order_call(PredVar, ArgVars, ArgTypes,
-			ArgModes, Detism),
+			ArgModes, Detism, _IsPredOrFunc),
 		bytecode_gen__higher_order_call(PredVar, ArgVars,
 			ArgTypes, ArgModes, Detism, ByteInfo0, Code),
 		ByteInfo = ByteInfo0

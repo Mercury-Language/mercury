@@ -391,7 +391,7 @@ traverse_goal(ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
 
 
 % we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, higher_order_call(PredVar,Args,_,_,_), UseInf0, UseInf) :-
+traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
@@ -1187,7 +1187,7 @@ fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = higher_order_call(_, _, _, _, _).
+	GoalExpr = higher_order_call(_, _, _, _, _, _).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-

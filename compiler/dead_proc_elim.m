@@ -370,7 +370,7 @@ dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else, _),
 		Needed1, Needed2),
 	dead_proc_elim__examine_goal(Else, CurrProc, Queue2, Queue,
 		Needed2, Needed).
-dead_proc_elim__examine_expr(higher_order_call(_,_,_,_,_), _,
+dead_proc_elim__examine_expr(higher_order_call(_,_,_,_,_,_), _,
 		Queue, Queue, Needed, Needed).
 dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
@@ -692,7 +692,7 @@ pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 		pre_modecheck_examine_goal(Goal, Info0, Info)
 	)) },
 	list__foldl(ExamineCase, Cases).
-pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_) - _) --> [].
+pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_,_) - _) --> [].
 pre_modecheck_examine_goal(not(Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(some(_, Goal) - _) -->

@@ -292,7 +292,7 @@ traverse_goal(switch(Var, CanFail, Cases0, SM) - Info,
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
-	{ Goal0 = higher_order_call(_,_,_,_,_) - _ }, 
+	{ Goal0 = higher_order_call(_,_,_,_,_,_) - _ }, 
 	maybe_specialize_higher_order_call(Goal0, Goal, PredProcId, Changed).
 
 		% check whether this call could be specialized
@@ -532,7 +532,10 @@ check_unify(complicated_unify(_, _)) -->
 maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
-	( Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0, _Det) ->
+	(
+		Goal0 = higher_order_call(PredVar0, Args0, _Types, Modes0,
+				_Det, _IsPredOrFunc)
+	->
 		PredVar = PredVar0,
 		Args = Args0,
 		Modes = Modes0

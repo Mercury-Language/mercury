@@ -187,8 +187,8 @@ lambda__process_goal_2(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	lambda__process_goal(A0, A),
 	lambda__process_goal(B0, B),
 	lambda__process_goal(C0, C).
-lambda__process_goal_2(higher_order_call(A,B,C,D,E), GoalInfo,
-			higher_order_call(A,B,C,D,E) - GoalInfo) -->
+lambda__process_goal_2(higher_order_call(A,B,C,D,E,F), GoalInfo,
+			higher_order_call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->

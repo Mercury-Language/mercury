@@ -405,7 +405,7 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = higher_order_call(Closure, Args, _, Modes, Det),
+	Goal0 = higher_order_call(Closure, Args, _, Modes, Det, _PredOrFunc),
 	( simplify_do_calls(Info0) ->
 		common__optimise_higher_order_call(Closure, Args, Modes, Det,
 			Goal0, GoalInfo, Goal, Info0, Info)
@@ -1579,7 +1579,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			BeforeAfter = before,
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
-			GoalExpr \= higher_order_call(_, _, _, _, _),
+			GoalExpr \= higher_order_call(_, _, _, _, _, _),
 			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _, _)
 		)
 	->

@@ -165,8 +165,8 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, ResumeVars0, ModuleInfo,
 	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
 		Goal, Liveness).
 
-store_alloc_in_goal_2(higher_order_call(A, B, C, D, E), Liveness, _, _,
-		higher_order_call(A, B, C, D, E), Liveness).
+store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _, _,
+		higher_order_call(A, B, C, D, E, F), Liveness).
 
 store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
 		call(A, B, C, D, E, F), Liveness).

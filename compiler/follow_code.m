@@ -107,8 +107,8 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
-move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E),
-			higher_order_call(A,B,C,D,E), _, R, R).
+move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E,F),
+			higher_order_call(A,B,C,D,E,F), _, R, R).
 
 move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 

@@ -932,12 +932,34 @@ hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, AppendVarnums,
 		io__write_string("\n")
 	).
 
-hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
+hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, PredOrFunc),
 		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	hlds_out__write_indent(Indent),
-	hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars], VarSet,
-		AppendVarnums),
+	(	{ PredOrFunc = predicate },
+		( { string__contains_char(Verbose, 'l') } ->
+			io__write_string("% higher-order predicate call"),
+			hlds_out__write_indent(Indent)
+		;
+			[]
+		),
+		hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars],
+			VarSet, AppendVarnums)
+	;
+		{ PredOrFunc = function },
+		( { string__contains_char(Verbose, 'l') } ->
+			io__write_string("% higher-order function application"),
+			hlds_out__write_indent(Indent)
+		;
+			[]
+		),
+		{ pred_args_to_func_args(ArgVars, FuncArgVars, FuncRetVar) },
+		mercury_output_var(FuncRetVar, VarSet, AppendVarnums),
+		io__write_string(" = "),
+		hlds_out__write_functor(term__atom("apply"), FuncArgVars,
+			VarSet, AppendVarnums)
+	),
 	io__write_string(Follow),
 	io__write_string("\n").
 

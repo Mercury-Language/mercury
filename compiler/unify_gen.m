@@ -337,7 +337,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ Args = [CallPred | CallArgs] },
 		{ ProcHeadVars = [ProcPred | ProcArgs] },
 		{ ProcInfoGoal = higher_order_call(ProcPred, ProcArgs, _, _,
-					CallDeterminism) - _GoalInfo },
+					CallDeterminism, _) - _GoalInfo },
 		{ determinism_to_code_model(CallDeterminism, CallCodeModel) },
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
