@@ -2131,7 +2131,9 @@ BEGIN_MODULE(io_run_module)
 BEGIN_CODE
 Define_entry(mercury__io__run_0_0);
 
+#ifdef CONSERVATIVE_GC
 	GC_INIT();
+#endif
 
         mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
