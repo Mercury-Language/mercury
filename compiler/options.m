@@ -346,11 +346,12 @@
 		;	optimize_unused_args
 		;	intermod_unused_args
 		;	optimize_higher_order
+		;	higher_order_size_limit
+		;	higher_order_arg_limit
 		;	unneeded_code
 		;	unneeded_code_copy_limit
 		;	type_specialization
 		;	user_guided_type_specialization
-		;	higher_order_size_limit
 		;	introduce_accumulators
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
@@ -755,11 +756,12 @@ option_defaults_2(optimization_option, [
 	optimize_unused_args	-	bool(no),
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
+	higher_order_size_limit	-	int(20),
+	higher_order_arg_limit -	int(10),
 	unneeded_code		-	bool(no),
 	unneeded_code_copy_limit	-	int(10),
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
-	higher_order_size_limit	-	int(20),
 	introduce_accumulators -	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
@@ -1156,6 +1158,8 @@ long_option("optimise-unused-args",	optimize_unused_args).
 long_option("intermod-unused-args",	intermod_unused_args).
 long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
+long_option("higher-order-size-limit",	higher_order_size_limit).
+long_option("higher-order-arg-limit",	higher_order_arg_limit).
 long_option("unneeded-code",		unneeded_code).
 long_option("unneeded-code-copy-limit",	unneeded_code_copy_limit).
 long_option("type-specialization",	type_specialization).
@@ -1170,7 +1174,6 @@ long_option("user-guided-type-specialisation",
 	% eventually be removed.
 long_option("fixed-user-guided-type-specialization",
 					user_guided_type_specialization).
-long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("introduce-accumulators",	introduce_accumulators).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
@@ -2469,16 +2472,6 @@ options_help_hlds_hlds_optimization -->
 
 		"--optimize-higher-order",
 		"\tEnable specialization of higher-order predicates.",
-		"--unneeded-code",
-		"\tRemove goals from computation paths where their outputs are",
-		"\tnot needed, provided the semantics options allow the deletion",
-		"\tor movement of the goal.",
-		"--unneeded-code-copy-limit",
-		"\tGives the maximum number of places to which a goal may be copied",
-		"\twhen removing it from computation paths on which its outputs are",
-		"\tnot needed. A value of zero forbids goal movement and allows",
-		"\tonly goal deletion; a value of one prevents any increase in the",
-		"\tsize of the code.",
 		"--type-specialization",
 		"\tEnable specialization of polymorphic predicates where the",
 		"\tpolymorphic types are known.",
@@ -2490,6 +2483,20 @@ options_help_hlds_hlds_optimization -->
 		"\t`--optimize-higher-order' and `--type-specialization'.",
 		"\tGoal size is measured as the number of calls, unifications",
 		"\tand branched goals.",
+		"--higher-order-arg-limit",
+		"\tSet the maximum size of higher-order arguments to",
+		"\tbe specialized by `--optimize-higher-order' and",
+		"\t`--type-specialization'.",
+		"--unneeded-code",
+		"\tRemove goals from computation paths where their outputs are",
+		"\tnot needed, provided the semantics options allow the deletion",
+		"\tor movement of the goal.",
+		"--unneeded-code-copy-limit",
+		"\tGives the maximum number of places to which a goal may be copied",
+		"\twhen removing it from computation paths on which its outputs are",
+		"\tnot needed. A value of zero forbids goal movement and allows",
+		"\tonly goal deletion; a value of one prevents any increase in the",
+		"\tsize of the code.",
 		"--introduce-accumulators",
 		"\tAttempt to introduce accumulating variables into",
 		"\tprocedures, so as to make them tail recursive.",

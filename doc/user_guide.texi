@@ -4865,6 +4865,13 @@ Goal size is measured as the number of calls, unifications
 and branched goals.
 
 @sp 1
+@item --higher-order-arg-limit
+@item --higher-order-arg-limit
+Set the maximum size of higher-order arguments to
+be specialized by @samp{--optimize-higher-order} and
+@samp{--type-specialization}.
+
+@sp 1
 @item --optimize-constant-propagation
 @findex --optimize-constant-propagation
 Evaluate constant expressions at compile time.

@@ -273,6 +273,9 @@ demangle_proc -->
 				% creating two predicates with the same
 				% name (deep profiling doesn't like that).
 				% It isn't used here so we just ignore it.
+				% The compiler also adds a version number
+				% for the argument order used for specialized
+				% versions, which can also be ignored.
 			;
 				{ IntroducedPredType = IntroducedPredType0 },
 				remove_int(Line),

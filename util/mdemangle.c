@@ -491,6 +491,10 @@ demangle(const char *orig_name)
 					** with the same name (deep profiling
 					** doesn't like that). It isn't used
 					** here, so we just ignore it.
+					** The compiler also adds a version
+					** number for the argument order used
+					** for specialized versions, which
+					** can also be ignored.
 					*/
 					*end_of_lambda_pred_name = '\0';
 					start = lambda_pred_name;
