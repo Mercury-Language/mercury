@@ -541,8 +541,18 @@ modecheck_goal_2(unify(A0, B0, _, _, UnifyContext), NonLocals, Goal) -->
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
-modecheck_goal_2(switch(_, _, _), _, _) -->
-	{ error("modecheck_goal_2: unexpected switch") }.
+modecheck_goal_2(switch(Var, CanFail, Cases0), NonLocals,
+		switch(Var, CanFail, Cases)) -->
+	mode_checkpoint(enter, "switch"),
+	( { Cases0 = [] } ->
+		{ Cases = [] },
+		mode_info_set_instmap(unreachable)
+	;
+		modecheck_case_list(Cases0, Var, Cases, InstMapList),
+		instmap_merge(NonLocals, InstMapList, disj)
+	),
+	mode_checkpoint(exit, "switch").
+
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds__goal_expr.
@@ -796,6 +806,24 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 	mode_info_dcg_get_instmap(InstMap),
 	mode_info_set_instmap(InstMap0),
 	modecheck_disj_list(Goals0, Goals, InstMaps).
+
+:- pred modecheck_case_list(list(case), var, list(case), list(instmap),
+				mode_info, mode_info).
+:- mode modecheck_case_list(in, in, out, out, mode_info_di, mode_info_uo)
+	is det.
+
+modecheck_case_list([], _Var, [], []) --> [].
+modecheck_case_list([Case0 | Cases0], Var,
+			[Case | Cases], [InstMap | InstMaps]) -->
+	{ Case0 = case(ConsId, Goal0) },
+	{ Case = case(ConsId, Goal) },
+	mode_info_dcg_get_instmap(InstMap0),
+		% XXX technically we should probably record
+		% that Var was bound to ConsId in the instmap here
+	modecheck_goal(Goal0, Goal),
+	mode_info_dcg_get_instmap(InstMap),
+	mode_info_set_instmap(InstMap0),
+	modecheck_case_list(Cases0, Var, Cases, InstMaps).
 
 	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
 	%	Merge the `InstMaps' resulting from different branches
