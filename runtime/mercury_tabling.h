@@ -18,6 +18,10 @@
 #include "mercury_types.h"
 #include "mercury_float.h"
 
+#ifndef CONSERVATIVE_GC
+  #include "mercury_deep_copy.h"
+#endif
+
 /*---------------------------------------------------------------------------*/
 /*
 ** The functions defined here are used only via the macros defined below.
