@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2683,12 +2683,10 @@ create_new_proc(NewPred, NewProcInfo0, NewPredInfo0,
 	pred_info_typevarset(NewPredInfo0, TypeVarSet0),
 	pred_info_arg_types(NewPredInfo0, OriginalArgTypes0),
 
-	CallerPredProcId = proc(CallerPredId, CallerProcId),
-	module_info_pred_proc_info(ModuleInfo, CallerPredId, CallerProcId,
-		CallerPredInfo, CallerProcInfo),
+	CallerPredProcId = proc(CallerPredId, _),
+	module_info_pred_info(ModuleInfo, CallerPredId, CallerPredInfo),
 	pred_info_typevarset(CallerPredInfo, CallerTypeVarSet),
 	pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
-	proc_info_typeinfo_varmap(CallerProcInfo, CallerTypeInfoVarMap0),
 
 	%
 	% Specialize the types of the called procedure as for inlining.
@@ -2749,14 +2747,36 @@ create_new_proc(NewPred, NewProcInfo0, NewPredInfo0,
 	proc_info_create_vars_from_types(NewProcInfo1, ExtraTypeInfoTypes,
 		ExtraTypeInfoVars, NewProcInfo2),
 
+	%
+	% Add any extra type-infos or typeclass-infos we've added
+	% to the typeinfo_varmap and typeclass_info_varmap.
+	%
+	proc_info_typeinfo_varmap(NewProcInfo2, TypeInfoVarMap0),
+	
+	% The variable renaming doesn't rename variables in the callee.
+	map__init(EmptyVarRenaming),
+	apply_substitutions_to_var_map(TypeInfoVarMap0, TypeRenaming,
+		TypeSubn, EmptyVarRenaming, TypeInfoVarMap1),
+
+	% Add entries in the typeinfo_varmap for the extra type-infos.
+	list__map(
+		(pred(TypeInfoVar::in, type_info(TypeInfoVar)::out) is det),
+		ExtraTypeInfoVars, ExtraTypeInfoLocns),
+	map__from_corresponding_lists(ExtraTypeInfoTVars, ExtraTypeInfoLocns,
+		ExtraTypeInfoMap),
+	map__overlay(TypeInfoVarMap1, ExtraTypeInfoMap, TypeInfoVarMap),
+
+	proc_info_set_typeinfo_varmap(NewProcInfo2,
+		TypeInfoVarMap, NewProcInfo3),
+
 	map__from_corresponding_lists(CallArgs, HeadVars0, VarRenaming0),
 
 	% Construct the constant input closures within the goal
 	% for the called procedure.
 	map__init(PredVars0),
 	construct_higher_order_terms(ModuleInfo, HeadVars0, ExtraHeadVars,
-		ArgModes0, ExtraArgModes, HOArgs, NewProcInfo2, NewProcInfo3,
-		VarRenaming0, VarRenaming, PredVars0, PredVars, ConstGoals),
+		ArgModes0, ExtraArgModes, HOArgs, NewProcInfo3, NewProcInfo4,
+		VarRenaming0, _, PredVars0, PredVars, ConstGoals),
 
 	%
 	% Record extra information about this version.
@@ -2784,45 +2804,6 @@ create_new_proc(NewPred, NewProcInfo0, NewPredInfo0,
 	map__det_insert(VersionInfoMap0, NewPredProcId, VersionInfo,
 		VersionInfoMap),
 	Info = Info0 ^ version_info := VersionInfoMap,
-
-	%
-	% Fix up the typeinfo_varmap.
-	%
-	proc_info_typeinfo_varmap(NewProcInfo3, TypeInfoVarMap0),
-
-	% Restrict the caller's typeinfo_varmap
-	% down onto the arguments of the call.
-	map__to_assoc_list(CallerTypeInfoVarMap0, TypeInfoAL0),
-	list__filter(
-		(pred(TVarAndLocn::in) is semidet :-
-			TVarAndLocn = _ - Locn,
-			type_info_locn_var(Locn, LocnVar),
-			map__contains(VarRenaming, LocnVar)
-		), TypeInfoAL0, TypeInfoAL),
-	map__from_assoc_list(TypeInfoAL, CallerTypeInfoVarMap1),
-
-	% The type renaming doesn't rename type variables in the caller.
-	map__init(EmptyTypeRenaming),
-	apply_substitutions_to_var_map(CallerTypeInfoVarMap1,
-		EmptyTypeRenaming, TypeSubn, VarRenaming,
-		CallerTypeInfoVarMap),
-	% The variable renaming doesn't rename variables in the callee.
-	map__init(EmptyVarRenaming),
-	apply_substitutions_to_var_map(TypeInfoVarMap0, TypeRenaming,
-		TypeSubn, EmptyVarRenaming, TypeInfoVarMap1),
-	map__merge(TypeInfoVarMap1, CallerTypeInfoVarMap,
-		TypeInfoVarMap2),
-
-	% Add entries in the typeinfo_varmap for the extra type-infos.
-	list__map(
-		(pred(TypeInfoVar::in, type_info(TypeInfoVar)::out) is det),
-		ExtraTypeInfoVars, ExtraTypeInfoLocns),
-	map__from_corresponding_lists(ExtraTypeInfoTVars, ExtraTypeInfoLocns,
-		ExtraTypeInfoMap),
-	map__overlay(TypeInfoVarMap2, ExtraTypeInfoMap, TypeInfoVarMap),
-
-	proc_info_set_typeinfo_varmap(NewProcInfo3,
-		TypeInfoVarMap, NewProcInfo4),
 
 	%
 	% Fix up the argument vars, types and modes.
@@ -2952,11 +2933,11 @@ create_new_proc(NewPred, NewProcInfo0, NewPredInfo0,
 		map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
 		pred_vars::in, pred_vars::out, list(hlds_goal)::out) is det.
 
-construct_higher_order_terms(_, _, [], _, [], [], ProcInfo, ProcInfo,
-		Renaming, Renaming, PredVars, PredVars, []).
+construct_higher_order_terms(_, _, [], _, [], [], !ProcInfo,
+		!Renaming, !PredVars, []).
 construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
-		NewArgModes, [HOArg | HOArgs], ProcInfo0, ProcInfo,
-		Renaming0, Renaming, PredVars0, PredVars, ConstGoals) :-
+		NewArgModes, [HOArg | HOArgs], !ProcInfo, !Renaming,
+		!PredVars, ConstGoals) :-
 	HOArg = higher_order_arg(ConsId, Index, NumArgs,
 		CurriedArgs, CurriedArgTypes, CurriedHOArgs, IsConst),
 
@@ -2986,17 +2967,21 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 		list__duplicate(NumArgs, InMode, CurriedArgModes1)
 	),
 
-	proc_info_create_vars_from_types(ProcInfo0, CurriedArgTypes,
-		CurriedHeadVars1, ProcInfo1),
-
+	proc_info_create_vars_from_types(!.ProcInfo, CurriedArgTypes,
+		CurriedHeadVars1, !:ProcInfo),
+	CurriedHeadVarsAndTypes = assoc_list__from_corresponding_lists(
+					CurriedHeadVars1, CurriedArgTypes),
+		
+	list__foldl(add_rtti_info, CurriedHeadVarsAndTypes, !ProcInfo),
+	
 	( IsConst = no ->
 		% Make traverse_goal pretend that the input higher-order
 		% argument is built using the new arguments as its curried
 		% arguments.
-		map__det_insert(PredVars0, LVar,
-			constant(ConsId, CurriedHeadVars1), PredVars1)
+		map__det_insert(!.PredVars, LVar,
+			constant(ConsId, CurriedHeadVars1), !:PredVars)
 	;
-		PredVars1 = PredVars0
+		true
 	),
 
 	assoc_list__from_corresponding_lists(CurriedArgs,
@@ -3005,18 +2990,18 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 		(pred(VarPair::in, Map0::in, Map::out) is det :-
 			VarPair = Var1 - Var2,
 			map__set(Map0, Var1, Var2, Map)
-		), CurriedRenaming, Renaming0, Renaming1),
+		), CurriedRenaming, !Renaming),
 
 	% Recursively construct the curried higher-order arguments.
 	construct_higher_order_terms(ModuleInfo, CurriedHeadVars1,
 		ExtraCurriedHeadVars, CurriedArgModes1, ExtraCurriedArgModes,
-		CurriedHOArgs, ProcInfo1, ProcInfo2, Renaming1, Renaming2,
-		PredVars1, PredVars2, CurriedConstGoals),
+		CurriedHOArgs, !ProcInfo, !Renaming, !PredVars,
+		CurriedConstGoals),
 
 	% Construct the rest of the higher-order arguments.
 	construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars1,
-		ArgModes0, NewArgModes1, HOArgs, ProcInfo2, ProcInfo,
-		Renaming2, Renaming, PredVars2, PredVars, ConstGoals1),
+		ArgModes0, NewArgModes1, HOArgs, !ProcInfo,
+		!Renaming, !PredVars, ConstGoals1),
 	
 	( IsConst = yes ->
 		%
@@ -3053,6 +3038,53 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 	list__condense([CurriedArgModes, ExtraCurriedArgModes, NewArgModes1],
 		NewArgModes),
 	list__append(ConstGoals0, ConstGoals1, ConstGoals).
+
+	% Add any new type-infos or typeclass-infos to the
+	% typeinfo_varmap or typeclass_info_varmap.
+:- pred add_rtti_info(pair(prog_var, (type))::in,
+		proc_info::in, proc_info::out) is det.
+
+add_rtti_info(Var - VarType, !ProcInfo) :-
+	(
+		polymorphism__type_info_type(VarType, Type),
+		Type = term__variable(TVar)
+	->
+		maybe_set_typeinfo_locn(TVar, type_info(Var), !ProcInfo)
+	;
+		polymorphism__typeclass_info_class_constraint(VarType,
+			Constraint),
+		proc_info_typeclass_info_varmap(!.ProcInfo, TCVarMap0),
+		\+ map__contains(TCVarMap0, Constraint)
+	->
+		map__det_insert(TCVarMap0, Constraint, Var, TCVarMap),
+		proc_info_set_typeclass_info_varmap(!.ProcInfo,
+			TCVarMap, !:ProcInfo),
+		Constraint = constraint(_, ConstraintTypes),
+		list__foldl2(
+		    (pred(ConstraintType::in, Index::in, (Index + 1)::out,
+		    		!.ProcInfo::in, !:ProcInfo::out) is det :-
+			( ConstraintType = term__variable(ConstraintTVar) ->
+			    maybe_set_typeinfo_locn(ConstraintTVar,
+			    	typeclass_info(Var, Index), !ProcInfo)
+			;
+			    true
+			)
+		    ), ConstraintTypes, 1, _, !ProcInfo)
+	;
+		true
+	).
+
+:- pred maybe_set_typeinfo_locn(tvar::in, type_info_locn::in,
+		proc_info::in, proc_info::out) is det.
+
+maybe_set_typeinfo_locn(TVar, Locn, !ProcInfo) :-
+	proc_info_typeinfo_varmap(!.ProcInfo, TVarMap0),
+	(  map__contains(TVarMap0, TVar) ->
+		true
+	;
+		map__det_insert(TVarMap0, TVar, Locn, TVarMap),
+		proc_info_set_typeinfo_varmap(!.ProcInfo, TVarMap, !:ProcInfo)
+	).
 
 :- pred remove_const_higher_order_args(int::in, list(T)::in,
 		list(higher_order_arg)::in, list(T)::out) is det.

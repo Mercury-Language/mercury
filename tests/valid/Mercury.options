@@ -37,6 +37,7 @@ MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-foreign_underscore_var	= --halt-at-warn
+MCFLAGS-higher_order4		= -O3
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
 MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
