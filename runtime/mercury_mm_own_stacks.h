@@ -112,4 +112,26 @@ extern	MR_AnswerBlock	MR_table_mmos_create_answer_block(MR_GeneratorPtr
 
 #endif	/* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
+#ifdef	MR_HIGHLEVEL_CODE
+
+  extern void MR_CALL
+  mercury__table_builtin__table_mmos_consume_next_answer_nondet_2_p_0(
+	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+	MR_Cont cont, void *cont_env_ptr);
+  extern void MR_CALL
+  mercury__table_builtin__table_mmos_consume_next_answer_multi_2_p_0(
+	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+	MR_Cont cont, void *cont_env_ptr);
+
+#else	/* MR_HIGHLEVEL_CODE */
+
+  #define MR_MMOS_RET_ALL_NONDET_ENTRY                                  \
+	MR_proc_entry_user_name(table_builtin,                          \
+		table_mmos_consume_next_answer_nondet, 2, 0)
+  #define MR_MMOS_RET_ALL_MULTI_ENTRY                                   \
+	MR_proc_entry_user_name(table_builtin,                          \
+		table_mmos_consume_next_answer_multi, 2, 0)
+
+#endif	/* MR_HIGHLEVEL_CODE */
+
 #endif	/* MERCURY_MM_OWN_STACKS_H */

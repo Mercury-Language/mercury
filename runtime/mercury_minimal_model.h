@@ -244,10 +244,10 @@ extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
   	mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
 		MR_C_Pointer subgoal_table_node);
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_return_all_nondet_2_2_p_0(
+  	mercury__table_builtin__table_mm_return_all_nondet_2_p_0(
 		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
   extern void MR_CALL
-  	mercury__table_builtin__table_mm_return_all_multi_2_2_p_0(
+  	mercury__table_builtin__table_mm_return_all_multi_2_p_0(
 		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
   extern void MR_CALL
   	mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(

@@ -1688,7 +1688,7 @@ mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
 }
 
 void MR_CALL
-mercury__table_builtin__table_mm_return_all_nondet_2_2_p_0(
+mercury__table_builtin__table_mm_return_all_nondet_2_p_0(
     MR_C_Pointer answer_list, MR_C_Pointer answer_block)
 {
     MR_fatal_error("sorry, not implemented: "
@@ -1696,7 +1696,7 @@ mercury__table_builtin__table_mm_return_all_nondet_2_2_p_0(
 }
 
 void MR_CALL
-mercury__table_builtin__table_mm_return_all_multi_2_2_p_0(
+mercury__table_builtin__table_mm_return_all_multi_2_p_0(
     MR_C_Pointer answer_list, MR_C_Pointer answer_block)
 {
     MR_fatal_error("sorry, not implemented: "

@@ -508,3 +508,107 @@ MR_table_generator_new_answer_slot(MR_GeneratorPtr generator)
 }
 
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+#ifdef MR_HIGHLEVEL_CODE
+
+void MR_CALL
+mercury__table_builtin__table_mmos_consume_next_answer_nondet_2_p_0(
+    MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+    MR_Cont cont, void *cont_env_ptr)
+{
+    MR_fatal_error("sorry, not implemented: " 
+        "minimal model tabling with --high-level-code");
+}
+
+void MR_CALL
+mercury__table_builtin__table_mmos_consume_next_answer_multi_2_p_0(
+    MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+    MR_Cont cont, void *cont_env_ptr)
+{
+    MR_fatal_error("sorry, not implemented: " 
+        "minimal model tabling with --high-level-code");
+}
+
+#else   /* ! MR_HIGHLEVEL_CODE */
+
+MR_define_extern_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+MR_define_extern_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1, 
+    MR_PREDICATE, table_builtin, table_mmos_consume_next_answer_nondet, 2, 0);
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1, 
+    MR_PREDICATE, table_builtin, table_mmos_consume_next_answer_multi, 2, 0);
+
+#ifndef  MR_USE_MINIMAL_MODEL_STACK_COPY
+
+MR_BEGIN_MODULE(mmos_module)
+    MR_init_entry_sl(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_init_entry_sl(MR_MMOS_RET_ALL_MULTI_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMOS_RET_ALL_MULTI_ENTRY);
+MR_BEGIN_CODE
+
+MR_define_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_fatal_error("call to table_mmos_consume_next_answer_nondet/2 in a "
+    "grade without own stack minimal model tabling");
+
+MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
+    MR_fatal_error("call to table_mmos_consume_next_answer_multi/2 in a "
+    "grade without own stack minimal model tabling");
+
+MR_END_MODULE
+
+#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+
+MR_BEGIN_MODULE(mmos_module)
+    MR_init_entry_sl(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_init_entry_sl(MR_MMOS_RET_ALL_MULTI_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMOS_RET_ALL_MULTI_ENTRY);
+MR_BEGIN_CODE
+
+MR_define_entry(MR_MMOS_RET_ALL_NONDET_ENTRY);
+    MR_fatal_error("table_mmos_consume_next_answer_nondet/2 NYI");
+
+MR_define_entry(MR_MMOS_RET_ALL_MULTI_ENTRY);
+    MR_fatal_error("table_mmos_consume_next_answer_multi/2 NYI");
+
+MR_END_MODULE
+
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+#endif  /* MR_HIGHLEVEL_CODE */
+
+/* Ensure that the initialization code for the above module gets to run. */
+/*
+INIT mercury_sys_init_mmos_modules
+*/
+
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmos_module;
+
+/* forward declarations to suppress gcc -Wmissing-decl warnings */
+void mercury_sys_init_mmos_modules_init(void);
+void mercury_sys_init_mmos_modules_init_type_tables(void);
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_mmos_modules_init(void)
+{
+#ifndef MR_HIGHLEVEL_CODE
+    mmos_module();
+#endif  /* MR_HIGHLEVEL_CODE */
+}
+
+void mercury_sys_init_mmos_modules_init_type_tables(void)
+{
+    /* no types to register */
+}
+
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_mmos_modules_write_out_proc_statics(FILE *fp)
+{
+    /* no proc_statics to write out */
+    /* XXX we need to fix the deep profiling */
+    /* of minimal model tabled predicates */
+}
+#endif
