@@ -42,6 +42,7 @@
 #include	"mercury_debug.h"
 
 #include	"mercury_types.h"
+#include	"mercury_library_types.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
 #include	"mercury_stack_trace.h"

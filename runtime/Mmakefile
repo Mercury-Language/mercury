@@ -44,6 +44,7 @@ HDRS		=	\
 			mercury_imp.h		\
 			mercury_init.h		\
 			mercury_label.h		\
+			mercury_library_types.h	\
 			mercury_memory.h	\
 			mercury_memory_zones.h	\
 			mercury_memory_handlers.h	\

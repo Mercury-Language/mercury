@@ -767,19 +767,6 @@ typedef MR_TypeLayout_part1 MR_TypeLayout;
 
 /*---------------------------------------------------------------------------*/
 
-/*
-** definitions for accessing the representation of the
-** Mercury `array' type
-*/
-
-typedef struct {
-	Integer size;
-	Word elements[1]; /* really this is variable-length */
-} MR_ArrayType;
-
-#define MR_make_array(sz) ((MR_ArrayType *) make_many(Word, (sz) + 1))
-
-
 Word * MR_create_type_info(Word *, Word *);
 int MR_compare_type_info(Word, Word);
 Word MR_collapse_equivalences(Word);
