@@ -1,16 +1,11 @@
 [morphine 1]: 
+Copyright (C) 1999 INRIA/INSA de Rennes.
 **************************************************
 **** Testing test_vars.m...
 Start debugging test_vars program.
-				       
----------------------------------
-[./test_vars ...]			       
-				       
   1: 1 [1] call main(state('<<c_pointer>>'), -) [] 
   3:  2 [2] exit p(3 - 8) [] 
-[3 - 8]
----------------------------------
-End of connection with the traced program
+[3 - 8]End of connection with the traced program
 test_vars: ok.
 
 Arg = [3 - 8]
