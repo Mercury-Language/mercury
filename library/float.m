@@ -304,13 +304,13 @@ float(Int) = Float :-
 	float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if( X >  (double)java.lang.Integer.MAX_VALUE ||
-			X <= (double)java.lang.Integer.MIN_VALUE - 1 ){
-		throw( new RuntimeException(
-				""Overflow converting floating point to int"")
-				);
+	if (X > (double) java.lang.Integer.MAX_VALUE ||
+			X <= (double) java.lang.Integer.MIN_VALUE - 1)
+	{
+		throw new java.lang.RuntimeException(
+				""Overflow converting floating point to int"");
 	} else {
-		Ceil = (int)java.lang.Math.ceil(X);
+		Ceil = (int) java.lang.Math.ceil(X);
 	}
 ").
 
@@ -332,13 +332,13 @@ float(Int) = Float :-
 	float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if( X >= (double)java.lang.Integer.MAX_VALUE + 1 ||
-			X <  (double)java.lang.Integer.MIN_VALUE ) {
-		throw( new RuntimeException(
-				""Overflow converting floating point to int"")
-				);
+	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
+			X < (double) java.lang.Integer.MIN_VALUE)
+	{
+		throw new java.lang.RuntimeException(
+				""Overflow converting floating point to int"");
 	} else {
-		Floor = (int)java.lang.Math.floor(X);
+		Floor = (int) java.lang.Math.floor(X);
 	}
 ").
 
@@ -360,13 +360,13 @@ float(Int) = Float :-
 	float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if( X >= (double)java.lang.Integer.MAX_VALUE + 0.5 ||
-			X <  (double)java.lang.Integer.MIN_VALUE - 0.5 ) {
-		throw( new RuntimeException(
-				""Overflow converting floating point to int"")
-				);
+	if (X >= (double) java.lang.Integer.MAX_VALUE + 0.5 ||
+			X < (double) java.lang.Integer.MIN_VALUE - 0.5)
+	{
+		throw new java.lang.RuntimeException(
+				""Overflow converting floating point to int"");
 	} else {
-		Round = (int)java.lang.Math.round(X);
+		Round = (int) java.lang.Math.round(X);
 	}
 ").
 
@@ -388,13 +388,13 @@ float(Int) = Float :-
 	float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if( X >= (double)java.lang.Integer.MAX_VALUE + 1 ||
-			X <= (double)java.lang.Integer.MIN_VALUE - 1 ) {
-		throw( new RuntimeException(
-				""Overflow converting floating point to int"")
-				);
+	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
+			X <= (double) java.lang.Integer.MIN_VALUE - 1)
+	{
+		throw new java.lang.RuntimeException(
+				""Overflow converting floating point to int"");
 	} else {
-		Trunc = (int)X;
+		Trunc = (int) X;
 	}
 ").
 
@@ -496,7 +496,7 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	int Code = F.GetHashCode();
-	if( Code < 0 ) {
+	if (Code < 0) {
 		H = -Code ^ 1;
 	} else {
 		H = Code;
@@ -507,7 +507,7 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	int Code = (new java.lang.Double(F)).hashCode();
-	if( Code < 0 ) {
+	if (Code < 0) {
 		H = -Code ^ 1;
 	} else {
 		H = Code;
@@ -572,7 +572,7 @@ is_nan_or_inf(Float) :-
 % For C, the floating-point system constants are derived from <float.h> and
 % implemented using the C interface.
 %
-% For .NET (and java), the values are mostly hard-coded.
+% For .NET (and Java), the values are mostly hard-coded.
 % It's OK to do this, because the ECMA specification for the .NET CLR
 % nails down the representation of System.Double as 64-bit IEEE float.
 % The Java Language Specification also follows the IEEE standard.
