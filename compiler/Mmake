@@ -130,8 +130,8 @@ install_compiler: mercury_compile
 install_compiler_nu: mercury_compile.nu
 	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
-		> $(INSTALL_NU_ARCH_DIR)/mercury_compile
-	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile
+		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
+	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
 	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
 
 .PHONY: install_compiler_sicstus
