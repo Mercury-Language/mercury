@@ -4,7 +4,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: types.m.
+% File: type_desc.m.
 % Main author: fjh, zs.
 % Stability: low.
 
@@ -207,7 +207,7 @@ MR_define_extern_entry(mercury____Compare___type_desc__type_ctor_desc_0_0);
 MR_define_extern_entry(mercury____Unify___type_desc__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___type_desc__type_desc_0_0);
 
-MR_BEGIN_MODULE(type_desc_module)
+MR_BEGIN_MODULE(type_desc_unify_compare_module)
 	MR_init_entry(mercury____Unify___type_desc__type_ctor_desc_0_0);
 	MR_init_entry(mercury____Compare___type_desc__type_ctor_desc_0_0);
 	MR_init_entry(mercury____Unify___type_desc__type_desc_0_0);
@@ -310,7 +310,7 @@ MR_BEGIN_CODE
 
 MR_END_MODULE
 
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_desc_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc type_desc_unify_compare_module;
 
 #endif /* ! MR_HIGHLEVEL_CODE */
 
@@ -318,7 +318,7 @@ void
 sys_init_type_desc_module_init(void)
 {
 #ifndef	MR_HIGHLEVEL_CODE
-	type_desc_module();
+	type_desc_unify_compare_module();
 
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_type_desc__type_ctor_info_type_ctor_desc_0,
