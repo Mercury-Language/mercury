@@ -644,7 +644,7 @@ mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
 
 chop(N, Div, Mod) :-
 	Div = N >> log2base,	% i.e. Div = N div base
-	Mod = N /\ basemask.	% i.e. Mod = N mode base
+	Mod = N /\ basemask.	% i.e. Mod = N mod base
 
 :- func pos_plus(integer, integer) = integer.
 
