@@ -2679,7 +2679,8 @@ common_cell_get_rvals(TypeAndValue) = Rvals :-
 
 :- func common_group_get_rvals(common_cell_arg_group) = list(rval).
 
-common_group_get_rvals(common_cell_arg_group(_, _, Rvals)) = Rvals.
+common_group_get_rvals(common_cell_grouped_args(_, _, Rvals)) = Rvals.
+common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
 %-----------------------------------------------------------------------------%
 
@@ -2821,13 +2822,21 @@ output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
 output_cons_arg_group_types([], _, _, !IO).
 output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
 	io__write_string(Indent, !IO),
-	Group = common_cell_arg_group(Type, ArraySize, _),
-	output_llds_type(Type, !IO),
-	io__write_string(" f", !IO),
-	io__write_int(ArgNum, !IO),
-	io__write_string("[", !IO),
-	io__write_int(ArraySize, !IO),
-	io__write_string("];\n", !IO),
+	(
+		Group = common_cell_grouped_args(Type, ArraySize, _),
+		output_llds_type(Type, !IO),
+		io__write_string(" f", !IO),
+		io__write_int(ArgNum, !IO),
+		io__write_string("[", !IO),
+		io__write_int(ArraySize, !IO),
+		io__write_string("];\n", !IO)
+	;
+		Group = common_cell_ungrouped_arg(Type, _),
+		output_llds_type(Type, !IO),
+		io__write_string(" f", !IO),
+		io__write_int(ArgNum, !IO),
+		io__write_string(";\n", !IO)
+	),
 	output_cons_arg_group_types(Groups, Indent, ArgNum + 1, !IO).
 
 	% Given an rval, figure out the type it would have as
@@ -2905,21 +2914,34 @@ output_cons_args([Rval - Type | RvalsTypes], !IO) :-
 
 output_cons_arg_groups([], !IO).
 output_cons_arg_groups([Group | Groups], !IO) :-
-	Group = common_cell_arg_group(Type, _, Rvals),
-	io__write_string("{\n", !IO),
 	(
-		direct_field_int_constant(Type) = yes,
-		list__map(project_int_constant, Rvals, Ints)
-	->
-		output_cons_arg_group_ints(Ints, !IO)
+		Group = common_cell_grouped_args(Type, _, Rvals),
+		io__write_string("{\n", !IO),
+		(
+			direct_field_int_constant(Type) = yes,
+			list__map(project_int_constant, Rvals, Ints)
+		->
+			output_cons_arg_group_ints(Ints, !IO)
+		;
+			output_cons_arg_group_elements(Type, Rvals, !IO)
+		),
+		io__write_string("}", !IO)
 	;
-		output_cons_arg_group_elements(Type, Rvals, !IO)
+		Group = common_cell_ungrouped_arg(Type, Rval),
+		(
+			direct_field_int_constant(Type) = yes,
+			project_int_constant(Rval, Int)
+		->
+			io__write_int(Int, !IO)
+		;
+			output_rval_as_type(Rval, Type, !IO)
+		)
 	),
 	( Groups \= [] ->
-		io__write_string("},\n", !IO),
+		io__write_string(",\n", !IO),
 		output_cons_arg_groups(Groups, !IO)
 	;
-		io__write_string("}\n", !IO)
+		io__write_string("\n", !IO)
 	).
 
 :- pred output_cons_arg_group_elements(llds_type::in, list(rval)::in,

@@ -73,15 +73,24 @@
 		).
 
 :- type common_cell_arg_group
-	--->	common_cell_arg_group(
+	--->	common_cell_grouped_args(
 			llds_type,		% The shared type of the
 						% fields in the group.
 			int,			% The number of fields in the
 						% group. This will contain the
 						% length of the list in the
 						% third argument, but computed
-						% only once.
+						% only once. It ought to be
+						% more than one; if a field
+						% cannot be grouped with
+						% neighbouring values of the
+						% same type, it should be
+						% stored as an ungrouped arg.
 			list(rval)		% The field values themselves.
+		)
+	;	common_cell_ungrouped_arg(
+			llds_type,		% The type of the field.
+			rval			% The field value.
 		).
 
 :- type common_cell_type_and_value

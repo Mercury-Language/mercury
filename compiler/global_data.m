@@ -316,10 +316,8 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
 		TypeAndArgGroups) :-
 	(
 		LaterArgsTypes = [],
-		list__length(RevArgsSoFar, NumArgsSoFar),
-		TypeGroup = CurType - NumArgsSoFar,
-		TypeAndArgGroup = common_cell_arg_group(CurType,
-			NumArgsSoFar, list__reverse(RevArgsSoFar)),
+		make_arg_groups(CurType, RevArgsSoFar,
+			TypeGroup, TypeAndArgGroup),
 		TypeGroups = [TypeGroup],
 		TypeAndArgGroups = [TypeAndArgGroup]
 	;
@@ -329,17 +327,29 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
 				[NextArg | RevArgsSoFar], MoreArgsTypes,
 				TypeGroups, TypeAndArgGroups)
 		;
-			list__length(RevArgsSoFar, NumArgsSoFar),
 			threshold_group_types(NextType, [NextArg],
 				MoreArgsTypes,
 				TypeGroupsTail, TypeAndArgGroupsTail),
-			TypeGroup = CurType - NumArgsSoFar,
-			TypeAndArgGroup = common_cell_arg_group(CurType,
-				NumArgsSoFar, list__reverse(RevArgsSoFar)),
+			make_arg_groups(CurType, RevArgsSoFar,
+				TypeGroup, TypeAndArgGroup),
 			TypeGroups = [TypeGroup | TypeGroupsTail],
 			TypeAndArgGroups = [TypeAndArgGroup |
 				TypeAndArgGroupsTail]
 		)
+	).
+
+:- pred make_arg_groups(llds_type::in, list(rval)::in,
+	pair(llds_type, int)::out, common_cell_arg_group::out) is det.
+
+make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
+	( RevArgs = [Arg] ->
+		TypeGroup = Type - 1,
+		TypeAndArgGroup = common_cell_ungrouped_arg(Type, Arg)
+	;
+		list__length(RevArgs, NumArgs),
+		list__reverse(RevArgs, Args),
+		TypeGroup = Type - NumArgs,
+		TypeAndArgGroup = common_cell_grouped_args(Type, NumArgs, Args)
 	).
 
 search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
@@ -361,11 +371,21 @@ search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
 offset_into_group([], _, _) :-
 	error("offset_into_group: offset out of bounds").
 offset_into_group([Group | Groups], Offset, Rval) :-
-	Group = common_cell_arg_group(_, NumRvalsInGroup, Rvals),
-	( Offset < NumRvalsInGroup ->
-		list__index0_det(Rvals, Offset, Rval)
+	(
+		Group = common_cell_grouped_args(_, NumRvalsInGroup, Rvals),
+		( Offset < NumRvalsInGroup ->
+			list__index0_det(Rvals, Offset, Rval)
+		;
+			offset_into_group(Groups, Offset - NumRvalsInGroup,
+				Rval)
+		)
 	;
-		offset_into_group(Groups, Offset - NumRvalsInGroup, Rval)
+		Group = common_cell_ungrouped_arg(_, GroupRval),
+		( Offset = 0 ->
+			Rval = GroupRval
+		;
+			offset_into_group(Groups, Offset - 1, Rval)
+		)
 	).
 
 get_static_cells(Info) =
