@@ -49,7 +49,7 @@ io__read_term(Result) -->
 	    ;
 		% NU-Prolog just dumps to error message to stderr.
 		% This is the best we can do:
-		Result = error("syntax error")
+		Result = error("syntax error", LineNumber)
 	    )
 	},
 	io__update_state.

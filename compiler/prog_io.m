@@ -449,14 +449,12 @@ read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
 read_items_loop_2(eof, Msgs, Items, Error, Msgs, Items, Error) --> []. 
 	% if the next item was end-of-file, then we're done.
 
-read_items_loop_2(syntax_error(ErrorMsg), Msgs0, Items0, _Error0,
+read_items_loop_2(syntax_error(ErrorMsg, LineNumber), Msgs0, Items0, _Error0,
 			Msgs, Items, Error) -->
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
 	io__input_stream(Stream),
 	io__stream_name(Stream, StreamName),
-	% XXX the line number is slightly off
-	io__get_line_number(LineNumber),
 	{
 	  term__context_init(StreamName, LineNumber, Context),
 	  dummy_term_with_context(Context, Term),
@@ -494,7 +492,7 @@ read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
 	% parses it.
 
 :- type maybe_item_or_eof --->	eof
-			;	syntax_error(string)
+			;	syntax_error(string, int)
 			;	error(string, term)
 			;	ok(item, term__context).
 
@@ -509,7 +507,8 @@ read_item(MaybeItem) -->
 :- mode process_read_term(input, output).
 
 process_read_term(eof, eof).
-process_read_term(error(ErrorMsg), syntax_error(ErrorMsg)).
+process_read_term(error(ErrorMsg, LineNumber),
+			syntax_error(ErrorMsg, LineNumber)).
 process_read_term(term(VarSet, Term), MaybeItemOrEof) :-
 	parse_item(VarSet, Term, MaybeItem),
 	convert_item(MaybeItem, MaybeItemOrEof).

@@ -38,15 +38,15 @@
 %		Return a list containing all the current operator definitions.
 %		Does not modify the io__state.
 
-:- type read_term ---> eof ; error(string) ; term(varset, term).
+:- type read_term ---> eof ; error(string, int) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
 :- mode io__read_term(output, di, uo).
 
 %	io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
 %		read_term/2, except that resulting term is in the ground
-%		representation. Binds Result to either 'eof' or
-%		'term(VarSet, Term)'.
+%		representation. Binds Result to either `eof',
+%		`term(VarSet, Term)', or `error(Message, LineNumber)'.
 
 :- pred io__write_term(varset, term, io__state, io__state).
 :- mode io__write_term(input, input, di, uo).
