@@ -357,13 +357,19 @@
 :- func mlds__append_class_qualifier(mlds_module_name, mlds__class_name, arity) =
 	mlds_module_name.
 
-% Append a mercury_code qualifier to the module name and leave the
+% Append a wrapper class qualifier to the module name and leave the
 % package name unchanged.
-:- func mlds__append_mercury_code(mlds_module_name) = mlds_module_name.
+:- func mlds__append_wrapper_class(mlds_module_name) = mlds_module_name.
 
 % Append an arbitarty qualifier to the module name and leave the package
 % name unchanged.
 :- func mlds__append_name(mlds_module_name, string) = mlds_module_name.
+
+% When targetting languages such as IL, C#, and Java, which don't
+% support global methods or global variables, we need to wrap all the
+% generated global functions and global data inside a wrapper class.
+% This function returns the name to use for the wrapper class.
+:- func wrapper_class_name = string.
 
 :- type mlds__defns == list(mlds__defn).
 :- type mlds__defn
@@ -1505,10 +1511,12 @@ mlds__append_class_qualifier(name(Package, Module), ClassName, ClassArity) =
 	string__format("%s_%d", [s(ClassName), i(ClassArity)],
 		ClassQualifier).
 
-mlds__append_mercury_code(Name) = mlds__append_name(Name, "mercury_code").
+mlds__append_wrapper_class(Name) = mlds__append_name(Name, wrapper_class_name).
 
 mlds__append_name(name(Package, Module), Name)
 	= name(Package, qualified(Module, Name)).
+
+wrapper_class_name = "mercury_code".
 
 %-----------------------------------------------------------------------------%
 

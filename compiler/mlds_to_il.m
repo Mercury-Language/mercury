@@ -233,7 +233,7 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 %-----------------------------------------------------------------------------%
 
 	% Move all the top level methods and data definitions into the
-	% mercury_code class, and then fix all the references so that
+	% wrapper class, and then fix all the references so that
 	% they refer to their new names.
 :- func transform_mlds(mlds) = mlds.
 
@@ -243,15 +243,15 @@ transform_mlds(MLDS0) = MLDS :-
 			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
 		), MLDS0 ^ defns, MercuryCodeMembers, Others),
-	MLDS = MLDS0 ^ defns := [mercury_code_class(
+	MLDS = MLDS0 ^ defns := [wrapper_class(
 			list__map(rename_defn, MercuryCodeMembers)) | Others].
 
 
-:- func mercury_code_class(mlds__defns) = mlds__defn.
+:- func wrapper_class(mlds__defns) = mlds__defn.
 
-mercury_code_class(Members)
+wrapper_class(Members)
 	= mlds__defn(
-		export("mercury_code"),
+		export(wrapper_class_name),
 		mlds__make_context(term__context_init),
 		ml_gen_type_decl_flags,
 		mlds__class(
@@ -387,7 +387,8 @@ rename_code_addr(proc(Label, Signature))
 rename_code_addr(internal(Label, Seq, Signature))
 	= internal(rename_proc_label(Label), Seq, Signature).
 
-rename_proc_label(qual(Module, Name)) = qual(append_mercury_code(Module), Name).
+rename_proc_label(qual(Module, Name))
+	= qual(append_wrapper_class(Module), Name).
 
 :- func rename_lval(mlds__lval) = mlds__lval.
 
@@ -411,23 +412,23 @@ rename_initializer(init_array(Inits))
 	= init_array(list__map(rename_initializer, Inits)).
 rename_initializer(no_initializer) = no_initializer.
 
-	% We need to append a mercury_code so that we access the RTTI
-	% fields correctly.
+	% We need to append a wrapper class qualifier so that we access
+	% the RTTI fields correctly.
 :- func rename_data_addr(data_addr) = data_addr.
 
 rename_data_addr(data_addr(ModuleName, Name))
-	= data_addr(append_mercury_code(ModuleName), Name).
+	= data_addr(append_wrapper_class(ModuleName), Name).
 
-	% We need to append a mercury_code so that we refer to the
-	% methods of the mercury_code class.
+	% We need to append a wrapper class qualifier so that we refer to the
+	% methods of the wrapper class.
 :- func rename_proc_label(mlds__qualified_proc_label) =
 		mlds__qualified_proc_label.
 
-	% Again append a mercury_code to the var name.
+	% Again append a wrapper class qualifier to the var name.
 :- func rename_var(mlds__var, mlds__type) = mlds__var.
 
 rename_var(qual(ModuleName, Name), _Type)
-	= qual(append_mercury_code(ModuleName), Name).
+	= qual(append_wrapper_class(ModuleName), Name).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -453,10 +454,10 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 	generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends,
 			Interfaces, MethodsAndFieldsAndCtors, Info1, Info2),
 
-		% Only the mercury_code class needs to have the
+		% Only the wrapper class needs to have the
 		% initialization instructions executed by the class
 		% constructor.
-	( EntityName = "mercury_code" ->
+	( EntityName = wrapper_class_name ->
 		Imports = Info2 ^ imports,
 		InitInstrs = list__condense(tree__flatten(Info2 ^ init_instrs)),
 		AllocInstrs = list__condense(
@@ -549,11 +550,14 @@ decl_flags_to_classattrs(Flags)
 	( AccessFlag = public,
 		Access = [public]
 	; AccessFlag = protected,
-		Access = []
+		error("decl_flags_to_classattrs: protected access flag")
 	; AccessFlag = private,
 		Access = [private]
 	; AccessFlag = default,
-		error("decl_flags_to_classattrs: default access flag")
+			% To make members of the private class
+			% accessible to other types in the assembly, set
+			% their access to be default or public.
+		Access = [private]
 	; AccessFlag = local,
 		error("decl_flags_to_classattrs: local access flag")
 	).
@@ -2123,7 +2127,7 @@ make_class_constructor_classdecl(DoneFieldRef, Imports, AllocInstrs,
 	test_rtti_initialization_field(DoneFieldRef, TestInstrs),
 	set_rtti_initialization_field(DoneFieldRef, SetInstrs),
 	{ CCtorCalls = list__map((func(X) = call_class_constructor(
-		class_name(X, "mercury_code"))), Imports) },
+		class_name(X, wrapper_class_name))), Imports) },
 	{ AllInstrs = list__condense([TestInstrs, AllocInstrs, SetInstrs,
 		CCtorCalls, InitInstrs, [ret]]) },
 	{ MethodDecls = [instrs(AllInstrs)] }.
@@ -2496,8 +2500,8 @@ mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 	),
 	SymName0 = mlds_module_name_to_sym_name(ModuleName0),
 		% Check to see whether or not the name has already been
-		% qualified with a mercury_code.  If not qualify it.
-	( SymName0 = qualified(SymName1, "mercury_code") ->
+		% qualified with the wrapper class.  If not qualify it.
+	( SymName0 = qualified(SymName1, wrapper_class_name) ->
 		( 
 			SymName1 = qualified(SQ, SM0),
 			SM = string__format("%s__%s_code",
@@ -2509,18 +2513,20 @@ mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 					[s(SM0), s(LangStr)]),
 			SymName2 = unqualified(SM)
 		),
-		SymName = qualified(SymName2, "mercury_code")
+		SymName = qualified(SymName2, wrapper_class_name)
 	;
 		( 
 			SymName0 = qualified(SQ, SM0),
 			SM = string__format("%s__%s_code",
 					[s(SM0), s(LangStr)]),
-			SymName = qualified(qualified(SQ, SM), "mercury_code")
+			SymName = qualified(qualified(SQ, SM),
+					wrapper_class_name)
 		; 
 			SymName0 = unqualified(SM0),
 			SM = string__format("%s__%s_code",
 					[s(SM0), s(LangStr)]),
-			SymName = qualified(unqualified(SM), "mercury_code")
+			SymName = qualified(unqualified(SM),
+					wrapper_class_name)
 		)
 	),
 	ModuleName = mercury_module_and_package_name_to_mlds(
@@ -2540,7 +2546,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 	( 
 		SymName = mlds_module_name_to_sym_name(ModuleName0),
 		SymName = qualified(qualified(unqualified("mercury"),
-			LibModuleName0), "mercury_code"),
+			LibModuleName0), wrapper_class_name),
 		DataName = rtti(rtti_type_id(_, Name, Arity),
 			_RttiName),
 		( LibModuleName0 = "builtin",
@@ -2575,7 +2581,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			LibModuleName),
 		ModuleName = mercury_module_name_to_mlds(
 			qualified(qualified(unqualified("mercury"),
-			LibModuleName), "mercury_code"))
+			LibModuleName), wrapper_class_name))
 	;
 		ModuleName = ModuleName0
 	).
@@ -2956,8 +2962,8 @@ il_string_type = ilds__type([], il_string_simple_type).
 
 :- func mercury_string_class_name = ilds__class_name.
 mercury_string_class_name = mercury_library_name(StringClass) :-
-	sym_name_to_class_name(qualified(unqualified("string"), "mercury_code"),
-			StringClass).
+	sym_name_to_class_name(qualified(unqualified("string"),
+			wrapper_class_name), StringClass).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3187,7 +3193,7 @@ runtime_initialization_instrs = [
 :- func runtime_init_module_name = ilds__class_name.
 runtime_init_module_name = 
 	structured_name("mercury",
-		["mercury", "private_builtin__cpp_code", "mercury_code"]).
+		["mercury", "private_builtin__cpp_code", wrapper_class_name]).
 
 :- func runtime_init_method_name = ilds__member_name.
 runtime_init_method_name = id("init_runtime").

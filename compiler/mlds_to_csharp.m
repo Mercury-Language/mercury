@@ -91,7 +91,7 @@ generate_csharp_code(MLDS) -->
 
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName), 
-			"mercury_code") },
+			wrapper_class_name) },
 
 	io__nl,
 	io__write_strings([
@@ -119,7 +119,7 @@ generate_csharp_code(MLDS) -->
 	)),
 
 	io__write_strings([
-		"\npublic class mercury_code",
+		"\npublic class " ++ wrapper_class_name,
 		"{\n"]),
 
 		% Output the contents of pragma foreign_code declarations.

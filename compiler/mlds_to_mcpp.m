@@ -94,7 +94,7 @@ generate_mcplusplus_code(MLDS) -->
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
-			"mercury_code") },
+			wrapper_class_name) },
 
 	io__nl,
 	io__write_strings([
@@ -132,7 +132,7 @@ generate_mcplusplus_code(MLDS) -->
 		ForeignCode),
 
 	io__write_strings([
-		"\n__gc public class mercury_code",
+		"\n__gc public class " ++ wrapper_class_name,
 		"{\n",
 		"public:\n"]),
 
