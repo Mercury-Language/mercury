@@ -171,10 +171,10 @@ find_follow_vars_in_goal_expr(some(Vars, Goal0), FVInfo,
 	find_follow_vars_in_goal(Goal0, FVInfo, FollowVars0,
 		Goal, FollowVars).
 
-find_follow_vars_in_goal_2(
+find_follow_vars_in_goal_expr(
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
-		ArgsMethod, ModuleInfo, _FollowVars0,
+		FVInfo, _FollowVars0,
 		higher_order_call(PredVar, Args, Types, Modes, Det,
 			IsPredOrFunc),
 		FollowVars) :-

@@ -88,12 +88,10 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 			{ instmap__to_assoc_list(InstMap, NewInstList) },
 			{ mode_info_get_varset(ModeInfo, VarSet) },
 			{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-			{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-			{ module_info_inst_key_table(ModuleInfo,
-				InstKeyTable) },
+			{ mode_info_get_inst_key_table(ModeInfo, IKT) },
 			write_var_insts(NewInstList, OldInstList,
-				VarSet, InstVarSet, InstKeyTable)
-%			inst_key_table_dump(InstKeyTable)
+				VarSet, InstVarSet, IKT)
+%			inst_key_table_dump(IKT)
 		;
 			{ NewInstList = [] },
 			io__write_string("\tUnreachable\n")
