@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1213,11 +1213,10 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 		% quantification.m uses when requantifying things.
 		%
 		=(Info0),
-		{ poly_info_get_type_info_map(Info0, TypeInfoMap) },
 		{ poly_info_get_var_types(Info0, VarTypes) },
 		{ map__lookup(VarTypes, XVar, Type) },
-		{ polymorphism__unification_typeinfos(Type, TypeInfoMap,
-			Unification0, GoalInfo0, Unification, GoalInfo) },
+		polymorphism__unification_typeinfos(Type,
+			Unification0, GoalInfo0, Unification, GoalInfo),
 		{ Goal = unify(XVar, Y, Mode, Unification,
 		 		UnifyContext) - GoalInfo }
 	; 
@@ -1246,10 +1245,38 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
                 { goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
 		{ set__union(NonLocals0, NonLocalTypeInfos, NonLocals) },
 		{ goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) },
+
+		%
+		% Complicated (in-in) argument unifications are impossible
+		% for lambda expressions, so we don't need to worry about
+		% adding the type-infos that would be required for such
+		% unifications.
+		%
 		{ Goal = unify(XVar, Y1, Mode, Unification0, UnifyContext)
 				- GoalInfo }
 	).
 
+:- pred polymorphism__unification_typeinfos(type, unification,
+	hlds_goal_info, unification, hlds_goal_info, poly_info, poly_info).
+:- mode polymorphism__unification_typeinfos(in, in, in,
+	out, out, in, out) is det.
+
+polymorphism__unification_typeinfos(Type, Unification0, GoalInfo0,
+		Unification, GoalInfo, Info0, Info) :-
+	%
+	% Compute the type_info/type_class_info variables that would be
+	% used if this unification ends up being a complicated_unify.
+	%
+	type_util__vars(Type, TypeVars),
+	list__map_foldl(get_type_info_locn, TypeVars, TypeInfoLocns,
+		Info0, Info),
+
+	polymorphism__add_unification_typeinfos(TypeInfoLocns,
+		Unification0, GoalInfo0, Unification, GoalInfo).
+
+	% This variant is for use by modecheck_unify.m.
+	% During mode-checking all the type-infos should appear in
+	% the type_info_varmap.
 polymorphism__unification_typeinfos(Type, TypeInfoMap,
 		Unification0, GoalInfo0, Unification, GoalInfo) :-
 	%
@@ -1258,6 +1285,16 @@ polymorphism__unification_typeinfos(Type, TypeInfoMap,
 	%
 	type_util__vars(Type, TypeVars),
 	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
+
+	polymorphism__add_unification_typeinfos(TypeInfoLocns,
+		Unification0, GoalInfo0, Unification, GoalInfo).
+
+:- pred polymorphism__add_unification_typeinfos(list(type_info_locn)::in,
+		unification::in, hlds_goal_info::in,
+		unification::out, hlds_goal_info::out) is det.
+
+polymorphism__add_unification_typeinfos(TypeInfoLocns,
+		Unification0, GoalInfo0, Unification, GoalInfo) :-
 	list__map(type_info_locn_var, TypeInfoLocns, TypeInfoVars0),
 	list__remove_dups(TypeInfoVars0, TypeInfoVars),
 
@@ -1383,23 +1420,33 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		goal_info_get_context(GoalInfo0, Context),
 		polymorphism__process_existq_unify_functor(ConsDefn,
 			IsConstruction, ActualArgTypes, TypeOfX, Context,
-			ExtraVars, ExtraGoals, PolyInfo0, PolyInfo),
+			ExtraVars, ExtraGoals, PolyInfo0, PolyInfo1),
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__insert_list(NonLocals0, ExtraVars, NonLocals),
-		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+
+		%
+		% Some of the argument unifications may be complicated
+		% unifications, which may need type-infos.
+		%
+		polymorphism__unification_typeinfos(TypeOfX, Unification0,
+			GoalInfo1, Unification, GoalInfo, PolyInfo1, PolyInfo),
+
 		Unify = unify(X0, functor(ConsId, ArgVars), Mode0,
-				Unification0, UnifyContext) - GoalInfo,
+				Unification, UnifyContext) - GoalInfo,
 		list__append(ExtraGoals, [Unify], GoalList),
 		conj_list_to_goal(GoalList, GoalInfo0, Goal)
 	;
 		%
-		% ordinary construction/deconstruction unifications
-		% we leave alone
+		% We leave construction/deconstruction unifications alone.
+		% Some of the argument unifications may be complicated
+		% unifications, which may need type-infos.
 		%
+		polymorphism__unification_typeinfos(TypeOfX, Unification0,
+			GoalInfo0, Unification, GoalInfo, PolyInfo0, PolyInfo),
 		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
-				Unification0, UnifyContext) - GoalInfo0,
-		PolyInfo = PolyInfo0
+			Unification, UnifyContext) - GoalInfo
 	).
 
 convert_pred_to_lambda_goal(PredOrFunc, EvalMethod, X0, ConsId0, PName,
@@ -2618,32 +2665,48 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 	%
 		Type = term__variable(TypeVar)
 	->
-		poly_info_get_type_info_map(Info0, TypeInfoMap0),
-		%
-		% If we have already allocated a location for this type_info,
-		% then all we need to do is to extract the type_info variable
-		% from its location.
-		%
-		( map__search(TypeInfoMap0, TypeVar, TypeInfoLocn) ->
-			get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var,
-				Info0, Info)
-		;
-			%
-			% Otherwise, we need to create a new type_info
-			% variable, and set the location for this type
-			% variable to be that type_info variable.
-			%
-			polymorphism__new_type_info_var(Type, "type_info",
-				Var, Info0, Info1),
-			map__det_insert(TypeInfoMap0, TypeVar, type_info(Var),
-				TypeInfoMap),
-			poly_info_set_type_info_map(TypeInfoMap, Info1, Info),
-			ExtraGoals = []
-		)
+		get_type_info_locn(TypeVar, TypeInfoLocn, Info0, Info1),
+		get_type_info(TypeInfoLocn, TypeVar, ExtraGoals, Var,
+				Info1, Info)
 	;
 		error("polymorphism__make_var: unknown type")
 	).
+ 
+:- pred get_type_info_locn(tvar, type_info_locn, poly_info, poly_info).
+:- mode get_type_info_locn(in, out, in, out) is det.
 
+get_type_info_locn(TypeVar, TypeInfoLocn, Info0, Info) :-
+	%
+	% If we have already allocated a location for this type_info,
+	% then all we need to do is to extract the type_info variable
+	% from its location.
+	%
+	poly_info_get_type_info_map(Info0, TypeInfoMap0),
+	( map__search(TypeInfoMap0, TypeVar, TypeInfoLocn0) ->
+		TypeInfoLocn = TypeInfoLocn0,
+		Info = Info0
+	;
+		%
+		% Otherwise, we need to create a new type_info
+		% variable, and set the location for this type
+		% variable to be that type_info variable.
+		%
+		% XXX This is wrong if the type variable is one of
+		% the existentially quantified variables of a called
+		% predicate and the variable occurs in an existential
+		% type-class constraint. In that case the type-info
+		% will be stored in the typeclass_info variable produced
+		% by the predicate, not in a type_info variable.
+		%
+		type_util__var(Type, TypeVar),
+		polymorphism__new_type_info_var(Type, "type_info",
+			Var, Info0, Info1),
+		TypeInfoLocn = type_info(Var),
+		map__det_insert(TypeInfoMap0, TypeVar, TypeInfoLocn,
+			TypeInfoMap),
+		poly_info_set_type_info_map(TypeInfoMap, Info1, Info)
+	).
+  
 :- pred polymorphism__construct_type_info(type, type_id, list(type),
 	bool, prog_context, prog_var, list(hlds_goal),
 	poly_info, poly_info).
