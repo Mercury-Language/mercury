@@ -1747,6 +1747,15 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
 	->
 		JavaTypeName = "java.lang.String"
 	;
+		% In C, we do some nasty hacks to represent type class
+		% constraints of different arities as different structures
+		% ending with arrays of the appropriate length, but in
+		% Java we just use a single type for all of them
+		% (with an extra level of indirection for the array).
+		string__prefix(GenTypeName, "TypeClassConstraint_")
+	->
+		JavaTypeName = "mercury.runtime.TypeClassConstraint"
+	;
 		% The rest are all defined in Mercury's Java runtime
 		% (java/runtime/*.java).
 		JavaTypeName = string__append("mercury.runtime.",

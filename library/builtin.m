@@ -835,6 +835,15 @@ namespace mercury.builtin {
 		return compare_3_p_0(ti, x, y);
 	}
 
+	public static comparison_result_0
+	compare_representation_3_p_0 (mercury.runtime.TypeInfo_Struct ti,
+		       java.lang.Object x, java.lang.Object y)
+	{
+		// stub only
+		throw new java.lang.Error (
+			""compare_representation_3_p_0/3 not implemented"");
+	}
+
 	//
 	// Type-specific unification routines for builtin types
 	//
