@@ -17,6 +17,7 @@
 
 :- include_module callback.
 :- include_module color_map.
+:- include_module font.
 :- include_module model.
 :- include_module overlay.
 :- include_module window.
