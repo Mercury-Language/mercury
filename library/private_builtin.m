@@ -882,78 +882,34 @@ unused :-
 #endif
 ").
 
-% The following nondet pragma c code seems to be compiled to C all right,
-% but the C compiler seems to simply omit several statements from the
-% generated executable. This is the reason for the handwritten module below.
-
-% :- pragma c_code(table_nondet_return_all_ans(T::in, A::out),
-% 	will_not_call_mercury,
-% 	local_vars("
-% 		MR_AnswerList	cur_node;
-% 	"),
-% 	first_code("
-% 		LOCALS->cur_node = MR_SUBGOAL(T)->answer_list;
-% 	"),
-% 	retry_code("
-% 	"),
-% 	shared_code("
-% 		if (LOCALS->cur_node == NULL) {
-% 			FAIL;
-% 		} else {
-% 			A = LOCALS->cur_node->answer_data;
-% 			LOCALS->cur_node = LOCALS->cur_node->next_answer;
-% 			SUCCEED;
-% 		}
-% 	")
-% ).
-
-:- external(table_nondet_return_all_ans/2).
-
-:- pragma c_code("
-BEGIN_MODULE(private_builtin_module_XXX)
-	init_entry(mercury__table_nondet_return_all_ans_2_0);
-	init_label(mercury__table_nondet_return_all_ans_2_0_i1);
-BEGIN_CODE
-Define_entry(mercury__table_nondet_return_all_ans_2_0);
-#ifdef	MR_USE_MINIMAL_MODEL
-	mkframe(""private_builtin:table_nondet_return_all_ans/2"", 1,
-		LABEL(mercury__table_nondet_return_all_ans_2_0_i1));
-	MR_framevar(1) = (Word) MR_SUBGOAL(r1)->answer_list;
-#ifdef	MR_TABLE_DEBUG
-	if (MR_tabledebug) {
-		printf(""from subgoal %p, ""
-			""returning everything in answer list %p\\n"",
-			 MR_SUBGOAL(r1), MR_SUBGOAL(r1)->answer_list);
-	}
+:- pragma c_code(table_nondet_return_all_ans(T::in, A::out),
+	will_not_call_mercury,
+	local_vars("
+#ifdef MR_USE_MINIMAL_MODEL
+		MR_AnswerList	cur_node;
 #endif
-Define_label(mercury__table_nondet_return_all_ans_2_0_i1);
-	if ( ((MR_AnswerList) MR_framevar(1)) == NULL) {
-		fail();
-	} else {
-#ifdef	MR_TABLE_DEBUG
-		if (MR_tabledebug) {
-			printf(""returning answer block %p\\n"",
-				(MR_AnswerList) MR_framevar(1));
-			printf(""num %ld, answer %ld at %p, next %p\\n"",
-				(long) ((MR_AnswerList)
-					MR_framevar(1))->answer_num,
-				(long) ((MR_AnswerList)
-					MR_framevar(1))->answer_data,
-				&((MR_AnswerList) MR_framevar(1))->answer_data,
-				((MR_AnswerList) MR_framevar(1))->next_answer);
+	"),
+	first_code("
+#ifdef MR_USE_MINIMAL_MODEL
+		LOCALS->cur_node = MR_SUBGOAL(T)->answer_list;
+#endif
+	"),
+	retry_code("
+	"),
+	shared_code("
+#ifdef MR_USE_MINIMAL_MODEL
+		if (LOCALS->cur_node == NULL) {
+			FAIL;
+		} else {
+			A = LOCALS->cur_node->answer_data;
+			LOCALS->cur_node = LOCALS->cur_node->next_answer;
+			SUCCEED;
 		}
-#endif
-		r1 = (Word) &((MR_AnswerList) MR_framevar(1))->answer_data;
-		MR_framevar(1) = (Word)
-			((MR_AnswerList) MR_framevar(1))->next_answer;
-		succeed();
-	}
 #else
-	fatal_error(""minimal model code entered when not enabled"");
+		fatal_error(""minimal model code entered when not enabled"");
 #endif
-END_MODULE
-").
-
+	")
+).
 %-----------------------------------------------------------------------------%
 
 :- interface.
