@@ -15,11 +15,17 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+*/
+
+#ifndef MR_NO_BACKWARDS_COMPAT
+
 #define	COMPARE_EQUAL		MR_COMPARE_EQUAL
 #define	COMPARE_LESS		MR_COMPARE_LESS
 #define	COMPARE_GREATER		MR_COMPARE_GREATER
-
-#ifndef	MR_NO_BACKWARDS_COMPAT
 
 /*
 ** The list manipulation macros are available for use by ordinary Mercury
@@ -33,6 +39,15 @@
 #define	list_tail(l)		MR_list_tail(l)
 #define	list_empty()		MR_list_empty()
 #define	list_cons(h, t)		MR_list_cons((h), (t))
+
+#endif	/* MR_NO_BACKWARDS_COMPAT */
+
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is not enabled by default.
+** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
+*/
+#ifdef	MR_EXTRA_BACKWARDS_COMPAT
 
 #define succip			MR_succip
 #define hp			MR_hp
@@ -237,6 +252,6 @@
 #define mercury_data___type_ctor_info_func_0_struct \
 	MR_TypeCtorInfo_struct
 
-#endif	/* not MR_NO_BACKWARDS_COMPAT */
+#endif	/* MR_EXTRA_BACKWARDS_COMPAT */
 
 #endif	/* MERCURY_BOOTSTRAP_H */

@@ -76,6 +76,11 @@
 **	Disable backwards compatibility with C code using obsolete low-level
 **	constructs, e.g. referring to variables and macros without their MR_
 **	prefixes.
+**
+** MR_EXTRA_BACKWARDS_COMPAT
+**	Add extra backwards compatibility with C code using obsolete low-level
+**	constructs, e.g. referring to variables and macros without their MR_
+**	prefixes.
 */
 
 /*
