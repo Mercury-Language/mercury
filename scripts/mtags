@@ -24,6 +24,7 @@ while ($#ARGV >= 0)
 
 		$body =~ s/\.$//;
 		$body =~ s/\(.*//;
+		$body =~ s/ .*//;
 
 		if ($body =~ m/[a-zA-Z_]/)
 			{ printf out "%s\t%s\t/^%s\$/\n", $body, $ARGV[0], $_;}
