@@ -110,6 +110,9 @@
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
 
+:- pred io__flush_output(io__state, io__state).
+%	Flush the output buffer of the current output stream.
+
 :- pred gc_call(pred).
 gc_call(Goal) :-
 	findall(Goal, Goal, List),
@@ -553,6 +556,13 @@ io__write_string(S) -->
 	
 write_string(S) :-
 	format("~s",[S]).
+
+io__flush_output -->
+	{ 
+	  currentOutput(Stream),
+	  flushOutput(Stream)
+	},
+	io__update_state.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
