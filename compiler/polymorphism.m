@@ -1168,12 +1168,13 @@ polymorphism__c_code_add_typeclass_infos_2([C|Cs], Mode, TypeVarSet,
 
 polymorphism__c_code_add_typeinfos(TVars, TypeVarSet,
 		ExistQVars, ArgNames0, ArgNames) :-
-	list__delete_elems(TVars, ExistQVars, UnivQVars),
+	list__filter(lambda([X::in] is semidet, (list__member(X, ExistQVars))),
+		TVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
 	in_mode(In),
 	out_mode(Out),
-	polymorphism__c_code_add_typeinfos_2(ExistQVars, TypeVarSet,
+	polymorphism__c_code_add_typeinfos_2(ExistUnconstrainedVars, TypeVarSet,
 		Out, ArgNames0, ArgNames1),
-	polymorphism__c_code_add_typeinfos_2(UnivQVars, TypeVarSet,
+	polymorphism__c_code_add_typeinfos_2(UnivUnconstrainedVars, TypeVarSet,
 		In, ArgNames1, ArgNames).
 
 :- pred polymorphism__c_code_add_typeinfos_2(list(tvar),
