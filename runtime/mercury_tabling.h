@@ -331,7 +331,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef CONSERVATIVE_GC
+#ifndef NATIVE_GC
 
   #define MR_TABLE_NEW(type)						\
 	MR_GC_NEW(type)
@@ -360,36 +360,36 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_table_list_cons(h, t)					\
 	MR_list_cons((h), (t))
 
-#else /* not CONSERVATIVE_GC */
+#else /* NATIVE_GC */
 
   #define MR_TABLE_NEW(type)						\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define MR_TABLE_NEW_ARRAY(type, count)				\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)			\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define table_allocate_bytes(size)					\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define table_reallocate_bytes(pointer, size)				\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define table_allocate_words(size)					\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define table_reallocate_words(pointer, size)				\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
   #define table_free(pointer)						\
-	fatal_error("Sorry, not implemented: tabling in non-GC grades")
+	fatal_error("Sorry, not implemented: tabling in native gc grades")
   #define MR_table_list_cons(h, t)					\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(Word) 0)
 
-#endif /* CONSERVATIVE_GC */
+#endif /* NATIVE_GC */
 
 #define table_copy_bytes(dest, source, size)				\
 	MR_memcpy((dest), (source), (size))
