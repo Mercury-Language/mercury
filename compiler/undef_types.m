@@ -142,12 +142,21 @@ find_undef_type(term__functor(F, As, C), ErrorContext, TypeDefns) -->
 		->
 			[]
 		;
+			{ is_builtin_func_type(F, As, _, _) }
+		->
+			[]
+		;
 			report_undef_type(TypeId, ErrorContext)
 		)
 	;
 		report_invalid_type(term__functor(F, As, C), ErrorContext)
 	),
-	find_undef_type_list(As, ErrorContext, TypeDefns).
+	( { is_builtin_func_type(F, As, ArgTypes, RetType) } ->
+		{ As1 = [RetType | ArgTypes] }
+	;
+		{ As1 = As }
+	),
+	find_undef_type_list(As1, ErrorContext, TypeDefns).
 
 %-----------------------------------------------------------------------------%
 
@@ -235,6 +244,17 @@ is_builtin_atomic_type_2("character").
 is_builtin_pred_type(QualifiedName - _Arity) :-
 	unqualify_name(QualifiedName, Name),
 	Name = "pred".
+
+	% is_builtin_func_type(Functor, Args)
+	%	is true iff `term__functor(Functor, Args, _)' is a builtin
+	%	higher-order function type.
+
+:- pred is_builtin_func_type(const, list(type), list(type), type).
+:- mode is_builtin_func_type(in, in, out, out) is semidet.
+
+is_builtin_func_type(term__atom("="),
+		[term__functor(term__atom("func"), ArgTypes, _), RetType],
+		ArgTypes, RetType).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -59,6 +59,9 @@
 :- pred split_types_and_modes(list(type_and_mode), list(type), maybe_modes).
 :- mode split_types_and_modes(in, out, out) is det.
 
+:- pred split_type_and_mode(type_and_mode, type, maybe(mode)).
+:- mode split_type_and_mode(in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -280,6 +283,9 @@ split_types_and_modes_2([TM|TMs], Result0, [T|Ts], [M|Ms], Result) :-
 
 split_type_and_mode(type_only(T), _, T, (free -> free), no).
 split_type_and_mode(type_and_mode(T,M), R, T, M, R).
+
+split_type_and_mode(type_only(T), T, no).
+split_type_and_mode(type_and_mode(T,M), T, yes(M)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

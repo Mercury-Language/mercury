@@ -1624,6 +1624,17 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 				% of a unification is exported
 	;	local.		% defined in the implementation of this module
 
+	% N-ary functions are converted into N+1-ary predicates.
+	% (Clauses are converted in make_hlds, but calls to functions
+	% cannot be converted until after type-checking, once we have
+	% resolved overloading.  So we do that during mode analysis.)
+	% The `is_pred_or_func' field of the pred_info records whether
+	% a pred_info is really for a predicate or whether it is for
+	% what was originally a function.
+:- type pred_or_func
+	--->	predicate
+	;	function.
+
 	% Predicates can be marked, to request that transformations be
 	% performed on them and to record that these transformations have been
 	% done and are still valid.
@@ -1661,8 +1672,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
 			condition, term__context, clauses_info, import_status,
-			bool, goal_type, pred_info).
-:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
+			bool, goal_type, pred_or_func, pred_info).
+:- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, in, out)
+	is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -1751,6 +1763,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_marker_list(pred_info, list(marker_status), pred_info).
 :- mode pred_info_set_marker_list(in, in, out) is det.
 
+:- pred pred_info_get_is_pred_or_func(pred_info, pred_or_func).
+:- mode pred_info_get_is_pred_or_func(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1797,13 +1812,15 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 			goal_type,	% whether the goals seen so far for
 					% this pred are clauses, 
 					% pragma(c_code, ...) decs, or none
-			list(marker_status)
+			list(marker_status),
 					% records which transformations
 					% have been done or are to be done
+			pred_or_func	% whether this "predicate" was really
+					% a predicate or a function
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
-		ClausesInfo, Status, Inline, GoalType, PredInfo) :-
+		ClausesInfo, Status, Inline, GoalType, PredOrFunc, PredInfo) :-
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
@@ -1814,10 +1831,10 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
 	),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
-		GoalType, Markers).
+		GoalType, Markers, PredOrFunc).
 
 pred_info_procids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _),
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -1843,42 +1860,43 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M),
-	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, L, M).
+	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
+	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, L, M, N).
 
 pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, 
-		_, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
-	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M),
+	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N),
 	PredInfo = predicate(TypeVarSet, ArgTypes, 
-			C, D, E, F, G, H, I, J, K, L, M).
+			C, D, E, F, G, H, I, J, K, L, M, N).
 
 pred_info_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M),
-	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M).
+	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
+	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, N).
 
 pred_info_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
-	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
+				_).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -1897,37 +1915,42 @@ pred_info_is_pseudo_exported(PredInfo) :-
 	ImportStatus = pseudo_exported.
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, N).
 
 pred_info_set_status(PredInfo0, Status, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L, M).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, L, M, N).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
+				N).
 
 pred_info_get_goal_type(PredInfo, GoalType) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, N).
 
 pred_info_is_inlined(PredInfo0) :-
 	pred_info_get_marker_list(PredInfo0, Markers),
 	list__member(request(inline), Markers).
 
 pred_info_get_marker_list(PredInfo, Markers) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, _).
 
 pred_info_set_marker_list(PredInfo0, Markers, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, N).
+
+pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
+			IsPredOrFunc).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -371,7 +371,7 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
 	pred_info_init(ModuleName, SymName, Arity, TVarSet, ArgTypes, true,
-		Context, ClausesInfo, local, no, none, PredInfo0),
+		Context, ClausesInfo, local, no, none, predicate, PredInfo0),
 
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, yes(Detism), ModeId),

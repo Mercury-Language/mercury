@@ -81,7 +81,7 @@ constraint__transform_proc_1(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	varset__init(ModeVarSet),
 
 	io__write_string("\nProcessing: ", IoState0, IoState1),
-	mercury_output_mode_subdecl(ModeVarSet, unqualified(Name),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
 				Modes, Det, Context, IoState1, IoState2),
 	io__write_string("\n", IoState2, IoState3),
 

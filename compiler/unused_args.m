@@ -215,11 +215,11 @@ setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
 	).
 
 
-	% searches for the dependencies of a variable, fails if the variable
-	%	is used
-:- pred var_is_unused(pred_proc_id::in, var::in, var_usage::in) is semidet.
+	% searches for the dependencies of a variable, succeeds if the variable
+	%	is definitely used
+:- pred var_is_used(pred_proc_id::in, var::in, var_usage::in) is semidet.
 
-var_is_unused(PredProc, Var, VarUsage) :-
+var_is_used(PredProc, Var, VarUsage) :-
 	\+ (
 		map__search(VarUsage, PredProc, UsageInfos),
 		map__contains(UsageInfos, Var)
@@ -479,7 +479,7 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 			(
 				set__member(Argument, ArgDep0),
 				Argument = PredProc - ArgVar,
-				var_is_unused(PredProc, ArgVar, VarUsage)
+				var_is_used(PredProc, ArgVar, VarUsage)
 			;	
 				set__member(Var2, VarDep0),
 				\+ map__contains(LocalVars0, Var2)
@@ -666,7 +666,8 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
 	pred_info_init(Module, unqualified(Name), Arity, Tvars, ArgTypes, true,
-		Context, ClausesInfo, local, Inline, GoalType, PredInfo1),
+		Context, ClausesInfo, local, Inline, GoalType, predicate,
+		PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 

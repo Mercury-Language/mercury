@@ -139,18 +139,34 @@ goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond), Context)
 	maybe_write_line_number(Context),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
-goedel_output_item(mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
-	goedel_output_mode(VarSet, PredName, Modes, Context).
+goedel_output_item(func(VarSet, PredName, TypesAndModes, RetTypeAndMode, _Det,
+		_Cond), Context) -->
+	io__write_string("\n"),
+	maybe_write_line_number(Context),
+	goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
+		Context).
+
+goedel_output_item(pred_mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
+	goedel_output_pred_mode(VarSet, PredName, Modes, Context).
+goedel_output_item(func_mode(VarSet, PredName, ArgModes, RetMode, _Det, _Cond),
+		Context) -->
+	goedel_output_func_mode(VarSet, PredName, ArgModes, RetMode, Context).
 
 goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
 	% io__write_string("warning: module declarations not yet supported.\n").
 	[].
 
-goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
+goedel_output_item(pred_clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_write_line_number(Context),
-	goedel_output_clause(VarSet, PredName, Args, Body, Context).
+	goedel_output_pred_clause(VarSet, PredName, Args, Body, Context).
 
-%Give a warning but ignore pragma declarations.
+goedel_output_item(func_clause(VarSet, PredName, Args, Result, Body), Context)
+		-->
+	maybe_write_line_number(Context),
+	goedel_output_func_clause(VarSet, PredName, Args, Result, Body,
+		Context).
+
+% Give a warning but ignore pragma declarations.
 goedel_output_item(pragma(_Pragma), _Context) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
@@ -318,7 +334,7 @@ goedel_output_pred(VarSet, PredName, TypesAndModes, Context) -->
 	(
 		{ MaybeModes = yes(Modes) }
 	->
-		goedel_output_mode(VarSet, PredName, Modes, Context)
+		goedel_output_pred_mode(VarSet, PredName, Modes, Context)
 	;
 		[]
 	).
@@ -363,13 +379,52 @@ goedel_output_remaining_types([Type | Types], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred goedel_output_func(varset, sym_name, list(type_and_mode), type_and_mode,
+		term__context, io__state, io__state).
+:- mode goedel_output_func(in, in, in, in, in, di, uo) is det.
+
+goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode, Context) -->
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
+	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
+	goedel_output_func_type(VarSet, PredName, Types, RetType, Context),
+	(
+		{ MaybeModes = yes(Modes) },
+		{ MaybeRetMode = yes(RetMode) }
+	->
+		goedel_output_func_mode(VarSet, PredName, Modes, RetMode,
+			Context)
+	;
+		[]
+	).
+
+:- pred goedel_output_func_type(varset, sym_name, list(type), type,
+		term__context, io__state, io__state).
+:- mode goedel_output_func_type(in, in, in, in, in, di, uo) is det.
+
+goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
+	goedel_output_ctors([FuncName - Types], RetType, VarSet).
+
+%-----------------------------------------------------------------------------%
+
 	% Output a mode declaration for a predicate.
 
-:- pred goedel_output_mode(varset, sym_name, list(mode), term__context,
+:- pred goedel_output_pred_mode(varset, sym_name, list(mode), term__context,
 			io__state, io__state).
-:- mode goedel_output_mode(in, in, in, in, di, uo) is det.
+:- mode goedel_output_pred_mode(in, in, in, in, di, uo) is det.
 
-goedel_output_mode(_VarSet, _PredName, _Modes, _Context) -->
+goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context) -->
+	% io__write_string("% warning: mode declarations not supported.\n"),
+	[].
+
+%-----------------------------------------------------------------------------%
+
+	% Output a mode declaration for a function.
+
+:- pred goedel_output_func_mode(varset, sym_name, list(mode), mode,
+			term__context, io__state, io__state).
+:- mode goedel_output_func_mode(in, in, in, in, in, di, uo) is det.
+
+goedel_output_func_mode(_VarSet, _PredName, _Modes, _RetMode, _Context) -->
 	% io__write_string("% warning: mode declarations not supported.\n"),
 	[].
 
@@ -377,14 +432,37 @@ goedel_output_mode(_VarSet, _PredName, _Modes, _Context) -->
 
 	% Output a clause.
 
-:- pred goedel_output_clause(varset, sym_name, list(term), goal, term__context,
-			io__state, io__state).
-:- mode goedel_output_clause(in, in, in, in, in, di, uo) is det.
+:- pred goedel_output_pred_clause(varset, sym_name, list(term), goal,
+			term__context, io__state, io__state).
+:- mode goedel_output_pred_clause(in, in, in, in, in, di, uo) is det.
 
-goedel_output_clause(VarSet, PredName, Args, Body, Context) -->
+goedel_output_pred_clause(VarSet, PredName, Args, Body, Context) -->
 	{ unqualify_name(PredName, PredName2) },
 	goedel_output_term(term__functor(term__atom(PredName2), Args, Context),
 			VarSet),
+	(
+		{ Body = true - Context }
+	->
+		[]
+	;
+		io__write_string(" <-\n\t"),
+		goedel_output_goal(Body, VarSet, 1)
+	),
+	io__write_string(".\n").
+
+	% Output an equation.
+
+:- pred goedel_output_func_clause(varset, sym_name, list(term), term, goal,
+			term__context, io__state, io__state).
+:- mode goedel_output_func_clause(in, in, in, in, in, in, di, uo) is det.
+
+goedel_output_func_clause(VarSet, PredName, Args, Result, Body, Context) -->
+	{ unqualify_name(PredName, PredName2) },
+	goedel_output_term(
+		term__functor(term__atom("="), [
+			term__functor(term__atom(PredName2), Args, Context),
+			Result], Context),
+		VarSet),
 	(
 		{ Body = true - Context }
 	->

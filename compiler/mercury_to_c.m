@@ -238,7 +238,7 @@ c_gen_proc(Indent, ModuleInfo, PredId, ProcId, Pred, Proc) -->
 	c_gen_indent(Indent),
 	io__write_string("** "),
 	{ varset__init(ModeVarSet) },
-	mercury_output_mode_decl(ModeVarSet, unqualified(PredName), 
+	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName), 
 			HeadModes, yes(InterfaceDeterminism), ModeContext),
 	c_gen_indent(Indent),
 	io__write_string("*/\n"),

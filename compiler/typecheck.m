@@ -1562,10 +1562,12 @@ make_pred_cons_info_list([PredId|PredIds], PredTable, Arity, ModuleInfo,
 				list(cons_type_info), list(cons_type_info)).
 :- mode make_pred_cons_info(in, in, in, in, in, out) is det.
 
-make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
+make_pred_cons_info(PredId, PredTable, FuncArity, _ModuleInfo, L0, L) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	predicate_arity(ModuleInfo, PredId, PredArity),
+	pred_info_arity(PredInfo, PredArity),
+	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
 	(
+		IsPredOrFunc = predicate,
 		PredArity >= FuncArity
 	->
 		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
@@ -1581,6 +1583,36 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 			L = [ConsInfo | L0]
 		;
 			error("make_pred_cons_info: split_list failed")
+		)
+	;
+		IsPredOrFunc = function,
+		PredAsFuncArity is PredArity - 1,
+		PredAsFuncArity >= FuncArity
+	->
+		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
+		(
+			list__split_list(FuncArity, CompleteArgTypes,
+				FuncArgTypes, FuncTypeParams),
+			list__length(FuncTypeParams, NumParams0),
+			NumParams1 is NumParams0 - 1,
+			list__split_list(NumParams1, FuncTypeParams,
+				FuncArgTypeParams, [FuncReturnTypeParam])
+		->
+			( FuncArgTypeParams = [] ->
+				FuncType = FuncReturnTypeParam
+			;
+				term__context_init("<builtin>", 0, Context),
+				FuncType = term__functor(term__atom("="), [
+					term__functor(term__atom("func"),
+						FuncArgTypeParams, Context),
+						FuncReturnTypeParam
+					], Context)
+			),
+			ConsInfo = cons_type_info(PredTypeVarSet, FuncType,
+					FuncArgTypes),
+			L = [ConsInfo | L0]
+		;
+			error("make_pred_cons_info: split_list or remove_suffix failed")
 		)
 	;
 		L = L0

@@ -301,12 +301,19 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ pred_info_get_marker_list(PredInfo, Markers) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
 		no, Context),
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
 	io__write_int(PredId),
+	io__write_string(", category: "),
+	( { PredOrFunc = function }, !,
+		io__write_string("function")
+	; { PredOrFunc = predicate },
+		io__write_string("predicate")
+	),
 	io__write_string(", status: "),
 	hlds_out__write_import_status(ImportStatus),
 	io__write_string("\n"),
@@ -1071,7 +1078,7 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ varset__init(ModeVarSet) },
-	mercury_output_mode_decl(ModeVarSet, unqualified(PredName), 
+	mercury_output_pred_mode_decl(ModeVarSet, unqualified(PredName), 
 			HeadModes, DeclaredDeterminism, ModeContext),
 
 	( { ImportStatus = pseudo_imported, ProcId = 0 } ->

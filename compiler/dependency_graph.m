@@ -332,10 +332,10 @@ dependency_graph__write_dependency_graph_3([S|Ss], Node, DepGraph,
 
 	{ varset__init(ModeVarSet) },
 
-	mercury_output_mode_subdecl(ModeVarSet, unqualified(PName),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
 						PModes, PDet, PContext),
 	io__write_string(" -> "),
-	mercury_output_mode_subdecl(ModeVarSet, unqualified(CName),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
 						CModes, CDet, CContext),
 	io__write_string(".\n"),
 
@@ -371,7 +371,7 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
 	{ varset__init(ModeVarSet) },
 
 	io__write_string("% "),
-	mercury_output_mode_subdecl(ModeVarSet, unqualified(Name),
+	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
 						Modes, Det, Context),
 	io__write_string("\n"),
 	dependency_graph__write_clique(Rest, ModuleInfo).

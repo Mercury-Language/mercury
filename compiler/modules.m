@@ -93,7 +93,11 @@ make_interface(ModuleName, Items0) -->
 
 check_for_clauses_in_interface([], []) --> [].
 check_for_clauses_in_interface([Item0 | Items0], Items) -->
-	( { Item0 = clause(_,_,_,_) - Context } ->
+	(
+		( { Item0 = pred_clause(_,_,_,_) - Context }
+		; { Item0 = func_clause(_,_,_,_,_) - Context }
+		)
+	->
 		prog_out__write_context(Context),
 		io__write_string("Warning: clause in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)

@@ -747,7 +747,8 @@ create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
                 % *** This will need to be fixed when the condition
                 %       field of the pred_info becomes used
         pred_info_init(Module, unqualified(Name), Arity, Tvars, Types, true,
-                Context, ClausesInfo, Status, Inline, GoalType, PredInfo1),
+                Context, ClausesInfo, Status, Inline, GoalType, predicate,
+		PredInfo1),
         pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo2),
 	pred_info_procedures(PredInfo2, Procs0),
 	next_mode_id(Procs0, no, NewProcId),

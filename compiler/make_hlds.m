@@ -120,7 +120,10 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 :- mode add_item_decl(in, in, in, in, out, out, di, uo) is det.
 
 	% skip clauses
-add_item_decl(clause(_, _, _, _), _, Status, Module, Status, Module) --> [].
+add_item_decl(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
+		--> [].
+add_item_decl(func_clause(_, _, _, _, _), _, Status, Module, Status, Module)
+		--> [].
 
 add_item_decl(type_defn(_, _, _), _, Status, Module, Status, Module) --> [].
 
@@ -137,10 +140,21 @@ add_item_decl(pred(VarSet, PredName, TypesAndModes, MaybeDet, Cond), Context,
 	module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet,
 		Cond, Context, Status, Module).
 
-add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
-		Module0, Status, Module) -->
+add_item_decl(func(VarSet, FuncName, TypesAndModes, RetTypeAndMode, MaybeDet,
+		Cond), Context, Status, Module0, Status, Module) -->
+	module_add_func(Module0, VarSet, FuncName, TypesAndModes,
+		RetTypeAndMode, MaybeDet, Cond, Context, Status, Module).
+
+add_item_decl(pred_mode(VarSet, PredName, Modes, MaybeDet, Cond), Context,
+		Status, Module0, Status, Module) -->
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
-		Context, Module).
+		Context, function, Module).
+
+add_item_decl(func_mode(VarSet, FuncName, Modes, RetMode, MaybeDet, Cond),
+		Context, Status, Module0, Status, Module) -->
+	{ list__append(Modes, [RetMode], Modes1) },
+	module_add_mode(Module0, VarSet, FuncName, Modes1,
+		MaybeDet, Cond, Context, predicate, Module).
 
 add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 	(
@@ -260,7 +274,11 @@ add_item_type_defn(module_defn(_VarSet, ModuleDefn), _Context, Status0, Module0,
 		{ Module = Module0 }
 	).
 
-add_item_type_defn(clause(_, _, _, _), _, Status, Module, Status, Module) -->
+add_item_type_defn(func_clause(_, _, _, _, _), _, Status, Module, Status,
+		Module) -->
+	[].
+add_item_type_defn(pred_clause(_, _, _, _), _, Status, Module, Status, Module)
+		-->
 	[].
 add_item_type_defn(inst_defn(_, _, _), _, Status, Module, Status, Module) -->
 	[].
@@ -268,8 +286,12 @@ add_item_type_defn(mode_defn(_, _, _), _, Status, Module, Status, Module) -->
 	[].
 add_item_type_defn(pred(_, _, _, _, _), _, Status, Module, Status, Module) -->
 	[].
-add_item_type_defn(mode(_, _, _, _, _), _, Status, Module, Status, Module) -->
-	[].
+add_item_type_defn(func(_, _, _, _, _, _), _, Status, Module, Status, Module)
+	--> [].
+add_item_type_defn(pred_mode(_, _, _, _, _), _, Status, Module, Status, Module)
+	--> [].
+add_item_type_defn(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
+		Module) --> [].
 add_item_type_defn(pragma(_), _, Status, Module, Status, Module) --> [].
 add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 
@@ -281,15 +303,21 @@ add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 			io__state, io__state).
 :- mode add_item_clause(in, in, in, out, di, uo) is det.
 
-add_item_clause(clause(VarSet, PredName, Args, Body), Context, Module0,
+add_item_clause(func_clause(VarSet, PredName, Args, Result, Body), Context,
+		Module0, Module) -->
+	module_add_func_clause(Module0, VarSet, PredName, Args, Result, Body,
+		Context, Module).
+add_item_clause(pred_clause(VarSet, PredName, Args, Body), Context, Module0,
 			Module) -->
-	module_add_clause(Module0, VarSet, PredName, Args, Body, Context,
+	module_add_pred_clause(Module0, VarSet, PredName, Args, Body, Context,
 			Module).
 add_item_clause(type_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(inst_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(pred(_, _, _, _, _), _, Module, Module) --> [].
-add_item_clause(mode(_, _, _, _, _), _, Module, Module) --> [].
+add_item_clause(func(_, _, _, _, _, _), _, Module, Module) --> [].
+add_item_clause(pred_mode(_, _, _, _, _), _, Module, Module) --> [].
+add_item_clause(func_mode(_, _, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
 add_item_clause(pragma(Pragma), Context, Module0, Module) -->
 	(
@@ -556,28 +584,51 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 		Context, Status, Module) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	add_new_pred(Module0, VarSet, PredName, Types, Cond, Context, Status,
-		Module1),
+		predicate, Module1),
 	(
-		% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	->
 		module_add_mode(Module1, VarSet, PredName, Modes, MaybeDet,
-			Cond, Context, Module)
+			Cond, Context, predicate, Module)
+	;
+		{ Module = Module1 }
+	).
+
+:- pred module_add_func(module_info, varset, sym_name, list(type_and_mode),
+		type_and_mode, maybe(determinism), condition, term__context,
+		import_status, module_info,
+		io__state, io__state).
+:- mode module_add_func(in, in, in, in, in, in, in, in, in, out, di, uo) is det.
+
+module_add_func(Module0, VarSet, FuncName, TypesAndModes, RetTypeAndMode,
+		MaybeDet, Cond, Context, Status, Module) -->
+	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
+	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
+	{ list__append(Types, [RetType], Types1) },
+	add_new_pred(Module0, VarSet, FuncName, Types1, Cond, Context, Status,
+		function, Module1),
+	(
+		{ MaybeModes = yes(Modes) },
+		{ MaybeRetMode = yes(RetMode) }
+	->
+		{ list__append(Modes, [RetMode], Modes1) },
+		module_add_mode(Module1, VarSet, FuncName, Modes1,
+			MaybeDet, Cond, Context, function, Module)
 	;
 		{ Module = Module1 }
 	).
 
 :- pred add_new_pred(module_info, tvarset, sym_name, list(type),
-		condition, term__context, import_status,
+		condition, term__context, import_status, pred_or_func,
 		module_info, io__state, io__state).
-:- mode add_new_pred(in, in, in, in, in, in, in, out, di, uo) is det.
+:- mode add_new_pred(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
 % NB.  Predicates are also added in polymorphism.m, which converts
 % lambda expressions into separate predicates, so any changes may need
 % to be reflected there too.
 
 add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
-		Module) -->
+		PredOrFunc, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ list__length(Types, Arity) },
 	(
@@ -593,7 +644,7 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 		{ clauses_info_init(Arity, ClausesInfo) },
 		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
 				Cond, Context, ClausesInfo, Status, no, none,	
-				PredInfo0) },
+				PredOrFunc, PredInfo0) },
 		(
 			{ predicate_table_search_m_n_a(PredicateTable0,
 				MNameOfPred, PName, Arity, [OrigPred|_]) }
@@ -712,7 +763,7 @@ add_special_pred_decl(SpecialPredId,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo0),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
-		Context, ClausesInfo0, Status, no, none, PredInfo0),
+		Context, ClausesInfo0, Status, no, none, predicate, PredInfo0),
 
 	add_new_proc(PredInfo0, Arity, ArgModes, yes(Det), Context,
 			PredInfo, _),
@@ -739,15 +790,17 @@ add_new_proc(PredInfo0, Arity, ArgModes, MaybeDet, Context, PredInfo, ModeId) :-
 	% Add a mode declaration for a predicate.
 
 :- pred module_add_mode(module_info, varset, sym_name, list(mode),
-		maybe(determinism), condition, term__context, module_info,
-		io__state, io__state).
-:- mode module_add_mode(in, in, in, in, in, in, in, out, di, uo) is det.
+		maybe(determinism), condition, term__context, pred_or_func,
+		module_info, io__state, io__state).
+:- mode module_add_mode(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
 	% We should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments.
 
 module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
-			MContext, ModuleInfo) -->
+			MContext, PredOrFunc, ModuleInfo) -->
+
+		% XXX should use PredOrFunc
 
 		% Lookup the pred declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), print an
@@ -771,6 +824,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 			"mode declaration"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, MContext,
+				PredOrFunc,
 				PredId, PredicateTable1) }
 	),
 
@@ -816,11 +870,12 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	% spurious errors.
 
 :- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
-				term__context, pred_id, predicate_table).
-:- mode preds_add_implicit(in, in, in, in, in, out, out) is det.
+				term__context, pred_or_func,
+				pred_id, predicate_table).
+:- mode preds_add_implicit(in, in, in, in, in, in, out, out) is det.
 
 preds_add_implicit(PredicateTable0,
-			ModuleName, PredName, Arity, Context,
+			ModuleName, PredName, Arity, Context, PredOrFunc,
 			PredId, PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars(Arity, TVarSet0, TypeVars, TVarSet),
@@ -828,7 +883,7 @@ preds_add_implicit(PredicateTable0,
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, local, no, none, PredInfo),
+		Context, ClausesInfo, local, no, none, PredOrFunc, PredInfo),
 	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
 		\+ predicate_table_search_m_n_a(PredicateTable0,
@@ -898,27 +953,57 @@ determinism_priority_step(10000).
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
+:- pred module_add_pred_clause(module_info, varset, sym_name, list(term), goal,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_clause(in, in, in, in, in, in, out, di, uo) is det.
+:- mode module_add_pred_clause(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
-			ModuleInfo) -->
+module_add_pred_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
+			Context, ModuleInfo) -->
 		% print out a progress message
-	{ module_info_name(ModuleInfo0, ModuleName) },
-	{ list__length(Args, Arity) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
+		{ list__length(Args, Arity) },
 		io__write_string("% Processing clause for pred `"),
 		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'...\n")
 	;
 		[]
 	),
+	module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body,
+		Context, predicate, ModuleInfo).
+
+:- pred module_add_func_clause(module_info, varset, sym_name, list(term), term,
+			goal, term__context, module_info, io__state, io__state).
+:- mode module_add_func_clause(in, in, in, in, in, in, in, out, di, uo) is det.
+
+module_add_func_clause(ModuleInfo0, ClauseVarSet, FuncName, Args0, Result, Body,
+			Context, ModuleInfo) -->
+		% print out a progress message
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	( { VeryVerbose = yes } ->
+		io__write_string("% Processing clause for func `"),
+		{ list__length(Args, Arity) },
+		hlds_out__write_pred_call_id(FuncName/Arity),
+		io__write_string("'...\n")
+	;
+		[]
+	),
+	{ list__append(Args0, [Result], Args) },
+	module_add_clause(ModuleInfo0, ClauseVarSet, FuncName, Args, Body,
+		Context, function, ModuleInfo).
+
+:- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
+		term__context, pred_or_func, module_info, io__state, io__state).
+:- mode module_add_clause(in, in, in, in, in, in, in, out, di, uo) is det.
+
+module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
+			PredOrFunc, ModuleInfo) -->
 		% Lookup the pred declaration in the predicate table.
 		% (if it's not there, print an error message and insert
 		% a dummy declaration for the predicate.)
+	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
+	{ list__length(Args, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_m_n_a(PredicateTable0,
@@ -932,6 +1017,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		undefined_pred_error(PredName, Arity, Context, "clause"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
+				PredOrFunc,
 				PredId, PredicateTable1) }
 	),
 		% Lookup the pred_info for this pred,
@@ -1039,6 +1125,7 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context,
 				"pragma (c_code)"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
+				predicate,
 				PredId, PredicateTable1) }
 	),
 		% Lookup the pred_info for this pred,

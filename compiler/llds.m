@@ -726,11 +726,11 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	;
 		[]
 	),
-	io__write_string("/* code for predicate "),
+	io__write_string("/* code for predicate '"),
 		% Now that we have unused_args.m mangling predicate names,
 		% we should probably demangle them here.
 	io__write_string(Name),
-	io__write_string("/"),
+	io__write_string("'/"),
 	io__write_int(Arity),
 	io__write_string(" in mode "),
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority

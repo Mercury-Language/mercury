@@ -1603,6 +1603,62 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 			UnifyContext, GoalInfo0, HowToCheckGoal,
 			Goal, ModeInfo0, ModeInfo) :-
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_var_types(ModeInfo0, VarTypes0),
+	map__lookup(VarTypes0, X0, TypeOfX),
+	module_info_get_predicate_table(ModuleInfo0, PredTable),
+	list__length(ArgVars0, Arity),
+	mode_info_get_predid(ModeInfo0, ThisPredId),
+	(
+		%
+		% is the function symbol a user-defined function, rather
+		% than a functor which represents a data constructor?
+		%
+
+		% As an optimization, if HowToCheck = check_unique_modes,
+		% then don't bother checking, since they will have already
+		% been expanded.
+		HowToCheckGoal \= check_unique_modes,
+
+		% Find the set of candidate predicates which have the
+		% specified name and arity
+		% (XXX and module, if module-qualified)
+		Name = term__atom(PredName),
+		PredArity is Arity + 1,		% n-ary func => n+1-ary pred
+		predicate_table_search_name_arity(PredTable, PredName,
+			PredArity, PredIds),
+
+		% Check if there any of the candidate predicates are functions,
+		% and have argument/return types which subsumes the actual
+		% argument/return types of this function call
+		module_info_pred_info(ModuleInfo0, ThisPredId, PredInfo),
+		pred_info_typevarset(PredInfo, TVarSet),
+		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
+		list__append(ArgTypes0, [TypeOfX], ArgTypes),
+		find_matching_function(PredIds, ModuleInfo0, TVarSet, ArgTypes,
+			PredId)
+	->
+		%
+		% Convert function calls into predicate calls:
+		% replace `X = f(A, B, C)'
+		% with `f(A, B, C, X)'
+		%
+		ProcId = 0,
+		list__append(ArgVars0, [X0], ArgVars),
+		hlds__is_builtin_make_builtin(no, no, Builtin),
+		FuncCallUnifyContext = call_unify_context(X0,
+					functor(Name, ArgVars0), UnifyContext),
+		FuncName = unqualified(PredName),
+		map__init(Follow),
+		FuncCall = call(PredId, ProcId, ArgVars, Builtin,
+				yes(FuncCallUnifyContext), FuncName, Follow),
+		%
+		% now modecheck it
+		%
+		modecheck_goal_2(FuncCall, GoalInfo0, Goal, ModeInfo0, ModeInfo)
+
+	;
+
 	%
 	% We replace any unifications with higher-order pred constants
 	% by lambda expressions.  For example, we replace
@@ -1624,10 +1680,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	% lambda.m will (I hope) turn the lambda expression
 	% back into a higher-order pred constant again.
 	%
-	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
-	mode_info_get_var_types(ModeInfo0, VarTypes0),
-	map__lookup(VarTypes0, X0, TypeOfX),
-	(
+
 		% check if variable has a higher-order pred type
 		TypeOfX = term__functor(term__atom("pred"), PredArgTypes, _),
 		Name = term__atom(PName),
@@ -1651,7 +1704,6 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% Build up the hlds__goal_expr for the call that will form
 		% the lambda goal
 		%
-		list__length(ArgVars0, Arity),
 		get_pred_id_and_proc_id(PName, Arity, PredArgTypes,
 				 ModuleInfo0, PredId, ProcId),
 		PredName = unqualified(PName),
@@ -1873,6 +1925,53 @@ modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
 		Mode = ModeOfX - ModeOfY,
 			% return any old garbage
 		Unification = Unification0
+	).
+
+:- pred find_matching_function(list(pred_id), module_info, tvarset, list(type),
+				pred_id).
+:- mode find_matching_function(in, in, in, in, out) is semidet.
+
+find_matching_function([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
+		ThePredId) :-
+	(
+		%
+		% check that this "predicate" is really a function
+		%
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_get_is_pred_or_func(PredInfo, function),
+
+		%
+		% lookup the argument types of the candidate predicate
+		% (i.e. the argument types + return type of the function)
+		%
+		pred_info_arg_types(PredInfo, PredTVarSet, PredArgTypes0),
+
+		%
+		% rename them apart from the actual argument types
+		%
+		varset__merge_subst(TVarSet, PredTVarSet, _TVarSet1, Subst),
+		term__apply_substitution_to_list(PredArgTypes0, Subst,
+					PredArgTypes),
+
+		%
+		% check that the types of the candidate predicate subsume
+		% the actual argument types
+		%
+		term__vars_list(ArgTypes, ArgTypeVars),
+		map__init(TypeSubst),
+		type_unify_list(ArgTypes, PredArgTypes, ArgTypeVars, TypeSubst,
+			TypeSubst)
+	->
+		%
+		% we've found a matching predicate
+		% (if there was more than one matching predicate, type checking
+		% would have reported an ambiguity error, so this must be
+		% the *only* matching predicate)
+		%
+		ThePredId = PredId
+	;
+		find_matching_function(PredIds, ModuleInfo,
+				TVarSet, ArgTypes, ThePredId)
 	).
 
 :- pred modecheck_unify_functor(var, const, list(var), unification,
