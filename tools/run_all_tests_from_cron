@@ -169,7 +169,7 @@ fi
 if [ -s $logfile.errs ]; then
 	echo
 	echo first 100 lines of log file summary:
-	head -100 $logfile
+	head -100 $logfile.errs
 elif [ $test_status = "FAILED" ]; then
 	echo
 	echo last 20 lines of log file:
