@@ -21,7 +21,7 @@
 	;	timeout(int)
 	;	menu
 	;	root(fields)
-	;	clique(int, fields)
+	;	clique(int, fields, maybe(int))
 	;	proc(int, fields)
 	;	top_procs(sort_measurement, include_descendants,
 			display_limit, fields)
@@ -60,6 +60,8 @@
 					% w: memory words
 					% The characters must be sorted.
 
+:- func default_ancestor_limit = maybe(int).
+
 :- func default_fields = string.
 :- func all_fields = string.
 
@@ -81,8 +83,9 @@
 :- import_module util.
 :- import_module char, string, list, set, require.
 
-default_fields = "pqw".
+default_ancestor_limit = yes(5).
 
+default_fields = "pqw".
 all_fields = "apqtw".
 
 to_server_pipe_name(DataFileName) =
@@ -154,8 +157,16 @@ cmd_to_query(Cmd, Query) :-
 		Cmd = root(Fields),
 		Query = format("root+%s", [s(Fields)])
 	;
-		Cmd = clique(CliqueNum, Fields),
-		Query = format("clique+%s+%d", [s(Fields), i(CliqueNum)])
+		Cmd = clique(CliqueNum, Fields, MaybeAncestorLimit),
+		(
+			MaybeAncestorLimit = yes(AncestorLimit),
+			Query = format("clique+%s+%d+%d",
+				[s(Fields), i(CliqueNum), i(AncestorLimit)])
+		;
+			MaybeAncestorLimit = no,
+			Query = format("clique+%s+%d+no",
+				[s(Fields), i(CliqueNum)])
+		)
 	;
 		Cmd = proc(ProcNum, Fields),
 		Query = format("proc+%s+%d", [s(Fields), i(ProcNum)])
@@ -199,16 +210,30 @@ query_to_cmd(QueryString, MaybeCmd) :-
 	split(QueryString, ('+'), Pieces),
 	(
 		(
-			Pieces = ["clique", NStr],
+			Pieces = ["clique", NStr, AncestorLimitStr],
 			string__to_int(NStr, N),
+			( string__to_int(AncestorLimitStr, AncestorLimit) ->
+				MaybeAncestorLimit = yes(AncestorLimit)
+			; AncestorLimitStr = "no" ->
+				MaybeAncestorLimit = no
+			;
+				fail
+			),
 			Fields = default_fields
 		;
-			Pieces = ["clique", Fields, NStr],
+			Pieces = ["clique", Fields, NStr, AncestorLimitStr],
 			string__to_int(NStr, N),
+			( string__to_int(AncestorLimitStr, AncestorLimit) ->
+				MaybeAncestorLimit = yes(AncestorLimit)
+			; AncestorLimitStr = "no" ->
+				MaybeAncestorLimit = no
+			;
+				fail
+			),
 			validate_fields(Fields)
 		)
 	->
-		MaybeCmd = yes(clique(N, Fields))
+		MaybeCmd = yes(clique(N, Fields, MaybeAncestorLimit))
 	;
 		(
 			Pieces = ["proc", NStr],

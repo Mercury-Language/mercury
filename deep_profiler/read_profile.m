@@ -21,23 +21,12 @@
 :- implementation.
 
 :- import_module measurements, array_util.
-:- import_module array, char, string, int, float, std_util, list, require.
+:- import_module array, char, string, int, float, list, require.
+:- import_module io_combinator.
 
-:- type deep_result(T)
-	--->	ok(T)
-	;	error(string).
-
-:- type deep_result2(T1, T2)
+:- type maybe_error2(T1, T2)
 	--->	ok2(T1, T2)
 	;	error2(string).
-
-:- type ptr_info --->
-		ptr_info(
-			ps	:: int,
-			css	:: int,
-			pd	:: int,
-			csd	:: int
-		).
 
 :- type ptr_kind
 	--->	ps
@@ -52,7 +41,7 @@ read_call_graph(FileName, Res) -->
 		read_id_string(Res1),
 		(
 			{ Res1 = ok(_) },
-			read_sequence7(
+			io_combinator__maybe_error_sequence_7(
 				read_fixed_size_int,
 				read_fixed_size_int,
 				read_fixed_size_int,
@@ -60,14 +49,13 @@ read_call_graph(FileName, Res) -->
 				read_num,
 				read_num,
 				read_num,
-				(pred(NumCSDs::in, NumCSSs::in,
-						NumPDs::in, NumPSs::in,
+				(pred(MaxCSD::in, MaxCSS::in,
+						MaxPD::in, MaxPS::in,
 						TicksPerSec::in,
 						InstrumentQuanta::in,
 						UserQuanta::in,
 						ResInitDeep::out) is det :-
-					init_deep(NumCSDs, NumCSSs,
-						NumPDs, NumPSs,
+					init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS,
 						TicksPerSec,
 						InstrumentQuanta, UserQuanta,
 						InitDeep0),
@@ -76,10 +64,8 @@ read_call_graph(FileName, Res) -->
 				Res2),
 			(
 				{ Res2 = ok(InitDeep) },
-				{ PtrInfo0 = ptr_info(0, 0, 0, 0) },
-				read_nodes(InitDeep, PtrInfo0, Res3),
-				io__seen_binary,
-				{ resize_arrays(Res3, Res) }
+				read_nodes(InitDeep, Res),
+				io__seen_binary
 			;
 				{ Res2 = error(Err) },
 				{ Res = error(Err) }
@@ -94,7 +80,7 @@ read_call_graph(FileName, Res) -->
 		{ Res = error(Msg) }
 	).
 
-:- pred read_id_string(deep_result(string)::out,
+:- pred read_id_string(maybe_error(string)::out,
 	io__state::di, io__state::uo) is det.
 
 read_id_string(Res) -->
@@ -118,75 +104,39 @@ id_string = "Mercury deep profiler data".
 :- pred init_deep(int::in, int::in, int::in, int::in, int::in, int::in,
 	int::in, initial_deep::out) is det.
 
-init_deep(NumCSDs, NumCSSs, NumPDs, NumPSs, InstrumentQuanta, UserQuanta,
-		TicksPerSec, InitDeep) :-
-	InitStats = profile_stats(
-		InstrumentQuanta,
-		UserQuanta,
-		-1, -1, -1, -1,
-		TicksPerSec),
+init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
+		InstrumentQuanta, UserQuanta, InitDeep) :-
+	InitStats = profile_stats(MaxCSD, MaxCSS, MaxPD, MaxPS,
+		TicksPerSec, InstrumentQuanta, UserQuanta),
+
 	InitDeep = initial_deep(
 		InitStats,
 		proc_dynamic_ptr(-1),
-		array__init(NumCSDs + 1,
+		array__init(MaxCSD + 1,
 			call_site_dynamic(
 				proc_dynamic_ptr(-1),
 				proc_dynamic_ptr(-1),
-				zero_own_prof_info,
-				no
+				zero_own_prof_info
 			)),
-		array__init(NumPDs + 1,
-			proc_dynamic(proc_static_ptr(-1), array([]), no)),
-		array__init(NumCSSs + 1,
+		array__init(MaxPD + 1,
+			proc_dynamic(proc_static_ptr(-1), array([]))),
+		array__init(MaxCSS + 1,
 			call_site_static(
 				proc_static_ptr(-1), -1,
 				normal_call(proc_static_ptr(-1), ""), -1, ""
 			)),
-		array__init(NumPSs + 1,
+		array__init(MaxPS + 1,
 			proc_static(dummy_proc_id, "", "", "", array([])))
 	).
 
-:- pred read_nodes(initial_deep::in, ptr_info::in,
-	deep_result2(initial_deep, ptr_info)::out,
+:- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
 	io__state::di, io__state::uo) is det.
 
-read_nodes(InitDeep0, PtrInfo0, Res) -->
+read_nodes(InitDeep0, Res) -->
 	read_byte(Res0),
 	(
 		{ Res0 = ok(Byte) },
-		( { Byte = token_call_site_static } ->
-			read_call_site_static(Res1),
-			(
-				{ Res1 = ok2(CallSiteStatic, CSSI) },
-				{ deep_insert(
-					InitDeep0 ^ init_call_site_statics,
-					CSSI, CallSiteStatic, CSSs) },
-				{ InitDeep1 = InitDeep0
-					^ init_call_site_statics := CSSs },
-				{ PtrInfo1 = PtrInfo0 ^ css
-					:= max(PtrInfo0 ^ css, CSSI) },
-				read_nodes(InitDeep1, PtrInfo1, Res)
-			;
-				{ Res1 = error2(Err) },
-				{ Res = error2(Err) }
-			)
-		; { Byte = token_proc_static } ->
-			read_proc_static(Res1),
-			(
-				{ Res1 = ok2(ProcStatic, PSI) },
-				{ deep_insert(
-					InitDeep0 ^ init_proc_statics,
-					PSI, ProcStatic, PSs) },
-				{ InitDeep1 = InitDeep0
-					^ init_proc_statics := PSs },
-				{ PtrInfo1 = PtrInfo0 ^ ps
-					:= max(PtrInfo0 ^ ps, PSI) },
-				read_nodes(InitDeep1, PtrInfo1, Res)
-			;
-				{ Res1 = error2(Err) },
-				{ Res = error2(Err) }
-			)
-		; { Byte = token_call_site_dynamic } ->
+		( { Byte = token_call_site_dynamic } ->
 			read_call_site_dynamic(Res1),
 			(
 				{ Res1 = ok2(CallSiteDynamic, CSDI) },
@@ -195,12 +145,10 @@ read_nodes(InitDeep0, PtrInfo0, Res) -->
 					CSDI, CallSiteDynamic, CSDs) },
 				{ InitDeep1 = InitDeep0
 					^ init_call_site_dynamics := CSDs },
-				{ PtrInfo1 = PtrInfo0 ^ csd
-					:= max(PtrInfo0 ^ csd, CSDI) },
-				read_nodes(InitDeep1, PtrInfo1, Res)
+				read_nodes(InitDeep1, Res)
 			;
 				{ Res1 = error2(Err) },
-				{ Res = error2(Err) }
+				{ Res = error(Err) }
 			)
 		; { Byte = token_proc_dynamic } ->
 			read_proc_dynamic(Res1),
@@ -211,37 +159,63 @@ read_nodes(InitDeep0, PtrInfo0, Res) -->
 					PDI, ProcDynamic, PDs) },
 				{ InitDeep1 = InitDeep0
 					^ init_proc_dynamics := PDs },
-				{ PtrInfo1 = PtrInfo0 ^ pd
-					:= max(PtrInfo0 ^ pd, PDI) },
-				read_nodes(InitDeep1, PtrInfo1, Res)
+				read_nodes(InitDeep1, Res)
 			;
 				{ Res1 = error2(Err) },
-				{ Res = error2(Err) }
+				{ Res = error(Err) }
+			)
+		; { Byte = token_call_site_static } ->
+			read_call_site_static(Res1),
+			(
+				{ Res1 = ok2(CallSiteStatic, CSSI) },
+				{ deep_insert(
+					InitDeep0 ^ init_call_site_statics,
+					CSSI, CallSiteStatic, CSSs) },
+				{ InitDeep1 = InitDeep0
+					^ init_call_site_statics := CSSs },
+				read_nodes(InitDeep1, Res)
+			;
+				{ Res1 = error2(Err) },
+				{ Res = error(Err) }
+			)
+		; { Byte = token_proc_static } ->
+			read_proc_static(Res1),
+			(
+				{ Res1 = ok2(ProcStatic, PSI) },
+				{ deep_insert(
+					InitDeep0 ^ init_proc_statics,
+					PSI, ProcStatic, PSs) },
+				{ InitDeep1 = InitDeep0
+					^ init_proc_statics := PSs },
+				read_nodes(InitDeep1, Res)
+			;
+				{ Res1 = error2(Err) },
+				{ Res = error(Err) }
 			)
 		; { Byte = token_root } ->
 			read_root(Res1),
 			(
 				{ Res1 = ok(PDPtr) },
 				{ InitDeep1 = InitDeep0 ^ init_root := PDPtr },
-				read_nodes(InitDeep1, PtrInfo0, Res)
+				read_nodes(InitDeep1, Res)
 			;
 				{ Res1 = error(Err) },
-				{ Res = error2(Err) }
+				{ Res = error(Err) }
 			)
 		;
 			{ format("unexpected token %d", [i(Byte)], Msg) },
-			{ Res = error2(Msg) }
+			{ Res = error(Msg) }
 		)
 	;
 		{ Res0 = eof },
-		{ Res = ok2(InitDeep0, PtrInfo0) }
+		{ Res = ok(InitDeep0) }
 	;
 		{ Res0 = error(Err) },
 		{ io__error_message(Err, Msg) },
-		{ Res = error2(Msg) }
+		{ Res = error(Msg) }
 	).
 
-:- pred read_root(deep_result(proc_dynamic_ptr)::out,
+:- pred read_root(maybe_error(proc_dynamic_ptr)::out,
 	io__state::di, io__state::uo) is det.
 
 read_root(Res) -->
@@ -256,12 +230,12 @@ read_root(Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_call_site_static(deep_result2(call_site_static, int)::out,
+:- pred read_call_site_static(maybe_error2(call_site_static, int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_static(Res) -->
 	% format("reading call_site_static.\n", []),
-	read_sequence4(
+	io_combinator__maybe_error_sequence_4(
 		read_ptr(css),
 		read_call_site_kind_and_callee,
 		read_num,
@@ -284,12 +258,12 @@ read_call_site_static(Res) -->
 	).
 
 
-:- pred read_proc_static(deep_result2(proc_static, int)::out,
+:- pred read_proc_static(maybe_error2(proc_static, int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_proc_static(Res) -->
 	% format("reading proc_static.\n", []),
-	read_sequence4(
+	io_combinator__maybe_error_sequence_4(
 		read_ptr(ps),
 		read_proc_id,
 		read_string,
@@ -321,7 +295,7 @@ read_proc_static(Res) -->
 		{ Res = error2(Err) }
 	).
 
-:- pred read_proc_id(deep_result(proc_id)::out,
+:- pred read_proc_id(maybe_error(proc_id)::out,
 	io__state::di, io__state::uo) is det.
 
 read_proc_id(Res) -->
@@ -344,11 +318,11 @@ read_proc_id(Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_proc_id_compiler_generated(deep_result(proc_id)::out,
+:- pred read_proc_id_compiler_generated(maybe_error(proc_id)::out,
 	io__state::di, io__state::uo) is det.
 
 read_proc_id_compiler_generated(Res) -->
-	read_sequence6(
+	io_combinator__maybe_error_sequence_6(
 		read_string,
 		read_string,
 		read_string,
@@ -363,11 +337,11 @@ read_proc_id_compiler_generated(Res) -->
 		),
 		Res).
 
-:- pred read_proc_id_user_defined(pred_or_func::in, deep_result(proc_id)::out,
+:- pred read_proc_id_user_defined(pred_or_func::in, maybe_error(proc_id)::out,
 	io__state::di, io__state::uo) is det.
 
 read_proc_id_user_defined(PredOrFunc, Res) -->
-	read_sequence5(
+	io_combinator__maybe_error_sequence_5(
 		read_string,
 		read_string,
 		read_string,
@@ -525,12 +499,12 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
 		fail
 	).
 
-:- pred read_proc_dynamic(deep_result2(proc_dynamic, int)::out,
+:- pred read_proc_dynamic(maybe_error2(proc_dynamic, int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_proc_dynamic(Res) -->
 	% format("reading proc_dynamic.\n", []),
-	read_sequence3(
+	io_combinator__maybe_error_sequence_3(
 		read_ptr(pd),
 		read_ptr(ps),
 		read_num,
@@ -544,7 +518,7 @@ read_proc_dynamic(Res) -->
 		(
 			{ Res2 = ok(Refs) },
 			{ PSPtr = proc_static_ptr(PSI) },
-			{ ProcDynamic = proc_dynamic(PSPtr, array(Refs), no) },
+			{ ProcDynamic = proc_dynamic(PSPtr, array(Refs)) },
 			{ Res = ok2(ProcDynamic, PDI) }
 		;
 			{ Res2 = error(Err) },
@@ -555,7 +529,7 @@ read_proc_dynamic(Res) -->
 		{ Res = error2(Err) }
 	).
 
-:- pred read_call_site_dynamic(deep_result2(call_site_dynamic, int)::out,
+:- pred read_call_site_dynamic(maybe_error2(call_site_dynamic, int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_dynamic(Res) -->
@@ -572,7 +546,7 @@ read_call_site_dynamic(Res) -->
 				{ PDPtr = proc_dynamic_ptr(PDI) },
 				{ DummyPDPtr = proc_dynamic_ptr(-1) },
 				{ CallSiteDynamic = call_site_dynamic(
-					DummyPDPtr, PDPtr, Profile, no) },
+					DummyPDPtr, PDPtr, Profile) },
 				{ Res = ok2(CallSiteDynamic, CSDI) }
 			;
 				{ Res3 = error(Err) },
@@ -587,7 +561,7 @@ read_call_site_dynamic(Res) -->
 		{ Res = error2(Err) }
 	).
 
-:- pred read_profile(deep_result(own_prof_info)::out,
+:- pred read_profile(maybe_error(own_prof_info)::out,
 	io__state::di, io__state::uo) is det.
 
 read_profile(Res) -->
@@ -651,8 +625,7 @@ read_profile(Res) -->
 			{ Res = error(Error) }
 		;
 			{ MaybeError7 = no },
-			{ Calls = Exits + Fails - Redos },
-			{ Res = ok(compress_profile(Calls, Exits, Fails, Redos, 
+			{ Res = ok(compress_profile(Exits, Fails, Redos, 
 				Quanta, Mallocs, Words)) }
 		)
 	;
@@ -675,7 +648,7 @@ maybe_read_num_handle_error(Value, MaybeError0, MaybeError) -->
 		{ MaybeError = yes(Error) }
 	).
 
-:- pred read_call_site_ref(deep_result(call_site_array_slot)::out,
+:- pred read_call_site_ref(maybe_error(call_site_array_slot)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_ref(Res) -->
@@ -711,7 +684,7 @@ read_call_site_ref(Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_call_site_kind(deep_result(call_site_kind)::out,
+:- pred read_call_site_kind(maybe_error(call_site_kind)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_kind(Res) -->
@@ -742,7 +715,7 @@ read_call_site_kind(Res) -->
 	).
 
 :- pred read_call_site_kind_and_callee(
-	deep_result(call_site_kind_and_callee)::out,
+	maybe_error(call_site_kind_and_callee)::out,
 	io__state::di, io__state::uo) is det.
 
 read_call_site_kind_and_callee(Res) -->
@@ -791,8 +764,8 @@ read_call_site_kind_and_callee(Res) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_n_things(int, pred(deep_result(T), io__state, io__state),
-		deep_result(list(T)), io__state, io__state).
+:- pred read_n_things(int, pred(maybe_error(T), io__state, io__state),
+	maybe_error(list(T)), io__state, io__state).
 :- mode read_n_things(in, pred(out, di, uo) is det, out, di, uo) is det.
 
 read_n_things(N, ThingReader, Res) -->
@@ -806,8 +779,8 @@ read_n_things(N, ThingReader, Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_n_things(int, pred(deep_result(T), io__state, io__state),
-		list(T), deep_result(list(T)), io__state, io__state).
+:- pred read_n_things(int, pred(maybe_error(T), io__state, io__state),
+	list(T), maybe_error(list(T)), io__state, io__state).
 :- mode read_n_things(in, pred(out, di, uo) is det, in, out, di, uo) is det.
 
 read_n_things(N, ThingReader, Things0, Res) -->
@@ -824,15 +797,15 @@ read_n_things(N, ThingReader, Things0, Res) -->
 		)
 	).
 
-:- pred read_things(pred(deep_result(T), io__state, io__state),
-		deep_result(list(T)), io__state, io__state).
+:- pred read_things(pred(maybe_error(T), io__state, io__state),
+	maybe_error(list(T)), io__state, io__state).
 :- mode read_things(pred(out, di, uo) is det, out, di, uo) is det.
 
 read_things(ThingReader, Res) -->
 	read_things(ThingReader, [], Res).
 
-:- pred read_things(pred(deep_result(T), io__state, io__state),
-		list(T), deep_result(list(T)), io__state, io__state).
+:- pred read_things(pred(maybe_error(T), io__state, io__state),
+	list(T), maybe_error(list(T)), io__state, io__state).
 :- mode read_things(pred(out, di, uo) is det, in, out, di, uo) is det.
 
 read_things(ThingReader, Things0, Res) -->
@@ -859,316 +832,7 @@ read_things(ThingReader, Things0, Res) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_sequence2(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(T1, T2, deep_result(T3)),
-	deep_result(T3), io__state, io__state).
-:- mode read_sequence2(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence2(P1, P2, Combine, Res) -->
-	call(P1, Res1),
-	(
-		{ Res1 = ok(T1) },
-		call(P2, Res2),
-		(
-			{ Res2 = ok(T2) },
-			{ call(Combine, T1, T2, Res) }
-		;
-			{ Res2 = error(Err) },
-			{ Res = error(Err) }
-		)
-	;
-		{ Res1 = error(Err) },
-		{ Res = error(Err) }
-	).
-
-:- pred read_sequence3(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(deep_result(T3), io__state, io__state),
-	pred(T1, T2, T3, deep_result(T4)),
-	deep_result(T4), io__state, io__state).
-:- mode read_sequence3(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence3(P1, P2, P3, Combine, Res) -->
-	call(P1, Res1),
-	(
-		{ Res1 = ok(T1) },
-		call(P2, Res2),
-		(
-			{ Res2 = ok(T2) },
-			call(P3, Res3),
-			(
-				{ Res3 = ok(T3) },
-				{ call(Combine, T1, T2, T3, Res) }
-			;
-				{ Res3 = error(Err) },
-				{ Res = error(Err) }
-			)
-		;
-			{ Res2 = error(Err) },
-			{ Res = error(Err) }
-		)
-	;
-		{ Res1 = error(Err) },
-		{ Res = error(Err) }
-	).
-
-:- pred read_sequence4(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(deep_result(T3), io__state, io__state),
-	pred(deep_result(T4), io__state, io__state),
-	pred(T1, T2, T3, T4, deep_result(T5)),
-	deep_result(T5), io__state, io__state).
-:- mode read_sequence4(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence4(P1, P2, P3, P4, Combine, Res) -->
-	call(P1, Res1),
-	(
-		{ Res1 = ok(T1) },
-		call(P2, Res2),
-		(
-			{ Res2 = ok(T2) },
-			call(P3, Res3),
-			(
-				{ Res3 = ok(T3) },
-				call(P4, Res4),
-				(
-					{ Res4 = ok(T4) },
-					{ call(Combine, T1, T2, T3, T4, Res) }
-				;
-					{ Res4 = error(Err) },
-					{ Res = error(Err) }
-				)
-			;
-				{ Res3 = error(Err) },
-				{ Res = error(Err) }
-			)
-		;
-			{ Res2 = error(Err) },
-			{ Res = error(Err) }
-		)
-	;
-		{ Res1 = error(Err) },
-		{ Res = error(Err) }
-	).
-
-:- pred read_sequence5(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(deep_result(T3), io__state, io__state),
-	pred(deep_result(T4), io__state, io__state),
-	pred(deep_result(T5), io__state, io__state),
-	pred(T1, T2, T3, T4, T5, deep_result(T6)),
-	deep_result(T6), io__state, io__state).
-:- mode read_sequence5(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, in, in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence5(P1, P2, P3, P4, P5, Combine, Res) -->
-	call(P1, Res1),
-	(
-		{ Res1 = ok(T1) },
-		call(P2, Res2),
-		(
-			{ Res2 = ok(T2) },
-			call(P3, Res3),
-			(
-				{ Res3 = ok(T3) },
-				call(P4, Res4),
-				(
-					{ Res4 = ok(T4) },
-					call(P5, Res5),
-					(
-						{ Res5 = ok(T5) },
-						{ call(Combine, T1, T2, T3, T4,
-							T5, Res) }
-					;
-						{ Res5 = error(Err) },
-						{ Res = error(Err) }
-					)
-				;
-					{ Res4 = error(Err) },
-					{ Res = error(Err) }
-				)
-			;
-				{ Res3 = error(Err) },
-				{ Res = error(Err) }
-			)
-		;
-			{ Res2 = error(Err) },
-			{ Res = error(Err) }
-		)
-	;
-		{ Res1 = error(Err) },
-		{ Res = error(Err) }
-	).
-
-:- pred read_sequence6(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(deep_result(T3), io__state, io__state),
-	pred(deep_result(T4), io__state, io__state),
-	pred(deep_result(T5), io__state, io__state),
-	pred(deep_result(T6), io__state, io__state),
-	pred(T1, T2, T3, T4, T5, T6, deep_result(T7)),
-	deep_result(T7), io__state, io__state).
-:- mode read_sequence6(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, in, in, in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence6(P1, P2, P3, P4, P5, P6, Combine, Res) -->
-	call(P1, Res1),
-	(
-		{ Res1 = ok(T1) },
-		call(P2, Res2),
-		(
-			{ Res2 = ok(T2) },
-			call(P3, Res3),
-			(
-				{ Res3 = ok(T3) },
-				call(P4, Res4),
-				(
-					{ Res4 = ok(T4) },
-					call(P5, Res5),
-					(
-						{ Res5 = ok(T5) },
-						call(P6, Res6),
-						(
-							{ Res6 = ok(T6) },
-							{ call(Combine, T1, T2,
-								T3, T4, T5,
-								T6, Res) }
-						;
-							{ Res6 = error(Err) },
-							{ Res = error(Err) }
-						)
-					;
-						{ Res5 = error(Err) },
-						{ Res = error(Err) }
-					)
-				;
-					{ Res4 = error(Err) },
-					{ Res = error(Err) }
-				)
-			;
-				{ Res3 = error(Err) },
-				{ Res = error(Err) }
-			)
-		;
-			{ Res2 = error(Err) },
-			{ Res = error(Err) }
-		)
-	;
-		{ Res1 = error(Err) },
-		{ Res = error(Err) }
-	).
-
-:- pred read_sequence7(
-	pred(deep_result(T1), io__state, io__state),
-	pred(deep_result(T2), io__state, io__state),
-	pred(deep_result(T3), io__state, io__state),
-	pred(deep_result(T4), io__state, io__state),
-	pred(deep_result(T5), io__state, io__state),
-	pred(deep_result(T6), io__state, io__state),
-	pred(deep_result(T7), io__state, io__state),
-	pred(T1, T2, T3, T4, T5, T6, T7, deep_result(T8)),
-	deep_result(T8), io__state, io__state).
-:- mode read_sequence7(
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(out, di, uo) is det,
-	pred(in, in, in, in, in, in, in, out) is det,
-	out, di, uo) is det.
-
-read_sequence7(P1, P2, P3, P4, P5, P6, P7, Combine, Res) -->
-	call(P1, Res1),
-	(
-	    { Res1 = ok(T1) },
-	    call(P2, Res2),
-	    (
-	        { Res2 = ok(T2) },
-	        call(P3, Res3),
-	        (
-	            { Res3 = ok(T3) },
-	            call(P4, Res4),
-	            (
-	                { Res4 = ok(T4) },
-	                call(P5, Res5),
-	                (
-	                    { Res5 = ok(T5) },
-	                    call(P6, Res6),
-	                    (
-	                        { Res6 = ok(T6) },
-	                        call(P7, Res7),
-	                        (
-	                            { Res7 = ok(T7) },
-	                            { call(Combine, T1, T2, T3, T4, T5, T6, T7,
-	                                Res) }
-	                        ;
-	                            { Res7 = error(Err) },
-	                            { Res = error(Err) }
-	                        )
-	                    ;
-	                        { Res6 = error(Err) },
-	                        { Res = error(Err) }
-	                    )
-	                ;
-	                    { Res5 = error(Err) },
-	                    { Res = error(Err) }
-	                )
-	            ;
-	                { Res4 = error(Err) },
-	                { Res = error(Err) }
-	            )
-	        ;
-	            { Res3 = error(Err) },
-	            { Res = error(Err) }
-	        )
-	    ;
-	        { Res2 = error(Err) },
-	        { Res = error(Err) }
-	    )
-	;
-	    { Res1 = error(Err) },
-	    { Res = error(Err) }
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred read_string(deep_result(string)::out,
+:- pred read_string(maybe_error(string)::out,
 	io__state::di, io__state::uo) is det.
 
 read_string(Res) -->
@@ -1185,7 +849,7 @@ read_string(Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_n_byte_string(int::in, deep_result(string)::out,
+:- pred read_n_byte_string(int::in, maybe_error(string)::out,
 	io__state::di, io__state::uo) is det.
 
 read_n_byte_string(Length, Res) -->
@@ -1210,7 +874,7 @@ read_n_byte_string(Length, Res) -->
 	% io__write(Res),
 	% io__write_string("\n")
 
-:- pred read_ptr(ptr_kind::in, deep_result(int)::out,
+:- pred read_ptr(ptr_kind::in, maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_ptr(_Kind, Res) -->
@@ -1219,7 +883,7 @@ read_ptr(_Kind, Res) -->
 	% io__write(Res),
 	% io__write_string("\n").
 
-:- pred read_num(deep_result(int)::out, io__state::di, io__state::uo) is det.
+:- pred read_num(maybe_error(int)::out, io__state::di, io__state::uo) is det.
 
 read_num(Res) -->
 	read_num1(0, Res).
@@ -1227,7 +891,7 @@ read_num(Res) -->
 	% io__write(Res),
 	% io__write_string("\n").
 
-:- pred read_num1(int::in, deep_result(int)::out,
+:- pred read_num1(int::in, maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_num1(Num0, Res) -->
@@ -1256,13 +920,13 @@ read_num1(Num0, Res) -->
 
 fixed_size_int_bytes = 4.
 
-:- pred read_fixed_size_int(deep_result(int)::out,
+:- pred read_fixed_size_int(maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_fixed_size_int(Res) -->
 	read_fixed_size_int1(fixed_size_int_bytes, 0, 0, Res).
 
-:- pred read_fixed_size_int1(int::in, int::in, int::in, deep_result(int)::out,
+:- pred read_fixed_size_int1(int::in, int::in, int::in, maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_fixed_size_int1(BytesLeft, Num0, ShiftBy, Res) -->
@@ -1281,7 +945,7 @@ read_fixed_size_int1(BytesLeft, Num0, ShiftBy, Res) -->
 		)
 	).
 
-:- pred read_n_bytes(int::in, deep_result(list(int))::out,
+:- pred read_n_bytes(int::in, maybe_error(list(int))::out,
 	io__state::di, io__state::uo) is det.
 
 read_n_bytes(N, Res) -->
@@ -1295,7 +959,7 @@ read_n_bytes(N, Res) -->
 		{ Res = error(Err) }
 	).
 
-:- pred read_n_bytes(int::in, list(int)::in, deep_result(list(int))::out,
+:- pred read_n_bytes(int::in, list(int)::in, maybe_error(list(int))::out,
 	io__state::di, io__state::uo) is det.
 
 read_n_bytes(N, Bytes0, Res) -->
@@ -1312,7 +976,7 @@ read_n_bytes(N, Bytes0, Res) -->
 		)
 	).
 
-:- pred read_deep_byte(deep_result(int)::out,
+:- pred read_deep_byte(maybe_error(int)::out,
 	io__state::di, io__state::uo) is det.
 
 read_deep_byte(Res) -->
@@ -1419,41 +1083,3 @@ deep_insert(A0, Ind, Thing, A) :-
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
-
-:- pred resize_arrays(deep_result2(initial_deep, ptr_info)::in,
-	maybe_error(initial_deep)::out) is det.
-
-resize_arrays(error2(Err), error(Err)).
-resize_arrays(ok2(InitDeep0, PI), ok(InitDeep)) :-
-	PI ^ csd = CSDMax,
-	CSDs0 = InitDeep0 ^ init_call_site_dynamics,
-	array__lookup(CSDs0, 0, CSDx),
-	array__resize(u(CSDs0), CSDMax + 1, CSDx, CSDs),
-	InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CSDs,
-
-	PI ^ pd = PDMax,
-	PDs0 = InitDeep1 ^ init_proc_dynamics,
-	array__lookup(PDs0, 0, PDx),
-	array__resize(u(PDs0), PDMax + 1, PDx, PDs),
-	InitDeep2 = InitDeep1 ^ init_proc_dynamics := PDs,
-
-	PI ^ css = CSSMax,
-	CSSs0 = InitDeep2 ^ init_call_site_statics,
-	array__lookup(CSSs0, 0, CSSx),
-	array__resize(u(CSSs0), CSSMax + 1, CSSx, CSSs),
-	InitDeep3 = InitDeep2 ^ init_call_site_statics := CSSs,
-
-	PI ^ ps = PSMax,
-	PSs0 = InitDeep3 ^ init_proc_statics,
-	array__lookup(PSs0, 0, PSx),
-	array__resize(u(PSs0), PSMax + 1, PSx, PSs),
-	InitDeep4 = InitDeep3 ^ init_proc_statics := PSs,
-
-	ProfileStats0 = InitDeep4 ^ init_profile_stats,
-	ProfileStats0 = profile_stats(InstrumentQuanta, UserQuanta,
-		_, _, _, _, TicksPerSec),
-	ProfileStats = profile_stats(InstrumentQuanta, UserQuanta,
-		CSDMax, PDMax, CSSMax, PSMax, TicksPerSec),
-	InitDeep = InitDeep4 ^ init_profile_stats := ProfileStats.
-
-%-----------------------------------------------------------------------------%

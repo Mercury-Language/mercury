@@ -293,6 +293,17 @@ we simply live with the window of vulnerability.
 <dt> array_util.m
 <dd>
 This module contains utility predicates for handling arrays.
+<dt> callgraph.m
+<dd>
+This module constructs an explicit representation of the call graph,
+so we can find its cliques.
+<dt> canonical.m
+<dd>
+This module has code to canonicalize call graphs
+(i.e. ensure that no clique contains
+more than one ProcDynamic from a given procedure).
+It also has code that uses canonicalization to merge two call graphs.
+This module is not complete yet.
 <dt> cliques.m
 <dd>
 This module allows you build a description of a directed graph (represented
@@ -313,6 +324,9 @@ of integers. This is used by cliques.m.
 This module defines the type of the commands
 that mdprof_cgi passes to mdprof_server,
 as well as utility predicates for manipulating commands and responses.
+<dt> io_combinator.m
+<dd>
+This module a set of I/O combinators for use by read_profile.m.
 <dt> mdprof_cgi.m
 <dd>
 This file contains the program that is executed by the web server

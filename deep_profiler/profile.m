@@ -7,7 +7,7 @@
 % Authors: conway, zs.
 %
 % This file defines the main data structures of the Mercury deep profiler,
-% and predicates for accessing it. The main concern of the access predicates
+% and predicates for accessing them. The main concern of the access predicates
 % is ensuring the safety of array accesses.
 %
 % For historical reasons, all the top-level arrays (i.e. those directly
@@ -25,13 +25,13 @@
 
 :- type profile_stats --->
 	profile_stats(
+		max_csd			:: int,
+		max_css			:: int,
+		max_pd			:: int,
+		max_ps			:: int,
+		ticks_per_sec		:: int,
 		instrument_quanta	:: int,
-		user_quanta		:: int,
-		num_csds		:: int,
-		num_pds			:: int,
-		num_csss		:: int,
-		num_pss			:: int,
-		ticks_per_sec		:: int
+		user_quanta		:: int
 	).
 
 :- type initial_deep --->
@@ -112,8 +112,7 @@
 :- type proc_dynamic
 	--->	proc_dynamic(
 			pd_proc_static	:: proc_static_ptr,
-			pd_sites	:: array(call_site_array_slot),
-			pd_redirect	:: maybe(proc_dynamic_ptr)
+			pd_sites	:: array(call_site_array_slot)
 		).
 
 :- type proc_static
@@ -129,8 +128,7 @@
 	--->	call_site_dynamic(
 			csd_caller	:: proc_dynamic_ptr,
 			csd_callee	:: proc_dynamic_ptr,
-			csd_own_prof	:: own_prof_info,
-			csd_redirect	:: maybe(call_site_dynamic_ptr)
+			csd_own_prof	:: own_prof_info
 		).
 
 :- type call_site_static

@@ -18,17 +18,18 @@
 
 :- import_module list, set.
 
-% Create a graph with no edges.
+	% Create a graph with no edges.
 :- pred init(graph::out) is det.
 
-% Add an arc from one node to another.
+	% Add an arc from one node to another.
 :- pred add_arc(graph::in, int::in, int::in, graph::out) is det.
 
-% Perform a topological sort on the graph. Each set of integers in the
-% resulting list gives the ids of the nodes in a clique. The list contains
-% the cliques in bottom-up order: if there is an arc from node A to node B
-% and the two nodes are not in the same clique, then the clique containing
-% node A will be before the clique containing node B.
+	% Perform a topological sort on the graph. Each set of integers in the
+	% resulting list gives the ids of the nodes in a clique. The list
+	% contains the cliques in top-down order: if there is an arc from
+	% node A to node B and the two nodes are not in the same clique,
+	% then the clique containing node A will be before the clique
+	% containing node B.
 :- pred topological_sort(graph::in, list(set(int))::out) is det.
 
 :- implementation.
@@ -36,8 +37,8 @@
 :- import_module array_util, dense_bitset.
 :- import_module array, int.
 
-:- type graph	--->
-		graph(
+:- type graph
+	--->	graph(
 			int,
 			array(set(int))
 		).
