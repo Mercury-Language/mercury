@@ -176,6 +176,7 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
 		duplicate_instance_1.int
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		--link-flags "$(ALL_MLFLAGS)" \
 		duplicate_instance_1.m duplicate_instance_2.m \
 		> $*.err 2>&1; \
 	then false; else true; fi
