@@ -9,7 +9,7 @@
 **  Main author: fjh.
 ** 
 **  This file implements parts of the Mercury standard library
-**  modules `io', `require', `std_util', and `string'.
+**  modules `io', `require', `std_util', `int', and `string'.
 */
 
 #include <string.h>
@@ -906,6 +906,18 @@ mercury__string__first_char_3_4:
 	  ((char *)r1)[0] = c;
 	  strcpy((char *)r1 + 1, rest);
 
+	  proceed();
+	}
+
+/*-----------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------*/
+
+/*
+	from int.m
+:- mode int__to_float(in, out) is det.
+*/
+mercury__int__to_float_2_0:
+	{ r2 = float_to_word( (Float) r1 );
 	  proceed();
 	}
 
