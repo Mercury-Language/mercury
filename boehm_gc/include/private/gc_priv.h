@@ -57,10 +57,14 @@ typedef int GC_bool;
 # define TRUE 1
 # define FALSE 0
 
-typedef char * ptr_t;	/* A generic pointer to which we can add	*/
-			/* byte displacements.				*/
-			/* Preferably identical to caddr_t, if it 	*/
-			/* exists.					*/
+/* ptr_t: A generic pointer to which we can add	byte displacements.	*/
+/* Preferably identical to caddr_t, if it exists.			*/
+/* This definition is duplicated in gcconfig.h.				*/
+#ifndef GC_ptr_t_defined
+#define GC_ptr_t_defined
+typedef char *ptr_t;
+#endif
+
 			
 # ifndef GCCONFIG_H
 #   include "gcconfig.h"

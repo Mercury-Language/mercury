@@ -440,6 +440,14 @@
 		    /* 			(LINUX & MSWINCE)		*/
 
 
+/* ptr_t: A generic pointer to which we can add	byte displacements.	*/
+/* Preferably identical to caddr_t, if it exists.			*/
+/* This definition is duplicated in gc_priv.h.				*/
+#ifndef GC_ptr_t_defined
+#define GC_ptr_t_defined
+typedef char *ptr_t;
+#endif
+
 /*
  * For each architecture and OS, the following need to be defined:
  *
