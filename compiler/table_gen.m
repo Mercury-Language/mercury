@@ -218,9 +218,7 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], Module0,
 
 	proc_info_eval_method(ProcInfo, EvalMethod),
 
-	(
-		eval_method_uses_table(EvalMethod) = yes
-	->
+	( eval_method_requires_tabling_transform(EvalMethod) = yes ->
 		table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo,
 			PredInfo, Module0, Module1)
 	;

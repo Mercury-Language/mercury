@@ -3923,7 +3923,7 @@ module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 	;
 		% do we have to make sure the tabled preds are stratified?
 		(
-			{ eval_method_need_stratification(EvalMethod) }
+			{ eval_method_needs_stratification(EvalMethod) = yes }
 		->
 			{ module_info_stratified_preds(ModuleInfo0, 
 				StratPredIds0) },

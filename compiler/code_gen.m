@@ -278,9 +278,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		GlobalData0, GlobalData) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
-	(
-		eval_method_uses_table(EvalMethod) = yes
-	->
+	( eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes ->
 		code_util__make_proc_label(ModuleInfo, PredId, ProcId,
 			ProcLabel),
 		module_info_name(ModuleInfo, ModuleName),

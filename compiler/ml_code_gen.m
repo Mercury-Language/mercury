@@ -765,7 +765,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		Defns0, Defns) :-
 	proc_info_eval_method(ProcInfo, EvalMethod),
 	(
-		eval_method_uses_table(EvalMethod) = yes
+		eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes
 	->
 		ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 			MLDS_PredLabel, _MLDS_PredModule),

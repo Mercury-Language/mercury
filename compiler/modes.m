@@ -2160,15 +2160,13 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
 		_, ProcInfo) },
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	( { eval_method_uses_table(EvalMethod) = yes } ->
 		{ proc_info_context(ProcInfo, Context) },
 		{ eval_method_to_string(EvalMethod, EvalMethodS) },
-		globals__io_lookup_bool_option(verbose_errors, 
-			VerboseErrors),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		{ proc_info_argmodes(ProcInfo, Modes) },
 		( 
-			\+ { only_fully_in_out_modes(Modes, 
-				ModuleInfo0) } 
+		{ eval_method_requires_ground_args(EvalMethod) = yes },
+		\+ { only_fully_in_out_modes(Modes, ModuleInfo0) } 
 		->
 			prog_out__write_context(Context),
 			io__write_string("Sorry, not implemented: `pragma "),
@@ -2192,8 +2190,8 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 			{ ModuleInfo1 = ModuleInfo0 }	
 		),	
 		( 
-			\+ { only_nonunique_modes(Modes, 
-				ModuleInfo1) } 
+		{ eval_method_destroys_uniqueness(EvalMethod) = yes },
+		\+ { only_nonunique_modes(Modes, ModuleInfo1) } 
 		->
 			prog_out__write_context(Context),
 			io__write_string("Error: `pragma "),
@@ -2215,9 +2213,6 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
 		;
 			{ ModuleInfo2 = ModuleInfo1 }	
-		)
-	;
-		{ ModuleInfo2 = ModuleInfo0 }	
 		
 	),
 	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
