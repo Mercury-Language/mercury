@@ -496,7 +496,13 @@ done
 AC_PROG_CPP
 #-----------------------------------------------------------------------------#
 # Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
+# When cross-compiling from Cygwin to Mingw (and perhaps also on
+# native Mingw?), `-lm' exists, but it is not needed and in fact we must
+# not use it, because if we do then it causes cygwin1.dll to be linked in.
 AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
+case "$CC" in *"-mno-cygwin")
+	MATH_LIB=
+esac
 AC_SUBST(MATH_LIB)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for use of a Microsoft C compiler)
