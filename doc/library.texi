@@ -2,20 +2,19 @@
 @setfilename mercury_library.info
 @settitle The Mercury Library Reference Manual
 
-@c --- texi2html doesn't support the @dir commands yet
-@c @dircategory The Mercury Programming Language
-@c @direntry
-@c * Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
-@c @end direntry
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
+@end direntry
 
 @c @smallbook
 @c @cropmarks
 @finalout
 @setchapternewpage off
-@ifinfo
+@ifnottex
 This file documents the Mercury standard library, version <VERSION>.
 
-Copyright (C) 1995-1997,1999-2002 The University of Melbourne.
+Copyright (C) 1995-1997,1999-2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -35,7 +34,7 @@ permission notice identical to this one.
 
 Permission is granted to copy and distribute translations of this manual
 into another language, under the above conditions for modified versions.
-@end ifinfo
+@end ifnottex
 
 @titlepage
 @title The Mercury Library Reference Manual
@@ -63,10 +62,10 @@ into another language, under the above conditions for modified versions.
 @page
 @c ---------------------------------------------------------------------------
 
-@ifinfo
+@ifnottex
 @node Top,,, (mercury)
 @top Mercury Library Reference Manual, version <VERSION>
-@end ifinfo
+@end ifnottex
 
 The Mercury standard library contains a variety of modules which we
 hope may be of general usefulness.  If you write a module that would

@@ -2,11 +2,10 @@
 @setfilename mercury_user_guide.info
 @settitle The Mercury User's Guide
 
-@c --- texi2html doesn't support the @dir commands yet
-@c @dircategory The Mercury Programming Language
-@c @direntry
-@c * Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
-@c @end direntry
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
+@end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @set aditi
@@ -42,7 +41,7 @@
 
 @c ----------------------------------------------------------------------------
 
-@ifinfo
+@ifnottex
 This file documents the Mercury implementation, version <VERSION>.
 
 Copyright (C) 1995-2003 The University of Melbourne.
@@ -65,7 +64,7 @@ permission notice identical to this one.
 
 Permission is granted to copy and distribute translations of this manual
 into another language, under the above conditions for modified versions.
-@end ifinfo
+@end ifnottex
 
 @titlepage
 @title The Mercury User's Guide
@@ -78,7 +77,7 @@ into another language, under the above conditions for modified versions.
 @author Mark Brown
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2002 The University of Melbourne.
+Copyright @copyright{} 1995--2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -100,7 +99,7 @@ into another language, under the above conditions for modified versions.
 
 @c ----------------------------------------------------------------------------
 
-@ifinfo
+@ifnottex
 @node Top,,, (mercury)
 @top The Mercury User's Guide, version <VERSION>
 
@@ -125,7 +124,7 @@ how to build and debug Mercury programs.
 		    languages from Mercury.
 * Index::
 @end menu
-@end ifinfo
+@end ifnottex
 
 @c ----------------------------------------------------------------------------
 

@@ -31,10 +31,10 @@ TEXINFO_INFO_FILES = mercury_ref.info mercury_user_guide.info \
 # The following variables specify which programs should be used to
 # to format the documentation.
 
-TEXI2HTML=$(PERL) texi2html
-TEXI2HTML_SPLIT=$(PERL) texi2html -split
+TEXI2HTML=$(MAKEINFO) --html --number-sections --no-split
+TEXI2HTML_SPLIT=$(MAKEINFO) --html --number-sections
 
-ifeq ("$(PERL)","")
+ifeq ("$(MAKEINFO)","")
 	HTML=warn_no_html
 else
 	HTML=html
@@ -76,12 +76,6 @@ endif
 
 %.text: %.texi_pp
 	$(MAKEINFO) --no-headers -o $@ $<
-
-%.html %_toc.html: %.texi_pp
-	$(TEXI2HTML) $<
-
-%_1.html: %.texi_pp
-	$(TEXI2HTML_SPLIT) $<
 
 M_ENV = \
 	MERCURY_PROFILER=../profiler/mercury_profile \
@@ -139,7 +133,7 @@ warn_no_info:
 	# This is probably due to a missing `makeinfo'
 
 .PHONY: html
-html: mercury.html $(TEXINFO_FILES:%=%_toc.html)
+html: mercury.html $(TEXINFO_INFO_FILES:%.info=%.html)
 
 .PHONY: warn_no_html
 warn_no_html: 
@@ -158,7 +152,7 @@ warn_no_ps:
 text: $(TEXINFO_FILES:%=%.text)
 
 .PHONY: split_html
-split_html: mercury.html $(TEXINFO_FILES:%=%_1.html)
+split_html: mercury.html $(TEXINFO_INFO_FILES:%.info=%/index.html)
 
 .PHONY: manpages
 manpages: $(MANPAGE_PROGS:%=%.1)
@@ -181,6 +175,28 @@ mercury_faq.info: faq.texi_pp
 	$(MAKEINFO) $<
 mercury_library.info: library.texi_pp
 	$(MAKEINFO) $<
+
+mercury_user_guide.html: user_guide.texi_pp
+	$(TEXI2HTML) $<
+mercury_ref.html: reference_manual.texi_pp
+	$(TEXI2HTML) $<
+mercury_trans_guide.html: transition_guide.texi_pp
+	$(TEXI2HTML) $<
+mercury_faq.html: faq.texi_pp
+	$(TEXI2HTML) $<
+mercury_library.html: library.texi_pp
+	$(TEXI2HTML) $<
+
+mercury_user_guide/index.html: user_guide.texi_pp
+	$(TEXI2HTML_SPLIT) $<
+mercury_ref/index.html: reference_manual.texi_pp
+	$(TEXI2HTML_SPLIT) $<
+mercury_trans_guide/index.html: transition_guide.texi_pp
+	$(TEXI2HTML_SPLIT) $<
+mercury_faq/index.html: faq.texi_pp
+	$(TEXI2HTML_SPLIT) $<
+mercury_library/index.html: library.texi_pp
+	$(TEXI2HTML_SPLIT) $<
 
 #-----------------------------------------------------------------------------#
 
@@ -352,7 +368,7 @@ install_webpage: library-chapters.texi_pp split_html ps install_dirs
 	for file in $(INSTALL_WEBPAGE_DIR)/*.ps ; do \
 		gzip -f -9 $$file ; \
 	done
-	cp *.html $(INSTALL_WEBPAGE_DIR)
+	cp -r $(TEXINFO_INFO_FILES:%.info=%) $(INSTALL_WEBPAGE_DIR)
 
 #-----------------------------------------------------------------------------#
 

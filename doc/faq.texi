@@ -2,11 +2,10 @@
 @setfilename mercury_faq.info
 @settitle The Mercury FAQ list
 
-@c --- texi2html doesn't support the @dir commands yet
-@c @dircategory The Mercury Programming Language
-@c @direntry
-@c * Mercury FAQ: (mercury_faq). The Mercury Frequently Asked Questions list.
-@c @end direntry
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury FAQ: (mercury_faq). The Mercury Frequently Asked Questions list.
+@end direntry
 
 @c failed attempt to control spacing
 @c @tex
@@ -21,11 +20,11 @@
 @c @cropmarks
 @finalout
 @setchapternewpage off
-@ifinfo
+@ifnottex
 This file is the Mercury Frequently Asked Questions List, version <VERSION>.
 It contains a list of frequently asked questions about Mercury, with answers.
 
-Copyright (C) 1995-1997,1999,2001-2002 The University of Melbourne.
+Copyright (C) 1995-1997,1999,2001-2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this FAQ list provided the copyright notice and this permission notice
@@ -45,7 +44,7 @@ permission notice identical to this one.
 
 Permission is granted to copy and distribute translations of this FAQ list
 into another language, under the above conditions for modified versions.
-@end ifinfo
+@end ifnottex
 
 @titlepage
 @title The Mercury Frequently Asked Questions List
@@ -72,7 +71,7 @@ into another language, under the above conditions for modified versions.
 @page
 @contents
 
-@ifinfo
+@ifnottex
 @node Top,,, (mercury)
 @top The Mercury Frequently Asked Questions List, version <VERSION>
 @menu
@@ -80,7 +79,7 @@ into another language, under the above conditions for modified versions.
 * Unimplemented::   Problems caused by unimplemented Mercury features.
 * Last resort::     What to do when all else fails.
 @end menu
-@end ifinfo
+@end ifnottex
 
 @node Programming
 @chapter Common programming errors

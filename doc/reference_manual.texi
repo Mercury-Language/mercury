@@ -2,11 +2,10 @@
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
 
-@c --- texi2html doesn't support the @dir commands yet
-@c @dircategory The Mercury Programming Language
-@c @direntry
-@c * Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
-@c @end direntry
+@dircategory The Mercury Programming Language
+@direntry
+* Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
+@end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @set aditi
@@ -15,7 +14,7 @@
 @c @cropmarks
 @finalout
 @setchapternewpage off
-@ifinfo
+@ifnottex
 This file documents the Mercury programming language, version <VERSION>.
 
 Copyright (C) 1995-2003 The University of Melbourne.
@@ -38,7 +37,7 @@ permission notice identical to this one.
 
 Permission is granted to copy and distribute translations of this manual
 into another language, under the above conditions for modified versions.
-@end ifinfo
+@end ifnottex
 
 @titlepage
 @title The Mercury Language Reference Manual
@@ -54,7 +53,7 @@ into another language, under the above conditions for modified versions.
 @author Ralph Becket
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2002 The University of Melbourne.
+Copyright @copyright{} 1995--2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -72,10 +71,10 @@ into another language, under the above conditions for modified versions.
 @page
 @c ---------------------------------------------------------------------------
 
-@ifinfo
+@ifnottex
 @node Top,,, (mercury)
 @top The Mercury Language Reference Manual, version <VERSION>
-@end ifinfo
+@end ifnottex
 @c XXX Move to after Determinism
 @c * Assertions::        Assertion declarations allow you to declare laws
 @c                       that hold.
@@ -7068,8 +7067,8 @@ When using no garbage collection, you must be careful not to retain
 pointers to memory on the Mercury heap after Mercury has backtracked
 to before the point where that memory was allocated.
 You must also avoid the use of the macros
-@code{list_empty()} and @code{list_cons()}.
-(The reason for this is that they may access Mercury's @samp{hp} register,
+@code{MR_list_empty()} and @code{MR_list_cons()}.
+(The reason for this is that they may access Mercury's @samp{MR_hp} register,
 which might not be valid in C code.  Using them in the bodies of
 procedures defined using @samp{pragma c_code} with
 @samp{will_not_call_mercury} would probably work, but we don't advise it.)
