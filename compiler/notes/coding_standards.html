@@ -125,7 +125,7 @@ Only use DCG notation for parsing, not for threading implicit arguments.
 Use state variables for threading the IO state etc.  The conventional IO
 state variable name is <code>!IO</code>.
 
-<h2> Error Handling </h2>
+<h2> Error handling </h2>
 
 <p>
 
@@ -146,17 +146,20 @@ use unexpected/2 or sorry/2 from error_util.m rather than error/1.
 
 <p>
 
-Error messages should follow a consistent format.  For compiler error
-messages, each line should start with the source file name and line
-line number in "%s:%03d: " format (but use prog_out__write_context --
-we may want to change this format later, e.g. to include column
-numbers).  Compiler error messages should be complete sentences; they
+Error messages should follow a consistent format.
+For compiler error messages, each line should start
+with the source file name and line number in "%s:%03d: " format.
+Compiler error messages should be complete sentences; they
 should start with a capital letter and end in a full stop.  For error
 messages that are spread over more than one line (as are most of them),
 the second and subsequent lines should be indented two spaces.  If the
 `--verbose-errors' option was set, you should print out additional text
 explaining in detail what the error message means and what the likely
 causes are.
+The preferred method of printing error messages
+is via the predicates in error_util.m;
+use prog_out__write_context and io__write_strings
+only if there is no way to add the capability you require to error_util.m.
 
 <p>
 
@@ -174,15 +177,29 @@ error message should include the filename.
 
 <p>
 
-Code should be indented consistently.
-Tabs should be every 8 spaces.
-Indentation should be one tab per level of indentation.
-except for highly intended code which may be
-indented at 4 spaces per level of indentation.
+Each module should be indented consistently,
+with either 4 or 8 spaces per level of indentation.
+The indentation should be consistently done,
+either only with tabs or only with spaces.
+A tab character should always mean 8 spaces;
+if a module is indented using 4 spaces per level of indentation,
+this should be indicated by four spaces,
+not by a tab with tab stops set to 4.
 
 <p>
 
-Each line should not extend beyond 79 characters.
+Files that use 8 spaces per level of indentation
+don't need any special setup.
+Files that use 4 spaces per level of indentation
+should have something like this at the top,
+even before the copyright line:
+<pre>
+	% vim: ft=mercury ts=4 sw=4 et
+</pre>
+
+<p>
+
+No line should extend beyond 79 characters.
 The reason we don't allow 80 character lines is that
 these lines wrap around in diffs,
 since diff adds an extra character at the start of each line.
@@ -250,13 +267,19 @@ end of a line -- put it at the start of the next line instead.
 
 <p>
 
-Type definitions should be formatted in the following style:
+Type definitions should be formatted in one of the following styles:
 
 <pre>
 	:- type my_type
 		--->	my_type(
 				some_other_type	% comment explaining it
 			).
+
+	:- type my_struct --->
+		my_struct(
+			field1,			% comment explaining it
+			...
+		).
 
 	:- type some_other_type == int.
 
@@ -375,7 +398,30 @@ can also be used to indicate divisions into major sections.
 Note that these dividing lines should not exceed the 79 character limit
 (see above).
 
-<h2> Standard Library Predicates </h2>
+<h2> Module imports </h2>
+
+Each group of :- import_module items should list only one module per line,
+since this makes it much easier to read diffs
+that change the set of imported modules.
+In the compiler, when e.g. an interface section imports modules
+from both the compiler and the standard library,
+there should be two groups of imports,
+the imports from the compiler first and then the ones from the library.
+For the purposes of this rule,
+consider the modules of mdbcomp to belong to the compiler.
+
+<p>
+
+Each group of import_module items should be sorted,
+since this makes it easier to detect duplicate imports
+and missing imports.
+It also groups together the imported modules from the same package.
+There should be no blank lines between
+the imports of modules from different packages,
+since this makes it harder to resort the group
+with a single editor command.
+
+<h2> Standard library predicates </h2>
 
 The descriptive comment for any predicate or function that occurs in
 the interface of a standard library module must be positioned above
@@ -445,12 +491,9 @@ changes.
 The file <a href="reviews.html">compiler/notes/reviews.html</a>
 contains more information on review policy.
 
-
-
-
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2005-03-07 01:05:35 $ by $Author: rafe $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-03-21 05:51:25 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
