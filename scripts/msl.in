@@ -86,7 +86,8 @@ if $debug; then
 	assert((mercury_do_save :-
 		on_exception(Error, (
 		  ( prolog_flag(compiling, _, fastcode) -> true ; true ),
-		  unix(argv(Files)), load(Files),
+		  ( prolog_flag(argv, Files) -> true ; unix(argv(Files)) ),
+		  load(Files),
 		  abolish(mercury_do_save),
 		  garbage_collect,
 		  save('$target', _),
@@ -104,10 +105,12 @@ else
 	cat > $tmp << EOF
 	on_exception(Error, (
 	  ( prolog_flag(compiling, _, fastcode) -> true ; true ),
-	  unix(argv(Files)), load(Files),
+	  ( prolog_flag(argv, Files) -> true ; unix(argv(Files)) ),
+	  load(Files),
 	  garbage_collect,
 	  save('$target', 1),
-	  unix(argv(Args)), run([mc|Args])
+	  ( prolog_flag(argv, Args) -> true ; unix(argv(Args)) ),
+	  run([mc|Args])
 	), print_message(error, Error)), halt ; halt.
 	e
 	e
