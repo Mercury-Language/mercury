@@ -199,8 +199,7 @@ set_string_opt(Option, Value, OptionTable0, OptionTable) :-
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
 usage_error(ErrorMessage) -->
-	io__progname("mercury_compile", ProgName0),
-	{ dir__basename(ProgName0, ProgName) },
+	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, ": "),
@@ -219,7 +218,7 @@ report_error(ErrorMessage) -->
 	% Display usage message
 :- pred usage(io__state::di, io__state::uo) is det.
 usage -->
-	io__progname("mercury_compile", ProgName),
+	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
  	io__write_string(StdErr, "Mercury compiler version 0.1\n"),
 	io__write_string(StdErr, "Usage: "),
@@ -231,7 +230,7 @@ usage -->
 
 :- pred long_usage(io__state::di, io__state::uo) is det.
 long_usage -->
-	io__progname("mercury_compile", ProgName),
+	io__progname_base("mercury_compile", ProgName),
  	io__write_string("Mercury compiler version 0.1\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),

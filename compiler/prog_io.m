@@ -351,7 +351,7 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		},
 		io__seen
 	;
-		io__progname("prog_io.m", Progname),
+		io__progname_base("prog_io.m", Progname),
 		{
 		  string__append(Progname, ": can't open file `", Message1),
 		  string__append(Message1, FileName, Message2),

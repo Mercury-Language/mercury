@@ -214,7 +214,7 @@
 
 	% local(proc_label)
 	%	local entry label
-	% local(proc_label, int, bool)
+	% local(proc_label, int, cont_type)
 	%	internal local label which can only be accessed externaly if
 	%	it is a continuation label.  The cont_type is if it is a cont
 	%	label, and whether the predicate is exported
@@ -289,16 +289,19 @@ output_c_file(c_file(Name, Modules)) -->
 	(
 		{ Result = ok }
 	->
+		io__write_string("/* this code automatically generated - do no edit.*/\n"),
+		io__write_string("\n"),
 		io__write_string("#include ""imp.h""\n"),
 		output_c_module_list(Modules),
 		io__told
 	;
-		io__progname("llds.m", ProgName),
+		io__progname_base("llds.m", ProgName),
 		io__write_string("\n"),
 		io__write_string(ProgName),
 		io__write_string(": can't open `"),
 		io__write_string(FileName),
-		io__write_string("' for output\n")
+		io__write_string("' for output\n"),
+		io__set_exit_status(1)
 	).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
@@ -314,12 +317,9 @@ output_c_module_list([M|Ms]) -->
 
 output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\n"),
-	io__write_string("/* this code automatically generated - do not edit.*/\n"),
-	io__write_string("\n"),
 	io__write_string("BEGIN_MODULE(mercury__"),
 	io__write_string(Name),
 	io__write_string(")\n"),
-	io__write_string("\t/* no module initialization in automatically generated code */\n"),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
 	output_c_procedure_list(Predicates),
@@ -337,8 +337,13 @@ output_c_procedure_list([P|Ps]) -->
 :- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
-	io__write_string("\n/*-------------------------------------"),
-	io__write_string("------------------------------------*/\n"),
+	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	( { PrintModComments = yes } ->
+		io__write_string("\n/*-------------------------------------"),
+		io__write_string("------------------------------------*/\n")
+	;
+		[]
+	),
 	io__write_string("/* code for predicate "),
 	io__write_string(Name),
 	io__write_string("/"),
@@ -354,9 +359,13 @@ output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
 
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
-	output_instruction(Inst),
-	io__write_string("\n"),
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
+	( { Inst = comment(_) } ->
+		[]
+	;
+		output_instruction(Inst),
+		io__write_string("\n")
+	),
 	(
 		{ Comment \= "" },
 		{ PrintModComments = yes }
@@ -690,18 +699,16 @@ maybe_output_update_prof_counter(Label) -->
 		{ Label2 = exported(ProcLabel) },
 		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
 		output_label(Label2),
-		io__write_string("));\n"),
-		io__write_string("\t\t/* restore prof_current_proc */\n")
+		io__write_string("));\n")
 	;
 		{ Label = local(ProcLabel, _, local) }
 	->
 		{ Label2 = local(ProcLabel) },
 		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
 		output_label(Label2),
-		io__write_string("));\n"),
-		io__write_string("\t\t/* restore prof_current_proc */\n")
+		io__write_string("));\n")
 	;
-		{ true }
+		[]
 	).
 
 :- pred output_goto(code_addr, code_addr, io__state, io__state).
