@@ -154,7 +154,8 @@ test_deconstruct_arg(T, ArgNum) -->
 	{ string__format("deconstruct argument %d of ", [i(ArgNum)], Str) },
 	io__write_string(Str),
 	io__print(T),
-	( { deconstruct__arg(T, include_details_cc, ArgNum, Arg) } ->
+	{ deconstruct__arg_cc(T, ArgNum, MaybeArg) },
+	( { MaybeArg = arg(Arg) } ->
 		io__write_string(" is "),
 		io__write(Arg),
 		io__write_string("\n")

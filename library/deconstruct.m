@@ -115,11 +115,19 @@
 	% -- that is, greater than or equal to the arity of the functor or
 	% lower than 0 -- then the call fails.
 	%
+	% Note that this predicate only returns an answer when NonCanon is
+	% do_not_allow or canonicalize.  If you need the include_details_cc
+	% behaviour use deconstruct__arg_cc/3.
+	%
 :- some [ArgT] pred arg(T, noncanon_handling, int, ArgT).
 :- mode arg(in, in(do_not_allow), in, out) is semidet.
 :- mode arg(in, in(canonicalize), in, out) is semidet.
-:- mode arg(in, in(include_details_cc), in, out) is cc_nondet.
-:- mode arg(in, in, in, out) is cc_nondet.
+:- mode arg(in, in(include_details_cc), in, out) is erroneous.
+:- mode arg(in, in, in, out) is semidet.
+
+	% See the documentation of std_util__arg_cc
+:- pred arg_cc(T, int, std_util__maybe_arg).
+:- mode arg_cc(in, in, out) is cc_multi.
 
 	% named_arg(Data, NonCanon, Name, Argument)
 	%
@@ -225,6 +233,7 @@
 :- implementation.
 
 :- import_module int, require, rtti_implementation.
+:- pragma foreign_import_module("C", std_util).
 
 %-----------------------------------------------------------------------------%
 
@@ -271,9 +280,17 @@ arg(Term, NonCanon, Index, Argument) :-
 		univ_arg_can(Term, Index, Univ)
 	;
 		NonCanon = include_details_cc,
-		univ_arg_idcc(Term, Index, Univ)
+		error("deconstruct__arg called with include_details_cc")
 	),
 	Argument = univ_value(Univ).
+
+arg_cc(Term, Index, MaybeArg) :-
+	univ_arg_idcc(Term, Index, MaybeUniv),
+	( MaybeUniv = yes(Univ),
+		MaybeArg = 'new arg'(univ_value(Univ))
+	; MaybeUniv = no,
+		MaybeArg = std_util__no
+	).
 
 named_arg(Term, NonCanon, Name, Argument) :-
 	(
@@ -298,7 +315,7 @@ det_arg(Term, NonCanon, Index, Argument) :-
 			univ_arg_can(Term, Index, Univ)
 		;
 			NonCanon = include_details_cc,
-			univ_arg_idcc(Term, Index, Univ)
+			error("deconstruct__arg called with include_details_cc")
 		)
 	->
 		Argument = univ_value(Univ)
@@ -426,7 +443,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 
 :- pred univ_arg_dna(T::in, int::in, univ::out) is semidet.
 :- pred univ_arg_can(T::in, int::in, univ::out) is semidet.
-:- pred univ_arg_idcc(T::in, int::in, univ::out) is cc_nondet.
+:- pred univ_arg_idcc(T::in, int::in, maybe(univ)::out) is cc_multi.
 
 :- pred univ_named_arg_dna(T::in, string::in, univ::out) is semidet.
 :- pred univ_named_arg_can(T::in, string::in, univ::out) is semidet.
@@ -442,6 +459,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #define	SELECTED_ARG		Argument
 #define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
 #define	NONCANON		MR_NONCANON_ABORT
+#define	SAVE_SUCCESS
 #include ""mercury_ml_arg_body.h""
 #undef	TYPEINFO_ARG
 #undef	TERM_ARG
@@ -449,6 +467,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_ARG
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C",
@@ -461,6 +480,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #define	SELECTED_ARG		Argument
 #define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
 #define	NONCANON		MR_NONCANON_ALLOW
+#define	SAVE_SUCCESS
 #include ""mercury_ml_arg_body.h""
 #undef	TYPEINFO_ARG
 #undef	TERM_ARG
@@ -468,25 +488,37 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_ARG
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C",
-	univ_arg_idcc(Term::in, Index::in, Argument::out),
+	univ_arg_idcc(Term::in, Index::in, MaybeArg::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
-#define	TYPEINFO_ARG		TypeInfo_for_T
-#define	TERM_ARG		Term
-#define	SELECTOR_ARG		Index
-#define	SELECTED_ARG		Argument
-#define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
-#define	NONCANON		MR_NONCANON_CC
-#include ""mercury_ml_arg_body.h""
-#undef	TYPEINFO_ARG
-#undef	TERM_ARG
-#undef	SELECTOR_ARG
-#undef	SELECTED_ARG
-#undef	SELECTED_TYPE_INFO
-#undef	NONCANON
+	MR_Word Argument;
+
+	#define	TYPEINFO_ARG		TypeInfo_for_T
+	#define	TERM_ARG		Term
+	#define	SELECTOR_ARG		Index
+	#define	SELECTED_ARG		Argument
+	#define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
+	#define	NONCANON		MR_NONCANON_CC
+	#include ""mercury_ml_arg_body.h""
+	#undef	TYPEINFO_ARG
+	#undef	TERM_ARG
+	#undef	SELECTOR_ARG
+	#undef	SELECTED_ARG
+	#undef	SELECTED_TYPE_INFO
+	#undef	NONCANON
+
+	if (success) {
+		MaybeArg = ML_construct_maybe_yes((MR_Word)
+				&MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0),
+				Argument);
+	} else {
+		MaybeArg = ML_construct_maybe_no((MR_Word)
+				&MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0));
+	}
 }").
 
 :- pragma foreign_proc("C",
@@ -500,6 +532,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
 #define	NONCANON		MR_NONCANON_ABORT
 #define	SELECT_BY_NAME
+#define	SAVE_SUCCESS
 #include ""mercury_ml_arg_body.h""
 #undef	TYPEINFO_ARG
 #undef	TERM_ARG
@@ -508,6 +541,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
 #undef	SELECT_BY_NAME
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C",
@@ -521,6 +555,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
 #define	NONCANON		MR_NONCANON_ALLOW
 #define	SELECT_BY_NAME
+#define	SAVE_SUCCESS
 #include ""mercury_ml_arg_body.h""
 #undef	TYPEINFO_ARG
 #undef	TERM_ARG
@@ -529,6 +564,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
 #undef	SELECT_BY_NAME
+#undef	SAVE_SUCCESS
 }").
 
 :- pragma foreign_proc("C",
@@ -542,6 +578,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #define	SELECTED_TYPE_INFO	TypeInfo_for_ArgT
 #define	NONCANON		MR_NONCANON_CC
 #define	SELECT_BY_NAME
+#define	SAVE_SUCCESS
 #include ""mercury_ml_arg_body.h""
 #undef	TYPEINFO_ARG
 #undef	TERM_ARG
@@ -550,6 +587,7 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 #undef	SELECTED_TYPE_INFO
 #undef	NONCANON
 #undef	SELECT_BY_NAME
+#undef	SAVE_SUCCESS
 }").
 
 univ_arg_dna(Term::in, Index::in, Arg::out) :-
@@ -560,10 +598,14 @@ univ_arg_can(Term::in, Index::in, Arg::out) :-
 	rtti_implementation__deconstruct(Term,
 			canonicalize, _Functor, _Arity, Arguments),
 	list__index0(Arguments, Index, Arg).
-univ_arg_idcc(_Term::in, _Index::in, _Arg::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("univ_arg_idcc/3").
+univ_arg_idcc(Term::in, Index::in, MaybeArg::out) :-
+	rtti_implementation__deconstruct(Term,
+			include_details_cc, _Functor, _Arity, Arguments),
+	( list__index0(Arguments, Index, Arg) ->
+		MaybeArg = yes(Arg)
+	;
+		MaybeArg = no
+	).
 
 univ_named_arg_dna(_Term::in, _Name::in, _Arg::out) :-
 	% This version is only used for back-ends for which there is no

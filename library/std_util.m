@@ -563,6 +563,10 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type maybe_arg
+	--->	some [T] arg(T)
+	;	no.
+
 	% functor, argument and deconstruct and their variants take any type
 	% (including univ), and return representation information for that type.
 	%
@@ -627,10 +631,12 @@
 	% equality predicate.)
 	%
 	% arg_cc and argument_cc succeed even if the first argument is
-	% of a non-canonical type.
+	% of a non-canonical type.  arg_cc encodes the possible
+	% non-existence of an argument at the requested location by using
+	% a maybe type.
 	%
 :- func arg(T::in, int::in) = (ArgT::out) is semidet.
-:- pred arg_cc(T::in, int::in, ArgT::out) is cc_nondet.
+:- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
 :- pred argument_cc(T::in, int::in, univ::out) is cc_nondet.
 
@@ -788,6 +794,16 @@ maybe_pred(Pred, X, Y) :-
 	;
 		Y = no
 	).
+
+	% Utility predicates which are useful for constructing values
+	% of the maybe(T) type from foreign code.
+:- func construct_yes(T) = maybe(T).
+:- pragma export(construct_yes(in) = out, "ML_construct_maybe_yes").
+construct_yes(T) = yes(T).
+
+:- func construct_no = maybe(T).
+:- pragma export(construct_no = out, "ML_construct_maybe_no").
+construct_no = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -1606,12 +1622,7 @@ arg(Term, Index) = Argument :-
 	private_builtin__typed_unify(Argument0, Argument).
 
 arg_cc(Term, Index, Argument) :-
-	deconstruct__arg(Term, include_details_cc, Index, Argument0),
-	( private_builtin__typed_unify(Argument0, Argument1) ->
-		Argument = Argument1
-	;
-		error("arg_cc: argument has wrong type")
-	).
+	deconstruct__arg_cc(Term, Index, Argument).
 
 argument(Term, Index) = ArgumentUniv :-
 	deconstruct__arg(Term, canonicalize, Index, Argument),

@@ -38,6 +38,8 @@
 **
 ** SELECT_BY_NAME       If defined, the argument is selected by name; if it is
 **                      not defined, the argument is selected by position.
+**
+** SAVE_SUCCESS         If defined, success is saved into SUCCESS_INDICATOR.
 */
 
 #ifdef  SELECT_BY_NAME
@@ -70,6 +72,8 @@
         MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, *argument_ptr);
     }
 
+#ifdef SAVE_SUCCESS
     SUCCESS_INDICATOR = success;
+#endif
 
 #undef  arg_func
