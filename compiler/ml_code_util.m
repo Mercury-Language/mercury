@@ -89,6 +89,10 @@
 	%
 :- pred sorry(string::in) is erroneous.
 
+	% Call error/1 with an "Unexpected" message.
+	%
+:- pred unexpected(string::in) is erroneous.
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating types.
@@ -351,6 +355,15 @@
 :- pred ml_gen_call_current_success_cont(prog_context, mlds__statement,
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_call_current_success_cont(in, out, in, out) is det.
+
+	% Generate code to call the current success continuation, using
+	% a local function as a proxy.
+	% This is used for generating success when in a model_non context
+	% from within pragma C code (currently only in IL).
+	%
+:- pred ml_gen_call_current_success_cont_indirectly(prog_context, 
+		mlds__statement, ml_gen_info, ml_gen_info).
+:- mode ml_gen_call_current_success_cont_indirectly(in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -777,6 +790,11 @@ ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
 	%
 sorry(What) :-
 	string__format("ml_code_gen.m: Sorry, not implemented: %s",
+		[s(What)], ErrorMessage),
+	error(ErrorMessage).
+
+unexpected(What) :-
+	string__format("ml_code_gen.m: Unexpected: %s", 
 		[s(What)], ErrorMessage),
 	error(ErrorMessage).
 
@@ -1398,6 +1416,93 @@ ml_gen_call_current_success_cont(Context, MLDS_Statement) -->
 			CallOrTailcall) },
 	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
 			mlds__make_context(Context)) }.
+
+	% XXX this code is quite similar to some of the existing code
+	% for calling continuations when doing copy-in/copy-out.
+	% Sharing code should be investigated.
+
+ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
+
+		% We generate a call to the success continuation, just
+		% as usual.
+	ml_gen_info_current_success_cont(SuccCont),
+	{ SuccCont = success_cont(ContinuationFuncRval, EnvPtrRval,
+		ArgTypes0, ArgLvals0) },
+	{ ArgRvals0 = list__map(func(Lval) = lval(Lval), ArgLvals0) },
+	ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
+	( { UseNestedFuncs = yes } ->
+		{ ArgTypes = ArgTypes0 },
+		{ ArgRvals = ArgRvals0 }
+	;
+		{ ArgTypes = list__append(ArgTypes0,
+			[mlds__generic_env_ptr_type]) },
+		{ ArgRvals = list__append(ArgRvals0, [EnvPtrRval]) }
+	),
+	{ RetTypes = [] },
+	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
+	{ ObjectRval = no },
+	{ RetLvals = [] },
+	{ CallOrTailcall = call },
+
+	{ MLDS_Context = mlds__make_context(Context) },
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_name(MLDSGenInfo, PredModule) },
+	{ MLDS_Module = mercury_module_name_to_mlds(PredModule) },
+
+		% We generate a nested function that does the real call
+		% to the continuation.
+		%
+		% All we do is change the call rvals to be the input
+		% variables, and the func rval to be the input variable
+		% for the continuation.
+	ml_gen_cont_params(ArgTypes0, InnerFuncParams0),
+	{ InnerFuncParams0 = func_params(InnerArgs0, Rets) },
+	{ InnerArgRvals = list__map(
+		(func(Data - _Type) 
+		= lval(var(qual(MLDS_Module, VarName))) :-
+			( Data = data(var(VarName0)) ->
+				VarName = VarName0		
+			;
+				error("expected variable name in continuation parameters")
+			)
+		), 
+			InnerArgs0) },
+	{ InnerFuncArgType = mlds__cont_type(ArgTypes0) },
+	{ InnerFuncRval = lval(var(qual(MLDS_Module, "passed_cont"))) },
+	{ InnerFuncParams = func_params(
+		[data(var("passed_cont")) - InnerFuncArgType | InnerArgs0],
+			Rets) },
+
+	{ InnerMLDS_Stmt = call(Signature, InnerFuncRval, ObjectRval, 
+			InnerArgRvals, RetLvals, CallOrTailcall) },
+	{ InnerMLDS_Statement = statement(InnerMLDS_Stmt, MLDS_Context) },
+
+	ml_gen_label_func(1, InnerFuncParams, Context, 
+		InnerMLDS_Statement, Defn),
+
+	{ ProxySignature = mlds__func_signature([InnerFuncArgType | ArgTypes],
+		RetTypes) },
+	{ ProxyArgRvals = [ContinuationFuncRval | ArgRvals] },
+
+	{ 
+		Defn = mlds__defn(function(PredLabel, ProcId, 
+			yes(SeqNum), _), _, _, function(_, _, yes(_)))
+	->
+		% We call the proxy function.
+		QualProcLabel = qual(MLDS_Module, PredLabel - ProcId),
+		ProxyFuncRval = const(code_addr_const(
+			internal(QualProcLabel, SeqNum, ProxySignature))),
+
+	
+		% Put it inside a block where we call it.
+		MLDS_Stmt = call(ProxySignature, ProxyFuncRval, ObjectRval,
+			ProxyArgRvals, RetLvals, CallOrTailcall),
+		MLDS_Statement = mlds__statement(
+			block([Defn], [statement(MLDS_Stmt, MLDS_Context)]), 
+			MLDS_Context)
+	;
+		error("success continuation generated was not a function")
+	}.
 
 %-----------------------------------------------------------------------------%
 %

@@ -76,6 +76,7 @@
 		;	debug_pd	% pd = partial deduction/deforestation
 		;	debug_rl_gen
 		;	debug_rl_opt
+		;	debug_il_asm	% il_asm = IL generation via asm
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -265,7 +266,7 @@
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	cflags_for_threads
-		;	c_debug
+		;	target_debug	
 		;	c_include_directory
 		;	c_flag_to_name_object_file
 		;	object_file_extension
@@ -459,7 +460,8 @@ option_defaults_2(verbosity_option, [
 	debug_vn		- 	int(0),
 	debug_pd		-	bool(no),
 	debug_rl_gen		-	bool(no),
-	debug_rl_opt		-	bool(no)
+	debug_rl_opt		-	bool(no),
+	debug_il_asm		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -612,7 +614,7 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above three defaults with values
 					% determined at configuration time
-	c_debug			-	bool(no),
+	target_debug		-	bool(no),
 	c_include_directory	-	accumulating([]),
 					% the `mmc' script will override the
 					% above default with a value determined
@@ -831,6 +833,11 @@ long_option("debug-vn",			debug_vn).
 long_option("debug-pd",			debug_pd).
 long_option("debug-rl-gen",		debug_rl_gen).
 long_option("debug-rl-opt",		debug_rl_opt).
+	% debug-il-asm does very low-level printf style debugging of
+	% IL assember.  Each instruction is written on stdout before it
+	% is executed.  It is a temporary measure until the IL debugging
+	% system built into .NET improves.
+long_option("debug-il-asm",		debug_il_asm).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -985,7 +992,12 @@ long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("cflags-for-threads",	cflags_for_threads).
-long_option("c-debug",			c_debug).
+	% XXX we should consider the relationship between c_debug and
+	% target_debug more carefully.  Perhaps target_debug could imply
+	% C debug if the target is C.  However for the moment they are
+	% just synonyms.
+long_option("c-debug",			target_debug).
+long_option("target-debug",		target_debug).
 long_option("c-include-directory",	c_include_directory).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",	object_file_extension).
@@ -2021,6 +2033,18 @@ options_help_code_generation -->
 		"\tCauses the generated code to become VERY big and VERY",
 		"\tinefficient.  Slows down compilation a LOT.",
 
+		"--target-debug",
+		"\tEnable debugging of the generated target code.",
+		"\tIf the target language is C, this has the same effect as",
+		"`--c-debug' (see below).",
+                "\tIf the target language is IL, this causes the compiler to",
+		"\tpass `/debug' to the IL assembler.)",
+
+		"--c-debug",
+		"\tEnable debugging of the generated C code.",
+		"\t(This has the same effect as",
+		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
+
 		"--no-trad-passes",
 		"\tThe default `--trad-passes' completely processes each predicate",
 		"\tbefore going on to the next predicate.",
@@ -2054,10 +2078,6 @@ options_help_code_generation -->
 		% are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 
-		"--c-debug",
-		"\tEnable debugging of the generated C code.",
-		"\t(This has the same effect as",
-		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
 
 		"--c-flag-to-name-object-file <flag>",
 		"\tThe flag the C compiler uses to name object files.",

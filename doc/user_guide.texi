@@ -3581,6 +3581,14 @@ implementors.  It causes the generated code to become very big and very
 inefficient, and slows down compilation a lot.
 
 @sp 1
+@item @code{--target-debug}
+Enable debugging of the generated target code.
+If the target language is C, this has the same effect as
+@samp{--c-debug} (see below).
+If the target language is IL, this causes the compiler to
+pass @samp{/debug} to the IL assembler.
+
+@sp 1
 @item --no-trad-passes
 The default @samp{--trad-passes} completely processes each predicate
 before going on to the next predicate.

@@ -1871,8 +1871,27 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 			raw_target_code("\t\tif (MR_succeeded) {\n")],
 			AssignOutputsList
 	]) },
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_string_option(Globals, target, Target) },
 	( { CodeModel = model_non } ->
-		ml_gen_call_current_success_cont(Context, CallCont)
+
+		% For IL code, we can't call continutations because
+		% there is no syntax for calling managed function
+		% pointers in managed C++.  Instead we
+		% have to call back into IL and make the continuation
+		% call in IL.  This is called an "indirect" success
+		% continuation call.
+		
+		(
+			{ Target = "il" }
+		->
+			ml_gen_call_current_success_cont_indirectly(Context,
+				CallCont)
+		;
+			ml_gen_call_current_success_cont(Context, CallCont)
+		)
 	;
 		{ error("ml_gen_nondet_pragma_c_code: unexpected code model") }
 	),

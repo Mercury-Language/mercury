@@ -25,8 +25,8 @@ library, runtime, etc.) fit together.
 
 The main job of the compiler is to translate Mercury into C, although it
 can also translate (subsets of) Mercury to some other languages: Goedel,
-bytecode (for a planned bytecode interpreter),
-and RL (the Aditi Relational Language).
+Mercury bytecode (for a planned bytecode interpreter), MSIL (for the
+Microsoft .NET platform) and RL (the Aditi Relational Language).
 
 <p>
 
@@ -80,7 +80,8 @@ back-ends into account, the structure looks like this:
           <li> 4b. code generation (annotated HLDS -&gt; MLDS)
           <li> 5b. MLDS transformations (MLDS -&gt; MLDS)
           <li> 6b. output code
-	       (MLDS -&gt; C or eventually MLDS -&gt; Java, etc.)
+	       (MLDS -&gt; C or MLDS -&gt; MSIL
+	       or eventually MLDS -&gt; Java, etc.)
           </ul>
      <li> c. RL back-end
           <ul type=disc>
@@ -929,12 +930,30 @@ information used for code generation:
 <h4> 5b. MLDS transformations </h4>
 <ul>
 <li> ml_tailcall.m annotates the MLDS with information about tailcalls.
+<li> ml_optimize.m does MLDS-&gt;MLDS optimizations
 <li> ml_elim_nested.m transforms the MLDS to eliminate nested functions.
 </ul>
 
 <h4> 6b. MLDS output </h4>
-mlds_to_c.m converts MLDS to C/C++ code.
 
+There are currently two backends that generate code from MLDS, one
+generates C/C++ code, the other generates Microsoft's Intermediate
+Language (MSIL or IL).
+<p>
+<ul>
+<li>mlds_to_c.m converts MLDS to C/C++ code.
+</ul>
+<p>
+The MLDS-&gt;IL backend is broken into several submodules.
+<ul>
+<li> mlds_to_ilasm.m converts MLDS to IL assembler and writes it to a .il file.
+<li> mlds_to_il.m converts MLDS to IL 
+<li> ilds.m contains representations of IL  
+<li> ilasm.m contains output routines for writing IL to assembler.
+<li> il_peephole.m performs peephole optimization on IL instructions.
+</ul>
+After IL assembler has been emitted, ILASM in invoked to turn the .il
+file into a .dll or .exe.
 <p>
 <hr>
 <!---------------------------------------------------------------------------->
@@ -1128,6 +1147,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-09-25 04:37:17 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-10-14 04:00:35 $ by $Author: trd $@cs.mu.oz.au. <br>
 </body>
 </html>

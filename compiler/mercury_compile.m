@@ -61,6 +61,8 @@
 :- import_module ml_elim_nested, ml_tailcall.	% MLDS -> MLDS
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
+:- import_module mlds_to_ilasm.			% MLDS -> IL assembler
+
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -437,6 +439,7 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
+		globals__io_get_target(Target),
 		globals__io_lookup_bool_option(target_code_only, 
 				TargetCodeOnly),
 
@@ -447,6 +450,17 @@ mercury_compile(Module) -->
 				Verbose, MaybeRLFile),
 		    ( { AditiOnly = yes } ->
 		    	[]
+		    ; { Target = il } ->
+			mercury_compile__mlds_backend(HLDS50, MLDS),
+			( { TargetCodeOnly = yes } ->
+				mercury_compile__mlds_to_il_assembler(MLDS)
+			;
+				{ HasMain = mercury_compile__mlds_has_main(
+					MLDS) },
+				mercury_compile__mlds_to_il_assembler(MLDS),
+				mercury_compile__il_assemble(ModuleName,
+					HasMain)
+			)
 		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50, MLDS),
 			mercury_compile__mlds_to_high_level_c(MLDS),
@@ -473,6 +487,21 @@ mercury_compile(Module) -->
 	    )
 	;
 	    []
+	).
+
+	% return `yes' iff this module defines the main/2 entry point.
+:- func mercury_compile__mlds_has_main(mlds) = bool.
+mercury_compile__mlds_has_main(MLDS) =
+	(
+		MLDS = mlds(_, _, _, Defns),
+		list__member(Defn, Defns),
+		Defn = mlds__defn(Name, _, _, _),
+		Name = function(FuncName, _, _, _), 
+		FuncName = pred(predicate, _, "main", 2)
+	->
+		yes
+	;
+		no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2458,6 +2487,57 @@ mercury_compile__mlds_to_high_level_c(MLDS) -->
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
 	maybe_report_stats(Stats).
 
+:- pred mercury_compile__mlds_to_il_assembler(mlds, io__state, io__state).
+:- mode mercury_compile__mlds_to_il_assembler(in, di, uo) is det.
+
+mercury_compile__mlds_to_il_assembler(MLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	maybe_write_string(Verbose, "% Converting MLDS to IL...\n"),
+	mlds_to_ilasm__output_mlds(MLDS),
+	maybe_write_string(Verbose, "% Finished converting MLDS to IL.\n"),
+	maybe_report_stats(Stats).
+
+:- pred mercury_compile__il_assemble(module_name, bool, io__state, io__state).
+:- mode mercury_compile__il_assemble(in, in, di, uo) is det.
+
+mercury_compile__il_assemble(ModuleName, HasMain) -->
+	module_name_to_file_name(ModuleName, ".il", no, IL_File),
+	module_name_to_file_name(ModuleName, ".dll", no, DLL_File),
+	module_name_to_file_name(ModuleName, ".exe", no, EXE_File),
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Assembling `"),
+	maybe_write_string(Verbose, IL_File),
+	maybe_write_string(Verbose, "':\n"),
+	{ Verbose = yes ->
+		VerboseOpt = ""
+	;
+		VerboseOpt = "/quiet "
+	},
+	globals__io_lookup_bool_option(target_debug, Debug),
+	{ Debug = yes ->
+		DebugOpt = "/debug "
+	;
+		DebugOpt = ""
+	},
+	{ HasMain = yes ->
+		TargetOpt = "",
+		TargetFile = EXE_File
+	;	
+		TargetOpt = "/dll ",
+		TargetFile = DLL_File
+	},
+	{ OutputOpt = "/out=" },
+	{ string__append_list(["ilasm ", VerboseOpt, DebugOpt, TargetOpt,
+		OutputOpt, TargetFile, " ", IL_File], Command) },
+	invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem assembling IL file.")
+	;
+		[]
+	).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2641,11 +2721,11 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		StackTraceOpt = ""
 	},
-	globals__io_lookup_bool_option(c_debug, C_Debug),
-	{ C_Debug = yes ->
-		C_DebugOpt = "-g "
+	globals__io_lookup_bool_option(target_debug, Target_Debug),
+	{ Target_Debug = yes ->
+		Target_DebugOpt = "-g "
 	;
-		C_DebugOpt = ""
+		Target_DebugOpt = ""
 	},
 	globals__io_lookup_bool_option(low_level_debug, LL_Debug),
 	{ LL_Debug = yes ->
@@ -2721,7 +2801,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		CFLAGS_FOR_THREADS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
-		C_DebugOpt, LL_DebugOpt,
+		Target_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
@@ -2806,11 +2886,11 @@ mercury_compile__link_module_list(Modules) -->
 		    maybe_write_string(Verbose, "% Linking...\n"),
 		    globals__io_get_globals(Globals),
 		    { compute_grade(Globals, Grade) },
-		    globals__io_lookup_bool_option(c_debug, C_Debug),
-		    { C_Debug = yes ->
-		    	C_Debug_Opt = "--no-strip "
+		    globals__io_lookup_bool_option(target_debug, Target_Debug),
+		    { Target_Debug = yes ->
+		    	Target_Debug_Opt = "--no-strip "
 		    ;
-		    	C_Debug_Opt = ""
+		    	Target_Debug_Opt = ""
 		    },
 		    globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
@@ -2830,7 +2910,7 @@ mercury_compile__link_module_list(Modules) -->
 				LinkObjects) },
 		    { string__append_list(
 			["ml --grade ", Grade, " ",
-			C_Debug_Opt, TraceOpt, LinkFlags,
+			Target_Debug_Opt, TraceOpt, LinkFlags,
 			" -o ", OutputFileName, " ",
 			InitObjFileName, " ", Objects, " ",
 			LinkObjects, " ",
