@@ -113,7 +113,57 @@
 
 %-----------------------------------------------------------------------------%
 
-        % functor, arg and expand take any type (including univ),
+       % The `type_info' type - allows access to type information.
+       %
+       % A type_info represents the type of a variable.
+       % 
+       % It is possible for the type of a variable to be an unbound type
+       % variable, this is represented as the type 'void'/0. 'void' is
+       % considered a special (builtin) type - it is not a discriminated
+       % union, so get_functor/5 and the function construct/3 will
+       % fail if used upon this type.
+
+:- type type_info.
+
+	% type_info(Data) returns the type_info of the type of Data.
+
+:- func type_of(T) = type_info.
+:- mode type_of(unused) = out is det.
+
+	% num_functors(TypeInfo) returns the number of different functors
+	% for the type specified by TypeInfo, or -1 if the type is not a
+	% discriminated union type.
+
+:- func num_functors(type_info) = int.
+:- mode num_functors(in) = out is det.
+
+	% get_functor(Var, N, Functor, Arity, ArgTypes)
+	%
+	% Binds Functor and Arity to the name and arity of the Nth
+	% functor for the specified type (starting at zero), and binds
+	% ArgTypes to the type_infos for the types of the arguments of
+	% that functor.  Fails if the type is not a discriminated union
+	% type, or if N is out of range.
+
+:- pred get_functor(type_info::in, int::in, string::out, int::out,
+		list(type_info)::out) is semidet.
+
+	% construct(TypeInfo, N, Args) = Term
+	%
+	% Returns a term of the type specified by TypeInfo whose functor
+	% is the Nth functor of TypeInfo (starting at zero), and whose
+	% arguments are given by Args.  Fails if the type is not a
+	% discriminated union type, or if N is out of range, or if the
+	% number of arguments doesn't match the arity of the Nth functor
+	% of the type, or if the types of the arguments doesn't match
+	% the expected argument types for that functor.
+
+:- func construct(type_info::in, int::in, list(univ)::in) = (univ::out)
+		is semidet.
+
+%-----------------------------------------------------------------------------%
+
+	% functor, arg and expand take any type (including univ),
 	% and return representation information for that type.
 	%
 	% The string representation of the functor that functor and 
@@ -172,6 +222,8 @@
 
 :- import_module require, set.
 
+:- type type_info == c_pointer.
+
 /****
 	Is this really useful?
 % for use in lambda expressions where the type of functor '-' is ambiguous
@@ -210,9 +262,8 @@ maybe_pred(Pred, X, Y) :-
 #include ""imp.h""
 #include ""deep_copy.h""
 
-extern const struct
-	mercury_data_mercury_builtin__base_type_info_list_1_struct
-	mercury_data_mercury_builtin__base_type_info_list_1;
+MR_DECLARE_STRUCT(
+	mercury_data_mercury_builtin__base_type_info_list_1);
 
 Declare_entry(do_call_nondet_closure);
 
@@ -490,9 +541,7 @@ int	mercury_compare_type_info(Word type_info_1, Word type_info_2);
 ** the case of higher order types, the arity).
 */
 
-extern const struct
-	mercury_data___base_type_info_pred_0_struct
-	mercury_data___base_type_info_pred_0;
+MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
 
 int
 mercury_compare_type_info(Word type_info_1, Word type_info_2)
@@ -843,6 +892,550 @@ void sys_init_unify_univ_module(void) {
 
 %-----------------------------------------------------------------------------%
 
+	% Code for type manipulation.
+
+
+	% Prototypes and type definitions.
+
+:- pragma(c_header_code, "
+
+typedef struct ML_Construct_Info_Struct {
+	int vector_type;
+	int arity;
+	Word *functors_vector;
+	Word *argument_vector;
+	Word primary_tag;
+	Word secondary_tag;
+	ConstString functor_name;
+} ML_Construct_Info;
+
+int	ML_get_num_functors(Word type_info); 
+Word 	ML_copy_argument_typeinfos(int arity, Word type_info,
+				Word *arg_vector);
+bool 	ML_get_functors_check_range(int functor_number, Word type_info, 
+				ML_Construct_Info *info);
+void	ML_copy_arguments_from_list_to_vector(int arity, Word arg_list, 
+				Word term_vector);
+int	ML_typecheck_arguments(Word type_info, int arity, 
+				Word arg_list, Word* arg_vector);
+Word 	ML_collapse_equivalences(Word maybe_equiv_type_info);
+
+").
+
+
+:- pragma c_code(type_of(Value::unused) = (TypeInfo::out),
+	will_not_call_mercury, " 
+{
+	/* 
+	** `Value' isn't used in this c_code, but the compiler
+	** gives a warning if you don't mention it.
+	*/ 
+
+	/*
+	** We collapse equivalences for efficiency. Any use of
+	** a type_info will collapse equivalences anyway, so we
+	** try to avoid doing it multiple times.
+	*/
+	save_transient_registers();
+	TypeInfo = ML_collapse_equivalences(TypeInfo_for_T);
+	restore_transient_registers();
+
+}
+").
+
+
+:- pragma c_code(num_functors(TypeInfo::in) = (Functors::out), 
+	will_not_call_mercury, "
+{
+	save_transient_registers();
+	Functors = ML_get_num_functors(TypeInfo); 
+	restore_transient_registers(); 
+}
+").
+
+
+:- pragma c_code(get_functor(TypeInfo::in, FunctorNumber::in,
+		FunctorName::out, Arity::out, TypeInfoList::out), 
+	will_not_call_mercury, "
+{
+	int i;
+	ML_Construct_Info info;
+
+		/* 
+		** Get information for this functor number and
+		** store in info. If this is a discriminated union
+		** type and if the functor number is in range, we
+	 	** succeed.
+		*/
+	save_transient_registers();
+	SUCCESS_INDICATOR = ML_get_functors_check_range(FunctorNumber,
+				TypeInfo, &info);
+	restore_transient_registers();
+
+		/* 
+		** Get the functor name and arity, construct the list
+		** of type_infos for arguments.
+		*/
+
+	if (SUCCESS_INDICATOR) {
+		make_aligned_string(FunctorName, (String) (Word) 
+				info.functor_name);
+		Arity = info.arity;
+		save_transient_registers();
+		TypeInfoList = ML_copy_argument_typeinfos((int) Arity,
+				TypeInfo, info.argument_vector);
+		restore_transient_registers();
+	}
+
+}
+").
+
+:- pragma c_code(construct(TypeInfo::in, FunctorNumber::in, ArgList::in) =
+	(Term::out), will_not_call_mercury, "
+{
+	Word 	arg_list, arg_type_info, layout_entry, new_data, 
+		term_vector, list_arg_type_info;
+	int i;
+	ML_Construct_Info info;
+
+		/* 
+		** Check range of FunctorNum, get info for this
+		** functor.
+		*/
+	save_transient_registers();
+	SUCCESS_INDICATOR = 
+		ML_get_functors_check_range(FunctorNumber, TypeInfo, &info) &&
+		ML_typecheck_arguments(TypeInfo, info.arity, ArgList, 
+				info.argument_vector);
+	restore_transient_registers();
+
+		/*
+		** Build the new term. 
+		** 
+		** It will be stored in `new_data', and `term_vector' is a
+		** the argument vector.
+		** 
+		*/
+	if (SUCCESS_INDICATOR) {
+
+		layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
+			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) TypeInfo), 
+				info.primary_tag);
+
+		if (info.vector_type == MR_TYPEFUNCTORS_ENUM) {
+			/*
+			** Enumeratiors don't have tags or arguments,
+			** just the enumeration value.
+			*/
+			new_data = (Word) info.secondary_tag;
+		} else {
+			/* 
+			** It must be some sort of tagged functor.
+			*/
+
+			if (info.vector_type == MR_TYPEFUNCTORS_NO_TAG) {
+
+				/*
+				** We set term_vector to point to
+				** new_data so that the argument filling
+				** loop will fill the argument in.
+				*/
+
+				term_vector = (Word) &new_data;
+
+			} else if (tag(layout_entry) == 
+					TYPELAYOUT_COMPLICATED_TAG) {
+
+				/*
+				** Create arity + 1 words, fill in the
+				** secondary tag, and the term_vector will
+				** be the rest of the words.
+				*/
+				incr_hp(new_data, info.arity + 1);
+				field(0, new_data, 0) = info.secondary_tag;
+				term_vector = (Word) (new_data + sizeof(Word));
+
+			} else if (tag(layout_entry) == TYPELAYOUT_CONST_TAG) {
+
+				/* 
+				** If it's a du, and this tag is
+				** constant, it must be a complicated
+				** constant tag. 
+				*/
+
+				new_data = mkbody(info.secondary_tag);
+				term_vector = (Word) NULL;
+
+			} else {
+
+				/*
+				** A simple tagged word, just need to
+				** create arguments.
+				*/
+
+				incr_hp(new_data, info.arity);
+				term_vector = (Word) new_data; 
+			}
+
+				/* 
+				** Copy arguments.
+				*/
+
+			ML_copy_arguments_from_list_to_vector(info.arity,
+					ArgList, term_vector);
+
+				/* 
+				** Add tag to new_data.
+				*/
+			new_data = (Word) mkword(mktag(info.primary_tag), 
+				new_data);
+		}
+
+		/* 
+		** Create a univ.
+		*/
+
+		incr_hp(Term, 2);
+	        field(mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
+			(Word) TypeInfo;
+	        field(mktag(0), Term, UNIV_OFFSET_FOR_DATA) = (Word) new_data;
+	}
+
+}
+"). 
+
+:- pragma(c_code, "
+
+	/* 
+	** Prototypes
+	*/
+
+static int 	get_functor_info(Word type_info, int functor_number, 
+				ML_Construct_Info *info);
+
+	/*
+	** get_functor_info:
+	**
+	** Extract the information for functor number `functor_number',
+	** for the type represented by type_info.
+	** We succeed if the type is some sort of discriminated union.
+	**
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+int 
+get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
+{
+	Word *base_type_functors;
+
+	base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
+		MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) type_info));
+
+	info->vector_type = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
+
+	switch	(info->vector_type) {
+
+	case MR_TYPEFUNCTORS_ENUM:
+		info->functors_vector = MR_TYPEFUNCTORS_ENUM_FUNCTORS(
+				base_type_functors);
+		info->arity = 0;
+		info->argument_vector = NULL;
+		info->primary_tag = 0;
+		info->secondary_tag = functor_number;
+		info->functor_name = MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(
+				info->functors_vector, functor_number);
+		break; 
+
+	case MR_TYPEFUNCTORS_DU:
+		info->functors_vector = MR_TYPEFUNCTORS_DU_FUNCTOR_N(
+				base_type_functors, functor_number);
+		info->arity = MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(
+			info->functors_vector);
+		info->argument_vector = MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(
+				info->functors_vector);
+		info->primary_tag = tag(MR_TYPELAYOUT_SIMPLE_VECTOR_TAG(
+			info->functors_vector));
+		info->secondary_tag = unmkbody(
+			body(MR_TYPELAYOUT_SIMPLE_VECTOR_TAG(
+				info->functors_vector), info->primary_tag));
+		info->functor_name = MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(
+				info->functors_vector);
+		break; 
+
+	case MR_TYPEFUNCTORS_NO_TAG:
+		info->functors_vector = MR_TYPEFUNCTORS_NO_TAG_FUNCTOR(
+				base_type_functors);
+		info->arity = 1;
+		info->argument_vector = MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(
+				info->functors_vector);
+		info->primary_tag = 0;
+		info->secondary_tag = 0;
+		info->functor_name = MR_TYPELAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(
+				info->functors_vector);
+		break; 
+
+	case MR_TYPEFUNCTORS_EQUIV: {
+			Word *equiv_type;
+			equiv_type = (Word *) MR_TYPEFUNCTORS_EQUIV_TYPE(
+					base_type_functors);
+			return get_functor_info((Word)
+					create_type_info((Word *) type_info, 
+							equiv_type),
+					functor_number, info);
+	}
+	case MR_TYPEFUNCTORS_SPECIAL:
+		return FALSE;
+	case MR_TYPEFUNCTORS_UNIV:
+		return FALSE;
+	default:
+		fatal_error(""std_util:construct - unexpected type."");
+	}
+
+	return TRUE;
+}
+
+	/*
+	** ML_typecheck_arguments:
+	**
+	** Given a list of univs (`arg_list'), and an vector of
+	** type_infos (`arg_vector'), checks that they are all of the
+	** same type. `arg_vector' may contain type variables, these
+	** will be filled in by the type arguments of `type_info'.
+	**
+	** If the type arguments of `type_info' are still type variables 
+	** they will be replaced by the void type (see the
+	** documentation of `create_type_info').
+	**
+	** Assumes the length of the list has already been checked.
+	**
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+int
+ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
+		Word* arg_vector) 
+{
+	int i;
+	Word arg_type_info, list_arg_type_info;
+
+		/* Type check list of arguments */
+
+	for (i = 0; i < arity; i++) {
+		if (list_is_empty(arg_list)) {
+			return FALSE;
+		}
+		list_arg_type_info = field(0, (list_head(arg_list)), 
+			UNIV_OFFSET_FOR_TYPEINFO);
+
+		arg_type_info = (Word) create_type_info(
+			(Word *) type_info, (Word *) arg_vector[i]);
+
+		if (mercury_compare_type_info(list_arg_type_info, 
+				arg_type_info) != COMPARE_EQUAL) {
+			return FALSE;
+		}
+		arg_list = list_tail(arg_list);
+	}
+
+		/* List should now be empty */
+	return list_is_empty(arg_list);
+}
+
+	/*
+	** ML_copy_arguments_from_list_to_vector:
+	**
+	** Copy the arguments from a list of univs (`arg_list'), 
+	** into the vector (`term_vector').
+	**
+	** Assumes the length of the list has already been checked.
+	*/
+
+void
+ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
+		Word term_vector) 
+{
+	int i;
+
+	for (i = 0; i < arity; i++) {
+		field(mktag(0), term_vector, i) = 
+			field(mktag(0), list_head(arg_list), 
+				UNIV_OFFSET_FOR_DATA);
+		arg_list = list_tail(arg_list);
+	}
+}
+
+
+	/*
+	** ML_get_functors_check_range:
+	**
+	** Check that functor_number is in range, and get the functor
+	** info if it is. Return FALSE if it is out of range, or
+	** if get_functor_info returns FALSE, otherwise return TRUE.
+	**
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+bool
+ML_get_functors_check_range(int functor_number, Word type_info, 
+	ML_Construct_Info *info)
+{
+		/* 
+		** Check range of functor_number, get functors
+		** vector
+		*/
+	return  functor_number < ML_get_num_functors(type_info) &&
+		functor_number >= 0 &&
+		get_functor_info(type_info, functor_number, info);
+}
+
+
+	/* 
+	** ML_copy_argument_typeinfos:
+	**
+	** Copy `arity' type_infos from `arg_vector' onto the heap
+	** in a list. 
+	** 
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+Word 
+ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
+{
+	Word type_info_list, *functors;
+
+	restore_transient_registers();
+	type_info_list = list_empty(); 
+
+	while (--arity >= 0) {
+		Word argument;
+
+			/* Get the argument type_info */
+		argument = arg_vector[arity];
+
+			/* Fill in any polymorphic type_infos */
+		save_transient_registers();
+		argument = (Word) create_type_info(
+			(Word *) type_info, (Word *) argument);
+		restore_transient_registers();
+
+			/* Look past any equivalences */
+		save_transient_registers();
+		argument = ML_collapse_equivalences(argument);
+		restore_transient_registers();
+
+			/* Join the argument to the front of the list */
+		type_info_list = list_cons(argument, type_info_list);
+	}
+	save_transient_registers();
+
+	return type_info_list;
+}
+
+	/*
+	** ML_collapse_equivalences:
+	**
+	** Keep looking past equivalences until the there are no more.
+	** This only looks past equivalences of the top level type, not
+	** the argument typeinfos.
+	** 
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+Word
+ML_collapse_equivalences(Word maybe_equiv_type_info) 
+{
+	Word *functors, equiv_type_info;
+	
+	functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
+			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
+					maybe_equiv_type_info));
+
+		/* Look past equivalences */
+	while (MR_TYPEFUNCTORS_INDICATOR(functors) == MR_TYPEFUNCTORS_EQUIV) {
+		equiv_type_info = (Word) MR_TYPEFUNCTORS_EQUIV_TYPE(functors);
+		equiv_type_info = (Word) create_type_info(
+				(Word *) maybe_equiv_type_info, 
+				(Word *) equiv_type_info);
+		functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
+			MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) 
+				equiv_type_info));
+		maybe_equiv_type_info = equiv_type_info;
+	}
+
+	return maybe_equiv_type_info;
+}
+
+	/* 
+	** ML_get_num_functors:
+	**
+	** Get the number of functors for a type. If it isn't a
+	** discriminated union, return -1.
+	**
+	** You need to save and restore transient registers around
+	** calls to this function.
+	*/
+
+int 
+ML_get_num_functors(Word type_info)
+{
+	Word *base_type_functors;
+	int Functors;
+
+	base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(
+		MR_TYPEINFO_GET_BASE_TYPEINFO((Word *) type_info));
+
+	switch ((int) MR_TYPEFUNCTORS_INDICATOR(base_type_functors)) {
+
+		case MR_TYPEFUNCTORS_DU:
+			Functors = MR_TYPEFUNCTORS_DU_NUM_FUNCTORS(
+					base_type_functors);
+			break;
+
+		case MR_TYPEFUNCTORS_ENUM:
+			Functors = MR_TYPEFUNCTORS_ENUM_NUM_FUNCTORS(
+					base_type_functors);
+			break;
+
+		case MR_TYPEFUNCTORS_EQUIV: {
+			Word *equiv_type;
+			equiv_type = (Word *) 
+				MR_TYPEFUNCTORS_EQUIV_TYPE(
+					base_type_functors);
+			Functors = ML_get_num_functors((Word)
+					create_type_info((Word *) 
+						type_info, equiv_type));
+			break;
+		}
+
+		case MR_TYPEFUNCTORS_SPECIAL:
+			Functors = -1;
+			break;
+
+		case MR_TYPEFUNCTORS_NO_TAG:
+			Functors = 1;
+			break;
+
+		case MR_TYPEFUNCTORS_UNIV:
+			Functors = -1;
+			break;
+
+		default:
+			fatal_error(""std_util:ML_get_num_functors :""
+				"" unknown indicator"");
+	}
+	return Functors;
+}
+
+").
+
+%-----------------------------------------------------------------------------%
+
+
 :- pragma(c_header_code, "
 
 	/* 
@@ -870,31 +1463,30 @@ void sys_init_unify_univ_module(void) {
 	 */
 
 
-typedef struct mercury_expand_info {
+typedef struct ML_Expand_Info_Struct {
 	ConstString functor;
 	int arity;
 	Word *argument_vector;
 	Word *type_info_vector;
 	bool need_functor;
 	bool need_args;
-} expand_info;
+} ML_Expand_Info;
 
 
 	/* Prototypes */
 
-void mercury_expand(Word* type_info, Word data_word, expand_info *info);
+void mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info);
 
 static void mercury_expand_const(Word data_value, Word entry_value,
-	expand_info *info);
+	ML_Expand_Info *info);
 static void mercury_expand_enum(Word data_value, Word entry_value, 
-	expand_info *info);
+	ML_Expand_Info *info);
 static void mercury_expand_simple(Word data_value, Word* arg_type_infos, 
-	Word * type_info, expand_info *info);
+	Word * type_info, ML_Expand_Info *info);
 static void mercury_expand_builtin(Word data_value, Word entry_value,
-	expand_info *info);
+	ML_Expand_Info *info);
 static void mercury_expand_complicated(Word data_value, Word entry_value, 
-	Word * type_info, expand_info *info);
-
+	Word * type_info, ML_Expand_Info *info);
 static Word * create_type_info(Word *term_type_info, 
 	Word *arg_pseudo_type_info);
 
@@ -927,7 +1519,7 @@ static Word * create_type_info(Word *term_type_info,
 */
 
 void 
-mercury_expand(Word* type_info, Word data_word, expand_info *info)
+mercury_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 {
 	Word *base_type_info, *arg_type_info, *base_type_layout;
 	Word data_value, entry_value, base_type_layout_entry;
@@ -1035,7 +1627,7 @@ mercury_expand(Word* type_info, Word data_word, expand_info *info)
  */
 
 void
-mercury_expand_const(Word data_value, Word entry_value, expand_info *info) 
+mercury_expand_const(Word data_value, Word entry_value, ML_Expand_Info *info) 
 {
 
 #ifdef DEBUG_STD_UTIL__EXPAND
@@ -1060,7 +1652,7 @@ mercury_expand_const(Word data_value, Word entry_value, expand_info *info)
  */
 
 void
-mercury_expand_enum(Word data_value, Word entry_value, expand_info *info) 
+mercury_expand_enum(Word data_value, Word entry_value, ML_Expand_Info *info) 
 {
 
 #ifdef DEBUG_STD_UTIL__EXPAND
@@ -1093,7 +1685,7 @@ mercury_expand_enum(Word data_value, Word entry_value, expand_info *info)
  */
 void 
 mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
-	expand_info *info)
+	ML_Expand_Info *info)
 {
 	int i;
 
@@ -1136,7 +1728,7 @@ mercury_expand_simple(Word data_value, Word* arg_type_infos, Word * type_info,
 
 void
 mercury_expand_complicated(Word data_value, Word entry_value, Word * type_info,
-	expand_info *info)
+	ML_Expand_Info *info)
 {
 	Word new_data_value, new_entry_value, new_entry_body,
 		new_entry_tag, secondary_tag;
@@ -1158,7 +1750,7 @@ mercury_expand_complicated(Word data_value, Word entry_value, Word * type_info,
 }
 
 void
-mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
+mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 {
 	switch ((int) entry_value) {
 	
@@ -1267,68 +1859,104 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 
 
 	/* 
-	 * Given a type_info (term_type_info) which contains a
-	 * base_type_info pointer and possibly other type_infos
-	 * giving the values of the type parameters of this type,
-	 * and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	 * base_type_info pointer and possibly other type_infos
-	 * giving EITHER
-	 * 	- the values of the type parameters of this type,
-	 * or	- an indication of the type parameter of the
-	 * 	  term_type_info that should be substituted here
-	 *
-	 * This returns a fully instantiated type_info, a version of the
-	 * arg_pseudo_type_info with all the type variables filled in.
-	 * We allocate memory for a new type_info on the Mercury heap,
-	 * copy the necessary information, and return a pointer to the
-	 * new type_info. 
-	 *
-	 * In the case where the argument's pseudo_type_info is a
-	 * base_type_info with no arguments, we don't copy the
-	 * base_type_info - we just return a pointer to it - no memory
-	 * is allocated. The caller can check this by looking at the
-	 * first cell of the returned pointer - if it is zero, this is a
-	 * base_type_info. Otherwise, it is an allocated copy of a
-	 * type_info.
-	 *
-	 * NOTE: If you are changing this code, you might also need
-	 * to change the code in create_type_info in runtime/deep_copy.c,
-	 * which does much the same thing, only allocating using malloc
-	 * instead of on the heap.
-	 */
+	** Given a type_info (term_type_info) which contains a
+	** base_type_info pointer and possibly other type_infos
+	** giving the values of the type parameters of this type,
+	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
+	** base_type_info pointer and possibly other type_infos
+	** giving EITHER
+	** 	- the values of the type parameters of this type,
+	** or	- an indication of the type parameter of the
+	** 	  term_type_info that should be substituted here
+	**
+	** This returns a fully instantiated type_info, a version of the
+	** arg_pseudo_type_info with all the type variables filled in.
+	**
+	** If the substituted type parameters from the term_type_info
+	** were type variables, they will be replaced with references
+	** to the void type ('void'/0).
+	** XXX: This is a temporary measure. It would be best if the
+	** code in polymorphism.m and typecheck.m was changed to output
+	** references to 'void' for unbound type variables, rather than
+	** outputting NULL pointers, which we convert to references to
+	** void here. Note that this would also involve changing any
+	** code that relied upon the NULL definition (for example,
+	** mercury_compare_type_info).
+	**
+	** We allocate memory for a new type_info on the Mercury heap,
+	** copy the necessary information, and return a pointer to the
+	** new type_info. 
+	**
+	** In the case where the argument's pseudo_type_info is a
+	** base_type_info with no arguments, we don't copy the
+	** base_type_info - we just return a pointer to it - no memory
+	** is allocated. The caller can check this by looking at the
+	** first cell of the returned pointer - if it is zero, this is a
+	** base_type_info. Otherwise, it is an allocated copy of a
+	** type_info.
+	**
+	** NOTE: If you are changing this code, you might also need
+	** to change the code in create_type_info in runtime/deep_copy.c,
+	** which does much the same thing, only allocating using malloc
+	** instead of on the heap.
+	*/
 
-Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
+MR_DECLARE_STRUCT(mercury_data___base_type_info_void_0);
+
+Word * 
+create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	int i, arity;
 	Word base_type_info;
 	Word *type_info;
 
-		/* The arg_pseudo_type_info might be a polymorphic variable */
+		/* 
+		** The arg_pseudo_type_info might be a polymorphic variable,
+		** if so - substitute.
+		*/
 
 	if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
 		arg_pseudo_type_info = (Word *) 
 			term_type_info[(Word) arg_pseudo_type_info];
 	}
 
+		/* 
+		** If it's still a variable, make it a reference to 'void'.
+		*/
+	if (arg_pseudo_type_info == NULL) {
+		return (Word *) (Word) &mercury_data___base_type_info_void_0;
+	}
+	else if ((Word) arg_pseudo_type_info < TYPELAYOUT_MAX_VARINT) {
+		fatal_error(""unbound type variable"");
+	}
+
 	base_type_info = arg_pseudo_type_info[0];
 
 		/* no arguments - optimise common case */
 	if (base_type_info == 0) {
-
-		/* The only case where we don't allocate memory */
 		return arg_pseudo_type_info;
 	}
 
-	arity = ((Word *) base_type_info)[0];
+	arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
 
 	incr_saved_hp(LVALUE_CAST(Word, type_info), arity + 1);
 
 	for (i = 0; i <= arity; i++) {
 		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
 			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
-			if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
-				fatal_error(""Error! Can't instantiate type variable."");
+
+			/* 
+			** If it's still a variable, make it a reference 
+			** to `void'.
+			*/
+			if ((Word *) type_info[i] == NULL) {
+				type_info[i] = (Word) 
+					&mercury_data___base_type_info_void_0;
 			}
+			else if (type_info[i] < TYPELAYOUT_MAX_VARINT) {
+				fatal_error(""unbound type variable"");
+			}
+
 		} else {
 			type_info[i] = arg_pseudo_type_info[i];
 		}
@@ -1344,7 +1972,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 :- pragma(c_code, functor(Type::in, Functor::out, Arity::out), " 
 {
-	expand_info info;
+	ML_Expand_Info info;
 
 	info.need_functor = TRUE;
 	info.need_args = FALSE;
@@ -1364,7 +1992,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 :- pragma(c_code, arg(ArgumentIndex::in, Type::in, Argument::out), " 
 {
-	expand_info info;
+	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
 
 	info.need_functor = FALSE;
@@ -1415,7 +2043,7 @@ det_arg(ArgumentIndex, Type, Argument) :-
 
 :- pragma(c_code, expand(Type::in, Functor::out, Arity::out, Arguments::out), " 
 {
-	expand_info info;
+	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
 	Word Argument, tmp;
 	int i;

@@ -61,7 +61,8 @@
 % Tag 0 - 	CONST   Word = 5	- character
 % Tag 0 - 	CONST   Word = 6	- univ
 % Tag 0 - 	CONST   Word = 7	- pred
-% 			Words 8 - 1024 reserved for future use
+% Tag 0 - 	CONST   Word = 8	- void
+% 			Words 9 - 1024 reserved for future use
 % Tag 0 - 	CONST   Word = 1024+	- constant(s) 
 % 					  word is pointer to enum
 % 					  vector.
@@ -359,7 +360,7 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 			Enum = yes,
 			base_type_layout__layout_enum(SortedConsTags,
 				LayoutInfo1, LayoutInfo2, LayoutTypeData),
-			base_type_layout__functors_enum(UnsortedConsTags,
+			base_type_layout__functors_enum(SortedConsTags,
 				LayoutInfo2, LayoutInfo3, FunctorsTypeData)
 		;
 			Enum = no,

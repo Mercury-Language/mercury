@@ -225,6 +225,13 @@
 #endif
 
 /*
+** Declaration for structs.
+*/
+
+#define MR_DECLARE_STRUCT(T)			\
+	extern const struct T##_struct T
+
+/*
 ** Typelayouts for builtins are often defined as X identical
 ** values, where X is the number of possible tag values.
 */
@@ -295,6 +302,7 @@
 #define TYPELAYOUT_CHARACTER_VALUE	((Integer) 5)
 #define TYPELAYOUT_UNIV_VALUE		((Integer) 6)
 #define TYPELAYOUT_PREDICATE_VALUE	((Integer) 7)
+#define TYPELAYOUT_NO_NAME_VALUE	((Integer) 8)
 
 /* 
 ** Highest allowed type variable number
@@ -463,12 +471,234 @@
 ** base_type_functors.
 */
 
+/*
+** All type_functors have an indicator.
+*/
+
+#define MR_TYPEFUNCTORS_OFFSET_FOR_INDICATOR	((Integer) 0)
+
+#define MR_TYPEFUNCTORS_INDICATOR(Functors)				\
+	((Functors)[MR_TYPEFUNCTORS_OFFSET_FOR_INDICATOR])
+
+
+/*
+** Values that the indicator can take.
+*/
+
 #define MR_TYPEFUNCTORS_DU	((Integer) 0)
 #define MR_TYPEFUNCTORS_ENUM	((Integer) 1)
 #define MR_TYPEFUNCTORS_EQUIV	((Integer) 2)
 #define MR_TYPEFUNCTORS_SPECIAL	((Integer) 3)
 #define MR_TYPEFUNCTORS_NO_TAG	((Integer) 4)
 #define MR_TYPEFUNCTORS_UNIV	((Integer) 5)
+
+
+	/*
+	** Macros to access the data in a discriminated union
+	** type_functors, the number of functors, and the simple_vector
+	** for functor number N (where N starts at 1). 
+	*/
+
+#define MR_TYPEFUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS	((Integer) 1)
+#define MR_TYPEFUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 2)
+
+#define MR_TYPEFUNCTORS_DU_NUM_FUNCTORS(Functors)			\
+	((Functors)[MR_TYPEFUNCTORS_DU_OFFSET_FOR_NUM_FUNCTORS])
+
+#define MR_TYPEFUNCTORS_DU_FUNCTOR_N(Functor, N)			\
+	((Word *) ((Functor)[						\
+		MR_TYPEFUNCTORS_DU_OFFSET_FOR_FUNCTORS_VECTOR + N]))
+
+	/*
+	** Macros to access the data in a enumeration type_functors, the
+	** number of functors, and the enumeration vector.
+	*/
+
+#define MR_TYPEFUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR		((Integer) 1)
+
+#define MR_TYPEFUNCTORS_ENUM_NUM_FUNCTORS(Functors)			\
+	MR_TYPELAYOUT_ENUM_VECTOR_NUM_FUNCTORS(			\
+		MR_TYPEFUNCTORS_ENUM_FUNCTORS((Functors)))
+
+#define MR_TYPEFUNCTORS_ENUM_FUNCTORS(Functor)				\
+	((Word *) ((Functor)[MR_TYPEFUNCTORS_ENUM_OFFSET_FOR_FUNCTORS_VECTOR]))
+
+	/*
+	** Macros to access the data in a no_tag type_functors, the
+	** simple_vector for the functor (there can only be one functor
+	** with no_tags).
+	*/
+
+#define MR_TYPEFUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR	((Integer) 1)
+
+#define MR_TYPEFUNCTORS_NO_TAG_FUNCTOR(Functors)			\
+	((Word *) ((Functors)						\
+		[MR_TYPEFUNCTORS_NO_TAG_OFFSET_FOR_FUNCTORS_VECTOR]))
+
+	/*
+	** Macros to access the data in an equivalence type_functors,
+	** the equivalent type of this type.
+	*/
+
+#define MR_TYPEFUNCTORS_EQUIV_OFFSET_FOR_TYPE	((Integer) 1)
+
+#define MR_TYPEFUNCTORS_EQUIV_TYPE(Functors)				\
+	((Functors)[MR_TYPEFUNCTORS_EQUIV_OFFSET_FOR_TYPE])
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Macros and defintions for defining and dealing with the vectors
+** created by base_type_layouts (these are the same vectors referred to
+** by base_type_functors)
+** 	- the simple_vector, describing a single functor
+** 	- the enum_vector, describing an enumeration
+** 	- the no_tag_vector, describing a single functor 
+*/
+
+	/*
+	** Macros for dealing with enum vectors.
+	*/
+
+typedef struct {
+	Word enum_or_comp_const;
+	Word num_sharers;		
+	ConstString functor1;
+/* other functors follow, num_sharers of them.
+** 	ConstString functor2;
+** 	...
+*/
+} MR_TypeLayout_EnumVector;
+
+#define MR_TYPELAYOUT_ENUM_VECTOR_NUM_FUNCTORS(Vector)			\
+	((MR_TypeLayout_EnumVector *) (Vector))->num_sharers
+
+#define MR_TYPELAYOUT_ENUM_VECTOR_FUNCTOR_NAME(Vector, N)		\
+	( (&((MR_TypeLayout_EnumVector *)(Vector))->functor1) [N] )
+
+
+	/*
+	** Macros for dealing with simple vectors.
+	*/
+
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY		((Integer) 0)
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS		((Integer) 1)
+	/* Note, these offsets are from the end of the args */
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME	((Integer) 1)
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG	((Integer) 2)
+
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V)				\
+		((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARITY])
+
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_ARGS(V)				\
+		(V + MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_ARGS)
+
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_FUNCTOR_NAME(V)			\
+		((String) ((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
+			MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_NAME]))
+
+#define MR_TYPELAYOUT_SIMPLE_VECTOR_TAG(V)				\
+		((Word) ((V)[MR_TYPELAYOUT_SIMPLE_VECTOR_ARITY(V) +	\
+			MR_TYPELAYOUT_SIMPLE_VECTOR_OFFSET_FOR_FUNCTOR_TAG]))
+
+	/* 
+	** Macros for dealing with no_tag vectors 
+	**
+	** (Note, we know the arity is 1).
+	*/
+
+typedef struct {
+	Word arity;
+	Word arg;
+	ConstString name;
+} MR_TypeLayout_NoTagVector;
+
+#define MR_TYPELAYOUT_NO_TAG_VECTOR_ARITY(Vector)			\
+		(1)
+#define MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(Vector)			\
+		(&(((MR_TypeLayout_NoTagVector *) (Vector))->arg))
+		
+#define MR_TYPELAYOUT_NO_TAG_VECTOR_FUNCTOR_NAME(Vector)		\
+		(((MR_TypeLayout_NoTagVector *) (Vector))->name)
+
+/*---------------------------------------------------------------------------*/
+
+	/* 
+	** Macros for retreiving things from type_infos and
+	** base_type_infos
+	*/
+
+#define MR_TYPEINFO_GET_BASE_TYPEINFO(TypeInfo)				\
+		((*TypeInfo) ? ((Word *) *TypeInfo) : TypeInfo)
+
+#define MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(BaseTypeInfo)			\
+		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_FUNCTORS])
+
+#define MR_BASE_TYPEINFO_GET_TYPELAYOUT(BaseTypeInfo)			\
+		((Word *) (BaseTypeInfo)[OFFSET_FOR_BASE_TYPE_LAYOUT])
+
+#define MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(BaseTypeInfo, Tag)	\
+		(MR_BASE_TYPEINFO_GET_TYPELAYOUT(BaseTypeInfo)[(Tag)])
+
+#define MR_BASE_TYPEINFO_GET_TYPE_ARITY(BaseTypeInfo)			\
+		(((Word *) (BaseTypeInfo))[OFFSET_FOR_COUNT])
+
+/*---------------------------------------------------------------------------*/
+
+#if 0
+
+	/* XXX: We should use structs to represent the various
+	** data structures in the functors and layouts.
+	**
+	** To implement this: 
+	** 	1. The code that uses the data in the library and
+	** 	   runtime should be modified to use the above access
+	** 	   macros
+	** 	2. Then we can simplify the ordering of the data
+	** 	   structures (for example, put variable length fields
+	** 	   last)
+	** 	3. Then we can create structs for them.
+	**
+	** Some examples are below, (no guarantees of correctness).
+	**
+	** Note that enum_vectors have already been handled in this way.
+	*/
+
+        /*
+        **         ** IMPORTANT: the layout in memory of the following
+        **         struct must match the way that the Mercury compiler
+        **         generates code for it.
+        */         
+
+
+typedef struct {
+	Word arity;
+	Word arg1;		
+/* other arguments follow, there are arity of them,
+** then followed by functor name, and functor tag.
+** 	Word arg2;
+** 	...
+** 	Word argarity;
+**	ConstString functorname;
+**	Word tag;
+*/
+} MR_TypeLayout_SimpleVector;
+
+
+typedef struct {
+	Word arity;
+	Word arg_pseudo_type_infos[1]; /* variable-sized array */
+                        /* actualy length is `arity', not 1 */
+} MR_TypeLayout_part1;
+
+typedef struct {
+                ConstString name;
+                Word arg_layouts[1]; /* variable-sized array */
+                        /* actualy length is `arity', not 1 */
+} MR_TypeLayout_part2;
+typedef MR_TypeLayout_part1 MR_TypeLayout;
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 

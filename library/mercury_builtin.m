@@ -514,6 +514,15 @@ const struct mercury_data___base_type_layout_pred_0_struct {
 		mkbody(TYPELAYOUT_PREDICATE_VALUE))
 };
 
+	/* The void type */
+
+const struct mercury_data___base_type_layout_void_0_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data___base_type_layout_void_0 = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_NO_NAME_VALUE))
+};
+
 	/* base_type_functors definitions */
 
 const struct mercury_data___base_type_functors_int_0_struct {
@@ -543,6 +552,14 @@ const struct mercury_data___base_type_functors_float_0_struct {
 const struct mercury_data___base_type_functors_pred_0_struct {
 	Integer f1;
 } mercury_data___base_type_functors_pred_0 = {
+	MR_TYPEFUNCTORS_SPECIAL
+};
+
+	/* The void type */
+
+const struct mercury_data___base_type_functors_void_0_struct {
+	Integer f1;
+} mercury_data___base_type_functors_void_0 = {
 	MR_TYPEFUNCTORS_SPECIAL
 };
 
@@ -727,6 +744,38 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 	(const Word *) & mercury_data___base_type_layout_pred_0,
 	(const Word *) & mercury_data___base_type_functors_pred_0,
 	(const Word *) string_const(""pred"", 4)
+#endif
+};
+
+	/* The void type */
+
+MR_STATIC_CODE_CONST struct mercury_data___base_type_info_void_0_struct {
+	Integer f1;
+	Code *f2;
+	Code *f3;
+	Code *f4;
+#ifdef USE_TYPE_TO_TERM
+	Code *f5;
+	Code *f6;
+#endif
+#ifdef USE_TYPE_LAYOUT
+	const Word *f7;
+	const Word *f8;
+	const Word *f9;
+#endif
+} mercury_data___base_type_info_void_0 = {
+	((Integer) 0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+#ifdef USE_TYPE_TO_TERM
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0))
+#endif
+#ifdef  USE_TYPE_LAYOUT
+	(const Word *) & mercury_data___base_type_layout_void_0,
+	(const Word *) & mercury_data___base_type_functors_void_0,
+	(const Word *) string_const(""void"", 4)
 #endif
 };
 
