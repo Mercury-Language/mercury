@@ -3205,26 +3205,34 @@ static mercury_open(MR_String filename, MR_String type)
         System::IO::FileMode fa;
         System::IO::Stream *stream = 0;
 
-                // XXX get this right...
-        if (System::String::op_Equality(type, ""r"")) {
-                fa = System::IO::FileMode::Open;
-        } else if (System::String::op_Equality(type, ""a"")) {
-                fa = System::IO::FileMode::Append;
-        } else if (System::String::op_Equality(type, ""w"")) {
-		fa = System::IO::FileMode::Truncate;
-	} else {
-		MR_String msg;
-		msg = System::String::Concat(
-			""foreign code for this function, open type:"",
-			type);
-		mercury::runtime::Errors::SORRY(msg);
-
-                // fa = XXX;
-        }
-
 	try {
-		stream = System::IO::File::Open(filename, fa);
-	} catch (System::IO::IOException* e) {}
+			// XXX get this right...
+		if (System::String::op_Equality(type, ""r"")) {
+			fa = System::IO::FileMode::Open;
+		} else if (System::String::op_Equality(type, ""a"")) {
+			fa = System::IO::FileMode::Append;
+		} else if (System::String::op_Equality(type, ""w"")) {
+			fa = System::IO::FileMode::Truncate;
+		} else {
+			MR_String msg;
+			msg = System::String::Concat(
+				""foreign code for this function, open type:"",
+				type);
+			mercury::runtime::Errors::SORRY(msg);
+
+			// fa = XXX;
+		}
+
+		if (fa == System::IO::FileMode::Truncate &&
+				!System::IO::File::Exists(filename))
+		{
+			stream = System::IO::File::Create(filename);
+		} else {
+			stream = System::IO::File::Open(filename, fa);
+		}
+	} catch (System::IO::IOException* e) {
+		System::Console::WriteLine(e->Message);
+	}
 
         if (!stream) {
                 return 0;
