@@ -222,7 +222,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 	% back into a higher-order pred constant again.
 	%
 
-		% check if variable has a higher-order pred type
+		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
 		ConsId = cons(PName, _),
 		% but in case we are redoing mode analysis, make sure
@@ -246,11 +246,15 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		% the lambda goal
 		%
 
-		get_pred_id_and_proc_id(PName, Arity, PredOrFunc,
-			PredArgTypes, ModuleInfo0, PredId, ProcId),
+		module_info_pred_info(ModuleInfo0, ThisPredId, ThisPredInfo),
+		pred_info_typevarset(ThisPredInfo, TVarSet),
+		map__apply_to_list(Args, VarTypes, ArgTypes),
+		get_pred_id_and_proc_id(PName, PredOrFunc, TVarSet, ArgTypes,
+			ModuleInfo0, PredId, ProcId),
+		module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+					PredInfo, ProcInfo),
 
 		% module-qualify the pred name (is this necessary?)
-		module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 		pred_info_module(PredInfo, PredModule),
 		unqualify_name(PName, UnqualPName),
 		QualifiedPName = qualified(PredModule, UnqualPName),
@@ -277,8 +281,6 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		% work out the modes of the introduced lambda variables
 		% and the determinism of the lambda goal
 		%
-		module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-					_PredInfo, ProcInfo),
 		proc_info_argmodes(ProcInfo, ArgModes),
 		( list__drop(Arity, ArgModes, LambdaModes0) ->
 			LambdaModes = LambdaModes0

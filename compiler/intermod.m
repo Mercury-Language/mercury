@@ -481,10 +481,7 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		{ DoWrite = yes }
 	).
 
-	% Resolve overloading and module qualify function calls and
-	% higher-order predicate constants in a unify_rhs.
-	% This has to wait until I implement module qualification of
-	% functions.
+	% Resolve overloading and module qualify everything in a unify_rhs.
 :- pred intermod__module_qualify_unify_rhs(var::in, unify_rhs::in,
 		unify_rhs::out, bool::out, intermod_info::in,
 		intermod_info::out) is det.
@@ -502,8 +499,10 @@ intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,Goal0),
 	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
 				UserInstDefns, Modes).
 
-	% Check if the functor is actually a function call or a higher-order
-	% pred constant. If so, module qualify.
+	% Check if the functor is a function call, a higher-order
+	% term, or an unqualified symbol. If so, module qualify.
+	% For function calls and higher-order terms, call intermod__add_proc
+	% so that the predicate or function will be exported if necessary.
 intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 				functor(Functor, Vars), DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
@@ -511,40 +510,77 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 	intermod_info_get_tvarset(TVarSet),
 	intermod_info_get_var_types(VarTypes),
 	(
-		{ 
-			Functor0 = cons(QualifiedFuncName, Arity),
-			QualifiedFuncName = qualified(FuncModule, FuncName),
-			predicate_table_search_func_m_n_a(PredTable,
-				FuncModule, FuncName, Arity, [PredId])
-		;
-			Functor0 = cons(unqualified(FuncName), Arity),
-			predicate_table_search_func_name_arity(PredTable,
-					FuncName, Arity, PredIds),
-			list__append(Vars, [LVar], FuncArgs),
-			map__apply_to_list(FuncArgs, VarTypes, ArgTypes),
-			typecheck__find_matching_pred_id(PredIds, ModuleInfo,
-				TVarSet, ArgTypes, PredId, QualifiedFuncName)
-		}
+		%
+		% Is it a module-qualified function call?
+		%
+		{ Functor0 = cons(qualified(FuncModule, FuncName), Arity) },
+		{ predicate_table_search_func_m_n_a(PredTable,
+				FuncModule, FuncName, Arity, PredIds) }
 	->
-			% The unification is really a function call
+		%
+		% Yes, it is a module-qualified function call.
+		% Make sure that the called function will be exported.
+		%
+		( { PredIds = [PredId] } ->
+			intermod_info_add_proc(PredId, DoWrite)
+		;
+			% there should be at most one function
+			% with a given module, name, and arity
+			{ error("intermod.m: func_m_n_a not unique") }
+		),
+		{ Functor = Functor0 }
+	;
+		%
+		% Is it an unqualified function call?
+		%
+		{ Functor0 = cons(unqualified(FuncName), Arity) },
+		{ predicate_table_search_func_name_arity(PredTable,
+				FuncName, Arity, PredIds) }
+	->
+		%
+		% Yes, it is an unqualified function call.
+		% Module-qualify it.
+		% Make sure that the called function will be exported.
+		%
+		{ list__append(Vars, [LVar], FuncArgs) },
+		{ typecheck__resolve_overloading(ModuleInfo,
+			FuncArgs, VarTypes, TVarSet, PredIds,
+			QualifiedFuncName, PredId) },
 		{ Functor = cons(QualifiedFuncName, Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
 	;
-		intermod_info_get_var_types(VarTypes),
+		%
+		% Is this a higher-order predicate or higher-order function
+		% term?
+		%
 		{ Functor0 = cons(PredName, Arity) },
+		intermod_info_get_var_types(VarTypes),
 		{ map__lookup(VarTypes, LVar, LVarType) },
 		{ type_is_higher_order(LVarType, PredOrFunc, PredArgTypes) }
 	->
-			% The unification creates a higher-order pred constant.
-		{ get_pred_id_and_proc_id(PredName, Arity, PredOrFunc,
-			PredArgTypes, ModuleInfo, PredId, _ProcId) },
-		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_module(PredInfo, Module) },
-		{ unqualify_name(PredName, UnqualPredName) },
-		{ QualifiedPredName = qualified(Module, UnqualPredName) },
-		{ Functor = cons(QualifiedPredName, Arity) },
-		intermod_info_add_proc(PredId, DoWrite)
+		%
+		% Yes, the unification creates a higher-order term.
+		% Make sure that the predicate/function is exported.
+		%
+		{ map__apply_to_list(Vars, VarTypes, Types) },
+		{ list__append(PredArgTypes, Types, ArgTypes) },
+		{ get_pred_id_and_proc_id(PredName, PredOrFunc,
+			TVarSet, ArgTypes, ModuleInfo, PredId, _ProcId) },
+		intermod_info_add_proc(PredId, DoWrite),
+		%
+		% Module-qualify it, if necessary.
+		%
+		{ PredName = unqualified(UnqualPredName) ->
+			predicate_module(ModuleInfo, PredId, Module),
+			QualifiedPredName = qualified(Module, UnqualPredName),
+			Functor = cons(QualifiedPredName, Arity)
+		;
+			Functor = Functor0
+		}
 	;
+		%
+		% Is it an unqualified functor symbol?
+		%
 		{ Functor0 = cons(unqualified(ConsName), ConsArity) },
 		{ map__lookup(VarTypes, LVar, VarType) },
 		{ type_to_type_id(VarType, TypeId, _) },

@@ -142,11 +142,27 @@
 
 
 	% Find a predicate which matches the given name and argument types.
+	% Abort if there is no matching pred.
+	% Abort if there are multiple matching preds.
 
 :- pred typecheck__resolve_pred_overloading(module_info, list(var),
 			map(var, type), tvarset, sym_name, sym_name, pred_id).
 :- mode typecheck__resolve_pred_overloading(in, in, in, in,
 			in, out, out) is det.
+
+	% Find a predicate or function from the list of pred_ids
+	% which matches the given name and argument types.
+	% Abort if there is no matching pred.
+	% Abort if there are multiple matching preds.
+
+:- pred typecheck__resolve_overloading(module_info, list(var), map(var, type),
+				tvarset, list(pred_id), sym_name, pred_id).
+:- mode typecheck__resolve_overloading(in, in, in, in, in, out, out) is det.
+
+	% Find a predicate or function from the list of pred_ids
+	% which matches the given name and argument types.
+	% Fail if there is no matching pred.
+	% Abort if there are multiple matching preds.
 
 :- pred typecheck__find_matching_pred_id(list(pred_id), module_info,
 			tvarset, list(type), pred_id, sym_name).
@@ -899,7 +915,11 @@ typecheck__resolve_pred_overloading(ModuleInfo, Args, VarTypes, TVarSet,
 	;
 		PredIds = []
 	),
+	typecheck__resolve_overloading(ModuleInfo, Args, VarTypes, TVarSet,
+			 PredIds, PredName, PredId).
 
+typecheck__resolve_overloading(ModuleInfo, Args, VarTypes, TVarSet, PredIds,
+		 PredName, PredId) :-
 	%
 	% Check if there any of the candidate pred_ids
 	% have argument/return types which subsume the actual
