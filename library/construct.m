@@ -120,6 +120,13 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
     type_info = (MR_TypeInfo) TypeDesc;
 
         /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
+
+        /*
         ** Get information for this functor number and
         ** store in construct_info. If this is a discriminated union
         ** type and if the functor number is in range, we
@@ -209,6 +216,13 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
 
         /*
         ** Get information for this functor number and
@@ -329,6 +343,13 @@ get_functor_2(TypeDesc, FunctorNumber,
     MR_bool             success;
 
     type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
 
         /*
         ** Check range of FunctorNum, get info for this

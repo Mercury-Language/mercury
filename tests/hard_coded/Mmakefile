@@ -28,6 +28,7 @@ ORDINARY_PROGS=	\
 	constraint \
 	constraint_order \
 	construct_test \
+	construct_bug \
 	contravariance_bug \
 	contravariance_poly \
 	curry \
