@@ -28,17 +28,17 @@ p(X, Y) :- q(X, Y), test(X).
 :- pragma no_inline(q/2).
 :- pragma terminates(q/2).
 
-q(_, 1) :- impure unsafe_write_string("call to q\n").
+q(_, 1) :- impure puts("call to q").
 
 :- pred test(int::di) is semidet.
 :- pragma promise_pure(test/1).
 :- pragma no_inline(test/1).
 :- pragma terminates(test/1).
 
-test(3) :- impure unsafe_write_string("call to test\n").
+test(3) :- impure puts("call to test").
 
-:- impure pred unsafe_write_string(string::in) is det.
+:- impure pred puts(string::in) is det.
 
-:- pragma c_code(unsafe_write_string(Str::in), "printf(Str);").
-:- pragma foreign_proc("C#", unsafe_write_string(Str::in), [],
-		"System.Console.Write(Str);").
+:- pragma c_code(puts(Str::in), "puts(Str);").
+:- pragma foreign_proc("C#", puts(Str::in), [],
+		"System.Console.WriteLine(Str);").
