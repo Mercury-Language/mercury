@@ -47,7 +47,7 @@
 ** COMPACT_ARGS
 ** NO_TYPE_LAYOUT
 ** BOXED_FLOAT
-** USE_TRAIL
+** MR_USE_TRAIL
 **	See the documentation for
 **		--gcc-global-registers
 **		--gcc-non-local-gotos
@@ -91,8 +91,16 @@
 ** Debugging options:
 **
 ** MR_STACK_TRACE
-**	Enable stuff needed so that error/1 (and co.) can print out
-**	stack traces.
+**	Require the inclusion of the layout information needed by error/1
+**	and the debugger to print stack traces. This effect is achieved by
+**	including MR_STACK_TRACE in the mangled grade (see mercury_grade.h).
+**
+** MR_STACK_TRACE_THIS_MODULE
+**	Include the layout information needed by error/1 and the debugger
+**	to print stack traces. Unlike MR_STACK_TRACE, this does not affect
+**	the mangled grade, so it can be specified on a module-by-module basis.
+**	(When a stack trace encounters a stack frame created by code from a
+**	module which does not have layout information, the trace stops.)
 **
 ** MR_REQUIRE_TRACING
 **	Require that all Mercury procedures linked in should be compiled
@@ -143,16 +151,6 @@
 **
 ** PROFILE_MEMORY
 ** Enables profiling of memory usage.
-*/
-
-/*
-** Miscellaneous options:
-**
-** MR_CHOOSE_ENTRY_POINT
-**	Enables support for the `-w' (entry point) command
-**	in the MERCURY_OPTIONS environment variable.
-**	(`-w' also happens to work if you set certain other
-**	options instead, include MR_LOWLEVEL_DEBUG.)
 */
 
 /*---------------------------------------------------------------------------*/

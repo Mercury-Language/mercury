@@ -8,6 +8,7 @@
 #include	"mercury_dlist.h"
 #include	"mercury_regs.h"
 #include	"mercury_trace.h"
+#include	"mercury_label.h"
 #include	"mercury_misc.h"
 
 #include	<stdio.h>
@@ -214,19 +215,13 @@ pop_msg(Word val, const Word *addr)
 
 #endif /* defined(MR_LOWLEVEL_DEBUG) */
 
-#if defined(MR_DEBUG_GOTOS)
+#ifdef MR_DEBUG_GOTOS
 
 void 
 goto_msg(/* const */ Code *addr)
 {
 	printf("\ngoto ");
 	printlabel(addr);
-
-	if (detaildebug) {
-		printregs("registers at goto");
-	}
-
-	return;
 }
 
 void 
@@ -254,7 +249,7 @@ reg_msg(void)
 
 /*--------------------------------------------------------------------*/
 
-#if defined(MR_DEBUG_GOTOS)
+#ifdef MR_LOWLEVEL_DEBUG
 
 /* debugging printing tools */
 
@@ -410,16 +405,25 @@ print_ordinary_regs(void)
 void 
 printlabel(/* const */ Code *w)
 {
-	Label	*label;
+	MR_Internal	*internal;
 
-	label = lookup_label_addr(w);
-	if (label != NULL) {
-		printf("label %s (0x%p)\n", label->e_name, w);
+	internal = MR_lookup_internal_by_addr(w);
+	if (internal != NULL) {
+		printf("label %s (0x%p)\n", internal->i_name, w);
 	} else {
+#ifdef	MR_DEBUG_GOTOS
+		MR_Entry	*entry;
+		entry = MR_prev_entry_by_addr(w);
+		if (entry->e_addr == w) {
+			printf("label %s (0x%p)\n", entry->e_name, w);
+		} else {
+			printf("label UNKNOWN (0x%p)\n", w);
+		}
+#else
 		printf("label UNKNOWN (0x%p)\n", w);
+#endif	/* not MR_DEBUG_GOTOS */
 	}
 }
-
 
 void *
 newmem(size_t n)

@@ -2,14 +2,6 @@
 mtrace>        2:      2  2 CALL DET   debugger_regs_lib:data/41-0 
 mtrace>        3:      2  2 EXIT DET   debugger_regs_lib:data/41-0 
 mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
-          HeadVar__2           		a0
-          HeadVar__3           		a1
-          HeadVar__4           		a2
-          HeadVar__5           		a3
-          HeadVar__6           		a4
-          HeadVar__7           		a5
-          HeadVar__8           		a6
-          HeadVar__9           		a7
           HeadVar__10          		a8
           HeadVar__11          		a9
           HeadVar__12          		b0
@@ -20,6 +12,7 @@ mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
           HeadVar__17          		b5
           HeadVar__18          		b6
           HeadVar__19          		b7
+          HeadVar__2           		a0
           HeadVar__20          		b8
           HeadVar__21          		b9
           HeadVar__22          		c0
@@ -30,6 +23,7 @@ mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
           HeadVar__27          		c5
           HeadVar__28          		c6
           HeadVar__29          		c7
+          HeadVar__3           		a1
           HeadVar__30          		c8
           HeadVar__31          		c9
           HeadVar__32          		d0
@@ -40,8 +34,14 @@ mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
           HeadVar__37          		d5
           HeadVar__38          		d6
           HeadVar__39          		d7
+          HeadVar__4           		a2
           HeadVar__40          		d8
           HeadVar__41          		d9
+          HeadVar__5           		a3
+          HeadVar__6           		a4
+          HeadVar__7           		a5
+          HeadVar__8           		a6
+          HeadVar__9           		a7
 mtrace> a0a1a2a3a4a5a6a7a8a9
 b0b1b2b3b4b5b6b7b8b9
 c0c1c2c3c4c5c6c7c8c9

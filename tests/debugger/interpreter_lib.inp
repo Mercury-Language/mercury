@@ -1,11 +1,14 @@
 h
-b interpreter_lib consult_until_eof
+45s
+v
+p *
+b interpreter_lib database_assert_clause
 c
-p
-2s
-p
+p *
+F
+p *
+
 f
-p
-?
-- 0
+
+
 c

@@ -1185,29 +1185,26 @@ generates the static call graph for that file in @samp{@var{module}.prof}.)
 @node Time profiling methods
 @section Time profiling methods
 
-By setting the environment variable MERCURY_OPTIONS,
-which is used for passing options to the Mercury runtime system,
-you can control how the Mercury profiler measures the time spent.
-The default (@samp{-Tp}) is to count time spent executing the process,
-including time spent by the system performing operations on behalf of
-the process, but not including time that the process was suspended
-(e.g. due to time slicing, or while waiting for input).
-Using @samp{-Tv} counts only time spent executing the process.
-Using @samp{-Tr} counts all elapsed time, even including time that
-the process was suspended.
-
-@table @asis
-@item @samp{-Tr}
-Profile real (elapsed) time (using ITIMER_REAL).
-@item @samp{-Tv}
-Profile user time (using ITIMER_VIRTUAL).
-@item @samp{-Tp}
-Profile user time plus system time (using ITIMER_PROF).
-This is the default.
-@end table
-
-Currently, the @samp{-Tv} and @samp{-Tp} options don't work on Windows,
+You can control whether profiling measures
+real (elapsed) time, user time plus system time, or user time only,
+by including the options @samp{-Tr}, @samp{-Tp}, or @samp{-Tv} respectively
+in the environment variable MERCURY_OPTIONS
+when you run the program to be profiled.
+@c (See the environment variables section below.)
+Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
 so on Windows you must explicitly specify @samp{-Tr}.
+@c the above sentence is duplicated below
+
+The default is user time plus system time,
+which counts all time spent executing the process,
+including time spent by the operating system performing
+working on behalf of the process,
+but not including time that the process was suspended
+(e.g. due to time slicing, or while waiting for input).
+When measuring real time, profiling counts
+even periods during which the process was suspended.
+When measuring user time only, profiling does not count
+time inside the operating system at all.
 
 @node Creating the profile
 @section Creating the profile
@@ -2713,14 +2710,6 @@ values will generally work fine.
 The default grade to use if no @samp{--grade} option is specified.
 
 @sp 1
-@item MERCURY_OPTIONS
-A list of options for the Mercury runtime that gets
-linked into every Mercury program.
-Options are available to set the size of the different memory
-areas, and to enable various debugging traces.
-Set @samp{MERCURY_OPTIONS} to @samp{-h} for help.
-
-@sp 1
 @item MERCURY_C_INCL_DIR
 Directory for the C header files for the Mercury runtime system (@file{*.h}).
 This environment variable is used
@@ -2809,6 +2798,107 @@ Filename of the Mercury Interpreter.
 @sp 1
 @item MERCURY_MKINIT
 Filename of the program to create the @file{*_init.c} file.
+
+@sp 1
+@item MERCURY_OPTIONS
+A list of options for the Mercury runtime that gets
+linked into every Mercury program.
+Their meanings are as follows.
+
+@sp 1
+@table @code
+
+@c @item -a
+@c If given force a redo when the entry point procedure succeeds;
+@c this is useful for benchmarking when this procedure is model_non.
+
+@c @item -c
+@c Check how much of the space reserved for local variables
+@c by mercury_engine.c was actually used.
+
+@item -C @var{size}
+Tells the runtime system
+to optimize the locations of the starts of the various data areas
+for a primary data cache of @var{size} kilobytes.
+The optimization consists of arranging the starts of the areas
+to differ as much as possible modulo this size.
+
+@c @item -d @var{debugflag}
+@c Sets a low-level debugging flag.
+@c These flags are consulted only if
+@c the runtime was compiled with the approriate definitions;
+@c most of them depend on MR_LOWLEVEL_DEBUG.
+@c For the meanings of the debugflag parameters,
+@c see process_options() in mercury_wrapper.c
+@c and do a grep for the corresponding variable.
+
+@sp 1
+@item -D @var{debugger}
+Enables execution tracing of the program,
+via the internal debugger if @var{debugger} is @samp{i}
+and via the external debugger if @var{debugger} is @samp{e}.
+(The mdb script works by including -Di in MERCURY_OPTIONS.)
+The external debugger is not yet available.
+
+@sp 1
+@item -p
+Disables profiling.
+This only has an effect if the executable was built in a profiling grade.
+
+@sp 1
+@item -P @var{num}
+Tells the runtime system to use @var{num} threads
+if the program was built in a parallel grade.
+
+@c @item -r @var{num}
+@c Repeats execution of the entry point procedure @var{num} times,
+@c to enable accurate timing.
+
+@sp 1
+@item -s @var{area} @var{size}
+Sets the size of one of the runtime system's memory areas.
+@var{area} must be one of @samp{h} (standing for heap),
+@samp{d} (standing for deterministic stack),
+@samp{n} (standing for nondeterministic stack)
+and, in grades with trailing, @samp{t} (standing for trail).
+@var{size} specifies the size of that area, in kilobytes.
+
+@c @item -t
+@c Tells the runtime system to measure the time taken by
+@c the (required number of repetitions of) the program,
+@c and to print the result of this time measurement.
+
+@sp 1
+@item -T @var{time_method}
+If the executable was compiled in a grade that includes time profiling,
+this option specifies what time is counted in the profile.
+@var{time_method} must have one of the following values:
+
+@sp 1
+@table @code
+@item @samp{r}
+Profile real (elapsed) time (using ITIMER_REAL).
+@item @samp{p}
+Profile user time plus system time (using ITIMER_PROF).
+This is the default.
+@item @samp{v}
+Profile user time (using ITIMER_VIRTUAL).
+@end table
+
+@sp 1
+Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
+so on Windows you must explicitly specify @samp{-Tr}.
+@c the above sentence is duplicated above
+
+@c @item -x
+@c Tells the Boehm collector not to perform any garbage collection.
+
+@c @item -z @var{area} @var{size}
+@c Sets the size of the redzone on one of the runtime system's memory areas.
+@c The @var{area} and @var{size} parameters have the same meaning
+@c as they do for the @samp{-s} option.
+
+@end table
 
 @end table
 

@@ -479,7 +479,7 @@ process_options(int argc, char **argv)
 	unsigned long size;
 	int c;
 
-	while ((c = getopt(argc, argv, "acC:d:D:hLlP:pr:s:tT:w:xz:")) != EOF)
+	while ((c = getopt(argc, argv, "acC:d:D:P:pr:s:tT:xz:")) != EOF)
 	{
 		switch (c)
 		{
@@ -563,45 +563,20 @@ process_options(int argc, char **argv)
 
 			break;
 
-		case 'h':
-			usage();
-			break;
-
-		case 'L': 
-			do_init_modules();
-			break;
-
-		case 'l': {
-			List	*ptr;
-			List	*label_list;
-
-			label_list = get_all_labels();
-			for_list (ptr, label_list) {
-				Label	*label;
-				label = (Label *) ldata(ptr);
-				printf("%lu %lx %s\n",
-					(unsigned long) label->e_addr,
-					(unsigned long) label->e_addr,
-					label->e_name);
-			}
-
-			exit(0);
-		}
-
 		case 'p':
 			MR_profiling = FALSE;
 			break;
 
-#ifdef	MR_THREAD_SAFE
 		case 'P':
-				if (sscanf(optarg, "%u", &MR_num_threads) != 1)
-					usage();
-				
-				if (MR_num_threads < 1)
-					usage();
+#ifdef	MR_THREAD_SAFE
+			if (sscanf(optarg, "%u", &MR_num_threads) != 1)
+				usage();
 
-				break;
+			if (MR_num_threads < 1)
+				usage();
+
 #endif
+			break;
 
 		case 'r':	
 			if (sscanf(optarg, "%d", &repeats) != 1)
@@ -619,9 +594,6 @@ process_options(int argc, char **argv)
 				detstack_size = size;
 			else if (optarg[0] == 'n')
 				nondstack_size = size;
-			else if (optarg[0] == 'l')
-				entry_table_size = size *
-					1024 / (2 * sizeof(List *));
 #ifdef MR_USE_TRAIL
 			else if (optarg[0] == 't')
 				trail_size = size;
@@ -656,22 +628,6 @@ process_options(int argc, char **argv)
 			}
 			break;
 
-		case 'w': {
-			Label *which_label;
-
-			which_label = lookup_label_name(optarg);
-			if (which_label == NULL)
-			{
-				fprintf(stderr, "Mercury runtime: "
-					"label name `%s' unknown\n",
-					optarg);
-				exit(1);
-			}
-
-			program_entry_point = which_label->e_addr;
-
-			break;
-		}
 		case 'x':
 #ifdef CONSERVATIVE_GC
 			GC_dont_gc = TRUE;
@@ -708,54 +664,10 @@ process_options(int argc, char **argv)
 static void 
 usage(void)
 {
-	printf("Mercury runtime usage:\n"
-		"MERCURY_OPTIONS=\"[-hclLtxp] [-T[rvp]] [-d[abcdghs]]\n"
-        "                  [-[szt][hdn]#] [-C#] [-r#]  [-w name] [-[123]#]\"\n"
-		"-h \t\tprint this usage message\n"
-		"-c \t\tcheck cross-function stack usage\n"
-		"-l \t\tprint all labels\n"
-		"-L \t\tcheck for duplicate labels\n"
-		"-t \t\ttime program execution\n"
-		"-x \t\tdisable garbage collection\n"
-		"-p \t\tdisable profiling\n"
-		"-Tr \t\tprofile real time (using ITIMER_REAL)\n"
-		"-Tv \t\tprofile user time (using ITIMER_VIRTUAL)\n"
-		"-Tp \t\tprofile user + system time (using ITIMER_PROF)\n"
-		"-dg \t\tdebug gotos\n"
-		"-dc \t\tdebug calls\n"
-		"-db \t\tdebug backtracking\n"
-		"-dh \t\tdebug heap\n"
-		"-ds \t\tdebug detstack\n"
-		"-df \t\tdebug final success/failure\n"
-		"-da \t\tdebug all\n"
-		"-dm \t\tdebug memory allocation\n"
-		"-dG \t\tdebug garbage collection\n"
-		"-dd \t\tdetailed debug\n"
-		"-Di \t\tdebug the program using the internal debugger\n"
-#ifdef MR_USE_EXTERNAL_DEBUGGER
-		"-De \t\tdebug the program using the external debugger\n"
-#endif
-		"-sh<n> \t\tallocate n kb for the heap\n"
-		"-sd<n> \t\tallocate n kb for the det stack\n"
-		"-sn<n> \t\tallocate n kb for the nondet stack\n"
-#ifdef MR_USE_TRAIL
-		"-st<n> \t\tallocate n kb for the trail\n"
-#endif
-		"-sl<n> \t\tallocate n kb for the label table\n"
-		"-zh<n> \t\tallocate n kb for the heap redzone\n"
-		"-zd<n> \t\tallocate n kb for the det stack redzone\n"
-		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
-#ifdef MR_USE_TRAIL
-		"-zt<n> \t\tallocate n kb for the trail redzone\n"
-#endif
-		"-C<n> \t\tprimary cache size in kbytes\n"
-#ifdef PARALLEL
-		"-P<n> \t\tnumber of processes to use for parallel execution\n"
-		"\t\tapplies only if Mercury is configured with --enable-parallel\n"
-#endif
-		"-r<n> \t\trepeat n times\n"
-		"-w<name> \tcall predicate with given name (default: main/2)\n"
-		);
+	printf("The MERCURY_OPTIONS environment variable "
+		"contains an invalid option.\n"
+		"Please refer to the Environment Variables section of "
+		"the Mercury\nuser's guide for details.\n");
 	fflush(stdout);
 	exit(1);
 } /* end usage() */

@@ -1,7 +1,7 @@
        1:      1  1 CALL CCMUL queens_lib:main/2-0 
 mtrace>           HeadVar__1           		state('<<c_pointer>>')
 mtrace>        2:      2  2 CALL DET   queens_lib:data/1-0 
-mtrace> mtrace: no live variables
+mtrace> mtrace: there are no live variables
 mtrace>        3:      2  2 EXIT DET   queens_lib:data/1-0 
 mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
 mtrace>        4:      3  2 CALL NON   queens_lib:queen/2-0 
@@ -14,12 +14,17 @@ mtrace>        7:      5  4 CALL NON   queens_lib:qdelete/3-0
 mtrace>           HeadVar__2           		[1, 2, 3, 4, 5]
 mtrace>        8:      5  4 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
 mtrace>           HeadVar__2           		[1, 2, 3, 4, 5]
-          V_11                 		1
           V_10                 		[2, 3, 4, 5]
+          V_11                 		1
+mtrace> Ancestor level set to 1
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace> Ancestor level set to 2
+mtrace>         0 HeadVar__1
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
 mtrace>        9:      5  4 EXIT NON   queens_lib:qdelete/3-0 
 mtrace>           HeadVar__1           		1
-          HeadVar__3           		[2, 3, 4, 5]
           HeadVar__2           		[1, 2, 3, 4, 5]
+          HeadVar__3           		[2, 3, 4, 5]
 mtrace>       10:      6  4 CALL NON   queens_lib:qperm/2-0 
 mtrace>           HeadVar__1           		[2, 3, 4, 5]
 mtrace>       11:      6  4 SWTC NON   queens_lib:qperm/2-0 s1;
@@ -28,12 +33,12 @@ mtrace>       12:      7  5 CALL NON   queens_lib:qdelete/3-0
 mtrace>           HeadVar__2           		[2, 3, 4, 5]
 mtrace>       13:      7  5 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
 mtrace>           HeadVar__2           		[2, 3, 4, 5]
-          V_11                 		2
           V_10                 		[3, 4, 5]
+          V_11                 		2
 mtrace>       14:      7  5 EXIT NON   queens_lib:qdelete/3-0 
 mtrace>           HeadVar__1           		2
-          HeadVar__3           		[3, 4, 5]
           HeadVar__2           		[2, 3, 4, 5]
+          HeadVar__3           		[3, 4, 5]
 mtrace>       15:      8  5 CALL NON   queens_lib:qperm/2-0 
 mtrace>           HeadVar__1           		[3, 4, 5]
 mtrace>       16:      8  5 SWTC NON   queens_lib:qperm/2-0 s1;
@@ -42,12 +47,12 @@ mtrace>       17:      9  6 CALL NON   queens_lib:qdelete/3-0
 mtrace>           HeadVar__2           		[3, 4, 5]
 mtrace>       18:      9  6 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
 mtrace>           HeadVar__2           		[3, 4, 5]
-          V_11                 		3
           V_10                 		[4, 5]
+          V_11                 		3
 mtrace>       19:      9  6 EXIT NON   queens_lib:qdelete/3-0 
 mtrace>           HeadVar__1           		3
-          HeadVar__3           		[4, 5]
           HeadVar__2           		[3, 4, 5]
+          HeadVar__3           		[4, 5]
 mtrace>       20:     10  6 CALL NON   queens_lib:qperm/2-0 
 mtrace>           HeadVar__1           		[4, 5]
 mtrace>       21:     10  6 SWTC NON   queens_lib:qperm/2-0 s1;
@@ -56,12 +61,12 @@ mtrace>       22:     11  7 CALL NON   queens_lib:qdelete/3-0
 mtrace>           HeadVar__2           		[4, 5]
 mtrace>       23:     11  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
 mtrace>           HeadVar__2           		[4, 5]
-          V_11                 		4
           V_10                 		[5]
+          V_11                 		4
 mtrace>       24:     11  7 EXIT NON   queens_lib:qdelete/3-0 
 mtrace>           HeadVar__1           		4
-          HeadVar__3           		[5]
           HeadVar__2           		[4, 5]
+          HeadVar__3           		[5]
 mtrace>       25:     12  7 CALL NON   queens_lib:qperm/2-0 
 mtrace>           HeadVar__1           		[5]
 mtrace>       26:     12  7 SWTC NON   queens_lib:qperm/2-0 s1;
@@ -70,33 +75,33 @@ mtrace>       27:     13  8 CALL NON   queens_lib:qdelete/3-0
 mtrace>           HeadVar__2           		[5]
 mtrace>       28:     13  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
 mtrace>           HeadVar__2           		[5]
-          V_11                 		5
           V_10                 		[]
+          V_11                 		5
 mtrace>       29:     13  8 EXIT NON   queens_lib:qdelete/3-0 
 mtrace>           HeadVar__1           		5
-          HeadVar__3           		[]
           HeadVar__2           		[5]
+          HeadVar__3           		[]
 mtrace>       30:     14  8 CALL NON   queens_lib:qperm/2-0 
 mtrace>           HeadVar__1           		[]
 mtrace>       31:     14  8 SWTC NON   queens_lib:qperm/2-0 s2;
 mtrace> mtrace>       32:     14  8 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[]
-          HeadVar__1           		[]
+mtrace>           HeadVar__1           		[]
+          HeadVar__2           		[]
 mtrace>       33:     12  7 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[5]
-          HeadVar__1           		[5]
+mtrace>           HeadVar__1           		[5]
+          HeadVar__2           		[5]
 mtrace>       34:     10  6 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[4, 5]
-          HeadVar__1           		[4, 5]
+mtrace>           HeadVar__1           		[4, 5]
+          HeadVar__2           		[4, 5]
 mtrace>       35:      8  5 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[3, 4, 5]
-          HeadVar__1           		[3, 4, 5]
+mtrace>           HeadVar__1           		[3, 4, 5]
+          HeadVar__2           		[3, 4, 5]
 mtrace>       36:      6  4 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[2, 3, 4, 5]
-          HeadVar__1           		[2, 3, 4, 5]
+mtrace>           HeadVar__1           		[2, 3, 4, 5]
+          HeadVar__2           		[2, 3, 4, 5]
 mtrace>       37:      4  3 EXIT NON   queens_lib:qperm/2-0 
-mtrace>           HeadVar__2           		[1, 2, 3, 4, 5]
-          HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+          HeadVar__2           		[1, 2, 3, 4, 5]
 mtrace>       38:     15  3 CALL SEMI  queens_lib:safe/1-0 
 mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
 mtrace>       39:     15  3 SWTC SEMI  queens_lib:safe/1-0 s1;

@@ -15,24 +15,63 @@
 #ifndef	MERCURY_LABEL_H
 #define	MERCURY_LABEL_H
 
-#include "mercury_types.h"	/* for `Code *' */
-#include "mercury_dlist.h"		/* for `List' */
+#include "mercury_types.h"		/* for `Code *' */
+#include "mercury_dlist.h" 		/* for `List' */
+#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_*' */
 
-typedef struct s_label {
-	const char	*e_name;   /* name of the procedure	     */
-	Code		*e_addr;   /* address of the code	     */
-	Word		*e_layout; /* layout info for the label      */
-} Label;
+#if     defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS)
+  #define	MR_NEED_ENTRY_LABEL_ARRAY
+#endif
 
-extern	void	do_init_entries(void);
-extern	Label	*insert_entry(const char *name, Code *addr,
-			Word * entry_layout_info);
-extern	Label	*lookup_label_name(const char *name);
-extern	Label	*lookup_label_addr(const Code *addr);
-extern	List	*get_all_labels(void);
+#if     defined(MR_NEED_ENTRY_LABEL_ARRAY) || defined(PROFILE_CALLS)
+  #define	MR_NEED_ENTRY_LABEL_INFO
+#endif
 
-extern  int 	entry_table_size;
-	/* expected number of entries in the table */
-	/* we allocate 8 bytes per entry */
+/*
+** This struct records information about entry labels. Elements in the
+** entry label array are of this type. The table is sorted on address,
+** to allow the garbage collector to locate the entry label of the procedure 
+** to which an internal label belongs by a variant of binary search.
+**
+** The name field is needed only for low-level debugging.
+*/
+
+typedef struct s_entry {
+	const Code			*e_addr;
+	const MR_Stack_Layout_Entry	*e_layout;
+	const char			*e_name;
+} MR_Entry;
+
+/*
+** This struct records information about internal (non-entry) labels.
+** The internal label table is organized as a hash table, with the address
+** being the key.
+**
+** The name field is needed only for low-level debugging.
+*/
+
+typedef struct s_internal {
+	const Code			*i_addr;
+	const MR_Stack_Layout_Label	*i_layout;
+	const char			*i_name;
+} MR_Internal;
+
+extern	void		MR_do_init_label_tables(void);
+
+#ifdef	MR_NEED_ENTRY_LABEL_INFO
+  extern void		MR_insert_entry_label(const char *name, Code *addr,
+				const MR_Stack_Layout_Entry *entry_layout);
+#else
+  #define MR_insert_entry_label(n, a, l)	/* nothing */
+#endif	/* not MR_NEED_ENTRY_LABEL_INFO */
+
+#ifdef	MR_NEED_ENTRY_LABEL_ARRAY
+  extern MR_Entry	*MR_prev_entry_by_addr(const Code *addr);
+#endif	/* MR_NEED_ENTRY_LABEL_ARRAY */
+
+extern	void		MR_insert_internal_label(const char *name, Code *addr,
+				const MR_Stack_Layout_Label *label_layout);
+extern	MR_Internal	*MR_lookup_internal_by_addr(const Code *addr);
+extern	void		MR_process_all_internal_labels(void f(const void *));
 
 #endif /* not MERCURY_LABEL_H */

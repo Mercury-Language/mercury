@@ -12,6 +12,7 @@
 #include "mercury_conf.h"
 #include "mercury_types.h"	/* for `Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
+#include "mercury_label.h"	/* for insert_{entry,internal}_label() */
 
 #define paste(a,b) a##b
 #define stringify(string) #string
@@ -19,12 +20,14 @@
 #define skip(label) paste(skip_,label)
 
 #if defined(MR_USE_STACK_LAYOUTS)
-  #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
+  #define MR_ENTRY_LAYOUT(label)	(const MR_Stack_Layout_Entry *) (Word) \
+	&(paste(mercury_data__layout__,label))
+  #define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) (Word) \
 	&(paste(mercury_data__layout__,label))
 #else
-  #define MR_STACK_LAYOUT(label)	(Word *) NULL
+  #define MR_ENTRY_LAYOUT(label)	(const MR_Stack_Layout_Entry *) NULL
+  #define MR_INTERNAL_LAYOUT(label)	(const MR_Stack_Layout_Label *) NULL
 #endif
-
 
 /*
 ** Taking the address of a label can inhibit gcc's optimization,
@@ -40,25 +43,27 @@
 */
 
 #if defined(MR_INSERT_LABELS)
-  #define make_label(n, a, l)		make_entry(n, a, l)
-  #define make_label_sl(n, a, l)	make_entry_sl(n, a, l)
+  #define make_label(n, a, l)		MR_insert_internal_label(n, a, NULL)
+  #define make_label_sl(n, a, l)	\
+  		MR_insert_internal_label(n, a, MR_INTERNAL_LAYOUT(l))
 #else
   #define make_label(n, a, l)		/* nothing */
   #define make_label_sl(n, a, l)	/* nothing */
 #endif
 
 #if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
-  #define make_local(n, a, l)		make_entry(n, a, l)
-  #define make_local_sl(n, a, l)	make_entry_sl(n, a, l)
+  #define make_local(n, a, l)		MR_insert_internal_label(n, a, NULL)
+  #define make_local_sl(n, a, l)	\
+  		MR_insert_internal_label(n, a, MR_INTERNAL_LAYOUT(l))
 #else 
   #define make_local(n, a, l)		/* nothing */
   #define make_local_sl(n, a, l)	/* nothing */
 #endif
 
-#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS) \
-		|| defined(MR_CHOOSE_ENTRY_POINT)
-  #define make_entry(n, a, l)		insert_entry(n, a, NULL)
-  #define make_entry_sl(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
+#if defined(MR_INSERT_LABELS) || defined(PROFILE_CALLS)
+  #define make_entry(n, a, l)		MR_insert_entry_label(n, a, NULL)
+  #define make_entry_sl(n, a, l)	\
+  		MR_insert_entry_label(n, a, MR_ENTRY_LAYOUT(l))
 #else
   #define make_entry(n, a, l)		/* nothing */
   #define make_entry_sl(n, a, l)	/* nothing */
