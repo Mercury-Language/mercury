@@ -414,7 +414,7 @@ p(Thing, ...) :-
 
 The Mercury compiler does much better indexing than most Prolog compilers.
 Actually, the compiler indexes on all input variables to a disjunction
-(seperate clauses of a predicate are merged into a single clause
+(separate clauses of a predicate are merged into a single clause
 with a disjunction inside the compiler).
 As a consequence, the Mercury compiler indexes on all arguments.
 It also does deep indexing.
