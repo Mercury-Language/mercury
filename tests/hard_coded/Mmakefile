@@ -142,7 +142,6 @@ ORDINARY_PROGS=	\
 	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
-	test_array2d \
 	test_bitset \
 	test_cord \
 	test_imported_no_tag \
@@ -166,6 +165,16 @@ ORDINARY_PROGS=	\
 	write \
 	write_reg1 \
 	write_reg2
+
+# XXX test_array2d does not work in at least asm_fast.gc.profdeep; the
+# problem does not lie in test_array2d or array2d and has not yet been
+# fixed.
+ifeq "$(findstring profdeep,$(GRADE))" ""
+	BROKEN_FOR_PROFDEEP = \
+		test_array2d
+else
+	BROKEN_FOR_PROFDEEP =
+endif
 
 # These tests trigger a bug in lcc
 ifeq "$(findstring lcc,$(shell $(MGNUC) -v 2>&1))" "lcc"
@@ -304,7 +313,7 @@ else
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
-		$(CHAR_REP_PROGS)
+		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
