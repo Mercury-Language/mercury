@@ -778,7 +778,8 @@ link(ErrorStream, LinkTargetType, ModuleName,
 	maybe_write_string(Verbose, "% Linking...\n"),
 	( { LinkTargetType = static_library } ->
 	    	globals__io_lookup_string_option(library_extension, LibExt),
-		module_name_to_file_name(ModuleName, LibExt, yes, LibName),
+		module_name_to_lib_file_name("lib", ModuleName, LibExt,
+			yes, LibName),
 		create_archive(ErrorStream, LibName, ObjectsList, ArCmdOK),
 		maybe_report_stats(Stats),
 		( { ArCmdOK = no } ->
@@ -787,16 +788,19 @@ link(ErrorStream, LinkTargetType, ModuleName,
 			{ Succeeded = yes }
 		)
 	;
-		{ LinkTargetType = shared_library ->
-			SharedLibOpt = "--make-shared-lib ",
-			FileExtOpt = shared_library_extension
+		( { LinkTargetType = shared_library } ->
+			{ SharedLibOpt = "--make-shared-lib " },
+			globals__io_lookup_string_option(
+				shared_library_extension, SharedLibExt),
+			module_name_to_lib_file_name("lib", ModuleName,
+				SharedLibExt, yes, OutputFileName)
 		;
-			SharedLibOpt = "",
-			FileExtOpt = executable_file_extension
-		},
-		globals__io_lookup_string_option(FileExtOpt, OutputFileExt),
-		module_name_to_file_name(ModuleName, OutputFileExt,
-			yes, OutputFileName),
+			{ SharedLibOpt = "" },
+			globals__io_lookup_string_option(
+				executable_file_extension, ExeExt),
+			module_name_to_file_name(ModuleName, ExeExt,
+				yes, OutputFileName)
+		),
 		globals__io_lookup_bool_option(target_debug, Target_Debug),
 		{ Target_Debug = yes ->
 			Target_Debug_Opt = "--no-strip "

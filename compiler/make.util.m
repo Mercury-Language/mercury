@@ -135,9 +135,9 @@
 :- mode target_extension(in, in) = out is det.
 :- mode target_extension(in, out) = in is nondet.
 
-:- func linked_target_extension(globals, linked_target_type) = string.
-:- mode linked_target_extension(in, in) = out is det.
-:- mode linked_target_extension(in, out) = in is nondet.
+:- pred linked_target_file_name(module_name, linked_target_type, file_name,
+		io__state, io__state).
+:- mode linked_target_file_name(in, in, out, di, uo) is det.
 
 	% Find the extension for the timestamp file for the
 	% given target type, if one exists.
@@ -568,12 +568,15 @@ target_extension(Globals, object_code(non_pic)) = Ext :-
 target_extension(Globals, object_code(pic)) = Ext :-
 	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
 
-linked_target_extension(Globals, executable) = Ext :-
-	globals__lookup_string_option(Globals, executable_file_extension, Ext).
-linked_target_extension(Globals, static_library) = Ext :-
-	globals__lookup_string_option(Globals, library_extension, Ext).
-linked_target_extension(Globals, shared_library) = Ext :-
-	globals__lookup_string_option(Globals, shared_library_extension, Ext).
+linked_target_file_name(ModuleName, executable, FileName) -->
+	globals__io_lookup_string_option(executable_file_extension, Ext),
+	module_name_to_file_name(ModuleName, Ext, no, FileName).
+linked_target_file_name(ModuleName, static_library, FileName) -->
+	globals__io_lookup_string_option(library_extension, Ext),
+	module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
+linked_target_file_name(ModuleName, shared_library, FileName) -->
+	globals__io_lookup_string_option(shared_library_extension, Ext),
+	module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
 
 	% Note that we need a timestamp file for `.err' files because
 	% errors are written to the `.err' file even when writing interfaces.

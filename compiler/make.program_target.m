@@ -51,10 +51,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 		{ ObjModules = set__to_sorted_list(AllModules) }
 	),
 
-	globals__io_get_globals(Globals),
-	module_name_to_file_name(MainModuleName,
-		linked_target_extension(Globals, FileType),
-		no, OutputFileName),
+	linked_target_file_name(MainModuleName, FileType, OutputFileName),
 	get_file_timestamp([dir__this_directory], OutputFileName,
 		MaybeTimestamp, Info4, Info5),
 	
@@ -387,12 +384,12 @@ make_realclean(ModuleName, Info0, Info) -->
 		aditi_code, c_header
 		],
 		Info1, Info2),
-	globals__io_lookup_string_option(executable_file_extension, ExeExt),
-	globals__io_lookup_string_option(library_extension, LibExt),
-	globals__io_lookup_string_option(shared_library_extension,
-		SharedLibExt),
-	list__foldl2(remove_file(ModuleName),
-		[module_dep_file_extension, ExeExt, LibExt, SharedLibExt],
-		Info2, Info).
+	remove_file(ModuleName, module_dep_file_extension, Info2, Info3),
+	linked_target_file_name(ModuleName, executable, ExeFileName),
+	linked_target_file_name(ModuleName, static_library, LibFileName),
+	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+	list__foldl2(remove_file,
+		[ExeFileName, LibFileName, SharedLibFileName],
+		Info3, Info).
 
 %-----------------------------------------------------------------------------%
