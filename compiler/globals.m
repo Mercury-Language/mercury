@@ -35,23 +35,33 @@
 	--->	simple
 	;	compact.
 
+:- type type_info_method
+	--->	one_cell
+	;	one_or_two_cell
+	;	shared_one_or_two_cell.
+
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 
 :- pred convert_args_method(string::in, args_method::out) is semidet.
 
+:- pred convert_type_info_method(string::in, option_table::in,
+	type_info_method::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::di, gc_method::di, tags_method::di,
-	args_method::di, globals::uo) is det.
+	args_method::di, type_info_method::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_args_method(globals::in, args_method::out) is det.
+:- pred globals__get_type_info_method(globals::in, type_info_method::out)
+	is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
@@ -61,6 +71,8 @@
 	is det.
 :- pred globals__set_args_method(globals::in, args_method::in, globals::out)
 	is det.
+:- pred globals__set_type_info_method(globals::in, type_info_method::in,
+	globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
@@ -80,7 +92,8 @@
 	% io__state using io__set_globals and io__get_globals.
 
 :- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
-	args_method::in, io__state::di, io__state::uo) is det.
+	args_method::in, type_info_method::in, io__state::di, io__state::uo)
+	is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
 	io__state::di, io__state::uo) is det.
@@ -89,6 +102,9 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_args_method(args_method::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_type_info_method(type_info_method::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
@@ -120,6 +136,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module exprn_aux.
 :- import_module map, std_util, io, require.
 
 %-----------------------------------------------------------------------------%
@@ -135,6 +153,34 @@ convert_tags_method("high", high).
 convert_args_method("simple", simple).
 convert_args_method("compact", compact).
 
+convert_type_info_method("one-cell", _, one_cell).
+convert_type_info_method("one-or-two-cell", _, one_or_two_cell).
+convert_type_info_method("shared-one-or-two-cell", OptionTable,
+		Method) :-
+	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
+		NonLocalGotos),
+	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst),
+	(
+		IsConst = yes,
+		Method = shared_one_or_two_cell
+	;
+		IsConst = no,
+		error("shared_one_or_two_cell requires static code addresses")
+	).
+convert_type_info_method("default", OptionTable, Method) :-
+	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
+		NonLocalGotos),
+	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst),
+	(
+		IsConst = yes,
+		Method = shared_one_or_two_cell
+	;
+		IsConst = no,
+		Method = one_cell
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- type globals
@@ -142,25 +188,30 @@ convert_args_method("compact", compact).
 			option_table,
 			gc_method,
 			tags_method,
-			args_method
+			args_method,
+			type_info_method
 		).
 
-globals__init(Options, GC_Method, TagsMethod, ArgsMethod,
-	globals(Options, GC_Method, TagsMethod, ArgsMethod)).
+globals__init(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod,
+	globals(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod)).
 
-globals__get_options(globals(Options, _, _, _), Options).
-globals__get_gc_method(globals(_, GC_Method, _, _), GC_Method).
-globals__get_tags_method(globals(_, _, TagsMethod, _), TagsMethod).
-globals__get_args_method(globals(_, _, _, ArgsMethod), ArgsMethod).
+globals__get_options(globals(Options, _, _, _, _), Options).
+globals__get_gc_method(globals(_, GC_Method, _, _, _), GC_Method).
+globals__get_tags_method(globals(_, _, TagsMethod, _, _), TagsMethod).
+globals__get_args_method(globals(_, _, _, ArgsMethod, _), ArgsMethod).
+globals__get_type_info_method(globals(_, _, _, _, TypeInfoMethod),
+	TypeInfoMethod).
 
-globals__set_options(globals(_, B, C, D), Options,
-	globals(Options, B, C, D)).
-globals__set_gc_method(globals(A, _, C, D), GC_Method,
-	globals(A, GC_Method, C, D)).
-globals__set_tags_method(globals(A, B, _, D), TagsMethod,
-	globals(A, B, TagsMethod, D)).
-globals__set_args_method(globals(A, B, C, _), ArgsMethod,
-	globals(A, B, C, ArgsMethod)).
+globals__set_options(globals(_, B, C, D, E), Options,
+	globals(Options, B, C, D, E)).
+globals__set_gc_method(globals(A, _, C, D, E), GC_Method,
+	globals(A, GC_Method, C, D, E)).
+globals__set_tags_method(globals(A, B, _, D, E), TagsMethod,
+	globals(A, B, TagsMethod, D, E)).
+globals__set_args_method(globals(A, B, C, _, E), ArgsMethod,
+	globals(A, B, C, ArgsMethod, E)).
+globals__set_type_info_method(globals(A, B, C, D, _), TypeInfoMethod,
+	globals(A, B, C, D, TypeInfoMethod)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -203,12 +254,13 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod) -->
+globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod, TypeInfoMethod) -->
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(ArgsMethod, ArgsMethod1) },
+	{ copy(TypeInfoMethod, TypeInfoMethod1) },
 	{ globals__init(Options, GC_Method1, TagsMethod1, ArgsMethod1,
-		Globals) },
+		TypeInfoMethod1, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -222,6 +274,10 @@ globals__io_get_tags_method(Tags_Method) -->
 globals__io_get_args_method(ArgsMethod) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_args_method(Globals, ArgsMethod) }.
+
+globals__io_get_type_info_method(TypeInfoMethod) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_type_info_method(Globals, TypeInfoMethod) }.
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),

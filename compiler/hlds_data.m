@@ -119,8 +119,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- type hlds__type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset, list(type_param),
-	hlds__type_body, term__context, hlds__type_defn).
-:- mode hlds_data__set_type_defn(in, in, in, in, out) is det.
+	hlds__type_body, import_status, term__context, hlds__type_defn).
+:- mode hlds_data__set_type_defn(in, in, in, in, in, out) is det.
 
 :- pred hlds_data__get_type_defn_tvarset(hlds__type_defn, tvarset).
 :- mode hlds_data__get_type_defn_tvarset(in, out) is det.
@@ -130,6 +130,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred hlds_data__get_type_defn_body(hlds__type_defn, hlds__type_body).
 :- mode hlds_data__get_type_defn_body(in, out) is det.
+
+:- pred hlds_data__get_type_defn_status(hlds__type_defn, import_status).
+:- mode hlds_data__get_type_defn_status(in, out) is det.
 
 :- pred hlds_data__get_type_defn_context(hlds__type_defn, term__context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
@@ -234,7 +237,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 			tvarset,		% Names of type vars (empty
 						% except for polymorphic types)
 			list(type_param),	% Formal type parameters
-			hlds__type_body,	% the definition of the type
+			hlds__type_body,	% The definition of the type
+
+			import_status,		% Is the type defined in this
+						% module, and if yes, is it
+						% exported
 
 %			condition,		% UNUSED
 %				% Reserved for holding a user-defined invariant
@@ -244,18 +251,19 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 %				% :- type sorted_list(T) == list(T)
 %				%	where sorted.
 
-			term__context		% the location of this type
+			term__context		% The location of this type
 						% definition in the original
 						% source code
 		).
 
-hlds_data__set_type_defn(Tvarset, Params, Body, Context, Defn) :-
-	Defn = hlds__type_defn(Tvarset, Params, Body, Context).
+hlds_data__set_type_defn(Tvarset, Params, Body, Status, Context, Defn) :-
+	Defn = hlds__type_defn(Tvarset, Params, Body, Status, Context).
 
-hlds_data__get_type_defn_tvarset(hlds__type_defn(Tvarset, _, _, _), Tvarset).
-hlds_data__get_type_defn_tparams(hlds__type_defn(_, Params, _, _), Params).
-hlds_data__get_type_defn_body(hlds__type_defn(_, _, Body, _), Body).
-hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, Context), Context).
+hlds_data__get_type_defn_tvarset(hlds__type_defn(Tvarset, _, _, _, _), Tvarset).
+hlds_data__get_type_defn_tparams(hlds__type_defn(_, Params, _, _, _), Params).
+hlds_data__get_type_defn_body(hlds__type_defn(_, _, Body, _, _), Body).
+hlds_data__get_type_defn_status(hlds__type_defn(_, _, _, Status, _), Status).
+hlds_data__get_type_defn_context(hlds__type_defn(_, _, _, _, Context), Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -91,50 +91,58 @@ dump_arguments([Arg | Args]) -->
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
 postprocess_options(ok(OptionTable0), Error) -->
-	{ map__lookup(OptionTable0, grade, GradeOpt) },
-	(
-		{ GradeOpt = string(GradeStr) },
-		{ convert_grade_option(GradeStr, OptionTable0, OptionTable) }
-	->
-		{ map__lookup(OptionTable, gc, GC_Method0) },
-		(
-			{ GC_Method0 = string(GC_MethodStr) },
-			{ convert_gc_method(GC_MethodStr, GC_Method) }
-		->
-			{ map__lookup(OptionTable, tags, TagsMethod0) },
-			(
-				{ TagsMethod0 = string(TagsMethodStr) },
-				{ convert_tags_method(TagsMethodStr,
-					TagsMethod) }
-			->
-				{ map__lookup(OptionTable, args, ArgsMethod0) },
-				(
-					{ ArgsMethod0 = string(ArgsMethodStr) },
-					{ convert_args_method(ArgsMethodStr,
-						ArgsMethod) }
-				->
-					postprocess_options_2(OptionTable,
-						GC_Method, TagsMethod,
-						ArgsMethod),
-					{ Error = no }
-				;
-					{ Error = yes("Invalid args option (must be `simple' or `compact')") }
-				)
-			;
-				{ Error = yes("Invalid tags option (must be `none', `low' or `high')") }
-			)
-		;
-			{ Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
-		)
-	;
-		{ Error = yes("Invalid grade option") }
-	).
+        { map__lookup(OptionTable0, grade, GradeOpt) },
+        (
+            { GradeOpt = string(GradeStr) },
+            { convert_grade_option(GradeStr, OptionTable0, OptionTable) }
+        ->
+            { map__lookup(OptionTable, gc, GC_Method0) },
+            (
+                { GC_Method0 = string(GC_MethodStr) },
+                { convert_gc_method(GC_MethodStr, GC_Method) }
+            ->
+                { map__lookup(OptionTable, tags, TagsMethod0) },
+                (
+                    { TagsMethod0 = string(TagsMethodStr) },
+                    { convert_tags_method(TagsMethodStr, TagsMethod) }
+                ->
+                    { map__lookup(OptionTable, args, ArgsMethod0) },
+                    (
+                        { ArgsMethod0 = string(ArgsMethodStr) },
+                        { convert_args_method(ArgsMethodStr, ArgsMethod) }
+                    ->
+                        { map__lookup(OptionTable, type_info,
+			    TypeInfoMethod0) },
+                        (
+                            { TypeInfoMethod0 = string(TypeInfoMethodStr) },
+                            { convert_type_info_method(TypeInfoMethodStr,
+				OptionTable, TypeInfoMethod) }
+                        ->
+                            postprocess_options_2(OptionTable, GC_Method,
+                                TagsMethod, ArgsMethod, TypeInfoMethod),
+                            { Error = no }
+                        ;
+                            { Error = yes("Invalid type-info option (must be `one-cell', `one-or-two-cell', `shared-one-or-two-cell' or `default')") }
+                        )
+                    ;
+                        { Error = yes("Invalid args option (must be `simple' or `compact')") }
+                    )
+                ;
+                    { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+                )
+            ;
+                { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+            )
+        ;
+            { Error = yes("Invalid grade option") }
+        ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, args_method,
-	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, di, uo) is det.
+	type_info_method, io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, di, uo) is det.
 
-postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod) -->
+postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
+		TypeInfoMethod) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -144,7 +152,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod) -->
 	),
 
 	{ copy(OptionTable, OptionTable1) }, % XXX
-	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod),
+	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
+		TypeInfoMethod),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->

@@ -519,29 +519,51 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 	% t which defines t as an abstract_type.
 
 :- pred module_add_type_defn(module_info, tvarset, type_defn, condition,
-				term__context, import_status, module_info,
-				io__state, io__state).
+	term__context, import_status, module_info, io__state, io__state).
 :- mode module_add_type_defn(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status,
+module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status0,
 		Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
 	{ list__length(Args, Arity) },
-	{ hlds_data__set_type_defn(TVarSet, Args, Body, Context, T) },
+	{ 
+		% the type is exported if *any* occurrence is exported,
+		% even a previous abstract occurrence
+		map__search(Types0, Name - Arity, OldDefn)
+	->
+		hlds_data__get_type_defn_status(OldDefn, OldStatus),
+		combine_status(Status0, OldStatus, Status)
+	;
+		Status = Status0
+	},
+	{ hlds_data__set_type_defn(TVarSet, Args, Body, Status, Context, T) },
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
+		{ hlds_data__get_type_defn_tparams(T2, Params) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
 		{ hlds_data__get_type_defn_context(T2, OrigContext) },
+		{ hlds_data__get_type_defn_status(T2, OrigStatus) },
 		{ Body_2 \= abstract_type }
 	->
 	  	(
 			% then if this definition was abstract, ignore it
+			% (but update the status of the old defn if necessary)
 			{ Body = abstract_type }
 		->
-			{ Module = Module0 }
+			{
+				Status = OrigStatus
+			->
+				Module = Module0
+			;
+				hlds_data__set_type_defn(TVarSet, Params,
+					Body_2, OrigStatus, OrigContext, T3),
+				TypeId = Name - Arity,
+				map__set(Types0, TypeId, T3, Types),
+				module_info_set_types(Module0, Types, Module)
+			}
 		;
 			% otherwise issue an error message
 			{ module_info_incr_errors(Module0, Module) },
@@ -597,6 +619,29 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context, Status,
 			[]
 		)
 	).
+
+:- pred combine_status(import_status, import_status, import_status).
+:- mode combine_status(in, in, out) is det.
+
+combine_status(StatusA, StatusB, Status) :-
+	( combine_status_2(StatusA, StatusB, CombinedStatus) ->
+		Status = CombinedStatus
+	;
+		error("pseudo_imported or pseudo_exported type definition")
+	).
+
+:- pred combine_status_2(import_status, import_status, import_status).
+:- mode combine_status_2(in, in, out) is semidet.
+
+combine_status_2(imported, imported, imported).
+combine_status_2(imported, local,    local).
+combine_status_2(imported, exported, exported).
+combine_status_2(local,    imported, local).
+combine_status_2(local,    local,    local).
+combine_status_2(local,    exported, exported).
+combine_status_2(exported, imported, exported).
+combine_status_2(exported, local,    exported).
+combine_status_2(exported, exported, exported).
 
 :- pred add_abstract_export(module_info, type, type_id, module_info).
 :- mode add_abstract_export(in, in, in, out) is det.

@@ -104,6 +104,7 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
+		;	type_info
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -300,6 +301,7 @@ option_defaults_2(compilation_model_option, [
 					% above default with a value determined
 					% at configuration time
 	args			-	string("simple"),
+	type_info		-	string("one-cell"),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -529,6 +531,8 @@ long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
+long_option("type-info",		type_info).
+long_option("type-info-convention",	type_info).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -824,8 +828,7 @@ opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
-	optimize_repeat		-	int(4),
-	optimize_vnrepeat	-	int(1)
+	optimize_repeat		-	int(4)
 ]).
 
 % Optimization level 4: apply optimizations which may have some
@@ -834,7 +837,8 @@ opt_level(3, _, [
 % Currently this just enables value_number
 
 opt_level(4, _, [
-	optimize_value_number	-	bool(yes)
+	optimize_value_number	-	bool(yes),
+	optimize_vnrepeat	-	int(1)
 ]).
 
 % Optimization level 5: apply optimizations which may have some
@@ -1117,6 +1121,7 @@ options_help_compilation_model -->
 	io__write_string("\t\treal machine registers.\n"),
 	io__write_string("\t--args {simple, compact}\n"),
 	io__write_string("\t--arg-convention {simple, compact}\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tUse the specified argument passing convention\n"),
 	io__write_string("\t\tin the generated low-level C code. With the `simple'\n"),
 	io__write_string("\t\tconvention, the <n>th argument is passed in or out\n"),
@@ -1124,8 +1129,20 @@ options_help_compilation_model -->
 	io__write_string("\t\tthe <n>th input argument is passed using register r<n>,\n"),
 	io__write_string("\t\tand the <n>th output argument is returned using\n"),
 	io__write_string("\t\tregister r<n>. The compact convention generally leads to\n"),
-	io__write_string("\t\tmore efficient code. However, currently only the simple\n"),
-	io__write_string("\t\tconvention is supported.\n"),
+	io__write_string("\t\tmore efficient code. Its use requires the C code to be\n"),
+	io__write_string("\t\tcompiled with -DCOMPACT_ARGS.\n"),
+	io__write_string("\t--type-info {default, one-cell, one-or-two-cell, shared-one-or-two-cell}\n"),
+	io__write_string("\t--type-info-convention {default, one-cell, one-or-two-cell, shared-one-or-two-cell}\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tUse the specified format for the automatically generated\n"),
+	io__write_string("\t\ttype_info structures. The one-cell format minimizes\n"),
+	io__write_string("\t\truntime memory allocation in grades that cannot use\n"),
+	io__write_string("\t\tstatic ground terms, while the shared-one-or-two-cell format\n"),
+	io__write_string("\t\tminimizes runtime memory allocation in grades that\n"),
+	io__write_string("\t\tcan use static ground terms. Use of any alternative except\n"),
+	io__write_string("\t\tone-cell requires the C code to be compiled with the relevant\n"),
+	io__write_string("\t\toption from -DDEFAULT_TYPE_INFO, -DONE_OR_TWO_CELL_TYPE_INFO\n"),
+	io__write_string("\t\tand -DSHARED_ONE_OR_TWO_CELL_TYPE_INFO.\n"),
 	io__write_string("\t--single-prec-float\n"),
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),

@@ -100,6 +100,9 @@
 :- pred hlds_out__write_code_model(code_model, io__state, io__state).
 :- mode hlds_out__write_code_model(in, di, uo) is det.
 
+:- pred hlds_out__write_import_status(import_status, io__state, io__state).
+:- mode hlds_out__write_import_status(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% print out an entire hlds structure.
@@ -1069,9 +1072,6 @@ hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, Indent) -->
 		hlds_out__write_instmap_2(Rest, VarSet, Indent)
 	).
 
-:- pred hlds_out__write_import_status(import_status, io__state, io__state).
-:- mode hlds_out__write_import_status(in, di, uo) is det.
-
 hlds_out__write_import_status(local) -->
 	io__write_string("local").
 hlds_out__write_import_status(exported) -->
@@ -1159,6 +1159,7 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 	{ hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet) },
 	{ hlds_data__get_type_defn_tparams(TypeDefn, TypeParams) },
 	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
+	{ hlds_data__get_type_defn_status(TypeDefn, Status) },
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 
 	io__write_char('\n'),
@@ -1175,6 +1176,8 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 			io__write_string(FileName),
 			io__write_string("', line "),
 			io__write_int(LineNumber),
+			io__write_string(", status "),
+			hlds_out__write_import_status(Status),
 			io__write_char('\n'),
         		hlds_out__write_indent(Indent)
 		;

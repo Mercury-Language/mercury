@@ -50,7 +50,7 @@
 			;	polymorphic_type
 			;	user_type(type).
 
-	% Given a non-variable type, return it's type-id and argument types.
+	% Given a non-variable type, return its type-id and argument types.
 
 :- pred type_to_type_id(type, type_id, list(type)).
 :- mode type_to_type_id(in, out, out) is semidet.
@@ -63,7 +63,6 @@
 
 :- pred construct_type(type_id, list(type), term__context, (type)).
 :- mode construct_type(in, in, in, out) is det.
-
 
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.
@@ -207,7 +206,6 @@ type_is_enumeration(Type, ModuleInfo) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
-
 
 type_to_type_id(Type, SymName - Arity, Args) :-
 	Type = term__functor(term__atom(Atom), Args0, _),
