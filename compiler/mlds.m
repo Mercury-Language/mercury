@@ -1487,6 +1487,8 @@ XXX Full exception handling support is not yet implemented.
 	--->	data_addr(mlds_module_name, mlds__data_name).
 			% module name; which var
 
+:- type mlds__data == mlds__fully_qualified_name(mlds__data_name).
+
 :- type mlds__data_name
 	--->	var(mlds__var_name)
 			% ordinary variables
