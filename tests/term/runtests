@@ -5,35 +5,21 @@
 
 set -x
 
-stdoptions="--make-trans-opt --enable-termination"
-options="$stdoptions --term-single-arg 5 --term-norm simple"
+. ../handle_options
 
-modules=`mmake modules`
+mmake $jfactor clean > /dev/null 2>&1
+mmake $jfactor depend || exit 1
+eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+checkstatus=$?
 
-cat /dev/null > .allres
-failure=""
-for module in $modules
-do
-	/bin/rm $module.trans_opt > /dev/null 2>&1
-	lmc3 -C $options $module > $module.out 2>&1
-	if test "$?" = 0
-	then
-		diff -u $module.trans_opt $module.trans_opt_exp > $module.res
-		cat $module.res >> .allres
-	else
-		failure="$failure $module"
-	fi
-done
-
-if test ! -s .allres -a "$failure" = ""
+cat *.trans_opt_res > .allres
+if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the term directory succeeded"
 	rm -f .allres
 	exit 0
 else
 	echo "the tests in the term directory failed"
-	echo "the following modules had the compiler fail:"
-	echo $failure
 	echo "the differences are:"
 	cat .allres
 	exit 1
