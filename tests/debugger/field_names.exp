@@ -239,55 +239,55 @@ mdb> step
 mdb> finish
       11:      6  2 EXIT pred field_names.make_t4/2-0 (det)
 mdb> p 2
-       A(2) (arg 2)           	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
+       A(1) (arg 2)           	t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 mdb> p 2^1
-       A(2) (arg 2)           	0.600000000000000
+       A(1) (arg 2)           	0.600000000000000
 mdb> p 2^2
-       A(2) (arg 2)           	61
+       A(1) (arg 2)           	61
 mdb> p 2^3^t1a
-       A(2) (arg 2)           	41
+       A(1) (arg 2)           	41
 mdb> p 2^3^t1b
-       A(2) (arg 2)           	42
+       A(1) (arg 2)           	42
 mdb> p 2^3^t1c
 mdb: the path t1c does not exist.
 mdb> p 2^3^t1d
-       A(2) (arg 2)           	44
+       A(1) (arg 2)           	44
 mdb> p 2^3^t1e
 mdb: the path t1e does not exist.
 mdb> p 2^4
-       A(2) (arg 2)           	t1f2(51, 52, 53)
+       A(1) (arg 2)           	t1f2(51, 52, 53)
 mdb> p 2^4^t1a
 mdb: the path t1a does not exist.
 mdb> p 2^4^t1e
-       A(2) (arg 2)           	51
+       A(1) (arg 2)           	51
 mdb> p 2^4^t1f
 mdb: the path t1f does not exist.
 mdb> p 2^4^t1g
-       A(2) (arg 2)           	53
+       A(1) (arg 2)           	53
 mdb> p 2^t2a
-       A(2) (arg 2)           	0.600000000000000
+       A(1) (arg 2)           	0.600000000000000
 mdb> p 2^t2b
-       A(2) (arg 2)           	t1f1(41, 42, 43, 44)
+       A(1) (arg 2)           	t1f1(41, 42, 43, 44)
 mdb> p 2^t2b^t1a
-       A(2) (arg 2)           	41
+       A(1) (arg 2)           	41
 mdb> p 2^t2b^t1b
-       A(2) (arg 2)           	42
+       A(1) (arg 2)           	42
 mdb> p 2^t2b^t1c
 mdb: the path t1c does not exist.
 mdb> p 2^t2b^t1d
-       A(2) (arg 2)           	44
+       A(1) (arg 2)           	44
 mdb> p 2^t2b^t1e
 mdb: the path t1e does not exist.
 mdb> p 2^t2c
-       A(2) (arg 2)           	t1f2(51, 52, 53)
+       A(1) (arg 2)           	t1f2(51, 52, 53)
 mdb> p 2^t2c^t1a
 mdb: the path t1a does not exist.
 mdb> p 2^t2c^t1e
-       A(2) (arg 2)           	51
+       A(1) (arg 2)           	51
 mdb> p 2^t2c^t1f
 mdb: the path t1f does not exist.
 mdb> p 2^t2c^t1g
-       A(2) (arg 2)           	53
+       A(1) (arg 2)           	53
 mdb> step
       12:      7  2 CALL pred field_names.make_t5/2-0 (det)
 mdb> finish

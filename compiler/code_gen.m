@@ -349,9 +349,9 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 			eff_trace_needs_proc_body_reps(PredInfo, ProcInfo,
 				TraceLevel, TraceSuppress) = yes
 		->
-			MaybeGoal = yes(Goal)
+			NeedGoalRep = yes
 		;
-			MaybeGoal = no
+			NeedGoalRep = no
 		),
 		NeedsAllNames = eff_trace_needs_all_var_names(PredInfo,
 			ProcInfo, TraceLevel, TraceSuppress),
@@ -371,9 +371,10 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 		ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
 			Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
 			EffTraceLevel, MaybeTraceCallLabel, MaxTraceReg,
-			HeadVars, ArgModes, MaybeGoal, InstMap0, TraceSlotInfo,
-			ForceProcId, VarSet, VarTypes, InternalMap,
-			MaybeTableInfo, NeedsAllNames, MaybeDeepProfInfo),
+			HeadVars, ArgModes, Goal, NeedGoalRep, InstMap0,
+			TraceSlotInfo, ForceProcId, VarSet, VarTypes,
+			InternalMap, MaybeTableInfo, NeedsAllNames,
+			MaybeDeepProfInfo),
 		global_data_add_new_proc_layout(proc(PredId, ProcId),
 			ProcLayout, !GlobalData)
 	;

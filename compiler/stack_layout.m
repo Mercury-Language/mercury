@@ -308,13 +308,12 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, _Detism,
 		_StackSlots, _SuccipLoc, _EvalMethod, _EffTraceLevel,
-		_MaybeCallLabel, _MaxTraceReg, HeadVars, _ArgModes, MaybeGoal,
-		_InstMap, _TraceSlotInfo, ForceProcIdLayout, VarSet, _VarTypes,
-		InternalMap, MaybeTableIoDecl, _NeedsAllNames,
-		_MaybeDeepProfInfo),
+		_MaybeCallLabel, _MaxTraceReg, HeadVars, _ArgModes,
+		Goal, _NeedGoalRep, _InstMap, _TraceSlotInfo,
+		ForceProcIdLayout, VarSet, _VarTypes, InternalMap,
+		MaybeTableIoDecl, _NeedsAllNames, _MaybeDeepProfInfo),
 	map__to_assoc_list(InternalMap, Internals),
-	compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
-		VarNumMap),
+	compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap),
 
 	ProcLabel = get_proc_label(EntryLabel),
 	stack_layout__get_procid_stack_layout(!.Info, ProcIdLayout0),
@@ -328,9 +327,7 @@ stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	;
 		Kind = proc_layout_traversal
 	),
-
 	ProcLayoutName = proc_layout(RttiProcLabel, Kind),
-
 	(
 		( !.Info ^ agc_stack_layout = yes
 		; !.Info ^ trace_stack_layout = yes
@@ -343,7 +340,6 @@ stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
 	;
 		InternalLayouts = []
 	),
-
 	stack_layout__get_label_tables(!.Info, LabelTables0),
 	list__foldl(stack_layout__update_label_table, InternalLayouts,
 		LabelTables0, LabelTables),
@@ -512,9 +508,10 @@ stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
 stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
 		StackSlots, SuccipLoc, EvalMethod, EffTraceLevel,
-		MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes, MaybeGoal,
-		InstMap, TraceSlotInfo, _ForceProcIdLayout, VarSet, VarTypes,
-		_InternalMap, MaybeTableInfo, NeedsAllNames, MaybeProcStatic),
+		MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes,
+		Goal, NeedGoalRep, InstMap, TraceSlotInfo, _ForceProcIdLayout,
+		VarSet, VarTypes, _InternalMap, MaybeTableInfo, NeedsAllNames,
+		MaybeProcStatic),
 	stack_layout__construct_proc_traversal(EntryLabel, Detism, StackSlots,
 		SuccipLoc, Traversal, !Info),
 	(
@@ -530,10 +527,10 @@ stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 		->
 			stack_layout__construct_trace_layout(RttiProcLabel,
 				EvalMethod, EffTraceLevel, MaybeCallLabel,
-				MaxTraceReg, HeadVars, ArgModes, MaybeGoal,
-				InstMap, TraceSlotInfo, VarSet, VarTypes,
-				MaybeTableInfo, NeedsAllNames, VarNumMap,
-				ExecTrace, !Info),
+				MaxTraceReg, HeadVars, ArgModes, Goal,
+				NeedGoalRep, InstMap, TraceSlotInfo,
+				VarSet, VarTypes, MaybeTableInfo,
+				NeedsAllNames, VarNumMap, ExecTrace, !Info),
 			MaybeExecTrace = yes(ExecTrace)
 		;
 			MaybeExecTrace = no
@@ -559,7 +556,7 @@ stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
 	eval_method::in, trace_level::in, maybe(label)::in, int::in,
-	list(prog_var)::in, list(mode)::in, maybe(hlds_goal)::in,
+	list(prog_var)::in, list(mode)::in, hlds_goal::in, bool::in,
 	instmap::in, trace_slot_info::in, prog_varset::in, vartypes::in,
 	maybe(proc_table_info)::in, bool::in, var_num_map::in,
 	proc_layout_exec_trace::out,
@@ -567,17 +564,17 @@ stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
 
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 		MaybeCallLabel, MaxTraceReg, HeadVars, ArgModes,
-		MaybeGoal, InstMap, TraceSlotInfo, _VarSet, VarTypes,
+		Goal, NeedGoalRep, InstMap, TraceSlotInfo, _VarSet, VarTypes,
 		MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace, !Info) :-
 	stack_layout__construct_var_name_vector(VarNumMap,
 		NeedsAllNames, MaxVarNum, VarNameVector, !Info),
 	list__map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
 	ModuleInfo = !.Info ^ module_info,
 	(
-		MaybeGoal = no,
+		NeedGoalRep = no,
 		ProcBytes = []
 	;
-		MaybeGoal = yes(Goal),
+		NeedGoalRep = yes,
 		ProcBytes = prog_rep__represent_proc(HeadVars,
 			Goal, InstMap, VarTypes, VarNumMap, ModuleInfo)
 	),
@@ -686,27 +683,23 @@ stack_layout__construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
 %---------------------------------------------------------------------------%
 
 :- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
-	assoc_list(int, internal_layout_info)::in, maybe(hlds_goal)::in,
+	assoc_list(int, internal_layout_info)::in, hlds_goal::in,
 	var_num_map::out) is det.
 
-compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal, VarNumMap) :-
-	VarNumMap0 = map__init,
-	Counter0 = counter__init(1),	% to match term__var_supply_init
-	(
-		MaybeGoal = yes(Goal),
+compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
+	some [!VarNumMap, !Counter] (
+		!:VarNumMap = map__init,
+		!:Counter = counter__init(1), % to match term__var_supply_init
 		goal_util__goal_vars(Goal, GoalVarSet),
 		set__to_sorted_list(GoalVarSet, GoalVars),
 		list__foldl2(add_var_to_var_number_map(VarSet), GoalVars,
-			VarNumMap0, VarNumMap1, Counter0, Counter1)
-	;
-		MaybeGoal = no,
-		VarNumMap1 = VarNumMap0,
-		Counter1 = Counter0
-	),
-	list__foldl2(add_var_to_var_number_map(VarSet), HeadVars,
-		VarNumMap1, VarNumMap2, Counter1, Counter2),
-	list__foldl2(internal_var_number_map, Internals, VarNumMap2, VarNumMap,
-		Counter2, _Counter).
+			!VarNumMap, !Counter),
+		list__foldl2(add_var_to_var_number_map(VarSet), HeadVars,
+			!VarNumMap, !Counter),
+		list__foldl2(internal_var_number_map, Internals, !VarNumMap,
+			!.Counter, _),
+		VarNumMap = !.VarNumMap
+	).
 
 :- pred internal_var_number_map(pair(int, internal_layout_info)::in,
 	var_num_map::in, var_num_map::out, counter::in, counter::out) is det.

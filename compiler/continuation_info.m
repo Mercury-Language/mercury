@@ -115,9 +115,12 @@
 					% compiler.
 			arg_modes	:: list(mode),
 					% The modes of the head variables.
-			maybe_proc_body	:: maybe(hlds_goal),
-					% The body of the procedure, if
-					% required.
+			proc_body	:: hlds_goal,
+					% The body of the procedure.
+			needs_body_rep	:: bool,
+					% Do we need to include a
+					% representation of the procedure body
+					% in the exec trace layout?
 			initial_instmap	:: instmap,
 					% The instmap at the start of the
 					% procedure body.

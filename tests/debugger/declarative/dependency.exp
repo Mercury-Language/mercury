@@ -22,15 +22,15 @@ mdb> set format raw_pretty
 mdb> p proc_body
 	
 proc_rep(
-  [|](2, []), 
+  [|](1, []), 
   conj_rep(
     [|](
       atomic_goal_rep(
         det_rep, 
         "dependency.m", 
         20, 
-        [|](3, []), 
-        plain_call_rep("dependency", "p", [|](3, []))), 
+        [|](2, []), 
+        plain_call_rep("dependency", "p", [|](2, []))), 
       [|](
         ite_rep(atomic_goal_rep/5, atomic_goal_rep/5, atomic_goal_rep/5), 
         [|](atomic_goal_rep/5, [|](switch_rep([|]/2), [|](disj_rep([|]/2), [])))))))
