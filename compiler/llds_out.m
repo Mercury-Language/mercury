@@ -32,46 +32,43 @@
 	% code for the module.
 
 :- pred output_llds(c_file::in, map(label, data_addr)::in, maybe(rl_file)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% output_rval_decls(Rval, DeclSet0, DeclSet) outputs the declarations
 	% of any static constants, etc. that need to be declared before
 	% output_rval(Rval) is called.
 
 :- pred output_rval_decls(rval::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% output an rval (not converted to any particular type,
 	% but instead output as its "natural" type)
 
-:- pred output_rval(rval::in, io__state::di, io__state::uo) is det.
+:- pred output_rval(rval::in, io::di, io::uo) is det.
 
 	% output_code_addr_decls(CodeAddr, ...) outputs the declarations of any
 	% extern symbols, etc. that need to be declared before
 	% output_code_addr(CodeAddr) is called.
 
 :- pred output_code_addr_decls(code_addr::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-:- pred output_code_addr(code_addr::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_code_addr(code_addr::in, io::di, io::uo) is det.
 
 	% output_data_addr_decls(DataAddr, ...) outputs the declarations of
 	% any static constants, etc. that need to be declared before
 	% output_data_addr(DataAddr) is called.
 
 :- pred output_data_addr_decls(data_addr::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 :- pred output_data_addr_decls(data_addr::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- pred output_data_addrs_decls(list(data_addr)::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-:- pred output_data_addr(data_addr::in, io__state::di, io__state::uo) is det.
+:- pred output_data_addr(data_addr::in, io::di, io::uo) is det.
 
 	% c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit,
 	%	BeingDefined):
@@ -101,16 +98,16 @@
 	% This predicate is provided for debugging use only.
 
 :- pred output_instruction_and_comment(instr::in, string::in, bool::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Output an instruction.
 	% This predicate is provided for debugging use only.
 
-:- pred output_instruction(instr::in, io__state::di, io__state::uo) is det.
+:- pred output_instruction(instr::in, io::di, io::uo) is det.
 
 	% Output a label (used by garbage collection).
 
-:- pred output_label(label::in, io__state::di, io__state::uo) is det.
+:- pred output_label(label::in, io::di, io::uo) is det.
 
 	% Convert a label to a C string. The boolean controls whether
 	% a prefix ("mercury__") is added to the string.
@@ -237,7 +234,7 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile, !IO) :-
 
 :- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
 	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_split_user_foreign_codes([], _, _, _, !Num, !IO).
 output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
@@ -251,7 +248,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 
 :- pred output_split_c_exports(list(foreign_export)::in, module_name::in,
 	list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_split_c_exports([], _, _, _, !Num, !IO).
 output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
@@ -264,7 +261,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 
 :- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
 	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_split_comp_gen_c_vars([], _, _, _, !Num, !IO).
 output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
@@ -277,7 +274,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
 	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_split_comp_gen_c_datas([], _, _, _, !Num, !IO).
 output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
@@ -290,7 +287,7 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 
 :- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
 	module_name::in, list(foreign_decl_code)::in, map(label, data_addr)::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_split_comp_gen_c_modules([], _, _, _, !Num, !IO).
 output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
@@ -303,7 +300,7 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 
 :- pred output_split_c_file_init(module_name::in, list(comp_gen_c_module)::in,
 	list(comp_gen_c_data)::in, map(label, data_addr)::in,
-	maybe(rl_file)::in, io__state::di, io__state::uo) is det.
+	maybe(rl_file)::in, io::di, io::uo) is det.
 
 output_split_c_file_init(ModuleName, Modules, Datas,
 		StackLayoutLabels, MaybeRLFile, !IO) :-
@@ -336,7 +333,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		io__set_exit_status(1, !IO)
 	).
 
-:- pred output_c_file_mercury_headers(io__state::di, io__state::uo) is det.
+:- pred output_c_file_mercury_headers(io::di, io::uo) is det.
 
 output_c_file_mercury_headers(!IO) :-
 	globals__io_get_trace_level(TraceLevel, !IO),
@@ -362,8 +359,7 @@ output_c_file_mercury_headers(!IO) :-
 	).
 
 :- pred output_single_c_file(c_file::in, maybe(int)::in,
-	map(label, data_addr)::in, maybe(rl_file)::in,
-	io__state::di, io__state::uo) is det.
+	map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
 
 output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile, !IO) :-
 	CFile = c_file(ModuleName, _, _, _, _, _, _),
@@ -391,7 +387,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile, !IO) :-
 
 :- pred do_output_single_c_file(c_file::in, maybe(int)::in,
 	map(label, data_addr)::in, maybe(rl_file)::in, io__output_stream::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 do_output_single_c_file(CFile, SplitFiles, StackLayoutLabels,
 		MaybeRLFile, FileStream, !DeclSet, !IO) :-
@@ -473,7 +469,7 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
 	list(comp_gen_c_data)::in, map(label, data_addr)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels,
 		!DeclSet, !IO) :-
@@ -604,7 +600,7 @@ module_defines_label_with_layout(Module, StackLayoutLabels) :-
 
 :- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
 	module_name::in, string::in, int::in, bool::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_init_bunch_defs([], _, _, _, _, !IO).
 output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
@@ -620,7 +616,7 @@ output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
 		SplitFiles, !IO).
 
 :- pred output_init_bunch_def(list(comp_gen_c_module)::in, module_name::in,
-	bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 output_init_bunch_def([], _, _, !IO).
 output_init_bunch_def([Module | Modules], ModuleName, SplitFiles, !IO) :-
@@ -640,7 +636,7 @@ output_init_bunch_def([Module | Modules], ModuleName, SplitFiles, !IO) :-
 	output_init_bunch_def(Modules, ModuleName, SplitFiles, !IO).
 
 :- pred output_init_bunch_calls(list(list(comp_gen_c_module))::in,
-	module_name::in, string::in, int::in, io__state::di, io__state::uo)
+	module_name::in, string::in, int::in, io::di, io::uo)
 	is det.
 
 output_init_bunch_calls([], _, _, _, !IO).
@@ -654,8 +650,8 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq, !IO) :-
 	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, Typector);
 	% for each type_ctor_info defined in this module.
 
-:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_c_data_init_list(list(comp_gen_c_data)::in, io::di, io::uo)
+	is det.
 
 output_c_data_init_list([], !IO).
 output_c_data_init_list([Data | Datas], !IO) :-
@@ -669,7 +665,7 @@ output_c_data_init_list([Data | Datas], !IO) :-
 	% Output code to register each type_ctor_info defined in this module.
 
 :- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
-	bool::in, io__state::di, io__state::uo) is det.
+	bool::in, io::di, io::uo) is det.
 
 output_type_tables_init_list([], _, !IO).
 output_type_tables_init_list([Data | Datas], SplitFiles, !IO) :-
@@ -685,7 +681,7 @@ output_type_tables_init_list([Data | Datas], SplitFiles, !IO) :-
 	% Output declarations for each module layout defined in this module
 	% (there should only be one, of course).
 :- pred output_debugger_init_list_decls(list(comp_gen_c_data)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_debugger_init_list_decls([], !DeclSet, !IO).
 output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
@@ -704,8 +700,8 @@ output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
 	% for each module layout defined in this module
 	% (there should only be one, of course).
 
-:- pred output_debugger_init_list(list(comp_gen_c_data)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_debugger_init_list(list(comp_gen_c_data)::in, io::di, io::uo)
+	is det.
 
 output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
@@ -725,7 +721,7 @@ output_debugger_init_list([Data | Datas], !IO) :-
 	output_debugger_init_list(Datas, !IO).
 
 :- pred output_write_proc_static_list_decls(list(comp_gen_c_data)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_write_proc_static_list_decls([], !DeclSet, !IO).
 output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
@@ -740,7 +736,7 @@ output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
 	output_write_proc_static_list_decls(Datas, !DeclSet, !IO).
 
 :- pred output_write_proc_static_list(list(comp_gen_c_data)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_write_proc_static_list([], !IO).
 output_write_proc_static_list([Data | Datas], !IO) :-
@@ -759,8 +755,7 @@ output_write_proc_static_list([Data | Datas], !IO) :-
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
-:- pred output_init_comment(module_name::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_init_comment(module_name::in, io::di, io::uo) is det.
 
 output_init_comment(ModuleName, !IO) :-
 	io__write_string("/*\n", !IO),
@@ -779,8 +774,8 @@ output_init_comment(ModuleName, !IO) :-
 	io__write_string("ENDINIT\n", !IO),
 	io__write_string("*/\n\n", !IO).
 
-:- pred output_bunch_name(module_name::in, string::in, int::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_bunch_name(module_name::in, string::in, int::in, io::di, io::uo)
+	is det.
 
 output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
 	io__write_string("mercury__", !IO),
@@ -894,7 +889,7 @@ output_common_decl_chunk_entries([CommonData | CommonDatas], !DeclSet, !IO) :-
 	%
 
 :- pred output_c_data_type_def(comp_gen_c_data::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_data_type_def(common_data(CommonData), !DeclSet, !IO) :-
 	output_common_data_decl(CommonData, !DeclSet, !IO).
@@ -904,7 +899,7 @@ output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
 	output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO).
 
 :- pred output_common_data_decl(common_data::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
 		!DeclSet, !IO) :-
@@ -934,8 +929,8 @@ output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
 	decl_set_insert(VarDeclId, !DeclSet).
 
 :- pred output_comp_gen_c_module(map(label, data_addr)::in,
-	comp_gen_c_module::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
+	is det.
 
 output_comp_gen_c_module(StackLayoutLabels,
 		comp_gen_c_module(ModuleName, Procedures),
@@ -958,7 +953,7 @@ output_comp_gen_c_module(StackLayoutLabels,
 	io__write_string("MR_END_MODULE\n", !IO).
 
 :- pred output_comp_gen_c_var(comp_gen_c_var::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 		!DeclSet, !IO) :-
@@ -969,7 +964,7 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 	decl_set_insert(data_addr(DataAddr), !DeclSet).
 
 :- pred output_comp_gen_c_data(comp_gen_c_data::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_comp_gen_c_data(common_data(CommonData), !DeclSet, !IO) :-
 	output_common_data_defn(CommonData, !DeclSet, !IO).
@@ -979,7 +974,7 @@ output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
 	output_layout_data_defn(LayoutData, !DeclSet, !IO).
 
 :- pred output_common_data_defn(common_data::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
 		!DeclSet, !IO) :-
@@ -1002,8 +997,7 @@ output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
 		ExportedFromFile, yes, "", "", 0, _, !IO),
 	decl_set_insert(VarDeclId, !DeclSet).
 
-:- pred output_user_foreign_code(user_foreign_code::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_user_foreign_code(user_foreign_code::in, io::di, io::uo) is det.
 
 output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
 		!IO) :-
@@ -1031,14 +1025,14 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
 	% output_c_header_include_lines_2 which outputs them.  The list
 	% must be reversed since they are inserted in reverse order.
 :- pred output_foreign_header_include_lines(list(foreign_decl_code)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_foreign_header_include_lines(Headers, !IO) :-
 	list__reverse(Headers, RevHeaders),
 	list__foldl(output_foreign_header_include_lines_2, RevHeaders, !IO).
 
 :- pred output_foreign_header_include_lines_2(foreign_decl_code::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_foreign_header_include_lines_2(Decl, !IO) :-
 	Decl = foreign_decl_code(Lang, Code, Context),
@@ -1064,7 +1058,7 @@ output_foreign_header_include_lines_2(Decl, !IO) :-
 	).
 
 :- pred output_c_label_decls(map(label, data_addr)::in, list(label)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO) :-
 	group_c_labels_with_layouts(StackLayoutLabels, Labels,
@@ -1116,7 +1110,7 @@ group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
 		!DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers).
 
 :- pred output_label_layout_decls(pair(proc_label, list(int))::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_label_layout_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
 	% There must be a macro of the form MR_DECL_LL<n> for every <n>
@@ -1128,7 +1122,7 @@ output_label_layout_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
 		!DeclSet, !IO).
 
 :- pred output_label_layout_decl_group(proc_label::in, list(int)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 	io__write_string("MR_DECL_LL", !IO),
@@ -1140,7 +1134,7 @@ output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 	io__write_string(")\n", !IO).
 
 :- pred output_local_label_decls(pair(proc_label, list(int))::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_local_label_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
 	% There must be a macro of the form MR_decl_label<n> for every <n>
@@ -1155,7 +1149,7 @@ output_local_label_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
 	list__foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
 
 :- pred output_local_label_decl_group(proc_label::in, list(int)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 	io__write_string("MR_decl_label", !IO),
@@ -1185,7 +1179,7 @@ insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
 	decl_set_insert(DeclId, !DeclSet).
 
 :- pred output_c_label_decl(map(label, data_addr)::in, label::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
 	%
@@ -1260,7 +1254,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
 	decl_set_insert(code_addr(label(Label)), !DeclSet).
 
 :- pred output_stack_layout_decl(data_addr::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_stack_layout_decl(DataAddr, !DeclSet, !IO) :-
 	output_data_addr_decls(DataAddr, !DeclSet, !IO).
@@ -1379,7 +1373,7 @@ label_is_proc_entry(local(_), yes).
 label_is_proc_entry(exported(_), yes).
 
 :- pred output_c_procedure_decls(map(label, data_addr)::in, c_procedure::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
 	Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _),
@@ -1387,7 +1381,7 @@ output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
 		!DeclSet, !IO).
 
 :- pred output_c_procedure(bool::in, bool::in, c_procedure::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
 	Proc = c_procedure(Name, Arity, proc(_, ProcId), Instrs, _, _, _),
@@ -1530,13 +1524,13 @@ llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
 %-----------------------------------------------------------------------------%
 
 :- pred output_instruction_decls(map(label, data_addr)::in, instruction::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_instruction_decls(StackLayoutLabels, Instr - _Comment, !DeclSet, !IO) :-
 	output_instr_decls(StackLayoutLabels, Instr, !DeclSet, !IO).
 
 :- pred output_instr_decls(map(label, data_addr)::in, instr::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_instr_decls(_, comment(_), !DeclSet, !IO).
 output_instr_decls(_, livevals(_), !DeclSet, !IO).
@@ -1642,7 +1636,7 @@ output_instr_decls(_, join_and_continue(Lval, Label), !DeclSet, !IO) :-
 	output_code_addr_decls(label(Label), !DeclSet, !IO).
 
 :- pred output_pragma_c_component_decls(pragma_c_component::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_pragma_c_component_decls(pragma_c_inputs(Inputs), !DeclSet, !IO) :-
 	output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
@@ -1657,7 +1651,7 @@ output_pragma_c_component_decls(pragma_c_noop, !DeclSet, !IO).
 
 :- pred output_instruction_list(list(instruction)::in, bool::in,
 	pair(label, bintree_set(label))::in, bintree_set(label)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_instruction_list([], _, _, _, !IO).
 output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
@@ -1678,7 +1672,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 
 :- pred output_instruction_list_while(list(instruction)::in, label::in,
 	bool::in, pair(label, bintree_set(label))::in, bintree_set(label)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_instruction_list_while([], _, _, _, _, !IO) :-
 	io__write_string("\tbreak; } /* end while */\n", !IO).
@@ -1716,8 +1710,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 	).
 
 :- pred output_instruction_and_comment(instr::in, string::in, bool::in,
-	pair(label, bintree_set(label))::in,
-	io__state::di, io__state::uo) is det.
+	pair(label, bintree_set(label))::in, io::di, io::uo) is det.
 
 output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
 	(
@@ -1767,7 +1760,7 @@ output_instruction(Instr, !IO) :-
 	output_instruction(Instr, ProfInfo, !IO).
 
 :- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_instruction(comment(Comment), _, !IO) :-
 	io__write_strings(["/* ", Comment, " */\n"], !IO).
@@ -2044,8 +2037,8 @@ output_instruction(join_and_continue(Lval, Label), _, !IO) :-
 	output_label_as_code_addr(Label, !IO),
 	io__write_string(");\n", !IO).
 
-:- pred output_pragma_c_component(pragma_c_component::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_pragma_c_component(pragma_c_component::in, io::di, io::uo)
+	is det.
 
 output_pragma_c_component(pragma_c_inputs(Inputs), !IO) :-
 	output_pragma_inputs(Inputs, !IO).
@@ -2081,8 +2074,7 @@ output_pragma_c_component(pragma_c_noop, !IO).
 
 	% Output the local variable declarations at the top of the
 	% pragma_foreign code for C.
-:- pred output_pragma_decls(list(pragma_c_decl)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_pragma_decls(list(pragma_c_decl)::in, io::di, io::uo) is det.
 
 output_pragma_decls([], !IO).
 output_pragma_decls([Decl | Decls], !IO) :-
@@ -2106,7 +2098,7 @@ output_pragma_decls([Decl | Decls], !IO) :-
 
 	% Output declarations for any rvals used to initialize the inputs
 :- pred output_pragma_input_rval_decls(list(pragma_c_input)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_pragma_input_rval_decls([], !DeclSet, !IO).
 output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
@@ -2116,8 +2108,7 @@ output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
 
 	% Output the input variable assignments at the top of the
 	% pragma foreign_code code for C.
-:- pred output_pragma_inputs(list(pragma_c_input)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_pragma_inputs(list(pragma_c_input)::in, io::di, io::uo) is det.
 
 output_pragma_inputs([], !IO).
 output_pragma_inputs([Input | Inputs], !IO) :-
@@ -2164,7 +2155,7 @@ output_pragma_inputs([Input | Inputs], !IO) :-
 
 	% Output declarations for any lvals used for the outputs
 :- pred output_pragma_output_lval_decls(list(pragma_c_output)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_pragma_output_lval_decls([], !DeclSet, !IO).
 output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
@@ -2174,8 +2165,8 @@ output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
 
 	% Output the output variable assignments at the bottom of the
 	% pragma foreign code for C
-:- pred output_pragma_outputs(list(pragma_c_output)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_pragma_outputs(list(pragma_c_output)::in, io::di, io::uo)
+	is det.
 
 output_pragma_outputs([], !IO).
 output_pragma_outputs([O | Outputs], !IO) :-
@@ -2210,8 +2201,8 @@ output_pragma_outputs([O | Outputs], !IO) :-
 	io__write_string(";\n", !IO),
 	output_pragma_outputs(Outputs, !IO).
 
-:- pred output_reset_trail_reason(reset_trail_reason::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_reset_trail_reason(reset_trail_reason::in, io::di, io::uo)
+	is det.
 
 output_reset_trail_reason(undo) -->
 	io__write_string("MR_undo").
@@ -2226,7 +2217,7 @@ output_reset_trail_reason(retry) -->
 output_reset_trail_reason(gc) -->
 	io__write_string("MR_gc").
 
-:- pred output_livevals(list(lval)::in, io__state::di, io__state::uo) is det.
+:- pred output_livevals(list(lval)::in, io::di, io::uo) is det.
 
 output_livevals([], !IO).
 output_livevals([Lval | Lvals], !IO) :-
@@ -2235,8 +2226,7 @@ output_livevals([Lval | Lvals], !IO) :-
 	io__write_string("\n", !IO),
 	output_livevals(Lvals, !IO).
 
-:- pred output_gc_livevals(list(liveinfo)::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_gc_livevals(list(liveinfo)::in, io::di, io::uo) is det.
 
 output_gc_livevals(LiveVals, !IO) :-
 	globals__io_lookup_bool_option(auto_comments, PrintAutoComments, !IO),
@@ -2249,8 +2239,7 @@ output_gc_livevals(LiveVals, !IO) :-
 		true
 	).
 
-:- pred output_gc_livevals_2(list(liveinfo)::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_gc_livevals_2(list(liveinfo)::in, io::di, io::uo) is det.
 
 output_gc_livevals_2([], !IO).
 output_gc_livevals_2([LiveInfo | LiveInfos], !IO) :-
@@ -2266,7 +2255,7 @@ output_gc_livevals_2([LiveInfo | LiveInfos], !IO) :-
 	output_gc_livevals_2(LiveInfos, !IO).
 
 :- pred output_gc_livevals_params(assoc_list(tvar, set(layout_locn))::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_gc_livevals_params([], !IO).
 output_gc_livevals_params([Var - LocnSet | Locns], !IO) :-
@@ -2278,8 +2267,7 @@ output_gc_livevals_params([Var - LocnSet | Locns], !IO) :-
 	io__write_string("  ", !IO),
 	output_gc_livevals_params(Locns, !IO).
 
-:- pred output_layout_locns(list(layout_locn)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_layout_locns(list(layout_locn)::in, io::di, io::uo) is det.
 
 output_layout_locns([], !IO).
 output_layout_locns([Locn | Locns], !IO) :-
@@ -2291,8 +2279,7 @@ output_layout_locns([Locn | Locns], !IO) :-
 		output_layout_locns(Locns, !IO)
 	).
 
-:- pred output_layout_locn(layout_locn::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_layout_locn(layout_locn::in, io::di, io::uo) is det.
 
 output_layout_locn(Locn, !IO) :-
 	(
@@ -2306,8 +2293,7 @@ output_layout_locn(Locn, !IO) :-
 		output_lval(Lval, !IO)
 	).
 
-:- pred output_live_value_type(live_value_type::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_live_value_type(live_value_type::in, io::di, io::uo) is det.
 
 output_live_value_type(succip) --> io__write_string("type succip").
 output_live_value_type(curfr) --> io__write_string("type curfr").
@@ -2340,14 +2326,13 @@ output_live_value_type(var(Var, Name, Type, LldsInst)) -->
 	),
 	io__write_string(")").
 
-:- pred output_temp_decls(int::in, string::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_temp_decls(int::in, string::in, io::di, io::uo) is det.
 
 output_temp_decls(N, Type, !IO) :-
 	output_temp_decls_2(1, N, Type, !IO).
 
-:- pred output_temp_decls_2(int::in, int::in, string::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_temp_decls_2(int::in, int::in, string::in, io::di, io::uo)
+	is det.
 
 output_temp_decls_2(Next, Max, Type, !IO) :-
 	( Next =< Max ->
@@ -2379,7 +2364,7 @@ output_rval_decls(Lval, !DeclSet, !IO) :-
 	% the same symbol twice, which would cause an error in the C code.
 
 :- pred output_rval_decls(rval::in, string::in, string::in, int::in, int::out,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rval_decls(lval(Lval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
 	output_lval_decls(Lval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
@@ -2496,14 +2481,13 @@ output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
 		!N, !DeclSet, !IO).
 
 :- pred output_rvals_decls(list(rval)::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_rvals_decls(Rvals, !DeclSet, !IO) :-
 	output_rvals_decls(Rvals, "", "", 0, _, !DeclSet, !IO).
 
 :- pred output_rvals_decls(list(rval)::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_rvals_decls([], _FirstIndent, _LaterIndent, !N, !DeclSet, !IO).
 output_rvals_decls([Rval | Rvals], FirstIndent, LaterIndent,
@@ -2512,8 +2496,7 @@ output_rvals_decls([Rval | Rvals], FirstIndent, LaterIndent,
 	output_rvals_decls(Rvals, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
 
 :- pred output_mem_ref_decls(mem_ref::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_mem_ref_decls(stackvar_ref(_), _, _, !N, !DeclSet, !IO).
 output_mem_ref_decls(framevar_ref(_), _, _, !N, !DeclSet, !IO).
@@ -2638,8 +2621,7 @@ common_group_get_rvals(common_cell_arg_group(_, _, Rvals)) = Rvals.
 	% and third parts are output by output_const_term_decl_or_defn.
 
 :- pred output_const_term_type(common_cell_type_and_value::in, module_name::in,
-	string::in, string::in, int::in, int::out,
-	io__state::di, io__state::uo) is det.
+	string::in, string::in, int::in, int::out, io::di, io::uo) is det.
 
 output_const_term_type(TypeAndValue, ModuleName, FirstIndent, LaterIndent,
 		!N, !IO) :-
@@ -2661,8 +2643,7 @@ output_const_term_type(TypeAndValue, ModuleName, FirstIndent, LaterIndent,
 
 :- pred output_const_term_decl_or_defn(common_cell_type_and_value::in,
 	module_name::in, int::in, bool::in, bool::in,
-	string::in, string::in, int::in, int::out,
-	io__state::di, io__state::uo) is det.
+	string::in, string::in, int::in, int::out, io::di, io::uo) is det.
 
 output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
 		IsDefn, FirstIndent, LaterIndent, !N, !IO) :-
@@ -2720,7 +2701,7 @@ data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 data_name_may_include_non_static_code_address(common(_, _)) =  no.
 data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
-:- pred output_decl_id(decl_id::in, io__state::di, io__state::uo) is det.
+:- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
 output_decl_id(common_type(ModuleName, TypeNum)) -->
 	output_common_cell_type_name(ModuleName, TypeNum).
@@ -2738,7 +2719,7 @@ output_decl_id(typeclass_constraint_struct(_Name)) -->
 	{ error("output_decl_id: class_constraint_struct unexpected") }.
 
 :- pred output_cons_arg_types(list(llds_type)::in, string::in, int::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_cons_arg_types([], _, _, !IO).
 output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
@@ -2750,7 +2731,7 @@ output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
 	output_cons_arg_types(Types, Indent, ArgNum + 1, !IO).
 
 :- pred output_cons_arg_group_types(list(common_cell_arg_group)::in,
-	string::in, int::in, io__state::di, io__state::uo) is det.
+	string::in, int::in, io::di, io::uo) is det.
 
 output_cons_arg_group_types([], _, _, !IO).
 output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
@@ -2770,8 +2751,8 @@ output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
 	% (i.e. the type of the boxed value) rather than float
 	% (the type of the unboxed value).
 
-:- pred llds_out__rval_type_as_arg(rval::in, llds_type::out,
-	io__state::di, io__state::uo) is det.
+:- pred llds_out__rval_type_as_arg(rval::in, llds_type::out, io::di, io::uo)
+	is det.
 
 llds_out__rval_type_as_arg(Rval, ArgType, !IO) :-
 	llds__rval_type(Rval, Type),
@@ -2787,15 +2768,14 @@ llds_out__rval_type_as_arg(Rval, ArgType, !IO) :-
 
 	% Same as output_llds_type, but will put parentheses
 	% around the llds_type.
-:- pred output_llds_type_cast(llds_type::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_llds_type_cast(llds_type::in, io::di, io::uo) is det.
 
 output_llds_type_cast(LLDSType, !IO) :-
 	io__write_string("(", !IO),
 	output_llds_type(LLDSType, !IO),
 	io__write_string(") ", !IO).
 
-:- pred output_llds_type(llds_type::in, io__state::di, io__state::uo) is det.
+:- pred output_llds_type(llds_type::in, io::di, io::uo) is det.
 
 output_llds_type(int_least8)   --> io__write_string("MR_int_least8_t").
 output_llds_type(uint_least8)  --> io__write_string("MR_uint_least8_t").
@@ -2816,7 +2796,7 @@ output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
 	% and with a cast appropriate to its type if necessary.
 
 :- pred output_cons_args(assoc_list(rval, llds_type)::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_cons_args([], _Indent, !IO).
 output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
@@ -2837,7 +2817,7 @@ output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
 	).
 
 :- pred output_cons_arg_groups(list(common_cell_arg_group)::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_cons_arg_groups([], _Indent, !IO).
 output_cons_arg_groups([Group | Groups], Indent, !IO) :-
@@ -2861,7 +2841,7 @@ output_cons_arg_groups([Group | Groups], Indent, !IO) :-
 	).
 
 :- pred output_cons_arg_group_elements(llds_type::in, list(rval)::in,
-	string::in, io__state::di, io__state::uo) is det.
+	string::in, io::di, io::uo) is det.
 
 output_cons_arg_group_elements(_, [], _Indent, !IO).
 output_cons_arg_group_elements(Type, [Rval | Rvals], Indent, !IO) :-
@@ -2875,7 +2855,7 @@ output_cons_arg_group_elements(Type, [Rval | Rvals], Indent, !IO) :-
 	).
 
 :- pred output_cons_arg_group_ints(list(int)::in, string::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_cons_arg_group_ints([], _Indent, !IO).
 output_cons_arg_group_ints([Int | Ints], Indent, !IO) :-
@@ -2899,13 +2879,13 @@ project_int_constant(const(int_const(N)), N).
 % output_lval(Lval) is called.
 
 :- pred output_lval_decls(lval::in, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 output_lval_decls(Lval, !DeclSet, !IO) :-
 	output_lval_decls(Lval, "", "", 0, _, !DeclSet, !IO).
 
 :- pred output_lval_decls(lval::in, string::in, string::in, int::in, int::out,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_lval_decls(field(_, Rval, FieldNum), FirstIndent, LaterIndent,
 		!N, !DeclSet, !IO) :-
@@ -2940,8 +2920,7 @@ output_code_addr_decls(CodeAddress, !DeclSet, !IO) :-
 	output_code_addr_decls(CodeAddress, "", "", 0, _, !DeclSet, !IO).
 
 :- pred output_code_addr_decls(code_addr::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, !N, !DeclSet,
 		!IO) :-
@@ -2959,8 +2938,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, !N, !DeclSet,
 		)
 	).
 
-:- pred need_code_addr_decls(code_addr::in, bool::out,
-	io__state::di, io__state::uo) is det.
+:- pred need_code_addr_decls(code_addr::in, bool::out, io::di, io::uo) is det.
 
 need_code_addr_decls(label(Label), Need, !IO) :-
 	(
@@ -3003,8 +2981,7 @@ need_code_addr_decls(do_call_closure, yes, !IO).
 need_code_addr_decls(do_call_class_method, yes, !IO).
 need_code_addr_decls(do_not_reached, yes, !IO).
 
-:- pred output_code_addr_decls(code_addr::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_code_addr_decls(code_addr::in, io::di, io::uo) is det.
 
 output_code_addr_decls(label(Label), !IO) :-
 	output_label_as_code_addr_decls(Label, !IO).
@@ -3050,8 +3027,7 @@ output_code_addr_decls(do_call_class_method, !IO) :-
 output_code_addr_decls(do_not_reached, !IO) :-
 	io__write_string("MR_declare_entry(MR_do_not_reached);\n", !IO).
 
-:- pred output_label_as_code_addr_decls(label::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
 output_label_as_code_addr_decls(exported(ProcLabel), !IO) :-
 	io__write_string("MR_declare_entry(", !IO),
@@ -3083,7 +3059,7 @@ output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, !N, !DeclSet,
 	).
 
 :- pred output_data_addr_decls_2(data_addr::in, string::in, string::in,
-	int::in, int::out, io__state::di, io__state::uo) is det.
+	int::in, int::out, io::di, io::uo) is det.
 
 output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, !N, !IO) :-
 	output_indent(FirstIndent, LaterIndent, !.N, !IO),
@@ -3154,7 +3130,7 @@ c_data_const_string(Globals, InclCodeAddr, ConstStr) :-
 	% storage class "extern" is needed only on declarations).
 
 :- pred output_data_addr_storage_type_name(module_name::in, data_name::in,
-	bool::in, string::in, io__state::di, io__state::uo) is det.
+	bool::in, string::in, io::di, io::uo) is det.
 
 output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 		LaterIndent, !IO) :-
@@ -3182,8 +3158,7 @@ data_name_linkage(tabling_pointer(_), static).
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_indent(string::in, string::in, int::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_indent(string::in, string::in, int::in, io::di, io::uo) is det.
 
 output_indent(FirstIndent, LaterIndent, N0, !IO) :-
 	( N0 > 0 ->
@@ -3195,8 +3170,7 @@ output_indent(FirstIndent, LaterIndent, N0, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_output_update_prof_counter(label::in,
-	pair(label, bintree_set(label))::in,
-	io__state::di, io__state::uo) is det.
+	pair(label, bintree_set(label))::in, io::di, io::uo) is det.
 
 maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
 	% If ProfileTime is no, the definition of MR_update_prof_current_proc
@@ -3216,8 +3190,7 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_goto(code_addr::in, label::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_goto(code_addr::in, label::in, io::di, io::uo) is det.
 
 	% Note that we do some optimization here:
 	% instead of always outputting `MR_GOTO(<label>)', we
@@ -3355,8 +3328,8 @@ output_goto(do_not_reached, CallerLabel, !IO) :-
 	% calls to local labels, or `call_localret' for
 	% calls which return to local labels (i.e. most of them).
 
-:- pred output_call(code_addr::in, code_addr::in, label::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_call(code_addr::in, code_addr::in, label::in, io::di, io::uo)
+	is det.
 
 output_call(Target, Continuation, CallerLabel, !IO) :-
 	io__write_string("\t", !IO),
@@ -3460,8 +3433,7 @@ output_code_addr(do_not_reached, !IO) :-
 
 	% Output a maybe data address, with a `no' meaning NULL.
 
-:- pred output_maybe_data_addr(maybe(data_addr)::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_maybe_data_addr(maybe(data_addr)::in, io::di, io::uo) is det.
 
 output_maybe_data_addr(MaybeDataAddr, !IO) :-
 	(
@@ -3474,8 +3446,8 @@ output_maybe_data_addr(MaybeDataAddr, !IO) :-
 
 	% Output a list of maybe data addresses, with a `no' meaning NULL.
 
-:- pred output_maybe_data_addrs(list(maybe(data_addr))::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_maybe_data_addrs(list(maybe(data_addr))::in, io::di, io::uo)
+	is det.
 
 output_maybe_data_addrs([], !IO).
 output_maybe_data_addrs([MaybeDataAddr | MaybeDataAddrs], !IO) :-
@@ -3486,8 +3458,7 @@ output_maybe_data_addrs([MaybeDataAddr | MaybeDataAddrs], !IO) :-
 
 	% Output a list of data addresses.
 
-:- pred output_data_addrs(list(data_addr)::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_data_addrs(list(data_addr)::in, io::di, io::uo) is det.
 
 output_data_addrs([], !IO).
 output_data_addrs([DataAddr | DataAddrs], !IO) :-
@@ -3504,8 +3475,8 @@ output_data_addr(rtti_addr(RttiId), !IO) :-
 output_data_addr(layout_addr(LayoutName), !IO) :-
 	output_layout_name(LayoutName, !IO).
 
-:- pred output_data_addr(module_name::in, data_name::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_data_addr(module_name::in, data_name::in, io::di, io::uo)
+	is det.
 
 output_data_addr(ModuleName, VarName, !IO) :-
 	(
@@ -3517,8 +3488,8 @@ output_data_addr(ModuleName, VarName, !IO) :-
 		output_tabling_pointer_var_name(ProcLabel, !IO)
 	).
 
-:- pred output_common_cell_type_name(module_name::in, int::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_common_cell_type_name(module_name::in, int::in, io::di, io::uo)
+	is det.
 
 output_common_cell_type_name(ModuleName, TypeNum, !IO) :-
 	output_common_prefix(ModuleName, common_prefix_type, !IO),
@@ -3554,8 +3525,7 @@ output_common_prefix(ModuleName, Prefix, !IO) :-
 		io__write_string("__", !IO)
 	).
 
-:- pred output_label_as_code_addr(label::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
 output_label_as_code_addr(exported(ProcLabel)) -->
 	io__write_string("MR_ENTRY("),
@@ -3574,8 +3544,7 @@ output_label_as_code_addr(local(N, ProcLabel)) -->
 	output_label(local(N, ProcLabel)),
 	io__write_string(")").
 
-:- pred output_label_list(list(label)::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_label_list(list(label)::in, io::di, io::uo) is det.
 
 output_label_list([], !IO).
 output_label_list([Label | Labels], !IO) :-
@@ -3584,8 +3553,7 @@ output_label_list([Label | Labels], !IO) :-
 	io__write_string(")", !IO),
 	output_label_list_2(Labels, !IO).
 
-:- pred output_label_list_2(list(label)::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_label_list_2(list(label)::in, io::di, io::uo) is det.
 
 output_label_list_2([], !IO).
 output_label_list_2([Label | Labels], !IO) :-
@@ -3595,7 +3563,7 @@ output_label_list_2([Label | Labels], !IO) :-
 	io__write_string(")", !IO),
 	output_label_list_2(Labels, !IO).
 
-:- pred output_label_defn(label::in, io__state::di, io__state::uo) is det.
+:- pred output_label_defn(label::in, io::di, io::uo) is det.
 
 output_label_defn(exported(ProcLabel), !IO) :-
 	io__write_string("MR_define_entry(", !IO),
@@ -3659,7 +3627,7 @@ llds_out__label_to_c_string(local(Num, ProcLabel), AddPrefix) = LabelStr :-
 	string__append("_i", NumStr, NumSuffix),
 	string__append(ProcLabelStr, NumSuffix, LabelStr).
 
-:- pred output_reg(reg_type::in, int::in, io__state::di, io__state::uo) is det.
+:- pred output_reg(reg_type::in, int::in, io::di, io::uo) is det.
 
 output_reg(r, N, !IO) :-
 	llds_out__reg_to_string(r, N, RegName),
@@ -3667,7 +3635,7 @@ output_reg(r, N, !IO) :-
 output_reg(f, _, !IO) :-
 	error("Floating point registers not implemented").
 
-:- pred output_tag(tag::in, io__state::di, io__state::uo) is det.
+:- pred output_tag(tag::in, io::di, io::uo) is det.
 
 output_tag(Tag, !IO) :-
 	io__write_string("MR_mktag(", !IO),
@@ -3676,8 +3644,7 @@ output_tag(Tag, !IO) :-
 
 	% output an rval, converted to the specified type
 	%
-:- pred output_rval_as_type(rval::in, llds_type::in,
-	io__state::di, io__state::uo) is det.
+:- pred output_rval_as_type(rval::in, llds_type::in, io::di, io::uo) is det.
 
 output_rval_as_type(Rval, DesiredType, !IO) :-
 	llds__rval_type(Rval, ActualType),
@@ -3763,24 +3730,21 @@ direct_field_int_constant(word) = no.
 
 	% output a float rval, converted to type `MR_Word *'
 	%
-:- pred output_float_rval_as_data_ptr(rval::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_float_rval_as_data_ptr(rval::in, io::di, io::uo) is det.
 
 output_float_rval_as_data_ptr(Rval, !IO) :-
 	output_float_rval(Rval, yes, !IO).
 
 	% output a float rval, converted to type `MR_Word'
 	%
-:- pred output_float_rval_as_word(rval::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_float_rval_as_word(rval::in, io::di, io::uo) is det.
 
 output_float_rval_as_word(Rval, !IO) :-
 	output_float_rval(Rval, no, !IO).
 
 	% output a float rval, converted to type `MR_Word' or `MR_Word *'
 	%
-:- pred output_float_rval(rval::in, bool::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_float_rval(rval::in, bool::in, io::di, io::uo) is det.
 
 output_float_rval(Rval, IsPtr, !IO) :-
 	%
@@ -3997,13 +3961,13 @@ output_rval(mem_addr(MemRef), !IO) :-
 		io__write_string(")", !IO)
 	).
 
-:- pred output_unary_op(unary_op::in, io__state::di, io__state::uo) is det.
+:- pred output_unary_op(unary_op::in, io::di, io::uo) is det.
 
 output_unary_op(Op) -->
 	{ c_util__unary_prefix_op(Op, OpString) },
 	io__write_string(OpString).
 
-:- pred output_rval_const(rval_const::in, io__state::di, io__state::uo) is det.
+:- pred output_rval_const(rval_const::in, io::di, io::uo) is det.
 
 output_rval_const(int_const(N), !IO) :-
 	% we need to cast to (Integer) to ensure
@@ -4146,7 +4110,7 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
 			", ", int_to_string(Arity), ")"], !IO)
 	).
 
-:- pred output_lval_as_word(lval::in, io__state::di, io__state::uo) is det.
+:- pred output_lval_as_word(lval::in, io::di, io::uo) is det.
 
 output_lval_as_word(Lval) -->
 	{ llds__lval_type(Lval, ActualType) },
@@ -4161,7 +4125,7 @@ output_lval_as_word(Lval) -->
 		io__write_string(")")
 	).
 
-:- pred output_lval(lval::in, io__state::di, io__state::uo) is det.
+:- pred output_lval(lval::in, io::di, io::uo) is det.
 
 output_lval(reg(Type, Num)) -->
 	output_reg(Type, Num).
@@ -4249,22 +4213,21 @@ output_lval(mem_ref(Rval)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_set_line_num(prog_context::in, io__state::di, io__state::uo)
-	is det.
+:- pred output_set_line_num(prog_context::in, io::di, io::uo) is det.
 
 output_set_line_num(Context, !IO) :-
 	term__context_file(Context, File),
 	term__context_line(Context, Line),
 	c_util__set_line_num(File, Line, !IO).
 
-:- pred output_reset_line_num(io__state::di, io__state::uo) is det.
+:- pred output_reset_line_num(io::di, io::uo) is det.
 
 output_reset_line_num(!IO) :-
 	c_util__reset_line_num(!IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_binary_op(binary_op::in, io__state::di, io__state::uo) is det.
+:- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op(Op, !IO) :-
 	( c_util__binary_infix_op(Op, String) ->
