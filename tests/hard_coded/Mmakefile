@@ -177,6 +177,7 @@ ORDINARY_PROGS=	\
 	user_compare \
 	user_defined_equality2 \
 	write \
+	write_binary \
 	write_reg1 \
 	write_reg2
 
@@ -303,6 +304,7 @@ endif
 # XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
 #     not yet implemented for arrays.
 #
+# XXX we fail some of the commented-out tests in write_binary
 
 # The following tests are passed only in some grades.
 

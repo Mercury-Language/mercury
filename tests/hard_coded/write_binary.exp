@@ -1,0 +1,151 @@
+TESTING TERMS WITH OPERATORS
+ok... test passed:
+var("X") + int(3) * var("X^2") ; (type)
+var("X") + int(3) * var("X^2") ; (type)
+ok... test passed:
+{ type }
+{ type }
+ok... test passed:
+{ ':-' }
+{ ':-' }
+ok... test passed:
+':-'
+':-'
+ok... test passed:
+{ blah }
+{ blah }
+ok... test passed:
+blah ; (type), (type) * blah ; (type)
+blah ; (type), (type) * blah ; (type)
+ok... test passed:
+((blah ; blah), blah) * blah ; blah
+((blah ; blah), blah) * blah ; blah
+ok... test passed:
+(type) * blah ; (type)
+(type) * blah ; (type)
+TESTING DISCRIMINATED UNIONS
+ok... test passed:
+one
+one
+ok... test passed:
+two
+two
+ok... test passed:
+three
+three
+ok... test passed:
+apple([9, 5, 1])
+apple([9, 5, 1])
+ok... test passed:
+banana([three, one, two])
+banana([three, one, two])
+ok... test passed:
+zop(3.30000000000000, 2.03000000000000)
+zop(3.30000000000000, 2.03000000000000)
+ok... test passed:
+zip(3, 2)
+zip(3, 2)
+ok... test passed:
+zap(3, -2.11100000000000)
+zap(3, -2.11100000000000)
+ok... test passed:
+wombat
+wombat
+ok... test passed:
+foo
+foo
+TESTING POLYMORPHISM
+ok... test passed:
+poly_one([2399.30000000000])
+poly_one([2399.30000000000])
+ok... test passed:
+poly_two(3)
+poly_two(3)
+ok... test passed:
+poly_three(3.33000000000000, 4, poly_one(9.11000000000000))
+poly_three(3.33000000000000, 4, poly_one(9.11000000000000))
+TESTING BUILTINS
+ok... test passed:
+
+
+ok... test passed:
+Hello, world
+
+Hello, world
+
+ok... test passed:
+Foo%sFoo
+Foo%sFoo
+ok... test passed:
+"
+"
+ok... test passed:
+a
+a
+ok... test passed:
+&
+&
+ok... test passed:
+.
+.
+ok... test passed:
+%
+%
+ok... test passed:
+ 
+ 
+ok... test passed:
+	
+	
+ok... test passed:
+
+
+
+
+ok... test passed:
+\
+\
+ok... test passed:
+*
+*
+ok... test passed:
+/
+/
+ok... test passed:
+3.14159000000000
+3.14159000000000
+ok... test passed:
+1.12832498300000e-21
+1.12832498300000e-21
+ok... test passed:
+2.23954899000000e+23
+2.23954899000000e+23
+ok... test passed:
+-65
+-65
+ok... test passed:
+4
+4
+next text is expected to fail:
+test failed:
+exception(univ_cons("error reading term back in again"))
+'<<predicate>>'
+TESTING OTHER TYPES
+ok... test passed:
+var(1)
+var(1)
+ok... test passed:
+var_supply(0)
+var_supply(0)
+ok... test passed:
+var_supply(1)
+var_supply(1)
+ok... test passed:
+empty
+empty
+ok... test passed:
+qwerty(4)
+qwerty(4)
+ok... test passed:
+array([1, 2, 3, 4])
+array([1, 2, 3, 4])
