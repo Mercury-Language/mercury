@@ -4,10 +4,16 @@ taken when releasing a new version of Mercury.
 1.  Update the version number in
 	README
 	INSTALL (various places)
+	bindist/bindist.README
+	bindist/bindist.INSTALL
 	configure.in
 	library/library.m
+    and update the NEWS and RELEASE_NOTES files.
 
-2.  Checkout a fresh copy, and do `mmake tar'.
+2.  Checkout a fresh copy, and do
+	autoconf;
+	./configure;
+	mmake 'MMAKEFLAGS="MCFLAGS=--optimize-value-number -j4"' tar
 
 3.  Fix the tar file so that it unpacks into the directory `mercury-<version>'
     rather than `mercury'.

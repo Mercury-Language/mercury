@@ -1,17 +1,15 @@
 % A simpler calculator - parses and evaluates integer expressions.
-% Elegant, but not efficient - backtracking causes exponential performance :-(.
-% (Try this on the input "((((((((((((1))))))))))))".)
 
-% For an example of a more efficient parser, see ../library/parser.m.
+% For an example of a parser with better error handling, see parser.m in
+% the Mercury library source code.
 
-% This calculator also misparses "1 - 2 - 3" as "1 - (2 - 3)".
-% (Fixing that bug is left as an exercise for the reader...)
+% Author: fjh.
 
 :- module calculator.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 :- import_module list, char, int, string.
@@ -23,14 +21,6 @@
 	;       times(expr, expr)
 	;       div(expr, expr).
 
-:- pred evalexpr(expr::in, int::out) is det.
-
-evalexpr(number(NUM), NUM).
-evalexpr(plus(X,Y),  Z) :- Z is A + B, evalexpr(X,A), evalexpr(Y,B).
-evalexpr(minus(X,Y), Z) :- Z is A - B, evalexpr(X,A), evalexpr(Y,B).
-evalexpr(times(X,Y), Z) :- Z is A * B, evalexpr(X,A), evalexpr(Y,B).
-evalexpr(div(X,Y),   Z) :- Z is A // B, evalexpr(X,A), evalexpr(Y,B).
-
 main --> 
 	io__read_line(Res),
 	( { Res = error(_) },
@@ -39,38 +29,74 @@ main -->
 		io__write_string("EOF\n")
 	; { Res = ok(Line) },
 		( { fullexpr(X,Line,[]) } ->
-			{ evalexpr(X,NUM) },
-			io__write_int(NUM),
+			{ evalexpr(X, Num) },
+			io__write_int(Num),
 			io__write_string("\n")
 		;
 			io__write_string("Syntax error\n")
 		),
-		main	% recursively call itself for the next line(s)
+		main	% recursively call ourself for the next line(s)
 	).
 
-:- pred fullexpr( expr::out,	list(char)::in, list(char)::out) is nondet.
-:- pred expr(     expr::out,	list(char)::in, list(char)::out) is nondet.
-:- pred factor(   expr::out,	list(char)::in, list(char)::out) is nondet.
-:- pred term(     expr::out,	list(char)::in, list(char)::out) is nondet.
-:- pred const(list(char)::out,	list(char)::in, list(char)::out) is nondet.
-:- pred digit(char::out,	list(char)::in, list(char)::out) is semidet.
+:- pred evalexpr(expr::in, int::out) is det.
+evalexpr(number(Num), Num).
+evalexpr(plus(X,Y),  Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A + B.
+evalexpr(minus(X,Y), Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A - B.
+evalexpr(times(X,Y), Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A * B.
+evalexpr(div(X,Y),   Z) :- evalexpr(X,A), evalexpr(Y,B), Z is A // B.
 
-fullexpr(X)		-->	expr(X), ['\n'].
+% Simple recursive-descent parser.
 
-expr(X)			-->	factor(X).
-expr(plus(X,Y))  	-->	factor(X), ['+'], expr(Y).
-expr(minus(X,Y))  	--> 	factor(X), ['-'], expr(Y).
+:- pred fullexpr(expr::out, list(char)::in, list(char)::out) is semidet.
+fullexpr(X) -->
+	expr(X),
+	['\n'].
 
-factor(X)		-->	term(X).
-factor(times(X,Y)) 	--> 	term(X), ['*'], factor(Y).
-factor(div(X,Y)) 	--> 	term(X), ['/'], factor(Y).
+:- pred expr(expr::out, list(char)::in, list(char)::out) is semidet.
+expr(Expr) -->
+	factor(Factor),
+	expr2(Factor, Expr).
 
-term(number(N))		-->	const(L),
-				{ string__from_char_list(L,S) },
-				{ string__to_int(S,N) } .
-term(X)			-->	['('], expr(X), [')'].
+:- pred expr2(expr::in, expr::out, list(char)::in, list(char)::out) is semidet.
+expr2(Factor, Expr) -->
+	( ['+'] -> factor(Factor2), expr2(plus( Factor, Factor2), Expr)
+	; ['-'] -> factor(Factor2), expr2(minus(Factor, Factor2), Expr)
+	; { Expr = Factor }
+	).
 
-const([Char])		-->	digit(Char).
-const([Char|L])		-->	digit(Char), const(L).
+:- pred factor(expr::out, list(char)::in, list(char)::out) is semidet.
+factor(Factor) -->
+	term(Term),
+	factor2(Term, Factor).
 
-digit(Char)		-->	[Char], { char__is_digit(Char) }.
+:- pred factor2(expr::in, expr::out, list(char)::in, list(char)::out)
+	is semidet.
+factor2(Term, Factor) -->
+	( ['*'] -> term(Term2), factor2(times(Term,Term2), Factor)
+	; ['/'] -> term(Term2), factor2(div(  Term,Term2), Factor)
+	; { Factor = Term }
+	).
+
+:- pred term(expr::out, list(char)::in, list(char)::out) is semidet.
+term(Term)	-->
+	( const(Const) ->
+		{ string__from_char_list(Const, ConstString) },
+		{ string__to_int(ConstString, Num) },
+		{ Term = number(Num) }
+	;
+		['('], expr(Term), [')']
+	).
+
+:- pred const(list(char)::out, list(char)::in, list(char)::out) is semidet.
+const([Digit|Rest]) -->
+	digit(Digit),
+	( const(Const) ->
+		{ Rest = Const }
+	;
+		{ Rest = [] }
+	).
+
+:- pred digit(char::out, list(char)::in, list(char)::out) is semidet.
+digit(Char) -->
+	[Char],
+	{ char__is_digit(Char) }.

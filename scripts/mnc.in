@@ -17,8 +17,7 @@
 nc_builtin_nl=${MERCURY_NC_BUILTIN=@LIBDIR@/nuprolog/nc_builtin.nl}
 
 options=
-
-unset target
+target=
 
 while true; do
 	case "$1" in
@@ -59,5 +58,8 @@ for file in "$@"; do
 	fi
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns
-	mv $tmp.no ${target="$rootname.no"}
+	case "$target" in
+		"") mv $tmp.no "$rootname.no" ;;
+		*)  mv $tmp.no "$target" ;;
+	esac
 done
