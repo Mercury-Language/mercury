@@ -282,17 +282,31 @@ The end of file.
 @node Terms
 @section Terms
 
-Syntactically, terms in Mercury are exactly the same as in ISO Prolog.
+Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
+except that as an extension we permit higher-order terms, as described
+below.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  See @xref{Data-terms}.
 
 A term is either a variable or a functor.
-A functor is an integer, a float, a string, a name, or a compound term.
+
+A functor is an integer, a float, a string, a name, a compound term,
+or a higher-order term.
+
 A compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  Compound terms may also be specified using
 operator notation, as in Prolog.
+
+A higher-order term is a variable followed without any intervening
+whitespace by an open parenthesis (i.e. an open_ct token),
+a sequence of argument terms separated by commas, and a close
+parenthesis.  A higher-order term is equivalent to a compound term
+whose functor is the empty name, and whose arguments are the 
+the variable followed by the arguments of the higher-order term.
+That is, a term such as @code{Var(Arg1, @dots{}, ArgN)} is
+parsed as @code{''(Var, Arg1, @dots{}, ArgN)},
 
 @node Items
 @section Items
@@ -454,13 +468,21 @@ the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
 See @xref{Higher-order}.
 
+@item @code{Var}
+@itemx @code{Var(Arg1)}
+@itemx @code{Var(Arg2)}
+@itemx @code{Var(Arg2, Arg3)}
+@itemx @dots{}
+A higher-order predicate call.
+@var{Var} must be a variable.
+The semantics are exactly the same as for the corresponding
+higher-order call using the @code{call/N} syntax, i.e.
+@samp{call(Var)}, @samp{call(Var, Arg1)}, etc.
+
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
 must be a predicate call.
-If the term is a variable @var{Var},
-it is treated as if it were @samp{call(@var{Var})},
-i.e. as a higher-order predicate call.
-Otherwise, the top-level functor of the term
+The top-level functor of the term
 determines the predicate called;
 the predicate must be declared in a @code{pred} declaration
 in the module or in the interface of an imported module.
@@ -651,7 +673,7 @@ If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
 
-A lambda expression is a compound term of the form
+A lambda expression is a compound term of one of the following forms
 
 @example
 lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
@@ -669,16 +691,18 @@ whose value is the predicate or function of the specified arguments
 determined by the specified goal.
 See @xref{Higher-order}.
 
-A higher-order function application is a compound term of the form
+A higher-order function application is a compound term of one
+of the following two forms
 
 @example
 apply(@var{Func}, @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN})
-@dots{}
+@var{FuncVar}(@var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN})
 @end example
 
 @noindent
 where @var{N} >= 1, @var{Func} is a term of type
-@samp{func(T1, T2, ..., Tn) = T}, and
+@samp{func(T1, T2, ..., Tn) = T}, @var{FuncVar} is a variable
+of that type, and
 @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN} are terms of types
 @samp{T1}, @samp{T2}, @dots{}, @samp{Tn}. 
 The type of the higher-order function application term is @var{T}.
