@@ -185,7 +185,7 @@ case $HOST in
 
 			    0.10)
 				# There are some performance problems with
-				# deforestation on the release branch.
+				# deforestation on the 0.10 branch.
 				# The compiler takes forever to compile
 				# module_qual__process_assert with
 				# `--intermodule-optimization'
@@ -399,7 +399,7 @@ case $HOST in
 		# in the 0.10 branch.
 		# Likewise for `hlc' and `hlc.agc'
 		#	
-		# The hl.* grades don't work on the release branch because
+		# The hl.* grades don't work on the 0.10 branch because
 		# we can only install the header files for one grade, and the 
 		# headers for hl.gc and hlc.gc are different. This has been
 		# fixed on the main branch.
@@ -507,7 +507,7 @@ set -x	# trace execution
 : checkout the sources
 cd $DIR || { false; exit 1; }
 # we need to manually remove this copy of dl.m to avoid spurious cvs
-# conflicts when switching between the release branch (where it is in cvs)
+# conflicts when switching between the 0.10 branch (where it is in cvs)
 # and the main branch (where it is generated automatically).
 rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
