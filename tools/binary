@@ -487,6 +487,7 @@ do
 	cd $root
 done
 
+set +x
 doubtful=
 i=0
 while test $i -le $basecnt
@@ -494,6 +495,7 @@ do
 	doubtful="$doubtful $i"
 	i=`expr $i + 1`
 done
+set -x
 
 tested=`half $doubtful`
 knowngood=
