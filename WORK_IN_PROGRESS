@@ -36,3 +36,4 @@ distribution.
   is available from our Web page; a shorter version will be published
   in the Static Analysis Symposium.
 
+* Support for heap profiling.
