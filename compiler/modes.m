@@ -10,15 +10,17 @@
 % XXX unifying `free' with `free' should be allowed if one of the variables
 % is dead.
 
-% XXX unifying `free' with `f(free)' introduces aliasing, and should be
-% disallowed, unless either the variable is dead or all the free argument(s)
-% are dead.
-
 % XXX break unifications into "micro-unifications"
 
-% XXX should handle reordering of conjunctions.
+% (NB. One of the above two must be fixed to allow partially instantiated
+% data structures.)
 
-% XXX we should check that the final insts are correct.
+% XXX handle code which always fails or always loops.
+%	eg. currently the following code
+%		p(a, Y) :- fail.
+%		p(b, 1).
+%	gives a mode error, because Y is not output by the first clause.
+%	The same problem occurs with calls to error/1.
 
 /*************************************
 To mode-check a clause:
@@ -34,11 +36,15 @@ If goal is
 		check that the final insts of all the non-local
 		variables are the same for all the sub-goals.
 	(b) a conjunction
-		Attempt to schedule each sub-goal.
-		If a sub-goal can be scheduled, then schedule it,
-		and continue with the remaining sub-goals until
-		there is only one left, which gets mode-checked.
-		If no sub-goals can be scheduled, report a mode error.
+		Attempt to schedule each sub-goal.  If a sub-goal can
+		be scheduled, then schedule it, otherwise delay it.
+		Continue with the remaining sub-goals until there are
+		no goals left.  Every time a variable gets bound,
+		see whether we should wake up a delayed goal,
+		and if so, wake it up next time we get back to
+		the conjunction.  If there are still delayed goals
+		handing around at the end of the conjunction, 
+		report a mode error.
 	(c) a negation
 		Mode-check the sub-goal.
 		Check that the sub-goal does not further instantiate
@@ -66,7 +72,7 @@ To attempt to schedule a goal, first mode-check the goal.  If mode-checking
 succeeds, then scheduling succeeds.  If mode-checking would report
 an error due to the binding of a non-local variable, then scheduling
 fails.  If mode-checking would report an error due to the binding of
-a local variable, then report the error.
+a local variable, then report the error [this idea not yet implemented].
 
 ******************************************/
 
@@ -84,10 +90,6 @@ a local variable, then report the error.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-% :- import_module string, list, stack, map.
-% :- import_module require, std_util.
-% :- import_module varset, term, prog_out, hlds_out, mode_util.
-% :- import_module globals, options, mercury_to_mercury.
 
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module mode_util, prog_io.
