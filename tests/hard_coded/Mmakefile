@@ -274,7 +274,11 @@ MLFLAGS-needs_init		= 	--include-initialization-code --extra-inits
 # unless we increase the heap size from the default 4M.
 # The sizes specified here (70 Mb and 20 Mb respectively)
 # are sufficient for running these tests on 64-bit systems.
-MLFLAGS-integer_test = --runtime-flags "--heap-size 70000"
+# The setting of `--mdb-out' tests the quoting of runtime
+# options containing special characters.
+
+MLFLAGS-integer_test = \
+		--runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
 MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"
 
 # no_fully_strict is expected to fail (it calls error/1).

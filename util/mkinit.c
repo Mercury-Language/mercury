@@ -789,6 +789,7 @@ output_main(void)
 {
 	const char *aditi_load_func;
 	String_List *list_tmp;
+	char *options_str;
 
 	if (aditi) {
 		aditi_load_func = "MR_do_load_aditi_rl_code";
@@ -802,7 +803,22 @@ output_main(void)
 	printf("	MR_runtime_flags = \"");
 	for (list_tmp = runtime_flags;
 			list_tmp != NULL; list_tmp = list_tmp->next) {
-		fputs(list_tmp->data, stdout);
+		for (options_str = list_tmp->data;
+				*options_str != '\0'; options_str++) {
+			if (*options_str == '\n') {
+				putchar('\\');
+				putchar('n');
+			} else if (*options_str == '\t') {
+				putchar('\\');
+				putchar('t');
+			} else if (*options_str == '"' ||
+					*options_str == '\\') {
+				putchar('\\');
+				putchar(*options_str);
+			} else {
+				putchar(*options_str);
+			}
+		}
 		putchar(' ');
 	}
 	printf("\";\n");
