@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -443,6 +443,12 @@ term_io__quote_atom(S, NextToGraphicToken) -->
 			{ \+ (  list__member(Char, Chars),
 				\+ lexer__graphic_token_char(Char)) },
 			{ Chars \= [] },
+			%
+			% We need to quote tokens starting with '#',
+			% because Mercury uses '#' to start source line
+			% number indicators.
+			% 
+			{ Chars \= ['#' | _] },
 			%
 			% If the token could be the last token in a term,
 			% and the term could be followed with ".\n",
