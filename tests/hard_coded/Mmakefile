@@ -41,6 +41,7 @@ PROGS=	\
 	higher_order_type_manip \
 	ho_func_reg \
 	ho_order \
+	ho_order2 \
 	ho_solns \
 	ho_univ_to_type \
 	impossible_unify \
@@ -88,6 +89,7 @@ PROGS=	\
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
+MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-rnd		=	-O6
 

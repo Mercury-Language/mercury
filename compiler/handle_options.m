@@ -189,8 +189,7 @@ postprocess_options(ok(OptionTable), Error) -->
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		PrologDialect, TermNorm, TraceLevel) -->
 	% work around for NU-Prolog problems
-	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
-	->
+	( { map__search(OptionTable, heap_space, int(HeapSpace)) } ->
 		io__preallocate_heap_space(HeapSpace)
 	;
 		[]
@@ -337,6 +336,16 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% `procid' and `agc' stack layouts need `basic' stack layouts
 	option_implies(procid_stack_layout, basic_stack_layout, bool(yes)),
 	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
+
+	% XXX higher_order.m does not update the typeinfo_varmap
+	% for specialised versions.
+	% This causes the compiler to abort in unused_args.m when compiling
+	% tests/valid/agc_ho_pred.m with `-O3 --intermodule-optimization'.
+	option_implies(typeinfo_liveness, optimize_higher_order, bool(no)),
+
+	% XXX deforestation does not perform folding on polymorphic
+	% predicates correctly with --typeinfo-liveness.
+	option_implies(typeinfo_liveness, deforestation, bool(no)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),

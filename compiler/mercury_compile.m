@@ -321,8 +321,18 @@ mercury_compile(Module) -->
 	    ; { ErrorCheckOnly = yes } ->
 		% we may still want to run `unused_args' so that we get
 		% the appropriate warnings
-		globals__io_set_option(optimize_unused_args, bool(no)),
-		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _)
+		globals__io_lookup_bool_option(warn_unused_args, UnusedArgs),
+		( { UnusedArgs = yes } ->
+			% Run polymorphism so that the unused argument numbers
+			% read in from `.opt' files are correct.
+			mercury_compile__maybe_polymorphism(HLDS21,
+				Verbose, Stats, HLDS22), 
+			globals__io_set_option(optimize_unused_args, bool(no)),
+			mercury_compile__maybe_unused_args(HLDS22,
+				Verbose, Stats, _)
+	    	;
+			[]
+	    	)
 	    ; { MakeOptInt = yes } ->
 		% only run up to typechecking when making the .opt file
 	    	[]
@@ -407,17 +417,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 	( { FoundError = yes ; IntermodError = yes } ->
 		{ module_info_incr_errors(HLDS0, HLDS1) }
 	;	
-		globals__io_lookup_bool_option(intermodule_optimization,
-			Intermod),
-		globals__io_lookup_bool_option(make_optimization_interface,
-			MakeOptInt),
-		( { Intermod = yes, MakeOptInt = no } ->
-			% Eliminate unnecessary clauses from `.opt' files,
-			% to speed up compilation.
-			{ dead_pred_elim(HLDS0, HLDS1) }
-		;
-			{ HLDS1 = HLDS0 }
-		)
+		{ HLDS1 = HLDS0 }
 	).
 
 :- pred mercury_compile__module_qualify_items(item_list, item_list,
@@ -574,12 +574,25 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		"% Checking typeclass instances...\n"),
 	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
 		FoundTypeclassError),
-	    mercury_compile__maybe_dump_hlds(HLDS2, "2", "typeclass"), !,
+	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"), !,
+
+	    globals__io_lookup_bool_option(intermodule_optimization, Intermod),
+	    globals__io_lookup_bool_option(make_optimization_interface,
+		MakeOptInt),
+	    ( { Intermod = yes, MakeOptInt = no } ->
+		% Eliminate unnecessary clauses from `.opt' files,
+		% to speed up compilation. This must be done after
+		% typeclass instances have been checked, since that
+		% fills in which pred_ids are needed by instance decls.
+		{ dead_pred_elim(HLDS2, HLDS2a) }
+	    ;
+		{ HLDS2a = HLDS2 }
+	    ),
 
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2, HLDS3, FoundUndefModeError, FoundTypeError), !,
+	    typecheck(HLDS2a, HLDS3, FoundUndefModeError, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -599,30 +612,30 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		{ bool__or(FoundTypeError, FoundTypeclassError, FoundError) }
 	    ;
 		% only write out the `.opt' file if there are no type errors
-		globals__io_lookup_bool_option(make_optimization_interface,
-			MakeOptInt),
-		( { FoundTypeError = no } ->
+		% or undefined modes
+		( { FoundTypeError = no, FoundUndefModeError = no } ->
 			mercury_compile__maybe_write_optfile(MakeOptInt,
 		    		HLDS3, HLDS4), !
 		;
 			{ HLDS4 = HLDS3 }
 		),
-		% if our job was to write out the `.opt' file, then we're done
-		( { MakeOptInt = yes } ->
-		    	{ HLDS = HLDS4 },
-			{ bool__or(FoundTypeError, FoundTypeclassError,
-				FoundError) }
-		;
-			%
-			% We can't continue after an undefined inst/mode
-			% error, since mode analysis would get internal errors
-			%
-			( { FoundUndefModeError = yes } ->
-			    { FoundError = yes },
-			    { HLDS = HLDS4 },
-			    maybe_write_string(Verbose,
+		%
+		% We can't continue after an undefined inst/mode
+		% error, since mode analysis would get internal errors
+		%
+		( { FoundUndefModeError = yes } ->
+		    { FoundError = yes },
+		    { HLDS = HLDS4 },
+		    maybe_write_string(Verbose,
 		"% Program contains undefined inst or undefined mode error(s).\n"),
 			    io__set_exit_status(1)
+		;
+			% if our job was to write out the `.opt' file,
+			% then we're done
+			( { MakeOptInt = yes } ->
+				{ HLDS = HLDS4 },
+				{ bool__or(FoundTypeError, FoundTypeclassError,
+					FoundError) }
 			;
 			    %
 			    % Now go ahead and do the rest of mode checking and
@@ -643,6 +656,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		module_info::out, io__state::di, io__state::uo) is det.
 
 mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(intermodule_optimization, Intermod),
 	globals__io_lookup_bool_option(intermod_unused_args, IntermodArgs),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -685,6 +699,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		module_name_to_file_name(ModuleName, ".opt", yes, OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
+	; { Intermod = yes } ->
+		intermod__adjust_pred_import_status(HLDS0, HLDS)
 	;
 		{ HLDS = HLDS0 }
 	).
@@ -740,7 +756,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
-		{ HLDS13 = HLDS5 }
+		{ HLDS12 = HLDS5 }
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		!,
@@ -783,24 +799,13 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			% FoundModeError etc. aren't always correct.
 			{ ExitStatus = 0 }
 		->
-			{ FoundError = no },
-			globals__io_lookup_bool_option(intermodule_optimization,
-								Intermod),
-			globals__io_lookup_bool_option(
-				make_optimization_interface, MakeOptInt),
-			{ Intermod = yes, MakeOptInt = no ->
-				intermod__adjust_pred_import_status(HLDS12,
-					HLDS13), !
-			;
-				HLDS13 = HLDS12
-			}
+			{ FoundError = no }
 		;
-			{ FoundError = yes },
-			{ HLDS13 = HLDS12 }
+			{ FoundError = yes }
 		)
 	),
 
-	{ HLDS20 = HLDS13 },
+	{ HLDS20 = HLDS12 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end").
 
 :- pred mercury_compile__frontend_pass_2_by_preds(module_info, module_info,

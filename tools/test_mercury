@@ -50,7 +50,7 @@ CHECKOUT_OPTS=-A
 
 case $HOST in
 	# test things at different optimization levels...
-	murlibobo)	OPTIMIZE=-O5 ;;
+	murlibobo)	OPTIMIZE="-O5 --intermod-unused-args" ;;
 	kryten) 	OPTIMIZE=-O1 ;;
 	mercury) 	OPTIMIZE=-O3 ;;
 	hydra)		OPTIMIZE=-O2 ;;

@@ -98,6 +98,8 @@ dead_proc_elim__analyze(ModuleInfo0, Needed) :-
 		Needed0, Needed).
 
 	% Add all exported entities to the queue and map.
+	% Note: changes here are likely to require changes to
+	% dead_pred_elim as well.
 
 :- pred dead_proc_elim__initialize(module_info, entity_queue, needed_map).
 :- mode dead_proc_elim__initialize(in, out, out) is det.
@@ -660,12 +662,27 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 		).
 
 dead_pred_elim(ModuleInfo0, ModuleInfo) :-
-	module_info_predids(ModuleInfo0, PredIds),
+
 	queue__init(Queue0),
+	map__init(Needed0),
+	module_info_get_pragma_exported_procs(ModuleInfo0, PragmaExports),
+	dead_proc_elim__initialize_pragma_exports(PragmaExports,
+		Queue0, _, Needed0, Needed1),
+	module_info_instances(ModuleInfo0, Instances),
+	dead_proc_elim__initialize_class_methods(Instances,
+		Queue0, _, Needed1, Needed),
+	map__keys(Needed, Entities),
+	queue__init(Queue1),
+	set__init(NeededPreds0),
+	list__foldl2(dead_pred_elim_add_entity, Entities,
+		Queue1, Queue, NeededPreds0, NeededPreds1),
+
 	set__init(Preds0),
 	set__init(Names0),
-	DeadInfo0 = dead_pred_info(ModuleInfo0, Queue0, 
-		Preds0, Preds0, Names0),
+	DeadInfo0 = dead_pred_info(ModuleInfo0, Queue, 
+		Preds0, NeededPreds1, Names0),
+
+	module_info_predids(ModuleInfo0, PredIds),
 	list__foldl(dead_pred_elim_initialize, PredIds, 
 		DeadInfo0, DeadInfo1),
 	dead_pred_elim_analyze(DeadInfo1, DeadInfo),
@@ -675,6 +692,14 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	set__to_sorted_list(DeadPreds, DeadPredList),
 	list__foldl(module_info_remove_predicate, DeadPredList,
 		ModuleInfo1, ModuleInfo).
+
+:- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
+	queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.
+
+dead_pred_elim_add_entity(base_gen_info(_, _, _), Q, Q, Preds, Preds).
+dead_pred_elim_add_entity(proc(PredId, _), Q0, Q, Preds0, Preds) :-
+	queue__put(Q0, PredId, Q),
+	set__insert(Preds0, PredId, Preds).
 
 :- pred dead_pred_elim_initialize(pred_id::in, dead_pred_info::in,
 		dead_pred_info::out) is det.

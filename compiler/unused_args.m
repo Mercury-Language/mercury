@@ -464,42 +464,39 @@ traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
 	set_var_used(UseInf1, Var2, UseInf).
 		
 traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
-	(
-		map__contains(UseInf0, Var1)
-	->
-		add_aliases(UseInf0, Var2, [Var1], UseInf)
-	;
+	( local_var_is_used(UseInf0, Var1) ->
 		% if Var1 used to instantiate an output argument, Var2 used
 		set_var_used(UseInf0, Var2, UseInf)
+	;
+		add_aliases(UseInf0, Var2, [Var1], UseInf)
 	).
 
 traverse_goal(ModuleInfo,
 		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
 		UseInf0, UseInf) :-
+	partition_deconstruct_args(ModuleInfo, Args,
+		Modes, InputVars, OutputVars),
+		% The deconstructed variable is used if any of the
+		% variables, that the deconstruction binds are used.
+	add_aliases(UseInf0, Var1, OutputVars, UseInf1),
+		% Treat a deconstruction that further instantiates its
+		% left arg as a partial construction.
+	add_construction_aliases(UseInf1, Var1, InputVars, UseInf2),
 	(
 		CanFail = can_fail	
 	->
 		% a deconstruction that can_fail uses its left arg
-		set_var_used(UseInf0, Var1, UseInf)
+		set_var_used(UseInf2, Var1, UseInf)
 	;
-		get_instantiating_variables(ModuleInfo, Args, Modes, InputVars),
-		list__delete_elems(Args, InputVars, OutputVars),
-			% The deconstructed variable is used if any of the
-			% variables, that the deconstruction binds are used.
-		add_aliases(UseInf0, Var1, OutputVars, UseInf1),
-			% Treat a deconstruction that further instantiates its
-			% left arg as a partial construction.
-		add_construction_aliases(UseInf1, Var1, InputVars, UseInf)	
+		UseInf = UseInf2	
 	).
 
 traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 					UseInf0, UseInf) :-
-	(
-		map__contains(UseInf0, Var1)
-	->
-		add_construction_aliases(UseInf0, Var1, Args, UseInf)
-	;
+	( local_var_is_used(UseInf0, Var1) ->
 		set_list_vars_used(UseInf0, Args, UseInf)
+	;
+		add_construction_aliases(UseInf0, Var1, Args, UseInf)
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
@@ -550,27 +547,41 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 		UseInf = UseInf0
 	).
 			
-	% Returns variables which further instantiate a deconstructed variable.
-:- pred get_instantiating_variables(module_info::in, list(var)::in,
-				list(uni_mode)::in, list(var)::out) is det.
+	% Partition the arguments to a deconstruction into inputs
+	% and outputs.
+:- pred partition_deconstruct_args(module_info::in, list(var)::in,
+		list(uni_mode)::in, list(var)::out, list(var)::out) is det.
 
-get_instantiating_variables(ModuleInfo, ArgVars, ArgModes, InstVars) :-
+partition_deconstruct_args(ModuleInfo, ArgVars, ArgModes,
+		InputVars, OutputVars) :-
 	(
 		ArgVars = [Var | Vars], ArgModes = [Mode | Modes]
 	->
-		Mode = ((Inst1 - _) -> (Inst2 - _)),
-		(
-			inst_matches_binding(Inst1, Inst2, ModuleInfo)
-		->
-			InstVars = InstVars1
+		partition_deconstruct_args(ModuleInfo,
+			Vars, Modes, InputVars1, OutputVars1),
+		Mode = ((InitialInst1 - InitialInst2) ->
+			(FinalInst1 - FinalInst2)),
+
+		% If the inst of the argument of the LHS is changed,
+		% the argument is input.
+		( inst_matches_binding(InitialInst1, FinalInst1, ModuleInfo) ->
+			InputVars = InputVars1
 		;
-			InstVars = [Var | InstVars1]
+			InputVars = [Var | InputVars1]
 		),
-		get_instantiating_variables(ModuleInfo, Vars, Modes, InstVars1)
+
+		% If the inst of the argument of the RHS is changed,
+		% the argument is output.
+		( inst_matches_binding(InitialInst2, FinalInst2, ModuleInfo) ->
+			OutputVars = OutputVars1
+		;
+			OutputVars = [Var | OutputVars1]
+		)
 	;
-		( ArgVars = [], ArgModes = [] )
+		ArgVars = [], ArgModes = []
 	->
-		InstVars = []
+		InputVars = [],
+		OutputVars = []
 	;
 		error("get_instantiating_variables - invalid call")
 	).
@@ -1431,6 +1442,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 			{
 			pred_info_name(PredInfo, Name),
 			\+ pred_info_is_imported(PredInfo),
+			\+ pred_info_import_status(PredInfo, opt_imported),
 				% Don't warn about builtins
 				% that have unused arguments.
 			\+ code_util__predinfo_is_builtin(PredInfo),

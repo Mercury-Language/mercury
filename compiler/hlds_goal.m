@@ -94,10 +94,6 @@
 			unify_rhs,	% whatever is on the right hand side
 					% of the unification
 			unify_mode,	% the mode of the unification
-					% (this field might not make a lot
-					% of sense for higher-order
-					% unifications, because polymorphism.m
-					% does not update it properly)
 			unification,	% this field says what category of
 					% unification it is, and contains
 					% information specific to each category
@@ -263,10 +259,6 @@
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
-					% (this field might not make a lot
-					% of sense for higher-order
-					% unifications, because polymorphism.m
-					% does not update it properly)
 		)
 
 		% A deconstruction unification is a unification with a functor

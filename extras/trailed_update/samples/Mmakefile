@@ -11,7 +11,7 @@ GRADEFLAGS += --use-trail
 
 MCFLAGS = --infer-all
 
-MGNUCFLAGS=-g
+MGNUCFLAGS=-g -I..
 RM_C=:
 MLFLAGS=-g
 

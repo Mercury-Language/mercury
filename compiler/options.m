@@ -1111,7 +1111,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
-	deforestation		-	bool(no),	% buggy
+	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
