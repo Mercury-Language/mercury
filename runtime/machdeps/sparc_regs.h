@@ -73,9 +73,9 @@ register	Word	mr9 __asm__("l4");
   the registers marked above as `potentially non-clobbered', but
   I haven't verified that yet */
 
-#define save_transient_regs_to_area(save_area) \
+#define save_transient_regs_to_mem(save_area) \
 	save_regs_to_area(save_area)
-#define restore_transient_regs_from_area(save_area) \
+#define restore_transient_regs_from_mem(save_area) \
 	restore_regs_from_area(save_area)
 
 #define	mr10	fake_reg[10]
