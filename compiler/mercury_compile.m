@@ -2406,6 +2406,12 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		UseTrailOpt = ""
 	},
+	globals__io_lookup_bool_option(use_minimal_model, MinimalModel),
+	{ MinimalModel = yes ->
+		MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
+	;
+		MinimalModelOpt = ""
+	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
 		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
@@ -2455,7 +2461,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		C_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
-		UseTrailOpt, TypeLayoutOpt,
+		UseTrailOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
