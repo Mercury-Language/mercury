@@ -81,6 +81,11 @@
 		( some [BC]
 			(list__append(B, C, BC), list__append(A, BC, ABC)) )
 	).
+	% construction equivalence law.
+	% XXX when we implement rewrite rules, we should change this law
+	% to a rewrite rule.
+:- promise all [L,H,T] ( append([H], T, L) <=> L = [H|T] ).
+
 
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that

@@ -195,11 +195,13 @@
 
 %-----------------------------------------------------------------------------%
 
-	% commutivity of +
+	% commutivity and associativity of +
 :- promise all [A,B,C] ( C = B + A <=> C = A + B ).
+:- promise all [A,B,C,ABC] ( ABC = (A + B) + C <=> ABC = A + (B + C) ).
 
-	% commutivity of *
+	% commutivity and associativity of *
 :- promise all [A,B,C] ( C = B * A <=> C = A * B ).
+:- promise all [A,B,C,ABC] ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
 
 %-----------------------------------------------------------------------------%
 
