@@ -247,23 +247,55 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 					hlds__goal, poly_info, poly_info).
 :- mode polymorphism__process_goal_2(in, in, out, in, out) is det.
 
-polymorphism__process_goal_2(
-		call(PredId, ProcId, ArgVars0, Builtin, Context, Name, Follow),
-		GoalInfo, Goal) -->
+polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
+		Builtin, Context, Name0, Follow), GoalInfo, Goal) -->
 	% The builtin predicates call/N don't need a type_info
-	( { Name = unqualified("call") } ->
-		{ Goal = call(PredId, ProcId, ArgVars0, Builtin, Context,
-				Name, Follow) - GoalInfo }
+	( { Name0 = unqualified("call") } ->
+	    { Goal = call(PredId0, ProcId0, ArgVars0, Builtin, Context,
+				Name0, Follow) - GoalInfo }
 	;
-		polymorphism__process_call(PredId, ProcId, ArgVars0, 
-				ArgVars, ExtraVars, ExtraGoals),
-		{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
-		{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
-		{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
-		{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
-				Follow) - CallGoalInfo },
-		{ list__append(ExtraGoals, [Call], GoalList) },
-		{ conj_list_to_goal(GoalList, GoalInfo, Goal) }
+	    % Check for a call to a special predicate like compare/3
+	    % for which the type is known at compile-time.
+	    % Replace such calls with calls to the particular version
+	    % for that type.
+	    (
+		{ Name0 = unqualified(PredName0) },
+		{ list__length(ArgVars0, Arity) },
+		{ special_pred_name_arity(SpecialPredId, PredName0, 
+						_, Arity) },
+		=(poly_info(_, VarTypes, _, _TypeInfoMap, ModuleInfo)),
+		% XXX this is a bit of a kludge: for read/2, the argument
+		% which specifies the type is the second-last, for all
+		% the others special predicates it is the last argument.
+		% There is similar code in code_util.m -
+		% they should both be fixed after benyi commits his changes.
+		( { SpecialPredId = read } ->
+			{ list__reverse(ArgVars0, [XVar | _]) }
+		;
+			{ list__reverse(ArgVars0, [_, XVar | _]) }
+		),
+		{ map__lookup(VarTypes, XVar, Type) },
+		{ Type \= term__variable(_) }
+	    ->
+		{ classify_type(Type, ModuleInfo, TypeCategory) },
+		{ polymorphism__get_special_proc(TypeCategory, SpecialPredId,
+			ModuleInfo, SpecificPredName, PredId, ProcId) },
+		{ Name = unqualified(SpecificPredName) }
+	    ;
+		{ PredId = PredId0 },
+		{ ProcId = ProcId0 },
+		{ Name = Name0 }
+	    ),
+
+	    polymorphism__process_call(PredId, ProcId, ArgVars0, 
+	    		ArgVars, ExtraVars, ExtraGoals),
+	    { goal_info_get_nonlocals(GoalInfo, NonLocals0) },
+	    { set__insert_list(NonLocals0, ExtraVars, NonLocals) },
+	    { goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
+	    { Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
+	    		Follow) - CallGoalInfo },
+	    { list__append(ExtraGoals, [Call], GoalList) },
+	    { conj_list_to_goal(GoalList, GoalInfo, Goal) }
 	).
 
 polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
@@ -626,14 +658,16 @@ polymorphism__get_special_proc_list([Id | Ids],
 	% for the operation specified by Id applied to Type.
 
 	classify_type(Type, ModuleInfo, TypeCategory),
-	polymorphism__get_special_proc(TypeCategory, Id, ModuleInfo, ConsId),
+	polymorphism__get_special_proc(TypeCategory, Id, ModuleInfo,
+					PredName2, PredId, ProcId),
+	ConsId = address_const(PredId, ProcId),
 
 	% create a construction unification which unifies the fresh
 	% variable with the address constant obtained above
 
 	Unification = construct(Var, ConsId, [], []),
 
-	Functor = term__atom(PredName),
+	Functor = term__atom(PredName2),
 	Term = functor(Functor, []),
 
 	Inst = bound(shared, [functor(Functor, [])]),
@@ -658,11 +692,11 @@ polymorphism__get_special_proc_list([Id | Ids],
 		Vars, Goals, VarSet, VarTypes).
 
 :- pred polymorphism__get_special_proc(builtin_type, special_pred_id,
-					module_info, cons_id).
-:- mode polymorphism__get_special_proc(in, in, in, out) is det.
+					module_info, string, pred_id, proc_id).
+:- mode polymorphism__get_special_proc(in, in, in, out, out, out) is det.
 
 polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
-		ConsId) :-
+		PredName, PredId, ProcId) :-
 	( TypeCategory = user_type(Type) ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
@@ -671,16 +705,16 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 		;
 			error(
 		"polymorphism__get_special_proc: type_to_type_id failed")
-		)
+		),
+		predicate_name(ModuleInfo, PredId, PredName)
 	;
 		polymorphism__get_category_name(TypeCategory, CategoryName),
-		special_pred_name_arity(SpecialPredId, SpecialName, Arity),
+		special_pred_name_arity(SpecialPredId, SpecialName, _, Arity),
 		string__append_list(
 			["builtin_", SpecialName, "_", CategoryName], PredName),
 		polymorphism__get_pred_id(PredName, Arity, ModuleInfo, PredId)
 	),
-	ProcId = 0,	% always use the first mode of a special predicate
-	ConsId = address_const(PredId, ProcId).
+	special_pred_mode_num(SpecialPredId, ProcId).
 
 :- pred polymorphism__get_category_name(builtin_type, string).
 :- mode polymorphism__get_category_name(in, out) is det.

@@ -155,8 +155,13 @@
 			list(mode), determinism).
 :- mode special_pred_info(in, in, out, out, out, out) is det.
 
-:- pred special_pred_name_arity(special_pred_id, string, int).
-:- mode special_pred_name_arity(in, out, out) is det.
+:- pred special_pred_name_arity(special_pred_id, string, string, int).
+:- mode special_pred_name_arity(in, out, out, out) is det.
+:- mode special_pred_name_arity(out, in, out, in) is semidet.
+:- mode special_pred_name_arity(out, out, in, in) is semidet.
+
+:- pred special_pred_mode_num(special_pred_id, int).
+:- mode special_pred_mode_num(in, out) is det.
 
 :- pred special_pred_list(list(special_pred_id)).
 :- mode special_pred_list(out) is det.
@@ -180,11 +185,17 @@ determinism_to_code_model(failure,   model_semi).
 % special_pred_list([unify, index, compare, read, write]).
 special_pred_list([unify, index, compare]).
 
-special_pred_name_arity(unify, "unify", 2).
-special_pred_name_arity(index, "index", 2).
-special_pred_name_arity(compare, "compare", 3).
-special_pred_name_arity(read, "read", 2).
-special_pred_name_arity(write, "write", 2).
+special_pred_name_arity(unify, "unify", "__Unify__", 2).
+special_pred_name_arity(index, "index", "__Index__", 2).
+special_pred_name_arity(compare, "compare", "__Compare__", 3).
+special_pred_name_arity(read, "read", "__Read__", 2).
+special_pred_name_arity(write, "write", "__Write__", 2).
+
+special_pred_mode_num(unify, 0).
+special_pred_mode_num(index, 10000).
+special_pred_mode_num(compare, 10000).
+special_pred_mode_num(read, 10000).
+special_pred_mode_num(write, 10000).
 
 special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
 	in_mode(In),
