@@ -111,8 +111,10 @@ void pop_msg(Word val, const Word *addr)
 
 void goto_msg(const Code *addr)
 {
-	printf("goto ");
+	printf("\ngoto ");
 	printlabel(addr);
+	if (detaildebug)
+		printregs("registers at goto");
 }
 
 /*--------------------------------------------------------------------*/
@@ -124,23 +126,23 @@ void printint(Word n)
 
 void printstring(const char *s)
 {
-	printf("string %p %s\n", s, s);
+	printf("string 0x%p %s\n", s, s);
 }
 
 void printheap(const Word *h)
 {
-	printf("ptr %p, offset %3d words\n", h, h - heapmin);
+	printf("ptr 0x%p, offset %3d words\n", h, h - heapmin);
 }
 
 void printstack(const Word *s)
 {
-	printf("ptr %p, offset %3d words\n",
+	printf("ptr 0x%p, offset %3d words\n",
 		s, s - stackmin);
 }
 
 void printcpstack(const Word *s)
 {
-	printf("ptr %p, offset %3d words, procedure %s\n",
+	printf("ptr 0x%p, offset %3d words, procedure %s\n",
 		s, s - cpstackmin, (const char *) s[PREDNM]);
 }
 
@@ -150,7 +152,7 @@ void dumpframe(const Word *cp)
 
 	if ((cp - bt_prevcp(cp)) == RECLAIM_SIZE)
 	{
-		printf("reclaim frame at ptr %p, offset %3d words\n",
+		printf("reclaim frame at ptr 0x%p, offset %3d words\n",
 			cp, cp - cpstackmin);
 		printf("\t predname  %s\n", bt_prednm(cp));
 		printf("\t redoip    "); printlabel(bt_redoip(cp));
@@ -159,7 +161,7 @@ void dumpframe(const Word *cp)
 	}
 	else
 	{
-		printf("cp frame at ptr %p, offset %3d words\n",
+		printf("cp frame at ptr 0x%p, offset %3d words\n",
 			cp, cp - cpstackmin);
 		printf("\t predname  %s\n", bt_prednm(cp));
 		printf("\t succip    "); printlabel(bt_succip(cp));
@@ -168,7 +170,7 @@ void dumpframe(const Word *cp)
 		printf("\t prevcp    "); printcpstack(bt_prevcp(cp));
 
 		for (i = 0; &bt_var(cp,i) > bt_prevcp(cp); i++)
-			printf("\t cpvar(%d)  %d %x\n",
+			printf("\t cpvar(%d)  %d 0x%x\n",
 				i, bt_var(cp,i), bt_var(cp,i));
 	}
 }
@@ -189,6 +191,7 @@ void printlist(Word p)
 {
 	Word	t;
 	Word	lastt;
+	Word	*ptr;
 	int	c;
 
 	t = p;
@@ -198,12 +201,14 @@ void printlist(Word p)
 		if ((c % LIST_WRAP) == 0 && c != 0)
 			printf("\n\t ");
 
-		if ((body(t, TAG_CONS) & 0x3) || body(t, TAG_CONS) == 0)
+		ptr = (Word *) body(t, TAG_CONS);
+		if (((int)ptr & 0x3) || ptr == 0
+		    || ptr < heap || ptr > heapmax)
 		{
-			printf("<not a list> (%d)\n", t);
+			printf("0x%x (%d)\n", t, t);
 			return;
 		}
-		printf("(%p)%d.", & field(TAG_CONS,t,0), field(TAG_CONS,t,0));
+		printf("(0x%p)%d.", & field(TAG_CONS,t,0), field(TAG_CONS,t,0));
 		fflush(stdout);
 		t = field(TAG_CONS, t, 1);
 
@@ -221,7 +226,7 @@ void printlist(Word p)
 			t = field(TAG_CONS, t, 1);
 		}
 
-		printf("(%p)%d.", & field(TAG_CONS, lastt, 0), field(TAG_CONS, lastt, 0));
+		printf("(0x%p)%d.", & field(TAG_CONS, lastt, 0), field(TAG_CONS, lastt, 0));
 		fflush(stdout);
 	}
 
@@ -233,21 +238,14 @@ void printlabel(const Code *w)
 {
 	int	i;
 
-	for (i = 0; i < MAXENTRIES; i++)
+	for (i = 0; i < cur_entry; i++)
 		if (entries[i].e_addr == w)
 		{
-			printf("label %s (%p)\n", entries[i].e_name, w);
+			printf("label %s (0x%p)\n", entries[i].e_name, w);
 			return;
 		}
 
-	for (i = STARTLABELS; i < cur_entry; i++)
-		if (entries[i].e_addr == w)
-		{
-			printf("label %s (%p)\n", entries[i].e_name, w);
-			return;
-		}
-
-	printf("label UNKNOWN (%p)\n", w);
+	printf("label UNKNOWN (0x%p)\n", w);
 }
 
 #define	FNULL	((PrintRegFunc *) 0)
@@ -257,6 +255,8 @@ void printlabel(const Code *w)
 #define P_LABEL ((PrintRegFunc *) printlabel)
 #define P_STACK	((PrintRegFunc *) printstack)
 #define P_HEAP	((PrintRegFunc *) printheap)
+
+#if 0	/* this code no longer used */
 
 /* The following table describes the contents of the
    the registers r1, r2, ... for the specified
@@ -340,6 +340,7 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 /* NODIAG_1 */
 	{ P_INT, P_INT, P_LIST, FNULL }
 };
+#endif /* old code */
 
 void printframe(const char *msg)
 {
@@ -347,14 +348,14 @@ void printframe(const char *msg)
 
 	printf("\n%s\n", msg);
 	dumpframe(curcp);
-	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
+	for (i = 0; i < 5; i++)
 	{
 		if (i < 10)
 			printf("r%d:      ", i + 1);
 		else
 			printf("r%2d:     ", i + 1);
 
-		(*regtable[which][i])(get_reg(i + 1));
+		printlist(get_reg(i + 1));
 	}
 }
 
@@ -373,14 +374,10 @@ void printregs(const char *msg)
 	printf("%-9s", "hp:");  printheap(hp);
 	printf("%-9s", "sp:");  printstack(sp);
 
-	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
+	for (i = 0; i < 5; i++)
 	{
-		if (i + 1 < 10)
-			printf("r%d:      ", i + 1);
-		else
-			printf("r%2d:     ", i + 1);
-
-		(*regtable[which][i])(get_reg(i + 1));
+		printf("r%d:      ", i + 1);
+		printlist(get_reg(i + 1));
 	}
 }
 

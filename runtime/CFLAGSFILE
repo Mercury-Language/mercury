@@ -1,8 +1,18 @@
 # Use these options for optimizing compiles with cc on munta
-# -g3 -O2 -DSPEED
+# -g -O2 -DSPEED
 
 # Use these options for optimizing compiles with gcc
 # -g -O2 -fomit-frame-pointer -DSPEED
+
+# Use this with gcc if you want to look at the .s files
+# -fverbose-asm
+# (and add -mrnames for mips register names, if you want)
+
+# use to preserve the cpp output with gcc
+# -save-temps
+
+# use to debug gcc's flow analysis
+# -dr -df -ds
 
 # Use these options for debugging compiles
 -g 

@@ -29,73 +29,31 @@ typedef struct s_entry
 	Code		*e_input;  /* address of the input generator */
 } Entry;
 
-/* when you modify this, you must modify the table in aux.c as well */
-enum {
-	APPEND_1,
-	APPEND_2,
-	NREV_1,
-	LENGTH_1,
-	LENGTH_2,
-	ACLENGTH_1,
-	MEMBER_1,
-	MEMBER_2,
-	MEMDET_1,
-	MKLIST_1,
-	HEAP_1,
-	ONETEN_1,
-	INT_1,
-	Q_1,
-	NOT_Q_1,
-	NOT_Q5_1,
-	DETNEG_1,
-	NONDETNEG_1,
-	A_1,
-	C_1,
-	D_1,
-	E_1,
-	F_1,
-	COLOR_1,
-	NEXT_1,
-	NEXT_2,
-	NEXT_3,
-	OK_1,
-	OK_2,
-	OK_3,
-	OK_4,
-	DO_NOTHING_1,
-	QUEEN_1,
-	QPERM_1,
-	QDELETE_1,
-	SAFE_1,
-	NODIAG_1,
-	MAXENTRIES
-};
-
-#define	STARTLABELS	100
 #define	MAXLABELS	800
 
-#define	makeentry(e, n, a, i)					\
+#define	makeentry(n, a, i)					\
 			(					\
-				assert(e >= 0),			\
-				assert(e < MAXENTRIES), 	\
-				assert(e < STARTLABELS), 	\
-				entries[e].e_name  = n,		\
-				entries[e].e_addr  = a,		\
-				entries[e].e_input = i,		\
-				((void)0)			\
-			)
-
-#define	makelabel(n, a)	(					\
-				assert(cur_entry >= STARTLABELS), \
-				assert(cur_entry < MAXLABELS),	\
+				assert(cur_entry >= 0),		\
+				assert(cur_entry < MAXLABELS), 	\
 				entries[cur_entry].e_name  = n,	\
 				entries[cur_entry].e_addr  = a,	\
-				entries[cur_entry].e_input = NULL, \
+				entries[cur_entry].e_input = i,	\
 				cur_entry += 1,			\
 				((void)0)			\
 			)
 
+/* taking the address of labels can inhibit gcc's optimization,
+   because it assumes that anything can jump there,
+   so we want to do so only if we're debugging */
+#ifdef SPEED
+#define makelabel(n, a)	/* nothing */
+#else
+#define	makelabel(n,a)	makeentry((n),(a),NULL)
+#endif
+
 /* a table of the entry points defined by the various modules */
+/* TODO: replace this with a hash table */
+
 extern	Entry	entries[];
 extern	int	cur_entry;	/* next free slot in entries table   */
 extern	int	which;		/* procedure called from interpreter */
@@ -136,13 +94,26 @@ extern	Code	*dofastnegproceed;
 
 #define	call(proc, succcont)					\
 			do {					\
-				debugcall(proc, succcont);	\
-				succip = succcont;		\
+				debugcall((proc), (succcont));	\
+				succip = (succcont);		\
 				GOTO(proc);			\
 			} while (0)
 
-#define	callentry(entry, succcont)	\
-			call(entries[entry].e_addr, succcont)
+#define paste(a,b) a##b
+
+#ifdef USE_GCC_NONLOCAL_GOTOS
+#define	callentry(procname, succcont)				\
+			do {					\
+				extern Code *paste(entry_,procname); \
+				call(paste(entry_,procname), succcont); \
+			} while (0)
+#else
+#define	callentry(procname, succcont)				\
+			do {					\
+				extern Code *procname(void); 	\
+				call(procname, succcont); 	\
+			} while (0)				
+#endif
 
 #define	tailcall(proc)	do {					\
 				debugtailcall(proc);		\
@@ -506,15 +477,6 @@ extern	Word	do_mklist(int start, int len);
 	*/
 #define mklist(start,len) do_mklist(start,len)
 #endif
-
-/*
-** For each entry point, a table function pointers which indicate
-** which function should be called by debugregs() to print out
-** each register.
-*/
-
-typedef void PrintRegFunc(Word);
-extern	PrintRegFunc * regtable[MAXENTRIES][32];
 
 extern	bool	gotodebug;
 extern	bool	calldebug;
