@@ -1026,6 +1026,7 @@ Equivalence type definitions must be transparent.
 Unlike discriminated union type definitions,
 equivalence type definitions must not be cyclic;
 that is, the type on the left hand side of the @samp{==}
+(@samp{assoc_list} and @samp{money} in the examples above)
 must not occur on the right hand side of the @samp{==}.
 
 Mercury treats an equivalence type
