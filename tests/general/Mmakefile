@@ -52,7 +52,6 @@ PROGS=		array_test \
 		parse_list \
 		petdr1 \
 		prune_switch \
-		relation_test \
 		rtc_bug \
 		semidet_map \
 		set_test \
