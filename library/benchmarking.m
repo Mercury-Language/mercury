@@ -164,6 +164,14 @@ ML_report_stats(void)
 			eng->context.nondetstack_zone->min) / 1024.0
 	);
 
+#ifdef MR_USE_TRAIL
+	fprintf(stderr,
+		""Trail: %.3fk, "",
+		((char *) MR_trail_ptr - (char *)
+			eng->context.trail_zone->min) / 1024.0
+	);
+#endif
+
 	/*
 	** Print heap usage information.
 	*/
@@ -178,7 +186,7 @@ ML_report_stats(void)
 	);
 #else
 	fprintf(stderr, 
-		""Heap: %.3fk]\\n"",
+		""Heap: %.3fk"",
 		((char *) hp - (char *) eng->heap_zone->min) / 1024.0
 	);
 #endif
