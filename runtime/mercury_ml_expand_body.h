@@ -237,10 +237,10 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
             expand_info->non_canonical_type = TRUE;
-        /* fall through */
+            /* fall through */
 
         case MR_TYPECTOR_REP_RESERVED_ADDR:
-			{
+            {
 				int i;
 				MR_Word data;
 				MR_ReservedAddrTypeLayout ra_layout;
@@ -487,8 +487,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
             expand_info->arity = 1;
-            handle_functor_name(MR_type_ctor_layout(type_ctor_info).layout_notag
-                    ->MR_notag_functor_name);
+            handle_functor_name(MR_type_ctor_layout(type_ctor_info).
+                layout_notag->MR_notag_functor_name);
 
 #ifdef  EXPAND_ARGS_FIELD
             expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
@@ -498,8 +498,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_GC_NEW_ARRAY(MR_TypeInfo, 1);
             expand_info->EXPAND_ARGS_FIELD.arg_type_infos[0] =
                 MR_pseudo_type_info_is_ground(
-		    MR_type_ctor_layout(type_ctor_info).layout_notag->
-		    MR_notag_functor_arg_type);
+                    MR_type_ctor_layout(type_ctor_info).layout_notag->
+                        MR_notag_functor_arg_type);
 #endif  /* EXPAND_ARGS_FIELD */
 
 #ifdef  EXPAND_ONE_ARG
@@ -507,7 +507,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             if (MR_type_ctor_layout(type_ctor_info).layout_notag
                     ->MR_notag_functor_arg_name != NULL
                && streq(chosen_name, MR_type_ctor_layout(type_ctor_info).
-		    layout_notag->MR_notag_functor_arg_name))
+                    layout_notag->MR_notag_functor_arg_name))
             {
                 chosen = 0;
             }
@@ -519,7 +519,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_type_info =
                 MR_pseudo_type_info_is_ground(
                     MR_type_ctor_layout(type_ctor_info).layout_notag
-		    ->MR_notag_functor_arg_type);
+                        ->MR_notag_functor_arg_type);
             } else {
                 expand_info->chosen_index_exists = FALSE;
             }

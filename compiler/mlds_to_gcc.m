@@ -2016,11 +2016,11 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 	% MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
 	% MR_ProcAddr         MR_type_ctor_unify_pred;
 	% MR_ProcAddr         MR_type_ctor_compare_pred;
-	% MR_ConstString      MR_xtype_ctor_module_name;
-	% MR_ConstString      MR_xtype_ctor_name;
-	% MR_TypeFunctors     MR_xtype_ctor_functors;
-	% MR_TypeLayout       MR_xtype_ctor_layout;
-	% MR_int_least32_t    MR_xtype_ctor_num_functors;
+	% MR_ConstString      MR_type_ctor_module_name;
+	% MR_ConstString      MR_type_ctor_name;
+	% MR_TypeFunctors     MR_type_ctor_functors;
+	% MR_TypeLayout       MR_type_ctor_layout;
+	% MR_int_least32_t    MR_type_ctor_num_functors;
 
 	{ MR_ProcAddr = gcc__ptr_type_node },
 	build_struct_type("MR_TypeFunctors",
@@ -2037,11 +2037,11 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 		 'MR_int_least8_t'	- "MR_type_ctor_num_ptags",
 		 MR_ProcAddr		- "MR_type_ctor_unify_pred",
 		 MR_ProcAddr		- "MR_type_ctor_compare_pred",
-		 'MR_ConstString'	- "MR_xtype_ctor_module_name",
-		 'MR_ConstString'	- "MR_xtype_ctor_name",
-		 MR_TypeFunctors	- "MR_xtype_ctor_functors",
-		 MR_TypeLayout		- "MR_xtype_ctor_layout",
-		 'MR_int_least32_t'	- "MR_xtype_ctor_num_functors"],
+		 'MR_ConstString'	- "MR_type_ctor_module_name",
+		 'MR_ConstString'	- "MR_type_ctor_name",
+		 MR_TypeFunctors	- "MR_type_ctor_functors",
+		 MR_TypeLayout		- "MR_type_ctor_layout",
+		 'MR_int_least32_t'	- "MR_type_ctor_num_functors"],
 		GCC_Type).
 build_rtti_type(base_typeclass_info(_, _, _), Size, GCC_Type) -->
 	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },

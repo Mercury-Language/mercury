@@ -87,16 +87,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    ( assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__VERSION_NO) \
-    || assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__COMPACT))
-
-/*---------------------------------------------------------------------------*/
-
-#ifdef  MR_BOOTSTRAP_TYPE_CTOR_COMPACT
-  #define       MR_TypeCtorInfo_Struct  MR_NewTypeCtorInfo_Struct
-#else
-  #define       MR_TypeCtorInfo_Struct  MR_OldTypeCtorInfo_Struct
-#endif
+    assert(typector->MR_type_ctor_version == MR_RTTI_VERSION__COMPACT)
 
 /*---------------------------------------------------------------------------*/
 
@@ -234,7 +225,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define MR_pseudo_type_info_is_ground(pseudo_type_info)             \
     ( MR_CHECK_EXPR_TYPE((pseudo_type_info), MR_PseudoTypeInfo),    \
-      (MR_TypeInfo) (pseudo_type_info) )                            \
+      (MR_TypeInfo) (pseudo_type_info) )
 
 /*
 ** Macros for retrieving things from type_infos and pseudo_type_infos.
@@ -947,36 +938,18 @@ typedef union {
     ** `:- type' declaration.
     */
 
-struct MR_OldTypeCtorInfo_Struct {
+struct MR_TypeCtorInfo_Struct {
     MR_Integer          MR_type_ctor_arity;
     MR_int_least8_t     MR_type_ctor_version;
     MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
     MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
     MR_ProcAddr         MR_type_ctor_unify_pred;
     MR_ProcAddr         MR_type_ctor_compare_pred;
-    MR_Integer          MR_type_ctor_old_rep_CAST_ME;   /* unused */
-    MR_ProcAddr         MR_unused1;     /* spare */
-    MR_ProcAddr         MR_unused2;     /* spare */
-    MR_ConstString      MR_xtype_ctor_module_name;
-    MR_ConstString      MR_xtype_ctor_name;
-    MR_Integer          MR_xtype_ctor_old_version;       /* unused */
-    MR_TypeFunctors     MR_xtype_ctor_functors;
-    MR_TypeLayout       MR_xtype_ctor_layout;
-    MR_int_least32_t    MR_xtype_ctor_num_functors;
-};
-
-struct MR_NewTypeCtorInfo_Struct {
-    MR_Integer          MR_type_ctor_arity;
-    MR_int_least8_t     MR_type_ctor_version;
-    MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
-    MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
-    MR_ProcAddr         MR_type_ctor_unify_pred;
-    MR_ProcAddr         MR_type_ctor_compare_pred;
-    MR_ConstString      MR_xtype_ctor_module_name;
-    MR_ConstString      MR_xtype_ctor_name;
-    MR_TypeFunctors     MR_xtype_ctor_functors;
-    MR_TypeLayout       MR_xtype_ctor_layout;
-    MR_int_least32_t    MR_xtype_ctor_num_functors;
+    MR_ConstString      MR_type_ctor_module_name;
+    MR_ConstString      MR_type_ctor_name;
+    MR_TypeFunctors     MR_type_ctor_functors;
+    MR_TypeLayout       MR_type_ctor_layout;
+    MR_int_least32_t    MR_type_ctor_num_functors;
 
 /*
 ** The following fields will be added later, once we can exploit them:
@@ -989,34 +962,19 @@ struct MR_NewTypeCtorInfo_Struct {
     ((MR_TypeCtorRep) (tci)->MR_type_ctor_rep_CAST_ME)
 
 #define MR_type_ctor_module_name(tci)                                       \
-    ( (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_type_ctor_version == \
-        MR_RTTI_VERSION__COMPACT) ?                                         \
-        (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_module_name):\
-        (((struct MR_OldTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_module_name))
+    ((tci)->MR_type_ctor_module_name)
 
 #define MR_type_ctor_name(tci)                                              \
-    ( (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_type_ctor_version == \
-        MR_RTTI_VERSION__COMPACT) ?                                         \
-        (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_name) :  \
-        (((struct MR_OldTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_name))
+    ((tci)->MR_type_ctor_name)
 
 #define MR_type_ctor_functors(tci)                                          \
-    ( (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_type_ctor_version == \
-        MR_RTTI_VERSION__COMPACT) ?                                         \
-        (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_functors) :\
-        (((struct MR_OldTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_functors))
+    ((tci)->MR_type_ctor_functors)
 
 #define MR_type_ctor_layout(tci)                                            \
-    ( (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_type_ctor_version == \
-        MR_RTTI_VERSION__COMPACT) ?                                         \
-        (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_layout) :\
-        (((struct MR_OldTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_layout))
+    ((tci)->MR_type_ctor_layout)
 
 #define MR_type_ctor_num_functors(tci)                                      \
-    ( (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_type_ctor_version == \
-        MR_RTTI_VERSION__COMPACT) ?                                         \
-        (((struct MR_NewTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_num_functors) :\
-        (((struct MR_OldTypeCtorInfo_Struct *)(tci))->MR_xtype_ctor_num_functors))
+    ((tci)->MR_type_ctor_num_functors)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1045,9 +1003,7 @@ struct MR_NewTypeCtorInfo_Struct {
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_TYPE                           \
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
-#ifdef MR_BOOTSTRAP_TYPE_CTOR_COMPACT
-
-  #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)      \
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)        \
     {                                                                   \
         a,                                                              \
         MR_RTTI_VERSION__COMPACT,                                       \
@@ -1061,29 +1017,6 @@ struct MR_NewTypeCtorInfo_Struct {
         { 0 },                                                          \
         -1                                                              \
     }
-
-#else
-
-  #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)      \
-    {                                                                   \
-        a,                                                              \
-        MR_RTTI_VERSION__VERSION_NO,                                    \
-        cr,                                                             \
-        -1,                                                             \
-        MR_MAYBE_STATIC_CODE(MR_ENTRY(u)),                              \
-        MR_MAYBE_STATIC_CODE(MR_ENTRY(c)),                              \
-        cr,                                                             \
-        NULL,                                                           \
-        NULL,                                                           \
-        MR_string_const(MR_STRINGIFY(m), sizeof(MR_STRINGIFY(m))-1),    \
-        MR_string_const(MR_STRINGIFY(n), sizeof(MR_STRINGIFY(n))-1),    \
-        MR_RTTI_VERSION__VERSION_NO,                                    \
-        { 0 },                                                          \
-        { 0 },                                                          \
-        -1                                                              \
-    }
-
-#endif
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(m, n, a, cr, u, c)        \
         MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, m, n, a, cr, u, c)
@@ -1130,67 +1063,38 @@ struct MR_NewTypeCtorInfo_Struct {
   #define MR_special_func_type(NAME, ARITY)                             \
 	MR_PASTE2(MR_, MR_PASTE2(NAME, MR_PASTE2(Func_, ARITY)))
 
-  #ifdef MR_BOOTSTRAP_TYPE_CTOR_COMPACT
-
-    #define MR_define_type_ctor_info(module, type, arity, type_rep)         \
-        const struct MR_TypeCtorInfo_Struct                                 \
-            MR_type_ctor_info_name(module, type, arity) =                   \
-        {                                                                   \
-            arity,                                                          \
-            MR_RTTI_VERSION__COMPACT,                                       \
-            type_rep,                                                       \
-            -1,                                                             \
-            (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
-                            do_unify),                                      \
-            (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
-                            do_compare),                                    \
-            MR_STRINGIFY(module),                                           \
-            MR_STRINGIFY(type),                                             \
-            { 0 },                                                          \
-            { 0 },                                                          \
-            -1                                                              \
-        }
-
-  #else /* MR_BOOTSTRAP_TYPE_CTOR_COMPACT */
-
-    #define MR_define_type_ctor_info(module, type, arity, type_rep)         \
-        const struct MR_TypeCtorInfo_Struct                                 \
-            MR_type_ctor_info_name(module, type, arity) =                   \
-        {                                                                   \
-            arity,                                                          \
-            MR_RTTI_VERSION__VERSION_NO,                                    \
-            type_rep,                                                       \
-            -1,                                                             \
-            (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
-                            do_unify),                                      \
-            (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
-                            do_compare),                                    \
-            type_rep,                                                       \
-            NULL,                                                           \
-            NULL,                                                           \
-            MR_STRINGIFY(module),                                           \
-            MR_STRINGIFY(type),                                             \
-            MR_RTTI_VERSION__VERSION_NO,                                    \
-            { 0 },                                                          \
-            { 0 },                                                          \
-            -1                                                              \
-        }
-
-  #endif /* MR_BOOTSTRAP_TYPE_CTOR_COMPACT */
+  #define MR_define_type_ctor_info(module, type, arity, type_rep)       \
+    const struct MR_TypeCtorInfo_Struct                                 \
+        MR_type_ctor_info_name(module, type, arity) =                   \
+    {                                                                   \
+        arity,                                                          \
+        MR_RTTI_VERSION__COMPACT,                                       \
+        type_rep,                                                       \
+        -1,                                                             \
+        (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
+                        do_unify),                                      \
+        (MR_Box) MR_type_ctor_info_func_name(module, type, arity,       \
+                        do_compare),                                    \
+        MR_STRINGIFY(module),                                           \
+        MR_STRINGIFY(type),                                             \
+        { 0 },                                                          \
+        { 0 },                                                          \
+        -1                                                              \
+    }
 
 #else /* MR_HIGHLEVEL_CODE */
 
-  #define MR_builtin_type_ctor_info_name(TYPE, ARITY)			            \
-	MR_PASTE2(mercury_data_,					                            \
-	MR_PASTE2(__type_ctor_info_,					                        \
-	MR_PASTE2(TYPE,							                                \
+  #define MR_builtin_type_ctor_info_name(TYPE, ARITY)			        \
+	MR_PASTE2(mercury_data_,					                        \
+	MR_PASTE2(__type_ctor_info_,					                    \
+	MR_PASTE2(TYPE,							                            \
 	MR_PASTE2(_, ARITY))))
 
-  #define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			            \
-	MR_PASTE2(mercury_data_,					                            \
-	MR_PASTE2(MODULE,						                                \
-	MR_PASTE2(__type_ctor_info_,					                        \
-	MR_PASTE2(TYPE,							                                \
+  #define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			        \
+	MR_PASTE2(mercury_data_,					                        \
+	MR_PASTE2(MODULE,						                            \
+	MR_PASTE2(__type_ctor_info_,					                    \
+	MR_PASTE2(TYPE,							                            \
 	MR_PASTE2(_, ARITY)))))
 
 #endif /* MR_HIGHLEVEL_CODE */
