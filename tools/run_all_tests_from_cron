@@ -101,13 +101,13 @@ case "$BRANCH" in
 		# On even-numbered days, test the main branch
 		case $DAY in
 			*[13579]) BRANCH=latest ;;
-			*)	  BRANCH=release ;;
+			*)	  BRANCH=$release_branch ;;
 		esac
 		;;
 	   almery|ascolais|swordfish)
 		# On these hosts do the opposite.
 		case $DAY in
-			*[13579]) BRANCH=release ;;
+			*[13579]) BRANCH=$release_branch ;;
 			*)	  BRANCH=latest ;;
 		esac
 		;;
