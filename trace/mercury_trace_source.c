@@ -34,6 +34,16 @@
 #define MR_DEFAULT_SOURCE_SERVER_COMMAND	"vim"
 
 /*
+** When sent to a vim server, this string puts vim into "normal" mode.
+** This has much the same effect as ESC, except that there is no bell if
+** already in normal mode.
+**
+** See the vim help page for ctrl-\_ctrl-n (type ':he ** ctrl-\\_ctrl-n'
+** in vim).
+*/
+#define MR_SOURCE_SERVER_RESET_STRING           "\034\016"
+
+/*
 ** The name used for the server will start with this basename.
 */
 #define MR_SOURCE_SERVER_BASENAME		"mdb_source_server"
@@ -68,6 +78,13 @@ static const char *MR_trace_source_check_server_cmd(const char *server_cmd,
 */
 static const char *MR_trace_source_check_server(const char *server_cmd,
 		const char *server_name, bool verbose);
+
+/*
+** Send the given key sequence to the vim server.  Returns the status
+** code of the shell command.
+*/
+static int MR_trace_source_send(const char *server_cmd,
+		const char *server_name, const char *keys, bool verbose);
 
 static int MR_verbose_system_call(const char *system_call, bool verbose);
 
@@ -321,11 +338,15 @@ MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
 	}
 
 	/*
-	** Center the current line in the vim window.
+	** Center the current line in the vim window.  We need to put
+	** the server in normal mode, just in case the user has changed
+	** mode since the previous command was sent.
+	**
+	** Avoid echoing the command even if --verbose is set, because
+	** the control characters may interfere with the terminal.
 	*/
-	sprintf(system_call, "%s --servername \"%s\" --remote-send 'z.'",
-			real_server_cmd, server->server_name);
-	status = MR_verbose_system_call(system_call, verbose);
+	status = MR_trace_source_send(real_server_cmd, server->server_name,
+			MR_SOURCE_SERVER_RESET_STRING "z.", FALSE);
 	if (status != 0) {
 		return "warning: source synchronisation failed";
 	}
@@ -338,7 +359,6 @@ MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
 {
 	const char	*real_server_cmd;
 	const char	*msg;
-	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 
 	if (server->server_cmd != NULL) {
 		real_server_cmd = server->server_cmd;
@@ -357,15 +377,12 @@ MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
 	** "normal" mode without beeping, followed by ":q\n" which should
 	** quit.  This won't quit if the user has modified the file, which
 	** is just as well.
-	*/
-	sprintf(system_call,
-			"%s --servername \"%s\" --remote-send '\034\016:q\n'",
-			real_server_cmd, server->server_name);
-	/*
+	**
 	** Avoid echoing the command even if --verbose is set, because
 	** the control characters may interfere with the terminal.
 	*/
-	system(system_call);
+	MR_trace_source_send(real_server_cmd, server->server_name,
+			MR_SOURCE_SERVER_RESET_STRING ":q\n", FALSE);
 
 #if 0
 	/*
@@ -387,6 +404,16 @@ MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
 #else
 	return NULL;
 #endif
+}
+
+int MR_trace_source_send(const char *server_cmd, const char *server_name,
+		const char *keys, bool verbose)
+{
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+
+	sprintf(system_call, "%s --servername \"%s\" --remote-send '%s'",
+			server_cmd, server_name, keys);
+	return MR_verbose_system_call(system_call, verbose);
 }
 
 int MR_verbose_system_call(const char *system_call, bool verbose)
