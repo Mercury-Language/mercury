@@ -96,6 +96,6 @@ install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
 
 .PHONY: install_dll
 install_dll:
-	[ -f libpar_gc.dll ] && cp `vpath_find libpar_gc.dll` $(INSTALL_BINDIR)
+	-[ -f libpar_gc.dll ] && cp `vpath_find libpar_gc.dll` $(INSTALL_BINDIR)
 
 #-----------------------------------------------------------------------------#
