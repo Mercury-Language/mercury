@@ -2371,6 +2371,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			"\t@:\n"
 		]),
 
+		globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+		( { UseSubdirs = yes } ->
+			io__nl(DepStream),
+			list__foldl(
+				write_subdirs_shorthand_rule(DepStream,
+					ModuleName),
+				[".c", ".$O", ".pic_o", ".s", ".pic_s",
+				".java", ".class", ".il", ".dll"])
+		;
+			[]
+		),
+
 		( { SourceFileName \= default_source_file(ModuleName) } ->
 			%
 			% The pattern rules in Mmake.rules won't work,
@@ -2556,6 +2568,22 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps, ForeignLang)
 		[]
 	).
 
+	% With `--use-subdirs', allow users to type `mmake module.c'
+	% rather than `mmake Mercury/cs/module.c'.
+:- pred write_subdirs_shorthand_rule(io__output_stream::in,
+	module_name::in, string::in, io__state::di, io__state::uo) is det.
+
+write_subdirs_shorthand_rule(DepStream, ModuleName, Ext) -->
+	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleStr) },
+	module_name_to_file_name(ModuleName, Ext, no, Target),
+	{ ShorthandTarget = ModuleStr ++ Ext },
+	io__write_string(DepStream, ".PHONY: "),
+	io__write_string(DepStream, ShorthandTarget),
+	io__nl(DepStream),
+	io__write_string(DepStream, ShorthandTarget),
+	io__write_string(DepStream, ": "),
+	io__write_string(DepStream, Target),
+	io__nl(DepStream).
 
 maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 	globals__io_lookup_bool_option(transitive_optimization, TransOpt),
