@@ -46,7 +46,9 @@ done
 
 objlist=
 for obj in $LIBRARY_OBJS; do
-	if echo "" "$objlist" "$@" "" | grep " $obj " > /dev/null; then
+	if [ "$obj" = "sp_lib.ql" ]; then
+		sp_lib=$obj
+	elif echo "" "$objlist" "$@" "" | grep " $obj " > /dev/null; then
 		true
 	else
 		objlist="$objlist $SPLIBDIR/$obj"
@@ -54,10 +56,10 @@ for obj in $LIBRARY_OBJS; do
 done
 
 if $verbose; then
-	echo Linking $objlist "$@"
+	echo Linking $objlist "$@" $sp_lib
 fi
 if $debug; then
-	$SP $objlist "$@" 2>&1 << EOF
+	$SP $objlist "$@" $sp_lib 2>&1 << EOF
 	assert((mercury_do_save :-
 		on_exception(Error, (
 		  prolog_flag(compiling, _, fastcode),
@@ -71,7 +73,7 @@ if $debug; then
 
 EOF
 else
-	$SP $objlist "$@" 2>&1 << EOF
+	$SP $objlist "$@" $sp_lib 2>&1 << EOF
 	on_exception(Error, (
 	  prolog_flag(compiling, _, fastcode),
 	  unix(argv(Files)), load(Files),
