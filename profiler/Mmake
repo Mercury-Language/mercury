@@ -27,7 +27,7 @@ C2INIT =	\
 MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--no-libs  $(EXTRA_MLFLAGS)
+MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
 MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
 		$(RUNTIME_DIR)/libmer.a ` \
 		    case $(GRADE) in \
