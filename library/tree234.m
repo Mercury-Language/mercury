@@ -37,17 +37,22 @@
 
 :- pred tree234__set(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__set(di, di, di, uo) is det.
+:- mode tree234__set(di_tree234, in, in, uo_tree234) is det.
 :- mode tree234__set(in, in, in, out) is det.
 
 :- pred tree234__delete(tree234(K, V), K, tree234(K, V)).
 :- mode tree234__delete(di, in, uo) is det.
+:- mode tree234__delete(di_tree234, in, uo_tree234) is det.
 :- mode tree234__delete(in, in, out) is det.
 
 :- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__remove(di, in, uo, uo) is semidet.
+:- mode tree234__remove(di_tree234, in, out, uo_tree234) is semidet.
 :- mode tree234__remove(in, in, out, out) is semidet.
 
 :- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234__remove_smallest(di, uo, uo, uo) is semidet.
+:- mode tree234__remove_smallest(di_tree234, out, out, uo_tree234) is semidet.
 :- mode tree234__remove_smallest(in, out, out, out) is semidet.
 
 :- pred tree234__keys(tree234(K, V), list(K)).
@@ -80,7 +85,25 @@
 	;	two(K, V, tree234(K, V), tree234(K, V))
 	;	three(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V))
 	;	four(K, V, K, V, K, V, tree234(K, V), tree234(K, V),
-						tree234(K, V), tree234(K, V)).
+			tree234(K, V), tree234(K, V)).
+
+:- interface.
+:- inst uniq_tree234(K,V) =
+	unique(
+		empty
+	;	two(K, V, uniq_tree234(K, V), uniq_tree234(K, V))
+	;	three(K, V, K, V, uniq_tree234(K, V), uniq_tree234(K, V),
+			uniq_tree234(K, V))
+	;	four(K, V, K, V, K, V, uniq_tree234(K, V), uniq_tree234(K, V),
+			uniq_tree234(K, V), uniq_tree234(K, V))
+	).
+
+:- mode di_tree234(K, V) :: uniq_tree234(K, V) -> dead.
+:- mode di_tree234       :: uniq_tree234(ground, ground) -> dead.
+:- mode uo_tree234(K, V) :: free -> uniq_tree234(K, V).
+:- mode uo_tree234       :: free -> uniq_tree234(ground, ground).
+
+:- implementation.
 
 %------------------------------------------------------------------------------%
 
@@ -596,14 +619,24 @@ tree234__set(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
 
 %------------------------------------------------------------------------------%
 
-:- inst uniq_four == unique(four(unique, unique, unique, unique,
-			unique, unique, unique, unique, unique, unique)).
-:- inst four == bound(four(ground, ground, ground, ground,
-			ground, ground, ground, ground, ground, ground)).
+:- inst four(K, V, T) =
+	bound(
+		four(K, V, K, V, K, V, T, T, T, T)
+	).
+
+:- inst uniq_four(K, V, T) =
+	unique(
+		four(K, V, K, V, K, V, T, T, T, T)
+	).
+
+:- mode fdi_four :: di(uniq_four(unique, unique, unique)).
+:- mode di_four :: di(uniq_four(ground, ground, uniq_tree234(ground, ground))).
+:- mode in_four :: in(four(ground, ground, ground)).
 
 :- pred tree234__four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234__four(di(uniq_four), uo, uo, uo, uo) is det.
-:- mode tree234__four(in(four), out, out, out, out) is det.
+:- mode tree234__four(fdi_four, uo, uo, uo, uo) is det.
+:- mode tree234__four(di_four, out, out, uo_tree234, uo_tree234) is det.
+:- mode tree234__four(in_four, out, out, out, out) is det.
 
 tree234__four(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		K1, V1, two(K0, V0, T0, T1), two(K2, V2, T2, T3)).
@@ -845,6 +878,7 @@ tree234__remove_smallest(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 
 :- pred tree234__glue(tree234(K, V), tree234(K, V), tree234(K, V)).
 :- mode tree234__glue(di, di, uo) is det.
+:- mode tree234__glue(di_tree234, di_tree234, uo_tree234) is det.
 :- mode tree234__glue(in, in, out) is det.
 
 tree234__glue(empty, T, T).
