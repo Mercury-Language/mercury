@@ -2747,12 +2747,14 @@ get_type_info_locn(TypeVar, TypeInfoLocn, Info0, Info) :-
 		% variable, and set the location for this type
 		% variable to be that type_info variable.
 		%
-		% XXX This is wrong if the type variable is one of
+		% This is wrong if the type variable is one of
 		% the existentially quantified variables of a called
 		% predicate and the variable occurs in an existential
 		% type-class constraint. In that case the type-info
 		% will be stored in the typeclass_info variable produced
 		% by the predicate, not in a type_info variable.
+		% make_typeclass_info_headvar will fix this up when
+		% the typeclass_info is created.
 		%
 		type_util__var(Type, TypeVar),
 		polymorphism__new_type_info_var(Type, "type_info",
