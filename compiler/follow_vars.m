@@ -145,13 +145,14 @@ find_follow_vars_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, FollowVars,
 						follow_vars, follow_vars).
 :- mode find_follow_vars_in_call(in, in, in, in, in, out) is det.
 
-find_follow_vars_in_call(PredId, ProcId, Args0, ModuleInfo, Follow0, Follow) :-
+find_follow_vars_in_call(PredId, ProcId, Args0, ModuleInfo, _Follow, Follow) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	term__vars_list(Args0, Args),
+	map__init(Follow0),
 	find_follow_vars_in_call_2(ArgInfo, Args, Follow0, Follow).
 
 :- pred find_follow_vars_in_call_2(list(arg_info), list(var),
