@@ -130,8 +130,10 @@
 :- func type_of(T) = type_info.
 :- mode type_of(unused) = out is det.
 
-	% num_functors(TypeInfo) returns the number of different functors
-	% for the type specified by TypeInfo, or -1 if the type is not a
+	% num_functors(TypeInfo) 
+	% 
+	% Returns the number of different functors for the type
+	% specified by TypeInfo, or -1 if the type is not a
 	% discriminated union type.
 
 :- func num_functors(type_info) = int.
@@ -163,11 +165,11 @@
 
 %-----------------------------------------------------------------------------%
 
-	% functor, arg and expand take any type (including univ),
+	% functor, argument and expand take any type (including univ),
 	% and return representation information for that type.
 	%
-	% The string representation of the functor that functor and 
-	% expand return is:
+	% The string representation of the functor that `functor' and 
+	% `expand' return is:
 	% 	- for user defined types, the functor that is given
 	% 	  in the type defintion. For lists, this
 	% 	  means the functors ./2 and []/0 are used, even if
@@ -183,35 +185,66 @@
 	%	- for predicates and functions, the string
 	%	  <<predicate>>
 
-	% functor(Data, Functor, Arity), given a data item (Data),
-	% binds Functor to a string representation of the functor
-	% and Arity to the arity of this data item.
+	% functor(Data, Functor, Arity)
+	% 
+	% Given a data item (Data), binds Functor to a string
+	% representation of the functor and Arity to the arity of this
+	% data item.
 
 :- pred functor(T::in, string::out, int::out) is det.
 
-	% arg(ArgumentIndex, Data, Argument), given a data item (Data)
-	% and an argument index (ArgumentIndex), starting at 1 for the
-	% first argument, binds Argument to that argument of the functor
-	% of the data item. If the argument index is out of range -
-	% that is higher than the arity of the functor or lower than 1,
-	% arg/3 fails.
-	% The argument has the type univ. 
+	% argument(Data, ArgumentIndex, Argument)
+	% 
+	% Given a data item (Data) and an argument index
+	% (ArgumentIndex), starting at 0 for the first argument, binds
+	% Argument to that argument of the functor of the data item. If
+	% the argument index is out of range -- that is, greater than or
+	% equal to the arity of the functor or lower than 0 -- argument/3
+	% fails.  The argument has the type univ. 
+
+:- pred argument(T::in, int::in, univ::out) is semidet.
+
+	% det_argument(ArgumentIndex, Data, Argument)
+	% 
+	% Given a data item (Data) and an argument index
+	% (ArgumentIndex), starting at 0 for the first argument, binds
+	% Argument to that argument of the functor of the data item. If
+	% the argument index is out of range -- that is, greater than or
+	% equal to the arity of the functor or lower than 0 --
+	% det_argument/3 aborts. 
+
+:- pred det_argument(T::in, int::in, univ::out) is det.
+
+	% arg(ArgumentIndex, Data, Argument) 
+	% 
+	% Given a data item (Data) and an argument index
+	% (ArgumentIndex), starting at 1 for the first argument, binds
+	% Argument to that argument of the functor of the data item. If
+	% the argument index is out of range -- that is, higher than the
+	% arity of the functor or lower than 1 -- arg/3 fails.  The
+	% argument has the type univ. 
+	%
+	% NOTE: `arg' is provided for Prolog compatability - the order
+	% of parameters, and first argument number in `arg' are
+	% different from `argument'.
 
 :- pred arg(int::in, T::in, univ::out) is semidet.
 
-	% det_arg(ArgumentIndex, Data, Argument), given a data item (Data)
-	% and an argument index (ArgumentIndex), starting at 1 for the
-	% first argument, binds Argument to that argument of the functor
-	% of the data item. If the argument index is out of range -
-	% that is higher than the arity of the functor or lower than 1,
-	% det_arg/3 aborts. 
+	% det_arg(ArgumentIndex, Data, Argument) 
+	% 
+	% Given a data item (Data) and an argument index
+	% (ArgumentIndex), starting at 1 for the first argument, binds
+	% Argument to that argument of the functor of the data item. If
+	% the argument index is out of range -- that is, higher than the
+	% arity of the functor or lower than 1 -- det_arg/3 aborts. 
 
 :- pred det_arg(int::in, T::in, univ::out) is det.
 
-	% expand(Data, Functor, Arity, Arguments), given a data item (Data),
-	% binds Functor to a string representation of the functor,
-	% Arity to the arity of this data item, and Arguments to a list
-	% of arguments of the functor.
+	% expand(Data, Functor, Arity, Arguments) 
+	% 
+	% Given a data item (Data), binds Functor to a string
+	% representation of the functor, Arity to the arity of this data
+	% item, and Arguments to a list of arguments of the functor.
 	% The arguments in the list are each of type univ.
 
 :- pred expand(T::in, string::out, int::out, list(univ)::out) is det.
@@ -220,7 +253,7 @@
 
 :- implementation.
 
-:- import_module require, set.
+:- import_module require, set, int.
 
 :- type type_info == c_pointer.
 
@@ -1994,7 +2027,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-:- pragma(c_code, arg(ArgumentIndex::in, Type::in, Argument::out), " 
+:- pragma(c_code, argument(Type::in, ArgumentIndex::in, Argument::out), " 
 {
 	ML_Expand_Info info;
 	Word arg_pseudo_type_info;
@@ -2038,13 +2071,21 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
+arg(ArgumentIndex, Type, Argument) :-
+	ArgumentIndex1 is ArgumentIndex - 1,
+	argument(Type, ArgumentIndex1, Argument).
+
 det_arg(ArgumentIndex, Type, Argument) :-
+	ArgumentIndex1 is ArgumentIndex - 1,
+	det_argument(Type, ArgumentIndex1, Argument).
+
+det_argument(Type, ArgumentIndex, Argument) :-
 	(
-		arg(ArgumentIndex, Type, Argument0)
+		argument(Type, ArgumentIndex, Argument0)
 	->
 		Argument = Argument0
 	;
-		error("det_arg : invalid argument")
+		error("det_argument : argument out of range")
 	).
 
 :- pragma(c_code, expand(Type::in, Functor::out, Arity::out, Arguments::out), " 
