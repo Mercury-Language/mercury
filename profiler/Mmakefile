@@ -27,16 +27,18 @@ MCS	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --split-c-files -c
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
-C2INIT =	\
-MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/$(RT_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init" \
-		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+C2INIT =        MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
+                MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
-MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/lib$(STD_LIB_NAME).a \
+MLLIBS  =	$(EXTRA_MLLIBS) \
+		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).a \
+		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).a \
 		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).a ` \
 		    case $(GRADE) in \
-			*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
-			*.gc*) 		echo $(BOEHM_GC_DIR)/libgc.a ;; \
+			*.gc*.prof*)    echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
+			*.gc*)          echo $(BOEHM_GC_DIR)/libgc.a ;; \
 		    esac \
 		` -lm
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
