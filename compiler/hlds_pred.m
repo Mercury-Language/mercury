@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -447,6 +447,23 @@
 	% typeclass_info for that constraint.
 :- type constraint_proof_map == map(class_constraint, constraint_proof).
 
+	% Describes the class constraints on an instance method
+	% implementation. This information is used by polymorphism.m
+	% to ensure that the type_info and typeclass_info arguments
+	% are added in the order they will be passed in by
+	% do_call_class_method.
+:- type instance_method_constraints
+	---> instance_method_constraints(
+		class_id,
+		list(type),		% The types in the head of the
+					% instance declaration.
+		list(class_constraint),	% The universal constraints
+					% on the instance declaration.
+		class_constraints	% The contraints on the method's
+					% type declaration in the
+					% `:- typeclass' declaration.
+	).
+
 	% A typeclass_info_varmap is a map which for each type class constraint
 	% records which variable contains the typeclass_info for that
 	% constraint.
@@ -687,6 +704,14 @@
 :- pred pred_info_set_assertions(pred_info, set(assert_id), pred_info).
 :- mode pred_info_set_assertions(in, in, out) is det.
 
+:- pred pred_info_get_maybe_instance_method_constraints(pred_info,
+		maybe(instance_method_constraints)).
+:- mode pred_info_get_maybe_instance_method_constraints(in, out) is det.
+
+:- pred pred_info_set_maybe_instance_method_constraints(pred_info,
+		maybe(instance_method_constraints), pred_info).
+:- mode pred_info_set_maybe_instance_method_constraints(in, in, out) is det.
+
 :- pred pred_info_get_purity(pred_info, purity).
 :- mode pred_info_get_purity(in, out) is det.
 
@@ -868,9 +893,18 @@ status_defined_in_this_module(local,			yes).
 					% Indexes if this predicate is
 					% an Aditi base relation, ignored
 					% otherwise.
-			assertions	:: set(assert_id)
+			assertions	:: set(assert_id),
 					% List of assertions which
 					% mention this predicate.
+			maybe_instance_method_constraints
+					:: maybe(instance_method_constraints) 
+					% If this predicate is a class method
+					% implementation, record extra
+					% information about the class context
+					% to allow polymorphism.m to
+					% correctly set up the extra
+					% type_info and typeclass_info
+					% arguments.
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
@@ -884,11 +918,12 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	UnprovenBodyConstraints = [],
 	Indexes = [],
 	set__init(Assertions),
+	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet,
 		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes, Assertions).
+		Indexes, Assertions, MaybeInstanceConstraints).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, Status, Markers, PredOrFunc, ClassContext, User,
@@ -914,11 +949,12 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
 	Indexes = [],
+	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet,
 		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes, Assertions).
+		Indexes, Assertions, MaybeInstanceConstraints).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	map__keys(PredInfo^procedures, ProcIds).
@@ -1110,6 +1146,12 @@ pred_info_set_indexes(PredInfo, X, PredInfo^indexes := X).
 pred_info_get_assertions(PredInfo, PredInfo^assertions).
 
 pred_info_set_assertions(PredInfo, X, PredInfo^assertions := X).
+
+pred_info_get_maybe_instance_method_constraints(PredInfo,
+		PredInfo^maybe_instance_method_constraints).
+
+pred_info_set_maybe_instance_method_constraints(PredInfo, X,
+		PredInfo^maybe_instance_method_constraints := X).
 
 %-----------------------------------------------------------------------------%
 

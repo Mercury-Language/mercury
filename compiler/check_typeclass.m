@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -457,7 +457,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			[InstanceMethod | OrderedInstanceMethods0],
 		InstanceMethod = instance_method(_, _, InstancePredDefn,
 					_, Context),
-		produce_auxiliary_procs(ClassVars, Markers,
+		produce_auxiliary_procs(ClassId, ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
 			InstancePredDefn, Context,
@@ -609,43 +609,36 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
 pred_or_func_to_string(predicate, "predicate").
 pred_or_func_to_string(function, "function").
 
-:- pred produce_auxiliary_procs(list(tvar), pred_markers, list(type),
+:- pred produce_auxiliary_procs(class_id, list(tvar), pred_markers, list(type),
 	list(class_constraint), tvarset, instance_proc_def, prog_context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info,
 	io__state, io__state).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, in, out, out, 
 	in, out, di, uo) is det.
 
-produce_auxiliary_procs(ClassVars, Markers0,
+produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstancePredDefn, Context, PredId,
 		InstanceProcIds, Info0, Info, IO0, IO) :-
 
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-		Arity, ExistQVars0, ArgTypes0, ClassContext0, ArgModes,
-		Errors, ArgTypeVars0, Status0, PredOrFunc),
+		Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
+		ArgModes, Errors, ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
-		InstanceTypes),
+		InstanceTypes1),
 	apply_subst_to_constraint_list(RenameSubst, InstanceConstraints0,
-		InstanceConstraints),
+		InstanceConstraints1),
 
 		% Work out what the type variables are bound to for this
 		% instance, and update the class types appropriately.
-	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
+	map__from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
 	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes1),
-	apply_subst_to_constraints(TypeSubst, ClassContext0, ClassContext1),
-
-		% Add the constraints from the instance declaration to the 
-		% constraints from the class method. This allows an instance
-		% method to have constraints on it which are not part of the
-		% instance declaration as a whole.
-	ClassContext1 = constraints(UnivConstraints1, ExistConstraints),
-	list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
-	ClassContext2 = constraints(UnivConstraints, ExistConstraints),
+	apply_subst_to_constraints(TypeSubst, ClassMethodClassContext0,
+		ClassMethodClassContext1),
 
 		% Get rid of any unwanted type variables
 	term__vars_list(ArgTypes1, VarsToKeep0),
@@ -654,8 +647,21 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst, 
 		ArgTypes),
 	apply_variable_renaming_to_constraints(SquashSubst,
-		ClassContext2, ClassContext),
+		ClassMethodClassContext1, ClassMethodClassContext),
 	apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
+	apply_variable_renaming_to_list(InstanceTypes1, SquashSubst,
+		InstanceTypes),
+	apply_variable_renaming_to_constraint_list(SquashSubst,
+		InstanceConstraints1, InstanceConstraints),
+
+		% Add the constraints from the instance declaration to the 
+		% constraints from the class method. This allows an instance
+		% method to have constraints on it which are not part of the
+		% instance declaration as a whole.
+	ClassMethodClassContext = constraints(UnivConstraints1,
+					ExistConstraints),
+	list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
+	ClassContext = constraints(UnivConstraints, ExistConstraints),
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
@@ -682,8 +688,6 @@ produce_auxiliary_procs(ClassVars, Markers0,
 		PredArity, ArgTypes, Markers, Context, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
 
-	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
-
 	( status_is_imported(Status0, yes) ->
 		Status = opt_imported
 	;
@@ -694,6 +698,16 @@ produce_auxiliary_procs(ClassVars, Markers0,
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+
+	% Fill in some information in the pred_info which is
+	% used by polymorphism to make sure the type-infos
+	% and typeclass-infos are added in the correct order.
+	MethodConstraints = instance_method_constraints(ClassId,
+			InstanceTypes, InstanceConstraints,
+			ClassMethodClassContext),
+	pred_info_set_maybe_instance_method_constraints(PredInfo1,
+		yes(MethodConstraints), PredInfo2),
 
 		% Add procs with the expected modes and determinisms
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
@@ -705,8 +719,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
-		PredInfo0, PredInfo1),
-
+		PredInfo2, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
 	module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
