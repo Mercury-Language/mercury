@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,7 @@
 		[will_not_call_mercury, thread_safe], "{
 #ifndef MR_HIGHLEVEL_CODE
 	MR_Context	*ctxt;
-	ctxt = MR_create_context();
+	ctxt = MR_create_context(""spawn"", NULL);
 	ctxt->MR_ctxt_resume = &&spawn_call_back_to_mercury_cc_multi;
 		/* Store the closure on the top of the new context's stack. */
 	*(ctxt->MR_ctxt_sp) = Goal;
