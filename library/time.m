@@ -60,7 +60,7 @@
 	int	time_at_prev_stat;
 
 	time_at_prev_stat = time_at_last_stat;
-	time_at_last_stat = get_run_time();
+	time_at_last_stat = MR_get_user_cpu_miliseconds();
 
 	fprintf(stderr, 
 		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
@@ -166,7 +166,7 @@ Define_entry(mercury__time__benchmark_nondet_5_0);
 
 	framevar(3) = 0;
 	mark_hp(framevar(5));
-	framevar(4) = get_run_time();
+	framevar(4) = MR_get_user_cpu_miliseconds();
 
 	/* call the higher-order pred closure that we were passed in r3 */
 	r1 = r3;
@@ -210,7 +210,7 @@ Define_label(mercury__time__benchmark_nondet_5_0_i2);
 
 	/* no more iterations */
 	count_output = framevar(3);
-	time_output = get_run_time() - framevar(4);
+	time_output = MR_get_user_cpu_miliseconds() - framevar(4);
 	succeed_discard();
 END_MODULE
 
@@ -250,7 +250,7 @@ Define_entry(mercury__time__benchmark_det_5_0);
 	else
 		detstackvar(3) = rep_count;
 
-	detstackvar(4) = get_run_time();
+	detstackvar(4) = MR_get_user_cpu_miliseconds();
 
 	/* call the higher-order pred closure that we were passed in r3 */
 	r1 = r3;
@@ -286,7 +286,7 @@ Define_label(mercury__time__benchmark_det_5_0_i1);
 
 	/* no more iterations */
 	soln_output = r1; /* the closure *always* returns its output in r1 */
-	time_output = get_run_time() - detstackvar(4);
+	time_output = MR_get_user_cpu_miliseconds() - detstackvar(4);
 	succip = (Word *) detstackvar(6);
 	decr_sp(6);
 	proceed();
