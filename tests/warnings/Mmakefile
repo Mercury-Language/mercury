@@ -14,8 +14,7 @@ PROGS=	\
 	simple_code \
 	singleton_test \
 	unused_args_test \
-	unused_import \
-	uu_type
+	unused_import
 
 #-----------------------------------------------------------------------------#
 
@@ -26,10 +25,6 @@ MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
 
 #-----------------------------------------------------------------------------#
-
-# the compilation of uu_type is expected to yield a non-zero exit status
-uu_type.err:	uu_type.m
-	-mmc --errorcheck-only uu_type.m > uu_type.err 2>&1
 
 %.res:	%.exp %.err
 	-rm -f $@

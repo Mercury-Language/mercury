@@ -57,6 +57,7 @@ SOURCES= \
 	undef_mode.m \
 	undef_symbol.m \
 	undef_type.m \
+	uu_type \
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
