@@ -320,7 +320,7 @@ The most useful of these are the options that set the size of the stacks.
 
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
-The default size is 512k for the det stack and 128k for the nondet stack,
+The default size is 4096k for the det stack and 128k for the nondet stack,
 but these can be overridden with the
 @samp{--detstack-size} and @samp{--nondetstack-size} options,
 whose arguments are the desired sizes of the det and nondet stacks
