@@ -53,11 +53,21 @@ NEWS since Mercury release 0.7
   reference manual (it's at the end of the "C interface" section,
   which is in the chapter on "Pragmas").
 
-* We've added support for backtrackable destructive update on arrays.
+* We've rewritten the `store' module to use unique modes.
 
-  See the new module `tr_array' in the extras/trailed_update.
+  The `store' module provides mutable variables.
 
-  XXX Currently buggy -- see the "Trailing" documentation.
+* We've added library modules for backtrackable destructive update.
+
+  See the new modules `tr_array' and `tr_store' in the extras/trailed_update.
+  These are versions of `array' and `store' that use trailed backtrackable
+  destructive update.
+
+* The library predicate unsorted_aggregate/4 in std_util.m
+  now interleaves calls of the aggregation predicate with
+  the generation of solutions, rather than first finding all
+  solutions and then aggregating them.  This allows you
+  to print out solutions as they are found, for example.
 
 * We've improved the C interface.
 
