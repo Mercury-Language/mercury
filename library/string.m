@@ -1685,6 +1685,10 @@ string__special_precision_and_width(-1).
 	} else {
 		len_3 = strlen(S3);
 		len_2 = len_3 - len_1;
+		/*
+		** We need to make a copy to ensure that the pointer is
+		** word-aligned.
+		*/
 		incr_hp_atomic(tmp, (len_2 + sizeof(Word)) / sizeof(Word));
 		S2 = (char *) tmp;
 		strcpy(S2, S3 + len_1);
@@ -1745,6 +1749,10 @@ Define_label(mercury__string__append_3_3_xx_i1);
 	incr_hp_atomic(r1, (count + sizeof(Word)) / sizeof(Word));
 	memcpy((char *) r1, s3, count);
 	((char *) r1)[count] = '\\0';
+	/*
+	** We need to make a copy to ensure that the pointer is
+	** word-aligned.
+	*/
 	incr_hp_atomic(r2, (s3_len - count + sizeof(Word)) / sizeof(Word));
 	strcpy((char *) r2, s3 + count);
 	framevar(3) = count + 1;
@@ -1811,6 +1819,10 @@ void sys_init_string_append_module(void) {
 		Left = (char *) tmp;
 		memcpy(Left, Str, Count);
 		Left[Count] = '\\0';
+		/*
+		** We need to make a copy to ensure that the pointer is
+		** word-aligned.
+		*/
 		incr_hp_atomic(tmp,
 			(len - Count + sizeof(Word)) / sizeof(Word));
 		Right = (char *) tmp;
@@ -1860,6 +1872,10 @@ void sys_init_string_append_module(void) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		Str++;
+		/*
+		** We need to make a copy to ensure that the pointer is
+		** word-aligned.
+		*/
 		incr_hp_atomic(tmp,
 			(strlen(Str) + sizeof(Word)) / sizeof(Word));
 		Rest = (char *) tmp;
@@ -1878,6 +1894,10 @@ void sys_init_string_append_module(void) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		Str++;
+		/*
+		** We need to make a copy to ensure that the pointer is
+		** word-aligned.
+		*/
 		incr_hp_atomic(tmp,
 			(strlen(Str) + sizeof(Word)) / sizeof(Word));
 		Rest = (char *) tmp;
