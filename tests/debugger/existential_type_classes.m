@@ -80,8 +80,8 @@ my_exist_t = 43.
 ").
 
 :- pragma c_code(my_univ(Value::in) = (Univ::out), will_not_call_mercury, "
-	incr_hp(Univ, 2);
+	MR_incr_hp(Univ, 2);
 	MR_field(MR_mktag(0), Univ, 0) =
-		(Word) TypeClassInfo_for_existential_type_classes__fooable_T;
-	MR_field(MR_mktag(0), Univ, 1) = (Word) Value;
+		(MR_Word) TypeClassInfo_for_existential_type_classes__fooable_T;
+	MR_field(MR_mktag(0), Univ, 1) = (MR_Word) Value;
 ").
