@@ -269,6 +269,8 @@ void MC_call_gcc_backend(MR_String all_args, MR_Integer *result);
 void MC_continue_frontend(void);
 
 #include ""mercury_wrapper.h""		/* for MR_make_argv() */
+#include <stdio.h>			/* for fprintf() */
+#include <stdlib.h>			/* for exit() */
 ").
 
 :- pragma c_code("
@@ -308,14 +310,49 @@ MC_call_gcc_backend(MR_String all_args, MR_Integer *result)
 	char **argv;
 	int argc;
 	const char *error_msg;
+	static int num_calls = 0;
+
+	/*
+	** The gcc back-end cannot be called more than once.
+	** If you try, it uses up all available memory.
+	** So we need to abort nicely in that case.
+	**
+	** That case will happen if (a) there were nested
+	** sub-modules or (b) the user specified more than
+	** one module on the command line.
+	*/
+	num_calls++;
+	if (num_calls > 1) {
+		fprintf(stderr, ""Sorry, not implemented:\\n""
+			""compiling more than one module at a time ""
+			""with `--target asm'.\\n""
+			""Please use separate sub-modules ""
+			""rather than nested sub-modules,\\n""
+			""i.e. put each sub-module in its own file, ""
+			""and don't specify more\\n""
+			""than one module on the command line ""
+			""(use Mmake instead).\\n""
+			""Or alternatively, just use `--target c'.\\n"");
+		exit(EXIT_FAILURE);
+	}
 
 	error_msg = MR_make_argv(all_args, &args, &argv, &argc);
 	if (error_msg) {
-		MR_fatal_error(""error parsing GCC back-end arguments:\n%s\n"",
+		fprintf(stderr,
+			""Error parsing GCC back-end arguments:\n%s\n"",
 			error_msg);
+		exit(EXIT_FAILURE);
 	}
+
 	merc_continue_frontend = &MC_continue_frontend;
 	*result = toplev_main(argc, argv);
+
+	/*
+	** Reset GCC's progname after we return from toplev_main(),
+	** so that MC_in_gcc() knows that we're no longer in GCC. 
+	*/
+	progname = NULL;
+
 	MR_GC_free(args);
 	MR_GC_free(argv);
 }
