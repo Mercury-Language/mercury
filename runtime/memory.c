@@ -90,7 +90,8 @@ static	void	simple_sighandler(int);
 
 static	void	setup_mprotect(void);
 #ifdef	HAVE_SIGINFO
-static	bool	try_munprotect(void *);
+static	bool	try_munprotect(void *, void *);
+static	char	*explain_context(ucontext_t *);
 #endif
 
 static	void	setup_signal(void);
@@ -386,13 +387,17 @@ static void setup_mprotect(void)
 
 #define STDERR 2
 
-static void fatal_abort(const char *str)
+static void fatal_abort(void *context, const char *main_msg)
 {
-	write(STDERR, str, strlen(str));
+	char	*context_msg;
+
+	context_msg = explain_context((ucontext_t *) context);
+	write(STDERR, main_msg, strlen(main_msg));
+	write(STDERR, context_msg, strlen(context_msg));
 	_exit(1);
 }
 
-static bool try_munprotect(void *addr)
+static bool try_munprotect(void *addr, void *context)
 {
 	char *	fault_addr;
 	char *	new_zone;
@@ -417,7 +422,7 @@ static bool try_munprotect(void *addr)
 					fflush(stdout);
 				}
 
-				fatal_abort("\nMercury runtime: heap overflow\n");
+				fatal_abort(context, "\nMercury runtime: heap overflow\n");
 			}
 
 			if (memdebug)
@@ -466,7 +471,7 @@ static bool try_munprotect(void *addr)
 					fflush(stdout);
 				}
 
-				fatal_abort("\nMercury runtime: det stack overflow\n");
+				fatal_abort(context, "\nMercury runtime: det stack overflow\n");
 			}
 
 			if (mprotect(detstack_zone, new_zone-detstack_zone,
@@ -511,7 +516,7 @@ static bool try_munprotect(void *addr)
 					fflush(stdout);
 				}
 
-				fatal_abort("\nMercury runtime: nondet stack overflow\n");
+				fatal_abort(context, "\nMercury runtime: nondet stack overflow\n");
 			}
 
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone,
@@ -551,7 +556,7 @@ static void setup_mprotect(void)
 
 #ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
 
-static bool try_munprotect(void *addr)
+static bool try_munprotect(void *addr, void *context)
 {
 	return FALSE;
 }
@@ -626,19 +631,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 		}
 
-#ifdef PC_ACCESS
-#ifdef PC_ACCESS_GREG
-		fprintf(stderr, "PC at signal: %ld (%lx)\n",
-			(long) ((ucontext_t *) context)->
-				uc_mcontext.gregs[PC_ACCESS],
-			(long) ((ucontext_t *) context)->
-				uc_mcontext.gregs[PC_ACCESS]);
-#else
-		fprintf(stderr, "PC at signal: %ld (%lx)\n",
-			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS,
-			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS);
-#endif
-#endif
+		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 	}
@@ -677,19 +670,7 @@ static void explain_segv(siginfo_t *info, void *context)
 
 		}
 
-#ifdef PC_ACCESS
-#ifdef PC_ACCESS_GREG
-		fprintf(stderr, "PC at signal: %ld (%lx)\n",
-			(long) ((ucontext_t *) context)->
-				uc_mcontext.gregs[PC_ACCESS],
-			(long) ((ucontext_t *) context)->
-				uc_mcontext.gregs[PC_ACCESS]);
-#else
-		fprintf(stderr, "PC at signal: %ld (%lx)\n",
-			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS,
-			(long) ((ucontext_t *) context)->uc_mcontext.PC_ACCESS);
-#endif
-#endif
+		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 
@@ -714,7 +695,7 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	if (memdebug)
 		explain_segv(info, context);
 
-	if (try_munprotect(info->si_addr))
+	if (try_munprotect(info->si_addr, context))
 	{
 		if (memdebug)
 			fprintf(stderr, "returning from signal handler\n\n");
@@ -728,6 +709,29 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
+}
+
+static char *explain_context(ucontext_t *context)
+{
+	static	char	buf[100];
+
+#ifdef PC_ACCESS
+#ifdef PC_ACCESS_GREG
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long) context->uc_mcontext.gregs[PC_ACCESS],
+		(long) context->uc_mcontext.gregs[PC_ACCESS]);
+#else
+	sprintf(buf, "PC at signal: %ld (%lx)\n",
+		(long) context->uc_mcontext.PC_ACCESS,
+		(long) context->uc_mcontext.PC_ACCESS);
+#endif
+#else
+	/* if PC_ACCESS is not set, we don't know the context */
+	/* therefore we return an empty string to be printed  */
+	buf[0] = '\0';
+#endif
+
+	return buf;
 }
 
 #else
@@ -766,6 +770,7 @@ default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 		break;
 
 	}
+
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);

@@ -60,8 +60,8 @@ static	int	repcounter;
 
 /* timing */
 int		time_at_last_stat;
-static	int	start_time;
-static	int	finish_time;
+int		time_at_start;
+static	int	time_at_finish;
 
 const char *	progname;
 int		mercury_argc;	/* not counting progname or debug options */
@@ -621,8 +621,8 @@ void run_code(void)
 	nondstackmax = nondstackmin;
 #endif
 
-	time_at_last_stat = get_run_time();
-	start_time = time_at_last_stat;
+	time_at_start = get_run_time();
+	time_at_last_stat = time_at_start;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++)
 	{
@@ -632,7 +632,7 @@ void run_code(void)
 	}
 
         if (use_own_timer)
-		finish_time = get_run_time();
+		time_at_finish = get_run_time();
 
 #if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(SPEED)
 	{
@@ -665,7 +665,8 @@ void run_code(void)
 #endif
 
         if (use_own_timer)
-		printf("%8.3fu ", ((double) (finish_time - start_time)) / 1000);
+		printf("%8.3fu ",
+			((double) (time_at_finish - time_at_start)) / 1000);
 }
 
 #ifdef MEASURE_REGISTER_USAGE
