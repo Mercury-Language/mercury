@@ -8432,7 +8432,7 @@ the current implementation of tabling does not support all the
 possible compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide) allowed by the Mercury
 implementation.  In particular, minimal model tabling
-is incompatible high level code, the use of trailing,
+is incompatible with high level code, the use of trailing,
 and accurate garbage collection.
 
 @c XXX we should fix this bug...
