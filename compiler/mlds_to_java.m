@@ -401,17 +401,21 @@ output_java_src_file(Indent, MLDS) -->
 	%
 	% Output transformed MLDS as Java source.  
 	%
+	% The order is important here, because Java requires static constants
+	% be defined before they can be used in static initializers.
+	% We start with the Java foreign code declarations, since for
+	% library/private_builtin.m they contain static constants
+	% that will get used in the RTTI definitions.
+	%
 	output_src_start(Indent, ModuleName, Imports, ForeignDecls, Defns), 
+	io__write_list(ForeignBodyCode, "\n", output_java_body_code(Indent)),
+	{ CtorData = none },  % Not a constructor.
 	% XXX do we need to split this into RTTI and non-RTTI defns???
 	{ list__filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns) },
 	output_defns(Indent + 1, MLDS_ModuleName, CtorData, RttiDefns),
-	% Output Java foreign code declarations.
-	io__write_list(ForeignBodyCode, "\n", output_java_body_code(Indent)),
-	{ CtorData = none },  % Not a constructor.
 	output_defns(Indent + 1, MLDS_ModuleName, CtorData, NonRttiDefns),
 	output_src_end(Indent, ModuleName).
 	% XXX Need to handle non-Java foreign code at this point.
-
 
 %-----------------------------------------------------------------------------%
 % 
@@ -751,8 +755,10 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
 	% Create a name for this wrapper class based on the fully qualified
 	% method (predicate) name.
 	%
-	ModuleNameStr = mlds_module_name_to_string(ModuleQualifier),	
-	ClassEntityName = "AddrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
+	ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
+	mangle_mlds_sym_name_for_java(ModuleQualifierSym, "__", ModuleNameStr),
+	ClassEntityName = "AddrOf__" ++ ModuleNameStr ++
+		"__" ++ PredName,
 	MangledClassEntityName = name_mangle(ClassEntityName),
 	%
 	% Put it all together.
@@ -1455,14 +1461,7 @@ output_initializer_body(init_struct(StructType, FieldInits), _MaybeType,
 		ModuleName) --> 
 	io__write_string("new "),
 	output_type(StructType),
-	(
-		{ StructType = mercury_type(MercuryType, _, _) },
-		{ hand_defined_type(MercuryType, _, IsArray0) }
-	->
-		{ IsArray = IsArray0 }
-	;
-		{ IsArray = no }
-	),
+	{ IsArray = type_is_array(StructType) },
 	io__write_string(if IsArray = yes then " {" else "("),
 	io__write_list(FieldInits, ",\n\t\t",
 		(pred(FieldInit::in, di, uo) is det -->
@@ -1753,7 +1752,7 @@ output_type(mercury_type(Type, TypeCategory, _)) -->
 		% We need to handle type_info (etc.) types
 		% specially -- they get mapped to types in the
 		% runtime rather than in private_builtin.
-		{ hand_defined_type(Type, SubstituteName, _) }
+		{ hand_defined_type(TypeCategory, SubstituteName) }
 	->
 		io__write_string(SubstituteName)
 	;
@@ -1866,7 +1865,7 @@ output_mercury_type(Type, TypeCategory) -->
 		io__write_string("java.lang.Object")
 	;
 		{ TypeCategory = tuple_type }, 
-		io__write_string("/* Tuple */ java.lang.Object")
+		io__write_string("/* tuple */ java.lang.Object[]")
 	;
 		{ TypeCategory = higher_order_type },
 		io__write_string("/* closure */ java.lang.Object[]")
@@ -1898,25 +1897,50 @@ output_mercury_user_type(Type, TypeCategory) -->
 			"output_mercury_user_type: not a user type") }
 	).
 
+	% return yes if the corresponding Java type is an array type.
+:- func type_is_array(mlds__type) = bool.
+type_is_array(Type) = IsArray :-
+	( Type = mlds__array_type(_) ->
+		IsArray = yes
+	; Type = mlds__mercury_array_type(_) ->
+		IsArray = yes
+	; Type = mercury_type(_, TypeCategory, _) ->
+		IsArray = type_category_is_array(TypeCategory)
+	; Type = mlds__rtti_type(RttiId) ->
+		rtti_id_java_type(RttiId, _JavaTypeName, IsArray)
+	;
+		IsArray = no
+	).
+
+	% return yes if the corresponding Java type is an array type.
+:- func type_category_is_array(type_category) = bool.
+type_category_is_array(int_type) = no.
+type_category_is_array(char_type) = no.
+type_category_is_array(str_type) = no.
+type_category_is_array(float_type) = no.
+type_category_is_array(higher_order_type) = yes.
+type_category_is_array(tuple_type) = yes.
+type_category_is_array(enum_type) = no.
+type_category_is_array(variable_type) = no.
+type_category_is_array(type_info_type) = no.
+type_category_is_array(type_ctor_info_type) = no.
+type_category_is_array(typeclass_info_type) = yes.
+type_category_is_array(base_typeclass_info_type) = yes.
+type_category_is_array(void_type) = no.
+type_category_is_array(user_ctor_type) = no.
+
 	% We need to handle type_info (etc.) types
 	% specially -- they get mapped to types in the
 	% runtime rather than in private_builtin.
 	%
-:- pred hand_defined_type(prog_type::in, string::out, bool::out) is semidet.
-hand_defined_type(Type, SubstituteName, IsArray) :-
-	sym_name_and_args(Type, SymName, _Args),
-	SymName = qualified(PB, UnqualType),
-	mercury_private_builtin_module(PB),
-	hand_defined_type_2(UnqualType, SubstituteName, IsArray).
-
-:- pred hand_defined_type_2(string::in, string::out, bool::out) is semidet.
-hand_defined_type_2("type_info", "mercury.runtime.TypeInfo_Struct", no).
-hand_defined_type_2("type_ctor_info", "mercury.runtime.TypeCtorInfo_Struct",
-	no).
-hand_defined_type_2("base_typeclass_info",
-	"/* base_typeclass_info */ java.lang.Object[]", yes).
-hand_defined_type_2("typeclass_info",
-	"/* typeclass_info */ java.lang.Object[]", yes).
+	% hand_defined_type(Type, SubstituteName):
+:- pred hand_defined_type(type_category::in, string::out) is semidet.
+hand_defined_type(type_info_type, "mercury.runtime.TypeInfo_Struct").
+hand_defined_type(type_ctor_info_type, "mercury.runtime.TypeCtorInfo_Struct").
+hand_defined_type(base_typeclass_info_type,
+	"/* base_typeclass_info */ java.lang.Object[]").
+hand_defined_type(typeclass_info_type,
+	"/* typeclass_info */ java.lang.Object[]").
 
 %-----------------------------------------------------------------------------%
 %
@@ -2693,10 +2717,8 @@ output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	%
 	(
 		{ MaybeCtorName = yes(QualifiedCtorId) },
-		{ \+ (
-			Type = mlds__mercury_type(MercuryType, _, _),
-			hand_defined_type(MercuryType, _, yes)
-		) }
+		{ \+ (Type = mercury_type(_, TypeCategory, _),
+		      hand_defined_type(TypeCategory, _)) }
 	->
 		output_type(Type),
 		io__write_char('.'),
@@ -2707,15 +2729,9 @@ output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	;
 		output_type(Type)
 	),
-	(
-		{ Type = mlds__array_type(_Type)
-		; Type = mlds__mercury_type(_Type, higher_order_type, _)
-		; Type = mlds__mercury_type(MercType, _, _),
-		  hand_defined_type(MercType, _, yes)
-		} 
-	->
+	( { type_is_array(Type) = yes } ->
 		%
-		% The new object will be an array of java.lang.Object, so we
+		% The new object will be an array, so we
 		% need to initialise it using array literals syntax.
 		%
 		io__write_string(" {"),
@@ -2986,7 +3002,30 @@ output_rval(self(_), _) -->
 :- mode output_unop(in, in, in, di, uo) is det.
 	
 output_unop(cast(Type), Exprn, ModuleName) -->
-	output_cast_rval(Type, Exprn, ModuleName).
+	% rtti_to_mlds.m generates casts from int to
+	% mercury.runtime.PseudoTypeInfo, but for Java
+	% we need to treat these as constructions, not casts.
+	% Similarly for conversions from TypeCtorInfo to TypeInfo.
+	(
+		{ Type = mlds__pseudo_type_info_type },
+		{ Exprn = const(int_const(_)) }
+	->
+		maybe_output_comment("cast"),
+		io__write_string("new mercury.runtime.PseudoTypeInfo("),
+		output_rval(Exprn, ModuleName),
+		io__write_string(")")
+	;
+		( { Type = mlds__mercury_type(_, type_info_type, _) }
+		; { Type = mlds__type_info_type }
+		)
+	->
+		maybe_output_comment("cast"),
+		io__write_string("new mercury.runtime.TypeInfo_Struct("),
+		output_rval(Exprn, ModuleName),
+		io__write_string(")")
+	;
+		output_cast_rval(Type, Exprn, ModuleName)
+	).
 output_unop(box(Type), Exprn, ModuleName) -->
 	output_boxed_rval(Type, Exprn, ModuleName).
 output_unop(unbox(Type), Exprn, ModuleName) -->

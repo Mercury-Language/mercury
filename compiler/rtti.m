@@ -1636,7 +1636,7 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
 	).
 
 tc_rtti_name_java_type(_TCRttiName, JavaTypeName, IsArray) :-
-	JavaTypeName = "java.lang.Integer",
+	JavaTypeName = "java.lang.Object",
 	IsArray = yes.
 	% tc_rtti_name_type(TCRttiName, _GenTypeName, IsArray),
 	% JavaTypeName = string__append("mercury.runtime.", GenTypeName).
