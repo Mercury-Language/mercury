@@ -17,7 +17,7 @@ Valid? yes
 Call r(0, _)
 Throws zero
 Expected? yes
-Found unhandled exception:
+Found unhandled or incorrect exception:
 p(1, _)
 zero
 Is this a bug? yes
@@ -36,7 +36,7 @@ Throws zero
 Expected? no
 q(2, 0)
 Valid? yes
-Found unhandled exception:
+Found unhandled or incorrect exception:
 p(2, _)
 zero
 Is this a bug? yes
