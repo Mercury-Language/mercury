@@ -340,17 +340,17 @@ det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 det_infer_goal_2(conj(Goals0), MiscInfo, _, _, conj(Goals), D) :-
 	det_infer_conj(Goals0, MiscInfo, Goals, D).
 
-det_infer_goal_2(disj(Goals0), MiscInfo, _, _, Goal, D) :-
+det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	( Goals0 = [] ->
 		% an empty disjunction is equivalent to `fail' and
 		% is hence semi-deterministic
-		Goals = Goals0,
+		Goals = [],
 		D = semideterministic
 	; Goals0 = [SingleGoal0] ->
 		% a singleton disjunction is just equivalent to
 		% the goal itself
 		det_infer_goal(SingleGoal0, MiscInfo, SingleGoal, D),
-		Goal = disj([SingleGoal])
+		Goals = [SingleGoal]
 	;
 		D = nondeterministic,
 		det_infer_disj(Goals0, MiscInfo, Goals)
