@@ -146,6 +146,11 @@
 	io__state, io__state).
 :- mode hlds_out__write_var_modes(in, in, in, in, di, uo) is det.
 
+	% find the name of a marker
+
+:- pred hlds_out__marker_name(marker, string).
+:- mode hlds_out__marker_name(in, out) is det.
+
 	% print out the name of a marker
 
 :- pred hlds_out__write_marker(marker, io__state, io__state).
@@ -489,20 +494,17 @@ hlds_out__write_marker_status(done(Marker)) -->
 	hlds_out__write_marker(Marker),
 	io__write_string(")").
 
-hlds_out__write_marker(infer_type) -->
-	io__write_string("infer_type").
-hlds_out__write_marker(infer_modes) -->
-	io__write_string("infer_modes").
-hlds_out__write_marker(inline) -->
-	io__write_string("inline").
-hlds_out__write_marker(dnf) -->
-	io__write_string("dnf").
-hlds_out__write_marker(magic) -->
-	io__write_string("magic").
-hlds_out__write_marker(obsolete) -->
-	io__write_string("obsolete").
-hlds_out__write_marker(memo) -->
-	io__write_string("memo").
+hlds_out__marker_name(infer_type, "infer_type").
+hlds_out__marker_name(infer_modes, "infer_modes").
+hlds_out__marker_name(inline, "inline").
+hlds_out__marker_name(dnf, "dnf").
+hlds_out__marker_name(magic, "magic").
+hlds_out__marker_name(obsolete, "obsolete").
+hlds_out__marker_name(memo, "memo").
+
+hlds_out__write_marker(Marker) -->
+	{ hlds_out__marker_name(Marker, Name) },
+	io__write_string(Name).
 
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 		HeadVars, PredOrFunc, Clauses0, TypeQual) -->

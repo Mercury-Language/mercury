@@ -944,13 +944,8 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 		 ;	{ Marker = infer_modes }
 		)
 	->
-		io__write_string(":- pragma "),
-		hlds_out__write_marker(Marker),
-		io__write_string("("),
-		mercury_output_bracketed_sym_name(SymName),
-		io__write_char(('/')),
-		io__write_int(Arity),
-		io__write_string(").\n")
+		{ hlds_out__marker_name(Marker, Name) },
+		mercury_output_pragma_decl(SymName, Arity, Name)
 	;
 		[]
 	),

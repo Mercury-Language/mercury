@@ -46,6 +46,9 @@
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
 
+:- pred mercury_output_pragma_decl(sym_name, int, string, io__state, io__state).
+:- mode mercury_output_pragma_decl(in, in, in, di, uo) is det.
+
 :- pred mercury_output_pragma_c_code(may_call_mercury, sym_name, pred_or_func,
 		list(pragma_var), maybe(pair(list(string))),
 		varset, string, io__state, io__state).
@@ -1502,9 +1505,6 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 	mercury_output_pragma_c_code_vars(Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_output_pragma_decl(sym_name, int, string, io__state, io__state).
-:- mode mercury_output_pragma_decl(in, in, in, di, uo) is det.
 
 mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
 	io__write_string(":- pragma "),
