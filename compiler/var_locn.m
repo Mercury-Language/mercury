@@ -114,11 +114,12 @@
 :- pred var_locn__assign_var_to_var(prog_var::in, prog_var::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	var_locn__assign_lval_to_var(Var, Lval, VarLocnInfo0, VarLocnInfo)
+%	var_locn__assign_lval_to_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo)
 %		Reflects the effect of the assignment Var := lval(Lval) in the
-%		state of VarLocnInfo0 to yield VarLocnInfo.
+%		state of VarLocnInfo0 to yield VarLocnInfo; any code required
+%		to effect the assignment will be returned in Code.
 
-:- pred var_locn__assign_lval_to_var(prog_var::in, lval::in,
+:- pred var_locn__assign_lval_to_var(prog_var::in, lval::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__assign_const_to_var(Var, ConstRval,
@@ -257,14 +258,15 @@
 :- pred var_locn__clear_r1(code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	var_locn__materialize_vars_in_lval(Lval, FinalLval,
+%	var_locn__materialize_vars_in_lval(Lval, FinalLval, Code,
 %			VarLocnInfo0, VarLocnInfo)
 %		For every variable in Lval, substitutes the value of the
-%		variable and returns it as FinalLval. VarLocnInfo0 is unchanged
-%		(it is returned as VarLocnInfo to allow the predicate to be
-%		used in DCGs).
+%		variable and returns it as FinalLval. If we need to save the
+%		values of some of the substituted variables somewhere so as to
+%		prevent them from being evaluated again (and again ...), the
+%		required code will be returned in Code.
 
-:- pred var_locn__materialize_vars_in_lval(lval::in, lval::out,
+:- pred var_locn__materialize_vars_in_lval(lval::in, lval::out, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__get_var_locations(VarLocnInfo, Locations)
@@ -336,7 +338,7 @@
 	%	field will contain the empty set, but the expr_rval field
 	%	will be yes. The variables referred to in the expr_rval field
 	%	will include this variable in their using_vars sets, which
-	%	protects them from deletion from the code generator set until
+	%	protects them from deletion from the code generator state until
 	%	the using variable is produced or placed in an lval. When that
 	%	happens, the using variable's state will be transformed to the
 	%	general, third kind, releasing this variable's hold on the
@@ -649,7 +651,7 @@ var_locn__assign_var_to_var(Var, OldVar) -->
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_lval_to_var(Var, Lval0) -->
+var_locn__assign_lval_to_var(Var, Lval0, Code) -->
 	var_locn__check_var_is_unknown(Var),
 
 	(
@@ -659,33 +661,43 @@ var_locn__assign_lval_to_var(Var, Lval0) -->
 		var_locn__get_var_state_map(VarStateMap0),
 		{ map__lookup(VarStateMap0, BaseVar, BaseState) },
 		{ BaseState = state(BaseVarLvals, MaybeConstBaseVarRval,
-			MaybeExprRval, _UsingVars, _DeadOrAlive) },
-		{ require(unify(MaybeExprRval, no),
-			"var_locn__assign_lval_to_var: field of expr") },
-		{
-			MaybeConstBaseVarRval = yes(BaseVarRval),
-			BaseVarRval = create(Ptag, BaseVarArgs, _, _, _, _, _)
+			_MaybeExprRval, _UsingVars, _DeadOrAlive) },
+		(
+			{ MaybeConstBaseVarRval = yes(BaseVarRval) },
+			{ BaseVarRval = create(Ptag, BaseVarArgs, _,_,_,_,_) }
 		->
-			list__index0_det(BaseVarArgs, Offset, SelectedArg),
-			MaybeConstRval = SelectedArg
-		;
-			MaybeConstRval = no
-		},
-		{ Lvals = set__map(var_locn__add_field_offset(yes(Ptag),
-			const(int_const(Offset))), BaseVarLvals) },
-		{ set__init(Using) },
-		{ State = state(Lvals, MaybeConstRval, no, Using, alive) },
-		{ map__det_insert(VarStateMap0, Var, State, VarStateMap) },
-		var_locn__set_var_state_map(VarStateMap),
+			{ list__index0_det(BaseVarArgs, Offset, SelectedArg) },
+			{ MaybeConstRval = SelectedArg },
+			{ Lvals = set__map(var_locn__add_field_offset(
+				yes(Ptag), const(int_const(Offset))),
+				BaseVarLvals) },
+			{ set__init(Using) },
+			{ State = state(Lvals, MaybeConstRval, no,
+				Using, alive) },
+			{ map__det_insert(VarStateMap0, Var, State,
+				VarStateMap) },
+			var_locn__set_var_state_map(VarStateMap),
 
-		var_locn__get_loc_var_map(LocVarMap0),
-		{ var_locn__make_var_depend_on_lvals_roots(Var, Lvals,
-			LocVarMap0, LocVarMap) },
-		var_locn__set_loc_var_map(LocVarMap)
+			var_locn__get_loc_var_map(LocVarMap0),
+			{ var_locn__make_var_depend_on_lvals_roots(Var, Lvals,
+				LocVarMap0, LocVarMap) },
+			var_locn__set_loc_var_map(LocVarMap)
+		;
+			{ set__init(Lvals) },
+			{ Expr = lval(Lval0) },
+			{ set__init(Using) },
+			{ State = state(Lvals, no, yes(Expr), Using, alive) },
+			{ map__det_insert(VarStateMap0, Var, State,
+				VarStateMap1) },
+			{ var_locn__add_use_ref(BaseVar, Var,
+				VarStateMap1, VarStateMap) },
+			var_locn__set_var_state_map(VarStateMap)
+		),
+		{ Code = empty }
 	;
+		var_locn__materialize_vars_in_lval(Lval0, Lval, Code),
+
 		var_locn__get_var_state_map(VarStateMap0),
-		{ var_locn__materialize_vars_in_lval(Lval0, VarStateMap0,
-			Lval) },
 		{ set__singleton_set(LvalSet, Lval) },
 		{ State = state(LvalSet, no, no, set__init, alive) },
 		{ map__det_insert(VarStateMap0, Var, State, VarStateMap) },
@@ -732,8 +744,8 @@ var_locn__assign_expr_to_var(Var, Rval, empty) -->
 
 	{ exprn_aux__vars_in_rval(Rval, ContainedVars0) },
 	{ list__remove_dups(ContainedVars0, ContainedVars) },
-	{ var_locn__add_use_refs(ContainedVars, Var, VarStateMap1,
-		VarStateMap) },
+	{ var_locn__add_use_refs(ContainedVars, Var,
+		VarStateMap1, VarStateMap) },
 	var_locn__set_var_state_map(VarStateMap).
 
 :- pred var_locn__add_use_refs(list(prog_var)::in, prog_var::in,
@@ -742,15 +754,22 @@ var_locn__assign_expr_to_var(Var, Rval, empty) -->
 var_locn__add_use_refs([], _, VarStateMap, VarStateMap).
 var_locn__add_use_refs([ContainedVar | ContainedVars], UsingVar,
 		VarStateMap0, VarStateMap) :-
+	var_locn__add_use_ref(ContainedVar, UsingVar,
+		VarStateMap0, VarStateMap1),
+	var_locn__add_use_refs(ContainedVars, UsingVar,
+		VarStateMap1, VarStateMap).
+
+:- pred var_locn__add_use_ref(prog_var::in, prog_var::in,
+	var_state_map::in, var_state_map::out) is det.
+
+var_locn__add_use_ref(ContainedVar, UsingVar, VarStateMap0, VarStateMap) :-
 	map__lookup(VarStateMap0, ContainedVar, State0),
 	State0 = state(Lvals, MaybeConstRval, MaybeExprRval,
 		Using0, DeadOrAlive),
 	set__insert(Using0, UsingVar, Using),
 	State = state(Lvals, MaybeConstRval, MaybeExprRval,
 		Using, DeadOrAlive),
-	map__det_update(VarStateMap0, ContainedVar, State, VarStateMap1),
-	var_locn__add_use_refs(ContainedVars, UsingVar,
-		VarStateMap1, VarStateMap).
+	map__det_update(VarStateMap0, ContainedVar, State, VarStateMap).
 
 %----------------------------------------------------------------------------%
 
@@ -799,23 +818,34 @@ var_locn__assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
 	( { MaybeRval0 = yes(Rval0) } ->
 		{ Target = field(Ptag, Base, const(int_const(Offset))) },
 		( { Rval0 = var(Var) } ->
-			var_locn__produce_var_maybe_expr(Var, no, Rval),
+			var_locn__find_var_availability(Var, no, Avail),
+			(
+				{ Avail = available(Rval) },
+				{ EvalCode = empty }
+			;
+				{ Avail = needs_materialization },
+				var_locn__materialize_var(Var, no, no, [],
+					Rval, EvalCode)
+			),
 			var_locn__add_additional_lval_for_var(Var, Target),
 			var_locn__get_var_name(Var, VarName),
 			{ Comment = string__append("assigning from ",
 				VarName) }
 		; { Rval0 = const(_) } ->
 			{ Rval = Rval0 },
+			{ EvalCode = empty },
 			{ Comment = "assigning field from const" }
 		; { Rval0 = create(_, _, _, _, _, _, _) } ->
 			{ Rval = Rval0 },
+			{ EvalCode = empty },
 			{ Comment = "assigning field from const struct" }
 		;
 			{ error("var_locn__assign_cell_args: unknown rval") }
 		),
-		{ ThisCode = node([
+		{ AssignCode = node([
 			assign(Target, Rval) - Comment
-		]) }
+		]) },
+		{ ThisCode = tree(EvalCode, AssignCode) }
 	;
 		{ ThisCode = empty }
 	),
@@ -979,13 +1009,6 @@ var_locn__produce_var_in_reg_or_stack(Var, Lval, Code) -->
 		var_locn__place_var(Var, Lval, Code)
 	).
 
-:- pred var_locn__produce_var_maybe_expr(prog_var::in, maybe(lval)::in,
-	rval::out, var_locn_info::in, var_locn_info::out) is det.
-
-var_locn__produce_var_maybe_expr(Var, MaybePrefer, Rval) -->
-	var_locn__get_var_state_map(VarStateMap),
-	{ var_locn__select_expr_for_var(Var, VarStateMap, MaybePrefer, Rval) }.
-
 %----------------------------------------------------------------------------%
 
 var_locn__clear_r1(Code) -->
@@ -1050,13 +1073,21 @@ var_locn__actually_place_var(Var, Target, ForbiddenLvals, Code) -->
 			% If Var's value is cached, Lvals0 must be empty.
 			% However, the cached value may simply be var(Other),
 			% and Other may already be in Target. However, it may
-			% also be in other lval, so we say we prefer the
+			% also be in another lval, so we say we prefer the
 			% copy in Target.
-		var_locn__produce_var_maybe_expr(Var, yes(Target), Rval),
-		( { Rval = lval(SourceLval) } ->
-			var_locn__record_copy(SourceLval, Target)
+		var_locn__find_var_availability(Var, yes(Target), Avail),
+		(
+			{ Avail = available(Rval) },
+			{ EvalCode = empty },
+			( { Rval = lval(SourceLval) } ->
+				var_locn__record_copy(SourceLval, Target)
+			;
+				var_locn__record_clobbering(Target, [Var])
+			)
 		;
-				% Record the clobbering of Target.
+			{ Avail = needs_materialization },
+			var_locn__materialize_var(Var, yes(Target), no,
+				[Target], Rval, EvalCode),
 			var_locn__record_clobbering(Target, [Var])
 		),
 
@@ -1081,7 +1112,7 @@ var_locn__actually_place_var(Var, Target, ForbiddenLvals, Code) -->
 					- Msg
 			]) }
 		),
-		{ Code = tree(FreeCode, AssignCode) }
+		{ Code = tree(FreeCode, tree(EvalCode, AssignCode)) }
 	).
 
 :- pred var_locn__record_clobbering(lval::in, list(prog_var)::in,
@@ -1453,32 +1484,6 @@ var_locn__get_var_set_roots(Lvals, NoDupRootLvals) :-
 
 % Select the cheapest way to refer to the value of the variable.
 
-:- pred var_locn__select_expr_for_var(prog_var::in, var_state_map::in,
-	maybe(lval)::in, rval::out) is det.
-
-var_locn__select_expr_for_var(Var, VarStateMap, MaybePrefer, Rval) :-
-	map__lookup(VarStateMap, Var, State),
-	State = state(Lvals, MaybeConstRval, MaybeExprRval, _, _),
-	set__to_sorted_list(Lvals, LvalsList),
-	(
-		MaybePrefer = yes(Prefer),
-		list__member(Prefer, LvalsList)
-	->
-		Rval = lval(Prefer)
-	;
-		var_locn__maybe_select_lval_or_rval(LvalsList, MaybeConstRval,
-			Rval1)
-	->
-		Rval = Rval1
-	;
-		MaybeExprRval = yes(ExprRval)
-	->
-		var_locn__materialize_vars_in_rval(ExprRval, VarStateMap,
-			MaybePrefer, Rval)
-	;
-		error("var_locn__select_expr_for_var: no source")
-	).
-
 % From the given list of lvals, select the cheapest one to use.
 
 :- pred var_locn__select_lval(list(lval)::in, lval::out) is det.
@@ -1565,20 +1570,26 @@ var_locn__select_cheapest_lval([Lval | _], Lval).
 
 %----------------------------------------------------------------------------%
 
+:- pred var_locn__select_preferred_reg_avoid(prog_var::in, list(lval)::in,
+	lval::out, var_locn_info::in, var_locn_info::out) is det.
+
+var_locn__select_preferred_reg_avoid(Var, Avoid, Lval) -->
+	var_locn__select_preferred_reg(Var, yes, Avoid, Lval).
+
 :- pred var_locn__select_preferred_reg(prog_var::in, lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 var_locn__select_preferred_reg(Var, Lval) -->
-	var_locn__select_preferred_reg(Var, Lval, yes).
+	var_locn__select_preferred_reg(Var, yes, [], Lval).
 
 % Select the register into which Var should be put. If the follow_vars map
 % maps Var to a register, then select that register, unless it is already in
 % use, and CheckInUse = yes.
 
-:- pred var_locn__select_preferred_reg(prog_var::in, lval::out, bool::in,
-	var_locn_info::in, var_locn_info::out) is det.
+:- pred var_locn__select_preferred_reg(prog_var::in, bool::in, list(lval)::in,
+	lval::out, var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__select_preferred_reg(Var, Lval, CheckInUse) -->
+var_locn__select_preferred_reg(Var, CheckInUse, Avoid, Lval) -->
 	var_locn__get_follow_var_map(FollowVarMap),
 	(
 		{ map__search(FollowVarMap, Var, PrefLval) },
@@ -1590,14 +1601,15 @@ var_locn__select_preferred_reg(Var, Lval, CheckInUse) -->
 				\+ var_locn__lval_in_use(PrefLval)
 			;
 				[]
-			)
+			),
+			{ \+ list__member(PrefLval, Avoid) }
 		->
 			{ Lval = PrefLval }
 		;
-			var_locn__get_spare_reg(Lval)
+			var_locn__get_spare_reg_avoid(Avoid, Lval)
 		)
 	;
-		var_locn__get_spare_reg(Lval)
+		var_locn__get_spare_reg_avoid(Avoid, Lval)
 	).
 
 % Select the register or stack slot into which Var should be put. If the
@@ -1667,21 +1679,31 @@ real_lval(Lval) :-
 % Get a register that is not in use. We start the search at the next register
 % that is needed for the next call.
 
+:- pred var_locn__get_spare_reg_avoid(list(lval)::in, lval::out,
+	var_locn_info::in, var_locn_info::out) is det.
+
+var_locn__get_spare_reg_avoid(Avoid, Lval) -->
+	var_locn__get_next_non_reserved(NextNonReserved),
+	var_locn__get_spare_reg_2(Avoid, NextNonReserved, Lval).
+
 :- pred var_locn__get_spare_reg(lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 var_locn__get_spare_reg(Lval) -->
 	var_locn__get_next_non_reserved(NextNonReserved),
-	var_locn__get_spare_reg_2(NextNonReserved, Lval).
+	var_locn__get_spare_reg_2([], NextNonReserved, Lval).
 
-:- pred var_locn__get_spare_reg_2(int::in, lval::out,
+:- pred var_locn__get_spare_reg_2(list(lval)::in, int::in, lval::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__get_spare_reg_2(N0, Lval) -->
-	( var_locn__lval_in_use(reg(r, N0)) ->
-		var_locn__get_spare_reg_2(N0 + 1, Lval)
+var_locn__get_spare_reg_2(Avoid, N0, Lval) -->
+	{ TryLval = reg(r, N0) },
+	( var_locn__lval_in_use(TryLval) ->
+		var_locn__get_spare_reg_2(Avoid, N0 + 1, Lval)
+	; { list__member(TryLval, Avoid) } ->
+		var_locn__get_spare_reg_2(Avoid, N0 + 1, Lval)
 	;
-		{ Lval = reg(r, N0) }
+		{ Lval = TryLval }
 	).
 
 % Succeeds if Lval is currently in use or locked.
@@ -1714,11 +1736,7 @@ var_locn__reg_is_not_locked_for_var(RegNum, Var) -->
 	{
 		Reg = reg(r, RegNum),
 		\+ set__member(Reg, Acquired),
-		RegNum =< Locked =>
-		(
-			assoc_list__search(Exceptions, Var, VarExcpLval),
-			VarExcpLval = Reg
-		)
+		RegNum =< Locked => list__member(Var - Reg, Exceptions)
 	}.
 
 %----------------------------------------------------------------------------%
@@ -1857,124 +1875,203 @@ var_locn__args_are_constant([Arg0 | Args0], VarStateMap, ExprnOpts,
 
 % Lval is Lval0 with all variables in Lval0 replaced by their values.
 
-var_locn__materialize_vars_in_lval(Lval0, Lval) -->
-	var_locn__get_var_state_map(VarStateMap),
-	{ var_locn__materialize_vars_in_lval(Lval0, VarStateMap, Lval) }.
+var_locn__materialize_vars_in_lval(Lval0, Lval, Code) -->
+	var_locn__materialize_vars_in_lval(Lval0, [], Lval, Code).
 
-:- pred var_locn__materialize_vars_in_lval(lval::in, var_state_map::in,
-	lval::out) is det.
+:- pred var_locn__materialize_vars_in_lval(lval::in, list(lval)::in,
+	lval::out, code_tree::out,
+	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__materialize_vars_in_lval(Lval0, VarStateMap, Lval) :-
+var_locn__materialize_vars_in_lval(Lval0, Avoid, Lval, Code) -->
 	(
-		Lval0 = reg(_, _),
-		Lval = Lval0
+		{ Lval0 = reg(_, _) },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = stackvar(_),
-		Lval = Lval0
+		{ Lval0 = stackvar(_) },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = framevar(_),
-		Lval = Lval0
+		{ Lval0 = framevar(_) },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = succip,
-		Lval = Lval0
+		{ Lval0 = succip },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = maxfr,
-		Lval = Lval0
+		{ Lval0 = maxfr },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = curfr,
-		Lval = Lval0
+		{ Lval0 = curfr },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = hp,
-		Lval = Lval0
+		{ Lval0 = hp },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = sp,
-		Lval = Lval0
+		{ Lval0 = sp },
+		{ Lval = Lval0 },
+		{ Code = empty }
 	;
-		Lval0 = succip(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = succip(Rval)
+		{ Lval0 = succip(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = succip(Rval) }
 	;
-		Lval0 = redoip(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = redoip(Rval)
+		{ Lval0 = redoip(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = redoip(Rval) }
 	;
-		Lval0 = succfr(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = succfr(Rval)
+		{ Lval0 = succfr(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = succfr(Rval) }
 	;
-		Lval0 = redofr(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = redofr(Rval)
+		{ Lval0 = redofr(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = redofr(Rval) }
 	;
-		Lval0 = prevfr(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = prevfr(Rval)
+		{ Lval0 = prevfr(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = prevfr(Rval) }
 	;
-		Lval0 = mem_ref(Rval0),
-		var_locn__materialize_vars_in_rval(Rval0, VarStateMap, no,
-			Rval),
-		Lval = mem_ref(Rval)
+		{ Lval0 = mem_ref(Rval0) },
+		var_locn__materialize_vars_in_rval(Rval0, no, Avoid,
+			Rval, Code),
+		{ Lval = mem_ref(Rval) }
 	;
-		Lval0 = field(Tag, RvalA0, RvalB0),
-		var_locn__materialize_vars_in_rval(RvalA0, VarStateMap, no,
-			RvalA),
-		var_locn__materialize_vars_in_rval(RvalB0, VarStateMap, no,
-			RvalB),
-		Lval = field(Tag, RvalA, RvalB)
+		{ Lval0 = field(Tag, RvalA0, RvalB0) },
+		var_locn__materialize_vars_in_rval(RvalA0, no, Avoid,
+			RvalA, CodeA),
+		var_locn__materialize_vars_in_rval(RvalB0, no, Avoid,
+			RvalB, CodeB),
+		{ Lval = field(Tag, RvalA, RvalB) },
+		{ Code = tree(CodeA, CodeB) }
 	;
-		Lval0 = temp(_, _),
-		error("var_locn__materialize_vars_in_lval: temp")
+		{ Lval0 = temp(_, _) },
+		{ error("var_locn__materialize_vars_in_lval: temp") }
 	;
-		Lval0 = lvar(_),
-		error("var_locn__materialize_vars_in_lval: lvar")
+		{ Lval0 = lvar(_) },
+		{ error("var_locn__materialize_vars_in_lval: lvar") }
 	).
 
 % Rval is Rval0 with all variables in Rval0 replaced by their values.
 
-:- pred var_locn__materialize_vars_in_rval(rval::in, var_state_map::in,
-	maybe(lval)::in, rval::out) is det.
+:- pred var_locn__materialize_vars_in_rval(rval::in, maybe(lval)::in,
+	list(lval)::in, rval::out, code_tree::out,
+	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__materialize_vars_in_rval(Rval0, VarStateMap, MaybePrefer, Rval) :-
+var_locn__materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code) -->
 	(
-		Rval0 = lval(Lval0),
-		var_locn__materialize_vars_in_lval(Lval0, VarStateMap, Lval),
-		Rval = lval(Lval)
+		{ Rval0 = lval(Lval0) },
+		var_locn__materialize_vars_in_lval(Lval0, Avoid, Lval, Code),
+		{ Rval = lval(Lval) }
 	;
-		Rval0 = mkword(Tag, SubRval0),
-		var_locn__materialize_vars_in_rval(SubRval0, VarStateMap,
-			no, SubRval),
-		Rval = mkword(Tag, SubRval)
+		{ Rval0 = mkword(Tag, SubRval0) },
+		var_locn__materialize_vars_in_rval(SubRval0, no, Avoid,
+			SubRval, Code),
+		{ Rval = mkword(Tag, SubRval) }
 	;
-		Rval0 = unop(Unop, SubRval0),
-		var_locn__materialize_vars_in_rval(SubRval0, VarStateMap,
-			no, SubRval),
-		Rval = unop(Unop, SubRval)
+		{ Rval0 = unop(Unop, SubRval0) },
+		var_locn__materialize_vars_in_rval(SubRval0, no, Avoid,
+			SubRval, Code),
+		{ Rval = unop(Unop, SubRval) }
 	;
-		Rval0 = binop(Binop, SubRvalA0, SubRvalB0),
-		var_locn__materialize_vars_in_rval(SubRvalA0, VarStateMap,
-			no, SubRvalA),
-		var_locn__materialize_vars_in_rval(SubRvalB0, VarStateMap,
-			no, SubRvalB),
-		Rval = binop(Binop, SubRvalA, SubRvalB)
+		{ Rval0 = binop(Binop, SubRvalA0, SubRvalB0) },
+		var_locn__materialize_vars_in_rval(SubRvalA0, no, Avoid,
+			SubRvalA, CodeA),
+		var_locn__materialize_vars_in_rval(SubRvalB0, no, Avoid,
+			SubRvalB, CodeB),
+		{ Rval = binop(Binop, SubRvalA, SubRvalB) },
+		{ Code = tree(CodeA, CodeB) }
 	;
-		Rval0 = const(_),
-		Rval = Rval0
+		{ Rval0 = const(_) },
+		{ Rval = Rval0 },
+		{ Code = empty }
 	;
-		Rval0 = mem_addr(_),
-		Rval = Rval0
+		{ Rval0 = mem_addr(_) },
+		{ Rval = Rval0 },
+		{ Code = empty }
 	;
 			% If we get here, the cell must be a constant.
-		Rval0 = create(_, _, _, _, _, _, _),
-		Rval = Rval0
+		{ Rval0 = create(_, _, _, _, _, _, _) },
+		{ Rval = Rval0 },
+		{ Code = empty }
 	;
-		Rval0 = var(Var),
-		var_locn__select_expr_for_var(Var, VarStateMap, MaybePrefer,
-			Rval)
+		{ Rval0 = var(Var) },
+		var_locn__find_var_availability(Var, MaybePrefer, Avail),
+		(
+			{ Avail = available(Rval) },
+			{ Code = empty }
+		;
+			{ Avail = needs_materialization },
+			var_locn__materialize_var(Var, MaybePrefer, yes,
+				Avoid, Rval, Code)
+		)
+	).
+
+:- type var_avail
+	--->	available(rval)
+	;	needs_materialization.
+
+:- pred var_locn__find_var_availability(prog_var::in, maybe(lval)::in,
+	var_avail::out, var_locn_info::in, var_locn_info::out) is det.
+
+var_locn__find_var_availability(Var, MaybePrefer, Avail) -->
+	var_locn__get_var_state_map(VarStateMap),
+	{ map__lookup(VarStateMap, Var, State) },
+	{ State = state(Lvals, MaybeConstRval, _, _, _) },
+	{ set__to_sorted_list(Lvals, LvalsList) },
+	(
+		{ MaybePrefer = yes(Prefer) },
+		{ list__member(Prefer, LvalsList) }
+	->
+		{ Rval = lval(Prefer) },
+		{ Avail = available(Rval) }
+	;
+		{ var_locn__maybe_select_lval_or_rval(LvalsList,
+			MaybeConstRval, Rval) }
+	->
+		{ Avail = available(Rval) }
+	;
+		{ Avail = needs_materialization }
+	).
+
+:- pred var_locn__materialize_var(prog_var::in, maybe(lval)::in, bool::in,
+	list(lval)::in, rval::out, code_tree::out,
+	var_locn_info::in, var_locn_info::out) is det.
+
+var_locn__materialize_var(Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code) -->
+	var_locn__get_var_state_map(VarStateMap),
+	{ map__lookup(VarStateMap, Var, State) },
+	{ State = state(_Lvals, _MaybeConstRval, MaybeExprRval,
+		UsingVars, _DeadOrAlive) },
+	{
+		MaybeExprRval = yes(ExprRval)
+	;
+		MaybeExprRval = no,
+		error("var_locn__materialize_var: no expr")
+	},
+	var_locn__materialize_vars_in_rval(ExprRval, MaybePrefer, Avoid,
+		Rval0, ExprCode),
+	(
+		{ StoreIfReq = yes },
+		{ set__count(UsingVars, NumUsingVars) },
+		{ NumUsingVars > 1 }
+	->
+		var_locn__select_preferred_reg_avoid(Var, Avoid, Lval),
+		var_locn__place_var(Var, Lval, PlaceCode),
+		{ Rval = lval(Lval) },
+		{ Code = tree(ExprCode, PlaceCode) }
+	;
+		{ Rval = Rval0 },
+		{ Code = ExprCode }
 	).
 
 %----------------------------------------------------------------------------%
@@ -2185,24 +2282,24 @@ var_locn__nonempty_state(State) :-
 :- pred var_locn__set_exceptions(assoc_list(prog_var, lval)::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__get_varset(VI^varset, VI, VI).
-var_locn__get_stack_slots(VI^stack_slots, VI, VI).
-var_locn__get_exprn_opts(VI^exprn_opts, VI, VI).
-var_locn__get_follow_var_map(VI^follow_vars_map, VI, VI).
-var_locn__get_next_non_reserved(VI^next_non_res, VI, VI).
-var_locn__get_var_state_map(VI^var_state_map, VI, VI).
-var_locn__get_loc_var_map(VI^loc_var_map, VI, VI).
-var_locn__get_acquired(VI^acquired, VI, VI).
-var_locn__get_locked(VI^locked, VI, VI).
-var_locn__get_exceptions(VI^exceptions, VI, VI).
+var_locn__get_varset(VI ^ varset, VI, VI).
+var_locn__get_stack_slots(VI ^ stack_slots, VI, VI).
+var_locn__get_exprn_opts(VI ^ exprn_opts, VI, VI).
+var_locn__get_follow_var_map(VI ^ follow_vars_map, VI, VI).
+var_locn__get_next_non_reserved(VI ^ next_non_res, VI, VI).
+var_locn__get_var_state_map(VI ^ var_state_map, VI, VI).
+var_locn__get_loc_var_map(VI ^ loc_var_map, VI, VI).
+var_locn__get_acquired(VI ^ acquired, VI, VI).
+var_locn__get_locked(VI ^ locked, VI, VI).
+var_locn__get_exceptions(VI ^ exceptions, VI, VI).
 
-var_locn__set_varset(VS, VI, VI^varset := VS).
-var_locn__set_follow_var_map(FVM, VI, VI^follow_vars_map := FVM).
-var_locn__set_next_non_reserved(NNR, VI, VI^next_non_res := NNR).
-var_locn__set_var_state_map(VSM, VI, VI^var_state_map := VSM).
-var_locn__set_loc_var_map(LVM, VI, VI^loc_var_map := LVM).
-var_locn__set_acquired(A, VI, VI^acquired := A).
-var_locn__set_locked(L, VI, VI^locked := L).
-var_locn__set_exceptions(E, VI, VI^exceptions := E).
+var_locn__set_varset(VS, VI, VI ^ varset := VS).
+var_locn__set_follow_var_map(FVM, VI, VI ^ follow_vars_map := FVM).
+var_locn__set_next_non_reserved(NNR, VI, VI ^ next_non_res := NNR).
+var_locn__set_var_state_map(VSM, VI, VI ^ var_state_map := VSM).
+var_locn__set_loc_var_map(LVM, VI, VI ^ loc_var_map := LVM).
+var_locn__set_acquired(A, VI, VI ^ acquired := A).
+var_locn__set_locked(L, VI, VI ^ locked := L).
+var_locn__set_exceptions(E, VI, VI ^ exceptions := E).
 
 %----------------------------------------------------------------------------%

@@ -471,7 +471,9 @@ lookup_switch__generate_terms_2(Index, [Var | Vars], Map) -->
 	{ ArrayTerm = create(0, Args, uniform(no), must_be_static,
 		CellNo, "lookup_switch_data", Reuse) },
 	{ LookupLval = field(yes(0), ArrayTerm, Index) },
-	code_info__assign_lval_to_var(Var, LookupLval),
+	code_info__assign_lval_to_var(Var, LookupLval, Code),
+	{ require(tree__is_empty(Code),
+		"lookup_switch__generate_terms_2: nonempty code") },
 	lookup_switch__generate_terms_2(Index, Vars, Map).
 
 :- pred construct_args(list(pair(int, rval))::in, int::in,

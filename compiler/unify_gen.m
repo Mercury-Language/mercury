@@ -443,8 +443,9 @@ unify_gen__generate_construction_2(
 		{ NumNewArgsPlusThree is NumNewArgs + 3 },
 		{ NumNewArgsPlusThree_Rval =
 			const(int_const(NumNewArgsPlusThree)) },
-		code_info__produce_variable(CallPred, Code1, OldClosure),
-		{ Code2 = node([
+		code_info__produce_variable(CallPred, OldClosureCode,
+			OldClosure),
+		{ NewClosureCode = node([
 			comment("build new closure from old closure") - "",
 			assign(NumOldArgs,
 				lval(field(yes(0), OldClosure, Two)))
@@ -488,12 +489,17 @@ unify_gen__generate_construction_2(
 				- "repeat the loop?"
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
-			LoopCounter, NewClosure, Code3),
+			LoopCounter, NewClosure, ExtraArgsCode),
 		code_info__release_reg(LoopCounter),
 		code_info__release_reg(NumOldArgs),
 		code_info__release_reg(NewClosure),
-		code_info__assign_lval_to_var(Var, NewClosure),
-		{ Code = tree(Code1, tree(Code2, Code3)) }
+		code_info__assign_lval_to_var(Var, NewClosure, AssignCode),
+		{ Code =
+			tree(OldClosureCode,
+			tree(NewClosureCode,
+			tree(ExtraArgsCode,
+			     AssignCode)))
+		}
 	    )
 	;
 		code_info__make_entry_label(ModuleInfo,
@@ -859,11 +865,11 @@ unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
 		{ error("unify_gen__generate_sub_assign: lval vanished with ref") }
 	).
 	% Assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Var), lval(Lval), empty) -->
+unify_gen__generate_sub_assign(ref(Var), lval(Lval), Code) -->
 	( code_info__variable_is_forward_live(Var) ->
-		code_info__assign_lval_to_var(Var, Lval)
+		code_info__assign_lval_to_var(Var, Lval, Code)
 	;
-		[]
+		{ Code = empty }
 	).
 	% Assignment to a variable, so cache it.
 unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->

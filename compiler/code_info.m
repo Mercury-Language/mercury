@@ -3016,7 +3016,7 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__assign_var_to_var(prog_var::in, prog_var::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__assign_lval_to_var(prog_var::in, lval::in,
+:- pred code_info__assign_lval_to_var(prog_var::in, lval::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
 :- pred code_info__assign_const_to_var(prog_var::in, rval::in,
@@ -3148,15 +3148,16 @@ code_info__assign_var_to_var(Var, AssignedVar) -->
 	},
 	code_info__set_var_locns_info(VarInfo).
 
-code_info__assign_lval_to_var(Var, Lval) -->
+code_info__assign_lval_to_var(Var, Lval, Code) -->
 	code_info__get_var_locns_info(VarInfo0),
 	{
 		VarInfo0 = exprn_info(Exprn0),
 		code_exprn__cache_exprn(Var, lval(Lval), Exprn0, Exprn),
+		Code = empty,
 		VarInfo = exprn_info(Exprn)
 	;
 		VarInfo0 = var_locn_info(VarLocInfo0),
-		var_locn__assign_lval_to_var(Var, Lval,
+		var_locn__assign_lval_to_var(Var, Lval, Code,
 			VarLocInfo0, VarLocInfo),
 		VarInfo = var_locn_info(VarLocInfo)
 	},
@@ -3316,10 +3317,9 @@ code_info__materialize_vars_in_rval(Rval0, Rval, Code) -->
 	;
 		VarInfo0 = var_locn_info(VarLocnInfo0),
 		( Rval0 = lval(Lval0) ->
-			var_locn__materialize_vars_in_lval(Lval0, Lval,
+			var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
 				VarLocnInfo0, VarLocnInfo),
 			Rval = lval(Lval),
-			Code = empty,
 			VarInfo = var_locn_info(VarLocnInfo)
 		; exprn_aux__vars_in_rval(Rval0, []) ->
 			Rval = Rval0,
