@@ -17,6 +17,53 @@
 #include "mercury_tabling.h"
 #include "mercury_engine.h"
 
+#ifdef	MR_STACK_FRAME_STATS
+  #include "mercury_dword.h"
+
+  extern MR_Dword	MR_det_frame_count;
+  extern MR_Dword	MR_det_frame_total_size;
+  extern MR_Word	*MR_det_frame_max;
+  extern MR_Dword	MR_non_frame_count;
+  extern MR_Dword	MR_non_frame_total_size;
+  extern MR_Word	*MR_non_frame_max;
+
+  /*
+  ** This temporary is for use in the MR_increment_dword_tmp macro only.
+  ** Making the temporary variable global (nonlocal to the macro) allows
+  ** the macro have the form of an expression, instead of a statement,
+  ** without relying on GNU extensions to C.
+  */
+  extern MR_uint_least32_t MR_old_low_tmp;
+
+  extern void		MR_init_stack_frame_stats(void);
+  extern void		MR_print_stack_frame_stats(void);
+
+  #define MR_collect_det_frame_stats(size)				\
+	(								\
+		MR_increment_dword_tmp(MR_det_frame_count, 		\
+			1, MR_old_low_tmp),				\
+		MR_increment_dword_tmp(MR_det_frame_total_size,		\
+			(size), MR_old_low_tmp),			\
+		((MR_sp > MR_det_frame_max) ?				\
+		 	(MR_det_frame_max = MR_sp) : (void) 0)		\
+	)
+  #define MR_collect_non_frame_stats(slots)				\
+	(								\
+		MR_increment_dword_tmp(MR_non_frame_count,		\
+			1, MR_old_low_tmp),				\
+		MR_increment_dword_tmp(MR_non_frame_total_size, 	\
+			(slots) + MR_NONDET_FIXED_SIZE, MR_old_low_tmp),\
+		((MR_maxfr > MR_non_frame_max) ?			\
+		 	(MR_non_frame_max = MR_maxfr) : (void) 0)	\
+	)
+
+#else	/* !MR_STACK_FRAME_STATS */
+
+  #define MR_collect_det_frame_stats(size)		((void) 0)
+  #define MR_collect_non_frame_stats(slots)		((void) 0)
+
+#endif	/* !MR_STACK_FRAME_STATS */
+
 /*---------------------------------------------------------------------------*/
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
@@ -30,6 +77,7 @@
 				MR_debugincrsp(n, MR_sp),	\
 				MR_sp = MR_sp + (n),		\
 				MR_detstack_overflow_check(),	\
+				MR_collect_det_frame_stats(n),	\
 				(void)0				\
 			)
 
@@ -45,6 +93,7 @@
 				MR_debugincrsp(n, MR_sp),	\
 				MR_sp = MR_sp + (n),		\
 				MR_detstack_overflow_check(),	\
+				MR_collect_det_frame_stats(n),	\
 				(void)0				\
 			)
 
@@ -124,6 +173,7 @@
 				MR_redofr_slot(MR_curfr) = MR_curfr;	\
 				MR_debugmkframe(predname);		\
 				MR_nondstack_overflow_check();		\
+				MR_collect_non_frame_stats(numslots);	\
 			} while (0)
 
 /* just like mkframe, but also reserves space for a struct     */
@@ -145,6 +195,7 @@
 		MR_redofr_slot(MR_curfr) = MR_curfr;			\
 		MR_debugmkframe(predname);				\
 		MR_nondstack_overflow_check();				\
+		MR_collect_non_frame_stats(numslots);			\
 	} while (0)
 
 #define	MR_mktempframe(redoip)						\

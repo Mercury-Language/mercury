@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997, 1999-2000 The University of Melbourne.
+** Copyright (C) 1997, 1999-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "mercury_prof_mem.h"
+#include "mercury_dword.h"
 #include "mercury_heap_profile.h"
 
 /* all fields of these variables are initialized to 0 */

@@ -374,7 +374,7 @@ static void
 print_memory_node(FILE *words_fptr, FILE *cells_fptr, MR_memprof_record *node)
 {
 	if (node != NULL) {
-		MR_dword cells, words;
+		MR_Dword cells, words;
 
 		cells = node->counter.cells_at_period_start;
 		words = node->counter.words_at_period_start;

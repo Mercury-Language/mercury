@@ -1,12 +1,12 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-** This file contains code for manipulating the generator stack and the cut
-** stack.
+** This file contains code for printing statistics about stack frame sizes,
+** and for manipulating the generator stack and the cut stack.
 **
 ** The generator stack has one entry for each call to a minimal model tabled
 ** procedure that is (a) acting as the generator for its subgoal and (b) is
@@ -30,7 +30,85 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_runtime_util.h"
 #include <stdio.h>
+
+#ifdef	MR_STACK_FRAME_STATS
+
+#include "mercury_dword.h"
+
+MR_Dword	MR_det_frame_count;
+MR_Dword	MR_det_frame_total_size;
+MR_Word		*MR_det_frame_max;
+MR_Dword	MR_non_frame_count;
+MR_Dword	MR_non_frame_total_size;
+MR_Word		*MR_non_frame_max;
+
+MR_uint_least32_t MR_old_low_tmp;
+
+void
+MR_init_stack_frame_stats(void)
+{
+	MR_zero_dword(MR_det_frame_count);
+	MR_zero_dword(MR_det_frame_total_size);
+	MR_zero_dword(MR_non_frame_count);
+	MR_zero_dword(MR_non_frame_total_size);
+
+	/*
+	** We cannot initialize these to the starts of the their respective
+	** memory areas, since those areas may not have been initialized yet.
+	*/
+
+	MR_det_frame_max = NULL;
+	MR_non_frame_max = NULL;
+}
+
+void
+MR_print_stack_frame_stats(void)
+{
+	FILE	*fp;
+	double	det_frame_count;
+	double	det_frame_total_size;
+	double	non_frame_count;
+	double	non_frame_total_size;
+
+	fp = MR_checked_fopen(MR_STACK_FRAME_STATS, "open", "a");
+
+	MR_convert_dword_to_double(MR_det_frame_count,
+		det_frame_count);
+	MR_convert_dword_to_double(MR_det_frame_total_size,
+		det_frame_total_size);
+	MR_convert_dword_to_double(MR_non_frame_count,
+		non_frame_count);
+	MR_convert_dword_to_double(MR_non_frame_total_size,
+		non_frame_total_size);
+
+	fprintf(fp, "number of det stack frames created:  %.0f\n",
+		det_frame_count);
+	fprintf(fp, "number of words in det stack frames: %.0f\n",
+		det_frame_total_size);
+	fprintf(fp, "average size of a det stack frame:   %.3f\n",
+		det_frame_total_size / det_frame_count);
+	fprintf(fp, "max size of det stack:               %ld\n",
+		(long) (MR_det_frame_max
+		       - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+	fprintf(fp, "\n");
+
+	fprintf(fp, "number of non stack frames created:  %.0f\n",
+		non_frame_count);
+	fprintf(fp, "number of words in non stack frames: %.0f\n",
+		non_frame_total_size);
+	fprintf(fp, "average size of a non stack frame:   %.3f\n",
+		non_frame_total_size / non_frame_count);
+	fprintf(fp, "max size of non stack:               %ld\n",
+		(long) (MR_non_frame_max
+			- MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+	fprintf(fp, "-------------------------------------------\n");
+
+	MR_checked_fclose(fp, MR_STACK_FRAME_STATS);
+}
+
+#endif	/* MR_STACK_FRAME_STATS */
 
 #ifdef	MR_USE_MINIMAL_MODEL
 
@@ -208,4 +286,4 @@ MR_cleanup_generator_ptr(MR_TrieNode generator_ptr)
 	}
 }
 
-#endif
+#endif	/* MR_USE_MINIMAL_MODEL */

@@ -1013,6 +1013,9 @@ if test "$mercury_cv_int_least64_type" = unknown; then
 	[mercury_cv_int_least64_type=unknown],
 	[mercury_cv_int_least64_type=unknown])
 fi
+# Uncomment the following line to test how the system behaves
+# in the absence of a 64-bit integer type.
+# mercury_cv_int_least64_type=unknown
 AC_MSG_RESULT($mercury_cv_int_least64_type)
 if test "$mercury_cv_int_least64_type" != unknown; then
 	AC_DEFINE_UNQUOTED(MR_INT_LEAST64_TYPE, $mercury_cv_int_least64_type)
@@ -1055,6 +1058,19 @@ AC_MSG_RESULT($mercury_cv_int_least32_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
 MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
 AC_SUBST(MR_INT_LEAST32_TYPE)
+
+if test "$mercury_cv_int_least32_type" = int; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_MAX, INT_MAX)
+	AC_DEFINE_UNQUOTED(MR_UINT_LEAST32_MAX, UINT_MAX)
+elif test "$mercury_cv_int_least32_type" = long; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_MAX, LONG_MAX)
+	AC_DEFINE_UNQUOTED(MR_UINT_LEAST32_MAX, ULONG_MAX)
+else
+	AC_MSG_ERROR("Cannot find the name of the max values for MR_INT_LEAST32_TYPE.")
+fi
+AC_SUBST(MR_INT_LEAST32_MAX)
+AC_SUBST(MR_UINT_LEAST32_MAX)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for an integer type of at least 16 bits)
 AC_CACHE_VAL(mercury_cv_int_least16_type,
@@ -1091,6 +1107,19 @@ AC_MSG_RESULT($mercury_cv_int_least16_type)
 AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
 MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
 AC_SUBST(MR_INT_LEAST16_TYPE)
+
+if test "$mercury_cv_int_least16_type" = short; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_MAX, SHRT_MAX)
+	AC_DEFINE_UNQUOTED(MR_UINT_LEAST16_MAX, USHRT_MAX)
+elif test "$mercury_cv_int_least16_type" = int; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_MAX, INT_MAX)
+	AC_DEFINE_UNQUOTED(MR_UINT_LEAST16_MAX, UINT_MAX)
+else
+	AC_MSG_ERROR("Cannot find the name of the max value for MR_INT_LEAST16_TYPE.")
+fi
+AC_SUBST(MR_INT_LEAST16_MAX)
+AC_SUBST(MR_UINT_LEAST16_MAX)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,

@@ -7,6 +7,7 @@ limit=8
 cmd="mmc -C -O2 -I../compiler --no-lazy-code make_hlds.m"
 debug=false
 size=false
+framesizefile=""
 
 while test $# -gt 0
 do
@@ -19,6 +20,11 @@ do
 
 	-d)
 		debug=true ;;
+
+	-f)
+		framesizefile="$2" ; shift ;;
+	-f*)
+		framesizefile="` expr $1 : '-f\(.*\)' `" ;;
 
 	-n)
 		limit="$2" ; shift ;;
@@ -84,6 +90,11 @@ do
 	count=1
 	while test $count -le $limit
 	do
+		if test "$framesizefile" != ""
+		then
+			rm $framesizefile > /dev/null 2>&1
+		fi
+
 		briefname=`echo "$file" | sed "s:batch/$batch.::"`
 		$ECHO -n "$briefname "
 		if $debug
@@ -98,8 +109,16 @@ do
 			mv Deep.data ../batch/Deep.data.`basename $file .gz`.run$count
 		fi
 
+		if test "$count" -eq 1 -a "$framesizefile" != ""
+		then
+			echo
+			cat $framesizefile
+			echo
+		fi
+
 		count=`expr $count + 1`
 	done
+
 	cd $root
 	gzip $file
 done

@@ -47,6 +47,7 @@ HDRS		=	\
 			mercury_deep_profiling_hand.h \
 			mercury_dummy.h		\
 			mercury_dlist.h		\
+			mercury_dword.h		\
 		  	mercury_engine.h	\
 			mercury_file.h		\
 			mercury_float.h		\

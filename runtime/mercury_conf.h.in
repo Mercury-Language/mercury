@@ -78,6 +78,16 @@
 #undef	MR_INT_LEAST16_TYPE
 
 /*
+** MR_{UINT,INT}_LEAST{16,32}_MAX:
+** The symbolic names (defined in limits.h) of the maximum values for the
+** signed and unsigned forms of MR_INT_LEAST16_TYPE and MR_INT_LEAST32_TYPE.
+*/
+#undef	MR_INT_LEAST16_MAX
+#undef	MR_UINT_LEAST16_MAX
+#undef	MR_INT_LEAST32_MAX
+#undef	MR_UINT_LEAST32_MAX
+
+/*
 ** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
 ** we can use.  Normally this is the base-2 log of the word size in bytes.
 */

@@ -84,7 +84,7 @@
 **	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
 **	use inline functions rather than macros for a few builtins.
 **
-** PARALLEL
+** MR_THREAD_SAFE
 **	Enable support for parallelism [not yet working].
 **
 ** MR_NO_BACKWARDS_COMPAT
@@ -255,7 +255,28 @@
 ** MR_TABLE_STATISTICS
 ** Enable this if you want to gather statistics about the operation of the
 ** tabling system. The results are reported via io__report_tabling_stats.
+** 
+** MR_STACK_FRAME_STATS
+** If you want to gather statistics about the number and size of stack frames,
+** then set this macro to a string giving the name of the file to which which
+** the statistics should be appended when the program exits.
 */
+
+#if defined(MR_THREAD_SAFE) && defined(MR_TRACE_HISTOGRAM)
+  #error "MR_THREAD_SAFE and MR_TRACE_HISTOGRAM are not supported together"
+#endif
+
+#if defined(MR_THREAD_SAFE) && defined(MR_TYPE_CTOR_STATS)
+  #error "MR_THREAD_SAFE and MR_TYPE_CTOR_STATS are not supported together"
+#endif
+
+#if defined(MR_THREAD_SAFE) && defined(MR_TABLE_STATISTICS)
+  #error "MR_THREAD_SAFE and MR_TABLE_STATISTICS are not supported together"
+#endif
+
+#if defined(MR_THREAD_SAFE) && defined(MR_STACK_FRAME_STATS)
+  #error "MR_THREAD_SAFE and MR_STACK_FRAME_STATS are not supported together"
+#endif
 
 /*---------------------------------------------------------------------------*/
 /*

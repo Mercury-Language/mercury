@@ -328,6 +328,10 @@ mercury_runtime_init(int argc, char **argv)
 	process_args(argc, argv);
 	process_environment_options();
 
+#ifdef	MR_STACK_FRAME_STATS
+	MR_init_stack_frame_stats();
+#endif	/* MR_STACK_FRAME_STATS */
+
 	/*
 	** Some of the rest of this function may call Mercury code
 	** that may have been compiled with tracing (e.g. the initialization
@@ -1193,6 +1197,10 @@ mercury_runtime_main(void)
 #ifdef	MR_TYPE_CTOR_STATS
 	MR_print_type_ctor_stats();
 #endif
+
+#ifdef	MR_STACK_FRAME_STATS
+	MR_print_stack_frame_stats();
+#endif	/* MR_STACK_FRAME_STATS */
 
 	/*
 	** Save the Mercury registers and
