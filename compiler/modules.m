@@ -2749,6 +2749,7 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 :- pred write_fact_table_dependencies_list(module_name, list(file_name),
 			string, io__output_stream, io__state, io__state).
 :- mode write_fact_table_dependencies_list(in, in, in, in, di, uo) is det.
+
 write_fact_table_dependencies_list(_, [], _, _) --> [].
 write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
 			DepStream) -->
