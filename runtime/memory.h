@@ -38,6 +38,9 @@ extern	Word 	num_uses[MAX_RN];
  * areas such as a trail, a "solutions"-heap, and so on.
  * These memory areas are each represented by a structure that contains
  * the following fields:
+ *	name	- a string constant used to name the allocated area
+ *	id	- an integer which together with the name should uniquely
+ *		  identify the allocated area.
  *	bottom	- the address of the bottom of the allocated area
  *			(should be on a page boundary)
  *	top	- the address one word past the top of the allocated area
@@ -68,7 +71,8 @@ typedef struct MEMORY_ZONE {
 				   * is NULL or a pointer to the next memory
 				   * zone in the list.
 				   */
-	char	name[MAX_ZONE_NAME+1];
+	const char *name;	/* name identifier */
+	int	id;		/* number */
 	Word	*bottom;	/* beginning of the allocated area */
 	Word	*top;		/* end of the allocated area */
 	Word	*min;		/* lowest word of the area to be used */

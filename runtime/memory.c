@@ -120,22 +120,22 @@ MemoryZone *heap_zone;
 static	unsigned	unit;
 static	unsigned	page_size;
 
-/* create_zone(Name, Size, Offset, RedZoneSize, FaultHandler)
- * allocates a new memory zone with name Name, size Size (in bytes -
- * which gets rounded up to the nearest multiple of the page size),
- * an offset Offset from the page boundary at which to start using
- * the memory region (used to help avoid beating the cache),
+/* create_zone(Name, Id, Size, Offset, RedZoneSize, FaultHandler)
+ * allocates a new memory zone with name Name, and number Id, size
+ * Size (in bytes - which gets rounded up to the nearest multiple of
+ * the page size), an offset Offset from the page boundary at which
+ * to start using the memory region (used to help avoid beating the cache),
  * the amount Redzone of memory (in bytes) to be protected as a redzone
  * (must be less than Size), and the address of a function to handle
  * memory references in the redzone.
  * If it fails to allocate or protect the zone, then it exits.
  */
-MemoryZone	*create_zone(const char *name, unsigned size, unsigned offset,
-			unsigned redsize,
+MemoryZone	*create_zone(const char *name, int id, unsigned size,
+			unsigned offset, unsigned redsize,
 			bool ((*handler)(Word *addr, MemoryZone *zone,
 				void *context)));
 
-/* construct_zone(Name, Base, Size, Offset, RedZoneSize, FaultHandler)
+/* construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
  * has the same behaviour as create_zone, except instread of allocating
  * the memory, it takes a pointer to a region of memory that must be at
  * least Size bytes, or if HAVE_MPROTECT is defined, then it must be at
@@ -143,8 +143,8 @@ MemoryZone	*create_zone(const char *name, unsigned size, unsigned offset,
  * If it fails to protect the redzone then it exits
  * [*] unit is a global variable containing the page size in bytes
  */
-MemoryZone	*construct_zone(const char *name, Word *base, unsigned size,
-			unsigned offset, unsigned redsize,
+MemoryZone	*construct_zone(const char *name, int Id, Word *base,
+			unsigned size, unsigned offset, unsigned redsize,
 			bool ((*handler)(Word *addr, MemoryZone *zone,
 				void *context)));
 
@@ -184,7 +184,8 @@ void init_memory(void)
 	free_memory_zones = zone_table;
 	for(i=0; i < MAX_ZONES; i++)
 	{
-		strcpy(zone_table[i].name, "unused");
+		zone_table[i].name = "unused";
+		zone_table[i].id = i;
 		zone_table[i].bottom = NULL;
 		zone_table[i].top = NULL;
 		zone_table[i].min = NULL;
@@ -283,14 +284,14 @@ void init_memory(void)
 	** Create memory zones for the heap, det stack and nondet stack.
 	*/
 
-	detstack_zone = construct_zone("det stack", detstack_base,
+	detstack_zone = construct_zone("det stack", 1, detstack_base,
 			detstack_size, detstack_offset, detstack_zone_size,
 			default_handler);
-	nondetstack_zone = construct_zone("nondet stack", nondetstack_base,
+	nondetstack_zone = construct_zone("nondet stack", 1, nondetstack_base,
 			nondstack_size, nondstack_offset, nondstack_zone_size,
 			default_handler);
 #ifndef CONSERVATIVE_GC
-	heap_zone = construct_zone("heap", heap_base, heap_size, heap_offset,
+	heap_zone = construct_zone("heap", 1, heap_base, heap_size, heap_offset,
 			heap_zone_size, default_handler);
 #endif
 
@@ -302,7 +303,7 @@ void init_memory(void)
 #ifndef	SPEED
 	/* We allocate as many `char *'s as there are words in the detstack. */
 	/* In the worst-case, all detstack frames have only one word. */
-	dumpstack_zone = create_zone("dumpstack",
+	dumpstack_zone = create_zone("dumpstack", 1,
 		detstack_size * (sizeof(char *) / (sizeof(Word))), 0, 0,
 		null_handler);
 #endif
@@ -328,20 +329,20 @@ void init_memory(void)
 
 		for (zone = used_memory_zones; zone; zone = zone->next)
 		{
-			fprintf(stderr, "%-16s-base	= %p\n",
-				zone->name, (void *) zone->bottom);
-			fprintf(stderr, "%-16s-min		= %p\n",
-				zone->name, (void *) zone->min);
-			fprintf(stderr, "%-16s-top		= %p\n",
-				zone->name, (void *) zone->top);
+			fprintf(stderr, "%-16s#%d-base	= %p\n",
+				zone->name, zone->id, (void *) zone->bottom);
+			fprintf(stderr, "%-16s#%d-min		= %p\n",
+				zone->name, zone->id, (void *) zone->min);
+			fprintf(stderr, "%-16s#%d-top		= %p\n",
+				zone->name, zone->id, (void *) zone->top);
 #ifdef	HAVE_MPROTECT
-			fprintf(stderr, "%-16s-redzone		= %p\n",
-				zone->name, (void *) zone->redzone);
-			fprintf(stderr, "%-16s-hardmax		= %p\n",
-				zone->name, (void *) zone->hardmax);
+			fprintf(stderr, "%-16s#%d-redzone	= %p\n",
+				zone->name, zone->id, (void *) zone->redzone);
+			fprintf(stderr, "%-16s#%d-hardmax		= %p\n",
+				zone->name, zone->id, (void *) zone->hardmax);
 #endif
-			fprintf(stderr, "%-16s-size		= %ld\n",
-				zone->name,
+			fprintf(stderr, "%-16s#%d-size		= %ld\n",
+				zone->name, zone->id,
 				(char *)zone->hardmax - (char *)zone->min);
 			fprintf(stderr, "\n");
 		}
@@ -394,8 +395,8 @@ void unget_zone(MemoryZone *zone)
 	free_memory_zones = zone;
 }
 
-MemoryZone *create_zone(const char *name, unsigned size, unsigned offset,
-		unsigned redsize,
+MemoryZone *create_zone(const char *name, int id, unsigned size,
+		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
 {
 	Word		*base;
@@ -418,10 +419,10 @@ MemoryZone *create_zone(const char *name, unsigned size, unsigned offset,
 	if (base == NULL)
 		fatal_error("failed to allocate zone");
 
-	return construct_zone(name, base, size, offset, redsize, handler);
+	return construct_zone(name, id, base, size, offset, redsize, handler);
 }
 
-MemoryZone *construct_zone(const char *name, Word *base, unsigned size,
+MemoryZone *construct_zone(const char *name, int id, Word *base, unsigned size,
 		unsigned offset, unsigned redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
 {
@@ -433,8 +434,8 @@ MemoryZone *construct_zone(const char *name, Word *base, unsigned size,
 
 	zone = get_zone();
 
-	memset(zone->name, 0, MAX_ZONE_NAME+1);
-	strncpy(zone->name, name, MAX_ZONE_NAME);
+	zone->name = name;
+	zone->id = id;
 
 	zone->handler = handler;
 
@@ -461,9 +462,9 @@ MemoryZone *construct_zone(const char *name, Word *base, unsigned size,
 	if (mprotect(zone->redzone, redsize+unit, MY_PROT) < 0)
 	{
 		char buf[2560];
-		sprintf(buf, "unable to set %s redzone\n"
+		sprintf(buf, "unable to set %s#%d redzone\n"
 			"base=%p, redzone=%p",
-			zone->name, zone->bottom, zone->redzone);
+			zone->name, zone->id, zone->bottom, zone->redzone);
 		fatal_error(buf);
 	}
 	zone->hardmax = (Word *) ((char *)zone->top-unit);
@@ -568,8 +569,8 @@ static bool try_munprotect(void *addr, void *context)
 	{
 		if (memdebug)
 		{
-			fprintf(stderr, "checking %s: %p - %p\n",
-				zone->name, (void *) zone->redzone,
+			fprintf(stderr, "checking %s#%d: %p - %p\n",
+				zone->name, zone->id, (void *) zone->redzone,
 				(void *) zone->top);
 		}
 
@@ -577,8 +578,8 @@ static bool try_munprotect(void *addr, void *context)
 		{
 
 			if (memdebug)
-				fprintf(stderr, "address is in %s red zone\n",
-					zone->name);
+				fprintf(stderr, "address is in %s#%d redzone\n",
+					zone->name, zone->id);
 
 			return zone->handler(fault_addr, zone, context);
 		}
@@ -605,16 +606,16 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 	if (memdebug)
 	{
-	    fprintf(stderr, "trying to unprotect %s from %p to %p (%x)\n",
-	    zone->name, (void *) zone->redzone, (void *) new_zone,
+	    fprintf(stderr, "trying to unprotect %s#%d from %p to %p (%x)\n",
+	    zone->name, zone->id, (void *) zone->redzone, (void *) new_zone,
 	    (int)zone_size);
 	}
 	if (mprotect(zone->redzone, zone_size,
 	    PROT_READ|PROT_WRITE) < 0)
 	{
 	    char buf[2560];
-	    sprintf(buf, "Mercury runtime: cannot unprotect %s zone",
-		zone->name);
+	    sprintf(buf, "Mercury runtime: cannot unprotect %s#%d zone",
+		zone->name, zone->id);
 	    perror(buf);
 	    exit(1);
 	}
@@ -623,8 +624,8 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 	if (memdebug)
 	{
-	    fprintf(stderr, "successful: %s redzone now %p to %p\n",
-		zone->name, (void *) zone->redzone,
+	    fprintf(stderr, "successful: %s#%d redzone now %p to %p\n",
+		zone->name, zone->id, (void *) zone->redzone,
 		(void *) zone->top);
 	}
 	return TRUE;
@@ -633,8 +634,8 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     {
 	if (memdebug)
 	{
-	    fprintf(stderr, "can't unprotect last page of %s\n",
-		zone->name);
+	    fprintf(stderr, "can't unprotect last page of %s#%d\n",
+		zone->name, zone->id);
 	    fflush(stdout);
 	}
 
