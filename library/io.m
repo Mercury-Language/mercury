@@ -2123,8 +2123,12 @@ have_dotnet :- semidet_fail.
 :- pragma export(make_win32_err_msg(in, in, out, di, uo),
 		"ML_make_win32_err_msg").
 
-make_win32_err_msg(_, _, _, _, _) :-
-	error("io__make_win32_err_msg called for non Win32 back-end").
+make_win32_err_msg(_, _, "", !IO) :-
+	( semidet_succeed ->
+		error("io__make_win32_err_msg called for non Win32 back-end")
+	;
+		true
+	).
 
 :- pragma foreign_proc("C",
 	make_win32_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
@@ -3129,7 +3133,7 @@ io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 }").
 
 io__read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
-	io__read_into_array(Stream, Size, Array0, Array, !Pos, !IO).
+	io__read_into_array(Stream, Array0, Array, !Pos, Size, !IO).
 
 :- pred io__read_into_array(stream::in,
 	array(char)::array_di, array(char)::array_uo, int::in, int::out,
