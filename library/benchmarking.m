@@ -555,7 +555,7 @@ benchmark_det(Pred, In, Out, Repeats, Time) :-
 	impure get_user_cpu_miliseconds(StartTime),
 	impure benchmark_det_loop(Pred, In, Out, Repeats),
 	impure get_user_cpu_miliseconds(EndTime),
-	Time0 = StartTime - EndTime,
+	Time0 = EndTime - StartTime,
 	cc_multi_equal(Time0, Time).
 
 :- impure pred benchmark_det_loop(pred(T1, T2), T1, T2, int).
@@ -577,7 +577,7 @@ benchmark_nondet(Pred, In, Count, Repeats, Time) :-
 	impure get_user_cpu_miliseconds(StartTime),
 	impure benchmark_nondet_loop(Pred, In, Count, Repeats),
 	impure get_user_cpu_miliseconds(EndTime),
-	Time0 = StartTime - EndTime,
+	Time0 = EndTime - StartTime,
 	cc_multi_equal(Time0, Time).
 
 :- impure pred benchmark_nondet_loop(pred(T1, T2), T1, int, int).
