@@ -303,7 +303,11 @@
 
 	% list__zip(ListA, ListB, List):
 	%	List is the result of alternating the elements
-	%	of ListA and ListB.  When one of the lists goes to empty,
+	%	of ListA and ListB, starting with the first element
+	%	of ListA (followed by the first element of ListB,
+	%	then the second element of listA, then the second
+	%	element of ListB, etc.).  When there are no more
+	%	elements remaining in one of the lists,
 	% 	the remainder of the nonempty list is appended.
 	%
 :- pred list__zip(list(T), list(T), list(T)).
