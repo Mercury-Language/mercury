@@ -33,11 +33,12 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	SUPPRESS_LOG_FILE_RECURSION=yes
 	export SUPPRESS_LOG_FILE_RECURSION
 	trap 0 1 2 3 13 15
-	case $# in
-		0) exec ${CONFIG_SHELL-/bin/sh} "$0"      ;;
-		*) exec ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
-	esac | exec tee configure.log
-	exit
+	rm -f configure.exit_status
+	{ case $# in
+		0) ${CONFIG_SHELL-/bin/sh} "$0"      ;;
+		*) ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
+	esac; echo $? > configure.exit_status; } | exec tee configure.log
+	exit `cat configure.exit_status`
 fi
 #-----------------------------------------------------------------------------#
 remake_dependencies=false
@@ -56,7 +57,9 @@ else
 fi
 case "$PREFIX" in
     *\ *)
-	AC_MSG_ERROR(cannot install into a directory with a name containing spaces: \`$PREFIX.')
+	AC_MSG_ERROR(
+[cannot install into a directory with a name containing
+	spaces: \`$PREFIX.'])
 	exit 1
 	;;
 esac
@@ -185,9 +188,10 @@ case $enable_gcc_back_end in
 		if test -f "$gcc_src_dir"/gcc/tree.c; then
 			enable_gcc_back_end=yes
 		else
-			AC_MSG_ERROR(--enable-gcc-back-end=$gcc_src_dir specified,)
-			AC_MSG_ERROR(but GCC source code not found in $gcc_src_dir)
-			exit 1
+			AC_MSG_RESULT($gcc_src_dir)
+			AC_MSG_ERROR(
+[--enable-gcc-back-end=$gcc_src_dir specified,
+	but GCC source code not found in $gcc_src_dir])
 		fi		
 		;;
 esac
@@ -198,9 +202,10 @@ case $enable_gcc_back_end in
 		if test "$gcc_src_dir" = not_found; then
 			case $enable_gcc_back_end in
 				yes)
-					AC_MSG_ERROR(--enable-gcc-back-end specified,)
-					AC_MSG_ERROR(but gcc source code not found)
-					exit 1
+					AC_MSG_RESULT(yes)
+					AC_MSG_ERROR(
+[--enable-gcc-back-end specified, but gcc source
+	code not found])
 					;;
 				default)
 					enable_gcc_back_end=no
@@ -216,8 +221,10 @@ esac
 case $enable_gcc_back_end in
 	yes)
 		if test "$BOOTSTRAP_MC" = ""; then
-			AC_MSG_ERROR(--enable-gcc-back-end requires an already installed Mercury compiler.)
-			enable_gcc_back_end=no
+			AC_MSG_RESULT(yes)
+			AC_MSG_ERROR(
+[--enable-gcc-back-end requires an already
+	installed Mercury compiler])
 		else
 			# This will regenerate compiler/maybe_mlds_to_gcc.m.
 			remake_dependencies=true
@@ -242,16 +249,19 @@ AC_MSG_CHECKING(whether to enable the Aditi back-end)
 case $enable_aditi_back_end in
 	no)
 		if test "$BOOTSTRAP_MC" = ""; then
-			AC_MSG_WARN(--disable-aditi-back-end requires an already installed Mercury compiler.)
 			enable_aditi_back_end=yes
+			AC_MSG_RESULT(yes)
+			AC_MSG_WARN(
+[--disable-aditi-back-end requires an already
+	installed Mercury compiler])
 		else
 			# This will regenerate compiler/rl_out.m and
 			# compiler/rl_file.m.
+			AC_MSG_RESULT($enable_aditi_back_end)
 			remake_dependencies=true
 		fi
 		;;
 esac
-AC_MSG_RESULT($enable_aditi_back_end)
 ENABLE_ADITI_BACK_END=$enable_aditi_back_end
 AC_SUBST(ENABLE_ADITI_BACK_END)
 #-----------------------------------------------------------------------------#
@@ -328,7 +338,7 @@ if test "$MKTEMP" != ""; then
 	esac
 fi
 if test "$MKTEMP" = ""; then
-	AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit'')
+	AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit')
 	MKTEMP=""
 fi
 AC_SUBST(MKTEMP)
@@ -436,7 +446,7 @@ if test "$ac_microsoft" = "yes" ; then
 	USING_MICROSOFT_CL_COMPILER="yes"
 
 	case "$CYGPATH" in "echo")
-		AC_MSG_WARN("cygpath required with Microsoft Visual C++") ;;
+		AC_MSG_WARN(cygpath required with Microsoft Visual C++) ;;
 	esac
 	FIX_PATH_FOR_CC="$CYGPATH"
 
@@ -990,7 +1000,7 @@ elif test "$mercury_cv_word_type" = long; then
 elif test "$mercury_cv_word_type" = "long long"; then
 	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "ll")
 else
-	AC_MSG_ERROR("Cannot determine the length modifier for the MR_Integer type.")
+	AC_MSG_ERROR(Cannot determine the length modifier for the MR_Integer type.)
 fi
 AC_SUBST(MR_INTEGER_LENGTH_MODIFIER)
 
@@ -1103,7 +1113,9 @@ elif test "$mercury_cv_int_least32_type" = long; then
 	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_MAX, LONG_MAX)
 	AC_DEFINE_UNQUOTED(MR_UINT_LEAST32_MAX, ULONG_MAX)
 else
-	AC_MSG_ERROR("Cannot find the name of the max values for MR_INT_LEAST32_TYPE.")
+	AC_MSG_ERROR(
+[Cannot find the name of the max values
+	for MR_INT_LEAST32_TYPE.])
 fi
 AC_SUBST(MR_INT_LEAST32_MAX)
 AC_SUBST(MR_UINT_LEAST32_MAX)
@@ -1153,7 +1165,7 @@ elif test "$mercury_cv_int_least16_type" = int; then
 	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_MAX, INT_MAX)
 	AC_DEFINE_UNQUOTED(MR_UINT_LEAST16_MAX, UINT_MAX)
 else
-	AC_MSG_ERROR("Cannot find the name of the max value for MR_INT_LEAST16_TYPE.")
+	AC_MSG_ERROR(Cannot find the name of the max value for MR_INT_LEAST16_TYPE.)
 fi
 AC_SUBST(MR_INT_LEAST16_MAX)
 AC_SUBST(MR_UINT_LEAST16_MAX)
@@ -1196,13 +1208,13 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
 if test "$mercury_cv_low_tag_bits" -lt 2; then
 	if test "$BOOTSTRAP_MC" = ""; then
-		AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
+		AC_MSG_ERROR(cannot bootstrap: low tag bits less than 2)
 		exit 1
 	fi
 fi
 if test "$mercury_cv_low_tag_bits" -gt 2; then
 	if test "$BOOTSTRAP_MC" = ""; then
-		AC_MSG_WARN("bootstrapping using only 2 low tag bits")
+		AC_MSG_WARN(bootstrapping using only 2 low tag bits)
 		mercury_cv_low_tag_bits=2
 	fi
 fi
@@ -1306,13 +1318,12 @@ AC_CACHE_VAL(mercury_cv_unboxed_floats,
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
 if test "$mercury_cv_unboxed_floats" = yes; then
 	if test "$BOOTSTRAP_MC" = ""; then
-		AC_MSG_WARN(Mercury compiler not yet installed -" \
-				"cannot use unboxed floats)
-		AC_MSG_WARN(bootstrapping using boxed floats)
-		AC_MSG_WARN(*** after installation is complete you" \
-				"may want to reinstall from scratch)
-		AC_MSG_WARN(*** so you can use unboxed floats," \
-				"which are more efficient.)
+		AC_MSG_WARN(
+[Mercury compiler not yet installed -
+****	cannot use unboxed floats, bootstrapping using boxed floats
+****	after installation is complete you may want to reinstall
+****	from scratch so you can use unboxed floats, which are more
+****	efficient.])
 		mercury_cv_unboxed_floats=no
 	fi
 fi
@@ -1577,8 +1588,8 @@ case $ac_cv_prog_gcc in yes)
 	# ought to write a big enough example program to trigger
 	# the problem, but that would be too much work.
 	alpha*-dec-*)
-		MERCURY_MSG("asm labels work on the Alpha")
-		MERCURY_MSG("but plain gcc labels do not")
+		MERCURY_MSG(
+"asm labels work on the Alpha but plain gcc labels do not")
 		mercury_cv_asm_labels=yes
 		mercury_cv_gcc_labels=no
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
@@ -1591,9 +1602,9 @@ case $ac_cv_prog_gcc in yes)
 		;;
 	sparc*)
 		case "`$CC --version < /dev/null`" in 2.8*)
-			AC_MSG_WARN(*** Mercury might not work with " \
-				"gcc 2.8 on sparc!)
-			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
+			AC_MSG_WARN(
+[Mercury might not work with gcc 2.8 on sparc!
+****	We advise using gcc 2.95.x.])
 			;;
 		esac
 		;;
@@ -1868,9 +1879,10 @@ case $enable_deep_profiler in
 		fi
 
 		if test $mercury_cv_can_enable_deep_profiler = no; then
-			echo
-			AC_MSG_ERROR(--enable-deep-profiler specified but system does not support it)
-			exit 1
+			AC_MSG_RESULT($enable_deep_profiler)
+			AC_MSG_ERROR(
+[--enable-deep-profiler specified but system
+	does not support it])
 		fi
 
 		mercury_cv_enable_deep_profiler=yes
@@ -1881,9 +1893,8 @@ if test $mercury_cv_enable_deep_profiler = yes; then
 	if test -d $mercury_cv_cgi_dir; then
 		true
 	else
-		echo
+		AC_MSG_RESULT($enable_deep_profiler)
 		AC_MSG_ERROR(CGI script directory $mercury_cv_cgi_dir does not exist)
-		exit 1
 	fi		
 fi
 
@@ -2072,18 +2083,20 @@ esac
 if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 	if test "$BOOTSTRAP_MC" = ""; then
 		GRADE="$BOOTSTRAP_GRADE"
-		AC_MSG_WARN(Mercury compiler not yet installed -" \
-				"cannot use grade \`$BEST_GRADE_FOR_COMPILER')
-		AC_MSG_WARN(using grade \`$GRADE' to compile the compiler)
-		AC_MSG_WARN(*** after installation is complete you" \
-				"should reinstall from scratch)
-		AC_MSG_WARN(*** so you can use the more efficient" \
-				"grade \`$BEST_GRADE_FOR_COMPILER')
+		AC_MSG_WARN(
+[Mercury compiler not yet installed
+****	cannot use grade \`$BEST_GRADE_FOR_COMPILER'
+****	using grade \`$GRADE' to compile the compiler
+****	after installation is complete you should reinstall
+****	from scratch so you can use the more efficient
+****	grade \`$BEST_GRADE_FOR_COMPILER'.])
+
 	else
 		GRADE=$BEST_GRADE_FOR_COMPILER
-		MERCURY_MSG("using grade \`$GRADE' to compile the compiler")
-		MERCURY_MSG("compiler and library will be rebuilt with new grade")
-		MERCURY_MSG("installation may take a long time")
+		MERCURY_MSG(
+"using grade \`$GRADE' to compile the compiler
+	compiler and library will be rebuilt with new grade
+	installation may take a long time")
 		find library compiler browser profiler deep_profiler \
 			-name \*.c -o -name \*.c_date | xargs rm
 	fi
@@ -2303,13 +2316,15 @@ fi
 
 if test "$enable_libgrades_given" = yes; then
 	if test "$enable_libgrades" = no; then
-		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
-		MERCURY_MSG("aborting configure")
-		exit 1
+		AC_MSG_ERROR(
+[--enable-libgrades requires a comma-separated
+	list of grades as argument])
+
 	elif test "$enable_libgrades" = yes; then
-		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
-		MERCURY_MSG("aborting configure")
-		exit 1
+		AC_MSG_ERROR(
+[--enable-libgrades requires a comma-separated
+	list of grades as argument])
+
 	else
 		# Generate only the grades specified by the user.
 		raw_grades=`echo $enable_libgrades | sed 's/,/ /g'`
@@ -2333,9 +2348,8 @@ if test "$enable_libgrades_given" = yes; then
 
 		if $grade_error
 		then
-			comma=","
-			MERCURY_MSG("invalid grade(s) specified for --enable-libgrades$comma aborting configure")
-			exit 1
+			AC_MSG_ERROR(
+[invalid grade(s) specified for --enable-libgrades])
 		fi
 
 		LIBGRADES=$canonical_grades
@@ -3047,8 +3061,7 @@ if test "$mercury_cv_enable_extern_debug" = "yes"; then
 		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
 	else
 		AC_MSG_RESULT(no)
-		AC_MSG_ERROR(Cannot enable external debugger)
-		AC_MSG_ERROR(because sockets do not work)
+		AC_MSG_ERROR(Cannot enable external debugger because sockets do not work)
 	fi		
 else
 	AC_MSG_RESULT(no)
@@ -3151,14 +3164,16 @@ if test "$BOOTSTRAP_MC" != "" ; then
     else
         case $some_kept in
           true)
-            MERCURY_MSG("the following C files must be rebuilt in a grade")
-            MERCURY_MSG("that is consistent with autoconfigured settings")
-            MERCURY_MSG("$to_delete")
+            MERCURY_MSG(
+"the following C files must be rebuilt in a grade
+	that is consistent with autoconfigured settings
+	$to_delete")
             ;;
           false)
-            MERCURY_MSG("all Mercury generated C files must be rebuilt")
-            MERCURY_MSG("in a grade that is consistent with the")
-            MERCURY_MSG("autoconfigured settings")
+            MERCURY_MSG(
+"all Mercury generated C files must be rebuilt
+	in a grade that is consistent with the
+	autoconfigured settings")
             ;;
         esac
         MERCURY_MSG("installation may take longer than usual")
@@ -3193,14 +3208,11 @@ rm -f trace/libmer_trace.so browser/libmer_browse.so
 )
 
 case $remake_dependencies in true)
-	MERCURY_MSG("regenerating dependencies to enable GCC backend")
-	MERCURY_MSG("and/or disable Aditi backend.")
+	MERCURY_MSG(
+"regenerating dependencies to enable GCC backend
+	and/or disable Aditi backend.")
 
-	mmake depend
-	status=$?
-	if test $status != 0; then
-		exit $status
-	fi
+	MMAKE_DIR=`pwd`/scripts scripts/mmake depend || exit 1
 	;;
 esac
 #-----------------------------------------------------------------------------#
