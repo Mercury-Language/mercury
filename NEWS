@@ -1,10 +1,5 @@
-NEWS since Mercury release 0.10.1
----------------------------------
-Note that Mercury 0.10.1 has not actually been officially announced;
-this section documents changes in the development version of
-Mercury since we established a feature freeze for Mercury 0.10
-and split development of that version off onto a separate branch
-of our CVS repository (the `version-0_10_y' branch).
+NEWS since Mercury release 0.10.1:
+----------------------------------
 
 Changes to the Mercury language:
 * We've extended the language to allow you to specify different clauses
