@@ -1898,8 +1898,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			)
 		; LibModuleName0 = "std_util",
 			( 
-			  Name = "univ", Arity = 0
-			; Name = "type_desc", Arity = 0
+			  Name = "type_desc", Arity = 0
 			)
 		; LibModuleName0 = "private_builtin",
 			( 
