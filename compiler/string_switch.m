@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% string_switch.nl
+% string_switch.m
 
 % For switches on strings, we generate a hash table using open addressing
 % to resolve hash conflicts.

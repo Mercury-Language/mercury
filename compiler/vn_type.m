@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Vn_type.nl - types for value numbering.
+% vn_type.m - types for value numbering.
 
 % Author: zs.
 

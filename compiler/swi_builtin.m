@@ -1,11 +1,13 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 %
 % Main author: fjh.
 %
-% This file should be loaded into np before any of the others.
-% (This is done automatically if you just load 'doit.nl'.)
-% We should perhaps use ensure_loaded to achieve this, but that
-% declaration is broken in NU-Prolog.
+% Note that SWI-Prolog support is not complete.
+% SWI-Prolog is so slow anyway, why bother?
 %
 %-----------------------------------------------------------------------------%
 

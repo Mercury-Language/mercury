@@ -1,12 +1,25 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 :- module undef_modes.
+
+% Detects undefined `inst's and `mode's and reports appropriate error
+% messages.
+
+% Main author: fjh.
+
+%-----------------------------------------------------------------------------%
+
 :- interface.
 :- import_module hlds, io.
 
 :- pred check_undefined_modes(module_info, module_info, io__state, io__state).
 :- mode check_undefined_modes(in, out, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module prog_io, prog_out, hlds_out, list, map, std_util, require.

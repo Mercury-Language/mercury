@@ -1,11 +1,15 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% File: make_hlds.nl.
+% File: make_hlds.m.
 % Main author: fjh.
 
 % This module converts from the parse tree structure which is read in by
-% prog_io.nl, into the simplified high level data structure defined in
-% hlds.nl.  In the parse tree, the program is represented as a list of
+% prog_io.m, into the simplified high level data structure defined in
+% hlds.m.  In the parse tree, the program is represented as a list of
 % items; we insert each item into the appropriate symbol table, and report
 % any duplicate definition errors.  We also transform clause bodies from
 % (A,B,C) into conj([A,B,C]) form, convert all unifications into

@@ -1,4 +1,7 @@
 %---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % This module handles code generation for "simple" unifications,
@@ -6,8 +9,8 @@
 % inline code.
 %
 % For "complicated" unifications, we generate a call to an out-of-line
-% unification predicate (the call is handled in call_gen.nl) - and then
-% eventually generate the out-of-line code (unify_proc.nl).
+% unification predicate (the call is handled in call_gen.m) - and then
+% eventually generate the out-of-line code (unify_proc.m).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

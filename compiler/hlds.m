@@ -1,4 +1,7 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % HLDS - The High-Level Data Structure.
@@ -16,7 +19,7 @@
 % Although most of the data structures are private, it is a quite thin
 % layer of abstraction.
 %
-% WARNING: changes here will probably require changes in make_hlds.nl
+% WARNING: changes here will probably require changes in make_hlds.m
 % and elsewhere.
 
 :- module hlds.
@@ -363,7 +366,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% are filled in.  Type analysis fills in the
 				% pred_id.  Mode analysis fills in the
 				% proc_id and the is_builtin field.
-				% `follow_vars.nl' fills in
+				% `follow_vars.m' fills in
 				% the follow_vars field.
 			;	call(pred_id, proc_id, list(term), is_builtin,
 					sym_name, follow_vars)
@@ -482,7 +485,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% This is how type, modes and constructors are represented.
 	% The parts that are not defined here (i.e. type_param, constructor,
 	% type, inst, mode, condition) are represented in the same way as
-	% in prog_io.nl, and are defined there.
+	% in prog_io.m, and are defined there.
 
 :- type hlds__type_defn	--->	hlds__type_defn(
 						% names of type vars (empty 
@@ -1494,8 +1497,8 @@ determinism_to_category(erroneous, deterministic).
 determinism_to_category(failure, semideterministic).
 	% If the source code doesn't specify any determinism annotation,
 	% inferred determinism gets initialized to `deterministic'.
-	% This is what `det_analysis.nl' wants.  If it turns out
-	% that the procedure wasn't deterministic, then det_analysis.nl
+	% This is what `det_analysis.m' wants.  If it turns out
+	% that the procedure wasn't deterministic, then det_analysis.m
 	% provide the correct inferred determinism for it.
 determinism_to_category(unspecified, deterministic).
 

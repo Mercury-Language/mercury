@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Vn_flush.nl - flush the nodes of the vn graph in order.
+% vn_flush.m - flush the nodes of the vn graph in order.
 
 % Author: zs.
 

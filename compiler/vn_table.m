@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Vn_table.nl - predicates for managing vn tables.
+% vn_table.m - predicates for managing vn tables.
 
 % author: zs.
 

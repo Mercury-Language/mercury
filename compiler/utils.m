@@ -1,7 +1,10 @@
 %----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
 
-% utils.nl - some utility functions that use higher order predicates.
+% utils.m - some utility functions that use higher order predicates.
 
 % NB We need to do quite a bit of work on polymorphic modes
 % and higher-order preds before this code will work.

@@ -1,14 +1,24 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: mode_info.m.
+% Main author: fjh.
+
+% This file defines the mode_info data structure, which is used to hold
+% the information we need during mode analysis.
+
+%-----------------------------------------------------------------------------%
 :- module mode_info.
 :- interface.
 :- import_module hlds, map, list, varset, set.
 
 :- interface.
 
-:- type delay_info.		% defined in delay_info.nl
-:- type mode_error_info.	% defined in mode_errors.nl
+:- type delay_info.		% defined in delay_info.m
+:- type mode_error_info.	% defined in mode_errors.m
 
 	% The mode_info data structure and access predicates.
 

@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Vn_build.nl - Divide a procedure into extended basic blocks, building up
+% vn_build.m - Divide a procedure into extended basic blocks, building up
 %	a description of each basic block and handing them over to be flushed.
 
 % Author: zs.

@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Atsort.nl - approximate topological sort. The sort is approximate because
+% Atsort.m - approximate topological sort. The sort is approximate because
 % it must work even on data that has cycles.
 
 % Author: zs.

@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: arg_info.nl
+% file: arg_info.m
 % main author: fjh
 
 % This module is one of the pre-passes of the code generator.

@@ -1,4 +1,7 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 :- module store_alloc.
@@ -149,7 +152,7 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 						Then, Liveness, Follow),
 		% We ignore the resulting liveness and follow-vars
 		% from the else branch because this is the behaviour
-		% used in follow_vars.nl
+		% used in follow_vars.m
 	store_alloc_in_goal(Else0, Liveness1, Follow1, ModuleInfo,
 						Else, _Liveness2, _Follow2).
 

@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: make_tags.nl.
+% file: make_tags.m.
 % main author: fjh.
 
 	% This module is where we determine the representation for

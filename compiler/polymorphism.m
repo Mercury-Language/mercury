@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% file: polymorphism.nl
+% file: polymorphism.m
 % main author: fjh
 
 % This module is a pass over the HLDS.
@@ -145,7 +148,7 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 				ExtraArgTypes),
 			list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
 		;
-			error("polymorphism.nl: list__split_list failed")
+			error("polymorphism.m: list__split_list failed")
 		),
 
 		pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes,
@@ -278,7 +281,7 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 				"unify", 2, [CallPredId]) ->
 				PredId = CallPredId
 			;
-				error("polymorphism.nl: can't find `unify/2'")
+				error("polymorphism.m: can't find `unify/2'")
 			},
 			{ ProcId = 0 },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoVar) },

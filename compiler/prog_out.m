@@ -1,4 +1,7 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 :- module prog_out.
@@ -106,9 +109,9 @@ prog_out__write_module_spec(ModuleSpec) -->
 %-----------------------------------------------------------------------------%
 
 % THE REMAINDER OF THIS FILE IS JUNK THAT IS NOT USED.
-% It has been made obsolete by mercury_to_mercury.nl.
+% It has been made obsolete by mercury_to_mercury.m.
 % However, the code below handles operator precedence better
-% than mercury_to_mercury.nl.
+% than mercury_to_mercury.m.
 
 /**************************
 

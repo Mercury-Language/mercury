@@ -1,14 +1,23 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-	% Define the stuff necessary so that getopt.nl
-	% can parse the command-line options.
-	% When we implement higher-order preds, this and 
-	% getopt.nl should be rewritten to use them.
-	% Currently the interface dependencies are very hairy.
+% File: options.m.
+% Main author: fjh.
 
-	% IMPORTANT NOTE: any changes to the options should be
-	% reflected in both the help message produced below,
-	% and in the Mercury User's Guide (../doc/user_guide.texi).
+% This defines the stuff necessary so that getopt.m
+% can parse the command-line options.
+% When we implement higher-order preds, this and 
+% getopt.m should be rewritten to use them.
+% Currently the interface dependencies are very hairy.
+
+% IMPORTANT NOTE: any changes to the options should be
+% reflected in both the help message produced below,
+% and in the Mercury User's Guide (../doc/user_guide.texi).
+
+%-----------------------------------------------------------------------------%
 
 :- module options.
 :- interface.

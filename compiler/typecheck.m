@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 %
-% File: typecheck.nl.
+% File: typecheck.m.
 % Main author: fjh.
 %
 % This file contains a type-checker.
@@ -72,7 +76,7 @@
 %	:- type real == float.
 %
 %    Currently references to equivalence types are expanded
-%    in a separate pass by mercury_compile.nl.  It would be better
+%    in a separate pass by mercury_compile.m.  It would be better
 %    to avoid expanding them (and instead modify the type unification
 %    algorithm to handle equivalent types) because this would
 %    give better error messages.  However, this is not a high
@@ -525,7 +529,7 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		% repair the module name in the PredId
-		% (make_hlds.nl doesn't set it up correctly)
+		% (make_hlds.m doesn't set it up correctly)
 	list__length(Args, Arity),
 	unqualify_name(PredName, Name),
 

@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% unify_proc.nl: 
+%
+% unify_proc.m: 
 %
 %	This module encapsulates access to the unify_requests table,
 %	and constructs the clauses for out-of-line complicated
@@ -20,7 +23,7 @@
 %
 % Each time we come to generate code for a complicated unification, the
 % compiler just generates a call to the out-of-line unification procedure
-% (this is done in call_gen.nl).
+% (this is done in call_gen.m).
 %
 % Currently if the same complicated unification procedure is called by
 % different modules, each module will end up with a copy of the code for
@@ -148,7 +151,7 @@ unify_proc__lookup_num(Requests, TypeId, UniMode, Num) :-
 	( map__search(ReqMap, TypeId - UniMode, Num0) ->
 		Num = Num0
 	;
-		error("unify_proc.nl: sorry, complicated unifications with partially instantiated modes not implemented")
+		error("unify_proc.m: sorry, complicated unifications with partially instantiated modes not implemented")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -173,7 +176,7 @@ unify_proc__request_unify(UnifyId, Requests0, Requests) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX these belong in modes.nl
+	% XXX these belong in modes.m
 
 modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 	{ module_info_get_unify_requests(ModuleInfo0, Requests0) },

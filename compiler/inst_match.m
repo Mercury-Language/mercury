@@ -1,10 +1,14 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 %
-% file: inst_match.nl
+% file: inst_match.m
 % author: fjh
 %
 % This module defines some utility routines for comparing insts
-% that are used by modes.nl and det_analysis.nl.
+% that are used by modes.m and det_analysis.m.
 %
 %-----------------------------------------------------------------------------%
 

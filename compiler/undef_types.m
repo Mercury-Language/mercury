@@ -1,15 +1,25 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Check for any possible undefined types.
-	% Should we add a definition for undefined types?
-
 :- module undef_types.
+% Main author: fjh.
+
+% Check for any possible undefined types.
+% (XXX Should we add a definition for undefined types?)
+
+%-----------------------------------------------------------------------------%
+
 :- interface.
 :- import_module hlds, io.
 
 :- pred check_undefined_types(module_info, module_info, io__state, io__state).
 :- mode check_undefined_types(in, out, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module std_util, map, list, term, varset.

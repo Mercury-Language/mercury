@@ -1,9 +1,14 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% mode_util.nl - utility predicates dealing with modes and insts.
+% mode_util.m - utility predicates dealing with modes and insts.
 
 % Main author: fjh.
+
+%-----------------------------------------------------------------------------%
 
 :- module mode_util.
 :- interface.

@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Vn_debug.nl - debugging messages for vn_order and vn_flush.
+% vn_debug.m - debugging messages for vn_order and vn_flush.
 
 % Author: zs.
 

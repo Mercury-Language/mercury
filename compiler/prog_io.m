@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: prog_io.nl.
+% File: prog_io.m.
 % Main author: fjh.
 %
 % This module defines a data structure for representing Mercury
@@ -25,7 +28,7 @@
 % The results of this phase specify
 % basically the same information as is contained in the source code,
 % but in a parse tree rather than a flat file.
-% Simplifications are done only by make_hlds.nl, which transforms
+% Simplifications are done only by make_hlds.m, which transforms
 % the parse tree which we built here into the HLDS.
 %
 % Some of this code is a rather bad example of cut-and-paste style reuse.
@@ -348,7 +351,7 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 		},
 		io__seen
 	;
-		io__progname("prog_io.nl", Progname),
+		io__progname("prog_io.m", Progname),
 		{
 		  string__append(Progname, ": can't open file `", Message1),
 		  string__append(Message1, FileName, Message2),

@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% tag_switch.nl - generate switches based on primary and secondary tags.
+% tag_switch.m - generate switches based on primary and secondary tags.
 
 % Author: zs.
 

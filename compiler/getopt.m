@@ -1,4 +1,8 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
 :- module getopt.
 :- interface.
@@ -18,7 +22,7 @@
 	%	of recognizing options anywhere in the command-line, not
 	%	just at the start.
 	% 	Options are recognized using the short_option/3 and
-	%	long_option/3 predicate provided in options.nl.
+	%	long_option/3 predicate provided in options.m.
 	%
 	%	TODO:
 	%		check POSIX conformance.

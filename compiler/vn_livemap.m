@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% vn_livemap.nl - module to build up a map that gives the set of live lvals
+% vn_livemap.m - module to build up a map that gives the set of live lvals
 % at each label.
 
 % Author: zs.

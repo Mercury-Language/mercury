@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: type_util.nl.
+% File: type_util.m.
 % Main author: fjh.
 
 % This file provides some utility predicates which operate on types.
@@ -151,7 +154,7 @@ type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
 	% Given a constant and an arity, return a type_id.
 	% This really ought to take a name and an arity -
 	% use of integers/floats/strings as type names should
-	% be rejected by the parser in prog_io.nl, not in undef_types.nl.
+	% be rejected by the parser in prog_io.m, not in undef_types.m.
 
 make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 

@@ -1,6 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
-% Vn_temploc.nl - An abstract data type for temporary locations.
+% vn_temploc.m - An abstract data type for temporary locations.
 
 % Main author: zs.
 

@@ -1,6 +1,13 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 
 % LLDS - The Low-Level Data Structure.
+
+% This module defines both the LLDS data structure itself, and also
+% the routines for printing it out.
 
 % Main authors: conway, fjh.
 
@@ -286,7 +293,7 @@ output_c_file(c_file(Name, Modules)) -->
 		output_c_module_list(Modules),
 		io__told
 	;
-		io__progname("llds.nl", ProgName),
+		io__progname("llds.m", ProgName),
 		io__write_string("\n"),
 		io__write_string(ProgName),
 		io__write_string(": can't open `"),

@@ -1,11 +1,15 @@
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: switch_gen.nl
+% File: switch_gen.m
 % Authors: conway, fjh
 %
 % This module handles the generation of code for switches, which are
 % disjunctions that do not require backtracking.  Switches are detected
-% in switch_detection.nl.  This is the module that determines what
+% in switch_detection.m.  This is the module that determines what
 % sort of indexing to use for each switch and then actually generates the
 % code.
 %

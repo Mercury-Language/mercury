@@ -1,7 +1,10 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% det_analysis.nl - the determinism analysis pass.
+% det_analysis.m - the determinism analysis pass.
 
 % Main authors: conway, fjh.
 
@@ -394,7 +397,7 @@ det_infer_goal_2(disj(Goals0), InstMap0, MiscInfo, _, _, disj(Goals), Det) :-
 	% the category of a switch is the worst of the category of each of
 	% the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
-	% in switch_detection.nl and handled via the LocalDet field.
+	% in switch_detection.m and handled via the LocalDet field.
 
 det_infer_goal_2(switch(Var, LocalDet, Cases0), InstMap0, MiscInfo, _, _,
 		switch(Var, LocalDet, Cases), D) :-
@@ -538,10 +541,10 @@ det_infer_unify(construct(_, _, _, _), _MiscInfo, deterministic).
 	% only has one constructor, or if the variable is known to be
 	% already bound to the appropriate functor.
 	% 
-	% This is handled (modulo bugs) by modes.nl, which sets
+	% This is handled (modulo bugs) by modes.m, which sets
 	% the determinism field in the deconstruct(...) to semidet for
 	% those deconstruction unifications which might fail.
-	% But switch_detection.nl may set it back to det again, if it moves
+	% But switch_detection.m may set it back to det again, if it moves
 	% the functor test into a switch instead.
 
 det_infer_unify(deconstruct(_, _, _, _, Det), _MiscInfo, Det).

@@ -1,7 +1,10 @@
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
 %
-% file: graph_colour.nl
+% file: graph_colour.m
 % main author: conway.
 %
 % This file contains functionality to find a 'good' colouring of a graph.
@@ -11,8 +14,8 @@
 % colour, ensuring that touching elements have different colours.
 % ("Good" means using as few colours as possible.)
 %
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module graph_colour.
 

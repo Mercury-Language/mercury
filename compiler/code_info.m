@@ -1,7 +1,10 @@
 %---------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file: code_info.nl
+% file: code_info.m
 %
 % main author: conway.
 %
@@ -680,7 +683,7 @@ code_info__setup_call([V - arg_info(Loc,Mode)|Rest], Direction, Code) -->
 		{ code_exprn__place_var(V, reg(Reg), Code0, Exprn0, Exprn1) },
 			% We need to test that either the variable
 			% is live OR it occurs in the remaining arguments
-			% because of a bug in polymorphism.nl which
+			% because of a bug in polymorphism.m which
 			% causes some compiler generated code to violate
 			% superhomogeneous form
 		(

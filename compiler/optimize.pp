@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 
-% optimize.nl - LLDS to LLDS optimizations.
+% optimize.m - LLDS to LLDS optimizations.
 
 % Main author: zs.
 

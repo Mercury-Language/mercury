@@ -1,26 +1,29 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% hlds_out.nl
+% hlds_out.m
 
 % Main authors: conway, fjh.
 
 % There is quite a bit of overlap between the following modules:
 %
-%	hlds_out.nl
-%	mercury_to_mercury.nl
-%	term_io.nl
+%	hlds_out.m
+%	mercury_to_mercury.m
+%	term_io.m
 %
-% mercury_to_mercury.nl prints the parse tree data structure defined
-% in prog_io.nl.  hlds_out.nl does a similar task, but for the data
-% structure defined in hlds.nl.  term_io.nl prints terms.
+% mercury_to_mercury.m prints the parse tree data structure defined
+% in prog_io.m.  hlds_out.m does a similar task, but for the data
+% structure defined in hlds.m.  term_io.m prints terms.
 
 % There are two different ways of printing variables.
 % One way uses the names Var', Var'', etc. which are generated
 % by the compiler.  The other way converts all names back into
 % a format allowed as source code.  Currently this module calls
-% mercury_to_mercury.nl, which uses the second method, rather
-% than term_io.nl, which uses the first method.  We should 
+% mercury_to_mercury.m, which uses the second method, rather
+% than term_io.m, which uses the first method.  We should 
 % think about using an option to specify which method is used.
 
 %-----------------------------------------------------------------------------%

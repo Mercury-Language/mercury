@@ -421,7 +421,7 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".err : "),
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".nl"),
+		io__write_string(DepStream, ".m"),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
 		io__write_string(DepStream, "\n"),
@@ -429,7 +429,7 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".mod : "),
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".nl"),
+		io__write_string(DepStream, ".m"),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
 		io__write_string(DepStream, "\n"),
@@ -489,7 +489,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".srcs = "),
-	write_dependencies_list(Modules, ".nl", DepStream),
+	write_dependencies_list(Modules, ".m", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
