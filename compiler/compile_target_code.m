@@ -282,6 +282,7 @@ split_c_to_obj(ErrorStream, ModuleName,
 	( { Chunk > NumChunks } ->
 		{ Succeeded = yes }
 	;
+		% XXX should this use maybe_pic_object_file_extension?
 		globals__io_lookup_string_option(object_file_extension, Obj),
 		module_name_to_split_c_file_name(ModuleName, Chunk,
 			".c", C_File),
@@ -305,14 +306,7 @@ split_c_to_obj(ErrorStream, ModuleName,
 
 compile_c_file(ErrorStream, PIC, ModuleName, Succeeded) -->
 	module_name_to_file_name(ModuleName, ".c", yes, C_File),
-	(
-		{ PIC = pic },
-		globals__io_lookup_string_option(pic_object_file_extension,
-			ObjExt)
-	;
-		{ PIC = non_pic },
-		globals__io_lookup_string_option(object_file_extension, ObjExt)
-	),
+	maybe_pic_object_file_extension(PIC, ObjExt),
 	module_name_to_file_name(ModuleName, ObjExt, yes, O_File),
 	compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded).
 
@@ -593,6 +587,13 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
 
+:- pred maybe_pic_object_file_extension(pic::in, string::out,
+		io__state::di, io__state::uo) is det.
+maybe_pic_object_file_extension(pic, ObjExt) -->
+	globals__io_lookup_string_option(pic_object_file_extension, ObjExt).
+maybe_pic_object_file_extension(non_pic, ObjExt) -->
+	globals__io_lookup_string_option(object_file_extension, ObjExt).
+
 %-----------------------------------------------------------------------------%
 
 compile_java_file(ErrorStream, ModuleName, Succeeded) -->
@@ -633,19 +634,24 @@ compile_java_file(ErrorStream, ModuleName, Succeeded) -->
 %-----------------------------------------------------------------------------%
 
 assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
-	globals__io_lookup_bool_option(pic, Pic),
-	{ ( Pic = yes ; PIC = pic ) ->
+	% XXX What is the difference between the PIC argument
+	%     and the setting of the `--pic' option here?
+	%     When can they be different?
+	globals__io_lookup_bool_option(pic, PicOption),
+	{ ( PicOption = yes ; PIC = pic ) ->
+		ReallyPic = pic,
 		AsmExt = ".pic_s",
 		GCCFLAGS_FOR_ASM = "-x assembler ",
 		GCCFLAGS_FOR_PIC = "-fpic "
 	;
+		ReallyPic = non_pic,
 		AsmExt = ".s",
 		GCCFLAGS_FOR_ASM = "",
 		GCCFLAGS_FOR_PIC = ""
 	},
 	module_name_to_file_name(ModuleName, AsmExt, no, AsmFile),
-	globals__io_lookup_string_option(object_file_extension, Obj),
-	module_name_to_file_name(ModuleName, Obj, yes, ObjFile),
+	maybe_pic_object_file_extension(ReallyPic, ObjExt),
+	module_name_to_file_name(ModuleName, ObjExt, yes, ObjFile),
 
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Assembling `"),
