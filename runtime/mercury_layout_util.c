@@ -227,7 +227,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, Word *saved_regs,
 			if (! *succeeded) {
 				break;
 			}
-			value = MR_typeclass_info_superclass_info(baseaddr,
+			value = MR_typeclass_info_type_info(baseaddr,
 				offset);
 			*succeeded = TRUE;
 			break;

@@ -95,11 +95,13 @@ typedef	MR_int_least16_t	MR_Determinism;
 **  unknown		10	(The location is not known)
 **
 ** For indirect references, the word exclusive of the tag consists of
-** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index
-** of the typeinfo inside a type class info (to be interpreted by
-** private_builtin:type_info_from_typeclass_info), and (b) a MR_Long_Lval
-** value giving the location of the pointer to the type class info.
-** This MR_Long_Lval value will *not* have an indirect tag.
+** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index of
+** the typeinfo inside a type class info (to be interpreted by
+** MR_typeclass_info_type_info or the predicate
+** private_builtin:type_info_from_typeclass_info, which calls it) and
+** (b) a MR_Long_Lval value giving the location of the pointer to the
+** type class info.  This MR_Long_Lval value will *not* have an indirect
+** tag.
 **
 ** This data is generated in stack_layout__represent_locn_as_int,
 ** which must be kept in sync with the constants and macros defined here.
