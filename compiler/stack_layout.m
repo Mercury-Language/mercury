@@ -18,7 +18,7 @@
 % Modifications by zs.
 %
 % NOTE: If you make changes in this file, you may also need to modify
-% 		runtime/mercury_stack_layout.h
+% runtime/mercury_stack_layout.h.
 %
 %---------------------------------------------------------------------------%
 %
@@ -88,8 +88,10 @@
 % 	live data pairs 	(Word *) - pointer to vector of pairs
 %				containing MR_Live_Lval and MR_Live_Type
 % 	live data names	 	(Word *) - pointer to vector of String
-%	# of type parameters	(Integer)
 %	type parameters		(Word *) - pointer to vector of MR_Live_Lval
+%				in which the first word is an Integer
+%				giving the number of entries in the vector;
+%				a NULL pointer means no type parameters
 %
 % The internal label number field holds either the real label number
 % (which is always strictly positive), 0 indicating the entry label,
@@ -107,14 +109,20 @@
 % of the variable (it is either a pointer to a string, or a NULL pointer,
 % which means that the variable has no name).
 %
-% The number of type parameters is never stored as it is not needed --
-% the type parameter vector will simply be indexed by the type variable's
-% variable number stored within pseudo-typeinfos inside the elements
-% of the live data pairs vectors. Since we allocate type variable numbers
-% sequentially, the type parameter vector will usually be dense. However,
-% after all variables whose types include e.g. type variable 2 have gone
-% out of scope, variables whose types include type variable 3 may still
-% be around.
+% If the number of type parameters is not zero, we store the number,
+% so that the code that needs the type parameters can materialize
+% all the type parameters from their location descriptions in one go.
+% This is an optimization, since the type parameter vector could simply
+% be indexed on demand by the type variable's variable number stored within
+% pseudo-typeinfos inside the elements of the live data pairs vectors.
+%
+% Since we allocate type variable numbers sequentially, the type parameter
+% vector will usually be dense. However, after all variables whose types
+% include e.g. type variable 2 have gone out of scope, variables whose
+% types include type variable 3 may still be around. In cases like this,
+% the entry for type variable 2 will be zero; this signals to the code
+% in the internal debugger that materializes typeinfo structures that
+% this typeinfo structure need not be materialized.
 %
 % We need detailed information about the variables that are live at an
 % internal label in two kinds of circumstances. Stack layout information
@@ -136,9 +144,9 @@
 % to the live data names vector will be NULL unless the first condition
 % holds for the label (i.e. the label is used in execution tracing).
 %
-% XXX: Presently, type parameter vectors are not created, and
-% inst information is ignored. We also do not yet enable procid stack
-% layouts for profiling, since profiling does not yet use stack layouts.
+% XXX: Presently, inst information is ignored. We also do not yet enable
+% procid stack layouts for profiling, since profiling does not yet use
+% stack layouts.
 %
 %---------------------------------------------------------------------------%
 
@@ -423,17 +431,20 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnSet, RvalList) -->
 			NamesRval),
 
 		{ set__to_sorted_list(TVarLocnSet, TVarLocns) },
-		stack_layout__construct_type_param_locn_vector(TVarLocns, 1,
-			TypeParamLocs),
-		stack_layout__get_next_cell_number(CNum1),
-		{ TypeParamRval = create(0, TypeParamLocs, no, CNum1,
-			"stack_layout_type_param_locn_vector") },
-		{ list__length(TypeParamLocs, TypeParamsLength) },
-		{ TypeParamLengthRval = const(int_const(TypeParamsLength)) },
-
+		( { TVarLocns = [] } ->
+			{ TypeParamRval = const(int_const(0)) }
+		;
+			stack_layout__construct_type_param_locn_vector(
+				TVarLocns, 1, TypeParamLocs),
+			{ list__length(TypeParamLocs, TypeParamsLength) },
+			{ LengthRval = const(int_const(TypeParamsLength)) },
+			{ Vector = [yes(LengthRval) | TypeParamLocs] },
+			stack_layout__get_next_cell_number(CNum1),
+			{ TypeParamRval = create(0, Vector, no, CNum1,
+				"stack_layout_type_param_locn_vector") }
+		),
 		{ RvalList = [yes(VarLengthRval), yes(LiveValRval),
-			yes(NamesRval), yes(TypeParamLengthRval),
-			yes(TypeParamRval)] }
+			yes(NamesRval), yes(TypeParamRval)] }
 	;
 		{ RvalList = [yes(VarLengthRval)] }
 	).

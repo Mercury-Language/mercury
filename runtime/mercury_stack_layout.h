@@ -257,8 +257,22 @@ typedef	struct MR_Stack_Layout_Var_Struct {
 typedef	struct MR_Stack_Layout_Vars_Struct {
 	MR_Stack_Layout_Var	*MR_slvs_pairs;
 	String			*MR_slvs_names;
-	Integer			MR_slvs_tvar_count;
 	MR_Live_Lval		*MR_slvs_tvars;
+				/*
+				** If MR_slvs_tvars == NULL, there are no
+				** type parameters. If it is != NULL, then
+				** (Integer) MR_slvs_tvars[0] is the index
+				** of the highest numbered type parameter,
+				** and MR_slvs_tvars[i] for values of i
+				** between 1 and (Integer) MR_slvs_tvars[0]
+				** (both inclusive) describe the location
+				** of the typeinfo structure for the type
+				** variable of the corresponding number.
+				** If one of these type variables is not
+				** referred to by the variables described in
+				** MR_slvs_pairs, the corresponding entry
+				** will be zero.
+				*/
 } MR_Stack_Layout_Vars;
 
 #define	MR_name_if_present(vars, i)					\

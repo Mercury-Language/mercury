@@ -236,6 +236,7 @@ MR_trace_browse(int var_count, const MR_Stack_Layout_Vars *vars)
 {
 	Word	*type_params;
 	bool	succeeded;
+	int	count;
 	int	i;
 
 	if (var_count == 0) {
@@ -243,15 +244,25 @@ MR_trace_browse(int var_count, const MR_Stack_Layout_Vars *vars)
 		return;
 	}
 
-	type_params = checked_malloc((vars->MR_slvs_tvar_count + 1)
-		* sizeof(Word));
-	/* type_params should look like a typeinfo; type_params[0] is empty */
-	for (i = 0; i < vars->MR_slvs_tvar_count; i++) {
-		type_params[i+1] = MR_trace_lookup_live_lval(
-			vars->MR_slvs_tvars[i], &succeeded);
-		if (!succeeded) {
-			fatal_error("missing type param in MR_trace_browse");
+	if (vars->MR_slvs_tvars != NULL) {
+		count = (int) (Integer) vars->MR_slvs_tvars[0];
+		type_params = checked_malloc((count + 1) * sizeof(Word));
+
+		/*
+		** type_params should look like a typeinfo;
+		** type_params[0] is empty and will not be referred to
+		*/
+		for (i = 1; i <= count; i++) {
+			if (vars->MR_slvs_tvars[i] != 0) {
+				type_params[i] = MR_trace_lookup_live_lval(
+					vars->MR_slvs_tvars[i], &succeeded);
+				if (!succeeded) {
+					fatal_error("missing type param in MR_trace_browse");
+				}
+			}
 		}
+	} else {
+		type_params = NULL;
 	}
 
 	for (i = 0; i < var_count; i++) {
