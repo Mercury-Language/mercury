@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1034,10 +1034,8 @@ MR_trace_decl_ensure_init(void)
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
 			MR_trace_node_store = 0;
-			MR_DD_decl_diagnosis_state_init(
-					(MR_Word) &mdb_in,
-					(MR_Word) &mdb_out,
-					&MR_trace_front_end_state);
+			MR_DD_decl_diagnosis_state_init(&mdb_in, &mdb_out,
+				&MR_trace_front_end_state);
 		);
 		done = MR_TRUE;
 	}
@@ -1256,8 +1254,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_mercuryfile_init(MR_trace_store_file, 1, &stream);
 
 		MR_TRACE_CALL_MERCURY(
-			MR_DD_save_trace((MR_Word) &stream,
-						MR_trace_node_store, root);
+			MR_DD_save_trace(&stream, MR_trace_node_store, root);
 		);
 
 		fclose(MR_trace_store_file);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,15 +59,13 @@ MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_browse_format(type_info, value,
-				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
-				(MR_Word) format,
+				&mdb_in, &mdb_out, (MR_Word) format,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_browse(type_info, value,
-				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
+			ML_BROWSE_browse(type_info, value, &mdb_in, &mdb_out,
 				&maybe_mark, MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
@@ -93,8 +91,7 @@ MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_browse_format_synthetic(
 				(MR_String) (MR_Word) name, arg_list, is_func,
-				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
-				(MR_Word) format,
+				&mdb_in, &mdb_out, (MR_Word) format,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
@@ -102,8 +99,8 @@ MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_browse_synthetic(
 				(MR_String) (MR_Word) name, arg_list, is_func,
-				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
-				&maybe_mark, MR_trace_browser_persistent_state,
+				&mdb_in, &mdb_out, &maybe_mark,
+				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}
@@ -129,8 +126,7 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value,
 
 	MR_TRACE_CALL_MERCURY(
 		ML_BROWSE_browse_external(type_info, value,
-			(MR_Word) &MR_debugger_socket_in, 
-			(MR_Word) &MR_debugger_socket_out,
+			&MR_debugger_socket_in, &MR_debugger_socket_out,
 			MR_trace_browser_persistent_state,
 			&MR_trace_browser_persistent_state);
 	);
@@ -154,14 +150,13 @@ MR_trace_print(MR_Word type_info, MR_Word value, MR_Browse_Caller_Type caller,
 	if (format != MR_BROWSE_DEFAULT_FORMAT) {
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_print_format(type_info, value,
-				(MR_Word) &mdb_out, (MR_Word) caller,
-				(MR_Word) format,
+				&mdb_out, caller, (MR_Word) format,
 				MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_print(type_info, value,
-				(MR_Word) &mdb_out, (MR_Word) caller,
+			ML_BROWSE_print(type_info, value, &mdb_out,
+				(MR_Word) caller,
 				MR_trace_browser_persistent_state);
 		);
 	}
@@ -181,15 +176,14 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_print_format_synthetic(
 				(MR_String) (MR_Word) name, arg_list, is_func,
-				(MR_Word) &mdb_out, (MR_Word) caller,
-				(MR_Word) format,
+				&mdb_out, caller, (MR_Word) format,
 				MR_trace_browser_persistent_state);
 		);
 	} else {
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_print_synthetic(
 				(MR_String) (MR_Word) name, arg_list, is_func,
-				(MR_Word) &mdb_out, (MR_Word) caller,
+				&mdb_out, (MR_Word) caller,
 				MR_trace_browser_persistent_state);
 		);
 	}
@@ -347,7 +341,7 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 
 	MR_TRACE_CALL_MERCURY(
 		ML_query(type, imports_list, (MR_String) options_on_heap,
-			(MR_Word) &mdb_in, (MR_Word) &mdb_out);
+			&mdb_in, &mdb_out);
 	);
 }
 
@@ -359,8 +353,7 @@ MR_trace_query_external(MR_Query_Type type, MR_String options, int num_imports,
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_query_external(type, imports_list,  options,
-			(MR_Word) &MR_debugger_socket_in, 
-			(MR_Word) &MR_debugger_socket_out);
+			&MR_debugger_socket_in, &MR_debugger_socket_out);
 	);
 }
 
