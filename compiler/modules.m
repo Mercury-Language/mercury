@@ -767,6 +767,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 			; Ext = ".ints"
 			; Ext = ".int3s"
 			; Ext = ".rlos"
+			; Ext = ".ss"
+			; Ext = ".pic_ss"
 			; Ext = ".ils"
 			; Ext = ".opts"
 			; Ext = ".trans_opts"
@@ -3613,10 +3615,21 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".opts", no, OptsTargetName),
 	module_name_to_file_name(ModuleName, ".trans_opts", no,
 						TransOptsTargetName),
+	module_name_to_file_name(ModuleName, ".ss", no,
+						SsTargetName),
+	module_name_to_file_name(ModuleName, ".pic_ss", no,
+						PicSsTargetName),
 	module_name_to_file_name(ModuleName, ".rlos", no,
 						RLOsTargetName),
 	module_name_to_file_name(ModuleName, ".ils", no,
 						ILsTargetName),
+
+	% We need to explicitly mention
+	% $(foo.pic_ss) somewhere in the Mmakefile, otherwise it
+	% won't build properly with --target asm: GNU Make's pattern rule
+	% algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule chain
+	% rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
+	% So don't remove the pic_ss target here.
 
 	io__write_strings(DepStream, [
 		".PHONY : ", CheckTargetName, "\n",
@@ -3630,6 +3643,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		".PHONY : ", TransOptsTargetName, "\n",
 		TransOptsTargetName, " : $(", MakeVarName,
 						".trans_opt_dates)\n\n",
+		".PHONY : ", SsTargetName, "\n",
+		SsTargetName, " : $(", MakeVarName, ".ss)\n\n",
+		".PHONY : ", PicSsTargetName, "\n",
+		PicSsTargetName, " : $(", MakeVarName, ".pic_ss)\n\n",
 		".PHONY : ", RLOsTargetName, "\n",
 		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n",
 		".PHONY : ", ILsTargetName, "\n",
