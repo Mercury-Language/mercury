@@ -1,2 +1,3 @@
 mercury_profile
 *.c
+*.prof
