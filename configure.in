@@ -85,25 +85,25 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 
-		% Check that the compiler doesn't give
-		% "determinism declaration could be tighter"
-		% warnings for type class method implementations.
-		% They will usually be spurious.
-		% The library now contains code which would
-		% trigger this spurious warning.
-		:- typeclass my_enum(T) where [[
-			func my_from_int(int) = T is semidet
-		]].
-		:- instance my_enum(int) where [[
-			my_from_int(X) = X
-		]].
-
 		:- implementation.
+	
+		% Check that we can declare foreign_code for C and MC++.
+		:- pred foo(int::out) is det.
+		:- pragma foreign_code("C",    foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
+		:- pragma foreign_code("MC++", foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
 
 		% Currently we test that mmc accepts the
 		% --fixed-user-guided-type-specialization flag.
 		main --> 
-			print("Hello, world\n").
+			( { foo(42) } ->
+				print("Hello, world\n")
+			;
+				print("Nope.\n")
+			).
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
