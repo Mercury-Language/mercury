@@ -71,8 +71,17 @@ case $HOST in
 	*)		LN="ln"; LN_S="ln -s" ;;
 esac
 
+# flags for building the compiler
+INSTALL_MCFLAGS="$OPTIMIZE --opt-space"
+INSTALL_MGNUCFLAGS=""
+INSTALL_CFLAGS=""
+INSTALL_MLFLAGS=""
+
+# flags for running the tests
 TEST_MCFLAGS="$OPTIMIZE --opt-space"
+TEST_MGNUCFLAGS=""
 TEST_CFLAGS=""
+TEST_MLFLAGS=""
 
 case $FULLARCH in
 	i?86-*-linux*)
@@ -80,13 +89,11 @@ case $FULLARCH in
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
 		TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
-		TEST_MGNUCFLAGS=--pic-reg
-		TEST_MLFLAGS=--shared
+		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
+		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
 		;;
 	*)
 		# On other platforms shared libraries is the default
-		TEST_MGNUCFLAGS=""
-		TEST_MLFLAGS=""
 		;;
 esac
 
@@ -256,8 +263,10 @@ cd mercury || { false; exit 1; }
 # 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
 	echo "MC = ../scripts/mmc" > Mmake.params
-	echo "EXTRA_MCFLAGS = $TEST_MCFLAGS" >> Mmake.params
-	echo "EXTRA_CFLAGS = $TEST_CFLAGS" >> Mmake.params
+	echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS" >> Mmake.params
+	echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
+	echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
+	echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
 # fi
 
 autoconf || { false; exit 1; }
@@ -314,7 +323,7 @@ case $status in 0)
 		\
 		PATH=../scripts:../util:$PATH \
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
-		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
+		../scripts/mmake EXTRA_CFLAGS="$INSTALL_CFLAGS -O1" \
 		int.dir/*.o && \
 		\
 		PATH=../scripts:../util:$PATH \
@@ -369,42 +378,28 @@ for grade in $GRADES kludge_for_broken_shells
 do
 	if [ "$grade" != kludge_for_broken_shells ]; then
 		echo "test clpr stuff for grade $grade" 1>&2
+		{
+			echo "GRADE = $grade"
+			echo "EXTRA_MCFLAGS = $INSTALL_MCFLAGS"
+			echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS"
+			echo "EXTRA_CFLAGS = $INSTALL_CFLAGS"
+			echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS"
+		} > mercury/extras/Mmake.params &&
 		(cd mercury/extras/clpr &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
-				GRADE=$grade \
-				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
-				EXTRA_CFLAGS="$TEST_CFLAGS" &&
-			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 	fi
 done
@@ -516,16 +511,17 @@ do
 		$PARALLEL || status=1
 	case $grade in
 		*.memprof*)
-			# we need to link statically for profiling on DEC Alpha
+			# we need to set LD_BIND_NOW=1 for profiling on DEC Alpha
 			(cd benchmarks &&
 			touch poly.m &&
 			mmake poly.depend &&
 			mmake poly \
 				GRADE="$grade" \
 				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_MGNUCFLAGS="$TEST_MGNUCFLAGS" \
 				EXTRA_CFLAGS="$TEST_CFLAGS" \
-				EXTRA_MLFLAGS="-static" &&
-			./poly > poly.$grade.out &&
+				EXTRA_MLFLAGS="$TEST_MLFLAGS" &&
+			LD_BIND_NOW=1 ./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
 			{ diff -u poly.mprof-exp poly.$grade.mprof || true; } &&
 			cp Prof.CallPair poly.$grade.CallPair &&

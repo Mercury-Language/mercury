@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1998, 2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -31,5 +31,10 @@ clean :
 realclean :
 	cd samples && mmake $(MMAKEFLAGS) realclean
 	cd tests && mmake $(MMAKEFLAGS) realclean
+
+#-----------------------------------------------------------------------------#
+
+# The Mmake.params file can be used to override definitions in this file
+-include ../Mmake.params
 
 #-----------------------------------------------------------------------------#
