@@ -50,6 +50,10 @@ NONRETRY_PROGS = \
 
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
+# By default, we reclaim heap on failure in non-Boehm-gc grades.
+# The extra stack slots required for this reclamation cause spurious
+# differences from the expected output on the nondet_stack test case.
+MCFLAGS-nondet_stack = --no-reclaim-heap-on-failure
 MCFLAGS = --trace deep
 MLFLAGS = --trace
 C2INITFLAGS = --trace
@@ -219,9 +223,14 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
 
+# We insert the names of entry labels into the label table only in a few grades
+# (e.g. profiling grades). The debugger's redo label is an entry label. To
+# avoid spurious inconsistencies in the output, we filter out its name even
+# when known.
 nondet_stack.out: nondet_stack nondet_stack.inp
 	$(MDB) ./nondet_stack < nondet_stack.inp 2>&1 | \
-		sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' \
+		sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' | \
+		sed 's/entry label MR_do_trace_redo_fail_deep/label UNKNOWN/g' \
 		> nondet_stack.out 2>&1
 
 resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
