@@ -24,7 +24,7 @@
 	** TRUE.  Note that on some platforms, signal information is
 	** provided regardless of the value of need_info.
 	*/
-extern void MR_setup_signal(int sig, Code *handler, int need_info, 
+extern void MR_setup_signal(int sig, Code *handler, bool need_info, 
 	const char * error_message);
 
 

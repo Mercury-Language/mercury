@@ -67,7 +67,7 @@
 /*---------------------------------------------------------------------------*/
 
 void
-MR_setup_signal(int sig, Code *handler, int need_info, 
+MR_setup_signal(int sig, Code *handler, bool need_info, 
 		const char *error_message)
 {
 #if	defined(HAVE_SIGACTION)
