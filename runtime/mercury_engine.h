@@ -258,13 +258,15 @@ typedef struct MR_mercury_engine_struct {
 	#define	MR_engine_base	MR_thread_engine_base
   #endif
 
-  #define MR_ENGINE(x)		(((MercuryEngine *)MR_engine_base)->x)
-  #define MR_get_engine()	MR_thread_engine_base
+  #define MR_ENGINE(x)		(((MercuryEngine *) MR_engine_base)->x)
+  #define MR_cur_engine()	((MercuryEngine *) MR_engine_base)
+  #define MR_get_engine()	((MercuryEngine *) MR_thread_engine_base)
 
 #else 	/* !MR_THREAD_SAFE */
 
   extern MercuryEngine	MR_engine_base;
   #define MR_ENGINE(x)		(MR_engine_base.x)
+  #define MR_cur_engine()	(&MR_engine_base)
   #define MR_get_engine()	(&MR_engine_base)
 
 #endif	/* !MR_THREAD_SAFE */

@@ -3,7 +3,7 @@ INIT mercury_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -308,7 +308,7 @@ Define_entry(do_runnext);
 	while (1) {
 		if (MR_exit_now == TRUE) {
 			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
-			destroy_thread(MR_engine_base);
+			destroy_thread(MR_cur_engine());
 		}
 		tmp = MR_runqueue_head;
 		/* XXX check pending io */
