@@ -747,7 +747,10 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    { HLDS = HLDS4 },
 		    { bool__or(FoundTypeError, FoundTypeclassError,
 		    	FoundError) }
-	        ; { FoundTypeError = yes ; FoundPostTypecheckError = yes } ->
+	        ; 
+		    { FoundTypeError = yes ; FoundPostTypecheckError = yes 
+		    	; FoundTypeclassError = yes } 
+		->
 		    %
 		    % XXX it would be nice if we could go on and mode-check
 		    % the predicates which didn't have type errors, but

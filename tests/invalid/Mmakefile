@@ -62,6 +62,8 @@ SOURCES= \
 	record_syntax_errors.m \
 	some.m \
 	spurious_mode_error.m \
+	tc_err1.m \
+	tc_err2.m \
 	test_nested.m \
 	tricky_assert1.m \
 	type_inf_loop.m \
