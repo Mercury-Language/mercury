@@ -1088,7 +1088,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 :- type collected_pragma_foreign_code_attribute
 	--->	may_call_mercury(may_call_mercury)
 	;	thread_safe(thread_safe)
-	;	tabled_for_io(tabled_for_io).
+	;	tabled_for_io(tabled_for_io)
+	;	aliasing.
 
 :- pred parse_pragma_foreign_code_attributes_term(foreign_language, term, 
 		pragma_foreign_code_attributes).
@@ -1162,6 +1163,8 @@ parse_single_pragma_foreign_code_attribute(Term, Flag) :-
 		Flag = thread_safe(ThreadSafe)
 	; parse_tabled_for_io(Term, TabledForIo) ->
 		Flag = tabled_for_io(TabledForIo)
+	; parse_aliasing(Term) ->
+		Flag = aliasing
 	;
 		fail
 	).
@@ -1193,6 +1196,17 @@ parse_tabled_for_io(term__functor(term__atom("tabled_for_io"), [], _),
 	tabled_for_io).
 parse_tabled_for_io(term__functor(term__atom("not_tabled_for_io"), [], _),
 	not_tabled_for_io).
+
+	% XXX For the moment we just ignore the following attributes.
+	% These attributes are used for aliasing on the reuse branch,
+	% and ignoring them allows the main branch compiler to compile
+	% the reuse branch.
+:- pred parse_aliasing(term).
+:- mode parse_aliasing(in) is semidet.
+
+parse_aliasing(term__functor(term__atom("no_aliasing"), [], _)).
+parse_aliasing(term__functor(term__atom("unknown_aliasing"), [], _)).
+parse_aliasing(term__functor(term__atom("alias"), [_Types, _Alias], _)).
 
 % parse a pragma foreign_code declaration
 
