@@ -91,6 +91,7 @@ typedef void	Code;
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
 #define	incr_hp(n)	(					\
+				debugincrhp(n, hp),		\
 				hp += (n),			\
 				heap_overflow_check(),		\
 				(void)0				\
@@ -354,6 +355,7 @@ typedef void	Code;
 
 #define	debugcr1(val0, hp)			((void)0)
 #define	debugcr2(val0, val1, hp)		((void)0)
+#define	debugincrhp(val, hp)			((void)0)
 #define	debugincrsp(val, sp)			((void)0)
 #define	debugdecrsp(val, sp)			((void)0)
 #define	debugpush(val, sp)			((void)0)
@@ -383,6 +385,9 @@ typedef void	Code;
 
 #define	debugcr2(val0, val1, hp) \
 	IF (heapdebug, (save_registers(), cr2_msg(val0, val1, hp)))
+
+#define	debugincrhp(val, hp) \
+	IF (heapdebug, (save_registers(), incr_hp_msg((val), (hp))))
 
 #define	debugincrsp(val, sp) \
 	IF (detstackdebug, (save_registers(), incr_sp_msg((val), (sp))))
@@ -453,7 +458,7 @@ typedef void	Code;
 /* STRING HANDLING */
 
 #define string_const(string, len) ((Word)string)
-#define string_eq(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
+#define string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 

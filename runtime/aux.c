@@ -126,6 +126,12 @@ void cr2_msg(Word val0, Word val1, const Word *addr)
 	printheap(addr);
 }
 
+void incr_hp_msg(Word val, const Word *addr)
+{
+	printf("increment hp by %d from ", val);
+	printheap(addr);
+}
+
 void incr_sp_msg(Word val, const Word *addr)
 {
 	printf("increment sp by %d from ", val);
