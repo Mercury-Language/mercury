@@ -337,7 +337,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[UserForeignCode], [], [], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
-	{ Num1 is Num0 + 1 },
+	{ Num1 = Num0 + 1 },
 	output_split_user_foreign_codes(UserForeignCodes, ModuleName,
 		C_HeaderLines, StackLayoutLabels, Num1, Num).
 
@@ -351,7 +351,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[], [Export], [], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
-	{ Num1 is Num0 + 1 },
+	{ Num1 = Num0 + 1 },
 	output_split_c_exports(Exports, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
@@ -364,7 +364,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [Var], [], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
-	{ Num1 is Num0 + 1 },
+	{ Num1 = Num0 + 1 },
 	output_split_comp_gen_c_vars(Vars, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
@@ -377,7 +377,7 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num0, Num) -->
 	{ CFile = c_file(ModuleName, C_HeaderLines, [], [], [], [Data], []) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
-	{ Num1 is Num0 + 1 },
+	{ Num1 = Num0 + 1 },
 	output_split_comp_gen_c_datas(Datas, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
@@ -391,7 +391,7 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 	{ CFile = c_file(ModuleName, C_HeaderLines,
 		[], [], [], [], [Module]) },
 	output_single_c_file(CFile, yes(Num0), StackLayoutLabels, no),
-	{ Num1 is Num0 + 1 },
+	{ Num1 = Num0 + 1 },
 	output_split_comp_gen_c_modules(Modules, ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
@@ -694,7 +694,7 @@ output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq,
 	io__write_string("{\n"),
 	output_init_bunch_def(Bunch, ModuleName, SplitFiles),
 	io__write_string("}\n\n"),
-	{ NextSeq is Seq + 1 },
+	{ NextSeq = Seq + 1 },
 	output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq,
 		SplitFiles).
 
@@ -727,7 +727,7 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	io__write_string("\t"),
 	output_bunch_name(ModuleName, InitStatus, Seq),
 	io__write_string("();\n"),
-	{ NextSeq is Seq + 1 },
+	{ NextSeq = Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
 	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, Typector);
@@ -1404,10 +1404,10 @@ llds_out__is_while_label(Label, [Instr0 - Comment0 | Instrs0], Instrs,
 		Count = Count0,
 		Instrs = [Instr0 - Comment0 | Instrs0]
 	; Instr0 = goto(label(Label)) ->
-		Count1 is Count0 + 1,
+		Count1 = Count0 + 1,
 		llds_out__is_while_label(Label, Instrs0, Instrs, Count1, Count)
 	; Instr0 = if_val(_, label(Label)) ->
-		Count1 is Count0 + 1,
+		Count1 = Count0 + 1,
 		llds_out__is_while_label(Label, Instrs0, Instrs, Count1, Count)
 	;
 		llds_out__is_while_label(Label, Instrs0, Instrs, Count0, Count)
@@ -2215,7 +2215,7 @@ output_temp_decls_2(Next, Max, Type) -->
 		io__write_string("MR_temp"),
 		io__write_string(Type),
 		io__write_int(Next),
-		{ Next1 is Next + 1 },
+		{ Next1 = Next + 1 },
 		output_temp_decls_2(Next1, Max, Type)
 	;
 		[]
@@ -2261,7 +2261,7 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 				{ string__float_to_string(FloatVal,
 					FloatString) },
 				output_indent(FirstIndent, LaterIndent, N0),
-				{ N is N0 + 1 },
+				{ N = N0 + 1 },
 				io__write_strings([
 					"static const MR_Float ",
 					"mercury_float_const_", FloatName,
@@ -2308,7 +2308,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 		;
 			{ decl_set_insert(DeclSet2, FloatLabel, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
-			{ N is N2 + 1 },
+			{ N = N2 + 1 },
 			io__write_string("static const "),
 			output_llds_type(float),
 			io__write_string(" mercury_float_const_"),
@@ -2479,7 +2479,7 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 		[]
 	),
 	output_indent(FirstIndent, LaterIndent, N1),
-	{ N is N1 + 1 },
+	{ N = N1 + 1 },
 	(
 		{ Decl = yes }
 	->
@@ -2606,7 +2606,7 @@ output_uniform_cons_arg_types([Arg | Args], MaybeType, Indent, ArgNum) -->
 		io__write_string(" f"),
 		io__write_int(ArgNum),
 		io__write_string(";\n"),
-		{ ArgNum1 is ArgNum + 1 },
+		{ ArgNum1 = ArgNum + 1 },
 		output_uniform_cons_arg_types(Args, MaybeType, Indent, ArgNum1)
 	;
 		{ error("output_uniform_cons_arg_types: missing arg") }
@@ -2642,8 +2642,8 @@ output_initial_cons_arg_types_2([Arg | Args], N, MaybeType, InitTypes,
 			io__write_string(" f"),
 			io__write_int(ArgNum),
 			io__write_string(";\n"),
-			{ ArgNum1 is ArgNum + 1 },
-			{ N1 is N - 1 },
+			{ ArgNum1 = ArgNum + 1 },
+			{ N1 = N - 1 },
 			output_initial_cons_arg_types_2(Args, N1, MaybeType,
 				InitTypes, RestTypes, Indent, ArgNum1)
 		;
@@ -2803,7 +2803,7 @@ output_initial_cons_args_2([Arg | Args], N, MaybeType, InitTypes, RestTypes,
 			Indent)
 	;
 		( { Arg = yes(Rval) } ->
-			{ N1 is N - 1 },
+			{ N1 = N - 1 },
 			io__write_string(Indent),
 			( { MaybeType = yes(_) } ->
 				output_static_rval(Rval)
@@ -2894,7 +2894,7 @@ output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
-			{ N is N0 + 1 },
+			{ N = N0 + 1 },
 			output_code_addr_decls(CodeAddress)
 		;
 			{ N = N0 }
@@ -3048,7 +3048,7 @@ output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, N0, N,
 
 output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
-	{ N is N0 + 1 },
+	{ N = N0 + 1 },
 	(
 		{ DataAddr = data_addr(ModuleName, DataVarName) },
 		output_data_addr_storage_type_name(ModuleName, DataVarName, no,
@@ -3614,7 +3614,7 @@ llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 	get_label_name(DefiningModule, PredOrFunc, PredModule,
 		PredName, Arity, AddPrefix, LabelName),
 	( PredOrFunc = function ->
-		OrigArity is Arity - 1
+		OrigArity = Arity - 1
 	;
 		OrigArity = Arity
 	),
