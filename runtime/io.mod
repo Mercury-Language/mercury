@@ -52,7 +52,7 @@ mercury_open(const char *filename, const char *type)
 		return NULL;
 	}
 	mf->file = f;
-	mf->line_number = 0;
+	mf->line_number = 1;
 	return mf;
 }
 
@@ -328,6 +328,16 @@ mercury__io__command_line_arguments_3_0:
 	update_io(r2, r3);
 	proceed();
 
+mercury__io__get_exit_status_3_0:
+	r1 = mercury_exit_status;
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__set_exit_status_3_0:
+	mercury_exit_status = r1;
+	update_io(r2, r3);
+	proceed();
+
 mercury__io__preallocate_heap_space_3_0:
 	/* don't do anything - preallocate_heap_space was just a
 	   hack for NU-Prolog */
@@ -429,7 +439,7 @@ mercury____Unify___univ_0_0:
 	r4 = field(mktag(0), r3, 1);
 	r3 = field(mktag(0), r2, 1);
 	r2 = r1;
-	tailcallentry(mercury__unify_2_0, LABEL(mercury____Unify___univ_0_0));
+	tailcall(ENTRY(mercury__unify_2_0), LABEL(mercury____Unify___univ_0_0));
 
 mercury____Compare___univ_0_0:
 	/* Comparison for univ:
@@ -547,9 +557,8 @@ mercury__builtin_strcmp_3_0:
 /*-----------------------------------------------------------------------*/
 
 mercury__term_io__read_term_3_0:
-	{ extern EntryPoint ENTRY(mercury__parser__read_term_3_0);
-	  tailcall(ENTRY(mercury__parser__read_term_3_0),
-	  	LABEL(mercury__term_io__read_term_3_0)); }
+	tailcall(ENTRY(mercury__parser__read_term_3_0),
+	  	LABEL(mercury__term_io__read_term_3_0));
 
 /*-----------------------------------------------------------------------*/
 
@@ -559,14 +568,3 @@ mercury__opt_debug__write_1_0:
 	fatal_error("opt_debug__write/1 not implemented");
 
 END_MODULE
-
-BEGIN_MODULE(workaround_module)
-BEGIN_CODE
-
-mercury__io__init_state_2_0:
-	fatal_error("io__init_state/2 not implemented");
-mercury__parser__read_term_3_0:
-	fatal_error("parser__read_term/3 not implemented");
-
-END_MODULE
-

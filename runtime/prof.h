@@ -14,6 +14,10 @@
 *******************/
 #define PROF_TABLE_SIZE 4096
 
+/* this variable holds the address of the "current" procedure so that
+   when a profiling interrupt occurs, the profiler knows where we are,
+   so that it can credit the time to the appropriate procedure */
+extern Code *prof_current_proc;
 
 /* profiling node information */
 typedef struct s_prof_node

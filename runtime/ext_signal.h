@@ -1,6 +1,8 @@
 #ifndef	EXT_SIGNAL_H
 #define	EXT_SIGNAL_H
 
+/* do we really need all this junk? */
+
 #ifdef	HAVE_SIGINFO
 
 #include	<sys/siginfo.h>
@@ -58,7 +60,6 @@ struct sigaction {
 #define	S_SIGACTION	3
 #define	S_NONE		4
 
-#define	MINSIGSTKSZ	2048
 #define	SIGSTKSZ	8192
 
 #define	SS_ONSTACK	0x00000001

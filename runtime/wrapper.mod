@@ -4,7 +4,6 @@
 #include	"getopt.h"
 #include	"io.h"
 #include	"init.h"
-#include	"ext_stdio.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -45,6 +44,7 @@ static	int	finish_time;
 const char *	progname;
 int		mercury_argc;	/* not counting progname or debug options */
 char **		mercury_argv;
+int		mercury_exit_status = 0;
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 	init_engine();
 	run_code();
 
-	return 0;
+	return mercury_exit_status;
 }
 
 void do_init_modules(void)

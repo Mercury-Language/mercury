@@ -4,6 +4,7 @@
 extern	const	char	*progname;
 extern	int	mercury_argc;
 extern	char **	mercury_argv;
+extern	int	mercury_exit_status;
 
 extern	int	heap_size;
 extern	int	detstack_size;
