@@ -15,7 +15,7 @@ s1([1, 2])
 Valid? yes
 s2([9])
 Valid? yes
-my_append([1, 2], [9], [1, 2, 9])
+my_append([|](1, [|](2, [])), [|](9, []), [|](1, [|](2, [|]/2)))
 Valid? yes
 Found incorrect contour:
 p([1, 2, 9])
@@ -30,10 +30,7 @@ p([1, 2, 7, 8, 9])
 Valid? no
 s2([7, 8, 9])
 Valid? yes
-pred my_append
-	[1, 2]
-	[7, 8, 9]
-	[1, 2, 7, 8, 9]
+my_append([|](1, [|](2, [])), [|](7, [|](8, [|]/2)), [|](1, [|](2, [|]/2)))
 Valid? yes
 Found incorrect contour:
 p([1, 2, 7, 8, 9])
@@ -48,10 +45,7 @@ p([1, 2, 3, 9])
 Valid? no
 s1([1, 2, 3])
 Valid? yes
-pred my_append
-	[1, 2, 3]
-	[9]
-	[1, 2, 3, 9]
+my_append([|](1, [|](2, [|]/2)), [|](9, []), [|](1, [|](2, [|]/2)))
 Valid? yes
 Found incorrect contour:
 p([1, 2, 3, 9])
@@ -64,10 +58,7 @@ mdb> finish
 mdb> dd
 p([1, 2, 3, 7, 8, 9])
 Valid? no
-pred my_append
-	[1, 2, 3]
-	[7, 8, 9]
-	[1, 2, 3, 7, 8, 9]
+my_append([|](1, [|](2, [|]/2)), [|](7, [|](8, [|]/2)), [|](1, [|](2, [|]/2)))
 Valid? yes
 Found incorrect contour:
 p([1, 2, 3, 7, 8, 9])

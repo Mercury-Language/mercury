@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module list, string, io.
+:- import_module list, string, io, bool.
 
 % The stuff defined below is similar to types goal_path and trace_port
 % defined in modules compiler/hlds_goal.m and compiler/trace.m.
@@ -41,6 +41,9 @@
 :- type pred_or_func
 	--->	predicate
 	;	function.
+
+:- func util__is_predicate(pred_or_func) = bool.
+:- func util__is_function(pred_or_func) = bool.
 
 :- type goal_path_string == string.
 
@@ -82,6 +85,12 @@
 :- implementation.
 
 :- import_module int, require.
+
+util__is_predicate(predicate) = yes.
+util__is_predicate(function) = no.
+
+util__is_function(predicate) = no.
+util__is_function(function) = yes.
 
 util__trace_getline(Prompt, Result) -->
 	io__input_stream(MdbIn),

@@ -426,21 +426,21 @@ user_confirm_bug(Bug, Response, User0, User) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_question(wrong_answer(_, Atom), User) -->
-	write_decl_final_atom(User, "", Atom).
+	write_decl_final_atom(User, "", print, Atom).
 	
 write_decl_question(missing_answer(_, Call, Solns), User) -->
-	write_decl_init_atom(User, "Call ", Call),
+	write_decl_init_atom(User, "Call ", print, Call),
 	(
 		{ Solns = [] }
 	->
 		io__write_string(User ^ outstr, "No solutions.\n")
 	;
 		io__write_string(User ^ outstr, "Solutions:\n"),
-		list__foldl(write_decl_final_atom(User, "\t"), Solns)
+		list__foldl(write_decl_final_atom(User, "\t", print_all), Solns)
 	).
 
 write_decl_question(unexpected_exception(_, Call, Exception), User) -->
-	write_decl_init_atom(User, "Call ", Call),
+	write_decl_init_atom(User, "Call ", print, Call),
 	io__write_string(User ^ outstr, "Throws "),
 	io__write(User ^ outstr, include_details_cc, univ_value(Exception)),
 	io__nl(User ^ outstr).
@@ -452,16 +452,16 @@ write_decl_bug(e_bug(EBug), User) -->
 	(
 		{ EBug = incorrect_contour(Atom, _, _) },
 		io__write_string(User ^ outstr, "Found incorrect contour:\n"),
-		write_decl_final_atom(User, "", Atom)
+		write_decl_final_atom(User, "", print, Atom)
 	;
 		{ EBug = partially_uncovered_atom(Atom, _) },
 		io__write_string(User ^ outstr,
 				"Found partially uncovered atom:\n"),
-		write_decl_init_atom(User, "", Atom)
+		write_decl_init_atom(User, "", print, Atom)
 	;
 		{ EBug = unhandled_exception(Atom, Exception, _) },
 		io__write_string(User ^ outstr, "Found unhandled exception:\n"),
-		write_decl_init_atom(User, "", Atom),
+		write_decl_init_atom(User, "", print, Atom),
 		io__write(User ^ outstr, include_details_cc,
 				univ_value(Exception)),
 		io__nl(User ^ outstr)
@@ -470,94 +470,55 @@ write_decl_bug(e_bug(EBug), User) -->
 write_decl_bug(i_bug(IBug), User) -->
 	{ IBug = inadmissible_call(Parent, _, Call, _) },
 	io__write_string(User ^ outstr, "Found inadmissible call:\n"),
-	write_decl_atom(User, "Parent ", init(Parent)),
-	write_decl_atom(User, "Call ", init(Call)).
+	write_decl_atom(User, "Parent ", print, init(Parent)),
+	write_decl_atom(User, "Call ", print, init(Call)).
 
-:- pred write_decl_init_atom(user_state::in, string::in, init_decl_atom::in,
-	io__state::di, io__state::uo) is cc_multi.
+:- pred write_decl_init_atom(user_state::in, string::in, browse_caller_type::in,
+	init_decl_atom::in, io__state::di, io__state::uo) is cc_multi.
 
-write_decl_init_atom(User, Indent, InitAtom) -->
-	write_decl_atom(User, Indent, init(InitAtom)).
+write_decl_init_atom(User, Indent, CallerType, InitAtom) -->
+	write_decl_atom(User, Indent, CallerType, init(InitAtom)).
 
-:- pred write_decl_final_atom(user_state::in, string::in, final_decl_atom::in,
-	io__state::di, io__state::uo) is cc_multi.
+:- pred write_decl_final_atom(user_state::in, string::in,
+	browse_caller_type::in, final_decl_atom::in, io__state::di,
+	io__state::uo) is cc_multi.
 
-write_decl_final_atom(User, Indent, FinalAtom) -->
-	write_decl_atom(User, Indent, final(FinalAtom)).
+write_decl_final_atom(User, Indent, CallerType, FinalAtom) -->
+	write_decl_atom(User, Indent, CallerType, final(FinalAtom)).
 
-:- pred write_decl_atom(user_state::in, string::in, some_decl_atom::in,
-	io__state::di, io__state::uo) is cc_multi.
+:- pred write_decl_atom(user_state::in, string::in, browse_caller_type::in,
+	some_decl_atom::in, io__state::di, io__state::uo) is cc_multi.
 
-write_decl_atom(User, Indent, DeclAtom) -->
+write_decl_atom(User, Indent, CallerType, DeclAtom) -->
 	io__write_string(User ^ outstr, Indent),
-		%
-		% Check whether the atom is likely to fit on one line.
-		% If it's not, then call the browser to print the term
-		% to a limited depth.  If it is, then we prefer to print
-		% it out directly so that all arguments are put on the
-		% same line.
-		%
-	{ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) },
-	{ Which = chosen_head_vars_presentation },
-	{ check_trace_atom_size(Indent, Which, TraceAtom, RemSize) },
-	(
-		{ RemSize > 0 },
-		{ IoActions = [] }
-	->
-		write_decl_atom_direct(User ^ outstr, TraceAtom, Which)
-	;
-		write_decl_atom_limited(User, DeclAtom, Which)
-	).
-
-:- pred check_trace_atom_size(string::in, which_headvars::in, trace_atom::in,
-	int::out) is cc_multi.
-
-check_trace_atom_size(Indent, Which, atom(_, Functor, Args), RemSize) :-
-	trace_atom_size_limit(RemSize0),
-	string__length(Indent, I),
-	string__length(Functor, F),
-	P = 2,		% parentheses
-	RemSize1 = RemSize0 - I - F - P,
-	size_left_after_args(Args, Which, RemSize1, RemSize).
-
-:- pred size_left_after_args(list(trace_atom_arg)::in, which_headvars::in,
-	int::in, int::out) is cc_multi.
-
-size_left_after_args([], _) -->
-	[].
-size_left_after_args([arg_info(UserVis, _, MaybeUniv) | Args], Which) -->
-	(
-		{ MaybeUniv = yes(Univ) },
-		(
-			{ Which = only_user_headvars },
-			{ UserVis = no }
-		->
-			% This argument won't be printed.
-			[]
-		;
-			term_size_left_from_max(Univ)
-		)
-	;
-		{ MaybeUniv = no }
-	),
-	size_left_after_args(Args, Which).
-
-:- pred trace_atom_size_limit(int).
-:- mode trace_atom_size_limit(out) is det.
-
-trace_atom_size_limit(79).
-
-:- pred write_decl_atom_limited(user_state::in, some_decl_atom::in,
-	which_headvars::in, io__state::di, io__state::uo) is cc_multi.
-
-write_decl_atom_limited(User, DeclAtom, Which) -->
 	{ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) },
 	{ TraceAtom = atom(PredOrFunc, Functor, Args0) },
-	write_decl_atom_category(User ^ outstr, PredOrFunc),
-	io__write_string(User ^ outstr, Functor),
-	io__nl(User ^ outstr),
-	{ maybe_filter_headvars(Which, Args0, Args) },
-	list__foldl(print_decl_atom_arg(User), Args),
+	{ Which = chosen_head_vars_presentation },
+	{ maybe_filter_headvars(Which, Args0, Args1) },
+	{ list__map(trace_atom_arg_to_univ, Args1, Args) },
+		%
+		% Call the term browser to print the atom (or part of it
+		% up to a size limit) as a goal.
+		%
+	browse__print_synthetic(Functor, Args, is_function(PredOrFunc),
+		User ^ outstr, CallerType, User ^ browser),
+	write_io_actions(User, IoActions).
+
+:- pred trace_atom_arg_to_univ(trace_atom_arg::in, univ::out) is det.
+
+trace_atom_arg_to_univ(TraceAtomArg, Univ) :-
+	MaybeUniv = TraceAtomArg ^ arg_value,
+	(
+		MaybeUniv = yes(Univ)
+	;
+		MaybeUniv = no,
+		Univ = univ('_' `with_type` unbound)
+	).
+
+:- pred write_io_actions(user_state::in, list(io_action)::in, io__state::di,
+	io__state::uo) is cc_multi.
+
+write_io_actions(User, IoActions) -->
 	{ list__length(IoActions, NumIoActions) },
 	( { NumIoActions = 0 } ->
 		[]
@@ -585,75 +546,5 @@ print_io_action(User, IoAction) -->
 	{ io_action_to_synthetic_term(IoAction, ProcName, Args, IsFunc) },
 	browse__print_synthetic(ProcName, Args, IsFunc, User ^ outstr,
 		print_all, User ^ browser).
-
-:- pred write_decl_atom_category(io__output_stream::in, pred_or_func::in,
-	io__state::di, io__state::uo) is det.
-
-write_decl_atom_category(OutStr, predicate) -->
-	io__write_string(OutStr, "pred ").
-write_decl_atom_category(OutStr, function) -->
-	io__write_string(OutStr, "func ").
-
-:- pred print_decl_atom_arg(user_state::in, trace_atom_arg::in,
-	io__state::di, io__state::uo) is cc_multi.
-
-print_decl_atom_arg(User, arg_info(_, _, MaybeArg)) -->
-	(
-		{ MaybeArg = yes(Arg) },
-		io__write_string(User ^ outstr, "\t"),
-		browse__print(univ_value(Arg), User ^ outstr, print_all,
-			User ^ browser)
-	;
-		{ MaybeArg = no },
-		io__write_string(User ^ outstr, "\t_\n")
-	).
-
-:- pred write_decl_atom_direct(io__output_stream::in, trace_atom::in,
-	which_headvars::in, io__state::di, io__state::uo) is cc_multi.
-
-write_decl_atom_direct(OutStr, atom(PredOrFunc, Functor, Args0), Which) -->
-	io__write_string(OutStr, Functor),
-	{ maybe_filter_headvars(Which, Args0, Args) },
-	(
-		{ Args = [] }
-	;
-		{ Args = [FirstArg | ArgsRest] },
-		io__write_char(OutStr, '('),
-		(
-			{ PredOrFunc = predicate },
-			io__write_list(OutStr, Args, ", ",
-					write_decl_atom_arg(OutStr)),
-			io__write_char(OutStr, ')')
-		;
-			{ PredOrFunc = function },
-			{ get_inputs_and_result(FirstArg, ArgsRest, Inputs,
-					Result) },
-			io__write_list(OutStr, Inputs, ", ",
-					write_decl_atom_arg(OutStr)),
-			io__write_string(OutStr, ") = "),
-			write_decl_atom_arg(OutStr, Result)
-		)
-	),
-	io__nl(OutStr).
-
-:- pred write_decl_atom_arg(io__output_stream, trace_atom_arg,
-		io__state, io__state).
-:- mode write_decl_atom_arg(in, in, di, uo) is cc_multi.
-
-write_decl_atom_arg(OutStr, arg_info(_, _, MaybeArg)) -->
-	(
-		{ MaybeArg = yes(Arg) },
-		io__write(OutStr, include_details_cc, univ_value(Arg))
-	;
-		{ MaybeArg = no },
-		io__write_char(OutStr, '_')
-	).
-
-:- pred get_inputs_and_result(T, list(T), list(T), T).
-:- mode get_inputs_and_result(in, in, out, out) is det.
-
-get_inputs_and_result(A, [], [], A).
-get_inputs_and_result(A1, [A2 | As], [A1 | Inputs0], Result) :-
-	get_inputs_and_result(A2, As, Inputs0, Result).
 
 %-----------------------------------------------------------------------------%

@@ -538,7 +538,13 @@ portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
 	;
 		io__write_string("("),
 		io__write_list(Args, ", ", pred(U::in, di, uo) is cc_multi -->
-			io__write_univ(Stream, include_details_cc, U)),
+			(
+				{ univ_to_type(U, _ `with_type` unbound) }
+			->
+				io__write_char(Stream, '_')
+			;
+				io__write_univ(Stream, include_details_cc, U)
+			)),
 		io__write_string(")")
 	),
 	(

@@ -13,25 +13,16 @@ mdb> continue
 mdb> finish -n
       32:      4  3 EXIT pred tabled_read_decl:test/4-0 (det)
 mdb> print
-test('<<c_pointer>>', 1123, '_', state('<<c_pointer>>'))
+test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
 mdb> dd
-pred test
-	'<<c_pointer>>'
-	1123
-	_
-	state('<<c_pointer>>')
+test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
 4 io actions:
 read_char_code('<<c_pointer>>', 49)
 read_char_code('<<c_pointer>>', 50)
 read_char_code('<<c_pointer>>', 51)
 read_char_code('<<c_pointer>>', 10)
 Valid? no
-pred test_2
-	'<<c_pointer>>'
-	1
-	1123
-	_
-	state('<<c_pointer>>')
+test_2('<<c_pointer>>', 1, 1123, _, state('<<c_pointer>>'))
 4 io actions:
 read_char_code('<<c_pointer>>', 49)
 read_char_code('<<c_pointer>>', 50)
@@ -39,11 +30,7 @@ read_char_code('<<c_pointer>>', 51)
 read_char_code('<<c_pointer>>', 10)
 Valid? yes
 Found incorrect contour:
-pred test
-	'<<c_pointer>>'
-	1123
-	_
-	state('<<c_pointer>>')
+test('<<c_pointer>>', 1123, _, state('<<c_pointer>>'))
 4 io actions:
 read_char_code('<<c_pointer>>', 49)
 read_char_code('<<c_pointer>>', 50)
