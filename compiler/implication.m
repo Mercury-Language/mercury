@@ -18,14 +18,11 @@
 
 :- module implication.
 :- interface.
-
-:- import_module string, int, set, bintree, list, map, require, std_util.
-:- import_module term, term_io, prog_io, varset.
-:- import_module prog_util, prog_out, hlds_out.
-:- import_module globals, options.
-:- import_module make_tags, quantification.
-:- import_module unify_proc, type_util.
-:- import_module io.
+%-----------------------------------------------------------------------------%
+% PUBLIC PREDICATE DECLARATIONS:
+%-----------------------------------------------------------------------------%
+% dependencies
+:- import_module prog_io, io.
 
 :- pred implication__transform_operators(item_list, item_list,
 						io__state, io__state).
@@ -41,6 +38,14 @@
 % PUBLIC PREDICATE IMPLEMENTATIONS:
 %-----------------------------------------------------------------------------%
 :- implementation.
+
+% dependencies.
+:- import_module string, int, set, bintree, list, map, require, std_util.
+:- import_module term, term_io, varset.
+:- import_module prog_util, prog_out, hlds_out.
+:- import_module globals, options.
+:- import_module make_tags, quantification.
+:- import_module unify_proc, type_util.
 
 	% implication__transform_operators/4
 	% This is the top level, publically visible predicate of this
@@ -135,95 +140,69 @@ implication__transform_item(Item_In, Item_Out) :-
 
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 
-implication__transform_goal(Goal_In, Goal_Out) :-
-	(
-% Handle Implication...
-	% Default version: implicit existential quantification
-		Goal_In  = implies(P, Q)
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = not([], (P1, not([], Q1)))
-		)
-	;
-	% Implication with explicit existential quantification
-		Goal_In  = some(Vars, implies(P, Q))
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = some(Vars, not([], (P1, not([], Q1))))
-		)
-	;
-	% Implication with explicit universal quantification
-		Goal_In  = all(Vars, implies(P, Q))
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = not([], some(Vars, (P1, not([], Q1))))
-		)
-	;
+	% implication__transform_goal/2
 
-% Handle Equivalence...
-	% Default version: implicit existential quantification
-		Goal_In  = equivalent(P, Q)
-	->
-		(
-		implication__transform_goal(implies(P,Q), Forward),
-		implication__transform_goal(implies(Q,P), Backward),
-		Goal_Out = (Forward, Backward)
-		)
-	;
-	% Equivalence with explicit existential quantification
-		Goal_In  = some(_, equivalent(P, Q))
-	->
-		(
-		implication__transform_goal(implies(P,Q), Forward),
-		implication__transform_goal(implies(Q,P), Backward),
-		Goal_Out = (Forward, Backward)
-		)
-	;
-	% Equivalence with explicit universal quantification
-		Goal_In  = all(_, equivalent(P, Q))
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = not([], ((P1 ; Q1), (not([], P1) ; not([],Q1))))
-		)
-	;
+	% Implication
+implication__transform_goal(implies(P, Q), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	implication__transform_goal(Q, Q1),
+	Goal_Out = not([], (P1, not([], Q1))).
 
-% Handle negation...	
-	Goal_In  = not(_, implies(P, Q))
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = (P1, not([],Q1))
-		)
-	;
-		Goal_In  = not(_, equivalent(P, Q))
-	->
-		(
-		implication__transform_goal(P, P1),
-		implication__transform_goal(Q, Q1),
-		Goal_Out = ((P1, not([], Q1)) ; (Q1, not([], P1)))
-		)
-	;
+	% Equivalence
+implication__transform_goal(equivalent(P, Q), Goal_Out) :-
+	implication__transform_goal((implies(P,Q), implies(Q,P)),
+		Goal_Out).
 
-% Convert universal quantification to existential...
-	Goal_In  = all(Vars, P)
-	->
-		(
-		implication__transform_goal(not([], P), Not_P1),
-		Goal_Out = not([], some(Vars, Not_P1))
-		)
-	;
+	% Existential Quantification
+implication__transform_goal(some(Vars, P), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	Goal_Out = some(Vars, P1).
 
-% If all else fails let the goal fall through without change...
-		Goal_Out = Goal_In
-	).
+	% Universal Quantification
+implication__transform_goal(all(Vars, P), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	Goal_Out = not([], some(Vars, not([], P1))).
 
-% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+	% Negation
+implication__transform_goal(not(Vars, P), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	Goal_Out = not(Vars, P1).
+
+	% Conjunction
+implication__transform_goal((P, Q), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	implication__transform_goal(Q, Q1),
+	Goal_Out = (P1, Q1).
+
+	% Disjunction
+implication__transform_goal((P; Q), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	implication__transform_goal(Q, Q1),
+	Goal_Out = (P1; Q1).
+
+	% If-Then
+implication__transform_goal(if_then(Vars, P, Q), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	implication__transform_goal(Q, Q1),
+	Goal_Out = if_then(Vars, P1, Q1).
+
+	% If-Then-Else
+implication__transform_goal(if_then_else(Vars, P, Q, R), Goal_Out) :-
+	implication__transform_goal(P, P1),
+	implication__transform_goal(Q, Q1),
+	implication__transform_goal(R, R1),
+	Goal_Out = if_then_else(Vars, P1, Q1, R1).
+
+	% Truth
+implication__transform_goal(true, true).
+
+	% Falsehood
+implication__transform_goal(fail, fail).
+
+	% Call
+implication__transform_goal(call(Term), call(Term)).
+
+	% Unify
+implication__transform_goal(unify(Term1, Term2), unify(Term1, Term2)).
+	
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
