@@ -31,6 +31,7 @@
 :- import_module list, map, set, std_util, require, term, varset.
 :- import_module options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, switch_detection.
+:- import_module (lambda).
 
 %-----------------------------------------------------------------------------%
 
@@ -68,7 +69,7 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Repeating mode check for "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			hlds_out__write_pred_id(ModuleInfo1, PredId),
 			io__write_string("\n")
 		;
 			[]
@@ -82,18 +83,26 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		;
 			true
 		},
-
 		( { VeryVerbose = yes } ->
-			io__write_string("% Repeating switch detection for "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("% Repeating lambda expansion for "),
+			hlds_out__write_pred_id(ModuleInfo2, PredId),
 			io__write_string("\n")
 		;
 			[]
 		),
-		{ module_info_preds(ModuleInfo2, PredTable2) },
-		{ map__lookup(PredTable2, PredId, PredInfo2) },
-		detect_switches_in_pred(PredId, PredInfo2,
-			ModuleInfo2, ModuleInfo3),
+		{ lambda__process_pred(PredId, ModuleInfo2, ModuleInfo3) },
+
+		( { VeryVerbose = yes } ->
+			io__write_string("% Repeating switch detection for "),
+			hlds_out__write_pred_id(ModuleInfo3, PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
+		{ module_info_preds(ModuleInfo3, PredTable3) },
+		{ map__lookup(PredTable3, PredId, PredInfo3) },
+		detect_switches_in_pred(PredId, PredInfo3,
+			ModuleInfo3, ModuleInfo4),
 
 		( { VeryVerbose = yes } ->
 			io__write_string("% Repeating common deconstruction detection for "),
@@ -102,9 +111,9 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		{ module_info_preds(ModuleInfo3, PredTable3) },
-		{ map__lookup(PredTable3, PredId, PredInfo3) },
-		detect_cse_in_pred(PredId, PredInfo3, ModuleInfo3, ModuleInfo)
+		{ module_info_preds(ModuleInfo4, PredTable4) },
+		{ map__lookup(PredTable4, PredId, PredInfo4) },
+		detect_cse_in_pred(PredId, PredInfo4, ModuleInfo4, ModuleInfo)
 	).
 
 :- type cse_info	--->	cse_info(varset, map(var, type), module_info).

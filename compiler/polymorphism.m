@@ -9,8 +9,8 @@
 
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism
-% using higher-order predicates, and also handles lambda expressions,
-% by creating new predicates for them.
+% using higher-order predicates, and also invokes `lambda__transform_lambda'
+% to handle lambda expressions by creating new predicates for them.
 %
 % Every polymorphic predicate is transformed
 % so that it takes one additional argument for every type variable in the
@@ -52,27 +52,6 @@
 %
 % (except that both the input and output of the transformation are
 % actually in super-homogeneous form).
-%
-% Lambda expressions are converted into separate predicates, so for
-% example we translate
-%
-%	:- pred p(int::in) is det.
-%	p(X) :-
-%		V__1 = lambda([Y::out] is nondet, q(Y, X))),
-%		solutions(V__1, List),
-%		...
-%	:- pred q(int::out, int::in) is nondet.
-%
-% into
-%
-%	p(X) :-
-%		V__1 = '__LambdaGoal__1'(X)
-%		solutions(V__1, List),
-%		...
-%
-%	:- pred '__LambdaGoal__1'(int::in, int::out) is nondet.
-%	'__LambdaGoal__1'(X, Y) :- q(Y, X).
-%
 
 %-----------------------------------------------------------------------------%
 
@@ -90,7 +69,7 @@
 :- import_module int, string, list, set, map, term, varset, std_util, require.
 :- import_module prog_io, type_util, mode_util, quantification.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module llds.
+:- import_module llds, (lambda).
 
 %-----------------------------------------------------------------------------%
 
@@ -115,17 +94,23 @@ polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
 
 polymorphism__process_preds([], ModuleInfo, ModuleInfo).
 polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+	polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo1),
+	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
+
+:- pred polymorphism__process_pred(pred_id, module_info, module_info).
+:- mode polymorphism__process_pred(in, in, out) is det.
+
+polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_name(PredInfo, PredName),
 	% The builtin predicates call/N don't need a type_info
 	( PredName = "call" ->
-		ModuleInfo1 = ModuleInfo0
+		ModuleInfo = ModuleInfo0
 	;
 		pred_info_procids(PredInfo, ProcIds),
 		polymorphism__process_procs(PredId, ProcIds, ModuleInfo0,
-			ModuleInfo1)
-	),
-	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
+			ModuleInfo)
+	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
 					module_info, module_info).
@@ -399,7 +384,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		{ LambdaGoal0 = _ - GoalInfo0 },
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal),
-		polymorphism__transform_lambda(Vars, Modes, Det, NonLocals0,
+		polymorphism__process_lambda(Vars, Modes, Det, NonLocals0,
 				LambdaGoal, Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
@@ -443,6 +428,8 @@ polymorphism__process_goal_list([], []) --> [].
 polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 	polymorphism__process_goal(Goal0, Goal),
 	polymorphism__process_goal_list(Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
 
 :- pred polymorphism__process_call(pred_id, proc_id, list(var), list(var),
 					list(var), list(hlds__goal),
@@ -488,168 +475,19 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				TypeInfoMap, ModuleInfo)
 	).
 
-:- pred polymorphism__transform_lambda(list(var), list(mode), determinism,
+:- pred polymorphism__process_lambda(list(var), list(mode), determinism,
 		set(var), hlds__goal, unification, unify_rhs, unification,
 		poly_info, poly_info).
-:- mode polymorphism__transform_lambda(in, in, in, in, in, in, out, out,
+:- mode polymorphism__process_lambda(in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-polymorphism__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, PolyInfo0, PolyInfo) :-
-
-	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, _, ModuleInfo0),
-
-	%
-	% Optimize a special case: replace
-	%	`lambda([Y1, Y2, ...] is Det, p(X1, X2, ..., Y1, Y2, ...))'
-	% where `p' has determinism `Det' with
-	%	`p(X1, X2, ...)'
-	%
-	% XXX This optimization is only valid if the modes of the Xi are
-	% input, since only input arguments can be curried.
-	% Until this check is added, this optimization is incorrect,
-	% so I have disabled it - fjh.
-
-	LambdaGoal = _ - LambdaGoalInfo,
-	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, Vars, NonLocals),
-	set__to_sorted_list(NonLocals, ArgVars1),
-	( 
-/****************
-XXX this optimization temporarily disabled, see comment above
-
-		LambdaGoal = call(PredId0, ModeId0, CallVars, _, _, PredName, _)
-					- _,
-		list__remove_suffix(CallVars, Vars, InitialVars),
-
-		module_info_pred_proc_info(ModuleInfo0, PredId0, ModeId0, _,
-			Call_ProcInfo),
-		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
-		determinism_to_code_model(Det, CodeModel),
-			% Check that the code models are compatible.
-			% Note that det is not compatible with semidet,
-			% and semidet is not compatible with nondet,
-			% since the arguments go in different registers.
-			% But det is compatible with nondet.
-		( CodeModel = Call_CodeModel
-		; CodeModel = model_non, Call_CodeModel = model_det
-		)
-	->
-		ArgVars = InitialVars,
-		PredId = PredId0,
-		ModeId = ModeId0,
-		unqualify_name(PredName, PName),
-		PolyInfo = PolyInfo0
-	;
-****************/
-		% Prepare to create a new predicate for the lambda
-		% expression: work out the arguments, module name, predicate
-		% name, arity, arg types, determinism,
-		% context, status, etc. for the new predicate
-
-		ArgVars = ArgVars1,
-		list__append(ArgVars, Vars, AllArgVars),
-
-		module_info_name(ModuleInfo0, ModuleName),
-		module_info_next_lambda_count(ModuleInfo0, LambdaCount,
-					ModuleInfo1),
-		string__int_to_string(LambdaCount, LambdaCountStr),
-		string__append("__LambdaGoal__", LambdaCountStr, PName),
-		PredName = unqualified(PName),
-		list__length(AllArgVars, Arity),
-		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
-		Cond = true,
-		goal_info_context(LambdaGoalInfo, LambdaContext),
-		Status = local,
-		MaybeDet = yes(Det),
-		% the TVarSet is a superset of what it really ought be,
-		% but that shouldn't matter
-		(
-			Unification0 = construct(_, _, _, UniModes0)
-		->
-			UniModes = UniModes0
-		;
-			error("polymorphism__transform_lambda: wierd unification")
-		),
-		polymorphism__uni_modes_to_modes(UniModes, OrigArgModes),
-
-		% We have to jump through hoops to work out the mode
-		% of the lambda predicate. For introduced
-		% type_info arguments, we use the mode "in".  For the original
-		% non-local vars, we use the modes from `UniModes'.
-		% For the lambda var arguments at the end,
-		% we use the mode in the lambda expression. 
-
-		list__length(ArgVars, NumArgVars),
-		In = user_defined_mode(unqualified("in"), []),
-		list__duplicate(NumArgVars, In, InModes),
-		map__from_corresponding_lists(ArgVars, InModes,
-			ArgModesMap),
-
-		set__delete_list(OrigNonLocals0, Vars, OrigNonLocals),
-		set__to_sorted_list(OrigNonLocals, OrigArgVars),
-		map__from_corresponding_lists(OrigArgVars, OrigArgModes,
-			OrigArgModesMap),
-		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
-		map__values(ArgModesMap1, ArgModes1),
-
-		list__append(ArgModes1, Modes, AllArgModes),
-
-		% 
-		% Now construct the pred_info for the new predicate, using
-		% the information computed above
-		%
-		clauses_info_init(Arity, ClausesInfo),
-		pred_info_init(ModuleName, PredName, Arity, TVarSet,
-			ArgTypes, Cond, LambdaContext, ClausesInfo, Status,
-			no, PredInfo0),
-
-		%	
-		% Create a single mode for the new predicate, and insert
-		% the lambda goal as the body of that procedure.
-		%
-		pred_info_procedures(PredInfo0, Procs0),
-		next_mode_id(Procs0, MaybeDet, ModeId),
-		proc_info_init(Arity, AllArgModes, MaybeDet, LambdaContext,
-				ProcInfo0),
-		proc_info_set_body(ProcInfo0, VarSet, VarTypes, AllArgVars,
-				LambdaGoal, ProcInfo),
-		map__set(Procs0, ModeId, ProcInfo, Procs),
-		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
-
-		%
-		% save the new predicate in the predicate table
-		%
-		module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
-		predicate_table_insert(PredicateTable0, PredInfo,
-			PredId, PredicateTable),
-		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
-			ModuleInfo),
-		polymorphism__set_module_info(ModuleInfo, PolyInfo0, PolyInfo)
-	
-	),
-	Functor = functor(term__atom(PName), ArgVars),
-	ConsId = pred_const(PredId, ModeId),
-	(
-		Unification0 = construct(Var, _, _, ArgModes)
-	->
-		Unification = construct(Var, ConsId, ArgVars, ArgModes)
-	;
-		error("polymorphism__transform_lambda: wierd unification")
-	).
-
-:- pred polymorphism__uni_modes_to_modes(list(uni_mode), list(mode)).
-:- mode polymorphism__uni_modes_to_modes(in, out) is det.
-
-	% This predicate works out the modes of the original non-local
-	% variables of a lambda expression based on the list of uni_mode
-	% in the unify_info for the lambda unification.
-
-polymorphism__uni_modes_to_modes([], []).
-polymorphism__uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
-	UniMode = ((_Initial0 - Initial1) -> (_Final0 - _Final1)),
-	Mode = (Initial1 -> Initial1),
-	polymorphism__uni_modes_to_modes(UniModes, Modes).
+	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
+	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
+		Functor, Unification, ModuleInfo),
+	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
