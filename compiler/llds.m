@@ -2314,7 +2314,7 @@ gather_labels(Procs, Labels) :-
 	list__reverse(Labels1, Labels).
 
 :- pred gather_labels_2(list(c_procedure), list(label), list(label)).
-:- mode gather_labels_2(in, di, uo) is det.
+:- mode gather_labels_2(in, in, out) is det.
 
 gather_labels_2([], Labels, Labels).
 gather_labels_2([c_procedure(_, _, _, Instrs) | Procs], Labels0, Labels) :-
@@ -2322,7 +2322,7 @@ gather_labels_2([c_procedure(_, _, _, Instrs) | Procs], Labels0, Labels) :-
 	gather_labels_2(Procs, Labels1, Labels).
 
 :- pred gather_labels_from_instrs(list(instruction), list(label), list(label)).
-:- mode gather_labels_from_instrs(in, di, uo) is det.
+:- mode gather_labels_from_instrs(in, in, out) is det.
 
 gather_labels_from_instrs([], Labels, Labels).
 gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
