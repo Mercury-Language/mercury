@@ -351,8 +351,8 @@ MR_define_extern_entry(MR_do_trace_redo_fail_shallow);
 MR_define_extern_entry(MR_do_trace_redo_fail_deep);
 
 MR_BEGIN_MODULE(MR_trace_labels_module)
-	MR_init_entry_ai(MR_do_trace_redo_fail_shallow);
-	MR_init_entry_ai(MR_do_trace_redo_fail_deep);
+	MR_init_entry_an(MR_do_trace_redo_fail_shallow);
+	MR_init_entry_an(MR_do_trace_redo_fail_deep);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_do_trace_redo_fail_shallow);

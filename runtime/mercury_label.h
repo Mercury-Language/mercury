@@ -15,17 +15,10 @@
 #ifndef	MERCURY_LABEL_H
 #define	MERCURY_LABEL_H
 
-#include "mercury_types.h"		/* for `MR_Code *' */
-#include "mercury_dlist.h" 		/* for `List' */
-#include "mercury_stack_layout.h"	/* for `MR_Proc_Layout' etc */
-
-#if     defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS)
-  #define	MR_NEED_ENTRY_LABEL_ARRAY
-#endif
-
-#if     defined(MR_NEED_ENTRY_LABEL_ARRAY) || defined(MR_MPROF_PROFILE_CALLS)
-  #define	MR_NEED_ENTRY_LABEL_INFO
-#endif
+#include "mercury_conf_param.h"	    /* for `MR_NEED_ENTRY_LABEL_ARRAY' etc */
+#include "mercury_types.h"	    /* for `MR_Code *' */
+#include "mercury_dlist.h"	    /* for `List' */
+#include "mercury_stack_layout.h"   /* for `MR_Proc_Layout' etc */
 
 /*
 ** This struct records information about entry labels. Elements in the

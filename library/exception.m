@@ -1321,7 +1321,7 @@ MR_trace_throw(MR_Code *success_pointer, MR_Word *base_sp, MR_Word *base_curfr)
 		*/
 		result = MR_stack_walk_step(entry_layout, &return_label_layout,
 			&base_sp, &base_curfr, &problem);
-		if (result != STEP_OK) {
+		if (result != MR_STEP_OK) {
 			WARNING(problem);
 			return NULL;
 		}

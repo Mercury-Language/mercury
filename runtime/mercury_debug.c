@@ -19,6 +19,14 @@
 static void	MR_print_ordinary_regs(void);
 static void	MR_printdetslot_as_label(const MR_Integer offset);
 
+#ifdef	MR_LOWLEVEL_ADDR_DEBUG
+  #define	MR_PRINT_RAW_ADDRS	TRUE
+#else
+  #define	MR_PRINT_RAW_ADDRS	FALSE
+#endif
+
+static	bool	MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
+
 /* debugging messages */
 
 #ifdef MR_LOWLEVEL_DEBUG
@@ -225,15 +233,22 @@ MR_printint(MR_Word n)
 void 
 MR_printstring(const char *s)
 {
-	printf("string %p %s\n", (const void *) s, s);
+	if (MR_print_raw_addrs) {
+		printf("string %p %s\n", (const void *) s, s);
+	} else {
+		printf("string %s\n", s, s);
+	}
 }
 
 void 
 MR_printheap(const MR_Word *h)
 {
 #ifndef CONSERVATIVE_GC
-	printf("ptr %p, offset %3ld words\n",
-		(const void *) h,
+	if (MR_print_raw_addrs) {
+		printf("ptr %p, ", (const void *) h);
+	}
+
+	printf("offset %3ld words\n",
 		(long) (MR_Integer) (h - MR_ENGINE(MR_eng_heap_zone)->min));
 #else
 	printf("ptr %p\n",
@@ -246,8 +261,12 @@ MR_dumpframe(/* const */ MR_Word *fr)
 {
 	int	i;
 
-	printf("frame at ptr %p, offset %3ld words\n",
-		(const void *) fr, 
+	printf("frame at ");
+	if (MR_print_raw_addrs) {
+		printf("ptr %p, ", (const void *) fr);
+	}
+
+	printf("offset %3ld words\n",
 		(long) (MR_Integer)
 			(fr - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 	printf("\t succip    "); MR_printlabel(stdout, MR_succip_slot(fr));
@@ -358,17 +377,23 @@ MR_printdetstackptr(const MR_Word *s)
 void 
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
-	fprintf(fp, "det %3ld (%p)",
+	fprintf(fp, "det %3ld ",
 		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min),
-		(const void *) s);
+			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+
+	if (MR_print_raw_addrs) {
+		fprintf(fp, " (%p)", (const void *) s);
+	}
 }
 
 void 
 MR_printdetstack(const MR_Word *s)
 {
-	printf("ptr %p, offset %3ld words\n",
-		(const void *) s,
+	if (MR_print_raw_addrs) {
+		printf("ptr %p, ", (const void *) s);
+	}
+
+	printf("offset %3ld words\n",
 		(long) (MR_Integer)
 			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
 }
@@ -382,17 +407,24 @@ MR_printnondstackptr(const MR_Word *s)
 void 
 MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 {
-	fprintf(fp, "non %3ld (%p)",
+	fprintf(fp, "non %3ld",
 		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min),
+			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+
+	if (MR_print_raw_addrs) {
+		fprintf(fp, " (%p)",
 		(const void *) s);
+	}
 }
 
 void 
 MR_printnondstack(const MR_Word *s)
 {
-	printf("ptr %p, offset %3ld words\n",
-		(const void *) s,
+	if (MR_print_raw_addrs) {
+		printf("ptr %p, ", (const void *) s);
+	}
+
+	printf("offset %3ld words\n",
 		(long) (MR_Integer)
 			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
 }
@@ -403,13 +435,15 @@ void
 MR_print_heapptr(FILE *fp, const MR_Word *s)
 {
 #ifdef	CONSERVATIVE_GC
-	fprintf(fp, "heap %ld (%p)",
-		(long) s, (const void *) s);
+	fprintf(fp, "heap %ld", (long) s);
 #else
-	fprintf(fp, "heap %3ld (%p)",
-		(long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->min),
-		(const void *) s);
+	fprintf(fp, "heap %3ld",
+		(long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->min)),
 #endif
+
+	if (MR_print_raw_addrs) {
+		printf(" (%p)", (const void *) s);
+	}
 }
 
 void 
@@ -420,25 +454,31 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 	internal = MR_lookup_internal_by_addr(w);
 	if (internal != NULL) {
 		if (internal->i_name != NULL) {
-			fprintf(fp, "label %s (%p)", internal->i_name, w);
+			fprintf(fp, "label %s", internal->i_name);
 		} else {
-			fprintf(fp, "label (%p)", w);
+			fprintf(fp, "unnamed label");
 		}
 	} else {
-#ifdef	MR_DEBUG_GOTOS
+#ifdef	MR_NEED_ENTRY_LABEL_ARRAY
 		MR_Entry	*entry;
 
 		entry = MR_prev_entry_by_addr(w);
-		if (entry != NULL && entry->e_addr == w
-			&& entry->e_name != NULL)
-		{
-			fprintf(fp, "label %s (%p)", entry->e_name, w);
+		if (entry != NULL && entry->e_addr == w) {
+			if (entry->e_name != NULL) {
+				fprintf(fp, "entry label %s", entry->e_name);
+			} else {
+				fprintf(fp, "unnamed entry label");
+			}
 		} else {
-			fprintf(fp, "label UNKNOWN (%p)", w);
+			fprintf(fp, "label UNKNOWN");
 		}
 #else
-		fprintf(fp, "label UNKNOWN (%p)", w);
-#endif	/* not MR_DEBUG_GOTOS */
+		fprintf(fp, "label UNKNOWN");
+#endif	/* not MR_NEED_ENTRY_LABEL_ARRAY */
+	}
+
+	if (MR_print_raw_addrs) {
+		fprintf(fp, " (%p)", w);
 	}
 }
 

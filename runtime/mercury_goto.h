@@ -49,21 +49,30 @@
 ** or if we need the label address for profiling or
 ** accurate garbage collection.
 **
-** The versions of the macros below with the _ai or _sl suffix always insert
-** the label into the label table, the difference between them being that
-** the _ai variant does not include a layout structure. If the label *has*
-** a layout structure, use the _sl variant.
+** The versions of the macros below with the _ai, _an or _sl suffix always
+** insert the label into the label table, the difference between them being that
+** the _ai and _an variants do not include a layout structure. If the label
+** *has* a layout structure, use the _sl variant. The difference between the
+** _ai and the _an variants is that the latter always inserts the name of the
+** label as well. This is intended for a small number of labels that are
+** frequently needed in debugging, e.g. do_fail.
 */
 
 #define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
+#define MR_make_label_an(n, a, l)		MR_insert_internal_label(n, \
+							a, NULL)
 #define MR_make_label_sl(n, a, l)		MR_insert_internal(n, a, \
 							MR_LABEL_LAYOUT(l))
 
 #define MR_make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define MR_make_local_an(n, a, l)		MR_insert_entry_label(n, \
+							a, NULL)
 #define MR_make_local_sl(n, a, l)		MR_insert_entry(n, a, \
 							MR_PROC_LAYOUT(l))
 
 #define MR_make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
+#define MR_make_entry_an(n, a, l)		MR_insert_entry_label(n, \
+							a, NULL)
 #define MR_make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
 							MR_PROC_LAYOUT(l))
 
@@ -561,6 +570,9 @@
     #define MR_init_entry_ai(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
 	MR_make_entry_ai(MR_STRINGIFY(label), label, label)
+    #define MR_init_entry_an(label)	\
+	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+	MR_make_entry_an(MR_STRINGIFY(label), label, label)
     #define MR_init_entry_sl(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
 	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
@@ -594,6 +606,9 @@
     #define MR_init_entry_ai(label)	\
 	MR_make_entry_ai(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
+    #define MR_init_entry_an(label)	\
+	MR_make_entry_an(MR_STRINGIFY(label), &&label, label);	\
+	MR_entry(label) = &&label
     #define MR_init_entry_sl(label)	\
 	MR_make_entry_sl(MR_STRINGIFY(label), &&label, label);	\
 	MR_entry(label) = &&label
@@ -616,6 +631,8 @@
   	MR_make_local(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_local_ai(label)	\
   	MR_make_local_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_local_an(label)	\
+  	MR_make_local_an(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_local_sl(label)	\
   	MR_make_local_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_define_label(label)	MR_define_local(label)
@@ -624,6 +641,8 @@
 	MR_make_label(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_label_ai(label)	\
 	MR_make_label_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_label_an(label)	\
+	MR_make_label_an(MR_STRINGIFY(label), &&MR_entry(label), label)
   #define MR_init_label_sl(label)	\
 	MR_make_label_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
 
@@ -673,6 +692,8 @@
 		  				label, label)
   #define MR_init_entry_ai(label)	MR_make_entry_ai(MR_STRINGIFY(label), \
 		  				label, label)
+  #define MR_init_entry_an(label)	MR_make_entry_an(MR_STRINGIFY(label), \
+		  				label, label)
   #define MR_init_entry_sl(label)	MR_make_entry_sl(MR_STRINGIFY(label), \
 		  				label, label)
 
@@ -685,6 +706,8 @@
 		  				label, label)
   #define MR_init_local_ai(label)	MR_make_local_ai(MR_STRINGIFY(label), \
 		  				label, label)
+  #define MR_init_local_an(label)	MR_make_local_an(MR_STRINGIFY(label), \
+		  				label, label)
   #define MR_init_local_sl(label)	MR_make_local_sl(MR_STRINGIFY(label), \
 		  				label, label)
 
@@ -696,6 +719,8 @@
   #define MR_init_label(label)		MR_make_label(MR_STRINGIFY(label),    \
 		  				label, label)
   #define MR_init_label_ai(label)	MR_make_label_ai(MR_STRINGIFY(label), \
+		  				label, label)
+  #define MR_init_label_an(label)	MR_make_label_an(MR_STRINGIFY(label), \
 		  				label, label)
   #define MR_init_label_sl(label)	MR_make_label_sl(MR_STRINGIFY(label), \
 		  				label, label)

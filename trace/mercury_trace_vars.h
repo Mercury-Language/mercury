@@ -10,10 +10,11 @@
 ** MR_trace_init_point_vars to initialize this module's data structures
 ** to reflect the variables that are live at that event. During the processing
 ** of the various debugger commands while at that event, the debugger may
-** call MR_trace_set_level zero or more times to change this module's notion
-** of the "current" set of variables to refer instead to the variables that
-** are live at the return address in a given ancestor. This module maintains
-** its own record of what the current ancestor level is; the enquiry function
+** call MR_trace_set_level or its MR_trace_set_level_from_layout variant
+** zero or more times to change this module's notion of the "current" set
+** of variables to refer instead to the variables that are live at the
+** return address in a given ancestor. This module maintains its own record
+** of what the current ancestor level is; the enquiry function
 ** MR_trace_current_level returns this information, while enquiry function
 ** MR_trace_current_level_details returns information about this level.
 **
@@ -60,6 +61,10 @@ extern	void		MR_trace_init_point_vars(
 				const MR_Label_Layout *top_layout,
 				MR_Word *saved_regs, MR_Trace_Port port);
 extern	const char	*MR_trace_set_level(int ancestor_level);
+extern	const char	*MR_trace_set_level_from_layout(
+				const MR_Label_Layout *level_layout,
+				MR_Word *base_sp, MR_Word *base_curfr,
+				int ancestor_level);
 extern	int		MR_trace_current_level(void);
 extern	void		MR_trace_current_level_details(
 				const MR_Proc_Layout **entry_ptr,
@@ -136,5 +141,16 @@ extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
 
 extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser,
 				MR_Browse_Format format);
+
+/*
+** Sets the current set of variables to be ones live at the program point
+** referred to by level_layout, base_sp and base_curfr arguments, and then
+** prints them all.
+*/
+
+extern	const char	*MR_trace_browse_all_on_level(FILE *out,
+				const MR_Label_Layout *level_layout,
+				MR_Word *base_sp, MR_Word *base_curfr,
+				int ancestor_level);
 
 #endif	/* MERCURY_TRACE_VARS_H */

@@ -814,6 +814,11 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);
 	*jumpaddr = level_layout->MR_sle_code_addr;
+#ifdef	MR_DEBUG_RETRY
+	printf("jumpaddr is ");
+	MR_print_label(stdout, *jumpaddr);
+	printf("\n");
+#endif
 
 	/*
 	** Overriding MR_trace_call_seqno etc is not enough, because
@@ -969,7 +974,7 @@ MR_unwind_stacks_for_retry(const MR_Label_Layout *top_layout,
 	for (i = 0; i < ancestor_level; i++) {
 		result = MR_stack_walk_step(level_layout, &return_label_layout,
 				base_sp_ptr, base_curfr_ptr, problem);
-		if (result != STEP_OK || return_label_layout == NULL) {
+		if (result != MR_STEP_OK || return_label_layout == NULL) {
 			if (*problem == NULL) {
 				*problem = "not that many ancestors";
 			} else if (streq(*problem, "reached unknown label")) {

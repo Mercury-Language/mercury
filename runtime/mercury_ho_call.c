@@ -158,13 +158,13 @@ MR_define_extern_entry(mercury__compare_3_3);
 MR_declare_label(mercury__compare_3_0_i1);
 
 MR_BEGIN_MODULE(call_module)
-	MR_init_entry_ai(mercury__do_call_closure);
-	MR_init_entry_ai(mercury__do_call_class_method);
-	MR_init_entry_ai(mercury__unify_2_0);
-	MR_init_entry_ai(mercury__compare_3_0);
-	MR_init_entry_ai(mercury__compare_3_1);
-	MR_init_entry_ai(mercury__compare_3_2);
-	MR_init_entry_ai(mercury__compare_3_3);
+	MR_init_entry_an(mercury__do_call_closure);
+	MR_init_entry_an(mercury__do_call_class_method);
+	MR_init_entry_an(mercury__unify_2_0);
+	MR_init_entry_an(mercury__compare_3_0);
+	MR_init_entry_an(mercury__compare_3_1);
+	MR_init_entry_an(mercury__compare_3_2);
+	MR_init_entry_an(mercury__compare_3_3);
 MR_BEGIN_CODE
 
 /*

@@ -2028,10 +2028,29 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 #endif	/* MR_TRACE_HISTOGRAM */
 	} else if (streq(words[0], "nondet_stack")) {
-		if (word_count == 1) {
+		bool	detailed;
+
+		detailed = FALSE;
+		if (! MR_trace_options_detailed(&detailed,
+			&words, &word_count, "browsing", "nondet_stack"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
 			MR_trace_init_modules();
-			MR_dump_nondet_stack_from_layout(MR_mdb_out,
-				MR_saved_maxfr(saved_regs));
+			if (detailed) {
+				int	saved_level;
+
+				saved_level = MR_trace_current_level();
+				MR_dump_nondet_stack_from_layout(MR_mdb_out,
+					MR_saved_maxfr(saved_regs),
+					layout,
+					MR_saved_sp(saved_regs),
+					MR_saved_curfr(saved_regs));
+				MR_trace_set_level(saved_level);
+			} else {
+				MR_dump_nondet_stack(MR_mdb_out,
+					MR_saved_maxfr(saved_regs));
+			}
 		} else {
 			MR_trace_usage("developer", "nondet_stack");
 		}

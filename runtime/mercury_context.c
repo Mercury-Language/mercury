@@ -312,7 +312,7 @@ MR_schedule(MR_Context *ctxt)
 MR_define_extern_entry(MR_do_runnext);
 
 MR_BEGIN_MODULE(scheduler_module)
-	MR_init_entry_ai(MR_do_runnext);
+	MR_init_entry_an(MR_do_runnext);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_do_runnext);

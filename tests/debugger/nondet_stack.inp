@@ -1,0 +1,17 @@
+echo on
+context none
+register --quiet
+goto 21
+nondet_stack
+stack_regs
+nondet_stack -d
+goto 38
+nondet_stack
+stack_regs
+nondet_stack -d
+break nondet_stack__test
+continue
+nondet_stack
+stack_regs
+nondet_stack -d
+continue -S

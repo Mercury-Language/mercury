@@ -1157,7 +1157,7 @@ save_state(MR_SavedState *saved_state,
 
     #ifndef MR_HIGHLEVEL_CODE
 		if (MR_tablestackdebug) {
-			MR_dump_nondet_stack_from_layout(stdout, MR_maxfr);
+			MR_dump_nondet_stack(stdout, MR_maxfr);
 		}
     #endif
 	}
@@ -2011,7 +2011,7 @@ MR_END_MODULE
 
 MR_define_extern_entry(MR_table_nondet_commit);
 MR_BEGIN_MODULE(table_nondet_commit_module)
-	MR_init_entry_ai(MR_table_nondet_commit);
+	MR_init_entry_an(MR_table_nondet_commit);
 MR_BEGIN_CODE
 MR_define_entry(MR_table_nondet_commit);
 	MR_commit_cut();

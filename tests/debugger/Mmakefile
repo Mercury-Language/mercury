@@ -36,6 +36,7 @@ NONRETRY_PROGS = \
 	interpreter			\
 	loopcheck			\
 	multi_parameter			\
+	nondet_stack			\
 	output_term_dep			\
 	polymorphic_output		\
 	resume_typeinfos		\
@@ -217,6 +218,11 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+nondet_stack.out: nondet_stack nondet_stack.inp
+	$(MDB) ./nondet_stack < nondet_stack.inp 2>&1 | \
+		sed 's/nondet_stack.m:[0-9]*/nondet_stack.m:NNNN/g' \
+		> nondet_stack.out 2>&1
 
 resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
 	$(MDB) ./resume_typeinfos < resume_typeinfos.inp 2>&1 | \

@@ -669,10 +669,10 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				** printlabel(), so we would need to define new
 				** fprintf() and printlabel() and pass them
 				** down as parameters of
-				** MR_dump_nondet_stack_from_layout() (as we do
+				** MR_dump_nondet_stack() (as we do
 				** with MR_dump_stack_record_print()).
 				*/						
-				MR_dump_nondet_stack_from_layout(stdout,
+				MR_dump_nondet_stack(stdout,
 					MR_saved_maxfr(saved_regs));
 				MR_send_message_to_socket("ok");
 				break;

@@ -662,12 +662,12 @@ MR_define_extern_entry(MR_do_not_reached);
 MR_define_extern_entry(MR_exception_handler_do_fail);
 
 MR_BEGIN_MODULE(special_labels_module)
-	MR_init_entry_ai(MR_do_redo);
-	MR_init_entry_ai(MR_do_fail);
-	MR_init_entry_ai(MR_do_succeed);
-	MR_init_entry_ai(MR_do_last_succeed);
-	MR_init_entry_ai(MR_do_not_reached);
-	MR_init_entry_ai(MR_exception_handler_do_fail);
+	MR_init_entry_an(MR_do_redo);
+	MR_init_entry_an(MR_do_fail);
+	MR_init_entry_an(MR_do_succeed);
+	MR_init_entry_an(MR_do_last_succeed);
+	MR_init_entry_an(MR_do_not_reached);
+	MR_init_entry_an(MR_exception_handler_do_fail);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_do_redo);

@@ -188,6 +188,9 @@ int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
 char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char	*(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
+const char *
+	(*MR_address_of_trace_browse_all_on_level)(FILE *,
+		const MR_Label_Layout *, MR_Word *, MR_Word *, int);
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);
@@ -1400,12 +1403,14 @@ MR_define_extern_entry(MR_do_interpreter);
 MR_declare_label(global_success);
 MR_declare_label(global_fail);
 MR_declare_label(all_done);
+MR_declare_label(wrapper_not_reached);
 
 MR_BEGIN_MODULE(interpreter_module)
-	MR_init_entry_ai(MR_do_interpreter);
-	MR_init_label_ai(global_success);
-	MR_init_label_ai(global_fail);
-	MR_init_label_ai(all_done);
+	MR_init_entry_an(MR_do_interpreter);
+	MR_init_label_an(global_success);
+	MR_init_label_an(global_fail);
+	MR_init_label_an(all_done);
+	MR_init_label_an(wrapper_not_reached);
 MR_BEGIN_CODE
 
 MR_define_entry(MR_do_interpreter);
@@ -1415,6 +1420,7 @@ MR_define_entry(MR_do_interpreter);
 	MR_stackvar(3) = (MR_Word) MR_maxfr;
 	MR_stackvar(4) = (MR_Word) MR_curfr;
 
+	MR_succip = MR_LABEL(wrapper_not_reached);
 	MR_mkframe("interpreter", 1, MR_LABEL(global_fail));
 
 	MR_nondet_stack_trace_bottom = MR_maxfr;
@@ -1486,6 +1492,9 @@ MR_define_label(all_done);
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;
 #endif
+
+MR_define_label(wrapper_not_reached);
+	MR_fatal_error("reached wrapper_not_reached");
 MR_END_MODULE
 
 #endif

@@ -172,6 +172,20 @@
 ** MR_TABLE_DEBUG
 ** 	Enables low-level debugging messages from the tabling system.
 **
+** MR_DEBUG_RETRY
+** 	Enables low-level debugging messages from retry operations in the
+** 	debugger.
+**
+** MR_DEBUG_LABEL_NAMES
+** 	Registers labels and their names, enabling label addresses to be
+** 	converted back to a form in which they are usable by a developer.
+** 	Implied by MR_TABLE_DEBUG and MR_DEBUG_RETRY.
+**
+** MR_LOWLEVEL_ADDR_DEBUG
+** 	Enables the printing of raw addresses in debugging output even for
+** 	things (such as stack slots and labels) that can be identified by more
+** 	human-friendly handles (such as stack offsets and label names).
+**
 ** MR_DEBUG_JMPBUFS
 ** 	Enables low-level debugging messages from MR_call_engine and the
 ** 	code handling exceptions.
@@ -309,6 +323,16 @@
 /* XXX document MR_BYTECODE_CALLABLE */
 
 /*
+** MR_DEBUG_LABEL_NAMES -- we need to be able to convert code addresses into
+**			   the names of the labels they correspond to.
+*/
+
+/* MR_TABLE_DEBUG and MR_DEBUG_RETRY imply MR_DEBUG_LABEL_NAMES */
+#if defined(MR_TABLE_DEBUG) || defined(MR_DEBUG_RETRY)
+  #define MR_DEBUG_LABEL_NAMES
+#endif
+
+/*
 ** MR_INSERT_LABELS     -- labels need to be inserted into the label table. 
 **			   (this also means the initialization code needs
 **			   to be run some time before the first use of the
@@ -326,7 +350,7 @@
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
 #if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
-	|| defined(MR_BYTECODE_CALLABLE)
+	|| defined(MR_BYTECODE_CALLABLE) || defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_LABELS
 #endif
 
@@ -342,7 +366,8 @@
   #error "MR_INSERT_ENTRY_LABEL_NAMES should not be defined on the command line"
 #endif
 #if defined(MR_MPROF_PROFILE_CALLS) || defined(MR_DEBUG_GOTOS) \
-		|| defined(MR_DEBUG_AGC_SCHEDULING)
+		|| defined(MR_DEBUG_AGC_SCHEDULING) \
+		|| defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_ENTRY_LABEL_NAMES
 #endif
 
@@ -357,8 +382,35 @@
 #ifdef MR_INSERT_INTERNAL_LABEL_NAMES
   #error "MR_INSERT_INTERNAL_LABEL_NAMES should not be defined on the command line"
 #endif
-#if defined(MR_DEBUG_GOTOS) || defined(MR_DEBUG_AGC_SCHEDULING)
+#if defined(MR_DEBUG_GOTOS) || defined(MR_DEBUG_AGC_SCHEDULING) \
+	|| defined(MR_DEBUG_LABEL_NAMES)
   #define MR_INSERT_INTERNAL_LABEL_NAMES
+#endif
+
+/*
+** MR_NEED_ENTRY_LABEL_ARRAY -- we need an array of the procedure entry code
+**                              addresses and possibly their label names,
+**                              sorted by the code address before use.
+**
+** This is required by garbage collection and for some kinds of low level
+** debugging.
+**
+** MR_NEED_ENTRY_LABEL_INFO --  we need to register procedure entry code
+**                              addresses.
+**
+** This is required in order to construct the sorted array of procedure entry
+** code addresses, to let the mprof profiling system turn program counter
+** samples back into procedure names, and to let accurate gc find out the
+** layout of stack frames.
+*/
+
+#if defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) \
+	|| defined(MR_INSERT_ENTRY_LABEL_NAMES)
+  #define MR_NEED_ENTRY_LABEL_ARRAY
+#endif
+
+#if defined(MR_NEED_ENTRY_LABEL_ARRAY) || defined(MR_MPROF_PROFILE_CALLS)
+  #define MR_NEED_ENTRY_LABEL_INFO
 #endif
 
 /*

@@ -239,6 +239,31 @@ MR_trace_set_level(int ancestor_level)
 	MR_Word				*base_curfr;
 	const MR_Label_Layout		*top_layout;
 	const MR_Label_Layout		*level_layout;
+
+	problem = NULL;
+	top_layout = MR_point.MR_point_top_layout;
+	base_sp = MR_saved_sp(MR_point.MR_point_top_saved_regs);
+	base_curfr = MR_saved_curfr(MR_point.MR_point_top_saved_regs);
+	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+			&base_sp, &base_curfr, &problem);
+
+	if (level_layout != NULL) {
+		return MR_trace_set_level_from_layout(level_layout,
+				base_sp, base_curfr, ancestor_level);
+	} else {
+		if (problem == NULL) {
+			MR_fatal_error("MR_find_nth_ancestor failed "
+					"without reporting a problem");
+		}
+
+		return problem;
+	}
+}
+
+const char *
+MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
+	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level)
+{
 	const MR_Proc_Layout		*entry;
 	MR_Word				*valid_saved_regs;
 	int				var_count;
@@ -258,26 +283,10 @@ MR_trace_set_level(int ancestor_level)
 	const char			*filename;
 	int				linenumber;
 
-	problem = NULL;
-	top_layout = MR_point.MR_point_top_layout;
-	base_sp = MR_saved_sp(MR_point.MR_point_top_saved_regs);
-	base_curfr = MR_saved_curfr(MR_point.MR_point_top_saved_regs);
-	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-			&base_sp, &base_curfr, &problem);
-
-	if (level_layout != NULL) {
-		entry = level_layout->MR_sll_entry;
-		if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			return "this procedure does not have "
-				"debugging information";
-		}
-	} else {
-		if (problem == NULL) {
-			MR_fatal_error("MR_find_nth_ancestor failed "
-					"without reporting a problem");
-		}
-
-		return problem;
+	entry = level_layout->MR_sll_entry;
+	if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		return "this procedure does not have "
+			"debugging information";
 	}
 
 	if (! MR_has_valid_var_count(level_layout)) {
@@ -325,8 +334,9 @@ MR_trace_set_level(int ancestor_level)
 		return "there are no names for the live variables";
 	}
 
-	if (ancestor_level == 0 &&
-			MR_point.MR_point_top_port != MR_PORT_EXCEPTION)
+	if (MR_saved_curfr(MR_point.MR_point_top_saved_regs) == base_curfr
+		&& MR_saved_sp(MR_point.MR_point_top_saved_regs) == base_sp
+		&& MR_point.MR_point_top_port != MR_PORT_EXCEPTION)
 	{
 		valid_saved_regs = MR_point.MR_point_top_saved_regs;
 	} else {
@@ -834,6 +844,22 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 	}
 
 	return NULL;
+}
+
+const char *
+MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
+	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level)
+{
+	const char	*problem;
+
+	problem = MR_trace_set_level_from_layout(level_layout,
+			base_sp, base_curfr, ancestor_level);
+	if (problem != NULL) {
+		return problem;
+	}
+
+	return MR_trace_browse_all(out, MR_trace_print,
+		MR_BROWSE_DEFAULT_FORMAT);
 }
 
 /* ML_arg() is defined in std_util.m */

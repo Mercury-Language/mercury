@@ -111,6 +111,17 @@ extern	char *		(*MR_address_of_trace_get_command)(const char *,
 				FILE *, FILE *);
 
 /*
+** MR_trace_browse_all_on_level() is defined in trace/mercury_trace_vars.c
+** but may be called from runtime/mercury_stack_trace.c. As we can not do
+** direct calls from runtime/ to trace/, we do an indirect call via the
+** function pointer MR_address_of_trace_browse_all_on_level.
+*/
+
+extern	const char *	(*MR_address_of_trace_browse_all_on_level)(FILE *,
+				const MR_Label_Layout *, MR_Word *, MR_Word *,
+				int);
+
+/*
 ** MR_trace_init_external() and MR_trace_final_external() are defined 
 ** in trace/mercury_trace_external.c but are called in
 ** runtime/mercury_trace_base.c. As we can not do direct calls from

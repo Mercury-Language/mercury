@@ -73,14 +73,22 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_Print_Stack_Record print_stack_record);
 
 /*
-** MR_dump_nondet_stack_from_layout:
-**	This function dumps the control control slots of the nondet stack.
+** MR_dump_nondet_stack:
+**	This function dumps the control slots of the nondet stack.
 **	The output format is not meant to be intelligible to non-implementors.
-**	The value of maxfr should be in *base_maxfr.
 */
 
-extern	void	MR_dump_nondet_stack_from_layout(FILE *fp,
-			MR_Word *base_maxfr);
+extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *maxfr);
+
+/*
+** MR_dump_nondet_stack_from_layout:
+**	This function dumps the nondet stack.
+**	The output format is not meant to be intelligible to non-implementors.
+*/
+
+extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *maxfr,
+			const MR_Label_Layout *label_layout,
+			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
 ** MR_find_nth_ancestor:
@@ -113,17 +121,22 @@ extern	const MR_Label_Layout *MR_find_nth_ancestor(
 **	continuation label, or NULL if the bottom of the stack has
 **	been reached.
 **
-**	The meaning of the return value for MR_stack_walk_step is
-**	described in its type definition above.  If an error is
-**	encountered, problem_ptr will be set to a string representation
-**	of the error.
+**	The meanings of the possible return values from MR_stack_walk_step
+**	are as follows:
+**
+**	MR_STEP_OK:		everything is fine.
+**	MR_STEP_ERROR_BEFORE:	entry_layout has no valid stack trace info.
+**	MR_STEP_ERROR_AFTER:	entry_layout has valid stack trace info,
+**				but its caller does not.
+**
+**	If a MR_stack_walk_step encounters a problem, it will set problem_ptr
+**	to point to a string representation of the error.
 */
 
 typedef enum {
-	STEP_ERROR_BEFORE,      /* the current entry_layout has no valid info */
-	STEP_ERROR_AFTER,       /* the current entry_layout has valid info,
-				   but the next one does not */
-	STEP_OK                 /* both have valid info */
+	MR_STEP_ERROR_BEFORE,
+	MR_STEP_ERROR_AFTER,
+	MR_STEP_OK
 } MR_Stack_Walk_Step_Result;
 
 extern  MR_Stack_Walk_Step_Result
