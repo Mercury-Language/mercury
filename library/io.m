@@ -265,12 +265,19 @@
 %		Mercury syntax, from the current or specified input stream.
 %		The type of the term read is determined by the context
 %		in which `io__read' is used.
-%		If there are no more non-whitespace characters before the
+%
+%		First, the input stream is read until an end-of-term token,
+%		end-of-file, or I/O error is reached.  (An end-of-term
+%		token consists of a `.' followed by whitespace.
+%		The trailing whitespace is left in the input stream.)
+%
+%		Then, the result is determined according to the tokens read.
+%		If there were no non-whitespace characters before the
 %		end of file, then `io__read' returns `eof'.
-%		If it can read in a syntactically correct ground term
-%		of the correct type, then it returns `ok(Term)'.
-%		If characters on the input stream (up to the next `.' that
-%		is followed by whitespace) do not form a syntactically
+%		If the tokens read formed a syntactically correct ground term
+%		of the correct type, followed by an end-of-term token,
+%		then it returns `ok(Term)'.  If characters read from
+%		the input stream did not form a syntactically
 %		correct term, or if the term read is not a ground term,
 %		or if the term is not a valid term of the appropriate type,
 %		or if an I/O error is encountered, then it returns
@@ -375,7 +382,7 @@
 %		For the types containing existential quantifiers,
 %		the type `type_desc' and closure types, the result may not be
 %		parsable by `io__read', either.  But in all other cases the
-%		format used is standard Mercury syntax, and if you do append a
+%		format used is standard Mercury syntax, and if you append a
 %		period and newline (".\n"), then the results can be read in
 %		again using `io__read'.
 
