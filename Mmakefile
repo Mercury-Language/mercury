@@ -69,7 +69,7 @@ depend_profiler:
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SUBDIRS) README INSTALL
+all: README INSTALL $(SUBDIRS)
 
 .PHONY: scripts
 scripts:
@@ -155,7 +155,7 @@ INSTALL: .INSTALL.in VERSION
 # Generally you should do a `mmake realclean' before doing `mmake tar'.
 
 .PHONY: tar
-tar:
+tar: README INSTALL
 	touch Mmake.params
 	cd util && mmake
 	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
