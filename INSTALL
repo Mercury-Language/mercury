@@ -2,12 +2,12 @@
 #
 # INSTALL - installation instructions and installation script.
 #
+# You need GNU Make and GNU C.
+# Make sure that they are somewhere in your path.
+#
 # Step 0.  Extract the files from the gzipped tar archive.
 #
-# Step 1.  Run configure (just type `sh configure').
-#
-# IMPORTANT: Make sure that the `make' executable in your path is GNU Make.
-# (Use `make -v' to check.)
+# Step 1.  Run configure.  (Just type `sh configure'.)
 #
 # Step 2.  Execute this script.  (Just type `sh INSTALL'.)
 #	   Uncomment the `MMAKEFLAGS=-j3' below if you want to do a parallel
