@@ -85,8 +85,9 @@
 :- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
 	list(type_desc__type_desc)::out) is semidet.
 
-:- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
-	list(type_desc__type_desc)::out, list(string)::out) is semidet.
+:- pred get_functor_with_names(type_desc__type_desc::in, int::in, string::out,
+	int::out, list(type_desc__type_desc)::out, list(string)::out)
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -316,8 +317,8 @@ get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
 	get_functor_impl(TypeDesc, FunctorNumber, FunctorName, Arity,
 		TypeInfoList, _Names).
 
-get_functor_2(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList,
-		Names) :-
+get_functor_with_names(TypeDesc, FunctorNumber, FunctorName, Arity,
+		TypeInfoList, Names) :-
 	get_functor_impl(TypeDesc, FunctorNumber, FunctorName, Arity,
 		TypeInfoList, Names).
 

@@ -210,6 +210,7 @@
 
 :- import_module bool, string, require.
 :- use_module    rtti_implementation.
+:- use_module	 std_util.
 
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h""	/* for MR_incr_hp_msg() etc. */
@@ -334,7 +335,7 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 	% The backends in which we use this definition of this predicate
 	% don't yet support pseudo_type_descs.
-	semidet_fail.
+	std_util.semidet_fail.
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
 
@@ -358,7 +359,7 @@ is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 	% The backends in which we use this definition of this predicate
 	% don't yet support pseudo_type_descs.
-	semidet_fail.
+	std_util.semidet_fail.
 
 :- pragma foreign_proc("C",
 	type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
@@ -790,6 +791,11 @@ get_type_info_for_type_info = TypeDesc :-
 	TypeDesc = type_of(Type).
 
 %-----------------------------------------------------------------------------%
+
+	% XXX This is just here so that the library compiles in grade java.
+	% pseudo_type_desc's have not been implemented for the Java backend
+	% yet. 
+:- pragma foreign_type("Java", pseudo_type_desc, "java.lang.Object").
 
 :- pragma foreign_code("Java", "
 	public static class Type_desc_0 {
