@@ -1550,8 +1550,20 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		OptimizeOpt = ""
 	},
+	globals__io_lookup_bool_option(inline_alloc, InlineAlloc),
+	{ InlineAlloc = yes ->
+		InlineAllocOpt = "-DINLINE_ALLOC -DSILENT "
+	;
+		InlineAllocOpt = ""
+	},
 	{ CompilerType = gcc ->
-		WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused "
+		% if --inline-alloc is enabled, don't enable missing-prototype
+		% warnings, since gc_inline.h is missing lots of prototypes
+		( InlineAlloc = yes ->
+			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused "
+		;
+			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wstrict-prototypes "
+		)
 	; CompilerType = lcc ->
 		WarningOpt = "-w "
 	;
@@ -1565,7 +1577,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		ConstraintsOpt, WarningOpt, CFLAGS,
+		ConstraintsOpt, InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->

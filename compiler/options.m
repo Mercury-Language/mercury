@@ -119,7 +119,6 @@
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
-		;	use_macro_for_redo_fail
 		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_f_regs
@@ -135,6 +134,7 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	split_c_files
 	%	- HLDS
 		;	inlining
 		;	inline_simple
@@ -181,11 +181,12 @@
 		;	pred_value_number
 		;	vn_fudge
 	%	- C
+		;	use_macro_for_redo_fail
 		;	emit_c_loops
 		;	procs_per_c_function
 		;	everything_in_one_c_function
-		;	split_c_files
 		;	c_optimize
+		;	inline_alloc
 	% Link options
 		;	output_file_name
 		;	link_flags
@@ -209,6 +210,7 @@
 	;	language_semantics_option
 	;	compilation_model_option
 	;	code_gen_option
+	;	special_optimization_option
 	;	optimization_option
 	;	link_option
 	;	miscellaneous_option.
@@ -326,7 +328,6 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
-	use_macro_for_redo_fail	-	bool(no),
 	have_delay_slot		-	bool(no),
 					% the `mc' script may override the
 					% above default if configure says
@@ -352,11 +353,14 @@ option_defaults_2(code_gen_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	aditi			-	bool(no),
-
-		% split_c_files is really an optimization option,
-		% but we list it here as a code_gen_option,
-		% because we don't want `-O<n>' to turn it off.
+	aditi			-	bool(no)
+]).
+option_defaults_2(special_optimization_option, [
+		% Special optimization options.
+		% These ones are not affected by `-O<n>'.
+	opt_level		-	int_special,
+	opt_space		-	special,
+	intermodule_optimization -	bool(no),
 	split_c_files		-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -366,8 +370,6 @@ option_defaults_2(optimization_option, [
 		% Optimizations should be enabled by the appropriate
 		% optimization level in the opt_level table.
 		%
-	opt_level		-	int_special,
-	opt_space		-	special,
 % HLDS
 	inlining		-	bool_special,
 	inline_simple		-	bool(no),
@@ -389,7 +391,6 @@ option_defaults_2(optimization_option, [
 	optimize_higher_order	-	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
-	intermodule_optimization -	bool(no),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -424,10 +425,12 @@ option_defaults_2(optimization_option, [
 	vn_fudge		-	int(1000),
 
 % LLDS -> C
+	use_macro_for_redo_fail	-	bool(no),
 	emit_c_loops		-	bool(no),
 	procs_per_c_function	-	int(1),
 	everything_in_one_c_function -	special,
-	c_optimize		-	bool(no)
+	c_optimize		-	bool(no),
+	inline_alloc		-	bool(no)
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -576,7 +579,6 @@ long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
-long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("branch-delay-slot",	have_delay_slot).
 long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
@@ -665,6 +667,7 @@ long_option("pred-value-number",	pred_value_number).
 long_option("vn-fudge",			vn_fudge).
 
 % LLDS->C optimizations
+long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("emit-c-loops",		emit_c_loops).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
@@ -674,6 +677,7 @@ long_option("split-c-files",		split_c_files).
 long_option("split-C-files",		split_c_files).
 long_option("c-optimise",		c_optimize).
 long_option("c-optimize",		c_optimize).
+long_option("inline-alloc",		inline_alloc).
 
 % link options
 long_option("output-file",		output_file_name).
@@ -789,9 +793,11 @@ override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
 
 opt_space([
 	optimize_dead_procs	-	bool(yes),
-	optimize_fulljumps	-	bool(no),
 	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(yes)
+	optimize_dups		-	bool(yes),
+	optimize_fulljumps	-	bool(no),
+	inline_alloc		-	bool(no),
+	use_macro_for_redo_fail	-	bool(no)
 ]).
 
 %-----------------------------------------------------------------------------%
@@ -887,12 +893,15 @@ opt_level(5, _, [
 % payoff even if they increase compilation time to completely
 % unreasonable levels
 
-% Currently this just sets `everything_in_one_c_function', which causes
+% Currently this sets `everything_in_one_c_function', which causes
 % the compiler to put everything in the one C function and treat
 % calls to predicates in the same module as local.
+% We also enable inlining of GC_malloc(), redo(), and fail().
 
 opt_level(6, _, [
-	procs_per_c_function	-	int(0)	% everything in one C function
+	procs_per_c_function	-	int(0),	% everything in one C function
+	inline_alloc		-	bool(yes),
+	use_macro_for_redo_fail	-	bool(yes)
 ]).
 
 %-----------------------------------------------------------------------------%
@@ -944,7 +953,7 @@ options_help_warning -->
 	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
 	io__write_string("\t--warn-interface-imports\n"),
 	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
-	io__write_string("\t\twhich are not used in the interface"),
+	io__write_string("\t\twhich are not used in the interface.\n"),
 	io__write_string("\t--warn-missing-opt-files\n"),
 	io__write_string("\t\tWarn about `.opt' files which cannot be opened.\n").
 
@@ -961,7 +970,7 @@ options_help_verbosity -->
 	io__write_string("\t\tdetailed explanation of any errors it finds in your program.\n"),
 	io__write_string("\t-S, --statistics\n"),
 	io__write_string("\t\tOutput messages about the compiler's time/space usage.\n"),
-	io__write_string("\t\tAt the moment this option implies --no-trad-passes, so you get\n"),
+	io__write_string("\t\tAt the moment this option implies `--no-trad-passes', so you get\n"),
 	io__write_string("\t\tinformation at the boundaries between phases of the compiler.\n"),
 	io__write_string("\t-T, --debug-types\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
@@ -1036,7 +1045,7 @@ options_help_aux_output -->
 	io__write_string("\t\tTarget the named dialect if generating Prolog code.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
-	io__write_string("\t\tOnly works with the -G and -P options.\n"),
+	io__write_string("\t\tOnly works with the `-G' and `-P' options.\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
 	io__write_string("\t\t(The code may be easier to understand if you also\n"),
@@ -1049,7 +1058,7 @@ options_help_aux_output -->
 	io__write_string("\t\tStage numbers range from 1-19.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
-	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n").
+	io__write_string("\t\tWith `--dump-hlds', dumps some additional info.\n").
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
 
@@ -1155,10 +1164,12 @@ options_help_compilation_model -->
 	io__write_string("\t\tAssume that branch instructions have a delay slot.\n"),
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tAssume registers r1 up to r<n> are real general purpose registers.\n"),
+	io__write_string("\t\tAssume registers r1 up to r<n> are real general purpose\n"),
+	io__write_string("\t\tregisters.\n"),
 	io__write_string("\t--num-real-f-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tAssume registers f1 up to f<n> are real floating point registers.\n"),
+	io__write_string("\t\tAssume registers f1 up to f<n> are real floating point\n"),
+	io__write_string("\t\tregisters.\n"),
 	io__write_string("\t--num-real-r-temps <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume that <n> non-float temporaries will fit into\n"),
@@ -1180,7 +1191,8 @@ options_help_compilation_model -->
 	io__write_string("\t\tmore efficient code. Its use requires the C code to be\n"),
 	io__write_string("\t\tcompiled with -DCOMPACT_ARGS.\n"),
 	io__write_string("\t--type-info {default, one-cell, one-or-two-cell, shared-one-or-two-cell}\n"),
-	io__write_string("\t--type-info-convention {default, one-cell, one-or-two-cell, shared-one-or-two-cell}\n"),
+	io__write_string("\t--type-info-convention {default, one-cell, one-or-two-cell,\n"),
+	io__write_string("\t\t\tshared-one-or-two-cell}\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tUse the specified format for the automatically generated\n"),
 	io__write_string("\t\ttype_info structures. The one-cell format minimizes\n"),
@@ -1189,8 +1201,8 @@ options_help_compilation_model -->
 	io__write_string("\t\tminimizes runtime memory allocation in grades that\n"),
 	io__write_string("\t\tcan use static ground terms. Use of any alternative except\n"),
 	io__write_string("\t\tone-cell requires the C code to be compiled with the relevant\n"),
-	io__write_string("\t\toption from -DDEFAULT_TYPE_INFO, -DONE_OR_TWO_CELL_TYPE_INFO\n"),
-	io__write_string("\t\tand -DSHARED_ONE_OR_TWO_CELL_TYPE_INFO.\n"),
+	io__write_string("\t\toption from `-DDEFAULT_TYPE_INFO', `-DONE_OR_TWO_CELL_TYPE_INFO'\n"),
+	io__write_string("\t\tand `-DSHARED_ONE_OR_TWO_CELL_TYPE_INFO'.\n"),
 	io__write_string("\t--single-prec-float\n"),
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),
@@ -1204,7 +1216,7 @@ options_help_compilation_model -->
 options_help_code_generation -->
 	io__write_string("\nCode generation options:\n"),
 	io__write_string("\t--no-trad-passes\n"),
-	io__write_string("\t\tThe default --trad-passes completely processes each predicate\n"),
+	io__write_string("\t\tThe default `--trad-passes' completely processes each predicate\n"),
 	io__write_string("\t\tbefore going on to the next predicate.\n"),
 	io__write_string("\t\tThis option tells the compiler\n"),
 	io__write_string("\t\tto complete each phase of code generation on all predicates\n"),
@@ -1219,9 +1231,6 @@ options_help_code_generation -->
 	io__write_string("\t\tDon't reclaim heap on backtracking in semidet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-failure\n"),
 	io__write_string("\t\tCombines the effect of the two options above.\n"),
-	io__write_string("\t--use-macro-for-redo-fail\n"),
-	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
-	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),
@@ -1235,7 +1244,7 @@ options_help_optimization -->
 	io__write_string("\nOptimization Options:\n"),
 	io__write_string("\t-O <n>, --opt-level <n>, --optimization-level <n>\n"),
 	io__write_string("\t\tSet optimization level to <n>.\n"),
-	io__write_string("\t\tOptimization level 0 means no optimization\n"),
+	io__write_string("\t\tOptimization level -1 means no optimization\n"),
 	io__write_string("\t\twhile optimization level 6 means full optimization.\n"),
 	% io__write_string("\t\tFor a full description of each optimization level,\n"),
 	% io__write_string("\t\tsee the Mercury User's Guide.\n"),
@@ -1246,7 +1255,15 @@ options_help_optimization -->
 	io__write_string("\t--intermodule-optimization\n"),
 	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
 	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
-	io__write_string("\t\tThis option must be set throughout the compilation process.\n").
+	io__write_string("\t\tThis option must be set throughout the compilation process.\n"),
+	io__write_string("\t--split-c-files\n"),
+	io__write_string("\t\tGenerate each C function in its own C file,\n"),
+	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
+	io__write_string("\t\tThis option significantly increases compilation time,\n"),
+	io__write_string("\t\tlink time, and intermediate disk space requirements,\n"),
+	io__write_string("\t\tbut in return reduces the size of the final\n"),
+	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
+	io__write_string("\t\tThis option is only useful with `--procs-per-c-function 1'.\n").
 
 :- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo)
 	is det.
@@ -1268,7 +1285,7 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tInline a procedure if its size is less than the\n"),
 	io__write_string("\t\tgiven threshold.\n"),
 	io__write_string("\t--intermod-inline-simple-threshold\n"),
-	io__write_string("\t\tSimilar to --inline-simple-threshold, except used to\n"),
+	io__write_string("\t\tSimilar to `--inline-simple-threshold', except used to\n"),
 	io__write_string("\t\tdetermine which predicates should be included in\n"),
 	io__write_string("\t\t`.opt' files. Note that changing this between writing\n"),
 	io__write_string("\t\tthe `.opt' file and compiling to C may cause link errors,\n"),
@@ -1296,7 +1313,7 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t--no-optimize-higher-order\n"),
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
 	io__write_string("\t--optimize-constructor-last-call\n"),
-	io__write_string("\t\tEnable the optimization of `last' calls that are followed by\n"),
+	io__write_string("\t\tEnable the optimization of ""last"" calls that are followed by\n"),
 	io__write_string("\t\tconstructor application.\n").
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
@@ -1372,6 +1389,9 @@ options_help_llds_llds_optimization -->
 
 options_help_output_optimization -->
 	io__write_string("\n    Output-level (LLDS->C) optimizations:\n"),
+	io__write_string("\t--use-macro-for-redo-fail\n"),
+	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
+	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
 	io__write_string("\t--no-emit-c-loops\n"),
 	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
 	io__write_string("\t--procs-per-c-function <n>\n"),
@@ -1384,16 +1404,14 @@ options_help_output_optimization -->
 	io__write_string("\t\tthe Mercury procedures in a single C function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
 	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
-	io__write_string("\t--split-c-files\n"),
-	io__write_string("\t\tGenerate each C function in its own C file,\n"),
-	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
-	io__write_string("\t\tThis option significantly increases compilation time,\n"),
-	io__write_string("\t\tlink time, and intermediate disk space requirements,\n"),
-	io__write_string("\t\tbut in return reduces the size of the final\n"),
-	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
-	io__write_string("\t\tThis option is only useful with `--procs-per-c-function 1'.\n"),
 	io__write_string("\t--no-c-optimize\n"),
-	io__write_string("\t\tDon't enable the C compiler's optimizations.\n").
+	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
+	io__write_string("\t--inline-alloc\n"),
+	io__write_string("\t\tInline calls to GC_malloc().\n"),
+	io__write_string("\t\tThis can improve performance a fair bit,\n"),
+	io__write_string("\t\tbut may significantly increase code size.\n"),
+	io__write_string("\t\tThis option has no effect if `--gc conservative'\n"),
+	io__write_string("\t\tis not set or if the C compiler is not GNU C.\n").
 
 :- pred options_help_link(io__state::di, io__state::uo) is det.
 
