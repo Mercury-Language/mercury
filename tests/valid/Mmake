@@ -46,14 +46,13 @@ SOURCES= \
 	undead_proc.m \
 	uniq_unify.m \
 	unreachable_code.m \
+	unused_args_test2.m \
 	vn_float.m
 
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
 #	mode_merge_insts.m
-# A bug with no_tags functors stops this case from working:
-#	unused_args_test2.m
 
 OBJS =	$(SOURCES:%.m=%.o)
 NOS =	$(SOURCES:%.m=%.no)
@@ -63,13 +62,14 @@ all:	objs
 
 # we need to pass some options to really test middle_rec_labels.m
 middle_rec_labels.c: middle_rec_labels.m
-	$(MCG) $(MCGFLAGS) --middle-rec --no-follow-vars middle_rec_labels.m
+	$(MCG) $(MCGFLAGS) --middle-rec --no-follow-vars middle_rec_labels.m \
+		> middle_rec_labels.err 2>&1
 
 two_way_unif.c: two_way_unif.m
-	$(MCG) $(MCGFLAGS) -O-1 two_way_unif.m
+	$(MCG) $(MCGFLAGS) -O-1 two_way_unif.m > two_way_unif.err 2>&1
 
 vn_float.c: vn_float.m
-	$(MCG) $(MCGFLAGS) -O5 vn_float.m
+	$(MCG) $(MCGFLAGS) -O5 vn_float.m > vn_float.err 2>&1
 
 check:	objs
 
