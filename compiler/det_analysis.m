@@ -339,7 +339,9 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, MiscInfo,
 		% then it really it has only one solution
 		% (we will need to do pruning)
 
-		InternalSolns = at_most_many,
+		( InternalSolns = at_most_many
+		; InternalSolns = at_most_many_cc
+		),
 		OutputVars = no
 	->
 		determinism_components(Detism, InternalCanFail, at_most_one)
