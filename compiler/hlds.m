@@ -112,8 +112,9 @@
 	% and are defined there.
 
 :- type hlds__type_defn	--->	hlds__type_defn(varset, list(type_param),
-					hlds__type_body, condition)
-:- type hlds__type_body	-->	du_type(string, list(term), list(constructor))
+					hlds__type_body, condition).
+
+:- type hlds__type_body	--->	du_type(string, list(term), list(constructor))
 %			;	uu_type(string, list(term), list(type))
 			;	eqv_type(string, list(term), (type)).
 
@@ -176,7 +177,7 @@
 :- type pred_info	--->	predicate(
 					varset,		% names of type vars
 					list(type),	% argument types
-					condition	% formal specification
+					condition,	% formal specification
 							% (not used)
 					proc_table
 				).
