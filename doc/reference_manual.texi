@@ -1408,13 +1408,13 @@ values, just as it does for unique values:
 
 @example
 % mostly unique output
-:- mode muo :: free -> unique.
+:- mode muo :: free -> mostly_unique.
 
 % mostly unique input
-:- mode mui :: unique -> unique.
+:- mode mui :: mostly_unique -> mostly_unique.
 
 % mostly destructive input
-:- mode mdi :: unique -> dead.
+:- mode mdi :: mostly_unique -> mostly_dead.
 @end example
 
 @node Limitations of the current implementation
