@@ -35,8 +35,9 @@ HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
 HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
-# XXX Temporary hack for bootstrapping purposes
-case "`$MC --cflags-for-threads 2>&1`" in
+# XXX Temporary hack for bootstrapping purposes:
+# invoke $MC to test if it supports the --cflags-for-threads option.
+case "`$MC --cflags-for-threads </dev/null 2>&1`" in
 	*"unrecognized option"*)
 		# This value will get overridden by
 		# the later setting of --cflags-for-regs, so
