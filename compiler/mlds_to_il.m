@@ -316,7 +316,7 @@ generate_method_defn(FunctionDefn) -->
 
 			% Generate the code of the statement.
 		( { MaybeStatement = yes(Statement) } -> 
-			statement_to_il(Statement, InstrsTree0)
+			statement_to_il(Statement, InstrsTree1)
 		;
 				% If there is no function body,
 				% generate forwarding code instead.
@@ -325,7 +325,21 @@ generate_method_defn(FunctionDefn) -->
 				InstrsTree0),
 				% The code might reference locals...
 			il_info_add_locals(["succeeded" - 
-				mlds__native_bool_type])
+				mlds__native_bool_type]),
+			( { Returns = [_] } ->
+				% XXX Bug!
+				% We assume that if there is a return value,
+				% then it must be a semidet procedure, so
+				% we return `succeeded'.
+				% This is wrong for functions!
+				{ InstrsTree1 = tree__list([
+					InstrsTree0,
+					instr_node(ldloc(name("succeeded"))),
+					instr_node(ret)
+				]) }
+			;
+				{ InstrsTree1 = InstrsTree0 }
+			)
 		),
 
 			% If this is main, add the entrypoint, set a
@@ -357,7 +371,7 @@ generate_method_defn(FunctionDefn) -->
 		{ InstrsTree = tree__list([
 			context_node(Context),
 			instr_node(start_block(scope(Locals), BlockId)),
-			InstrsTree0, 
+			InstrsTree1, 
 			MaybeRet,
 			instr_node(end_block(scope(Locals), BlockId))
 			])
