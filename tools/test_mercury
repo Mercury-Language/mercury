@@ -362,7 +362,7 @@ case $HOST in murlibobo)
 	mv mercury-compiler-$version.tar.gz	\
 	    mercury-latest-unstable/mercury-compiler-$version-unstable.tar.gz &&
 	mv mercury-extras-$version.tar.gz	\
-	    mercury-latest-unstable/mercury-extra-$version-unstable.tar.gz &&
+	    mercury-latest-unstable/mercury-extras-$version-unstable.tar.gz &&
 	mv mercury-tests-$version.tar.gz	\
 	    mercury-latest-unstable/mercury-tests-$version-unstable.tar.gz
 	} || status=1
