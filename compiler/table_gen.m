@@ -658,11 +658,16 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 		CodeModel = model_non,
 		AfterGoalExpr = disj([MarkInactiveGoal, MarkActiveFailGoal]),
 		instmap_delta_init_reachable(AfterInstMapDelta),
-		goal_info_init_hide(set__init, AfterInstMapDelta,
-			multidet, impure, Context, AfterGoalInfo),
+		goal_info_init_hide(set__make_singleton_set(TableTipVar),
+			AfterInstMapDelta, multidet, impure, Context,
+			AfterGoalInfo),
 		AfterGoal = AfterGoalExpr - AfterGoalInfo,
 		FirstGoalExpr = conj([OrigGoal, AfterGoal]),
-		FirstGoal = FirstGoalExpr - OrigGoalInfo,
+		goal_info_get_nonlocals(OrigGoalInfo, OrigGINonLocals),
+		set__insert(OrigGINonLocals, TableTipVar, FirstNonlocals),
+		goal_info_set_nonlocals(OrigGoalInfo, FirstNonlocals,
+			FirstGoalInfo),
+		FirstGoal = FirstGoalExpr - FirstGoalInfo,
 		InactiveGoalExpr = disj([FirstGoal, MarkInactiveFailGoal])
 	),
 	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
@@ -677,7 +682,9 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 			InactiveGoal)
 	],
 	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
-	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
+	set__insert_list(InactiveNonLocals, [StatusVar, TableTipVar],
+		SwitchNonLocals),
+	goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta,
 		Detism, impure, Context, SwitchGoalInfo),
 	SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
@@ -931,7 +938,8 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 	),
 
 	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
-	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
+	set__insert(InactiveNonLocals, StatusVar, SwitchNonLocals),
+	goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta,
 		Detism, impure, Context, SwitchGoalInfo),
 	SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
@@ -1041,7 +1049,8 @@ create_new_memo_non_goal(Detism, OrigGoal, PredId, ProcId,
 	],
 
 	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
-	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
+	set__insert(InactiveNonLocals, StatusVar, SwitchNonLocals),
+	goal_info_init_hide(SwitchNonLocals, InactiveInstmapDelta,
 		Detism, impure, Context, SwitchGoalInfo),
 	SwitchGoal = SwitchExpr - SwitchGoalInfo,
 
@@ -1396,7 +1405,8 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
 		!VarTypes, !VarSet, SuspendGoal),
 
 	MainExpr = conj([OrigGoal | SaveAnswerGoals]),
-	set__insert(OrigNonLocals, SubgoalVar, MainNonLocals),
+	set__insert_list(OrigNonLocals, [SubgoalVar, StatusVar],
+		MainNonLocals),
 	create_instmap_delta([OrigGoal | SaveAnswerGoals], MainIMD0),
 	instmap_delta_restrict(MainIMD0, MainNonLocals, MainIMD),
 	goal_info_init_hide(MainNonLocals, MainIMD, nondet, impure, Context,
@@ -2860,7 +2870,12 @@ impure_or_semipure_to_features(pure_code) = [].
 generate_call(PredName, Detism, Args, Purity, InstMapSrc,
 		ModuleInfo, Context, Goal) :-
 	mercury_table_builtin_module(BuiltinModule),
-	Features = impure_or_semipure_to_features(Purity),
+	Features0 = impure_or_semipure_to_features(Purity),
+	( Detism = failure ->
+		Features = [preserve_backtrack_into | Features0]
+	;
+		Features = Features0
+	),
 	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
 		only_mode, Detism, Args, Features, InstMapSrc, ModuleInfo,
 		Context, Goal).
@@ -2875,7 +2890,12 @@ generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
 		PrefixCode, Code, SuffixCode, Purity, InstMapSrc,
 		ModuleInfo, Context, Goal) :-
 	mercury_table_builtin_module(BuiltinModule),
-	Features = impure_or_semipure_to_features(Purity),
+	Features0 = impure_or_semipure_to_features(Purity),
+	( Detism = failure ->
+		Features = [preserve_backtrack_into | Features0]
+	;
+		Features = Features0
+	),
 	goal_util__generate_foreign_proc(BuiltinModule, PredName, predicate,
 		only_mode, Detism, Attributes, Args, ExtraArgs,
 		PrefixCode, Code, SuffixCode, Features, InstMapSrc,

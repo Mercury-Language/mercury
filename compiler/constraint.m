@@ -78,15 +78,20 @@ propagate_constraints_in_goal(Goal0, Goal, !Info) :-
 
 propagate_goal(Goal0, Constraints, Goal, !Info) :-
 	% We need to treat all single goals as conjunctions so that
-	% propagate_conj can move the constraints to the
-	% left of the goal if that is allowed.
+	% propagate_conj can move the constraints to the left of the goal
+	% if that is allowed.
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_features(GoalInfo0, Features0),
+	goal_info_get_context(GoalInfo0, Context),
 	goal_to_conj_list(Goal0, Goals0),
 	propagate_conj(Goals0, Constraints, Goals, !Info),
 	goal_list_nonlocals(Goals, NonLocals),
 	goal_list_instmap_delta(Goals, Delta),
 	goal_list_determinism(Goals, ConjDetism),
 	goal_list_purity(Goals, Purity),
-	goal_info_init(NonLocals, Delta, ConjDetism, Purity, GoalInfo),
+	goal_info_init(NonLocals, Delta, ConjDetism, pure, Context, GoalInfo1),
+	goal_info_set_features(GoalInfo1, Features0, GoalInfo2),
+	add_goal_info_purity_feature(GoalInfo2, Purity, GoalInfo),
 	conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred propagate_conj_sub_goal(hlds_goal::in,

@@ -197,7 +197,7 @@ pd_debug__write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
 %-----------------------------------------------------------------------------%
 
 pd_debug__output_goal(PDInfo, Msg, Goal, !IO) :-
-	pd_debug__do_io(pd_debug__output_goal(PDInfo, Msg, Goal), !IO).
+	pd_debug__do_io(pd_debug__output_goal_2(PDInfo, Msg, Goal), !IO).
 
 :- pred pd_debug__output_goal_2(pd_info::in, string::in, hlds_goal::in,
 	io::di, io::uo) is det.
