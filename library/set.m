@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,6 +73,9 @@
 
 :- pred set__empty(set(T)).
 :- mode set__empty(in) is semidet.
+
+:- pred set__non_empty(set(T)).
+:- mode set__non_empty(in) is semidet.
 
 	% `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
 
@@ -232,6 +235,9 @@
 
 :- func set__map(func(T1) = T2, set(T1)) = set(T2).
 
+:- func set__filter(pred(T1), set(T1)) = set(T1).
+:- mode set__filter(pred(in) is semidet, in) = out is det.
+
 :- func set__filter_map(func(T1) = T2, set(T1)) = set(T2).
 :- mode set__filter_map(func(in) = out is semidet, in) = out is det.
 
@@ -271,6 +277,9 @@ set__equal(SetA, SetB) :-
 
 set__empty(Set) :-
 	set_ordlist__empty(Set).
+
+set__non_empty(Set) :-
+	\+ set_ordlist__empty(Set).
 
 set__subset(SetA, SetB) :-
 	set_ordlist__subset(SetA, SetB).
@@ -369,6 +378,9 @@ set__count(S) = N :-
 
 set__map(F, S1) = S2 :-
 	S2 = set__list_to_set(list__map(F, set__to_sorted_list(S1))).
+
+set__filter(P, S1) = S2 :-
+	S2 = set__list_to_set(list__filter(P, set__to_sorted_list(S1))).
 
 set__filter_map(PF, S1) = S2 :-
 	S2 = set__list_to_set(list__filter_map(PF, set__to_sorted_list(S1))).

@@ -104,6 +104,13 @@
 :- mode tree234__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode tree234__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+:- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
+	A, A).
+:- mode tree234__map_foldl(pred(in, in, out, in, out) is det,
+	in, out, in, out) is det.
+:- mode tree234__map_foldl(pred(in, in, out, in, out) is semidet,
+	in, out, in, out) is semidet.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -2455,6 +2462,34 @@ tree234__map_values(Pred, Tree0, Tree) :-
 	tree234__map_values(Pred, LMid0, LMid),
 	tree234__map_values(Pred, RMid0, RMid),
 	tree234__map_values(Pred, Right0, Right).
+
+%------------------------------------------------------------------------------%
+
+tree234__map_foldl(_Pred, empty, empty, A, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = two(K0, V0, Left0, Right0),
+	Tree  = two(K0, W0, Left, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, Right0, Right, A2, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+	Tree  = three(K0, W0, K1, W1, Left, Middle, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, Middle0, Middle, A2, A3),
+	call(Pred, K1, V1, W1, A3, A4),
+	tree234__map_foldl(Pred, Right0, Right, A4, A).
+tree234__map_foldl(Pred, Tree0, Tree, A0, A) :-
+	Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+	Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right),
+	tree234__map_foldl(Pred, Left0, Left, A0, A1),
+	call(Pred, K0, V0, W0, A1, A2),
+	tree234__map_foldl(Pred, LMid0, LMid, A2, A3),
+	call(Pred, K1, V1, W1, A3, A4),
+	tree234__map_foldl(Pred, RMid0, RMid, A4, A5),
+	call(Pred, K2, V2, W2, A5, A6),
+	tree234__map_foldl(Pred, Right0, Right, A6, A).
 
 %------------------------------------------------------------------------------%
 

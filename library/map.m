@@ -213,6 +213,14 @@
 :- mode map__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode map__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+	% Apply a transformation predicate to all the values
+	% in a map, while continuously updating an accumulator.
+:- pred map__map_foldl(pred(K, V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map__map_foldl(pred(in, in, out, in, out) is det, in, out, in, out)
+	is det.
+:- mode map__map_foldl(pred(in, in, out, in, out) is semidet, in, out, in, out)
+	is semidet. 
+
 	% Given two maps M1 and M2, create a third map M3 that has only the
 	% keys that occur in both M1 and M2. For keys that occur in both M1
 	% and M2, compute the value in the final map by applying the supplied
@@ -486,6 +494,9 @@ map__foldl(Pred, Map, Acc0, Acc) :-
 
 map__map_values(Pred, Map0, Map) :-
 	tree234__map_values(Pred, Map0, Map).
+
+map__map_foldl(Pred, Map0, Map, Acc0, Acc) :-
+	tree234__map_foldl(Pred, Map0, Map, Acc0, Acc).
 
 %-----------------------------------------------------------------------------%
 
@@ -767,4 +778,3 @@ map__union(F, M1, M2) = M3 :-
 map__det_union(F, M1, M2) = M3 :-
 	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
 	map__det_union(P, M1, M2, M3).
-
