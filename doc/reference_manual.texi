@@ -43,14 +43,13 @@ into another language, under the above conditions for modified versions.
 
 @titlepage
 @title The Mercury Language Reference Manual
-@subtitle April, 1996
 @author Fergus Henderson
 @author Thomas Conway
 @author Zoltan Somogyi
 @author David Jeffery
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995 The University of Melbourne.
+Copyright @copyright{} 1995-1997 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
