@@ -50,8 +50,6 @@
   #define END_MODULE } }
 
   #if defined(USE_ASM_LABELS)
-    #include	"dummy.h"
-
     #define Declare_entry(label)	\
 	extern void label(void) __asm__("entry_" stringify(label))
     #define Declare_static(label)	\

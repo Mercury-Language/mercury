@@ -4,6 +4,11 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** If you change this file, you should also change the settings of
+** NUM_REAL_R_REGS in ../configure.in.
+*/
+
 #define r1		count_usage(R_RN(1), mr2)
 #define r2		count_usage(R_RN(2), mr3)
 #define r3		count_usage(R_RN(3), mr4)
