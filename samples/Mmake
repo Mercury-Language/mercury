@@ -11,7 +11,7 @@
 # type `mmake depend', and then type `mmake'.
 
 PROGS=	hello cat calculator sort eliza ultra_sub \
-	all_solutions committed_choice interpreter
+	all_solutions committed_choice interpreter expand_terms
 
 DEPENDS=$(PROGS:%=%.depend)
 
