@@ -13,7 +13,8 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-PROGS=		commit_bug \
+PROGS=		array_test \
+		commit_bug \
 		commit_bug_2 \
 		disj_disj \
 		dnf \

@@ -43,5 +43,5 @@ TESTING OTHER TYPES
 1
 empty
 qwerty(4)
-uniq_array([1, 2, 3, 4])
+array([1, 2, 3, 4])
 
