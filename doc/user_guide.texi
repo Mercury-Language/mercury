@@ -2520,7 +2520,7 @@ of the @var{num}'th I/O action executed by the program.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 @sp 1
-@item stack [-d]
+@item stack [-d] [@var{num}]
 @kindex stack (mdb command)
 Prints the names of the ancestors of the call
 specified by the current event.
@@ -2532,6 +2532,9 @@ The option @samp{-d} or @samp{--detailed}
 specifies that for each ancestor call,
 the call's event number, sequence number and depth should also be printed
 if the call is to a procedure that is being execution traced.
+@sp 1
+The optional number, if present,
+specifies that only the topmost @var{num} stack frames should be printed.
 @sp 1
 This command will report an error if there is no stack trace
 information available about any ancestor.
@@ -3223,12 +3226,15 @@ In minimal model grades,
 prints the contents of the frames on the possible negated context stack.
 In other grades, it reports an error.
 @sp 1
-@item nondet_stack [-d]
+@item nondet_stack [-d] [@var{num}]
 @kindex nondet_stack (mdb command)
 Prints the contents of the frames on the nondet stack.
 By default, it prints only of the fixed slots in each nondet stack frame,
 but if the option @samp{-d} or @samp{--detailed} option is given,
 it will also print the names and values of the live variables in them.
+@sp 1
+The optional number, if present,
+specifies that only the topmost @var{num} stack frames should be printed.
 @sp 1
 @item stack_regs
 @kindex stack_regs (mdb command)

@@ -87,7 +87,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
         layout = label->i_layout;
         result = MR_dump_stack_from_layout(stderr, layout,
             det_stack_pointer, current_frame, include_trace_data,
-            MR_TRUE, &MR_dump_stack_record_print);
+            MR_TRUE, 0, &MR_dump_stack_record_print);
 
         if (result != NULL) {
             fprintf(stderr, "%s\n", result);
@@ -99,7 +99,7 @@ MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
     MR_Word *det_stack_pointer, MR_Word *current_frame,
-    MR_bool include_trace_data, MR_bool include_contexts,
+    MR_bool include_trace_data, MR_bool include_contexts, int limit,
     MR_Print_Stack_Record print_stack_record)
 {
     MR_Stack_Walk_Step_Result       result;
@@ -111,6 +111,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
     MR_Word                         *stack_trace_curfr;
     MR_Word                         *old_trace_sp;
     MR_Word                         *old_trace_curfr;
+    int                             frames_dumped_so_far;
 
     MR_do_init_modules();
     MR_dump_stack_record_init(include_trace_data, include_contexts);
@@ -120,7 +121,14 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
 
     cur_label_layout = label_layout;
 
+    frames_dumped_so_far = 0;
     do {
+        if (limit > 0 && frames_dumped_so_far >= limit) {
+            MR_dump_stack_record_flush(fp, print_stack_record);
+            fprintf(fp, "<more stack frames snipped>\n");
+            return NULL;
+        }
+
         entry_layout = cur_label_layout->MR_sll_entry;
         prev_label_layout = cur_label_layout;
 
@@ -142,6 +150,8 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Label_Layout *label_layout,
                 MR_dump_stack_record_frame(fp, prev_label_layout,
                     old_trace_sp, old_trace_curfr, print_stack_record);
         }
+
+        frames_dumped_so_far++;
     } while (cur_label_layout != NULL);
 
     MR_dump_stack_record_flush(fp, print_stack_record);
@@ -259,11 +269,11 @@ MR_stack_walk_succip_layout(MR_Code *success,
 /**************************************************************************/
 
 void
-MR_dump_nondet_stack(FILE *fp, MR_Word *base_maxfr)
+MR_dump_nondet_stack(FILE *fp, int limit, MR_Word *base_maxfr)
 {
 #ifndef MR_HIGHLEVEL_CODE
 
-    MR_dump_nondet_stack_from_layout(fp, base_maxfr, NULL, NULL, NULL);
+    MR_dump_nondet_stack_from_layout(fp, limit, base_maxfr, NULL, NULL, NULL);
 
 #else   /* !MR_HIGHLEVEL_CODE */
 
@@ -275,7 +285,7 @@ MR_dump_nondet_stack(FILE *fp, MR_Word *base_maxfr)
 #ifdef MR_HIGHLEVEL_CODE
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
+MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
     MR_fatal_error("MR_dump_nondet_stack_from_layout in high level grade");
@@ -348,13 +358,14 @@ static int                      MR_nondet_branch_info_max = 0;
 #define MR_INIT_NONDET_BRANCH_ARRAY_SIZE        10
 
 void
-MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
+MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
     const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr)
 {
     int             frame_size;
     int             level_number;
     MR_bool         print_vars;
     const char      *problem;
+    int             frames_dumped_so_far;
 
     MR_do_init_modules();
 
@@ -382,8 +393,14 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
     ** frame to be included.
     */
 
+    frames_dumped_so_far = 0;
     level_number = 0;
     while (base_maxfr >= MR_nondet_stack_trace_bottom) {
+        if (limit > 0 && frames_dumped_so_far >= limit) {
+            fprintf(fp, "<more stack frames snipped>\n");
+            return;
+        }
+
         frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
         if (frame_size == MR_NONDET_TEMP_SIZE) {
             MR_print_nondstackptr(fp, base_maxfr);
@@ -439,6 +456,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *base_maxfr,
         }
 
         base_maxfr = MR_prevfr_slot(base_maxfr);
+        frames_dumped_so_far++;
     }
 }
 

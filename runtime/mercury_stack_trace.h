@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -51,10 +51,11 @@ extern	void	MR_dump_stack(MR_Code *success_pointer,
 **	layout of the current point in the current procedure as input.
 **	It also takes a parameter that tells it where to put the stack dump
 **	and flags that say whether to include execution trace data and/or
-**	line numbers.
+**	line numbers. If limit is nonzero, dumps at most limit frames.
 **
-**	If the entire stack was printed successfully, the return value is NULL;
-**	otherwise, it is a string indicating why the dump was cut short.
+**	If the entire wanted part of the stack was printed successfully,
+**	the return value is NULL; otherwise, it is a string indicating
+**	why the dump was cut short.
 */
 
 typedef	void		(*MR_Print_Stack_Record)(FILE *fp,
@@ -70,25 +71,27 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_Word *det_stack_pointer,
 				MR_Word *current_frame,
 				MR_bool include_trace_data,
-				MR_bool include_contexts,
+				MR_bool include_contexts, int limit,
 				MR_Print_Stack_Record print_stack_record);
 
 /*
 ** MR_dump_nondet_stack:
 **	This function dumps the control slots of the nondet stack.
+**	If limit is nonzero, dumps at most limit frames.
 **	The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack(FILE *fp, MR_Word *maxfr);
+extern	void	MR_dump_nondet_stack(FILE *fp, int limit, MR_Word *maxfr);
 
 /*
 ** MR_dump_nondet_stack_from_layout:
 **	This function dumps the nondet stack.
+**	If limit is nonzero, dumps at most limit frames.
 **	The output format is not meant to be intelligible to non-implementors.
 */
 
-extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *maxfr,
-			const MR_Label_Layout *label_layout,
+extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, int limit,
+			MR_Word *maxfr, const MR_Label_Layout *label_layout,
 			MR_Word *base_sp, MR_Word *base_curfr);
 
 /*
