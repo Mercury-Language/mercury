@@ -794,34 +794,34 @@ The shell scripts use the following environment variables.
 
 @table @code
 @item MERCURY_C_INCL_DIR
-Directory for the Mercury C header files (@filename{*.h}).
+Directory for the Mercury C header files (@file{*.h}).
 
 @item MERCURY_INT_DIR
 Directory for the Mercury library interface
-files (@filename{*.int} and @filename{*.int2}).
+files (@file{*.int} and @file{*.int2}).
 
 @item MERCURY_NC_BUILTIN
 Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
 
 @item MERCURY_C_LIB_DIR
-Base directory containing the Mercury libraries (@filename{libmer.a} and
-possibly @filename{libmer.so}) for each configuration and grade.
+Base directory containing the Mercury libraries (@file{libmer.a} and
+possibly @file{libmer.so}) for each configuration and grade.
 The libraries for each configuration and grade should
 be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
 
 @item MERCURY_MOD_LIB_DIR
 The directory containing the .init files in the Mercury library.
-They are used to create the initialization file @filename{*_init.c}.
+They are used to create the initialization file @file{*_init.c}.
 
 @item MERCURY_MOD_LIB_MODS
 The names of the .init files in the Mercury library.
 
 @item MERCURY_NU_LIB_DIR
-Directory for the NU-Prolog object files (@filename{*.no}) for the
+Directory for the NU-Prolog object files (@file{*.no}) for the
 NU-Prolog Mercury library.
 
 @item MERCURY_NU_LIB_OBJS
-List of the NU-Prolog object files (@filename{*.no}) for the Mercury
+List of the NU-Prolog object files (@file{*.no}) for the Mercury
 library.
 
 @item MERCURY_COMPILER
@@ -831,7 +831,7 @@ Filename of the Mercury Compiler.
 Filename of the Mercury Interpreter.
 
 @item MERCURY_MKINIT
-Filename of the program to create the @filename{*_init.c} file.
+Filename of the program to create the @file{*_init.c} file.
 
 @item MERCURY_DEFAULT_GRADE
 The default grade to use if no @samp{--grade} option is specified.
