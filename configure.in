@@ -1558,6 +1558,34 @@ else
 	mercury_cv_gcc_model_fast=no
 fi
 #-----------------------------------------------------------------------------#
+#
+# Restore env vars modified by Irix 5 hack above
+#
+CC="$save_CC"
+LIBRARY_PATH="$save_LIBRARY_PATH"
+#-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether we can use global registers without gcc labels)
+AC_CACHE_VAL(mercury_cv_gcc_model_reg,
+AC_TRY_RUN([
+#define USE_GCC_GLOBAL_REGISTERS
+#include "mercury_engine.h"
+changequote(<<,>>) 
+MercuryEngine MR_engine_base;
+changequote([,]) 
+main() {
+	mr0 = 20;
+	mr7 = 22;
+	if (mr0 + mr7 != 42)
+		exit(1);
+	exit(0);
+}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
+	[mercury_cv_gcc_model_reg=no])
+)
+AC_MSG_RESULT($mercury_cv_gcc_model_reg)
+
+#-----------------------------------------------------------------------------#
+
 AC_MSG_CHECKING(whether we can support profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
 AC_TRY_CPP([
@@ -1588,32 +1616,6 @@ AC_TRY_CPP([
 ], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))
 AC_MSG_RESULT($mercury_cv_profiling)
 
-#-----------------------------------------------------------------------------#
-#
-# Restore env vars modified by Irix 5 hack above
-#
-CC="$save_CC"
-LIBRARY_PATH="$save_LIBRARY_PATH"
-#-----------------------------------------------------------------------------#
-
-AC_MSG_CHECKING(whether we can use global registers without gcc labels)
-AC_CACHE_VAL(mercury_cv_gcc_model_reg,
-AC_TRY_RUN([
-#define USE_GCC_GLOBAL_REGISTERS
-#include "mercury_engine.h"
-changequote(<<,>>) 
-MercuryEngine MR_engine_base;
-changequote([,]) 
-main() {
-	mr0 = 20;
-	mr7 = 22;
-	if (mr0 + mr7 != 42)
-		exit(1);
-	exit(0);
-}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
-	[mercury_cv_gcc_model_reg=no])
-)
-AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 #-----------------------------------------------------------------------------#
 
 # Figure out which flavour of pthreads to use, since none of the
