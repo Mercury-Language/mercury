@@ -57,6 +57,7 @@ PROGS=	\
 	ground_dd \
 	higher_order_func_test \
 	higher_order_syntax \
+	higher_order_syntax2 \
 	higher_order_type_manip \
 	ho_func_reg \
 	ho_order \

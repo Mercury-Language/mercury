@@ -20,6 +20,10 @@ Changes to the Mercury language:
   For example:
   	GetEvens = list__filter_map(
 		(func(X) = X is semidet :- X mod 2 = 0)).
+
+* We've generalized the higher-order term syntax a little:
+  in `Foo(Args)', we now allow Foo to be any term, not just
+  a variable.
  
 Changes to the standard library:
 
