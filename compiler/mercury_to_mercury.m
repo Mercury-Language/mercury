@@ -1794,7 +1794,11 @@ mercury_output_ctor(Ctor, VarSet) -->
 		mercury_output_remaining_ctor_args(VarSet, Rest),
 		io__write_string(")")
 	;
-		mercury_output_bracketed_sym_name(unqualified(Name))
+		mercury_output_bracketed_sym_name(unqualified(Name)),
+			% This space prevents a terminating full stop
+			% from being confused as part of the sym_name if
+			% the sym_name contains graphical characters.
+		io__write_string(" ")
 	),
 	(
 		{ Arity = 2 },
