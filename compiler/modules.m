@@ -422,6 +422,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".dirs = "),
+	write_dependencies_list(Modules, ".dir", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dir_os = "),
 	write_dependencies_list(Modules, ".dir/*.o", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -476,8 +481,10 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, ".split.a : $(", ModuleName, ".dir_os)\n",
 		"\trm -f ", ModuleName, ".split.a\n",
-		"\tar cr ", ModuleName, ".split.a ",
-			"$(", ModuleName, ".dir_os)\n",
+		"\tar cr ", ModuleName, ".split.a\n",
+		"\tfor dir in $(", ModuleName, ".dirs); do \\\n",
+		"\t	ar q ", ModuleName, ".split.a $$dir/*.o; \\\n",
+		"\tdone\n",
 		"\tranlib ", ModuleName, ".split.a\n\n"
 	]),
 
