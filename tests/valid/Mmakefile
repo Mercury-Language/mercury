@@ -37,6 +37,7 @@ SOURCES= \
 	higher_order_implied_mode.m \
 	ho_inst.m \
 	ho_func_call.m \
+	inhibit_warn_test.m \
 	implied_mode.m \
 	indexing.m \
 	intermod_lambda.m \
@@ -105,6 +106,7 @@ GRADEFLAGS-agc_unused_in	= --gc accurate
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-double_vn		= -O4
 MCFLAGS-higher_order_implied_mode = -O-1
+MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all

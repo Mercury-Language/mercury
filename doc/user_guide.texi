@@ -1471,6 +1471,16 @@ simple that they are likely to be programming errors.
 Warn about multiple calls to a predicate with the same
 input arguments.
 
+@sp 1
+@item --no-warn-missing-module-name
+Disable warnings for modules that do not start with a
+@samp{:- module} declaration.
+
+@sp 1
+@item --no-warn-wrong-module-name
+Disable warnings for modules whose @samp{:- module} declaration
+does not match the module's file name.
+
 @end table
 
 @node Verbosity options

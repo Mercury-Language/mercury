@@ -58,6 +58,8 @@
 		;	warn_non_stratification
 		;	warn_simple_code
 		;	warn_duplicate_calls
+		;	warn_missing_module_name
+		;	warn_wrong_module_name
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -287,9 +289,12 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool_special,
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
+	%
+	% IMPORTANT NOTE:
 	% if you add any new warning options, or if you change
 	% the default for an existing warning option to `yes',
 	% then you will need to modify the handling of inhibit_warnings
+	%
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
@@ -299,7 +304,9 @@ option_defaults_2(warning_option, [
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
 	warn_simple_code	-	bool(yes),
-	warn_duplicate_calls	-	bool(no)
+	warn_duplicate_calls	-	bool(no),
+	warn_missing_module_name -	bool(yes),
+	warn_wrong_module_name -	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -588,6 +595,8 @@ long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
 long_option("warn-simple-code",		warn_simple_code).
 long_option("warn-duplicate-calls",	warn_duplicate_calls).
+long_option("warn-missing-module-name",	warn_missing_module_name).
+long_option("warn-wrong-module-name",	warn_wrong_module_name).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -909,7 +918,9 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_nothing_exported	-	bool(Enable),
 			warn_interface_imports	-	bool(Enable),
 			warn_missing_opt_files	-	bool(Enable),
-			warn_simple_code	-	bool(Enable)
+			warn_simple_code	-	bool(Enable),
+			warn_missing_module_name -	bool(Enable),
+			warn_wrong_module_name	-	bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -1153,7 +1164,13 @@ options_help_warning -->
 	io__write_string("\t\tsimple that they are likely to be programming errors.\n"),
 	io__write_string("\t--warn-duplicate-calls\n"),
 	io__write_string("\t\tWarn about multiple calls to a predicate with the\n"),
-	io__write_string("\t\tsame input arguments.\n").
+	io__write_string("\t\tsame input arguments.\n"),
+	io__write_string("\t--no-warn-missing-module-name\n"),
+	io__write_string("\t\tDisable warnings for modules that do no start with\n"),
+	io__write_string("\t\ta `:- module' declaration.\n"),
+	io__write_string("\t--no-warn-wrong-module-name\n"),
+	io__write_string("\t\tDisable warnings for modules whose `:- module'\n"),
+	io__write_string("\t\tdeclaration does not match the module's file name.\n").
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 

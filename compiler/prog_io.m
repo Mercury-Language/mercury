@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -154,11 +154,11 @@ prog_io__read_module_2(FileName, ModuleName, Search,
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
 		  list__reverse(RevMessages, Messages0),
-		  list__reverse(RevItems, Items0),
-		  check_begin_module(ModuleName,
-				Messages0, Items0, Error0, EndModule,
-				FileName, Messages, Items, Error)
+		  list__reverse(RevItems, Items0)
 		},
+		check_begin_module(ModuleName,
+				Messages0, Items0, Error0, EndModule,
+				FileName, Messages, Items, Error),
 		io__seen
 	;
 		io__progname_base("prog_io.m", Progname),
@@ -218,16 +218,20 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and construct the final parsing result.
 
 :- pred check_begin_module(string, message_list, item_list, module_error,
-		module_end, string, message_list, item_list, module_error).
-:- mode check_begin_module(in, in, in, in, in, in, out, out, out) is det.
+		module_end, string, message_list, item_list, module_error,
+		io__state, io__state).
+:- mode check_begin_module(in, in, in, in, in, in, out, out, out, di, uo)
+		is det.
 
 check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
-		Messages, Items, Error) :-
+		Messages, Items, Error) -->
+    globals__io_lookup_bool_option(warn_missing_module_name, WarnMissing),
+    globals__io_lookup_bool_option(warn_wrong_module_name, WarnWrong),
 
     % check that the first item is a `:- module ModuleName'
     % declaration
 
-    (
+    {
         Items0 = [module_defn(_VarSet, module(ModuleName1)) - Context
               | Items1]
     ->
@@ -250,7 +254,8 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
         ;
 	% check that the begin module declaration matches the expected name
 	% of the module
-	    ModuleName1 \= ModuleName
+	    ModuleName1 \= ModuleName,
+	    WarnWrong = yes
 	->
 	    dummy_term_with_context(Context, Term2),
             ThisError =
@@ -265,14 +270,18 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
 	    Error = Error0
         )
     ;
-	term__context_init(FileName, 1, Context),
-	dummy_term_with_context(Context, Term2),
-        ThisError = "Warning: module should start with a `:- module' declaration"
+	( WarnMissing = yes ->
+	    term__context_init(FileName, 1, Context),
+	    dummy_term_with_context(Context, Term2),
+            ThisError = "Warning: module should start with a `:- module' declaration"
 		- Term2,
-        Messages = [ThisError | Messages0],
+            Messages = [ThisError | Messages0]
+	;
+	    Messages = Messages0
+	),
 	Items = Items0,
 	Error = Error0
-    ).
+    }.
 
 	% Create a dummy term.
 	% Used for error messages that are not associated with any
