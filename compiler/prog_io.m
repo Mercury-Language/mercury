@@ -1568,7 +1568,7 @@ parse_pragma_type("obsolete", PragmaTerms, ErrorTerm, _VarSet, Result) :-
 			Pragma = obsolete(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
-:- pred parse_simple_pragma(string, pred(sym_name, int, pragma),
+:- pred parse_simple_pragma(string, pred(sym_name, int, pragma_type),
 			list(term), term, maybe1(item)).
 :- mode parse_simple_pragma(in, pred(in, in, out) is det, in, in, out) is det.
 

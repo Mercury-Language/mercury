@@ -65,7 +65,7 @@
 				%       VarNames, PredName, ArgModes,
 				%	ReturnValueMode,
 				%	Deterministicness, Cond
-			;	pragma(pragma)
+			;	pragma(pragma_type)
 			;	nothing.
 				% used for items that should be ignored
 				% (currently only NU-Prolog `when' declarations,
@@ -75,7 +75,7 @@
 :- type type_and_mode	--->	type_only(type)
 			;	type_and_mode(type, mode).
 
-:- type (pragma) --->		c_header_code(string)
+:- type pragma_type --->	c_header_code(string)
 			;	c_code(string)
 			;	c_code(sym_name, 
 					list(pragma_var), varset, string)
