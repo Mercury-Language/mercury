@@ -4500,9 +4500,9 @@ write_inference_message(PredInfo) -->
 
 report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
 	{ pred_info_context(PredInfo, Context) },
-	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName) },
-	{ ErrorMsg0 = [ "Error: no clauses for ", PredName, "." ] },
-	{ error_util__list_to_pieces(ErrorMsg0, ErrorMsg) },
+	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName0) },
+	{ string__append(PredName0, ".", PredName) },
+	{ ErrorMsg = [ words("Error: no clauses for "), fixed(PredName) ] },
 	error_util__write_error_pieces(Context, 0, ErrorMsg).
 
 %-----------------------------------------------------------------------------%

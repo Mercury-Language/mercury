@@ -40,7 +40,8 @@ aditi_update_errors.m:073: In clause for predicate `aditi_update_errors:aditi_up
 aditi_update_errors.m:073:   warning: variable `X' has overlapping scopes.
 aditi_update_errors.m:083: In clause for predicate `aditi_update_errors:aditi_update_syntax/2':
 aditi_update_errors.m:083:   warning: variable `X' has overlapping scopes.
-aditi_update_errors.m:007: Error: no clauses for predicate `aditi_update_errors:aditi_update_syntax/2'.
+aditi_update_errors.m:007: Error: no clauses for
+aditi_update_errors.m:007:   predicate `aditi_update_errors:aditi_update_syntax/2'.
 aditi_update_errors.m:097: In clause for predicate `aditi_update_errors:aditi_update_types/2':
 aditi_update_errors.m:097:   error: wrong number of arguments (2; should be 3)
 aditi_update_errors.m:097:   in call to predicate `p'.
@@ -146,7 +147,8 @@ aditi_update_errors.m:175: In clause for predicate `aditi_update_errors:aditi_up
 aditi_update_errors.m:175:   in argument 2 of `aditi_modify' of function `q/2':
 aditi_update_errors.m:175:   type error: variable `ModifyQ' has type `((aditi_top_down func(V_47, int, int, V_50, int)) = int)',
 aditi_update_errors.m:175:   expected type was `(aditi_top_down pred((aditi:state), int, int, (aditi:state), int, int))'.
-aditi_update_errors.m:026: Error: no clauses for predicate `aditi_update_errors:anc/3'.
+aditi_update_errors.m:026: Error: no clauses for
+aditi_update_errors.m:026:   predicate `aditi_update_errors:anc/3'.
 aditi_update_errors.m:094: In `aditi_insert' of predicate `anc/3':
 aditi_update_errors.m:094:   error: the modified predicate is not a base relation.
 For more information, try recompiling with `-E'.
