@@ -101,7 +101,7 @@ depend_profiler:
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: README INSTALL mercury-compile.spec $(SUBDIRS)
+all: README INSTALL mercury-compiler.spec $(SUBDIRS)
 
 .PHONY: util
 util: scripts
