@@ -169,6 +169,11 @@ builtin_compare_string(R, S1, S2) :-
 "
 	Res = System::String::Compare(S1, S2);
 ").
+:- pragma foreign_proc("Java", builtin_strcmp(Res::out, S1::in, S2::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+        Res = S1.compareTo(S2);
+").
 
 builtin_unify_float(F, F).
 
@@ -1253,14 +1258,14 @@ no_clauses(PredName) :-
 	     return new mercury.builtin.comparison_result_0(mercury.builtin.comparison_result_0.f_greater_than);
      }
     
-    public static int builtin_strcmp_3_p_0(java.lang.String string1, java.lang.String string2)
+    public static class ref_1
      {
-        return string1.compareTo(string2);
+     	// XXX stub only
      }
-    
-    public static void compare_error_0_p_0()
+
+    public static class heap_pointer_0
      {
-	throw new java.lang.Error(""internal error in compare/3"");
+     	// XXX stub only
      }
 ").
 
