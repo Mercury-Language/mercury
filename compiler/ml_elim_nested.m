@@ -166,6 +166,8 @@
 % There are also some things that could be done to improve efficiency,
 % e.g.
 %	- optimize away temporary variables
+%	- put stack_chain and/or heap pointer in global register variables
+%	- avoid linking stack chain unnecessarily?
 %
 %-----------------------------------------------------------------------------%
 %
@@ -357,7 +359,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, list, std_util, string, require.
+:- import_module bool, counter, int, list, std_util, string, require.
 
 :- import_module ml_code_util, ml_util.
 :- import_module prog_util, type_util.
@@ -1389,30 +1391,13 @@ flatten_stmt(Stmt0, Stmt) -->
 		fixup_lval(Ref0, Ref),
 		flatten_statement(Statement0, Statement1),
 		flatten_statement(Handler0, Handler1),
-		%
-		% add code to save/restore the stack chain pointer
-		%
+		{ Stmt1 = try_commit(Ref, Statement1, Handler1) },
 		Action =^ action,
-		ModuleName =^ module_name,
-		{ Action = chain_gc_stack_frames ->
-			Statement1 = mlds__statement(_, StatementContext),
-			Handler1 = mlds__statement(_, HandlerContext),
-			Handler = mlds__statement(
-				block(
-				    [],
-				    [gen_restore_stack_chain_var(ModuleName,
-						HandlerContext),
-				     Handler1]
-				),
-				HandlerContext),
-			TryCommit = try_commit(Ref, Statement1, Handler),
-			Stmt = block(
-				[gen_saved_stack_chain_var(StatementContext)],
-				[mlds__statement(TryCommit, StatementContext)]
-			)
+		( { Action = chain_gc_stack_frames } ->
+			save_and_restore_stack_chain(Stmt1, Stmt)
 		;
-			Stmt = try_commit(Ref, Statement1, Handler1)
-		}
+			{ Stmt = Stmt1 }
+		)
 	;
 		{ Stmt0 = atomic(AtomicStmt0) },
 		fixup_atomic_stmt(AtomicStmt0, AtomicStmt),
@@ -1436,6 +1421,58 @@ flatten_default(default_do_nothing, default_do_nothing) --> [].
 flatten_default(default_case(Statement0), default_case(Statement)) -->
 	flatten_statement(Statement0, Statement).
 	
+%-----------------------------------------------------------------------------%
+
+	%
+	% add code to save/restore the stack chain pointer:
+	% convert
+	%	try {
+	%	    Statement
+	%	} commit {
+	%	    Handler
+	%	}
+	% into
+	%	{
+	%	    void *saved_stack_chain;
+	%	    try {
+	%		saved_stack_chain = stack_chain;
+	%		Statement
+	%	    } commit {
+	%		stack_chain = saved_stack_chain;
+	%		Handler
+	%	    }
+	%	}
+	%
+:- inst try_commit ---> try_commit(ground, ground, ground).
+
+:- pred save_and_restore_stack_chain(mlds__stmt, mlds__stmt,
+		elim_info, elim_info).
+:- mode save_and_restore_stack_chain(in(try_commit), out, in, out) is det.
+
+save_and_restore_stack_chain(Stmt0, Stmt, ElimInfo0, ElimInfo) :-
+	ModuleName = ElimInfo0 ^ module_name,
+	counter__allocate(Id, ElimInfo0 ^ saved_stack_chain_counter, NextId),
+	ElimInfo = (ElimInfo0 ^ saved_stack_chain_counter := NextId),
+	Stmt0 = try_commit(Ref, Statement0, Handler0),
+	Statement0 = mlds__statement(_, StatementContext),
+	Handler0 = mlds__statement(_, HandlerContext),
+	SavedVarDecl = gen_saved_stack_chain_var(Id, StatementContext),
+	SaveStatement = gen_save_stack_chain_var(ModuleName, Id,
+		StatementContext),
+	RestoreStatement = gen_restore_stack_chain_var(ModuleName, Id,
+		HandlerContext),
+	Statement = mlds__statement(
+		block([], [SaveStatement, Statement0]),
+		HandlerContext),
+	Handler = mlds__statement(
+		block([], [RestoreStatement, Handler0]),
+		HandlerContext),
+	TryCommit = try_commit(Ref, Statement, Handler),
+	Stmt = block(
+		[SavedVarDecl],
+		[mlds__statement(TryCommit, StatementContext)]
+	).
+
 %-----------------------------------------------------------------------------%
 
 %
@@ -2442,32 +2479,42 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 	UnchainFrame = mlds__statement(atomic(Assignment), Context).
 
 	% Generate a local variable declaration
-	% to save the stack chain pointer:
-	%	void *saved_stack_chain = stack_chain;
-:- func gen_saved_stack_chain_var(mlds__context) = mlds__defn.
-gen_saved_stack_chain_var(Context) = Defn :-
-	Name = data(var(ml_saved_stack_chain_name)),
+	% to hold the saved stack chain pointer:
+	%	void *saved_stack_chain;
+:- func gen_saved_stack_chain_var(int, mlds__context) = mlds__defn.
+gen_saved_stack_chain_var(Id, Context) = Defn :-
+	Name = data(var(ml_saved_stack_chain_name(Id))),
 	Flags = ml_gen_local_var_decl_flags,
 	Type = ml_stack_chain_type,
-	Initializer = init_obj(lval(ml_stack_chain_var)),
+	Initializer = no_initializer,
 	% The saved stack chain never needs to be traced by the GC,
 	% since it will always point to the stack, not into the heap.
 	GCTraceCode = no,
 	DefnBody = mlds__data(Type, Initializer, GCTraceCode),
 	Defn = mlds__defn(Name, Context, Flags, DefnBody).
 
+	% Generate a statement to save the stack chain pointer:
+	%	saved_stack_chain = stack_chain;
+:- func gen_save_stack_chain_var(mlds_module_name, int, mlds__context) =
+	mlds__statement.
+gen_save_stack_chain_var(MLDS_Module, Id, Context) = SaveStatement :-
+	SavedStackChain = var(qual(MLDS_Module,
+		ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
+	Assignment = assign(SavedStackChain, lval(ml_stack_chain_var)),
+	SaveStatement = mlds__statement(atomic(Assignment), Context).
+
 	% Generate a statement to restore the stack chain pointer:
 	%	stack_chain = saved_stack_chain;
-:- func gen_restore_stack_chain_var(mlds_module_name, mlds__context) =
+:- func gen_restore_stack_chain_var(mlds_module_name, int, mlds__context) =
 	mlds__statement.
-gen_restore_stack_chain_var(MLDS_Module, Context) = RestoreStatement :-
+gen_restore_stack_chain_var(MLDS_Module, Id, Context) = RestoreStatement :-
 	SavedStackChain = var(qual(MLDS_Module,
-		ml_saved_stack_chain_name), ml_stack_chain_type),
+		ml_saved_stack_chain_name(Id)), ml_stack_chain_type),
 	Assignment = assign(ml_stack_chain_var, lval(SavedStackChain)),
 	RestoreStatement = mlds__statement(atomic(Assignment), Context).
 
-:- func ml_saved_stack_chain_name = mlds__var_name.
-ml_saved_stack_chain_name = var_name("saved_stack_chain", no).
+:- func ml_saved_stack_chain_name(int) = mlds__var_name.
+ml_saved_stack_chain_name(Id) = var_name("saved_stack_chain", yes(Id)).
 
 %-----------------------------------------------------------------------------%
 
@@ -2515,7 +2562,11 @@ ml_saved_stack_chain_name = var_name("saved_stack_chain", no).
 				% a pointer to the env_type_name (in the
 				% IL backend we don't necessarily use a
 				% pointer).
-			env_ptr_type_name :: mlds__type
+			env_ptr_type_name :: mlds__type,
+
+				% A counter used to number the local variables
+				% used to save the stack chain
+			saved_stack_chain_counter :: counter
 	).
 
 	% The lists of local variables for
@@ -2527,7 +2578,7 @@ ml_saved_stack_chain_name = var_name("saved_stack_chain", no).
 		mlds__type, mlds__type) = elim_info.
 elim_info_init(Action, ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName) =
 	elim_info(Action, ModuleName, OuterVars, [], [],
-		EnvTypeName, EnvPtrTypeName).
+		EnvTypeName, EnvPtrTypeName, counter__init(0)).
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
 elim_info_get_module_name(ElimInfo) = ElimInfo ^ module_name.
