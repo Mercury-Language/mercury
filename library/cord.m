@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Mon Feb  3 12:27:53 EST 2003
 %
-% A cord is a sequence sequence type supporting O(1) consing and
+% A cord is a sequence type supporting O(1) consing and
 % concatenation.  A cord is essentially a tree structure with data stored
 % in the leaf nodes.  Joining two cords together to construct a new cord
 % is therefore an O(1) operation.

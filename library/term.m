@@ -202,7 +202,7 @@
 	list(term(T))::in, list(term(T))::in, list(term(T))::out) is det.
 
 	% term__apply_rec_substitution(Term0, Substitution, Term):
-	% Recursively apply substitution to Term0 until no more substitions
+	% Recursively apply substitution to Term0 until no more substitutions
 	% can be applied, and then return the result in Term.
 	%
 :- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
@@ -244,7 +244,7 @@
 	is semidet.
 
 	% term__relabel_variable(Term0, OldVar, NewVar, Term):
-	% Replace all occurences of OldVar in Term0 with NewVar and
+	% Replace all occurrences of OldVar in Term0 with NewVar and
 	% put the result in Term.
 	%
 :- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
