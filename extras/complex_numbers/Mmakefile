@@ -1,0 +1,3 @@
+MAIN_TARGET = all
+depend: complex_lib.depend
+all: libcomplex_lib
