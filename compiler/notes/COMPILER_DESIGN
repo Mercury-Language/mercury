@@ -12,7 +12,7 @@ stages:
 
 	1. parsing (source files -> HLDS)
 	2. semantic analysis and error checking (HLDS -> annotated HLDS)
-	3. high-level optimizations (annotated HLDS -> annotated HLDS)
+	3. high-level transformations (annotated HLDS -> annotated HLDS)
 	4. code generation (annotated HLDS -> LLDS)
 	5. low-level optimizations (LLDS -> LLDS)
 	6. output C code (LLDS -> C)
@@ -60,9 +60,10 @@ stored in the io__state, using the type globals defined in globals.m.
 	prog_util.m contains some utility predicates for manipulating
 	the parse tree.
 
-* imports and exports are handled at this point
+* imports and exports are handled at this point (modules.m)
 
-	The code to do this is in mercury_compile.m.
+	modules.m has the code to write out `.int', `.int2', `.d'
+	and `.dep' files.
 
 * expansion of equivalence types (prog_util.m)
 
@@ -130,9 +131,6 @@ in an HLDS goal.
 	  with modes (many of these are used by lots of later stages
 	  of the compiler)
 
-* introduction of type_info arguments for polymorphic predicates
-  (polymorphism.m)
-  
 * indexing and determinism analysis
 
 	switch detection (switch_detection.m),
@@ -149,20 +147,26 @@ in an HLDS goal.
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
 
+3. High-level transformations
+
+The first two passes of this stage are code simplifications.
+
+* introduction of type_info arguments for polymorphic predicates
+  (polymorphism.m)
+
 * removal of lambda expressions (lambda.m)
 
 	lambda.m converts lambda expressions into higher-order predicate
         terms referring to freshly introduced separate predicates.
 	This pass needs to come after unique_modes.m to ensure that
 	the modes we give to the introduced predicates are correct.
+	It also needs to come after polymorphism.m since polymorphism.m
+	doesn't handle higher-order predicate constants.
   
 To improve efficiency, the above two passes are actually combined into
-one - unique_modes.m calls modecheck_unification in modes.m which (if
-it was called from unique_modes.m) calls lambda__transform_lambda.
+one - polymorphism.m calls calls lambda__transform_lambda directly.
 
-3. High-level optimization
-
-The various HLDS-to-HLDS optimizations are:
+The remaining HLDS-to-HLDS transformations are optimizations:
 
 * inlining (i.e. unfolding) of simple procedures (inlining.m)
 
