@@ -1114,7 +1114,7 @@ BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Compare___std_util__univ_0_0);
 #else
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
-	MR_INIT_PROC_LAYOUT_ADDR.(mercury____Compare___std_util__univ_0_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
 #endif
 
