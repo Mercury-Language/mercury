@@ -331,79 +331,55 @@ purity_name((impure), "impure").
 check_preds_purity(FoundTypeError, ModuleInfo0,
 		PostTypecheckError, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo0,
-		ModuleInfo1, 0, NumErrors, no, PostTypecheckError),
-	{ module_info_num_errors(ModuleInfo1, Errs0) },
+
+	% Only report error messages for unbound type variables
+	% if we didn't get any type errors already; this avoids
+	% a lot of spurious diagnostics.
+	{ ReportTypeErrors = bool__not(FoundTypeError) },
+	post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors1,
+		PostTypecheckError, ModuleInfo0, ModuleInfo1),
+
+	check_preds_purity_2(PredIds, ModuleInfo1, ModuleInfo2,
+		NumErrors1, NumErrors),
+	{ module_info_num_errors(ModuleInfo2, Errs0) },
 	{ Errs is Errs0 + NumErrors },
-	{ module_info_set_num_errors(ModuleInfo1, Errs, ModuleInfo) }.
+	{ module_info_set_num_errors(ModuleInfo2, Errs, ModuleInfo) }.
 
+:- pred check_preds_purity_2(list(pred_id), module_info, module_info,
+			int, int, io__state, io__state).
+:- mode check_preds_purity_2(in, in, out, in, out, di, uo) is det.
 
-:- pred check_preds_purity_2(list(pred_id), bool, module_info, module_info,
-			int, int, bool, bool, io__state, io__state).
-:- mode check_preds_purity_2(in, in, in, out, in, out, in, out, di, uo) is det.
-
-check_preds_purity_2([], _, ModuleInfo, ModuleInfo, NumErrors, NumErrors,
-		PostTypecheckError, PostTypecheckError) --> [].
-check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
-		ModuleInfo, NumErrors0, NumErrors,
-		PostTypecheckError0, PostTypecheckError) -->
-	{ module_info_preds(ModuleInfo0, Preds0) },
-	{ map__lookup(Preds0, PredId, PredInfo0) },
+check_preds_purity_2([], ModuleInfo, ModuleInfo, NumErrors, NumErrors) --> [].
+check_preds_purity_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
+		NumErrors0, NumErrors) -->
+	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
 	(	
 		{ pred_info_is_imported(PredInfo0)
 		; pred_info_is_pseudo_imported(PredInfo0) }
 	->
-		post_typecheck__finish_imported_pred(ModuleInfo0, PredId,
-				PredInfo0, PredInfo),
-		{ NumErrors1 = NumErrors0 },
-		{ PostTypecheckError1 = PostTypecheckError0 }
+		{ ModuleInfo1 = ModuleInfo0 },
+		{ PredInfo = PredInfo0 },
+		{ NumErrors1 = NumErrors0 }
 	;
 		write_pred_progress_message("% Purity-checking ", PredId,
 					    ModuleInfo0),
-		%
-		% Only report error messages for unbound type variables
-		% if we didn't get any type errors already; this avoids
-		% a lot of spurious diagnostics.
-		%
-		{ bool__not(FoundTypeError, ReportErrs) },
-		post_typecheck__check_type_bindings(PredId, PredInfo0,
-				ModuleInfo0, ReportErrs,
-				PredInfo1, UnboundTypeErrsInThisPred),
-		%
-		% if there were any unsatisfied type class constraints,
-		% then that can cause internal errors in polymorphism.m
-		% if we try to continue, so we need to halt compilation
-		% after this pass.
-		%
-		{ UnboundTypeErrsInThisPred \= 0 ->
-			PostTypecheckError1 = yes
-		;
-			PostTypecheckError1 = PostTypecheckError0
-		},
-		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
+		puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo0,
 				PurityErrsInThisPred),
-		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
-				PredInfo),
-		{ NumErrors1 is NumErrors0 + UnboundTypeErrsInThisPred
-					   + PurityErrsInThisPred }
+		{ NumErrors1 = NumErrors0 + PurityErrsInThisPred },
+		{ module_info_set_pred_info(ModuleInfo0, PredId,
+				PredInfo, ModuleInfo1) }
 	),
-	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
-	{ module_info_get_predicate_table(ModuleInfo0, PredTable0) },
-	{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
-	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
-					  ModuleInfo1) },
 
 		% finish processing of promise declarations
-	{ pred_info_get_goal_type(PredInfo0, GoalType) },
+	{ pred_info_get_goal_type(PredInfo, GoalType) },
 	( { GoalType = promise(PromiseType) } ->
 		post_typecheck__finish_promise(PromiseType, ModuleInfo1,
 				PredId, ModuleInfo2)
 	;
 		{ ModuleInfo2 = ModuleInfo1 }
 	),
-	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo2, ModuleInfo,
-				  NumErrors1, NumErrors,
-				  PostTypecheckError1, PostTypecheckError).
+	check_preds_purity_2(PredIds, ModuleInfo2, ModuleInfo,
+			  NumErrors1, NumErrors).
 
 	% Purity-check the code for single predicate, reporting any errors.
 

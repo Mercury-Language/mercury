@@ -34,7 +34,8 @@
 :- import_module hlds__hlds_pred, parse_tree__prog_data.
 :- import_module list, io, bool, std_util.
 
-	% check_type_bindings(PredId, PredInfo, ModuleInfo, ReportErrors):
+	% post_typecheck__finish_preds(PredIds, ReportTypeErrors,
+	%	NumErrors, FoundTypeError, Module0, Module)
 	%
 	% Check that all Aditi predicates have an `aditi__state' argument.
 	% Check that the all of the types which have been inferred
@@ -47,11 +48,37 @@
 	% Note that when checking assertions we take the conservative
 	% approach of warning about unbound type variables.  There may
 	% be cases for which this doesn't make sense.
+	% FoundTypeError will be `yes' if there were errors which
+	% should prevent further processing (e.g. polymorphism or
+	% mode analysis).
 	%
-:- pred post_typecheck__check_type_bindings(pred_id, pred_info, module_info,
-		bool, pred_info, int, io__state, io__state).
-:- mode post_typecheck__check_type_bindings(in, in, in, in, out, out, di, uo)
-		is det.
+:- pred post_typecheck__finish_preds(list(pred_id), bool,
+	int, bool, module_info, module_info, io__state, io__state).
+:- mode post_typecheck__finish_preds(in, in, out, out,
+	in, out, di, uo) is det.
+
+	% As above, but don't check for `aditi__state's and return
+	% the list of procedures containing unbound inst variables
+	% instead of reporting the errors directly.
+	%
+:- pred post_typecheck__finish_pred_no_io(module_info, list(proc_id),
+		pred_info, pred_info).
+:- mode post_typecheck__finish_pred_no_io(in, out, in, out) is det.
+
+:- pred post_typecheck__finish_imported_pred_no_io(module_info,
+		list(proc_id), pred_info, pred_info).
+:- mode post_typecheck__finish_imported_pred_no_io(in, out, in, out) is det.
+
+:- pred post_typecheck__finish_ill_typed_pred(module_info, pred_id,
+		pred_info, pred_info, io__state, io__state).
+:- mode post_typecheck__finish_ill_typed_pred(in, in, in, out, di, uo) is det.
+
+	% Now that the assertion has finished being typechecked,
+	% remove it from further processing and store it in the
+	% assertion_table.
+:- pred post_typecheck__finish_promise(promise_type, module_info, pred_id,
+		module_info, io__state, io__state) is det.
+:- mode post_typecheck__finish_promise(in, in, in, out, di, uo) is det.
 
 	% Handle any unresolved overloading for a predicate call.
 	%
@@ -89,43 +116,6 @@
 :- mode post_typecheck__resolve_unify_functor(in, in, in, in, in, in,
 		in, in, in, out, in, out, in, out, out) is det.
 
-	% Do the stuff needed to initialize the pred_infos and proc_infos
-	% so that a pred is ready for running polymorphism and then
-	% mode checking.
-	% Also check that all predicates with an `aditi' marker have
-	% an `aditi__state' argument.
-	%
-:- pred post_typecheck__finish_pred(module_info, pred_id, pred_info, pred_info,
-		io__state, io__state).
-:- mode post_typecheck__finish_pred(in, in, in, out, di, uo) is det.
-
-:- pred post_typecheck__finish_imported_pred(module_info, pred_id,
-		pred_info, pred_info, io__state, io__state).
-:- mode post_typecheck__finish_imported_pred(in, in, in, out, di, uo) is det.
-
-	% As above, but don't check for `aditi__state's and return
-	% the list of procedures containing unbound inst variables
-	% instead of reporting the errors directly.
-	%
-:- pred post_typecheck__finish_pred_no_io(module_info, list(proc_id),
-		pred_info, pred_info).
-:- mode post_typecheck__finish_pred_no_io(in, out, in, out) is det.
-
-:- pred post_typecheck__finish_imported_pred_no_io(module_info,
-		list(proc_id), pred_info, pred_info).
-:- mode post_typecheck__finish_imported_pred_no_io(in, out, in, out) is det.
-
-:- pred post_typecheck__finish_ill_typed_pred(module_info, pred_id,
-		pred_info, pred_info, io__state, io__state).
-:- mode post_typecheck__finish_ill_typed_pred(in, in, in, out, di, uo) is det.
-
-	% Now that the assertion has finished being typechecked,
-	% remove it from further processing and store it in the
-	% assertion_table.
-:- pred post_typecheck__finish_promise(promise_type, module_info, pred_id,
-		module_info, io__state, io__state) is det.
-:- mode post_typecheck__finish_promise(in, in, in, out, di, uo) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -144,12 +134,103 @@
 :- import_module string, varset.
 
 %-----------------------------------------------------------------------------%
+
+post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors,
+		FoundTypeError, ModuleInfo0, ModuleInfo) -->
+	post_typecheck__finish_preds(PredIds, ReportTypeErrors,
+		ModuleInfo0, ModuleInfo, 0, NumErrors, no, FoundTypeError).
+
+:- pred post_typecheck__finish_preds(list(pred_id), bool,
+	module_info, module_info, int, int, bool, bool, io__state, io__state).
+:- mode post_typecheck__finish_preds(in, in, in, out, in, out,
+	in, out, di, uo) is det.
+
+post_typecheck__finish_preds([], _, ModuleInfo, ModuleInfo,
+		NumErrors, NumErrors,
+		PostTypecheckError, PostTypecheckError) --> [].
+post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
+		ModuleInfo0, ModuleInfo, NumErrors0, NumErrors,
+		FoundTypeError0, FoundTypeError) -->
+	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
+	(	
+		{ pred_info_is_imported(PredInfo0)
+		; pred_info_is_pseudo_imported(PredInfo0) }
+	->
+		post_typecheck__finish_imported_pred(ModuleInfo0, PredId,
+				PredInfo0, PredInfo),
+		{ NumErrors1 = NumErrors0 },
+		{ FoundTypeError1 = FoundTypeError0 }
+	;
+		%
+		% Only report error messages for unbound type variables
+		% if we didn't get any type errors already; this avoids
+		% a lot of spurious diagnostics.
+		%
+		post_typecheck__check_type_bindings(PredId, PredInfo0,
+				ModuleInfo0, ReportTypeErrors,
+				PredInfo1, UnboundTypeErrsInThisPred),
+
+		%
+		% if there were any unsatisfied type class constraints,
+		% then that can cause internal errors in polymorphism.m
+		% if we try to continue, so we need to halt compilation
+		% after this pass.
+		%
+		{ UnboundTypeErrsInThisPred \= 0 ->
+			FoundTypeError1 = yes
+		;
+			FoundTypeError1 = FoundTypeError0
+		},
+
+		{ post_typecheck__finish_pred_no_io(ModuleInfo0,
+			ErrorProcs, PredInfo1, PredInfo2) },
+		report_unbound_inst_vars(ModuleInfo0, PredId,
+			ErrorProcs, PredInfo2, PredInfo3),
+		check_for_indistinguishable_modes(ModuleInfo0, PredId,
+			PredInfo3, PredInfo),
+
+		%
+		% check that main/2 has the right type
+		%
+		( { ReportTypeErrors = yes } ->
+			check_type_of_main(PredInfo)
+		;
+			[]
+		),
+
+		%
+		% Check that all Aditi predicates have an `aditi__state'
+		% argument. This must be done after typechecking because
+		% of type inference -- the types of some Aditi predicates
+		% may not be known before.
+		%
+		{ pred_info_get_markers(PredInfo, Markers) },
+		( { ReportTypeErrors = yes, check_marker(Markers, aditi) } ->
+			check_aditi_state(ModuleInfo0, PredInfo)
+		;
+			[]
+		),
+	 
+		{ NumErrors1 is NumErrors0 + UnboundTypeErrsInThisPred }
+	),
+	{ module_info_set_pred_info(ModuleInfo0, PredId,
+		PredInfo, ModuleInfo1) },
+	post_typecheck__finish_preds(PredIds, ReportTypeErrors,
+		ModuleInfo1, ModuleInfo, NumErrors1, NumErrors,
+		FoundTypeError1, FoundTypeError).
+
+%-----------------------------------------------------------------------------%
 %			Check for unbound type variables
 %
 %  Check that the all of the types which have been inferred
 %  for the variables in the clause do not contain any unbound type
 %  variables other than those that occur in the types of head
 %  variables, and that there are no unsatisfied type class constraints.
+
+:- pred post_typecheck__check_type_bindings(pred_id, pred_info, module_info,
+		bool, pred_info, int, io__state, io__state).
+:- mode post_typecheck__check_type_bindings(in, in, in, in, out, out, di, uo)
+		is det.
 
 post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 		PredInfo, NumErrors, IOState0, IOState) :-
@@ -179,16 +260,16 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 			[], Errs, Set0, Set),
 	( Errs = [] ->
 		PredInfo = PredInfo0,
-		IOState2 = IOState1
+		IOState = IOState1
 	;
 		( ReportErrs = yes ->
 			%
 			% report the warning
 			%
 			report_unresolved_type_warning(Errs, PredId, PredInfo0,
-				ModuleInfo, VarSet, IOState1, IOState2)
+				ModuleInfo, VarSet, IOState1, IOState)
 		;
-			IOState2 = IOState1
+			IOState = IOState1
 		),
 
 		%
@@ -201,27 +282,6 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 			ClausesInfo),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_constraint_proofs(PredInfo1, Proofs, PredInfo)
-	),
-
-	%
-	% check that main/2 has the right type
-	%
-	( ReportErrs = yes ->
-		check_type_of_main(PredInfo, IOState2, IOState3)
-	;
-		IOState3 = IOState2
-	),
-
-	%
-	% Check that all Aditi predicates have an `aditi__state' argument.
-	% This must be done after typechecking because of type inference --
-	% the types of some Aditi predicates may not be known before.
-	%
-	pred_info_get_markers(PredInfo, Markers),
-	( ReportErrs = yes, check_marker(Markers, aditi) ->
-		check_aditi_state(ModuleInfo, PredInfo, IOState3, IOState)
-	;
-		IOState = IOState3
 	).
 
 :- pred check_type_bindings_2(assoc_list(prog_var, (type)), list(tvar),
@@ -625,18 +685,6 @@ report_aditi_builtin_error(
 
 %-----------------------------------------------------------------------------%
 
-	% 
-	% Ensure that all constructors occurring in predicate mode 
-	% declarations are module qualified.
-	% 
-post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
-	{ post_typecheck__finish_pred_no_io(ModuleInfo,
-			ErrorProcs, PredInfo0, PredInfo1) },
-	report_unbound_inst_vars(ModuleInfo, PredId,
-			ErrorProcs, PredInfo1, PredInfo2),
-	check_for_indistinguishable_modes(ModuleInfo, PredId,
-			PredInfo2, PredInfo).
-
 post_typecheck__finish_pred_no_io(ModuleInfo, ErrorProcs,
 		PredInfo0, PredInfo) :-
 	post_typecheck__propagate_types_into_modes(ModuleInfo,
@@ -661,6 +709,10 @@ post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
 	% constructors occurring in predicate mode declarations are
 	% module qualified.
 	% 
+:- pred post_typecheck__finish_imported_pred(module_info, pred_id,
+		pred_info, pred_info, io__state, io__state).
+:- mode post_typecheck__finish_imported_pred(in, in, in, out, di, uo) is det.
+
 post_typecheck__finish_imported_pred(ModuleInfo, PredId,
 		PredInfo0, PredInfo) -->
 	{ pred_info_get_markers(PredInfo0, Markers) },

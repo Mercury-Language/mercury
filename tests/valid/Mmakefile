@@ -95,6 +95,7 @@ OTHER_SOURCES= \
 	intermod_impure.m \
 	intermod_lambda.m \
 	intermod_nested_module.m \
+	intermod_nested_module_bug.m \
 	intermod_nested_uniq.m \
 	intermod_pragma_import.m \
 	intermod_quote.m \
@@ -177,7 +178,7 @@ OTHER_SOURCES= \
 	zero_arity.m
 
 # XXX The mode system can't handle the following test cases yet:
-#	assoc_list.m
+#	assoc_list_bug.m
 #	determinism.m
 #	mode_merge_insts.m
 #	inst_perf_bug_2.m
@@ -289,6 +290,8 @@ MCFLAGS-intermod_lambda		= --intermodule-optimization
 MCFLAGS-intermod_lambda2	= --intermodule-optimization
 MCFLAGS-intermod_nested_module	= --intermodule-optimization
 MCFLAGS-intermod_nested_module2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug = --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug2 = --intermodule-optimization
 MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
 MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
 MCFLAGS-intermod_pragma_import	= --intermodule-optimization
