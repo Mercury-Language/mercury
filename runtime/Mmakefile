@@ -56,8 +56,8 @@ PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 LDFLAGS		= -L$(BOEHM_GC_DIR)
 LDLIBS		= \
 		` case "$(GRADE)" in 					\
-		    *.gc.prof)	echo "-lgc_prof" ;;			\
-		    *.gc)	echo "-lgc" ;;				\
+		    *.gc*.prof)	echo "-lgc_prof" ;;			\
+		    *.gc*)	echo "-lgc" ;;				\
 		  esac							\
 		`
 
