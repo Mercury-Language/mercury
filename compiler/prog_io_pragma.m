@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -287,11 +287,10 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 		list(term), term, varset, maybe1(item)).
 :- mode parse_pragma_foreign_code_pragma(in, in, in, in, in, out) is det.
 
-parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
-			ErrorTerm, VarSet, Result) :-
+parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
 	string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
 		InvalidDeclStr),
-
 
 	Check1 = (func(PTerms1, ForeignLanguage) = Res is semidet :- 
 		PTerms1 = [Just_Code_Term],
@@ -308,200 +307,9 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 		)
 	),
 
-		% After foreign_proc has bootstrapped and the library has
-		% been updated to use foreign_proc where appropriate, we
-		% should uncomment this code and remove Check2, Check3,
-		% Check5, Check6 and the other definition of CheckLength. 
-/*
 	CheckLength = (func(PTermsLen, ForeignLanguage) = Res :- 
 		( 
 			Res0 = Check1(PTermsLen, ForeignLanguage)
-		->	
-			Res = Res0
-		;
-			ErrMsg = "-- wrong number of arguments",
-			Res = error(string__append(InvalidDeclStr, ErrMsg), 
-				ErrorTerm)
-		)	
-	),
-*/
-
-	Check6 = (func(PTerms6, ForeignLanguage) = Res is semidet :- 
-            PTerms6 = [PredAndVarsTerm, FlagsTerm,
-		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
-	    parse_pragma_foreign_proc_attributes_term(
-		ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
-	    ( MaybeFlags = ok(Flags) ->
-	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
-			FieldsContext) ->
-	            ( parse_pragma_keyword("first_code", FirstTerm, First,
-		    		FirstContext) ->
-	                ( parse_pragma_keyword("retry_code", LaterTerm, Later,
-				LaterContext) ->
-	                    ( parse_pragma_keyword("shared_code", SharedTerm,
-			    		Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName,
-				    Flags, PredAndVarsTerm,
-				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
-					Later, yes(LaterContext),
-					share, Shared, yes(SharedContext)),
-				    VarSet, Res)
-		            ; parse_pragma_keyword("duplicated_code",
-			    		SharedTerm, Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName,
-				    Flags, PredAndVarsTerm,
-				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
-					Later, yes(LaterContext),
-					duplicate, Shared, yes(SharedContext)),
-				    VarSet, Res)
-		            ; parse_pragma_keyword("common_code", SharedTerm,
-			    		Shared, SharedContext) ->
-	        	        parse_pragma_foreign_code(ModuleName, 
-				    Flags, PredAndVarsTerm,
-				    nondet(Fields, yes(FieldsContext),
-				    	First, yes(FirstContext),
-					Later, yes(LaterContext),
-					automatic, Shared, yes(SharedContext)),
-				    VarSet, Res)
-		            ;
-		                ErrMsg = "-- invalid seventh argument, expecting `common_code(<code>)'",
-				Res = error(string__append(InvalidDeclStr,
-					ErrMsg), SharedTerm)
-			    )
-		        ;
-		            ErrMsg = "-- invalid sixth argument, expecting `retry_code(<code>)'",
-			    Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	LaterTerm)
-			)
-		    ;
-		        ErrMsg = "-- invalid fifth argument, expecting `first_code(<code>)'",
-			Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	FirstTerm)
-		    )
-		;
-		    ErrMsg = "-- invalid fourth argument, expecting `local_vars(<fields>)'",
-		    Res = error(string__append(InvalidDeclStr, ErrMsg),
-			    	FieldsTerm)
-		)
-	    ;
-		MaybeFlags = error(ErrorStr, ErrorTerm),
-		ErrMsg = "-- invalid third argument, expecting foreign proc attribute or list of attributes: " ++ ErrorStr,
-		Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
-	    )
-	),
-
-	Check5 = (func(PTerms5, ForeignLanguage) = Res is semidet :- 
-		PTerms5 = [PredAndVarsTerm, FlagsTerm,
-		    FieldsTerm, FirstTerm, LaterTerm],
-		term__context_init(DummyContext),
-		SharedTerm = term__functor(term__atom("common_code"),
-			[term__functor(term__string(""), [], DummyContext)],
-			DummyContext),
-		Res = Check6([PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
-			LaterTerm, SharedTerm], ForeignLanguage)
-	),
-
-	Check3 = (func(PTerms3, ForeignLanguage) = Res is semidet :- 
-    	    PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
-	    (
-		CodeTerm = term__functor(term__string(Code), [], Context)
-	    ->
-		parse_pragma_foreign_proc_attributes_term(
-			ForeignLanguage, Pragma, FlagsTerm, MaybeFlags),
-		( 
-			MaybeFlags = ok(Flags),
-			parse_pragma_foreign_code(ModuleName, Flags,
-				PredAndVarsTerm, ordinary(Code, yes(Context)),
-				VarSet, Res),
-			parse_pragma_foreign_proc_attributes_term(
-				ForeignLanguage, Pragma, PredAndVarsTerm,
-				MaybeFlags2),
-			( 
-				MaybeFlags2 = ok(Flags)
-			->
-			    % XXX we should issue a warning; this syntax is
-			    % deprecated We will continue to accept this if
-			    % c_code is used, but not with foreign_code
-				( Pragma = "c_code" ->
-					parse_pragma_foreign_code(ModuleName,
-					Flags, FlagsTerm, ordinary(Code,
-					yes(Context)), VarSet, Res)
-				;
-					ErrMsg = "-- invalid second argument, expecting predicate or function mode",
-					Res = error(string__append(
-						InvalidDeclStr, ErrMsg),
-						PredAndVarsTerm)
-				)
-			;
-				ErrMsg = "-- invalid second argument, expecting predicate or function mode",
-				Res = error(string__append(
-					InvalidDeclStr, ErrMsg),
-					PredAndVarsTerm)
-			)
-	        ;
-		    MaybeFlags = error(FlagsError, FlagsErrorTerm),
-		    ErrMsg = "-- invalid third argument: ",
-		    Res = error(InvalidDeclStr ++ ErrMsg ++ FlagsError,
-			FlagsErrorTerm)
-		)
-	    ;
-		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
-		Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	CodeTerm)
-	    )
-	),
-
-	Check2 = (func(PTerms2, ForeignLanguage) = Res is semidet :- 
-		PTerms2 = [PredAndVarsTerm, CodeTerm],
-	    	% XXX we should issue a warning; this syntax is deprecated.
-		% We will continue to accept this if c_code is used, but
-		% not with foreign_code
-		( 
-			Pragma = "c_code"
-		->
-			% may_call_mercury is a conservative default.
-			default_attributes(ForeignLanguage, Attributes),
-			(
-			    CodeTerm = term__functor(term__string(Code), [],
-				Context)
-			->
-			    parse_pragma_foreign_code(ModuleName, 
-			        Attributes, PredAndVarsTerm, ordinary(Code,
-				yes(Context)), VarSet, Res)
-			;
-			    ErrMsg = "-- expecting either `may_call_mercury' or `will_not_call_mercury', and a string for foreign code",
-			    Res = error(string__append(InvalidDeclStr, ErrMsg), 
-				CodeTerm)
-	    		)
-		;
-			ErrMsg = "-- doesn't say whether it can call mercury",
-			Res = error(string__append(InvalidDeclStr, ErrMsg),
-				ErrorTerm)
-		)
-	),
-
-
-	CheckLength = (func(PTermsLen, ForeignLanguage) = Res :- 
-		( 
-			Res0 = Check1(PTermsLen, ForeignLanguage)
-		->	
-			Res = Res0
-		;
-			Res0 = Check2(PTermsLen, ForeignLanguage)
-		->	
-			Res = Res0
-		;
-			Res0 = Check3(PTermsLen, ForeignLanguage)
-		->	
-			Res = Res0
-		;
-			Res0 = Check5(PTermsLen, ForeignLanguage)
-		->	
-			Res = Res0
-		;
-			Res0 = Check6(PTermsLen, ForeignLanguage)
 		->	
 			Res = Res0
 		;
