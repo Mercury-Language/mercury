@@ -177,7 +177,7 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 # so we don't check the error output, we just check the command
 # return status.
 duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
-		duplicate_instance_1.int
+		$(ints_subdir)duplicate_instance_1.int
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		--link-flags "$(ALL_MLFLAGS)" \
 		duplicate_instance_1.m duplicate_instance_2.m \
