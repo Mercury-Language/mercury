@@ -170,18 +170,19 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ length(Args, Arity),
 	  I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond, Context) },
-	(if %%% some [I2]		% NU-Prolog inconsistency
+	(
+		% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Insts0, Name - Arity, I2) }
-	then
+	->
 		{ Insts = Insts0 },
-		(if
+		(
 			{ inst_is_compat(I, I2) }
-		then
+		->
 			duplicate_def_warning(Name, Arity, "inst", Context)
-		else
+		;
 			multiple_def_error(Name, Arity, "inst", Context)
 		)
-	else
+	;
 		{ map__insert(Insts0, Name - Arity, I, Insts) }
 	).
 
@@ -221,16 +222,19 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	{ length(Args, Arity),
 	  I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond, Context) },
-	(if %%% some [I2]		% NU-Prolog inconsistency
+	(
+		% some [I2]		% NU-Prolog inconsistency
 		{ map__search(Modes0, Name - Arity, I2) }
-	then
+	->
 		{ Modes = Modes0 },
-		(if { mode_is_compat(I, I2) } then
+		(
+			{ mode_is_compat(I, I2) }
+		->
 			duplicate_def_warning(Name, Arity, "mode", Context)
-		else
+		;
 			multiple_def_error(Name, Arity, "mode", Context)
 		)
-	else
+	;
 		{ map__insert(Modes0, Name - Arity, I, Modes) }
 	).
 
@@ -397,12 +401,13 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 		Module) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module1),
-	(if %%% some [Modes]
+	(
+		% some [Modes]
 		{ MaybeModes = yes(Modes) }
-	then
+	->
 		module_add_mode(Module1, VarSet, PredName, Modes, Det, Cond,
 			Context, Module)
-	else
+	;
 		{ Module = Module1 }
 	).
 
@@ -419,18 +424,19 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 	  make_predid(ModuleName, Name, Arity, PredId),
 	  clauses_info_init(Arity, ClausesInfo),
 	  P = predicate(VarSet, Types, Cond, ClausesInfo, Procs, Context) },
-	(if %%% some [P2]
+	(
+		% some [P2]
 		{ map__search(Preds0, PredId, P2) }
-	then
+	->
 		{ Module = Module0 },
-		(if 
+		(
 			{ pred_is_compat(P, P2) }
-		then
+		->
 			duplicate_def_warning(Name, Arity, "pred", Context)
-		else
+		;
 			multiple_def_error(Name, Arity, "pred", Context)
 		)
-	else
+	;
 		{ map__insert(Preds0, PredId, P, Preds) },
 		{ moduleinfo_set_preds(Module0, Preds, Module1) },
 		{ moduleinfo_predids(Module1, PredIds0) },
@@ -438,7 +444,9 @@ preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 				Module2) },
 		{ moduleinfo_pred_name_index(Module2, PredNameIndex0) },
 		{ unqualify_name(Name, UnqualifiedName) },
-		{ map__search(PredNameIndex0, UnqualifiedName, PredIdList) ->
+		{
+			map__search(PredNameIndex0, UnqualifiedName, PredIdList)
+		->
 			map__set(PredNameIndex0, UnqualifiedName,
 				[PredId | PredIdList], PredNameIndex)
 		;
@@ -486,9 +494,10 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		MContext, Preds) -->
 	{ length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
-	(if %%% some [P0]
+	(
+		% some [P0]
 		{ map__search(Preds0, PredId, P0) }
-	then
+	->
 		{ P0 = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs0,
 			TContext) },
 			% XXX we should check that this mode declaration
@@ -499,7 +508,7 @@ pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs,
 			TContext) },
 		{ map__set(Preds0, PredId, P, Preds) }
-	else
+	;
 		undefined_pred_error(PredName, Arity, MContext,	
 			"mode declaration"),
 		{ preds_add_implicit(Preds0, PredId, MContext, Preds1) },
@@ -562,9 +571,10 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		Preds) -->
 	{ length(Args, Arity) },
 	{ make_predid(ModuleName, PredName, Arity, PredId) },
-	(if %%% some [PredInfo0]
+	(
+		% some [PredInfo0]
 		{ map__search(Preds0, PredId, PredInfo0) }
-	then
+	->
 			% XXX abstract predicate/4
 		{ PredInfo0 = predicate(TVarSet, Types, Cond, Clauses0, Procs,
 				TContext),
@@ -574,7 +584,7 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		  PredInfo = predicate(TVarSet, Types, Cond, Clauses, Procs,
 				TContext),
 		  map__set(Preds0, PredId, PredInfo, Preds) }
-	else
+	;
 		undefined_pred_error(PredName, Arity, Context, "clause"),
 		{ preds_add_implicit(Preds0, PredId, Context, Preds1) },
 		clauses_add(Preds1, ModuleName, VarSet, PredName, Args,
@@ -696,7 +706,7 @@ transform_goal(if_then(Vars0, A0, B0), Subst,
 	transform_goal(fail, Subst, C),
 	goalinfo_init(GoalInfo).
 
-transform_goal(not(Vars, A0), Subst, not(Vars, A) - GoalInfo) :-
+transform_goal(not(Vars0, A0), Subst, not(Vars, A) - GoalInfo) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(A0, Subst, A),
 	goalinfo_init(GoalInfo).
@@ -777,12 +787,13 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 :- mode get_conj(input, input, input, output).
 
 get_conj(Goal, Subst, Conj0, Conj) :-
-	(if some [A,B]
+	(
+		%some [A,B]
 		Goal = (A,B)
-	then
+	->
 		get_conj(B, Subst, Conj0, Conj1),
 		get_conj(A, Subst, Conj1, Conj)
-	else
+	;
 		transform_goal(Goal, Subst, Goal1),
 		Conj = [Goal1 | Conj0]
 	).
@@ -795,12 +806,13 @@ get_conj(Goal, Subst, Conj0, Conj) :-
 :- mode get_disj(input, input, input, output).
 
 get_disj(Goal, Subst, Disj0, Disj) :-
-	(if some [A,B]
+	(
+		%some [A,B]
 		Goal = (A;B)
-	then
+	->
 		get_disj(B, Subst, Disj0, Disj1),
 		get_disj(A, Subst, Disj1, Disj)
-	else
+	;
 		transform_goal(Goal, Subst, Goal1),
 		Disj = [Goal1 | Disj0]
 	).
