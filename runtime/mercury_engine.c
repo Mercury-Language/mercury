@@ -233,7 +233,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	*/
 	if (catch_exceptions) {
 		MR_create_exception_handler("call_engine",
-			MR_C_LONGJMP_HANDLER, 0, MR_ENTRY(do_fail));
+			MR_C_LONGJMP_HANDLER, 0, MR_ENTRY(MR_do_fail));
 	}
 
 	/*
@@ -652,43 +652,43 @@ MR_terminate_engine(void)
 
 /*---------------------------------------------------------------------------*/
 
-MR_define_extern_entry(do_redo);
-MR_define_extern_entry(do_fail);
-MR_define_extern_entry(do_succeed);
-MR_define_extern_entry(do_last_succeed);
-MR_define_extern_entry(do_not_reached);
-MR_define_extern_entry(exception_handler_do_fail);
+MR_define_extern_entry(MR_do_redo);
+MR_define_extern_entry(MR_do_fail);
+MR_define_extern_entry(MR_do_succeed);
+MR_define_extern_entry(MR_do_last_succeed);
+MR_define_extern_entry(MR_do_not_reached);
+MR_define_extern_entry(MR_exception_handler_do_fail);
 
 MR_BEGIN_MODULE(special_labels_module)
-	MR_init_entry_ai(do_redo);
-	MR_init_entry_ai(do_fail);
-	MR_init_entry_ai(do_succeed);
-	MR_init_entry_ai(do_last_succeed);
-	MR_init_entry_ai(do_not_reached);
-	MR_init_entry_ai(exception_handler_do_fail);
+	MR_init_entry_ai(MR_do_redo);
+	MR_init_entry_ai(MR_do_fail);
+	MR_init_entry_ai(MR_do_succeed);
+	MR_init_entry_ai(MR_do_last_succeed);
+	MR_init_entry_ai(MR_do_not_reached);
+	MR_init_entry_ai(MR_exception_handler_do_fail);
 MR_BEGIN_CODE
 
-MR_define_entry(do_redo);
+MR_define_entry(MR_do_redo);
 	MR_redo();
 
-MR_define_entry(do_fail);
+MR_define_entry(MR_do_fail);
 	MR_fail();
 
-MR_define_entry(do_succeed);
+MR_define_entry(MR_do_succeed);
 	MR_succeed();
 
-MR_define_entry(do_last_succeed);
+MR_define_entry(MR_do_last_succeed);
 	MR_succeed_discard();
 
-MR_define_entry(do_not_reached);
+MR_define_entry(MR_do_not_reached);
 	MR_fatal_error("reached not_reached\n");
 
-MR_define_entry(exception_handler_do_fail);
+MR_define_entry(MR_exception_handler_do_fail);
 	/*
-	** `exception_handler_do_fail' is the same as `do_fail':
-	** it just invokes fail().  The reason we don't just use
-	** `do_fail' for this is that when unwinding the stack we
-	** check for a redoip of `exception_handler_do_fail' and
+	** `MR_exception_handler_do_fail' is the same as `MR_do_fail':
+	** it just invokes MR_fail().  The reason we don't just use
+	** `MR_do_fail' for this is that when unwinding the stack we
+	** check for a redoip of `MR_exception_handler_do_fail' and
 	** handle it specially.
 	*/
 	MR_fail();

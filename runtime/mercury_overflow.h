@@ -9,7 +9,7 @@
 #ifndef MERCURY_OVERFLOW_H
 #define MERCURY_OVERFLOW_H
 
-#define IF(cond, val)	((cond) ? ((val), (void)0) : (void)0)
+#define MR_IF(cond, val) ((cond) ? ((val), (void)0) : (void)0)
 
 #ifndef MR_CHECK_FOR_OVERFLOW
 
@@ -25,53 +25,53 @@
 #include "mercury_misc.h"	/* for MR_fatal_error() */
 
 #define	MR_heap_overflow_check()					\
-		(							\
-			IF (MR_hp >= MR_ENGINE(MR_heap_zone)->top,(	\
-				MR_fatal_error("heap overflow")		\
-			)),						\
-			IF (MR_hp > MR_ENGINE(MR_heap_zone)->max,(	\
-				MR_ENGINE(heap_zone)->max = MR_hp	\
-			)),						\
-			(void)0						\
-		)
+	(								\
+		MR_IF (MR_hp >= MR_ENGINE(MR_heap_zone)->top,(		\
+			MR_fatal_error("heap overflow")			\
+		)),							\
+		MR_IF (MR_hp > MR_ENGINE(MR_heap_zone)->max,(		\
+			MR_ENGINE(heap_zone)->max = MR_hp		\
+		)),							\
+		(void)0							\
+	)
 
 #define	MR_detstack_overflow_check()					\
-		(							\
-			IF (MR_sp >= MR_CONTEXT(MR_detstack_zone)->top,(\
-				MR_fatal_error("stack overflow")	\
-			)),						\
-			IF (MR_sp > MR_CONTEXT(MR_detstack_zone)->max,(	\
-				MR_CONTEXT(detstack_zone)->max = MR_sp	\
-			)),						\
-			(void)0						\
-		)
+	(								\
+		MR_IF (MR_sp >= MR_CONTEXT(MR_detstack_zone)->top,(	\
+			MR_fatal_error("stack overflow")		\
+		)),							\
+		MR_IF (MR_sp > MR_CONTEXT(MR_detstack_zone)->max,(	\
+			MR_CONTEXT(detstack_zone)->max = MR_sp		\
+		)),							\
+		(void)0							\
+	)
 
 #define	MR_detstack_underflow_check()					\
-		(							\
-			IF (MR_sp < MR_CONTEXT(MR_detstack_zone)->min,(	\
-				MR_fatal_error("stack underflow")	\
-			)),						\
-			(void)0						\
-		)
+	(								\
+		MR_IF (MR_sp < MR_CONTEXT(MR_detstack_zone)->min,(	\
+			MR_fatal_error("stack underflow")		\
+		)),							\
+		(void)0							\
+	)
 
 #define	MR_nondstack_overflow_check()					\
-		(							\
-			IF (MR_maxfr >= MR_CONTEXT(MR_nondetstack_zone)->top,( \
-				MR_fatal_error("nondetstack overflow")	\
-			)),						\
-			IF (MR_maxfr > MR_CONTEXT(MR_nondetstack_zone)->max,( \
-				MR_CONTEXT(nondetstack_zone)->max = MR_maxfr \
-			)),						\
-			(void)0						\
-		)
+	(								\
+		MR_IF (MR_maxfr >= MR_CONTEXT(MR_nondetstack_zone)->top,( \
+			MR_fatal_error("nondetstack overflow")		\
+		)),							\
+		MR_IF (MR_maxfr > MR_CONTEXT(MR_nondetstack_zone)->max,( \
+			MR_CONTEXT(nondetstack_zone)->max = MR_maxfr	\
+		)),							\
+		(void)0							\
+	)
 
 #define	MR_nondstack_underflow_check()					\
-		(							\
-			IF (MR_maxfr < MR_CONTEXT(MR_nondetstack_zone)->min,( \
-				MR_fatal_error("nondetstack underflow")	\
-			)),						\
-			(void)0						\
-		)
+	(								\
+		MR_IF (MR_maxfr < MR_CONTEXT(MR_nondetstack_zone)->min,( \
+			MR_fatal_error("nondetstack underflow")		\
+		)),							\
+		(void)0							\
+	)
 
 #endif /* MR_CHECK_FOR_OVERFLOW */
 

@@ -1877,7 +1877,7 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
 	io__write_string(C_Code).
 output_pragma_c_component(pragma_c_fail_to(Label)) -->
-	io__write_string("if (!r1) MR_GOTO_LABEL("),
+	io__write_string("if (!MR_r1) MR_GOTO_LABEL("),
 	output_label(Label),
 	io__write_string(");\n").
 output_pragma_c_component(pragma_c_noop) --> [].
@@ -2881,7 +2881,7 @@ output_code_addr_decls(do_redo) -->
 	;
 		{ UseMacro = no },
 		io__write_string("MR_declare_entry("),
-		io__write_string("do_redo"),
+		io__write_string("MR_do_redo"),
 		io__write_string(");\n")
 	).
 output_code_addr_decls(do_fail) -->
@@ -2891,7 +2891,7 @@ output_code_addr_decls(do_fail) -->
 	;
 		{ UseMacro = no },
 		io__write_string("MR_declare_entry("),
-		io__write_string("do_fail"),
+		io__write_string("MR_do_fail"),
 		io__write_string(");\n")
 	).
 output_code_addr_decls(do_trace_redo_fail_shallow) -->
@@ -2902,6 +2902,8 @@ output_code_addr_decls(do_call_closure) -->
 	io__write_string("MR_declare_entry(mercury__do_call_closure);\n").
 output_code_addr_decls(do_call_class_method) -->
 	io__write_string("MR_declare_entry(mercury__do_call_class_method);\n").
+% XXX The do_*_aditi_call and do_aditi_* entry point names
+% should start with an `MADITI_' prefix.
 output_code_addr_decls(do_det_aditi_call) -->
 	io__write_string("MR_declare_entry(do_det_aditi_call);\n").
 output_code_addr_decls(do_semidet_aditi_call) -->
@@ -2919,7 +2921,7 @@ output_code_addr_decls(do_aditi_bulk_delete) -->
 output_code_addr_decls(do_aditi_bulk_modify) -->
 	io__write_string("MR_declare_entry(do_aditi_bulk_modify);\n").
 output_code_addr_decls(do_not_reached) -->
-	io__write_string("MR_declare_entry(do_not_reached);\n").
+	io__write_string("MR_declare_entry(MR_do_not_reached);\n").
 
 :- pred output_label_as_code_addr_decls(label, io__state, io__state).
 :- mode output_label_as_code_addr_decls(in, di, uo) is det.
@@ -3134,7 +3136,7 @@ output_goto(do_redo, _) -->
 		io__write_string("MR_redo();\n")
 	;
 		{ UseMacro = no },
-		io__write_string("MR_GOTO(MR_ENTRY(do_redo));\n")
+		io__write_string("MR_GOTO(MR_ENTRY(MR_do_redo));\n")
 	).
 output_goto(do_fail, _) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
@@ -3143,7 +3145,7 @@ output_goto(do_fail, _) -->
 		io__write_string("MR_fail();\n")
 	;
 		{ UseMacro = no },
-		io__write_string("MR_GOTO(MR_ENTRY(do_fail));\n")
+		io__write_string("MR_GOTO(MR_ENTRY(MR_do_fail));\n")
 	).
 output_goto(do_trace_redo_fail_shallow, _) -->
 	io__write_string("MR_GOTO(MR_ENTRY(MR_do_trace_redo_fail_shallow));\n").
@@ -3163,6 +3165,8 @@ output_goto(do_call_class_method, CallerLabel) -->
 	io__write_string(");\n\t\t"),
 	io__write_string(
 		"MR_noprof_tailcall(MR_ENTRY(mercury__do_call_class_method));\n").
+% XXX The do_*_aditi_call and do_aditi_* entry point names
+% should start with an `MADITI_' prefix.
 output_goto(do_det_aditi_call, CallerLabel) -->
 	io__write_string("MR_tailcall(MR_ENTRY(do_det_aditi_call),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -3196,7 +3200,7 @@ output_goto(do_aditi_bulk_modify, CallerLabel) -->
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_not_reached),\n\t\t"),
+	io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
 
@@ -3962,6 +3966,8 @@ output_rval_const(multi_string_const(Length, String)) -->
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
+% XXX we should consider using MR_TRUE and MR_FALSE
+% rather than TRUE and FALSE
 output_rval_const(true) -->
 	io__write_string("TRUE").
 output_rval_const(false) -->
@@ -4038,6 +4044,8 @@ output_rval_static_const(multi_string_const(Length, String)) -->
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
+% XXX we should consider using MR_TRUE and MR_FALSE
+% rather than TRUE and FALSE
 output_rval_static_const(true) -->
 	io__write_string("TRUE").
 output_rval_static_const(false) -->
@@ -4064,7 +4072,7 @@ output_lval_as_word(Lval) -->
 		% sanity check -- if this happens, the llds is ill-typed
 		{ error("output_lval_as_word: got float") }
 	;
-		io__write_string("LVALUE_CAST(MR_Word,"),
+		io__write_string("MR_LVALUE_CAST(MR_Word,"),
 		output_lval(Lval),
 		io__write_string(")")
 	).

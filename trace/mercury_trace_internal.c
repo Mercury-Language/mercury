@@ -465,8 +465,10 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 		return "missing exception value";
 	}
 
-	type_info = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_TYPEINFO);
-	value = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_DATA);
+	type_info = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_TYPEINFO);
+	value = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_DATA);
 
 	(*browser)(type_info, value, caller, format);
 
@@ -1050,7 +1052,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
 			const char	*msg;
-			do_init_modules();
+			MR_do_init_modules();
 			msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
@@ -1820,7 +1822,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #endif	/* MR_TRACE_HISTOGRAM */
 	} else if (streq(words[0], "nondet_stack")) {
 		if (word_count == 1) {
-			do_init_modules();
+			MR_do_init_modules();
 			MR_dump_nondet_stack_from_layout(MR_mdb_out,
 				MR_saved_maxfr(saved_regs));
 		} else {
@@ -1831,7 +1833,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		if (word_count == 1) {
 			bool	saved_tabledebug;
 
-			do_init_modules();
+			MR_do_init_modules();
 			saved_tabledebug = MR_tabledebug;
 			MR_tabledebug = TRUE;
 			MR_print_gen_stack(MR_mdb_out);

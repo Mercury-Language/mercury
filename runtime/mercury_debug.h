@@ -29,10 +29,12 @@
 
 #define	MR_debuggoto(label) \
 	(MR_assert(label), \
-	IF (MR_gotodebug, (MR_save_transient_registers(), MR_goto_msg(label))))
+	MR_IF (MR_gotodebug, \
+		(MR_save_transient_registers(), MR_goto_msg(label))))
 
 #define	MR_debugsreg() \
-	IF (MR_sregdebug, (MR_save_transient_registers(), MR_reg_msg()))
+	MR_IF (MR_sregdebug, \
+		(MR_save_transient_registers(), MR_reg_msg()))
 
 #endif
 
@@ -61,67 +63,73 @@
 #else
 
 #define	MR_debugcr1(val0, hp) \
-	IF (MR_heapdebug, (MR_save_transient_registers(), MR_cr1_msg(val0, hp)))
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr1_msg(val0, hp)))
 
 #define	MR_debugcr2(val0, val1, hp) \
-	IF (MR_heapdebug, (MR_save_transient_registers(), MR_cr2_msg(val0, val1, hp)))
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr2_msg(val0, val1, hp)))
 
 #define	MR_debugincrhp(val, hp) \
-	IF (MR_heapdebug, \
+	MR_IF (MR_heapdebug, \
 		(MR_save_transient_registers(), MR_incr_hp_debug_msg((val), (hp))))
 
 #define	MR_debugincrsp(val, sp) \
-	IF (MR_detstackdebug, \
+	MR_IF (MR_detstackdebug, \
 		(MR_save_transient_registers(), MR_incr_sp_msg((val), (sp))))
 
 #define	MR_debugdecrsp(val, sp) \
-	IF (MR_detstackdebug, \
+	MR_IF (MR_detstackdebug, \
 		(MR_save_transient_registers(), MR_decr_sp_msg((val), (sp))))
 
 #define	MR_debugregs(msg) \
-	IF (MR_progdebug, (MR_save_transient_registers(), MR_printregs(msg)))
+	MR_IF (MR_progdebug, (MR_save_transient_registers(), MR_printregs(msg)))
 
 #define	MR_debugmkframe(predname) \
-	IF (MR_nondstackdebug, \
+	MR_IF (MR_nondstackdebug, \
 		(MR_save_transient_registers(), MR_mkframe_msg(predname)))
 
 #define	MR_debugframe(msg)	 \
-	IF (MR_progdebug, (MR_save_transient_registers(), MR_printframe(msg)))
+	MR_IF (MR_progdebug, \
+		(MR_save_transient_registers(), MR_printframe(msg)))
 
 #define	MR_debugsucceed() \
-	IF (MR_nondstackdebug, (MR_save_transient_registers(), MR_succeed_msg()))
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_succeed_msg()))
 
 #define	MR_debugsucceeddiscard() \
-	IF (MR_nondstackdebug, \
+	MR_IF (MR_nondstackdebug, \
 		(MR_save_transient_registers(), MR_succeeddiscard_msg()))
 
 #define	MR_debugfail() \
 	IF (MR_nondstackdebug, (MR_save_transient_registers(), MR_fail_msg()))
 
 #define	MR_debugredo() \
-	IF (MR_nondstackdebug, (MR_save_transient_registers(), MR_redo_msg()))
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_redo_msg()))
 
 #define	MR_debugcall(proc, succ_cont) \
-	IF (MR_calldebug, \
+	MR_IF (MR_calldebug, \
 		(MR_save_transient_registers(), MR_call_msg(proc, succ_cont)))
 
 #define	MR_debugtailcall(proc) \
-	IF (MR_calldebug, (MR_save_transient_registers(), MR_tailcall_msg(proc)))
+	MR_IF (MR_calldebug, \
+		(MR_save_transient_registers(), MR_tailcall_msg(proc)))
 
 #define	MR_debugproceed() \
-	IF (MR_calldebug, (MR_save_transient_registers(), MR_proceed_msg()))
+	MR_IF (MR_calldebug, (MR_save_transient_registers(), MR_proceed_msg()))
 
 #define	MR_debugmsg0(msg) \
-	IF (MR_progdebug, (printf(msg)))
+	MR_IF (MR_progdebug, (printf(msg)))
 
 #define	MR_debugmsg1(msg, arg1) \
-	IF (MR_progdebug, (printf(msg, arg1)))
+	MR_IF (MR_progdebug, (printf(msg, arg1)))
 
 #define	MR_debugmsg2(msg, arg1, arg2) \
-	IF (MR_progdebug, (printf(msg, arg1, arg2)))
+	MR_IF (MR_progdebug, (printf(msg, arg1, arg2)))
 
 #define	MR_debugmsg3(msg, arg1, arg2, arg3) \
-	IF (MR_progdebug, (printf(msg, arg1, arg2, arg3)))
+	MR_IF (MR_progdebug, (printf(msg, arg1, arg2, arg3)))
 
 #endif /* MR_LOWLEVEL_DEBUG */
 

@@ -523,23 +523,23 @@ try_again:
                 ** to still contain the type rather than just holding
                 ** a forwarding pointer.
                 */
-                new_data_ptr[UNIV_OFFSET_FOR_DATA] = copy(
-                        &data_value[UNIV_OFFSET_FOR_DATA],
+                new_data_ptr[MR_UNIV_OFFSET_FOR_DATA] = copy(
+                        &data_value[MR_UNIV_OFFSET_FOR_DATA],
                         (const MR_TypeInfo)
-                            data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                            data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
                         lower_limit, upper_limit);
-                new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] =
-                    (MR_Word) copy_type_info(
-                        (MR_TypeInfo *) &data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                new_data_ptr[MR_UNIV_OFFSET_FOR_TYPEINFO] =
+                    (MR_Word) copy_type_info((MR_TypeInfo *)
+		    	&data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
                         lower_limit, upper_limit);
                 leave_forwarding_pointer(data_ptr, new_data);
 	    } else if (in_traverse_range(data_value)) {
-		copy(&data_value[UNIV_OFFSET_FOR_DATA],
+		copy(&data_value[MR_UNIV_OFFSET_FOR_DATA],
 			(const MR_TypeInfo) 
-			    data_value[UNIV_OFFSET_FOR_TYPEINFO],
+			    data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
 			lower_limit, upper_limit);
-	        copy_type_info(
-			(MR_TypeInfo *) &data_value[UNIV_OFFSET_FOR_TYPEINFO],
+	        copy_type_info((MR_TypeInfo *)
+			&data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
 			lower_limit, upper_limit);
 		new_data = data;
             } else {

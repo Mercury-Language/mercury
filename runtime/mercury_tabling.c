@@ -342,7 +342,7 @@ static	MR_Unsigned	MR_table_hash_insert_probes = 0;
 			}						      \
 		}							      \
 									      \
-		table_free(table->hash_table);				      \
+		MR_table_free(table->hash_table);			      \
 		table->hash_table = new_hash_table;			      \
 		table->size = new_size;					      \
 		table->threshold = new_threshold;			      \
@@ -845,10 +845,10 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 
                 data_value = (MR_Word *) data;
                 MR_DEBUG_TABLE_TYPEINFO(table,
-                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO]);
+                    (MR_TypeInfo) data_value[MR_UNIV_OFFSET_FOR_TYPEINFO]);
                 MR_DEBUG_TABLE_ANY(table,
-                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO],
-                    data_value[UNIV_OFFSET_FOR_DATA]);
+                    (MR_TypeInfo) data_value[MR_UNIV_OFFSET_FOR_TYPEINFO],
+                    data_value[MR_UNIV_OFFSET_FOR_DATA]);
                 break;
             }
 
@@ -1006,8 +1006,8 @@ save_state(MR_SavedState *saved_state,
 	if (MR_maxfr > generator_maxfr) {
 		saved_state->non_stack_block_size = MR_maxfr - generator_maxfr;
 		saved_state->non_stack_block =
-			table_allocate_words(saved_state->non_stack_block_size);
-		table_copy_words(saved_state->non_stack_block,
+			MR_table_allocate_words(saved_state->non_stack_block_size);
+		MR_table_copy_words(saved_state->non_stack_block,
 			saved_state->non_stack_block_start,
 			saved_state->non_stack_block_size);
 	} else {
@@ -1019,8 +1019,8 @@ save_state(MR_SavedState *saved_state,
 	if (MR_sp > generator_sp) {
 		saved_state->det_stack_block_size = (MR_sp - 1) - generator_sp;
 		saved_state->det_stack_block =
-			table_allocate_words(saved_state->det_stack_block_size);
-		table_copy_words(saved_state->det_stack_block,
+			MR_table_allocate_words(saved_state->det_stack_block_size);
+		MR_table_copy_words(saved_state->det_stack_block,
 			saved_state->det_stack_block_start,
 			saved_state->det_stack_block_size);
 	} else {
@@ -1031,15 +1031,15 @@ save_state(MR_SavedState *saved_state,
   #endif /* ! MR_HIGHLEVEL_CODE */
 
 	saved_state->gen_next = MR_gen_next;
-	saved_state->generator_stack_block = table_allocate_bytes(
+	saved_state->generator_stack_block = MR_table_allocate_bytes(
 			MR_gen_next * sizeof(MR_GeneratorStackFrame));
-	table_copy_bytes(saved_state->generator_stack_block,
+	MR_table_copy_bytes(saved_state->generator_stack_block,
 		MR_gen_stack, MR_gen_next * sizeof(MR_GeneratorStackFrame));
 
 	saved_state->cut_next = MR_cut_next;
-	saved_state->cut_stack_block = table_allocate_bytes(
+	saved_state->cut_stack_block = MR_table_allocate_bytes(
 			MR_cut_next * sizeof(MR_CutStackFrame));
-	table_copy_bytes(saved_state->cut_stack_block,
+	MR_table_copy_bytes(saved_state->cut_stack_block,
 		MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_USE_TRAIL
@@ -1144,22 +1144,22 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 	MR_curfr = saved_state->cur_fr;
 	MR_maxfr = saved_state->max_fr;
 
-	table_copy_words(saved_state->non_stack_block_start,
+	MR_table_copy_words(saved_state->non_stack_block_start,
 		saved_state->non_stack_block,
 		saved_state->non_stack_block_size);
 
-	table_copy_words(saved_state->det_stack_block_start,
+	MR_table_copy_words(saved_state->det_stack_block_start,
 		saved_state->det_stack_block,
 		saved_state->det_stack_block_size);
 
   #endif
 
 	MR_gen_next = saved_state->gen_next;
-	table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
+	MR_table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
 		saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
 
 	MR_cut_next = saved_state->cut_next;
-	table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
+	MR_table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
 		saved_state->cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_TABLE_DEBUG
@@ -1285,10 +1285,10 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 				== suspension->saved_state.s_p - 1);
 	}
 
-	arena_block = table_allocate_words(arena_size);
+	arena_block = MR_table_allocate_words(arena_size);
 
-	table_copy_words(arena_block, arena_start, extension_size);
-	table_copy_words(arena_block + extension_size,
+	MR_table_copy_words(arena_block, arena_start, extension_size);
+	MR_table_copy_words(arena_block + extension_size,
 		suspension->saved_state.det_stack_block,
 		suspension->saved_state.det_stack_block_size);
 
@@ -1320,10 +1320,10 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 	assert(leader->generator_maxfr + arena_size
 			== suspension->saved_state.max_fr);
 
-	arena_block = table_allocate_words(arena_size);
+	arena_block = MR_table_allocate_words(arena_size);
 
-	table_copy_words(arena_block, arena_start, extension_size);
-	table_copy_words(arena_block + extension_size,
+	MR_table_copy_words(arena_block, arena_start, extension_size);
+	MR_table_copy_words(arena_block + extension_size,
 		suspension->saved_state.non_stack_block,
 		suspension->saved_state.non_stack_block_size);
 
@@ -1364,7 +1364,8 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 		if (saved_fr - frame_size
 			> suspension->saved_state.non_stack_block)
 		{
-			*MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(do_fail);
+			*MR_redoip_addr(saved_fr) =
+				(MR_Word) MR_ENTRY(MR_do_fail);
 
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tabledebug) {
@@ -1492,11 +1493,11 @@ MR_define_entry(mercury__table_nondet_suspend_2_0);
 	** nondet stack fragment. The framevar slot is for use by
 	** table_nondet_resume.
 	*/
-	MR_mkframe("mercury__table_nondet_suspend", 1, MR_ENTRY(do_fail));
+	MR_mkframe("mercury__table_nondet_suspend", 1, MR_ENTRY(MR_do_fail));
 
 	table = (MR_TrieNode) r1;
 	subgoal = table->MR_subgoal;
-	consumer = table_allocate_bytes(sizeof(MR_Consumer));
+	consumer = MR_table_allocate_bytes(sizeof(MR_Consumer));
 	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
 
 	MR_save_transient_registers();
@@ -1558,7 +1559,7 @@ MR_define_entry(mercury__table_nondet_suspend_2_0);
 
 				assert(MR_prevfr_slot(fr) != (stop_addr - 1));
 
-				*clobber_addr = (MR_Word) MR_ENTRY(do_fail);
+				*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
 #ifdef	MR_TABLE_DEBUG
 				if (MR_tablestackdebug) {
 					printf("clobbering redoip "
@@ -1589,7 +1590,7 @@ MR_define_entry(mercury__table_nondet_suspend_2_0);
 
 			cur_cut--;
 		} else {
-			*clobber_addr = (MR_Word) MR_ENTRY(do_fail);
+			*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tablestackdebug) {
 				printf("clobbering redoip of frame at ");
@@ -1609,7 +1610,7 @@ MR_define_entry(mercury__table_nondet_suspend_2_0);
 #endif
 
 	assert(*(subgoal->consumer_list_tail) == NULL);
-	listnode = table_allocate_bytes(sizeof(MR_ConsumerListNode));
+	listnode = MR_table_allocate_bytes(sizeof(MR_ConsumerListNode));
 	*(subgoal->consumer_list_tail) = listnode;
 	subgoal->consumer_list_tail = &(listnode->next);
 	listnode->item = consumer;

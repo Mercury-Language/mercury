@@ -8,7 +8,7 @@
 #include "mercury_regs.h"
 #include "mercury_engine.h"
 #include "mercury_memory.h"
-#include "mercury_context.h"	/* for do_runnext */
+#include "mercury_context.h"	/* for MR_do_runnext */
 #include "mercury_thread.h"
 
 #include <stdio.h>
@@ -67,7 +67,7 @@ MR_create_thread_2(void *goal0)
 
 #endif /* MR_THREAD_SAFE */
 
-MR_Bool
+bool
 MR_init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
@@ -106,7 +106,7 @@ MR_init_thread(MR_when_to_use when_to_use)
 
 	switch (when_to_use) {
 		case MR_use_later :
-			(void) MR_call_engine(MR_ENTRY(do_runnext), FALSE);
+			(void) MR_call_engine(MR_ENTRY(MR_do_runnext), FALSE);
 
 			MR_destroy_engine(eng);
 			return FALSE;

@@ -6,11 +6,12 @@
 #ifndef MERCURY_THREAD_H
 #define MERCURY_THREAD_H
 
+#include "mercury_std.h"
+
 #ifdef	MR_THREAD_SAFE
 
   #include <signal.h>	/* for sigset_t on the SPARC */
   #include <pthread.h>
-  #include "mercury_std.h"
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_MUTEX_ATTR		pthread_mutexattr_default
@@ -141,7 +142,7 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** finalize_thread_engine if it is true).
 */
 
-extern	MR_Bool	MR_init_thread(MR_when_to_use);
+extern	bool	MR_init_thread(MR_when_to_use);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.

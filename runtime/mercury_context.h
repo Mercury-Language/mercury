@@ -227,16 +227,16 @@ extern	void		MR_flounder(void);
 
 extern	void		MR_schedule(MR_Context *ctxt);
 
-MR_declare_entry(do_runnext);
+MR_declare_entry(MR_do_runnext);
 #define MR_runnext()						\
 	do {							\
-		MR_GOTO(MR_ENTRY(do_runnext));			\
+		MR_GOTO(MR_ENTRY(MR_do_runnext));		\
 	} while (0)						\
 
 #ifdef	MR_THREAD_SAFE
-  #define IF_MR_THREAD_SAFE(x)	x
+  #define MR_IF_MR_THREAD_SAFE(x)	x
 #else
-  #define IF_MR_THREAD_SAFE(x)
+  #define MR_IF_MR_THREAD_SAFE(x)
 #endif
 
 /*
@@ -250,7 +250,7 @@ MR_declare_entry(do_runnext);
 		MR_Context	*f_n_c_context;				\
 		int		fork_new_context_i;			\
 		f_n_c_context = MR_create_context();			\
-		IF_MR_THREAD_SAFE(					\
+		MR_IF_MR_THREAD_SAFE(					\
 			f_n_c_context->owner_thread = NULL;		\
 		)							\
 		for (fork_new_context_i = (numslots) ;			\

@@ -15,6 +15,14 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define do_redo				MR_do_redo
+#define do_fail				MR_do_fail
+#define do_reset_hp_fail		MR_do_reset_hp_fail
+#define do_reset_framevar0_fail		MR_do_reset_framevar0_fail
+#define do_succeed			MR_do_succeed
+#define do_not_reached			MR_do_not_reached
+#define exception_handler_do_fail	MR_exception_handler_do_fail
+
 #define	r1				MR_r1
 #define	r2				MR_r2
 #define	r3				MR_r3
@@ -255,6 +263,8 @@
 ** the other changes in this file).
 */
 
+#include "mercury_types.h"
+#include "mercury_float.h"
 typedef MR_Word 		Word;
 typedef MR_Code 		Code;
 typedef MR_Char 		Char;

@@ -40,8 +40,10 @@ foo(X) -->
 call_my_univ_value(Univ) = my_univ_value(Univ).
 
 :- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "
-	TypeInfo_for_T = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+	TypeInfo_for_T = MR_field(MR_mktag(0), Univ,
+			MR_UNIV_OFFSET_FOR_TYPEINFO);
+	Value = MR_field(MR_mktag(0), Univ,
+			MR_UNIV_OFFSET_FOR_DATA);
 ").
 
 % The predicate has_type/2 is basically an existentially typed

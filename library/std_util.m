@@ -1074,7 +1074,7 @@ det_univ_to_type(Univ, X) :-
 **	`univ' is represented as a two word structure.
 **	One word contains the address of a type_info for the type.
 **	The other word contains the data.
-**	The offsets UNIV_OFFSET_FOR_TYPEINFO and UNIV_OFFSET_FOR_DATA
+**	The offsets MR_UNIV_OFFSET_FOR_TYPEINFO and MR_UNIV_OFFSET_FOR_DATA
 **	are defined in runtime/type_info.h.
 */
 
@@ -1111,13 +1111,15 @@ det_univ_to_type(Univ, X) :-
 	MR_Word	univ_type_info;
 	int	    comp;
 
-	univ_type_info = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	univ_type_info = MR_field(MR_mktag(0), Univ,
+			MR_UNIV_OFFSET_FOR_TYPEINFO);
 	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) univ_type_info,
 		(MR_TypeInfo) TypeInfo_for_T);
 	MR_restore_transient_registers();
 	if (comp == MR_COMPARE_EQUAL) {
-		Value = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+		Value = MR_field(MR_mktag(0), Univ,
+				MR_UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -1125,7 +1127,7 @@ det_univ_to_type(Univ, X) :-
 }").
 
 :- pragma c_code(univ_type(Univ::in) = (TypeInfo::out), will_not_call_mercury, "
-	TypeInfo = MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	TypeInfo = MR_field(MR_mktag(0), Univ, MR_UNIV_OFFSET_FOR_TYPEINFO);
 ").
 
 :- pragma c_code("
@@ -1174,8 +1176,8 @@ MR_define_entry(mercury____Unify___std_util__univ_0_0);
 	univ2 = r2;
 
 	/* First check the type_infos compare equal */
-	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo1 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo2 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_TYPEINFO);
 	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
 		(MR_TypeInfo) typeinfo2);
@@ -1190,8 +1192,8 @@ MR_define_entry(mercury____Unify___std_util__univ_0_0);
 	** unwrapped args
 	*/
 	r1 = typeinfo1;
-	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
+	r2 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_DATA);
+	r3 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_DATA);
 	{
 		MR_declare_entry(mercury__unify_2_0);
 		MR_tailcall(MR_ENTRY(mercury__unify_2_0),
@@ -1213,8 +1215,8 @@ MR_define_entry(mercury____Compare___std_util__univ_0_0);
 	univ2 = r2;
 
 	/* First compare the type_infos */
-	typeinfo1 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_TYPEINFO);
-	typeinfo2 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo1 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_TYPEINFO);
+	typeinfo2 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_TYPEINFO);
 	MR_save_transient_registers();
 	comp = MR_compare_type_info((MR_TypeInfo) typeinfo1,
 		(MR_TypeInfo) typeinfo2);
@@ -1230,8 +1232,8 @@ MR_define_entry(mercury____Compare___std_util__univ_0_0);
 	*/
 
 	r1 = typeinfo1;
-	r2 = MR_field(MR_mktag(0), univ1, UNIV_OFFSET_FOR_DATA);
-	r3 = MR_field(MR_mktag(0), univ2, UNIV_OFFSET_FOR_DATA);
+	r2 = MR_field(MR_mktag(0), univ1, MR_UNIV_OFFSET_FOR_DATA);
+	r3 = MR_field(MR_mktag(0), univ2, MR_UNIV_OFFSET_FOR_DATA);
 	{
 		MR_declare_entry(mercury__compare_3_0);
 		MR_tailcall(MR_ENTRY(mercury__compare_3_0),
@@ -1935,7 +1937,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
             }
 
             new_data = MR_field(MR_mktag(0), MR_list_head(ArgList),
-                UNIV_OFFSET_FOR_DATA);
+                MR_UNIV_OFFSET_FOR_DATA);
             break;
 
         case MR_TYPECTOR_REP_DU:
@@ -1973,7 +1975,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                     for (i = 0; i < arity; i++) {
                         MR_field(ptag, new_data, i + 1) =
                             MR_field(MR_mktag(0), MR_list_head(arg_list),
-                                UNIV_OFFSET_FOR_DATA);
+                                MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
 
@@ -1988,7 +1990,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                     for (i = 0; i < arity; i++) {
                         MR_field(ptag, new_data, i) =
                             MR_field(MR_mktag(0), MR_list_head(arg_list),
-                                UNIV_OFFSET_FOR_DATA);
+                                MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
 
@@ -2018,7 +2020,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                     for (i = 0; i < arity; i++) {
                         MR_field(MR_mktag(0), new_data, i) =
                                 MR_field(MR_mktag(0), MR_list_head(arg_list),
-                                    UNIV_OFFSET_FOR_DATA);
+                                    MR_UNIV_OFFSET_FOR_DATA);
                         arg_list = MR_list_tail(arg_list);
                     }
 
@@ -2080,7 +2082,7 @@ construct_tuple(Args) =
 			""<created by std_util:construct_tuple/1>"");
 		for (i = 0; i < Arity; i++) {
 			arg_value = MR_field(MR_mktag(0), MR_list_head(Args),
-					UNIV_OFFSET_FOR_DATA);
+					MR_UNIV_OFFSET_FOR_DATA);
 			MR_field(MR_mktag(0), new_data, i) = arg_value;
 			Args = MR_list_tail(Args);
 		}
@@ -2274,7 +2276,7 @@ ML_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
         }
 
         list_arg_type_info = (MR_TypeInfo) MR_field(MR_mktag(0),
-            MR_list_head(arg_list), UNIV_OFFSET_FOR_TYPEINFO);
+            MR_list_head(arg_list), MR_UNIV_OFFSET_FOR_TYPEINFO);
 
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
                 MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
@@ -2315,7 +2317,7 @@ ML_copy_arguments_from_list_to_vector(int arity, MR_Word arg_list,
     for (i = 0; i < arity; i++) {
         MR_field(MR_mktag(0), term_vector, i) =
             MR_field(MR_mktag(0), MR_list_head(arg_list),
-                UNIV_OFFSET_FOR_DATA);
+                MR_UNIV_OFFSET_FOR_DATA);
         arg_list = MR_list_tail(arg_list);
     }
 }
@@ -2960,8 +2962,8 @@ ML_expand(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                  */
             data_word = *data_word_ptr;
             ML_expand((MR_TypeInfo)
-                ((MR_Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO],
-                &((MR_Word *) data_word)[UNIV_OFFSET_FOR_DATA], expand_info);
+                ((MR_Word *) data_word)[MR_UNIV_OFFSET_FOR_TYPEINFO],
+                &((MR_Word *) data_word)[MR_UNIV_OFFSET_FOR_DATA], expand_info);
             break;
         }
 

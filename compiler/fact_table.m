@@ -575,23 +575,23 @@ write_fact_table_header(PredName, PredInfo, FileName, FactArgInfos,
 #ifndef MERCURY_FACT_TABLE_HASH_TABLES
 #define MERCURY_FACT_TABLE_HASH_TABLES
 
-struct fact_table_hash_table_s {
+struct MR_fact_table_hash_table_s {
 	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_s *table;	/* the actual table */
 };
 
-struct fact_table_hash_table_f {
+struct MR_fact_table_hash_table_f {
 	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_f *table;	/* the actual table */
 };
 
-struct fact_table_hash_table_i {
+struct MR_fact_table_hash_table_i {
 	MR_Integer size;		/* size of the hash table */
 	struct fact_table_hash_entry_i *table;	/* the actual table */
 };
 
 /* hash table for string keys */
-struct fact_table_hash_entry_s {
+struct MR_fact_table_hash_entry_s {
 	MR_ConstString key;   /* lookup key */
 	const MR_Word *index; /* index into fact table data array	     */
 		          /* or pointer to hash table for next argument      */
@@ -604,7 +604,7 @@ struct fact_table_hash_entry_s {
 };
 
 /* hash table for float keys */
-struct fact_table_hash_entry_f {
+struct MR_fact_table_hash_entry_f {
 	MR_Float key;
 	const MR_Word *index;
 #if TAGBITS < 2
@@ -614,7 +614,7 @@ struct fact_table_hash_entry_f {
 };
 
 /* hash table for int keys */
-struct fact_table_hash_entry_i {
+struct MR_fact_table_hash_entry_i {
 	MR_Integer key;
 	const MR_Word *index;
 #if TAGBITS < 2
@@ -625,17 +625,24 @@ struct fact_table_hash_entry_i {
 
 
 #if TAGBITS >= 2
-	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   MR_mkword(MR_mktag(t), MR_mkbody(i))
-	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) MR_mkword(MR_mktag(t), p)
-	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((MR_Word)((p).index))
-	#define FACT_TABLE_HASH_INDEX(w)            MR_unmkbody(w)
-	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,MR_tag(w))
+	#define MR_FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   \
+		MR_mkword(MR_mktag(t), MR_mkbody(i))
+	#define MR_FACT_TABLE_MAKE_TAGGED_POINTER(p,t) \
+		MR_mkword(MR_mktag(t), p)
+	#define MR_FACT_TABLE_HASH_ENTRY_TYPE(p)       \
+		MR_tag((MR_Word)((p).index))
+	#define MR_FACT_TABLE_HASH_INDEX(w)            \
+		MR_unmkbody(w)
+	#define MR_FACT_TABLE_HASH_POINTER(w)          \
+		MR_body(w,MR_tag(w))
 #else
-	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const MR_Word *) i), (t)
-	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const MR_Word *) p), (t)
-	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       ((p).type)
-	#define FACT_TABLE_HASH_INDEX(w)            (w)
-	#define FACT_TABLE_HASH_POINTER(w)          (w)
+	#define MR_FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   \
+		((const MR_Word *) i), (t)
+	#define MR_FACT_TABLE_MAKE_TAGGED_POINTER(p,t) \
+		((const MR_Word *) p), (t)
+	#define MR_FACT_TABLE_HASH_ENTRY_TYPE(p)       ((p).type)
+	#define MR_FACT_TABLE_HASH_INDEX(w)            (w)
+	#define MR_FACT_TABLE_HASH_POINTER(w)          (w)
 #endif
 
 #endif /* not MERCURY_FACT_TABLE_HASH_TABLES */
@@ -678,7 +685,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 			StructContents1, Result),
 		{
 			IsOutput = yes,
-			string__format("\tInteger V_%d;\n", [i(I)], 
+			string__format("\tMR_Integer V_%d;\n", [i(I)], 
 				StructContents0),
 			string__append(StructContents0, StructContents1, 
 				StructContents)
@@ -1425,7 +1432,7 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
 			{ string__format("%s_hash_table_%d_", 
 				[s(StructName), i(ProcInt)], HashTableName) },
 			{ string__format(
-				"extern struct fact_table_hash_table_i %s0;\n",
+			  "extern struct MR_fact_table_hash_table_i %s0;\n",
 				[s(HashTableName)], C_HeaderCode0) },
 				% Note: the type declared here is not
 				% necessarily correct.  The type is declared
@@ -1501,7 +1508,8 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		{ proc_id_to_int(ProcID, ProcInt) },
 		{ string__format("%s_hash_table_%d_",
 			[s(StructName), i(ProcInt)], HashTableName) },
-		{ string__format("extern struct fact_table_hash_table_i %s0;\n",
+		{ string__format(
+			"extern struct MR_fact_table_hash_table_i %s0;\n",
 			[s(HashTableName)], C_HeaderCode1) },
 			% Note: the type declared here is not
 			% necessarily correct.  The type is declared
@@ -2244,7 +2252,7 @@ hash_table_set(HashTable0, Index, Value, HashTable) :-
 
 write_hash_table(BaseName, TableNum, HashTable, OutputStream) -->
 	{ get_hash_table_type(HashTable, TableType) },
-	{ string__format("struct fact_table_hash_entry_%c %s%d_data[]",
+	{ string__format("struct MR_fact_table_hash_entry_%c %s%d_data[]",
 		[c(TableType), s(BaseName), i(TableNum)], HashTableDataName) },
 	io__set_output_stream(OutputStream, OldOutputStream),
 	io__write_strings([HashTableDataName, " = {\n"]),
@@ -2254,7 +2262,7 @@ write_hash_table(BaseName, TableNum, HashTable, OutputStream) -->
 	io__write_string("};\n\n"),
 	io__format("
 
-struct fact_table_hash_table_%c %s%d = {
+struct MR_fact_table_hash_table_%c %s%d = {
 	%d,
 	%s%d_data
 };
@@ -2297,18 +2305,18 @@ write_hash_table_2(HashTable, CurrIndex, MaxIndex) -->
 			(
 				{ Index = fact(I) },
 				io__format(
-				    ", FACT_TABLE_MAKE_TAGGED_INDEX(%d, 1), ",
+				", MR_FACT_TABLE_MAKE_TAGGED_INDEX(%d, 1), ",
 				    [i(I)])
 			;
 				{ Index = hash_table(I, H) },
 				io__format(
-				", FACT_TABLE_MAKE_TAGGED_POINTER(&%s%d, 2), ",
+			", MR_FACT_TABLE_MAKE_TAGGED_POINTER(&%s%d, 2), ",
 				    [s(H), i(I)])
 			),
 			io__write_int(Next)
 		;
 			io__write_string(
-			    "0, FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ")
+			"0, MR_FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ")
 		),
 		io__write_string("},\n"),
 		{ NextIndex is CurrIndex + 1 },
@@ -2564,10 +2572,10 @@ MR_END_MODULE
 extern MR_ModuleFunc %s_module;
 
 /*
-INIT sys_init_%s_module
+INIT mercury_sys_init_%s_module
 */
-void sys_init_%s_module(void);
-void sys_init_%s_module(void) {
+void mercury_sys_init_%s_module(void);
+void mercury_sys_init_%s_module(void) {
 	%s_module();
 }
 
@@ -2828,7 +2836,7 @@ generate_hash_int_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
 		/* calculate hash value for an integer */
 
-		hashsize = ((struct fact_table_hash_table_i *)current_table)
+		hashsize = ((struct MR_fact_table_hash_table_i *)current_table)
 			->size;
 
 		hashval = (%s >= 0 ? %s : -%s) %% hashsize;
@@ -2856,13 +2864,13 @@ generate_hash_float_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
 		/* calculate hash value for a float */
 
-		hashsize = ((struct fact_table_hash_table_f *)current_table)
+		hashsize = ((struct MR_fact_table_hash_table_f *)current_table)
 			->size;
 
-		hashval = hash_float(%s);
+		hashval = MR_hash_float(%s);
 		hashval = (hashval >= 0 ? hashval : -hashval) %% hashsize;
 
-		current_key = float_to_word(%s);
+		current_key = MR_float_to_word(%s);
 
 		/* lookup the hash table */
 		%s
@@ -2883,7 +2891,7 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 		Types, ModuleInfo, ArgNum, FactTableSize, HashLookupCode),
 	C_Code_Template = "
 
-		hashsize = ((struct fact_table_hash_table_s *)current_table)
+		hashsize = ((struct MR_fact_table_hash_table_s *)current_table)
 			->size;
 
 		/* calculate hash value for a string */
@@ -2918,7 +2926,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
 		KeyType, CheckKeys, PredName, PragmaVars, Types,
 		ModuleInfo, ArgNum, FactTableSize, HashLookupCode) :-
 	string__format(
-	   "((struct fact_table_hash_table_%c *)current_table)->table[hashval]",
+	"((struct MR_fact_table_hash_table_%c *)current_table)->table[hashval]",
 		[c(KeyType)], HashTableEntry),
 	string__append(HashTableEntry, ".key", HashTableKey),
 	string__format(CompareTemplate, [s(HashTableKey), s(VarName)],
@@ -2927,7 +2935,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
 	HashLookupCodeTemplate = "
 
 		do {
-			if (FACT_TABLE_HASH_ENTRY_TYPE(%s) != 0 && %s)
+			if (MR_FACT_TABLE_HASH_ENTRY_TYPE(%s) != 0 && %s)
 			{
 				ind = (MR_Word) %s.index;
 				goto found_%s_%d;
@@ -2939,8 +2947,8 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
 
 	found_%s_%d:
 
-		if (FACT_TABLE_HASH_ENTRY_TYPE(%s) == 1) {
-			ind = FACT_TABLE_HASH_INDEX(ind);
+		if (MR_FACT_TABLE_HASH_ENTRY_TYPE(%s) == 1) {
+			ind = MR_FACT_TABLE_HASH_INDEX(ind);
 
 			/* check that any remaining input arguments match */
 			%s
@@ -2949,7 +2957,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, CompareTemplate,
 			goto success_code_%s;
 		}
 
-		current_table = (void *) FACT_TABLE_HASH_POINTER(ind);
+		current_table = (void *) MR_FACT_TABLE_HASH_POINTER(ind);
 
 	",
 	( CheckKeys = yes ->
@@ -3003,14 +3011,15 @@ generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 		    % Cast MR_ConstString -> MR_Word -> MR_String to avoid 
 		    % gcc warning "assignment discards `const'".
 		    Template = 
-			"\t\tmake_aligned_string(%s, (MR_String) (MR_Word) %s);\n",
+			"\t\tMR_make_aligned_string(%s, (MR_String) (MR_Word) %s);\n",
 		    string__format(Template, [s(VarName), s(TableEntry)],
 		    	C_Code0)
 		;
 		    % Unique modes need to allow destructive update so we
 		    % need to make a copy of the string on the heap.
 		    Template = 
-"		MR_incr_hp_atomic(tmp, (strlen(%s) + sizeof(MR_Word)) / sizeof(MR_Word));
+"		MR_incr_hp_atomic(tmp,
+			(strlen(%s) + sizeof(MR_Word)) / sizeof(MR_Word));
 		%s = (MR_String) tmp;
 		strcpy(%s, %s);
 ",
@@ -3105,10 +3114,10 @@ MR_END_MODULE
 extern MR_ModuleFunc %s_module;
 
 /*
-INIT sys_init_%s_module
+INIT mercury_sys_init_%s_module
 */
-void sys_init_%s_module(void);
-void sys_init_%s_module(void) {
+void mercury_sys_init_%s_module(void);
+void mercury_sys_init_%s_module(void) {
 	%s_module();
 }
 
@@ -3422,10 +3431,10 @@ MR_END_MODULE
 extern MR_ModuleFunc %s_module;
 
 /*
-INIT sys_init_%s_module
+INIT mercury_sys_init_%s_module
 */
-void sys_init_%s_module(void);
-void sys_init_%s_module(void) {
+void mercury_sys_init_%s_module(void);
+void mercury_sys_init_%s_module(void) {
 	%s_module();
 }
 
@@ -3446,9 +3455,9 @@ void sys_init_%s_module(void) {
 		StringHashLookupCode),
 	generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, "%s == %s",	
 		'i', no, "", [], [], ModuleInfo, 0, 0, IntHashLookupCode),
-	generate_hash_lookup_code("word_to_float(MR_framevar(4))", LabelName2,
-		2, "%s == %s", 'f', no, "", [], [], ModuleInfo, 0, 0,
-		FloatHashLookupCode),
+	generate_hash_lookup_code("MR_word_to_float(MR_framevar(4))",
+		LabelName2, 2, "%s == %s", 'f', no, "", [], [], ModuleInfo,
+		0, 0, FloatHashLookupCode),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
 		FactTableSize, FactLookupCode),
 	list__length(PragmaVars, Arity),

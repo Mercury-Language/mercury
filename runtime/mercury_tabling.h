@@ -349,19 +349,19 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_TABLE_RESIZE_ARRAY(ptr, type, count)			\
 	MR_GC_RESIZE_ARRAY((ptr), type, (count))
 
-  #define table_allocate_bytes(size)					\
+  #define MR_table_allocate_bytes(size)					\
 	MR_GC_malloc((size))
 
-  #define table_reallocate_bytes(pointer, size)				\
+  #define MR_table_reallocate_bytes(pointer, size)			\
 	MR_GC_realloc((pointer), (size))
 
-  #define table_allocate_words(size)					\
+  #define MR_table_allocate_words(size)					\
 	MR_GC_malloc(sizeof(MR_Word) * (size))
 
-  #define table_reallocate_words(pointer, size)				\
+  #define MR_table_reallocate_words(pointer, size)			\
 	MR_GC_realloc((pointer), sizeof(MR_Word) * (size))
 
-  #define table_free(pointer)						\
+  #define MR_table_free(pointer)					\
 	MR_GC_free((pointer))
 
   #define MR_table_list_cons(h, t)					\
@@ -378,19 +378,19 @@ extern	void		MR_table_report_statistics(FILE *fp);
   #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)			\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
-  #define table_allocate_bytes(size)					\
+  #define MR_table_allocate_bytes(size)					\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
-  #define table_reallocate_bytes(pointer, size)				\
+  #define MR_table_reallocate_bytes(pointer, size)				\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
-  #define table_allocate_words(size)					\
+  #define MR_table_allocate_words(size)					\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
-  #define table_reallocate_words(pointer, size)				\
+  #define MR_table_reallocate_words(pointer, size)				\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
 	(void *) NULL)
-  #define table_free(pointer)						\
+  #define MR_table_free(pointer)						\
 	MR_fatal_error("Sorry, not implemented: tabling in native gc grades")
   #define MR_table_list_cons(h, t)					\
 	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
@@ -398,10 +398,10 @@ extern	void		MR_table_report_statistics(FILE *fp);
 
 #endif /* NATIVE_GC */
 
-#define table_copy_bytes(dest, source, size)				\
+#define MR_table_copy_bytes(dest, source, size)				\
 	MR_memcpy((dest), (source), (size))
 
-#define table_copy_words(dest, source, size)				\
+#define MR_table_copy_words(dest, source, size)				\
 	MR_memcpy((char *) (dest), (char *) (source), sizeof(MR_Word) * (size))
 
 /*---------------------------------------------------------------------------*/

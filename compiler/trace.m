@@ -758,7 +758,7 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	llds_out__get_label(Label, yes, LabelStr),
-	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
+	DeclStmt = "\t\tMR_Code *MR_jumpaddr;\n",
 	SaveStmt = "\t\tMR_save_transient_registers();\n",
 	RestoreStmt = "\t\tMR_restore_transient_registers();\n",
 	GotoStmt = "\t\tif (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);"

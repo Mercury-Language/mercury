@@ -275,23 +275,23 @@ typedef struct MR_mercury_engine_struct {
 #define	MR_CONTEXT(x)		(MR_ENGINE(context).x)
 
 #ifndef CONSERVATIVE_GC
-  #define IF_NOT_CONSERVATIVE_GC(x)	x
+  #define MR_IF_NOT_CONSERVATIVE_GC(x)	x
 #else
-  #define IF_NOT_CONSERVATIVE_GC(x)
+  #define MR_IF_NOT_CONSERVATIVE_GC(x)
 #endif
 
 #define MR_load_engine_regs(eng)					\
   	do {								\
-		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
-		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
-		IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
 	} while (0)
 
 #define MR_save_engine_regs(eng)					\
   	do {								\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
 	} while (0)
 
 /*
@@ -323,12 +323,12 @@ extern	void		MR_dump_prev_locations(void);
 ** Builtin labels that point to commonly used code fragments.
 */
 
-MR_declare_entry(do_redo);
-MR_declare_entry(do_fail);
-MR_declare_entry(do_reset_hp_fail);
-MR_declare_entry(do_reset_framevar0_fail);
-MR_declare_entry(do_succeed);
-MR_declare_entry(do_not_reached);
-MR_declare_entry(exception_handler_do_fail);
+MR_declare_entry(MR_do_redo);
+MR_declare_entry(MR_do_fail);
+MR_declare_entry(MR_do_reset_hp_fail);
+MR_declare_entry(MR_do_reset_framevar0_fail);
+MR_declare_entry(MR_do_succeed);
+MR_declare_entry(MR_do_not_reached);
+MR_declare_entry(MR_exception_handler_do_fail);
 
 #endif /* not MERCURY_ENGINE_H */

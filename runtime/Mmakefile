@@ -173,8 +173,8 @@ THREADLIBS	= \
 
 HDR_CHECK_CS = $(HDRS:.h=_check.c)
 HDR_CHECK_OBJS = $(HDRS:.h=_check.$O)
-HDR_CHECK_NMS = $(HDRS:.h=_check.nms)
 HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
+OBJ_CHECKS = $(OBJS:%=%.obj_check)
 
 #-----------------------------------------------------------------------------#
 
@@ -272,24 +272,65 @@ mercury_deep_copy_body_check.$O:
 # foo_check.macros that contains a list of all the macros defined
 # by the header file (or by headers that it includes, excluding
 # standard headers) that do not start with `GC_', `MR_', or `MERCURY_'.
-#
-# XXX the `cmp' command below, which forces `mmake check_headers' to fail
-# if the foo_check.macros file is non-empty, i.e. if the header is not
-# macro-namespace-clean, is commented out because currently the headers
-# are not namespace-clean.
+# We define MERCURY_BOOTSTRAP_H to avoid including the contents of
+# that header; stuff there is for backwards compatibility and is
+# therefore excluded from these checks.
 # 
 
 AWK = awk
 %_check.macros: %.h %_check.c
-	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $*_check.c \
+	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		-DMERCURY_BOOTSTRAP_H \
+		-E $*_check.c \
 		-nostdinc -dN \
 		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \
 		grep -v -e '^MR_' -e '^GC_' -e '^MERCURY_' | \
-		sort | uniq > $@
-	#cmp $@ /dev/null	# XXX disabled for now
+		fgrep -v -x -f RESERVED_MACRO_NAMES | \
+		sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Macro name(s) in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add MR_ prefixes to these names.)"; \
+		exit 1; \
+	fi
+
+.PHONY: check_headers_self_contained
+check_headers_self_contained: $(HDR_CHECK_OBJS)
+
+.PHONY: check_headers_macros
+check_headers_macros: $(HDR_CHECK_MACROS)
 
 .PHONY: check_headers
-check_headers: $(HDR_CHECK_OBJS) $(HDR_CHECK_MACROS)
+check_headers: check_headers_self_contained check_headers_macros
+
+#
+# $(OBJ_CHECKS) is used to check that the objects are properly
+# namespace-clean, with regard to the global symbols that they define.
+# For each object file foo.o, the rule below produces a file
+# foo.o.obj_check that contains a list of all the globals defined
+# by that object that do not start with `MR_', `mercury_', or `entry_'.
+# 
+
+%.obj_check: %
+	nm -g $< | awk '$$1 != "U" { print $$3; }' | \
+		grep -v -e '^_entry' -e '^MR_' -e '^mercury_' | \
+		sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Global symbols in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add MR_ prefixes to these names.)"; \
+		exit 1; \
+	fi
+
+.PHONY: check_objs
+check_objs: $(OBJ_CHECKS)
+
+.PHONY: check_namespace
+check_namespace: check_headers check_objs
 
 #-----------------------------------------------------------------------------#
 
@@ -342,6 +383,7 @@ clean_o:
 .PHONY: clean_check
 clean_check:
 	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
+	rm -f $(OBJ_CHECKS)
 
 realclean_local:
 	rm -f lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init

@@ -92,7 +92,7 @@ MR_init_context(MR_Context *c)
 #ifdef	MR_THREAD_SAFE
 	c->owner_thread = (MercuryThread) NULL;
 #endif
-	c->context_succip = MR_ENTRY(do_not_reached);
+	c->context_succip = MR_ENTRY(MR_do_not_reached);
 
 	if (c->detstack_zone != NULL) {
 		MR_reset_redzone(c->detstack_zone);
@@ -118,10 +118,10 @@ MR_init_context(MR_Context *c)
 	*/
 	c->context_maxfr = c->nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
 	c->context_curfr = c->context_maxfr;
-	MR_redoip_slot(c->context_curfr) = MR_ENTRY(do_not_reached);
+	MR_redoip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_redofr_slot(c->context_curfr) = NULL;
 	MR_prevfr_slot(c->context_curfr) = NULL;
-	MR_succip_slot(c->context_curfr) = MR_ENTRY(do_not_reached);
+	MR_succip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_succfr_slot(c->context_curfr) = NULL;
 
 #ifdef	MR_USE_MINIMAL_MODEL
@@ -207,7 +207,7 @@ MR_flounder(void)
 ** block or not.
 */
 static int
-MR_check_pending_contexts(MR_Bool block)
+MR_check_pending_contexts(bool block)
 {
 #ifdef	MR_CAN_DO_PENDING_IO
 
@@ -300,13 +300,13 @@ MR_schedule(MR_Context *ctxt)
 	MR_UNLOCK(MR_runqueue_lock, "schedule");
 }
 
-MR_define_extern_entry(do_runnext);
+MR_define_extern_entry(MR_do_runnext);
 
 MR_BEGIN_MODULE(scheduler_module)
-	MR_init_entry_ai(do_runnext);
+	MR_init_entry_ai(MR_do_runnext);
 MR_BEGIN_CODE
 
-MR_define_entry(do_runnext);
+MR_define_entry(MR_do_runnext);
 #ifdef MR_THREAD_SAFE
 {
 	MR_Context *tmp, *prev;
@@ -316,11 +316,11 @@ MR_define_entry(do_runnext);
 	depth = MR_ENGINE(c_depth);
 	thd = MR_ENGINE(owner_thread);
 
-	MR_LOCK(MR_runqueue_lock, "do_runnext (i)");
+	MR_LOCK(MR_runqueue_lock, "MR_do_runnext (i)");
 
 	while (1) {
 		if (MR_exit_now == TRUE) {
-			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
+			MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (ii)");
 			MR_destroy_thread(MR_cur_engine());
 		}
 		tmp = MR_runqueue_head;
@@ -348,7 +348,7 @@ MR_define_entry(do_runnext);
 	if (MR_runqueue_tail == tmp) {
 		MR_runqueue_tail = prev;
 	}
-	MR_UNLOCK(MR_runqueue_lock, "do_runnext (iii)");
+	MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (iii)");
 	MR_load_context(MR_ENGINE(this_context));
 	MR_GOTO(MR_ENGINE(this_context)->resume);
 }

@@ -341,22 +341,22 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** The second word contains the data.
 */
 
-#define UNIV_OFFSET_FOR_TYPEINFO        0
-#define UNIV_OFFSET_FOR_DATA            1
+#define MR_UNIV_OFFSET_FOR_TYPEINFO        0
+#define MR_UNIV_OFFSET_FOR_DATA            1
 
 #define	MR_unravel_univ(univ, typeinfo, value)                      \
     do {                                                            \
         typeinfo = (MR_TypeInfo) MR_field(MR_mktag(0), (univ),      \
-                        UNIV_OFFSET_FOR_TYPEINFO);                  \
+                        MR_UNIV_OFFSET_FOR_TYPEINFO);               \
         value = MR_field(MR_mktag(0), (univ),                       \
-                        UNIV_OFFSET_FOR_DATA);                      \
+                        MR_UNIV_OFFSET_FOR_DATA);                   \
     } while (0)
 
 #define MR_define_univ_fields(univ, typeinfo, value)                \
     do {                                                            \
-        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_TYPEINFO)     \
+        MR_field(MR_mktag(0), (univ), MR_UNIV_OFFSET_FOR_TYPEINFO)  \
             = (MR_Word) (typeinfo);                                 \
-        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_DATA)         \
+        MR_field(MR_mktag(0), (univ), MR_UNIV_OFFSET_FOR_DATA)      \
             = (MR_Word) (value);                                    \
     } while (0)
 
