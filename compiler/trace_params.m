@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,6 +34,7 @@
 :- func trace_level_needs_fixed_slots(trace_level) = bool.
 :- func trace_level_needs_from_full_slot(trace_level) = bool.
 :- func trace_level_needs_decl_debug_slots(trace_level) = bool.
+:- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
@@ -97,6 +98,12 @@ trace_level_needs_decl_debug_slots(shallow) = no.
 trace_level_needs_decl_debug_slots(deep) = no.
 trace_level_needs_decl_debug_slots(decl) = yes.
 trace_level_needs_decl_debug_slots(decl_rep) = yes.
+
+trace_level_allows_delay_death(none) = no.
+trace_level_allows_delay_death(shallow) = no.
+trace_level_allows_delay_death(deep) = yes.
+trace_level_allows_delay_death(decl) = yes.
+trace_level_allows_delay_death(decl_rep) = yes.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
 	(

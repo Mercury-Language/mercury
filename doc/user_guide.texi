@@ -3140,10 +3140,12 @@ See @ref{Debugging}.
 @item --trace-optimized
 Do not disable optimizations that can change the trace.
 
-@c --trace-decl is commented out in the absence of runtime support
-@c @item --trace-decl
-@c Make the generated tracing code include support
-@c for an experimental declarative debugger.
+@item --no-delay-death
+When the trace level is `deep', the compiler normally
+preserves the values of variables as long as possible, even
+beyond the point of their last use, in order to make them
+accessible from as many debugger events as possible.
+However, it will not do this if this option is given.
 
 @item --stack-trace-higher-order
 Enable stack traces through predicates and functions with

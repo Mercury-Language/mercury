@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -99,6 +99,7 @@
 		;	trace_optimized
 		;	trace_table_io
 		;	trace_table_io_states
+		;	delay_death
 		;	suppress_trace
 		;	stack_trace_higher_order
 		;	generate_bytecode
@@ -504,6 +505,7 @@ option_defaults_2(aux_output_option, [
 	trace_table_io		-	bool(no),
 	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
+	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
@@ -903,6 +905,7 @@ long_option("trace-optimized",		trace_optimized).
 long_option("trace-table-io",		trace_table_io).
 long_option("trace-table-io-states",	trace_table_io_states).
 long_option("suppress-trace",		suppress_trace).
+long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
@@ -1719,6 +1722,12 @@ options_help_aux_output -->
 %		"\tWhen tabling I/O actions, table the io__state arguments",
 %		"\ttogether with the others. This should be required iff",
 %		"\tvalues of type io__state actually contain information.",
+		"--no-delay-death",
+		"\tWhen the trace level is `deep', the compiler normally",
+		"\tpreserves the values of variables as long as possible, even",
+		"\tbeyond the point of their last use, in order to make them",
+		"\taccessible from as many debugger events as possible.",
+		"\tHowever, it will not do this if this option is given.",
 		"--stack-trace-higher-order",
 		"\tEnable stack traces through predicates and functions with",
 		"\thigher-order arguments, even if stack tracing is not",
