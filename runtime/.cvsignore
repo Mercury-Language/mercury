@@ -1,9 +1,7 @@
 conf.h
-engine.c
-io_rt.c
-wrapper.c
 call.c
-solutions.c
-math_rt.c
 context.c
+engine.c
+type_info.c
+wrapper.c
 runtime.init
