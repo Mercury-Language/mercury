@@ -17,7 +17,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
-#define	MR_based_stackvar(base_sp, n)	((base_sp)[-n])
+#define	MR_based_stackvar(base_sp, n)	((base_sp)[-(n)])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
 
 #define	incr_sp_push_msg(n, msg)				\
