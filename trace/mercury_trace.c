@@ -592,16 +592,18 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			if (found_io_action_counter
 			|| MR_io_tabling_counter == 0)
 			{
-				answer = MR_trace_getline(
+				fprintf(out_fp,
 					"Retry across I/O operations "
-					"is not always safe.\n"
+					"is not always safe.\n");
+				answer = MR_trace_getline(
 					"Are you sure you want to do it? ",
 					in_fp, out_fp);
 			} else {
-				answer = MR_trace_getline(
+				fprintf(out_fp,
 					"Retry across I/O operations "
 					"without saved I/O action numbers "
-					"is not safe.\n"
+					"is not safe.\n");
+				answer = MR_trace_getline(
 					"Are you sure you want to do it? ",
 					in_fp, out_fp);
 			}
