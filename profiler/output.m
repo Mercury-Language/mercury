@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module bool, float, list, require, std_util.
+:- import_module assoc_list, bool, float, list, require, std_util.
 :- import_module globals, options, generate_output.
 
 output__main(Output, IndexMap) -->

@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module options, getopt.
+:- import_module bool, list, options, getopt.
 
 :- type globals.
 

@@ -37,7 +37,7 @@
 
 :- implementation.
 
-:- import_module float, int, list, map, multi_map, require.
+:- import_module assoc_list, float, int, list, map, multi_map, require.
 :- import_module string, set_bbbtree, std_util.
 % :- import_module writeln.
 

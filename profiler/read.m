@@ -40,7 +40,7 @@
 
 :- implementation.
 
-:- import_module list, string.
+:- import_module list, string, char.
 :- import_module std_util, require.
 
 
