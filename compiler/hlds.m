@@ -185,7 +185,12 @@
 
 :- type mode_id		=	int.
 
-:- type clause		--->	clause(list(var_id), goal).
+:- type clause		--->	clause(
+					list(var_id),
+					mode_info,
+					goal
+				).
+
 			%	head variables, body
 
 :- type var_info	--->	var_info(
