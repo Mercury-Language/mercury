@@ -611,16 +611,18 @@ hlds_out__write_unify_rhs(var(Var), _, VarSet, _) -->
 	mercury_output_var(Var, VarSet).
 hlds_out__write_unify_rhs(functor(Functor, ArgVars), _, VarSet, _) -->
 	hlds_out__write_functor(Functor, ArgVars, VarSet).
-hlds_out__write_unify_rhs(lambda_goal(Vars, Modes, Goal),
+hlds_out__write_unify_rhs(lambda_goal(Vars, Modes, Det, Goal),
 			ModuleInfo, VarSet, Indent) -->
-	io__write_string("lambda ["),
+	io__write_string("(lambda ["),
 	hlds_out__write_var_modes(Vars, Modes, VarSet),
-	io__write_string("] (\n"),
+	io__write_string("] is "),
+	mercury_output_det(Det),
+	io__write_string(" (\n"),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_indent(Indent1),
 	hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
 	mercury_output_newline(Indent),
-	io__write_string(")").
+	io__write_string("))").
 
 hlds_out__write_functor(Functor, ArgVars, VarSet) -->
 	{ term__context_init(Context) },
@@ -979,7 +981,7 @@ hlds_out__write_determinism(semidet) -->
 hlds_out__write_determinism(nondet) -->
 	io__write_string("nondet").
 hlds_out__write_determinism(multidet) -->
-	io__write_string("multidet").
+	io__write_string("multi").
 hlds_out__write_determinism(erroneous) -->
 	io__write_string("erroneous").
 hlds_out__write_determinism(failure) -->

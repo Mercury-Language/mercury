@@ -145,8 +145,8 @@ dupelim__replace_labels_instr(assign(Lval0, Rval0), Replmap,
 dupelim__replace_labels_instr(call(Target, Return0, Caller, LiveInfo), Replmap,
 		call(Target, Return, Caller, LiveInfo)) :-
 	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
-dupelim__replace_labels_instr(call_closure(Target, Return0, LiveInfo), Replmap,
-		call_closure(Target, Return, LiveInfo)) :-
+dupelim__replace_labels_instr(call_closure(Target, Return0, Caller, LiveInfo),
+		Replmap, call_closure(Target, Return, Caller, LiveInfo)) :-
 	dupelim__replace_labels_code_addr(Return0, Replmap, Return).
 dupelim__replace_labels_instr(mkframe(Name, Size, Redoip0), Replmap,
 		mkframe(Name, Size, Redoip)) :-

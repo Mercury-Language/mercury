@@ -247,7 +247,7 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_call_closure(_, Ret, _), Str) :-
+opt_debug__dump_vninstr(vn_call_closure(_, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", R_str, ")"], Str).
 opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
@@ -668,7 +668,7 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(call_closure(CodeModel, Ret, _), Str) :-
+opt_debug__dump_instr(call_closure(CodeModel, Ret, _, _), Str) :-
 	opt_debug__dump_code_model(CodeModel, F_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", F_str, ", ", R_str, ", ...)"],

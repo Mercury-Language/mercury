@@ -103,14 +103,15 @@ shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 	Const = quad(constant, constant, constant, constant),
 	term__context_init(TermContext),
 	(
+		Ground = ground(shared, no),
 		map__insert(S_Tab0, term__functor(term__atom("string"), [],
-			TermContext) - ground(shared), num(0) - Const, S_Tab1),
+			TermContext) - Ground, num(0) - Const, S_Tab1),
 		map__insert(S_Tab1, term__functor(term__atom("float"), [],
-			TermContext) - ground(shared), num(1) - Const, S_Tab2),
+			TermContext) - Ground, num(1) - Const, S_Tab2),
 		map__insert(S_Tab2, term__functor(term__atom("int"), [],
-			TermContext) - ground(shared), num(2) - Const, S_Tab3),
+			TermContext) - Ground, num(2) - Const, S_Tab3),
 		map__insert(S_Tab3, term__functor(term__atom("character"), [],
-			TermContext) - ground(shared), num(3) - Const, S_Tab4) 
+			TermContext) - Ground, num(3) - Const, S_Tab4) 
 	-> 
 		S_Num = 4,
 		S_Tab_Out = S_Tab4
@@ -196,7 +197,7 @@ shapes__add_shape_numbers([T - S | Ts] , Types, ShapeTab0, ShapeTab,
 	;	
 		S = no(Type)
 	->
-		shapes__request_shape_number(Type - ground(shared), Types,  
+		shapes__request_shape_number(Type - ground(shared, no), Types,  
  			ShapeTab1, ShapeTab, S_Num),
 		N = T - yes(num(S_Num))
 	;
@@ -341,7 +342,7 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			% another type - we just find the type it is 
 			% equivalent to and store it as a reference.
 		->
-			shapes__replace_context(ET - ground(shared),
+			shapes__replace_context(ET - ground(shared, no),
 				EqvType - G),
 			shapes__request_shape_number(EqvType - G,
 				Type_Tab, S_Tab0, S_Tab, EqvShapeNum),
@@ -457,7 +458,7 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 shapes__lookup_simple_info([], [], _, S_Tab, S_Tab).
 shapes__lookup_simple_info([ Arg | Args], [ num(Num) - S | ShapeIds],
 				Type_Table, S_Tab0, S_Tab) :-
-	S = Arg - ground(shared),
+	S = Arg - ground(shared, no),
         shapes__request_shape_number(S, Type_Table, S_Tab0, S_Tab1, Num),
 	shapes__lookup_simple_info(Args, ShapeIds, Type_Table, S_Tab1, S_Tab).
 

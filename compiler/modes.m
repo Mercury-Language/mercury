@@ -509,7 +509,7 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Goal - GoalInfo), Vars) :-
+unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Det, _Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, LambdaVars, NonLocals),
 	set__to_sorted_list(NonLocals, Vars).
@@ -1415,15 +1415,27 @@ inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 		bound(Uniq, List), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
-inst_merge_3(bound(UniqA, ListA), ground(UniqB), ModuleInfo,
-		ground(Uniq), ModuleInfo) :-
+inst_merge_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
+		ground(Uniq, no), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_merge_3(ground(UniqA), bound(UniqB, ListB), ModuleInfo,
-		ground(Uniq), ModuleInfo) :-
+inst_merge_3(ground(UniqA, no), bound(UniqB, ListB), ModuleInfo,
+		ground(Uniq, no), ModuleInfo) :-
 	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
-inst_merge_3(ground(UniqA), ground(UniqB), M, ground(Uniq), M) :-
+inst_merge_3(ground(UniqA, PredA), ground(UniqB, PredB), M,
+		ground(Uniq, Pred), M) :-
+	% for higher order pred insts,
+	% we require the pred_inst_info in each branch to
+	% be identical - this requirement is probably more
+	% restrictive than it needs to be
+	(
+		PredA = PredB
+	->
+		Pred = PredA
+	;	
+		fail
+	),
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo0, abstract_inst(Name, Args), ModuleInfo) :-
@@ -1716,6 +1728,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 
 		%
 		% work out the modes of the introduced lambda variables
+		% and the determinism of the lambda goal
 		%
 		module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 					_PredInfo, ProcInfo),
@@ -1725,12 +1738,19 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		;
 			error("modecheck_unification: list__drop failed")
 		),
+		proc_info_declared_determinism(ProcInfo, MaybeDet),
+		( MaybeDet = yes(Det) ->
+			LambdaDet = Det
+		;
+			error("Sorry, not implemented: determinism inference for higher-order predicate terms")
+		),
 
 		%
 		% construct the lambda expression, and then go ahead
 		% and modecheck this unification in its new form
 		%
-		Functor0 = lambda_goal(LambdaVars, LambdaModes, LambdaGoal),
+		Functor0 = lambda_goal(LambdaVars, LambdaModes, LambdaDet,
+					LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
 				GoalInfo0,
 				X, Functor, ExtraGoals, Mode, Unification,
@@ -1748,9 +1768,9 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		Functor = functor(Name, ArgVars)
 	).
 
-modecheck_unification(X, lambda_goal(Vars, Modes, Goal0),
+modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 			Unification0, _UnifyContext, _GoalInfo,
-			X, lambda_goal(Vars, Modes, Goal), 
+			X, lambda_goal(Vars, Modes, Det, Goal), 
 			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
 	%
 	% first modecheck the lambda goal itself:
@@ -2062,7 +2082,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		% until the code below marked "Loses information" get fixed.
 bind_args(not_reached, _) -->
 	mode_info_set_instmap(unreachable).
-bind_args(ground(Uniq), Args) -->
+bind_args(ground(Uniq, no), Args) -->
 	ground_args(Uniq, Args).
 bind_args(bound(_Uniq, List), Args) -->
 	( { List = [] } ->
@@ -2086,7 +2106,7 @@ bind_args_2([Arg | Args], [Inst | Insts]) -->
 
 ground_args(_Uniq, []) --> [].
 ground_args(Uniq, [Arg | Args]) -->
-	modecheck_set_var_inst(Arg, ground(Uniq)),
+	modecheck_set_var_inst(Arg, ground(Uniq, no)),
 	ground_args(Uniq, Args).
 
 %-----------------------------------------------------------------------------%
@@ -2096,8 +2116,8 @@ ground_args(Uniq, [Arg | Args]) -->
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(ground(Uniq), ArgInsts, ArgModes) :-
-	mode_set_args(ArgInsts, ground(Uniq), ArgModes).
+get_mode_of_args(ground(Uniq, no), ArgInsts, ArgModes) :-
+	mode_set_args(ArgInsts, ground(Uniq, no), ArgModes).
 get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 	( List = [] ->
 		% the code is unreachable
@@ -2220,8 +2240,8 @@ abstractly_unify_inst_3(live, free,	bound(UniqY, List0),	M0,
 		List = List0, M = M0
 	).
 
-abstractly_unify_inst_3(live, free,	ground(UniqY),	M,
-					ground(Uniq), det, M) :-
+abstractly_unify_inst_3(live, free,	ground(UniqY, PredInst),	M,
+					ground(Uniq, PredInst), det, M) :-
 	unify_uniq(live, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(live, free,	abstract_inst(_,_), _, _, _, _) :- fail.
@@ -2237,8 +2257,8 @@ abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), M0,
 	unify_uniq(live, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(live, ListX, ListY, M0, List, Det, M).
 
-abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY),	M0,
-		bound(Uniq, BoundInsts), semidet, M) :-
+abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, no),
+		M0, bound(Uniq, BoundInsts), semidet, M) :-
 	unify_uniq(live, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqY, M0,
 			BoundInsts, M).
@@ -2250,7 +2270,22 @@ abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), M,
 	bound_inst_list_is_ground(List, M).
 ***/
 
-abstractly_unify_inst_3(live, ground(Uniq), Inst0, M0,
+abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, M,
+				ground(Uniq, yes(PredInst)), det, M) :-
+	unify_uniq(live, unique, Uniq0, Uniq).
+
+abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
+				ground(UniqB, yes(PredInstB)), M,
+				ground(Uniq, yes(PredInst)), det, M) :-
+	% this might be too restrictive
+	( PredInstA = PredInstB ->
+		PredInst = PredInstA
+	;
+		fail
+	),
+	unify_uniq(live, UniqA, UniqB, Uniq).
+	
+abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, M0,
 				Inst, Det, M) :-
 	( inst_is_free(M0, Inst0) ->
 		Det = det
@@ -2264,12 +2299,12 @@ abstractly_unify_inst_3(live, ground(Uniq), Inst0, M0,
 
 /*** abstract insts not supported
 abstractly_unify_inst_3(live, abstract_inst(_,_), bound(Uniq, List), ModuleInfo,
-				ground(shared), semidet, ModuleInfo) :-
+				ground(shared, no), semidet, ModuleInfo) :-
 	check_not_clobbered(Uniq),
 	bound_inst_list_is_ground(List, ModuleInfo).
 
-abstractly_unify_inst_3(live, abstract_inst(_,_), ground(Uniq), M,
-				ground(shared), semidet, M) :-
+abstractly_unify_inst_3(live, abstract_inst(_,_), ground(Uniq, no), M,
+				ground(shared, no), semidet, M) :-
 	check_not_clobbered(Uniq).
 
 abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
@@ -2292,7 +2327,7 @@ abstractly_unify_inst_3(dead, bound(UniqX, ListX), bound(UniqY, ListY), M0,
 	unify_uniq(dead, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, Det, M).
 
-abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY), M0,
+abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY, no), M0,
 			bound(Uniq, BoundInsts), semidet, M) :-
 	unify_uniq(dead, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, dead, UniqY, M0,
@@ -2312,7 +2347,21 @@ abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
 	).
 *****/
 
-abstractly_unify_inst_3(dead, ground(Uniq),	Inst0,	M0, Inst, Det, M) :-
+abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, M,
+				ground(Uniq, yes(PredInst)), det, M).
+
+abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
+				ground(UniqB, yes(PredInstB)), M,
+				ground(Uniq, yes(PredInst)), det, M) :-
+	% this might be too restrictive
+	( PredInstA = PredInstB ->
+		PredInst = PredInstA
+	;
+		fail
+	),
+	unify_uniq(dead, UniqA, UniqB, Uniq).
+
+abstractly_unify_inst_3(dead, ground(Uniq, no),	Inst0,	M0, Inst, Det, M) :-
 	( inst_is_free(M0, Inst0) ->
 		Det = det
 	;
@@ -2427,8 +2476,8 @@ abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), Name, Args,
 	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
 						M0, List, M).
 
-abstractly_unify_inst_functor_2(live, ground(Uniq), Name, ArgInsts, _ArgLives,
-		M0, Inst, M) :-
+abstractly_unify_inst_functor_2(live, ground(Uniq, no), Name, ArgInsts,
+		_ArgLives, M0, Inst, M) :-
 	make_ground_inst_list(ArgInsts, live, Uniq, M0, GroundArgInsts, M), 
 	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
 
@@ -2445,8 +2494,8 @@ abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), Name, Args,
 	ListY = [functor(Name, Args)],
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, _, M). 
 
-abstractly_unify_inst_functor_2(dead, ground(Uniq), Name, ArgInsts, _ArgLives,
-		M0, Inst, M) :-
+abstractly_unify_inst_functor_2(dead, ground(Uniq, no), Name, ArgInsts,
+		_ArgLives, M0, Inst, M) :-
 	make_ground_inst_list(ArgInsts, dead, Uniq, M0, GroundArgInsts, M),
 	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
 
@@ -2474,7 +2523,7 @@ make_ground_inst_list([Inst0 | Insts0], Live, Uniq, ModuleInfo0,
 :- mode make_ground_inst(in, in, in, in, out, out) is det.
 
 make_ground_inst(not_reached, _, _, M, not_reached, M).
-make_ground_inst(free, IsLive, Uniq0, M, ground(Uniq), M) :-
+make_ground_inst(free, IsLive, Uniq0, M, ground(Uniq, no), M) :-
 	unify_uniq(IsLive, unique, Uniq0, Uniq).
 make_ground_inst(free(T), IsLive, Uniq0, M,
 		defined_inst(typed_ground(Uniq, T)), M) :-
@@ -2484,11 +2533,12 @@ make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, M0,
 	unify_uniq(IsLive, Uniq0, Uniq1, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, M0,
 					BoundInsts, M).
-make_ground_inst(ground(Uniq0), IsLive, Uniq1, M, ground(Uniq), M) :-
+make_ground_inst(ground(Uniq0, PredInst), IsLive, Uniq1, M,
+		ground(Uniq, PredInst), M) :-
 	unify_uniq(IsLive, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _) :-
 	error("free inst var").
-make_ground_inst(abstract_inst(_,_), _, _, M, ground(shared), M).
+make_ground_inst(abstract_inst(_,_), _, _, M, ground(shared, no), M).
 make_ground_inst(defined_inst(InstName), IsLive, Uniq, ModuleInfo0,
 			Inst, ModuleInfo) :-
 		% check whether the inst name is already in the
@@ -2589,7 +2639,7 @@ make_shared_inst(free(T), M, free(T), M).
 make_shared_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts), M) :-
 	make_shared(Uniq0, Uniq),
 	make_shared_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
-make_shared_inst(ground(Uniq0), M, ground(Uniq), M) :-
+make_shared_inst(ground(Uniq0, PredInst), M, ground(Uniq, PredInst), M) :-
 	make_shared(Uniq0, Uniq).
 make_shared_inst(inst_var(_), _, _, _) :-
 	error("free inst var").

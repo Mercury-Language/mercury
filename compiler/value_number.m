@@ -481,7 +481,7 @@ vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = call_closure(_, _, _),
+		Instr = call_closure(_, _, _, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
@@ -1074,7 +1074,7 @@ vn__boundary_instr(livevals(_), no).
 vn__boundary_instr(block(_, _), no).
 vn__boundary_instr(assign(_,_), no).
 vn__boundary_instr(call(_, _, _, _), yes).
-vn__boundary_instr(call_closure(_, _, _), yes).
+vn__boundary_instr(call_closure(_, _, _, _), yes).
 vn__boundary_instr(mkframe(_, _, _), yes).
 vn__boundary_instr(modframe(_), yes).
 vn__boundary_instr(label(_), yes).

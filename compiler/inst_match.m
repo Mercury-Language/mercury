@@ -106,7 +106,7 @@ inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_initial_3(bound(UniqA, List), ground(UniqB), ModuleInfo, _) :-
+inst_matches_initial_3(bound(UniqA, List), ground(UniqB, no), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_is_ground(List, ModuleInfo),
 	( UniqB = unique ->
@@ -118,8 +118,8 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, ModuleInfo),
 	bound_inst_list_is_unique(List, ModuleInfo).
-inst_matches_initial_3(ground(_Uniq), free, _, _).
-inst_matches_initial_3(ground(UniqA), bound(UniqB, List), ModuleInfo, _) :-
+inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
+inst_matches_initial_3(ground(UniqA, no), bound(UniqB, List), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	( UniqA = shared ->
 		bound_inst_list_is_shared(List, ModuleInfo)
@@ -131,10 +131,15 @@ inst_matches_initial_3(ground(UniqA), bound(UniqB, List), ModuleInfo, _) :-
 		% or if List contains some not_reached insts.
 		% Should succeed if List contains all the constructors
 		% for the type.  Problem is we don't know what the type was :-(
-inst_matches_initial_3(ground(UniqA), ground(UniqB), _, _) :-
+inst_matches_initial_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
+		_, _) :-
+	% We require that higher order pred insts match exactly.
+	% This requirement is probably too strict, and may need to be loosened.
+	PredInstA = PredInstB,
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_UniqA), abstract_inst(_,_), _, _) :-
+inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
+		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
 inst_matches_initial_3(abstract_inst(_,_), free, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
@@ -235,7 +240,8 @@ inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
 		Expansions) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_final(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_final_3(bound(UniqA, ListA), ground(UniqB), ModuleInfo, _Exps) :-
+inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
+		_Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, ModuleInfo),
 	( UniqB = unique ->
@@ -243,7 +249,8 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB), ModuleInfo, _Exps) :-
 	;
 		true
 	).
-inst_matches_final_3(ground(UniqA), bound(UniqB, ListB), ModuleInfo, _Exps) :-
+inst_matches_final_3(ground(UniqA, no), bound(UniqB, ListB), ModuleInfo,
+			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, ModuleInfo),
 	( UniqA = shared ->
@@ -255,7 +262,11 @@ inst_matches_final_3(ground(UniqA), bound(UniqB, ListB), ModuleInfo, _Exps) :-
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
-inst_matches_final_3(ground(UniqA), ground(UniqB), _, _) :-
+inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
+		_, _) :-
+	% We require higher-order pred insts to match exactly;
+	% this requirement may be too strict and hence may need to be relaxed.
+	PredInstA = PredInstB,
 	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-

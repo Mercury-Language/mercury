@@ -500,7 +500,8 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 
 :- type unify_rhs	--->	var(var)
 			;	functor(const, list(var))
-			;	lambda_goal(list(var), list(mode), hlds__goal).
+			;	lambda_goal(list(var), list(mode), determinism,
+						hlds__goal).
 
 :- type unification	--->
 				% Y = f(X) where the top node of Y is output,

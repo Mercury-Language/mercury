@@ -139,7 +139,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		Ccode = Ccode0
 	;
-		Uinstr0 = call_closure(_, _, _),
+		Uinstr0 = call_closure(_, _, _, _),
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals, "call_closure", yes, _),
 		Livemap = Livemap0,

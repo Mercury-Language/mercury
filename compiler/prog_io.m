@@ -200,7 +200,9 @@
 			;	free(type)
 			;	bound(uniqueness, list(bound_inst))
 					% The list(bound_inst) must be sorted
-			;	ground(uniqueness)
+			;	ground(uniqueness, maybe(pred_inst_info))
+					% The pred_inst_info is used for
+					% higher-order pred modes
 			;	not_reached
 			;	inst_var(var)
 			;	defined_inst(inst_name)
@@ -214,6 +216,20 @@
 	;		unique		% there is only one reference
 	;		clobbered.	% this was the only reference, but
 					% the data has already been reused
+
+	% higher-order predicate terms are given the inst
+	%	`ground(shared, yes(PredInstInfo))'
+	% where the PredInstInfo contains the extra modes and the determinism
+	% for the predicate.  Note that the higher-order predicate term
+	% itself must be ground.
+
+:- type pred_inst_info
+	---> pred_inst_info(
+			list(mode),		% the modes of the additional
+						% (i.e. not-yet-supplied)
+						% arguments of the pred
+			determinism 		% the determinism of the pred
+	).
 
 :- type bound_inst	--->	functor(const, list(inst)).
 
@@ -321,18 +337,13 @@
 :- pred parse_goal(term, varset, goal, varset).
 :- mode parse_goal(in, in, out, out) is det.
 
-	% parse_lambda_args/3 converts the first argument to a lambda/2
-	% expression into a list of variables and their corresponding modes.
-	% The valid syntaxes are
-	%
-	% 1.	[Var1::Mode1, ..., VarN::ModeN]
-	% 2.	Var::Mode 		(if there is only one variable,
-	%				the brackets are optional)
-	% 3.	[Var1, ..., VarN]	(mode defaults to `in')
-	% 4.	Var
+	% parse_lambda_expression/3 converts the first argument to a lambda/2
+	% expression into a list of variables, a list of their corresponding
+	% modes, and a determinism.
+	% The syntax is `[Var1::Mode1, ..., VarN::ModeN] is Det'.
 
-:- pred parse_lambda_args(term, list(var), list(mode)).
-:- mode parse_lambda_args(in, out, out) is semidet.
+:- pred parse_lambda_expression(term, list(var), list(mode), determinism).
+:- mode parse_lambda_expression(in, out, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -874,6 +885,16 @@ parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
+parse_lambda_expression(LambdaExpressionTerm, Vars, Modes, Det) :-
+	LambdaExpressionTerm = term__functor(term__atom("is"),
+				[LambdaArgsTerm, DetTerm], _),
+	DetTerm = term__functor(term__atom(DetString), [], _),
+	standard_det(DetString, Det),
+	parse_lambda_args(LambdaArgsTerm, Vars, Modes).
+
+:- pred parse_lambda_args(term, list(var), list(mode)).
+:- mode parse_lambda_args(in, out, out) is semidet.
+
 parse_lambda_args(Term, Vars, Modes) :-
 	( Term = term__functor(term__atom("."), [Head, Tail], _Context) ->
 		parse_lambda_arg(Head, Var, Mode),
@@ -893,13 +914,9 @@ parse_lambda_args(Term, Vars, Modes) :-
 :- mode parse_lambda_arg(in, out, out) is semidet.
 
 parse_lambda_arg(Term, Var, Mode) :-
-	( Term = term__functor(term__atom("::"), [VarTerm, ModeTerm], _) ->
-		VarTerm = term__variable(Var),
-		convert_mode(ModeTerm, Mode)
-	;
-		Term = term__variable(Var),
-		Mode = user_defined_mode(unqualified("in"), [])
-	).
+	Term = term__functor(term__atom("::"), [VarTerm, ModeTerm], _),
+	VarTerm = term__variable(Var),
+	convert_mode(ModeTerm, Mode).
 
 %-----------------------------------------------------------------------------%
 
@@ -2007,11 +2024,29 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	( Name = term__atom("free"), Args0 = [] ->
 		Result = free
 	; Name = term__atom("ground"), Args0 = [] ->
-		Result = ground(shared)
+		Result = ground(shared, no)
 	; Name = term__atom("unique"), Args0 = [] ->
-		Result = ground(unique)
+		Result = ground(unique, no)
 	; Name = term__atom("clobbered"), Args0 = [] ->
-		Result = ground(clobbered)
+		Result = ground(clobbered, no)
+	;
+		% The syntax for a higher-order pred inst is
+		%
+		%	pred_initial(<Mode1>, <Mode2>, ...) is <Detism>
+		% or
+		%	pred_final(<Mode1>, <Mode2>, ...) is <Detism>
+		%
+		% where <Mode1>, <Mode2>, ... are a list of modes,
+		% and <Detism> is a determinism.
+
+		Name = term__atom("is"), Args0 = [PredTerm, DetTerm],
+		PredTerm = term__functor(term__atom("pred"), ArgModesTerm, _)
+	->
+		DetTerm = term__functor(term__atom(DetString), [], _),
+		standard_det(DetString, Detism),
+		convert_mode_list(ArgModesTerm, ArgModes),
+		PredInst = pred_inst_info(ArgModes, Detism),
+		Result = ground(shared, yes(PredInst))
 	; Name = term__atom("not_reached"), Args0 = [] ->
 		Result = not_reached
 	; Name = term__atom("bound"), Args0 = [Disj] ->
@@ -2171,6 +2206,24 @@ convert_mode(Term, Mode) :-
 		convert_inst(InstA, ConvertedInstA),
 		convert_inst(InstB, ConvertedInstB),
 		Mode = (ConvertedInstA -> ConvertedInstB)
+	;
+		% Handle higher-order predicate modes:
+		% a mode of the form
+		%	pred(<Mode1>, <Mode2>, ...) is det
+		% is an abbreviation for the inst mapping
+		% 	(  pred(<Mode1>, <Mode2>, ...) is det'
+		%	-> pred(<Mode1>, <Mode2>, ...) is det'
+		%	)
+
+		Term = term__functor(term__atom("is"), [PredTerm, DetTerm], _),
+		PredTerm = term__functor(term__atom("pred"), ArgModesTerms, _)
+	->
+		DetTerm = term__functor(term__atom(DetString), [], _),
+		standard_det(DetString, Detism),
+		convert_mode_list(ArgModesTerms, ArgModes),
+		PredInstInfo = pred_inst_info(ArgModes, Detism),
+		Inst = ground(shared, yes(PredInstInfo)),
+		Mode = (Inst -> Inst)
 	;
 		parse_qualified_term(Term, "mode definition", R),
 		R = ok(Name, Args),	% should improve error reporting

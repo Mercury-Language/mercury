@@ -231,7 +231,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(ExtraHeadVars, HeadVars0, HeadVars),
 	list__length(ExtraHeadVars, NumExtraVars),
-	list__duplicate(NumExtraVars, (ground(shared) -> ground(shared)),
+	list__duplicate(NumExtraVars, user_defined_mode(unqualified("in"), []),
 			ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
@@ -392,12 +392,12 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		;
 			{ error("polymorphism: type_to_type_id failed") }
 		)
-	; { Y = lambda_goal(Vars, Modes, LambdaGoal0) } ->
+	; { Y = lambda_goal(Vars, Modes, Det, LambdaGoal0) } ->
 		% for lambda expressions, we must recursively traverse the
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal),
-		polymorphism__transform_lambda(Vars, Modes, LambdaGoal, 
+		polymorphism__transform_lambda(Vars, Modes, Det, LambdaGoal, 
 				Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
@@ -478,12 +478,13 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				TypeInfoMap, ModuleInfo)
 	).
 
-:- pred polymorphism__transform_lambda(list(var), list(mode), hlds__goal,
-		unification, unify_rhs, unification, poly_info, poly_info).
-:- mode polymorphism__transform_lambda(in, in, in, in, out, out, in, out)
+:- pred polymorphism__transform_lambda(list(var), list(mode), determinism,
+		hlds__goal, unification, unify_rhs, unification,
+		poly_info, poly_info).
+:- mode polymorphism__transform_lambda(in, in, in, in, in, out, out, in, out)
 		is det.
 
-polymorphism__transform_lambda(Vars, Modes, LambdaGoal, Unification0,
+polymorphism__transform_lambda(Vars, Modes, Det, LambdaGoal, Unification0,
 				Functor, Unification, PolyInfo0, PolyInfo) :-
 
 	%
@@ -529,8 +530,7 @@ polymorphism__transform_lambda(Vars, Modes, LambdaGoal, Unification0,
 		Cond = true,
 		goal_info_context(LambdaGoalInfo, LambdaContext),
 		Status = local,
-		% XXX determinism of lambda expressions???
-		MaybeDet = no,
+		MaybeDet = yes(Det),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
 		(
@@ -938,12 +938,13 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize it
-	UniMode = (free - ground(shared) -> ground(shared) - ground(shared)),
+	UniMode = (free - ground(shared, no) ->
+		   ground(shared, no) - ground(shared, no)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes),
-	UnifyMode = (free -> ground(shared)) -
-			(ground(shared) -> ground(shared)),
+	UnifyMode = (free -> ground(shared, no)) -
+			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -954,7 +955,7 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 	set__list_to_set([TypeInfoVar | ArgVars], NonLocals),
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	map__init(InstMapping0),
-	list__duplicate(NumArgVars, ground(shared), ArgInsts),
+	list__duplicate(NumArgVars, ground(shared, no), ArgInsts),
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but hopefully it shouldn't make any
 		% difference.

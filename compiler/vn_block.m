@@ -198,10 +198,10 @@ vn__handle_instr(call(Proc, Return, Caller, Info),
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn__new_ctrl_node(vn_call(Proc, Return, Caller, Info),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
-vn__handle_instr(call_closure(Proc, Return, Info),
+vn__handle_instr(call_closure(Proc, Return, Caller, Info),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
-	vn__new_ctrl_node(vn_call_closure(Proc, Return, Info),
+	vn__new_ctrl_node(vn_call_closure(Proc, Return, Caller, Info),
 		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
 vn__handle_instr(mkframe(Name, Size, Redoip),
 		Livemap, VnTables0, VnTables,
@@ -309,7 +309,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_call_closure(_, _, _),
+		Vn_instr = vn_call_closure(_, _, _, _),
 		vn__record_at_call(VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
@@ -736,7 +736,7 @@ vn__is_ctrl_instr(livevals(_), yes).
 vn__is_ctrl_instr(block(_, _), no).
 vn__is_ctrl_instr(assign(_, _), no).
 vn__is_ctrl_instr(call(_, _, _, _), yes).
-vn__is_ctrl_instr(call_closure(_, _, _), yes).
+vn__is_ctrl_instr(call_closure(_, _, _, _), yes).
 vn__is_ctrl_instr(mkframe(_, _, _), yes).
 vn__is_ctrl_instr(modframe(_), no).
 vn__is_ctrl_instr(label(_), yes).

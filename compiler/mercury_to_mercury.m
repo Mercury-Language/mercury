@@ -16,6 +16,7 @@
 
 :- import_module list, string, hlds, io, prog_io, varset, term.
 
+%	convert_to_mercury(ProgName, OutputFileName, Items)
 :- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
@@ -43,6 +44,9 @@
 
 :- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
 :- mode mercury_output_mode_list(in, in, di, uo) is det.
+
+:- pred mercury_output_det(determinism, io__state, io__state).
+:- mode mercury_output_det(in, di, uo) is det.
 
 	% output a comma-separated list of variables
 
@@ -246,8 +250,19 @@ mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
 	),
 	mercury_output_bound_insts(BoundInsts, VarSet),
 	io__write_string(")").
-mercury_output_inst(ground(Uniq), _) -->
+mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 	(	
+		{ MaybePredInfo = yes(pred_inst_info(Modes, Det)) }
+	->
+		( { Modes = [] } ->
+			io__write_string("(pred) is ")
+		;
+			io__write_string("pred("),
+			mercury_output_mode_list(Modes, VarSet),
+			io__write_string(") is ")
+		),
+		mercury_output_det(Det)
+	;
 		{ Uniq = shared },
 		io__write_string("ground")
 	;
@@ -375,11 +390,29 @@ mercury_output_mode_list([Mode | Modes], VarSet) -->
 	).
 
 mercury_output_mode((InstA -> InstB), VarSet) -->
-	io__write_string("("),
-	mercury_output_inst(InstA, VarSet),
-	io__write_string(" -> "),
-	mercury_output_inst(InstB, VarSet),
-	io__write_string(")").
+	( 
+	    %
+	    % check for higher-order pred modes, and output them in a nice
+	    % format
+	    %
+	    { InstA = ground(shared, yes(pred_inst_info(Modes, Det))) },
+	    { InstB = ground(shared, yes(pred_inst_info(Modes, Det))) }
+	->
+	    ( { Modes = [] } ->
+		io__write_string("(pred) is ")
+	    ;
+		io__write_string("pred("),
+		mercury_output_mode_list(Modes, VarSet),
+		io__write_string(") is ")
+	    ),
+	    mercury_output_det(Det)
+	;
+	    io__write_string("("),
+	    mercury_output_inst(InstA, VarSet),
+	    io__write_string(" -> "),
+	    mercury_output_inst(InstB, VarSet),
+	    io__write_string(")")
+	).
 mercury_output_mode(user_defined_mode(Name, Args), VarSet) -->
 	( { Args = [] } ->
 		mercury_output_bracketed_sym_name(Name)
@@ -583,9 +616,6 @@ mercury_output_det_annotation(MaybeDet) -->
 		io__write_string(" is "),
 		mercury_output_det(Det)
 	).
-
-:- pred mercury_output_det(determinism, io__state, io__state).
-:- mode mercury_output_det(in, di, uo) is det.
 
 mercury_output_det(det) -->
 	io__write_string("det").

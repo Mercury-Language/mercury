@@ -209,7 +209,7 @@ mode_util__modes_to_uni_modes(X, [M|Ms], ModuleInfo, [A|As]) :-
 
 :- inst_is_clobbered(_, X) when X.		% NU-Prolog indexing.
 
-inst_is_clobbered(_, ground(clobbered)).
+inst_is_clobbered(_, ground(clobbered, _)).
 inst_is_clobbered(_, bound(clobbered, _)).
 inst_is_clobbered(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
@@ -236,7 +236,7 @@ inst_is_free(ModuleInfo, defined_inst(InstName)) :-
 
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
-inst_is_bound(_, ground(_)).
+inst_is_bound(_, ground(_, _)).
 inst_is_bound(_, bound(_, _)).
 inst_is_bound(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
@@ -280,7 +280,7 @@ inst_is_ground(ModuleInfo, Inst) :-
 
 inst_is_ground_2(ModuleInfo, bound(_, List), _, Expansions) :-
 	bound_inst_list_is_ground_2(List, ModuleInfo, Expansions).
-inst_is_ground_2(_, ground(_), _, _).
+inst_is_ground_2(_, ground(_, _), _, _).
 inst_is_ground_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_ground_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
@@ -312,7 +312,7 @@ inst_is_unique(ModuleInfo, Inst) :-
 inst_is_unique_2(ModuleInfo, bound(unique, List), _, Expansions) :-
 	bound_inst_list_is_unique_2(List, ModuleInfo, Expansions).
 inst_is_unique_2(_, free, _, _).
-inst_is_unique_2(_, ground(unique), _, _).
+inst_is_unique_2(_, ground(unique, _), _, _).
 inst_is_unique_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_unique_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
@@ -344,7 +344,7 @@ inst_is_shared(ModuleInfo, Inst) :-
 inst_is_shared_2(ModuleInfo, bound(shared, List), _, Expansions) :-
 	bound_inst_list_is_shared_2(List, ModuleInfo, Expansions).
 inst_is_shared_2(_, free, _, _).
-inst_is_shared_2(_, ground(shared), _, _).
+inst_is_shared_2(_, ground(shared, _), _, _).
 inst_is_shared_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_shared_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
@@ -513,7 +513,7 @@ inst_lookup_2(user_inst(Name, Args), ModuleInfo, Inst) :-
 		Inst = abstract_inst(Name, Args)
 	).
 inst_lookup_2(typed_ground(Uniq, Type), ModuleInfo, Inst) :-
-	propagate_type_info_inst(Type, ModuleInfo, ground(Uniq), Inst).
+	propagate_type_info_inst(Type, ModuleInfo, ground(Uniq, no), Inst).
 inst_lookup_2(typed_inst(Type, InstName), ModuleInfo, Inst) :-
 	inst_lookup_2(InstName, ModuleInfo, Inst0),
 	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst).
@@ -610,11 +610,15 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors, ModuleInfo,
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-propagate_ctor_info(ground(Uniq), _Type, Constructors, ModuleInfo, Inst) :-
+propagate_ctor_info(ground(Uniq, no), _Type, Constructors, ModuleInfo, Inst) :-
 	constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
 		BoundInsts0),
 	list__sort_and_remove_dups(BoundInsts0, BoundInsts),
 	Inst = bound(Uniq, BoundInsts).
+propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
+	% for higher-order pred modes, the information we need is already
+	% in the inst, so we leave it unchanged
+			ground(Uniq, yes(PredInstInfo))).
 propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
 propagate_ctor_info(inst_var(_), _, _, _, _) :-
@@ -643,8 +647,12 @@ ex_propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors,
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-ex_propagate_ctor_info(ground(Uniq), Type, _, _, Inst) :-
+ex_propagate_ctor_info(ground(Uniq, no), Type, _, _, Inst) :-
 	Inst = defined_inst(typed_ground(Uniq, Type)).
+ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
+	% for higher-order pred modes, the information we need is already
+	% in the inst, so we leave it unchanged
+			ground(Uniq, yes(PredInstInfo))).
 ex_propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
 ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
@@ -774,7 +782,7 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(free(T), _, free(T)).
-inst_apply_substitution(ground(Uniq), _, ground(Uniq)).
+inst_apply_substitution(ground(Uniq, PredStuff), _, ground(Uniq, PredStuff)).
 inst_apply_substitution(bound(Uniq, Alts0), Subst, bound(Uniq, Alts)) :-
 	alt_list_apply_substitution(Alts0, Subst, Alts).
 inst_apply_substitution(not_reached, _, not_reached).

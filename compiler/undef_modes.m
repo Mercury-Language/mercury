@@ -34,7 +34,7 @@ check_undefined_modes(Module, Module, FoundError) -->
 	{ module_info_insts(Module, InstDefns) },
 	{ inst_table_get_user_insts(InstDefns, UserInstDefns) },
 	{ map__keys(UserInstDefns, InstIds) },
-	find_undef_inst_bodies(InstIds, UserInstDefns),
+	find_undef_inst_bodies(InstIds, ModeDefns, UserInstDefns),
 	{ module_info_modes(Module, ModeDefns) },
 	{ map__keys(ModeDefns, ModeIds) },
 	find_undef_mode_bodies(ModeIds, ModeDefns, UserInstDefns),
@@ -124,9 +124,9 @@ find_undef_mode_list([Mode|Modes], ErrorContext, ModeDefns, InstDefns) -->
 				io__state, io__state).
 :- mode find_undef_mode(in, in, in, in, di, uo) is det.
 
-find_undef_mode((InstA -> InstB), ErrorContext, _ModeDefns, InstDefns) -->
-	find_undef_inst(InstA, ErrorContext, InstDefns),
-	find_undef_inst(InstB, ErrorContext, InstDefns).
+find_undef_mode((InstA -> InstB), ErrorContext, ModeDefns, InstDefns) -->
+	find_undef_inst(InstA, ErrorContext, ModeDefns, InstDefns),
+	find_undef_inst(InstB, ErrorContext, ModeDefns, InstDefns).
 find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 		InstDefns) -->
 		  %%% no builtin modes as yet
@@ -139,73 +139,87 @@ find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 	;
 		report_undef_mode(ModeId, ErrorContext)
 	),
-	find_undef_inst_list(Args, ErrorContext, InstDefns).
+	find_undef_inst_list(Args, ErrorContext, ModeDefns, InstDefns).
 
 %-----------------------------------------------------------------------------%
 
 	% Find any undefined insts used in the bodies of other inst
 	% declarations.
 
-:- pred find_undef_inst_bodies(list(inst_id), user_inst_table,
+:- pred find_undef_inst_bodies(list(inst_id), mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_bodies(in, in, di, uo) is det.
+:- mode find_undef_inst_bodies(in, in, in, di, uo) is det.
 
-find_undef_inst_bodies([], _) --> [].
-find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
+find_undef_inst_bodies([], _, _) --> [].
+find_undef_inst_bodies([InstId | InstIds], ModeDefns, InstDefns) -->
 	{ map__lookup(InstDefns, InstId, HLDS_InstDefn) },
 		% XXX abstract hlds__inst_defn/5
 	{ HLDS_InstDefn = hlds__inst_defn(_, _, Inst, _, Context) },
-	find_undef_inst_body(Inst, inst(InstId) - Context, InstDefns),
-	find_undef_inst_bodies(InstIds, InstDefns).
+	find_undef_inst_body(Inst, inst(InstId) - Context,
+		ModeDefns, InstDefns),
+	find_undef_inst_bodies(InstIds, ModeDefns, InstDefns).
 
 	% Find any undefined insts used in the given inst definition.
 
 :- pred find_undef_inst_body(hlds__inst_body, mode_error_context,
-				user_inst_table, io__state, io__state).
-:- mode find_undef_inst_body(in, in, in, di, uo) is det.
+				mode_table, user_inst_table,
+				io__state, io__state).
+:- mode find_undef_inst_body(in, in, in, in, di, uo) is det.
 
-find_undef_inst_body(eqv_inst(Inst), ErrorContext, InstDefns) -->
-	find_undef_inst(Inst, ErrorContext, InstDefns).
-find_undef_inst_body(abstract_inst, _, _) --> [].
+find_undef_inst_body(eqv_inst(Inst), ErrorContext, ModeDefns, InstDefns) -->
+	find_undef_inst(Inst, ErrorContext, ModeDefns, InstDefns).
+find_undef_inst_body(abstract_inst, _, _, _) --> [].
 
 	% Find any undefined insts in a list of insts.
 
-:- pred find_undef_inst_list(list(inst), mode_error_context, user_inst_table,
+:- pred find_undef_inst_list(list(inst), mode_error_context,
+				mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_list(in, in, in, di, uo) is det.
+:- mode find_undef_inst_list(in, in, in, in, di, uo) is det.
 
-find_undef_inst_list([], _ErrorContext, _InstDefns) --> [].
-find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
-	find_undef_inst(Inst, ErrorContext, InstDefns),
-	find_undef_inst_list(Insts, ErrorContext, InstDefns).
+find_undef_inst_list([], _ErrorContext, _ModeDefns, _InstDefns) --> [].
+find_undef_inst_list([Inst|Insts], ErrorContext, ModeDefns, InstDefns) -->
+	find_undef_inst(Inst, ErrorContext, ModeDefns, InstDefns),
+	find_undef_inst_list(Insts, ErrorContext, ModeDefns, InstDefns).
 
 	% Find any undefined insts used in an inst.
 	% The inst itself may be undefined, and also
 	% any inst arguments may also be undefined.
 	% (eg. the inst `undef1(undef2, undef3)' should generate 3 errors.)
 
-:- pred find_undef_inst(inst, mode_error_context, user_inst_table,
+:- pred find_undef_inst(inst, mode_error_context, mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst(in, in, in, di, uo) is det.
+:- mode find_undef_inst(in, in, in, in, di, uo) is det.
 
-find_undef_inst(free, _, _) --> [].
-find_undef_inst(ground(_), _, _) --> [].
-find_undef_inst(inst_var(_), _, _) --> [].
-find_undef_inst(bound(_Uniq, BoundInsts), ErrorContext, InstDefns) -->
-	find_undef_bound_insts(BoundInsts, ErrorContext, InstDefns).
-find_undef_inst(defined_inst(InstName), ErrorContext, InstDefns) -->
-	find_undef_inst_name(InstName, ErrorContext, InstDefns).
-find_undef_inst(abstract_inst(Name, Args), ErrorContext, InstDefns) -->
-	find_undef_inst_name(user_inst(Name, Args), ErrorContext, InstDefns).
-find_undef_inst(not_reached, _, _) --> [].
-find_undef_inst(free(_), _, _) --> 
+find_undef_inst(free, _, _, _) --> [].
+find_undef_inst(ground(_, MaybePredInfo), ErrorContext, ModeDefns, InstDefns)
+		-->
+	( { MaybePredInfo = yes(pred_inst_info(Modes, _Det)) } ->
+		find_undef_mode_list(Modes, ErrorContext, ModeDefns, InstDefns)
+	;
+		[]
+	).
+find_undef_inst(inst_var(_), _, _, _) --> [].
+find_undef_inst(bound(_Uniq, BoundInsts), ErrorContext, ModeDefns, InstDefns)
+		-->
+	find_undef_bound_insts(BoundInsts, ErrorContext, ModeDefns, InstDefns).
+find_undef_inst(defined_inst(InstName), ErrorContext, ModeDefns, InstDefns) -->
+	find_undef_inst_name(InstName, ErrorContext, ModeDefns, InstDefns).
+find_undef_inst(abstract_inst(Name, Args), ErrorContext, ModeDefns, InstDefns)
+		-->
+	find_undef_inst_name(user_inst(Name, Args), ErrorContext, ModeDefns,
+		InstDefns).
+find_undef_inst(not_reached, _, _, _) --> [].
+find_undef_inst(free(_), _, _, _) --> 
 	{ error("compiler generated inst unexpected") }.
 
-:- pred find_undef_inst_name(inst_name, mode_error_context, user_inst_table,
+:- pred find_undef_inst_name(inst_name, mode_error_context,
+				mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_name(in, in, in, di, uo) is det.
+:- mode find_undef_inst_name(in, in, in, in, di, uo) is det.
 
-find_undef_inst_name(user_inst(Name, Args), ErrorContext, InstDefns) -->
+find_undef_inst_name(user_inst(Name, Args), ErrorContext, ModeDefns, InstDefns)
+		-->
 	{ list__length(Args, Arity) },
 	{ InstId = Name - Arity },
 	(
@@ -215,29 +229,30 @@ find_undef_inst_name(user_inst(Name, Args), ErrorContext, InstDefns) -->
 	;
 		report_undef_inst(InstId, ErrorContext)
 	),
-	find_undef_inst_list(Args, ErrorContext, InstDefns).
-find_undef_inst_name(unify_inst(_, _, _), _, _) -->
+	find_undef_inst_list(Args, ErrorContext, ModeDefns, InstDefns).
+find_undef_inst_name(unify_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(merge_inst(_, _), _, _) -->
+find_undef_inst_name(merge_inst(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(ground_inst(_, _, _), _, _) -->
+find_undef_inst_name(ground_inst(_, _, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(typed_ground(_, _), _, _) -->
+find_undef_inst_name(typed_ground(_, _), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(shared_inst(_), _, _) -->
+find_undef_inst_name(shared_inst(_), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(typed_inst(_,_), _, _) -->
+find_undef_inst_name(typed_inst(_,_), _, _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 :- pred find_undef_bound_insts(list(bound_inst), mode_error_context,
-				user_inst_table, io__state, io__state).
-:- mode find_undef_bound_insts(in, in, in, di, uo) is det.
+				mode_table, user_inst_table,
+				io__state, io__state).
+:- mode find_undef_bound_insts(in, in, in, in, di, uo) is det.
 
-find_undef_bound_insts([], _, _) --> [].
+find_undef_bound_insts([], _, _, _) --> [].
 find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
-		InstDefns) -->
-	find_undef_inst_list(Args, ErrorContext, InstDefns),
-	find_undef_bound_insts(BoundInsts, ErrorContext, InstDefns).
+		ModeDefns, InstDefns) -->
+	find_undef_inst_list(Args, ErrorContext, ModeDefns, InstDefns),
+	find_undef_bound_insts(BoundInsts, ErrorContext, ModeDefns, InstDefns).
 
 %-----------------------------------------------------------------------------%
 

@@ -1080,8 +1080,8 @@ typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As).
-typecheck_unification(X, lambda_goal(Vars, Modes, Goal0),
-			 lambda_goal(Vars, Modes, Goal)) -->
+typecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
+			 lambda_goal(Vars, Modes, Det, Goal)) -->
  	typecheck_lambda_var_has_type(X, Vars),
 	typecheck_goal(Goal0, Goal).
 

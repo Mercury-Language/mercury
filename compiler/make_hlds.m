@@ -502,7 +502,7 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 		module_info, io__state, io__state).
 :- mode add_new_pred(in, in, in, in, in, in, in, out, di, uo) is det.
 
-% NB.  Predicates are also added in polymorpism.m, which converts
+% NB.  Predicates are also added in polymorphism.m, which converts
 % lambda expressions into separate predicates, so any changes may need
 % to be reflected there too.
 
@@ -1374,15 +1374,15 @@ unravel_unification(term__variable(X), term__functor(F, Args, Context),
 	(
 		% handle lambda expressions
 		F = term__atom("lambda"),
-		Args = [VarsAndModesTerm, GoalTerm],
-		parse_lambda_args(VarsAndModesTerm, Vars, Modes)
+		Args = [LambdaExpressionTerm, GoalTerm],
+		parse_lambda_expression(LambdaExpressionTerm, Vars, Modes, Det)
 	->
 		parse_goal(GoalTerm, VarSet0, ParsedGoal, VarSet1),
 		map__init(Substitution),
 		transform_goal(ParsedGoal, VarSet1, Substitution,
 				HLDS_Goal, VarSet),
 		create_atomic_unification(X,
-				lambda_goal(Vars, Modes, HLDS_Goal),
+				lambda_goal(Vars, Modes, Det, HLDS_Goal),
 				Context, MainContext, SubContext, Goal)
 	; Args = [] ->
 		create_atomic_unification(X, functor(F, []),

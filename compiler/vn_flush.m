@@ -180,10 +180,10 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Templocs = Templocs0,
 		Instrs = [call(ProcAddr, RetAddr, CallerAddr, LiveInfo) - ""]
 	;
-		Vn_instr = vn_call_closure(ClAddr, RetAddr, LiveInfo),
+		Vn_instr = vn_call_closure(ClAddr, RetAddr, Caller, LiveInfo),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
-		Instrs = [call_closure(ClAddr, RetAddr, LiveInfo) - ""]
+		Instrs = [call_closure(ClAddr, RetAddr, Caller, LiveInfo) - ""]
 	;
 		Vn_instr = vn_mkframe(Name, Size, Redoip),
 		vn__rval_to_vn(const(address_const(Redoip)), AddrVn,

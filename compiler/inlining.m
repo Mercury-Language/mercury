@@ -367,8 +367,8 @@ inlining__rename_unify_rhs(var(Var0), Subn, var(Var)) :-
 inlining__rename_unify_rhs(functor(Functor, ArgVars0), Subn,
 			functor(Functor, ArgVars)) :-
 	inlining__rename_var_list(ArgVars0, Subn, ArgVars).
-inlining__rename_unify_rhs(lambda_goal(Vars0, Modes, Goal0), Subn,
-			lambda_goal(Vars, Modes, Goal)) :-
+inlining__rename_unify_rhs(lambda_goal(Vars0, Modes, Det, Goal0), Subn,
+			lambda_goal(Vars, Modes, Det, Goal)) :-
 	inlining__rename_var_list(Vars0, Subn, Vars),
 	inlining__name_apart(Goal0, Subn, Goal).
 

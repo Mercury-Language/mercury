@@ -62,12 +62,14 @@
 			% The third code_addr is the entry address for
 			% the caller predicate and is used for profiling.
 
-	;	call_closure(code_model, code_addr, list(liveinfo))
+	;	call_closure(code_model, code_addr, code_addr, list(liveinfo))
 			% Setup the arguments and branch to a higher
 			% order call. The closure is in r1 and the
 			% input arguments are in r2, r3, ...
 			% The output arguments are in r1, r2, ...
 			% except for semidet calls, where they are in r2, ...
+			% The second code_addr is the entry address for
+			% the caller predicate and is used for profiling.
 
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
@@ -638,11 +640,13 @@ output_instruction(call(Target, Continuation, CallerAddress, LiveVals)) -->
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
-output_instruction(call_closure(IsSemidet, Continuation, LiveVals)) -->
+output_instruction(call_closure(IsSemidet, Continuation, CallerAddress,
+		LiveVals)) -->
 	io__write_string("\t{ "),
 	{ set__init(DeclSet0) },
-	output_code_addr_decls(Continuation, DeclSet0, _),
-	output_call_closure(IsSemidet, Continuation),
+	output_code_addr_decls(Continuation, DeclSet0, DeclSet1),
+	output_code_addr_decls(CallerAddress, DeclSet1, _),
+	output_call_closure(IsSemidet, Continuation, CallerAddress),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
@@ -1105,26 +1109,25 @@ output_call(Target, Continuation, CallerAddress) -->
 		io__write_string(");")
 	).
 
-:- pred output_call_closure(code_model, code_addr, io__state, io__state).
-:- mode output_call_closure(in, in, di, uo) is det.
+:- pred output_call_closure(code_model, code_addr, code_addr,
+				io__state, io__state).
+:- mode output_call_closure(in, in, in, di, uo) is det.
 
-output_call_closure(CodeModel, Continuation) -->
+output_call_closure(CodeModel, Continuation, CallerAddress) -->
 	(
 		{ CodeModel = model_det },
-		io__write_string("call_det_closure("),
-		output_code_addr(Continuation),
-		io__write_string(");")
+		io__write_string("call_det_closure(")
 	;
 		{ CodeModel = model_semi },
-		io__write_string("call_semidet_closure("),
-		output_code_addr(Continuation),
-		io__write_string(");")
+		io__write_string("call_semidet_closure(")
 	;
 		{ CodeModel = model_non },
-		io__write_string("call_nondet_closure("),
-		output_code_addr(Continuation),
-		io__write_string(");")
-	).
+		io__write_string("call_nondet_closure(")
+	),
+	output_code_addr(Continuation),
+	io__write_string(","),
+	output_code_addr(CallerAddress),
+	io__write_string(");").
 
 :- pred output_code_addr(code_addr, io__state, io__state).
 :- mode output_code_addr(in, di, uo) is det.

@@ -58,7 +58,7 @@
 			;	vn_call(code_addr, code_addr, code_addr, 
 					list(liveinfo))
 			;	vn_call_closure(code_model, code_addr,
-					list(liveinfo))
+					code_addr, list(liveinfo))
 			;	vn_mkframe(string, int, code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr, code_addr)

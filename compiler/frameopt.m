@@ -211,7 +211,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap,
 				yes, no, no,
 				FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 		;
-			Uinstr0 = call_closure(_, ReturnAddr, _),
+			Uinstr0 = call_closure(_, ReturnAddr, _, _),
 			frameopt__targeting_code_addr(ReturnAddr,
 				yes, FrameSet0, FrameSet1),
 			frameopt__targeting_code_addr(ReturnAddr,
@@ -673,7 +673,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 				N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
 		;
-			Uinstr0 = call_closure(_, _, _),
+			Uinstr0 = call_closure(_, _, _, _),
 			frameopt__generate_setup(SetupFrame0, yes,
 				SetupSuccip0, yes, FrameSize, SetupCode),
 			frameopt__doit(Instrs0, FrameSize, yes, no, no,
