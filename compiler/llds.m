@@ -246,7 +246,7 @@ output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\n"),
 	io__write_string("/* this code automatically generated - do no edit.*/\n"),
 	io__write_string("\n"),
-	io__write_string("BEGIN_MODULE("),
+	io__write_string("BEGIN_MODULE(mercury__"),
 	io__write_string(Name),
 	io__write_string(")\n"),
 	io__write_string("\t/* no module initialization in automatically generated code */\n"),

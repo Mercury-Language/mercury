@@ -2119,7 +2119,8 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 :- mode report_warning_no_clauses(in, in, in, di, uo) is det.
 
 report_warning_no_clauses(PredId, PredInfo, ModuleInfo) -->
-	( { code_util__is_builtin(ModuleInfo, PredId, 0, is_builtin) } ->
+	{ code_util__is_builtin(ModuleInfo, PredId, 0, Builtin) },
+	( { Builtin = is_builtin } ->
 		[]
 	;
 		{ pred_info_context(PredInfo, Context) },

@@ -103,18 +103,26 @@ add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Status,
 	module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context,
 		Module).
 
-add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module,
+add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		Status, Module) -->
 	( { ModuleDefn = interface } ->
-		{ Status = exported_pred }
+		{ Status = exported_pred },
+		{ Module = Module0 }
 	; { ModuleDefn = implementation } ->
-		{ Status = local_pred }
+		{ Status = local_pred },
+		{ Module = Module0 }
 	; { ModuleDefn = imported } ->
-		{ Status = imported_pred }
+		{ Status = imported_pred },
+		{ Module = Module0 }
 	; { ModuleDefn = import(module(_)) } ->
-		{ Status = Status0 }
+		{ Status = Status0 },
+		{ Module = Module0 }
+	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
+		{ Status = Status0 },
+		module_mark_as_external(Name, Arity, Module0, Module)
 	;
 		{ Status = Status0 },
+		{ Module = Module0 },
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
@@ -143,6 +151,33 @@ add_item_clause(pred(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(mode(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
 add_item_clause(nothing, _, Module, Module) --> [].
+
+%-----------------------------------------------------------------------------%
+
+:- pred module_mark_as_external(sym_name, int, module_info, module_info,
+				io__state, io__state).
+:- mode module_mark_as_external(in, in, in, out, di, uo) is det.
+
+module_mark_as_external(PredName, Arity, Module0, Module) -->
+	{ module_info_name(Module0, ModuleName) },
+	{ module_info_get_predicate_table(Module0, PredicateTable0) },
+	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
+	(
+		{ predicate_table_search_m_n_a(PredicateTable0,
+			ModuleName, PName, Arity, PredIdList) },
+		{ PredIdList = [PredId] }
+	->
+		{ module_info_preds(Module0, Preds0) },
+		{ map__lookup(Preds0, PredId, PredInfo0) },
+		{ pred_info_mark_as_external(PredInfo0, PredInfo) },
+		{ map__set(Preds0, PredId, PredInfo, Preds) },
+		{ module_info_set_preds(Module0, Preds, Module) }
+	;
+		{ Module = Module0 },
+		{ term__context_init(0, Context) },	% XXX
+		undefined_pred_error(PredName, Arity, Context,	
+			"`external' declaration")
+	).
 
 %-----------------------------------------------------------------------------%
 

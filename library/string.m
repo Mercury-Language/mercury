@@ -186,10 +186,8 @@
 :- pred intToString(int, string).
 :- mode intToString(out, in) is semidet.
 
-/*
-:- external("NU-Prolog", string__to_int_list).
-:- external("NU-Prolog", intToString).
-*/
+:- external(intToString/2).
+:- external(string__to_int_list/2).
 
 string__index(String, Int, Char) :-
 	string__to_int_list(String, CodeList),

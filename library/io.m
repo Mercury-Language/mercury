@@ -333,10 +333,6 @@
 :- implementation.
 :- import_module map.
 
-/* Many of these predicates are implemented using either non-logical
-   NU-Prolog code in io.nu.nl, or C code in code/io.mod.
-*/
-
 :- type io__state	---> 	io__state(io__stream_names, univ, io__state_2).
 
 :- type io__stream_names ==	map(io__stream, string).
@@ -354,9 +350,14 @@
  *			;	user_input
  *			;	user_output
  *			;	user_error.
- *	In C:
- *	io__stream	==	
+ * In C:
+ *	io__stream	==	pointer to MercuryStream
  */
+
+	% This inter-language stuff is tricky.
+	% We communicate via ints rather than via io__result_codes because
+	% we don't want the C code to depend on how Mercury stores it's
+	% discriminated union data types.
 
 :- pred io__read_char_code(io__input_stream, int, io__state, io__state).
 :- mode io__read_char_code(in, out, di, uo) is det.
@@ -369,30 +370,61 @@
 %		Invokes the operating system shell with the specified
 %		Command.  Returns Status = -1 on failure.
 
-/*
-:- external("NU-Prolog", io__progname/4).
-:- external("NU-Prolog", io__read_char_code/4).
-:- external("NU-Prolog", io__write_char/3).
-:- external("NU-Prolog", io__write_char/4).
-:- external("NU-Prolog", io__write_int/3).
-:- external("NU-Prolog", io__write_int/4).
-:- external("NU-Prolog", io__write_string/3).
-:- external("NU-Prolog", io__write_string/4).
-:- external("NU-Prolog", io__write_float/3).
-:- external("NU-Prolog", io__write_float/4).
-:- external("NU-Prolog", io__write_anything/3).
-:- external("NU-Prolog", io__write_anything/4).
-:- external("NU-Prolog", io__flush_output/2).
-:- external("NU-Prolog", io__flush_output/3).
-:- external("NU-Prolog", io__do_open_input/5).
-:- external("NU-Prolog", io__do_open_output/5).
-:- external("NU-Prolog", io__do_open_append/5).
-:- external("NU-Prolog", io__close_input/3).
-:- external("NU-Prolog", io__close_output/3).
-:- external("NU-Prolog", io__get_line_number/3).
-:- external("NU-Prolog", io__gc_call/3).
-:- external("NU-Prolog", io__preallocate_heap_space/3).
+:- pred io__do_open_input(string, int, io__input_stream, io__state, io__state).
+:- mode io__do_open_input(in, out, out, di, uo) is det.
+%	io__do_open_input(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for input.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_output(string, int, io__output_stream, io__state,
+							io__state).
+:- mode io__do_open_output(in, out, out, di, uo) is det.
+%	io__do_open_output(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for output.
+%		Result is 0 for success, -1 for failure.
+
+:- pred io__do_open_append(string, int, io__output_stream, io__state,
+							io__state).
+:- mode io__do_open_append(in, out, out, di, uo) is det.
+%	io__do_open_append(File, ResultCode, Stream, IO0, IO1).
+%		Attempts to open a file for appending.
+%		Result is 0 for success, -1 for failure.
+
+/* Many of these predicates are implemented using either non-logical
+   NU-Prolog code in io.nu.nl, or C code in code/io.mod.
 */
+
+:- external(io__progname/4).
+:- external(io__read_char_code/4).
+:- external(io__write_char/3).
+:- external(io__write_char/4).
+:- external(io__write_int/3).
+:- external(io__write_int/4).
+:- external(io__write_string/3).
+:- external(io__write_string/4).
+:- external(io__write_float/3).
+:- external(io__write_float/4).
+:- external(io__write_anything/3).
+:- external(io__write_anything/4).
+:- external(io__flush_output/2).
+:- external(io__flush_output/3).
+:- external(io__stdin_stream/3).
+:- external(io__stdout_stream/3).
+:- external(io__stderr_stream/3).
+:- external(io__input_stream/3).
+:- external(io__output_stream/3).
+:- external(io__set_input_stream/4).
+:- external(io__set_output_stream/4).
+:- external(io__do_open_input/5).
+:- external(io__do_open_output/5).
+:- external(io__do_open_append/5).
+:- external(io__close_input/3).
+:- external(io__close_output/3).
+:- external(io__get_line_number/3).
+:- external(io__command_line_arguments/3).
+:- external(io__call_system_code/4).
+:- external(io__gc_call/3).
+:- external(io__preallocate_heap_space/3).
 
 %-----------------------------------------------------------------------------%
 
@@ -455,31 +487,6 @@ io__write_strings(Stream, [S|Ss]) -->
 %-----------------------------------------------------------------------------%
 
 % stream predicates
-
-	% This inter-language stuff is tricky.
-	% We communicate via ints rather than via io__result_codes because
-	% we don't want the C code to depend on how Mercury stores it's
-	% discriminated union data types.
-
-:- pred io__do_open_input(string, int, io__input_stream, io__state, io__state).
-:- mode io__do_open_input(in, out, out, di, uo) is det.
-%	io__do_open_input(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for input.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_output(string, int, io__output_stream, io__state,
-							io__state).
-:- mode io__do_open_output(in, out, out, di, uo) is det.
-%	io__do_open_output(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for output.
-%		Result is 0 for success, -1 for failure.
-
-:- pred io__do_open_append(string, int, io__output_stream, io__state,
-							io__state).
-:- mode io__do_open_append(in, out, out, di, uo) is det.
-%	io__do_open_append(File, ResultCode, Stream, IO0, IO1).
-%		Attempts to open a file for appending.
-%		Result is 0 for success, -1 for failure.
 
 io__open_input(FileName, Result) -->
 	io__do_open_input(FileName, Result0, NewStream),

@@ -221,6 +221,7 @@
 				% this is used internally by the compiler,
 				% to identify declarations which originally
 				% came from some other module
+			;	external(sym_name_specifier)
 			;	end_module(module_name)
 			;	export(sym_list)
 			;	import(sym_list)
@@ -896,8 +897,12 @@ parse_dcg_goal_2("->", [A0,B0], _, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
 		SomeVars, A, B, VarSet, N, Var),
-	Goal = if_then_else(SomeVars, A, B,
-		unify(term__variable(Var), term__variable(Var0))).
+	( Var = Var0 ->
+		Goal = if_then(SomeVars, A, B)
+	;
+		Goal = if_then_else(SomeVars, A, B,
+			unify(term__variable(Var), term__variable(Var0)))
+	).
 
 	% If-then (NU-Prolog syntax).
 parse_dcg_goal_2("if", [
@@ -905,8 +910,12 @@ parse_dcg_goal_2("if", [
 		], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
 		SomeVars, A, B, VarSet, N, Var),
-	Goal = if_then_else(SomeVars, A, B,
-		unify(term__variable(Var), term__variable(Var0))).
+	( Var = Var0 ->
+		Goal = if_then(SomeVars, A, B)
+	;
+		Goal = if_then_else(SomeVars, A, B,
+			unify(term__variable(Var), term__variable(Var0)))
+	).
 
 	% Conjunction.
 parse_dcg_goal_2(",", [A0,B0], _, VarSet0, N0, Var0,
@@ -921,14 +930,37 @@ parse_dcg_goal_2(";", [A0,B0], _, VarSet0, N0, Var0,
 		A0 = term__functor(term__atom("->"), [X0,Y0], _Context)
 	->
 		parse_dcg_if_then(X0, Y0, VarSet0, N0, Var0,
-			SomeVars, X, Y, VarSet1, N1, Var),
+			SomeVars, X, Y, VarSet1, N1, VarA),
 		parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, VarB),
-		Goal = if_then_else(SomeVars, X, Y,
-			(B, unify(term__variable(Var), term__variable(VarB))))
+		( VarA = Var0, VarB = Var0 ->
+			Var = Var0,
+			Goal = if_then_else(SomeVars, X, Y, B)
+		; VarA = Var0 ->
+			Var = VarB,
+			Goal = if_then_else(SomeVars, X,
+					(Y, unify(term__variable(Var),
+						term__variable(VarA))), B)
+		;
+			Var = VarA,
+			Goal = if_then_else(SomeVars, X, Y,
+				(B, unify(term__variable(Var),
+					term__variable(VarB))))
+		)
 	;
-		parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, Var),
+		parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet1, N1, VarA),
 		parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, VarB),
-		Goal = (A ; B, unify(term__variable(Var), term__variable(VarB)))
+		( VarA = Var0, VarB = Var0 ->
+			Var = Var0,
+			Goal = (A ; B)
+		; VarA = Var0 ->
+			Var = VarB,
+			Goal = (A, unify(term__variable(Var),
+					term__variable(VarA)) ; B)
+		;
+			Var = VarA,
+			Goal = (A ; B, unify(term__variable(Var),
+					term__variable(VarB)))
+		)
 	).
 
 	% If-then-else (NU-Prolog syntax).
@@ -939,10 +971,21 @@ parse_dcg_goal_2( "else", [
 		    C0
 		], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(A0, B0, VarSet0, N0, Var0,
-		SomeVars, A, B, VarSet1, N1, Var),
+		SomeVars, A, B, VarSet1, N1, VarAB),
 	parse_dcg_goal(C0, VarSet1, N1, Var0, C, VarSet, N, VarC),
-	Goal = if_then_else(SomeVars, A, B,
-		(C, unify(term__variable(Var), term__variable(VarC)))).
+	( VarAB = Var0, VarC = Var0 ->
+		Var = Var0,
+		Goal = if_then_else(SomeVars, A, B, C)
+	; VarAB = Var0 ->
+		Var = VarC,
+		Goal = if_then_else(SomeVars, A,
+			(B, unify(term__variable(Var), term__variable(VarAB))),
+			C)
+	;
+		Var = VarAB,
+		Goal = if_then_else(SomeVars, A, B,
+			(C, unify(term__variable(Var), term__variable(VarC))))
+	).
 
 	% Negation (NU-Prolog syntax).
 parse_dcg_goal_2( "not", [A0], _, VarSet0, N0, Var0,
@@ -1157,6 +1200,9 @@ process_decl(VarSet, "export_op", [OpSpec], Result) :-
 process_decl(VarSet, "interface", [], ok(module_defn(VarSet, interface))).
 process_decl(VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
+process_decl(VarSet, "external", [PredSpec], Result) :-
+	parse_symbol_name_specifier(PredSpec, Result0),
+	process_external(Result0, VarSet, Result).
 
 process_decl(VarSet, "module", [ModuleName], Result) :-
 	(
@@ -1204,6 +1250,12 @@ parse_type_decl_2(ok(TypeDefn), VarSet, Cond,
 		% we should check the condition for errs
 		% (don't bother at the moment, since we ignore
 		% conditions anyhow :-)
+
+:- pred process_external(maybe1(sym_name_specifier), varset, maybe1(item)).
+:- mode process_external(in, in, out) is det.
+process_external(ok(SymSpec), VarSet,
+		ok(module_defn(VarSet, external(SymSpec)))).
+process_external(error(Error, Term), _, error(Error, Term)).
 
 %-----------------------------------------------------------------------------%
 

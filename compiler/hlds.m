@@ -987,9 +987,10 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- interface.
 
 :- type import_status
-	--->	imported_pred
-	;	exported_pred
-	;	local_pred.
+	--->	imported_pred	% defined in the interface of some other module
+				% or `external' (in some other language)
+	;	exported_pred	% defined in the interface of this module
+	;	local_pred.	% defined in the implementation of this module
 
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
@@ -1041,6 +1042,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_is_imported(pred_info::in) is semidet.
 
 :- pred pred_info_is_exported(pred_info::in) is semidet.
+
+:- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1134,6 +1137,10 @@ pred_info_is_imported(PredInfo) :-
 
 pred_info_is_exported(PredInfo) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported_pred).
+
+pred_info_mark_as_external(PredInfo0, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported_pred).
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

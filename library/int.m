@@ -113,13 +113,7 @@
 
 :- import_module require.
 
-/*
-:- external("NU-Prolog", (is)/2).
-:- external("NU-Prolog", (<)/2).
-:- external("NU-Prolog", (=<)/2).
-:- external("NU-Prolog", (>)/2).
-:- external("NU-Prolog", (>=)/2).
-*/
+:- external((is)/2).
 
 int__abs(Num, Abs) :-
 	(
