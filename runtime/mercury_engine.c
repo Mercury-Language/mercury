@@ -128,7 +128,11 @@ init_engine(MercuryEngine *eng)
 
 void finalize_engine(MercuryEngine *eng)
 {
-	
+	/*
+	** XXX there are lots of other resources in MercuryEngine that
+	** might need to be finalized.  
+	*/
+	destroy_context(eng->this_context);
 }
 
 /*---------------------------------------------------------------------------*/

@@ -130,10 +130,23 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 /*
 ** Create and initialize a new Mercury engine running in the current
 ** POSIX thread.
+**
 ** See the comments above for the meaning of the argument.
 ** If there is already a Mercury engine running in the current POSIX
 ** thread then init_thread is just a no-op.
+**
+** Returns TRUE if a Mercury engine was created as a result of this
+** call *and* it is the caller's responsibility to finalize it (it is
+** intended that the caller can store the return value and call
+** finalize_thread_engine if it is true).
 */
-void	init_thread(MR_when_to_use);
+MR_Bool	init_thread(MR_when_to_use);
+/*
+** Finalize the thread engine running in the current POSIX thread.
+** This will release the resources used by this thread -- this is very
+** important because the memory used for the det stack for each thread
+** can be re-used by the next init_thread.
+*/
+void    finalize_thread_engine(void);
 
 #endif

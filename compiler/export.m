@@ -118,11 +118,14 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%			/* Word for input, Word* for output */
 	% {
 	% #if NUM_REAL_REGS > 0
-	%	Word c_regs[NUM_REAL_REGS];
+	%	MR_Word c_regs[NUM_REAL_REGS];
 	% #endif
 	% #if FUNCTION
-	%	Word retval;
+	%	MR_Word retval;
 	% #endif
+	% #if MR_THREAD_SAFE
+	% 	MR_Bool must_finalize_engine;
+	% #endif 
 	%
 	%		/* save the registers that our C caller may be using */
 	%	save_regs_to_mem(c_regs);
@@ -134,7 +137,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		*/
 	%
 	% #if MR_THREAD_SAFE
-	% 	init_thread(MR_use_now);
+	% 	must_finalize_engine = init_thread(MR_use_now);
 	% #endif 
 	%
 	%		/* 
@@ -166,6 +169,11 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%	<copy return value register into retval>
 	% #endif
 	%	<copy output args from registers into *Mercury__Arguments>
+	% #if MR_THREAD_SAFE
+	% 	if (must_finalize_engine) {
+	% 		finalize_thread_engine();
+	% 	}
+	% #endif 
 	%	restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return TRUE;
@@ -207,11 +215,14 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"#if NUM_REAL_REGS > 0\n",
 				"\tMR_Word c_regs[NUM_REAL_REGS];\n",
 				"#endif\n",
+				"#if MR_THREAD_SAFE\n",
+				"\tMR_Bool must_finalize_engine;\n", 
+				"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
 				"\tsave_regs_to_mem(c_regs);\n", 
 				"#if MR_THREAD_SAFE\n",
-				"\tinit_thread(MR_use_now);\n", 
+				"\tmust_finalize_engine = init_thread(MR_use_now);\n", 
 				"#endif\n",
 				"\trestore_registers();\n", 
 				InputArgs,
@@ -221,6 +232,11 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
+				"#if MR_THREAD_SAFE\n",
+				"\tif (must_finalize_engine) {\n", 
+				"\t\t finalize_thread_engine();\n", 
+				"\t}\n", 
+				"#endif\n",
 				"\trestore_regs_from_mem(c_regs);\n", 
 				MaybeSucceed,
 				"}\n\n"],
