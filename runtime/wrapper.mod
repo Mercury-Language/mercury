@@ -497,7 +497,7 @@ global_success:
 	}
 #endif
 
-	goto all_done;
+	GOTO_LABEL(all_done);
 
 global_fail:
 #ifndef	SPEED
