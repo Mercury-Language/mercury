@@ -829,16 +829,28 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 		DeclaredDetism, InferredDetism) -->
 	{ module_info_preds(ModuleInfo, PredTable) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ predicate_arity(ModuleInfo, PredId, Arity) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ map__lookup(ProcTable, ModeId, ProcInfo) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 
 	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
 		 io__set_exit_status(1)
 	;
 		[]
+	),
+
+	% We need to strip off the extra type_info arguments inserted at the
+	% front by polymorphism.m - we only want the last `PredArity' of them.
+	%
+	{ list__length(ArgModes0, NumArgModes) },
+	{ NumToDrop is NumArgModes - Arity },
+	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
+		{ ArgModes = ArgModes1 }
+	;	
+		{ error("report_determinism_problem: list__drop failed") }
 	),
 
 	prog_out__write_context(Context),
