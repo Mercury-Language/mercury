@@ -407,7 +407,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 
 :- pragma foreign_proc("Java",
 	type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
-	[may_call_mercury, thread_safe, promise_pure],
+	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
 	java.lang.Object [] result =
 			mercury.rtti_implementation.type_ctor_and_args_3_p_0(
