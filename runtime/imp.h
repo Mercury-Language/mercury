@@ -376,7 +376,7 @@ extern	Word	*nondstackmin;
 #define	heap_overflow_check()					\
 			(					\
 				IF (hp >= &heap[MAXHEAP],(	\
-					printf("heap overflow\n"),	\
+					fprintf(stderr, "heap overflow\n"), \
 					exit(1)			\
 				)),				\
 				IF (hp > heapmax,(		\
@@ -388,7 +388,7 @@ extern	Word	*nondstackmin;
 #define	detstack_overflow_check()				\
 			(					\
 				IF (sp >= &detstack[MAXDETSTACK],(	\
-					printf("stack overflow\n"),	\
+					fprintf(stderr, "stack overflow\n"), \
 					exit(1)			\
 				)),				\
 				IF (sp > detstackmax,(		\
@@ -400,7 +400,7 @@ extern	Word	*nondstackmin;
 #define	detstack_underflow_check()				\
 			(					\
 				IF (sp < detstackmin,(		\
-					printf("stack underflow\n"),	\
+					fprintf(stderr, "stack underflow\n"), \
 					exit(1)			\
 				)),				\
 				(void)0				\
@@ -409,7 +409,8 @@ extern	Word	*nondstackmin;
 #define	nondstack_overflow_check()				\
 			(					\
 				IF (maxfr >= &nondstack[MAXNONDSTACK],(	\
-					printf("nondstack overflow\n"),	\
+					fprintf(stderr, 	\
+						"nondstack overflow\n"), \
 					exit(1)			\
 				)),				\
 				IF (maxfr > nondstackmax,(	\
@@ -421,7 +422,8 @@ extern	Word	*nondstackmin;
 #define	nondstack_underflow_check()				\
 			(					\
 				IF (maxfr < nondstackmin,(	\
-					printf("nondstack underflow\n"),	\
+					fprintf(stderr,		\
+						"nondstack underflow\n"), \
 					exit(1)			\
 				)),				\
 				(void)0				\
@@ -522,6 +524,11 @@ extern	Word	*nondstackmin;
 	IF (progdebug, (printf(msg, arg1, arg2, arg3)))
 
 #endif
+
+/* STRING HANDLING */
+
+#define string_const(string, len) ((Word)string)
+#define string_eq(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 
