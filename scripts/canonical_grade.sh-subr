@@ -35,15 +35,34 @@ case $asm_labels in
 	false)		;;
 esac
 
-case $highlevel_code,$highlevel_data,$GRADE in
-	true,true,none)		
-		GRADE="hl" ;;
-	true,false,none)	
-		GRADE="hlc" ;;
-	false,false,*)
+case $highlevel_code,$highlevel_data,$GRADE,$target in
+	true,true,none,*)		
+		case $target in
+			c|asm)	GRADE="hl" ;;
+			il)	GRADE="il" ;;
+			java)	GRADE="java" ;;
+			*)
+				progname=`basename $0`
+				echo "$progname: unknown target: $target"
+				exit 1
+				;;
+		esac
+		;;
+	true,false,none,*)	
+		case $target in
+			c|asm)	GRADE="hlc" ;;
+			il)	GRADE="ilc" ;;
+			*)
+				progname=`basename $0`
+				echo "$progname: unsupported target: $target"
+				exit 1
+				;;
+		esac
+		;;
+	false,false,*,*)
 		# GRADE was set above
 		;;
-	false,true,*)
+	false,true,*,*)
 		progname=`basename $0`
 		echo "$progname: error: \`--high-level-data' requires \`--high-level-code'" 1>&2
 		exit 1
