@@ -56,15 +56,15 @@ SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
 dep: dep_library dep_browser dep_compiler dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
-dep_library: library/$(deps_subdir)library.dep
+dep_library: library/$(deps_subdir)mer_std.dep
 
-library/$(deps_subdir)library.dep:
+library/$(deps_subdir)mer_std.dep:
 	+cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_browser
-dep_browser: browser/$(deps_subdir)mdb.dep
+dep_browser: browser/$(deps_subdir)mer_browser.dep
 
-browser/$(deps_subdir)mdb.dep:
+browser/$(deps_subdir)mer_browser.dep:
 	+cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
