@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2001 The University of Melbourne.
+# Copyright (C) 1998-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -7,40 +7,6 @@
 # Mmake - Mmake file for the bytecode interpreter
 
 MAIN_TARGET=all
-
-MERCURY_DIR=..
-include $(MERCURY_DIR)/Mmake.common
--include ../Mmake.params
-
-#-----------------------------------------------------------------------------#
-# NOTE: any library functions that called from bytecode must be compiled
-# with trace information. (So their entry labels can be looked up)
-#-----------------------------------------------------------------------------#
-
-MERCURY_SYSTEM	= \
-		$(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h \
-		$(RUNTIME_DIR)/machdeps/*.c $(RUNTIME_DIR)/machdeps/*.h\
-		$(LIBRARY_DIR)/*.m \
-		$(TRACE_DIR)/*.h $(TRACE_DIR)/*.c \
-		$(BROWSER_DIR)/*.h $(BROWSER_DIR)/*.c \
-		$(BOEHM_GC_DIR)/*.h $(BOEHM_GC_DIR)/include/*.h
-
-MERCURY_INC	= \
-		-I$(LIBRARY_DIR) \
-		 -I$(RUNTIME_DIR) \
-		 -I$(BOEHM_GC_DIR) \
-		 -I$(BOEHM_GC_DIR)/include \
-		 -I$(TRACE_DIR)
-	
-#-----------------------------------------------------------------------------#
-
-CFLAGS		= $(MERCURY_INC) -DMR_BYTECODE_CALLABLE -g
-
-MGNUCFLAGS-mb_disasm = --no-ansi
-
-MCFLAGS		= --trace shallow --generate-bytecode -O 0
-
-MLFLAGS		= --trace
 
 #-----------------------------------------------------------------------------#
 # keep these lists in alphabetical order, please
@@ -83,6 +49,48 @@ MB_OBJS		= $(MB_MFILES:%.m=%.o) $(MB_CFILES:%.c=%.o)
 
 $(MB_OBJS): $(MB_HDRS)
 
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  = $(MB_HDRS)
+CHECK_MHDRS =
+CHECK_OBJS  = $(MB_OBJS)
+ALLOW_LIB_PREFIX=no
+ALLOW_BROWSER_PREFIX=no
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+-include ../Mmake.params
+
+#-----------------------------------------------------------------------------#
+# NOTE: any library functions that called from bytecode must be compiled
+# with trace information. (So their entry labels can be looked up)
+#-----------------------------------------------------------------------------#
+
+MERCURY_SYSTEM	= \
+		$(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h \
+		$(RUNTIME_DIR)/machdeps/*.c $(RUNTIME_DIR)/machdeps/*.h\
+		$(LIBRARY_DIR)/*.m \
+		$(TRACE_DIR)/*.h $(TRACE_DIR)/*.c \
+		$(BROWSER_DIR)/*.h $(BROWSER_DIR)/*.c \
+		$(BOEHM_GC_DIR)/*.h $(BOEHM_GC_DIR)/include/*.h
+
+MERCURY_INC	= \
+		-I$(LIBRARY_DIR) \
+		 -I$(RUNTIME_DIR) \
+		 -I$(BOEHM_GC_DIR) \
+		 -I$(BOEHM_GC_DIR)/include \
+		 -I$(TRACE_DIR)
+	
+#-----------------------------------------------------------------------------#
+
+CFLAGS		= $(MERCURY_INC) -DMR_BYTECODE_CALLABLE -g
+
+MGNUCFLAGS-mb_disasm = --no-ansi
+
+MCFLAGS		= --trace shallow --generate-bytecode -O 0
+
+MLFLAGS		= --trace
 
 #-----------------------------------------------------------------------------#
 # The actual program (as distinct from bytecode interpreter)

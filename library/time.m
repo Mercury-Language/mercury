@@ -167,7 +167,7 @@
 		#include <sys/times.h>
 	#endif
 
-	#define update_io(r_src, r_dest)	((r_dest) = (r_src))
+	#define MR_update_io(r_src, r_dest)	((r_dest) = (r_src))
 
 	#include ""mercury_string.h"" /* for MR_make_aligned_string_copy() */
 ").
@@ -192,7 +192,7 @@ time__clock(Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	Ret = (MR_Integer) clock();
-	update_io(IO0, IO);
+	MR_update_io(IO0, IO);
 }").
 time__c_clock(_) -->
 	% This version is only used for back-ends for which there is no
@@ -253,7 +253,7 @@ time__times(Tms, Result, IO0, IO) :-
 #else
 	Ret = -1;
 #endif
-	update_io(IO0, IO);
+	MR_update_io(IO0, IO);
 }").
 time__c_times(_, _, _, _, _) -->
 	% This version is only used for back-ends for which there is no
@@ -282,7 +282,7 @@ time__time(Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	Ret = (MR_Integer) time(NULL);
-	update_io(IO0, IO);
+	MR_update_io(IO0, IO);
 }").
 time__c_time(_) -->
 	% This version is only used for back-ends for which there is no

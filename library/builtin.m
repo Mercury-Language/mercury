@@ -790,7 +790,7 @@ mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info,
 }
 
 /* forward decl, to suppress gcc -Wmissing-decl warning */
-void sys_init_copy_module(void);
+void mercury_sys_init_copy_module(void);
 
 #else /* ! MR_HIGHLEVEL_CODE */
 
@@ -885,20 +885,20 @@ MR_END_MODULE
 /* Ensure that the initialization code for the above module gets run. */
 
 /*
-INIT sys_init_copy_module
+INIT mercury_sys_init_copy_module
 */
 
 /* suppress gcc -Wmissing-decl warnings */
-void sys_init_copy_module_init(void);
-void sys_init_copy_module_init_type_tables(void);
+void mercury_sys_init_copy_module_init(void);
+void mercury_sys_init_copy_module_init_type_tables(void);
 #ifdef MR_DEEP_PROFILING
-void sys_init_copy_module_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp);
 #endif
 
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc copy_module;
 
 void
-sys_init_copy_module_init(void)
+mercury_sys_init_copy_module_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
 	copy_module();
@@ -906,13 +906,13 @@ sys_init_copy_module_init(void)
 }
 
 void
-sys_init_copy_module_init_type_tables(void)
+mercury_sys_init_copy_module_init_type_tables(void)
 {
 }
 
 #ifdef	MR_DEEP_PROFILING
 void
-sys_init_copy_module_write_out_proc_statics(FILE *fp)
+mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp)
 {
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
 		&mercury_data__proc_static__mercury__copy_2_0);

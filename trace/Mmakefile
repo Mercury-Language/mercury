@@ -7,29 +7,6 @@
 # Mmakefile for the Mercury trace library, which contains the runtime
 # system components that are needed only if some procedures are traced.
 
-MAIN_TARGET=trace
-
-MERCURY_DIR=..
-LINK_STDLIB_ONLY=yes
-include $(MERCURY_DIR)/Mmake.common
--include Mmake.trace.params
-
-# Avoid trying to make this file with `mmc --make' if it doesn't exist.
-Mmake.trace.params: ;
-
-#-----------------------------------------------------------------------------#
-
-CFLAGS		+= -I$(BROWSER_DIR) -g $(DLL_CFLAGS) \
-			-DMR_NO_BACKWARDS_COMPAT -DMERCURY_CONF_BOOTSTRAP_H
-MGNUCFLAGS	+= --no-ansi
-
-#-----------------------------------------------------------------------------#
-
-# mercury_readline.c #includes the GNU readline headers, which
-# lack prototypes and `const', so we need to disable warnings
-# when compiling that file.
-MGNUCFLAGS-mercury_trace_readline = --no-check
-
 #-----------------------------------------------------------------------------#
 
 # keep this list in alphabetical order, please
@@ -77,11 +54,6 @@ RUNTIME_HDRS	=	\
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
-HDR_CHECK_CS	= $(HDRS:.h=.check_hdr.c)
-HDR_CHECK_OBJS	= $(HDRS:.h=.check_hdr.$O)
-HDR_CHECK_MACROS = $(HDRS:.h=.check.macros)
-OBJ_CHECKS	= $(OBJS:%=%.obj_check)
-
 LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
 			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -L/usr/local/lib
 LDLIBS		= -l$(BROWSER_LIB_NAME) $(MLLIBS) $(SOCKET_LIBRARY) \
@@ -91,6 +63,37 @@ THREADLIBS	= \
 		    *.par*) echo "-lpthread" ;;				\
 		  esac							\
 		`
+MAIN_TARGET=trace
+
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  = $(HDRS)
+CHECK_MHDRS =
+CHECK_OBJS  = $(OBJS)
+ALLOW_LIB_PREFIX=no
+ALLOW_BROWSER_PREFIX=no
+
+MERCURY_DIR=..
+LINK_STDLIB_ONLY=yes
+include $(MERCURY_DIR)/Mmake.common
+-include Mmake.trace.params
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+Mmake.trace.params: ;
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS		+= -I$(BROWSER_DIR) -g $(DLL_CFLAGS) \
+			-DMR_NO_BACKWARDS_COMPAT -DMERCURY_CONF_BOOTSTRAP_H
+MGNUCFLAGS	+= --no-ansi
+
+#-----------------------------------------------------------------------------#
+
+# mercury_readline.c #includes the GNU readline headers, which
+# lack prototypes and `const', so we need to disable warnings
+# when compiling that file.
+MGNUCFLAGS-mercury_trace_readline = --no-check
 
 #-----------------------------------------------------------------------------#
 
@@ -148,33 +151,6 @@ tags: $(CFILES) $(HDRS)
 	ctags $(CFILES) $(HDRS) $(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h
 
 #-----------------------------------------------------------------------------#
-#
-# `mmake check_namespace' performs various checks on the header files
-# and object files to make sure that they conform with our coding standards.
-#
-
-# This should match the definition of HEADER_CLEAN_FILTER in
-# runtime/Mmakefile.  See the documentation there.
-HEADER_CLEAN_FILTER = \
-	grep -v -e '^MR_' -e '^MERCURY_' -e '^MPS_' -e '^mps_' -e '^GC_' | \
-	fgrep -v -x -f $(RUNTIME_DIR)/RESERVED_MACRO_NAMES
-
-.PHONY: check_headers_self_contained
-check_headers_self_contained: $(HDR_CHECK_OBJS)
-
-.PHONY: check_headers_macros
-check_headers_macros: $(HDR_CHECK_MACROS)
-
-.PHONY: check_headers
-check_headers: check_headers_self_contained check_headers_macros
-
-.PHONY: check_objs
-check_objs: $(OBJ_CHECKS)
-
-.PHONY: check_namespace
-check_namespace: check_headers check_objs
-
-#-----------------------------------------------------------------------------#
 
 # installation rules
 
@@ -213,11 +189,6 @@ clean_local: clean_o clean_check
 .PHONY: clean_o
 clean_o:
 	rm -f $(OBJS) $(PIC_OBJS)
-
-.PHONY: clean_check
-clean_check:
-	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
-	rm -f $(OBJ_CHECKS)
 
 .PHONY: realclean_local
 realclean_local:

@@ -219,6 +219,74 @@ include $(MERCURY_DIR)/Mercury.options
 $(MERCURY_DIR)/Mmake.params: ;
 
 #-----------------------------------------------------------------------------#
+#
+# `mmake check_namespace' performs various checks on the header files
+# and object files to make sure that they conform with our coding standards.
+#
+
+ifdef CHECK_OBJS
+
+HDR_CHECK_CS	  = $(CHECK_HDRS:.h=.check_hdr.c)
+HDR_CHECK_OBJS    = $(CHECK_HDRS:.h=.check_hdr.$O)
+HDR_CHECK_MACROS  = $(CHECK_HDRS:.h=.check.macros)
+MHDR_CHECK_CS	  = $(CHECK_MHDRS:.mh=.check_mhdr.c)
+MHDR_CHECK_OBJS   = $(CHECK_MHDRS:.mh=.check_mhdr.$O)
+MHDR_CHECK_MACROS = $(CHECK_MHDRS:.mh=.check.mmacros)
+OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
+
+# Macro names must normally start with one of the prefixes associated
+# with the different components of our system:
+# 	`MR_' or `MERCURY_' for stuff in the Mercury runtime implementation
+# 		(the `runtime' and `trace' directories)
+# 	`ML_' for stuff in the Mercury standard library
+# 		(the `library' directory)
+# 	`MDB_' for stuff in the browser
+# 		(the `browser' directory)
+# 	`GC_' for stuff in the Boehm et al conservative garbage collector
+# 		(the `boehm_gc' directory)
+# 	`MPS_' or `mps_' for stuff in the Memory Pool System toolkit
+# 		(the `mps_gc' directory, if present -- note that this
+# 		is in a separate CVS module and is not included in the
+# 		normal Mercury source distributions)
+# Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file
+# in the relevant directory.
+
+GEN_MACRO_PREFIX_EXPRS = \
+	-e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_'
+GEN_OBJ_PREFIX_EXPRS = \
+	-e '^MR_' -e '^_entry' -e '^mercury_'
+
+ifeq ("$(ALLOW_LIB_PREFIX)","yes")
+LIB_MACRO_PREFIX_EXPRS = \
+	-e '^ML_'
+LIB_OBJ_PREFIX_EXPRS = \
+	-e '^ML_'
+else
+LIB_MACRO_PREFIX_EXPRS =
+LIB_OBJ_PREFIX_EXPRS =
+endif
+
+ifeq ("$(ALLOW_BROWSER_PREFIX)","yes")
+BROWSER_MACRO_PREFIX_EXPRS = \
+	-e '^MDB_'
+BROWSER_OBJ_PREFIX_EXPRS = \
+	-e '^MDB_' -e '^mdb_'
+else
+BROWSER_MACRO_PREFIX_EXPRS =
+BROWSER_OBJ_PREFIX_EXPRS =
+endif
+
+MACRO_PREFIX_EXPRS = \
+	$(GEN_MACRO_PREFIX_EXPRS) \
+	$(LIB_MACRO_PREFIX_EXPRS) \
+	$(BROWSER_MACRO_PREFIX_EXPRS)
+OBJ_PREFIX_EXPRS   = \
+	$(GEN_OBJ_PREFIX_EXPRS) \
+	$(LIB_OBJ_PREFIX_EXPRS) \
+	$(BROWSER_OBJ_PREFIX_EXPRS)
+
+HEADER_CLEAN_FILTER = \
+	grep -v $(MACRO_PREFIX_EXPRS) | fgrep -v -x -f RESERVED_MACRO_NAMES
 
 # This rule checks that object files are properly namespace-clean, with
 # regard to the global symbols that they define.
@@ -228,39 +296,48 @@ $(MERCURY_DIR)/Mmake.params: ;
 
 %.obj_check: %
 	nm -g $< | awk '$$1 != "U" { print $$3; }' | \
-		grep -v -e '^_entry' -e '^MR_' -e '^mercury_' | \
-		sort -u > $@
+		grep -v $(OBJ_PREFIX_EXPRS) | sort -u > $@
 	@if cmp -s /dev/null $@; then \
 		true; \
 	else \
 		echo "** Global symbols in user namespace:"; \
 		cat $@; \
-		echo "(You may need to add MR_ prefixes to these names.)"; \
+		echo "(You may need to add a distinguishing prefix to these names.)"; \
 		exit 1; \
 	fi
 
-# This rule helps to check that header files is self-contained, i.e. that each
+# These rules help to check that header files is self-contained, i.e. that each
 # header file foo.h includes any other header files that define types
 # used by foo.h. It creates a foo.check_hdr.c file that contains only a single
 # `#include' statement that includes foo.h; compiling foo.check_hdr.c will fail
-# if foo.h is not self-contained.
+# if foo.h is not self-contained. Similarly for .mh files.
 
 %.check_hdr.c : %.h
 	echo "#include \"$*.h\"" > $*.check_hdr.c
 
-# This rule checks whether a header file defines any macros it shouldn't.
-# It generates the list of macros defined in the header file, and filters this
+%.check_mhdr.c : %.mh
+	echo "#include \"$*.mh\"" > $*.check_mhdr.c
+
+# These rules check whether a header file defines any macros it shouldn't.
+# They generates the list of macros defined in the header file, and filter this
 # list through a command that is intended to filter out all references to macro
-# names that are all right. Each directory that uses this rule must set
-# the HEADER_CLEAN_FILTER make variable to contain this command.
+# names that are all right. Each directory that uses this rule must set arrange
+# for the precursors of the HEADER_CLEAN_FILTER make variable to contain this
+# command.
+#
+# The two rules should differ only in the filenames they use and in the fact
+# that the automatically created header file for module x is allowed to have
+# two macros, X_H and X_DECL_GUARD over and above what HEADER_CLEAN_FILTER
+# allows.
 
 AWK = awk
+
 %.check.macros: %.h %.check_hdr.c
 	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
 		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
 		-E $*.check_hdr.c \
 		-nostdinc -dN \
-		2> /dev/null | $(AWK) '/^#define/ { print $$2; }' | \
+		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
 		$(HEADER_CLEAN_FILTER) | sort -u > $@
 	@if cmp -s /dev/null $@; then \
 		true; \
@@ -270,5 +347,49 @@ AWK = awk
 		echo "(You may need to add a distinguishing prefix to these names.)"; \
 		exit 1; \
 	fi
+
+%.check.mmacros: %.mh %.check_mhdr.c
+	-$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		-DMERCURY_BOOTSTRAP_H -DMR_NO_CONF_BACKWARDS_COMPAT \
+		-E $*.check_mhdr.c \
+		-nostdinc -dN \
+		2> /dev/null | $(AWK) '/[ \t]*#define/ { print $$2; }' | \
+		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_H | \
+		grep -v -e `echo $(subst .check.mmacros,,$@) | tr '[a-z]' '[A-Z]'`_DECL_GUARD | \
+		$(HEADER_CLEAN_FILTER) | sort -u > $@
+	@if cmp -s /dev/null $@; then \
+		true; \
+	else \
+		echo "** Macro name(s) in user namespace:"; \
+		cat $@; \
+		echo "(You may need to add a distinguishing prefix to these names.)"; \
+		exit 1; \
+	fi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check_headers_self_contained
+check_headers_self_contained: $(HDR_CHECK_OBJS) $(MHDR_CHECK_OBJS)
+
+.PHONY: check_headers_macros
+check_headers_macros: $(HDR_CHECK_MACROS) $(MHDR_CHECK_MACROS)
+
+.PHONY: check_headers
+check_headers: check_headers_self_contained check_headers_macros
+
+.PHONY: check_objs
+check_objs: $(OBJ_CHECKS)
+
+.PHONY: check_namespace
+check_namespace: check_headers check_objs
+
+.PHONY: clean_check
+clean_check:
+	-rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
+	-rm -f $(MHDR_CHECK_OBJS) $(MHDR_CHECK_CS) $(MHDR_CHECK_MACROS)
+	-rm -f $(OBJ_CHECKS)
+
+endif
+# ifdef CHECK_OBJS
 
 #-----------------------------------------------------------------------------#

@@ -4,25 +4,6 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake - Mmake file for the Mercury runtime library
-
-MAIN_TARGET=runtime
-
-MERCURY_DIR=..
-LINK_BOEHM_GC_ONLY=yes
-include $(MERCURY_DIR)/Mmake.common
--include Mmake.runtime.params
-
-# Avoid trying to make this file with `mmc --make' if it doesn't exist.
-Mmake.runtime.params: ;
-
-#-----------------------------------------------------------------------------#
-
-CFLAGS	+= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
-MGNUCFLAGS	+= --no-ansi
-
-#-----------------------------------------------------------------------------#
-
 # All the headers in $(HDRS) should be syntactically well-formed
 # header files, unlike the headers in $(BODY_HDRS).
 # All the headers in $(HDRS) must also be in C (not C++).
@@ -187,6 +168,36 @@ CFILES		= 	\
 			mercury_type_tables.c	\
 			mercury_wrapper.c
 
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury runtime library
+
+MAIN_TARGET=runtime
+
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  = $(HDRS)
+CHECK_MHDRS =
+CHECK_OBJS  = $(CFILES:.c=.$O)
+ALLOW_LIB_PREFIX=no
+ALLOW_BROWSER_PREFIX=no
+
+MERCURY_DIR=..
+LINK_BOEHM_GC_ONLY=yes
+include $(MERCURY_DIR)/Mmake.common
+-include Mmake.runtime.params
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+Mmake.runtime.params: ;
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS	+= -g $(DLL_CFLAGS) -DMERCURY_BOOTSTRAP_H -DMERCURY_CONF_BOOTSTRAP_H
+MGNUCFLAGS	+= --no-ansi
+
+#-----------------------------------------------------------------------------#
+
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
@@ -198,11 +209,6 @@ THREADLIBS	= \
 		    *.par*|*.mps*) echo "-lpthread" ;;			\
 		  esac							\
 		`
-
-HDR_CHECK_CS = $(HDRS:.h=.check_hdr.c)
-HDR_CHECK_OBJS = $(HDRS:.h=.check_hdr.$O)
-HDR_CHECK_MACROS = $(HDRS:.h=.check.macros)
-OBJ_CHECKS = $(OBJS:%=%.obj_check)
 
 $(HDR_CHECK_OBJS):	mercury_conf.h
 
@@ -316,42 +322,6 @@ tags: $(CFILES) $(HDRS) $(BODY_HDRS)
 	ctags $(CFILES) $(HDRS) $(BODY_HDRS)
 
 #-----------------------------------------------------------------------------#
-#
-# `mmake check_namespace' performs various checks on the header files
-# and object files to make sure that they conform with our coding standards.
-#
-
-# Macro names must normally start with one of the prefixes associated
-# with the different components of our system:
-# 	`MR_' or `MERCURY_' for stuff in the Mercury runtime implementation
-# 		(the `runtime' and `trace' directories)
-# 	`GC_' for stuff in the Boehm et al conservative garbage collector
-# 		(the `boehm_gc' directory)
-# 	`MPS_' or `mps_' for stuff in the Memory Pool System toolkit
-# 		(the `mps_gc' directory, if present -- note that this
-# 		is in a separate CVS module and is not included in the
-# 		normal Mercury source distributions)
-# Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file.
-HEADER_CLEAN_FILTER = \
-	grep -v -e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_' | \
-	fgrep -v -x -f RESERVED_MACRO_NAMES
-
-.PHONY: check_headers_self_contained
-check_headers_self_contained: $(HDR_CHECK_OBJS)
-
-.PHONY: check_headers_macros
-check_headers_macros: $(HDR_CHECK_MACROS)
-
-.PHONY: check_headers
-check_headers: check_headers_self_contained check_headers_macros
-
-.PHONY: check_objs
-check_objs: $(OBJ_CHECKS)
-
-.PHONY: check_namespace
-check_namespace: check_headers check_objs
-
-#-----------------------------------------------------------------------------#
 
 # installation rules
 
@@ -412,11 +382,6 @@ clean_local: clean_o clean_check
 .PHONY: clean_o
 clean_o:
 	rm -f $(OBJS) $(PIC_OBJS)
-
-.PHONY: clean_check
-clean_check:
-	rm -f $(HDR_CHECK_OBJS) $(HDR_CHECK_CS) $(HDR_CHECK_MACROS)
-	rm -f $(OBJ_CHECKS)
 
 .PHONY: realclean_local
 realclean_local:

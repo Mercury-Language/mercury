@@ -15,6 +15,15 @@
 # in an executable must be of the same grade, we need to be able to
 # compile the modules in this directory in debug grades as well.
 
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  =
+CHECK_MHDRS = $(mer_browser.mhs)
+CHECK_OBJS  = $(mer_browser.os)
+ALLOW_LIB_PREFIX=yes
+ALLOW_BROWSER_PREFIX=yes
+
 MERCURY_DIR=..
 LINK_STDLIB_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common

@@ -13,7 +13,16 @@
 EXTRA_LDFLAGS =
 EXTRA_LDLIBS =
 #-----------------------------------------------------------------------------#
- 
+
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  =
+CHECK_MHDRS = $(mer_std.mhs)
+CHECK_OBJS  = $(mer_std.os)
+ALLOW_LIB_PREFIX=yes
+ALLOW_BROWSER_PREFIX=no
+
 MERCURY_DIR=..
 LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common

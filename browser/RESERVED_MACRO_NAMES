@@ -37,8 +37,3 @@ _GC_H
 # but that would be inconsistent with the coding style used in mps_gc/code.
 mercury_mps_h
 #-----------------------------------------------------------------------------#
-# This is defined by mercury_getopt.h
-# That header file is NOT #included by any of the other
-# headers, so this doesn't cause any name space polution.
-__GNU_LIBRARY__
-#-----------------------------------------------------------------------------#

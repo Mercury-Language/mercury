@@ -555,18 +555,18 @@ MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_array_module_builtins
+INIT mercury_sys_init_array_module_builtins
 */
 
 /* suppress gcc -Wmissing-decl warning */
-void sys_init_array_module_builtins_init(void);
-void sys_init_array_module_builtins_init_type_tables(void);
+void mercury_sys_init_array_module_builtins_init(void);
+void mercury_sys_init_array_module_builtins_init_type_tables(void);
 #ifdef	MR_DEEP_PROFILING
-void sys_init_array_module_builtins_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp);
 #endif
 
 void
-sys_init_array_module_builtins_init(void)
+mercury_sys_init_array_module_builtins_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
 	array_module_builtins();
@@ -577,7 +577,7 @@ sys_init_array_module_builtins_init(void)
 }
 
 void
-sys_init_array_module_builtins_init_type_tables(void)
+mercury_sys_init_array_module_builtins_init_type_tables(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
 	MR_register_type_ctor_info(
@@ -587,7 +587,7 @@ sys_init_array_module_builtins_init_type_tables(void)
 
 #ifdef	MR_DEEP_PROFILING
 void
-sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
+mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 {
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
 		&MR_proc_static_compiler_name(array, __Unify__, array, 1, 0));

@@ -54,15 +54,14 @@ Options:
 		that is not compatible with the standard one.
 	-p, --copy-profiler
 		Copy the profiler directory instead of linking it.
-		This is sometimes necessary for bootstrapping
-		changes.
+		This is sometimes necessary for bootstrapping changes.
 	-b-, --no-bootcheck
 		Do not run the bootstrap check; execute the test suite and/or
 		the extras only. This option requires a previous bootstrap
 		check to have left a working stage 2 directory.
 	--no-check-namespace
-		Don't build the check_namespace targets in the runtime
-		and trace directories.
+		Don't build the check_namespace targets in the runtime,
+		trace, browser and library directories.
 	-t-, --no-test-suite
 		By default, bootcheck will also run the test quite.
 		This option prevents that.
@@ -247,6 +246,7 @@ while [ $# -gt 0 ]; do
 		runtests=false ;;
 
 	--skip-stage-2)
+		keep_stage_2=true
 		mmake_stage_2=false ;;
 
 	-2|--keep-stage-2)
@@ -661,20 +661,75 @@ then
 		fi
 	fi
 
+	# Build the check_namespace target in the relevant directories.
+	# We want to do so before we delete any of the stage2 object files.
+
+	check_namespace_status=0
+	if $check_namespace
+	then
+		cd $root/stage2/runtime
+		mmake $mmake_opts check_namespace || {
+			echo '** mmake check_namespace failed in runtime!'
+			check_namespace_status=1
+		}
+		cd $root/stage2/trace
+		mmake $mmake_opts check_namespace || {
+			echo '** mmake check_namespace failed in trace!'
+			check_namespace_status=1
+		}
+		cd $root/stage2/library
+		mmake $mmake_opts check_namespace || {
+			echo '** mmake check_namespace failed in library!'
+			check_namespace_status=1
+		}
+		cd $root/stage2/browser
+		mmake $mmake_opts check_namespace || {
+			echo '** mmake check_namespace failed in browser!'
+			check_namespace_status=1
+		}
+		cd $root
+	fi
+
 	if $stop_after_stage_2
 	then
 		echo "stopping after building stage 2"
 		exit 0
 	fi
 
-	# We can remove the library object files now,
-	# but we will keep the compiler objects for a while longer
+	# We can now remove the object files from most stage2 directories,
+	# but we will keep the compiler objects for a while longer.
 	if $keep_objs
 	then
 		true
 	else
-		find $root/stage2/library -name "*.o" -print |
-		xargs /bin/rm -f
+		libdirs="library browser"
+		if $copy_profiler
+		then
+			profdirs="profiler deep_profiler"
+		else
+			profdirs=
+		fi
+		if $copy_runtime
+		then
+			rundirs="runtime trace"
+		else
+			rundirs=
+		fi
+
+		objdirs="$libdirs $profdirs $rundirs"
+		for rmdir in $objdirs
+		do
+			cd $root/stage2/$rmdir
+			/bin/rm -f *.o *.pic_o
+		done
+
+		for cleandir in runtime trace library browser
+		do
+			cd $root/stage2/$cleandir
+			mmake clean_check
+		done
+
+		cd $root
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
@@ -935,26 +990,6 @@ then
 	# Set PATH for mkinit, mmc, mgnuc, ml etc
 	PATH=$root/${stage2_insert}util:$root/${stage2_insert}scripts:$PATH
 	export PATH
-fi
-
-#-----------------------------------------------------------------------------#
-
-# build the check_namespace target in the runtime directory
-
-check_namespace_status=0
-if $check_namespace
-then
-	cd $root/${stage2_insert}runtime
-	mmake $mmake_opts check_namespace || {
-		echo '** mmake check_namespace failed!'
-		check_namespace_status=1
-	}
-	cd $root/${stage2_insert}trace
-	mmake $mmake_opts check_namespace || {
-		echo '** mmake check_namespace failed!'
-		check_namespace_status=1
-	}
-	cd $root
 fi
 
 #-----------------------------------------------------------------------------#
