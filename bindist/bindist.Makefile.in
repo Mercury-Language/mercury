@@ -50,16 +50,24 @@ install: install_lib install_info install_scripts install_mmake \
 install_lib:
 	echo "Installing lib in $(INSTALL_LIBDIR)..."
 	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
-	LIB_TAR_FILE=`pwd`/lib.tar.gz; cd $(INSTALL_LIBDIR); \
-		zcat $$LIB_TAR_FILE | tar -xf - $(LIB_PARTS)
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	gzip --decompress lib.tar.gz
+	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
+		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
+	gzip lib.tar # tidy up
 	echo "Done."
 
 .PHONY: install_info
 install_info:
 	echo "Installing info documentation in $(INSTALL_INFODIR)..."
 	test -d $(INSTALL_INFODIR) || mkdir -p $(INSTALL_INFODIR)
-	INFO_TAR_FILE=`pwd`/info.tar.gz; cd $(INSTALL_INFODIR)/..; \
-		zcat $$INFO_TAR_FILE | tar -xf -
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	gzip --decompress lib.tar.gz
+	INFO_TAR_FILE=`pwd`/info.tar &&  cd $(INSTALL_INFODIR)/.. && \
+		tar -xf $$INFO_TAR_FILE
+	gzip lib.tar # tidy up
 	echo "Done."
 
 .PHONY: install_scripts
