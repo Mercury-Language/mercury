@@ -2244,6 +2244,41 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 	
     base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
         base_type_info, data_tag);
+
+#ifdef MR_RESERVE_TAG
+    /*
+    ** Catch unbound Herbrand variables.
+    ** Should fix the test --- I have no idea of the real origin of
+    ** the RHS, so it may not work in all cases...
+    */
+
+    if (data_tag == TAG_VAR && base_type_layout_entry ==
+		    mkword(mktag(0), (Word *) mkbody((Integer) 1))) {
+	/*
+	** We assume this is a Herbrand variable.  First check whether
+	** it is really a variable by performing one dereference step
+	** and checking the tag.  If it's still tagged as a variable,
+	** return something printable; otherwise continue with the
+	** dereferenced data.
+	*/
+
+	data_word = *(Word *) data_value;
+	data_tag = tag(data_word);
+
+	if (data_tag == TAG_VAR) {
+	    info->functor = ""<unbound>"";
+	    info->argument_vector = NULL;
+	    info->type_info_vector = NULL;
+	    info->arity = 0;
+	    return;
+	}
+
+	data_value = body(data_word, data_tag);
+	base_type_layout_entry = MR_BASE_TYPEINFO_GET_TYPELAYOUT_ENTRY(
+	    base_type_info, data_tag);
+    }
+#endif
+
     base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(base_type_info);
     functors_indicator = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
 
