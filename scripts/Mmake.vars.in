@@ -22,8 +22,9 @@ MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
 EXTRA_C_LIB_DIRS	= \
 	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@,$(EXTRA_LIB_DIRS)) \
 	$(patsubst %,%/lib/@FULLARCH@,$(EXTRA_LIB_DIRS))
-EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS)) \
-	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@/inc,$(EXTRA_LIB_DIRS))
+EXTRA_C_INCL_DIRS	= \
+	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@/inc,$(EXTRA_LIB_DIRS)) \
+	$(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
 EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
 MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
 else
