@@ -153,6 +153,9 @@ case $use_subdirs in
 		;;
 esac
 
+MMAKE_USE_SUBDIRS=$use_subdirs
+export MMAKE_USE_SUBDIRS
+
 echo "starting at `date`"
 
 set -x
