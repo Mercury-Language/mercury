@@ -56,6 +56,8 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER="@CC@"}
 MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
+EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
+EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
 
 verbose=false
 case $FULLARCH in
@@ -189,8 +191,15 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
+LIBDIR_OPTS="
+	-L$LIBDIR/$GRADE/$FULLARCH
+	-L$LIBDIR/$FULLARCH
+"
 case $mercury_libs in
 	shared) LIBS=${MERCURY_LIBS="-lmercury -lmer $LIBGC -lm"}
+		RPATH_1="$EXE_RPATH_OPT$DEFAULT_LIBDIR/$GRADE/$FULLARCH"
+		RPATH_2="$EXE_RPATH_SEP$DEFAULT_LIBDIR/$FULLARCH"
+		LIBDIR_OPTS="$RPATH_1$RPATH_2 $LIBDIR_OPTS"
 		;;
 	static) LIBS=${MERCURY_LIBS="\
 			$LIBDIR/$GRADE/$FULLARCH/libmercury.a \
@@ -199,47 +208,22 @@ case $mercury_libs in
 			-lm"}
 		;;
 	none)	LIBS=""
+		LIBDIR_OPTS=""
 		;;
 esac
 
+# On Irix 5, grades `fast' and `jump' only work in non_shared mode.
 case $FULLARCH in
-	i?86-*-linux*)
-		LIBDIR_OPTS="
-		-Wl,-rpath,$DEFAULT_LIBDIR/$FULLARCH -L$LIBDIR/$FULLARCH
-		-Wl,-rpath,$DEFAULT_LIBDIR/$GRADE/$FULLARCH -L$LIBDIR/$GRADE/$FULLARCH
-		"
+    *-sgi-irix5*)
+	case "$GRADE" in
+	    *fast*|*jump*)
+		ARCH_OPTS=-non_shared
+		NONSHARED_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
+		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
+		export LIBRARY_PATH
 		;;
-	*-solaris*)
-		LIBDIR_OPTS="
-		-R$DEFAULT_LIBDIR/$FULLARCH -L$LIBDIR/$FULLARCH
-		-R$DEFAULT_LIBDIR/$GRADE/$FULLARCH -L$LIBDIR/$GRADE/$FULLARCH
-		"
-		;;
-	alpha-dec-osf*)
-		LIBDIR_OPTS="
-	-Wl,-rpath,$DEFAULT_LIBDIR/$FULLARCH:$DEFAULT_LIBDIR/$GRADE/$FULLARCH
-		-L$LIBDIR/$FULLARCH -L$LIBDIR/$GRADE/$FULLARCH
-		"
-		;;
-	*-sgi-irix5*)
-		LIBDIR_OPTS="
-	-Wl,-rpath,$DEFAULT_LIBDIR/$FULLARCH:$DEFAULT_LIBDIR/$GRADE/$FULLARCH
-		-L$LIBDIR/$FULLARCH -L$LIBDIR/$GRADE/$FULLARCH
-		"
-		case "$GRADE" in
-			*fast*|*jump*)
-				ARCH_OPTS=-non_shared
-LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
-				export LIBRARY_PATH
-				;;
-		esac
-		;;
-	*)
-		LIBDIR_OPTS="
-		-L$LIBDIR/$FULLARCH
-		-L$LIBDIR/$GRADE/$FULLARCH
-		"
-		;;
+	esac
+	;;
 esac
 
 case "$MKFIFO" in

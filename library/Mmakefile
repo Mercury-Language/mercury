@@ -137,14 +137,20 @@ libmercury.a : $(library.os)
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
 
+RPATH_1=$(SHLIB_RPATH_OPT)$(INSTALL_MERC_LIB_DIR)
+RPATH_2=$(SHLIB_RPATH_SEP)$(INSTALL_MERC_GC_LIB_DIR)
+
 libmercury.so : $(library.pic_os)
-	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
-		-L$(RUNTIME_DIR) -lmer ` \
-		case "$(GRADE)" in \
-			*.gc.prof) echo "-L$(BOEHM_GC_DIR) -lgc_prof" ;; \
-			*.gc) echo "-L$(BOEHM_GC_DIR) -lgc" ;; \
-		esac \
-		` $(SHARED_LIBS)
+	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)		\
+		$(RPATH_1)$(RPATH_2)					\
+		-L$(RUNTIME_DIR) -lmer 					\
+		-L$(BOEHM_GC_DIR)					\
+		` case "$(GRADE)" in					\
+			*.gc.prof) echo "-lgc_prof" ;;			\
+			*.gc) echo "-lgc" ;;				\
+		  esac							\
+		`							\
+		$(SHARED_LIBS)
 
 library.init: library.dep
 	for file in $(library.ms); do \

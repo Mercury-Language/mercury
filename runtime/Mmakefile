@@ -63,12 +63,15 @@ libmer.a: $(OBJS)
 	$(RANLIB) libmer.a
 
 libmer.so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) `\
-		case "$(GRADE)" in \
-			*.gc.prof) echo "-L$(BOEHM_GC_DIR) -lgc_prof" ;; \
-			*.gc) echo "-L$(BOEHM_GC_DIR) -lgc" ;; \
-		esac \
-		` $(SHARED_LIBS)
+	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
+		$(SHLIB_RPATH_OPT)$(INSTALL_MERC_GC_LIB_DIR) 		\
+		-L$(BOEHM_GC_DIR)					\
+		` case "$(GRADE)" in 					\
+		    *.gc.prof)	echo "-lgc_prof" ;;			\
+		    *.gc)	echo "-lgc" ;;				\
+		  esac							\
+		`							\
+		$(SHARED_LIBS)
 
 runtime.init: $(MOD_CS)
 	cat `vpath_find $(MOD_CS)` | grep '^INIT ' > runtime.init
