@@ -19,11 +19,11 @@
 
 :- import_module io, list.
 
-:- pred optimize_main(list(c_procedure)::in, global_data::in,
-	list(c_procedure)::out, io__state::di, io__state::uo) is det.
+:- pred optimize_main(global_data::in,
+	list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
-:- pred optimize__proc(c_procedure::in, global_data::in,
-	c_procedure::out, io__state::di, io__state::uo) is det.
+:- pred optimize__proc(global_data::in, c_procedure::in, c_procedure::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,12 +52,10 @@
 :- import_module bool, int, string.
 :- import_module map, set, std_util, require, counter.
 
-optimize_main([], _, []) --> [].
-optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
-	optimize__proc(Proc0, GlobalData, Proc),
-	optimize_main(Procs0, GlobalData, Procs).
+optimize_main(GlobalData, !Procs, !IO) :-
+	list__map_foldl(optimize__proc(GlobalData), !Procs, !IO).
 
-optimize__proc(CProc0, GlobalData, CProc) -->
+optimize__proc(GlobalData, CProc0, CProc) -->
 	{ CProc0 = c_procedure(Name, Arity, PredProcId, Instrs0,
 		ProcLabel, C0, MayAlterRtti) },
 	optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, C0,

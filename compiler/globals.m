@@ -314,7 +314,8 @@ globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
 		( convert_foreign_language(String, ForeignLang0) ->
 			ForeignLang = ForeignLang0
 		;
-			error("globals__io_get_backend_foreign_languages: invalid foreign_language string")
+			error("globals__io_get_backend_foreign_languages: " ++
+				"invalid foreign_language string")
 		), LangStrs).
 
 globals__set_options(Globals, Options, Globals ^ options := Options).

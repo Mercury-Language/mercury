@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,10 +53,8 @@
 
 :- import_module bool, io.
 
-:- pred check_typeclass__check_instance_decls(module_info, qual_info,
-	module_info, qual_info, bool, io__state, io__state).
-:- mode check_typeclass__check_instance_decls(in, in, out, out,
-	out, di, uo) is det.
+:- pred check_typeclass__check_instance_decls(qual_info::in, qual_info::out,
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 :- implementation.
 
@@ -84,23 +82,21 @@
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
 
-check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
-		ModuleInfo, QualInfo, FoundError, !IO) :-
-	module_info_classes(ModuleInfo0, ClassTable),
-	module_info_instances(ModuleInfo0, InstanceTable0),
+check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
+		!IO) :-
+	module_info_classes(!.ModuleInfo, ClassTable),
+	module_info_instances(!.ModuleInfo, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
 	list_map_foldl2(check_one_class(ClassTable), InstanceList0,
-		InstanceList, check_tc_info([], ModuleInfo0, QualInfo0),
-		check_tc_info(Errors, ModuleInfo1, QualInfo), !IO),
+		InstanceList, check_tc_info([], !.ModuleInfo, !.QualInfo),
+		check_tc_info(Errors, !:ModuleInfo, !:QualInfo), !IO),
 	(
 		Errors = []
 	->
 		map__from_assoc_list(InstanceList, InstanceTable),
-		module_info_set_instances(InstanceTable,
-			ModuleInfo1, ModuleInfo),
+		module_info_set_instances(InstanceTable, !ModuleInfo),
 		FoundError = no
 	;
-		ModuleInfo = ModuleInfo1,
 		list__reverse(Errors, ErrorList),
 		WriteError = (pred(E::in, IO0::di, IO::uo) is det :-
 			E = ErrorContext - ErrorPieces,

@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % error_util.m
 % Main author: zs.
-% 
+%
 % This module contains code that can be helpful in the formatting of
 % error messages.
 %
@@ -51,40 +51,44 @@
 				% white space may be rearranged and line
 				% breaks may be inserted.
 
-	;	nl		% Insert a line break if there has been text
+	;	nl.		% Insert a line break if there has been text
 				% output since the last line break.
-	.
-		
+
 	% Convert a list of strings into a list of format_components,
 	% suitable for displaying as an error message.
 :- pred error_util__list_to_pieces(list(string)::in,
-		list(format_component)::out) is det.
+	list(format_component)::out) is det.
 
 	% Convert a list of lists of format_components into a list of
 	% format_components separated by commas, with the last two
 	% elements separated by `and'.
 :- func error_util__component_lists_to_pieces(list(list(format_component))) =
-		list(format_component).
+	list(format_component).
+
+	% Display the given error message, without a context and with standard
+	% indentation.
+:- pred write_error_pieces_plain(list(format_component)::in,
+	io::di, io::uo) is det.
 
 	% Display the given error message.
 :- pred write_error_pieces(prog_context::in, int::in,
-	list(format_component)::in, io__state::di, io__state::uo) is det.
+	list(format_component)::in, io::di, io::uo) is det.
 
 	% Display the given error message, but indent the first line.
 	% This is useful when adding extra lines to an already
 	% displayed message.
 :- pred write_error_pieces_not_first_line(prog_context::in, int::in,
-	list(format_component)::in, io__state::di, io__state::uo) is det.
+	list(format_component)::in, io::di, io::uo) is det.
 
 :- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
-	list(format_component)::in, io__state::di, io__state::uo) is det.
+	list(format_component)::in, io::di, io::uo) is det.
 
 	% Report a warning, and set the exit status to error if the
 	% --halt-at-warn option is set. This predicate does the same thing as
 	% prog_io_util__report_warning, except that it does a nicer job of
 	% displaying the warning message.
 :- pred report_warning(prog_context::in, int::in, list(format_component)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Predicates to convert a predicate names to strings.
 
@@ -116,7 +120,7 @@
 	% Append a punctuation character to a message, avoiding unwanted
 	% line splitting between the message and the punctuation.
 :- func error_util__append_punctuation(list(format_component), char) =
-		list(format_component).
+	list(format_component).
 
 	% report_error_num_args(MaybePredOrFunc, Arity, CorrectArities).
 	%
@@ -124,9 +128,8 @@
 	% "wrong number of arguments (<Arity>; should be <CorrectArities>)",
 	% adjusting `Arity' and `CorrectArities' if `MaybePredOrFunc' is
 	% `yes(function)'.
-:- pred report_error_num_args(maybe(pred_or_func), int, list(int),
-		io__state, io__state).
-:- mode report_error_num_args(in, in, in, di, uo) is det.
+:- pred report_error_num_args(maybe(pred_or_func)::in, int::in, list(int)::in,
+	io::di, io::uo) is det.
 
 	% sorry(ModuleName, Message)
 	% Call error/1 with a "Sorry, not implemented" message.
@@ -172,34 +175,37 @@ error_util__component_lists_to_pieces(
 		error_util__component_lists_to_pieces(
 			[Components2, Components3 | Components])).
 
-report_warning(Context, Indent, Components) -->
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		io__set_exit_status(1)
+report_warning(Context, Indent, Components, !IO) :-
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+	( HaltAtWarn = yes ->
+		io__set_exit_status(1, !IO)
 	;
-		[]
+		true
 	),
-	write_error_pieces(Context, Indent, Components).
+	write_error_pieces(Context, Indent, Components, !IO).
 
-write_error_pieces(Context, Indent, Components) -->
+write_error_pieces_plain(Components, !IO) :-
+	write_error_pieces_maybe_with_context(yes, no, 0, Components, !IO).
+
+write_error_pieces(Context, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, yes(Context),
-		Indent, Components).
+		Indent, Components, !IO).
 
-write_error_pieces_not_first_line(Context, Indent, Components) -->
+write_error_pieces_not_first_line(Context, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(no, yes(Context),
-		Indent, Components).
+		Indent, Components, !IO).
 
-write_error_pieces_maybe_with_context(MaybeContext, Indent, Components) -->
+write_error_pieces_maybe_with_context(MaybeContext, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, MaybeContext,
-		Indent, Components).
+		Indent, Components, !IO).
 
 :- pred write_error_pieces_maybe_with_context(bool::in,
 	maybe(prog_context)::in, int::in, list(format_component)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
-		Indent, Components) -->
-	{
+		Indent, Components, !IO) :-
+	(
 			% The fixed characters at the start of the line are:
 			% filename
 			% :
@@ -229,67 +235,67 @@ write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
 		Remain = 79 - (ContextLength + Indent + NotFirstIndent),
 		convert_components_to_word_list(Components, [], [], Words),
 		group_words(IsFirst, Words, Remain, Lines)
-	},
-	( { IsFirst = yes } ->
-		write_lines(Lines, MaybeContext, Indent)
+	),
+	( IsFirst = yes ->
+		write_lines(Lines, MaybeContext, Indent, !IO)
 	;
-		write_nonfirst_lines(Lines, MaybeContext, Indent + 2)
+		write_nonfirst_lines(Lines, MaybeContext, Indent + 2, !IO)
 	).
 
 :- pred write_lines(list(list(string))::in, maybe(prog_context)::in, int::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-write_lines([], _, _) --> [].
-write_lines([Line | Lines], MaybeContext, Indent) -->
+write_lines([], _, _, !IO).
+write_lines([Line | Lines], MaybeContext, Indent, !IO) :-
 	(
-		{ MaybeContext = yes(Context) },
-		prog_out__write_context(Context)
+		MaybeContext = yes(Context),
+		prog_out__write_context(Context, !IO)
 	;
-		{ MaybeContext = no }
+		MaybeContext = no
 	),
-	{ string__pad_left("", ' ', Indent, IndentStr) },
-	io__write_string(IndentStr),
-	write_line(Line),
-	{ Indent2 = Indent + 2 },
-	write_nonfirst_lines(Lines, MaybeContext, Indent2).
+	string__pad_left("", ' ', Indent, IndentStr),
+	io__write_string(IndentStr, !IO),
+	write_line(Line, !IO),
+	Indent2 = Indent + 2,
+	write_nonfirst_lines(Lines, MaybeContext, Indent2, !IO).
 
 :- pred write_nonfirst_lines(list(list(string))::in, maybe(prog_context)::in,
-	int::in, io__state::di, io__state::uo) is det.
+	int::in, io::di, io::uo) is det.
 
-write_nonfirst_lines([], _, _) --> [].
-write_nonfirst_lines([Line | Lines], MaybeContext, Indent) -->
+write_nonfirst_lines([], _, _, !IO).
+write_nonfirst_lines([Line | Lines], MaybeContext, Indent, !IO) :-
 	(
-		{ MaybeContext = yes(Context) },
-		prog_out__write_context(Context)
+		MaybeContext = yes(Context),
+		prog_out__write_context(Context, !IO)
 	;
-		{ MaybeContext = no }
+		MaybeContext = no
 	),
-	{ string__pad_left("", ' ', Indent, IndentStr) },
-	io__write_string(IndentStr),
-	write_line(Line),
-	write_nonfirst_lines(Lines, MaybeContext, Indent).
+	string__pad_left("", ' ', Indent, IndentStr),
+	io__write_string(IndentStr, !IO),
+	write_line(Line, !IO),
+	write_nonfirst_lines(Lines, MaybeContext, Indent, !IO).
 
-:- pred write_line(list(string)::in, io__state::di, io__state::uo) is det.
+:- pred write_line(list(string)::in, io::di, io::uo) is det.
 
-write_line([]) --> [].
-write_line([Word | Words]) -->
-	io__write_string(Word),
-	write_line_rest(Words),
-	io__write_char('\n').
+write_line([], !IO).
+write_line([Word | Words], !IO) :-
+	io__write_string(Word, !IO),
+	write_line_rest(Words, !IO),
+	io__write_char('\n', !IO).
 
-:- pred write_line_rest(list(string)::in, io__state::di, io__state::uo) is det.
+:- pred write_line_rest(list(string)::in, io::di, io::uo) is det.
 
-write_line_rest([]) --> [].
-write_line_rest([Word | Words]) -->
-	io__write_char(' '),
-	io__write_string(Word),
-	write_line_rest(Words).
+write_line_rest([], !IO).
+write_line_rest([Word | Words], !IO) :-
+	io__write_char(' ', !IO),
+	io__write_string(Word, !IO),
+	write_line_rest(Words, !IO).
 
 %----------------------------------------------------------------------------%
 
 :- pred convert_components_to_word_list(list(format_component)::in,
-		list(string)::in, list(list(string))::in,
-		list(list(string))::out) is det.
+	list(string)::in, list(list(string))::in, list(list(string))::out)
+	is det.
 
 convert_components_to_word_list([], Words0, Paras0, Paras) :-
 	list__reverse(Words0, Words),
@@ -312,14 +318,14 @@ convert_components_to_word_list([Component | Components], Words0,
 	),
 	convert_components_to_word_list(Components, Words1, Paras1, Paras).
 
-:- pred break_into_words(string::in, list(string)::in,
-		list(string)::out) is det.
+:- pred break_into_words(string::in, list(string)::in, list(string)::out)
+	is det.
 
 break_into_words(String, Words0, Words) :-
 	break_into_words_from(String, 0, Words0, Words).
 
-:- pred break_into_words_from(string::in, int::in,
-		list(string)::in, list(string)::out) is det.
+:- pred break_into_words_from(string::in, int::in, list(string)::in,
+	list(string)::out) is det.
 
 break_into_words_from(String, Cur, Words0, Words) :-
 	( find_word_start(String, Cur, Start) ->
@@ -365,7 +371,7 @@ find_word_end(String, Cur, WordEnd) :-
 	% at least one line.
 
 :- pred group_words(bool::in, list(list(string))::in, int::in,
-		list(list(string))::out) is det.
+	list(list(string))::out) is det.
 
 group_words(IsFirst, Paras, Max, Lines) :-
 	(
@@ -429,7 +435,7 @@ get_later_words([Word | Words], OldLen, MaxLen, Line0, Line, RestWords) :-
 		Line = Line0,
 		RestWords = [Word | Words]
 	).
-		
+
 %-----------------------------------------------------------------------------%
 
 	% The code of this predicate duplicates the functionality of
@@ -461,7 +467,7 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 			"'"], Piece)
 	).
 
-error_util__describe_several_pred_names(Module, PredId, Pieces) :- 
+error_util__describe_several_pred_names(Module, PredId, Pieces) :-
 	list__map(error_util__describe_one_pred_name(Module), PredId, Pieces0),
 	error_util__list_to_pieces(Pieces0, Pieces).
 
@@ -509,8 +515,8 @@ error_util__pred_or_func_to_string(predicate) = "predicate".
 error_util__pred_or_func_to_string(function) = "function".
 
 error_util__append_punctuation([], _) = _ :-
-	error(
-	"error_util__append_punctuation: appending punctuation after nothing").
+	error("error_util__append_punctuation: " ++
+		"appending punctuation after nothing").
 error_util__append_punctuation([Piece0], Punc) = [Piece] :-
 	% Avoid unwanted line splitting between the message
 	% and the punctuation.
@@ -522,17 +528,17 @@ error_util__append_punctuation([Piece0], Punc) = [Piece] :-
 		Piece = fixed(string__append(String, char_to_string(Punc)))
 	;
 		Piece0 = nl,
-		error(
-	"error_util__append_punctutation: appending punctuation after newline")
+		error("error_util__append_punctutation: " ++
+			"appending punctuation after newline")
 	).
 error_util__append_punctuation([Piece1, Piece2 | Pieces], Punc) =
 	[Piece1 | error_util__append_punctuation([Piece2 | Pieces], Punc)].
 
 %-----------------------------------------------------------------------------%
 
-report_error_num_args(MaybePredOrFunc, Arity0, Arities0) -->
+report_error_num_args(MaybePredOrFunc, Arity0, Arities0, !IO) :-
 	% Adjust arities for functions.
-	{ MaybePredOrFunc = yes(function) ->
+	( MaybePredOrFunc = yes(function) ->
 		adjust_func_arity(function, Arity, Arity0),
 		list__map(
 			(pred(OtherArity0::in, OtherArity::out) is det :-
@@ -543,30 +549,26 @@ report_error_num_args(MaybePredOrFunc, Arity0, Arities0) -->
 	;
 		Arity = Arity0,
 		Arities = Arities0
-	},
-
-	io__write_string("wrong number of arguments ("),
-	io__write_int(Arity),
-	io__write_string("; should be "),
-	report_error_right_num_args(Arities),
-	io__write_string(")").
-
-:- pred report_error_right_num_args(list(int), io__state, io__state).
-:- mode report_error_right_num_args(in, di, uo) is det.
-
-report_error_right_num_args([]) --> [].
-report_error_right_num_args([Arity | Arities]) -->
-	io__write_int(Arity),
-	( { Arities = [] } ->
-		[]
-	; { Arities = [_] } ->
-		io__write_string(" or ")
-	;
-		io__write_string(", ")
 	),
-	report_error_right_num_args(Arities).
+	io__write_string("wrong number of arguments (", !IO),
+	io__write_int(Arity, !IO),
+	io__write_string("; should be ", !IO),
+	report_error_right_num_args(Arities, !IO),
+	io__write_string(")", !IO).
 
+:- pred report_error_right_num_args(list(int)::in, io::di, io::uo) is det.
 
+report_error_right_num_args([], !IO).
+report_error_right_num_args([Arity | Arities], !IO) :-
+	io__write_int(Arity, !IO),
+	( Arities = [] ->
+		true
+	; Arities = [_] ->
+		io__write_string(" or ", !IO)
+	;
+		io__write_string(", ", !IO)
+	),
+	report_error_right_num_args(Arities, !IO).
 
 	% Call error/1 with a "Sorry, not implemented" message.
 	%
@@ -576,8 +578,6 @@ sorry(Module, What) :-
 	error(ErrorMessage).
 
 unexpected(Module, What) :-
-	string__format("%s: Unexpected: %s", 
+	string__format("%s: Unexpected: %s",
 		[s(Module), s(What)], ErrorMessage),
 	error(ErrorMessage).
-
-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,8 +50,8 @@
 
 :- import_module set, list, bool, std_util.
 
-:- pred dnf__transform_module(module_info::in, bool::in,
-	maybe(set(pred_proc_id))::in, module_info::out) is det.
+:- pred dnf__transform_module(bool::in, maybe(set(pred_proc_id))::in,
+	module_info::in, module_info::out) is det.
 
 :- pred dnf__transform_proc(proc_info::in, pred_info::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
@@ -75,12 +75,12 @@
 
 	% Traverse the module structure.
 
-dnf__transform_module(ModuleInfo0, TransformAll, MaybeNonAtomic, ModuleInfo) :-
-	module_info_predids(ModuleInfo0, PredIds),
+dnf__transform_module(TransformAll, MaybeNonAtomic, !ModuleInfo) :-
+	module_info_predids(!.ModuleInfo, PredIds),
 	dnf__transform_preds(PredIds, TransformAll, MaybeNonAtomic,
-		ModuleInfo0, ModuleInfo1),
+		!ModuleInfo),
 	% The dependency_graph information is now incorrect.
-	module_info_clobber_dependency_info(ModuleInfo1, ModuleInfo).
+	module_info_clobber_dependency_info(!ModuleInfo).
 
 :- pred dnf__transform_preds(list(pred_id)::in, bool::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out) is det.
