@@ -230,9 +230,14 @@ wrap_port(Port, port(Port)).
 %-----------------------------------------------------------------------------%
 
 :- type port_category
-	--->	interface
-	;	internal
-	;	context.
+	--->	interface	% The events that describe the interface of a
+				% procedure with its callers.
+	;	internal	% The events inside each procedure that were
+				% present in the initial procedural debugger.
+	;	context.	% The events inside each procedure that we
+				% added because the declarative debugger needs
+				% to know when (potentially) negated contexts
+				% start and end.
 
 :- func trace_port_category(trace_port) = port_category.
 
