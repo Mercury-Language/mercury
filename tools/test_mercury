@@ -296,7 +296,7 @@ esac
 
 BETA_FTPHOST=ftp.mercury.cs.mu.oz.au
 BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases/$FTP_DIR_NAME
-BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
+BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases/$FTP_DIR_NAME
 BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 
 STABLE=$HOSTDIR/$INSTALL_DIR_NAME-stable
