@@ -41,7 +41,7 @@
 :- pred math__ceiling(float, float).
 :- mode math__ceiling(in, out) is det.
 
-	% math__floor(X, Ceil) is true if Ceil is the largest integer
+	% math__floor(X, Floor) is true if Floor is the largest integer
 	% not greater than X.
 :- pred math__floor(float, float).
 :- mode math__floor(in, out) is det.

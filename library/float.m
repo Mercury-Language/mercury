@@ -110,6 +110,29 @@
 
 %---------------------------------------------------------------------------%
 
+        % float__ceiling_to_int(X, Ceil) is true if Ceil is the
+	% smallest integer not less than X.
+:- pred float__ceiling_to_int(float, int).
+:- mode float__ceiling_to_int(in, out) is det.
+
+        % float__floor_to_int(X, Ceil) is true if Ceil is the
+	% largest integer not greater than X.
+:- pred float__floor_to_int(float, int).
+:- mode float__floor_to_int(in, out) is det.
+
+        % float__round_to_int(X, Round) is true if Round is the
+	% integer closest to X.  If X has a fractional value of
+	% 0.5, it is rounded up.
+:- pred float__round_to_int(float, int).
+:- mode float__round_to_int(in, out) is det.
+
+        % float__truncate_to_int(X, Trunc) is true if Trunc is
+	% the integer closest to X such that |Trunc| =< |X|.
+:- pred float__truncate_to_int(float, int).
+:- mode float__truncate_to_int(in, out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred float__pow( float, int, float).
 :- mode float__pow( in, in, out) is det.
 %	float__pow( Base, Exponent, Answer)
@@ -136,6 +159,20 @@
 
 :- implementation.
 :- import_module int, require.
+
+%
+% Header files of mathematical significance.
+%
+
+:- pragma(c_header_code, "
+
+	#include <float.h>
+	#include <math.h>
+
+").
+
+%---------------------------------------------------------------------------%
+
 
 % The arithmetic and comparison operators are builtins,
 % which the compiler expands inline.  We don't need to define them here.
@@ -169,6 +206,41 @@ float__min(X, Y, Min) :-
 
 %---------------------------------------------------------------------------%
 
+        % float__ceiling_to_int(X, Ceil) is true if Ceil is the
+	% smallest integer not less than X.
+:- pragma(c_code,
+	float__ceiling_to_int(X :: in, Ceil :: out),
+"
+	Ceil = (Integer)ceil(X);
+").
+
+        % float__floor_to_int(X, Floor) is true if Floor is the
+	% largest integer not greater than X.
+:- pragma(c_code,
+	float__floor_to_int(X :: in, Floor :: out),
+"
+	Floor = (Integer)floor(X);
+").
+
+        % float__round_to_int(X, Round) is true if Round is the
+	% integer closest to X.  If X has a fractional value of
+	% 0.5, it is rounded up.
+:- pragma(c_code,
+	float__round_to_int(X :: in, Round :: out),
+"
+	Round = (Integer)floor(X+0.5);
+").
+
+        % float__truncate_to_int(X, Trunc) is true if Trunc is
+	% the integer closest to X such that |Trunc| =< |X|.
+:- pragma(c_code,
+	float__truncate_to_int(X :: in, Trunc :: out),
+"
+	Trunc = (Integer)X;
+").
+
+%---------------------------------------------------------------------------%
+
 % float_pow(Base, Exponent, Answer).
 %	XXXX This function could be more efficient, with an int_mod pred, to
 %	reduce O(N) to O(logN) of the exponent.
@@ -188,12 +260,11 @@ float__pow( X, Exp, Ans) :-
 %---------------------------------------------------------------------------%
 
 %
-% System constants from <float.h>, implemented using the C interface
+% The floating-point system constants are derived from <float.h> and
+% implemented using the C interface.
 %
 
 :- pragma(c_header_code, "
-
-	#include <float.h>
 
 	#if defined USE_SINGLE_PREC_FLOAT
 		#define	MERCURY_FLOAT_MAX	FLT_MAX
@@ -204,6 +275,7 @@ float__pow( X, Exp, Ans) :-
 		#define	MERCURY_FLOAT_MIN	DBL_MIN
 		#define	MERCURY_FLOAT_EPSILON	DBL_EPSILON
 	#endif
+
 ").
 
 	% Maximum floating-point number
