@@ -506,7 +506,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		% new variables whose types we need to look-up.
 		%
 	mode_info_get_var_types(!.ModeInfo, VarTypes),
-
 	(
 		% If we are allowed to insert solver type initialisation
 		% calls and InstOfX0 is free and all ArgVars0 are either
@@ -523,20 +522,20 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 	->
 		modes__construct_initialisation_calls(ArgVarsToInit, InitGoals,
 			!ModeInfo),
-		( InitGoals = [] ->
+		(
+			InitGoals = [],
 			ExtraGoals1 = no_extra_goals
 		;
+			InitGoals = [_ | _],
 			ExtraGoals1 = extra_goals(InitGoals, [])
 		)
 	;
 		ExtraGoals1 = no_extra_goals
 	),
-
 	mode_info_get_instmap(!.ModeInfo, InstMap1),
 	instmap__lookup_vars(ArgVars0, InstMap1, InstArgs),
 	mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
 	InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
-
 	(
 
 		% The occur check: X = f(X) is considered a mode error
@@ -585,9 +584,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			% us most of what we want w.r.t. solver types.
 		not (
 			inst_is_free(ModuleInfo0, InstOfX),
-			member(InstArg, InstArgs),
+			list__member(InstArg, InstArgs),
 			inst_is_free(ModuleInfo0, InstArg),
-			member(ArgVar, ArgVars0),
+			list__member(ArgVar, ArgVars0),
 			ArgType = VarTypes ^ elem(ArgVar),
 			type_is_solver_type(ModuleInfo0, ArgType)
 		),
@@ -711,7 +710,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			[X0 | ArgVars0], [X | ArgVars], InstMap0, Goal,
 			!ModeInfo, !IO)
 	).
-
 
 :- pred all_arg_vars_are_non_free_or_solver_vars(list(prog_var)::in,
 	list(inst)::in, map(prog_var, type)::in, module_info::in,
