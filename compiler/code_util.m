@@ -103,9 +103,12 @@
 	%
 	% At least one of these will be present.
 	%
-	% Each rval returned is guaranteed to be either a unop or a binop,
+	% Each test rval returned is guaranteed to be either a unop or a binop,
 	% applied to arguments that are either variables (from the argument
 	% list) or constants.
+	%
+	% Each to be assigned rval is guaranteed to be either in a form
+	% acceptable for a test rval, or in the form of a variable.
 
 :- pred code_util__translate_builtin(string, string, proc_id, list(var),
 	maybe(rval), maybe(pair(var, rval))).

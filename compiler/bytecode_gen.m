@@ -84,7 +84,9 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	proc_info_variables(ProcInfo, VarSet),
 	proc_info_interface_determinism(ProcInfo, Detism),
 
-	goal_util__goal_vars(Goal, Vars),
+	goal_util__goal_vars(Goal, GoalVars),
+	proc_info_headvars(ProcInfo, ArgVars),
+	set__insert_list(GoalVars, ArgVars, Vars),
 	set__to_sorted_list(Vars, VarList),
 	map__init(VarMap0),
 	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, 0,
@@ -92,7 +94,6 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo),
 
-	proc_info_headvars(ProcInfo, ArgVars),
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
 
@@ -338,7 +339,7 @@ bytecode_gen__map_test(ByteInfo, Rval, Code) :-
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		Code = node([builtin_untest(Unop, ByteX)])
 	;
-		error("builtin test is not a unary or binary operator")
+		error("builtin test is not in a recognized form")
 	).
 
 :- pred bytecode_gen__map_assign(byte_info::in, var::in, rval::in,
@@ -354,8 +355,12 @@ bytecode_gen__map_assign(ByteInfo, Var, Rval, Code) :-
 		bytecode_gen__map_arg(ByteInfo, X, ByteX),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		Code = node([builtin_unop(Unop, ByteX, ByteVar)])
+	; Rval = var(X) ->
+		bytecode_gen__map_var(ByteInfo, X, ByteX),
+		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+		Code = node([assign(ByteVar, ByteX)])
 	;
-		error("builtin assignment is not a unary or binary operator")
+		error("builtin assignment is not in a recognized form")
 	).
 
 :- pred bytecode_gen__map_arg(byte_info::in, rval::in, byte_arg::out) is det.
@@ -385,12 +390,24 @@ bytecode_gen__unify(construct(Var, ConsId, Args, UniModes), _, _, ByteInfo,
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	(
-		bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs),
-		bytecode_gen__all_dirs_same(Dirs, to_var)
+		ByteConsId = pred_const(_, _, _, _)
 	->
 		Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
 	;
-		error("invalid mode for construction unification")
+		% Don't call bytecode_gen__map_uni_modes until after
+		% the pred_const test fails, since the arg-modes on
+		% unifications that create closures aren't like other arg-modes.
+		bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs),
+		(
+			bytecode_gen__all_dirs_same(Dirs, to_var)
+		->
+			Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
+		;
+			assoc_list__from_corresponding_lists(ByteArgs, Dirs,
+				Pairs),
+			Code = node([complex_construct(ByteVar, ByteConsId,
+				Pairs)])
+		)
 	).
 bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _), _, _, ByteInfo,
 		Code) :-
@@ -439,12 +456,12 @@ bytecode_gen__map_uni_modes([UniMode | UniModes], [Arg | Args], ByteInfo,
 	->
 		Dir = to_var
 	;
-		VarMode = top_out,
-		ArgMode = top_in
+		VarMode = top_unused,
+		ArgMode = top_unused
 	->
 		Dir = to_none
 	;
-		error("invalid mode for deconstruct unification")
+		error("invalid mode for (de)construct unification")
 	),
 	bytecode_gen__map_uni_modes(UniModes, Args, ByteInfo, Dirs).
 bytecode_gen__map_uni_modes([], [_|_], _, _) :-

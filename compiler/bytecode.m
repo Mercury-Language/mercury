@@ -47,6 +47,8 @@
 					list(byte_var))
 			;	deconstruct(byte_var, byte_cons_id,
 					list(byte_var))
+			;	complex_construct(byte_var, byte_cons_id,
+					list(pair(byte_var, byte_dir)))
 			;	complex_deconstruct(byte_var, byte_cons_id,
 					list(pair(byte_var, byte_dir)))
 			;	place_arg(reg_type, int, byte_var)
@@ -112,11 +114,11 @@
 :- implementation.
 
 :- import_module hlds_pred.
-:- import_module library, int, require.
+:- import_module library, int, string, require.
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(5).
+bytecode__version(6).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -238,6 +240,12 @@ output_args(deconstruct(Var, ConsId, Vars)) -->
 	{ list__length(Vars, Length) },
 	output_length(Length),
 	output_vars(Vars).
+output_args(complex_construct(Var, ConsId, VarDirs)) -->
+	output_var(Var),
+	output_cons_id(ConsId),
+	{ list__length(VarDirs, Length) },
+	output_length(Length),
+	output_var_dirs(VarDirs).
 output_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 	output_var(Var),
 	output_cons_id(ConsId),
@@ -340,6 +348,12 @@ debug_args(deconstruct(Var, ConsId, Vars)) -->
 	{ list__length(Vars, Length) },
 	debug_length(Length),
 	debug_vars(Vars).
+debug_args(complex_construct(Var, ConsId, VarDirs)) -->
+	debug_var(Var),
+	debug_cons_id(ConsId),
+	{ list__length(VarDirs, Length) },
+	debug_length(Length),
+	debug_var_dirs(VarDirs).
 debug_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
 	debug_var(Var),
 	debug_cons_id(ConsId),
@@ -792,17 +806,18 @@ byte_code(assign(_, _),				21).
 byte_code(test(_, _),				22).
 byte_code(construct(_, _, _),			23).
 byte_code(deconstruct(_, _, _),			24).
-byte_code(complex_deconstruct(_, _, _),		25).
-byte_code(place_arg(_, _, _),			26).
-byte_code(pickup_arg(_, _, _),			27).
-byte_code(call(_, _, _, _),			28).
-byte_code(higher_order_call(_, _, _, _),	29).
-byte_code(builtin_binop(_, _, _, _),		20).
-byte_code(builtin_unop(_, _, _),		31).
-byte_code(builtin_bintest(_, _, _),		32).
-byte_code(builtin_untest(_, _),			33).
-byte_code(context(_),				34).
-byte_code(not_supported,			35).
+byte_code(complex_construct(_, _, _),		25).
+byte_code(complex_deconstruct(_, _, _),		26).
+byte_code(place_arg(_, _, _),			27).
+byte_code(pickup_arg(_, _, _),			28).
+byte_code(call(_, _, _, _),			29).
+byte_code(higher_order_call(_, _, _, _),	30).
+byte_code(builtin_binop(_, _, _, _),		31).
+byte_code(builtin_unop(_, _, _),		32).
+byte_code(builtin_bintest(_, _, _),		33).
+byte_code(builtin_untest(_, _),			34).
+byte_code(context(_),				35).
+byte_code(not_supported,			36).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -832,6 +847,7 @@ byte_debug(assign(_, _),			"assign").
 byte_debug(test(_, _),				"test").
 byte_debug(construct(_, _, _),			"construct").
 byte_debug(deconstruct(_, _, _),		"deconstruct").
+byte_debug(complex_construct(_, _, _),		"complex_construct").
 byte_debug(complex_deconstruct(_, _, _),	"complex_deconstruct").
 byte_debug(place_arg(_, _, _),			"place_arg").
 byte_debug(pickup_arg(_, _, _),			"pickup_arg").
@@ -1024,10 +1040,17 @@ output_int(Val) -->
 	).
 
 :- pred output_float(float, io__state, io__state).
-:- mode output_float(in, di, uo) is erroneous.
+:- mode output_float(in, di, uo) is det.
 
 output_float(_Val) -->
-	{ error("output of floats not supported yet") }.
+	io__write_byte(0).
+	% This is just temporary; we ought to find a way to write out
+	% the float as a sequence of bytes. Requiring the compiling and
+	% debugging platform to have the same FP representation is better
+	% than silently rounding/truncating float values given to the
+	% debugger.
+	% { string__float_to_string(Val, Str) },
+	% output_string(Str).
 
 %---------------------------------------------------------------------------%
 
