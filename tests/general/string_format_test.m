@@ -19,7 +19,7 @@ main -->
 	{ Numba_2 is Numba_0 + 5 } ,
 	{ Mg_poly = s("In the beginning there was the text, and the text was words, and yea, verily, I say unto you, there was too much of it and it had to be compressed.") } ,
 	[],
-	{ Num_nr_1 = 0.9999 } ,
+	{ Num_nr_1 = 9.9999 } ,
 %	{ builtin_float_times( 2.0, Num_nr_1, Num_nr_2) } ,
 	{ builtin_float_plus( Num_nr_1, Num_nr_1, Num_nr_2) } ,
 	[],

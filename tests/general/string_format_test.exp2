@@ -6,7 +6,7 @@ First 0x25 characters of fig 1.4 in MG are
 `In the beginning there was the text, '.
 
 Following line should have 3, 4, 1 significant figures.
-Strangly, 1.00e+00+  1.000=  2E+00
+Strangly, 1.00e+01+  10.000=  2E+01
 
 
 !%0 10.5i!%0+10.5i!%0 -10.5i!%0+-10.5i!
