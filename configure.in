@@ -2345,7 +2345,7 @@ if test "$BOOTSTRAP_MC" != "" ; then
             to_keep="$to_keep $c_file"
             ;;
         *)
-            sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
+            sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
             if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
 	    	confscratch > /dev/null 2>&1
             then
