@@ -1,17 +1,19 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-** This file defines stuff used by the automatically generated *_init.c files.
+** init.h - this file defines stuff used by the automatically generated
+** _init.c files.
 */
 
 #ifndef	INIT_H
 #define	INIT_H
 
-#include "imp.h"
+#include "goto.h"		/* for Declare_entry */
+#include "mercury_types.h"	/* for `Code *' */
 
 /*
 ** mercury_main() is defined in the <module>_init.c file.
@@ -47,10 +49,11 @@ Declare_entry(mercury__io__run_0_0);
 extern	void		mercury_init_io(void);
 
 /*
-** The following global variables are set by mercury_main().
+** The following global variables are defined in wrapper.mod,
+** and set by mercury_main() on startup.
 ** The entry points are set based on the options to mkinit.c.
 ** The address_of_foo pointers are set to the address of
-** the correspoinding foo.
+** the corresponding foo.
 */
 extern	Code *		library_entry_point; /* normally mercury__io__run_0_0 */
 extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
@@ -61,4 +64,4 @@ extern	void		(*address_of_init_modules)(void);
 extern	void		(*address_of_init_gc)(void);
 #endif
 
-#endif
+#endif /* INIT_H */

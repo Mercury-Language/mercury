@@ -17,43 +17,43 @@
 */
 
 #include	"imp.h"
+
+#include	<stdio.h>
+#include	<ctype.h>
+#include	<string.h>
+
 #include	"timing.h"
 #include	"getopt.h"
 #include	"init.h"
 #include	"dummy.h"
-#include	<ctype.h>
-#include	<string.h>
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
 /* command-line options */
 
-/* size of data areas, in kilobytes */
-unsigned	heap_size =      4096;
-unsigned	detstack_size =  2048;
-unsigned	nondstack_size =  128;
-unsigned	solutions_heap_size =      1024;
+/* size of data areas (including redzones), in kilobytes */
+/* (but we later multiply by 1024 to convert to bytes) */
+size_t		heap_size =      	4096;
+size_t		detstack_size =  	2048;
+size_t		nondstack_size =  	128;
+size_t		solutions_heap_size =	1024;
 
 /* size of the redzones at the end of data areas, in kilobytes */
-unsigned	heap_zone_size =       16;
-unsigned	detstack_zone_size =   16;
-unsigned	nondstack_zone_size =  16;
-unsigned	solutions_heap_zone_size = 16;
+/* (but we later multiply by 1024 to convert to bytes) */
+size_t		heap_zone_size =	16;
+size_t		detstack_zone_size =	16;
+size_t		nondstack_zone_size =	16;
+size_t		solutions_heap_zone_size = 16;
 
-/* primary cache size to optimize for */
-unsigned	pcache_size =    8192;
+/* primary cache size to optimize for, in kilobytes */
+/* (but we later multiply by 1024 to convert to bytes) */
+size_t		pcache_size =    8192;
 
 /* other options */
+
 int		r1val = -1;
 int		r2val = -1;
 int		r3val = -1;
-
-/* constraints solver */
-#ifdef CONSTRAINTS
-int		*mercury_solver_sp;
-int		*mercury_solver_sp_old;
-int		solver_ticket_stack_size = SOLVER_STACK_SIZE;
-#endif
 
 bool		check_space = FALSE;
 
@@ -61,17 +61,27 @@ static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
 static	int	repeats = 1;
 
-static	int	repcounter;
-
 /* timing */
 int		time_at_last_stat;
 int		time_at_start;
 static	int	time_at_finish;
 
 const char *	progname;
-int		mercury_argc;	/* not counting progname or debug options */
+int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
+
+/*
+** Constraint solver trail.
+**
+** XXX this should not be here; it should be in engine.mod
+** or constraints.c or somewhere like that.
+*/
+#ifdef CONSTRAINTS
+int		*mercury_solver_sp;
+int		*mercury_solver_sp_old;
+size_t		solver_ticket_stack_size = SOLVER_STACK_SIZE;
+#endif
 
 /*
 ** The Mercury runtime calls io:run/0 in the Mercury library, and the Mercury
@@ -380,7 +390,9 @@ process_environment_options(void)
 static void
 process_options(int argc, char **argv)
 {
+	unsigned long size;
 	int c;
+
 	while ((c = getopt(argc, argv, "acd:hLlp:r:s:tw:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
@@ -464,11 +476,11 @@ process_options(int argc, char **argv)
 				exit(0);
 		}
 
-		case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
+		case 'p':
+				if (sscanf(optarg, "%lu", &size) != 1)
 					usage();
 
-				if (pcache_size < 512)
-					pcache_size *= 1024;
+				pcache_size = size * 1024;
 
 				break;
 
@@ -477,29 +489,28 @@ process_options(int argc, char **argv)
 
 				break;
 
-		case 's': {
-				int val;
-				if (sscanf(optarg+1, "%d", &val) != 1)
+		case 's':
+				if (sscanf(optarg+1, "%lu", &size) != 1)
 					usage();
 
 				if (optarg[0] == 'h')
-					heap_size = val;
+					heap_size = size;
 				else if (optarg[0] == 'd')
-					detstack_size = val;
+					detstack_size = size;
 				else if (optarg[0] == 'n')
-					nondstack_size = val;
+					nondstack_size = size;
 				else if (optarg[0] == 'l')
-					entry_table_size = val *
+					entry_table_size = size *
 						1024 / (2 * sizeof(List *));
 #ifdef CONSTRAINTS
 				else if (optarg[0] == 's')
-					solver_ticket_stack_size = val;
+					solver_ticket_stack_size = size;
 #endif
 				else
 					usage();
 
 				break;
-		}
+
 		case 't':	use_own_timer = TRUE;
 
 				calldebug      = FALSE;
@@ -550,22 +561,21 @@ process_options(int argc, char **argv)
 
 				break;
 
-		case 'z': {
-				int val;
-				if (sscanf(optarg+1, "%d", &val) != 1)
+		case 'z':
+				if (sscanf(optarg+1, "%lu", &size) != 1)
 					usage();
 
 				if (optarg[0] == 'h')
-					heap_zone_size = val;
+					heap_zone_size = size;
 				else if (optarg[0] == 'd')
-					detstack_zone_size = val;
+					detstack_zone_size = size;
 				else if (optarg[0] == 'n')
-					nondstack_zone_size = val;
+					nondstack_zone_size = size;
 				else
 					usage();
 
 				break;
-		}
+
 		case '1':	if (sscanf(optarg, "%d", &r1val) != 1)
 					usage();
 
@@ -618,7 +628,7 @@ static void usage(void)
 		"-zh<n> \t\tallocate n kb for the heap redzone\n"
 		"-zd<n> \t\tallocate n kb for the det stack redzone\n"
 		"-zn<n> \t\tallocate n kb for the nondet stack redzone\n"
-		"-p<n> \t\tprimary cache size in (k)bytes\n"
+		"-p<n> \t\tprimary cache size in kbytes\n"
 		"-r<n> \t\trepeat n times\n"
 	"-m<name> \tcall I/O predicate with given name (default: main/2)\n"
 		"-w<name> \tcall predicate with given name\n"
@@ -631,6 +641,8 @@ static void usage(void)
 
 void run_code(void)
 {
+	static	int	repcounter;
+
 #if !defined(SPEED) && defined(USE_GCC_NONLOCAL_GOTOS)
 	/*
 	** double-check to make sure that we're not corrupting

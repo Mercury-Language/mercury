@@ -1,8 +1,10 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
+/* debug.h - definitions for debugging messages */
 
 #ifndef DEBUG_H
 #define DEBUG_H
@@ -14,8 +16,6 @@
 #endif
 
 #endif
-
-/* DEFINITIONS FOR DEBUGGING MESSAGES */
 
 #if defined(SPEED) && !defined(DEBUG_GOTOS)
 

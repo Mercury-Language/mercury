@@ -1,11 +1,14 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 #ifndef REGS_H
 #define REGS_H
+
+#include "conf.h"
+#include "mercury_types.h"
 
 /*
 ** GNU C allows lvalue casts, so if we have gcc, use them.

@@ -1,13 +1,20 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1993-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** tags.h - defines macros for tagging and untagging words.
+** Also defines macros for accessing the Mercury list type from C.
 */
 
 #ifndef TAGS_H
 #define TAGS_H
 
-#include <limits.h>
+#include <limits.h>		/* for `CHAR_BIT' */
+#include "conf.h"		/* for `LOW_TAG_BITS' */
+#include "mercury_types.h"	/* for `Word' */
 
 /* DEFINITIONS FOR WORD LAYOUT */
 
@@ -15,15 +22,15 @@
 
 /* TAGBITS specifies the number of bits in each word that we can use for tags */
 #ifndef TAGBITS
-#ifdef HIGHTAGS
-#error "HIGHTAGS defined but TAGBITS undefined"
-#else
-#define	TAGBITS		LOW_TAG_BITS
-#endif
+  #ifdef HIGHTAGS
+    #error "HIGHTAGS defined but TAGBITS undefined"
+  #else
+    #define TAGBITS	LOW_TAG_BITS
+  #endif
 #endif
 
 #if TAGBITS > 0 && defined(HIGHTAGS) && defined(CONSERVATIVE_GC)
-#error "Conservative GC does not work with high tag bits"
+  #error "Conservative GC does not work with high tag bits"
 #endif
 
 #ifdef	HIGHTAGS
@@ -35,7 +42,7 @@
 #define unmkbody(w)	(w)
 #define	body(w, t)	((w) & (~(Word)0 >> TAGBITS))
 
-#else
+#else /* ! HIGHTAGS */
 
 #define	mktag(t)	(t)
 #define	unmktag(w)	(w)
@@ -44,7 +51,7 @@
 #define unmkbody(w)	((Word) (w) >> TAGBITS)
 #define	body(w, t)	((w) - (t))
 
-#endif
+#endif /* ! HIGHTAGS */
 
 /*
 ** the result of mkword() is cast to (const Word *), not to (Word)

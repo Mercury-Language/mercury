@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,8 +24,18 @@
 ** eventual destinations.
 */
 
-#include "imp.h"
+#include "regs.h"
+
+#include <assert.h>
+
+#include "mercury_types.h"
 #include "type_info.h"
+#include "calls.h"
+#include "stacks.h"
+#include "memory.h"			/* for fake_reg */
+#include "tags.h"			/* for field() */
+#include "misc.h"			/* for fatal_error() */
+#include "engine.h"			/* for do_fail */
 
 BEGIN_MODULE(call_module)
 

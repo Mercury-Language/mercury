@@ -1,10 +1,20 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995, 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
+** regorder.h - defines the mapping from the Mercury abstract machine
+** registers (r1, r2, ..., hp, sp, etc.) to the underlying intermediate-level
+** abstract machine memory (mr0, mr1, ...).
+**
+** This file should be #included from "regs.h" and nowhere else.
+** The reason this is separate from "regs.h" is so that it could,
+** at least in theory, be generated automatically based on
+** profiling feedback from the register usage counts for a particular
+** application.  However, currently we don't do that.
+**
 ** If you change this file, you should also change the settings of
 ** NUM_REAL_R_REGS in ../configure.in.
 */

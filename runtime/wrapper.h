@@ -1,11 +1,19 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1994-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** wrapper.h - defines the interface to wrapper.mod.
+** See wrapper.mod for documentation.
+*/
+
 #ifndef	WRAPPER_H
 #define	WRAPPER_H
+
+#include <stddef.h>	/* for `size_t' */
+#include "std.h"	/* for `bool' */
 
 extern	void		do_init_modules(void);
 
@@ -14,17 +22,20 @@ extern	int		mercury_argc;
 extern	char **		mercury_argv;
 extern	int		mercury_exit_status;
 
-extern	unsigned	heap_size;
-extern	unsigned	detstack_size;
-extern	unsigned	nondstack_size;
-extern	unsigned	solutions_heap_size;
+/* sizes of the data areas, *including* the red zone size */
+extern	size_t		heap_size;
+extern	size_t		detstack_size;
+extern	size_t		nondstack_size;
+extern	size_t		solutions_heap_size;
 
-extern	unsigned	heap_zone_size;
-extern	unsigned	detstack_zone_size;
-extern	unsigned	nondstack_zone_size;
-extern	unsigned	solutions_heap_zone_size;
+/* sizes of the red zones */
+extern	size_t		heap_zone_size;
+extern	size_t		detstack_zone_size;
+extern	size_t		nondstack_zone_size;
+extern	size_t		solutions_heap_zone_size;
 
-extern	unsigned	pcache_size;
+/* size of the primary cache */
+extern	size_t		pcache_size;
 
 extern	int		r1val;
 extern	int		r2val;

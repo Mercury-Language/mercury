@@ -4,6 +4,15 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** getopt.h - declares the interface to the system function getopt()
+**
+** We use this file rather than the system's <getopt.h>
+** because different systems have different ideas about
+** where the `const's should go on the declaration of getopt().
+** Also, some systems might have getopt() but not <getopt.h>.
+*/
+
 #ifndef	GETOPT_H
 #define	GETOPT_H
 

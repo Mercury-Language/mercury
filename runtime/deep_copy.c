@@ -5,8 +5,8 @@
 */
 
 /*
- * This module defines the deep copy function.
- */
+** This module defines the deep_copy() function.
+*/
 
 #include "imp.h"
 #include "deep_copy.h"
@@ -20,7 +20,6 @@
 static Word get_base_type_layout_entry(Word data, Word *type_info);
 static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	bool *allocated);
-
 
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.
@@ -355,6 +354,4 @@ Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	} else {
 		return arg_pseudo_type_info;
 	}
-
 }
-

@@ -1,11 +1,21 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/*
+** engine.h - definitions for the Mercury runtime engine.
+**
+** For documentation, see the comments in engine.mod.
+*/
+
 #ifndef	ENGINE_H
 #define	ENGINE_H
+
+#include "std.h"		/* for `bool' */
+#include "mercury_types.h"	/* for `Code *' */
+#include "goto.h"		/* for `Define_entry()' */
 
 #define	PROGFLAG	0
 #define	GOTOFLAG	1

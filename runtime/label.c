@@ -1,15 +1,25 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include	"imp.h"
-#include	"table.h"
-#include	"prof.h"
-#include	"init.h"
+/*
+** label.c defines the label table, which is a pair of hash tables
+** that map from procedure names to addresses and vice versa.
+*/
 
+#include	<stdio.h>
 #include	<string.h>
+
+#include	"conf.h"
+
+#include	"label.h"
+
+#include	"table.h"	/* for `Table' */
+#include	"prof.h"	/* for prof_output_addr_decls() */
+#include	"engine.h"	/* for `progdebug' */
+#include	"wrapper.h"	/* for do_init_modules() */
 
 static	const void	*entry_name(const void *entry);
 static	const void	*entry_addr(const void *entry);

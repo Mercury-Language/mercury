@@ -1,8 +1,19 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
+/* stacks.h - definitions for manipulation the det and nondet stacks */
+
+#ifndef STACKS_H
+#define STACKS_H
+
+#include "regs.h"
+#include "mercury_types.h"
+#include "overflow.h"
+#include "debug.h"
+#include "goto.h"
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
@@ -160,3 +171,5 @@
 				curfr = maxfr;			\
 				GOTO(curredoip);		\
 			} while (0)
+
+#endif /* STACKS_H */

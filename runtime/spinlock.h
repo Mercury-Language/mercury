@@ -1,3 +1,11 @@
+/*
+** Copyright (C) 1995-1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/* spinlock.h - defines spin locks (locks obtained by busy-waiting) */
+
 #ifndef SPINLOCK_H
 #define SPINLOCK_H
 
@@ -39,12 +47,10 @@ void release_lock(SpinLock *);
 ** but code elsewhere should avoid depending on these details.
 */
 
-#include "imp.h"	/* for `Word' */
-#include <stddef.h>	/* for `NULL' */
-#include "conf.h"	/* for `PARALLEL' */
-#include "context.h"	/* for `numprocs' */
-
-typedef Word SpinLock;
+#include "mercury_types.h"	/* for `SpinLock' and `Word' */
+#include <stddef.h>		/* for `NULL' */
+#include "conf.h"		/* for `PARALLEL' */
+#include "context.h"		/* for `numprocs' */
 
 void do_spinlock(SpinLock *s);
 

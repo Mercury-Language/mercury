@@ -1,15 +1,29 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** memory.h - general memory-allocation related stuff for the Mercury runtime.
+**
+** This defines the different memory areas used by the Mercury runtime,
+** including the det & nondet stacks, the heap (and solutions heap),
+** and the fake_reg array for holding Mercury virtual registers.
+** It also provides interfaces for constructing new memory zones,
+** and for allocating (possibly shared) memory.
 */
 
 #ifndef	MEMORY_H
 #define	MEMORY_H
 
-#include "regs.h"
-#include <stdlib.h>
-#include "std.h"
+#include "regs.h"		/* for NUM_REAL_REGS */
+
+#include <stdlib.h>		/* for size_t */
+
+#include "mercury_types.h"	/* for Word */
+#include "std.h"		/* for bool */
+
 
 /* these cannot be changed without lots of modifications elsewhere */
 #define MAX_REAL_REG 32		/* r1 .. r32 */

@@ -4,8 +4,12 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/* prof.h -- definitions for profiling */
+
 #ifndef PROF_H
 #define PROF_H
+
+#include "mercury_types.h"	/* for `Code *' */
 
 /*
 ** this variable holds the address of the "current" procedure so that
@@ -42,4 +46,4 @@ extern	void	prof_output_addr_pair_table(void);
 extern	void	prof_output_addr_decls(const char *, const Code *);
 extern	void	prof_output_addr_table(void);
 
-#endif
+#endif	/* PROF_H */

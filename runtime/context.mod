@@ -1,16 +1,24 @@
+/*
+** Copyright (C) 1995-1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/* context.mod - handles multithreading stuff. */
+
 #include "imp.h"
 
-#include <unistd.h>
+#include <assert.h>
+#include <unistd.h>		/* for getpid() and fork() */
+#ifdef PARALLEL
 #include <signal.h>
+#endif
 
 #include "context.h"
 
 #ifdef	PARALLEL
 int numprocs	=	1;
 #endif
-
-Context	*new_context(void);
-void	delete_context(Context *context);
 
 #ifdef	PARALLEL
 pid_t	*procid;

@@ -1,13 +1,19 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** label.h defines the interface to the label table, which is a pair of
+** hash tables mapping from procedure names to addresses and vice versa.
 */
 
 #ifndef	LABEL_H
 #define	LABEL_H
 
-#include	"dlist.h"
+#include "mercury_types.h"	/* for `Code *' */
+#include "dlist.h"		/* for `List' */
 
 typedef struct s_label
 {

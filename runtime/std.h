@@ -1,17 +1,18 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1993-1995, 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** std.h - "standard" [sic] definitions for C:
+**	bool, TRUE, FALSE, min(), max(), streq(), etc.
 */
 
 #ifndef STD_H
 #define STD_H
 
 #include <stdlib.h>	/* for size_t */
-
-/*
-**	Standard definitions for C
-*/
 
 #ifndef	reg
 #define	reg		register
@@ -51,6 +52,7 @@
 
 #define	ungetchar(c)		ungetc(c, stdin)
 
+/* XXX these should go in memory.h or heap.h */
 #define make(t)			((t *) newmem(sizeof(t)))
 #define make_many(t, n)		((t *) newmem((n) * sizeof(t)))
 #define resize_many(t, p, n)	((t *) resizemem((p), (n) * sizeof(t)))
@@ -62,6 +64,7 @@
 #define	FALSE		0
 #endif
 
+/* XXX these should go in memory.h or heap.h */
 extern	void	*newmem(size_t);
 extern	void	*resizemem(void *, size_t);
 extern	void	oldmem(void *);

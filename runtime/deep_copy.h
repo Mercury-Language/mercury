@@ -4,11 +4,12 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/* deepcopy.h - declares the deep_copy() function. */
+
 #ifndef	DEEP_COPY_H
 #define	DEEP_COPY_H
 
-#include "imp.h"
-
+#include "mercury_types.h"	/* for `Word' */
 
 /* Deep Copy:
 **

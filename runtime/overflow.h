@@ -1,14 +1,17 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* DEFINITIONS FOR OVERFLOW CHECKS */
+/* overflow.h - definitions for overflow checks */
 
-#define IF(cond, val)	((cond) ? (val),(void)0 : (void)0)
+#ifndef OVERFLOW_H
+#define OVERFLOW_H
 
-#ifdef	SPEED
+#define IF(cond, val)	((cond) ? ((val), (void)0) : (void)0)
+
+#ifdef SPEED
 
 #define	heap_overflow_check()		((void)0)
 #define	detstack_overflow_check()	((void)0)
@@ -16,7 +19,10 @@
 #define	nondstack_overflow_check()	((void)0)
 #define	nondstack_underflow_check()	((void)0)
 
-#else
+#else /* not SPEED */
+
+#include "regs.h"
+#include "misc.h"	/* for fatal_error() */
 
 #define	heap_overflow_check()					\
 			(					\
@@ -67,4 +73,6 @@
 				(void)0				\
 			)
 
-#endif
+#endif /* not SPEED */
+
+#endif /* OVERFLOW_H */

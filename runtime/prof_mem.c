@@ -1,4 +1,10 @@
 /*
+** Copyright (C) 1996-1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
 ** prof_mem.c
 **
 ** Author:	petdr
@@ -11,12 +17,11 @@
 ** 	as mercury will no longer use malloc anymore.
 */
 
-
 #include <stdio.h>
 
-#include "std.h"
 #include "prof_mem.h"
 
+#include "std.h"	/* for newmem() */
 
 /*----------------------------------------------------------------------------*/
 
@@ -35,7 +40,7 @@
 /*
 ** Private Global Variables
 */
-static size_t	mem_left = 0;		/* Number of units left		*/
+static size_t	mem_left = 0;		/* Number of bytes left		*/
 static void	*next	 = NULL;	/* Pointer to next data block	*/
 					/* we can give away		*/
 

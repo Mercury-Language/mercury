@@ -1,14 +1,24 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 /*
 ** @configure_input@
 */
+
 /*
-**	Various configuration parameters, generally automatically by
-**	the auto-configuration script.  Their meanings are:
+** conf.h.in -
+**	Various configuration parameters, determined automatically by
+**	the auto-configuration script.
+*/
+
+#ifndef CONF_H
+#define CONF_H
+
+/*
+** The parameters defined here have the following meanings:
 **
 **	WORD_TYPE		the base type for the definition of Word.
 **	LOW_TAG_BITS		the number of low-order tag bits we can use.
@@ -20,10 +30,10 @@
 **	HAVE_MPROTECT		the machine has the mprotect() syscall.
 **	HAVE_STRERROR		the machine has the strerror() function.
 **	RETSIGTYPE		the return type of signal handlers.
-**	HAVE_SIGINFO		signal handlers are given siginfo arguments.
-**				we have <sys/siginfo.h>
-**	HAVE_UCONTEXT		signal handlers are given ucontext arguments
-**				we have <ucontext.h>
+**	HAVE_SIGINFO		signal handlers are given siginfo arguments,
+**				and we have <sys/siginfo.h>
+**	HAVE_UCONTEXT		signal handlers are given ucontext arguments,
+**				and we have <ucontext.h>
 **	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
 **	HAVE_SYS_TIME		we have <sys/time.h>
 **	HAVE_SYS_PARAM		we have <sys/param.h>
@@ -54,3 +64,5 @@
 #undef	PC_ACCESS_GREG
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
+
+#endif /* CONF_H */

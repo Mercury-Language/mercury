@@ -1,15 +1,16 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/* heap.h - definitions for manipulating the Mercury heap */
+
 #ifndef HEAP_H
 #define HEAP_H
 
-#include "context.h"	/* for min_heap_reclamation_point */
-
-/* DEFINITIONS FOR MANIPULATING THE HEAP */
+#include "mercury_types.h"	/* for `Word' */
+#include "context.h"		/* for min_heap_reclamation_point() */
 
 #ifdef CONSERVATIVE_GC
 
@@ -110,7 +111,7 @@
 #define hp_alloc(count)  incr_hp(hp,count)
 #define hp_alloc_atomic(count) incr_hp_atomic(count)
 
-#endif
+#endif /* ! CONSERVATIVE_GC */
 
 #define	incr_hp(dest,count)	tag_incr_hp((dest),mktag(0),(count))
 #define	incr_hp_atomic(dest,count) \

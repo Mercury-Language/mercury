@@ -1,11 +1,15 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef	AUX_H
-#define	AUX_H
+/* misc.h - debugging messages, fatal_error(), and checked_malloc() */
+
+#ifndef	MISC_H
+#define	MISC_H
+
+#include "mercury_types.h"	/* for `Code *' */
 
 #ifndef SPEED
 
@@ -62,6 +66,8 @@ extern	Word	do_mklist(int start, int len);
 #endif
 extern	void	fatal_error(const char *msg) NO_RETURN;
 
+/* XXX checked_malloc() should be moved to memory.h or heap.h */
+#include <stddef.h>	/* for size_t */
 void *checked_malloc(size_t n);
 
-#endif
+#endif /* MISC_H */

@@ -1,15 +1,15 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-**	Definitions for the list module.
+** dlist.h - defines a doubly-linked list type.
 */
 
-#ifndef	LIST_H
-#define	LIST_H
+#ifndef	DLIST_H
+#define	DLIST_H
 
 /*
 ** The lists we use are doubly-linked.
@@ -69,4 +69,4 @@ extern	int	length(const List *);
 extern	void	dlist_delete(List *, List *, void (*)(void *));
 extern	void	oldlist(List *, void (*)(void *));
 
-#endif /* LIST_H */
+#endif /* DLIST_H */

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1996-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,9 +18,8 @@
 #ifndef MERCURY_SOLVER_BACKTRACK_H
 #define MERCURY_SOLVER_BACKTRACK_H
 
-	/* Mercury headers */
-#include "imp.h"
-#include "misc.h"
+#include <stdio.h>	/* for `FILE' */
+
 
 	/* This constant is also defined in the  */
 	/* CLP(R) headers, but we'll define it   */

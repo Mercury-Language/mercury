@@ -5,10 +5,14 @@
 */
 
 #include	"imp.h"
-#include	"dummy.h"
 
+#include	<stdio.h>
 #include 	<string.h>
 #include	<setjmp.h>
+
+#include	"engine.h"
+
+#include	"dummy.h"
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

@@ -1,17 +1,18 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1993-1995, 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-**	Definitions for the table module.
+** table.h - defines the interface to the hash table module.
 */
 
 #ifndef	TABLE_H
 #define	TABLE_H
 
-#include	"dlist.h"
+#include "std.h"	/* for bool */
+#include "dlist.h"	/* for List */
 
 typedef	struct	s_table
 {

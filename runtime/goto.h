@@ -1,10 +1,16 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
+** Copyright (C) 1995-1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" NON-LOCAL GOTOS */
+/* goto.h - definitions for the "portable assembler" non-local gotos */
+
+#ifndef GOTO_H
+#define GOTO_H
+
+#include "mercury_types.h"	/* for `Code *' */
+#include "debug.h"		/* for debuggoto() */
 
 /*
 ** Taking the address of a label can inhibit gcc's optimization,
@@ -559,7 +565,7 @@
 
 #endif /* !defined(USE_GCC_NONLOCAL_GOTOS) */
 
-/* DEFINITIONS FOR COMPUTED GOTOS */
+/* definitions for computed gotos */
 
 #define COMPUTED_GOTO(val, labels) 			\
 	{ static Code *jump_table[] = {			\
@@ -568,3 +574,5 @@
 	  GOTO(jump_table[val]);			\
 	}
 #define AND ,	/* used to separate the labels */
+
+#endif /* GOTO_H */

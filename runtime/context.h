@@ -1,19 +1,12 @@
-#ifndef CONTEXT_H
-#define CONTEXT_H
-
-#include "spinlock.h"
-
 /*
-** If we have parallelism switched on (PARALLEL is defined),
-** then we define how many processes should be used.
-** Ultimately this should be configurable through the
-** MERCURY_OPTIONS environment variable.
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
-#ifdef	PARALLEL
-extern int numprocs;
-#endif
 
 /*
+** context.h - defines Mercury multithreading stuff.
+**
 ** A Context is like a thread. It contains a detstack, a nondetstack,
 ** the various pointers that refer to them, a succip, and a thread-
 ** resumption continuation. Contexts are initally stored in a free-list.
@@ -46,6 +39,28 @@ extern int numprocs;
 ** required. Since there is only one process, no signalling is needed
 ** to wake suspended processes.
 */
+
+#ifndef CONTEXT_H
+#define CONTEXT_H
+
+#include "regs.h"		/* for hp */
+
+#include <sys/types.h>		/* for pid_t */
+
+#include "mercury_types.h"	/* for Word */
+#include "memory.h"		/* for MemoryZone */
+#include "spinlock.h"		/* for SpinLock */
+#include "goto.h"		/* for GOTO() */
+
+/*
+** If we have parallelism switched on (PARALLEL is defined),
+** then we define how many processes should be used.
+** Ultimately this should be configurable through the
+** MERCURY_OPTIONS environment variable.
+*/
+#ifdef	PARALLEL
+extern int numprocs;
+#endif
 
 /*
 ** The number of context structures initially allocated.
@@ -100,119 +115,119 @@ struct CONTEXT {
 		*/
 };
 
-		/*
-		** free_context_list is a global linked list of unused context
-		** structures. If the MemoryZone pointers are not NULL,
-		** then they point to allocated MemoryZones, which will
-		** need to be reinitialized, but have space allocated to
-		** them. (see comments in memory.h about reset_zone())
-		*/
+/*
+** free_context_list is a global linked list of unused context
+** structures. If the MemoryZone pointers are not NULL,
+** then they point to allocated MemoryZones, which will
+** need to be reinitialized, but have space allocated to
+** them. (see comments in memory.h about reset_zone())
+*/
 extern	Context **free_context_list_ptr;
 
-		/*
-		** the runqueue is a linked list of contexts that are
-		** runnable.
-		*/
+/*
+** the runqueue is a linked list of contexts that are
+** runnable.
+*/
 extern	Context **runqueue_ptr;
 
-		/*
-		** this_context is a pointer to the currently executing
-		** context. the fields of this_context are not necessarily
-		** in sync with the real values, since *this_context only
-		** gets updated when save_context() gets called.
-		*/
+/*
+** this_context is a pointer to the currently executing
+** context. the fields of this_context are not necessarily
+** in sync with the real values, since *this_context only
+** gets updated when save_context() gets called.
+*/
 extern	Context *this_context;
 
-		/* a pointer to a word used for the spinlock on the runqueue */
+/* a pointer to a word used for the spinlock on the runqueue */
 extern	SpinLock *runqueue_lock;
 
-		/*
-		** a pointer to a word used for the spinlock on the free
-		** context list
-		*/
+/*
+** a pointer to a word used for the spinlock on the free
+** context list
+*/
 extern	SpinLock *free_context_list_lock;
 
-		/*
-		** init_processes() forks new process (if necessary), and
-		** initializes the data-structures for managing the interactions
-		** between them.
-		*/
+/*
+** init_processes() forks new process (if necessary), and
+** initializes the data-structures for managing the interactions
+** between them.
+*/
 void	init_processes(void);
 
-		/*
-		** init_process_context() creates a top-level context for
-		** the original process, and allocates a heap and a solutions-
-		** heap for each process.
-		*/
+/*
+** init_process_context() creates a top-level context for
+** the original process, and allocates a heap and a solutions-
+** heap for each process.
+*/
 void	init_process_context(void);
 
-		/*
-		** new_context() allocates and initializes a new context
-		** structure.
-		*/
+/*
+** new_context() allocates and initializes a new context
+** structure.
+*/
 Context	*new_context(void);
 
-		/*
-		** delete_context(ptr) returns the context structure pointed
-		** to by ptr to the free list, and releases resources as
-		** necessary.
-		*/
+/*
+** delete_context(ptr) returns the context structure pointed
+** to by ptr to the free list, and releases resources as
+** necessary.
+*/
 void	delete_context(Context *context);
 
-	/*
-	** flounder() aborts with a runtime error message. It is called if
-	** the runqueue becomes empty and none of the running processes are
-	** working - ie the computation has floundered.
-	*/
+/*
+** flounder() aborts with a runtime error message. It is called if
+** the runqueue becomes empty and none of the running processes are
+** working - ie the computation has floundered.
+*/
 void	flounder(void);
 
-		/*
-		** procid[N] is the process id of the Nth process.
-		** procid[my_procnum] == getpid() == my_procid.
-		*/
+/*
+** procid[N] is the process id of the Nth process.
+** procid[my_procnum] == getpid() == my_procid.
+*/
 extern	pid_t	*procid;
 
-		/*
-		** procwaiting[N] is true if the process procid[N] is
-		** suspended because the runqueue was empty when it
-		** called runnext().
-		** Although we semantically want bools here, we use
-		** words to ensure coherency. Since a bool may be
-		** smaller than a word, storing a bool may be implemented
-		** in a coherency-breaking manner.
-		** (Assuming that Words can be read and written in a
-		** coherent manner is sufficiently important in terms of
-		** simplifying the synchronization mechanisms, that
-		** we really need to do so -- or so says Tom, at least.
-		** I remain unconvinced. -Fergus.)
-		*/
-typedef Word AtomicBool;
+/*
+** procwaiting[N] is true if the process procid[N] is
+** suspended because the runqueue was empty when it
+** called runnext().
+** Although we semantically want bools here, we use
+** words to ensure coherency. Since a bool may be
+** smaller than a word, storing a bool may be implemented
+** in a coherency-breaking manner.
+** (Assuming that Words can be read and written in a
+** coherent manner is sufficiently important in terms of
+** simplifying the synchronization mechanisms, that
+** we really need to do so -- or so says Tom, at least.
+** I remain unconvinced. -Fergus.)
+*/
+typedef Word		AtomicBool;
 extern	AtomicBool	*procwaiting;
 
-		/*
-		** my_procnum is the number of the current process.
-		** my_procnum == 0 is the original parent process.
-		*/
+/*
+** my_procnum is the number of the current process.
+** my_procnum == 0 is the original parent process.
+*/
 extern	int	my_procnum;
 extern	pid_t	my_procid;
 
-		/*
-		** The minimum value of hp to which the current context
-		** may truncate the heap on backtracking. see the comments
-		** below next to the set_min_heap_reclamation_point macro.
-		*/
+/*
+** The minimum value of hp to which the current context
+** may truncate the heap on backtracking. see the comments
+** below next to the set_min_heap_reclamation_point macro.
+*/
 extern	Word	*min_heap_reclamation_point;
 
-		/* do a context switch */
+/* do a context switch */
 Declare_entry(do_runnext);
 #define	runnext()	GOTO(ENTRY(do_runnext));
 
-		/*
-		** schedule(Context *cptr, Code *resume):
-		** setup a call to do_schedule which
-		** adds the context pointed to by `cptr' to the runqueue then
-		** branches to `resume'.
-		*/
+/*
+** schedule(Context *cptr, Code *resume):
+** setup a call to do_schedule which
+** adds the context pointed to by `cptr' to the runqueue then
+** branches to `resume'.
+*/
 Declare_entry(do_schedule);
 extern Context *do_schedule_cptr;
 extern Code *do_schedule_resume;
@@ -222,13 +237,13 @@ extern Code *do_schedule_resume;
 		GOTO(ENTRY(do_schedule));		\
 	} while(0)
 
-		/*
-		** fork_new_context(Code *child, Code *parent, int numslots):
-		** create a new context to execute the code at `child', and
-		** copy the topmost `numslots' from the current stackframe.
-		** The new context gets put on the runqueue, and the current
-		** context resumes at `parent'.
-		*/
+/*
+** fork_new_context(Code *child, Code *parent, int numslots):
+** create a new context to execute the code at `child', and
+** copy the topmost `numslots' from the current stackframe.
+** The new context gets put on the runqueue, and the current
+** context resumes at `parent'.
+*/
 #define fork_new_context(child, parent, numslots) do {		\
 		Context	*fork_new_context_context;		\
 		int	fork_new_context_i;			\

@@ -4,12 +4,14 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
+/* access.h - some unfinished junk that should probably be delted */
+
 #ifndef	ACCESS_H
 #define	ACCESS_H
 
-#ifndef		LIST_H
-#include	"dlist.h"
-#endif
+#include <stdio.h>		/* for `FILE' */
+#include "mercury_types.h"	/* for `Word' */
+#include "dlist.h"		/* for `List' */
 
 extern	void	reset(void);
 extern	void	help(void);
@@ -19,4 +21,5 @@ extern	Word	get_mem(Word *);
 extern	Word	set_mem(Word *, Word);
 extern	Word	createn(List *);
 extern	int	getflexline(const char *, FILE *, char **, int *);
+
 #endif
