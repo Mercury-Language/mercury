@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -269,6 +269,14 @@
 	--->	type(ilds__type)
 	;	methodref(ilds__methodref).
 
+:- type ref_or_value
+	--->	reference(simple_type)
+	;	value(simple_type).
+
+	% If possible converts a class name to a simple type and an
+	% indicator of whether or not that simple type is a reference or
+	% value class.
+:- pred name_to_simple_type(class_name::in, ref_or_value::out) is semidet.
 
 :- implementation.
 
@@ -738,12 +746,6 @@ output_simple_type('*'(Type), Info0, Info) -->
 output_simple_type('&'(Type), Info0, Info) --> 
 	output_type(Type, Info0, Info),
 	io__write_string("&").
-
-:- type ref_or_value
-	--->	reference(simple_type)
-	;	value(simple_type).
-
-:- pred name_to_simple_type(structured_name::in, ref_or_value::out) is semidet.
 
 name_to_simple_type(Name, Type) :-
 		% Parition II section 'Built-in Types' (7.2 in Beta2) states

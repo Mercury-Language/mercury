@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2468,7 +2468,12 @@ unaryop_to_il(unbox(UnboxedType), Rval, Instrs) -->
 	}.
 
 :- pred already_boxed(ilds__type::in) is semidet.
-already_boxed(ilds__type(_, class(_))).
+already_boxed(ilds__type(_, class(Name))) :-
+		% XXX Value classes are not already boxed, this call
+		% catches some of the value classes (which can be
+		% introduced by a :- pragma foreign_type), but not all
+		% possible values classes.
+	\+ name_to_simple_type(Name, value(_)).
 already_boxed(ilds__type(_, '[]'(_, _))).
 
 :- pred binaryop_to_il(binary_op, instr_tree, il_info,
@@ -3675,8 +3680,12 @@ simple_type_to_value_class(string) = _ :-
 	error("no value class for System.String").
 simple_type_to_value_class(refany) = _ :-
 	error("no value class for refany").
-simple_type_to_value_class(class(_)) = _ :-
-	error("no value class for class").
+simple_type_to_value_class(class(Name)) = Result :-
+	( name_to_simple_type(Name, value(Simple)) ->
+		Result = simple_type_to_value_class(Simple)
+	;
+		error("no value class for class")
+	).
 simple_type_to_value_class(value_class(_)) = _ :-
 	error("no value class for value_class").
 simple_type_to_value_class(interface(_)) = _ :-
