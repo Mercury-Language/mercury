@@ -147,16 +147,21 @@
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
 :- mode hlds_out__write_hlds(in, in, di, uo) is det.
 
+	% hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
+	%	AppendVarNums, HeadVars, PredOrFunc, Clauses, MaybeVarTypes).
 :- pred hlds_out__write_clauses(int, module_info, pred_id, prog_varset, bool,
 		list(prog_var), pred_or_func, list(clause), maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_clauses(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
 
+	% hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
+	%	AppendVarNums, HeadTerms, PredOrFunc, Clause,
+	%	UseDeclaredModes, MaybeVarTypes).
 :- pred hlds_out__write_clause(int, module_info, pred_id, prog_varset, bool,
-		list(prog_term), pred_or_func, clause, maybe_vartypes,
+		list(prog_term), pred_or_func, clause, bool, maybe_vartypes,
 		io__state, io__state).
-:- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, in, di, uo)
+:- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
 
 :- pred hlds_out__write_assertion(int, module_info, pred_id, prog_varset, bool,
@@ -933,9 +938,10 @@ hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 		{ Clauses0 = [Clause|Clauses] }
 	->
 		{ term__var_list_to_term_list(HeadVars, HeadTerms) },
+		{ UseDeclaredModes = no },
 		hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadTerms, PredOrFunc,
-			Clause, TypeQual),
+			Clause, UseDeclaredModes, TypeQual),
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadVars, PredOrFunc, Clauses, TypeQual)
 	;
@@ -943,7 +949,8 @@ hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 	).
 
 hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
-		AppendVarnums, HeadTerms, PredOrFunc, Clause, TypeQual) -->
+		AppendVarnums, HeadTerms, PredOrFunc, Clause,
+		UseDeclaredModes, TypeQual) -->
 	{
 		Clause = clause(
 			Modes,
@@ -984,7 +991,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		% than a compiler abort during the dumping process.
 		hlds_out__write_annotated_clause_heads(ModuleInfo, Context,
 			PredId, Modes, VarSet, AppendVarnums, HeadTerms,
-			PredOrFunc)
+			PredOrFunc, UseDeclaredModes)
 	),
 	( { Goal = conj([]) - _GoalInfo } ->
 		io__write_string(".\n")
@@ -996,29 +1003,53 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 
 :- pred hlds_out__write_annotated_clause_heads(module_info::in,
 	term__context::in, pred_id::in, list(proc_id)::in, prog_varset::in,
-	bool::in, list(prog_term)::in, pred_or_func::in,
+	bool::in, list(prog_term)::in, pred_or_func::in, bool::in,
 	io__state::di, io__state::uo) is det.
 
-hlds_out__write_annotated_clause_heads(_, _, _, [], _, _, _, _) --> [].
+hlds_out__write_annotated_clause_heads(_, _, _, [], _, _, _, _, _) --> [].
 hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
 		[ProcId | ProcIds], VarSet, AppendVarnums, HeadTerms,
-		PredOrFunc) -->
+		PredOrFunc, UseDeclaredModes) -->
 	hlds_out__write_annotated_clause_head(ModuleInfo, Context, PredId,
-		ProcId, VarSet, AppendVarnums, HeadTerms, PredOrFunc),
+		ProcId, VarSet, AppendVarnums, HeadTerms,
+		PredOrFunc, UseDeclaredModes),
 	hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
-		ProcIds, VarSet, AppendVarnums, HeadTerms, PredOrFunc).
+		ProcIds, VarSet, AppendVarnums, HeadTerms,
+		PredOrFunc, UseDeclaredModes).
 
 :- pred hlds_out__write_annotated_clause_head(module_info::in,
 	term__context::in, pred_id::in, proc_id::in, prog_varset::in,
-	bool::in, list(prog_term)::in, pred_or_func::in,
+	bool::in, list(prog_term)::in, pred_or_func::in, bool::in,
 	io__state::di, io__state::uo) is det.
 
 hlds_out__write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId,
-		VarSet, AppendVarnums, HeadTerms, PredOrFunc) -->
+		VarSet, AppendVarnums, HeadTerms,
+		PredOrFunc, UseDeclaredModes) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procedures) },
 	( { map__search(Procedures, ProcId, ProcInfo) } ->
-		{ proc_info_argmodes(ProcInfo, ArgModes) },
+		%
+		% When writing `.opt' files, use the declared
+		% argument modes so that the modes are guaranteed
+		% to be syntactically identical to those in the
+		% original program. The test in make_hlds.m to
+		% check whether a clause matches a procedure 
+		% tests for syntactic identity (roughly).
+		% The modes returned by proc_info_argmodes may have
+		% been slightly expanded by propagate_types_into_modes.
+		%
+		% We can't use the declared argument modes when writing
+		% HLDS dumps because the modes of the type-infos will
+		% not have been added, so the call to
+		% assoc_list__from_corresponding_lists below
+		% will abort. `.opt' files are written before
+		% the polymorphism pass.
+		%
+		{ UseDeclaredModes = yes ->
+			proc_info_declared_argmodes(ProcInfo, ArgModes)
+		;
+			proc_info_argmodes(ProcInfo, ArgModes)
+		},
 		{ assoc_list__from_corresponding_lists(HeadTerms, ArgModes, 
 			AnnotatedPairs) },
 		{ AnnotatedHeadTerms = list__map(add_mode_qualifier(Context),

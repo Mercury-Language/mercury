@@ -31,5 +31,9 @@ main -->
 	{ impure test2(In, In) },
 	{ impure test2(In, _Out11) },
 	{ impure test2(_Out12, In) },
-	{ impure test2(_Out13, _Out14) }.
+	{ impure test2(_Out13, _Out14) },
+	
+	{ get_determinism((pred(1::out) is semidet), Det) },
+	io__write(Det),
+	io__nl.
 

@@ -12,3 +12,4 @@ test2(in, in)
 test2(in, out)
 test2(out, in)
 test2(out, out)
+semidet

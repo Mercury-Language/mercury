@@ -29,6 +29,24 @@
 
 :- impure pred puts(string::in) is det.
 
+:- type determinism
+	--->	det
+	;	semidet
+	;	cc_multi
+	;	cc_nondet
+	;	multi
+	;	nondet
+	;	erroneous
+	;	failure.
+
+:- pred get_determinism(pred(T), determinism).
+:- mode get_determinism(pred(out) is det,     out(bound(det)))     is det.
+:- mode get_determinism(pred(out) is semidet, out(bound(semidet))) is det.
+:- mode get_determinism(pred(out) is multi, out(bound(multi)))     is det.
+:- mode get_determinism(pred(out) is nondet, out(bound(nondet)))   is det.
+:- mode get_determinism(pred(out) is cc_multi, out(bound(cc_multi))) is det.
+:- mode get_determinism(pred(out) is cc_nondet, out(bound(cc_nondet))) is det.
+
 :- implementation.
 
 func0 = ("func0 = out" :: out).
@@ -65,3 +83,12 @@ test2(0::out, 0::out) :-
 	impure puts("test2(out, out)").
 
 :- pragma c_code(puts(S::in), [will_not_call_mercury], "puts(S)").
+
+:- pragma promise_pure(get_determinism/2).
+get_determinism(_Pred::(pred(out) is det), det::out(bound(det))).
+get_determinism(_Pred::(pred(out) is semidet), semidet::out(bound(semidet))).
+get_determinism(_Pred::(pred(out) is cc_multi), cc_multi::out(bound(cc_multi))).
+get_determinism(_Pred::(pred(out) is cc_nondet), cc_nondet::out(bound(cc_nondet))).
+get_determinism(_Pred::(pred(out) is multi), multi::out(bound(multi))).
+get_determinism(_Pred::(pred(out) is nondet), nondet::out(bound(nondet))).
+

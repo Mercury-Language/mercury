@@ -1437,8 +1437,11 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
 	% where the added arguments for a DCG pred expression
 	% are named the same as variables in the enclosing clause.
 	{ AppendVarNums = yes },
+	{ UseDeclaredModes = yes },
+	{ MaybeVarTypes = no },
 	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
-		ClauseHeadVars, PredOrFunc, Clause, no).
+		ClauseHeadVars, PredOrFunc, Clause, UseDeclaredModes,
+		MaybeVarTypes).
 
 intermod__write_clause(ModuleInfo, PredId, VarSet, _HeadVars,
 		PredOrFunc, SymName, Clause) -->
