@@ -66,9 +66,9 @@ HDRS		=	\
 			mercury_regs.h		\
 			mercury_signal.h	\
 			mercury_std.h		\
-			mercury_stacks.h	\
 			mercury_stack_layout.h	\
 			mercury_stack_trace.h	\
+			mercury_stacks.h	\
 			mercury_string.h	\
 			mercury_tabling.h	\
 			mercury_tags.h		\
@@ -123,6 +123,7 @@ CFILES		= 	\
 			mercury_regs.c		\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
+			mercury_stacks.c	\
 			mercury_tabling.c	\
 			mercury_thread.c	\
 			mercury_timing.c	\

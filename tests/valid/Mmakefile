@@ -15,6 +15,10 @@ AGC_SOURCES= \
 	agc_unbound_typevars2.m \
 	agc_unused_in.m 
 
+TRAIL_SOURCES= \
+	complex_failure.m \
+	semi_fail_in_non_ite.m
+
 TYPECLASS_SOURCES= \
 	func_method.m \
 	instance_superclass.m \
@@ -22,7 +26,6 @@ TYPECLASS_SOURCES= \
 
 OTHER_SOURCES= \
 	compl_unify_bug.m \
-	complex_failure.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
@@ -87,7 +90,6 @@ OTHER_SOURCES= \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	same_length_2.m \
-	semi_fail_in_non_ite.m \
 	semidet_disj.m \
 	shape_type.m \
 	simplify_bug.m \
@@ -120,17 +122,23 @@ OTHER_SOURCES= \
 # cannot be used with accurate GC or type classes
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    SOURCES=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+    SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
 else
     ifneq "$(findstring jump,$(GRADE))" ""
-        SOURCES=$(OTHER_SOURCES)
+        SOURCES0=$(OTHER_SOURCES)
     else
         ifneq "$(findstring fast,$(GRADE))" ""
-            SOURCES=$(OTHER_SOURCES)
+            SOURCES0=$(OTHER_SOURCES)
         else
-            SOURCES=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+            SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
         endif
     endif
+endif
+
+ifneq "$(findstring .mm,$(GRADE))" ""
+    SOURCES=$(SOURCES0)
+else
+    SOURCES=$(SOURCES0) $(TRAIL_SOURCES)
 endif
 
 DEPS =	$(SOURCES:%.m=%.depend)
@@ -140,15 +148,18 @@ PROGS =	$(SOURCES:%.m=%)
 all:	objs
 
 # some regression tests only failed with particular options enabled
-# (please keep this list sorted)
+# (please keep these lists sorted)
+
 GRADEFLAGS-agc_graph		= --gc accurate
 GRADEFLAGS-agc_ho_pred		= --gc accurate
 GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
+GRADEFLAGS-complex_failure	= --use-trail
+GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
+
 MCFLAGS-compl_unify_bug		= -O3
-MCFLAGS-complex_failure		= --use-trail
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4
@@ -159,7 +170,6 @@ MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-pred_with_no_modes	= --infer-all
-MCFLAGS-semi_fail_in_non_ite	= --use-trail
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all

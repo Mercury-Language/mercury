@@ -76,9 +76,10 @@ extern	int	mercury_terminate(void);
 ** by C programs that wish to interface to Mercury.
 */
 
-#include "mercury_goto.h"		/* for Declare_entry */
+#include "mercury_regs.h"	/* must come before system headers */
+#include "mercury_goto.h"	/* for Declare_entry */
 #include "mercury_types.h"	/* for `Word' */
-#include "mercury_wrapper.h"		/* for do_init_modules,
+#include "mercury_wrapper.h"	/* for do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),

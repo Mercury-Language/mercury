@@ -47,9 +47,9 @@ ENDINIT
 /* size of data areas (including redzones), in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef MR_DEBUG_AGC
-  size_t		heap_size =       128;
+  size_t	heap_size =		  128;
 #else
-  size_t		heap_size =	 4096;
+  size_t	heap_size =		 4096;
 #endif
 size_t		detstack_size =  	 2048;
 size_t		nondstack_size =  	  128;
@@ -57,13 +57,15 @@ size_t		solutions_heap_size =	 1024;
 size_t		global_heap_size =	 1024;
 size_t		trail_size =		  128;
 size_t		debug_heap_size =	 4096;
+size_t		generatorstack_size =  	   32;
+size_t		cutstack_size =  	   32;
 
 /* size of the redzones at the end of data areas, in kilobytes */
 /* (but we later multiply by 1024 to convert to bytes) */
 #ifdef NATIVE_GC
-  size_t		heap_zone_size =   96;
+  size_t	heap_zone_size =	   96;
 #else
-  size_t		heap_zone_size =   16;
+  size_t	heap_zone_size =	   16;
 #endif
 size_t		detstack_zone_size =	   16;
 size_t		nondstack_zone_size =	   16;
@@ -71,14 +73,16 @@ size_t		solutions_heap_zone_size = 16;
 size_t		global_heap_zone_size =	   16;
 size_t		trail_zone_size =	   16;
 size_t		debug_heap_zone_size =	   16;
+size_t		generatorstack_zone_size = 16;
+size_t		cutstack_zone_size =	   16;
 
 /* primary cache size to optimize for, in bytes */
 size_t		pcache_size =	         8192;
 
 /* file names for mdb's debugger I/O streams */
-const char *MR_mdb_in_filename = NULL;
-const char *MR_mdb_out_filename = NULL;
-const char *MR_mdb_err_filename = NULL;
+const char	*MR_mdb_in_filename = NULL;
+const char	*MR_mdb_out_filename = NULL;
+const char	*MR_mdb_err_filename = NULL;
 
 /* other options */
 
@@ -684,6 +688,8 @@ process_options(int argc, char **argv)
 				MR_sregdebug    = TRUE;
 			else if (streq(MR_optarg, "t"))
 				MR_tracedebug   = TRUE;
+			else if (streq(MR_optarg, "S"))
+				MR_tablestackdebug = TRUE;
 			else if (streq(MR_optarg, "T"))
 				MR_tabledebug   = TRUE;
 			else if (streq(MR_optarg, "a")) {
@@ -952,6 +958,18 @@ print_register_usage_counts(void)
 				break;
 			case MR_GLOBAL_HP_RN:
 				printf("MR_global_hp");
+				break;
+			case MR_GEN_STACK_RN:
+				printf("MR_gen_stack");
+				break;
+			case MR_GEN_NEXT_RN:
+				printf("MR_gen_next");
+				break;
+			case MR_CUT_STACK_RN:
+				printf("MR_cut_stack");
+				break;
+			case MR_CUT_NEXT_RN:
+				printf("MR_cut_next");
 				break;
 			default:
 				printf("UNKNOWN%d", i);

@@ -36,7 +36,7 @@
 
 :- implementation.
 
-:- import_module code_util, code_exprn, prog_out.
+:- import_module code_util, code_exprn, llds_out, prog_out.
 :- import_module arg_info, type_util, mode_util, options.
 
 :- import_module term, varset.
@@ -1652,8 +1652,10 @@ code_info__generate_det_commit(DetCommitInfo, Code) -->
 
 :- type commit_hijack_info
 	--->	commit_temp_frame(
-			lval		% The stack slot in which we saved
+			lval,		% The stack slot in which we saved
 					% the old value of maxfr.
+			bool		% Do we bracket the goal with
+					% MR_commit_mark and MR_commit_cut?
 		)
 	;	commit_quarter_hijack
 	;	commit_half_hijack(
@@ -1686,14 +1688,45 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 		{ Allow = not_allowed ; CondEnv = inside_non_condition }
 	->
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
 		{ MaxfrCode = node([
 			assign(MaxfrSlot, lval(maxfr))
 				- "prepare for temp frame commit"
 		]) },
 		code_info__create_temp_frame(StackLabel,
 			"prepare for temp frame commit", TempFrameCode),
-		{ HijackCode = tree(MaxfrCode, TempFrameCode) }
+		code_info__get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, use_minimal_model,
+			UseMinimalModel) },
+		{ HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel) },
+		{
+			UseMinimalModel = yes,
+			% If the code we are committing across starts but
+			% does not complete the evaluation of a tabled subgoal,
+			% the cut will remove the generator's choice point,
+			% so that the evaluation of the subgoal will never
+			% be completed. We handle such "dangling" generators
+			% by removing them from the subgoal trie of the
+			% tabled procedure. This requires knowing what
+			% tabled subgoals are started inside commits,
+			% which is why we wrap the goal being committed across
+			% inside MR_commit_{mark,cut}.
+			Components = [
+				pragma_c_raw_code(
+					"\tsave_transient_registers();\n"),
+				pragma_c_raw_code(
+					"\tMR_commit_mark();\n"),
+				pragma_c_raw_code(
+					"\trestore_transient_registers();\n")
+			],
+			MarkCode = node([
+				pragma_c([], Components, will_not_call_mercury,
+					no, no) - ""
+			])
+		;
+			UseMinimalModel = no,
+			MarkCode = empty
+		},
+		{ HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode)) }
 	;
 		{ ResumeKnown = resume_point_known },
 		{ CurfrMaxfr = must_be_equal }
@@ -1707,6 +1740,7 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 		{ CurfrMaxfr = must_be_equal }
 	->
 		% Here ResumeKnown must be resume_point_unknown.
+
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
 			RedoipSlot),
 		{ HijackInfo = commit_half_hijack(RedoipSlot) },
@@ -1750,12 +1784,28 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 	code_info__set_fail_info(FailInfo),
 	% XXX should release the temp slots in each arm of the switch
 	(
-		{ HijackInfo = commit_temp_frame(MaxfrSlot) },
-		{ SuccessUndoCode = node([
+		{ HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel) },
+		{ MaxfrCode = node([
 			assign(maxfr, lval(MaxfrSlot))
-				- "restore maxfr for full commit hijack"
+				- "restore maxfr for temp frame hijack"
 		]) },
-		{ FailureUndoCode = SuccessUndoCode }
+		{
+			UseMinimalModel = yes,
+			% See the comment in prepare_for_semi_commit above.
+			Components = [
+				pragma_c_raw_code("\tMR_commit_cut();\n")
+			],
+			CutCode = node([
+				pragma_c([], Components,
+					will_not_call_mercury, no, no)
+					- "commit for temp frame hijack"
+			])
+		;
+			UseMinimalModel = no,
+			CutCode = empty
+		},
+		{ SuccessUndoCode = tree(MaxfrCode, CutCode) },
+		{ FailureUndoCode = tree(MaxfrCode, CutCode) }
 	;
 		{ HijackInfo = commit_quarter_hijack },
 		{ FailInfo = fail_info(ResumePoints, _, _, _, _) },

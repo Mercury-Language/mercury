@@ -1,10 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % Main author: ohutch
+% Significant modifications by zs.
 %
 % This module transforms HLDS code to a form that allows tabled evaluation,
 % minimal model evaluation and loop detection.  The tabling transformation
@@ -26,8 +27,13 @@
 % the semantics behind the transformation. Currently only SLGd is
 % implemented.
 %
-% XXX the current implementation of minimal_model tabling is buggy;
-% e.g. it fails for tests/tabling/coup.m.
+% The current implementation does not attempt to do anything special
+% to handle cases where tabling interacts with if-then-else, solutions,
+% and negated contexts in general. Such situations are not even detected,
+% since the cost of such detection is quite substantial, and this cost
+% would be "distributed fat". Therefore in such cases the system may
+% silently produce incorrect answers. For time being, this is not a bug,
+% but a missing feature :-)
 %
 % Example of transformation for semidet minimal_model :
 %
@@ -49,18 +55,18 @@
 %		impure table_lookup_insert_int(T0, A, T1),
 %		impure table_lookup_insert_int(T1, B, T2),
 %		(if
-%			semipure table_have_ans(T2)
+%			semipure table_simple_is_complete(T2)
 %		then
 %				% True if the subgoal has already succeeded
-%			semipure table_has_succeeded(T2)
+%			semipure table_simple_has_succeeded(T2)
 %		else
 %		   	(if
 %					% Fail if we are already working on
 %					% an ans for this subgoal
-%				semipure table_not_working_on_ans(T2),
+%				semipure table_simple_is_inactive(T2),
 %
 %					% Mark this subgoal as being evaluated
-%				impure table_mark_as_working(T2),
+%				impure table_simple_mark_as_active(T2),
 %
 %				(
 %					%
@@ -68,9 +74,9 @@
 %					%
 %				)
 %			then
-%				impure table_mark_as_succeeded(T2)
+%				impure table_simple_mark_as_succeeded(T2)
 %			else
-%				impure table_mark_as_failed(T2)
+%				impure table_simple_mark_as_failed(T2)
 %			)
 %		).
 %
@@ -87,30 +93,30 @@
 %	The transformed code would be :
 %
 %	p(A, B) :-
-%			% Code to get a handle on the table
+%			% Code to get a handle on the table.
 %		T0 = <table pointer for p/2>,
 %
-%			% Code to lookup input arguments and setup table
+%			% Code to lookup input arguments and setup table.
 %		impure table_lookup_insert_int(T0, A, T1),
-%		impure table_setup(T1, T2),
+%		impure table_nondet_setup(T1, T2),
 %		(if
-%			semipure table_have_all_ans(T2)
+%			semipure table_nondet_is_complete(T2)
 %		then
 %				% Code to return all ans if we have found
-%				% them
-%			impure table_return_all_ans(T2, Ans),
+%				% them.
+%			impure table_nondet_return_all_ans(T2, Ans),
 %			impure table_restore_int_ans(Ans, 0, B)
 %		else if
-%			semipure table_have_some_ans(T2)
+%			semipure table_nondet_is_active(T2)
 %		then
 %				% Code to suspend the current computational
-%				% branch
-%			impure table_suspend(T2, Ans),
+%				% branch.
+%			impure table_nondet_suspend(T2, Ans),
 %			impure table_restore_int_ans(Ans, 0, B)
 %		else
 %		   	(		% Mark that this subgoal is being
-%					% evaluated
-%				impure table_mark_have_some_ans(T2),
+%					% evaluated.
+%				impure table_nondet_mark_as_active(T2),
 %
 %				(
 %					%
@@ -119,29 +125,25 @@
 %				),
 %
 %					% Code to check for duplicate
-%					% answers
-%				impure table_get_ans_table(T2, AT0),
+%					% answers.
+%				impure table_nondet_get_ans_table(T2, AT0),
 %				impure table_lookup_insert_int(AT0, B, AT1),
 %
-%					% The following pred is semidet
+%					% The following pred is semidet;
 %					% it will fail if the answer is
 %					% already in the table.
-%				semipure table_has_not_returned(AT1),
+%				semipure table_nondet_answer_is_not_dupl(AT1),
 %
 %					% Code to save a new ans in the
 %					% table.
-%				impure table_mark_as_returned(AT1),
-%				impure table_new_ans_slot(T2, AS),
+%				impure table_nondet_new_ans_slot(T2, AS),
 %				impure table_create_ans_block(AS, 1, AB),
 %				impure table_save_int_ans(AB, 0, B)
 %			;
-%					% Code to resume suspended nodes.
-%				impure table_resume(T2),
-%				fail
-%			;
-%					% Code to mark the current subgoal
+%					% Code to resume all suspended nodes,
+%					% and then mark the current subgoal
 %					% as totally evaluated.
-%				impure table_mark_have_all_ans(T2),
+%				impure table_nondet_resume(T2),
 %				fail
 %			)
 %		).
@@ -153,6 +155,7 @@
 % dropped and the loop handling code is modified to call an error predicate.
 %
 %-----------------------------------------------------------------------------%
+
 :- module table_gen.
 
 :- interface.
@@ -178,7 +181,7 @@
 
 %-----------------------------------------------------------------------------%
 
-	% NOTE : following preds seem to duplicate the code in passes_aux.m.
+	% NOTE: following preds seem to duplicate the code in passes_aux.m.
 	% This is not strictly true as the following code saved the value of
 	% the pred_info and passes this value on to the code for handling
 	% each of the procedures.
@@ -303,14 +306,14 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredId, ProcId,
 
 	generate_det_lookup_goal(InputVars, Module, PredId, ProcId,
 		VarTypes0, VarTypes1, VarSet0, VarSet1, TableVar, LookUpGoal),
-	generate_call("table_have_ans", [TableVar], semidet, semipure,
-		[], Module, HaveAnsCheckGoal),
+	generate_call("table_simple_is_complete", [TableVar], semidet, semipure,
+		[], Module, CompleteCheckGoal),
 	generate_save_goal(OutputVars, TableVar, VarTypes1, VarTypes2,
 		VarSet1, VarSet2, Module, SaveAnsGoal0),
 	generate_restore_goal(OutputVars, TableVar,  Module, VarTypes2,
 		VarTypes3, VarSet2, VarSet3, RestoreAnsGoal),
-	generate_call("table_mark_done_working", [TableVar], det, impure,
-		[], Module, DoneWorkingGoal),
+	generate_call("table_simple_mark_as_inactive", [TableVar], det, impure,
+		[], Module, MarkAsInactiveGoal),
 	generate_loop_error_goal(PredInfo, Module, VarTypes3, VarTypes,
 		VarSet3, VarSet, LoopErrorGoal),
 
@@ -321,23 +324,22 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredId, ProcId,
 	set__insert(OrigNonLocals, TableVar, GenAnsNonLocals),
 
 	( EvalMethod = eval_loop_check ->
-		SaveAnsGoal = DoneWorkingGoal
-	;	EvalMethod = eval_memo ->
+		SaveAnsGoal = MarkAsInactiveGoal
+	; EvalMethod = eval_memo ->
 		SaveAnsGoal = SaveAnsGoal0
 	;
 		error(
     "table_gen__create_new_det_goal: unsupported evaluation model")
 	),
 
-	generate_call("table_working_on_ans", [TableVar], semidet,
-		semipure, [], Module, WorkingCheckGoal),
-	generate_call("table_mark_as_working", [TableVar], det,
-		impure, [], Module, MarkAsWorkingGoal),
+	generate_call("table_simple_is_active", [TableVar], semidet,
+		semipure, [], Module, ActiveCheckGoal),
+	generate_call("table_simple_mark_as_active", [TableVar], det,
+		impure, [], Module, MarkAsActiveGoal),
 
-	NoLoopGenAnsGoalEx = conj([MarkAsWorkingGoal, OrigGoal,
-		SaveAnsGoal]),
-	create_instmap_delta([MarkAsWorkingGoal, OrigGoal,
-		SaveAnsGoal], NoLoopGenInstMapDelta0),
+	NoLoopGenAnsGoalEx = conj([MarkAsActiveGoal, OrigGoal, SaveAnsGoal]),
+	create_instmap_delta([MarkAsActiveGoal, OrigGoal, SaveAnsGoal],
+		NoLoopGenInstMapDelta0),
 	instmap_delta_restrict(NoLoopGenInstMapDelta0, GenAnsNonLocals,
 		NoLoopGenInstMapDelta),
 	goal_info_init(GenAnsNonLocals, NoLoopGenInstMapDelta, det,
@@ -345,9 +347,9 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredId, ProcId,
 	NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
 	map__init(StoreMap),
-	GenAnsGoalEx = if_then_else([], WorkingCheckGoal,
+	GenAnsGoalEx = if_then_else([], ActiveCheckGoal,
 		LoopErrorGoal, NoLoopGenAnsGoal, StoreMap),
-	create_instmap_delta([WorkingCheckGoal, LoopErrorGoal,
+	create_instmap_delta([ActiveCheckGoal, LoopErrorGoal,
 		NoLoopGenAnsGoal], GenAnsInstMapDelta0),
 	instmap_delta_restrict(GenAnsInstMapDelta0, GenAnsNonLocals,
 		GenAnsInstMapDelta),
@@ -356,9 +358,9 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredId, ProcId,
 
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
-	ITEGoalEx = if_then_else([], HaveAnsCheckGoal, RestoreAnsGoal,
+	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
 		GenAnsGoal, StoreMap),
-	create_instmap_delta([HaveAnsCheckGoal, RestoreAnsGoal, GenAnsGoal],
+	create_instmap_delta([CompleteCheckGoal, RestoreAnsGoal, GenAnsGoal],
 		ITEInstMapDelta0),
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
 		ITEInstMapDelta),
@@ -391,20 +393,20 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredId, ProcId,
 
 	generate_det_lookup_goal(InputVars, Module, PredId, ProcId,
 		VarTypes0, VarTypes1, VarSet0, VarSet1, TableVar, LookUpGoal),
-	generate_call("table_have_ans", [TableVar], semidet, semipure,
-		[], Module, HaveAnsCheckGoal),
+	generate_call("table_simple_is_complete", [TableVar],
+		semidet, semipure, [], Module, CompleteCheckGoal),
 	generate_save_goal(OutputVars, TableVar, VarTypes1, VarTypes2,
 		VarSet1, VarSet2, Module, SaveAnsGoal0),
 	generate_restore_goal(OutputVars, TableVar,  Module, VarTypes2,
 		VarTypes3, VarSet2, VarSet3, RestoreTrueAnsGoal),
 	generate_loop_error_goal(PredInfo, Module, VarTypes3, VarTypes,
 		VarSet3, VarSet, LoopErrorGoal),
-	generate_call("table_mark_as_failed", [TableVar], failure, impure,
-		[], Module, MarkAsFailedGoal),
-	generate_call("table_has_succeeded", [TableVar], semidet, semipure,
-		[], Module, HasSucceededCheckGoal),
-	generate_call("table_mark_done_working", [TableVar], det, impure,
-		[], Module, DoneWorkingGoal),
+	generate_call("table_simple_mark_as_failed", [TableVar],
+		failure, impure, [], Module, MarkAsFailedGoal),
+	generate_call("table_simple_has_succeeded", [TableVar],
+		semidet, semipure, [], Module, HasSucceededCheckGoal),
+	generate_call("table_simple_mark_as_inactive", [TableVar],
+		det, impure, [], Module, MarkAsInactiveGoal),
 
 	OrigGoal = _ - OrigGoalInfo,
 	goal_info_get_nonlocals(OrigGoalInfo, OrigNonLocals),
@@ -423,17 +425,17 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredId, ProcId,
 		(
 			EvalMethod = eval_loop_check
 		->
-			SaveAnsGoal = DoneWorkingGoal
+			SaveAnsGoal = MarkAsInactiveGoal
 		;
 			SaveAnsGoal = SaveAnsGoal0
 		),
-		generate_call("table_working_on_ans", [TableVar], semidet,
-			semipure, [], Module, WorkingCheckGoal),
-		generate_call("table_mark_as_working", [TableVar], det,
-			impure, [], Module, MarkAsWorkingGoal),
+		generate_call("table_simple_is_active", [TableVar], semidet,
+			semipure, [], Module, ActiveCheckGoal),
+		generate_call("table_simple_mark_as_active", [TableVar], det,
+			impure, [], Module, MarkAsActiveGoal),
 
-		NoLoopGenAnsGoalEx = conj([MarkAsWorkingGoal, OrigGoal]),
-		create_instmap_delta([MarkAsWorkingGoal, OrigGoal],
+		NoLoopGenAnsGoalEx = conj([MarkAsActiveGoal, OrigGoal]),
+		create_instmap_delta([MarkAsActiveGoal, OrigGoal],
 			NoLoopGenInstMapDelta0),
 		instmap_delta_restrict(NoLoopGenInstMapDelta0, GenAnsNonLocals,
 			NoLoopGenInstMapDelta),
@@ -441,9 +443,9 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredId, ProcId,
 			NoLoopGenGoalInfo),
 		NoLoopGenAnsGoal = NoLoopGenAnsGoalEx - NoLoopGenGoalInfo,
 
-		GenTrueAnsGoalEx = if_then_else([], WorkingCheckGoal,
+		GenTrueAnsGoalEx = if_then_else([], ActiveCheckGoal,
 			LoopErrorGoal, NoLoopGenAnsGoal, StoreMap),
-		create_instmap_delta([WorkingCheckGoal, LoopErrorGoal,
+		create_instmap_delta([ActiveCheckGoal, LoopErrorGoal,
 			NoLoopGenAnsGoal], GenTrueAnsInstMapDelta0),
 		instmap_delta_restrict(GenTrueAnsInstMapDelta0,
 			GenAnsNonLocals, GenTrueAnsInstMapDelta),
@@ -456,16 +458,16 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredId, ProcId,
 	->
 		SaveAnsGoal = SaveAnsGoal0,
 
-		generate_call("table_not_working_on_ans", [TableVar], semidet,
-			semipure, [], Module, NotWorkingCheckGoal),
+		generate_call("table_simple_is_inactive", [TableVar], semidet,
+			semipure, [], Module, InactiveCheckGoal),
 
-		generate_call("table_mark_as_working", [TableVar], det,
-			impure, [], Module, MarkAsWorkingGoal),
+		generate_call("table_simple_mark_as_active", [TableVar], det,
+			impure, [], Module, MarkAsActiveGoal),
 
-		GenTrueAnsGoalEx = conj([NotWorkingCheckGoal,
-			MarkAsWorkingGoal, OrigGoal]),
+		GenTrueAnsGoalEx = conj([InactiveCheckGoal,
+			MarkAsActiveGoal, OrigGoal]),
 
-		create_instmap_delta([NotWorkingCheckGoal, MarkAsWorkingGoal,
+		create_instmap_delta([InactiveCheckGoal, MarkAsActiveGoal,
 			OrigGoal, SaveAnsGoal], GenTrueAnsInstMapDelta0),
 		instmap_delta_restrict(GenTrueAnsInstMapDelta0,
 			GenAnsNonLocals, GenTrueAnsInstMapDelta),
@@ -499,9 +501,9 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredId, ProcId,
 		GenAnsGoalInfo),
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalInfo,
 
-	ITEGoalEx = if_then_else([], HaveAnsCheckGoal, RestoreAnsGoal,
+	ITEGoalEx = if_then_else([], CompleteCheckGoal, RestoreAnsGoal,
 		GenAnsGoal, StoreMap),
-	create_instmap_delta([HaveAnsCheckGoal, RestoreAnsGoal, GenAnsGoal],
+	create_instmap_delta([CompleteCheckGoal, RestoreAnsGoal, GenAnsGoal],
 		ITEInstMapDelta0),
 	instmap_delta_restrict(ITEInstMapDelta0, GenAnsNonLocals,
 		ITEInstMapDelta),
@@ -534,24 +536,22 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredId, ProcId,
 
 	generate_non_lookup_goal(InputVars, Module, PredId, ProcId,
 		VarTypes0, VarTypes1, VarSet0, VarSet1, TableVar, LookUpGoal),
-	generate_call("table_have_all_ans", [TableVar], semidet, semipure,
-		[], Module, HaveAllAnsCheckGoal),
+	generate_call("table_nondet_is_complete", [TableVar], semidet, semipure,
+		[], Module, CompleteCheckGoal),
 	generate_non_save_goal(OutputVars, TableVar, VarTypes1, VarTypes2,
 		VarSet1, VarSet2, Module, SaveAnsGoal0),
 	generate_restore_all_goal(OutputVars, TableVar,  Module, VarTypes2,
 		VarTypes3, VarSet2, VarSet3, RestoreAllAnsGoal),
-	generate_call("table_have_some_ans", [TableVar], semidet, semipure,
-		[], Module, HaveSomeAnsCheckGoal),
+	generate_call("table_nondet_is_active", [TableVar], semidet, semipure,
+		[], Module, IsActiveCheckGoal),
 	generate_suspend_goal(OutputVars, TableVar, Module, VarTypes3,
 		VarTypes4, VarSet3, VarSet4, SuspendGoal),
 	generate_loop_error_goal(PredInfo, Module, VarTypes4, VarTypes,
 		VarSet4, VarSet, LoopErrorGoal),
-	generate_call("table_mark_have_some_ans", [TableVar], det, impure,
-		[], Module, MarkHaveSomeAnsGoal),
-	generate_call("table_resume", [TableVar], failure, impure,
+	generate_call("table_nondet_mark_as_active", [TableVar], det, impure,
+		[], Module, MarkAsActiveGoal),
+	generate_call("table_nondet_resume", [TableVar], failure, impure,
 		[], Module, ResumeGoal0),
-	generate_call("table_mark_have_all_ans", [TableVar], failure, impure,
-		[], Module, MarkHaveAllAnsGoal),
 
 	true_goal(TrueGoal),
 	fail_goal(FailGoal),
@@ -565,25 +565,25 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredId, ProcId,
 		EvalMethod = eval_memo
 	->
 		SaveAnsGoal = SaveAnsGoal0,
-		WorkingOnAnsGoal = LoopErrorGoal
+		ActiveGoal = LoopErrorGoal
 	;
 		EvalMethod = eval_loop_check
 	->
 		SaveAnsGoal = TrueGoal,
-		WorkingOnAnsGoal = LoopErrorGoal
+		ActiveGoal = LoopErrorGoal
 	;
 		EvalMethod = eval_minimal
 	->
 		SaveAnsGoal = SaveAnsGoal0,
-		WorkingOnAnsGoal = SuspendGoal
+		ActiveGoal = SuspendGoal
 	;
 		error(
     "table_gen__create_new_non_goal: unsupported evaluation model")
 	),
 
-	GenAnsGoalPart1Ex = conj([MarkHaveSomeAnsGoal, OrigGoal, SaveAnsGoal]),
+	GenAnsGoalPart1Ex = conj([MarkAsActiveGoal, OrigGoal, SaveAnsGoal]),
 	set__insert(OrigNonLocals, TableVar, GenAnsGoalPart1NonLocals),
-	create_instmap_delta([MarkHaveSomeAnsGoal, OrigGoal, SaveAnsGoal],
+	create_instmap_delta([MarkAsActiveGoal, OrigGoal, SaveAnsGoal],
 		GenAnsGoalPart1IMD0),
 	instmap_delta_restrict(GenAnsGoalPart1IMD0, GenAnsGoalPart1NonLocals,
 		GenAnsGoalPart1IMD),
@@ -598,11 +598,10 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredId, ProcId,
 	;
 		ResumeGoal = FailGoal
 	),
-	GenAnsGoalEx = disj([GenAnsGoalPart1, ResumeGoal, MarkHaveAllAnsGoal],
-		StoreMap),
+	GenAnsGoalEx = disj([GenAnsGoalPart1, ResumeGoal], StoreMap),
 	GenAnsGoal = GenAnsGoalEx - GenAnsGoalPart1GoalInfo,
 
-	ITE1GoalEx = if_then_else([], HaveSomeAnsCheckGoal, WorkingOnAnsGoal,
+	ITE1GoalEx = if_then_else([], IsActiveCheckGoal, ActiveGoal,
 		GenAnsGoal, StoreMap),
 	ITE1Goal = ITE1GoalEx - GenAnsGoalPart1GoalInfo,
 
@@ -611,7 +610,7 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredId, ProcId,
 	->
 		ITE2Goal = ITE1Goal
 	;
-		ITE2GoalEx = if_then_else([], HaveAllAnsCheckGoal,
+		ITE2GoalEx = if_then_else([], CompleteCheckGoal,
 			RestoreAllAnsGoal, ITE1Goal, StoreMap),
 		ITE2Goal = ITE2GoalEx - GenAnsGoalPart1GoalInfo
 	),
@@ -628,18 +627,19 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredId, ProcId,
 :- mode generate_get_table_goal(in, out, in, out, in, in, out, out) is det.
 
 generate_get_table_goal(VarTypes0, VarTypes, VarSet0, VarSet,
-		PredId, ProcId, TableVar, Goal) :-
-	generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet, TableVar),
+		PredId, ProcId, PredTableVar, Goal) :-
+	generate_new_table_var("PredTable", VarTypes0, VarTypes,
+		VarSet0, VarSet, PredTableVar),
 
 	ConsId = tabling_pointer_const(PredId, ProcId),
-	TableVarInst = ground(unique, no),
-	UnifyMode = (free -> TableVarInst) - (TableVarInst -> TableVarInst),
+	VarInst = ground(unique, no),
+	UnifyMode = (free -> VarInst) - (VarInst -> VarInst),
 	UnifyContext = unify_context(explicit, []),
-	GoalExpr = unify(TableVar, functor(ConsId, []), UnifyMode,
-			construct(TableVar, ConsId, [], []), UnifyContext),
+	GoalExpr = unify(PredTableVar, functor(ConsId, []), UnifyMode,
+			construct(PredTableVar, ConsId, [], []), UnifyContext),
 
-	set__singleton_set(NonLocals, TableVar),
-	instmap_delta_from_assoc_list([TableVar - TableVarInst],
+	set__singleton_set(NonLocals, PredTableVar),
+	instmap_delta_from_assoc_list([PredTableVar - VarInst],
 		InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det,
 		GoalInfo0),
@@ -658,8 +658,8 @@ generate_det_lookup_goal(Vars, Module, PredId, ProcId, VarTypes0, VarTypes,
 		VarSet0, VarSet, TableVar, Goal) :-
 
 	generate_get_table_goal(VarTypes0, VarTypes1, VarSet0, VarSet1,
-		PredId, ProcId, TableVar0, GetTableGoal),
-	generate_lookup_goals(Vars, TableVar0, TableVar, Module,
+		PredId, ProcId, PredTableVar, GetTableGoal),
+	generate_lookup_goals(Vars, PredTableVar, TableVar, Module,
 		VarTypes1, VarTypes, VarSet1, VarSet, LookupGoals),
 
 	GoalEx = conj([GetTableGoal | LookupGoals]),
@@ -676,20 +676,21 @@ generate_det_lookup_goal(Vars, Module, PredId, ProcId, VarTypes0, VarTypes,
 	is det.
 
 generate_non_lookup_goal(Vars, Module, PredId, ProcId, VarTypes0, VarTypes,
-		VarSet0, VarSet, TableVar, Goal) :-
+		VarSet0, VarSet, SubgoalVar, Goal) :-
 
 	generate_get_table_goal(VarTypes0, VarTypes1, VarSet0, VarSet1,
-		PredId, ProcId, TableVar0, GetTableGoal),
-	generate_lookup_goals(Vars, TableVar0, TableVar1, Module,
+		PredId, ProcId, PredTableVar, GetTableGoal),
+	generate_lookup_goals(Vars, PredTableVar, TableNodeVar, Module,
 		VarTypes1, VarTypes2, VarSet1, VarSet2, LookupGoals),
-	generate_new_table_var(VarTypes2, VarTypes, VarSet2, VarSet,
-		TableVar),
-	generate_call("table_setup", [TableVar1, TableVar], det, impure,
-		[TableVar - ground(unique, no)], Module, SetupGoal),
+	generate_new_table_var("SubgoalVar", VarTypes2, VarTypes,
+		VarSet2, VarSet, SubgoalVar),
+	generate_call("table_nondet_setup", [TableNodeVar, SubgoalVar],
+		det, impure, [SubgoalVar - ground(unique, no)],
+		Module, SetupGoal),
 
 	list__append([GetTableGoal | LookupGoals], [SetupGoal], Goals),
 	GoalEx = conj(Goals),
-	set__singleton_set(NonLocals0, TableVar),
+	set__singleton_set(NonLocals0, SubgoalVar),
 	set__insert_list(NonLocals0, Vars, NonLocals),
 	create_instmap_delta(Goals, InstMapDelta0),
 	instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
@@ -743,12 +744,14 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Module, VarTypes0,
 				VarTypes1, VarSet0, VarSet1, RangeVar,
 				RangeUnifyGoal),
 
-			generate_new_table_var(VarTypes1, VarTypes, VarSet1,
-				VarSet, NextTableVar),
-			generate_call("table_lookup_insert_enum", [TableVar,
-				RangeVar, ArgVar, NextTableVar], det, impure,
-				[NextTableVar - ground(unique, no)], Module,
-				LookupGoal),
+			generate_new_table_var("TableNodeVar",
+				VarTypes1, VarTypes, VarSet1, VarSet,
+				NextTableVar),
+			generate_call("table_lookup_insert_enum",
+				[TableVar, RangeVar, ArgVar, NextTableVar],
+				det, impure,
+				[NextTableVar - ground(unique, no)],
+				Module, LookupGoal),
 			set__init(NonLocals0),
 			set__insert_list(NonLocals0, [TableVar, ArgVar],
 				NonLocals),
@@ -780,8 +783,8 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Module, VarTypes0,
 			string__append("table_lookup_insert_", CatString,
 				LookupPredName)
 		),
-		generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet,
-			NextTableVar),
+		generate_new_table_var("TableNodeVar", VarTypes0, VarTypes,
+			VarSet0, VarSet, NextTableVar),
 		generate_call(LookupPredName, [TableVar, ArgVar, NextTableVar],
 			det, impure, [NextTableVar - ground(unique, no)],
 			Module, Goal)
@@ -805,22 +808,22 @@ generate_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
 			VarTypes1, VarSet0, VarSet1, NumAnsVarsVar,
 			NumAnsVarsUnifyGoal),
 
-		generate_new_table_var(VarTypes1, VarTypes2, VarSet1, VarSet2,
-			AnsTableVar),
+		generate_new_table_var("AnswerTableVar", VarTypes1, VarTypes2,
+			VarSet1, VarSet2, AnsTableVar),
 
-		generate_call("table_create_ans_block", [TableVar,
-			NumAnsVarsVar, AnsTableVar], det, impure,
+		generate_call("table_create_ans_block",
+			[TableVar, NumAnsVarsVar, AnsTableVar], det, impure,
 			[AnsTableVar - ground(unique, no)], Module,
-			GenAnsBlockGoal),
+			CreateAnsBlockGoal),
 
 		generate_save_goals(AnsList, AnsTableVar, 0, Module,
 			VarTypes2, VarTypes, VarSet2, VarSet, SaveGoals),
 
-		GoalEx = conj([NumAnsVarsUnifyGoal, GenAnsBlockGoal |
+		GoalEx = conj([NumAnsVarsUnifyGoal, CreateAnsBlockGoal |
 			SaveGoals]),
 		set__singleton_set(NonLocals0, TableVar),
 		set__insert_list(NonLocals0, AnsList, NonLocals),
-		create_instmap_delta([NumAnsVarsUnifyGoal, GenAnsBlockGoal |
+		create_instmap_delta([NumAnsVarsUnifyGoal, CreateAnsBlockGoal |
 			SaveGoals], InstMapDelta0),
 		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
 		goal_info_init(NonLocals, InstMapDelta, det,  GoalInfo),
@@ -837,42 +840,41 @@ generate_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
 		module_info, hlds_goal).
 :- mode generate_non_save_goal(in, in, in, out, in, out, in, out) is det.
 
-generate_non_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
-		VarSet, Module, Goal) :-
+generate_non_save_goal(AnsList, TableVar, VarTypes0, VarTypes,
+		VarSet0, VarSet, Module, Goal) :-
 
-	generate_new_table_var(VarTypes0, VarTypes1, VarSet0, VarSet1,
-		AnsTableVar0),
-	generate_call("table_get_ans_table", [TableVar, AnsTableVar0], det,
-		impure, [AnsTableVar0 - ground(unique, no)], Module,
-		GetAnsTableGoal),
+	generate_new_table_var("AnswerTableVar", VarTypes0, VarTypes1,
+		VarSet0, VarSet1, AnsTableVar0),
+	generate_call("table_nondet_get_ans_table", [TableVar, AnsTableVar0],
+		det, impure, [AnsTableVar0 - ground(unique, no)],
+		Module, GetAnsTableGoal),
 	generate_lookup_goals(AnsList, AnsTableVar0, AnsTableVar1, Module,
 		VarTypes1, VarTypes2, VarSet1, VarSet2, LookupAnsGoals),
-	generate_call("table_has_not_returned", [AnsTableVar1], semidet,
-		semipure, [], Module, NewAnsCheckGoal),
-	generate_call("table_mark_as_returned", [AnsTableVar1], det, impure,
-		[],  Module, MarkAsReturnedGoal),
+	generate_call("table_nondet_answer_is_not_duplicate", [AnsTableVar1],
+		semidet, impure, [], Module, DuplicateCheckGoal),
 
-	generate_new_table_var(VarTypes2, VarTypes3, VarSet2, VarSet3,
-		AnsBlockVar0),
-	generate_call("table_new_ans_slot", [TableVar, AnsBlockVar0], det,
-		impure, [AnsBlockVar0 - ground(unique, no)], Module,
-		GenAnsSlotGoal),
+	generate_new_table_var("AnswerSlotVar", VarTypes2, VarTypes3,
+		VarSet2, VarSet3, AnsSlotVar),
+	generate_call("table_nondet_new_ans_slot", [TableVar, AnsSlotVar], det,
+		impure, [AnsSlotVar - ground(unique, no)],
+		Module, NewAnsSlotGoal),
 
 	list__length(AnsList, NumAnsVars),
 	gen_int_construction("NumAnsVars", NumAnsVars, VarTypes3, VarTypes4,
 		VarSet3, VarSet4, NumAnsVarsVar, NumAnsVarsUnifyGoal),
-	generate_new_table_var(VarTypes4, VarTypes5, VarSet4, VarSet5,
-		AnsBlockVar),
-	generate_call("table_create_ans_block", [AnsBlockVar0, NumAnsVarsVar,
-		AnsBlockVar], det, impure, [AnsBlockVar - ground(unique, no)],
-		Module, GenAnsBlockGoal),
+	generate_new_table_var("AnswerBlock", VarTypes4, VarTypes5,
+		VarSet4, VarSet5, AnsBlockVar),
+	generate_call("table_create_ans_block",
+		[AnsSlotVar, NumAnsVarsVar, AnsBlockVar], det, impure,
+		[AnsBlockVar - ground(unique, no)],
+		Module, CreateAnsBlockGoal),
 
 	generate_save_goals(AnsList, AnsBlockVar, 0, Module, VarTypes5,
 		VarTypes, VarSet5, VarSet, SaveGoals),
 
 	list__append([GetAnsTableGoal | LookupAnsGoals],
-		[NewAnsCheckGoal, MarkAsReturnedGoal, GenAnsSlotGoal,
-		NumAnsVarsUnifyGoal, GenAnsBlockGoal | SaveGoals], Goals),
+		[DuplicateCheckGoal, NewAnsSlotGoal, NumAnsVarsUnifyGoal,
+		CreateAnsBlockGoal | SaveGoals], Goals),
 
 	GoalEx = conj(Goals),
 	set__singleton_set(NonLocals0, TableVar),
@@ -954,9 +956,9 @@ generate_restore_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 generate_restore_all_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 		VarSet0, VarSet, Goal) :-
 
-	generate_new_table_var(VarTypes0, VarTypes1, VarSet0, VarSet1,
-		AnsTableVar),
-	generate_call("table_return_all_ans", [TableVar, AnsTableVar],
+	generate_new_table_var("AnswerTable", VarTypes0, VarTypes1,
+		VarSet0, VarSet1, AnsTableVar),
+	generate_call("table_nondet_return_all_ans", [TableVar, AnsTableVar],
 		nondet, semipure, [AnsTableVar - ground(unique, no)],
 		Module, ReturnAnsBlocksGoal),
 
@@ -1025,9 +1027,9 @@ gen_restore_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module,
 generate_suspend_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 		VarSet0, VarSet, Goal) :-
 
-	generate_new_table_var(VarTypes0, VarTypes1, VarSet0, VarSet1,
-		AnsTableVar),
-	generate_call("table_suspend", [TableVar, AnsTableVar],
+	generate_new_table_var("AnswerTable", VarTypes0, VarTypes1,
+		VarSet0, VarSet1, AnsTableVar),
+	generate_call("table_nondet_suspend", [TableVar, AnsTableVar],
 		nondet, semipure, [AnsTableVar - ground(unique, no)],
 		Module, ReturnAnsBlocksGoal),
 
@@ -1078,12 +1080,13 @@ generate_loop_error_goal(PredInfo, ModuleInfo, VarTypes0, VarTypes,
 
 %------------------------------------------------------------------------------%
 
-:- pred generate_new_table_var(map(prog_var, type), map(prog_var, type),
+:- pred generate_new_table_var(string,
+		map(prog_var, type), map(prog_var, type),
 		prog_varset, prog_varset, prog_var).
-:- mode generate_new_table_var(in, out, in, out, out) is det.
+:- mode generate_new_table_var(in, in, out, in, out, out) is det.
 
-generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
-	varset__new_named_var(VarSet0, "TableVar", Var, VarSet),
+generate_new_table_var(Name, VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
+	varset__new_named_var(VarSet0, Name, Var, VarSet),
 	get_table_var_type(Type),
 	map__set(VarTypes0, Var, Type, VarTypes).
 

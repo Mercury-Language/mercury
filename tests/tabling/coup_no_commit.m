@@ -1,9 +1,7 @@
-% This test case is from Bart Demoen, whose mail reporting it said:
-%
-% the following program shows a coup, i.e. a change of leader;
-% the generated program loops
+% This test case is a variant of coup. It does not use commits,
+% but does use the output value of every tabled subgoal.
 
-:- module coup.
+:- module coup_no_commit.
 
 :- interface.
 :- import_module io.
@@ -25,13 +23,17 @@ main -->
 :- mode p(out) is nondet.
 
 p(X) :-
-	q(X).
-p(X) :-
-	X = 1.
+	(
+		q(X)
+	;
+		X = 1
+	).
 
 :- pragma minimal_model(q/1).
 :- pred q(int).
 :- mode q(out) is nondet.
 
-q(3) :- q(_).
-q(4) :- p(_).
+q(Y) :-
+	p(Z),
+	Y is Z + 3,
+	Y < 10.

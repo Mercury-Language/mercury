@@ -140,6 +140,7 @@
 		;	stack_trace
 		;	require_tracing
 		;	use_trail
+		;	use_minimal_model
 		;	pic_reg
 		;	tags
 		;	num_tag_bits
@@ -454,6 +455,7 @@ option_defaults_2(compilation_model_option, [
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
+	use_minimal_model	-	bool(no),
 	pic_reg			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -809,6 +811,7 @@ long_option("debug",			debug).
 % long_option("stack-trace",		stack_trace).
 % long_option("require-tracing",	require_tracing).
 long_option("use-trail",		use_trail).
+long_option("use-minimal-model",	use_minimal_model).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -1777,6 +1780,10 @@ your program compiled with different options.
 %		"\tKeeps typeinfo variables around for as long as any data",
 %		"\tthat has a type that contains that type variable is live",
 %
+		"--use-minimal-model",
+		"(This option is not for general use.)",
+		"\tEnable the use of minimal model tabling.",
+
 		"--unboxed-float",
 		"(This option is not for general use.)",
 		"\tDon't box floating point numbers.",

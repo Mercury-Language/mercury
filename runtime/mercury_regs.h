@@ -260,6 +260,10 @@ extern	Word	set_reg(int, Word);
 #define	MR_MIN_HP_REC		(MR_ORD_RN + 8)
 #define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
 #define	MR_GLOBAL_HP_RN		(MR_ORD_RN + 10)
-#define	MAX_RN			(MR_ORD_RN + 11)
+#define	MR_GEN_STACK_RN		(MR_ORD_RN + 11)
+#define	MR_GEN_NEXT_RN		(MR_ORD_RN + 12)
+#define	MR_CUT_STACK_RN		(MR_ORD_RN + 13)
+#define	MR_CUT_NEXT_RN		(MR_ORD_RN + 14)
+#define	MAX_RN			(MR_ORD_RN + 15)
 
 #endif /* not MERCURY_REGS_H */

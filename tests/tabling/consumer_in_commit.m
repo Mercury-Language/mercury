@@ -1,9 +1,7 @@
-% This test case is from Bart Demoen, whose mail reporting it said:
-%
-% the following program shows a coup, i.e. a change of leader;
-% the generated program loops
+% This test case checks whether we get incorrect answers
+% when a consumer gets suspended inside a commit.
 
-:- module coup.
+:- module consumer_in_commit.
 
 :- interface.
 :- import_module io.
@@ -20,18 +18,29 @@ main -->
 	io__write(Solns),
 	io__write_string("\n").
 
-:- pragma minimal_model(p/1).
 :- pred p(int).
 :- mode p(out) is nondet.
 
 p(X) :-
-	q(X).
-p(X) :-
-	X = 1.
+	q(X),
+	r(X).
 
 :- pragma minimal_model(q/1).
 :- pred q(int).
 :- mode q(out) is nondet.
 
-q(3) :- q(_).
-q(4) :- p(_).
+q(X) :-
+	(
+		X = 1
+	;
+		q(Y),
+		X = Y + 1,
+		X < 10
+	).
+
+:- pred r(int).
+:- mode r(in) is semidet.
+
+r(X) :-
+	X < 5,
+	q(_).

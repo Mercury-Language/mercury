@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -96,6 +96,11 @@
 	--no-use-trail)
 		use_trail=false ;;
 
+	--use-minimal-model)
+		use_minimal_model=true ;;
+	--no-use-minimal-model)
+		use_minimal_model=false ;;
+
 	--args)
 		shift
 		case "$1" in
@@ -133,6 +138,7 @@
 	    profile_calls=false
 	    profile_memory=false
 	    use_trail=false
+	    use_minimal_model=false
 	    args_method=compact
 	    stack_trace=false
 	    require_tracing=false
@@ -161,6 +167,8 @@
 				args_method=simple
 				;;
 			tr)	use_trail=true
+				;;
+			mm)	use_minimal_model=true
 				;;
 			memprof)
 				profile_time=false

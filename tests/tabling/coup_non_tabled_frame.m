@@ -1,9 +1,9 @@
-% This test case is from Bart Demoen, whose mail reporting it said:
-%
-% the following program shows a coup, i.e. a change of leader;
-% the generated program loops
+% This is yet another variant of the coup test case. This one includes
+% a non-tabled model_non procedure in the nondet stack segment that needs
+% to be saved and restored, checking that the frames of such procedures
+% are handled correctly.
 
-:- module coup.
+:- module coup_non_tabled_frame.
 
 :- interface.
 :- import_module io.
@@ -25,9 +25,15 @@ main -->
 :- mode p(out) is nondet.
 
 p(X) :-
-	q(X).
+	r(X).
 p(X) :-
 	X = 1.
+
+:- pred r(int).
+:- mode r(out) is multi.
+
+r(X) :- q(X).
+r(6).
 
 :- pragma minimal_model(q/1).
 :- pred q(int).
@@ -35,3 +41,4 @@ p(X) :-
 
 q(3) :- q(_).
 q(4) :- p(_).
+q(5).

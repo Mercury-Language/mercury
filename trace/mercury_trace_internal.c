@@ -1294,6 +1294,15 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("developer", "nondet_stack");
 		}
+#ifdef	MR_USE_MINIMAL_MODEL
+	} else if (streq(words[0], "gen_stack")) {
+		if (word_count == 1) {
+			do_init_modules();
+			MR_print_gen_stack(MR_mdb_out);
+		} else {
+			MR_trace_usage("developer", "gen_stack");
+		}
+#endif
 	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
 			fprintf(MR_mdb_out, "sp = ");
@@ -2489,6 +2498,9 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "exp", "clear_histogram" },
 #endif
 	{ "developer", "nondet_stack" },
+#ifdef	MR_USE_MINIMAL_MODEL
+	{ "developer", "gen_stack" },
+#endif
 	{ "developer", "stack_regs" },
 	{ "misc", "source" },
 	{ "misc", "quit" },

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -106,8 +106,18 @@ struct MR_context_struct {
 		/* saved maxfr pointer for this context */
 	Word		*context_curfr;
 		/* saved curfr pointer for this context */
+#ifdef	MR_USE_MINIMAL_MODEL
+	MemoryZone	*generatorstack_zone;
+		/* pointer to the generatorstack_zone for this context */
+	Integer		context_gen_next;
+		/* saved generator stack index for this context */
+	MemoryZone	*cutstack_zone;
+		/* pointer to the cutstack_zone for this context */
+	Integer		context_cut_next;
+		/* saved cut stack index for this context */
+#endif
 
-#ifdef MR_USE_TRAIL
+#ifdef	MR_USE_TRAIL
 	MemoryZone	*trail_zone;
 		/* pointer to the MR_trail_zone for this context */
 	MR_TrailEntry	*context_trail_ptr;
@@ -316,6 +326,12 @@ Declare_entry(do_runnext);
   #define MR_IF_USE_TRAIL(x)
 #endif
 
+#ifdef MR_USE_MINIMAL_MODEL
+  #define MR_IF_USE_MINIMAL_MODEL(x) x
+#else
+  #define MR_IF_USE_MINIMAL_MODEL(x)
+#endif
+
 #define load_context(cptr)						\
 	do {								\
 		MR_Context	*load_context_c;			\
@@ -324,6 +340,10 @@ Declare_entry(do_runnext);
 		MR_sp		= load_context_c->context_sp;		\
 		MR_maxfr	= load_context_c->context_maxfr; 	\
 		MR_curfr	= load_context_c->context_curfr;	\
+		MR_IF_USE_MINIMAL_MODEL(				\
+		    MR_gen_next = load_context_c->context_gen_next;	\
+		    MR_cut_next = load_context_c->context_cut_next;	\
+		)							\
 	        MR_IF_USE_TRAIL(					\
 		    MR_trail_zone = load_context_c->trail_zone;		\
 		    MR_trail_ptr = load_context_c->context_trail_ptr;	\
@@ -334,6 +354,16 @@ Declare_entry(do_runnext);
 				load_context_c->detstack_zone;		\
 		MR_ENGINE(context).nondetstack_zone =			\
 				load_context_c->nondetstack_zone;	\
+		MR_IF_USE_MINIMAL_MODEL(				\
+		    MR_ENGINE(context).generatorstack_zone =		\
+				load_context_c->generatorstack_zone;	\
+		    MR_ENGINE(context).cutstack_zone =			\
+				load_context_c->cutstack_zone;		\
+		    MR_gen_stack = (MR_GeneratorStackFrame *)		\
+				MR_ENGINE(context).generatorstack_zone;	\
+		    MR_cut_stack = (MR_CutStackFrame *)			\
+				MR_ENGINE(context).cutstack_zone;	\
+	    	)							\
 		set_min_heap_reclamation_point(load_context_c);		\
 	} while (0)
 
@@ -342,9 +372,13 @@ Declare_entry(do_runnext);
 		MR_Context	*save_context_c;			\
 		save_context_c = (cptr);				\
 		save_context_c->context_succip	= MR_succip;		\
-		save_context_c->context_sp	 = MR_sp;		\
-		save_context_c->context_maxfr	= MR_maxfr;		\
-		save_context_c->context_curfr	= MR_curfr;		\
+		save_context_c->context_sp	= MR_sp;		\
+		save_context_c->context_maxfr   = MR_maxfr;		\
+		save_context_c->context_curfr   = MR_curfr;		\
+		MR_IF_USE_MINIMAL_MODEL(				\
+		    save_context_c->context_gen_next = MR_gen_next;	\
+		    save_context_c->context_cut_next = MR_cut_next;	\
+		)							\
 		MR_IF_USE_TRAIL(					\
 		    save_context_c->trail_zone = MR_trail_zone;		\
 		    save_context_c->context_trail_ptr = MR_trail_ptr;	\
@@ -355,6 +389,16 @@ Declare_entry(do_runnext);
 				MR_ENGINE(context).detstack_zone;	\
 		save_context_c->nondetstack_zone =			\
 				MR_ENGINE(context).nondetstack_zone;	\
+		MR_IF_USE_MINIMAL_MODEL(				\
+		    save_context_c->generatorstack_zone =		\
+				MR_ENGINE(context).generatorstack_zone;	\
+		    save_context_c->cutstack_zone =			\
+				MR_ENGINE(context).cutstack_zone;	\
+		    assert(MR_gen_stack == (MR_GeneratorStackFrame *)	\
+				MR_ENGINE(context).generatorstack_zone);\
+		    assert(MR_cut_stack == (MR_CutStackFrame *)		\
+				MR_ENGINE(context).cutstack_zone);	\
+		)							\
 		save_hp_in_context(save_context_c);			\
 	} while (0)
 

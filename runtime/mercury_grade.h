@@ -129,13 +129,23 @@
   #define MR_GRADE_PART_6	MR_GRADE_PART_5
 #endif
 
+#ifdef MR_USE_MINIMAL_MODEL
+  #define MR_GRADE_PART_6A	MR_PASTE2(MR_GRADE_PART_6, _mm)
+#else
+  #define MR_GRADE_PART_6A	MR_GRADE_PART_6
+#endif
+
+#if defined(MR_USE_TRAIL) && defined(MR_USE_MINIMAL_MODEL)
+  #error "trailing and minimal model tabling are not compatible"
+#endif
+
 #if TAGBITS == 0
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _notags)
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, _notags)
 #elif defined(HIGHTAGS)
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, \
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, \
   					MR_PASTE2(_hightags, TAGBITS))
 #else
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, \
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, \
   					MR_PASTE2(_tags, TAGBITS))
 #endif
 
@@ -275,6 +285,12 @@ extern const char MR_GRADE_VAR;
   #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5
 #endif
 
+#ifdef MR_USE_MINIMAL_MODEL
+  #define MR_GRADE_OPT_PART_6A	MR_GRADE_OPT_PART_6 ".mm"
+#else
+  #define MR_GRADE_OPT_PART_6A	MR_GRADE_OPT_PART_6
+#endif
+
 /*
 ** Parts 7-10 above (i.e. tag bits, compact args, and (un)boxed float)
 ** are documented as "not for general use", and can't be set via the
@@ -282,9 +298,9 @@ extern const char MR_GRADE_VAR;
 */
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6 ".picreg"
+  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6A ".picreg"
 #else
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6
+  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6A
 #endif
 
 /*

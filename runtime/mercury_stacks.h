@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,7 @@
 #include "mercury_overflow.h"
 #include "mercury_debug.h"
 #include "mercury_goto.h"
+#include "mercury_tabling.h"
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
@@ -96,6 +97,15 @@
 
 #define	MR_SAVEVAL		(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
+
+#define	MR_prevfr_addr(fr)	(&((Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_addr(fr)	(&((Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_addr(fr)	(&((Word *) (fr))[MR_REDOFR])
+#define	MR_succip_addr(fr)	(&((Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_addr(fr)	(&((Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_addr(fr)	(&((Word *) (fr))[MR_DETFR])
+#define	MR_based_framevar_addr(fr, n) \
+				(&(((Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
 #define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_PREVFR])
 #define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_REDOIP])
@@ -224,4 +234,40 @@
 				GOTO(MR_redoip_slot(MR_maxfr));		\
 			} while (0)
 
-#endif /* not MERCURY_STACKS_H */
+#ifdef	MR_USE_MINIMAL_MODEL
+
+/* DEFINITIONS FOR GENERATOR STACK FRAMES */
+
+typedef struct MR_GeneratorStackFrameStruct {
+	Word			*generator_frame;
+	MR_Subgoal		*generator_table;
+} MR_GeneratorStackFrame;
+
+extern	void			MR_push_generator(Word *frame_addr,
+					MR_Subgoal *table_addr);
+extern	MR_Subgoal		*MR_top_generator_table(void);
+extern	void			MR_pop_generator(void);
+extern	void			MR_print_gen_stack(FILE *fp);
+
+/* DEFINITIONS FOR CUT STACK FRAMES */
+
+typedef struct MR_CutGeneratorListNode *MR_CutGeneratorList;
+struct MR_CutGeneratorListNode {
+	MR_Subgoal		**generator_ptr;
+	MR_CutGeneratorList	next_generator;
+};
+
+typedef struct MR_CutStackFrameStruct {
+	Word			*frame;
+	Integer			gen_next;
+	MR_CutGeneratorList	generators;
+} MR_CutStackFrame;
+
+extern	void			MR_commit_mark(void);
+extern	void			MR_commit_cut(void);
+
+extern	void			MR_register_generator_ptr(MR_Subgoal **);
+
+#endif	/* MR_USE_MINIMAL_MODEL */
+
+#endif	/* not MERCURY_STACKS_H */

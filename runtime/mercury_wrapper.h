@@ -16,6 +16,7 @@
 #include "mercury_std.h"		/* for `bool' */
 #include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
+#include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 
 /*
 ** mercury_runtime_init() does some stuff to initialize the garbage collector
@@ -114,6 +115,8 @@ extern	size_t		solutions_heap_size;
 extern	size_t		trail_size;
 extern	size_t		global_heap_size;
 extern	size_t		debug_heap_size;
+extern	size_t		generatorstack_size;
+extern	size_t		cutstack_size;
 
 /* sizes of the red zones */
 extern	size_t		heap_zone_size;
@@ -123,11 +126,13 @@ extern	size_t		solutions_heap_zone_size;
 extern	size_t		trail_zone_size;
 extern	size_t		global_heap_zone_size;
 extern	size_t		debug_heap_zone_size;
+extern	size_t		generatorstack_zone_size;
+extern	size_t		cutstack_zone_size;
 
 /* file names for the mdb debugging streams */
-extern const char *MR_mdb_in_filename;
-extern const char *MR_mdb_out_filename;
-extern const char *MR_mdb_err_filename;
+extern	const char	*MR_mdb_in_filename;
+extern	const char	*MR_mdb_out_filename;
+extern	const char	*MR_mdb_err_filename;
 
 /* size of the primary cache */
 extern	size_t		pcache_size;

@@ -164,8 +164,8 @@ postprocess_options(ok(OptionTable), Error) -->
                                 ->
                                     postprocess_options_2(OptionTable,
                                         GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel),
-                                    { Error = no }
+                                        PrologDialect, TermNorm, TraceLevel,
+					Error)
                                 ;
                                     { DumpAliasOption = string(DumpAlias) },
                                     { convert_dump_alias(DumpAlias,
@@ -175,8 +175,8 @@ postprocess_options(ok(OptionTable), Error) -->
                                         string(DumpOptions), NewOptionTable) },
                                     postprocess_options_2(NewOptionTable,
                                         GC_Method, TagsMethod, ArgsMethod,
-                                        PrologDialect, TermNorm, TraceLevel),
-                                    { Error = no }
+                                        PrologDialect, TermNorm, TraceLevel,
+					Error)
                                 ;
                                     { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                                 )
@@ -204,11 +204,11 @@ postprocess_options(ok(OptionTable), Error) -->
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method,
 	args_method, prolog_dialect, termination_norm, trace_level,
-	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
+	maybe(string), io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, in, out, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm, TraceLevel) -->
+		PrologDialect, TermNorm, TraceLevel, Error) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) } ->
 		io__preallocate_heap_space(HeapSpace)
@@ -285,8 +285,20 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
+	% Minimal model tabling is not compatible with trailing;
+	% see the comment in runtime/mercury_tabling.c.
+
+	globals__io_lookup_bool_option(use_trail, UseTrail),
+	globals__io_lookup_bool_option(use_minimal_model, UseMinimalModel),
+	{ UseTrail = yes, UseMinimalModel = yes ->
+		Error = yes("trailing and minimal model tabling are not compatible")
+	;
+		Error = no
+	},
+
 	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
-	% implies --use-trail.
+	% implies --use-trail, except with --use-minimal-model, which is
+	% not compatible with --use-trail.
 	%
 	% The reason for this is to avoid unnecessary proliferation in
 	% the number of different grades.  If you're using --debug,
@@ -296,7 +308,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	globals__io_lookup_bool_option(stack_trace, StackTrace),
 	globals__io_lookup_bool_option(require_tracing, RequireTracing),
-	( { StackTrace = yes, RequireTracing = yes } ->
+	( { StackTrace = yes, RequireTracing = yes, UseMinimalModel = no } ->
 		globals__io_set_option(use_trail, bool(yes))
 	;
 		[]
@@ -397,6 +409,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% operations involving tickets, which are generated only with
 	% --use-trail.
 	option_implies(use_trail, optimize_value_number, bool(no)),
+
+	% Minimal model tabling needs to be able to rewrite all the redoips
+	% in a given nondet stack segments. If we allow hijacks, some of these
+	% redoips may have been saved in ordinary framevars, which means that
+	% tabling can't find them without label layout info. Since we want
+	% to allow tabling in grades that do not have label layout info,
+	% we disable hijacks instead.
+	option_implies(use_minimal_model, allow_hijacks, bool(no)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
@@ -554,6 +574,7 @@ long_usage -->
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
+	;	minimal_model	% whether we set up for minimal model tabling
 	;	args		% argument passing convention
 	;	trace		% tracing/debugging options
 	;	par		% parallelism / multithreading
@@ -687,6 +708,10 @@ grade_component_table("strace", trace,
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).
 
+	% Mimimal model tabling components
+grade_component_table("mm", minimal_model,
+	[use_minimal_model - bool(yes)]).
+
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.
 
@@ -713,6 +738,7 @@ grade_start_values(profile_memory - bool(no)).
 grade_start_values(stack_trace - bool(no)).
 grade_start_values(require_tracing - bool(no)).
 grade_start_values(use_trail - bool(no)).
+grade_start_values(use_minimal_model - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.

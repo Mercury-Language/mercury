@@ -48,6 +48,7 @@
 ** NO_TYPE_LAYOUT
 ** BOXED_FLOAT
 ** MR_USE_TRAIL
+** MR_USE_MINIMAL_MODEL
 **	See the documentation for
 **		--gcc-global-registers
 **		--gcc-non-local-gotos
@@ -58,6 +59,7 @@
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail
+**		--use-minimal-model
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
 ** USE_SINGLE_PREC_FLOAT:
