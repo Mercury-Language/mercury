@@ -52,12 +52,14 @@
 
 :- pragma c_header_code("
 	#include <stdio.h>
+	#include ""mercury_context.h""
+	#include ""mercury_thread.h""
 
 	typedef struct ME_SEMAPHORE_STRUCT {
 		int		count;
 		MR_Context	*suspended;
 #ifdef MR_THREAD_SAFE
-		MR_Lock		lock;
+		MercuryLock		lock;
 #endif
 	} ME_Semaphore;
 ").
