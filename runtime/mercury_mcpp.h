@@ -133,7 +133,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP(a) MR_BOX_INT(mercury::runtime::Constants::a)
 
 // XXX This is hardcoded
-#define MR_RTTI_VERSION MR_BOX_INT(7)
+#define MR_RTTI_VERSION MR_BOX_INT(8)
 
 // XXX It is intended that we eventually define the constants in
 // private_builtin.m and mercury_mcpp.cpp in terms of these #defines
