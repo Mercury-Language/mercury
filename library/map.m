@@ -94,7 +94,6 @@
 
 	% For map__merge(MapA, MapB, Map), MapA and MapB must
 	% not both contain the same key.
-
 :- pred map__merge(map(K, V), map(K, V), map(K, V)).
 :- mode map__merge(in, in, out) is det.
 
@@ -102,9 +101,11 @@
 	% contain the same key, then Map will map that key to
 	% the value from MapB.  In otherwords, MapB takes precedence
 	% over MapA.
-
 :- pred map__overlay(map(K,V), map(K,V), map(K,V)).
 :- mode map__overlay(in, in, out) is det.
+
+:- pred map__apply_to_list(list(K), map(K, V), list(V)).
+:- mode map__apply_to_list(in, in, out) is det.
 
 :- pred map__optimize(map(K, V), map(K, V)).
 :- mode map__optimize(in, out) is det.
@@ -231,5 +232,12 @@ map__overlay_2([K - V | AssocList], Map0, Map) :-
 	map__set(Map0, K, V, Map1),
 	map__overlay_2(AssocList, Map1, Map).
 	
+%-----------------------------------------------------------------------------%
+
+map__apply_to_list([], _, []).
+map__apply_to_list([K | Ks], Map, [V | Vs]) :-
+	map__lookup(Map, K, V),
+	map__apply_to_list(Ks, Map, Vs).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -141,6 +141,9 @@
 :- pred mode_info_get_var_types(mode_info, map(var,type)).
 :- mode mode_info_get_var_types(mode_info_ui, out) is det.
 
+:- pred mode_info_get_types_of_vars(mode_info, list(var), list(type)).
+:- mode mode_info_get_types_of_vars(mode_info_ui, in, out) is det.
+
 :- pred mode_info_lock_vars(set(var), mode_info, mode_info).
 :- mode mode_info_lock_vars(in, mode_info_di, mode_info_uo) is det.
 
@@ -452,6 +455,10 @@ mode_info_get_var_types(ModeInfo, VarTypes) :-
 	mode_info_get_procid(ModeInfo, ProcId),
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_vartypes(ProcInfo, VarTypes).
+
+mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
+	mode_info_get_var_types(ModeInfo, VarTypes),
+	map__apply_to_list(Vars, VarTypes, TypesOfVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1242,7 +1242,8 @@ proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(DeclaredDet, _, _, _, ArgModes, _, Context,
 		CallInfo, InferredDet, ArgInfo, Liveness, Follow),
 	ProcInfo = procedure(DeclaredDet, VarSet, VarTypes, HeadVars, ArgModes,
-		Goal, Context, CallInfo, InferredDet, ArgInfo, Liveness, Follow).
+		Goal, Context, CallInfo, InferredDet, ArgInfo, Liveness,
+		Follow).
 
 proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L),
@@ -1264,10 +1265,10 @@ proc_info_set_follow_vars(ProcInfo0, L, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K, L).
 
-
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
+		% XXX propagate type info!
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
 	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
 

@@ -8,8 +8,6 @@
 % It is used by various stages of the compilation after type-checking,
 % include the mode checker and the code generator.
 
-% XXX TODO: implement type_is_enumeration.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -40,6 +38,11 @@
 			;	usertype(type).
 
 %-----------------------------------------------------------------------------%
+
+	% Given a non-variable type, return it's type-id and argument types.
+
+:- pred type_to_type_id(type, type_id, list(type)).
+:- mode type_to_type_id(in, out, out) is det.
 
 	% Given a constant and an arity, return a type_id.
 
@@ -87,17 +90,17 @@ classify_type(VarType, ModuleInfo, Type) :-
 :- mode type_is_enumeration(in, in) is semidet.
 
 type_is_enumeration(Type, ModuleInfo) :-
-	type_to_type_id(Type, TypeId),
+	Type = term__functor(_, _, _),
+	type_to_type_id(Type, TypeId, _),
 	module_info_types(ModuleInfo, TypeDefnTable),
 	map__lookup(TypeDefnTable, TypeId, TypeDefn),
 	TypeDefn = hlds__type_defn(_, _, TypeBody, _, _),
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
 
-:- pred type_to_type_id(type, type_id).
-:- mode type_to_type_id(in, out) is det.
-
-type_to_type_id(term__functor(Name, Args, _), TypeId) :-
+type_to_type_id(term__variable(_), _, _) :-
+	error("cannot make type_id for a type variable").
+type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
 	list__length(Args, Arity),
 	make_type_id(Name, Arity, TypeId).
 

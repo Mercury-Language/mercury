@@ -65,7 +65,7 @@
 ****/
 :- mode list__same_length(in, output_list_skel) is det.
 :- mode list__same_length(output_list_skel, in) is det.
-:- mode list__same_length(in, in) is det.
+:- mode list__same_length(in, in) is semidet.
 
 	% list__split_list(Len, List, Start, End):
 	%	splits `List' into a prefix `Start' of length `Len',

@@ -86,11 +86,26 @@
 :- pred instmapping_lookup_var(instmapping, var, inst).
 :- mode instmapping_lookup_var(in, in, out) is det.
 
+	% Given corresponding lists of types and modes, produce a new
+	% list of modes which includes the information provided by the
+	% corresponding types.
+
+:- pred propagate_type_info_mode_list(list(type), module_info, list(mode),
+				list(mode)).
+:- mode propagate_type_info_mode_list(in, in, in, out) is det.
+
+	% Given a type and an inst, produce a new inst which includes
+	% the information provided by the type.
+
+:- pred propagate_type_info_inst(type, module_info, inst, inst).
+:- mode propagate_type_info_inst(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require, map, set, term, std_util.
+:- import_module prog_util, type_util.
 
 mode_list_get_final_insts([], _ModuleInfo, []).
 mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
@@ -248,14 +263,16 @@ inst_list_is_free([Inst | Insts], ModuleInfo) :-
 	inst_is_free(ModuleInfo, Inst),
 	inst_list_is_free(Insts, ModuleInfo).
 
-inst_lookup(ModuleInfo, InstName, Inst) :-
-	module_info_insts(ModuleInfo, InstTable),
-	inst_lookup_2(InstName, InstTable, Inst).
+%-----------------------------------------------------------------------------%
 
-:- pred inst_lookup_2(inst_name, inst_table, inst).
+inst_lookup(ModuleInfo, InstName, Inst) :-
+	inst_lookup_2(InstName, ModuleInfo, Inst).
+
+:- pred inst_lookup_2(inst_name, module_info, inst).
 :- mode inst_lookup_2(in, in, out) is det.
 
-inst_lookup_2(unify_inst(Live, A, B), InstTable, Inst) :-
+inst_lookup_2(unify_inst(Live, A, B), ModuleInfo, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_unify_insts(InstTable, UnifyInstTable),
 	map__lookup(UnifyInstTable, unify_inst_pair(Live, A, B), MaybeInst),
 	( MaybeInst = known(Inst0) ->
@@ -263,7 +280,8 @@ inst_lookup_2(unify_inst(Live, A, B), InstTable, Inst) :-
 	;
 		Inst = defined_inst(unify_inst(Live, A, B))
 	).
-inst_lookup_2(merge_inst(A, B), InstTable, Inst) :-
+inst_lookup_2(merge_inst(A, B), ModuleInfo, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_merge_insts(InstTable, MergeInstTable),
 	map__lookup(MergeInstTable, A - B, MaybeInst),
 	( MaybeInst = known(Inst0) ->
@@ -271,7 +289,8 @@ inst_lookup_2(merge_inst(A, B), InstTable, Inst) :-
 	;
 		Inst = defined_inst(merge_inst(A, B))
 	).
-inst_lookup_2(ground_inst(A), InstTable, Inst) :-
+inst_lookup_2(ground_inst(A), ModuleInfo, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_ground_insts(InstTable, GroundInstTable),
 	map__lookup(GroundInstTable, A, MaybeInst),
 	( MaybeInst = known(Inst0) ->
@@ -279,7 +298,8 @@ inst_lookup_2(ground_inst(A), InstTable, Inst) :-
 	;
 		Inst = defined_inst(ground_inst(A))
 	).
-inst_lookup_2(user_inst(Name, Args), InstTable, Inst) :-
+inst_lookup_2(user_inst(Name, Args), ModuleInfo, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_user_insts(InstTable, UserInstTable),
 	list__length(Args, Arity),
 	( map__search(UserInstTable, Name - Arity, InstDefn) ->
@@ -288,6 +308,211 @@ inst_lookup_2(user_inst(Name, Args), InstTable, Inst) :-
 	;
 		Inst = abstract_inst(Name, Args)
 	).
+inst_lookup_2(typed_ground(Type), ModuleInfo, Inst) :-
+	propagate_type_info_inst(Type, ModuleInfo, ground, Inst).
+inst_lookup_2(typed_inst(Type, InstName), ModuleInfo, Inst) :-
+	inst_lookup_2(InstName, ModuleInfo, Inst0),
+	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst).
+
+%-----------------------------------------------------------------------------%
+
+	% Given corresponding lists of types and modes, produce a new
+	% list of modes which includes the information provided by the
+	% corresponding types.
+
+propagate_type_info_mode_list([], _, [], []).
+propagate_type_info_mode_list([Type | Types], ModuleInfo, [Mode0 | Modes0],
+		[Mode | Modes]) :-
+	propagate_type_info_mode(Type, ModuleInfo, Mode0, Mode),
+	propagate_type_info_mode_list(Types, ModuleInfo, Modes0, Modes).
+
+	% Given a type and a mode, produce a new mode which includes
+	% the information provided by the type.
+
+:- pred propagate_type_info_mode(type, module_info, mode, mode).
+:- mode propagate_type_info_mode(in, in, in, out) is det.
+
+propagate_type_info_mode(Type, ModuleInfo, Mode0, Mode) :-
+	mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
+	ex_propagate_type_info_inst(Type, ModuleInfo, InitialInst0,
+		InitialInst),
+	ex_propagate_type_info_inst(Type, ModuleInfo, FinalInst0, FinalInst),
+	Mode = (InitialInst -> FinalInst).
+
+	% Given a type and an inst, produce a new inst which includes
+	% the information provided by the type.
+
+propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
+	( Type = term__variable(_) ->
+		% A type variable doesn't provide any extra information
+		Inst = Inst0
+	;
+		module_info_types(ModuleInfo, TypeTable),
+		type_to_type_id(Type, TypeId, TypeArgs),
+		(
+			map__search(TypeTable, TypeId, TypeDefn),
+			TypeDefn = hlds__type_defn(_, TypeParams, TypeBody,
+							_, _),
+			TypeBody = du_type(Constructors0, _, _)
+		->
+			substitute_type_args(TypeParams, TypeArgs,
+				Constructors0, Constructors),
+			propagate_ctor_info(Inst0, Type, Constructors,
+				ModuleInfo, Inst)
+		;
+			Inst = Inst0
+		)
+	).
+
+	% Given a type and an inst, produce a new inst which includes
+	% the information provided by the type.
+
+:- pred ex_propagate_type_info_inst(type, module_info, inst, inst).
+:- mode ex_propagate_type_info_inst(in, in, in, out) is det.
+
+ex_propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
+	( Type = term__variable(_) ->
+		% A type variable doesn't provide any extra information
+		Inst = Inst0
+	;
+		module_info_types(ModuleInfo, TypeTable),
+		type_to_type_id(Type, TypeId, TypeArgs),
+		(
+			map__search(TypeTable, TypeId, TypeDefn),
+			TypeDefn = hlds__type_defn(_, TypeParams, TypeBody,
+							_, _),
+			TypeBody = du_type(Constructors0, _, _)
+		->
+			substitute_type_args(TypeParams, TypeArgs,
+				Constructors0, Constructors),
+			ex_propagate_ctor_info(Inst0, Type, Constructors,
+				ModuleInfo, Inst)
+		;
+			Inst = Inst0
+		)
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Substitute the actual values of the type parameters
+	% in list of constructors, for a particular instance of
+	% a polymorphic type.
+
+:- pred substitute_type_args(list(type_param), list(type),
+				list(constructor), list(constructor)).
+:- mode substitute_type_args(in, in, in, out) is det.
+
+substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
+	( TypeParams0 = [] ->
+		Constructors = Constructors0
+	;
+		term__term_list_to_var_list(TypeParams0, TypeParams),
+		substitute_type_args_2(Constructors0, TypeParams, TypeArgs,
+			Constructors)
+	).
+
+:- pred substitute_type_args_2(list(constructor), list(var), list(type),
+				list(constructor)).
+:- mode substitute_type_args_2(in, in, in, out) is det.
+
+substitute_type_args_2([], _TypeParams, _TypeArgs, []).
+substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
+		[Name - Args | Ctors]) :-
+	term__substitute_corresponding_list(TypeParams, TypeArgs, Args0, Args),
+	substitute_type_args_2(Ctors0, TypeParams, TypeArgs, Ctors).
+
+%-----------------------------------------------------------------------------%
+
+:- pred propagate_ctor_info(inst, type, list(constructor), module_info, inst).
+:- mode propagate_ctor_info(in, in, in, in, out) is det.
+
+% propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
+propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
+
+propagate_ctor_info(free(_), _, _, _, _) :-
+	error("propagate_ctor_info: type info already present").
+propagate_ctor_info(bound(BoundInsts0), _Type, Constructors, ModuleInfo,
+		Inst) :-
+	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
+		BoundInsts),
+	( BoundInsts = [] ->
+		Inst = not_reached
+	;
+		% XXX do we need to sort the BoundInsts?
+		Inst = bound(BoundInsts)
+	).
+propagate_ctor_info(ground, _Type, Constructors, ModuleInfo, Inst) :-
+	constructors_to_bound_insts(Constructors, ModuleInfo, BoundInsts0),
+	list__sort(BoundInsts0, BoundInsts),
+	Inst = bound(BoundInsts).
+propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
+		not_reached).
+propagate_ctor_info(inst_var(_), _, _, _, _) :-
+	error("propagate_ctor_info: unbound inst var").
+propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
+		abstract_inst(Name, Args)).	% XXX loses info
+propagate_ctor_info(defined_inst(InstName), Type, Ctors, ModuleInfo, Inst) :-
+	inst_lookup(ModuleInfo, InstName, Inst0),
+	propagate_ctor_info(Inst0, Type, Ctors, ModuleInfo, Inst).
+
+:- pred ex_propagate_ctor_info(inst, type, list(constructor), module_info, inst).
+:- mode ex_propagate_ctor_info(in, in, in, in, out) is det.
+
+% ex_propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
+ex_propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
+
+ex_propagate_ctor_info(free(_), _, _, _, _) :-
+	error("ex_propagate_ctor_info: type info already present").
+ex_propagate_ctor_info(bound(BoundInsts0), _Type, Constructors, ModuleInfo,
+		Inst) :-
+	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
+		BoundInsts),
+	( BoundInsts = [] ->
+		Inst = not_reached
+	;
+		% XXX do we need to sort the BoundInsts?
+		Inst = bound(BoundInsts)
+	).
+ex_propagate_ctor_info(ground, Type, _, _, Inst) :-
+	Inst = defined_inst(typed_ground(Type)).
+ex_propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
+		not_reached).
+ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
+	error("propagate_ctor_info: unbound inst var").
+ex_propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
+		abstract_inst(Name, Args)).	% XXX loses info
+ex_propagate_ctor_info(defined_inst(InstName), Type, _, _,
+		defined_inst(typed_inst(Type, InstName))).
+
+:- pred constructors_to_bound_insts(list(constructor), module_info,
+				list(bound_inst)).
+:- mode constructors_to_bound_insts(in, in, out) is det.
+
+constructors_to_bound_insts([], _, []).
+constructors_to_bound_insts([Ctor | Ctors], ModuleInfo,
+		[BoundInst | BoundInsts]) :-
+	Ctor = Name0 - Args,
+	type_list_to_inst_list(Args, Insts),
+	unqualify_name(Name0, Name),
+	BoundInst = functor(term__atom(Name), Insts),
+	constructors_to_bound_insts(Ctors, ModuleInfo, BoundInsts).
+
+:- pred type_list_to_inst_list(list(type), list(inst)).
+:- mode type_list_to_inst_list(in, out) is det.
+
+type_list_to_inst_list([], []).
+type_list_to_inst_list([Type | Types], [Inst | Insts]) :-
+	Inst = defined_inst(typed_ground(Type)),
+	type_list_to_inst_list(Types, Insts).
+
+:- pred propagate_ctor_info_2(list(bound_inst), list(constructor),
+		module_info, list(bound_inst)).
+:- mode propagate_ctor_info_2(in, in, in, out) is det.
+
+propagate_ctor_info_2(BoundInsts0, _Constructors, _ModuleInfo, BoundInsts) :-
+	BoundInsts = BoundInsts0.	% XXX Stub only!!
+
+%-----------------------------------------------------------------------------%
 
 :- pred inst_lookup_subst_args(hlds__inst_body, list(inst_param), sym_name,
 			list(inst), inst).
@@ -298,6 +523,7 @@ inst_lookup_subst_args(eqv_inst(Inst0), Params, _Name, Args, Inst) :-
 inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 		abstract_inst(Name, Args)).
 
+%-----------------------------------------------------------------------------%
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
 

@@ -176,11 +176,11 @@
 :- type inst_param	==	term.
 
 :- type (inst)		--->	free
+			;	free(type)
 			;	bound(list(bound_inst))
 					% The list must be sorted
 			;	ground
 			;	not_reached
-
 			;	inst_var(var)
 			;	defined_inst(inst_name)
 				% An abstract inst is a defined inst which
@@ -193,7 +193,9 @@
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
 			;	unify_inst(is_live, inst, inst)
-			;	ground_inst(inst_name).
+			;	ground_inst(inst_name)
+			;	typed_ground(type)
+			;	typed_inst(type, inst_name).
 
 :- type is_live		--->	live ; dead.
 

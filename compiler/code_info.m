@@ -1041,20 +1041,12 @@ code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
 code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
-		% Use the variable to determine the type
+		% Use the variable to determine the type_id
 		%
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) },
-		%
-		% Given the type, determine the type_id
-		%
-	{ Type = term__functor(TypeName, TypeArgs, _Context) ->
-		list__length(TypeArgs, TypeArity),
-		make_type_id(TypeName, TypeArity, TypeId)
-	;
-		error("unification with polymorphically typed variable?")
-	},
+	{ type_to_type_id(Type, TypeId, _) },
 		%
 		% Given the type_id, lookup up the constructor tag
 		% table for that type

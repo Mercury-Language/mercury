@@ -263,6 +263,18 @@ mercury_output_inst_name(ground_inst(InstName), VarSet) -->
 	io__write_string("$ground("),
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
+mercury_output_inst_name(typed_ground(Type), _VarSet) -->
+	io__write_string("$typed_ground("),
+	{ varset__init(TypeVarSet) },
+	mercury_output_term(Type, TypeVarSet),
+	io__write_string(")").
+mercury_output_inst_name(typed_inst(Type, InstName), VarSet) -->
+	io__write_string("$typed_inst("),
+	{ varset__init(TypeVarSet) },
+	mercury_output_term(Type, TypeVarSet),
+	io__write_string(", "),
+	mercury_output_inst_name(InstName, VarSet),
+	io__write_string(")").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
 		io__state).
