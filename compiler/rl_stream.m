@@ -309,9 +309,12 @@ rl_stream__end_block_list(Info0, Info) :-
 	Info0 = stream_info(Materialise0, Uses, Aliases0),
 	relation__rtc(Aliases0, Aliases),
 	relation__domain(Aliases, AliasedRels0),
-	set__to_sorted_list(AliasedRels0, AliasedRels),
+	bag__to_assoc_list(Uses, UsesAL),
+	assoc_list__keys(UsesAL, UsedRels),
+	set__insert_list(AliasedRels0, UsedRels, RelsToCheck0),
+	set__to_sorted_list(RelsToCheck0, RelsToCheck),
 	list__foldl(rl_stream__end_block_check_relation(Uses, Aliases),
-		AliasedRels, Materialise0, Materialise),
+		RelsToCheck, Materialise0, Materialise),
 	Info = stream_info(Materialise, Uses, Aliases).
 
 	% Work out which relations used in this block need to be materialised.
