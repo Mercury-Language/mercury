@@ -70,6 +70,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 	bool top_frame = TRUE;
 
 	layout = label->i_layout;
+	success_ip = label->i_addr;
 	entry_layout = layout->MR_sll_entry;
 
 	/* 
