@@ -164,10 +164,16 @@
   #define MR_GRADE_PART_6	MR_GRADE_PART_5
 #endif
 
-#ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _mm)
+#ifdef MR_RESERVE_TAG
+  #define MR_GRADE_PART_6b	MR_PASTE2(MR_GRADE_PART_6, _rt)
 #else
-  #define MR_GRADE_PART_7	MR_GRADE_PART_6
+  #define MR_GRADE_PART_6b	MR_GRADE_PART_6
+#endif
+
+#ifdef MR_USE_MINIMAL_MODEL
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6b, _mm)
+#else
+  #define MR_GRADE_PART_7	MR_GRADE_PART_6b
 #endif
 
 #if defined(MR_USE_TRAIL) && defined(MR_USE_MINIMAL_MODEL)
@@ -334,10 +340,16 @@ extern const char MR_GRADE_VAR;
   #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5
 #endif
 
-#ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6 ".mm"
+#ifdef MR_RESERVE_TAG
+  #define MR_GRADE_OPT_PART_6b	MR_GRADE_OPT_PART_6 ".rt"
 #else
-  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
+  #define MR_GRADE_OPT_PART_6b	MR_GRADE_OPT_PART_6
+#endif
+
+#ifdef MR_USE_MINIMAL_MODEL
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6b ".mm"
+#else
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6b
 #endif
 
 /*
