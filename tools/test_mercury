@@ -854,8 +854,9 @@ cd tests || { false; exit 1; }
 # esac
 
 case "$C_COMPILER" in
-        gcc)    test_error_file="test-$BRANCH-$HOST.test_errs" ;;
-        *)      test_error_file="test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
+        gcc) test_error_file="$TEST_DIR/logs/test-$BRANCH-$HOST.test_errs" ;;
+        *)   test_error_file=\
+		"$TEST_DIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
 esac
 rm -f $test_error_file
 for grade in $GRADES
