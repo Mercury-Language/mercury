@@ -1279,12 +1279,12 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		),
 		(
 			PredOrFunc = function,
-			ml_is_output_det_function(ModuleInfo, PredId,
+			\+ ml_is_output_det_function(ModuleInfo, PredId,
 				ProcId, _)
 		->
-			NonOutputFunc = no
-		;
 			NonOutputFunc = yes
+		;
+			NonOutputFunc = no
 		),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
 				PredName, PredArity, CodeModel,
