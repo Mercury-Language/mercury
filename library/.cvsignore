@@ -19,4 +19,5 @@ io.h std_util.h exception.h
 library.nu.nl
 mer_std.init
 library.dep
+library.dv
 Mercury
