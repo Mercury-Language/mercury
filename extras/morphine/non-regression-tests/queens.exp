@@ -1,5 +1,5 @@
 [morphine 1]: 
-Copyright (C) 1999-2001 INRIA/INSA de Rennes.
+Copyright (C) 1999-2002 INRIA/INSA de Rennes.
 **************************************************
 ******** Non regression test for Morphine *********
 **************************************************
@@ -12,17 +12,17 @@ Start debugging queens program.
   3:  2 [2] exit data([1, 2, 3, 4, 5]) []  16 
   4:  3 [2] call queen([1, 2, 3, 4, 5], -) []  16 
   5:   4 [3] call qperm([1, 2, 3, 4, 5], -) []  43 
-  6:   4 [3] switch qperm([1, 2, 3, 4, 5], -) [s1]  47 
+  6:   4 [3] switch qperm([1, 2, 3, 4, 5], -) [s2]  47 
   7:    5 [4] call qdelete(-, [1, 2, 3, 4, 5], -) []  48 
   8:    5 [4] disj qdelete(-, [1, 2, 3, 4, 5], -) [c2, d1]  52 
   9:    5 [4] exit qdelete(1, [1, 2, 3, 4, 5], [2, 3, 4, 5]) []  48 
  10:    6 [4] call qperm([2, 3, 4, 5], -) []  50 
- 11:    6 [4] switch qperm([2, 3, 4, 5], -) [s1]  47 
+ 11:    6 [4] switch qperm([2, 3, 4, 5], -) [s2]  47 
  12:     7 [5] call nondet (predicate) {queens} queens: qdelete(-, [2, 3, 4, 5] {list__list(int)}, -)/3-0 []  48 
  13:     7 [5] disj nondet (predicate) {queens} queens: qdelete(-, [2, 3, 4, 5] {list__list(int)}, -)/3-0 [c2, d1]  52 
  14:     7 [5] exit nondet (predicate) {queens} queens: qdelete(2 {int}, [2, 3, 4, 5] {list__list(int)}, [3, 4, 5] {list__list(int)})/3-0 []  48 
  15:     8 [5] call nondet (predicate) {queens} queens: qperm([3, 4, 5] {list__list(int)}, -)/2-0 []  50 
- 16:     8 [5] switch nondet (predicate) {queens} queens: qperm([3, 4, 5] {list__list(int)}, -)/2-0 [s1]  47 
+ 16:     8 [5] switch nondet (predicate) {queens} queens: qperm([3, 4, 5] {list__list(int)}, -)/2-0 [s2]  47 
  17:      9 [6] call nondet (predicate) {queens} queens: qdelete(-, [3, 4, 5] {list__list(int)}, -)/3-0 []  48 
  18:      9 [6] disj nondet (predicate) {queens} queens: qdelete(-, [3, 4, 5] {list__list(int)}, -)/3-0 [c2, d1]  52 
  19:      9 [6] exit nondet (predicate) {queens} queens: qdelete(3 {int}, [3, 4, 5] {list__list(int)}, [4, 5] {list__list(int)})/3-0 []  48 
@@ -274,24 +274,26 @@ Start debugging queens program.
   1: 1 [1] call main(state('<<c_pointer>>'), -) []  0 
 [1, 3, 5, 2, 4]
 End of connection with the traced program
-Uncovered: 9
-To cover: 33
-The coverage rate is 72.7273 
+Uncovered: 13
+To cover: 35
+The coverage rate is 62.8571 
 Uncovered call sites are:
+csc(queens, fail, 66, [fail])
+csc(queens, fail, 68, [fail])
+csc(queens, qdelete, 48, [fail])
 csc(queens, qperm, 43, [fail])
+csc(queens, qperm, 50, [fail])
 csc(queens, queen, 16, [exit, fail])
+csc(queens, write_int, 94, [exit])
 csc(queens, write_string, 19, [exit])
-csc(queens, fail, 66, [])
-csc(queens, fail, 68, [])
 csc(queens, write_string, 82, [exit])
 csc(queens, write_string, 84, [exit])
 csc(queens, write_string, 86, [exit])
-csc(queens, write_int, 94, [exit])
 csc(queens, write_string, 100, [exit])
 
 *** call_site_cov: ok.
 
-Uncovered = [csc("queens", "qperm", 43, [fail]), csc("queens", "queen", 16, [exit, fail]), csc("queens", "write_string", 19, [exit]), csc("queens", "fail", 66, []), csc("queens", "fail", 68, []), csc("queens", "write_string", 82, [exit]), csc("queens", "write_string", 84, [exit]), csc("queens", "write_string", 86, [exit]), csc("queens", "write_int", 94, [exit]), csc("queens", "write_string", 100, [exit])]     More? (;) 
+Uncovered = [csc("queens", "fail", 66, [fail]), csc("queens", "fail", 68, [fail]), csc("queens", "qdelete", 48, [fail]), csc("queens", "qperm", 43, [fail]), csc("queens", "qperm", 50, [fail]), csc("queens", "queen", 16, [exit, fail]), csc("queens", "write_int", 94, [exit]), csc("queens", "write_string", 19, [exit]), csc("queens", "write_string", 82, [exit]), csc("queens", "write_string", 84, [exit]), csc("queens", "write_string", 86, [exit]), csc("queens", "write_string", 100, [exit])]     More? (;) 
 [morphine 10]: 
 **************************************************
 **** Testing pred_cov...
@@ -299,15 +301,16 @@ Start debugging queens program.
   1: 1 [1] call main(state('<<c_pointer>>'), -) []  0 
 [1, 3, 5, 2, 4]
 End of connection with the traced program
-Uncovered: 2
+Uncovered: 3
 To cover: 17
-The coverage rate is 88.2353 
+The coverage rate is 82.3529 
 Uncovered predicates are:
+pc(queens, qperm, [fail])
 pc(queens, queen, [exit, fail])
 
 *** pred_cov: ok.
 
-Uncovered = [pc("queens", "queen", [exit, fail])]     More? (;) 
+Uncovered = [pc("queens", "qperm", [fail]), pc("queens", "queen", [exit, fail])]     More? (;) 
 [morphine 11]: 
 **************************************************
 **** Testing other Morphine commands...

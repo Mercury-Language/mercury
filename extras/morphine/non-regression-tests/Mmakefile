@@ -21,8 +21,9 @@ MLFLAGS = --trace
 
 # We need to use shared libraries for collect to work.
 # The following is necessary for shared libraries to work on Linux.
-# MGNUCFLAGS-queens = --pic-reg
-# MLFLAGS-queens = --shared
+MGNUCFLAGS-queens =--pic-reg
+MGNUCFLAGS-queens_init =--pic-reg
+MLFLAGS-queens = --shared 
 
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).

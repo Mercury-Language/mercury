@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 INRIA/INSA de Rennes/IFSIC.
+% Copyright (C) 1999-2002 INRIA/INSA de Rennes/IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -121,7 +121,8 @@ generate_dynamic_call_graph(G) :-
 	append_strings(MorphineDir, "/source/collect__dynamic_call_graph", 
 		CollectFile),
 	collect(CollectFile, Result),
-	Result = collected_type(G).
+	Result = collected_type(G0),
+	reverse(G0, G).
 
 % This is the pure Morphine version:
 %
@@ -169,7 +170,7 @@ display_graph(Graph, DotFile, PsFile) :-
 	open(DotFile, write, dotfile),
 	print(dotfile, "digraph G {\n\n"),
 	print(dotfile, "ordering=out;\n\n"), 
-		% so that the proof tree nodes are displayed in their
+		% so that the oroff tree nodes are displayed in their
 		% order of creation
 	dump_proc(ProcList),
 	dump_graph(Graph),
@@ -291,7 +292,10 @@ generate_proof_tree_graph(G) :-
 	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
 	append_strings(MorphineDir, "/source/collect__proof_tree", 
 		CollectFile),
+	get_parameter(collect_arg, CollectArg),
+	set_parameter(collect_arg, [yes]),
 	collect(CollectFile, Result),
+	set_parameter(collect_arg, CollectArg),
 	( Result = ct(ProofTree), ! ; Result = pb(Msg), print(Msg), abort), 
 	tree_to_graph(toplevel, ProofTree, G).
 

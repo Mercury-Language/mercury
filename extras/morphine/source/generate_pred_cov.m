@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 IFSIC.
+% Copyright (C) 2001, 2002 IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -33,14 +33,14 @@ main -->
 		    get_all_imported_module_list("", ImpModList, ImpModList, 
 			    AllModList, _),
 
-		    % we want the predicates define in the module it imports
+		    % we want the predicates defined in the module it imports
 		    % which are in the same directory
 		    { get_proc_det_list(FileName, ItemList, DetList1) }, 
 		    get_all_proc_det_list(AllModList, DetList2),
 		    { append(DetList1, DetList2, DetList) },
 		    
 		    { get_pred_list_criteria(DetList, PredCritList) },
-		    generate_monitor(FileName, PredCritList, "pred")
+		    generate_monitor(FileName, pc(PredCritList), "pred")
 		;
 		    io__write_string("File does not exist\n")
 		 ))
@@ -49,7 +49,6 @@ main -->
     ).
 
 
-:- type pred_crit ---> pc(string, string, list(exit_or_fail)).
 
 
 %-----------------------------------------------------------------------%

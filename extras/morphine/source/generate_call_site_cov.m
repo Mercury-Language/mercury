@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 IFSIC.
+% Copyright (C) 2001, 2002 IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -19,7 +19,7 @@
 %
 %    This program is largely untested, and hence almost certainly buggy.
 %
-%    High order calls not handled: e.g. solutions(foo, L) will miss the call
+%    Higher-order calls are not handled: e.g. solutions(foo, L) will miss the call
 %    to foo (should be easy to fix).  
 %
 %    I suppose there is one mode per predicate or function; indeed, it is 
@@ -93,7 +93,7 @@ main -->
 
 		    { get_call_site_list_criteria(DetList, CallSiteList,
 			CallSiteCritList) },
-		    generate_monitor(FileName, CallSiteCritList, "call_site")
+		    generate_monitor(FileName, csc(CallSiteCritList), "call_site")
 		;
 		    io__write_string("File does not exist\n")
 		 ))
@@ -104,7 +104,6 @@ main -->
     ).
 
 :- type call_site ---> cs(string, string, int).
-:- type call_site_crit ---> csc(string, string, int, list(exit_or_fail)).
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%
@@ -138,7 +137,6 @@ get_call_site_list(ItemList, CallSiteList) :-
 
 
 :- pred get_call_site(term__term::in, list(call_site)::out) is semidet.
-
 get_call_site(term__functor(Const, [_, TermBody], _context), CallSiteList) :-
 	( Const = atom(":-") ; Const = atom("-->") ),
 	get_call_site_body(TermBody, CallSiteList).
@@ -260,12 +258,23 @@ call_site_to_call_site_crit_cc(DetList,  cs(Mod0, Pred0, Ln),
 	;
 		Pred = Pred0
 	),
-
-	( member(_Mod - Pred - Det, DetList) ->
+	(
+	        is_predefined(Pred, Det)
+	->
+	        det_to_port_list(Det, Crit)
+	;
+	        member(_Mod - Pred - Det, DetList)
+	->
 		det_to_port_list(Det, Crit)
 	;
-		Crit = []
+	        Crit = []
 	).
+
+
+% Some calls won't appear in user programs, neitheir in libs...
+:- pred is_predefined(string::in, string::out) is semidet.
+is_predefined("true", "multi").
+is_predefined("fail", "failure").
 
 %-----------------------------------------------------------------------%
 %-----------------------------------------------------------------------%

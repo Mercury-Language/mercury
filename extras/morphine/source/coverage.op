@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 IFSIC.
+% Copyright (C) 2001, 2002 IFSIC.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -22,7 +22,7 @@ opium_scenario(
 %-----------------------------------------------------------------------%
 opium_command(
 	name		: pred_cov,
-	arg_list	: [Module, Uncovered],
+	arg_list	: [Call, Uncovered],
 	arg_type_list	: [string, var],
 	abbrev		: pc,
 	interface	: menu,
@@ -30,8 +30,9 @@ opium_command(
 	implementation	: pred_cov_Op,
 	parameters	: [],
 	message		:
-"Takes a Mercury module name \"Module\", and unifies its 2nd argument with the \
-uncovered predicate criteria of \"Module\" and the modules it imports which \
+"Takes a call to Mercury program (compiled in a debug mode) \
+(\"Call\") and unifies its 2nd argument with the uncovered predicate \
+criteria of the called module as well as the modules it imports which \
 are in the current directory. A predicate criterion is a \
 3-tuple containing a module name, a procedure name, and a list of `exit' and \
 `fail' atoms; for example, the predicate criterion \
@@ -40,11 +41,11 @@ has to succeed and fail exactly once to be considered as covered. \
 \n\
 \n\
 pred_cov/2 works as follows; it calls `morphine/bin/generate_pred_cov \
-<Module>.m' which generates 2 files: \"Module__pred_cov\" that contains \
-a monitor to perform the coverage, and \"Module__pred\" that contains \
-the list of call sites of Module. Then it runs the \"Module__pred_cov\" \
+<Module>.m' which generates 2 files: \"<Module>__pred_cov\" that contains \
+a monitor to perform the coverage, and \"<Module>__pred\" that contains \
+the list of call sites of <Module>. Then it runs the \"<Module>__pred_cov\" \
 monitor, which outputs the list of uncovered call sites. The file \
-\"Module__pred\" is used to display the coverage ratio.\
+\"<Module>__pred\" is used to display the coverage ratio.\
 ").
 
 pred_cov_Op(ProgramCall, Uncovered) :-
@@ -129,7 +130,8 @@ call_site_cov_Op(ProgramCall, Uncovered) :-
 
 crit_cov(CovType, ProgramCall, MonitorName, CritListFile, Uncovered) :-
 	run(ProgramCall),
-	collect(MonitorName, Uncovered),
+	collect(MonitorName, Uncovered0),
+	assoc_list_to_crit(Uncovered0, Uncovered),
 	count_crit(CovType, Uncovered, UncoveredCard),
 	print("Uncovered: "), print(UncoveredCard), nl,
 	get_crit_list_from_file(CritListFile, ToCover),
@@ -158,4 +160,14 @@ count_crit(pred, [pc(_,_,List) | Tail], N) :-
 	count_crit(pred, Tail, N0),
 	N is N0 + L.
 
+assoc_list_to_crit(AssocList, CritList) :-
+	maplist(assoc_to_crit, AssocList, CritList).
 
+assoc_to_crit(Assoc, Crit) :-
+	(
+	  Assoc = p(Mod, Name) - pc(_, List),
+	  Crit = pc(Mod, Name, List), !
+	;
+	  Assoc = p(Mod, Name, LN) - csc(_, List),
+	  Crit = csc(Mod, Name, LN, List)
+	  ).

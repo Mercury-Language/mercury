@@ -1,26 +1,55 @@
-%
+:- import_module map, list, assoc_list.
 
-:- import_module string.
+:- type port == trace_port_type.
+:- type proc ---> p(declared_module_name, proc_name, line_number).
+:- type call_site_crit ---> csc(list(call_number), list(port)).
+:- type accumulator_type == map(proc, call_site_crit).
 
-:- type call_site_crit --->
-	csc(defined_module_name, proc_name, line_number, list(trace_port_type)). 
-    
-:- type accumulator_type == list(call_site_crit).
+filter(Event, Map0, Map) :-
+  Port = port(Event),
+  Proc = p(decl_module(Event), proc_name(Event), line_number(Event)),
+  CallN = call(Event),
+  ( if
+      ( Port = exit ; Port = fail ),
+      csc(CNL0, PL0) = map__search(Map0, Proc)
+    then
+      ( if
+          CNL0 = []
+        then
+          remove_port(Port, PL0, PL)
+        else if
+          member(CallN, CNL0)
+        then
+          ( if Port = exit then remove_port(exit, PL0, PL) else PL = PL0 )
+        else
+          % not member(CallN, CNL0) and not (CNL0 = [])
+          ( if Port = exit then PL = PL0 else remove_port(fail, PL0, PL) )
+      ),
+      ( if
+          PL = []
+        then
+          map__delete(Map0, Proc, Map)
+        else
+          ( if
+	      (Port = exit, not member(CallN, CNL0))
+	    then
+	      CNL = [CallN | CNL0]
+	    else
+	     CNL = CNL0
+	  ),
+	  map__update(Map0, Proc, csc(CNL, PL), Map)
+      )
+    else
+      Map = Map0
+  ).
 
-filter(Event, CSL0, CSL) :-
-	solutions(update_call_site_list(port(Event), def_module(Event), 
-		proc_name(Event), line_number(Event), CSL0), Sol),
-	( Sol = [CSL1|_] -> CSL = CSL1 ; CSL = CSL0 ).
+:- pred remove_port(port::in, list(port)::in, list(port)::out) is det.
+remove_port(Port, List0, List) :-
+  ( if list__delete_first(List0, Port, List1)
+    then List = List1 else List = List0 ).
 
-:- pred update_call_site_list(trace_port_type::in, string::in, string::in, int::in, 
-	accumulator_type::in, accumulator_type::out) is nondet.
-update_call_site_list(Port, Mod, ProcName, Ln, CSL0, CSL) :-
-	( Port = exit ; Port = fail ), 
-	list__delete(CSL0, csc(Mod, ProcName, Ln, Crit), CSL1),
-	list__delete(Crit, Port, NewCrit),
-	( NewCrit = [] -> 
-	    CSL = CSL1
-	;
-	    list__insert(csc(Mod, ProcName, Ln, NewCrit), CSL1, CSL)
-	).
+:- type collected_type == assoc_list(proc, call_site_crit).
+post_process(Map, AssocList) :-
+	map__to_assoc_list(Map, AssocList).
+
 
