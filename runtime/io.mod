@@ -139,7 +139,9 @@ mercury__io__write_int_3_0:
 	proceed();
 
 mercury__io__write_float_3_0:
-	fatal_error("floating point not implemented");
+	fprintf(mercury_current_output->file, "%f", word_to_float(r1));
+	update_io(r2, r3);
+	proceed();
 
 mercury__io__write_anything_3_0:
 	fprintf(mercury_current_output->file,
@@ -170,7 +172,9 @@ mercury__io__write_int_4_0:
 	proceed();
 
 mercury__io__write_float_4_0:
-	fatal_error("floating point not implemented");
+	fprintf(((MercuryFile*)r1)->file, "%f", word_to_float(r2));
+	update_io(r3, r4);
+	proceed();
 
 mercury__io__write_anything_4_0:
 	fprintf(((MercuryFile*)r1)->file,
@@ -468,13 +472,21 @@ mercury____Index___univ_0_0:
 
 /* from string.nl */
 
+mercury__string__float_to_string_2_0:
+	{ char buf[100];
+	  sprintf(buf, "%f", word_to_float(r1));
+	  incr_hp(r2, (strlen(buf) + 1 + sizeof(Word) - 1 / sizeof(Word)));
+	  strcpy((char *)r2, buf);
+	}
+	proceed();
+
 mercury__string__to_float_2_0:
 		/* mode string__to_float(in, out) is semidet */
 	{ float tmp;
 		/* use a temporary, since we can't take the address of a reg */
-	  r1 = sscanf((char *)r2, "%f", &tmp);
+	  r1 = (sscanf((char *)r2, "%f", &tmp) == 1);
 		/* r1 is TRUE if sscanf succeeds, FALSE otherwise */
-	  r3 = *(Word*)&tmp;
+	  r3 = float_to_word(tmp);
 	}
 	proceed();
 
@@ -499,7 +511,7 @@ mercury__string__to_int_list_2_1:
 /*
 ** loop to calculate list length + 4 in r4 using list in r2
 */
-	r4 = 4;
+	r4 = sizeof(Word);
 	GOTO_LABEL(mercury__string__to_int_list_2_1_i4);
 mercury__string__to_int_list_2_1_i3:
 	r2 = list_tail(r2);
@@ -511,7 +523,7 @@ mercury__string__to_int_list_2_1_i4:
 ** allocate (length + 1) bytes of heap space for string
 ** i.e. (length + 4) / 4 words
 */
-	incr_hp(r1, r4 / 4);
+	incr_hp(r1, r4 / sizeof(Word));
 /*
 ** loop to copy the characters from the int_list to the string
 */
