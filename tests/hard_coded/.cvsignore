@@ -55,3 +55,4 @@ erroneous_liveness
 mode_choice
 purity
 eqv_type_bug
+pragma_import pragma_import.h
