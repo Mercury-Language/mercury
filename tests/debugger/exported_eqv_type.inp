@@ -1,0 +1,11 @@
+echo on
+context none
+register --quiet
+break p
+continue
+finish
+print *
+continue
+finish
+print *
+continue -S

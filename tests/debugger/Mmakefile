@@ -24,6 +24,7 @@ NONRETRY_PROGS = \
 	exception_value			\
 	exception_vars			\
 	existential_type_classes	\
+	exported_eqv_type		\
 	field_names			\
 	higher_order			\
 	implied_instance		\
@@ -294,6 +295,9 @@ existential_type_classes.out: existential_type_classes \
 		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' | \
 		sed 's/int.m:[0-9]*/int.m:NNNN/g' \
 		> existential_type_classes.out
+
+exported_eqv_type.out: exported_eqv_type exported_eqv_type.inp
+	$(MDB) ./exported_eqv_type < exported_eqv_type.inp > exported_eqv_type.out 2>&1
 
 field_names.out: field_names field_names.inp
 	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1

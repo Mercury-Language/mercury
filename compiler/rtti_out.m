@@ -580,8 +580,9 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
 	io__write_string(""",\n\t", !IO),
 	(
 		MaybeFunctorsName = yes(FunctorsName),
-		io__write_string("{ (void *) &", !IO),
-		output_ctor_rtti_id(RttiTypeCtor, FunctorsName, !IO),
+		FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, FunctorsName),
+		io__write_string("{ ", !IO),
+		output_cast_addr_of_rtti_id("(void *)", FunctorsRttiId, !IO),
 		io__write_string(" }", !IO)
 	;
 		MaybeFunctorsName = no,
@@ -590,8 +591,9 @@ output_type_ctor_data_defn(TypeCtorData, !DeclSet, !IO) :-
 	io__write_string(",\n\t", !IO),
 	(
 		MaybeLayoutName = yes(LayoutName),
-		io__write_string("{ (void *) &", !IO),
-		output_ctor_rtti_id(RttiTypeCtor, LayoutName, !IO),
+		LayoutRttiId = ctor_rtti_id(RttiTypeCtor, LayoutName),
+		io__write_string("{ ", !IO),
+		output_cast_addr_of_rtti_id("(void *)", LayoutRttiId, !IO),
 		io__write_string(" }", !IO)
 	;
 		MaybeLayoutName = no,
@@ -664,8 +666,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
 		MaybeFunctorsName = yes(notag_functor_desc)
 	;
 		TypeCtorDetails = eqv(EqvType),
-		output_maybe_pseudo_type_info_defn(EqvType,
-			!DeclSet, !IO),
+		output_maybe_pseudo_type_info_defn(EqvType, !DeclSet, !IO),
 		TypeData = maybe_pseudo_type_info_to_rtti_data(EqvType),
 		output_rtti_data_decls(TypeData, "", "", 0, _,
 			!DeclSet, !IO),
@@ -715,8 +716,7 @@ output_notag_functor_defn(RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
 	NotagFunctor = notag_functor(FunctorName, ArgType, MaybeArgName),
 	output_maybe_pseudo_type_info_defn(ArgType, !DeclSet, !IO),
 	ArgTypeData = maybe_pseudo_type_info_to_rtti_data(ArgType),
-	output_rtti_data_decls(ArgTypeData, "", "", 0, _,
-		!DeclSet, !IO),
+	output_rtti_data_decls(ArgTypeData, "", "", 0, _, !DeclSet, !IO),
 	output_generic_rtti_data_defn_start(
 		ctor_rtti_id(RttiTypeCtor, notag_functor_desc),
 		!DeclSet, !IO),
@@ -1590,15 +1590,17 @@ output_cast_addr_of_rtti_id(Cast, RttiId, !IO) :-
 
 output_addr_of_rtti_id(RttiId, !IO) :-
 	%
-	% If the RttiName is not an array, then
-	% we need to use `&' to take its address
+	% If the RttiName is not an array, then we need to use `&'
+	% to take its address
 	%
-	( rtti_id_has_array_type(RttiId) = yes ->
-		true
+	( RttiId = ctor_rtti_id(_, pseudo_type_info(type_var(VarNum))) ->
+		io__write_int(VarNum, !IO)
+	; rtti_id_has_array_type(RttiId) = yes ->
+		output_rtti_id(RttiId, !IO)
 	;
-		io__write_string("&", !IO)
-	),
-	output_rtti_id(RttiId, !IO).
+		io__write_string("&", !IO),
+		output_rtti_id(RttiId, !IO)
+	).
 
 :- pred output_addr_of_ctor_rtti_id(rtti_type_ctor::in, ctor_rtti_name::in,
 	io__state::di, io__state::uo) is det.
