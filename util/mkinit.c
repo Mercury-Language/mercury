@@ -91,6 +91,8 @@ static const char header2[] =
 
 static const char mercury_funcs[] =
 	"\n"
+	"#define MR_TRACE_ENABLED %d\n"
+	"\n"
 	"Declare_entry(%s);\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
@@ -151,10 +153,19 @@ static const char mercury_funcs[] =
 	"	MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
 	"	MR_io_print_to_stream = ML_io_print_to_stream;\n"
 	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
+	"  #if MR_TRACE_ENABLED\n"
 	"	MR_address_of_trace_init_external = MR_trace_init_external;\n"
 	"	MR_address_of_trace_final_external = MR_trace_final_external;\n"
+	"  #else\n"
+	"	MR_address_of_trace_init_external = NULL;\n"
+	"	MR_address_of_trace_final_external = NULL;\n"
+	"  #endif\n"
 	"#endif\n"
-	"	MR_trace_func_ptr = %s;\n"
+	"#if MR_TRACE_ENABLED\n"
+	"	MR_trace_func_ptr = MR_trace_real;\n"
+	"#else\n"
+	"	MR_trace_func_ptr = MR_trace_fake;\n"
+	"#endif\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
@@ -396,10 +407,7 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	const char *trace_func;
-
-	trace_func = (need_tracing ? "MR_trace_real" : "MR_trace_fake");
-	printf(mercury_funcs, entry_point, trace_func, entry_point);
+	printf(mercury_funcs, need_tracing, entry_point, entry_point);
 	if (output_main_func) {
 		fputs(main_func, stdout);
 	}

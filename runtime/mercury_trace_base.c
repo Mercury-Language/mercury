@@ -138,18 +138,26 @@ MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 			path, max_mr_num);
 }
 
+static void
+MR_tracing_not_enabled(void)
+{
+	fatal_error("This executable is not set up for debugging.\n"
+		"Rebuild the <main>_init.c file, "
+		"and give the `-t' (or `--trace')\n"
+		"option to c2init when you do so.  "
+		"If you are using mmake, you\n"
+		"can do this by including "
+		"`-t' (or `--trace') in C2INITFLAGS.\n"
+		"For further details, please see the \"Debugging\" chapter "
+		"of the\n"
+		"Mercury User's Guide.\n");
+}
+
 Code *
 MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	Unsigned seqno, Unsigned depth, const char * path, int max_mr_num)
 {
-	fatal_error("This executable is not set up for debugging.\n"
-		"Rebuild the <main>_init.c file, "
-		"and give the `-t' flag to c2init when you do so.\n"
-		"If you are using mmake, you can do this by including "
-		"`-t' in C2INITFLAGS.\n"
-		"For further details, please see the \"Debugging\" chapter "
-		"of the\n"
-		"Mercury User's Guide.\n");
+	MR_tracing_not_enabled();
 	/*NOTREACHED*/
 	return NULL;
 }
@@ -158,8 +166,13 @@ void
 MR_trace_init(void)
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-	if (MR_trace_handler == MR_TRACE_EXTERNAL)
-		MR_address_of_trace_init_external();
+	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
+		if (MR_address_of_trace_init_external != NULL) {
+			MR_address_of_trace_init_external();
+		} else {
+			MR_tracing_not_enabled();
+		}
+	}
 #endif
 }
 
@@ -167,8 +180,13 @@ void
 MR_trace_final(void)
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-	if (MR_trace_handler == MR_TRACE_EXTERNAL)
-		MR_address_of_trace_final_external();
+	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
+		if (MR_address_of_trace_final_external != NULL) {
+			MR_address_of_trace_final_external();
+		} else {
+			MR_tracing_not_enabled();
+		}
+	}
 #endif
 }
 
