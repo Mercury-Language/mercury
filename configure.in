@@ -864,6 +864,18 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
 if test $GRADE != $DEFAULT_GRADE; then
 	LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
 fi
+#
+# on the alpha, the grades that use non-local gotos are a bit
+# flakey, due to problems with register $15 (fp) being clobbered,
+# so always install reg.gc and reg.gc.prof
+#
+case "$host" in
+	alpha-dec-*)
+		if test $enable_all_grades != yes; then
+			LIBGRADES="$LIBGRADES reg.gc reg.gc.prof"
+		fi
+		;;
+esac
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
