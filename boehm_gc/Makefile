@@ -297,13 +297,13 @@ dyn_load_sunos53.o: dyn_load.c
 
 # Mercury-specific target:
 # generic shared library version of the collector
-libgc$(PROF).so: $(OBJS) if_mach if_not_there # dyn_load_sunos53.o
+libgc$(PROF).so: $(OBJS) $(UTILS) # dyn_load_sunos53.o
 	rm -f on_sparc_sunos5_so
 	./if_mach SPARC SUNOS5 touch on_sparc_sunos5_so
 	./if_mach SPARC SUNOS5 $(MAKE) dyn_load_sunos53.o
 	./if_mach SPARC SUNOS5 \
 	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o \
-		-ldl
+		-ldl `./threadlibs`
 	./if_not_there on_sparc_sunos5_so $(MAKE) dyn_load.o
 	./if_not_there on_sparc_sunos5_so \
 	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load.o -lc
