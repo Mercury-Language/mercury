@@ -29,11 +29,11 @@
 %-----------------------------------------------------------------------------%
 
 	% Some declarations for complicated modes using lists.
-	% Partially instantiated mode aren't fully implemented yet,
-	% so don't try to use these.
+	% (Note that partial instantiation is not currently supported.)
 
 :- inst list_skel(I) ---> [] ; [I | list_skel(I)].
 :- inst list_skel == list_skel(free).
+:- inst list(I) == list_skel(I).
 
 :- inst non_empty_list ---> [ground | ground].
 
