@@ -37,8 +37,11 @@ DRAFT NEWS for Mercury release 0.7
   items must be explicitly module qualified.
 
   More changes to the module system are expected in the future,
-  including changing the module qualifier operator to `.'
-  (currently either `:' or `__' can be used as module qualifiers).
+  possibly including changing the module qualifier operator to `.'.
+  Currently either `:' or `__' can be used as module qualifiers,
+  but we advise you to stick with using only `__' rather than `:',
+  to avoid problems in the future if we do change the module
+  qualifier to `.'.
 
 * We've improved the C interface.
 
@@ -46,8 +49,8 @@ DRAFT NEWS for Mercury release 0.7
   previously it only handled predicates, not functions. 
   Also, exporting semidet predicates or functions to C now works
   (see `samples/c_interface/c_calls_mercury.m' for some examples).
-  We've included some examples of how to use the C interface
-  to interface with C++.
+  We've improved the documentation, and we've included some examples
+  of how to use the C interface to interface with C++.
 
 * We now support cross-module optimizations.
 
@@ -114,7 +117,7 @@ DRAFT NEWS for Mercury release 0.7
   it catches some errors that previously it missed (such as specifiying
   modes in some but not all of the arguments of a `:- pred' declaration).
 
-* We have made a few changes to the Mercury standard library.
+* We have made quite a few changes to the Mercury standard library.
 
   The changes are listed here, but see the library reference manual for
   details such as documentation on the new predicates.
@@ -196,19 +199,24 @@ DRAFT NEWS for Mercury release 0.7
 
   - We've added a double accumulator version of list__foldl/4 called
     list__foldl2/6, which is a convenient generalisation for accumulators
-    that also do I/O. Also, we've added have list__map_foldl/5, which is an
+    that also do I/O.  Also, we've added have list__map_foldl/5, which is an
     amalgam of list__map/3 and list__foldl/4.
 
-  - We've added a new type of option data: maybe_string(maybe(string)). See
-    library/getopt.m for details. Also added to getopt are some missing
+  - We've added a new type of option data: maybe_string(maybe(string)).  See
+    library/getopt.m for details.  Also added to getopt are some missing
     option-lookup predicates: getopt__lookup_accumulating_option/3 and
     getopt__lookup_maybe_string_option/3.
 
-  - We've added string__foldl to the library. It has the same semantics as
+  - We've added string__foldl to the library.  It has the same semantics as
     (string__to_char_list(String, Chars), list__foldl(Pred, Chars, Acc0, Acc))
     but is implemented more efficiently.
 
-  - XXX cleanup of integer division, mod & rem
+  - We've cleaned up the handling of integer division and modulus/remainder.
+    Previously the semantics of `//' and `mod' were not really well defined.
+    The semantics of `//' and `mod' have now been clarified and there are
+    new functions `div' and `rem'.  `//' truncates towards zero, and `rem'
+    is remainder with respect to `//', whereas `div' truncates towards minus
+    infinity, and `mod' is remainder with respect to `div'.
 
   - The interface to arrays has changed significantly.  array.m has been
     renamed bt_array.m (short for `backtrackable array') and uniq_array.m
@@ -228,7 +236,7 @@ DRAFT NEWS for Mercury release 0.7
 	  (in this implementation, always 0), upper and both bounds of
 	  a array respectively.
 
-    The following predicated have been added to bt_array.m (formerly
+    The following predicates have been added to bt_array.m (formerly
     array.m):
 
 	+ bt_array__min/2, bt_array__max/2, bt_array__size/2  Finds
