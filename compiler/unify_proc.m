@@ -282,7 +282,11 @@ unify_proc__request_proc(PredId, ArgModes, ArgLives, MaybeDet, Context,
 	proc_info_set_can_process(ProcInfo0, no, ProcInfo1),
 
 	copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
-	map__det_update(Procs1, ProcId, ProcInfo2, Procs2),
+
+	proc_info_goal(ProcInfo2, Goal0),
+	set_goal_contexts(Context, Goal0, Goal),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	map__det_update(Procs1, ProcId, ProcInfo, Procs2),
 	pred_info_set_procedures(PredInfo1, Procs2, PredInfo2),
 	map__det_update(Preds0, PredId, PredInfo2, Preds2),
 	module_info_set_preds(ModuleInfo0, Preds2, ModuleInfo2),
