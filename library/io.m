@@ -21,7 +21,7 @@
 
 :- module io.
 :- interface.
-:- import_module bool, char, string, std_util, list.
+:- import_module char, string, std_util, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -835,44 +835,6 @@
 	% io__remove_file(FileName, Result, IO0, IO) attempts to remove the
 	% file `FileName', binding Result to ok/0 if it succeeds, or
 	% error/1 if it fails.
-
-%-----------------------------------------------------------------------------%
-
-% File locking predicates (using advisory locking only)
-
-:- type lock_type
-	--->	shared
-	;	exclusive
-	.
-
-:- type block
-	--->	block
-	;	no_block
-	.
-
-:- type io__poly_stream
-	--->	i(io__input_stream)
-	;	o(io__output_stream)
-	;	bi(io__binary_input_stream)
-	;	bo(io__binary_output_stream)
-	.
-
-	% Attempt to obtain a lock on a file.
-	% A file may have multiple shared locks, but only one exclusive
-	% lock. A file may not have both a shared lock and an exclusive
-	% lock simultaneously. If the block parameter is set to `block'
-	% then execution will block until the requested lock becomes
-	% available.
-	% `Result' is bound to `ok(yes)' if a lock was obtained, to
-	% `ok(no)' if `no_block' was given and the attempt to get a
-	% lock failed, and to `error(Err)' if an error occured.
-:- pred io__lock_file(io__poly_stream, lock_type, block, io__res(bool),
-		io__state, io__state).
-:- mode io__lock_file(in, in, in, out, di, uo) is det.
-
-	% Unlock a file.
-:- pred io__unlock_file(io__poly_stream, io__state, io__state).
-:- mode io__unlock_file(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -2766,105 +2728,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	} else {
 		RetStr = NULL;
 	}
-	update_io(IO0, IO);
 }").
 
-%------------------------------------------------------------------------------%
 
-:- pragma c_header_code("
-	#include <sys/file.h>
-").
-
-io__lock_file(PolyStream, Lock, Block, Result) -->
-	{ lock_type_to_flag(Lock, LockFlag) },
-	{ block_to_flag(Block, BlockFlag) },
-	{ unwrap_poly_stream(PolyStream, Stream) },
-	io__lock_file_2(Stream, LockFlag \/ BlockFlag, Status, Errno),
-	(
-		{ Status = 0 }
-	->
-		{ Result = ok(yes) }
-	;
-		{ would_block(Errno) }
-	->
-		{ Result = ok(no) }
-	;
-		{ Result = error("locking error") }
-	).
-
-:- pred io__lock_file_2(io__stream, int, int, int, io__state, io__state).
-:- mode io__lock_file_2(in, in, out, out, di, uo) is det.
-
-:- pragma c_code(io__lock_file_2(Stream::in, Flags::in, RStat::out,
-		Errno::out, IO0::di, IO::uo), "{
-
-	MercuryFile *stream = (MercuryFile *) Stream;
-
-	RStat = flock(fileno(stream->file), Flags);
-	Errno = errno;
-
-	update_io(IO0, IO);
-}").
-
-:- pred unwrap_poly_stream(io__poly_stream, io__stream).
-:- mode unwrap_poly_stream(in, out) is det.
-
-unwrap_poly_stream(i(S), S).
-unwrap_poly_stream(o(S), S).
-unwrap_poly_stream(bi(S), S).
-unwrap_poly_stream(bo(S), S).
-
-:- pred lock_type_to_flag(lock_type, int).
-:- mode lock_type_to_flag(in, out) is det.
-
-lock_type_to_flag(shared, Shared) :-
-	lock_type_to_flag_2(0, Shared).
-lock_type_to_flag(exclusive, Exclusive) :-
-	lock_type_to_flag_2(1, Exclusive).
-
-:- pred lock_type_to_flag_2(int, int).
-:- mode lock_type_to_flag_2(in, out) is det.
-
-:- pragma c_code(lock_type_to_flag_2(I::in, F::out), "{
-	static int lock_flags[] = { LOCK_SH, LOCK_EX };
-	F = lock_flags[I];
-}").
-
-:- pred block_to_flag(block, int).
-:- mode block_to_flag(in, out) is det.
-
-block_to_flag(block, 0).
-block_to_flag(no_block, Block) :-
-	block_to_flag_2(Block).
-
-:- pred block_to_flag_2(int).
-:- mode block_to_flag_2(out) is det.
-
-:- pragma c_code(block_to_flag_2(F::out), "{
-	F = LOCK_NB;
-}").
-
-:- pred would_block(int::out) is det.
-
-:- pragma c_code(would_block(I::out), "I = EWOULDBLOCK;").
-
-%------------------------------------------------------------------------------%
-
-io__unlock_file(PolyStream) -->
-	{ unwrap_poly_stream(PolyStream, Stream) },
-	io__unlock_file_2(Stream).
-
-:- pred io__unlock_file_2(io__stream, io__state, io__state).
-:- mode io__unlock_file_2(in, di, uo) is det.
-
-:- pragma c_code(io__unlock_file_2(Stream::in, IO0::di, IO::uo), "{
-
-	MercuryFile *stream = (MercuryFile *) Stream;
-
-	flock(fileno(stream->file), LOCK_UN);
-
-	update_io(IO0, IO);
-}").
-
-%------------------------------------------------------------------------------%
-
+/*---------------------------------------------------------------------------*/
