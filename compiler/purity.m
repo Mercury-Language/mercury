@@ -435,7 +435,6 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 		% the changes requires to make foreign_proc impure by default
 	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
 		{ WorstPurity = (impure) },
-		{ IsPragmaCCode = yes },
 			% This is where we assume pragma foreign_proc is
 			% pure.
 		{ Purity = (pure) },
@@ -468,11 +467,10 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 				ClausesInfo) },
 		{ pred_info_set_clauses_info(PredInfo1, ClausesInfo,
 				PredInfo) },
-		{ WorstPurity = Purity },
-		{ IsPragmaCCode = no }
+		{ WorstPurity = Purity }
 	),
 	{ perform_pred_purity_checks(PredInfo, Purity, DeclPurity,
-		PromisedPurity, IsPragmaCCode, PurityCheckResult) },
+		PromisedPurity, PurityCheckResult) },
 	( { PurityCheckResult = inconsistent_promise },
 		{ NumErrors is NumErrors0 + 1 },
 		error_inconsistent_promise(ModuleInfo, PredInfo, PredId,
@@ -867,9 +865,9 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity) -->
 	% InPragmaCCode: Is this a pragma c code?
 	% Promised: Did we promise this pred as pure?
 :- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
-	purity::in, bool::in, purity_check_result::out) is det.
+	purity::in, purity_check_result::out) is det.
 perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
-		PromisedPurity, IsPragmaCCode, PurityCheckResult) :-
+		PromisedPurity, PurityCheckResult) :-
 	( 
 		% The declared purity must match any promises.
 		% (A promise of impure means no promise was made).
@@ -907,8 +905,11 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 			% assume they are pure, but you can declare them
 			% to be impure.
 		pred_info_get_markers(PredInfo, Markers),
+		pred_info_get_goal_type(PredInfo, GoalType),
 		( 
-			IsPragmaCCode = yes
+			GoalType = pragmas
+		;
+			GoalType = clauses_and_pragmas
 		;
 			check_marker(Markers, class_method) 
 		;

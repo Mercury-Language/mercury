@@ -24,10 +24,10 @@ VPATH=.
 #-----------------------------------------------------------------------------#
 #
 # XXX The following is needed only for bootstrapping
-# the new modes of int__xor.
+# the fix to compiler/purity.m.
 #
 
-MCFLAGS-int = --no-halt-at-warn
+MCFLAGS-private_builtin = --no-halt-at-warn
 
 # Modules which use user-guided type specialization need to be
 # compiled with these flags to make sure all calls

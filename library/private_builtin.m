@@ -33,16 +33,6 @@
 
 :- interface.
 
-	% free_heap/1 is used internally by the compiler to implement
-	% compile-time garbage collection. Don't use it in programs.
-	% The `di' mode on the argument is overly conservative -- only
-	% the top-level cell is clobbered. This is handled correctly by
-	% mode_util__recompute_instmap_delta.
-:- pred free_heap(_T).
-:- mode free_heap(di) is det.
-
-%-----------------------------------------------------------------------------%
-
 	% This section of the module contains predicates that are used
 	% by the compiler, to implement polymorphism. These predicates
 	% should not be used by user programs directly.
@@ -130,19 +120,6 @@ static MR_Word dummy_var;
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
-
-:- pragma foreign_decl("C", "
-	#include ""mercury_heap.h""	/* for MR_free_heap() */
-").
-
-:- pragma foreign_proc("C", free_heap(Val::di),
-	[will_not_call_mercury, thread_safe],
-	"MR_free_heap((void *) Val);").
-
-:- pragma foreign_proc("MC++", free_heap(_Val::di),
-	[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-").
 
 builtin_unify_int(X, X).
 
@@ -856,6 +833,30 @@ static void init_runtime(void)
 
 :- implementation.
 
+% Default (Mercury) implementations.
+% These should be overridden by the appropriate foreign language implementation.
+store_ticket(_Ticket::out) :-
+	sorry("private_builtin__store_ticket/1").
+reset_ticket_undo(_Ticket::in) :-
+	sorry("private_builtin__reset_ticket_undo/1").
+reset_ticket_commit(_Ticket::in) :-
+	sorry("private_builtin__reset_ticket_commit/1").
+reset_ticket_solve(_Ticket::in) :-
+	sorry("private_builtin__reset_ticket_solve/1").
+mark_ticket_stack(_TicketCounter::out) :-
+	sorry("private_builtin__mark_ticket_stack/1").
+prune_tickets_to(_TicketCounter::in) :-
+	sorry("private_builtin__prune_tickets_to/1").
+/****
+% XXX we can't give default Mercury implementations for these,
+% because you can't write a mode-specific clause for a zero-arity
+% procedure.
+discard_ticket :-
+	sorry("private_builtin__discard_ticket/0").
+prune_ticket :-
+	sorry("private_builtin__prune_ticket/0").
+****/
+
 :- pragma foreign_proc("C", store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
@@ -1013,18 +1014,37 @@ trailed_nondet_pragma_foreign_code :-
 %-----------------------------------------------------------------------------%
 
 	% This section of the module contains predicates that are used
-	% by the MLDS back-end, to implement heap reclamation on failure.
-	% (The LLDS back-end does not use these; instead it inserts
-	% the corresponding LLDS instructions directly during code
-	% generation.)
+	% internally by the compiler for manipulating the heap.
 	% These predicates should not be used by user programs directly.
 
 :- interface.
 
-:- type heap_pointer == c_pointer.
+	% free_heap/1 is used internally by the compiler to implement
+	% compile-time garbage collection.
+	% (Note that currently compile-time garbage collection
+	% is not yet fully implemented.)
+	% free_heap/1 explicitly deallocates a cell on the heap.
+	% It works by calling GC_free(), which will put the cell
+	% on the appropriate free list.
+	% It can only be used when doing conservative GC,
+	% since with `--gc none' or `--gc accurate',
+	% allocation does not use a free list.
+	% The `di' mode on the argument is overly conservative -- only
+	% the top-level cell is clobbered. This is handled correctly by
+	% mode_util__recompute_instmap_delta.
+	% XXX Why isn't this marked as `impure'?
+:- pred free_heap(_T).
+:- mode free_heap(di) is det.
 
+	% mark_hp/1 and restore_hp/1 are used by the MLDS back-end,
+	% to implement heap reclamation on failure.
+	% (The LLDS back-end does not use these; instead it inserts
+	% the corresponding LLDS instructions directly during code
+	% generation.)
 	% For documentation, see the corresponding LLDS instructions
 	% in compiler/llds.m.  See also compiler/notes/trailing.html.
+
+:- type heap_pointer == c_pointer.
 
 :- impure pred mark_hp(heap_pointer::out) is det.
 :- impure pred restore_hp(heap_pointer::in) is det.
@@ -1038,6 +1058,31 @@ trailed_nondet_pragma_foreign_code :-
 	% N.B. interface continued below.
 
 :- implementation.
+
+:- pragma foreign_decl("C", "
+	#include ""mercury_heap.h""	/* for MR_free_heap() */
+").
+
+% default (Mercury) implementation for free_heap/1
+% This should be overridden by the appropriate foreign language implementation.
+free_heap(_::di) :-
+	error("private_builtin__free_heap/1").
+
+:- pragma foreign_proc("C", free_heap(Val::di),
+	[will_not_call_mercury, thread_safe],
+	"MR_free_heap((void *) Val);").
+
+:- pragma foreign_proc("MC++", free_heap(_Val::di),
+	[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for free_heap/1"");
+").
+
+% default (Mercury) implementations for mark_hp/1 and restore_hp/1.
+% This should be overridden by the appropriate foreign language implementation.
+mark_hp(_::out) :-
+	sorry("private_builtin__mark_hp/1").
+restore_hp(_::in) :-
+	sorry("private_builtin__restore_hp/1").
 
 :- pragma foreign_proc("C", mark_hp(SavedHeapPointer::out),
 	[will_not_call_mercury, thread_safe],
@@ -1098,6 +1143,8 @@ reclaim_heap_nondet_pragma_foreign_code :-
 
 :- pred unused is det.
 
+	% N.B. interface continued below.
+
 :- implementation.
 
 % unsafe_type_cast is a builtin; the compiler generates inline code for it
@@ -1132,46 +1179,20 @@ unused :-
 
 :- implementation.
 
-:- pragma foreign_proc("C", var(_X::ui),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
-:- pragma foreign_proc("C", var(_X::in),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
-:- pragma foreign_proc("C", var(_X::unused),
-		[thread_safe, will_not_call_mercury], "").
+var(_::ui) :- fail.
+var(_::in) :- fail.
+var(_::unused) :- true.
 
-:- pragma foreign_proc("C", nonvar(_X::ui),
-		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_proc("C", nonvar(_X::in),
-		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_proc("C", nonvar(_X::unused),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
+nonvar(_::ui) :- true.
+nonvar(_::in) :- true.
+nonvar(_::unused) :- fail.
 
-:- pragma foreign_proc("MC++", var(_X::ui),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
-:- pragma foreign_proc("MC++", var(_X::in),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
-:- pragma foreign_proc("MC++", var(_X::unused),
-		[thread_safe, will_not_call_mercury], "").
+%-----------------------------------------------------------------------------%
 
-:- pragma foreign_proc("MC++", nonvar(_X::ui),
-		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_proc("MC++", nonvar(_X::in),
-		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_proc("MC++", nonvar(_X::unused),
-		[thread_safe, will_not_call_mercury], "
-	SUCCESS_INDICATOR = FALSE;
-").
-
+:- pred sorry(string::in) is erroneous.
+sorry(PredName) :-
+	error("sorry, `" ++ PredName ++ "' not implemented\n" ++
+		"for this target language (or compiler back-end).").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
