@@ -343,7 +343,7 @@ void printregs(const char *msg)
 
 	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
 	{
-		if (i < 10)
+		if (i + 1 < 10)
 			printf("r%d:      ", i + 1);
 		else
 			printf("r%2d:     ", i + 1);
