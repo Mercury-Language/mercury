@@ -113,11 +113,21 @@ extern	int	mercury_terminate(void);
 extern	void	mercury_init_io(void);
 extern	void	ML_io_init_state(void);
 extern	void	ML_io_finalize_state(void);
-extern	void	ML_io_stderr_stream(MR_Word *);
-extern	void	ML_io_stdout_stream(MR_Word *);
-extern	void	ML_io_stdin_stream(MR_Word *);
 
-extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Word);
+#ifdef MR_HIGHLEVEL_CODE
+  extern	void	ML_io_stderr_stream(MR_Box *);
+  extern	void	ML_io_stdout_stream(MR_Box *);
+  extern	void	ML_io_stdin_stream(MR_Box *);
+
+  extern	void	ML_io_print_to_stream(MR_Word, MR_Box, MR_Word);
+#else
+  extern	void	ML_io_stderr_stream(MR_Word *);
+  extern	void	ML_io_stdout_stream(MR_Word *);
+  extern	void	ML_io_stdin_stream(MR_Word *);
+
+  extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Word);
+#endif
+
 extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
 
 /* in trace/mercury_trace_internal.h */
