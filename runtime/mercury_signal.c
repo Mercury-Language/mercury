@@ -43,6 +43,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #ifdef HAVE_SYS_SIGINFO
   #include <sys/siginfo.h>
