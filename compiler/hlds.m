@@ -17,7 +17,8 @@
 % layer of abstraction.
 
 :- module hlds.
-:- import_module int, string, list, varset, term, map.
+:- interface.
+:- import_module int, string, list, varset, term, map, prog_io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -560,6 +561,26 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 
 :- pred goalinfo_liveness(hlds__goal_info, map(var_id, is_live)).
 :- mode goalinfo_liveness(input, output).
+
+:- pred goalinfo_set_liveness(hlds__goal_info, map(var_id, is_live),
+				hlds__goal_info).
+:- mode goalinfo_set_liveness(input, input, output).
+
+:- pred goalinfo_category(hlds__goal_info, category).
+:- mode goalinfo_category(input, output).
+
+:- pred goalinfo_set_category(hlds__goal_info, category, hlds__goal_info).
+:- mode goalinfo_set_category(input, input, output).
+
+:- pred goalinfo_instmap(hlds__goal_info, map(var_id, inst)).
+:- mode goalinfo_instmap(input, output).
+
+:- pred goalinfo_set_instmap(hlds__goal_info, map(var_id, inst),
+				hlds__goal_info).
+:- mode goalinfo_set_instmap(input, input, output).
+
+:- pred liveness_livevars(map(var_id, is_live), list(var_id)).
+:- mode liveness_livevars(input, output).
 
 %-----------------------------------------------------------------------------%
 

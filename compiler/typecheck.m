@@ -104,7 +104,7 @@
 
 :- module typecheck.
 :- interface.
-:- import_module hlds, io.
+:- import_module hlds, io, prog_io.
 
 :- pred typecheck(module_info, module_info, bool, io__state, io__state).
 :- mode typecheck(input, output, output, di, uo).
@@ -385,8 +385,8 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 	% is the same for each type_assign (i.e. that the tvarsets
 	% were indeed in synch).
 
-:- pred rename_apart_2(type_info, tvarset, list(type), type_info, list(type)).
-:- mode rename_apart_2(typeinfo_di, input, input, typeinfo_uo, output).
+:- pred rename_apart(type_info, tvarset, list(type), type_info, list(type)).
+:- mode rename_apart(typeinfo_di, input, input, typeinfo_uo, output).
 
 rename_apart(TypeInfo0, PredTypeVarSet, PredArgTypes0, TypeInfo, PredArgTypes)
 		:-
