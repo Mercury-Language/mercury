@@ -1965,17 +1965,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		{ add_special_preds(Module2, TVarSet, Type, TypeId,
 			Body, Context, Status, Module3) },
 		{ module_info_set_types(Module3, Types, Module) },
-		( { Body = uu_type(_) } ->
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
-			prog_out__write_context(Context),
-			io__write_string("Error in type declaration: \n"),
-			prog_out__write_context(Context),
-			io__write_string(
-	"  the syntax for type equivalence is `:- type t1 == t2'.\n"),
-			io__set_exit_status(1),
-			io__set_output_stream(OldStream, _)
-		;
+		(
 			% XXX we can't handle abstract exported
 			% polymorphic equivalence types with monomorphic
 			% bodies, because the compiler stuffs up the
@@ -2097,7 +2087,6 @@ combine_status_abstract_imported(Status2, Status) :-
 convert_type_defn(du_type(Body, EqualityPred), TypeId, Globals,
 		du_type(Body, CtorTags, IsEnum, EqualityPred)) :-
 	assign_constructor_tags(Body, TypeId, Globals, CtorTags, IsEnum).
-convert_type_defn(uu_type(Body), _, _, uu_type(Body)).
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type, _, _, abstract_type).
 

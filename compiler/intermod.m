@@ -1209,9 +1209,6 @@ intermod__write_type(TypeId - TypeDefn) -->
 		{ Body = du_type(Ctors, _, _, MaybeEqualityPred) },
 		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
 	;
-		{ Body = uu_type(_) },
-		{ error("uu types not implemented") }
-	;
 		{ Body = eqv_type(EqvType) },
 		{ TypeBody = eqv_type(EqvType) }
 	;

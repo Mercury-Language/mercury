@@ -257,9 +257,6 @@ find_weights_for_type(TypeId, TypeDefn, Weights0, Weights) :-
 		find_weights_for_cons_list(Constructors, TypeId, TypeParams,
 			Weights0, Weights)
 	;
-		TypeBody = uu_type(_),
-		error("undiscriminated union types not yet implemented")
-	;
 		% This type does not introduce any functors
 		TypeBody = eqv_type(_),
 		Weights = Weights0

@@ -761,9 +761,6 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
-		{ TypeBody = uu_type(_) },
-		{ error("trying to create unify proc for uu type") }
-	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create unify proc for abstract type") }
 	).
@@ -816,9 +813,6 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 	;
 		{ TypeBody = foreign_type(_, _, _) },
 		{ error("trying to create index proc for a foreign type") }
-	;
-		{ TypeBody = uu_type(_) },
-		{ error("trying to create index proc for uu type") }
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create index proc for abstract type") }
@@ -899,9 +893,6 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 				[Res, H1, H2], Context, Goal),
 		unify_proc__quantify_clauses_body([Res, H1, H2], Goal, Context,
 			Clauses)
-	;
-		{ TypeBody = uu_type(_) },
-		{ error("trying to create compare proc for uu type") }
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create compare proc for abstract type") }

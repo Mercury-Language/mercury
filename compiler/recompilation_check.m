@@ -1096,7 +1096,6 @@ check_for_pred_or_func_ambiguity(ItemType, Name, NeedQualifier,
 
 check_type_defn_ambiguity_with_functor(_, _, abstract_type) --> [].
 check_type_defn_ambiguity_with_functor(_, _, eqv_type(_)) --> [].
-check_type_defn_ambiguity_with_functor(_, _, uu_type(_)) --> [].
 check_type_defn_ambiguity_with_functor(NeedQualifier,
 			TypeId, du_type(Ctors, _)) -->
 	list__foldl(check_functor_ambiguities(NeedQualifier, TypeId),

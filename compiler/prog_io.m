@@ -1341,10 +1341,6 @@ parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
 	get_maybe_equality_pred(B, Body, EqualityPred),
 	process_du_type(ModuleName, H, Body, EqualityPred, R).
 
-parse_type_decl_type(ModuleName, "=", [H, B], Condition, R) :-
-	get_condition(B, Body, Condition),
-	process_uu_type(ModuleName, H, Body, R).
-
 parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(ModuleName, H, Body, R).
@@ -1517,22 +1513,6 @@ get_condition(B, Body, Condition) :-
 		list(type_param),
 		type_defn
 	).
-
-	% This is for "Head = Body" (undiscriminated union) definitions.
-:- pred process_uu_type(module_name, term, term, maybe1(processed_type_body)).
-:- mode process_uu_type(in, in, in, out) is det.
-process_uu_type(ModuleName, Head, Body, Result) :-
-	check_for_errors(ModuleName, Head, Body, Result0),
-	process_uu_type_2(Result0, Body, Result).
-
-:- pred process_uu_type_2(maybe_functor, term, maybe1(processed_type_body)).
-:- mode process_uu_type_2(in, in, out) is det.
-process_uu_type_2(error(Error, Term), _, error(Error, Term)).
-process_uu_type_2(ok(Name, Args0), Body,
-		ok(processed_type_body(Name, Args, uu_type(List)))) :-
-	list__map(term__coerce, Args0, Args),
-	sum_to_list(Body, List0),
-	list__map(convert_type, List0, List).
 
 %-----------------------------------------------------------------------------%
 

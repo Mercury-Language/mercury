@@ -244,9 +244,6 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 	module_info_globals(ModuleInfo, Globals),
 	hlds_data__get_type_defn_body(HldsDefn, TypeBody),
 	(
-		TypeBody = uu_type(_Alts),
-		sorry(this_file, "undiscriminated union")
-	;
 		TypeBody = abstract_type,
 		TypeCtorRep = unknown,
 		NumFunctors = -1,

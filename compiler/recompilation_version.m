@@ -247,10 +247,6 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 			% always use the body.
 			{ NameItem = Item },
 			{ BodyItem = Item }
-		;
-			{ Body = uu_type(_) },
-			{ error(
-			"recompilation_version__gather_items_2: uu_type") }
 		),
 		{ TypeId = Name - list__length(Args) },
 		GatheredItems0 =^ gathered_items,

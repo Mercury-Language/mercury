@@ -113,8 +113,6 @@ ml_gen_type_2(abstract_type, _, _, _) --> [].
 ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
 	% For a description of the problems with equivalence types,
 	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(uu_type(_), _, _, _) -->
-	{ error("sorry, undiscriminated union types not implemented") }.
 ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred),
 		ModuleInfo, TypeId, TypeDefn) -->
 	{ ml_gen_equality_members(MaybeEqualityPred, MaybeEqualityMembers) },

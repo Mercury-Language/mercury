@@ -649,8 +649,6 @@ qualify_type_defn(du_type(Ctors0, MaybeEqualityPred0),
 	% (during mode analysis).  That way they get full type overloading
 	% resolution, etc.  Thus we don't module-qualify them here.
 	{ MaybeEqualityPred = MaybeEqualityPred0 }.
-qualify_type_defn(uu_type(Types0), uu_type(Types), Info0, Info) -->
-	qualify_type_list(Types0, Types, Info0, Info).	
 qualify_type_defn(eqv_type(Type0), eqv_type(Type), Info0, Info) -->
 	qualify_type(Type0, Type, Info0, Info).	
 qualify_type_defn(abstract_type, abstract_type, Info, Info) --> [].

@@ -297,7 +297,6 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 			bool,		% is this type an enumeration?
 			maybe(sym_name) % user-defined equality pred
 		)
-	;	uu_type(list(type))	% not yet implemented!
 	;	eqv_type(type)
 	;	foreign_type(
 			bool,		% is the type already boxed

@@ -1,3 +1,2 @@
-uu_type.m:022: Error in type declaration: 
-uu_type.m:022:   the syntax for type equivalence is `:- type t1 == t2'.
+uu_type.m:022: Error: type parameters must be variables: hiddenrenamedtype = hiddentype.
 For more information, try recompiling with `-E'.

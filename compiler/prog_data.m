@@ -742,7 +742,6 @@
 
 :- type type_defn	
 	--->	du_type(list(constructor), maybe(equality_pred))
-	;	uu_type(list(type))
 	;	eqv_type(type)
 	;	abstract_type.
 

@@ -1023,8 +1023,6 @@ recompilation_usage__find_items_used_by_type_body(du_type(Ctors, _, _, _)) -->
 	    ), Ctors).
 recompilation_usage__find_items_used_by_type_body(eqv_type(Type)) -->
 	recompilation_usage__find_items_used_by_type(Type).
-recompilation_usage__find_items_used_by_type_body(uu_type(Types)) -->
-	recompilation_usage__find_items_used_by_types(Types).
 recompilation_usage__find_items_used_by_type_body(abstract_type) --> [].
 recompilation_usage__find_items_used_by_type_body(foreign_type(_, _, _)) --> [].
 

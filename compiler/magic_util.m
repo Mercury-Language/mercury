@@ -1373,8 +1373,6 @@ magic_util__check_type_id(Parents, TypeId, Errors0, Errors) -->
 magic_util__check_type_defn(du_type(Ctors, _, _, _),
 		Parents, Errors0, Errors) -->
 	list__foldl2(magic_util__check_ctor(Parents), Ctors, Errors0, Errors).
-magic_util__check_type_defn(uu_type(_), _, _, _) -->
-	{ error("magic_util__check_type_defn: uu_type") }.
 magic_util__check_type_defn(eqv_type(_), _, _, _) -->
 	{ error("magic_util__check_type_defn: eqv_type") }.
 magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->

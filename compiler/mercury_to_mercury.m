@@ -1553,13 +1553,6 @@ mercury_format_mode(user_defined_mode(Name, Args), VarSet) -->
 		type_defn, prog_context, io__state, io__state).
 :- mode mercury_output_type_defn(in, in, in, in, in, di, uo) is det.
 
-mercury_output_type_defn(_VarSet, _Name, _Args, uu_type(_Body), Context) -->
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
-	prog_out__write_context(Context),
-	io__write_string("warning: undiscriminated union types not yet supported.\n"),
-	io__set_output_stream(OldStream, _).
-
 mercury_output_type_defn(VarSet, Name, Args, abstract_type, Context) -->
 	io__write_string(":- type "),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },

@@ -2714,9 +2714,6 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 	io__write_string(".\n").
 
 	
-hlds_out__write_type_body(_Indent, _Tvarset, uu_type(_)) -->
-	{ error("hlds_out__write_type_body: undiscriminated union found") }.
-
 hlds_out__write_type_body(_Indent, Tvarset, eqv_type(Type)) -->
 	io__write_string(" == "),
 	term_io__write_term(Tvarset, Type),

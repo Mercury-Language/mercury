@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -251,12 +251,6 @@ equiv_type__replace_in_type_defn(TypeId, eqv_type(TBody0),
 		VarSet, ContainsCirc, Info0, Info) :-
 	equiv_type__replace_in_type_2(TBody0, VarSet0, EqvMap, [TypeId],
 		TBody, VarSet, ContainsCirc, Info0, Info).
-
-equiv_type__replace_in_type_defn(_, uu_type(TBody0),
-		VarSet0, EqvMap, uu_type(TBody), VarSet, no,
-		Info0, Info) :-
-	equiv_type__replace_in_uu(TBody0, VarSet0, EqvMap, TBody,
-		VarSet, Info0, Info).
 
 equiv_type__replace_in_type_defn(_, du_type(TBody0,
 		EqPred), VarSet0, EqvMap, du_type(TBody, EqPred),
