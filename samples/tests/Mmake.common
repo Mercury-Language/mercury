@@ -3,8 +3,7 @@
 #
 # Note: Mmake lets you override MCFLAGS for a particular file by setting
 # MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
-# file by setting both GRADEFLAGS-foo and (for compiling the foo_init.c
-# file) GRADEFLAGS-foo_init.
+# file by setting both GRADEFLAGS-foo.
 #
 
 # override this with `mmake HAVE_NUPROLOG=yes'
