@@ -7520,18 +7520,14 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 			parse_lambda_expression(LambdaExpressionTerm,
 				Vars0, Modes0, Det0)
 		->
-			report_warning(Context, 0,
-			[words("Warning: deprecated lambda expression syntax."), nl,
-			 words("Lambda expressions with lambda as the top-level functor"),
-			 words("are deprecated; please use the form using pred instead.")],
-				!IO),
 			LambdaPurity = (pure),
 			PredOrFunc = predicate,
 			EvalMethod = EvalMethod0,
 			Vars1 = Vars0,
 			Modes1 = Modes0,
 			Det1 = Det0,
-			GoalTerm1 = GoalTerm0
+			GoalTerm1 = GoalTerm0,
+			WarnDeprecatedLambda = yes
 		;
 			% handle higher-order pred and func expressions -
 			% same semantics as lambda expressions, different
@@ -7552,9 +7548,19 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 				parse_func_expression(HeadTerm, EvalMethod,
 					Vars1, Modes1, Det1),
 				PredOrFunc = function
-			)
+			),
+			WarnDeprecatedLambda = no
 		)
 	->
+		( WarnDeprecatedLambda = yes ->
+			report_warning(Context, 0,
+			[words("Warning: deprecated lambda expression syntax."), nl,
+			 words("Lambda expressions with lambda as the top-level functor"),
+			 words("are deprecated; please use the form using pred instead.")],
+				!IO)
+		;
+			true
+		),
 		check_expr_purity(Purity, Context, !Info, !IO),
 		make_hlds__qualify_lambda_mode_list(Modes1, Modes, Context,
 			!Info, !IO),
