@@ -162,9 +162,8 @@ group__remove_elements([I|Is], Es0, Es) :-
 
 group__same_group(G, E0, E1) :-
 	group__get_elements(G, Es),
-	map__lookup(Es, E0, GK1),
-	map__lookup(Es, E1, GK2),
-	GK1 = GK2.	% work around bug in determinism analysis
+	map__lookup(Es, E0, GK),
+	map__lookup(Es, E1, GK).
 
 group__largest_group_key(G, GK) :-
 	group__get_sets(G, Ss),

@@ -141,8 +141,7 @@ map__init(M) :-
 	bintree__init(M).
 
 map__is_empty(M) :-
-	bintree__init(M0), M = M0.
-		% XXX work-around bug in determinism analysis
+	bintree__init(M).
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).
