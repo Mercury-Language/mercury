@@ -52,7 +52,8 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 		{ atsort(Succmap2, Predmap2, MustSuccmap2, MustPredmap2,
 			PrefOrder, Blocks) },
 		{ LastCtrl is Ctrl - 1 },
-		{ vn__blockorder_to_order(Blocks, LastCtrl, VnTables2, Order) },
+		{ vn__blocks_to_order(Blocks, LastCtrl, VnTables2, Order0) },
+		{ vn__reorder_noops(Order0, VnTables2, Order) },
 
 		vn__order_order_msg(Order),
 		{ Maybe = yes(VnTables2 - Order) }
@@ -505,9 +506,9 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 			vn__search_desired_value(Vnlval, Vn, VnTables),
 			vn__search_current_value(Vnlval, Vn, VnTables)
 		->
-			Uses = [Use0 | Uses1]
-		;
 			Uses = Uses1
+		;
+			Uses = [Use0 | Uses1]
 		)
 	;
 		Uses = [Use0 | Uses1]
@@ -705,11 +706,11 @@ vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
 	% and the C compiler may not be able to turn the latter into
 	% the former.
 
-:- pred vn__blockorder_to_order(list(list(vn_node)), int, vn_tables,
+:- pred vn__blocks_to_order(list(list(vn_node)), int, vn_tables,
 	list(vn_node)).
-:- mode vn__blockorder_to_order(in, in, in, out) is det.
+:- mode vn__blocks_to_order(in, in, in, out) is det.
 
-vn__blockorder_to_order(BlockOrder, N, VnTables, Order) :-
+vn__blocks_to_order(BlockOrder, N, VnTables, Order) :-
 	vn__order_equal_lists(BlockOrder, VnTables, GoodBlockOrder),
 	list__condense(GoodBlockOrder, Order0),
 	vn__find_last_ctrl(Order0, N, Ctrl, Order1),
@@ -798,6 +799,44 @@ vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
 	;
 		Ctrl = Ctrl1,
 		Nodes = [Node0 | Nodes1]
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% We want to make sure that references to node_lvals that do
+	% not actually call for any actions to be taken are at the start
+	% of the order, because this way they tie up registers for access
+	% for the shortest possible time.
+
+:- pred vn__reorder_noops(list(vn_node), vn_tables, list(vn_node)).
+:- mode vn__reorder_noops(di, in, uo) is det.
+
+vn__reorder_noops(Order0, VnTables, Order) :-
+	vn__reorder_noops_2(Order0, VnTables, Noops, Ops),
+	list__append(Noops, Ops, Order).
+
+:- pred vn__reorder_noops_2(list(vn_node), vn_tables,
+	list(vn_node), list(vn_node)).
+:- mode vn__reorder_noops_2(di, in, uo, uo) is det.
+
+vn__reorder_noops_2([], _, [], []).
+vn__reorder_noops_2([Node | Nodes], VnTables, Noops, Ops) :-
+	vn__reorder_noops_2(Nodes, VnTables, Noops0, Ops0),
+	(
+		(
+			Node = node_origlval(_)
+		;
+			Node = node_lval(Vnlval),
+			vn__lookup_desired_value(Vnlval, Vn, VnTables),
+			vn__search_current_value(Vnlval, Vn, VnTables)
+		)
+	->
+		Ops = Ops0,
+		Noops = [Node | Noops0]
+	;
+		Ops = [Node | Ops0],
+		Noops = Noops0
 	).
 
 %-----------------------------------------------------------------------------%

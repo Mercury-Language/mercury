@@ -67,16 +67,22 @@ vn__instr_cost(Uinstr, Cost) :-
 		Uinstr = assign(Lval, Rval),
 		vn__lval_cost(Lval, LvalCost),
 		vn__rval_cost(Rval, RvalCost),
-		% Is this an assignment that speeds up future accesses?
-		% If yes, do not count a cost for the assignment.
-		% Basically, assignments to registers are free
-		% unless they merely shuffle registers around.
 		(
+			% Is this an assignment that speeds up future accesses?
+			% If yes, do not count a cost for the assignment.
+			% Basically, assignments to registers are free
+			% unless they merely shuffle registers around.
 			LvalCost = 0,
 			Rval = lval(_),
 			RvalCost > 0
 		->
 			Cost = RvalCost
+		;
+			% Tagging a value has the same cost as the assignment
+			% itself, so don't count this cost twice.
+			Rval = mkword(_, _)
+		->
+			Cost is RvalCost + LvalCost
 		;
 			Cost1 is RvalCost + LvalCost,
 			Cost is Cost1 + AssignCost
@@ -111,11 +117,20 @@ vn__instr_cost(Uinstr, Cost) :-
 		vn__rval_cost(Rval, RvalCost),
 		Cost = RvalCost
 	;
-		Uinstr = incr_hp(Lval, _, Rval),
+		Uinstr = incr_hp(Lval, MaybeTag, Rval),
 		vn__lval_cost(Lval, LvalCost),
 		vn__rval_cost(Rval, RvalCost),
 		Cost1 is RvalCost + LvalCost,
-		Cost is Cost1 + AssignCost		% maybe 2*AssignCost?
+		Cost2 is 3 * AssignCost,
+		Cost12 is Cost1 + Cost2,
+		(
+			MaybeTag = yes(_),
+			Cost3 = 1
+		;
+			MaybeTag = no,
+			Cost3 = 0
+		),
+		Cost is Cost12 + Cost3
 	;
 		Uinstr = mark_hp(Lval),
 		vn__lval_cost(Lval, LvalCost),

@@ -1,9 +1,11 @@
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % Vn_flush.nl - flush the nodes of the vn graph in order.
 
 % Author: zs.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module vn_flush.
@@ -19,6 +21,7 @@
 	list(instruction), io__state, io__state).
 :- mode vn__flush_nodelist(in, in, in, in, out, di, uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -52,7 +55,7 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 	vn__flush_start_msg(Node),
 	(
 		{ Node = node_shared(Vn) },
-		{ vn__choose_best_loc(Vn, Vnlval, VnTables0,
+		{ vn__choose_loc_for_shared_vn(Vn, Vnlval, VnTables0,
 			Templocs0, Templocs1) },
 		( { vn__search_desired_value(Vnlval, Vn, VnTables0) } ->
 			vn__flush_also_msg(Vnlval),
@@ -60,9 +63,6 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		;
 			{ Nodes = Nodes0 }
 		),
-		% vn__vnlval_access_vns(Vnlval, AccessVns),
-		% vn__compensate_for_access_vns(AccessVns, Vnlval,
-		% 	VnTables0, VnTables1),
 		{ vn__ensure_assignment(Vnlval, Vn,
 			VnTables0, VnTables, Templocs1, Templocs, Instrs) }
 	;
@@ -85,6 +85,8 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 			VnTables0, VnTables, Templocs0, Templocs, Instrs) }
 	),
 	vn__flush_end_msg(Instrs, VnTables).
+
+%-----------------------------------------------------------------------------%
 
 :- pred vn__flush_ctrl_node(vn_instr, int, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
@@ -130,35 +132,28 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 	;
 		Vn_instr = vn_computed_goto(Vn, Labels),
 		vn__flush_vn(Vn, [src_ctrl(N)], Rval,
-			VnTables0, VnTables,
-			Templocs0, Templocs, FlushInstrs),
+			VnTables0, VnTables, Templocs0, Templocs, FlushInstrs),
 		Instr = computed_goto(Rval, Labels) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_if_val(Vn, TargetAddr),
 		vn__flush_vn(Vn, [src_ctrl(N)], Rval,
-			VnTables0, VnTables,
-			Templocs0, Templocs, FlushInstrs),
+			VnTables0, VnTables, Templocs0, Templocs, FlushInstrs),
 		Instr = if_val(Rval, TargetAddr) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_mark_hp(Vnlval),
 		vn__flush_access_path(Vnlval, [src_ctrl(N)], Lval,
-			VnTables0, VnTables1,
-			Templocs0, Templocs, FlushInstrs),
-		vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn,
-			VnTables1),
-		vn__set_current_value(Vnlval, OldhpVn,
-			VnTables1, VnTables),
+			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+		vn__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn, VnTables1),
+		vn__set_current_value(Vnlval, OldhpVn, VnTables1, VnTables),
 		Instr = mark_hp(Lval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_restore_hp(Vn),
 		vn__flush_vn(Vn, [src_ctrl(N)], Rval,
-			VnTables0, VnTables1,
-			Templocs0, Templocs, FlushInstrs),
-		vn__set_current_value(vn_hp, Vn,
-			VnTables1, VnTables),
+			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+		vn__set_current_value(vn_hp, Vn, VnTables1, VnTables),
 		Instr = restore_hp(Rval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
@@ -174,66 +169,60 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 	).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Choose a location for a shared value number that does not have to go
-	% anywhere specific right now. We prefer to choose a register that
-	% already has the value. If we cannot, we would like to choose from
-	% among those locations that eventually want to have that value number,
-	% but this may not be worthwhile if the contents of that location would
-	% have to be saved first.
+	% anywhere specific right now; we do have to ensure that the chosen
+	% location is accessible without access vns.
 
-:- pred vn__choose_best_loc(vn, vnlval, vn_tables, templocs, templocs).
-:- mode vn__choose_best_loc(in, out, in, di, uo) is det.
+	% We prefer to choose a register or stack slot that already has the
+	% value; failing that, a register or stack slot that would like to
+	% have the value and whose contents either don't have to be saved
+	% or can be saved with a single instruction.
 
-vn__choose_best_loc(Vn, Chosen, VnTables, Templocs0, Templocs) :-
+	% In either case we have to pay attention when we choose non-register
+	% destinations. It pays to choose a non-register holder of the value
+	% only if there is at most one other user of the value. It pays to
+	% choose a non-register user only if there are no other users of the
+	% value.
+
+:- pred vn__choose_loc_for_shared_vn(vn, vnlval, vn_tables, templocs, templocs).
+:- mode vn__choose_loc_for_shared_vn(in, out, in, di, uo) is det.
+
+vn__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 	(
 		vn__lookup_current_locs(Vn, CurrentLocs, VnTables),
-		CurrentLocs = [_|_]
-	->
-		vn__choose_cheapest_loc(CurrentLocs, no, no, Presumed),
+		vn__choose_cheapest_loc(CurrentLocs, BestHolder),
+		vn__vnlval_access_vns(BestHolder, []),
 		(
-			\+ Presumed = vn_reg(_),
-			vn__lookup_uses(Vn, Uses, VnTables),
-			list__delete_first(Uses, src_liveval(Presumed),
-				NewUses),
-			NewUses = [_,_|_]
-		->
-			vn__choose_best_user(Vn, Chosen, VnTables,
-				Templocs0, Templocs)
+			vn__classify_loc_cost(BestHolder, 0)
 		;
-			Chosen = Presumed,
-			Templocs = Templocs0
+			vn__lookup_uses(Vn, Uses, VnTables),
+			list__delete_first(Uses, src_liveval(BestHolder),
+				NewUses),
+			( NewUses = [] ; NewUses = [_] )
 		)
+	->
+		Chosen = BestHolder,
+		Templocs = Templocs0
 	;
-		vn__choose_best_user(Vn, Chosen, VnTables, Templocs0, Templocs)
-	).
-
-:- pred vn__choose_best_user(vn, vnlval, vn_tables, templocs, templocs).
-:- mode vn__choose_best_user(in, out, in, di, uo) is det.
-
-vn__choose_best_user(Vn, Chosen, VnTables, Templocs0, Templocs) :-
-	(
 		vn__find_cheap_users(Vn, Users, VnTables),
-		Users = [_|_]
-	->
-		vn__choose_cheapest_loc(Users, no, no, Presumed),
+		vn__choose_cheapest_loc(Users, BestUser),
+		vn__vnlval_access_vns(BestUser, []),
 		(
-			% assign directly to a non-reg location
-			% only if that is the only user of this vn
-			\+ Presumed = vn_reg(_),
-			vn__lookup_uses(Vn, Uses, VnTables),
-			list__delete_first(Uses, src_liveval(Presumed),
-				NewUses),
-			NewUses = [_|_]
-		->
-			vn__next_temploc(Templocs0, Templocs, Chosen)
+			vn__classify_loc_cost(BestUser, 0)
 		;
-			Chosen = Presumed,
-			Templocs = Templocs0
+			vn__lookup_uses(Vn, Uses, VnTables),
+			list__delete_first(Uses, src_liveval(BestUser), [])
 		)
+	->
+		Chosen = BestUser,
+		Templocs = Templocs0
 	;
 		vn__next_temploc(Templocs0, Templocs, Chosen)
 	).
+
+%-----------------------------------------------------------------------------%
 
 	% Find a 'user', location that would like to have the given vn.
 	% The user should be 'cheap', i.e. either it should hold no value
@@ -300,56 +289,53 @@ vn__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Choose the cheapest location from among those already holding
-	% the desired vn. Therefore access time is the only consideration.
+	% Choose the cheapest location from a given list of locations.
+	% Access time is the only consideration. There are three cost levels:
+	% registers and temporaries; stackvars and framevars; fields.
+	% Fail only if the input list is empty.
 
-:- pred vn__choose_cheapest_loc(list(vnlval), maybe(vnlval), maybe(vnlval),
+:- pred vn__choose_cheapest_loc(list(vnlval), vnlval).
+:- mode vn__choose_cheapest_loc(in, out) is semidet.
+
+vn__choose_cheapest_loc(Locs, BestLoc) :-
+	vn__choose_cheapest_loc_2(Locs, no, no, BestLoc).
+
+:- pred vn__choose_cheapest_loc_2(list(vnlval), maybe(vnlval), maybe(vnlval),
 	vnlval).
-:- mode vn__choose_cheapest_loc(in, in, in, out) is det.
+:- mode vn__choose_cheapest_loc_2(in, in, in, out) is semidet.
 
-vn__choose_cheapest_loc([Loc | Locs], Stack0, Heap0, BestLoc) :-
-	(
-		Loc = vn_reg(_),
+vn__choose_cheapest_loc_2([Loc | Locs], Stack0, Heap0, BestLoc) :-
+	vn__classify_loc_cost(Loc, Cost),
+	( Cost = 0 ->
 		BestLoc = Loc
+	; Cost = 1 ->
+		vn__choose_cheapest_loc_2(Locs, yes(Loc), Heap0, BestLoc)
 	;
-		Loc = vn_stackvar(_),
-		vn__choose_cheapest_loc(Locs, yes(Loc), Heap0, BestLoc)
-	;
-		Loc = vn_framevar(_),
-		vn__choose_cheapest_loc(Locs, yes(Loc), Heap0, BestLoc)
-	;
-		Loc = vn_succip,
-		BestLoc = Loc
-	;
-		Loc = vn_maxfr,
-		BestLoc = Loc
-	;
-		Loc = vn_curfr,
-		BestLoc = Loc
-	;
-		Loc = vn_redoip(_),
-		vn__choose_cheapest_loc(Locs, yes(Loc), Heap0, BestLoc)
-	;
-		Loc = vn_hp,
-		BestLoc = Loc
-	;
-		Loc = vn_sp,
-		BestLoc = Loc
-	;
-		Loc = vn_field(_, _, _),
-		vn__choose_cheapest_loc(Locs, Stack0, yes(Loc), BestLoc)
-	;
-		Loc = vn_temp(_),
-		BestLoc = Loc
+		vn__choose_cheapest_loc_2(Locs, Stack0, yes(Loc), BestLoc)
 	).
-vn__choose_cheapest_loc([], Stack0, Heap0, BestLoc) :-
+vn__choose_cheapest_loc_2([], Stack0, Heap0, BestLoc) :-
 	( Stack0 = yes(Stack) ->
 		BestLoc = Stack
 	; Heap0 = yes(Heap) ->
 		BestLoc = Heap
 	;
-		error("empty locations list in vn__choose_cheapest_loc")
+		fail
 	).
+
+:- pred vn__classify_loc_cost(vnlval, int).
+:- mode vn__classify_loc_cost(in, out) is det.
+
+vn__classify_loc_cost(vn_reg(_), 0).
+vn__classify_loc_cost(vn_stackvar(_), 1).
+vn__classify_loc_cost(vn_framevar(_), 1).
+vn__classify_loc_cost(vn_succip, 0).
+vn__classify_loc_cost(vn_maxfr, 0).
+vn__classify_loc_cost(vn_curfr, 0).
+vn__classify_loc_cost(vn_redoip(_), 1).
+vn__classify_loc_cost(vn_hp, 0).
+vn__classify_loc_cost(vn_sp, 0).
+vn__classify_loc_cost(vn_field(_, _, _), 2).
+vn__classify_loc_cost(vn_temp(_), 0).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -389,14 +375,14 @@ vn__generate_assignment(Vnlval, Vn, VnTables0, VnTables,
 	;
 		true
 	),
-	% Only lvals on the heap must have their access path flushed,
-	% but they cannot appear on the temploc list, so of the next
-	% next two calls, at most one will modify temploc.
 	( vn__search_current_value(Vnlval, OldVn0, VnTables0) ->
 		SaveVn = yes(OldVn0)
 	;
 		SaveVn = no
 	),
+	% Only lvals on the heap must have their access path flushed,
+	% but they cannot appear on the temploc list, so of the next
+	% next two calls, at most one will modify Temploc.
 	vn__no_temploc(Vnlval, Templocs0, Templocs1),
 	vn__flush_access_path(Vnlval, [src_access(Vnlval)], Lval,
 		VnTables0, VnTables1, Templocs1, Templocs2, AccessInstrs),
@@ -430,6 +416,24 @@ vn__generate_assignment(Vnlval, Vn, VnTables0, VnTables,
 	list__condense([AccessInstrs, FlushInstrs1, SaveInstrs, [Instr]],
 		Instrs).
 
+	% Remove the incr_hp instruction from the list and return it
+	% separately.
+
+:- pred vn__get_incr_hp(list(instruction), instruction, list(instruction)).
+:- mode vn__get_incr_hp(di, out, uo) is det.
+
+vn__get_incr_hp([], _, _) :-
+	error("could not find incr_hp").
+vn__get_incr_hp([Instr0 | Instrs0], IncrHp, Instrs) :-
+	( Instr0 = incr_hp(_, _, _) - _ ->
+		IncrHp = Instr0,
+		Instrs = Instrs0
+	;
+		vn__get_incr_hp(Instrs0, IncrHp, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred vn__flush_vn(vn, list(vn_src), rval, vn_tables, vn_tables,
@@ -453,28 +457,7 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 		vn__lookup_current_locs(Vn, Locs, VnTables0),
 		vn__lookup_uses(Vn, Uses, VnTables0),
 		list__delete_all(Uses, Src, NewUses),
-		( Locs = [] ->
-			% If there are no more uses, it is useless to assign
-			% the vn to a location. Otherwise it is useful, but if
-			% Src is a livevals, the assignment will be done by
-			% the caller.
-			(
-				NewUses = [_|_],
-				\+ Src = src_liveval(_)
-			->
-				vn__choose_best_loc(Vn, Vnlval, VnTables0,
-					Templocs0, Templocs1),
-				vn__generate_assignment(Vnlval, Vn,
-					VnTables0, VnTables3,
-					Templocs1, Templocs, Lval, Instrs),
-				Rval = lval(Lval)
-			;
-				vn__flush_vn_value(Vn, Srcs, Rval,
-					VnTables0, VnTables3,
-					Templocs0, Templocs, Instrs)
-			)
-		;
-			vn__choose_cheapest_loc(Locs, no, no, Loc),
+		( vn__choose_cheapest_loc(Locs, Loc) ->
 			(
 				Loc = vn_hp
 			->
@@ -498,6 +481,26 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 					Templocs0, Templocs, Instrs),
 				Rval = lval(Lval)
 			)
+		;
+			% If there are no more uses, it is useless to assign
+			% the vn to a location. Otherwise it is useful, but if
+			% Src is a livevals, the assignment will be done by
+			% the caller.
+			(
+				NewUses = [_|_],
+				\+ Src = src_liveval(_)
+			->
+				vn__choose_loc_for_shared_vn(Vn, Vnlval,
+					VnTables0, Templocs0, Templocs1),
+				vn__generate_assignment(Vnlval, Vn,
+					VnTables0, VnTables3,
+					Templocs1, Templocs, Lval, Instrs),
+				Rval = lval(Lval)
+			;
+				vn__flush_vn_value(Vn, Srcs, Rval,
+					VnTables0, VnTables3,
+					Templocs0, Templocs, Instrs)
+			)
 		)
 	),
 	vn__del_old_use(Vn, Src, VnTables3, VnTables),
@@ -509,6 +512,8 @@ vn__flush_vn(Vn, Srcs, Rval, VnTables0, VnTables,
 	% 	vn__lookup_current_locs(Vn, NewlyFree1, VnTables0)
 	% 	list__append(NewlyFree0, NewlyFree1, NewlyFree)
 	% ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred vn__flush_vn_value(vn, list(vn_src), rval, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
@@ -537,13 +542,13 @@ vn__flush_vn_value(Vn, Srcs, Rval, VnTables0, VnTables, Templocs0, Templocs,
 		;
 			Locs1 = Locs0
 		),
-		( Locs1 = [] ->
+		( vn__choose_cheapest_loc(Locs1, LocPrime) ->
+			Loc = LocPrime
+		;
 			opt_debug__dump_vnlval(Vnlval, V_str),
 			string__append("cannot find copy of an origlval: ",
 				V_str, Str),
 			error(Str)
-		;
-			vn__choose_cheapest_loc(Locs1, no, no, Loc)
 		),
 		vn__flush_access_path(Loc, [src_vn(Vn) | Srcs], Lval,
 			VnTables0, VnTables, Templocs0, Templocs, Instrs),
@@ -598,6 +603,8 @@ vn__flush_vn_value(Vn, Srcs, Rval, VnTables0, VnTables, Templocs0, Templocs,
 		Rval = binop(Binop, Rval1, Rval2),
 		list__append(Instrs1, Instrs2, Instrs)
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred vn__flush_old_hp(list(vn_src), rval, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
@@ -659,8 +666,7 @@ vn__flush_old_hp(Srcs0, ReturnRval, VnTables0, VnTables, Templocs0, Templocs,
 			Templocs2 = Templocs1
 		; 
 			vn__find_cheap_users(UserVn, UserLocs, VnTables3),
-			UserLocs = [_|_],
-			vn__choose_cheapest_loc(UserLocs, no, no, UserLoc),
+			vn__choose_cheapest_loc(UserLocs, UserLoc),
 			UserLoc = vn_reg(_)
 		->
 			Vnlval = UserLoc,
@@ -711,6 +717,8 @@ vn__flush_old_hp(Srcs0, ReturnRval, VnTables0, VnTables, Templocs0, Templocs,
 	vn__set_current_value(Vnlval, AssignedVn, VnTables4, VnTables),
 	Instr = incr_hp(Lval, MaybeTag, Rval) - "",
 	list__condense([IncrInstrs, SaveInstrs, [Instr]], Instrs).
+
+%-----------------------------------------------------------------------------%
 
 :- pred vn__flush_hp_incr(vn, list(vn_src), maybe(rval), vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
@@ -798,6 +806,8 @@ vn__flush_hp_incr(Vn, Srcs, MaybeRval, VnTables0, VnTables,
 		),
 		vn__del_old_use(Vn, Src, VnTables2, VnTables)
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred vn__free_of_old_hp(list(vn), vn_tables).
 :- mode vn__free_of_old_hp(in, in) is semidet.
@@ -905,6 +915,9 @@ vn__flush_access_path(Vnlval, Srcs, Lval, VnTables0, VnTables,
 		AccessInstrs = []
 	).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% If the vn currently stored in the vnlval is used elsewhere,
 	% and if it cannot be recreated blind (or at least not cheaply),
 	% then save the value somewhere else. We prefer the somewhere else
@@ -934,9 +947,8 @@ vn__maybe_save_prev_value(Vnlval, Vn, ForbiddenLvals,
 	->
 		(
 			vn__find_cheap_users(Vn, ReqLocs, VnTables0),
-			ReqLocs = [_|_]
+			vn__choose_cheapest_loc(ReqLocs, Presumed)
 		->
-			vn__choose_cheapest_loc(ReqLocs, no, no, Presumed),
 			vn__no_access_vnlval_to_lval(Presumed, MaybePresumed),
 			(
 				MaybePresumed = yes(PresumedLval),
@@ -975,19 +987,3 @@ vn__no_good_copies([]).
 vn__no_good_copies([Vnlval | Vnlvals]) :-
 	Vnlval = vn_field(_, _, _),
 	vn__no_good_copies(Vnlvals).
-
-%-----------------------------------------------------------------------------%
-
-:- pred vn__get_incr_hp(list(instruction), instruction, list(instruction)).
-:- mode vn__get_incr_hp(di, out, uo) is det.
-
-vn__get_incr_hp([], _, _) :-
-	error("could not find incr_hp").
-vn__get_incr_hp([Instr0 | Instrs0], IncrHp, Instrs) :-
-	( Instr0 = incr_hp(_, _, _) - _ ->
-		IncrHp = Instr0,
-		Instrs = Instrs0
-	;
-		vn__get_incr_hp(Instrs0, IncrHp, Instrs1),
-		Instrs = [Instr0 | Instrs1]
-	).

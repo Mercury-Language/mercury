@@ -282,50 +282,9 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
 	;
 		Vn_instr = vn_if_val(_, TargetAddr),
-		(
-			TargetAddr = label(Label),
-			map__search(Livemap, Label, _)
-		->
-			vn__record_one_label(Label, Livemap,
-				VnTables0, VnTables1, Liveset0, Liveset1,
-				FlushEntry0, FlushEntry1,
-				LabelNo0, LabelNoPrime, ParallelsPrime),
-			(
-				Prev is Ctrl0 - 1,
-				map__search(Ctrlmap0, Prev, PrevInstr),
-				PrevInstr = vn_livevals(_)
-			->
-				% middle-rec branch back
-				bintree_set__to_sorted_list(Liveset0,
-					Vnlivelist),
-				vn__record_livevnlvals(Vnlivelist,
-					VnTables1, VnTables,
-					Liveset1, Liveset,
-					FlushEntry1, FlushEntry),
-				LabelNo = LabelNo0,
-				Parallels = []
-			;
-				VnTables = VnTables1,
-				Liveset = Liveset1,
-				FlushEntry = FlushEntry1,
-				LabelNo = LabelNoPrime,
-				Parallels = ParallelsPrime
-			)
-		;
-			TargetAddr = do_fail
-		->
-			VnTables = VnTables0,
-			Liveset = Liveset0,
-			FlushEntry = FlushEntry0,
-			LabelNo = LabelNo0,
-			Parallels = []
-		;
-			bintree_set__to_sorted_list(Liveset0, Vnlivelist),
-			vn__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
-				Liveset0, Liveset, FlushEntry0, FlushEntry),
-			LabelNo = LabelNo0,
-			Parallels = []
-		)
+		vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0,
+			VnTables0, VnTables, Liveset0, Liveset,
+			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels)
 	;
 		Vn_instr = vn_mark_hp(Vnlval),
 		vn__rval_to_vn(lval(hp), Vn, VnTables0, VnTables1),
@@ -335,7 +294,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_restore_hp(_Vn),
+		Vn_instr = vn_restore_hp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -360,6 +319,81 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 	map__det_insert(Ctrlmap0, Ctrl0, Vn_instr, Ctrlmap),
 	map__det_insert(Flushmap0, Ctrl0, FlushEntry, Flushmap),
 	map__det_insert(Parmap0, Ctrl0, Parallels, Parmap).
+
+:- pred vn__new_if_node(code_addr, livemap, ctrlmap, int,
+	vn_tables, vn_tables, vnlvalset, vnlvalset,
+	flushmapentry, flushmapentry, int, int, list(parallel)).
+:- mode vn__new_if_node(in, in, in, in, di, uo, di, uo, di, uo, in, out, out)
+	is det.
+
+vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0, VnTables0, VnTables,
+		Liveset0, Liveset, FlushEntry0, FlushEntry,
+		LabelNo0, LabelNo, Parallels) :-
+	(
+		TargetAddr = label(Label),
+		map__search(Livemap, Label, _)
+	->
+		vn__record_one_label(Label, Livemap,
+			VnTables0, VnTables1, Liveset0, Liveset1,
+			FlushEntry0, FlushEntry1,
+			LabelNo0, LabelNoPrime, ParallelsPrime),
+		(
+			Prev is Ctrl0 - 1,
+			map__search(Ctrlmap0, Prev, PrevInstr),
+			PrevInstr = vn_livevals(_)
+		->
+			% middle-rec branch back
+			bintree_set__to_sorted_list(Liveset0,
+				Vnlivelist),
+			vn__record_livevnlvals(Vnlivelist,
+				VnTables1, VnTables,
+				Liveset1, Liveset,
+				FlushEntry1, FlushEntry),
+			LabelNo = LabelNo0,
+			Parallels = []
+		;
+			VnTables = VnTables1,
+			Liveset = Liveset1,
+			FlushEntry = FlushEntry1,
+			LabelNo = LabelNoPrime,
+			Parallels = ParallelsPrime
+		)
+	;
+		TargetAddr = do_fail
+	->
+		VnTables = VnTables0,
+		Liveset = Liveset0,
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		TargetAddr = do_redo
+	->
+		bintree_set__to_sorted_list(Liveset0, Vnlivelist0),
+		vn__filter_redo_livelist(Vnlivelist0, Vnlivelist),
+		vn__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
+			Liveset0, Liveset, FlushEntry0, FlushEntry),
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		bintree_set__to_sorted_list(Liveset0, Vnlivelist),
+		vn__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
+			Liveset0, Liveset, FlushEntry0, FlushEntry),
+		LabelNo = LabelNo0,
+		Parallels = []
+	).
+
+:- pred vn__filter_redo_livelist(list(vnlval), list(vnlval)).
+:- mode vn__filter_redo_livelist(di, uo) is det.
+
+vn__filter_redo_livelist([], []).
+vn__filter_redo_livelist([Live0 | Lives0], Lives) :-
+	vn__filter_redo_livelist(Lives0, Lives1),
+	( Live0 = vn_hp ->
+		Lives = Lives1
+	;
+		Lives = [Live0 | Lives1]
+	).
 
 %-----------------------------------------------------------------------------%
 
