@@ -323,6 +323,9 @@ while [ $# -gt 0 ]; do
 	-W|--windows)
 		windows=true; use_cp=true; A=lib ;;
 
+	--use-cp)
+		use_cp=true ;;
+
 	--no-sym-links)
 		use_cp=true ;;
 

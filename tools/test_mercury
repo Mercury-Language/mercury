@@ -195,6 +195,7 @@ rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 
 #-----------------------------------------------------------------------------#
 
+use_cp_opt=""
 case $HOST in
 	# test things at different optimization levels...
 
@@ -220,7 +221,9 @@ case $HOST in
 
 	murlibobo)	OPTIMIZE=-O5 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
-	mundroo) 	OPTIMIZE=-O2 ;;
+	mundroo) 	OPTIMIZE=-O2; use_cp_opt="--use-cp" ;;
+			# On mundroo, "mkdir -p scripts" aborts
+			# if scripts is a symbolic link to a directory.
 	quicksilver) 	OPTIMIZE=-O0 ;;
 	hg) 		OPTIMIZE=-O4 ;;
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
@@ -680,7 +683,8 @@ mmake $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 mmake $target_opts depend $PARALLEL || { false; exit 1; }
 version=`mmake $target_opts version` || { false; exit 1; }
 fullarch=`mmake $target_opts fullarch` || { false; exit 1; }
-tools/bootcheck $target_opts --keep-objs --copy-runtime --copy-profiler \
+tools/bootcheck $use_cp_opt $target_opts \
+	--keep-objs --copy-runtime --copy-profiler \
 	--no-test-suite $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
