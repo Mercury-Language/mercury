@@ -2,6 +2,22 @@
 #define REGS_H
 
 /*
+** GNU C allows lvalue casts, so if we have gcc, use them.
+** If we don't have gcc, then we can use *(type *)&lval,
+** but that wouldn't work for gcc since lval might be a global
+** register in which case we couldn't take it's address.
+** Similarly for comma expressions.
+*/
+
+#ifdef __GNUC__
+  #define LVALUE_CAST(type, lval)	((type)(lval))
+  #define LVALUE_SEQ(expr, lval)	((expr),(lval))
+#else
+  #define LVALUE_CAST(type, lval)	(*(type*)&(lval))
+  #define LVALUE_SEQ(expr, lval)	(*((expr),&(lval)))
+#endif
+
+/*
 ** The registers of the Mercury virtual machine are built up using
 ** three levels of abstraction.
 **
@@ -17,28 +33,16 @@
 **
 ** The second level maps the Mercury virtual machine registers
 **
-**	succip, hp, sp, curfr, maxfr and r1 - r64
+**	succip, hp, sp, curfr, maxfr and
+**	r1, ..., r32, r(33), ..., r(MAX_VIRTUAL_REG)
 **
-** to the set mr0..mr36, mr(37)..mr(69)
+** to the set mr0..mr36, mr(37), mr(38), ..., mr(MAX_FAKE_REG-1)
 **
 ** Since the set of most frequently used Mercury virtual machine
 ** registers can be different for each program, we want to make
 ** this mapping as easy to change as possible. This is why the
 ** map is in a minimal header file, regorder.h.
 */
-
-/*
-** if any of the following change, you must inspect memory.[ch],
-** the headers in machdeps, as well as all uses of all macros defined here.
-*/
-
-#define	SI_RN	 0
-#define	ORD_RN	32
-#define	HP_RN	(ORD_RN + 1)
-#define	SP_RN	(ORD_RN + 2)
-#define	CF_RN	(ORD_RN + 3)
-#define	MF_RN	(ORD_RN + 4)
-#define MAX_RN	(ORD_RN + 5)
 
 #if defined(USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__
@@ -56,29 +60,11 @@
     #include "machdeps/no_regs.h"
 #endif
 
-#ifndef save_transient_registers
-    #error "Software error: machdeps does not define save_transient_registers."
-#endif
+/* The machdeps header defines mr0 .. mr36; now define mr(n) for n > 36 */
 
-#ifndef restore_transient_registers
-    #error "Software error: machdeps does not define restore_transient_registers."
-#endif
-
-/*
-** GNU C allows lvalue casts, so if we have gcc, use them.
-** If we don't have gcc, then we can use *(type *)&lval,
-** but that wouldn't work for gcc since lval might be a global
-** register in which case we couldn't take it's address.
-** Similarly for comma expressions.
-*/
-
-#ifdef __GNUC__
-  #define LVALUE_CAST(type, lval)	((type)(lval))
-  #define LVALUE_SEQ(expr, lval)	((expr),(lval))
-#else
-  #define LVALUE_CAST(type, lval)	(*(type*)&(lval))
-  #define LVALUE_SEQ(expr, lval)	(*((expr),&(lval)))
-#endif
+#define mr(n) LVALUE_SEQ(assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
+				(n) < MAX_FAKE_REG),\
+		fake_reg[n])
 
 #ifdef MEASURE_REGISTER_USAGE
   #define count_usage(num,reg)		LVALUE_SEQ(num_uses[num]++, reg)
@@ -88,8 +74,30 @@
 
 #include	"regorder.h"
 
-/* define the macro for doing reg-number translations */
+/* regorrder.h defines r1 .. r32; now define r(n) for n > 32 */
 
-#define virtual_reg(num)	(fake_reg[virtual_reg_map[(num)]])
+#define r(n) mr((n) + NUM_SPECIAL_REG - 1)
+
+/* virtual_reg(n) accesses the underlying fake_reg for register n */
+
+#define virtual_reg(n)	\
+	((n) > MAX_REAL_REG ? r(n) : fake_reg[virtual_reg_map[(n) - 1]])
+
+/*
+** the following macros define a mapping from registers to indices into the
+** num_uses array used for counting register usage
+**
+** any changes to these will also require changes to
+** print_register_usage_counts() in wrapper.mod.
+*/
+
+#define	SI_RN	0
+#define R_RN(n)	(n)
+#define ORD_RN	MAX_REAL_REG
+#define	HP_RN	(ORD_RN + 1)
+#define	SP_RN	(ORD_RN + 2)
+#define	CF_RN	(ORD_RN + 3)
+#define	MF_RN	(ORD_RN + 4)
+#define MAX_RN	(ORD_RN + 5)
 
 #endif /* REGS_H */

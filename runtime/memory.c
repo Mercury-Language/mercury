@@ -73,10 +73,9 @@ static	void	setup_signal(void);
 
 Word	fake_reg[MAX_FAKE_REG];
 
-Word	virtual_reg_map[MAX_VIRTUAL_REG+1] = VIRTUAL_REG_MAP_BODY;
+Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
-Word	*saved_regs;
-Word	*num_uses;
+Word	num_uses[MAX_RN];
 
 Word	*heap;
 Word	*detstack;
@@ -109,7 +108,7 @@ void init_memory(void)
 {
 	char	*arena;
 	int	total_size;
-	int	i;
+	int	fake_reg_offset, heap_offset, detstack_offset, nondstack_offset;
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -117,10 +116,7 @@ void init_memory(void)
 	*/
 
 	page_size = getpagesize();
-
-	unit = page_size;
-	while (unit < pcache_size)
-		unit *= 2;
+	unit = max(page_size, pcache_size);
 
 	heap_size           = roundup(heap_size * 1024, unit);
 	detstack_size       = roundup(detstack_size * 1024, unit);
@@ -128,6 +124,10 @@ void init_memory(void)
 	heap_zone_size      = roundup(heap_zone_size * 1024, unit);
 	detstack_zone_size  = roundup(detstack_zone_size * 1024, unit);
 	nondstack_zone_size = roundup(nondstack_zone_size * 1024, unit);
+
+	/*
+	** What is this code for, Zoltan?
+	*/
 
 	if (heap_zone_size >= heap_size)
 		heap_zone_size = unit;
@@ -141,9 +141,13 @@ void init_memory(void)
 	/*
 	** Calculate how much memory to allocate, then allocate it
 	** and divide it up among the areas.
+	** We allocate 4 extra units, since we waste one unit each
+	** for the heap, detstack, and nondstack to ensure they
+	** are aligned at non-conflicting cache offsets, and we may
+	** waste one unit aligning the whole arena on a unit boundary.
 	*/
 
-	total_size = heap_size + detstack_size + nondstack_size + 5 * unit;
+	total_size = heap_size + detstack_size + nondstack_size + 4 * unit;
 
 	/*  get mem_size pages aligned on a page boundary */
 	arena = memalign(unit, total_size);
@@ -152,52 +156,25 @@ void init_memory(void)
 		printf("cannot allocate arena: memalign() failed\n");
 		exit(1);
 	}
+	arena = (char *) roundup((int) arena, unit);
+	
+	fake_reg_offset = (int) fake_reg % unit;
+	heap_offset = fake_reg_offset + pcache_size / 4;
+	detstack_offset = heap_offset + pcache_size / 4;
+	nondstack_offset = detstack_offset + pcache_size / 4;
 
-	if ((int) arena % unit != 0)
-	{
-		arena = arena + unit - 1;
-		arena = (char *) ((int) arena - (int) arena % unit);
-
-		if ((int) arena % unit != 0)
-		{
-			printf("rounding arena address didn't work\n");
-			exit(1);
-		}
-	}
-
-	saved_regs  = (Word *) (arena + 0 * MAX_FAKE_REG * sizeof(Word));
-	num_uses    = (Word *) (arena + 1 * MAX_FAKE_REG * sizeof(Word));
-
-	for (i = 0; i < MAX_FAKE_REG; i++)
-		num_uses[i] = 0;
-
-	if (2 * MAX_FAKE_REG * sizeof(Word) < pcache_size/4)
-	{
-		heap    = (Word *) (arena + 0 * MAX_FAKE_REG * sizeof(Word));
-		heapmin = (Word *) (arena + 2 * MAX_FAKE_REG * sizeof(Word));
-	}
-	else
-	{
-		if (2 * MAX_FAKE_REG * sizeof(Word) >= unit)
-		{
-			printf("cache division strategy isn't working\n");
-			exit(1);
-		}
-
-		heap    = (Word *) (arena + unit + 0 * MAX_FAKE_REG * sizeof(Word));
-		heapmin = (Word *) (arena + unit + 2 * MAX_FAKE_REG * sizeof(Word));
-	}
-
+	heap    = (Word *) arena;
+	heapmin = (Word *) ((char *) heap + heap_offset);
 	heapend = (Word *) ((char *) heap + heap_size + unit);
 	assert(((int) heapend) % unit == 0);
 
 	detstack    = heapend;
-	detstackmin = (Word *) ((char *) detstack + (pcache_size / 2));
+	detstackmin = (Word *) ((char *) detstack + detstack_offset);
 	detstackend = (Word *) ((char *) detstack + detstack_size + unit);
 	assert(((int) detstackend) % unit == 0);
 
 	nondstack    = detstackend;
-	nondstackmin = (Word *) ((char *) nondstack + (3 * pcache_size / 4));
+	nondstackmin = (Word *) ((char *) nondstack + nondstack_offset);
 	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
 	assert(((int) nondstackend) % unit == 0);
 
@@ -218,63 +195,61 @@ void init_memory(void)
 	{
 
 		printf("\n");
-		printf("pcache_size  = %d (%x)\n", pcache_size, pcache_size);
-		printf("page_size    = %d (%x)\n", page_size, page_size);
-		printf("unit         = %d (%x)\n", unit, unit);
+		printf("pcache_size  = %d (0x%x)\n", pcache_size, pcache_size);
+		printf("page_size    = %d (0x%x)\n", page_size, page_size);
+		printf("unit         = %d (0x%x)\n", unit, unit);
 
 		printf("\n");
-		printf("saved_regs     = %p (%d)\n", (void *) saved_regs,
-			(int) saved_regs & (unit-1));
-		printf("num_uses       = %p (%d)\n", (void *) num_uses,
-			(int) num_uses & (unit-1));
-
+		printf("fake_reg       = %p (offset %d)\n", (void *) fake_reg,
+			(int) fake_reg & (unit-1));
 		printf("\n");
-		printf("heap           = %p (%d)\n", (void *) heap,
+
+		printf("heap           = %p (offset %d)\n", (void *) heap,
 			(int) heap & (unit-1));
-		printf("heapmin        = %p (%d)\n", (void *) heapmin,
+		printf("heapmin        = %p (offset %d)\n", (void *) heapmin,
 			(int) heapmin & (unit-1));
-		printf("heapend        = %p (%d)\n", (void *) heapend,
+		printf("heapend        = %p (offset %d)\n", (void *) heapend,
 			(int) heapend & (unit-1));
-		printf("heap_zone      = %p (%d)\n", (void *) heap_zone,
+		printf("heap_zone      = %p (offset %d)\n", (void *) heap_zone,
 			(int) heap_zone & (unit-1));
 
 		printf("\n");
-		printf("detstack       = %p (%d)\n", (void *) detstack,
+		printf("detstack       = %p (offset %d)\n", (void *) detstack,
 			(int) detstack & (unit-1));
-		printf("detstackmin    = %p (%d)\n", (void *) detstackmin,
+		printf("detstackmin    = %p (offset %d)\n", (void *) detstackmin,
 			(int) detstackmin & (unit-1));
-		printf("detstackend    = %p (%d)\n", (void *) detstackend,
+		printf("detstackend    = %p (offset %d)\n", (void *) detstackend,
 			(int) detstackend & (unit-1));
-		printf("detstack_zone  = %p (%d)\n", (void *) detstack_zone,
+		printf("detstack_zone  = %p (offset %d)\n", (void *) detstack_zone,
 			(int) detstack_zone & (unit-1));
 
 		printf("\n");
-		printf("nondstack      = %p (%d)\n", (void *) nondstack,
+		printf("nondstack      = %p (offset %d)\n", (void *) nondstack,
 			(int) nondstack & (unit-1));
-		printf("nondstackmin   = %p (%d)\n", (void *) nondstackmin,
+		printf("nondstackmin   = %p (offset %d)\n", (void *) nondstackmin,
 			(int) nondstackmin & (unit-1));
-		printf("nondstackend   = %p (%d)\n", (void *) nondstackend,
+		printf("nondstackend   = %p (offset %d)\n", (void *) nondstackend,
 			(int) nondstackend & (unit-1));
-		printf("nondstack_zone = %p (%d)\n", (void *) detstack_zone,
+		printf("nondstack_zone = %p (offset %d)\n", (void *) detstack_zone,
 			(int) nondstack_zone & (unit-1));
 
 		printf("\n");
-		printf("arena start    = %p (%d)\n", (void *) arena,
+		printf("arena start    = %p (offset %d)\n", (void *) arena,
 			(int) arena & (unit-1));
-		printf("arena end      = %p (%d)\n", (void *) (arena+total_size),
+		printf("arena end      = %p (offset %d)\n", (void *) (arena+total_size),
 			(int) (arena+total_size) & (unit-1));
 
 		printf("\n");
-		printf("heap           = %d (%x)\n",
+		printf("heap size      = %d (0x%x)\n",
 			(char *) heapend - (char *) heapmin,
 			(char *) heapend - (char *) heapmin);
-		printf("detstack       = %d (%x)\n",
+		printf("detstack size  = %d (0x%x)\n",
 			(char *) detstackend - (char *) detstackmin,
 			(char *) detstackend - (char *) detstackmin);
-		printf("nondstack      = %d (%x)\n",
+		printf("nondstack size = %d (0x%x)\n",
 			(char *) nondstackend - (char *) nondstackmin,
 			(char *) nondstackend - (char *) nondstackmin);
-		printf("arena size     = %d (%x)\n", total_size, total_size);
+		printf("arena size     = %d (0x%x)\n", total_size, total_size);
 	}
 }
 
