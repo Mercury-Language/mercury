@@ -418,13 +418,12 @@ det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	).
 
 	% the category of a switch is the worst of the category of each of
-	% the cases and (if only a subset of the constructors are handled)
-	% semideterministic.
+	% the cases. (Also, if only a subset of the constructors are handled,
+	% then it is semideterministic or worse - this is determined
+	% in switch_detection.nl and handled via the local_determinism field.)
 
 det_infer_goal_2(switch(Var, Cases0), MiscInfo, _, _, switch(Var, Cases), D) :-
-	det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1),
-	test_to_see_that_all_constructors_are_tested(Cons, MiscInfo, D2),
-	max_category(D1, D2, D).
+	det_infer_switch(Cases0, MiscInfo, Cases, D).
 
 	% look up the category entry associated with the call.
 	% This is the point at which annotations start changing
@@ -539,7 +538,7 @@ det_infer_unify(construct(_, _, _, _), _MiscInfo, deterministic).
 	% only has one constructor, or if the variable is known to be
 	% already bound to the appropriate functor.
 	% 
-	% This will (XXX eventually!) be handled by modes.nl setting
+	% This is handled (modulo bugs) by modes.nl, which sets
 	% the determinism field in the deconstruct(...) to semidet for
 	% those deconstruction unifications which might fail.
 	% But switch_detection.nl may set it back to det again, if it moves
@@ -551,24 +550,18 @@ det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
 
 det_infer_unify(complicated_unify(_, _, _, Det), _MiscInfo, Det).
 
-:- pred det_infer_switch(list(case), misc_info, list(case), 
-			list(cons_id), category).
-:- mode det_infer_switch(in, in, out, out, out) is det.
+:- pred det_infer_switch(list(case), misc_info, list(case), category).
+:- mode det_infer_switch(in, in, out, out) is det.
 
-det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1) :-
-	det_infer_switch_2(Cases0, MiscInfo, Cases, [], Cons, 
-		deterministic, D1).
+det_infer_switch(Cases0, MiscInfo, Cases, D) :-
+	det_infer_switch_2(Cases0, MiscInfo, Cases, deterministic, D).
 
-	% Note that the use of an accumulator here is very Prolog-ish;
-	% it doesn't actually buy us anything for Mercury.
+:- pred det_infer_switch_2(list(case), misc_info, list(case),
+			category, category).
+:- mode det_infer_switch_2(in, in, out, in, out) is det.
 
-:- pred det_infer_switch_2(list(case), misc_info, list(case), list(cons_id),
-			list(cons_id), category, category).
-:- mode det_infer_switch_2(in, in, out, in, out, in, out) is det.
-
-det_infer_switch_2([], _MiscInfo, [], Cons, Cons, D, D).
-det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
-		D0, D) :-
+det_infer_switch_2([], _MiscInfo, [], D, D).
+det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], D0, D) :-
 		% XXX we should update the instmap to reflect the
 		% knowledge that the var is bound to this particular
 		% constructor
@@ -576,8 +569,7 @@ det_infer_switch_2([Case0|Cases0], MiscInfo, [Case|Cases], Cons0, Cons,
 	det_infer_goal(Goal0, MiscInfo, Goal, D1),
 	max_category(D0, D1, D2),
 	Case = case(ConsId, Goal),
-	det_infer_switch_2(Cases0, MiscInfo, Cases, [ConsId|Cons0], Cons,
-		D2, D).
+	det_infer_switch_2(Cases0, MiscInfo, Cases, D2, D).
 
 %-----------------------------------------------------------------------------%
 
@@ -616,14 +608,4 @@ detism_lookup(MiscInfo, PredId, ModeId, Category) :-
 	map__lookup(ProcTable, ModeId, ProcInfo),
 	proc_info_inferred_determinism(ProcInfo, Category).
 
-%-----------------------------------------------------------------------------%
-
-:- pred test_to_see_that_all_constructors_are_tested(list(cons_id),
-		misc_info, category).
-:- mode test_to_see_that_all_constructors_are_tested(in, in, out) is det.
-	
-test_to_see_that_all_constructors_are_tested(_, _, deterministic).
-		% Actually, we may handle this via the local_det field
-		% in the goal_info, so this stub may be unnecessary.
-	
 %-----------------------------------------------------------------------------%
