@@ -730,7 +730,7 @@ relation__dfs_2(Rel, Node, !Visit, !DfsRev) :-
 		relation__lookup_key_set_from(Rel, Node, AdjSet),
 		insert(!.Visit, Node, !:Visit),
 
-		% Go and visit all a nodes children first
+		% Go and visit all of the node's children first
 		{!:Visit, !:DfsRev} = foldl(
 			(func(Adj, {!.Visit, !.DfsRev}) =
 					{!:Visit, !:DfsRev} :-
@@ -927,17 +927,9 @@ relation__make_reduced_graph(Map, [U - V | Rest], Rel0, Rel) :-
 	% relation__tsort returns a topological sorting
 	% of a relation.  It fails if the relation is cyclic.
 relation__tsort(Rel, Tsort) :-
-	relation__tsort_2(Rel, Tsort0),
-	list__map(relation__lookup_key(Rel), Tsort0, Tsort).
-
-:- pred relation__tsort_2(relation(T), list(relation_key)).
-:- mode relation__tsort_2(in, out) is semidet.
-
-relation__tsort_2(Rel, Tsort) :-
-	relation__domain_sorted_list(Rel, DomList),
-	init(Vis0),
-	relation__c_dfs(Rel, DomList, Vis0, _Vis, [], Tsort),
-	relation__check_tsort(Rel, Vis0, Tsort).
+	relation__dfsrev(Rel, Tsort0),
+	relation__check_tsort(Rel, init, Tsort0),
+	Tsort = list__map(relation__lookup_key(Rel), Tsort0).
 
 :- pred relation__check_tsort(relation(T), relation_key_set,
 		list(relation_key)).
@@ -949,31 +941,6 @@ relation__check_tsort(Rel, Vis, [X | Xs]) :-
 	intersect(Vis1, RX, BackPointers),
 	empty(BackPointers),
 	relation__check_tsort(Rel, Vis1, Xs).
-
-:- pred relation__c_dfs(relation(T), list(relation_key), relation_key_set,
-	relation_key_set, list(relation_key), list(relation_key)).
-:- mode relation__c_dfs(in, in, in, out, in, out) is det.
-relation__c_dfs(_Rel, [], !Vis, !Dfs).
-relation__c_dfs(Rel, [X | Xs], !Vis, !Dfs) :-
-	( contains(!.Vis, X) ->
-		true
-	;
-		relation__c_dfs_2(Rel, X, !Vis, !Dfs)
-	),
-	relation__c_dfs(Rel, Xs, !Vis, !Dfs).
-
-:- pred relation__c_dfs_2(relation(T), relation_key, relation_key_set,
-	relation_key_set, list(relation_key), list(relation_key)).
-:- mode relation__c_dfs_2(in, in, in, out, in, out) is det.
-relation__c_dfs_2(Rel, X, !Vis, !Dfs) :-
-	insert(!.Vis, X, !:Vis),
-	relation__lookup_key_set_from(Rel, X, FromXs),
-	foldl(
-		(pred(FromX::in, {!.Vis, !.Dfs}::in,
-				{!:Vis, !:Dfs}::out) is det :-
-			relation__c_dfs_2(Rel, FromX, !Vis, !Dfs)
-		), FromXs, {!.Vis, !.Dfs}, {!:Vis, !:Dfs}),
-	!:Dfs = [X | !.Dfs].
 
 %------------------------------------------------------------------------------%
 
@@ -993,8 +960,7 @@ relation__atsort(Rel, ATsort) :-
 	list__reverse(ATsort0, ATsort).
 
 :- pred relation__atsort_2(list(relation_key), relation(T),
-	relation_key_set, list(set(T)),
-	list(set(T))).
+	relation_key_set, list(set(T)), list(set(T))).
 :- mode relation__atsort_2(in, in, in, in, out) is det.
 
 relation__atsort_2([], _, _, ATsort, ATsort).

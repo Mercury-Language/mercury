@@ -23,24 +23,38 @@ main -->
 			"c" - "c1",
 			"d" - "d1"],
 			Rel2) },
+	test_rel("Rel", Rel),
+	test_rel("Rel2", Rel2),
+	{ relation__compose(Rel, Rel2, ComposedRel) },
+	print("composition of Rel and Rel2 ="), nl,
+			print_rel(ComposedRel), nl.
+
+:- pred test_rel(string::in, relation(T)::in,
+		io__state::di, io__state::uo) is det.
+
+test_rel(Name, Rel) -->
+	{ relation__dfs(Rel, DfsKeys) },
+	{ list__map(relation__lookup_key(Rel), DfsKeys, Dfs) },
 	{ relation__tc(Rel, TC_Rel) },
 	{ relation__rtc(Rel, RTC_Rel) },
-	{ relation__compose(Rel, Rel2, ComposedRel) },
-	print("Rel ="), nl, print_rel(Rel), nl,
-	print("tc of Rel ="), nl, print_rel(TC_Rel), nl,
-	print("rtc of Rel ="), nl, print_rel(RTC_Rel), nl,
-	print("Rel2 ="), nl, print_rel(Rel2), nl,
-	print("composition of Rel1 and Rel2 ="), nl,
-			print_rel(ComposedRel), nl,
-	( { relation__is_dag(Rel) } ->
-		io__write_string("Error: relation__is_dag(Rel) succeeded\n")
+	{ relation__sc(Rel, SC_Rel) },
+	{ relation__atsort(Rel, ATSort) },
+	print(Name),
+	print(" ="), nl, print_rel(Rel), nl,
+	print("tc ="), nl, print_rel(TC_Rel), nl,
+	print("rtc ="), nl, print_rel(RTC_Rel), nl,
+	print("sc ="), nl, print_rel(SC_Rel), nl,
+	print("dfs ="), nl, print(Dfs), nl,
+	print("atsort ="), nl, print(ATSort), nl,
+	( { relation__tsort(Rel, TSort) } ->
+		print("tsort ="), nl, print(TSort), nl
 	;
-		io__write_string("relation__is_dag(Rel) failed as expected\n")
+		print("tsort failed\n")
 	),
-	( { relation__is_dag(Rel2) } ->
-		io__write_string("relation__is_dag(Rel) succeeded\n")
+	( { relation__is_dag(Rel) } ->
+		io__write_string("is_dag succeeded\n")
 	;
-		io__write_string("Error: relation__is_dag(Rel2) failed\n")
+		io__write_string("is_dag failed\n")
 	).
 
 :- pred print_rel(relation(T), state, state).
@@ -49,5 +63,5 @@ main -->
 print_rel(Relation) -->
 	{ relation__to_assoc_list(Relation, AssocList0) },
 	{ list__sort(AssocList0, AssocList) },
-	write_list(AssocList, "\n", print), nl.
+	write_list(AssocList, "\n\t", print), nl.
 
