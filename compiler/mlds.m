@@ -1189,7 +1189,9 @@ mercury_std_library_module("builtin").
 mercury_std_library_module("char").
 mercury_std_library_module("dir").
 mercury_std_library_module("eqvclass").
+mercury_std_library_module("exception").
 mercury_std_library_module("float").
+mercury_std_library_module("gc").
 mercury_std_library_module("getopt").
 mercury_std_library_module("graph").
 mercury_std_library_module("group").
@@ -1224,6 +1226,7 @@ mercury_std_library_module("store").
 mercury_std_library_module("string").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
+mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("varset").
 

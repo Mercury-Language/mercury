@@ -43,9 +43,26 @@
 %-----------------------------------------------------------------------------%
 
 mlds_to_c__output_mlds(MLDS) -->
+	%
+	% We need to use the MLDS package name to compute the header file
+	% names, giving e.g. `mercury.io.h', `mercury.time.h' etc.,
+	% rather than using just the Mercury module name, which would give
+	% just `io.h', `time.h', etc.  The reason for this is that if we
+	% don't, then we get name clashes with the standard C header files.
+	% For example, `time.h' clashes with the standard <time.h> header.
+	%
+	% But to keep the Mmake auto-dependencies working (or at least
+	% _mostly_ working!), we still want to name the `.c' file based
+	% on just the Mercury module name, giving e.g. `time.c', not
+	% `mercury.time.c'.
+	%
+	% Hence the different treatment of SourceFile and HeaderFile below.
+	%
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".h", yes, HeaderFile),
 	module_name_to_file_name(ModuleName, ".c", yes, SourceFile),
+	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
+	{ ModuleSymName = mlds_module_name_to_sym_name(MLDS_ModuleName) },
+	module_name_to_file_name(ModuleSymName, ".h", yes, HeaderFile),
 	{ Indent = 0 },
 	mlds_output_to_file(HeaderFile, mlds_output_hdr_file(Indent, MLDS)),
 	mlds_output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)).
@@ -190,10 +207,8 @@ mlds_output_src_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("/* :- implementation. */\n"),
 	io__nl,
-	module_name_to_file_name(ModuleName, ".h", no, HeaderFile),
-	io__write_string("#include """),
-	io__write_string(HeaderFile),
-	io__write_string("""\n"),
+	mlds_output_hdr_import(Indent,
+		mercury_module_name_to_mlds(ModuleName)),
 	io__nl.
 
 :- pred mlds_output_hdr_end(indent, mercury_module_name,
@@ -362,7 +377,7 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 
 mlds_output_class_decl(_Indent, Name, _ClassDefn) -->
 	io__write_string("struct "),
-	mlds_output_fully_qualified_name(Name, mlds_output_name).
+	mlds_output_fully_qualified_name(Name).
 
 :- pred mlds_output_class(indent, mlds__qualified_entity_name, mlds__context,
 		mlds__class_defn, io__state, io__state).
@@ -390,7 +405,7 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 mlds_output_data_decl(Name, Type) -->
 	mlds_output_type(Type),
 	io__write_char(' '),
-	mlds_output_fully_qualified_name(Name, mlds_output_name).
+	mlds_output_fully_qualified_name(Name).
 
 :- pred mlds_output_data_defn(mlds__qualified_entity_name, mlds__type,
 			maybe(mlds__initializer), io__state, io__state).
@@ -538,7 +553,7 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 		{ error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
-	mlds_output_fully_qualified_name(Name, mlds_output_name),
+	mlds_output_fully_qualified_name(Name),
 	mlds_output_params(Indent, Name, Parameters).
 
 :- pred mlds_output_params(indent, qualified_entity_name, mlds__arguments,
@@ -562,8 +577,7 @@ mlds_output_params(Indent, FuncName, Parameters) -->
 mlds_output_param(_Indent, qual(ModuleName, _FuncName), Name - Type) -->
 	mlds_output_type(Type),
 	io__write_char(' '),
-	mlds_output_fully_qualified_name(qual(ModuleName, Name),
-		mlds_output_name).
+	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
 
 :- pred mlds_output_func_type(func_params, io__state, io__state).
 :- mode mlds_output_func_type(in, di, uo) is det.
@@ -604,12 +618,30 @@ mlds_output_param_type(_Name - Type) -->
 % Code to output names of various entities
 %
 
-:- pred mlds_output_fully_qualified_name(mlds__fully_qualified_name(T),
+:- pred mlds_output_fully_qualified_name(mlds__qualified_entity_name,
+		io__state, io__state).
+:- mode mlds_output_fully_qualified_name(in, di, uo) is det.
+
+mlds_output_fully_qualified_name(QualifiedName) -->
+	(
+		%
+		% don't module-qualify main/2
+		%
+		{ QualifiedName = qual(_ModuleName, Name) },
+		{ Name = function(PredLabel, _, _, _) },
+		{ PredLabel = pred(predicate, no, "main", 2) }
+	->
+		mlds_output_name(Name)
+	;
+		mlds_output_fully_qualified(QualifiedName, mlds_output_name)
+	).
+
+:- pred mlds_output_fully_qualified(mlds__fully_qualified_name(T),
 		pred(T, io__state, io__state), io__state, io__state).
-:- mode mlds_output_fully_qualified_name(in, pred(in, di, uo) is det,
+:- mode mlds_output_fully_qualified(in, pred(in, di, uo) is det,
 		di, uo) is det.
 
-mlds_output_fully_qualified_name(qual(ModuleName, Name), OutputFunc) -->
+mlds_output_fully_qualified(qual(ModuleName, Name), OutputFunc) -->
 	{ SymName = mlds_module_name_to_sym_name(ModuleName) },
 	{ llds_out__sym_name_mangle(SymName, MangledModuleName) },
 	io__write_string(MangledModuleName),
@@ -733,7 +765,7 @@ mlds_output_type(mlds__bool_type)  --> io__write_string("bool").
 mlds_output_type(mlds__char_type)  --> io__write_string("char").
 mlds_output_type(mlds__class_type(Name, Arity)) -->
 	io__write_string("struct "),
-	mlds_output_fully_qualified_name(Name, io__write_string),
+	mlds_output_fully_qualified(Name, io__write_string),
 	io__format("_%d", [i(Arity)]).
 mlds_output_type(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
@@ -903,13 +935,46 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
 	% dangling else ambiguity
 	%
 	{
+		%
+		% For examples of the form
+		%
+		%	if (...)
+		%		if (...)
+		%			...
+		%	else
+		%		...
+		%
+		% we need braces around the inner `if', otherwise
+		% they wouldn't parse they way we want them to:
+		% C would match the `else' with the inner `if'
+		% rather than the outer `if'.
+		%
 		MaybeElse = yes(_),
-		Then0 = statement(if_then_else(_, _, no), Context)
+		Then0 = statement(if_then_else(_, _, no), ThenContext)
 	->
-		Then = statement(block([], [Then0]), Context)
+		Then = statement(block([], [Then0]), ThenContext)
+	;
+		%
+		% For examples of the form
+		%
+		%	if (...)
+		%		if (...)
+		%			...
+		%		else
+		%			...
+		%
+		% we don't _need_ braces around the inner `if',
+		% since C will match the else with the inner `if',
+		% but we add braces anyway, to avoid a warning from gcc.
+		%
+		MaybeElse = no,
+		Then0 = statement(if_then_else(_, _, yes(_)), ThenContext)
+	->
+		Then = statement(block([], [Then0]), ThenContext)
 	;
 		Then = Then0
 	},
+
 	mlds_indent(Indent),
 	io__write_string("if ("),
 	mlds_output_rval(Cond),
@@ -1225,8 +1290,7 @@ mlds_output_assign_args(Indent, ModuleName, Context,
 		[]
 	;
 		mlds_indent(Context, Indent),
-		mlds_output_fully_qualified_name(qual(ModuleName, Name),
-			mlds_output_name),
+		mlds_output_fully_qualified_name(qual(ModuleName, Name)),
 		io__write_string(" = "),
 		mlds_output_rval(Arg),
 		io__write_string(";\n")
@@ -1420,7 +1484,7 @@ mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId))) -->
 		io__write_string(")"),
 		io__write_string("->")
 	),
-	mlds_output_fully_qualified_name(FieldId, io__write_string).
+	mlds_output_fully_qualified(FieldId, io__write_string).
 mlds_output_lval(mem_ref(Rval)) -->
 	io__write_string("*"),
 	mlds_output_bracketed_rval(Rval).
@@ -1431,7 +1495,7 @@ mlds_output_lval(var(VarName)) -->
 :- mode mlds_output_var(in, di, uo) is det.
 
 mlds_output_var(VarName) -->
-	mlds_output_fully_qualified_name(VarName, io__write_string).
+	mlds_output_fully_qualified(VarName, io__write_string).
 
 :- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_bracketed_lval(in, di, uo) is det.
@@ -1702,9 +1766,9 @@ mlds_output_tag(Tag) -->
 :- mode mlds_output_code_addr(in, di, uo) is det.
 
 mlds_output_code_addr(proc(Label)) -->
-	mlds_output_fully_qualified_name(Label, mlds_output_proc_label).
+	mlds_output_fully_qualified(Label, mlds_output_proc_label).
 mlds_output_code_addr(internal(Label, SeqNum)) -->
-	mlds_output_fully_qualified_name(Label, mlds_output_proc_label),
+	mlds_output_fully_qualified(Label, mlds_output_proc_label),
 	io__write_string("_"),
 	io__write_int(SeqNum).
 

@@ -184,7 +184,7 @@
 %	model_non in semi context: (using GNU C nested functions,
 %				GNU C local labels, and exiting
 %				the nested function by a goto
-%				to a lable in the containing function)
+%				to a label in the containing function)
 %		<succeeded = Goal>
 % 	===>
 %		bool succeeded;
@@ -214,7 +214,7 @@
 %	model_non in det context (using GNU C nested functions,
 %				GNU C local labels, and exiting
 %				the nested function by a goto
-%				to a lable in the containing function)
+%				to a label in the containing function)
 %		<do Goal>
 %	===>
 %		__label__ done;
@@ -593,9 +593,12 @@
 :- pred ml_code_gen(module_info, mlds, io__state, io__state).
 :- mode ml_code_gen(in, out, di, uo) is det.
 
-	% Generate the mlds__pred_label for a given procedure.
+	% Generate the mlds__pred_label and module name
+	% for a given procedure.
 	%
-:- func ml_gen_pred_label(module_info, pred_id, proc_id) = mlds__pred_label.
+:- pred ml_gen_pred_label(module_info, pred_id, proc_id,
+		mlds__pred_label, mlds_module_name).
+:- mode ml_gen_pred_label(in, in, in, out, out) is det.
 
 	% Generate the function prototype for a given procedure.
 	%
@@ -1328,8 +1331,9 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
 ml_gen_goal_expr(pragma_c_code(_, _, _, _, _ArgNames, _, _PragmaCode),
-		_, _, _, _) -->
-	{ sorry("C interface") }.
+		_, _, [], []) -->
+	[].
+%	{ sorry("C interface") }.
 
 ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% these should have been expanded out by now
@@ -1627,11 +1631,9 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId) },
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_module(PredInfo, PredModule) },
-	{ MLDS_Module = mercury_module_name_to_mlds(PredModule) },
-	{ QualifiedProcLabel = qual(MLDS_Module, PredLabel - ProcId) },
+	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
+		PredLabel, PredModule) },
+	{ QualifiedProcLabel = qual(PredModule, PredLabel - ProcId) },
 	{ CodeAddrRval = const(code_addr_const(proc(QualifiedProcLabel))) }.
 
 %
@@ -2510,10 +2512,9 @@ ml_gen_new_func_label(FuncLabel, FuncLabelRval) -->
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ ml_gen_info_get_pred_id(Info, PredId) },
 	{ ml_gen_info_get_proc_id(Info, ProcId) },
-	{ PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId) },
-	{ module_info_name(ModuleInfo, ModuleName) },
-	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
-	{ ProcLabel = qual(MLDS_ModuleName, PredLabel - ProcId) },
+	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
+		PredLabel, PredModule) },
+	{ ProcLabel = qual(PredModule, PredLabel - ProcId) },
 	{ FuncLabelRval = const(code_addr_const(internal(ProcLabel,
 		FuncLabel))) }.
 
@@ -2944,10 +2945,9 @@ ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), _ConsId,
 	ml_gen_var(Var, VarLval),
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId) },
-	{ module_info_name(ModuleInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ DataAddr = data_addr(MLDS_Module,
+	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
+		PredLabel, PredModule) },
+	{ DataAddr = data_addr(PredModule,
 			tabling_pointer(PredLabel - ProcId)) },
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
 		const(data_addr_const(DataAddr)), Context) }.
@@ -4024,10 +4024,10 @@ ml_gen_nondet_label(ModuleInfo, PredId, ProcId, SeqNum) =
 :- func ml_gen_func_label(module_info, pred_id, proc_id,
 		maybe(ml_label_func)) = mlds__entity_name.
 ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum) = MLDS_Name :-
-	MLDS_PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId),
+	ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, _),
 	MLDS_Name = function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
 
-ml_gen_pred_label(ModuleInfo, PredId, ProcId) = MLDS_PredLabel :-
+ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
@@ -4056,7 +4056,8 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId) = MLDS_PredLabel :-
 				DeclaringModule = no
 			),
 			MLDS_PredLabel = special_pred(PredName,
-				DeclaringModule, TypeName, Arity)
+				DeclaringModule, TypeName, Arity),
+			MLDS_Module = mercury_module_name_to_mlds(TypeModule)
 		;
 			string__append_list(["ml_gen_pred_label:\n",
 				"cannot make label for special pred `",
@@ -4081,7 +4082,8 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId) = MLDS_PredLabel :-
 		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 		pred_info_arity(PredInfo, Arity),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
-				PredName, Arity)
+				PredName, Arity),
+		MLDS_Module = mercury_module_name_to_mlds(PredModule)
 	).
 
 %-----------------------------------------------------------------------------%
