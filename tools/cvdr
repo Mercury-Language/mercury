@@ -26,7 +26,7 @@ done
 
 for file in "$@"; do
 {
-topversion="`cvs status $file 2>/dev/null | awk '
+topversion="`cvs -n status $file 2>/dev/null | awk '
 	/  Repository revision:/ 		{ print $3; exit; }	
 '`"
 
@@ -46,8 +46,16 @@ while [ "$branch" != "" ]; do
 		echo "Revision $branch.$N"
 	done 
 	newbranch=`expr match $branch '\(\([0-9]*\.\)*[0-9]*\)\.[0-9]*\.[0-9]*'`
-	N=`expr match $branch "$newbranch\.\([0-9]*\)"` 
+	N1=`expr match $branch "$newbranch\.\([0-9]*\)"` 
+	if [ "$newbranch" != "" ]; then
+		echo cvs log -r$branch.$N $options "$file"
+		cvs -n log -N -r$branch.$N $options "$file" | sed '1,/^-------/d'
+		echo cvs diff -u -r$newbranch.$N1 -r$branch.$N $options "$file"
+		cvs -n diff -u -r$newbranch.$N1 -r$branch.$N $options "$file"
+		echo "Revision $newbranch.$N1"
+	fi
 	branch=$newbranch
+	N=$N1
 done
 
 	# We only use CVSROOT to remove it as a prefix to the path in
@@ -60,9 +68,9 @@ else
 	FULLFILE=`sed "s^$CVSROOT/^^" CVS/Repository`/"$file"
 fi
 
-echo cvs log -N -r1.1 $options "$file"
-cvs log -N -r1.1 $options "$file" | sed '1,/^-------/d'
+echo cvs log -r1.1 $options "$file"
+cvs -n log -N -r1.1 $options "$file" | sed '1,/^-------/d'
 echo cvs checkout -p -r1.1 "$FULLFILE"
-cvs checkout -p -r1.1 "$FULLFILE" 2>&1
+cvs -n checkout -p -r1.1 "$FULLFILE" 2>&1
 } | ${PAGER:-more}
 done
