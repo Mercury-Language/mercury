@@ -60,17 +60,17 @@ SINGLEMODULE= \
 	errors \
 	errors1 \
 	errors2 \
+	exported_mode \
 	external \
 	ext_type \
 	ext_type_bug \
-	exported_mode \
 	field_syntax_error \
 	foreign_singleton \
 	foreign_type_2 \
 	foreign_type_visibility \
+	freefree \
 	func_errors \
 	funcs_as_preds \
-	freefree \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \
@@ -83,6 +83,7 @@ SINGLEMODULE= \
 	invalid_typeclass \
 	io_in_ite_cond \
 	lambda_syntax_error \
+	magicbox \
 	make_opt_error \
 	merge_ground_any \
 	method_impl \
@@ -92,8 +93,8 @@ SINGLEMODULE= \
 	modes_erroneous \
 	mostly_uniq1 \
 	mostly_uniq2 \
-	multimode_missing_impure \
 	multimode_dcg \
+	multimode_missing_impure \
 	multimode_syntax \
 	multisoln_func \
 	nested_impl_in_int \
@@ -120,31 +121,31 @@ SINGLEMODULE= \
 	tc_err1 \
 	tc_err2 \
 	tricky_assert1 \
-	type_inf_loop \
-	type_loop \
-	type_mismatch \
-	type_vars \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
-	typeclass_mode \
 	typeclass_missing_det \
 	typeclass_missing_det_2 \
 	typeclass_missing_det_3 \
 	typeclass_missing_mode \
 	typeclass_missing_mode_2 \
+	typeclass_mode \
 	typeclass_test_1 \
+	typeclass_test_10 \
 	typeclass_test_2 \
 	typeclass_test_3 \
 	typeclass_test_4 \
 	typeclass_test_5 \
 	typeclass_test_7 \
 	typeclass_test_9 \
-	typeclass_test_10 \
+	type_inf_loop \
+	type_loop \
+	type_mismatch \
 	types	\
+	type_vars \
 	unbound_type_vars \
 	undeclared_mode \
-	undef_lambda_mode \
 	undef_inst \
+	undef_lambda_mode \
 	undef_mode \
 	undef_mode_and_no_clauses \
 	undef_symbol \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1093,6 +1093,10 @@ det_switch_detism(DetismA, DetismB, Detism) :-
 % the goal might have many logical solutions if there were no
 % pruning, but that the goal occurs in a single-solution
 % context, so only the first solution will be returned.
+%
+% The reason why we don't throw an exception in det_switch_maxsoln and
+% det_disjunction_maxsoln is given in the documentation of the test case
+% invalid/magicbox.m.
 
 :- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_conjunction_maxsoln(in, in, out) is det.
@@ -1141,19 +1145,11 @@ det_disjunction_maxsoln(at_most_one,     at_most_many,    at_most_many).
 det_disjunction_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_disjunction_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_disjunction_maxsoln(at_most_many_cc, at_most_many,    _) :-
-	% if the first disjunct could be cc pruned,
-	% the second disjunct ought to have been cc pruned too
-	error("det_disjunction_maxsoln: cc in first case, " ++
-		"not cc in second case").
+det_disjunction_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
 
 det_disjunction_maxsoln(at_most_many,    at_most_zero,    at_most_many).
 det_disjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_disjunction_maxsoln(at_most_many,    at_most_many_cc, _) :-
-	% if the first disjunct could be cc pruned,
-	% the second disjunct ought to have been cc pruned too
-	error("det_disjunction_maxsoln: cc in second case, " ++
-		"not cc in first case").
+det_disjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
 det_disjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_disjunction_canfail(can_fail,    can_fail,    can_fail).
@@ -1174,17 +1170,11 @@ det_switch_maxsoln(at_most_one,     at_most_many,    at_most_many).
 det_switch_maxsoln(at_most_many_cc, at_most_zero,    at_most_many_cc).
 det_switch_maxsoln(at_most_many_cc, at_most_one,     at_most_many_cc).
 det_switch_maxsoln(at_most_many_cc, at_most_many_cc, at_most_many_cc).
-det_switch_maxsoln(at_most_many_cc, at_most_many,    _) :-
-	% if the first case could be cc pruned,
-	% the second case ought to have been cc pruned too
-	error("det_switch_maxsoln: cc in first case, not cc in second case").
+det_switch_maxsoln(at_most_many_cc, at_most_many,    at_most_many_cc).
 
 det_switch_maxsoln(at_most_many,    at_most_zero,    at_most_many).
 det_switch_maxsoln(at_most_many,    at_most_one,     at_most_many).
-det_switch_maxsoln(at_most_many,    at_most_many_cc, _) :-
-	% if the first case could be cc pruned,
-	% the second case ought to have been cc pruned too
-	error("det_switch_maxsoln: cc in second case, not cc in first case").
+det_switch_maxsoln(at_most_many,    at_most_many_cc, at_most_many_cc).
 det_switch_maxsoln(at_most_many,    at_most_many,    at_most_many).
 
 det_switch_canfail(can_fail,    can_fail,    can_fail).
