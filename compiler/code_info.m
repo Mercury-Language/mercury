@@ -3020,7 +3020,9 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__assign_cell_to_var(prog_var::in, tag::in,
+	% code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
+	% 	Size, TypeMsg, Code, !CI)
+:- pred code_info__assign_cell_to_var(prog_var::in, bool::in, tag::in,
 	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
@@ -3157,11 +3159,13 @@ code_info__assign_expr_to_var(Var, Rval, Code, !CI) :-
 	),
 	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code, !CI) :-
+code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, Size,
+		TypeMsg, Code, !CI) :-
 	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
 	code_info__get_static_cell_info(!.CI, StaticCellInfo0),
-	var_locn__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code,
-		StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
+	var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
+		Size, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
+		VarLocnInfo0, VarLocnInfo),
 	code_info__set_static_cell_info(StaticCellInfo, !CI),
 	code_info__set_var_locn_info(VarLocnInfo, !CI).
 

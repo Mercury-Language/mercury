@@ -375,10 +375,7 @@ unify_gen__generate_construction_2(unshared_tag(Ptag),
 	unify_gen__var_types(!.CI, Args, ArgTypes),
 	unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
 		Rvals),
-	VarType = code_info__variable_type(!.CI, Var),
-	unify_gen__var_type_msg(VarType, VarTypeMsg),
-	code_info__assign_cell_to_var(Var, Ptag, Rvals, Size, VarTypeMsg, Code,
-		!CI).
+	unify_gen__construct_cell(Var, Ptag, Rvals, Size, Code, !CI).
 unify_gen__generate_construction_2(shared_remote_tag(Ptag, Sectag),
 		Var, Args, Modes, Size, _, Code, !CI) :-
 	code_info__get_module_info(!.CI, ModuleInfo),
@@ -387,10 +384,7 @@ unify_gen__generate_construction_2(shared_remote_tag(Ptag, Sectag),
 		Rvals0),
 		% the first field holds the secondary tag
 	Rvals = [yes(const(int_const(Sectag))) | Rvals0],
-	VarType = code_info__variable_type(!.CI, Var),
-	unify_gen__var_type_msg(VarType, VarTypeMsg),
-	code_info__assign_cell_to_var(Var, Ptag, Rvals, Size, VarTypeMsg, Code,
-		!CI).
+	unify_gen__construct_cell(Var, Ptag, Rvals, Size, Code, !CI).
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
 		Var, _Args, _Modes, _, _, empty, !CI) :-
 	code_info__assign_const_to_var(Var,
@@ -672,8 +666,8 @@ unify_gen__generate_construction_2(
 			yes(const(int_const(NumArgs)))
 			| PredArgs
 		],
-		code_info__assign_cell_to_var(Var, 0, Vector, no, "closure",
-			Code, !CI)
+		code_info__assign_cell_to_var(Var, no, 0, Vector, no,
+			"closure", Code, !CI)
 	).
 
 :- pred unify_gen__generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -746,6 +740,34 @@ unify_gen__generate_cons_args_2([Var | Vars], [Type | Types],
 	),
 	unify_gen__generate_cons_args_2(Vars, Types, UniModes, ModuleInfo,
 		RVals).
+
+:- pred unify_gen__construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
+	maybe(term_size_value)::in, code_tree::out,
+	code_info::in, code_info::out) is det.
+
+unify_gen__construct_cell(Var, Ptag, Rvals, Size, Code, !CI) :-
+	VarType = code_info__variable_type(!.CI, Var),
+	unify_gen__var_type_msg(VarType, VarTypeMsg),
+	% If we're doing accurate GC, then
+	% for types which hold RTTI that will be traversed
+	% by the collector at GC-time, we need to allocate
+	% an extra word at the start, to hold the forwarding
+	% pointer.  Normally we would just overwrite the
+	% first word of the object in the "from" space,
+	% but this can't be done for objects which will be
+	% referenced during the garbage collection process.
+	(
+		code_info__get_globals(!.CI, Globals),
+		globals__get_gc_method(Globals, GCMethod),
+		GCMethod = accurate,
+		is_introduced_type_info_type(VarType)
+	->
+		ReserveWordAtStart = yes
+	;
+		ReserveWordAtStart = no
+	),
+	code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Rvals,
+		Size, VarTypeMsg, Code, !CI).
 
 %---------------------------------------------------------------------------%
 

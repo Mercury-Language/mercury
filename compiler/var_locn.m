@@ -151,14 +151,18 @@
 :- pred var_locn__assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code,
-%			StaticCellInfo0, StaticCellInfo,
+%	var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
+%			TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
 %			VarLocnInfo0, VarLocnInfo)
 %		Generates code to assign to Var a pointer, tagged by Ptag, to
 %		the cell whose contents are given by the other arguments,
 %		and updates the state of VarLocnInfo0 accordingly.
+%		If ReserveWordAtStart is yes, and the cell is allocated on
+%		the heap (rather than statically), then reserve an extra
+%		word immediately before the allocated object, for the
+%		garbage collector to use to hold a forwarding pointer.
 
-:- pred var_locn__assign_cell_to_var(prog_var::in, tag::in,
+:- pred var_locn__assign_cell_to_var(prog_var::in, bool::in, tag::in,
 	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
 	code_tree::out, static_cell_info::in, static_cell_info::out,
 	var_locn_info::in, var_locn_info::out) is det.
@@ -330,6 +334,7 @@
 :- import_module libs__tree.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__exprn_aux.
+:- import_module hlds__error_util.
 
 :- import_module int, string, bag, require, getopt, varset, term.
 
@@ -787,8 +792,8 @@ var_locn__add_use_ref(ContainedVar, UsingVar, VarStateMap0, VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals0, SizeInfo, TypeMsg, Code,
-		!StaticCellInfo, !VLI) :-
+var_locn__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals0,
+		SizeInfo, TypeMsg, Code, !StaticCellInfo, !VLI) :-
 	(
 		SizeInfo = yes(SizeSource),
 		(
@@ -817,23 +822,35 @@ var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals0, SizeInfo, TypeMsg, Code,
 		var_locn__assign_const_to_var(Var, CellPtrRval, !VLI),
 		Code = empty
 	;
-		var_locn__assign_dynamic_cell_to_var(Var, Ptag, MaybeRvals,
-			MaybeOffset, TypeMsg, Code, !VLI)
+		var_locn__assign_dynamic_cell_to_var(Var, ReserveWordAtStart,
+			Ptag, MaybeRvals, MaybeOffset, TypeMsg, Code, !VLI)
 	).
 
-:- pred var_locn__assign_dynamic_cell_to_var(prog_var::in, tag::in,
+:- pred var_locn__assign_dynamic_cell_to_var(prog_var::in, bool::in, tag::in,
 	list(maybe(rval))::in, maybe(int)::in, string::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__assign_dynamic_cell_to_var(Var, Ptag, Vector, MaybeOffset,
-		TypeMsg, Code, !VLI) :-
+var_locn__assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
+		MaybeOffset, TypeMsg, Code, !VLI) :-
 	var_locn__check_var_is_unknown(!.VLI, Var),
 
 	var_locn__select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
 	var_locn__get_var_name(!.VLI, Var, VarName),
 	list__length(Vector, Size),
+	( ReserveWordAtStart = yes ->
+		( MaybeOffset = yes(_) ->
+			% Accurate GC and term profiling both want to own
+			% the word before this object
+			sorry(this_file,
+			  "accurate GC combined with term size profiling")
+		;
+			TotalOffset = yes(1)
+		)
+	;
+		TotalOffset = MaybeOffset
+	),
 	CellCode = node([
-		incr_hp(Lval, yes(Ptag), MaybeOffset, const(int_const(Size)),
+		incr_hp(Lval, yes(Ptag), TotalOffset, const(int_const(Size)),
 			TypeMsg)
 			- string__append("Allocating heap for ", VarName)
 	]),
@@ -2302,5 +2319,12 @@ var_locn__set_loc_var_map(LVM, VI, VI ^ loc_var_map := LVM).
 var_locn__set_acquired(A, VI, VI ^ acquired := A).
 var_locn__set_locked(L, VI, VI ^ locked := L).
 var_locn__set_exceptions(E, VI, VI ^ exceptions := E).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "var_locn.m".
+
+:- end_module ll_backend__var_locn.
 
 %----------------------------------------------------------------------------%
