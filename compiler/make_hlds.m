@@ -952,7 +952,8 @@ add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual),
 			error_util__write_error_pieces(Context, 0, ErrorPieces),
 			{ module_info_incr_errors(Module0, Module) }
 		;
-			module_add_type_defn_2(Module0, TVarSet, Name,
+			{ module_info_contains_foreign_type(Module0, Module1) },
+			module_add_type_defn_2(Module1, TVarSet, Name,
 				Args, Body, Cond, Context,
 				item_status(ImportStatus, NeedQual),
 				Module)

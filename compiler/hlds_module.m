@@ -267,6 +267,12 @@
 :- pred module_info_set_globals(module_info, globals, module_info).
 :- mode module_info_set_globals(in, in, out) is det.
 
+:- pred module_info_contains_foreign_type(module_info).
+:- mode module_info_contains_foreign_type(in) is semidet.
+
+:- pred module_info_contains_foreign_type(module_info, module_info).
+:- mode module_info_contains_foreign_type(in, out) is det.
+
 :- pred module_info_get_foreign_decl(module_info, foreign_decl_info).
 :- mode module_info_get_foreign_decl(in, out) is det.
 
@@ -527,6 +533,7 @@
 	module_sub(
 		module_name ::			module_name,
 		globals ::			globals,
+		contains_foreign_type ::	bool,
 		foreign_decl_info ::		foreign_decl_info,
 		foreign_body_info ::		foreign_body_info,
 		foreign_import_module_info ::	foreign_import_module_info,
@@ -609,7 +616,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
-	ModuleSubInfo = module_sub(Name, Globals, [], [], [], no, 0, 0, [], 
+	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], no, 0, 0, [], 
 		[], StratPreds, UnusedArgInfo, 0, ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation,
 		TypeSpecInfo, NoTagTypes),
@@ -669,6 +676,8 @@ module_info_set_maybe_recompilation_info(MI, I,
 
 module_info_name(MI, MI ^ sub_info ^ module_name).
 module_info_globals(MI, MI ^ sub_info ^ globals).
+module_info_contains_foreign_type(MI) :-
+	MI ^ sub_info ^ contains_foreign_type = yes.
 module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
 module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_foreign_import_module(MI,
@@ -700,6 +709,8 @@ module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 
 module_info_set_globals(MI, NewVal,
 	MI ^ sub_info ^ globals := NewVal).
+module_info_contains_foreign_type(MI,
+	MI ^ sub_info ^ contains_foreign_type := yes).
 module_info_set_foreign_decl(MI, NewVal,
 	MI ^ sub_info ^ foreign_decl_info := NewVal).
 module_info_set_foreign_body_code(MI, NewVal,
