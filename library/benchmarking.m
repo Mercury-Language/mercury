@@ -21,13 +21,13 @@
 % `report_stats' is a non-logical procedure intended for use in profiling
 % the performance of a program.
 % It has the side-effect of reporting some memory and time usage statistics
-% about the time period since the last call to report_stats to stdout.
+% about the time period since the last call to report_stats to stderr.
 
 :- impure pred report_stats is det.
 
 % `report_full_memory_stats' is a non-logical procedure intended for use
 % in profiling the memory usage of a program.  It has the side-effect of
-% reporting a full memory profile to stdout.
+% reporting a full memory profile to stderr.
 
 :- impure pred report_full_memory_stats is det.
 

@@ -970,12 +970,12 @@
 
 % Memory management predicates.
 
-	% Write memory/time usage statistics to stdout.
+	% Write memory/time usage statistics to stderr.
 
 :- pred io__report_stats(io__state, io__state).
 :- mode io__report_stats(di, uo) is det.
 
-	% Write complete memory usage statistics to stdout,
+	% Write complete memory usage statistics to stderr,
 	% including information about all procedures and types.
 	% (You need to compile with memory profiling enabled.)
 
