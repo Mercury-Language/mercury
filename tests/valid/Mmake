@@ -34,6 +34,7 @@ SOURCES= \
 	modes_bug.m \
 	multidet_prune1.m \
 	multidet_test.m \
+	nasty_func_test.m \
 	name_mangling.m \
 	nondet_live.m \
 	semidet_disj.m \
