@@ -958,21 +958,21 @@ abstractly_unify_inst_3(live, not_reached, _, _,	M, not_reached, det, M).
 abstractly_unify_inst_3(live, any(UniqX), any(UniqY), Real, M,
 					any(Uniq), det, M) :-
 	Real = fake_unify,
-	unify_uniq(live, Real, UniqX, UniqY, Uniq).
+	unify_uniq(live, Real, det, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(live, any(UniqX), free, Real, M,
 					any(Uniq), det, M) :-
-	unify_uniq(live, Real, UniqX, unique, Uniq).
+	unify_uniq(live, Real, det, UniqX, unique, Uniq).
 
 abstractly_unify_inst_3(live, free, any(UniqY), Real, M,
 					any(Uniq), det, M) :-
-	unify_uniq(live, Real, unique, UniqY, Uniq).
+	unify_uniq(live, Real, det, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(live, free,	free, _,	_, _, _, _) :- fail.
 
 abstractly_unify_inst_3(live, free,	bound(UniqY, List0), Real, M0,
 					bound(Uniq, List), det, M) :-
-	unify_uniq(live, Real, unique, UniqY, Uniq),
+	unify_uniq(live, Real, det, unique, UniqY, Uniq),
 		% since both are live, we must disallow free-free unifications
 	bound_inst_list_is_ground_or_any(List0, M0),
 		% since both are live, we must make the result shared
@@ -985,43 +985,43 @@ abstractly_unify_inst_3(live, free,	bound(UniqY, List0), Real, M0,
 
 abstractly_unify_inst_3(live, free,	ground(UniqY, PredInst), Real, M,
 					ground(Uniq, PredInst), det, M) :-
-	unify_uniq(live, Real, unique, UniqY, Uniq).
+	unify_uniq(live, Real, det, unique, UniqY, Uniq).
 
 % abstractly_unify_inst_3(live, free,	abstract_inst(_,_), _, _, _, _) :- fail.
 
 abstractly_unify_inst_3(live,		bound(UniqY, List0), free, Real, M0,
 					bound(Uniq, List), det,	 M) :-
-	unify_uniq(live, Real, unique, UniqY, Uniq),
+	unify_uniq(live, Real, det, unique, UniqY, Uniq),
 		% since both are live, we must disallow free-free unifications
 	bound_inst_list_is_ground_or_any(List0, M0),
 	make_shared_bound_inst_list(List0, M0, List, M).
 
 abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), Real,
 			M0,	bound(Uniq, List), Det, M) :-
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(live, ListX, ListY, Real, M0,
-		List, Det, M).
+		List, Det, M),
+	unify_uniq(dead, Real, Det, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, _),
 		Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqY, Real, M0,
 			BoundInsts, M).
 
 /*** abstract insts not supported
 abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), Real, M,
 					ground(shared), semidet, M) :-
-	unify_uniq(live, Real, unique, UniqY, Uniq),
+	unify_uniq(live, Real, semidet, unique, UniqY, Uniq),
 	bound_inst_list_is_ground(List, M).
 ***/
 
 abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, Real, M,
 				ground(Uniq, yes(PredInst)), det, M) :-
-	unify_uniq(live, Real, unique, Uniq0, Uniq).
+	unify_uniq(live, Real, det, unique, Uniq0, Uniq).
 
 abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
 		Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, det, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, M0,
 			BoundInsts, M).
 
@@ -1038,7 +1038,7 @@ abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
 	% for fake_unifys, for which it shouldn't make any difference,
 	% we just choose the information specified by PredInstA.
 	PredInst = yes(PredInstA),
-	unify_uniq(live, Real, UniqA, UniqB, Uniq).
+	unify_uniq(live, Real, semidet, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, Real, M0,
 				Inst, Det, M) :-
@@ -1074,7 +1074,7 @@ abstractly_unify_inst_3(dead, not_reached, _, _, M, not_reached, det, M).
 abstractly_unify_inst_3(dead, any(UniqX), any(UniqY), Real, M,
 					any(Uniq), det, M) :-
 	Real = fake_unify,
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq).
+	unify_uniq(dead, Real, det, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(dead, any(UniqX), free, _Real, M,
 					any(UniqX), det, M).
@@ -1083,17 +1083,17 @@ abstractly_unify_inst_3(dead, free, Inst, _, M, Inst, det, M).
 
 abstractly_unify_inst_3(dead, bound(UniqX, List), free, Real, ModuleInfo,
 				bound(Uniq, List), det, ModuleInfo) :-
-	unify_uniq(dead, Real, UniqX, unique, Uniq).
+	unify_uniq(dead, Real, det, UniqX, unique, Uniq).
 
 abstractly_unify_inst_3(dead, bound(UniqX, ListX), bound(UniqY, ListY),
 			Real, M0, bound(Uniq, List), Det, M) :-
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, Real, M0,
-		List, Det, M).
+		List, Det, M),
+	unify_uniq(dead, Real, Det, UniqX, UniqY, Uniq).
 
 abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY, _),
 			Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, semidet, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, dead, UniqY, Real, M0,
 					BoundInsts, M).
 
@@ -1116,7 +1116,7 @@ abstractly_unify_inst_3(dead, ground(Uniq, yes(PredInst)), free, _Real, M,
 
 abstractly_unify_inst_3(dead, ground(UniqA, yes(_)), bound(UniqB, BoundInsts0),
 			Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(dead, Real, UniqA, UniqB, Uniq),
+	unify_uniq(dead, Real, semidet, UniqA, UniqB, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, dead, UniqA, Real, M0,
 					BoundInsts, M).
 
@@ -1125,7 +1125,7 @@ abstractly_unify_inst_3(dead, ground(UniqA, yes(PredInstA)),
 				ground(Uniq, PredInst), det, M) :-
 	Real = fake_unify,
 	PredInst = yes(PredInstA),
-	unify_uniq(dead, Real, UniqA, UniqB, Uniq).
+	unify_uniq(dead, Real, det, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(dead, ground(Uniq, no),	Inst0, Real, M0,
 				Inst, Det, M) :-
@@ -1162,67 +1162,84 @@ abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 
 %-----------------------------------------------------------------------------%
 
-:- pred unify_uniq(is_live, unify_is_real, uniqueness, uniqueness, uniqueness).
-:- mode unify_uniq(in, in, in, in, out) is semidet.
+:- pred unify_uniq(is_live, unify_is_real, determinism, uniqueness, uniqueness,
+		uniqueness).
+:- mode unify_uniq(in, in, in, in, in, out) is semidet.
 
 	% Unifying shared with either shared or unique gives shared.
 	% Unifying unique with unique gives shared if live, unique if
 	% dead.  Unifying clobbered with anything gives clobbered,
 	% except that if live then it is an internal error (a clobbered
 	% value should not be live, right?), and except that unifying
-	% with clobbered is only allowed for "fake" unifications.
+	% with clobbered is not allowed for semidet unifications,
+	% unless they are "fake".
 	%
 	% The only way this predicate can fail (indicating a unique mode error)
 	% is if we are attempting to unify with a clobbered value, and
-	% this was a "real" unification, not a "fake" one.
+	% this was a "real" unification, not a "fake" one,
+	% and the determinism of the unification is semidet.
 	% (See comment in prog_data.m for more info on "real" v.s. "fake".)
+	% Note that if a unification or sub-unification is det, then it is
+	% OK to unify with a clobbered value.  This can occur e.g. with
+	% unifications between free and clobbered, or with free and
+	% bound(..., clobbered, ...).  Such det unifications are OK because
+	% the clobbered value will not be examined, instead all that will
+	% happen is that a variable or a field of a variable will become
+	% bound to the clobbered value; and since the final inst will also
+	% be clobbered, the variable or field's value can never be examined
+	% later either.  Only semidet unifications would test the value
+	% of a clobbered variable, so those are the only ones we need to
+	% disallow.
 
-unify_uniq(_,      _,          shared,   shared,    	    shared).
-unify_uniq(_,      _,          shared,   unique,    	    shared).
-unify_uniq(_,      _,          shared,   mostly_unique,     shared).
-unify_uniq(live,   _,          shared,   clobbered, 	    _) :-
-	error("unify_uniq").
-unify_uniq(live,   _,          shared,   mostly_clobbered,  _) :-
-	error("unify_uniq").
-unify_uniq(dead,   fake_unify, shared,   clobbered, 	    clobbered).
-unify_uniq(dead,   fake_unify, shared,   mostly_clobbered,  mostly_clobbered).
+unify_uniq(_,      _, _,       shared,   shared,    	    shared).
+unify_uniq(_,      _, _,       shared,   unique,    	    shared).
+unify_uniq(_,      _, _,       shared,   mostly_unique,     shared).
+unify_uniq(Live,   Real, Det,  shared,   clobbered, 	    clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
+unify_uniq(Live,   Real, Det,  shared,   mostly_clobbered,  mostly_clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
 
-unify_uniq(_,      _,          unique,   shared,    	    shared).
-unify_uniq(live,   _,          unique,   unique,    	    shared).
-unify_uniq(live,   _,          unique,   mostly_unique,     shared).
-unify_uniq(dead,   _,          unique,   unique,    	    unique).
-unify_uniq(dead,   _,          unique,   mostly_unique,     mostly_unique).
+unify_uniq(_,      _, _,       unique,   shared,    	    shared).
+unify_uniq(live,   _, _,       unique,   unique,    	    shared).
+unify_uniq(live,   _, _,       unique,   mostly_unique,     shared).
+unify_uniq(dead,   _, _,       unique,   unique,    	    unique).
+unify_uniq(dead,   _, _,       unique,   mostly_unique,     mostly_unique).
 		% XXX the above line is a conservative approximation
 		% sometimes it should return unique not mostly_unique
-unify_uniq(live,   _,          unique,   clobbered, 	    _) :-
-	error("unify_uniq").
-unify_uniq(live,   _,          unique,   mostly_clobbered,  _) :-
-	error("unify_uniq").
-unify_uniq(dead,   fake_unify, unique,   clobbered, 	    clobbered).
-unify_uniq(dead,   fake_unify, unique,   mostly_clobbered,  mostly_clobbered).
+unify_uniq(Live,   Real, Det,  unique,   clobbered, 	    clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
+unify_uniq(Live,   Real, Det,  unique,   mostly_clobbered,  mostly_clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
 
-unify_uniq(_,      _,          mostly_unique,    shared,    shared).
-unify_uniq(live,   _,          mostly_unique,    unique,    shared).
-unify_uniq(live,   _,          mostly_unique,    mostly_unique,    shared).
-unify_uniq(dead,   _,          mostly_unique,    unique,    mostly_unique).
+unify_uniq(_,      _, _,       mostly_unique,    shared,    shared).
+unify_uniq(live,   _, _,       mostly_unique,    unique,    shared).
+unify_uniq(live,   _, _,       mostly_unique,    mostly_unique,    shared).
+unify_uniq(dead,   _, _,       mostly_unique,    unique,    mostly_unique).
 		% XXX the above line is a conservative approximation
 		% sometimes it should return unique not mostly_unique
-unify_uniq(dead,   _,          mostly_unique,    mostly_unique, mostly_unique).
-unify_uniq(live,   _,          mostly_unique,    clobbered, _) :-
-	error("unify_uniq").
-unify_uniq(live,   _,          mostly_unique,    mostly_clobbered, _) :-
-	error("unify_uniq").
-unify_uniq(dead,   fake_unify, mostly_unique,    clobbered, clobbered).
-unify_uniq(dead,   fake_unify, mostly_unique,    mostly_clobbered,
-							    mostly_clobbered).
+unify_uniq(dead,   _, _,       mostly_unique,    mostly_unique, mostly_unique).
+unify_uniq(Live,   Real, Det,  mostly_unique,    clobbered, clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
+unify_uniq(Live,   Real, Det,  mostly_unique,    mostly_clobbered,
+							    mostly_clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
 
-unify_uniq(live,   _,          clobbered,	 _,         _) :-
-	error("unify_uniq").
-unify_uniq(dead,   fake_unify, clobbered,	 _,         clobbered).
+unify_uniq(Live,   Real, Det,  clobbered,	 _,         clobbered) :-
+	allow_unify_with_clobbered(Live, Real, Det).
 
-unify_uniq(live,   _,          mostly_clobbered, _,         _) :-
-	error("unify_uniq").
-unify_uniq(dead,   fake_unify, mostly_clobbered, _,         mostly_clobbered).
+unify_uniq(Live,   Real, Det,  mostly_clobbered, Uniq0,	    Uniq) :-
+	( Uniq0 = clobbered -> Uniq = clobbered ; Uniq = mostly_clobbered ),
+	allow_unify_with_clobbered(Live, Real, Det).
+
+:- pred allow_unify_with_clobbered(is_live, unify_is_real, determinism).
+:- mode allow_unify_with_clobbered(in, in, in) is semidet.
+
+allow_unify_with_clobbered(live, _, _) :-
+	error("allow_unify_with_clobbered: clobbered value is live?").
+allow_unify_with_clobbered(dead, fake_unify, _).
+allow_unify_with_clobbered(dead, _, det).
+
+%-----------------------------------------------------------------------------%
 
 :- pred check_not_clobbered(uniqueness, unify_is_real).
 :- mode check_not_clobbered(in, in) is det.
@@ -1367,20 +1384,20 @@ make_ground_inst_list([Inst0 | Insts0], Live, Uniq, Real, ModuleInfo0,
 
 make_ground_inst(not_reached, _, _, _, M, not_reached, M).
 make_ground_inst(any(Uniq0), IsLive, Uniq1, Real, M, ground(Uniq, no), M) :-
-	unify_uniq(IsLive, Real, Uniq0, Uniq1, Uniq).
+	unify_uniq(IsLive, Real, semidet, Uniq0, Uniq1, Uniq).
 make_ground_inst(free, IsLive, Uniq0, Real, M, ground(Uniq, no), M) :-
-	unify_uniq(IsLive, Real, unique, Uniq0, Uniq).
+	unify_uniq(IsLive, Real, det, unique, Uniq0, Uniq).
 make_ground_inst(free(T), IsLive, Uniq0, Real, M,
 		defined_inst(typed_ground(Uniq, T)), M) :-
-	unify_uniq(IsLive, Real, unique, Uniq0, Uniq).
+	unify_uniq(IsLive, Real, det, unique, Uniq0, Uniq).
 make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real, M0,
 		bound(Uniq, BoundInsts), M) :-
-	unify_uniq(dead, Real, Uniq0, Uniq1, Uniq),
+	unify_uniq(dead, Real, semidet, Uniq0, Uniq1, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real, M0,
 					BoundInsts, M).
 make_ground_inst(ground(Uniq0, _PredInst), _IsLive, Uniq1, Real, M,
 		ground(Uniq, no), M) :-
-	unify_uniq(dead, Real, Uniq0, Uniq1, Uniq).
+	unify_uniq(dead, Real, semidet, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _) :-
 	error("free inst var").
 make_ground_inst(abstract_inst(_,_), _, _, _, M, ground(shared, no), M).
