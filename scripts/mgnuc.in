@@ -47,6 +47,8 @@ NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
+CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
+CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 AS=as
 
 case "$CC" in
@@ -200,6 +202,20 @@ case $COMPILER in
 		esac
 esac
 
+# if we're using global registers, add CFLAGS_FOR_REGS
+case "$GRADE_OPTS" in
+	*-DUSE_GCC_GLOBAL_REGISTERS*)
+		GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_REGS"
+		;;
+esac
+
+# if we're using non-local gotos, add CFLAGS_FOR_GOTOS
+case "$GRADE_OPTS" in
+	*-DUSE_GCC_NONLOCAL_GOTOS*)
+		GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_GOTOS"
+		;;
+esac
+
 #
 # Special case hacks for particular architectures
 # Any code here needs to be duplicated in ../configure.in.
@@ -207,24 +223,14 @@ esac
 
 ARCH_OPTS=""
 case "$FULLARCH" in
-	i?86-*)
-		# on the 386, we need `-fno-omit-frame-pointer' and
-		# `-fno-builtin' to make global register variables work
-		case $GRADE_OPTS in
-			*-DUSE_GCC_GLOBAL_REGISTERS*)
-				ARCH_OPTS="-fno-builtin -fno-omit-frame-pointer"
-			;;
-		esac
-		;;
 	mips-sgi-irix5.*)
 		# nonlocal gotos don't work with PIC, which is the
 		# default for Irix 5, so if nonlocal gotos are enabled
-		# we need to disable PIC with -non_shared -mno-abicalls.
-		case $GRADE_OPTS in
+		# we need to disable the use of shared libraries.
+		case "$GRADE_OPTS" in
 			*-DUSE_GCC_NONLOCAL_GOTOS*)
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 				export LIBRARY_PATH
-				ARCH_OPTS="-non_shared -mno-abicalls"
 				AS_OPTS="-non_shared"
 			;;
 		esac
