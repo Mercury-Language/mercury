@@ -20,6 +20,7 @@
 ** The following must come before any definitions of global variables.
 ** This is necessary to support DLLs on Windows.
 */
+#include "conf.h" /* for USE_DLLS */
 #if USE_DLLS
   #include "libmer_dll.h"
 #endif
