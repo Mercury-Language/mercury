@@ -634,7 +634,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		{ Type = term__functor(term__atom("character"), [], _) },
 	 	{ string__char_to_string(Char, Name) }
 	->
-		{ char_to_int(Char, CharCode) },
+		{ char__to_int(Char, CharCode) },
 		{ Tag = int_constant(CharCode) }
 	;
 		% handle higher-order pred types specially

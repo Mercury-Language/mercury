@@ -18,6 +18,7 @@
 %	implement the Mercury IO library in Goedel;
 %	implement various NU-Prolog predicates in Goedel; 
 %	handle undiscriminated union types;
+%	handle (possibly overloaded) predicates with module qualifiers;
 %
 % (Wish list)
 %	indent `ELSE IF' properly
@@ -513,8 +514,11 @@ goedel_output_goal_2((A;B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal_2(call(Term), VarSet, Indent) -->
-	goedel_output_call(Term, VarSet, Indent).
+% XXX should preserve some of the qualification information?
+goedel_output_goal_2(call(Name, Term), VarSet, Indent) -->
+	{ unqualify_name(Name, Name0) },
+	{ term__context_init(Context0) },
+	goedel_output_call(term__functor(term__atom(Name0), Term, Context0), VarSet, Indent).
 
 goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
@@ -986,7 +990,7 @@ convert_to_valid_functor_name_2(String, Name) :-
 	(
 		string__first_char(String, Char, Rest)
 	->
-		char_to_int(Char, Code),
+		char__to_int(Char, Code),
 		string__int_to_string(Code, CodeString),
 		string__append("_", CodeString, ThisCharString),
 		convert_to_valid_functor_name_2(Rest, Name0),

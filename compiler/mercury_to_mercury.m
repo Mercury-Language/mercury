@@ -559,11 +559,15 @@ mercury_output_pred_type(VarSet, PredName, Types, MaybeDet, _Context) -->
 	% `:- pred int is int_expr' and then report some very confusing
 	% error message.  Thus you _have_ to give a determinism
 	% annotation in the pred declaration for is/2, eg.
-	% `:- pred int(int, int_expr) is det.'
+	% `:- pred is(int, int_expr) is det.'
 	% (Yes, this made me puke too.)
+	%
+	% The alternative is a term traversal in compiler/prog_io.m 
+	% get_determinism/3.  The alternative is more `nice', but less
+	% efficient.
 
 	(
-		{ PredName = unqualified("is") },
+		{ unqualify_name(PredName, "is") },
 		{ list__length(Types, 2) }
 	->
 		mercury_output_det_annotation(MaybeDet)
@@ -651,8 +655,13 @@ mercury_output_bracketed_sym_name(Name) -->
 :- mode mercury_output_sym_name(in, di, uo) is det.
 
 mercury_output_sym_name(Name) -->
-	{ unqualify_name(Name, Name2) },
-	term_io__write_constant(term__atom(Name2)).
+	(	{ Name = qualified(ModuleName, PredName) },
+		term_io__write_constant(term__atom(ModuleName)),
+		io__write_char(':')
+	;
+		{ Name = unqualified(PredName) }
+	),
+	term_io__write_constant(term__atom(PredName)).
 
 %-----------------------------------------------------------------------------%
 
@@ -662,12 +671,20 @@ mercury_output_sym_name(Name) -->
 			io__state, io__state).
 :- mode mercury_output_clause(in, in, in, in, in, di, uo) is det.
 
-mercury_output_clause(VarSet, PredName, Args, Body, Context) -->
-	{ unqualify_name(PredName, PredName2) },
-	mercury_output_term(term__functor(term__atom(PredName2), Args, Context),
-			VarSet),
+mercury_output_clause(VarSet, PredName, Args, Body, _Context) -->
+	mercury_output_sym_name(PredName),
 	(
-		{ Body = true - _Context }
+		{ Args = [Arg | Args0] }
+	->
+		io__write_string("("),
+		mercury_output_term(Arg, VarSet),
+		mercury_output_remaining_terms(Args0, VarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	(
+		{ Body = true - _Context0 }
 	->
 		[]
 	;
@@ -781,19 +798,27 @@ mercury_output_goal_2((A;B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal_2(call(Term), VarSet, Indent) -->
-	mercury_output_call(Term, VarSet, Indent).
+mercury_output_goal_2(call(Name, Term), VarSet, Indent) -->
+	mercury_output_call(Name, Term, VarSet, Indent).
 
 mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	mercury_output_term(A, VarSet),
 	io__write_string(" = "),
 	mercury_output_term(B, VarSet).
 
-:- pred mercury_output_call(term, varset, int, io__state, io__state).
-:- mode mercury_output_call(in, in, in, di, uo) is det.
+:- pred mercury_output_call(sym_name, list(term), varset, int, io__state, io__state).
+:- mode mercury_output_call(in, in, in, in, di, uo) is det.
 
-mercury_output_call(Term, VarSet, _Indent) -->
-	mercury_output_term(Term, VarSet).
+mercury_output_call(Name, Term, VarSet, _Indent) -->
+	(	
+		{ Name = qualified(ModuleName, PredName) },
+		io__write_string(ModuleName),
+		io__write_string(":")
+	;
+		{ Name = unqualified(PredName) }
+	),
+	{ term__context_init(Context0) },
+	mercury_output_term(term__functor(term__atom(PredName), Term, Context0), VarSet).
 
 :- pred mercury_output_disj(goal, varset, int, io__state, io__state).
 :- mode mercury_output_disj(in, in, in, di, uo) is det.

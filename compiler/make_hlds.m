@@ -512,28 +512,42 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, MaybeDet, Cond,
 add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 		Module) -->
 	{ module_info_name(Module0, ModuleName) },
-	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ list__length(Types, Arity) },
-	{ clauses_info_init(Arity, ClausesInfo) },
-	{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
-		Context, ClausesInfo, Status, PredInfo0) },
-	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
-		{ \+ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, _) }
-	->
-		( { code_util__predinfo_is_builtin(Module0, PredInfo0) } ->
-			{ pred_info_mark_as_external(PredInfo0, PredInfo) }
-		;
-			{ PredInfo = PredInfo0 }
-		),
-		{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
-			PredicateTable) },
-		{ module_info_set_predicate_table(Module0, PredicateTable,
-			Module) }
-	;
+		{ PredName = unqualified(_PName) },
 		{ module_info_incr_errors(Module0, Module) },
-		multiple_def_error(PredName, Arity, "pred", Context)
+		unqualified_pred_error(PredName, Arity, Context)
+		% All predicate names passed into this predicate should have 
+		% been qualified by prog_io.m, when they were first read.
+	;
+		{ PredName = qualified(MNameOfPred, PName) },
+		{ Module1 = Module0 },
+		{ module_info_get_predicate_table(Module1, PredicateTable0) },
+		{ clauses_info_init(Arity, ClausesInfo) },
+		{ pred_info_init(ModuleName, PredName, Arity, TVarSet, Types,
+				Cond, Context, ClausesInfo, Status, 
+				PredInfo0) },
+		(
+			{ \+ predicate_table_search_m_n_a(PredicateTable0,
+				MNameOfPred, PName, Arity, _) }
+		->
+			( 
+				{ code_util__predinfo_is_builtin(Module1, 
+						PredInfo0) }
+			->
+				{ pred_info_mark_as_external(PredInfo0,
+						PredInfo) }
+			;
+				{ PredInfo = PredInfo0 }
+			),
+			{ predicate_table_insert(PredicateTable0, PredInfo, 
+					_PredId, PredicateTable) },
+			{ module_info_set_predicate_table(Module1, 
+					PredicateTable, Module) }
+		;
+			{ module_info_incr_errors(Module1, Module) },
+			multiple_def_error(PredName, Arity, "pred", Context)
+		)
 	).
 
 :- pred add_special_pred_list(list(special_pred_id),
@@ -669,7 +683,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% error message and insert a dummy declaration for the
 		% predicate.
 
-	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ module_info_name(ModuleInfo0, ModuleName0) },
+	{ sym_name_get_module_name(PredName, ModuleName0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(Modes, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
@@ -1221,10 +1236,18 @@ transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet).
 
-transform_goal_2(call(Goal0), Context, VarSet0, Subst, Goal, VarSet) :-
+transform_goal_2(call(Name, Goals0), Context, VarSet0, Subst, Goal, VarSet) :-
 
-	( Goal0 = term__functor(term__atom("\\="), [LHS, RHS], _Context) ->
-
+	(
+		Name = qualified(ModuleName, PredName)
+	;
+		Name = unqualified(PredName),
+		ModuleName = ""
+	),
+	( 
+		PredName = "\\=",
+		Goals0 = [LHS,RHS]
+	->
 			% `LHS \= RHS' is defined as `not (RHS = RHS)'
 		transform_goal_2(not(unify(LHS, RHS) - Context), Context,
 				VarSet0, Subst, Goal, VarSet)
@@ -1233,9 +1256,15 @@ transform_goal_2(call(Goal0), Context, VarSet0, Subst, Goal, VarSet) :-
 		ModeId = 0,
 		is_builtin__make_builtin(no, no, Builtin),
 
-		term__apply_substitution(Goal0, Subst, Goal1),
+		term__context_init(Context0),
+		term__apply_substitution(term__functor(term__atom(PredName), 
+				Goals0, Context0), Subst, Goal1),
 		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
-			PredName = PredName0,
+			( ModuleName = "" ->
+				SymName = unqualified(PredName0)
+			;
+				SymName = qualified(ModuleName, PredName0)
+			),
 			Args = Args0
 		;
 			% If the called term is not an atom, then it is
@@ -1246,12 +1275,10 @@ transform_goal_2(call(Goal0), Context, VarSet0, Subst, Goal, VarSet) :-
 			% In either case, we transform it to a call to call/1.
 			% The error in the latter case will be caught by the
 			% type-checker.
-			PredName = "call",
+			SymName = qualified("mercury_builtin", "call"),
 			Args = [Goal1]
 		),
 		list__length(Args, Arity),
-			% XXX we should handle module qualifiers properly
-		SymName = unqualified(PredName),
 		PredCallId = SymName/Arity,
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		invalid_pred_id(PredId),
@@ -1673,5 +1700,19 @@ clause_for_imported_pred_error(Name, Arity, Context) -->
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("'.\n").
+
+:- pred unqualified_pred_error(sym_name, int, term__context,
+				io__state, io__state).
+:- mode unqualified_pred_error(in, in, in, di, uo) is det.
+
+unqualified_pred_error(PredName, Arity, Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: An unqualified predicate name `"),
+	prog_out__write_sym_name(PredName),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("'.\n"),
+	io__write_string("\t\tShould have been qualified by prog_io.m.\n").
 
 %-----------------------------------------------------------------------------%

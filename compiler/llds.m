@@ -1386,23 +1386,17 @@ output_label(local(ProcLabel, Num)) -->
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).
 
-	% XXX we need to do something with the module name.
-output_proc_label(proc(_Module, Pred0, Arity, ModeNum0)) -->
-	output_label_prefix,
-	%%% io__write_string(Module),
-	{ llds__name_mangle(Pred0, Pred) },
-	io__write_string(Pred),
+output_proc_label(proc(Module, Pred, Arity, ModeNum0)) -->
+	llds__output_label_name(Module, Pred, Arity),
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
 
-output_proc_label(special_proc(_Module, PredName, TypeName, TypeArity,
+output_proc_label(special_proc(Module, PredName, TypeName, TypeArity,
 				ModeNum0)) -->
-	output_label_prefix,
-	%%% io__write_string(Module),
-	io__write_string(PredName),
+	llds__output_label_name(Module, PredName, TypeArity),
 	io__write_string("_"),
 	io__write_string(TypeName),
 	io__write_string("_"),
@@ -1410,6 +1404,45 @@ output_proc_label(special_proc(_Module, PredName, TypeName, TypeArity,
 	io__write_string("_"),
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
+
+
+%	llds__output_label_name/5 writes a name to standard out.  Depending
+%	on the name of the label module and arity, the module name may also
+%	be written as a qualifier.
+
+:- pred llds__output_label_name(string, string, int, io__state, io__state).
+:- mode llds__output_label_name(in, in, in, di, uo) is det.
+llds__output_label_name(Module0, Name0, Arity) -->
+	output_label_prefix,
+	(
+		( 
+			{ Module0 = "mercury_builtin" }
+		;
+			{ Name0 = "main" },
+			{ Arity = 2 }
+		;
+			{ string__append("__", _, Name0) }
+		)
+		% The conditions above define which labels are printed without
+		% module qualification.  XXX Changes to runtime/* are necessary
+		% to allow `mercury_builtin' labels to be qualified/
+		% overloaded.
+	->
+		{ llds__name_mangle(Name0, Name) }
+	;
+		{ string__append(Module0, "__", UnderscoresModule) },
+		( { string__append(UnderscoresModule, Name1, Name0) } ->
+			{ Name2 = Name1 }
+		;
+			{ Name2 = Name0 }
+		),
+		{ llds__name_mangle(Module0, Module) },
+		{ llds__name_mangle(Name2, Name) },
+		io__write_string(Module),
+		io__write_string("__")
+	),
+	io__write_string(Name).
+
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
@@ -1965,6 +1998,7 @@ llds__name_conversion_table("*", "f_times").
 llds__name_conversion_table("/", "f_slash").
 llds__name_conversion_table(",", "f_comma").
 llds__name_conversion_table(";", "f_semicolon").
+llds__name_conversion_table("!", "f_cut").
 
 	% This is the fall-back method.
 	% Given a string, produce a C identifier
@@ -1983,7 +2017,7 @@ llds__convert_to_valid_c_identifier_2(String, Name) :-
 	(
 		string__first_char(String, Char, Rest)
 	->
-		char_to_int(Char, Code),
+		char__to_int(Char, Code),
 		string__int_to_string(Code, CodeString),
 		string__append("_", CodeString, ThisCharString),
 		llds__convert_to_valid_c_identifier_2(Rest, Name0),

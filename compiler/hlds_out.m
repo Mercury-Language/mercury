@@ -394,7 +394,9 @@ hlds_out__write_intlist_2(Ns0) -->
 
 hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
-	hlds_out__write_functor(term__atom(PredName), HeadVars, VarSet).
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
+	hlds_out__write_qualified_functor(ModuleName, term__atom(PredName),
+				HeadVars, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
@@ -600,8 +602,12 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
 hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
-	{ unqualify_name(PredName, Name) },
-	hlds_out__write_functor(term__atom(Name), ArgVars, VarSet).
+	(	{ PredName = qualified(ModuleName, Name) }, 
+		hlds_out__write_qualified_functor(ModuleName, term__atom(Name), ArgVars, VarSet)
+	;
+		{ PredName = unqualified(Name) },
+		hlds_out__write_functor(term__atom(Name), ArgVars, VarSet)
+	).
 
 hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		Indent) -->
@@ -645,6 +651,15 @@ hlds_out__write_functor(Functor, ArgVars, VarSet) -->
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
 	{ Term = term__functor(Functor, ArgTerms, Context) },
 	mercury_output_term(Term, VarSet).
+
+:- pred hlds_out__write_qualified_functor(string, const, list(var), varset,
+				io__state, io__state).
+:- mode hlds_out__write_qualified_functor(in, in, in, in, di, uo) is det.
+
+hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet) -->
+	io__write_string(ModuleName),
+	io__write_string(":"),
+	hlds_out__write_functor(Functor, ArgVars, VarSet).
 
 :- pred hlds_out__write_var_modes(list(var), list(mode), varset,
 					io__state, io__state).
@@ -907,8 +922,8 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ varset__init(ModeVarSet) },
-	mercury_output_mode_decl(ModeVarSet, unqualified(PredName), HeadModes,
-		DeclaredDeterminism, ModeContext),
+	mercury_output_mode_decl(ModeVarSet, unqualified(PredName), 
+			HeadModes, DeclaredDeterminism, ModeContext),
 
 	( { IsImported = no } ->
 		% { proc_info_call_info(Proc, CallInfo) },

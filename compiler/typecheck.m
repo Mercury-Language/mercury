@@ -549,8 +549,6 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 	% WISHLIST - we should handle overloading of predicates
 
 typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
-		% repair the module name in the PredId
-		% (make_hlds.m doesn't set it up correctly)
 	list__length(Args, Arity),
 	unqualify_name(PredName, Name),
 
@@ -565,28 +563,49 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 			PredName, Arity, PredIdList)
 	->
 		( PredIdList = [PredId0] ->
-			PredId = PredId0
-		;
-			error("sorry, predicate overloading not implemented")
-		),
+			PredId = PredId0,
+			TypeInfo3 = TypeInfo1,
 
-		predicate_table_get_preds(PredicateTable, Preds),
-		map__lookup(Preds, PredId, PredInfo),
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+			predicate_table_get_preds(PredicateTable, Preds),
+			map__lookup(Preds, PredId, PredInfo),
+			pred_info_arg_types(PredInfo, PredTypeVarSet,
+						PredArgTypes),
 
-			% rename apart the type variables in called
-			% predicate's arg types and then
-			% unify the types of the call arguments with
-			% the called predicates' arg types
-			% (optimize for the common case of
-			% a non-polymorphic predicate)
-		( varset__is_empty(PredTypeVarSet) ->
-			typecheck_var_has_type_list(Args, PredArgTypes, 0,
-					TypeInfo1, TypeInfo)
+				% rename apart the type variables in called
+				% predicate's arg types and then
+				% unify the types of the call arguments with
+				% the called predicates' arg types
+				% (optimize for the common case of
+				% a non-polymorphic predicate)
+			( varset__is_empty(PredTypeVarSet) ->
+				typecheck_var_has_type_list(Args, PredArgTypes,
+						0, TypeInfo3, TypeInfo)
+			;
+				typecheck_var_has_polymorphic_type_list(
+					Args, PredTypeVarSet, PredArgTypes,
+				TypeInfo3, TypeInfo)
+			)
 		;
-			typecheck_var_has_polymorphic_type_list(
-				Args, PredTypeVarSet, PredArgTypes,
-				TypeInfo1, TypeInfo)
+	%%%%%%%%
+	%%  If the 'default' module name were available, it would be best to
+	%%  try and qualify the predicate name with that module name, before
+	%%  reporting an overloading error.  This is to ensure that a 
+	%%  modification to an imported module won't mysteriously cause another
+	%%  module to break.  This would relax the overloading system a little.
+	%%
+	%%	sym_name_get_module_name(PredName, "", ""),
+	%%	qualify_sym_name(ModuleName, PredName, PredName0),
+	%%	predicate_table_search_sym_arity(PredicateTable,
+	%%		PredName0, Arity, [PredId0])
+	%%->
+	%%	PredId = PredId0
+	%%%%%%%%	
+			type_info_get_io_state(TypeInfo1, IOState0),
+			report_error_overloading_unqual_pred(TypeInfo1,
+					PredCallId, IOState0, IOState),
+			type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
+			type_info_set_found_error(TypeInfo2, yes, TypeInfo),
+			invalid_pred_id(PredId)
 		)
 	;
 		invalid_pred_id(PredId),
@@ -2746,6 +2765,8 @@ write_context_and_pred_id(TypeInfo) -->
 	{ type_info_get_predid(TypeInfo, PredId) },
 	prog_out__write_context(Context),
 	io__write_string("In clause for predicate `"),
+	%%% XXX perhaps should also write a module qualifier here or in 
+	%%% XXX the following call?
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string("':\n").
 
@@ -2802,6 +2823,24 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
 	),
 	report_ambiguity_error_2(Vs, VarSet, TypeInfo,
 				TypeAssign1, TypeAssign2).
+
+	
+%-----------------------------------------------------------------------------%
+
+:- pred report_error_overloading_unqual_pred(type_info, pred_call_id, 
+			io__state, io__state).
+:- mode report_error_overloading_unqual_pred(in, in, di, uo) is det.
+
+report_error_overloading_unqual_pred(TypeInfo, PredCallId) -->
+	write_type_info_context(TypeInfo),
+	{ type_info_get_context(TypeInfo, Context) },
+	io__write_string("Sorry, not implemented: predicate overloading. \n"),
+	prog_out__write_context(Context),
+	io__write_string("Call to "),
+	hlds_out__write_pred_call_id(PredCallId),
+	io__write_string(" matches to more than one predicate.\n"),
+	prog_out__write_context(Context),
+	io__write_string("An explicit module qualifier may help.").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

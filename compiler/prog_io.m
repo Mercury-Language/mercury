@@ -141,7 +141,7 @@
 			;	equivalent(goal,goal)
 			;	if_then(vars,goal,goal)
 			;	if_then_else(vars,goal,goal,goal)
-			;	call(term)
+			;	call(sym_name, list(term))
 			;	unify(term, term).
 
 :- type goals		==	list(goal).
@@ -384,7 +384,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module io, term_io, dir.
+:- import_module io, term_io, dir, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -411,7 +411,7 @@ prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 	globals__io_lookup_accumulating_option(search_directories, Dirs),
 	search_for_file(Dirs, FileName, R),
 	( { R = yes } ->
-		read_all_items(RevMessages, RevItems0, Error0),
+		read_all_items(ModuleName, RevMessages, RevItems0, Error0),
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
 		  list__reverse(RevMessages, Messages0),
@@ -570,12 +570,12 @@ dummy_term_with_context(Context, Term) :-
 	% which may be a declaration or a clause.
 
 
-:- pred read_all_items(message_list, item_list, module_error,
+:- pred read_all_items(string, message_list, item_list, module_error,
 			io__state, io__state).
-:- mode read_all_items(out, out, out, di, uo) is det.
+:- mode read_all_items(in, out, out, out, di, uo) is det.
 
-read_all_items(Messages, Items, Error) -->
-	read_items_loop([], [], no, Messages, Items, Error).
+read_all_items(ModuleName, Messages, Items, Error) -->
+	read_items_loop(ModuleName, [], [], no, Messages, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -593,28 +593,31 @@ read_all_items(Messages, Items, Error) -->
 	% implementation unless the compiler is smart enough to inline
 	% read_items_loop_2.
 
-:- pred read_items_loop(message_list, item_list, module_error, message_list,
-			item_list, module_error, io__state, io__state).
-:- mode read_items_loop(in, in, in, out, out, out, di, uo) is det.
+:- pred read_items_loop(string, message_list, item_list, module_error, 
+			message_list, item_list, module_error, 
+			io__state, io__state).
+:- mode read_items_loop(in, in, in, in, out, out, out, di, uo) is det.
 
-read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
-	io__gc_call(read_item(MaybeItem)),
- 	read_items_loop_2(MaybeItem, Msgs1, Items1, Error1, Msgs, Items, Error).
+read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error) -->
+	io__gc_call(read_item(ModuleName, NewModuleName, MaybeItem)),
+ 	read_items_loop_2(NewModuleName, MaybeItem, Msgs1, Items1, Error1, 
+				Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_items_loop_2(maybe_item_or_eof, message_list, item_list,
+:- pred read_items_loop_2(string, maybe_item_or_eof, message_list, item_list,
 			module_error, message_list, item_list, module_error,
 			io__state, io__state).
-:- mode read_items_loop_2(in, in, in, in, out, out, out, di, uo) is det.
+:- mode read_items_loop_2(in, in, in, in, in, out, out, out, di, uo) is det.
 
 % do a switch on the type of the next item
 
-read_items_loop_2(eof, Msgs, Items, Error, Msgs, Items, Error) --> []. 
+read_items_loop_2(_ModuleName, eof, Msgs, Items, Error, Msgs, Items, Error) 
+			--> []. 
 	% if the next item was end-of-file, then we're done.
 
-read_items_loop_2(syntax_error(ErrorMsg, LineNumber), Msgs0, Items0, _Error0,
-			Msgs, Items, Error) -->
+read_items_loop_2(ModuleName, syntax_error(ErrorMsg, LineNumber), Msgs0, 
+			Items0, _Error0, Msgs, Items, Error) -->
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
 	io__input_stream(Stream),
@@ -627,9 +630,10 @@ read_items_loop_2(syntax_error(ErrorMsg, LineNumber), Msgs0, Items0, _Error0,
 	  Items1 = Items0,
 	  Error1 = yes
 	},
-	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
+	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
 
-read_items_loop_2(error(M,T), Msgs0, Items0, _Error0, Msgs, Items, Error) -->
+read_items_loop_2(ModuleName, error(M,T), Msgs0, Items0, _Error0, Msgs, Items, 
+			Error) -->
 	% if the next item was a semantic error, then insert it in
 	% the list of messages and continue looping
 	{
@@ -637,9 +641,9 @@ read_items_loop_2(error(M,T), Msgs0, Items0, _Error0, Msgs, Items, Error) -->
 	  Items1 = Items0,
 	  Error1 = yes
 	},
- 	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
+ 	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
 
-read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
+read_items_loop_2(ModuleName, ok(Item, Context), Msgs0, Items0, Error0,
 			Msgs, Items, Error) -->
 	% if the next item was a valid item, then insert it in
 	% the list of items and continue looping
@@ -648,7 +652,7 @@ read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
 	  Items1 = [Item - Context | Items0],
 	  Error1 = Error0
 	},
- 	read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error).
+ 	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -660,21 +664,22 @@ read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
 			;	error(string, term)
 			;	ok(item, term__context).
 
-:- pred read_item(maybe_item_or_eof, io__state, io__state).
-:- mode read_item(out, di, uo) is det.
+:- pred read_item(string, string, maybe_item_or_eof, io__state, io__state).
+:- mode read_item(in, out, out, di, uo) is det.
 
-read_item(MaybeItem) -->
+read_item(ModuleName0, ModuleName, MaybeItem) -->
 	term_io__read_term(MaybeTerm),
-	{ process_read_term(MaybeTerm, MaybeItem) }.
+	{ process_read_term(ModuleName0, MaybeTerm, ModuleName, MaybeItem) }.
 
-:- pred process_read_term(read_term, maybe_item_or_eof).
-:- mode process_read_term(in, out) is det.
+:- pred process_read_term(string, read_term, string, maybe_item_or_eof).
+:- mode process_read_term(in, in, out, out) is det.
 
-process_read_term(eof, eof).
-process_read_term(error(ErrorMsg, LineNumber),
+process_read_term(ModuleName, eof, ModuleName, eof).
+process_read_term(ModuleName, error(ErrorMsg, LineNumber), ModuleName,
 			syntax_error(ErrorMsg, LineNumber)).
-process_read_term(term(VarSet, Term), MaybeItemOrEof) :-
-	parse_item(VarSet, Term, MaybeItem),
+process_read_term(ModuleName0, term(VarSet, Term), ModuleName,
+			MaybeItemOrEof) :-
+	parse_item(ModuleName0, VarSet, Term, ModuleName, MaybeItem),
 	convert_item(MaybeItem, MaybeItemOrEof).
 
 :- pred convert_item(maybe_item_and_context, maybe_item_or_eof).
@@ -683,22 +688,23 @@ process_read_term(term(VarSet, Term), MaybeItemOrEof) :-
 convert_item(ok(Item, Context), ok(Item, Context)).
 convert_item(error(M,T), error(M,T)).
 
-:- pred parse_item(varset, term, maybe_item_and_context).
-:- mode parse_item(in, in, out) is det.
+:- pred parse_item(string, varset, term, string, maybe_item_and_context). 
+:- mode parse_item(in, in, in, out, out) is det.
 
-parse_item(VarSet, Term, Result) :-
+parse_item(ModuleName0, VarSet, Term, ModuleName, Result) :-
  	( %%% some [Decl, DeclContext]
 		Term = term__functor(term__atom(":-"), [Decl], DeclContext)
 	->
 		% It's a declaration
-		parse_decl(VarSet, Decl, R),
+		parse_decl(ModuleName0, VarSet, Decl, R, ModuleName),
 		add_context(R, DeclContext, Result)
 	; %%% some [DCG_H, DCG_B, DCG_Context]
 		% It's a DCG clause
 		Term = term__functor(term__atom("-->"), [DCG_H, DCG_B],
 			DCG_Context)
 	->
-		parse_dcg_clause(VarSet, DCG_H, DCG_B, DCG_Context, Result)
+		parse_dcg_clause(ModuleName0, VarSet, DCG_H, DCG_B, DCG_Context, Result),
+		ModuleName0 = ModuleName
 	;
 		% It's either a fact or a rule
 		( %%% some [H, B, TermContext]
@@ -724,9 +730,10 @@ parse_item(VarSet, Term, Result) :-
 			Body = term__functor(term__atom("true"), [], TheContext)
 		),
 		parse_goal(Body, VarSet, Body2, VarSet2),
-		parse_qualified_term(Head, "clause head", R2),
+		parse_qualified_term(ModuleName0, Head, "clause head", R2),
 		process_clause(R2, VarSet2, Body2, R3),
-		add_context(R3, TheContext, Result)
+		add_context(R3, TheContext, Result),
+		ModuleName0 = ModuleName
 	).
 
 :- pred add_context(maybe1(item), term__context, maybe_item_and_context).
@@ -745,10 +752,13 @@ process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
 
 	% Parse a goal.
 	% We just check if it matches the appropriate pattern
-	% for one of the builtins.  If it doens't match any of the
+	% for one of the builtins.  If it doesn't match any of the
 	% builtins, then it's just a predicate call.
-	% XXX we should do more parsing here - type qualification and
-	% module qualification should be parsed here.
+	% XXX we should do more parsing here - type qualification
+	% should be parsed here.
+	%
+	% We could do some error-checking here, but all errors are picked up
+	% in either the type-checker or parser anyway.
 
 parse_goal(Term, VarSet0, Goal, VarSet) :-
 	(
@@ -758,13 +768,44 @@ parse_goal(Term, VarSet0, Goal, VarSet) :-
 		Goal = GoalExpr - Context,
 		VarSet = VarSet1
 	;
-		( Term = term__functor(_, _, KnownContext) ->
-			Context = KnownContext
+		(
+			Term = term__functor(term__atom(Name), Terms, Context)
+		->
+			VarSet = VarSet0,
+			( Name = ":" ->
+				(
+					Terms = [term__functor(term__atom(
+							ModuleName), [], _), 
+						term__functor(term__atom(
+							PredName), Args, _)]
+				->
+					Goal = call(qualified(ModuleName, 
+						PredName), Args) - Context
+				;
+				Term0 = term__functor(term__atom("call"), 
+							[Term], Context),
+				Goal = call(unqualified("call"), [Term0])
+							- Context
+				% Goal contains ill-formed qualified 
+				% predicate calls..
+				)
+			;
+				Goal = call(unqualified(Name), Terms) - Context
+			)
 		;
-			term__context_init(Context)
-		),
-		Goal = call(Term) - Context,
-		VarSet = VarSet0
+			(
+				Term = term__functor(_, _, Context)
+			;
+				Term = term__variable(_),
+				term__context_init(Context)
+			),
+			Term0 = term__functor(term__atom("call"), [Term],
+							Context),
+			Goal = call(unqualified("call"), [Term0]) - Context,
+			VarSet = VarSet0
+			% Term in Goal above is a term__constant or 
+			% term__variable that is definately not a function call.
+		)
 	).
 
 :- pred parse_goal_2(string, list(term), varset, goal_expr, varset).
@@ -811,29 +852,29 @@ parse_goal_2("else",[
 	parse_some_vars_goal(A0, V0, Vars, A, V1),
 	parse_goal(B0, V1, B, V2),
 	parse_goal(C0, V2, C, V).
-parse_goal_2("not", [A0], V0, not(A), V ) :-
+parse_goal_2("not", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
 parse_goal_2("\\+", [A0], V0, not(A), V) :-
 	parse_goal(A0, V0, A, V).
-parse_goal_2("all", [Vars0,A0], V0, all(Vars,A), V ):-
+parse_goal_2("all", [Vars0,A0], V0, all(Vars,A), V):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
 	% handle implication
-parse_goal_2("<=", [A0,B0], V0, implies(B,A), V ):-
+parse_goal_2("<=", [A0,B0], V0, implies(B,A), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
-parse_goal_2("=>", [A0,B0], V0, implies(A,B), V ):-
+parse_goal_2("=>", [A0,B0], V0, implies(A,B), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
 	% handle equivalence
-parse_goal_2("<=>", [A0,B0], V0, equivalent(A,B), V ):-
+parse_goal_2("<=>", [A0,B0], V0, equivalent(A,B), V):-
 	parse_goal(A0, V0, A, V1),
 	parse_goal(B0, V1, B, V).
 
-parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V ):-
+parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V):-
 	term__vars(Vars0, Vars),
 	parse_goal(A0, V0, A, V).
 
@@ -857,8 +898,8 @@ parse_expression(Expression, Destination, VarSet0, Goal, VarSet) :-
 		parse_expression_list(Args0, VarSet0, Context,
 					Args1, ArgGoal, VarSet),
 		list__append(Args1, [Destination], Args),
-		ExprGoal = call(term__functor(term__atom(BuiltinPredName), Args,
-			Context)) - Context,
+		ExprGoal = call(unqualified(BuiltinPredName), Args) - Context,
+			%%% XXX or qualified("builtin",  )??
 		Goal = (ArgGoal, ExprGoal)
 	;
 		VarSet = VarSet0,
@@ -957,15 +998,17 @@ parse_lambda_arg(Term, Var, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_dcg_clause(varset, term, term, term__context,
+:- pred parse_dcg_clause(string, varset, term, term, term__context,
 			maybe_item_and_context).
-:- mode parse_dcg_clause(in, in, in, in, out) is det.
+:- mode parse_dcg_clause(in, in, in, in, in, out) is det.
 
-parse_dcg_clause(VarSet0, DCG_Head, DCG_Body, DCG_Context, Result) :-
+parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
+		Result) :-
 	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
 	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
 			Body, VarSet, _N, DCG_Var),
-	parse_qualified_term(DCG_Head, "DCG clause head", HeadResult),
+	parse_qualified_term(ModuleName, DCG_Head, "DCG clause head",
+			HeadResult),
 	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
 	add_context(R, DCG_Context, Result).
 
@@ -1010,13 +1053,25 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 			% goal, and append the DCG argument pair to the
 			% non-terminal's argument list.
 			new_dcg_var(VarSet0, N0, VarSet, N, Var),
-			list__append(Args0, [
-					term__variable(Var0),
-					term__variable(Var)
-				], Args),
-			Term = term__functor(term__atom(Functor), Args,
-				Context),
-			Goal = call(Term) - Context
+			(
+				Functor = ":" ,
+				Args0 = [term__functor(term__atom(ModuleName),
+						[], _), 
+					term__functor(term__atom(PredName),
+						Args_of_pred0, _)]
+			->
+				list__append(Args_of_pred0, [
+						term__variable(Var0),
+						term__variable(Var)
+					], Args_of_pred),
+				Goal = call(qualified(ModuleName, PredName), Args_of_pred) - Context
+			;
+				list__append(Args0, [
+						term__variable(Var0),
+						term__variable(Var)
+					], Args),
+				Goal = call(unqualified(Functor), Args) - Context
+			)
 		)
 	;
 		% A call to a free variable, or to a number or string.
@@ -1030,7 +1085,7 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 				term__variable(Var0),
 				term__variable(Var)
 			], CallContext),
-		Goal = call(Term) - CallContext
+		Goal = call(unqualified("call"), [Term]) - CallContext
 	).
 
 	% parse_dcg_goal_2(Functor, Args, Context, VarSet0, N0, Var0,
@@ -1310,117 +1365,120 @@ process_dcg_clause(error(ErrMessage, Term), _, _, _, _,
 %-----------------------------------------------------------------------------%
 	% parse a declaration
 
-:- pred parse_decl(varset, term, maybe1(item)).
-:- mode parse_decl(in, in, out) is det.
-parse_decl(VarSet, F, Result) :-
+:- pred parse_decl(string, varset, term, maybe1(item), string).
+:- mode parse_decl(in, in, in, out, out) is det.
+parse_decl(ModuleName0, VarSet, F, Result, ModuleName) :-
 	( 
 		F = term__functor(term__atom(Atom), As, _Context)
 	->
 		(
-			process_decl(VarSet, Atom, As, R)
+			process_decl(ModuleName0, VarSet, Atom, As, R)
 		->
 			Result = R
 		;
 			Result = error("Unrecognized declaration", F)
-		)
+		),
+		update_module_name(Result, ModuleName0, ModuleName)
 	;
-		Result = error("Atom expected after `:-'", F)
+		Result = error("Atom expected after `:-'", F),
+		ModuleName = ModuleName0
 	).
 
 	% process_decl(VarSet, Atom, Args, Result) succeeds if Atom(Args)
 	% is a declaration and binds Result to a representation of that
 	% declaration.
-:- pred process_decl(varset, string, list(term), maybe1(item)).
-:- mode process_decl(in, in, in, out) is semidet.
+:- pred process_decl(string, varset, string, list(term), maybe1(item)).
+:- mode process_decl(in, in, in, in, out) is semidet.
 
-process_decl(VarSet, "type", [TypeDecl], Result) :-
+process_decl(_ModuleName, VarSet, "type", [TypeDecl], Result) :-
 	parse_type_decl(VarSet, TypeDecl, Result).
 
-process_decl(VarSet, "pred", [PredDecl], Result) :-
-	parse_type_decl_pred(VarSet, PredDecl, Result).
+process_decl(ModuleName, VarSet, "pred", [PredDecl], Result) :-
+	parse_type_decl_pred(ModuleName, VarSet, PredDecl, Result).
 
 /*** OBSOLETE
-process_decl(VarSet, "rule", [RuleDecl], Result) :-
+process_decl(_ModuleName, VarSet, "rule", [RuleDecl], Result) :-
 	parse_type_decl_rule(VarSet, RuleDecl, Result).
 ***/
 
-process_decl(VarSet, "mode", [ModeDecl], Result) :-
-	parse_mode_decl(VarSet, ModeDecl, Result).
+process_decl(ModuleName, VarSet, "mode", [ModeDecl], Result) :-
+	parse_mode_decl(ModuleName, VarSet, ModeDecl, Result).
 
-process_decl(VarSet, "inst", [InstDecl], Result) :-
+process_decl(_ModuleName, VarSet, "inst", [InstDecl], Result) :-
 	parse_inst_decl(VarSet, InstDecl, Result).
 
-process_decl(VarSet, "import_module", [ModuleSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_module", [ModuleSpec], Result) :-
 	parse_import_module_decl(VarSet, ModuleSpec, Result).
 
-process_decl(VarSet, "use_module", [ModuleSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_module", [ModuleSpec], Result) :-
 	parse_use_module_decl(VarSet, ModuleSpec, Result).
 
-process_decl(VarSet, "export_module", [ModuleSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_module", [ModuleSpec], Result) :-
 	parse_export_module_decl(VarSet, ModuleSpec, Result).
 
-process_decl(VarSet, "import_sym", [SymSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_sym", [SymSpec], Result) :-
 	parse_import_sym_decl(VarSet, SymSpec, Result).
 
-process_decl(VarSet, "use_sym", [SymSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_sym", [SymSpec], Result) :-
 	parse_use_sym_decl(VarSet, SymSpec, Result).
 
-process_decl(VarSet, "export_sym", [SymSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_sym", [SymSpec], Result) :-
 	parse_export_sym_decl(VarSet, SymSpec, Result).
 
-process_decl(VarSet, "import_pred", [PredSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_pred", [PredSpec], Result) :-
 	parse_import_pred_decl(VarSet, PredSpec, Result).
 
-process_decl(VarSet, "use_pred", [PredSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_pred", [PredSpec], Result) :-
 	parse_use_pred_decl(VarSet, PredSpec, Result).
 
-process_decl(VarSet, "export_pred", [PredSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_pred", [PredSpec], Result) :-
 	parse_export_pred_decl(VarSet, PredSpec, Result).
 
-process_decl(VarSet, "import_cons", [ConsSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_cons", [ConsSpec], Result) :-
 	parse_import_cons_decl(VarSet, ConsSpec, Result).
 
-process_decl(VarSet, "use_cons", [ConsSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_cons", [ConsSpec], Result) :-
 	parse_use_cons_decl(VarSet, ConsSpec, Result).
 
-process_decl(VarSet, "export_cons", [ConsSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_cons", [ConsSpec], Result) :-
 	parse_export_cons_decl(VarSet, ConsSpec, Result).
 
-process_decl(VarSet, "import_type", [TypeSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_type", [TypeSpec], Result) :-
 	parse_import_type_decl(VarSet, TypeSpec, Result).
 
-process_decl(VarSet, "use_type", [TypeSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_type", [TypeSpec], Result) :-
 	parse_use_type_decl(VarSet, TypeSpec, Result).
 
-process_decl(VarSet, "export_type", [TypeSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_type", [TypeSpec], Result) :-
 	parse_export_type_decl(VarSet, TypeSpec, Result).
 
-process_decl(VarSet, "import_adt", [ADT_Spec], Result) :-
+process_decl(_ModuleName, VarSet, "import_adt", [ADT_Spec], Result) :-
 	parse_import_adt_decl(VarSet, ADT_Spec, Result).
 
-process_decl(VarSet, "use_adt", [ADT_Spec], Result) :-
+process_decl(_ModuleName, VarSet, "use_adt", [ADT_Spec], Result) :-
 	parse_use_adt_decl(VarSet, ADT_Spec, Result).
 
-process_decl(VarSet, "export_adt", [ADT_Spec], Result) :-
+process_decl(_ModuleName, VarSet, "export_adt", [ADT_Spec], Result) :-
 	parse_export_adt_decl(VarSet, ADT_Spec, Result).
 
-process_decl(VarSet, "import_op", [OpSpec], Result) :-
+process_decl(_ModuleName, VarSet, "import_op", [OpSpec], Result) :-
 	parse_import_op_decl(VarSet, OpSpec, Result).
 
-process_decl(VarSet, "use_op", [OpSpec], Result) :-
+process_decl(_ModuleName, VarSet, "use_op", [OpSpec], Result) :-
 	parse_use_op_decl(VarSet, OpSpec, Result).
 
-process_decl(VarSet, "export_op", [OpSpec], Result) :-
+process_decl(_ModuleName, VarSet, "export_op", [OpSpec], Result) :-
 	parse_export_op_decl(VarSet, OpSpec, Result).
 
-process_decl(VarSet, "interface", [], ok(module_defn(VarSet, interface))).
-process_decl(VarSet, "implementation", [],
+process_decl(_ModuleName, VarSet, "interface", [], 
+				ok(module_defn(VarSet, interface))).
+process_decl(_ModuleName, VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
-process_decl(VarSet, "external", [PredSpec], Result) :-
+process_decl(_ModuleName, VarSet, "external", [PredSpec], Result) :-
 	parse_symbol_name_specifier(PredSpec, Result0),
 	process_external(Result0, VarSet, Result).
 
-process_decl(VarSet, "module", [ModuleName], Result) :-
+process_decl(_ModuleName0, VarSet, "module", [ModuleName], Result) :-
 	(
 		ModuleName = term__functor(term__atom(Module), [], _Context)
 	->
@@ -1429,7 +1487,7 @@ process_decl(VarSet, "module", [ModuleName], Result) :-
 		Result = error("Module name expected", ModuleName)
 	).
 
-process_decl(VarSet, "end_module", [ModuleName], Result) :-
+process_decl(_ModuleName0, VarSet, "end_module", [ModuleName], Result) :-
 	(
 		ModuleName = term__functor(term__atom(Module), [], _Context)
 	->
@@ -1440,11 +1498,21 @@ process_decl(VarSet, "end_module", [ModuleName], Result) :-
 
 	% NU-Prolog `when' declarations are silently ignored for
 	% backwards compatibility.
-process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
+process_decl(_ModuleName, _VarSet, "when", [_Goal, _Cond], Result) :-
 	Result = ok(nothing).
 
-process_decl(_VarSet, "pragma", Pragma, Result):-
+process_decl(_ModuleName, _VarSet, "pragma", Pragma, Result):-
 	parse_pragma(Pragma, Result).
+
+:- pred update_module_name(maybe1(item), string, string).
+:- mode update_module_name(in, in, out) is det.
+update_module_name(error(_, _), ModuleName, ModuleName).
+update_module_name(ok(Item), ModuleName0, ModuleName) :-
+	( Item = module_defn(_Varset, module(Name)) ->
+		ModuleName = Name
+	;
+		ModuleName = ModuleName0
+	).
 
 :- pred parse_type_decl(varset, term, maybe1(item)).
 :- mode parse_type_decl(in, in, out) is det.
@@ -1520,21 +1588,22 @@ parse_type_decl_type("==", [H,B], Condition, R) :-
 	% if Pred is a predicate type declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
-:- pred parse_type_decl_pred(varset, term, maybe1(item)).
-:- mode parse_type_decl_pred(in, in, out) is det.
+:- pred parse_type_decl_pred(string, varset, term, maybe1(item)).
+:- mode parse_type_decl_pred(in, in, in, out) is det.
 
-parse_type_decl_pred(VarSet, Pred, R) :-
+parse_type_decl_pred(ModuleName, VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-	process_type_decl_pred(MaybeDeterminism, VarSet, Body2, Condition, R).
+	process_type_decl_pred(ModuleName, MaybeDeterminism, VarSet, Body2,
+				Condition, R).
 
-:- pred process_type_decl_pred(maybe1(maybe(determinism)), varset, term,
+:- pred process_type_decl_pred(string, maybe1(maybe(determinism)), varset, term,
 				condition, maybe1(item)).
-:- mode process_type_decl_pred(in, in, in, in, out) is det.
+:- mode process_type_decl_pred(in, in, in, in, in, out) is det.
 
-process_type_decl_pred(error(Term, Reason), _, _, _, error(Term, Reason)).
-process_type_decl_pred(ok(MaybeDeterminism), VarSet, Body, Condition, R) :-
-	process_pred(VarSet, Body, MaybeDeterminism, Condition, R).
+process_type_decl_pred(_MNm, error(Term, Reason), _, _, _, error(Term, Reason)).
+process_type_decl_pred(ModuleName, ok(MaybeDeterminism), VarSet, Body, Condition, R) :-
+	process_pred(ModuleName, VarSet, Body, MaybeDeterminism, Condition, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1551,25 +1620,26 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 ****/
 
 %-----------------------------------------------------------------------------%
-	% parse_mode_decl_pred(Pred, Condition, Result) succeeds
+	% parse_mode_decl_pred(ModuleName, Pred, Condition, Result) succeeds
 	% if Pred is a predicate mode declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
-:- pred parse_mode_decl_pred(varset, term, maybe1(item)).
-:- mode parse_mode_decl_pred(in, in, out) is det.
+:- pred parse_mode_decl_pred(string, varset, term, maybe1(item)).
+:- mode parse_mode_decl_pred(in, in, in, out) is det.
 
-parse_mode_decl_pred(VarSet, Pred, Result) :-
+parse_mode_decl_pred(ModuleName, VarSet, Pred, Result) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-	parse_mode_decl_pred_2(MaybeDeterminism, VarSet, Body2,
+	parse_mode_decl_pred_2(ModuleName, MaybeDeterminism, VarSet, Body2,
 		Condition, Result).
 
-:- pred parse_mode_decl_pred_2(maybe1(maybe(determinism)), varset, term,
+:- pred parse_mode_decl_pred_2(string, maybe1(maybe(determinism)), varset, term,
 				condition, maybe1(item)).
-:- mode parse_mode_decl_pred_2(in, in, in, in, out) is det.
-parse_mode_decl_pred_2(ok(MaybeDet), VarSet, Body, Condition, R) :-
-	process_mode(VarSet, Body, MaybeDet, Condition, R).
-parse_mode_decl_pred_2(error(Term, Reason), _, _, _, error(Term, Reason)).
+:- mode parse_mode_decl_pred_2(in, in, in, in, in, out) is det.
+parse_mode_decl_pred_2(ModuleName, ok(MaybeDet), VarSet, Body, Condition, R) :-
+	process_mode(ModuleName, VarSet, Body, MaybeDet, Condition, R).
+parse_mode_decl_pred_2(_ModuleName, error(Term, Reason), _, _, _,
+							error(Term, Reason)).
 		% just pass the error up (after conversion to the right type)
 
 
@@ -1598,9 +1668,9 @@ parse_pragma(Pragma, Result) :-
 :- mode get_determinism(in, out, out) is det.
 
 get_determinism(B, Body, Determinism) :-
-	( %%% some [Body1, Determinism1, Context]
-		B = term__functor(term__atom("is"), [Body1, Determinism1],
-					_Context)
+	( 
+		B = term__functor(term__atom("is"), Args, _Context1),
+		Args = [Body1, Determinism1]
 	->
 		Body = Body1,
 		( 
@@ -1814,7 +1884,7 @@ convert_constructor(Term, Result) :-
 	;
 		Term2 = Term
 	),
-	parse_qualified_term(Term2, "", ok(F, As)),
+	parse_qualified_term(Term2, "convert_constructor/2", ok(F, As)),
 	convert_type_list(As, ArgTypes),
 	Result = F - ArgTypes.
 
@@ -1865,11 +1935,11 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 
 	% parse a `:- pred p(...)' declaration
 
-:- pred process_pred(varset, term, maybe(determinism), condition, maybe1(item)).
-:- mode process_pred(in, in, in, in, out) is det.
+:- pred process_pred(string, varset, term, maybe(determinism), condition, maybe1(item)).
+:- mode process_pred(in, in, in, in, in, out) is det.
 
-process_pred(VarSet, PredType, MaybeDet, Cond, Result) :-
-	parse_qualified_term(PredType, "`:- pred' declaration", R),
+process_pred(ModuleName, VarSet, PredType, MaybeDet, Cond, Result) :-
+	parse_qualified_term(ModuleName, PredType, "`:- pred' declaration", R),
 	process_pred_2(R, PredType, VarSet, MaybeDet, Cond, Result).
 
 :- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
@@ -1887,11 +1957,11 @@ process_pred_2(error(M, T), _, _, _, _, error(M, T)).
 
 	% parse a `:- mode p(...)' declaration
 
-:- pred process_mode(varset, term, maybe(determinism), condition, maybe1(item)).
-:- mode process_mode(in, in, in, in, out) is det.
+:- pred process_mode(string, varset, term, maybe(determinism), condition, maybe1(item)).
+:- mode process_mode(in, in, in, in, in, out) is det.
 
-process_mode(VarSet, PredMode, MaybeDet, Cond, Result) :-
-	parse_qualified_term(PredMode, "`:- mode' declaration", R),
+process_mode(ModuleName, VarSet, PredMode, MaybeDet, Cond, Result) :-
+	parse_qualified_term(ModuleName, PredMode, "`:- mode' declaration", R),
 	process_mode_2(R, PredMode, VarSet, MaybeDet, Cond, Result).
 
 :- pred process_mode_2(maybe_functor, term, varset, maybe(determinism),
@@ -2131,9 +2201,9 @@ process_inst_defn(ok(InstDefn), VarSet, Cond,
 
 	% parse a `:- mode foo :: ...' or `:- mode foo = ...' definition.
 
-:- pred parse_mode_decl(varset, term, maybe1(item)).
-:- mode parse_mode_decl(in, in, out) is det.
-parse_mode_decl(VarSet, ModeDefn, Result) :-
+:- pred parse_mode_decl(string, varset, term, maybe1(item)).
+:- mode parse_mode_decl(in, in, in, out) is det.
+parse_mode_decl(ModuleName, VarSet, ModeDefn, Result) :-
 	( %%% some [H,B]
 		mode_op(ModeDefn, H, B)
 	->
@@ -2141,7 +2211,7 @@ parse_mode_decl(VarSet, ModeDefn, Result) :-
 		convert_mode_defn(H, Body, R),
 		process_mode_defn(R, VarSet, Condition, Result)
 	;
-		parse_mode_decl_pred(VarSet, ModeDefn, Result)
+		parse_mode_decl_pred(ModuleName, VarSet, ModeDefn, Result)
 	).
 
 :- pred mode_op(term, term, term).
@@ -2902,9 +2972,9 @@ process_name_specifier(error(Error, Term), error(Error, Term)).
 %		Name
 %		Module:Name)
 
-:- pred parse_qualified_term(term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, out) is det.
-parse_qualified_term(Term, Msg, Result) :-
+:- pred parse_qualified_term(string, term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, in, out) is det.
+parse_qualified_term(DefaultModName, Term, Msg, Result) :-
     (
        	Term = term__functor(term__atom(":"), [ModuleTerm, NameArgsTerm],
 		_Context)
@@ -2915,7 +2985,13 @@ parse_qualified_term(Term, Msg, Result) :-
             ( 
                 ModuleTerm = term__functor(term__atom(Module), [], _Context3)
 	    ->
-		Result = ok(qualified(Module, Name), Args)
+		(
+		    Module = DefaultModName
+		->
+		    Result = ok(qualified(Module, Name), Args)
+		;
+		    Result = error("Module qualifier in predicate definition  does not match preceding `:- module' declaration", Term)
+		)
 	    ;
 		Result = error("Module name identifier expected before ':' in qualified symbol name", Term)
             )
@@ -2926,13 +3002,26 @@ parse_qualified_term(Term, Msg, Result) :-
         ( 
             Term = term__functor(term__atom(Name2), Args2, _Context4)
         ->
-            Result = ok(unqualified(Name2), Args2)
+	    (
+		DefaultModName = ""
+	    ->
+            	Result = ok(unqualified(Name2), Args2)
+	    ;
+		Result = ok(qualified(DefaultModName, Name2), Args2)
+	    )
         ;
 	    string__append("atom expected in ", Msg, ErrorMsg),
             Result = error(ErrorMsg, Term)
         )
     ).
 
+% parse_qualified_term/3 calls parse_qualified_term/4, and is used when
+% no default module name exists.
+
+:- pred parse_qualified_term(term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, out) is det.
+parse_qualified_term(Term, Msg, Result) :-
+	parse_qualified_term("", Term, Msg, Result).
 %-----------------------------------------------------------------------------%
 
 %	A SymbolName is one of
@@ -2943,9 +3032,9 @@ parse_qualified_term(Term, Msg, Result) :-
 %			Matches symbols with the specified name exported
 %			by the specified module.
 
-:- pred parse_symbol_name(term, maybe1(sym_name)).
-:- mode parse_symbol_name(in, out) is det.
-parse_symbol_name(Term, Result) :-
+:- pred parse_symbol_name(string, term, maybe1(sym_name)).
+:- mode parse_symbol_name(in, in, out) is det.
+parse_symbol_name(DefaultModName, Term, Result) :-
     ( 
        	Term = term__functor(term__atom(":"), [ModuleTerm, NameTerm], _Context)
     ->
@@ -2966,11 +3055,22 @@ parse_symbol_name(Term, Result) :-
         ( 
             Term = term__functor(term__atom(Name2), [], _Context3)
         ->
-            Result = ok(unqualified(Name2))
+	    (
+		DefaultModName = ""
+	    ->
+		Result = ok(unqualified(Name2))
+	    ;
+		Result = ok(qualified(DefaultModName, Name2))
+	    )
         ;
             Result = error("Symbol name specifier expected", Term)
         )
     ).
+
+
+:- pred parse_symbol_name(term, maybe1(sym_name)).
+:- mode parse_symbol_name(in, out) is det.
+parse_symbol_name(Term, Result) :- parse_symbol_name("", Term, Result).
 
 %-----------------------------------------------------------------------------%
 
