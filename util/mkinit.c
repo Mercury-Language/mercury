@@ -817,8 +817,22 @@ output_init_function(const char *func_name, int *num_bunches_ptr,
 
 	(*num_calls_in_cur_bunch_ptr)++;
 
+	/* 
+	** XXX if the suffix isn't the empty string then we are
+	** outputting an initialization function which isn't supported
+	** by the MLDS backend.
+	*/
+	if (*suffix != '\0') {
+		fputs("#ifndef MR_HIGHLEVEL_CODE\n", stdout);
+	}
+
 	printf("\t{ extern void %s%s(void);\n", func_name, suffix);
 	printf("\t  %s%s(); }\n", func_name, suffix);
+
+	if (*suffix != '\0') {
+		fputs("#endif /* MR_HIGHLEVEL_CODE */\n", stdout);
+	}
+
 }
 
 /*---------------------------------------------------------------------------*/
