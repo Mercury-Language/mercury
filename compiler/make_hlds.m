@@ -576,15 +576,23 @@ transform(VarSet0, Args, Body, VarSet, HeadVars, Goal) :-
 :- mode make_n_fresh_vars(input, input, output, output).
 
 make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
-	(if N = 0 then
+	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
+
+:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
+:- mode make_n_fresh_vars_2(input, input, input, output, output).
+
+make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
+	(N = Max ->
 		VarSet = VarSet0,
 		Vars = []
-	else
-		N1 is N - 1,
+	;
+		N1 is N + 1,
 		varset__new_var(VarSet0, Var, VarSet1),
-		varset__name_var(VarSet1, Var, "HeadVar", VarSet2),
+		string__int_to_string(N1, Num),
+		string__append("HeadVar__", Num, VarName),
+		varset__name_var(VarSet1, Var, VarName, VarSet2),
 		Vars = [Var | Vars1],
-		make_n_fresh_vars(N1, VarSet2, Vars1, VarSet)
+		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
 	).
 
 :- pred insert_head_unifications(list(term), list(var), goal, goal).
