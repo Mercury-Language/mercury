@@ -334,16 +334,18 @@ install_profiler: profiler
 	cd profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_grades
-install_grades: scripts dep_library dep_browser
+install_grades: scripts
 	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so \
+		{ mv -f *.dep *.h *.c *.o *.pic_o *.a *.so \
+			Mercury/deps/*.dep \
 			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
 	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.c *.o *.pic_o *.a *.so \
+		{ mv -f *.dep *.h *.c *.o *.pic_o *.a *.so \
+			Mercury/deps/*.dep \
 			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
@@ -362,16 +364,18 @@ install_grades: scripts dep_library dep_browser
 		( cd runtime && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd library && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
 		( cd browser && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade depend && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
 		( cd trace && \
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
 		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
-		( cd library && rm -f *.c *.o *.pic_o *.a *.so \
+		( cd library && rm -f *.dep *.h *.c *.o *.pic_o *.a *.so \
 				Mercury/cs/*.c Mercury/os/*.o ) && \
-		( cd browser && rm -f *.c *.o *.pic_o *.a *.so \
+		( cd browser && rm -f *.dep *.h *.c *.o *.pic_o *.a *.so \
 				Mercury/cs/*.c Mercury/os/*.o ) && \
 		( cd trace && rm -f *.o *.pic_o *.a *.so ) && \
 		true \
@@ -382,9 +386,11 @@ install_grades: scripts dep_library dep_browser
 	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
 			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
 			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
@@ -393,16 +399,17 @@ install_split_library: scripts dep_library
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f *.dir *.c *.o *.pic_o *.a *.so \
+	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
 		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
-	        rm -rf *.dir *.c *.o *.pic_o *.a *.so \
+	        rm -rf *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
 			Mercury/cs/*.c Mercury/os/*.o; \
 	done && \
-	{ [ -d Mercury/cs ] && mv tmp_dir/cs/*.c Mercury/cs; \
-	  [ -d Mercury/os ] && mv tmp_dir/os/*.o Mercury/os; \
+	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
+	  [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
 	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#

@@ -327,10 +327,13 @@ clean_local: clean_prof_files
 
 # Note: the `lib%.install_ints' rule is generated in each module's `.dep'
 # file so it can be more easily customised based on the desired level of
-# intermodule optimisation.
+# intermodule optimisation.  Likewise the `lib%.install_hdrs' is also
+# generated in the `.dep' file, since it depends on the setting of
+# the `--high-level-code' option.
 
 .PHONY: lib%.install
-lib%.install: lib%.install_ints lib%.install_init lib%.install_library
+lib%.install: lib%.install_ints lib%.install_hdrs lib%.install_init \
+		lib%.install_library
 	$(MMAKE) lib$*.install_grades || { mercury_cleanup_install && exit 1; }
 
 .PHONY: lib%.install_split
@@ -354,31 +357,41 @@ lib%.install_split_library: %.split.a install_grade_dirs
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) $($*.pic_os) \
+		*.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade lib$*.depend || \
+				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
-			rm -f $($*.cs) $($*.os) $($*.pic_os) *.a *.so; \
+			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.os) \
+				$($*.pic_os) *.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.c $(cs_subdir). ; \
 	  mv tmp_dir/*.o $(os_subdir). ; \
 	  mv tmp_dir/*.pic_o $(os_subdir). ; \
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
 	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 lib%.install_split_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $($*.dirs) *.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.dirs) *.a *.so \
+		tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
+			$(MMAKE) GRADE=$$grade lib$*.depend || \
+				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
 				exit 1; \
-			rm -rf $($*.dirs) *.a *.so; \
+			rm -rf $(deps_subdir)$*.dep $($*.hs) $($*.dirs) \
+				*.a *.so; \
 		fi; \
 	done && \
 	{ mv tmp_dir/*.dir $(dirs_subdir). ; \
+	  mv tmp_dir/*.dep $(deps_subdir). ; \
 	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }
 
 

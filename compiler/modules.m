@@ -625,6 +625,7 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".realclean"
 		; Ext = ".depend"
 		; Ext = ".install_ints"
+		; Ext = ".install_hdrs"
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
@@ -2939,6 +2940,38 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"""; \\\n",
 		InstallIntsRuleBody
 	]),
+
+	module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs", no,
+				LibInstallHdrsTargetName),
+	io__write_strings(DepStream, [
+		".PHONY : ", LibInstallHdrsTargetName, "\n",
+		LibInstallHdrsTargetName, " : $(", MakeVarName, ".hs) ",
+			"install_lib_dirs\n"
+	]),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	( { HighLevelCode = yes } ->
+		%
+		% XXX  Note that we install the header files in two places:
+		% in the `inc' directory, so that the C compiler will find
+		% them, and also in the `ints' directory, so that Mmake
+		% will find them.  That's not ideal, but it works.
+		% (A better fix would be to change the VPATH setting
+		% in scripts/Mmake.vars.in so that Mmake also searches
+		% the `inc' directory, but doing that properly is non-trivial.)
+		%
+		io__write_strings(DepStream, [
+			"\tfor hdr in $(", MakeVarName, ".hs); do \\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INC_DIR)\\\n",
+			"\t	$(INSTALL) $$hdr $(INSTALL_INT_DIR)\\\n",
+			"\tdone\n\n"
+		])
+	;
+		# for non-MLDS grades, we don't need to install the header
+		# files, so this rule does nothing
+		io__write_strings(DepStream, [
+			"\t\n\n"
+		])
+	),
 
 	module_name_to_file_name(SourceModuleName, ".check", no,
 				CheckTargetName),
