@@ -1000,6 +1000,7 @@
  *			;	user_error.
  * In C:
  *	io__stream	==	pointer to MercuryFile
+ *				(which is defined in runtime/mercury_types.h)
  */
 
 	% This inter-language stuff is tricky.
@@ -2033,11 +2034,6 @@ io__set_op_table(_OpTable) --> [].
 #ifdef HAVE_SYS_WAIT
 #include <sys/wait.h>
 #endif
-
-/*
-** Mercury files are not quite the same as C stdio FILEs,
-** because we keep track of a little bit more information.
-*/
 
 extern MercuryFile mercury_stdin;
 extern MercuryFile mercury_stdout;
