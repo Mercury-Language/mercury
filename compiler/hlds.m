@@ -124,18 +124,21 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type shape_id	==	pair(type_id, inst).
+:- type shape_id	==	pair(type, inst).
 
 :- type shape_table	==	pair(map(shape_id, pair(shape_num, shape)),int).
 
 :- type shape           --->    quad(shape_tag, shape_tag, shape_tag,
-					 shape_tag).
+					 shape_tag)
+			;	abstract(type) 
+			;	polymorphic(type)
+			;	closure(type).
 
 :- type shape_num	==	int.
 
 :- type shape_tag	--->	constant
-			;	simple(list(shape_id))
-			;       complicated(list(list(shape_id))).
+			;	simple(list(pair(shape_num, shape_id)))
+			;       complicated(list(list(pair(shape_num, shape_id)))).
 
 %-----------------------------------------------------------------------------%
 

@@ -2894,17 +2894,8 @@ code_info__livevals_to_livelvals([L - V|Ls], [live_lvalue(L, S_Num )|Lives]) -->
 	{ module_info_shapes(Module, S_Tab0) } ,
 	{ module_info_types(Module, Type_Table) } ,
 	code_info__variable_type(V, Type),
-	(
-		{ type_to_type_id(Type, Type_Id, _) }
-	->
-		{ shapes__request_shape_number(Type_Id, ground, Type_Table, 
-					S_Tab0, S_Tab1, S_Num) } 
-	;
-		{ shapes__request_shape_number(
-			unqualified("__type_variable__") - -1, ground,
-			Type_Table, S_Tab0, S_Tab1, S_Num) }
-	%	{ error("code_info__livevals_to_livelvals: type not found") }
-	),
+	{ shapes__request_shape_number(Type - ground, Type_Table, 
+					S_Tab0, S_Tab1, S_Num) } ,
 	{ module_info_set_shapes(Module, S_Tab1, Module1) },
 	code_info__set_module_info(Module1),
 	code_info__livevals_to_livelvals(Ls, Lives).
