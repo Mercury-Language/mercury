@@ -289,6 +289,9 @@ AC_DEFUN(MERCURY_CHECK_JAVA,
 # then that's what we'd get. If the user has jikes installed, then that
 # probably means that they want to use it, so we check for jikes before javac.
 AC_PATH_PROGS(JAVAC, jikes javac gcj)
+case "$JAVAC" in *gcj)
+	JAVAC="$JAVAC -C" ;;
+esac
 AC_PATH_PROG(JAVA_INTERPRETER, java)
 AC_PATH_PROG(JAR, jar)
 
