@@ -60,6 +60,9 @@ SINGLEMODULE_SOURCES= \
 	modes_erroneous.m \
 	mostly_uniq1.m \
 	mostly_uniq2.m \
+	multimode_missing_impure.m \
+	multimode_dcg.m \
+	multimode_syntax.m \
 	multisoln_func.m \
 	nested_impl_in_int.m \
 	no_exports.m \
