@@ -980,7 +980,7 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 :- mode module_add_c_body_code(in, in, in, out) is det.
 
 module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
-	module_info_get_c_header(Module0, C_Body_List0),
+	module_info_get_c_body_code(Module0, C_Body_List0),
 		% store the c headers in reverse order and reverse them later
 		% for efficiency
 	C_Body_List = [C_Body_Code - Context | C_Body_List0],

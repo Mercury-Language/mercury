@@ -31,8 +31,8 @@
 					list(c_module)
 				).
 
-:- type c_header_info 	==	list(c_header_code).
-:- type c_body_info 	==	list(c_body_code).
+:- type c_header_info 	==	list(c_header_code).	% in reverse order
+:- type c_body_info 	==	list(c_body_code).	% in reverse order
 
 :- type c_header_code	==	pair(string, term__context).
 :- type c_body_code	==	pair(string, term__context).
