@@ -102,7 +102,7 @@ output__call_graph_headers -->
 	io__write_string("\tthe number of second's of this child's desdendent time which is due\n"),
 	io__write_string("\tto the current predicate.\n\n"),
 
-	io__write_string("called*\tthe nubmer of times this child is called by the current\n"),
+	io__write_string("called*\tthe number of times this child is called by the current\n"),
 	io__write_string("\tpredicate.\n\n"),
 
 	io__write_string("total*\tthe number of time's this child is called by all predicates.\n\n"),
