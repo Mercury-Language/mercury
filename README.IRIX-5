@@ -11,11 +11,12 @@ To use non-local gotos, your Irix machine needs to have the nonshared
 versions of the C standard library installed (in /usr/lib/nonshared),
 and you need also need a version of `libgcc.a' that has been compiled
 with `-mno-abicalls' in /usr/lib/nonshared.  To create that, you need
-to replace the `-g1' with `-mno-abicalls' in the definition of
-LIBGCC2_CFLAGS in the Makefile in the gcc source directory, then type
-`make libgcc.a', and then copy libgcc.a to /usr/lib/nonshared.
-[To use a different directory than /usr/lib/nonshared, you will
-have to edit `configure', `scripts/ml.in', and `scripts/mgnuc.in'.]
+to obtain a copy of the gcc source distribution, replace the `-g1' with
+`-mno-abicalls' in the definition of LIBGCC2_CFLAGS in the Makefile in
+the gcc source directory, type `make libgcc.a', and then copy libgcc.a
+to /usr/lib/nonshared.  [To use a directory other than
+/usr/lib/nonshared, you will have to edit `configure', `scripts/ml.in',
+and `scripts/mgnuc.in'.]
 
 Once you have done that, you can reinstall Mercury;
 `configure' should detect that using gcc labels now works. 
@@ -30,11 +31,4 @@ The default grade will be set to `reg.gc', since shared libraries
 give you small executables and short link times.  But for
 large programs, you should set GRADE=asm_fast.gc in your Mmake file
 for considerably improved performance.
-
-XXX
-You will also need to change
-	AS=as
-to
-	AS=as -non_shared
-in boehm_gc/Makefile to get asm_fast.gc working.
 
