@@ -18,6 +18,7 @@
 # A directory $(INSTALL_PREFIX)/lib/mercury will be created, if
 # necessary, and everything put there.
 #
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 #INSTALL_PREFIX = $(HOME)/mercury
 
 # Omit this line if you want to install the default grades.

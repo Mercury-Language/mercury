@@ -75,11 +75,14 @@
 **  automatically called at the right time.
 */
 
+#ifndef ME_SCOPEHANDLE_DEFINED
+#define ME_SCOPEHANDLE_DEFINED
 typedef struct {
 	MR_Word *var;
 	MR_Word insideval;
 	MR_Word outsideval;
 } *ME_ScopeHandle;
+#endif
 
 void ME_enter_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason);
 void ME_exit_scope_failing(ME_ScopeHandle handle, MR_untrail_reason reason);

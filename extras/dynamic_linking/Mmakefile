@@ -1,10 +1,12 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2001 The University of Melbourne.
+# Copyright (C) 2000-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 -include ../Mmake.params
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 # Use shared libraries, since they're needed for dynamic linking
 MGNUCFLAGS = --pic-reg
@@ -19,6 +21,8 @@ MLFLAGS += --no-strip
 
 main_target: libdl
 depend: dl.depend dl_test.depend dl_test2.depend hello.depend
+
+install: libdl.install
 
 #-----------------------------------------------------------------------------#
 #

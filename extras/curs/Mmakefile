@@ -21,6 +21,7 @@
 # necessary, and everything put there.
 #
 #INSTALL_PREFIX = $(HOME)/mercury
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 # Omit this line if you want to install the default grades.
 # Edit this line if you want to install with different grades.
@@ -39,6 +40,9 @@ MLLIBS = -lpanel -lncurses
 #EXTRA_LIBRARIES = curs
 
 -include ../Mmake.params
+
+# Needed to avoid conflicts with `bool'
+CFLAGS = -DMERCURY_BOOTSTRAP_H
 
 MAIN_TARGET = libcurs
 depend: curs.depend

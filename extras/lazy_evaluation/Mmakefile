@@ -1,22 +1,10 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000, 2002 The University of Melbourne.
+# Copyright (C) 2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
-
--include ../Mmake.params
-
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
-
-.PHONY: default_target
-default_target: tryit libxml
-
-.PHONY: depend
-depend: tryit.depend xml.depend
-
-.PHONY: install
-install: libxml.install
-
-.PHONY: check
-check:
-	true
+default_target: all
+depend: lazy_list.depend lazy_list_test.depend
+all: liblazy_list lazy_list_test
+install: liblazy_list.install

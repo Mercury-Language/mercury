@@ -1,18 +1,22 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2001 The University of Melbourne.
+# Copyright (C) 2000-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 -include ../Mmake.params
 
-default_target: tests
+default_target: all
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 TESTS = philo philo2 philo3 midimon
 
-depend:		$(TESTS:%=%.depend)
+depend:		concurrency.depend $(TESTS:%=%.depend)
+all:		libconcurrency tests
+install:	libconcurrency.install
 tests:		$(TESTS)
 
 .PHONY: check
-check: tests
+check: all
 		true

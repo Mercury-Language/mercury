@@ -365,7 +365,7 @@ void free(void *ptr)
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", start(IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     initscr();                          /* Start the show */
 
@@ -450,7 +450,7 @@ init_pair(FG_BG(COLOR_WHITE, COLOR_WHITE),      COLOR_WHITE, COLOR_WHITE);
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", stop(IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     endwin();
     IO = IO0;
@@ -467,7 +467,7 @@ session(P) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", rows_cols(Rows::out, Cols::out, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     getmaxyx(stdscr, Rows, Cols);
     IO = IO0;
@@ -477,7 +477,7 @@ session(P) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", move(Row::in, Col::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     move(Row, Col);
     IO = IO0;
@@ -487,7 +487,7 @@ session(P) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", clear(IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     clear();
     IO = IO0;
@@ -497,7 +497,7 @@ session(P) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", addch(Attr::in, CharCode::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     addch((chtype)Attr | (chtype)CharCode);
     IO = IO0;
@@ -515,21 +515,21 @@ addstr(Attr, Str) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", attr_on(Attr::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     attron(Attr);
     IO = IO0;
 
 ").
 :- pragma foreign_proc("C", attr_off(Attr::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     attroff(Attr);
     IO = IO0;
 
 ").
 :- pragma foreign_proc("C", attr_set(Attr::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     attrset(Attr);
     IO = IO0;
@@ -539,7 +539,7 @@ addstr(Attr, Str) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", doupdate(IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     doupdate();
     IO = IO0;
@@ -549,7 +549,7 @@ addstr(Attr, Str) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", getch(CharCode::out, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     CharCode = getch();
     IO = IO0;
@@ -559,217 +559,217 @@ addstr(Attr, Str) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", key_down = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_DOWN;
 ").
 :- pragma foreign_proc("C", key_up = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_UP;
 ").
 :- pragma foreign_proc("C", key_left = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_LEFT;
 ").
 :- pragma foreign_proc("C", key_right = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_RIGHT;
 ").
 :- pragma foreign_proc("C", key_home = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_HOME;
 ").
 :- pragma foreign_proc("C", key_backspace = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_BACKSPACE;
 ").
 :- pragma foreign_proc("C", key_f(N::in) = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_F( N);
 ").
 :- pragma foreign_proc("C", key_del = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_DC;
 ").
 :- pragma foreign_proc("C", key_ins = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_IC;
 ").
 :- pragma foreign_proc("C", key_pageup = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_NPAGE;
 ").
 :- pragma foreign_proc("C", key_pagedown = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_PPAGE;
 ").
 :- pragma foreign_proc("C", key_a1 = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_A1;
 ").
 :- pragma foreign_proc("C", key_a3 = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_A3;
 ").
 :- pragma foreign_proc("C", key_b2 = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_B2;
 ").
 :- pragma foreign_proc("C", key_c1 = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_C1;
 ").
 :- pragma foreign_proc("C", key_c3 = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_C3;
 ").
 :- pragma foreign_proc("C", key_enter = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_ENTER;
 ").
 :- pragma foreign_proc("C", key_end = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_END;
 ").
 :- pragma foreign_proc("C", key_resize = (K::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     K = KEY_RESIZE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", acs_block = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_BLOCK;
 ").
 :- pragma foreign_proc("C", acs_board = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_BOARD;
 ").
 :- pragma foreign_proc("C", acs_btee = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_BTEE;
 ").
 :- pragma foreign_proc("C", acs_bullet = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_BULLET;
 ").
 :- pragma foreign_proc("C", acs_ckboard = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_CKBOARD;
 ").
 :- pragma foreign_proc("C", acs_darrow = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_DARROW;
 ").
 :- pragma foreign_proc("C", acs_degree = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_DEGREE;
 ").
 :- pragma foreign_proc("C", acs_diamond = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_DIAMOND;
 ").
 :- pragma foreign_proc("C", acs_gequal = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_GEQUAL;
 ").
 :- pragma foreign_proc("C", acs_hline = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_HLINE;
 ").
 :- pragma foreign_proc("C", acs_lantern = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LANTERN;
 ").
 :- pragma foreign_proc("C", acs_larrow = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LARROW;
 ").
 :- pragma foreign_proc("C", acs_lequal = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LEQUAL;
 ").
 :- pragma foreign_proc("C", acs_llcorner = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LLCORNER;
 ").
 :- pragma foreign_proc("C", acs_lrcorner = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LRCORNER;
 ").
 :- pragma foreign_proc("C", acs_ltee = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_LTEE;
 ").
 :- pragma foreign_proc("C", acs_nequal = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_NEQUAL;
 ").
 :- pragma foreign_proc("C", acs_pi = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_PI;
 ").
 :- pragma foreign_proc("C", acs_plminus = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_PLMINUS;
 ").
 :- pragma foreign_proc("C", acs_plus = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_PLUS;
 ").
 :- pragma foreign_proc("C", acs_rarrow = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_RARROW;
 ").
 :- pragma foreign_proc("C", acs_rtee = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_RTEE;
 ").
 :- pragma foreign_proc("C", acs_s1 = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_S1;
 ").
 :- pragma foreign_proc("C", acs_s3 = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_S3;
 ").
 :- pragma foreign_proc("C", acs_s7 = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_S7;
 ").
 :- pragma foreign_proc("C", acs_s9 = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_S9;
 ").
 :- pragma foreign_proc("C", acs_sterling = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_STERLING;
 ").
 :- pragma foreign_proc("C", acs_ttee = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_TTEE;
 ").
 :- pragma foreign_proc("C", acs_uarrow = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_UARROW;
 ").
 :- pragma foreign_proc("C", acs_ulcorner = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_ULCORNER;
 ").
 :- pragma foreign_proc("C", acs_urcorner = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_URCORNER;
 ").
 :- pragma foreign_proc("C", acs_vline = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = ACS_VLINE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", curs:((Attr1::in) + (Attr2::in)) = (Attr::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     Attr = (chtype)Attr1 | (chtype)Attr2;
 
@@ -778,81 +778,81 @@ addstr(Attr, Str) -->
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", normal = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_NORMAL;
 ").
 :- pragma foreign_proc("C", standout = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_STANDOUT;
 ").
 :- pragma foreign_proc("C", underline = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_UNDERLINE;
 ").
 :- pragma foreign_proc("C", reverse = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_REVERSE;
 ").
 :- pragma foreign_proc("C", blink = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_BLINK;
 ").
 :- pragma foreign_proc("C", dim = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_DIM;
 ").
 :- pragma foreign_proc("C", bold = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_BOLD;
 ").
 :- pragma foreign_proc("C", invis = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = A_INVIS;
 ").
 :- pragma foreign_proc("C", fg_bg(Fg::in, Bg::in) = (A::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     A = COLOR_PAIR(FG_BG(Fg, Bg));
 ").
 
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", black = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_BLACK;
 ").
 :- pragma foreign_proc("C", red = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_RED;
 ").
 :- pragma foreign_proc("C", green = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_GREEN;
 ").
 :- pragma foreign_proc("C", yellow = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_YELLOW;
 ").
 :- pragma foreign_proc("C", blue = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_BLUE;
 ").
 :- pragma foreign_proc("C", magenta = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_MAGENTA;
 ").
 :- pragma foreign_proc("C", cyan = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_CYAN;
 ").
 :- pragma foreign_proc("C", white = (C::out),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
     C = COLOR_WHITE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
 :- pragma foreign_proc("C", border(IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     border(0, 0, 0, 0, 0, 0, 0, 0);
     IO = IO0;
@@ -860,7 +860,7 @@ addstr(Attr, Str) -->
 ").
 
 :- pragma foreign_proc("C", hline(C::in, N::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     hline(C, N);
     IO = IO0;
@@ -868,7 +868,7 @@ addstr(Attr, Str) -->
 ").
 
 :- pragma foreign_proc("C", vline(C::in, N::in, IO0::di, IO::uo),
-    [will_not_call_mercury], "
+    [will_not_call_mercury, promise_pure], "
 
     vline(C, N);
     IO = IO0;
@@ -897,7 +897,7 @@ addstr(Attr, Str) -->
 
     :- pragma foreign_proc("C", new(Rows::in, Cols::in, Row::in, Col::in, Attr::in,
                             Panel::out, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         WINDOW *w = newwin(Rows, Cols, Row, Col);
         scrollok(w, TRUE);
@@ -913,7 +913,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", delete(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         delwin(panel_window((PANEL *)Panel));
         del_panel((PANEL *)Panel);
@@ -925,7 +925,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", raise(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         top_panel((PANEL *)Panel);
 
@@ -936,7 +936,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", lower(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         bottom_panel((PANEL *)Panel);
 
@@ -947,7 +947,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", hide(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         hide_panel((PANEL *)Panel);
 
@@ -958,7 +958,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", reveal(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         show_panel((PANEL *)Panel);
 
@@ -969,7 +969,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", relocate(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         move_panel((PANEL *)Panel, Row, Col);
 
@@ -980,7 +980,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", clear(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wclear(panel_window((PANEL *)Panel));
 
@@ -991,7 +991,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", move(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wmove(panel_window((PANEL *)Panel), Row, Col);
 
@@ -1002,7 +1002,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", addch(Panel::in, Attr::in, CharCode::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         waddch(panel_window((PANEL *)Panel), (chtype)Attr | (chtype)CharCode);
 
@@ -1023,21 +1023,21 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", attr_on(Panel::in, Attr::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wattron(panel_window((PANEL *)Panel), Attr);
         IO = IO0;
 
     ").
     :- pragma foreign_proc("C", attr_off(Panel::in, Attr::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wattroff(panel_window((PANEL *)Panel), Attr);
         IO = IO0;
 
     ").
     :- pragma foreign_proc("C", attr_set(Panel::in, Attr::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wattrset(panel_window((PANEL *)Panel), Attr);
         IO = IO0;
@@ -1047,7 +1047,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", update_panels(IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         update_panels();
         doupdate();
@@ -1059,7 +1059,7 @@ addstr(Attr, Str) -->
     % ------------------------------------------------------------------------ %
 
     :- pragma foreign_proc("C", border(Panel::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wborder(panel_window((PANEL *)Panel), 0, 0, 0, 0, 0, 0, 0, 0);
         IO = IO0;
@@ -1067,7 +1067,7 @@ addstr(Attr, Str) -->
     ").
 
     :- pragma foreign_proc("C", hline(Panel::in, C::in, N::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         whline(panel_window((PANEL *)Panel), C, N);
         IO = IO0;
@@ -1075,7 +1075,7 @@ addstr(Attr, Str) -->
     ").
 
     :- pragma foreign_proc("C", vline(Panel::in, C::in, N::in, IO0::di, IO::uo),
-        [will_not_call_mercury], "
+        [will_not_call_mercury, promise_pure], "
 
         wvline(panel_window((PANEL *)Panel), C, N);
         IO = IO0;

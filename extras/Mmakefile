@@ -1,0 +1,48 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2002 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# This Mmakefile provides some targets for building and installing most
+# of the libraries in this `extras' distribution.
+#
+# Note that not all subdirectories of `extras' are set up for
+# automatic installation.  This Mmakefile will only build those which are.
+# In addition, libraries which are not reasonably portable won't get built.
+# The following subdirectories are not included in the list that gets
+# built by this Mmakefile, because they are often won't install
+# "out-of-the-box":
+#
+#	graphics 	you need to have tcl/tk or OpenGL installed
+#	morphine 	see morphine/README for instructions on how to install
+#	concurrency 	doesn't work in all compilation grades
+#	trailed_update 	doesn't work in all compilation grades
+#	logged_output 	requires a specially-configured Mercury installation
+#	odbc 		requires an ODBC driver be installed
+#	quickcheck 	no `install' target
+#	stream 		no `install' target; also has some modules shared with
+#			the `concurrency' package.
+
+SUBDIRS = cgi complex_numbers curs curses dynamic_linking \
+	lazy_evaluation lex moose posix \
+	references xml
+
+MMAKEFLAGS =
+
+main_target: all
+
+depend: $(SUBDIRS:%=%_depend)
+all: $(SUBDIRS)
+install: all $(SUBDIRS:%=%_install)
+
+$(SUBDIRS:%=%_depend): %_depend:
+	cd $* && $(MMAKE) $(MMAKEFLAGS) depend
+
+$(SUBDIRS): %:
+	cd $* && $(MMAKE) $(MMAKEFLAGS) 
+
+$(SUBDIRS:%=%_install): %_install:
+	cd $* && $(MMAKE) $(MMAKEFLAGS) install
+
+.PHONY: $(SUBDIRS)
