@@ -319,7 +319,10 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 	    (pred(TargetFile0::out) is nondet :-
 		(
 			Suffix = target_extension(Globals,
-				ModuleTargetType)
+				ModuleTargetType),
+			% Allowing these will cause multiple solutions,
+			% which will cause classification to fail.
+			ModuleTargetType \= factt_object(_)
 		->
 			ModuleNameStr = ModuleNameStr0,
 			TargetType0 = module_target(ModuleTargetType)

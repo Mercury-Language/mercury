@@ -156,7 +156,7 @@
 	% to the value of P.
 :- pred maybe_pic_object_file_extension(globals, pic, string).
 :- mode maybe_pic_object_file_extension(in, in, out) is det.
-:- mode maybe_pic_object_file_extension(in, out, in) is nondet.
+:- mode maybe_pic_object_file_extension(in, out, in) is semidet.
 
 	% Same as above except the globals, G, are obtained from the io__state.
 :- pred maybe_pic_object_file_extension(pic::in, string::out,
@@ -1727,13 +1727,40 @@ make_all_module_command(Command0, MainModule, AllModules, Command) -->
 
 %-----------------------------------------------------------------------------%
 
-maybe_pic_object_file_extension(Globals, pic, Ext) :-
-	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
-maybe_pic_object_file_extension(Globals, link_with_pic, ObjExt) :-
-	globals__lookup_string_option(Globals,
-		link_with_pic_object_file_extension, ObjExt).
-maybe_pic_object_file_extension(Globals, non_pic, Ext) :-
-	globals__lookup_string_option(Globals, object_file_extension, Ext).
+:- pragma promise_pure(maybe_pic_object_file_extension/3).
+maybe_pic_object_file_extension(Globals::in, PIC::in, Ext::out) :-
+	( PIC = non_pic,
+		globals__lookup_string_option(Globals,
+			object_file_extension, Ext)
+	; PIC = pic,
+		globals__lookup_string_option(Globals,
+			pic_object_file_extension, Ext)
+	; PIC = link_with_pic,
+		globals__lookup_string_option(Globals,
+			link_with_pic_object_file_extension, Ext)
+	).
+maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
+	(
+		% This test must come first -- if the architecture doesn't
+		% need special treatment for PIC, we should always return
+		% `non_pic'.  `mmc --make' depends on this.
+		globals__lookup_string_option(Globals,
+			object_file_extension, Ext)
+	->
+		PIC = non_pic
+	;
+		globals__lookup_string_option(Globals,
+			pic_object_file_extension, Ext)
+	->
+		PIC = pic
+	;
+		globals__lookup_string_option(Globals,
+			link_with_pic_object_file_extension, Ext)
+ 	->
+		PIC = link_with_pic
+	;
+		fail
+	).
 
 maybe_pic_object_file_extension(PIC, ObjExt) -->
 	globals__io_get_globals(Globals),

@@ -672,11 +672,15 @@ target_extension(_, asm_code(link_with_pic)) = ".s".
 target_extension(_, asm_code(pic)) = ".pic_s".
 target_extension(Globals, object_code(PIC)) = Ext :-
 	maybe_pic_object_file_extension(Globals, PIC, Ext).
-target_extension(Globals, foreign_object(PIC, c)) = Ext :-
-	maybe_pic_object_file_extension(Globals, PIC, Ext).
 
 		% Note we use the bogus extension "bogus ext" so that
 		% the reverse mode of this function remains nondet.
+target_extension(_, foreign_object(PIC, c)) = "bogus ext" :-
+	( PIC = pic
+	; PIC = link_with_pic
+	; PIC = non_pic
+	),
+	unexpected(this_file, "C foreign_object").
 target_extension(_, foreign_object(PIC, csharp)) = "bogus ext" :-
 	( PIC = pic
 	; PIC = link_with_pic

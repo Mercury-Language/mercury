@@ -35,6 +35,9 @@ rebuild.runtest:
 	$(MCM) --rebuild --verbose-make rebuild > rebuild.err2 2>&1
 	grep '^Making rebuild$(EXT_FOR_EXE)$$' rebuild.err2
 
+# The compiler used to fail when invoked as `mmc --make build_object.o'.
+build_object.runtest: build_object.o
+
 .PHONY: install_libs
 install_libs: start_runtests_local
 	cd lib; \
