@@ -324,6 +324,7 @@ then
 		ln -s $root/trace .
 	fi
 	if $copy_boehm_gc
+	then
 		# Remove symbolic link to the stage 1 gc if it's present,
 		# which it can be with the -2 option.
 		rm boehm_gc
