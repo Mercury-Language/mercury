@@ -586,11 +586,20 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 	call_gen__save_variables(OutArgs, SaveCode),
 		% place the immediate input arguments in registers
 		% starting at r4.
-	call_gen__generate_immediate_args(InVars, InVars, 4, ImmediateCode),
+	call_gen__generate_immediate_args(InVars, 4, InLocs, ImmediateCode),
 	code_info__generate_stack_livevals(OutArgs, LiveVals0),
-	{ set__insert_list(LiveVals0, [reg(r(1)), reg(r(2)), reg(r(3))],
-		LiveVals) },
-	call_gen__generate_return_livevals(OutArgs, [], OutLiveVals),
+	{ set__insert_list(LiveVals0,
+		[reg(r(1)), reg(r(2)), reg(r(3)) | InLocs], LiveVals) },
+	(
+		{ CodeModel = model_semi }
+	->
+		{ FirstArg = 2 }
+	;
+		{ FirstArg = 1 }
+	),
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+	{ call_gen__output_args(OutArguments, OutLocs) },
+	call_gen__generate_return_livevals(OutArgs, OutLocs, OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(
 		{ RVal = lval(reg(r(1))) }
@@ -617,14 +626,6 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 			- "setup and call higher order pred",
 		label(ReturnLabel) - "Continuation label"
 	]) },
-	(
-		{ CodeModel = model_semi }
-	->
-		{ FirstArg = 2 }
-	;
-		{ FirstArg = 1 }
-	),
-	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
 	call_gen__rebuild_registers(OutArguments),
 	(
 		{ CodeModel = model_semi }
@@ -644,15 +645,16 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_immediate_args(list(var), list(var), int, code_tree,
+:- pred call_gen__generate_immediate_args(list(var), int, list(lval), code_tree,
 							code_info, code_info).
-:- mode call_gen__generate_immediate_args(in, in, in, out, in, out) is det.
+:- mode call_gen__generate_immediate_args(in, in, out, out, in, out) is det.
 
-call_gen__generate_immediate_args([], _Args, _N, empty) --> [].
-call_gen__generate_immediate_args([V|Vs], Args, N0, Code) -->
-	code_info__place_var(V, reg(r(N0)), Code0),
+call_gen__generate_immediate_args([], _N, [], empty) --> [].
+call_gen__generate_immediate_args([V|Vs], N0, [Lval|Lvals], Code) -->
+	{ Lval = reg(r(N0)) },
+	code_info__place_var(V, Lval, Code0),
 	{ N1 is N0 + 1 },
-	call_gen__generate_immediate_args(Vs, Args, N1, Code1),
+	call_gen__generate_immediate_args(Vs, N1, Lvals, Code1),
 	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
