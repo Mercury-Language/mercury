@@ -49,7 +49,7 @@ require(Goal, Message) :-
 
 :- pragma c_header_code("
 #include <stdio.h>
-#include ""mercury_trace.h""
+#include ""mercury_trace_base.h""
 #include ""mercury_stack_trace.h""
 ").
 
