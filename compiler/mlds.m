@@ -942,7 +942,6 @@ XXX Full exception handling support is not yet implemented.
 			% Compile time garbage collect (ie explicitly
 			% deallocate) the memory used by the lval.
 
-		% XXX the following is still quite tentative
 			% new_object(Target, Tag, Type,
 			%	Size, CtorName, Args, ArgTypes):
 			% Allocate a memory block of the given size,
@@ -963,10 +962,7 @@ XXX Full exception handling support is not yet implemented.
 			maybe(mlds__rval),
 					% The amount of memory that needs to
 					% be allocated for the new object,
-					% measured in bytes.
-					% (XXX would it be better to measure
-					% this in bits or words rather than
-					% bytes?)
+					% measured in words (NOT bytes!).
 			maybe(ctor_name),
 					% The name of the constructor to
 					% invoke.

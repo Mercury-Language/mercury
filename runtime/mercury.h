@@ -271,9 +271,8 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_tuple_0
 
 /*
-** The compiler generates references to this constant.
-** This avoids the need for the mlds__rval type to
-** have a `sizeof' operator.
+** The compiler used to generate references to this constant.
+** XXX This should only be needed for bootstrapping now.
 */
 #ifdef MR_AVOID_MACROS
   enum { mercury__private_builtin__SIZEOF_WORD = sizeof(MR_Word) };

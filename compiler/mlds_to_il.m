@@ -1068,14 +1068,11 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
 			StoreLvalInstrs),
 
-			% XXX some hackery here to get around the MLDS memory
-			% allocation that tries to allocate in bytes.
-		{ Size = yes(binop((*), SizeInWordsRval0, _)) ->
-			SizeInWordsRval = SizeInWordsRval0
-		; Size = yes(SizeInWordsRval0) ->
+		{ Size = yes(SizeInWordsRval0) ->
 			SizeInWordsRval = SizeInWordsRval0
 		;
-			% XXX something else
+			% XXX do we need to handle this case?
+			% I think it's needed for --high-level-data
 			error("unknown size in MLDS new_object")
 		},
 		load(SizeInWordsRval, LoadSizeInstrs),

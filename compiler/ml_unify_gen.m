@@ -972,9 +972,6 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		%
 		{ list__length(ArgRvals, NumArgs) },
 		{ SizeInWordsRval = const(int_const(NumArgs)) },
-		{ SizeOfWordRval = ml_sizeof_word_rval },
-		{ SizeInBytesRval = binop((*), SizeInWordsRval,
-			SizeOfWordRval) },
 		
 		%
 		% Generate a `new_object' statement to dynamically allocate
@@ -983,7 +980,7 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 		% with boxed versions of the specified arguments.
 		%
 		{ MakeNewObject = new_object(VarLval, MaybeTag, MLDS_Type,
-			yes(SizeInBytesRval), yes(CtorName), ArgRvals,
+			yes(SizeInWordsRval), yes(CtorName), ArgRvals,
 			MLDS_ArgTypes) },
 		{ MLDS_Stmt = atomic(MakeNewObject) },
 		{ MLDS_Statement = mlds__statement(MLDS_Stmt,
@@ -1207,18 +1204,6 @@ ml_gen_static_const_addr(Var, ConstAddrRval) -->
 
 ml_cons_name(ConsId, ConsName) -->
 	{ hlds_out__cons_id_to_string(ConsId, ConsName) }.
-
-	% Return an rval for the `SIZEOF_WORD' constant.
-	% This constant is supposed to be defined by the Mercury library.
-	% It holds `sizeof(Word)'.  (Using this constant allows us to avoid
-	% hard-coding the word size without having to add support for
-	% `sizeof' to MLDS.)
-	%
-:- func ml_sizeof_word_rval = mlds__rval.
-ml_sizeof_word_rval = SizeofWordRval :-
-	mercury_private_builtin_module(PrivateBuiltin),
-	MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-	SizeofWordRval = lval(var(qual(MLDS_Module, "SIZEOF_WORD"))).
 
 :- pred ml_gen_cons_args(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).

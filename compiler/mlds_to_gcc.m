@@ -2839,28 +2839,10 @@ gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	%
 	% Calculate the size that we're going to allocate.
 	%
-	( { MaybeSize = yes(SizeInBytes0) } ->
-		% Rather than generating a reference to a global variable
-		% mercury__private_builtin__SIZEOF_WORD, we ignore the
-		% word size multiplier, and instead get the word size
-		% from the bytes_per_word option.
-		% XXX This is kludgy.  We should change new_object
-		% so that it has the size in words rather than in bytes.
-		(
-			{ SizeInBytes0 = binop((*), SizeInWords,
-				_SizeOfWord) }
-		->
-			globals__io_lookup_int_option(bytes_per_word,
-				BytesPerWord),
-			{ SizeOfWord = const(int_const(BytesPerWord)) },
-			{ SizeInBytes = binop((*), SizeInWords, SizeOfWord) }
-		;
-			{ sorry(this_file, "unexpected size in new_object") },
-			{ SizeInBytes0 = SizeInBytes }
-		)
-		% For debugging:
-		% io__print("SizeInBytes0 = "), io__print(SizeInBytes0), io__nl,
-		% io__print("SizeInBytes = "), io__print(SizeInBytes), io__nl,
+	( { MaybeSize = yes(SizeInWords) } ->
+		globals__io_lookup_int_option(bytes_per_word, BytesPerWord),
+		{ SizeOfWord = const(int_const(BytesPerWord)) },
+		{ SizeInBytes = binop((*), SizeInWords, SizeOfWord) }
 	;
 		{ sorry(this_file, "new_object with unknown size") }
 	),

@@ -2416,7 +2416,9 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_output_type(Type),
 	io__write_string(", "),
 	( { MaybeSize = yes(Size) } ->
-		mlds_output_rval(Size)
+		io__write_string("("),
+		mlds_output_rval(Size),
+		io__write_string(" * sizeof(MR_Word))")
 	;
 		% XXX what should we do here?
 		io__write_int(-1)
