@@ -66,7 +66,7 @@ insert_entry(const char *name, Code *addr, Word *entry_layout_info)
 	if (MR_profiling) MR_prof_output_addr_decl(name, addr);
 #endif
 
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	if (progdebug) {
 		printf("inserting label %s at %p\n", name, addr);
 	}
@@ -89,7 +89,7 @@ lookup_label_addr(const Code *addr)
 {
 	do_init_entries();
 	do_init_modules();
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	if (progdebug) {
 		printf("looking for label at %p\n", addr);
 	}
@@ -103,7 +103,7 @@ lookup_label_name(const char *name)
 {
 	do_init_entries();
 	do_init_modules();
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 	if (progdebug) {
 		printf("looking for label %s\n", name);
 	}

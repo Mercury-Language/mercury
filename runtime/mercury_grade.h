@@ -139,10 +139,10 @@
   #define MR_GRADE_PART_8	_sa
 #endif
 
-#ifdef SPEED
+#ifndef MR_DEBUG_NONDET_STACK
   #define MR_GRADE_PART_9
 #else
-  #define MR_GRADE_PART_9	_debug
+  #define MR_GRADE_PART_9	_debugNDS
 #endif
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)

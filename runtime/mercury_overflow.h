@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,7 +11,7 @@
 
 #define IF(cond, val)	((cond) ? ((val), (void)0) : (void)0)
 
-#ifdef SPEED
+#ifndef MR_CHECK_FOR_OVERFLOW
 
 #define	heap_overflow_check()		((void)0)
 #define	detstack_overflow_check()	((void)0)
@@ -19,7 +19,7 @@
 #define	nondstack_overflow_check()	((void)0)
 #define	nondstack_underflow_check()	((void)0)
 
-#else /* not SPEED */
+#else /* MR_CHECK_FOR_OVERFLOW */
 
 #include "mercury_regs.h"
 #include "mercury_misc.h"	/* for fatal_error() */
@@ -73,6 +73,6 @@
 				(void)0				\
 			)
 
-#endif /* not SPEED */
+#endif /* MR_CHECK_FOR_OVERFLOW */
 
 #endif /* not MERCURY_OVERFLOW_H */

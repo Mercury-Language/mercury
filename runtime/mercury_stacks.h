@@ -73,13 +73,13 @@
 #define	SUCCIP		(-2)	/* in caller proc, set up at call	*/
 #define	SUCCFR		(-3)	/* frame of caller proc, set up at call	*/
 
-#ifdef	SPEED
-#define	bt_prednm(fr)	"unknown"
-#define	NONDET_FIXED_SIZE_0	4	/* units: words */
+#ifdef MR_DEBUG_NONDET_STACK
+  #define PREDNM		(-4)	/* for debugging, set up at call */
+  #define bt_prednm(fr)	LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
+  #define NONDET_FIXED_SIZE_0	5	/* units: words */
 #else
-#define	PREDNM		(-4)	/* for debugging, set up at call 	*/
-#define	bt_prednm(fr)	LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
-#define	NONDET_FIXED_SIZE_0	5	/* units: words */
+  #define bt_prednm(fr)	"unknown"
+  #define NONDET_FIXED_SIZE_0	4	/* units: words */
 #endif
 
 #define NONDET_FIXED_SIZE	NONDET_FIXED_SIZE_0
@@ -102,7 +102,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifndef	SPEED
+#ifdef	MR_DEBUG_NONDET_STACK
 #define mkframe_save_prednm(prednm) (curprednm = prednm)
 #else
 #define mkframe_save_prednm(prednm) /* nothing */

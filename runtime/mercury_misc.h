@@ -11,7 +11,7 @@
 
 #include "mercury_types.h"	/* for `Code *' */
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 
 extern	void	mkframe_msg(void);
 extern	void	modframe_msg(void);
@@ -31,14 +31,14 @@ extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
 #endif
 
-#if !defined(SPEED) || defined(DEBUG_GOTOS)
+#if defined(MR_DEBUG_GOTOS)
 
 extern	void	goto_msg(/* const */ Code *addr);
 extern	void	reg_msg(void);
 
 #endif
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 
 extern	void	printint(Word n);
 extern	void	printstring(const char *s);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -180,7 +180,7 @@ MemoryZone *nondetstack_zone;
   MemoryZone *heap_zone;
   MemoryZone *solutions_heap_zone;
 #endif
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
   MemoryZone *dumpstack_zone;
   int	dumpindex;
 #endif
@@ -371,7 +371,7 @@ init_zones()
 		zone_table[i].bottom = NULL;
 		zone_table[i].top = NULL;
 		zone_table[i].min = NULL;
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 		zone_table[i].max = NULL;
 #endif
 #ifdef HAVE_MPROTECT
@@ -422,7 +422,7 @@ init_heap(void)
 
 #endif
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	/*
 	** Create the dumpstack, used for debugging stack traces.
 	** Note that we can just make the dumpstack the same size as
@@ -576,7 +576,7 @@ construct_zone(const char *name, int id, Word *base,
 
 	zone->top = (Word *) ((char *)base+total_size);
 	zone->min = (Word *) ((char *)base+offset);
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 	zone->max = zone->min;
 #endif
 
@@ -629,16 +629,17 @@ reset_zone(MemoryZone *zone)
 
 #define STDERR 2
 
-#ifdef	SPEED
+#ifndef	MR_LOWLEVEL_DEBUG
 
 static void 
 print_dump_stack(void)
 {
-	const char *msg = "You can get a stack dump by using grade debug\n";
+	const char *msg =
+		"You can get a stack dump by using `--low-level-debug'\n";
 	write(STDERR, msg, strlen(msg));
 }
 
-#else /* not SPEED */
+#else /* MR_LOWLEVEL_DEBUG */
 
 static void 
 print_dump_stack(void)
@@ -681,7 +682,7 @@ print_dump_stack(void)
 
 } /* end print_dump_stack() */
 
-#endif /* not SPEED */
+#endif /* MR_LOWLEVEL_DEBUG */
 
 #if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	/* try_munprotect is only useful if we have SIGINFO */

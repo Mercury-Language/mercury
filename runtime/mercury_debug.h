@@ -15,9 +15,7 @@
 	#define DEBUG(X)
 #endif
 
-#endif
-
-#if defined(SPEED) && !defined(DEBUG_GOTOS)
+#if !defined(MR_DEBUG_GOTOS)
 
 #define	debuggoto(label)			((void)0)
 #define	debugsreg()				((void)0)
@@ -33,7 +31,7 @@
 
 #endif
 
-#ifdef	SPEED
+#ifndef MR_LOWLEVEL_DEBUG
 
 #define	dump_push_msg(msg)			((void)0)
 #define	dump_pop_msg()				((void)0)
@@ -133,6 +131,8 @@
 
 #define	debugmsg3(msg, arg1, arg2, arg3) \
 	IF (progdebug, (printf(msg, arg1, arg2, arg3)))
+
+#endif /* MR_LOWLEVEL_DEBUG */
 
 #endif /* not MERCURY_DEBUG_H */
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1997 The University of Melbourne.
+** Copyright (C) 1994-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -103,9 +103,9 @@ struct MEMORY_ZONE {
 	Word	*bottom;	/* beginning of the allocated area */
 	Word	*top;		/* end of the allocated area */
 	Word	*min;		/* lowest word of the area to be used */
-#ifndef SPEED
-	Word	*max;		/* highest word of the area to be used */
-#endif
+	Word	*max;		/* highest word of the area to be used;
+				   computed only if MR_LOWLEVEL_DEBUG is
+				   enabled */
 #ifdef HAVE_MPROTECT
 	Word	*redzone_base;	/* beginning of the original redzone */
 	Word	*redzone;	/* beginning of the current redzone */
@@ -133,7 +133,7 @@ extern MemoryZone	*heap_zone;
 extern MemoryZone	*solutions_heap_zone;
 #endif
 
-#ifndef	SPEED
+#ifdef	MR_LOWLEVEL_DEBUG
 extern	MemoryZone	*dumpstack_zone;
 extern	int		dumpindex;
 #endif

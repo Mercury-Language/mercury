@@ -17,7 +17,7 @@ static void print_ordinary_regs(void);
 
 /* debugging messages */
 
-#ifndef SPEED
+#ifdef MR_LOWLEVEL_DEBUG
 
 void 
 mkframe_msg(void)
@@ -211,9 +211,9 @@ pop_msg(Word val, const Word *addr)
 	return;
 }
 
-#endif /* !defined(SPEED) */
+#endif /* defined(MR_LOWLEVEL_DEBUG) */
 
-#if !defined(SPEED) || defined(DEBUG_GOTOS)
+#if defined(MR_DEBUG_GOTOS)
 
 void 
 goto_msg(/* const */ Code *addr)
@@ -249,11 +249,11 @@ reg_msg(void)
 	return;
 }
 
-#endif /* !defined(SPEED) || defined(DEBUG_GOTOS) */
+#endif /* defined(MR_DEBUG_GOTOS) */
 
 /*--------------------------------------------------------------------*/
 
-#if !defined(SPEED) || defined(DEBUG_GOTOS)
+#if defined(MR_DEBUG_GOTOS)
 
 /* debugging printing tools */
 
@@ -297,7 +297,7 @@ printdetstack(const Word *s)
 void 
 printnondstack(const Word *s)
 {
-#ifdef	SPEED
+#ifndef	MR_DEBUG_NONDET_STACK
 	printf("ptr 0x%p, offset %3ld words\n",
 		(const void *) s, (long) (Integer) (s - nondetstack_zone->min));
 #else
@@ -327,7 +327,7 @@ dumpframe(/* const */ Word *fr)
 	printf("frame at ptr 0x%p, offset %3ld words\n",
 		(const void *) fr, 
 		(long) (Integer) (fr - nondetstack_zone->min));
-#ifndef	SPEED
+#ifdef	MR_DEBUG_NONDET_STACK
 	printf("\t predname  %s\n", bt_prednm(fr));
 #endif
 	printf("\t succip    "); printlabel(bt_succip(fr));
@@ -404,7 +404,7 @@ print_ordinary_regs(void)
 	}
 }
 
-#endif /* !defined(SPEED) || defined(DEBUG_GOTOS) */
+#endif /* defined(MR_DEBUG_GOTOS) */
 
 void 
 printlabel(/* const */ Code *w)
