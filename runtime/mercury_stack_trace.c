@@ -212,13 +212,15 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 	while (base_maxfr >= MR_nondet_stack_trace_bottom) {
 		frame_size = base_maxfr - MR_prevfr_slot(base_maxfr);
 		if (frame_size == MR_NONDET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp\n", base_maxfr);
+			fprintf(fp, "%p: nondet temp, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
 				MR_redofr_slot(base_maxfr));
 		} else if (frame_size == MR_DET_TEMP_SIZE) {
-			fprintf(fp, "%p: nondet temp\n", base_maxfr);
+			fprintf(fp, "%p: nondet temp, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
@@ -226,7 +228,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 			fprintf(fp, " detfr:  %p\n",
 				MR_detfr_slot(base_maxfr));
 		} else {
-			fprintf(fp, "%p: ordinary\n", base_maxfr);
+			fprintf(fp, "%p: ordinary, %d words\n",
+				base_maxfr, frame_size);
 			fprintf(fp, " redoip: ");
 			printlabel(MR_redoip_slot(base_maxfr));
 			fprintf(fp, " redofr: %p\n",
