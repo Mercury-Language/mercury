@@ -108,6 +108,8 @@ server(TimeOut, Debug, Deep) -->
 		Debug, 0, Deep).
 
 :- pragma foreign_decl("C", "
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 ").
 
