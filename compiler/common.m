@@ -168,7 +168,7 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 		)
 	;
 		Unification0 = deconstruct(Var, ConsId,
-				ArgVars, UniModes, _, _),
+				ArgVars, UniModes, CanFail, _),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		(
 				% Don't optimise partially instantiated
@@ -194,10 +194,15 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 			OldStruct = structure(_, _, _, OldArgVars),
 			common__create_output_unifications(GoalInfo0, ArgVars,
 				OldArgVars, UniModes, Goals, Info0, Info1),
-			simplify_info_set_requantify(Info1, Info2),
 			Goal = conj(Goals),
 			pd_cost__goal(Goal0 - GoalInfo0, Cost),
-			simplify_info_incr_cost_delta(Info2, Cost, Info)
+			simplify_info_incr_cost_delta(Info1, Cost, Info2),
+			simplify_info_set_requantify(Info2, Info3),
+			( CanFail = can_fail ->
+				simplify_info_set_rerun_det(Info3, Info)
+			;	
+				Info = Info3
+			)
 		;
 			Goal = Goal0,
 			common__record_cell(Var, ConsId, ArgVars, Info0, Info)
@@ -502,7 +507,13 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, Goal0,
 				Structs1, SeenCalls0),
 			pd_cost__goal(Goal0 - GoalInfo, Cost),
 			simplify_info_incr_cost_delta(Info2, Cost, Info3),
-			simplify_info_set_requantify(Info3, Info4)
+			simplify_info_set_requantify(Info3, Info4),
+			goal_info_get_determinism(GoalInfo, Detism0),
+			( Detism0 \= det ->
+				simplify_info_set_rerun_det(Info4, Info5)
+			;
+				Info5 = Info4
+			)
 		;
 			goal_info_get_context(GoalInfo, Context),
 			ThisCall = call_args(Context, InputArgs, OutputArgs),
@@ -511,7 +522,7 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, Goal0,
 			CommonInfo = common(Eqv0, Structs0,
 				Structs1, SeenCalls),
 			Goal = Goal0,
-			Info4 = Info0
+			Info5 = Info0
 		)
 	;
 		goal_info_get_context(GoalInfo, Context),
@@ -519,9 +530,9 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, Goal0,
 		map__det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
 		CommonInfo = common(Eqv0, Structs0, Structs1, SeenCalls),
 		Goal = Goal0,
-		Info4 = Info0
+		Info5 = Info0
 	),
-	simplify_info_set_common_info(Info4, CommonInfo, Info).
+	simplify_info_set_common_info(Info5, CommonInfo, Info).
 
 %---------------------------------------------------------------------------%
 

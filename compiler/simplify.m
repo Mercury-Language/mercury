@@ -996,7 +996,9 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 			Info0, Info1),
 		goal_info_get_context(GoalInfo0, Context),
 		simplify_info_add_msg(Info1, ite_cond_cannot_fail(Context),
-			Info)
+			Info2),
+		simplify_info_set_requantify(Info2, Info3),
+		simplify_info_set_rerun_det(Info3, Info)
 	; CondSolns0 = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		det_negation_det(CondDetism0, MaybeNegDetism),
@@ -1040,14 +1042,18 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 			Info0, Info1),
 		goal_info_get_context(GoalInfo0, Context),
 		simplify_info_add_msg(Info1, ite_cond_cannot_succeed(Context),
-			Info)
+			Info2),
+		simplify_info_set_requantify(Info2, Info3),
+		simplify_info_set_rerun_det(Info3, Info)
 	; Else0 = disj([]) - _ ->
 		% (A -> C ; fail) is equivalent to (A, C)
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
 		list__append(CondList, ThenList, List),
 		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
-			Info0, Info)
+			Info0, Info1),
+		simplify_info_set_requantify(Info1, Info2),
+		simplify_info_set_rerun_det(Info2, Info)
 	;
 		%
 		% recursively simplify the sub-goals,
