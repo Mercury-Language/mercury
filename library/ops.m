@@ -113,98 +113,103 @@ ops__lookup_op(_OpTable, Name) :-
 :- mode ops__op_table(in, in, out, out) is semidet.
 :- mode ops__op_table(in, out, out, out) is nondet.
 
-ops__op_table("*", after, yfx, 400).
-ops__op_table("**", after, xfy, 200).
-ops__op_table("+", after, yfx, 500).
-ops__op_table("+", before, fx, 500).
-ops__op_table(",", after, xfy, 1000).
-ops__op_table("&", after, xfy, 1025).
-ops__op_table("-", after, yfx, 500).
-ops__op_table("-", before, fx, 200).
-ops__op_table("--->", after, xfy, 1179).
-ops__op_table("-->", after, xfx, 1200).
-ops__op_table("->", after, xfy, 1050).
-ops__op_table(".", after, xfy, 600).
-ops__op_table("/", after, yfx, 400).
-ops__op_table("//", after, yfx, 400).
-ops__op_table("/\\", after, yfx, 500).
-ops__op_table(":", after, xfy, 600).
-ops__op_table(":-", after, xfx, 1200).
-ops__op_table(":-", before, fx, 1200).
-ops__op_table("::", after, xfx, 1175).
-ops__op_table(";", after, xfy, 1100).
-ops__op_table("<", after, xfx, 700).
-ops__op_table("<<", after, yfx, 400).
-ops__op_table("<=", after, xfy, 920).
-ops__op_table("<=>", after, xfy, 920).
-ops__op_table("=", after, xfx, 700).
-ops__op_table("=..", after, xfx, 700).
-ops__op_table("=:=", after, xfx, 700).
-ops__op_table("=<", after, xfx, 700).
-ops__op_table("==", after, xfx, 700).
-ops__op_table("=>", after, xfy, 920).
-ops__op_table("=\\=", after, xfx, 700).
-ops__op_table(">", after, xfx, 700).
-ops__op_table(">=", after, xfx, 700).
-ops__op_table(">>", after, yfx, 400).
-ops__op_table("?-", before, fx, 1200).
-ops__op_table("@<", after, xfx, 700).
-ops__op_table("@=<", after, xfx, 700).
-ops__op_table("@>", after, xfx, 700).
-ops__op_table("@>=", after, xfx, 700).
-ops__op_table("\\", before, fx, 200).
-ops__op_table("\\+", before, fy, 900).
-ops__op_table("\\/", after, yfx, 500).
-ops__op_table("\\=", after, xfx, 700).
-ops__op_table("\\==", after, xfx, 700).
-ops__op_table("^", after, xfy, 200).
-ops__op_table("all", before, fxy, 950).
-ops__op_table("and", after, xfy, 720).
-ops__op_table("div", after, yfx, 400).
-ops__op_table("else", after, xfy, 1170).
-ops__op_table("end_module", before, fx, 1199).
-ops__op_table("export_adt", before, fx, 1199).
-ops__op_table("export_cons", before, fx, 1199).
-ops__op_table("export_module", before, fx, 1199).
-ops__op_table("export_op", before, fx, 1199).
-ops__op_table("export_pred", before, fx, 1199).
-ops__op_table("export_sym", before, fx, 1199).
-ops__op_table("export_type", before, fx, 1199).
-ops__op_table("func", before, fx, 1180).
-ops__op_table("if", before, fx, 1160).
-ops__op_table("import_adt", before, fx, 1199).
-ops__op_table("import_cons", before, fx, 1199).
-ops__op_table("import_module", before, fx, 1199).
-ops__op_table("import_op", before, fx, 1199).
-ops__op_table("import_pred", before, fx, 1199).
-ops__op_table("import_sym", before, fx, 1199).
-ops__op_table("import_type", before, fx, 1199).
-ops__op_table("inst", before, fx, 1199).
-ops__op_table("is", after, xfx, 701).
-ops__op_table("lambda", before, fxy, 950).
-ops__op_table("mod", after, yfx, 400).
-ops__op_table("mode", before, fx, 1199).
-ops__op_table("module", before, fx, 1199).
-ops__op_table("not", before, fy, 900).
-ops__op_table("or", after, xfy, 740).
-ops__op_table("pragma", before, fx, 1199).
-ops__op_table("pred", before, fx, 1180).
-ops__op_table("rem", after, yfx, 400).
-ops__op_table("rule", before, fx, 1199).
-ops__op_table("some", before, fxy, 950).
-ops__op_table("then", after, xfx, 1150).
-ops__op_table("type", before, fx, 1180).
-ops__op_table("use_adt", before, fx, 1199).
-ops__op_table("use_cons", before, fx, 1199).
-ops__op_table("use_module", before, fx, 1199).
-ops__op_table("use_op", before, fx, 1199).
-ops__op_table("use_pred", before, fx, 1199).
-ops__op_table("use_sym", before, fx, 1199).
-ops__op_table("use_type", before, fx, 1199).
-ops__op_table("when", after, xfx, 900).
-ops__op_table("where", after, xfx, 1175).
-ops__op_table("~", before, fy, 900).
-ops__op_table("~=", after, xfx, 700).
+ops__op_table("*", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("**", after, xfy, 200).		% standard ISO Prolog
+ops__op_table("+", after, yfx, 500).		% standard ISO Prolog
+ops__op_table("+", before, fx, 500).		% traditional Prolog (not ISO)
+ops__op_table(",", after, xfy, 1000).		% standard ISO Prolog
+ops__op_table("&", after, xfy, 1025).		% Mercury extension
+ops__op_table("-", after, yfx, 500).		% standard ISO Prolog
+ops__op_table("-", before, fx, 200).		% standard ISO Prolog
+ops__op_table("--->", after, xfy, 1179).	% Mercury extension
+ops__op_table("-->", after, xfx, 1200).		% standard ISO Prolog
+ops__op_table("->", after, xfy, 1050).		% standard ISO Prolog
+ops__op_table(".", after, xfy, 600).		% traditional Prolog (not ISO)
+ops__op_table("/", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("//", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("/\\", after, yfx, 500).		% standard ISO Prolog
+ops__op_table(":", after, xfy, 600).		% different precedence in ISO?
+ops__op_table(":-", after, xfx, 1200).		% standard ISO Prolog
+ops__op_table(":-", before, fx, 1200).		% standard ISO Prolog
+ops__op_table("::", after, xfx, 1175).		% Mercury extension
+ops__op_table(";", after, xfy, 1100).		% standard ISO Prolog
+ops__op_table("<", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("<<", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("<=", after, xfy, 920).		% Mercury/NU-Prolog extension
+ops__op_table("<=>", after, xfy, 920).		% Mercury/NU-Prolog extension
+ops__op_table("=", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("=..", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("=:=", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("=<", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("==", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("=>", after, xfy, 920).		% Mercury/NU-Prolog extension
+ops__op_table("=\\=", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table(">", after, xfx, 700).		% standard ISO Prolog
+ops__op_table(">=", after, xfx, 700).		% standard ISO Prolog
+ops__op_table(">>", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("?-", before, fx, 1200).		% standard ISO Prolog (*)
+ops__op_table("@<", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("@=<", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("@>", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("@>=", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("\\", before, fx, 200).		% standard ISO Prolog
+ops__op_table("\\+", before, fy, 900).		% standard ISO Prolog
+ops__op_table("\\/", after, yfx, 500).		% standard ISO Prolog
+ops__op_table("\\=", after, xfx, 700).		% standard ISO Prolog
+ops__op_table("\\==", after, xfx, 700).		% standard ISO Prolog (*)
+ops__op_table("^", after, xfy, 200).		% standard ISO Prolog
+ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension
+ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
+ops__op_table("div", after, yfx, 400).		% standard ISO Prolog
+ops__op_table("else", after, xfy, 1170).	% Mercury/NU-Prolog extension
+ops__op_table("end_module", before, fx, 1199).	% Mercury extension
+ops__op_table("export_adt", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("export_cons", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("export_module", before, fx, 1199). % Mercury extension (NYI)
+ops__op_table("export_op", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("export_pred", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("export_sym", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("export_type", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("func", before, fx, 1180).	% Mercury extension
+ops__op_table("if", before, fx, 1160).		% Mercury/NU-Prolog extension
+ops__op_table("import_adt", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("import_cons", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("import_module", before, fx, 1199). % Mercury extension
+ops__op_table("import_op", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("import_pred", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("import_sym", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("import_type", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("inst", before, fx, 1199).	% Mercury extension
+ops__op_table("is", after, xfx, 701).		% ISO Prolog says prec 700
+ops__op_table("lambda", before, fxy, 950).	% Mercury extension
+ops__op_table("mod", after, xfx, 400).		% Standard ISO Prolog
+ops__op_table("mode", before, fx, 1199).	% Mercury extension
+ops__op_table("module", before, fx, 1199).	% Mercury extension
+ops__op_table("not", before, fy, 900).		% Mercury/NU-Prolog extension
+ops__op_table("or", after, xfy, 740).		% NU-Prolog extension
+ops__op_table("pragma", before, fx, 1199).	% Mercury extension
+ops__op_table("pred", before, fx, 1180).	% Mercury/NU-Prolog extension
+ops__op_table("rem", after, xfx, 400).		% Standard ISO Prolog
+ops__op_table("rule", before, fx, 1199).	% NU-Prolog extension
+ops__op_table("some", before, fxy, 950).	% Mercury/NU-Prolog extension
+ops__op_table("then", after, xfx, 1150).	% Mercury/NU-Prolog extension
+ops__op_table("type", before, fx, 1180).	% Mercury extension
+ops__op_table("use_adt", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_cons", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_module", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_op", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_pred", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_sym", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("use_type", before, fx, 1199).	% Mercury extension (NYI)
+ops__op_table("when", after, xfx, 900).		% NU-Prolog extension (*)
+ops__op_table("where", after, xfx, 1175).	% NU-Prolog extension (*)
+ops__op_table("~", before, fy, 900).		% Goedel (*)
+ops__op_table("~=", after, xfx, 700).		% NU-Prolog (*)
+
+% (*) means that the operator is not useful in Mercury
+%     and is provided only for compatibility.
+% (NYI) means that the operator is reserved for some Not Yet Implemented
+%     future purpose
 
 ops__init_op_table(ops__table).
 
