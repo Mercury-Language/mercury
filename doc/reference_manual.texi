@@ -3682,6 +3682,9 @@ and if includes both, then it is both declaration and definition.
 
 It is an error to declare a sub-module twice, or to define it twice.
 It is an error to define a sub-module without declaring it.
+As mentioned earlier, it is an error to define a sub-module in the
+interface section of its parent module.
+
 If a sub-module is declared but not explicitly defined,
 then there is an implicit definition with an empty implementation section
 for that sub-module (this will result in an error, if the interface
@@ -3721,14 +3724,46 @@ not include all the module qualifiers, then the University of Melbourne
 Mercury implementation requires the module name in the @samp{:- module}
 declaration for that module to be fully qualified.)
 
-If an @samp{:- include_module} declaration occurs in the interface
-section of a module, then only the declarations (interfaces) of the sub-modules
-are included in the parent module's interface; the definitions
-(implementations) of the sub-modules are considered to be implicitly
-part of the parent module's implementation.
+The semantics of separate sub-modules are identical to those of nested
+sub-modules.  The procedure to transform a separate sub-module into a
+nested sub-module is as follows:
 
-Apart from that, the semantics of separate sub-modules are
-identical to those of nested sub-modules.
+@enumerate
+@item
+Replace the @samp{:- include_module @var{submodule}} declaration with
+the interface section of the sub-module enclosed within 
+@samp{:- module @var{submodule}} and @samp{:- end_module @var{submodule}}
+declarations.
+@item
+Place the implementation section of the sub-module enclosed within
+@samp{:- module @var{submodule}} and @samp{:- end_module @var{submodule}}
+declarations in the implementation section of the parent module.
+@end enumerate
+
+For example
+
+@example
+:- module x.
+:- interface.
+:- include_module y.
+:- end_module x.
+@end example
+
+@noindent
+is equivalent to
+
+@example
+:- module x.
+:- interface.
+    :- module y.
+    % interface section of module @samp{y}
+    :- end_module y.
+:- implementation.
+    :- module y.
+    % implementation section of module @samp{y}
+    :- end_module y.
+:- end_module x.
+@end example
 
 @node Visibility rules
 @subsection Visibility rules
@@ -3739,10 +3774,18 @@ sub-modules, including indirect sub-modules (i.e. sub-sub-modules, etc.).
 Similarly, declarations in the interfaces of any modules imported using an
 @samp{:- import_module} or a @samp{:- use_module} in the parent module
 are visible in the parent's sub-modules, including indirect sub-modules.
-However, declarations in a child module are not visible in the parent
-module or in "sibling" modules (other children of the same parent)
-unless the child is explicitly imported using an @samp{:- import_module}
-or @samp{:- use_module} declaration. 
+
+Declarations in a child module are not visible in the parent module,
+or in "sibling" modules (other children of the same parent), or in
+other unrelated modules unless the child is explicitly imported using
+an @samp{:- import_module} or @samp{:- use_module} declaration.  It
+is an error to import a module without importing all of its parent
+modules.
+
+Note that a sub-module for which the @samp{:- module} or
+@samp{:- include_module} declaration occurs only in the implementation
+section of the parent module may only be imported or used by its
+parent module or by sub-modules of its parent module.
 
 Note that as mentioned previously, all @samp{:- import_module} and
 @samp{:- use_module} declarations must use fully-qualified module
