@@ -117,8 +117,3 @@
 	MR_fatal_error(""increment_size: term size profiling not enabled"");
 #endif
 }").
-
-% Temporary definition, until the change to the compiler that makes
-% term_size_prof_builtin__plus a builtin is bootstrapped.
-
-term_size_plus(X, Y) = X + Y.
