@@ -1089,13 +1089,13 @@ file in your home directory.
 For more information on buffers, windows, and frames,
 see the Emacs documentation.
 
-Another useful Emacs variable is @samp{gud-mdb-search-directories}.
+Another useful Emacs variable is @samp{gud-mdb-directories}.
 This specifies the list of directories to search for source files.
 You can use a command such as
 
 @example
 M-x set-variable @key{RET}
-gud-mdb-search-directories @key{RET}
+gud-mdb-directories @key{RET}
 (list "/foo/bar" "../other" "/home/guest") @key{RET}
 @end example
 
@@ -1103,7 +1103,7 @@ gud-mdb-search-directories @key{RET}
 to set it interactively, or you can put a command like
 
 @example
-(setq gud-mdb-search-directories
+(setq gud-mdb-directories
   (list "/foo/bar" "../other" "/home/guest"))
 @end example
 
@@ -1113,7 +1113,7 @@ in your @file{.emacs} file.
 At each trace event, the debugger will search for the
 source file corresponding to that event, first in the
 same directory as the program, and then in the directories
-specified by the @samp{gud-mdb-search-directories} variable.
+specified by the @samp{gud-mdb-directories} variable.
 It will display the source file, with the line number
 corresponding to that trace event marked by
 an arrow (@samp{=>}) at the start of the line.
