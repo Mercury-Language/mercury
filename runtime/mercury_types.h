@@ -23,6 +23,7 @@
 #define MERCURY_TYPES_H
 
 #include "mercury_conf.h"
+#include "mercury_std.h"    /* for MR_VARIABLE_SIZED */
 
 /*
 ** This section defines types similar to C9X's <stdint.h> header.
@@ -100,6 +101,25 @@ typedef unsigned char   MR_UnsignedChar;
 
 typedef MR_Char         *MR_String;
 typedef const MR_Char   *MR_ConstString;
+
+/*
+** Definitions for accessing the representation of the Mercury `array' type.
+** Even though array is defined in the library, it is a built in type in the
+** sense that mlds_to_c generates references to it. Since mercury.h doesn't
+** include mercury_library_types.h, the definition needs to be here, otherwise
+** references to arrays in e.g. library/bitmap.m would cause C compiler errors.
+**
+** Note that arrays should be allocated on the Mercury heap,
+** using MR_incr_hp_msg().
+*/
+
+typedef struct {
+	MR_Integer size;
+	MR_Word elements[MR_VARIABLE_SIZED];
+} MR_ArrayType;
+
+typedef MR_ArrayType		*MR_ArrayPtr;
+typedef const MR_ArrayType	*MR_ConstArrayPtr;
 
 #ifndef MR_HIGHLEVEL_CODE
   /*

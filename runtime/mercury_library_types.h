@@ -147,19 +147,4 @@
 
 #endif	/* MR_NEW_MERCURYFILE_STRUCT */
 
-/*
-** Definitions for accessing the representation of the
-** Mercury `array' type.
-** Note that arrays should be allocated on the Mercury heap,
-** using MR_incr_hp_msg().
-*/
-
-typedef struct {
-	MR_Integer size;
-	MR_Word elements[MR_VARIABLE_SIZED];
-} MR_ArrayType;
-
-typedef MR_ArrayType		*MR_ArrayPtr;
-typedef const MR_ArrayType	*MR_ConstArrayPtr;
-
 #endif /* not MERCURY_LIBRARY_TYPES_H */

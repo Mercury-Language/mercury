@@ -316,7 +316,7 @@
 :- mode array__map(func(in) = out is det, array_di) = array_uo is det.
 
 :- func array_compare(array(T), array(T)) = comparison_result.
-:- mode array_compare(in, in) = out is det.
+:- mode array_compare(in, in) = uo is det.
 
 	% array__sort(Array) returns a version of Array sorted
 	% into ascending order.
@@ -366,284 +366,20 @@
 % Everything beyond here is not intended as part of the public interface,
 % and will not appear in the Mercury Library Reference Manual.
 
-%-----------------------------------------------------------------------------%
-:- interface.
-
-	% The following predicates have to be declared in the interface,
-	% otherwise dead code elimination will remove them.
-	% But they're an implementation detail; user code should just
-	% use the generic versions.
-
-	% unify/2 for arrays
-
-:- pred array_equal(array(T), array(T)).
-:- mode array_equal(in, in) is semidet.
-
-	% compare/3 for arrays
-
-:- pred array_compare(comparison_result, array(T), array(T)).
-:- mode array_compare(out, in, in) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
 :- import_module exception, int, require, string.
 
-/****
-lower bounds other than zero are not supported
-	% array__resize takes an array and new lower and upper bounds.
-	% the array is expanded or shrunk at each end to make it fit
-	% the new bounds.
-:- pred array__resize(array(T), int, int, array(T)).
-:- mode array__resize(in, in, in, out) is det.
-****/
-
-%-----------------------------------------------------------------------------%
-
-% Arrays are implemented using the C interface.
-
-% The C type which defines the representation of arrays is
-% MR_ArrayType; it is defined in runtime/mercury_library_types.h.
-
-%-----------------------------------------------------------------------------%
-
-:- pragma foreign_decl("C", "
-#ifdef MR_HIGHLEVEL_CODE
-  MR_bool MR_CALL mercury__array__do_unify__array_1_0(
-  	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y);
-  MR_bool MR_CALL mercury__array____Unify____array_1_0(
-	MR_Mercury_Type_Info type_info, MR_Array x, MR_Array y);
-  void MR_CALL mercury__array__do_compare__array_1_0(MR_Mercury_Type_Info
- 	 type_info, MR_Comparison_Result *result, MR_Box x, MR_Box y);
-  void MR_CALL mercury__array____Compare____array_1_0(MR_Mercury_Type_Info
-	type_info, MR_Comparison_Result *result, MR_Array x, MR_Array y);
-#endif
-").
-
-:- pragma foreign_code("C", "
-
-#include ""mercury_deep_profiling_hand.h""
-
-
-#ifdef	MR_DEEP_PROFILING
-MR_proc_static_compiler_plain(array, __Unify__,   array, 1, 0,
-	array, array_equal,   2, 0, ""array.m"", 99, MR_TRUE);
-MR_proc_static_compiler_plain(array, __Compare__, array, 1, 0,
-	array, array_compare, 3, 0, ""array.m"", 99, MR_TRUE);
-#endif
-
-MR_DEFINE_TYPE_CTOR_INFO(array, array, 1, ARRAY);
-
-#ifdef MR_HIGHLEVEL_CODE
-
-MR_bool MR_CALL
-mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
-	MR_Box x, MR_Box y)
-{
-	return mercury__array____Unify____array_1_0(
-		type_info, (MR_Array) x, (MR_Array) y);
-}
-
-MR_bool MR_CALL
-mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
-	MR_Array x, MR_Array y)
-{
-	return mercury__array__array_equal_2_p_0(type_info, x, y);
-}
-
-void MR_CALL
-mercury__array__do_compare__array_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
-{
-	mercury__array____Compare____array_1_0(
-		type_info, result, (MR_Array) x, (MR_Array) y);
-}
-
-void MR_CALL
-mercury__array____Compare____array_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Array x, MR_Array y)
-{
-	mercury__array__array_compare_3_p_0(type_info, result, x, y);
-}
-
-#else
-
-MR_declare_entry(mercury__array__array_equal_2_0);
-MR_declare_entry(mercury__array__array_compare_3_0);
-
-MR_BEGIN_MODULE(array_module_builtins)
-	MR_init_entry(mercury____Unify___array__array_1_0);
-	MR_init_entry(mercury____Compare___array__array_1_0);
-#ifdef	MR_DEEP_PROFILING
-	MR_init_label(mercury____Unify___array__array_1_0_i1);
-	MR_init_label(mercury____Unify___array__array_1_0_i2);
-	MR_init_label(mercury____Unify___array__array_1_0_i3);
-	MR_init_label(mercury____Unify___array__array_1_0_i4);
-	MR_init_label(mercury____Unify___array__array_1_0_i5);
-	MR_init_label(mercury____Unify___array__array_1_0_i6);
-	MR_init_label(mercury____Compare___array__array_1_0_i1);
-	MR_init_label(mercury____Compare___array__array_1_0_i2);
-	MR_init_label(mercury____Compare___array__array_1_0_i3);
-	MR_init_label(mercury____Compare___array__array_1_0_i4);
-#endif
-MR_BEGIN_CODE
-	/*
-	** Unification and comparison for arrays are implemented in Mercury,
-	** not hand-coded low-level C
-	*/
-
-#ifdef	MR_DEEP_PROFILING
-
-#define	proc_label	mercury____Unify___array__array_1_0
-#define proc_static	MR_proc_static_compiler_name(array, __Unify__,	\
-				array, 1, 0)
-#define	body_code	MR_deep_prepare_normal_call(			\
-			  mercury____Unify___array__array_1_0, 3,	\
-			  mercury____Unify___array__array_1_0_i5, 0);	\
-			MR_call_localret(				\
-			  MR_ENTRY(mercury__array__array_equal_2_0),	\
-			  mercury____Unify___array__array_1_0_i6,	\
-			  MR_ENTRY(mercury____Unify___array__array_1_0));\
-			MR_define_label(				\
-			  mercury____Unify___array__array_1_0_i6);
-
-#include ""mercury_hand_unify_body.h""
-
-#undef	body_code
-#undef	proc_static
-#undef	proc_label
-
-#define	proc_label	mercury____Compare___array__array_1_0
-#define proc_static	MR_proc_static_compiler_name(array, __Compare__,\
-				array, 1, 0)
-#define	body_code	MR_deep_prepare_normal_call(			\
-			  mercury____Compare___array__array_1_0, 3,	\
-			  mercury____Compare___array__array_1_0_i3, 0);	\
-			MR_call_localret(				\
-			  MR_ENTRY(mercury__array__array_compare_3_0),	\
-			  mercury____Compare___array__array_1_0_i4,	\
-			  MR_ENTRY(mercury____Compare___array__array_1_0));\
-			MR_define_label(				\
-			  mercury____Compare___array__array_1_0_i4);
-
-#include ""mercury_hand_compare_body.h""
-
-#undef	body_code
-#undef	proc_static
-#undef	proc_label
-
-#else
-
-MR_define_entry(mercury____Unify___array__array_1_0);
-	MR_tailcall(MR_ENTRY(mercury__array__array_equal_2_0),
-		MR_ENTRY(mercury____Unify___array__array_1_0));
-
-MR_define_entry(mercury____Compare___array__array_1_0);
-	/* this is implemented in Mercury, not hand-coded low-level C */
-	MR_tailcall(MR_ENTRY(mercury__array__array_compare_3_0),
-		MR_ENTRY(mercury____Compare___array__array_1_0));
-
-#endif
-
-MR_END_MODULE
-
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
-
-#endif /* ! MR_HIGHLEVEL_CODE */
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT mercury_sys_init_array_module_builtins
-*/
-
-/* suppress gcc -Wmissing-decl warning */
-void mercury_sys_init_array_module_builtins_init(void);
-void mercury_sys_init_array_module_builtins_init_type_tables(void);
-#ifdef	MR_DEEP_PROFILING
-void mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp);
-#endif
-
-void
-mercury_sys_init_array_module_builtins_init(void)
-{
-#ifndef MR_HIGHLEVEL_CODE
-	array_module_builtins();
-	MR_INIT_TYPE_CTOR_INFO(
-		mercury_data_array__type_ctor_info_array_1,
-		array__array_1_0);
-#endif
-}
-
-void
-mercury_sys_init_array_module_builtins_init_type_tables(void)
-{
-#ifndef MR_HIGHLEVEL_CODE
-	MR_register_type_ctor_info(
-		&mercury_data_array__type_ctor_info_array_1);
-#endif
-}
-
-#ifdef	MR_DEEP_PROFILING
-void
-mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
-{
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(array, __Unify__, array, 1, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_compiler_name(array, __Compare__, array, 1, 0));
-}
-#endif
-
-").
-
-:- pragma foreign_code("MC++", "
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY)
-
-    static MR_bool
-    special___Unify___array_1_0(MR_TypeInfo type_info, MR_Array x, MR_Array y)
-    {
-            return mercury::array::mercury_code::ML_array_equal(
-	    	type_info, x, y);
-    }
-
-    static void
-    special___Compare___array_1_0(
-            MR_TypeInfo type_info, MR_ComparisonResult *result, MR_Array x, MR_Array y)
-    {
-            mercury::array::mercury_code::ML_array_compare(
-	    	type_info, result, x, y);
-    }
-
-    static MR_bool
-    do_unify__array_1_0(MR_TypeInfo type_info, MR_Box x, MR_Box y)
-    {
-            return mercury::array__cpp_code::mercury_code::special___Unify___array_1_0(
-                    type_info, 
-                    dynamic_cast<MR_Array>(x),
-                    dynamic_cast<MR_Array>(y));
-    }
-
-    static void
-    do_compare__array_1_0(
-            MR_TypeInfo type_info, MR_ComparisonResult *result, MR_Box x, MR_Box y)
-    {
-            mercury::array__cpp_code::mercury_code::special___Compare___array_1_0(
-                    type_info, result, 
-                    dynamic_cast<MR_Array>(x),
-                    dynamic_cast<MR_Array>(y));
-    }
-").
-
-
-%-----------------------------------------------------------------------------%
-
-
-:- pragma export(array_equal(in, in), "ML_array_equal").
-:- pragma export(array_compare(out, in, in), "ML_array_compare").
+	% MR_ArrayPtr is defined in runtime/mercury_library_types.h.
+:- pragma foreign_type("C", array(T), "MR_ArrayPtr")
+	where equality is array__array_equal,
+	comparison is array__array_compare.
+:- pragma foreign_type(il,  array(T), "class [mscorlib]System.Array")
+	where equality is array__array_equal,
+	comparison is array__array_compare.
 
 	% unify/2 for arrays
+
+:- pred array_equal(array(T)::in, array(T)::in) is semidet.
+:- pragma export(array_equal(in, in), "ML_array_equal").
 
 array_equal(Array1, Array2) :-
 	array__size(Array1, Size),
@@ -665,6 +401,10 @@ array__equal_elements(N, Size, Array1, Array2) :-
 
 	% compare/3 for arrays
 
+:- pred array_compare(comparison_result::uo, array(T)::in, array(T)::in)
+	is det.
+:- pragma export(array_compare(uo, in, in), "ML_array_compare").
+
 array_compare(Result, Array1, Array2) :-
 	array__size(Array1, Size1),
 	array__size(Array2, Size2),
@@ -677,7 +417,7 @@ array_compare(Result, Array1, Array2) :-
 
 :- pred array__compare_elements(int, int, array(T), array(T),
 			comparison_result).
-:- mode array__compare_elements(in, in, in, in, out) is det.
+:- mode array__compare_elements(in, in, in, in, uo) is det.
 
 array__compare_elements(N, Size, Array1, Array2, Result) :-
 	( N = Size ->
@@ -726,11 +466,15 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h""		/* for MR_maybe_record_allocation() */
-#include ""mercury_library_types.h""	/* for MR_ArrayType */
+#include ""mercury_library_types.h""	/* for MR_ArrayPtr */
+
+#define	ML_alloc_array(newarray, arraysize, proclabel)	\
+	MR_incr_hp_msg(MR_LVALUE_CAST(MR_Word, (newarray)), (arraysize), \
+		proclabel, ""array:array/1"")
 ").
 
 :- pragma foreign_decl("C", "
-void ML_init_array(MR_ArrayType *, MR_Integer size, MR_Word item);
+void ML_init_array(MR_ArrayPtr, MR_Integer size, MR_Word item);
 ").
 
 :- pragma foreign_code("C", "
@@ -739,7 +483,7 @@ void ML_init_array(MR_ArrayType *, MR_Integer size, MR_Word item);
 ** This routine does the job of initializing the already-allocated memory.
 */
 void
-ML_init_array(MR_ArrayType *array, MR_Integer size, MR_Word item)
+ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 {
 	MR_Integer i;
 
@@ -764,16 +508,16 @@ array__init(Size, Item, Array) :-
 	array__init_2(Size::in, Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	ML_init_array((MR_ArrayType *)Array, Size, Item);
+	ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+	ML_init_array(Array, Size, Item);
 ").
 
 :- pragma foreign_proc("C",
 	array__make_empty_array(Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_incr_hp_msg(Array, 1, MR_PROC_LABEL, ""array:array/1"");
-	ML_init_array((MR_ArrayType *)Array, 0, 0);
+	ML_alloc_array(Array, 1, MR_PROC_LABEL);
+	ML_init_array(Array, 0, 0);
 ").
 
 :- pragma foreign_proc("C#", 
@@ -836,13 +580,13 @@ array__init(Size, Item, Array) :-
 	array__max(Array::array_ui, Max::out), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = ((MR_ArrayType *)Array)->size - 1;
+	Max = Array->size - 1;
 ").
 :- pragma foreign_proc("C",
 	array__max(Array::in, Max::out), 
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = ((MR_ArrayType *)Array)->size - 1;
+	Max = Array->size - 1;
 ").
 :- pragma foreign_proc("C#", 
 	array__max(Array::array_ui, Max::out), 
@@ -875,13 +619,13 @@ array__bounds(Array, Min, Max) :-
 	array__size(Array::array_ui, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = ((MR_ArrayType *)Array)->size;
+	Max = Array->size;
 ").
 :- pragma foreign_proc("C",
 	array__size(Array::in, Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	Max = ((MR_ArrayType *)Array)->size;
+	Max = Array->size;
 ").
 
 :- pragma foreign_proc("C#",
@@ -944,25 +688,23 @@ array__lookup(Array, Index, Item) :-
 	array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_ArrayType *array = (MR_ArrayType *)Array;
-	Item = array->elements[Index];
+	Item = Array->elements[Index];
 }").
 :- pragma foreign_proc("C",
 	array__unsafe_lookup(Array::in, Index::in, Item::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_ArrayType *array = (MR_ArrayType *)Array;
-	Item = array->elements[Index];
+	Item = Array->elements[Index];
 }").
 
 :- pragma foreign_proc("C#",
-		array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
+	array__unsafe_lookup(Array::array_ui, Index::in, Item::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	Item = Array.GetValue(Index);
 }").
 :- pragma foreign_proc("C#",
-		array__unsafe_lookup(Array::in, Index::in, Item::out),
+	array__unsafe_lookup(Array::in, Index::in, Item::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	Item = Array.GetValue(Index);
@@ -981,17 +723,16 @@ array__set(Array0, Index, Item, Array) :-
 :- mode array__unsafe_set(array_di, in, in, array_uo) is det.
 
 :- pragma foreign_proc("C",
-		array__unsafe_set(Array0::array_di, Index::in,
+	array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_ArrayType *array = (MR_ArrayType *)Array0;
-	array->elements[Index] = Item;	/* destructive update! */
+	Array0->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
 }").
 
 :- pragma foreign_proc("C#",
-		array__unsafe_set(Array0::array_di, Index::in,
+	array__unsafe_set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -1001,9 +742,18 @@ array__set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
+/****
+lower bounds other than zero are not supported
+	% array__resize takes an array and new lower and upper bounds.
+	% the array is expanded or shrunk at each end to make it fit
+	% the new bounds.
+:- pred array__resize(array(T), int, int, array(T)).
+:- mode array__resize(in, in, in, out) is det.
+****/
+
 :- pragma foreign_decl("C", "
-void ML_resize_array(MR_ArrayType *new_array, MR_ArrayType *old_array,
-					MR_Integer array_size, MR_Word item);
+void ML_resize_array(MR_ArrayPtr new_array, MR_ArrayPtr old_array,
+	MR_Integer array_size, MR_Word item);
 ").
 
 :- pragma foreign_code("C", "
@@ -1014,7 +764,7 @@ void ML_resize_array(MR_ArrayType *new_array, MR_ArrayType *old_array,
 ** and deallocating the old array.
 */
 void
-ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
+ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 	MR_Integer array_size, MR_Word item)
 {
 	MR_Integer i;
@@ -1044,22 +794,20 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 ").
 
 :- pragma foreign_proc("C",
-		array__resize(Array0::array_di, Size::in, Item::in,
+	array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if (((MR_ArrayType *)Array0)->size == Size) {
+	if ((Array0)->size == Size) {
 		Array = Array0;
 	} else {
-		MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL,
-			""array:array/1"");
-		ML_resize_array((MR_ArrayType *) Array,
-			(MR_ArrayType *) Array0, Size, Item);
+		ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+		ML_resize_array(Array, Array0, Size, Item);
 	}
 ").
 
 :- pragma foreign_proc("C#",
-		array__resize(Array0::array_di, Size::in, Item::in,
+	array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -1086,8 +834,8 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-void ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
-					MR_Integer array_size);
+void ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
+	MR_Integer array_size);
 ").
 
 :- pragma foreign_code("C", "
@@ -1097,7 +845,7 @@ void ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
 ** new array and deallocating the old array.
 */
 void
-ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
+ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 	MR_Integer array_size)
 {
 	MR_Integer i;
@@ -1131,16 +879,15 @@ array__shrink(Array0, Size, Array) :-
 :- mode array__shrink_2(array_di, in, array_uo) is det.
 
 :- pragma foreign_proc("C",
-		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
+	array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	ML_shrink_array((MR_ArrayType *)Array, (MR_ArrayType *) Array0,
-		Size);
+	ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+	ML_shrink_array(Array, Array0, Size);
 ").
 
 :- pragma foreign_proc("C#",
-		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
+	array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Array = System.Array.CreateInstance(
@@ -1151,7 +898,7 @@ array__shrink(Array0, Size, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-void ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array);
+void ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array);
 ").
 
 :- pragma foreign_code("C", "
@@ -1160,7 +907,7 @@ void ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array);
 ** This routine does the job of copying the array elements.
 */
 void
-ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
+ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 {
 	/*
 	** Any changes to this function will probably also require
@@ -1175,30 +922,27 @@ ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
 	}
-
 }
 ").
 
 :- pragma foreign_proc("C",
-		array__copy(Array0::array_ui, Array::array_uo),
+	array__copy(Array0::array_ui, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
-		MR_PROC_LABEL, ""array:array/1"");
-	ML_copy_array((MR_ArrayType *) Array, (const MR_ArrayType *) Array0);
+	ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
+	ML_copy_array(Array, (MR_ConstArrayPtr) Array0);
 ").
 
 :- pragma foreign_proc("C",
-		array__copy(Array0::in, Array::array_uo),
+	array__copy(Array0::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
-		MR_PROC_LABEL, ""array:array/1"");
-	ML_copy_array((MR_ArrayType *) Array, (const MR_ArrayType *) Array0);
+	ML_alloc_array(Array, Array0->size + 1, MR_PROC_LABEL);
+	ML_copy_array(Array, (MR_ConstArrayPtr) Array0);
 ").
 
 :- pragma foreign_proc("C#",
-		array__copy(Array0::array_ui, Array::array_uo),
+	array__copy(Array0::array_ui, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	// XXX we implement the same as ML_copy_array, which doesn't appear
@@ -1209,7 +953,7 @@ ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 ").
 
 :- pragma foreign_proc("C#",
-		array__copy(Array0::in, Array::array_uo),
+	array__copy(Array0::in, Array::array_uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	// XXX we implement the same as ML_copy_array, which doesn't appear

@@ -700,9 +700,8 @@ mlds_output_pragma_export_type(Type) -->
 :- mode mlds_output_pragma_export_type(in, in, di, uo) is det.
 
 mlds_output_pragma_export_type(suffix, _Type) --> [].
-		% Array types are exported as MR_Word
 mlds_output_pragma_export_type(prefix, mercury_array_type(_ElemType)) -->
-	io__write_string("MR_Word").
+	io__write_string("MR_ArrayPtr").
 mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType)) -->
 	io__write_string(foreign__to_type_string(c, ExportedType)).
 mlds_output_pragma_export_type(prefix, mlds__cont_type(_)) -->
@@ -1795,9 +1794,7 @@ mlds_output_type_prefix(mercury_array_type(_ElemType)) -->
 			qualified(unqualified("array"), "array") - 1,
 			user_type)
 	;
-		% for the --no-high-level-data case,
-		% we just treat everything as `MR_Word'
-		io__write_string("MR_Array")
+		io__write_string("MR_ArrayPtr")
 	).
 mlds_output_type_prefix(mlds__native_int_type)   --> io__write_string("int").
 mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
