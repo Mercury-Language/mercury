@@ -3680,6 +3680,19 @@ module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 				io__write_string(".\n")
 			)
 		;
+			{ ExistingProcs = [] }
+		->
+			{ module_info_incr_errors(ModuleInfo1, ModuleInfo) }, 
+			prog_out__write_context(Context),
+			io__write_string("Error: `:- pragma "),
+			io__write_string(EvalMethodS),
+			io__write_string("' declaration for\n"), 
+			prog_out__write_context(Context),
+			io__write_string("  "),
+			hlds_out__write_simple_call_id(PredOrFunc, 
+				PredName/Arity),
+			io__write_string(" with no declared modes.\n")
+		;
 			{ set_eval_method_list(ExistingProcs, EvalMethod, 
 				Procs0, Procs) },
 			{ pred_info_set_procedures(PredInfo0, Procs, 
