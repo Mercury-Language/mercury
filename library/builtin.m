@@ -1043,6 +1043,21 @@ mercury_sys_init_copy_module_write_out_proc_statics(FILE *fp)
 
 ").
 
+%-----------------------------------------------------------------------------%
+
+% 
+% A definition of the Mercury type void/0 is needed because we can generate
+% references to it in code.  See tests/hard_coded/nullary_ho_func.m for an
+% example of code which does.
+%
+:- pragma foreign_decl("C#", "
+namespace mercury.builtin {
+	public class void_0
+	{
+	}
+}
+").
+
 :- end_module builtin.
 
 %-----------------------------------------------------------------------------%
