@@ -591,8 +591,7 @@ init_cached_transitive_dependencies = map__init.
 
 find_reachable_local_modules(ModuleName, Success, Modules, Info0, Info) -->
 	find_transitive_module_dependencies(all_dependencies, local_module,
-		ModuleName, Success, Modules0, Info0, Info),
-	{ Modules = set__insert(Modules0, ModuleName) }.
+		ModuleName, Success, Modules, Info0, Info).
 
 :- pred find_transitive_interface_imports(module_name::in, bool::out,
 		set(module_name)::out, make_info::in, make_info::out,
@@ -601,7 +600,8 @@ find_reachable_local_modules(ModuleName, Success, Modules, Info0, Info) -->
 find_transitive_interface_imports(ModuleName,
 		Success, Modules, Info0, Info) -->
 	find_transitive_module_dependencies(interface_imports, any_module,
-		ModuleName, Success, Modules, Info0, Info).
+		ModuleName, Success, Modules0, Info0, Info),
+	{ set__delete(Modules0, ModuleName, Modules) }.
 
 :- pred find_transitive_module_dependencies(transitive_dependencies_type::in,
 	module_locn::in, module_name::in, bool::out, set(module_name)::out,
@@ -612,8 +612,7 @@ find_transitive_module_dependencies(DependenciesType, ModuleLocn,
 	globals__io_lookup_bool_option(keep_going, KeepGoing),
 	find_transitive_module_dependencies_2(KeepGoing,
 		DependenciesType, ModuleLocn, ModuleName,
-		Success, set__init, Modules0, Info0, Info1),
-	{ set__delete(Modules0, ModuleName, Modules) },
+		Success, set__init, Modules, Info0, Info1),
     	{ DepsRoot = transitive_dependencies_root(ModuleName,
 			DependenciesType, ModuleLocn) },
 	{ Info = Info1 ^ cached_transitive_dependencies
@@ -745,7 +744,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, DepFiles,
 	debug_msg(
 	    (pred(di, uo) is det -->
 		io__write_string(TargetFileName),
-		io__write_string("does not exist.\n")
+		io__write_string(" does not exist.\n")
 	    ))
     ;
 	{ MaybeTimestamp = ok(Timestamp) },
