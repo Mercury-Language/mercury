@@ -2504,7 +2504,8 @@ rtti_enum_const("MR_TYPECTOR_REP_TYPECTORDESC", 36).
 rtti_enum_const("MR_TYPECTOR_REP_FOREIGN", 37).
 rtti_enum_const("MR_TYPECTOR_REP_REFERENCE", 38).
 rtti_enum_const("MR_TYPECTOR_REP_STABLE_C_POINTER", 39).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 40).
+rtti_enum_const("MR_TYPECTOR_REP_PSEUDOTYPEDESC", 40).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 41).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).

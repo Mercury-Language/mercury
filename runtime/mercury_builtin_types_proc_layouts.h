@@ -62,6 +62,7 @@ MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(private_builtin, type_info, 1);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(private_builtin, base_typeclass_info, 1);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(private_builtin, typeclass_info, 1);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, type_ctor_desc, 0);
+MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, pseudo_type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
 MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
 

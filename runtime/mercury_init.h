@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2003 The University of Melbourne.
+** Copyright (C) 1993-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -125,11 +125,14 @@ extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
 /* in library/private_builtin.m */
 extern	const MR_TypeCtorInfo		ML_type_ctor_info_for_univ;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_type_info;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_pseudo_type_info;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_univ;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_int;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_char;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_string;
 extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_type_info;
+extern	const MR_FA_TypeInfo_Struct1
+				ML_type_info_for_list_of_pseudo_type_info;
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);

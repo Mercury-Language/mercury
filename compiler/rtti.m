@@ -373,6 +373,7 @@
 	;	tuple
 	;	ref
 	;	type_desc
+	;	pseudo_type_desc
 	;	type_ctor_desc.
 
 	% The list of type constructors that are used behind the scenes by
@@ -1520,6 +1521,7 @@ builtin_ctor_rep_to_string(func_ctor, "MR_TYPECTOR_REP_FUNC").
 builtin_ctor_rep_to_string(tuple, "MR_TYPECTOR_REP_TUPLE").
 builtin_ctor_rep_to_string(ref, "MR_TYPECTOR_REP_REFERENCE").
 builtin_ctor_rep_to_string(type_ctor_desc, "MR_TYPECTOR_REP_TYPECTORDESC").
+builtin_ctor_rep_to_string(pseudo_type_desc, "MR_TYPECTOR_REP_PSEUDOTYPEDESC").
 builtin_ctor_rep_to_string(type_desc, "MR_TYPECTOR_REP_TYPEDESC").
 
 :- pred impl_ctor_rep_to_string(impl_ctor::in, string::out) is det.

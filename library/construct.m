@@ -41,9 +41,9 @@
     % FunctorNumber is out of range.
     %
 :- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-        list(type_desc__type_desc)::out) is semidet.
+    list(type_desc__pseudo_type_desc)::out) is semidet.
 
-    % get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
+    % get_functor_with_names(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
     %   ArgNames)
     %
     % Binds FunctorName and Arity to the name and arity of functor number
@@ -52,9 +52,9 @@
     % field name of each functor argument, if any.  Fails if the type is
     % not a discriminated union type, or if FunctorNumber is out of range.
     %
-:- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-        list(type_desc__type_desc)::out, list(maybe(string))::out)
-        is semidet.
+:- pred get_functor_with_names(type_desc__type_desc::in, int::in, string::out,
+    int::out, list(type_desc__pseudo_type_desc)::out, list(maybe(string))::out)
+    is semidet.
 
     % get_functor_ordinal(Type, I, Ordinal)
     %
@@ -107,9 +107,104 @@
 
 num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
 
+get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
+            PseudoTypeInfoList) :-
+    get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
+            PseudoTypeInfoList).
+
+get_functor_with_names(TypeDesc, I, Functor, Arity,
+        PseudoTypeInfoList, ArgNameList) :-
+    get_functor_with_names_internal(TypeDesc, I, Functor, Arity,
+        PseudoTypeInfoList, ArgNameList0),
+    ArgNameList = map(null_to_no, ArgNameList0).
+
+:- pred get_functor_internal(type_desc__type_desc::in, int::in, string::out,
+    int::out, list(type_desc__pseudo_type_desc)::out) is semidet.
+
+get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
+        MaybeTypeInfoList) :-
+    rtti_implementation__get_functor(TypeInfo, FunctorNumber,
+        FunctorName, Arity, TypeInfoList),
+    % The backends in which we use this definition of this predicate
+    % don't yet support function symbols with existential types, which is
+    % the only kind of function symbol in which we may want to return unbound.
+    MaybeTypeInfoList = list__map(type_desc_to_pseudo_type_desc, TypeInfoList).
+
 :- pragma foreign_proc("C",
-    get_functor(TypeDesc::in, FunctorNumber::in, FunctorName::out,
-        Arity::out, TypeInfoList::out),
+    get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
+        Arity::out, PseudoTypeInfoList::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"{
+    MR_TypeInfo         type_info;
+    MR_Construct_Info   construct_info;
+    int                 arity;
+    MR_bool             success;
+
+    type_info = (MR_TypeInfo) TypeDesc;
+
+        /*
+        ** If type_info is an equivalence type, expand it.
+        */
+    MR_save_transient_registers();
+    type_info = MR_collapse_equivalences(type_info);
+    MR_restore_transient_registers();
+
+        /*
+        ** Get information for this functor number and store in construct_info.
+        ** If this is a discriminated union type and if the functor number
+        ** is in range, we succeed.
+        */
+    MR_save_transient_registers();
+    success = MR_get_functors_check_range(FunctorNumber, type_info,
+        &construct_info);
+    MR_restore_transient_registers();
+
+        /*
+        ** Get the functor name and arity, construct the list
+        ** of type_infos for arguments.
+        */
+
+    if (success) {
+        MR_make_aligned_string(FunctorName, construct_info.functor_name);
+        arity = construct_info.arity;
+        Arity = arity;
+
+        if (MR_TYPE_CTOR_INFO_IS_TUPLE(
+            MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
+        {
+            MR_save_transient_registers();
+            PseudoTypeInfoList = MR_type_params_vector_to_list(Arity,
+                MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
+            MR_restore_transient_registers();
+        } else {
+            MR_save_transient_registers();
+            PseudoTypeInfoList =
+                MR_pseudo_type_info_vector_to_pseudo_type_info_list(arity,
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
+                    construct_info.arg_pseudo_type_infos);
+            MR_restore_transient_registers();
+        }
+    }
+    SUCCESS_INDICATOR = success;
+}").
+
+:- pred get_functor_with_names_internal(type_desc__type_desc::in, int::in,
+    string::out, int::out, list(type_desc__pseudo_type_desc)::out,
+    list(string)::out) is semidet.
+
+get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
+        MaybeTypeInfoList, Names) :-
+    rtti_implementation__get_functor_with_names(TypeDesc, FunctorNumber,
+        FunctorName, Arity, TypeInfoList, Names),
+    % The backends in which we use this definition of this predicate
+    % don't yet support function symbols with existential types, which is
+    % the only kind of function symbol in which we may want to return unbound.
+    MaybeTypeInfoList = list__map(type_desc_to_pseudo_type_desc, TypeInfoList).
+
+:- pragma foreign_proc("C",
+    get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
+        FunctorName::out, Arity::out, PseudoTypeInfoList::out,
+        ArgNameList::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
     MR_TypeInfo         type_info;
@@ -150,28 +245,30 @@ num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
             MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
+            int i;
+
             MR_save_transient_registers();
-            TypeInfoList = MR_type_params_vector_to_list(Arity,
+            PseudoTypeInfoList = MR_type_params_vector_to_list(Arity,
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
+            ArgNameList = MR_list_empty();
+            for (i = 0; i < Arity; i++) {
+                ArgNameList = MR_string_list_cons_msg((MR_Word) NULL,
+                    ArgNameList, MR_PROC_LABEL);
+            }
             MR_restore_transient_registers();
         } else {
             MR_save_transient_registers();
-            TypeInfoList = MR_pseudo_type_info_vector_to_type_info_list(
-                arity, MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                construct_info.arg_pseudo_type_infos);
+            PseudoTypeInfoList =
+                MR_pseudo_type_info_vector_to_pseudo_type_info_list(arity,
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
+                    construct_info.arg_pseudo_type_infos);
+            ArgNameList = MR_arg_name_vector_to_list(arity,
+                construct_info.arg_names);
             MR_restore_transient_registers();
         }
     }
     SUCCESS_INDICATOR = success;
 }").
-
-get_functor(TypeInfo, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
-    rtti_implementation__get_functor(TypeInfo, FunctorNumber,
-        FunctorName, Arity, TypeInfoList).
-
-get_functor(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList) :-
-    get_functor_2(TypeDesc, I, Functor, Arity, TypeInfoList, ArgNameList0),
-    ArgNameList = map(null_to_no, ArgNameList0).
 
 :- func null_to_no(string) = maybe(string).
 
@@ -200,81 +297,6 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 "
     succeeded = (S == null);
 ").
-
-:- pred get_functor_2(type_desc__type_desc::in, int::in, string::out, int::out,
-    list(type_desc__type_desc)::out, list(string)::out) is semidet.
-
-:- pragma foreign_proc("C",
-    get_functor_2(TypeDesc::in, FunctorNumber::in, FunctorName::out,
-        Arity::out, TypeInfoList::out, ArgNameList::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"{
-    MR_TypeInfo         type_info;
-    MR_Construct_Info   construct_info;
-    int                 arity;
-    MR_bool             success;
-
-    type_info = (MR_TypeInfo) TypeDesc;
-
-        /*
-        ** If type_info is an equivalence type, expand it.
-        */
-    MR_save_transient_registers();
-    type_info = MR_collapse_equivalences(type_info);
-    MR_restore_transient_registers();
-
-        /*
-        ** Get information for this functor number and
-        ** store in construct_info. If this is a discriminated union
-        ** type and if the functor number is in range, we
-        ** succeed.
-        */
-    MR_save_transient_registers();
-    success = MR_get_functors_check_range(FunctorNumber,
-                type_info, &construct_info);
-    MR_restore_transient_registers();
-
-        /*
-        ** Get the functor name and arity, construct the list
-        ** of type_infos for arguments.
-        */
-
-    if (success) {
-        MR_make_aligned_string(FunctorName, construct_info.functor_name);
-        arity = construct_info.arity;
-        Arity = arity;
-
-        if (MR_TYPE_CTOR_INFO_IS_TUPLE(
-            MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
-        {
-            int i;
-
-            MR_save_transient_registers();
-            TypeInfoList = MR_type_params_vector_to_list(Arity,
-                MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
-            ArgNameList = MR_list_empty();
-            for (i = 0; i < Arity; i++) {
-                ArgNameList = MR_string_list_cons_msg((MR_Word) NULL,
-                    ArgNameList, MR_PROC_LABEL);
-            }
-            MR_restore_transient_registers();
-        } else {
-            MR_save_transient_registers();
-            TypeInfoList = MR_pseudo_type_info_vector_to_type_info_list(
-                arity, MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
-                construct_info.arg_pseudo_type_infos);
-            ArgNameList = MR_arg_name_vector_to_list(arity,
-                construct_info.arg_names);
-            MR_restore_transient_registers();
-        }
-    }
-    SUCCESS_INDICATOR = success;
-}").
-
-get_functor_2(TypeDesc, FunctorNumber,
-        FunctorName, Arity, TypeInfoList, Names) :-
-    rtti_implementation__get_functor_2(TypeDesc, FunctorNumber,
-        FunctorName, Arity, TypeInfoList, Names).
 
 :- pragma foreign_proc("C",
     get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),

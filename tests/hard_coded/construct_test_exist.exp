@@ -1,0 +1,19 @@
+5 functors in this type
+4 - f15/3 [E513, list(E514), E514]  [_, _, _]
+3 - f14/2 [E513, list(E514)]  [_, _]
+2 - f13/3 [int, E513, list(E513)]  [_, _, _]
+1 - f12/1 [int]  [_]
+0 - f11/0 []  []
+
+2 functors in this type
+1 - f22/5 [int, E513, list(E513), E513, float]  [f21name, f22name, f23name, f24name, f25name]
+0 - f21/0 []  []
+
+2 functors in this type
+1 - f32/4 [int, pair(int, E513), tree234(int, pair(string, pair(E513, E514))), string]  [f31name, f32name, f33name, f34name]
+0 - f31/2 [int, string]  [_, _]
+
+2 functors in this type
+1 - f32/4 [int, pair(list(int), E513), tree234(list(int), pair(float, pair(E513, E514))), float]  [f31name, f32name, f33name, f34name]
+0 - f31/2 [list(int), float]  [_, _]
+

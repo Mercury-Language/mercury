@@ -916,10 +916,15 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
             {
-                MR_TypeInfo     data_type_info;
-                MR_TypeCtorInfo data_type_ctor_info;
-                MR_Word         *arg_type_infos;
-                int             num_args;
+                MR_TypeInfo         data_type_info;
+                MR_TypeCtorInfo     data_type_ctor_info;
+                MR_Word             *arg_type_infos;
+                int                 num_args;
+
+                /*
+                ** Most changes here should also be made in the code for
+                ** MR_TYPECTOR_REP_PSEUDOTYPEDESC below.
+                */
 
                 if (noncanon == MR_NONCANON_ABORT) {
                     /* XXX should throw an exception */
@@ -928,7 +933,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 }
 
                 /*
-                ** The only source of noncanonicality in typeinfos is due
+                ** The only source of noncanonicality in type_infos is due
                 ** to type equivalences, so we can eliminate noncanonicality
                 ** by expanding out equivalences.
                 */
@@ -943,8 +948,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
 
                 if (MR_type_ctor_has_variable_arity(data_type_ctor_info)) {
-                    num_args =
-                        MR_TYPEINFO_GET_VAR_ARITY_ARITY(data_type_info);
+                    num_args = MR_TYPEINFO_GET_VAR_ARITY_ARITY(data_type_info);
                     arg_type_infos = (MR_Word *)
                         MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(data_type_info);
                 } else {
@@ -975,8 +979,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         MR_TRUE;
                     for (i = 0; i < num_args ; i++) {
                         /*
-                        ** The arguments of a typeinfo are themselves of type
-                        ** ``typeinfo''.
+                        ** The arguments of a type_info are themselves of type
+                        ** ``type_info''.
                         */
                         expand_info->EXPAND_ARGS_FIELD.arg_type_infos[i] =
                             type_info;
@@ -989,6 +993,116 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     MR_Word *arg_vector;
 
                     arg_vector = (MR_Word *) data_type_info;
+                    expand_info->chosen_index_exists = MR_TRUE;
+                    expand_info->chosen_value_ptr = &arg_type_infos[chosen];
+                    expand_info->chosen_type_info = type_info;
+                } else {
+                    expand_info->chosen_index_exists = MR_FALSE;
+                }
+#endif  /* EXPAND_ONE_ARG */
+            }
+
+            return;
+
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+            {
+                MR_PseudoTypeInfo   data_pseudo_type_info;
+                MR_TypeCtorInfo     data_type_ctor_info;
+                MR_Word             *arg_type_infos;
+                int                 num_args;
+
+                /*
+                ** Most changes here should also be made in the code for
+                ** MR_TYPECTOR_REP_TYPEDESC above.
+                */
+
+                if (noncanon == MR_NONCANON_ABORT) {
+                    /* XXX should throw an exception */
+                    MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                        ": attempt to deconstruct noncanonical term");
+                }
+
+                /*
+                ** The only source of noncanonicality in pseudo_type_infos
+                ** is due to type equivalences, so we can eliminate
+                ** noncanonicality by expanding out equivalences.
+                */
+
+                data_pseudo_type_info = (MR_PseudoTypeInfo) *data_word_ptr;
+                if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(data_pseudo_type_info)) {
+#ifdef  EXPAND_FUNCTOR_FIELD
+                    {
+                        char    buf[500];
+                        char    *str;
+
+                        sprintf(buf, "tvar%ld", (long) data_pseudo_type_info);
+                        MR_make_aligned_string_copy_saved_hp(str, buf);
+                        expand_info->EXPAND_FUNCTOR_FIELD = str;
+                    }
+#endif  /* EXPAND_FUNCTOR_FIELD */
+
+                    handle_zero_arity_args();
+                    return;
+                }
+
+                if (noncanon == MR_NONCANON_ALLOW) {
+                    data_pseudo_type_info = MR_collapse_equivalences_pseudo(
+                            data_pseudo_type_info);
+                }
+
+                data_type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(
+                        data_pseudo_type_info);
+                handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
+
+                if (MR_type_ctor_has_variable_arity(data_type_ctor_info)) {
+                    num_args = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(
+                        data_pseudo_type_info);
+                    arg_type_infos = (MR_Word *)
+                        MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(
+                            data_pseudo_type_info);
+                } else {
+                    num_args = data_type_ctor_info->MR_type_ctor_arity;
+                    arg_type_infos = (MR_Word *)
+                        MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
+                            data_pseudo_type_info);
+                }
+
+                expand_info->arity = num_args;
+                /* switch from 1-based to 0-based array indexing */
+                arg_type_infos++;
+
+#ifdef  EXPAND_ARGS_FIELD
+  #ifdef    EXPAND_APPLY_LIMIT
+                if (num_args > max_arity) {
+                    expand_info->limit_reached = MR_TRUE;
+                } else
+  #endif    /* EXPAND_APPLY_LIMIT */
+                {
+                    int i;
+
+                    expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
+                    expand_info->EXPAND_ARGS_FIELD.arg_values = arg_type_infos;
+
+                    expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
+                        MR_GC_NEW_ARRAY(MR_TypeInfo, num_args);
+                    expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
+                        MR_TRUE;
+                    for (i = 0; i < num_args ; i++) {
+                        /*
+                        ** The arguments of a pseudo_type_info are themselves
+                        ** of type ``pseudo_type_info''.
+                        */
+                        expand_info->EXPAND_ARGS_FIELD.arg_type_infos[i] =
+                            type_info;
+                    }
+                }
+#endif  /* EXPAND_ARGS_FIELD */
+
+#ifdef  EXPAND_ONE_ARG
+                if (0 <= chosen && chosen < expand_info->arity) {
+                    MR_Word *arg_vector;
+
+                    arg_vector = (MR_Word *) data_pseudo_type_info;
                     expand_info->chosen_index_exists = MR_TRUE;
                     expand_info->chosen_value_ptr = &arg_type_infos[chosen];
                     expand_info->chosen_type_info = type_info;

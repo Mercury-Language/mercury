@@ -643,6 +643,27 @@ start_label:
 #endif
             }
 
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+            {
+#ifdef  select_compare_code
+                int result;
+
+                MR_save_transient_registers();
+                result = MR_compare_pseudo_type_info(
+                    (MR_PseudoTypeInfo) x, (MR_PseudoTypeInfo) y);
+                MR_restore_transient_registers();
+                return_compare_answer(type_desc, pseudo_type_desc, 0, result);
+#else
+                MR_bool result;
+
+                MR_save_transient_registers();
+                result = MR_unify_pseudo_type_info(
+                    (MR_PseudoTypeInfo) x, (MR_PseudoTypeInfo) y);
+                MR_restore_transient_registers();
+                return_unify_answer(type_desc, pseudo_type_desc, 0, result);
+#endif
+            }
+
         case MR_TYPECTOR_REP_TYPECTORINFO:
             {
 #ifdef  select_compare_code

@@ -283,6 +283,14 @@
 	MR_typed_list_cons_msg(MR_type_info_for_type_info, (head),	\
 		MR_type_info_for_list_of_type_info, (tail), proclabel)
 
+#define MR_pseudo_type_info_list_cons(head, tail)			\
+	MR_typed_list_cons(MR_type_info_for_pseudo_type_info, (head),	\
+		MR_type_info_for_list_of_pseudo_type_info, (tail))
+
+#define MR_pseudo_type_info_list_cons_msg(head, tail, proclabel)	\
+	MR_typed_list_cons_msg(MR_type_info_for_pseudo_type_info, (head), \
+		MR_type_info_for_list_of_pseudo_type_info, (tail), proclabel)
+
 /*
 ** Convert an enumeration declaration into one which assigns the same
 ** values to the enumeration constants as Mercury's tag allocation scheme

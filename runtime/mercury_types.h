@@ -179,6 +179,7 @@ typedef struct MR_TypeCtorInfo_Struct                   MR_TypeCtorInfo_Struct;
 typedef const struct MR_TypeCtorInfo_Struct             *MR_TypeCtorInfo;
 typedef       struct MR_TypeInfo_Almost_Struct          *MR_TypeInfo;
 typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
+typedef       struct MR_PseudoTypeInfo_Almost_Struct    *MR_NCPseudoTypeInfo;
 typedef const void                                      *MR_ReservedAddr;
 
 #ifdef  MR_HIGHLEVEL_CODE

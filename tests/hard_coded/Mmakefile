@@ -11,10 +11,9 @@ ORDINARY_PROGS=	\
 	any_free_unify \
 	backquoted_qualified_ops \
 	bidirectional \
+	boyer \
 	brace \
 	builtin_inst_rename \
-	boyer \
-	c_write_string \
 	cc_and_non_cc_test \
 	cc_multi_bug \
 	cc_nondet_disj \
@@ -23,17 +22,19 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	comparison \
-	contains_char \
 	constant_prop_1 \
 	constraint \
 	constraint_order \
-	construct_test \
 	construct_bug \
+	construct_test \
+	construct_test_exist \
+	contains_char \
 	contravariance_bug \
 	contravariance_poly \
 	curry \
 	curry2 \
 	cut_test \
+	c_write_string \
 	cycles \
 	cycles2 \
 	deconstruct_arg \
@@ -45,8 +46,8 @@ ORDINARY_PROGS=	\
 	division_test \
 	dot_separator \
 	dst_test \
-	dupcall_types_bug \
 	dupcall_impurity \
+	dupcall_types_bug \
 	elim_special_pred \
 	equality_pred_which_requires_boxing \
 	eqv_type_bug \
@@ -56,8 +57,8 @@ ORDINARY_PROGS=	\
 	existential_float \
 	existential_reordering \
 	existential_reordering_class \
-	existential_type_switch_opt \
 	existential_types_test \
+	existential_type_switch_opt \
 	expand \
 	export_test \
 	external_unification_pred \
@@ -94,13 +95,13 @@ ORDINARY_PROGS=	\
 	impossible_unify \
 	impure_foreign \
 	impure_prune \
-	int_fold_up_down \
 	integer_test \
 	intermod_c_code \
 	intermod_foreign_type \
 	intermod_multimode_main \
 	intermod_pragma_clause \
 	intermod_type_qual \
+	int_fold_up_down \
 	join_list \
 	loop_inv_test \
 	loop_inv_test1 \
@@ -115,10 +116,10 @@ ORDINARY_PROGS=	\
 	no_fully_strict \
 	no_inline \
 	no_inline_builtins \
-	no_warn_singleton \
 	nonascii \
-	nondet_ctrl_vn \
 	nondet_copy_out \
+	nondet_ctrl_vn \
+	no_warn_singleton \
 	nullary_ho_func \
 	null_char \
 	ppc_bug \
@@ -166,8 +167,8 @@ ORDINARY_PROGS=	\
 	test_bitset \
 	test_cord \
 	test_imported_no_tag \
-	tim_qual1 \
 	time_test \
+	tim_qual1 \
 	trans_intermod_user_equality \
 	transitive_inst_type \
 	tuple_test \
@@ -178,9 +179,9 @@ ORDINARY_PROGS=	\
 	type_spec_ho_term \
 	type_spec_modes \
 	type_to_term_bug \
+	unify_existq_cons \
 	unify_expression \
 	unify_typeinfo_bug \
-	unify_existq_cons \
 	uniq_duplicate_call \
 	unused_float_box_test \
 	user_compare \

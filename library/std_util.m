@@ -523,8 +523,8 @@
 :- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
 	list(type_desc__type_desc)::out) is semidet.
 
-	% get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
-	%	ArgNames)
+	% get_functor_with_names(Type, FunctorNumber, FunctorName, Arity,
+	%	ArgTypes, ArgNames)
 	%
 	% Binds FunctorName and Arity to the name and arity of functor number
 	% FunctorNumber for the specified type, ArgTypes to the type_descs
@@ -532,8 +532,9 @@
 	% field name of each functor argument, if any.  Fails if the type is
 	% not a discriminated union type, or if FunctorNumber is out of range.
 	%
-:- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-	list(type_desc__type_desc)::out, list(maybe(string))::out) is semidet.
+:- pred get_functor_with_names(type_desc__type_desc::in, int::in, string::out,
+	int::out, list(type_desc__type_desc)::out, list(maybe(string))::out)
+	is semidet.
 
 	% get_functor_ordinal(Type, I, Ordinal)
 	%
@@ -1707,12 +1708,24 @@ num_functors(TypeInfo) =
 
 get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList) :-
 	construct__get_functor(TypeDesc, FunctorNumber, FunctorName,
-		Arity, TypeInfoList).
+		Arity, PseudoTypeInfoList),
+	% If a pseudo_type_info in PseudoTypeInfoList is not ground, then
+	% we get an exception thrown. This is not good, but is no worse than
+	% the current behavior. If you want to avoid this, use construct.m's
+	% version of get_functor.
+	TypeInfoList = list__map(ground_pseudo_type_desc_to_type_desc_det,
+		PseudoTypeInfoList).
 
-get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, TypeInfoList,
-		ArgNameList) :-
-	construct__get_functor(TypeDesc, FunctorNumber, FunctorName,
-		Arity, TypeInfoList, ArgNameList).
+get_functor_with_names(TypeDesc, FunctorNumber, FunctorName, Arity,
+		TypeInfoList, ArgNameList) :-
+	construct__get_functor_with_names(TypeDesc, FunctorNumber, FunctorName,
+		Arity, PseudoTypeInfoList, ArgNameList),
+	% If a pseudo_type_info in PseudoTypeInfoList is not ground, then
+	% we get an exception thrown. This is not good, but is no worse than
+	% the current behavior. If you want to avoid this, use construct.m's
+	% version of get_functor_with_names.
+	TypeInfoList = list__map(ground_pseudo_type_desc_to_type_desc_det,
+		PseudoTypeInfoList).
 
 get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
 	construct__get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).

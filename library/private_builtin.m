@@ -472,7 +472,8 @@ public static int MR_TYPECTOR_REP_TYPECTORDESC		=36;
 public static int MR_TYPECTOR_REP_FOREIGN		=37;
 public static int MR_TYPECTOR_REP_REFERENCE		=38;
 public static int MR_TYPECTOR_REP_STABLE_C_POINTER	=39;
-public static int MR_TYPECTOR_REP_UNKNOWN		=40;
+public static int MR_TYPECTOR_REP_PSEUDOTYPEDESC	=40;
+public static int MR_TYPECTOR_REP_UNKNOWN		=41;
 
 public static int MR_SECTAG_NONE				= 0;
 public static int MR_SECTAG_LOCAL				= 1;
@@ -1154,6 +1155,15 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_type_info = {
 	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0) }
 };
 
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_pseudo_type_info = {
+	/*
+	** For the time being, we handle pseudo_type_infos the same way
+	** as we handle type_infos.
+	*/
+	&MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0) }
+};
+
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_univ = {
 	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
 	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0) }
@@ -1176,6 +1186,16 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_string = {
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_type_info = {
 	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &ML_type_info_for_type_info }
+};
+
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	/*
+	** For the time being, we handle pseudo_type_infos the same way
+	** as we handle type_infos.
+	*/
 	{ (MR_TypeInfo) &ML_type_info_for_type_info }
 };
 
@@ -1373,7 +1393,8 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_FOREIGN = 37;
     public static final int MR_TYPECTOR_REP_REFERENCE = 38;
     public static final int MR_TYPECTOR_REP_STABLE_C_POINTER = 39;
-    public static final int MR_TYPECTOR_REP_UNKNOWN = 40;
+    public static final int MR_TYPECTOR_REP_PSEUDOTYPEDESC = 40;
+    public static final int MR_TYPECTOR_REP_UNKNOWN = 41;
 	
     public static final int MR_SECTAG_NONE	= 0;
     public static final int MR_SECTAG_LOCAL	= 1;

@@ -1045,6 +1045,9 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo) data);
             return table;
 
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+            MR_fatal_error("Attempt to table a pseudo_type_desc");
+
         case MR_TYPECTOR_REP_TYPECTORINFO:
             MR_fatal_error("Attempt to table a type_ctor_info");
 

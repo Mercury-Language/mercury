@@ -620,6 +620,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	; TypeName = qualified(RttiImplementation, _)
 
 	; TypeName = qualified(TypeDesc, "type_desc")
+	; TypeName = qualified(TypeDesc, "pseudo_type_desc")
 	; TypeName = qualified(TypeDesc, "type_ctor_desc")
 
 		% Types which don't have a Mercury representation.

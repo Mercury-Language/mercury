@@ -692,6 +692,18 @@
 	in, out) is nondet,
 	in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
+	% list__all_true(Pred, List) takes a closure with one input argument.
+	% If Pred succeeds for every member of List, all_true succeeds.
+	% If Pred fails for any member of List, all_true fails.
+:- pred list__all_true(pred(X)::in(pred(in) is semidet), list(X)::in)
+	is semidet.
+
+	% list__all_false(Pred, List) takes a closure with one input argument.
+	% If Pred fails for every member of List, all_false succeeds.
+	% If Pred succeeds for any member of List, all_false fails.
+:- pred list__all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
+	is semidet.
+
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
@@ -1445,6 +1457,16 @@ list__foldr(_, [], !A).
 list__foldr(P, [H | T], !A) :-
 	list__foldr(P, T, !A),
 	call(P, H, !A).
+
+list__all_true(_P, []).
+list__all_true(P, [X | Xs]) :-
+	P(X),
+	list__all_true(P, Xs).
+
+list__all_false(_P, []).
+list__all_false(P, [X | Xs]) :-
+	not P(X),
+	list__all_false(P, Xs).
 
 list__filter(P, Xs, Ys) :-
 	list__filter(P, Xs, Ys, _).

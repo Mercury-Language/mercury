@@ -281,6 +281,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_TYPECTORINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
         case MR_TYPECTOR_REP_TYPECTORDESC:
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
         case MR_TYPECTOR_REP_TYPECLASSINFO:
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
         case MR_TYPECTOR_REP_SUCCIP:

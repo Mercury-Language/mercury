@@ -17,23 +17,28 @@
 					/* variable arity type constructors */
 
 /*
-** Values of type `types:type_desc' are represented the same way as
-** values of type `private_builtin:type_info' (this representation is
+** Values of type `type_ctor.type_desc' are represented the same way as
+** values of type `private_builtin.type_info' (this representation is
 ** documented in compiler/polymorphism.m). Some parts of the library
 ** (e.g. the gc initialization code) depend on this.
 ** The C type corresponding to these Mercury types is `MR_TypeInfo'.
 **
-** Values of type `types:type_ctor_desc' are not guaranteed to be
-** represented the same way as values of type `private_builtin:type_ctor_info'.
+** Values of type `type_ctor.pseudo_type_desc' are represented the same way as
+** values of type `private_builtin.pseudo_type_info' (this representation is
+** documented in compiler/polymorphism.m).
+** The C type corresponding to these Mercury types is `MR_PseudoTypeInfo'.
+**
+** Values of type `type_ctor.type_ctor_desc' are not guaranteed to be
+** represented the same way as values of type `private_builtin.type_ctor_info'.
 ** The representations *are* in fact identical for fixed arity types, but they
 ** differ for higher order and tuple types. Instead of a type_ctor_desc
 ** being a structure containing a pointer to the type_ctor_info for pred/0
 ** or func/0 and an arity, we have a single small encoded integer. This
-** integer is four times the arity, plus zero, one or two; plus zero encodes a
-** predicate, plus one encodes a function, plus two encodes a tuple.
+** integer is four times the arity, plus zero, one or two; plus zero encodes
+** a predicate, plus one encodes a function, plus two encodes a tuple.
 ** The maximum arity that can be encoded is given by MR_MAX_VARIABLE_ARITY
 ** (see below).
-** The C type corresponding to types:type_ctor_desc is `MR_TypeCtorDesc'.
+** The C type corresponding to type_ctor.type_ctor_desc is `MR_TypeCtorDesc'.
 */
 
 /*
@@ -129,8 +134,18 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
 				MR_TypeCtorInfo type_ctor_info);
 
 /*
+** Create and return a MR_TypeCtorDesc that describes the same type as
+** type_ctor_info. If type_ctor_info is of variable arity, take the arity
+** from pseudo, which should be the pseudo_type_info that type_ctor_info was
+** extracted from.
+*/
+
+extern	MR_TypeCtorDesc MR_make_type_ctor_desc_pseudo(MR_PseudoTypeInfo pseudo,
+				MR_TypeCtorInfo type_ctor_info);
+
+/*
 ** Given type_info, return the MR_TypeCtorDesc describing its outermost type
-** constructor in *type_ctor_desc_ptr and a list of the typeinfos of its
+** constructor in *type_ctor_desc_ptr and a list of the type_infos of its
 ** argument types in *arg_type_info_list_ptr. If collapse_equivalences is
 ** MR_TRUE, then expand out the equivalences in type_info first.
 **
@@ -138,8 +153,25 @@ extern	MR_TypeCtorDesc MR_make_type_ctor_desc(MR_TypeInfo type_info,
 ** calls to this function.
 */
 
-
 extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
+				MR_bool collapse_equivalences,
+				MR_TypeCtorDesc *type_ctor_desc_ptr,
+				MR_Word *arg_type_info_list_ptr);
+
+/*
+** Given pseudo_type_info representing a variable, return MR_FALSE. Given a
+** pseudo_type_info representing a nonvariable type, return MR_TRUE, and
+** return the MR_TypeCtorDesc describing its outermost type constructor
+** in *type_ctor_desc_ptr and a list of the pseudo_type_infos of its argument
+** types in *arg_type_info_list_ptr. If collapse_equivalences is MR_TRUE,
+** then expand out the equivalences in pseudo_type_info first.
+**
+** You need to wrap MR_{save/restore}_transient_registers() around
+** calls to this function.
+*/
+
+extern	MR_bool		MR_pseudo_type_ctor_and_args(MR_PseudoTypeInfo
+				pseudo_type_info,
 				MR_bool collapse_equivalences,
 				MR_TypeCtorDesc *type_ctor_desc_ptr,
 				MR_Word *arg_type_info_list_ptr);
@@ -161,12 +193,12 @@ extern	void		MR_type_ctor_and_args(MR_TypeInfo type_info,
 extern	MR_TypeInfo	MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 				MR_Word arg_type_list);
 
-/* 
+/*
 ** Compare two type_ctor_info structures, using an ordering based on the
 ** module names, type names and arities of the types represented by tcd1/tcd2.
 ** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
 ** depending on whether tcd1 is greater than, equal to, or less than tcd2.
-** 
+**
 ** You need to wrap MR_{save/restore}_transient_hp() around
 ** calls to this function.
 */
@@ -174,12 +206,12 @@ extern	MR_TypeInfo	MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 extern	int		MR_compare_type_ctor_desc(MR_TypeCtorDesc tcd1,
 				MR_TypeCtorDesc tcd2);
 
-/* 
+/*
 ** Unify two type_ctor_info structures, using an ordering based on the
 ** module names, type names and arities of the types represented by tcd1/tcd2.
 ** Return MR_TRUE iff tcd1 and tcd2 represent the same type constructor,
 ** and MR_FALSE otherwise.
-** 
+**
 ** You need to wrap MR_{save/restore}_transient_hp() around
 ** calls to this function.
 */

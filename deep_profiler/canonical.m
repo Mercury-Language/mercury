@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1010,16 +1010,6 @@ concat_proc_dynamic_ptr(PrevMaxPD, PDPtr0, PDPtr) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-	% list__all_true(P, L) succeeds iff P is true for all elements of the
-	% list L.
-:- pred all_true(pred(X), list(X)).
-:- mode all_true(pred(in) is semidet, in) is semidet.
-
-all_true(_, []).
-all_true(P, [H | T]) :-
-	call(P, H),
-	all_true(P, T).
 
 	% array_match_elements(Min, Max, BaseArray, OtherArrays):
 	% Succeeds iff all the elements of all the OtherArrays are equal to the

@@ -446,6 +446,7 @@ builtin_type_ctor("builtin", "func", 0, func_ctor).
 builtin_type_ctor("builtin", "tuple", 0, tuple).
 builtin_type_ctor("private_builtin", "ref", 1, ref).
 builtin_type_ctor("type_desc", "type_ctor_desc", 0, type_ctor_desc).
+builtin_type_ctor("type_desc", "pseudo_type_desc", 0, pseudo_type_desc).
 builtin_type_ctor("type_desc", "type_desc", 0, type_desc).
 
 :- pred impl_type_ctor(string::in, string::in, int::in, impl_ctor::out)

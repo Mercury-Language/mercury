@@ -249,7 +249,16 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(20)
 ** start at one, MR_TypeInfoParams arrays also start at one.
 */
 
-typedef MR_TypeInfo     *MR_TypeInfoParams;
+typedef MR_TypeInfo             *MR_TypeInfoParams;
+
+/*
+** When deep copying a MR_PseudoTypeInfo, we need to know the parameters
+** of a non-variable pseudo_type_info, which are themselves pseudo_type_infos.
+** A MR_PseudoTypeInfoParams array serves this purpose. Because type variables
+** start at one, MR_PseudoTypeInfoParams arrays also start at one.
+*/
+
+typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 
 /*
 ** MR_PSEUDOTYPEINFO_EXIST_VAR_BASE should be kept in sync with
@@ -314,17 +323,29 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info)           \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
+#define MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pseudo_type_info) \
+    ((MR_PseudoTypeInfoParams) &(pseudo_type_info)->MR_pti_type_ctor_info)
+
 #define MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)             \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_var_arity_arity)
 
+#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info) \
+    ((MR_PseudoTypeInfoParams) &(pseudo_type_info)->MR_pti_var_arity_arity)
+  
 /*
-** Macros for creating type_infos.
+** Macros for creating type_infos and pseudo_type_infos.
 */
 
 #define MR_fixed_arity_type_info_size(arity)                        \
     (1 + (arity))
 
 #define MR_var_arity_type_info_size(arity)                          \
+    (2 + (arity))
+
+#define MR_fixed_arity_pseudo_type_info_size(arity)                 \
+    (1 + (arity))
+
+#define MR_var_arity_pseudo_type_info_size(arity)                   \
     (2 + (arity))
 
 #define MR_fill_in_fixed_arity_type_info(arena, type_ctor_info, vector) \
@@ -342,6 +363,23 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
         new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
         new_ti->MR_ti_var_arity_arity = (arity);                    \
         (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_var_arity_arity;\
+    } while (0)
+
+#define MR_fill_in_fixed_arity_pseudo_type_info(arena, type_ctor_info, vector) \
+    do {                                                            \
+        MR_NCPseudoTypeInfo new_pti;                                \
+        new_pti = (MR_NCPseudoTypeInfo) (arena);                    \
+        new_pti->MR_pti_type_ctor_info = (type_ctor_info);          \
+        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_type_ctor_info; \
+    } while (0)
+
+#define MR_fill_in_var_arity_pseudo_type_info(arena, type_ctor_info, arity, vector)\
+    do {                                                            \
+        MR_NCPseudoTypeInfo new_pti;                                \
+        new_pti = (MR_NCPseudoTypeInfo) (arena);                    \
+        new_pti->MR_pti_type_ctor_info = (type_ctor_info);          \
+        new_pti->MR_pti_var_arity_arity = (arity);                  \
+        (vector) = (MR_PseudoTypeInfoParams) &new_pti->MR_pti_var_arity_arity;\
     } while (0)
 
 #define MR_static_type_info_arity_0(name, ctor)                     \
@@ -616,6 +654,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_REFERENCE),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_C_POINTER),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_FOREIGN),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_PSEUDOTYPEDESC),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -1484,6 +1523,58 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 /*---------------------------------------------------------------------------*/
 
 /*
+** Compare two pseudo_type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** depending on whether pti1 is greater than, equal to, or less than pti2.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  int     MR_compare_pseudo_type_info(MR_PseudoTypeInfo pti1,
+                    MR_PseudoTypeInfo pti2);
+
+/*
+** Unify two pseudo_type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_TRUE if pti1 represents the same type as pti2, and MR_FALSE
+** otherwise.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_bool MR_unify_pseudo_type_info(MR_PseudoTypeInfo pti1,
+                    MR_PseudoTypeInfo pti2);
+
+/*
+** Compare two pseudo_type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** depending on whether pti1 is greater than, equal to, or less than pti2.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  int     MR_compare_pseudo_type_info(MR_PseudoTypeInfo ti1,
+                    MR_PseudoTypeInfo ti2);
+
+/*
+** Unify two pseudo_type_info structures, using an ordering based on the
+** module names, type names and arities of the types inside the type_info.
+** Return MR_TRUE if ti1 represents the same type as ti2, and MR_FALSE
+** otherwise.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_bool MR_unify_pseudo_type_info(MR_PseudoTypeInfo ti1,
+                    MR_PseudoTypeInfo ti2);
+
+/*
 ** Compare two type_info structures, using an ordering based on the
 ** module names, type names and arities of the types inside the type_info.
 ** Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
@@ -1535,10 +1626,10 @@ extern  MR_bool MR_unify_type_ctor_info(MR_TypeCtorInfo tci1,
 
 /*
 ** MR_collapse_equivalences expands out all the top-level equivalences in
-** the argument typeinfo. It guarantees that the returned typeinfo's
+** the argument type_info. It guarantees that the returned type_info's
 ** type_ctor_info will not have a MR_TYPE_CTOR_REP_EQUIV* representation.
 ** However, since it only works on the top level type constructor,
-** this is not guaranteed for the typeinfos of the type constructor's
+** this is not guaranteed for the type_infos of the type constructor's
 ** arguments.
 **
 ** You need to wrap MR_{save/restore}_transient_hp() around
@@ -1546,6 +1637,38 @@ extern  MR_bool MR_unify_type_ctor_info(MR_TypeCtorInfo tci1,
 */
 
 extern  MR_TypeInfo MR_collapse_equivalences(MR_TypeInfo type_info);
+
+/*
+** MR_collapse_equivalences_pseudo expands out all the top-level equivalences
+** in the argument pseudo_type_info. It guarantees that the returned
+** pseudo_type_info's type_ctor_info, if any, will not have a
+** MR_TYPE_CTOR_REP_EQUIV* representation.
+** However, since it only works on the top level type constructor,
+** this is not guaranteed for the type_infos of the type constructor's
+** arguments.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
+                    MR_PseudoTypeInfo pseudo_type_info);
+
+/*
+** MR_collapse_equivalences_pseudo expands out all the top-level equivalences
+** in the argument pseudo_type_info. It guarantees that the returned
+** pseudo_type_info's type_ctor_info, if any, will not have a
+** MR_TYPE_CTOR_REP_EQUIV* representation.
+** However, since it only works on the top level type constructor,
+** this is not guaranteed for the type_infos of the type constructor's
+** arguments.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_PseudoTypeInfo MR_collapse_equivalences_pseudo(
+                    MR_PseudoTypeInfo pseudo_type_info);
 
 /* 
 ** MR_create_type and MR_make_type_info both turn a pseudo typeinfo into
@@ -1594,6 +1717,15 @@ extern  MR_TypeInfo MR_create_type_info_maybe_existq(
                 const MR_Word *data_value,
                 const MR_DuFunctorDesc *functor_descriptor);
 
+extern  MR_PseudoTypeInfo MR_create_pseudo_type_info(
+                const MR_PseudoTypeInfoParams type_info_params,
+                const MR_PseudoTypeInfo pseudo_type_info);
+extern  MR_PseudoTypeInfo MR_create_pseudo_type_info_maybe_existq(
+                const MR_PseudoTypeInfoParams type_info_params,
+                const MR_PseudoTypeInfo pseudo_type_info,
+                const MR_Word *data_value,
+                const MR_DuFunctorDesc *functor_descriptor);
+
 struct MR_MemoryCellNode {
     void                        *data;
     struct MR_MemoryCellNode    *next;
@@ -1627,6 +1759,19 @@ extern  MR_Word     MR_type_params_vector_to_list(int arity,
                         MR_TypeInfoParams type_params);
 
 /*
+** MR_pseudo_type_params_vector_to_list:
+**
+** Copy `arity' pseudo_type_infos from the `arg_type_infos' vector,
+** which starts at index 1, onto the Mercury heap in a list.
+**
+** You need to save and restore transient registers around
+** calls to this function.
+*/
+
+extern  MR_Word     MR_pseudo_type_params_vector_to_list(int arity,
+                        MR_PseudoTypeInfoParams type_params);
+
+/*
 ** ML_arg_name_vector_to_list:
 **
 ** Copy `arity' argument names from the `arg_names' vector, which starts
@@ -1643,18 +1788,20 @@ extern  MR_Word     MR_arg_name_vector_to_list(int arity,
                         const MR_ConstString *arg_names);
 
 /*
-** ML_pseudo_type_info_vector_to_type_info_list:
+** MR_pseudo_type_info_vector_to_pseudo_type_info_list:
 **
 ** Take `arity' pseudo_type_infos from the `arg_pseudo_type_infos' vector,
 ** which starts at index 0, expand them, and copy them onto the heap
-** in a list.
+** in a list. The elements of the resulting list will be pseudo_type_infos
+** which shouldn't contain universally quantified type variables, but may
+** contain existentially quantified type variables.
 **
 ** You need to save and restore transient registers around
 ** calls to this function.
 */
 
-extern  MR_Word     MR_pseudo_type_info_vector_to_type_info_list(int arity,
-                        MR_TypeInfoParams type_params,
+extern  MR_Word     MR_pseudo_type_info_vector_to_pseudo_type_info_list(
+                        int arity, MR_TypeInfoParams type_params,
                         const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 
 /*---------------------------------------------------------------------------*/

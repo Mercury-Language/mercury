@@ -19,18 +19,23 @@
 ** Prototypes.
 */
 
-static  MR_Word         copy_arg(const MR_Word *parent_data_ptr, MR_Word data,
-                            const MR_DuFunctorDesc *functor_descriptor,
-                            const MR_TypeInfoParams type_params,
-                            const MR_PseudoTypeInfo arg_pseudotype_info,
-                            const MR_Word *lower_limit,
-                            const MR_Word *upper_limit);
-static  MR_TypeInfo     copy_type_info(MR_TypeInfo type_info,
-                            const MR_Word *lower_limit,
-                            const MR_Word *upper_limit);
-static  MR_Word         copy_typeclass_info(MR_Word typeclass_info,
-                            const MR_Word *lower_limit,
-                            const MR_Word *upper_limit);
+static  MR_Word             copy_arg(const MR_Word *parent_data_ptr,
+                                MR_Word data,
+                                const MR_DuFunctorDesc *functor_descriptor,
+                                const MR_TypeInfoParams type_params,
+                                const MR_PseudoTypeInfo arg_pseudotype_info,
+                                const MR_Word *lower_limit,
+                                const MR_Word *upper_limit);
+static  MR_TypeInfo         copy_type_info(MR_TypeInfo type_info,
+                                const MR_Word *lower_limit,
+                                const MR_Word *upper_limit);
+static  MR_PseudoTypeInfo   copy_pseudo_type_info(
+                                MR_PseudoTypeInfo pseudo_type_info,
+                                const MR_Word *lower_limit,
+                                const MR_Word *upper_limit);
+static  MR_Word             copy_typeclass_info(MR_Word typeclass_info,
+                                const MR_Word *lower_limit,
+                                const MR_Word *upper_limit);
 
 /*
 ** We need to make sure that we don't clobber any part of
@@ -58,7 +63,7 @@ static  MR_Word         copy_typeclass_info(MR_Word typeclass_info,
 
 /*
 ** RETURN_IF_OUT_OF_RANGE(MR_Word tagged_pointer, MR_Word *pointer,
-**                        int forwarding_pointer_offset):
+**          int forwarding_pointer_offset, rettype):
 **      Check if `pointer' is either out of range, or has already been
 **      processed, and if so, return (from the function that called this macro)
 **      with the appropriate value.
@@ -544,6 +549,10 @@ try_again:
         return (MR_Word) copy_type_info((MR_TypeInfo) data,
             lower_limit, upper_limit);
 
+    case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
+        return (MR_Word) copy_pseudo_type_info((MR_PseudoTypeInfo) data,
+            lower_limit, upper_limit);
+
     case MR_TYPECTOR_REP_TYPECTORINFO:
         /* type_ctor_infos are always pointers to static data */
         return data;
@@ -726,6 +735,10 @@ static MR_TypeInfo
 copy_type_info(MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
+    /*
+    ** Most changes here should also be done in copy_pseudo_type_info below.
+    */
+
     RETURN_IF_OUT_OF_RANGE((MR_Word) type_info, (MR_Word *) type_info,
         TYPEINFO_FORWARDING_PTR_OFFSET, MR_TypeInfo);
 
@@ -793,6 +806,97 @@ copy_type_info(MR_TypeInfo type_info,
         leave_forwarding_pointer((MR_Word) type_info,
             TYPEINFO_FORWARDING_PTR_OFFSET, (MR_Word) new_type_info_arena);
         return (MR_TypeInfo) new_type_info_arena;
+    }
+}
+
+static MR_PseudoTypeInfo
+copy_pseudo_type_info(MR_PseudoTypeInfo pseudo_type_info,
+    const MR_Word *lower_limit, const MR_Word *upper_limit)
+{
+    /*
+    ** Most changes here should also be done in copy_type_info above.
+    */
+
+    if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
+        return pseudo_type_info;
+    }
+
+    RETURN_IF_OUT_OF_RANGE((MR_Word) pseudo_type_info,
+        (MR_Word *) pseudo_type_info, TYPEINFO_FORWARDING_PTR_OFFSET,
+        MR_PseudoTypeInfo);
+
+    {
+        MR_TypeCtorInfo     type_ctor_info;
+        MR_Word             *new_pseudo_type_info_arena;
+        MR_Word             new_pseudo_type_info_arena_word;
+        MR_PseudoTypeInfo   *pseudo_type_info_args;
+        MR_PseudoTypeInfo   *new_pseudo_type_info_args;
+        int                 arity;
+        int                 i;
+        int                 forwarding_pointer_size;
+        
+        /*
+        ** Note that we assume type_ctor_infos will always be
+        ** allocated statically, so we never copy them.
+        */
+
+        type_ctor_info =
+            MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
+
+        /*
+        ** Optimize a special case: if there are no arguments,
+        ** we don't need to construct a pseudo_type_info; instead,
+        ** we can just return the type_ctor_info.
+        */
+
+        if ((MR_Word) pseudo_type_info == (MR_Word) type_ctor_info) {
+            return (MR_PseudoTypeInfo) type_ctor_info;
+        }
+
+        /* compute how many words to reserve for the forwarding pointer */
+#ifdef MR_NATIVE_GC
+        forwarding_pointer_size = 1;
+#else
+        forwarding_pointer_size = 0;
+#endif
+
+        if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
+            arity = MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo_type_info);
+            pseudo_type_info_args =
+                MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(pseudo_type_info);
+            MR_offset_incr_saved_hp(new_pseudo_type_info_arena_word,
+                forwarding_pointer_size,
+                MR_var_arity_pseudo_type_info_size(arity)
+                    + forwarding_pointer_size);
+            new_pseudo_type_info_arena = (MR_Word *)
+                new_pseudo_type_info_arena_word;
+            MR_fill_in_var_arity_pseudo_type_info(new_pseudo_type_info_arena,
+                type_ctor_info, arity, new_pseudo_type_info_args);
+        } else {
+            arity = type_ctor_info->MR_type_ctor_arity;
+            pseudo_type_info_args =
+                MR_PSEUDO_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(pseudo_type_info);
+            MR_offset_incr_saved_hp(new_pseudo_type_info_arena_word,
+                forwarding_pointer_size,
+                MR_fixed_arity_pseudo_type_info_size(arity)
+                    + forwarding_pointer_size
+            );
+            new_pseudo_type_info_arena = (MR_Word *)
+                new_pseudo_type_info_arena_word;
+            MR_fill_in_fixed_arity_pseudo_type_info(new_pseudo_type_info_arena,
+                type_ctor_info, new_pseudo_type_info_args);
+        }
+
+        for (i = 1; i <= arity; i++) {
+            new_pseudo_type_info_args[i] =
+                copy_pseudo_type_info(pseudo_type_info_args[i],
+                    lower_limit, upper_limit);
+        }
+
+        leave_forwarding_pointer((MR_Word) pseudo_type_info,
+            TYPEINFO_FORWARDING_PTR_OFFSET,
+            (MR_Word) new_pseudo_type_info_arena);
+        return (MR_PseudoTypeInfo) new_pseudo_type_info_arena;
     }
 }
 

@@ -17,13 +17,52 @@
 
 :- import_module list.
 
-	% The `type_desc' and `type_ctor_desc' types: these
+	% The `type_desc', `pseudo_type_desc' and `type_ctor_desc' types
 	% provide access to type information.
 	% A type_desc represents a type, e.g. `list(int)'.
+	% A pseudo_type_desc represents a type that possibly contains type
+	% variables, e.g. `list(T)'.
 	% A type_ctor_desc represents a type constructor, e.g. `list/1'.
 
 :- type type_desc.
+:- type pseudo_type_desc.
 :- type type_ctor_desc.
+
+	% The possibly nonground type represented by a pseudo_type_desc
+	% is either a type constructor applied to zero or more
+	% pseudo_type_descs, or a type variable. If the latter, the
+	% type variable may be either universally or existentially quantified.
+	% In either case, the type is identified by an integer, which has no
+	% meaning beyond the fact that two type variables will be represented
+	% by identical integers if and only if they are the same type variable.
+	% Existentially quantified type variables may have type class
+	% constraints placed on them, but for now we can't return these.
+
+:- type pseudo_type_rep
+	--->	bound(type_ctor_desc, list(pseudo_type_desc))
+	;	univ_tvar(int)
+	;	exist_tvar(int).
+
+:- pred pseudo_type_desc_is_ground(pseudo_type_desc::in) is semidet.
+
+	% This function allows the caller to look into the structure
+	% of the given pseudo_type_desc.
+:- func pseudo_type_desc_to_rep(pseudo_type_desc) = pseudo_type_rep.
+
+	% Convert a type_desc, which by definition describes a ground
+	% type, to a pseudo_type_desc.
+	%
+:- func type_desc_to_pseudo_type_desc(type_desc) = pseudo_type_desc.
+
+	% Convert a pseudo_type_desc describing a ground type to a type_desc.
+	% If the pseudo_type_desc describes a non-ground type, fail.
+:- func ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc
+	is semidet.
+
+	% Convert a pseudo_type_desc describing a ground type to a type_desc.
+	% If the pseudo_type_desc describes a non-ground type, abort.
+:- func ground_pseudo_type_desc_to_type_desc_det(pseudo_type_desc) = type_desc
+	is det.
 
 	% (Note: it is not possible for the type of a variable to be an
 	% unbound type variable; if there are no constraints on a type
@@ -37,8 +76,7 @@
 	% The function type_of/1 returns a representation of the type
 	% of its argument.
 	%
-:- func type_of(T) = type_desc__type_desc.
-:- mode type_of(unused) = out is det.
+:- func type_of(T::unused) = (type_desc__type_desc::out) is det.
 
 	% The predicate has_type/2 is basically an existentially typed
 	% inverse to the function type_of/1.  It constrains the type
@@ -77,15 +115,40 @@
 	type_desc__type_ctor_desc::out, list(type_desc__type_desc)::out)
 	is det.
 
+	% pseudo_type_ctor_and_args(Type, TypeCtor, TypeArgs):
+	%	True iff `TypeCtor' is a representation of the top-level
+	%	type constructor for `Type', and `TypeArgs' is a list
+	%	of the corresponding type arguments to `TypeCtor',
+	%	and `TypeCtor' is not an equivalence type.
+	%
+	% Similar to type_ctor_and_args, but works on pseudo_type_infos.
+	% Fails if the input pseudo_type_info is a variable.
+	%
+:- pred pseudo_type_ctor_and_args(type_desc__pseudo_type_desc::in,
+	type_desc__type_ctor_desc::out, list(type_desc__pseudo_type_desc)::out)
+	is semidet.
+
 	% type_ctor(Type) = TypeCtor :-
 	%	type_ctor_and_args(Type, TypeCtor, _).
 	%
 :- func type_ctor(type_desc__type_desc) = type_desc__type_ctor_desc.
 
+	% pseudo_type_ctor(Type) = TypeCtor :-
+	%	pseudo_type_ctor_and_args(Type, TypeCtor, _).
+	%
+:- func pseudo_type_ctor(type_desc__pseudo_type_desc) =
+	type_desc__type_ctor_desc is semidet.
+
 	% type_args(Type) = TypeArgs :-
 	%	type_ctor_and_args(Type, _, TypeArgs).
 	%
 :- func type_args(type_desc__type_desc) = list(type_desc__type_desc).
+
+	% pseudo_type_args(Type) = TypeArgs :-
+	%	pseudo_type_ctor_and_args(Type, _, TypeArgs).
+	%
+:- func pseudo_type_args(type_desc__pseudo_type_desc) =
+	list(type_desc__pseudo_type_desc) is semidet.
 
 	% type_ctor_name(TypeCtor) returns the name of specified
 	% type constructor.
@@ -213,13 +276,115 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	return (MR_compare_type_info(x, y) == 0);
 }
 
+public static void
+special___Compare___pseudo_type_desc_0_0(
+	ref object[] result, object[] x, object[] y)
+{
+	mercury.runtime.Errors.SORRY(
+		""foreign code for comparing pseudo_type_desc"");
+}
+
+public static bool
+special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
+{
+	mercury.runtime.Errors.SORRY(
+		""foreign code for unifying pseudo_type_desc"");
+}
+
 ").
 
 %-----------------------------------------------------------------------------%
 
 	% Code for type manipulation.
 
-	% Prototypes and type definitions.
+pseudo_type_desc_is_ground(PseudoTypeDesc) :-
+	pseudo_type_ctor_and_args(PseudoTypeDesc, _TypeCtor, ArgPseudos),
+	list__all_true(pseudo_type_desc_is_ground, ArgPseudos).
+
+pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
+	( pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtor, ArgPseudos) ->
+		PseudoTypeRep = bound(TypeCtor, ArgPseudos)
+	; is_exist_pseudo_type_desc(PseudoTypeDesc, UnivNum) ->
+		PseudoTypeRep = exist_tvar(UnivNum)
+	; is_univ_pseudo_type_desc(PseudoTypeDesc, UnivNum) ->
+		PseudoTypeRep = univ_tvar(UnivNum)
+	;
+		error("pseudo_type_desc_to_rep: internal error")
+	).
+
+:- pred is_univ_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
+
+:- pragma foreign_proc("C",
+	is_univ_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	MR_PseudoTypeInfo   pseudo_type_info;
+
+	pseudo_type_info = (MR_PseudoTypeInfo) PseudoTypeDesc;
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info) &&
+		MR_TYPE_VARIABLE_IS_UNIV_QUANT(pseudo_type_info))
+	{
+		TypeVarNum = (MR_Integer) pseudo_type_info;
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
+
+is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
+	% The backends in which we use this definition of this predicate
+	% don't yet support pseudo_type_descs.
+	semidet_fail.
+
+:- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
+
+:- pragma foreign_proc("C",
+	is_exist_pseudo_type_desc(PseudoTypeDesc::in, TypeVarNum::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	MR_PseudoTypeInfo   pseudo_type_info;
+
+	pseudo_type_info = (MR_PseudoTypeInfo) PseudoTypeDesc;
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info) &&
+		MR_TYPE_VARIABLE_IS_EXIST_QUANT(pseudo_type_info))
+	{
+		TypeVarNum = (MR_Integer) pseudo_type_info;
+		SUCCESS_INDICATOR = MR_TRUE;
+	} else {
+		SUCCESS_INDICATOR = MR_FALSE;
+	}
+").
+
+is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
+	% The backends in which we use this definition of this predicate
+	% don't yet support pseudo_type_descs.
+	semidet_fail.
+
+:- pragma foreign_proc("C",
+	type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	PseudoTypeDesc = TypeDesc;
+").
+
+type_desc_to_pseudo_type_desc(_TypeDesc) = _PseudoTypeDesc :-
+	% The backends in which we use this definition of this predicate
+	% don't yet support pseudo_type_descs.
+	private_builtin__sorry("type_desc_to_pseudo_type_desc").
+
+ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
+	( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
+		private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
+	;
+		fail
+	).
+
+ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
+	( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
+		private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
+	;
+		error("ground_pseudo_type_desc_to_type_desc_det: not ground")
+	).
 
 :- pragma foreign_proc("C",
 	type_of(_Value::unused) = (TypeInfo::out),
@@ -254,9 +419,8 @@ special___Unify___type_desc_0_0(object[] x, object[] y)
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	TypeInfo = new mercury.type_desc.Type_desc_0(
-			(mercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
+		(mercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
 ").
-
 
 :- pragma foreign_proc("C",
 	has_type(_Arg::unused, TypeInfo::in),
@@ -292,7 +456,7 @@ type_name(Type) = TypeName :-
 		( ModuleName = "builtin", Name = "func" ->
 			IsFunc = yes
 		;
-		 	IsFunc = no
+			IsFunc = no
 		),
 		(
 			ModuleName = "builtin", Name = "{}"
@@ -355,6 +519,9 @@ type_arg_names([Type | Types], IsFunc, ArgNames) :-
 type_args(Type) = ArgTypes :-
 	type_ctor_and_args(Type, _TypeCtor, ArgTypes).
 
+pseudo_type_args(PseudoType) = ArgPseudoTypes :-
+	pseudo_type_ctor_and_args(PseudoType, _TypeCtor, ArgPseudoTypes).
+
 type_ctor_name(TypeCtor) = Name :-
 	type_ctor_name_and_arity(TypeCtor, _ModuleName, Name, _Arity).
 
@@ -390,6 +557,29 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 }").
 
 :- pragma foreign_proc("C",
+	pseudo_type_ctor(PseudoTypeInfo::in) = (TypeCtor::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"{
+	MR_TypeCtorInfo 	type_ctor_info;
+	MR_PseudoTypeInfo	pseudo_type_info;
+
+	MR_save_transient_registers();
+	pseudo_type_info = MR_collapse_equivalences_pseudo(
+		(MR_PseudoTypeInfo) PseudoTypeInfo);
+	MR_restore_transient_registers();
+
+	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
+		SUCCESS_INDICATOR = MR_FALSE;
+	} else {
+		type_ctor_info = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(
+			pseudo_type_info);
+		TypeCtor = (MR_Word) MR_make_type_ctor_desc_pseudo(
+			pseudo_type_info, type_ctor_info);
+		SUCCESS_INDICATOR = MR_TRUE;
+	}
+}").
+
+:- pragma foreign_proc("C",
 	type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "{
@@ -410,8 +600,8 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 	[may_call_mercury, thread_safe, promise_pure, terminates],
 "
 	java.lang.Object [] result =
-			mercury.rtti_implementation.type_ctor_and_args_3_p_0(
-			((mercury.type_desc.Type_desc_0) TypeDesc).struct);
+		mercury.rtti_implementation.type_ctor_and_args_3_p_0(
+		((mercury.type_desc.Type_desc_0) TypeDesc).struct);
 
 	TypeCtorDesc = new Type_ctor_desc_0((TypeCtorInfo_Struct) result[0]);
 	ArgTypes = result[1];
@@ -434,6 +624,28 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 		TypeCtorDesc0, ArgTypes0),
 	TypeCtorDesc = rtti_implementation__unsafe_cast(TypeCtorDesc0),
 	ArgTypes = rtti_implementation__unsafe_cast(ArgTypes0).
+
+:- pragma foreign_proc("C",
+	pseudo_type_ctor_and_args(PseudoTypeDesc::in, TypeCtorDesc::out,
+		ArgPseudoTypeInfos::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"{
+	MR_TypeCtorDesc 	type_ctor_desc;
+	MR_PseudoTypeInfo	pseudo_type_info;
+	MR_bool			success;
+
+	pseudo_type_info = (MR_PseudoTypeInfo) PseudoTypeDesc;
+	MR_save_transient_registers();
+	success = MR_pseudo_type_ctor_and_args(pseudo_type_info, MR_TRUE,
+		&type_ctor_desc, &ArgPseudoTypeInfos);
+	TypeCtorDesc = (MR_Word) type_ctor_desc;
+	MR_restore_transient_registers();
+	SUCCESS_INDICATOR = success;
+}").
+
+pseudo_type_ctor_and_args(_, _, _) :-
+	% The non-C backends can't (yet) handle pseudo_type_infos.
+	private_builtin__sorry("pseudo_type_ctor_and_args").
 
 	/*
 	** This is the forwards mode of make_type/2:
@@ -591,7 +803,7 @@ get_type_info_for_type_info = TypeDesc :-
 		public mercury.runtime.TypeCtorInfo_Struct struct;
 
 		public Type_ctor_desc_0(
-				mercury.runtime.TypeCtorInfo_Struct init)
+			mercury.runtime.TypeCtorInfo_Struct init)
 		{
 			struct = init;
 		}

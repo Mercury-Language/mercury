@@ -323,11 +323,13 @@ void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 
 MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
 MR_TypeInfo	MR_type_info_for_type_info;
+MR_TypeInfo	MR_type_info_for_pseudo_type_info;
 MR_TypeInfo	MR_type_info_for_list_of_univ;
 MR_TypeInfo	MR_type_info_for_list_of_int;
 MR_TypeInfo	MR_type_info_for_list_of_char;
 MR_TypeInfo	MR_type_info_for_list_of_string;
 MR_TypeInfo	MR_type_info_for_list_of_type_info;
+MR_TypeInfo	MR_type_info_for_list_of_pseudo_type_info;
 
 MR_Box	(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 

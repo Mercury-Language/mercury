@@ -18,6 +18,7 @@
 :- module term.
 :- interface.
 :- import_module enum, list, map, std_util.
+:- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,7 +82,7 @@
 :- type term_to_type_error(T)
 	--->	type_error(
 			term(T),
-			type_desc,
+			type_desc__type_desc,
 			term__context,
 			term_to_type_context
 		)
@@ -381,7 +382,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module bool, char, float, std_util, require, array, int, string.
+:- import_module construct.
 
 %-----------------------------------------------------------------------------%
 
@@ -409,7 +412,7 @@ term__try_term_to_type(Term, Result) :-
 
 term__try_term_to_type(IsAditiTuple, Term, Result) :-
 	term__try_term_to_univ(IsAditiTuple, Term,
-		type_of(ValTypedVar), UnivResult),
+		type_desc__type_of(ValTypedVar), UnivResult),
 	(
 		UnivResult = ok(Univ),
 		det_univ_to_type(Univ, Val),
@@ -420,24 +423,25 @@ term__try_term_to_type(IsAditiTuple, Term, Result) :-
 		Result = error(Error)
 	).
 
-:- pred term__try_term_to_univ(bool::in, term(T)::in, type_desc::in,
+:- pred term__try_term_to_univ(bool::in, term(T)::in, type_desc__type_desc::in,
 	term_to_type_result(univ, T)::out) is det.
 
 term__try_term_to_univ(IsAditiTuple, Term, Type, Result) :-
 	term__try_term_to_univ_2(IsAditiTuple, Term, Type, [], Result).
 
-:- pred term__try_term_to_univ_2(bool::in, term(T)::in, type_desc::in,
-	term_to_type_context::in, term_to_type_result(univ, T)::out) is det.
+:- pred term__try_term_to_univ_2(bool::in, term(T)::in,
+	type_desc__type_desc::in, term_to_type_context::in,
+	term_to_type_result(univ, T)::out) is det.
 
 term__try_term_to_univ_2(_, term__variable(Var), _Type, Context,
 		error(mode_error(Var, Context))).
 term__try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
 	Term = term__functor(Functor, ArgTerms, TermContext),
 	(
-		type_ctor_and_args(Type, TypeCtor, TypeArgs),
+		type_desc__type_ctor_and_args(Type, TypeCtor, TypeArgs),
 		term__term_to_univ_special_case(IsAditiTuple,
-			type_ctor_module_name(TypeCtor),
-			type_ctor_name(TypeCtor),
+			type_desc__type_ctor_module_name(TypeCtor),
+			type_desc__type_ctor_name(TypeCtor),
 			TypeArgs, Term, Type, Context, SpecialCaseResult)
 	->
 		Result = SpecialCaseResult
@@ -450,7 +454,10 @@ term__try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
 	->
 		(
 			ArgsResult = ok(ArgValues),
-			( Value = construct(Type, FunctorNumber, ArgValues) ->
+			(
+				Value = construct__construct(Type,
+					FunctorNumber, ArgValues)
+			->
 				Result = ok(Value)
 			;
 				error("term_to_type: construct/3 failed")
@@ -467,9 +474,9 @@ term__try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
 	).
 
 :- pred term__term_to_univ_special_case(bool::in, string::in, string::in,
-	list(type_desc)::in,
+	list(type_desc__type_desc)::in,
 	term(T)::in(bound(term__functor(ground, ground, ground))),
-	type_desc::in, term_to_type_context::in,
+	type_desc__type_desc::in, term_to_type_context::in,
 	term_to_type_result(univ, T)::out) is semidet.
 
 term__term_to_univ_special_case(IsAditiTuple, "builtin", "character", [],
@@ -514,15 +521,15 @@ term__term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
 	% convert the term representing the list of elements back to a list,
 	% and then (if successful) we just call the array/1 function.
 	%
-	has_type(Elem, ElemType),
-	ListType = type_of([Elem]),
+	type_desc__has_type(Elem, ElemType),
+	ListType = type_desc__type_of([Elem]),
 	ArgContext = arg_context(term__atom("array"), 1, TermContext),
 	NewContext = [ArgContext | PrevContext],
 	term__try_term_to_univ_2(IsAditiTuple, ArgList, ListType, NewContext,
 		ArgResult),
 	(
 		ArgResult = ok(ListUniv),
-		has_type(Elem2, ElemType),
+		type_desc__has_type(Elem2, ElemType),
 		same_type(List, [Elem2]),
 		det_univ_to_type(ListUniv, List),
 		Array = array(List),
@@ -563,14 +570,14 @@ term__term_to_univ_special_case(_, "std_util", "type_info", _, _, _, _, _) :-
 	fail.
 
 :- pred term__term_list_to_univ_list(bool::in, list(term(T))::in,
-	list(type_desc)::in, term__const::in, int::in,
+	list(type_desc__type_desc)::in, term__const::in, int::in,
 	term_to_type_context::in, term__context::in,
 	term_to_type_result(list(univ), T)::out) is semidet.
 
 term__term_list_to_univ_list(_, [], [], _, _, _, _, ok([])).
-term__term_list_to_univ_list(IsAditiTuple, [ArgTerm|ArgTerms],
-		[Type|Types], Functor, ArgNum, PrevContext,
-		TermContext, Result) :-
+term__term_list_to_univ_list(IsAditiTuple, [ArgTerm | ArgTerms],
+		[Type | Types], Functor, ArgNum, PrevContext, TermContext,
+		Result) :-
 	ArgContext = arg_context(Functor, ArgNum, TermContext),
 	NewContext = [ArgContext | PrevContext],
 	term__try_term_to_univ_2(IsAditiTuple, ArgTerm, Type, NewContext,
@@ -578,8 +585,8 @@ term__term_list_to_univ_list(IsAditiTuple, [ArgTerm|ArgTerms],
 	(
 		ArgResult = ok(Arg),
 		term__term_list_to_univ_list(IsAditiTuple, ArgTerms, Types,
-			Functor, ArgNum + 1, PrevContext,
-			TermContext, RestResult),
+			Functor, ArgNum + 1, PrevContext, TermContext,
+			RestResult),
 		(
 			RestResult = ok(Rest),
 			Result = ok([Arg | Rest])
@@ -592,20 +599,20 @@ term__term_list_to_univ_list(IsAditiTuple, [ArgTerm|ArgTerms],
 		Result = error(Error)
 	).
 
-:- pred term__find_functor(type_desc::in, string::in, int::in, int::out,
-	list(type_desc)::out) is semidet.
+:- pred term__find_functor(type_desc__type_desc::in, string::in, int::in,
+	int::out, list(type_desc__type_desc)::out) is semidet.
 
 term__find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
-	N = num_functors(Type),
+	N = construct__num_functors(Type),
 	term__find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
 
-:- pred term__find_functor_2(type_desc::in, string::in, int::in, int::in,
-	int::out, list(type_desc)::out) is semidet.
+:- pred term__find_functor_2(type_desc__type_desc::in, string::in, int::in,
+	int::in, int::out, list(type_desc__type_desc)::out) is semidet.
 
 term__find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
 	Num >= 0,
 	Num1 = Num - 1,
-	( get_functor(TypeInfo, Num1, Functor, Arity, ArgTypes1) ->
+	( std_util.get_functor(TypeInfo, Num1, Functor, Arity, ArgTypes1) ->
 		ArgTypes = ArgTypes1,
 		FunctorNumber = Num1
 	;
@@ -623,7 +630,7 @@ term__det_term_to_type(Term, X) :-
 		string__append_list([
 			"term__det_term_to_type failed, due to a type error:\n",
 			"the term wasn't a valid term for type `",
-			type_name(type_of(X)),
+			type_desc__type_name(type_desc__type_of(X)),
 			"'"], Message),
 		error(Message)
 	).
@@ -639,11 +646,13 @@ term__univ_to_term(Univ, Term) :-
 	term__context_init(Context),
 	Type = univ_type(Univ),
 	% NU-Prolog barfs on `num_functors(Type) < 0'
-	( num_functors(Type) = N, N < 0 ->
+	( construct__num_functors(Type) = N, N < 0 ->
 		(
-			type_ctor_and_args(Type, TypeCtor, TypeArgs),
-			TypeName = type_ctor_name(TypeCtor),
-			ModuleName = type_ctor_module_name(TypeCtor),
+			type_desc__type_ctor_and_args(Type, TypeCtor,
+				TypeArgs),
+			TypeName = type_desc__type_ctor_name(TypeCtor),
+			ModuleName =
+				type_desc__type_ctor_module_name(TypeCtor),
 			term__univ_to_term_special_case(ModuleName, TypeName,
 				TypeArgs, Univ, Context, SpecialCaseTerm)
 		->
@@ -651,7 +660,7 @@ term__univ_to_term(Univ, Term) :-
 		;
 			string__append_list(
 				["term__type_to_term: unknown type `",
-				type_name(univ_type(Univ)),
+				type_desc__type_name(univ_type(Univ)),
 				"'"],
 				Message),
 			error(Message)
@@ -665,7 +674,7 @@ term__univ_to_term(Univ, Term) :-
 	).
 
 :- pred term__univ_to_term_special_case(string::in, string::in,
-	list(type_desc)::in, univ::in, term__context::in,
+	list(type_desc__type_desc)::in, univ::in, term__context::in,
 	term(T)::out) is semidet.
 
 term__univ_to_term_special_case("builtin", "int", [], Univ, Context,
@@ -699,7 +708,7 @@ term__univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
 term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context,
 		Term) :-
 	Term = term__functor(term__atom("array"), [ArgsTerm], Context),
-	has_type(Elem, ElemType),
+	type_desc__has_type(Elem, ElemType),
 	same_type(List, [Elem]),
 	det_univ_to_type(Univ, Array),
 	array__to_list(Array, List),
@@ -718,13 +727,13 @@ term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
 	term__univ_list_to_term_list(Values, Terms).
 
 % given a type_info, return a term that represents the name of that type.
-:- pred type_info_to_term(term__context::in, type_desc::in, term(T)::out)
-	is det.
+:- pred type_info_to_term(term__context::in, type_desc__type_desc::in,
+	term(T)::out) is det.
 
 type_info_to_term(Context, TypeInfo, Term) :-
-	type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
-	TypeName = type_ctor_name(TypeCtor),
-	ModuleName = type_ctor_name(TypeCtor),
+	type_desc__type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
+	TypeName = type_desc__type_ctor_name(TypeCtor),
+	ModuleName = type_desc__type_ctor_name(TypeCtor),
 	list__map(type_info_to_term(Context), ArgTypes, ArgTerms),
 
 	( ModuleName = "builtin" ->
