@@ -5,3 +5,4 @@ string__format_test string_test string_test_2 set_test univ
 higher_order semidet_map parse_list
 det_complicated_unify commit_bug nondet_ite_2
 unreachable dnf hello_again nondetlive semidet_lambda liveness
+mode_inf_bug

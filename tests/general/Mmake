@@ -13,7 +13,8 @@ NONDETPROGS=	commit_bug disj_disj dnf hello_again interpreter \
 DETPROGS=	arithmetic det_complicated_unify duplicate_label \
 		environment higher_order parse_list petdr1 \
 		semidet_map set_test string__format_test string_test \
-		string_test_2 univ unreachable float_test 
+		string_test_2 univ unreachable float_test \
+		mode_inf_bug
 
 # The `liveness' test doesn't work yet, due to bugs
 # in the compiler.  Ditto for frameopt_mkframe_bug.
@@ -29,6 +30,10 @@ PROGS=$(DETPROGS)
 else
 PROGS=$(DETPROGS) $(NONDETPROGS)
 endif
+
+	# mode_inf_bug needs to be compiled with `--infer-all'.
+mode_inf_bug.c: mode_inf_bug.m
+	$(MCG) $(MCGFLAGS) --infer-all mode_inf_bug.m > mode_inf_bug.err 2>&1
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
