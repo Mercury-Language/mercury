@@ -31,7 +31,7 @@ in the file Mmake.common - by default these locations are
 and /usr/local/mercury-0.6/lib/mercury/doc respectively.
 The files RELEASE_NOTES, NEWS, HISTORY, LIMITATIONS, and BUGS
 also contain useful information.  If you're interested in looking
-at the source code, the file compiler/notes/COMPILER_DESIGN is
+at the source code, the file compiler/notes/compiler_design.html is
 a good place to start.
 
 For more information about Mercury, see the Mercury WWW home page at
