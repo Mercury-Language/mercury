@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 :- interface.
 
 :- import_module stream.
-:- import_module bool, char.
+:- import_module bool, char, io.
 
 	% A handle on the lowlevel stream.
 :- type lowlevel(S).
@@ -89,23 +89,23 @@
 
 :- implementation.
 
-:- import_module mutvar.
+:- import_module mvar.
 :- import_module exception, std_util.
 
 :- type lowlevel(S)
 	--->	lowlevel(
 			S,		% Handle
-			mutvar(unit)	% Mutvar used as a semaphore to
+			mvar(unit)	% Mvar used as a semaphore to
 					% ensure the atomicity of
 					% operations.
 		).
 
 init(S, lowlevel(S, MVar)) -->
-	mutvar__init(MVar),
-	mutvar__put(MVar, unit).
+	mvar__init(MVar),
+	mvar__put(MVar, unit).
 
 low_read_char(lowlevel(Stream, MVar), Result) -->
-	mutvar__take(MVar, Unit),
+	mvar__take(MVar, Unit),
 	read_char(Stream, Chr, ReadBool), 
 	( { ReadBool = yes } ->
 		{ Result = ok(Chr) }
@@ -123,15 +123,15 @@ low_read_char(lowlevel(Stream, MVar), Result) -->
 			)
 		)
 	),
-	mutvar__put(MVar, Unit).
+	mvar__put(MVar, Unit).
 
 %-----------------------------------------------------------------------------%
 
 low_write_char(lowlevel(Stream, MVar), Chr) -->
-	mutvar__take(MVar, Unit),
+	mvar__take(MVar, Unit),
 	write_char(Stream, Chr, WriteBool),
 	( { WriteBool = yes } ->
-		mutvar__put(MVar, Unit)
+		mvar__put(MVar, Unit)
 	;
 		get_error(Stream, Err0, ErrorBool),
 		{ ErrorBool = yes ->
@@ -139,7 +139,7 @@ low_write_char(lowlevel(Stream, MVar), Chr) -->
 		;
 			Err = "write char failed but there is no error message"
 		},
-		mutvar__put(MVar, Unit),
+		mvar__put(MVar, Unit),
 		{ throw(stream_error(Err)) }
 	).
 

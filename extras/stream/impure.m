@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -32,6 +32,7 @@
 
 :- import_module stream.
 :- import_module char.
+:- import_module io.
 
 	% A handle on the impure stream.
 :- type impure(S).
@@ -82,24 +83,24 @@
 
 :- implementation.
 
-:- import_module mutvar.
+:- import_module mvar.
 :- import_module exception, std_util.
 
 :- type impure(S)
 	--->	impure(
 			S,		% Handle
-			mutvar(unit)	% Mutvar used as a semaphore to
+			mvar(unit)	% Mvar used as a semaphore to
 					% ensure the atomicity of
 					% operations.
 		).
 
 impure_init(S, impure(S, MVar)) -->
-	mutvar__init(MVar),
-	mutvar__put(MVar, unit).
+	mvar__init(MVar),
+	mvar__put(MVar, unit).
 
 :- pragma promise_pure(pure_read_char/4).
 pure_read_char(impure(Stream, MVar), Result, IO0, IO) :-
-	mutvar__take(MVar, Unit, IO0, IO1),
+	mvar__take(MVar, Unit, IO0, IO1),
 	( impure impure__read_char(Stream, Chr) ->
 		Result = ok(Chr)
 	;
@@ -112,22 +113,22 @@ pure_read_char(impure(Stream, MVar), Result, IO0, IO) :-
 			Result = error(Error)
 		)
 	),
-	mutvar__put(MVar, Unit, IO1, IO).
+	mvar__put(MVar, Unit, IO1, IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pragma promise_pure(pure_write_char/4).
 pure_write_char(impure(Stream, MVar), Chr, IO0, IO) :-
-	mutvar__take(MVar, Unit, IO0, IO1),
+	mvar__take(MVar, Unit, IO0, IO1),
 	( impure impure__write_char(Stream, Chr) ->
-		mutvar__put(MVar, Unit, IO1, IO)
+		mvar__put(MVar, Unit, IO1, IO)
 	;
 		( impure impure__get_error(Stream, Err0) ->
 			Err = Err0
 		;
 			Err = "write char failed but there is no error message"
 		),
-		mutvar__put(MVar, Unit, IO1, IO),
+		mvar__put(MVar, Unit, IO1, IO),
 		throw(stream_error(Err))
 	).
 

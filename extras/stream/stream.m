@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%*
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -200,13 +200,13 @@
 	% library.
 :- import_module (impure), lowlevel.
 
-:- import_module mutvar.
+:- import_module mvar.
 :- import_module int, string.
 
 :- type putback(S)
 	--->	pb(
 			S,
-			mutvar(list(char))
+			mvar(list(char))
 		).
 
 :- instance stream(putback(S)) <= stream(S) where [
@@ -222,8 +222,8 @@
 ].
 
 putback_stream(Stream, pb(Stream, MPutbackChars)) -->
-	mutvar__init(MPutbackChars),
-	mutvar__put(MPutbackChars, []).
+	mvar__init(MPutbackChars),
+	mvar__put(MPutbackChars, []).
 
 putback_base_stream(pb(Stream, _)) = Stream.
 
@@ -231,7 +231,7 @@ putback_base_stream(pb(Stream, _)) = Stream.
 		io__state::di, io__state::uo) is det <= stream__input(S).
 
 putback_read_char(pb(Stream, MPutbackChars), Result) -->
-	mutvar__take(MPutbackChars, PutbackChars),
+	mvar__take(MPutbackChars, PutbackChars),
 	(
 		{ PutbackChars = [] },
 		{ NewPutbackChars = PutbackChars },
@@ -240,21 +240,21 @@ putback_read_char(pb(Stream, MPutbackChars), Result) -->
 		{ PutbackChars = [Char | NewPutbackChars] },
 		{ Result = ok(Char) }
 	),
-	mutvar__put(MPutbackChars, NewPutbackChars).
+	mvar__put(MPutbackChars, NewPutbackChars).
 
 :- pred putback_putback_char(putback(S)::in, char::in,
 		io__state::di, io__state::uo) is det <= stream__input(S).
 
 putback_putback_char(pb(_Stream, MPutbackChars), Char) -->
-	mutvar__take(MPutbackChars, PutbackChars),
-	mutvar__put(MPutbackChars, [Char | PutbackChars]).
+	mvar__take(MPutbackChars, PutbackChars),
+	mvar__put(MPutbackChars, [Char | PutbackChars]).
 
 %-----------------------------------------------------------------------------%
 
 :- type linenumber(S)
 	--->	line(
 			S,		% stream
-			mutvar(int)	% line number
+			mvar(int)	% line number
 		).
 
 :- instance stream(linenumber(S)) <= stream(S) where [
@@ -275,8 +275,8 @@ putback_putback_char(pb(_Stream, MPutbackChars), Char) -->
 ].
 
 linenumber_stream(S, line(S, MLine)) -->
-	mutvar__init(MLine),
-	mutvar__put(MLine, 0).
+	mvar__init(MLine),
+	mvar__put(MLine, 0).
 
 linenumber_base_stream(line(Stream, _)) = Stream.
 
@@ -286,8 +286,8 @@ linenumber_base_stream(line(Stream, _)) = Stream.
 linenumber_read_char(line(Stream, MLine), Result) -->
 	stream__read_char(Stream, Result),
 	( { Result = ok('\n') } ->
-		mutvar__take(MLine, Line),
-		mutvar__put(MLine, Line + 1)
+		mvar__take(MLine, Line),
+		mvar__put(MLine, Line + 1)
 	;
 		[]
 	).
@@ -298,8 +298,8 @@ linenumber_read_char(line(Stream, MLine), Result) -->
 linenumber_putback_char(line(Stream, MLine), Char) -->
 	stream__putback_char(Stream, Char),
 	( { Char = '\n' } ->
-		mutvar__take(MLine, Line),
-		mutvar__put(MLine, Line - 1)
+		mvar__take(MLine, Line),
+		mvar__put(MLine, Line - 1)
 	;
 		[]
 	).
@@ -308,15 +308,15 @@ linenumber_putback_char(line(Stream, MLine), Char) -->
 		io__state::di, io__state::uo) is det.
 
 linenumber(line(_, MLine), Line) -->
-	mutvar__take(MLine, Line),
-	mutvar__put(MLine, Line).
+	mvar__take(MLine, Line),
+	mvar__put(MLine, Line).
 
 :- pred set_linenumber(linenumber(S)::in, int::in,
 		io__state::di, io__state::uo) is det.
 
 set_linenumber(line(_, MLine), Line) -->
-	mutvar__take(MLine, _OldLine),
-	mutvar__put(MLine, Line).
+	mvar__take(MLine, _OldLine),
+	mvar__put(MLine, Line).
 
 %-----------------------------------------------------------------------------%
 

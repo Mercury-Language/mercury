@@ -3,8 +3,9 @@ The streams interface uses type classes, so that users can define their
 own stream types and can write generic code that will work on any
 appropriate stream.
 
-To build this library you need mutvar.m and semaphore.m from the
-extras/concurrency directory.
+To build this library you need mvar.m and semaphore.m from the
+extras/concurrency directory.  (The Mmakefile rules should copy these
+here automatically.)
 
 The following files implement the stream interfaces at various levels
 
