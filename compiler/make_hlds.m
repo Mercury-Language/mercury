@@ -515,7 +515,7 @@ preds_add_implicit(Preds0, PredId, Context, Preds) :-
 	clauses_info_init(Arity, ClausesInfo),
 	map__init(Procs),
 	varset__init(TVarSet0),
-	make_n_fresh_vars(Arity, TVarSet0, TypesVars, TVarSet),
+	make_n_fresh_vars(Arity, TVarSet0, TypeVars, TVarSet),
 	var_list_to_term_list(TypeVars, Types),
 	P = predicate(TVarSet, Types, true, ClausesInfo, Procs, Context),
 	map__set(Preds0, PredId, P, Preds).
