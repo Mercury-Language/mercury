@@ -240,7 +240,7 @@ unify_gen__generate_construction_2(no_tag, Var, Args, _Modes, Code) -->
 		code_info__cache_expression(Var, var(Arg))
 	;
 		{ error(
-		"unify_gen__generate_construction_2: no_tag: arity != 2") }
+		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
@@ -475,7 +475,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 			unify_gen__generate_det_sub_unify(ref(Var), ref(Arg),
 				Mode, Code)
 		;
-			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 2") }
+			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
 	;
 		{ Tag = simple_tag(SimpleTag) },
