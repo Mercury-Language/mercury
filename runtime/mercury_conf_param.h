@@ -71,11 +71,16 @@
 **	Mercury floating point type (`MR_Float').
 **
 ** MR_USE_REGPARM:
-**	On x86, use a different (more efficient) calling convention.
+**	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
+**	on x86, use a different (more efficient) calling convention.
 **	This requires the use of a very recent version of gcc --
 **	more recent that gcc 2.95.2.
 **	For details, see the definition of the MR_CALL macro in
 **	runtime/mercury_std.h.
+**
+** MR_AVOID_MACROS:
+**	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
+**	use inline functions rather than macros for a few builtins.
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
