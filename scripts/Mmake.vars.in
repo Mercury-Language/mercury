@@ -518,6 +518,7 @@ nos_subdir=$(SUBDIR)nos/
 qls_subdir=$(SUBDIR)qls/
 deps_subdir=$(SUBDIR)deps/
 ds_subdir=$(SUBDIR)ds/
+module_deps_subdir=$(SUBDIR)module_deps/
 int0s_subdir=$(SUBDIR)int0s/
 ints_subdir=$(SUBDIR)ints/
 int2s_subdir=$(SUBDIR)int2s/
@@ -541,12 +542,14 @@ rlos_subdir=
 ils_subdir=$(SUBDIR)ils/
 javas_subdir=$(SUBDIR)javas/
 dirs_subdir=$(SUBDIR)dirs/
+num_splits_subdir=$(SUBDIR)num_splits/
 c_dates_subdir=$(SUBDIR)c_dates/
 s_dates_subdir=$(SUBDIR)s_dates/
 pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
 il_dates_subdir=$(SUBDIR)il_dates/
 java_dates_subdir=$(SUBDIR)java_dates/
 classes_subdir=$(SUBDIR)classs/
+err_dates_subdir=$(SUBDIR)err_dates/
 
 else
 
@@ -556,6 +559,7 @@ nos_subdir=
 qls_subdir=
 deps_subdir=
 ds_subdir=
+module_deps_subdir=
 int0s_subdir=
 ints_subdir=
 int2s_subdir=
@@ -577,12 +581,14 @@ rlos_subdir=
 ils_subdir=
 javas_subdir=
 dirs_subdir=
+num_splits_subdir=
 c_dates_subdir=
 s_dates_subdir=
 pic_s_dates_subdir=
 il_dates_subdir=
 java_dates_subdir=
 classes_subdir=
+err_dates_subdir=
 
 endif
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -145,14 +145,16 @@
 bytecode__version(9).
 
 output_bytecode_file(FileName, ByteCodes) -->
-	io__tell_binary(FileName, Result),
+	io__open_binary_output(FileName, Result),
 	(
-		{ Result = ok }
+		{ Result = ok(FileStream) }
 	->
+		io__set_binary_output_stream(FileStream, OutputStream),
 		{ bytecode__version(Version) },
 		output_short(Version),
 		output_bytecode_list(ByteCodes),
-		io__told_binary
+		io__set_binary_output_stream(OutputStream, _),
+		io__close_binary_output(FileStream)
 	;
 		io__progname_base("byte.m", ProgName),
 		io__write_string("\n"),
@@ -164,16 +166,18 @@ output_bytecode_file(FileName, ByteCodes) -->
 	).
 
 debug_bytecode_file(FileName, ByteCodes) -->
-	io__tell(FileName, Result),
+	io__open_output(FileName, Result),
 	(
-		{ Result = ok }
+		{ Result = ok(FileStream) }
 	->
+		io__set_output_stream(FileStream, OutputStream),
 		{ bytecode__version(Version) },
 		io__write_string("bytecode_version "),
 		io__write_int(Version),
 		io__write_string("\n"),
 		debug_bytecode_list(ByteCodes),
-		io__told
+		io__set_output_stream(OutputStream, _),
+		io__close_output(FileStream)
 	;
 		io__progname_base("byte.m", ProgName),
 		io__write_string("\n"),

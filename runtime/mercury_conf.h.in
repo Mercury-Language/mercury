@@ -191,6 +191,7 @@
 **	MR_HAVE_MPROTECT    	we have the mprotect() system call.
 **	MR_HAVE_MEMALIGN    	we have the memalign() function.
 **	MR_HAVE_STRERROR    	we have the strerror() function.
+**	MR_HAVE_SIGINTERRUPT	we have the siginterrupt() function.
 **	MR_HAVE_SETITIMER   	we have the setitimer() function.
 **	MR_HAVE_MEMMOVE   		we have the memmove() function.
 **	MR_HAVE_DLOPEN   		we have the dlopen() function.
@@ -232,6 +233,7 @@
 #undef	MR_HAVE_MEMALIGN
 #undef	MR_HAVE_MPROTECT
 #undef	MR_HAVE_STRERROR
+#undef	MR_HAVE_SIGINTERRUPT
 #undef	MR_HAVE_SETITIMER
 #undef	MR_HAVE_MEMMOVE
 #undef	MR_HAVE_DLOPEN

@@ -110,16 +110,16 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	module_name_to_file_name(ModuleName, ".opt.tmp", yes, TmpName),
-	io__tell(TmpName, Result2),
+	io__open_output(TmpName, Result2),
 	(
 		{ Result2 = error(Err2) },
 		{ io__error_message(Err2, Msg2) },
-		io__stderr_stream(ErrStream2),
-		io__write_string(ErrStream2, Msg2),
+		io__write_string(Msg2),
 		io__set_exit_status(1),
 		{ ModuleInfo = ModuleInfo0 }
 	;
-		{ Result2 = ok },
+		{ Result2 = ok(FileStream) },
+		io__set_output_stream(FileStream, OutputStream),
 		{ module_info_predids(ModuleInfo0, RealPredIds) },
 		{ module_info_assertion_table(ModuleInfo0, AssertionTable) },
 		{ assertion_table_pred_ids(AssertionTable, AssertPredIds) },
@@ -140,7 +140,8 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		intermod__write_intermod_info(IntermodInfo),
 		{ intermod_info_get_module_info(ModuleInfo1,
 			IntermodInfo, _) },
-		io__told,
+		io__set_output_stream(OutputStream, _),
+		io__close_output(FileStream),
 		globals__io_lookup_bool_option(intermod_unused_args,
 			UnusedArgs),
 		( { UnusedArgs = yes } ->
@@ -2052,8 +2053,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		%
 		% Read in the .opt files for imported and ancestor modules.
 		%
-	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
-				ImplementationDeps0, _, _, _, _, _, _, _, _) },
+	{ ModuleName = Module0 ^ module_name },
+	{ Ancestors0 = Module0 ^ parent_deps },
+	{ InterfaceDeps0 = Module0 ^ int_deps },
+	{ ImplementationDeps0 = Module0 ^ impl_deps },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),

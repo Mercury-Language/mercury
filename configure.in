@@ -457,7 +457,7 @@ esac
 mercury_check_for_functions \
 		sysconf getpagesize gethostname \
 		mprotect memalign memmove \
-		sigaction setitimer \
+		sigaction siginterrupt setitimer \
 		snprintf vsnprintf _vsnprintf strerror \
 		open close dup dup2 fdopen fileno fstat stat isatty \
 		getpid setpgid fork execlp wait kill \

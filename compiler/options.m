@@ -71,6 +71,7 @@
 		;	warn_missing_module_name
 		;	warn_wrong_module_name
 		;	warn_smart_recompilation
+		;	warn_undefined_options_variables
 		;	warn_non_tail_recursion
 	% Verbosity options
 		;	verbose
@@ -79,6 +80,8 @@
 		;	verbose_recompilation
 		;	find_all_recompilation_reasons
 		;	verbose_make
+		;	verbose_commands
+		;	output_compile_error_lines
 		;	statistics
 		;	debug_types
 		;	debug_modes
@@ -113,6 +116,8 @@
 				% It is implied by --smart-recompilation,
 				% and cannot be set explicitly by the user.
 		;	generate_item_version_numbers
+		;	generate_mmc_make_module_dependencies
+		;	generate_mmake_module_dependencies
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
@@ -472,10 +477,20 @@
 		;	java_flags
 		;	java_classpath
 		;	java_object_file_extension
-			
+
 			% IL
+		;	il_assembler
+		;	ilasm_flags
 		;	dotnet_library_version
 		;	support_ms_clr
+
+			% Managed C++
+		;	mcpp_compiler
+		;	mcpp_flags
+
+			% C#
+		;	csharp_compiler
+		;	csharp_flags
 
 	% Link options
 		;	output_file_name
@@ -500,15 +515,22 @@
 		;	create_archive_command_flags
 		;	ranlib_command
 
-	% Miscellaneous Options
+	% Build system options
 		;	make
 		;	keep_going
 		;	rebuild
+		;	install_prefix
+		;	install_command
+		;	libgrades
+		;	options_files
+		;	options_search_directories
+		;	use_subdirs
+
+	% Miscellaneous Options
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
 		;	filenames_from_stdin
-		;	use_subdirs
 		;	aditi		% XXX this should be in the
 					% "Auxiliary output options"
 					% section
@@ -536,6 +558,7 @@
 	;	optimization_option
 	;	target_code_compilation_option
 	;	link_option
+	;	build_system_option
 	;	miscellaneous_option.
 
 option_defaults(Option, Default) :-
@@ -574,6 +597,7 @@ option_defaults_2(warning_option, [
 	warn_missing_module_name -	bool(yes),
 	warn_wrong_module_name -	bool(yes),
 	warn_smart_recompilation -	bool(yes),
+	warn_undefined_options_variables - bool(yes),
 	warn_non_tail_recursion -	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
@@ -585,6 +609,8 @@ option_defaults_2(verbosity_option, [
 	find_all_recompilation_reasons -
 					bool(no),
 	verbose_make		-	bool(yes),
+	verbose_commands	-	bool(no),
+	output_compile_error_lines -	int(15),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
@@ -618,6 +644,8 @@ option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	smart_recompilation	-	bool(no),
 	generate_item_version_numbers -	bool(no),
+	generate_mmc_make_module_dependencies - bool(no),
+	generate_mmake_module_dependencies - bool(yes),
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
@@ -947,10 +975,20 @@ option_defaults_2(target_code_compilation_option, [
 	java_object_file_extension -	string(".class"),
 
 % IL
+	il_assembler		-	string("ilasm"),
+	ilasm_flags		-	accumulating([]),
 		% We default to the version of the library that came
 		% with Beta2.
 	dotnet_library_version	-	string("1.0.3300.0"),
-	support_ms_clr		-	bool(yes)
+	support_ms_clr		-	bool(yes),
+
+% Managed C++
+	mcpp_compiler		-	string("cl"),
+	mcpp_flags		-	accumulating([]),
+
+% C#
+	csharp_compiler		-	string("csc"),
+	csharp_flags		-	accumulating([])
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -986,17 +1024,25 @@ option_defaults_2(link_option, [
 	ranlib_command -		string("")
 
 ]).
-option_defaults_2(miscellaneous_option, [
-		% Miscellaneous Options
-	filenames_from_stdin	-	bool(no),
+option_defaults_2(build_system_option, [
+		% Build System Options
 	make			-	bool(no),
 	keep_going		-	bool(no),
 	rebuild			-	bool(no),
+	install_prefix		-	string("/usr/local/"),
+	install_command		-	string("cp"),
+	libgrades		-	accumulating([]),
+	options_files		-	accumulating([]),
+	options_search_directories -	accumulating(["."]),
+	use_subdirs		-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
-				-	bool(yes),
-	use_subdirs		-	bool(no),
+				-	bool(yes)
+]).
+option_defaults_2(miscellaneous_option, [
+		% Miscellaneous Options
+	filenames_from_stdin	-	bool(no),
 	aditi			-	bool(no),
 	aditi_user		-	string(""),
 	help 			-	bool(no),
@@ -1056,6 +1102,8 @@ long_option("warn-duplicate-calls",	warn_duplicate_calls).
 long_option("warn-missing-module-name",	warn_missing_module_name).
 long_option("warn-wrong-module-name",	warn_wrong_module_name).
 long_option("warn-smart-recompilation",	warn_smart_recompilation).
+long_option("warn-undefined-options-variables",
+					warn_undefined_options_variables).
 long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
 
 % verbosity options
@@ -1066,6 +1114,8 @@ long_option("verbose-recompilation",	verbose_recompilation).
 long_option("find-all-recompilation-reasons",
 					find_all_recompilation_reasons).
 long_option("verbose-make",		verbose_make).
+long_option("verbose-commands",		verbose_commands).
+long_option("output-compile-error-lines", output_compile_error_lines).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
@@ -1115,6 +1165,12 @@ long_option("output-grade-string",	output_grade_string).
 % aux output options
 long_option("smart-recompilation",	smart_recompilation).
 long_option("assume-gmake",		assume_gmake).
+long_option("generate-mmc-make-module-dependencies",
+					generate_mmc_make_module_dependencies).
+long_option("generate-mmc-deps",
+					generate_mmc_make_module_dependencies).
+long_option("generate-mmake-module-dependencies",
+					generate_mmake_module_dependencies).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
@@ -1470,7 +1526,7 @@ long_option("pic-object-file-extension", pic_object_file_extension).
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
-long_option("java-flags",			cflags).
+long_option("java-flags",		java_flags).
 	% XXX we should consider the relationship between java_debug and
 	% target_debug more carefully.  Perhaps target_debug could imply
 	% Java debug if the target is Java.  However for the moment they are
@@ -1479,8 +1535,16 @@ long_option("java-debug",		target_debug).
 long_option("java-classpath",   	java_classpath).
 long_option("java-object-file-extension", java_object_file_extension).
 
+long_option("il-assembler",		il_assembler).
+long_option("ilasm-flags",		ilasm_flags).
 long_option("dotnet-library-version",	dotnet_library_version).
 long_option("support-ms-clr",		support_ms_clr).
+
+long_option("mcpp-compiler",		mcpp_compiler).
+long_option("mcpp-flags",		mcpp_flags).
+
+long_option("csharp-compiler",		csharp_compiler).
+long_option("csharp-flags",		csharp_flags).
 
 % link options
 long_option("output-file",		output_file_name).
@@ -1505,17 +1569,25 @@ long_option("create-archive-command-output-flag",
 long_option("create-archive-command-flags", create_archive_command_flags).
 long_option("ranlib-command",		ranlib_command).
 
-% misc options
-long_option("help",			help).
+% build system options
 long_option("make",			make).
 long_option("keep-going",		keep_going).
 long_option("rebuild",			rebuild).
+long_option("install-prefix",		install_prefix).
+long_option("install-command",		install_command).
+long_option("library-grade",		libgrades).
+long_option("libgrade",			libgrades).
+long_option("options-file",		options_files).
+long_option("options-search-directory", options_search_directories).
+long_option("use-subdirs",		use_subdirs).	
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
 					use_search_directories_for_intermod).	
+
+% misc options
+long_option("help",			help).
 long_option("filenames-from-stdin",	filenames_from_stdin).
-long_option("use-subdirs",		use_subdirs).	
 long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
 long_option("fullarch",			fullarch).
@@ -1610,7 +1682,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_simple_code	-	bool(Enable),
 			warn_missing_module_name -	bool(Enable),
 			warn_wrong_module_name	-	bool(Enable),
-			warn_smart_recompilation -	bool(Enable)
+			warn_smart_recompilation -	bool(Enable),
+			warn_undefined_options_variables - bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -1892,6 +1965,7 @@ options_help -->
 	options_help_output_optimization,
 	options_help_target_code_compilation,
 	options_help_link,
+	options_help_build_system,
 	options_help_misc.
 
 :- pred options_help_warning(io__state::di, io__state::uo) is det.
@@ -1959,6 +2033,9 @@ options_help_warning -->
 		"\tdeclaration does not match the module's file name.",
 		"--no-warn-smart-recompilation",
 		"\tDisable warnings from the smart recompilation system.",
+		"--no-warn-undefined-options-variables",
+		"\tWarn about references to undefined variables in",
+		"\toptions files with `--make'.",
 		"--warn-non-tail-recursion",
 		"\tWarn about any directly recursive calls that are not tail calls.",
 		"\tThis requires --high-level-code."
@@ -1976,10 +2053,16 @@ options_help_verbosity -->
 		"-E, --verbose-error-messages",
 		"\tExplain error messages.  Asks the compiler to give you a more",
 		"\tdetailed explanation of any errors it finds in your program.",
-% `--make' is not yet implemented.
-%		"--verbose-make",
-%		"\tOutput progress messages about the progress of the",
-%		"\t`--make' option.",
+		"--no-verbose-make",
+		"\tDisable messages about the progress of builds using",
+		"\tthe `--make' option.",
+		"--output-compile-error-lines <n>",
+		"\tWith `--make', output the first <n> lines of the `.err'",
+		"\tfile after compiling a module (default: 15).",
+		"--verbose-commands",
+		"\tOutput each external command before it is run.",
+		"\tNote that some commands will only be printed",
+		"\tprinted with `--verbose'.",
 		"--verbose-recompilation",
 		"\tWhen using `--smart-recompilation', output messages",
 		"\texplaining why a module needs to be recompiled.",
@@ -2007,10 +2090,9 @@ options_help_verbosity -->
 		"\tOutput detailed debugging traces of Aditi-RL optimization.",
 		"--debug-liveness <pred_id>",
 		"\tOutput detailed debugging traces of the liveness analysis",
-		"\tof the predicate with the given predicate id."
-% `--make' is not yet implemented.
-%		"--debug-make",
-%		"\tOutput detailed debugging traces of the `--make' option."
+		"\tof the predicate with the given predicate id.",
+		"--debug-make",
+		"\tOutput detailed debugging traces of the `--make' option."
 	]).
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
@@ -2089,6 +2171,18 @@ options_help_aux_output -->
 		"\tWhen generating `.dep' files, generate Makefile",
 		"\tfragments that use only the features of standard make;",
 		"\tdo not assume the availability of GNU Make extensions.",
+		"\tWhen generating `.dep' files, generate dependencies",
+		"\tfor use by `mmc --make' in addition to the dependencies",
+		"\tused by mmake.",
+		"--generate-mmc-deps",
+		"--generate-mmc-make-module-dependencies",
+		"\tGenerate dependencies for use by `mmc --make' even",
+		"\twhen using Mmake. This is recommended when building a",
+		"\tlibrary for installation.",
+
+		% --generate-mmake-module-dependencies is for internal
+		% use by the compiler.
+
 % declarative debugging is not documented yet, since it is still experimental
 %		"--trace {minimum, shallow, deep, decl, rep, default}",
 		"--trace {minimum, shallow, deep, default}",
@@ -3091,15 +3185,29 @@ options_help_target_code_compilation -->
 		"--java-compiler",
 		"\tSpecify which Java compiler to use.  The default is javac.",
 		
-		"--java-flags",
+		"--java-flags <options>",
 		"\tSpecify options to be passed to the Java compiler.",
 
-		"--java-classpath",
+		"--java-classpath <path>",
 		"\tSet the classpath for the Java compiler.",
 
-		"--java-object-file-extension",
+		"--java-object-file-extension <ext>",
 		"\tSpecify an extension for Java object (bytecode) files",
-		"\tBy default this is `.class'."
+		"\tBy default this is `.class'.",
+
+		"--il-assembler <ilasm>",
+		"\tThe Microsoft IL Assembler.",
+		"--ilasm-flags <options>",
+		"\tSpecify options to be passed to the IL assembler.",
+		"--mcpp-compiler <cl>",
+		"\tSpecify the name of the Microsoft Managed C++ Compiler.",
+		"--mcpp-flags <options>",
+		"\tSpecify options to be passed to the Managed C++ Compiler.",
+
+		"--csharp-compiler <csc>",
+		"\tSpecify the name of the Microsoft C# Compiler.",
+		"--csharp-flags <options>",
+		"\tSpecify options to be passed to the C# Compiler."
 	]).
 
 :- pred options_help_link(io__state::di, io__state::uo) is det.
@@ -3149,21 +3257,38 @@ options_help_link -->
 		% they are deliberately not documented.
 	]).
 
-:- pred options_help_misc(io__state::di, io__state::uo) is det.
+:- pred options_help_build_system(io__state::di, io__state::uo) is det.
 
-options_help_misc -->
-	io__write_string("\nMiscellaneous Options:\n"),
+options_help_build_system -->
+	io__write_string("\nBuild System Options:\n"),
 	write_tabbed_lines([
-% `--make' is not yet implemented.
-%		"-m, --make",
-%		"\tTreat the non-option arguments to `mmc' as files to",
-%		"\tmake, rather than source files.",
-%		"-r, --rebuild",
-%		"\tSame as `--make', but always rebuild the target files",
-%		"\teven if they are up to date."j
-%		"-k, --keep-going",
-%		"\tWith `--make' or `--rebuild', keep going as far as",
-%		"\tpossible even if an error is detected.",
+		"-m, --make",
+		"\tTreat the non-option arguments to `mmc' as files to",
+		"\tmake, rather than source files.",
+		"-r, --rebuild",
+		"\tSame as `--make', but always rebuild the target files",
+		"\teven if they are up to date.",
+		"-k, --keep-going",
+		"\tWith `--make', keep going as far as",
+		"\tpossible even if an error is detected.",
+		"--install-prefix <dir>",
+		"\tThe directory under which to install Mercury libraries.",
+		"--install-command <command>",
+		"\tSpecify the command to use to install the files in",
+		"\tMercury libraries. The given command will be invoked as",
+		"\t`<command> <source> <target>' to install each file",
+		"\tin a Mercury library. The default command is `cp'.",
+		"--libgrade <grade>",
+		"\tAdd <grade> to the list of compilation grades in",
+		"\twhich a library to be installed should be built.",
+		"--options-file <file>",
+		"\tAdd <file> to the list of options files to be processed.",
+		"\tIf no `--options-file' options are given, the file",
+		"\t`Mercury.options' in the current directory will be read",
+		"\tif it exists.",
+		"--options-search-directory <dir>",
+		"\tAdd <dir> to the list of directories to be searched for",
+		"\toptions files.",
 		"-I <dir>, --search-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
 		"\timported modules.",
@@ -3176,7 +3301,14 @@ options_help_misc -->
 		"\tdirectories given by `--intermod-directory'.",
 		"--use-subdirs",
 		"\tGenerate intermediate files in a `Mercury' subdirectory,",
-		"\trather than generating them in the current directory.",
+		"\trather than generating them in the current directory."
+	]).
+
+:- pred options_help_misc(io__state::di, io__state::uo) is det.
+
+options_help_misc -->
+	io__write_string("\nMiscellaneous Options:\n"),
+	write_tabbed_lines([
 		"--filenames-from-stdin",
 		"\tRead then compile a newline terminated module name or",
 		"\tfile name from the standard input. Repeat this until EOF",

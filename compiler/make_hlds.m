@@ -292,11 +292,8 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		;
 			{ Status = Status0 },
 			{ Module = Module0 },
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			report_warning("Warning: `external' declaration requires arity.\n"),
-			io__set_output_stream(OldStream, _)
+			report_warning("Warning: `external' declaration requires arity.\n")
 		)
 	; { ModuleDefn = module(_ModuleName) } ->
 		report_unexpected_decl("module", Context),
@@ -315,11 +312,8 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		report_warning("Warning: declaration not yet implemented.\n"),
-		io__set_output_stream(OldStream, _)
+		report_warning("Warning: declaration not yet implemented.\n")
 	).
 
 add_item_decl_pass_1(nothing(_), _, Status, Module, Status, Module) --> [].
@@ -1976,8 +1970,6 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			{ term__contains_var_list(Args, Var) },
 			{ \+ term__contains_var(EqvType, Var) }
 		->
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			io__write_string(
 	"Sorry, not implemented: polymorphic equivalence type,\n"),
@@ -1997,8 +1989,7 @@ module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 			;
 				[]
 			),
-			io__set_exit_status(1),
-			io__set_output_stream(OldStream, _)
+			io__set_exit_status(1)
 		;
 			[]
 		)
@@ -2123,8 +2114,6 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 		{ OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _) }
 	->
 		% XXX we should record each error using module_info_incr_errors
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
 		io__write_string("Error: constructor `"),
 		hlds_out__write_cons_id(QualifiedConsId),
@@ -2132,7 +2121,6 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 		hlds_out__write_type_ctor(TypeCtor),
 		io__write_string("' multiply defined.\n"),
 		io__set_exit_status(1),
-		io__set_output_stream(OldStream, _),
 		{ QualifiedConsDefns = QualifiedConsDefns1 }
 	;
 		{ QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1] }	
@@ -2237,8 +2225,6 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 		% XXX we should record each error
 		% using module_info_incr_errors
 		{ FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _) },
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
 		{ prog_out__sym_name_to_string(FieldName, FieldString) },
 		{ ErrorPieces = [
 			words("Error: field"),
@@ -2256,7 +2242,6 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 		io__write_string(FieldString),
 		io__write_string("'.\n"),
 		io__set_exit_status(1),
-		io__set_output_stream(OldStream, _),
 		{ FieldNameTable = FieldNameTable0 }
 	;
 		{ unqualify_name(FieldName, UnqualFieldName) },
@@ -4138,8 +4123,6 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 				PredicateTable, ModuleInfo) }
 		;
 			{ module_info_incr_errors(ModuleInfo1, ModuleInfo) }, 
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			io__write_string("Error: `:- pragma import' "),
 			io__write_string("declaration for undeclared mode "),
@@ -4147,7 +4130,6 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 			hlds_out__write_simple_call_id(PredOrFunc,
 				PredName/Arity),
 			io__write_string(".\n"),
-			io__set_output_stream(OldStream, _),
 			{ Info = Info0 }
 		)
 	).
@@ -4326,8 +4308,6 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 				ModuleInfo)
 		;
 			{ module_info_incr_errors(ModuleInfo1, ModuleInfo) }, 
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			io__write_string("Error: `:- pragma foreign_proc' "),
 			io__write_string("declaration for undeclared mode "),
@@ -4335,7 +4315,6 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 			hlds_out__write_simple_call_id(PredOrFunc,
 				PredName/Arity),
 			io__write_string(".\n"),
-			io__set_output_stream(OldStream, _),
 			{ Info = Info0 }
 		)
 	).
@@ -4705,25 +4684,22 @@ maybe_warn_overlap(Warnings, VarSet, PredCallId) -->
 warn_overlap([], _, _) --> [].
 warn_overlap([Warn|Warns], VarSet, PredCallId) -->
 	{ Warn = warn_overlap(Vars, Context) },
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
 	prog_out__write_context(Context),
-	io__write_string(StdErr, "In clause for "),
+	io__write_string("In clause for "),
 	hlds_out__write_simple_call_id(PredCallId),
-	io__write_string(StdErr, ":\n"),
+	io__write_string(":\n"),
 	prog_out__write_context(Context),
 	( { Vars = [Var] } ->
-		io__write_string(StdErr, "  warning: variable `"),
+		io__write_string("  warning: variable `"),
 		mercury_output_var(Var, VarSet, no),
-		report_warning(StdErr, "' has overlapping scopes.\n")
+		report_warning("' has overlapping scopes.\n")
 	;
-		io__write_string(StdErr, "  warning: variables `"),
+		io__write_string("  warning: variables `"),
 		mercury_output_vars(Vars, VarSet, no),
-		report_warning(StdErr, "'\n"),
+		report_warning("'\n"),
 		prog_out__write_context(Context),
-		report_warning(StdErr, "  each have overlapping scopes.\n")
+		report_warning("  each have overlapping scopes.\n")
 	),
-	io__set_output_stream(OldStream, _),
 	warn_overlap(Warns, VarSet, PredCallId).
 
 %-----------------------------------------------------------------------------%
@@ -4974,8 +4950,6 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 		( { UnmentionedVars = [] } ->
 			[]
 		;
-			io__stderr_stream(StdErr1),
-			io__set_output_stream(StdErr1, OldStream1),
 			prog_out__write_context(Context),
 			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
@@ -4983,8 +4957,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 			prog_out__write_context(Context),
 			write_variable_warning_start(UnmentionedVars),
 			io__write_string("not occur in the " ++
-				LangStr ++ " code.\n"),
-			io__set_output_stream(OldStream1, _)
+				LangStr ++ " code.\n")
 		)
 	;
 		{ PragmaImpl = nondet(_, _, FirstCode, _,
@@ -5001,8 +4974,6 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 		( { UnmentionedInputVars = [] } ->
 			[]
 		;
-			io__stderr_stream(StdErr2),
-			io__set_output_stream(StdErr2, OldStream2),
 			prog_out__write_context(Context),
 			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
@@ -5010,8 +4981,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 			prog_out__write_context(Context),
 			write_variable_warning_start(UnmentionedInputVars),
 			io__write_string("not occur in the first " ++
-				LangStr ++ " code.\n "),
-			io__set_output_stream(OldStream2, _)
+				LangStr ++ " code.\n ")
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
@@ -5023,8 +4993,6 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 		( { UnmentionedFirstOutputVars = [] } ->
 			[]
 		;
-			io__stderr_stream(StdErr3),
-			io__set_output_stream(StdErr3, OldStream3),
 			prog_out__write_context(Context),
 			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
@@ -5034,8 +5002,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 				UnmentionedFirstOutputVars),
 			io__write_string("not occur in the first " ++
 				LangStr ++ " code or the shared " ++ LangStr ++
-				" code.\n "),
-			io__set_output_stream(OldStream3, _)
+				" code.\n ")
 		),
 		{ solutions(lambda([Name::out] is nondet, (
 				list__member(yes(Name - Mode), ArgInfo),
@@ -5047,8 +5014,6 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 		( { UnmentionedLaterOutputVars = [] } ->
 			[]
 		;
-			io__stderr_stream(StdErr4),
-			io__set_output_stream(StdErr4, OldStream4),
 			prog_out__write_context(Context),
 			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
@@ -5058,8 +5023,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo,
 				UnmentionedLaterOutputVars),
 			io__write_string("not occur in the retry " ++
 				LangStr ++ " code or the shared " ++ LangStr ++
-				" code.\n "),
-			io__set_output_stream(OldStream4, _)
+				" code.\n ")
 		)
 	;
 		{ PragmaImpl = import(_, _, _, _) }
@@ -5170,8 +5134,6 @@ write_string_list([X|Xs]) -->
 
 warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 		PredOrFuncCallId) -->
-	io__stderr_stream(StdErr),
-
 	% find all the variables in the goal that don't occur outside the
 	% goal (i.e. are singleton), have a variable name that doesn't
 	% start with "_" or "DCG_", and don't have the same name as any
@@ -5195,18 +5157,18 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 		[]
 	;
 		prog_out__write_context(Context),
-		io__write_string(StdErr, "In clause for "),
+		io__write_string("In clause for "),
 		hlds_out__write_simple_call_id(PredOrFuncCallId),
-		io__write_string(StdErr, ":\n"),
+		io__write_string(":\n"),
 		prog_out__write_context(Context),
 		( { SingletonVars = [_] } ->
-			io__write_string(StdErr, "  warning: variable `"),
+			io__write_string("  warning: variable `"),
 			mercury_output_vars(SingletonVars, VarSet, no),
-			report_warning(StdErr, "' occurs only once in this scope.\n")
+			report_warning("' occurs only once in this scope.\n")
 		;
-			io__write_string(StdErr, "  warning: variables `"),
+			io__write_string("  warning: variables `"),
 			mercury_output_vars(SingletonVars, VarSet, no),
-			report_warning(StdErr, "' occur only once in this scope.\n")
+			report_warning("' occur only once in this scope.\n")
 		)
 	),
 
@@ -5227,18 +5189,18 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 		[]
 	;
 		prog_out__write_context(Context),
-		io__write_string(StdErr, "In clause for "),
+		io__write_string("In clause for "),
 		hlds_out__write_simple_call_id(PredOrFuncCallId),
-		io__write_string(StdErr, ":\n"),
+		io__write_string(":\n"),
 		prog_out__write_context(Context),
 		( { MultiVars = [_] } ->
-			io__write_string(StdErr, "  warning: variable `"),
+			io__write_string("  warning: variable `"),
 			mercury_output_vars(MultiVars, VarSet, no),
-			report_warning(StdErr, "' occurs more than once in this scope.\n")
+			report_warning("' occurs more than once in this scope.\n")
 		;
-			io__write_string(StdErr, "  warning: variables `"),
+			io__write_string("  warning: variables `"),
 			mercury_output_vars(MultiVars, VarSet, no),
-			report_warning(StdErr, "' occur more than once in this scope.\n")
+			report_warning("' occur more than once in this scope.\n")
 		)
 	).
 

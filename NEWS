@@ -93,6 +93,7 @@ Changes to the Mercury standard library:
 * We've added some other new functions to list.m, namely
   list__last_det/2, list__split_last/3 and list__split_last_det/3.
 * We've added cc_multi modes to list__foldl/4 and list__foldr/4.
+* We've added a predicate list__map_foldl2.
 * As mentioned above, the constructor for lists has changed from './2'
   to `[|]/2'. This change affects the behaviour of the term manipulation
   predicates in the standard library when dealing with values of
@@ -141,6 +142,13 @@ Changes to the Mercury standard library:
   The order of the fields of type `time__tm' has been changed so that
   comparison of values of type `tm' whose `tm_dst' fields are identical
   is equivalent to comparison of the times those values represent.
+
+* We've added a predicate to io.m to return the last modification time
+  of a file (io__file_modification_time).
+
+* There is a variant of io__call_system, io__call_system_return_signal
+  which on interrupt returns the number of the signal which interrupted
+  the command rather than just an error message.
 
 * We've added a predicate `std_util__map_maybe/3' and a function
   `std_util__map_maybe/2' to apply a predicate or a function to

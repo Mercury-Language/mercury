@@ -336,18 +336,19 @@
 %-----------------------------------------------------------------------------%
 
 convert_to_mercury(ModuleName, OutputFileName, Items) -->
-	io__stderr_stream(StdErr),
-	io__tell(OutputFileName, Res),
-	( { Res = ok } ->
+	io__open_output(OutputFileName, Res),
+	( { Res = ok(FileStream) } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		( { Verbose = yes } ->
-			io__write_string(StdErr, "% Writing output to "),
-			io__write_string(StdErr, OutputFileName),
-			io__write_string(StdErr, "..."),
-			io__flush_output(StdErr)
+			io__write_string("% Writing output to "),
+			io__write_string(OutputFileName),
+			io__write_string("..."),
+			io__flush_output
 		;
 			[]
 		),
+
+		io__set_output_stream(FileStream, OutputStream),
 		io__write_string(":- module "),
 		mercury_output_bracketed_sym_name(ModuleName),
 		io__write_string(".\n"),
@@ -356,16 +357,18 @@ convert_to_mercury(ModuleName, OutputFileName, Items) -->
 		% declaration above.
 		{ UnqualifiedItemNames = yes },
 		mercury_output_item_list(UnqualifiedItemNames, Items),
+		io__set_output_stream(OutputStream, _),
+		io__close_output(FileStream),
+
 		( { Verbose = yes } ->
-			io__write_string(StdErr, " done\n")
+			io__write_string(" done\n")
 		;
 			[]
-		),
-		io__told
+		)
 	;
-		io__write_string(StdErr, "Error: couldn't open file `"),
-		io__write_string(StdErr, OutputFileName),
-		io__write_string(StdErr, "' for output.\n")
+		io__write_string("Error: couldn't open file `"),
+		io__write_string(OutputFileName),
+		io__write_string("' for output.\n")
 	).
 
 %-----------------------------------------------------------------------------%

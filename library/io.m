@@ -1161,6 +1161,23 @@
 %		signal kills the system call, then Result will be an error
 %		indicating which signal occured.
 
+:- type io__system_result
+	--->	exited(int)
+	;	signalled(int)
+	.
+
+:- pred io__call_system_return_signal(string, io__res(io__system_result),
+		io__state, io__state).
+:- mode io__call_system_return_signal(in, out, di, uo) is det.
+%	io__call_system_return_signal(Command, Result, IO0, IO1).
+%		Invokes the operating system shell with the specified
+%		Command.  Result is either `ok(ExitStatus)' if it was
+%		possible to invoke the command and the it ran to completion,
+%		`signal(SignalNum)' if the command was killed by a signal, or
+%		`error(ErrorCode)' if the command could not be executed.
+%		The `ExitStatus' will be 0 if the command completed
+%		successfully or the return value of the command otherwise.
+
 :- func io__error_message(io__error) = string.
 :- pred io__error_message(io__error, string).
 :- mode io__error_message(in, out) is det.
@@ -1225,16 +1242,23 @@
 :- mode io__write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write_univ(in, in, in, di, uo) is cc_multi.
 
-% This is the same as io__read_from_string, except that an integer
-% is allowed where a character is expected. This is needed by
-% extras/aditi/aditi.m because Aditi does not have a builtin
-% character type. This also allows an integer where a float
-% is expected.
+% For use by extras/aditi/aditi.m
 
+	% This is the same as io__read_from_string, except that an integer
+	% is allowed where a character is expected. This is needed because
+	% Aditi does not have a builtin character type. This also allows an
+	% integer where a float is expected.
 :- pred io__read_from_string_with_int_instead_of_char(string, string, int,
 			io__read_result(T), posn, posn).
 :- mode io__read_from_string_with_int_instead_of_char(in, in, in,
 			out, in, out) is det.
+
+% For use by compiler/make.util.m:
+
+	% Interpret the child process exit status returned by
+	% system() or wait().
+:- func io__handle_system_command_exit_status(int) =
+		io__res(io__system_result).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1312,13 +1336,13 @@
 %		Reads a character code from specified stream.
 %		Returns -1 if at EOF, -2 if an error occurs.
 
-:- pred io__call_system_code(string, int, io__state, io__state).
-:- mode io__call_system_code(in, out, di, uo) is det.
-%	io__call_system_code(Command, Status, IO0, IO1).
+:- pred io__call_system_code(string, int, string, io__state, io__state).
+:- mode io__call_system_code(in, out, out, di, uo) is det.
+%	io__call_system_code(Command, Status, Message, IO0, IO1).
 %		Invokes the operating system shell with the specified
-%		Command.  Returns Status = 127 on failure.  Otherwise
-%		returns the exit status as a positive integer, or the
-%		signal which killed the command as a negative integer.
+%		Command.  Returns Status = 127 and Message on failure.
+%		Otherwise returns the raw exit status from the system()
+%		call.
 
 :- pred io__do_open(string, string, int, io__input_stream,
 			io__state, io__state).
@@ -3207,18 +3231,27 @@ io__insert_std_stream_names -->
 	io__insert_stream_name(Stderr, "<standard error>").
 
 io__call_system(Command, Result) -->
-	io__call_system_code(Command, Status),
-	{ Status = 127 ->
-		% XXX improve error message
-		Result = error(io_error("can't invoke system command"))
-	; Status < 0 ->
-		Signal is - Status,
+	io__call_system_return_signal(Command, Result0),
+	{
+		Result0 = ok(exited(Code)),
+		Result = ok(Code)
+	;
+		Result0 = ok(signalled(Signal)),
 		string__int_to_string(Signal, SignalStr),
 		string__append("system command killed by signal number ",
 			SignalStr, ErrMsg),
 		Result = error(io_error(ErrMsg))
 	;
-		Result = ok(Status)
+		Result0 = error(Error),
+		Result = error(Error)
+	}.
+	
+io__call_system_return_signal(Command, Result) -->
+	io__call_system_code(Command, Code, Msg),
+	{ Code = 127 ->
+		Result = error(io_error(Msg))
+	;
+		Result = io__handle_system_command_exit_status(Code)
 	}.
 
 :- type io__error	
@@ -4864,18 +4897,46 @@ io__close_binary_output(Stream) -->
 ").
 
 :- pragma foreign_proc("C",
-	io__call_system_code(Command::in, Status::out, IO0::di, IO::uo),
+	io__call_system_code(Command::in, Status::out, Msg::out,
+		IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Status = system(Command);
-	if ( Status == -1 || Status == 127 ) {
+	if ( Status == -1 ) {
 		/* 
 		** Return values of 127 or -1 from system() indicate that
 		** the system call failed.  Dont return -1, as -1 indicates
 		** that the system call was killed by signal number 1. 
 		*/
 		Status = 127;
+		ML_maybe_make_err_msg(TRUE,
+			""error invoking system command: "",
+			MR_PROC_LABEL, Msg);
 	} else {
+		Msg = MR_make_string_const("""");	
+	}
+	update_io(IO0, IO);
+").
+
+
+io__handle_system_command_exit_status(Code0) = Status :-
+	Code = io__handle_system_command_exit_code(Code0),
+	( Code = 127 ->
+		Status = error(
+			io_error("unknown result code from system command"))
+	; Code < 0 ->
+		Status = ok(signalled(-Code))
+	;
+		Status = ok(exited(Code))
+	).
+
+:- func io__handle_system_command_exit_code(int) = int.
+
+:- pragma foreign_proc("C",
+	io__handle_system_command_exit_code(Status0::in) = (Status::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+		Status = Status0;
 		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
 			defined (WIFSIGNALED) && defined (WTERMSIG)
 		if (WIFEXITED(Status))
@@ -4894,8 +4955,6 @@ io__close_binary_output(Stream) -->
 			Status = (Status & 0xff00) >> 8;
 
 		#endif
-	}
-	update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++",
@@ -4937,7 +4996,8 @@ io__close_binary_output(Stream) -->
 ").
 
 :- pragma foreign_proc("MC++",
-	io__call_system_code(Command::in, Status::out, IO0::di, IO::uo),
+	io__call_system_code(Command::in, Status::out, _Msg::out,
+			IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 		// XXX This could be better... need to handle embedded spaces.
@@ -4949,6 +5009,14 @@ io__close_binary_output(Stream) -->
 //	Diagnostics::Process::Start(commandstr, argstr);
 	Status = NULL;
 	update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("MC++",
+		io__handle_system_command_exit_code(Status0::in)
+			= (Status::out),
+		[will_not_call_mercury, thread_safe, promise_pure],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 io__current_input_stream(_::out, _::di, _::uo) :- 

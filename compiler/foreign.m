@@ -154,18 +154,29 @@
 	% for use in machine-readable name mangling.
 :- func simple_foreign_language_string(foreign_language) = string.
 
+	% Sub-type of foreign_language for languages for which
+	% we generate external files for foreign code.
+:- inst lang_gen_ext_file 
+	--->	c
+	;	managed_cplusplus
+	;	csharp
+	.
+
 	% The file extension used for this foreign language (including
 	% the dot).
 	% Not all foreign languages generate external files,
 	% so this function only succeeds for those that do.
-:- func foreign_language_file_extension(foreign_language) = string
-		is semidet.
+:- func foreign_language_file_extension(foreign_language) = string.
+:- mode foreign_language_file_extension(in) = out is semidet.
+:- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
 
 	% The module name used for this foreign language.
 	% Not all foreign languages generate external modules 
 	% so this function only succeeds for those that do.
 :- func foreign_language_module_name(module_name, foreign_language) =
-		module_name is semidet.
+		module_name.
+:- mode foreign_language_module_name(in, in) = out is semidet.
+:- mode foreign_language_module_name(in, in(lang_gen_ext_file)) = out is det.
 
 :- implementation.
 

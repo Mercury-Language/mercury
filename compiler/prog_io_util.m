@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -537,14 +537,13 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 %-----------------------------------------------------------------------------%
 
 report_warning(Message) -->
-	io__stderr_stream(StdErr),
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)
 	;
 		[]
 	),
-	io__write_string(StdErr, Message).
+	io__write_string(Message).
 
 report_warning(Stream, Message) -->
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
@@ -558,8 +557,7 @@ report_warning(Stream, Message) -->
 report_warning(FileName, LineNum, Message) -->
 	{ string__format("%s:%3d: Warning: %s\n",
 		[s(FileName), i(LineNum), s(Message)], FullMessage) },
-	io__stderr_stream(StdErr),
-	io__write_string(StdErr, FullMessage),
+	io__write_string(FullMessage),
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
 		io__set_exit_status(1)

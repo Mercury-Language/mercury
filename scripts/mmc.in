@@ -40,6 +40,10 @@ DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 
+# XXX Once the `mmc --make' change is installed everywhere, the default
+# option settings below should be set in the DEFAULT_MCFLAGS environment
+# variable to avoid having them override the value of MCFLAGS in the
+# Mercury.options file.
 # XXX when the compiler has bootstrapped we need to add the following to
 # the mmc command line
 # --dotnet-library-version "$MS_DOTNET_LIBRARY_VERSION"

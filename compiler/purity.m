@@ -222,14 +222,10 @@
 puritycheck(FoundTypeError, HLDS0, PostTypecheckError, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Purity-checking clauses...\n"),
 	check_preds_purity(FoundTypeError, HLDS0, PostTypecheckError, HLDS),
-	maybe_report_stats(Statistics),
-
-	io__set_output_stream(OldStream, _).
+	maybe_report_stats(Statistics).
 
 
 %  worst_purity/3 could be written more compactly, but this definition

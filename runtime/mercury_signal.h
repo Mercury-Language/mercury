@@ -16,8 +16,6 @@
 #ifndef	MERCURY_SIGNAL_H
 #define	MERCURY_SIGNAL_H
 
-#include "mercury_types.h"
-#include "mercury_std.h"
 #include "mercury_conf.h"
 
 #ifdef MR_HAVE_SIGCONTEXT_STRUCT
@@ -48,6 +46,9 @@
 #else
   #include <signal.h>
 #endif
+
+#include "mercury_types.h"
+#include "mercury_std.h"
 
 #ifdef MR_HAVE_SIGACTION
 typedef struct sigaction	MR_signal_action;
@@ -92,5 +93,14 @@ extern void MR_get_signal_action(int sig, MR_signal_action *old_action,
 	*/
 extern void MR_set_signal_action(int sig, MR_signal_action *action,
 	const char *error_message);
+
+	/*
+	** Change the behaviour of system calls when the
+	** the specified signal is received.
+	** If restart is MR_TRUE they will be restarted, if it
+	** is MR_FALSE, they won't. This function may have no
+	** effect on some systems.
+	*/
+extern void MR_signal_should_restart(int sig, MR_bool restart);
 
 #endif /* not MERCURY_SIGNAL_H */

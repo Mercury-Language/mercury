@@ -165,14 +165,10 @@
 typecheck(Module0, Module, FoundError, ExceededIterationLimit) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
 	check_pred_types(Module0, Module, FoundError, ExceededIterationLimit),
-	maybe_report_stats(Statistics),
-
-	io__set_output_stream(OldStream, _).
+	maybe_report_stats(Statistics).
 
 %-----------------------------------------------------------------------------%
 

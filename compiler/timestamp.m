@@ -22,21 +22,29 @@
 	% is equivalent to comparison of the times represented.
 :- type timestamp.
 
-	% time__time_t_to_timestamp(Time) = Timestamp:
+	% time_t_to_timestamp(Time) = Timestamp:
 	%	Converts the calendar time value `Time' into a timestamp.
 	%	Equivalent to `gm_time_to_timestamp(gmtime(Time))'.
 :-func time_t_to_timestamp(time_t) = timestamp.
 
-	% time__timestamp_to_string(Timestamp) = String:
+	% timestamp_to_string(Timestamp) = String:
 	%	Converts `Timestamp' into a string with format
 	%	"yyyy-mm-dd hh:mm:ss", expressed as UTC. 
 :- func timestamp_to_string(timestamp) = string.
 
-	% time__string_to_timestamp(String) = Timestamp:
+	% string_to_timestamp(String) = Timestamp:
 	%	Converts a string formatted as "yyyy-mm-dd hh:mm:ss",
 	%	into a timestamp. Fails if the string does not have the
 	%	correct format.
 :- func string_to_timestamp(string) = timestamp is semidet.
+
+	% oldest_timestamp = Timestamp:
+	%	Return a timestamp which is older than any other timestamp.
+:- func oldest_timestamp = timestamp.
+
+	% newest_timestamp = Timestamp:
+	%	Return a timestamp which is newer than any other timestamp.
+:- func newest_timestamp = timestamp.
 
 %-----------------------------------------------------------------------------%
 
@@ -48,7 +56,8 @@
 	% representing a time expressed as UTC (Universal Coordinated Time).
 :- type timestamp == string.
 
-:- pragma c_header_code("#include <time.h>").
+oldest_timestamp = "0000-00-00 00:00:00".
+newest_timestamp = "9999-99-99 99:99:99".
 
 time_t_to_timestamp(Time) = gmtime_to_timestamp(time__gmtime(Time)).
 
@@ -145,4 +154,3 @@ string_to_timestamp(Timestamp) = Timestamp :-
 	string__to_int(string__unsafe_substring(Timestamp, 17, 2), Second),
 	Second >= 0,
 	Second =< 61.	% Seconds 60 and 61 are for leap seconds.
-

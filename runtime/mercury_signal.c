@@ -11,6 +11,7 @@
 /*---------------------------------------------------------------------------*/
 
 #include "mercury_imp.h"
+#include "mercury_signal.h"
 
 #ifdef MR_HAVE_UNISTD_H
   #include <unistd.h>
@@ -142,4 +143,30 @@ MR_set_signal_action(int sig, MR_signal_action *act,
 		exit(1);
 	}
 #endif /* not MR_HAVE_SIGACTION */
+}
+
+void
+MR_signal_should_restart(int sig, MR_bool restart)
+{
+#if defined(MR_HAVE_SIGACTION)
+	struct sigaction	act;
+	if (sigaction(sig, NULL, &act) != 0) {
+		MR_perror("error setting signal system call behaviour");
+		exit(1);
+	}
+	if (restart) {
+		act.sa_flags |= SA_RESTART;
+	} else {
+		act.sa_flags &= ~SA_RESTART;
+	}
+	if (sigaction(sig, &act, NULL) != 0) {
+		MR_perror("error setting signal system call behaviour");
+		exit(1);
+	}
+#elif defined(MR_HAVE_SIGINTERRUPT)
+	if (siginterrupt(sig, !restart) != 0) {
+		MR_perror("error setting signal system call behaviour");
+		exit(1);
+	}
+#endif 
 }

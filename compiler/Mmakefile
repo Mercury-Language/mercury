@@ -100,6 +100,10 @@ endif
 
 CFLAGS-rl_code=-O1
 
+# make.util.m uses `kill' and `struct sigaction' from <signal.h>,
+# which are not available with `--ansi'.
+MGNUCFLAGS-make.util = --no-ansi
+
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.
 CFLAGS-gcc =	-DMERCURY_BOOTSTRAP_H \

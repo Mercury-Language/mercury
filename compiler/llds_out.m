@@ -263,7 +263,7 @@
 :- import_module rtti, rtti_out, layout, layout_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules, passes_aux.
-:- import_module c_util, foreign.
+:- import_module c_util, foreign, compile_target_code.
 
 :- import_module int, char, string, std_util.
 :- import_module set, bintree_set, assoc_list, require.
@@ -292,6 +292,7 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 			UserForeignCodes, Exports, Vars, Datas, Modules) },
 		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
+
 		output_split_c_file_init(ModuleName, Modules, Datas,
 			StackLayoutLabels, MaybeRLFile),
 		output_split_user_foreign_codes(UserForeignCodes, ModuleName,
@@ -303,7 +304,16 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 		output_split_comp_gen_c_datas(Datas, ModuleName,
 			C_HeaderInfo, StackLayoutLabels, Num3, Num4),
 		output_split_comp_gen_c_modules(Modules, ModuleName,
-			C_HeaderInfo, StackLayoutLabels, Num4, _Num)
+			C_HeaderInfo, StackLayoutLabels, Num4, Num),
+
+		compile_target_code__write_num_split_c_files(ModuleName,
+			Num, Succeeded),
+		( { Succeeded = no } ->
+			compile_target_code__remove_split_c_output_files(
+				ModuleName, Num)
+		;
+			[]
+		)
 	;
 		output_single_c_file(C_File, no,
 			StackLayoutLabels, MaybeRLFile)
@@ -387,11 +397,12 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
-	io__tell(FileName, Result),
+	io__open_output(FileName, Result),
 	(
-		{ Result = ok }
+		{ Result = ok(FileStream) }
 	->
 		{ library__version(Version) },
+		io__set_output_stream(FileStream, OutputStream),
 		output_c_file_intro_and_grade(SourceFileName, Version),
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
@@ -400,7 +411,8 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels, DeclSet0, _DeclSet),
 		output_rl_file(ModuleName, MaybeRLFile),
-		io__told
+		io__set_output_stream(OutputStream, _),
+		io__close_output(FileStream)
 	;
 		io__progname_base("llds.m", ProgName),
 		io__write_string("\n"),
@@ -480,11 +492,12 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 	;
 		module_name_to_file_name(ModuleName, ".c", yes, FileName)
 	),
-	io__tell(FileName, Result),
+	io__open_output(FileName, Result),
 	(
-		{ Result = ok }
+		{ Result = ok(FileStream) }
 	->
 		{ library__version(Version) },
+		io__set_output_stream(FileStream, OutputStream),
 		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 		output_c_file_intro_and_grade(SourceFileName, Version),
 		( { SplitFiles = yes(_) } ->
@@ -517,7 +530,8 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 				StackLayoutLabels, DeclSet5, _DeclSet)
 		),
 		output_rl_file(ModuleName, MaybeRLFile),
-		io__told
+		io__set_output_stream(OutputStream, _),
+		io__close_output(FileStream)
 	;
 		io__progname_base("llds.m", ProgName),
 		io__write_string("\n"),

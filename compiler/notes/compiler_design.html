@@ -111,7 +111,8 @@ see the documentation at the start of that module's source code.
 <!---------------------------------------------------------------------------->
 <p>
 
-The action is co-ordinated from mercury_compile.m.
+The action is co-ordinated from mercury_compile.m or make.m (if `--make'
+was specified on the command line).
 
 <p>
 
@@ -124,6 +125,48 @@ mercury_compile.m calls library/getopt.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set.  The results are
 stored in the io__state, using the type globals defined in globals.m.
+After the options are processed, the options files specified
+by the `--option-defaults-file' option is read by options_file.m.
+The options are then reprocessed with the options set in the options
+file.
+
+<p>
+
+<h3> Build system </h3>
+
+<p>
+
+<dl> 
+
+<dt> make.m
+	<dd> 
+	Categorizes targets passed on the command line and passes
+	them to the appropriate module to be built.
+
+<dt> make.program_target.m
+	<dd>
+	Handles whole program `mmc --make' targets, including
+	executables, libraries and cleanup.
+
+<dt> make.module_target.m
+	<dd>
+	Handles targets built by a compilation action associated 
+	with a single module, for example making interface files,
+
+<dt> make.dependencies.m
+	<dd>
+	Compute dependencies between targets and between modules.
+
+<dt> make.module_dep_file.m
+	<dd>
+	Record the dependency information for each module between
+	compilations.
+
+<dt> make.util.m
+	<dd>
+	Utility predicates.
+
+</dl>
 
 <p>
 <hr>
@@ -1170,6 +1213,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-03-04 07:31:38 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-12 16:33:12 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -94,12 +94,14 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
 		{ OptDebugInfo = opt_debug_info(BaseName, 0) },
 
 		{ string__append_list([BaseName, ".opt0"], FileName) },
-		io__tell(FileName, Res),
-		( { Res = ok } ->
+		io__open_output(FileName, Res),
+		( { Res = ok(FileStream) } ->
+			io__set_output_stream(FileStream, OutputStream),
 			{ counter__allocate(NextLabel, Counter, _) },
 			opt_debug__msg(yes, NextLabel, "before optimization"),
 			opt_debug__dump_instrs(yes, Instrs0),
-			io__told
+			io__set_output_stream(OutputStream, _),
+			io__close_output(FileStream)
 		;
 			{ string__append("cannot open ", FileName, ErrorMsg) },
 			{ error(ErrorMsg) }
@@ -126,12 +128,14 @@ optimize__maybe_opt_debug(Instrs, Counter, Msg,
 			OptFileName) },
 		{ string__append_list([BaseName, ".diff", OptNumStr],
 			DiffFileName) },
-		io__tell(OptFileName, Res),
-		( { Res = ok } ->
+		io__open_output(OptFileName, Res),
+		( { Res = ok(FileStream) } ->
+			io__set_output_stream(FileStream, OutputStream),
 			{ counter__allocate(NextLabel, Counter, _) },
 			opt_debug__msg(yes, NextLabel, Msg),
 			opt_debug__dump_instrs(yes, Instrs),
-			io__told
+			io__set_output_stream(OutputStream, _),
+			io__close_output(FileStream)
 		;
 			{ string__append("cannot open ", OptFileName,
 				ErrorMsg) },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001 The University of Melbourne.
+% Copyright (C) 1996-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -559,10 +559,11 @@ export__produce_header_file([], _) --> [].
 export__produce_header_file(C_ExportDecls, ModuleName) -->
 	{ C_ExportDecls = [_|_] },
 	module_name_to_file_name(ModuleName, ".h", yes, FileName),
-	io__tell(FileName, Result),
+	io__open_output(FileName, Result),
 	(
-		{ Result = ok }
+		{ Result = ok(FileStream) }
 	->
+		io__set_output_stream(FileStream, OutputStream),
 		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 		{ library__version(Version) },
 		io__write_strings(["/*\n** Automatically generated from `", 
@@ -595,7 +596,8 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 			"#endif\n",
 			"\n",
 			"#endif /* ", GuardMacroName, " */\n"]),
-		io__told
+		io__set_output_stream(OutputStream, _),
+		io__close_output(OutputStream)
 	;
 		io__progname_base("export.m", ProgName),
 		io__write_string("\n"),

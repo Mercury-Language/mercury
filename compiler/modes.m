@@ -338,15 +338,11 @@ a variable live if its value will be used later on in the computation.
 modecheck(Module0, Module, UnsafeToContinue) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
 	check_pred_modes(check_modes, may_change_called_proc,
 		Module0, Module, UnsafeToContinue),
-	maybe_report_stats(Statistics),
-
-	io__set_output_stream(OldStream, _).
+	maybe_report_stats(Statistics).
 
 %-----------------------------------------------------------------------------%
 	

@@ -20,13 +20,24 @@
 :- import_module list, bool, std_util, io.
 :- import_module globals, options.
 
-:- pred handle_options(maybe(string), list(string), bool, io__state, io__state).
-:- mode handle_options(out, out, out, di, uo) is det.
+	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
+:- pred handle_options(list(string), maybe(string), list(string),
+		list(string), bool, io__state, io__state).
+:- mode handle_options(in, out, out, out, out, di, uo) is det.
 
+	% usage_error(Descr, Message)
+	%
+	% Display the description of the error location, the error message
+	% and then a usage message.
+:- pred usage_error(string::in, string::in,
+		io__state::di, io__state::uo) is det.
+
+	% usage_error(Message)
+	%
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
 
-	% Display usage message
+	% Display usage message.
 :- pred usage(io__state::di, io__state::uo) is det.
 
 	% Display long usage message for help
@@ -49,15 +60,15 @@
 :- import_module prog_data, foreign.
 :- import_module char, dir, int, string, map, set, getopt, library.
 
-handle_options(MaybeError, Args, Link) -->
-	io__command_line_arguments(Args0),
+handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 	% io__write_string("original arguments\n"),
 	% dump_arguments(Args0),
 	{ OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler) },
 	% default to optimization level `-O2'
 	{ Args1 = ["-O2" | Args0] },
-	{ getopt__process_options(OptionOps, Args1, Args, Result) },
+	{ getopt__process_options(OptionOps, Args1,
+		OptionArgs, Args, Result) },
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, MaybeError),
@@ -266,11 +277,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% and assume --num-tag-bits 0
 	( { NumTagBits1 < 0 } ->
 		io__progname_base("mercury_compile", ProgName),
-		io__stderr_stream(StdErr),
 		report_warning(ProgName),
 		report_warning(
 			": warning: --num-tag-bits invalid or unspecified\n"),
-		io__write_string(StdErr, ProgName),
+		io__write_string(ProgName),
 		report_warning(": using --num-tag-bits 0 (tags disabled)\n"),
 		{ NumTagBits = 0 }
 	;
@@ -407,6 +417,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% --no-mlds-optimize implies --no-optimize-tailcalls
 	option_neg_implies(optimize, optimize_tailcalls, bool(no)),
 
+	% make.m controls generating object code and linking itself,
+	% so mercury_compile.m should only generate target code when
+	% given a module to process.
+	option_implies(make, compile_only, bool(yes)),
+	option_implies(make, target_code_only, bool(yes)),
+
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
 	option_implies(check_termination, warn_missing_trans_opt_files,
@@ -493,7 +509,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	maybe_disable_smart_recompilation(Smart, target_code_only, no,
 		"`--no-target-code-only'"),
 
+	% --rebuild is just like --make but always rebuilds the files
+	% without checking timestamps.
+	option_implies(rebuild, make, bool(yes)),
+
+	% --make does not handle --transitive-intermodule-optimization.
+	% --transitive-intermodule-optimization is in the process of
+	% being rewritten anyway.
+	option_implies(make, transitive_optimization, bool(no)),
+
 	option_implies(very_verbose, verbose, bool(yes)),
+	option_implies(verbose, verbose_commands, bool(yes)),
 
 	globals__io_lookup_int_option(debug_liveness, DebugLiveness),
 	(
@@ -511,6 +537,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
+
+	% --split-c-files is not supported by the high-level C code generator.
+	option_implies(highlevel_code, split_c_files, bool(no)),
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
@@ -1042,20 +1071,29 @@ disable_smart_recompilation(OptionDescr) -->
 		[]
 	).
 
+usage_error(ErrorDescr, ErrorMessage) -->
+	write_program_name,	
+	io__write_string(ErrorDescr),
+	io__nl,
+	usage_error(ErrorMessage).
+
 usage_error(ErrorMessage) -->
-	io__progname_base("mercury_compile", ProgName),
-	io__stderr_stream(StdErr),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, ": "),
-	io__write_string(StdErr, ErrorMessage),
-	io__write_string(StdErr, "\n"),
+	write_program_name,
+	io__write_string(ErrorMessage),
+	io__write_string("\n"),
 	io__set_exit_status(1),
 	usage.
 
+:- pred write_program_name(io__state::di, io__state::uo) is det.
+
+write_program_name -->
+	io__progname_base("mercury_compile", ProgName),
+	io__write_string(ProgName),
+	io__write_string(": ").
+
 usage -->
-	io__stderr_stream(StdErr),
 	{ library__version(Version) },
- 	io__write_strings(StdErr, [
+ 	io__write_strings([
 		"Mercury Compiler, version ", Version, "\n",
 		"Copyright (C) 1993-2000 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",

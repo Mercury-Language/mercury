@@ -114,10 +114,13 @@
 		io__state, io__state).
 :- mode check_module_has_expected_name(in, in, in, di, uo) is det.
 
-	% search_for_file(Dirs, FileName, Found, IO0, IO)
+	% search_for_file(Dirs, FileName, FoundDirName, IO0, IO)
 	%
-	% Search Dirs for FileName, opening the file if it is found.
-:- pred search_for_file(list(dir_name), file_name, bool, io__state, io__state).
+	% Search Dirs for FileName, opening the file if it is found,
+	% and returning the name of the directory in which the file
+	% was found.
+:- pred search_for_file(list(dir_name), file_name, maybe(dir_name),
+		io__state, io__state).
 :- mode search_for_file(in, in, out, di, uo) is det.
 
 	% parse_item(ModuleName, VarSet, Term, MaybeItem)
@@ -228,8 +231,7 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName) -->
 	( { ActualName \= ExpectedName } ->
 		{ prog_out__sym_name_to_string(ActualName, ActualString) },
 		{ prog_out__sym_name_to_string(ExpectedName, ExpectedString) },
-		io__stderr_stream(ErrStream),
-		io__write_strings(ErrStream, [
+		io__write_strings([
 			"Error: file `", FileName,
 				"' contains the wrong module.\n",
 			"Expected module `", ExpectedString,
@@ -269,7 +271,7 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
 	),
 	io__input_stream(OldInputStream),
 	search_for_file(Dirs, FileName, R),
-	( { R = yes } ->
+	( { R = yes(_) } ->
 		( { ReturnTimestamp = yes } ->
 			io__input_stream_name(InputStreamName),
 			io__file_modification_time(InputStreamName,
@@ -326,13 +328,11 @@ search_for_file([Dir | Dirs], FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
 	;
-		dir__directory_separator(Separator),
-		string__first_char(Tmp1, Separator, FileName),
-		string__append(Dir, Tmp1, ThisFileName)
+		ThisFileName = dir__make_path_name(Dir, FileName)
 	},
 	io__see(ThisFileName, R0),
 	( { R0 = ok } ->
-		{ R = yes }
+		{ R = yes(Dir) }
 	;
 		search_for_file(Dirs, FileName, R)
 	).
