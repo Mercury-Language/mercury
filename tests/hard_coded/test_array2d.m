@@ -72,7 +72,7 @@ main(!IO) :-
 :- mode write_array2d(in,     array2d_ui, di, uo) is det.
 
 write_array2d(Name, Table, !IO) :-
-    io.format("%s =\n%s\n", [s(Name), s(string(Table))], !IO).
+    io.format("%s =\n%s\n", [s(Name), s(test_array2d.string(Table))], !IO).
 
 %-----------------------------------------------------------------------------%
 
