@@ -88,11 +88,17 @@ fi
 
 echo "starting at `date`"
 
+set -x
+
 root=`/bin/pwd`
+trueroot=`echo $root | sed 's:/mount/munkora/mercury:/home/mercury:'`
 PATH=$root/tools:$PATH
 export PATH
 
-set -x
+if test "$RMSTAGECMD" = ""
+then
+	RMSTAGECMD="/bin/rm -fr"
+fi
 
 if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 then
@@ -122,10 +128,10 @@ then
 else
 	# We try to do the removal of the stage 2 directory in parallel
 	# since recursive rm's across NFS can be quite slow ...
-	/bin/rm -fr stage2/compiler &
-	/bin/rm -fr stage2/library &
+	$RMSTAGECMD $trueroot/stage2/compiler < /dev/null &
+	$RMSTAGECMD $trueroot/stage2/library < /dev/null &
 	wait
-	/bin/rm -fr stage2/*
+	$RMSTAGECMD $trueroot/stage2/* < /dev/null
 fi
 
 set +x
@@ -243,10 +249,10 @@ then
 else
 	# We try to do the removal of the stage 3 directory in parallel
 	# since recursive rm's across NFS can be quite slow ...
-	/bin/rm -fr stage3/compiler &
-	/bin/rm -fr stage3/library &
+	$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
+	$RMSTAGECMD $trueroot/stage3/library < /dev/null &
 	wait
-	/bin/rm -fr stage3/*
+	$RMSTAGECMD $trueroot/stage3/* < /dev/null
 fi
 
 echo linking stage 3... 1>&2
@@ -338,10 +344,10 @@ else
 	echo "removing stage 3..."
 	# We try to do the removal of the stage 3 directory in parallel
 	# since recursive rm's across NFS can be quite slow ...
-	/bin/rm -fr stage3/compiler &
-	/bin/rm -fr stage3/library &
+	$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
+	$RMSTAGECMD $trueroot/stage3/library < /dev/null &
 	wait
-	/bin/rm -fr stage3/*
+	$RMSTAGECMD $trueroot/stage3/* < /dev/null
 fi
 
 # since we may have removed the stage3 library, use the one in stage2
@@ -366,7 +372,7 @@ then
 		cd $root
 	else
 		echo "cannot find test directory"
-		test_status=0
+		test_status=1
 	fi
 else
 	test_status=0

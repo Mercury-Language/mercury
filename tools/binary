@@ -159,6 +159,11 @@ root=`/bin/pwd`
 PATH=$root/tools:$PATH
 export PATH
 
+if test "$RMSTAGECMD" = ""
+then
+	RMSTAGECMD="/bin/rm -fr"
+fi
+
 [ -d stage2 ] || mkdir stage2
 /bin/rm -fr stage2/*
 set +x
@@ -220,7 +225,10 @@ cp stage2.ok/compiler/*.date stage2/compiler
 
 cd $root
 [ -d stage3 ] || mkdir stage3
-/bin/rm -fr stage3/*
+$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
+$RMSTAGECMD $trueroot/stage3/library < /dev/null &
+wait
+$RMSTAGECMD $trueroot/stage3/* < /dev/null
 echo linking stage 3... 1>&2
 cd stage3
 mkdir compiler
