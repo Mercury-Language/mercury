@@ -1,2 +1,4 @@
 README.MS-Windows
 .INSTALL.in
+config.sub
+config.guess
