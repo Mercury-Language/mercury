@@ -33,10 +33,28 @@ static  MR_Stack_Walk_Step_Result
 
 #ifndef MR_HIGHLEVEL_CODE
 
-static MR_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
+typedef enum {
+    MR_FRAME_ON_MAIN_BRANCH,
+    MR_INTERNAL_FRAME_ON_SIDE_BRANCH,
+    MR_TOP_FRAME_ON_SIDE_BRANCH,
+    MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH
+} MR_Nondet_Frame_Category;
+
+typedef struct {
+    MR_Traverse_Nondet_Frame_Func *func;
+    void *func_data;
+} MR_Traverse_Nondet_Frame_Func_Info;
+
+typedef void MR_Dump_Or_Traverse_Nondet_Frame_Func(void *user_data,
+                MR_Nondet_Frame_Category category, MR_Word *top_fr,
+                const MR_Label_Layout *layout, MR_Word *base_sp,
+                MR_Word *base_curfr, int level_number);
+
+static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_dump_nondet_stack_frame;
+static MR_Dump_Or_Traverse_Nondet_Frame_Func MR_traverse_nondet_stack_frame;
 static  const char  *MR_step_over_nondet_frame(
-                        MR_Traverse_Nondet_Frame_Func *func, void *func_data,
-                        FILE *fp, int level_number, MR_Word *fr);
+                        MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
+                        void *func_data, int level_number, MR_Word *fr);
 static void         MR_init_nondet_branch_infos(MR_Word *base_maxfr,
                     	const MR_Label_Layout *top_layout, MR_Word *base_sp,
                         MR_Word *base_curfr);
@@ -449,7 +467,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
             if (print_vars && base_maxfr > MR_nondet_stack_trace_bottom) {
                 problem = MR_step_over_nondet_frame(
                         MR_dump_nondet_stack_frame, fp,
-                        fp, level_number, base_maxfr);
+                        level_number, base_maxfr);
                 if (problem != NULL) {
                     fprintf(fp, "%s\n", problem);
                     return;
@@ -463,13 +481,42 @@ MR_dump_nondet_stack_from_layout(FILE *fp, int limit, MR_Word *base_maxfr,
 }
 
 static void
-MR_dump_nondet_stack_frame(void *fp,
-    const MR_Label_Layout *top_layout, MR_Word *base_sp, MR_Word *base_curfr,
-    int level_number)
+MR_dump_nondet_stack_frame(void *fp, MR_Nondet_Frame_Category category,
+    MR_Word *top_fr, const MR_Label_Layout *top_layout, MR_Word *base_sp,
+    MR_Word *base_curfr, int level_number)
 {
-    /* XXX we ignore the return value */
-    (*MR_address_of_trace_browse_all_on_level) (fp, top_layout, base_sp,
-        base_curfr, level_number, MR_TRUE);
+    FILE *dump_fp = fp;
+
+    switch (category) {
+    case MR_INTERNAL_FRAME_ON_SIDE_BRANCH:
+        fprintf(dump_fp, " internal frame on nondet side branch ");
+        MR_printnondstackptr(top_fr);
+        fprintf(dump_fp, "\n");
+        break;
+    case MR_FRAME_ON_MAIN_BRANCH:
+        fprintf(dump_fp, " on main nondet branch ");
+        MR_printnondstackptr(top_fr);
+        fprintf(dump_fp, "\n");
+        break;
+    case MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH:
+        fprintf(dump_fp, " terminal top frame of a nondet side branch ");
+        MR_printnondstackptr(base_curfr);
+        fprintf(dump_fp, "\n");
+        break;
+    case MR_TOP_FRAME_ON_SIDE_BRANCH:
+        fprintf(dump_fp, " top frame of a nondet side branch ");
+        MR_printnondstackptr(base_curfr);
+        fprintf(dump_fp, "\n");
+        break;
+    default:
+        MR_fatal_error("invalid MR_Nondet_Frame_Category");
+    }
+
+    if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
+        /* XXX we ignore the return value */
+        (*MR_address_of_trace_browse_all_on_level) (dump_fp, top_layout,
+                base_sp, base_curfr, level_number, MR_TRUE);
+    }
 }
 
 void
@@ -507,8 +554,12 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
         } else {
             level_number++;
             if (base_maxfr > MR_nondet_stack_trace_bottom) {
-                problem = MR_step_over_nondet_frame(func, func_data,
-                        NULL, level_number, base_maxfr);
+                MR_Traverse_Nondet_Frame_Func_Info func_info;
+                func_info.func = func;
+                func_info.func_data = func_data;
+                problem = MR_step_over_nondet_frame(
+                        MR_traverse_nondet_stack_frame, &func_info,
+                        level_number, base_maxfr);
                 if (problem != NULL) {
                     MR_fatal_error(problem);
                 }
@@ -517,6 +568,18 @@ MR_traverse_nondet_stack_from_layout(MR_Word *base_maxfr,
 
         base_maxfr = MR_prevfr_slot(base_maxfr);
         frames_traversed_so_far++;
+    }
+}
+
+static void
+MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
+    MR_Word *top_fr, const MR_Label_Layout *top_layout, MR_Word *base_sp,
+    MR_Word *base_curfr, int level_number)
+{
+    MR_Traverse_Nondet_Frame_Func_Info *func_info = info;
+    if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
+        func_info->func(func_info->func_data, top_layout, base_sp, base_curfr,
+            level_number);
     }
 }
 
@@ -535,8 +598,8 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
 }
 
 static const char *
-MR_step_over_nondet_frame(MR_Traverse_Nondet_Frame_Func *func,
-    void *func_data, FILE *dump_fp, int level_number, MR_Word *fr)
+MR_step_over_nondet_frame(MR_Dump_Or_Traverse_Nondet_Frame_Func *func,
+    void *func_data, int level_number, MR_Word *fr)
 {
     MR_Stack_Walk_Step_Result       result;
     MR_Determinism                  determinism;
@@ -551,24 +614,19 @@ MR_step_over_nondet_frame(MR_Traverse_Nondet_Frame_Func *func,
     MR_Code                         *redoip;
     MR_Code                         *success;
     const char                      *problem;
+    MR_Nondet_Frame_Category        category;
 
     if (MR_find_matching_branch(fr, &branch)) {
         base_sp = MR_nondet_branch_infos[branch].branch_sp;
         base_curfr = MR_nondet_branch_infos[branch].branch_curfr;
         label_layout = MR_nondet_branch_infos[branch].branch_layout;
         topfr = MR_nondet_branch_infos[branch].branch_topfr;
-        if (dump_fp) {
-            if (base_sp == NULL) {
-                fprintf(dump_fp, " internal frame on nondet side branch ");
-                MR_printnondstackptr(topfr);
-                fprintf(dump_fp, "\n");
-            } else {
-                fprintf(dump_fp, " on main nondet branch ");
-                MR_printnondstackptr(topfr);
-                fprintf(dump_fp, "\n");
-            }
+        if (base_sp == NULL) {
+            category = MR_INTERNAL_FRAME_ON_SIDE_BRANCH;
+        } else {
+            category = MR_FRAME_ON_MAIN_BRANCH;
         }
-        (*func)(func_data, label_layout, base_sp, base_curfr,
+        (*func)(func_data, category, topfr, label_layout, base_sp, base_curfr,
                 level_number);
         MR_erase_temp_redoip(fr);
         proc_layout = label_layout->MR_sll_entry;
@@ -621,12 +679,8 @@ MR_step_over_nondet_frame(MR_Traverse_Nondet_Frame_Func *func,
         }
 
         if (redoip == NULL) {
-            if (dump_fp) {
-                fprintf(dump_fp,
-                        " terminal top frame of a nondet side branch ");
-                MR_printnondstackptr(fr);
-                fprintf(dump_fp, "\n");
-            }
+            (*func)(func_data, MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH,
+                    NULL, NULL, NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
             success = MR_succip_slot(fr);
@@ -642,12 +696,8 @@ MR_step_over_nondet_frame(MR_Traverse_Nondet_Frame_Func *func,
             }
 
             label_layout = internal->i_layout;
-            if (dump_fp) {
-                fprintf(dump_fp, " top frame of a nondet side branch ");
-                MR_printnondstackptr(fr);
-                fprintf(dump_fp, "\n");
-            }
-            (*func)(func_data, label_layout, NULL, fr, level_number);
+            (*func)(func_data, MR_TOP_FRAME_ON_SIDE_BRANCH, NULL, label_layout,
+                    NULL, fr, level_number);
             MR_erase_temp_redoip(fr);
 
             /*
