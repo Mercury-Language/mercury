@@ -930,18 +930,26 @@ list__partition([Head|Tail], Partition, Low, High) :-
 :- mode list__merge_sort(in, out) is det.
 :- pragma type_spec(list__merge_sort(in, out), T = var(_)).
 
-list__merge_sort([], []).
-list__merge_sort([X], [X]).
 list__merge_sort(List, SortedList) :-
-	List = [_,_|_],
-	list__length(List, Length),
-	HalfLength is Length // 2,
-	( list__split_list(HalfLength, List, Front, Back) ->
-		list__merge_sort(Front, SortedFront),
-		list__merge_sort(Back, SortedBack),
-		list__merge(SortedFront, SortedBack, SortedList)
+	list__merge_sort_2(list__length(List), List, SortedList).
+
+:- pred list__merge_sort_2(int, list(T), list(T)).
+:- mode list__merge_sort_2(in, in, out) is det.
+:- pragma type_spec(list__merge_sort_2(in, in, out), T = var(_)).
+
+list__merge_sort_2(Length, List, SortedList) :-
+	( Length > 1 ->
+		HalfLength = Length // 2,
+		( list__split_list(HalfLength, List, Front, Back) ->
+			list__merge_sort_2(HalfLength, Front, SortedFront),
+			list__merge_sort_2(Length - HalfLength,
+				Back, SortedBack),
+			list__merge(SortedFront, SortedBack, SortedList)
+		;
+			error("list__merge_sort_2")
+		)
 	;
-		error("list__merge_sort")
+		SortedList = List
 	).
 
 %-----------------------------------------------------------------------------%
