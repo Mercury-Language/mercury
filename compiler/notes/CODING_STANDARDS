@@ -234,18 +234,7 @@ Committing changes
 ------------------
 
 Before committing a change, you should get someone else to review your
-changes.  (Before getting someone else to review your changes, you
-should review them yourself!)
+changes. 
 
-Normally code reviews should be done by sending the output of `cvs
-diff -u' to the reviewer, together with a description of the changes
-for the CVS log. The description should state why the changes were
-made, not just what the changes were. 
-
-If you have added any new files or directories, then before committing
-you must check the group-id and permissions of the newly created files
-or directories in the CVS repository.  Files should be readable by
-group mercury and directories should be both readable and writeable by
-group mercury.  (Setting of permissions will be enforced by the
-pre-commit check script `CVSROOT/check.pl'.)
+The file "REVIEWS" contains more information on review policy.
 
