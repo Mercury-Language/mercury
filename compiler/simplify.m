@@ -100,11 +100,13 @@ simplify__proc(Simplify, PredId, ProcId, ModuleInfo0, ModuleInfo,
 			simplify(no, no, Once, no, no, Excess, no, Prop),
 			InstMap2, VarSet2, VarTypes2, Info3),
 		simplify_info_set_msgs(Info3, Msgs2, Info4),
+
 		%simplify_info_get_module_info(Info4, ModuleInfo4),
 		%proc_info_goal(Proc2, OutGoal),
 		%hlds_out__write_goal(OutGoal, ModuleInfo4, VarSet2, yes,
 		%	2, ".", State3, State4)
 		State4 = State3
+
 	;
 		Info4 = Info0,
 		Proc2 = Proc0,
@@ -153,6 +155,8 @@ simplify__proc_2(Proc0, Proc, Info0, Info, State0, State) :-
 		simplify_info_get_inst_key_table(Info1, IKT1),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		proc_info_get_initial_instmap(Proc4, ModuleInfo1, InstMap0),
+		% hlds_out__write_goal(Goal2, ModuleInfo1, VarSet, yes,
+		% 	2, ".", State0, State),
 		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
 			InstMap0, IKT1, IKT, ModuleInfo1, ModuleInfo),
 		simplify_info_set_module_info(Info1, ModuleInfo, Info2),

@@ -1444,7 +1444,7 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 		list__map(instmap__lookup_var(InstMap1), Vars, ArgInsts),
         	(
                 	map__init(Sub0),
-                	abstractly_unify_inst_functor(live, InitialInst, ConsId,
+                	abstractly_unify_inst_functor(dead, InitialInst, ConsId,
                         	ArgInsts, ArgLives, real_unify, IKT1,
 				ModuleInfo0, Sub0,
 				UnifyInst0, _, IKT2, ModuleInfo2, Sub1)
@@ -1470,13 +1470,25 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 
 		% First, compute the instmap_delta of the goal.
 
-		recompute_instmap_delta_2(Goal0, Goal, InstMap0,
+		% Set the head modes of the lambda.
+		RI0 = recompute_info(_, ModuleInfo0, _),
+		mode_list_get_initial_insts(LambdaModes, ModuleInfo0,
+			LambdaInitialInsts),
+		assoc_list__from_corresponding_lists(Vars, LambdaInitialInsts,
+			VarInstAL),
+		instmap_delta_from_assoc_list(VarInstAL, VarsInstmapDelta),
+		instmap__apply_instmap_delta(InstMap0, VarsInstmapDelta,
+			InstMap1),
+
+		% Analyse the lambda goal
+		recompute_instmap_delta_2(Goal0, Goal, InstMap1,
 			_, _, RI0, RI1),
 
 		instmap__lookup_var(InstMap0, Var, InstOfX),
 
 		LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
 			LambdaDet),
+
 		RI1 = recompute_info(Atomic, ModuleInfo1, IKT1),
 		InstOfY = ground(unique, yes(LambdaPredInfo)),
 
@@ -1486,13 +1498,13 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 				real_unify, IKT1, ModuleInfo1, Sub0, UnifyInst0,
 				_Det, IKT2, ModuleInfo2, Sub)
 		->
-			apply_inst_key_sub(Sub, InstMap0, InstMap1, IKT2, IKT),
+			apply_inst_key_sub(Sub, InstMap1, InstMap2, IKT2, IKT),
 			UnifyInst0 = UnifyInst,
 			ModuleInfo = ModuleInfo2
 		;
 			error("recompute_instmap_delta_unify: var-lambda unify failed")
 		),
-		instmap__set(InstMap1, Var, UnifyInst, InstMapUnify),
+		instmap__set(InstMap2, Var, UnifyInst, InstMapUnify),
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		compute_instmap_delta(InstMap0, InstMapUnify, NonLocals,
 			InstMapDelta),
@@ -1520,7 +1532,7 @@ recompute_instmap_delta_unify(Var, UnifyRhs0, _Unification,
 		instmap__lookup_var(InstMap1, VarY, InitialInstY),
 		(
 			map__init(Sub0),
-			abstractly_unify_inst(live, InitialInstX, InitialInstY,
+			abstractly_unify_inst(dead, InitialInstX, InitialInstY,
 				real_unify, IKT1, ModuleInfo0, Sub0, UnifyInst0,
 				_Det, IKT2, ModuleInfo, Sub1)
 		->

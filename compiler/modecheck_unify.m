@@ -914,6 +914,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 						ModeInfo0, ModeInfo)
 				)
 			;
+				% Don't request a unification if it's a
+				% X = X unification.
+				\+ ( IX = alias(Key), IY = alias(Key) ),
 				type_to_type_id(Type, TypeId, _)
 			->
 				% YYY Optimise UniMode0 in the case that there
@@ -961,6 +964,13 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 		% mode checker is concerned, but a mode _error_.
 		map__init(Empty),
 		Unify = disj([], Empty)
+	;
+		% A unification of X with X should be optimised
+		% away.
+		mode_get_insts(ModuleInfo0, ModeOfX, alias(K), _),
+		mode_get_insts(ModuleInfo0, ModeOfY, alias(K), _)
+	->
+		Unify = conj([])
 	;
 		Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification,
 				UnifyContext)

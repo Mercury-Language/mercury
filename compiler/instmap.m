@@ -536,9 +536,6 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_set_instmap(InstMap, ModeInfo2, ModeInfo3),
 	mode_info_set_inst_key_table(ModeInfo3, IKT, ModeInfo).
 
-:- pred breakpoint is det.
-breakpoint.
-
 :- pred get_reachable_instmaps(list(instmap), list(map(var,inst))).
 :- mode get_reachable_instmaps(in, out) is det.
 
@@ -571,7 +568,6 @@ instmap__merge_2([Var|Vars], InstMapList, IKT0, ModuleInfo0, InstMap0,
 	instmap__merge_var(InstMapList, Var, IKT1, ModuleInfo1,
 			Insts, Inst, IKT, ModuleInfo, Error),
 	( Error = yes ->
-		breakpoint,
 		ErrorList = [Var - Insts | ErrorList1],
 		map__set(InstMap1, Var, not_reached, InstMap)
 	;
