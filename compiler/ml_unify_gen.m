@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -362,7 +362,7 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	% Compute the rval which holds the number of arguments
 	%
 	{ NumArgsRval = const(int_const(NumArgs)) },
-	{ NumArgsType = mlds__int_type },
+	{ NumArgsType = mlds__native_int_type },
 
 	%
 	% the pointer will not be tagged (i.e. the tag will be zero)
@@ -744,7 +744,7 @@ ml_gen_new_object(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	%
 	{ MaybeSecondaryTag = yes(SecondaryTag) ->
 		SecondaryTagRval = const(int_const(SecondaryTag)),
-		SecondaryTagType = mlds__int_type,
+		SecondaryTagType = mlds__native_int_type,
 		ArgRvals = [SecondaryTagRval | ArgRvals0],
 		MLDS_ArgTypes = [SecondaryTagType | MLDS_ArgTypes0]
 	;

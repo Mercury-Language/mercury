@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -617,7 +617,7 @@ ml_gen_proc_params(ModuleInfo, PredId, ProcId) = FuncParams :-
 ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 		FuncParams :-
 	( CodeModel = model_semi ->
-		RetTypes = [mlds__bool_type]
+		RetTypes = [mlds__native_bool_type]
 	;
 		RetTypes = []
 	),
@@ -949,7 +949,7 @@ ml_gen_failure(model_non, _, MLDS_Statements) -->
 	% Generate the declaration for the built-in `succeeded' variable.
 	%
 ml_gen_succeeded_var_decl(Context) =
-	ml_gen_mlds_var_decl(var("succeeded"), mlds__bool_type, Context).
+	ml_gen_mlds_var_decl(var("succeeded"), mlds__native_bool_type, Context).
 
 	% Return the lval for the `succeeded' flag.
 	% (`succeeded' is a boolean variable used to record

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -783,10 +783,10 @@ mlds_output_type(mercury_type(Type)) -->
 		% so that distinct Mercury types map to distinct C types
 		io__write_string("Word")
 	).
-mlds_output_type(mlds__int_type)   --> io__write_string("int").
-mlds_output_type(mlds__float_type) --> io__write_string("float").
-mlds_output_type(mlds__bool_type)  --> io__write_string("bool").
-mlds_output_type(mlds__char_type)  --> io__write_string("char").
+mlds_output_type(mlds__native_int_type)   --> io__write_string("int").
+mlds_output_type(mlds__native_float_type) --> io__write_string("float").
+mlds_output_type(mlds__native_bool_type)  --> io__write_string("bool").
+mlds_output_type(mlds__native_char_type)  --> io__write_string("char").
 mlds_output_type(mlds__class_type(Name, Arity)) -->
 	io__write_string("struct "),
 	mlds_output_fully_qualified(Name, io__write_string),
@@ -1617,7 +1617,7 @@ mlds_output_boxed_rval(Type, Exprn) -->
 	(
 		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
 				[], _))
-		; Type = mlds__float_type
+		; Type = mlds__native_float_type
 		}
 	->
 		io__write_string("MR_box_float("),
@@ -1636,7 +1636,7 @@ mlds_output_unboxed_rval(Type, Exprn) -->
 	(
 		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
 				[], _))
-		; Type = mlds__float_type
+		; Type = mlds__native_float_type
 		}
 	->
 		io__write_string("MR_unbox_float("),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -469,10 +469,10 @@
 		% These are the builtin types of the MLDS target language,
 		% whatever that may be.
 		% Currently we don't actually use many of these.
-	;	mlds__bool_type
-	;	mlds__int_type
-	;	mlds__float_type
-	;	mlds__char_type
+	;	mlds__native_bool_type
+	;	mlds__native_int_type
+	;	mlds__native_float_type
+	;	mlds__native_char_type
 
 		% MLDS types defined using mlds__class_defn
 	;	mlds__class_type(mlds__class, arity)	% name, arity
