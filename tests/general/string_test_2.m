@@ -1,4 +1,4 @@
-:- module s.
+:- module string_test_2.
 :- interface.
 :- import_module io.
 
