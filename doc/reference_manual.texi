@@ -1425,6 +1425,20 @@ For example:
 :- mode length(in) = in is semidet.
 @end example
 
+An annotation of @samp{det} or @samp{multidet} is an assertion that
+for every value each of the inputs, there exists at least one value
+of the outputs for which the predicate is true, or (in the case
+of functions) for which the function term is equal to the result term.
+Conversely, an annotation of @samp{det} or @samp{semidet} is an assertion
+that for every value each of the inputs, there exists at most one value
+of the outputs for which the predicate is true, or (in the case
+of functions) for which the function term is equal to the result term.
+These assertions are called the @dfn{mode-determinism assertions};
+they can play a role in the semantics, because in certain 
+circumstances they may allow an implementation to perform optimizations
+that would not otherwise be allowed, such as optimizing away a goal
+with no outputs even though it might infinitely loop.
+
 If the mode of the predicate is given in the @code{:- pred} declaration
 rather than in a separate @code{:- mode} declaration,
 then the determinism annotation goes on the @code{:- pred} declaration
@@ -1445,7 +1459,9 @@ q :- fail.
 @end example
 
 If there is no mode declaration for a function, then the default
-mode for that function is considered to be declared @samp{det}.
+mode for that function is considered to have been declared as @samp{det}.
+If you want to write a partial function, i.e. one whose determinism
+is @samp{semidet}, then you must explicitly declare the mode and determinism.
 
 The determinism categories form this lattice:
 
@@ -2174,41 +2190,120 @@ the compiler must report an error.
 For each legal Mercury program,
 there is an associated predicate calculus theory
 whose language is specified by the type declarations in the program
-and whose axioms are the completion of all predicates in the program,
-plus the usual equality axioms extended with the completion of all
-the functions in the program, plus axioms specifying the semantics
-of library predicates and functions.
+and whose axioms are the completion of the clauses for all predicates
+in the program,
+plus the usual equality axioms extended with the completion of the
+equations for all functions in the program,
+plus axioms corresponding to the mode-determinism assertions
+(@pxref{Determinism}),
+plus axioms specifying the semantics of library predicates and functions.
 The declarative semantics of a legal Mercury program
 is specified by this theory.
+
 Mercury implementations must be sound:
 the answers they compute must be true in every model of the theory.
+Mercury implementations are not required to be complete:
+they may fail to compute an answer in finite time,
+or they may exhaust the resource limitations of the execution
+environment, even though an answer is provable in the theory.
+However, there are certain minimum requirements that they
+must satisfy with respect to completeness.
 
 There is an operational semantics of Mercury programs called the
-@dfn{vanilla} operational semantics.  In this semantics, the program
-is executed top-down, and conjunctions and disjunctions
-are executed left-to-right. 
-Conjunctions are ``minimally'' reordered:
+@dfn{strict sequential} operational semantics.  In this semantics,
+the program is executed top-down, starting from @samp{main/2},
+and conjunctions and disjunctions are executed left-to-right. 
+Conjunctions are ``minimally'' reordered as required by the modes:
 the order is determined by selecting the first mode-correct conjunct,
-executing that, then selecting the next mode-correct conjunct, executing
-that, and so on.  (There is no interleaving of different individual conjuncts,
+executing that, then selecting the first of the remaining conjuncts
+which is now mode-correct, executing that, and so on. 
+(There is no interleaving of different individual conjuncts,
 however; the conjuncts are reordered, not split and interleaved.)
 Function application is strict, not lazy.
 
-Mercury implementations are not required to be complete.  They are required
-to provide to provide at least one, and optionally two or three different
-methods of processing Mercury programs.  They must provide a method which
-is equivalent to the vanilla operational semantics.  They may optionally
-provide a method which is more complete than the vanilla semantics; in
-this mode of operation, the implementation will compute an answer for
-any program for which the vanilla semantics computes an answer, but may
-also compute answers for programs for which the vanilla semantics
-does not terminate, or calls the library predicate @code{error/1}.
-Implementations may also optionally provide a mode of operation which
-is sound, but is not guaranteed to be as complete as the vanilla
+Mercury implementations are required to provide a method of processing
+Mercury programs which is equivalent to the strict sequential
 operational semantics.
 
-Execution of a legal Mercury program begins with the predicate @samp{main/2}.
-Only one solution of main/2 is sought.
+There is another operational semantics of Mercury programs called
+the @dfn{strict commutative} operational semantics.  This semantics
+is equivalent to the strict sequential operation semantics except
+that there is no requirement that conjunctions and disjunctions 
+be executed left-to-right; they may be executed in any order.
+(The order may even be different each time a particular conjunct
+or disjunct is entered.)
+
+As well as providing the strict sequential operational semantics,
+Mercury implementations may optionally provide additional
+implementation-defined operational semantics, provided that
+any such implementation-defined operational semantics are
+at least as complete as the strict commutative operational
+semantics.  An implementation-defined semantics
+is ``at least as complete'' as the strict commutative 
+semantics if and only if the implementation-defined 
+semantics guarantees to compute an answer in finite time for
+any program for which an answer would be computed in finite time for all
+possible executions under the strict commutative semantics
+(i.e. for all possible orderings of conjuctions and disjunctions).
+
+Thus, to summarize, there are in fact a variety of different operational
+semantics for Mercury.  In one of them, the strict sequential semantics, there
+is no nondeterminism -- the behaviour is always specified exactly.
+Programs are executed top-down using SLDNF (or something equivalent),
+mode analysis does "minimal" reordering (in a precisely defined sense),
+conjunctions and disjunctions are executed left-to-right, and function
+evaluation is strict.  All implementations are required to support the
+strict sequential
+semantics, so that a program which works on one implementation using
+this semantics will be guaranteed to work on any other implementation.
+However, implementations are also allowed to support other operational
+semantics, which may have non-determinism, so long as they are sound
+with respect to the declarative semantics, and so long as they meet a
+mimimum level of completeness (they must be at least as complete as the
+strict commutative semantics, in the sense that every program which
+terminates for all possible orderings must must also terminate
+in any implementation-defined operational semantics).
+
+This compromise allows Mercury to be used in several different ways.
+Programmers who care more about ease of programming and portability
+than about efficiency can use the strict sequential semantics, and
+can then be guaranteed that if their program works on one correct
+implementation, it will work on all correct implementations.  Compiler
+implementors who want to write optimizing implementations that do lots
+of clever code reorderings and other high-level transformations or that
+want to offer parallelizing implementations which take maximum
+advantage of parallelism can define different semantic models.
+Programmers who care about efficiency more than portability can write
+code for these implementation-defined semantic models.  Programmers who
+care about efficiency @emph{and} portability can achieve this by writing
+code for the commutative semantics.
+Of course, this is not
+quite as easy as using the strict sequential semantics, since it is
+in general not sufficient to test your programs on just one
+implementation if you are to be sure that it will be able to use the
+maximally efficient operational semantics on any implementation.
+However, if you do write code which works for all possible executions
+under commutative semantics (i.e. for all possible orderings of
+conjunctions and disjunctions), then you can be guaranteed that it
+will work correctly on every implementation, under every possible
+implementation-defined semantics.
+
+The University of Melbourne Mercury implementation will offer eight
+different semantics, which will be selected with different
+combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
+and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
+will prevent
+the compiler from improving completeness by optimizing away infinite
+loops or calls to @code{error/1}.)  The default semantics will be the
+commutative semantics.  Enabling all of these options will give you the
+the strict sequential semantics.  Enabling just some of them will give
+you a semantics somewhere in between.  (At the time of writing, however,
+these options had not been implemented.)
+
+Future implementations of Mercury may wish to offer other semantics.
+For example, they may wish to provide semantics in which function
+evaluation is lazy, rather than strict; semantics with a guaranteed
+fair search rule; and so forth.
 
 @node Pragmas
 @chapter Pragmas
