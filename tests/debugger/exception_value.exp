@@ -24,16 +24,7 @@ mdb> browse exception
 browser> set depth 9
 browser> set size 99
 browser> ls
--
-1-"q oops"
-2-[|]
-  1-1
-  2-[|]
-    1-2
-    2-[|]
-      1-3
-      2-[]
-
+"q oops" - [1, 2, 3]
 browser> quit
 mdb> continue
 mdb: warning: reached unknown label

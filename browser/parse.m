@@ -8,7 +8,7 @@
 % author: aet
 
 % This file contains the parser for the term browser command language.
-% If the term browser is called from mdb, it parses the stuff you type 
+% If the term browser is called from mdb, it parses the stuff you type
 % at the "browser> " prompt after typing "browse" from the mdb prompt.
 % If it is called from the external debugger, then it parses the stuff
 % contained in a term `external_request(<string to parse>)' send by the
@@ -19,19 +19,57 @@
 % The Command Language
 %
 %	commandline:
-%		"?"			// SICStus help
-%		"^" [numlist]		// SICStus cd
-%		"d"			// SICStus display
-%		"w"			// SICStus write
+%		"?"				// SICStus help
+%		"^" [path]			// SICStus cd
+%		"d"				// SICStus display
+%		"w"				// SICStus write
+%		"<"				// SICStus set depth
 %		"help"
+%		"h"				// short for help
 %		"cd" [path]
 %		"pwd"
-%		"ls"
+%		"ls" [formatoptions] [path]
+%		"print" [formatoptions] [path]
+%		"p" [formatoptions] [path]	// short for print
 %		"display"
 %		"write"
-%		"set" [varvalue]
+%		"set" [[setoptions] varvalue]
 %		"mark" [path]
 %		"quit"
+%
+%	formatoptions:
+%		/* empty */
+%		formatoption formatoptions
+%
+%	formatoption:
+%		-f
+%		-r
+%		-v
+%		-p
+%		--flat
+%		--raw-pretty
+%		--verbose
+%		--pretty
+%
+%	setoptions:
+%		/* empty */
+%		setoption setoptions
+%
+%	setoption:
+%		-P
+%		-B
+%		-A
+%		-f
+%		-r
+%		-v
+%		-p
+%		--print
+%		--browse
+%		--print-all
+%		--flat
+%		--raw-pretty
+%		--verbose
+%		--pretty
 %
 %	varvalue:
 %		"depth" num
@@ -66,22 +104,23 @@
 
 :- interface.
 
-:- import_module io, string, list.
 :- import_module mdb__browser_info.
+:- import_module io, string, list, std_util, getopt.
 
 :- type command
-	--->	ls(path)
-	;	ls
+	--->	print(
+			maybe(maybe_option_table(format_option)),
+			maybe(path)
+		)
 	;	cd(path)
 	;	cd
 	;	mark(path)
 	;	mark
 	;	pwd
 	;	help
-	;	set(setting)
+	;	set(maybe_option_table(setting_option), setting)
 	;	set
 	;	quit
-	;	print
 	;	display
 	;	write
 	;	empty
@@ -91,9 +130,24 @@
 	--->	root_rel(list(dir))
 	;	dot_rel(list(dir)).
 
+:- type format_option
+	--->	flat
+	;	raw_pretty
+	;	verbose
+	;	pretty.
+
+:- type setting_option
+	--->	print
+	;	browse
+	;	print_all
+	;	flat
+	;	raw_pretty
+	;	verbose
+	;	pretty.
+
 % If the term browser is called from the external debugger, the term browser
 % commands are send through the socket via terms of type external_request.
-:- type external_request 
+:- type external_request
 	---> external_request(string).
 
 :- pred parse__read_command(string, command, io__state, io__state).
@@ -103,11 +157,11 @@
 :- mode parse__read_command_external(out, di, uo) is det.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module list, char, int, std_util.
 :- import_module mdb__util.
-
+:- import_module bool, list, char, int.
 
 :- type token
 	--->	(.)
@@ -123,9 +177,8 @@
 
 parse__read_command(Prompt, Command) -->
 	util__trace_get_command(Prompt, Line),
-	{ string__to_char_list(Line, Cs) },
-	{ lexer(Cs, Tokens) },
-	( { parse(Tokens, Command2) } ->
+	{ string__words(char__is_whitespace, Line) = Words },
+	( { parse(Words, Command2) } ->
 		{ Command = Command2 }
 	;
 		{ Command = unknown }
@@ -134,9 +187,8 @@ parse__read_command(Prompt, Command) -->
 parse__read_command_external(Command) -->
 	io__read(Result),
 	( { Result = ok(external_request(StringToParse)) } ->
-		{ string__to_char_list(StringToParse, Cs) },
-		{ lexer(Cs, Tokens) },
-		( { parse(Tokens, Command2) } ->
+		{ string__words(char__is_whitespace, StringToParse) = Words },
+		( { parse(Words, Command2) } ->
 			{ Command = Command2 }
 		;
 			{ Command = unknown }
@@ -147,52 +199,71 @@ parse__read_command_external(Command) -->
 		{ Command = unknown }
 	).
 
-:- pred lexer(list(char), list(token)).
-:- mode lexer(in, out) is det.
-lexer([], []).
-lexer([C | Cs], Toks) :-
+:- pred lexer_words(list(string), list(token)).
+:- mode lexer_words(in, out) is det.
+
+lexer_words([], []).
+lexer_words([Word | Words], Tokens) :-
+	lexer_word(Word, WordTokens),
+	lexer_words(Words, WordsTokens),
+	list__append(WordTokens, WordsTokens, Tokens).
+
+:- pred lexer_word(string, list(token)).
+:- mode lexer_word(in, out) is det.
+
+lexer_word(Word, Tokens) :-
+	string__to_char_list(Word, Chars),
+	lexer_word_chars(Chars, Tokens).
+
+:- pred lexer_word_chars(list(char), list(token)).
+:- mode lexer_word_chars(in, out) is det.
+
+lexer_word_chars([], []).
+lexer_word_chars([C | Cs], Toks) :-
 	( C = ('.') ->
 		lexer_dots(Cs, Toks)
 	; C = ('/') ->
 		Toks = [(/) | Toks2],
-		lexer(Cs, Toks2)
+		lexer_word_chars(Cs, Toks2)
 	; C = ('?') ->
 		Toks = [(?) | Toks2],
-		lexer(Cs, Toks2)
+		lexer_word_chars(Cs, Toks2)
 	; C = ('^') ->
 		Toks = [(^) | Toks2],
-		lexer(Cs, Toks2)
+		lexer_word_chars(Cs, Toks2)
 	; C = ('<') ->
 		Toks = [(<) | Toks2],
-		lexer(Cs, Toks2)
+		lexer_word_chars(Cs, Toks2)
 	; char__is_digit(C) ->
 		dig_to_int(C, N),
 		lexer_num(N, Cs, Toks)
 	; char__is_alpha_or_underscore(C) ->
 		lexer_name(C, Cs, Toks)
 	; char__is_whitespace(C) ->
-		lexer(Cs, Toks)
+		lexer_word_chars(Cs, Toks)
 	;
 		Toks = [unknown(C) | Toks2],
-		lexer(Cs, Toks2)
+		lexer_word_chars(Cs, Toks2)
 	).
 
 :- pred lexer_dots(list(char), list(token)).
 :- mode lexer_dots(in, out) is det.
+
 lexer_dots([], []).
 lexer_dots([C | Cs], Toks) :-
 	( C = ('.') ->
 		Tok = (..),
-		lexer(Cs, Toks2),
+		lexer_word_chars(Cs, Toks2),
 		Toks = [Tok | Toks2]
 	;
 		Tok = (.),
-		lexer([C | Cs], Toks2),
+		lexer_word_chars([C | Cs], Toks2),
 		Toks = [Tok | Toks2]
 	).
 
 :- pred dig_to_int(char, int).
 :- mode dig_to_int(in, out) is det.
+
 dig_to_int(C, N) :-
 	char__to_int('0', Zero),
 	char__to_int(C, CN),
@@ -200,280 +271,442 @@ dig_to_int(C, N) :-
 
 :- pred lexer_num(int, list(char), list(token)).
 :- mode lexer_num(in, in, out) is det.
+
 lexer_num(N, Cs, Toks) :-
 	list__takewhile(char__is_digit, Cs, Digits, Rest),
 	digits_to_int_acc(N, Digits, Num),
 	Toks = [num(Num) | Toks2],
-	lexer(Rest, Toks2).
-	
-			
+	lexer_word_chars(Rest, Toks2).
+
 :- pred digits_to_int_acc(int, list(char), int).
 :- mode digits_to_int_acc(in, in, out) is det.
+
 digits_to_int_acc(Acc, [], Acc).
 digits_to_int_acc(Acc, [C | Cs], Num) :-
 	dig_to_int(C, D),
 	Acc2 = 10 * Acc + D,
 	digits_to_int_acc(Acc2, Cs, Num).
-	
 
 :- pred lexer_name(char, list(char), list(token)).
 :- mode lexer_name(in, in, out) is det.
+
 lexer_name(C, Cs, Toks) :-
 	list__takewhile(char__is_alnum_or_underscore, Cs, Letters, Rest),
 	string__from_char_list([C | Letters], Name),
-	lexer(Rest, Toks2),
+	lexer_word_chars(Rest, Toks2),
 	Toks = [name(Name) | Toks2].
-	
 
-:- pred parse(list(token), command).
+%---------------------------------------------------------------------------%
+
+:- pred parse(list(string), command).
 :- mode parse(in, out) is semidet.
-parse(Toks, Command) :-
-	( Toks = [] ->
+
+parse(Words, Command) :-
+	(
+		Words = [],
 		Command = empty
 	;
-		start(Toks, Command)
+		Words = [CmdWord | ArgWords],
+		lexer_word(CmdWord, CmdTokens),
+		lexer_words(ArgWords, ArgTokens),
+		( CmdTokens = [_] ->
+			% If the initial word is one token, then it can make
+			% sense to parse the command line as words.
+			MaybeArgWords = yes(ArgWords)
+		;
+			% If the initial word is more than one token, then
+			% it doesn't make sense to parse the command line
+			% as words.
+			MaybeArgWords = no
+		),
+		list__append(CmdTokens, ArgTokens, AllTokens),
+		(
+			AllTokens = [],
+			Command = empty
+		;
+			AllTokens = [FirstToken | LaterTokens],
+			parse_cmd(FirstToken, LaterTokens, MaybeArgWords,
+				Command)
+		)
 	).
 
-:- pred start(list(token), command).
-:- mode start(in, out) is semidet.
-start([Tok | Toks], Command) :-
-	( (Tok = name("help") ; Tok = (?) ; Tok = name("h")) ->
-		Toks = [],
+:- pred parse_cmd(token::in, list(token)::in, maybe(list(string))::in,
+	command::out) is semidet.
+
+parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
+	(
+		( CmdToken = name("help")
+		; CmdToken = (?)
+		; CmdToken = name("h")
+		)
+	->
+		ArgTokens = [],
 		Command = help
-	; (Tok = name("cd") ; Tok = (^)) ->
-		( Toks = [] ->
+	;
+		( CmdToken = name("cd")
+		; CmdToken = (^)
+		)
+	->
+		( ArgTokens = [] ->
 			Command = cd
 		;
-			parse_path(Toks, Path),
+			parse_path(ArgTokens, Path),
 			Command = cd(Path)
 		)
-	; Tok = name("pwd") ->
-		Toks = [],
+	;
+		CmdToken = name("pwd")
+	->
+		ArgTokens = [],
 		Command = pwd
-	; Tok = name("ls") ->
-		( Toks = [] ->
-			Command = ls
-		;
-			parse_path(Toks, Path),
-			Command = ls(Path)
-		)
-	; Tok = name("mark") ->
-		( Toks = [] ->
+	;
+		CmdToken = name("mark")
+	->
+		( ArgTokens = [] ->
 			Command = mark
 		;
-			parse_path(Toks, Path),
+			parse_path(ArgTokens, Path),
 			Command = mark(Path)
 		)
-	; Tok = name("set") ->
-		( Toks = [] ->
+	;
+		CmdToken = name("set")
+	->
+		( ArgTokens = [] ->
 			Command = set
 		;
-			parse_setting(Toks, Setting),
-			Command = set(Setting)
+			MaybeArgWords = yes(ArgWords),
+			OptionOps = option_ops(short_setting_option,
+				long_setting_option,
+				setting_option_defaults_nondet),
+			getopt__process_options(OptionOps, ArgWords,
+				RemainingWords, MaybeOptionTable),
+			lexer_words(RemainingWords, RemainingTokens),
+			parse_setting(RemainingTokens, Setting),
+			Command = set(MaybeOptionTable, Setting)
 		)
-	; Tok = name("quit") ->
-		Toks = [],
-		Command = quit
-	; (Tok = name("display") ; Tok = name("d")) ->
-		Toks = [],
-		Command = display
-	; (Tok = name("write") ; Tok = name("w")) ->
-		Toks = [],
-		Command = write
-	; (Tok = name("print") ; Tok = name("p")) ->
-		Toks = [],
-		Command = print
 	;
-		Tok = (<),
-		Toks = [num(Depth)],
-		Command = set(depth(Depth))
+		CmdToken = name("quit")
+	->
+		ArgTokens = [],
+		Command = quit
+	;
+		( CmdToken = name("display")
+		; CmdToken = name("d")
+		)
+	->
+		ArgTokens = [],
+		Command = display
+	;
+		( CmdToken = name("write")
+		; CmdToken = name("w")
+		)
+	->
+		ArgTokens = [],
+		Command = write
+	;
+		( CmdToken = name("print")
+		; CmdToken = name("p")
+		; CmdToken = name("ls")
+		)
+	->
+		(
+			MaybeArgWords = no,
+			MaybeMaybeOptionTable = no,
+			RemainingTokens = ArgTokens
+		;
+			MaybeArgWords = yes(ArgWords),
+			OptionOps = option_ops(short_format_option,
+				long_format_option,
+				format_option_defaults_nondet),
+			getopt__process_options(OptionOps, ArgWords,
+				RemainingWords, MaybeOptionTable),
+			MaybeMaybeOptionTable = yes(MaybeOptionTable),
+			lexer_words(RemainingWords, RemainingTokens)
+		),
+		( RemainingTokens = [] ->
+			MaybePath = no
+		;
+			parse_path(RemainingTokens, Path),
+			MaybePath = yes(Path)
+		),
+		Command = print(MaybeMaybeOptionTable, MaybePath)
+	;
+		CmdToken = (<)
+	->
+		ArgTokens = [num(Depth)],
+		% compute the default MaybeOptionTable
+		OptionOps = option_ops(short_setting_option,
+			long_setting_option, setting_option_defaults_nondet),
+		getopt__process_options(OptionOps, [], _, MaybeOptionTable),
+		Command = set(MaybeOptionTable, depth(Depth))
+	;
+		fail
 	).
 
 :- pred parse_path(list(token), path).
 :- mode parse_path(in, out) is semidet.
+
 	% SICStus is forgiving in the syntax of paths, hence so are we.
 	% XXX: Be less forgiving?
-parse_path([Tok | Toks], Path) :-
-	( Tok = (/) ->
+parse_path([Token | Tokens], Path) :-
+	( Token = (/) ->
 		Path = root_rel(Dirs),
-		parse_dirs(Toks, Dirs)
+		parse_dirs(Tokens, Dirs)
 	;
 		Path = dot_rel(Dirs),
-		parse_dirs([Tok | Toks], Dirs)
+		parse_dirs([Token | Tokens], Dirs)
 	).
 
 :- pred parse_dirs(list(token), list(dir)).
 :- mode parse_dirs(in, out) is semidet.
+
 parse_dirs([], []).
-parse_dirs([Tok | Toks], Dirs) :-
+parse_dirs([Token | Tokens], Dirs) :-
 	(
-		Tok = num(Subdir),
+		Token = num(Subdir),
 		Dirs = [child_num(Subdir) | RestDirs],
-		parse_dirs(Toks, RestDirs)
+		parse_dirs(Tokens, RestDirs)
 	;
-		Tok = name(NamedSubdir),
+		Token = name(NamedSubdir),
 		Dirs = [child_name(NamedSubdir) | RestDirs],
-		parse_dirs(Toks, RestDirs)
+		parse_dirs(Tokens, RestDirs)
 	;
-		Tok = (..),
+		Token = (..),
 		Dirs = [parent | RestDirs],
-		parse_dirs(Toks, RestDirs)
+		parse_dirs(Tokens, RestDirs)
 	;
 		% We can effectively ignore slashes (for Unix-style
 		% pathnames) and carets (for SICStus-style pathnames),
 		% but anything else is not allowed.
-		Tok = (/),
-		parse_dirs(Toks, Dirs)
+		Token = (/),
+		parse_dirs(Tokens, Dirs)
 	;
-		Tok = (^),
-		parse_dirs(Toks, Dirs)
+		Token = (^),
+		parse_dirs(Tokens, Dirs)
 	).
 
 :- pred parse_setting(list(token), setting).
 :- mode parse_setting(in, out) is semidet.
-parse_setting([Tok | Toks], Setting) :-
-	( Tok = name("depth") ->
-		Toks = [num(Depth)],
+
+parse_setting([Token | Tokens], Setting) :-
+	( Token = name("depth") ->
+		Tokens = [num(Depth)],
 		Setting = depth(Depth)
-	; Tok = name("size") ->
-		Toks = [num(Size)],
+	; Token = name("size") ->
+		Tokens = [num(Size)],
 		Setting = size(Size)
-	; Tok = name("width") ->
-		Toks = [num(X)],
+	; Token = name("width") ->
+		Tokens = [num(X)],
 		Setting = width(X)
-	; Tok = name("lines") ->
-		Toks = [num(Y)],
+	; Token = name("lines") ->
+		Tokens = [num(Y)],
 		Setting = lines(Y)
-	; Tok = name("num_io_actions") ->
-		Toks = [num(Y)],
+	; Token = name("num_io_actions") ->
+		Tokens = [num(Y)],
 		Setting = num_io_actions(Y)
-	; Tok = name("format") ->
-		Toks = [Fmt],
+	; Token = name("format") ->
+		Tokens = [Fmt],
 		( Fmt = name("flat") ->
 			Setting = format(flat)
 		; Fmt = name("raw_pretty") ->
 			Setting = format(raw_pretty)
 		; Fmt = name("verbose") ->
 			Setting = format(verbose)
-		; 
+		;
 			Fmt = name("pretty"),
 			Setting = format(pretty)
 		)
 	;
 		fail
 	).
-	
 
 %---------------------------------------------------------------------------%
 
-:- pred show_command(command, io__state, io__state).
-:- mode show_command(in, di, uo) is det.
+:- pred short_format_option(char::in, format_option::out) is semidet.
 
-show_command(ls(Path)) -->
-	io__write_string("ls "),
-	show_path(Path),
-	io__nl.
-show_command(ls) -->
-	io__write_string("ls\n").
-show_command(cd(Path)) -->
-	io__write_string("cd "),
-	show_path(Path),
-	io__nl.
-show_command(cd) -->
-	io__write_string("cd\n").
-show_command(mark(Path)) -->
-	io__write_string("mark "),
-	show_path(Path),
-	io__nl.
-show_command(mark) -->
-	io__write_string("mark\n").
-show_command(pwd) -->
-	io__write_string("pwd\n").
-show_command(help) -->
-	io__write_string("help\n").
-show_command(set(Setting)) -->
-	io__write_string("set "),
-	show_setting(Setting),
-	io__nl.
-show_command(set) -->
-	io__write_string("set\n").
-show_command(quit) -->
-	io__write_string("quit\n").
-show_command(print) -->
-	io__write_string("print\n").
-show_command(display) -->
-	io__write_string("display\n").
-show_command(write) -->
-	io__write_string("write\n").
-show_command(empty) -->
-	io__write_string("empty\n").
-show_command(unknown) -->
-	io__write_string("unknown\n").
+short_format_option('f', flat).
+short_format_option('r', raw_pretty).
+short_format_option('v', verbose).
+short_format_option('p', pretty).
 
-:- pred show_path(path, io__state, io__state).
-:- mode show_path(in, di, uo) is det.
+:- pred long_format_option(string::in, format_option::out) is semidet.
 
-show_path(root_rel(Dirs)) -->
-	io__write_string("/"),
-	show_dirs(Dirs).
-show_path(dot_rel(Dirs)) -->
-	show_dirs(Dirs).
+long_format_option("flat", flat).
+long_format_option("raw-pretty", raw_pretty).
+long_format_option("verbose", verbose).
+long_format_option("pretty", pretty).
 
-:- pred show_dirs(list(dir), io__state, io__state).
-:- mode show_dirs(in, di, uo) is det.
+:- pred format_option_defaults_nondet(format_option::out, option_data::out)
+	is nondet.
 
-show_dirs([]) -->
-	io__nl.
-show_dirs([child_num(Num) | Dirs]) -->
-	io__write_int(Num),
-	io__write_string("/"),
-	show_dirs(Dirs).
-show_dirs([child_name(Name) | Dirs]) -->
-	io__write_string(Name),
-	io__write_string("/"),
-	show_dirs(Dirs).
-show_dirs([parent | Dirs]) -->
-	io__write_string("../"),
-	show_dirs(Dirs).
+format_option_defaults_nondet(Option, Value) :-
+	( semidet_succeed ->
+		format_option_defaults(Option, Value)
+	;
+		fail
+	).
 
-:- pred show_setting(setting, io__state, io__state).
-:- mode show_setting(in, di, uo) is det.
+:- pred format_option_defaults(format_option::out, option_data::out) is multi.
 
-show_setting(depth(Depth)) -->
-	io__write_string("depth "),
-	io__write_int(Depth),
-	io__nl.
-show_setting(size(Size)) -->
-	io__write_string("size "),
-	io__write_int(Size),
-	io__nl.
-show_setting(width(X)) -->
-	io__write_string("width "),
-	io__write_int(X),
-	io__nl.
-show_setting(lines(Y)) -->
-	io__write_string("lines "),
-	io__write_int(Y),
-	io__nl.
-show_setting(format(Fmt)) -->
-	io__write_string("format "),
-	show_format(Fmt),
-	io__nl.
-show_setting(num_io_actions(N)) -->
-	io__write_string("num_io_actions "),
-	io__write_int(N),
-	io__nl.
+format_option_defaults(flat,		bool(no)).
+format_option_defaults(raw_pretty,	bool(no)).
+format_option_defaults(verbose,		bool(no)).
+format_option_defaults(pretty,		bool(no)).
 
-:- pred show_format(portray_format, io__state, io__state).
-:- mode show_format(in, di, uo) is det.
+%---------------------------------------------------------------------------%
 
-show_format(flat) -->
-	io__write_string("flat").
-show_format(raw_pretty) -->
-	io__write_string("raw_pretty").
-show_format(verbose) -->
-	io__write_string("verbose").
-show_format(pretty) -->
-	io__write_string("pretty").
+:- pred short_setting_option(char::in, setting_option::out) is semidet.
+
+short_setting_option('P', print).
+short_setting_option('B', browse).
+short_setting_option('A', print_all).
+short_setting_option('f', flat).
+short_setting_option('r', raw_pretty).
+short_setting_option('v', verbose).
+short_setting_option('p', pretty).
+
+:- pred long_setting_option(string::in, setting_option::out) is semidet.
+
+long_setting_option("print", print).
+long_setting_option("browse", browse).
+long_setting_option("print-all", print_all).
+long_setting_option("flat", flat).
+long_setting_option("raw-pretty", raw_pretty).
+long_setting_option("verbose", verbose).
+long_setting_option("pretty", pretty).
+
+:- pred setting_option_defaults_nondet(setting_option::out, option_data::out)
+	is nondet.
+
+setting_option_defaults_nondet(Option, Value) :-
+	( semidet_succeed ->
+		setting_option_defaults(Option, Value)
+	;
+		fail
+	).
+
+:- pred setting_option_defaults(setting_option::out, option_data::out)
+	is multi.
+
+setting_option_defaults(print,		bool(no)).
+setting_option_defaults(browse,		bool(no)).
+setting_option_defaults(print_all,	bool(no)).
+setting_option_defaults(flat,		bool(no)).
+setting_option_defaults(raw_pretty,	bool(no)).
+setting_option_defaults(verbose,	bool(no)).
+setting_option_defaults(pretty,		bool(no)).
+
+%---------------------------------------------------------------------------%
+
+% The commented out code is not currently used.
+
+% :- pred show_command(command, io__state, io__state).
+% :- mode show_command(in, di, uo) is det.
+% 
+% show_command(ls(Path)) -->
+% 	io__write_string("ls "),
+% 	show_path(Path),
+% 	io__nl.
+% show_command(ls) -->
+% 	io__write_string("ls\n").
+% show_command(cd(Path)) -->
+% 	io__write_string("cd "),
+% 	show_path(Path),
+% 	io__nl.
+% show_command(cd) -->
+% 	io__write_string("cd\n").
+% show_command(mark(Path)) -->
+% 	io__write_string("mark "),
+% 	show_path(Path),
+% 	io__nl.
+% show_command(mark) -->
+% 	io__write_string("mark\n").
+% show_command(pwd) -->
+% 	io__write_string("pwd\n").
+% show_command(help) -->
+% 	io__write_string("help\n").
+% show_command(set(Setting)) -->
+% 	io__write_string("set "),
+% 	show_setting(Setting),
+% 	io__nl.
+% show_command(set) -->
+% 	io__write_string("set\n").
+% show_command(quit) -->
+% 	io__write_string("quit\n").
+% show_command(print) -->
+% 	io__write_string("print\n").
+% show_command(display) -->
+% 	io__write_string("display\n").
+% show_command(write) -->
+% 	io__write_string("write\n").
+% show_command(empty) -->
+% 	io__write_string("empty\n").
+% show_command(unknown) -->
+% 	io__write_string("unknown\n").
+% 
+% :- pred show_path(path, io__state, io__state).
+% :- mode show_path(in, di, uo) is det.
+% 
+% show_path(root_rel(Dirs)) -->
+% 	io__write_string("/"),
+% 	show_dirs(Dirs).
+% show_path(dot_rel(Dirs)) -->
+% 	show_dirs(Dirs).
+% 
+% :- pred show_dirs(list(dir), io__state, io__state).
+% :- mode show_dirs(in, di, uo) is det.
+% 
+% show_dirs([]) -->
+% 	io__nl.
+% show_dirs([child_num(Num) | Dirs]) -->
+% 	io__write_int(Num),
+% 	io__write_string("/"),
+% 	show_dirs(Dirs).
+% show_dirs([child_name(Name) | Dirs]) -->
+% 	io__write_string(Name),
+% 	io__write_string("/"),
+% 	show_dirs(Dirs).
+% show_dirs([parent | Dirs]) -->
+% 	io__write_string("../"),
+% 	show_dirs(Dirs).
+% 
+% :- pred show_setting(setting, io__state, io__state).
+% :- mode show_setting(in, di, uo) is det.
+% 
+% show_setting(depth(Depth)) -->
+% 	io__write_string("depth "),
+% 	io__write_int(Depth),
+% 	io__nl.
+% show_setting(size(Size)) -->
+% 	io__write_string("size "),
+% 	io__write_int(Size),
+% 	io__nl.
+% show_setting(width(X)) -->
+% 	io__write_string("width "),
+% 	io__write_int(X),
+% 	io__nl.
+% show_setting(lines(Y)) -->
+% 	io__write_string("lines "),
+% 	io__write_int(Y),
+% 	io__nl.
+% show_setting(format(Fmt)) -->
+% 	io__write_string("format "),
+% 	show_format(Fmt),
+% 	io__nl.
+% show_setting(num_io_actions(N)) -->
+% 	io__write_string("num_io_actions "),
+% 	io__write_int(N),
+% 	io__nl.
+% 
+% :- pred show_format(portray_format, io__state, io__state).
+% :- mode show_format(in, di, uo) is det.
+% 
+% show_format(flat) -->
+% 	io__write_string("flat").
+% show_format(raw_pretty) -->
+% 	io__write_string("raw_pretty").
+% show_format(verbose) -->
+% 	io__write_string("verbose").
+% show_format(pretty) -->
+% 	io__write_string("pretty").
 
 %---------------------------------------------------------------------------%

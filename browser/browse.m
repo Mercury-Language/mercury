@@ -115,11 +115,12 @@
 	int::in, int::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module mdb__parse, mdb__util, mdb__frame, mdb__sized_pretty.
-:- import_module string, int, char, std_util.
-:- import_module parser, require, pprint, deconstruct.
+:- import_module string, int, char, map, std_util, getopt.
+:- import_module parser, require, pprint, getopt, deconstruct.
 
 %---------------------------------------------------------------------------%
 %
@@ -150,19 +151,18 @@
 % If the term browser is called from the internal debugger, input is
 % done via a call to the readline library (if available), using streams
 % MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
-% Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out. 
-% In the latter case we need to output terms; their type is 
+% Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out.
+% In the latter case we need to output terms; their type is
 % term_browser_response.
 
-
-:- type term_browser_response 
+:- type term_browser_response
 	--->	browser_str(string)
 	;	browser_int(int)
 	;	browser_nl
 	;	browser_end_command
 	;	browser_quit.
 
-:- type debugger 
+:- type debugger
 	--->	internal
 	;	external.
 
@@ -290,7 +290,7 @@ synthetic_term_to_browser_term(FunctorString, Args, IsFunc, BrowserTerm) :-
 			yes(Return))
 	).
 
-:- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out, 
+:- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
 	io__state::di, io__state::uo) is cc_multi.
 
 browse_main_loop(Debugger, Info0, Info) -->
@@ -328,133 +328,208 @@ startup_message(Debugger) -->
 
 prompt("browser> ").
 
-:- pred run_command(debugger::in, command::in, bool::out, browser_info::in,
-	browser_info::out, io__state::di, io__state::uo) is cc_multi.
+:- pred run_command(debugger::in, command::in, bool::out,
+	browser_info::in, browser_info::out, io__state::di, io__state::uo)
+	is cc_multi.
 
-run_command(Debugger, Command, Quit, Info0, Info) -->
+run_command(Debugger, Command, Quit, !Info, !IO) :-
 	% XXX The commands `set', `ls' and `print' should allow the format
 	% to be specified by an option.  In each case we instead pass `no' to
 	% the respective handler.
-	( { Command = empty },
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = unknown },
-		write_string_debugger(Debugger, 
-			"Error: unknown command or syntax error.\n"),
-		write_string_debugger(Debugger, "Type \"help\" for help.\n"),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = help },
-		help(Debugger),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = set },
-		show_settings(Debugger, Info0, no),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = set(Setting) },
-		{ set_browse_param(Info0 ^ caller_type, Setting,
-			Info0, Info) },
-		{ Quit = no }
-	; { Command = ls },
-		portray(Debugger, browse, no, Info0),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = ls(Path) },
-		portray_path(Debugger, browse, no, Info0, Path),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = cd },
-		{ set_path(root_rel([]), Info0, Info) },
-		{ Quit = no }
-	; { Command = cd(Path) },
-		{ change_dir(Info0 ^ dirs, Path, NewPwd) },
-		( { deref_subterm(Info0 ^ term, NewPwd, _SubUniv) } ->
-			{ Info = Info0 ^ dirs := NewPwd }
-		;
-			write_string_debugger(Debugger, 
-				"error: cannot change to subterm\n"),
-			{ Info = Info0 }
-		),
-		{ Quit = no }
-	; { Command = print },
-		portray(Debugger, print, no, Info0),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = pwd },
-		write_path(Debugger, Info0 ^ dirs),
-		nl_debugger(Debugger),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = mark },
-		{ Quit = yes },
-		{ Info = Info0 ^ maybe_mark := yes(Info0 ^ dirs) }
-	; { Command = mark(Path) },
-		{ change_dir(Info0 ^ dirs, Path, NewPwd) },
-		( { deref_subterm(Info0 ^ term, NewPwd, _SubUniv) } ->
-			{ Quit = yes },
-			{ Info = Info0 ^ maybe_mark := yes(NewPwd) }
-		;
-			write_string_debugger(Debugger, 
-				"error: cannot mark subterm\n"),
-			{ Quit = no },
-			{ Info = Info0 }
-		)
-	; { Command = quit },
-		{ Quit = yes },
-		{ Info = Info0 }
-	; { Command = display },
-		write_string_debugger(Debugger,
-				"command not yet implemented\n"),
-		{ Quit = no },
-		{ Info = Info0 }
-	; { Command = write },
-		write_string_debugger(Debugger,
-				"command not yet implemented\n"),
-		{ Quit = no },
-		{ Info = Info0 }
-	),
-	( { Debugger = external } ->
-		send_term_to_socket(browser_end_command)
+	(
+		Command = empty,
+		Quit = no
 	;
-		{ true }
+		Command = unknown,
+		write_string_debugger(Debugger,
+			"Error: unknown command or syntax error.\n", !IO),
+		write_string_debugger(Debugger,
+			"Type \"help\" for help.\n", !IO),
+		Quit = no
+	;
+		Command = help,
+		help(Debugger, !IO),
+		Quit = no
+	;
+		Command = set,
+		show_settings(Debugger, !.Info, !IO),
+		Quit = no
+	;
+		Command = set(MaybeOptionTable, Setting),
+		(
+			MaybeOptionTable = ok(OptionTable),
+			set_browse_param(OptionTable, Setting, !Info)
+		;
+			MaybeOptionTable = error(Msg),
+			write_string_debugger(Debugger, Msg, !IO)
+		),
+		Quit = no
+	;
+		Command = cd,
+		set_path(root_rel([]), !Info),
+		Quit = no
+	;
+		Command = cd(Path),
+		change_dir(!.Info ^ dirs, Path, NewPwd),
+		( deref_subterm(!.Info ^ term, NewPwd, _SubUniv) ->
+			!:Info = !.Info ^ dirs := NewPwd
+		;
+			write_string_debugger(Debugger,
+				"error: cannot change to subterm\n", !IO)
+		),
+		Quit = no
+	;
+		Command = print(PrintOption, MaybePath),
+		do_portray(Debugger, browse, PrintOption, !.Info,
+			MaybePath, !IO),
+		Quit = no
+	;
+		Command = pwd,
+		write_path(Debugger, !.Info ^ dirs, !IO),
+		nl_debugger(Debugger, !IO),
+		Quit = no
+	;
+		Command = mark,
+		!:Info = !.Info ^ maybe_mark := yes(!.Info ^ dirs),
+		Quit = yes
+	;
+		Command = mark(Path),
+		change_dir(!.Info ^ dirs, Path, NewPwd),
+		( deref_subterm(!.Info ^ term, NewPwd, _SubUniv) ->
+			!:Info = !.Info ^ maybe_mark := yes(NewPwd),
+			Quit = yes
+		;
+			write_string_debugger(Debugger,
+				"error: cannot mark subterm\n", !IO),
+			Quit = no
+		)
+	;
+		Command = quit,
+		Quit = yes
+	;
+		Command = display,
+		write_string_debugger(Debugger,
+			"command not yet implemented\n", !IO),
+		Quit = no
+	;
+		Command = write,
+		write_string_debugger(Debugger,
+			"command not yet implemented\n", !IO),
+		Quit = no
+	),
+	( Debugger = external ->
+		send_term_to_socket(browser_end_command, !IO)
+	;
+		true
 	).
 
-:- pred set_browse_param(browse_caller_type::in, setting::in,
+:- pred do_portray(debugger::in, browse_caller_type::in,
+	maybe(maybe_option_table(format_option))::in, browser_info::in,
+	maybe(path)::in, io__state::di, io__state::uo) is cc_multi.
+
+do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info,
+		MaybePath, !IO) :-
+	(
+		MaybeMaybeOptionTable = no,
+		portray_maybe_path(Debugger, CallerType, no, Info,
+			MaybePath, !IO)
+	;
+		MaybeMaybeOptionTable = yes(MaybeOptionTable),
+		(
+			MaybeOptionTable = ok(OptionTable),
+			interpret_format_options(OptionTable, FormatResult),
+			(
+				FormatResult = ok(MaybeFormat),
+				portray_maybe_path(Debugger, CallerType,
+					MaybeFormat, Info, MaybePath, !IO)
+			;
+				FormatResult = error(Msg),
+				write_string_debugger(Debugger, Msg, !IO)
+			)
+		;
+			MaybeOptionTable = error(Msg),
+			write_string_debugger(Debugger, Msg, !IO)
+		)
+	).
+
+:- pred interpret_format_options(option_table(format_option)::in,
+	maybe_error(maybe(portray_format))::out) is det.
+
+interpret_format_options(OptionTable, MaybeMaybeFormat) :-
+	map__to_assoc_list(OptionTable, OptionAssocList),
+	list__filter_map(bool_format_option_is_true, OptionAssocList,
+		TrueFormatOptions),
+	(
+		TrueFormatOptions = [],
+		MaybeMaybeFormat = ok(no)
+	;
+		TrueFormatOptions = [FormatOption],
+		(
+			FormatOption = flat,
+			Format = flat
+		;
+			FormatOption = raw_pretty,
+			Format = raw_pretty
+		;
+			FormatOption = pretty,
+			Format = pretty
+		;
+			FormatOption = verbose,
+			Format = verbose
+		),
+		MaybeMaybeFormat = ok(yes(Format))
+	;
+		TrueFormatOptions = [_, _ | _],
+		MaybeMaybeFormat = error("error: inconsistent format options")
+	).
+
+:- pred bool_format_option_is_true(pair(format_option, option_data)::in,
+	format_option::out) is semidet.
+
+bool_format_option_is_true(Format - bool(yes), Format).
+
+:- pred set_browse_param(option_table(setting_option)::in, setting::in,
 	browser_info::in, browser_info::out) is det.
 
-set_browse_param(CallerType, Setting, Info0, Info) :-
-	%
-	% XXX We can't yet give options to the `set' command.
-	%
-	No = bool__no,
-	browser_info__set_param(yes(CallerType), No, No, No, No, Setting, 
-			Info0 ^ state, NewState),
+set_browse_param(OptionTable, Setting, Info0, Info) :-
+	browser_info__set_param(yes,
+		lookup_bool_option(OptionTable, print) `with_type` bool,
+		lookup_bool_option(OptionTable, browse) `with_type` bool,
+		lookup_bool_option(OptionTable, print_all) `with_type` bool,
+		lookup_bool_option(OptionTable, flat) `with_type` bool,
+		lookup_bool_option(OptionTable, raw_pretty) `with_type` bool,
+		lookup_bool_option(OptionTable, verbose) `with_type` bool,
+		lookup_bool_option(OptionTable, pretty) `with_type` bool,
+		Setting, Info0 ^ state, NewState),
 	Info = Info0 ^ state := NewState.
 
 :- pred help(debugger::in, io__state::di, io__state::uo) is det.
+
 help(Debugger) -->
 	{ string__append_list([
 "Commands are:\n",
-"\tls [path]      -- list subterm (expanded)\n",
-"\tcd [path]      -- cd current subterm (default is root)\n",
-"\thelp           -- show this help message\n",
-"\tset var value  -- set a setting\n",
-"\tset            -- show settings\n",
-"\tprint          -- show single line representation of current term\n",
-"\tquit           -- quit browser\n",
+"\t[print|p|ls] [format_options] [path]\n",
+"\t               -- print the specified subterm using the `browse' params\n",
+"\tcd [path]      -- cd to the specified subterm (default is root)\n",
+"\tpwd            -- print the path to the current subterm\n",
+"\tset [setting_options] var value\n",
+"\t               -- set a parameter value\n",
+"\tset            -- show parameter values\n",
 "\tmark [path]    -- mark the given subterm (default is current) and quit\n",
+"\tquit           -- quit browser\n",
+"\thelp           -- show this help message\n",
 "SICStus Prolog style commands are:\n",
 "\tp              -- print\n",
 "\t< n            -- set depth\n",
-"\t^ [path]       -- cd [path] (default is root)\n",
+"\t^ [path]       -- cd to the specified subterm (default is root)\n",
 "\t?              -- help\n",
 "\th              -- help\n",
 "\n",
-"-- settings:\n",
-"--    size <n>; depth <n>; path <n>; width <n>; lines <n>; num_io_actions <n>;\n",
-"--    format <flat,raw_pretty,verbose,pretty>; ",
-"--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
+"-- Parameter variables with integer values:\n",
+"--  size <n>; depth <n>; path <n>; width <n>; lines <n>; num_io_actions <n>;\n",
+"-- Parameter variables with non-integer values:\n",
+"--  format <flat,raw_pretty,verbose,pretty>;\n",
+"-- Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
 "\n"],
 		HelpMessage) },
 	write_string_debugger(Debugger, HelpMessage).
@@ -463,6 +538,19 @@ help(Debugger) -->
 %
 % Various pretty-print routines
 %
+
+:- pred portray_maybe_path(debugger::in, browse_caller_type::in,
+	maybe(portray_format)::in, browser_info::in,
+	maybe(path)::in, io__state::di, io__state::uo) is cc_multi.
+
+portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
+	(
+		MaybePath = no,
+		portray(Debugger, Caller, MaybeFormat, Info, !IO)
+	;
+		MaybePath = yes(Path),
+		portray_path(Debugger, Caller, MaybeFormat, Info, Path, !IO)
+	).
 
 :- pred portray(debugger::in, browse_caller_type::in,
 	maybe(portray_format)::in, browser_info::in,
@@ -571,7 +659,7 @@ portray_verbose(Debugger, BrowserTerm, Params) -->
 	io__state::di, io__state::uo) is det.
 
 portray_raw_pretty(Debugger, BrowserTerm, Params) -->
-	{ browser_term_to_string_raw_pretty(BrowserTerm, Params ^ width, 
+	{ browser_term_to_string_raw_pretty(BrowserTerm, Params ^ width,
 		Params ^ depth, Str) },
 	write_string_debugger(Debugger, Str).
 
@@ -591,16 +679,13 @@ portray_pretty(Debugger, BrowserTerm, Params) -->
 max_print_size = 60.
 
 term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
-	(
-		MaxSize < 0
-	->
+	( MaxSize < 0 ->
 		RemainingSize = MaxSize
 	;
-		std_util__limited_deconstruct_cc(univ_value(Univ), MaxSize,
-				MaybeFunctorArityArgs),
+		deconstruct__limited_deconstruct_cc(univ_value(Univ), MaxSize,
+			MaybeFunctorArityArgs),
 		(
-			MaybeFunctorArityArgs = yes({Functor, Arity, Args})
-		->
+			MaybeFunctorArityArgs = yes({Functor, Arity, Args}),
 			string__length(Functor, FunctorSize),
 			% "()", plus Arity-1 times ", "
 			PrincipalSize = FunctorSize + Arity * 2,
@@ -608,6 +693,7 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 			list__foldl(term_size_left_from_max,
 				Args, MaxArgsSize, RemainingSize)
 		;
+			MaybeFunctorArityArgs = no,
 			RemainingSize = -1
 		)
 	;
@@ -847,7 +933,7 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
 			append_list([Functor, "/", ArityStr], Str)
 		)
 	).
-	
+
 %---------------------------------------------------------------------------%
 %
 % Print using the pretty printer from the standard library.
@@ -975,16 +1061,15 @@ write_path(Debugger, [Dir]) -->
 		write_string_debugger(Debugger, "/")
 	;
 		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_int_debugger(Debugger, N)
 	;
 		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_string_debugger(Debugger, Name)
 	).
 write_path(Debugger, [Dir, Dir2 | Dirs]) -->
 	write_path_2(Debugger, [Dir, Dir2 | Dirs]).
-
 
 :- pred write_path_2(debugger, list(dir), io__state, io__state).
 :- mode write_path_2(in, in, di, uo) is det.
@@ -996,11 +1081,11 @@ write_path_2(Debugger, [Dir]) -->
 		write_string_debugger(Debugger, "/..")
 	;
 		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_int_debugger(Debugger, N)
 	;
 		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_string_debugger(Debugger, Name)
 	).
 write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
@@ -1010,12 +1095,12 @@ write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
 		write_path_2(Debugger, [Dir2 | Dirs])
 	;
 		{ Dir = child_num(N) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_int_debugger(Debugger, N),
 		write_path_2(Debugger, [Dir2 | Dirs])
 	;
 		{ Dir = child_name(Name) },
-		write_string_debugger(Debugger, "/"), 
+		write_string_debugger(Debugger, "/"),
 		write_string_debugger(Debugger, Name),
 		write_path_2(Debugger, [Dir2 | Dirs])
 	).
@@ -1071,7 +1156,7 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 	(
 		Path = [],
 		Univ = SubUniv
-	; 
+	;
 		Path = [Dir | Dirs],
 		(
 			Dir = child_num(N),
@@ -1141,49 +1226,104 @@ set_browser_term(BrowserTerm, Info, Info ^ term := BrowserTerm).
 % Display predicates.
 %
 
-:- pred show_settings(debugger, browser_info, maybe(portray_format),
-		io__state, io__state).
-:- mode show_settings(in, in, in, di, uo) is det.
+:- pred show_settings(debugger::in, browser_info::in,
+	io__state::di, io__state::uo) is det.
 
-show_settings(Debugger, Info, MaybeFormat) -->
-	{ browser_info__get_format(Info, browse, MaybeFormat, Format) },
-	{ browser_info__get_format_params(Info, browse, Format, Params) },
-	write_string_debugger(Debugger, "Max depth is: "), 
-		write_int_debugger(Debugger, Params ^ depth), 
-		nl_debugger(Debugger),
-	write_string_debugger(Debugger, "Max size is: "), 
-		write_int_debugger(Debugger, Params ^ size), 
-		nl_debugger(Debugger),
-	write_string_debugger(Debugger, "X clip is: "), 
-		write_int_debugger(Debugger, Params ^ width), 
-		nl_debugger(Debugger),
-	write_string_debugger(Debugger, "Y clip is: "), 
-		write_int_debugger(Debugger, Params ^ lines),
-		nl_debugger(Debugger),
-	write_string_debugger(Debugger, "Current path is: "),
-		write_path(Debugger, Info ^ dirs),
-		nl_debugger(Debugger),
-	{ browser_info__get_format(Info, browse, no, LsFormat) },
-	write_string_debugger(Debugger, "Ls format is "),
-		print_format_debugger(Debugger, LsFormat),
-		nl_debugger(Debugger),
-	{ browser_info__get_format(Info, print, no, PrintFormat) },
-	write_string_debugger(Debugger, "Print format is "),
-		print_format_debugger(Debugger, PrintFormat),
-		nl_debugger(Debugger),
-	write_string_debugger(Debugger, "Number of I/O actions printed is: "),
-		write_int_debugger(Debugger,
-			get_num_printed_io_actions(Info ^ state)),
-		nl_debugger(Debugger).
+show_settings(Debugger, Info, !IO) :-
+	show_settings_caller(Debugger, Info, browse, "Browser", !IO),
+	show_settings_caller(Debugger, Info, print, "Print", !IO),
+	show_settings_caller(Debugger, Info, print_all, "Printall", !IO),
+
+	write_string_debugger(Debugger, "Current path is: ", !IO),
+	write_path(Debugger, Info ^ dirs, !IO),
+	nl_debugger(Debugger, !IO),
+
+	write_string_debugger(Debugger,
+		"Number of I/O actions printed is: ", !IO),
+	write_int_debugger(Debugger,
+		get_num_printed_io_actions(Info ^ state), !IO),
+	nl_debugger(Debugger, !IO).
+
+:- pred show_settings_caller(debugger::in, browser_info::in,
+	browse_caller_type::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
+	browser_info__get_format(Info, Caller, no, Format),
+	write_string_debugger(Debugger,
+		CallerName ++ " default format: ", !IO),
+	print_format_debugger(Debugger, Format, !IO),
+	nl_debugger(Debugger, !IO),
+
+	write_string_debugger(Debugger,
+		pad_right("", ' ', row_name_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right("depth", ' ', depth_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right("size", ' ', size_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right("x clip", ' ', x_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right("y clip", ' ', y_len), !IO),
+	nl_debugger(Debugger, !IO),
+
+	show_settings_caller_format(Debugger, Info, Caller, CallerName,
+		flat, "flat", !IO),
+	show_settings_caller_format(Debugger, Info, Caller, CallerName,
+		verbose, "verbose", !IO),
+	show_settings_caller_format(Debugger, Info, Caller, CallerName,
+		pretty, "pretty", !IO),
+	show_settings_caller_format(Debugger, Info, Caller, CallerName,
+		raw_pretty, "raw_pretty", !IO),
+	nl_debugger(Debugger, !IO).
+
+:- pred show_settings_caller_format(debugger::in, browser_info::in,
+	browse_caller_type::in, string::in, portray_format::in, string::in,
+	io__state::di, io__state::uo) is det.
+
+show_settings_caller_format(Debugger, Info, Caller, CallerName,
+		Format, FormatName, !IO) :-
+	browser_info__get_format_params(Info, Caller, Format, Params),
+	write_string_debugger(Debugger,
+		pad_right(CallerName ++ " " ++ FormatName ++ ":",
+			' ', row_name_len),
+		!IO),
+	write_string_debugger(Debugger,
+		pad_right(" ", ' ', centering_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right(int_to_string(Params ^ depth), ' ', depth_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right(int_to_string(Params ^ size), ' ', size_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right(int_to_string(Params ^ width), ' ', x_len), !IO),
+	write_string_debugger(Debugger,
+		pad_right(int_to_string(Params ^ lines), ' ', y_len), !IO),
+	nl_debugger(Debugger, !IO).
+
+:- func row_name_len = int.
+:- func centering_len = int.
+:- func depth_len = int.
+:- func size_len = int.
+:- func x_len = int.
+:- func y_len = int.
+
+row_name_len  = 30.
+centering_len =  3.
+depth_len     = 10.
+size_len      = 10.
+x_len         = 10.
+y_len         = 10.
 
 :- pred string_to_path(string, path).
 :- mode string_to_path(in, out) is semidet.
+
 string_to_path(Str, Path) :-
 	string__to_char_list(Str, Cs),
 	chars_to_path(Cs, Path).
 
 :- pred chars_to_path(list(char), path).
 :- mode chars_to_path(in, out) is semidet.
+
 chars_to_path([C | Cs], Path) :-
 	( C = ('/') ->
 		Path = root_rel(Dirs),
@@ -1195,12 +1335,14 @@ chars_to_path([C | Cs], Path) :-
 
 :- pred chars_to_dirs(list(char), list(dir)).
 :- mode chars_to_dirs(in, out) is semidet.
+
 chars_to_dirs(Cs, Dirs) :-
 	split_dirs(Cs, Names),
 	names_to_dirs(Names, Dirs).
 
 :- pred names_to_dirs(list(string), list(dir)).
 :- mode names_to_dirs(in, out) is semidet.
+
 names_to_dirs([], []).
 names_to_dirs([Name | Names], Dirs) :-
 	( Name = ".." ->
@@ -1216,9 +1358,9 @@ names_to_dirs([Name | Names], Dirs) :-
 		names_to_dirs(Names, RestDirs)
 	).
 
-
 :- pred split_dirs(list(char), list(string)).
 :- mode split_dirs(in, out) is det.
+
 split_dirs(Cs, Names) :-
 	takewhile(not_slash, Cs, NameCs, Rest),
 	string__from_char_list(NameCs, Name),
@@ -1232,10 +1374,10 @@ split_dirs(Cs, Names) :-
 	;
 		error("split_dirs: software error")
 	).
-		
-		
+
 :- pred not_slash(char).
 :- mode not_slash(in) is semidet.
+
 not_slash(C) :-
 	C \= ('/').
 
@@ -1245,6 +1387,7 @@ not_slash(C) :-
 	% to a limit.
 :- pred simplify_dirs(list(dir), list(dir)).
 :- mode simplify_dirs(in, out) is det.
+
 simplify_dirs(Dirs, SimpleDirs) :-
 	util__limit(simplify, Dirs, SimpleDirs).
 
@@ -1256,6 +1399,7 @@ simplify_dirs(Dirs, SimpleDirs) :-
 	%
 :- pred simplify(list(dir), list(dir)).
 :- mode simplify(in, out) is det.
+
 simplify([], []).
 simplify([First | Rest], Simplified) :-
 	( First = parent ->
@@ -1273,6 +1417,7 @@ simplify([First | Rest], Simplified) :-
 
 :- pred write_string_debugger(debugger, string, io__state, io__state).
 :- mode write_string_debugger(in, in, di, uo) is det.
+
 write_string_debugger(internal, String) -->
 	io__write_string(String).
 write_string_debugger(external, String) -->
@@ -1280,6 +1425,7 @@ write_string_debugger(external, String) -->
 
 :- pred nl_debugger(debugger, io__state, io__state).
 :- mode nl_debugger(in, di, uo) is det.
+
 nl_debugger(internal) -->
 	io__nl.
 nl_debugger(external) -->
@@ -1287,14 +1433,15 @@ nl_debugger(external) -->
 
 :- pred write_int_debugger(debugger, int, io__state, io__state).
 :- mode write_int_debugger(in, in, di, uo) is det.
+
 write_int_debugger(internal, Int) -->
 	io__write_int(Int).
 write_int_debugger(external, Int) -->
 	send_term_to_socket(browser_int(Int)).
 
-
 :- pred print_format_debugger(debugger, portray_format, io__state, io__state).
 :- mode print_format_debugger(in, in, di, uo) is det.
+
 print_format_debugger(internal, X) -->
 	io__print(X).
 print_format_debugger(external, X) -->
@@ -1314,6 +1461,7 @@ print_format_debugger(external, X) -->
 
 :- pred send_term_to_socket(term_browser_response, io__state, io__state).
 :- mode send_term_to_socket(in, di, uo) is det.
+
 send_term_to_socket(Term) -->
 	write(Term),
 	print(".\n"),
@@ -1341,7 +1489,7 @@ synthetic_term_to_doc(Depth, Functor, Args, MaybeReturn) = Doc :-
 			(
 				MaybeReturn = yes(_),
 				Doc = text(Functor) `<>` text("/") `<>`
-					poly(i(Arity)) `<>` text("+1") 
+					poly(i(Arity)) `<>` text("+1")
 			;
 				MaybeReturn = no,
 				Doc = text(Functor) `<>` text("/") `<>`

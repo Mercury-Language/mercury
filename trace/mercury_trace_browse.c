@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -206,46 +206,55 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 	MR_trace_browse_ensure_init();
 
 	if (MR_streq(param, "format") &&
-			MR_trace_is_portray_format(value, &new_format))
+		MR_trace_is_portray_format(value, &new_format))
 	{
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_set_param_format(print, browse, print_all,
-				new_format, MR_trace_browser_persistent_state,
-				&MR_trace_browser_persistent_state);
-		);
-	}
-	else if (MR_streq(param, "depth") && MR_trace_is_natural_number(value, &depth))
-	{
-		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_set_param_depth(print, browse, print_all,
-				flat, raw_pretty, verbose, pretty, depth,
+			ML_BROWSE_set_param_format_from_mdb(print, browse,
+				print_all, new_format,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "size") && MR_trace_is_natural_number(value, &size))
+	else if (MR_streq(param, "depth") &&
+		MR_trace_is_natural_number(value, &depth))
 	{
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_set_param_size(print, browse, print_all,
-				flat, raw_pretty, verbose, pretty, size,
+			ML_BROWSE_set_param_depth_from_mdb(print, browse,
+				print_all, flat, raw_pretty, verbose, pretty,
+				depth,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "width") && MR_trace_is_natural_number(value, &width))
+	else if (MR_streq(param, "size") &&
+		MR_trace_is_natural_number(value, &size))
 	{
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_set_param_width(print, browse, print_all,
-				flat, raw_pretty, verbose, pretty, width,
+			ML_BROWSE_set_param_size_from_mdb(print, browse,
+				print_all, flat, raw_pretty, verbose, pretty,
+				size,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "lines") && MR_trace_is_natural_number(value, &lines))
+	else if (MR_streq(param, "width") &&
+		MR_trace_is_natural_number(value, &width))
 	{
 		MR_TRACE_CALL_MERCURY(
-			ML_BROWSE_set_param_lines(print, browse, print_all,
-				flat, raw_pretty, verbose, pretty, lines,
+			ML_BROWSE_set_param_width_from_mdb(print, browse,
+				print_all, flat, raw_pretty, verbose, pretty,
+				width,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state);
+		);
+	}
+	else if (MR_streq(param, "lines") &&
+		MR_trace_is_natural_number(value, &lines))
+	{
+		MR_TRACE_CALL_MERCURY(
+			ML_BROWSE_set_param_lines_from_mdb(print, browse,
+				print_all, flat, raw_pretty, verbose, pretty,
+				lines,
 				MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
@@ -256,8 +265,8 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 	}
 
 	MR_trace_browser_persistent_state =
-			MR_make_permanent(MR_trace_browser_persistent_state,
-				MR_trace_browser_persistent_state_type);
+		MR_make_permanent(MR_trace_browser_persistent_state,
+			MR_trace_browser_persistent_state_type);
 	return MR_TRUE;
 }
 

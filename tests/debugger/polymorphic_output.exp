@@ -38,15 +38,15 @@ mdb> set format flat
 mdb> browse goal
 browser> ^1
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^2
 error: cannot change to subterm
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^3
 error: cannot change to subterm
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^r
 browser> p
 '_'

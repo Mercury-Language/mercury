@@ -12,10 +12,7 @@ mdb> dd
 p(1, baz(1, bar))
 Valid? browse 2
 browser> ls
-baz
-1-1
-2-bar
-
+baz(1, bar)
 browser> quit
 p(1, baz(1, bar))
 Valid? no

@@ -110,13 +110,13 @@
 	% portray_format overrides the current default.
 	%
 :- pred browser_info__get_format(browser_info, browse_caller_type,
-		maybe(portray_format), portray_format).
+	maybe(portray_format), portray_format).
 :- mode browser_info__get_format(in, in, in, out) is det.
 
 	% Get the format parameters for the given caller type and format.
 	%
 :- pred browser_info__get_format_params(browser_info, browse_caller_type,
-		portray_format, format_params).
+	portray_format, format_params).
 :- mode browser_info__get_format_params(in, in, in, out) is det.
 
 :- func browser_info__get_num_printed_io_actions(browser_persistent_state)
@@ -135,21 +135,23 @@
 :- pred browser_info__init_persistent_state(browser_persistent_state).
 :- mode browser_info__init_persistent_state(out) is det.
 
-	% Update a setting in the browser state.  The first seven arguments
-	% indicate the presence of the `set' options -P, -B, -A, -f, -r, -v
-	% and -p, in that order.
+	% Update a setting in the browser state.  The first argument should be
+	% true iff the set command is invoked from within the browser. The next
+	% seven arguments indicate the presence of the `set' options
+	% -P, -B, -A, -f, -r, -v and -p, in that order.
 	%
 :- pred browser_info__set_param(bool::in, bool::in, bool::in, bool::in,
-	bool::in, bool::in, bool::in, setting::in, 
+	bool::in, bool::in, bool::in, bool::in, setting::in, 
 	browser_persistent_state::in, browser_persistent_state::out) is det.
 
-	% Update a setting in the browser state.  The first argument
-	% indicates the presence of at most one of the options -P, -B, -A,
-	% while the next four indicate the presence of -f, -r, -v and -p,
-	% in that order.
+	% Update a setting in the browser state.  The first argument should be
+	% true iff the set command is invoked from within the browser. The next
+	% argument indicates the presence of at most one of the options
+	% -P, -B, -A, while the next four indicate the presence of -f, -r, -v
+	% and -p, in that order.
 	%
-:- pred browser_info__set_param(maybe(browse_caller_type)::in, bool::in,
-	bool::in, bool::in, bool::in, setting::in, 
+:- pred browser_info__set_param(bool::in, maybe(browse_caller_type)::in,
+	bool::in, bool::in, bool::in, bool::in, setting::in, 
 	browser_persistent_state::in, browser_persistent_state::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -193,53 +195,53 @@
 	% call browser_info__set_param from C code.
 	%
 
-:- pred set_param_depth(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, bool::in, int::in, browser_persistent_state::in,
-		browser_persistent_state::out) is det.
-:- pragma export(set_param_depth(in, in, in, in, in, in, in, in, in, out),
-		"ML_BROWSE_set_param_depth").
+:- pred set_param_depth_from_mdb(bool::in, bool::in, bool::in, bool::in,
+	bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
+	browser_persistent_state::out) is det.
+:- pragma export(set_param_depth_from_mdb(in, in, in, in, in, in, in, in,
+	in, out), "ML_BROWSE_set_param_depth_from_mdb").
 
-set_param_depth(P, B, A, F, Pr, V, NPr, Depth) -->
-	browser_info__set_param(P, B, A, F, Pr, V, NPr,  depth(Depth)).
+set_param_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth) -->
+	browser_info__set_param(no, P, B, A, F, Pr, V, NPr,  depth(Depth)).
 
-:- pred set_param_size(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, bool::in, int::in, browser_persistent_state::in,
-		browser_persistent_state::out) is det.
-:- pragma export(set_param_size(in, in, in, in, in, in, in, in, in, out),
-		"ML_BROWSE_set_param_size").
+:- pred set_param_size_from_mdb(bool::in, bool::in, bool::in, bool::in,
+	bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
+	browser_persistent_state::out) is det.
+:- pragma export(set_param_size_from_mdb(in, in, in, in, in, in, in, in,
+	in, out), "ML_BROWSE_set_param_size_from_mdb").
 
-set_param_size(P, B, A, F, Pr, NPr, V, Size) -->
-	browser_info__set_param(P, B, A, F, Pr, V, NPr, size(Size)).
+set_param_size_from_mdb(P, B, A, F, Pr, NPr, V, Size) -->
+	browser_info__set_param(no, P, B, A, F, Pr, V, NPr, size(Size)).
 
-:- pred set_param_width(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, bool::in, int::in, browser_persistent_state::in,
-		browser_persistent_state::out) is det.
-:- pragma export(set_param_width(in, in, in, in, in, in, in, in, in, out),
-		"ML_BROWSE_set_param_width").
+:- pred set_param_width_from_mdb(bool::in, bool::in, bool::in, bool::in,
+	bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
+	browser_persistent_state::out) is det.
+:- pragma export(set_param_width_from_mdb(in, in, in, in, in, in, in, in,
+	in, out), "ML_BROWSE_set_param_width_from_mdb").
 
-set_param_width(P, B, A, F, Pr, V, NPr, Width) -->
-	browser_info__set_param(P, B, A, F, Pr, V, NPr, width(Width)).
+set_param_width_from_mdb(P, B, A, F, Pr, V, NPr, Width) -->
+	browser_info__set_param(no, P, B, A, F, Pr, V, NPr, width(Width)).
 
-:- pred set_param_lines(bool::in, bool::in, bool::in, bool::in, bool::in,
-		bool::in, bool::in, int::in, browser_persistent_state::in,
-		browser_persistent_state::out) is det.
-:- pragma export(set_param_lines(in, in, in, in, in, in, in, in, in, out),
-		"ML_BROWSE_set_param_lines").
+:- pred set_param_lines_from_mdb(bool::in, bool::in, bool::in, bool::in,
+	bool::in, bool::in, bool::in, int::in,
+	browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(set_param_lines_from_mdb(in, in, in, in, in, in, in, in,
+	in, out), "ML_BROWSE_set_param_lines_from_mdb").
 
-set_param_lines(P, B, A, F, Pr, V, NPr, Lines) -->
-	browser_info__set_param(P, B, A, F, Pr, V, NPr, lines(Lines)).
+set_param_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines) -->
+	browser_info__set_param(no, P, B, A, F, Pr, V, NPr, lines(Lines)).
 
-:- pred set_param_format(bool::in, bool::in, bool::in, portray_format::in,
-		browser_persistent_state::in, browser_persistent_state::out)
-		is det.
-:- pragma export(set_param_format(in, in, in, in, in, out),
-		"ML_BROWSE_set_param_format").
+:- pred set_param_format_from_mdb(bool::in, bool::in, bool::in,
+	portray_format::in, browser_persistent_state::in,
+	browser_persistent_state::out) is det.
+:- pragma export(set_param_format_from_mdb(in, in, in, in, in, out),
+	"ML_BROWSE_set_param_format_from_mdb").
 
-set_param_format(P, B, A, Format) -->
+set_param_format_from_mdb(P, B, A, Format) -->
 	%
 	% Any format flags are ignored for this parameter.
 	%
-	browser_info__set_param(P, B, A, no, no, no, no, format(Format)).
+	browser_info__set_param(no, P, B, A, no, no, no, no, format(Format)).
 
 	%
 	% The following exported functions allow C code to create
@@ -248,10 +250,12 @@ set_param_format(P, B, A, Format) -->
 
 :- func mercury_bool_yes = bool.
 :- pragma export(mercury_bool_yes = out, "ML_BROWSE_mercury_bool_yes").
+
 mercury_bool_yes = yes.
 
 :- func mercury_bool_no = bool.
 :- pragma export(mercury_bool_no = out, "ML_BROWSE_mercury_bool_no").
+
 mercury_bool_no = no.
 
 %---------------------------------------------------------------------------%
@@ -337,7 +341,7 @@ caller_type_print_defaults(Params) :-
 :- mode caller_type_browse_defaults(out) is det.
 
 caller_type_browse_defaults(Params) :-
-	DefaultFormat = verbose,
+	DefaultFormat = flat,
 	Flat	  = format_params(10, 30, 80, 25),
 	RawPretty = format_params(10, 30, 80, 25),
 	Verbose	  = format_params(10, 30, 80, 25),
@@ -362,18 +366,34 @@ caller_type_print_all_defaults(Params) :-
 % context.
 num_printed_io_actions_default = 20.
 
-browser_info__set_param(MaybeCallerType, F0, Pr0, V0, NPr0, Setting, State0,
-		State) :-
-	affected_caller_types(MaybeCallerType, P, B, A),
-	browser_info__set_param(P, B, A, F0, Pr0, V0, NPr0, Setting, State0,
-		State).
+browser_info__set_param(FromBrowser, MaybeCallerType, F0, Pr0, V0, NPr0,
+		Setting, State0, State) :-
+	affected_caller_types(FromBrowser, MaybeCallerType, P, B, A),
+	browser_info__set_param(FromBrowser, P, B, A, F0, Pr0, V0, NPr0,
+		Setting, State0, State).
 
-browser_info__set_param(P0, B0, A0, F0, Pr0, V0, NPr0, Setting, State0,
-		State) :-
+browser_info__set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0,
+		Setting, State0, State) :-
 	( Setting = num_io_actions(NumIoActions) ->
 		State = State0 ^ num_printed_io_actions := NumIoActions
 	;
-		default_all_yes(P0, B0, A0, P, B, A),
+		(
+			FromBrowser = no,
+			default_all_yes(P0, B0, A0, P, B, A)
+		;
+			FromBrowser = yes,
+			(
+				P0 = no,
+				B0 = no,
+				A0 = no
+			->
+				affected_caller_types(FromBrowser, no, P, B, A)
+			;
+				P = P0,
+				B = B0,
+				A = A0
+			)
+		),
 		default_all_yes(F0, Pr0, V0, NPr0, F, Pr, V, NPr),
 		PParams0 = State0 ^ print_params,
 		BParams0 = State0 ^ browse_params,
@@ -385,17 +405,19 @@ browser_info__set_param(P0, B0, A0, F0, Pr0, V0, NPr0, Setting, State0,
 			State0 ^ num_printed_io_actions)
 	).
 
-:- pred affected_caller_types(maybe(browse_caller_type)::in,
+:- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
 	bool::out, bool::out, bool::out) is det.
 
 	%
-	% If no caller type is specified, the command by default
-	% applies to _all_ caller types.
+	% If no caller type is specified, the set command by default
+	% applies to _all_ caller types if invoked from the mdb prompt,
+	% and to the browser only if invoked from the browser prompt.
 	%
-affected_caller_types(no,             yes, yes, yes).
-affected_caller_types(yes(print),     yes, no, no).
-affected_caller_types(yes(browse),    no, yes, no).
-affected_caller_types(yes(print_all), no, no, yes).
+affected_caller_types(no, no,            yes, yes, yes).
+affected_caller_types(yes, no,           no, yes, no).
+affected_caller_types(_, yes(print),     yes, no, no).
+affected_caller_types(_, yes(browse),    no, yes, no).
+affected_caller_types(_, yes(print_all), no, no, yes).
 
 :- pred default_all_yes(bool, bool, bool, bool, bool, bool).
 :- mode default_all_yes(in, in, in, out, out, out) is det.
@@ -479,16 +501,15 @@ maybe_set_param_2(yes, lines(L), Params, Params ^ lines := L).
 maybe_set_param_2(yes, num_io_actions(_), _, _) :-
 	error("maybe_set_param_2: num_io_actions").
 
-:- pred get_caller_params(browser_persistent_state, browse_caller_type,
-		caller_params).
-:- mode get_caller_params(in, in, out) is det.
+:- pred get_caller_params(browser_persistent_state::in, browse_caller_type::in,
+	caller_params::out) is det.
 
 get_caller_params(State, print, State ^ print_params).
 get_caller_params(State, browse, State ^ browse_params).
 get_caller_params(State, print_all, State ^ print_all_params).
 
-:- pred get_caller_format_params(caller_params, portray_format, format_params).
-:- mode get_caller_format_params(in, in, out) is det.
+:- pred get_caller_format_params(caller_params::in, portray_format::in,
+	format_params::out) is det.
 
 get_caller_format_params(Params, flat, Params ^ flat_params).
 get_caller_format_params(Params, raw_pretty, Params ^ raw_pretty_params).

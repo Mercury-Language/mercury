@@ -367,7 +367,8 @@ print_atom_argument(Atom, ArgNum, User0, OK) -->
 		{ ArgInfo = arg_info(_, _, MaybeArg) },
 		{ MaybeArg = yes(Arg) }
 	->
-		print(univ_value(Arg), User0 ^ outstr, print, User0 ^ browser),
+		print(univ_value(Arg), User0 ^ outstr, decl_caller_type,
+			User0 ^ browser),
 		{ OK = yes }
 	;
 		io__write_string(User0 ^ outstr, "Invalid argument number\n"),
@@ -590,6 +591,12 @@ user_confirm_bug(Bug, Response, User0, User) -->
 
 %-----------------------------------------------------------------------------%
 
+	% Returns the caller type we want to use throughout the
+	% declarative debugger.
+:- func decl_caller_type = browse_caller_type.
+
+decl_caller_type = print.
+
 	% Display the node in user readable form on the current
 	% output stream.
 	%
@@ -597,10 +604,10 @@ user_confirm_bug(Bug, Response, User0, User) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_question(wrong_answer(_, Atom), User) -->
-	write_decl_final_atom(User, "", print, Atom).
+	write_decl_final_atom(User, "", decl_caller_type, Atom).
 	
 write_decl_question(missing_answer(_, Call, Solns), User) -->
-	write_decl_init_atom(User, "Call ", print, Call),
+	write_decl_init_atom(User, "Call ", decl_caller_type, Call),
 	(
 		{ Solns = [] }
 	->
@@ -611,7 +618,7 @@ write_decl_question(missing_answer(_, Call, Solns), User) -->
 	).
 
 write_decl_question(unexpected_exception(_, Call, Exception), User) -->
-	write_decl_init_atom(User, "Call ", print, Call),
+	write_decl_init_atom(User, "Call ", decl_caller_type, Call),
 	io__write_string(User ^ outstr, "Throws "),
 	io__write(User ^ outstr, include_details_cc, univ_value(Exception)),
 	io__nl(User ^ outstr).
@@ -623,16 +630,16 @@ write_decl_bug(e_bug(EBug), User) -->
 	(
 		{ EBug = incorrect_contour(Atom, _, _) },
 		io__write_string(User ^ outstr, "Found incorrect contour:\n"),
-		write_decl_final_atom(User, "", print, Atom)
+		write_decl_final_atom(User, "", decl_caller_type, Atom)
 	;
 		{ EBug = partially_uncovered_atom(Atom, _) },
 		io__write_string(User ^ outstr,
 				"Found partially uncovered atom:\n"),
-		write_decl_init_atom(User, "", print, Atom)
+		write_decl_init_atom(User, "", decl_caller_type, Atom)
 	;
 		{ EBug = unhandled_exception(Atom, Exception, _) },
 		io__write_string(User ^ outstr, "Found unhandled exception:\n"),
-		write_decl_init_atom(User, "", print, Atom),
+		write_decl_init_atom(User, "", decl_caller_type, Atom),
 		io__write(User ^ outstr, include_details_cc,
 				univ_value(Exception)),
 		io__nl(User ^ outstr)
@@ -641,8 +648,8 @@ write_decl_bug(e_bug(EBug), User) -->
 write_decl_bug(i_bug(IBug), User) -->
 	{ IBug = inadmissible_call(Parent, _, Call, _) },
 	io__write_string(User ^ outstr, "Found inadmissible call:\n"),
-	write_decl_atom(User, "Parent ", print, init(Parent)),
-	write_decl_atom(User, "Call ", print, init(Call)).
+	write_decl_atom(User, "Parent ", decl_caller_type, init(Parent)),
+	write_decl_atom(User, "Call ", decl_caller_type, init(Call)).
 
 :- pred write_decl_init_atom(user_state::in, string::in, browse_caller_type::in,
 	init_decl_atom::in, io__state::di, io__state::uo) is cc_multi.
