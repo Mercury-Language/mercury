@@ -787,13 +787,25 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% `trace' stack layouts need `procid' stack layouts
 	option_implies(trace_stack_layout, procid_stack_layout, bool(yes)),
 
-	% --gc accurate requires `agc' stack layouts, typeinfo liveness,
-	% and needs hijacks and frameopt to be switched off.
+	% --gc accurate for the LLDS back-end (not yet implemented...)
+	% requires `agc' stack layouts, typeinfo liveness, and
+	% needs hijacks and frameopt to be switched off.
+	% For the MLDS back-end, `--gc accurate' requires just typeinfo
+	% liveness.
+	%
+	% XXX currently accurate GC also requires disabling the higher-order
+	% specialization pass, since that pass creates procedures
+	% which don't respect left-to-right scoping of type_info parameters,
+	% i.e. in which a parameter X may have a type whose type_info var
+	% (in the type_info_varmap) occurs to the right of X in the
+	% procedure's parameter list.
+	% 
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
 		globals__io_set_option(allow_hijacks, bool(no)),
-		globals__io_set_option(optimize_frames, bool(no))
+		globals__io_set_option(optimize_frames, bool(no)),
+		globals__io_set_option(optimize_higher_order, bool(no))
 	;
 		[]
 	),
