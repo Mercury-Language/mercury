@@ -1671,6 +1671,12 @@ string__special_precision_and_width(-1).
 
 :- pragma(c_header_code, "
 
+Declare_entry(mercury__string__append_3_3_xx);
+
+").
+
+:- pragma(c_code, "
+
 Define_extern_entry(mercury__string__append_3_3_xx);
 Declare_label(mercury__string__append_3_3_xx_i1);
 
@@ -1741,7 +1747,7 @@ END_MODULE
 	Word tmp;
 	if (Count <= 0) {
 		/* XXX need to guarantee alignment of strings */
-		Left = (String) """";
+		Left = (String) (Word) """";
 		Right = Str;
 	} else {
 		len = strlen(Str);

@@ -183,11 +183,17 @@
 	#define	MERCURY_FLOAT__PI		3.1415926535897932384
 	#define	MERCURY_FLOAT__LN2		0.69314718055994530941
 
+	void mercury_domain_error(const char *where);
+
+"). % end pragma c_header_code
+
+:- pragma(c_code, "
+
 	/*
 	** Handle domain errors.
 	*/
-	static void
-	domain_error(const char *where)
+	void
+	mercury_domain_error(const char *where)
 	{
 		fflush(stdout);
 		fprintf(stderr,
@@ -196,7 +202,7 @@
 		exit(1);
 	}
 
-"). % end pragma_c_header_code
+"). % end pragma c_code
 
 %
 % Mathematical constants from math.m
@@ -249,7 +255,7 @@
 %
 :- pragma(c_code, math__sqrt(X::in, SquareRoot::out), "
 	if (X < 0.0) {
-	    domain_error(""math__sqrt"");
+	    mercury_domain_error(""math__sqrt"");
 	}
 	SquareRoot = sqrt(X);
 ").
@@ -264,11 +270,11 @@
 %
 :- pragma(c_code, math__pow(X::in, Y::in, Res::out), "
 	if (X < 0.0) {
-	    domain_error(""math__pow"");
+	    mercury_domain_error(""math__pow"");
 	}
 	if (X == 0.0) {
 	    if (Y <= 0.0) {
-		domain_error(""math__pow"");
+		mercury_domain_error(""math__pow"");
 	    }
 	    Res = 0.0;
 	} else {
@@ -291,7 +297,7 @@
 %
 :- pragma(c_code, math__ln(X::in, Log::out), "
 	if (X <= 0.0) {
-	    domain_error(""math__ln"");
+	    mercury_domain_error(""math__ln"");
 	}
 	Log = log(X);
 ").
@@ -305,7 +311,7 @@
 %
 :- pragma(c_code, math__log10(X::in, Log10::out), "
 	if (X <= 0.0)
-	    domain_error(""math__log10"");
+	    mercury_domain_error(""math__log10"");
 	Log10 = log10(X);
 ").
 
@@ -318,7 +324,7 @@
 %
 :- pragma(c_code, math__log2(X::in, Log2::out), "
 	if (X <= 0.0) {
-	    domain_error(""math__log2"");
+	    mercury_domain_error(""math__log2"");
 	}
 	Log2 = log(X) / MERCURY_FLOAT__LN2;
 ").
@@ -334,10 +340,10 @@
 %
 :- pragma(c_code, math__log(B::in, X::in, Log::out), "
 	if (X <= 0.0 || B <= 0.0) {
-	    domain_error(""math__log"");
+	    mercury_domain_error(""math__log"");
 	}
 	if (B == 1.0) {
-	    domain_error(""math__log"");
+	    mercury_domain_error(""math__log"");
 	}
 	Log = log(X)/log(B);
 ").
@@ -366,7 +372,7 @@
 %
 :- pragma(c_code, math__asin(X::in, ASin::out), "
 	if (X < -1.0 || X > 1.0) {
-	    domain_error(""math__asin"");
+	    mercury_domain_error(""math__asin"");
 	}
 	ASin = asin(X);
 ").
@@ -380,7 +386,7 @@
 %
 :- pragma(c_code, math__acos(X::in, ACos::out), "
 	if (X < -1.0 || X > 1.0) {
-	    domain_error(""math__acos"");
+	    mercury_domain_error(""math__acos"");
 	}
 	ACos = asin(X);
 ").

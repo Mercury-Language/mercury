@@ -1317,13 +1317,13 @@ typedef struct mercury_file {
 	int line_number;
 } MercuryFile;
 
-MercuryFile mercury_stdin = { NULL, 0 };
-MercuryFile mercury_stdout = { NULL, 0 };
-MercuryFile mercury_stderr = { NULL, 0 };
-MercuryFile *mercury_current_text_input = &mercury_stdin;
-MercuryFile *mercury_current_text_output = &mercury_stdout;
-MercuryFile *mercury_current_binary_input = &mercury_stdin;
-MercuryFile *mercury_current_binary_output = &mercury_stdout;
+extern MercuryFile mercury_stdin;
+extern MercuryFile mercury_stdout;
+extern MercuryFile mercury_stderr;
+extern MercuryFile *mercury_current_text_input;
+extern MercuryFile *mercury_current_text_output;
+extern MercuryFile *mercury_current_binary_input;
+extern MercuryFile *mercury_current_binary_output;
 
 #define initial_external_state()	0	/* some random number */
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
@@ -1333,6 +1333,24 @@ MercuryFile *mercury_current_binary_output = &mercury_stdout;
 #define COMPARE_LESS 1
 #define COMPARE_GREATER 2
 
+void 		mercury_init_io(void);
+MercuryFile*	mercury_open(const char *filename, const char *type);
+int		mercury_output_error(MercuryFile* mf);
+void		mercury_print_string(MercuryFile* mf, const char *s);
+int		mercury_getc(MercuryFile* mf);
+void		mercury_close(MercuryFile* mf);
+").
+
+:- pragma(c_code, "
+
+MercuryFile mercury_stdin = { NULL, 0 };
+MercuryFile mercury_stdout = { NULL, 0 };
+MercuryFile mercury_stderr = { NULL, 0 };
+MercuryFile *mercury_current_text_input = &mercury_stdin;
+MercuryFile *mercury_current_text_output = &mercury_stdout;
+MercuryFile *mercury_current_binary_input = &mercury_stdin;
+MercuryFile *mercury_current_binary_output = &mercury_stdout;
+
 void
 mercury_init_io(void)
 {
@@ -1341,7 +1359,11 @@ mercury_init_io(void)
 	mercury_stderr.file = stderr;
 }
 
-static MercuryFile*
+").
+
+:- pragma(c_code, "
+
+MercuryFile*
 mercury_open(const char *filename, const char *type)
 {
 	MercuryFile *mf;
@@ -1355,7 +1377,11 @@ mercury_open(const char *filename, const char *type)
 	return mf;
 }
 
-static int
+").
+
+:- pragma(c_code, "
+
+int
 mercury_output_error(MercuryFile* mf)
 {
 	fprintf(stderr,
@@ -1364,7 +1390,11 @@ mercury_output_error(MercuryFile* mf)
 	exit(1);
 }
 
-static void
+").
+
+:- pragma(c_code, "
+
+void
 mercury_print_string(MercuryFile* mf, const char *s)
 {
 	if (fprintf(mf->file, ""%s"", s) < 0) {
@@ -1377,7 +1407,11 @@ mercury_print_string(MercuryFile* mf, const char *s)
 	}
 }
 
-static int
+").
+
+:- pragma(c_code, "
+
+int
 mercury_getc(MercuryFile* mf)
 {
 	int c = getc(mf->file);
@@ -1387,7 +1421,11 @@ mercury_getc(MercuryFile* mf)
 	return c;
 }
 
-static void
+").
+
+:- pragma(c_code, "
+
+void
 mercury_close(MercuryFile* mf)
 {
 	if (mf != &mercury_stdin &&
@@ -1404,10 +1442,10 @@ mercury_close(MercuryFile* mf)
 	}
 }
 
-"). % end pragma(c_header_code).
+").
 
 :- pragma(c_header_code, "#include ""init.h""").
-:- pragma(c_header_code, "
+:- pragma(c_code, "
 
 Declare_entry(mercury__io__init_state_2_0);
 
@@ -1591,7 +1629,7 @@ END_MODULE
 
 /* stream predicates */
 
-:- pragma(c_header_code, "
+:- pragma(c_code, "
 
 Define_extern_entry(mercury____Unify___io__stream_0_0);
 Define_extern_entry(mercury____Compare___io__stream_0_0);
@@ -1799,6 +1837,7 @@ END_MODULE
 
 :- pragma(c_code, io__preallocate_heap_space(_HeapSpace::in, IO0::di, IO::uo),
 "
+	/* _HeapSpace not used */
 	/* don't do anything - preallocate_heap_space was just a
 	   hack for NU-Prolog */
 	update_io(IO0, IO);
@@ -1826,7 +1865,7 @@ END_MODULE
 
 /*---------------------------------------------------------------------------*/
 
-:- pragma(c_header_code, "
+:- pragma(c_code, "
 
 Define_extern_entry(mercury____Unify___io__external_state_0_0);
 Define_extern_entry(mercury____Compare___io__external_state_0_0);

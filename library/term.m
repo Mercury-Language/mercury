@@ -231,7 +231,6 @@
 
 :- implementation.
 :- import_module std_util, require.
-:- import_module random.
 
 %-----------------------------------------------------------------------------%
 

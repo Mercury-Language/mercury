@@ -465,7 +465,7 @@ term__context_init(term__context("", 0)).
 */
 
 :- external(copy/2).
-:- pragma(c_header_code, "
+:- pragma(c_code, "
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
 

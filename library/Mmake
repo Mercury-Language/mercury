@@ -113,10 +113,6 @@ libmercury.a : $(library.os)
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
 
-libmercury.opt.a : $(library.ms)
-	-$(MC) --optimize-value-number --split-c-files -c $(library.ms)
-	ar cr libmercury.opt.a $(library.dir_os)
-
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
 		-L$(RUNTIME_DIR) -lmer -L$(BOEHM_GC_DIR) ` \
@@ -129,6 +125,11 @@ library.init:
 	for file in $(library.ms); do \
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > library.init
+
+# libmercury.opt.a is a version of libmercury.a that has been compiled
+# with `--split-c-files'.
+libmercury.opt.a : $(library.dir_os)
+	ar cr libmercury.opt.a $(library.dir_os)
 
 #-----------------------------------------------------------------------------#
 
@@ -224,6 +225,11 @@ install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_library_opt
+install_library_opt: libmercury.opt.a
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmercury.opt.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
 
 .PHONY: install_nuprolog
 install_nuprolog: install_library_nu install_interpreter_nu

@@ -138,6 +138,8 @@ lower bounds other than zero are not supported
 
 %-----------------------------------------------------------------------------%
 
+% Arrays are implemented using the C interface.
+
 :- pragma(c_header_code, "
 
 	typedef struct {
@@ -145,28 +147,40 @@ lower bounds other than zero are not supported
 		Word *elements;
 	} UniqArrayType;
 
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma(c_code, "
+
 Define_extern_entry(mercury____Unify___uniq_array_1_0);
 Define_extern_entry(mercury____Compare___uniq_array_1_0);
 Define_extern_entry(mercury____Index___uniq_array_1_0);
-/* Define_extern_entry(mercury____TypeToTerm___uniq_array_1_0); */
-/* Define_extern_entry(mercury____TermToType___uniq_array_1_0); */
+Define_extern_entry(mercury____TypeToTerm___uniq_array_1_0);
+Define_extern_entry(mercury____TermToType___uniq_array_1_0);
 
 BEGIN_MODULE(uniq_array_module)
-        init_entry(mercury____Unify___uniq_array_1_0);
-        init_entry(mercury____Compare___uniq_array_1_0);
-        init_entry(mercury____Index___uniq_array_1_0);
-/*        init_entry(mercury____TypeToTerm___uniq_array_1_0); */
-/*        init_entry(mercury____TermToType___uniq_array_1_0); */
+	init_entry(mercury____Unify___uniq_array_1_0);
+	init_entry(mercury____Compare___uniq_array_1_0);
+	init_entry(mercury____Index___uniq_array_1_0);
+	init_entry(mercury____TypeToTerm___uniq_array_1_0);
+	init_entry(mercury____TermToType___uniq_array_1_0);
 BEGIN_CODE
 
 Define_entry(mercury____Unify___uniq_array_1_0);
-        fatal_error(""cannot unify uniq_arrays"");
+	fatal_error(""cannot unify uniq_arrays"");
 
 Define_entry(mercury____Compare___uniq_array_1_0);
-        fatal_error(""cannot compare uniq_arrays"");
+	fatal_error(""cannot compare uniq_arrays"");
 
 Define_entry(mercury____Index___uniq_array_1_0);
-        fatal_error(""cannot index uniq_array"");
+	fatal_error(""cannot index uniq_array"");
+
+Define_entry(mercury____TypeToTerm___uniq_array_1_0);
+	fatal_error(""cannot type_to_term uniq_array"");
+
+Define_entry(mercury____TermToType___uniq_array_1_0);
+	fatal_error(""cannot term_to_type uniq_array"");
 
 END_MODULE
 
@@ -175,8 +189,12 @@ END_MODULE
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
-static UniqArrayType *
-make_uniq_array(Integer size, Word item)
+UniqArrayType *mercury_make_uniq_array(Integer size, Word item);
+").
+
+:- pragma(c_code, "
+UniqArrayType *
+mercury_make_uniq_array(Integer size, Word item)
 {
 	Integer i;
 	Word *array_elements;
@@ -196,13 +214,13 @@ make_uniq_array(Integer size, Word item)
 :- pragma(c_code,
 	uniq_array__init(Size::in, Item::in, UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) make_uniq_array(Size, Item);
+	UniqArray = (Word) mercury_make_uniq_array(Size, Item);
 ").
 
 :- pragma(c_code,
 	uniq_array__make_empty_array(UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) make_uniq_array(0, 0);
+	UniqArray = (Word) mercury_make_uniq_array(0, 0);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -269,8 +287,14 @@ uniq_array__bounds(Array, Min, Max) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
-static UniqArrayType *
-resize_uniq_array(UniqArrayType *old_array, Integer array_size, Word item)
+UniqArrayType * mercury_resize_uniq_array(UniqArrayType *old_array,
+					Integer array_size, Word item);
+").
+
+:- pragma(c_code, "
+UniqArrayType *
+mercury_resize_uniq_array(UniqArrayType *old_array, Integer array_size,
+				Word item)
 {
 	Integer i;
 	Word *array_elements;
@@ -308,15 +332,19 @@ resize_uniq_array(UniqArrayType *old_array, Integer array_size, Word item)
 	uniq_array__resize(UniqArray0::uniq_array_di, Size::in, Item::in,
 		UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) resize_uniq_array((UniqArrayType *) UniqArray0,
-						Size, Item);
+	UniqArray = (Word) mercury_resize_uniq_array(
+				(UniqArrayType *) UniqArray0, Size, Item);
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
-static UniqArrayType *
-copy_uniq_array(UniqArrayType *old_array)
+UniqArrayType *mercury_copy_uniq_array(UniqArrayType *old_array);
+").
+
+:- pragma(c_code, "
+UniqArrayType *
+mercury_copy_uniq_array(UniqArrayType *old_array)
 {
 	Integer i;
 	Word *array_elements;
@@ -342,13 +370,15 @@ copy_uniq_array(UniqArrayType *old_array)
 :- pragma(c_code,
 	uniq_array__copy(UniqArray0::uniq_array_ui, UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) copy_uniq_array((UniqArrayType *) UniqArray0);
+	UniqArray =
+		(Word) mercury_copy_uniq_array((UniqArrayType *) UniqArray0);
 ").
 
 :- pragma(c_code,
 	uniq_array__copy(UniqArray0::in, UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) copy_uniq_array((UniqArrayType *) UniqArray0);
+	UniqArray =
+		(Word) mercury_copy_uniq_array((UniqArrayType *) UniqArray0);
 ").
 
 %-----------------------------------------------------------------------------%

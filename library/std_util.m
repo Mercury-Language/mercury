@@ -158,12 +158,20 @@ Declare_entry(mercury__index_3_0);
 Declare_entry(mercury__term_to_type_2_0);
 Declare_entry(mercury__type_to_term_2_0);
 
-/* Compare two type_info structures, using an arbitrary ordering
-   (based on the addresses of the unification predicates).
+int
+mercury_compare_type_info(Word type_info_1, Word type_info_2);
+
+").
+
+:- pragma(c_code, "
+
+/*
+** Compare two type_info structures, using an arbitrary ordering
+** (based on the addresses of the unification predicates).
 */
 
-static int
-compare_type_info(Word type_info_1, Word type_info_2)
+int
+mercury_compare_type_info(Word type_info_1, Word type_info_2)
 {
 	int i, num_arg_types, comp;
 	Word unify_pred_1, unify_pred_2;
@@ -187,7 +195,8 @@ compare_type_info(Word type_info_1, Word type_info_2)
 					OFFSET_FOR_ARG_TYPE_INFOS + i);
 		Word arg_type_info_2 = field(mktag(0), type_info_2,
 					OFFSET_FOR_ARG_TYPE_INFOS + i);
-		comp = compare_type_info(arg_type_info_1, arg_type_info_2);
+		comp = mercury_compare_type_info(
+				arg_type_info_1, arg_type_info_2);
 		if (comp != COMPARE_EQUAL) return comp;
 	}
 	return COMPARE_EQUAL;
@@ -237,7 +246,8 @@ compare_type_info(Word type_info_1, Word type_info_2)
 	 */
 :- pragma(c_code, type_to_univ(Type::out, Univ::in), "{
 	Word univ_type_info = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
-	if (compare_type_info(univ_type_info, TypeInfo_for_T) == COMPARE_EQUAL)
+	if (mercury_compare_type_info(univ_type_info, TypeInfo_for_T)
+		== COMPARE_EQUAL)
 	{
 		Type = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
 		SUCCESS_INDICATOR = TRUE;
@@ -246,7 +256,7 @@ compare_type_info(Word type_info_1, Word type_info_2)
 	}
 }").
 
-:- pragma(c_header_code, "
+:- pragma(c_code, "
 
 Define_extern_entry(mercury____Unify___univ_0_0);
 Define_extern_entry(mercury____Compare___univ_0_0);
@@ -276,7 +286,7 @@ Define_entry(mercury____Unify___univ_0_0);
 	 */
 	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
 	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
-	if (compare_type_info(r1, r4) != COMPARE_EQUAL)
+	if (mercury_compare_type_info(r1, r4) != COMPARE_EQUAL)
 	{
 		r1 = FALSE;
 		proceed();
@@ -302,7 +312,7 @@ Define_entry(mercury____Compare___univ_0_0);
 	*/
 	r1 = field(mktag(0), r2, UNIV_OFFSET_FOR_TYPEINFO);
 	r4 = field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO);
-	r1 = compare_type_info(r1, r4);
+	r1 = mercury_compare_type_info(r1, r4);
 	if (r1 != COMPARE_EQUAL) {
 		proceed();
 	}
