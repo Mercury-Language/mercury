@@ -29,8 +29,9 @@ ENDINIT
 static	void	call_engine_inner(Code *entry_point);
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-static	Code	*engine_done(void);
-static	Code	*engine_init_registers(void);
+  static Code	*engine_done(void);
+  static Code	*engine_init_registers(void);
+  MR_MAKE_STACK_LAYOUT_ENTRY(engine_done);
 #endif
 
 bool	debugflag[MAXFLAG];
@@ -62,11 +63,10 @@ init_engine(void)
 	init_memory();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-	make_label("engine_done", LABEL(engine_done));
+	make_label("engine_done", LABEL(engine_done), engine_done);
 #endif
 
 	init_process_context();
-
 }
 
 /*---------------------------------------------------------------------------*/
@@ -177,7 +177,7 @@ call_engine_inner(Code *entry_point)
 
 	if (!initialized)
 	{
-		make_label("engine_done", LABEL(engine_done));
+		make_label("engine_done", LABEL(engine_done), engine_done);
 		initialized = TRUE;
 	}
 }
