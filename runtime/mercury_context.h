@@ -13,7 +13,7 @@
 ** When one is running, the Unix process that is executing it has a pointer
 ** to its context structure `this_context'. When a context suspends, it
 ** calls `save_context(context_ptr)' which copies the context from the
-** various registers and global variables into the structure refered to
+** various registers and global variables into the structure referred to
 ** by `context_ptr'. The context contains no rN or fN registers - all
 ** registers are "context save" (by analogy to caller-save).
 **
