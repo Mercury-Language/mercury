@@ -879,7 +879,7 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
 						_Context, _Status),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
-	mode_get_insts(ModuleInfo, Mode, Initial, Final).
+	mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final).
 
 mode_get_insts(ModuleInfo, Mode, Inst1, Inst2) :-
 	( mode_get_insts_semidet(ModuleInfo, Mode, Inst1a, Inst2a) ->
