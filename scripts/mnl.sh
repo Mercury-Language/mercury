@@ -10,15 +10,20 @@
 # Environment variables: MERCURY_LIB_DIR, MERCURY_LIB_OBJS
 
 NULIBDIR=${MERCURY_LIB_DIR:-@LIBDIR@/nuprolog/@FULLARCH@}
-LIBRARY_OBJS=${MERCURY_LIB_OBJS:-"@LIBOBJS@"}
+LIBRARY_OBJS=${MERCURY_LIB_OBJS:-`cd $NULIBDIR; echo *.no`}
 
 options=
 verbose=false
+debug=false
 
 while true; do
 	case "$1" in
 		-v|--verbose)
 			verbose=true
+			shift
+			;;
+		-d|--debug)
+			debug=true
 			shift
 			;;
 		-e|-u|-o|-F)
@@ -32,6 +37,9 @@ while true; do
 			;;
 	esac
 done
+if $debug; then
+	LIBRARY_OBJS="$LIBRARY_OBJS debug.no portray.no"
+fi
 
 objlist=
 for obj in $LIBRARY_OBJS; do
