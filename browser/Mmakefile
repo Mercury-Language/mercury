@@ -179,9 +179,22 @@ install_dirs:
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
+ifeq ($(findstring il,$(GRADE)),il)                                     
+
+# there is no browser in the .NET backend
+
+.PHONY: install_init
+install_init: 
+
+.PHONY: install_library
+install_library:
+
+else 
+
 .PHONY: install_init
 install_init: $(BROWSER_LIB_NAME).init install_dirs
 	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
+
 
 .PHONY: install_library
 install_library: lib$(BROWSER_LIB_NAME).$A \
@@ -189,3 +202,7 @@ install_library: lib$(BROWSER_LIB_NAME).$A \
 	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
 		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+
+endif
+
+

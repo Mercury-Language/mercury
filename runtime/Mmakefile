@@ -213,14 +213,17 @@ mercury_ho_call.o:	mercury_unify_compare_body.h
 
 #-----------------------------------------------------------------------------#
 
-ifneq (,$(findstring il,$(GRADE)))
+ifeq ($(findstring il,$(GRADE)),il)        
 
 # Managed C++ files compiled in this directory should not be put in an
 # assembly of their own.  We put the runtime and library dlls into a single
 # assembly called `mercury'
 MS_CL_NOASM=:noAssembly
+
+# We need to build the following DLLs for the .NET runtime
+DOTNET_DLLS=mercury_il.dll mercury_mcpp.dll
  
-runtime: mercury_il.dll mercury_mcpp.dll
+runtime: $(DOTNET_DLLS)
 
 mercury_mcpp.dll: mercury_il.dll
  
@@ -301,11 +304,24 @@ install_dirs:
 	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
-.PHONY: install_headers
-install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) \
-		$(MCPP_HDRS) install_dirs
-	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+ifeq ($(findstring il,$(GRADE)),il)        
+
+.PHONY: install_headers 
+install_headers: $(MCPP_HDRS) install_dirs
 	cp `vpath_find $(MCPP_HDRS)` $(INSTALL_INC_DIR)
+
+.PHONY: install_init
+install_init: 
+
+.PHONY: install_lib 
+install_lib: $(DOTNET_DLLS) install_dirs
+	cp `vpath_find $(DOTNET_DLLS)` $(INSTALL_MERC_LIB_DIR)
+
+else
+
+.PHONY: install_headers
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
+	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
 	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
@@ -317,12 +333,15 @@ install_init: $(RT_LIB_NAME).init install_dirs
 	# then delete it; otherwise the initialization would get done twice.
 	rm -f $(INSTALL_MODULE_DIR)/runtime.init
 
-.PHONY: install_lib
+.PHONY: install_lib install_dirs
 install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		install_dirs
 	cp `vpath_find lib$(RT_LIB_NAME).$A \
 		lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+
+endif
+
 
 #-----------------------------------------------------------------------------#
 

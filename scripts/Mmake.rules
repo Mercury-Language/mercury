@@ -212,7 +212,7 @@ $(ils_subdir)%.il : %.m
 # These rules are only available in *il* backends, because we'd like to avoid
 # processing user code that is in a .cpp file, and we'd like to avoid going via
 # IL to generate a DLL if we are in a non-IL grade.
-ifneq (,$(findstring il,$(GRADE)))
+ifeq ($(findstring il,$(GRADE)),il)        
 $(os_subdir)%.dll : %.cpp
 	rm -f $(os_subdir)$*.dll
 	$(MS_CL) -com+$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
@@ -333,8 +333,7 @@ endif # $(cs_subdir) != ""
 # we only activate these rules when in an IL grade.
 #
 
-ifneq (,$(findstring il,$(GRADE)))
-ifneq ("$(ils_subdir)","")
+ifeq ($(findstring il,$(GRADE)),il)        
 
 .il.dll:
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
@@ -349,7 +348,6 @@ ifneq ("$(ils_subdir)","")
 .cpp.exe:
 	$(MS_CL) -com+($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
 
-endif # $(ils_subdir) != ""
 endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
