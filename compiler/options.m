@@ -278,7 +278,7 @@ option_defaults_2(aux_output_option, [
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
-	verbose_dump_hlds	-	bool(no)
+	verbose_dump_hlds	-	string("")
 ]).
 option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
@@ -1091,8 +1091,9 @@ options_help_aux_output -->
 	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
 	io__write_string("\t\tStage numbers range from 1-19.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
-	io__write_string("\t-D, --verbose-dump-hlds\n"),
-	io__write_string("\t\tWith `--dump-hlds', dumps some additional info.\n").
+	io__write_string("\t-D, --verbose-dump-hlds <fields>\n"),
+	io__write_string("\t\tWith `--dump-hlds', dump with each goal the fields\n"),
+	io__write_string("\t\twhose initials are given in the option argument.\n").
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
 

@@ -232,6 +232,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
+	% -D all is really -D "abcdefghijklmnopqrstuvwxyz"
+	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
+	( { VerboseDump = "all" } ->
+		globals__io_set_option(verbose_dump_hlds, string("abcdefghijklmnopqrstuvwxyz"))
+	;	
+		[]
+	),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),

@@ -678,8 +678,8 @@ intermod__write_intermod_info(IntermodInfo) -->
 		[]
 	),
 	% Disable verbose dumping of clauses.
-	globals__io_lookup_option(verbose_dump_hlds, VerboseDump),
-	globals__io_set_option(verbose_dump_hlds, bool(no)),
+	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
+	globals__io_set_option(verbose_dump_hlds, string("")),
 	( { WriteHeader = yes } ->
 		{ module_info_get_c_header(ModuleInfo, CHeader) },
 		intermod__write_c_header(CHeader)
@@ -697,7 +697,7 @@ intermod__write_intermod_info(IntermodInfo) -->
 	intermod__write_insts(ModuleInfo, InstDefns, Insts),
 	intermod__write_pred_decls(ModuleInfo, PredDecls),
 	intermod__write_preds(ModuleInfo, Preds),
-	globals__io_set_option(verbose_dump_hlds, VerboseDump).
+	globals__io_set_option(verbose_dump_hlds, string(VerboseDump)).
 
 
 :- pred intermod__write_modules(list(module_name)::in,

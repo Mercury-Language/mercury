@@ -446,13 +446,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 
 		% Never write the clauses out verbosely -
-		% Temporarily disable the verbose_dump_hlds option
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	globals__io_set_option(verbose_dump_hlds, bool(no)),
+		% disable the verbose_dump_hlds option before writing them,
+		% and restore its initial value afterwards
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	globals__io_set_option(verbose_dump_hlds, string("")),
 	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
-			HeadVars, PredOrFunc, Clauses, no),
-		% Re-enable it
-	globals__io_set_option(verbose_dump_hlds, bool(Verbose)),
+		HeadVars, PredOrFunc, Clauses, no),
+	globals__io_set_option(verbose_dump_hlds, string(Verbose)),
 
 	hlds_out__write_procs(Indent, ModuleInfo, PredId, ImportStatus,
 		ProcTable),
@@ -520,8 +520,8 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		),
 		Indent1 is Indent + 1
 	},
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	( { Verbose = yes } ->
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__occurs(Verbose, 'm') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
 		hlds_out__write_intlist(Modes),
@@ -604,21 +604,25 @@ hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent, Follow) -->
 
 hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			VarSet, Indent, Follow, TypeQual) -->
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	( { Verbose = yes } ->
-%		{ goal_info_get_context(GoalInfo, Context) },
-%		{ term__context_file(Context, FileName) },
-%		{ term__context_line(Context, LineNumber) },
-%		( { FileName \= "" } ->
-%			hlds_out__write_indent(Indent),
-%			io__write_string("% context: file `"),
-%			io__write_string(FileName),
-%			io__write_string("', line "),
-%			io__write_int(LineNumber),
-%			io__write_string("\n")
-%		;
-%			[]
-%		),
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__occurs(Verbose, 'c') } ->
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ term__context_file(Context, FileName) },
+		{ term__context_line(Context, LineNumber) },
+		( { FileName \= "" } ->
+			hlds_out__write_indent(Indent),
+			io__write_string("% context: file `"),
+			io__write_string(FileName),
+			io__write_string("', line "),
+			io__write_int(LineNumber),
+			io__write_string("\n")
+		;
+			[]
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'n') } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		( { NonLocalsList \= [] } ->
@@ -628,7 +632,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			io__write_string("\n")
 		;
 			[]
-		),
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'p') } ->
 		{ goal_info_get_pre_births(GoalInfo, PreBirths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
 		( { PreBirthList \= [] } ->
@@ -648,7 +656,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			io__write_string("\n")
 		;
 			[]
-		),
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'f') } ->
 		{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
 		(
 			{ MaybeFollowVars = yes(FollowVars) }
@@ -660,7 +672,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 				VarSet, Indent)
 		;
 			[]
-		),
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'd') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
@@ -671,7 +687,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 	),
 	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent, Follow,
 		TypeQual),
-	( { Verbose = yes } ->
+	( { string__occurs(Verbose, 'i') } ->
 		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 		( { instmap_delta_changed_vars(InstMapDelta, Vars),
 				set__empty(Vars) } ->
@@ -682,7 +698,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			hlds_out__write_instmap_delta(InstMapDelta, VarSet,
 				Indent),
 			io__write_string("\n")
-		),
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'p') } ->
 		{ goal_info_get_post_births(GoalInfo, PostBirths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
 		( { PostBirthList \= [] } ->
@@ -702,7 +722,11 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			io__write_string("\n")
 		;
 			[]
-		),
+		)
+	;
+		[]
+	),
+	( { string__occurs(Verbose, 'r') } ->
 		{ goal_info_get_resume_point(GoalInfo, Resume) },
 		(
 			{ Resume = no_resume_point }
@@ -726,21 +750,22 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			),
 			mercury_output_vars(ResumeVarList, VarSet),
 			io__write_string("\n")
-		),
-		(
-			( { Goal = disj(_, SM) }
-			; { Goal = switch(_, _, _, SM) }
-			; { Goal = if_then_else(_, _, _, _, SM) }
-			)
-		->
-			{ map__to_assoc_list(SM, SMlist) },
-			hlds_out__write_indent(Indent),
-			io__write_string("% store map:\n"),
-			hlds_out__write_var_to_lvals(SMlist,
-				VarSet, Indent)
-		;
-			[]
 		)
+	;
+		[]
+	),
+	(
+		{ string__occurs(Verbose, 's') },
+		( { Goal = disj(_, SM) }
+		; { Goal = switch(_, _, _, SM) }
+		; { Goal = if_then_else(_, _, _, _, SM) }
+		),
+		{ map__to_assoc_list(SM, SMlist) },
+		{ SMlist \= [] }
+	->
+		hlds_out__write_indent(Indent),
+		io__write_string("% store map:\n"),
+		hlds_out__write_var_to_lvals(SMlist, VarSet, Indent)
 	;
 		[]
 	).
@@ -798,9 +823,9 @@ hlds_out__write_goal_2(if_then_else(Vars, Cond, Then, Else, _), ModuleInfo,
 	hlds_out__write_goal_a(Then, ModuleInfo, VarSet, Indent1, "", TypeQual),
 	hlds_out__write_indent(Indent),
 	io__write_string("else\n"),
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	(
-		{ Verbose = no },
+		{ Verbose \= "" },
 		{ Else = if_then_else(_, _, _, _, _) - _ }
 	->
 		hlds_out__write_goal_a(Else, ModuleInfo, VarSet, Indent, "",
@@ -828,8 +853,8 @@ hlds_out__write_goal_2(not(Goal), ModuleInfo, VarSet, Indent, Follow,
 hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent, Follow,
 		TypeQual) -->
 	( { List = [Goal | Goals] } ->
-		globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-		( { Verbose = yes } ->
+		globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+		( { Verbose \= "" } ->
 			{ Indent1 is Indent + 1 },
 			hlds_out__write_indent(Indent),
 			io__write_string("( % conjunction\n"),
@@ -881,22 +906,20 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
 hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
 			_ModuleInfo, VarSet, Indent, Follow, _TypeQual) -->
 		% XXX we should print more info here
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	(
-		{ Verbose = yes },
-		{ hlds__is_builtin_is_internal(Builtin) }
-	->
-		hlds_out__write_indent(Indent),
-		io__write_string("% internal\n")
-	;
-		[]
-	),
-	(
-		{ Verbose = yes },
-		{ hlds__is_builtin_is_inline(Builtin) }
-	->
-		hlds_out__write_indent(Indent),
-		io__write_string("% inline\n")
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__occurs(Verbose, 'b') } ->
+		( { hlds__is_builtin_is_internal(Builtin) } ->
+			hlds_out__write_indent(Indent),
+			io__write_string("% internal\n")
+		;
+			[]
+		),
+		( { hlds__is_builtin_is_inline(Builtin) } ->
+			hlds_out__write_indent(Indent),
+			io__write_string("% inline\n")
+		;
+			[]
+		)
 	;
 		[]
 	),
@@ -925,22 +948,22 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	},
 	hlds_out__write_unify_rhs_2(B, ModuleInfo, VarSet,
 				Indent, Follow, VarType, TypeQual),
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	(
-		{ Verbose = no }
-	->
-		[]
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__occurs(Verbose, 'a') } ->
+		(
+			% don't output bogus info if we haven't been through
+			% mode analysis yet
+			{ Unification = complicated_unify(Mode, CanFail) },
+			{ CanFail = can_fail },
+			{ Mode = (free - free -> free - free) }
+		->
+			[]
+		;
+			hlds_out__write_unification(Unification, ModuleInfo,
+				VarSet, Indent)
+		)
 	;
-		% don't output bogus info if we haven't been through
-		% mode analysis yet
-		{ Unification = complicated_unify(Mode, CanFail) },
-		{ CanFail = can_fail },
-		{ Mode = (free - free -> free - free) }
-	->
 		[]
-	;
-		hlds_out__write_unification(Unification, ModuleInfo, VarSet,
-			Indent)
 	).
 
 hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), _, _,
@@ -1181,7 +1204,7 @@ hlds_out__write_var_mode(Var, Mode, VarSet) -->
 	mercury_output_mode(Mode, VarSet).
 
 :- pred hlds_out__write_conj(hlds__goal, list(hlds__goal), module_info, varset,
-		int, string, bool, vartypes, io__state, io__state).
+		int, string, string, vartypes, io__state, io__state).
 :- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_conj(Goal1, Goals1, ModuleInfo, VarSet, Indent, Follow,
@@ -1189,7 +1212,7 @@ hlds_out__write_conj(Goal1, Goals1, ModuleInfo, VarSet, Indent, Follow,
 	(
 		{ Goals1 = [Goal2 | Goals2] }
 	->
-		( { Verbose = yes } ->
+		( { Verbose \= "" } ->
 			% when generating verbose dumps,
 			% we want the comma on its own line,
 			% since that way it visually separates
@@ -1422,8 +1445,8 @@ hlds_out__write_types_2(Indent, [TypeId - TypeDefn | Types]) -->
 	% Write the context
 
 	io__write_char('\n'),
-	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
-	( { Verbose = yes } ->
+	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
+	( { string__occurs(Verbose, 'c') } ->
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
 		( { FileName \= "" } ->
