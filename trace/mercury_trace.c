@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -392,8 +392,8 @@ MR_trace_interrupt(const MR_Label_Layout *layout)
     MR_Unsigned     depth;
     MR_Trace_Port   port;
 
-    /* restore the original MR_trace_func_ptr value */
-    MR_trace_func_ptr = MR_trace_real;
+    /* restore the original MR_selected_trace_func_ptr value */
+    MR_selected_trace_func_ptr = MR_trace_real;
 
     if (MR_trace_handler == MR_TRACE_INTERNAL) {
         MR_trace_interrupt_message();
@@ -422,11 +422,11 @@ MR_trace_interrupt_handler(void)
     /*
     ** This function is a signal handler, so there is not
     ** much that we can safely do here.  We just set the volatile
-    ** variable MR_trace_func_ptr; the real work will be done
+    ** variable MR_selected_trace_func_ptr; the real work will be done
     ** by MR_trace_interrupt(), which will be called by MR_trace()
     ** at the next debugger event.
     */
-    MR_trace_func_ptr = MR_trace_interrupt;
+    MR_selected_trace_func_ptr = MR_trace_interrupt;
 }
 
 static MR_Code *

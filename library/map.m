@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,6 +206,15 @@
 	% over MapA.
 :- pred map__overlay(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
 :- func map__overlay(map(K, V), map(K, V)) = map(K, V).
+
+	% map__overlay_large_map(MapA, MapB, Map) performs the same task as
+	% map__overlay(MapA, MapB, Map). However, while map__overlay takes time
+	% proportional to the size of MapB, map__overlay_large_map takes time
+	% proportional to the size of MapA. In other words, it preferable when
+	% MapB is a large map.
+:- pred map__overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
+	is det.
+:- func map__overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 
 	% map__select takes a map and a set of keys and returns
 	% a map containing the keys in the set and their corresponding
@@ -642,6 +651,23 @@ map__overlay_2([K - V | AssocList], Map0, Map) :-
 	map__set(Map0, K, V, Map1),
 	map__overlay_2(AssocList, Map1, Map).
 
+map__overlay_large_map(Map0, Map1, Map) :-
+	map__to_assoc_list(Map0, AssocList),
+	map__overlay_2(AssocList, Map1, Map).
+
+:- pred map__overlay_large_map_2(assoc_list(K, V)::in,
+	map(K, V)::in, map(K, V)::out) is det.
+:- pragma type_spec(map__overlay_large_map_2/3, K = var(_)).
+
+map__overlay_large_map_2([], Map, Map).
+map__overlay_large_map_2([K - V | AssocList], Map0, Map) :-
+	( map__insert(Map0, K, V, Map1) ->
+		Map2 = Map1
+	;
+		Map2 = Map0
+	),
+	map__overlay_large_map_2(AssocList, Map2, Map).
+
 %-----------------------------------------------------------------------------%
 
 map__select(Original, KeySet, NewMap) :-
@@ -937,6 +963,9 @@ map__merge(M1, M2) = M3 :-
 
 map__overlay(M1, M2) = M3 :-
 	map__overlay(M1, M2, M3).
+
+map__overlay_large_map(M1, M2) = M3 :-
+	map__overlay_large_map(M1, M2, M3).
 
 map__select(M1, S) = M2 :-
 	map__select(M1, S, M2).

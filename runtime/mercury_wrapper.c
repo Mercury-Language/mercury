@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2004 The University of Melbourne.
+** Copyright (C) 1994-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -392,7 +392,7 @@ MR_bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
 		/* normally ML_DI_found_match (output_current/12) */
 void	(*MR_DI_read_request_from_socket)(MR_Word, MR_Word *, MR_Integer *);
 
-MR_Code	*(*volatile MR_trace_func_ptr)(const MR_Label_Layout *);
+MR_Code	*(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
 
 void	(*MR_address_of_trace_interrupt_handler)(void);
 
@@ -615,7 +615,7 @@ mercury_runtime_init(int argc, char **argv)
 	MR_trace_start(MR_debug_enabled);
 
 	if (MR_debug_enabled) {
-		MR_selected_trace_func_ptr = MR_trace_func_ptr;
+		MR_selected_trace_func_ptr = MR_exec_trace_func_ptr;
 		/* MR_debug_enabled overrides MR_trace_count_enabled */
 		MR_trace_count_enabled = MR_FALSE;
 	} else if (MR_trace_count_enabled) {

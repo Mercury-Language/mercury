@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2004 The University of Melbourne.
+% Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1047,8 +1047,8 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct,
 	goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
 	set__insert(CaseNonLocals0, Var, CaseNonLocals),
 	goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
-	instmap_delta_apply_instmap_delta(ExtraInstMapDelta,
-		CaseInstMapDelta, InstMapDelta),
+	instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
+		test_size, InstMapDelta),
 	goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
 	det_conjunction_detism(semidet, CaseDetism0, Detism),
 	infer_goal_info_purity(CaseGoalInfo, CasePurity),
@@ -1120,7 +1120,8 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 
 	goal_info_get_instmap_delta(GoalInfo1, Delta1),
 	goal_info_get_instmap_delta(GoalInfo2, Delta2),
-	instmap_delta_apply_instmap_delta(Delta1, Delta2, CombinedDelta0),
+	instmap_delta_apply_instmap_delta(Delta1, Delta2, test_size,
+		CombinedDelta0),
 	instmap_delta_restrict(CombinedDelta0, OuterNonLocals, CombinedDelta),
 
 	goal_info_get_determinism(GoalInfo1, Detism1),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,7 +364,7 @@
 :- import_module parse_tree__prog_out.
 
 :- import_module int, set, term, varset.
-:- import_module list, map, string, require, std_util.
+:- import_module list, map, bag, string, require, std_util.
 :- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -1167,7 +1167,7 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
 	% later on by unique_modes.m.)
 	%
 	mode_info_get_live_vars(!.ModeInfo, LiveVars0),
-	mode_info_set_live_vars([], !ModeInfo),
+	mode_info_set_live_vars(bag__init, !ModeInfo),
 	%
 	% We need to lock the non-local variables, to ensure
 	% that the negation does not bind them.

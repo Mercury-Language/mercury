@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -973,7 +973,7 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, Cond0, Then0, Else0),
 	recompute_instmap_delta_1(Atomic, Else0, Else, VarTypes, InstMap0,
 		InstMapDeltaElse, !RI),
 	instmap_delta_apply_instmap_delta(InstMapDeltaCond, InstMapDeltaThen,
-		InstMapDeltaCondThen),
+		test_size, InstMapDeltaCondThen),
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	update_module_info(merge_instmap_delta(InstMap0, NonLocals,
 		VarTypes, InstMapDeltaElse, InstMapDeltaCondThen),
@@ -1041,7 +1041,7 @@ recompute_instmap_delta_2(_,
 		instmap_delta_restrict(OldInstMapDelta,
 			set__list_to_set(ExtraArgVars), ExtraArgsInstMapDelta),
 		instmap_delta_apply_instmap_delta(InstMapDelta0,
-			ExtraArgsInstMapDelta, InstMapDelta)
+			ExtraArgsInstMapDelta, large_base, InstMapDelta)
 	).
 
 recompute_instmap_delta_2(_, shorthand(_), _, _, _, _, _, !RI) :-
@@ -1064,7 +1064,7 @@ recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 	recompute_instmap_delta_conj(Atomic, Goals0, Goals, VarTypes, InstMap1,
 		InstMapDelta1, !RI),
 	instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
-		InstMapDelta).
+		large_overlay, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 

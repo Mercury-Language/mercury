@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2004 The University of Melbourne.
+** Copyright (C) 1994-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -151,19 +151,13 @@ extern	void		(*MR_address_of_trace_init_external)(void);
 extern	void		(*MR_address_of_trace_final_external)(void);
 
 /*
-** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
-** or MR_trace_fake (runtime/mercury_trace_base.c),
-** depending on whether tracing was enabled when creating the _init.c
-** file.  It is also temporarily set to MR_trace_interrupt by
-** MR_trace_interrupt_handler if tracing was enabled and the
-** process receives a SIGINT signal.
-** It is called from MR_trace (runtime/mercury_trace_base.c).
-**
-** Since it is set from a signal handler, it must be declared `volatile'.
+** MR_exec_trace_func_ptr is set to either MR_trace_real
+** (trace/mercury_trace.c), or MR_trace_fake (runtime/mercury_trace_base.c),
+** depending on whether execution tracing was enabled when creating the _init.c
+** file.
 */
 
-extern	MR_Code		*(*volatile MR_trace_func_ptr)(
-				const MR_Label_Layout *);
+extern	MR_Code		*(*MR_exec_trace_func_ptr)(const MR_Label_Layout *);
 
 /*
 ** If the init file was built with tracing enabled, then

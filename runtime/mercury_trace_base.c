@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -49,7 +49,8 @@ MR_bool         MR_debug_ever_enabled = MR_FALSE;
 MR_bool         MR_debug_enabled = MR_FALSE;
 MR_bool         MR_trace_count_enabled = MR_FALSE;
 MR_bool         MR_trace_func_enabled = MR_FALSE;
-MR_Code         *(*MR_selected_trace_func_ptr)(const MR_Label_Layout *);
+MR_Code         *(*volatile MR_selected_trace_func_ptr)(
+                    const MR_Label_Layout *);
 MR_Unsigned     MR_trace_call_seqno = 0;
 MR_Unsigned     MR_trace_call_depth = 0;
 MR_Unsigned     MR_trace_event_number = 0;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -169,6 +169,11 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type overlay_how
+	--->	large_base
+	;	large_overlay
+	;	test_size.
+
 	% Given two instmaps and a set of variables, compute an instmap delta
 	% which records the change in the instantiation state of those
 	% variables.
@@ -187,7 +192,7 @@
 	% instmap_delta.
 	%
 :- pred instmap_delta_apply_instmap_delta(instmap_delta::in, instmap_delta::in,
-	instmap_delta::out) is det.
+	overlay_how::in, instmap_delta::out) is det.
 
 	% instmap_merge(NonLocalVars, InstMaps, MergeContext):
 	%       Merge the `InstMaps' resulting from different branches
@@ -301,7 +306,7 @@
 :- import_module hlds__hlds_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, require, string, term, svmap.
+:- import_module std_util, require, string, int, term, svmap.
 
 :- type instmap_delta	==	instmap.
 
@@ -565,11 +570,41 @@ instmap__apply_instmap_delta(reachable(InstMapping0),
 	% instmap_delta on top of those in the first to produce a new
 	% instmap_delta.
 
-instmap_delta_apply_instmap_delta(unreachable, _, unreachable).
-instmap_delta_apply_instmap_delta(reachable(_), unreachable, unreachable).
-instmap_delta_apply_instmap_delta(reachable(InstMappingDelta0),
-		reachable(InstMappingDelta1), reachable(InstMappingDelta)) :-
-	map__overlay(InstMappingDelta0, InstMappingDelta1, InstMappingDelta).
+instmap_delta_apply_instmap_delta(InstMap1, InstMap2, How, InstMap) :-
+	(
+		InstMap1 = unreachable,
+		InstMap = unreachable
+	;
+		InstMap1 = reachable(_),
+		InstMap2 = unreachable,
+		InstMap = unreachable
+	;
+		InstMap1 = reachable(InstMappingDelta1),
+		InstMap2 = reachable(InstMappingDelta2),
+		(
+			How = large_base,
+			map__overlay(InstMappingDelta1, InstMappingDelta2,
+				InstMappingDelta)
+		;
+			How = large_overlay,
+			map__overlay_large_map(InstMappingDelta1,
+				InstMappingDelta2, InstMappingDelta)
+		;
+			How = test_size,
+ 			(
+ 				map__count(InstMappingDelta1, Count1),
+ 				map__count(InstMappingDelta2, Count2),
+ 				Count1 >= Count2
+ 			->
+ 				map__overlay(InstMappingDelta1,
+ 					InstMappingDelta2, InstMappingDelta)
+ 			;
+ 				map__overlay_large_map(InstMappingDelta1,
+ 					InstMappingDelta2, InstMappingDelta)
+ 			)
+		),
+		InstMap = reachable(InstMappingDelta)
+	).
 
 %-----------------------------------------------------------------------------%
 

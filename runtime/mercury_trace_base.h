@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -207,9 +207,13 @@ extern	MR_bool		MR_trace_func_enabled;
 /*
 ** MR_selected_trace_func_ptr contains the address of the function to call
 ** in MR_trace if MR_trace_func_enabled is true.
+**
+** Since it is set from a signal handler (MR_trace_interrupt_handler),
+** it must be declared `volatile'.
 */
 
-extern	MR_Code *(*MR_selected_trace_func_ptr)(const MR_Label_Layout *);
+extern	MR_Code *(*volatile MR_selected_trace_func_ptr)(
+			const MR_Label_Layout *);
 
 
 /*

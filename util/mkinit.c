@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2004 The University of Melbourne.
+** Copyright (C) 1995-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -316,7 +316,7 @@ static const char mercury_funcs2[] =
 	"	MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
 	"	MR_io_print_to_stream = ML_io_print_to_stream;\n"
 	"#if MR_TRACE_ENABLED\n"
-	"	MR_trace_func_ptr = MR_trace_real;\n"
+	"	MR_exec_trace_func_ptr = MR_trace_real;\n"
 	"	MR_register_module_layout = MR_register_module_layout_real;\n"
 	"	MR_address_of_trace_getline = MR_trace_getline;\n"
 	"	MR_address_of_trace_get_command = MR_trace_get_command;\n"
@@ -329,7 +329,7 @@ static const char mercury_funcs2[] =
 	"	MR_address_of_trace_final_external = MR_trace_final_external;\n"
 	"  #endif\n"
 	"#else\n"
-	"	MR_trace_func_ptr = MR_trace_fake;\n"
+	"	MR_exec_trace_func_ptr = MR_trace_fake;\n"
 	"	MR_register_module_layout = NULL;\n"
 	"	MR_address_of_trace_getline = NULL;\n"
 	"	MR_address_of_trace_get_command = NULL;\n"

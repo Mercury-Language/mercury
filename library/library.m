@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -65,6 +65,7 @@
 :- import_module float.
 :- import_module gc.
 :- import_module getopt.
+:- import_module getopt_io.
 :- import_module graph.
 :- import_module group.
 :- import_module hash_table.
@@ -98,6 +99,7 @@
 :- import_module store.
 :- import_module string.
 :- import_module svarray.
+:- import_module svbag.
 :- import_module svbimap.
 :- import_module svmap.
 :- import_module svqueue.
@@ -190,6 +192,7 @@ mercury_std_library_module("exception").
 mercury_std_library_module("float").
 mercury_std_library_module("gc").
 mercury_std_library_module("getopt").
+mercury_std_library_module("getopt_io").
 mercury_std_library_module("graph").
 mercury_std_library_module("group").
 mercury_std_library_module("hash_table").
@@ -227,6 +230,7 @@ mercury_std_library_module("std_util").
 mercury_std_library_module("store").
 mercury_std_library_module("string").
 mercury_std_library_module("svarray").
+mercury_std_library_module("svbag").
 mercury_std_library_module("svbimap").
 mercury_std_library_module("svmap").
 mercury_std_library_module("svqueue").

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
 
-:- import_module map, list, set, bool, assoc_list, std_util.
+:- import_module map, list, set, bag, bool, assoc_list, std_util.
 
 :- interface.
 
@@ -112,10 +112,9 @@
 :- pred mode_info_get_var_types(mode_info::in,
 	map(prog_var, type)::out) is det.
 :- pred mode_info_get_delay_info(mode_info::in, delay_info::out) is det.
-:- pred mode_info_get_live_vars(mode_info::in,
-	list(set(prog_var))::out) is det.
-:- pred mode_info_get_nondet_live_vars(mode_info::in,
-	list(set(prog_var))::out) is det.
+:- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
+:- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
+	is det.
 :- pred mode_info_get_last_checkpoint_insts(mode_info::in,
 	assoc_list(prog_var, inst)::out) is det.
 :- pred mode_info_get_parallel_vars(mode_info::in,
@@ -160,9 +159,9 @@
 	mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_delay_info(delay_info::in,
 	mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_live_vars(list(set(prog_var))::in,
+:- pred mode_info_set_live_vars(bag(prog_var)::in,
 	mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_nondet_live_vars(list(set(prog_var))::in,
+:- pred mode_info_set_nondet_live_vars(bag(prog_var)::in,
 	mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_last_checkpoint_insts(assoc_list(prog_var, inst)::in,
 	mode_info::in, mode_info::out) is det.
@@ -239,7 +238,7 @@
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_util.
 
-:- import_module string, term, varset.
+:- import_module svbag, string, term, varset.
 :- import_module require, std_util, queue.
 
 :- type mode_info --->
@@ -272,7 +271,7 @@
 		errors		:: list(mode_error_info),
 				% The mode errors found
 
-		live_vars	:: list(set(prog_var)),
+		live_vars	:: bag(prog_var),
 				% The live variables, i.e. those variables
 				% which may be referenced again on forward
 				% execution or after shallow backtracking.
@@ -281,7 +280,7 @@
 				% or semidet disjunction within the current
 				% predicate.)
 
-		nondet_live_vars :: list(set(prog_var)),
+		nondet_live_vars :: bag(prog_var),
 				% The nondet-live variables,
 				% i.e. those variables which may be
 				% referenced again after deep backtracking
@@ -368,8 +367,8 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_inst_varset(ProcInfo, InstVarSet),
 
-	LiveVarsList = [LiveVars],
-	NondetLiveVarsList = [LiveVars],
+	bag__from_set(LiveVars, LiveVarsBag),
+	bag__from_set(LiveVars, NondetLiveVarsBag),
 
 	Changed = no,
 	CheckingExtraGoals = no,
@@ -377,7 +376,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 
 	ModeInfo = mode_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
-		ErrorList, LiveVarsList, NondetLiveVarsList, InstVarSet,
+		ErrorList, LiveVarsBag, NondetLiveVarsBag, InstVarSet,
 		[], [], Changed, HowToCheck, MayChangeProc,
 		CheckingExtraGoals, MayInitSolverVars
 	).
@@ -491,8 +490,10 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 mode_info_add_live_vars(NewLiveVars, !MI) :-
 	LiveVars0 = !.MI ^ live_vars,
 	NondetLiveVars0 = !.MI ^ nondet_live_vars,
-	!:MI = !.MI ^ live_vars := [NewLiveVars | LiveVars0],
-	!:MI = !.MI ^ nondet_live_vars := [NewLiveVars | NondetLiveVars0].
+	svbag__insert_set(NewLiveVars, LiveVars0, LiveVars),
+	svbag__insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
+	!:MI = !.MI ^ live_vars := LiveVars,
+	!:MI = !.MI ^ nondet_live_vars := NondetLiveVars.
 
 	% Remove a set of vars from the bag of live vars and
 	% the bag of nondet-live vars.
@@ -500,16 +501,8 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
 	LiveVars0 = !.MI ^ live_vars,
 	NondetLiveVars0 = !.MI ^ nondet_live_vars,
-	(
-		list__delete_first(LiveVars0, OldLiveVars, LiveVars1),
-		list__delete_first(NondetLiveVars0, OldLiveVars,
-			NondetLiveVars1)
-	->
-		LiveVars = LiveVars1,
-		NondetLiveVars = NondetLiveVars1
-	;
-		error("mode_info_remove_live_vars: failed")
-	),
+	svbag__det_remove_set(OldLiveVars, LiveVars0, LiveVars),
+	svbag__det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
 	!:MI = !.MI ^ live_vars := LiveVars,
 	!:MI = !.MI ^ nondet_live_vars := NondetLiveVars,
 		% when a variable becomes dead, we may be able to wake
@@ -529,11 +522,7 @@ mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
 	% Check whether a variable is live or not
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
-	(
-		% some [LiveVars]
-		list__member(LiveVars, ModeInfo^live_vars),
-		set__member(Var, LiveVars)
-	->
+	( bag__contains(ModeInfo ^ live_vars, Var) ->
 		Result = live
 	;
 		Result = dead
@@ -542,27 +531,15 @@ mode_info_var_is_live(ModeInfo, Var, Result) :-
 	% Check whether a variable is nondet_live or not.
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
-	(
-		% some [LiveVars]
-		list__member(LiveVars, ModeInfo^nondet_live_vars),
-		set__member(Var, LiveVars)
-	->
+	( bag__contains(ModeInfo ^ nondet_live_vars, Var) ->
 		Result = live
 	;
 		Result = dead
 	).
 
 mode_info_get_liveness(ModeInfo, LiveVars) :-
-	set__init(LiveVars0),
-	mode_info_get_liveness_2(ModeInfo ^ live_vars, LiveVars0, LiveVars).
-
-:- pred mode_info_get_liveness_2(list(set(prog_var))::in, set(prog_var)::in,
-	set(prog_var)::out) is det.
-
-mode_info_get_liveness_2([], LiveVars, LiveVars).
-mode_info_get_liveness_2([LiveVarsSet | LiveVarsList], LiveVars0, LiveVars) :-
-	set__union(LiveVars0, LiveVarsSet, LiveVars1),
-	mode_info_get_liveness_2(LiveVarsList, LiveVars1, LiveVars).
+	bag__to_list_without_duplicates(ModeInfo ^ live_vars, SortedList),
+	set__sorted_list_to_set(SortedList, LiveVars).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2004 The University of Melbourne.
+% Copyright (C) 1997-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3068,7 +3068,7 @@ create_instmap_delta([Goal | Rest], IMD) :-
 	Goal = _ - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, IMD0),
 	create_instmap_delta(Rest, IMD1),
-	instmap_delta_apply_instmap_delta(IMD0, IMD1, IMD).
+	instmap_delta_apply_instmap_delta(IMD0, IMD1, test_size, IMD).
 
 %-----------------------------------------------------------------------------%
 

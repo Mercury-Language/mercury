@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002, 2004 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -216,9 +216,16 @@
 	% set_ordlist__divide(Pred, Set, TruePart, FalsePart):
 	% TruePart consists of those elements of Set for which Pred succeeds;
 	% FalsePart consists of those elements of Set for which Pred fails.
-:- pred set_ordlist__divide(pred(T1)::in(pred(in) is semidet),
-	set_ordlist(T1)::in, set_ordlist(T1)::out, set_ordlist(T1)::out)
+:- pred set_ordlist__divide(pred(T)::in(pred(in) is semidet),
+	set_ordlist(T)::in, set_ordlist(T)::out, set_ordlist(T)::out)
 	is det.
+
+	% set_ordlist__divide_by_set(DivideBySet, Set, InPart, OutPart):
+	% InPart consists of those elements of Set which are also in
+	% DivideBySet; OutPart consists of those elements of which are
+	% not in DivideBySet.
+:- pred set_ordlist__divide_by_set(set_ordlist(T)::in, set_ordlist(T)::in,
+	set_ordlist(T)::out, set_ordlist(T)::out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -490,10 +497,10 @@ set_ordlist__divide(Pred, Set, TruePart, FalsePart) :-
 	list__reverse(RevTruePart, TruePart),
 	list__reverse(RevFalsePart, FalsePart).
 
-:- pred set_ordlist__divide_2(pred(T1)::in(pred(in) is semidet),
-	set_ordlist(T1)::in,
-	set_ordlist(T1)::in, set_ordlist(T1)::out,
-	set_ordlist(T1)::in, set_ordlist(T1)::out) is det.
+:- pred set_ordlist__divide_2(pred(T)::in(pred(in) is semidet),
+	set_ordlist(T)::in,
+	set_ordlist(T)::in, set_ordlist(T)::out,
+	set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
 set_ordlist__divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
 set_ordlist__divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
@@ -505,3 +512,45 @@ set_ordlist__divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
 		RevFalse1 = [H | RevFalse0]
 	),
 	set_ordlist__divide_2(Pred, T, RevTrue1, RevTrue, RevFalse1, RevFalse).
+
+set_ordlist__divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
+	set_ordlist__divide_by_set_2(DivideBySet, Set,
+		[], RevTruePart, [], RevFalsePart),
+	list__reverse(RevTruePart, TruePart),
+	list__reverse(RevFalsePart, FalsePart),
+	(
+		set_ordlist__divide(set_ordlist__contains(DivideBySet),
+			Set, TruePart, FalsePart)
+	->
+		true
+	;
+		error("divide_by_set")
+	).
+
+:- import_module require.
+
+:- pred set_ordlist__divide_by_set_2(set_ordlist(T1)::in,
+	set_ordlist(T1)::in,
+	set_ordlist(T1)::in, set_ordlist(T1)::out,
+	set_ordlist(T1)::in, set_ordlist(T1)::out) is det.
+
+set_ordlist__divide_by_set_2([], [], !RevTrue, !RevFalse).
+set_ordlist__divide_by_set_2([], [H | T], !RevTrue, !RevFalse) :-
+	list__append(list__reverse([H | T]), !RevFalse).
+set_ordlist__divide_by_set_2([_ | _], [], !RevTrue, !RevFalse).
+set_ordlist__divide_by_set_2([Div | Divs], [H | T], !RevTrue, !RevFalse) :-
+	compare(R, Div, H),
+	(
+		R = (=),
+		!:RevTrue = [H | !.RevTrue],
+		set_ordlist__divide_by_set_2(Divs, T, !RevTrue, !RevFalse)
+	;
+		R = (<),
+		set_ordlist__divide_by_set_2(Divs, [H | T],
+			!RevTrue, !RevFalse)
+	;
+		R = (>),
+		!:RevFalse = [H | !.RevFalse],
+		set_ordlist__divide_by_set_2([Div | Divs], T,
+			!RevTrue, !RevFalse)
+	).

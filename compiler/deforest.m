@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 University of Melbourne.
+% Copyright (C) 1999-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1708,7 +1708,7 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	goal_list_instmap_delta([EarlierGoal | BetweenGoals], Delta0),
 	LaterGoal = _ - LaterInfo,
 	goal_info_get_instmap_delta(LaterInfo, Delta1),
-	instmap_delta_apply_instmap_delta(Delta0, Delta1, Delta2),
+	instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta2),
 	instmap_delta_restrict(Delta2, NonLocals, Delta),
 	goal_list_determinism([EarlierGoal | BetweenGoals], Detism0),
 	goal_info_get_determinism(LaterInfo, Detism1),

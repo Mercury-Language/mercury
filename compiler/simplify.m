@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -952,7 +952,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
 		Then = _ - ThenInfo,
 		goal_info_get_instmap_delta(ThenInfo, ThenDelta),
 		instmap_delta_apply_instmap_delta(CondDelta, ThenDelta,
-			CondThenDelta),
+			test_size, CondThenDelta),
 		Else = _ - ElseInfo,
 		goal_info_get_instmap_delta(ElseInfo, ElseDelta),
                 goal_info_get_nonlocals(GoalInfo0, NonLocals),

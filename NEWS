@@ -22,9 +22,9 @@ Changes to the Mercury standard library:
   version_array2d, version_bitmap, version_hash_table, and version_store,
   implementing non-unique versions of these types supporting O(1) access for
   non-persistent use.  A new module term_to_xml has been added for converting
-  arbitrary terms to XML documents. Five new modules, svarray, svmap, svbimap,
-  svset and svqueue now provide more convenient ways to update arrays, maps,
-  bimaps, sets and queues in code that uses state variables.
+  arbitrary terms to XML documents. Six new modules, svarray, svmap, svbimap,
+  svset, svbag and svqueue now provide more convenient ways to update arrays,
+  maps, bimaps, sets, bags and queues in code that uses state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file
@@ -232,8 +232,8 @@ Changes to the Mercury standard library:
   useful with higher-order code.  It can also be useful with state
   variables.  We've also added a function version. 
 
-* We've added some new predicates, map__common_subset and map__foldl3,
-  to map.m.
+* We've added some new predicates, map__common_subset, map__foldl3,
+  and map__overlay_large_map, to map.m.
 
 * We've added a predicate, map_fold, to set.m.
 

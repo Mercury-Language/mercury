@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2004 The University of Melbourne.
+% Copyright (C) 1996-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,7 @@ unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 	( determinism_components(Detism, _, at_most_many) ->
 		true
 	;
-		mode_info_set_nondet_live_vars([], !ModeInfo)
+		mode_info_set_nondet_live_vars(bag__init, !ModeInfo)
 	),
 
 	%
@@ -423,7 +423,7 @@ unique_modes__check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal),
 	% So we need to set the live variables set to empty here.
 	%
 	mode_info_get_live_vars(!.ModeInfo, LiveVars0),
-	mode_info_set_live_vars([], !ModeInfo),
+	mode_info_set_live_vars(bag__init, !ModeInfo),
 	%
 	% We need to lock the non-local variables, to ensure
 	% that the negation does not bind them.

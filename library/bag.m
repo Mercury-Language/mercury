@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module list, assoc_list.
+:- import_module list, assoc_list, set.
 
 :- type bag(T).
 
@@ -35,10 +35,20 @@
 :- pred bag__insert_list(bag(T)::in, list(T)::in, bag(T)::out) is det.
 :- func bag__insert_list(bag(T), list(T)) = bag(T).
 
+	% Insert a list of values into a bag.
+	%
+:- pred bag__insert_set(bag(T)::in, set(T)::in, bag(T)::out) is det.
+:- func bag__insert_set(bag(T), set(T)) = bag(T).
+
 	% Make a bag from a list.
 	%
 :- pred bag__from_list(list(T)::in, bag(T)::out) is det.
 :- func bag__from_list(list(T)) = bag(T).
+
+	% Make a bag from a set.
+	%
+:- pred bag__from_set(set(T)::in, bag(T)::out) is det.
+:- func bag__from_set(set(T)) = bag(T).
 
 	% Given a bag, produce a sorted list containing all the values in
 	% the bag.  Each value will appear in the list the same number of
@@ -60,6 +70,11 @@
 	%
 :- pred bag__to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
 :- func bag__to_list_without_duplicates(bag(T)) = list(T).
+
+	% Given a bag, produce a set containing all the values in the bag.
+	%
+:- pred bag__to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
+:- func bag__to_set_without_duplicates(bag(T)) = set(T).
 
 	% Remove one occurrence of a particular value from a bag.
 	% Fail if the item does not exist in the bag.
@@ -85,13 +100,23 @@
 	%
 :- pred bag__remove_list(bag(T)::in, list(T)::in, bag(T)::out) is semidet.
 
-:- func bag__det_remove_list(bag(T), list(T)) = bag(T).
-
 	% Remove a list of values from a bag.  Duplicates are removed
 	% from the bag the appropriate number of times.  Abort if any
 	% of the items in the list do not exist in the bag.
 	%
 :- pred bag__det_remove_list(bag(T)::in, list(T)::in, bag(T)::out) is det.
+:- func bag__det_remove_list(bag(T), list(T)) = bag(T).
+
+	% Remove a set of values from a bag. Each value is removed once.
+	% Fail if any of the items in the set do not exist in the bag.
+	%
+:- pred bag__remove_set(bag(T)::in, set(T)::in, bag(T)::out) is semidet.
+
+	% Remove a set of values from a bag. Each value is removed once.
+	% Abort if any of the items in the set do not exist in the bag.
+	%
+:- pred bag__det_remove_set(bag(T)::in, set(T)::in, bag(T)::out) is det.
+:- func bag__det_remove_set(bag(T), set(T)) = bag(T).
 
 	% Delete one occurrence of a particular value from a bag.
 	% If the key is not present, leave the bag unchanged.
@@ -219,8 +244,19 @@ bag__insert_list(Bag0, [Item|Items], Bag) :-
 	bag__insert(Bag0, Item, Bag1),
 	bag__insert_list(Bag1, Items, Bag).
 
+bag__insert_set(Bag0, Set, Bag) :-
+	set__to_sorted_list(Set, List),
+		% XXX We should exploit the sortedness of List.
+	bag__insert_list(Bag0, List, Bag).
+
 bag__from_list(List, Bag) :-
 	bag__init(Bag0),
+	bag__insert_list(Bag0, List, Bag).
+
+bag__from_set(Set, Bag) :-
+	set__to_sorted_list(Set, List),
+	bag__init(Bag0),
+		% XXX We should exploit the sortedness of List.
 	bag__insert_list(Bag0, List, Bag).
 
 bag__to_list(Bag, List) :-
@@ -244,6 +280,10 @@ bag__to_assoc_list(Bag, AssocList) :-
 
 bag__to_list_without_duplicates(Bag, List) :-
 	map__keys(Bag, List).
+
+bag__to_set_without_duplicates(Bag, Set) :-
+	map__keys(Bag, List),
+	set__sorted_list_to_set(List, Set).
 
 %---------------------------------------------------------------------------%
 
@@ -281,6 +321,16 @@ bag__det_remove_list(Bag0, List, Bag) :-
 	;
 		error("bag__det_remove_list: Missing item in bag.")
 	).
+
+bag__remove_set(Bag0, Set, Bag) :-
+	set__to_sorted_list(Set, List),
+		% XXX We should exploit the sortedness of List.
+	bag__remove_list(Bag0, List, Bag).
+
+bag__det_remove_set(Bag0, Set, Bag) :-
+	set__to_sorted_list(Set, List),
+		% XXX We should exploit the sortedness of List.
+	bag__det_remove_list(Bag0, List, Bag).
 
 bag__remove_all(Bag0, Item, Bag) :- 	% semidet
 	map__remove(Bag0, Item, _Val, Bag).
@@ -449,8 +499,14 @@ bag__insert(B1, X) = B2 :-
 bag__insert_list(B1, Xs) = B2 :-
 	bag__insert_list(B1, Xs, B2).
 
+bag__insert_set(B1, Xs) = B2 :-
+	bag__insert_set(B1, Xs, B2).
+
 bag__from_list(Xs) = B :-
 	bag__from_list(Xs, B).
+
+bag__from_set(Xs) = B :-
+	bag__from_set(Xs, B).
 
 bag__to_list(B) = Xs :-
 	bag__to_list(B, Xs).
@@ -461,11 +517,17 @@ bag__to_assoc_list(B) = AL :-
 bag__to_list_without_duplicates(B) = Xs :-
 	bag__to_list_without_duplicates(B, Xs).
 
+bag__to_set_without_duplicates(B) = Xs :-
+	bag__to_set_without_duplicates(B, Xs).
+
 bag__det_remove(B1, X) = B2 :-
 	bag__det_remove(B1, X, B2).
 
 bag__det_remove_list(B1, Xs) = B2 :-
 	bag__det_remove_list(B1, Xs, B2).
+
+bag__det_remove_set(B1, Xs) = B2 :-
+	bag__det_remove_set(B1, Xs, B2).
 
 bag__delete(B1, X) = B2 :-
 	bag__delete(B1, X, B2).

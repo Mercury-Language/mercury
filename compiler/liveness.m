@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -848,8 +848,7 @@ update_liveness_goal(GoalExpr - GoalInfo, LiveInfo, Liveness0, Liveness) :-
 	set__difference(Liveness3, PostDeaths, Liveness4),
 	set__union(Liveness4, PostBirths, Liveness5),
 
-	set__divide(set__contains(Liveness0), Liveness5,
-		OldLiveness, NewLiveness0),
+	set__divide_by_set(Liveness0, Liveness5, OldLiveness, NewLiveness0),
 	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 		_, CompletedNonLocals),
 	set__intersect(NewLiveness0, CompletedNonLocals, NewLiveness),
@@ -997,8 +996,7 @@ delay_death_goal(GoalExpr0 - GoalInfo0, BornVars0, DelayedDead0, VarSet,
 	set__divide(var_is_named(VarSet), PostDeaths2,
 		PostDelayedDead, UnnamedPostDeaths),
 	set__union(DelayedDead2, PostDelayedDead, DelayedDead3),
-	set__divide(set__contains(BornVars0), DelayedDead3,
-		DelayedDead, ToBeKilled),
+	set__divide_by_set(BornVars0, DelayedDead3, DelayedDead, ToBeKilled),
 	set__union(UnnamedPostDeaths, ToBeKilled, PostDeaths),
 	goal_info_set_post_deaths(GoalInfo2, PostDeaths, GoalInfo).
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2004 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -250,8 +250,15 @@
 	% TruePart consists of those elements of Set for which Pred succeeds;
 	% FalsePart consists of those elements of Set for which Pred fails.
 	%
-:- pred set__divide(pred(T1), set(T1), set(T1), set(T1)).
-:- mode set__divide(pred(in) is semidet, in, out, out) is det.
+:- pred set__divide(pred(T)::in(pred(in) is semidet), set(T)::in,
+	set(T)::out, set(T)::out) is det.
+
+	% set_divide_by_set(DivideBySet, Set, InPart, OutPart):
+	% InPart consists of those elements of Set which are also in
+	% DivideBySet; OutPart consists of those elements of which are
+	% not in DivideBySet.
+:- pred set__divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
+	is det.
 
 %--------------------------------------------------------------------------%
 
@@ -448,3 +455,6 @@ set__fold(F, S, A) = B :-
 
 set__divide(P, Set, TruePart, FalsePart) :-
 	set_ordlist__divide(P, Set, TruePart, FalsePart).
+
+set__divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
+	set_ordlist__divide_by_set(DivideBySet, Set, TruePart, FalsePart).
