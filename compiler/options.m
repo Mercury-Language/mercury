@@ -198,6 +198,9 @@ option_defaults_2(output_option, [
 	auto_comments		-	bool(no),
 	profiling		-	bool(no),
 	output_file_name	-	string("")
+					% if the output_file_name is an empty
+					% string, we use the name of the first
+					% module on the command line
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -210,7 +213,10 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
-	num_tag_bits		-	int(2),
+	num_tag_bits		-	int(-1),
+					% -1 is a special value which means
+					% use the autoconf-determined value
+					% instead
 	gc			-	string("conservative"),
 	cc			-	string("gcc"),
 	cflags			-	string(""),
@@ -225,6 +231,10 @@ option_defaults_2(optimization_option, [
 	debug			-	bool(no),
 	c_optimize		-	bool(yes),
 	grade			-	string("asm_fast.gc"),
+					% this default grade always gets
+					% overridden by the `mc' script,
+					% which uses the value determined
+					% by autoconf
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
@@ -518,7 +528,7 @@ options_help -->
 	io__write_string("\t\teach word as tag bits (default: low).\n"),
 	% io__write_string("\t\t`--tags none' implies `--num-tag-bits 0'.\n"),
 	io__write_string("\t--num-tag-bits <n>\n"),
-	io__write_string("\t\tUse <n> tag bits (only used with `--tags high').\n"),
+	io__write_string("\t\tUse <n> tag bits.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
 	io__write_string("\t--c-include-directory <dir>\n"),

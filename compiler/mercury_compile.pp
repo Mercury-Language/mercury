@@ -68,86 +68,10 @@ postprocess_options(ok(OptionTable0), Error) -->
 			( 
 				{ Tags_Method0 = string(Tags_Method_String) },
 				{ convert_tags_method(Tags_Method_String,
-					Tags_Method1) }
+					Tags_Method) }
 			->
-				% work around for NU-Prolog problems
-				( { map__search(OptionTable0, heap_space,
-					int(HeapSpace)) }
-				->
-					io__preallocate_heap_space(HeapSpace)
-				;
-					[]
-				),
-				( { Tags_Method1 = low, conf__low_tag_bits(0) } ->
-					{ Tags_Method = none }
-				;
-					{ Tags_Method = Tags_Method1 }
-				),
-				globals__io_init(OptionTable, GC_Method,
-					Tags_Method),
-				% --gc conservative implies --no-reclaim-heap-*
-				( { GC_Method = conservative } ->
-					globals__io_set_option(
-						reclaim_heap_on_semidet_failure,
-						bool(no)
-					),
-					globals__io_set_option(
-						reclaim_heap_on_nondet_failure,
-						bool(no)
-					)
-				;
-					[]
-				),
-				% --tags none implies --num-tag-bits 0
-				% --tags low implies using autoconf result
-				(
-					{ Tags_Method = none },
-					globals__io_set_option(num_tag_bits,
-						int(0))
-				;
-					{ Tags_Method = low },
-					{ conf__low_tag_bits(LowTagBits) },
-					globals__io_set_option(num_tag_bits,
-						int(LowTagBits))
-				;	
-					{ Tags_Method = high },
-					globals__io_lookup_int_option(num_tag_bits,
-						NumTagBits0),
-					{ int__max(NumTagBits0, 0, NumTagBits1) },
-					{ int__min(NumTagBits1, 6, HighTagBits) },
-					globals__io_set_option(num_tag_bits,
-						int(HighTagBits))
-				),
-				% --very-verbose implies --verbose
-				globals__io_lookup_bool_option(very_verbose,
-					VeryVerbose),
-				( { VeryVerbose = yes } ->
-					globals__io_set_option(verbose,
-						bool(yes))
-				;	
-					[]
-				),
-				% dump and flags statistics
-				% require compilation by phases
-				globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
-				globals__io_lookup_bool_option(statistics, Statistics),
-				( { DumpStages \= [] ; Statistics = yes } ->
-					globals__io_set_option(trad_passes,
-						bool(no))
-				;
-					[]
-				),
-				globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
-				( { InhibitWarnings = yes } ->
-					globals__io_set_option(warn_singleton_vars,
-						bool(no)),
-					globals__io_set_option(warn_missing_det_decls,
-						bool(no)),
-					globals__io_set_option(warn_det_decls_too_lax,
-						bool(no))
-				;
-					[]
-				),
+				postprocess_options_2(OptionTable,
+					GC_Method, Tags_Method),
 				{ Error = no }
 			;
 				{ Error = yes("Invalid tags option (must be `none', `low' or `high')") }
@@ -157,6 +81,94 @@ postprocess_options(ok(OptionTable0), Error) -->
 		)
 	;
 		{ Error = yes("Invalid grade option") }
+	).
+
+:- pred postprocess_options_2(option_table, gc_method, tags_method,
+				io__state, io__state).
+:- mode postprocess_options_2(in, in, in, di, uo) is det.
+
+postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
+	% work around for NU-Prolog problems
+	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
+	->
+		io__preallocate_heap_space(HeapSpace)
+	;
+		[]
+	),
+
+	globals__io_init(OptionTable, GC_Method, Tags_Method),
+	
+	% --gc conservative implies --no-reclaim-heap-*
+	( { GC_Method = conservative } ->
+		globals__io_set_option(
+			reclaim_heap_on_semidet_failure, bool(no)
+		),
+		globals__io_set_option(
+			reclaim_heap_on_nondet_failure, bool(no)
+		)
+	;
+		[]
+	),
+
+	% --tags none implies --num-tag-bits 0.
+	( { Tags_Method = none } ->
+		{ NumTagBits0 = 0 }
+	;
+		globals__io_lookup_int_option(num_tag_bits, NumTagBits0)
+	),
+
+	% if --tags low but --num-tag-bits not specified, 
+	% use the autoconf-determined value for --num-tag-bits
+	(
+		{ Tags_Method = low },
+		{ NumTagBits0 = -1 }
+	->
+		{ conf__low_tag_bits(NumTagBits1) }
+	;	
+		{ NumTagBits1 = NumTagBits0 }
+	),
+
+	% if --num-tag-bits negative or unspecified, issue a warning
+	% and assume --num-tag-bits 0
+	( { NumTagBits1 < 0 } ->
+		io__progname_base("mercury_compile", ProgName),
+		io__stderr_stream(StdErr),
+		io__write_strings(StdErr, [ProgName,
+			": warning: --num-tag-bits invalid or unspecified\n",
+			ProgName, ": using --num-tag-bits 0 (tags disabled)\n"
+		]),
+		{ NumTagBits = 0 }
+	;
+		{ NumTagBits = NumTagBits1 }
+	),
+
+	globals__io_set_option(num_tag_bits, int(NumTagBits)),
+
+	% --very-verbose implies --verbose
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	( { VeryVerbose = yes } ->
+		globals__io_set_option(verbose, bool(yes))
+	;	
+		[]
+	),
+
+	% --dump-hlds and --statistics require compilation by phases
+	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
+	globals__io_lookup_bool_option(statistics, Statistics),
+	( { DumpStages \= [] ; Statistics = yes } ->
+		globals__io_set_option(trad_passes, bool(no))
+	;
+		[]
+	),
+
+	% -w (--inhibit-warnings) disables all warnings
+	globals__io_lookup_bool_option(inhibit_warnings, InhibitWarnings),
+	( { InhibitWarnings = yes } ->
+		globals__io_set_option(warn_singleton_vars, bool(no)),
+		globals__io_set_option(warn_missing_det_decls, bool(no)),
+		globals__io_set_option(warn_det_decls_too_lax, bool(no))
+	;
+		[]
 	).
 
 % Set the type of gc that the grade option implies.
