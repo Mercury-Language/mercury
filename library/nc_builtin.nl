@@ -57,8 +57,11 @@
 % clash between the precedences of the two different forms of the
 % operator, which NU-Prolog does not allow.  Hence we must first
 % undefine the existing operator declaration for it.
+% As a rather nasty hack, we use `$setOpField((:), [])' rather than
+% `op(0, xfy, (:)' because the latter results in lots of spurious
+% warning messages.
 
-:- op(0, xfy, (:)).
+:- $setOpField((:), []).
 :- op(600, xfy, (:)).
 
 % Prevent warnings about undefined predicates
