@@ -33,7 +33,8 @@ LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
 LIB_NUPROLOG_PARTS	= @NUPROLOG@
 LIB_SICSTUS_PARTS	= @SICSTUS@
 
-UTILS			= util/mdemangle util/mkinit util/mtags
+UTILS			= util/mdemangle util/mkinit util/mtags \
+			  util/mprof_merge_runs
 
 INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
 INSTALL_SICSTUS		= @INSTALL_SICSTUS@

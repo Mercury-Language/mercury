@@ -59,6 +59,7 @@ AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(HAVE_DELAY_SLOT)
+AC_SUBST(DEFAULT_RM_C)
 
 #-----------------------------------------------------------------------------#
 AC_PROG_RANLIB
