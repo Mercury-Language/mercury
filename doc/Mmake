@@ -123,6 +123,7 @@ install_dvi: dvi
 clean: distclean clean_texi
 
 .PHONY: distclean
+distclean:
 	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
 
 .PHONY: clean_texi
