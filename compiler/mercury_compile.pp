@@ -1272,12 +1272,7 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
 		{ bool__not(FoundModeError, Proceed2) },
 
-<<<<<<< mercury_compile.pp
 		mercury_compile__maybe_write_dependency_graph(HLDS3, HLDS3a),
-=======
-		mercury_compile__make_dependency_graph(HLDS3, HLDS3a),
-		mercury_compile__maybe_output_prof_call_graph(HLDS3a),
->>>>>>> 1.70
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->

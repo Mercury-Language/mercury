@@ -896,7 +896,6 @@ module_info_consids(ModuleInfo, ConsIDs) :-
 	map__keys(Ctors, ConsIDs).
 
 module_info_dependency_info(ModuleInfo, DepInfo) :-
-<<<<<<< hlds.m
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, DepInfo0, _, _),
 	( DepInfo0 = yes(DepInfo1) ->
 	    DepInfo = DepInfo1
@@ -906,9 +905,6 @@ module_info_dependency_info(ModuleInfo, DepInfo) :-
 
 module_info_dependency_info_built(ModuleInfo) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, yes(_), _, _).
-=======
-	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, DepInfo, _, _).
->>>>>>> 1.161
 
 module_info_num_errors(ModuleInfo, NumErrors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, NumErrors, _).
@@ -967,13 +963,8 @@ module_info_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, Ctors, K, L, M).
 
 module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo) :-
-<<<<<<< hlds.m
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, _, K, L),
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, yes(DepInfo), K, L).
-=======
-	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, _, L, M),
-	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, DepInfo, L, M).
->>>>>>> 1.161
 
 module_info_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, _, M),

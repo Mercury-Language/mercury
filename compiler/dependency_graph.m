@@ -22,19 +22,16 @@
 :- pred module_info_ensure_dependency_info(module_info, module_info).
 :- mode module_info_ensure_dependency_info(in, out) is det.
 
-<<<<<<< dependency_graph.m
 :- pred dependency_graph__write_dependency_graph(module_info, module_info,
 						io__state, io__state).
 :- mode dependency_graph__write_dependency_graph(in, out, di, uo) is det.
 
-=======
 	% Output a form of the static call graph to a file for use by the
 	% profiler.
 :- pred dependency_graph__write_prof_dependency_graph(module_info,
 						io__state, io__state).
 :- mode dependency_graph__write_prof_dependency_graph(in, di, uo) is det.
 
->>>>>>> 1.2
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -377,7 +374,6 @@ dependency_graph__write_clique([PredId - ProcId | Rest], ModuleInfo) -->
 	dependency_graph__write_clique(Rest, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 % dependency_graph__write_prof_dependency_graph:
 %	Output's the static call graph of the current module in the form of
@@ -501,3 +497,6 @@ dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId,
                 PredAddress = label(Label)
         )
         }.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
