@@ -1662,8 +1662,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
         MR_list_nil(prev);
 
         for (i = length - 1; i >= 0; i--) {
-		MR_list_cons(tmp, __box(Str->get_Chars(i)),
-			prev);
+		MR_list_cons(tmp, __box((MR_Integer) Str->get_Chars(i)), prev);
 		prev = tmp;
         }
         IntList = tmp;
