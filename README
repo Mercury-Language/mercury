@@ -2,7 +2,7 @@ This directory contains the source distribution for the University of Melbourne
 Mercury compiler, version 0.6.
 
 The Mercury implementation is free software, but it is Copyright (C)
-1994, 1995 University of Melbourne.  It is distributed under the terms
+1994-1996 The University of Melbourne.  It is distributed under the terms
 of the GNU General Public License.  See the file COPYING for copying
 permission.  The Mercury library and runtime (the files in the library
 and runtime subdirectories) are distributed under the terms of the GNU
@@ -51,7 +51,6 @@ from the following locations:
 
 	Australia:
 		ftp://turiel.cs.mu.oz.au/pub/mercury
-		http://www.cs.mu.oz.au/~fjh/mercury
 	USA:
 		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
 	Europe:
