@@ -666,7 +666,7 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 
 #if defined(SOLARIS_THREADS) || defined(IRIX_THREADS) || \
 	defined(LINUX_THREADS)
-extern void GC_thr_init();	/* Needed for Solaris/X86	*/
+extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
 #endif
 
 /*

@@ -260,7 +260,15 @@ case $use_trail in
 esac
 
 case $thread_safe in
-	true)		THREAD_OPTS="-DMR_THREAD_SAFE -DSOLARIS_THREADS -D_SOLARIS_PTHREADS -D_REENTRANT";;
+	true)
+	case $FULLARCH in
+		*solaris*) THREAD_OPTS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
+				-D_SOLARIS_PTHREADS -D_REENTRANT";;
+
+		*linux*) THREAD_OPTS="-DMR_THREAD_SAFE -DLINUX_THREADS";;
+
+		*)		THREAD_OPTS="" ;;
+	esac ;;
 	false)		THREAD_OPTS="" ;;
 esac
 

@@ -300,7 +300,7 @@ GC_thread GC_lookup_thread(pthread_t id)
     return(p);
 }
 
-extern volatile int volatile_counter;
+volatile int volatile_counter;
 volatile int prev_counter;
 
 /* Caller holds allocation lock.	*/
