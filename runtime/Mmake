@@ -9,8 +9,7 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc \
-		  `sed 's/\#.*//' CFLAGSFILE`
+CFLAGS		= -I$(MERCURY_DIR)/runtime -I $(MERCURY_DIR)/boehm_gc -g
 MGNUC		= MERCURY_C_INCL_DIR=. mgnuc
 MGNUCFLAGS	= $(CFLAGS)
 
@@ -26,6 +25,7 @@ MODS		= engine.mod io.mod wrapper.mod call.mod
 OBJS		= engine.o io.o wrapper.o call.o \
 		  access.o aux.o dummy.o label.o \
 		  list.o memory.o table.o timing.o
+PIC_OBJS	= $(OBJS:.o=.pic_o)
 
 #-----------------------------------------------------------------------------#
 
@@ -40,8 +40,8 @@ libmer.a: $(OBJS)
 	ar cr libmer.a $(OBJS)
 	$(RANLIB) libmer.a
 
-libmer.so: $(OBJS)
-	mgnuc -- -shared -o libmer.so $(OBJS)
+libmer.so: $(PIC_OBJS)
+	mgnuc -- -shared -o libmer.so $(PIC_OBJS)
 
 #-----------------------------------------------------------------------------#
 
