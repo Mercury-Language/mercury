@@ -1,4 +1,9 @@
 #!/bin/sh
+# Assemble a C source file from its component parts.
+# The parts are in stage2.{ok,bad}/$problemdir/$module.c.part.{1,2,...$count}.
+# Assemble uses the parts from stage2.bad for the parts whose numbers are
+# listed in $tested, and the parts from stage2.ok for the other parts.
+# The patchwork file will be put in stage2/$problemdir/$module.c.
 
 if test $# -le 3
 then

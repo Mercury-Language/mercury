@@ -1,4 +1,5 @@
 #!/bin/sh
+# Given N arguments, print the first N/2 arguments, rounding down.
 
 take=`expr $# / 2`
 while test $take -gt 0

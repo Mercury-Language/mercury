@@ -1,8 +1,24 @@
 #!/bin/sh
+# This script find miscompiled procedures.
+#
+# Given a stage2 directory that works (stage2.ok) and one that doesn't
+# (stage2.bad), this script uses binary search to try to find in stage2.bad
+# first the C source file and then the module within that C source file that
+# when put together with everthing else from the stage2.ok directory, still
+# causes the compiler to fail.
+#
+# If the bad C source file has different numbers of modules in the bad and ok
+# versions, then the script stops after identifying only the file.
+#
+# The test for the composite stage2 compiler is either bootstrap checking
+# (the default, or the successful execution of the all the test cases in
+# one or more dubdirectories of the tests directory.
 
 usage="\
 Usage: $0 [options]
 Options:
+	-b, --no-bootcheck
+		Do not perform a bootcheck; check only the tests directory.
 	-c, --compile-only
 		Compile only. Do not compare stage2.ok and stage3.
 	-h, --help
@@ -11,17 +27,30 @@ Options:
 		Run using <num-jobs> different parallel processes.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
+	-t <testdir>, --test-dir <testdir>
+		Execute runtests from the named subdirectory of tests.
 "
 
+bootcheck=""
 compile_only=""
 jfactor=
 mmake_opts=""
+outfile=""
+copy_runtime=false
+testdirs=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 
+	-b|--no-bootcheck)
+		bootcheck="-b"; shift ;;
+
 	-c|--compile-only)
-		compile_only="-c"; shift ;
+		compile_only="-c"; shift ;;
 
 	-h|--help)
 		echo "$usage"
@@ -36,6 +65,19 @@ while [ $# -gt 0 ]; do
 
 	-m|--mmake)
 		mmake_opts="$mmake_opts $2"; shift ;;
+
+	-o|--output-file)
+		outfile="-o $2"; shift ;;
+	-o*)
+		outfile="-o ` expr $1 : '-o\(.*\)' `"; ;;
+
+	-r|--copy-runtime)
+		copy_runtime=true ;;
+
+	-t|--test-dir)
+		testdirs="$testdirs -t$2"; shift ;;
+	-t*)
+		testdirs="$testdirs ` expr $1 : '-t\(.*\)' `"; ;;
 
 	--)	
 		shift; break ;;
@@ -78,6 +120,9 @@ ln -s ../../library/*.nl .
 ln -s ../../library/Mmake* .
 ln -s ../../library/library.init .
 cd ..
+if test "$copy_runtime" = "true"
+then
+	mkdir runtime
 	cd runtime
 	ln -s ../../runtime/*.h .
 	ln -s ../../runtime/*.c .
@@ -96,13 +141,7 @@ ln -s ../util .
 ln -s ../profiler .
 ln -s ../conf* .
 rm -f config*.log
-if test -f ../Mmake.stage.params
-then
-	/bin/rm -f Mmake.params
-	# we copy the stage2.ok parameters
-	# because we will compare our stage3 with stage2.ok
-	cp ../stage2.ok/Mmake.params Mmake.params
-fi
+cp ../stage2.ok/Mmake* .
 cd ..
 
 # We don't copy the .d files. This prevents mmake from trying to remake any
@@ -119,12 +158,14 @@ cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 
-# See if the stage2.bad library works
+echo testing whether the stage2.bad library works
 
 cp stage2.bad/library/*.[co] stage2/library
 cp stage2.ok/compiler/*.[co] stage2/compiler
 
-if binary_step $compile_only $jfactor -m "$mmake_opts"
+set -x
+
+if binary_step $compile_only $jfactor -m "$mmake_opts" $outfile $bootcheck $testdirs
 then
 	problemdir=compiler
 else
@@ -159,7 +200,7 @@ do
 		cp stage2.bad/$problemdir/$module.[co] stage2/$problemdir
 	done
 
-	if binary_step $compile_only $jfactor -m "$mmake_opts"
+	if binary_step $compile_only $jfactor -m "$mmake_opts" $outfile $bootcheck $testdirs
 	then
 		echo "test succeeded"
 		knowngood="$knowngood $tested"
@@ -198,7 +239,7 @@ then
 fi
 
 module=`echo $doubtful | tr -d ' '`
-arg $module
+# arg $module
 
 echo "there is a problem in $problemdir/$module"
 echo "the modules known to be ok are: $knowngood"
@@ -247,7 +288,7 @@ do
 	mmake $module.o
 	cd ../..
 
-	if binary_step $compile_only $jfactor -m "$mmake_opts"
+	if binary_step $compile_only $jfactor -m "$mmake_opts" $outfile $bootcheck $testdirs
 	then
 		echo "test succeeded"
 		knowngood="$knowngood $tested"

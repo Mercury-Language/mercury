@@ -31,6 +31,10 @@ keep_stage_3=false
 while [ $# -gt 0 ]; do
 	case "$1" in
 
+	-h|--help)
+		echo "$usage"
+		exit 0 ;;
+
 	-j|--jobs)
 		jfactor="-j$2"; shift ;;
 	-j*)
@@ -48,14 +52,12 @@ while [ $# -gt 0 ]; do
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
+
 	-2|--keep-stage-2)
 		keep_stage_2=true ;;
+
 	-3|--keep-stage-3)
 		keep_stage_3=true ;;
-
-	-h|--help)
-		echo "$usage"
-		exit 0 ;;
 
 	--)	
 		shift; break ;;
@@ -110,23 +112,24 @@ cd stage2
 mkdir compiler
 cd compiler
 ln -s ../../compiler/*.m .
-ln -s ../../compiler/Mmake* .
+cp ../../compiler/Mmake* .
 cd ..
 mkdir library
 cd library
 ln -s ../../library/*.m .
 ln -s ../../library/*.nl .
-ln -s ../../library/Mmake* .
+cp ../../library/Mmake* .
 ln -s ../../library/library.init .
 cd ..
-if [ $copy_runtime = "true" ]; then
+if test "$copy_runtime" = "true"
+then
 	mkdir runtime
 	cd runtime
 	ln -s ../../runtime/*.h .
 	ln -s ../../runtime/*.c .
 	ln -s ../../runtime/*.mod .
 	ln -s ../../runtime/*.in .
-	ln -s ../../runtime/Mmake* .
+	cp ../../runtime/Mmake* .
 	ln -s ../../runtime/machdeps .
 	cd ..
 else
@@ -139,7 +142,7 @@ ln -s ../util .
 ln -s ../profiler .
 ln -s ../conf* .
 rm -f config*.log
-ln -s ../Mmake* .
+cp ../Mmake* .
 if test -f ../Mmake.stage.params
 then
 	/bin/rm -f Mmake.params
@@ -214,13 +217,13 @@ cd stage3
 mkdir compiler
 cd compiler
 ln -s ../../compiler/*.m .
-ln -s ../../compiler/Mmake* .
+cp ../../compiler/Mmake* .
 cd ..
 mkdir library
 cd library
 ln -s ../../library/*.m .
 ln -s ../../library/*.nl .
-ln -s ../../library/Mmake* .
+cp ../../library/Mmake* .
 ln -s ../../library/library.init .
 cd ..
 ln -s ../boehm_gc .
@@ -231,7 +234,7 @@ ln -s ../util .
 ln -s ../profiler .
 ln -s ../conf* .
 rm -f config*.log
-ln -s ../Mmake* .
+cp ../Mmake* .
 if test -f ../Mmake.stage.params
 then
 	/bin/rm -f Mmake.params
