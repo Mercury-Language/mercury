@@ -1509,10 +1509,13 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		WarningOpt = ""
 	},
-	{ string__append_list([CC, " ", InclOpt, SplitOpt,
-		CFLAGS_FOR_REGS, RegOpt, CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
+	% Be careful with the order here!  Some options override others,
+	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
+	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
+	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
+		RegOpt, GotoOpt, AsmOpt, CFLAGS_FOR_REGS, CFLAGS_FOR_GOTOS,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		ConstraintsOpt, OptimizeOpt, WarningOpt, CFLAGS,
+		ConstraintsOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
