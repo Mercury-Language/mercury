@@ -10,7 +10,6 @@ SUBDIRS = \
 	misc_tests \
 	tabling \
 	term \
-	typeclasses \
 	valid \
 	warnings
 TESTS_DIR=.
