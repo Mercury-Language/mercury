@@ -132,8 +132,19 @@ A. The following language features are not yet fully supported:
 	deconstruct
 	type_desc
 
+   This in turn means that any other routines which depend on those
+   (such as io.print/3, io.write/3 and io.read/3) won't work.
+
    In addition, the following individual procedures are incompletely
    implemented:
+
+   	builtin.copy/2:
+		Currently only works for strings and arrays thereof.
+		For any other type, it throws an exception.
+
+   	io.read_binary/{3,4}:
+   	io.write_binary/{3,4}:
+		io.read_binary is broken.
 
 	benchmarking.report_stats/0:
 	benchmarking.report_full_memory_stats/0:
@@ -153,6 +164,8 @@ A. The following language features are not yet fully supported:
 		implementing these procedures in pure Java, we have implemented
 		them using a native code library implemented in C and accessed
 		via JNI.  This approach sacrifices some portability.
+
+   This list is probably not complete.
 
 Q. So how do I enable Java-level debugging?
 
