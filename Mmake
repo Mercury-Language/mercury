@@ -32,24 +32,36 @@ scripts:
 	cd scripts && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
-runtime:
+runtime: scripts
 	cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: boehm_gc
-boehm_gc:
+boehm_gc: scripts
 	cd boehm_gc && $(SUBDIR_MMAKE)
 
 .PHONY: library
-library:
+library: scripts
 	cd library && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
-compiler:
+compiler: scripts runtime boehm_gc library 
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
-doc:
+doc: scripts
 	cd doc && $(SUBDIR_MMAKE)
+
+#-----------------------------------------------------------------------------#
+
+# Generally you should do a `mmake realclean' before doing `mmake tar'.
+
+.PHONY: tar
+tar: ../mercury.tar.gz
+
+../mercury.tar.gz:
+	cd library && $(SUBDIR_MMAKE) cs
+	cd compiler && $(SUBDIR_MMAKE) cs
+	cd .. && (tar -cf - mercury | gzip > mercury.tar.gz)
 
 #-----------------------------------------------------------------------------#
 
@@ -101,39 +113,51 @@ stage_4:
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_scripts install_runtime install_library install_compiler \
-		install_doc
+install: all install_scripts install_runtime install_boehm_gc \
+		install_library install_compiler install_doc \
+		install_runtime_grades install_library_grades
 
 .PHONY: install_scripts
-install_scripts:
-	cd scripts && \
-	$(SUBDIR_MMAKE) install
-
-.PHONY: install_doc
-install_doc:
-	cd doc && \
-	$(SUBDIR_MMAKE) install
-
-.PHONY: install_library
-install_library:
-	cd library && \
-		$(SUBDIR_MMAKE) install_ints install_nuprolog install_sicstus 
-	cd library && \
-	for grade in $(LIBGRADES); do \
-		rm -f *.mod *.c *.o *.a *.so; \
-		$(SUBDIR_MMAKE) GRADE=$$grade install_library || exit 1; \
-	done; \
-	rm -f *.mod *.c *.o *.a *.so
+install_scripts: scripts
+	cd scripts && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime
-install_runtime:
-	cd runtime && $(SUBDIR_MMAKE) install_headers install_mods
+install_runtime: runtime
+	cd runtime && $(SUBDIR_MMAKE) install
+
+.PHONY: install_boehm_gc
+install_boehm_gc: boehm_gc
+	cd boehm_gc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_library
+install_library: library
+	cd library && $(SUBDIR_MMAKE) install
+
+.PHONY: install_compiler
+install_compiler: compiler
+	cd compiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_doc
+install_doc: doc
+	cd doc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_runtime_grades
+install_runtime_grades
 	cd runtime && \
 	for grade in $(LIBGRADES); do \
 		rm -f *.o *.a *.so; \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_lib || exit 1; \
 	done; \
 	rm -f *.o *.a *.so
+
+.PHONY: install_library_grades
+install_library_grades:
+	cd library && \
+	for grade in $(LIBGRADES); do \
+		rm -f *.mod *.c *.o *.a *.so; \
+		$(SUBDIR_MMAKE) GRADE=$$grade install_library || exit 1; \
+	done; \
+	rm -f *.mod *.c *.o *.a *.so
 
 #-----------------------------------------------------------------------------#
 
