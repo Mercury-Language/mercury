@@ -46,13 +46,13 @@ made concrete this weekend by turning it into the proposed set of C type
 definitions contained in the attached file.
 
 The new RTTI design records a lot more information than the old one, but
-the growth is mostly in statically allocated data structures. The new design
-also in type-safe C, for ease of debugging its implementation. There should
-be a type-safe Mercury version of it as well, for future use in the Java and
-IL backends. The reason why there isn't one yet is that some these structures
-must contain references to polymporphic procedures, since methods may be
-polymorphic. Mercury doesn't (yet) support polymorphic procedures, even if
-(as here) only the compiler can create them.
+the growth is mostly in statically allocated data structures. Also, the new
+design is in type-safe C, for ease of debugging its implementation. There
+should be a type-safe Mercury version of it as well, for future use in the
+Java and IL backends. The reason why there isn't one yet is that some these
+structures must contain references to polymporphic procedures, since methods
+may be polymorphic. Mercury doesn't (yet) support polymorphic procedures,
+even if (as here) only the compiler can create them.
 
 The new design has three main data structures: one corresponding to a
 typeclass declaration, one corresponding to an instance declaration, and one
@@ -99,7 +99,7 @@ typedef       struct MR_Dictionary_Struct               *MR_Dictionary;
 **
 ** Note that the arity cannot be zero, so we do not have to worry about
 ** zero-size arrays. On the other hand, type classes with more than even two
-** arguments can be expected to be very rare, so have five as a fixed limit
+** arguments can be expected to be very rare, so having five as a fixed limit
 ** should not be a problem. If it is, we can lift the limit by defining
 ** MR_TypeClassSkel_N on demand for all N > 5.
 **
