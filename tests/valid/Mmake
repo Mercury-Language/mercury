@@ -26,6 +26,7 @@ SOURCES= \
 	semidet_disj.m \
 	stack_alloc.m \
 	switches.m \
+	two_pragma_c_codes.m \
 	unreachable_code.m
 
 # The mode system can't handle the following test cases yet:
