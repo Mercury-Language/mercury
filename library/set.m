@@ -255,6 +255,7 @@
 :- pred set__fold(pred(T1, T2, T2), set(T1), T2, T2).
 :- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
 :- mode set__fold(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set__fold(pred(in, in, out) is semidet, in, in, out) is semidet.
 
 :- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
 
