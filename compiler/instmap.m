@@ -387,14 +387,15 @@ instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
 		ModuleInfo = ModuleInfo0
 	;
 		InstmapDelta0 = reachable(InstmappingDelta0),
+		instmap__lookup_var(InstMap, Var, OldInst),
 		( map__search(InstmappingDelta0, Var, Inst0) ->
 			Inst1 = Inst0
 		;
-			instmap__lookup_var(InstMap, Var, Inst1)
+			Inst1 = OldInst
 		),
 		bind_inst_to_functor(Inst1, ConsId, Inst,
 			ModuleInfo0, ModuleInfo),
-		( Inst \= Inst1 ->
+		( Inst \= OldInst ->
 			instmap_delta_set(InstmapDelta0, Var,
 				Inst, InstmapDelta)
 		;

@@ -1735,7 +1735,7 @@ recompute_instmap_delta_cases(Atomic, Var, [Case0], [Case],
 	recompute_instmap_delta(Atomic, Goal0, Goal,
 		InstMap, InstMapDelta0),
 	instmap_delta_bind_var_to_functor(Var, Functor,
-		InstMap, InstMapDelta0, InstMapDelta),
+		InstMap0, InstMapDelta0, InstMapDelta),
 	{ Case = case(Functor, Goal) }.
 recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 		InstMap0, NonLocals, InstMapDelta) -->
@@ -1745,11 +1745,11 @@ recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 	recompute_instmap_delta(Atomic, Goal0, Goal,
 		InstMap, InstMapDelta0),
 	instmap_delta_bind_var_to_functor(Var, Functor,
-		InstMap, InstMapDelta0, InstMapDelta1),
+		InstMap0, InstMapDelta0, InstMapDelta1),
 	{ Case = case(Functor, Goal) },
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
-		InstMap, NonLocals, InstMapDelta2),
-	merge_instmap_delta(InstMap, NonLocals, InstMapDelta1,
+		InstMap0, NonLocals, InstMapDelta2),
+	merge_instmap_delta(InstMap0, NonLocals, InstMapDelta1,
 		InstMapDelta2, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
