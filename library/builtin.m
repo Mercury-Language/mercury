@@ -429,7 +429,7 @@ Define_entry(mercury__copy_2_0);
 fallthru(ENTRY(mercury__copy_2_1), ENTRY(mercury__copy_2_0))
 Define_entry(mercury__copy_2_1);
 {
-	Word value, copy, type_info;
+	MR_Word value, copy, type_info;
 
 	type_info = r1;
 	value = r2;

@@ -1113,18 +1113,18 @@
 	% for cases such as `type_name(main)'.
 
 :- pragma c_header_code("
-	extern Word ML_io_stream_names;
-	extern Word ML_io_user_globals;
+	extern	MR_Word	ML_io_stream_names;
+	extern	MR_Word	ML_io_user_globals;
 	#if 0
-	  extern Word ML_io_ops_table;
+	  extern MR_Word ML_io_ops_table;
 	#endif
 ").
 
 :- pragma c_code("
-	Word ML_io_stream_names;
-	Word ML_io_user_globals;
+	MR_Word	ML_io_stream_names;
+	MR_Word	ML_io_user_globals;
 	#if 0
-	  extern Word ML_io_ops_table;
+	  extern MR_Word ML_io_ops_table;
 	#endif
 ").
 
@@ -1362,11 +1362,11 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		[will_not_call_mercury, thread_safe],
 "
 #define ML_IO_READ_LINE_GROW(n)	((n) * 3 / 2)
-#define ML_IO_BYTES_TO_WORDS(n)	(((n) + sizeof(Word) - 1) / sizeof(Word))
+#define ML_IO_BYTES_TO_WORDS(n)	(((n) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 #define ML_IO_READ_LINE_START	1024
 
-	Char initial_read_buffer[ML_IO_READ_LINE_START];
-	Char *read_buffer = initial_read_buffer;
+	MR_Char initial_read_buffer[ML_IO_READ_LINE_START];
+	MR_Char *read_buffer = initial_read_buffer;
 	size_t read_buf_size = ML_IO_READ_LINE_START;
 	size_t i;
 	int char_code = '\\0';
@@ -1380,7 +1380,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			}
 			break;
 		}
-		if (char_code != (Char) char_code) {
+		if (char_code != (MR_Char) char_code) {
 			Res = -2;
 			break;
 		}
@@ -1390,21 +1390,21 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			/* Grow the read buffer */
 			read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
 			if (read_buffer == initial_read_buffer) {
-				read_buffer = MR_NEW_ARRAY(Char,
+				read_buffer = MR_NEW_ARRAY(MR_Char,
 						read_buf_size);
 				memcpy(read_buffer, initial_read_buffer,
 					ML_IO_READ_LINE_START);
 			} else {
 				read_buffer = MR_RESIZE_ARRAY(read_buffer,
-						Char, read_buf_size);
+						MR_Char, read_buf_size);
 			}
 		}
 	}
 	if (Res == 0) {
-		incr_hp_atomic_msg(LVALUE_CAST(Word, RetString),
-			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(Char)),
+		incr_hp_atomic_msg(LVALUE_CAST(MR_Word, RetString),
+			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
 			MR_PROC_LABEL, ""string:string/0"");
-		memcpy(RetString, read_buffer, i * sizeof(Char));
+		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
 		RetString[i] = '\\0';
 	} else {
 		RetString = NULL;
@@ -1614,7 +1614,8 @@ io__check_err(Stream, Res) -->
 		[will_not_call_mercury, thread_safe],
 "{
 	incr_hp_atomic_msg(Buffer,
-		(Size * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
+		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
 }").
 
@@ -1623,26 +1624,28 @@ io__check_err(Stream, Res) -->
 			Buffer::uo),
 	[will_not_call_mercury, thread_safe],
 "{
-	Char *buffer0 = (Char *) Buffer0;
-	Char *buffer;
+	MR_Char *buffer0 = (MR_Char *) Buffer0;
+	MR_Char *buffer;
 
 #ifdef CONSERVATIVE_GC
-	buffer = GC_REALLOC(buffer0, NewSize * sizeof(Char));
+	buffer = GC_REALLOC(buffer0, NewSize * sizeof(MR_Char));
 #else
-	if (buffer0 + OldSize == (Char *) MR_hp) {
-		Word next;
+	if (buffer0 + OldSize == (MR_Char *) MR_hp) {
+		MR_Word next;
 		incr_hp_atomic_msg(next, 
-		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
+		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL,
 		   ""io:buffer/0"");
-		assert(buffer0 + OldSize == (Char *) next);
+		assert(buffer0 + OldSize == (MR_Char *) next);
 	    	buffer = buffer0;
 	} else {
 		/* just have to alloc and copy */
 		incr_hp_atomic_msg(Buffer,
-		   (NewSize * sizeof(Char) + sizeof(Word) - 1) / sizeof(Word),
+		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL, ""io:buffer/0"");
-		buffer = (Char *) Buffer;
+		buffer = (MR_Char *) Buffer;
 		if (OldSize > NewSize) {
 			memcpy(buffer, buffer0, NewSize);
 		} else {
@@ -1651,14 +1654,14 @@ io__check_err(Stream, Res) -->
 	}
 #endif
 
-	Buffer = (Word) buffer;
+	Buffer = (MR_Word) buffer;
 }").
 
 :- pred io__buffer_to_string(buffer::di, int::in, string::uo) is det.
 :- pragma c_code(io__buffer_to_string(Buffer::di, Len::in, Str::uo),
 	[will_not_call_mercury, thread_safe],
 "{
-	Str = (String) Buffer;
+	Str = (MR_String) Buffer;
 	Str[Len] = '\\0';
 }").
 
@@ -1666,7 +1669,7 @@ io__check_err(Stream, Res) -->
 :- pragma c_code(io__buffer_to_string(Buffer::di, Str::uo),
 	[will_not_call_mercury, thread_safe],
 "{
-	Str = (String) Buffer;
+	Str = (MR_String) Buffer;
 }").
 
 :- pred io__read_into_buffer(stream::in, buffer::di, int::in, int::in,
@@ -1678,12 +1681,12 @@ io__check_err(Stream, Res) -->
 		[will_not_call_mercury, thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
-	char *buffer = (Char *) Buffer0;
+	char *buffer = (MR_Char *) Buffer0;
 	int items_read;
 
 	items_read = MR_READ(*f, buffer + Pos0, Size - Pos0);
 
-	Buffer = (Word) buffer;
+	Buffer = (MR_Word) buffer;
 	Pos = Pos0 + items_read;
 }").
 
@@ -2832,7 +2835,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 {
 	va_list args;
 	char message[5000];
-	ConstString message_as_mercury_string;
+	MR_ConstString message_as_mercury_string;
 
 	/* the `mf' parameter is currently not used */
 
@@ -2847,7 +2850,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 	save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
-	ML_throw_io_error((String) message_as_mercury_string);
+	ML_throw_io_error((MR_String) message_as_mercury_string);
 }
 
 ").
@@ -3302,55 +3305,55 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma c_code(io__stdin_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdin;
+	Stream = (MR_Word) &mercury_stdin;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__stdout_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdout;
+	Stream = (MR_Word) &mercury_stdout;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__stderr_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stderr;
+	Stream = (MR_Word) &mercury_stderr;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__stdin_binary_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdin_binary;
+	Stream = (MR_Word) &mercury_stdin_binary;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__stdout_binary_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	Stream = (Word) &mercury_stdout_binary;
+	Stream = (MR_Word) &mercury_stdout_binary;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__input_stream(Stream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	Stream = (Word) mercury_current_text_input;
+	Stream = (MR_Word) mercury_current_text_input;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__output_stream(Stream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	Stream = (Word) mercury_current_text_output;
+	Stream = (MR_Word) mercury_current_text_output;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__binary_input_stream(Stream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	Stream = (Word) mercury_current_binary_input;
+	Stream = (MR_Word) mercury_current_binary_input;
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__binary_output_stream(Stream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	Stream = (Word) mercury_current_binary_output;
+	Stream = (MR_Word) mercury_current_binary_output;
 	update_io(IO0, IO);
 ").
 
@@ -3416,7 +3419,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(
 	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	OutStream = (Word) mercury_current_text_input;
+	OutStream = (MR_Word) mercury_current_text_input;
 	mercury_current_text_input = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
@@ -3424,7 +3427,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(
 	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
-	OutStream = (Word) mercury_current_text_output;
+	OutStream = (MR_Word) mercury_current_text_output;
 	mercury_current_text_output = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
@@ -3432,7 +3435,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
 			IO0::di, IO::uo), will_not_call_mercury, "
-	OutStream = (Word) mercury_current_binary_input;
+	OutStream = (MR_Word) mercury_current_binary_input;
 	mercury_current_binary_input = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
@@ -3440,7 +3443,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 :- pragma c_code(
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
 			IO0::di, IO::uo), will_not_call_mercury, "
-	OutStream = (Word) mercury_current_binary_output;
+	OutStream = (MR_Word) mercury_current_binary_output;
 	mercury_current_binary_output = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
@@ -3455,7 +3458,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 			Stream::out, IO0::di, IO::uo),
 			[will_not_call_mercury, thread_safe],
 "
-	Stream = (Word) mercury_open(FileName, Mode);
+	Stream = (MR_Word) mercury_open(FileName, Mode);
 	ResultCode = (Stream ? 0 : -1);
 	update_io(IO0, IO);
 ").
@@ -3490,13 +3493,16 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
 	if (progname) {
-		/* The silly casting below is needed to avoid
-		   a gcc warning about casting away const.
-		   PrognameOut is of type `String' (char *);
-		   it should be of type `ConstString' (const char *),
-		   but fixing that requires a fair bit of work
-		   on the compiler.  */
-		MR_make_aligned_string(LVALUE_CAST(ConstString, PrognameOut),
+		/*
+		** The silly casting below is needed to avoid
+		** a gcc warning about casting away const.
+		** PrognameOut is of type `MR_String' (char *);
+		** it should be of type `MR_ConstString' (const char *),
+		** but fixing that requires a fair bit of work
+		** on the compiler.
+		*/
+		MR_make_aligned_string(
+			LVALUE_CAST(MR_ConstString, PrognameOut),
 			progname);
 	} else {
 		PrognameOut = DefaultProgname;
@@ -3510,7 +3516,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	{ int i = mercury_argc;
 	  Args = MR_list_empty_msg(MR_PROC_LABEL);
 	  while (--i >= 0) {
-		Args = MR_list_cons_msg((Word) mercury_argv[i], Args,
+		Args = MR_list_cons_msg((MR_Word) mercury_argv[i], Args,
 			MR_PROC_LABEL);
 	  }
 	}
@@ -3657,8 +3663,8 @@ io__make_temp(Dir, Prefix, Name) -->
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
-	incr_hp_atomic_msg(LVALUE_CAST(Word, FileName),
-		(len + sizeof(Word)) / sizeof(Word),
+	incr_hp_atomic_msg(LVALUE_CAST(MR_Word, FileName),
+		(len + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
 	if (ML_io_tempnam_counter == 0) {
 		ML_io_tempnam_counter = getpid();
@@ -3716,13 +3722,14 @@ io__make_temp(Dir, Prefix, Name) -->
 	do {								\\
 		char *errno_msg;					\\
 		size_t total_len;					\\
-		Word tmp;						\\
+		MR_Word tmp;						\\
 									\\
 		if (was_error) {					\\
 			errno_msg = strerror(errno);			\\
 			total_len = strlen(msg) + strlen(errno_msg);	\\
 			incr_hp_atomic_msg(tmp,				\\
-				(total_len + sizeof(Word)) / sizeof(Word), \\
+				(total_len + sizeof(MR_Word))		\\
+					/ sizeof(MR_Word),		\\
 				procname,				\\
 				""string:string/0"");			\\
 			(error_msg) = (char *)tmp;			\\

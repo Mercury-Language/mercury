@@ -379,7 +379,7 @@ float(Int) = Float :-
 :- pragma c_code(float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Ceil = (Integer) ceil(X);
+	Ceil = (MR_Integer) ceil(X);
 ").
 
 float__ceiling_to_int(X, float__ceiling_to_int(X)).
@@ -389,7 +389,7 @@ float__ceiling_to_int(X, float__ceiling_to_int(X)).
 :- pragma c_code(float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Floor = (Integer) floor(X);
+	Floor = (MR_Integer) floor(X);
 ").
 
 float__floor_to_int(X, float__floor_to_int(X)).
@@ -399,7 +399,7 @@ float__floor_to_int(X, float__floor_to_int(X)).
 :- pragma c_code(float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Round = (Integer) floor(X + 0.5);
+	Round = (MR_Integer) floor(X + 0.5);
 ").
 
 float__round_to_int(X, float__round_to_int(X)).
@@ -409,7 +409,7 @@ float__round_to_int(X, float__round_to_int(X)).
 :- pragma c_code(float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Trunc = (Integer) X;
+	Trunc = (MR_Integer) X;
 ").
 
 float__truncate_to_int(X, float__truncate_to_int(X)).

@@ -48,13 +48,13 @@
 % might not have a Mercury compiler around to compile library.m with.
 
 :- pragma c_code(library__version(Version::out), will_not_call_mercury, "
-	ConstString version_string = 
+	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
 	/*
 	** Cast away const needed here, because Mercury declares Version
-	** with type String rather than ConstString.
+	** with type String rather than MR_ConstString.
 	*/
-	Version = (String) (Word) version_string;
+	Version = (MR_String) (MR_Word) version_string;
 ").
 
 %---------------------------------------------------------------------------%

@@ -113,7 +113,7 @@ typedef	enum {
 extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
 				int ancestor_level, const char **problem,
-				Code **jumpaddr);
+				MR_Code **jumpaddr);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be

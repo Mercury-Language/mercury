@@ -495,7 +495,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 	[will_not_call_mercury, thread_safe],
 	"
 		Node = Id;
-		SUCCESS_INDICATOR = (Id != (Word) NULL);
+		SUCCESS_INDICATOR = (Id != (MR_Word) NULL);
 	"
 ).
 
@@ -850,7 +850,7 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 :- pragma c_code(
 	null_trace_node_id(Id::out),
 	[will_not_call_mercury, thread_safe],
-	"Id = (Word) NULL;"
+	"Id = (MR_Word) NULL;"
 ).
 
 
@@ -952,7 +952,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
 
 :- pragma c_code(node_id_to_key(Id::in, Key::out),
 		[will_not_call_mercury, thread_safe],
-		"Key = (Integer) Id;").
+		"Key = (MR_Integer) Id;").
 
 :- pred convert_node(trace_node(trace_node_id), trace_node(trace_node_key)).
 :- mode convert_node(in, out) is det.

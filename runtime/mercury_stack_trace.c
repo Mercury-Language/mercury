@@ -537,12 +537,12 @@ MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
 	bool spec)
 {
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		fatal_error("cannot print procedure id without layout");
+		MR_fatal_error("cannot print procedure id without layout");
 	}
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
 		if (spec) {
-			fatal_error("cannot generate specifications "
+			MR_fatal_error("cannot generate specifications "
 				"for compiler generated procedures");
 		}
 
@@ -567,7 +567,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Stack_Layout_Entry *entry,
 		{
 			fprintf(fp, "func");
 		} else {
-			fatal_error("procedure is not pred or func");
+			MR_fatal_error("procedure is not pred or func");
 		}
 
 		if (spec) {
@@ -673,7 +673,7 @@ MR_print_proc_id_trace_and_context(FILE *fp, bool include_trace_data,
 			break;
 
 		default:
-			fatal_error("invalid MR_Context_Position");
+			MR_fatal_error("invalid MR_Context_Position");
 	}
 }
 

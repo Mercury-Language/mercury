@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,7 +147,7 @@
 
 :- import_module int, exception.
 
-% XXX The assumption that a C `time_t' can fit into a Mercury `Integer'
+% XXX The assumption that a C `time_t' can fit into a Mercury `MR_Integer'
 % is not very portable.
 :- type time_t == int.
 
@@ -182,7 +182,7 @@ time__clock(Result, IO0, IO) :-
 :- pragma c_code(time__c_clock(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "{
-	Ret = (Integer) clock();
+	Ret = (MR_Integer) clock();
 	update_io(IO0, IO);
 }").
 
@@ -199,7 +199,7 @@ time__clocks_per_sec = Val :-
 :- pragma c_code(time__c_clocks_per_sec(Ret::out),
 	[will_not_call_mercury],
 "{
-	Ret = (Integer) CLOCKS_PER_SEC;
+	Ret = (MR_Integer) CLOCKS_PER_SEC;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -226,12 +226,12 @@ time__times(Tms, Result, IO0, IO) :-
 #ifdef MR_HAVE_POSIX_TIMES
 	struct tms t;
 
-	Ret = (Integer) times(&t);
+	Ret = (MR_Integer) times(&t);
 
-	Ut = (Integer) t.tms_utime;
-	St = (Integer) t.tms_stime;
-	CUt = (Integer) t.tms_cutime;
-	CSt = (Integer) t.tms_cstime;
+	Ut = (MR_Integer) t.tms_utime;
+	St = (MR_Integer) t.tms_stime;
+	CUt = (MR_Integer) t.tms_cutime;
+	CSt = (MR_Integer) t.tms_cstime;
 #else
 	Ret = -1;
 #endif
@@ -257,7 +257,7 @@ time__time(Result, IO0, IO) :-
 :- pragma c_code(time__c_time(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "{
-	Ret = (Integer) time(NULL);
+	Ret = (MR_Integer) time(NULL);
 	update_io(IO0, IO);
 }").
 
@@ -274,7 +274,7 @@ time__difftime(T1, T0) = Diff :-
 :- pragma c_code(time__c_difftime(T1::in, T0::in, Diff::out),
 	[will_not_call_mercury],
 "{
-	Diff = (Float) difftime((time_t) T1, (time_t) T0);
+	Diff = (MR_Float) difftime((time_t) T1, (time_t) T0);
 }").
 
 %-----------------------------------------------------------------------------%
@@ -309,14 +309,14 @@ time__localtime(Time) = TM :-
 
 	/* XXX do we need to handle the case where p == NULL here? */
 
-	Sec = (Integer) p->tm_sec;
-	Min = (Integer) p->tm_min;
-	Hrs = (Integer) p->tm_hour;
-	Mnt = (Integer) p->tm_mon;
-	Yr = (Integer) p->tm_year;
-	WD = (Integer) p->tm_wday;
-	YD = (Integer) p->tm_yday;
-	N = (Integer) p->tm_isdst;
+	Sec = (MR_Integer) p->tm_sec;
+	Min = (MR_Integer) p->tm_min;
+	Hrs = (MR_Integer) p->tm_hour;
+	Mnt = (MR_Integer) p->tm_mon;
+	Yr = (MR_Integer) p->tm_year;
+	WD = (MR_Integer) p->tm_wday;
+	YD = (MR_Integer) p->tm_yday;
+	N = (MR_Integer) p->tm_isdst;
 }").
 
 %:- func time__gmtime(time_t) = tm.
@@ -349,14 +349,14 @@ time__gmtime(Time) = TM :-
 
 	/* XXX do we need to handle the case where p == NULL here? */
 
-	Sec = (Integer) p->tm_sec;
-	Min = (Integer) p->tm_min;
-	Hrs = (Integer) p->tm_hour;
-	Mnt = (Integer) p->tm_mon;
-	Yr = (Integer) p->tm_year;
-	WD = (Integer) p->tm_wday;
-	YD = (Integer) p->tm_yday;
-	N = (Integer) p->tm_isdst;
+	Sec = (MR_Integer) p->tm_sec;
+	Min = (MR_Integer) p->tm_min;
+	Hrs = (MR_Integer) p->tm_hour;
+	Mnt = (MR_Integer) p->tm_mon;
+	Yr = (MR_Integer) p->tm_year;
+	WD = (MR_Integer) p->tm_wday;
+	YD = (MR_Integer) p->tm_yday;
+	N = (MR_Integer) p->tm_isdst;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -393,7 +393,7 @@ time__mktime(TM) = Time :-
 	t.tm_yday = YD;
 	t.tm_isdst = N;
 
-	Time = (Integer) mktime(&t);
+	Time = (MR_Integer) mktime(&t);
 }").
 
 %-----------------------------------------------------------------------------%

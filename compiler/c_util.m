@@ -208,7 +208,7 @@ c_util__unary_prefix_op(unmkbody,		"MR_unmkbody").
 c_util__unary_prefix_op(hash_string,		"MR_hash_string").
 c_util__unary_prefix_op(bitwise_complement,	"~").
 c_util__unary_prefix_op(not,			"!").
-c_util__unary_prefix_op(cast_to_unsigned,	"(Unsigned)").
+c_util__unary_prefix_op(cast_to_unsigned,	"(MR_Unsigned)").
 
 c_util__string_compare_op(str_eq, "==").
 c_util__string_compare_op(str_ne, "!=").

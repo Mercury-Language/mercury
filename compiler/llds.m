@@ -999,49 +999,51 @@
 	% to avoid unnecessary boxing/unboxing of floats.
 :- type llds_type
 	--->	bool		% A boolean value
-				% represented using the C type `Integer'.
+				% represented using the C type `MR_Integer'.
 	;	int_least8	% A signed value that fits that contains
 				% at least eight bits, represented using the
-				% C type int_least8_t. Intended for use in
+				% C type MR_int_least8_t. Intended for use in
 				% static data declarations, not for data
 				% that gets stored in registers, stack slots
 				% etc.
 	;	uint_least8	% An unsigned version of int_least8,
-				% represented using the C type uint_least8_t.
+				% represented using the C type
+				% MR_uint_least8_t.
 	;	int_least16	% A signed value that fits that contains
 				% at least sixteen bits, represented using the
-				% C type int_least16_t. Intended for use in
+				% C type MR_int_least16_t. Intended for use in
 				% static data declarations, not for data
 				% that gets stored in registers, stack slots
 				% etc.
 	;	uint_least16	% An unsigned version of int_least16,
-				% represented using the C type uint_least16_t.
+				% represented using the C type
+				% MR_uint_least16_t.
 	;	int_least32	% A signed value that fits that contains
 				% at least 32 bits, represented using the
-				% C type int_least32_t. Intended for use in
+				% C type MR_int_least32_t. Intended for use in
 				% static data declarations, not for data
 				% that gets stored in registers, stack slots
 				% etc.
 	;	uint_least32	% An unsigned version of intleast_32,
 				% represented using the C type uint_least32_t.
 	;	integer		% A Mercury `int', represented in C as a
-				% value of type `Integer' (which is
+				% value of type `MR_Integer' (which is
 				% a signed integral type of the same
 				% size as a pointer).
-	;	unsigned	% Something whose C type is `Unsigned'
-				% (the unsigned equivalent of `Integer').
+	;	unsigned	% Something whose C type is `MR_Unsigned'
+				% (the unsigned equivalent of `MR_Integer').
 	;	float		% A Mercury `float', represented in C as a
-				% value of type `Float' (which may be either
+				% value of type `MR_Float' (which may be either
 				% `float' or `double', but is usually
 				% `double').
 	;	string		% A Mercury string; represented in C as a
-				% value of type `String'.
+				% value of type `MR_String'.
 	;	data_ptr	% A pointer to data; represented in C
-				% as a value of C type `Word *'.
+				% as a value of C type `MR_Word *'.
 	;	code_ptr	% A pointer to code; represented in C
-				% as a value of C type `Code *'.
+				% as a value of C type `MR_Code *'.
 	;	word.		% Something that can be assigned to a value
-				% of C type `Word', i.e., something whose
+				% of C type `MR_Word', i.e., something whose
 				% size is a word but which may be either
 				% signed or unsigned
 				% (used for registers, stack slots, etc).

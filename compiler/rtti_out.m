@@ -399,8 +399,9 @@ output_base_typeclass_info_defn(ClassId, InstanceString,
 	% XXX It would be nice to avoid generating redundant declarations
 	% of base_typeclass_infos, but currently we don't.
 	{ DeclSet1 = DeclSet },
-	io__write_string(" = {\n\t(Code *) "),
-	io__write_list([N1, N2, N3, N4, N5], ",\n\t(Code *) ", io__write_int),
+	io__write_string(" = {\n\t(MR_Code *) "),
+	io__write_list([N1, N2, N3, N4, N5],
+		",\n\t(MR_Code *) ", io__write_int),
 	io__write_string(",\n\t"),
 	io__write_list(CodeAddrs, ",\n\t", output_static_code_addr),
 	io__write_string("\n};\n").
@@ -1003,7 +1004,7 @@ rtti_name_linkage(RttiName, Linkage) :-
 
 rtti_name_c_type(exist_locns(_),           "MR_DuExistLocn", "[]").
 rtti_name_c_type(exist_info(_),            "MR_DuExistInfo", "").
-rtti_name_c_type(field_names(_),           "ConstString", "[]").
+rtti_name_c_type(field_names(_),           "MR_ConstString", "[]").
 rtti_name_c_type(field_types(_),           "MR_PseudoTypeInfo", "[]").
 rtti_name_c_type(enum_functor_desc(_),     "MR_EnumFunctorDesc", "").
 rtti_name_c_type(notag_functor_desc,       "MR_NotagFunctorDesc", "").
@@ -1015,7 +1016,7 @@ rtti_name_c_type(du_stag_ordered_table(_), "MR_DuFunctorDesc *", "[]").
 rtti_name_c_type(du_ptag_ordered_table,    "MR_DuPtagLayout", "[]").
 rtti_name_c_type(type_ctor_info,           "struct MR_TypeCtorInfo_Struct",
 						"").
-rtti_name_c_type(base_typeclass_info(_, _), "Code *", "[]").
+rtti_name_c_type(base_typeclass_info(_, _), "MR_Code *", "[]").
 rtti_name_c_type(pseudo_type_info(Pseudo), TypePrefix, TypeSuffix) :-
 	pseudo_type_info_name_c_type(Pseudo, TypePrefix, TypeSuffix).
 rtti_name_c_type(type_hashcons_pointer,    "union MR_TableNode_Union **", "").

@@ -492,7 +492,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			/* "double quoted" arg - scan until next double quote */
 			while (*s != '"') {
 				if (s == '\0') {
-					fatal_error(
+					MR_fatal_error(
 				"Mercury runtime: unterminated quoted string\n"
 				"in MERCURY_OPTIONS environment variable\n"
 					);
@@ -1262,7 +1262,7 @@ Define_entry(do_interpreter);
 	MR_stack_trace_bottom = LABEL(global_success);
 
 	if (program_entry_point == NULL) {
-		fatal_error("no program entry point supplied");
+		MR_fatal_error("no program entry point supplied");
 	}
 
 #ifdef  PROFILE_TIME
@@ -1381,7 +1381,7 @@ MR_load_aditi_rl_code(void)
 	if (MR_address_of_do_load_aditi_rl_code != NULL) {
 		return (*MR_address_of_do_load_aditi_rl_code)();	
 	} else {
-		fatal_error(
+		MR_fatal_error(
 			"attempt to load Aditi-RL code from an executable\n"
 			"not compiled for Aditi execution.\n"
 			"Add `--aditi' to C2INITFLAGS.\n"

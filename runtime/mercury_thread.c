@@ -43,7 +43,7 @@ create_thread(MR_ThreadGoal *goal)
 #endif
 
 	if (err != 0)
-		fatal_error("error creating thread");
+		MR_fatal_error("error creating thread");
 
 	return thread;
 }
@@ -114,7 +114,7 @@ init_thread(MR_when_to_use when_to_use)
 			return TRUE;
 		
 		default:
-			fatal_error("init_thread was passed a bad value");
+			MR_fatal_error("init_thread was passed a bad value");
 	}
 }
 

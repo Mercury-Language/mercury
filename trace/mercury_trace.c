@@ -60,8 +60,8 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
 	TRUE	/* must check */
 };
 
-Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout);
-static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
+MR_Code 	*MR_trace_real(const MR_Stack_Layout_Label *layout);
+static	MR_Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, MR_Unsigned seqno,
 			MR_Unsigned depth);
@@ -102,7 +102,7 @@ static	void	MR_abandon_call_table_array(void);
 ** compiled code whenever an event to be traced occurs.
 */
 
-Code *
+MR_Code *
 MR_trace_real(const MR_Stack_Layout_Label *layout)
 {
 	MR_Integer	maybe_from_full;
@@ -323,7 +323,7 @@ check_stop_print:
 ** MR_trace_event().
 */
 
-static Code *
+static MR_Code *
 MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
 {
 	MR_Unsigned	seqno;
@@ -368,12 +368,12 @@ MR_trace_interrupt_handler(void)
 	MR_trace_func_ptr = MR_trace_interrupt;
 }
 
-static Code *
+static MR_Code *
 MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	MR_Unsigned seqno, MR_Unsigned depth)
 {
-	Code		*jumpaddr;
+	MR_Code		*jumpaddr;
 	MR_Event_Info	event_info;
 	MR_Word		*saved_regs = event_info.MR_saved_regs;
 	int		max_r_num;
@@ -440,7 +440,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 
 MR_Retry_Result
 MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
-	int ancestor_level, const char **problem, Code **jumpaddr)
+	int ancestor_level, const char **problem, MR_Code **jumpaddr)
 {
 	MR_Word				*base_sp;
 	MR_Word				*base_curfr;
@@ -864,7 +864,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
 	const MR_Stack_Layout_Entry	*proc_layout;
 	MR_Word				*top_maxfr;
 	MR_Word				*cur_maxfr;
-	Code				*redoip;
+	MR_Code				*redoip;
 	MR_TrieNode			trienode;
 	MR_Subgoal			*subgoal;
 	MR_Subgoal			*leader;
@@ -1047,7 +1047,7 @@ MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
 		** to MR_undo_updates_of_maxfr ...
 		*/
 
-		fatal_error("proc layout without exec trace "
+		MR_fatal_error("proc layout without exec trace "
 				"in MR_maybe_record_call_table");
 	}
 
@@ -1091,7 +1091,8 @@ MR_maybe_record_call_table(const MR_Stack_Layout_Entry *level_layout,
 		return;
 	}
 
-	fatal_error("unknown evaluation method in MR_maybe_record_call_table");
+	MR_fatal_error(
+		"unknown evaluation method in MR_maybe_record_call_table");
 }
 
 static void

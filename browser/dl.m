@@ -97,9 +97,9 @@ open(FileName, Mode, Scope, Result) -->
 	#ifdef RTLD_GLOBAL
 	  if (Scope) mode |= RTLD_GLOBAL;
 	#endif
-	Result = (Word) dlopen(FileName, mode);
+	Result = (MR_Word) dlopen(FileName, mode);
 #else
-	Result = (Word) NULL;
+	Result = (MR_Word) NULL;
 #endif
 }").
 
@@ -205,9 +205,9 @@ sym(handle(Handle), Name, Result) -->
 	_IO0::di, _IO::uo), [will_not_call_mercury], "
 {
 #if defined(HAVE_DLFCN_H) && defined(HAVE_DLSYM)
-	Pointer = (Word) dlsym((void *) Handle, Name);
+	Pointer = (MR_Word) dlsym((void *) Handle, Name);
 #else
-	Pointer = (Word) NULL;
+	Pointer = (MR_Word) NULL;
 #endif
 }").
 

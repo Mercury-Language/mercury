@@ -150,10 +150,10 @@ static	void	MR_trace_internal_init_from_local(void);
 static	void	MR_trace_internal_init_from_home_dir(void);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info,
-			MR_Event_Details *event_details, Code **jumpaddr);
+			MR_Event_Details *event_details, MR_Code **jumpaddr);
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, Code **jumpaddr);
+			MR_Event_Details *event_details, MR_Code **jumpaddr);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
@@ -198,11 +198,11 @@ static	void	MR_trace_event_print_internal_report(
 
 static	bool	MR_trace_valid_command(const char *word);
 
-Code *
+MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 		MR_Event_Info *event_info)
 {
-	Code			*jumpaddr;
+	MR_Code			*jumpaddr;
 	char			*line;
 	MR_Next			res;
 	MR_Event_Details	event_details;
@@ -483,7 +483,7 @@ static char *MR_mmc_options = NULL;
 static MR_Next
 MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
-	Code **jumpaddr)
+	MR_Code **jumpaddr)
 {
 	char		**words;
 	char		**orig_words = NULL;
@@ -542,7 +542,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 static MR_Next
 MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
-	Code **jumpaddr)
+	MR_Code **jumpaddr)
 {
 	const MR_Stack_Layout_Label	*layout;
 	MR_Word 				*saved_regs;
@@ -597,7 +597,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("forward", "goto");
 		}
 	} else if (streq(words[0], "next")) {
-		Unsigned	depth = event_info->MR_call_depth;
+		MR_Unsigned	depth = event_info->MR_call_depth;
 		int		stop_depth;
 		int		n;
 
@@ -628,7 +628,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			return STOP_INTERACTING;
 		}
 	} else if (streq(words[0], "finish")) {
-		Unsigned	depth = event_info->MR_call_depth;
+		MR_Unsigned	depth = event_info->MR_call_depth;
 		int		stop_depth;
 		int		n;
 
@@ -661,7 +661,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "fail")) {
 		MR_Determinism	detism = event_info->MR_event_sll->
 					MR_sll_entry->MR_sle_detism;
-		Unsigned	depth = event_info->MR_call_depth;
+		MR_Unsigned	depth = event_info->MR_call_depth;
 		int		stop_depth;
 		int		n;
 
@@ -886,7 +886,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			return KEEP_INTERACTING;
 		}
 
-		fatal_error("unrecognized retry result");
+		MR_fatal_error("unrecognized retry result");
 
 	} else if (streq(words[0], "level")) {
 		int	n;
@@ -2598,7 +2598,7 @@ MR_insert_line_at_tail(const char *contents)
 	}
 }
 
-Code *
+MR_Code *
 MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info)
 {

@@ -244,10 +244,10 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 	"
 
 	{
-		Float64		float64;
+		MR_Float64	float64;
 		unsigned char	*raw_mem_p;
 
-		float64 = (Float64) FloatVal;
+		float64 = (MR_Float64) FloatVal;
 		raw_mem_p = (unsigned char*) &float64;
 
 		#if defined(MR_BIG_ENDIAN)

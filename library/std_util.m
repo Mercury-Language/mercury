@@ -1332,28 +1332,28 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 */
 #define MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(T)                           \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
-          (Unsigned) (T) <= (4 * MR_MAX_VARIABLE_ARITY + 2) )
+          (MR_Unsigned) (T) <= (4 * MR_MAX_VARIABLE_ARITY + 2) )
 #define MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(T)              \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
           (MR_TypeCtorInfo) (T) )
 #define MR_TYPECTOR_DESC_GET_VA_ARITY(T)                                \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
-          (Unsigned) (T) / 4 )
+          (MR_Unsigned) (T) / 4 )
 #define MR_TYPECTOR_DESC_GET_VA_NAME(T)                                 \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
-          (ConstString) (((Unsigned) (T) % 4 == 0)                      \
+          (MR_ConstString) (((MR_Unsigned) (T) % 4 == 0)                \
                 ? ""pred""                                              \
-                : (((Unsigned) (T) % 4 == 1)                            \
+                : (((MR_Unsigned) (T) % 4 == 1)                         \
                     ? ""func""                                          \
                     : ""{}"" )) )
 #define MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(T)                          \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
-          (ConstString) ""builtin"" )
+          (MR_ConstString) ""builtin"" )
 #define MR_TYPECTOR_DESC_GET_VA_TYPE_CTOR_INFO(T)                       \
         ( MR_CHECK_EXPR_TYPE(T, MR_TypeCtorDesc),                       \
-          ((Unsigned) (T) % 4 == 0)                                     \
+          ((MR_Unsigned) (T) % 4 == 0)                                  \
                 ? MR_TYPE_CTOR_INFO_HO_PRED                             \
-                : (((Unsigned) (T) % 4 == 1)                            \
+                : (((MR_Unsigned) (T) % 4 == 1)                         \
                    ? MR_TYPE_CTOR_INFO_HO_FUNC                          \
                    : MR_TYPE_CTOR_INFO_TUPLE ) )
 
@@ -1370,8 +1370,8 @@ typedef struct MR_TypeCtorDesc_Struct *MR_TypeCtorDesc;
 #define ML_CONSTRUCT_INFO_GUARD
 
 typedef struct ML_Construct_Info_Struct {
-    ConstString             functor_name;
-    Integer                 arity;
+    MR_ConstString          functor_name;
+    MR_Integer              arity;
     const MR_PseudoTypeInfo *arg_pseudo_type_infos;
     MR_TypeCtorRep          type_ctor_rep;
     union {
@@ -1582,7 +1582,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 {
 	MR_TypeCtorInfo type_ctor_info;
 	MR_TypeCtorDesc type_ctor_desc;
-	Integer		arity;
+	MR_Integer	arity;
 
 	if (collapse_equivalences) {
 		type_info = MR_collapse_equivalences(type_info);
@@ -1696,28 +1696,28 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	type_ctor_desc = (MR_TypeCtorDesc) TypeCtorDesc;
 
 	if (MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
-		TypeCtorModuleName = (MR_String) (MR_Word)
-			MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
-		TypeCtorName = (MR_String) (MR_Word)
-			MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
-		TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
-	} else {
-        MR_TypeCtorInfo type_ctor_info;
+            TypeCtorModuleName = (MR_String) (MR_Word)
+                MR_TYPECTOR_DESC_GET_VA_MODULE_NAME(type_ctor_desc);
+            TypeCtorName = (MR_String) (MR_Word)
+                MR_TYPECTOR_DESC_GET_VA_NAME(type_ctor_desc);
+            TypeCtorArity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
+        } else {
+            MR_TypeCtorInfo type_ctor_info;
 
-        type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
-            type_ctor_desc);
+            type_ctor_info = MR_TYPECTOR_DESC_GET_FIXED_ARITY_TYPE_CTOR_INFO(
+                type_ctor_desc);
 
             /*
             ** We cast away the const-ness of the module and type names,
             ** because MR_String is defined as char *, not const char *.
             */
 
-		TypeCtorModuleName =
-            (MR_String) (Integer) type_ctor_info->type_ctor_module_name;
-		TypeCtorName =
-            (MR_String) (Integer) type_ctor_info->type_ctor_name;
-		TypeCtorArity = type_ctor_info->arity;
-	}
+            TypeCtorModuleName = (MR_String) (MR_Integer)
+                type_ctor_info->type_ctor_module_name;
+            TypeCtorName = (MR_String) (MR_Integer)
+                type_ctor_info->type_ctor_name;
+            TypeCtorArity = type_ctor_info->arity;
+        }
 }
 ").
 
@@ -2448,7 +2448,7 @@ int
 ML_get_num_functors(MR_TypeInfo type_info)
 {
     MR_TypeCtorInfo type_ctor_info;
-    Integer         functors;
+    MR_Integer      functors;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
@@ -2555,15 +2555,15 @@ ML_get_num_functors(MR_TypeInfo type_info)
 #define	ML_EXPAND_INFO_GUARD
 
 typedef struct ML_Expand_Info_Struct {
-    ConstString functor;
-    int         arity;
-    int         num_extra_args;
-    MR_Word     *arg_values;
-    MR_TypeInfo *arg_type_infos;
-    bool        can_free_arg_type_infos;
-    bool        non_canonical_type;
-    bool        need_functor;
-    bool        need_args;
+    MR_ConstString  functor;
+    int             arity;
+    int             num_extra_args;
+    MR_Word         *arg_values;
+    MR_TypeInfo     *arg_type_infos;
+    bool            can_free_arg_type_infos;
+    bool            non_canonical_type;
+    bool            need_functor;
+    bool            need_args;
 } ML_Expand_Info;
 
 #endif
@@ -3148,7 +3148,7 @@ ML_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     }
 
         /* Copy functor onto the heap */
-    MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+    MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Functor),
         expand_info.functor);
 
     Arity = expand_info.arity;
@@ -3268,7 +3268,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
     }
 
         /* Get functor */
-    MR_make_aligned_string(LVALUE_CAST(ConstString, Functor),
+    MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Functor),
         expand_info.functor);
 
         /* Get arity */
@@ -3425,7 +3425,7 @@ get_functor_info(Univ, FunctorInfo) :-
     switch (type_ctor_info->type_ctor_rep) {
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
-            Enum = (Integer) value;
+            Enum = (MR_Integer) value;
             SUCCESS_INDICATOR = TRUE;
             break;
 
@@ -3519,7 +3519,8 @@ get_functor_info(Univ, FunctorInfo) :-
                     break;
 
                 default:
-                    fatal_error(""get_du_functor_info: unknown sectag locn"");
+                    MR_fatal_error(
+		    ""get_du_functor_info: unknown sectag locn"");
             }
             break;
 

@@ -481,7 +481,8 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 
 #ifdef	MR_TABLE_DEBUG
 	if (key >= range) {
-		fatal_error("MR_int_fix_index_lookup_or_add: key out of range");
+		MR_fatal_error(
+			"MR_int_fix_index_lookup_or_add: key out of range");
 	}
 #endif
 
@@ -510,7 +511,8 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table,
 
 #ifdef	MR_TABLE_DEBUG
 	if (key < start) {
-		fatal_error("MR_int_start_index_lookup_or_add: small too key");
+		MR_fatal_error(
+			"MR_int_start_index_lookup_or_add: small too key");
 	}
 #endif
 
@@ -597,7 +599,7 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 MR_TrieNode
 MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
 {
-	fatal_error("tabling of typeclass_infos not yet implemented");
+	MR_fatal_error("tabling of typeclass_infos not yet implemented");
 	return NULL;
 }
 
@@ -668,7 +670,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                     arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                     break;
                 default:
-                    fatal_error("MR_table_type(): unknown sectag_locn");
+                    MR_fatal_error("MR_table_type(): unknown sectag_locn");
                 }
 
                 MR_DEBUG_TABLE_ENUM(table,
@@ -769,7 +771,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             ** The current version of the RTTI gives all equivalence types
             ** the EQUIV type_ctor_rep, not EQUIV_VAR.
             */
-            fatal_error("unexpected EQUIV_VAR type_ctor_rep");
+            MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -851,11 +853,11 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             }
 
         case MR_TYPECTOR_REP_VOID:
-            fatal_error("Cannot table a void type");
+            MR_fatal_error("Cannot table a void type");
             break;
 
         case MR_TYPECTOR_REP_C_POINTER:
-            fatal_error("Attempt to table a C_POINTER");
+            MR_fatal_error("Attempt to table a C_POINTER");
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -863,7 +865,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
-            fatal_error("Attempt to table a type_class_info");
+            MR_fatal_error("Attempt to table a type_class_info");
             break;
 
         case MR_TYPECTOR_REP_ARRAY:
@@ -891,40 +893,40 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             }
 
         case MR_TYPECTOR_REP_SUCCIP:
-            fatal_error("Attempt to table a saved succip");
+            MR_fatal_error("Attempt to table a saved succip");
             break;
 
         case MR_TYPECTOR_REP_HP:
-            fatal_error("Attempt to table a saved hp");
+            MR_fatal_error("Attempt to table a saved hp");
             break;
 
         case MR_TYPECTOR_REP_CURFR:
-            fatal_error("Attempt to table a saved curfr");
+            MR_fatal_error("Attempt to table a saved curfr");
             break;
 
         case MR_TYPECTOR_REP_MAXFR:
-            fatal_error("Attempt to table a saved maxfr");
+            MR_fatal_error("Attempt to table a saved maxfr");
             break;
 
         case MR_TYPECTOR_REP_REDOFR:
-            fatal_error("Attempt to table a saved redofr");
+            MR_fatal_error("Attempt to table a saved redofr");
             break;
 
         case MR_TYPECTOR_REP_REDOIP:
-            fatal_error("Attempt to table a saved redoip");
+            MR_fatal_error("Attempt to table a saved redoip");
             break;
 
         case MR_TYPECTOR_REP_TRAIL_PTR:
-            fatal_error("Attempt to table a saved trail pointer");
+            MR_fatal_error("Attempt to table a saved trail pointer");
             break;
 
         case MR_TYPECTOR_REP_TICKET:
-            fatal_error("Attempt to table a saved ticket");
+            MR_fatal_error("Attempt to table a saved ticket");
             break;
 
         case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
         default:
-            fatal_error("Unknown layout tag in table_any");
+            MR_fatal_error("Unknown layout tag in table_any");
             break;
     }
 
@@ -992,7 +994,7 @@ save_state(MR_SavedState *saved_state,
 	restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
-	fatal_error("sorry, not implemented: "
+	MR_fatal_error("sorry, not implemented: "
 		"minimal model tabling with --high-level-code");
   #else
 	saved_state->succ_ip = MR_succip;
@@ -1063,7 +1065,7 @@ save_state(MR_SavedState *saved_state,
 	** The trail handler will be thoroughly confused by such a sequence.
 	*/
 
-	fatal_error("Sorry, not implemented: "
+	MR_fatal_error("Sorry, not implemented: "
 		"can't have both minimal model tabling and trailing");
   #endif
 
@@ -1076,7 +1078,7 @@ save_state(MR_SavedState *saved_state,
 			MR_gen_next, MR_cut_next);
 
     #ifdef MR_HIGHLEVEL_CODE
-		fatal_error("sorry, not implemented: "
+		MR_fatal_error("sorry, not implemented: "
 			"minimal model tabling with --high-level-code");
     #else
 		printf("non region from ");
@@ -1132,7 +1134,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 
   #ifdef MR_HIGHLEVEL_CODE
 
-	fatal_error("sorry, not implemented: "
+	MR_fatal_error("sorry, not implemented: "
 		"minimal model tabling with --high-level-code");
 
   #else

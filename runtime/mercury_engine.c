@@ -688,7 +688,7 @@ Define_entry(do_last_succeed);
 	MR_succeed_discard();
 
 Define_entry(do_not_reached);
-	fatal_error("reached not_reached\n");
+	MR_fatal_error("reached not_reached\n");
 
 Define_entry(exception_handler_do_fail);
 	/*

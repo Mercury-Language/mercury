@@ -139,7 +139,7 @@ MR_trace(const MR_Stack_Layout_Label *layout)
 void
 MR_tracing_not_enabled(void)
 {
-	fatal_error("This executable is not set up for debugging.\n"
+	MR_fatal_error("This executable is not set up for debugging.\n"
 		"Rebuild the <main>_init.c file, "
 		"and give the `-t' (or `--trace')\n"
 		"option to c2init when you do so.  "

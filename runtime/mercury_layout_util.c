@@ -95,7 +95,7 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 						base_sp, base_curfr,
 						&succeeded);
 				if (! succeeded) {
-					fatal_error("missing type param in "
+					MR_fatal_error("missing type param in "
 					    "MR_materialize_typeinfos_base");
 				}
 			}

@@ -1360,7 +1360,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	IntList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
 		p--;
-		IntList = MR_list_cons_msg((UnsignedChar) *p, IntList,
+		IntList = MR_list_cons_msg((MR_UnsignedChar) *p, IntList,
 			MR_PROC_LABEL);
 	}
 }").
@@ -1564,7 +1564,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
-		MR_make_aligned_string(LVALUE_CAST(ConstString, SubString),
+		MR_make_aligned_string(LVALUE_CAST(MR_ConstString, SubString),
 			"""");
 	} else {
 		len = strlen(Str);
@@ -1609,7 +1609,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_Integer len;
 	MR_Word tmp;
 	if (Count <= 0) {
-		MR_make_aligned_string(LVALUE_CAST(ConstString, Left), """");
+		MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Left),
+			"""");
 		Right = Str;
 	} else {
 		len = strlen(Str);

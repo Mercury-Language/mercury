@@ -417,11 +417,11 @@ stack_layout__valid_proc_layout(ProcLayoutInfo) :-
 :- pragma c_code(stack_layout__concat_string_list(StringList::in,
 		ArenaSize::in, Arena::out),
 		[will_not_call_mercury, thread_safe], "{
-	Word	cur_node;
-	Integer	cur_offset;
-	Word	tmp;
+	MR_Word		cur_node;
+	MR_Integer	cur_offset;
+	MR_Word		tmp;
 
-	incr_hp_atomic(tmp, (ArenaSize + sizeof(Word)) / sizeof(Word));
+	incr_hp_atomic(tmp, (ArenaSize + sizeof(MR_Word)) / sizeof(MR_Word));
 	Arena = (char *) tmp;
 
 	cur_offset = 0;

@@ -409,7 +409,7 @@
 		subgoal->followers->item = subgoal;
 		subgoal->followers->next = NULL;
 		subgoal->followers_tail = &(subgoal->followers->next);
-		subgoal->answer_table = (Word) NULL;
+		subgoal->answer_table = (MR_Word) NULL;
 		subgoal->num_ans = 0;
 		subgoal->answer_list = NULL;
 		subgoal->answer_list_tail = &subgoal->answer_list;
@@ -490,7 +490,7 @@
 
 	table = (MR_TrieNode) T;
 
-	AT = (Word) &(table->MR_subgoal->answer_table);
+	AT = (MR_Word) &(table->MR_subgoal->answer_table);
 #else
 	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
@@ -555,7 +555,7 @@
 	*(subgoal->answer_list_tail) = answer_node;
 	subgoal->answer_list_tail = &(answer_node->next_answer);
 
-	Slot = (Word) &(answer_node->answer_data);
+	Slot = (MR_Word) &(answer_node->answer_data);
 #endif
 ").
 
@@ -596,7 +596,7 @@
 		if (LOCALS->cur_node == NULL) {
 			FAIL;
 		} else {
-			A = (Word) &LOCALS->cur_node->answer_data;
+			A = (MR_Word) &LOCALS->cur_node->answer_data;
 			LOCALS->cur_node = LOCALS->cur_node->next_answer;
 			SUCCEED;
 		}
@@ -643,7 +643,7 @@
 		if (LOCALS->cur_node == NULL) {
 			FAIL;
 		} else {
-			A = (Word) &LOCALS->cur_node->answer_data;
+			A = (MR_Word) &LOCALS->cur_node->answer_data;
 			LOCALS->cur_node = LOCALS->cur_node->next_answer;
 			SUCCEED;
 		}
@@ -782,8 +782,8 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_INT(table, table0, (Integer) I);
-	T = (Word) table;
+	MR_DEBUG_NEW_TABLE_INT(table, table0, (MR_Integer) I);
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_char(T0::in, C::in, T::out),
@@ -791,8 +791,8 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_CHAR(table, table0, (Integer) C);
-	T = (Word) table;
+	MR_DEBUG_NEW_TABLE_CHAR(table, table0, (MR_Integer) C);
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_string(T0::in, S::in, T::out),
@@ -800,8 +800,8 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table0, table;
 
 	table0 = (MR_TrieNode) T0;
-	MR_DEBUG_NEW_TABLE_STRING(table, table0, (String) S);
-	T = (Word) table;
+	MR_DEBUG_NEW_TABLE_STRING(table, table0, (MR_String) S);
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_float(T0::in, F::in, T::out),
@@ -810,7 +810,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table0 = (MR_TrieNode) T0;
 	MR_DEBUG_NEW_TABLE_FLOAT(table, table0, F);
-	T = (Word) table;
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
@@ -819,7 +819,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table0 = (MR_TrieNode) T0;
 	MR_DEBUG_NEW_TABLE_ENUM(table, table0, R, V);
-	T = (Word) table;
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_user(T0::in, V::in, T::out),
@@ -828,7 +828,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table0 = (MR_TrieNode) T0;
 	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
-	T = (Word) table;
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_lookup_insert_poly(T0::in, V::in, T::out),
@@ -837,7 +837,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 
 	table0 = (MR_TrieNode) T0;
 	MR_DEBUG_NEW_TABLE_ANY(table, table0, (MR_TypeInfo) TypeInfo_for_T, V);
-	T = (Word) table;
+	T = (MR_Word) table;
 ").
 
 :- pragma c_code(table_save_int_ans(T::in, Offset::in, I::in),
@@ -863,7 +863,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	MR_TABLE_SAVE_ANSWER(table, Offset, (Word) S,
+	MR_TABLE_SAVE_ANSWER(table, Offset, (MR_Word) S,
 		&mercury_data___type_ctor_info_string_0);
 ").
 
@@ -874,7 +874,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	table = (MR_TrieNode) T;
 #ifdef MR_HIGHLEVEL_CODE
 	MR_TABLE_SAVE_ANSWER(table, Offset,
-		(Word) MR_box_float(F),
+		(MR_Word) MR_box_float(F),
 		&mercury_data___type_ctor_info_float_0);
 #else
 	MR_TABLE_SAVE_ANSWER(table, Offset,
@@ -896,7 +896,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	I = (Integer) MR_TABLE_GET_ANSWER(table, Offset);
+	I = (MR_Integer) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_char_ans(T::in, Offset::in, C::out),
@@ -904,7 +904,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	C = (Char) MR_TABLE_GET_ANSWER(table, Offset);
+	C = (MR_Char) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_string_ans(T::in, Offset::in, S::out),
@@ -912,7 +912,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	S = (String) MR_TABLE_GET_ANSWER(table, Offset);
+	S = (MR_String) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_restore_float_ans(T::in, Offset::in, F::out),
@@ -932,7 +932,7 @@ extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	MR_TrieNode	table;
 
 	table = (MR_TrieNode) T;
-	V = (Word) MR_TABLE_GET_ANSWER(table, Offset);
+	V = (MR_Word) MR_TABLE_GET_ANSWER(table, Offset);
 ").
 
 :- pragma c_code(table_create_ans_block(T0::in, Size::in, T::out),

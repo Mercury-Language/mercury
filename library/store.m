@@ -248,21 +248,21 @@ I wonder whether it is worth it?  Hmm, probably not.
 		will_not_call_mercury,
 "
 	incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
-	*(Word *)Mutvar = Val;
+	* (MR_Word *) Mutvar = Val;
 	S = S0;
 ").
 
 :- pragma c_code(get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Mutvar;
+	Val = * (MR_Word *) Mutvar;
 	S = S0;
 ").
 
 :- pragma c_code(set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	*(Word *)Mutvar = Val;
+	* (MR_Word *) Mutvar = Val;
 	S = S0;
 ").
 
@@ -288,7 +288,7 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 		will_not_call_mercury,
 "
 	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
-	*(Word *)Ref = Val;
+	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
 
@@ -305,7 +305,7 @@ copy_ref_value(Ref, Val) -->
 :- pragma c_code(unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Ref;
+	Val = * (MR_Word *) Ref;
 	S = S0;
 ").
 
@@ -319,8 +319,8 @@ ref_functor(Ref, Functor, Arity) -->
 	#include ""mercury_misc.h""	/* for MR_fatal_error() */
 
 	/* ML_arg() is defined in std_util.m */
-	bool ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
-			MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr);
+	bool ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr);
 
 ").
 
@@ -330,14 +330,14 @@ ref_functor(Ref, Functor, Arity) -->
 	MR_TypeInfo	type_info;
 	MR_TypeInfo	arg_type_info;
 	MR_TypeInfo	exp_arg_type_info;
-	Word		*arg_ref;
+	MR_Word		*arg_ref;
 
 	type_info = (MR_TypeInfo) TypeInfo_for_T;
 	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(type_info, (Word *) Ref, ArgNum,
+	if (!ML_arg(type_info, (MR_Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		MR_fatal_error(
@@ -352,7 +352,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 	restore_transient_registers();
 
-	ArgRef = (Word) arg_ref;
+	ArgRef = (MR_Word) arg_ref;
 	S = S0;
 }").
 
@@ -362,14 +362,14 @@ ref_functor(Ref, Functor, Arity) -->
 	MR_TypeInfo	type_info;
 	MR_TypeInfo	arg_type_info;
 	MR_TypeInfo	exp_arg_type_info;
-	Word		*arg_ref;
+	MR_Word		*arg_ref;
 
 	type_info = (MR_TypeInfo) TypeInfo_for_T;
 	exp_arg_type_info = (MR_TypeInfo) TypeInfo_for_ArgT;
 
 	save_transient_registers();
 
-	if (!ML_arg(type_info, (Word *) &Val, ArgNum,
+	if (!ML_arg(type_info, (MR_Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		MR_fatal_error(
@@ -394,9 +394,9 @@ ref_functor(Ref, Functor, Arity) -->
 
 	if (arg_ref == &Val) {
 		incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
-		* (Word *) ArgRef = Val;
+		* (MR_Word *) ArgRef = Val;
 	} else {
-		ArgRef = (Word) arg_ref;
+		ArgRef = (MR_Word) arg_ref;
 	}
 	S = S0;
 }").
@@ -404,21 +404,21 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(set_ref(Ref::in, ValRef::in, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	* (Word *) Ref = * (Word *) ValRef;
+	* (MR_Word *) Ref = * (MR_Word *) ValRef;
 	S = S0;
 ").
 
 :- pragma c_code(set_ref_value(Ref::in, Val::di, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	* (Word *) Ref = Val;
+	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
 
 :- pragma c_code(extract_ref_value(_S::di, Ref::in, Val::out),
 		will_not_call_mercury,
 "
-	Val = * (Word *) Ref;
+	Val = * (MR_Word *) Ref;
 ").
 
 %-----------------------------------------------------------------------------%

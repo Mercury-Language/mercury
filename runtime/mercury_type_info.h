@@ -355,9 +355,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_define_univ_fields(univ, typeinfo, value)                \
     do {                                                            \
         MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_TYPEINFO)     \
-            = (Word) (typeinfo);                                    \
+            = (MR_Word) (typeinfo);                                 \
         MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_DATA)         \
-            = (Word) (value);                                       \
+            = (MR_Word) (value);                                    \
     } while (0)
 
 /*---------------------------------------------------------------------------*/
@@ -387,9 +387,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** added to it.
 */
 #define MR_typeclass_info_arg_typeclass_info(tci, n)                \
-    (((Word *)(tci))[(n)])
+    (((MR_Word *)(tci))[(n)])
 #define MR_typeclass_info_unconstrained_type_info(tci, n)           \
-    (((Word *)(tci))[(n)])
+    (((MR_Word *)(tci))[(n)])
 
 /*
 ** The following have the same definitions. This is because

@@ -256,7 +256,7 @@ MR_malloc(size_t n)
 
 	ptr = malloc(n);
 	if (ptr == NULL && n != 0) {
-		fatal_error("ran out of memory");
+		MR_fatal_error("ran out of memory");
 	}
 
 	return ptr;
@@ -269,7 +269,7 @@ MR_realloc(void *old_ptr, size_t num_bytes)
 
 	ptr = realloc(old_ptr, num_bytes);
 	if (ptr == NULL && num_bytes != 0) {
-		fatal_error("ran out of memory");
+		MR_fatal_error("ran out of memory");
 	}
 
 	return ptr;
@@ -310,7 +310,7 @@ MR_GC_malloc(size_t num_bytes)
 #endif
 	
 	if (ptr == NULL && num_bytes != 0) {
-		fatal_error("could not allocate memory");
+		MR_fatal_error("could not allocate memory");
 	}
 
 	return ptr;
@@ -328,7 +328,7 @@ MR_GC_malloc_uncollectable(size_t num_bytes)
 #endif
 	
 	if (ptr == NULL && num_bytes != 0) {
-		fatal_error("could not allocate memory");
+		MR_fatal_error("could not allocate memory");
 	}
 
 	return ptr;
@@ -345,7 +345,7 @@ MR_GC_realloc(void *old_ptr, size_t num_bytes)
 	ptr = realloc(old_ptr, num_bytes);
 #endif
 	if (ptr == NULL && num_bytes != 0) {
-		fatal_error("ran out of memory");
+		MR_fatal_error("ran out of memory");
 	}
 
 	return ptr;

@@ -382,14 +382,14 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 ").
 
 :- pragma c_header_code("
-MR_ArrayType *ML_make_array(Integer size, Word item);
+MR_ArrayType *ML_make_array(MR_Integer size, MR_Word item);
 ").
 
 :- pragma c_code("
 MR_ArrayType *
-ML_make_array(Integer size, Word item)
+ML_make_array(MR_Integer size, MR_Word item)
 {
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType *array;
 
 	array = MR_make_array(size);
@@ -404,13 +404,13 @@ ML_make_array(Integer size, Word item)
 :- pragma c_code(array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_make_array(Size, Item);
+	Array = (MR_Word) ML_make_array(Size, Item);
 ").
 
 :- pragma c_code(array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_make_array(0, 0);
+	Array = (MR_Word) ML_make_array(0, 0);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -478,7 +478,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
@@ -488,7 +488,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
@@ -502,7 +502,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""array__set: array index out of bounds"");
 	}
 #endif
@@ -514,17 +514,17 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 :- pragma c_header_code("
 MR_ArrayType * ML_resize_array(MR_ArrayType *old_array,
-					Integer array_size, Word item);
+					MR_Integer array_size, MR_Word item);
 ").
 
 :- pragma c_code("
 MR_ArrayType *
-ML_resize_array(MR_ArrayType *old_array, Integer array_size,
-				Word item)
+ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
+				MR_Word item)
 {
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer elements_to_copy;
+	MR_Integer elements_to_copy;
 
 	elements_to_copy = old_array->size;
 	if (elements_to_copy == array_size) return old_array;
@@ -532,7 +532,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -554,7 +554,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 :- pragma c_code(array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo), [will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_resize_array(
+	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
 
@@ -562,16 +562,16 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 
 :- pragma c_header_code("
 MR_ArrayType * ML_shrink_array(MR_ArrayType *old_array,
-					Integer array_size);
+					MR_Integer array_size);
 ").
 
 :- pragma c_code("
 MR_ArrayType *
-ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
+ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 {
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer old_array_size;
+	MR_Integer old_array_size;
 
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
@@ -580,7 +580,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 			""array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -599,7 +599,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 :- pragma c_code(array__shrink(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_shrink_array(
+	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
 
@@ -618,9 +618,9 @@ ML_copy_array(MR_ArrayType *old_array)
 	** changes to deepcopy() in runtime/deep_copy.c.
 	*/
 
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer array_size;
+	MR_Integer array_size;
 
 	array_size = old_array->size;
 	array = MR_make_array(array_size);
@@ -636,14 +636,14 @@ ML_copy_array(MR_ArrayType *old_array)
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
+	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
 :- pragma c_code(array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	Array = (Word) ML_copy_array((MR_ArrayType *) Array0);
+	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
 %-----------------------------------------------------------------------------%
