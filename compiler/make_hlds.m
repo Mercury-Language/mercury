@@ -29,8 +29,8 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	lookup_option(very_verbose, bool(VeryVerbose)),
-	maybe_report_stats(VeryVerbose),
+	lookup_option(statistics, bool(Statistics)),
+	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module1, Module2),
 	{ moduleinfo_predids(Module2, RevPredIds),
 	  reverse(RevPredIds, PredIds),
@@ -772,16 +772,12 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
+	make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
+	var_list_to_term_list(HeadVars, HeadArgs),
+	Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
 	goalinfo_init(GoalInfo),
-	Goal = call(PredId, ModeId, Args, Builtin) - GoalInfo,
-	VarSet = VarSet0.
-
-	%%% make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
-	%%% var_list_to_term_list(HeadVars, HeadArgs),
-	%%% Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
-	%%% goalinfo_init(GoalInfo),
-	%%% insert_head_unifications(HeadVars, Args, call(PredId), Goal2,
-	%%% 	VarSet0, Goal, VarSet).
+	insert_head_unifications(HeadVars, Args, call(PredId), Goal2,
+	 	VarSet1, Goal, VarSet).
 
 transform_goal(unify(A0, B0), VarSet, Subst,
 		unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo, VarSet) :-

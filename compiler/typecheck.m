@@ -148,24 +148,24 @@
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
-	lookup_option(very_verbose, bool(VeryVerbose)),
+	lookup_option(statistics, bool(Statistics)),
 	lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Checking for undefined types...\n"),
 	check_undefined_types(Module0, Module1),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose,
 		"% Checking for circular type definitions...\n"),
 	check_circular_types(Module1, Module2),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
 	check_pred_types(Module2, Module, FoundError),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
 
@@ -375,17 +375,17 @@ report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
 	io__write_string("Unbound type vars were: "),
 	write_type_var_list(TVars, TVarSet),
 	io__write_string(".\n"),
-	lookup_option(verbose, bool(Verbose)),
-	( { Verbose = yes } ->
+	lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
 		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
 		io__write_string("\tbut I can't determine which version should be called,\n"),
-		io__write_string("\tbecause the type variables listed above didn't get bound.\n")
+		io__write_string("\tbecause the type variables listed above didn't get bound.\n"),
+			% XXX improve error message
+		io__write_string("\t(I ought to tell you which call caused the error, but I'm afraid\n"),
+		io__write_string("\tyou'll have to work it out yourself.  My apologies.)\n")
 	;
 		[]
-	),
-		% XXX improve error message
-	io__write_string("\t(I ought to tell you which call caused the error, but I'm afraid\n"),
-	io__write_string("\tyou'll have to work it out yourself.  My apologies.)\n").
+	).
 
 :- pred write_type_var_list(list(var), varset, io__state, io__state).
 :- mode write_type_var_list(in, in, di, uo).
@@ -874,8 +874,8 @@ checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	lookup_option(very_verbose, bool(VeryVerbose)),
-	maybe_report_stats(VeryVerbose),
+	lookup_option(statistics, bool(Statistics)),
+	maybe_report_stats(Statistics),
 	io__write_string("\n"),
 	{ typeinfo_get_type_assign_set(T0, TypeAssignSet) },
 	{ typeinfo_get_varset(T0, VarSet) },
@@ -1285,8 +1285,8 @@ check_undefined_types(Module, Module) -->
 	{ moduleinfo_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
-	lookup_option(very_verbose, bool(VeryVerbose)),
-	maybe_report_stats(VeryVerbose),
+	lookup_option(statistics, bool(Statistics)),
+	maybe_report_stats(Statistics),
 	{ moduleinfo_preds(Module, Preds) },
 	{ moduleinfo_predids(Module, PredIds) },
 	find_undef_pred_types(PredIds, Preds, TypeDefns).
@@ -1987,8 +1987,8 @@ report_error_unif(TypeInfo, VarSet, X, Y, TypeAssignSet) -->
 :- mode write_type_assign_set_msg(input, input, di, uo).
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
-	lookup_option(very_verbose, bool(VeryVerbose)),
-	( { VeryVerbose = yes } ->
+	lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
 		( { TypeAssignSet = [_] } ->
 		    io__write_string("\tThe partial type assignment was:\n")
 		;
@@ -2009,6 +2009,7 @@ write_type_assign_set([], _) --> [].
 write_type_assign_set([TypeAssign | TypeAssigns], VarSet) -->
 	io__write_string("\t"),
 	write_type_assign(TypeAssign, VarSet),
+	io__write_string("\n"),
 	write_type_assign_set(TypeAssigns, VarSet).
 
 :- pred write_type_assign(type_assign, tvarset, io__state, io__state).
@@ -2021,44 +2022,41 @@ write_type_assign(TypeAssign, VarSet) -->
 	  type_assign_get_typevarset(TypeAssign, TypeVarSet),
 	  map__keys(VarTypes, Vars)
 	},
-	 
-	( { Vars = [Var | Vars1] } ->
-		( 
-			{ map__search(VarTypes, Var, Type) },
-			{ varset__lookup_name(VarSet, Var, _) }
-		->
-			io__write_variable(Var, VarSet),
-			io__write_string(" :: "),
-			write_type_b(Type, TypeVarSet, TypeBindings)
-		;
-			[]
-		),
-		write_type_assign_2(Vars1, VarSet, VarTypes, TypeBindings,
-			TypeVarSet)
-	;
-		io__write_string("(No variables were assigned a type)")
-	),
+	write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet,
+			no),
 	io__write_string("\n").
 
 :- pred write_type_assign_2(list(var), varset, map(var, type),
-			tsubst, tvarset, io__state, io__state).
-:- mode write_type_assign_2(input, input, input, input, input, di, uo).
+			tsubst, tvarset, bool, io__state, io__state).
+:- mode write_type_assign_2(input, input, input, input, input, input, di, uo).
 
-write_type_assign_2([], _, _, _, _) --> [].
-write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet)
-		-->
+write_type_assign_2([], _, _, _, _, FoundOne) -->
+	( { FoundOne = no } ->
+		io__write_string("(No variables were assigned a type)")
+	;
+		[]
+	).
+
+write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
+			FoundOne) -->
 	( 
 		{ map__search(VarTypes, Var, Type) },
 		{ varset__lookup_name(VarSet, Var, _) }
 	->
-		io__write_string(", "),
+		( { FoundOne = yes } ->
+			io__write_string("\n\t")
+		;
+			[]
+		),
 		io__write_variable(Var, VarSet),
 		io__write_string(" :: "),
-		write_type_b(Type, TypeVarSet, TypeBindings)
+		write_type_b(Type, TypeVarSet, TypeBindings),
+		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
+			TypeVarSet, yes)
 	;
-		[]
-	),
-	write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet).
+		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
+			TypeVarSet, FoundOne)
+	).
 
 	% write_type_b writes out a type after applying the type bindings.
 
@@ -2098,12 +2096,17 @@ report_error_var(TypeInfo, VarSet, VarId, TypeStuffList, Type,
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),
+		lookup_option(verbose_errors, bool(VerboseErrors)),
 		io__write_string("which doesn't match the expected type.\n"),
-			% XXX improve error message: should output
-			% the expected type.
-		io__write_string("\t(I ought to tell you what the expected type was,\n"),
-		io__write_string("\tbut it might be different for each overloading,\n"),
-		io__write_string("\tso I won't try.  My apologies.)\n")
+		( { VerboseErrors = yes } ->
+				% XXX improve error message: should output
+				% the expected type.
+			io__write_string("\t(I ought to tell you what the expected type was,\n"),
+			io__write_string("\tbut it might be different for each overloading,\n"),
+			io__write_string("\tso I won't try.  My apologies.)\n")
+		;
+			[]
+		)
 	),
 	write_type_assign_set_msg(TypeAssignSet0, VarSet).
 

@@ -29,20 +29,20 @@
 	% XXX need to pass FoundError to all steps
 
 modecheck(Module0, Module, FoundError) -->
-	lookup_option(very_verbose, bool(VeryVerbose)),
+	lookup_option(statistics, bool(Statistics)),
 	lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose,
 		"% Checking for undefined insts and modes...\n"),
 	check_undefined_modes(Module0, Module1),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
 	check_pred_modes(Module1, Module, FoundError),
-	maybe_report_stats(VeryVerbose),
+	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
 
