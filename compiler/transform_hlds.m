@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 :- include_module higher_order.
 :- include_module inlining.
 :- include_module deforest.
-   :- include_module pd_cost, pd_debug, pd_info, pd_term.
+   :- include_module constraint, pd_cost, pd_debug, pd_info, pd_term.
    :- include_module pd_util.
 :- include_module delay_construct.
 :- include_module unused_args.
@@ -44,8 +44,10 @@
 :- include_module const_prop.
 :- include_module loop_inv.
 
+:- include_module mmc_analysis.
+
 % XXX The following modules are all currently unused.
-:- include_module constraint, transform.
+:- include_module transform.
 :- include_module lco.
 
 %-----------------------------------------------------------------------------%

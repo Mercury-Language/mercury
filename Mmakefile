@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -30,6 +30,7 @@ SUBDIRS = \
 		library \
 		trace \
 		browser \
+		analysis \
 		compiler \
 		doc \
 		profiler \
@@ -55,7 +56,8 @@ GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
 .PHONY: dep
-dep: dep_library dep_browser dep_compiler dep_profiler dep_deep_profiler
+dep: dep_library dep_browser dep_analysis dep_compiler \
+		dep_profiler dep_deep_profiler
 
 .PHONY: dep_library
 dep_library: library/$(deps_subdir)mer_std.dep
@@ -68,6 +70,12 @@ dep_browser: browser/$(deps_subdir)mer_browser.dep
 
 browser/$(deps_subdir)mer_browser.dep:
 	+cd browser && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_analysis
+dep_analysis: analysis/$(deps_subdir)mer_analysis.dep
+
+analysis/$(deps_subdir)mer_analysis.dep:
+	+cd analysis && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
 dep_compiler: compiler/$(deps_subdir)top_level.dep
@@ -101,6 +109,7 @@ deep_profiler/$(deps_subdir)mdprof_test.dep: library/$(deps_subdir)mer_std.dep
 depend:
 	+cd library && $(SUBDIR_MMAKE) depend
 	+cd browser && $(SUBDIR_MMAKE) depend
+	+cd analysis && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd profiler && $(SUBDIR_MMAKE) depend
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
@@ -155,16 +164,22 @@ library: dep_library scripts util boehm_gc runtime
 browser: dep_browser scripts util boehm_gc runtime library
 	+cd browser && $(SUBDIR_MMAKE)
 
+.PHONY: analysis
+analysis: dep_analysis scripts util boehm_gc runtime library browser trace
+	+cd analysis && $(SUBDIR_MMAKE)
+
 .PHONY: runtime
 trace: scripts boehm_gc runtime library browser
 	+cd trace && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
-compiler: dep_compiler scripts util boehm_gc runtime library browser trace
+compiler: dep_compiler scripts util boehm_gc runtime library \
+		browser trace analysis
 	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
-libmmc: dep_compiler scripts util boehm_gc runtime library browser trace
+libmmc: dep_compiler scripts util boehm_gc runtime library \
+		browser trace analysis
 	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
@@ -183,7 +198,8 @@ deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
-tags: tags_compiler tags_library tags_browser tags_profiler tags_deep_profiler
+tags: tags_compiler tags_library tags_browser tags_analysis \
+		tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
@@ -196,6 +212,10 @@ tags_library:
 .PHONY: tags_browser
 tags_browser:
 	+cd browser && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_analysis
+tags_analysis:
+	+cd analysis && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_profiler
 tags_profiler:
@@ -210,7 +230,8 @@ tags_deep_profiler:
 # Remove from each of the listed directories mmc-generated files that don't
 # belong there.
 cleanint:
-	for dir in browser compiler deep_profiler library profiler; do \
+	for dir in analysis browser compiler deep_profiler library profiler; \
+	do \
 		echo Looking for inappropriate files in the $$dir directory: ; \
 		( cd $$dir && ../tools/cleanint > .cleanint ) ; \
 		if test -s $$dir/.cleanint ; then \
@@ -277,6 +298,8 @@ tar: $(GENERATED_DOCS)
 	+cd browser && $(SUBDIR_MMAKE) depend
 	+cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
 	+cd trace && $(SUBDIR_MMAKE) cs
+	+cd analysis && $(SUBDIR_MMAKE) depend
+	+cd analysis && $(SUBDIR_MMAKE) cs tags
 	+cd compiler && $(SUBDIR_MMAKE) depend
 	+cd compiler && $(SUBDIR_MMAKE) cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
@@ -541,6 +564,9 @@ touch_files:
 	touch browser/*.optdate
 	chmod +w browser/*.dep
 	touch browser/*.dep
+	touch analysis/*.date*
+	chmod +w analysis/*.dep
+	touch analysis/*.dep
 	touch compiler/*.date*
 	chmod +w compiler/*.dep
 	touch compiler/*.dep

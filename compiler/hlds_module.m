@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,12 +26,15 @@
 :- import_module hlds__hlds_pred, hlds__hlds_data, check_hlds__unify_proc.
 :- import_module hlds__special_pred.
 :- import_module libs__globals, backend_libs__foreign.
+:- import_module analysis.
 :- import_module relation, map, std_util, list, set, multi_map, counter.
 
 :- implementation.
 
 :- import_module hlds__hlds_out, parse_tree__prog_out, parse_tree__prog_util.
 :- import_module check_hlds__typecheck, parse_tree__modules.
+:- import_module transform_hlds__mmc_analysis.
+
 :- import_module bool, require, int, string.
 
 %-----------------------------------------------------------------------------%
@@ -374,6 +377,13 @@
 		no_tag_type_table, module_info).
 :- mode module_info_set_no_tag_types(in, in, out) is det.
 
+:- pred module_info_analysis_info(module_info, analysis_info).
+:- mode module_info_analysis_info(in, out) is det.
+
+:- pred module_info_set_analysis_info(module_info,
+		analysis_info, module_info).
+:- mode module_info_set_analysis_info(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info, pred_table).
@@ -574,12 +584,16 @@
 		type_spec_info ::		type_spec_info,
 					% data used for user-guided type
 					% specialization.
-		no_tag_type_table ::		no_tag_type_table
+		no_tag_type_table ::		no_tag_type_table,
 					% Information about no tag
 					% types. This information is
 					% also in the type_table,
 					% but lookups in this table
 					% will be much faster.
+
+		analysis_info ::		analysis_info
+					% Information for the inter-module
+					% analysis framework.
 	).
 
 	% A predicate which creates an empty module
@@ -620,7 +634,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], no, 0, 0, [], 
 		[], StratPreds, UnusedArgInfo, 0, ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation,
-		TypeSpecInfo, NoTagTypes),
+		TypeSpecInfo, NoTagTypes, init_analysis_info(mmc)),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -702,6 +716,7 @@ module_info_get_do_aditi_compilation(MI,
 	MI ^ sub_info ^ do_aditi_compilation).
 module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
+module_info_analysis_info(MI, MI ^ sub_info ^ analysis_info).
 
 %-----------------------------------------------------------------------------%
 
@@ -750,6 +765,8 @@ module_info_set_type_spec_info(MI, NewVal,
 	MI ^ sub_info ^ type_spec_info := NewVal).
 module_info_set_no_tag_types(MI, NewVal,
 	MI ^ sub_info ^ no_tag_type_table := NewVal).
+module_info_set_analysis_info(MI, NewVal,
+	MI ^ sub_info ^ analysis_info := NewVal).
 
 %-----------------------------------------------------------------------------%
 

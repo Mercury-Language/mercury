@@ -495,6 +495,13 @@ then
 		cp $root/browser/Mmake* $root/browser/Mercury.options .
 		$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 		cd $root/stage2
+		mkdir analysis
+		cd analysis
+		$LN_S $root/analysis/*.m .
+		cp $root/analysis/Mmake* $root/analysis/Mercury.options .
+		$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
+
+		cd $root/stage2
 		if $copy_runtime
 		then
 			# Remove symbolic link to the stage 1 runtime
@@ -616,7 +623,8 @@ then
 		fi
 
 		if (cd stage2 && $MMAKE $mmake_opts dep_library dep_browser \
-			dep_compiler dep_profiler dep_deep_profiler)
+			dep_analysis dep_compiler dep_profiler \
+			dep_deep_profiler)
 		then
 			echo "building of stage 2 dependencies successful"
 		else
@@ -645,6 +653,14 @@ then
 			echo "building of stage 2 trace successful"
 		else
 			echo "building of stage 2 trace not successful"
+			exit 1
+		fi
+
+		if (cd stage2 && $MMAKE $mmake_opts $jfactor analysis)
+		then
+			echo "building of stage 2 analysis successful"
+		else
+			echo "building of stage 2 analysis not successful"
 			exit 1
 		fi
 
@@ -794,6 +810,12 @@ then
 	cp $root/browser/Mmake* $root/browser/Mercury.options .
 	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage3
+	mkdir analysis
+	cd analysis
+	$LN_S $root/analysis/*.m .
+	cp $root/analysis/Mmake* $root/analysis/Mercury.options .
+	$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
+	cd $root/stage3
 	$LN_S $root/boehm_gc .
 	$LN_S $root/mps_gc .
 	$LN_S $root/bindist .
@@ -834,7 +856,7 @@ then
 	fi
 
 	if (cd stage3 && $MMAKE $mmake_opts dep_library dep_browser \
-		dep_compiler)
+		dep_analysis dep_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
 	else
@@ -892,6 +914,26 @@ then
 		fi
 	fi
 
+	if 	(cd stage3/analysis &&
+		$MMAKE $mmake_opts $jfactor all-ints &&
+		$MMAKE $mmake_opts $jfactor ${target_ext}s)
+	then
+		echo "building of stage 3 analysis successful"
+	else
+		echo "building of stage 3 analysis initially not successful"
+		df .
+		# try again, in case the failure cause was transient
+		if 	(cd stage3/analysis &&
+			$MMAKE $mmake_opts $jfactor all-ints &&
+			$MMAKE $mmake_opts $jfactor ${target_ext}s)
+		then
+			echo "building of stage 3 analysis successful"
+		else
+			echo "building of stage 3 analysis not successful"
+			exit 1
+		fi
+	fi
+
 	if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
 		echo "building of stage 3 compiler successful"
@@ -923,7 +965,7 @@ then
 		exec > "$outfile"	# redirect stdout to $outfile
 	fi
 
-	for dir in library browser compiler; do
+	for dir in library browser analysis compiler; do
 		# `mmake cs' in the compiler directory doesn't build
 		# `top_level_init.c', so we only compare the `.c'
 		# files present in the stage3 directory.

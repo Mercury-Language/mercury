@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -356,6 +356,8 @@ demangle_unused_args(UnusedArgs, ModeNum0, ModeNum) -->
 	% Process the mangling introduced by unused_args.m.
 	% This involves stripping off the `__ua<m>' or `__uab<m>' added to 
 	% the end of the predicate/function name, where m is the mode number.
+	% XXX This is out-of-date. The compiler now generates names
+	% such as UnusedArgs__p__[1].
 	% 
 	(
 		remove_trailing_int(UA_ModeNum),

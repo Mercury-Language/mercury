@@ -16,10 +16,23 @@ BETA_RELEASE=0.11.1
 # matching the release numbers.
 shopt -s extglob
 
-INDEX=index.html.$HOST
+INDEX=index.html.$HOST.$$
+LOCKDIR=generate_index_html.lock
 handled_files=
 
-trap 'rm -f $INDEX; exit 1' 1 2 3 13 15
+# Lock the directory (this script may be invoked by test_mercury
+# on multiple machines at once).
+timeout=20
+retries=0
+until mkdir $LOCKDIR; do
+	case $retries in
+	    $timeout) 	echo "** $0: timed out" 1>&2; exit 1 ;;
+	esac
+	sleep 5
+	retries=`expr $retries + 1`
+done
+
+trap 'rm -rf $INDEX $LOCKDIR; exit 1' 1 2 3 13 15
 
     #
     # These are the standard locations for apache's icons
@@ -188,7 +201,7 @@ echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 #
 for file in *
 do
-	if [ -d $file ]
+	if [ -d $file -a $file != $LOCKDIR ]
 	then
 		(cd $file && generate_index_html)
 		echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
@@ -291,3 +304,4 @@ chgrp mercury $INDEX
 
 mv $INDEX index.html
 
+rmdir $LOCKDIR || { echo "** $0: error removing $LOCKDIR" 1>&2; exit 1; }

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -392,6 +392,7 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	intermodule_analysis
 		;	read_opt_files_transitively
 		;	automatic_intermodule_optimization
 		;	use_opt_files
@@ -952,6 +953,7 @@ option_defaults_2(special_optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 	intermodule_optimization -	bool(no),
+	intermodule_analysis -		bool(no),
 	read_opt_files_transitively -	bool(yes),
 	automatic_intermodule_optimization - bool(yes),
 	use_opt_files		-	bool(no),
@@ -1555,6 +1557,7 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
+long_option("intermodule-analysis",	intermodule_analysis).
 long_option("read-opt-files-transitively", read_opt_files_transitively).
 long_option("automatic-intermodule-optimization",
 					automatic_intermodule_optimization).
@@ -3288,6 +3291,10 @@ options_help_optimization -->
 		"\t`.trans_opt' files which are already built,",
 		"\te.g. those for the standard library, but do",
 		"\tnot build any others.",
+		"--intermodule-analysis",
+		"\tPerform analyses such as termination analysis and",
+		"\tunused argument elimination across module boundaries.",
+		"\tThis option is not yet fully implemented.",
 		"--split-c-files",
 		"\tGenerate each C function in its own C file,",
 		"\tso that the linker will optimize away unused code.",

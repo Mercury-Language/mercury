@@ -1,0 +1,113 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2003 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+# analysis/Mmakefile - this is the Mmakefile for building the Mercury
+# inter-module analysis library.
+
+MERCURY_DIR=..
+LINK_STDLIB_ONLY=yes
+include $(MERCURY_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+MAIN_TARGET=library
+MERCURY_MAIN_MODULES=$(ANALYSIS_LIB_NAME)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the library.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params.
+
+MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+LN	=	ln
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS = -Dlib$(ANALYSIS_LIB_NAME)_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : library
+
+DEPENDS = $(ANALYSIS_LIB_NAME).depend
+.PHONY: depend
+depend		: $(DEPENDS)
+
+.PHONY: check
+check		: $(ANALYSIS_LIB_NAME).check
+
+.PHONY: all-ints 
+all-ints: ints int3s
+
+.PHONY: ints 
+ints		: $(ANALYSIS_LIB_NAME).ints
+
+.PHONY: int3s 
+int3s		: $(ANALYSIS_LIB_NAME).int3s
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(MTAGS) $($(ANALYSIS_LIB_NAME).ms)
+	$(MTAGS) $($(ANALYSIS_LIB_NAME).ms) ../library/*.m
+
+$(ANALYSIS_LIB_NAME).stats : $(COMPILER_DIR)/source_stats.awk \
+				$($(ANALYSIS_LIB_NAME).ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk \
+		`vpath_find $($(ANALYSIS_LIB_NAME).ms)` > $@
+	
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $($(ANALYSIS_LIB_NAME).dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs ss
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
+os: $($(ANALYSIS_LIB_NAME).os)
+cs: $($(ANALYSIS_LIB_NAME).cs)
+ss: $($(ANALYSIS_LIB_NAME).ss)
+else
+os: $(ANALYSIS_LIB_NAME).os
+cs: $(ANALYSIS_LIB_NAME).cs
+ss: $(ANALYSIS_LIB_NAME).ss
+endif
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: library
+library: lib$(ANALYSIS_LIB_NAME)
+
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install:
+

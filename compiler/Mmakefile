@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -22,7 +22,7 @@ MAIN_TARGET=mercury
 
 MERCURY_MAIN_MODULES = top_level mlds_to_gcc
 
-VPATH=$(LIBRARY_DIR) $(BROWSER_DIR)
+VPATH=$(LIBRARY_DIR) $(BROWSER_DIR) $(ANALYSIS_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -47,10 +47,13 @@ force: ;
 $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
-MCFLAGS +=	-I $(BROWSER_DIR)
-MLOBJS :=	../main.$O $(MLOBJS)
+MCFLAGS +=	-I $(BROWSER_DIR) -I $(ANALYSIS_DIR) \
+			--c-include-directory $(ANALYSIS_DIR)
+CFLAGS +=	-I $(ANALYSIS_DIR)
+MLOBJS :=	../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS =	$(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS +=	--no-main --shared
+C2INITARGS +=	$(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
 
 #
 # Work-around for a fixed limit: on alpha-dec-osf3.2, if we compile with
@@ -223,6 +226,7 @@ $(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 $(MC_PROG): $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 $(MC_PROG): $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A
+$(MC_PROG): $(ANALYSIS_DIR)/lib$(ANALYSIS_LIB_NAME).$A
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.

@@ -12,6 +12,9 @@ MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
 					--trace-optimized
 
 MCFLAGS-duplicate_call		= --warn-duplicate-calls
+MCFLAGS-unused_args_analysis    = --intermodule-analysis \
+				--optimize-unused-args --warn-unused-args
+MCFLAGS-unused_args_analysis2   = --intermodule-analysis --optimize-unused-args
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
 MCFLAGS-inference_test		= --infer-all

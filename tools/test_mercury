@@ -1243,12 +1243,21 @@ case $HOST in
 	(
 	cd $BETA_WEBDIR_TOP
 	generate_index_html
-	)
+	) || set_status "generating www index"
 	echo "test_mercury generating www index files, finished at `date`" 1>&2
 	;;
     *)
 	;;
 esac
+
+# Now rebuild the index files on the ftp site
+echo "test_mercury generating ftp index files, starting at `date`" 1>&2
+rsh $BETA_FTPHOST "\
+	PATH=/home/mercury/public/cron/scripts:\$PATH &&
+	export PATH &&
+	cd $BETA_FTPDIR &&
+	generate_index_html" || set_status "generating ftp index"
+echo "test_mercury generating ftp index files, finished at `date`" 1>&2
 
 : check for success
 

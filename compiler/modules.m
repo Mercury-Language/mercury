@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -4114,6 +4114,18 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".analysiss = "),
+	write_compact_dependencies_list(Modules, "$(analysiss_subdir)",
+					".analysis", Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".requests = "),
+	write_compact_dependencies_list(Modules, "$(requests_subdir)",
+					".request", Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".schemas = "),
 	write_compact_dependencies_list(Modules, "", ".base_schema",
 					Basis, DepStream),
@@ -4642,6 +4654,8 @@ endif\n\n"]),
 		"\t-echo $(", MakeVarName, ".int3s) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".opts) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".trans_opts) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".analysiss) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".requests) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".ds) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".module_deps) | xargs rm -f\n",
 		"\t-echo $(", MakeVarName, ".all_mhs) | xargs rm -f\n",

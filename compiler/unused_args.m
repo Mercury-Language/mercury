@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,16 +44,28 @@
 :- interface.
 
 :- import_module hlds__hlds_module.
+:- import_module analysis.
 :- import_module io.
 
 :- pred unused_args__process_module(module_info::in, module_info::out,
 				io__state::di, io__state::uo) is det.
+
+	% Instances used by mmc_analysis.m.
+:- type unused_args_answer.
+:- type unused_args_func_info.
+:- instance analysis(unused_args_func_info, any_call, unused_args_answer).
+:- instance partial_order(unused_args_func_info, any_call).
+:- instance call_pattern(unused_args_func_info, any_call).
+:- instance partial_order(unused_args_func_info, unused_args_answer).
+:- instance answer_pattern(unused_args_func_info, unused_args_answer).
+:- instance to_string(unused_args_answer).
 
 %-------------------------------------------------------------------------------
 :- implementation.
 
 :- import_module parse_tree__mercury_to_mercury, parse_tree__modules. 
 :- import_module parse_tree__prog_data, parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 :- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
 :- import_module hlds__hlds_out, hlds__instmap, hlds__make_hlds.
 :- import_module hlds__quantification, hlds__special_pred.
@@ -61,6 +73,7 @@
 :- import_module hlds__goal_util.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module check_hlds__inst_match, check_hlds__polymorphism.
+:- import_module transform_hlds__mmc_analysis.
 :- import_module ll_backend__code_util.
 :- import_module libs__options, libs__globals.
 
@@ -87,24 +100,76 @@
 		warning_info(prog_context, string, int, list(int)).
 			% context, pred name, arity, list of args to warn 
 
+%-----------------------------------------------------------------------------%
+	% Types and instances used by mmc_analysis.m.
 
-unused_args__process_module(ModuleInfo0, ModuleInfo) -->
+	% The list of unused arguments is in sorted order.
+:- type unused_args_answer ---> unused_args(list(int)).
+
+:- instance analysis(unused_args_func_info, any_call,
+		unused_args_answer) where [
+	analysis_name(_, _, _) = "unused_args",
+	analysis_version_number(_, _, _) = 1,
+	preferred_fixpoint_type(_, _, _) = least_fixpoint
+].
+
+:- type unused_args_func_info ---> unused_args_func_info(arity).
+
+:- instance call_pattern(unused_args_func_info, any_call) where [].
+:- instance partial_order(unused_args_func_info, any_call) where [
+	(more_precise_than(_, _, _) :- semidet_fail),
+	(equivalent(_, _, _) :- semidet_succeed)
+].
+
+:- instance answer_pattern(unused_args_func_info, unused_args_answer) where [
+	bottom(unused_args_func_info(Arity)) = unused_args(1 `..` Arity),
+	top(_) = unused_args([])
+].
+:- instance partial_order(unused_args_func_info, unused_args_answer) where [
+	(more_precise_than(_, unused_args(Args1), unused_args(Args2)) :-
+		set__subset(sorted_list_to_set(Args2),
+			sorted_list_to_set(Args1))
+	),
+	equivalent(_, Args, Args)
+].
+
+:- instance to_string(unused_args_answer) where [
+	to_string(unused_args(Args)) =
+		string__join_list(" ", list__map(int_to_string, Args)),
+	(from_string(String) = unused_args(Args) :-
+	    {Digits, Args0} =  string__foldl(
+		(func(Char, {Digits0, Ints0}) =
+		    ( char__is_digit(Char) ->
+			{[Char | Digits0], Ints0}
+		    ;
+			{[], [string__det_to_int(
+				string__from_rev_char_list(Digits0)) | Ints0]}
+		    )
+		), String, {[], []}),
+	    Args = list__reverse([string__det_to_int(
+	    		string__from_rev_char_list(Digits)) | Args0])
+	)
+].
+
+%-----------------------------------------------------------------------------%
+
+unused_args__process_module(!ModuleInfo) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	{ init_var_usage(ModuleInfo0, VarUsage0, PredProcs, OptProcs) },
+	init_var_usage(VarUsage0, PredProcs, ProcCallInfo0, !ModuleInfo),
 	%maybe_write_string(VeryVerbose, "% Finished initialisation.\n"),
 
 	{ unused_args_pass(PredProcs, VarUsage0, VarUsage) },
 	%maybe_write_string(VeryVerbose, "% Finished analysis.\n"),
 
 	{ map__init(UnusedArgInfo0) },
-	{ get_unused_arg_info(ModuleInfo0, PredProcs, VarUsage,
+	{ get_unused_arg_info(!.ModuleInfo, PredProcs, VarUsage,
 					UnusedArgInfo0, UnusedArgInfo) },
 
 	{ map__keys(UnusedArgInfo, PredProcsToFix) },
 
 	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
 	( { MakeOpt = yes } ->
-		{ module_info_name(ModuleInfo0, ModuleName) },
+		{ module_info_name(!.ModuleInfo, ModuleName) },
 		module_name_to_file_name(ModuleName, ".opt.tmp", no,
 				OptFileName),
 		io__open_append(OptFileName, OptFileRes),
@@ -123,7 +188,7 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(warn_unused_args, DoWarn),
 	( { DoWarn = yes ; MakeOpt = yes } ->
 		{ set__init(WarnedPredIds0) },
-		output_warnings_and_pragmas(ModuleInfo0, UnusedArgInfo,
+		output_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
 			MaybeOptFile, DoWarn, PredProcsToFix, WarnedPredIds0)
 	;
 		[]
@@ -137,29 +202,22 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	(
 		{ DoFixup = yes }
 	->
-		{ map__init(ProcCallInfo0) },
-		{ create_new_preds(PredProcsToFix, UnusedArgInfo,
-				ProcCallInfo0, ProcCallInfo1,
-				ModuleInfo0, ModuleInfo1) }, 
-		{ make_imported_unused_args_pred_infos(OptProcs,
-				ProcCallInfo1, ProcCallInfo,
-				ModuleInfo1, ModuleInfo2) },
+		list__foldl3(create_new_pred(UnusedArgInfo), PredProcsToFix,
+				ProcCallInfo0, ProcCallInfo, !ModuleInfo), 
 		% maybe_write_string(VeryVerbose, "% Finished new preds.\n"),
-		fixup_unused_args(VarUsage, PredProcs, ProcCallInfo,
-				ModuleInfo2, ModuleInfo3, VeryVerbose),
+		fixup_unused_args(VarUsage, PredProcs,
+			ProcCallInfo, !ModuleInfo, VeryVerbose),
 		% maybe_write_string(VeryVerbose, "% Fixed up goals.\n"),
 		{ map__is_empty(ProcCallInfo) ->
-			ModuleInfo = ModuleInfo3
+			true
 		;
 			% The dependencies have changed, so the dependency
 			% graph needs rebuilding.
-			module_info_clobber_dependency_info(ModuleInfo3,
-				ModuleInfo)
+			module_info_clobber_dependency_info(!ModuleInfo)
 		}
 	;
-		{ ModuleInfo = ModuleInfo0 }
+		[]
 	).
-	  
 
 %-------------------------------------------------------------------------------
 	% Initialisation section
@@ -170,96 +228,110 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	% iteration over.
 	% OptPredProcList is a list of procedures for which we got
 	% unused argument information from .opt files.
-:- pred init_var_usage(module_info::in, var_usage::out,
-		pred_proc_list::out, pred_proc_list::out) is det.
+:- pred init_var_usage(var_usage::out, pred_proc_list::out,
+		proc_call_info::out, module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
-init_var_usage(ModuleInfo, VarUsage, PredProcList, OptPredProcList) :-
+init_var_usage(VarUsage, PredProcList, ProcCallInfo, !ModuleInfo, !IO) :-
+	map__init(ProcCallInfo0),
 	map__init(VarUsage0),
-	module_info_predids(ModuleInfo, PredIds),
-	module_info_preds(ModuleInfo, PredTable),
-	module_info_unused_arg_info(ModuleInfo, UnusedArgInfo),
-	setup_local_var_usage(ModuleInfo, PredTable, PredIds, UnusedArgInfo,
-		VarUsage0, VarUsage, [], PredProcList, [], OptPredProcList).
-
-
+	module_info_predids(!.ModuleInfo, PredIds),
+	module_info_unused_arg_info(!.ModuleInfo, UnusedArgInfo),
+	setup_local_var_usage(PredIds, UnusedArgInfo,
+		VarUsage0, VarUsage, [], PredProcList,
+		ProcCallInfo0, ProcCallInfo, !ModuleInfo, !IO).
 
 	% setup args for the whole module.	
-:- pred setup_local_var_usage(module_info::in, pred_table::in,
-	list(pred_id)::in, unused_arg_info::in, var_usage::in,
-	var_usage::out, pred_proc_list::in, pred_proc_list::out,
-	pred_proc_list::in,  pred_proc_list::out) is det.
+:- pred setup_local_var_usage(list(pred_id)::in, unused_arg_info::in,
+	var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
+	proc_call_info::in, proc_call_info::out, module_info::in,
+	module_info::out, io__state::di, io__state::uo) is det.
 
-setup_local_var_usage(_, _, [], _, VarUsage, VarUsage,
-		PredProcs, PredProcs, OptProcs, OptProcs).
-setup_local_var_usage(ModuleInfo, PredTable, [PredId | PredIds], UnusedArgInfo,
-		VarUsage0, VarUsage, PredProcList0, PredProcList,
-		OptProcList0, OptProcList) :-
-	map__lookup(PredTable, PredId, PredInfo),
+setup_local_var_usage([], _, !VarUsage, !PredProcs,
+		!OptProcs, !ModuleInfo, !IO).
+setup_local_var_usage([PredId | PredIds], UnusedArgInfo,
+		!VarUsage, !PredProcList, !OptProcs, !ModuleInfo, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 		% The builtins use all their arguments.
 	( code_util__predinfo_is_builtin(PredInfo) ->
-		VarUsage1 = VarUsage0,
-		setup_local_var_usage(ModuleInfo, PredTable, PredIds,
-			UnusedArgInfo, VarUsage1, VarUsage, PredProcList0,
-			PredProcList, OptProcList0, OptProcList)
+		setup_local_var_usage(PredIds, UnusedArgInfo, !VarUsage,
+			!PredProcList, !OptProcs, !ModuleInfo, !IO)
 	;
 		pred_info_procids(PredInfo, ProcIds),
-		setup_pred_args(ModuleInfo, PredId, ProcIds, UnusedArgInfo,
-			VarUsage0, VarUsage1, PredProcList0, PredProcList1,
-			OptProcList0, OptProcList1),
-		setup_local_var_usage(ModuleInfo, PredTable, PredIds,
-			UnusedArgInfo, VarUsage1, VarUsage, PredProcList1,
-			PredProcList, OptProcList1, OptProcList)
+		setup_pred_args(PredId, ProcIds, UnusedArgInfo, !VarUsage,
+			!PredProcList, !OptProcs, !ModuleInfo, !IO),
+		setup_local_var_usage(PredIds, UnusedArgInfo, !VarUsage,
+			!PredProcList, !OptProcs, !ModuleInfo, !IO)
 	).
 
-
 	% setup args for a predicate
-:- pred setup_pred_args(module_info::in, pred_id::in, list(proc_id)::in,
-			unused_arg_info::in, var_usage::in, var_usage::out,
-			pred_proc_list::in, pred_proc_list::out,
-			pred_proc_list::in, pred_proc_list::out) is det.
+:- pred setup_pred_args(pred_id::in, list(proc_id)::in, unused_arg_info::in,
+	var_usage::in, var_usage::out, pred_proc_list::in, pred_proc_list::out,
+	proc_call_info::in, proc_call_info::out, module_info::in,
+	module_info::out, io__state::di, io__state::uo) is det.
 
-setup_pred_args(_, _, [], _, VarUsage, VarUsage,
-		PredProcs, PredProcs, OptProcs, OptProcs).
-setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
-		VarUsage, PredProcs0, PredProcs, OptProcs0, OptProcs) :-
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+setup_pred_args(_, [], _, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo, !IO).
+setup_pred_args(PredId, [ProcId | Rest], UnusedArgInfo, !VarUsage,
+		!PredProcs, !OptProcs, !ModuleInfo, !IO) :-
+	module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo),
 	map__init(VarDep0),
-	Proc = proc(PredId, ProcId),
+	globals__io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
 	(
-		% Get the unused argument info from the .opt files.
-		% Don't use the .opt file info when we have the clauses
-		% (opt_imported preds) since we may be able to do better with
-		% the information in this module.
+		% Don't use the intermodule analysis info when we have the
+		% clauses (opt_imported preds) since we may be able to do
+		% better with the information in this module.
+		Intermod = yes,
 		pred_info_is_imported(PredInfo)
 	->
-		( map__search(UnusedArgInfo, Proc, UnusedArgs) ->
+		pred_info_module(PredInfo, PredModule),
+		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+		pred_info_name(PredInfo, PredName),
+		pred_info_arity(PredInfo, PredArity),
+		FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
+			PredName, PredArity, ProcId),
+		module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
+		lookup_best_result(module_name_to_module_id(PredModule),
+			FuncId, unused_args_func_info(PredArity),
+			any_call, MaybeBestResult,
+			AnalysisInfo0, AnalysisInfo, !IO),
+		module_info_set_analysis_info(!.ModuleInfo,
+			AnalysisInfo, !:ModuleInfo),
+		( MaybeBestResult = yes(_ - unused_args(UnusedArgs)) ->
 			proc_info_headvars(ProcInfo, HeadVars),
 			list__map(list__index1_det(HeadVars),
-				UnusedArgs, UnusedVars),
+					UnusedArgs, UnusedVars),
 			initialise_vardep(VarDep0, UnusedVars, VarDep),
-			map__set(VarUsage0, proc(PredId, ProcId),
-				VarDep, VarUsage1),
-			OptProcs1 = [proc(PredId, ProcId) | OptProcs0]
+			!:VarUsage = map__set(!.VarUsage,
+					proc(PredId, ProcId), VarDep),
+			globals__io_lookup_bool_option(optimize_unused_args,
+				Optimize, !IO),
+			( Optimize = yes ->
+				make_imported_unused_args_pred_info(
+					proc(PredId, ProcId), UnusedArgs,
+					!OptProcs, !ModuleInfo)
+			;
+				true
+			)
 		;
-			VarUsage1 = VarUsage0,
-			OptProcs1 = OptProcs0
-		),
-		PredProcs1 = PredProcs0
+			true
+		)
 	;
-		pred_info_is_pseudo_imported(PredInfo),
-		hlds_pred__in_in_unification_proc_id(ProcId)
+		(
+			pred_info_is_imported(PredInfo)
+		;
+			pred_info_is_pseudo_imported(PredInfo),
+			hlds_pred__in_in_unification_proc_id(ProcId)
+		)
 	->
-		PredProcs1 = PredProcs0,
-		OptProcs1 = OptProcs0,
-		VarUsage1 = VarUsage0
+		true
 	;
 		proc_info_vartypes(ProcInfo, VarTypes),
 		map__keys(VarTypes, Vars),
 		initialise_vardep(VarDep0, Vars, VarDep1),
-		setup_output_args(ModuleInfo, ProcInfo, VarDep1, VarDep2),
+		setup_output_args(!.ModuleInfo, ProcInfo, VarDep1, VarDep2),
 		
-		module_info_globals(ModuleInfo, Globals),
+		module_info_globals(!.ModuleInfo, Globals),
 		proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
 			Globals, TypeInfoLiveness),
 		( TypeInfoLiveness = yes ->
@@ -272,14 +344,15 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		),
 
 		proc_info_goal(ProcInfo, Goal - _),
-		Info = traverse_info(ModuleInfo, VarTypes),
+		Info = traverse_info(!.ModuleInfo, VarTypes),
 		traverse_goal(Info, Goal, VarDep3, VarDep),
-		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
-		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
-		OptProcs1 = OptProcs0
+		!:VarUsage = map__set(!.VarUsage,
+				proc(PredId, ProcId), VarDep),
+
+		!:PredProcs = [proc(PredId, ProcId) | !.PredProcs]
 	),
-	setup_pred_args(ModuleInfo, PredId, Rest, UnusedArgInfo, VarUsage1,
-		VarUsage, PredProcs1, PredProcs, OptProcs1, OptProcs).
+	setup_pred_args(PredId, Rest, UnusedArgInfo,
+		!VarUsage, !PredProcs, !OptProcs, !ModuleInfo, !IO).
 
 
 :- pred initialise_vardep(var_dep::in, list(prog_var)::in, var_dep::out) is det.
@@ -732,11 +805,7 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
 					UnusedArgInfo0, UnusedArgInfo) :-
 	PredProc = proc(PredId, ProcId), 
 	map__lookup(VarUsage, PredProc, LocalVarUsage),
-
-	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, Procs),
-	map__lookup(Procs, ProcId, ProcInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	get_unused_arg_nos(LocalVarUsage, HeadVars, 1, UnusedArgs),
 	map__det_insert(UnusedArgInfo0, PredProc, UnusedArgs, UnusedArgInfo1),
@@ -765,40 +834,74 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
 		% interface. 
 		% The other is that the next proc_id for a predicate is
 		% chosen based on the length of the list of proc_ids.
-:- pred create_new_preds(pred_proc_list::in, unused_arg_info::in,
+:- pred create_new_pred(unused_arg_info::in, pred_proc_id::in,
 		proc_call_info::in, proc_call_info::out,
-		module_info::in, module_info::out) is det.
+		module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
-create_new_preds([], _UnusedArgInfo, ProcCallInfo, ProcCallInfo, Mod, Mod).
-create_new_preds([PredProc | PredProcs], UnusedArgInfo,
-		ProcCallInfo0, ProcCallInfo, ModuleInfo0, ModuleInfo) :- 
-	create_new_pred(PredProc, UnusedArgInfo, ProcCallInfo0, ProcCallInfo1,
-			ModuleInfo0, ModuleInfo1),
-	create_new_preds(PredProcs, UnusedArgInfo, ProcCallInfo1, ProcCallInfo,
-			ModuleInfo1, ModuleInfo).
-
-:- pred create_new_pred(pred_proc_id::in, unused_arg_info::in,
-		proc_call_info::in, proc_call_info::out,
-		module_info::in, module_info::out) is det.
-
-create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
-		ProcCallInfo0, ProcCallInfo, ModuleInfo0, ModuleInfo) :-
+create_new_pred(UnusedArgInfo, proc(PredId, ProcId),
+		!ProcCallInfo, !ModuleInfo, !IO) :-
 	map__lookup(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs),
-	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
-								OldProc0), 
+	module_info_pred_proc_info(!.ModuleInfo,
+		PredId, ProcId, OrigPredInfo, OrigProcInfo), 
 	(
 		UnusedArgs = []
 	->
-		ModuleInfo = ModuleInfo0,
-		ProcCallInfo = ProcCallInfo0
+		true
 	;
-		need_extra_proc(ModuleInfo0, UnusedArgs, proc(PredId, ProcId), 
-			IntermodUnusedArgs, InMap),
-		pred_info_import_status(PredInfo0, Status0),
+		pred_info_module(OrigPredInfo, PredModule),
+		pred_info_name(OrigPredInfo, PredName),
+
+		globals__io_lookup_bool_option(intermodule_analysis,
+			Intermod, !IO),
+		( Intermod = yes ->
+			module_info_analysis_info(!.ModuleInfo, AnalysisInfo0),
+			pred_info_get_is_pred_or_func(OrigPredInfo,
+				PredOrFunc),
+			pred_info_arity(OrigPredInfo, PredArity),
+			ModuleId = module_name_to_module_id(PredModule),
+			FuncId = pred_or_func_name_arity_to_func_id(PredOrFunc,
+					PredName, PredArity, ProcId),
+			FuncInfo = unused_args_func_info(PredArity),
+
+			lookup_results(ModuleId, FuncId, FuncInfo,
+				IntermodResults0, AnalysisInfo0, AnalysisInfo1,
+				!IO),
+			IntermodResults1 = list__map(
+			    (func(any_call - unused_args(ResArgs)) = ResArgs),
+			    IntermodResults0),
+			( list__member(UnusedArgs, IntermodResults1) ->
+				AnalysisInfo = AnalysisInfo1
+			;
+				analysis__record_result(ModuleId,
+					FuncId, FuncInfo, any_call,
+					unused_args(UnusedArgs),
+					AnalysisInfo1, AnalysisInfo)
+			),
+			module_info_set_analysis_info(!.ModuleInfo,
+				AnalysisInfo, !:ModuleInfo),
+
+			%
+			% XXX Mark versions which have more unused arguments
+			% than what we have computed here as invalid
+			% in the AnalysisInfo, so that modules which use
+			% those versions can be recompiled.
+			%
+			IntermodResults = list__filter(
+			    (pred(VersionUnusedArgs::in) is semidet :-
+				set__subset(
+					sorted_list_to_set(VersionUnusedArgs),
+					sorted_list_to_set(UnusedArgs))
+				), IntermodResults1)
+		;
+			IntermodResults0 = [],
+			IntermodResults = []
+		),
+		pred_info_import_status(OrigPredInfo, Status0),
 		(
 			Status0 = opt_imported,
-			InMap = yes,
-			IntermodUnusedArgs = no
+			IntermodResults0 = [_|_],
+			IntermodResults = []
 		->
 			% If this predicate is from a .opt file, and
 			% no more arguments have been removed than in the
@@ -807,129 +910,91 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 			% it if no other optimization is performed on it.
 			Status = opt_imported
 		;
-			Status0 = exported,
-			InMap = yes
+			status_is_exported(Status0, yes)
 		->
-			% This specialized version of the predicate was
-			% declared in the .opt file for this module so
+			% This specialized version of the predicate will be
+			% declared in the analysis file for this module so
 			% it must be exported.
-			Status = exported
+			Status = Status0
 		;
 			Status = local
 		),
-		( IntermodUnusedArgs = no ->
-			NameSuffix = "__ua"
-		;
-			% This predicate was declared in a .opt file,
-			% but more arguments were removed than was declared
-			% in the .opt file, so a different name is required. 
-			NameSuffix = "__uab"
-		),
-		make_new_pred_info(ModuleInfo0, PredInfo0, UnusedArgs,
-		    NameSuffix, Status, proc(PredId, ProcId), NewPredInfo0),
+		make_new_pred_info(!.ModuleInfo, OrigPredInfo, UnusedArgs,
+		    Status, proc(PredId, ProcId), NewPredInfo0),
+		pred_info_name(NewPredInfo0, NewPredName),
 		pred_info_procedures(NewPredInfo0, NewProcs0),
-		next_mode_id(NewProcs0, no, NewProcId),
 
 			% Assign the old procedure to a new predicate, which
 			% will be fixed up in fixup_unused_args.
-		map__set(NewProcs0, NewProcId, OldProc0, NewProcs),
+		map__set(NewProcs0, ProcId, OrigProcInfo, NewProcs),
 		pred_info_set_procedures(NewPredInfo0, NewProcs, NewPredInfo),
 
 			% add the new proc to the pred table
-		module_info_get_predicate_table(ModuleInfo0, PredTable0),
-		predicate_table_insert(PredTable0, NewPredInfo, NewPredId,
-								PredTable1),
-		pred_info_module(NewPredInfo, PredModule),
-		pred_info_name(NewPredInfo, PredName),
-		PredSymName = qualified(PredModule, PredName),
+		module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+		predicate_table_insert(PredTable0,
+			NewPredInfo, NewPredId, PredTable),
+		module_info_set_predicate_table(!.ModuleInfo,
+			PredTable, !:ModuleInfo),
+
 			% add the new proc to the proc_call_info map
-		map__det_insert(ProcCallInfo0, proc(PredId, ProcId),
-		    call_info(NewPredId, NewProcId, PredSymName, UnusedArgs),
-		    ProcCallInfo),
-		(
-			Status0 = exported,
-			IntermodUnusedArgs = yes(UnusedArgs2)
-		->
-			% Add an exported predicate with the number of removed
-			% arguments promised in the .opt file which just calls
-			% the new predicate.
-			make_new_pred_info(ModuleInfo0, PredInfo0,
-				UnusedArgs2, "__ua", exported,
-				proc(PredId, ProcId), ExtraPredInfo0),
-			create_call_goal(UnusedArgs, NewPredId, NewProcId,
-				PredModule, PredName, OldProc0, ExtraProc0),
-			proc_info_headvars(OldProc0, HeadVars0),
-			remove_listof_elements(HeadVars0, 1, UnusedArgs2,
-				IntermodHeadVars),
-			proc_info_set_headvars(ExtraProc0, IntermodHeadVars,
-				ExtraProc1),
-			proc_info_argmodes(OldProc0, ArgModes0),
-			remove_listof_elements(ArgModes0, 1, UnusedArgs2,
-				IntermodArgModes),
-			proc_info_set_argmodes(ExtraProc1, IntermodArgModes,
-					ExtraProc),
-			pred_info_procedures(ExtraPredInfo0, ExtraProcs0),
-			next_mode_id(ExtraProcs0, no, ExtraProcId),
-			map__set(ExtraProcs0, ExtraProcId,
-				ExtraProc, ExtraProcs),
-			pred_info_set_procedures(ExtraPredInfo0, ExtraProcs,
-				ExtraPredInfo),
-			predicate_table_insert(PredTable1, ExtraPredInfo,
-					_, PredTable2)
-		;
-			PredTable2 = PredTable1
-		),
+		PredSymName = qualified(PredModule, NewPredName),
+		map__det_insert(!.ProcCallInfo, proc(PredId, ProcId),
+			call_info(NewPredId, ProcId, PredSymName, UnusedArgs),
+			!:ProcCallInfo),
 
-		predicate_table_get_preds(PredTable2, Preds0),
-		pred_info_procedures(PredInfo0, Procs0),
-		create_call_goal(UnusedArgs, NewPredId, NewProcId,
-			PredModule, PredName, OldProc0, OldProc),
-		map__set(Procs0, ProcId, OldProc, Procs),
-		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
-		map__det_update(Preds0, PredId, PredInfo, Preds1),
-		predicate_table_set_preds(PredTable2, Preds1, PredTable),
-		module_info_set_predicate_table(ModuleInfo0, PredTable,
-							ModuleInfo)
+			% add a forwarding predicate with the
+			% original interface.
+		create_call_goal(UnusedArgs, NewPredId, ProcId, PredModule,
+			NewPredName, OrigProcInfo, ForwardingProcInfo),
+		module_info_set_pred_proc_info(!.ModuleInfo,
+			PredId, ProcId, OrigPredInfo,
+			ForwardingProcInfo, !:ModuleInfo),
+
+			% add forwarding predicates for results
+			% produced in previous compilations.
+		list__foldl(
+			make_intermod_proc(PredId, NewPredId, ProcId,
+				NewPredName, OrigPredInfo, OrigProcInfo,
+				UnusedArgs),
+			IntermodResults, !ModuleInfo)
 	).
 
-	% Check that if this procedure has a pragma unused_args declaration 
-	% in the .opt file, the number of removed arguments matches with what
-	% has just been computed. If not, it means that more arguments were
-	% found to be unused given the information from .opt files, so we need
-	% to create an interface predicate with the promised number of
-	% arguments removed which calls the fully optimized version.
-:- pred need_extra_proc(module_info::in, list(int)::in, pred_proc_id::in,
-		maybe(list(int))::out, bool::out) is det.
+:- pred make_intermod_proc(pred_id::in, pred_id::in, proc_id::in, string::in,
+	pred_info::in, proc_info::in, list(int)::in, list(int)::in,
+	module_info::in, module_info::out) is det.
 
-need_extra_proc(ModuleInfo, UnusedArgs, PredProcId,
-		MaybeIntermodUnusedArgs, InMap) :-
-	module_info_unused_arg_info(ModuleInfo, IntermodUnusedArgInfo),
-	(
-		map__search(IntermodUnusedArgInfo,
-			PredProcId, IntermodUnusedArgs)
-	->
-		InMap = yes,
-		( IntermodUnusedArgs = UnusedArgs ->
-			MaybeIntermodUnusedArgs = no
-		;
-			MaybeIntermodUnusedArgs = yes(IntermodUnusedArgs)
-		)
-	;
-		InMap = no,
-		MaybeIntermodUnusedArgs = no
-	).
+make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
+		OrigPredInfo, OrigProcInfo, UnusedArgs,
+		UnusedArgs2, !ModuleInfo) :-
+	% Add an exported predicate with the number of removed
+	% arguments promised in the analysis file which just calls
+	% the new predicate.
+	make_new_pred_info(!.ModuleInfo, OrigPredInfo, UnusedArgs2,
+		exported, proc(PredId, ProcId), ExtraPredInfo0),
+	pred_info_module(OrigPredInfo, PredModule),
+	create_call_goal(UnusedArgs, NewPredId, ProcId,
+		PredModule, NewPredName, OrigProcInfo, ExtraProc0),
+	proc_info_headvars(OrigProcInfo, HeadVars0),
+	remove_listof_elements(HeadVars0, 1, UnusedArgs2, IntermodHeadVars),
+	proc_info_set_headvars(ExtraProc0, IntermodHeadVars, ExtraProc1),
+	proc_info_argmodes(OrigProcInfo, ArgModes0),
+	remove_listof_elements(ArgModes0, 1, UnusedArgs2, IntermodArgModes),
+	proc_info_set_argmodes(ExtraProc1, IntermodArgModes, ExtraProc),
+	pred_info_procedures(ExtraPredInfo0, ExtraProcs0),
+	map__set(ExtraProcs0, ProcId, ExtraProc, ExtraProcs),
+	pred_info_set_procedures(ExtraPredInfo0, ExtraProcs, ExtraPredInfo),
+	module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+	predicate_table_insert(PredTable0, ExtraPredInfo, _, PredTable),
+	module_info_set_predicate_table(!.ModuleInfo, PredTable, !:ModuleInfo).
 
 :- pred make_new_pred_info(module_info::in, pred_info::in, list(int)::in,
-	    string::in, import_status::in, pred_proc_id::in,
-	    pred_info::out) is det.
+	    import_status::in, pred_proc_id::in, pred_info::out) is det.
 
-make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
-		proc(_PredId, ProcId), PredInfo) :-
+make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, Status,
+		proc(_PredId, _ProcId), PredInfo) :-
 	pred_info_module(PredInfo0, PredModule),
 	pred_info_name(PredInfo0, Name0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
-	proc_id_to_int(ProcId, ProcInt),
-	string__int_to_string(ProcInt, Id),
 	pred_info_arg_types(PredInfo0, Tvars, ExistQVars, ArgTypes0),
 		% create a unique new pred name using the old proc_id
 	(
@@ -961,7 +1026,8 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	;
 		Name1 = Name0
 	),
-	string__append_list([Name1, NameSuffix, Id], Name),
+	make_pred_name(PredModule, "UnusedArgs", yes(PredOrFunc),
+		Name1, unused_args(UnusedArgs), Name),
 	pred_info_arity(PredInfo0, Arity),
 	pred_info_typevarset(PredInfo0, TypeVars),
 	remove_listof_elements(ArgTypes0, 1, UnusedArgs, ArgTypes),
@@ -972,9 +1038,7 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	pred_info_get_class_context(PredInfo0, ClassContext),
 	pred_info_get_aditi_owner(PredInfo0, Owner),
 	map__init(EmptyProofs),
-		% *** This will need to be fixed when the condition
-		%	field of the pred_info becomes used.
-	pred_info_init(PredModule, qualified(PredModule, Name), Arity, Tvars,
+	pred_info_init(PredModule, Name, Arity, Tvars,
 		ExistQVars, ArgTypes, true, Context, ClausesInfo, Status,
 		Markers, GoalType, PredOrFunc, ClassContext, EmptyProofs,
 		Owner, PredInfo1),
@@ -1018,23 +1082,18 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 
 	% Create a pred_info for an imported pred with a pragma unused_args
 	% in the .opt file.
-:- pred make_imported_unused_args_pred_infos(pred_proc_list::in,
+:- pred make_imported_unused_args_pred_info(pred_proc_id::in, list(int)::in,
 		proc_call_info::in, proc_call_info::out,
 		module_info::in, module_info::out) is det.
 
-make_imported_unused_args_pred_infos([], ProcCallInfo, ProcCallInfo,
-				ModuleInfo, ModuleInfo).
-make_imported_unused_args_pred_infos([OptProc | OptProcs],
+make_imported_unused_args_pred_info(OptProc, UnusedArgs,
  		ProcCallInfo0, ProcCallInfo, ModuleInfo0, ModuleInfo) :-
-	module_info_unused_arg_info(ModuleInfo0, UnusedArgInfo),
-	map__lookup(UnusedArgInfo, OptProc, UnusedArgs),
 	OptProc = proc(PredId, ProcId),
 	module_info_pred_proc_info(ModuleInfo0,
 		PredId, ProcId, PredInfo0, ProcInfo0),
 	make_new_pred_info(ModuleInfo0, PredInfo0, UnusedArgs,
-		"__ua", imported(interface), OptProc, NewPredInfo0),
+		imported(interface), OptProc, NewPredInfo0),
 	pred_info_procedures(NewPredInfo0, NewProcs0),
-	next_mode_id(NewProcs0, no, NewProcId),
 
 		% Assign the old procedure to a new predicate.
 	proc_info_headvars(ProcInfo0, HeadVars0),
@@ -1043,23 +1102,20 @@ make_imported_unused_args_pred_infos([OptProc | OptProcs],
 	proc_info_argmodes(ProcInfo1, ArgModes0),
 	remove_listof_elements(ArgModes0, 1, UnusedArgs, ArgModes),
 	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
-	map__set(NewProcs0, NewProcId, ProcInfo, NewProcs),
+	map__set(NewProcs0, ProcId, ProcInfo, NewProcs),
 	pred_info_set_procedures(NewPredInfo0, NewProcs, NewPredInfo),
 
 		% Add the new proc to the pred table.
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, NewPredInfo, NewPredId, PredTable1),
-	module_info_set_predicate_table(ModuleInfo0, PredTable1, ModuleInfo1),
+	module_info_set_predicate_table(ModuleInfo0, PredTable1, ModuleInfo),
 	pred_info_module(NewPredInfo, PredModule),
 	pred_info_name(NewPredInfo, PredName),
 	PredSymName = qualified(PredModule, PredName),
 		% Add the new proc to the proc_call_info map.
 	map__det_insert(ProcCallInfo0, proc(PredId, ProcId),
-		call_info(NewPredId, NewProcId, PredSymName, UnusedArgs),
-		ProcCallInfo1),
-	make_imported_unused_args_pred_infos(OptProcs, ProcCallInfo1,
-		ProcCallInfo, ModuleInfo1, ModuleInfo).
-
+		call_info(NewPredId, ProcId, PredSymName, UnusedArgs),
+		ProcCallInfo).
 
 :- pred remove_listof_elements(list(T)::in, int::in, list(int)::in,
 							 list(T)::out) is det.

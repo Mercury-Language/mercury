@@ -1,0 +1,2 @@
+unused_args_analysis.m:005: In predicate `unused_args_analysis:p/2':
+unused_args_analysis.m:005:   warning: argument 1 is unused.

@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -164,8 +164,13 @@ demangle(const char *orig_name)
 	static const char func[]  = "func__";
 	static const char porf[]  = "pred_or_func__";
 
+		/*
+		** XXX This is out-of-date. The compiler now generates names
+		** such as UnusedArgs__p__[1].
+		*/
 	static const char ua_suffix[] = "__ua"; /* added by unused_args.m */
 	static const char ua_suffix2[] = "__uab"; /* added by unused_args.m */
+
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
 	static const char mercury_data[] = "mercury_data_";

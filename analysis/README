@@ -1,0 +1,162 @@
+-----------------------------------------------------------------------------
+| Copyright (C) 2003 The University of Melbourne.
+| This file may only be copied under the terms of the GNU General
+| Public License - see the file COPYING in the Mercury distribution.
+-----------------------------------------------------------------------------
+
+This directory contains an implementation of the inter-module
+analysis framework described in 
+
+	Nicholas Nethercote. The Analysis Framework of HAL,
+	Chapter 7: Inter-module Analysis, Master's Thesis,
+	University of Melbourne, September 2001, revised April 2002.
+	<http://www.cl.cam.ac.uk/~njn25/pubs/masters2001.ps.gz>.
+
+This framework records call and answer patterns for arbitrary analyses,
+and performs dependency analysis to force recompilation where necessary
+when modules change.
+
+TODO:
+- dependency tracking and invalidation after source modifications
+- garbage collection of unused versions
+- least fixpoint analyses
+
+DESIGN:
+
+The analysis framework is a library which links into the client
+compiler, allowing the class methods to examine compiler data
+structures. The interface is as compiler-independent as possible,
+so that compilers which can interface with Mercury code via .NET
+can use it.
+
+Clients of the library must define an instance of the typeclass
+`analysis__compiler', which describes the analyses the compiler
+wants to perform.
+
+Each analysis is described by a call pattern type and an
+answer pattern type. A call pattern describes the information
+known about the argument variables before analysing a call
+(by executing it in the abstract domain used by the analysis).
+An answer pattern describes the information known after analysing
+the call. Call and answer patterns must form a partial order, and
+must be convertible to strings.
+
+Analysis database
+=================
+
+When analysing a module, at each call to an imported function
+the client should call `analysis__lookup_results' or
+`analysis__lookup_best_result' to find the results which
+match the call pattern.
+
+If no results exist, the client should call `analysis__record_request',
+to ask that a specialized version be created on the next compilation
+of the client module.
+
+There is currently no way to analyse higher-order or class method
+calls. It might be possible to analyse such calls where the set of
+possibly called predicates is known, but it is better to optimize away
+higher-order or class method calls where possible.
+
+When compilation of a module is complete, the client should
+call `analysis__write_analysis_files' to write out all
+information collected during the compilation.
+
+Called by analysis passes to record analysis requests and lookup
+answers for imported functions. The status of each answer recorded
+in the database is one of the following (this is currently not
+implemented):
+
+* invalid - the answer was computed using information which has changed,
+  and must be recomputed. `invalid' entries may not be used in analysis
+  or in generating code.
+
+* fixpoint_invalid - the entry is for a least fixpoint analysis, and
+  depends on an answer which has changed so that the new answer
+  is strictly less precise than the old answer (moving towards to
+  correct answer). `fixpoint_invalid' entries may be used when analysing
+  a module, but code must not be generated which uses `fixpoint_invalid'
+  results (even indirectly). In addition, code must not be generated when
+  compiling a module in a strongly connected component of the analysis
+  dependency graph which contains `fixpoint_invalid' entries. (Note that
+  the method for handling least fixpoint analyses is not described in
+  Nicholas Nethercote's thesis).
+
+* suboptimal - the entry does not depend on any `invalid' or
+  `fixpoint_invalid' entries, but may be improved by further
+  recompilation. `suboptimal' entries do not need to be recompiled,
+  but efficiency may be improved if they are. `suboptimal' annotations
+  are only possible for greatest fixpoint analyses (least fixpoint
+  analyses start with a "super-optimal" answer and work towards the
+  correct answer).
+
+* optimal - the entry does not depend on any `invalid', `fixpoint_invalid'
+  or `suboptimal' results. Modules containing only `optimal' entries do
+  not need recompilation.
+
+Analysis dependency checker (NYI)
+=================================
+
+Examines the dependencies between analysis results and the state
+of the compilation, then orders recompilations so that there are no
+`invalid' or `fixpoint_invalid' entries (with an option to eliminate
+`suboptimal' entries).
+
+Each client compiler should have an option which invokes the analysis
+dependency checker rather than compiling code. This adjusts the status
+of entries in the database, then invokes the compiler's build tools
+(through a typeclass method) to recompile modules in the correct order.
+
+If the implementation of a function changes, all of its answers are
+marked as invalid, and the results of the functions it directly uses
+in the SCC of the analysis dependency graph containing it are reset
+to `top' (marked `suboptimal') for greatest fixpoint analyses, or
+`bottom' (marked `fixpoint_invalid') for least fixpoint analyses.
+This ensures that the new result for the function is not computed
+using potentially invalid information.
+
+After each compilation, the dependency checker examines the changes
+in the analysis results for each function.
+
+For greatest fixpoint analyses, if the new answer is
+- less precise than or incomparable with the old result,
+  all users of the call pattern are marked `invalid'.
+- equal to the old result, no entries need to be marked. 
+- more precise than the old result, callers are marked
+  as `suboptimal'.
+
+For least fixpoint analyses, if the new answer is
+- less precise than or incomparable with the old result,
+  all users of the call pattern are marked `invalid'.
+- equal to the old result, no entries need to be marked. 
+- more precise than the old result, callers are marked
+  as `fixpoint_invalid'.
+
+The new answer itself will be marked as `optimal'. This isn't
+necessarily correct -- further recompilations may change its status
+to `fixpoint_invalid' or `suboptimal' (or `invalid' if there
+are source code changes).
+
+Recompilation must proceed until there are no `invalid' or `fixpoint_invalid'
+entries. Optionally, optimization can proceed until there are no new requests
+or `suboptimal' answers.
+
+It the responsibility of the analysis implementor to ensure termination of
+the analysis process by not generating an infinite number of requests.
+
+Granularity of dependencies
+===========================
+
+The description in Nicholas Nethercote's thesis uses fine-grained
+dependency tracking, where for each exported answer only the imported
+analysis results used to compute that answer are recorded.
+
+For simplicity, the initial Mercury implementation will only record
+dependencies of entire modules on particular analysis results 
+(effectively the exported results depend on all imported analysis
+results used in that compilation). This is worthwhile because none of
+the analyses in the Mercury compiler currently record the information
+required for the more precise approach, and I would expect that other
+compilers not designed for inter-module analysis would also not
+record that information.
+

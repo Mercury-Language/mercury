@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002 The University of Melbourne. 
+# Copyright (C) 2002-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -54,6 +54,7 @@ BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
 MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
 COMPILER_DIR = $(WORKSPACE)/compiler
 UTIL_DIR = $(WORKSPACE)/util
+ANALYSIS_DIR = $(WORKSPACE)/analysis
 
 # Specify the MPS "platform"
 # E.g. lii4gc means Linux, i486, gcc
@@ -79,6 +80,7 @@ RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
 BROWSER_LIB_NAME = mer_browser
+ANALYSIS_LIB_NAME = mer_analysis
 
 # This specifies the path to the so_locations file (or its equivalent),
 # which is used by the linker to help it to map different shared objects

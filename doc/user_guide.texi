@@ -45,7 +45,7 @@
 @ifinfo
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2002 The University of Melbourne.
+Copyright (C) 1995-2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -5583,6 +5583,12 @@ others.
 Perform inter-module optimization using any @samp{.trans_opt} files which are 
 already built, e.g.@: those for the standard library, but do not build any
 others.
+
+@item --intermodule-analysis
+@findex --intermodule-analysis
+Perform analyses such as termination analysis and
+unused argument elimination across module boundaries.
+This option is not yet fully implemented.
 
 @sp 1
 @item --split-c-files

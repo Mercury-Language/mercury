@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -166,6 +166,7 @@
 :- type new_pred_id
 	--->	counter(int, int)		% Line number, Counter
 	;	type_subst(tvarset, type_subst)
+	;	unused_args(list(int))
 	.
 
 %-----------------------------------------------------------------------------%
@@ -472,6 +473,9 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
 				SubstStr)
 		)),
 		list_to_string(SubstToString, TypeSubst, PredIdStr)
+	;
+		NewPredId = unused_args(Args),
+		list_to_string(int_to_string, Args, PredIdStr)
 	),
 
 	string__format("%s__%s__%s__%s",

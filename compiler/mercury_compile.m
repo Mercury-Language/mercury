@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,6 +108,10 @@
 :- import_module recompilation__check.
 :- import_module libs__timestamp.
 :- import_module make, make__options_file, backend_libs__compile_target_code.
+
+	% inter-module analysis framework
+:- import_module analysis.
+:- import_module transform_hlds__mmc_analysis.
 
 	% library modules
 :- import_module int, list, map, set, std_util, require, string, bool, dir.
@@ -1125,6 +1129,18 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 		% magic sets can report errors.
 		{ module_info_num_errors(HLDS50, NumErrors) },
 		( { NumErrors = 0 } ->
+
+		    globals__io_lookup_bool_option(intermodule_analysis,
+				IntermodAnalysis),
+		    ( { IntermodAnalysis = yes } ->
+			{ module_info_analysis_info(HLDS50, AnalysisInfo) },
+			analysis__write_analysis_files(
+				module_name_to_module_id(ModuleName),
+				AnalysisInfo)
+		    ;
+			[]
+		    ),
+
 		    mercury_compile__maybe_generate_rl_bytecode(HLDS50,
 				Verbose, MaybeRLFile),
 		    ( { Target = c ; Target = asm } ->
