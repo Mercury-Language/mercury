@@ -25,7 +25,7 @@ time(Pred, Count, _InternalCount) -->
 		write_s("no")
 	),
 	io__nl,
-	write_s("Count = "), io__write_int(Count), nl.
+	write_s("Count = "), io__write_int(Count), io__nl.
 
 write_s(S) --> io__write_string(S).
 
@@ -37,7 +37,7 @@ write_s(S) --> io__write_string(S).
 
 %% Description: Speed tests for meta predicates.
 
-%% RCS: $Id: mode_inf_bug.m,v 1.2 1997-02-23 06:11:31 fjh Exp $
+%% RCS: $Id: mode_inf_bug.m,v 1.3 1997-03-04 04:06:31 fjh Exp $
 
 %%% Simple test predicate --------------------------------------------
 :- mode is_a(in) is semidet.
@@ -96,13 +96,13 @@ test_map_list_2(N)  :- gen_a_list(N,L), map_list_2(L,hook_is_a).
 
 test_all(ListSize,Count,InternalCount) -->
   write_s("Non-meta predicate:"),
-  time(test_is_a_list_1(ListSize),Count,InternalCount),nl,
+  time(test_is_a_list_1(ListSize),Count,InternalCount),io__nl,
   %%
   write_s("Non-meta predicate with call:"),
-  time(test_is_a_list_2(ListSize),Count,InternalCount),nl,
+  time(test_is_a_list_2(ListSize),Count,InternalCount),io__nl,
   %%
   write_s("Meta-predicate with call:"),
-  time(test_map_list_1(ListSize),Count,InternalCount),nl,
+  time(test_map_list_1(ListSize),Count,InternalCount),io__nl,
   %%
   write_s("Meta-predicate with hook:"),
   time(test_map_list_2(ListSize),Count,InternalCount).
