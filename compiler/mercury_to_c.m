@@ -605,6 +605,7 @@ c_gen_goal_2(disj(List), Indent, CGenInfo0, CGenInfo) -->
 	; { List = [Goal | Goals] } ->
 		c_gen_indent(Indent),
 		io__write_string("/* disjunction */\n"),
+		% XXX need to fix failure conts
 		{ c_gen_info_new_label_func(Label, CGenInfo0, CGenInfo1) },
 		c_gen_disj([Goal | Goals], Label, Indent, CGenInfo1, CGenInfo),
 		c_gen_insert_label_func(Label, Indent, CGenInfo),

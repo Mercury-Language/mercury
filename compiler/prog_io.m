@@ -225,8 +225,17 @@
 :- type uniqueness
 	--->		shared		% there might be other references
 	;		unique		% there is only one reference
-	;		clobbered.	% this was the only reference, but
+	;		mostly_unique	% there is only one reference
+					% but there might be more on
+					% backtracking
+	;		clobbered	% this was the only reference, but
 					% the data has already been reused
+	;		mostly_clobbered.
+					% this was the only reference, but
+					% the data has already been reused;
+					% however, there may be more references
+					% on backtracking, so we will need to
+					% restore the old value on backtracking
 
 	% higher-order predicate terms are given the inst
 	%	`ground(shared, yes(PredInstInfo))'
@@ -2303,8 +2312,12 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 		Result = ground(shared, no)
 	; Name = term_atom("unique"), Args0 = [] ->
 		Result = ground(unique, no)
+	; Name = term_atom("mostly_unique"), Args0 = [] ->
+		Result = ground(mostly_unique, no)
 	; Name = term_atom("clobbered"), Args0 = [] ->
 		Result = ground(clobbered, no)
+	; Name = term_atom("mostly_clobbered"), Args0 = [] ->
+		Result = ground(mostly_clobbered, no)
 	;
 		% The syntax for a higher-order pred inst is
 		%
@@ -2330,7 +2343,7 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 		convert_bound_inst_list(List, Functors0),
 		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(shared, Functors)
-/* backwards compatibility */
+/* `bound_unique' is for backwards compatibility - use `unique' instead */
 	; Name = term_atom("bound_unique"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
@@ -2341,6 +2354,11 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 		convert_bound_inst_list(List, Functors0),
 		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(unique, Functors)
+	; Name = term_atom("mostly_unique"), Args0 = [Disj] ->
+		disjunction_to_list(Disj, List),
+		convert_bound_inst_list(List, Functors0),
+		list__sort_and_remove_dups(Functors0, Functors),
+		Result = bound(mostly_unique, Functors)
 	;
 		parse_qualified_term(term_functor(Name, Args0, Context),
 			"", ok(QualifiedName, Args1)),

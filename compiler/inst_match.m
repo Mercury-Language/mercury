@@ -154,7 +154,7 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 
 	% To avoid infinite regress, we assume that
 	% inst_matches_initial is true for any pairs of insts which
-	% occur in Expansions.
+	% occur in `Expansions'.
 
 inst_matches_initial_3(free, free, _, _).
 inst_matches_initial_3(bound(_Uniq, _List), free, _, _).
@@ -167,6 +167,8 @@ inst_matches_initial_3(bound(UniqA, List), ground(UniqB, no), ModuleInfo, _) :-
 	bound_inst_list_is_ground(List, ModuleInfo),
 	( UniqB = unique ->
 		bound_inst_list_is_unique(List, ModuleInfo)
+	; UniqB = mostly_unique ->
+		bound_inst_list_is_mostly_unique(List, ModuleInfo)
 	;
 		true
 	).
@@ -174,11 +176,17 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
 	Uniq = unique,
 	bound_inst_list_is_ground(List, ModuleInfo),
 	bound_inst_list_is_unique(List, ModuleInfo).
+inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
+	Uniq = mostly_unique,
+	bound_inst_list_is_ground(List, ModuleInfo),
+	bound_inst_list_is_mostly_unique(List, ModuleInfo).
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _).
 inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
 	( UniqA = shared ->
-		bound_inst_list_is_shared(List, ModuleInfo)
+		bound_inst_list_is_not_partly_unique(List, ModuleInfo)
+	; UniqA = mostly_unique ->
+		bound_inst_list_is_not_fully_unique(List, ModuleInfo)
 	;
 		true
 	),
@@ -214,10 +222,20 @@ pred_inst_matches_initial(yes(PredInstA), yes(PredInstB)) :-
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
 
-unique_matches_initial(unique, unique).
-unique_matches_initial(unique, shared).
+	% unique_matches_initial(A, B) succeeds if A >= B in the ordering
+	% clobbered < mostly_clobbered < shared < mostly_unique < unique
+
+unique_matches_initial(unique, _).
+unique_matches_initial(mostly_unique, mostly_unique).
+unique_matches_initial(mostly_unique, shared).
+unique_matches_initial(mostly_unique, mostly_clobbered).
+unique_matches_initial(mostly_unique, clobbered).
 unique_matches_initial(shared, shared).
-unique_matches_initial(_, clobbered).
+unique_matches_initial(shared, mostly_clobbered).
+unique_matches_initial(shared, clobbered).
+unique_matches_initial(mostly_clobbered, mostly_clobbered).
+unique_matches_initial(mostly_clobbered, clobbered).
+unique_matches_initial(clobbered, clobbered).
 
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
@@ -310,6 +328,8 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), ModuleInfo,
 	bound_inst_list_is_ground(ListA, ModuleInfo),
 	( UniqB = unique ->
 		bound_inst_list_is_unique(ListA, ModuleInfo)
+	; UniqB = mostly_unique ->
+		bound_inst_list_is_mostly_unique(ListA, ModuleInfo)
 	;
 		true
 	).
@@ -318,7 +338,9 @@ inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListB, ModuleInfo),
 	( UniqA = shared ->
-		bound_inst_list_is_shared(ListB, ModuleInfo)
+		bound_inst_list_is_not_partly_unique(ListB, ModuleInfo)
+	; UniqA = mostly_unique ->
+		bound_inst_list_is_not_fully_unique(ListB, ModuleInfo)
 	;
 		true
 	).
@@ -348,10 +370,8 @@ pred_inst_matches_final(yes(PredInstA), yes(PredInstB)) :-
 :- pred unique_matches_final(uniqueness, uniqueness).
 :- mode unique_matches_final(in, in) is semidet.
 
-unique_matches_final(unique, unique).
-unique_matches_final(unique, shared).
-unique_matches_final(shared, shared).
-unique_matches_final(_, clobbered).
+unique_matches_final(A, B) :-
+	unique_matches_initial(A, B).
 
 :- pred inst_list_matches_final(list(inst), list(inst), module_info,
 				expansions).
@@ -602,17 +622,16 @@ inst_merge_3(not_reached, Inst, M, Inst, M).
 :- pred merge_uniq(uniqueness, uniqueness, uniqueness).
 :- mode merge_uniq(in, in, out) is det.
 
-	% if var was clobbered on either branch, the result is clobbered
-	% otherwise if var was shared on either branch, the result is shared
-	% otherwise var was unique on both branches and the result is unique
+	% merge_uniq(A, B, C) succeeds if C is minimum of A and B in
+	% the ordering
+	% clobbered < mostly_clobbered < shared < mostly_unique < unique
 
-merge_uniq(shared, shared, shared).
-merge_uniq(shared, unique, shared).
-merge_uniq(shared, clobbered, clobbered).
-merge_uniq(unique, shared, shared).
-merge_uniq(unique, unique, unique).
-merge_uniq(unique, clobbered, clobbered).
-merge_uniq(clobbered, _, clobbered).
+merge_uniq(UniqA, UniqB, Merged) :-
+	( unique_matches_initial(UniqA, UniqB) ->	% A >= B
+		Merged = UniqB
+	;
+		Merged = UniqA
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -748,7 +767,7 @@ abstractly_unify_inst_3(live, free,	bound(UniqY, List0), Real, M0,
 					bound(Uniq, List), det, M) :-
 	unify_uniq(live, Real, unique, UniqY, Uniq),
 	bound_inst_list_is_ground(List0, M),
-	( Uniq = unique ->
+	( ( Uniq = unique ; Uniq = mostly_unique ) ->
 		make_shared_bound_inst_list(List0, M0, List, M)
 	;
 		List = List0, M = M0
@@ -939,19 +958,52 @@ abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 	% this was a "real" unification, not a "fake" one.
 	% (See comment in prog_io.m for more info on "real" v.s. "fake".)
 
-unify_uniq(_,      _,          shared,    shared,    shared).
-unify_uniq(_,      _,          shared,    unique,    shared).
-unify_uniq(live,   _,          shared,    clobbered, _) :- error("unify_uniq").
-unify_uniq(dead,   fake_unify, shared,    clobbered, clobbered).
+unify_uniq(_,      _,          shared,   shared,    	    shared).
+unify_uniq(_,      _,          shared,   unique,    	    shared).
+unify_uniq(_,      _,          shared,   mostly_unique,     shared).
+unify_uniq(live,   _,          shared,   clobbered, 	    _) :-
+	error("unify_uniq").
+unify_uniq(live,   _,          shared,   mostly_clobbered,  _) :-
+	error("unify_uniq").
+unify_uniq(dead,   fake_unify, shared,   clobbered, 	    clobbered).
+unify_uniq(dead,   fake_unify, shared,   mostly_clobbered,  mostly_clobbered).
 
-unify_uniq(_,      _,          unique,    shared,    shared).
-unify_uniq(live,   _,          unique,    unique,    shared).
-unify_uniq(dead,   _,          unique,    unique,    unique).
-unify_uniq(live,   _,          unique,    clobbered, _) :- error("unify_uniq").
-unify_uniq(dead,   fake_unify, unique,    clobbered, clobbered).
+unify_uniq(_,      _,          unique,   shared,    	    shared).
+unify_uniq(live,   _,          unique,   unique,    	    shared).
+unify_uniq(live,   _,          unique,   mostly_unique,     shared).
+unify_uniq(dead,   _,          unique,   unique,    	    unique).
+unify_uniq(dead,   _,          unique,   mostly_unique,     mostly_unique).
+		% XXX the above line is a conservative approximation
+		% sometimes it should return unique not mostly_unique
+unify_uniq(live,   _,          unique,   clobbered, 	    _) :-
+	error("unify_uniq").
+unify_uniq(live,   _,          unique,   mostly_clobbered,  _) :-
+	error("unify_uniq").
+unify_uniq(dead,   fake_unify, unique,   clobbered, 	    clobbered).
+unify_uniq(dead,   fake_unify, unique,   mostly_clobbered,  mostly_clobbered).
 
-unify_uniq(live,   _,          clobbered, _,         _) :- error("unify_uniq").
-unify_uniq(dead,   fake_unify, clobbered, _,         clobbered).
+unify_uniq(_,      _,          mostly_unique,    shared,    shared).
+unify_uniq(live,   _,          mostly_unique,    unique,    shared).
+unify_uniq(live,   _,          mostly_unique,    mostly_unique,    shared).
+unify_uniq(dead,   _,          mostly_unique,    unique,    mostly_unique).
+		% XXX the above line is a conservative approximation
+		% sometimes it should return unique not mostly_unique
+unify_uniq(dead,   _,          mostly_unique,    mostly_unique, mostly_unique).
+unify_uniq(live,   _,          mostly_unique,    clobbered, _) :-
+	error("unify_uniq").
+unify_uniq(live,   _,          mostly_unique,    mostly_clobbered, _) :-
+	error("unify_uniq").
+unify_uniq(dead,   fake_unify, mostly_unique,    clobbered, clobbered).
+unify_uniq(dead,   fake_unify, mostly_unique,    mostly_clobbered,
+							    mostly_clobbered).
+
+unify_uniq(live,   _,          clobbered,	 _,         _) :-
+	error("unify_uniq").
+unify_uniq(dead,   fake_unify, clobbered,	 _,         clobbered).
+
+unify_uniq(live,   _,          mostly_clobbered, _,         _) :-
+	error("unify_uniq").
+unify_uniq(dead,   fake_unify, mostly_clobbered, _,         mostly_clobbered).
 
 :- pred check_not_clobbered(uniqueness, unify_is_real).
 :- mode check_not_clobbered(in, in) is det.
@@ -960,6 +1012,8 @@ unify_uniq(dead,   fake_unify, clobbered, _,         clobbered).
 check_not_clobbered(Uniq, Real) :-
 	( Real = real_unify, Uniq = clobbered ->
 		error("abstractly_unify_inst_3: clobbered inst")
+	; Real = real_unify, Uniq = mostly_clobbered ->
+		error("abstractly_unify_inst_3: mostly_clobbered inst")
 	;
 		true
 	).
@@ -1176,8 +1230,8 @@ make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
 	make_shared_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1),
 	make_shared_inst_list(Insts0, ModuleInfo1, Insts, ModuleInfo).
 
-% make an inst shared; replace all occurrences of `unique' in the
-% inst with `shared'.
+% make an inst shared; replace all occurrences of `unique' or `mostly_unique'
+% in the inst with `shared'.
 
 :- pred make_shared_inst(inst, module_info, inst, module_info).
 :- mode make_shared_inst(in, in, out, out) is det.
@@ -1237,7 +1291,9 @@ make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 :- mode make_shared(in, out) is det.
 
 make_shared(unique, shared).
+make_shared(mostly_unique, shared).
 make_shared(shared, shared).
+make_shared(mostly_clobbered, mostly_clobbered).
 make_shared(clobbered, clobbered).
 
 :- pred make_shared_bound_inst_list(list(bound_inst), module_info,

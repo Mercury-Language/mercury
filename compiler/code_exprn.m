@@ -802,13 +802,19 @@ code_exprn__cache_exprn(Var, Rval) -->
 
 code_exprn__place_var(Var, Lval, Code) -->
 	code_exprn__get_vars(Vars0),
-	{
-		map__search(Vars0, Var, Stat0)
+	(
+		{ map__search(Vars0, Var, Stat0) }
 	->
-		Stat = Stat0
+		{ Stat = Stat0 }
 	;
-		error("variable not found")
-	},
+		code_exprn__get_varset(VarSet),
+		{ varset__lookup_name(VarSet, Var, Name) ->
+			string__append("variable not found - ", Name, Msg),
+			error(Msg)
+		;
+			error("variable not found")
+		}
+	),
 	code_exprn__place_var_2(Stat, Var, Lval, Code).
 
 :- pred code_exprn__place_var_2(var_stat, var, lval, code_tree,

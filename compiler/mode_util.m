@@ -32,11 +32,21 @@
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
 
+	% succeed if the inst is `mostly_unique' or `unique'
+:- pred inst_is_mostly_unique(module_info, inst).
+:- mode inst_is_mostly_unique(in, in) is semidet.
+
+	% succeed if the inst is `unique'
 :- pred inst_is_unique(module_info, inst).
 :- mode inst_is_unique(in, in) is semidet.
 
-:- pred inst_is_shared(module_info, inst).
-:- mode inst_is_shared(in, in) is semidet.
+	% succeed if the inst is not `mostly_unique' or unique'
+:- pred inst_is_not_partly_unique(module_info, inst).
+:- mode inst_is_not_partly_unique(in, in) is semidet.
+
+	% succeed if the inst is not `unique'
+:- pred inst_is_not_fully_unique(module_info, inst).
+:- mode inst_is_not_fully_unique(in, in) is semidet.
 
 :- pred inst_is_clobbered(module_info, inst).
 :- mode inst_is_clobbered(in, in) is semidet.
@@ -47,8 +57,14 @@
 :- pred inst_list_is_unique(list(inst), module_info).
 :- mode inst_list_is_unique(in, in) is semidet.
 
-:- pred inst_list_is_shared(list(inst), module_info).
-:- mode inst_list_is_shared(in, in) is semidet.
+:- pred inst_list_is_mostly_unique(list(inst), module_info).
+:- mode inst_list_is_mostly_unique(in, in) is semidet.
+
+:- pred inst_list_is_not_partly_unique(list(inst), module_info).
+:- mode inst_list_is_not_partly_unique(in, in) is semidet.
+
+:- pred inst_list_is_not_fully_unique(list(inst), module_info).
+:- mode inst_list_is_not_fully_unique(in, in) is semidet.
 
 :- pred bound_inst_list_is_ground(list(bound_inst), module_info).
 :- mode bound_inst_list_is_ground(in, in) is semidet.
@@ -56,8 +72,14 @@
 :- pred bound_inst_list_is_unique(list(bound_inst), module_info).
 :- mode bound_inst_list_is_unique(in, in) is semidet.
 
-:- pred bound_inst_list_is_shared(list(bound_inst), module_info).
-:- mode bound_inst_list_is_shared(in, in) is semidet.
+:- pred bound_inst_list_is_mostly_unique(list(bound_inst), module_info).
+:- mode bound_inst_list_is_mostly_unique(in, in) is semidet.
+
+:- pred bound_inst_list_is_not_partly_unique(list(bound_inst), module_info).
+:- mode bound_inst_list_is_not_partly_unique(in, in) is semidet.
+
+:- pred bound_inst_list_is_not_fully_unique(list(bound_inst), module_info).
+:- mode bound_inst_list_is_not_fully_unique(in, in) is semidet.
 
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(in, in) is semidet.
@@ -217,12 +239,15 @@ mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
 %-----------------------------------------------------------------------------%
 
 	% inst_is_clobbered succeeds iff the inst passed is `clobbered'
-	% or is a user-defined inst which is defined as `clobbered'.
+	% or `mostly_clobbered' or if it is a user-defined inst which
+	% is defined as one of those.
 
 :- inst_is_clobbered(_, X) when X.		% NU-Prolog indexing.
 
 inst_is_clobbered(_, ground(clobbered, _)).
+inst_is_clobbered(_, ground(mostly_clobbered, _)).
 inst_is_clobbered(_, bound(clobbered, _)).
+inst_is_clobbered(_, bound(mostly_clobbered, _)).
 inst_is_clobbered(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
@@ -336,36 +361,115 @@ inst_is_unique_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
 		inst_is_unique_2(ModuleInfo, Inst2, Inst2, Expansions2)
 	).
 
-	% inst_is_shared succeeds iff the inst passed is shared
-	% or free.  Abstract insts are not considered shared.
+	% inst_is_mostly_unique succeeds iff the inst passed is unique,
+	% mostly_unique, or free.  Abstract insts are not considered unique.
 
-inst_is_shared(ModuleInfo, Inst) :-
+inst_is_mostly_unique(ModuleInfo, Inst) :-
 	set__init(Expansions),
-	inst_is_shared_2(ModuleInfo, Inst, Inst, Expansions).
+	inst_is_mostly_unique_2(ModuleInfo, Inst, Inst, Expansions).
 
 	% The third argument must be the same as the second.
 	% The fourth arg is the set of insts which have already
 	% been expanded - we use this to avoid going into an
 	% infinite loop.
 
-:- pred inst_is_shared_2(module_info, inst, inst, set(inst)).
-:- mode inst_is_shared_2(in, in, in, in) is semidet.
+:- pred inst_is_mostly_unique_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_mostly_unique_2(in, in, in, in) is semidet.
 
-:- inst_is_shared_2(_, X, _, _) when X.		% NU-Prolog indexing.
+:- inst_is_mostly_unique_2(_, X, _, _) when X.		% NU-Prolog indexing.
 
-inst_is_shared_2(ModuleInfo, bound(shared, List), _, Expansions) :-
-	bound_inst_list_is_shared_2(List, ModuleInfo, Expansions).
-inst_is_shared_2(_, free, _, _).
-inst_is_shared_2(_, ground(shared, _), _, _).
-inst_is_shared_2(_, inst_var(_), _, _) :-
+inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), _, Expansions)
+		:-
+	bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
+inst_is_mostly_unique_2(ModuleInfo, bound(mostly_unique, List), _, Expansions)
+		:-
+	bound_inst_list_is_mostly_unique_2(List, ModuleInfo, Expansions).
+inst_is_mostly_unique_2(_, free, _, _).
+inst_is_mostly_unique_2(_, ground(unique, _), _, _).
+inst_is_mostly_unique_2(_, ground(mostly_unique, _), _, _).
+inst_is_mostly_unique_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_shared_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
+inst_is_mostly_unique_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
 	( set__member(Inst, Expansions) ->
 		true
 	;
 		set__insert(Expansions, Inst, Expansions2),
 		inst_lookup(ModuleInfo, InstName, Inst2),
-		inst_is_shared_2(ModuleInfo, Inst2, Inst2, Expansions2)
+		inst_is_mostly_unique_2(ModuleInfo, Inst2, Inst2, Expansions2)
+	).
+
+	% inst_is_not_partly_unique succeeds iff the inst passed is 
+	% not unique or mostly_unique, i.e. if it is shared
+	% or free.  It fails for abstract insts.
+
+inst_is_not_partly_unique(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_not_partly_unique_2(ModuleInfo, Inst, Inst, Expansions).
+
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_not_partly_unique_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_not_partly_unique_2(in, in, in, in) is semidet.
+
+:- inst_is_not_partly_unique_2(_, X, _, _) when X.	% NU-Prolog indexing.
+
+inst_is_not_partly_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
+	bound_inst_list_is_not_partly_unique_2(List, ModuleInfo, Expansions).
+inst_is_not_partly_unique_2(_, free, _, _).
+inst_is_not_partly_unique_2(_, ground(shared, _), _, _).
+inst_is_not_partly_unique_2(_, inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_not_partly_unique_2(ModuleInfo, defined_inst(InstName), Inst,
+		Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
+		inst_is_not_partly_unique_2(ModuleInfo, Inst2, Inst2,
+			Expansions2)
+	).
+
+	% inst_is_not_fully_unique succeeds iff the inst passed is 
+	% not unique or mostly_unique, i.e. if it is shared
+	% or free.  It fails for abstract insts.
+
+inst_is_not_fully_unique(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_not_fully_unique_2(ModuleInfo, Inst, Inst, Expansions).
+
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_not_fully_unique_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_not_fully_unique_2(in, in, in, in) is semidet.
+
+:- inst_is_not_fully_unique_2(_, X, _, _) when X.	% NU-Prolog indexing.
+
+inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List), _, Expansions) :-
+	bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
+inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List), _,
+		Expansions) :-
+	bound_inst_list_is_not_fully_unique_2(List, ModuleInfo, Expansions).
+inst_is_not_fully_unique_2(_, free, _, _).
+inst_is_not_fully_unique_2(_, ground(shared, _), _, _).
+inst_is_not_fully_unique_2(_, ground(mostly_unique, _), _, _).
+inst_is_not_fully_unique_2(_, inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_not_fully_unique_2(ModuleInfo, defined_inst(InstName), Inst,
+		Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
+		inst_is_not_fully_unique_2(ModuleInfo, Inst2, Inst2,
+			Expansions2)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -380,10 +484,23 @@ bound_inst_list_is_unique([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
 	inst_list_is_unique(Args, ModuleInfo),
 	bound_inst_list_is_unique(BoundInsts, ModuleInfo).
 
-bound_inst_list_is_shared([], _).
-bound_inst_list_is_shared([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
-	inst_list_is_shared(Args, ModuleInfo),
-	bound_inst_list_is_shared(BoundInsts, ModuleInfo).
+bound_inst_list_is_mostly_unique([], _).
+bound_inst_list_is_mostly_unique([functor(_Name, Args)|BoundInsts],
+		ModuleInfo) :-
+	inst_list_is_mostly_unique(Args, ModuleInfo),
+	bound_inst_list_is_mostly_unique(BoundInsts, ModuleInfo).
+
+bound_inst_list_is_not_partly_unique([], _).
+bound_inst_list_is_not_partly_unique([functor(_Name, Args)|BoundInsts],
+		ModuleInfo) :-
+	inst_list_is_not_partly_unique(Args, ModuleInfo),
+	bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo).
+
+bound_inst_list_is_not_fully_unique([], _).
+bound_inst_list_is_not_fully_unique([functor(_Name, Args)|BoundInsts],
+		ModuleInfo) :-
+	inst_list_is_not_fully_unique(Args, ModuleInfo),
+	bound_inst_list_is_not_fully_unique(BoundInsts, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -405,14 +522,37 @@ bound_inst_list_is_unique_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
 	inst_list_is_unique_2(Args, ModuleInfo, Expansions),
 	bound_inst_list_is_unique_2(BoundInsts, ModuleInfo, Expansions).
 
-:- pred bound_inst_list_is_shared_2(list(bound_inst), module_info, set(inst)).
-:- mode bound_inst_list_is_shared_2(in, in, in) is semidet.
+:- pred bound_inst_list_is_mostly_unique_2(list(bound_inst), module_info,
+						set(inst)).
+:- mode bound_inst_list_is_mostly_unique_2(in, in, in) is semidet.
 
-bound_inst_list_is_shared_2([], _, _).
-bound_inst_list_is_shared_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
-		Expansions) :-
-	inst_list_is_shared_2(Args, ModuleInfo, Expansions),
-	bound_inst_list_is_shared_2(BoundInsts, ModuleInfo, Expansions).
+bound_inst_list_is_mostly_unique_2([], _, _).
+bound_inst_list_is_mostly_unique_2([functor(_Name, Args)|BoundInsts],
+		ModuleInfo, Expansions) :-
+	inst_list_is_mostly_unique_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_mostly_unique_2(BoundInsts, ModuleInfo, Expansions).
+
+:- pred bound_inst_list_is_not_partly_unique_2(list(bound_inst), module_info,
+						set(inst)).
+:- mode bound_inst_list_is_not_partly_unique_2(in, in, in) is semidet.
+
+bound_inst_list_is_not_partly_unique_2([], _, _).
+bound_inst_list_is_not_partly_unique_2([functor(_Name, Args)|BoundInsts],
+		ModuleInfo, Expansions) :-
+	inst_list_is_not_partly_unique_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_not_partly_unique_2(BoundInsts, ModuleInfo,
+		Expansions).
+
+:- pred bound_inst_list_is_not_fully_unique_2(list(bound_inst), module_info,
+						set(inst)).
+:- mode bound_inst_list_is_not_fully_unique_2(in, in, in) is semidet.
+
+bound_inst_list_is_not_fully_unique_2([], _, _).
+bound_inst_list_is_not_fully_unique_2([functor(_Name, Args)|BoundInsts],
+		ModuleInfo, Expansions) :-
+	inst_list_is_not_fully_unique_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_not_fully_unique_2(BoundInsts, ModuleInfo,
+		Expansions).
 
 %-----------------------------------------------------------------------------%
 
@@ -426,10 +566,20 @@ inst_list_is_unique([Inst | Insts], ModuleInfo) :-
 	inst_is_unique(ModuleInfo, Inst),
 	inst_list_is_unique(Insts, ModuleInfo).
 
-inst_list_is_shared([], _).
-inst_list_is_shared([Inst | Insts], ModuleInfo) :-
-	inst_is_shared(ModuleInfo, Inst),
-	inst_list_is_shared(Insts, ModuleInfo).
+inst_list_is_mostly_unique([], _).
+inst_list_is_mostly_unique([Inst | Insts], ModuleInfo) :-
+	inst_is_mostly_unique(ModuleInfo, Inst),
+	inst_list_is_mostly_unique(Insts, ModuleInfo).
+
+inst_list_is_not_partly_unique([], _).
+inst_list_is_not_partly_unique([Inst | Insts], ModuleInfo) :-
+	inst_is_not_partly_unique(ModuleInfo, Inst),
+	inst_list_is_not_partly_unique(Insts, ModuleInfo).
+
+inst_list_is_not_fully_unique([], _).
+inst_list_is_not_fully_unique([Inst | Insts], ModuleInfo) :-
+	inst_is_not_fully_unique(ModuleInfo, Inst),
+	inst_list_is_not_fully_unique(Insts, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -449,13 +599,29 @@ inst_list_is_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
 	inst_is_unique_2(ModuleInfo, Inst, Inst, Expansions),
 	inst_list_is_unique_2(Insts, ModuleInfo, Expansions).
 
-:- pred inst_list_is_shared_2(list(inst), module_info, set(inst)).
-:- mode inst_list_is_shared_2(in, in, in) is semidet.
+:- pred inst_list_is_mostly_unique_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_mostly_unique_2(in, in, in) is semidet.
 
-inst_list_is_shared_2([], _, _).
-inst_list_is_shared_2([Inst | Insts], ModuleInfo, Expansions) :-
-	inst_is_shared_2(ModuleInfo, Inst, Inst, Expansions),
-	inst_list_is_shared_2(Insts, ModuleInfo, Expansions).
+inst_list_is_mostly_unique_2([], _, _).
+inst_list_is_mostly_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_mostly_unique_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_mostly_unique_2(Insts, ModuleInfo, Expansions).
+
+:- pred inst_list_is_not_partly_unique_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_not_partly_unique_2(in, in, in) is semidet.
+
+inst_list_is_not_partly_unique_2([], _, _).
+inst_list_is_not_partly_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_not_partly_unique_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_not_partly_unique_2(Insts, ModuleInfo, Expansions).
+
+:- pred inst_list_is_not_fully_unique_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_not_fully_unique_2(in, in, in) is semidet.
+
+inst_list_is_not_fully_unique_2([], _, _).
+inst_list_is_not_fully_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_not_fully_unique_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_not_fully_unique_2(Insts, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 

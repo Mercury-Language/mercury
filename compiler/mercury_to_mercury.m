@@ -257,7 +257,13 @@ mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
 	;
 		{ Uniq = clobbered },
 		io__write_string("clobbered(")
-	),
+	;
+		{ Uniq = mostly_unique },
+		io__write_string("mostly_unique(")
+	;
+		{ Uniq = mostly_clobbered },
+		io__write_string("mostly_clobbered(")
+	), !,
 	mercury_output_bound_insts(BoundInsts, VarSet),
 	io__write_string(")").
 mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
@@ -281,7 +287,14 @@ mercury_output_inst(ground(Uniq, MaybePredInfo), VarSet) -->
 	;
 		{ Uniq = clobbered },
 		io__write_string("clobbered")
-	).
+	;
+		{ Uniq = mostly_unique },
+		io__write_string("mostly_unique")
+	;
+		{ Uniq = mostly_clobbered },
+		io__write_string("mostly_clobbered")
+	),
+	!.
 mercury_output_inst(inst_var(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
@@ -359,9 +372,16 @@ mercury_output_inst_name(typed_inst(Type, InstName), VarSet) -->
 :- pred mercury_output_uniqueness(uniqueness, io__state, io__state).
 :- mode mercury_output_uniqueness(in, di, uo) is det.
 
-mercury_output_uniqueness(shared) --> io__write_string("shared").
-mercury_output_uniqueness(unique) --> io__write_string("unique").
-mercury_output_uniqueness(clobbered) --> io__write_string("clobbered").
+mercury_output_uniqueness(shared) -->
+	io__write_string("shared").
+mercury_output_uniqueness(unique) -->
+	io__write_string("unique").
+mercury_output_uniqueness(mostly_unique) -->
+	io__write_string("mostly_unique").
+mercury_output_uniqueness(clobbered) -->
+	io__write_string("clobbered").
+mercury_output_uniqueness(mostly_clobbered) -->
+	io__write_string("mostly_clobbered").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
 		io__state).

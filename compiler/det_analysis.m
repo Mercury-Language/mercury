@@ -661,9 +661,16 @@ det_infer_goal_2(not(Goal0), _, InstMap0, MiscInfo, _, _, Goal, Det, Msgs) :-
 	% but we cannot rely on explicit quantification to detect this.
 	% Therefore cuts are handled in det_infer_goal.
 
-det_infer_goal_2(some(Vars, Goal0), _, InstMap0, MiscInfo, _, _,
-			some(Vars, Goal), Det, Msgs) :-
-	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Det, Msgs).
+det_infer_goal_2(some(Vars0, Goal0), _, InstMap0, MiscInfo, _, _,
+			Goal, Det, Msgs) :-
+	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal1, _InstMap, Det, Msgs),
+	% make sure that nested `some's are replaced by a single `some'
+	( Goal1 = some(Vars1, Goal2) - _GoalInfo ->
+		list__append(Vars0, Vars1, Vars),
+		Goal = some(Vars, Goal2)
+	;
+		Goal = some(Vars0, Goal1)
+	).
 
 	% pragma_c_code must be deterministic.
 det_infer_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
