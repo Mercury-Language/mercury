@@ -568,7 +568,7 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 	set__union(Liveness1, PreBirths0, Liveness2),
 
 	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras1,
-						Goal, Liveness3, Extras),
+				GoalModel, Goal, Liveness3, Extras),
 
 
 	set__difference(Liveness3, PostDeaths0, Liveness4),
@@ -577,28 +577,28 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
         goal_info_set_nondet_lives(GoalInfo0, Extras1, GoalInfo).
 
 :- pred add_nondet_lives_to_goal_2(hlds__goal_expr, set(var), set(var),
-					hlds__goal_expr, set(var), set(var)).
-:- mode add_nondet_lives_to_goal_2(in, in, in, out, out, out) is det.
+			code_model, hlds__goal_expr, set(var), set(var)).
+:- mode add_nondet_lives_to_goal_2(in, in, in, in, out, out, out) is det.
 
-add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, Extras0, _,
 				conj(Goals), Liveness, Extras) :-
 	add_nondet_lives_to_conj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, Extras).
 
-add_nondet_lives_to_goal_2(disj(Goals0, FV), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(disj(Goals0, FV), Liveness0, Extras0, _,
 				disj(Goals, FV), Liveness, Extras) :-
 	ExtrasAcc = Extras0,
 	add_nondet_lives_to_disj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, ExtrasAcc, Extras).
 
-add_nondet_lives_to_goal_2(switch(Var, CF, Goals0, FV), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(switch(Var, CF, Goals0, FV), Liveness0, Extras0, _,
 				switch(Var, CF, Goals, FV), Liveness, Extras) :-
 	ExtrasAcc = Extras0,
 	add_nondet_lives_to_switch(Goals0, Liveness0, Extras0,
 					Goals, Liveness, ExtrasAcc, Extras).
 
 add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
-		Liveness0, Extras0, if_then_else(Vars, Cond, Then, Else, FV),
+		Liveness0, Extras0, _, if_then_else(Vars, Cond, Then, Else, FV),
 							Liveness, Extras) :-
 	add_nondet_lives_to_goal(Cond0, Liveness0, Extras0,
 					Cond, Liveness1, Extras1),
@@ -620,28 +620,42 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	set__difference(Extras, Extras3, ThenOnlyExtras),
 	stuff_liveness_residue_into_goal(Else1, ThenOnlyExtras, Else).
 
-	% Nondet lives cannot escape from a quantifier
-add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0,
-				some(Vars, Goal), Liveness, Extras0) :-
+	% Nondet lives cannot escape from a commit
+	% so we have to work if if this quantifier is a commit or not.
+add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0, OuterModel,
+				some(Vars, Goal), Liveness, Extras) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
-					Goal, Liveness, _Extras1).
+					Goal, Liveness, Extras1),
+	Goal0 = _ - GoalInfo,
+	goal_info_get_code_model(GoalInfo, InnerModel),
+	(
+		% is this a commit?
+		OuterModel \= model_non,
+		InnerModel = model_non
+	->
+		% if it is, then we revert to the original
+		% set of nondet live variables
+		Extras = Extras0
+	;
+		Extras = Extras1
+	).
 
 	% Nondet lives cannot escape from a negation
-add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0, _,
 				not(Goal), Liveness, Extras0) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
 					Goal, Liveness, _).
 
-add_nondet_lives_to_goal_2(higher_order_call(A,B,C,D,E,F), Liveness, Extras,
+add_nondet_lives_to_goal_2(higher_order_call(A,B,C,D,E,F), Liveness, Extras, _,
 			higher_order_call(A,B,C,D,E,F), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, Extras,
+add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, Extras, _,
 				call(A,B,C,D,E,F,G), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, Extras,
+add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, Extras, _,
 				unify(A,B,C,D,E), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(pragma_c_code(A,B,C,D,E), Liveness, Extras,
+add_nondet_lives_to_goal_2(pragma_c_code(A,B,C,D,E), Liveness, Extras, _,
 				pragma_c_code(A,B,C,D,E), Liveness, Extras).
 
 
