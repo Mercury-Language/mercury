@@ -22,7 +22,6 @@ ORDINARY_PROGS=	\
 	common_type_cast \
 	compare_spec \
 	construct \
-	copy_pred \
 	curry \
 	curry2 \
 	cut_test \
@@ -117,6 +116,10 @@ ORDINARY_PROGS=	\
 	write \
 	write_reg1
 
+# XXX copy_pred does not work in the hl* grades (e.g. hlc.gc),
+# because the MLDS back-end doesn't generate the closure layout
+# information needed to copy closures.
+#
 # factt_non does not work in the hl* grades (e.g. hlc.gc),
 # because the code for nondet fact tables assumes that
 # we're using the LLDS back-end.
@@ -126,7 +129,7 @@ ORDINARY_PROGS=	\
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 ifeq "$(findstring hl,$(GRADE))" ""
-BACKEND_PROGS = factt_non type_tables
+BACKEND_PROGS = copy_pred factt_non type_tables
 else
 BACKEND_PROGS =
 endif
@@ -141,9 +144,10 @@ else
 SPLIT_PROGS =
 endif
 
-# we do no pass the following tests
-#	purity -- executable name clashes with the `purity' subdirectory
-#	var_not_found -- "sorry, not implemented" in polymorphism.m.
+# we do not pass the following tests
+#	var_not_found -- mode error in automatically generated unification
+#		predicate.  This test uses partially instantiated modes,
+#		which are not yet fully support.
 
 #-----------------------------------------------------------------------------#
 
