@@ -8,6 +8,7 @@
 #include "mercury_regs.h"
 #include "mercury_engine.h"
 #include "mercury_memory.h"
+#include "mercury_context.h"	/* for do_runnext */
 #include "mercury_thread.h"
 
 #include <stdio.h>
@@ -19,10 +20,6 @@
 #endif
 
 bool	MR_exit_now;
-
-Declare_entry(do_runnext);
-
-MR_MAKE_STACK_LAYOUT_ENTRY(do_runnext)
 
 #ifdef MR_THREAD_SAFE
 

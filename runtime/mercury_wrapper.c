@@ -165,7 +165,6 @@ static	void	print_register_usage_counts(void);
 #endif
 
 Declare_entry(do_interpreter);
-Declare_entry(do_runnext);
 
 /*---------------------------------------------------------------------------*/
 

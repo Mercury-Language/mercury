@@ -160,6 +160,8 @@ flounder(void)
 	fatal_error("computation floundered");
 }
 
+Define_extern_entry(do_runnext);
+
 BEGIN_MODULE(scheduler_module)
 	init_entry(do_runnext);
 BEGIN_CODE
