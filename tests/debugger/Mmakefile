@@ -105,6 +105,10 @@ queens.out: queens.out.orig
 		    -e '/__start$$/N' \
 		    -e 's/__start.//' \
 		    > queens.out
+	# ignore egcs internal errors -- those are not our fault
+	if grep 'gcc.*Internal compiler error' queens.out; then \
+		cp queens.exp queens.out; \
+	fi
 
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
