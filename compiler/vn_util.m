@@ -23,8 +23,9 @@
 
 	% Reflect the action of an assignment in the vn tables.
 
-:- pred vn__handle_assign(lval, rval, vn_tables, vn_tables).
-:- mode vn__handle_assign(in, in, di, uo) is det.
+:- pred vn__handle_assign(lval, rval, vnlvalset, vnlvalset,
+	vn_tables, vn_tables).
+:- mode vn__handle_assign(in, in, di, uo, di, uo) is det.
 
 	% Reflect the effect of a livevals instr on the set of live vnlvals.
 
@@ -33,10 +34,26 @@
 
 :- implementation.
 
-vn__handle_assign(Lval, Rval, Vn_tables0, Vn_tables) :-
+vn__handle_assign(Lval, Rval, Livevals0, Livevals, Vn_tables0, Vn_tables) :-
 	vn__rval_to_vn(Rval, Vn, Vn_tables0, Vn_tables1),
 	vn__lval_to_vnlval(Lval, Vnlval, Vn_tables1, Vn_tables2),
-	vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables).
+	vn__set_desired_value(Vnlval, Vn, Vn_tables2, Vn_tables),
+	vn__find_specials(Vnlval, Specials),
+	bintree_set__insert_list(Livevals0, Specials, Livevals).
+
+:- pred vn__find_specials(vnlval, list(vnlval)).
+:- mode vn__find_specials(in, out) is det.
+
+vn__find_specials(vn_reg(_), []).
+vn__find_specials(vn_stackvar(_), []).
+vn__find_specials(vn_framevar(_), []).
+vn__find_specials(vn_succip, [vn_succip]).
+vn__find_specials(vn_maxfr, [vn_maxfr]).
+vn__find_specials(vn_curredoip, [vn_curredoip]).
+vn__find_specials(vn_hp, [vn_hp]).
+vn__find_specials(vn_sp, [vn_sp]).
+vn__find_specials(vn_field(_, _, _), []).
+vn__find_specials(vn_temp(_), []).
 
 vn__handle_livevals(Terminate, Livevals, Liveset0, Liveset) :-
 	( Terminate = yes ->
@@ -245,14 +262,14 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 	map__init(FlushEntry0),
 	(
 		Vn_instr = vn_call(_, _, _),
-		Vn_tables = Vn_tables0,
-		Livevals = Livevals0,
-		FlushEntry = FlushEntry0
+		bintree_set__to_sorted_list(Livevals0, Livelist),
+		vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+			Livevals0, Livevals, FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_call_closure(_, _, _),
-		Vn_tables = Vn_tables0,
-		Livevals = Livevals0,
-		FlushEntry = FlushEntry0
+		bintree_set__to_sorted_list(Livevals0, Livelist),
+		vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+			Livevals0, Livevals, FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_mkframe(_, _, _),
 		Vn_tables = Vn_tables0,
@@ -274,9 +291,9 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 				Vn_tables0, Vn_tables, Livevals0, Livevals,
 				FlushEntry0, FlushEntry)
 		;
-			Vn_tables = Vn_tables0,
-			Livevals = Livevals0,
-			FlushEntry = FlushEntry0
+			bintree_set__to_sorted_list(Livevals0, Livelist),
+			vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+				Livevals0, Livevals, FlushEntry0, FlushEntry)
 		)
 	;
 		Vn_instr = vn_computed_goto(_, Labels),
@@ -290,9 +307,9 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 				Vn_tables0, Vn_tables, Livevals0, Livevals,
 				FlushEntry0, FlushEntry)
 		;
-			Vn_tables = Vn_tables0,
-			Livevals = Livevals0,
-			FlushEntry = FlushEntry0
+			bintree_set__to_sorted_list(Livevals0, Livelist),
+			vn__record_livevnlvals(Livelist, Vn_tables0, Vn_tables,
+				Livevals0, Livevals, FlushEntry0, FlushEntry)
 		)
 	),
 	map__set(Flushmap0, Ctrl0, FlushEntry, Flushmap).
@@ -376,6 +393,26 @@ vn__record_livevals([Lval | Livelist], Vn_tables0, Vn_tables,
 	vn__record_livevals(Livelist, Vn_tables1, Vn_tables,
 		Livevals1, Livevals, FlushEntry1, FlushEntry).
 
+:- pred vn__record_livevnlvals(list(vnlval), vn_tables, vn_tables,
+	vnlvalset, vnlvalset, flushmapentry, flushmapentry).
+:- mode vn__record_livevnlvals(in, di, uo, di, uo, di, uo) is det.
+
+vn__record_livevnlvals([], Vn_tables, Vn_tables,
+		Livevals, Livevals, FlushEntry, FlushEntry).
+vn__record_livevnlvals([Vnlval | Livevnlvallist], Vn_tables0, Vn_tables,
+		Livevals0, Livevals, FlushEntry0, FlushEntry) :-
+	( vn__search_desired_value(Vnlval, VnPrime, Vn_tables0) ->
+		Vn = VnPrime,
+		Vn_tables1 = Vn_tables0
+	;
+		vn__record_first_vnlval(Vnlval, Vn,
+			Vn_tables0, Vn_tables1)
+	),
+	map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
+	bintree_set__insert(Livevals0, Vnlval, Livevals1),
+	vn__record_livevnlvals(Livevnlvallist, Vn_tables1, Vn_tables,
+		Livevals1, Livevals, FlushEntry1, FlushEntry).
+
 %-----------------------------------------------------------------------------%
 
 	% Insert the heap references that have been made so far into the
@@ -399,10 +436,57 @@ vn__record_compulsory_lvals(Vn_tables, Livevals0, Livevals,
 vn__record_compulsory_lval_list([], Livevals, Livevals, FlushEntry, FlushEntry).
 vn__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		Livevals0, Livevals, FlushEntry0, FlushEntry) :-
-	map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
-	bintree_set__insert(Livevals0, Vnlval, Livevals1),
+	vn__vnlval_access_vn(Vnlval, Access),
+	(
+		Access = [_|_],
+		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),
+		bintree_set__insert(Livevals0, Vnlval, Livevals1)
+	;
+		Access = [],
+		FlushEntry1 = FlushEntry0,
+		Livevals1 = Livevals0
+	),
 	vn__record_compulsory_lval_list(Lval_vn_list,
 		Livevals1, Livevals, FlushEntry1, FlushEntry).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- pred vn__pref_order(relmap(vn_node), list(vn_node)).
+:- mode vn__pref_order(in, out) is det.
+
+:- implementation.
+
+vn__pref_order(Map, Order) :-
+	map__keys(Map, Nodes),
+	vn__classify_nodes(Nodes, Origlvals, Ctrls, Shareds, Lvals),
+	list__condense([Origlvals, Ctrls, Shareds, Lvals], Order).
+
+:- pred vn__classify_nodes(list(vn_node), list(vn_node), list(vn_node),
+	list(vn_node), list(vn_node)).
+:- mode vn__classify_nodes(di, uo, uo, uo, uo) is det.
+
+vn__classify_nodes([], [], [], [], []).
+vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
+	(
+		Node = node_origlval(_),
+		vn__classify_nodes(Nodes, Origlvals0, Ctrls, Shareds, Lvals),
+		Origlvals = [Node | Origlvals0]
+	;
+		Node = node_ctrl(_),
+		vn__classify_nodes(Nodes, Origlvals, Ctrls0, Shareds, Lvals),
+		Ctrls = [Node | Ctrls0]
+	;
+		Node = node_shared(_),
+		vn__classify_nodes(Nodes, Origlvals, Ctrls, Shareds0, Lvals),
+		Shareds = [Node | Shareds0]
+	;
+		Node = node_lval(_),
+		vn__classify_nodes(Nodes, Origlvals, Ctrls, Shareds, Lvals0),
+		Lvals = [Node | Lvals0]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -489,16 +573,26 @@ vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
 :- mode vn__find_sub_vns(in, out) is det.
 
 vn__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
-	(Vnlval = vn_field(_, SubVn1, SubVn2) ->
-		SubVns = [SubVn1, SubVn2]
-	;
-		SubVns = []
-	).
+	vn__find_sub_vns_vnlval(Vnlval, SubVns).
 vn__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
 vn__find_sub_vns(vn_const(_), []).
 vn__find_sub_vns(vn_create(_, _, _), []).
 vn__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
 vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
+
+:- pred vn__find_sub_vns_vnlval(vnlval, list(vn)).
+:- mode vn__find_sub_vns_vnlval(in, out) is det.
+
+vn__find_sub_vns_vnlval(vn_reg(_), []).
+vn__find_sub_vns_vnlval(vn_stackvar(_), []).
+vn__find_sub_vns_vnlval(vn_framevar(_), []).
+vn__find_sub_vns_vnlval(vn_succip, []).
+vn__find_sub_vns_vnlval(vn_maxfr, []).
+vn__find_sub_vns_vnlval(vn_curredoip, []).
+vn__find_sub_vns_vnlval(vn_hp, []).
+vn__find_sub_vns_vnlval(vn_sp, []).
+vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
+vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -515,8 +609,8 @@ vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
 :- pred vn__lval_to_vnlval(lval, vnlval, vn_tables, vn_tables).
 :- mode vn__lval_to_vnlval(in, out, di, uo) is det.
 
-:- pred vn__is_const_expr(vn, vn_tables).
-:- mode vn__is_const_expr(in, in) is semidet.
+:- pred vn__is_const_expr(vn, bool, vn_tables).
+:- mode vn__is_const_expr(in, out, in) is det.
 
 	% Find out what rvals, if any, are needed to access an lval.
 
@@ -763,19 +857,28 @@ vn__vnlval_access_vn(vn_sp, []).
 vn__vnlval_access_vn(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
 vn__vnlval_access_vn(vn_temp(_), []).
 
-vn__is_const_expr(Vn, Vn_tables) :-
+vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 	vn__lookup_defn(Vn, Vnrval, Vn_tables),
-	( Vnrval = vn_const(_) ->
-		true
-	; Vnrval = vn_mkword(_, Vn1) ->
-		vn__is_const_expr(Vn1, Vn_tables)
-	; Vnrval = vn_unop(_, Vn1) ->
-		vn__is_const_expr(Vn1, Vn_tables)
-	; Vnrval = vn_binop(_, Vn1, Vn2) ->
-		vn__is_const_expr(Vn1, Vn_tables),
-		vn__is_const_expr(Vn2, Vn_tables)
+	(
+		Vnrval = vn_origlval(_),
+		IsConst = no
 	;
-		fail
+		Vnrval = vn_mkword(_, Vn1),
+		vn__is_const_expr(Vn1, IsConst, Vn_tables)
+	;
+		Vnrval = vn_const(_),
+		IsConst = yes
+	;
+		Vnrval = vn_create(_, _, _),
+		IsConst = yes
+	;
+		Vnrval = vn_unop(_, Vn1),
+		vn__is_const_expr(Vn1, IsConst, Vn_tables)
+	;	
+		Vnrval = vn_binop(_, Vn1, Vn2),
+		vn__is_const_expr(Vn1, IsConst1, Vn_tables),
+		vn__is_const_expr(Vn2, IsConst2, Vn_tables),
+		bool__and(IsConst1, IsConst2, IsConst)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -847,17 +950,17 @@ vn__is_const_expr(Vn, Vn_tables) :-
 :- pred vn__del_old_use(vn, vn_src, vn_tables, vn_tables).
 :- mode vn__del_old_use(in, in, di, uo) is det.
 
-:- pred vn__set_current_value(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__set_current_value(in, in, di, uo) is det.
-
-:- pred vn__set_desired_value(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__set_desired_value(in, in, di, uo) is det.
-
 :- pred vn__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
 :- mode vn__record_first_vnrval(in, out, di, uo) is det.
 
 :- pred vn__record_first_vnlval(vnlval, vn, vn_tables, vn_tables).
 :- mode vn__record_first_vnlval(in, out, di, uo) is det.
+
+:- pred vn__set_desired_value(vnlval, vn, vn_tables, vn_tables).
+:- mode vn__set_desired_value(in, in, di, uo) is det.
+
+:- pred vn__set_current_value(vnlval, vn, vn_tables, vn_tables).
+:- mode vn__set_current_value(in, in, di, uo) is det.
 
 :- implementation.
 
@@ -1025,43 +1128,14 @@ vn__del_old_use(Vn, OldUse, Vn_tables0, Vn_tables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
 	map__lookup(Vn_to_uses_table0, Vn, Uses0),
-	( list__member(OldUse, Uses0) ->
-		list__delete_all(Uses0, OldUse, Uses1)
-	;
-		error("old use not known")
-	),
+	% OldUse may not be in Uses0
+	% it may have been deleted earlier (if constant)
+	% or it may be an artificially introduced src_liveval for a shared vn
+	list__delete_all(Uses0, OldUse, Uses1),
 	map__set(Vn_to_uses_table0, Vn, Uses1, Vn_to_uses_table1),
 	Vn_tables = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table1,
-		Vn_to_locs_table0, Loc_to_vn_table0).
-
-vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
-	Vn_tables0 = vn_tables(NextVn0,
-		Lval_to_vn_table0,  Rval_to_vn_table0,
-		Vn_to_rval_table0, Vn_to_uses_table0,
-		Vn_to_locs_table0, Loc_to_vn_table0),
-	% change the forward mapping
-	map__lookup(Loc_to_vn_table0, Vnlval, Old_vn),
-	map__set(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
-	% change the reverse mapping
-	map__lookup(Vn_to_locs_table0, Old_vn, Old_locs0),
-	list__delete_all(Old_locs0, Vnlval, Old_locs1),
-	map__set(Vn_to_locs_table0, Old_vn, Old_locs1, Vn_to_locs_table1),
-	Vn_tables = vn_tables(NextVn0,
-		Lval_to_vn_table0,  Rval_to_vn_table0,
-		Vn_to_rval_table0, Vn_to_uses_table0,
-		Vn_to_locs_table1, Loc_to_vn_table1).
-
-vn__set_desired_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
-	Vn_tables0 = vn_tables(NextVn0,
-		Lval_to_vn_table0, Rval_to_vn_table0,
-		Vn_to_rval_table0, Vn_to_uses_table0,
-		Vn_to_locs_table0, Loc_to_vn_table0),
-	map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table1),
-	Vn_tables = vn_tables(NextVn0,
-		Lval_to_vn_table1, Rval_to_vn_table0,
-		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0).
 
 vn__record_first_vnrval(Vnrval, Vn, Vn_tables0, Vn_tables) :-
@@ -1074,10 +1148,11 @@ vn__record_first_vnrval(Vnrval, Vn, Vn_tables0, Vn_tables) :-
 	map__set(Rval_to_vn_table0, Vnrval, Vn, Rval_to_vn_table1),
 	map__set(Vn_to_rval_table0, Vn, Vnrval, Vn_to_rval_table1),
 	map__set(Vn_to_uses_table0, Vn, [], Vn_to_uses_table1),
+	map__set(Vn_to_locs_table0, Vn, [], Vn_to_locs_table1),
 	Vn_tables = vn_tables(NextVn1,
 		Lval_to_vn_table0, Rval_to_vn_table1,
 		Vn_to_rval_table1, Vn_to_uses_table1,
-		Vn_to_locs_table0, Loc_to_vn_table0).
+		Vn_to_locs_table1, Loc_to_vn_table0).
 
 vn__record_first_vnlval(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 	Vn_tables0 = vn_tables(NextVn0,
@@ -1086,16 +1161,76 @@ vn__record_first_vnlval(Vnlval, Vn, Vn_tables0, Vn_tables) :-
 		Vn_to_locs_table0, Loc_to_vn_table0),
 	Vn = NextVn0,
 	NextVn is NextVn0 + 1,
-	map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table),
-	map__set(Rval_to_vn_table0, vn_origlval(Vnlval), Vn, Rval_to_vn_table),
-	map__set(Vn_to_rval_table0, Vn, vn_origlval(Vnlval), Vn_to_rval_table),
-	map__set(Vn_to_uses_table0, Vn, [], Vn_to_uses_table),
-	map__set(Vn_to_locs_table0, Vn, [Vnlval], Vn_to_locs_table),
-	map__set(Loc_to_vn_table0,  Vnlval, Vn, Loc_to_vn_table),
+	map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table1),
+	map__set(Rval_to_vn_table0, vn_origlval(Vnlval), Vn, Rval_to_vn_table1),
+	map__set(Vn_to_rval_table0, Vn, vn_origlval(Vnlval), Vn_to_rval_table1),
+	map__set(Vn_to_uses_table0, Vn, [], Vn_to_uses_table1),
+	map__set(Vn_to_locs_table0, Vn, [Vnlval], Vn_to_locs_table1),
+	map__set(Loc_to_vn_table0,  Vnlval, Vn, Loc_to_vn_table1),
 	Vn_tables = vn_tables(NextVn,
-		Lval_to_vn_table, Rval_to_vn_table,
-		Vn_to_rval_table, Vn_to_uses_table,
-		Vn_to_locs_table, Loc_to_vn_table).
+		Lval_to_vn_table1, Rval_to_vn_table1,
+		Vn_to_rval_table1, Vn_to_uses_table1,
+		Vn_to_locs_table1, Loc_to_vn_table1).
+
+vn__set_desired_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
+	Vn_tables0 = vn_tables(NextVn0,
+		Lval_to_vn_table0, Rval_to_vn_table0,
+		Vn_to_rval_table0, Vn_to_uses_table0,
+		Vn_to_locs_table0, Loc_to_vn_table0),
+	( map__search(Loc_to_vn_table0, Vnlval, _) ->
+		map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table1),
+		Vn_tables = vn_tables(NextVn0,
+			Lval_to_vn_table1, Rval_to_vn_table0,
+			Vn_to_rval_table0, Vn_to_uses_table0,
+			Vn_to_locs_table0, Loc_to_vn_table0)
+	;
+		CurVn = NextVn0,
+		NextVn is NextVn0 + 1,
+		map__set(Lval_to_vn_table0, Vnlval, Vn, Lval_to_vn_table1),
+		map__set(Rval_to_vn_table0, vn_origlval(Vnlval), CurVn, Rval_to_vn_table1),
+		map__set(Vn_to_rval_table0, CurVn, vn_origlval(Vnlval), Vn_to_rval_table1),
+		map__set(Vn_to_uses_table0, CurVn, [], Vn_to_uses_table1),
+		map__set(Vn_to_locs_table0, CurVn, [Vnlval], Vn_to_locs_table1),
+		map__set(Loc_to_vn_table0,  Vnlval, CurVn, Loc_to_vn_table1),
+		Vn_tables = vn_tables(NextVn,
+			Lval_to_vn_table1, Rval_to_vn_table1,
+			Vn_to_rval_table1, Vn_to_uses_table1,
+			Vn_to_locs_table1, Loc_to_vn_table1)
+	).
+
+vn__set_current_value(Vnlval, Vn, Vn_tables0, Vn_tables) :-
+	Vn_tables0 = vn_tables(NextVn0,
+		Lval_to_vn_table0,  Rval_to_vn_table0,
+		Vn_to_rval_table0, Vn_to_uses_table0,
+		Vn_to_locs_table0, Loc_to_vn_table0),
+	( map__search(Loc_to_vn_table0, Vnlval, OldVn) ->
+
+		% change the forward mapping
+		map__set(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
+
+		% change the reverse mapping, first for old vn, then the new
+		map__lookup(Vn_to_locs_table0, OldVn, OldLocs0),
+		list__delete_all(OldLocs0, Vnlval, OldLocs1),
+		map__set(Vn_to_locs_table0, OldVn, OldLocs1, Vn_to_locs_table1),
+
+		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
+		map__set(Vn_to_locs_table1, Vn, [Vnlval | NewLocs0],
+			Vn_to_locs_table2)
+	;
+		% The search can fail for newly introduced templocs
+
+		% change the forward mapping
+		map__set(Loc_to_vn_table0, Vnlval, Vn, Loc_to_vn_table1),
+
+		% change the reverse mapping
+		map__lookup(Vn_to_locs_table0, Vn, NewLocs0),
+		map__set(Vn_to_locs_table0, Vn, [Vnlval | NewLocs0],
+			Vn_to_locs_table2)
+	),
+	Vn_tables = vn_tables(NextVn0,
+		Lval_to_vn_table0,  Rval_to_vn_table0,
+		Vn_to_rval_table0, Vn_to_uses_table0,
+		Vn_to_locs_table2, Loc_to_vn_table1).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
