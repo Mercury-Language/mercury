@@ -17,6 +17,11 @@ CFLAGS-aditi_backend.rl_code=-O1
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi
+# If intermodule optimization is enabled, we also need to use `--no-ansi'
+# for the following modules, because they import process_util.
+MGNUCFLAGS-make.module_dep_file = --no-ansi
+MGNUCFLAGS-make.module_target = --no-ansi
+MGNUCFLAGS-make.program_target = --no-ansi
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.
