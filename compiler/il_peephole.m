@@ -46,7 +46,7 @@
 
 :- type instrs == list(instr).
 
-:- import_module assoc_list, bool, map, string, std_util.
+:- import_module assoc_list, bool, map, string, std_util, int.
 :- import_module ilds, require.
 
 	% We zip down to the end of the instruction list, and start attempting
@@ -86,8 +86,27 @@ optimize_decl(Decl0, Decl, Mod0, Mod) :-
 optimize_class_decl(Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = method(A, MethodDecls0) ->
 		list__map_foldl(optimize_method_decl, MethodDecls0,
-			MethodDecls, Mod0, Mod),
-		Decl = method(A, MethodDecls)
+			MethodDecls1, Mod0, Mod),
+		( Mod = yes ->
+				% find the new maxstack
+			MaxStacks = list__map((func(X) = 
+				( if X = instrs(I) 
+				  then calculate_max_stack(I) 
+				  else 0
+				)), MethodDecls1),
+			NewMaxStack = list__foldl((func(X, Y0) = X + Y0),
+				MaxStacks, 0
+			),
+				% set the maxstack
+			MethodDecls = list__map((func(X) = 
+				( if X = maxstack(_) 
+				  then maxstack(int32(NewMaxStack))
+				  else X
+				)), MethodDecls1),
+			Decl = method(A, MethodDecls)
+		;
+			Decl = method(A, MethodDecls1)
+		)
 	;
 		Mod = no,
 	 	Decl0 = Decl 
