@@ -518,7 +518,6 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			io__write_string("c, ")
 		),
 		mercury_output_sym_name(MercuryTypeSymName),
-		io__write_string(", "),
 		io__write_string(", \""),
 		{ ForeignType = il(il(RefOrVal,
 				ForeignLocStr, ForeignTypeName)),
