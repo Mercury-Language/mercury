@@ -3536,7 +3536,7 @@ scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
 scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
 scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
 scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
-scripts/mercury_config scripts/Mercury.config
+scripts/mercury_config scripts/Mercury.config tools/lmc
 ,
 [
 # Only do this when compiling the source, not when reconfiguring

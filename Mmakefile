@@ -34,7 +34,8 @@ SUBDIRS = \
 		compiler \
 		doc \
 		profiler \
-		deep_profiler
+		deep_profiler \
+		tools
 
 MMAKEFLAGS =
 
