@@ -1620,6 +1620,7 @@ code_info__reenter_lvals(Var, [L|Ls]) -->
 code_info__cons_id_to_tag(_Var, int_const(X), int_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
+code_info__cons_id_to_tag(_Var, pred_const(P,M), pred_constant(P,M)) --> [].
 code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
 		% Lookup the type of the variable

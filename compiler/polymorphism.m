@@ -69,7 +69,8 @@ polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
 polymorphism__process_preds([], ModuleInfo, ModuleInfo).
 polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	( code_util__predinfo_is_builtin(ModuleInfo0, PredInfo) ->
+	pred_info_name(PredInfo, PredName),
+	( PredName = "call" ->
 		ModuleInfo1 = ModuleInfo0
 	;
 		pred_info_procids(PredInfo, ProcIds),
@@ -167,7 +168,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 	list__duplicate(NumExtraVars, ground -> ground, ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
-	( pred_info_is_imported(PredInfo0) ->
+	pred_info_name(PredInfo0, PredName),
+	( PredName = "call" ->
 		VarTypes = VarTypes1,
 		VarSet = VarSet1,
 		TypeVarSet = TypeVarSet0,
@@ -355,8 +357,10 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 		term__var_list_to_term_list(PredTypeVars, PredTypes0),
 		term__apply_rec_substitution_to_list(PredTypes0, TypeSubst,
 			PredTypes),
-		polymorphism__make_vars(PredTypes, UnifyProcMap, VarSet0,
-			VarTypes0, ExtraVars, ExtraGoals, VarSet, VarTypes),
+		module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap),
+		polymorphism__make_vars(PredTypes, UnifyPredMap, UnifyProcMap,
+				VarSet0, VarTypes0,
+				ExtraVars, ExtraGoals, VarSet, VarTypes),
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				UnifyProcMap, ModuleInfo)
@@ -364,17 +368,20 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 
 %---------------------------------------------------------------------------%
 
-:- pred polymorphism__make_vars(list(type), map(tvar, var),
-				varset, map(var, type),
+:- pred polymorphism__make_vars(list(type), map(type_id, pred_id),
+				map(tvar, var), varset, map(var, type),
 				list(var), list(hlds__goal),
 				varset, map(var, type)).
-:- mode polymorphism__make_vars(in, in, in, in, out, out, out, out) is det.
+:- mode polymorphism__make_vars(in, in, in, in, in, out, out, out, out) is det.
 
-polymorphism__make_vars([], _, VarSet, VarTypes, [], [], VarSet, VarTypes).
-polymorphism__make_vars([Type|Types], UnifyProcMap, VarSet0, VarTypes0,
+polymorphism__make_vars([], _, _, VarSet, VarTypes, [], [], VarSet, VarTypes).
+/*###378 [cc] In clause for predicate `polymorphism__make_vars/9':%%%*/
+/*###378 [cc] error: wrong number of arguments in call to pred `type_to_type_id'.%%%*/
+polymorphism__make_vars([Type|Types], UnifyPredMap, UnifyProcMap,
+				VarSet0, VarTypes0,
 				ExtraVars, ExtraGoals, VarSet, VarTypes) :-
 	(
-		Type = term__functor(_TypeName, TypeArgs, Context)
+		type_to_type_id(Type, TypeId, TypeArgs)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a known value of the type variable.
@@ -395,13 +402,15 @@ polymorphism__make_vars([Type|Types], UnifyProcMap, VarSet0, VarTypes0,
 
 		% create a term which holds the unification pred for
 		% the type, processing any argument types recursively
-		polymorphism__make_vars(TypeArgs, UnifyProcMap,
+		polymorphism__make_vars(TypeArgs, UnifyPredMap, UnifyProcMap,
 			VarSet0, VarTypes0,
 			ArgVars, ExtraGoals0, VarSet1, VarTypes1),
 		term__var_list_to_term_list(ArgVars, Args),
 		Functor = term__atom("="), 
+		term__context_init(0, Context),
 		ValTerm = term__functor(Functor, Args, Context),
-		ConsId = cons("=", 2),
+		map__lookup(UnifyPredMap, TypeId, UnifyPredId),
+		ConsId = pred_const(UnifyPredId, 0),
 		
 		% introduce new variable
 		varset__new_var(VarSet1, Var, VarSet2),
@@ -515,7 +524,8 @@ polymorphism__make_vars([Type|Types], UnifyProcMap, VarSet0, VarTypes0,
 	),
 	ExtraVars = [Var | ExtraVars1],
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals),
-	polymorphism__make_vars(Types,  UnifyProcMap, VarSet2, VarTypes2,
+	polymorphism__make_vars(Types, UnifyPredMap, UnifyProcMap,
+				VarSet2, VarTypes2,
 				ExtraVars1, ExtraGoals2, VarSet, VarTypes).
 
 :- pred polymorphism__make_head_vars(list(tvar), tvarset,
