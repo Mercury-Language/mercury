@@ -355,6 +355,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -370,6 +371,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -385,6 +387,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -402,6 +405,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -420,6 +424,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -441,6 +446,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	tail.
 	calli	int32 (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -459,6 +465,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object[]&, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -475,6 +482,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
@@ -494,6 +502,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -515,6 +524,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
@@ -537,6 +547,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
@@ -562,6 +573,7 @@ get_ftn_ptr_univ_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
+	// using tail. here is not verifiable due to the byref argument
 	calli	void (class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object,
 		class [mscorlib]System.Object, class [mscorlib]System.Object[]&,
@@ -578,6 +590,7 @@ get_ftn_ptr_univ_unify() {
 
 .class public 'Init' {
     .method public static default void init_runtime() {
+        tail.
         call void ['mercury']mercury.io.mercury_code::init_state_2()
 	ret
     }
