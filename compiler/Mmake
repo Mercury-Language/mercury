@@ -49,7 +49,7 @@ MNLFLAGS =	-u 6000
 .PHONY: depend
 depend : mercury_compile.depend
 
-# we need to make sure the .pp and .in files get converted to .m before
+# we need to make sure the .pp files get converted to .m before
 # we do the make depend
 mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
 
@@ -87,7 +87,7 @@ ints		: mercury_compile.ints
 #-----------------------------------------------------------------------------#
 
 tags		: $(mercury_compile.ms)
-	mtags *.pp *.in $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+	mtags *.pp $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
 
 mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
 	awk -f `vpath_find source_stats.awk` \
