@@ -262,9 +262,15 @@ install_ints: $(library.ints) $(library.int3s) \
 		fi; \
 	done
 	# The following is needed to support the `--use-subdirs' option
-	for dir in ints int2s int3s opts trans_opts; do \
+	# We try using `ln -s', but if that fails, then we just use `cp'.
+	for ext in int int2 int3 opt trans_opt; do \
+		dir=$${ext}s; \
 		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
-		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
+		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir || { \
+			mkdir $(INSTALL_INT_DIR)/Mercury/$$dir && \
+			cp $(INSTALL_INT_DIR)/*.$$ext \
+				$(INSTALL_INT_DIR)/Mercury/$$dir; \
+		} || exit 1; \
 	done
 
 .PHONY: install_init
