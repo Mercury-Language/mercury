@@ -273,6 +273,13 @@
 	"Det = ML_CC_MULTI"
 ).
 
+% These are not worth inlining, since they will
+% (presumably) not be called frequently, and so
+% any increase in speed from inlining is not worth
+% the increase in code size.
+:- pragma no_inline(throw/1).
+:- pragma no_inline(rethrow/1).
+
 throw(Exception) :-
 	type_to_univ(Exception, Univ),
 	builtin_throw(Univ).
