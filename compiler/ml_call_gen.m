@@ -382,11 +382,11 @@ ml_gen_cast(Context, ArgVars, MLDS_Decls, MLDS_Statements) -->
 	%	...
 	%
 	% 	/* code to call the function */
-	%	func(unbox(Arg1), box(Arg2), &boxed_Arg3, &unboxed_Arg4);
+	%	func(unbox(Arg1), box(Arg2), &unboxed_Arg3, &boxed_Arg4);
 	%
 	%	/* code to box/unbox the output arguments */
-	%	*Arg3 = unbox(boxed_Arg3);
-	%	*Arg4 = box(unboxed_Arg4);
+	%	*Arg3 = box(unboxed_Arg3);
+	%	*Arg4 = unbox(boxed_Arg4);
 	%	...
 	%
 	% Note that of course in general not every argument will need
