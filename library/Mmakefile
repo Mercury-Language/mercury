@@ -263,8 +263,6 @@ $(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) \
 # Ensure we recompile library__version if VERSION is changed.
 $(os_subdir)library.o \
 $(os_subdir)library.pic_o \
-$(optdates_subdir)library.optdate \
-$(trans_opt_dates_subdir)library.trans_opt_date \
 	: $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
