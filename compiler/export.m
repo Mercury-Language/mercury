@@ -58,22 +58,15 @@
 :- pred convert_type_from_mercury(string, type, string).
 :- mode convert_type_from_mercury(in, in, out) is det.
 
-	% Certain types, namely io__state and store__store(S),
-	% are just dummy types used to ensure logical semantics;
-	% there is no need to actually pass them, and so when
-	% importing or exporting procedures to/from C, we don't
-	% include arguments with these types.
-:- pred export__exclude_argument_type(type).
-:- mode export__exclude_argument_type(in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds_out, modules.
-:- import_module term, varset.
+:- import_module type_util.
 
+:- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.
 :- import_module list, bool.
 
@@ -245,7 +238,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
 				arg_info(RetArgLoc, RetArgMode) - RetType),
 			RetArgMode = top_out,
-			\+ export__exclude_argument_type(RetType)
+			\+ type_util__is_dummy_argument_type(RetType)
 		->
 			export__type_to_type_string(RetType, C_RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
@@ -299,7 +292,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 :- pred export__include_arg(pair(arg_info, type)::in) is semidet.
 export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	Mode \= top_unused,
-	\+ export__exclude_argument_type(Type).
+	\+ type_util__is_dummy_argument_type(Type).
 
 	% get_argument_declarations(Args, NameThem, DeclString):
 	% build a string to declare the argument types (and if
@@ -460,25 +453,6 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	;
 		ConvertedRval = Rval
 	).
-
-% Certain types, namely io__state and store__store(S),
-% are just dummy types used to ensure logical semantics;
-% there is no need to actually pass them, and so when
-% importing or exporting procedures to/from C, we don't
-% include arguments with these types.
-
-export__exclude_argument_type(Type) :-
-	Type = term__functor(term__atom(":"), [
-			term__functor(term__atom(ModuleName), [], _),
-			term__functor(term__atom(TypeName), TypeArgs, _)
-		], _),
-	list__length(TypeArgs, TypeArity),
-	export__exclude_argument_type_2(ModuleName, TypeName, TypeArity).
-
-:- pred export__exclude_argument_type_2(string::in, string::in, arity::in)
-	is semidet.
-export__exclude_argument_type_2("io", "state", 0).	% io:state/0
-export__exclude_argument_type_2("store", "store", 1).	% store:store/1.
 
 %-----------------------------------------------------------------------------%
 

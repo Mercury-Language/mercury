@@ -45,6 +45,14 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func, lambda_eval_method).
 :- mode type_id_is_higher_order(in, out, out) is semidet.
 
+	% Certain types, e.g. io__state and store__store(S),
+	% are just dummy types used to ensure logical semantics;
+	% there is no need to actually pass them, and so when
+	% importing or exporting procedures to/from C, we don't
+	% include arguments with these types.
+:- pred type_util__is_dummy_argument_type(type).
+:- mode type_util__is_dummy_argument_type(in) is semidet.
+
 :- pred type_is_aditi_state(type).
 :- mode type_is_aditi_state(in) is semidet.
 
@@ -437,6 +445,26 @@ type_id_is_higher_order(SymName - _Arity, PredOrFunc, EvalMethod) :-
 		PorFStr = "func",
 		PredOrFunc = function
 	).
+
+	% Certain types, e.g. io__state and store__store(S),
+	% are just dummy types used to ensure logical semantics;
+	% there is no need to actually pass them, and so when
+	% importing or exporting procedures to/from C, we don't
+	% include arguments with these types.
+
+type_util__is_dummy_argument_type(Type) :-
+	Type = term__functor(term__atom(":"), [
+			term__functor(term__atom(ModuleName), [], _),
+			term__functor(term__atom(TypeName), TypeArgs, _)
+		], _),
+	list__length(TypeArgs, TypeArity),
+	type_util__is_dummy_argument_type_2(ModuleName, TypeName, TypeArity).
+
+:- pred type_util__is_dummy_argument_type_2(string::in, string::in, arity::in)
+	is semidet.
+% XXX should we include aditi:state/0 in this list?
+type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
+type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
 
 type_is_aditi_state(Type) :-
         type_to_type_id(Type,

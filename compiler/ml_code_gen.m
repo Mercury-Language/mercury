@@ -934,9 +934,10 @@ ml_gen_call(PredId, ProcId, ArgVars, CodeModel, Context,
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-		_PredInfo, ProcInfo) },
+		PredInfo, ProcInfo) },
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
-	ml_gen_arg_list(ArgVars, ArgModes, ArgRvals0, RetLvals0),
+	ml_gen_arg_list(ArgVars, ArgTypes, ArgModes, ArgRvals0, RetLvals0),
 
 	% append the extra argument or return val for this code_model
 	(
@@ -986,21 +987,32 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 %
 % Generate rvals and lvals for the arguments of a procedure call
 %
-:- pred ml_gen_arg_list(list(prog_var), list(mode),
+:- pred ml_gen_arg_list(list(prog_var), list(prog_data__type), list(mode),
 		list(mlds__rval), list(mlds__lval),
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_arg_list(in, in, out, out, in, out) is det.
+:- mode ml_gen_arg_list(in, in, in, out, out, in, out) is det.
 
-ml_gen_arg_list(Vars, Modes, InputRvals, OutputLvals) -->
-	( { Vars = [], Modes = [] } ->
+ml_gen_arg_list(Vars, Types, Modes, InputRvals, OutputLvals) -->
+	(
+		{ Vars = [], Types = [], Modes = [] }
+	->
 		{ InputRvals = [] },
 		{ OutputLvals = [] }
-	; { Vars = [Var|Vars1], Modes = [Mode|Modes1] } ->
+	;
+		{ Vars = [Var|Vars1] },
+		{ Types = [Type|Types1] },
+		{ Modes = [Mode|Modes1] }
+	->
 		ml_gen_var(Var, VarLval),
-		ml_gen_arg_list(Vars1, Modes1, InputRvals1, OutputLvals1),
+		ml_gen_arg_list(Vars1, Types1, Modes1,
+			InputRvals1, OutputLvals1),
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-		( { mode_is_input(ModuleInfo, Mode) } ->
+		( { type_util__is_dummy_argument_type(Type) } ->
+			% exclude arguments of type io__state etc.
+			{ InputRvals = InputRvals1 },
+			{ OutputLvals = OutputLvals1 }
+		; { mode_is_input(ModuleInfo, Mode) } ->
 			{ InputRvals = [lval(VarLval) | InputRvals1] },
 			{ OutputLvals = OutputLvals1 }
 	/************
@@ -2715,11 +2727,16 @@ ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet,
 		HeadTypes = [Type | Types],
 		HeadModes = [Mode | Modes]
 	->
-		ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet,
-			FuncArg),
 		ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, VarSet,
-			FuncArgs1),
-		FuncArgs = [FuncArg | FuncArgs1]
+			FuncArgs0),
+		% exclude types such as io__state, etc.
+		( type_util__is_dummy_argument_type(Type) ->
+			FuncArgs = FuncArgs0
+		;
+			ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, VarSet,
+				FuncArg),
+			FuncArgs = [FuncArg | FuncArgs0]
+		)
 	;
 		error("ml_gen_arg_decls: length mismatch")
 	).

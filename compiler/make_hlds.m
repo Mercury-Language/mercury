@@ -3285,7 +3285,7 @@ handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
 			mode_to_arg_mode(ModuleInfo, RetMode, RetType,
 				RetArgMode),
 			RetArgMode = top_out,
-			\+ export__exclude_argument_type(RetType)
+			\+ type_util__is_dummy_argument_type(RetType)
 		->
 			string__append(RetArgName, " = ", C_Code0),
 			Args2 = Args1
@@ -3320,7 +3320,7 @@ handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
 include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
 	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
 	ArgMode \= top_unused,
-	\+ export__exclude_argument_type(Type).
+	\+ type_util__is_dummy_argument_type(Type).
 
 %
 % create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):

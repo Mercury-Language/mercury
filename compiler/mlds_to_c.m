@@ -423,7 +423,12 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 
 mlds_output_params(Indent, FuncName, Parameters) -->
 	io__write_char('('),
-	io__write_list(Parameters, ", ", mlds_output_param(Indent, FuncName)),
+	( { Parameters = [] } ->
+		io__write_string("void")
+	;
+		io__write_list(Parameters, ", ",
+			mlds_output_param(Indent, FuncName))
+	),
 	io__write_char(')').
 
 :- pred mlds_output_param(int, qualified_entity_name,
