@@ -172,10 +172,13 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 		% bind all the type variables in `Set' to `void' ...
 		%
 		pred_info_context(PredInfo0, Context),
-		bind_type_vars_to_void(Set, Context, VarTypesMap0, VarTypesMap),
+		pred_info_get_constraint_proofs(PredInfo0, Proofs0),
+		bind_type_vars_to_void(Set, Context, VarTypesMap0, VarTypesMap,
+			Proofs0, Proofs),
 		clauses_info_set_vartypes(ClausesInfo0, VarTypesMap,
 			ClausesInfo),
-		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
+		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+		pred_info_set_constraint_proofs(PredInfo1, Proofs, PredInfo)
 	),
 
 	%
@@ -224,11 +227,12 @@ check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
 % bind all the type variables in `UnboundTypeVarsSet' to the type `void' ...
 %
 :- pred bind_type_vars_to_void(set(tvar), prog_context,
-				map(prog_var, type), map(prog_var, type)).
-:- mode bind_type_vars_to_void(in, in, in, out) is det.
+				map(prog_var, type), map(prog_var, type),
+				constraint_proof_map, constraint_proof_map).
+:- mode bind_type_vars_to_void(in, in, in, out, in, out) is det.
 
 bind_type_vars_to_void(UnboundTypeVarsSet, Context,
-		VarTypesMap0, VarTypesMap) :-
+		VarTypesMap0, VarTypesMap, Proofs0, Proofs) :-
 	%
 	% first create a pair of corresponding lists (UnboundTypeVars, Voids)
 	% that map the unbound type variables to void
@@ -239,13 +243,28 @@ bind_type_vars_to_void(UnboundTypeVarsSet, Context,
 	list__duplicate(Length, Void, Voids),
 
 	%
-	% then apply the substitution we just created to the variable types
+	% then create a *substitution* that maps the 
+	% unbound type variables to void, but throws away the term context,
+	% for use in renaming the constraint proofs (ie. so that we can use
+	% map__lookup on the proofs).
+	%
+	term__context_init(InitContext),
+	VoidNoContext = term__functor(term__atom("void"), [], InitContext),
+	list__duplicate(Length, VoidNoContext, VoidsNoContext),
+	map__from_corresponding_lists(UnboundTypeVars, VoidsNoContext, 
+		VoidSubst),
+
+	%
+	% then apply the substitutions we just created to the variable types
+	% and constraint proofs
 	%
 	map__keys(VarTypesMap0, Vars),
 	map__values(VarTypesMap0, Types0),
 	term__substitute_corresponding_list(UnboundTypeVars, Voids,
 		Types0, Types),
-	map__from_corresponding_lists(Vars, Types, VarTypesMap).
+	map__from_corresponding_lists(Vars, Types, VarTypesMap),
+
+	apply_subst_to_constraint_proofs(VoidSubst, Proofs0, Proofs).
 
 %-----------------------------------------------------------------------------%
 %

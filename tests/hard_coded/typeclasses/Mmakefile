@@ -45,6 +45,7 @@ PROGS=	\
 	typeclass_test_5 \
 	typeclass_test_6 \
 	type_spec \
+	unbound_tvar \
 	unqualified_method \
 	use_abstract_instance
 
@@ -61,6 +62,7 @@ MCFLAGS-intermod_typeclass_bug = --intermodule-optimization
 MCFLAGS-intermod_typeclass_bug2 = --intermodule-optimization
 MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
 MCFLAGS-abstract_instance = --infer-all
+MCFLAGS-unbound_tvar = --no-user-guided-type-specialisation
 MCFLAGS-unqualified_method = --intermodule-optimization
 MCFLAGS-unqualified_method2 = --intermodule-optimization
 MCFLAGS-unqualified_method3 = --intermodule-optimization
