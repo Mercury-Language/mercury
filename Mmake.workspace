@@ -75,14 +75,6 @@ C2INITARGS +=	$(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 MLFLAGS +=	--no-mercury-stdlib-dir
 
 #
-# MC_MAKE_FLAGS contains flags to be used by `mmc --make'.
-# This will also include flags to pass to ml.
-#
-MC_MAKE_FLAGS += --trace-init-file $(BROWSER_DIR)/$(BROWSER_LIB_NAME).init \
-		--init-file $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
-		--init-file $(RUNTIME_DIR)/$(RT_LIB_NAME).init
-
-#
 # Work out the C include directories.
 #
 C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
@@ -96,12 +88,16 @@ endif
 endif
 endif
 CFLAGS +=	$(C_INCL_DIRS)
-MC_MAKE_FLAGS += $(patsubst -I%,--c-include-directory %,$(C_INCL_DIRS))
+MCFLAGS +=	$(C_INCL_DIRS:-I%=--c-include-directory %)
 
 #
 # Work out which libraries to link with.
+# The $(shell) here is needed to allow the variable values in
+# ECHO_MERCURY_OPTIONS in Mmake.vars to be single-quoted when
+# passed to echo in order to preserve double-quotes (e.g. for
+# file names containing spaces).
 #
-STATIC_GC_LIBS =						\
+STATIC_GC_LIBS_0 = 						\
 	`							\
 	    case $(GRADE) in					\
 		*.par*.gc*.prof*) echo $(BOEHM_GC_DIR)/libpar_gc_prof.$A ;; \
@@ -110,8 +106,10 @@ STATIC_GC_LIBS =						\
 		*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
 	    esac						\
 	`
-SHARED_GC_LIBS =						\
-	`							\
+STATIC_GC_LIBS = $(shell echo $(STATIC_GC_LIBS_0))
+
+SHARED_GC_LIBS_0 =						\
+	 `							\
 	    case $(GRADE) in					\
 		*.par*.gc*.prof*) echo -lpar_gc_prof ;;		\
 		*.par*.gc*)	echo -lpar_gc ;;		\
@@ -119,48 +117,52 @@ SHARED_GC_LIBS =						\
 		*.gc*)		echo -lgc ;;			\
 	    esac						\
 	`
+SHARED_GC_LIBS = $(shell echo $(SHARED_GC_LIBS_0))
+
 
 ifeq ($(LINK_STATIC),yes)
 
-STATIC_LIBS := $(STATIC_GC_LIBS)
+STATIC_RT_LIBS=
+STATIC_STD_LIBS=
+STATIC_TRACE_LIBS=
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
-STATIC_LIBS := $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A $(STATIC_LIBS)
+STATIC_RT_LIBS = $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 ifneq ($(LINK_RUNTIME_ONLY),yes)
-STATIC_LIBS := $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A $(STATIC_LIBS)
+STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
-STATIC_LIBS := $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
-		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A $(STATIC_LIBS)
+STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 endif
 endif
 endif
-
-MLLIBS +=	$(STATIC_LIBS)
-MC_MAKE_FLAGS += $(patsubst %,--link-object %,$(STATIC_LIBS))
+MLOBJS += $(STATIC_TRACE_LIBS) $(STATIC_STD_LIBS) \
+		$(STATIC_RT_LIBS) $(STATIC_GC_LIBS)
 
 else # LINK_STATIC != yes
 
-NON_STATIC_LIBS := $(SHARED_GC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(BOEHM_GC_DIR)
+LINK_RT_LIB_OPTS=
+LINK_STD_LIB_OPTS=
+LINK_TRACE_LIB_OPTS=
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
-NON_STATIC_LIBS := -l$(RT_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(RUNTIME_DIR) $(NON_STATIC_LIB_DIRS)
+LINK_RT_LIB_OPTS = -l$(RT_LIB_NAME)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
-NON_STATIC_LIBS := -l$(STD_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(LIBRARY_DIR) $(NON_STATIC_LIB_DIRS)
+LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-NON_STATIC_LIBS := -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(TRACE_DIR) -L$(BROWSER_DIR) $(NON_STATIC_LIB_DIRS)
+LINK_TRACE_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME)
 endif
 endif
 endif
 
-MLFLAGS +=	$(NON_STATIC_LIB_DIRS)
-MLLIBS +=	$(NON_STATIC_LIBS)
-MC_MAKE_FLAGS += $(NON_STATIC_LIB_DIRS) $(NON_STATIC_LIBS)
+LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_RT_LIB_OPTS) \
+			$(LINK_STD_LIB_OPTS) $(SHARED_GC_LIBS) 
+LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) \
+			-L$(TRACE_DIR) -L$(BROWSER_DIR)
+
+MLFLAGS +=	$(LIB_DIR_OPTS)
+MLLIBS +=	$(LINK_LIB_OPTS)
 
 ifeq ($(SET_RPATH),yes)
-MLFLAGS += $(NON_STATIC_LIB_DIRS:-L%,-R%)
-MC_MAKE_FLAGS += $(NON_STATIC_LIB_DIRS:-L%,--link-flags -R%)
+MLFLAGS += $(LIB_DIR_OPTS:-L%=-R%)
 endif
 
 endif # LINK_STATIC != yes

@@ -298,21 +298,18 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 # Note that interactive.out.orig depends on $(interactive.ints) because
 # interactive.inp contains interactive queries that require interactive.ints
 # to have been built.
-
-ifeq ($(MMAKE_USE_SUBDIRS),yes)
-USE_SUBDIRS_OPT = --use-subdirs
-else
-USE_SUBDIRS_OPT =
-endif
-
-interactive.out.orig: interactive interactive.inp $(interactive.ints)
+interactive.out.orig: Mercury.options.interactive interactive \
+			interactive.inp $(interactive.ints)
 	echo "echo on" > interactive.inp.tmp
-	echo mmc_options $(USE_SUBDIRS_OPT) \
-			$(shell echo $(ALL_MC_MAKE_FLAGS)) \
+	echo mmc_options --options-file Mercury.options.interactive \
 			--trace minimum >> interactive.inp.tmp
 	cat interactive.inp >> interactive.inp.tmp
 	$(MDB) ./interactive < interactive.inp.tmp > interactive.out.orig 2>&1
 	rm -f interactive.inp.tmp
+
+.PHONY: Mercury.options.interactive
+Mercury.options.interactive:
+	$(ECHO_MERCURY_OPTIONS) > Mercury.options.interactive
 
 # We pipe the output through sed to avoid differences for `--use-subdirs',
 # and to remove some spurious warnings that `gcc' and `ld' issue.
@@ -389,6 +386,9 @@ dep_local:	$(DEPS)
 depend_local:	$(DEPENDS)
 check_local:	$(OUTS) $(RESS)
 all_local:	$(PROGS)
+
+realclean_local:
+	rm -f Mercury.options.interactive
 
 #-----------------------------------------------------------------------------#
 

@@ -85,18 +85,21 @@ read_options_files(MaybeVariables) -->
 			globals__io_lookup_accumulating_option(options_files,
 				OptionsFiles),
 			{ Variables0 = options_variables_init },
-			(
-			        { OptionsFiles = [_|_] },
-				list__foldl2(
-					read_options_file(error, search, no),
-					OptionsFiles, Variables0, Variables1)
-			;
-				{ OptionsFiles = [] },
-			    	read_options_file(no_error, no_search,
-					yes(dir__this_directory),
-					"Mercury.options",
-					Variables0, Variables1)
-			)
+			{ ReadFile =
+			    (pred(OptionsFile::in, Vars0::in, Vars::out,
+					di, uo) is det -->
+				{ OptionsFile = "Mercury.options" ->
+					ErrorIfNotExist = error,
+					Search = no_search
+				;
+					ErrorIfNotExist = no_error,
+					Search = search
+				},
+				read_options_file(ErrorIfNotExist, Search, no,
+					OptionsFile, Vars0, Vars)
+			    ) },
+			list__foldl2(ReadFile, OptionsFiles,
+				Variables0, Variables1)
 		    ), R)
 	    ), OptionsFileResult),
 	(
@@ -128,21 +131,32 @@ read_options_files(MaybeVariables) -->
 		maybe(dir_name)::in, string::in, options_variables::in,
 		options_variables::out, io__state::di, io__state::uo) is det.
 
-read_options_file(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
+read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		Variables0, Variables) -->
-	( { Search = search } ->
+    ( { OptionsFile0 = "-" } ->
+	% Read from standard input.
+	read_options_lines(dir__this_directory, Variables0, Variables)
+    ;
+	( { OptionsFile0 = "Mercury.options" } ->
+		% Don't complain if the "Mercury.options"
+		% file doesn't exist.
+		{ ErrorIfNotExist = no_error },
+		{ SearchDirs = [dir__this_directory] }
+	; { Search = search } ->
+		{ ErrorIfNotExist = ErrorIfNotExist0 },
 		globals__io_lookup_accumulating_option(
 			options_search_directories, SearchDirs)
 	;
+		{ ErrorIfNotExist = ErrorIfNotExist0 },
 		{ SearchDirs = [dir__this_directory] }
 	),
-
 	{ dir__split_name(OptionsFile0, OptionsDir, OptionsFile) },
 	(
 		% Is it an absolute pathname?
 		% XXX This won't work on Windows
 		% (but GNU Make does it this way too).
-		{ string__index(OptionsDir, 0, dir__directory_separator) }
+		{ string__index(OptionsDir, 0,
+			dir__directory_separator) }
 	->
 		{ FileToFind = OptionsFile },
 		{ Dirs = [OptionsDir] }
@@ -181,7 +195,8 @@ read_options_file(ErrorIfNotExist, Search, MaybeDirName, OptionsFile0,
 		;
 			[]
 		)
-	).
+	)
+    ).
 
 :- func maybe_add_path_name(dir_name, file_name) = file_name.
 
@@ -834,7 +849,7 @@ mmc_option_type(ilasm_flags) = option(not_split, "--ilasm-flags").
 mmc_option_type(mcpp_flags) = option(not_split, "--mcpp-flags").
 mmc_option_type(csharp_flags) = option(not_split, "--csharp-flags").
 mmc_option_type(ml_flags) = option(not_split, "--link-flags").
-mmc_option_type(ml_objs) = option(split, "--link_object").
+mmc_option_type(ml_objs) = option(split, "--link-object").
 mmc_option_type(ml_libs) = option(not_split, "--link-flags").
 mmc_option_type(c2init_args) = option(split, "--init-file").
 mmc_option_type(libraries) = option(split, "--mercury-library").

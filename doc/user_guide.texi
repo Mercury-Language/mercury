@@ -5615,9 +5615,9 @@ which a library to be installed should be built.
 @item --options-file @var{file}
 @findex --options-file
 Add @var{file} to the list of options files to be processed.
-If no @samp{--options-file} options are given, the file
-@file{Mercury.options} in the current directory will be
-read if it exists.
+If @var{file} is @samp{-}, an options file will be read from the
+standard input.  By default the file @file{Mercury.options}
+in the current directory will be read.
 
 @item --options-search-directory @var{dir}
 Add @var{dir} to the list of directories to be searched for

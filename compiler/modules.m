@@ -3825,10 +3825,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
-			InitObjFileName, " ", All_MLLibsDepString, "\n",
+			InitObjFileName, " ", All_MLObjsString, " ",
+			All_MLLibsDepString, "\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
 			"-o ", SplitExeFileName, " ", InitObjFileName, " \\\n",
-		"\t	", SplitLibFileName, " $(ALL_MLLIBS)\n\n"
+		"\t	", SplitLibFileName, " ", All_MLObjsString,
+			" $(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [

@@ -293,13 +293,13 @@ $(il_dates_subdir)%.il_date : %.m
 ifeq ($(findstring il,$(GRADE)),il)        
 $(os_subdir)%.dll : %.cpp
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
-		-I`cygpath -w $(MERC_C_INCL_DIR)` \
-		-AI`cygpath -w $(MERC_DLL_DIR)` $< \
+		-I`$(CYGPATH) $(MERC_C_INCL_DIR)` \
+		-AI`$(CYGPATH) $(MERC_DLL_DIR)` $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 	rm -f $*.obj
 
 $(os_subdir)%.dll : %.cs
-	$(MS_CSC) /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+	$(MS_CSC) /t:library /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
 		$(CSHARP_ASSEMBLY_REFS-$*) $(ALL_MS_CSCFLAGS) $<
 
 $(os_subdir)%.dll : %.il
@@ -411,20 +411,20 @@ ifeq ($(findstring il,$(GRADE)),il)
 
 .cpp.dll:
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
-		-I`cygpath -w $(MERC_C_INCL_DIR)` \
-		-AI`cygpath -w $(MERC_DLL_DIR)` $< \
+		-I`$(CYGPATH) $(MERC_C_INCL_DIR)` \
+		-AI`$(CYGPATH) $(MERC_DLL_DIR)` $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 	rm -f $*.obj
 
 .cs.dll:
-	$(MS_CSC) /t:library /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+	$(MS_CSC) /t:library /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
 		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 .cpp.exe:
 	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
 
 .cs.exe:
-	$(MS_CSC) /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
+	$(MS_CSC) /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
 		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 endif # $(findstring il,$(GRADE)) != ""
@@ -436,11 +436,11 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 # Always attempt to rebuild these files, even if they exist.
 .PHONY: $(ALL_MC_BUILD_FILES) *.err
 $(ALL_MC_BUILD_FILES) %.err:
-	$(MCM) $(ALL_GRADEFLAGS) $(ALL_MC_MAKE_FLAGS) $@
+	$(MCM) $@
 
 # If we don't know how to make the file, try using `mmc --make'.
 .DEFAULT:
-	$(MCM) $(ALL_GRADEFLAGS) $(ALL_MC_MAKE_FLAGS) $@
+	$(MCM) $@
 
 clean_local: $(MERCURY_MAIN_MODULES:%=%.clean)
 realclean_local: $(MERCURY_MAIN_MODULES:%=%.realclean)

@@ -16,6 +16,7 @@ ALL_EXTRA_LIBRARIES	= $(TARGET_EXTRA_LIBRARIES) $(EXTRA_LIBRARIES)
 EXTRA_LIB_DIRS		=
 EXTRA_LIBRARIES		=
 
+ifeq ($(MMAKE_USE_MMC_MAKE),no)
 EXTRA_INT_DIRS		= $(patsubst %,%/ints,$(EXTRA_LIB_DIRS))
 MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
 EXTRA_C_LIB_DIRS	= \
@@ -24,6 +25,15 @@ EXTRA_C_LIB_DIRS	= \
 EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
 EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
 MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
+else
+# mmc handles these itself when invoked with `--make'.
+EXTRA_INT_DIRS =
+MERCURY_EXTRA_INT_DIRS =
+EXTRA_C_LIB_DIRS =
+EXTRA_C_INCL_DIRS =
+EXTRA_INIT_DIRS =
+MERCURY_EXTRA_INIT_DIRS	=
+endif
 
 # Set the directory search path. 
 # (See the GNU Make manual for documentation about VPATH and GPATH.)
@@ -97,7 +107,24 @@ EXTRA_MCFLAGS	=
 LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
 
 # Flags for use with `mmc --make'.
-ALL_MC_MAKE_FLAGS = $(ALL_MCFLAGS) $(MC_MAKE_FLAGS) $(EXTRA_MC_MAKE_FLAGS)
+# Pass the options as a Mercury.options file on stdin rather
+# than on the command line. This avoids problems with quoting
+# and unwanted word splitting.
+ECHO_MERCURY_OPTIONS = { \
+	echo MCFLAGS += '$(ALL_GRADEFLAGS) $(ALL_MCFLAGS)'; \
+	echo MCFLAGS += '$(MC_MAKE_FLAGS) $(EXTRA_MC_MAKE_FLAGS)'; \
+	echo CFLAGS += '$(ALL_CFLAGS)'; \
+	echo JAVACFLAGS += '$(ALL_JAVACFLAGS)'; \
+	echo MS_CLFLAGS += '$(ALL_MS_CLFLAGS)'; \
+	echo MS_ILASMFLAGS += '$(ALL_MS_ILASMFLAGS)'; \
+	echo C2INITARGS += '$(ALL_C2INITARGS)'; \
+	echo MLFLAGS += '$(ALL_MLFLAGS)'; \
+	echo MLLIBS += '$(ALL_MLLIBS)'; \
+	echo MLOBJS += '$(ALL_MLOBJS)'; \
+	echo EXTRA_LIBRARIES += '$(EXTRA_LIBRARIES)'; \
+	echo EXTRA_LIB_DIRS += '$(EXTRA_LIB_DIRS)'; \
+	}
+
 MC_MAKE_FLAGS	=
 EXTRA_MC_MAKE_FLAGS =
 
@@ -111,7 +138,7 @@ MCSI		= $(MC) --make-short-interface
 MCOI		= $(MC) --make-optimization-interface
 MCTOI		= $(MC) --make-transitive-optimization-interface
 MCOGS		= $(MC) --output-grade-string
-MCM		= $(MC) --make
+MCM		= $(ECHO_MERCURY_OPTIONS) | $(MC) --make --options-file -
 
 ALL_MCIFLAGS	= $(MCIFLAGS) $(EXTRA_MCIFLAGS) $(TARGET_MCFLAGS) \
 		  $(LIB_MCFLAGS)
@@ -171,13 +198,20 @@ EXTRA_CFLAGS	=
 
 # MS_CL is the command line version of Microsoft Visual C++, which we
 # use to compile Managed C++ code in the .NET backend.
+CYGPATH		= @CYGPATH@
 MS_CL		= @MS_CL@
 MS_VISUALCPP_DIR = @MS_VISUALCPP_DIR@
 ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
 		$(LIB_MS_CLFLAGS)
 MS_CLFLAGS	=
 EXTRA_MS_CLFLAGS =
-MS_VC7_INCLUDES = -I"`cygpath -w '$(MS_VISUALCPP_DIR)/include'`"
+# The $(shell ...) here is to cause make to evaluate the command substitution
+# when the variable is expanded. This is necessary because the result
+# will be single-quoted when passed to the shell via ECHO_MERCURY_OPTIONS
+# to preserve possible double-quotes, so the command substitution won't
+# be run then.
+MS_VC7_INCLUDE_DIR = $(shell echo `$(CYGPATH) "$(MS_VISUALCPP_DIR)/include"`)
+MS_VC7_INCLUDES = -I"$(MS_VC7_INCLUDE_DIR)"
 LIB_MS_CLFLAGS	= $(MS_VC7_INCLUDES) $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_CL_NOASM can be used to turn off assembly generation.  Use
