@@ -13,6 +13,8 @@
 % 
 % XXX we should record each error using moduleinfo_incr_errors.
 
+% WISHLIST - we should handle explicit module quantification
+
 :- module make_hlds.
 :- interface.
 :- import_module prog_io, hlds.
@@ -848,9 +850,9 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	ModeId = 0,
 	Builtin = not_builtin,
 
-	% XXX serious design flaw
-	% XXX we need to know the module name!!!
-	ModuleName = "xxx",
+	% the module name will be determined by typecheck.nl
+	% when it resolves predicate overloading
+	ModuleName = "",
 
 	term__apply_substitution(Goal0, Subst, Goal1),
 	( Goal1 = term_functor(term_atom(PredName0), Args0, _) ->

@@ -83,9 +83,10 @@
 :- mode set__delete(in, out, out) is nondet.
 :- mode set__delete(in, in, out) is semidet.
 
-	% `set__delete_list(Set0, Xs, Set)' is true iff `Set0' contains
-	% every member of `Xs', and `Set' is the relative complement of
-	% `Set0' and the set containing only the members of `Xs'.
+	% `set__delete_list(Set0, Xs, Set)' is true iff Xs does not
+	% contain any duplicates, `Set0' contains every member of `Xs',
+	% and `Set' is the relative complement of `Set0' and the set
+	% containing only the members of `Xs'.
 
 :- pred set__delete_list(set(T), list(T), set(T)).
 :- mode set__delete_list(in, in, out) is semidet.

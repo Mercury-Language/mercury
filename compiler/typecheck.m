@@ -268,14 +268,15 @@ typecheck_clause_list([Clause0|Clauses0], HeadVars, ArgTypes,
 			type_info, type_info).
 :- mode typecheck_clause(in, in, in, out, typeinfo_di, typeinfo_uo).
 
-typecheck_clause(Clause, HeadVars, ArgTypes, Clause) -->
+typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 		% XXX abstract clause/3
-	{ Clause = clause(_Modes, Body, Context) },
+	{ Clause0 = clause(Modes, Body0, Context) },
 	typeinfo_set_context(Context),
 		% typecheck the clause - first the head unification, and
 		% then the body
 	typecheck_var_has_type_list(HeadVars, ArgTypes, 1),
-	typecheck_goal(Body),
+	typecheck_goal(Body0, Body),
+	{ Clause = clause(Modes, Body, Context) },
 		% check for type ambiguities
 	typecheck_finish_clause.
 
@@ -401,47 +402,50 @@ write_type_var_list_2([V|Vs], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_goal(hlds__goal, type_info, type_info).
-:- mode typecheck_goal(in, typeinfo_di, typeinfo_uo).
+:- pred typecheck_goal(hlds__goal, hlds__goal, type_info, type_info).
+:- mode typecheck_goal(in, out, typeinfo_di, typeinfo_uo).
 
-typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
+typecheck_goal(Goal0 - GoalInfo, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 	% XXX prog_io.nl and make_hlds.nl don't set up the
 	%     goalinfo context, so we have to just use the clause
 	%     context
 	% goalinfo_context(GoalInfo, Context),
 	% typeinfo_set_context(Context, TypeInfo0, TypeInfo1),
 	TypeInfo1 = TypeInfo0,
-	typecheck_goal_2(Goal, TypeInfo1, TypeInfo).
+	typecheck_goal_2(Goal0, Goal, TypeInfo1, TypeInfo).
 
-:- pred typecheck_goal_2(hlds__goal_expr, type_info, type_info).
-:- mode typecheck_goal_2(in, typeinfo_di, typeinfo_uo).
+:- pred typecheck_goal_2(hlds__goal_expr, hlds__goal_expr,
+				type_info, type_info).
+:- mode typecheck_goal_2(in, out, typeinfo_di, typeinfo_uo).
 
-typecheck_goal_2(conj(List)) -->
+typecheck_goal_2(conj(List0), conj(List)) -->
 	checkpoint("conj"),
-	typecheck_goal_list(List).
-typecheck_goal_2(disj(List)) -->
+	typecheck_goal_list(List0, List).
+typecheck_goal_2(disj(List0), disj(List)) -->
 	checkpoint("disj"),
-	typecheck_goal_list(List).
-typecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
+	typecheck_goal_list(List0, List).
+typecheck_goal_2(if_then_else(Vs, A0, B0, C0), if_then_else(Vs, A, B, C)) -->
 	checkpoint("if"),
-	typecheck_goal(A),
+	typecheck_goal(A0, A),
 	checkpoint("then"),
-	typecheck_goal(B),
+	typecheck_goal(B0, B),
 	checkpoint("else"),
-	typecheck_goal(C).
-typecheck_goal_2(not(_Vs, A)) -->
+	typecheck_goal(C0, C).
+typecheck_goal_2(not(Vs, A0), not(Vs, A)) -->
 	checkpoint("not"),
-	typecheck_goal(A).
-typecheck_goal_2(some(_Vs, G)) -->
+	typecheck_goal(A0, A).
+typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
 	checkpoint("some"),
-	typecheck_goal(G).
-typecheck_goal_2(all(_Vs, G)) -->
+	typecheck_goal(G0, G).
+typecheck_goal_2(all(Vs, G0), all(Vs, G)) -->
 	checkpoint("all"),
-	typecheck_goal(G).
-typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
+	typecheck_goal(G0, G).
+typecheck_goal_2(call(PredId0, Mode, Args, Builtin),
+			call(PredId, Mode, Args, Builtin)) -->
 	checkpoint("call"),
-	typecheck_call_pred(PredId, Args).
-typecheck_goal_2(unify(A, B, _Mode, _Info, UnifyContext)) -->
+	typecheck_call_pred(PredId0, Args, PredId).
+typecheck_goal_2(unify(A, B, Mode, Info, UnifyContext),
+		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),
 	typeinfo_set_arg_num(0),
 	typeinfo_set_unify_context(UnifyContext),
@@ -449,22 +453,29 @@ typecheck_goal_2(unify(A, B, _Mode, _Info, UnifyContext)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_goal_list(list(hlds__goal), type_info, type_info).
-:- mode typecheck_goal_list(in, typeinfo_di, typeinfo_uo).
+:- pred typecheck_goal_list(list(hlds__goal), list(hlds__goal),
+				type_info, type_info).
+:- mode typecheck_goal_list(in, out, typeinfo_di, typeinfo_uo).
 
-typecheck_goal_list([]) --> [].
-typecheck_goal_list([Goal | Goals]) -->
-	typecheck_goal(Goal),
-	typecheck_goal_list(Goals).
+typecheck_goal_list([], []) --> [].
+typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
+	typecheck_goal(Goal0, Goal),
+	typecheck_goal_list(Goals0, Goals).
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred(pred_id, list(term), type_info, type_info).
-:- mode typecheck_call_pred(in, in, typeinfo_di, typeinfo_uo).
+:- pred typecheck_call_pred(pred_id, list(term), pred_id, type_info, type_info).
+:- mode typecheck_call_pred(in, in, out, typeinfo_di, typeinfo_uo).
 
 	% WISHLIST - we should handle overloading of predicates
 
-typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
+typecheck_call_pred(PredId0, Args, PredId, TypeInfo0, TypeInfo) :-
+		% repair the module name in the PredId
+		% (make_hlds.nl doesn't set it up correctly)
+	typeinfo_get_module_name(TypeInfo0, ModuleName),
+	PredId0 = pred(_, Name, Arity),
+	PredId = pred(ModuleName, Name, Arity),
+
 		% look up the called predicate's arg types
 	typeinfo_set_called_predid(TypeInfo0, PredId, TypeInfo1),
 	typeinfo_get_preds(TypeInfo1, Preds),
@@ -1852,6 +1863,14 @@ typeinfo_get_io_state(typeinfo(IOState,_,_,_,_,_,_,_,_,_,_), IOState).
 
 typeinfo_set_io_state( typeinfo(_,B,C,D,E,F,G,H,I,J,K), IOState,
 			typeinfo(IOState,B,C,D,E,F,G,H,I,J,K)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typeinfo_get_module_name(type_info, string).
+:- mode typeinfo_get_module_name(in, out).
+
+typeinfo_get_module_name(typeinfo(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Name) :-
+	moduleinfo_name(ModuleInfo, Name).
 
 %-----------------------------------------------------------------------------%
 

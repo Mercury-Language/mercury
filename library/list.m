@@ -16,9 +16,17 @@
 
 %-----------------------------------------------------------------------------%
 
+	% standard append predicate
+
 :- pred append(list(T), list(T), list(T)).
 :- mode append(input, input, output).
 :- mode append(output, output, input).
+
+	% merge - see NU-Prolog documentation
+
+:- pred merge(list(T), list(T), list(T)).
+:- mode merge(input, input, output).
+:- mode merge(output, output, input).
 
 :- pred member(T, list(T)).
 :- mode member(output, input).
@@ -96,6 +104,7 @@ nth_member_lookup([X | Xs], N, Y) :-
 
 /*
 :- external("NU-Prolog", append/3).
+:- external("NU-Prolog", merge/3).
 :- external("NU-Prolog", member/2).
 :- external("NU-Prolog", member/3).
 :- external("NU-Prolog", delete/3).
