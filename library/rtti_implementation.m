@@ -1549,11 +1549,14 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 typeinfo_is_variable(_::in, 42::out) :-
 	semidet_unimplemented("typeinfo_is_variable").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	typeinfo_is_variable(TypeInfo::in, VarNum::out), [promise_pure], "
-	SUCCESS_INDICATOR = (dynamic_cast<MR_Word>(TypeInfo) == NULL);
-	if (SUCCESS_INDICATOR) {
-		VarNum = System::Convert::ToInt32(TypeInfo);
+	try {
+		SUCCESS_INDICATOR = true;
+		VarNum = System.Convert.ToInt32(TypeInfo);
+	}
+	catch (System.Exception e) {
+		SUCCESS_INDICATOR = false;
 	}
 ").
 
