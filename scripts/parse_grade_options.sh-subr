@@ -1,0 +1,208 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1997 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# parse_grade_options.sh-subr:
+#	An `sh' subroutine for parsing grade-related options.
+#	Used by the `ml' and `mgnuc' scripts.
+#
+#	The code here should be inserted in the case statement in a scripts
+#	option-parsing loop.
+#
+#---------------------------------------------------------------------------#
+
+	--asm-labels)
+		asm_labels=true ;;
+	--no-asm-labels)
+		asm_labels=false ;;
+
+	--gcc-non-local-gotos)
+		non_local_gotos=true ;;
+	--no-gcc-non-local-gotos)
+		non_local_gotos=false ;;
+
+	--gcc-global-registers)
+		global_regs=true ;;
+	--no-gcc-global-registers)
+		global_regs=false ;;
+
+	--debug)
+		debug=true ;;
+	--no-debug)
+		debug=false ;;
+
+	--gc)
+		shift
+		case "$1" in
+			accurate|conservative|none)
+				gc_method=$1 ;;
+			*)
+				echo "$0: invalid gc method \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	-p|--profiling)
+		profile_time=true
+		profile_calls=true
+		;;
+	-p-|--no-profiling)
+		profile_time=false
+		profile_calls=false
+		;;
+	--profile-time)
+		profile_time=true ;;
+	--no-profile-time)
+		profile_time=false ;;
+	--profile-calls)
+		profile_calls=true ;;
+	--no-profile-calls)
+		profile_calls=false ;;
+
+	--use-trail)
+		use_trail=true ;;
+	--no-use-trail)
+		use_trail=false ;;
+
+	--args)
+		shift
+		case "$1" in
+			simple|compact)
+				args_method=$1;;
+			*)
+				echo "$0: invalid arg method \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--pic-reg)
+		pic_reg=true ;;
+	--no-pic-reg)
+		pic_reg=false ;;
+
+	-s|--grade)
+		shift
+		grade="$1";
+
+		# Convert a grade to a set of options.
+		#
+		# IMPORTANT: any changes to the handling of grades here
+		# may also require changes to
+		#	runtime/mercury_grade.h
+		#	compiler/handle_options.m
+		#	scripts/ml.in
+
+		case "$grade" in
+			*.debug)
+				debug=true
+				grade="` expr $grade : '\(.*\).debug' `"
+				;;
+			*)	debug=false
+				;;
+		esac
+
+		case "$grade" in
+			*.sa)
+				args_method=simple
+				grade="` expr $grade : '\(.*\).sa' `"
+				;;
+			*)	args_method=compact
+				;;
+		esac
+
+		case "$grade" in
+			*.tr)	use_trail=true
+				grade="` expr $grade : '\(.*\).tr' `"
+				;;
+			*)	use_trail=false
+				;;
+		esac
+
+		case "$grade" in
+			*.prof)
+				profile_time=true
+				profile_calls=true
+				grade="` expr $grade : '\(.*\).prof' `"
+				;;
+			*.proftime)	
+				profile_time=true
+				profile_calls=false
+				grade="` expr $grade : '\(.*\).proftime' `"
+				;;
+			*.profcalls)	
+				profile_time=false
+				profile_calls=true
+				grade="` expr $grade : '\(.*\).profcalls' `"
+				;;
+			*)
+				profile_time=false
+				profile_calls=false
+				;;
+		esac
+
+		case "$grade" in
+			*.agc)	gc_method=accurate
+				grade="` expr $grade : '\(.*\).agc' `"
+				;;
+			*.gc)	gc_method=conservative
+				grade="` expr $grade : '\(.*\).gc' `"
+				;;
+			*)	gc_method=none
+				;;
+		esac
+
+		case "$grade" in
+			asm_fast)
+				global_regs=true
+				non_local_gotos=true
+				asm_labels=true
+				;;
+			fast)
+				global_regs=true
+				non_local_gotos=true
+				asm_labels=false
+				;;
+			reg)
+				global_regs=true
+				non_local_gotos=false
+				asm_labels=false
+				;;
+			asm_jump)
+				global_regs=false
+				non_local_gotos=true
+				asm_labels=true
+				;;
+			jump)
+				global_regs=false
+				asm_labels=false
+				non_local_gotos=true
+				;;
+			none)
+				global_regs=false
+				asm_labels=false
+				non_local_gotos=false
+				;;
+			debug)
+				debug=true
+				global_regs=false
+				asm_labels=false
+				non_local_gotos=false
+				;;
+			*)
+				echo "$0: invalid grade \`$grade'" 1>&2;
+				exit 1
+				;;
+		esac
+		;;
+	-s*)
+		grade="` expr $1 : '-s\(.*\)' `"
+		# just insert it as `--grade $grade' and then reparse it
+		case $# in
+			0) set - "x --grade $grade" ;;
+			0) set - "x --grade $grade" "$@" ;;
+		esac
+		;;

@@ -569,7 +569,7 @@ Error messages are placed in @file{.err} files.
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
 with the Mercury compiler's @samp{--split-c-files} option enabled.
-@xref{Output-level (LLDS->C) optimization options} for more information
+@xref{Output-level (LLDS -> C) optimization options} for more information
 about @samp{--split-c-files}.
 
 @item @var{main-module}.nu
@@ -913,9 +913,8 @@ multiple runs of the same program, but unfortunately there is not yet
 any way to do that.
 
 Due to a known timing-related bug in our code, you may occasionally get
-segmentation violations when running your program with profiling enabled.
-If this happens, just run it again --- the problem does not occur frequently.
-This bug will hopefully be fixed soon.
+segmentation violations when running your program with time profiling enabled.
+If this happens, just run it again --- the problem occurs only very rarely.
 
 @node Displaying the profile
 @section Displaying the profile
@@ -1474,17 +1473,29 @@ code in such a way that the entire program must be
 compiled with the same setting of these options,
 and it must be linked to a version of the Mercury
 library which has been compiled with the same setting.
-Rather than setting them individually, you must
-specify them all at once by selecting a particular
-compilation model ("grade").
+(Attempting to link object files compiled with different
+settings of these options will generally result in an error at
+link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
+or @samp{symbol MR_runtime_grade multiply defined}.)
+
+The options below must be passed to @samp{mgnuc} and @samp{ml} as well
+as to @samp{mmc}.
 
 @table @asis
 @item @code{-s @var{grade}}
 @itemx @code{--grade @var{grade}}
-Select the compilation model. The @var{grade} should be one of
-@samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast},
-or one of those with @samp{.gc}, @samp{.prof} or @samp{.gc.prof} appended.
+Select the compilation model. The @var{grade} should be a base
+grade with zero or more grade modifiers appended.
+The base grades are @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, and @samp{asm_fast}.
+The grade modifiers are @samp{.gc}, @samp{.prof}, @samp{.proftime},
+@samp{.profcalls}, @samp{.tr}, and @samp{.debug}.  The @samp{.prof},
+@samp{.proftime}, and @samp{.profcalls} grade modifiers are mutually
+exclusive; only one of those three may be specified.
+If a grade includes more than one grade modifier,
+the grade modifiers must be given in the same order as the
+order they are listed here.
+
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
 with the @samp{MERCURY_DEFAULT_GRADE} environment variable if desired.
@@ -1492,16 +1503,15 @@ Depending on your particular installation, only a subset
 of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
+(The error message will typically be something like
+@samp{ld: can't find library for -lmercury}.)
 
-The following table shows the options that are selected by each grade; it
-is followed by descriptions of those options.
+The tables below show the options that are selected by each base grade
+and grade modifier; they are followed by descriptions of those options.
 
 @table @asis
 @item @var{Grade}
 @var{Options implied}.
-
-@item @samp{debug}
-@code{--debug --no-c-optimize}.
 
 @item @samp{none}
 None.
@@ -1521,32 +1531,45 @@ None.
 @item @samp{asm_fast}
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
-@item Any of the above followed by @samp{.gc}
-As above, plus @code{--gc conservative}.
+@end table
 
-@item Any of the above followed by @samp{.prof}
-As above, plus @code{--profiling}.
+@table @asis
+@item @var{Grade modifier}
+@var{Options implied}.
+
+@item @samp{.gc}
+@code{--gc conservative}.
+
+@item @samp{.prof}
+@code{--profiling}.
+
+@item @samp{.proftime}
+@code{--profile-time}.
+
+@item @samp{.profcalls}
+@code{--profile-calls}.
+
+@item @samp{.tr}
+@code{--use-trail}.
+
+@item @samp{.debug}
+@code{--debug}.
 
 @end table
 
 @sp 1
-Reminder: the following optimizations should not be set individually.
-Instead, you should use the @samp{--grade} option to change the setting of
-these options.
-
-@sp 1
 @item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
-@itemx @code{--no-gcc-global-registers} (grades: debug, none, jump, asm_jump)
+@itemx @code{--no-gcc-global-registers} (grades: none, jump, asm_jump)
 Specify whether or not to use GNU C's global register variables extension.
 
 @sp 1
 @item @code{--gcc-non-local-gotos} (grades: jump, fast, asm_jump, asm_fast)
-@item @code{--no-gcc-non-local-gotos} (grades: debug, none, reg)
+@item @code{--no-gcc-non-local-gotos} (grades: none, reg)
 Specify whether or not to use GNU C's ``labels as values'' extension.
 
 @sp 1
 @item @code{--asm-labels} (grades: asm_jump, asm_fast)
-@itemx @code{--no-asm-labels} (grades: debug, none, reg, jump, fast)
+@itemx @code{--no-asm-labels} (grades: none, reg, jump, fast)
 Specify whether or not to use GNU C's asm extensions
 for inline assembler labels.
 
@@ -1573,39 +1596,33 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--have-delay-slot}
-(This option is not intended for general use.)
-Assume that branch instructions have a delay slot.
-
-@sp 1
-@item @code{--num-real-r-regs @var{n}}
-(This option is not intended for general use.)
-Assume r1 up to r@var{n} are real general purpose registers.
-
-@sp 1
-@item @code{--num-real-f-regs @var{n}}
-(This option is not intended for general use.)
-Assume f1 up to f@var{n} are real floating point registers.
-
-@sp 1
-@item @code{--num-real-r-temps @var{n}}
-(This option is not intended for general use.)
-Assume that @var{n} non-float temporaries will fit into real machine registers.
-
-@sp 1
-@item @code{--num-real-f-temps @var{n}}
-(This option is not intended for general use.)
-Assume that @var{n} float temporaries will fit into real machine registers.
-
-@sp 1
-@item @code{--profiling} (grades: any grade ending in @samp{.prof})
+@item @code{--profiling} (grades: any grade containing @samp{.prof})
 Enable profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
 @sp 1
-@item @code{--debug} (grades: debug)
+@item @code{--profile-calls} (grades: any grade containing @samp{.profcalls})
+Similar to @samp{--profiling}, except that this option only gathers
+call counts, not timing information.  Useful on systems where time
+profiling is not supported (e.g. MS Windows).
+
+@sp 1
+@item @code{--profile-time} (grades: any grade containing @samp{.proftime})
+Similar to @samp{--profiling}, except that this option only gathers
+timing information, not call counts.  For the results to be useful,
+call counts for an identical run of your program need to be gathered
+using @samp{--profiling} or @samp{--profile-calls}. 
+The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
+to gather timing information and call counts in seperate runs,
+rather than just using @samp{--profiling} to gather them both at once,
+is that the former method can give slightly more accurate timing results.
+because with the latter method the code inserted to record call counts
+has a small effect on the execution speed.
+
+@sp 1
+@item @code{--debug} (grades: any grade containing @samp{.debug})
 Enable debugging.
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
 to enable debugging of the generated C code. 
@@ -1626,8 +1643,8 @@ the @var{n}th argument is passed in or out using register r@var{n}.
 With the @samp{compact} convention,
 the @var{n}th input argument is passed using register r@var{n}
 and the @var{n}th output argument is returned using register r@var{n}.
-The @samp{compact} convention generally leads to more efficient code.
-However, currently only the @samp{simple} convention is supported.
+The @samp{compact} convention, which is the default,
+generally leads to more efficient code.
 
 @sp 1
 @item @code{--no-type-layout}
@@ -1638,6 +1655,14 @@ use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
 runtime. The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
+
+@sp 1
+@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
+[For Unix with intel x86 architecture only.]
+Select a register usage convention that is compatible
+with position-independent code (gcc's `-fpic' option).
+This is necessary when using shared libraries on Intel x86 systems
+running Unix.  On other systems it has no effect.
 
 @end table
 
@@ -1694,6 +1719,31 @@ default: 90).  A lower value means that the compiler will use
 larger tables, but there will generally be less hash collisions,
 so it may result in faster lookups.
 
+@sp 1
+@item @code{--have-delay-slot}
+(This option is not intended for general use.)
+Assume that branch instructions have a delay slot.
+
+@sp 1
+@item @code{--num-real-r-regs @var{n}}
+(This option is not intended for general use.)
+Assume r1 up to r@var{n} are real general purpose registers.
+
+@sp 1
+@item @code{--num-real-f-regs @var{n}}
+(This option is not intended for general use.)
+Assume f1 up to f@var{n} are real floating point registers.
+
+@sp 1
+@item @code{--num-real-r-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} non-float temporaries will fit into real machine registers.
+
+@sp 1
+@item @code{--num-real-f-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} float temporaries will fit into real machine registers.
+
 @end table
 
 @node Optimization options
@@ -1701,10 +1751,11 @@ so it may result in faster lookups.
 
 @menu
 * Overall optimization options::
-* High-level (HLDS->HLDS) optimization options::
-* Medium-level (HLDS->LLDS) optimization options::
-* Low-level (LLDS->LLDS) optimization options::
-* Output-level (LLDS->C) optimization options::
+* High-level (HLDS -> HLDS) optimization options::
+* Medium-level (HLDS -> LLDS) optimization options::
+* Low-level (LLDS -> LLDS) optimization options::
+* Output-level (LLDS -> C) optimization options::
+* Object-level (C -> object code) optimization options::
 @end menu
 
 @node Overall optimization options
@@ -1771,8 +1822,8 @@ rather than @samp{mmake foo}.
 
 @end table
 
-@node High-level (HLDS->HLDS) optimization options
-@subsection High-level (HLDS->HLDS) optimization options
+@node High-level (HLDS -> HLDS) optimization options
+@subsection High-level (HLDS -> HLDS) optimization options
 
 These optimizations are high-level transformations on our HLDS (high-level
 data structure).
@@ -1874,8 +1925,8 @@ that have to be saved across calls.
 
 @end table
 
-@node Medium-level (HLDS->LLDS) optimization options
-@subsection Medium-level (HLDS->LLDS) optimization options
+@node Medium-level (HLDS -> LLDS) optimization options
+@subsection Medium-level (HLDS -> LLDS) optimization options
 
 These optimizations are applied during the process of generating
 low-level intermediate code from our high-level data structure.
@@ -1941,8 +1992,8 @@ Don't optimize the assignment of registers in branched goals.
 
 @end table
 
-@node Low-level (LLDS->LLDS) optimization options
-@subsection Low-level (LLDS->LLDS) optimization options
+@node Low-level (LLDS -> LLDS) optimization options
+@subsection Low-level (LLDS -> LLDS) optimization options
 
 These optimizations are transformations that are applied to our
 low-level intermediate code before emitting C code.
@@ -1979,9 +2030,9 @@ Enable elimination of duplicate code.
 @item --optimize-value-number
 Perform value numbering on extended basic blocks.
 
-@c @sp 1
-@c @item --pred-value-number
-@c Extend value numbering to whole procedures, rather than just basic blocks.
+@sp 1
+@item --pred-value-number
+Extend value numbering to whole procedures, rather than just basic blocks.
 
 @sp 1
 @item --no-optimize-frames
@@ -2001,8 +2052,8 @@ Iterate value numbering at most @var{n} times (default: 1).
 
 @end table
 
-@node Output-level (LLDS->C) optimization options
-@subsection Output-level (LLDS->C) optimization options
+@node Output-level (LLDS -> C) optimization options
+@subsection Output-level (LLDS -> C) optimization options
 
 These optimizations are applied during the process of generating
 C intermediate code from our low-level data structure.
@@ -2027,9 +2078,28 @@ putting all the procedures in a single function,
 which produces the most efficient code
 but tends to severely stress the C compiler.
 
-@sp 1
+@end table
+
+@node Object-level (C -> object code) optimization options
+@subsection Object-level (C -> object code) optimization options
+
+These optimizations are applied during the process of compiling
+the generated C code to machine code object files.
+
+If you are using Mmake, you need to pass these options
+to @samp{mgnuc} rather than to @samp{mmc}.
+
+@table @code
 @item --no-c-optimize
 Don't enable the C compiler's optimizations.
+
+@sp 1
+@item --inline-alloc
+Inline calls to @samp{GC_malloc()}.
+This can improve performance a fair bit,
+but may significantly increase code size.
+This option has no effect if @samp{--gc conservative}
+is not set or if the C compiler is not GNU C.
 
 @end table
 

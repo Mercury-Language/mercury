@@ -1027,9 +1027,10 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, Verbose, Stats,
 
 mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 		ModuleInfo) -->
-	globals__io_lookup_bool_option(profiling, Profiling),
+	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
+	globals__io_lookup_bool_option(profile_time, ProfileTime),
 	(
-		{ Profiling = yes }
+		{ ProfileCalls = yes ; ProfileTime = yes }
 	->
 		maybe_write_string(Verbose, "% Outputing profiling call graph..."),
 		maybe_flush_output(Verbose),
@@ -1664,11 +1665,23 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		GC_Opt = ""
 	},
-	globals__io_lookup_bool_option(profiling, Profiling),
-	{ Profiling = yes ->
-		ProfileOpt = "-DPROFILE_CALLS -DPROFILE_TIME "
+	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
+	{ ProfileCalls = yes ->
+		ProfileCallsOpt = "-DPROFILE_CALLS "
 	;
-		ProfileOpt = ""
+		ProfileCallsOpt = ""
+	},
+	globals__io_lookup_bool_option(profile_time, ProfileTime),
+	{ ProfileTime = yes ->
+		ProfileTimeOpt = "-DPROFILE_TIME "
+	;
+		ProfileTimeOpt = ""
+	},
+	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
+	{ PIC_Reg = yes ->
+		PIC_Reg_Opt = "-DPIC_REG "
+	;
+		PIC_Reg_Opt = ""
 	},
 	globals__io_get_tags_method(Tags_Method),
 	{ Tags_Method = high ->
@@ -1754,7 +1767,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
-		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, PIC_Reg_Opt,
+		TagsOpt, NumTagBitsOpt, DebugOpt,
 		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
@@ -1823,7 +1837,8 @@ mercury_compile__link_module_list(Modules) -->
 		    report_error("compilation of init file failed.")
 		;
 		    maybe_write_string(Verbose, "% Linking...\n"),
-		    globals__io_lookup_string_option(grade, Grade),
+		    globals__io_get_globals(Globals),
+		    { compute_grade(Globals, Grade) },
 		    globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
 		    { join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },

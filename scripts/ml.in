@@ -49,8 +49,18 @@ Options:
 	-g, --no-strip
 		Do not strip debugging information.
 	-s <grade>, --grade <grade>
-		Specify which grade of the Mercury library to link with.
-		(The default grade is determined by ``configure'.)"
+	--asm-labels
+	--gcc-non-local-gotos
+	--gcc-global-registers
+	-p, --profiling
+	--profile-calls
+	--profile-time
+	--debug
+	--use-trail
+	--args {simple, compact}
+	--pic-reg
+		See the documentation in the \"Invocation\" section
+		of the Mercury User's Guide."
 
 FULLARCH=@FULLARCH@
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
@@ -81,12 +91,14 @@ case $FULLARCH in
 esac
 mercury_libs=default
 demangle=true
-GRADE=$DEFAULT_GRADE
 MAYBE_STATIC_OPT=""
 make_shared_lib=false
 user_shlib_dirs=""
 
-while true; do
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
+while : ; do
     case "$1" in
 	-h|--help|"-?")
 		echo "$Help"
@@ -94,29 +106,25 @@ while true; do
 		;;
 	-v|--verbose)
 		verbose=true
-		shift ;;
+		;;
 	--demangle)
 		demangle=true
-		shift ;;
+		;;
 	--no-demangle)
 		demangle=false
-		shift ;;
-	-s|--grade)
-		shift
-		GRADE="$1"
-		shift ;;
+		;;
 	--strip)
 		strip=true
-		shift ;;
+		;;
 	-g|--no-strip)
 		strip=false
-		shift ;;
+		;;
 	--make-shared-lib)
 		make_shared_lib=true
 		# on some targets, stripping shared libraries will
 		# make them unusable, I think, so don't strip
 		strip=false
-		shift ;;
+		;;
 	--no-libs)
 		progname=`basename $0`
 		cat 1>&2 << EOF
@@ -125,12 +133,12 @@ $progname:   please use the new option \`--mercury-libs none' instead.
 $progname:   Support for \`--no-libs' may be removed in a future release.
 EOF
 		mercury_libs=none
-		shift ;;
+		;;
 	--mercury-libs)
 		case "$2" in
 			shared|static|none|default)
 				mercury_libs="$2"
-				shift; shift ;;
+				shift ;;
 			*)
 				progname=`basename $0`
 				cat 1>&2 << EOF
@@ -147,7 +155,6 @@ EOF
 		case $mercury_libs in static|default)
 			mercury_libs=shared ;;
 		esac
-		shift
 		;;
 	-static|--static)
 		case $FULLARCH in
@@ -167,27 +174,27 @@ EOF
 		case $mercury_libs in shared|default)
 			mercury_libs=static ;;
 		esac
-		shift
 		;;
 	-R|--shared-lib-dir)
 		dir="$2"
 		user_shlib_dirs="$user_shlib_dirs $dir"
-		shift; shift
+		shift
 		;;
 	-R*)
 		dir="` expr $1 : '-R\(.*\)' `"
 		user_shlib_dirs="$user_shlib_dirs $dir"
-		shift
 		;;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
 	--)
 		shift
 		break ;;
-	-s*)
-		GRADE="` expr $1 : '-s\(.*\)' `"
-		shift ;;
 	*)
 		break ;;
     esac
+    shift
 done
 
 case $mercury_libs in default)
@@ -202,6 +209,43 @@ case $mercury_libs in default)
 		;;
 	esac
 	;;
+esac
+
+#
+# compute the grade from the options settings
+#
+
+case $non_local_gotos,$global_regs in
+	true,true) 	GRADE="fast" ;;
+	true,false)  	GRADE="jump" ;;
+	false,true)  	GRADE="reg" ;;
+	false,false)   	GRADE="none" ;;
+esac
+case $asm_labels in
+	true)		GRADE="asm_$GRADE" ;;
+	false)		;;
+esac
+case $gc_method in
+	conservative)	GRADE="$GRADE.gc" ;;
+	accurate)	GRADE="$GRADE.agc" ;;
+esac
+case $profile_time,$profile_calls in
+	true,true)	GRADE="$GRADE.prof" ;;
+	true,false)	GRADE="$GRADE.proftime" ;;
+	false,true)	GRADE="$GRADE.profcalls" ;;
+	false,false)	;;
+esac
+case $use_trail in
+	true)		GRADE="$GRADE.tr" ;;
+	false)		;;
+esac
+case $args_method in
+	simple)		GRADE="$GRADE.sa" ;;
+	compact)	;;
+esac
+case $debug in
+	true)		GRADE="$GRADE.debug" ;;
+	false)		;;
 esac
 
 case "$GRADE" in
@@ -286,8 +330,8 @@ esac
 # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
 case $FULLARCH in
     *-sgi-irix5*)
-	case "$GRADE" in
-	    *fast*|*jump*)
+	case $non_local_gotos in
+	    true)
 		ARCH_OPTS=-non_shared
 		NONSHARED_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
 		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
@@ -303,6 +347,7 @@ esac
 
 case $verbose in
     true)
+	echo "ml: using grade \`$GRADE'"
 	case $demangle in
 	    false)
 		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \

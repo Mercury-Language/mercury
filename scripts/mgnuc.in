@@ -13,19 +13,31 @@ Help="\
 Name:	mgnuc - Mercury front-end to GNU C
 Usage:	mgnuc [<options>] [-- <gcc options>] files...
 Options:
-	-s <grade>, --grade <grade>
-		Select optimization/debug/gc options according to <grade>,
-		which must be one of debug, none, jump, asm_jump, reg, fast,
-		or asm_fast, or one of those with .gc and/or .prof appended.
 	-v, --verbose
 		Echo gcc command before executing it.
 	--no-ansi
 		Don't pass \`-ansi' to gcc.
 	--no-check
 		Don't enable any of gcc's warnings.
+	-s <grade>, --grade <grade>
+	--asm-labels
+	--gcc-non-local-gotos
+	--gcc-global-registers
+	-p, --profiling
+	--profile-calls
+	--profile-time
+	--debug
+	--use-trail
+	--args {simple, compact}
+	--pic-reg
+	--inline-alloc
+	--split-c-files
+		See the documentation in the \"Invocation\" section
+		of the Mercury User's Guide.
+		
 Description:
 	This runs gcc with the appropriate options for compiling Mercury
-	programs in the specified grade.
+	programs.
 	Normally it invokes gcc in ANSI mode with almost all warnings enabled,
 	but this can be changed using the \`--no-ansi' or \`--no-check'
 	options.
@@ -35,7 +47,7 @@ Environment variables:
 
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
-# *** changes to compiler/mercury_compile.pp                            ***
+# *** changes to compiler/mercury_compile.m                             ***
 # *************************************************************************
 
 FULLARCH=@FULLARCH@
@@ -46,8 +58,6 @@ CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 AS=as
-
-ARG_OPTS=-DCOMPACT_ARGS
 
 case "$CC" in
     *gcc*)
@@ -68,30 +78,32 @@ case "$CC" in
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
 
-	OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
+	OPT_OPTS="-O2 -fomit-frame-pointer"
 	COMPILER=gcc
 	;;
     *lcc*)
 	ANSI_OPTS=
 	CHECK_OPTS=
-	OPT_OPTS="-DSPEED"
+	OPT_OPTS=""
 	COMPILER=lcc
 	;;
     *)
 	ANSI_OPTS=
 	CHECK_OPTS=
-	OPT_OPTS="-O -DSPEED"
+	OPT_OPTS="-O"
 	COMPILER=unknown
 	;;
 esac
 
-DEBUG_OPTS="-g"
 AS_OPTS=""
 SPLIT_OPTS=""
+INLINE_ALLOC_OPTS=""
 
-grade=$DEFAULT_GRADE
 verbose=false
 assemble=false
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
 
 while : ; do
     case "$1" in
@@ -99,39 +111,47 @@ while : ; do
 		echo "$Help"
 		exit 0
 		;;
+
+	-v|--verbose)
+		verbose=true
+		;;
+	-v-|--no-verbose)
+		verbose=false
+		;;
+
 	--assemble)
 		assemble=true
-		shift
 		;;
+
 	--no-ansi)
 		ANSI_OPTS=
-		shift
 		;;
+
 	--no-check)
 		CHECK_OPTS=
-		shift
 		;;
+
 	--split-c-files)
 		SPLIT_OPTS=-DSPLIT_C_FILES
-		shift
 		;;
 	--no-split-c-files)
 		SPLIT_OPTS=
-		shift
 		;;
-	-v|--verbose)
-		verbose=true
-		shift
+
+	--inline-alloc)
+		INLINE_ALLOC_OPTS="-DINLINE_ALLOC -DSILENT"
 		;;
-	-s|--grade)
-		shift
-		grade="$1";
-		shift
+	--no-inline-alloc)
+		INLINE_ALLOC_OPTS=""
 		;;
-	-s*)
-		grade="` expr $1 : '-s\(.*\)' `"
-		shift
+
+	--no-c-optimize)
+		OPT_OPTS=""
 		;;
+
+	# include the file `parse_grade_options.sh-subr'
+	@PARSE_GRADE_OPTIONS@
+
 	--)
 		shift
 		break
@@ -140,98 +160,91 @@ while : ; do
 		break
 		;;
     esac
+    shift
 done
 
-case "$grade" in
-	*.tr)	TRAIL_OPTS="-DMR_USE_TRAIL"
-		grade="` expr $grade : '\(.*\).tr' `"
-		;;
-	*)
-		TRAIL_OPTS=""
-		;;
+#
+# convert mgnuc options into gcc options
+#
+# IMPORTANT: any changes here will require similar changes to
+# compiler/mercury_compile.m.
+#
+
+case $asm_labels in
+	true)		ASM_OPTS="-DUSE_ASM_LABELS" ;;
+	false)		ASM_OPTS="" ;;
 esac
 
-case "$grade" in
-	*.prof)	PROF_OPTS="-DPROFILE_TIME -DPROFILE_CALLS"
-		grade="` expr $grade : '\(.*\).prof' `"
-		;;
-	*)
-		PROF_OPTS="-DNO_SIGNALS"
-		;;
+case $non_local_gotos in
+	true)		GOTO_OPTS="-DUSE_GCC_NONLOCAL_GOTOS" ;;
+	false)		GOTO_OPTS="" ;;
 esac
 
-case "$grade" in
-	*.agc)	GC_OPTS="-DNATIVE_GC"
-		grade="` expr $grade : '\(.*\).agc' `"
-		;;
-	*.gc)	GC_OPTS="-DCONSERVATIVE_GC"
-		grade="` expr $grade : '\(.*\).gc' `"
-		;;
-	*)
-		GC_OPTS=""
-		;;
+case $global_regs in
+	true)		REG_OPTS="-DUSE_GCC_GLOBAL_REGISTERS" ;;
+	false)		REG_OPTS="" ;;
 esac
 
-case "$grade" in
-	asm_fast)
-		GRADE_OPTS="$OPT_OPTS -DUSE_GCC_GLOBAL_REGISTERS
-				-DUSE_ASM_LABELS -DUSE_GCC_NONLOCAL_GOTOS"
-		;;
-	fast)
-		GRADE_OPTS="$OPT_OPTS
-			-DUSE_GCC_GLOBAL_REGISTERS -DUSE_GCC_NONLOCAL_GOTOS"
-		;;
-	reg)
-		GRADE_OPTS="$OPT_OPTS
-			-DUSE_GCC_GLOBAL_REGISTERS"
-		;;
-	asm_jump)
-		GRADE_OPTS="$OPT_OPTS
-			-DUSE_ASM_LABELS -DUSE_GCC_NONLOCAL_GOTOS"
-		;;
-	jump)
-		GRADE_OPTS="$OPT_OPTS
-			-DUSE_GCC_NONLOCAL_GOTOS"
-		;;
-	none)
-		GRADE_OPTS="$OPT_OPTS"
-		;;
-	init)
-		echo "$0: the \`-s init' option is no longer supported" 1>&2
-		exit 1
-		;;
-	debug)
-		GRADE_OPTS="$DEBUG_OPTS"
-		;;
-	*)
-		echo "$0: invalid grade \`$grade'" 1>&2;
-		exit 1
+case $debug in
+	true)		DEBUG_OPTS="-g" ;;
+	false)		DEBUG_OPTS="$OPT_OPTS -DSPEED" ;;
 esac
+
+case $gc_method in
+	accurate)	GC_OPTS="-DNATIVE_GC" ;;
+	conservative)	GC_OPTS="-DCONSERVATIVE_GC" ;;
+	none)		GC_OPTS="" ;;
+esac
+
+case $profile_time in
+	true)		PROF_TIME_OPTS="-DPROFILE_TIME" ;;
+	false)		PROF_TIME_OPTS="-DNO_SIGNALS" ;;
+esac
+
+case $profile_calls in
+	true)		PROF_CALLS_OPTS="-DPROFILE_CALLS" ;;
+	false)		PROF_CALLS_OPTS="" ;;
+esac
+
+case $use_trail in
+	true)		TRAIL_OPTS="-DMR_USE_TRAIL" ;;
+	false)		TRAIL_OPTS="" ;;
+esac
+
+case $args_method in
+	simple)		ARG_OPTS="" ;;
+	compact)	ARG_OPTS="-DCOMPACT_ARGS" ;;
+esac
+
+case $pic_reg in
+	true)		PICREG_OPTS="-DPIC_REG" ;;
+	false)		PICREG_OPTS="" ;;
+esac
+
 
 # check that special grades are only used with gcc
 case $COMPILER in
 	gcc)	;;
-	*)	case $grade in
-			debug|none)	;;
-			*)
+	*)	case "$GRADE_OPTS" in
+			*USE_GCC*)
 		echo "$0: For compilers other than GNU C, the only" 1>&2
 		echo "$0: grades allowed are \`debug' and \`none'" 1>&2
 					;;
 		esac
 esac
 
+GRADE_OPTS="$DEBUG_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"
+
 # if we're using global registers, add CFLAGS_FOR_REGS
-case "$GRADE_OPTS" in
-	*-DUSE_GCC_GLOBAL_REGISTERS*)
-		GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_REGS"
-		;;
+case $global_regs in
+	true)	GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_REGS" ;;
+	false)	;;
 esac
 
 # if we're using non-local gotos, add CFLAGS_FOR_GOTOS
-case "$GRADE_OPTS" in
-	*-DUSE_GCC_NONLOCAL_GOTOS*)
-		GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_GOTOS"
-		;;
+case $non_local_gotos in
+	true)	GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_GOTOS" ;;
+	false)	;;
 esac
 
 #
@@ -245,8 +258,8 @@ case "$FULLARCH" in
 		# nonlocal gotos don't work with PIC, which is the
 		# default for Irix 5, so if nonlocal gotos are enabled
 		# we need to disable the use of shared libraries.
-		case "$GRADE_OPTS" in
-			*-DUSE_GCC_NONLOCAL_GOTOS*)
+		case $non_local_gotos in
+			true)
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 				export LIBRARY_PATH
 				AS_OPTS="-non_shared"
@@ -325,14 +338,17 @@ esac
 
 case $verbose in true)
 	echo $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
+		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
+		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
 esac
 case $# in
 	0) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$ARCH_OPTS $OVERRIDE_OPTS ;;
+		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
+		$PICREG_OPTS $ARCH_OPTS $OVERRIDE_OPTS ;;
 	*) exec $CC -I$C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS $TRAIL_OPTS $SPLIT_OPTS \
-		$ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
+		$GRADE_OPTS $GC_OPTS $PROF_TIME_OPTS $PROF_CALLS_OPTS \
+		$INLINE_ALLOC_OPTS $TRAIL_OPTS $SPLIT_OPTS \
+		$PICREG_OPTS $ARCH_OPTS $ARG_OPTS "$@" $OVERRIDE_OPTS ;;
 esac
