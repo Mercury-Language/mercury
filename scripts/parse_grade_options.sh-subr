@@ -328,6 +328,11 @@
 					stack_trace=true
 					require_tracing=true
 					;;
+				*)
+					echo "$0: unknown grade component" \
+						"\`$grade_piece'" 1>&2
+					exit 1
+					;;
 			esac
 		done
 		;;
