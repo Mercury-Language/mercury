@@ -223,7 +223,7 @@ special_term_dep.out: special_term_dep special_term_dep.inp
 			> special_term_dep.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
-	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \
+	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
 			> tabled_read_decl.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
