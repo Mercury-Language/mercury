@@ -95,37 +95,39 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 	io__state::di, io__state::uo) is det.
 
 optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
-		OptDebugInfo) -->
-	globals__io_lookup_bool_option(debug_opt, DebugOpt),
+		OptDebugInfo, !IO) :-
+	globals__io_lookup_bool_option(debug_opt, DebugOpt, !IO),
+	globals__io_lookup_int_option(debug_opt_pred_id, DebugOptPredId, !IO),
+	PredProcId = proc(PredId, ProcId),
+	pred_id_to_int(PredId, PredIdInt),
+	proc_id_to_int(ProcId, ProcIdInt),
 	(
-		{ DebugOpt = yes },
-		{ MangledName = name_mangle(Name) },
-		{ PredProcId = proc(PredId, ProcId) },
-		{ pred_id_to_int(PredId, PredIdInt) },
-		{ proc_id_to_int(ProcId, ProcIdInt) },
-		{ string__int_to_string(Arity, ArityStr) },
-		{ string__int_to_string(PredIdInt, PredIdStr) },
-		{ string__int_to_string(ProcIdInt, ProcIdStr) },
-		{ string__append_list([MangledName, "_", ArityStr,
-			".pred", PredIdStr, ".proc", ProcIdStr], BaseName) },
-		{ OptDebugInfo = opt_debug_info(BaseName, 0) },
+		DebugOpt = yes,
+		( DebugOptPredId >= 0 => DebugOptPredId = PredIdInt )
+	->
+		MangledName = name_mangle(Name),
+		string__int_to_string(Arity, ArityStr),
+		string__int_to_string(PredIdInt, PredIdStr),
+		string__int_to_string(ProcIdInt, ProcIdStr),
+		string__append_list([MangledName, "_", ArityStr,
+			".pred", PredIdStr, ".proc", ProcIdStr], BaseName),
+		OptDebugInfo = opt_debug_info(BaseName, 0),
 
-		{ string__append_list([BaseName, ".opt0"], FileName) },
-		io__open_output(FileName, Res),
-		( { Res = ok(FileStream) } ->
-			io__set_output_stream(FileStream, OutputStream),
-			{ counter__allocate(NextLabel, Counter, _) },
-			opt_debug__msg(yes, NextLabel, "before optimization"),
-			opt_debug__dump_instrs(yes, Instrs0),
-			io__set_output_stream(OutputStream, _),
-			io__close_output(FileStream)
+		string__append_list([BaseName, ".opt0"], FileName),
+		io__open_output(FileName, Res, !IO),
+		( Res = ok(FileStream) ->
+			io__set_output_stream(FileStream, OutputStream, !IO),
+			counter__allocate(NextLabel, Counter, _),
+			opt_debug__msg(yes, NextLabel, "before optimization", !IO),
+			opt_debug__dump_instrs(yes, Instrs0, !IO),
+			io__set_output_stream(OutputStream, _, !IO),
+			io__close_output(FileStream, !IO)
 		;
-			{ string__append("cannot open ", FileName, ErrorMsg) },
-			{ error(ErrorMsg) }
+			string__append("cannot open ", FileName, ErrorMsg),
+			error(ErrorMsg)
 		)
 	;
-		{ DebugOpt = no },
-		{ OptDebugInfo = no_opt_debug_info }
+		OptDebugInfo = no_opt_debug_info
 	).
 
 :- pred optimize__maybe_opt_debug(list(instruction)::in, counter::in,

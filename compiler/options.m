@@ -108,6 +108,7 @@
 		;	debug_modes
 		;	debug_det
 		;	debug_opt
+		;	debug_opt_pred_id
 		;	debug_pd	% pd = partial deduction/deforestation
 		;	debug_rl_gen
 		;	debug_rl_opt
@@ -159,6 +160,7 @@
 		;	auto_comments
 		;	show_dependency_graph
 		;	dump_hlds
+		;	dump_hlds_pred_id
 		;	dump_hlds_alias
 		;	dump_hlds_options
 		;	dump_mlds
@@ -738,6 +740,7 @@ option_defaults_2(verbosity_option, [
 	debug_modes		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
+	debug_opt_pred_id	- 	int(-1),
 	debug_pd		-	bool(no),
 	debug_rl_gen		-	bool(no),
 	debug_rl_opt		-	bool(no),
@@ -789,6 +792,7 @@ option_defaults_2(aux_output_option, [
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
+	dump_hlds_pred_id	-	int(-1),
 	dump_hlds_alias		-	string(""),
 	dump_hlds_options	-	string(""),
 	dump_mlds		-	accumulating([]),
@@ -1345,6 +1349,7 @@ long_option("debug-modes",		debug_modes).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
+long_option("debug-opt-pred-id",	debug_opt_pred_id).
 long_option("debug-pd",			debug_pd).
 long_option("debug-rl-gen",		debug_rl_gen).
 long_option("debug-rl-opt",		debug_rl_opt).
@@ -1415,6 +1420,7 @@ long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("hlds-dump",		dump_hlds).
+long_option("dump-hlds-pred-id",	dump_hlds_pred_id).
 long_option("dump-hlds-alias",		dump_hlds_alias).
 long_option("dump-hlds-options",	dump_hlds_options).
 long_option("dump-mlds",		dump_mlds).
@@ -2533,6 +2539,9 @@ options_help_verbosity -->
 		"\tOutput detailed debugging traces of determinism analysis.",
 		"--debug-opt",
 		"\tOutput detailed debugging traces of the optimization process.",
+		"--debug-opt-pred-id <n>",
+		"\tOutput detailed debugging traces of the optimization process",
+		"\tonly for the predicate/function with the specified pred id.",
 		"--debug-pd",
 		"\tOutput detailed debugging traces of the partial",
 		"\tdeduction and deforestation process.",
@@ -2714,6 +2723,9 @@ options_help_aux_output -->
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
+		"--dump-hlds-pred-id <n>",
+		"\tDump the HLDS only of the predicate/function with the given",
+		"\tpred id.",
 % This option is for developers only
 %		"-D, --dump-hlds-alias <dump-alias>",
 %		"\tWith `--dump-hlds', include extra detail in the dump.",

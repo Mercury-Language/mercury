@@ -779,50 +779,53 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
 	io__write_string("%-------- Predicates --------\n\n"),
 	hlds_out__write_indent(Indent),
 	{ map__keys(PredTable, PredIds) },
-	hlds_out__write_preds_2(Indent, ModuleInfo, PredIds, PredTable).
+	list__foldl(hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable),
+		PredIds).
 
-:- pred hlds_out__write_preds_2(int, module_info, list(pred_id), pred_table,
-	io__state, io__state).
-:- mode hlds_out__write_preds_2(in, in, in, in, di, uo) is det.
+:- pred hlds_out__maybe_write_pred(int::in, module_info::in, pred_table::in,
+	pred_id::in, io__state::di, io__state::uo) is det.
 
-hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
-        globals__io_lookup_string_option(dump_hlds_options, Verbose),
+hlds_out__maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
+        globals__io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+	globals__io_lookup_int_option(dump_hlds_pred_id, DumpPredId, !IO),
+	pred_id_to_int(PredId, PredIdInt),
+	map__lookup(PredTable, PredId, PredInfo),
 	(
-		{ PredIds0 = [PredId|PredIds] }
+		% If the user requested one predicate/function to be dumped,
+		% we dump it even if the condition of the nested if-then-else
+		% says it shouldn't be dumped, and we don't dump anything else.
+		DumpPredId >= 0
 	->
-		{ map__lookup(PredTable, PredId, PredInfo) },
-		(
-			{ \+ string__contains_char(Verbose, 'I') },
-			{ pred_info_is_imported(PredInfo) }
-		->
-			[]
+		( PredIdInt = DumpPredId ->
+			hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
 		;
-			% for pseudo-imported predicates (i.e. unification
+			true
+		)
+	;
+		(
+			\+ string__contains_char(Verbose, 'I'),
+			pred_info_is_imported(PredInfo)
+		;
+			% For pseudo-imported predicates (i.e. unification
 			% preds), only print them if we are using a local
-			% mode for them
-			{ \+ string__contains_char(Verbose, 'I') },
-			{ pred_info_is_pseudo_imported(PredInfo) },
-			{ pred_info_procids(PredInfo, ProcIds) },
-			{ hlds_pred__in_in_unification_proc_id(ProcId) },
-			{ ProcIds = [ProcId] }
-		->
-			[]
+			% mode for them.
+			\+ string__contains_char(Verbose, 'I'),
+			pred_info_is_pseudo_imported(PredInfo),
+			pred_info_procids(PredInfo, ProcIds),
+			hlds_pred__in_in_unification_proc_id(ProcId),
+			ProcIds = [ProcId]
 		;
 			% We dump unification and other compiler-generated
 			% special predicates if suboption 'U' is on. We don't
 			% need that information to understand how the program
 			% has been transformed.
-			{ \+ string__contains_char(Verbose, 'U') },
-			{ is_unify_or_compare_pred(PredInfo) }
-		->
-			[]
-		;
-			hlds_out__write_pred(Indent, ModuleInfo, PredId,
-				PredInfo)
-		),
-		hlds_out__write_preds_2(Indent, ModuleInfo, PredIds, PredTable)
+			\+ string__contains_char(Verbose, 'U'),
+			is_unify_or_compare_pred(PredInfo)
+		)
+	->
+		true
 	;
-		[]
+		hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
 	).
 
 :- pred hlds_out__write_pred(int, module_info, pred_id, pred_info,

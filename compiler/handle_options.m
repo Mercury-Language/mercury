@@ -630,7 +630,19 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			% dump options do not print these annotations.
 		globals__io_lookup_string_option(dump_hlds_options,
 			DumpOptions0),
-		{ string__append(DumpOptions0, AllDumpOptions, DumpOptions) },
+		{ string__append(DumpOptions0, AllDumpOptions, DumpOptions1) },
+		globals__io_set_option(dump_hlds_options, string(DumpOptions1))
+	;
+		[]
+	),
+
+	globals__io_lookup_int_option(dump_hlds_pred_id, DumpHLDSPredId),
+	( { DumpHLDSPredId >= 0 } ->
+		globals__io_lookup_string_option(dump_hlds_options,
+			DumpOptions2),
+		% Prevent the dumping of the mode and type tables.
+		{ string__replace_all(DumpOptions2, "M", "", DumpOptions3) },
+		{ string__replace_all(DumpOptions3, "T", "", DumpOptions) },
 		globals__io_set_option(dump_hlds_options, string(DumpOptions))
 	;
 		[]

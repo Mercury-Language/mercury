@@ -4372,6 +4372,12 @@ Output detailed debugging traces of determinism analysis.
 Output detailed debugging traces of the optimization process.
 
 @sp 1
+@item --debug-opt-pred-id @var{predid}
+@findex --debug-opt-pred-id
+With --debug-opt, restrict the debugging traces
+to the optimization of the predicate or function with the specified pred id.
+
+@sp 1
 @item --debug-pd
 @findex --debug-pd
 Output detailed debugging traces of the partial
@@ -4702,6 +4708,12 @@ M - mode and inst information,
 P - path information,
 T - type and typeclass information,
 U - unify and compare predicates.
+
+@sp 1
+@item --dump-hlds-pred-id @var{predid}
+@findex --dump-hlds-pred-id
+With @samp{--dump-hlds}, restrict the output
+to the HLDS of the predicate or function with the specified pred id.
 
 @sp 1
 @item --dump-mlds @var{stage}
