@@ -52,6 +52,7 @@ SINGLEMODULE_SOURCES= \
 	ext_type_bug.m \
 	exported_mode.m \
 	field_syntax_error.m \
+	foreign_singleton.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_default_func_1.m \
@@ -170,6 +171,7 @@ MCFLAGS-children =		--no-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-foreign_type =		--compile-only
+MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface

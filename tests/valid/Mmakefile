@@ -75,6 +75,7 @@ OTHER_SOURCES= \
 	explicit_quant.m \
 	fail_ite.m \
 	followcode_det_problem.m \
+	foreign_underscore_var.m \
 	func_int_bug_main.m \
 	func_default_modes.m \
 	headvar_not_found.m \
@@ -278,6 +279,7 @@ MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
+MCFLAGS-foreign_underscore_var	= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
 MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
