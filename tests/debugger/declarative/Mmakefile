@@ -62,13 +62,14 @@ else
     INP=inp
 endif
 
-# Debugging does not work in MLDS (hl*) and deep profiling (profdeep) grades.
+# Debugging does not work in MLDS (hl*, il*, and java*) grades
+# or deep profiling (profdeep) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 # Currently, declarative debugging does not work in `rt' grades.
 # Also, declarative debugging only works in `.gc' grades.
 
-ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifeq "$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
         ifneq "$(findstring rt,$(GRADE))" ""
 	    PROGS=

@@ -100,8 +100,9 @@ endif
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
 ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) $(SHALLOW_PROGS)
 
-# Debugging doesn't yet don't work in MLDS grades (hl*), and the retry command
-# doesn't and will not work in deep profiling grades (profdeep).
+# Debugging doesn't yet don't work in MLDS grades (hl*, il*, and java),
+# and the retry command doesn't and will not work in deep profiling
+# grades (profdeep).
 # Also base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
 
@@ -115,7 +116,7 @@ else
     DEBUGGER_PROGS=$(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
 endif
 
-ifneq "$(findstring hl,$(GRADE))" ""
+ifneq "$(filter hl% java% il%,$(GRADE))" ""
     PROGS=
 else
     ifneq "$(findstring asm_,$(GRADE))" ""
@@ -433,3 +434,4 @@ mdb_command_test.out: mdb_command_test mdb_command_test.inp
 		> mdb_command_test.out
 
 #-----------------------------------------------------------------------------#
+
