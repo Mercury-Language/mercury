@@ -593,6 +593,8 @@ target.
 
 @end table
 
+@cindex Variables, Mmake
+@cindex Mmake variables
 The variables used by the builtin rules (and their default values) are
 defined in the file @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
 these may be overridden by user @samp{Mmake} files.  Some of the more
@@ -640,8 +642,8 @@ using it).
 
 @item MS_CL_NOASM 
 @vindex MS_CL_NOASM
-The option to control whether the Microsoft command line C++ compile
-will generate assemblies from managed C++ files.  Set to
+The option to control whether the Microsoft command line C++ compiler
+will generate .NET assemblies from Managed C++ files.  Set to
 @samp{:noAssembly} to turn off assembly generation, leave empty to turn
 on assembly generation.  The default is to leave this variable empty.
 
@@ -5711,8 +5713,9 @@ or assembler.
 Only available on backends that compile to C or assembler.
 
 @item @samp{Managed C++}
-Managed Extensions for C++ provides support for writing .NET components
-in C++, by adding extra keywords and syntax.
+Managed Extensions for C++ is a language based on C++ that
+provide support for writing .NET components, by adding extra
+keywords and syntax.
 
 This is the default foreign language on all backends which compile to IL.
 In the current implementation, this is only available on backends that

@@ -4236,7 +4236,8 @@ polymorphic procedure whose argument type is universally quantified.
 (Note, however, that the standard library includes some quite powerful
 procedures such as `io__write' which can be useful in this context.)
 
-A non-variable type is considered @emph{more general} than an
+A non-variable type (i.e. a type which is not a type variable)
+is considered @emph{more general} than an
 existentially quantified type variable.  Type inference will therefore
 never infer an existentially quantified type for a predicate or
 function unless that predicate or function calls (directly or indirectly)
@@ -4685,10 +4686,10 @@ fair search rule; and so forth.
 				       written in a different
 				       programming language.
 * Adding foreign declarations::        How to add declarations of
-  				       enities in other programming
+  				       entities in other programming
 				       languages.
-* Adding foreign definitions::         How to add definitions of entities
-  				       enities in other programming
+* Adding foreign definitions::         How to add definitions of
+  				       entities in other programming
 				       languages.
 * Language specific bindings::         Information specific to each
   				       foreign language.
@@ -4700,8 +4701,8 @@ It is documented here as an aid to the Mercury language developers.
 See the @pxref{C interface} chapter for the existing, supported C
 interface for Mercury.
 
-The syntax, documentation, behaviour and semantics described in this
-chapter are subject to change without notice.
+The syntax, documentation, behaviour and semantics of the constructs
+described in this chapter are subject to change without notice.
 
 @node Calling foreign code from Mercury
 @section Calling foreign code from Mercury
@@ -4740,7 +4741,7 @@ written in language @var{Lang}, if @var{Lang} is selected as the foreign
 language code by this implementation. 
 See the ``Foreign Language Interface'' chapter of the
 Mercury User's Guide, for more information about how the implementation
-selects the approriate @samp{foreign_proc} to use.
+selects the appropriate @samp{foreign_proc} to use.
 
 The foreign code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
@@ -4757,11 +4758,11 @@ the strings used to identify them, see the language specific information
 in the ``Foreign Language Interface'' chapter of the
 Mercury User's Guide.
 
-If there is one @code{pragma foreign_proc} declaration for any
+If there is a @code{pragma foreign_proc} declaration for any
 mode of a predicate or function, then there must be either a mode
-specific clause, or a @code{pragma foreign_proc} 
+specific clause or a @code{pragma foreign_proc} 
 @c or @code{pragma import} 
-declaration for every mode of the predicate or function.
+declaration for every mode of that predicate or function.
 
 Here's an example of code using @samp{pragma foreign_proc}:
 The following code defines a Mercury function
@@ -4851,15 +4852,24 @@ items.
 @section Adding foreign declarations
 
 Foreign language declarations (such as type declarations, header file
-inclusions or macro defintions) can included in the Mercury source file as
+inclusions or macro definitions) can included in the Mercury source file as
 part of a @samp{foreign_decl} declaration of the form
 
 @example
 :- pragma foreign_decl("@var{Lang}", @var{DeclCode}).
 @end example
 
-The semantics of @samp{foreign_decl} depend upon the implementation and
-foreign language used. 
+This declaration will have effects equivalent to including the specified
+@var{DeclCode} in an automatically-generated source file of the specified
+programming language, in a place appropriate for declarations,
+and linking that source file with the Mercury program
+(after having compiled it with a compiler for the specified programming
+language, if appropriate).
+
+Entities declared in @samp{pragma foreign_decl} declarations should be
+visible in @samp{pragma foreign_code} and @samp{pragma foreign_proc}
+declarations that specify the same foreign language and occur in in the
+same Mercury module.
 
 @node Adding foreign definitions
 @section Adding foreign definitions
@@ -4871,24 +4881,34 @@ variables) may be included using a declaration of the form
 :- pragma foreign_code("@var{Lang}", @var{Code}).
 @end example
 
-The semantics of @samp{foreign_code} depend upon the implementation and
-foreign language used. 
+This declaration will have effects equivalent to including the specified
+@var{DeclCode} in an automatically-generated source file of the specified
+programming language, in a place appropriate for definitions,
+and linking that source file with the Mercury program
+(after having compiled it with a compiler for the specified programming
+language, if appropriate).
+
+Entities declared in @samp{pragma foreign_code} declarations should be
+visible in @samp{pragma foreign_proc} declarations that specify the same
+foreign language and occur in in the same Mercury module.
 
 @c -----------------------------------------------------------------------
 
 @node Language specific bindings
 @section Language specific bindings
 
-Note that these bindings are specific to the Melbourne Mercury compiler,
-other compilers may choose to implement a different set of bindings.
+All Mercury implementations should support interfacing with C.
+The set of other languages supported is implementation-defined.
+
+The University of Melbourne Mercury implementation supports
+interfacing with the following languages:
 
 @table @asis
 
+@c Please keep this table in alphabetical order
+
 @item @samp{C}
 Use the string "C" to set the foreign language to C.
-
-@item @samp{Managed C++}
-Use the string "MC++" to set the foreign language to Managed C++.
 
 @item @samp{C#}
 Use the string "C#" to set the foreign language to C#.
@@ -4896,10 +4916,10 @@ Use the string "C#" to set the foreign language to C#.
 @item @samp{IL}
 Use the string "IL" to set the foreign language to IL.
 
-@end table
+@item @samp{Managed C++}
+Use the string "MC++" to set the foreign language to Managed C++.
 
-Each of these foreign language interfaces requires that an appropriate
-compiler be installed.
+@end table
 
 
 @node C interface
@@ -5523,6 +5543,11 @@ Mercury types in C code to use typedefs for each user-defined Mercury type,
 and to treat each such type as an abstract data type.  This is good style
 and it will also minimize any compatibility problems if and when we do change
 this.)
+
+@c For the Managed C++ interface, the types are mapped slightly differently:
+@c Mercury variables which are polymorphically typed
+@c have type @samp{MR_Box} rather than @samp{MR_Word}.
+@c XXX We should document the Managed C++ interface somewhere.
 
 Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
