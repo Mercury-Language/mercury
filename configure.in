@@ -2120,7 +2120,7 @@ if test "$enable_libgrades_given" = yes; then
 		grade_error=false
 		for raw_grade in $raw_grades
 		do
-			if ! test -x scripts/canonical/grade
+			if ! test -x scripts/canonical_grade
 			then
 				canonical_grades="$canonical_grades $raw_grade"
 			elif scripts/canonical_grade --grade $raw_grade > .confgrade
