@@ -97,24 +97,15 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- module conftest.
 		:- interface.
 		:- import_module io.
-		:- pred main(io__state::di, io__state::uo) is cc_multi.
+		:- pred main(io__state::di, io__state::uo) is det.
 
 		:- implementation.
-		:- import_module int, exception.
+		:- import_module list, std_util.
         
-		% Check that X/0 throws an exception. If it doesn't,
-		% the old compiler will report an error for the clauses
-		% for int:// and float:/, which according to the old
-		% compiler should be builtins.
-		% Also check for unchecked_int_quotient, which is a builtin
-		% present only in recent compilers.
+		% Check that the functor for lists is "[[|]]/2"
+		% rather than "./2".
 		main --> 
-			{ try(
-				(pred(Value::out) is det :-
-					Value = 42 // 0 +
-						unchecked_quotient(10, 2)
-				), Result) },
-			( { Result = exception(_) } ->
+			( { functor([[1, 2]], "[[|]]", 2) } ->
 				print("Hello, world\n")
 			;
 				print("Nope.\n")
