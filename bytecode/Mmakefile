@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -13,10 +13,13 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-INCPATH		= -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) -I.
+INCPATH		= -I$(RUNTIME_DIR) \
+		  -I$(BOEHM_GC_DIR) \
+		  -I$(BOEHM_GC_DIR)/include \
+		  -I.
 LIBPATH		= -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH) -DDEBUGGING
-MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
+MGNUC		= MERCURY_ALL_C_INCL_DIRS="$(INCPATH)" $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= $(CFLAGS) 
 
 MAKEDEPEND	= makedepend

@@ -44,35 +44,30 @@ CHECK_TERM_OPTS =
 
 endif
 
-MCD	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --generate-dependencies $(INTERMODULE_OPTS)
-MCI	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-interface $(INTERMODULE_OPTS) \
+M_ENV	=	MERCURY_INT_DIR=. \
+		MERCURY_ALL_C_INCL_DIRS="\
+			-I$(TRACE_DIR) \
+			-I$(RUNTIME_DIR) \
+			-I$(BOEHM_GC_DIR) \
+			-I$(BOEHM_GC_DIR)/include \
+		"
+MCD	=	$(M_ENV) $(MC) --generate-dependencies $(INTERMODULE_OPTS)
+MCI	=	$(M_ENV) $(MC) --make-interface $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
-MCOI	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-opt-int $(INTERMODULE_OPTS) \
+MCPI	=	$(M_ENV) $(MC) --make-private-interface $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
-MCTOI	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --make-trans-opt $(INTERMODULE_OPTS) \
+MCSI	=	$(M_ENV) $(MC) --make-short-interface $(INTERMODULE_OPTS) \
 			$(ENABLE_TERM_OPTS)
-MCG	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --compile-to-c $(INTERMODULE_OPTS) \
+MCOI	=	$(M_ENV) $(MC) --make-opt-int $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCTOI	=	$(M_ENV) $(MC) --make-trans-opt $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCG	=	$(M_ENV) $(MC) --compile-to-c $(INTERMODULE_OPTS) \
 			$(CHECK_TERM_OPTS)
-MCS	=	MERCURY_INT_DIR=. \
-		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(MC) --split-c-files -c \
-			--cflags "-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			--cflags "-I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
+MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
-MGNUC	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
-			$(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I$(TRACE_DIR) -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
-			$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 LDLIBS	=	-l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
