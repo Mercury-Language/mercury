@@ -1618,3 +1618,293 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
+
+:- pragma foreign_proc("MC++", prepare_for_normal_call(_N::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_normal_call"");
+}").
+:- pragma foreign_proc("MC++", prepare_for_special_call(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_special_call"");
+}").
+:- pragma foreign_proc("MC++", prepare_for_ho_call(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_ho_call"");
+}").
+:- pragma foreign_proc("MC++", prepare_for_method_call(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_method_call"");
+}").
+:- pragma foreign_proc("MC++", prepare_for_callback(_N::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_callback"");
+}").
+:- pragma foreign_proc("MC++", prepare_for_tail_call(_N::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""prepare_for_tail_call"");
+}").
+:- pragma foreign_proc("MC++", det_call_port_code_ac(_A::in, _B::out, _C::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""det_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		det_call_port_code_sr(_A::in, _B::out, _C::out, _D::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""det_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", det_exit_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""det_exit_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		det_exit_port_code_sr(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""det_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", semi_call_port_code_ac(_A::in, _B::out, _C::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		semi_call_port_code_sr(_A::in, _B::out, _C::out, _D::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", semi_exit_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_exit_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		semi_exit_port_code_sr(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", semi_fail_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_fail_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		semi_fail_port_code_sr(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""semi_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", 
+		non_call_port_code_ac(_A::in, _B::out, _C::out, _D::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		non_call_port_code_sr(_A::in, _B::out, _C::out, _D::out, _E::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", non_exit_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_exit_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		non_exit_port_code_sr(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_call_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", non_fail_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_fail_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		non_fail_port_code_sr(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_fail_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", non_redo_port_code_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_redo_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++", non_redo_port_code_sr(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""non_redo_port_code_ac"");
+}").
+:- pragma foreign_proc("MC++",
+		save_and_zero_activation_info_ac(_A::out, _B::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_and_zero_activation_info_ac"");
+}").
+:- pragma foreign_proc("MC++", save_and_zero_activation_info_sr(_A::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_and_zero_activation_info_sr"");
+}").
+:- pragma foreign_proc("MC++", rezero_activation_info_ac,
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""rezero_activation_info_ac"");
+}").
+:- pragma foreign_proc("MC++", rezero_activation_info_sr,
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""rezero_activation_info_sr"");
+}").
+:- pragma foreign_proc("MC++", reset_activation_info_ac(_A::in, _B::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""reset_activation_info_ac"");
+}").
+:- pragma foreign_proc("MC++", reset_activation_info_sr(_A::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""reset_activation_info_sr"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_1(_A::in, _B::in, _C::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_1"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_2(_A::in, _B::in, _C::out, _D::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_2"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_3(_A::in, _B::in, _C::out, _D::out,
+			_E::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_3"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_4(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_4"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_5(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out, _G::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_5"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_6(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out, _G::out, _H::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_6"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_7(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out, _G::out, _H::out, _I::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_7"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_8(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out, _G::out, _H::out, _I::out, _J::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_8"");
+}").
+:- pragma foreign_proc("MC++",
+		save_recursion_depth_9(_A::in, _B::in, _C::out, _D::out,
+			_E::out, _F::out, _G::out, _H::out, _I::out, _J::out,
+			_K::out),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""save_recursion_depth_9"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_1(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_1"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_2(_A::in, _B::in, _C::in, _D::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_2"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_3(_A::in, _B::in, _C::in, _D::in,
+			_E::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_3"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_4(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_4"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_5(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_5"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_6(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_6"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_7(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_7"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_8(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in, _J::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_8"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_exit_9(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in, _J::in,
+			_K::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_exit_9"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_1(_A::in, _B::in, _C::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_1"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_2(_A::in, _B::in, _C::in, _D::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_2"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_3(_A::in, _B::in, _C::in, _D::in,
+			_E::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_3"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_4(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_4"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_5(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_5"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_6(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_6"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_7(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_7"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_8(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in, _J::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_8"");
+}").
+:- pragma foreign_proc("MC++",
+		restore_recursion_depth_fail_9(_A::in, _B::in, _C::in, _D::in,
+			_E::in, _F::in, _G::in, _H::in, _I::in, _J::in,
+			_K::in),
+		[thread_safe, will_not_call_mercury], "{
+	mercury::runtime::Errors::SORRY(""restore_recursion_depth_fail_9"");
+}").
