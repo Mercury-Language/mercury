@@ -1332,27 +1332,6 @@ if test "$mercury_cv_normal_system_retval" = no; then
 	AC_MSG_WARN(Unable to interpret return values from system)
 fi
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for tempnam)
-AC_CACHE_VAL(mercury_cv_has_tempnam,
-	AC_TRY_RUN([
-	#include <stdio.h>
-	int main() {
-		char	*name;
-
-		name = tempnam("/tmp", "foobie");
-
-		exit(name == NULL);
-	}],
-	[mercury_cv_has_tempnam=yes],
-	[mercury_cv_has_tempnam=no],
-	[mercury_cv_has_tempnam=no])
-)
-AC_MSG_RESULT($mercury_cv_has_tempnam)
-if test "$mercury_cv_has_tempnam" = yes; then
-	AC_DEFINE(IO_HAVE_TEMPNAM)
-fi
-AC_SUBST(IO_HAVE_TEMPNAM)
-#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
 AC_CACHE_VAL(mercury_cv_can_do_pending_io,
 	AC_TRY_RUN([
