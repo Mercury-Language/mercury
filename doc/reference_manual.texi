@@ -1010,7 +1010,7 @@ transform(Term ^ Field(Arg1, @dots{}) := FieldValue) =
 transform(Term0 ^ Field(Arg1, @dots{}) ^ Rest := FieldValue) = Term :-
         OldFieldValue = Field(Arg1, @dots{}, Term0),
         NewFieldValue = transform(OldFieldValue ^ Rest := FieldValue),
-        Term = 'Field :='(Arg1, @dots{}, Term, NewFieldValue).
+        Term = 'Field :='(Arg1, @dots{}, Term0, NewFieldValue).
 @end example
 
 Examples:
@@ -1026,7 +1026,7 @@ to the code
 @example
 OldField1 = field1(Arg1, Term),
 NewField1 = 'field2 :='(Arg2, OldField1, FieldValue),
-Result = 'field1 :='(Arg1, OldField1, NewField1)
+Result = 'field1 :='(Arg1, Term, NewField1)
 @end example
 
 @end table
