@@ -1675,7 +1675,8 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, io__write_byte(Byte::in, IO0::di, IO::uo), "
 	/* call putc with a strictly non-negative byte-sized integer */
-	if (putc((int) ((unsigned char) Byte), mercury_current_binary_output->file) < 0) {
+	if (putc((int) ((unsigned char) Byte),
+			mercury_current_binary_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(IO0, IO);
@@ -1739,7 +1740,8 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo), "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (putc(Byte, stream->file) < 0) {
+	/* call putc with a strictly non-negative byte-sized integer */
+	if (putc((int) ((unsigned char) Byte), stream->file) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);
