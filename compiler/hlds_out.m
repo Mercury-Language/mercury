@@ -142,6 +142,12 @@
 :- mode hlds_out__write_clauses(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
 
+:- pred hlds_out__write_clause(int, module_info, pred_id, prog_varset, bool,
+		list(prog_term), pred_or_func, clause, maybe_vartypes,
+		io__state, io__state).
+:- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, in, di, uo)
+	is det.
+
 :- pred hlds_out__write_assertion(int, module_info, pred_id, prog_varset, bool,
 		list(prog_var), pred_or_func, clause, maybe_vartypes,
 		io__state, io__state).
@@ -856,22 +862,18 @@ hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 	(
 		{ Clauses0 = [Clause|Clauses] }
 	->
+		{ term__var_list_to_term_list(HeadVars, HeadTerms) },
 		hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
-			AppendVarnums, HeadVars, PredOrFunc, Clause, TypeQual),
+			AppendVarnums, HeadTerms, PredOrFunc,
+			Clause, TypeQual),
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadVars, PredOrFunc, Clauses, TypeQual)
 	;
 		[]
 	).
 
-:- pred hlds_out__write_clause(int, module_info, pred_id, prog_varset, bool,
-		list(prog_var), pred_or_func, clause, maybe_vartypes,
-		io__state, io__state).
-:- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, in, di, uo)
-	is det.
-
 hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
-		AppendVarnums, HeadVars, PredOrFunc, Clause, TypeQual) -->
+		AppendVarnums, HeadTerms, PredOrFunc, Clause, TypeQual) -->
 	{
 		Clause = clause(
 			Modes,
@@ -892,7 +894,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		[]
 	),
 	hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, AppendVarnums,
-		HeadVars, PredOrFunc),
+		HeadTerms, PredOrFunc),
 	( { Goal = conj([]) - _GoalInfo } ->
 		io__write_string(".\n")
 	;
@@ -934,26 +936,26 @@ hlds_out__write_intlist_2(Ns0) -->
 	).
 
 :- pred hlds_out__write_clause_head(module_info, pred_id, prog_varset, bool,
-		list(prog_var), pred_or_func, io__state, io__state).
+		list(prog_term), pred_or_func, io__state, io__state).
 :- mode hlds_out__write_clause_head(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, AppendVarnums,
-			HeadVars, PredOrFunc) -->
+			HeadTerms, PredOrFunc) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	(
 		{ PredOrFunc = function },
-		{ pred_args_to_func_args(HeadVars, FuncArgs, RetVal) },
-		hlds_out__write_qualified_functor(ModuleName,
-			term__atom(PredName), FuncArgs, VarSet,
+		{ pred_args_to_func_args(HeadTerms, FuncArgs, RetVal) },
+		hlds_out__write_qualified_functor_with_term_args(
+			ModuleName, term__atom(PredName), FuncArgs, VarSet,
 			AppendVarnums),
 		io__write_string(" = "),
-		mercury_output_term(term__variable(RetVal), VarSet,
+		mercury_output_term(RetVal, VarSet,
 			AppendVarnums, next_to_graphic_token)
 	;
 		{ PredOrFunc = predicate },
-		hlds_out__write_qualified_functor(ModuleName,
-			term__atom(PredName), HeadVars, VarSet,
+		hlds_out__write_qualified_functor_with_term_args(
+			ModuleName, term__atom(PredName), HeadTerms, VarSet,
 			AppendVarnums)
 	).
 
@@ -1957,6 +1959,19 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
 		next_to_graphic_token).
 
+:- pred hlds_out__write_qualified_functor_with_term_args(module_name, const,
+		list(prog_term), prog_varset, bool, io__state, io__state).
+:- mode hlds_out__write_qualified_functor_with_term_args(in, in, in,
+		in, in, di, uo) is det.
+
+hlds_out__write_qualified_functor_with_term_args(ModuleName, Functor,
+		ArgTerms, VarSet, AppendVarNums) -->
+	mercury_output_bracketed_sym_name(ModuleName),
+	io__write_string(":"),
+	{ term__context_init(Context) },
+	mercury_output_term(term__functor(Functor, ArgTerms, Context), VarSet,
+		AppendVarNums, next_to_graphic_token).
+
 hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		AppendVarnums) -->
 	(
@@ -2859,8 +2874,9 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		hlds_out__write_stack_slots(Indent, StackSlots, VarSet,
 			AppendVarnums),
 		hlds_out__write_indent(Indent),
+		{ term__var_list_to_term_list(HeadVars, HeadTerms) },
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
-			AppendVarnums, HeadVars, PredOrFunc),
+			AppendVarnums, HeadTerms, PredOrFunc),
 		io__write_string(" :-\n"),
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent1, ".\n")

@@ -1193,12 +1193,111 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 		)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
-		hlds_out__write_clauses(1, ModuleInfo, PredId, VarSet, no,
-			HeadVars, PredOrFunc, Clauses, no)
-		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
+		list__foldl(intermod__write_clause(ModuleInfo, PredId, VarSet,
+			HeadVars, PredOrFunc), Clauses)
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 
+:- pred intermod__write_clause(module_info::in, pred_id::in, prog_varset::in,
+		list(prog_var)::in, pred_or_func::in, clause::in,
+		io__state::di, io__state::uo) is det.
+
+intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
+		PredOrFunc, Clause0) -->
+	{ strip_headvar_unifications(HeadVars, Clause0,
+		ClauseHeadVars, Clause) },
+	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, no,
+		ClauseHeadVars, PredOrFunc, Clause, no).
+
+	% Strip the `Headvar__n = Term' unifications from each clause,
+	% except if the `Term' is a lambda expression.
+	%
+	% At least two problems occur if this is not done:
+	% - in some cases where nested unique modes were accepted by
+	% 	mode analysis, the extra aliasing added by the extra level
+	%	of headvar unifications caused mode analysis to report
+	% 	an error (ground expected unique), when analysing the
+	% 	clauses read in from `.opt' files.
+	% - only HeadVar unifications may be reordered with impure goals,
+	%	so a mode error results for the second level of headvar
+	% 	unifications added when the clauses are read in again from
+	%	the `.opt' file. Clauses containing impure goals are not
+	%	written to the `.opt' file for this reason.
+:- pred strip_headvar_unifications(list(prog_var)::in,
+		clause::in, list(prog_term)::out, clause::out) is det.
+
+strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Context),
+		HeadTerms, clause(ProcIds, Goal, Context)) :-
+	Goal0 = _ - GoalInfo0,
+	goal_to_conj_list(Goal0, Goals0),
+	map__init(HeadVarMap0),
+	(
+		strip_headvar_unifications_from_goal_list(Goals0, HeadVars,
+			[], Goals, HeadVarMap0, HeadVarMap)
+	->
+		list__map(
+		    (pred(HeadVar0::in, HeadTerm::out) is det :-
+			( map__search(HeadVarMap, HeadVar0, HeadTerm0) ->
+				HeadTerm = HeadTerm0
+			;
+				HeadTerm = term__variable(HeadVar0)
+			)
+		    ), HeadVars, HeadTerms),
+		conj_list_to_goal(Goals, GoalInfo0, Goal)
+	;
+		term__var_list_to_term_list(HeadVars, HeadTerms),
+		Goal = Goal0
+	).
+
+:- pred strip_headvar_unifications_from_goal_list(list(hlds_goal)::in,
+		list(prog_var)::in, list(hlds_goal)::in, list(hlds_goal)::out,
+		map(prog_var, prog_term)::in,
+		map(prog_var, prog_term)::out) is semidet.
+
+strip_headvar_unifications_from_goal_list([], _, RevGoals, Goals,
+		HeadVarMap, HeadVarMap) :-
+	list__reverse(RevGoals, Goals).
+strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
+		RevGoals0, Goals, HeadVarMap0, HeadVarMap) :-
+	(
+		Goal = unify(LHSVar, RHS, _, _, _) - _,
+		list__member(LHSVar, HeadVars),
+		(
+			RHS = var(RHSVar),
+			RHSTerm = term__variable(RHSVar)
+		;
+			RHS = functor(ConsId, Args),
+			term__context_init(Context),
+			(
+				ConsId = int_const(Int),
+				RHSTerm = term__functor(term__integer(Int),
+						[], Context)
+			;
+				ConsId = float_const(Float),
+				RHSTerm = term__functor(term__float(Float),
+						[], Context)
+			;
+				ConsId = string_const(String),
+				RHSTerm = term__functor(term__string(String),
+						[], Context)
+			;
+				ConsId = cons(SymName, _),
+				term__var_list_to_term_list(Args, ArgTerms),
+				construct_qualified_term(SymName, ArgTerms,
+					RHSTerm)
+			)
+		)
+	->
+		% Don't strip the headvar unifications if one of the
+		% headvars appears twice. This should probably never happen.
+		map__insert(HeadVarMap0, LHSVar, RHSTerm, HeadVarMap1),
+		RevGoals1 = RevGoals0
+	;
+		HeadVarMap1 = HeadVarMap0,
+		RevGoals1 = [Goal | RevGoals0]
+	),
+	strip_headvar_unifications_from_goal_list(Goals0, HeadVars,
+		RevGoals1, Goals, HeadVarMap1, HeadVarMap).
 
 :- pred intermod__write_pragmas(pred_info::in,
 		io__state::di, io__state::uo) is det.
