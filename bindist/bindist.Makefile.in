@@ -30,8 +30,13 @@ INSTALL_MDB_EXTRAS	= scripts/mdbrc
 
 LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
 
+EXT_FOR_EXE		= @EXT_FOR_EXE@
+
+UTIL_PROGS		= util/mkinit util/mdemangle
+UTIL_PROGFILENAMES	= $(UTIL_PROGS:%=%$(EXT_FOR_EXE))
+
 # Any miscellaneous scripts and utilities not processed by configure
-UTILS			= util/mdemangle util/mkinit util/mtags \
+UTILS			= $(UTIL_PROGFILENAMES) util/mtags \
 			  util/mprof_merge_runs util/vpath_find \
 			  util/mercury_cleanup_install
 
