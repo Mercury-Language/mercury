@@ -5365,8 +5365,8 @@ space to record answers in the table.
 The implementation can optionally also check at runtime for the situation
 where a procedure calls itself recursively with the same arguments,
 which would normally result in a infinite loop; if this situation is
-encountered, it can (at the programmer's option) either report a
-run-time error, or avoid the infinite loop by computing solutions
+encountered, it can (at the programmer's option) either throw an
+exception, or avoid the infinite loop by computing solutions
 using the ``minimal model'' semantics.
 
 The current Mercury implementation thus supports three different
