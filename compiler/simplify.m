@@ -209,9 +209,11 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		Goal1 = _ - GoalInfo1,
 		goal_info_get_nonlocals(GoalInfo1, NonLocals),
 		simplify_info_get_type_info_varmap(Info1, TVarMap),
+		simplify_info_get_pred_info(Info1, PredInfo0),
 		simplify_info_get_module_info(Info1, ModuleInfo1),
 		module_info_globals(ModuleInfo1, Globals),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal1, VarSet0, VarTypes0,
 			TVarMap, TypeInfoLiveness, NonLocals,
 			Goal2, VarSet, VarTypes, _),
@@ -226,8 +228,9 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		RecomputeAtomic = yes,
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, TVarMap, InstMap0, ModuleInfo3, ModuleInfo4),
+		recompute_instmap_delta(RecomputeAtomic, PredInfo0,
+			Goal2, Goal3, VarTypes, TVarMap, InstMap0,
+			ModuleInfo3, ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
@@ -1960,6 +1963,8 @@ simplify_info_reinit(Simplifications, InstMap0, Info0, Info) :-
 
 :- pred simplify_info_get_module_info(simplify_info::in,
 		module_info::out) is det.
+:- pred simplify_info_get_pred_info(simplify_info::in,
+		pred_info::out) is det.
 
 :- implementation.
 
@@ -1982,6 +1987,12 @@ simplify_info_get_type_info_varmap(SI, SI^type_info_varmap).
 simplify_info_get_module_info(Info, ModuleInfo) :-
 	simplify_info_get_det_info(Info, DetInfo),
 	det_info_get_module_info(DetInfo, ModuleInfo).
+
+simplify_info_get_pred_info(Info, PredInfo) :-
+	simplify_info_get_det_info(Info, DetInfo),
+	det_info_get_module_info(DetInfo, ModuleInfo),
+	det_info_get_pred_id(DetInfo, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo).
 
 :- interface.
 

@@ -1291,7 +1291,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
 	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
-		{ move_follow_code_in_proc(ProcInfo0, ProcInfo1,
+		{ move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo1,
 			ModuleInfo0, ModuleInfo1) }
 	;
 		{ ProcInfo1 = ProcInfo0 },

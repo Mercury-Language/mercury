@@ -112,13 +112,13 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
-:- pred recompute_instmap_delta_proc(bool, proc_info, proc_info,
-				module_info, module_info).
-:- mode recompute_instmap_delta_proc(in, in, out, in, out) is det.
+:- pred recompute_instmap_delta_proc(bool::in, pred_info::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out)
+	is det.
 
-:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, vartypes,
-		type_info_varmap, instmap, module_info, module_info).
-:- mode recompute_instmap_delta(in, in, out, in, in, in, in, out) is det.
+:- pred recompute_instmap_delta(bool::in, pred_info::in,
+	hlds_goal::in, hlds_goal::out, vartypes::in, type_info_varmap::in,
+	instmap::in, module_info::in, module_info::out) is det.
 
 	% Given corresponding lists of types and modes, produce a new
 	% list of modes which includes the information provided by the
@@ -1104,23 +1104,26 @@ mode_id_to_int(_ - X, X).
 	% and deconstructions may become non-local (XXX does this require
 	% rerunning mode analysis rather than just recompute_instmap_delta?).
 
-recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo0, ProcInfo) -->
+recompute_instmap_delta_proc(RecomputeAtomic, PredInfo, ProcInfo0, ProcInfo)
+		-->
 	=(ModuleInfo0),
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes) },
 	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	{ module_info_globals(ModuleInfo0, Globals) },
-	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) },
 	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal,
 		VarTypes, TVarMap, InstMap0, TypeInfoLiveness, _),
 	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) }.
 
-recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, TVarMap,
-		InstMap0) -->
+recompute_instmap_delta(RecomputeAtomic, PredInfo, Goal0, Goal,
+		VarTypes, TVarMap, InstMap0) -->
 	=(ModuleInfo0),
 	{ module_info_globals(ModuleInfo0, Globals) },
-	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
+	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
+		TypeInfoLiveness) },
 	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes,
 		TVarMap, InstMap0, TypeInfoLiveness, _).
 

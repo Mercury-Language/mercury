@@ -238,17 +238,6 @@
 		proc_info, proc_info, module_info).
 :- mode poly_info_extract(in, in, out, in, out, out) is det.
 
-	% unsafe_type_cast and unsafe_promise_unique are polymorphic
-	% builtins which do not need their type_infos. unsafe_type_cast
-	% can be introduced by common.m after polymorphism is run, so it
-	% is much simpler to avoid introducing type_info arguments for it.
-	% Since both of these are really just assignment unifications, it
-	% is desirable to generate them inline.
-	% There are also some predicates in private_builtin.m to
-	% manipulate typeclass_infos which don't need their type_infos.
-:- pred polymorphism__no_type_info_builtin(module_name, string, int).
-:- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
-
 	% Build the type describing the typeclass_info for the
 	% given class_constraint.
 :- pred polymorphism__build_typeclass_info_type(class_constraint, (type)).
@@ -367,8 +356,7 @@ polymorphism__maybe_process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 			pred_info_module(PredInfo, PredModule),
 			pred_info_name(PredInfo, PredName),
 			pred_info_arity(PredInfo, PredArity),
-			polymorphism__no_type_info_builtin(PredModule,
-				PredName, PredArity) 
+			no_type_info_builtin(PredModule, PredName, PredArity) 
 		}
 	->
 		% just copy the clauses to the proc_infos
@@ -377,34 +365,6 @@ polymorphism__maybe_process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 	;
 		polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo)
 	).
-
-%---------------------------------------------------------------------------%
-
-polymorphism__no_type_info_builtin(ModuleName, PredName, Arity) :-
-	no_type_info_builtin_2(ModuleNameType, PredName, Arity),
-	check_module_name(ModuleNameType, ModuleName).
-
-:- type builtin_mod ---> builtin ; private_builtin.
-
-:- pred check_module_name(builtin_mod, module_name).
-:- mode check_module_name(in, in) is semidet.
-
-check_module_name(builtin, Module) :-
-	mercury_public_builtin_module(Module).
-check_module_name(private_builtin, Module) :-
-	mercury_private_builtin_module(Module).
-
-:- pred no_type_info_builtin_2(builtin_mod, string, int).
-:- mode no_type_info_builtin_2(out, in, out) is semidet.
-
-no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
-no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
-no_type_info_builtin_2(private_builtin, "superclass_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin,
-				"instance_constraint_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "table_restore_any_ans", 3).
-no_type_info_builtin_2(private_builtin, "table_lookup_insert_enum", 4).
 
 %---------------------------------------------------------------------------%
 
@@ -937,10 +897,7 @@ polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ pred_info_arity(PredInfo, PredArity) },
 
 
-	(
-		{ polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity)  }
-	->
+	( { no_type_info_builtin(PredModule, PredName, PredArity) } ->
 		{ Goal = Goal0 - GoalInfo }
 	;
 		{ list__length(ExtraVars, NumExtraVars) },
@@ -1662,8 +1619,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 			PredTypeVars0 = []
 		;
 			% some builtins don't need the type_info
-			polymorphism__no_type_info_builtin(PredModule,
-				PredName, PredArity)
+			no_type_info_builtin(PredModule, PredName, PredArity)
 		;
 			% Leave Aditi relations alone, since they must
 			% be monomorphic. This is checked by magic.m.
@@ -1826,9 +1782,11 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_get_var_types(Info0, VarTypes0),
 		set__list_to_set(HeadVars, OutsideVars),
 		poly_info_get_type_info_map(Info0, TVarMap),
+		poly_info_get_pred_info(Info0, PredInfo),
 		poly_info_get_module_info(Info0, ModuleInfo),
 		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			TVarMap, TypeInfoLiveness, OutsideVars,
 			Goal, VarSet, VarTypes, _Warnings),
@@ -1875,9 +1833,11 @@ polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
 			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
 		poly_info_get_type_info_map(Info0, TVarMap),
+		poly_info_get_pred_info(Info0, PredInfo),
 		poly_info_get_module_info(Info0, ModuleInfo),
 		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			TVarMap, TypeInfoLiveness, OutsideVars,
 			Goal, VarSet, VarTypes, _Warnings),

@@ -53,7 +53,7 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ saved_vars_proc_no_io(PredId, ProcId, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) }.
 
-saved_vars_proc_no_io(_PredId, _ProcId, ProcInfo0, ProcInfo,
+saved_vars_proc_no_io(PredId, _ProcId, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, Varset0),
@@ -69,14 +69,15 @@ saved_vars_proc_no_io(_PredId, _ProcId, ProcInfo0, ProcInfo,
 	% hlds_out__write_goal(Goal1, ModuleInfo, Varset1, 0, "\n"),
 
 	% recompute the nonlocals for each goal
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	module_info_globals(ModuleInfo0, Globals),
-	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, TVarMap, TypeInfoLiveness,
 		Goal2, Varset, VarTypes, _Warnings),
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-	recompute_instmap_delta(no, Goal2, Goal, VarTypes, TVarMap, InstMap0, 
-		ModuleInfo0, ModuleInfo),
+	recompute_instmap_delta(no, PredInfo, Goal2, Goal, VarTypes, TVarMap,
+		InstMap0, ModuleInfo0, ModuleInfo),
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, "\n"),
 

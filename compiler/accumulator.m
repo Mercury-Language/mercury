@@ -1555,7 +1555,8 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 	proc_info_set_vartypes(OrigProcInfo2, VarTypes, OrigProcInfo3),
 
 	module_info_globals(ModuleInfo1, Globals),
-	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+	body_should_use_typeinfo_liveness(OrigPredInfo, Globals,
+		TypeInfoLiveness),
 	OrigProcInfo = requantify_procedure(TypeInfoLiveness, OrigProcInfo3),
 
 	update_accumulator_pred(AccPredId, AccProcId, AccGoal,
@@ -1964,7 +1965,7 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo),
 
 	module_info_globals(ModuleInfo0, Globals),
-	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
 		PredInfo, requantify_procedure(TypeInfoLiveness, ProcInfo),
 		ModuleInfo).

@@ -153,36 +153,14 @@
 
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	module_info_globals(ModuleInfo, Globals),
-	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness0),
-	(
-		pred_info_module(PredInfo, PredModule),
-		( mercury_public_builtin_module(PredModule)
-		; mercury_private_builtin_module(PredModule)
-		)
-	->
-		TypeInfoLiveness1 = no
-	;
-		TypeInfoLiveness1 = TypeInfoLiveness0
-	),
-	requantify_proc(TypeInfoLiveness1, ProcInfo0, ProcInfo1),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
+	requantify_proc(TypeInfoLiveness, ProcInfo0, ProcInfo1),
 
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
 	proc_info_typeinfo_varmap(ProcInfo1, TVarMap),
-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	(
-		polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity)
-	->
-		TypeInfoLiveness = no
-	;
-		TypeInfoLiveness = TypeInfoLiveness0
-	),
 	live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, TVarMap, Varset,
 		LiveInfo),
 
@@ -1013,22 +991,10 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
 	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	pred_info_arity(PredInfo, PredArity),
-	( 	
-		TypeinfoLiveness = yes,
-		\+ polymorphism__no_type_info_builtin(PredModule,
-			PredName, PredArity)
-	->
-		proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-		proc_info_get_typeinfo_vars(NonLocals0, VarTypes, TVarMap,
-			TypeInfoNonLocals),
-		set__union(NonLocals0, TypeInfoNonLocals, NonLocals)
-	;
-		NonLocals = NonLocals0
-	),
+	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
+	proc_info_maybe_complete_with_typeinfo_vars(NonLocals0,
+		TypeinfoLiveness, VarTypes, TVarMap, NonLocals),
 	set__intersect(Liveness2, NonLocals, Liveness).
 
 :- pred initial_liveness_2(list(prog_var), list(mode), list(type), module_info,
@@ -1070,16 +1036,9 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
 
 		% If doing alternate liveness, the corresponding
 		% typeinfos need to be added to these.
-	( 
-		LiveInfo^typeinfo_liveness = yes
-	->
-		proc_info_typeinfo_varmap(ProcInfo, TVarMap),
-		proc_info_get_typeinfo_vars(Deadness2, VarTypes, TVarMap,
-			TypeInfoVars),
-		set__union(Deadness2, TypeInfoVars, Deadness)
-	;
-		Deadness = Deadness2
-	).
+	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+	proc_info_maybe_complete_with_typeinfo_vars(Deadness2,
+		LiveInfo^typeinfo_liveness, VarTypes, TVarMap, Deadness).
 
 :- pred initial_deadness_2(list(prog_var), list(mode), list(type),
 		module_info, set(prog_var), set(prog_var)).

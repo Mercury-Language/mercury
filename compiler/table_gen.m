@@ -281,7 +281,7 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 	% are pretty dodgy (especially those for if-then-elses), so 
 	% recompute them here.
 	RecomputeAtomic = no,
-	recompute_instmap_delta_proc(RecomputeAtomic,
+	recompute_instmap_delta_proc(RecomputeAtomic, PredInfo1,
 		ProcInfo4, ProcInfo, Module1, Module2),
 
 	pred_info_procedures(PredInfo1, ProcTable1),

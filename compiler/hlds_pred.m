@@ -1136,7 +1136,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	% so that we can copy the closure.
 	module_info_globals(ModuleInfo0, Globals),
 	ExportStatus = local,
-	interface_should_use_typeinfo_liveness(ExportStatus,
+	non_special_interface_should_use_typeinfo_liveness(ExportStatus,
 		IsAddressTaken, Globals, TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -1427,24 +1427,42 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 	% Return true if the interface of the given procedure must include
 	% typeinfos for all the type variables in the types of the arguments.
-:- pred proc_interface_should_use_typeinfo_liveness(pred_info, proc_id,
-	globals, bool).
-:- mode proc_interface_should_use_typeinfo_liveness(in, in, in, out) is det.
+:- pred proc_interface_should_use_typeinfo_liveness(pred_info::in, proc_id::in,
+	globals::in, bool::out) is det.
 
-	% Return true if the interface of a procedure with the given
-	% characteristics (import/export/local status, address taken status)
-	% must include typeinfos for all the type variables in the types
-	% of the arguments.
-:- pred interface_should_use_typeinfo_liveness(import_status, is_address_taken,
-		globals, bool).
-:- mode interface_should_use_typeinfo_liveness(in, in, in, out) is det.
+	% Return true if the interface of a procedure in a non-special
+	% predicate with the given characteristics (import/export/local
+	% status, address taken status) must include typeinfos for
+	% all the type variables in the types of the arguments.
+	% Note that only a few predicates in the builtin modules are special
+	% in this sense, and that compiler-generated predicates are never
+	% special.
+:- pred non_special_interface_should_use_typeinfo_liveness(import_status::in,
+	is_address_taken::in, globals::in, bool::out) is det.
 
-	% Return true if the body of the procedure must keep a typeinfo
-	% variable alive during the lifetime of all variables whose type
-	% includes the corresponding type variable. Note that body typeinfo
-	% liveness implies interface typeinfo liveness, but not vice versa.
-:- pred body_should_use_typeinfo_liveness(globals, bool).
-:- mode body_should_use_typeinfo_liveness(in, out) is det.
+	% Return true if the body of a procedure from the given predicate
+	% must keep a typeinfo variable alive during the lifetime of all
+	% variables whose type includes the corresponding type variable.
+	% Note that body typeinfo liveness implies interface typeinfo liveness,
+	% but not vice versa.
+:- pred body_should_use_typeinfo_liveness(pred_info::in, globals::in,
+	bool::out) is det.
+
+	% Return true if the body of a procedure in a non-special predicate
+	% must keep a typeinfo variable alive during the lifetime of all
+	% variables whose type includes the corresponding type variable.
+:- pred non_special_body_should_use_typeinfo_liveness(globals::in,
+	bool::out) is det.
+
+	% unsafe_type_cast and unsafe_promise_unique are polymorphic
+	% builtins which do not need their type_infos. unsafe_type_cast
+	% can be introduced by common.m after polymorphism is run, so it
+	% is much simpler to avoid introducing type_info arguments for it.
+	% Since both of these are really just assignment unifications, it
+	% is desirable to generate them inline.
+	% There are also some predicates in private_builtin.m to
+	% manipulate typeclass_infos which don't need their type_infos.
+:- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
 
 :- implementation.
 
@@ -1795,15 +1813,22 @@ proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
 
 proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
 		InterfaceTypeInfoLiveness) :-
-	pred_info_import_status(PredInfo, Status),
-	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_is_address_taken(ProcInfo, IsAddressTaken),
-	interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
-		InterfaceTypeInfoLiveness).
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	( no_type_info_builtin(PredModule, PredName, PredArity) ->
+		InterfaceTypeInfoLiveness = no
+	;
+		pred_info_import_status(PredInfo, Status),
+		pred_info_procedures(PredInfo, ProcTable),
+		map__lookup(ProcTable, ProcId, ProcInfo),
+		proc_info_is_address_taken(ProcInfo, IsAddressTaken),
+		non_special_interface_should_use_typeinfo_liveness(Status,
+			IsAddressTaken, Globals, InterfaceTypeInfoLiveness)
+	).
 
-interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
-		InterfaceTypeInfoLiveness) :-
+non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
+		Globals, InterfaceTypeInfoLiveness) :-
 	(
 		(
 			IsAddressTaken = address_is_taken
@@ -1813,7 +1838,8 @@ interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
 			% follows that it must be exported somewhere.
 			Status \= local
 		;
-			body_should_use_typeinfo_liveness(Globals, yes)
+			non_special_body_should_use_typeinfo_liveness(Globals,
+				yes)
 		)
 	->
 		InterfaceTypeInfoLiveness = yes
@@ -1821,9 +1847,44 @@ interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
 		InterfaceTypeInfoLiveness = no
 	).
 
-body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
+body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	( no_type_info_builtin(PredModule, PredName, PredArity) ->
+		BodyTypeInfoLiveness = no
+	;
+		non_special_body_should_use_typeinfo_liveness(Globals,
+			BodyTypeInfoLiveness)
+	).
+
+non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
 	globals__lookup_bool_option(Globals, body_typeinfo_liveness,
 		BodyTypeInfoLiveness).
+
+no_type_info_builtin(ModuleName, PredName, Arity) :-
+	no_type_info_builtin_2(ModuleNameType, PredName, Arity),
+	(
+		ModuleNameType = builtin,
+		mercury_public_builtin_module(ModuleName)
+	;
+		ModuleNameType = private_builtin,
+		mercury_private_builtin_module(ModuleName)
+	).
+
+:- type builtin_mod ---> builtin ; private_builtin.
+
+:- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
+	is semidet.
+
+no_type_info_builtin_2(private_builtin, "unsafe_type_cast", 2).
+no_type_info_builtin_2(builtin, "unsafe_promise_unique", 2).
+no_type_info_builtin_2(private_builtin, "superclass_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin,
+				"instance_constraint_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
+no_type_info_builtin_2(private_builtin, "table_restore_any_ans", 3).
+no_type_info_builtin_2(private_builtin, "table_lookup_insert_enum", 4).
 
 %-----------------------------------------------------------------------------%
 

@@ -384,21 +384,24 @@ traverse_goal(MustRecompute, Info0, Info) :-
 		higher_order_info::in, higher_order_info::out) is det.
 
 fixup_proc_info(MustRecompute, Goal0, Info0, Info) :-
-	Info0 = info(A, B, C, D, E, ProcInfo0, ModuleInfo0, H, Changed),
+	Info0 = info(A, B, C, D, PredInfo, ProcInfo0, ModuleInfo0, H, Changed),
 	( (Changed = changed ; MustRecompute = yes) ->
 		proc_info_set_goal(ProcInfo0, Goal0, ProcInfo1),
 		module_info_globals(ModuleInfo0, Globals),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo, Globals,
+			TypeInfoLiveness),
 		requantify_proc(TypeInfoLiveness, ProcInfo1, ProcInfo2),
 		proc_info_goal(ProcInfo2, Goal2),
 		RecomputeAtomic = no,
 		proc_info_get_initial_instmap(ProcInfo2, ModuleInfo0, InstMap),
 		proc_info_vartypes(ProcInfo2, VarTypes),
 		proc_info_typeinfo_varmap(ProcInfo2, TVarMap),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
-			VarTypes, TVarMap, InstMap, ModuleInfo0, ModuleInfo),
+		recompute_instmap_delta(RecomputeAtomic, PredInfo,
+			Goal2, Goal3, VarTypes, TVarMap, InstMap,
+			ModuleInfo0, ModuleInfo),
 		proc_info_set_goal(ProcInfo2, Goal3, ProcInfo),
-		Info = info(A, B, C, D, E, ProcInfo, ModuleInfo, H, Changed)
+		Info = info(A, B, C, D, PredInfo, ProcInfo, ModuleInfo,
+			H, Changed)
 	;
 		Info = Info0
 	).

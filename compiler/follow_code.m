@@ -16,15 +16,12 @@
 :- import_module hlds_module, hlds_pred, hlds_goal.
 :- import_module list.
 
-:- pred move_follow_code_in_proc(proc_info, proc_info,
-	module_info, module_info).
-% :- mode move_follow_code_in_proc(di, uo, di, uo) is det.
-:- mode move_follow_code_in_proc(in, out, in, out) is det.
+:- pred move_follow_code_in_proc(pred_info::in, proc_info::in, proc_info::out,
+	module_info::in, module_info::out) is det.
 
 	% Split a list of goals into the prefix of builtins and the rest.
-:- pred move_follow_code_select(list(hlds_goal), list(hlds_goal),
-	list(hlds_goal)).
-:- mode move_follow_code_select(in, out, out) is det.
+:- pred move_follow_code_select(list(hlds_goal)::in, list(hlds_goal)::out,
+	list(hlds_goal)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,7 +34,8 @@
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo) :-
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, follow_code, FollowCode),
 	globals__lookup_bool_option(Globals, prev_code, PrevCode),
@@ -54,14 +52,15 @@ move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
 			% the nonlocal vars and the non-atomic instmap deltas.
 		proc_info_headvars(ProcInfo0, HeadVars),
 		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_clause_body(HeadVars, Goal1,
 			Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
 			Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, Goal2, Goal, VarTypes, TVarMap,
-			InstMap0, ModuleInfo0, ModuleInfo)
+		recompute_instmap_delta(no, PredInfo, Goal2, Goal,
+			VarTypes, TVarMap, InstMap0, ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
 		Varset = Varset0,

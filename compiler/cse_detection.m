@@ -155,7 +155,8 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 
 		module_info_globals(ModuleInfo0, Globals),
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		body_should_use_typeinfo_liveness(PredInfo0, Globals,
+			TypeInfoLiveness),
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 			VarTypes1, TVarMap, TypeInfoLiveness,
 			Goal, Varset, VarTypes, _Warnings),

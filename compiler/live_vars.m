@@ -58,7 +58,8 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 		LiveSets1 = LiveSets0
 	),
 	trace__reserved_slots(ProcInfo0, Globals, NumReservedSlots),
-	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets1,
 		ModuleInfo, ProcInfo0, TypeInfoLiveness,
 		_Liveness, _ResumeVars, LiveSets),
