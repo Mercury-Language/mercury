@@ -285,10 +285,14 @@ base_type_layout__gen_base_gen_layouts([TypeId | TypeIds], TypeTable,
 		ModuleInfo, BaseGenInfos1),
 	TypeId = SymName - TypeArity,
 	(
-		% Is this type defined in this module? 
+		% Is this type defined in this module and not hand
+		% defined?
 			
 		SymName = qualified(TypeModuleName, TypeName),
-		( TypeModuleName = ModuleName ->
+		( 
+			TypeModuleName = ModuleName,
+			\+ type_id_is_hand_defined(TypeId)
+		->
 			map__lookup(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
 

@@ -43,6 +43,13 @@
 :- pred type_id_is_higher_order(type_id, pred_or_func).
 :- mode type_id_is_higher_order(in, out) is semidet.
 
+	% A test for types that are defined by hand (not including
+	% the builtin types).  Don't generate base_type_*
+	% for these types.
+
+:- pred type_id_is_hand_defined(type_id).
+:- mode type_id_is_hand_defined(in) is semidet.
+
 	% Given a type, determine what sort of type it is.
 
 :- pred classify_type(type, module_info, builtin_type).
@@ -229,6 +236,11 @@ type_is_atomic(Type, ModuleInfo) :-
 	BuiltinType \= user_type.
 
 type_util__var(term__variable(Var), Var).
+
+type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-
+	mercury_private_builtin_module(PrivateBuiltin).
+type_id_is_hand_defined(qualified(PrivateBuiltin, "base_type_info") - 1) :-
+	mercury_private_builtin_module(PrivateBuiltin).
 
 %-----------------------------------------------------------------------------%
 
