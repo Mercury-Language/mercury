@@ -41,6 +41,7 @@
 #define mkbody(i)	(i)
 #define unmkbody(w)	(w)
 #define	body(w, t)	((w) & (~(Word)0 >> TAGBITS))
+#define strip_tag(w)	((w) & (~(Word)0 >> TAGBITS))
 
 #else /* ! HIGHTAGS */
 
@@ -50,6 +51,7 @@
 #define mkbody(i)	((i) << TAGBITS)
 #define unmkbody(w)	((Word) (w) >> TAGBITS)
 #define	body(w, t)	((w) - (t))
+#define strip_tag(w)	((w) & (~(Word)0 << TAGBITS))
 
 #endif /* ! HIGHTAGS */
 
