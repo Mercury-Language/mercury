@@ -1786,7 +1786,7 @@ compensate_for_zero_map(Deep, CallerPSPtr, PDPtr, Desc0, Desc) :-
 
 pair_self(CSDPtr) = CSDPtr - CSDPtr.
 
-:- func pair_contour(deep, set(exclude_spec), call_site_dynamic_ptr)
+:- func pair_contour(deep, exclude_file, call_site_dynamic_ptr)
 	= pair(call_site_dynamic_ptr).
 
 pair_contour(Deep, ExcludeSpec, CSDPtr) =
