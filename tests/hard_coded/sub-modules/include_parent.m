@@ -5,7 +5,7 @@
 :- interface.
 
 :- import_module io.
-:- include_module separate.
+:- include_module separate, separate2.
 
 :- pred hello(io__state::di, io__state::uo) is det.
 

@@ -7,3 +7,5 @@ include_parent__separate: hello2
 include_parent__separate: hello2
 include_parent__separate: hello2
 include_parent__separate__nested: hello
+include_parent__separate2: hello
+include_parent__separate2__nested: hello
