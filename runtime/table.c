@@ -17,8 +17,7 @@
 **	Initialize a table.
 */
 
-void
-tab_init_table(Table *table)
+void tab_init_table(Table *table)
 {
 	reg	int	i;
 
@@ -32,8 +31,7 @@ tab_init_table(Table *table)
 **	in a table.
 */
 
-void *
-tab_lookup_table(const Table *table, const void *key)
+void *tab_lookup_table(const Table *table, const void *key)
 {
 	reg	List	*ptr;
 	reg	int	h;
@@ -53,8 +51,7 @@ tab_lookup_table(const Table *table, const void *key)
 **	Return whether it was there before.
 */
 
-bool
-tab_insert_table(const Table *table, void *entry)
+bool tab_insert_table(const Table *table, void *entry)
 {
 	reg	List		*ptr;
 	reg	const void	*key;
@@ -80,8 +77,7 @@ tab_insert_table(const Table *table, void *entry)
 **	Return all table entries in a list.
 */
 
-List *
-tab_get_all_entries(const Table *table)
+List *tab_get_all_entries(const Table *table)
 {
 	reg	List	*list;
 	reg	int	i;
@@ -98,8 +94,7 @@ tab_get_all_entries(const Table *table)
 **	mod the table size is a good hash value.
 */
 
-int
-tab_str_to_int(const char *cs)
+int tab_str_to_int(const char *cs)
 {
 	reg	int		h;
 	reg	const char	*s;

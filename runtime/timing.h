@@ -1,3 +1,6 @@
+#ifndef	TIMING_H
+#define	TIMING_H
+
 /*---------------------------------------------------------------------------*/
 /* I hacked this from toplev.c in the gcc source - fjh. */
 /*---------------------------------------------------------------------------*/
@@ -20,13 +23,13 @@ You should have received a copy of the GNU General Public License
 along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
-/* Return time used so far, in microseconds.  */
+/* Return time used so far, in milliseconds.  */
 
-int get_run_time (void);
+extern	int	get_run_time (void);
 
-/* Print a message and a time in microseconds. */
+/* Print a message and a time in milliseconds. */
 
-void print_time (const char *str, int total);
+extern	void	print_time(const char *str, int total);
 
 #define TIMEVAR(VAR, BODY)    					\
 	do {							\
@@ -35,3 +38,4 @@ void print_time (const char *str, int total);
 		VAR = get_run_time () - otime;			\
 	} while (0)	
 
+#endif

@@ -11,8 +11,7 @@
 **	Make an empty list.
 */
 
-List *
-makelist0()
+List *makelist0()
 {
 	reg	List	*list;
 
@@ -28,8 +27,7 @@ makelist0()
 **	Make a list with the argument is its only element.
 */
 
-List *
-list_makelist(void * data)
+List *list_makelist(void * data)
 {
 	reg	List	*list;
 
@@ -43,8 +41,7 @@ list_makelist(void * data)
 **	Add some data to the head of a list.
 */
 
-List *
-list_addhead(List *list, void *data)
+List *list_addhead(List *list, void *data)
 {
 	reg	List	*item;
 
@@ -69,8 +66,7 @@ list_addhead(List *list, void *data)
 **	Add some data to the tail of a list.
 */
 
-List *
-list_addtail(List *list, Cast data)
+List *list_addtail(List *list, Cast data)
 {
 	reg	List	*item;
 
@@ -96,8 +92,7 @@ list_addtail(List *list, Cast data)
 **	list2 is not meaningful after the operation, it is freed.
 */
 
-List *
-addlist(List *list1, List *list2)
+List *addlist(List *list1, List *list2)
 {
 	if (list1 == NULL)
 		list1 = makelist0();
@@ -139,8 +134,7 @@ addlist(List *list1, List *list2)
 **	but only the data pointers of the second are used.
 */
 
-List *
-addndlist(List *list1, List *list2)
+List *addndlist(List *list1, List *list2)
 {
 	reg	List	*ptr;
 
@@ -160,8 +154,7 @@ addndlist(List *list1, List *list2)
 **	Insert into a list before a given position.
 */
 
-void
-list_insert_before(List *list, List *where, void *data)
+void list_insert_before(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
@@ -181,8 +174,7 @@ list_insert_before(List *list, List *where, void *data)
 **	Insert into a list after a given position.
 */
 
-void
-list_insert_after(List *list, List *where, void *data)
+void list_insert_after(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
@@ -202,8 +194,7 @@ list_insert_after(List *list, List *where, void *data)
 **	Return the length of a given list.
 */
 
-int
-length(const List *list)
+int length(const List *list)
 {
 	if (list == NULL)
 		return 0;
@@ -216,8 +207,7 @@ length(const List *list)
 **	and maybe the data.
 */
 
-void
-delete(List *list, List *item, void (* func)(void *))
+void delete(List *list, List *item, void (* func)(void *))
 {
 	if (list == NULL)
 		return;
@@ -241,8 +231,7 @@ delete(List *list, List *item, void (* func)(void *))
 **	by newmem and malloc, then all Hell will break loose.
 */
 
-void
-oldlist(List *list, void (* func)(void *))
+void oldlist(List *list, void (* func)(void *))
 {
 	reg	List	*ptr;
 	reg	List	*item;

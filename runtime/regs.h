@@ -22,48 +22,9 @@
 ** map is in a minimal header file, regorder.h.
 */
 
-extern	Word	unreal_reg_0;
-extern	Word	unreal_reg_1;
-extern	Word	unreal_reg_2;
-extern	Word	unreal_reg_3;
-extern	Word	unreal_reg_4;
-extern	Word	unreal_reg_5;
-extern	Word	unreal_reg_6;
-extern	Word	unreal_reg_7;
-extern	Word	unreal_reg_8;
-extern	Word	unreal_reg_9;
-extern	Word	unreal_reg_10;
-extern	Word	unreal_reg_11;
-extern	Word	unreal_reg_12;
-extern	Word	unreal_reg_13;
-extern	Word	unreal_reg_14;
-extern	Word	unreal_reg_15;
-extern	Word	unreal_reg_16;
-extern	Word	unreal_reg_17;
-extern	Word	unreal_reg_18;
-extern	Word	unreal_reg_19;
-extern	Word	unreal_reg_20;
-extern	Word	unreal_reg_21;
-extern	Word	unreal_reg_22;
-extern	Word	unreal_reg_23;
-extern	Word	unreal_reg_24;
-extern	Word	unreal_reg_25;
-extern	Word	unreal_reg_26;
-extern	Word	unreal_reg_27;
-extern	Word	unreal_reg_28;
-extern	Word	unreal_reg_29;
-extern	Word	unreal_reg_30;
-extern	Word	unreal_reg_31;
-extern	Word	unreal_reg_32;
-extern	Word	unreal_reg_33;
-extern	Word	unreal_reg_34;
-extern	Word	unreal_reg_35;
-extern	Word	unreal_reg_36;
-
 /*
-** if any of the following change, you must inspect all the files
-** that may be included from here, as well as all uses of all macros
-** defined here.
+** if any of the following change, you must inspect memory.[ch],
+** machdeps/*, as well as all uses of all macros defined here.
 */
 
 #define	SI_RN	 0
@@ -73,10 +34,6 @@ extern	Word	unreal_reg_36;
 #define	CF_RN	35
 #define	MF_RN	36
 #define	MAX_RN	37
-
-/* both these are arrays of size MAX_RN */
-extern	Word	*saved_regs;
-extern	Word	*num_uses;
 
 #if defined(USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__

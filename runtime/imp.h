@@ -7,8 +7,8 @@
 #endif
 
 #include	<stdio.h>
+#include	<stdlib.h>
 #include	<assert.h>
-#include	"getopt.h"
 #include	"std.h"
 
 /* GENERAL DEFINITIONS */
@@ -18,43 +18,8 @@ typedef void	Code;
 
 #define	WORDSIZE	sizeof(Word)
 
-#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
-
-/* DEFINITIONS FOR DEBUGGING FLAGS */
-
-#define	PROGFLAG	0
-#define	GOTOFLAG	1
-#define	CALLFLAG	2
-#define	HEAPFLAG	3
-#define	DETSTACKFLAG	4
-#define	NONDSTACKFLAG	5
-#define	FINALFLAG	6
-#define	MEMFLAG		7
-#define	DETAILFLAG	8
-#define	MAXFLAG		9
-/* DETAILFLAG should be the last real flag */
-
-#define	progdebug	debugflag[GOTOFLAG]
-#define	gotodebug	debugflag[GOTOFLAG]
-#define	calldebug	debugflag[CALLFLAG]
-#define	heapdebug	debugflag[HEAPFLAG]
-#define	detstackdebug	debugflag[DETSTACKFLAG]
-#define	nondstackdebug	debugflag[NONDSTACKFLAG]
-#define	finaldebug	debugflag[FINALFLAG]
-#define	memdebug	debugflag[MEMFLAG]
-#define	detaildebug	debugflag[DETAILFLAG]
-
-/* DEFINITIONS FOR THE LABEL TABLE */
-
-#include "label.h"
-
-/* DEFINITIONS FOR WORD LAYOUT */
-
-#include "tags.h"
-
-/* DEFINITIONS FOR VIRTUAL MACHINE REGISTERS */
-
-#include "regs.h"
+#include	"tags.h"
+#include	"regs.h"
 
 /* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" NON-LOCAL GOTOS */
 
@@ -88,21 +53,7 @@ typedef void	Code;
 
 #endif
 
-/* STANDARD ENTRY POINTS */
-
-/* these #defines are just for backwards compatibility with old .mod files */
-
-#define doredo 			ENTRY(do_redo)
-#define dofail 			ENTRY(do_fail)
-#define doresethpfail		ENTRY(do_reset_hp_fail)
-#define doresetframevar0fail	ENTRY(do_reset_framevar0_fail)
-#define dosucceed		ENTRY(do_succeed)
-
-extern	EntryPoint	doredo;
-extern	EntryPoint	dofail;
-extern	EntryPoint	doresethpfail;
-extern	EntryPoint	doresetframevar0fail;
-extern	EntryPoint	dosucceed;
+#include	"engine.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
@@ -134,28 +85,6 @@ extern	EntryPoint	dosucceed;
 				debugproceed();			\
 				GOTO(succip);			\
 			} while (0)
-
-/* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
-
-/* beginning of allocated areas */
-extern	Word	*heap;
-extern	Word	*detstack;
-extern	Word	*nondstack;
-
-/* beginning of used areas */
-extern	Word	*heapmin;
-extern	Word	*detstackmin;
-extern	Word	*nondstackmin;
-
-/* highest locations actually used */
-extern	Word	*heapmax;
-extern	Word	*detstackmax;
-extern	Word	*nondstackmax;
-
-/* end of allocated areas */
-extern	Word	*heapend;
-extern	Word	*detstackend;
-extern	Word	*nondstackend;
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
@@ -236,7 +165,7 @@ extern	Word	*nondstackend;
 				/* return */ *sp		\
 			)
 
-/* DEFINITIONS FOR CHOICE AND RECLAIM POINTS */
+/* DEFINITIONS FOR NONDET STACK FRAMES */
 
 #define	PREDNM		(-0)	/* for debugging, set up at call 	*/
 #define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
@@ -254,7 +183,7 @@ extern	Word	*nondstackend;
 #define	bt_succfr(fr)	LVALUE_CAST(Word *, fr[SUCCFR])
 #define	bt_var(fr,n)	fr[SAVEVAL-n]
 
-/* the offsets used by choice points */
+/* the offsets used by nondet stack frames */
 #define	curprednm	bt_prednm(curfr)
 #define	curredoip	bt_redoip(curfr)
 #define	curprevfr	bt_prevfr(curfr)
@@ -269,9 +198,9 @@ extern	Word	*nondstackend;
 #define	recsavehp	bt_savehp(maxfr)
 
 #define	RECLAIM_SIZE		4	/* units: words */
-#define	CHOICE_POINT_SIZE	5	/* units: words */
+#define	NONDET_FIXED_SIZE	5	/* units: words */
 
-/* DEFINITIONS FOR MANIPULATING THE CHOICE POINT STACK */
+/* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
 #define	mkframe(prednm, n, redoip)				\
 			do {					\
@@ -280,7 +209,7 @@ extern	Word	*nondstackend;
 								\
 				prevfr = maxfr;			\
 				succfr = curfr;			\
-				maxfr = maxfr + (CHOICE_POINT_SIZE + n);\
+				maxfr = maxfr + (NONDET_FIXED_SIZE + n);\
 				curfr = maxfr;			\
 				curfr[PREDNM] = (Word) prednm;	\
 				curfr[REDOIP] = (Word) redoip;	\
@@ -346,6 +275,8 @@ extern	Word	*nondstackend;
 			} while (0)
 
 /* DEFINITIONS FOR OVERFLOW CHECKS */
+
+#define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
 
 #ifdef	SPEED
 
@@ -524,12 +455,6 @@ extern	Word	*nondstackend;
 
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 
-extern	int	r1val;
-extern	int	r2val;
-extern	int	r3val;
-extern	int	repcounter;
-
-extern	Word	do_mklist(int start, int len);
 #ifdef __GNUC__
 #define mklist(start,len) \
 	({						\
@@ -541,54 +466,16 @@ extern	Word	do_mklist(int start, int len);
 	})
 #else
 	/*
-	** if it's not gcc, then we can't be using global register variables,
+	** if it's not gcc, then we can't use global register variables,
 	** so we don't need to worry about saving/restoring them
-	** (which would have been slightly tricky to do in a portable macro)
+	** (which would have been tricky to do in a portable macro)
 	*/
 #define mklist(start,len) do_mklist(start,len)
 #endif
 
-extern	char	scratchbuf[];
-extern	bool	debugflag[];
-
-/* debugging messages, defined in aux.c */
-
-extern	void	mkframe_msg(void);
-extern	void	mkreclaim_msg(void);
-extern	void	modframe_msg(void);
-extern	void	succeed_msg(void);
-extern	void	succeeddiscard_msg(void);
-extern	void	fail_msg(void);
-extern	void	redo_msg(void);
-extern	void	call_msg(const Code *proc, const Code *succcont);
-extern	void	tailcall_msg(const Code *proc);
-extern	void	proceed_msg(void);
-extern	void	cr1_msg(Word val0, const Word *addr);
-extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
-extern	void	incr_sp_msg(Word val, const Word *addr);
-extern	void	decr_sp_msg(Word val, const Word *addr);
-extern	void	push_msg(Word val, const Word *addr);
-extern	void	pop_msg(Word val, const Word *addr);
-extern	void	goto_msg(const Code *addr);
-
-/* more debugging messages, defined in aux.c */
-
-extern	void	printregs(const char *msg);
-extern	void	printtmps(void);
-extern	void	printint(Word n);
-extern	void	printstring(const char *s);
-extern	void	printheap(const Word *h);
-extern	void	printdetstack(const Word *s);
-extern	void	printnondstack(const Word *s);
-extern	void	printlist(Word p);
-extern	void	printlabel(const Code *w);
-extern	void	printregs(const char *);
-extern	void	printframe(const char *);
-extern	void	dumpframe(const Word *);
-extern	void	dumpnondstack(void);
-extern	int	whichlabel(const char *name);
-
-extern 	void	init_engine(void);
-extern 	void	call_engine(Code *);
+#include	"aux.h"
+#include	"label.h"
+#include	"memory.h"
+#include	"test_harness.h"
 
 #endif /* IMP_H */

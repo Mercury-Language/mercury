@@ -1,7 +1,5 @@
-#include 	<stdlib.h>
 #include	"imp.h"
 #include	"list.h"
-#include	"label.h"
 #include	"access.h"
 
 /*--------------------------------------------------------------------*/
@@ -291,100 +289,6 @@ void printlabel(const Code *w)
 		printf("label UNKNOWN (0x%p)\n", w);
 }
 
-#define	FNULL	((PrintRegFunc *) 0)
-#define P_INT 	((PrintRegFunc *) printint)
-#define P_STR	((PrintRegFunc *) printstring)
-#define P_LIST 	((PrintRegFunc *) printlist)
-#define P_LABEL ((PrintRegFunc *) printlabel)
-#define P_STACK	((PrintRegFunc *) printdetstack)
-#define P_HEAP	((PrintRegFunc *) printheap)
-
-#if 0	/* this code no longer used */
-
-/* The following table describes the contents of the
-   the registers r1, r2, ... for the specified
-   entry points.
-*/
-
-PrintRegFunc	*regtable[MAXENTRIES][32] =
-{
-/* APPEND_1 */
-	{ P_LIST, P_LIST, P_LIST, FNULL },
-/* APPEND_2 */
-	{ P_LIST, P_LIST, P_LIST, FNULL },
-/* NREV_1 */
-	{ P_LIST, P_LIST, P_LIST, FNULL },
-/* LENGTH_1 */
-	{ P_LIST, P_INT, FNULL },
-/* LENGTH_2 */
-	{ P_LIST, P_INT, FNULL },
-/* ACLENGTH_1 */
-	{ P_LIST, P_INT, P_INT, FNULL },
-/* MEMBER_1 */
-	{ P_INT, P_LIST, FNULL },
-/* MEMBER_2 */
-	{ P_INT, P_LIST, FNULL },
-/* MEMDET_1 */
-	{ P_LIST, P_INT, P_INT, FNULL },
-/* MKLIST_1 */
-	{ P_LIST, FNULL },
-/* HEAP_1 */
-	{ P_LIST, P_INT, FNULL },
-/* ONEDET_1 */
-	{ P_INT, FNULL },
-/* INT_1 */
-	{ P_INT, P_INT, FNULL },
-/* Q_1 */
-	{ P_INT, P_INT, FNULL },
-/* NOT_Q_1 */
-	{ P_INT, P_INT, FNULL },
-/* NOT_Q5_1 */
-	{ P_INT, P_INT, FNULL },
-/* DETNEG_1 */
-	{ P_INT, P_INT, FNULL },
-/* NONDETNEG_1 */
-	{ P_INT, P_INT, FNULL },
-/* A_1 */
-	{ P_INT, P_INT, FNULL },
-/* C_1 */
-	{ P_INT, P_INT, FNULL },
-/* D_1 */
-	{ P_INT, P_INT, FNULL },
-/* E_1 */
-	{ P_INT, P_INT, FNULL },
-/* F_1 */
-	{ P_INT, P_INT, FNULL },
-/* COLOR_1 */
-	{ P_INT, P_INT, P_INT, P_INT, P_INT, FNULL },
-/* NEXT_1 */
-	{ P_INT, P_INT, FNULL },
-/* NEXT_2 */
-	{ P_INT, P_INT, FNULL },
-/* NEXT_3 */
-	{ P_INT, P_INT, FNULL },
-/* OK_1 */
-	{ P_INT, P_INT, FNULL },
-/* OK_2 */
-	{ P_INT, P_INT, FNULL },
-/* OK_3 */
-	{ P_INT, P_INT, FNULL },
-/* OK_4 */
-	{ P_INT, P_INT, FNULL },
-/* DO_NOTHING_1 */
-	{ FNULL },
-/* QUEEN_1 */
-	{ P_LIST, FNULL },
-/* QPERM_1 */
-	{ P_LIST, P_LIST, FNULL },
-/* QDELETE_1 */
-	{ P_INT, P_LIST, P_LIST, FNULL },
-/* SAFE_1 */
-	{ P_LIST, P_LIST, P_LIST, FNULL },
-/* NODIAG_1 */
-	{ P_INT, P_INT, P_LIST, FNULL }
-};
-#endif /* old code */
-
 void printframe(const char *msg)
 {
 	reg	int	i;
@@ -449,8 +353,7 @@ Word do_mklist(int start, int len)
 	return curr;
 }
 
-void *
-newmem(size_t n)
+void *newmem(size_t n)
 {
 	reg	void	*p;
 
@@ -464,8 +367,7 @@ newmem(size_t n)
 	return p;
 }
 
-void
-oldmem(void *p)
+void oldmem(void *p)
 {
 	free(p);
 }

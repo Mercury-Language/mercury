@@ -1,15 +1,6 @@
-#include	"imp.h"
 #include 	<string.h>
-#include 	<stdlib.h>
-#include 	<stdio.h>
+#include	"imp.h"
 #include	"dummy.h"
-#include	"init.h"
-
-char	scratchbuf[256];
-
-extern	bool	check_space;
-
-/*---------------------------------------------------------------------------*/
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -17,32 +8,22 @@ extern	bool	check_space;
 #define MAGIC_MARKER	187	/* a random character */
 #define MAGIC_MARKER_2	142	/* another random character */
 
-void	*global_pointer;	/* used to defeat possible optimization	*/
-
 #endif
 
-/*---------------------------------------------------------------------------*/
-
-/* FUNCTION PROTOTYPES */
-
-void		init_engine(void);
-void		call_engine(Code *entry_point);
-extern	void	init_memory(void);
 static	void	init_registers(void);
+
 #ifndef USE_GCC_NONLOCAL_GOTOS
 static	Code	*engine_done(void);
+static	Code	*engine_init_registers(void);
 #endif
 
-void		special_labels_module(void);
-
-extern EntryPoint ENTRY(do_not_reached);
-
-/*---------------------------------------------------------------------------*/
+bool	debugflag[MAXFLAG];
 
 void init_engine(void)
 {
 	init_memory();
 	init_registers();
+
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	makelabel("engine_done", LABEL(engine_done));
 #endif
@@ -65,8 +46,6 @@ static void init_registers(void)
 
 	save_registers();
 }
-
-/*---------------------------------------------------------------------------*/
 
 /*
 ** call_engine(Code *entry_point)
@@ -209,7 +188,7 @@ engine_done:
 
 static jmp_buf *engine_jmp_buf;
 
-static Code * engine_done(void)
+static Code *engine_done(void)
 {
 	save_registers();
 
@@ -217,7 +196,7 @@ static Code * engine_done(void)
 	longjmp(*engine_jmp_buf, 1);
 }
 
-static Code * engine_init_registers(void)
+static Code *engine_init_registers(void)
 {
 	restore_registers();
 	succip = engine_done;
@@ -273,8 +252,6 @@ void call_engine(Code *entry_point)
 	}
 }
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
-
-/*---------------------------------------------------------------------------*/
 
 BEGIN_MODULE(special_labels_module)
 

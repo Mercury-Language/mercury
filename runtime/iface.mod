@@ -1,4 +1,3 @@
-#include	<stdlib.h>
 #include	"imp.h"
 #include	"access.h"
 #include	"iface.h"

@@ -1,5 +1,4 @@
 #include "imp.h"
-#include <stdio.h>
 
 BEGIN_MODULE(io_module)
 

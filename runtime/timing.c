@@ -92,6 +92,6 @@ int get_run_time (void)
 void print_time (const char *str, int total)
 {
   fprintf (stderr,
-	   "%s = %d.%06d\n",
-	   str, total / 1000000, total % 1000000);
+	   "%s = %d.%03d\n",
+	   str, total / 1000, total % 1000);
 }

@@ -3,7 +3,6 @@
 */
 
 #ifndef	TABLE_H
-
 #define	TABLE_H
 
 #ifndef		LIST_H

@@ -1,4 +1,5 @@
-/* more access functions, defined in access.c */
+#ifndef	ACCESS_H
+#define	ACCESS_H
 
 #ifndef		LIST_H
 #include	"list.h"
@@ -12,3 +13,4 @@ extern	Word	get_mem(Word *);
 extern	Word	set_mem(Word *, Word);
 extern	Word	createn(List *);
 extern	int	getflexline(const char *, FILE *, char **, int *);
+#endif

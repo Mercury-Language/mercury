@@ -1,6 +1,5 @@
-#include "imp.h"
-#include <stdlib.h>
 #include <unistd.h>
+#include "imp.h"
 
 /*
 ** The important global variables of the execution algorithm.
@@ -35,6 +34,8 @@
 #else
 
 #define	memalign(a,s)	malloc(s)
+
+extern	int	getpagesize(void);
 
 #endif
 
@@ -107,17 +108,7 @@ char	*nondstack_zone;
 static	int	unit;
 static	int	page_size;
 
-extern	int	pcache_size;
-
-extern	int	heap_size;
-extern	int	detstack_size;
-extern	int	nondstack_size;
-extern	int	heap_zone_size;
-extern	int	detstack_zone_size;
-extern	int	nondstack_zone_size;
-
-void
-init_memory(void)
+void init_memory(void)
 {
 	char	*arena;
 	int	total_size;
@@ -318,8 +309,7 @@ init_memory(void)
 	}
 }
 
-static int
-roundup(int value, int align)
+static int roundup(int value, int align)
 {
 	if ((value & (align - 1)) != 0)
 		value += align - (value & (align - 1));
@@ -327,8 +317,7 @@ roundup(int value, int align)
 	return value;
 }
 
-static void
-mer_sighandler(int sig)
+static void mer_sighandler(int sig)
 {
 	switch (sig)
 	{
