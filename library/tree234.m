@@ -76,6 +76,7 @@
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int, require.
@@ -157,70 +158,95 @@ tree234__member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
 
 %------------------------------------------------------------------------------%
 
-tree234__search(empty, _K, _V) :- fail.
-tree234__search(two(K0, V0, T0, T1), K, V) :-
-	compare(Result, K, K0),
+tree234__search(T, K, V) :-
 	(
-		Result = (<),
-		tree234__search(T0, K, V)
+		T = empty,
+		fail
 	;
-		Result = (=),
-		V = V0
-	;
-		Result = (>),
-		tree234__search(T1, K, V)
-	).
-tree234__search(three(K0, V0, K1, V1, T0, T1, T2), K, V) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__search(T0, K, V)
-	;
-		Result0 = (=),
-		V = V0
-	;
-		Result0 = (>),
-		compare(Result1, K, K1),
+		T = two(K0, _, _, _),
+		compare(Result, K, K0),
 		(
-			Result1 = (<),
+			Result = (<),
+			T = two(_, _, T0, _),
+			tree234__search(T0, K, V)
+		;
+			Result = (=),
+			T = two(_, V0, _, _),
+			V = V0
+		;
+			Result = (>),
+			T = two(_, _, _, T1),
 			tree234__search(T1, K, V)
-		;
-			Result1 = (=),
-			V = V1
-		;
-			Result1 = (>),
-			tree234__search(T2, K, V)
 		)
-	).
-tree234__search(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__search(T0, K, V)
 	;
-		Result0 = (=),
-		V = V0
-	;
-		Result0 = (>),
-		compare(Result1, K, K1),
+		T = three(K0, _, _, _, _, _, _),
+		compare(Result0, K, K0),
 		(
-			Result1 = (<),
-			tree234__search(T1, K, V)
+			Result0 = (<),
+			T = three(_, _, _, _, T0, _, _),
+			tree234__search(T0, K, V)
 		;
-			Result1 = (=),
-			V = V1
+			Result0 = (=),
+			T = three(_, V0, _, _, _, _, _),
+			V = V0
 		;
-			Result1 = (>),
-			compare(Result2, K, K2),
+			Result0 = (>),
+			T = three(_, _, K1, _, _, _, _),
+			compare(Result1, K, K1),
 			(
-				Result2 = (<),
+				Result1 = (<),
+				T = three(_, _, _, _, _, T1, _),
+				tree234__search(T1, K, V)
+			;
+				Result1 = (=),
+				T = three(_, _, _, V1, _, _, _),
+				V = V1
+			;
+				Result1 = (>),
+				T = three(_, _, _, _, _, _, T2),
 				tree234__search(T2, K, V)
+			)
+		)
+	;
+		T = four(K0, _, _, _, _, _, _, _, _, _),
+		compare(Result0, K, K0),
+		(
+			Result0 = (<),
+			T = four(_, _, _, _, _, _, T0, _, _, _),
+			tree234__search(T0, K, V)
+		;
+			Result0 = (=),
+			T = four(_, V0, _, _, _, _, _, _, _, _),
+			V = V0
+		;
+			Result0 = (>),
+			T = four(_, _, K1, _, _, _, _, _, _, _),
+			compare(Result1, K, K1),
+			(
+				Result1 = (<),
+				T = four(_, _, _, _, _, _, _, T1, _, _),
+				tree234__search(T1, K, V)
 			;
-				Result2 = (=),
-				V = V2
+				Result1 = (=),
+				T = four(_, _, _, V1, _, _, _, _, _, _),
+				V = V1
 			;
-				Result2 = (>),
-				tree234__search(T3, K, V)
+				Result1 = (>),
+				T = four(_, _, _, _, K2, _, _, _, _, _),
+				compare(Result2, K, K2),
+				(
+					Result2 = (<),
+					T = four(_, _, _, _, _, _, _, _, T2, _),
+					tree234__search(T2, K, V)
+				;
+					Result2 = (=),
+					T = four(_, _, _, _, _, V2, _, _, _, _),
+					V = V2
+				;
+					Result2 = (>),
+					T = four(_, _, _, _, _, _, _, _, _, T3),
+					tree234__search(T3, K, V)
+				)
 			)
 		)
 	).
