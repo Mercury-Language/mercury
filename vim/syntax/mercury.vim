@@ -50,6 +50,7 @@ syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
+syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
 syn keyword mercuryLogical      some all not if then else true fail
