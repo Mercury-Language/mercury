@@ -31,6 +31,7 @@ SOURCES= \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
 	ho_unique_error.m \
+	impure_method_impl.m \
 	inline_conflict.m \
 	inst_list_dup.m \
 	io_in_ite_cond.m \
