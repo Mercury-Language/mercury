@@ -13,17 +13,21 @@ typedef struct s_entry
 	void	*e_input;	/* the address of the input generator	*/
 } Entry;
 
+/* when you modify this, modify the table in aux.c as well */
 #define	APPEND_1	0
 #define	APPEND_2	1
 #define	NREV_1		2
 #define	LENGTH_1	3
-#define	ACLENGTH_1	4
-#define	MEMBER_1	5
-#define	MKLIST_1	6
-#define	Q_1		7
-#define	INT_1		8
+#define	LENGTH_2	4
+#define	ACLENGTH_1	5
+#define	MEMBER_1	6
+#define	MEMBER_2	7
+#define	MKLIST_1	8
+#define	Q_1		9
+#define	INT_1		10
+#define	HEAP_1		11
 
-#define	MAXENTRIES	9
+#define	MAXENTRIES	12
 #define	STARTLABELS	40
 #define	MAXLABELS	400
 
@@ -81,6 +85,7 @@ extern	int	r3val;
 extern	int	repcounter;
 
 extern	void	*dofail;
+extern	void	*doresethpfail;
 extern	void	*doredo;
 
 #define	WORDSIZE	4
@@ -111,19 +116,31 @@ extern	void	*doredo;
 #define	TAG_CONS	mktag(bTAG_CONS)
 #define	TAG_VAR		mktag(bTAG_VAR)
 
+/* these offsets and used by both choice points and reclaim points */
+
 #define	PREDNM		-0
-#define	SUCCIP		-1	/* in calling proc, set up at call	*/
-#define	SUCCCP		-2	/* cp of calling proc, set up at call	*/
-#define	REDOIP		-3	/* in this proc, set up at clause entry	*/
-#define	PREVCP		-4	/* prev cp on stack, set up at call	*/
+#define	REDOIP		-1	/* in this proc, set up at clause entry	*/
+#define	PREVCP		-2	/* prev cp on stack, set up at call	*/
+#define	SAVEHP		-3	/* in calling proc, set up at call	*/
+#define	SUCCIP		-3	/* in calling proc, set up at call	*/
+#define	SUCCCP		-4	/* cp of calling proc, set up at call	*/
 #define	SAVEVAL		-5
 
+/* the offsets used by choice points */
 #define	cpprednm	(char *) curcp[PREDNM]
 #define	cpsuccip	(void *) curcp[SUCCIP]
 #define	cpsucccp	(Word *) curcp[SUCCCP]
 #define	cpredoip	(void *) curcp[REDOIP]
 #define	cpprevcp	(Word *) curcp[PREVCP]
 #define	cpvar(n)	curcp[SAVEVAL-n]
+
+/* the offsets used by reclaim points */
+#define	recprednm	(char *) curcp[PREDNM]
+#define	recredoip	(void *) curcp[REDOIP]
+#define	recprevcp	(Word *) curcp[PREVCP]
+#define	recsavehp	(Word *) curcp[SAVEHP]
+
+#define	RECLAIM_SIZE	(4 * sizeof(Word))
 
 #define	stackvar(n)	sp[-n]
 
@@ -142,6 +159,21 @@ extern	void	*doredo;
 				cpsucccp = succcp;		\
 				cpprevcp = prevcp;		\
 				debugmkcp();			\
+				cpstack_overflow_check();	\
+			} while (0)
+
+#define	mkreclaim(prednm)					\
+			do {					\
+				reg	Word	*prevcp;	\
+								\
+				prevcp = maxcp;			\
+				maxcp += 4;			\
+				curcp = maxcp;			\
+				recprednm = prednm;		\
+				recredoip = doresethpfail;	\
+				recprevcp = prevcp;		\
+				recsavehp = hp;			\
+				debugmkreclaim();		\
 				cpstack_overflow_check();	\
 			} while (0)
 
@@ -227,6 +259,8 @@ extern	void	*doredo;
 			do { } while (0)
 #define	debugmkcp()						\
 			do { } while (0)
+#define	debugmkreclaim()					\
+			do { } while (0)
 #define	debugmodcp()						\
 			do { } while (0)
 #define	debugsucceed()						\
@@ -309,20 +343,23 @@ extern	void	*doredo;
 #define	stack_push_msg(val, sp)					\
 			do {					\
 				if (stackdebug)			\
-					printf("push %x to %x\n",\
-					val, sp);		\
+					push_msg(val, sp);	\
 			} while (0)
 #define	stack_pop_msg(val, sp)					\
 			do {					\
 				if (stackdebug)			\
-					printf("pop %x from %x\n",\
-					val, sp);		\
+					pop_msg(val, sp);	\
 			} while (0)
 #define	debugregs(msg)						\
 			printregs(msg)
 #define	debugmkcp()	do {					\
 				if (cpstackdebug)		\
 					mkcp_msg();		\
+			} while (0)
+#define	debugmkreclaim()					\
+			do {					\
+				if (cpstackdebug)		\
+					mkreclaim_msg();	\
 			} while (0)
 #define	debugmodcp()	do {					\
 				if (cpstackdebug)		\

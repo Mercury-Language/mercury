@@ -12,6 +12,17 @@ void mkcp_msg()
 		dumpcpstack();
 }
 
+void mkreclaim_msg()
+{
+	printf("\nnew reclaim point for procedure %s\n", cpprednm);
+	printf("new  cp: "); printcpstack((Word) curcp);
+	printf("prev cp: "); printcpstack((Word) recprevcp);
+	printf("redo ip: "); printlabel((Word) recredoip);
+	printf("save hp: "); printheap((Word) recsavehp);
+	if (detaildebug)
+		dumpcpstack();
+}
+
 void modcp_msg()
 {
 	printf("\nmodifying choice point for procedure %s\n", cpprednm);
@@ -64,6 +75,18 @@ void printint(Word n)
 	printf("int %d\n", n);
 }
 
+void push_msg(Word val, Word *addr)
+{
+	printf("push value %x to ", val);
+	printstack((Word) addr);
+}
+
+void pop_msg(Word val, Word *addr)
+{
+	printf("pop value %x from ", val);
+	printstack((Word) addr);
+}
+
 void printheap(Word h)
 {
 	printf("ptr %x, offset %3d words\n",
@@ -90,16 +113,28 @@ void dumpcpstack()
 	printf("\ncpstack dump\n");
 	for (cp = maxcp; cp > cpstackmin; cp = (Word *) cp[PREVCP])
 	{
-		printf("frame at ptr %x, offset %3d words\n",
-			cp, cp - cpstackmin);
-		printf("\tpredname  %s\n", cp[PREDNM]);
-		printf("\tsuccip    "); printlabel(cp[SUCCIP]);
-		printf("\tredoip    "); printlabel(cp[REDOIP]);
-		printf("\tsucccp    "); printcpstack(cp[SUCCCP]);
-		printf("\tprevcp    "); printcpstack(cp[PREVCP]);
+		if ((cp - cp[PREVCP]) == RECLAIM_SIZE)
+		{
+			printf("reclaim frame at ptr %x, offset %3d words\n",
+				cp, cp - cpstackmin);
+			printf("\tpredname  %s\n", cp[PREDNM]);
+			printf("\tredoip    "); printlabel(cp[REDOIP]);
+			printf("\tprevcp    "); printcpstack(cp[PREVCP]);
+			printf("\tsavehp    "); printheap(cp[SAVEHP]);
+		}
+		else
+		{
+			printf("cp frame at ptr %x, offset %3d words\n",
+				cp, cp - cpstackmin);
+			printf("\tpredname  %s\n", cp[PREDNM]);
+			printf("\tsuccip    "); printlabel(cp[SUCCIP]);
+			printf("\tredoip    "); printlabel(cp[REDOIP]);
+			printf("\tsucccp    "); printcpstack(cp[SUCCCP]);
+			printf("\tprevcp    "); printcpstack(cp[PREVCP]);
 
-		for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
-			printf("\tcpvar(%d)  %x\n", i, cp[SAVEVAL-i]);
+			for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
+				printf("\tcpvar(%d)  %x\n", i, cp[SAVEVAL-i]);
+		}
 	}
 }
 
@@ -187,11 +222,19 @@ void	(*regtable[MAXENTRIES][16])() =
 	{ printlabel, printlist, printint, FNULL,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+/* LENGTH_2 */
+	{ printlabel, printlist, printint, FNULL,
+	FNULL, FNULL, printheap, printstack,
+	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* ACLENGTH_1 */
 	{ printlabel, printlist, printint, printint,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
 /* MEMBER_1 */
+	{ printlabel, printlist, printint, printint,
+	FNULL, FNULL, printheap, printstack,
+	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+/* MEMBER_2 */
 	{ printlabel, printlist, printint, printint,
 	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
@@ -204,6 +247,11 @@ void	(*regtable[MAXENTRIES][16])() =
 	FNULL, printcpstack, printcpstack, printcpstack },
 /* INT_1 */
 	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
+	FNULL, FNULL, FNULL, FNULL,
+	FNULL, printcpstack, printcpstack, printcpstack },
+/* HEAP_1 */
+	{ printlabel, printlist, printint, FNULL,
+	FNULL, FNULL, printheap, printstack,
 	FNULL, FNULL, FNULL, FNULL,
 	FNULL, printcpstack, printcpstack, printcpstack },
 };
