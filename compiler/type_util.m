@@ -1341,15 +1341,13 @@ type_constructors_are_type_info(Ctors) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, _, _),
 	ctor_is_type_info(Ctor).
 
-:- pred ctor_is_type_info(sym_name).
-:- mode ctor_is_type_info(in) is semidet.
+:- pred ctor_is_type_info(sym_name::in) is semidet.
 
 ctor_is_type_info(Ctor) :-
 	unqualify_private_builtin(Ctor, Name),
 	name_is_type_info(Name).
 
-:- pred name_is_type_info(string).
-:- mode name_is_type_info(in) is semidet.
+:- pred name_is_type_info(string::in) is semidet.
 
 name_is_type_info("type_info").
 name_is_type_info("type_ctor_info").
@@ -1361,16 +1359,14 @@ name_is_type_info("base_typeclass_info").
 	% All, user-defined types should be module-qualified by the
 	% time this predicate is called, so we assume that any
 	% unqualified names are in private_builtin.
-:- pred unqualify_private_builtin(sym_name, string).
-:- mode unqualify_private_builtin(in, out) is semidet.
+:- pred unqualify_private_builtin(sym_name::in, string::out) is semidet.
 
 unqualify_private_builtin(unqualified(Name), Name).
 unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
 	mercury_private_builtin_module(ModuleName).
 
-:- pred type_is_single_ctor_single_arg(list(constructor), sym_name,
-	maybe(ctor_field_name), type).
-:- mode type_is_single_ctor_single_arg(in, out, out, out) is semidet.
+:- pred type_is_single_ctor_single_arg(list(constructor)::in, sym_name::out,
+	maybe(ctor_field_name)::out, (type)::out) is semidet.
 
 type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	Ctors = [SingleCtor],
@@ -1384,7 +1380,7 @@ type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	% (unless it is type_info/1 or we are reserving a tag,
 	% or if it is one of the dummy types)
 type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals,
-			SingleFunc, SingleArg, MaybeArgName) :-
+		SingleFunc, SingleArg, MaybeArgName) :-
 	type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg,
 		MaybeArgName),
 	(
@@ -1408,9 +1404,8 @@ type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals,
 	% in list of constructors, for a particular instance of
 	% a polymorphic type.
 
-:- pred substitute_type_args(list(type_param), list(type),
-				list(constructor), list(constructor)).
-:- mode substitute_type_args(in, in, in, out) is det.
+:- pred substitute_type_args(list(type_param)::in, list(type)::in,
+	list(constructor)::in, list(constructor)::out) is det.
 
 substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 	( TypeParams0 = [] ->
@@ -1418,15 +1413,14 @@ substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 	;
 		term__term_list_to_var_list(TypeParams0, TypeParams),
 		map__from_corresponding_lists(TypeParams, TypeArgs, Subst),
-		substitute_type_args_2(Constructors0, Subst, Constructors)
+		substitute_type_args_2(Subst, Constructors0, Constructors)
 	).
 
-:- pred substitute_type_args_2(list(constructor), tsubst,
-				list(constructor)).
-:- mode substitute_type_args_2(in, in, out) is det.
+:- pred substitute_type_args_2(tsubst::in, list(constructor)::in,
+	list(constructor)::out) is det.
 
-substitute_type_args_2([], _, []).
-substitute_type_args_2([Ctor0| Ctors0], Subst, [Ctor | Ctors]) :-
+substitute_type_args_2(_, [], []).
+substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
 	% Note: prog_io.m ensures that the existentially quantified
 	% variables, if any, are distinct from the parameters,
 	% and that the (existential) constraints can only contain
@@ -1434,18 +1428,17 @@ substitute_type_args_2([Ctor0| Ctors0], Subst, [Ctor | Ctors]) :-
 	% no need to worry about applying the substitution to
 	% ExistQVars or Constraints
 	Ctor0 = ctor(ExistQVars, Constraints, Name, Args0),
-	Ctor = ctor(ExistQVars, Constraints, Name, Args),
-	substitute_type_args_3(Args0, Subst, Args),
-	substitute_type_args_2(Ctors0, Subst, Ctors).
+	substitute_type_args_3(Subst, Args0, Args),
+	substitute_type_args_2(Subst, Ctors0, Ctors),
+	Ctor = ctor(ExistQVars, Constraints, Name, Args).
 
-:- pred substitute_type_args_3(list(constructor_arg), tsubst,
-				list(constructor_arg)).
-:- mode substitute_type_args_3(in, in, out) is det.
+:- pred substitute_type_args_3(tsubst::in, list(constructor_arg)::in,
+	list(constructor_arg)::out) is det.
 
-substitute_type_args_3([], _, []).
-substitute_type_args_3([Name - Arg0 | Args0], Subst, [Name - Arg | Args]) :-
+substitute_type_args_3(_, [], []).
+substitute_type_args_3(Subst, [Name - Arg0 | Args0], [Name - Arg | Args]) :-
 	term__apply_substitution(Arg0, Subst, Arg),
-	substitute_type_args_3(Args0, Subst, Args).
+	substitute_type_args_3(Subst, Args0, Args).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1635,8 +1628,8 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 		fail
 	).
 
-:- pred replace_eqv_type(const, int, list(type), type).
-:- mode replace_eqv_type(in, in, in, out) is semidet.
+:- pred replace_eqv_type(const::in, int::in, list(type)::in, (type)::out)
+	is semidet.
 
 replace_eqv_type(Functor, Arity, Args, EqvType) :-
 
@@ -1658,8 +1651,8 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams) -->
 	type_unify(X, Y, HeadTypeParams),
 	type_unify_list(Xs, Ys, HeadTypeParams).
 
-:- pred type_unify_head_type_param(tvar, tvar, list(tvar), tsubst, tsubst).
-:- mode type_unify_head_type_param(in, in, in, in, out) is semidet.
+:- pred type_unify_head_type_param(tvar::in, tvar::in, list(tvar)::in,
+	tsubst::in, tsubst::out) is semidet.
 
 type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 		Bindings) :-
@@ -1703,8 +1696,7 @@ apply_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
 	).
 
 :- pred apply_substitution_to_type_map_2(list(prog_var)::in,
-		map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out)
-		is det.
+	map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out) is det.
 
 apply_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
 apply_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
@@ -1727,8 +1719,7 @@ apply_rec_substitution_to_type_map(VarTypes0, Subst, VarTypes) :-
 	).
 
 :- pred apply_rec_substitution_to_type_map_2(list(prog_var)::in,
-		map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out)
-		is det.
+	map(prog_var, type)::in, tsubst::in, map(prog_var, type)::out) is det.
 
 apply_rec_substitution_to_type_map_2([], VarTypes, _Subst, VarTypes).
 apply_rec_substitution_to_type_map_2([Var | Vars], VarTypes0, Subst,
@@ -1756,13 +1747,13 @@ apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
 	).
 
 :- pred apply_substitutions_to_var_map_2(list(tvar)::in, map(tvar,
-		type_info_locn)::in, tsubst::in, map(tvar, type)::in,
-		map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in,
-		map(tvar, type_info_locn)::out) is det.
+	type_info_locn)::in, tsubst::in, map(tvar, type)::in,
+	map(prog_var, prog_var)::in, map(tvar, type_info_locn)::in,
+	map(tvar, type_info_locn)::out) is det.
 
-apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, NewVarMap, NewVarMap).
+apply_substitutions_to_var_map_2([], _VarMap0, _, _, _, !NewVarMap).
 apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
-		TSubst, VarSubst, NewVarMap0, NewVarMap) :-
+		TSubst, VarSubst, !NewVarMap) :-
 	map__lookup(VarMap0, TVar, Locn),
 	type_info_locn_var(Locn, Var),
 
@@ -1800,33 +1791,31 @@ apply_substitutions_to_var_map_2([TVar | TVars], VarMap0, TRenaming,
 	( type_util__var(NewType, NewTVar) ->
 		% Don't abort if two old type variables
 		% map to the same new type variable.
-		map__set(NewVarMap0, NewTVar, NewLocn, NewVarMap1)
+		map__set(!.NewVarMap, NewTVar, NewLocn, !:NewVarMap)
 	;
-		NewVarMap1 = NewVarMap0
+		true
 	),
 	apply_substitutions_to_var_map_2(TVars, VarMap0, TRenaming,
-		TSubst, VarSubst, NewVarMap1, NewVarMap).
+		TSubst, VarSubst, !NewVarMap).
 
 %-----------------------------------------------------------------------------%
 
-apply_substitutions_to_typeclass_var_map(VarMap0,
-		TRenaming, TSubst, Subst, VarMap) :-
+apply_substitutions_to_typeclass_var_map(VarMap0, TRenaming, TSubst, Subst,
+		VarMap) :-
 	map__to_assoc_list(VarMap0, VarAL0),
 	list__map(apply_substitutions_to_typeclass_var_map_2(TRenaming,
 		TSubst, Subst), VarAL0, VarAL),
 	map__from_assoc_list(VarAL, VarMap).
 
-:- pred apply_substitutions_to_typeclass_var_map_2(tsubst, map(tvar, type),
-		map(prog_var, prog_var), pair(class_constraint, prog_var),
-		pair(class_constraint, prog_var)).
-:- mode apply_substitutions_to_typeclass_var_map_2(in, in,
-		in, in, out) is det.
+:- pred apply_substitutions_to_typeclass_var_map_2(tsubst::in,
+	map(tvar, type)::in, map(prog_var, prog_var)::in,
+	pair(class_constraint, prog_var)::in,
+	pair(class_constraint, prog_var)::out) is det.
 
 apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
 		Constraint0 - Var0, Constraint - Var) :-
 	apply_subst_to_constraint(TRenaming, Constraint0, Constraint1),
 	apply_rec_subst_to_constraint(TSubst, Constraint1, Constraint),
-
 	( map__search(VarRenaming, Var0, Var1) ->
 		Var = Var1
 	;
@@ -1841,9 +1830,8 @@ apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
 	apply_rec_subst_to_constraint_list(Subst, ExistCs0, ExistCs),
 	Constraints = constraints(UnivCs, ExistCs).
 
-apply_rec_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
-	list__map(apply_rec_subst_to_constraint(Subst), Constraints0,
-		Constraints).
+apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
+	list__map(apply_rec_subst_to_constraint(Subst), !Constraints).
 
 apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
@@ -1865,37 +1853,46 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
-	map__init(Empty),
-	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
-			is det :-
-		apply_subst_to_constraint(Subst, Constraint0, Constraint),
-		(
-			Proof0 = apply_instance(_),
-			Proof = Proof0
-		;
-			Proof0 = superclass(Super0),
-			apply_subst_to_constraint(Subst, Super0, Super),
-			Proof = superclass(Super)
-		),
-		map__set(Map0, Constraint, Proof, Map)
+	map__foldl(apply_subst_to_constraint_proofs_2(Subst), Proofs0,
+		map__init, Proofs).
+
+:- pred apply_subst_to_constraint_proofs_2(tsubst::in,
+	class_constraint::in, constraint_proof::in,
+	map(class_constraint, constraint_proof)::in,
+	map(class_constraint, constraint_proof)::out) is det.
+
+apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
+	apply_subst_to_constraint(Subst, Constraint0, Constraint),
+	(
+		Proof0 = apply_instance(_),
+		Proof = Proof0
+	;
+		Proof0 = superclass(Super0),
+		apply_subst_to_constraint(Subst, Super0, Super),
+		Proof = superclass(Super)
 	),
-	Proofs0, Empty, Proofs).
+	map__set(Map0, Constraint, Proof, Map).
 
 apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
-	map__init(Empty),
-	map__foldl((pred(Constraint0::in, Proof0::in, Map0::in, Map::out)
-			is det :-
-		apply_rec_subst_to_constraint(Subst, Constraint0, Constraint),
-		(
-			Proof0 = apply_instance(_),
-			Proof = Proof0
-		;
-			Proof0 = superclass(Super0),
-			apply_rec_subst_to_constraint(Subst, Super0, Super),
-			Proof = superclass(Super)
-		),
-		map__set(Map0, Constraint, Proof, Map)
-	), Proofs0, Empty, Proofs).
+	map__foldl(apply_rec_subst_to_constraint_proofs_2(Subst), Proofs0,
+		map__init, Proofs).
+
+:- pred apply_rec_subst_to_constraint_proofs_2(tsubst::in,
+	class_constraint::in, constraint_proof::in,
+	map(class_constraint, constraint_proof)::in,
+	map(class_constraint, constraint_proof)::out) is det.
+
+apply_rec_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
+	apply_rec_subst_to_constraint(Subst, Constraint0, Constraint),
+	(
+		Proof0 = apply_instance(_),
+		Proof = Proof0
+	;
+		Proof0 = superclass(Super0),
+		apply_rec_subst_to_constraint(Subst, Super0, Super),
+		Proof = superclass(Super)
+	),
+	map__set(Map0, Constraint, Proof, Map).
 
 apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
 	map__map_values(
@@ -1907,14 +1904,13 @@ apply_variable_renaming_to_constraints(Renaming,
 		constraints(UniversalCs0, ExistentialCs0),
 		constraints(UniversalCs, ExistentialCs)) :-
 	apply_variable_renaming_to_constraint_list(Renaming,
-			UniversalCs0, UniversalCs),
+		UniversalCs0, UniversalCs),
 	apply_variable_renaming_to_constraint_list(Renaming,
-			ExistentialCs0, ExistentialCs).
+		ExistentialCs0, ExistentialCs).
 
-apply_variable_renaming_to_constraint_list(Renaming, Constraints0,
-		Constraints) :-
+apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
 	list__map(apply_variable_renaming_to_constraint(Renaming),
-			Constraints0, Constraints).
+		!Constraints).
 
 apply_variable_renaming_to_constraint(Renaming, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, ClassArgTypes0),
@@ -1972,8 +1968,8 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 
 %-----------------------------------------------------------------------------%
 
-maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity, MaybeTypes)
-		:-
+maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity,
+		MaybeTypes) :-
 	( ConsId0 = cons(_SymName, _) ->
 		ConsId = ConsId0,
 		(
