@@ -23,6 +23,9 @@
 :- import_module std_util.
 
 	% The `clock_t' type represents times measured in clock ticks.
+	% NOTE: the unit used for a value of this type depends on whether it was
+	% returned by `time__clock' or `time__times'.  See the comments on these
+	% predicates below.
 :- type clock_t == int.
 
 	% The `tms' type holds information about the amount of processor
@@ -73,14 +76,20 @@
 	%	within a single process.
 	%	If the time cannot be obtained, this procedure
 	%	will throw a time_error exception.
+	%	To obtain a time in seconds, divide Result by
+	%	`time__clocks_per_sec'.
 	% 
 :- pred time__clock(clock_t, io__state, io__state).
 :- mode time__clock(out, di, uo) is det.
 
 	% time__clocks_per_sec:
-	%	Returns the number of clock ticks per second.
+	%	Returns the number of "clocks" per second as defined by
+	%	CLOCKS_PER_SEC.  A `clock_t' value returned by `time__clock' can
+	%	be divided by this value to obtain a time in seconds.
 	%
 :- func time__clocks_per_sec = int.
+
+%-----------------------------------------------------------------------------%
 
 	% time__time(Result, IO_state, IO_state):
 	%	Returns the current (simple) calendar time.
@@ -90,11 +99,15 @@
 :- pred time__time(time_t, io__state, io__state).
 :- mode time__time(out, di, uo) is det.
 
+%-----------------------------------------------------------------------------%
+
 	% time__times(ProcessorTime, ElapsedRealTime, IO_state, IO_state)
 	%	(POSIX)
 	%	Returns the processor time information in the `tms'
 	%	value, and the elapsed real time relative to an
 	%	arbitrary base in the `clock_t' value.
+	%	To obtain a time in seconds, divide the result by
+	%	`time__clk_tck'.
 	%	If the time cannot be obtained, this procedure
 	%	will throw a time_error exception.
 	%
@@ -103,6 +116,17 @@
 	%
 :- pred time__times(tms, clock_t, io__state, io__state).
 :- mode time__times(out, out, di, uo) is det.
+
+	% time__clk_tck:
+	%	Returns the number of "clock ticks" per second as defined by
+	%	sysconf(_SC_CLK_TCK).  A `clock_t' value returned by
+	%	`time__times' can be divided by this value to obtain a time in
+	%	seconds.
+	%
+	%	On non-POSIX systems that do not support this functionality,
+	%	this procedure may simply always throw an exception.
+	%
+:- func time__clk_tck = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -165,6 +189,9 @@
 	#endif
 	#ifdef MR_HAVE_SYS_TIMES_H
 		#include <sys/times.h>
+	#endif
+	#ifdef MR_HAVE_UNISTD_H
+		#include <unistd.h>
 	#endif
 
 	#define MR_update_io(r_src, r_dest)	((r_dest) = (r_src))
@@ -260,6 +287,32 @@ time__c_times(_, _, _, _, _) -->
 	% matching foreign_proc version.
 	{ private_builtin__sorry("time__c_times") }.
 
+%-----------------------------------------------------------------------------%
+
+time__clk_tck = Ret :-
+	Ret0 = time__c_clk_tck,
+	( Ret0 = -1 ->
+		throw(time_error("can't get clk_tck value"))
+	;
+		Ret = Ret0
+	).
+
+:- func time__c_clk_tck = int.
+
+:- pragma foreign_proc("C", time__c_clk_tck = (Ret::out),
+		[will_not_call_mercury, promise_pure],
+"{
+#if defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+	Ret = (MR_Integer) sysconf(_SC_CLK_TCK);
+#elif defined(CLK_TCK)
+	/*
+	** If sysconf is not available, try using the (obsolete) macro CLK_TCK.
+	*/
+	Ret = (MR_Integer) CLK_TCK;
+#else
+	Ret = -1;
+#endif
+}").
 
 %-----------------------------------------------------------------------------%
 
