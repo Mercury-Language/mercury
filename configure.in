@@ -1853,6 +1853,7 @@ AC_TRY_LINK([
 	#include <string.h>
 	#include <errno.h>
 	#include <stdarg.h>
+	#include <stdlib.h>
 	#include <sys/types.h>
 	#include <unistd.h>
 	#include <sys/socket.h>
