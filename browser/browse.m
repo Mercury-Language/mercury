@@ -335,7 +335,10 @@ run_command(Debugger, Command, Quit, Info0, Info) -->
 	% XXX The commands `set', `ls' and `print' should allow the format
 	% to be specified by an option.  In each case we instead pass `no' to
 	% the respective handler.
-	( { Command = unknown },
+	( { Command = empty },
+		{ Quit = no },
+		{ Info = Info0 }
+	; { Command = unknown },
 		write_string_debugger(Debugger, 
 			"Error: unknown command or syntax error.\n"),
 		write_string_debugger(Debugger, "Type \"help\" for help.\n"),
