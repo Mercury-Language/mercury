@@ -715,6 +715,11 @@ apply_instmap_delta(reachable(InstMapping0), reachable(InstMappingDelta),
 	% X -> bound(f) and the other branch has X -> bound(g), the
 	% correct merged instmap has X -> bound(f ; g), but this
 	% predicate will just randomly pick X -> bound(f).
+	%
+	% Note that this bug currently doesn't have any ill-effects,
+	% since code generation only cares whether a mode is
+	% top-in/top-out/top-unused/unreachable, not what the bindings
+	% are.  Only determinism analysis cares what the bindings are.
 
 :- pred merge_instmap_delta(instmap_delta, instmap_delta, instmap).
 :- mode merge_instmap_delta(in, in, out) is det.

@@ -42,16 +42,19 @@ io__gc_call(Goal) -->
 :- dynamic io__save_progname/1.
 
 :- pred main(list(atom)).
+:- mode main(in) is det.
 main(Args) :-
 	( io__main_started ->
 		exit(1)
 	;
 		assert(io__main_started),
-		run(Args)
+		run(Args),
+		exit(0)
 	).
 
 
 :- pred run(list(atom)).
+:- mode run(in) is det.
 run(Args) :-
 	putprop(io__saved_state, depth, 0),
 	atoms_to_strings(Args, ArgStrings),
@@ -64,6 +67,17 @@ run(Args) :-
 	io__init_state(IOState0),
 	io__call(main_predicate(ArgStrings), IOState0, IOState),
 	io__final_state(IOState).
+
+	% The following definition of main_predicate/3 is a default
+	% and will normally be overridden by the users main_predicate/3.
+	% It just invokes the NU-Prolog command loop.
+
+:- pred main_predicate(list(string), io__state, io__state).
+:- mode main_predicate(in, di, uo) is det.
+
+main_predicate(_) -->
+	{ retractall(io__main_started) },	% Fix handling of `abort'.
+	{ $mainloop }.
 
 :- pred io__call(pred).
 

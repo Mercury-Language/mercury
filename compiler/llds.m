@@ -116,13 +116,18 @@
 
 :- type tag		==	int.
 
-:- pred output_c_file(c_file, io__state, io__state).
-:- mode output_c_file(in, di, uo) is det.
-
 	% Given a 'c_file' structure, open the appropriate .mod file
 	% and output the code into that file.
 	% (We use .mod instead of .mod to distinguish the compiler-generated
 	% files from the hand-written ones.)
+
+:- pred output_c_file(c_file, io__state, io__state).
+:- mode output_c_file(in, di, uo) is det.
+
+	% Convert an lval to a string description of that lval.
+
+:- pred llds__lval_to_string(lval, string).
+:- mode llds__lval_to_string(in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -679,6 +684,31 @@ int_to_letter(22, "w").
 int_to_letter(23, "x").
 int_to_letter(24, "y").
 int_to_letter(25, "z").
+
+llds__lval_to_string(framevar(N), Description) :-
+	string__int_to_string(N, N_String),
+	string__append("framevar(", N_String, Tmp),
+	string__append(Tmp, ")", Description).
+llds__lval_to_string(stackvar(N), Description) :-
+	string__int_to_string(N, N_String),
+	string__append("stackvar(", N_String, Tmp),
+	string__append(Tmp, ")", Description).
+llds__lval_to_string(reg(Reg), Description) :-
+	llds__reg_to_string(Reg, Reg_String),
+	string__append("reg(", Reg_String, Tmp),
+	string__append(Tmp, ")", Description).
+
+:- pred llds__reg_to_string(reg, string).
+:- mode llds__reg_to_string(in, out) is det.
+
+llds__reg_to_string(r(N), Description) :-
+	string__int_to_string(N, N_String),
+	string__append("r(", N_String, Tmp),
+	string__append(Tmp, ")", Description).
+llds__reg_to_string(f(N), Description) :-
+	string__int_to_string(N, N_String),
+	string__append("f(", N_String, Tmp),
+	string__append(Tmp, ")", Description).
 
 :- end_module llds.
 

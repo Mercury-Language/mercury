@@ -160,6 +160,11 @@
 %	If `Count' is out of the range [0, length of `String' - `Start'], it is
 %	treated as if it were the nearest end-point of that range.)
 
+:- pred string__append_list(list(string), string).
+:- mode string__append_list(in, out) is det.
+:- mode string__append_list(out, in) is nondet.
+%	Append a list of strings together.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -430,6 +435,11 @@ string__duplicate_char(Char, Count, String) :-
 		string__first_char(String, Char, String1),
 		string__duplicate_char(Char, Count1, String1)
 	).
+
+string__append_list([], "").
+string__append_list([S | Ss], L) :-
+	string__append_list(Ss, L0),
+	string__append(S, L0, L).
 
 :- end_module string.
 
