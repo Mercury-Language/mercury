@@ -86,6 +86,7 @@ SOURCES= \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
 	undef_mode.m \
+	undef_mode_and_no_clauses.m \
 	undef_mod_qual.m \
 	undef_symbol.m \
 	undef_type.m \

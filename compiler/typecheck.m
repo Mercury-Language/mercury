@@ -158,7 +158,6 @@
 
 :- implementation.
 
-:- import_module post_typecheck.
 :- import_module hlds_goal, prog_util, type_util, modules, code_util.
 :- import_module prog_io, prog_io_util, prog_out, hlds_out, error_util.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
@@ -276,6 +275,15 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 				ModuleInfo2) }
 		;
 			{ Error1 = yes },
+		/********************
+		This code is not needed at the moment,
+		since currently we don't run mode analysis if
+		there are any type errors.
+		And this code also causes problems:
+		if there are undefined modes,
+		this code can end up calling error/1,
+		since post_typecheck__finish_ill_typed_pred
+		assumes that there are no undefined modes.
 			%
 			% if we get an error, we need to call
 			% post_typecheck__finish_ill_typed_pred on the
@@ -288,6 +296,8 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 			post_typecheck__finish_ill_typed_pred(ModuleInfo0,
 				PredId, PredInfo1, PredInfo),
 			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+		*******************/
+			{ map__det_update(Preds0, PredId, PredInfo1, Preds) },
 			{ module_info_set_preds(ModuleInfo0, Preds,
 				ModuleInfo1) },
 			{ module_info_remove_predid(ModuleInfo1, PredId,
