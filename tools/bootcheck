@@ -392,6 +392,7 @@ then
 		$LN_S $root/runtime/*.in .
 		cp $root/runtime/Mmake* .
 		$LN_S $root/runtime/machdeps .
+		$LN_S $root/runtime/RESERVED_MACRO_NAMES .
 		cd $root/stage2
 		rm -f trace
 		mkdir trace
