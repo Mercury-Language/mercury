@@ -85,14 +85,6 @@
 		mlds__statement, mlds__defn, ml_gen_info, ml_gen_info).
 :- mode ml_gen_label_func(in, in, in, in, out, in, out) is det.
 
-	% Call error/1 with a "Sorry, not implemented" message.
-	%
-:- pred sorry(string::in) is erroneous.
-
-	% Call error/1 with an "Unexpected" message.
-	%
-:- pred unexpected(string::in) is erroneous.
-
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating types.
@@ -785,14 +777,6 @@ ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
 	Abstractness = concrete,
 	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
 		Virtuality, Finality, Constness, Abstractness).
-
-	% Call error/1 with a "Sorry, not implemented" message.
-	%
-sorry(What) :-
-	error_util__sorry("ml_code_gen", What).	
-
-unexpected(What) :-
-	error_util__unexpected("ml_code_gen", What).	
 
 %-----------------------------------------------------------------------------%
 %

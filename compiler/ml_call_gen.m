@@ -99,7 +99,7 @@
 
 :- import_module hlds_module.
 :- import_module builtin_ops.
-:- import_module type_util, mode_util.
+:- import_module type_util, mode_util, error_util.
 :- import_module options, globals.
 
 :- import_module bool, int, string, std_util, term, varset, require, map.
@@ -190,7 +190,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 		{ FuncRval = unop(unbox(FuncType), lval(FuncLval)) }
 	;
 		{ GenericCall = aditi_builtin(_, _) },
-		{ sorry("Aditi builtins") }
+		{ sorry(this_file, "Aditi builtins") }
 	),
 
 	%
@@ -842,3 +842,9 @@ ml_gen_simple_expr(float_const(Float)) = const(float_const(Float)).
 ml_gen_simple_expr(unary(Op, Expr)) = unop(std_unop(Op), ml_gen_simple_expr(Expr)).
 ml_gen_simple_expr(binary(Op, Expr1, Expr2)) =
 	binop(Op, ml_gen_simple_expr(Expr1), ml_gen_simple_expr(Expr2)).
+
+
+:- func this_file = string.
+this_file = "ml_call_gen.m".
+
+:- end_module ml_call_gen.

@@ -76,7 +76,7 @@
 
 :- import_module hlds_module, hlds_out, builtin_ops.
 :- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
-:- import_module rtti.
+:- import_module rtti, error_util.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
 
@@ -128,7 +128,7 @@ ml_gen_unification(construct(Var, ConsId, Args, ArgModes,
 	{ require(unify(CodeModel, model_det),
 		"ml_code_gen: construct not det") },
 	{ MaybeAditiRLExprnID = yes(_) ->
-		sorry("Aditi closures")
+		sorry(this_file, "Aditi closures")
 	;
 		true
 	},
@@ -410,11 +410,11 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	;
 		{ EvalMethod = (aditi_bottom_up) },
 		% XXX not yet implemented
-		{ sorry("`aditi_bottom_up' closures") }
+		{ sorry(this_file, "`aditi_bottom_up' closures") }
 	;
 		{ EvalMethod = (aditi_top_down) },
 		% XXX not yet implemented
-		{ sorry("`aditi_top_down' closures") }
+		{ sorry(this_file, "`aditi_top_down' closures") }
 	),
 
 	%
@@ -1753,3 +1753,9 @@ ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
 	;
 		error("ml_gen_field_id: invalid type")
 	).
+
+
+:- func this_file = string.
+this_file = "ml_unify_gen.m".
+
+:- end_module ml_unify_gen.
