@@ -1,5 +1,5 @@
 --- /soft/eclipse/eclipse4.1/lib_pd/opium_light/help.op	Sat Feb 20 16:09:16 1999
-+++ help.op	Mon Dec 13 13:41:17 1999
++++ help.op	Tue Aug 15 17:03:29 2000
 @@ -41,8 +41,28 @@
  :- tool(show_all/2).
  
@@ -60,7 +60,7 @@
  	system(Cmd1),
  	concat_atom([File, '.tex'], LatexFile),
  	concat_atom(['rm -f ', LatexFile], Cmd2),
-@@ -728,16 +750,63 @@
+@@ -728,16 +750,65 @@
  	opium_printf(help, "demo_goal: %w\ncondition: %w\n%w\n", [DemoGoal, Condition, Message]).
  print_man_Op(tty, ArgList, ArgType, Message, DefaultValue, ObjType) :-
  	!,
@@ -79,8 +79,10 @@
 +
 +% Print on-line help messages in such a way that they fit into 80 columns. 
 +print_message(Stream, Msg) :-
++	% To make sure that Msg is a string
++	( string(Msg) -> MsgStr = Msg ; atom_string(Msg, MsgStr) ),
 +	% To take into account the existing `\n\'.
-+	split_string(Msg, "\n\\", "", ListStr),
++	split_string(MsgStr, "\n\\", "", ListStr),
 +	print_message_list(Stream, ListStr).
 +
 +print_message_list(Stream, []).
@@ -126,7 +128,7 @@
  print_arg_type(_, _, []) :- !.
  print_arg_type(tty, [Arg | AList], [Type | TList]) :-
  	!,
-@@ -777,5 +846,63 @@
+@@ -777,5 +848,63 @@
  
  
  
