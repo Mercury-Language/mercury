@@ -459,7 +459,7 @@ export__produce_header_file(Module, ModuleName) -->
 					"extern ""C"" {\n",
 					"#endif\n",
 					"\n",
-					"#include ""imp.h""\n",
+					"#include ""mercury_imp.h""\n",
 					"\n"]),
 			export__produce_header_file_2(Preds, ExportedProcs),
 			io__write_strings([
