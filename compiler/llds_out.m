@@ -418,6 +418,11 @@ output_c_file_mercury_headers -->
 		io__write_string("#include ""mercury_trace_base.h""\n")
 	;
 		io__write_string("#include ""mercury_imp.h""\n")
+	),
+	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
+	(	{ GenBytecode = yes },
+		io__write_string("#include ""mb_interface.h""\n")
+	;	{ GenBytecode = no }
 	).
 
 output_c_file_intro_and_grade(SourceFileName, Version) -->

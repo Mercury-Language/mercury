@@ -800,6 +800,12 @@
 :- pred negate_goal(hlds_goal, hlds_goal_info, hlds_goal).
 :- mode negate_goal(in, in, out) is det.
 
+	% Return yes if goal(s) contain any foreign code
+:- func goal_has_foreign(hlds_goal) = bool.
+:- mode goal_has_foreign(in) = out is det.
+:- func goal_list_has_foreign(list(hlds_goal)) = bool.
+:- mode goal_list_has_foreign(in) = out is det.
+
 	% A goal is atomic iff it doesn't contain any sub-goals
 	% (except possibly goals inside lambda expressions --
 	% but lambda expressions will get transformed into separate
@@ -1470,6 +1476,71 @@ all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
 	all_negated(NegatedConj, Goals1),
 	all_negated(NegatedGoals, Goals2),
 	list__append(Goals1, Goals2, Goals).
+
+%-----------------------------------------------------------------------------%
+% Returns yes if a goal (or subgoal contained within) contains any foreign
+% code
+goal_has_foreign(Goal) = HasForeign :-
+	Goal = GoalExpr - _,
+	(
+		GoalExpr = conj(Goals),
+		HasForeign = goal_list_has_foreign(Goals)
+	;
+		GoalExpr = call(_, _, _, _, _, _),
+		HasForeign = no
+	;
+		GoalExpr = generic_call(_, _, _, _),
+		HasForeign = no
+	;
+		GoalExpr = switch(_, _, _, _),
+		HasForeign = no
+	;
+		GoalExpr = unify(_, _, _, _, _),
+		HasForeign = no
+	;
+		GoalExpr = disj(Goals, _),
+		HasForeign = goal_list_has_foreign(Goals)
+	;
+		GoalExpr = not(Goal2),
+		HasForeign = goal_has_foreign(Goal2)
+	;
+		GoalExpr = some(_, _, Goal2),
+		HasForeign = goal_has_foreign(Goal2)
+	;
+		GoalExpr = if_then_else(_, Goal2, Goal3, Goal4, _),
+		HasForeign =
+		(	goal_has_foreign(Goal2) = yes 
+		->	yes
+		;	goal_has_foreign(Goal3) = yes
+		->	yes
+		;	goal_has_foreign(Goal4) = yes
+		->	yes
+		;	no
+		)
+	;
+		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _),
+		HasForeign = yes
+	;
+		GoalExpr = par_conj(Goals, _),
+		HasForeign = goal_list_has_foreign(Goals)
+	;
+		GoalExpr = bi_implication(Goal2, Goal3),
+		HasForeign =
+		(	goal_has_foreign(Goal2) = yes
+		->	yes
+		;	goal_has_foreign(Goal3) = yes
+		->	yes
+		;	no
+		)
+	).
+
+goal_list_has_foreign([]) = no.
+goal_list_has_foreign([X | Xs]) =
+	(	goal_has_foreign(X) = yes
+	->	yes
+	;	goal_list_has_foreign(Xs)
+	).
+
 
 %-----------------------------------------------------------------------------%
 

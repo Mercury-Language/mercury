@@ -348,10 +348,31 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		ContainsReconstruction = does_not_contain_reconstruction
 	),
 
-		% Construct a c_procedure structure with all the information.
 	code_info__get_label_counter(LabelCounter, CodeInfo, _),
-	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions,
-		ProcLabel, LabelCounter, ContainsReconstruction).
+
+	globals__lookup_bool_option(Globals, generate_bytecode, GenBytecode),
+	(
+		% XXX: There is a mass of calls above that the bytecode
+		% doesn't need; work out which is and isn't needed and put
+		% inside the else case below
+		GenBytecode = yes,
+		% We don't generate bytecode for __Unify__, __Compare__ etc
+		% Since we will assume this code is already correct
+		\+ code_util__compiler_generated(PredInfo),
+		% Don't generate bytecode for procs with foreign code
+		goal_has_foreign(Goal) = no
+	->
+		EmptyLabelCounter = counter__init(0),
+		code_gen__bytecode_stub(ModuleInfo, PredId, ProcId,
+			BytecodeInstructions),
+		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
+			BytecodeInstructions, ProcLabel, EmptyLabelCounter,
+			ContainsReconstruction)
+	;	
+		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
+			Instructions, ProcLabel, LabelCounter,
+			ContainsReconstruction)
+	).
 
 :- pred maybe_add_tabling_pointer_var(module_info::in,
 	pred_id::in, proc_id::in, proc_info::in, proc_label::in,
@@ -1211,5 +1232,69 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn = Instrn0
 	),
 	code_gen__add_saved_succip(Instrns0, StackLoc, Instrns).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_gen__bytecode_stub(module_info::in, pred_id::in, proc_id::in,
+	list(instruction)::out) is det.
+
+code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
+	
+%	module_info_name(ModuleInfo, ModuleSymName),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_module(PredInfo, ModuleSymName),
+
+	prog_out__sym_name_to_string(ModuleSymName, "__", ModuleName),
+	
+	code_util__make_local_entry_label(ModuleInfo, PredId,
+		ProcId, no, Entry),
+
+	pred_info_name(PredInfo, PredName),
+	proc_id_to_int(ProcId, ProcNum),
+	string__int_to_string(ProcNum, ProcStr),
+	pred_info_arity(PredInfo, Arity),
+	int_to_string(Arity, ArityStr),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+
+	CallStructName = "bytecode_call__" ++
+		(PredOrFunc = function -> "fn__" ; "") ++
+		ModuleName ++ "__" ++ PredName ++ "_" ++ ArityStr ++ "_" ++
+		ProcStr,
+
+	append_list([
+		"\t\tstatic MB_Call ", CallStructName, " = {\n",
+		"\t\t\t(MB_Word)NULL,\n",
+		"\t\t\t""", ModuleName, """,\n",
+		"\t\t\t""", PredName, """,\n",
+		"\t\t\t", ProcStr, ",\n",
+		"\t\t\t", ArityStr, ",\n",
+		"\t\t\t", (PredOrFunc = function -> "TRUE" ; "FALSE"), "\n",
+		"\t\t};\n"
+		], CallStruct),
+
+	append_list([
+		"\t\tMB_Native_Addr return_addr;\n",
+		"\t\tMR_save_registers();\n",
+		"\t\treturn_addr = MB_bytecode_call_entry(",
+			"&",CallStructName,");\n",
+		"\t\tMR_restore_registers();\n",
+		"\t\tMR_GOTO(return_addr);\n"
+		], BytecodeCall),
+
+		
+	BytecodeInstructions = [
+		label(Entry) - "Procedure entry point",
+
+		pragma_c(
+		[],
+		[
+		pragma_c_raw_code("\t{\n"),
+		pragma_c_raw_code(CallStruct),
+		pragma_c_raw_code(BytecodeCall),
+		pragma_c_raw_code("\t}\n")
+		],
+		may_call_mercury, no, no, no, no
+		) - "Entry stub"
+	].
 
 %---------------------------------------------------------------------------%
