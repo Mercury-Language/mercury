@@ -5,7 +5,7 @@
 
 . ../handle_options
 
-case "`mmake $mmakeopts should_run_recompilation_tests`" in
+case "`eval mmake $mmakeopts should_run_recompilation_tests`" in
 	no)	
 		exit 0
 		;;
