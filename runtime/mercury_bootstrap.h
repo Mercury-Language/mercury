@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2000 The University of Melbourne.
+** Copyright (C) 1999-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -22,6 +22,13 @@
 #define do_succeed			MR_do_succeed
 #define do_not_reached			MR_do_not_reached
 #define exception_handler_do_fail	MR_exception_handler_do_fail
+
+/*
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+*/
+
+#ifndef MR_NO_BACKWARDS_COMPAT
 
 #define	r1				MR_r1
 #define	r2				MR_r2
@@ -224,14 +231,8 @@
 #endif
 
 /*---------------------------------------------------------------------------*/
-/*
-** This stuff is enabled by default,
-** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
-*/
 
 #define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
-
-#ifndef MR_NO_BACKWARDS_COMPAT
 
 #define	save_regs_to_mem(save_area)					\
 				MR_save_regs_to_mem(save_area)

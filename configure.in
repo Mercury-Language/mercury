@@ -112,7 +112,31 @@ EOF
 		 	</dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
+		rm -f conftest*
+		cat > conftest.m << EOF
+			% This module generates an assignment of the address of
+			% the MR_do_fail label to a redoip slot.
+			:- module conftest.
+
+			:- interface.
+
+			:- pred p(int::out) is multi.
+
+			:- implementation.
+
+			p(1).
+			p(2).
+EOF
+		if 
+			$BOOTSTRAP_MC --compile-to-c --grade asm_fast.gc -O0 \
+				conftest </dev/null >&AC_FD_CC 2>&1 &&
+			grep "MR_ENTRY(MR_do_fail);" conftest.c >/dev/null 2>&1
+		then
 		AC_MSG_RESULT(yes)
+		else
+			BOOTSTRAP_MC=
+			AC_MSG_RESULT(no)
+		fi
 	else
 		BOOTSTRAP_MC=
 		AC_MSG_RESULT(no)
