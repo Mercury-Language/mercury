@@ -14,8 +14,9 @@
 **	LOW_TAG_BITS		the number of low-order tag bits we can use.
 **	HAVE_SYSCONF		the machine has the sysconf() syscall.
 **	HAVE_GETPAGESIZE	the machine has the getpagesize() syscall.
-**	HAVE_MEMALIGN		the machine has the memalign() libcall.
+**	HAVE_MEMALIGN		the machine has the memalign() function.
 **	HAVE_MPROTECT		the machine has the mprotect() syscall.
+**	HAVE_STRERROR		the machine has the strerror() function.
 **	RETSIGTYPE		the return type of signal handlers.
 **	HAVE_SIGINFO		signal handlers are given siginfo arguments.
 **				we have <sys/siginfo.h>
@@ -37,6 +38,7 @@
 #undef	HAVE_GETPAGESIZE
 #undef	HAVE_MEMALIGN
 #undef	HAVE_MPROTECT
+#undef	HAVE_STRERROR
 #undef	RETSIGTYPE
 #undef	HAVE_SIGINFO
 #undef	HAVE_UCONTEXT
