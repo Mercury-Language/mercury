@@ -670,17 +670,21 @@ compile_java_file(ErrorStream, JavaFile, Succeeded) -->
 	{ join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS) },
 
 	globals__io_lookup_accumulating_option(java_classpath,
-	 	Java_Incl_Dirs),
-	( { Java_Incl_Dirs = [] } ->
-		{ InclOpt = "" }
-	;
-		% XXX PathSeparator should be ";" on Windows
-		{ PathSeparator = ":" },
-		{ join_string_list(Java_Incl_Dirs, "", "",
+		 	Java_Incl_Dirs),
+	% XXX PathSeparator should be ";" on Windows
+	{ PathSeparator = ":" },
+	% We prepend the current CLASSPATH to preserve the accumulating
+	% nature of this variable.
+	get_env_classpath(EnvClasspath),
+	{ join_string_list([EnvClasspath|Java_Incl_Dirs], "", "",
 			PathSeparator, ClassPath) },
-		{ InclOpt = string__append_list([
-			"-classpath ", quote_arg(ClassPath), " "]) }
-	),
+	{ ClassPath = "" ->
+		InclOpt = ""
+	;
+		InclOpt = string__append_list([
+				"-classpath ", quote_arg(ClassPath), " "])
+	},
+
 	globals__io_lookup_bool_option(target_debug, Target_Debug),
 	{ Target_Debug = yes ->
 		Target_DebugOpt = "-g "

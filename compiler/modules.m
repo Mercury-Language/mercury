@@ -805,6 +805,16 @@
 :- pred list_class_files_for_jar(module_name::in, string::in, string::out,
 		io__state::di, io__state::uo) is det.
 
+	% get_env_classpath:
+	%	Get the value of the Java class path from the environment.
+	%	(Normally it will be obtained from the CLASSPATH environment
+	%	variable, but if that isn't present then the java.class.path
+	%	variable may be used instead.  This is used for the Java
+	%	back-end, which doesn't support environment variables
+	%	properly.)
+
+:- pred get_env_classpath(string::out, io__state::di, io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -7244,7 +7254,7 @@ create_java_shell_script(MainModuleName, Succeeded) -->
 			{ ChmodResult = ok(Status) },
 			( { Status = 0 } ->
 				{ Succeeded = yes },
-        			maybe_write_string(Verbose, "% done.\n")
+				maybe_write_string(Verbose, "% done.\n")
 			;
 				{ error("chmod exit status != 0") },
 				{ Succeeded = no }
@@ -7282,6 +7292,21 @@ list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles) -->
 	;
 		{ AnySubdirs = no },
 		{ ListClassFiles = ClassFiles }
+	).
+
+get_env_classpath(Classpath) -->
+	io__get_environment_var("CLASSPATH", MaybeCP),
+	(
+		{ MaybeCP = yes(Classpath) }
+	;
+		{ MaybeCP = no },
+		io__get_environment_var("java.class.path", MaybeJCP),
+		{
+			MaybeJCP = yes(Classpath)
+		;
+			MaybeJCP = no,
+			Classpath = ""
+		}
 	).
 
 %-----------------------------------------------------------------------------%
