@@ -74,9 +74,9 @@
 :- type proc_info	--->	procedure(
 					category,
 					varset,		% variable names
-					map(var, type), % variable types
+					varset,		% variable types
 					list(var),	% head vars
-					list(mode),
+					list(mode),	% modes of args
 					hlds__goal,	% Body
 					term__context,	% The context of
 							% the :- mode decl,
@@ -126,6 +126,8 @@
 
 %%% :- export_type mode_table.
 :- type mode_table	==	map(mode_id, hlds__mode_defn).
+
+:- type mode_info	==	map(var, hlds__mode_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -529,8 +531,8 @@ predinfo_context(PredInfo, Context) :-
 :- pred procinfo_headvars(proc_info, list(var)).
 :- mode procinfo_headvars(input, output).
 
-:- pred procinfo_modeinfo(proc_info, list(mode)).
-:- mode procinfo_modeinfo(input, output).
+:- pred procinfo_argmodes(proc_info, list(hlds__mode_defn)).
+:- mode procinfo_argmodes(input, output).
 
 :- pred procinfo_goal(proc_info, hlds__goal).
 :- mode procinfo_goal(input, output).
@@ -558,7 +560,7 @@ procinfo_vartypes(ProcInfo, VarTypes) :-
 procinfo_headvars(ProcInfo, HeadVars) :-
 	ProcInfo = procedure(_Category, _Names, _Types, HeadVars,
 				_ModeInfo, _Goal, _Context, _CallInfo).
-procinfo_modeinfo(ProcInfo, ModeInfo) :-
+procinfo_argmodes(ProcInfo, ModeInfo) :-
 	ProcInfo = procedure(_Category, _Names, _Types, _HeadVars,
 				ModeInfo, _Goal, _Context, _CallInfo).
 procinfo_goal(ProcInfo, Goal) :-
