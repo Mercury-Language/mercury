@@ -62,7 +62,7 @@ Debugging options:
 		This option is needed if any of the modules being linked
 		were compiled with tracing enabled.  However, \`--debug'
 		implies \`--trace', so if you're using \`--debug',
-		then you don't need to explicilty specify \`--trace'.
+		then you don't need to explicitly specify \`--trace'.
 		Note that \`--trace' is incompatible with \`--static'
 		on some platforms (e.g. sparc-sun-solaris2.6).
 	-g, --c-debug, --no-strip
