@@ -31,12 +31,12 @@ libpar_gc.lib:
 
 dll: libgcd$(DLL_DEF_LIB).dll
 libgc$(DLL_DEF_LIB).dll: libgcd.dll
-# had -DSMALL_CONFIG
+
 %.obj:%.c
-	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DLARGE_CONFIG -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
+	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
 
 %.obj:%.cpp
-	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSMALL_CONFIG -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
+	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
 
 $(OBJS) test.obj: gc_priv.h gc_hdrs.h gc.h
 
