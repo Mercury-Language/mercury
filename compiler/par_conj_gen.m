@@ -118,8 +118,9 @@ par_conj_gen__generate_det_par_conj(Goals, GoalInfo, Code) -->
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
 	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
 	code_info__get_module_info(ModuleInfo),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
-			[], Outputs) },
+	code_info__get_inst_table(InstTable),
+	{ par_conj_gen__find_outputs(Variables, Initial, Final, InstTable,
+			ModuleInfo, [], Outputs) },
 	{ list__length(Goals, NumGoals) },
 	code_info__acquire_reg(r, RegLval),
 	code_info__acquire_temp_slot(sync_term, SyncSlot),
@@ -164,8 +165,9 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
 	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
 	code_info__get_module_info(ModuleInfo),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
-			[], TheseOutputs) },
+	code_info__get_inst_table(InstTable),
+	{ par_conj_gen__find_outputs(Variables, Initial, Final, InstTable,
+			ModuleInfo, [], TheseOutputs) },
 	par_conj_gen__copy_outputs(TheseOutputs, SpSlot, CopyCode),
 	(
 		{ Goals = [_|_] }
@@ -199,24 +201,25 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 			Initial, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
 
-:- pred par_conj_gen__find_outputs(list(var), instmap, instmap, module_info,
-		list(var), list(var)).
-:- mode par_conj_gen__find_outputs(in, in, in, in, in, out) is det.
+:- pred par_conj_gen__find_outputs(list(var), instmap, instmap, inst_table,
+		module_info, list(var), list(var)).
+:- mode par_conj_gen__find_outputs(in, in, in, in, in, in, out) is det.
 
-par_conj_gen__find_outputs([], _Initial, _Final, _ModuleInfo,
+par_conj_gen__find_outputs([], _Initial, _Final, _InstTable, _ModuleInfo,
 		Outputs, Outputs).
-par_conj_gen__find_outputs([Var|Vars],  Initial, Final, ModuleInfo,
+par_conj_gen__find_outputs([Var|Vars],  Initial, Final, InstTable, ModuleInfo,
 		Outputs0, Outputs) :-
 	instmap__lookup_var(Initial, Var, InitialInst),
 	instmap__lookup_var(Final, Var, FinalInst),
 	(
-		mode_is_output(ModuleInfo, (InitialInst -> FinalInst))
+		mode_is_output(InstTable, ModuleInfo,
+			(InitialInst -> FinalInst))
 	->
 		Outputs1 = [Var|Outputs0]
 	;
 		Outputs1 = Outputs0
 	),
-	par_conj_gen__find_outputs(Vars, Initial, Final, ModuleInfo,
+	par_conj_gen__find_outputs(Vars, Initial, Final, InstTable, ModuleInfo,
 			Outputs1, Outputs).
 
 :- pred par_conj_gen__copy_outputs(list(var), lval, code_tree,

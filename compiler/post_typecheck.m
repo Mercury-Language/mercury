@@ -291,8 +291,8 @@ propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
 propagate_types_into_proc_modes(ModuleInfo, PredId,
 		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
 	{ map__lookup(Procs0, ProcId, ProcInfo0) },
-	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
-	{ propagate_types_into_mode_list(ArgTypes, ModuleInfo,
+	{ proc_info_argmodes(ProcInfo0, argument_modes(IT, ArgModes0)) },
+	{ propagate_types_into_mode_list(ArgTypes, IT, ModuleInfo,
 		ArgModes0, ArgModes) },
 	%
 	% check for unbound inst vars
@@ -300,12 +300,13 @@ propagate_types_into_proc_modes(ModuleInfo, PredId,
 	% because we need the insts to be module-qualified; and it
 	% needs to be done before mode analysis, to avoid internal errors)
 	%
-	( { mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) } ->
+	( { mode_list_contains_inst_var(ArgModes, IT, ModuleInfo, _InstVar) } ->
 		unbound_inst_var_error(PredId, ProcInfo0, ModuleInfo),
 		% delete this mode, to avoid internal errors
 		{ map__det_remove(Procs0, ProcId, _, Procs1) }
 	;
-		{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) },
+		{ proc_info_set_argmodes(ProcInfo0,
+			argument_modes(IT, ArgModes), ProcInfo) },
 		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
 	),
 	propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,
