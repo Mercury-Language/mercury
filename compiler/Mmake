@@ -1,0 +1,112 @@
+#-----------------------------------------------------------------------------#
+
+# Mmake - this is Mmake file for building the Mercury compiler 
+
+MERCURY_DIR=..
+include ../Mmake.common
+
+MAIN_TARGET=mercury_compile
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the compiler.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params
+
+MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
+		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
+		mod2init
+ML	=	MERCURY_C_LIB_DIR=`pwd`/$(RUNTIME_DIR) ml
+
+#-----------------------------------------------------------------------------#
+
+COMPILER_SRCS = $(mercury_compile.srcs)
+COMPILER_OBJS = $(mercury_compile.nos) $(mercury_compile.objs)
+# the use of .objs is for backwards compatibility
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: depend
+depend : mercury_compile.depend
+
+# we need to make sure the .pp files get converted to .nl before
+# we do the make depend
+mercury_compile.depend: mercury_compile.nl optimize.nl code_gen.nl
+
+.PHONY: all
+all : mercury_compile
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check		: mercury_compile.check
+
+.PHONY: ints 
+ints		: mercury_compile.ints
+
+.PHONY: mods 
+mods		: $(mercury_compile.mods)
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(mercury_compile.srcs)
+	mtags *.pp $(mercury_compile.srcs)
+
+mercury_compile.stats : source_stats.awk $(mercury_compile.srcs)
+	awk -f `vpath_find source_stats.awk` \
+		`vpath_find $(mercury_compile.srcs)` > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(mercury_compile.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(mercury_compile.os) mercury_compile_init.o
+cs: $(mercury_compile.cs) mercury_compile_init.c
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_mercury install_nuprolog install_sicstus
+	echo "Don't forget to fix the permissions"
+
+.PHONY: install_mercury
+install_mercury: install_compiler
+	
+.PHONY: install_nuprolog
+install_nuprolog: install_compiler_nu
+
+.PHONY: install_sicstus
+install_sicstus: install_compiler_sicstus
+
+.PHONY: install_compiler
+install_compiler: mercury_compile
+	mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
+
+.PHONY: install_compiler_nu
+install_compiler_nu: mercury_compile.nu
+	mkdir -p $(INSTALL_NU_ARCH_DIR) 
+	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile` \
+		> $(INSTALL_NU_ARCH_DIR)/mercury_compile
+	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile
+	cp `vpath_find mercury_compile.save` \
+		$(INSTALL_NU_ARCH_DIR)/mercury_compile.save
+
+.PHONY: install_compiler_sicstus
+install_compiler_sicstus: mercury_compile.sicstus
+	mkdir -p $(INSTALL_SP_ARCH_DIR) 
+	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
+
+#-----------------------------------------------------------------------------#
