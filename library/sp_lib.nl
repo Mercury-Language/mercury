@@ -425,15 +425,6 @@ bimap__search(bimap(O, C), K, V) :-
 		error("bimap__search")
 	).
 
-	/* This one works around a wierd bug in Sicstus Prolog. */
-code_info__current_store_map(Map) -->
-        code_info__get_store_map(Maps0),
-        { stack__top(Maps0, Map0) },
-        !,
-        { Map = Map0 }.
-code_info__current_store_map(_) -->
-        { error("No store map on stack") }.
-
 call(G0, X) :-
 	G0 =.. L0,
 	append(L0, [X], L),
