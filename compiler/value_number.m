@@ -172,7 +172,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 				Target = succfr(_)
 			)
 		;
-			Uinstr0 = mkframe(_, _, _, _)
+			Uinstr0 = mkframe(_, _)
 		)
 	->
 		N1 is N0 + 1,
@@ -406,10 +406,9 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 		{ value_number__push_decr_sp_back(Instrs1, Instrs2) },
 		{ value_number__push_incr_sp_forw(Instrs2, Instrs3) },
 		{ value_number__push_livevals_back(Instrs3, Instrs4) },
-		{ value_number__convert_back_modframe(Instrs4, Instrs5) },
-		{ vn_filter__block(Instrs5, Instrs6) },
+		{ vn_filter__block(Instrs4, Instrs5) },
 		globals__io_get_gc_method(GC_Method),
-		{ peephole__optimize(GC_Method, Instrs6, Instrs7, _) },
+		{ peephole__optimize(GC_Method, Instrs5, Instrs6, _) },
 
 		vn_debug__cost_header_msg("original code sequence"),
 		vn_cost__block_cost(Instrs0, Params, yes, OrigCost),
@@ -417,11 +416,11 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 			[]
 		;
 			vn_debug__cost_header_msg("unfiltered code sequence"),
-			vn_cost__block_cost(Instrs5, Params, yes, _)
+			vn_cost__block_cost(Instrs4, Params, yes, _)
 		),
 
 		vn_debug__cost_header_msg("new code sequence"),
-		vn_cost__block_cost(Instrs7, Params, yes, VnCost),
+		vn_cost__block_cost(Instrs6, Params, yes, VnCost),
 
 		globals__io_lookup_int_option(vn_fudge, VnFudge),
 
@@ -429,21 +428,21 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 			{ VnCost < OrigCost },
 			{
 				assoc_list__keys(Instrs0, Uinstrs0),
-				assoc_list__keys(Instrs7, Uinstrs7),
-				list__sublist(Uinstrs7, Uinstrs0)
+				assoc_list__keys(Instrs6, Uinstrs6),
+				list__sublist(Uinstrs6, Uinstrs0)
 			;
 				VnCost * 1000 < OrigCost * VnFudge
 			}
 		->
 			vn_debug__cost_msg(yes, OrigCost, VnCost),
-			{ vn_block__build_block_info(Instrs7, LiveMap, Params,
-				ParEntries, LabelNo0, VnTables7, Liveset7,
-				SeenIncr7, Tuple7) },
-			vn_verify__ok(Instrs7, Uinstr0, SeenIncr0, SeenIncr7,
-				Liveset0, Liveset7, VnTables0, VnTables7, OK),
+			{ vn_block__build_block_info(Instrs6, LiveMap, Params,
+				ParEntries, LabelNo0, VnTables6, Liveset6,
+				SeenIncr6, Tuple6) },
+			vn_verify__ok(Instrs6, Uinstr0, SeenIncr0, SeenIncr6,
+				Liveset0, Liveset6, VnTables0, VnTables6, OK),
 			( { OK = yes } ->
-				{ Instrs = Instrs7 },
-				{ Tuple = Tuple7 }
+				{ Instrs = Instrs6 },
+				{ Tuple = Tuple6 }
 			;
 				{ Instrs = Instrs0 },
 				{ Tuple = Tuple0 }
@@ -874,25 +873,6 @@ value_number__find_block_by_label([Block | Blocks], Label, Before, LabelBlock,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred value_number__convert_back_modframe(list(instruction),
-	list(instruction)).
-:- mode value_number__convert_back_modframe(in, out) is det.
-
-value_number__convert_back_modframe([], []).
-value_number__convert_back_modframe([Instr0 | Instrs0], [Instr | Instrs]) :-
-	value_number__convert_back_modframe(Instrs0, Instrs),
-	(
-		Instr0 = assign(redoip(lval(curfr)),
-			const(code_addr_const(Redoip))) - _
-	->
-		Instr = modframe(Redoip) - "recovered modframe"
-	;
-		Instr = Instr0
-	).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- pred value_number__push_decr_sp_back(list(instruction), list(instruction)).
 % :- mode value_number__push_decr_sp_back(di, uo) is det.
 :- mode value_number__push_decr_sp_back(in, out) is det.
@@ -1074,10 +1054,14 @@ value_number__push_livevals_back_2([Instr0 | Instrs0], Livevals, Instrs) :-
 value_number__boundary_instr(comment(_), no).
 value_number__boundary_instr(livevals(_), no).
 value_number__boundary_instr(block(_, _, _), no).
-value_number__boundary_instr(assign(_,_), no).
+value_number__boundary_instr(assign(Lval,_), Boundary) :-
+	( Lval = redoip(_) ->
+		Boundary = yes
+	;
+		Boundary = no
+	).
 value_number__boundary_instr(call(_, _, _, _), yes).
-value_number__boundary_instr(mkframe(_, _, _, _), yes).
-value_number__boundary_instr(modframe(_), yes).
+value_number__boundary_instr(mkframe(_, _), yes).
 value_number__boundary_instr(label(_), yes).
 value_number__boundary_instr(goto(_), yes).
 value_number__boundary_instr(computed_goto(_, _), yes).

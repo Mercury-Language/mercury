@@ -63,8 +63,14 @@ main_2(yes(ErrorMessage), _, _) -->
 	usage_error(ErrorMessage).
 main_2(no, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
+	globals__io_lookup_bool_option(output_grade_string, OutputGrade),
 	( { Help = yes } ->
 		long_usage
+	; { OutputGrade = yes } ->
+		globals__io_get_globals(Globals),
+		{ compute_grade(Globals, Grade) },
+		io__write_string(Grade),
+		io__write_string("\n")
 	; { Args = [] } ->
 		usage
 	;
@@ -204,15 +210,15 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	; { Error = yes, HaltSyntax = yes } ->
 		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_short_interface, SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_private_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
@@ -224,7 +230,7 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 		convert_to_goedel(ModuleName, Items),
 		{ ModulesToLink = [] }
 	;
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		(
 			{ mercury_private_builtin_module(ModuleName)
 			; mercury_public_builtin_module(ModuleName)
@@ -1153,7 +1159,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
 	{ generate_proc_code(ProcInfo7, ProcId, PredId, ModuleInfo3, Globals,
-		ContInfo0, CellCount0, ContInfo1, CellCount, Proc0) },
+		ContInfo0, ContInfo1, CellCount0, CellCount, Proc0) },
 	{ module_info_set_continuation_info(ModuleInfo3, ContInfo1, 
 		ModuleInfo4) },
 	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo5) },

@@ -280,10 +280,14 @@
 
 	% Given a module (well, a list of items), split it into
 	% its constituent sub-modules, in top-down order.
+	% Report an error if the `implementation' section of a sub-module
+	% is contained inside the `interface' section of its parent module.
 
-:- pred split_into_submodules(module_name, item_list,
-				list(pair(module_name, item_list))).
-:- mode split_into_submodules(in, in, out) is det.
+:- type module_list == list(pair(module_name, item_list)).
+
+:- pred split_into_submodules(module_name, item_list, module_list,
+					io__state, io__state).
+:- mode split_into_submodules(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1775,7 +1779,7 @@ generate_file_dependencies(FileName) -->
 	read_mod_from_file(FileName, ".m", "Reading file", no,
 		Items, Error, ModuleName),
 	{ string__append(FileName, ".m", SourceFileName) },
-	{ split_into_submodules(ModuleName, Items, SubModuleList) },
+	split_into_submodules(ModuleName, Items, SubModuleList),
 	{ list__map(init_dependencies(SourceFileName, Error), SubModuleList,
 		ModuleImportsList) },
 	{ map__init(DepsMap0) },
@@ -2749,7 +2753,7 @@ read_dependencies(ModuleName, Search, ModuleImportsList) -->
 	;
 		{ FileName = FileName0 },
 		{ Items = Items0 },
-		{ split_into_submodules(ModuleName, Items, SubModuleList) }
+		split_into_submodules(ModuleName, Items, SubModuleList)
 	),
 	{ list__map(init_dependencies(FileName, Error), SubModuleList,
 		ModuleImportsList) }.
@@ -3322,79 +3326,172 @@ get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type submodule_map == map(module_name, item_list).
+
 	% Given a module (well, a list of items), split it into
 	% its constituent sub-modules, in top-down order.
+split_into_submodules(ModuleName, Items0, ModuleList) -->
+	{ InParentInterface = no },
+	split_into_submodules_2(ModuleName, Items0, InParentInterface,
+		Items, ModuleList),
+	{ require(unify(Items, []), "modules.m: items after end_module") }.
 
-split_into_submodules(ModuleName, Items0, ModuleList) :-
-	split_into_submodules_2(ModuleName, Items0, Items, ModuleList),
-	require(unify(Items, []), "modules.m: items after end_module").
+:- pred split_into_submodules_2(module_name, item_list, bool, item_list,
+				module_list, io__state, io__state).
+:- mode split_into_submodules_2(in, in, in, out, out, di, uo) is det.
 
-:- pred split_into_submodules_2(module_name, item_list, item_list,
-				list(pair(module_name, item_list))).
-:- mode split_into_submodules_2(in, in, out, out) is det.
+split_into_submodules_2(ModuleName, Items0, InParentInterface,
+		Items, ModuleList) -->
+	{ InInterface0 = no },
+	split_into_submodules_3(ModuleName, Items0,
+		InParentInterface, InInterface0,
+		ThisModuleItems, Items, SubModules),
+	{ map__to_assoc_list(SubModules, SubModuleList) },
+	{ ModuleList = [ModuleName - ThisModuleItems | SubModuleList] }.
 
-split_into_submodules_2(ModuleName, Items0, Items, ModuleList) :-
-	split_into_submodules_3(ModuleName, Items0, ThisModuleItems,
-		Items, SubModuleList),
-	ModuleList = [ModuleName - ThisModuleItems | SubModuleList].
+:- pred split_into_submodules_3(module_name, item_list, bool, bool,
+			item_list, item_list, map(module_name, item_list),
+			io__state, io__state).
+:- mode split_into_submodules_3(in, in, in, in, out, out, out, di, uo) is det.
 
-:- pred split_into_submodules_3(module_name, item_list, item_list, item_list,
-				list(pair(module_name, item_list))).
-:- mode split_into_submodules_3(in, in, out, out, out) is det.
-
-split_into_submodules_3(_ModuleName, [], [], [], []).
+split_into_submodules_3(_ModuleName, [], _, _, [], [], SubModules) -->
+	{ map__init(SubModules) }.
 split_into_submodules_3(ModuleName, [Item | Items1],
-		ThisModuleItems, OtherItems, SubModules) :-
+		InParentInterface, InInterface0, 
+		ThisModuleItems, OtherItems, SubModules) -->
 	(
 		%
 		% check for a `module' declaration, which signals
 		% the start of a nested module
 		%
-		Item = module_defn(VarSet, module(SubModuleName)) - Context
+		{ Item = module_defn(VarSet, module(SubModuleName)) - Context }
 	->
 		%
 		% parse in the items for the nested submodule
 		%
-		split_into_submodules_2(SubModuleName, Items1,
+		split_into_submodules_2(SubModuleName, Items1, InInterface0,
 			Items2, SubModules0),
 		%
 		% parse in the remaining items for this module
 		%
-		split_into_submodules_3(ModuleName, Items2,
-			ThisModuleItems0, Items3, SubModules1),
+		split_into_submodules_3(ModuleName, Items2, InParentInterface,
+			InInterface0, ThisModuleItems0, Items3, SubModules1),
+
+		%
+		% combine the sub-module declarations from the prevous two
+		% steps
+		%
+		{ list__foldl(add_submodule, SubModules0, SubModules1,
+			SubModules) },
 		%
 		% replace the nested submodule with an `include_module'
 		% declaration
 		%
-		IncludeSubMod = module_defn(VarSet,
-			include_module([SubModuleName])) - Context,
-		ThisModuleItems = [IncludeSubMod | ThisModuleItems0],
-		OtherItems = Items3,
-		list__append(SubModules0, SubModules1, SubModules)
+		{ IncludeSubMod = module_defn(VarSet,
+			include_module([SubModuleName])) - Context },
+		{ ThisModuleItems = [IncludeSubMod | ThisModuleItems0] },
+		{ OtherItems = Items3 }
 	;
 		%
 		% check for a matching `end_module' declaration
 		%
-		Item = module_defn(_VarSet, end_module(ModuleName)) - _Context
+		{ Item = module_defn(_VarSet, end_module(ModuleName)) - _ }
 	->
 		%
 		% if so, thats the end of this module
 		%
-		ThisModuleItems = [],
-		OtherItems = Items1,
-		SubModules = []
+		{ ThisModuleItems = [] },
+		{ OtherItems = Items1 },
+		{ map__init(SubModules) }
 	;
 		%
-		% otherwise just parse the remaining items for this
-		% module and then put the current item back onto the
-		% front of the item list for this module
+		% otherwise, process the next item in this module
+		%
+
+		%
+		% update the flag which records whether
+		% we're currently in the interface section,
+		% and report an error if there is an `implementation'
+		% section inside an `interface' section.
+		%
+		(
+			{ Item = module_defn(_, interface) - _Context }
+		->
+			{ InInterface1 = yes }
+		;
+			{ Item = module_defn(_, implementation) - Context }
+		->
+			( { InParentInterface = yes } ->
+				report_error_implementation_in_interface(
+					ModuleName, Context)
+			;
+				[]
+			),
+			{ InInterface1 = no }
+		;
+			{ InInterface1 = InInterface0 }
+		),
+		%
+		% parse the remaining items for this module,
 		%
 		split_into_submodules_3(ModuleName, Items1,
+			InParentInterface, InInterface1,
 			ThisModuleItems0, Items2, SubModules),
-		ThisModuleItems = [Item | ThisModuleItems0],
-		OtherItems = Items2
+		%
+		% put the current item back onto the
+		% front of the item list for this module
+		%
+		{ ThisModuleItems = [Item | ThisModuleItems0] },
+		{ OtherItems = Items2 }
 	).
-			
+
+:- pred add_submodule(pair(module_name, item_list),
+			submodule_map, submodule_map).
+:- mode add_submodule(in, in, out) is det.
+
+add_submodule(ModuleName - ModuleItemList, SubModules0, SubModules) :-
+	%
+	% If the same module name occurs twice, then just append
+	% the lists of items together.
+	% Perhaps we should be a bit more strict about this, for
+	% example by only allowing one `:- implementation' section
+	% and one `:- interface' section for each module?
+	%
+	( map__search(SubModules0, ModuleName, ItemList0) ->
+		list__append(ModuleItemList, ItemList0, ItemList),
+		map__det_update(SubModules0, ModuleName, ItemList, SubModules)
+	;
+		map__det_insert(SubModules0, ModuleName, ModuleItemList,
+								SubModules)
+	).
+
+:- pred report_error_implementation_in_interface(module_name, term__context,
+		io__state, io__state).
+:- mode report_error_implementation_in_interface(in, in, di, uo) is det.
+
+report_error_implementation_in_interface(ModuleName, Context) -->
+	{ ModuleName = qualified(ParentModule0, ChildModule0) ->
+		ParentModule = ParentModule0,
+		ChildModule = ChildModule0
+	;
+		error("report_error_implementation_in_interface")
+	},
+	prog_out__write_context(Context),
+	io__write_string("In interface for module `"),
+	prog_out__write_sym_name(ParentModule),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string("  in definition of sub-module `"),
+	io__write_string(ChildModule),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  error: `:- implementation.' declaration for sub-module\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  occurs in interface section of parent module.\n"),
+	io__set_exit_status(1).
+
 	% Given a module (well, a list of items), extract the interface
 	% part of that module, i.e. all the items between `:- interface'
 	% and `:- implementation'. If IncludeImported is yes, also
@@ -3519,5 +3616,11 @@ make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
 make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
+
+	% Given a module (well, a list of items), extract the interface
+	% part of that module, i.e. all the items between `:- interface'
+	% and `:- implementation'. If IncludeImported is yes, also
+	% include all items after a `:- imported'. This is useful for
+	% making the .int file.
 
 %-----------------------------------------------------------------------------%

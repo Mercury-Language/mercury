@@ -10,9 +10,6 @@
 %
 % The predicates of this module generate code for disjunctions.
 %
-% The handling of model_det and model_semi disjunctions is almost identical.
-% The handling of model_non disjunctions is also quite similar.
-%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -23,97 +20,143 @@
 :- import_module hlds_goal, llds, code_info.
 :- import_module list.
 
-:- pred disj_gen__generate_det_disj(list(hlds_goal), store_map,
-					code_tree, code_info, code_info).
-:- mode disj_gen__generate_det_disj(in, in, out, in, out) is det.
-
-:- pred disj_gen__generate_semi_disj(list(hlds_goal), store_map,
-					code_tree, code_info, code_info).
-:- mode disj_gen__generate_semi_disj(in, in, out, in, out) is det.
-
-:- pred disj_gen__generate_non_disj(list(hlds_goal), store_map,
-					code_tree, code_info, code_info).
-:- mode disj_gen__generate_non_disj(in, in, out, in, out) is det.
+:- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
+	store_map::in, code_tree::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds_data, code_gen, code_util, trace, options, globals.
-:- import_module bool, set, tree, map, std_util, require.
+:- import_module bool, set, tree, map, std_util, term, require.
 
-%---------------------------------------------------------------------------%
-
-disj_gen__generate_det_disj(Goals, StoreMap, Code) -->
-	disj_gen__generate_pruned_disj(Goals, StoreMap, Code).
-
-disj_gen__generate_semi_disj(Goals, StoreMap, Code) -->
-	( { Goals = [] } ->
-		code_info__generate_failure(Code)
+disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->
+	(
+		{ Goals = [] },
+		( { CodeModel = model_semi } ->
+			code_info__generate_failure(Code)
+		;
+			{ error("empty disjunction") }
+		)
 	;
-		disj_gen__generate_pruned_disj(Goals, StoreMap, Code)
+		{ Goals = [Goal | _] },
+		{ Goal = _ - GoalInfo },
+		{ goal_info_get_resume_point(GoalInfo, Resume) },
+		{ Resume = resume_point(ResumeVarsPrime, _) ->
+			ResumeVars = ResumeVarsPrime
+		;
+			set__init(ResumeVars)
+		},
+		disj_gen__generate_real_disj(CodeModel, ResumeVars,
+			Goals, StoreMap, Code)
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_pruned_disj(list(hlds_goal), store_map,
-	code_tree, code_info, code_info).
-:- mode disj_gen__generate_pruned_disj(in, in, out, in, out) is det.
+:- pred disj_gen__generate_real_disj(code_model::in, set(var)::in,
+	list(hlds_goal)::in, store_map::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
+disj_gen__generate_real_disj(CodeModel, ResumeVars, Goals, StoreMap, Code) -->
+		% Make sure that the variables whose values will be needed
+		% on backtracking to any disjunct are materialized into
+		% registers or stack slots. Their locations are recorded
+		% in ResumeMap.
+	code_info__produce_vars(ResumeVars, ResumeMap, FlushCode),
+
 		% If we are using a trail, save the current trail state
 		% before the first disjunct.
+		% XXX We should use a scheme such as the one we use for heap
+		% recovery for semi and det disjunctions, and delay saving
+		% the ticket until necessary.
 	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
-		ReclaimHeap) },
 	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
 	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
 		MaybeTicketSlot),
 
-		% Rather than saving the heap pointer here,
-		% we delay saving it until we get to the first
-		% disjunct that might allocate some heap space.
-	{ MaybeHpSlot = no },
+		% If we are using a grade in which we can recover memory
+		% by saving and restoring the heap pointer, set up for
+		% doing so if necessary.
+	( { CodeModel = model_non } ->
+			% With nondet disjunctions, we must recover memory
+			% across all disjuncts, even disjuncts that cannot
+			% themselves allocate memory, since we can backtrack
+			% to disjunct N after control leaves disjunct N-1.
+		{ globals__lookup_bool_option(Globals,
+			reclaim_heap_on_nondet_failure, ReclaimHeap) },
+		code_info__maybe_save_hp(ReclaimHeap, SaveHpCode,
+			MaybeHpSlot)
+	;
+			% With other disjunctions, we can backtrack to
+			% disjunct N only from disjunct N-1, so if disjunct
+			% N-1 does not allocate memory, we need not recover
+			% memory across it. Since it is possible (and common)
+			% for no disjunct to allocate memory, we delay saving
+			% the heap pointer and allocating a stack slot for
+			% the saved hp as long as possible.
+		{ globals__lookup_bool_option(Globals,
+			reclaim_heap_on_semidet_failure, ReclaimHeap) },
+		{ SaveHpCode = empty },
+		{ MaybeHpSlot = no }
+	),
 
-		% Generate all the disjuncts.
+		% Save the values of any stack slots we may hijack,
+		% and if necessary, set the redofr slot of the top frame
+		% to point to this frame.
+	code_info__prepare_for_disj_hijack(CodeModel,
+		HijackInfo, PrepareHijackCode),
+
 	code_info__get_next_label(EndLabel),
-	disj_gen__generate_pruned_disjuncts(Goals, StoreMap, EndLabel,
-		ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
 
-		% Remake the code_info using the store map for the
-		% variable locations at the end of the disjunction.
-	code_info__remake_with_store_map(StoreMap),
+	code_info__remember_position(BranchStart),
+	disj_gen__generate_disjuncts(Goals, CodeModel, ResumeMap, no,
+		HijackInfo, StoreMap, EndLabel,
+		ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+		BranchStart, no, MaybeEnd, GoalsCode),
 
-	{ Code = tree(SaveTicketCode, GoalsCode) }.
+	code_info__after_all_branches(StoreMap, MaybeEnd),
+	( { CodeModel = model_non } ->
+		code_info__set_resume_point_to_unknown
+	;
+		[]
+	),
+		% XXX release any temp slots holding heap or trail pointers
+	{ Code =
+		tree(FlushCode,
+		tree(SaveTicketCode,
+		tree(SaveHpCode,
+		tree(PrepareHijackCode,
+		     GoalsCode))))
+	}.
 
 %---------------------------------------------------------------------------%
 
-:- pred disj_gen__generate_pruned_disjuncts(list(hlds_goal), store_map,
-	label, bool, maybe(lval), maybe(lval), bool, code_tree,
-	code_info, code_info).
-:- mode disj_gen__generate_pruned_disjuncts(in, in, in, in, in, in, in,
-	out, in, out) is det.
+:- pred disj_gen__generate_disjuncts(list(hlds_goal)::in,
+	code_model::in, resume_map::in, maybe(resume_point_info)::in,
+	disj_hijack_info::in, store_map::in, label::in,
+	bool::in, maybe(lval)::in, maybe(lval)::in, position_info::in,
+	maybe(branch_end_info)::in, maybe(branch_end_info)::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-	% To generate code for a det or semidet disjunction,
-	% we generate a chain of goals if-then-else style
-	% until we come to a goal without a resume point.
-	% That goal is the last in the chain that we need to
-	% generate code for. (This is figured out by the liveness pass.)
-	%
-	% For a semidet disj, this goal will be semidet,
-	% and will be followed by no other goal.
-	% For a det disj, this goal will be det,
-	% and may be followed by other goals.
-	%
-	% XXX For efficiency, we ought not to restore anything in the
-	% first disjunct.
+disj_gen__generate_disjuncts([], _, _, _, _, _, _, _, _, _, _, _, _, _) -->
+	{ error("empty disjunction!") }.
+disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
+		MaybeEntryResumePoint, HijackInfo, StoreMap, EndLabel,
+		ReclaimHeap, MaybeHpSlot0, MaybeTicketSlot,
+		BranchStart, MaybeEnd0, MaybeEnd, Code) -->
 
-disj_gen__generate_pruned_disjuncts([], _, _, _, _, _, _, _) -->
-	{ error("Empty pruned disjunction!") }.
-disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
-		ReclaimHeap, MaybeHpSlot0, MaybeTicketSlot, First, Code) -->
+	code_info__reset_to_position(BranchStart),
+
+		% If this is not the first disjunct, generate the
+		% resume point by which arrive at this disjunct.
+	( { MaybeEntryResumePoint = yes(EntryResumePoint) } ->
+		code_info__generate_resume_point(EntryResumePoint,
+			EntryResumePointCode)
+	;
+		{ EntryResumePointCode = empty }
+	),
+
 	{ Goal0 = GoalExpr0 - GoalInfo0 },
-	{ goal_info_get_code_model(GoalInfo0, CodeModel) },
 	{ goal_info_get_resume_point(GoalInfo0, Resume) },
 	(
 		{ Resume = resume_point(ResumeVars, ResumeLocs) }
@@ -121,29 +164,27 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		% Emit code for a non-last disjunct, including setting things
 		% up for the execution of the next disjunct.
 
-		code_info__push_resume_point_vars(ResumeVars),
-		code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
-			ModContCode),
-			% The next line is to enable Goal to pass the
-			% pre_goal_update sanity check.
-		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
-			GoalInfo) },
-		{ Goal = GoalExpr0 - GoalInfo },
-
-		( { First = no } ->
+		( { MaybeEntryResumePoint = yes(_) } ->
 				% Reset the heap pointer to recover memory
 				% allocated by the previous disjunct(s),
 				% if necessary.
 			code_info__maybe_restore_hp(MaybeHpSlot0,
-				RestoreHPCode),
+				RestoreHpCode),
 
 				% Reset the solver state if necessary.
 			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
 				RestoreTicketCode)
 		;
-			{ RestoreHPCode = empty },
+			{ RestoreHpCode = empty },
 			{ RestoreTicketCode = empty }
 		),
+
+			% The pre_goal_update sanity check insist on
+			% no_resume_point, to make sure that all resume
+			% points have been handled by surrounding code.
+		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
+			GoalInfo) },
+		{ Goal = GoalExpr0 - GoalInfo },
 
 			% Save hp if it needs to be saved and hasn't been
 			% saved previously.
@@ -152,244 +193,109 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			{ code_util__goal_may_allocate_heap(Goal) },
 			{ MaybeHpSlot0 = no }
 		->
-			code_info__save_hp(SaveHPCode, HpSlot),
+			code_info__save_hp(SaveHpCode, HpSlot),
 			{ MaybeHpSlot = yes(HpSlot) }
 		;
-			{ SaveHPCode = empty },
+			{ SaveHpCode = empty },
 			{ MaybeHpSlot = MaybeHpSlot0 }
 		),
 
-		code_info__grab_code_info(CodeInfo),
-
-			% Generate the disjunct as a semi-deterministic goal.
-		{ CodeModel = model_semi ->
-			true
-		;
-			error("pruned disj non-last goal is not semidet")
-		},
-		trace__maybe_generate_internal_event_code(Goal, TraceCode),
-		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-
-		{ BranchCode = node([
-			goto(label(EndLabel)) -
-				"skip to end of pruned disj"
-		]) },
-
-		code_info__slap_code_info(CodeInfo),
-		code_info__pop_resume_point_vars,
-		code_info__restore_failure_cont(RestoreContCode),
-
-		disj_gen__generate_pruned_disjuncts(Goals, StoreMap, EndLabel,
-			ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, no,
-			RestCode),
-
-		{ Code = tree(ModContCode, 
-			 tree(RestoreHPCode,
-			 tree(SaveHPCode,
-			 tree(RestoreTicketCode,
-			 tree(TraceCode,
-			 tree(GoalCode,
-			 tree(SaveCode,
-			 tree(BranchCode,
-			 tree(RestoreContCode,
-			      RestCode)))))))))
-		}
-	;
-		% Emit code for the last disjunct.
-
-			% Restore the heap pointer if necessary.
-		code_info__maybe_restore_and_discard_hp(MaybeHpSlot0,
-			RestoreHPCode),
-
-			% Restore the solver state if necessary.
-		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, 
-			undo, RestorePopTicketCode),
-
-			% Generate the goal.
-		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
-		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-
-		{ EndCode = node([
-			label(EndLabel) - "End of pruned disj"
-		]) },
-		{ Code = tree(RestoreHPCode,
-			 tree(RestorePopTicketCode,
-			 tree(TraceCode,
-			 tree(GoalCode,
-			 tree(SaveCode,
-			      EndCode)))))
-		}
-	).
-
-%---------------------------------------------------------------------------%
-
-disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
-
-		% Sanity check
-	{
-		Goals = [],
-		error("empty disjunction shouldn't be nondet")
-	;
-		Goals = [_],
-		error("singleton disjunction")
-	;
-		Goals = [_, _ | _]
-	},
-
-		% If we are using a trail, save the current trail state
-		% before the first disjunct.
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
-	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
-		MaybeTicketSlot),
-
-		% With nondet disjunctions, we must recover memory across
-		% all disjuncts, since we can backtract to disjunct N
-		% even after control leaves disjunct N-1.
-	{ globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
-		ReclaimHeap) },
-	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot),
-
-	code_info__get_next_label(EndLabel),
-	disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel,
-		MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
-
-		% since we don't know which disjunct we have come from
-		% we must set the current failure continuation to unknown.
-
-	code_info__unset_failure_cont(FlushResumeVarsCode),
-	code_info__remake_with_store_map(StoreMap),
-	{ Code = tree(SaveTicketCode,
-		 tree(SaveHeapCode,
-		 tree(GoalsCode,
-		      FlushResumeVarsCode))) }.
-
-%---------------------------------------------------------------------------%
-
-	% XXX For efficiency, we ought not to restore anything in the
-	% first disjunct.
-
-:- pred disj_gen__generate_non_disjuncts(list(hlds_goal), store_map, label,
-	maybe(lval), maybe(lval), bool, code_tree, code_info, code_info).
-:- mode disj_gen__generate_non_disjuncts(in, in, in, in, in, in,
-	out, in, out) is det.
-
-disj_gen__generate_non_disjuncts([], _, _, _, _, _, _) -->
-	{ error("empty nondet disjunction!") }.
-disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
-		MaybeHpSlot, MaybeTicketSlot, First, Code) -->
-
-	{ Goal0 = GoalExpr0 - GoalInfo0 },
-	{ goal_info_get_resume_point(GoalInfo0, Resume) },
-	(
-		{ Resume = resume_point(ResumeVars, ResumeLocs) }
-	->
-		% Emit code for a non-last disjunct, including setting things
-		% up for the execution of the next disjunct.
-
-		code_info__push_resume_point_vars(ResumeVars),
-		code_info__make_known_failure_cont(ResumeVars, ResumeLocs, yes,
+		code_info__make_resume_point(ResumeVars, ResumeLocs,
+			FullResumeMap, NextResumePoint),
+		code_info__effect_resume_point(NextResumePoint, CodeModel,
 			ModContCode),
-			% The next line is to enable Goal to pass the
-			% pre_goal_update sanity check.
-		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
-			GoalInfo) },
-		{ Goal = GoalExpr0 - GoalInfo },
 
-		( { First = no } ->
-				% Reset the heap pointer to recover memory
-				% allocated by the previous disjunct(s),
-				% if necessary.
-			code_info__maybe_restore_hp(MaybeHpSlot,
-				RestoreHPCode),
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
+		{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
+		code_gen__generate_goal(GoalCodeModel, Goal, GoalCode),
 
-				% Reset the solver state if necessary.
-			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
-				RestoreTicketCode)
+		( { CodeModel = model_non } ->
+			% We can backtrack to the next disjunct from outside,
+			% so we make sure every variable in the resume set
+			% is in its stack slot.
+			code_info__flush_resume_vars_to_stack(ResumeVarsCode)
 		;
-			{ RestoreHPCode = empty },
-			{ RestoreTicketCode = empty }
+			{ ResumeVarsCode = empty }
 		),
 
-		code_info__grab_code_info(CodeInfo),
-
-		trace__maybe_generate_internal_event_code(Goal, TraceCode),
-		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
-
-			% Make sure every variable in the resume set is in its
-			% stack slot.
-		code_info__flush_resume_vars_to_stack(FlushResumeVarsCode),
+			% Put every variable whose value is needed after
+			% the disjunction to the place indicated by StoreMap,
+			% and accumulate information about the code_info state
+			% at the ends of the branches so far.
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+			SaveCode),
 
 		{ BranchCode = node([
 			goto(label(EndLabel)) -
 				"skip to end of nondet disj"
 		]) },
 
-		code_info__slap_code_info(CodeInfo),
-		code_info__pop_resume_point_vars,
+		disj_gen__generate_disjuncts(Goals, CodeModel, FullResumeMap,
+			yes(NextResumePoint), HijackInfo, StoreMap, EndLabel,
+			ReclaimHeap, MaybeHpSlot, MaybeTicketSlot,
+			BranchStart, MaybeEnd1, MaybeEnd, RestCode),
 
-			% Make sure that the redoip of the top nondet frame
-			% points to the right label, and set up the start of
-			% the next disjunct.
-		code_info__restore_failure_cont(RestoreContCode),
-
-		disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel,
-			MaybeHpSlot, MaybeTicketSlot, no, RestCode),
-
-		{ Code = tree(ModContCode, 
-			 tree(RestoreHPCode,
-			 tree(RestoreTicketCode,
-			 tree(TraceCode,
-			 tree(GoalCode,
-			 tree(SaveCode,
-			 tree(FlushResumeVarsCode,
-			 tree(BranchCode,
-			 tree(RestoreContCode,
-			      RestCode)))))))))
+		{ Code =
+			tree(EntryResumePointCode, 
+			tree(RestoreHpCode,
+			tree(RestoreTicketCode,
+			tree(SaveHpCode,
+			tree(ModContCode, 
+			tree(TraceCode,
+			tree(GoalCode,
+			tree(ResumeVarsCode,
+			tree(SaveCode,
+			tree(BranchCode,
+			     RestCode))))))))))
 		}
 	;
-		% Emit code for the last disjunct.
+		% Emit code for the last disjunct
 
-		{ Goals = [] ->
-			true
+			% Restore the heap pointer and solver state
+			% if necessary.
+		( { CodeModel = model_non } ->
+
+			% Note that we can't release the temps used for the
+			% heap pointer and ticket, because those values may be
+			% required again after backtracking after control
+			% leaves the disjunction. If we were to reuse either
+			% of their stack slots for something else when
+			% generating the code that follows this goal,
+			% then the values that earlier disjuncts need on
+			% backtracking would get clobbered.
+			% Thus we must not use the `_discard' versions
+			% of the two predicates below.
+
+			code_info__maybe_restore_hp(MaybeHpSlot0,
+				RestoreHpCode),
+			code_info__maybe_reset_and_pop_ticket(
+				MaybeTicketSlot, undo, RestoreTicketCode)
 		;
-			error("disj_gen__generate_non_disjuncts: last disjunct followed by others")
-		},
+			code_info__maybe_restore_and_discard_hp(MaybeHpSlot0,
+				RestoreHpCode),
+			code_info__maybe_reset_and_discard_ticket(
+				MaybeTicketSlot, undo, RestoreTicketCode)
+		),
 
-		% Note that we can't release the temps used for the heap
-		% pointer and ticket, because those values may be required
-		% again after backtracking from goals that following
-		% the disjunction.
-		% If we were to reuse the same stack slot for something
-		% else when generating the code that follows this goal,
-		% then the values that earlier disjuncts need on
-		% backtracking would get clobbered.
-		% Thus we must not use the `_discard' versions of the two
-		% predicates below.
-
-			% Restore the heap pointer if necessary.
-		code_info__maybe_restore_hp(MaybeHpSlot, RestoreHPCode),
-
-			% Restore the solver state if necessary.
-		code_info__maybe_reset_and_pop_ticket(
-			MaybeTicketSlot, undo, RestorePopTicketCode),
+		code_info__undo_disj_hijack(HijackInfo, UndoCode),
 
 		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
-		code_gen__generate_goal(model_non, Goal0, GoalCode),
-		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
+		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+			SaveCode),
 
 		{ EndCode = node([
 			label(EndLabel) - "End of nondet disj"
 		]) },
-		{ Code = tree(RestoreHPCode,
-			 tree(RestorePopTicketCode,
-			 tree(TraceCode,
-			 tree(GoalCode,
-			 tree(SaveCode,
-			      EndCode)))))
+		{ Code =
+			tree(EntryResumePointCode,
+			tree(TraceCode,
+			tree(RestoreHpCode,
+			tree(RestoreTicketCode,
+			tree(UndoCode,
+			tree(GoalCode,
+			tree(SaveCode,
+			     EndCode)))))))
 		}
 	).
 

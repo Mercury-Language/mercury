@@ -211,10 +211,11 @@ vn_verify__subst_access_vns(vn_framevar(N), [], framevar(N)).
 vn_verify__subst_access_vns(vn_succip, [], succip).
 vn_verify__subst_access_vns(vn_maxfr, [], maxfr).
 vn_verify__subst_access_vns(vn_curfr, [], curfr).
-vn_verify__subst_access_vns(vn_succfr(_), [R], succfr(R)).
 vn_verify__subst_access_vns(vn_prevfr(_), [R], prevfr(R)).
 vn_verify__subst_access_vns(vn_redoip(_), [R], redoip(R)).
+vn_verify__subst_access_vns(vn_redofr(_), [R], redofr(R)).
 vn_verify__subst_access_vns(vn_succip(_), [R], succip(R)).
+vn_verify__subst_access_vns(vn_succfr(_), [R], succfr(R)).
 vn_verify__subst_access_vns(vn_hp, [], hp).
 vn_verify__subst_access_vns(vn_sp, [], sp).
 vn_verify__subst_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
@@ -298,11 +299,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = mkframe(_, _, _, _),
-		NoDeref = NoDeref0,
-		Tested = Tested0
-	;
-		Instr = modframe(_),
+		Instr = mkframe(_, _),
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
@@ -386,13 +383,15 @@ vn_verify__tags_lval(framevar(_), _).
 vn_verify__tags_lval(succip, _).
 vn_verify__tags_lval(maxfr, _).
 vn_verify__tags_lval(curfr, _).
-vn_verify__tags_lval(succip(Rval), NoDeref) :-
+vn_verify__tags_lval(prevfr(Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
 vn_verify__tags_lval(redoip(Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
-vn_verify__tags_lval(succfr(Rval), NoDeref) :-
+vn_verify__tags_lval(redofr(Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
-vn_verify__tags_lval(prevfr(Rval), NoDeref) :-
+vn_verify__tags_lval(succip(Rval), NoDeref) :-
+	vn_verify__tags_rval(Rval, NoDeref).
+vn_verify__tags_lval(succfr(Rval), NoDeref) :-
 	vn_verify__tags_rval(Rval, NoDeref).
 vn_verify__tags_lval(hp, _).
 vn_verify__tags_lval(sp, _).

@@ -203,25 +203,27 @@ vn_block__handle_instr(assign(Lval, Rval),
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
 	vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
 	vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
-	vn_util__find_specials(Vnlval, LeftSpecials),
-	(
-		% Assignments of this form occur in the setup for commit.
-		% We must record the left hand side (which will be a stackvar)
-		% as a must flush location, because liveness will not force
-		% it to be flushed. The reason for this is that livemap.m
-		% may be confused by an incr_sp and assignment to a similarly
-		% numbered stackvar in later code into thinking that this
-		% assignment is redundant.
-		Rval = lval(SubLval),
-		( SubLval = curfr
-		; SubLval = maxfr
-		; SubLval = redoip(_)
-		)
-	->
-		Specials = [Vnlval | LeftSpecials]
-	;
-		Specials = LeftSpecials
-	),
+	vn_util__find_specials(Vnlval, Specials),
+%	vn_util__find_specials(Vnlval, LeftSpecials),
+%	(
+%		% Assignments of this form occur in the setup for commit.
+%		% We must record the left hand side (which will be a stackvar)
+%		% as a must flush location, because liveness will not force
+%		% it to be flushed. The reason for this is that livemap.m
+%		% may be confused by an incr_sp and assignment to a similarly
+%		% numbered stackvar in later code into thinking that this
+%		% assignment is redundant.
+%		Rval = lval(SubLval),
+%		( SubLval = curfr
+%		; SubLval = maxfr
+%		; SubLval = redoip(_)
+%		; SubLval = redofr(_)
+%		)
+%	->
+%		Specials = [Vnlval | LeftSpecials]
+%	;
+%		Specials = LeftSpecials
+%	),
 	set__insert_list(Liveset0, Specials, Liveset).
 vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
@@ -229,23 +231,16 @@ vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 	vn_block__new_ctrl_node(vn_call(Proc, Return, Info, CallModel), Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(mkframe(Name, Size, Pragma, Redoip), Livemap, Params,
+vn_block__handle_instr(mkframe(NondetFrameInfo, Redoip), Livemap, Params,
 		VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr0, SeenIncr, Tuple0, Tuple) :-
-	vn_block__new_ctrl_node(vn_mkframe(Name, Size, Pragma, Redoip),
+	vn_block__new_ctrl_node(vn_mkframe(NondetFrameInfo, Redoip),
 		Livemap, Params, VnTables0, VnTables1,
 		Liveset0, Liveset1, Tuple0, Tuple1),
 	vn_block__handle_instr(assign(redoip(lval(maxfr)),
 		const(code_addr_const(Redoip))),
 		Livemap, Params, VnTables1, VnTables, Liveset1, Liveset,
 		SeenIncr0, SeenIncr, Tuple1, Tuple).
-vn_block__handle_instr(modframe(Redoip), Livemap, Params,
-		VnTables0, VnTables, Liveset0, Liveset,
-		SeenIncr0, SeenIncr, Tuple0, Tuple) :-
-	vn_block__handle_instr(assign(redoip(lval(curfr)),
-		const(code_addr_const(Redoip))),
-		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
-		SeenIncr0, SeenIncr, Tuple0, Tuple).
 vn_block__handle_instr(label(Label),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -404,7 +399,7 @@ vn_block__new_ctrl_node(VnInstr, Livemap, Params,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		VnInstr = vn_mkframe(_, _, _, _),
+		VnInstr = vn_mkframe(_, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -800,6 +795,7 @@ vn_block__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 	(
 		( Vnlval = vn_field(_, _, _)
 		; Vnlval = vn_redoip(_)
+		; Vnlval = vn_redofr(_)
 		; Vnlval = vn_framevar(_)
 		; Vnlval = vn_curfr
 		; Vnlval = vn_maxfr
@@ -890,8 +886,7 @@ vn_block__is_ctrl_instr(livevals(_), yes).
 vn_block__is_ctrl_instr(block(_, _, _), no).
 vn_block__is_ctrl_instr(assign(_, _), no).
 vn_block__is_ctrl_instr(call(_, _, _, _), yes).
-vn_block__is_ctrl_instr(mkframe(_, _, _, _), yes).
-vn_block__is_ctrl_instr(modframe(_), no).
+vn_block__is_ctrl_instr(mkframe(_, _), yes).
 vn_block__is_ctrl_instr(label(_), yes).
 vn_block__is_ctrl_instr(goto(_), yes).
 vn_block__is_ctrl_instr(computed_goto(_, _), yes).

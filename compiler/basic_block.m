@@ -160,8 +160,7 @@ possible_targets(call(_, ReturnAddr, _, _), Labels) :-
 	;
 		Labels = []
 	).
-possible_targets(mkframe(_, _, _, _), []).
-possible_targets(modframe(_), []).
+possible_targets(mkframe(_, _), []).
 possible_targets(label(_), []).
 possible_targets(goto(CodeAddr), Targets) :-
 	( CodeAddr = label(Label) ->

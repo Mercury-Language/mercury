@@ -27,6 +27,7 @@
 			;	vn_curfr
 			;	vn_succfr(vn)
 			;	vn_prevfr(vn)
+			;	vn_redofr(vn)
 			;	vn_redoip(vn)
 			;	vn_succip(vn)
 			;	vn_hp
@@ -70,8 +71,7 @@
 :- type vn_instr	--->	vn_livevals(lvalset)
 			;	vn_call(code_addr, code_addr,
 					list(liveinfo), call_model)
-			;	vn_mkframe(string, int, maybe(pragma_c_struct),
-					code_addr)
+			;	vn_mkframe(nondet_frame_info, code_addr)
 			;	vn_label(label)
 			;	vn_goto(code_addr)
 			;	vn_computed_goto(vn, list(label))
@@ -202,6 +202,7 @@ vn_type__vnlval_type(vn_stackvar(_), word).
 vn_type__vnlval_type(vn_framevar(_), word).
 vn_type__vnlval_type(vn_succip(_), code_ptr).
 vn_type__vnlval_type(vn_redoip(_), code_ptr).
+vn_type__vnlval_type(vn_redofr(_), data_ptr).
 vn_type__vnlval_type(vn_succfr(_), data_ptr).
 vn_type__vnlval_type(vn_prevfr(_), data_ptr).
 vn_type__vnlval_type(vn_field(_, _, _), word).

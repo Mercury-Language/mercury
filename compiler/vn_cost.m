@@ -111,10 +111,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = call(_, _, _, _),
 		Cost = 0
 	;
-		Uinstr = mkframe(_, _, _, _),
-		Cost = 0
-	;
-		Uinstr = modframe(_),
+		Uinstr = mkframe(_, _),
 		Cost = 0
 	;
 		Uinstr = label(_),
@@ -251,6 +248,11 @@ vn_cost__lval_cost(Lval, Params, Cost) :-
 		Cost is RvalCost + StackrefCost
 	;
 		Lval = prevfr(Rval),
+		vn_type__costof_stackref(Params, StackrefCost),
+		vn_cost__rval_cost(Rval, Params, RvalCost),
+		Cost is RvalCost + StackrefCost
+	;
+		Lval = redofr(Rval),
 		vn_type__costof_stackref(Params, StackrefCost),
 		vn_cost__rval_cost(Rval, Params, RvalCost),
 		Cost is RvalCost + StackrefCost

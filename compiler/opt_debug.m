@@ -298,7 +298,7 @@ opt_debug__dump_vninstr(vn_call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_vninstr(vn_mkframe(_, _, _, _), "mkframe").
+opt_debug__dump_vninstr(vn_mkframe(_, _), "mkframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
@@ -503,6 +503,9 @@ opt_debug__dump_vnlval(vn_prevfr(V), Str) :-
 opt_debug__dump_vnlval(vn_succfr(V), Str) :-
 	string__int_to_string(V, V_str),
 	string__append_list(["vn_succfr(", V_str, ")"], Str).
+opt_debug__dump_vnlval(vn_redofr(V), Str) :-
+	string__int_to_string(V, V_str),
+	string__append_list(["vn_redofr(", V_str, ")"], Str).
 opt_debug__dump_vnlval(vn_redoip(V), Str) :-
 	string__int_to_string(V, V_str),
 	string__append_list(["vn_redoip(", V_str, ")"], Str).
@@ -587,6 +590,9 @@ opt_debug__dump_lval(succfr(R), Str) :-
 opt_debug__dump_lval(prevfr(R), Str) :-
 	opt_debug__dump_rval(R, R_str),
 	string__append_list(["prevfr(", R_str, ")"], Str).
+opt_debug__dump_lval(redofr(R), Str) :-
+	opt_debug__dump_rval(R, R_str),
+	string__append_list(["redofr(", R_str, ")"], Str).
 opt_debug__dump_lval(redoip(R), Str) :-
 	opt_debug__dump_rval(R, R_str),
 	string__append_list(["redoip(", R_str, ")"], Str).
@@ -835,20 +841,30 @@ opt_debug__dump_instr(call(Proc, Ret, _, _), Str) :-
 	opt_debug__dump_code_addr(Proc, P_str),
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call(", P_str, ", ", R_str, ", ...)"], Str).
-opt_debug__dump_instr(mkframe(Name, Size, MaybePragma, Redoip), Str) :-
-	string__int_to_string(Size, S_str),
-	( MaybePragma = yes(pragma_c_struct(StructName, StructFields, _)) ->
-		string__append_list(["yes(", StructName, ", ",
-			StructFields, ")"], P_str)
+opt_debug__dump_instr(mkframe(FrameInfo, Redoip), Str) :-
+	opt_debug__dump_code_addr(Redoip, R_str),
+	(
+		FrameInfo = ordinary_frame(Name, Size, MaybePragma),
+		string__int_to_string(Size, S_str),
+		( MaybePragma = yes(pragma_c_struct(StructName, Fields, _)) ->
+			string__append_list(["yes(", StructName, ", ",
+				Fields, ")"], P_str)
+		;
+			P_str = "no"
+		),
+		string__append_list(["mkframe(", Name, ", ", S_str, ", ",
+			P_str, ", ", R_str, ")"], Str)
 	;
-		P_str = "no"
-	),
-	opt_debug__dump_code_addr(Redoip, R_str),
-	string__append_list(["mkframe(", Name, ", ", S_str, ", ",
-		P_str, ", ", R_str, ")"], Str).
-opt_debug__dump_instr(modframe(Redoip), Str) :-
-	opt_debug__dump_code_addr(Redoip, R_str),
-	string__append_list(["modframe(", R_str, ")"], Str).
+		FrameInfo = temp_frame(Kind),
+		(
+			Kind = nondet_stack_proc,
+			string__append_list(["mktempframe(", R_str, ")"], Str)
+		;
+			Kind = det_stack_proc,
+			string__append_list(["mkdettempframe(", R_str, ")"],
+				Str)
+		)
+	).
 opt_debug__dump_instr(label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).

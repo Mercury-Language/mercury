@@ -66,8 +66,13 @@ jumpopt_main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 	map__init(Forkmap0),
 	jumpopt__build_forkmap(Instrs0, Sdprocmap, Forkmap0, Forkmap),
 	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
-		Procmap, Sdprocmap, Forkmap, Succmap, Instrs1, Mod),
-	opt_util__filter_out_bad_livevals(Instrs1, Instrs).
+		Procmap, Sdprocmap, Forkmap, Succmap, Instrs1),
+	opt_util__filter_out_bad_livevals(Instrs1, Instrs),
+	( Instrs = Instrs0 ->
+		Mod = no
+	;
+		Mod = yes
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -179,14 +184,14 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 	% between the if-val and the goto.
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
-	lvalmap, tailmap, tailmap, tailmap, tailmap, list(instruction), bool).
-:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, out, out)
+	lvalmap, tailmap, tailmap, tailmap, tailmap, list(instruction)).
+:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, out)
 	is det.
 
 jumpopt__instr_list([], _PrevInstr, _Instrmap, _Blockmap,
-		_Lvalmap, _Procmap, _Sdprocmap, _Forkmap, _Succmap, [], no).
+		_Lvalmap, _Procmap, _Sdprocmap, _Forkmap, _Succmap, []).
 jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
-		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, Instrs, Mod) :-
+		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, Instrs) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
@@ -204,8 +209,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			opt_util__filter_out_livevals(Between0, Between1),
 			list__append(Between1, [livevals(Livevals) - "",
 				goto(Proc) - Redirect], NewInstrs),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Look for semidet style tailcalls.
 			CallModel = semidet,
@@ -214,8 +218,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		->
 			list__append(Between, [livevals(Livevals) - "",
 				goto(Proc) - Redirect], NewInstrs),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Look for nondet style tailcalls.
 			CallModel = nondet(yes),
@@ -233,8 +236,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				livevals(Livevals) - "",
 				goto(Proc) - Redirect
 			],
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Short circuit the return label if possible.
 			map__search(Instrmap, RetLabel, RetInstr)
@@ -243,18 +245,15 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				DestLabel, _DestInstr),
 			( RetLabel = DestLabel ->
 				NewInstrs = [Instr0],
-				RemainInstrs = Instrs0,
-				Mod0 = no
+				RemainInstrs = Instrs0
 			;
 				NewInstrs = [call(Proc, label(DestLabel),
 					GC, CallModel) - Redirect],
-				RemainInstrs = Instrs0,
-				Mod0 = yes
+				RemainInstrs = Instrs0
 			)
 		;
 			NewInstrs = [Instr0],
-			RemainInstrs = Instrs0,
-			Mod0 = no
+			RemainInstrs = Instrs0
 		)
 	;
 		Uinstr0 = goto(label(TargetLabel))
@@ -264,8 +263,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			opt_util__is_this_label_next(TargetLabel, Instrs0, _)
 		->
 			NewInstrs = [],
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			PrevInstr = if_val(_, label(IfTargetLabel)),
 			opt_util__is_this_label_next(IfTargetLabel, Instrs0, _)
@@ -277,8 +275,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			% We cannot eliminate the instruction here because
 			% that would require altering the if_val instruction.
 			NewInstrs = [Instr0],
-			RemainInstrs = Instrs0,
-			Mod0 = no
+			RemainInstrs = Instrs0
 		;
 			% Replace a jump to a det epilog with the epilog.
 			map__search(Procmap, TargetLabel, Between0)
@@ -286,8 +283,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
 			list__append(Between, [goto(succip) - "shortcircuit"],
 				NewInstrs),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Replace a jump to a semidet epilog with the epilog.
 			map__search(Sdprocmap, TargetLabel, Between0)
@@ -295,16 +291,14 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
 			list__append(Between, [goto(succip) - "shortcircuit"],
 				NewInstrs),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Replace a jump to a nondet epilog with the epilog.
 			map__search(Succmap, TargetLabel, BetweenIncl0)
 		->
 			jumpopt__adjust_livevals(PrevInstr, BetweenIncl0,
 				NewInstrs),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+			RemainInstrs = Instrs0
 		;
 			% Replace a jump to a non-epilog block with the
 			% block itself. These jumps are treated separately
@@ -336,9 +330,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__delete(Blockmap, DestLabel, CrippledBlockmap),
 			jumpopt__instr_list(AdjustedBlock, comment(""),
 				Instrmap, CrippledBlockmap, Lvalmap, Procmap,
-				Sdprocmap, Forkmap, Succmap, NewInstrs, _),
-			RemainInstrs = Instrs0,
-			Mod0 = yes
+				Sdprocmap, Forkmap, Succmap, NewInstrs),
+			RemainInstrs = Instrs0
 		;
 			% Short-circuit the goto.
 			map__search(Instrmap, TargetLabel, TargetInstr)
@@ -352,18 +345,15 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Canfallthrough),
 			( Canfallthrough = no ->
 				NewInstrs0 = [UdestInstr - Shorted],
-				RemainInstrs = Instrs0,
-				Mod0 = yes
+				RemainInstrs = Instrs0
 			;
 				( TargetLabel = DestLabel ->
 					NewInstrs0 = [Instr0],
-					RemainInstrs = Instrs0,
-					Mod0 = no
+					RemainInstrs = Instrs0
 				;
 					NewInstrs0 = [goto(label(DestLabel))
 						- Shorted],
-					RemainInstrs = Instrs0,
-					Mod0 = yes
+					RemainInstrs = Instrs0
 				)
 			),
 			( map__search(Lvalmap, DestLabel, yes(Lvalinstr)) ->
@@ -374,19 +364,18 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			)
 		;
 			NewInstrs = [Instr0],
-			RemainInstrs = Instrs0,
-			Mod0 = no
+			RemainInstrs = Instrs0
 		)
 	; Uinstr0 = computed_goto(Index, LabelList0) ->
 		% Short-circuit all the destination labels.
-		jumpopt__short_labels(LabelList0, Instrmap, LabelList, Mod0),
+		jumpopt__short_labels(LabelList0, Instrmap, LabelList),
 		RemainInstrs = Instrs0,
-		( Mod0 = yes ->
+		( LabelList = LabelList0 ->
+			NewInstrs = [Instr0]
+		;
 			string__append(Comment0, " (some shortcircuits)",
 				Shorted),
 			NewInstrs = [computed_goto(Index, LabelList) - Shorted]
-		;
-			NewInstrs = [Instr0]
 		)
 	; Uinstr0 = if_val(Cond, label(TargetLabel)) ->
 		(
@@ -435,8 +424,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			% the recursive call. We can't go into an infinite
 			% loop because each application of the transformation
 			% strictly reduces the size of the code.
-			RemainInstrs = [NewInstr | AfterGoto],
-			Mod0 = yes
+			RemainInstrs = [NewInstr | AfterGoto]
 		;
 			map__search(Instrmap, TargetLabel, TargetInstr)
 		->
@@ -486,8 +474,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				Proceed = goto(succip) - "shortcircuit",
 				list__append([NewAssign | Between], [Proceed],
 					NewInstrs),
-				RemainInstrs = Instrs0,
-				Mod0 = yes
+				RemainInstrs = Instrs0
 			;
 				% Try to short-circuit the destination.
 
@@ -497,22 +484,29 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 					Comment0, Shorted),
 				NewInstrs = [if_val(Cond, label(DestLabel))
 					- Shorted],
-				RemainInstrs = Instrs0,
-				Mod0 = yes
+				RemainInstrs = Instrs0
 			;
 				NewInstrs = [Instr0],
-				RemainInstrs = Instrs0,
-				Mod0 = no
+				RemainInstrs = Instrs0
 			)
 		;
 			NewInstrs = [Instr0],
-			RemainInstrs = Instrs0,
-			Mod0 = no
+			RemainInstrs = Instrs0
+		)
+	; Uinstr0 = assign(Lval, Rval0) ->
+		% Any labels mentioned in Rval0 should be short-circuited.
+		jumpopt__short_labels_rval(Rval0, Instrmap, Rval),
+		RemainInstrs = Instrs0,
+		( Rval = Rval0 ->
+			NewInstrs = [Instr0]
+		;
+			string__append(Comment0, " (some shortcircuits)",
+				Shorted),
+			NewInstrs = [assign(Lval, Rval) - Shorted]
 		)
 	;
 		NewInstrs = [Instr0],
-		RemainInstrs = Instrs0,
-		Mod0 = no
+		RemainInstrs = Instrs0
 	),
 	( ( Uinstr0 = comment(_) ; NewInstrs = [] ) ->
 		NewPrevInstr = PrevInstr
@@ -520,13 +514,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		NewPrevInstr = Uinstr0
 	),
 	jumpopt__instr_list(RemainInstrs, NewPrevInstr, Instrmap, Blockmap,
-		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, Instrs9, Mod1),
-	list__append(NewInstrs, Instrs9, Instrs),
-	( Mod0 = no, Mod1 = no ->
-		Mod = no
-	;
-		Mod = yes
-	).
+		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, Instrs9),
+	list__append(NewInstrs, Instrs9, Instrs).
 
 % We avoid generating statements that redefine the value of a location
 % by comparing its old contents for non-equality with zero.
@@ -588,32 +577,25 @@ jumpopt__adjust_livevals(PrevInstr, Instrs0, Instrs) :-
 	% Short-circuit the given label by following any gotos at the
 	% labelled instruction or by falling through consecutive labels.
 
-:- pred jumpopt__short_label(label, instrmap, label, bool).
-:- mode jumpopt__short_label(in, in, out, out) is det.
+:- pred jumpopt__short_label(label, instrmap, label).
+:- mode jumpopt__short_label(in, in, out) is det.
 
-jumpopt__short_label(Label0, Instrmap, Label, Mod) :-
-	map__lookup(Instrmap, Label0, Instr0),
-	jumpopt__final_dest(Label0, Instr0, Instrmap, Label, _Instr),
-	( Label = Label0 ->
-		Mod = no
+jumpopt__short_label(Label0, Instrmap, Label) :-
+	( map__search(Instrmap, Label0, Instr0) ->
+		jumpopt__final_dest(Label0, Instr0, Instrmap, Label, _Instr)
 	;
-		Mod = yes
+		Label = Label0
 	).
 
-:- pred jumpopt__short_labels(list(label), instrmap, list(label), bool).
-:- mode jumpopt__short_labels(in, in, out, out) is det.
+:- pred jumpopt__short_labels(list(label), instrmap, list(label)).
+:- mode jumpopt__short_labels(in, in, out) is det.
 
 % XXX these uses of the Mod argument should be replaced by accumulator passing
 
-jumpopt__short_labels([], _Instrmap, [], no).
-jumpopt__short_labels([Label0 | Labels0], Instrmap, [Label | Labels], Mod) :-
-	jumpopt__short_label(Label0, Instrmap, Label, Mod1),
-	jumpopt__short_labels(Labels0, Instrmap, Labels, Mod2),
-	( Mod1 = no, Mod2 = no ->
-		Mod = no
-	;
-		Mod = yes
-	).
+jumpopt__short_labels([], _Instrmap, []).
+jumpopt__short_labels([Label0 | Labels0], Instrmap, [Label | Labels]) :-
+	jumpopt__short_label(Label0, Instrmap, Label),
+	jumpopt__short_labels(Labels0, Instrmap, Labels).
 
 %-----------------------------------------------------------------------------%
 
@@ -649,5 +631,99 @@ jumpopt__final_dest_2(SrcLabel, SrcInstr, Instrmap, LabelsSofar,
 		DestLabel = SrcLabel,
 		DestInstr = SrcInstr
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred jumpopt__short_labels_rval(rval, instrmap, rval).
+:- mode jumpopt__short_labels_rval(in, in, out) is det.
+
+jumpopt__short_labels_rval(lval(Lval0), Instrmap, lval(Lval)) :-
+	jumpopt__short_labels_lval(Lval0, Instrmap, Lval).
+jumpopt__short_labels_rval(var(_), _, _) :-
+	error("var rval in jumpopt__short_labels_rval").
+jumpopt__short_labels_rval(create(Tag, Rvals0, Unique, Cell, Type), Instrmap,
+		create(Tag, Rvals, Unique, Cell, Type)) :-
+	jumpopt__short_labels_maybe_rvals(Rvals0, Instrmap, Rvals).
+jumpopt__short_labels_rval(mkword(Tag, Rval0), Instrmap,
+		mkword(Tag, Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_rval(const(Const0), Instrmap, const(Const)) :-
+	jumpopt__short_labels_const(Const0, Instrmap, Const).
+jumpopt__short_labels_rval(unop(Op, Rval0), Instrmap, unop(Op, Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_rval(binop(Op, LRval0, RRval0), Instrmap,
+		binop(Op, LRval, RRval)) :-
+	jumpopt__short_labels_rval(LRval0, Instrmap, LRval),
+	jumpopt__short_labels_rval(RRval0, Instrmap, RRval).
+jumpopt__short_labels_rval(mem_addr(MemRef), _, mem_addr(MemRef)).
+
+:- pred jumpopt__short_labels_const(rval_const, instrmap, rval_const).
+:- mode jumpopt__short_labels_const(in, in, out) is det.
+
+jumpopt__short_labels_const(true, _, true).
+jumpopt__short_labels_const(false, _, false).
+jumpopt__short_labels_const(int_const(I), _, int_const(I)).
+jumpopt__short_labels_const(float_const(F), _, float_const(F)).
+jumpopt__short_labels_const(string_const(S), _, string_const(S)).
+jumpopt__short_labels_const(label_entry(Label0), Instrmap,
+		label_entry(Label)) :-
+	jumpopt__short_label(Label0, Instrmap, Label).
+jumpopt__short_labels_const(code_addr_const(CodeAddr0), Instrmap,
+		code_addr_const(CodeAddr)) :-
+	( CodeAddr0 = label(Label0) ->
+		jumpopt__short_label(Label0, Instrmap, Label),
+		CodeAddr = label(Label)
+	;
+		CodeAddr = CodeAddr0
+	).
+jumpopt__short_labels_const(data_addr_const(D), _, data_addr_const(D)).
+
+:- pred jumpopt__short_labels_maybe_rvals(list(maybe(rval)), instrmap,
+	list(maybe(rval))).
+:- mode jumpopt__short_labels_maybe_rvals(in, in, out) is det.
+
+jumpopt__short_labels_maybe_rvals([], _, []).
+jumpopt__short_labels_maybe_rvals([MaybeRval0 | MaybeRvals0], Instrmap,
+		[MaybeRval | MaybeRvals]) :-
+	(
+		MaybeRval0 = no,
+		MaybeRval = no
+	;
+		MaybeRval0 = yes(Rval0),
+		jumpopt__short_labels_rval(Rval0, Instrmap, Rval),
+		MaybeRval = yes(Rval)
+	),
+	jumpopt__short_labels_maybe_rvals(MaybeRvals0, Instrmap, MaybeRvals).
+
+:- pred jumpopt__short_labels_lval(lval, instrmap, lval).
+:- mode jumpopt__short_labels_lval(in, in, out) is det.
+
+jumpopt__short_labels_lval(reg(T, N), _, reg(T, N)).
+jumpopt__short_labels_lval(succip, _, succip).
+jumpopt__short_labels_lval(maxfr, _, maxfr).
+jumpopt__short_labels_lval(curfr, _, curfr).
+jumpopt__short_labels_lval(hp, _, hp).
+jumpopt__short_labels_lval(sp, _, sp).
+jumpopt__short_labels_lval(temp(T, N), _, temp(T, N)).
+jumpopt__short_labels_lval(stackvar(N), _, stackvar(N)).
+jumpopt__short_labels_lval(framevar(N), _, framevar(N)).
+jumpopt__short_labels_lval(succip(Rval0), Instrmap, succip(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(redoip(Rval0), Instrmap, redoip(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(redofr(Rval0), Instrmap, redofr(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(succfr(Rval0), Instrmap, succfr(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(prevfr(Rval0), Instrmap, prevfr(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(field(Tag, Rval0, Field0), Instrmap,
+		field(Tag, Rval, Field)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval),
+	jumpopt__short_labels_rval(Field0, Instrmap, Field).
+jumpopt__short_labels_lval(mem_ref(Rval0), Instrmap, mem_ref(Rval)) :-
+	jumpopt__short_labels_rval(Rval0, Instrmap, Rval).
+jumpopt__short_labels_lval(lvar(_), _, _) :-
+	error("lvar lval in jumpopt__short_labels_lval").
 
 %-----------------------------------------------------------------------------%

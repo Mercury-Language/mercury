@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,20 +27,20 @@
 %	L1:
 %		if (cond) goto L2
 %		incr_sp(N)
-%		detstackvar(N) = succip
+%		stackvar(N) = succip
 %		...
 %
 % We transform this code into:
 %
 %	L1:
-%		detstackvar(0) = succip
+%		stackvar(0) = succip
 %		if (cond) goto L2
 %		incr_sp(N)
 %		...
 %
-% The initial store intro detstackvar(0) is into the first word above the
+% The initial store intro stackvar(0) is into the first word above the
 % current detstack top. After the incr_sp is executed (if it ever is), this
-% word will become the bottom stack slot of the new frame, i.e. detstackvar(N).
+% word will become the bottom stack slot of the new frame, i.e. stackvar(N).
 
 %-----------------------------------------------------------------------------%
 

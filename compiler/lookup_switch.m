@@ -59,9 +59,9 @@
 
 :- pred lookup_switch__generate(var, list(var), case_consts,
 		int, int, can_fail, can_fail, maybe(set(var)), store_map,
-		code_tree, code_info, code_info).
+		branch_end, branch_end, code_tree, code_info, code_info).
 :- mode lookup_switch__generate(in, in, in, in, in, in, in, in, in,
-		out, in, out) is det.
+		in, out, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -204,13 +204,13 @@ lookup_switch__generate_constants([], _Vars, _CodeModel, [], no) --> [].
 lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 		[CaseVal|Rest], yes(Liveness)) -->
 	{ Case = case(_, int_constant(CaseTag), _, Goal) },
-	code_info__grab_code_info(CodeInfo),
+	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(CodeModel, Goal, Code),
 	code_info__get_forward_live_vars(Liveness),
 	{ tree__is_empty(Code) },
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
-	code_info__slap_code_info(CodeInfo),
+	code_info__reset_to_position(BranchStart),
 	lookup_switch__generate_constants(Cases, Vars, CodeModel, Rest, _).
 
 %---------------------------------------------------------------------------%
@@ -267,7 +267,7 @@ lookup_switch__rvals_are_constant([MRval|MRvals], ExprnOpts) :-
 
 lookup_switch__generate(Var, OutVars, CaseValues,
 		StartVal, EndVal, NeedRangeCheck, NeedBitVecCheck,
-		MLiveness, StoreMap, Code) -->
+		MLiveness, StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		% Evaluate the variable which we are going to be switching on
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
@@ -311,7 +311,8 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }
 	),
-	code_info__generate_branch_end(model_det, StoreMap, LookupCode),
+	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+		LookupCode),
 		% Assemble to code together
 	{ Comment = node([comment("lookup switch") - ""]) },
 	{ Code =

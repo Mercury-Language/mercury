@@ -218,23 +218,23 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
-	{ ProcLayoutInfo = proc_layout_info(ProcLabel, Detism,
+	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
 		StackSlots, SuccipLoc, CallLabel, InternalMap) },
-	stack_layout__construct_proc_layout(ProcLabel, Detism,
+	stack_layout__construct_proc_layout(EntryLabel, Detism,
 		StackSlots, SuccipLoc, CallLabel),
 	{ map__to_assoc_list(InternalMap, Internals) },
-	list__foldl(stack_layout__construct_internal_layout(ProcLabel),
+	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
 		Internals).
 
 %---------------------------------------------------------------------------%
 
 	% Construct a procedure-specific layout.
 
-:- pred stack_layout__construct_proc_layout(proc_label::in,
+:- pred stack_layout__construct_proc_layout(label::in,
 	determinism::in, int::in, maybe(int)::in, maybe(label)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
+stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		MaybeSuccipLoc, MaybeCallLabel) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
@@ -274,10 +274,9 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 	;
 		SuccipLval = stackvar(Location)
 	},
-	{ Label = local(ProcLabel) },
 	{ stack_layout__represent_lval(SuccipLval, SuccipRval) },
 	{ StackSlotsRval = const(int_const(StackSlots)) },
-	{ CodeAddrRval = const(code_addr_const(label(Label))) },
+	{ CodeAddrRval = const(code_addr_const(label(EntryLabel))) },
 
 	{ stack_layout__represent_determinism(Detism, DetismRval) },
 	{ MaybeRvals0 = [yes(CodeAddrRval), yes(DetismRval),
@@ -287,7 +286,7 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 	(
 		{ ProcIdLayout = yes }
 	->
-		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals) },
+		{ stack_layout__construct_procid_rvals(EntryLabel, IdRvals) },
 		{ list__append(MaybeRvals0, IdRvals, MaybeRvals1) }
 	;
 		{ NoIdRvals = yes(const(int_const(-1))) },
@@ -315,16 +314,25 @@ stack_layout__construct_proc_layout(ProcLabel, Detism, StackSlots,
 	{ Exported = no },	% XXX With the new profiler, we will need to
 				% set this to `yes' if the profiling option
 				% is given and if the procedure is exported.
-	{ CModule = c_data(ModuleName, stack_layout(Label), Exported,
+	{ CModule = c_data(ModuleName, stack_layout(EntryLabel), Exported,
 		MaybeRvals, []) },
-	stack_layout__add_cmodule(CModule, Label).
+	stack_layout__add_cmodule(CModule, EntryLabel).
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__construct_procid_rvals(proc_label::in,
+:- pred stack_layout__construct_procid_rvals(label::in,
 	list(maybe(rval))::out) is det.
 
-stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
+stack_layout__construct_procid_rvals(Label, Rvals) :-
+	( 
+		Label = local(ProcLabel, _)
+	;
+		Label = c_local(ProcLabel)
+	;
+		Label = local(ProcLabel)
+	;
+		Label = exported(ProcLabel)
+	),
 	(
 		ProcLabel = proc(DefModule, PredFunc, DeclModule,
 			PredName, Arity, ProcId),
@@ -365,15 +373,15 @@ stack_layout__represent_pred_or_func(function, 1).
 
 	% Construct the layout describing a single internal label.
 
-:- pred stack_layout__construct_internal_layout(proc_label::in,
+:- pred stack_layout__construct_internal_layout(label::in,
 	pair(label, internal_layout_info)::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
+stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 		% generate the required rvals
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
-		stack_layout(local(ProcLabel))))) },
+		stack_layout(EntryLabel)))) },
 	stack_layout__construct_internal_rvals(Internal, VarInfoRvals),
 	% Reenable this code if you want label numbers in label layouts.
 	% { Label = local(_, LabelNum0) ->
@@ -636,10 +644,12 @@ stack_layout__represent_live_value_type(curfr, Rval) -->
 	{ Rval = const(int_const(2)) }.
 stack_layout__represent_live_value_type(maxfr, Rval) -->
 	{ Rval = const(int_const(3)) }.
-stack_layout__represent_live_value_type(redoip, Rval) -->
+stack_layout__represent_live_value_type(redofr, Rval) -->
 	{ Rval = const(int_const(4)) }.
-stack_layout__represent_live_value_type(unwanted, Rval) -->
+stack_layout__represent_live_value_type(redoip, Rval) -->
 	{ Rval = const(int_const(5)) }.
+stack_layout__represent_live_value_type(unwanted, Rval) -->
+	{ Rval = const(int_const(6)) }.
 stack_layout__represent_live_value_type(var(Type, _Inst), Rval) -->
 	stack_layout__get_cell_number(CNum0),
 	{ base_type_layout__construct_pseudo_type_info(Type, Rval0,
@@ -683,6 +693,8 @@ stack_layout__represent_lval(temp(_, _), _) :-
 stack_layout__represent_lval(succip(_), _) :-
 	error("stack_layout: continuation live value stored in code address").
 stack_layout__represent_lval(redoip(_), _) :-
+	error("stack_layout: continuation live value stored in code address").
+stack_layout__represent_lval(redofr(_), _) :-
 	error("stack_layout: continuation live value stored in code address").
 stack_layout__represent_lval(succfr(_), _) :-
 	error("stack_layout: continuation live value stored in code address").

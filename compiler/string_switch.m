@@ -21,8 +21,9 @@
 :- import_module term.
 
 :- pred string_switch__generate(cases_list, var, code_model,
-	can_fail, store_map, label, code_tree, code_info, code_info).
-:- mode string_switch__generate(in, in, in, in, in, in, out, in, out)
+	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	code_info, code_info).
+:- mode string_switch__generate(in, in, in, in, in, in, in, out, out, in, out)
 	is det.
 
 %-----------------------------------------------------------------------------%
@@ -33,7 +34,7 @@
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
-		EndLabel, Code) -->
+		EndLabel, MaybeEnd0, MaybeEnd, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
 	code_info__acquire_reg(r, SlotReg),
 	code_info__acquire_reg(r, StringReg),
@@ -67,7 +68,7 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		% before the code for the cases (which might reuse those
 		% registers), and because that code is generated manually
 		% (below) so we don't need the reg info to be valid when
-		% we generated it.
+		% we generate it.
 	code_info__release_reg(SlotReg),
 	code_info__release_reg(StringReg),
 
@@ -80,8 +81,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-		StoreMap, FailLabel, EndLabel, Strings, Labels,
-		NextSlots, SlotsCode),
+		StoreMap, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+		Strings, Labels, NextSlots, SlotsCode),
 
 		% Generate code which does the hash table lookup
 	{
@@ -245,16 +246,18 @@ string_switch__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 	).
 
 :- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
-	code_model, store_map, label, label, list(maybe(rval)), list(label),
-	list(maybe(rval)), code_tree, code_info, code_info).
+	code_model, store_map, label, label, branch_end, branch_end,
+	list(maybe(rval)), list(label), list(maybe(rval)), code_tree,
+	code_info, code_info).
 :- mode string_switch__gen_hash_slots(in, in, in, in, in, in, in,
-	out, out, out, out, in, out) is det.
+	in, out, out, out, out, out, in, out) is det.
 
 string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
-		StoreMap, FailLabel, EndLabel, Strings, Labels,
-		NextSlots, Code) -->
+		StoreMap, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+		Strings, Labels, NextSlots, Code) -->
 	( { Slot = TableSize } ->
 		{
+			MaybeEnd = MaybeEnd0,
 			Strings = [],
 			Labels = [],
 			NextSlots = [],
@@ -264,8 +267,9 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 		}
 	;
 		string_switch__gen_hash_slot(Slot, TableSize, HashSlotMap,
-				CodeModel, StoreMap, FailLabel, EndLabel,
-				String, Label, NextSlot, SlotCode),
+			CodeModel, StoreMap, FailLabel, EndLabel,
+			MaybeEnd0, MaybeEnd1,
+			String, Label, NextSlot, SlotCode),
 		{ Slot1 is Slot + 1 },
 		{ 
 			Strings = [String | Strings0],
@@ -274,19 +278,21 @@ string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
 			Code = tree(SlotCode, Code0)
 		},
 		string_switch__gen_hash_slots(Slot1, TableSize, HashSlotMap,
-				CodeModel, StoreMap, FailLabel, EndLabel,
-				Strings0, Labels0, NextSlots0, Code0)
+			CodeModel, StoreMap, FailLabel, EndLabel,
+			MaybeEnd1, MaybeEnd,
+			Strings0, Labels0, NextSlots0, Code0)
 	).
 
 :- pred string_switch__gen_hash_slot(int, int, map(int, hash_slot),
-	code_model, store_map, label, label, maybe(rval), label,
-	maybe(rval), code_tree, code_info, code_info).
+	code_model, store_map, label, label, branch_end, branch_end,
+	maybe(rval), label, maybe(rval), code_tree,
+	code_info, code_info).
 :- mode string_switch__gen_hash_slot(in, in, in, in, in, in, in,
-	out, out, out, out, in, out) is det.
+	in, out, out, out, out, out, in, out) is det.
 
 string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
-		FailLabel, EndLabel, yes(StringRval), Label,
-		yes(NextSlotRval), Code) -->
+		FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
+		yes(StringRval), Label, yes(NextSlotRval), Code) -->
 	(
 		{ map__search(HashSlotMap, Slot, hash_slot(Case, Next)) }
 	->
@@ -303,17 +309,18 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		{ LabelCode = node([
 			label(Label) - Comment
 		]) },
-		code_info__grab_code_info(CodeInfo),
+		code_info__remember_position(BranchStart),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+			SaveCode),
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
 		->
 			[]
 		;
-			code_info__slap_code_info(CodeInfo)
+			code_info__reset_to_position(BranchStart)
 		),
 		{ FinishCode = node([
 			goto(label(EndLabel)) - "jump to end of switch"
@@ -326,6 +333,7 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 			     FinishCode))))
 		}
 	;
+		{ MaybeEnd = MaybeEnd0 },
 		{ StringRval = const(int_const(0)) },
 		{ Label = FailLabel },
 		{ NextSlotRval = const(int_const(-2)) },

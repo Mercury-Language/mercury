@@ -125,22 +125,24 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ tree__flatten(EntryTestCode, EntryTestListList) },
 	{ list__condense(EntryTestListList, EntryTestList) },
 
-	code_info__grab_code_info(CodeInfo),
+	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(model_det, Base, BaseGoalCode),
-	code_info__generate_branch_end(model_det, StoreMap, BaseSaveCode),
-	code_info__slap_code_info(CodeInfo),
+	code_info__generate_branch_end(StoreMap, no, MaybeEnd1,
+		BaseSaveCode),
+	code_info__reset_to_position(BranchStart),
 	code_gen__generate_goal(model_det, Recursive, RecGoalCode),
-	code_info__generate_branch_end(model_det, StoreMap, RecSaveCode),
+	code_info__generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
+		RecSaveCode),
 
 	code_info__post_goal_update(SwitchGoalInfo),
-	code_info__remake_with_store_map(StoreMap),
+	code_info__after_all_branches(StoreMap, MaybeEnd),
 
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
 	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
 	code_info__setup_call(Args, callee, EpilogCode),
 
-	{ code_gen__output_args(Args, LiveArgs) },
+	{ code_util__output_args(Args, LiveArgs) },
 
 	{ BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)) },
 	{ RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)) },
@@ -390,8 +392,7 @@ middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
 	middle_rec__find_used_registers_rval(Rval, Used1, Used).
 middle_rec__find_used_registers_instr(call(_, _, _, _), Used, Used).
-middle_rec__find_used_registers_instr(mkframe(_, _, _, _), Used, Used).
-middle_rec__find_used_registers_instr(modframe(_), Used, Used).
+middle_rec__find_used_registers_instr(mkframe(_, _), Used, Used).
 middle_rec__find_used_registers_instr(label(_), Used, Used).
 middle_rec__find_used_registers_instr(goto(_), Used, Used).
 middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-

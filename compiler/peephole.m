@@ -84,15 +84,14 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
-		
 	% Look for code patterns that can be optimized, and optimize them.
 
 :- pred peephole__match(instr, string, list(pattern),
 		list(instruction), list(instruction)).
 :- mode peephole__match(in, in, in, in, out) is semidet.
 
-	% A `computed_goto' with all branches pointing to the same 
-	% label can be replaced with an unconditional goto. 
+	% A `computed_goto' with all branches pointing to the same
+	% label can be replaced with an unconditional goto.
 
 peephole__match(computed_goto(_, Labels), Comment, _, Instrs0, Instrs) :-
 	list__all_same(Labels),
@@ -134,39 +133,46 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 		fail
 	).
 
-	% If a `mkframe' is followed by a `modframe', with the instructions
-	% in between containing only straight-line code, we can delete the
-	% `modframe' and instead just set the redoip directly in the `mkframe'.
-	% This should also be done if the modframe appears instead as an
-	% assignment to the redoip of curfr or maxfr.
+	% If a `mkframe' is followed by an assignment to its redoip slot,
+	% with the instructions in between containing only straight-line code,
+	% we can delete the assignment and instead just set the redoip
+	% directly in the `mkframe'.
 	%
-	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
+	%	mkframe(NFI, _)		=>	mkframe(NFI, Redoip)
 	%	<straightline instrs>		<straightline instrs>
-	%	modframe(Redoip)
+	%	assign(redoip(lval(_)), Redoip)
 	%
 	% If a `mkframe' is followed by a test that can fail, we try to
 	% swap the two instructions to avoid doing the mkframe unnecessarily.
 	%
-	%	mkframe(D, S, dofail)	=>	if_val(test, redo)
-	%	if_val(test, redo/fail)		mkframe(D, S, dofail)
+	%	mkframe(NFI, dofail)	=>	if_val(test, redo)
+	%	if_val(test, redo/fail)		mkframe(NFI, dofail)
 	%
-	%	mkframe(D, S, label)	=>	if_val(test, redo)
-	%	if_val(test, fail)		mkframe(D, S, label)
+	%	mkframe(NFI, label)	=>	if_val(test, redo)
+	%	if_val(test, fail)		mkframe(NFI, label)
 	%
-	%	mkframe(D, S, label)	=>	mkframe(D, S, label)
+	%	mkframe(NFI, label)	=>	mkframe(NFI, label)
 	%	if_val(test, redo)		if_val(test, label)
 	%
 	% These two patterns are mutually exclusive because if_val is not
 	% straight-line code.
 
-peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
+peephole__match(mkframe(NondetFrameInfo, Redoip1), Comment, _,
 		Instrs0, Instrs) :-
 	(
-		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
+		% A mkframe sets curfr to point to the new frame
+		% only for ordinary frames, not temp frames.
+		( NondetFrameInfo = ordinary_frame(_, _, _) ->
+			AllowedBases = [maxfr, curfr]
+		;
+			AllowedBases = [maxfr]
+		),
+		opt_util__next_assign_to_redoip(Instrs0, AllowedBases,
+			[], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
 	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [mkframe(Name, Slots, Pragma, Redoip2) - Comment
+		Instrs = [mkframe(NondetFrameInfo, Redoip2) - Comment
 			| Instrs1]
 	;
 		opt_util__skip_comments_livevals(Instrs0, Instrs1),
@@ -177,8 +183,10 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 			( Target = do_redo ; Target = do_fail)
 		->
 			Instrs = [
-				if_val(Test, do_redo) - Comment2,
-				mkframe(Name, Slots, Pragma, do_fail) - Comment
+				if_val(Test, do_redo)
+					- Comment2,
+				mkframe(NondetFrameInfo, do_fail)
+					- Comment
 				| Instrs2
 			]
 		;
@@ -188,8 +196,9 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 				Target = do_fail
 			->
 				Instrs = [
-					if_val(Test, do_redo) - Comment2,
-					mkframe(Name, Slots, Pragma, Redoip1)
+					if_val(Test, do_redo)
+						- Comment2,
+					mkframe(NondetFrameInfo, Redoip1)
 						- Comment
 					| Instrs2
 				]
@@ -197,9 +206,10 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 				Target = do_redo
 			->
 				Instrs = [
-					mkframe(Name, Slots, Pragma, Redoip1)
+					mkframe(NondetFrameInfo, Redoip1)
 						- Comment,
-					if_val(Test, Redoip1) - Comment2
+					if_val(Test, Redoip1)
+						- Comment2
 					| Instrs2
 				]
 			;
@@ -221,29 +231,35 @@ peephole__match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
 	Instrs1 = [reset_ticket(lval(Lval), _Reason) - _Comment2 | Instrs2],
 	Instrs = [store_ticket(Lval) - Comment | Instrs2].
 
-	% If a `modframe' is followed by another, with the instructions
-	% in between containing only straight-line code, we can delete
-	% one of the modframes:
+	% If an assignment to a redoip slot is followed by another, with
+	% the instructions in between containing only straight-line code,
+	% we can delete one of the asignments:
 	%
-	%	modframe(Redoip1)	=>	modframe(Redoip2)
+	%	assign(redoip(Fr), Redoip1) =>	assign(redoip(Fr), Redoip2)
 	%	<straightline instrs>		<straightline instrs>
-	%	modframe(Redoip2)
+	%	assign(redoip(Fr), Redoip2)
 
-	% If a modframe(do_fail) is followed by straight-line instructions
-	% except possibly for if_val with do_fail or do_redo as target,
-	% until a goto to do_succeed(no), and if the nondet stack linkages
-	% are not touched by the straight-line instructions, then we can
-	% discard the nondet stack frame early.
+	% If an assignment of do_fail to the redoip slot of the current frame
+	% is followed by straight-line instructions except possibly for if_val
+	% with do_fail or do_redo as target, until a goto to do_succeed(no),
+	% and if the nondet stack linkages are not touched by the
+	% straight-line instructions, then we can discard the nondet stack
+	% frame early.
 
-peephole__match(modframe(Redoip), Comment, _, Instrs0, Instrs) :-
+peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
+		Instrs0, Instrs) :-
 	(
-		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
+		opt_util__next_assign_to_redoip(Instrs0, [Base],
+			[], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
 	->
 		list__append(Skipped, Rest, Instrs1),
-		Instrs = [modframe(Redoip2) - Comment | Instrs1]
+		Instrs = [assign(redoip(lval(Base)),
+			const(code_addr_const(Redoip2))) - Comment
+			| Instrs1]
 	;
-		Redoip = do_fail,
+		Base = curfr,
+		Redoip = const(code_addr_const(do_fail)),
 		opt_util__straight_alternative(Instrs0, Between, After),
 		opt_util__touches_nondet_ctrl(Between, no)
 	->
@@ -283,11 +299,11 @@ peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 	% Given a GC method, return the list of invalid peephole
 	% optimizations.
 
-:- pred peephole__invalid_opts(gc_method, list(pattern)). 
+:- pred peephole__invalid_opts(gc_method, list(pattern)).
 :- mode peephole__invalid_opts(in, out) is det.
 
 peephole__invalid_opts(GC_Method, InvalidPatterns) :-
-	( 
+	(
 		GC_Method = accurate
 	->
 		InvalidPatterns = [incr_sp]

@@ -215,6 +215,11 @@ output_c_file_init(ModuleName, C_Modules) -->
 :- mode output_c_file_mercury_headers(di, uo) is det.
 
 output_c_file_mercury_headers -->
+		% The next two lines are only until MR_USE_REDOFR is default.
+		% The #undef avoids a warning if the invocation of mgnuc
+		% also supplies a definition on the command line.
+	io__write_string("#undef MR_USE_REDOFR\n"),
+	io__write_string("#define MR_USE_REDOFR\n"),
 	globals__io_get_trace_level(TraceLevel),
 	( { trace_level_trace_interface(TraceLevel, yes) } ->
 		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
@@ -737,13 +742,11 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 		(
 			Instr = call(_, label(ContLabel), _, _)
 		;
-			Instr = mkframe(_, _, _, label(ContLabel))
-		;
-			Instr = modframe(label(ContLabel))
+			Instr = mkframe(_, label(ContLabel))
 		;
 			Instr = join_and_continue(_, ContLabel)
 		;
-			Instr = assign(redoip(lval(maxfr)), 
+			Instr = assign(redoip(lval(_)), 
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
@@ -845,14 +848,19 @@ output_instruction_decls(call(Target, ContLabel, _, _), DeclSet0, DeclSet) -->
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(ContLabel, "", "", 0, _, DeclSet1, DeclSet).
 output_instruction_decls(c_code(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
+output_instruction_decls(mkframe(FrameInfo, FailureContinuation),
 		DeclSet0, DeclSet) -->
 	(
-		{ MaybeStruct = yes(pragma_c_struct(StructName,
-			StructFields, MaybeStructFieldsContext)) }
+		{ FrameInfo = ordinary_frame(_, _, yes(Struct)) },
+		{ Struct = pragma_c_struct(StructName, StructFields,
+				MaybeStructFieldsContext) }
 	->
-		{ bintree_set__is_member(pragma_c_struct(StructName), DeclSet0) ->
-			string__append_list(["struct ", StructName, " has been declared already"], Msg),
+		{
+			bintree_set__is_member(pragma_c_struct(StructName),
+				DeclSet0)
+		->
+			string__append_list(["struct ", StructName,
+				" has been declared already"], Msg),
 			error(Msg)
 		;
 			true
@@ -868,15 +876,13 @@ output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 			io__write_string(StructFields)
 		),
 		io__write_string("\n};\n"),
-		{ bintree_set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
+		{ bintree_set__insert(DeclSet0, pragma_c_struct(StructName),
+			DeclSet1) }
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
 	output_code_addr_decls(FailureContinuation, "", "", 0, _,
 		DeclSet1, DeclSet).
-output_instruction_decls(modframe(FailureContinuation), DeclSet0, DeclSet) -->
-	output_code_addr_decls(FailureContinuation, "", "", 0, _,
-		DeclSet0, DeclSet).
 output_instruction_decls(label(_), DeclSet, DeclSet) --> [].
 output_instruction_decls(goto(CodeAddr), DeclSet0, DeclSet) -->
 	output_code_addr_decls(CodeAddr, "", "", 0, _, DeclSet0, DeclSet).
@@ -1096,31 +1102,42 @@ output_instruction(c_code(C_Code_String), _) -->
 	io__write_string("\t"),
 	io__write_string(C_Code_String).
 
-output_instruction(mkframe(Msg, Num, MaybePragmaStructName, FailCont), _) -->
-	( { MaybePragmaStructName = yes(pragma_c_struct(StructName, _, _)) } ->
-		io__write_string("\tmkpragmaframe("""),
-		io__write_string(Msg),
-		io__write_string(""", "),
-		io__write_int(Num),
-		io__write_string(", "),
-		io__write_string(StructName),
-		io__write_string(", "),
-		output_code_addr(FailCont),
-		io__write_string(");\n")
+output_instruction(mkframe(FrameInfo, FailCont), _) -->
+	(
+		{ FrameInfo = ordinary_frame(Msg, Num, MaybeStruct) },
+		( { MaybeStruct = yes(pragma_c_struct(StructName, _, _)) } ->
+			io__write_string("\tmkpragmaframe("""),
+			io__write_string(Msg),
+			io__write_string(""", "),
+			io__write_int(Num),
+			io__write_string(", "),
+			io__write_string(StructName),
+			io__write_string(", "),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		;
+			io__write_string("\tmkframe("""),
+			io__write_string(Msg),
+			io__write_string(""", "),
+			io__write_int(Num),
+			io__write_string(", "),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		)
 	;
-		io__write_string("\tmkframe("""),
-		io__write_string(Msg),
-		io__write_string(""", "),
-		io__write_int(Num),
-		io__write_string(", "),
-		output_code_addr(FailCont),
-		io__write_string(");\n")
+		{ FrameInfo = temp_frame(Kind) },
+		(
+			{ Kind = det_stack_proc },
+			io__write_string("\tmkdettempframe("),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		;
+			{ Kind = nondet_stack_proc },
+			io__write_string("\tmktempframe("),
+			output_code_addr(FailCont),
+			io__write_string(");\n")
+		)
 	).
-
-output_instruction(modframe(FailureContinuation), _) -->
-	io__write_string("\tmodframe("),
-	output_code_addr(FailureContinuation),
-	io__write_string(");\n").
 
 output_instruction(label(Label), ProfInfo) -->
 	output_label_defn(Label),
@@ -1502,6 +1519,7 @@ output_gc_livevals_params([Var - Lval | Lvals]) -->
 output_live_value_type(succip) --> io__write_string("MR_succip").
 output_live_value_type(curfr) --> io__write_string("MR_curfr").
 output_live_value_type(maxfr) --> io__write_string("MR_maxfr").
+output_live_value_type(redofr) --> io__write_string("MR_redofr").
 output_live_value_type(redoip) --> io__write_string("MR_redoip").
 output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
@@ -1946,6 +1964,10 @@ output_lval_decls(succfr(Rval), FirstIndent, LaterIndent, N0, N,
 	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
 output_lval_decls(prevfr(Rval), FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+		DeclSet0, DeclSet).
+output_lval_decls(redofr(Rval), FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
@@ -2825,9 +2847,7 @@ XXX broken for C == minint
 		io__write_string(")")
 	).
 output_rval(mkword(Tag, Exprn)) -->
-	% XXX we should change the definition of mkword()
-	% so that this cast is not needed
-	io__write_string("(const Word *) mkword("),
+	io__write_string("mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval_as_type(Exprn, word),
@@ -2855,9 +2875,7 @@ output_rval(lval(Lval)) -->
 output_rval(create(Tag, _Args, _Unique, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	% XXX we should change the definition of mkword()
-	% so that this cast is not needed
-	io__write_string("(const Word *) mkword(mktag("),
+	io__write_string("mkword(mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),
@@ -2868,12 +2886,12 @@ output_rval(var(_)) -->
 output_rval(mem_addr(MemRef)) -->
 	(
 		{ MemRef = stackvar_ref(N) },
-		io__write_string("(const Word *) &detstackvar("),
+		io__write_string("(const Word *) &MR_stackvar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = framevar_ref(N) },
-		io__write_string("(const Word *) &framevar("),
+		io__write_string("(const Word *) &MR_framevar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
@@ -3006,7 +3024,7 @@ output_lval(stackvar(N)) -->
 	;
 		true
 	},
-	io__write_string("detstackvar("),
+	io__write_string("MR_stackvar("),
 	io__write_int(N),
 	io__write_string(")").
 output_lval(framevar(N)) -->
@@ -3015,8 +3033,9 @@ output_lval(framevar(N)) -->
 	;
 		true
 	},
-	io__write_string("framevar("),
-	io__write_int(N),
+	io__write_string("MR_framevar("),
+	{ N1 is N + 1 },
+	io__write_int(N1),
 	io__write_string(")").
 output_lval(succip) -->
 	io__write_string("succip").
@@ -3034,6 +3053,10 @@ output_lval(succfr(Rval)) -->
 	io__write_string(")").
 output_lval(prevfr(Rval)) -->
 	io__write_string("bt_prevfr("),
+	output_rval(Rval),
+	io__write_string(")").
+output_lval(redofr(Rval)) -->
+	io__write_string("bt_redofr("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(redoip(Rval)) -->
@@ -3147,12 +3170,13 @@ llds_out__binary_op_to_string(float_divide, "float_divide").
 %-----------------------------------------------------------------------------%
 
 llds_out__lval_to_string(framevar(N), Description) :-
-	string__int_to_string(N, N_String),
-	string__append("framevar(", N_String, Tmp),
+	N1 is N + 1,
+	string__int_to_string(N1, N_String),
+	string__append("MR_framevar(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 llds_out__lval_to_string(stackvar(N), Description) :-
 	string__int_to_string(N, N_String),
-	string__append("stackvar(", N_String, Tmp),
+	string__append("MR_stackvar(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 llds_out__lval_to_string(reg(RegType, RegNum), Description) :-
 	llds_out__reg_to_string(RegType, RegNum, Reg_String),

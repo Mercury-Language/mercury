@@ -105,8 +105,8 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 			OutVars, CaseVals, MLiveness)
 	->
 		lookup_switch__generate(CaseVar, OutVars, CaseVals,
-			FirstVal, LastVal, NeedRangeCheck,
-			NeedBitVecCheck, MLiveness, StoreMap, Code)
+			FirstVal, LastVal, NeedRangeCheck, NeedBitVecCheck,
+			MLiveness, StoreMap, no, MaybeEnd, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
@@ -121,7 +121,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 	->
 		dense_switch__generate(TaggedCases,
 			FirstVal, LastVal, CaseVar, CodeModel, CanFail1,
-			StoreMap, EndLabel, Code)
+			StoreMap, EndLabel, no, MaybeEnd, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = string_switch },
@@ -131,7 +131,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 		{ NumCases >= StringSize }
 	->
 		string_switch__generate(TaggedCases, CaseVar, CodeModel,
-			CanFail, StoreMap, EndLabel, Code)
+			CanFail, StoreMap, EndLabel, no, MaybeEnd, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = tag_switch },
@@ -141,16 +141,17 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 		{ NumCases >= TagSize }
 	->
 		tag_switch__generate(TaggedCases, CaseVar, CodeModel, CanFail,
-			StoreMap, EndLabel, Code)
+			StoreMap, EndLabel, no, MaybeEnd, Code)
 	;
 		% To generate a switch, first we flush the
 		% variable on whose tag we are going to switch, then we
 		% generate the cases for the switch.
 
 		switch_gen__generate_all_cases(TaggedCases, CaseVar,
-			CodeModel, CanFail, StoreMap, EndLabel, Code)
+			CodeModel, CanFail, StoreMap, EndLabel, no, MaybeEnd,
+			Code)
 	),
-	code_info__remake_with_store_map(StoreMap).
+	code_info__after_all_branches(StoreMap, MaybeEnd).
 
 %---------------------------------------------------------------------------%
 
@@ -243,12 +244,13 @@ switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
 	% breaks caused by taken branches.
 
 :- pred switch_gen__generate_all_cases(list(extended_case), var, code_model,
-	can_fail, store_map, label, code_tree, code_info, code_info).
-:- mode switch_gen__generate_all_cases(in, in, in, in, in, in, out, in, out)
-	is det.
+	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	code_info, code_info).
+:- mode switch_gen__generate_all_cases(in, in, in, in, in, in, in, out, out,
+	in, out) is det.
 
 switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, StoreMap,
-		EndLabel, Code) -->
+		EndLabel, MaybeEnd0, MaybeEnd, Code) -->
 	code_info__produce_variable(Var, VarCode, _Rval),
 	(
 		{ CodeModel = model_det },
@@ -275,25 +277,26 @@ switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, StoreMap,
 			Cases = [Case2, Case1]
 		;
 			Cases = Cases0
-		},
-		switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
-			StoreMap, EndLabel, CasesCode)
+		}
 	;
-		switch_gen__generate_cases(Cases0, Var, CodeModel, CanFail,
-			StoreMap, EndLabel, CasesCode)
+		{ Cases = Cases0 }
 	),
+	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
+		StoreMap, EndLabel, MaybeEnd0, MaybeEnd, CasesCode),
 	{ Code = tree(VarCode, CasesCode) }.
 
 :- pred switch_gen__generate_cases(list(extended_case), var, code_model,
-	can_fail, store_map, label, code_tree, code_info, code_info).
-:- mode switch_gen__generate_cases(in, in, in, in, in, in, out, in, out) is det.
+	can_fail, store_map, label, branch_end, branch_end, code_tree,
+	code_info, code_info).
+:- mode switch_gen__generate_cases(in, in, in, in, in, in, in, out, out,
+	in, out) is det.
 
 	% At the end of a locally semidet switch, we fail because we
 	% came across a tag which was not covered by one of the cases.
 	% It is followed by the end of switch label to which the cases
 	% branch.
 switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
-		EndLabel, Code) -->
+		EndLabel, MaybeEnd, MaybeEnd, Code) -->
 	( { CanFail = can_fail } ->
 		code_info__generate_failure(FailCode)
 	;
@@ -306,8 +309,8 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
 	{ Code = tree(FailCode, EndCode) }.
 
 switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
-		CanFail, StoreMap, EndLabel, CasesCode) -->
-	code_info__grab_code_info(CodeInfo0),
+		CanFail, StoreMap, EndLabel, MaybeEnd0, MaybeEnd, CasesCode) -->
+	code_info__remember_position(BranchStart),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
@@ -315,7 +318,8 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 			NextLabel, TestCode),
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+			SaveCode),
 		{ ElseCode = node([
 			goto(label(EndLabel)) -
 				"skip to the end of the switch",
@@ -328,25 +332,22 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 			tree(GoalCode,
 			tree(SaveCode,
 			     ElseCode))))
-		},
-		code_info__grab_code_info(CodeInfo1),
-		code_info__slap_code_info(CodeInfo0)
+		}
 	;
 		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+			SaveCode),
 		{ ThisCaseCode =
 			tree(TraceCode,
 			tree(GoalCode,
 			     SaveCode))
-		},
-		code_info__grab_code_info(CodeInfo1),
-		code_info__slap_code_info(CodeInfo0)
+		}
 	),
+	code_info__reset_to_position(BranchStart),
 		% generate the rest of the cases.
 	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, StoreMap,
-		EndLabel, OtherCasesCode),
-	{ CasesCode = tree(ThisCaseCode, OtherCasesCode) },
-	code_info__slap_code_info(CodeInfo1).
+		EndLabel, MaybeEnd1, MaybeEnd, OtherCasesCode),
+	{ CasesCode = tree(ThisCaseCode, OtherCasesCode) }.
 
 %------------------------------------------------------------------------------%

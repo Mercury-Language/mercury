@@ -63,7 +63,7 @@
 	%
 :- type proc_layout_info
 	--->	proc_layout_info(
-			proc_label,	% the proc label
+			label,		% the entry label
 			determinism,	% determines which stack is used
 			int,		% number of stack slots
 			maybe(int),	% location of succip on stack
@@ -170,11 +170,11 @@
 	%
 	% Add the information for a single proc.
 	%
-	% Takes the pred_proc_id, proc_label, the number of stack slots,
+	% Takes the pred_proc_id, entry label, the number of stack slots,
 	% the code model for this proc, and the stack slot of the succip
 	% in this proc (if there is one).
 	%
-:- pred continuation_info__add_proc_info(pred_proc_id::in, proc_label::in,
+:- pred continuation_info__add_proc_info(pred_proc_id::in, label::in,
 	int::in, determinism::in, maybe(int)::in, maybe(label)::in,
 	proc_label_layout_info::in, continuation_info::in,
 	continuation_info::out) is det.
@@ -226,13 +226,13 @@ continuation_info__init(ContInfo) :-
 	% Add the info for this proc (a proc_layout_info) to the
 	% continuation_info. 
 	%
-continuation_info__add_proc_info(PredProcId, ProcLabel, StackSize,
+continuation_info__add_proc_info(PredProcId, EntryLabel, StackSize,
 		Detism, SuccipLocation, MaybeTraceCallLabel, InternalMap,
 		ContInfo0, ContInfo) :-
 	( map__contains(ContInfo0, PredProcId) ->
 		error("duplicate continuation_info for proc.")
 	;
-		LayoutInfo = proc_layout_info(ProcLabel, Detism, StackSize,
+		LayoutInfo = proc_layout_info(EntryLabel, Detism, StackSize,
 			SuccipLocation, MaybeTraceCallLabel, InternalMap),
 		map__det_insert(ContInfo0, PredProcId, LayoutInfo, ContInfo)
 	).

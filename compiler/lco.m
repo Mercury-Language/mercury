@@ -271,7 +271,17 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 		Proc = Proc0,
 		Goal1 = Goal0,
 		Unifies = Unifies1,
-		ChangedVarsSet = ChangedVarsSet0,
+		list__foldl(lambda([G::in, Vs0::in, Vs::out] is det,
+			(
+				G = Expr - _,
+				Expr = unify(_, _, _, U, _),
+				U = construct(_, _, UVars, _)
+			->
+				set__insert_list(Vs0, UVars, Vs)
+			;
+				Vs = Vs0
+			)), Unifies, ChangedVarsSet0, ChangedVarsSet),
+
 		Changed = yes,
 
 		maybe_create_new_proc(ChangedVarsSet, Module0, Module,

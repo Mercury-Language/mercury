@@ -37,25 +37,9 @@
 			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_call(in, in, in, in, in, out, in, out) is det.
 
-:- pred call_gen__generate_det_builtin(pred_id, proc_id, list(var),
+:- pred call_gen__generate_builtin(code_model, pred_id, proc_id, list(var),
 			code_tree, code_info, code_info).
-:- mode call_gen__generate_det_builtin(in, in, in, out, in, out) is det.
-
-:- pred call_gen__generate_semidet_builtin(pred_id, proc_id, list(var),
-			code_tree, code_info, code_info).
-:- mode call_gen__generate_semidet_builtin(in, in, in, out, in, out) is det.
-
-:- pred call_gen__generate_nondet_builtin(pred_id, proc_id, list(var),
-			code_tree, code_info, code_info).
-:- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is
-					erroneous.
-
-/* DEAD CODE
-:- pred call_gen__generate_complicated_unify(var, var, uni_mode, can_fail,
-					code_tree, code_info, code_info).
-:- mode call_gen__generate_complicated_unify(in, in, in, in, out, in, out)
-	is det.
-*/
+:- mode call_gen__generate_builtin(in, in, in, in, out, in, out) is det.
 
 :- pred call_gen__partition_args(assoc_list(var, arg_info),
 						list(var), list(var)).
@@ -100,17 +84,12 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 		% save possibly unknown variables on the stack as well
 		% if they may be needed on backtracking, and figure out the
 		% call model
-	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, _),
+	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, _, _),
 
 		% move the input arguments to their registers
 	code_info__setup_call(ArgsInfos, caller, SetupCode),
 
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__prepare_for_call(TraceInfo, TraceCode) }
-	;
-		{ TraceCode = empty }
-	),
+	trace__prepare_for_call(TraceCode),
 
 		% figure out what locations are live at the call point,
 		% for use by the value numbering optimization
@@ -155,17 +134,17 @@ call_gen__generate_call(CodeModel, PredId, ModeId, Arguments, GoalInfo, Code)
 %---------------------------------------------------------------------------%
 
 	%
-	% for a higher-order call,
+	% For a higher-order call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by do_call_<detism>_closure in
-	% runtime/mercury_ho_call.c, generate the call to 
-	% do_call_<detism>_closure, and pick up the outputs from the 
-	% locations that we know runtime/mercury_ho_call.c leaves them in.
+	% runtime/mercury_ho_call.c, generate the call to that code,
+	% and pick up the outputs from the locations that we know
+	% the runtime system leaves them in.
 	%
-	% lambda.m ensures that procedures which are directly 
-	% higher-order-called use the compact argument convertion,
-	% so that runtime/mercury_ho_call.c doesn't have trouble 
-	% figuring out which registers the arguments go in.
+	% Lambda.m transforms the generated lambda predicates to
+	% make sure that all inputs come before all outputs, so that
+	% the code in the runtime system doesn't have trouble figuring out
+	% which registers the arguments go in.
 	%
 
 call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
@@ -180,12 +159,11 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 		ArgIKT, ModuleInfo, ArgInfos) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos) },
 	{ call_gen__partition_args(ArgsInfos, InVars, OutVars) },
-	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
 
 	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel,
-		RuntimeAddr),
+		DoHigherCall, _),
 
 		% place the immediate input arguments in registers
 		% starting at r4.
@@ -230,19 +208,13 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 			"Assign number of output arguments"
 	]) },
 
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__prepare_for_call(TraceInfo, TraceCode) }
-	;
-		{ TraceCode = empty }
-	),
-
+	trace__prepare_for_call(TraceCode),
 	code_info__get_next_label(ReturnLabel),
 	{ CallCode = node([
 		livevals(LiveVals)
 			- "",
-		call(RuntimeAddr, label(ReturnLabel), OutLiveVals, CallModel)
-			- "setup and call higher order pred",
+		call(DoHigherCall, label(ReturnLabel), OutLiveVals, CallModel)
+			- "Setup and call higher order pred",
 		label(ReturnLabel)
 			- "Continuation label"
 	]) },
@@ -265,16 +237,17 @@ call_gen__generate_higher_order_call(_OuterCodeModel, PredVar, Args, Types,
 %---------------------------------------------------------------------------%
 
 	%
-	% for a class method call,
+	% For a class method call,
 	% we split the arguments into inputs and outputs, put the inputs
 	% in the locations expected by do_call_<detism>_class_method in
-	% runtime/mercury_ho_call.c, generate the call to 
-	% do_call_<detism>_class_method, and pick up the outputs from the 
-	% locations that we know runtime/mercury_ho_call.c leaves them in.
+	% runtime/mercury_ho_call.c, generate the call to that code,
+	% and pick up the outputs from the locations that we know
+	% the runtime system leaves them in.
 	%
+
 call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 		Types, ArgModes, Det, GoalInfo, Code) -->
-	{ determinism_to_code_model(Det, InnerCodeModel) },
+	{ determinism_to_code_model(Det, CodeModel) },
 	code_info__get_globals(Globals),
 	code_info__get_module_info(ModuleInfo),
 
@@ -286,40 +259,15 @@ call_gen__generate_class_method_call(_OuterCodeModel, TCVar, MethodNum, Args,
 	),
 	{ ArgModes = argument_modes(InstTable, Modes) },
 	{ instmap__init_reachable(BogusInstMap) },	% YYY
-	{ make_arg_infos(ArgsMethod, Types, Modes, InnerCodeModel,
+	{ make_arg_infos(ArgsMethod, Types, Modes, CodeModel,
 		BogusInstMap, InstTable, ModuleInfo, ArgInfo) },
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsAndArgInfo) },
 	{ call_gen__partition_args(ArgsAndArgInfo, InVars, OutVars) },
-	call_gen__generate_class_method_call_2(InnerCodeModel, TCVar, 
-		MethodNum, InVars, OutVars, GoalInfo, Code).
-
-:- pred call_gen__generate_class_method_call_2(code_model, var, int, list(var),
-		list(var), hlds_goal_info, code_tree, code_info, code_info).
-:- mode call_gen__generate_class_method_call_2(in, in, in, in, in, in, out, in,
-		out) is det.
-
-call_gen__generate_class_method_call_2(CodeModel, TCVar, Index, 
-		InVars, OutVars, GoalInfo, Code) -->
-	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
-	(
-		{ CodeModel = model_det },
-		{ CallModel = det },
-		{ RuntimeAddr = do_det_class_method },
-		{ FlushCode = empty }
-	;
-		{ CodeModel = model_semi },
-		{ CallModel = semidet },
-		{ RuntimeAddr = do_semidet_class_method },
-		{ FlushCode = empty }
-	;
-		{ CodeModel = model_non },
-		code_info__may_use_nondet_tailcall(TailCall),
-		{ CallModel = nondet(TailCall) },
-		{ RuntimeAddr = do_nondet_class_method },
-		code_info__unset_failure_cont(FlushCode)
-	),
+	call_gen__prepare_for_call(CodeModel, FlushCode, CallModel,
+		_, DoMethodCall),
+
 		% place the immediate input arguments in registers
 		% starting at r5.
 	call_gen__generate_immediate_args(InVars, 5, InLocs, ImmediateCode),
@@ -336,14 +284,13 @@ call_gen__generate_class_method_call_2(CodeModel, TCVar, Index,
 	),
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
 	{ call_gen__output_arg_locs(OutArguments, OutLocs) },
-
 	code_info__get_instmap(InstMap),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	{ instmap__apply_instmap_delta(InstMap, InstMapDelta,
 		AfterCallInstMap) },
-
 	call_gen__generate_return_livevals(OutArgs, OutLocs, AfterCallInstMap, 
 		OutLiveVals),
+
 	code_info__produce_variable(TCVar, TCVarCode, TCVarRVal),
 	(
 		{ TCVarRVal = lval(reg(r, 1)) }
@@ -351,78 +298,75 @@ call_gen__generate_class_method_call_2(CodeModel, TCVar, Index,
 		{ CopyCode = empty }
 	;
 		{ CopyCode = node([
-			assign(reg(r, 1), TCVarRVal) - "Copy typeclass info"
-		])}
+			assign(reg(r, 1), TCVarRVal)
+				- "Copy typeclass info"
+		]) }
 	),
 	{ list__length(InVars, NInVars) },
 	{ list__length(OutVars, NOutVars) },
-	{ SetupCode = tree(CopyCode, node([
-			assign(reg(r, 2), const(int_const(Index))) -
-				"Index of class method in typeclass info",
-			assign(reg(r, 3), const(int_const(NInVars))) -
-				"Assign number of immediate input arguments",
-			assign(reg(r, 4), const(int_const(NOutVars))) -
-				"Assign number of output arguments"
-		])
-	) },
-	code_info__get_next_label(ReturnLabel),
-	{ TryCallCode = node([
-		livevals(LiveVals) - "",
-		call(RuntimeAddr, label(ReturnLabel), OutLiveVals, CallModel)
-			- "setup and call class method",
-		label(ReturnLabel) - "Continuation label"
+	{ SetupCode = node([
+		assign(reg(r, 2), const(int_const(MethodNum))) -
+			"Index of class method in typeclass info",
+		assign(reg(r, 3), const(int_const(NInVars))) -
+			"Assign number of immediate input arguments",
+		assign(reg(r, 4), const(int_const(NOutVars))) -
+			"Assign number of output arguments"
 	]) },
+
+	trace__prepare_for_call(TraceCode),
+	code_info__get_next_label(ReturnLabel),
+	{ CallCode = node([
+		livevals(LiveVals)
+			- "",
+		call(DoMethodCall, label(ReturnLabel), OutLiveVals, CallModel)
+			- "Setup and call class method",
+		label(ReturnLabel)
+			- "Continuation label"
+	]) },
+
 	call_gen__rebuild_registers(OutArguments),
-	(
-		{ CodeModel = model_semi }
-	->
-		code_info__generate_failure(FailCode),
-		code_info__get_next_label(ContLab),
-		{ TestSuccessCode = node([
-			if_val(lval(reg(r, 1)), label(ContLab)) -
-				"Test for success"
-		]) },
-		{ ContLabelCode = node([label(ContLab) - ""]) },
-		{ CallCode =
-			tree(TryCallCode,
-			tree(TestSuccessCode,
-			tree(FailCode,
-			     ContLabelCode))) }
-	;
-		{ CallCode = TryCallCode }
-	),
+	call_gen__handle_failure(CodeModel, FailHandlingCode),
+
 	{ Code =
 		tree(SaveCode,
 		tree(FlushCode,
 		tree(ImmediateCode,
 		tree(TCVarCode,
+		tree(CopyCode,
 		tree(SetupCode,
-		     CallCode)))))
+		tree(TraceCode,
+		tree(CallCode,
+		     FailHandlingCode))))))))
 	}.
 
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__prepare_for_call(code_model, code_tree, call_model,
-	code_addr, code_info, code_info).
-:- mode call_gen__prepare_for_call(in, out, out, out, in, out) is det.
+	code_addr, code_addr, code_info, code_info).
+:- mode call_gen__prepare_for_call(in, out, out, out, out, in, out) is det.
 
-call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, RuntimeAddr) -->
+call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, Higher, Method) -->
+	code_info__succip_is_used,
 	(
 		{ CodeModel = model_det },
 		{ CallModel = det },
-		{ RuntimeAddr = do_det_closure },
+		{ Higher = do_det_closure },
+		{ Method = do_det_class_method },
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_semi },
 		{ CallModel = semidet },
-		{ RuntimeAddr = do_semidet_closure },
+		{ Higher = do_semidet_closure },
+		{ Method = do_semidet_class_method },
 		{ FlushCode = empty }
 	;
 		{ CodeModel = model_non },
 		code_info__may_use_nondet_tailcall(TailCall),
 		{ CallModel = nondet(TailCall) },
-		{ RuntimeAddr = do_nondet_closure },
-		code_info__unset_failure_cont(FlushCode)
+		{ Higher = do_nondet_closure },
+		{ Method = do_nondet_class_method },
+		code_info__flush_resume_vars_to_stack(FlushCode),
+		code_info__set_resume_point_and_frame_to_unknown
 	).
 
 :- pred call_gen__handle_failure(code_model, code_tree, code_info, code_info).
@@ -430,13 +374,16 @@ call_gen__prepare_for_call(CodeModel, FlushCode, CallModel, RuntimeAddr) -->
 
 call_gen__handle_failure(CodeModel, FailHandlingCode) -->
 	( { CodeModel = model_semi } ->
-		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab),
 		{ FailTestCode = node([
 			if_val(lval(reg(r, 1)), label(ContLab))
 				- "test for success"
 		]) },
-		{ ContLabelCode = node([label(ContLab) - ""]) },
+		code_info__generate_failure(FailCode),
+		{ ContLabelCode = node([
+			label(ContLab)
+				- ""
+		]) },
 		{ FailHandlingCode =
 			tree(FailTestCode,
 			tree(FailCode, 
@@ -521,57 +468,60 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args]) -->
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
+call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
-	(
-		{ code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, no, yes(Var - Rval)) }
+	{
+		code_util__translate_builtin(ModuleName, PredName,
+			ProcId, Args, MaybeTestPrime, MaybeAssignPrime)
 	->
-		code_info__cache_expression(Var, Rval),
-		{ Code = empty }
+		MaybeTest = MaybeTestPrime,
+		MaybeAssign = MaybeAssignPrime
 	;
-		{ error("Unknown builtin predicate") }
-	).
-
-%---------------------------------------------------------------------------%
-
-call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
-	code_info__get_module_info(ModuleInfo),
-	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
+		error("Unknown builtin predicate")
+	},
 	(
-		{ code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, yes(Rval0), Assign) }
-	->
-		( { Rval0 = binop(BinOp, X0, Y0) } ->
-			call_gen__generate_builtin_arg(X0, X, CodeX),
-			call_gen__generate_builtin_arg(Y0, Y, CodeY),
-			{ Rval = binop(BinOp, X, Y) },
-			{ ArgCode = tree(CodeX, CodeY) }
-		; { Rval0 = unop(UnOp, X0) } ->
-			call_gen__generate_builtin_arg(X0, X, ArgCode),
-			{ Rval = unop(UnOp, X) }
+		{ CodeModel = model_det },
+		(
+			{ MaybeTest = no },
+			{ MaybeAssign = yes(Var - Rval) }
+		->
+			code_info__cache_expression(Var, Rval),
+			{ Code = empty }
 		;
-			{ error("Unknown builtin predicate") }
-		),
-		code_info__fail_if_rval_is_false(Rval, TestCode),
-		( { Assign = yes(Var - AssignRval) } ->
-			code_info__cache_expression(Var, AssignRval)
-		;
-			[]
-		),
-		{ Code = tree(ArgCode, TestCode) }
+			{ error("Malformed det builtin predicate") }
+		)
 	;
-		{ error("Unknown builtin predicate") }
+		{ CodeModel = model_semi },
+		(
+			{ MaybeTest = yes(Test) }
+		->
+			( { Test = binop(BinOp, X0, Y0) } ->
+				call_gen__generate_builtin_arg(X0, X, CodeX),
+				call_gen__generate_builtin_arg(Y0, Y, CodeY),
+				{ Rval = binop(BinOp, X, Y) },
+				{ ArgCode = tree(CodeX, CodeY) }
+			; { Test = unop(UnOp, X0) } ->
+				call_gen__generate_builtin_arg(X0, X, ArgCode),
+				{ Rval = unop(UnOp, X) }
+			;
+				{ error("Malformed semi builtin predicate") }
+			),
+			code_info__fail_if_rval_is_false(Rval, TestCode),
+			( { MaybeAssign = yes(Var - AssignRval) } ->
+				code_info__cache_expression(Var, AssignRval)
+			;
+				[]
+			),
+			{ Code = tree(ArgCode, TestCode) }
+		;
+			{ error("Malformed semi builtin predicate") }
+		)
+	;
+		{ CodeModel = model_non },
+		{ error("Nondet builtin predicate") }
 	).
-
-%---------------------------------------------------------------------------%
-
-call_gen__generate_nondet_builtin(_PredId, _ProcId, _Args, _Code) -->
-	% there aren't any nondet builtins
-	{ error("Unknown nondet builtin predicate") }.
 
 %---------------------------------------------------------------------------%
 
@@ -601,89 +551,6 @@ call_gen__partition_args([V - arg_info(_Loc,Mode) | Rest], Ins, Outs) :-
 		call_gen__partition_args(Rest, Ins, Outs0),
 		Outs = [V | Outs0]
 	).
-
-%---------------------------------------------------------------------------%
-
-/* DEAD CODE
-call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
-	{ determinism_components(Det, CanFail, at_most_one) },
-	{ determinism_to_code_model(Det, CodeModel) },
-	code_info__get_globals(Globals),
-	{ globals__get_args_method(Globals, ArgsMethod) },
-	{ arg_info__unify_arg_info(ArgsMethod, CodeModel, ArgInfo) },
-	{ Arguments = [Var1, Var2] },
-	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
-	{ call_gen__select_out_args(Args, OutArgs) },
-	call_gen__save_variables(OutArgs, CodeA),
-	code_info__setup_call(Args, caller, CodeB),
-	code_info__get_next_label(ReturnLabel),
-	code_info__get_module_info(ModuleInfo),
-	code_info__variable_type(Var1, VarType),
-	code_info__get_inst_key_table(InstKeyTable),
-	( { type_to_type_id(VarType, VarTypeId, _) } ->
-		{ unify_proc__lookup_mode_num(ModuleInfo, InstKeyTable,
-			VarTypeId, UniMode, Det, ModeNum) },
-		{ call_gen__input_args(ArgInfo, InputArguments) },
-		call_gen__generate_call_livevals(OutArgs, InputArguments,
-			CodeC0),
-		{ call_gen__output_arg_locs(Args, OutputArguments) },
-		call_gen__generate_return_livevals(OutArgs, OutputArguments, 
-				GoalInfo, OutLiveVals),
-		{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum,
-			UniLabel) },
-		{ Address = imported(UniLabel) },
-	/\************
-		% Currently we just conservatively assume the address
-		% of a unification predicate is imported.  For
-		% non-standard modes, we could do better, if
-		% procs_per_c_function is zero (meaning infinity),
-		% or if it is a recursive call.
-		% But the code below doesn't work if procs_per_c_function
-		% is non-zero and it's not a recursive call.
-		{ ModeNum = 0 ->
-			Address = imported(UniLabel)
-		;
-			Address = label(local(UniLabel))
-		},
-	**************\/
-		(
-			{ CanFail = can_fail }
-		->
-			{ CallModel = semidet }
-		;
-			{ CallModel = det }
-		),
-		{ CodeC1 = node([
-			call(Address, label(ReturnLabel),
-				OutLiveVals, CallModel)
-				- "branch to out-of-line unification procedure",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		% `type_to_type_id' failed - the type must be a type variable,
-		% i.e. it is a polymorphic unification.
-		% However, these sorts of unifications should have been changed
-		% into calls to unify/2 by polymorphism.m, so if we encounter
-		% any here, it's an internal error.
-		{ error("unexpected polymorphic unification") }
-	),
-	(
-		{ CanFail = can_fail }
-	->
-		code_info__get_next_label(ContLab),
-		call_gen__rebuild_registers(Args),
-		code_info__generate_failure(FailCode),
-		{ CodeD = tree(node([
-			if_val(lval(reg(r(1))), label(ContLab)) -
-				"Test for success"
-			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
-	;
-		call_gen__rebuild_registers(Args),
-		{ CodeD = empty }
-	),
-
-	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) }.
-*/
 
 %---------------------------------------------------------------------------%
 

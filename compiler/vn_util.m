@@ -44,10 +44,11 @@ vn_util__find_specials(vn_framevar(_), []).
 vn_util__find_specials(vn_succip, [vn_succip]).
 vn_util__find_specials(vn_maxfr, [vn_maxfr]).
 vn_util__find_specials(vn_curfr, [vn_curfr]).
+vn_util__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn_util__find_specials(vn_redoip(Vn), [vn_redoip(Vn)]).
+vn_util__find_specials(vn_redofr(Vn), [vn_redofr(Vn)]).
 vn_util__find_specials(vn_succip(Vn), [vn_succip(Vn)]).
 vn_util__find_specials(vn_succfr(Vn), [vn_succfr(Vn)]).
-vn_util__find_specials(vn_prevfr(Vn), [vn_prevfr(Vn)]).
 vn_util__find_specials(vn_hp, [vn_hp]).
 vn_util__find_specials(vn_sp, [vn_sp]).
 vn_util__find_specials(vn_field(_, _, _), []).
@@ -939,18 +940,21 @@ vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 	; Lval = mem_ref(Rval1) ->
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_mem_ref(Vn1)
-	; Lval = succfr(Rval1) ->
-		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
-		Vnlval = vn_succfr(Vn1)
 	; Lval = prevfr(Rval1) ->
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_prevfr(Vn1)
 	; Lval = redoip(Rval1) ->
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_redoip(Vn1)
+	; Lval = redofr(Rval1) ->
+		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_redofr(Vn1)
 	; Lval = succip(Rval1) ->
 		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
 		Vnlval = vn_succip(Vn1)
+	; Lval = succfr(Rval1) ->
+		vn_util__rval_to_vn(Rval1, Vn1, VnTables0, VnTables),
+		Vnlval = vn_succfr(Vn1)
 	;
 		error("unexpected lval in vn_util__lval_to_vnlval")
 	).
@@ -967,9 +971,10 @@ vn_util__no_access_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
 vn_util__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
 vn_util__no_access_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
 vn_util__no_access_lval_to_vnlval(curfr,		yes(vn_curfr)).
-vn_util__no_access_lval_to_vnlval(redoip(_),		no).
-vn_util__no_access_lval_to_vnlval(succip(_),		no).
 vn_util__no_access_lval_to_vnlval(prevfr(_),		no).
+vn_util__no_access_lval_to_vnlval(redoip(_),		no).
+vn_util__no_access_lval_to_vnlval(redofr(_),		no).
+vn_util__no_access_lval_to_vnlval(succip(_),		no).
 vn_util__no_access_lval_to_vnlval(succfr(_),		no).
 vn_util__no_access_lval_to_vnlval(hp,			yes(vn_hp)).
 vn_util__no_access_lval_to_vnlval(sp,			yes(vn_sp)).
@@ -985,10 +990,11 @@ vn_util__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn_util__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
 vn_util__no_access_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
 vn_util__no_access_vnlval_to_lval(vn_curfr,		yes(curfr)).
-vn_util__no_access_vnlval_to_lval(vn_succfr(_),		no).
-vn_util__no_access_vnlval_to_lval(vn_prevfr(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_redofr(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_redoip(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_prevfr(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_succip(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_succfr(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn_util__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
 vn_util__no_access_vnlval_to_lval(vn_field(_, _, _),	no).
@@ -1002,10 +1008,11 @@ vn_util__vnlval_access_vns(vn_framevar(_), []).
 vn_util__vnlval_access_vns(vn_succip, []).
 vn_util__vnlval_access_vns(vn_maxfr, []).
 vn_util__vnlval_access_vns(vn_curfr, []).
-vn_util__vnlval_access_vns(vn_succfr(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_prevfr(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_redoip(Vn), [Vn]).
+vn_util__vnlval_access_vns(vn_redofr(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_succip(Vn), [Vn]).
+vn_util__vnlval_access_vns(vn_succfr(Vn), [Vn]).
 vn_util__vnlval_access_vns(vn_hp, []).
 vn_util__vnlval_access_vns(vn_sp, []).
 vn_util__vnlval_access_vns(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
@@ -1179,10 +1186,11 @@ vn_util__classify_loc_cost(vn_framevar(_), 1).
 vn_util__classify_loc_cost(vn_succip, 0).
 vn_util__classify_loc_cost(vn_maxfr, 0).
 vn_util__classify_loc_cost(vn_curfr, 0).
-vn_util__classify_loc_cost(vn_succfr(_), 1).
 vn_util__classify_loc_cost(vn_prevfr(_), 1).
 vn_util__classify_loc_cost(vn_redoip(_), 1).
+vn_util__classify_loc_cost(vn_redofr(_), 1).
 vn_util__classify_loc_cost(vn_succip(_), 1).
+vn_util__classify_loc_cost(vn_succfr(_), 1).
 vn_util__classify_loc_cost(vn_hp, 0).
 vn_util__classify_loc_cost(vn_sp, 0).
 vn_util__classify_loc_cost(vn_field(_, _, _), 2).
@@ -1219,7 +1227,7 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			VnInstr = vn_call(_, _, _, _),
 			VnTables1 = VnTables0
 		;
-			VnInstr = vn_mkframe(_, _, _, _),
+			VnInstr = vn_mkframe(_, _),
 			VnTables1 = VnTables0
 		;
 			VnInstr = vn_label(_),

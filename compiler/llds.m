@@ -152,21 +152,17 @@
 			% says whether tail recursion elimination is
 			% potentially applicable to the call.
 
-	;	mkframe(string, int, maybe(pragma_c_struct), code_addr)
-			% mkframe(Comment, SlotCount, MaybePragmaStruct,
-			% FailureContinuation) creates a nondet stack frame.
-			% Comment says what predicate creates the frame.
-			% SlotCount says how many ordinary framevar slots
-			% it ought to have. If MaybePragmaStruct is yes,
-			% the argument gives the details of the structure
-			% which occupies the rest of the framevar slots.
-			% CodeAddr is the code address to branch to when
-			% trying to generate the next solution from this
+	;	mkframe(nondet_frame_info, code_addr)
+			% mkframe(NondetFrameInfo, CodeAddr) creates a nondet
+			% stack frame. NondetFrameInfo says whether the frame
+			% is an ordinary frame, containing the variables of a
+			% model_non procedure, or a temp frame used only for
+			% its redoip/redofr slots. If the former, it also
+			% gives the details of the size of the variable parts
+			% of the frame (temp frames have no variable sized
+			% parts). CodeAddr is the code address to branch to
+			% when trying to generate the next solution from this
 			% choice point.
-
-	;	modframe(code_addr)
-			% modframe(FailureContinuation) is the same as
-			% current_redoip = FailureContinuation.
 
 	;	label(label)
 			% Defines a label that can be used as the
@@ -322,6 +318,33 @@
 			% term is specified by the given lval.
 	.
 
+:- type nondet_frame_info
+	--->	temp_frame(
+			temp_frame_type
+		)
+	;	ordinary_frame(
+			string, 		% Name of the predicate.
+			int,			% Number of framevar slots.
+			maybe(pragma_c_struct)	% If yes, the frame should
+						% also contain this struct
+						% (for use by a model_non
+						% pragma C code).
+		).
+
+	% Temporary frames on the nondet stack exist only to provide a failure
+	% environment, i.e. a place to store a redoip and a redofr. Accurate
+	% garbage collection and execution tracing need to know how to
+	% interpret the layout information associated with the label whose
+	% address is in the redoip slot. If the label is in a procedure that
+	% stores its variables on the nondet stack, the redofr slot will give
+	% the address of the relevant stack frame. If the label is in a
+	% procedure that stores its variables on the det stack, the temporary
+	% frame will contain an extra slot containing the address of the
+	% relevant frame on the det stack.
+:- type temp_frame_type
+	--->	det_stack_proc
+	;	nondet_stack_proc.
+
 	% Procedures defined by nondet pragma C codes must have some way of
 	% preserving information after a success, so that when control
 	% backtracks to the procedure, the C code knows what to do.
@@ -420,6 +443,7 @@
 	;	curfr		% a stored curfr
 	;	maxfr		% a stored maxfr
 	;	redoip
+	;	redofr
 	;	hp
 	;	var(type, qualified_inst)
 				% a variable
@@ -490,6 +514,12 @@
 	;	redoip(rval)	% The redoip slot of the specified
 				% nondet stack frame; holds the code address
 				% to jump to on failure.
+
+	;	redofr(rval)	% the redofr slot of the specified
+				% nondet stack frame; holds the address of
+				% the frame that the curfr register should be
+				% set to when backtracking through the redoip
+				% slot.
 
 	;	succfr(rval)	% The succfr slot of the specified
 				% nondet stack frame; holds the address of
@@ -787,6 +817,7 @@ llds__lval_type(stackvar(_), word).
 llds__lval_type(framevar(_), word).
 llds__lval_type(succip(_), code_ptr).
 llds__lval_type(redoip(_), code_ptr).
+llds__lval_type(redofr(_), data_ptr).
 llds__lval_type(succfr(_), data_ptr).
 llds__lval_type(prevfr(_), data_ptr).
 llds__lval_type(field(_, _, _), word).

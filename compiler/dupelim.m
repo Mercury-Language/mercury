@@ -294,10 +294,7 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = call(_, _, _, _),
 		Instr = Instr1
 	;
-		Instr1 = mkframe(_, _, _, _),
-		Instr = Instr1
-	;
-		Instr1 = modframe(_),
+		Instr1 = mkframe(_, _),
 		Instr = Instr1
 	;
 		Instr1 = label(_),
@@ -413,6 +410,9 @@ standardize_lval(Lval1, Lval) :-
 		Lval = Lval1
 	;
 		Lval1 = succfr(_),
+		Lval = Lval1
+	;
+		Lval1 = redofr(_),
 		Lval = Lval1
 	;
 		Lval1 = prevfr(_),
@@ -562,11 +562,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = mkframe(_, _, _, _),
-		Instr2 = Instr1,
-		Instr = Instr1
-	;
-		Instr1 = modframe(_),
+		Instr1 = mkframe(_, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
@@ -695,6 +691,10 @@ most_specific_lval(Lval1, Lval2, Lval) :-
 		Lval2 = Lval1,
 		Lval = Lval1
 	;
+		Lval1 = redofr(_),
+		Lval2 = Lval1,
+		Lval = Lval1
+	;
 		Lval1 = succfr(_),
 		Lval2 = Lval1,
 		Lval = Lval1
@@ -793,10 +793,8 @@ dupelim__replace_labels_instr(assign(Lval0, Rval0), ReplMap,
 dupelim__replace_labels_instr(call(Target, Return0, LiveInfo, CM),
 		ReplMap, call(Target, Return, LiveInfo, CM)) :-
 	dupelim__replace_labels_code_addr(Return0, ReplMap, Return).
-dupelim__replace_labels_instr(mkframe(Name, Size, Pragma, Redoip0), ReplMap,
-		mkframe(Name, Size, Pragma, Redoip)) :-
-	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
-dupelim__replace_labels_instr(modframe(Redoip0), ReplMap, modframe(Redoip)) :-
+dupelim__replace_labels_instr(mkframe(NondetFrameInfo, Redoip0), ReplMap,
+		mkframe(NondetFrameInfo, Redoip)) :-
 	dupelim__replace_labels_code_addr(Redoip0, ReplMap, Redoip).
 dupelim__replace_labels_instr(label(Label), ReplMap, label(Label)) :-
 	( map__search(ReplMap, Label, _) ->
@@ -874,6 +872,8 @@ dupelim__replace_labels_lval(curfr, _, curfr).
 dupelim__replace_labels_lval(succip(Rval0), ReplMap, succip(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_lval(redoip(Rval0), ReplMap, redoip(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
+dupelim__replace_labels_lval(redofr(Rval0), ReplMap, redofr(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_lval(succfr(Rval0), ReplMap, succfr(Rval)) :-
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).

@@ -162,7 +162,7 @@
 	module_info).
 :- mode module_info_set_superclasses(in, in, out) is det.
 
-	% The cell count is used as a unique label number for
+	% The cell count is used as a unique cell number for
 	% constants in the generated C code.
 :- pred module_info_get_cell_count(module_info, int).
 :- mode module_info_get_cell_count(in, out) is det.

@@ -473,7 +473,10 @@ produce_auxiliary_procs(ClassVars,
 		create_atomic_unification(ReturnVar, 
 			functor(cons(InstancePredName, PredArity),
 				RealHeadVars), 
-			Context, explicit, [], IntroducedGoal)
+			Context, explicit, [], IntroducedGoal0),
+		% set the goal_info
+		IntroducedGoal0 = IntroducedGoalExpr - _,
+		IntroducedGoal = IntroducedGoalExpr - GoalInfo
 	),
 	IntroducedClause = clause(InstanceProcIds, IntroducedGoal, Context),
 	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
