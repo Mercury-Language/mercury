@@ -116,26 +116,60 @@ inst_is_bound(_, abstract_inst(_, _)).
 	% inst_is_ground succeeds iff the inst passed is `ground'
 	% or the equivalent.  Abstract insts are not considered ground.
 
-:- inst_is_ground(_, X) when X.		% NU-Prolog indexing.
+inst_is_ground(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_ground_2(ModuleInfo, Inst, Inst, Expansions).
 
-inst_is_ground(ModuleInfo, bound(List)) :-
-	bound_inst_list_is_ground(List, ModuleInfo).
-inst_is_ground(_, ground).
-inst_is_ground(_, inst_var(_)) :-
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_ground_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_ground_2(in, in, in, in) is semidet.
+
+:- inst_is_ground_2(_, X, _, _) when X.		% NU-Prolog indexing.
+
+inst_is_ground_2(ModuleInfo, bound(List), _, Expansions) :-
+	bound_inst_list_is_ground_2(List, ModuleInfo, Expansions).
+inst_is_ground_2(_, ground, _, _).
+inst_is_ground_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
-inst_is_ground(ModuleInfo, user_defined_inst(Name, Args)) :-
-	inst_lookup(ModuleInfo, Name, Args, Inst),
-	inst_is_bound(ModuleInfo, Inst).
+inst_is_ground_2(ModuleInfo, user_defined_inst(Name, Args), Inst, Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, Name, Args, Inst2),
+		inst_is_ground_2(ModuleInfo, Inst2, Inst2, Expansions2)
+	).
 
 bound_inst_list_is_ground([], _).
 bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
 	inst_list_is_ground(Args, ModuleInfo),
 	bound_inst_list_is_ground(BoundInsts, ModuleInfo).
 
+:- pred bound_inst_list_is_ground_2(list(bound_inst), module_info, set(inst)).
+:- mode bound_inst_list_is_ground_2(in, in, in) is semidet.
+
+bound_inst_list_is_ground_2([], _, _).
+bound_inst_list_is_ground_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
+		Expansions) :-
+	inst_list_is_ground_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_ground_2(BoundInsts, ModuleInfo, Expansions).
+
 inst_list_is_ground([], _).
 inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 	inst_is_ground(ModuleInfo, Inst),
 	inst_list_is_ground(Insts, ModuleInfo).
+
+:- pred inst_list_is_ground_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_ground_2(in, in, in) is semidet.
+
+inst_list_is_ground_2([], _, _).
+inst_list_is_ground_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_ground_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_ground_2(Insts, ModuleInfo, Expansions).
 
 bound_inst_list_is_free([], _).
 bound_inst_list_is_free([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
