@@ -135,16 +135,16 @@ get_ftn_ptr_type_ctor_info_unify() {
 
 .method public static default int32
 get_ftn_ptr_type_ctor_desc_compare() {
-	ldftn int32 ['mercury'] 'mercury'.'type_desc'.'mercury_code'::
+	ldftn void ['mercury'] 'mercury'.'type_desc__cpp_code'.'mercury_code'::
 	do_compare__type_ctor_desc_0_0(
-		class [mscorlib]System.Object[], class [mscorlib]System.Object,
+		class [mscorlib]System.Object[]&, class [mscorlib]System.Object,
 		class [mscorlib]System.Object)
 	ret
 }
 
 .method public static default int32
 get_ftn_ptr_type_ctor_desc_unify() {
-	ldftn int32 ['mercury'] 'mercury'.'type_desc'.'mercury_code'::
+	ldftn int32 ['mercury'] 'mercury'.'type_desc__cpp_code'.'mercury_code'::
 	do_unify__type_ctor_desc_0_0(
 		class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret

@@ -3324,6 +3324,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			; LibModuleName0 = "type_desc",
 				( 
 				  Name = "type_desc", Arity = 0
+				; Name = "type_ctor_desc", Arity = 0
 				)
 			; LibModuleName0 = "private_builtin",
 				( 
