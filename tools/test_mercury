@@ -443,11 +443,15 @@ cd ..
 : update the unstable release
 
 BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
+BETA_WEBDIR=/local/dept/w3/unsupported/docs/mercury/download/files/beta-releases
 
 case $HOST in murlibobo)
 	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
-		$BETA_FTPDIR
+		$BETA_FTPDIR 
+	rm -f $BETA_WEBDIR/mercury-*-rotd-*-unstable.tar.gz &&
+	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_WEBDIR
 	;;
 esac
 
@@ -480,7 +484,16 @@ case $status in
 	    ln $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
 	    ln $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
-	        $BETA_FTPDIR/mercury-tests-$version.tar.gz 
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz &&
+
+		# Only delete the stable rotds.
+	    rm -f $BETA_WEBDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    ln $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
+	    ln $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-extras-$version.tar.gz &&
+	    ln $BETA_WEBDIR/mercury-tests-$version-unstable.tar.gz \
+	        $BETA_WEBDIR/mercury-tests-$version.tar.gz 
 	    ;;
 	esac
 	echo "test_mercury exiting successfully at `date`" 1>&2
