@@ -110,9 +110,16 @@ init_context(MR_Context *c)
 			nondstack_size, next_offset(), nondstack_zone_size,
 			default_handler);
 	}
-	c->context_maxfr = c->nondetstack_zone->min;
-	c->context_curfr = c->nondetstack_zone->min;
+	/*
+	** Note that maxfr and curfr point to the last word in the frame,
+	** not to the first word, so we need to add the size of the frame,
+	** minus one word, to the base address to get the maxfr/curfr pointer
+	** for the first frame on the nondet stack.
+	*/
+	c->context_maxfr = c->nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
+	c->context_curfr = c->context_maxfr;
 	MR_redoip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_redofr_slot(c->context_curfr) = NULL;
 	MR_prevfr_slot(c->context_curfr) = NULL;
 	MR_succip_slot(c->context_curfr) = ENTRY(do_not_reached);
 	MR_succfr_slot(c->context_curfr) = NULL;
