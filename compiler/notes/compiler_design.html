@@ -657,6 +657,24 @@ so that the compiler does the right thing for options such as
 	</ul>
 	<p>
 
+<dt> constraint based mode analysis propagation solver
+
+	<dd> This is an new alternative
+	for the constraint based mode analysis algorithm.
+	So far it builds a system of boolean constraints
+	about where variables can be bound,
+	but does not solve those constraints as yet.
+
+	<ul>
+	<li> prop_mode_constraints.m is the interface to the old
+	mode_constraints.m. It builds constraints for an SCC.
+	<li> build_mode_constraints.m is the module that traverses a predicate
+	to build constraints for it.
+	<li> abstract_mode_constraints.m describes data structures for the
+	constraints themselves.
+	</ul>
+	<p>
+
 <dt> indexing and determinism analysis
  
 	<dd>
@@ -1588,6 +1606,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-02-15 05:22:23 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-02-22 12:33:50 $ by $Author: richardf $@cs.mu.oz.au. <br>
 </body>
 </html>
