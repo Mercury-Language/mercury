@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,11 +157,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred normalise_insts(list(inst), module_info, list(inst)).
-:- mode normalise_insts(in, in, out) is det.
+:- pred normalise_insts(list(inst), list(type), module_info, list(inst)).
+:- mode normalise_insts(in, in, in, out) is det.
 
-:- pred normalise_inst(inst, module_info, inst).
-:- mode normalise_inst(in, in, out) is det.
+:- pred normalise_inst(inst, (type), module_info, inst).
+:- mode normalise_inst(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -182,7 +182,7 @@
 
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list.
-:- import_module prog_util, type_util.
+:- import_module prog_util, prog_io, type_util.
 :- import_module inst_match, inst_util, term.
 
 %-----------------------------------------------------------------------------%
@@ -1509,27 +1509,39 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_insts([], _, []).
-normalise_insts([Inst0|Insts0], ModuleInfo, [Inst|Insts]) :-
-	normalise_inst(Inst0, ModuleInfo, Inst),
-	normalise_insts(Insts0, ModuleInfo, Insts).
+normalise_insts([], [], _, []).
+normalise_insts([Inst0|Insts0], [Type|Types], ModuleInfo, [Inst|Insts]) :-
+	normalise_inst(Inst0, Type, ModuleInfo, Inst),
+	normalise_insts(Insts0, Types, ModuleInfo, Insts).
+normalise_insts([], [_|_], _, _) :-
+	error("normalise_insts: length mismatch").
+normalise_insts([_|_], [], _, _) :-
+	error("normalise_insts: length mismatch").
 
 	% This is a bit of a hack.
 	% The aim is to avoid non-termination due to the creation
 	% of ever-expanding insts.
 	% XXX should also normalise partially instantiated insts.
 
-normalise_inst(Inst0, ModuleInfo, NormalisedInst) :-
+normalise_inst(Inst0, Type, ModuleInfo, NormalisedInst) :-
 	inst_expand(ModuleInfo, Inst0, Inst),
 	( Inst = bound(_, _) ->
 		(
 			inst_is_ground(ModuleInfo, Inst),
-			inst_is_unique(ModuleInfo, Inst)
+			inst_is_unique(ModuleInfo, Inst),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(unique, no)
 		;
 			inst_is_ground(ModuleInfo, Inst),
-			inst_is_mostly_unique(ModuleInfo, Inst)
+			inst_is_mostly_unique(ModuleInfo, Inst),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(mostly_unique, no)
 		;

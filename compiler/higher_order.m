@@ -607,7 +607,7 @@ check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :-
 	Info = info(PredVars, Requests, NewPreds, PredProcId, 
 		PredInfo, ProcInfo, ModuleInfo, Params, Changed).
 	
-check_unify(complicated_unify(_, _)) -->
+check_unify(complicated_unify(_, _, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
 
 :- pred is_interesting_cons_id(ho_params::in, cons_id::in) is semidet.
@@ -1748,11 +1748,13 @@ create_new_pred(Request, NewPred, NextHOid0, NextHOid,
 	varset__init(EmptyVarSet),
 	map__init(EmptyVarTypes),
 	map__init(EmptyProofs),
+	map__init(EmptyTIMap),
+	map__init(EmptyTCIMap),
 	
 	% This isn't looked at after here, and just clutters up
 	% hlds dumps if it's filled in.
 	ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes,
-		EmptyVarTypes, [], []),
+		EmptyVarTypes, [], [], EmptyTIMap, EmptyTCIMap),
 	pred_info_init(PredModule, SymName, Arity, ArgTVarSet, ExistQVars,
 		Types, true, Context, ClausesInfo, Status, MarkerList, GoalType,
 		PredOrFunc, ClassContext, EmptyProofs, Owner, PredInfo1),

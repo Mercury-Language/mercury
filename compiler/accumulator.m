@@ -1434,7 +1434,7 @@ accumulator__check_assoc_unify(assign(L, _R)) -->
 	assoc_info_set_dynamic_set(DynamicSet).
 accumulator__check_assoc_unify(simple_test(_L, _R)) --> 
 	{ fail }.
-accumulator__check_assoc_unify(complicated_unify(_Modes, _Cat)) -->
+accumulator__check_assoc_unify(complicated_unify(_Modes, _Cat, _)) -->
 	{ fail }.	% XXX not sure what this should be.
 
 %-----------------------------------------------------------------------------%

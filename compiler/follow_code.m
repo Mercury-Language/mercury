@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -312,7 +312,7 @@ check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
 :- mode move_follow_code_is_builtin(in) is semidet.
 
 move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
-	Unification \= complicated_unify(_, _).
+	Unification \= complicated_unify(_, _, _).
 move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 	Builtin = inline_builtin.
 

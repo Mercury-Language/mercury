@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -514,7 +514,7 @@ traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _), _),
+traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _, _), _),
 		UseInf0, UseInf) :-
     	% This is here to cover the case where unused arguments is called 
 	% with --error-check-only and polymorphism has not been run.
@@ -1397,7 +1397,7 @@ fixup_unify(ModuleInfo, UnusedVars, Changed,
 	).
 
 	% These should be transformed into calls by polymorphism.m.
-fixup_unify(_, _, _, complicated_unify(_, _), _) :-
+fixup_unify(_, _, _, complicated_unify(_, _, _), _) :-
 		error("unused_args:fixup_goal : complicated unify").
 
 	% Check if any of the arguments of a deconstruction are unused, if

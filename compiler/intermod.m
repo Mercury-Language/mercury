@@ -217,14 +217,14 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	->
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 		{ pred_info_typevarset(PredInfo0, TVarSet) },
-		{ ClausesInfo0 = clauses_info(VarSet, DeclTypes, VarTypes,
-						HeadVars, Clauses0) },
+		{ clauses_info_vartypes(ClausesInfo0, VarTypes) },
+		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
 		intermod_info_set_var_types(VarTypes),
 		intermod_info_set_tvarset(TVarSet),
 		intermod__traverse_clauses(Clauses0, Clauses, DoWrite),
 		( { DoWrite = yes } ->
-			{ ClausesInfo = clauses_info(VarSet, DeclTypes,
-					VarTypes, HeadVars, Clauses) },
+			{ clauses_info_set_clauses(ClausesInfo0, Clauses,
+				ClausesInfo) },
 			{ pred_info_set_clauses_info(PredInfo0, ClausesInfo,
 					PredInfo) },	
 			{ map__det_update(PredTable0, PredId,
@@ -1064,15 +1064,18 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	% already be in the interface file.
 
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
+	{ clauses_info_varset(ClausesInfo, VarSet) },
+	{ clauses_info_headvars(ClausesInfo, HeadVars) },
+	{ clauses_info_clauses(ClausesInfo, Clauses) },
+
 		% handle pragma c_code(...) separately
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
-		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
+		intermod__write_c_code(SymName, PredOrFunc, HeadVars, VarSet,
 						Clauses, Procs)
 	;
 		% { pred_info_typevarset(PredInfo, TVarSet) },
-		hlds_out__write_clauses(1, ModuleInfo, PredId, Varset, no,
+		hlds_out__write_clauses(1, ModuleInfo, PredId, VarSet, no,
 			HeadVars, PredOrFunc, Clauses, no)
 		%	HeadVars, Clauses, yes(TVarSet, VarTypes))
 	),

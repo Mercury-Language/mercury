@@ -746,7 +746,7 @@ code_util__cannot_stack_flush(GoalExpr - _) :-
 :- mode code_util__cannot_stack_flush_2(in) is semidet.
 
 code_util__cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
-	Unify \= complicated_unify(_, _).
+	Unify \= complicated_unify(_, _, _).
 code_util__cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
 	BuiltinState = inline_builtin.
 code_util__cannot_stack_flush_2(conj(Goals)) :-

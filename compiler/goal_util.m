@@ -414,8 +414,9 @@ goal_util__rename_unify(assign(L0, R0), Must, Subn, assign(L, R)) :-
 goal_util__rename_unify(simple_test(L0, R0), Must, Subn, simple_test(L, R)) :-
 	goal_util__rename_var(L0, Must, Subn, L),
 	goal_util__rename_var(R0, Must, Subn, R).
-goal_util__rename_unify(complicated_unify(Modes, Cat), _Must, _Subn,
-			complicated_unify(Modes, Cat)).
+goal_util__rename_unify(complicated_unify(Modes, Cat, TypeInfoVars),
+			_Must, _Subn,
+			complicated_unify(Modes, Cat, TypeInfoVars)).
 
 %-----------------------------------------------------------------------------%
 

@@ -62,7 +62,7 @@
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
 :- import_module term, varset.
-:- import_module int, list, map, set, std_util, require, assoc_list.
+:- import_module int, list, map, set, std_util, require, assoc_list, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -347,9 +347,17 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
 	mode_info_unlock_vars(if_then_else, NonLocals),
-	% mode_info_dcg_get_instmap(InstMapA),
-	unique_modes__check_goal(B0, B),
-	mode_info_dcg_get_instmap(InstMapB),
+	mode_info_dcg_get_instmap(InstMapA),
+	( { instmap__is_reachable(InstMapA) } ->
+		unique_modes__check_goal(B0, B),
+		mode_info_dcg_get_instmap(InstMapB)
+	;
+		% We should not mode-analyse the goal, since it is unreachable.
+		% Instead we optimize the goal away, so that later passes
+		% won't complain about it not having unique mode information.
+		{ true_goal(B) },
+		{ InstMapB = InstMapA }
+	),
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_goal(C0, C),
 	mode_info_dcg_get_instmap(InstMapC),
@@ -387,7 +395,8 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
+	unique_modes__check_call_modes(Args, Modes, 0,
+			CodeModel, NeverSucceeds),
 	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det,
 			PredOrFunc) },
 	mode_info_unset_call_context,
@@ -408,14 +417,17 @@ unique_modes__check_goal_2(class_method_call(TCVar, Num, Args, Types, Modes,
 		NeverSucceeds = no
 	},
 	{ determinism_to_code_model(Det, CodeModel) },
-	unique_modes__check_call_modes(Args, Modes, CodeModel, NeverSucceeds),
+	unique_modes__check_call_modes(Args, Modes, 0,
+			CodeModel, NeverSucceeds),
 	{ Goal = class_method_call(TCVar, Num, Args, Types, Modes, Det) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "class method call").
 
 unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 		PredName), _GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "call"),
+	{ prog_out__sym_name_to_string(PredName, PredNameString) },
+	{ string__append("call ", PredNameString, CallString) },
+	mode_checkpoint(enter, CallString),
 	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
@@ -479,12 +491,14 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	% first off, try using the existing mode
 	%
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0, _, ProcInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
+		PredInfo, ProcInfo),
+	compute_arg_offset(PredInfo, ArgOffset),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
-	unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel,
-				NeverSucceeds, ModeInfo1, ModeInfo2),
+	unique_modes__check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
+			CodeModel, NeverSucceeds, ModeInfo1, ModeInfo2),
 
 	%
 	% see whether or not that worked
@@ -539,21 +553,21 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	% argument if the variable is nondet-live and the required initial
 	% inst was unique.
 
-:- pred unique_modes__check_call_modes(list(prog_var), list(mode), code_model,
-		bool, mode_info, mode_info).
-:- mode unique_modes__check_call_modes(in, in, in, in,
+:- pred unique_modes__check_call_modes(list(prog_var), list(mode), int,
+		code_model, bool, mode_info, mode_info).
+:- mode unique_modes__check_call_modes(in, in, in, in, in,
 			mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_call_modes(ArgVars, ProcArgModes, CodeModel, NeverSucceeds,
-			ModeInfo0, ModeInfo) :-
+unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
+		CodeModel, NeverSucceeds, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 				InitialInsts),
-	modecheck_var_has_inst_list(ArgVars, InitialInsts, 0,
+	modecheck_var_has_inst_list(ArgVars, InitialInsts, ArgOffset,
 				ModeInfo0, ModeInfo1),
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
-		NewArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
+		ArgOffset, NewArgVars, ExtraGoals, ModeInfo1, ModeInfo2),
 	( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 		true
 	;	
@@ -592,7 +606,17 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
 	mode_info_remove_live_vars(NonLocals),
 	unique_modes__check_goal(Goal0, Goal),
-	unique_modes__check_conj(Goals0, Goals).
+	mode_info_dcg_get_instmap(InstMap),
+	( { instmap__is_unreachable(InstMap) } ->
+		% We should not mode-analyse the remaining goals, since they
+		% are unreachable.  Instead we optimize them away, so that
+		% later passes won't complain about them not having
+		% unique mode information.
+		mode_info_remove_goals_live_vars(Goals0),
+		{ Goals  = [] }
+	;
+		unique_modes__check_conj(Goals0, Goals)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -657,9 +681,19 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 	modecheck_set_var_inst(Var,
 		bound(unique, [functor(ConsId, ArgInsts)])),
 
-	unique_modes__check_goal(Goal0, Goal1),
+	mode_info_dcg_get_instmap(InstMap1),
+	( { instmap__is_reachable(InstMap1) } ->
+		unique_modes__check_goal(Goal0, Goal1)
+	;
+		% We should not mode-analyse the goal, since it is unreachable.
+		% Instead we optimize the goal away, so that later passes
+		% won't complain about it not having unique mode information.
+		{ true_goal(Goal1) }
+	),
+
 	mode_info_dcg_get_instmap(InstMap),
 	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
+
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
 

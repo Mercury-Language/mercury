@@ -914,7 +914,7 @@ rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail),
 		{ ArgCodes = empty }
 	),
 	{ Code = tree(TestCode, ArgCodes) }.
-rl_exprn__unify(complicated_unify(_, _), _, _, _) -->
+rl_exprn__unify(complicated_unify(_, _, _), _, _, _) -->
 	{ error("rl_gen__unify: complicated_unify") }.
 rl_exprn__unify(assign(Var1, Var2), _GoalInfo, _Fail, Code) -->
 	rl_exprn_info_lookup_var(Var1, Var1Loc),

@@ -856,8 +856,10 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		Goal = call(PredId, DummyProcId, Args,
 			not_builtin, no, SymName) - GoalInfo,
 		Clause = clause(ProcIds, Goal, Context),
+		map__init(TI_VarMap),
+		map__init(TCI_VarMap),
 		Clauses = clauses_info(ArgVarSet, VarTypes0,
-			VarTypes0, Args, [Clause]),
+			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap),
 		pred_info_get_markers(PredInfo0, Markers),
 		map__init(Proofs),
 		( pred_info_is_imported(PredInfo0) ->
@@ -2357,8 +2359,8 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 	pred_info_name(PredInfo0, Name),
 	pred_info_context(PredInfo0, Context),
 	pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	ClausesInfo0 = clauses_info(VarSet, _VarTypes0, _VarTypes1,
-					HeadVars, _ClauseList0),
+	clauses_info_varset(ClausesInfo0, VarSet),
+	clauses_info_headvars(ClausesInfo0, HeadVars),
 
 		%
 		% construct the pseudo-recursive call to Module:Name(HeadVars)
@@ -2385,8 +2387,10 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		%
 	ClauseList = [Clause],
 	map__from_corresponding_lists(HeadVars, Types, VarTypes),
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
 	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes,
-					HeadVars, ClauseList),
+				HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -4177,7 +4181,10 @@ clauses_info_init(Arity, ClausesInfo) :-
 	map__init(VarTypes),
 	varset__init(VarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, VarSet0, HeadVars, VarSet),
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, []).
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, [],
+		TI_VarMap, TCI_VarMap).
 
 :- pred clauses_info_add_clause(clauses_info::in, pred_id::in, 
 		list(proc_id)::in, prog_varset::in, tvarset::in,
@@ -4190,7 +4197,8 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 		Args, Body, Context, Goal, VarSet, TVarSet0,
 		ClausesInfo, Warnings, Info0, Info) -->
 	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes0, VarTypes1,
-					HeadVars, ClauseList0) },
+					HeadVars, ClauseList0,
+					TI_VarMap, TCI_VarMap) },
 	{ update_qual_info(Info0, TVarSet0, VarTypes0, PredId, Info1) },
 	{ varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst) },
 	transform(Subst, HeadVars, Args, Body, VarSet1, Context,
@@ -4200,7 +4208,8 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 							ClauseList) },
 	{ qual_info_get_var_types(Info, VarTypes) },
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes1,
-					HeadVars, ClauseList) }.
+					HeadVars, ClauseList,
+					TI_VarMap, TCI_VarMap) }.
 
 %-----------------------------------------------------------------------------
 
@@ -4221,7 +4230,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
-				 HeadVars, ClauseList),
+				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_infos(PVars, ArgInfo),
 
@@ -4250,7 +4259,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		HldsGoal, VarSet, _, _Warnings),
 	NewClause = clause([ModeId], HldsGoal, Context),
 	ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1, HeadVars, 
-		[NewClause|ClauseList])
+		[NewClause|ClauseList], TI_VarMap, TCI_VarMap)
 	}.
 
 :- pred allocate_vars_for_saved_vars(list(string), list(pair(prog_var, string)),
@@ -5023,7 +5032,7 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 		Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
-	UnifyInfo = complicated_unify(UMode, can_fail),
+	UnifyInfo = complicated_unify(UMode, can_fail, []),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),

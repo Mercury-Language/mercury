@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,7 +77,9 @@
 :- import_module hlds_module, hlds_data, (inst), inst_match, varset.
 :- import_module options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity, pd_cost.
-:- import_module set, require, std_util, int.
+:- import_module prog_util, unify_proc, special_pred, polymorphism.
+
+:- import_module set, require, std_util, int, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -308,7 +310,6 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		%
 		% if --no-fully-strict,
 		% replace goals with determinism failure with `fail'.
-		% XXX we should warn about this (if the goal wasn't `fail')
 		%
 		Detism = failure,
 		% ensure goal is pure or semipure
@@ -317,16 +318,30 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
+		% warn about this, unless the goal was an explicit
+		% `fail', or some goal containing `fail'.
+
+		goal_info_get_context(GoalInfo0, Context),
+		(
+			simplify_do_warn(Info0),
+			\+ (goal_contains_goal(Goal0, SubGoal),
+			    SubGoal = disj([], _) - _)
+		->
+			simplify_info_add_msg(Info0,
+				goal_cannot_succeed(Context), Info1)
+		;
+			Info1 = Info0
+		),
+		
 		% If the goal had any non-locals we should requantify. 
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		( set__empty(NonLocals0) ->
-			Info1 = Info0
+			Info2 = Info1
 		;
-			simplify_info_set_requantify(Info0, Info1)
+			simplify_info_set_requantify(Info1, Info2)
 		),
 		pd_cost__goal(Goal0, CostDelta),
-		simplify_info_incr_cost_delta(Info1, CostDelta, Info2),
-		goal_info_get_context(GoalInfo0, Context),
+		simplify_info_incr_cost_delta(Info2, CostDelta, Info3),
 		fail_goal(Context, Goal1)
 	;
 		%
@@ -337,16 +352,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% since these may occur in conjunctions where there
 		% are no producers for some variables, and the
 		% code generator would fail for these.
-		% XXX we should warn about this (if the goal wasn't `true')
 		%
-
-		% XXX this optimization is currently disabled for anything
-		% other than unifications, since it mishandles calls to
-		% existentially typed predicates. 
-		% The fix for this is to run polymorphism.m before simplify.m.
-		% When that is done, we can re-enable this optimization.
-		Goal0 = unify(_, _, _, _, _) - _,
-		
 		determinism_components(Detism, cannot_fail, MaxSoln),
 		MaxSoln \= at_most_zero,
 		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
@@ -360,27 +366,63 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
+/******************
+The following warning is disabled, because it often results in spurious
+warnings.  Sometimes predicate calls are used just to constrain the types,
+to avoid type ambiguities or unbound type variables, and in such cases,
+it is perfectly legitimate for a call to be det and to have no outputs.
+There's no simple way of telling those cases from cases for which we
+really ought to warn.
+		% warn about this, if the goal wasn't `true', wasn't `!',
+		% and wasn't a deconstruction unification.
+		% We don't warn about deconstruction unifications
+		% with no outputs that always succeed, because that
+		% would result in bogus warnings, since switch detection
+		% converts deconstruction unifications that can fail
+		% into ones that always succeed by moving the test into
+		% the switch.
+		% We also don't warn about conjunctions or existential
+		% quantifications, because it seems that warnings in those
+		% cases are usually spurious.
+		(
+			simplify_do_warn(Info0),
+			% Goal0 \= conj([]) - _,
+			\+ (Goal0 = call(_, _, _, _, _, SymName) - _,
+			    unqualify_name(SymName, "!")),
+			Goal0 \= conj(_) - _,
+			Goal0 \= some(_, _) - _,
+			\+ (Goal0 = unify(_, _, _, Unification, _) - _,
+			    Unification = deconstruct(_, _, _, _, _))
+		->
+			simplify_info_add_msg(Info0,
+				det_goal_has_no_outputs(Context), Info1)
+		;
+			Info1 = Info0
+		),
+******************/
+		Info0 = Info1,
+		
 		% If the goal had any non-locals we should requantify. 
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		( set__empty(NonLocals0) ->
-			Info1 = Info0
+			Info2 = Info1
 		;
-			simplify_info_set_requantify(Info0, Info1)
+			simplify_info_set_requantify(Info1, Info2)
 		),
 		pd_cost__goal(Goal0, CostDelta),
-		simplify_info_incr_cost_delta(Info1, CostDelta, Info2),
+		simplify_info_incr_cost_delta(Info2, CostDelta, Info3),
 		goal_info_get_context(GoalInfo0, Context),
 		true_goal(Context, Goal1)
 	;
 		Goal1 = Goal0,
-		Info2 = Info0
+		Info3 = Info0
 	),
-	simplify_info_maybe_clear_structs(before, Goal1, Info2, Info3),
+	simplify_info_maybe_clear_structs(before, Goal1, Info3, Info4),
 	Goal1 = GoalExpr1 - GoalInfo1,
-	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info3, Info4),
+	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info4, Info5),
 	simplify_info_maybe_clear_structs(after, Goal - GoalInfo2,
-		Info4, Info5),
-	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info5, Info).
+		Info5, Info6),
+	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info6, Info).
 
 :- pred simplify__enforce_invariant(hlds_goal_info, hlds_goal_info,
 		simplify_info, simplify_info).
@@ -776,6 +818,18 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
 	;
+		U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
+	->
+		( RT0 = var(V) ->
+			simplify__process_compl_unify(LT0, V,
+				UniMode, CanFail, TypeInfoVars,
+				C, GoalInfo0, Goal1,
+				Info0, Info),
+			Goal1 = Goal - GoalInfo
+		;
+			error("simplify.m: invalid RHS for complicated unify")
+		)
+	;
 		simplify_do_common(Info0)
 	->
 		common__optimise_unification(U0, LT0, RT0, M, C,
@@ -996,6 +1050,222 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Info = Info0,
 		Goal = Goal0
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify__process_compl_unify(prog_var, prog_var,
+		uni_mode, can_fail, list(prog_var), unify_context,
+		hlds_goal_info, hlds_goal, simplify_info, simplify_info).
+:- mode simplify__process_compl_unify(in, in, in, in, in, in, in, out,
+		in, out) is det.
+
+simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
+		Context, GoalInfo0, Goal) -->
+	=(Info0),
+	{ simplify_info_get_module_info(Info0, ModuleInfo) },
+	{ simplify_info_get_var_types(Info0, VarTypes) },
+	{ map__lookup(VarTypes, XVar, Type) },
+	( { Type = term__variable(TypeVar) } ->
+		%
+		% Convert polymorphic unifications into calls to
+		% `unify/2', the general unification predicate, passing
+		% the appropriate type_info
+		% 	unify(TypeInfoVar, X, Y)
+		% where TypeInfoVar is the type_info variable
+		% associated with the type of the variables that
+		% are being unified.
+		%
+		simplify__type_info_locn(TypeVar, TypeInfoVar, ExtraGoals),
+		{ ArgVars = [TypeInfoVar, XVar, YVar] },
+
+		% sanity check: the TypeInfoVars we computed here should
+		% match with what was stored in the complicated_unify struct
+		{ require(unify(OldTypeInfoVars, [TypeInfoVar]),
+		  "simplify__process_compl_unify: mismatched type_info vars") },
+
+		{ module_info_get_predicate_table(ModuleInfo,
+			PredicateTable) },
+		{ mercury_public_builtin_module(MercuryBuiltin) },
+		{ predicate_table_search_pred_m_n_a(PredicateTable,
+			MercuryBuiltin, "unify", 2, [CallPredId])
+		->
+			PredId = CallPredId
+		;
+			error("simplify.m: can't find `builtin:unify/2'")
+		},
+		% Note: the mode for polymorphic unifications
+		% should be `in, in'. 
+		% (This should have been checked by mode analysis.)
+		{ hlds_pred__in_in_unification_proc_id(ProcId) },
+
+		{ SymName = unqualified("unify") },
+		{ code_util__builtin_state(ModuleInfo, PredId, ProcId,
+			BuiltinState) },
+		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
+		{ Call = call(PredId, ProcId, ArgVars,
+			BuiltinState, yes(CallContext), SymName)
+			- GoalInfo0 }
+
+	; { type_is_higher_order(Type, _, _) } ->
+		%
+		% convert higher-order unifications into calls to
+		% builtin_unify_pred (which calls error/1)
+		%
+		{ SymName = unqualified("builtin_unify_pred") },
+		{ ArgVars = [XVar, YVar] },
+		{ module_info_get_predicate_table(ModuleInfo,
+			PredicateTable) },
+		{
+			mercury_private_builtin_module(PrivateBuiltin),
+			predicate_table_search_pred_m_n_a(
+			    PredicateTable,
+			    PrivateBuiltin, "builtin_unify_pred", 2,
+			    [PredId0])
+		->
+			PredId = PredId0
+		;
+			error("can't locate private_builtin:builtin_unify_pred/2")
+		},
+		{ hlds_pred__in_in_unification_proc_id(ProcId) },
+		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
+		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
+			yes(CallContext), SymName) },
+		simplify__goal_2(Call0, GoalInfo0, Call1, GoalInfo),
+		{ Call = Call1 - GoalInfo },
+		{ ExtraGoals = [] }
+
+	; { type_to_type_id(Type, TypeId, TypeArgs) } ->
+		%
+		% Convert other complicated unifications into
+		% calls to specific unification predicates,
+		% inserting extra typeinfo arguments if necessary.
+		%
+
+		% generate code to construct the new type_info arguments
+		simplify__make_type_info_vars(TypeArgs, TypeInfoVars,
+			ExtraGoals),
+
+		% create the new call goal
+		{ list__append(TypeInfoVars, [XVar, YVar], ArgVars) },
+		{ module_info_get_special_pred_map(ModuleInfo,
+			SpecialPredMap) },
+		{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
+		{ determinism_components(Det, CanFail, at_most_one) },
+		{ unify_proc__lookup_mode_num(ModuleInfo, TypeId,
+		 	UniMode, Det, ProcId) },
+		{ SymName = unqualified("__Unify__") },
+		{ CallContext = call_unify_context(XVar, var(YVar), Context) },
+		{ Call0 = call(PredId, ProcId, ArgVars, not_builtin,
+			yes(CallContext), SymName) },
+
+		% add the extra type_info vars to the nonlocals for the call
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
+		{ set__insert_list(NonLocals0, TypeInfoVars, NonLocals) },
+		{ goal_info_set_nonlocals(GoalInfo0, NonLocals,
+			CallGoalInfo0) },
+
+		% recursively simplify the call goal
+		simplify__goal_2(Call0, CallGoalInfo0, Call1, CallGoalInfo1),
+		{ Call = Call1 - CallGoalInfo1 }
+	;
+		{ error("simplify: type_to_type_id failed") }
+	),
+	{ list__append(ExtraGoals, [Call], ConjList) },
+	{ conj_list_to_goal(ConjList, GoalInfo0, Goal) }.
+
+:- pred simplify__make_type_info_vars(list(type)::in, list(prog_var)::out,
+	list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
+
+simplify__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
+		Info0, Info) :-
+	%
+	% Extract the information from simplify_info
+	%
+	simplify_info_get_det_info(Info0, DetInfo0),
+	simplify_info_get_varset(Info0, VarSet0),
+	simplify_info_get_var_types(Info0, VarTypes0),
+	det_info_get_module_info(DetInfo0, ModuleInfo0),
+	det_info_get_pred_id(DetInfo0, PredId),
+	det_info_get_proc_id(DetInfo0, ProcId),
+
+	%
+	% Put the varset and vartypes from the simplify_info
+	% back in the proc_info
+	%
+	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+		PredInfo0, ProcInfo0),
+	proc_info_set_vartypes(ProcInfo0, VarTypes0, ProcInfo1),
+	proc_info_set_varset(ProcInfo1, VarSet0, ProcInfo2),
+
+	%
+	% Call polymorphism.m to create the type_infos
+	%
+	create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
+	ExistQVars = [],
+	term__context_init(Context),
+	polymorphism__make_type_info_vars(Types, ExistQVars, Context,
+		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
+	poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+		ProcInfo0, ProcInfo, ModuleInfo1),
+
+	%
+	% Get the new varset and vartypes from the proc_info
+	% and put them back in the simplify_info.
+	%
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_varset(ProcInfo, VarSet),
+	simplify_info_set_var_types(Info0, VarTypes, Info1),
+	simplify_info_set_varset(Info1, VarSet, Info2),
+
+	%
+	% Put the new proc_info and pred_info back
+	% in the module_info and put the new module_info
+	% back in the simplify_info.
+	%
+	module_info_set_pred_proc_info(ModuleInfo1, PredId, ProcId,
+		PredInfo, ProcInfo, ModuleInfo),
+	simplify_info_set_module_info(Info2, ModuleInfo, Info).
+
+:- pred simplify__type_info_locn(tvar, prog_var, list(hlds_goal),
+		simplify_info, simplify_info).
+:- mode simplify__type_info_locn(in, out, out, in, out) is det.
+
+simplify__type_info_locn(TypeVar, TypeInfoVar, Goals) -->
+	=(Info0),
+	{ simplify_info_get_typeinfo_map(Info0, TypeInfoMap) },
+	{ map__lookup(TypeInfoMap, TypeVar, TypeInfoLocn) },
+	(
+			% If the typeinfo is available in a variable,
+			% just use it
+		{ TypeInfoLocn = type_info(TypeInfoVar) },
+		{ Goals = [] }
+	;
+			% If the typeinfo is in a typeclass_info
+			% then we need to extract it
+		{ TypeInfoLocn =
+			typeclass_info(TypeClassInfoVar, Index) },
+		simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
+			Goals, TypeInfoVar)
+	).
+
+:- pred simplify__extract_type_info(tvar, prog_var, int,
+		list(hlds_goal), prog_var, simplify_info, simplify_info).
+:- mode simplify__extract_type_info(in, in, in, out, out, in, out) is det.
+
+simplify__extract_type_info(TypeVar, TypeClassInfoVar, Index,
+		Goals, TypeInfoVar, Info0, Info) :-
+	simplify_info_get_module_info(Info0, ModuleInfo),
+	simplify_info_get_varset(Info0, VarSet0),
+	simplify_info_get_var_types(Info0, VarTypes0),
+	simplify_info_get_typeinfo_map(Info0, TypeInfoLocns0),
+
+	polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
+		ModuleInfo, Goals, TypeInfoVar,
+		VarSet0, VarTypes0, TypeInfoLocns0,
+		VarSet, VarTypes, _TypeInfoLocns),
+
+	simplify_info_set_var_types(Info0, VarTypes, Info1),
+	simplify_info_set_varset(Info1, VarSet, Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1729,6 +1999,18 @@ simplify_do_more_common(Info) :-
 	simplify_info_get_simplifications(Info, Simplifications),
 	set__member(extra_common_struct, Simplifications).
 
+:- pred simplify_info_get_typeinfo_map(simplify_info::in,
+		map(tvar, type_info_locn)::out) is det.
+
+simplify_info_get_typeinfo_map(Info0, TypeInfoMap) :-
+	simplify_info_get_det_info(Info0, DetInfo0),
+	det_info_get_module_info(DetInfo0, ModuleInfo),
+	det_info_get_pred_id(DetInfo0, ThisPredId),
+	det_info_get_proc_id(DetInfo0, ThisProcId),
+	module_info_pred_proc_info(ModuleInfo, ThisPredId, ThisProcId,
+		_PredInfo, ProcInfo),
+	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap).
+
 :- pred simplify_info_update_instmap(simplify_info::in, hlds_goal::in,
 		simplify_info::out) is det.
 
@@ -1801,3 +2083,35 @@ simplify_info_undo_goal_updates(Info1, Info2, Info) :-
 	simplify_info_set_common_info(Info2, CommonInfo0, Info3),
 	simplify_info_get_instmap(Info1, InstMap),
 	simplify_info_set_instmap(Info3, InstMap, Info).
+
+%-----------------------------------------------------------------------------%
+
+:- pred goal_contains_goal(hlds_goal, hlds_goal).
+:- mode goal_contains_goal(in, out) is multi.
+
+goal_contains_goal(Goal, Goal).
+goal_contains_goal(Goal - _, SubGoal) :-
+	direct_subgoal(Goal, DirectSubGoal),
+	goal_contains_goal(DirectSubGoal, SubGoal).
+
+:- pred direct_subgoal(hlds_goal_expr, hlds_goal).
+:- mode direct_subgoal(in, out) is nondet.
+
+direct_subgoal(some(_, Goal), Goal).
+direct_subgoal(not(Goal), Goal).
+direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
+	( Goal = If
+	; Goal = Then
+	; Goal = Else
+	).
+direct_subgoal(conj(ConjList), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(par_conj(ConjList, _), Goal) :-
+	list__member(Goal, ConjList).
+direct_subgoal(disj(DisjList, _), Goal) :-
+	list__member(Goal, DisjList).
+direct_subgoal(switch(_, _, CaseList, _), Goal) :-
+	list__member(Case, CaseList),
+	Case = case(_, Goal).
+
+%-----------------------------------------------------------------------------%

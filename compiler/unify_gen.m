@@ -79,7 +79,7 @@ unify_gen__generate_unification(CodeModel, Uni, Code) -->
 	;
 			% These should have been transformed into calls
 			% to unification procedures by polymorphism.m.
-		{ Uni = complicated_unify(_UniMode, _CanFail) },
+		{ Uni = complicated_unify(_UniMode, _CanFail, _TypeInfoVars) },
 		{ error("complicated unify during code generation") }
 	).
 

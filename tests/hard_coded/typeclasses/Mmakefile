@@ -10,6 +10,7 @@ TYPECLASS_PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
 	existential_type_classes \
+	existential_data_types \
 	extra_typeinfo \
 	func_default_mode_bug \
 	ho_map \

@@ -88,6 +88,7 @@ into another language, under the above conditions for modified versions.
                       with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
 * Type classes::      Constrained polymorphism
+* Existential types:: Support for data abstraction and heterogenous collections
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Various compiler directives, used for the C interface
                       and to control optimization.
@@ -866,8 +867,9 @@ well-moded into ones that would be ill-moded.)
 @node Types
 @chapter Types
 
-The type system is based on many-sorted logic, with polymorphism and
-type classes (@pxref{Type classes}).
+The type system is based on many-sorted logic, and supports polymorphism,
+type classes (@pxref{Type classes}), and existentially quantified types
+(@pxref{Existential types}).
 
 Certain special types are builtin, or are defined in the Mercury library:
 
@@ -1040,14 +1042,37 @@ The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
 The argument types and return type of each function must be
 explicitly declared with a @samp{:- func} declaration.
-These declarations may be polymorphic.
 For example:
+
+@example
+:- pred is_all_uppercase(string).
+
+:- func strlen(string) = int.
+@end example
+
+Predicates and functions can be polymorphic; that is, their
+declarations can include type variables.  For example:
 
 @example
 :- pred member(T, list(T)).
 
 :- func length(list(T)) = int.
 @end example
+
+Type variables in predicate and function declarations
+are implicitly universally quantified by default;
+that is, the predicate or function may be called with arguments
+and (in the case of functions) return value
+whose actual types are any instance of the types
+specified in the declaration.  For example,
+the function @samp{length/1} declared above
+could be called with the argument having
+type @samp{list(int)}, or @samp{list(float)},
+or @samp{list(list(int))}, etc.
+
+Type variables in predicate and function declarations can
+also be existentially quantified; this is discussed in
+@ref{Existential types}.
 
 There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
@@ -2039,7 +2064,7 @@ if-then-else is also in a single-solution context.
 @item
 For other compound goals, i.e. disjunctions, negations, and
 (explicitly) existentially quantified goals, if the compound goal
-is in a single-solution context, then the immediate subgoals of that
+is in a single-solution context, then the immediate sub-goals of that
 compound goal are also in single-solution contexts.
 
 @end itemize
@@ -2064,6 +2089,8 @@ or @samp{cc_multi} predicates, not in @samp{multi} predicates.
 Another is for dealing with types that use non-canonical representations
 (@pxref{Equality preds}).
 And there are a variety of other applications.
+
+@c XXX fix semantics for I/O + committed choice + mode inference 
 
 @node Equality preds
 @chapter User-defined equality predicates
@@ -3209,6 +3236,297 @@ abstract instance declaration must exactly match the type class
 constraints on the corresponding non-abstract instance declaration that
 defines that instance.
 @c XXX The current implementation does not enforce that rule.
+
+@node Existential types
+@chapter Existential types
+
+Existentially quantified type variables (or simply "existential types"
+for short) are useful tools for data abstraction.  In combination with
+type classes, they allow you to write code in an "object oriented"
+style that is similar to the use of interfaces in Java or abstract
+base classes in C++.
+
+Mercury supports existential type quantifiers on predicate and function
+declarations.  Unfortunately we do not yet support existential type
+quantifiers on data type definitions.  However, we do provide some
+work-arounds for this.
+
+@menu
+* Syntax for explicit type qualifiers::
+* Semantics of type qualifiers::
+* Examples of correct code using type quantifiers::
+* Examples of incorrect code using type quantifiers::
+* Existential class constraints::
+* Some idioms using existentially quantified types::
+* Known bugs in the current implementation::
+@end menu
+
+@node Syntax for explicit type qualifiers
+@section Syntax for explicit type qualifiers
+
+Type variables in type declarations for polymorphic predicates or functions
+are normally universally quantified.  
+However, it is also possible to existentially quantify such
+type variables, by using an explicit existential quantifier of
+the form @samp{some @var{Vars}} before the @samp{pred} or @samp{func}
+declaration, where @var{Vars} is a list of variables.
+
+For example:
+
+@example
+% Here the type variables `T' is existentially quantified
+:- some [T] pred foo(T).
+
+% Here the type variabless `T1' and `T2' are existentially quantified.
+:- some [T1, T2] func bar(int, list(T1), set(T2)) = pair(T1, T2).
+
+% Here the type variable `T2' is existentially quantified,
+% but the type variables `T1' and `T3' are universally quantified.
+:- some [T2] pred foo(T1, T2, T3).
+@end example
+
+Explicit universal quantifiers, of the form @samp{all @var{Vars}},
+are also permitted on @samp{pred} and @samp{func} declarations,
+although they are not necessary, since universal quantification is
+the default.  (If both universal and existential quantifiers
+are present, the universal quantifiers must precede the existential
+quantifiers.)  For example:
+
+@example
+% Here the type variable `T2' is existentially quantified,
+% but the type variables `T1' and `T3' are universally quantified.
+:- all [T3] some [T2] pred foo(T1, T2, T3).
+@end example
+
+@node Semantics of type qualifiers
+@section Semantics of type qualifiers
+
+If a type variable in the type declaration for a polymorphic predicate
+or function is universally quantified, this means the caller will
+determine the value of the type variable, and the callee must be defined
+so that it will work for @emph{all} types which are an instance of its
+declared type.
+
+For an existentially quantified type variable, the situation is the
+converse: the @emph{callee} must determine the value of the type variable,
+and all @emph{callers} must be defined so as to work for all types
+which are an instance of the called procedure's declared type.
+
+When type checking a predicate or function, if a variable has a type
+that occurs as a universally quantified type variable in the predicate
+or function declaration, or a type that occurs as an existentially
+quantified type variable in the declaration of one of the predicates
+or functions that it calls, then its type is treated as an opaque type.
+This means that there are very few things which it is legal to do with
+such a variable -- basically you can only pass it to another procedure
+expecting the same type, unify it with another value of the same
+type, put it in a polymorphic data structure, or pass it to a
+polymorphic procedure whose argument type is universally quantified.
+(Note, however, that the standard library includes some quite powerful
+procedures such as `io__write' which can be useful in this context.)
+
+A non-variable type is considered @emph{more general} than an
+existentially quantified type variable.  Type inference will therefore
+never infer an existentially quantified type for a predicate or
+function unless that predicate or function calls (directly or indirectly)
+a predicate or function which was explicitly declared to have an
+existentially quantified type.
+
+For procedures involving calls to existentially-typed predicates or functions,
+the compiler's mode analysis must take account of the modes for type
+variables in all polymorphic calls.
+Universally quantified type variables have mode @samp{in},
+whereas existentially quantified type variables have mode @samp{out}.
+As usual, the compiler's mode analysis will attempt to reorder the
+elements of conjunctions in order to satisfy the modes.
+
+@node Examples of correct code using type quantifiers
+@section Examples of correct code using type quantifiers
+
+Here are some examples of type-correct code using universal and
+existential types.
+
+@example
+/* simple examples */
+
+:- pred foo(T).
+foo(_).
+	% ok
+
+:- pred call_foo.
+call_foo :- foo(42).
+	% ok (T = int)
+
+:- some [T] pred e_foo(T).
+e_foo(X) :- X = 42.
+	% ok (T = int)
+
+:- pred call_e_foo.
+call_e_foo :- e_foo(_).
+	% ok
+
+/* examples using higher-order functions */
+
+:- func bar(T, T, func(T) = int) = int.
+bar(X, Y, F) = F(X) + F(Y).
+	% ok
+
+:- func call_bar = int.
+call_bar = bar(2, 3, (func(X) = X*X)).
+	% ok (T = int)
+	% returns 13 (= 2*2 + 3*3)
+
+:- some [T] pred e_bar(T, T, func(T) = int).
+:-          mode e_bar(out, out, out(func(in) = out is det)).
+e_bar(2, 3, (func(X) = X * X)).
+	% ok (T = int)
+
+:- func call_e_bar = int.
+call_e_bar = F(X) + F(Y) :- e_bar(X, Y, F).
+	% ok
+	% returns 13 (= 2*2 + 3*3)
+
+@end example
+
+@node Examples of incorrect code using type quantifiers
+@section Examples of incorrect code using type quantifiers
+
+Here are some examples of code using universal and
+existential types that contains type errors.
+
+@example
+/* simple examples */
+
+:- pred bad_foo(T).
+bad_foo(42).
+	% type error
+
+:- some [T] pred e_foo(T).
+e_foo(42).
+	% ok
+
+:- pred bad_call_e_foo.
+bad_call_e_foo :- e_foo(42).
+	% type error
+
+:- some [T] pred e_bar1(T).
+e_bar1(42).
+e_bar1(42).
+e_bar1(43).
+	% ok (T = int)
+
+:- some [T] pred bad_e_bar2(T).
+bad_e_bar2(42).
+bad_e_bar2("blah").
+	% type error (cannot unify types `int' and `string')
+
+:- some [T] pred bad_e_bar3(T).
+bad_e_bar3(X) :- e_foo(X).
+bad_e_bar3(X) :- e_foo(X).
+	% type error (attempt to bind type variable `T' twice)
+
+@end example
+
+@node Existential class constraints
+@section Existential class constraints
+
+Existentially quantified type variables are especially useful in
+combination with type class constraints.
+
+Type class constraints can be either universal or existential.
+Universal type class constraints are written using "<=",
+as described in @ref{Type class constraints on predicates and functions};
+they signify a constraint that the @emph{caller} must satisfy.
+Existential type class constraints are written in the same syntax
+as universal constraints, but using "=>" instead of "<=";
+they signify a constraint that the @emph{callee} must satisfy.
+(If a declaration has both universal and existential constraints,
+then the universal constraints must precede the existential constraints.)
+
+For example:
+
+@example
+% Here `c1(T1)' is a universal constraint,
+% and `c2(T2)' is an existential constraint.
+:- all [T1] some [T2] ((pred p(T1, T2) <= c1(T1)) => (c2(T2), c3(T1, T2)).
+@end example
+
+In general, constraints that constrain any existentially quantified
+type variables should be existential constraints, and constraints that
+constrain only universally quantified type variables should be
+universal constraints.  (The only time exceptions to this rule would
+make any sense at all would be if there were instance declarations that
+were visible in the definition of the caller but which due to module
+visibility issues were not in the definition of the callee, or vice
+versa.  But even then, any exception to this rule would have to involve
+a rather obscure coding style, which we do not recommend.)
+
+@node Some idioms using existentially quantified types
+@section Some idioms using existentially quantified types
+
+The standard library module @samp{std_util} provides a type
+named @samp{univ} which can hold values of any type. 
+You can form heterogenous containers (containers that can hold values of
+different types at the same time) by using data structures
+that contain @code{univ}s, e.g. @samp{list(univ)}.
+
+	@example
+	% `univ' is a type which can hold any value.
+	:- type univ.
+
+	% The function univ/1 takes a value of any type and constructs
+	% a `univ' containing that value (the type will be stored along
+	% with the value)
+	:- func univ(T) = univ.
+
+	% The function univ_value/1 takes a `univ' argument and extracts
+	% the value contained in the `univ' (together with its type).
+	% This is the inverse of the function univ/1.
+	:- some [T] func univ_value(univ) = T.
+	@end example
+
+An existentially typed procedure is not allowed to have different
+types for its existentially typed arguments in different clauses or
+or in different subgoals of a single clause.  For instance, both
+of the following examples are illegal:
+
+	:- some [T] pred bad_example(string, T).
+	bad_example("foo", 42).
+	bad_example("bar", "blah").
+		% type error (cannot unify `int' and `string')
+
+	:- some [T] pred bad_example2(string, T).
+	bad_example2(Name, Value) :-
+		( Name = "bar", Value = 42
+		; Name = "bar", Value = "blah"
+		).
+		% type error (cannot unify `int' and `string')
+
+However, using @samp{univ},
+it is possible for an existentially typed function to return
+values of different types at each invocation.
+
+	:- some [T] pred good_example(string, T).
+	good_example(Name, univ_value(Univ)) :-
+		( Name = "bar", Univ = univ(42)
+		; Name = "bar", Univ = univ("blah")
+		).
+
+Unfortunately this technique doesn't work if you also want to use
+type class constraints.  Eventually we hope to support existentially
+typed data types with type class constaints, which would address this issue.
+@c (In the mean time, as a work-around, it is in fact possible to achieve
+@c the same effect via some hacks using the C interface.)
+
+@node Known bugs in the current implementation
+@section Known bugs in the current implementation
+
+The current implementation does not properly deal with most cases
+that involve both existentially quantified constraints and
+mode reordering due to the modes of type variables.
+The symptom in such cases is spurious mode errors.
+The solution is to write such code in the correct order manually
+rather than relying on the compiler's mode reordering.
 
 @node Semantics
 @chapter Semantics

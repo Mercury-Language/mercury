@@ -10,6 +10,8 @@
 % The dependency_graph records which procedures depend on which other
 % procedures.  It is defined as a relation (see hlds_module.m) R where xRy
 % means that the definition of x depends on the definition of y.
+% Note that imported procedures are not included in the dependency_graph
+% (although opt_imported procedures are included).
 %
 % The other important structure is the dependency_ordering which is
 % a list of the cliques (strongly-connected components) of this relation,
@@ -119,19 +121,14 @@ dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
                                         DepGraph0, DepGraph) :-
         module_info_preds(ModuleInfo, PredTable),
         map__lookup(PredTable, PredId, PredInfo),
-	(
-		% Don't bother adding nodes (or arcs) for predicates
-		% which which are imported (ie we don't have any `clauses'
-		% for).
-		pred_info_is_imported(PredInfo)
-	->
-		DepGraph1 = DepGraph0
-	;
-		pred_info_procids(PredInfo, ProcIds),
-		dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
-			DepGraph0, DepGraph1)
-	),
-        dependency_graph__add_pred_nodes(PredIds, ModuleInfo, DepGraph1, DepGraph).
+	% Don't bother adding nodes (or arcs) for procedures
+	% which which are imported (ie we don't have any `clauses'
+	% for).
+	pred_info_non_imported_procids(PredInfo, ProcIds),
+	dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
+		DepGraph0, DepGraph1),
+        dependency_graph__add_pred_nodes(PredIds, ModuleInfo,
+		DepGraph1, DepGraph).
 
 :- pred dependency_graph__add_proc_nodes(list(proc_id), pred_id, module_info,
                         dependency_graph, dependency_graph).
@@ -156,16 +153,11 @@ dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo,
 					DepGraph0, DepGraph) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
-	(
-		pred_info_is_imported(PredInfo)
-	->
-		DepGraph1 = DepGraph0
-	;
-		pred_info_procids(PredInfo, ProcIds),
-		dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
-			DepGraph0, DepGraph1)
-	),
-	dependency_graph__add_pred_arcs(PredIds, ModuleInfo, DepGraph1, DepGraph).
+	pred_info_non_imported_procids(PredInfo, ProcIds),
+	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
+			DepGraph0, DepGraph1),
+	dependency_graph__add_pred_arcs(PredIds, ModuleInfo,
+			DepGraph1, DepGraph).
 
 :- pred dependency_graph__add_proc_arcs(list(proc_id), pred_id, module_info,
 			dependency_graph, dependency_graph).
@@ -271,7 +263,7 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	; Unify = deconstruct(_, Cons, _, _, _),
 	    dependency_graph__add_arcs_in_cons(Cons, Caller,
 				DepGraph0, DepGraph)
-	; Unify = complicated_unify(_, _),
+	; Unify = complicated_unify(_, _, _),
 	    DepGraph0 = DepGraph
 	).
 

@@ -31,8 +31,8 @@ mdb>
        8:      5  4 DISJ pred queens:qdelete/3-0 (nondet) c2;d1;
 mdb> print *
        HeadVar__2             	[1, 2, 3, 4, 5]
-       V_10                   	[2, 3, 4, 5]
-       V_11                   	1
+       V_11                   	[2, 3, 4, 5]
+       V_12                   	1
 mdb> level 1
    1       5       4    3 pred queens:qperm/2-0 (nondet) 
 Ancestor level set to 1.
@@ -69,8 +69,8 @@ mdb>
       13:      7  5 DISJ pred queens:qdelete/3-0 (nondet) c2;d1;
 mdb> print *
        HeadVar__2             	[2, 3, 4, 5]
-       V_10                   	[3, 4, 5]
-       V_11                   	2
+       V_11                   	[3, 4, 5]
+       V_12                   	2
 mdb> 
       14:      7  5 EXIT pred queens:qdelete/3-0 (nondet) 
 mdb> print *

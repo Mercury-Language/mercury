@@ -37,7 +37,8 @@
 	% should not be used by user programs directly.
 
 	% Changes here may also require changes in compiler/polymorphism.m,
-	% compiler/higher_order.m and runtime/mercury_type_info.{c,h}.
+	% compiler/unify_proc.m, compiler/higher_order.m and
+	% runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
@@ -84,6 +85,18 @@
 :- pred builtin_int_gt(int, int).
 :- mode builtin_int_gt(in, in) is semidet.
 :- external(builtin_int_gt/2).
+
+	% A "typed" version of unify/2 -- i.e. one that can handle arguments
+	% of different types.  It first unifies their types, and then if
+	% the types are equal it unifies the values.
+:- pred typed_unify(T1, T2).
+:- mode typed_unify(in, in) is semidet.
+
+	% A "typed" version of compare/3 -- i.e. one that can handle arguments
+	% of different types.  It first compares the types, and then if the
+	% types are equal it compares the values.
+:- pred typed_compare(comparison_result, T1, T2).
+:- mode typed_compare(uo, in, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -181,6 +194,12 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 	% This is used by the code that the compiler generates for compare/3.
 compare_error :-
 	error("internal error in compare/3").
+
+	% XXX These could be implemented more efficiently using
+	%     `pragma c_code' -- the implementation below does some
+	%     unnecessary memory allocatation.
+typed_unify(X, Y) :- univ(X) = univ(Y).
+typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -19,6 +19,7 @@ SOURCES= \
 	errors2.m \
 	external.m \
 	ext_type_bug.m \
+	ext_data_type.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_type_mode_bug.m \
@@ -92,13 +93,6 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
 %.err: %.m
 	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
-	then false; else true; fi
-
-# We need a hard-coded rule for polymorphic_unification because we need to
-# do more than error check it: the error case we are checking for only
-# gets caught during polymorphism.
-polymorphic_unification.err: polymorphic_unification.m
-	if $(MC) $(ALL_MCFLAGS) polymorphic_unification > polymorphic_unification.err 2>&1; \
 	then false; else true; fi
 
 # Some tests have more than one possible valid output, so

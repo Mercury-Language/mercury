@@ -359,7 +359,7 @@ build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 build_live_sets_in_goal_2(unify(_,_,_,D,_), Liveness, ResumeVars0, LiveSets0,
 		_, _, _, Liveness, ResumeVars0, LiveSets) :-
 	(
-		D = complicated_unify(_, _)
+		D = complicated_unify(_, _, _)
 	->
 			% we have to save all live and protected variables
 			% across complicated unifications.

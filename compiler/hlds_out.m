@@ -542,7 +542,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	;
 		[]
 	),
-	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses) },
+	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses,
+		TypeInfoMap, TypeClassInfoMap) },
 	( { string__contains_char(Verbose, 'C') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% pred id: "),
@@ -561,6 +562,10 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			hlds_out__write_marker_list(MarkerList),
 			io__write_string("\n")
 		),
+		hlds_out__write_typeinfo_varmap(Indent, AppendVarnums,
+			TypeInfoMap, VarSet, TVarSet),
+		hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
+			TypeClassInfoMap, VarSet, TVarSet),
 		( { map__is_empty(Proofs) } ->
 			[]
 		;
@@ -568,6 +573,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 				Proofs),
 			io__write_string("\n")
 		),
+
+		% XXX The indexes are not part of the clauses_info,
+		% so why is this code inside this if-then-else
+		% with the condition `string__contains_char(Verbose, 'C')'?
+		% Shouldn't it be dependent on a different letter?
+
 		( { Indexes = [] } ->
 			[]
 		;
@@ -1262,9 +1273,11 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		(
 			% don't output bogus info if we haven't been through
 			% mode analysis yet
-			{ Unification = complicated_unify(Mode, CanFail) },
+			{ Unification = complicated_unify(Mode, CanFail,
+					TypeInfoVars) },
 			{ CanFail = can_fail },
-			{ Mode = (free - free -> free - free) }
+			{ Mode = (free - free -> free - free) },
+			{ TypeInfoVars = [] }
 		->
 			[]
 		;
@@ -1406,8 +1419,8 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	!,
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
-hlds_out__write_unification(complicated_unify(Mode, CanFail),
-		_ModuleInfo, _ProgVarSet, InstVarSet, _, Indent) -->
+hlds_out__write_unification(complicated_unify(Mode, CanFail, TypeInfoVars),
+		_ModuleInfo, ProgVarSet, InstVarSet, AppendVarNums, Indent) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	( { CanFail = can_fail },
@@ -1418,7 +1431,12 @@ hlds_out__write_unification(complicated_unify(Mode, CanFail),
 	!,
 	io__write_string("mode: "),
 	mercury_output_uni_mode(Mode, InstVarSet),
+	io__write_string("\n"),
+	hlds_out__write_indent(Indent),
+	io__write_string("% type-info vars: "),
+	mercury_output_vars(TypeInfoVars, ProgVarSet, AppendVarNums),
 	io__write_string("\n").
+
 
 :- pred hlds_out_write_functor_and_submodes(cons_id, list(prog_var),
 		list(uni_mode), module_info, prog_varset, inst_varset,

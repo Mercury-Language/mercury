@@ -310,7 +310,29 @@
 
 	;	complicated_unify(
 			uni_mode,	% The mode of the unification.
-			can_fail	% Whether or not it could possibly fail
+			can_fail,	% Whether or not it could possibly fail
+
+			% When unifying polymorphic types such as
+			% map/2, we need to pass type_info variables
+			% to the unification procedure for map/2
+			% so that it knows how to unify the
+			% polymorphically typed components of the
+			% data structure.  Likewise for comparison
+			% predicates.
+			% This field records which type_info variables
+			% we will need.
+			% This field is set by polymorphism.m.
+			% It is used by quantification.m
+			% when recomputing the nonlocals.
+			% It is also used by modecheck_unify.m,
+			% which checks that the type_info
+			% variables needed are all ground.
+			% It is also checked by simplify.m when
+			% it converts complicated unifications
+			% into procedure calls.
+			list(prog_var)	% The type_info variables needed
+					% by this unification, if it ends up
+					% being a complicated unify.
 		).
 
 	% A unify_context describes the location in the original source

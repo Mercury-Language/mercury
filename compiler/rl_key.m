@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,7 +693,7 @@ rl_key__extract_key_range_unify(construct(Var, ConsId, Args, _)) -->
 rl_key__extract_key_range_unify(
 		deconstruct(Var, ConsId, Args, _, _)) -->
 	rl_key__unify_functor(Var, ConsId, Args).
-rl_key__extract_key_range_unify(complicated_unify(_, _)) -->
+rl_key__extract_key_range_unify(complicated_unify(_, _, _)) -->
 	{ error("rl_key__extract_key_range_unify") }.
 
 :- pred rl_key__unify_functor(prog_var::in, cons_id::in, list(prog_var)::in,

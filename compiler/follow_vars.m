@@ -342,7 +342,7 @@ find_follow_vars_in_conj([Goal0 | Goals0], ModuleInfo, FollowVars0,
 			BuiltinState = inline_builtin
 		;
 			GoalExpr0 = unify(_, _, _, Unification, _),
-			Unification \= complicated_unify(_, _)
+			Unification \= complicated_unify(_, _, _)
 		)
 	->
 		AttachToNext = no

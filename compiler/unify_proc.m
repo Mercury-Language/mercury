@@ -107,7 +107,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, string, require.
+:- import_module tree, map, queue, int, string, require, assoc_list.
 
 :- import_module code_util, code_info, type_util.
 :- import_module mercury_to_mercury, hlds_out.
@@ -239,7 +239,13 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 
 		% convert from `uni_mode' to `list(mode)'
 		UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
-		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
+		ArgModes0 = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
+
+		% for polymorphic types, add extra modes for the type_infos
+		TypeId = _TypeName - TypeArity,
+		in_mode(InMode),
+		list__duplicate(TypeArity, InMode, TypeInfoModes),
+		list__append(TypeInfoModes, ArgModes0, ArgModes),
 
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
@@ -485,7 +491,10 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		VarTypeInfo = VarTypeInfo1
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
-	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses).
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses,
+			TI_VarMap, TCI_VarMap).
 
 :- pred unify_proc__generate_unify_clauses(hlds_type_body, prog_var, prog_var,
 		prog_context, list(clause), unify_proc_info, unify_proc_info).
@@ -635,18 +644,19 @@ unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
 unify_proc__generate_du_unify_clauses([], _H1, _H2, _Context, []) --> [].
 unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 		[Clause | Clauses]) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
 		H1, functor(FunctorConsId, Vars1), Context, explicit, [], 
 		UnifyH1_Goal) },
 	{ create_atomic_unification(
 		H2, functor(FunctorConsId, Vars2), Context, explicit, [], 
 		UnifyH2_Goal) },
-	{ unify_proc__unify_var_lists(Vars1, Vars2, UnifyArgs_Goal) },
+	unify_proc__unify_var_lists(ArgTypes, ExistQTVars, Vars1, Vars2,
+		UnifyArgs_Goal),
 	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context,
@@ -692,10 +702,10 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 unify_proc__generate_du_index_clauses([], _X, _Index, _Context, _N, []) --> [].
 unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 		[Clause | Clauses]) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, ArgVars),
 	{ create_atomic_unification(
 		X, functor(FunctorConsId, ArgVars), Context, explicit, [], 
 		UnifyX_Goal) },
@@ -883,18 +893,19 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 	is det.
 
 unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
 		X, functor(FunctorConsId, Vars1), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
 		Y, functor(FunctorConsId, Vars2), Context, explicit, [], 
 		UnifyY_Goal) },
-	unify_proc__compare_args(Vars1, Vars2, R, Context, CompareArgs_Goal),
+	unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
+		R, Context, CompareArgs_Goal),
 	{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context,
@@ -927,20 +938,53 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
 
 */
 
-:- pred unify_proc__compare_args(list(prog_var), list(prog_var), prog_var,
-		prog_context, hlds_goal, unify_proc_info, unify_proc_info).
-:- mode unify_proc__compare_args(in, in, in, in, out, in, out) is det.
+:- pred unify_proc__compare_args(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), prog_var, prog_context,
+		hlds_goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__compare_args(in, in, in, in, in, in, out, in, out) is det.
 
-unify_proc__compare_args([], [], R, Context, Return_Equal) -->
+unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal) -->
+	(
+		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
+			Context, Goal0)
+	->
+		{ Goal = Goal0 }
+	;
+		{ error("unify_proc__compare_args: length mismatch") }
+	).
+
+:- pred unify_proc__compare_args_2(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), prog_var, prog_context,
+		hlds_goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__compare_args_2(in, in, in, in, in, in, out, in, out)
+		is semidet.
+
+unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal) -->
 	{ create_atomic_unification(
 		R, functor(cons(unqualified("="), 0), []),
 		Context, explicit, [], 
 		Return_Equal) }.
-unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
+unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
+		R, Context, Goal) -->
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	%
+	% When comparing existentially typed arguments, the arguments may
+	% have different types; in that case, rather than just comparing them,
+	% which would be a type error, we call `typed_compare', which is a
+	% builtin that first compares their types and then compares
+	% their values.
+	%
+	{
+		list__member(ExistQTVar, ExistQTVars),
+		term__contains_var(Type, ExistQTVar)
+	->
+		ComparePred = "typed_compare"
+	;
+		ComparePred = "compare"
+	},
 	( { Xs = [], Ys = [] } ->
-		unify_proc__build_call("compare", [R, X, Y], Context, Goal)
+		unify_proc__build_call(ComparePred, [R, X, Y], Context, Goal)
 	;
 		{ mercury_public_builtin_module(MercuryBuiltin) },
 		{ construct_type(
@@ -948,7 +992,7 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
 			[], ResType) },
 		unify_proc__info_new_var(ResType, R1),
 
-		unify_proc__build_call("compare", [R1, X, Y], Context,
+		unify_proc__build_call(ComparePred, [R1, X, Y], Context,
 			Do_Comparison),
 
 		{ create_atomic_unification(
@@ -964,12 +1008,9 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
 		{ map__init(Empty) },
 		{ Goal = if_then_else([], Condition, Return_R1, ElseCase, Empty)
 					- GoalInfo},
-		unify_proc__compare_args(Xs, Ys, R, Context, ElseCase)
+		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
+			Context, ElseCase)
 	).
-unify_proc__compare_args([], [_|_], _, _, _) -->
-	{ error("unify_proc__compare_args: length mismatch") }.
-unify_proc__compare_args([_|_], [], _, _, _) -->
-	{ error("unify_proc__compare_args: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1008,7 +1049,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	},
 	{ hlds_pred__initial_proc_id(ModeId) },
 	{ Call = call(IndexPredId, ModeId, ArgVars, not_builtin,
-			no, unqualified(Name)) },
+			no, qualified(MercuryBuiltin, Name)) },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ Goal = Call - GoalInfo }.
@@ -1016,7 +1057,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 %-----------------------------------------------------------------------------%
 
 :- pred unify_proc__make_fresh_vars_from_types(list(type), list(prog_var),
-					unify_proc_info, unify_proc_info).
+			unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars_from_types(in, out, in, out) is det.
 
 unify_proc__make_fresh_vars_from_types([], []) --> [].
@@ -1024,29 +1065,72 @@ unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars]) -->
 	unify_proc__info_new_var(Type, Var),
 	unify_proc__make_fresh_vars_from_types(Types, Vars).
 
-:- pred unify_proc__make_fresh_vars(list(constructor_arg), list(prog_var),
-					unify_proc_info, unify_proc_info).
-:- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
+:- pred unify_proc__make_fresh_vars(list(constructor_arg), existq_tvars,
+			list(prog_var), unify_proc_info, unify_proc_info).
+:- mode unify_proc__make_fresh_vars(in, in, out, in, out) is det.
 
-unify_proc__make_fresh_vars([], []) --> [].
-unify_proc__make_fresh_vars([_Name - Type | Args], [Var | Vars]) -->
-	unify_proc__info_new_var(Type, Var),
-	unify_proc__make_fresh_vars(Args, Vars).
+unify_proc__make_fresh_vars(CtorArgs, ExistQTVars, Vars) -->
+	( { ExistQTVars = [] } ->
+		{ assoc_list__values(CtorArgs, ArgTypes) },
+		unify_proc__make_fresh_vars_from_types(ArgTypes, Vars)
+	;
+		%
+		% If there are existential types involved, then it's too
+		% hard to get the types right here (it would require
+		% allocating new type variables) -- instead, typecheck.m
+		% will typecheck the clause to figure out the correct types.
+		% So we just allocate the variables and leave it up to
+		% typecheck.m to infer their types.
+		%
+		unify_proc__info_get_varset(VarSet0),
+		{ list__length(CtorArgs, NumVars) },
+		{ varset__new_vars(VarSet0, NumVars, Vars, VarSet) },
+		unify_proc__info_set_varset(VarSet)
+	).
+		
+:- pred unify_proc__unify_var_lists(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), list(hlds_goal),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__unify_var_lists(in, in, in, in, out, in, out) is det.
 
-:- pred unify_proc__unify_var_lists(list(prog_var), list(prog_var),
-		list(hlds_goal)).
-:- mode unify_proc__unify_var_lists(in, in, out) is det.
+unify_proc__unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal) -->
+	(
+		unify_proc__unify_var_lists_2(ArgTypes, ExistQVars,
+			Vars1, Vars2, Goal0)
+	->
+		{ Goal = Goal0 }
+	;
+		{ error("unify_proc__unify_var_lists: length mismatch") }
+	).
 
-unify_proc__unify_var_lists([], [_|_], _) :-
-	error("unify_proc__unify_var_lists: length mismatch").
-unify_proc__unify_var_lists([_|_], [], _) :-
-	error("unify_proc__unify_var_lists: length mismatch").
-unify_proc__unify_var_lists([], [], []).
-unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
-	term__context_init(Context),
-	create_atomic_unification(Var1, var(Var2), Context, explicit, [],
-		Goal),
-	unify_proc__unify_var_lists(Vars1, Vars2, Goals).
+:- pred unify_proc__unify_var_lists_2(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), list(hlds_goal),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__unify_var_lists_2(in, in, in, in, out, in, out) is semidet.
+
+unify_proc__unify_var_lists_2([], _, [], [], []) --> [].
+unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
+		[Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) -->
+	{ term__context_init(Context) },
+	%
+	% When unifying existentially typed arguments, the arguments may
+	% have different types; in that case, rather than just unifying them,
+	% which would be a type error, we call `typed_unify', which is a
+	% builtin that first checks that their types are equal and then
+	% unifies the values.
+	%
+	(
+		{ list__member(ExistQTVar, ExistQTVars) },
+		{ term__contains_var(Type, ExistQTVar) }
+	->
+		unify_proc__build_call("typed_unify", [Var1, Var2], Context,
+			Goal)
+	;
+		{ create_atomic_unification(Var1, var(Var2), Context, explicit,
+			[], Goal) }
+	),
+	unify_proc__unify_var_lists_2(ArgTypes, ExistQTVars, Vars1, Vars2,
+		Goals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,7 +151,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 		Unification = simple_test(_InVar1, _InVar2),
 		Info = Info0
 	;
-		Unification = complicated_unify(_, _),
+		Unification = complicated_unify(_, _, _),
 		error("Unexpected complicated_unify in termination analysis")
 	).
 

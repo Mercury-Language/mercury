@@ -28,7 +28,10 @@
 :- type mode_context
 	--->	call(	
 			pred_id,	% pred name / arity
-			int		% argument number
+			int		% argument number (offset so that
+					% the real arguments start at number 1
+					% whereas the type_info arguments
+					% have numbers <= 0).
 		)
 	;	higher_order_call(
 			pred_or_func,	% is it call/N (higher-order pred call)
@@ -573,6 +576,11 @@ mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
 		mode_info_set_mode_context(
 			higher_order_call(PredOrFunc, ArgNum),
 			ModeInfo0, ModeInfo)
+	; ModeContext0 = unify(_UnifyContext, _Side) ->
+		% This only happens when checking that the typeinfo variables
+		% for polymorphic complicated unifications are ground.
+		% For that case, we don't care about the ArgNum.
+		ModeInfo = ModeInfo0
 	;
 		error("mode_info_set_call_arg_context")
 	).

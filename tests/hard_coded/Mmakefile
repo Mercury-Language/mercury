@@ -30,6 +30,7 @@ PROGS=	\
 	dupcall_types_bug \
 	elim_special_pred \
 	existential_bound_tvar \
+	existential_reordering \
 	eqv_type_bug \
 	error_func \
 	erroneous_liveness \
