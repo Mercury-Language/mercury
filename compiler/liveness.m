@@ -146,8 +146,8 @@ detect_liveness_in_goal_2(not(Vars, Goal0), Liveness, ModuleInfo,
 			% bind X.
 	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
 
-detect_liveness_in_goal_2(switch(Var, Cases0, FollowVars), Liveness,
-		ModuleInfo, switch(Var, Cases, FollowVars)) :-
+detect_liveness_in_goal_2(switch(Var, Cases0), Liveness,
+				ModuleInfo, switch(Var, Cases)) :-
 	set__init(Union),
 	detect_liveness_in_cases(Cases0, Liveness, ModuleInfo, Union, _, Cases).
 
@@ -274,8 +274,8 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,
 	set__difference(Deadness1, Deadness2, Residue1),
 	stuff_deadness_residue_into_goal(Else1, Residue1, Else).
 
-detect_deadness_in_goal_2(switch(Var, Cases0, FollowVars), Deadness,
-		ModuleInfo, switch(Var, Cases, FollowVars)) :-
+detect_deadness_in_goal_2(switch(Var, Cases0), Deadness,
+				ModuleInfo, switch(Var, Cases)) :-
 	set__init(Union0),
 	detect_deadness_in_cases(Cases0, Deadness, ModuleInfo, Union0,
 								_, Cases).

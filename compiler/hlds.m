@@ -23,7 +23,7 @@
 :- interface.
 :- import_module int, string, list, set, map, std_util.
 :- import_module varset, term.
-:- import_module prog_io.
+:- import_module prog_io, llds.
 
 :- implementation.
 :- import_module prog_util, mode_util.
@@ -273,8 +273,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Deterministic disjunctions are converted
 				% into case statements by the switch
 				% detection pass.
-				% Variable, functor-args-goal, followvars
-			;	switch(var, list(case), follow_vars)
+				% Variable, functor-args-goal
+			;	switch(var, list(case))
 
 				% Initially only the terms and the context
 				% are know.  Mode analysis fills in the
@@ -301,8 +301,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% unify(term, term, _, _), but mode analysis replaces
 	% these with various special cases.
 
-:- type follow_vars	==	map(var, register_slot).
-:- type register_slot		==	int.
+:- type follow_vars	==	map(var, lval).
 
 :- type unification	--->	
 				% Y = f(X) where the top node of Y is output,
@@ -1342,6 +1341,12 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 :- pred goal_to_disj_list(hlds__goal, list(hlds__goal)).
 :- mode goal_to_disj_list(in, out) is det.
 
+:- pred conj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
+:- mode conj_list_to_goal(in, in, out) is det.
+
+:- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
+:- mode disj_list_to_goal(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1427,6 +1432,20 @@ goal_to_disj_list(Goal, DisjList) :-
 		DisjList = List
 	;
 		DisjList = [Goal]
+	).
+
+conj_list_to_goal(ConjList, GoalInfo, Goal) :-
+	( ConjList = [Goal0] ->
+		Goal = Goal0
+	;
+		Goal = conj(ConjList) - GoalInfo
+	).
+
+disj_list_to_goal(ConjList, GoalInfo, Goal) :-
+	( ConjList = [Goal0] ->
+		Goal = Goal0
+	;
+		Goal = disj(ConjList) - GoalInfo
 	).
 
 %-----------------------------------------------------------------------------%

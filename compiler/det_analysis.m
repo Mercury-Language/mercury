@@ -387,8 +387,7 @@ det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	% the cases and (if only a subset of the constructors are handled)
 	% semideterministic.
 
-det_infer_goal_2(switch(Var, Cases0, Follow), MiscInfo, _, _,
-				switch(Var, Cases, Follow), D) :-
+det_infer_goal_2(switch(Var, Cases0), MiscInfo, _, _, switch(Var, Cases), D) :-
 	det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1),
 	test_to_see_that_all_constructors_are_tested(Cons, MiscInfo, D2),
 	max_category(D1, D2, D).

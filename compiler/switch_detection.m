@@ -173,8 +173,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 		% with only one case into something simpler
 		detect_switches_in_cases(Cases0, InstMap, ModuleInfo,
 			Cases),
-		map__init(FollowVars),
-		Goal = switch(Var, Cases, FollowVars)
+		Goal = switch(Var, Cases)
 	;
 		detect_switches_in_disj(Vars, Goals0, GoalInfo,
 			InstMap, InstMapDelta, ModuleInfo, Goal)
@@ -232,16 +231,6 @@ fix_case_list([Functor - DisjList | Cases0], GoalInfo,
 		[case(Functor, Goal) | Cases]) :-
 	disj_list_to_goal(DisjList, GoalInfo, Goal),
 	fix_case_list(Cases0, GoalInfo, Cases).
-
-:- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
-:- mode disj_list_to_goal(in, in, out) is det.
-
-disj_list_to_goal(DisjList, GoalInfo, Goal) :-
-	( DisjList = [SingleGoal] ->
-		Goal = SingleGoal
-	;
-		Goal = disj(DisjList) - GoalInfo
-	).
 
 %-----------------------------------------------------------------------------%
 

@@ -84,8 +84,8 @@ implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
 			   disj(Goals), NonLocalVars) :-
 	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars).
 
-implicitly_quantify_goal_2(switch(Var, Cases0, F), OutsideVars,
-			   switch(Var, Cases, F), NonLocalVars) :-
+implicitly_quantify_goal_2(switch(Var, Cases0), OutsideVars,
+			   switch(Var, Cases), NonLocalVars) :-
 	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars).
 
 implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
@@ -250,7 +250,7 @@ goal_vars_2(conj(Goals), Set0, Set) :-
 goal_vars_2(disj(Goals), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
 
-goal_vars_2(switch(_Var, Cases, _F), Set0, Set) :-
+goal_vars_2(switch(_Var, Cases), Set0, Set) :-
 	case_list_vars_2(Cases, Set0, Set).
 
 goal_vars_2(some(Vars, Goal), Set0, Set) :-
