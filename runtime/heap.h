@@ -74,23 +74,23 @@
 #define	restore_hp(src)	((void)0)
 
 			/* we use `hp' as a convenient temporary here */
-#define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
+#define hp_alloc(count) (incr_hp(MR_hp,(count)), MR_hp += (count), (void)0)
 #define hp_alloc_atomic(count) \
-			(incr_hp_atomic(hp,(count)), hp += (count), (void)0)
+			(incr_hp_atomic(MR_hp,(count)), MR_hp += (count), (void)0)
 
 #else /* not CONSERVATIVE_GC */
 
 #define	tag_incr_hp(dest,tag,count)	(			\
-				(dest) = (Word)mkword(tag, (Word)hp),	\
-				debugincrhp(count, hp),		\
-				hp += (count),			\
+				(dest) = (Word)mkword(tag, (Word)MR_hp),	\
+				debugincrhp(count, MR_hp),		\
+				MR_hp += (count),			\
 				heap_overflow_check(),		\
 				(void)0				\
 			)
 #define tag_incr_hp_atomic(dest,tag,count) tag_incr_hp((dest),(tag),(count))
 
 #define	mark_hp(dest)	(					\
-				(dest) = (Word)hp,		\
+				(dest) = (Word)MR_hp,		\
 				(void)0				\
 			)
 
@@ -101,9 +101,9 @@
 ** the set_min_heap_reclamation_point() macro.
 */
 #define	restore_hp(src)	(						\
-			LVALUE_CAST(Word,hp) =				\
-			  ( (Word) min_heap_reclamation_point < (src) ?	\
-			  (src) : (Word) min_heap_reclamation_point ),	\
+			LVALUE_CAST(Word,MR_hp) =				\
+			  ( (Word) MR_min_hp_rec < (src) ?	\
+			  (src) : (Word) MR_min_hp_rec ),	\
 			(void)0						\
 		)
 
@@ -126,47 +126,47 @@
 /* not by the automatically generated code */
 #define create1(w1)	(					\
 				hp_alloc(1),			\
-				hp[-1] = (Word) (w1),		\
-				debugcr1(hp[-1], hp),		\
-				/* return */ (Word) (hp - 1)	\
+				MR_hp[-1] = (Word) (w1),		\
+				debugcr1(MR_hp[-1], MR_hp),		\
+				/* return */ (Word) (MR_hp - 1)	\
 			)
 
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create2(w1, w2)	(					\
 				hp_alloc(2),			\
-				hp[-2] = (Word) (w1),		\
-				hp[-1] = (Word) (w2),		\
-				debugcr2(hp[-2], hp[-1], hp),	\
-				/* return */ (Word) (hp - 2)	\
+				MR_hp[-2] = (Word) (w1),		\
+				MR_hp[-1] = (Word) (w2),		\
+				debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),	\
+				/* return */ (Word) (MR_hp - 2)	\
 			)
 
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create3(w1, w2, w3)	(				\
 				hp_alloc(3),			\
-				hp[-3] = (Word) (w1),		\
-				hp[-2] = (Word) (w2),		\
-				hp[-1] = (Word) (w3),		\
-				/* return */ (Word) (hp - 3)	\
+				MR_hp[-3] = (Word) (w1),		\
+				MR_hp[-2] = (Word) (w2),		\
+				MR_hp[-1] = (Word) (w3),		\
+				/* return */ (Word) (MR_hp - 3)	\
 			)
 
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create2_bf(w1)	(					\
-				hp = hp + 2,			\
-				hp[-2] = (Word) (w1),		\
+				MR_hp = MR_hp + 2,			\
+				MR_hp[-2] = (Word) (w1),		\
 				heap_overflow_check(),		\
-				/* return */ (Word) (hp - 2)	\
+				/* return */ (Word) (MR_hp - 2)	\
 			)
 
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create2_fb(w2)	(					\
-				hp = hp + 2,			\
-				hp[-1] = (Word) (w2),		\
+				MR_hp = MR_hp + 2,			\
+				MR_hp[-1] = (Word) (w2),		\
 				heap_overflow_check(),		\
-				/* return */ (Word) (hp - 2)	\
+				/* return */ (Word) (MR_hp - 2)	\
 			)
 
 /*

@@ -26,29 +26,29 @@
 
 #define	heap_overflow_check()					\
 			(					\
-				IF (hp >= heap_zone->top,(	\
+				IF (MR_hp >= heap_zone->top,(	\
 					fatal_error("heap overflow") \
 				)),				\
-				IF (hp > heap_zone->max,(	\
-					heap_zone->max = hp	\
+				IF (MR_hp > heap_zone->max,(	\
+					heap_zone->max = MR_hp	\
 				)),				\
 				(void)0				\
 			)
 
 #define	detstack_overflow_check()				\
 			(					\
-				IF (sp >= detstack_zone->top,(	\
+				IF (MR_sp >= detstack_zone->top,(	\
 					fatal_error("stack overflow") \
 				)),				\
-				IF (sp > detstack_zone->max,(	\
-					detstack_zone->max = sp	\
+				IF (MR_sp > detstack_zone->max,(	\
+					detstack_zone->max = MR_sp	\
 				)),				\
 				(void)0				\
 			)
 
 #define	detstack_underflow_check()				\
 			(					\
-				IF (sp < detstack_zone->min,(		\
+				IF (MR_sp < detstack_zone->min,(		\
 					fatal_error("stack underflow") \
 				)),				\
 				(void)0				\
@@ -56,18 +56,18 @@
 
 #define	nondstack_overflow_check()				\
 			(					\
-				IF (maxfr >= nondetstack_zone->top,(	\
+				IF (MR_maxfr >= nondetstack_zone->top,(	\
 					fatal_error("nondetstack overflow") \
 				)),				\
-				IF (maxfr > nondetstack_zone->max,(	\
-					nondetstack_zone->max = maxfr	\
+				IF (MR_maxfr > nondetstack_zone->max,(	\
+					nondetstack_zone->max = MR_maxfr	\
 				)),				\
 				(void)0				\
 			)
 
 #define	nondstack_underflow_check()				\
 			(					\
-				IF (maxfr < nondetstack_zone->min,(	\
+				IF (MR_maxfr < nondetstack_zone->min,(	\
 					fatal_error("nondetstack underflow") \
 				)),				\
 				(void)0				\

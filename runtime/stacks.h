@@ -17,53 +17,53 @@
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
-#define	detstackvar(n)	sp[-n]
+#define	detstackvar(n)	(MR_sp[-n])
 
 #define	incr_sp_push_msg(n, msg)				\
 			(					\
-				debugincrsp(n, sp),		\
+				debugincrsp(n, MR_sp),		\
 				dump_push_msg(msg),		\
-				sp = sp + (n),			\
+				MR_sp = MR_sp + (n),		\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	decr_sp_pop_msg(n)					\
 			(					\
-				debugdecrsp(n, sp),		\
+				debugdecrsp(n, MR_sp),		\
 				dump_pop_msg(),			\
-				sp = sp - (n),			\
+				MR_sp = MR_sp - (n),		\
 				detstack_underflow_check(),	\
 				(void)0				\
 			)
 
 #define	incr_sp(n)	(					\
-				debugincrsp(n, sp),		\
-				sp = sp + (n),			\
+				debugincrsp(n, MR_sp),		\
+				MR_sp = MR_sp + (n),		\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	decr_sp(n)	(					\
-				debugdecrsp(n, sp),		\
-				sp = sp - (n),			\
+				debugdecrsp(n, MR_sp),		\
+				MR_sp = MR_sp - (n),		\
 				detstack_underflow_check(),	\
 				(void)0				\
 			)
 
 #define	push(w)		(					\
-				*sp = (Word) (w),		\
-				debugpush(*sp, sp),		\
-				sp = sp + 1,			\
+				*MR_sp = (Word) (w),		\
+				debugpush(*sp, MR_sp),		\
+				MR_sp = MR_sp + 1,		\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	pop()		(					\
-				sp = sp - 1,			\
-				debugpop(*sp, sp),		\
+				MR_sp = MR_sp - 1,		\
+				debugpop(*MR_sp, MR_sp),	\
 				detstack_underflow_check(),	\
-				/* return */ *sp		\
+				/* return */ *MR_sp		\
 			)
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
@@ -93,12 +93,12 @@
 #define	bt_succfr(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[SUCCFR])
 #define	bt_var(fr,n)	(((Word *) (fr))[SAVEVAL-(n)])
 
-#define	curprednm	bt_prednm(curfr)
-#define	curredoip	bt_redoip(curfr)
-#define	curprevfr	bt_prevfr(curfr)
-#define	cursuccip	bt_succip(curfr)
-#define	cursuccfr	bt_succfr(curfr)
-#define	framevar(n)	bt_var(curfr,n)
+#define	curprednm	bt_prednm(MR_curfr)
+#define	curredoip	bt_redoip(MR_curfr)
+#define	curprevfr	bt_prevfr(MR_curfr)
+#define	curMR_succip	bt_succip(MR_curfr)
+#define	cursuccfr	bt_succfr(MR_curfr)
+#define	framevar(n)	bt_var(MR_curfr,n)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
@@ -114,13 +114,13 @@
 				reg	Word	*prevfr;	\
 				reg	Word	*succfr;	\
 								\
-				prevfr = maxfr;			\
-				succfr = curfr;			\
-				maxfr += (NONDET_FIXED_SIZE + numslots);\
-				curfr = maxfr;			\
+				prevfr = MR_maxfr;			\
+				succfr = MR_curfr;			\
+				MR_maxfr += (NONDET_FIXED_SIZE + numslots);\
+				MR_curfr = MR_maxfr;			\
 				curredoip = redoip;		\
 				curprevfr = prevfr;		\
-				cursuccip = succip;		\
+				curMR_succip = MR_succip;		\
 				cursuccfr = succfr;		\
 				mkframe_save_prednm(prednm);	\
 				debugmkframe();			\
@@ -140,8 +140,8 @@
 				reg	Word	*childfr;	\
 								\
 				debugsucceed();			\
-				childfr = curfr;		\
-				curfr = cursuccfr;		\
+				childfr = MR_curfr;		\
+				MR_curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
@@ -150,17 +150,17 @@
 				reg	Word	*childfr;	\
 								\
 				debugsucceeddiscard();		\
-				childfr = curfr;		\
-				maxfr = curprevfr;		\
-				curfr = cursuccfr;		\
+				childfr = MR_curfr;		\
+				MR_maxfr = curprevfr;		\
+				MR_curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
 
 #define	fail()		do {					\
 				debugfail();			\
-				maxfr = curprevfr;		\
-				curfr = maxfr;			\
+				MR_maxfr = curprevfr;		\
+				MR_curfr = MR_maxfr;			\
 				nondstack_underflow_check();	\
 				GOTO(curredoip);		\
 			} while (0)
@@ -168,7 +168,7 @@
 
 #define	redo()		do {					\
 				debugredo();			\
-				curfr = maxfr;			\
+				MR_curfr = MR_maxfr;			\
 				GOTO(curredoip);		\
 			} while (0)
 

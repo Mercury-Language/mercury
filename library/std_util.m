@@ -594,9 +594,9 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 	temp = (Word) heap_zone;				\
 	heap_zone = solutions_heap_zone;			\
 	LVALUE_CAST(Word, solutions_heap_zone) = temp;		\
-	temp = (Word) hp;					\
-	hp = solutions_heap_pointer;				\
-	LVALUE_CAST(Word, solutions_heap_pointer) = temp;	\
+	temp = (Word) MR_hp;					\
+	MR_hp = MR_sol_hp;				\
+	LVALUE_CAST(Word, MR_sol_hp) = temp;		\
     } while (0)
  
 /*
@@ -633,7 +633,7 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
  
 	/* save heap states */
- 	saved_solhp_fv = (Word) solutions_heap_pointer; 
+ 	saved_solhp_fv = (Word) MR_sol_hp; 
  	mark_hp(saved_hp_fv);
 
 #ifdef MR_USE_TRAIL
@@ -734,7 +734,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	builtin_aggregate_output = copied_collection;
 
  	/* reset solutions heap to where it was before call to solutions  */
- 	solutions_heap_pointer = (Word *) saved_solhp_fv;
+ 	MR_sol_hp = (Word *) saved_solhp_fv;
  	
 	/* discard the frame we made */
 	succeed_discard();

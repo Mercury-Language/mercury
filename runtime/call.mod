@@ -41,7 +41,7 @@ do_call_det_closure:
 
 	push(r3); /* The number of output args to unpack */
 	push(num_in_args + num_extra_args); /* The number of input args */
-	push(succip);
+	push(MR_succip);
 
 	save_registers();
 
@@ -68,7 +68,7 @@ det_closure_return:
 {
 	int	i, num_in_args, num_out_args;
 
-	succip = pop(); /* restore succip */
+	MR_succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
 	num_out_args = pop(); /* restore the ouput arg counter */
 
@@ -97,7 +97,7 @@ do_call_semidet_closure:
 
 	push(r3); /* The number of output args to unpack */
 	push(num_in_args + num_extra_args); /* The number of input args */
-	push(succip);
+	push(MR_succip);
 
 	save_registers();
 
@@ -140,7 +140,7 @@ semidet_closure_return:
 {
 	int	i, num_in_args, num_out_args;
 
-	succip = pop(); /* restore succip */
+	MR_succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
 	num_out_args = pop(); /* restore the ouput arg counter */
 
@@ -329,7 +329,7 @@ mercury__index_2_0:
 #ifdef	COMPACT_ARGS
 	tailcall(index_pred, LABEL(mercury__index_2_0));
 #else
-	push(succip);
+	push(MR_succip);
 	push(type_arity);
 	call(index_pred, LABEL(mercury__index_2_0_i1), 
 		LABEL(mercury__index_2_0));
@@ -347,7 +347,7 @@ mercury__index_2_0_i1:
 	int	type_arity;
 
 	type_arity = pop();
-	succip = pop();
+	MR_succip = pop();
 	save_registers();
 	r3 = virtual_reg(type_arity + 2);
 	proceed();
@@ -438,7 +438,7 @@ mercury__compare_3_3:
 #ifdef	COMPACT_ARGS
 	tailcall(compare_pred, LABEL(mercury__compare_3_3));
 #else
-	push(succip);
+	push(MR_succip);
 	push(type_arity);
 	call(compare_pred, LABEL(mercury__compare_3_0_i1),
 		LABEL(mercury__compare_3_3));
@@ -456,7 +456,7 @@ mercury__compare_3_0_i1:
 	int	type_arity;
 
 	type_arity = pop();
-	succip = pop();
+	MR_succip = pop();
 	save_registers();
 	r2 = virtual_reg(type_arity + 1);
 	proceed();

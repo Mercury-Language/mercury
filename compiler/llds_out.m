@@ -1290,11 +1290,11 @@ output_gc_livevals_params([Var - Lval | Lvals]) -->
 
 :- pred output_live_value_type(live_value_type, io__state, io__state).
 :- mode output_live_value_type(in, di, uo) is det.
-output_live_value_type(succip) --> io__write_string("succip").
-output_live_value_type(curfr) --> io__write_string("curfr").
-output_live_value_type(maxfr) --> io__write_string("maxfr").
-output_live_value_type(redoip) --> io__write_string("redoip").
-output_live_value_type(hp) --> io__write_string("hp").
+output_live_value_type(succip) --> io__write_string("MR_succip").
+output_live_value_type(curfr) --> io__write_string("MR_curfr").
+output_live_value_type(maxfr) --> io__write_string("MR_maxfr").
+output_live_value_type(redoip) --> io__write_string("MR_redoip").
+output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
 output_live_value_type(var(Type, Inst)) --> 
 	io__write_string("var("),

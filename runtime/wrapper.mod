@@ -830,9 +830,9 @@ BEGIN_MODULE(interpreter_module)
 BEGIN_CODE
 
 do_interpreter:
-	push(hp);
-	push(succip);
-	push(maxfr);
+	push(MR_hp);
+	push(MR_succip);
+	push(MR_maxfr);
 	mkframe("interpreter", 1, LABEL(global_fail));
 
 	if (program_entry_point == NULL) {
@@ -880,9 +880,9 @@ all_done:
 	prof_output_addr_pair_table();
 #endif
 
-	maxfr = (Word *) pop();
-	succip = (Code *) pop();
-	hp = (Word *) pop();
+	MR_maxfr = (Word *) pop();
+	MR_succip = (Code *) pop();
+	MR_hp = (Word *) pop();
 
 #ifndef SPEED
 	if (finaldebug && detaildebug) {

@@ -122,7 +122,7 @@ struct CONTEXT {
 
 	Word		*context_hp;
 		/* saved hp for this context */
-	Word		*min_heap_reclamation_point;
+	Word		*min_hp_rec;
 		/*
 		** this pointer marks the minimum value of hp to which we can
 		** truncate the heap on backtracking. See comments before the
@@ -232,30 +232,15 @@ extern	AtomicBool	*procwaiting;
 extern	int	my_procnum;
 extern	pid_t	my_procid;
 
-/*
-** The minimum value of hp to which the current context
-** may truncate the heap on backtracking. see the comments
-** below next to the set_min_heap_reclamation_point macro.
-*/
-extern	Word	*min_heap_reclamation_point;
-
 /* do a context switch */
 Declare_entry(do_runnext);
 #define	runnext()	GOTO(ENTRY(do_runnext));
 
 /*
 ** schedule(Context *cptr, Code *resume):
-** setup a call to do_schedule which
-** adds the context pointed to by `cptr' to the runqueue then
-** branches to `resume'.
 */
-Declare_entry(do_schedule);
-extern Context *do_schedule_cptr;
-extern Code *do_schedule_resume;
-#define schedule(cptr, resume)	do {			\
-		do_schedule_cptr = (Context *)(cptr);	\
-		do_schedule_resume = (Code *)(resume);	\
-		GOTO(ENTRY(do_schedule));		\
+#define schedule(cptr, resume)	do {				\
+		fatal_error("schedule not implemented");	\
 	} while(0)
 
 /*
@@ -292,7 +277,7 @@ extern Code *do_schedule_resume;
 **
 ** If hp > context_hp, another context has allocated data on the heap since
 ** we were last scheduled, so the furthest back that we can reclaim is to
-** the current value of hp, so we set min_heap_reclamation_point and the
+** the current value of hp, so we set MR_min_hp_rec and the
 ** field of the same name in our context structure.
 **
 ** If hp < context_hp, then another context has truncated the heap on failure.
@@ -314,20 +299,18 @@ extern Code *do_schedule_resume;
 		if (hp != (ctxt)->context_hp 			\
 			|| (ctxt)->context_hp == NULL)		\
 		{						\
-			min_heap_reclamation_point = hp;	\
-			(ctxt)->min_heap_reclamation_point = hp;\
+			MR_min_hp_rec = hp;	\
+			(ctxt)->min_hp_rec = hp;\
 		}						\
 		else						\
 		{						\
-			min_heap_reclamation_point =		\
-				(ctxt)->min_heap_reclamation_point;\
+			MR_min_hp_rec =	(ctxt)->min_hp_rec;	\
 		}						\
 	} while (0)
 
 #define	save_hp_in_context(ctxt)	do {		\
 		(ctxt)->context_hp = hp;		\
-		(ctxt)->min_heap_reclamation_point =	\
-			min_heap_reclamation_point;	\
+		(ctxt)->min_hp_rec = MR_min_hp_rec;	\
 	} while (0)
 
 #else
@@ -347,12 +330,12 @@ extern Code *do_schedule_resume;
 #define	load_context(cptr)	do {					\
 		Context	*load_context_c;				\
 		load_context_c = (cptr);				\
-		succip		= load_context_c->context_succip;	\
+		MR_succip		= load_context_c->context_succip; \
 		detstack_zone	= load_context_c->detstack_zone;	\
-		sp		= load_context_c->context_sp;		\
+		MR_sp		= load_context_c->context_sp;		\
 		nondetstack_zone = load_context_c->nondetstack_zone;	\
-		maxfr		= load_context_c->context_maxfr;	\
-		curfr		= load_context_c->context_curfr;	\
+		MR_maxfr		= load_context_c->context_maxfr; \
+		MR_curfr		= load_context_c->context_curfr; \
 	        MR_IF_USE_TRAIL(					\
 		    MR_trail_zone = load_context_c->trail_zone;		\
 		    MR_trail_ptr = load_context_c->context_trail_ptr;	\
@@ -365,12 +348,12 @@ extern Code *do_schedule_resume;
 #define	save_context(cptr)	do {					\
 		Context	*save_context_c;				\
 		save_context_c = (cptr);				\
-		save_context_c->context_succip	= succip;		\
+		save_context_c->context_succip	= MR_succip;		\
 		save_context_c->detstack_zone	= detstack_zone;	\
-		save_context_c->context_sp	 = sp;			\
+		save_context_c->context_sp	 = MR_sp;		\
 		save_context_c->nondetstack_zone = nondetstack_zone;	\
-		save_context_c->context_maxfr	= maxfr;		\
-		save_context_c->context_curfr	= curfr;		\
+		save_context_c->context_maxfr	= MR_maxfr;		\
+		save_context_c->context_curfr	= MR_curfr;		\
 		MR_IF_USE_TRAIL(					\
 		    save_context_c->trail_zone = MR_trail_zone;		\
 		    save_context_c->context_trail_ptr = MR_trail_ptr;	\
@@ -400,20 +383,12 @@ extern Code *do_schedule_resume;
 #define	SYNC_TERM_COUNTER	1
 #define	SYNC_TERM_PARENT	2
 
-Declare_entry(do_join_and_terminate);
-extern Word	*do_join_and_terminate_sync_term;
 #define join_and_terminate(sync_term)	do {				\
-		do_join_and_terminate_sync_term = (Word *)(sync_term);	\
-		GOTO(ENTRY(do_join_and_terminate));			\
+		fatal_error("join_and_terminate not implemented");	\
 	} while (0)
 
-Declare_entry(do_join_and_continue);
-extern Word	*do_join_and_continue_sync_term;
-extern Code	*do_join_and_continue_where_to;
 #define join_and_continue(sync_term, where_to)	do {			\
-		do_join_and_continue_sync_term = (Word *)(sync_term);	\
-		do_join_and_continue_where_to = (Code *)(where_to);	\
-		GOTO(ENTRY(do_join_and_continue));			\
+		fatal_error("join_and_continue not implemented");	\
 	} while (0)
 
 #endif

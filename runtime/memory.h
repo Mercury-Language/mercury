@@ -130,7 +130,6 @@ extern MemoryZone	*nondetstack_zone;
 #ifndef CONSERVATIVE_GC
 extern MemoryZone	*heap_zone;
 extern MemoryZone	*solutions_heap_zone;
-extern Word		*solutions_heap_pointer;
 #endif
 
 #ifndef	SPEED

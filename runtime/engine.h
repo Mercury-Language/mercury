@@ -89,7 +89,7 @@ typedef struct {
 	** - The general-purpose registers r1, r2... are not restored and must
 	** be saved by the caller.
 	** - In grades without conservative garbage collection, the caller
-	** must save and restore hp, solutions_heap_pointer, heap_zone 
+	** must save and restore hp, sol_hp, heap_zone 
 	** and solutions_heap_zone.
 	*/
 #define MR_setjmp(setjmp_env, longjmp_label)				\

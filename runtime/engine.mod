@@ -61,16 +61,8 @@ init_engine(void)
 	make_label("engine_done", LABEL(engine_done));
 #endif
 
-	init_processes();
 	init_process_context();
 
-	if (my_procnum == 0) {
-		return;
-	} else {
-		call_engine(ENTRY(do_runnext));
-		/* not reached */
-		MR_assert(FALSE);
-	}
 }
 
 /*---------------------------------------------------------------------------*/
@@ -302,7 +294,7 @@ static Code *
 engine_init_registers(void)
 {
 	restore_transient_registers();
-	succip = engine_done;
+	MR_succip = engine_done;
 	return NULL;
 }
 
@@ -390,8 +382,6 @@ terminate_engine(void)
 	** we don't bother to deallocate memory...
 	** that will happen automatically on process exit anyway.
 	*/
-
-	shutdown_processes();
 }
 
 /*---------------------------------------------------------------------------*/

@@ -9,7 +9,7 @@
 #ifndef CALLS_H
 #define CALLS_H
 
-#include "regs.h"	/* for succip */
+#include "regs.h"	/* for MR_succip */
 #include "goto.h"	/* calls are implemented using gotos */
 #include "debug.h"	/* we need to debug them */
 #include "prof.h"	/* we need to profile them */
@@ -17,7 +17,7 @@
 #define	noprof_localcall(label, succ_cont)			\
 		do {						\
 			debugcall(LABEL(label), (succ_cont));	\
-			succip = (succ_cont);			\
+			MR_succip = (succ_cont);			\
 			set_prof_current_proc(LABEL(label));	\
 			GOTO_LABEL(label);			\
 		} while (0)
@@ -32,7 +32,7 @@
 		({						\
 			__label__ fixup_gp;			\
 			debugcall((proc), (succ_cont));		\
-			succip = (&&fixup_gp);			\
+			MR_succip = (&&fixup_gp);		\
 			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		fixup_gp:					\
@@ -44,7 +44,7 @@
 		({						\
 			__label__ fixup_gp;			\
 			debugcall((proc), (succ_cont));		\
-			succip = (&&fixup_gp);			\
+			MR_succip = (&&fixup_gp);		\
 			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		fixup_gp:					\
@@ -55,7 +55,7 @@
   #define	noprof_call(proc, succ_cont)			\
 		do {						\
 			debugcall((proc), (succ_cont));		\
-			succip = (succ_cont);			\
+			MR_succip = (succ_cont);		\
 			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		} while (0)
@@ -66,7 +66,7 @@
 #define	localcall(label, succ_cont, current_label)		\
 		do {						\
 			debugcall(LABEL(label), (succ_cont));	\
-			succip = (succ_cont);			\
+			MR_succip = (succ_cont);		\
 			PROFILE(LABEL(label), (current_label));	\
 			set_prof_current_proc(LABEL(label));	\
 			GOTO_LABEL(label);			\
@@ -81,7 +81,7 @@
 #define	call_localret(proc, succ_cont, current_label)		\
 		do {						\
 			PROFILE((proc), (current_label));	\
-			noprof_call_localret(proc, succ_cont); \
+			noprof_call_localret(proc, succ_cont);	\
 		} while (0)
 
 #define	call_det_closure(succ_cont, current_label)		\
@@ -124,7 +124,7 @@
 #define	proceed()						\
 		do {						\
 			debugproceed();				\
-			GOTO(succip);				\
+			GOTO(MR_succip);			\
 		} while (0)
 
 #endif /* not CALLS_H */

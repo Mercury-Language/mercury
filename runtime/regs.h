@@ -148,15 +148,18 @@ extern	Word	set_reg(int, Word);
 ** print_register_usage_counts() in wrapper.mod.
 */
 
-#define	SI_RN	0
-#define R_RN(n)	(n)
-#define ORD_RN	MAX_REAL_REG
-#define	HP_RN	(ORD_RN + 1)
-#define	SP_RN	(ORD_RN + 2)
-#define	CF_RN	(ORD_RN + 3)
-#define	MF_RN	(ORD_RN + 4)
-#define MR_TRAIL_PTR_RN		(ORD_RN + 5)
-#define MR_TICKET_COUNTER_RN	(ORD_RN + 6)
-#define MAX_RN			(ORD_RN + 7)
+#define	MR_SI_RN		0
+#define MR_R_RN(n)		(n)
+#define MR_ORD_RN		MAX_REAL_REG
+#define	MR_HP_RN		(MR_ORD_RN + 1)
+#define	MR_SP_RN		(MR_ORD_RN + 2)
+#define	MR_CF_RN		(MR_ORD_RN + 3)
+#define	MR_MF_RN		(MR_ORD_RN + 4)
+#define MR_TRAIL_PTR_RN		(MR_ORD_RN + 5)
+#define MR_TICKET_COUNTER_RN	(MR_ORD_RN + 6)
+#define	MR_SOL_HP_RN		(MR_ORD_RN + 7)
+#define	MR_MIN_HP_REC		(MR_ORD_RN + 8)
+#define	MR_MIN_SOL_HP_REC	(MR_ORD_RN + 9)
+#define MAX_RN			(MR_ORD_RN + 10)
 
 #endif /* not REGS_H */

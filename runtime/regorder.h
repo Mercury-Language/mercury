@@ -55,11 +55,20 @@
 #define r31		count_usage(R_RN(31), mr35)
 #define r32		count_usage(R_RN(32), mr36)
 
-#define succip		LVALUE_CAST(Code *, count_usage(SI_RN, mr1))
-#define hp		LVALUE_CAST(Word *, count_usage(HP_RN, mr5))
-#define sp		LVALUE_CAST(Word *, count_usage(SP_RN, mr0))
-#define curfr		LVALUE_CAST(Word *, count_usage(CF_RN, mr8))
-#define maxfr		LVALUE_CAST(Word *, count_usage(MF_RN, mr9))
+#define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
+#define succip		MR_succip
+#define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
+#define hp		MR_hp
+#define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
+#define sp		MR_sp
+#define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr8))
+#define curfr		MR_curfr
+#define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr9))
+#define maxfr		MR_maxfr
+#define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(37)))
+#define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(38)))
+#define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
+			count_usage(MR_MIN_HP_REC, mr39))
 
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \

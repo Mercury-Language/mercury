@@ -183,7 +183,6 @@ MemoryZone *nondetstack_zone;
 #ifndef CONSERVATIVE_GC
   MemoryZone *heap_zone;
   MemoryZone *solutions_heap_zone;
-  Word       *solutions_heap_pointer;
 #endif
 #ifndef	SPEED
   MemoryZone *dumpstack_zone;
@@ -415,13 +414,15 @@ init_heap(void)
 			heap_zone_size, default_handler);
 
 	restore_transient_registers();
-	hp = heap_zone->min;
+	MR_hp = heap_zone->min;
 	save_transient_registers();
 
 	solutions_heap_zone = create_zone("solutions_heap", 1,
 			solutions_heap_size, next_offset(),
 			solutions_heap_zone_size, default_handler);
-	solutions_heap_pointer = solutions_heap_zone->min;
+	restore_transient_registers();
+	MR_sol_hp = solutions_heap_zone->min;
+	save_transient_registers();
 
 #endif
 
