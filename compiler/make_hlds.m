@@ -2361,7 +2361,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ code_util__predinfo_is_builtin(PredInfo1) }
 	->
 		prog_out__write_context(Context),
-		report_warning("Warning: clause for builtin.\n"),
+		io__write_string("Warning: clause for builtin.\n"),
 		{ ModuleInfo = ModuleInfo0 },
 		{ Info = Info0 }
 	;
