@@ -2906,11 +2906,27 @@ hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
 		[]
 	),
 	hlds_out__write_constructors(Indent, Tvarset, Ctors, Tags),
-	( { MaybeEqualityPred = yes(PredName) } ->
+	( { MaybeEqualityPred = yes(unify_compare(MaybeEq, MaybeCompare)) } ->
 		io__write_string("\n"),
 		hlds_out__write_indent(Indent + 1),
-		io__write_string("where equality is "),
-		prog_out__write_sym_name(PredName)
+		io__write_string("where "),
+		( { MaybeEq = yes(Eq) } ->
+			io__write_string("equality is "),
+			prog_out__write_sym_name(Eq),
+			( { MaybeCompare = yes(_) } ->
+				io__write_string(", ")
+			;
+				[]
+			)
+		;
+			[]
+		),
+		( { MaybeCompare = yes(Compare) } ->
+			io__write_string("comparison is "),
+			prog_out__write_sym_name(Compare)
+		;
+			[]
+		)
 	;
 		[]
 	),

@@ -887,7 +887,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 qualify_pragma(X@source_file(_), X, Info, Info) --> [].
 qualify_pragma(X@foreign_decl(_, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_code(_, _), X, Info, Info) --> [].
-qualify_pragma(X@foreign_type(_, _, _, _), X, Info, Info) --> [].
+qualify_pragma(X@foreign_type(_, _, _, _, _), X, Info, Info) --> [].
 qualify_pragma(X@foreign_import_module(_, _), X, Info, Info) --> [].
 qualify_pragma(
 	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),

@@ -1700,7 +1700,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),
 		( Target = c,
-			( MaybeC = yes(CForeignType),
+			( MaybeC = yes(CForeignType - _),
 				ForeignType = c(CForeignType)
 			; MaybeC = no,
 				% This is checked by check_foreign_type
@@ -1709,7 +1709,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 				"mercury_type_to_mlds_type: No C foreign type")
 			)
 		; Target = il,
-			( MaybeIL = yes(ILForeignType),
+			( MaybeIL = yes(ILForeignType - _),
 				ForeignType = il(ILForeignType)
 			; MaybeIL = no,
 				% This is checked by check_foreign_type
@@ -1718,7 +1718,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 				"mercury_type_to_mlds_type: No IL foreign type")
 			)
 		; Target = java,
-			( MaybeJava = yes(JavaForeignType),
+			( MaybeJava = yes(JavaForeignType - _),
 				ForeignType = java(JavaForeignType)
 			; MaybeJava = no,
 				% This is checked by check_foreign_type
@@ -1727,7 +1727,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 				"mercury_type_to_mlds_type: No Java foreign type")
 			)	
 		; Target = asm,
-			( MaybeC = yes(CForeignType),
+			( MaybeC = yes(CForeignType - _),
 				ForeignType = c(CForeignType)
 			; MaybeC = no,
 				% XXX This ought to be checked by the

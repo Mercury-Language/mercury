@@ -131,6 +131,7 @@ SINGLEMODULE_PROGS= \
 	typeclass_test_5 \
 	typeclass_test_7 \
 	typeclass_test_9 \
+	typeclass_test_10 \
 	types	\
 	type_spec \
 	unbound_type_vars \

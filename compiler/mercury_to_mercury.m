@@ -535,7 +535,8 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			PredOrFunc, Vars, VarSet, PragmaCode)
 	;
 		{ Pragma = foreign_type(ForeignType, TVarSet,
-				MercuryTypeSymName, MercuryTypeArgs) },
+				MercuryTypeSymName, MercuryTypeArgs,
+				MaybeEqCompare) },
 
 		io__write_string(":- pragma foreign_type("),
 		( { ForeignType = il(_) },
@@ -548,6 +549,12 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		{ construct_qualified_term(MercuryTypeSymName,
 			MercuryTypeArgs, MercuryType) },
 		mercury_output_term(MercuryType, TVarSet, no),
+		( { MaybeEqCompare = yes(_) } ->
+			io__write_string(" ")
+		;
+			[]
+		),
+		mercury_output_equality_compare_preds(MaybeEqCompare),
 		io__write_string(", \""),
 		{ ForeignType = il(il(RefOrVal,
 				ForeignLocStr, ForeignTypeName)),
@@ -1728,19 +1735,44 @@ mercury_output_type_defn(VarSet, Name, Args, eqv_type(Body), Context) -->
 	io__write_string(".\n").
 
 mercury_output_type_defn(VarSet, Name, Args,
-		du_type(Ctors, MaybeEqualityPred), Context) -->
+		du_type(Ctors, MaybeEqCompare), Context) -->
 	io__write_string(":- type "),
 	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
 	mercury_output_term(TypeTerm, VarSet, no),
 	io__write_string("\n\t--->\t"),
 	mercury_output_ctors(Ctors, VarSet),
-	( { MaybeEqualityPred = yes(EqualityPredName) } ->
-		io__write_string("\n\twhere equality is "),
-		mercury_output_bracketed_sym_name(EqualityPredName)
+	( { MaybeEqCompare = yes(_) } ->
+		io__write_string("\n\t")
 	;
 		[]
 	),
+	mercury_output_equality_compare_preds(MaybeEqCompare),
 	io__write_string("\n\t.\n").
+
+:- pred mercury_output_equality_compare_preds(maybe(unify_compare)::in,
+		io__state::di, io__state::uo) is det.
+
+mercury_output_equality_compare_preds(no) --> [].
+mercury_output_equality_compare_preds(
+		yes(unify_compare(MaybeEqualityPred, MaybeComparisonPred))) -->
+	io__write_string("where "),
+	( { MaybeEqualityPred = yes(EqualityPredName) } ->
+		io__write_string("equality is "),
+		mercury_output_bracketed_sym_name(EqualityPredName),
+		( { MaybeComparisonPred = yes(_) } ->
+			io__write_string(", ")
+		;
+			[]
+		)
+	;
+		[]
+	),
+	( { MaybeComparisonPred = yes(ComparisonPredName) } ->
+		io__write_string("comparison is "),
+		mercury_output_bracketed_sym_name(ComparisonPredName)
+	;
+		[]
+	).
 
 :- pred mercury_output_ctors(list(constructor), tvarset,
 				io__state, io__state).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -154,7 +154,9 @@
 
 :- func promise_only_solution(pred(T)) = T.
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
+:- mode promise_only_solution(pred(uo) is cc_multi) = uo is det.
 :- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
+:- mode promise_only_solution(pred(uo) is cc_nondet) = uo is semidet.
 
 % `promise_only_solution_io' is like `promise_only_solution', but
 % for procedures with unique modes (e.g. those that do IO).
@@ -178,6 +180,13 @@
 	% unify(X, Y) is true iff X = Y.
 :- pred unify(T::in, T::in) is semidet.
 
+	% For use in defining user-defined unification predicates.
+	% The relation defined by a value of type `unify', must be an
+	% equivalence relation; that is, it must be symmetric, reflexive,
+	% and transitive. 
+:- type unify(T) == pred(T, T).
+:- inst unify == (pred(in, in) is semidet).
+
 :- type comparison_result ---> (=) ; (<) ; (>).
 
 	% compare(Res, X, Y) binds Res to =, <, or >
@@ -191,6 +200,25 @@
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
 :- mode compare(uo, in, ui) is det.
+
+	% For use in defining user-defined comparison predicates.
+	% For a value `ComparePred' of type `compare', the following
+	% conditions must hold:
+	%
+	% - the relation
+	%	compare_eq(X, Y) :- ComparePred((=), X, Y).
+	%   must be an equivalence relation; that is, it must be symmetric,
+	%   reflexive, and transitive. 
+	%
+	% - the relations
+	%	compare_leq(X, Y) :-
+	%		ComparePred(R, X, Y), (R = (=) ; R = (<)).
+	%	compare_geq(X, Y) :-
+	%		ComparePred(R, X, Y), (R = (=) ; R = (>)).
+	%   must be total order relations: that is they must be antisymmetric,
+	%   reflexive and transitive.
+:- type compare(T) == pred(comparison_result, T, T).
+:- inst compare == (pred(uo, in, in) is det).
 
 	% ordering(X, Y) = R  <=>  compare(R, X, Y)
 	%
@@ -322,9 +350,19 @@ false :- fail.
 
 %-----------------------------------------------------------------------------%
 
+% XXX The calls to unsafe_promise_unique below work around
+% mode checker limitations.
 :- pragma promise_pure(promise_only_solution/1).
-promise_only_solution(CCPred) = OutVal :-
+promise_only_solution(CCPred::(pred(out) is cc_multi)) = (OutVal::out) :-
 	impure OutVal = get_one_solution(CCPred).
+promise_only_solution(CCPred::(pred(uo) is cc_multi)) = (OutVal::uo) :-
+	impure OutVal0 = get_one_solution(CCPred),
+	OutVal = unsafe_promise_unique(OutVal0).
+promise_only_solution(CCPred::(pred(out) is cc_nondet)) = (OutVal::out) :-
+	impure OutVal = get_one_solution(CCPred).
+promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
+	impure OutVal0 = get_one_solution(CCPred),
+	OutVal = unsafe_promise_unique(OutVal0).
 
 get_one_solution(CCPred) = OutVal :-
 	impure Pred = cc_cast(CCPred),

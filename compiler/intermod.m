@@ -999,32 +999,102 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 	(
 	    intermod__should_write_type(ModuleName, TypeCtor, TypeDefn0)
 	->
+	    hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
 	    (
-		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
-		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0,
-			ReservedTag, Foreign),
-		MaybeUserEq0 = yes(UserEq0)
+		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
+			ReservedTag, MaybeForeign0)
 	    ->
-		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
-		map__lookup(SpecialPreds, unify - TypeCtor, UnifyPredId),
-		module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
-		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
-		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
-			TVarSet, UserEq0, UserEq, UserEqPredId),
-		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq), 
-			ReservedTag, Foreign),
-		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
-		intermod__add_proc(UserEqPredId, _, Info1, Info2)
+		intermod__resolve_unify_compare_overloading(ModuleInfo,
+			TypeCtor, MaybeUserEqComp0, MaybeUserEqComp,
+			Info1, Info2),
+		(
+			MaybeForeign0 = yes(Foreign0),
+			intermod__resolve_foreign_type_body_overloading(
+				ModuleInfo, TypeCtor, Foreign0, Foreign,
+				Info2, Info3),
+			MaybeForeign = yes(Foreign)
+		;
+			MaybeForeign0 = no,
+			MaybeForeign = no,
+			Info3 = Info2
+		),
+		TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
+				ReservedTag, MaybeForeign),
+		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
 	    ;	
-		Info2 = Info1,
+		TypeBody0 = foreign_type(ForeignTypeBody0)
+	    ->
+		intermod__resolve_foreign_type_body_overloading(ModuleInfo,
+			TypeCtor, ForeignTypeBody0, ForeignTypeBody,
+			Info1, Info3),
+		TypeBody = foreign_type(ForeignTypeBody),
+		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn)
+	    ;
+		Info3 = Info1,
 		TypeDefn = TypeDefn0
 	    ),
-	    intermod_info_get_types(Types0, Info2, Info3),
+	    intermod_info_get_types(Types0, Info3, Info4),
 	    intermod_info_set_types([TypeCtor - TypeDefn | Types0],
-	        Info3, Info)
+	        Info4, Info)
 	;
 	    Info = Info1
 	).
+
+:- pred intermod__resolve_foreign_type_body_overloading(module_info::in,
+		type_ctor::in, foreign_type_body::in, foreign_type_body::out,
+		intermod_info::in, intermod_info::out) is det.
+
+intermod__resolve_foreign_type_body_overloading(ModuleInfo,
+		TypeCtor, foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0),
+		foreign_type_body(MaybeIL, MaybeC, MaybeJava), Info0, Info) :-
+	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+		MaybeC0, MaybeC, Info0, Info1),
+	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+		MaybeIL0, MaybeIL, Info1, Info2),
+	intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+		MaybeJava0, MaybeJava, Info2, Info).
+
+:- pred intermod__resolve_foreign_type_body_overloading_2(module_info::in,
+		type_ctor::in, foreign_type_lang_body(T)::in,
+		foreign_type_lang_body(T)::out, intermod_info::in,
+		intermod_info::out) is det.
+
+intermod__resolve_foreign_type_body_overloading_2(_, _, no, no, Info, Info).
+intermod__resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+		yes(Body - MaybeEqComp0), yes(Body - MaybeEqComp),
+		Info0, Info) :-
+	intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
+		MaybeEqComp0, MaybeEqComp, Info0, Info).
+
+:- pred intermod__resolve_unify_compare_overloading(module_info::in,
+	type_ctor::in, maybe(unify_compare)::in, maybe(unify_compare)::out,
+	intermod_info::in, intermod_info::out) is det.
+
+intermod__resolve_unify_compare_overloading(_, _, no, no, Info, Info).
+intermod__resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
+		yes(unify_compare(MaybeUserEq0, MaybeUserCompare0)),
+		yes(unify_compare(MaybeUserEq, MaybeUserCompare)),
+		Info0, Info) :-
+	intermod__resolve_user_special_pred_overloading(ModuleInfo,
+		unify, TypeCtor, MaybeUserEq0, MaybeUserEq, Info0, Info1),
+	intermod__resolve_user_special_pred_overloading(ModuleInfo,
+		compare, TypeCtor, MaybeUserCompare0, MaybeUserCompare,
+		Info1, Info).
+
+:- pred intermod__resolve_user_special_pred_overloading(module_info::in,
+	special_pred_id::in, type_ctor::in, maybe(sym_name)::in,
+	maybe(sym_name)::out, intermod_info::in, intermod_info::out) is det.
+
+intermod__resolve_user_special_pred_overloading(_, _, _, no, no, Info, Info).
+intermod__resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
+		TypeCtor, yes(Pred0), yes(Pred), Info0, Info) :-
+	module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
+	map__lookup(SpecialPreds, SpecialId - TypeCtor, UnifyPredId),
+	module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
+	pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
+	typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
+		TVarSet, Pred0, Pred, UserEqPredId),
+	intermod__add_proc(UserEqPredId, _, Info0, Info).
 
 :- pred intermod__should_write_type(module_name::in,
 		type_ctor::in, hlds_type_defn::in) is semidet.
@@ -1206,26 +1276,27 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC,
 				MaybeJava) }
 	->
-		( { MaybeIL = yes(ILForeignType) },
+		( { MaybeIL = yes(ILForeignType - ILUserEqComp) },
 			mercury_output_item(pragma(
 				foreign_type(il(ILForeignType), VarSet,
-					Name, Args)),
+					Name, Args, ILUserEqComp)),
 				Context)
 		; { MaybeIL = no },
 			[]
 		),
-		( { MaybeC = yes(CForeignType) },
+		( { MaybeC = yes(CForeignType - CUserEqComp) },
 			mercury_output_item(pragma(
 				foreign_type(c(CForeignType), VarSet,
-					Name, Args)),
+					Name, Args, CUserEqComp)),
 				Context)
 		; { MaybeC = no },
 			[]
 		),
-		( { MaybeJava = yes(JavaForeignType) },
+		( { MaybeJava = yes(JavaForeignType - JavaUserEqComp) },
 			mercury_output_item(pragma(
-				foreign_type(java(JavaForeignType), VarSet,
-					Name, Args)),
+				foreign_type(
+					java(JavaForeignType),
+					VarSet, Name, Args, JavaUserEqComp)),
 				Context)
 		; { MaybeJava = no },
 			[]

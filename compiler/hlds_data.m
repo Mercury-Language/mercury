@@ -306,8 +306,9 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 					% is this type an enumeration?
 			du_type_is_enum :: bool,
 
-					% user-defined equality pred
-			du_type_usereq :: maybe(sym_name),
+					% user-defined equality and
+					% comparison preds
+			du_type_usereq :: maybe(unify_compare),
 
 					% is there a `:- pragma reserve_tag'
 					% pragma for this type?
@@ -323,10 +324,12 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type foreign_type_body
 	---> foreign_type_body(
-			il	:: maybe(il_foreign_type),
-			c	:: maybe(c_foreign_type),
-			java	:: maybe(java_foreign_type)
+			il	:: foreign_type_lang_body(il_foreign_type),
+			c	:: foreign_type_lang_body(c_foreign_type),
+			java	:: foreign_type_lang_body(java_foreign_type)
 	).
+
+:- type foreign_type_lang_body(T) == maybe(pair(T, maybe(unify_compare))).
 
 	% The `cons_tag_values' type stores the information on how
 	% a discriminated union type is represented.

@@ -680,14 +680,15 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	unify_proc__make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1,
 		Args, VarTypeInfo0, VarTypeInfo1),
 	( SpecialPredId = unify, Args = [H1, H2] ->
-		unify_proc__generate_unify_clauses(TypeBody, H1, H2,
-			Context, Clauses, VarTypeInfo1, VarTypeInfo)
+		unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
+			H1, H2, Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	; SpecialPredId = index, Args = [X, Index] ->
-		unify_proc__generate_index_clauses(TypeBody,
+		unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
 			X, Index, Context, Clauses, VarTypeInfo1, VarTypeInfo)
 	; SpecialPredId = compare, Args = [Res, X, Y] ->
-		unify_proc__generate_compare_clauses(Type, TypeBody,
-			Res, X, Y, Context, Clauses, VarTypeInfo1, VarTypeInfo)
+		unify_proc__generate_compare_clauses(ModuleInfo, Type,
+			TypeBody, Res, X, Y, Context, Clauses,
+			VarTypeInfo1, VarTypeInfo)
 	;
 		error("unknown special pred")
 	),
@@ -700,32 +701,22 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 			Types, Args, Clauses, TI_VarMap, TCI_VarMap,
 			HasForeignClauses).
 
-:- pred unify_proc__generate_unify_clauses(hlds_type_body::in,
+:- pred unify_proc__generate_unify_clauses(module_info::in, hlds_type_body::in,
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
+unify_proc__generate_unify_clauses(ModuleInfo, TypeBody,
+		H1, H2, Context, Clauses) -->
+    (
+	{ type_body_has_user_defined_equality_pred(ModuleInfo,
+		TypeBody, UserEqCompare) }
+    ->
+	unify_proc__generate_user_defined_unify_clauses(
+		UserEqCompare, H1, H2, Context, Clauses)
+    ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
-		( { MaybeEqPred = yes(PredName) } ->
-			%
-			% Just generate a call to the specified predicate,
-			% which is the user-defined equality pred for this
-			% type.
-			% (The pred_id and proc_id will be figured
-			% out by type checking and mode analysis.)
-			%
-			{ invalid_pred_id(PredId) },
-			{ invalid_proc_id(ModeId) },
-			{ Call = call(PredId, ModeId, [H1, H2], not_builtin,
-					no, PredName) },
-			{ goal_info_init(GoalInfo0) },
-			{ goal_info_set_context(GoalInfo0, Context,
-				GoalInfo) },
-			{ Goal = Call - GoalInfo },
-			unify_proc__quantify_clauses_body([H1, H2], Goal,
-				Context, Clauses)
-		; { IsEnum = yes } ->
+		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		( { IsEnum = yes } ->
 			%
 			% Enumerations are atomic types, so modecheck_unify.m
 			% will treat this unification as a simple_test, not
@@ -744,15 +735,68 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		generate_unify_clauses_eqv_type(EqvType, H1, H2,
 				Context, Clauses)
 	;
-		% We treat foreign_type as if they were an equivalent to
-		% the builtin type c_pointer.
 		{ TypeBody = foreign_type(_) },
+		% If no user defined equality predicate is given,
+		% we treat foreign_type as if they were an equivalent
+		% to the builtin type c_pointer.
 		generate_unify_clauses_eqv_type(c_pointer_type,
 				H1, H2, Context, Clauses)
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create unify proc for abstract type") }
-	).
+	)
+    ).
+
+:- pred unify_proc__generate_user_defined_unify_clauses(unify_compare::in,
+	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+
+unify_proc__generate_user_defined_unify_clauses(UserEqCompare, H1, H2,
+		Context, Clauses) -->
+	{ UserEqCompare = unify_compare(MaybeUnify, MaybeCompare) },
+	(
+		{ MaybeUnify = yes(UnifyPredName) }
+	->
+		%
+		% Just generate a call to the specified predicate,
+		% which is the user-defined equality pred for this
+		% type.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		{ invalid_pred_id(PredId) },
+		{ invalid_proc_id(ModeId) },
+		{ Call = call(PredId, ModeId, [H1, H2], not_builtin,
+				no, UnifyPredName) },
+		{ goal_info_init(Context, GoalInfo) },
+		{ Goal = Call - GoalInfo }
+	;
+		{ MaybeCompare = yes(ComparePredName) }
+	->
+		%
+		% Just generate a call to the specified predicate,
+		% which is the user-defined comparison pred for this
+		% type, and unify the result with `='.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		unify_proc__info_new_var(comparison_result_type, ResultVar),
+		{ invalid_pred_id(PredId) },
+		{ invalid_proc_id(ModeId) },
+		{ Call = call(PredId, ModeId, [ResultVar, H1, H2],
+				not_builtin, no, ComparePredName) },
+		{ goal_info_init(Context, GoalInfo) },
+		{ CallGoal = Call - GoalInfo },
+
+		{ mercury_public_builtin_module(Builtin) },
+		{ create_atomic_unification(ResultVar,
+			functor(cons(qualified(Builtin, "="), 0), no, []),
+			Context, explicit, [], UnifyGoal) },
+		{ Goal = conj([CallGoal, UnifyGoal]) - GoalInfo }
+	;
+		{ error("unify_proc__generate_user_defined_unify_clauses") }
+	),
+	unify_proc__quantify_clauses_body([H1, H2], Goal, Context, Clauses).
 
 :- pred generate_unify_clauses_eqv_type((type)::in, prog_var::in, prog_var::in,
 		prog_context::in, list(clause)::out,
@@ -790,22 +834,25 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses) -->
 	% of special preds to define only for the kinds of types which do not
 	% lead this predicate to abort.
 
-:- pred unify_proc__generate_index_clauses(hlds_type_body::in,
+:- pred unify_proc__generate_index_clauses(module_info::in, hlds_type_body::in,
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
+unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
+		X, Index, Context, Clauses) -->
+    ( { type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, _) } ->
+	%
+	% For non-canonical types, the generated comparison
+	% predicate either calls a user-specified comparison
+	% predicate or returns an error, and does not call the
+	% type's index predicate, so do not generate an index
+	% predicate for such types.
+	%
+	{ error("trying to create index proc for non-canonical type") }
+    ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
-		( { MaybeEqPred = yes(_) } ->
-			%
-			% For non-canonical types, the generated comparison
-			% predicate returns an error, and does not call the
-			% type's index predicate, so do not generate an index
-			% predicate for such types.
-			%
-			{ error("trying to create index proc for non-canonical type") }
-		; { IsEnum = yes } ->
+		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		( { IsEnum = yes } ->
 			%
 			% For enum types, the generated comparison predicate
 			% performs an integer comparison, and does not call the
@@ -834,27 +881,26 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create index proc for abstract type") }
-	).
+	)
+    ).
 
-:- pred unify_proc__generate_compare_clauses((type)::in, hlds_type_body::in,
-	prog_var::in, prog_var::in, prog_var::in, prog_context::in,
-	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__generate_compare_clauses(module_info::in, (type)::in,
+	hlds_type_body::in, prog_var::in, prog_var::in, prog_var::in,
+	prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
-		Clauses) -->
+unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
+		H1, H2, Context, Clauses) -->
+    (
+	{ type_body_has_user_defined_equality_pred(ModuleInfo,
+		TypeBody, UserEqComp) }
+    ->
+	generate_user_defined_compare_clauses(UserEqComp,
+		Res, H1, H2, Context, Clauses)
+    ;
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
-		( { MaybeEqPred = yes(_) } ->
-			%
-			% just generate code that will call error/1
-			%
-			{ ArgVars = [Res, H1, H2] },
-			unify_proc__build_call(
-				"builtin_compare_non_canonical_type",
-				ArgVars, Context, Goal),
-			unify_proc__quantify_clauses_body(ArgVars, Goal,
-				Context, Clauses)
-		; { IsEnum = yes } ->
+		{ TypeBody = du_type(Ctors, _, IsEnum, _, _, _) },
+		( { IsEnum = yes } ->
 			{ IntType = int_type },
 			unify_proc__make_fresh_named_var_from_type(IntType,
 				"Cast_HeadVar", 1, CastVar1),
@@ -890,7 +936,40 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create compare proc for abstract type") }
-	).
+	)
+    ).
+
+:- pred generate_user_defined_compare_clauses(unify_compare::in,
+		prog_var::in, prog_var::in, prog_var::in,
+		prog_context::in, list(clause)::out,
+		unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
+		Res, H1, H2, Context, Clauses) -->
+	{ ArgVars = [Res, H1, H2] },
+	( { MaybeCompare = yes(ComparePredName) } ->
+		%
+		% Just generate a call to the specified predicate,
+		% which is the user-defined comparison pred for this
+		% type.
+		% (The pred_id and proc_id will be figured
+		% out by type checking and mode analysis.)
+		%
+		{ invalid_pred_id(PredId) },
+		{ invalid_proc_id(ModeId) },
+		{ Call = call(PredId, ModeId, ArgVars, not_builtin,
+				no, ComparePredName) },
+		{ goal_info_init(Context, GoalInfo) },
+		{ Goal = Call - GoalInfo }
+	;
+		%
+		% just generate code that will call error/1
+		%
+		unify_proc__build_call(
+			"builtin_compare_non_canonical_type",
+			ArgVars, Context, Goal)
+	),
+	unify_proc__quantify_clauses_body(ArgVars, Goal, Context, Clauses).
 
 :- pred generate_compare_clauses_eqv_type((type)::in,
 		prog_var::in, prog_var::in, prog_var::in,
@@ -1221,12 +1300,9 @@ unify_proc__generate_du_linear_compare_clauses(Type, Ctors, Res, X, Y,
 unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 		Context, Goal) -->
 	{ IntType = int_type },
-	{ mercury_public_builtin_module(MercuryBuiltin) },
-	{ construct_type(qualified(MercuryBuiltin, "comparison_result") - 0,
-					[], ResType) },
 	unify_proc__info_new_var(IntType, X_Index),
 	unify_proc__info_new_var(IntType, Y_Index),
-	unify_proc__info_new_var(ResType, R),
+	unify_proc__info_new_var(comparison_result_type, R),
 
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
@@ -1437,11 +1513,7 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 	( { Xs = [], Ys = [] } ->
 		unify_proc__build_call(ComparePred, [R, X, Y], Context, Goal)
 	;
-		{ mercury_public_builtin_module(MercuryBuiltin) },
-		{ construct_type(
-			qualified(MercuryBuiltin, "comparison_result") - 0,
-			[], ResType) },
-		unify_proc__info_new_var(ResType, R1),
+		unify_proc__info_new_var(comparison_result_type, R1),
 
 		unify_proc__build_call(ComparePred, [R1, X, Y], Context,
 			Do_Comparison),

@@ -130,13 +130,27 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		no, InvalidModes0),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
-	add_item_list_decls_pass_2(Items,
-		item_status(local, may_be_unqualified), Module1, Module2),
-	% Add constructors and special preds. This must be done after
-	% adding all type and `:- pragma foreign_type' declarations.
-	{ module_info_types(Module2, Types) },
-	map__foldl2(process_type_defn, Types, Module2, Module3),
 
+	check_for_errors(
+		add_item_list_decls_pass_2(Items,
+			item_status(local, may_be_unqualified)),
+		InvalidTypes1, Module1, Module2),
+
+	% Add constructors and special preds to the HLDS.
+	% This must be done after adding all type and
+	% `:- pragma foreign_type' declarations.
+	% If there were errors in foreign type type declarations,
+	% doing this may cause a compiler abort.
+	(
+		{ InvalidTypes1 = no },
+		{ module_info_types(Module2, Types) },
+		map__foldl2(process_type_defn, Types,
+			{no, Module2}, {InvalidTypes2, Module3})
+	;
+		{ InvalidTypes1 = yes },
+		{ InvalidTypes2 = yes },
+		{ Module3 = Module2 }
+	),
 
 	maybe_report_stats(Statistics),
 		% balance the binary trees
@@ -145,17 +159,40 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	{ init_qual_info(MQInfo0, EqvMap, QualInfo0) },
 	add_item_list_clauses(Items, local, Module4, Module5,
 				QualInfo0, QualInfo),
+
 	{ qual_info_get_mq_info(QualInfo, MQInfo) },
-	{ mq_info_get_type_error_flag(MQInfo, InvalidTypes) },
+	{ mq_info_get_type_error_flag(MQInfo, InvalidTypes3) },
+	{ InvalidTypes = InvalidTypes1 `or` InvalidTypes2 `or` InvalidTypes3 },
 	{ mq_info_get_mode_error_flag(MQInfo, InvalidModes1) },
-	{ InvalidModes = bool__or(InvalidModes0, InvalidModes1) },
+	{ InvalidModes = InvalidModes0 `or` InvalidModes1 },
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
-	{ module_info_num_errors(Module4, NumErrors0) },
-	{ NumErrors is NumErrors0 + MQ_NumErrors },
+
+	{ module_info_num_errors(Module5, NumErrors5) },
+	{ NumErrors is NumErrors5 + MQ_NumErrors },
 	{ module_info_set_num_errors(Module5, NumErrors, Module6) },
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
 	{ module_info_reverse_predids(Module6, Module) }.
+
+:- pred check_for_errors(pred(module_info, module_info, io__state, io__state),
+		bool, module_info, module_info, io__state, io__state).
+:- mode check_for_errors((pred(in, out, di, uo) is det),
+		out, in, out, di, uo) is det.
+
+check_for_errors(P, FoundError, Module0, Module) -->
+	io__get_exit_status(BeforeStatus),
+	io__set_exit_status(0),
+	{ module_info_num_errors(Module0, BeforeNumErrors) },
+	P(Module0, Module),
+	{ module_info_num_errors(Module, AfterNumErrors) },
+	io__get_exit_status(AfterStatus),
+	{ FoundError =
+	    (AfterStatus = 0, BeforeNumErrors = AfterNumErrors -> no ; yes) },
+	( { BeforeStatus \= 0 } ->
+		io__set_exit_status(BeforeStatus)
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -434,12 +471,13 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = foreign_proc(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
-		% Note that we check during add_item_clause that we have
+		% Note that we check during process_type_defn that we have
 		% defined a foreign_type which is usable by the back-end
 		% we are compiling on.
-		{ Pragma = foreign_type(ForeignType, TVarSet, Name, Args) },	
+		{ Pragma = foreign_type(ForeignType, TVarSet, Name, Args,
+				UserEqComp) },	
 		add_pragma_foreign_type(Context, Status, ForeignType,
-			TVarSet, Name, Args, Module0, Module)
+			TVarSet, Name, Args, UserEqComp, Module0, Module)
 	;	
 		% Handle pragma tabled decls later on (when we process
 		% clauses).
@@ -803,12 +841,6 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
  			Module0, Module),
  		{ Info = Info0 }
  	;
-		{ Pragma = foreign_type(_, _, Name, Args) }
-	->
-		check_foreign_type(Name, list__length(Args),
-			Context, Module0, Module),
-		{ Info = Info0 }
-	;
 		{ Pragma = reserve_tag(TypeName, TypeArity) }
 	->
 		add_pragma_reserve_tag(TypeName, TypeArity, Status,
@@ -946,21 +978,23 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 
 :- pred add_pragma_foreign_type(prog_context, item_status,
 	foreign_language_type, tvarset, sym_name, list(type_param),
-	module_info, module_info, io__state, io__state).
-:- mode add_pragma_foreign_type(in, in, in, in, in, in,
+	maybe(unify_compare), module_info, module_info, io__state, io__state).
+:- mode add_pragma_foreign_type(in, in, in, in, in, in, in,
 	in, out, di, uo) is det.
 
 add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual), 
-		ForeignType, TVarSet, Name, Args, Module0, Module) -->
+		ForeignType, TVarSet, Name, Args,
+		UserEqComp, Module0, Module) -->
 	{ ForeignType = il(ILForeignType),
-		Body = foreign_type(foreign_type_body(yes(ILForeignType),
-				no, no))
+		Body = foreign_type(
+			foreign_type_body(yes(ILForeignType - UserEqComp),
+			no, no))
 	; ForeignType = c(CForeignType),
-		Body = foreign_type(foreign_type_body(no, yes(CForeignType),
-				no))
+		Body = foreign_type(foreign_type_body(no,
+				yes(CForeignType - UserEqComp), no))
 	; ForeignType = java(JavaForeignType),
 		Body = foreign_type(foreign_type_body(no, no,
-				yes(JavaForeignType)))
+				yes(JavaForeignType - UserEqComp)))
 	},
 	{ Cond = true },
 
@@ -2320,115 +2354,129 @@ check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
 	).	
 
 	% Add the constructors and special preds for a type to the HLDS.
-:- pred process_type_defn(type_ctor::in, hlds_type_defn::in, module_info::in,
-	module_info::out, io__state::di, io__state::uo) is det.
+:- pred process_type_defn(type_ctor::in, hlds_type_defn::in,
+	{bool, module_info}::in, {bool, module_info}::out,
+	io__state::di, io__state::uo) is det.
 
-process_type_defn(TypeCtor, TypeDefn, Module0, Module) -->
+process_type_defn(TypeCtor, TypeDefn, {FoundError0, Module0},
+		{FoundError, Module}) -->
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
 	{ hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet) },
 	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
 	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
 	{ hlds_data__get_type_defn_status(TypeDefn, Status) },
 	{ hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual) },
+
 	(
-		{ Body = du_type(ConsList, _, _, _, ReservedTag, _) }
-	->
+		{ Body = du_type(ConsList, _, _, _, ReservedTag, _) },
 		{ module_info_ctors(Module0, Ctors0) },
 		{ module_info_get_partial_qualifier_info(Module0, PQInfo) },
-		{ module_info_ctor_field_table(Module0, CtorFields0) },
-		ctors_add(ConsList, TypeCtor, TVarSet, NeedQual,
-			PQInfo, Context, Status,
-			CtorFields0, CtorFields, Ctors0, Ctors),
-		{ module_info_set_ctors(Module0, Ctors, Module1) },
-		{ module_info_set_ctor_field_table(Module1,
-			CtorFields, Module2) },
+		check_for_errors(
+		    (pred(M0::in, M::out, di, uo) is det -->
+			{ module_info_ctor_field_table(M0, CtorFields0) },
+			ctors_add(ConsList, TypeCtor, TVarSet, NeedQual,
+				PQInfo, Context, Status,
+				CtorFields0, CtorFields, Ctors0, Ctors),
+			{ module_info_set_ctors(M0, Ctors, M1) },
+			{ module_info_set_ctor_field_table(M1,
+				CtorFields, M) }
+		    ), FoundError1, Module0, Module1),
+
 		globals__io_get_globals(Globals),
 		{
 			type_constructors_should_be_no_tag(ConsList, 
 				ReservedTag, Globals, Name, CtorArgType, _)
 		->
 			NoTagType = no_tag_type(Args, Name, CtorArgType),
-			module_info_no_tag_types(Module2, NoTagTypes0),
+			module_info_no_tag_types(Module1, NoTagTypes0),
 			map__set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
-			module_info_set_no_tag_types(Module2,
-				NoTagTypes, Module3)
+			module_info_set_no_tag_types(Module1,
+				NoTagTypes, Module2)
 		;
-			Module3 = Module2
+			Module2 = Module1
 		}
 	;
-		{ Module3 = Module0 }
+		{ Body = abstract_type },
+		{ FoundError1 = no },
+		{ Module2 = Module0 }
+	;
+		{ Body = eqv_type(_) },
+		{ FoundError1 = no },
+		{ Module2 = Module0 }
+	;
+		{ Body = foreign_type(ForeignTypeBody) },
+		check_foreign_type(TypeCtor, ForeignTypeBody,
+			Context, FoundError1, Module0, Module2)
 	),
-
+	{ FoundError = FoundError0 `and` FoundError1 },
+	{
+		FoundError = yes
+	->
+		Module = Module2
+	;
 		% Equivalence types are fully expanded on the IL and Java
 		% backends, so the special predicates aren't required.
-	{
-		are_equivalence_types_expanded(Module3),
+		are_equivalence_types_expanded(Module2),
 		Body = eqv_type(_)
 	->
-		Module = Module3
+		Module = Module2
 	;
 		construct_type(TypeCtor, Args, Type),
-		add_special_preds(Module3, TVarSet, Type, TypeCtor,
+		add_special_preds(Module2, TVarSet, Type, TypeCtor,
 			Body, Context, Status, Module)
 	}.
 
 	% check_foreign_type ensures that if we are generating code for
 	% a specific backend that the foreign type has a representation
 	% on that backend.
-:- pred check_foreign_type(sym_name::in, arity::in, prog_context::in,
-		module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred check_foreign_type(type_ctor::in, foreign_type_body::in,
+	prog_context::in, bool::out, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
-check_foreign_type(Name, Arity, Context, Module0, Module) -->
+check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError,
+		Module0, Module) -->
 	{ TypeCtor = Name - Arity },
-	{ module_info_types(Module0, Types) },
-	{ TypeStr = error_util__describe_sym_name_and_arity(Name/Arity) },
-	( 
-		{ map__search(Types, TypeCtor, Defn) },
-		{ hlds_data__get_type_defn_body(Defn, Body) },
-		{ Body = foreign_type(ForeignTypeBody) }
-	->
-		{ module_info_globals(Module0, Globals) },
-		generating_code(GeneratingCode),
-		( { GeneratingCode = yes } ->
-			io_lookup_bool_option(very_verbose, VeryVerbose),
-			{ VeryVerbose = yes ->
-				VerboseErrorPieces = [
-					nl,
-					words("There are representations for"),
-					words("this type on other back-ends,"),
-					words("but none for this back-end.")
-				]
-			;
-				VerboseErrorPieces = []
-			},
-			{ globals__get_target(Globals, Target) },
-			(
-				{ have_foreign_type_for_backend(Target,
-					ForeignTypeBody, yes) }
-			->
-				{ Module = Module0 }
-			;
-		
-				{ Target = c, LangStr = "C"
-				; Target = il, LangStr = "IL"
-				; Target = java, LangStr = "Java"
-				; Target = asm, LangStr = "C"
-				},
-				{ ErrorPieces = [
-				    words("Error: no"), words(LangStr),
-				    words(
-				    "`pragma foreign_type' declaration for"),
-				    fixed(TypeStr) | VerboseErrorPieces
-				] },
-				error_util__write_error_pieces(Context,
-					0, ErrorPieces),
-				{ module_info_incr_errors(Module0, Module) }
-			)
+	{ module_info_globals(Module0, Globals) },
+	generating_code(GeneratingCode),
+	{ globals__get_target(Globals, Target) },
+	( { have_foreign_type_for_backend(Target, ForeignTypeBody, yes) } ->
+		{ FoundError = no },
+		{ Module = Module0 }
+	; { GeneratingCode = yes } ->
+		%
+		% If we're not generating code the error may only have
+		% occurred because the grade options weren't passed.
+		%
+		io_lookup_bool_option(very_verbose, VeryVerbose),
+		{ VeryVerbose = yes ->
+			VerboseErrorPieces = [
+				nl,
+				words("There are representations for"),
+				words("this type on other back-ends,"),
+				words("but none for this back-end.")
+			]
 		;
-			{ Module = Module0 }
-		)
+			VerboseErrorPieces = []
+		},
+		{ Target = c, LangStr = "C"
+		; Target = il, LangStr = "IL"
+		; Target = java, LangStr = "Java"
+		; Target = asm, LangStr = "C"
+		},
+		{ TypeStr =
+		    error_util__describe_sym_name_and_arity(
+			Name/Arity) },
+		{ ErrorPieces = [
+		    words("Error: no"), words(LangStr),
+		    words("`pragma foreign_type' declaration for"),
+		    fixed(TypeStr) | VerboseErrorPieces
+		] },
+		error_util__write_error_pieces(Context,
+			0, ErrorPieces),
+		{ FoundError = yes },
+		{ module_info_incr_errors(Module0, Module) }
 	;
-		% We probably chose a Mercury implementation for this type.
+		{ FoundError = yes },
 		{ Module = Module0 }
 	).
 

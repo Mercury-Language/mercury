@@ -158,6 +158,7 @@ ORDINARY_PROGS=	\
 	unify_typeinfo_bug \
 	unify_existq_cons \
 	unused_float_box_test \
+	user_compare \
 	user_defined_equality2 \
 	write \
 	write_reg1 \

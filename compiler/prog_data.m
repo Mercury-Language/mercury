@@ -176,9 +176,9 @@
 			% VarNames, Foreign Code Implementation Info
 
 	;	foreign_type(foreign_language_type, tvarset,
-			sym_name, list(type_param))
+			sym_name, list(type_param), maybe(unify_compare))
 			% ForeignType, TVarSet, MercuryTypeName,
-			% MercuryTypeParams
+			% MercuryTypeParams, UnifyAndCompare
 
 	;	foreign_import_module(foreign_language, module_name)
 			% Equivalent to
@@ -826,7 +826,7 @@
 % type_defn/3 is defined above as a constructor for item/0
 
 :- type type_defn	
-	--->	du_type(list(constructor), maybe(equality_pred))
+	--->	du_type(list(constructor), maybe(unify_compare))
 	;	eqv_type(type)
 	;	abstract_type.
 
@@ -846,10 +846,19 @@
 
 :- type ctor_field_name == sym_name.
 
+:- type unify_compare
+	--->	unify_compare(
+			unify :: maybe(equality_pred),
+			compare :: maybe(comparison_pred)
+		).
+
 	% An equality_pred specifies the name of a user-defined predicate
 	% used for equality on a type.  See the chapter on them in the
 	% Mercury Language Reference Manual.
 :- type equality_pred	==	sym_name.
+
+	 % The name of a user-defined comparison predicate.
+:- type comparison_pred	==	sym_name.
 
 	% probably type parameters should be variables not terms.
 :- type type_param	==	term(tvar_type).

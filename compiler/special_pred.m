@@ -93,8 +93,8 @@
 	% or	(b) it is the unification or comparison predicate for an
 	%           existially quantified type.
 	%
-:- pred special_pred_for_type_needs_typecheck(hlds_type_body).
-:- mode special_pred_for_type_needs_typecheck(in) is semidet.
+:- pred special_pred_for_type_needs_typecheck(module_info, hlds_type_body).
+:- mode special_pred_for_type_needs_typecheck(in, in) is semidet.
 
 	% Succeed if the type can have clauses generated for
 	% its special predicates. This will fail for abstract
@@ -129,9 +129,7 @@ special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Uo, In, In], det) :-
-	mercury_public_builtin_module(PublicBuiltin),
-	construct_type(qualified(PublicBuiltin, "comparison_result") - 0,
-							[], ResType),
+	ResType = comparison_result_type,
 	in_mode(In),
 	uo_mode(Uo).
 
@@ -207,13 +205,13 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	% The special predicates for types with user-defined
 	% equality or existentially typed constructors are always
 	% generated immediately by make_hlds.m.
-	\+ special_pred_for_type_needs_typecheck(Body).
+	\+ special_pred_for_type_needs_typecheck(ModuleInfo, Body).
 
-special_pred_for_type_needs_typecheck(Body) :-
-	Body = du_type(Ctors, _, _, MaybeEqualityPred, _, _),
+special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 	(
-		MaybeEqualityPred = yes(_)
+		type_body_has_user_defined_equality_pred(ModuleInfo, Body, _)
 	;
+		Body = du_type(Ctors, _, _, _, _, _),
 		list__member(Ctor, Ctors),
 		Ctor = ctor(ExistQTVars, _, _, _),
 		ExistQTVars \= []

@@ -183,6 +183,20 @@
 :- pred parse_type_defn_head(module_name, term, term, maybe_functor).
 :- mode parse_type_defn_head(in, in, in, out) is det.
 
+	% get_maybe_equality_compare_preds(Body0, Body, MaybeEqualPred):
+	%	Checks if `Body0' is a term of the form
+	%		`<body> where equality is <symname>'
+	%		`<body> where comparison is <symname>'
+	%		or `<body> where equality is <symname>,
+	%			comparison is <sym_name>'
+	%	If so, returns the `<body>' in Body and the <symname>s in
+	%	MaybeEqualPred.  If not, returns Body = Body0 
+	%	and `no' in MaybeEqualPred.
+
+:- pred get_maybe_equality_compare_preds(term, term,
+		maybe1(maybe(unify_compare))).
+:- mode get_maybe_equality_compare_preds(in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	%	A QualifiedTerm is one of
@@ -1505,8 +1519,8 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
 	/* get_condition(...), */
 	Condition = true,
-	get_maybe_equality_pred(B, Body, EqualityPred),
-	process_du_type(ModuleName, H, Body, EqualityPred, R).
+	get_maybe_equality_compare_preds(B, Body, EqCompare),
+	process_du_type(ModuleName, H, Body, EqCompare, R).
 
 parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
 	get_condition(B, Body, Condition),
@@ -1628,41 +1642,72 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-	% get_maybe_equality_pred(Body0, Body, MaybeEqualPred):
-	%	Checks if `Body0' is a term of the form
-	%		`<body> where equality is <symname>'
-	%	If so, returns the `<body>' in Body and the <symname> in
-	%	MaybeEqualPred.  If not, returns Body = Body0 
-	%	and `no' in MaybeEqualPred.
-
-:- pred get_maybe_equality_pred(term, term, maybe1(maybe(sym_name))).
-:- mode get_maybe_equality_pred(in, out, out) is det.
-
-get_maybe_equality_pred(B, Body, MaybeEqualityPred) :-
+get_maybe_equality_compare_preds(B, Body, MaybeEqComp) :-
 	( 
 		B = term__functor(term__atom("where"), Args, _Context1),
-		Args = [Body1, Equality_Is_PredName]
+		Args = [Body1, EqCompTerm]
 	->
 		Body = Body1,
 		( 
-			Equality_Is_PredName = term__functor(term__atom("is"),
-				[Equality, PredName], _),
-			Equality = term__functor(term__atom("equality"), [], _)
+			parse_equality_or_comparison_pred_term("equality",
+				EqCompTerm, PredName)
 		->
-			parse_symbol_name(PredName, MaybeEqualityPred0),
-			process_maybe1(make_yes, MaybeEqualityPred0,
-				MaybeEqualityPred)
+			parse_symbol_name(PredName, MaybeEqComp0),
+			process_maybe1(make_equality, MaybeEqComp0,
+				MaybeEqComp)
 		;
-			MaybeEqualityPred = error("syntax error after `where'",
+			parse_equality_or_comparison_pred_term("comparison",
+				EqCompTerm, PredName)
+		->
+			parse_symbol_name(PredName, MaybeEqComp0),
+			process_maybe1(make_comparison, MaybeEqComp0,
+				MaybeEqComp)
+		;
+			EqCompTerm = term__functor(term__atom(","),
+					[EqTerm, CompTerm], _),
+			parse_equality_or_comparison_pred_term("equality",
+				EqTerm, EqPredNameTerm),
+			parse_equality_or_comparison_pred_term("comparison",
+				CompTerm, CompPredNameTerm)
+		->
+			parse_symbol_name(EqPredNameTerm, EqPredNameResult),
+			parse_symbol_name(CompPredNameTerm,
+				CompPredNameResult),
+			(
+				EqPredNameResult = ok(EqPredName),
+				CompPredNameResult = ok(CompPredName),
+				MaybeEqComp = ok(yes(
+					unify_compare(yes(EqPredName),
+						yes(CompPredName))))
+			;
+				EqPredNameResult = ok(_),
+				CompPredNameResult = error(M, T),
+				MaybeEqComp = error(M, T)
+			;
+				EqPredNameResult = error(M, T),
+				MaybeEqComp = error(M, T)
+			)
+		;
+			MaybeEqComp = error("syntax error after `where'",
 				Body)
 		)
 	;
 		Body = B,
-		MaybeEqualityPred = ok(no)
+		MaybeEqComp = ok(no)
 	).
 
-:- pred make_yes(T::in, maybe(T)::out) is det.
-make_yes(T, yes(T)).
+:- pred parse_equality_or_comparison_pred_term(string::in, term::in,
+		term::out) is semidet.
+
+parse_equality_or_comparison_pred_term(EqOrComp, Term, PredNameTerm) :-
+	Term = term__functor(term__atom("is"),
+		[term__functor(term__atom(EqOrComp), [], _), PredNameTerm], _).
+
+:- pred make_equality(sym_name::in, maybe(unify_compare)::out) is det.
+make_equality(Pred, yes(unify_compare(yes(Pred), no))).
+
+:- pred make_comparison(sym_name::in, maybe(unify_compare)::out) is det.
+make_comparison(Pred, yes(unify_compare(no, yes(Pred)))).
 
 	% get_determinism(Term0, Term, Determinism) binds Determinism
 	% to a representation of the determinism condition of Term0, if any,
@@ -1812,7 +1857,7 @@ process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 	% This is for "Head ---> Body" (constructor) definitions.
-:- pred process_du_type(module_name, term, term, maybe1(maybe(equality_pred)),
+:- pred process_du_type(module_name, term, term, maybe1(maybe(unify_compare)),
 			maybe1(processed_type_body)).
 :- mode process_du_type(in, in, in, in, out) is det.
 process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
@@ -1820,7 +1865,7 @@ process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
 	process_du_type_2(ModuleName, Result0, Body, EqualityPred, Result).
 
 :- pred process_du_type_2(module_name, maybe_functor, term,
-		maybe1(maybe(equality_pred)), maybe1(processed_type_body)).
+		maybe1(maybe(unify_compare)), maybe1(processed_type_body)).
 :- mode process_du_type_2(in, in, in, in, out) is det.
 process_du_type_2(_, error(Error, Term), _, _, error(Error, Term)).
 process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,

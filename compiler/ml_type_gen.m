@@ -122,10 +122,10 @@ ml_gen_type_2(abstract_type, _, _, _) --> [].
 ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
 	% For a description of the problems with equivalence types,
 	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred,
+ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeUserEqCompare,
 		_ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn) -->
 	% XXX we probably shouldn't ignore _ReservedTag
-	{ ml_gen_equality_members(MaybeEqualityPred, MaybeEqualityMembers) },
+	{ ml_gen_equality_members(MaybeUserEqCompare, MaybeEqualityMembers) },
 	( { IsEnum = yes } ->
 		ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 			MaybeEqualityMembers)
@@ -917,7 +917,7 @@ ml_gen_type_name(Name - Arity, qual(MLDS_Module, TypeName), Arity) :-
 	% For interoperability, we ought to generate an `==' member
 	% for types which have a user-defined equality, if the target
 	% language supports it (as do e.g. C++, Java).
-:- pred ml_gen_equality_members(maybe(sym_name), list(mlds__defn)).
+:- pred ml_gen_equality_members(maybe(unify_compare), list(mlds__defn)).
 :- mode ml_gen_equality_members(in, out) is det.
 ml_gen_equality_members(_, []).  % XXX generation of `==' members
 				 % is not yet implemented.

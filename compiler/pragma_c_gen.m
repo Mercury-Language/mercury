@@ -1209,7 +1209,7 @@ get_maybe_foreign_type_name(Type, MaybeForeignType) -->
 		hlds_data__get_type_defn_body(Defn, Body),
 		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
 	->
-		( MaybeC = yes(c(Name)),
+		( MaybeC = yes(c(Name) - _),
 			MaybeForeignType = yes(Name)
 		; MaybeC = no,
 			% This is ensured by check_foreign_type in

@@ -11,6 +11,8 @@ Changes to the Mercury language:
   function.
 * We now support impure higher-order code.
 
+* We now allow user-defined comparison routines.
+
 Changes to the Mercury compiler:
 * It's now easier to use shared libraries on Linux/x86 systems
   with `mmc --make'.
@@ -33,6 +35,12 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury language:
+
+* We now allow user-defined comparison routines, using the syntax
+  :- type t ---> t where equality is unify_t, comparison is compare_t.
+
+  See the "User-defined equality and comparison" chapter of the
+  Mercury Language Reference Manual for details.
 
 * Infix `.' is now accepted as a module name separator.  Hence it is
   now possible to write io.write_string and list.member to mean the
@@ -81,6 +89,9 @@ Changes to the Mercury standard library:
 	std_util.limited_deconstruct_cc/5
   These have been replaced by cc_multi versions in which success or failure
   is indicated by returning a maybe type.
+
+* builtin.m now contains types and insts `unify' and `compare' for use
+  in defining user-defined equality and comparison predicates.
 
 Changes to the extras distribution:
 

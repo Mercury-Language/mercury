@@ -30,13 +30,38 @@
 parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
 		% new syntax: `:- pragma foo(...).'
-		PragmaTerms = [SinglePragmaTerm],
+		PragmaTerms = [SinglePragmaTerm0],
+		get_maybe_equality_compare_preds(SinglePragmaTerm0,
+				SinglePragmaTerm, UnifyCompareResult),
 		SinglePragmaTerm = term__functor(term__atom(PragmaType), 
 					PragmaArgs, _),
 		parse_pragma_type(ModuleName, PragmaType, PragmaArgs,
 				SinglePragmaTerm, VarSet, Result0)
 	->
-		Result = Result0
+		(
+			UnifyCompareResult = ok(MaybeUserEqCompare),
+			(
+				MaybeUserEqCompare = yes(_),
+				Result0 = ok(Pragma)
+			->
+				(
+					Pragma = pragma(foreign_type(A,
+							B, C, D, _))
+				->
+					Result = ok(pragma(foreign_type(A,
+						B, C, D, MaybeUserEqCompare)))
+				;
+					Result = error(
+				"unexpected `where equality/comparison is'",
+						SinglePragmaTerm0)
+				)
+			;
+				Result = Result0
+			)
+		;
+			UnifyCompareResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		)
 	;
 		% old syntax: `:- pragma(foo, ...).'
 		% XXX we should issue a warning; this syntax is deprecated.
@@ -86,7 +111,8 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms,
 		    varset__coerce(VarSet, TVarSet),
 		    MercuryArgs = list__map(term__coerce, MercuryArgs0),
 		    Result = ok(pragma(foreign_type(ForeignType,
-			    TVarSet, MercuryTypeSymName, MercuryArgs))) 
+			    TVarSet, MercuryTypeSymName,
+			    MercuryArgs, no))) 
 		;
 		    MaybeTypeDefnHead = error(String, Term),
 		    Result = error(String, Term)

@@ -794,7 +794,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	special_pred_for_type_needs_typecheck(Body).
+	special_pred_for_type_needs_typecheck(ModuleInfo, Body).
 
 %-----------------------------------------------------------------------------%
 

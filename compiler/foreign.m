@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data, libs__globals.
-:- import_module hlds__hlds_module, hlds__hlds_pred.
+:- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 
 :- import_module bool, list, string, term.
 
@@ -77,6 +77,11 @@
 	% Given an arbitary mercury type, get the exported_type representation
 	% of that type on the current backend.
 :- func foreign__to_exported_type(module_info, (type)) = exported_type.
+
+	% Does the implementation of the given foreign type body on
+	% the current backend use a user-defined comparison predicate.
+:- func foreign_type_body_has_user_defined_equality_pred(module_info,
+		foreign_type_body) = unify_compare is semidet.
 
 	% Given the exported_type representation for a type,
 	% determine whether or not it is a foreign type.
@@ -651,49 +656,63 @@ non_foreign_type(Type) = mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
 	module_info_types(ModuleInfo, Types),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_target(Globals, Target),
 	(
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(foreign_type_body(MaybeIL, MaybeC,
-				MaybeJava)) ->
-			( Target = c,
-				( MaybeC = yes(c(NameStr)),
-					Name = unqualified(NameStr)
-				; MaybeC = no,
-					unexpected(this_file,
-						"to_exported_type: no C type")
-				)
-			; Target = il, 
-				( MaybeIL = yes(il(_, _, Name))
-				; MaybeIL = no,
-					unexpected(this_file,
-						"to_exported_type: no IL type")
-				)
-			; Target = java,
-				( MaybeJava = yes(java(NameStr)),
-					Name = unqualified(NameStr)
-				; MaybeJava = no,
-					unexpected(this_file,
-						"to_exported_type: no Java type")
-				)
-			; Target = asm,
-				( MaybeC = yes(c(NameStr)),
-					Name = unqualified(NameStr)
-				; MaybeC = no,
-					unexpected(this_file,
-						"to_exported_type: no C type")
-				)
-			),
-			ExportType = foreign(Name)
+		( Body = foreign_type(ForeignTypeBody) ->
+			ExportType = foreign(fst(
+				foreign_type_body_to_exported_type(ModuleInfo,
+					ForeignTypeBody)))
 		;
 			ExportType = mercury(Type)
 		)
 	;
 		ExportType = mercury(Type)
+	).
+
+foreign_type_body_has_user_defined_equality_pred(ModuleInfo, Body) =
+		UserEqComp :-
+	yes(UserEqComp) =
+		snd(foreign_type_body_to_exported_type(ModuleInfo, Body)).
+
+:- func foreign_type_body_to_exported_type(module_info, foreign_type_body) =
+		pair(sym_name, maybe(unify_compare)).
+
+foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody) =
+			Name - MaybeUserEqComp :-
+	ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+
+	( Target = c,
+		( MaybeC = yes(c(NameStr) - MaybeUserEqComp),
+			Name = unqualified(NameStr)
+		; MaybeC = no,
+			unexpected(this_file,
+				"to_exported_type: no C type")
+		)
+	; Target = il, 
+		( MaybeIL = yes(il(_, _, Name) - MaybeUserEqComp)
+		; MaybeIL = no,
+			unexpected(this_file,
+				"to_exported_type: no IL type")
+		)
+	; Target = java,
+		( MaybeJava = yes(java(NameStr) - MaybeUserEqComp),
+			Name = unqualified(NameStr)
+		; MaybeJava = no,
+			unexpected(this_file,
+				"to_exported_type: no Java type")
+		)
+	; Target = asm,
+		( MaybeC = yes(c(NameStr) - MaybeUserEqComp),
+			Name = unqualified(NameStr)
+		; MaybeC = no,
+			unexpected(this_file,
+				"to_exported_type: no C type")
+		)
 	).
 
 is_foreign_type(foreign(_)) = yes.

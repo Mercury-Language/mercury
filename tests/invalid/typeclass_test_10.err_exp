@@ -1,0 +1,11 @@
+typeclass_test_10.m:001: In module `typeclass_test_10':
+typeclass_test_10.m:001:   warning: module `std_util'
+typeclass_test_10.m:001:   is imported in the interface, but is not
+typeclass_test_10.m:001:   used in the interface.
+typeclass_test_10.m:006: In instance declaration for `typeclass_test_10.bar/1':
+typeclass_test_10.m:006:   incorrect method name(s): predicate
+typeclass_test_10.m:006:   `typeclass_test_10.p/0' .
+typeclass_test_10.m:011: In instance declaration for `typeclass_test_10.baz/1':
+typeclass_test_10.m:011:   incorrect method name(s): predicate
+typeclass_test_10.m:011:   `typeclass_test_10.r/0' .
+For more information, try recompiling with `-E'.

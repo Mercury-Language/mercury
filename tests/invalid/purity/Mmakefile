@@ -14,6 +14,7 @@ PROGS= \
 	impure_pred_t2 \
 	purity \
 	purity_nonsense \
+	purity_nonsense2 \
 	purity_type_error
 
 # XXX the pragma_c_and_mercury test is not enabled, 
@@ -36,6 +37,8 @@ override EXTRA_MCFLAGS += \
 include Mercury.options
 
 %.runtest: %.err_res ;
+
+.PRECIOUS: %.err_res
 
 #-----------------------------------------------------------------------------#
 

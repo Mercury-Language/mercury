@@ -62,8 +62,12 @@
 	% return true iff there was a `where equality is <predname>'
 	% declaration for the specified type, and return the name of
 	% the equality predicate and the context of the type declaration.
-:- pred type_has_user_defined_equality_pred(module_info, (type), sym_name).
+:- pred type_has_user_defined_equality_pred(module_info,
+		(type), unify_compare).
 :- mode type_has_user_defined_equality_pred(in, in, out) is semidet.
+
+:- pred type_body_has_user_defined_equality_pred(module_info::in,
+		hlds_type_body::in, unify_compare::out) is semidet.
 
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
@@ -494,11 +498,11 @@
 :- implementation.
 
 :- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module backend_libs__foreign.
 :- import_module parse_tree__prog_util.
 :- import_module check_hlds__purity.
 :- import_module libs__options, libs__globals.
-
-:- import_module char, int, string.
+:- import_module bool, char, int, string.
 :- import_module assoc_list, require, varset.
 
 type_util__type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -688,12 +692,22 @@ type_is_tuple(Type, ArgTypes) :-
 
 type_ctor_is_tuple(unqualified("{}") - _).
 
-type_has_user_defined_equality_pred(ModuleInfo, Type, SymName) :-
+type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 	module_info_types(ModuleInfo, TypeTable),
 	type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
 	map__search(TypeTable, TypeCtor, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-	TypeBody ^ du_type_usereq = yes(SymName).
+	type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
+		UserEqComp).
+
+type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
+	(
+		TypeBody ^ du_type_usereq = yes(UserEqComp)
+	;
+		TypeBody = foreign_type(ForeignTypeBody),
+		UserEqComp = foreign_type_body_has_user_defined_equality_pred(
+				ModuleInfo, ForeignTypeBody)
+	).
 
 	% Certain types, e.g. io__state and store__store(S),
 	% are just dummy types used to ensure logical semantics;
