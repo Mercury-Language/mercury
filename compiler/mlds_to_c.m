@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -642,6 +642,8 @@ mlds_output_c_defn(_Indent, user_foreign_code(csharp, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
 mlds_output_c_defn(_Indent, user_foreign_code(il, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
+mlds_output_c_defn(_Indent, user_foreign_code(java, _, _)) -->
+	{ sorry(this_file, "foreign code other than C") }.
 
 :- pred mlds_output_pragma_export_defn(mlds_module_name, indent,
 		mlds__pragma_export, io__state, io__state).
@@ -709,6 +711,9 @@ mlds_output_pragma_export_type(prefix, mlds__foreign_type(ForeignType)) -->
 	; { ForeignType = il(_) },
 		{ unexpected(this_file,
 			"mlds_output_type_prefix: il foreign_type") }
+	; { ForeignType = java(_) },
+		{ unexpected(this_file,
+			"mlds_output_type_prefix: java foreign_type") }
 	).
 mlds_output_pragma_export_type(prefix, mlds__class_type(_, _, _)) -->
 	io__write_string("MR_Word").

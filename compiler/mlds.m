@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1304,6 +1304,7 @@ XXX Full exception handling support is not yet implemented.
 	;	lang_C_minus_minus
 	;	lang_asm
 	;	lang_il
+	;	lang_java
 	;	lang_java_asm
 	;	lang_java_bytecode
 	.
@@ -1694,7 +1695,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		Body = foreign_type(foreign_type_body(MaybeIL, MaybeC))
+		Body = foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava))
 	->
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),
@@ -1717,7 +1718,14 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 				"mercury_type_to_mlds_type: No IL foreign type")
 			)
 		; Target = java,
-			sorry(this_file, "foreign types on the java backend")
+			( MaybeJava = yes(JavaForeignType),
+				ForeignType = java(JavaForeignType)
+			; MaybeJava = no,
+				% This is checked by check_foreign_type
+				% in make_hlds.
+				unexpected(this_file,
+				"mercury_type_to_mlds_type: No Java foreign type")
+			)	
 		; Target = asm,
 			( MaybeC = yes(CForeignType),
 				ForeignType = c(CForeignType)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -343,6 +343,9 @@ extrude_pragma_implementation_2(c, csharp, _, _, _, _) :-
 extrude_pragma_implementation_2(c, il, _, _, _, _) :-
 	unimplemented_combination(c, il).
 
+extrude_pragma_implementation_2(c, java, _, _, _, _) :-
+	unimplemented_combination(c, java).
+
 extrude_pragma_implementation_2(c, c, ModuleInfo, Impl, ModuleInfo, Impl).
 
 
@@ -360,6 +363,8 @@ extrude_pragma_implementation_2(managed_cplusplus, csharp, _, _, _, _) :-
 extrude_pragma_implementation_2(managed_cplusplus, il, _, _, _, _) :-
 	unimplemented_combination(managed_cplusplus, il).
 
+extrude_pragma_implementation_2(managed_cplusplus, java, _, _, _, _) :-
+	unimplemented_combination(managed_cplusplus, java).
 
 
 extrude_pragma_implementation_2(csharp, csharp,
@@ -374,6 +379,8 @@ extrude_pragma_implementation_2(csharp, managed_cplusplus, _, _, _, _) :-
 extrude_pragma_implementation_2(csharp, il, _, _, _, _) :-
 	unimplemented_combination(csharp, il).
 
+extrude_pragma_implementation_2(csharp, java, _, _, _, _) :-
+	unimplemented_combination(csharp, java).
 
 extrude_pragma_implementation_2(il, il,
 	ModuleInfo, Impl, ModuleInfo, Impl).
@@ -387,7 +394,24 @@ extrude_pragma_implementation_2(il, managed_cplusplus, _, _, _, _) :-
 extrude_pragma_implementation_2(il, csharp, _, _, _, _) :-
 	unimplemented_combination(il, csharp).
 
+extrude_pragma_implementation_2(il, java, _, _, _, _) :-
+	unimplemented_combination(il, java).
 
+
+extrude_pragma_implementation_2(java, java, 
+	ModuleInfo, Impl, ModuleInfo, Impl).
+
+extrude_pragma_implementation_2(java, c, _, _, _, _) :-
+	unimplemented_combination(java, c).
+
+extrude_pragma_implementation_2(java, managed_cplusplus, _, _, _, _) :-
+	unimplemented_combination(java, managed_cplusplus).
+
+extrude_pragma_implementation_2(java, csharp, _, _, _, _) :-
+	unimplemented_combination(java, csharp).
+
+extrude_pragma_implementation_2(java, il, _, _, _, _) :-
+	unimplemented_combination(java, il).
 
 :- pred unimplemented_combination(foreign_language::in, foreign_language::in)
 		is erroneous.
@@ -411,6 +435,7 @@ make_pred_name_rest(managed_cplusplus, qualified(ModuleSpec, Name)) =
 make_pred_name_rest(managed_cplusplus, unqualified(Name)) = Name.
 make_pred_name_rest(csharp, _SymName) = "some_csharp_name".
 make_pred_name_rest(il, _SymName) = "some_il_name".
+make_pred_name_rest(java, _SymName) = "some_java_name".
 
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
@@ -589,15 +614,18 @@ foreign_language_string(c) = "C".
 foreign_language_string(managed_cplusplus) = "Managed C++".
 foreign_language_string(csharp) = "C#".
 foreign_language_string(il) = "IL".
+foreign_language_string(java) = "Java".
 
 simple_foreign_language_string(c) = "c".
 simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
 simple_foreign_language_string(csharp) = "csharp".
 simple_foreign_language_string(il) = "il".
+simple_foreign_language_string(java) = "java".
 
 foreign_language_file_extension(c) = ".c".
 foreign_language_file_extension(managed_cplusplus) = ".cpp".
 foreign_language_file_extension(csharp) = ".cs".
+foreign_language_file_extension(java) = ".java".
 foreign_language_file_extension(il) = _ :- fail.
 
 foreign_language_module_name(M, L) = FM :-
@@ -630,7 +658,8 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 		map__search(Types, TypeCtor, TypeDefn)
 	->
 		hlds_data__get_type_defn_body(TypeDefn, Body),
-		( Body = foreign_type(foreign_type_body(MaybeIL, MaybeC)) ->
+		( Body = foreign_type(foreign_type_body(MaybeIL, MaybeC,
+				MaybeJava)) ->
 			( Target = c,
 				( MaybeC = yes(c(NameStr)),
 					Name = unqualified(NameStr)
@@ -645,7 +674,12 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
 						"to_exported_type: no IL type")
 				)
 			; Target = java,
-				sorry(this_file, "to_exported_type for java")
+				( MaybeJava = yes(java(NameStr)),
+					Name = unqualified(NameStr)
+				; MaybeJava = no,
+					unexpected(this_file,
+						"to_exported_type: no Java type")
+				)
 			; Target = asm,
 				( MaybeC = yes(c(NameStr)),
 					Name = unqualified(NameStr)
@@ -680,6 +714,8 @@ to_type_string(managed_cplusplus, foreign(ForeignType)) = Result ++ " *":-
 	sym_name_to_string(ForeignType, "::", Result).
 to_type_string(il, foreign(ForeignType)) = Result :-
 	sym_name_to_string(ForeignType, ".", Result).
+to_type_string(java, foreign(ForeignType)) = Result :-
+	sym_name_to_string(ForeignType, ".", Result).
 
 	% XXX does this do the right thing for high level data?
 to_type_string(c, mercury(Type)) = Result :-
@@ -706,6 +742,18 @@ to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
 	).
 to_type_string(il, mercury(_Type)) = _ :-
 	sorry(this_file, "to_type_string for il").
+to_type_string(java, mercury(Type)) = Result :-
+	( Type = term__functor(term__atom("int"), [], _) ->
+		Result = "int"
+	; Type = term__functor(term__atom("float"), [], _) ->
+		Result = "double"
+	; Type = term__functor(term__atom("string"), [], _) ->
+		Result = "java.lang.String"
+	; Type = term__functor(term__atom("character"), [], _) ->
+		Result = "char"
+	;
+		Result = "java.lang.Object"
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -715,6 +763,8 @@ foreign__foreign_import_module_name(
 	( Lang = c,
 		ModuleName = ForeignImportModule
 	; Lang = il,
+		ModuleName = ForeignImportModule
+	; Lang = java,
 		ModuleName = ForeignImportModule
 	; Lang = managed_cplusplus,
 		ModuleName = foreign_language_module_name(ForeignImportModule,
@@ -738,6 +788,9 @@ foreign__foreign_import_module_name(ModuleForeignImported, CurrentModule) =
 		ImportedForeignCodeModuleName = handle_std_library(
 				CurrentModule, ImportedForeignCodeModuleName1)
 	; Lang = csharp,
+		ImportedForeignCodeModuleName = handle_std_library(
+				CurrentModule, ImportedForeignCodeModuleName1)
+	; Lang = java,
 		ImportedForeignCodeModuleName = handle_std_library(
 				CurrentModule, ImportedForeignCodeModuleName1)
 	).

@@ -1199,8 +1199,10 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 				[]
 			;
 				io__output_stream(OutputStream),
+				module_name_to_file_name(ModuleName,
+					".java", no, JavaFile),
 				compile_target_code__compile_java_file(
-					OutputStream, ModuleName, Succeeded),
+					OutputStream, JavaFile, Succeeded),
 				maybe_set_exit_status(Succeeded)
 			)
 		    ; { Target = asm } ->
@@ -3438,6 +3440,10 @@ make_foreign_import_header_code(
 		{ Lang = il },
 		{ error("sorry.
 :- import_module not yet implemented: `:- pragma foreign_import_module' for IL") }
+	;
+		{ Lang = java },
+		{ error("sorry.
+:- import_module not yet implemented: `:- pragma foreign_import_module' for Java") }
 	).
 
 :- pred get_c_body_code(foreign_body_info, list(user_foreign_code)).

@@ -379,8 +379,9 @@ build_object_code(ModuleName, asm, PIC, ErrorStream, _Imports, Succeeded) -->
 	compile_target_code__assemble(ErrorStream, PIC, ModuleName,
 		Succeeded).
 build_object_code(ModuleName, java, _, ErrorStream, _Imports, Succeeded) -->
-	compile_target_code__compile_java_file(ErrorStream,
-		ModuleName, Succeeded).
+	module_name_to_file_name(ModuleName, ".java", yes, JavaFile),
+	compile_target_code__compile_java_file(ErrorStream, JavaFile,
+		Succeeded).
 build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded) -->
 	compile_target_code__il_assemble(ErrorStream, ModuleName,
 		Imports ^ has_main, Succeeded).
@@ -397,6 +398,10 @@ compile_foreign_code_file(ErrorStream, _, _Imports,
 		foreign_code_file(il, ILFile, DLLFile), Succeeded) -->
 	compile_target_code__il_assemble(ErrorStream, ILFile, DLLFile,
 		no_main, Succeeded).
+compile_foreign_code_file(ErrorStream, _, _Imports,
+		foreign_code_file(java, JavaFile, _ClassFile), Succeeded) -->
+	compile_target_code__compile_java_file(ErrorStream, JavaFile,
+		Succeeded).
 compile_foreign_code_file(ErrorStream, _, _Imports,
 		foreign_code_file(managed_cplusplus, MCPPFile, DLLFile),
 		Succeeded) -->

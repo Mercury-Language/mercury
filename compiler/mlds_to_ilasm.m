@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,6 +96,8 @@ handle_foreign_lang(c, _) :-
 	sorry(this_file, "language C foreign code not supported").
 handle_foreign_lang(il, _) :-
 	sorry(this_file, "language IL foreign code not supported").
+handle_foreign_lang(java, _) :-
+	sorry(this_file, "language Java foreign code not supported").
 
 	%
 	% Generate the `.il' file.

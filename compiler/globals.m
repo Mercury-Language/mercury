@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
 % 	;	cplusplus
  	;	csharp
  	;	managed_cplusplus
-% 	;	java
+ 	;	java
  	;	il
 	.
 
@@ -246,6 +246,7 @@ convert_foreign_language_2("c#", csharp).
 convert_foreign_language_2("csharp", csharp).
 convert_foreign_language_2("c sharp", csharp).
 convert_foreign_language_2("il", il).
+convert_foreign_language_2("java", java).
 
 convert_gc_method("none", none).
 convert_gc_method("conservative", boehm).

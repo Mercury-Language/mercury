@@ -542,6 +542,8 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			io__write_string("il, ")
 		; { ForeignType = c(_) },
 			io__write_string("c, ")
+		; { ForeignType = java(_) },
+			io__write_string("java, ")
 		),
 		{ construct_qualified_term(MercuryTypeSymName,
 			MercuryTypeArgs, MercuryType) },
@@ -558,6 +560,7 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 			ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++
 					"]" ++ NameStr
 		; ForeignType = c(c(ForeignTypeStr))
+		; ForeignType = java(java(ForeignTypeStr))
 		},
 		io__write_string(ForeignTypeStr),
 		io__write_string("\").\n")

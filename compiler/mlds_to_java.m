@@ -20,13 +20,14 @@
 %	multidet and nondet predicates
 %	test tests/benchmarks/*.m
 %	generate optimized tailcalls
+%	handle foreign code written in Java
+%
 % TODO: 
 %	General code cleanup
 %	handle static ground terms
 %	RTTI (requires static ground terms)
 %	generate names of classes etc. correctly (mostly same as IL backend)
-%
-%	handle foreign code written in Java
+%	support foreign_import_module for Java
 %	handle foreign code written in C 
 %
 % NOTES: 
@@ -78,8 +79,9 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module parse_tree__prog_data, parse_tree__prog_out.
 :- import_module check_hlds__type_util, hlds__error_util.
+:- import_module backend_libs__foreign.
 
-:- import_module bool, int, string, library, list, set.
+:- import_module bool, int, string, library, list, map, set.
 :- import_module assoc_list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -363,7 +365,7 @@ output_java_src_file(Indent, MLDS) -->
 	%
 	% Run further transformations on the MLDS. 
 	%	
-	{ MLDS = mlds(ModuleName, _ForeignCode, Imports, Defns0) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0) },
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) }, 
 	%
 	% Find and build list of all methods which would have their addresses
@@ -376,17 +378,58 @@ output_java_src_file(Indent, MLDS) -->
 	% 
 	{ generate_code_addr_wrappers(Indent + 1, CodeAddrs, [], 
 			WrapperDefns) },
-	{ Defns = WrapperDefns ++ Defns0 }, 
+	{ Defns = WrapperDefns ++ Defns0 },
+	%
+	% Get the foreign code for Java
+	%
+	{ ForeignCode = mlds_get_java_foreign_code(AllForeignCode) },
+	{ ForeignCode = mlds__foreign_code(RevForeignDecls, _RevImports,
+		_RevBodyCode, _ExportDefns) },
+	{ ForeignDecls = list__reverse(RevForeignDecls) },
 	%
 	% Output transformed MLDS as Java source.  
 	%
 	output_src_start(Indent, ModuleName, Imports, Defns), 
 	{ list__filter(defn_is_rtti_data, Defns, _RttiDefns, NonRttiDefns) },
 	% XXX Need to output RTTI data at this point.
+	% Output Java foreign code declarations.
+	io__write_list(ForeignDecls, "\n", output_java_decl(Indent)),
 	{ CtorData = none },  % Not a constructor.
 	output_defns(Indent + 1, MLDS_ModuleName, CtorData, NonRttiDefns),
 	output_src_end(Indent, ModuleName).
 	% XXX Need to handle non-Java foreign code at this point.
+
+
+%-----------------------------------------------------------------------------%
+% 
+% Code for working with Java `foreign_code'.
+%
+
+:- pred output_java_decl(indent, foreign_decl_code, io__state, io__state).
+:- mode output_java_decl(in, in, di, uo) is det.
+
+output_java_decl(Indent, foreign_decl_code(Lang, Code, Context)) -->
+	% only output Java code
+	( { Lang = java } ->
+		indent_line(make_context(Context), Indent),
+		io__write_string(Code), io__nl
+	;
+		{ sorry(this_file, "foreign code other than Java") }
+	).
+
+
+:- func mlds_get_java_foreign_code(map(foreign_language, mlds__foreign_code))
+		= mlds__foreign_code.
+
+	% Get the foreign code for Java
+mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
+	( map__search(AllForeignCode, java, ForeignCode0) ->
+		ForeignCode = ForeignCode0
+	;
+		% This can occur when compiling to a non-C target
+		% using "--mlds-dump all"
+		ForeignCode = foreign_code([], [], [], [])
+	).
 
 
 %-----------------------------------------------------------------------------%
@@ -1274,9 +1317,7 @@ get_java_type_initializer(mlds__native_bool_type) = "false".
 get_java_type_initializer(mlds__native_int_type) = "0".
 get_java_type_initializer(mlds__native_float_type) = "0".
 get_java_type_initializer(mlds__native_char_type) = "0".
-get_java_type_initializer(mlds__foreign_type(_)) = _ :-
-	unexpected(this_file, 
-		"get_type_initializer: variable has foreign_type"). 
+get_java_type_initializer(mlds__foreign_type(_)) = "null".
 get_java_type_initializer(mlds__class_type(_, _, _)) = "null".
 get_java_type_initializer(mlds__array_type(_)) = "null".
 get_java_type_initializer(mlds__ptr_type(_)) = "null".
@@ -1633,7 +1674,15 @@ output_data_name(tabling_pointer(ProcLabel)) -->
 :- mode output_type(in, di, uo) is det.
 
 output_type(mercury_type(Type, TypeCategory, _)) -->
-	output_mercury_type(Type, TypeCategory).
+	( { Type = c_pointer_type } ->
+		% The c_pointer type is used in the c back-end as a
+		% generic way to pass foreign types to automatically
+		% generated Compare and Unify code.  When compiling to
+		% Java we must instead use java.lang.Object.
+		io__write_string("java.lang.Object")
+	;
+		output_mercury_type(Type, TypeCategory)
+	).
 
 output_type(mercury_array_type(MLDSType)) -->
 	output_type(MLDSType),
@@ -1642,8 +1691,14 @@ output_type(mlds__native_int_type)   --> io__write_string("int").
 output_type(mlds__native_float_type) --> io__write_string("double").
 output_type(mlds__native_bool_type) --> io__write_string("boolean").
 output_type(mlds__native_char_type)  --> io__write_string("char").
-output_type(mlds__foreign_type(_))  -->
-	{ unexpected(this_file, "output_type: foreign_type NYI.") }.
+output_type(mlds__foreign_type(ForeignType))  -->
+	( { ForeignType = java(java(Name)) },
+		io__write_string(Name)
+	; { ForeignType = c(_) },
+		{ unexpected(this_file, "output_type: c foreign_type") }
+	; { ForeignType = il(_) },
+		{ unexpected(this_file, "output_type: il foreign_type") }
+	).
 output_type(mlds__class_type(Name, Arity, ClassKind)) -->
 	( { ClassKind = mlds__enum } ->
 		output_fully_qualified(Name, output_mangled_name, "."),
@@ -2235,10 +2290,14 @@ output_stmt(Indent, FuncInfo, return(Results0), _Context, ExitMethods) -->
 		{ Params = mlds__func_params(_Args, ReturnTypes) },
 		{ TypesAndResults = assoc_list__from_corresponding_lists(
 			ReturnTypes, Results) },
-		io__write_string("return new java.lang.Object[] { "),
-		io__write_list(TypesAndResults, ",\n ",
+		io__write_string("return new java.lang.Object[] {\n"),
+		indent_line(Indent + 1),
+		{ Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2) },
+		io__write_list(TypesAndResults, Separator,
 			(pred((Type - Result)::in, di, uo) is det -->
 				output_boxed_rval(Type, Result))),
+		io__write_string("\n"),
+		indent_line(Indent),
 		io__write_string("};\n")
 	),
 	{ ExitMethods = set__make_singleton_set(can_return) }.
@@ -2550,14 +2609,40 @@ output_atomic_stmt(_Indent, _FuncInfo, trail_op(_TrailOp), _) -->
 	%
 	% foreign language interfacing
 	%
-output_atomic_stmt(_Indent, _FuncInfo, 
-		inline_target_code(_TargetLang, _Components), _Context) -->
-	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
+output_atomic_stmt(Indent, _FuncInfo,
+		inline_target_code(TargetLang, Components), Context) -->
+	( { TargetLang = lang_java } ->
+		indent_line(Indent),
+		list__foldl(output_target_code_component(Context), Components)
+	;
+		{ unexpected(this_file, "inline_target_code only works for lang_java") }
+	).
 
 output_atomic_stmt(_Indent, _FuncInfo, 
 		outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
 		_Context) -->
-	{ error("mlds_to_java.m: sorry, foreign language interfacing not implemented") }.
+	{ unexpected(this_file, "foreign language interfacing not implemented") }.
+
+%------------------------------------------------------------------------------%
+
+:- pred output_target_code_component(mlds__context, target_code_component,
+		io__state, io__state).
+:- mode output_target_code_component(in, in, di, uo) is det.
+
+output_target_code_component(_Context, user_target_code(CodeString,
+		_MaybeUserContext, _Attrs), !IO) :-
+	% XXX Java does not have an equivalent of the C #line preprocessor
+	%     directive.  If it did, we should use it here.
+	io__write_string(CodeString, !IO).
+output_target_code_component(_Context, raw_target_code(CodeString,
+		_Attrs), !IO) :-
+	io__write_string(CodeString, !IO).
+output_target_code_component(_Context, target_code_input(Rval), !IO) :-
+	output_rval(Rval, !IO).
+output_target_code_component(_Context, target_code_output(Lval), !IO) :-
+	output_lval(Lval, !IO).
+output_target_code_component(_Context, name(Name), !IO) :-
+	output_fully_qualified_name(Name, !IO).
 
 %------------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -878,7 +878,7 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 foreign_type_required_imports(c, _) = [].
 foreign_type_required_imports(il, TypeDefn) = Imports :-
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	( Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC)) ->
+	( Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC, _MaybeJava)) ->
 		( MaybeIL = yes(il(_, Location, _)) ->
 			Name = il_assembly_name(mercury_module_name_to_mlds(
 					unqualified(Location))),
@@ -2370,7 +2370,64 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
 		ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
+	; { Lang = java },
+		ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
+			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			Foreign_Code, Context, MLDS_Decls, MLDS_Statements)
 	).
+
+:- pred ml_gen_ordinary_pragma_java_proc(code_model::in, 
+		pragma_foreign_proc_attributes::in,
+		pred_id::in, proc_id::in, list(prog_var)::in,
+		list(maybe(pair(string, mode)))::in, list(prog_type)::in,
+		string::in, prog_context::in, mlds__defns::out, 
+		mlds__statements::out, ml_gen_info::in, ml_gen_info::out)
+		is det.
+
+	% For ordinary (not model_non) pragma foreign_code in Java.
+	%
+ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes,
+		_PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		JavaCode, Context, MLDS_Decls, MLDS_Statements) -->
+
+	{ foreign_language(Attributes, Lang) },
+	%
+	% Combine all the information about the each arg
+	%
+	{ ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList) },
+	%
+	% Generate <declaration of one local variable for each arg>
+	%
+	ml_gen_pragma_c_decls(Lang, ArgList, ArgDeclsList),
+	%
+	% Generate code to set the values of the input variables.
+	%
+	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList),
+	%
+	% Generate MLDS statements to assign the values of the output
+	% variables.
+	%
+	ml_gen_pragma_java_output_arg_list(Lang, ArgList, Context,
+			AssignOutputsList, ConvDecls, ConvStatements),
+	%
+	% Put it all together
+	%
+	{ Java_Code = list__condense([
+			ArgDeclsList,
+			AssignInputsList,
+			[user_target_code(JavaCode, yes(Context), [])]
+	]) },
+	{ Java_Code_Stmt = inline_target_code(lang_java, Java_Code) },
+	{ Java_Code_Statement = mlds__statement(
+			atomic(Java_Code_Stmt),
+			mlds__make_context(Context)) },
+	{ MLDS_Statements = list__condense([
+			[Java_Code_Statement],
+			AssignOutputsList,
+			ConvStatements
+			]) },
+	{ MLDS_Decls = ConvDecls }.
+
 
 :- pred ml_gen_ordinary_pragma_managed_proc(code_model, 
 		pragma_foreign_proc_attributes,
@@ -2859,6 +2916,9 @@ get_target_code_attributes(Lang, [max_stack_size(N) | Xs]) =
 		list(maybe(pair(string, mode)))::in, list(prog_type)::in,
 		list(ml_c_arg)::out) is det.
 
+	% XXX Maybe this ought to be renamed as it works for, and
+	%     is used by the Java back-end as well.
+	%     
 ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
 	( Vars = [], ArgDatas = [], Types = [] ->
 		ArgList = []
@@ -2879,6 +2939,9 @@ ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
 		list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
+	% XXX Maybe this ought to be renamed as it works for, and
+	%     is used by the Java back-end as well.
+	%     
 ml_gen_pragma_c_decls(_, [], []) --> [].
 ml_gen_pragma_c_decls(Lang, [Arg|Args], [Decl|Decls]) -->
 	ml_gen_pragma_c_decl(Lang, Arg, Decl),
@@ -2932,6 +2995,9 @@ var_is_singleton(Name) :-
 		list(ml_c_arg)::in, list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
+	% XXX Maybe this ought to be renamed as it works for, and
+	%     is used by the Java back-end as well.
+	%     
 ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs) -->
 	list__map_foldl(ml_gen_pragma_c_input_arg(Lang), ArgList,
 		AssignInputsList),
@@ -2974,7 +3040,10 @@ ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ ExportedType = foreign__to_exported_type(ModuleInfo,
 			OrigType) },
 		{ TypeString = foreign__to_type_string(Lang, ExportedType) },
-		( { foreign__is_foreign_type(ExportedType) = yes } ->
+		(
+			{ foreign__is_foreign_type(ExportedType) = yes },
+			{ Lang \= java }
+		->
 			% For foreign types,
 			% we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE
 			{ AssignInput = [
@@ -3028,6 +3097,81 @@ ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		% it can't be used, so we just ignore it
 		{ AssignInput = [] }
 	).
+
+:- pred ml_gen_pragma_java_output_arg_list(foreign_language::in,
+		list(ml_c_arg)::in, prog_context::in,
+		mlds__statements::out,
+		mlds__defns::out, mlds__statements::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_java_output_arg_list(_, [], _, [], [], []) --> [].
+ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
+		Statements, ConvDecls, ConvStatements) -->
+	ml_gen_pragma_java_output_arg(Lang, Java_Arg, Context, Statements1,
+			ConvDecls1, ConvStatements1),
+	ml_gen_pragma_java_output_arg_list(Lang, Java_Args, Context,
+			Statements2, ConvDecls2, ConvStatements2),
+	{ Statements = Statements1 ++ Statements2 },
+	{ ConvDecls  = ConvDecls1 ++ ConvDecls2 },
+	{ ConvStatements = ConvStatements1 ++ ConvStatements2 }.
+
+
+% ml_gen_pragma_java_output_arg generates MLDS statements to
+% assign the value of an output arg for a `pragma foreign_proc'
+% declaration.
+%
+:- pred ml_gen_pragma_java_output_arg(foreign_language::in,
+		ml_c_arg::in, prog_context::in,
+		mlds__statements::out,
+		mlds__defns::out, mlds__statements::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_java_output_arg(_Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
+		Context, AssignOutput, ConvDecls, ConvOutputStatements) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	(
+		{ MaybeNameAndMode = yes(ArgName - Mode) },
+		{ not var_is_singleton(ArgName) },
+		{ not type_util__is_dummy_argument_type(OrigType) },
+		{ mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out) }
+	->
+		% Create a target lval with the right type for *internal*
+		% use in the code generated by the Mercury compiler's
+		% MLDS back-end.
+		ml_variable_type(Var, VarType),
+		ml_gen_var(Var, VarLval),
+		ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval,
+			mlds__var_name(ArgName, no), Context, no, 0,
+			ArgLval, ConvDecls, _ConvInputStatements,
+			ConvOutputStatements),
+		% This is the MLDS type of the original argument, which
+		% we need to cast the local (Java) representation of 
+		% the argument back to.
+		{ MLDSType = mercury_type_to_mlds_type(ModuleInfo, OrigType) },
+		% Construct an MLDS lval for the local Java representation 
+		% of the argument.
+		{ module_info_name(ModuleInfo, ModuleName) },
+		{ MLDSModuleName = mercury_module_name_to_mlds(ModuleName) },
+		{ NonMangledVarName = mlds__var_name(ArgName, no) },
+		{ QualLocalVarName = qual(MLDSModuleName, NonMangledVarName) },
+		% XXX MLDSType is the incorrect type for this variable.
+		%     It should have the Java foreign language
+		%     representation of that type. Unfortunately this
+		%     is not easily expressed as an mlds__type.
+		{ LocalVarLval = var(QualLocalVarName, MLDSType) },
+		% We cast this variable back to the corresponding
+		% MLDS type before assigning it to the lval
+		{ Rval = unop(cast(MLDSType), lval(LocalVarLval)) },
+		{ AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)] }
+	;
+		% if the variable doesn't occur in the ArgNames list,
+		% it can't be used, so we just ignore it
+		{ AssignOutput = [] },
+		{ ConvDecls = [] },
+		{ ConvOutputStatements = [] }
+	).
+
 
 :- pred ml_gen_pragma_c_output_arg_list(foreign_language::in,
 		list(ml_c_arg)::in, prog_context::in,

@@ -647,8 +647,16 @@ target_extension(_, foreign_object(PIC, il)) = "bogus ext" :-
 	; PIC = non_pic
 	),
 	unexpected(this_file, "il foreign_object").
+target_extension(_, foreign_object(PIC, java)) = "bogus ext" :-
+	( PIC = pic
+	; PIC = link_with_pic
+	; PIC = non_pic
+	),
+	unexpected(this_file, "Java foreign_object").
 target_extension(_, foreign_il_asm(c)) = "bogus ext" :-
 	unexpected(this_file, "C foreign_il_asm").
+target_extension(_, foreign_il_asm(java)) = "bogus ext" :-
+	unexpected(this_file, "Java foreign_il_asm").
 
 target_extension(_, foreign_il_asm(csharp)) = ".dll".
 target_extension(_, foreign_il_asm(managed_cplusplus)) = ".dll".

@@ -1203,7 +1203,8 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		{ Body = foreign_type(ForeignTypeBody)
 		; Body = du_type(_, _, _, _, _, yes(ForeignTypeBody))
 		},
-		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC) }
+		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC,
+				MaybeJava) }
 	->
 		( { MaybeIL = yes(ILForeignType) },
 			mercury_output_item(pragma(
@@ -1219,6 +1220,14 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 					Name, Args)),
 				Context)
 		; { MaybeC = no },
+			[]
+		),
+		( { MaybeJava = yes(JavaForeignType) },
+			mercury_output_item(pragma(
+				foreign_type(java(JavaForeignType), VarSet,
+					Name, Args)),
+				Context)
+		; { MaybeJava = no },
 			[]
 		)
 	;

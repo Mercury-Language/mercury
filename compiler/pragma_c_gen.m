@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1207,7 +1207,7 @@ get_maybe_foreign_type_name(Type, MaybeForeignType) -->
 		type_to_ctor_and_args(Type, TypeId, _SubTypes),
 		map__search(Types, TypeId, Defn),
 		hlds_data__get_type_defn_body(Defn, Body),
-		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC))
+		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
 	->
 		( MaybeC = yes(c(Name)),
 			MaybeForeignType = yes(Name)

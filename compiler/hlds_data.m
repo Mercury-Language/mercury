@@ -324,7 +324,8 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 :- type foreign_type_body
 	---> foreign_type_body(
 			il	:: maybe(il_foreign_type),
-			c	:: maybe(c_foreign_type)
+			c	:: maybe(c_foreign_type),
+			java	:: maybe(java_foreign_type)
 	).
 
 	% The `cons_tag_values' type stores the information on how

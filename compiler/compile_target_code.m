@@ -45,8 +45,8 @@
 		bool, io__state, io__state).
 :- mode assemble(in, in, in, out, di, uo) is det.
 	
-	% compile_java_file(ErrorStream, ModuleName, Succeeded).
-:- pred compile_java_file(io__output_stream, module_name, bool,
+	% compile_java_file(ErrorStream, JavaFile, Succeeded).
+:- pred compile_java_file(io__output_stream, string, bool,
 		io__state, io__state).
 :- mode compile_java_file(in, in, out, di, uo) is det.
 
@@ -626,8 +626,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 
 %-----------------------------------------------------------------------------%
 
-compile_java_file(ErrorStream, ModuleName, Succeeded) -->
-	module_name_to_file_name(ModuleName, ".java", no, JavaFile),
+compile_java_file(ErrorStream, JavaFile, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, JavaFile),

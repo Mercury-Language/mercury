@@ -1135,10 +1135,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		% XXX This is wrong!  It should be asm.
 		{ BackendForeignLanguages = ["c"] }
 	;
-		% XXX We don't generate java or handle it as a foreign
-		% language just yet, but if we did, we should fix this
 		{ Target = java },
-		{ BackendForeignLanguages = [] }
+		{ BackendForeignLanguages = ["java"] }
 	),
 
 		% only set the backend foreign languages if they are unset

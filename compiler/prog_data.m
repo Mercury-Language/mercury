@@ -349,6 +349,7 @@
 :- type foreign_language_type
 	--->	il(il_foreign_type)
 	;	c(c_foreign_type)
+	;	java(java_foreign_type)
 	.
 
 :- type il_foreign_type
@@ -363,6 +364,11 @@
 :- type c_foreign_type
 	--->	c(
 			string		% The C type name
+		).
+
+:- type java_foreign_type
+	--->	java(
+			string		% The Java type name
 		).
 
 :- type ref_or_val

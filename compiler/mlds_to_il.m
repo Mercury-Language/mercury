@@ -1911,6 +1911,8 @@ atomic_statement_to_il(inline_target_code(lang_il, Code), Instrs) -->
 	{ Instrs = inline_code_to_il_asm(Code) }.
 atomic_statement_to_il(inline_target_code(lang_C, _Code), _Instrs) --> 
 	{ unexpected(this_file, "lang_C") }.
+atomic_statement_to_il(inline_target_code(lang_java, _Code), _Instrs) --> 
+	{ unexpected(this_file, "lang_java") }.
 atomic_statement_to_il(inline_target_code(lang_java_bytecode, _), _) --> 
 	{ unexpected(this_file, "lang_java_bytecode") }.
 atomic_statement_to_il(inline_target_code(lang_java_asm, _), _) --> 
@@ -3031,6 +3033,8 @@ mlds_type_to_ilds_type(_, mlds__foreign_type(ForeignType))
 		)
 	; ForeignType = c(_),
 		error("mlds_to_il: c foreign type")
+	; ForeignType = java(_),
+		error("mlds_to_il: java foreign type")
 	).
 
 mlds_type_to_ilds_type(ILDataRep, mlds__ptr_type(MLDSType)) =

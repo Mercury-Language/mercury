@@ -953,9 +953,14 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual), 
 		ForeignType, TVarSet, Name, Args, Module0, Module) -->
 	{ ForeignType = il(ILForeignType),
-		Body = foreign_type(foreign_type_body(yes(ILForeignType), no))
+		Body = foreign_type(foreign_type_body(yes(ILForeignType),
+				no, no))
 	; ForeignType = c(CForeignType),
-		Body = foreign_type(foreign_type_body(no, yes(CForeignType)))
+		Body = foreign_type(foreign_type_body(no, yes(CForeignType),
+				no))
+	; ForeignType = java(JavaForeignType),
+		Body = foreign_type(foreign_type_body(no, no,
+				yes(JavaForeignType)))
 	},
 	{ Cond = true },
 
@@ -2406,8 +2411,7 @@ check_foreign_type(Name, Arity, Context, Module0, Module) -->
 		
 				{ Target = c, LangStr = "C"
 				; Target = il, LangStr = "IL"
-				% Foreign types aren't yet supported for Java.
-				; Target = java, LangStr = "Mercury"
+				; Target = java, LangStr = "Java"
 				; Target = asm, LangStr = "C"
 				},
 				{ ErrorPieces = [
@@ -2435,7 +2439,8 @@ have_foreign_type_for_backend(c, ForeignTypeBody,
 		( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(il, ForeignTypeBody,
 		( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(java, _, no).
+have_foreign_type_for_backend(java, ForeignTypeBody, 
+		( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
 	have_foreign_type_for_backend(c, ForeignTypeBody, Result).
 
@@ -2475,7 +2480,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
 		Body1 @ du_type(_, _, _, _, _, MaybeForeignTypeBody1), Body) :-
 	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
 	; MaybeForeignTypeBody1 = no,
-		ForeignTypeBody1 = foreign_type_body(no, no)
+		ForeignTypeBody1 = foreign_type_body(no, no, no)
 	),
 	merge_foreign_type_bodies_2(ForeignTypeBody0,
 		ForeignTypeBody1, ForeignTypeBody),
@@ -2498,11 +2503,12 @@ merge_foreign_type_bodies(_, _, foreign_type(Body0), foreign_type(Body1),
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
 		foreign_type_body::in, foreign_type_body::out) is semidet.
 
-merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA),
-		foreign_type_body(MaybeILB, MaybeCB),
-		foreign_type_body(MaybeIL, MaybeC)) :-
+merge_foreign_type_bodies_2(foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA),
+		foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB),
+		foreign_type_body(MaybeIL, MaybeC, MaybeJava)) :-
 	merge_maybe(MaybeILA, MaybeILB, MaybeIL),
-	merge_maybe(MaybeCA, MaybeCB, MaybeC).
+	merge_maybe(MaybeCA, MaybeCB, MaybeC),
+	merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
 merge_maybe(no, no, no).

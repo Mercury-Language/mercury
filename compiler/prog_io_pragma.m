@@ -229,6 +229,18 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
 				InputTerm)
 		)
 	;
+		Language = java
+	->
+		(
+			InputTerm = term__functor(term__string(JavaTypeName),
+				[], _)
+		->
+			Result = ok(java(java(JavaTypeName)))
+		;
+			Result = error("invalid backend specification term",
+				InputTerm)
+		)
+	;
 
 		Result = error("unsupported language specified, unable to parse backend type", InputTerm)
 	).
@@ -1261,6 +1273,7 @@ check_required_attributes(il, Attrs, Term) = Res :-
 	;
 		Res = ok(Attrs)
 	).
+check_required_attributes(java, Attrs, _Term) = ok(Attrs).
 
 :- pred parse_pragma_foreign_proc_attributes_term0(term,
 		list(collected_pragma_foreign_proc_attribute)).
