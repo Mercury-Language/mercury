@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,7 +87,7 @@
 
 	%	user_gen_inst is the instance for each user-defined generator	
 :- inst user_gen_inst
-	=	bound({ ground, 
+	==	bound({ ground, 
 		        func(in, in, in, 
 			     list_skel_in(user_gen_inst), in, out) = out is det
 		      }).
