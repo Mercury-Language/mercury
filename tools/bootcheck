@@ -838,6 +838,7 @@ then
 	$LN_S $root/runtime .
 	$LN_S $root/trace .
 	$LN_S $root/scripts .
+	$LN_S $root/tools .
 	$LN_S $root/util .
 	$LN_S $root/profiler .
 	$LN_S $root/deep_profiler .
