@@ -1,4 +1,9 @@
 #!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-1997 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
 
 usage="\
 Usage: $0 [options]
@@ -165,6 +170,7 @@ then
 	cd $root/stage2_sicstus
 	mkdir library
 	cd library
+	ln -s $root/library/library.m.in .
 	ln -s $root/library/[a-l]*.m .
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
@@ -191,6 +197,7 @@ then
 	ln -s $root/util .
 	ln -s $root/profiler .
 	ln -s $root/conf* .
+	ln -s $root/VERSION .
 	rm -f config*.log
 	cp $root/Mmake* .
 	if test -f $root/Mmake.stage.params
@@ -322,6 +329,7 @@ cp $root/compiler/Mmake* .
 cd $root/stage2
 mkdir library
 cd library
+ln -s $root/library/library.m.in .
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
@@ -348,6 +356,7 @@ ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
+ln -s $root/VERSION .
 rm -f config*.log
 cp $root/Mmake* .
 if test -f $root/Mmake.stage.params
@@ -441,6 +450,7 @@ cp $root/compiler/Mmake* .
 cd $root/stage3
 mkdir library
 cd library
+ln -s $root/library/library.m.in .
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
@@ -454,6 +464,7 @@ ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
+ln -s $root/VERSION .
 rm -f config*.log
 cp $root/Mmake* .
 if test -f $root/Mmake.stage.params
