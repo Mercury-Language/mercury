@@ -11,13 +11,26 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  */
-/* Boehm, July 13, 1994 12:32 pm PDT */
+/* Boehm, February 10, 1995 12:55 pm PST */
  
 #include <stdio.h>
 #include "gc_priv.h"
 
 extern ptr_t GC_clear_stack();	/* in misc.c, behaves like identity */
 void GC_extend_size_map();	/* in misc.c. */
+
+/* Allocate reclaim list for kind:	*/
+/* Return TRUE on success		*/
+bool GC_alloc_reclaim_list(kind)
+register struct obj_kind * kind;
+{
+    struct hblk ** result = (struct hblk **)
+    		GC_scratch_alloc((MAXOBJSZ+1) * sizeof(struct hblk *));
+    if (result == 0) return(FALSE);
+    BZERO(result, (MAXOBJSZ+1)*sizeof(struct hblk *));
+    kind -> ok_reclaim_list = result;
+    return(TRUE);
+}
 
 /* allocate lb bytes for an object of kind.	*/
 /* Should not be used to directly to allocate	*/
@@ -56,12 +69,7 @@ register ptr_t *opp;
 	      }
 #	    endif
 	    if (kind -> ok_reclaim_list == 0) {
-	    	/* Allocate reclaim list */
-	    	struct hblk ** result = (struct hblk **)
-	    		GC_scratch_alloc((MAXOBJSZ+1) * sizeof(struct hblk *));
-	    	if (result == 0) goto out;
-	    	BZERO(result, (MAXOBJSZ+1)*sizeof(struct hblk *));
-	    	kind -> ok_reclaim_list = result;
+	    	if (!GC_alloc_reclaim_list(kind)) goto out;
 	    }
 	    op = GC_allocobj(lw, k);
 	    if (op == 0) goto out;
@@ -197,16 +205,20 @@ register int k;
 {
 register ptr_t op;
 register ptr_t *opp;
+register struct obj_kind * kind = GC_obj_kinds + k;
 DCL_LOCK_STATE;
 
     GC_invoke_finalizers();
     DISABLE_SIGNALS();
     LOCK();
-    opp = &(GC_obj_kinds[k].ok_freelist[lw]);
+    opp = &(kind -> ok_freelist[lw]);
     if( (op = *opp) == 0 ) {
         if (!GC_is_initialized) {
             GC_init_inner();
         }
+	if (kind -> ok_reclaim_list == 0) {
+	    if (!GC_alloc_reclaim_list(kind)) goto out;
+	}
 	op = GC_clear_stack(GC_allocobj(lw, k));
 	if (op == 0) goto out;
     }
@@ -363,6 +375,31 @@ DCL_LOCK_STATE;
    }
 }
 
+# ifdef REDIRECT_MALLOC
+# ifdef __STDC__
+    extern_ptr_t malloc(size_t lb)
+# else
+    extern_ptr_t malloc(lb)
+    size_t lb;
+# endif
+  {
+    /* It might help to manually inline the GC_malloc call here.	*/
+    /* But any decent compiler should reduce the extra procedure call	*/
+    /* to at most a jump instruction in this case.			*/
+    return(REDIRECT_MALLOC(lb));
+  }
+
+# ifdef __STDC__
+    extern_ptr_t calloc(size_t n, size_t lb)
+# else
+    extern_ptr_t calloc(n, lb)
+    size_t n, lb;
+# endif
+  {
+    return(REDIRECT_MALLOC(n*lb));
+  }
+# endif /* REDIRECT_MALLOC */
+
 /* Allocate lb bytes of pointerful, traced, but not collectable data */
 # ifdef __STDC__
     extern_ptr_t GC_malloc_uncollectable(size_t lb)
@@ -515,6 +552,19 @@ int obj_kind;
     }
 }
 
+# ifdef REDIRECT_MALLOC
+# ifdef __STDC__
+    extern_ptr_t realloc(extern_ptr_t p, size_t lb)
+# else
+    extern_ptr_t realloc(p,lb)
+    extern_ptr_t p;
+    size_t lb;
+# endif
+  {
+    return(GC_realloc(p, lb));
+  }
+# endif /* REDIRECT_MALLOC */
+
 /* Explicitly deallocate an object p.				*/
 # ifdef __STDC__
     void GC_free(extern_ptr_t p)
@@ -546,7 +596,7 @@ int obj_kind;
 	GC_mem_freed += sz;
 	/* A signal here can make GC_mem_freed and GC_non_gc_bytes	*/
 	/* inconsistent.  We claim this is benign.			*/
-	if (knd == UNCOLLECTABLE) GC_non_gc_bytes -= sz;
+	if (knd == UNCOLLECTABLE) GC_non_gc_bytes -= WORDS_TO_BYTES(sz);
 	if (ok -> ok_init) {
 	    BZERO((word *)p + 1, WORDS_TO_BYTES(sz-1));
 	}
@@ -561,10 +611,21 @@ int obj_kind;
     	DISABLE_SIGNALS();
         LOCK();
         GC_mem_freed += sz;
-	if (knd == UNCOLLECTABLE) GC_non_gc_bytes -= sz;
+	if (knd == UNCOLLECTABLE) GC_non_gc_bytes -= WORDS_TO_BYTES(sz);
         GC_freehblk(h);
         UNLOCK();
         ENABLE_SIGNALS();
     }
 }
 
+# ifdef REDIRECT_MALLOC
+#   ifdef __STDC__
+      void free(extern_ptr_t p)
+#   else
+      void free(p)
+      extern_ptr_t p;
+#   endif
+  {
+      GC_free(p);
+  }
+# endif  /* REDIRECT_MALLOC */

@@ -12,7 +12,7 @@
  *
  * Author: Hans-J. Boehm (boehm@parc.xerox.com)
  */
-/* Boehm, May 19, 1994 2:22 pm PDT */
+/* Boehm, October 4, 1994 5:34 pm PDT */
  
 /*
  * Cords are immutable character strings.  A number of operations
@@ -51,7 +51,7 @@
  * CORD_fetch(int i) - Retrieve i'th character (slowly).
  * CORD_cmp(cord1, cord2) - compare two cords.
  * CORD_from_file(FILE * f) - turn a read-only file into a cord.
- * CORD_to_char_start(cord) - convert to C string.
+ * CORD_to_char_star(cord) - convert to C string.
  *   (Non-NULL C constant strings are cords.)
  * CORD_printf (etc.) - cord version of printf. Use %r for cords.
  */
@@ -72,7 +72,7 @@ typedef const char * CORD;
 # define CORD_EMPTY 0
 
 /* Is a nonempty cord represented as a C string? */
-#define IS_STRING(s) (*(s) != '\0')
+#define CORD_IS_STRING(s) (*(s) != '\0')
 
 /* Concatenate two cords.  If the arguments are C strings, they may 	*/
 /* not be subsequently altered.						*/
@@ -159,30 +159,30 @@ int CORD_riter(CORD x, CORD_iter_fn f1, void * client_data);
 	
 	typedef <OPAQUE but fairly big> CORD_pos[1];
 	
-	/* Extract the cord from a position:
+	* Extract the cord from a position:
 	CORD CORD_pos_to_cord(CORD_pos p);
 	
-	/* Extract the current index from a position:
+	* Extract the current index from a position:
 	size_t CORD_pos_to_index(CORD_pos p);
 	
-	/* Fetch the character located at the given position:
+	* Fetch the character located at the given position:
 	char CORD_pos_fetch(CORD_pos p);
 	
-	/* Initialize the position to refer to the give cord and index.
-	/* Note that this is the most expensive function on positions:
+	* Initialize the position to refer to the given cord and index.
+	* Note that this is the most expensive function on positions:
 	void CORD_set_pos(CORD_pos p, CORD x, size_t i);
 	
-	/* Advance the position to the next character.
-	/* P must be initialized and valid.
-	/* Invalidates p if past end:
+	* Advance the position to the next character.
+	* P must be initialized and valid.
+	* Invalidates p if past end:
 	void CORD_next(CORD_pos p);
 	
-	/* Move the position to the preceding character.
-	/* P must be initialized and valid.
-	/* Invalidates p if past beginning:
+	* Move the position to the preceding character.
+	* P must be initialized and valid.
+	* Invalidates p if past beginning:
 	void CORD_prev(CORD_pos p);
 	
-	/* Is the position valid, i.e. inside the cord?
+	* Is the position valid, i.e. inside the cord?
 	int CORD_pos_valid(CORD_pos p);
 */
 # define CORD_FOR(pos, cord) \
@@ -202,6 +202,9 @@ void CORD_dump(CORD x);
 
 /* Concatenate a character to the end of a cord.	*/
 CORD CORD_cat_char(CORD x, char c);
+
+/* Concatenate n cords.	*/
+CORD CORD_catn(int n, /* CORD */ ...);
 
 /* Return the character in CORD_substr(x, i, 1)  	*/
 char CORD_fetch(CORD x, size_t i);
@@ -254,6 +257,10 @@ CORD CORD_from_file_lazy(FILE * f);
 /* Turn a cord into a C string.	The result shares no structure with	*/
 /* x, and is thus modifiable.						*/
 char * CORD_to_char_star(CORD x);
+
+/* Identical to the above, but the result may share structure with	*/
+/* the argument and is thus not modifiable.				*/
+const char * CORD_to_const_char_star(CORD x); 
 
 /* Write a cord to a file, starting at the current position.  No	*/
 /* trailing NULs are newlines are added.				*/
