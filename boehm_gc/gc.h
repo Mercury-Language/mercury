@@ -36,7 +36,7 @@
 # define __GC
 # include <stddef.h>
 
-#if defined(__CYGWIN32__)
+#if defined(USE_DLLS)
 #include "libgc_dll.h"
 #endif
 
@@ -649,7 +649,7 @@ GC_PTR GC_malloc_many(size_t lb);
  * I don't know any other method for figuring out the start and
  * end of the main program's global data from inside a DLL.
  */
-#elif defined(__CYGWIN32__) && defined(GC_USE_DLL)
+#elif defined(__CYGWIN32__)
 #   define GC_INIT() { \
 		extern int _bss_start__, _data_end__; \
 		GC_add_roots((void *)&_bss_start__, (void *)&_data_end__); \
