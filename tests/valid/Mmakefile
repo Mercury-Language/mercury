@@ -163,11 +163,14 @@ OTHER_SOURCES= \
 	vn_float.m \
 	zero_arity.m
 
-# The mode system can't handle the following test cases yet:
+# XXX The mode system can't handle the following test cases yet:
 #	assoc_list.m
 #	determinism.m
 #	mode_merge_insts.m
 #	inst_perf_bug_2.m
+#
+# XXX We also don't pass this one (see the comments in it for details):
+#	mode_selection.m
 
 # There used to be problems with compiling typeclass
 # and AGC stuff in grades jump.* and fast.*, but they should
