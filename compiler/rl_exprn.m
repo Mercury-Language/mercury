@@ -82,7 +82,7 @@
 
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
-:- import_module rl_out, inlining, hlds_goal, prog_util.
+:- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
 
 % Note: the reason that we need to import llds and builtin_ops here is that
 % we generate code for builtins by first converting the builtin to LLDS
@@ -718,22 +718,70 @@ rl_exprn__disj([Goal | Goals], Succeed, Fail, Code) -->
 		hlds_goal_info::in, byte_tree::in, byte_tree::out, 
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__call(PredId, ProcId, Vars, _GoalInfo, Fail, Code) -->
+rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 	rl_exprn_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
 	{ proc_info_inferred_determinism(ProcInfo, Detism) },
-	( { determinism_components(Detism, _, at_most_many) } ->
-		{ error("Sorry, not yet implemented - nondeterministic Mercury calls in Aditi procedures") }
-	;
-		{ pred_info_is_imported(PredInfo) },
-		{ \+ code_util__predinfo_is_builtin(PredInfo) }
+	rl_exprn_info_get_parent_pred_proc_ids(Parents0),
+	(
+		% XXX Nondet top-down calls are not yet implemented.
+		{ determinism_components(Detism, _, at_most_many) }
 	->
-		{ error("Sorry, not yet implemented - calls to imported Mercury procedures from Aditi") }
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ rl_exprn__call_not_implemented_error(Context,
+			ModuleInfo, PredId, ProcId,
+			"nondeterministic Mercury calls in Aditi procedures") }
+	;
+		% XXX Top-down calls to imported predicates
+		% are not yet implemented.
+		{ pred_info_is_imported(PredInfo) },
+
+		% Calls to `unify/2' and `compare/3' will have been
+		% transformed into the type-specific versions
+		% by polymorphism.m. Polymorphic types are not allowed
+		% in Aditi predicates so the types must be known.
+		\+ {
+			% `index/2' doesn't work in Aditi.
+			code_util__compiler_generated(PredInfo),
+			\+ pred_info_name(PredInfo, "__Index__")
+		},
+		{ \+ code_util__predinfo_is_builtin(PredInfo) },
+		{ \+ rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
+			ProcId, _) }
+	->
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ rl_exprn__call_not_implemented_error(Context,
+			ModuleInfo, PredId, ProcId,
+			"calls to imported Mercury procedures from Aditi") }
+	;
+		% XXX Recursive top-down calls are not yet implemented.
+		{ set__member(proc(PredId, ProcId), Parents0) }
+	->
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ rl_exprn__call_not_implemented_error(Context,
+			ModuleInfo, PredId, ProcId,
+			"recursive Mercury calls in Aditi procedures") }
 	;
 		rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo,
 			Fail, Vars, Code)
 	).
+
+:- pred rl_exprn__call_not_implemented_error(prog_context::in, module_info::in,
+		pred_id::in, proc_id::in, string::in) is erroneous.
+
+rl_exprn__call_not_implemented_error(Context, 
+		ModuleInfo, PredId, ProcId, ErrorDescr) :-
+	error_util__describe_one_proc_name(ModuleInfo,
+		proc(PredId, ProcId), ProcName),
+	prog_out__context_to_string(Context, ContextStr),
+	string__append_list(
+		[
+			ContextStr, "in call to ", ProcName, ":\n",
+			"sorry, not yet implemented - ", ErrorDescr
+		],
+		Msg),
+	error(Msg).
 
 :- pred rl_exprn__call_body(pred_id::in, proc_id::in, pred_info::in,
 	proc_info::in, byte_tree::in, list(prog_var)::in, byte_tree::out,
@@ -742,9 +790,17 @@ rl_exprn__call(PredId, ProcId, Vars, _GoalInfo, Fail, Code) -->
 rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_arity(PredInfo, Arity) },
-	( { code_util__predinfo_is_builtin(PredInfo) } ->
+	(
+		{ code_util__predinfo_is_builtin(PredInfo) }
+	->
 		rl_exprn__generate_builtin_call(PredId, ProcId, PredInfo,
 			Args, Fail, Code)
+	;
+		{ rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
+			ProcId, Bytecode) }
+	->
+		rl_exprn__generate_extra_aditi_builtin(Bytecode,
+			Args, Code)
 	;
 		% Handle unify/2 specially, since it is possibly recursive,
 		% which will cause the code below to fall over. Also, magic.m
@@ -809,15 +865,8 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	;
 		% XXX temporary hack until we allow Mercury calls from Aditi -
 		% generate the goal of the called procedure, not a call to 
-		% the called procedure, checking first that the call is not
-		% recursive.
-
+		% the called procedure.
 		rl_exprn_info_get_parent_pred_proc_ids(Parents0),
-		( { set__member(proc(PredId, ProcId), Parents0) } ->
-			{ error("sorry, recursive Mercury calls in Aditi-RL code are not yet implemented") }
-		;	
-			[]
-		),
 		{ set__insert(Parents0, proc(PredId, ProcId), Parents) },
 		rl_exprn_info_set_parent_pred_proc_ids(Parents),
 		rl_exprn__inline_call(PredId, ProcId,
@@ -1412,6 +1461,119 @@ rl_exprn__binop_bytecode(float_le, rl_EXP_flt_le).
 rl_exprn__binop_bytecode(float_ge, rl_EXP_flt_ge).
 
 %-----------------------------------------------------------------------------%
+
+	% Generate code for deterministic library predicates and functions
+	% for which all arguments except the last are input.
+	% This is not an exhaustive list, it's just the ones that
+	% Aditi happens to have bytecodes for.
+	% This is only needed until Aditi can call arbitrary Mercury code.
+:- pred rl_exprn__generate_extra_aditi_builtin(bytecode::in, 
+		list(prog_var)::in, byte_tree::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__generate_extra_aditi_builtin(Bytecode, Args, Code) -->
+	% The extra aditi builtins are not all functions, but
+	% this does the right thing.
+	{ pred_args_to_func_args(Args, InArgs, OutArg) },
+
+	rl_exprn__push_builtin_args(InArgs, empty, PushCode),
+
+	rl_exprn_info_lookup_var(OutArg, OutReg),
+	rl_exprn_info_lookup_var_type(OutArg, OutVarType),
+	rl_exprn__generate_pop(reg(OutReg), OutVarType, PopCode),
+	
+	{ Code =
+		tree(PushCode,
+		tree(node([Bytecode]),
+		PopCode
+	)) }.
+
+:- pred rl_exprn__push_builtin_args(list(prog_var)::in, byte_tree::in,
+	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__push_builtin_args([], Code, Code) --> [].
+rl_exprn__push_builtin_args([Var | Vars], Code0, Code) -->
+	rl_exprn_info_lookup_var(Var, VarReg),
+	rl_exprn_info_lookup_var_type(Var, VarType),
+	rl_exprn__generate_push(reg(VarReg), VarType, Code1),
+	rl_exprn__push_builtin_args(Vars, tree(Code0, Code1), Code).
+
+:- pred rl_exprn__is_simple_extra_aditi_builtin(pred_info::in, proc_id::in,
+		bytecode::out) is semidet.
+
+rl_exprn__is_simple_extra_aditi_builtin(PredInfo, ProcId, Bytecode) :-
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, PredModule),
+	PredModule = unqualified(PredModuleName),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity0),
+	hlds_pred__proc_id_to_int(ProcId, ProcInt),
+	adjust_func_arity(PredOrFunc, PredArity, PredArity0),
+	rl_exprn__simple_extra_builtin(PredOrFunc, PredModuleName,
+		PredName, PredArity, ProcInt, Bytecode).
+
+:- pred rl_exprn__simple_extra_builtin(pred_or_func::in, string::in,
+		string::in, int::in, int::in, bytecode::in) is semidet.
+:- mode rl_exprn__simple_extra_builtin(in, in, in, in, out, out) is semidet.
+
+rl_exprn__simple_extra_builtin(predicate, "int", "to_float", 2, 0,
+		rl_EXP_int_toflt).
+rl_exprn__simple_extra_builtin(predicate, "int", "max", 3, 0, rl_EXP_int_max).
+rl_exprn__simple_extra_builtin(predicate, "int", "min", 3, 0, rl_EXP_int_min).
+rl_exprn__simple_extra_builtin(predicate, "int", "abs", 2, 0, rl_EXP_int_abs).
+
+rl_exprn__simple_extra_builtin(function, "float", "float", 1, 0,
+		rl_EXP_int_toflt).
+rl_exprn__simple_extra_builtin(function, "float",
+		"truncate_to_int", 1, 0, rl_EXP_flt_toint).
+rl_exprn__simple_extra_builtin(function, "float", "pow", 2, 0, rl_EXP_flt_pow).
+rl_exprn__simple_extra_builtin(predicate, "float", "pow", 3, 0,
+		rl_EXP_flt_pow).
+rl_exprn__simple_extra_builtin(function, "float", "abs", 1, 0, rl_EXP_flt_abs).
+rl_exprn__simple_extra_builtin(predicate, "float", "abs", 2, 0,
+		rl_EXP_flt_abs).
+rl_exprn__simple_extra_builtin(function, "float", "max", 2, 0, rl_EXP_flt_max).
+rl_exprn__simple_extra_builtin(predicate, "float", "max", 3, 0,
+		rl_EXP_flt_max).
+rl_exprn__simple_extra_builtin(function, "float", "min", 2, 0, rl_EXP_flt_min).
+rl_exprn__simple_extra_builtin(predicate, "float", "min", 3, 0,
+		rl_EXP_flt_min).
+
+rl_exprn__simple_extra_builtin(function, "math", "ceiling", 1, 0,
+		rl_EXP_flt_ceil).
+rl_exprn__simple_extra_builtin(function, "math", "floor", 1, 0,
+		rl_EXP_flt_floor).
+rl_exprn__simple_extra_builtin(function, "math", "round", 1, 0,
+		rl_EXP_flt_round).
+rl_exprn__simple_extra_builtin(function, "math", "sqrt", 1, 0,
+		rl_EXP_flt_sqrt).
+rl_exprn__simple_extra_builtin(function, "math", "pow", 2, 0, rl_EXP_flt_pow).
+rl_exprn__simple_extra_builtin(function, "math", "exp", 1, 0, rl_EXP_flt_exp).
+rl_exprn__simple_extra_builtin(function, "math", "ln", 1, 0, rl_EXP_flt_log).
+rl_exprn__simple_extra_builtin(function, "math", "log10", 1, 0,
+		rl_EXP_flt_log10).
+rl_exprn__simple_extra_builtin(function, "math", "log2", 1, 0,
+		rl_EXP_flt_log2).
+rl_exprn__simple_extra_builtin(function, "math", "sin", 1, 0, rl_EXP_flt_sin).
+rl_exprn__simple_extra_builtin(function, "math", "cos", 1, 0, rl_EXP_flt_cos).
+rl_exprn__simple_extra_builtin(function, "math", "tan", 1, 0, rl_EXP_flt_tan).
+rl_exprn__simple_extra_builtin(function, "math", "asin", 1, 0,
+		rl_EXP_flt_asin).
+rl_exprn__simple_extra_builtin(function, "math", "acos", 1, 0,
+		rl_EXP_flt_acos).
+rl_exprn__simple_extra_builtin(function, "math", "atan", 1, 0,
+		rl_EXP_flt_atan).
+rl_exprn__simple_extra_builtin(function, "math", "sinh", 1, 0,
+		rl_EXP_flt_sinh).
+rl_exprn__simple_extra_builtin(function, "math", "cosh", 1, 0,
+		rl_EXP_flt_cosh).
+rl_exprn__simple_extra_builtin(function, "math", "tanh", 1, 0,
+		rl_EXP_flt_tanh).
+
+rl_exprn__simple_extra_builtin(predicate, "string", "length", 2, 0,
+		rl_EXP_str_length).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc, GrpByType, 
@@ -1483,7 +1645,7 @@ rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
 
 	rl_exprn_info_get_free_reg(NonGrpByType, NonGrpByReg),
 	rl_exprn__assign(reg(NonGrpByReg), input_field(one, 1),
-		GrpByType, NonGrpByAssign),
+		NonGrpByType, NonGrpByAssign),
 
 	rl_exprn_info_get_free_reg(AccType, InitialAccReg),
 
@@ -1492,7 +1654,8 @@ rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
 	% the group, and assign it to a register.
 	% 
 	{ Args = [GrpByReg, NonGrpByReg, InitialAccReg] },
-	rl_exprn__closure(ComputeClosure, Args, IsConst, AccCode0),
+	{ ArgTypes = [GrpByType, NonGrpByType, AccType] },
+	rl_exprn__closure(ComputeClosure, Args, ArgTypes, IsConst, AccCode0),
 
 	% Restore the initial value of the accumulator at the start
 	% of a new group.
@@ -1531,13 +1694,14 @@ rl_exprn__aggregate_update(UpdateClosure, GrpByReg, GrpByType, NonGrpByType,
 		NonGrpByType, NonGrpByCode),
 
 	% Allocate a location to collect the new accumulator.
-	rl_exprn_info_get_free_reg(GrpByType, OutputAccReg),
+	rl_exprn_info_get_free_reg(AccType, OutputAccReg),
 	rl_exprn__assign(reg(AccReg), reg(OutputAccReg),
 		AccType, AccAssignCode),
 
 	{ Args = [GrpByReg, NonGrpByReg, AccReg, OutputAccReg] },
+	{ ArgTypes = [GrpByType, NonGrpByType, AccType, AccType] },
 
-	rl_exprn__closure(UpdateClosure, Args, _, UpdateCode),
+	rl_exprn__closure(UpdateClosure, Args, ArgTypes, _, UpdateCode),
 	{ Code =
 		tree(NonGrpByCode,
 		tree(UpdateCode,
@@ -1551,27 +1715,32 @@ rl_exprn__aggregate_update(UpdateClosure, GrpByReg, GrpByType, NonGrpByType,
 	% Return whether the input arguments are actually used in
 	% constructing the outputs. If not, the closure is constant
 	% and can be evaluated once, instead of once per group.
-:- pred rl_exprn__closure(pred_proc_id::in, list(reg_id)::in, bool::out,
-		byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+:- pred rl_exprn__closure(pred_proc_id::in, list(reg_id)::in, list(type)::in,
+		bool::out, byte_tree::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__closure(proc(PredId, ProcId), ArgLocs, IsConst, Code) -->
+rl_exprn__closure(proc(PredId, ProcId), ArgLocs, ArgTypes, IsConst, Code) -->
 	rl_exprn_info_get_module_info(ModuleInfo),
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ proc_info_varset(ProcInfo, VarSet) },
-	rl_exprn_info_set_vartypes(VarTypes),
-	rl_exprn_info_set_varset(VarSet),
 
-	{ proc_info_headvars(ProcInfo, HeadVars) },
-	{ map__from_corresponding_lists(HeadVars, ArgLocs, VarLocs) },
-	{ list__length(HeadVars, NextVar) },
-	rl_exprn_info_set_vars(VarLocs - NextVar),
+	% Create dummy variables for the arguments of the procedure.
+	rl_exprn_info_get_varset(VarSet0),
+	rl_exprn_info_get_vartypes(VarTypes0),
+	{ list__length(ArgTypes, NumVars) },
+	{ varset__new_vars(VarSet0, NumVars, ArgVars, VarSet) },
+	{ map__det_insert_from_corresponding_lists(VarTypes0, 
+		ArgVars, ArgTypes, VarTypes) },
+	rl_exprn_info_set_varset(VarSet),
+	rl_exprn_info_set_vartypes(VarTypes),
+
+	rl_exprn_info_set_var_locs(ArgVars, ArgLocs),
 
 	% Check if the closure depends on the input arguments.
 	{ proc_info_goal(ProcInfo, Goal) },
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+	{ proc_info_headvars(ProcInfo, HeadVars) },
 	{ proc_info_argmodes(ProcInfo, argument_modes(_, ArgModes)) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 	{ proc_info_inst_table(ProcInfo, InstTable) },
@@ -1587,7 +1756,7 @@ rl_exprn__closure(proc(PredId, ProcId), ArgLocs, IsConst, Code) -->
 
 	{ Fail = node([rl_EXP_return_false]) },
 	rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo,
-			Fail, HeadVars, Code).
+			Fail, ArgVars, Code).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1852,6 +2021,9 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 :- pred rl_exprn_info_set_varset(prog_varset, rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_set_varset(in, in, out) is det.
 
+:- pred rl_exprn_info_get_vars(id_map(prog_var), rl_exprn_info, rl_exprn_info).
+:- mode rl_exprn_info_get_vars(out, in, out) is det.
+
 :- pred rl_exprn_info_set_vars(id_map(prog_var), rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_set_vars(in, in, out) is det.
 
@@ -1893,6 +2065,14 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 :- pred rl_exprn_info_lookup_var_type(prog_var, type,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_lookup_var_type(in, out, in, out) is det.
+
+:- pred rl_exprn_info_set_var_locs(list(prog_var), list(reg_id),
+		rl_exprn_info, rl_exprn_info).
+:- mode rl_exprn_info_set_var_locs(in, in, in, out) is det.
+
+:- pred rl_exprn_info_set_var_loc(prog_var, reg_id,
+		rl_exprn_info, rl_exprn_info).
+:- mode rl_exprn_info_set_var_loc(in, in, in, out) is det.
 
 :- pred rl_exprn_info_get_decls(list(type), rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_decls(out, in, out) is det.
@@ -1987,6 +2167,8 @@ rl_exprn_info_get_vartypes(C, Info, Info) :-
 	Info = rl_exprn_info(_,_,C,_,_,_,_,_,_,_,_,_).
 rl_exprn_info_get_varset(D, Info, Info) :-
 	Info = rl_exprn_info(_,_,_,D,_,_,_,_,_,_,_,_).
+rl_exprn_info_get_vars(E, Info, Info) :-
+	Info = rl_exprn_info(_,_,_,_,E,_,_,_,_,_,_,_).
 rl_exprn_info_get_consts(G, Info, Info) :-
 	Info = rl_exprn_info(_,_,_,_,_,_,G,_,_,_,_,_).
 rl_exprn_info_get_rules(H, Info, Info) :-
@@ -2047,6 +2229,20 @@ rl_exprn_info_lookup_rule(Rule, Loc, Info0, Info) :-
 rl_exprn_info_lookup_var_type(Var, Type) -->
 	rl_exprn_info_get_vartypes(VarTypes),
 	{ map__lookup(VarTypes, Var, Type) }.
+
+rl_exprn_info_set_var_locs([], []) --> [].
+rl_exprn_info_set_var_locs([_|_], []) -->
+	{ error("rl_exprn_info_set_var_locs") }.
+rl_exprn_info_set_var_locs([], [_|_]) -->
+	{ error("rl_exprn_info_set_var_locs") }.
+rl_exprn_info_set_var_locs([Var | Vars], [Loc | Locs]) -->
+	rl_exprn_info_set_var_loc(Var, Loc),
+	rl_exprn_info_set_var_locs(Vars, Locs).
+
+rl_exprn_info_set_var_loc(Var, Loc) -->
+	rl_exprn_info_get_vars(VarMap0 - NextVar),
+	{ map__det_insert(VarMap0, Var, Loc, VarMap) },
+	rl_exprn_info_set_vars(VarMap - NextVar).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

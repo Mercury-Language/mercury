@@ -391,6 +391,8 @@ rl_dump__write_join_type(_, semi) -->
 
 rl_dump__write_subtract_type(_, nested_loop) -->
 	io__write_string("nested_loop").
+rl_dump__write_subtract_type(_, semi) -->
+	io__write_string("semi").
 rl_dump__write_subtract_type(_, sort_merge(SortAttr1, SortAttr2)) -->
 	io__write_string("sort_merge("),
 	rl_dump__write_sort_spec(SortAttr1),

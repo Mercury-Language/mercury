@@ -260,10 +260,10 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 			ArgInstTable, ArgModes, VarDep1, VarDep2),
 
 		module_info_globals(ModuleInfo, Globals),
-		globals__lookup_bool_option(Globals, typeinfo_liveness, 
-			TypeinfoLiveness),
+		proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId,
+			Globals, TypeInfoLiveness),
 		( 
-			TypeinfoLiveness = yes,
+			TypeInfoLiveness = yes,
 			pred_info_module(PredInfo, PredModule),
 			pred_info_name(PredInfo, PredName),
 			pred_info_arity(PredInfo, PredArity),

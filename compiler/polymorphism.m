@@ -716,22 +716,33 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo, ClausesInfo,
 		)
 	->
 		% 
-		% We need to set the headvars in the proc_info here, because
+		% We need to set these fields in the proc_info here, because
 		% some parts of the compiler (e.g. unused_args.m) depend on the
-		% headvars field being valid even for imported procedures.
+		% these fields being valid even for imported procedures.
 		%
 		clauses_info_headvars(ClausesInfo, HeadVars),
-		proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1)
+		clauses_info_typeclass_info_varmap(ClausesInfo,
+			TypeClassInfoVarMap),
+		clauses_info_type_info_varmap(ClausesInfo,
+			TypeInfoVarMap),
+		clauses_info_varset(ClausesInfo,
+			VarSet),
+		proc_info_set_headvars(ProcInfo0, HeadVars, ProcInfo1),
+		proc_info_set_typeclass_info_varmap(ProcInfo1, 
+			TypeClassInfoVarMap, ProcInfo2),
+		proc_info_set_typeinfo_varmap(ProcInfo2, 
+			TypeInfoVarMap, ProcInfo3),
+		proc_info_set_varset(ProcInfo3, VarSet, ProcInfo4)
 	;
-		copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo0, ProcInfo1)
+		copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo0, ProcInfo4)
 	),
 
 	%
 	% add the ExtraArgModes to the proc_info argmodes
 	%
-	proc_info_argmodes(ProcInfo1, argument_modes(IT, ArgModes1)),
+	proc_info_argmodes(ProcInfo4, argument_modes(IT, ArgModes1)),
 	list__append(ExtraArgModes, ArgModes1, ArgModes),
-	proc_info_set_argmodes(ProcInfo1, argument_modes(IT, ArgModes),
+	proc_info_set_argmodes(ProcInfo4, argument_modes(IT, ArgModes),
 		ProcInfo).
 
 % XXX the following code ought to be rewritten to handle

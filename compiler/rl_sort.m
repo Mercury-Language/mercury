@@ -627,6 +627,8 @@ rl_sort__instr_needed(BlockId,
 	( 
 		{ Type = nested_loop }
 	;
+		{ Type = semi }
+	;
 		{ Type = sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),
 			Input1),
@@ -638,13 +640,13 @@ rl_sort__instr_needed(BlockId,
 			Input2)
 	;
 		{ Type = cross }
-	;
-		{ Type = semi }
 	).
 rl_sort__instr_needed(BlockId,
 		subtract(_Output, Input1, Input2, Type, _Exprn) - _) -->
 	(
 		{ Type = nested_loop }
+	;
+		{ Type = semi }
 	;
 		{ Type = sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),

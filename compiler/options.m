@@ -179,9 +179,33 @@
 				% execution tracing.
 		;	trace_stack_layout
 				% Use an alternate calculation of liveness
-				% where typeinfos are live for any live data
-				% the includes that type variable.
-		;	typeinfo_liveness
+				% where the typeinfo for a type variable
+				% must live at any point in the body of the
+				% procedure at which a live variable's type
+				% includes that type variable.
+				%
+				% Although this option governs whether the
+				% body of a procedure uses this liveness
+				% calculation, it is not the only consideration
+				% we have to take into account when deciding on
+				% the interface of any procedure whose address
+				% may be taken. We must include typeinfos
+				% describing the types of all arguments in the
+				% interface of a procedure if either this
+				% option is set *or* the procedure's address
+				% may be taken, otherwise, the layout structure
+				% we include in closures using that procedure
+				% may not have all the information required
+				% to reconstruct the types of all the values
+				% inside the closure.
+				%
+				% The only place in the compiler that should
+				% look at this option is the predicate
+				% body_should_use_typeinfo_liveness in
+				% hlds_pred.m; everything else, including
+				% the predicates deciding interface typeinfo
+				% liveness, should go through there.
+		;	body_typeinfo_liveness
 				% Generate unify and compare preds.  For
 				% measurement only. Code generated with
 				% this set to `no' is unlikely to
@@ -505,7 +529,7 @@ option_defaults_2(compilation_model_option, [
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
-	typeinfo_liveness	-	bool(no),
+	body_typeinfo_liveness	-	bool(no),
 	special_preds		-	bool(yes),
 	type_ctor_info		-	bool(yes),
 	type_ctor_layout	-	bool(yes),
@@ -853,7 +877,7 @@ long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
-long_option("typeinfo-liveness",	typeinfo_liveness).
+long_option("body-typeinfo-liveness",	body_typeinfo_liveness).
 long_option("special-preds",		special_preds).
 long_option("type-ctor-info",		type_ctor_info).
 long_option("type-ctor-layout",		type_ctor_layout).
@@ -1785,12 +1809,10 @@ your program compiled with different options.
 %		"\texecution tracing.",
 
 		% This is a developer only option.
-%		"--typeinfo-liveness",
+%		"--body-typeinfo-liveness",
 %		"(This option is not for general use.)",
-%		"\tUse an alternate technique for calculating liveness.",
-%		"\tKeeps typeinfo variables around for as long as any data",
-%		"\tthat has a type that contains that type variable is live",
-%
+%		For documentation, see the comment in the type declaration.
+
 		"--use-minimal-model",
 		"(This option is not for general use.)",
 		"\tEnable the use of minimal model tabling.",

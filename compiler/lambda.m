@@ -371,18 +371,10 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals1),
-	module_info_globals(ModuleInfo0, Globals),
 
-	% If typeinfo_liveness is set, all type_infos for the
-	% arguments should be included, not just the ones
-	% that are used.
-	globals__lookup_bool_option(Globals,
-		typeinfo_liveness, TypeInfoLiveness),
-	( TypeInfoLiveness = yes ->
-		set__union(NonLocals1, ExtraTypeInfos, NonLocals)
-	;
-		NonLocals = NonLocals1
-	),
+	% We need all the typeinfos, including the ones that are not used,
+	% for the layout structure describing the closure.
+	set__union(NonLocals1, ExtraTypeInfos, NonLocals),
 
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
@@ -500,9 +492,9 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 			% queries. Currently all nondet lambda expressions
 			% within Aditi predicates are treated as aggregate
 			% inputs.
+			% EvalMethod = (aditi_bottom_up),
 			determinism_components(Detism, _, at_most_many),
-			check_marker(Markers, aditi),
-			EvalMethod = (aditi_bottom_up)
+			check_marker(Markers, aditi)
 		->
 			markers_to_marker_list(Markers, MarkerList0),
 			list__filter(
@@ -521,6 +513,10 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 				)),
 				MarkerList0, MarkerList),
 			marker_list_to_markers(MarkerList, LambdaMarkers)
+		;
+			EvalMethod = (aditi_bottom_up)
+		->
+			marker_list_to_markers([aditi], LambdaMarkers)
 		;
 			EvalMethod = (aditi_top_down)
 		->

@@ -567,6 +567,7 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	code_info__produce_variable_in_reg_or_stack(Var, VarCode, Rval),
 	code_info__variable_type(Var, Type),
 	code_info__get_inst_table(InstTable),
+	code_info__get_module_info(ModuleInfo),
 	{
 	( Rval = lval(LvalPrime) ->
 		Lval = LvalPrime
@@ -577,9 +578,18 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		% The code that interprets layout information must know this.
 		% Lval = reg(r, 0)
 	),
-	varset__lookup_name(VarSet, Var, "V_", Name),
+	( varset__search_name(VarSet, Var, SearchName) ->
+		Name = SearchName
+	;
+		Name = ""
+	),
 	instmap__lookup_var(InstMap, Var, Inst),
-	LiveType = var(Var, Name, Type, qualified_inst(InstTable, Inst)),
+	( inst_match__inst_is_ground(Inst, InstMap, InstTable, ModuleInfo) ->
+		LldsInst = ground
+	;
+		LldsInst = partial(InstTable, Inst)
+	),
+	LiveType = var(Var, Name, Type, LldsInst),
 	VarInfo = var_info(direct(Lval), LiveType),
 	type_util__vars(Type, TypeVars),
 	set__insert_list(Tvars0, TypeVars, Tvars1)

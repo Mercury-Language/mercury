@@ -714,6 +714,11 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	),
 	{ ClausesInfo = clauses_info(VarSet, _, VarTypes, HeadVars, Clauses,
 		TypeInfoMap, TypeClassInfoMap) },
+	( { string__contains_char(Verbose, 'v') } ->
+		{ AppendVarnums = yes }
+	;
+		{ AppendVarnums = no }
+	),
 	( { string__contains_char(Verbose, 'C') } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% pred id: "),
@@ -756,18 +761,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 			io__write_list(Indexes, ", ",
 				mercury_output_index_spec),
 			io__nl
-		)
-	;
-		[]
-	),
+		),
 
-	( { string__contains_char(Verbose, 'v') } ->
-		{ AppendVarnums = yes }
-	;
-		{ AppendVarnums = no }
-	),
-
-	( { string__contains_char(Verbose, 'C'), Clauses \= [] } ->
 		( { HeadTypeParams \= [] } ->
 			io__write_string(
 				"% head_type_params:\n"),
@@ -781,15 +776,20 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		hlds_out__write_var_types(Indent, VarSet, AppendVarnums,
 			VarTypes, TVarSet),
 
-		% Never write the clauses out verbosely -
-		% disable the dump_hlds_options option before writing them,
-		% and restore its initial value afterwards
-		globals__io_set_option(dump_hlds_options, string("")),
-		{ inst_table_init(InstTable) },	% YYY
-		hlds_out__write_clauses(Indent, InstTable, ModuleInfo, PredId,
-			VarSet, AppendVarnums, HeadVars, PredOrFunc, Clauses,
-			no),
-		globals__io_set_option(dump_hlds_options, string(Verbose))
+		( { Clauses \= [] } ->
+			% Never write the clauses out verbosely -
+			% disable the dump_hlds_options option before writing
+			% them, and restore its initial value afterwards
+			globals__io_set_option(dump_hlds_options, string("")),
+			{ inst_table_init(InstTable) },	% YYY
+			hlds_out__write_clauses(Indent, InstTable,
+				ModuleInfo, PredId, VarSet, AppendVarnums,
+				HeadVars, PredOrFunc, Clauses, no),
+			globals__io_set_option(dump_hlds_options,
+				string(Verbose))
+		;
+			[]
+		)
 	;
 		[]
 	),

@@ -322,6 +322,9 @@
 
 :- type subtract_type
 	--->	nested_loop
+	;	semi		% The output tuple is copied from the
+				% first input tuple. An output projection
+				% must be done as a separate operation.
 	;	sort_merge(sort_spec, sort_spec)
 	;	index(index_spec, key_range)
 	.

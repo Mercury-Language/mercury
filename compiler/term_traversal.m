@@ -204,13 +204,24 @@ traverse_goal_2(pragma_c_code(_, CallPredId, CallProcId, Args, _, _, _),
 	goal_info_get_context(GoalInfo, Context),
 	error_if_intersect(OutVars, Context, pragma_c_code, Info0, Info).
 
-	% For now, we'll pretend that a class method call is a higher order
-	% call. In reality, we could probably analyse further than this, since
-	% we know that the method being called must come from one of the
-	% instance declarations, and we could potentially (globally) analyse
-	% these.
-traverse_goal_2(generic_call(_, _, _, _),
-		GoalInfo, _InstMap0, Params, Info0, Info) :-
+traverse_goal_2(generic_call(_, _, _, _), GoalInfo, _InstMap0, Params,
+		Info0, Info) :-
+	%
+	% For class method calls, we could probably analyse further
+	% than this, since we know that the method being called must come
+	% from one of the instance declarations, and we could potentially
+	% (globally) analyse these.
+	%
+	% Aditi builtins are not guaranteed to terminate
+	% - all of them cause the transaction to abort if an error occurs
+	% (e.g. if the database server dies).
+	% - all except `aditi_insert' execute a user-specified goal
+	% which could possibly loop. Analysis of the termination of
+	% goals executed bottom-up is not yet implemented.
+	%
+	% The error message for `generic_call's other than higher-order calls
+	% could be better.
+	%
 	goal_info_get_context(GoalInfo, Context),
 	add_error(Context, horder_call, Params, Info0, Info).
 

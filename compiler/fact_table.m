@@ -1428,8 +1428,12 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
 			{ proc_id_to_int(ProcID, ProcInt) },
 			{ string__format("%s_hash_table_%d_", 
 				[s(StructName), i(ProcInt)], HashTableName) },
-			{ string__format("extern %s0;\n", [s(HashTableName)],
-				C_HeaderCode0) },
+			{ string__format(
+				"extern struct fact_table_hash_table_i %s0;\n",
+				[s(HashTableName)], C_HeaderCode0) },
+				% Note: the type declared here is not
+				% necessarily correct.  The type is declared
+				% just to stop the C compiler emitting warnings.
 			{ map__lookup(ProcTable, ProcID, ProcInfo) },
 			{ proc_info_argmodes(ProcInfo,
 				argument_modes(ArgInstTable, ArgModes)) },
@@ -1505,8 +1509,11 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		{ proc_id_to_int(ProcID, ProcInt) },
 		{ string__format("%s_hash_table_%d_",
 			[s(StructName), i(ProcInt)], HashTableName) },
-		{ string__format("extern %s0;\n", [s(HashTableName)],
-			C_HeaderCode1) },
+		{ string__format("extern struct fact_table_hash_table_i %s0;\n",
+			[s(HashTableName)], C_HeaderCode1) },
+			% Note: the type declared here is not
+			% necessarily correct.  The type is declared
+			% just to stop the C compiler emitting warnings.
 		{ string__append(C_HeaderCode1, C_HeaderCode0,
 			C_HeaderCode2) },
 		{ map__lookup(ProcTable, ProcID, ProcInfo) },
@@ -2382,7 +2389,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
 write_fact_table_pointer_array(NumFacts, StructName, OutputStream, 
 		C_HeaderCode) -->
 	{ string__append_list(
-		["struct ", StructName, "_struct *", StructName, "[]"], 
+		["const struct ", StructName, "_struct *", StructName, "[]"], 
 		PointerArrayName) },
 	{ string__append_list(["extern ", PointerArrayName, ";\n"], 
 		C_HeaderCode) },
@@ -2773,7 +2780,7 @@ generate_decl_code(Name, ProcID, DeclCode) :-
 			Integer hashval, hashsize;
 			Word ind;
 			void *current_table;
-			char keytype;
+			char keytype = '\\0';
 			Word current_key, tmp;
 
 			/*

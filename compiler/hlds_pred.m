@@ -14,13 +14,13 @@
 :- interface.
 
 :- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
-:- import_module term_util, inst_table.
+:- import_module globals, term_util, inst_table.
 :- import_module bool, list, set, map, std_util, term, varset.
 
 :- implementation.
 
 :- import_module code_aux, goal_util, make_hlds, prog_util.
-:- import_module mode_util, type_util, globals, options.
+:- import_module mode_util, type_util, options.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -454,7 +454,7 @@
 	%
 	% Create a new predicate for the given goal, returning a goal to 
 	% call the created predicate. ExtraArgs is the list of extra
-	% type_infos and typeclass_infos required by --typeinfo-liveness
+	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
 	% This must only be called after polymorphism.m.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
@@ -671,8 +671,6 @@
 
 :- pred purity_to_markers(purity, pred_markers).
 :- mode purity_to_markers(in, out) is det.
-
-:- type pred_markers.
 
 :- pred pred_info_get_markers(pred_info, pred_markers).
 :- mode pred_info_get_markers(in, out) is det.
@@ -1291,13 +1289,14 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 
 	Goal0 = _ - GoalInfo,
 
-	% If typeinfo_liveness is set, all type_infos for the argument
-	% variables need to be passed in, not just the ones that are used.
+	% If interface typeinfo liveness is set, all type_infos for the
+	% arguments need to be passed in, not just the ones that are used.
 	% Similarly if the address of a procedure of this predicate is taken,
 	% so that we can copy the closure.
 	module_info_globals(ModuleInfo0, Globals),
-	globals__lookup_bool_option(Globals, typeinfo_liveness,
-		TypeInfoLiveness),
+	ExportStatus = local,
+	interface_should_use_typeinfo_liveness(ExportStatus,
+		IsAddressTaken, Globals, TypeInfoLiveness),
 	( TypeInfoLiveness = yes ->
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap,
@@ -1346,7 +1345,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 	set__init(Assertions),
 
 	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
-		true, Context, local, Markers, predicate, ClassContext, 
+		true, Context, ExportStatus, Markers, predicate, ClassContext, 
 		Owner, Assertions, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -1592,6 +1591,27 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 		list(type), list(prog_var), proc_info).
 :- mode proc_info_create_vars_from_types(in, in, out, out) is det.
 
+	% Return true if the interface of the given procedure must include
+	% typeinfos for all the type variables in the types of the arguments.
+:- pred proc_interface_should_use_typeinfo_liveness(pred_info, proc_id,
+	globals, bool).
+:- mode proc_interface_should_use_typeinfo_liveness(in, in, in, out) is det.
+
+	% Return true if the interface of a procedure with the given
+	% characteristics (import/export/local status, address taken status)
+	% must include typeinfos for all the type variables in the types
+	% of the arguments.
+:- pred interface_should_use_typeinfo_liveness(import_status, is_address_taken,
+		globals, bool).
+:- mode interface_should_use_typeinfo_liveness(in, in, in, out) is det.
+
+	% Return true if the body of the procedure must keep a typeinfo
+	% variable alive during the lifetime of all variables whose type
+	% includes the corresponding type variable. Note that body typeinfo
+	% liveness implies interface typeinfo liveness, but not vice versa.
+:- pred body_should_use_typeinfo_liveness(globals, bool).
+:- mode body_should_use_typeinfo_liveness(in, out) is det.
+
 :- implementation.
 
 :- type proc_info
@@ -1649,6 +1669,11 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 					% typeinfo liveness for them, so that
 					% deep_copy and accurate gc have the
 					% RTTI they need for copying closures.
+					%
+					% Note that any non-local procedure
+					% must be considered as having its
+					% address taken, since it is possible
+					% that some other module may do so.
 			inst_table,
 					% the inst_table for this proc
 			maybe(rl_exprn_id)
@@ -2113,6 +2138,38 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 		NewVars, Types, VarTypes),
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
 	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo).
+
+proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
+		InterfaceTypeInfoLiveness) :-
+	pred_info_import_status(PredInfo, Status),
+	pred_info_procedures(PredInfo, ProcTable),
+	map__lookup(ProcTable, ProcId, ProcInfo),
+	proc_info_is_address_taken(ProcInfo, IsAddressTaken),
+	interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
+		InterfaceTypeInfoLiveness).
+
+interface_should_use_typeinfo_liveness(Status, IsAddressTaken, Globals,
+		InterfaceTypeInfoLiveness) :-
+	(
+		(
+			IsAddressTaken = address_is_taken
+		;
+			% If the predicate is exported, its address may have
+			% been taken elsewhere. If it is imported, then it
+			% follows that it must be exported somewhere.
+			Status \= local
+		;
+			body_should_use_typeinfo_liveness(Globals, yes)
+		)
+	->
+		InterfaceTypeInfoLiveness = yes
+	;
+		InterfaceTypeInfoLiveness = no
+	).
+
+body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
+	globals__lookup_bool_option(Globals, body_typeinfo_liveness,
+		BodyTypeInfoLiveness).
 
 %-----------------------------------------------------------------------------%
 

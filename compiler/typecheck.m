@@ -3068,10 +3068,12 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		type_assign_get_typeclass_constraints(TypeAssign,
 			TypeConstraints),
 		type_assign_get_constraint_proofs(TypeAssign,
-			ConstraintProofs),
+			ConstraintProofs0),
 
 		map__keys(VarTypes0, Vars),
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
+		apply_rec_subst_to_constraint_proofs(TypeBindings,
+			ConstraintProofs0, ConstraintProofs),
 
 		%
 		% figure out how we should rename the existential types

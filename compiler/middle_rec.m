@@ -153,6 +153,12 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ tree__flatten(RecCode, RecListList) },
 	{ list__condense(RecListList, RecList) },
 
+	% In the code we generate, the base instruction sequence is executed
+	% in situations where this procedure has no stack frame. If this
+	% sequence refers to stackvars, it will be to some other procedure's
+	% variables, which is obviously incorrect.
+	{ opt_util__block_refers_stackvars(BaseList, no) },
+
 	{ list__append(BaseList, RecList, AvoidList) },
 	{ middle_rec__find_unused_register(AvoidList, AuxReg) },
 
@@ -160,12 +166,12 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
 		BeforeList) },
 
-	{ middle_rec__generate_downloop_test(EntryTestList,
-		Loop1Label, Loop1Test) },
-
 	code_info__get_next_label(Loop1Label),
 	code_info__get_next_label(Loop2Label),
 	code_info__get_total_stackslot_count(FrameSize),
+
+	{ middle_rec__generate_downloop_test(EntryTestList,
+		Loop1Label, Loop1Test) },
 
 	{ FrameSize = 0 ->
 		MaybeIncrSp = [],
