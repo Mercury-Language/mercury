@@ -9,7 +9,7 @@
 
 :- interface.
 
-:- import_module list, int, io.
+:- import_module int, io.
 
 :- type quad ---> quad(string, int, string, int).
 
