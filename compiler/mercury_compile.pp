@@ -129,7 +129,9 @@ main_2(ok(OptionTable0), Args) -->
 	is semidet.
 
 convert_gc_grade_option(GC_Grade) -->
-	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
+	( { GC_Grade = "" } ->
+		[]
+	; { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
 		set_string_opt(gc, "conservative"),
 		convert_grade_option(Grade)
 	;
@@ -140,7 +142,6 @@ convert_gc_grade_option(GC_Grade) -->
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
-convert_grade_option("") --> [].
 convert_grade_option("asm_fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
