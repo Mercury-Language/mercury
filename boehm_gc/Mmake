@@ -34,12 +34,13 @@ install: install_headers install_lib
 
 .PHONY: install_headers
 install_headers: gc.h
-	mkdir -p $(INSTALL_INC_DIR)/machdeps
+	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)/machdeps
 	cp `vpath_find gc.h` $(INSTALL_INC_DIR)
 
 .PHONY: install_lib
 install_lib: libgc.a libgc.so
-	mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
+		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
 	cp `vpath_find libgc.a libgc.so` $(INSTALL_MERC_GC_LIB_DIR)
 
 #-----------------------------------------------------------------------------#
