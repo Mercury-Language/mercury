@@ -83,6 +83,10 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___private_builtin__type_info_1_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___private_builtin__type_info_1_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___private_builtin__type_info_1_0);
 BEGIN_MODULE(type_info_module)
+	init_entry(mercury____Unify___private_builtin__type_info_1_0);
+	init_entry(mercury____Index___private_builtin__type_info_1_0);
+	init_entry(mercury____Compare___private_builtin__type_info_1_0);
+BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 {
 	/*
