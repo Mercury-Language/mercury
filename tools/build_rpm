@@ -176,6 +176,6 @@ scp $RPMDIR/SRPMS/mercury-compiler-$base_vsn_with_us-$rel.src.rpm \
 	|| failed 'copying RPMs to ftp site'
 
 /bin/rm $RPMDIR/RPMS/$arch/mercury-compiler-$base_vsn_with_us-$rel.$arch.rpm
-/bin/rm $RPMDIR/SRPMS/mercury-compiler-$base_vsn_with_underscores-$rel.src.rpm
+/bin/rm $RPMDIR/SRPMS/mercury-compiler-$base_vsn_with_us-$rel.src.rpm
 
 #-----------------------------------------------------------------------------#
