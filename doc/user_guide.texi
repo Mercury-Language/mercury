@@ -67,7 +67,7 @@ into another language, under the above conditions for modified versions.
 @page
 
 @ifinfo
-@node Top
+@node Top,,, (mercury)
 @top The Mercury User's Guide - BETA TEST version, July 1995
 
 This guide describes the compilation environment of Mercury ---

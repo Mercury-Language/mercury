@@ -68,7 +68,7 @@ into another language, under the above conditions for modified versions.
 @c ---------------------------------------------------------------------------
 
 @ifinfo
-@node Top
+@node Top,,, (mercury)
 @top Mercury Library Reference Manual - BETA TEST version, July 1995
 @end ifinfo
 

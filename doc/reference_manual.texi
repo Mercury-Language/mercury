@@ -67,7 +67,7 @@ into another language, under the above conditions for modified versions.
 @page
 @c ---------------------------------------------------------------------------
 
-@node Top,,, (DIR)
+@node Top,,, (mercury)
 @ifinfo
 @chapter Mercury Language Reference Manual - BETA TEST version, July 1995
 @end ifinfo
