@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 % 
@@ -14,7 +14,7 @@
 %	initialize/1 and filter/4,
 % 2) generate `collect.m' from this file (generate_collect/1),
 % 3) compile collect.m (compile_collect/0),
-% 4) dynamically link it with the current execution (dyn_link_collect/0).
+% 4) dynamically link it with the current execution (dyn_link_collect/2).
 % 5) run the command (run_command/1).
 
 opium_scenario(
@@ -106,7 +106,7 @@ each event attributes, please refer to the Reference Manual):\n\
 	mode_number).\n\
 :- type arguments == list(univ).\n\
 \n\
-Here are functions that eases the access of the event attributes:\n\
+Here are functions that eases the access to event attributes:\n\
 \n\
 :- func chrono(event::in) = (event_number::out) is det.\n\
 :- func call(event::in) = (call_number::out) is det.\n\
@@ -185,13 +185,13 @@ collect_Op(File, Result) :-
 	check_a_program_is_running("collect/2"),
 	(
 		% File might be an atom or a string.
-		string(File),
-		append_strings(File, ".so", File_so),
-		!
+		string(File)
+	->
+		File = FileStr
 	;
-		atom_string(File, FileStr),
-		append_strings(FileStr, ".so", File_so)
+		atom_string(File, FileStr)
 	),
+	append_strings(FileStr, ".so", File_so),
 	( 
 		% We don't generate again collect.so if the collect input 
 		% file has already been collected and if it has not been 
@@ -208,7 +208,7 @@ collect_Op(File, Result) :-
 		concat_string(["cp collect.so ", File_so], Cmd2),
 		sh(Cmd2)
 	),
-	dyn_link_collect,
+	dyn_link_collect(FileStr, File_so),
 	run_collect(Result).
 
 %------------------------------------------------------------------------------%
@@ -316,11 +316,23 @@ generate_collect_Op(File) :-
 		write(collect, ":- mode acc_in :: in.\n"),
 		write(collect, ":- mode acc_out :: out.\n\n")
 	),
+
+
+	% From the Mercury Reference manual:
+	%   The `source_file' pragma and `#line' directives provide
+ 	%   support for preprocessors and other tools that generate
+ 	%   Mercury code. The tool can insert these directives into the
+ 	%   generated Mercury code to allow the Mercury compiler to
+ 	%   report diagnostics (error and warning messages) at the
+ 	%   original source code location, rather than at the location in
+ 	%   the automatically generated Mercury code.
+	printf(collect, ":- pragma source_file(\"%w\").\n", [File]),
+	write(collect, "#1\n"),
 	write(collect, Body),
 	close(collect),
 	close(collect_in).
 
-	
+
 % Check if there is a mode definition of `acc_in' and `acc_out' in the 
 % file `File'. Those are to let users specify di and uo as modes for filter.
 is_there_any_mode_declaration(File) :-
@@ -357,16 +369,16 @@ is_there_any_mode_declaration_do(S) :-
 %------------------------------------------------------------------------------%
 opium_primitive(
 	name		: dyn_link_collect,
-	arg_list	: [],
-	arg_type_list	: [],
+	arg_list	: [File, FileSo],
+	arg_type_list	: [is_string, is_string],
 	abbrev		: _,
 	implementation	: dyn_link_collect_Op,
 	message		:
 "Dynamically links the collect module with the currently run program."
 	).
 
-dyn_link_collect_Op :-
-	check_a_program_is_running("dyn_link_collect/0"),
+dyn_link_collect_Op(File, FileSo) :-
+	check_a_program_is_running("dyn_link_collect/2"),
 	(
 		exists("collect.so"),
 		!
@@ -388,16 +400,28 @@ dyn_link_collect_Op :-
 		% if the Mercury program has been compiled in another grade, the 
 		% linking will fail here. So if it fails, we recompile the collect
 		% module and try again.
+	        touch(File),   % to make sure it really recompiles it
+		print("Because the dynamic linking failed for some reasons, "),
+		print("we recompile the collect module and retry.\n"),
+		generate_collect(File),
 		compile_collect,
+		concat_string(["cp collect.so ", FileSo], Cmd3),
+		sh(Cmd3),
 		send_message_to_socket(link_collect("\"./collect.so\"")),
 		read_message_from_socket(Result2),
 		( Result2 = link_collect_succeeded ->
-			morphine_write_debug("collect.so has been linked successfully.\n")
+			morphine_write_debug("collect.so has been linked "),
+			morphine_write_debug("successfully this time.\n")
 		;
 			print("**** collect.so has not been linked.\n"),
 			abort
 		)
 	).
+
+touch(File) :-
+	append_strings("touch ", File, Cmd),
+	morphine_write_debug(Cmd),
+	sh(Cmd).
 
 
 %------------------------------------------------------------------------------%
@@ -456,7 +480,7 @@ run_collect_Op(Result) :-
 		CollectLinked == collect_not_linked,
 		print("You can't call run_collect/1; "),
 		print("The collect module has not been linked with "),
-		print("the current execution (cf dyn_link_collect/0).\n"),
+		print("the current execution (cf dyn_link_collect/2).\n"),
 		!,
 		fail
 	;

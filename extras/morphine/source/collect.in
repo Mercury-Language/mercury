@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 
 :- module collect.
 
@@ -37,7 +37,7 @@
 :- pragma export(collected_variable_type(out), 
 	"ML_COLLECT_collecting_variable_type").
 
-:- import_module int, io, std_util.
+:- import_module list, int, io, std_util.
 
 :- type event_number == int.
 :- type call_number == int.
