@@ -60,13 +60,14 @@ Define_extern_entry(mercury__garbage_collect_0_0);
 void
 MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 {
-	MR_Stack_Layout_Label	*layout;
+	MR_Stack_Layout_Label		*layout;
 	const MR_Stack_Layout_Entry	*entry_layout;
-	MR_Lval_Type		type;
-	MR_Live_Lval		location;
-	const char		*reason;
-	MR_Entry		*entry_label = NULL;
-	int			determinism, number;
+	MR_Lval_Type			type;
+	MR_Live_Lval			location;
+	const char			*reason;
+	MR_Entry			*entry_label = NULL;
+	int				number;
+	MR_Determinism			determinism;
 
 	if (gc_running) {
 		/*
@@ -229,7 +230,6 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
 {
     MR_Internal                     *label, *first_label;
     int                             i, var_count, count;
-    MR_Determinism                  determinism;
     const MR_Stack_Layout_Label     *internal_layout;
     const MR_Stack_Layout_Vars      *vars;
     MemoryZone                      *old_heap, *new_heap;

@@ -61,6 +61,14 @@ CFILES		= 	\
 			mercury_trace_spy.c		\
 			mercury_trace_tables.c
 
+# The object files in this directory depend on many of the header files
+# in the runtime. However, changes to many of these header files require
+# a global make clean. Here we list only the header files from the runtime
+# whose changes don't usually require a make clean but which nevertheless
+# require the trace library to be recompiled.
+RUNTIME_HDRS	=	\
+			../runtime/mercury_stack_layout.h
+
 OBJS		= $(CFILES:.c=.o)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
@@ -103,7 +111,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 
 #-----------------------------------------------------------------------------#
 

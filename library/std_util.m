@@ -511,7 +511,7 @@ Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
 Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
 
 MR_MAKE_PROC_LAYOUT(mercury__std_util__builtin_aggregate_4_0,
-	MR_DETISM_MULTI, MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_DETISM_MULTI, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, ""std_util"", ""builtin_aggregate"", 4, 0);
 
 MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 1);
@@ -1107,7 +1107,7 @@ Define_extern_entry(mercury____Compare___std_util__univ_0_0);
 Declare_label(mercury____Compare___std_util__univ_0_0_i1);
 
 MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
-	MR_DETISM_DET, 1, MR_LIVE_LVAL_STACKVAR(1),
+	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
 	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
 MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
 

@@ -160,8 +160,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 	const char **problem_ptr)
 {
 	MR_Internal		*label;
-	MR_Live_Lval		location;
-	MR_Lval_Type		type;
+	MR_Long_Lval		location;
+	MR_Long_Lval_Type	type;
 	int			number;
 	int			determinism;
 	Code			*success;
@@ -181,10 +181,10 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 
 	if (MR_DETISM_DET_STACK(determinism)) {
 		location = entry_layout->MR_sle_succip_locn;
-		type = MR_LIVE_LVAL_TYPE(location);
-		number = MR_LIVE_LVAL_NUMBER(location);
+		type = MR_LONG_LVAL_TYPE(location);
+		number = MR_LONG_LVAL_NUMBER(location);
 
-		if (type != MR_LVAL_TYPE_STACKVAR) {
+		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
 			*problem_ptr = "can only handle stackvars";
 			return STEP_ERROR_AFTER;
 		}

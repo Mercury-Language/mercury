@@ -183,7 +183,7 @@ static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 			Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
-			const MR_Stack_Layout_Var *var,
+			const MR_Stack_Layout_Vars *vars, int i,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params, bool browse);
 static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
@@ -1768,7 +1768,7 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 	type_params = MR_materialize_typeinfos_base(vars,
 				valid_saved_regs, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
-		&vars->MR_slvs_pairs[which_var], valid_saved_regs,
+		vars, which_var, valid_saved_regs,
 		base_sp, base_curfr, type_params, browse);
 	free(type_params);
 }
@@ -1817,7 +1817,7 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 
 	for (i = 0; i < var_count; i++) {
 		MR_trace_browse_var(MR_name_if_present(vars, i),
-			&vars->MR_slvs_pairs[i], valid_saved_regs,
+			vars, i, valid_saved_regs,
 			base_sp, base_curfr, type_params, FALSE);
 	}
 
@@ -1825,14 +1825,13 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 }
 
 static void
-MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
+MR_trace_browse_var(const char *name, const MR_Stack_Layout_Vars *vars, int i,
 	Word *saved_regs, Word *base_sp, Word *base_curfr, Word *type_params,
 	bool browse)
 {
 	Word	value;
 	Word	type_info;
 	bool	print_value;
-	int	i;
 
 	/*
 	** XXX The printing of type_infos is buggy at the moment
@@ -1864,7 +1863,7 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	** are not of interest to the user.
 	*/
 
-	print_value = MR_get_type_and_value_base(var, saved_regs,
+	print_value = MR_get_type_and_value_base(vars, i, saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value);
 	if (print_value) {
 		if (browse) {
@@ -1883,12 +1882,13 @@ static const char *
 MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
 	int *var_count_ptr)
 {
-	*var_count_ptr = (int) layout->MR_sll_var_count;
-	if (*var_count_ptr < 0) {
+	if (! MR_has_valid_var_count(&layout->MR_sll_var_info)) {
 		return "there is no information about live variables";
-	} else if (*var_count_ptr == 0) {
+	} else if (! MR_has_valid_var_info(&layout->MR_sll_var_info)) {
 		return "there are no live variables";
 	} else {
+		*var_count_ptr =
+			MR_all_desc_var_count(&layout->MR_sll_var_info);
 		return NULL;
 	}
 }

@@ -819,8 +819,8 @@ MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout)
 
 	Word				var_names_list;
 
-	var_count = layout->MR_sll_var_count;
 	vars = &layout->MR_sll_var_info;
+	var_count = MR_all_desc_var_count(vars);
 
     MR_TRACE_USE_HP(
 	var_names_list = list_empty();
@@ -831,9 +831,9 @@ MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout)
 		** due to the fake arity of the type private_builtin:typeinfo/1.
 		*/
 		if ((strncmp(name, "TypeInfo", 8) == 0)
-		    || (strncmp(name, "TypeClassInfo", 13) == 0)
-		    ) {
-		  continue;
+			|| (strncmp(name, "TypeClassInfo", 13) == 0))
+		{
+			continue;
 		}
 
 		var_names_list = list_cons(name, var_names_list);
@@ -856,7 +856,6 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	const MR_Stack_Layout_Vars 	*vars;
 	int				i;
 	const char			*name;
-	MR_Stack_Layout_Var*		var;
 	Word				type_info;
 	String		      		type_info_string;
 	Word				*base_sp;
@@ -865,8 +864,8 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 
 	Word				type_list;
 
-	var_count = layout->MR_sll_var_count;
 	vars = &layout->MR_sll_var_info;
+	var_count = MR_all_desc_var_count(vars);
 
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
@@ -876,10 +875,10 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
         );
 
 	/* 
-	** If no information on live variables is available, return the 
-	** empty list 
+	** If no information on live variables is available, or if there
+	** are no live variables, return the empty list.
 	*/
-	if (layout->MR_sll_var_count <= 0) {
+	if (! MR_has_valid_var_info(vars)) {
 		return type_list;
 	}
 
@@ -889,10 +888,8 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	for (i = var_count - 1; i >= 0; i--) {
 
 		name = MR_name_if_present(vars, i);
-		var = &vars->MR_slvs_pairs[i];
-
-		if (! MR_get_type_filtered(var, saved_regs, name, type_params, 
-			&type_info))
+		if (! MR_get_type_filtered(vars, i, saved_regs,
+			name, type_params, &type_info))
 		{
 			continue;
 		}
@@ -921,8 +918,6 @@ MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	int 				var_number;
 	const MR_Stack_Layout_Vars 	*vars;
 	const char			*name;
-	MR_Stack_Layout_Var*		var;
-	int				i;
 	Word				value;
 	Word				type_info;
 	Word				*base_sp;
@@ -936,7 +931,6 @@ MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 		   current_nth_var(var_number) */
 	vars = &layout->MR_sll_var_info;
 	name = MR_name_if_present(vars, var_number);
-	var = &vars->MR_slvs_pairs[var_number];
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
 	
@@ -944,7 +938,7 @@ MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	** Should never occur since we check in the external debugger
 	** process if a variable is live before retrieving it.
 	*/
-	if (layout->MR_sll_var_count <= 0) {
+	if (! MR_has_valid_var_info(vars)) {
 		fatal_error("try to retrieve a non-live variable");
 	}
 
@@ -955,7 +949,7 @@ MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 		incr_hp(univ, 2);
 	);
 
-	if (MR_get_type_and_value_filtered(var, saved_regs, name,
+	if (MR_get_type_and_value_filtered(vars, var_number, saved_regs, name,
 			type_params, &type_info, &value))
 	{
 		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;

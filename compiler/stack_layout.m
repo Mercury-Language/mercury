@@ -14,8 +14,7 @@
 % We can create several types of stack layouts. Which kind we generate
 % depends on the values of several options.
 %
-% Main author: trd.
-% Modifications by zs.
+% Main authors: trd, zs.
 %
 % NOTE: If you make changes in this file, you may also need to modify
 % runtime/mercury_stack_layout.h.
@@ -30,11 +29,11 @@
 % This structure will always contain the following information:
 %
 %	code address		(Code *) - address of entry
-% 	determinism		(Integer) actually, type MR_Determinism
-% 	number of stack slots	(Integer)
-% 	succip stack location	(Integer) actually, type MR_Live_Lval
+% 	succip stack location	(uint_least32_t) actually, type MR_Live_Lval
 % 					(the location will be set to -1
 % 					if there is no succip available).
+% 	number of stack slots	(uint_least16_t)
+% 	determinism		(uint_least16_t) actually, type MR_Determinism
 %
 % If the option procid_stack_layout is set, i.e. if we are doing stack
 % tracing, execution tracing or profiling, the structure will also include
@@ -70,10 +69,10 @@
 % tracing, the structure will also include three extra fields:
 %
 %	call trace info		(Word *) - pointer to label stack layout
-%	maybe from full		(Integer) - number of the stack slot of
+%	maybe from full		(int_least16_t) - number of the stack slot of
 %				the from_full flag, if the procedure is
 %				shallow traced
-%	maybe decl debug	(Integer) - number of the first of two
+%	maybe decl debug	(int_least16_t) - number of the first of two
 %				stack slots used by the declarative debugger,
 %				if --trace-decl is set
 %
@@ -105,20 +104,57 @@
 % This table has the following format:
 %
 %	procedure info		(Word *) - pointer to procedure stack layout
-% 	# of live vars		(Integer)
-% 	live data pairs 	(Word *) - pointer to vector of pairs
-%				containing MR_Live_Lval and MR_Live_Type
-% 	live data names	 	(Word *) - pointer to vector of String
-%	type parameters		(Word *) - pointer to vector of MR_Live_Lval
-%				in which the first word is an Integer
-%				giving the number of entries in the vector;
-%				a NULL pointer means no type parameters
+% 	# of live data item	(void *) - an encoded representation of
+%				the number of live data items at the label
+% 	live data types locns 	(void *) - pointer to an area of memory
+%				containing information about where the live
+%				data items are and what their types are
+% 	live data names	 	(String *) - pointer to vector of String
+%				giving the names of the data items, if any
+%	type parameters		(MR_Long_Lval *) - pointer to vector of
+%			 	MR_Long_Lval giving the locations of the
+%				typeinfos for the type parameters that may
+%				be referred to by the types of the live data
+%				items; the first word of the vector is an
+%				integer giving the number of entries in the
+%				vector; a NULL pointer means no type parameters
+%
+% The layout of the memory area containing information about the locations
+% and types of live data items is somewhat complicated, due to our desire
+% to make this information compact. We can represent a location in one of
+% two ways, as an 8-bit MR_Short_Lval or as a 32-bit MR_Long_Lval.
+% We prefer representing a location as an MR_Short_Lval, but of course
+% not all locations can be represented in this way, so those other locations
+% are represented as MR_Long_Lvals.
+%
+% The field containing the number of live data items is encoded by the
+% formula (#Long << short_count_bits + #Short), where #Short is the number
+% data items whose descriptions fit into an MR_Short_Lval and #Long is the
+% number of data items whose descriptions do not. (The field is not an integer
+% so that people who attempt to use it without going through the decoding
+% macros in runtime/mercury_stack_layout.h get an error from the C compiler.
+% The number of distinct values that fit into a uint_least_t also fits into
+% 8 bits, but since some locations hold the value of more than one variable
+% at a time, not all the values need to be distinct; this is why
+% short_count_bits is more than 8.)
+%
+% The memory area contains three vectors back to back. The first vector
+% has #Long + #Short word-sized elements, each of which is a pointer to a
+% MR_PseudoTypeInfo giving the type of a live data item, with a small
+% integer instead of a pointer representing a special kind of live data item
+% (e.g. a saved succip or hp). The second vector is an array of #Long
+% MR_Long_Lvals, and the third is an array of #Short MR_Short_Lvals,
+% each of which describes a location. The pseudotypeinfo pointed to by
+% the slot at subscript i in the first vector describes the type of
+% the data stored in slot i in the second vector if i < #Long, and
+% the type of the data stored in slot i - #Long in the third vector
+% otherwise.
 %
 % The live data pair vector will have an entry for each live variable.
 % The entry will give the location of the variable and its type. (It also
 % has room for its instantiation state, but this is not filled in yet.)
 %
-% The live data name vector pointer will be NULL. If it is not, the vector
+% The live data name vector pointer may be NULL. If it is not, the vector
 % will have an entry for each live variable, with each entry giving the name
 % of the variable (it is either a pointer to a string, or a NULL pointer,
 % which means that the variable has no name).
@@ -183,7 +219,7 @@
 
 :- pred stack_layout__construct_closure_layout(proc_label::in,
 	maybe(closure_layout_info)::in, list(maybe(rval))::out,
-	int::in, int::out) is det.
+	create_arg_types::out, int::in, int::out) is det.
 
 :- implementation.
 
@@ -192,20 +228,6 @@
 :- import_module (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set.
-
-:- type stack_layout_info 	--->
-	stack_layout_info(
-		module_name,	% module name
-		int,		% next available cell number
-		bool,		% generate agc layout info?
-		bool,		% generate tracing layout info?
-		bool,		% generate procedure id layout info?
-		bool,		% have static code addresses?
-		list(comp_gen_c_data),	% generated proc layouts
-		list(comp_gen_c_data),	% generated label layouts
-		set_bbbtree(label)
-				% the set of labels with layouts
-	).
 
 %---------------------------------------------------------------------------%
 
@@ -301,13 +323,6 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 			% similar constraints.
 		Location = -1
 	},
-	{ determinism_components(Detism, _, at_most_many) ->
-		SuccipLval = framevar(Location)
-	;
-		SuccipLval = stackvar(Location)
-	},
-	{ stack_layout__represent_locn(direct(SuccipLval), SuccipRval) },
-	{ StackSlotsRval = const(int_const(StackSlots)) },
 	stack_layout__get_static_code_addresses(StaticCodeAddr),
 	{ StaticCodeAddr = yes ->
 		CodeAddrRval = const(code_addr_const(label(EntryLabel)))
@@ -316,38 +331,67 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		% at initialization time.
 		CodeAddrRval = const(int_const(0))
 	},
-
+	{ determinism_components(Detism, _, at_most_many) ->
+		SuccipLval = framevar(Location)
+	;
+		SuccipLval = stackvar(Location)
+	},
+	{ stack_layout__represent_locn_as_int(direct(SuccipLval), SuccipRval) },
+	{ StackSlotsRval = const(int_const(StackSlots)) },
 	{ stack_layout__represent_determinism(Detism, DetismRval) },
-	{ MaybeRvals0 = [yes(CodeAddrRval), yes(DetismRval),
-		yes(StackSlotsRval), yes(SuccipRval)] },
+	{ TraversalRvals = [yes(CodeAddrRval), yes(SuccipRval),
+		yes(StackSlotsRval), yes(DetismRval)] },
+	{ TraversalArgTypes = [1 - yes(code_ptr), 1 - yes(uint_least32), 
+		2 - yes(uint_least16)] },
 
 	stack_layout__get_procid_stack_layout(ProcIdLayout0),
 	{ bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout) },
-	{
-		ProcIdLayout = yes
+	(
+		{ ProcIdLayout = yes }
 	->
-		code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
-		stack_layout__construct_procid_rvals(ProcLabel, IdRvals),
-		list__append(MaybeRvals0, IdRvals, MaybeRvals1)
+		{ code_util__extract_proc_label_from_label(EntryLabel,
+			ProcLabel) },
+		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
+			IdArgTypes) },
+		stack_layout__construct_trace_layout(MaybeCallLabel,
+			TraceSlotInfo, TraceRvals, TraceArgTypes),
+		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
+		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
 	;
-		% Indicate the absence of the procedure id fields.
-		NoIdRvals = yes(const(int_const(-1))),
-		list__append(MaybeRvals0, [NoIdRvals], MaybeRvals1)
-	},
+		% Indicate the absence of the proc id and exec trace fields.
+		{ IdTraceRvals = [yes(const(int_const(-1)))] },
+		{ IdTraceArgTypes = initial([1 - yes(integer)], none) }
+	),
 
+	{ Exported = no },	% XXX With the new profiler, we will need to
+				% set this to `yes' if the profiling option
+				% is given and if the procedure is exported.
+				% Beware however that linkage/2 in llds_out.m
+				% assumes that this is `no'.
+	{ list__append(TraversalRvals, IdTraceRvals, Rvals) },
+	{ ArgTypes = initial(TraversalArgTypes, IdTraceArgTypes) },
+	stack_layout__get_module_name(ModuleName),
+	{ CData = comp_gen_c_data(ModuleName, proc_layout(EntryLabel),
+		Exported, Rvals, ArgTypes, []) },
+	stack_layout__add_proc_layout_data(CData, EntryLabel).
+
+:- pred stack_layout__construct_trace_layout(maybe(label)::in,
+	trace_slot_info::in, list(maybe(rval))::out, create_arg_types::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
+		Rvals, ArgTypes) -->
 	stack_layout__get_module_name(ModuleName),
 	stack_layout__get_trace_stack_layout(TraceLayout),
 	{
 		TraceLayout = yes
 	->
-		require(unify(ProcIdLayout, yes),
-			"trace_layout is set but proc_id_layout is not"),
 		( MaybeCallLabel = yes(CallLabel) ->
 			CallRval = yes(const(data_addr_const(
 					data_addr(ModuleName,
 						internal_layout(CallLabel)))))
 		;
-			error("stack_layout__construct_proc_layout: call label not present")
+			error("stack_layout__construct_trace_layout: call label not present")
 		),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 			MaybeDeclSlots),
@@ -361,35 +405,21 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		;
 			DeclRval = yes(const(int_const(-1)))
 		),
-		list__append(MaybeRvals1, [CallRval, FromFullRval, DeclRval],
-			MaybeRvals)
+		Rvals = [CallRval, FromFullRval, DeclRval],
+		ArgTypes = initial([1 - yes(data_ptr), 2 - yes(int_least16)],
+			none)
 	;
-		ProcIdLayout = yes
-	->
 		% Indicate the absence of the trace layout fields.
-		NoCallRval = yes(const(int_const(0))),
-		list__append(MaybeRvals1, [NoCallRval], MaybeRvals)
-	;
-		% The absence of the procedure id fields implies
-		% the absence of the trace layout fields as well.
-		MaybeRvals = MaybeRvals1
-	},
-
-	{ Exported = no },	% XXX With the new profiler, we will need to
-				% set this to `yes' if the profiling option
-				% is given and if the procedure is exported.
-				% Beware however that linkage/2 in llds_out.m
-				% assumes that this is `no'.
-	{ CData = comp_gen_c_data(ModuleName, proc_layout(EntryLabel),
-		Exported, MaybeRvals, []) },
-	stack_layout__add_proc_layout_data(CData, EntryLabel).
+		Rvals = [yes(const(int_const(0)))],
+		ArgTypes = initial([1 - yes(integer)], none)
+	}.
 
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__construct_procid_rvals(proc_label::in,
-	list(maybe(rval))::out) is det.
+	list(maybe(rval))::out, initial_arg_types::out) is det.
 
-stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
+stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
 	(
 		ProcLabel = proc(DefModule, PredFunc, DeclModule,
 			PredName, Arity, ProcId),
@@ -404,7 +434,8 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
 				yes(const(string_const(PredName))),
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
-			]
+			],
+		ArgTypes = [6 - no]
 	;
 		ProcLabel = special_proc(DefModule, PredName, TypeModule,
 			TypeName, Arity, ProcId),
@@ -418,7 +449,8 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
 				yes(const(string_const(PredName))),
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
-			]
+			],
+		ArgTypes = [6 - no]
 	).
 
 :- pred stack_layout__represent_pred_or_func(pred_or_func::in, int::out) is det.
@@ -439,7 +471,8 @@ stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
 		proc_layout(EntryLabel)))) },
-	stack_layout__construct_internal_rvals(Internal, VarInfoRvals),
+	stack_layout__construct_internal_rvals(Internal, VarInfoRvals,
+		VarInfoRvalTypes),
 	% Reenable this code if you want label numbers in label layouts.
 	% { Label = local(_, LabelNum0) ->
 	% 	LabelNum = LabelNum0
@@ -447,20 +480,21 @@ stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 	% 	LabelNum = 0
 	% },
 	% { LabelNumRval = const(int_const(LabelNum)) },
-	% { LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval
+	% { LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval)
 	% 	| VarInfoRvals] }
 	{ LayoutRvals = [yes(EntryAddrRval) | VarInfoRvals] },
+	{ ArgTypes = initial([1 - no], VarInfoRvalTypes) },
 	{ CData = comp_gen_c_data(ModuleName, internal_layout(Label),
-		no, LayoutRvals, []) },
+		no, LayoutRvals, ArgTypes, []) },
 	stack_layout__add_internal_layout_data(CData, Label).
 
 	% Construct the rvals required for accurate GC or for tracing.
 
 :- pred stack_layout__construct_internal_rvals(internal_layout_info::in,
-	list(maybe(rval))::out,
+	list(maybe(rval))::out, create_arg_types::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_internal_rvals(Internal, RvalList) -->
+stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 	{ Internal = internal_layout_info(Port, Return) },
 	{
 		Port = no,
@@ -502,56 +536,63 @@ stack_layout__construct_internal_rvals(Internal, RvalList) -->
 			% about variables at this label. (Zero would say
 			% that there are no variables live at this label,
 			% which may not be true.)
-		{ RvalList = [yes(const(int_const(-1)))] }
+		{ RvalList = [yes(const(int_const(-1)))] },
+		{ ArgTypes = initial([1 - yes(integer)], none) }
 	;
 			% XXX ignore differences in insts inside var_infos
 		{ set__union(PortLiveVarSet, ReturnLiveVarSet, LiveVarSet) },
 		{ map__union(set__intersect, PortTypeVarMap, ReturnTypeVarMap,
 			TypeVarMap) },
 		stack_layout__construct_livelval_rvals(LiveVarSet,
-			TypeVarMap, RvalList)
+			TypeVarMap, RvalList, ArgTypes)
 	).
 
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__construct_livelval_rvals(set(var_info)::in,
 	map(tvar, set(layout_locn))::in, list(maybe(rval))::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	create_arg_types::out, stack_layout_info::in, stack_layout_info::out)
+	is det.
 
-stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, RvalList) -->
+stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
+		RvalList, ArgTypes) -->
 	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
 	{ list__length(LiveLvals, Length) },
-	{ VarLengthRval = const(int_const(Length)) },
 	( { Length > 0 } ->
 		{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
-		stack_layout__construct_liveval_pairs(SortedLiveLvals,
-			LiveValRval, NamesRval),
+		stack_layout__construct_liveval_arrays(SortedLiveLvals,
+			VarLengthRval, LiveValRval, NamesRval),
 
 		( { map__is_empty(TVarLocnMap) } ->
 			{ TypeParamRval = const(int_const(0)) }
 		;
 			{ stack_layout__construct_tvar_rvals(TVarLocnMap,
-				Vector) },
+				Vector, VectorTypes) },
 			stack_layout__get_next_cell_number(CNum1),
-			{ TypeParamRval = create(0, Vector, no, CNum1,
+			{ TypeParamRval = create(0, Vector, VectorTypes,
+				must_be_static, CNum1,
 				"stack_layout_type_param_locn_vector") }
 		),
 		{ RvalList = [yes(VarLengthRval), yes(LiveValRval),
-			yes(NamesRval), yes(TypeParamRval)] }
+			yes(NamesRval), yes(TypeParamRval)] },
+		{ ArgTypes = initial([1 - yes(integer), 3 - yes(data_ptr)],
+			none) }
 	;
-		{ RvalList = [yes(VarLengthRval)] }
+		{ RvalList = [yes(const(int_const(0)))] },
+		{ ArgTypes = initial([1 - yes(integer)], none) }
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
-	list(maybe(rval))::out) is det.
+	list(maybe(rval))::out, create_arg_types::out) is det.
 
-stack_layout__construct_tvar_rvals(TVarLocnMap, Vector) :-
+stack_layout__construct_tvar_rvals(TVarLocnMap, Vector, VectorTypes) :-
 	map__to_assoc_list(TVarLocnMap, TVarLocns),
 	stack_layout__construct_type_param_locn_vector(TVarLocns, 1,
 		TypeParamLocs),
 	list__length(TypeParamLocs, TypeParamsLength),
 	LengthRval = const(int_const(TypeParamsLength)),
-	Vector = [yes(LengthRval) | TypeParamLocs].
+	Vector = [yes(LengthRval) | TypeParamLocs],
+	VectorTypes = uniform(yes(uint_least32)).
 
 %---------------------------------------------------------------------------%
 
@@ -644,7 +685,7 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		;
 			error("tvar has empty set of locations")
 		),
-		stack_layout__represent_locn(Locn, Rval),
+		stack_layout__represent_locn_as_int(Locn, Rval),
 		stack_layout__construct_type_param_locn_vector(TVarLocns,
 			NextSlot, VectorTail),
 		Vector = [yes(Rval) | VectorTail]
@@ -658,44 +699,116 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		error("unsorted tvars in construct_type_param_locn_vector")
 	).
 
+%---------------------------------------------------------------------------%
+
+:- type liveval_array_info
+	--->	live_array_info(
+			rval,	% Rval describing the location of a live value.
+				% Always of llds type uint_least8 if the cell
+				% is in the byte array, and uint_least32 if it
+				% is in the int array.
+			rval,	% Rval describing the type of a live value.
+			llds_type, % The llds type of the rval describing the
+				% type.
+			rval	% Rval describing the name of a live value.
+				% Always of llds type string.
+		).
+		% Rvals describing the location, type (eventually: shape)
+		% and name of a live value.
+
 	% Construct a vector of (locn, live_value_type) pairs,
 	% and a corresponding vector of variable names.
 
-:- pred stack_layout__construct_liveval_pairs(list(var_info)::in,
-	rval::out, rval::out, stack_layout_info::in, stack_layout_info::out)
-	is det.
+:- pred stack_layout__construct_liveval_arrays(list(var_info)::in,
+	rval::out, rval::out, rval::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_pairs(LiveLvals, LocnVector, NameVector) -->
-	list__map_foldl(stack_layout__construct_liveval_pair, LiveLvals,
-		LocnTypePairs),
-	{ list__condense(LocnTypePairs, LocnTypeVectorArgs) },
+stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
+		TypeLocnVector, NameVector) -->
+	{ int__pow(2, stack_layout__short_count_bits, BytesLimit) },
+	stack_layout__construct_liveval_array_infos(VarInfos,
+		0, BytesLimit, IntArrayInfo, ByteArrayInfo),
+
+	{ list__length(IntArrayInfo, IntArrayLength) },
+	{ list__length(ByteArrayInfo, ByteArrayLength) },
+	{ list__append(IntArrayInfo, ByteArrayInfo, AllArrayInfo) },
+
+	{ EncodedLength is IntArrayLength << stack_layout__short_count_bits
+		+ ByteArrayLength },
+	{ LengthRval = const(int_const(EncodedLength)) },
+
+	{ SelectLocns = lambda([ArrayInfo::in, MaybeLocnRval::out] is det, (
+		ArrayInfo = live_array_info(LocnRval, _, _, _),
+		MaybeLocnRval = yes(LocnRval)
+	)) },
+	{ SelectTypes = lambda([ArrayInfo::in, MaybeTypeRval::out] is det, (
+		ArrayInfo = live_array_info(_, TypeRval, _, _),
+		MaybeTypeRval = yes(TypeRval)
+	)) },
+	{ SelectTypeTypes = lambda([ArrayInfo::in, CountTypeType::out] is det,(
+		ArrayInfo = live_array_info(_, _, TypeType, _),
+		CountTypeType = 1 - yes(TypeType)
+	)) },
+	{ SelectNames = lambda([ArrayInfo::in, MaybeNameRval::out] is det, (
+		ArrayInfo = live_array_info(_, _, _, NameRval),
+		MaybeNameRval = yes(NameRval)
+	)) },
+
+	{ list__map(SelectTypes, AllArrayInfo, AllTypes) },
+	{ list__map(SelectTypeTypes, AllArrayInfo, AllTypeTypes) },
+	{ list__map(SelectLocns, IntArrayInfo, IntLocns) },
+	{ list__map(SelectLocns, ByteArrayInfo, ByteLocns) },
+	{ list__append(IntLocns, ByteLocns, AllLocns) },
+	{ list__append(AllTypes, AllLocns, TypeLocnVectorRvals) },
+	{ LocnArgTypes = [IntArrayLength - yes(uint_least32),
+			ByteArrayLength - yes(uint_least8)] },
+	{ list__append(AllTypeTypes, LocnArgTypes, ArgTypes) },
 	stack_layout__get_next_cell_number(CNum1),
-	{ LocnVector = create(0, LocnTypeVectorArgs, no, CNum1,
+	{ TypeLocnVector = create(0, TypeLocnVectorRvals,
+		initial(ArgTypes, none), must_be_static, CNum1,
 		"stack_layout_locn_vector") },
 
-	{ list__map(stack_layout__construct_liveval_name, LiveLvals, Names) },
+	{ list__map(SelectNames, AllArrayInfo, AllNames) },
 	stack_layout__get_next_cell_number(CNum2),
-	{ NameVector = create(0, Names, no, CNum2,
-		"stack_layout_name_vector") }.
+	{ NameVector = create(0, AllNames, uniform(yes(string)),
+		must_be_static, CNum2, "stack_layout_name_vector") }.
 
-	% Construct a pair of (locn, live_value_type) representations.
+:- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
+	int::in, int::in,
+	list(liveval_array_info)::out, list(liveval_array_info)::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__construct_liveval_pair(var_info::in,
-	list(maybe(rval))::out, stack_layout_info::in, stack_layout_info::out)
-	is det.
-
-stack_layout__construct_liveval_pair(var_info(Locn, LiveValueType),
-		MaybeRvals) -->
-	{ stack_layout__represent_locn(Locn, Rval0) },
-	stack_layout__represent_live_value_type(LiveValueType, Rval1),
-	{ MaybeRvals = [yes(Rval0), yes(Rval1)] }.
-
-:- pred stack_layout__construct_liveval_name(var_info::in, maybe(rval)::out)
-	is det.
-
-stack_layout__construct_liveval_name(var_info(_, VarInfo), MaybeRval) :-
+stack_layout__construct_liveval_array_infos([], _, _, [], []) --> [].
+stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
+		BytesSoFar, BytesLimit, IntVars, ByteVars) -->
+	{ VarInfo = var_info(Locn, LiveValueType) },
+	stack_layout__represent_live_value_type(LiveValueType, TypeRval,
+		TypeRvalType),
+	{ stack_layout__construct_liveval_name(VarInfo, NameRval) },
 	(
-		VarInfo = var(Var, Name, _, _),
+		{ BytesSoFar < BytesLimit },
+		{ stack_layout__represent_locn_as_byte(Locn, LocnByteRval) }
+	->
+		{ Var = live_array_info(LocnByteRval, TypeRval, TypeRvalType,
+			NameRval) },
+		stack_layout__construct_liveval_array_infos(VarInfos,
+			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0),
+		{ ByteVars = [Var | ByteVars0] }
+	;
+		{ stack_layout__represent_locn_as_int(Locn, LocnRval) },
+		{ Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
+			NameRval) },
+		stack_layout__construct_liveval_array_infos(VarInfos,
+			BytesSoFar, BytesLimit, IntVars0, ByteVars),
+		{ IntVars = [Var | IntVars0] }
+	).
+
+:- pred stack_layout__construct_liveval_name(var_info::in, rval::out)
+	is det.
+
+stack_layout__construct_liveval_name(var_info(_, LiveValueType), Rval) :-
+	(
+		LiveValueType = var(Var, Name, _, _),
 		Name \= ""
 	->
 		% We include a representation of the variable number at the
@@ -713,8 +826,7 @@ stack_layout__construct_liveval_name(var_info(_, VarInfo), MaybeRval) :-
 		% We prefer a null pointer to a pointer to an empty string,
 		% since this way we don't need many copies of the empty string.
 		Rval = const(int_const(0))
-	),
-	MaybeRval = yes(Rval).
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -723,39 +835,52 @@ stack_layout__construct_liveval_name(var_info(_, VarInfo), MaybeRval) :-
 	% the data structures we build here.
 
 stack_layout__construct_closure_layout(ProcLabel, MaybeClosureLayoutInfo,
-		Rvals, CNum0, CNum) :-
-	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals),
+		Rvals, ArgTypes, CNum0, CNum) :-
+	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals,
+		ProcIdTypes),
 	( MaybeClosureLayoutInfo = yes(ClosureLayoutInfo) ->
 		ClosureLayoutInfo = closure_layout_info(ClosureArgs,
 			TVarLocnMap),
 		stack_layout__construct_closure_arg_rvals(ClosureArgs,
-			ClosureArgRvals, CNum0, CNum),
-		stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals),
-		list__append(ClosureArgRvals, TVarRvals, LayoutRvals)
+			ClosureArgRvals, ClosureArgTypes, CNum0, CNum),
+		stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals,
+			TvarRvalTypes),
+		list__append(ClosureArgRvals, TVarRvals, LayoutRvals),
+		LayoutTypes = initial(ClosureArgTypes, TvarRvalTypes)
 	;
 		LayoutRvals = [yes(const(int_const(-1)))],
+		LayoutTypes = initial([1 - yes(integer)], none),
 		CNum = CNum0
 	),
-	list__append(ProcIdRvals, LayoutRvals, Rvals).
+	list__append(ProcIdRvals, LayoutRvals, Rvals),
+	ArgTypes = initial(ProcIdTypes, LayoutTypes).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
-	list(maybe(rval))::out, int::in, int::out) is det.
+	list(maybe(rval))::out, initial_arg_types::out, int::in, int::out)
+	is det.
 
 stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
-		CNum0, CNum) :-
+		ClosureArgTypes, CNum0, CNum) :-
 	list__map_foldl(stack_layout__construct_closure_arg_rval,
-		ClosureArgs, MaybeArgRvals, CNum0, CNum),
+		ClosureArgs, MaybeArgRvalsTypes, CNum0, CNum),
+	assoc_list__keys(MaybeArgRvalsTypes, MaybeArgRvals),
+	AddOne = lambda([Pair::in, CountLldsType::out] is det, (
+		Pair = _ - LldsType,
+		CountLldsType = 1 - yes(LldsType)
+	)),
+	list__map(AddOne, MaybeArgRvalsTypes, ArgRvalTypes),
 	list__length(MaybeArgRvals, Length),
-	ClosureArgRvals = [yes(const(int_const(Length))) | MaybeArgRvals].
+	ClosureArgRvals = [yes(const(int_const(Length))) | MaybeArgRvals],
+	ClosureArgTypes = [1 - yes(integer) | ArgRvalTypes].
 
 :- pred stack_layout__construct_closure_arg_rval(closure_arg_info::in,
-	maybe(rval)::out, int::in, int::out) is det.
+	pair(maybe(rval), llds_type)::out, int::in, int::out) is det.
 
-stack_layout__construct_closure_arg_rval(ClosureArg, yes(ArgRval),
-		CNum0, CNum) :-
+stack_layout__construct_closure_arg_rval(ClosureArg,
+		yes(ArgRval) - ArgRvalType, CNum0, CNum) :-
 	ClosureArg = closure_arg_info(Type, _Inst),
-	base_type_layout__construct_pseudo_type_info(Type, ArgRval,
-		CNum0, CNum).
+	base_type_layout__construct_typed_pseudo_type_info(Type, ArgRval,
+		ArgRvalType, CNum0, CNum).
 
 %---------------------------------------------------------------------------%
 
@@ -770,42 +895,47 @@ stack_layout__construct_closure_arg_rval(ClosureArg, yes(ArgRval),
 	% runtime/mercury_type_info.h).
 
 :- pred stack_layout__represent_live_value_type(live_value_type, rval,
-	stack_layout_info, stack_layout_info).
-:- mode stack_layout__represent_live_value_type(in, out, in, out) is det.
+	llds_type, stack_layout_info, stack_layout_info).
+:- mode stack_layout__represent_live_value_type(in, out, out, in, out) is det.
 
-stack_layout__represent_live_value_type(succip, Rval) -->
+stack_layout__represent_live_value_type(succip, Rval, integer) -->
 	{ Rval = const(int_const(0)) }.
-stack_layout__represent_live_value_type(hp, Rval) -->
+stack_layout__represent_live_value_type(hp, Rval, integer) -->
 	{ Rval = const(int_const(1)) }.
-stack_layout__represent_live_value_type(curfr, Rval) -->
+stack_layout__represent_live_value_type(curfr, Rval, integer) -->
 	{ Rval = const(int_const(2)) }.
-stack_layout__represent_live_value_type(maxfr, Rval) -->
+stack_layout__represent_live_value_type(maxfr, Rval, integer) -->
 	{ Rval = const(int_const(3)) }.
-stack_layout__represent_live_value_type(redofr, Rval) -->
+stack_layout__represent_live_value_type(redofr, Rval, integer) -->
 	{ Rval = const(int_const(4)) }.
-stack_layout__represent_live_value_type(redoip, Rval) -->
+stack_layout__represent_live_value_type(redoip, Rval, integer) -->
 	{ Rval = const(int_const(5)) }.
-stack_layout__represent_live_value_type(unwanted, Rval) -->
+stack_layout__represent_live_value_type(unwanted, Rval, integer) -->
 	{ Rval = const(int_const(6)) }.
-stack_layout__represent_live_value_type(var(_, _, Type, Inst), Rval) -->
+stack_layout__represent_live_value_type(var(_, _, Type, Inst), Rval, data_ptr)
+		-->
 	stack_layout__get_cell_number(CNum0),
 	{ stack_layout__represent_var_shape(Type, Inst, VarShape,
 		CNum0, CNum1) },
 	stack_layout__set_cell_number(CNum1),
 	stack_layout__get_next_cell_number(CNum2),
-	{ Rval = create(0, VarShape, no, CNum2, "variable_shape") }.
+	{ Rval = create(0, VarShape, uniform(no), must_be_static,
+		CNum2, "variable_shape") }.
 
 :- pred stack_layout__represent_var_shape((type)::in, (inst)::in,
 	list(maybe(rval))::out, int::in, int::out) is det.
 
 stack_layout__represent_var_shape(Type, _Inst, VarShape, CNum0, CNum) :-
-	base_type_layout__construct_pseudo_type_info(Type, TypeRval,
+	base_type_layout__construct_typed_pseudo_type_info(Type, TypeRval, _,
 		CNum0, CNum),
 	% XXX hack - don't yet write out insts
 	InstRval = const(int_const(-1)),
 	VarShape = [yes(TypeRval), yes(InstRval)].
 
-	% Construct a representation of a variable location.
+%---------------------------------------------------------------------------%
+
+	% Construct a representation of a variable location as a 32-bit
+	% integer.
 	%
 	% Most of the time, a layout specifies a location as an lval.
 	% However, a type_info variable may be hidden inside a typeclass_info,
@@ -819,22 +949,22 @@ stack_layout__represent_var_shape(Type, _Inst, VarShape, CNum0, CNum) :-
 	% A more general representation that would allow more indirection
 	% would be much harder to fit into one machine word.
 
-:- pred stack_layout__represent_locn(layout_locn, rval).
-:- mode stack_layout__represent_locn(in, out) is det.
+:- pred stack_layout__represent_locn_as_int(layout_locn, rval).
+:- mode stack_layout__represent_locn_as_int(in, out) is det.
 
-stack_layout__represent_locn(direct(Lval), Rval) :-
+stack_layout__represent_locn_as_int(direct(Lval), Rval) :-
 	stack_layout__represent_lval(Lval, Word),
 	Rval = const(int_const(Word)).
-stack_layout__represent_locn(indirect(Lval, Offset), Rval) :-
+stack_layout__represent_locn_as_int(indirect(Lval, Offset), Rval) :-
 	stack_layout__represent_lval(Lval, BaseWord),
-	stack_layout__offset_bits(OffsetBits),
-	require((1 << OffsetBits) > Offset,
+	require((1 << stack_layout__long_lval_offset_bits) > Offset,
 	"stack_layout__represent_locn: offset too large to be represented"),
-	BaseAndOffset is (BaseWord << OffsetBits) + Offset,
+	BaseAndOffset is (BaseWord << stack_layout__long_lval_offset_bits)
+		+ Offset,
 	stack_layout__make_tagged_word(lval_indirect, BaseAndOffset, Word),
 	Rval = const(int_const(Word)).
 
-	% Construct a representation of an lval.
+	% Construct a four byte representation of an lval.
 
 :- pred stack_layout__represent_lval(lval, int).
 :- mode stack_layout__represent_lval(in, out) is det.
@@ -892,8 +1022,7 @@ stack_layout__represent_lval(lvar(_), _) :-
 
 stack_layout__make_tagged_word(Locn, Value, TaggedValue) :-
 	stack_layout__locn_type_code(Locn, Tag),
-	stack_layout__tag_bits(TagBits),
-	TaggedValue is (Value << TagBits) + Tag.
+	TaggedValue is (Value << stack_layout__long_lval_tag_bits) + Tag.
 
 :- type locn_type
 	--->	lval_r_reg
@@ -920,19 +1049,81 @@ stack_layout__locn_type_code(lval_hp,       7).
 stack_layout__locn_type_code(lval_sp,       8).
 stack_layout__locn_type_code(lval_indirect, 9).
 
-:- pred stack_layout__tag_bits(int::out) is det.
+:- func stack_layout__long_lval_tag_bits = int.
 
 % This number of tag bits must be able to encode all values of
 % stack_layout__locn_type_code.
 
-stack_layout__tag_bits(4).
+stack_layout__long_lval_tag_bits = 4.
 
 % This number of tag bits must be able to encode the largest offset
 % of a type_info within a typeclass_info.
 
-:- pred stack_layout__offset_bits(int::out) is det.
+:- func stack_layout__long_lval_offset_bits = int.
 
-stack_layout__offset_bits(6).
+stack_layout__long_lval_offset_bits = 6.
+
+%---------------------------------------------------------------------------%
+
+	% Construct a representation of a variable location as a byte,
+	% if this is possible.
+
+:- pred stack_layout__represent_locn_as_byte(layout_locn::in, rval::out)
+	is semidet.
+
+stack_layout__represent_locn_as_byte(LayoutLocn, Rval) :-
+	LayoutLocn = direct(Lval), 
+	stack_layout__represent_lval_as_byte(Lval, Byte),
+	Rval = const(int_const(Byte)).
+
+	% Construct a representation of an lval in a byte, if possible.
+
+:- pred stack_layout__represent_lval_as_byte(lval::in, int::out) is semidet.
+
+stack_layout__represent_lval_as_byte(reg(r, Num), Byte) :-
+	stack_layout__make_tagged_byte(0, Num, Byte).
+
+stack_layout__represent_lval_as_byte(stackvar(Num), Byte) :-
+	stack_layout__make_tagged_byte(1, Num, Byte).
+stack_layout__represent_lval_as_byte(framevar(Num), Byte) :-
+	stack_layout__make_tagged_byte(2, Num, Byte).
+
+stack_layout__represent_lval_as_byte(succip, Byte) :-
+	stack_layout__locn_type_code(lval_succip, Val),
+	stack_layout__make_tagged_byte(3, Val, Byte).
+stack_layout__represent_lval_as_byte(maxfr, Byte) :-
+	stack_layout__locn_type_code(lval_maxfr, Val),
+	stack_layout__make_tagged_byte(3, Val, Byte).
+stack_layout__represent_lval_as_byte(curfr, Byte) :-
+	stack_layout__locn_type_code(lval_curfr, Val),
+	stack_layout__make_tagged_byte(3, Val, Byte).
+stack_layout__represent_lval_as_byte(hp, Byte) :-
+	stack_layout__locn_type_code(lval_hp, Val),
+	stack_layout__make_tagged_byte(3, Val, Byte).
+stack_layout__represent_lval_as_byte(sp, Byte) :-
+	stack_layout__locn_type_code(lval_succip, Val),
+	stack_layout__make_tagged_byte(3, Val, Byte).
+
+:- pred stack_layout__make_tagged_byte(int::in, int::in, int::out) is semidet.
+
+stack_layout__make_tagged_byte(Tag, Value, TaggedValue) :-
+	int__pow(2, stack_layout__byte_bits
+		- stack_layout__short_lval_tag_bits, Limit),
+	Value < Limit,
+	TaggedValue is unchecked_left_shift(Value,
+		stack_layout__short_lval_tag_bits) + Tag.
+
+:- func stack_layout__short_lval_tag_bits = int.
+
+stack_layout__short_lval_tag_bits = 2.
+
+:- func stack_layout__short_count_bits = int.
+
+stack_layout__short_count_bits = 10.
+
+:- func stack_layout__byte_bits = int.
+
+stack_layout__byte_bits = 8.
 
 %---------------------------------------------------------------------------%
 
@@ -977,6 +1168,20 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 %---------------------------------------------------------------------------%
 
 	% Access to the stack_layout data structure.
+
+:- type stack_layout_info 	--->
+	stack_layout_info(
+		module_name,	% module name
+		int,		% next available cell number
+		bool,		% generate agc layout info?
+		bool,		% generate tracing layout info?
+		bool,		% generate procedure id layout info?
+		bool,		% have static code addresses?
+		list(comp_gen_c_data),	% generated proc layouts
+		list(comp_gen_c_data),	% generated label layouts
+		set_bbbtree(label)
+				% the set of labels with layouts
+	).
 
 :- pred stack_layout__get_module_name(module_name::out,
 	stack_layout_info::in, stack_layout_info::out) is det.

@@ -517,7 +517,7 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 output_c_data_init_list([]) --> [].
 output_c_data_init_list([Data | Datas]) -->
 	(
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _) },
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = type_ctor(info, TypeName, Arity) }
 	->
 		io__write_string("\t\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
@@ -613,7 +613,7 @@ output_c_data_def_list([M | Ms], DeclSet0, DeclSet) -->
 :- mode output_c_data_def(in, in, out, di, uo) is det.
 
 output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
-		ArgVals, _Refs), DeclSet0, DeclSet) -->
+		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 
@@ -640,7 +640,7 @@ output_c_data_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
 		{ ExportedFromFile = SplitFiles }
 	),
 
-	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, 
+	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile, 
 			yes, yes, no, "", "", 0, _),
 	{ decl_set_insert(DeclSet0, DataAddr, DeclSet) }.
 
@@ -706,8 +706,8 @@ output_comp_gen_c_data_list([Data | Datas], DeclSet0, DeclSet) -->
 :- pred output_comp_gen_c_data(comp_gen_c_data::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName,
-		ExportedFromModule, ArgVals, _Refs), DeclSet0, DeclSet) -->
+output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
+		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
@@ -740,8 +740,8 @@ output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName,
 		globals__io_lookup_bool_option(split_c_files, SplitFiles),
 		{ ExportedFromFile = SplitFiles }
 	),
-	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, no, yes,
-		yes, "", "", 0, _),
+	output_const_term_decl(ArgVals, ArgTypes, DataAddr, ExportedFromFile,
+		no, yes, yes, "", "", 0, _),
 	{ decl_set_insert(DeclSet1, DataAddr, DeclSet) }.
 
 :- pred output_user_c_code_list(list(user_c_code)::in,
@@ -1991,18 +1991,18 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
-		N0, N, DeclSet0, DeclSet) -->
+output_rval_decls(create(_Tag, ArgVals, CreateArgTypes, _StatDyn, Label, _),
+		FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
 	( { decl_set_is_member(CreateLabel, DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
 		{ decl_set_insert(DeclSet0, CreateLabel, DeclSet1) },
-		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
-			DeclSet1, DeclSet),
-		output_const_term_decl(ArgVals, CreateLabel, no, yes, yes, yes,
-			FirstIndent, LaterIndent, N1, N)
+		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent,
+			N0, N1, DeclSet1, DeclSet),
+		output_const_term_decl(ArgVals, CreateArgTypes, CreateLabel,
+			no, yes, yes, yes, FirstIndent, LaterIndent, N1, N)
 	).
 output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
@@ -2110,13 +2110,13 @@ llds_out__float_op_name(float_divide, "divide").
 	% are conditionally output are Def, Decl and Init.  It is an
 	% error for Init to be yes and Decl to be no.
 
-:- pred output_const_term_decl(list(maybe(rval)), decl_id, bool, bool, bool, 
-		bool, string, string, int, int, io__state, io__state).
-:- mode output_const_term_decl(in, in, in, in, in,
-		in, in, in, in, out, di, uo) is det.
+:- pred output_const_term_decl(list(maybe(rval)), create_arg_types, decl_id,
+	bool, bool, bool, bool, string, string, int, int, io__state, io__state).
+:- mode output_const_term_decl(in, in, in, in, in, in,
+	in, in, in, in, out, di, uo) is det.
 
-output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent, 
-		LaterIndent, N1, N) -->
+output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
+		Def, Decl, Init, FirstIndent, LaterIndent, N1, N) -->
 	(
 		{ Init = yes }, { Decl = no }
 	->
@@ -2161,7 +2161,7 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 		{ Def = yes }
 	->
 		io__write_string(" {\n"),
-		output_cons_arg_types(ArgVals, "\t", 1),
+		output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
 		io__write_string("} ")
 	;
 		[]
@@ -2175,7 +2175,7 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 			{ Init = yes }
 		->
 			io__write_string(" = {\n"),
-			output_cons_args(ArgVals, "\t"),
+			output_cons_args(ArgVals, CreateArgTypes, "\t"),
 			io__write_string(LaterIndent),
 			io__write_string("};\n")
 		;
@@ -2219,33 +2219,97 @@ output_decl_id(float_label(_Label)) -->
 output_decl_id(pragma_c_struct(_Name)) -->
 	{ error("output_decl_id: pragma_c_struct unexpected") }.
 
-:- pred output_cons_arg_types(list(maybe(rval)), string, int, 
-				io__state, io__state).
-:- mode output_cons_arg_types(in, in, in, di, uo) is det.
+:- pred output_cons_arg_types(list(maybe(rval))::in, create_arg_types::in,
+	string::in, int::in, io__state::di, io__state::uo) is det.
 
-output_cons_arg_types([], _, _) --> [].
-output_cons_arg_types([Arg | Args], Indent, ArgNum) -->
+output_cons_arg_types(Args, uniform(MaybeType), Indent, ArgNum) -->
+	output_uniform_cons_arg_types(Args, MaybeType, Indent, ArgNum).
+output_cons_arg_types(Args, initial(InitialTypes, RestTypes),
+		Indent, ArgNum) -->
+	output_initial_cons_arg_types(Args, InitialTypes, RestTypes,
+		Indent, ArgNum).
+output_cons_arg_types(Args, none, _, _) -->
+	{ require(unify(Args, []), "too many args for specified arg types") }.
+
+:- pred output_uniform_cons_arg_types(list(maybe(rval))::in,
+	maybe(llds_type)::in, string::in, int::in,
+	io__state::di, io__state::uo) is det.
+
+output_uniform_cons_arg_types([], _, _, _) --> [].
+output_uniform_cons_arg_types([Arg | Args], MaybeType, Indent, ArgNum) -->
 	( { Arg = yes(Rval) } ->
 		io__write_string(Indent),
-		llds_out__rval_type_as_arg(Rval, Type),
+		llds_arg_type(Rval, MaybeType, Type),
 		output_llds_type(Type),
 		io__write_string(" f"),
 		io__write_int(ArgNum),
-		io__write_string(";\n")
+		io__write_string(";\n"),
+		{ ArgNum1 is ArgNum + 1 },
+		output_uniform_cons_arg_types(Args, MaybeType, Indent, ArgNum1)
 	;
-		{ error("output_cons_arg_types: missing arg") }
-	),
-	{ ArgNum1 is ArgNum + 1 },
-	output_cons_arg_types(Args, Indent, ArgNum1).
+		{ error("output_uniform_cons_arg_types: missing arg") }
+	).
+
+:- pred output_initial_cons_arg_types(list(maybe(rval))::in,
+	initial_arg_types::in, create_arg_types::in, string::in, int::in,
+	io__state::di, io__state::uo) is det.
+
+output_initial_cons_arg_types(Args, [], RestTypes, Indent, ArgNum) -->
+	output_cons_arg_types(Args, RestTypes, Indent, ArgNum).
+output_initial_cons_arg_types(Args, [N - MaybeType | InitTypes], RestTypes,
+		Indent, ArgNum) -->
+	output_initial_cons_arg_types_2(Args, N, MaybeType, InitTypes,
+		RestTypes, Indent, ArgNum).
+
+:- pred output_initial_cons_arg_types_2(list(maybe(rval))::in, int::in,
+	maybe(llds_type)::in, initial_arg_types::in, create_arg_types::in,
+	string::in, int::in, io__state::di, io__state::uo) is det.
+
+output_initial_cons_arg_types_2([], N, _, _, _, _, _) -->
+	{ require(unify(N, 0), "not enough args for specified arg types") }.
+output_initial_cons_arg_types_2([Arg | Args], N, MaybeType, InitTypes,
+		RestTypes, Indent, ArgNum) -->
+	( { N = 0 } ->
+		output_initial_cons_arg_types([Arg | Args], InitTypes,
+			RestTypes, Indent, ArgNum)
+	;
+		( { Arg = yes(Rval) } ->
+			io__write_string(Indent),
+			llds_arg_type(Rval, MaybeType, Type),
+			output_llds_type(Type),
+			io__write_string(" f"),
+			io__write_int(ArgNum),
+			io__write_string(";\n"),
+			{ ArgNum1 is ArgNum + 1 },
+			{ N1 is N - 1 },
+			output_initial_cons_arg_types_2(Args, N1, MaybeType,
+				InitTypes, RestTypes, Indent, ArgNum1)
+		;
+			{ error("output_initial_cons_arg_types: missing arg") }
+		)
+	).
+
+	% Given an rval, figure out the type it would have as an argument,
+	% if it is not explicitly specified.
+
+:- pred llds_arg_type(rval::in, maybe(llds_type)::in, llds_type::out,
+	io__state::di, io__state::uo) is det.
+
+llds_arg_type(Rval, MaybeType, Type) -->
+	( { MaybeType = yes(SpecType) } ->
+		{ Type = SpecType }
+	;
+		llds_out__rval_type_as_arg(Rval, Type)
+	).
 
 	% Given an rval, figure out the type it would have as
 	% an argument.  Normally that's the same as its usual type;
 	% the exception is that for boxed floats, the type is data_ptr
 	% (i.e. the type of the boxed value) rather than float
 	% (the type of the unboxed value).
-	%
-:- pred llds_out__rval_type_as_arg(rval, llds_type, io__state, io__state).
-:- mode llds_out__rval_type_as_arg(in, out, di, uo) is det.
+
+:- pred llds_out__rval_type_as_arg(rval::in, llds_type::out,
+	io__state::di, io__state::uo) is det.
 
 llds_out__rval_type_as_arg(Rval, ArgType) -->
 	{ llds__rval_type(Rval, Type) },
@@ -2256,20 +2320,26 @@ llds_out__rval_type_as_arg(Rval, ArgType) -->
 		{ ArgType = Type }
 	).
 
-:- pred output_llds_type(llds_type, io__state, io__state).
-:- mode output_llds_type(in, di, uo) is det.
+:- pred output_llds_type(llds_type::in, io__state::di, io__state::uo) is det.
 
-output_llds_type(bool)     --> io__write_string("Integer").
-output_llds_type(integer)  --> io__write_string("Integer").
-output_llds_type(unsigned) --> io__write_string("Unsigned").
-output_llds_type(float)    --> io__write_string("Float").
-output_llds_type(word)     --> io__write_string("Word").
-output_llds_type(data_ptr) --> io__write_string("Word *").
-output_llds_type(code_ptr) --> io__write_string("Code *").
+output_llds_type(int_least8)   --> io__write_string("int_least8_t").
+output_llds_type(uint_least8)  --> io__write_string("uint_least8_t").
+output_llds_type(int_least16)  --> io__write_string("int_least16_t").
+output_llds_type(uint_least16) --> io__write_string("uint_least16_t").
+output_llds_type(int_least32)  --> io__write_string("int_least32_t").
+output_llds_type(uint_least32) --> io__write_string("uint_least32_t").
+output_llds_type(bool)         --> io__write_string("Integer").
+output_llds_type(integer)      --> io__write_string("Integer").
+output_llds_type(unsigned)     --> io__write_string("Unsigned").
+output_llds_type(float)        --> io__write_string("Float").
+output_llds_type(word)         --> io__write_string("Word").
+output_llds_type(string)       --> io__write_string("String").
+output_llds_type(data_ptr)     --> io__write_string("Word *").
+output_llds_type(code_ptr)     --> io__write_string("Code *").
 
-:- pred output_cons_arg_decls(list(maybe(rval)), string, string, int, int,
-	decl_set, decl_set, io__state, io__state).
-:- mode output_cons_arg_decls(in, in, in, in, out, in, out, di, uo) is det.
+:- pred output_cons_arg_decls(list(maybe(rval))::in, string::in, string::in,
+	int::in, int::out, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
 output_cons_arg_decls([], _, _, N, N, DeclSet, DeclSet) --> [].
 output_cons_arg_decls([Arg | Args], FirstIndent, LaterIndent, N0, N,
@@ -2284,27 +2354,87 @@ output_cons_arg_decls([Arg | Args], FirstIndent, LaterIndent, N0, N,
 	output_cons_arg_decls(Args, FirstIndent, LaterIndent, N1, N,
 		DeclSet1, DeclSet).
 
-:- pred output_cons_args(list(maybe(rval)), string, io__state, io__state).
-:- mode output_cons_args(in, in, di, uo) is det.
-% 	output_cons_args(Args, Indent):
-%	output the arguments, each on its own line prefixing with Indent.
+	% Output the arguments, each on its own line prefixing with Indent,
+	% and with a cast appropriate to its type if necessary.
 
-output_cons_args([], _) --> [].
-output_cons_args([Arg | Args], Indent) -->
+:- pred output_cons_args(list(maybe(rval))::in, create_arg_types::in,
+	string::in, io__state::di, io__state::uo) is det.
+
+output_cons_args(Args, uniform(MaybeType), Indent) -->
+	output_uniform_cons_args(Args, MaybeType, Indent).
+output_cons_args(Args, initial(InitTypes, RestTypes), Indent) -->
+	output_initial_cons_args(Args, InitTypes, RestTypes, Indent).
+output_cons_args(Args, none, _) -->
+	{ require(unify(Args, []), "too many args for specified arg types") }.
+
+:- pred output_uniform_cons_args(list(maybe(rval))::in, maybe(llds_type)::in,
+	string::in, io__state::di, io__state::uo) is det.
+
+output_uniform_cons_args([], _, _) --> [].
+output_uniform_cons_args([Arg | Args], MaybeType, Indent) -->
 	( { Arg = yes(Rval) } ->
 		io__write_string(Indent),
-		llds_out__rval_type_as_arg(Rval, TypeAsArg),
-		output_rval_as_type(Rval, TypeAsArg)
+		( { MaybeType = yes(_) } ->
+			output_static_rval(Rval)
+		;
+			llds_out__rval_type_as_arg(Rval, Type),
+			output_rval_as_type(Rval, Type)
+		),
+		( { Args \= [] } ->
+			io__write_string(",\n"),
+			output_uniform_cons_args(Args, MaybeType, Indent)
+		;
+			io__write_string("\n")
+		)
 	;
 		% `Arg = no' means the argument is uninitialized,
 		% but that would mean the term isn't ground
-		{ error("output_cons_args: missing argument") }
-	),
-	( { Args \= [] } ->
-		io__write_string(",\n"),
-		output_cons_args(Args, Indent)
+		{ error("output_uniform_cons_args: missing argument") }
+	).
+
+:- pred output_initial_cons_args(list(maybe(rval))::in, initial_arg_types::in,
+	create_arg_types::in, string::in, io__state::di, io__state::uo) is det.
+
+output_initial_cons_args(Args, [], RestTypes, Indent) -->
+	output_cons_args(Args, RestTypes, Indent).
+output_initial_cons_args(Args, [N - MaybeType | InitTypes], RestTypes,
+		Indent) -->
+	output_initial_cons_args_2(Args, N, MaybeType, InitTypes, RestTypes,
+		Indent).
+
+:- pred output_initial_cons_args_2(list(maybe(rval))::in, int::in,
+	maybe(llds_type)::in, initial_arg_types::in, create_arg_types::in,
+	string::in, io__state::di, io__state::uo) is det.
+
+output_initial_cons_args_2([], N, _, _, _, _) -->
+	{ require(unify(N, 0), "not enough args for specified arg types") }.
+output_initial_cons_args_2([Arg | Args], N, MaybeType, InitTypes, RestTypes,
+		Indent) -->
+	( { N = 0 } ->
+		output_initial_cons_args([Arg | Args], InitTypes, RestTypes,
+			Indent)
 	;
-		io__write_string("\n")
+		( { Arg = yes(Rval) } ->
+			{ N1 is N - 1 },
+			io__write_string(Indent),
+			( { MaybeType = yes(_) } ->
+				output_static_rval(Rval)
+			;
+				llds_out__rval_type_as_arg(Rval, Type),
+				output_rval_as_type(Rval, Type)
+			),
+			( { Args \= [] } ->
+				io__write_string(",\n"),
+				output_initial_cons_args_2(Args, N1, MaybeType,
+					InitTypes, RestTypes, Indent)
+			;
+				{ require(unify(N1, 0),
+				"not enough args for specified arg types") },
+				io__write_string("\n")
+			)
+		;
+			{ error("output_initial_cons_arg: missing argument") }
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2771,8 +2901,7 @@ output_code_addr(do_not_reached) -->
 llds_out__make_stack_layout_name(Label, Name) :-
 	llds_out__get_label(Label, yes, LabelName),
 	string__append_list([
-		"mercury_data_",
-		"_layout__",
+		"mercury_data__layout__",
 		LabelName
 	], Name).
 
@@ -3119,7 +3248,6 @@ output_rval_as_type(Rval, DesiredType) -->
 			output_rval(Rval)
 		)
 	).
-
 	
 	% types_match(DesiredType, ActualType) is true iff
 	% a value of type ActualType can be used as a value of
@@ -3312,7 +3440,7 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(Tag, _Args, _Unique, CellNum, _Msg)) -->
+output_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	io__write_string("MR_mkword(MR_mktag("),
@@ -3431,6 +3559,70 @@ output_rval_const(data_addr_const(data_addr(ModuleName, VarName))) -->
 	io__write_string("(Word *) &"),
 	output_data_addr(ModuleName, VarName).
 output_rval_const(label_entry(Label)) -->
+	io__write_string("ENTRY("),
+	output_label(Label),
+	io__write_string(")").
+
+	% Output an rval as an initializer in a static struct.
+	% Make sure it has the C type the corresponding field would have.
+	% This is the "really" natural type of the rval, free of the
+	% Mercury abstract engine's need to shoehorn things into Words.
+
+:- pred output_static_rval(rval, io__state, io__state).
+:- mode output_static_rval(in, di, uo) is det.
+
+output_static_rval(const(Const)) -->
+	output_rval_static_const(Const).
+output_static_rval(unop(_, _)) -->
+	{ error("Cannot output a unop(_, _) in a static initializer") }.
+output_static_rval(binop(_, _, _)) -->
+	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
+output_static_rval(mkword(Tag, Exprn)) -->
+	io__write_string("(Word *) mkword("),
+	output_tag(Tag),
+	io__write_string(", "),
+	output_static_rval(Exprn),
+	io__write_string(")").
+output_static_rval(lval(_)) -->
+	{ error("Cannot output an lval(_) in a static initializer") }.
+output_static_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg)) -->
+		% emit a reference to the static constant which we
+		% declared in output_rval_decls.
+	io__write_string("mkword(mktag("),
+	io__write_int(Tag),
+	io__write_string("), "),
+	io__write_string("&mercury_const_"),
+	io__write_int(CellNum),
+	io__write_string(")").
+output_static_rval(var(_)) -->
+	{ error("Cannot output a var(_) in a static initializer") }.
+output_static_rval(mem_addr(_)) -->
+	{ error("Cannot output a mem_ref(_) in a static initializer") }.
+
+:- pred output_rval_static_const(rval_const, io__state, io__state).
+:- mode output_rval_static_const(in, di, uo) is det.
+
+output_rval_static_const(int_const(N)) -->
+	io__write_int(N).
+output_rval_static_const(float_const(FloatVal)) -->
+	io__write_float(FloatVal).
+output_rval_static_const(string_const(String)) -->
+	io__write_string("(String) string_const("""),
+	output_c_quoted_string(String),
+	{ string__length(String, StringLength) },
+	io__write_string(""", "),
+	io__write_int(StringLength),
+	io__write_string(")").
+output_rval_static_const(true) -->
+	io__write_string("TRUE").
+output_rval_static_const(false) -->
+	io__write_string("FALSE").
+output_rval_static_const(code_addr_const(CodeAddress)) -->
+	output_code_addr(CodeAddress).
+output_rval_static_const(data_addr_const(data_addr(ModuleName, VarName))) -->
+	io__write_string("(Word *) &"),
+	output_data_addr(ModuleName, VarName).
+output_rval_static_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
 	output_label(Label),
 	io__write_string(")").

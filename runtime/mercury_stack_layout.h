@@ -42,7 +42,7 @@ typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
 ** that we do not set the 1 bit unless we also set the 2 bit.
 */
 
-typedef	Word MR_Determinism;
+typedef	int_least16_t	 MR_Determinism;
 
 #define	MR_DETISM_DET		6
 #define	MR_DETISM_SEMI		2
@@ -66,17 +66,17 @@ typedef	Word MR_Determinism;
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Live_Lval
+** Definitions for MR_Long_Lval and MR_Short_Lval
 */
 
 /*
-** MR_Live_Lval is a Word which describes an location. This includes
+** MR_Long_Lval is a uint_least32_t which describes an location. This includes
 ** lvals such as stack slots, general registers, and special registers
 ** such as succip, hp, etc, as well as locations whose address is given
-** as a particular word offset from the memory address found in an lval.
+** as a typeinfo inside the type class info structure pointed to by an lval.
 **
-** What kind of of location an MR_Live_Lval refers to is encoded using
-** a low tag with MR_LIVE_LVAL_TAGBITS bits; the type MR_Lval_Type describes
+** What kind of location an MR_Long_Lval refers to is encoded using
+** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Lval_Type describes
 ** the different tag values. The interpretation of the rest of the word
 ** depends on the location type:
 **
@@ -94,56 +94,107 @@ typedef	Word MR_Determinism;
 **  unknown		10	(The location is not known)
 **
 ** For indirect references, the word exclusive of the tag consists of
-** (a) an integer with MR_LIVE_LVAL_OFFSETBITS bits giving the number of
-** words to offset and (b) a MR_Live_Lval value giving the location of
-** the base address. This MR_Live_Lval valud will *not* have an indirect tag.
+** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index
+** of the typeinfo inside a type class info (to be interpreted by
+** private_builtin:type_info_from_typeclass_info), and (b) a MR_Long_Lval
+** value giving the location of the pointer to the type class info.
+** This MR_Long_Lval value will *not* have an indirect tag.
 **
-** This data is generated in compiler/stack_layout.m, which must be kept
-** in sync with the constants defined here.
+** This data is generated in stack_layout__represent_locn_as_int,
+** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef Word MR_Live_Lval;
+typedef uint_least32_t	MR_Long_Lval;
 
 typedef enum {
-	MR_LVAL_TYPE_R,
-	MR_LVAL_TYPE_F,
-	MR_LVAL_TYPE_STACKVAR,
-	MR_LVAL_TYPE_FRAMEVAR,
-	MR_LVAL_TYPE_SUCCIP,
-	MR_LVAL_TYPE_MAXFR,
-	MR_LVAL_TYPE_CURFR,
-	MR_LVAL_TYPE_HP,
-	MR_LVAL_TYPE_SP,
-	MR_LVAL_TYPE_INDIRECT,
-	MR_LVAL_TYPE_UNKNOWN 
-} MR_Lval_Type;
+	MR_LONG_LVAL_TYPE_R,
+	MR_LONG_LVAL_TYPE_F,
+	MR_LONG_LVAL_TYPE_STACKVAR,
+	MR_LONG_LVAL_TYPE_FRAMEVAR,
+	MR_LONG_LVAL_TYPE_SUCCIP,
+	MR_LONG_LVAL_TYPE_MAXFR,
+	MR_LONG_LVAL_TYPE_CURFR,
+	MR_LONG_LVAL_TYPE_HP,
+	MR_LONG_LVAL_TYPE_SP,
+	MR_LONG_LVAL_TYPE_INDIRECT,
+	MR_LONG_LVAL_TYPE_UNKNOWN 
+} MR_Long_Lval_Type;
 
-/* This must be in sync with stack_layout__tag_bits */
-#define MR_LIVE_LVAL_TAGBITS	4
+/* This must be in sync with stack_layout__long_lval_tag_bits */
+#define MR_LONG_LVAL_TAGBITS	4
 
-#define MR_LIVE_LVAL_TYPE(Locn) 				\
-	((MR_Lval_Type) (((Word) Locn) & ((1 << MR_LIVE_LVAL_TAGBITS) - 1)))
+#define MR_LONG_LVAL_TYPE(Locn) 					\
+	((MR_Long_Lval_Type)						\
+		(((Word) Locn) & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
-#define MR_LIVE_LVAL_NUMBER(Locn) 				\
-	((int) ((Word) Locn) >> MR_LIVE_LVAL_TAGBITS)
+#define MR_LONG_LVAL_NUMBER(Locn) 					\
+	((int) ((Word) Locn) >> MR_LONG_LVAL_TAGBITS)
 
 /* This must be in sync with stack_layout__offset_bits */
-#define MR_LIVE_LVAL_OFFSETBITS	6
+#define MR_LONG_LVAL_OFFSETBITS	6
 
-#define MR_LIVE_LVAL_INDIRECT_OFFSET(LocnNumber) 		\
-	((int) ((LocnNumber) & ((1 << MR_LIVE_LVAL_OFFSETBITS) - 1)))
+#define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber) 			\
+	((int) ((LocnNumber) & ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
 
-#define MR_LIVE_LVAL_INDIRECT_BASE_LVAL(LocnNumber)		\
-	(((Word) (LocnNumber)) >> MR_LIVE_LVAL_OFFSETBITS)
+#define MR_LONG_LVAL_INDIRECT_BASE_LVAL(LocnNumber)			\
+	(((Word) (LocnNumber)) >> MR_LONG_LVAL_OFFSETBITS)
 
-#define	MR_LIVE_LVAL_STACKVAR(n)				\
-	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_STACKVAR)
+#define	MR_LONG_LVAL_STACKVAR(n)					\
+	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
 
-#define	MR_LIVE_LVAL_FRAMEVAR(n)				\
-	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_FRAMEVAR)
+#define	MR_LONG_LVAL_FRAMEVAR(n)					\
+	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
 
-#define	MR_LIVE_LVAL_R_REG(n)					\
-	((Word) ((n) << MR_LIVE_LVAL_TAGBITS) + MR_LVAL_TYPE_R)
+#define	MR_LONG_LVAL_R_REG(n)						\
+	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
+
+/*
+** MR_Short_Lval is a uint_least8_t which describes an location. This includes
+** lvals such as stack slots and general registers that have small numbers,
+** and special registers such as succip, hp, etc.
+**
+** What kind of location an MR_Long_Lval refers to is encoded using
+** a low tag with 2 bits; the type MR_Short_Lval_Type describes
+** the different tag values. The interpretation of the rest of the word
+** depends on the location type:
+**
+**  Locn		Tag	Rest
+**  r(Num)		 0	Num (register number)
+**  stackvar(Num)	 1	Num (stack slot number)
+**  framevar(Num)	 2	Num (stack slot number)
+**  special reg		 3	MR_Long_Lval_Type
+**
+** This data is generated in stack_layout__represent_locn_as_byte,
+** which must be kept in sync with the constants and macros defined here.
+*/
+
+typedef uint_least8_t	MR_Short_Lval;
+
+typedef enum {
+	MR_SHORT_LVAL_TYPE_R,
+	MR_SHORT_LVAL_TYPE_STACKVAR,
+	MR_SHORT_LVAL_TYPE_FRAMEVAR,
+	MR_SHORT_LVAL_TYPE_SPECIAL
+} MR_Short_Lval_Type;
+
+/* This must be in sync with stack_layout__short_lval_tag_bits */
+#define MR_SHORT_LVAL_TAGBITS	2
+
+#define MR_SHORT_LVAL_TYPE(Locn) 					\
+	((MR_Short_Lval_Type)						\
+		(((Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
+
+#define	MR_SHORT_LVAL_STACKVAR(n)					\
+	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+		+ MR_SHORT_LVAL_TYPE_STACKVAR))
+
+#define	MR_SHORT_LVAL_FRAMEVAR(n)					\
+	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+		+ MR_SHORT_LVAL_TYPE_FRAMEVAR))
+
+#define	MR_SHORT_LVAL_R_REG(n)						\
+	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
+		+ MR_SHORT_LVAL_TYPE_R))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -191,13 +242,6 @@ typedef struct {
 #define MR_LIVE_TYPE_GET_VAR_INST(T)   			\
 		(((MR_Var_Shape_Info *) T)->inst)
 
-/* MR_Stack_Layout_Var --------------------------------------------------- */
-
-typedef	struct MR_Stack_Layout_Var_Struct {
-	MR_Live_Lval		MR_slv_locn;
-	MR_Live_Type		MR_slv_live_type;
-} MR_Stack_Layout_Var;
-
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_Stack_Layout_Vars
@@ -205,25 +249,56 @@ typedef	struct MR_Stack_Layout_Var_Struct {
 
 /*
 ** If MR_slvs_tvars == NULL, there are no type parameters.
-** If it is != NULL, then (Integer) MR_slvs_tvars[0] is the index
-** of the highest numbered type parameter, and MR_slvs_tvars[i]
-** for values of i between 1 and (Integer) MR_slvs_tvars[0] (both inclusive)
-** describe the location of the typeinfo structure for the type variable
-** of the corresponding number. If one of these type variables
+** If it is != NULL, then MR_slvs_tvars->MR_tp_param_count is the number
+** of type parameters, and the element at index i in the array
+** MR_slvs_tvars->MR_tp_param_locns describes the location of the typeinfo
+** structure for type variable i+1 (since array offsets start at zero
+** but type variable numbers start at one). If one of these type variables
 ** is not referred to by the variables described in MR_slvs_pairs,
 ** the corresponding entry will be zero.
 */
 
 typedef	struct MR_Type_Param_Locns_Struct {
-	Integer			MR_tp_param_count;
-	MR_Live_Lval		MR_tp_param_locns[MR_VARIABLE_SIZED];
+	uint_least32_t		MR_tp_param_count;
+	MR_Long_Lval		MR_tp_param_locns[MR_VARIABLE_SIZED];
 } MR_Type_Param_Locns;
 
+/*
+** The MR_slvs_var_count field should be set to a negative number
+** if there is no information about the variables live at the label.
+*/
+
 typedef	struct MR_Stack_Layout_Vars_Struct {
-	MR_Stack_Layout_Var	*MR_slvs_pairs;
+	void			*MR_slvs_var_count;
+	/* the remaining fields are present only if MR_sll_var_count > 0 */
+	void			*MR_slvs_locns_types;
 	String			*MR_slvs_names;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
+
+#define	MR_SHORT_COUNT_BITS	10
+#define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
+
+#define	MR_has_valid_var_count(slvs)					    \
+		(((Integer) ((slvs)->MR_slvs_var_count)) >= 0)
+#define	MR_has_valid_var_info(slvs)					    \
+		(((Integer) ((slvs)->MR_slvs_var_count)) > 0)
+#define	MR_long_desc_var_count(slvs)					    \
+		(((Integer) ((slvs)->MR_slvs_var_count)) >> MR_SHORT_COUNT_BITS)
+#define	MR_short_desc_var_count(slvs)					    \
+		(((Integer) ((slvs)->MR_slvs_var_count)) & MR_SHORT_COUNT_MASK)
+#define	MR_all_desc_var_count(slvs)					    \
+		(MR_long_desc_var_count(slvs) + MR_short_desc_var_count(slvs))
+#define	MR_var_pti(slvs, i)						    \
+		(((MR_PseudoTypeInfo **) ((slvs)->MR_slvs_locns_types))[(i)])
+#define	MR_end_of_var_ptis(slvs)					    \
+		(&MR_var_pti((slvs), MR_all_desc_var_count(slvs)))
+#define	MR_long_desc_var_locn(slvs, i)					    \
+		(((uint_least32_t *) MR_end_of_var_ptis(slvs))[(i)])
+#define	MR_end_of_long_desc_var_locns(slvs)				    \
+		(&MR_long_desc_var_locn((slvs), MR_long_desc_var_count(slvs)))
+#define	MR_short_desc_var_locn(slvs, i)					    \
+		(((uint_least8_t *) MR_end_of_long_desc_var_locns(slvs))[(i)])
 
 #define	MR_name_if_present(vars, i)					    \
 				((vars->MR_slvs_names != NULL		    \
@@ -305,9 +380,9 @@ typedef union MR_Stack_Layout_Proc_Id_Union {
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
 	Code			*MR_sle_code_addr;
+	MR_Long_Lval		MR_sle_succip_locn;
+	int_least16_t		MR_sle_stack_slots;
 	MR_Determinism		MR_sle_detism;
-	Integer			MR_sle_stack_slots;
-	MR_Live_Lval		MR_sle_succip_locn;
 
 	/* proc id group */
 	MR_Stack_Layout_Proc_Id	MR_sle_proc_id;
@@ -315,8 +390,8 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
-	Integer			MR_sle_maybe_from_full;
-	Integer			MR_sle_maybe_decl_debug;
+	int_least16_t		MR_sle_maybe_from_full;
+	int_least16_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
@@ -343,7 +418,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** and the location of the succip is fixed.
 **
 ** An unknown slot count should be signalled by MR_ENTRY_NO_SLOT_COUNT.
-** An unknown succip location should be signalled by MR_LVAL_TYPE_UNKNOWN.
+** An unknown succip location should be signalled by MR_LONG_LVAL_TYPE_UNKNOWN.
 **
 ** For the procedure identification, we always use the same module name
 ** for the defining and declaring modules, since procedures whose code
@@ -376,9 +451,9 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 		pf, module, name, arity, mode) 				\
 	MR_Stack_Layout_Entry mercury_data__layout__##entry = {		\
 		MR_MAKE_PROC_LAYOUT_ADDR(entry),			\
-		detism,							\
-		slots,							\
 		succip_locn,						\
+		slots,							\
+		detism,							\
 		{{							\
 			pf,						\
 			module,						\
@@ -440,18 +515,11 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** Definitions for MR_Stack_Layout_Label
 */
 
-/*
-** The MR_sll_var_count field should be set to a negative number
-** if there is no information about the variables live at the label.
-*/
-
 typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Entry	*MR_sll_entry;
 #ifdef	MR_LABEL_STRUCTS_INCLUDE_NUMBER
 	Integer			MR_sll_label_num;
 #endif
-	Integer			MR_sll_var_count;
-	/* the last field is present only if MR_sll_var_count > 0 */
 	MR_Stack_Layout_Vars	MR_sll_var_info;
 } MR_Stack_Layout_Label;
 
@@ -488,7 +556,12 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Label mercury_data__layout__##l = {		\
 		&mercury_data__layout__##e,				\
 		UNKNOWN_INTERNAL_LABEL_NUMBER				\
-		(Integer) -1	/* No information about live values */	\
+		{							\
+			(void *) -1,	/* No info about live values */	\
+			NULL,						\
+			NULL,						\
+			NULL						\
+		}							\
 	}
 
 #define MR_MAKE_INTERNAL_LAYOUT(e, n)					\

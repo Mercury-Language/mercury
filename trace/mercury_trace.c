@@ -302,14 +302,13 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	saved_regs = event_info->MR_saved_regs;
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	call_label = entry->MR_sle_call_label;
+	input_args = &call_label->MR_sll_var_info;
 
-	if (call_label->MR_sll_var_count < 0) {
+	if (input_args->MR_slvs_var_count < 0) {
 		message = "Cannot perform retry because information about "
 		          "the input arguments is not available.";
 		return message;
 	}
-
-	input_args = &call_label->MR_sll_var_info;
 
 	/*
 	** With the Boehm collector, args need not be considered a root, 
@@ -322,7 +321,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	args = NULL;
 	arg_max = 0;
 
-	for (i = 0; i < call_label->MR_sll_var_count; i++) {
+	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
 		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
 				saved_regs, input_args->MR_slvs_names[i],
 				&succeeded);
@@ -333,8 +332,14 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			return message;
 		}
 
-		arg_num = MR_get_register_number(
-			input_args->MR_slvs_pairs[i].MR_slv_locn);
+		if (i < MR_long_desc_var_count(input_args)) {
+			arg_num = MR_get_register_number_long(
+				MR_long_desc_var_locn(input_args, i));
+		} else {
+			arg_num = MR_get_register_number_short(
+				MR_short_desc_var_locn(input_args, i));
+		}
+
 		if (arg_num > 0) {
 			MR_ensure_big_enough(arg_num, arg, Word,
 				MR_INIT_ARG_COUNT);
@@ -348,7 +353,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_trace_call_depth = event_info->MR_call_depth - 1;
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-		MR_Live_Lval	location;
+		MR_Long_Lval	location;
 		Word		*this_frame;
 
 		/*
@@ -359,14 +364,15 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		*/
 
 		location = entry->MR_sle_succip_locn;
-		if (MR_LIVE_LVAL_TYPE(location) != MR_LVAL_TYPE_STACKVAR) {
+		if (MR_LONG_LVAL_TYPE(location) != MR_LONG_LVAL_TYPE_STACKVAR)
+		{
 			fatal_error("illegal location for stored succip");
 		}
 
 		this_frame = MR_saved_sp(saved_regs);
 		MR_saved_succip(saved_regs) = (Word *)
 				MR_based_stackvar(this_frame,
-				MR_LIVE_LVAL_NUMBER(location));
+				MR_LONG_LVAL_NUMBER(location));
 		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
 		MR_trace_event_number = MR_event_num_stackvar(this_frame);
 	} else {
@@ -425,12 +431,19 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
 		return 0;
 	}
 
-	for (i = 0; i < label->MR_sll_var_count; i++) {
+	for (i = 0; i < MR_all_desc_var_count(vars); i++) {
 		if (streq(vars->MR_slvs_names[i], name)) {
-			return MR_lookup_live_lval_base(
-				vars->MR_slvs_pairs[i].MR_slv_locn, saved_regs,
-				MR_saved_sp(saved_regs),
+			if (i < MR_long_desc_var_count(vars)) {
+				return MR_lookup_long_lval_base(
+					MR_long_desc_var_locn(vars, i),
+					saved_regs, MR_saved_sp(saved_regs),
+					MR_saved_curfr(saved_regs), succeeded);
+			} else {
+				return MR_lookup_short_lval_base(
+					MR_short_desc_var_locn(vars, i),
+					saved_regs, MR_saved_sp(saved_regs),
 				MR_saved_curfr(saved_regs), succeeded);
+			}
 		}
 	}
 

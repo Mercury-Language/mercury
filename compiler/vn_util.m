@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,9 +148,9 @@ vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables) :-
 		Rval = var(_),
 		error("value_number should never get rval: var")
 	;
-		Rval = create(Tag, Args, Unique, Label, Msg),
-		vn_util__vnrval_to_vn(vn_create(Tag, Args, Unique, Label, Msg),
-			Vn, VnTables0, VnTables)
+		Rval = create(Tag, Args, ArgTypes, StatDyn, Label, Msg),
+		vn_util__vnrval_to_vn(vn_create(Tag, Args, ArgTypes,
+			StatDyn, Label, Msg), Vn, VnTables0, VnTables)
 	;
 		Rval = mkword(Tag, Rval1),
 		vn_util__rval_to_vn(Rval1, SubVn, VnTables0, VnTables1),
@@ -1026,7 +1026,7 @@ vn_util__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
 	vn_util__vnlval_access_vns(Vnlval, SubVns).
 vn_util__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
 vn_util__find_sub_vns(vn_const(_), []).
-vn_util__find_sub_vns(vn_create(_, _, _, _, _), []).
+vn_util__find_sub_vns(vn_create(_, _, _, _, _, _), []).
 vn_util__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
 vn_util__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
 vn_util__find_sub_vns(vn_stackvar_addr(_), []).
@@ -1045,7 +1045,7 @@ vn_util__is_const_expr(Vn, IsConst, VnTables) :-
 		Vnrval = vn_const(_),
 		IsConst = yes
 	;
-		Vnrval = vn_create(_, _, _, _, _),
+		Vnrval = vn_create(_, _, _, _, _, _),
 		IsConst = yes
 	;
 		Vnrval = vn_unop(_, Vn1),
@@ -1076,7 +1076,7 @@ vn_util__find_lvals_in_rval(Rval, Lvals) :-
 		Rval = var(_),
 		error("var found in vn_util__find_lvals_in_rval")
 	;
-		Rval = create(_, _, _, _, _),
+		Rval = create(_, _, _, _, _, _),
 		Lvals = []
 	;
 		Rval = mkword(_, Rval1),
@@ -1343,7 +1343,7 @@ vn_util__record_use(Vn, Src, VnTables0, VnTables) :-
 			Vnrval = vn_const(_),
 			VnTables = VnTables1
 		;
-			Vnrval = vn_create(_, _, _, _, _),
+			Vnrval = vn_create(_, _, _, _, _, _),
 			VnTables = VnTables1
 		;
 			Vnrval = vn_unop(_, SubVn),

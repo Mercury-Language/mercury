@@ -669,7 +669,7 @@ opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
 	opt_util__lval_refers_stackvars(Lval, Refers).
 opt_util__rval_refers_stackvars(var(_), _) :-
 	error("found var in rval_refers_stackvars").
-opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _), Refers) :-
+opt_util__rval_refers_stackvars(create(_, Rvals, _, _, _, _), Refers) :-
 	opt_util__rvals_refer_stackvars(Rvals, Refers).
 opt_util__rval_refers_stackvars(mkword(_, Rval), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers).
@@ -1478,7 +1478,7 @@ opt_util__touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
 opt_util__touches_nondet_ctrl_rval(lval(Lval), Touch) :-
 	opt_util__touches_nondet_ctrl_lval(Lval, Touch).
 opt_util__touches_nondet_ctrl_rval(var(_), no).
-opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _), no).
+opt_util__touches_nondet_ctrl_rval(create(_, _, _, _, _, _), no).
 opt_util__touches_nondet_ctrl_rval(mkword(_, Rval), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval, Touch).
 opt_util__touches_nondet_ctrl_rval(const(_), no).
@@ -1558,7 +1558,7 @@ opt_util__rval_free_of_lval(lval(Lval), Forbidden) :-
 	opt_util__rvals_free_of_lval(Rvals, Forbidden).
 opt_util__rval_free_of_lval(var(_), _) :-
 	error("found var in opt_util__rval_free_of_lval").
-opt_util__rval_free_of_lval(create(_, _, _, _, _), _).
+opt_util__rval_free_of_lval(create(_, _, _, _, _, _), _).
 opt_util__rval_free_of_lval(mkword(_, Rval), Forbidden) :-
 	opt_util__rval_free_of_lval(Rval, Forbidden).
 opt_util__rval_free_of_lval(const(_), _).

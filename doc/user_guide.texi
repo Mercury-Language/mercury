@@ -3404,6 +3404,9 @@ low-level intermediate code from our high-level data structure.
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
+Note that auxiliarity data structures created by the compiler
+for purposes such as debugging
+will still be created as static constants.
 
 @sp 1
 @item --no-smart-indexing

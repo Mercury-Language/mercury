@@ -174,7 +174,7 @@ from the data_name, for use in forward declarations.
 	),
 	DataName = type_ctor(info, TypeName, TypeArity),
 	CModule = comp_gen_c_data(ModuleName, DataName, Exported,
-		[ArityArg | FinalArgs], Procs),
+		[ArityArg | FinalArgs], uniform(no), Procs),
 	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
 		CModules).
 

@@ -441,7 +441,7 @@ standardize_rval(Rval1, Rval) :-
 		Rval1 = var(_),
 		error("var in standardize_rval")
 	;
-		Rval1 = create(_, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval = Rval1
 	;
 		Rval1 = mkword(_, _),
@@ -735,7 +735,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = var(_),
 		error("var in most_specific_rval")
 	;
-		Rval1 = create(_, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval2 = Rval1,
 		Rval = Rval1
 	;
@@ -896,8 +896,8 @@ dupelim__replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
 dupelim__replace_labels_rval(lval(Lval0), ReplMap, lval(Lval)) :-
 	dupelim__replace_labels_lval(Lval0, ReplMap, Lval).
 dupelim__replace_labels_rval(var(Var), _, var(Var)).
-dupelim__replace_labels_rval(create(Tag, Rvals, Unique, N, Msg), _,
-		create(Tag, Rvals, Unique, N, Msg)).
+dupelim__replace_labels_rval(create(Tag, Rvals, ArgTypes, StatDyn, N, Msg), _,
+		create(Tag, Rvals, ArgTypes, StatDyn, N, Msg)).
 dupelim__replace_labels_rval(mkword(Tag, Rval0), ReplMap, mkword(Tag, Rval)) :-
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_rval(const(Const0), ReplMap, const(Const)) :-

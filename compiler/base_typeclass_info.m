@@ -106,7 +106,7 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		Status = yes,
 
 		CModule = comp_gen_c_data(ModuleName, DataName,
-			Status, Rvals, Procs),
+			Status, Rvals, uniform(no), Procs),
 		CModules = [CModule | CModules1]
 	;
 			% The instance decl is from another module,

@@ -227,12 +227,14 @@
 		list(comp_gen_c_data)).
 :- mode base_type_layout__generate_llds(in, out, out) is det.
 
-	% stack_layout.m uses this.
+	% Given a Mercury type, this predicate returns an rval giving the
+	% pseudo type info for that type, plus the llds_type of that rval.
 	% The int arguments are label numbers for generating `create' rvals
 	% with.
-:- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
-:- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
-
+:- pred base_type_layout__construct_typed_pseudo_type_info(type,
+	rval, llds_type, int, int).
+:- mode base_type_layout__construct_typed_pseudo_type_info(in,
+	out, out, in, out) is det.
 
 :- implementation.
 
@@ -421,10 +423,10 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 	;
 		LayoutDataName = type_ctor(layout, TypeName, TypeArity),
 		LayoutCData = comp_gen_c_data(ModuleName, LayoutDataName,
-			Exported, LayoutTypeData, []),
+			Exported, LayoutTypeData, uniform(no), []),
 		FunctorsDataName = type_ctor(functors, TypeName, TypeArity),
 		FunctorsCData = comp_gen_c_data(ModuleName, FunctorsDataName,
-			Exported, FunctorsTypeData, []),
+			Exported, FunctorsTypeData, uniform(no), []),
 		base_type_layout__add_c_data(LayoutInfo3, LayoutCData, 
 			LayoutInfo4),
 		base_type_layout__add_c_data(LayoutInfo4, FunctorsCData, 
@@ -530,20 +532,20 @@ base_type_layout__encode_mkword(LayoutInfo, Tag, Rval, Rvals) :-
 	% containing the tag and one containing the pointer.
 	
 :- pred base_type_layout__encode_create(layout_info, int, list(maybe(rval)),
-		bool, int, list(maybe(rval))).
+	static_or_dynamic, int, list(maybe(rval))).
 :- mode base_type_layout__encode_create(in, in, in, in, in, out) is det.
-base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber, 
+base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, StatDyn, CellNumber, 
 		Rvals) :-
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	(
 		MaxTags < 4
 	->
 		Rvals = [yes(const(int_const(Tag))), 
-			yes(create(0, Rvals0, Unique, CellNumber,
-				"type_layout"))]
+			yes(create(0, Rvals0, uniform(no), StatDyn,
+				CellNumber, "type_layout"))]
 	;
-		Rvals = [yes(create(Tag, Rvals0, Unique, CellNumber,
-			"type_layout"))]
+		Rvals = [yes(create(Tag, Rvals0, uniform(no), StatDyn,
+			CellNumber, "type_layout"))]
 	).
 
 	% Encode a cons tag (unshared or shared) in rvals.
@@ -629,7 +631,7 @@ base_type_layout__layout_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__tag_value_const(Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		VectorRvals, no, NextCellNumber, Rval),
+		VectorRvals, must_be_static, NextCellNumber, Rval),
 
 		% Duplicate it MaxTags times.
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
@@ -680,7 +682,7 @@ base_type_layout__layout_no_tag(SymName, Type, LayoutInfo0,
 	base_type_layout__tag_value_equiv(Tag),
 
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-			VectorRvals, no, NextCellNumber, Rval),
+			VectorRvals, must_be_static, NextCellNumber, Rval),
 
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	list__duplicate(MaxTags, Rval, RvalsList),
@@ -751,7 +753,8 @@ base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 		base_type_layout__get_next_cell_number(NextCellNumber, 
 			LayoutInfo1, LayoutInfo),
 		base_type_layout__encode_create(LayoutInfo, Tag, 
-			[IndicatorRval, Rval0], no, NextCellNumber, Rval)
+			[IndicatorRval, Rval0], must_be_static,
+			NextCellNumber, Rval)
 	),
 	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
 	list__duplicate(MaxTags, Rval, RvalsList),
@@ -864,8 +867,8 @@ base_type_layout__handle_shared_local([C | Cs], LayoutInfo0, LayoutInfo,
 		LayoutInfo),
 	base_type_layout__tag_value(shared_local, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		[Rval0, Rval1 | CtorNameRvals], no, NextCellNumber, Rval).
-
+		[Rval0, Rval1 | CtorNameRvals], must_be_static,
+		NextCellNumber, Rval).
 
 	% For unshared tags:
 	%
@@ -881,8 +884,8 @@ base_type_layout__handle_unshared(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
 	base_type_layout__tag_value(unshared, Tag),
-	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals, no, 
-		NextCellNumber, Rval).
+	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals,
+		must_be_static, NextCellNumber, Rval).
 
 	% Create a functor descriptor.
 	%
@@ -953,7 +956,8 @@ base_type_layout__handle_shared_remote([C | Cs], LayoutInfo0, LayoutInfo,
 
 	base_type_layout__tag_value(shared_remote, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
-		[NumSharersRval | SharedRvals], no, NextCellNumber, Rval).
+		[NumSharersRval | SharedRvals], must_be_static,
+		NextCellNumber, Rval).
 
 %---------------------------------------------------------------------------%
 
@@ -997,8 +1001,8 @@ base_type_layout__functors_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 		LayoutInfo),
 	base_type_layout__functors_value(enum, EnumIndicator),
 	EnumRval = yes(const(int_const(EnumIndicator))),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
-		"type_layout")),
+	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
+		NextCellNumber, "type_layout")),
 	Rvals = [EnumRval, CreateRval].
 
 	% type_ctor_functors of a no_tag:
@@ -1017,8 +1021,8 @@ base_type_layout__functors_no_tag(SymName, Type, LayoutInfo0,
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
-	CreateRval = yes(create(0, VectorRvals, no, NextCellNumber,
-		"type_layout")),
+	CreateRval = yes(create(0, VectorRvals, uniform(no), must_be_static,
+		NextCellNumber, "type_layout")),
 
 	base_type_layout__functors_value(no_tag, NoTagIndicator),
 	NoTagRval = yes(const(int_const(NoTagIndicator))),
@@ -1046,8 +1050,9 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 				LayoutInfoA, LayoutInfoB, VectorRvalList),
 			base_type_layout__get_next_cell_number(NextCellNumber,
 				LayoutInfoB, LayoutInfoC),
-			VectorRval = yes(create(0, VectorRvalList, no, 
-				NextCellNumber, "type_layout")),
+			VectorRval = yes(create(0, VectorRvalList, uniform(no),
+				must_be_static, NextCellNumber,
+				"type_layout")),
 			Rvals1 = [VectorRval | Rvals0],
 			NewAcc = Rvals1 - LayoutInfoC)),
 		ConsList, [] - LayoutInfo0, VectorRvals - LayoutInfo),
@@ -1079,12 +1084,19 @@ base_type_layout__functors_special(_ConsId - ConsTag, Rvals) :-
 base_type_layout__generate_pseudo_type_info(Type, yes(Rval), LayoutInfo0, 
 		LayoutInfo) :-
 	base_type_layout__get_cell_number(LayoutInfo0, CellNumber0),
-	base_type_layout__construct_pseudo_type_info(Type, Rval, 
+	base_type_layout__construct_pseudo_type_info(Type, Rval,
 		CellNumber0, CellNumber),
 	base_type_layout__set_cell_number(CellNumber, LayoutInfo0, LayoutInfo).
 
+:- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
+:- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
 
 base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
+	base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, _,
+		CNum0, CNum).
+
+base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
+		CNum0, CNum) :-
 	(
 		type_to_type_id(Type, TypeId, TypeArgs0)
 	->
@@ -1124,6 +1136,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 		),
 		Pseudo0 = yes(const(data_addr_const(data_addr(TypeModule,
 			type_ctor(info, TypeName, Arity))))),
+		LldsType = data_ptr,
 		CNum1 = CNum0 + 1,
 
 			% generate args, but remove one level of create()s.
@@ -1134,8 +1147,8 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 		list__append(RealArityArg, PseudoArgs1, PseudoArgs),
 
-		Pseudo = create(0, [Pseudo0 | PseudoArgs], no, 
-			CNum0, "type_layout")
+		Pseudo = create(0, [Pseudo0 | PseudoArgs], uniform(no),
+			must_be_static, CNum0, "type_layout")
 	;
 		type_util__var(Type, Var)
 	->
@@ -1144,6 +1157,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 		require(VarInt < MaxVarInt, 
 			"type_ctor_layout: type variable representation exceeds limit"),
 		Pseudo = const(int_const(VarInt)),
+		LldsType = integer,
 		CNum = CNum0
 	;
 		error("type_ctor_layout: type neither var nor non-var")
@@ -1157,7 +1171,7 @@ base_type_layout__construct_pseudo_type_info(Type, Pseudo, CNum0, CNum) :-
 
 base_type_layout__remove_create(Rval0, Rval) :-
 	(
-		Rval0 = create(_, [PTI], _, _, _)
+		Rval0 = create(_, [PTI], _, _, _, _)
 	->
 		Rval = PTI
 	;

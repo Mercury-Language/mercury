@@ -37,12 +37,30 @@
 */
 
 /*
-** WORD_TYPE: the base type for the definition of Word.
+** MR_WORD_TYPE: the base type for the definition of Word.
 ** This must be a C integral type (e.g. int, long, or long long)
 ** without any explicit signedness.
 ** It ought to be the same size as the machine's general-purpose registers.
 */
-#undef	WORD_TYPE
+#undef	MR_WORD_TYPE
+
+/*
+** MR_INT_LEAST16_TYPE:
+** This must be a C integral type (e.g. short, int)
+** without any explicit signedness.
+** It ought to be at least 16 bits in size.
+** It may be bigger, but any bits beyond 16 are not used.
+*/
+#undef	MR_INT_LEAST16_TYPE
+
+/*
+** MR_INT_LEAST32_TYPE:
+** This must be a C integral type (e.g. short, int, long)
+** without any explicit signedness.
+** It ought to be at least 32 bits in size.
+** It may be bigger, but any bits beyond 32 are not used.
+*/
+#undef	MR_INT_LEAST32_TYPE
 
 /*
 ** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -689,8 +689,9 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		Templocs = Templocs0,
 		Instrs = []
 	;
-		Vnrval = vn_create(Tag, MaybeRvals, Unique, Label, Msg),
-		Rval = create(Tag, MaybeRvals, Unique, Label, Msg),
+		Vnrval = vn_create(Tag, MaybeRvals, ArgTypes, StatDyn,
+			Label, Msg),
+		Rval = create(Tag, MaybeRvals, ArgTypes, StatDyn, Label, Msg),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = []
@@ -893,7 +894,7 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 			Templocs = Templocs0,
 			Instrs = []
 		;
-			Vnrval = vn_create(_, _, _, _, _),
+			Vnrval = vn_create(_, _, _, _, _, _),
 			error("create in calculation of new hp")
 		;
 			Vnrval = vn_unop(_, _),

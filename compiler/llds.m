@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module bool, list, map, set, std_util.
+:- import_module bool, assoc_list, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,6 +105,8 @@
 						% redundant; see linkage/2
 						% in llds_out.m.
 			list(maybe(rval)),	% The arguments of the create.
+			create_arg_types,	% May specify the types of the
+						% arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
 		).
@@ -595,8 +597,10 @@
 		% but should not be present in the LLDS at any
 		% stage after code generation.
 
-	;	create(tag, list(maybe(rval)), bool, int, string)
-		% create(Tag, Arguments, IsUnique, LabelNumber):
+	;	create(tag, list(maybe(rval)), create_arg_types,
+			static_or_dynamic, int, string)
+		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
+		%	LabelNumber, CellKind):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
 		% (if the term is constant) as a static constant.
@@ -604,12 +608,20 @@
 		% should be present in the LLDS, others will get transformed
 		% to incr_hp(..., Tag, Size) plus assignments to the fields.
 		%
-		% The boolean should be true if the term
-		% must be unique (e.g. if we're doing to do
-		% destructive update on it).  This will prevent the term
-		% from being used for other purposes as well; unique terms
-		% are always created on the heap, not as constants, and
-		% we must not do common term elimination on them.
+		% MaybeArgTypes may explicitly give the C level types of
+		% the arguments, although usually these types will be implicit.
+		%
+		% StaticOrDynamic may say that the cell must be allocated
+		% dynamically on the heap, because the resulting data structure
+		% must be unique (e.g. if we're doing to do destructive update
+		% on it). It may say that the cell must be allocated
+		% statically, e.g. because the MaybeArgTypes includes
+		% explicitly specified types that differ in size from Word
+		% (the code generator cannot fill in such cells).
+		% Or it may say that this cell can be allocated either way,
+		% subject to other constraints (e.g. a cell cannot be allocated
+		% statically unless all of its components are statically
+		% allocated as well).
 		%
 		% The label number is needed for the case when
 		% we can construct the term at compile-time
@@ -618,6 +630,13 @@
 		% The last argument gives the name of the type constructor
 		% of the function symbol of which this is a cell, for use
 		% in memory profiling.
+		%
+		% For the time being, you must leave the argument types
+		% implicit if the cell is to be unique. This is because
+		% (a) the code generator assumes that each argument of a cell
+		% it creates on the heap is the same size as a Word; (b)
+		% this assumption may be incorrect with explicitly defined
+		% argument types.
 
 	;	mkword(tag, rval)
 		% Given a pointer and a tag, mkword returns a tagged pointer.
@@ -631,6 +650,34 @@
 	;	mem_addr(mem_ref).
 		% The address of a word in the heap, the det stack or
 		% the nondet stack.
+
+:- type static_or_dynamic
+	--->	must_be_static
+	;	can_be_either
+	;	must_be_dynamic.
+
+	% Values of this type specify the C types and therefore the sizes
+	% of the arguments of a create rval.
+	%
+	% If the type is given as yes(LldsType), then the type is the C type
+	% corresponding to LldsType. If the type is given as no, then the
+	% type is implicit; it is what llds_out__rval_type_as_arg says
+	% when given the actual argument.
+:- type create_arg_types
+	--->	uniform(maybe(llds_type))	% All the arguments have
+						% the given C type.
+	;	initial(initial_arg_types, create_arg_types)
+						% Each element of the assoc
+						% list N - T specifies that
+						% the next N arguments have
+						% type T. The types of the
+						% remainder of the arguments
+						% are given by the recursive
+						% create_arg_types.
+	;	none.				% There ought to be no more
+						% arguments.
+
+:- type initial_arg_types == assoc_list(int, maybe(llds_type)).
 
 :- type mem_ref
 	--->	stackvar_ref(int)		% stack slot number
@@ -791,26 +838,53 @@
 	% choosing the right sort of register for a given value
 	% to avoid unnecessary boxing/unboxing of floats.
 :- type llds_type
-	--->	bool		% a boolean value
-				% represented using the C type `Integer'
-	;	integer		% a Mercury `int', represented in C as a
+	--->	bool		% A boolean value
+				% represented using the C type `Integer'.
+	;	int_least8	% A signed value that fits that contains
+				% at least eight bits, represented using the
+				% C type int_least8_t. Intended for use in
+				% static data declarations, not for data
+				% that gets stored in registers, stack slots
+				% etc.
+	;	uint_least8	% An unsigned version of int_least8,
+				% represented using the C type uint_least8_t.
+	;	int_least16	% A signed value that fits that contains
+				% at least sixteen bits, represented using the
+				% C type int_least16_t. Intended for use in
+				% static data declarations, not for data
+				% that gets stored in registers, stack slots
+				% etc.
+	;	uint_least16	% An unsigned version of int_least16,
+				% represented using the C type uint_least16_t.
+	;	int_least32	% A signed value that fits that contains
+				% at least 32 bits, represented using the
+				% C type int_least32_t. Intended for use in
+				% static data declarations, not for data
+				% that gets stored in registers, stack slots
+				% etc.
+	;	uint_least32	% An unsigned version of intleast_32,
+				% represented using the C type uint_least32_t.
+	;	integer		% A Mercury `int', represented in C as a
 				% value of type `Integer' (which is
 				% a signed integral type of the same
-				% size as a pointer)
-	;	unsigned	% something whose C type is `Unsigned'
-				% (the unsigned equivalent of `Integer')
-	;	float		% a Mercury `float', represented in C as a
+				% size as a pointer).
+	;	unsigned	% Something whose C type is `Unsigned'
+				% (the unsigned equivalent of `Integer').
+	;	float		% A Mercury `float', represented in C as a
 				% value of type `Float' (which may be either
-				% `float' or `double', but is usually `double')
-	;	data_ptr	% a pointer to data; represented in C
-				% as a value of C type `Word *'
-	;	code_ptr	% a pointer to code; represented in C
-				% as a value of C type `Code *'
-	;	word.		% something that can be assigned to a value
+				% `float' or `double', but is usually
+				% `double').
+	;	string		% A Mercury string; represented in C as a
+				% value of type `String'.
+	;	data_ptr	% A pointer to data; represented in C
+				% as a value of C type `Word *'.
+	;	code_ptr	% A pointer to code; represented in C
+				% as a value of C type `Code *'.
+	;	word.		% Something that can be assigned to a value
 				% of C type `Word', i.e., something whose
 				% size is a word but which may be either
 				% signed or unsigned
-				% (used for registers, stack slots, etc.)
+				% (used for registers, stack slots, etc).
 
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.
@@ -832,6 +906,13 @@
 
 	% given a register, figure out its type
 :- pred llds__register_type(reg_type::in, llds_type::out) is det.
+
+	% check whether the types of all argument are the same size as word
+:- pred llds__all_args_are_word_size(create_arg_types::in, bool::out) is det.
+
+	% check whether an arg of the given type is the same size as word
+	% (floats may be bigger than a word, but if so, they are boxed)
+:- pred llds__type_is_word_size_as_arg(llds_type::in, bool::out) is det.
 
 :- implementation.
 :- import_module require.
@@ -861,7 +942,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing
@@ -952,3 +1033,33 @@ llds__binop_return_type(float_ge, bool).
 
 llds__register_type(r, word).
 llds__register_type(f, float).
+
+llds__all_args_are_word_size(uniform(MaybeType), AllWordSize) :-
+	llds__maybe_type_is_word_size(MaybeType, AllWordSize).
+llds__all_args_are_word_size(initial(Init, Rest), AllWordSize) :-
+	assoc_list__values(Init, MaybeTypes),
+	list__map(llds__maybe_type_is_word_size, MaybeTypes, InitWordSizes),
+	llds__all_args_are_word_size(Rest, RestWordSize),
+	bool__and_list([RestWordSize | InitWordSizes], AllWordSize).
+llds__all_args_are_word_size(none, yes).
+
+:- pred llds__maybe_type_is_word_size(maybe(llds_type)::in, bool::out) is det.
+
+llds__maybe_type_is_word_size(no, yes).
+llds__maybe_type_is_word_size(yes(Type), IsWordSize) :-
+	llds__type_is_word_size_as_arg(Type, IsWordSize).
+
+llds__type_is_word_size_as_arg(int_least8,   no).
+llds__type_is_word_size_as_arg(uint_least8,  no).
+llds__type_is_word_size_as_arg(int_least16,  no).
+llds__type_is_word_size_as_arg(uint_least16, no).
+llds__type_is_word_size_as_arg(int_least32,  no).
+llds__type_is_word_size_as_arg(uint_least32, no).
+llds__type_is_word_size_as_arg(bool,         yes).
+llds__type_is_word_size_as_arg(integer,      yes).
+llds__type_is_word_size_as_arg(unsigned,     yes).
+llds__type_is_word_size_as_arg(float,        yes).
+llds__type_is_word_size_as_arg(string,       yes).
+llds__type_is_word_size_as_arg(data_ptr,     yes).
+llds__type_is_word_size_as_arg(code_ptr,     yes).
+llds__type_is_word_size_as_arg(word,         yes).

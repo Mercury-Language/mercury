@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -414,7 +414,7 @@ code_exprn__rval_depends_on_reg(var(Var), Vars) :-
 		code_exprn__filter_out_reg_depending(Rvals0, Vars, Rvals),
 		set__empty(Rvals)
 	).
-code_exprn__rval_depends_on_reg(create(_, Rvals, _, _, _), Vars) :-
+code_exprn__rval_depends_on_reg(create(_, Rvals, _, _, _, _), Vars) :-
 	code_exprn__args_depend_on_reg(Rvals, Vars).
 code_exprn__rval_depends_on_reg(mkword(_Tag, Rval), Vars) :-
 	code_exprn__rval_depends_on_reg(Rval, Vars).
@@ -616,7 +616,7 @@ code_exprn__add_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__add_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__add_lval_reg_dependencies(Lval).
 code_exprn__add_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__add_rval_reg_dependencies(create(_, Rvals, _, _, _)) -->
+code_exprn__add_rval_reg_dependencies(create(_, Rvals, _, _, _, _)) -->
 	code_exprn__add_arg_reg_dependencies(Rvals).
 code_exprn__add_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__add_rval_reg_dependencies(Rval).
@@ -689,7 +689,7 @@ code_exprn__rem_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__rem_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__rem_lval_reg_dependencies(Lval).
 code_exprn__rem_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _, _, _)) -->
+code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _, _, _, _)) -->
 	code_exprn__rem_arg_reg_dependencies(Rvals).
 code_exprn__rem_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__rem_rval_reg_dependencies(Rval).
@@ -917,11 +917,16 @@ code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, ExprnOpts,
 		mkword(Tag, Expr)) :-
 	code_exprn__expr_is_constant(Expr0, Vars, ExprnOpts, Expr).
 
-code_exprn__expr_is_constant(create(Tag, Args0, Unique, Label, Msg),
-		Vars, ExprnOpts, create(Tag, Args, Unique, Label, Msg)) :-
-	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
-	StaticGroundTerms = yes,
-	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
+code_exprn__expr_is_constant(create(Tag, Args0, ArgTypes, StatDyn, Label, Msg),
+		Vars, ExprnOpts, NewRval) :-
+	( StatDyn = must_be_static ->
+		NewRval = create(Tag, Args0, ArgTypes, StatDyn, Label, Msg)
+	;
+		ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
+		StaticGroundTerms = yes,
+		code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args),
+		NewRval = create(Tag, Args, ArgTypes, StatDyn, Label, Msg)
+	).
 
 code_exprn__expr_is_constant(var(Var), Vars, ExprnOpts, Rval) :-
 	map__search(Vars, Var, Stat),
@@ -1249,7 +1254,7 @@ code_exprn__find_real_creates([MaybeRval | MaybeRvals], SubCreates) -->
 
 code_exprn__rval_is_real_create(Rval) -->
 	(
-		{ Rval = create(_, _, _, _, _) },
+		{ Rval = create(_, _, _, _, _, _) },
 		code_exprn__get_vars(Vars0),
 		code_exprn__get_options(ExprnOpts),
 		{ \+ code_exprn__expr_is_constant(Rval, Vars0, ExprnOpts, _) }
@@ -1275,8 +1280,11 @@ code_exprn__rval_is_real_create(Rval) -->
 code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 	{ exprn_aux__simplify_rval(Rval0, Rval) },
 	(
-		{ Rval = create(Tag, Rvals, _Unique, _Label, Msg) }
+		{ Rval = create(Tag, Rvals, ArgTypes, _StatDyn, _Label, Msg) }
 	->
+		{ require(lambda([] is semidet,
+			(llds__all_args_are_word_size(ArgTypes, yes))),
+		"trying to construct heap cell with non-word-size arg(s)") },
 		{ list__length(Rvals, Arity) },
 		(
 			{ Arity = 0 }
@@ -1381,7 +1389,7 @@ code_exprn__produce_var(Var, Rval, Code) -->
 			;
 				RvalX = unop(_, _)
 			;
-				RvalX = create(_, _, _, _, _)
+				RvalX = create(_, _, _, _, _, _)
 			;
 				RvalX = mkword(_, _)
 			}

@@ -996,9 +996,9 @@ BEGIN_CODE
 
 Define_entry(do_interpreter);
 	MR_incr_sp(3);
-	MR_stackvar(1) = MR_hp;
-	MR_stackvar(2) = MR_succip;
-	MR_stackvar(3) = MR_maxfr;
+	MR_stackvar(1) = (Word) MR_hp;
+	MR_stackvar(2) = (Word) MR_succip;
+	MR_stackvar(3) = (Word) MR_maxfr;
 
 	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
@@ -1047,9 +1047,9 @@ Define_label(all_done);
 	if (MR_profiling) MR_prof_turn_off_time_profiling();
 #endif
 
-	MR_hp     = MR_stackvar(1);
-	MR_succip = MR_stackvar(2);
-	MR_maxfr  = MR_stackvar(3);
+	MR_hp     = (Word *) MR_stackvar(1);
+	MR_succip = (Code *) MR_stackvar(2);
+	MR_maxfr  = (Word *) MR_stackvar(3);
 	MR_decr_sp(3);
 
 #ifdef MR_LOWLEVEL_DEBUG

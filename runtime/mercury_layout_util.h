@@ -66,22 +66,30 @@ extern	Word	MR_make_var_list(const MR_Stack_Layout_Label *layout,
 ** If it does not, return -1.
 */
 
-extern	int	MR_get_register_number(MR_Live_Lval locn);
+extern	int	MR_get_register_number_long(MR_Long_Lval locn);
+extern	int	MR_get_register_number_short(MR_Short_Lval locn);
 
 /*
-** Given an encoded location, return the value at that location if possible.
-** *succeeded will say whether the attempt was successful.
+** Given an location either in a long or short form, return the value
+** at that location if possible. *succeeded will say whether the attempt
+** was successful.
 **
-** MR_lookup_live_lval looks up locations in the current environment,
+** MR_lookup_{long,short}_lval looks up locations in the current environment,
 ** as indicated by the set of saved registers (including MR_sp and MR_curfr).
-** MR_lookup_live_lval_base does the same job but assumes the environment
-** is given by the given values of MR_sp and MR_curfr, and does not assume
-** that the registers have valid contents unless saved_regs is non-null.
+** MR_lookup_{long,short}_lval_base does the same job but assumes the
+** environment is given by the given values of MR_sp and MR_curfr, and does
+** not assume that the registers have valid contents unless saved_regs is
+** non-null.
 */ 
 
-extern	Word	MR_lookup_live_lval(MR_Live_Lval locn,
+extern	Word	MR_lookup_long_lval(MR_Long_Lval locn,
 			Word *saved_regs, bool *succeeded);
-extern	Word	MR_lookup_live_lval_base(MR_Live_Lval locn,
+extern	Word	MR_lookup_long_lval_base(MR_Long_Lval locn,
+			Word *saved_regs, Word *base_sp, Word *base_curfr,
+			bool *succeeded);
+extern	Word	MR_lookup_short_lval(MR_Short_Lval locn,
+			Word *saved_regs, bool *succeeded);
+extern	Word	MR_lookup_short_lval_base(MR_Short_Lval locn,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			bool *succeeded);
 
@@ -113,22 +121,23 @@ extern	Word	MR_lookup_live_lval_base(MR_Live_Lval locn,
 ** be allocated on the Mercury heap.
 */
 
-extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Var *var,
-			Word *saved_regs, Word *type_params, Word *type_info,
-			Word *value);
-extern	bool	MR_get_type_and_value_base(const MR_Stack_Layout_Var *var,
-			Word *saved_regs, Word *base_sp, Word *base_curfr,
+extern	bool	MR_get_type_and_value(const MR_Stack_Layout_Vars *vars,
+			int var, Word *saved_regs,
 			Word *type_params, Word *type_info, Word *value);
-extern	bool	MR_get_type(const MR_Stack_Layout_Var *var,
+extern	bool	MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars,
+			int var, Word *saved_regs,
+			Word *base_sp, Word *base_curfr,
+			Word *type_params, Word *type_info, Word *value);
+extern	bool	MR_get_type(const MR_Stack_Layout_Vars *vars, int var,
 			Word *saved_regs, Word *type_params, Word *type_info);
-extern	bool	MR_get_type_base(const MR_Stack_Layout_Var *var,
+extern	bool	MR_get_type_base(const MR_Stack_Layout_Vars *vars, int var,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params, Word *type_info);
 extern	bool	MR_get_type_and_value_filtered(
-			const MR_Stack_Layout_Var *var, Word *saved_regs,
-			const char *name, Word *type_params, Word *type_info, 
-			Word *value);
-extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Var *var, 
+			const MR_Stack_Layout_Vars *vars, int var,
+			Word *saved_regs, const char *name,
+			Word *type_params, Word *type_info, Word *value);
+extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Vars *vars, int var, 
 			Word *saved_regs, const char *name, Word *type_params, 
 			Word *type_info);
 

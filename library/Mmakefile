@@ -194,6 +194,17 @@ $(os_subdir)library.o \
 $(os_subdir)library.pic_o \
 	: $(RUNTIME_DIR)/mercury_conf.h
 
+# The object files in this directory depend on many of the header files
+# in the runtime. However, changes to many of these header files require
+# a global make clean. Here we list only the header files from the runtime
+# whose changes don't usually require a make clean but which nevertheless
+# require some files in the library to be recompiled.
+$(os_subdir)benchmarking.o \
+$(os_subdir)benchmarking.pic_o \
+$(os_subdir)std_util.o \
+$(os_subdir)std_util.pic_o \
+	: ../runtime/mercury_stack_layout.h
+
 #-----------------------------------------------------------------------------#
 
 realclean:
