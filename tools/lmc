@@ -24,8 +24,8 @@
 #
 # You can also ask the script to enable low level debugging of the generated
 # code by setting the environment variable MMC_LOWLEVEL_DEBUG to the string
-# "true", and you can ask it to enable low level debugguing of tabling
-# operations by setting the environment variable MMC_TABLE_CDEBUG to the same
+# "true", and you can ask it to enable low level debugging of tabling
+# operations by setting the environment variable MMC_TABLE_DEBUG to the same
 # string.
 #
 # You can ask for additional C flags to compile with by setting the environment
