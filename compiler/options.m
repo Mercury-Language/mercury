@@ -577,7 +577,9 @@
 		;	init_files
 		;	trace_init_files
 		;	linkage
+		;	linkage_special
 		;	mercury_linkage
+		;	mercury_linkage_special
 		;	strip
 		;	demangle
 		;	main
@@ -1170,8 +1172,10 @@ option_defaults_2(link_option, [
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
 	trace_init_files -		accumulating([]),
-	linkage -			string("default"),
-	mercury_linkage -		string("default"),
+	linkage -			string("shared"),
+	linkage_special -		string_special,
+	mercury_linkage -		string("shared"),
+	mercury_linkage_special -	string_special,
 	demangle -			bool(yes),
 	strip -				bool(yes),
 	main -				bool(yes),
@@ -1818,8 +1822,8 @@ long_option("mercury-stdlib-dir",	mercury_standard_library_directory).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
 long_option("trace-init-file",		trace_init_files).
-long_option("linkage",			linkage).
-long_option("mercury-linkage",		mercury_linkage).
+long_option("linkage",			linkage_special).
+long_option("mercury-linkage",		mercury_linkage_special).
 long_option("demangle",			demangle).
 long_option("strip",			strip).
 long_option("main",			main).
@@ -2045,6 +2049,24 @@ special_handler(quoted_ld_flag, string(Flag),
 special_handler(quoted_ld_libflag, string(Flag),
 			OptionTable0, ok(OptionTable)) :-
 	handle_quoted_flag(ld_libflags, Flag, OptionTable0, OptionTable).
+special_handler(linkage_special, string(Flag), OptionTable0, Result) :-
+	( ( Flag = "shared" ; Flag = "static" ) ->
+		Result = ok(
+			(OptionTable0 ^ elem(mercury_linkage) := string(Flag))
+					^ elem(linkage) := string(Flag))
+	;
+		Result = error(
+	"argument of `--linkage' should be either ""shared"" or ""static"".")
+	).
+special_handler(mercury_linkage_special, string(Flag),
+			OptionTable0, Result) :-
+	( ( Flag = "shared" ; Flag = "static" ) ->
+		Result = ok(
+			OptionTable0 ^ elem(mercury_linkage) := string(Flag))
+	;
+		Result = error(
+"argument of `--mercury-linkage' should be either ""shared"" or ""static"".")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -3733,13 +3755,9 @@ options_help_link -->
 		"-L <directory>, --library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for libraries.",
-
-		/* NYI
 		"-R <directory>, --runtime-library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for shared libraries at runtime.",
-		*/
-
 		"-l <library>, --library <library>",
 		"\tLink with the specified library.",
 		"--link-object <object-file>",
@@ -3759,14 +3777,12 @@ options_help_link -->
 		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
 
-		/* NYI
 		"--linkage {shared|static}",
 		"\tSpecify whether to use shared or static linking for",
 		"\texecutables.",
 		"--mercury-linkage {shared|static}",
 		"\tSpecify whether to use shared or static linking when",
-		"\tlinking with Mercury libraries."
-		*/
+		"\tlinking an executable with Mercury libraries.",
 
 		"--init-file-directory <directory>",
 		"\tAppend <directory> to the list of directories to",

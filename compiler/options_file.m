@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -776,6 +776,8 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	;	lib_dirs
 	;	lib_grades
 	;	install_prefix
+	;	linkage
+	;	mercury_linkage
 	.
 
 :- func options_variable_types = list(options_variable_type).
@@ -784,7 +786,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	% depend on C libraries, but C libraries typically do not
 	% depend on Mercury libraries).
 options_variable_types =
-	[grade_flags, mmc_flags, c_flags, java_flags,
+	[grade_flags, linkage, mercury_linkage, mmc_flags, c_flags, java_flags,
 	ilasm_flags, csharp_flags, mcpp_flags,
 	ml_objs, lib_dirs, ml_flags, ld_flags,
 	libraries, ml_libs, c2init_args,
@@ -809,6 +811,8 @@ options_variable_name(libraries) = "LIBRARIES".
 options_variable_name(lib_dirs) = "LIB_DIRS".
 options_variable_name(lib_grades) = "LIBGRADES".
 options_variable_name(install_prefix) = "INSTALL_PREFIX".
+options_variable_name(linkage) = "LINKAGE".
+options_variable_name(mercury_linkage) = "MERCURY_LINKAGE".
 
 :- func options_variable_type_is_target_specific(options_variable_type) = bool.
 
@@ -827,9 +831,10 @@ options_variable_type_is_target_specific(ld_libflags) = yes.
 options_variable_type_is_target_specific(c2init_args) = yes.
 options_variable_type_is_target_specific(libraries) = yes.
 options_variable_type_is_target_specific(lib_dirs) = no.
-	% XXX With Mmake, LIBGRADES is target specific.
-options_variable_type_is_target_specific(lib_grades) = no.
 options_variable_type_is_target_specific(install_prefix) = no.
+options_variable_type_is_target_specific(lib_grades) = yes.
+options_variable_type_is_target_specific(linkage) = yes.
+options_variable_type_is_target_specific(mercury_linkage) = yes.
 
 :- func convert_to_mmc_options(
 		pair(options_variable_type, maybe(list(string)))) =
@@ -884,6 +889,8 @@ mmc_option_type(libraries) = option([], "--mercury-library").
 mmc_option_type(lib_dirs) = option([], "--mercury-library-directory").
 mmc_option_type(lib_grades) = option(["--no-libgrade"], "--libgrade").
 mmc_option_type(install_prefix) = option([], "--install-prefix").
+mmc_option_type(linkage) = option([], "--linkage").
+mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 
 %-----------------------------------------------------------------------------%
 

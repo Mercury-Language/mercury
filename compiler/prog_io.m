@@ -398,10 +398,17 @@ search_for_file(Dirs, FileName, Result) -->
 		Result = error(Message)
 	}.	
 
-search_for_file_returning_dir([], FileName,
-		error("cannot open `" ++ FileName ++ "'")) -->
-	[].
-search_for_file_returning_dir([Dir | Dirs], FileName, R) -->
+search_for_file_returning_dir(Dirs, FileName, R) -->
+	search_for_file_returning_dir(Dirs, Dirs, FileName, R).
+
+:- pred search_for_file_returning_dir(list(dir_name), list(dir_name),
+		file_name, maybe_error(dir_name), io__state, io__state).
+:- mode search_for_file_returning_dir(in, in, in, out, di, uo) is det.
+
+search_for_file_returning_dir([], AllDirs, FileName, error(Msg)) -->
+	{ Msg = append_list(["cannot find `", FileName, "' in directories ",
+			string__join_list(", ", AllDirs), "."]) }.
+search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
 	;
@@ -411,7 +418,7 @@ search_for_file_returning_dir([Dir | Dirs], FileName, R) -->
 	( { R0 = ok } ->
 		{ R = ok(Dir) }
 	;
-		search_for_file_returning_dir(Dirs, FileName, R)
+		search_for_file_returning_dir(Dirs, AllDirs, FileName, R)
 	).
 
 search_for_module_source(Dirs, ModuleName, MaybeFileName) -->

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,6 +34,7 @@ Mmake.deep.params: ;
 #-----------------------------------------------------------------------------#
 
 MLFLAGS += --shared
+MCFLAGS += --linkage shared
 
 #-----------------------------------------------------------------------------#
 

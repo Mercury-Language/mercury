@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -463,6 +463,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		[]
 	),
+
+	option_implies(compile_to_shared_lib, pic, bool(yes)),
+	option_implies(pic, pic_reg, bool(yes)),
+	option_implies(compile_to_shared_lib, linkage, string("shared")),
+	option_implies(compile_to_shared_lib, mercury_linkage,
+		string("shared")),
 
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
@@ -976,6 +982,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			link_library_directories, LinkLibDirs),
 		globals__io_set_option(link_library_directories,
 			accumulating(LinkLibDirs ++ ExtraLinkLibDirs)),
+
+		globals__io_lookup_accumulating_option(
+			runtime_link_library_directories, Rpath),
+		globals__io_set_option(runtime_link_library_directories,
+			accumulating(Rpath ++ ExtraLinkLibDirs)),
 
 		{ ExtraCIncludeDirs = list__map(
 			(func(MercuryLibDir) =

@@ -10,6 +10,7 @@ SUBDIRS = \
 	hard_coded \
 	invalid \
 	misc_tests \
+	mmc_make \
 	recompilation \
 	tabling \
 	term \

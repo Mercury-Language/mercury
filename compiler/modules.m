@@ -1002,15 +1002,17 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 		->
 			SubDirName = "dirs"
 		;
-			% .$O and .pic_o files need to go in the
+			% .$O, .pic_o and .lpic_o files need to go in the
 			% same directory, so that using
 			% .$(EXT_FOR_PIC_OBJECTS) will work.
 			( Ext = ".o"
 			; Ext = ".$O"
+			; Ext = ".lpic_o"
 			; Ext = ".pic_o"
 			; Ext = "$(EXT_FOR_PIC_OBJECTS)"
 			; Ext = "_init.o"
 			; Ext = "_init.$O"
+			; Ext = "_init.lpic_o"
 			; Ext = "_init.pic_o"
 			; Ext = "_init.$(EXT_FOR_PIC_OBJECTS)"
 			)
@@ -1201,12 +1203,19 @@ file_is_arch_or_grade_dependent(Globals, Ext0) :-
 file_is_arch_or_grade_dependent(Globals, Ext) :-
 	globals__lookup_string_option(Globals, executable_file_extension, Ext).
 file_is_arch_or_grade_dependent(Globals, Ext) :-
-	globals__lookup_string_option(Globals, object_file_extension, ObjExt),
+	(
+		globals__lookup_string_option(Globals,
+			object_file_extension, ObjExt)
+	;
+		globals__lookup_string_option(Globals,
+			pic_object_file_extension, ObjExt)
+	;
+		globals__lookup_string_option(Globals,
+			link_with_pic_object_file_extension, ObjExt)
+	),
 	( Ext = ObjExt
 	; Ext = "_init" ++ ObjExt
 	).
-file_is_arch_or_grade_dependent(Globals, Ext) :-
-	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
 file_is_arch_or_grade_dependent(Globals, Ext) :-
 	globals__lookup_string_option(Globals, library_extension, LibExt),
 	( Ext = LibExt

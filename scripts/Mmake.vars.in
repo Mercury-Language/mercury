@@ -129,9 +129,11 @@ ECHO_MERCURY_OPTIONS = { \
 	echo EXTRA_LIB_DIRS += '$(EXTRA_LIB_DIRS)'; \
 	echo LIBGRADES = '$(ALL_LIBGRADES)'; \
 	echo INSTALL_PREFIX = '$(INSTALL_PREFIX)'; \
+	echo LINKAGE = '$(LINKAGE)'; \
+	echo MERCURY_LINKAGE = '$(MERCURY_LINKAGE)'; \
 	}
 
-MC_MAKE_FLAGS	=
+MC_MAKE_FLAGS =
 EXTRA_MC_MAKE_FLAGS =
 
 MCS		= $(MC) --split-c-files --compile-only
@@ -339,6 +341,10 @@ ALL_MLLIBS_DEP	=
 MLLIBS		=
 EXTRA_MLLIBS	=
 LIB_MLLIBS	= $(patsubst %,-l%,$(ALL_EXTRA_LIBRARIES))
+
+# These only have an effect with `mmc --make'.
+LINKAGE = shared
+MERCURY_LINKAGE = @DEFAULT_LINKAGE@
 
 #-----------------------------------------------------------------------------#
 #

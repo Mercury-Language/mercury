@@ -1,6 +1,6 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne.
+# Copyright (C) 1996-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -29,6 +29,7 @@ SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"
 SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"
 EXT_FOR_EXE="@EXT_FOR_EXE@"
 EXT_FOR_PIC_OBJECTS="@EXT_FOR_PIC_OBJECTS@"
+EXT_FOR_LINK_WITH_PIC_OBJECTS="@EXT_FOR_LINK_WITH_PIC_OBJECTS@"
 EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"
 CFLAGS_FOR_PIC="@CFLAGS_FOR_PIC@"
 SHARED_LIBS='@SHARED_LIBS@'
@@ -51,6 +52,7 @@ LIB_PREFIX="@LIB_PREFIX@"
 LIB_LIBPATH="@LIB_LIBPATH@"
 LINK_LIB="@LINK_LIB@"
 LINK_OPT_SEP="@LINK_OPT_SEP@"
+DEFAULT_LINKAGE="@DEFAULT_LINKAGE@"
 FIX_PATH_FOR_CC="@FIX_PATH_FOR_CC@"
 CYGPATH="@CYGPATH@"
 MATH_LIB="@MATH_LIB@"

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne. 
+# Copyright (C) 1996-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -71,6 +71,7 @@ AC_SUBST(SHLIB_RPATH_OPT)
 AC_SUBST(SHLIB_RPATH_SEP)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
+AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(HAVE_DELAY_SLOT)
@@ -92,6 +93,7 @@ AC_SUBST(LIB_PREFIX)
 AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
+AC_SUBST(DEFAULT_LINKAGE)
 AC_SUBST(FIX_PATH_FOR_CC)
 AC_SUBST(CYGPATH)
 AC_SUBST(MATH_LIB)

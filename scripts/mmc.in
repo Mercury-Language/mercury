@@ -27,6 +27,9 @@ case "$MERCURY_INT_DIR" in
 	;;
 esac
 
+DEFAULT_MERCURY_LINKAGE=${MERCURY_LINKAGE=@DEFAULT_LINKAGE@}
+export DEFAULT_MERCURY_LINKAGE
+
 # The default options settings are passed in the DEFAULT_MCFLAGS enviroment
 # variable, rather than on the command line, so that they can be overridden
 # by the value of MCFLAGS in the Mercury.options file. 
@@ -44,6 +47,7 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--c-flag-to-name-object-file \"@OBJFILE_OPT@\" \
 		--object-file-extension \".@OBJ_SUFFIX@\" \
 		--pic-object-file-extension \".@EXT_FOR_PIC_OBJECTS@\" \
+		--link-with-pic-object-file-extension \".@EXT_FOR_LINK_WITH_PIC_OBJECTS@\" \
 		--executable-file-extension \"@EXT_FOR_EXE@\" \
 		--shared-library-extension \".@EXT_FOR_SHARED_LIB@\" \
 		--library-extension \".@LIB_SUFFIX@\"

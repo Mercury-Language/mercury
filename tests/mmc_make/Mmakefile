@@ -1,0 +1,41 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = mmc_make
+
+#-----------------------------------------------------------------------------#
+
+# Any program added here should also be added to the `.cvsignore' file.
+
+MMAKE_USE_MMC_MAKE=yes
+
+PROGS =	\
+		complex_test \
+		hello
+
+# These tests only work if the workspace was compiled with `--use-subdirs'.
+ifneq ($(origin WORKSPACE),undefined)
+    ifeq ($(shell [ -d $(WORKSPACE)/library/Mercury ] || echo cannot_run),cannot_run)
+	PROGS =
+    endif
+endif
+
+SUBDIRS=
+TESTS=$(PROGS)
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+%.runtest: %.res ;
+
+complex_test.log: install_libs
+
+.PHONY: install_libs
+install_libs: start_runtests_local
+	cd lib; \
+	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
+			libcomplex_numbers.install
+
+realclean_local:
+	rm -rf install
+	cd lib; $(MCM) complex_numbers.realclean
+
+#-----------------------------------------------------------------------------#

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,7 +43,8 @@
 		).
 
 	% Find the foreign code files generated when a module is processed.
-:- pred external_foreign_code_files(module_imports::in,
+	% The `pic' field is only used for C foreign code.
+:- pred external_foreign_code_files(pic::in, module_imports::in,
 	list(foreign_code_file)::out, io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -555,24 +556,23 @@ compilation_task(_, java_code) = process_module(compile_to_target_code) -
 compilation_task(_, asm_code(PIC)) =
 		process_module(compile_to_target_code) - 
 			( PIC = pic -> ["--pic"] ; [] ).
-compilation_task(Globals, object_code(PIC)) =
-	target_code_to_object_code(PIC) - get_pic_flags(Globals, PIC).
+compilation_task(_, object_code(PIC)) =
+	target_code_to_object_code(PIC) - get_pic_flags(PIC).
 compilation_task(_, foreign_il_asm(Lang)) =
 	foreign_code_to_object_code(non_pic, Lang) - [].
-compilation_task(Globals, foreign_object(PIC, Lang)) =
-	foreign_code_to_object_code(PIC, Lang) - get_pic_flags(Globals, PIC).
-compilation_task(Globals, factt_object(PIC)) =
-	fact_table_code_to_object_code(PIC) - get_pic_flags(Globals, PIC).
+compilation_task(_, foreign_object(PIC, Lang)) =
+	foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
+compilation_task(_, factt_object(PIC)) =
+	fact_table_code_to_object_code(PIC) - get_pic_flags(PIC).
 
-:- func get_pic_flags(globals, pic) = list(string).
+:- func get_pic_flags(pic) = list(string).
 
-get_pic_flags(Globals, PIC) = Flags :-
-	globals__get_target(Globals, Target),
-	( PIC = pic ->
-		Flags = ( Target = asm -> ["--pic"] ; ["--pic-reg"] )
-	;
-		Flags = []
-	).
+% `--pic-reg' is harmless for architectures and grades where
+% it is not needed (it's only needed for grades using
+% GCC global register variables on x86).
+get_pic_flags(pic) = ["--pic", "--pic-reg"].
+get_pic_flags(link_with_pic) = ["--pic-reg"].
+get_pic_flags(non_pic) = [].
 
 	% Find the files which could be touched by a compilation task.
 :- pred touched_files(target_file::in, compilation_task_type::in,
@@ -629,8 +629,9 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 	(
 	    { Task = compile_to_target_code }
 	->
-	    list__map_foldl(external_foreign_code_files, ModuleImportsList,
-			ForeignCodeFileList),
+	    list__map_foldl(
+		    external_foreign_code_files(target_type_to_pic(FileType)),
+	    	    ModuleImportsList, ForeignCodeFileList),
 	    { ForeignCodeFiles = list__map(
 	    		(func(ForeignFile) = ForeignFile ^ target_file),
 			list__condense(ForeignCodeFileList)) },
@@ -743,64 +744,14 @@ touched_files(TargetFile, fact_table_code_to_object_code(PIC),
 	{ ForeignObjectFiles = list__map((func(F) = F ^ object_file),
 			FactTableForeignCodes) }.
 
-:- pred get_target_code_to_object_code_foreign_files(module_name::in, 
-		list(foreign_code_file)::out, make_info::in, make_info::out,
-		io__state::di, io__state::uo) is det.
-
-get_target_code_to_object_code_foreign_files(ModuleName, ForeignCodeFiles,
-		Info0, Info) -->
-	get_module_dependencies(ModuleName, MaybeImports, Info0, Info1),
-	{ MaybeImports = yes(Imports0) ->
-		Imports = Imports0
-	;
-		% This error should have been caught earlier.
-		% We shouldn't be attempting to build a target
-		% if we couldn't find the dependencies for the
-		% module.
-		error(
-"get_target_code_to_object_code_foreign_files: no module dependencies")
-	},
-
-	%
-	% For `--target asm' there is only one `.s' file per module
-	% so we should compile the foreign code for 
-	%
-	globals__io_get_target(CompilationTarget),
-	( { CompilationTarget = asm } ->
-		{ NestedChildren = Imports ^ nested_children },
-
-		list__map_foldl2(get_module_dependencies, NestedChildren,
-			MaybeNestedImportsList, Info1, Info),
-		{
-		    list__map(
-			(pred(yes(NestedModuleImports)::in,
-					NestedModuleImports::out) is semidet),
-			MaybeNestedImportsList, NestedImportsList)
-		->
-		    ModuleImportsList = [Imports | NestedImportsList]
-		;
-			% This error should have been caught earlier.
-			% We shouldn't be attempting to build a target
-			% if we couldn't find the dependencies for the
-			% module or its nested sub-modules.
-		    error(
-"get_target_code_to_object_code_foreign_files: no nested module dependencies")
-		}
-	;
-		{ Info = Info1 },
-		{ ModuleImportsList = [Imports] }
-	),
-	list__map_foldl(external_foreign_code_files,
-		ModuleImportsList, ForeignCodeFileLists),
-	{ ForeignCodeFiles = list__condense(ForeignCodeFileLists) }.
-
-external_foreign_code_files(Imports, ForeignFiles) -->
+external_foreign_code_files(PIC, Imports, ForeignFiles) -->
 	%
 	% Find externally compiled foreign code files for
 	% `:- pragma foreign_proc' declarations.
 	%
+	globals__io_get_globals(Globals),
+	{ ObjExt = target_extension(Globals, object_code(PIC)) },
 	globals__io_get_target(CompilationTarget),
-	globals__io_lookup_string_option(object_file_extension, ObjExt),
 	{ ModuleName = Imports ^ module_name },
 	(
 		{ CompilationTarget = asm },
@@ -866,6 +817,17 @@ external_foreign_code_files_for_il(ModuleName, Language,
 		% No external file is generated for this foreign language.
 		{ ForeignFiles = [] }
 	).
+
+:- func target_type_to_pic(module_target_type) = pic.
+
+target_type_to_pic(TargetType) =
+		( TargetType = asm_code(PIC) ->
+			PIC
+		; TargetType = object_code(PIC) ->
+			PIC
+		;
+			non_pic
+		).
 
 %-----------------------------------------------------------------------------%
 

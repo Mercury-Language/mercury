@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,22 +33,27 @@
 
 :- import_module hlds__passes_aux.
 
-make_linked_target(MainModuleName - FileType, Succeeded, !Info) -->
+make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
+	{ ExtraOptions =
+		( if FileType = shared_library then ["--compile-to-shared-lib"]
+		  else []
+		) },
+	build_with_module_options(MainModuleName, ExtraOptions,
+		make_linked_target_2(MainModuleName - FileType),
+		Succeeded, Info0, Info).
+
+:- pred make_linked_target_2(linked_target_file::in, list(string)::in,
+		bool::out, make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info) -->
     find_reachable_local_modules(MainModuleName, DepsSuccess,
 		AllModules, !Info),
     globals__io_lookup_bool_option(keep_going, KeepGoing),
     ( { DepsSuccess = no, KeepGoing = no } ->
 	{ Succeeded = no }
     ;
-	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
-	globals__io_lookup_string_option(object_file_extension, ObjExt),
-	{ FileType = shared_library, PicObjExt \= ObjExt ->
-		ObjectCodeType = pic,
-		ObjExtToUse = PicObjExt
-	;
-		ObjectCodeType = non_pic,
-		ObjExtToUse = ObjExt
-	},
+	get_object_code_type(FileType, PIC),
 
 	%
 	% Build the `.c' files first so that errors are
@@ -58,11 +63,11 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info) -->
 	{
 		CompilationTarget = c,
 		IntermediateTargetType = c_code,
-		ObjectTargetType = object_code(ObjectCodeType)
+		ObjectTargetType = object_code(PIC)
 	;
 		CompilationTarget = asm,
-		IntermediateTargetType = asm_code(ObjectCodeType),
-		ObjectTargetType = object_code(ObjectCodeType)
+		IntermediateTargetType = asm_code(PIC),
+		ObjectTargetType = object_code(PIC)
 	;
 		CompilationTarget = il,
 		IntermediateTargetType = il_code,
@@ -80,7 +85,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info) -->
 					IntermediateTargetType) },
 	{ ObjTargets = make_dependency_list(ObjModules, ObjectTargetType) },
 
-	list__map_foldl2(get_foreign_object_targets(ObjectCodeType),
+	list__map_foldl2(get_foreign_object_targets(PIC),
 			ObjModules, ForeignObjTargetsList, !Info),
 	{ ForeignObjTargets = list__condense(ForeignObjTargetsList) },
 
@@ -100,12 +105,11 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info) -->
 	    { BuildDepsResult \= error }
 	->
 	    build_with_check_for_interrupt(
-		build_with_module_options_and_output_redirect(
-			MainModuleName, [],
+		build_with_output_redirect(MainModuleName, 
 			build_linked_target(MainModuleName, FileType,
 				OutputFileName, MaybeTimestamp, AllModules,
-				ObjModules, CompilationTarget, ObjExtToUse,
-				DepsSuccess, BuildDepsResult)),
+				ObjModules, CompilationTarget,
+				PIC, DepsSuccess, BuildDepsResult)),
 		linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 			CompilationTarget),
 		Succeeded, !Info)
@@ -204,14 +208,14 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info) -->
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
 	file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
-	list(module_name)::in, compilation_target::in, string::in, bool::in,
-	dependencies_result::in, list(string)::in, io__output_stream::in,
+	list(module_name)::in, compilation_target::in, pic::in,
+	bool::in, dependencies_result::in, io__output_stream::in,
 	bool::out, make_info::in, make_info::out,
 	io__state::di, io__state::uo) is det.
 
 build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
-		AllModules, ObjModules, CompilationTarget, ObjExtToUse,
-		DepsSuccess, BuildDepsResult, _, ErrorStream, Succeeded,
+		AllModules, ObjModules, CompilationTarget, PIC,
+		DepsSuccess, BuildDepsResult, ErrorStream, Succeeded,
 		Info0, Info) -->
 	globals__io_lookup_maybe_string_option(pre_link_command,
 		MaybePreLinkCommand),
@@ -227,7 +231,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 	( { PreLinkSucceeded = yes } ->
 		build_linked_target_2(MainModuleName, FileType, OutputFileName,
 			MaybeTimestamp, AllModules, ObjModules,
-			CompilationTarget, ObjExtToUse, DepsSuccess,
+			CompilationTarget, PIC, DepsSuccess,
 			BuildDepsResult, ErrorStream, Succeeded,
 			Info0, Info)
 	;
@@ -237,12 +241,12 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 
 :- pred build_linked_target_2(module_name::in, linked_target_type::in,
 	file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
-	list(module_name)::in, compilation_target::in, string::in, bool::in,
-	dependencies_result::in, io__output_stream::in, bool::out,
+	list(module_name)::in, compilation_target::in, pic::in,
+	bool::in, dependencies_result::in, io__output_stream::in, bool::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
-		AllModules, ObjModules, CompilationTarget, ObjExtToUse,
+		AllModules, ObjModules, CompilationTarget, PIC,
 		DepsSuccess, BuildDepsResult, ErrorStream, Succeeded,
 		Info0, Info) -->
 	globals__io_lookup_accumulating_option(link_objects, LinkObjects),
@@ -336,7 +340,8 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 				MakeInfo0, MakeInfo),
 			(
 			    { MaybeImports = yes(Imports) },
-			    external_foreign_code_files(Imports, ForeignFiles)
+			    external_foreign_code_files(PIC,
+			    	Imports, ForeignFiles)
 			;
 			    { MaybeImports = no },
 			    % This error should have been detected earlier.
@@ -348,6 +353,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			(func(foreign_code_file(_, _, ObjFile)) = ObjFile),
 			list__condense(ExtraForeignFiles)) },
 
+		maybe_pic_object_file_extension(PIC, ObjExtToUse),
 		list__map_foldl(
 		    (pred(ObjModule::in, ObjToLink::out, di, uo) is det -->
 			module_name_to_file_name(ObjModule,
@@ -412,10 +418,7 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 		; CompilationTarget = asm
 		}
 	->
-		globals__io_lookup_string_option(object_file_extension,
-			ObjExt),
-		remove_file(MainModuleName, "_init.c", Info1, Info2),
-		remove_file(MainModuleName, "_init" ++ ObjExt, Info2, Info)
+		remove_init_files(MainModuleName, Info1, Info)
 	;
 		{ Info = Info1 }
 	).
@@ -423,6 +426,15 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 %-----------------------------------------------------------------------------%
 
 make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
+	build_with_module_options(MainModuleName, [],
+		make_misc_target(MainModuleName - TargetType), 
+		Succeeded, Info0, Info).
+
+:- pred make_misc_target(pair(module_name, misc_target_type)::in,
+		list(string)::in, bool::out, make_info::in, make_info::out,
+		io__state::di, io__state::uo) is det.
+
+make_misc_target(MainModuleName - TargetType, _, Succeeded, Info0, Info) -->
 	% Don't rebuild dependencies when cleaning up.
 	{ RebuildDeps = Info0 ^ rebuild_dependencies },
 	{ ( TargetType = clean ; TargetType = realclean ) ->
@@ -931,41 +943,82 @@ make_main_module_realclean(ModuleName, Info0, Info) -->
 
 remove_init_files(ModuleName, Info0, Info) -->
 	globals__io_lookup_string_option(object_file_extension, ObjExt),
-	list__foldl2(remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt],
+	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
+	globals__io_lookup_string_option(link_with_pic_object_file_extension,
+		LinkWithPicObjExt),
+	list__foldl2(remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt,
+		"_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt],
 		Info0, Info).
 
 :- pred make_module_clean(module_name::in, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.
 
-make_module_clean(ModuleName, Info0, Info) -->
+make_module_clean(ModuleName, !Info) -->
 	list__foldl2(remove_target_file(ModuleName),
-		[errors, c_code, c_header(mih),
-		object_code(pic), object_code(non_pic),
-		asm_code(pic), asm_code(non_pic),
-		il_code, java_code
-		],
-		Info0, Info1),
+		[errors, c_code, c_header(mih), il_code, java_code],
+		!Info),
 
 	list__foldl2(remove_file(ModuleName),
 		[".used", ".prof", ".derived_schema", ".base_schema"],
-		Info1, Info2),
+		!Info),
 
-	get_module_dependencies(ModuleName, MaybeImports, Info2, Info3),
-	(
-		{ MaybeImports = yes(Imports) },
-		external_foreign_code_files(Imports, ForeignCodeFiles),
-		list__foldl2(
-		    (pred(ForeignCodeFile::in, MakeInfo0::in, MakeInfo::out,
-		    		di, uo) is det -->
-			{ ForeignCodeFile = foreign_code_file(_,
-				TargetFile, ObjectFile) },
-			remove_file(TargetFile, MakeInfo0, MakeInfo1),
-			remove_file(ObjectFile, MakeInfo1, MakeInfo)
-		    ), ForeignCodeFiles, Info3, Info)
+	get_module_dependencies(ModuleName, MaybeImports,
+		!Info),
+	{
+		MaybeImports = yes(Imports),
+		FactTableFiles = Imports ^ fact_table_deps
 	;
-		{ MaybeImports = no },
-		{ Info = Info3 }
-	).
+		MaybeImports = no,
+		FactTableFiles = []
+	},
+
+	list__foldl2(
+		(pred(FactTableFile::in, !.Info::in, !:Info::out,
+				di, uo) is det -->
+			fact_table_file_name(ModuleName, FactTableFile,
+				".c", no, FactTableCFile),
+			remove_file(FactTableCFile, !Info)
+		), FactTableFiles, !Info),
+
+	{ CCodeModule = foreign_language_module_name(ModuleName, c) },
+	remove_file(CCodeModule, ".c", !Info),
+
+	%
+	% Remove object and assembler files.
+	%
+	list__foldl2(
+	    (pred(PIC::in, !.Info::in, !:Info::out, di, uo) is det -->
+		globals__io_get_globals(Globals),
+		{ ObjExt = target_extension(Globals, object_code(PIC)) },
+		{ AsmExt = target_extension(Globals, asm_code(PIC)) },
+		remove_target_file(ModuleName, object_code(PIC), !Info),
+		remove_target_file(ModuleName, asm_code(PIC), !Info),
+		remove_file(CCodeModule, ObjExt, !Info),
+		remove_file(CCodeModule, AsmExt, !Info),
+		list__foldl2(
+		    (pred(FactTableFile::in, !.Info::in, !:Info::out,
+				di, uo) is det -->
+			fact_table_file_name(ModuleName, FactTableFile,
+				ObjExt, no, FactTableObjFile),
+			remove_file(FactTableObjFile, !Info)
+		    ), FactTableFiles, !Info)
+	    ),
+	    [pic, link_with_pic, non_pic], !Info),
+
+	%
+	% Remove IL foreign code files.
+	%
+	{ CSharpModule = foreign_language_module_name(ModuleName, csharp) },
+	remove_file(CSharpModule, foreign_language_file_extension(csharp),
+		!Info),
+	remove_file(CSharpModule, ".dll", !Info),
+	
+	{ McppModule = foreign_language_module_name(ModuleName,
+				managed_cplusplus) },
+	remove_file(McppModule,
+		foreign_language_file_extension(managed_cplusplus),
+		!Info),
+	remove_file(McppModule, ".dll", !Info).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.

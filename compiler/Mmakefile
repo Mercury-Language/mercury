@@ -53,6 +53,7 @@ CFLAGS +=	-I $(ANALYSIS_DIR)
 MLOBJS :=	../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS =	$(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS +=	--no-main --shared
+MCFLAGS +=	--no-main --linkage shared
 C2INITARGS +=	$(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
 
 #
@@ -67,6 +68,7 @@ C2INITARGS +=	$(ANALYSIS_DIR)/$(ANALYSIS_LIB_NAME).init
 #
 ifeq ($(FULLARCH),alpha-dec-osf3.2)
 MLFLAGS += --static
+MCFLAGS += --linkage static
 endif
 
 #-----------------------------------------------------------------------------#

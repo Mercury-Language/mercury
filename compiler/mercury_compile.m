@@ -391,8 +391,10 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 				TargetCodeOnly),
 		( { Result = ok, TargetCodeOnly = no } ->
 			io__output_stream(OutputStream),
+			get_linked_target_type(TargetType),
+			get_object_code_type(TargetType, PIC),
 			compile_target_code__assemble(OutputStream,
-				non_pic, ModuleName, AssembleOK),
+				PIC, ModuleName, AssembleOK),
 			maybe_set_exit_status(AssembleOK)
 		;
 			[]
@@ -1202,10 +1204,12 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 				% C compiler on that.
 				%
 				( { ContainsCCode = yes } ->
+					get_linked_target_type(TargetType),
+					get_object_code_type(TargetType, PIC),
+					maybe_pic_object_file_extension(PIC,
+						Obj),
 					module_name_to_file_name(ModuleName,
 						".c", no, CCode_C_File),
-					globals__io_lookup_string_option(
-						object_file_extension, Obj),
 					{ ForeignModuleName =
 						foreign_language_module_name(
 							ModuleName, c) },
@@ -1214,7 +1218,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 						yes, CCode_O_File),
 					io__output_stream(OutputStream),
 					compile_target_code__compile_c_file(
-						OutputStream, non_pic,
+						OutputStream, PIC,
 						CCode_C_File, CCode_O_File,
 						CompileOK),
 					maybe_set_exit_status(CompileOK),
@@ -1238,13 +1242,14 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 			;
 				module_name_to_file_name(ModuleName, ".c", no,
 					C_File),
-				globals__io_lookup_string_option(
-					object_file_extension, Obj),
+				get_linked_target_type(TargetType),
+				get_object_code_type(TargetType, PIC),
+				maybe_pic_object_file_extension(PIC, Obj),
 				module_name_to_file_name(ModuleName, Obj, yes,
 					O_File),
 				io__output_stream(OutputStream),
 				compile_target_code__compile_c_file(
-					OutputStream, non_pic, C_File, O_File,
+					OutputStream, PIC, C_File, O_File,
 					CompileOK),
 				maybe_set_exit_status(CompileOK)
 			)
@@ -1285,6 +1290,14 @@ mercury_compile__mlds_has_main(MLDS) =
 	;
 		no_main
 	).
+
+:- pred get_linked_target_type(linked_target_type, io__state, io__state).
+:- mode get_linked_target_type(out, di, uo) is det.
+
+get_linked_target_type(LinkedTargetType) -->
+	globals__io_lookup_bool_option(compile_to_shared_lib, MakeSharedLib),
+	{ LinkedTargetType =
+		( MakeSharedLib = yes -> shared_library ; executable ) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3466,10 +3479,12 @@ mercury_compile__c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded) -->
 		compile_target_code__split_c_to_obj(ErrorStream, ModuleName,
 			NumChunks, Succeeded)
 	;
-		globals__io_lookup_string_option(object_file_extension, Obj),
+		get_linked_target_type(LinkedTargetType),
+		get_object_code_type(LinkedTargetType, PIC),
+		maybe_pic_object_file_extension(PIC, Obj),
 		module_name_to_file_name(ModuleName, ".c", no, C_File),
 		module_name_to_file_name(ModuleName, Obj, yes, O_File),
-		compile_target_code__compile_c_file(ErrorStream, non_pic,
+		compile_target_code__compile_c_file(ErrorStream, PIC,
 			C_File, O_File, Succeeded)
 	).
 

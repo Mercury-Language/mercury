@@ -228,6 +228,9 @@ As usual, @file{.c} files are C source code,
 and @file{.o} files are object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
+@file{.lpic_o} files are object code files that can be
+linked with shared libraries, but don't necessarily
+contain position-independent code themselves.
 @file{.mh} and @file{.mih} files are C header files generated
 by the Mercury compiler. The non-standard extensions are necessary
 to avoid conflicts with system header files.
@@ -698,6 +701,19 @@ on assembly generation.  The default is to leave this variable empty.
 @vindex ML
 The executable that invokes the linker.
 
+@item LINKAGE
+@vindex LINKAGE
+Can be set to either @samp{shared} to link with shared libraries,
+or @samp{static} to always link statically.  The default is @samp{shared}.
+This variable only has an effect with @samp{mmc --make}.
+
+@item MERCURY_LINKAGE
+@vindex MERCURY_LINKAGE
+Can be set to either @samp{shared} to link with shared Mercury libraries,
+or @samp{static} to always link with the static versions of Mercury libraries.
+The default is system dependent.
+This variable only has an effect with @samp{mmc --make}.
+
 @item MLFLAGS and EXTRA_MLFLAGS
 @vindex MLFLAGS
 @vindex EXTRA_MLFLAGS
@@ -842,7 +858,7 @@ is no @samp{mmake depend} step and the dependencies are more accurate.
 Parallel builds are not yet supported.
 
 Note that @samp{--use-subdirs} is automatically enabled if you specify
-@samp{--mmake}.
+@samp{mmc --make}.
 
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}
@@ -1129,7 +1145,11 @@ libraries, etc.
 @findex --ml
 @findex --mercury-library
 To use a library when invoking @samp{mmc} directly, use the @samp{--mld}
-and @samp{--ml} options (@pxref{Link options}).
+and @samp{--ml} options (@pxref{Link options}).  You can also specify
+whether to link executables with the shared or static versions of Mercury
+libraries using @samp{--mercury-linkage shared} or
+@samp{--mercury-linkage static} (shared libraries are always linked with
+the shared versions of libraries).
 
 Beware that the directory name that you must use in @samp{EXTRA_LIB_DIRS}
 or as the argument of the @samp{--mld} option is not quite the same as
@@ -6485,6 +6505,14 @@ to be quoted when passed to the shell.
 Append @var{directory} to the list of directories in which
 to search for libraries.
 
+@sp 1
+@item -R @var{directory}
+@itemx --runtime-library-directory @var{directory}
+@findex -R
+@findex --runtime-library-directory
+Append @var{directory} to the list of directories in which
+to search for shared libraries at runtime.
+
 @item -l @var{library}
 @itemx --library @var{library}
 @findex -l
@@ -6543,6 +6571,17 @@ to be passed to @samp{c2init}.
 Append @var{file} to the list of @samp{.init} files
 to be passed to @samp{c2init} when tracing is enabled.
 
+@sp 1
+@item --linkage @{shared,static@}
+@findex --linkage
+Specify whether to use shared or static linking for executables.
+
+@sp 1
+@item --mercury-linkage @{shared,static@}
+@findex --mercury-linkage
+Specify whether to use shared or static linking when
+linking an executable with Mercury libraries.
+
 @end table
 
 @c ----------------------------------------------------------------------------
@@ -6564,6 +6603,7 @@ values will generally work fine.
 @vindex MERCURY_DEFAULT_GRADE
 The default grade to use if no @samp{--grade} option is specified.
 
+@sp 1
 @item MERCURY_STDLIB_DIR
 @vindex MERCURY_STDLIB_DIR
 The directory containing the installed Mercury standard library.

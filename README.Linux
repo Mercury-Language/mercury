@@ -27,6 +27,9 @@ a future release.)
 To use the shared libraries, you must compile your program with
 `mmc --pic-reg' and link with `ml --shared' or add 
 `MGNUCFLAGS=--pic-reg' and `MLFLAGS=--shared' to your Mmake file.
+If you are using `mmc --make' you can set the MERCURY_LINKAGE Mmake
+variable to "shared" in the Mercury.options file or the environment,
+or use `mmc --make --linkage shared'.
 
 Mercury code compiled with `--pic-reg' or with gcc's `-fpic' option has
 what we shall call "PIC linkage", whereas Mercury code compiled without

@@ -1,5 +1,5 @@
-NEWS for Mercury release 0.12:
-------------------------------
+NEWS since Mercury release 0.11:
+--------------------------------
 
 HIGHLIGHTS
 ==========
@@ -11,7 +11,8 @@ Changes to the Mercury language:
   function.
 
 Changes to the Mercury compiler:
-* Nothing yet.
+* It's now easier to use shared libraries on Linux/x86 systems
+  with `mmc --make'.
 
 Portability improvements:
 * Nothing yet.
@@ -67,6 +68,11 @@ Changes to the extras distribution:
 * Nothing yet.
 
 Changes to the Mercury compiler:
+
+* It's now easier to use shared libraries on Linux/x86 systems with
+  `mmc --make'.  See the documentation for the `--mercury-linkage'
+  and `--linkage' options and the `MERCURY_LINKAGE' Mmake variable
+  in the Mercury User's Guide.
 
 * The Mercury compiler now uses `.' and not `:' as the module separator
   in all output.

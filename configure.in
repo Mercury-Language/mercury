@@ -2587,12 +2587,18 @@ SHLIB_RPATH_OPT="-Wl,-rpath,"
 SHLIB_RPATH_SEP=" -Wl,-rpath,"
 CFLAGS_FOR_PIC="-fpic -DMR_PIC"
 EXT_FOR_PIC_OBJECTS=pic_o
+# Object files with extension $EXT_FOR_LINK_WITH_PIC_OBJECTS are used
+# in executables which are linked with shared Mercury libraries.
+# EXT_FOR_LINK_WITH_PIC_OBJECTS should be `lpic_o' if `-DMR_PIC_REG'
+# has any effect (currently only on x86), or `o' otherwise.
+EXT_FOR_LINK_WITH_PIC_OBJECTS=lpic_o
 EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
 # The following variables specify options to $LINK_SHARED_OBJ to
 # allow/disallow unresolved symbols when building shared libraries.
 ALLOW_UNDEFINED=""
 ERROR_UNDEFINED=""
+DEFAULT_LINKAGE="shared"
 
 case "$host" in
 	i*86-*-linux|i*86-*-linux-gnu)
@@ -2632,10 +2638,12 @@ case "$host" in
 			AC_MSG_RESULT(no)
 			;;
 		esac
+		DEFAULT_LINKAGE=static
 		;;
 	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
 		EXT_FOR_SHARED_LIB=so
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		;;
 	i*86-*-freebsd*)
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
@@ -2648,6 +2656,7 @@ case "$host" in
 		EXE_RPATH_SEP=" -R"
 		SHLIB_RPATH_OPT="-R"
 		SHLIB_RPATH_SEP=" -R"
+		DEFAULT_LINKAGE=static
 		;;
 	i*86-*-solaris2.*)
 		AC_MSG_RESULT(yes)
@@ -2675,6 +2684,7 @@ case "$host" in
 		SHLIB_RPATH_OPT="-R"
 		SHLIB_RPATH_SEP=" -R"
 		EXT_FOR_SHARED_LIB=so
+		DEFAULT_LINKAGE=static
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
@@ -2689,6 +2699,7 @@ case "$host" in
 		SHLIB_RPATH_SEP=" -R"
 		CFLAGS_FOR_PIC="-fpic -DMR_PIC"	# used only for libgc.{a,so}
 		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		#
 		# Note that despite the above definition of CFLAGS_FOR_PIC,
 		# we don't use `-fpic' for shared libraries on Solaris
@@ -2748,6 +2759,7 @@ case "$host" in
 		# -fpic not needed on Alpha/OSF, since it is the default
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		;;
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared \
@@ -2764,6 +2776,7 @@ case "$host" in
 		# -fpic not needed on IRIX, since it is the default
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		# shared libraries are incompatible with gcc non-local gotos,
 		case "$GRADE" in
 		reg.gc | none.gc | hlc.gc)
@@ -2785,12 +2798,15 @@ case "$host" in
 		AC_MSG_RESULT(disabled for now because it is untested)
 
 		CFLAGS_FOR_PIC=
+		DEFAULT_LINKAGE=static
 		;;
 	*)
 		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
 		# libgc.a.  If the system doesn't support shared libraries,
 		# then we should set it to empty, not `-fpic'.
 		CFLAGS_FOR_PIC=
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
+		DEFAULT_LINKAGE=static
 		AC_MSG_RESULT(no)
 		;;
 esac
@@ -2818,11 +2834,13 @@ AC_SUBST(SHLIB_RPATH_OPT)
 AC_SUBST(SHLIB_RPATH_SEP)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
+AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(SHARED_LIBS_SH)
+AC_SUBST(DEFAULT_LINKAGE)
 if test $USE_DLLS = "yes"; then
 	AC_DEFINE(MR_USE_DLLS)
 fi

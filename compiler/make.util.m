@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 University of Melbourne.
+% Copyright (C) 2002-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -620,6 +620,7 @@ target_extension(_, il_code) = ".il".
 target_extension(_, il_asm) = ".dll". % XXX ".exe" if the module contains main.
 target_extension(_, java_code) = ".java".
 target_extension(_, asm_code(non_pic)) = ".s".
+target_extension(_, asm_code(link_with_pic)) = ".s".
 target_extension(_, asm_code(pic)) = ".pic_s".
 target_extension(Globals, object_code(PIC)) = Ext :-
 	maybe_pic_object_file_extension(Globals, PIC, Ext).
@@ -630,16 +631,19 @@ target_extension(Globals, foreign_object(PIC, c)) = Ext :-
 		% the reverse mode of this function remains nondet.
 target_extension(_, foreign_object(PIC, csharp)) = "bogus ext" :-
 	( PIC = pic
+	; PIC = link_with_pic
 	; PIC = non_pic
 	),
 	unexpected(this_file, "C# foreign_object").
 target_extension(_, foreign_object(PIC, managed_cplusplus)) = "bogus ext" :-
 	( PIC = pic
+	; PIC = link_with_pic
 	; PIC = non_pic
 	),
 	unexpected(this_file, "MC++ foreign_object").
 target_extension(_, foreign_object(PIC, il)) = "bogus ext" :-
 	( PIC = pic
+	; PIC = link_with_pic
 	; PIC = non_pic
 	),
 	unexpected(this_file, "il foreign_object").

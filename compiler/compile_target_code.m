@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,6 +26,7 @@
 	% files.
 :- type pic
 	--->    pic
+	;	link_with_pic
 	;       non_pic
 	.
 
@@ -102,6 +103,13 @@
 :- pred link_module_list(list(string), bool, io__state, io__state).
 :- mode link_module_list(in, out, di, uo) is det.
 
+	% get_object_code_type(TargetType, PIC)
+	%
+	% Work out whether we should be generating position-independent
+	% object code.
+:- pred get_object_code_type(linked_target_type, pic, io__state, io__state).
+:- mode get_object_code_type(in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 	% Code to deal with `--split-c-files'.
 
@@ -157,8 +165,8 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module libs__options, libs__handle_options.
-:- import_module hlds__passes_aux, libs__trace_params.
+:- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module hlds__error_util, hlds__passes_aux, libs__trace_params.
 :- import_module parse_tree__prog_out.
 :- import_module backend_libs__foreign.
 
@@ -380,15 +388,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		CompilerType = unknown
 	},
 
-	(
-		{ PIC = pic },
-		globals__io_lookup_string_option(cflags_for_pic,
-			CFLAGS_FOR_PIC)
-	;
-		{ PIC = non_pic },
-		{ CFLAGS_FOR_PIC = "" }
-	),
-
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
 	globals__io_lookup_bool_option(split_c_files, SplitCFiles),
 	{ (UseSubdirs = yes ; SplitCFiles = yes) ->
@@ -499,12 +498,30 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	;
 		ProfileDeepOpt = ""
 	},
-	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
+
+	(
+		{ PIC = pic },
+		globals__io_lookup_string_option(cflags_for_pic,
+			CFLAGS_FOR_PIC),
+		{ PIC_Reg = yes }
+	;
+		{ PIC = link_with_pic },
+		{ CFLAGS_FOR_PIC = "" },
+		{ PIC_Reg = yes }
+	;
+		{ PIC = non_pic },
+		{ CFLAGS_FOR_PIC = "" },
+		globals__io_lookup_bool_option(pic_reg, PIC_Reg)
+	),
 	{ PIC_Reg = yes ->
+		% This will be ignored for architectures/grades
+		% where use of position independent code does not
+		% reserve a register.
 		PIC_Reg_Opt = "-DMR_PIC_REG "
 	;
 		PIC_Reg_Opt = ""
 	},
+
 	globals__io_get_tags_method(Tags_Method),
 	{ Tags_Method = high ->
 		TagsOpt = "-DMR_HIGHTAGS "
@@ -676,23 +693,24 @@ compile_java_file(ErrorStream, ModuleName, Succeeded) -->
 %-----------------------------------------------------------------------------%
 
 assemble(ErrorStream, PIC, ModuleName, Succeeded) -->
-	% XXX What is the difference between the PIC argument
-	%     and the setting of the `--pic' option here?
-	%     When can they be different?
-	globals__io_lookup_bool_option(pic, PicOption),
-	{ ( PicOption = yes ; PIC = pic ) ->
-		ReallyPic = pic,
+	{
+		PIC = pic,
 		AsmExt = ".pic_s",
 		GCCFLAGS_FOR_ASM = "-x assembler ",
 		GCCFLAGS_FOR_PIC = "-fpic "
 	;
-		ReallyPic = non_pic,
+		PIC = link_with_pic,
+		% `--target asm' doesn't support any grades for
+		% which `.lpic_o' files are needed.
+		error("compile_target_code__assemble: link_with_pic")
+	;
+		PIC = non_pic,
 		AsmExt = ".s",
 		GCCFLAGS_FOR_ASM = "",
 		GCCFLAGS_FOR_PIC = ""
 	},
 	module_name_to_file_name(ModuleName, AsmExt, no, AsmFile),
-	maybe_pic_object_file_extension(ReallyPic, ObjExt),
+	maybe_pic_object_file_extension(PIC, ObjExt),
 	module_name_to_file_name(ModuleName, ObjExt, yes, ObjFile),
 
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -790,7 +808,13 @@ link_module_list(Modules, Succeeded) -->
 
 	{ file_name_to_module_name(OutputFileName, MainModuleName) },
 
-	globals__io_lookup_string_option(object_file_extension, Obj),
+	globals__io_lookup_bool_option(compile_to_shared_lib,
+		CompileToSharedLib),
+	{ TargetType =
+		(CompileToSharedLib = yes -> shared_library ; executable) },
+	get_object_code_type(TargetType, PIC),
+	maybe_pic_object_file_extension(PIC, Obj),
+
 	globals__io_get_target(Target),
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	io__output_stream(OutputStream),
@@ -818,10 +842,6 @@ link_module_list(Modules, Succeeded) -->
 	( { MakeLibCmdOK = no } ->
     	    { Succeeded = no }
 	;
-	    globals__io_lookup_bool_option(compile_to_shared_lib,
-			CompileToSharedLib),
-	    { TargetType =
-		(CompileToSharedLib = yes -> shared_library ; executable) },
     	    ( { TargetType = executable } ->
 		{ list__map(
 		    (pred(ModuleStr::in, ModuleName::out) is det :-
@@ -882,8 +902,11 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	{ compute_grade(Globals, Grade) },
 
 	standard_library_directory_option(StdLibOpt),
-	globals__io_lookup_string_option(object_file_extension, Obj),
-	{ string__append("_init", Obj, InitObj) },
+
+	get_object_code_type(executable, PIC),
+	maybe_pic_object_file_extension(PIC, ObjExt),
+	{ InitObj = "_init" ++ ObjExt },
+		
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
 	module_name_to_file_name(ModuleName, InitObj, yes, InitObjFileName),
 
@@ -951,7 +974,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 		    maybe_write_string(Verbose,
 			"% Compiling initialization file...\n"),
 
-		    compile_c_file(ErrorStream, non_pic, InitCFileName,
+		    compile_c_file(ErrorStream, PIC, InitCFileName,
 		    	InitObjFileName, CompileOK),
 		    maybe_report_stats(Stats),
 		    ( { CompileOK = no } ->
@@ -1026,22 +1049,66 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				LinkLibraryDirectoriesList),
 		{ join_quoted_string_list(LinkLibraryDirectoriesList, "-L", "",
 				" ", LinkLibraryDirectories) },
-		globals__io_lookup_accumulating_option(link_libraries,
-				LinkLibrariesList),
-		{ join_quoted_string_list(LinkLibrariesList, "-l", "", " ",
-				LinkLibraries) },
+		globals__io_lookup_accumulating_option(
+				runtime_link_library_directories,
+				RuntimeLinkLibraryDirectoriesList),
+		{ join_quoted_string_list(RuntimeLinkLibraryDirectoriesList,
+				"-R", "", " ",
+				RuntimeLinkLibraryDirectories) },
 
-		% Note that LDFlags may contain `-l' options
-		% so it should come after Objects.
-		{ string__append_list(
-			["ml --grade ", Grade, " ", SharedLibOpt,
-			Target_Debug_Opt, TraceOpt, StdLibOpt,
-			LinkFlags, " ", LinkLibraryDirectories,
-			" -- -o ", OutputFileName, " ", Objects, " ",
-			LDFlags, " ", LinkLibraries],
-			LinkCmd) },
-		invoke_shell_command(ErrorStream, verbose_commands,
-			LinkCmd, LinkSucceeded)
+		%
+		% Pass either `-llib' or `PREFIX/lib/GRADE/FULLARCH/liblib.a',
+		% depending on whether we are linking with static or shared
+		% Mercury libraries.
+		%
+		globals__io_lookup_accumulating_option(
+				mercury_library_directories,
+				MercuryLibDirs0),
+		globals__io_lookup_string_option(fullarch, FullArch),
+		{ MercuryLibDirs = list__map(
+				(func(LibDir) = LibDir/"lib"/Grade/FullArch),
+				MercuryLibDirs0) },
+		globals__io_lookup_accumulating_option(link_libraries,
+				LinkLibrariesList0),
+		list__map_foldl2(process_link_library(MercuryLibDirs),
+				LinkLibrariesList0, LinkLibrariesList,
+				yes, LibrariesSucceeded),	
+		(
+			{ LibrariesSucceeded = yes },
+			{ join_quoted_string_list(LinkLibrariesList,
+				"", "", " ", LinkLibraries) },
+
+			globals__io_lookup_string_option(linkage, Linkage),
+			{ LinkageOpt = "--" ++ Linkage },
+			globals__io_lookup_maybe_string_option(
+				mercury_standard_library_directory,
+				MaybeStdLibDir),
+			globals__io_lookup_string_option(mercury_linkage,
+				MercuryLinkage),
+			{ MaybeStdLibDir = yes(_),
+				MercuryLinkageOpt =
+					"--mercury-libs " ++ MercuryLinkage
+			; MaybeStdLibDir = no,
+				MercuryLinkageOpt = ""
+			},
+
+			% Note that LDFlags may contain `-l' options
+			% so it should come after Objects.
+			{ string__append_list(
+				["ml --grade ", Grade, " ", SharedLibOpt,
+				Target_Debug_Opt, TraceOpt, StdLibOpt,
+				LinkageOpt, " ", MercuryLinkageOpt, " ",
+				LinkFlags, " ", LinkLibraryDirectories, " ",
+				RuntimeLinkLibraryDirectories,
+				" -- -o ", OutputFileName, " ", Objects, " ",
+				LDFlags, " ", LinkLibraries],
+				LinkCmd) },
+			invoke_shell_command(ErrorStream, verbose_commands,
+				LinkCmd, LinkSucceeded)
+		;
+			{ LibrariesSucceeded = no },
+			{ LinkSucceeded = no }
+		)
 	),
 	maybe_report_stats(Stats),
 	globals__io_lookup_bool_option(use_grade_subdirs,
@@ -1071,6 +1138,48 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 		{ Succeeded = LinkSucceeded }
 	).
 
+:- pred process_link_library(list(dir_name), string, string, bool, bool,
+		io__state, io__state).
+:- mode process_link_library(in, in, out, in, out, di, uo) is det.
+
+process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded) -->
+	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
+	globals__io_lookup_accumulating_option(mercury_libraries, MercuryLibs),
+	( { MercuryLinkage = "static", list__member(LibName, MercuryLibs) } ->
+		% If we are linking statically with Mercury libraries,
+		% pass the absolute pathname of the `.a' file for
+		% the library.
+		globals__io_lookup_bool_option(use_grade_subdirs,
+			UseGradeSubdirs),
+
+		{ file_name_to_module_name(LibName, LibModuleName) },
+		globals__io_lookup_string_option(library_extension, LibExt),
+
+		globals__io_set_option(use_grade_subdirs, bool(no)),
+		module_name_to_lib_file_name("lib", LibModuleName, LibExt,
+			no, LibFileName),
+		globals__io_set_option(use_grade_subdirs,
+			bool(UseGradeSubdirs)),
+
+		io__input_stream(InputStream),
+		search_for_file_returning_dir(MercuryLibDirs, LibFileName,
+			SearchResult),
+		(
+			{ SearchResult = ok(DirName) },
+			{ LinkerOpt = DirName/LibFileName },
+			io__set_input_stream(InputStream, LibInputStream),
+			io__close_input(LibInputStream)	
+		;
+			{ SearchResult = error(Error) },
+			{ LinkerOpt = "" },
+			write_error_pieces_maybe_with_context(no,
+				0, [words(Error)]),
+			{ !:Succeeded = no }
+		)	
+	;
+		{ LinkerOpt = "-l" ++ LibName }
+	).
+
 :- pred create_archive(io__output_stream, file_name, list(file_name),
 		bool, io__state, io__state).
 :- mode create_archive(in, in, in, out, di, uo) is det.
@@ -1090,6 +1199,61 @@ create_archive(ErrorStream, LibFileName, ObjectList, MakeLibCmdOK) -->
 		" && ", RanLib, " ", LibFileName]) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		MakeLibCmd, MakeLibCmdOK).
+
+get_object_code_type(FileType, ObjectCodeType) -->
+	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
+	globals__io_lookup_string_option(link_with_pic_object_file_extension,
+		LinkWithPicObjExt),
+	globals__io_lookup_string_option(object_file_extension, ObjExt),
+	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
+	globals__io_lookup_bool_option(gcc_global_registers, GCCGlobals),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	globals__io_lookup_bool_option(pic, PIC),
+	globals__io_get_target(Target),
+	{
+	    PIC = yes,
+		% We've been explicitly told to use position independent code.
+	    ObjectCodeType = ( if PicObjExt = ObjExt then non_pic else pic )
+	;
+    	    PIC = no,
+	    (
+		FileType = static_library,
+		ObjectCodeType = non_pic
+	    ;
+		FileType = shared_library,
+		ObjectCodeType =
+			( if PicObjExt = ObjExt then non_pic else pic )
+	    ;
+		FileType = executable,
+		( MercuryLinkage = "shared" ->
+			(
+				% We only need to create `.lpic'
+				% files if `-DMR_PIC_REG' has an
+				% effect, which currently is only
+				% with grades using GCC global
+				% registers on x86.
+				( LinkWithPicObjExt = ObjExt
+				; HighLevelCode = yes
+				; GCCGlobals = no
+				; Target \= c
+				)
+			->
+				ObjectCodeType = non_pic
+			;
+				LinkWithPicObjExt = PicObjExt
+			->
+				ObjectCodeType = pic
+			;
+				ObjectCodeType = link_with_pic
+			)
+		; MercuryLinkage = "static" ->
+			ObjectCodeType = non_pic
+		;
+			% The linkage string is checked by options.m.
+			error("unknown linkage " ++ MercuryLinkage)
+		)
+	    )
+	}.
 
 %-----------------------------------------------------------------------------%
 
@@ -1289,6 +1453,9 @@ substitute_user_command_2([Char | Chars], RevMainModule,
 
 maybe_pic_object_file_extension(Globals, pic, Ext) :-
 	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
+maybe_pic_object_file_extension(Globals, link_with_pic, ObjExt) :-
+	globals__lookup_string_option(Globals,
+		link_with_pic_object_file_extension, ObjExt).
 maybe_pic_object_file_extension(Globals, non_pic, Ext) :-
 	globals__lookup_string_option(Globals, object_file_extension, Ext).
 
