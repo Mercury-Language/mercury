@@ -12,6 +12,7 @@
 
 :- import_module list, int, std_util, term, map.
 
+:- pred test_ops(io__state::di, io__state::uo) is det.
 :- pred test_builtins(io__state::di, io__state::uo) is det.
 :- pred test_discriminated(io__state::di, io__state::uo) is det.
 :- pred test_polymorphism(io__state::di, io__state::uo) is det.
@@ -34,12 +35,35 @@
 
 :- type no_tag		---> 	qwerty(int).
 
+:- type expr		--->	var(string)
+			;	int(int)
+			;	expr + expr
+			;	expr - expr
+			; 	expr * expr
+			;	(expr, expr)
+			;	{expr; expr}
+			;	{{expr}}
+			;	(type)
+			;	blah
+			;	(:-)
+			.
+
 main -->
+	test_ops,
 	test_discriminated,
 	test_polymorphism,
 	test_builtins, 
 	test_other.
 
+
+test_ops -->
+	io__write(var("X") + int(3) * var("X^2") ; (type)), newline,
+	io__write({type}), newline,
+	io__write({:-}), newline,
+	io__write({blah}), newline,
+	io__write((blah ; (type), (type) * blah ; (type))), newline,
+	io__write(((blah ; blah), blah) * blah ; blah), newline,
+	io__write((type) * blah ; (type)), newline.
 
 test_discriminated -->
 	io__write_string("TESTING DISCRIMINATED UNIONS\n"),
