@@ -213,9 +213,7 @@ case $HOST in
 	earth)	
 			case $BRANCH in
 			    latest)
-				# XXX --optimize-higher-order is disabled
-				# until a bug fix is installed
-				OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation --no-optimize-higher-order"
+				OPTIMIZE="-O5 --intermodule-optimization --constraint-propagation"
 				;;
 
 			    0.10)
