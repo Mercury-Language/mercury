@@ -220,7 +220,7 @@
 :- implementation.
 
 :- import_module require, list, map, bimap, tree, int, std_util.
-:- import_module string, varset.
+:- import_module string, varset, term.
 
 :- type code_info	--->
 		code_info(
@@ -491,7 +491,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	->
 		(
 			{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) },
-			{ not Lval0 = TargetReg }
+			{ Lval0 \= TargetReg }
 		->
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
@@ -504,7 +504,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		{ VarStat = cashed(Exprn, target(TargetReg1)) }
 	->
 		(
-			{ not TargetReg = TargetReg1 }
+			{ TargetReg \= TargetReg1 }
 		->
 			code_info__generate_expression(Exprn,
 							TargetReg1, Code0),
@@ -549,11 +549,11 @@ code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 		{ Field = 0 }
 	;
 		{ Tag = unsimple(TagNum) },
-		{ HInc = 1 },
+		{ HInc is Arity + 1 },
 		{ Field = 1 }
 	),
 	(
-		{ Arity > 0 }
+		{ HInc > 0 }
 	->
 		{ CodeA = [
 			assign(TargetReg, lval(hp)) - "Get the heap memory",
@@ -563,8 +563,8 @@ code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 		] }
 	;
 		{ CodeA = [
-			assign(TargetReg, iconst(TagNum)) -
-					"Assign an enumeration"
+			assign(TargetReg, mkword(TagNum, iconst(0))) -
+					"Assign a constant"
 		] }
 	),
 	code_info__generate_cons_args(TargetReg, TagNum, Field, Args, CodeB),
@@ -588,6 +588,8 @@ code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
 :- pred code_info__generate_cons_args(lval, int, int, list(rval),
 				list(instruction), code_info, code_info).
 :- mode code_info__generate_cons_args(in, in, in, in, out, in, out) is det.
+
+:- code_info__generate_cons_args(_, _, _, X, _, _, _) when X. % indexing
 
 code_info__generate_cons_args(_Reg, _Tag, _Field0, [], []) --> [].
 code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
@@ -1050,7 +1052,8 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 		{ Code = tree(node(Code0), RestCode) }
 	;
 			% This case should only occur in the presence
-			% of `erroneous' procedures.
+			% of `erroneous' or `failure' procedures, i.e.
+			% procedures which never succeed.
 		code_info__variable_is_live(Var)
 	->
 		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
@@ -1154,6 +1157,8 @@ code_info__variable_dependencies(Var, cashed(Exprn, _), V0, V) -->
 						code_info, code_info).
 :- mode code_info__expressions_dependencies(in, in, in, out, in, out) is det.
 
+:- code_info__expressions_dependencies(_, X, _, _, _, _) when X. % Indexing
+
 code_info__expressions_dependencies(_Var, [], V, V) --> [].
 code_info__expressions_dependencies(Var, [R|Rs], V0, V) -->
 	code_info__expression_dependencies(Var, R, V0, V1),
@@ -1163,6 +1168,8 @@ code_info__expressions_dependencies(Var, [R|Rs], V0, V) -->
 				variable_info, variable_info,
 						code_info, code_info).
 :- mode code_info__expression_dependencies(in, in, in, out, in, out) is det.
+
+:- code_info__expression_dependencies(_, X, _, _, _, _) when X. % Indexing
 
 code_info__expression_dependencies(Var, lval(Lval), V0, V) -->
 	code_info__lvalue_dependencies(Var, Lval, V0, V).
@@ -1193,6 +1200,8 @@ code_info__expression_dependencies(_Var, sconst(_), V, V) --> [].
 						code_info, code_info).
 :- mode code_info__lvalues_dependencies(in, in, in, out, in, out) is det.
 
+:- code_info__lvalues_dependencies(_, X, _, _, _, _) when X. % Indexing
+
 code_info__lvalues_dependencies(_Var, [], V, V) --> [].
 code_info__lvalues_dependencies(Var, [L|Ls], V0, V) -->
 	code_info__lvalue_dependencies(Var, L, V0, V1),
@@ -1203,6 +1212,8 @@ code_info__lvalues_dependencies(Var, [L|Ls], V0, V) -->
 						code_info, code_info).
 :- mode code_info__lvalue_dependencies(in, in,
 						in, out, in, out) is det.
+
+:- code_info__lvalue_dependencies(_, X, _, _, _, _) when X. % Indexing
 
 code_info__lvalue_dependencies(_Var, stackvar(_), V, V) --> [].
 code_info__lvalue_dependencies(_Var, reg(R), V0, V) -->
@@ -1263,6 +1274,8 @@ code_info__reconstruct_registers([Var - VarStat|VarStats]) -->
 
 :- pred code_info__reenter_registers(var, list(lval), code_info, code_info).
 :- mode code_info__reenter_registers(in, in, in, out) is det.
+
+:- code_info__reenter_registers(_, X, _, _) when X. % Indexing
 
 code_info__reenter_registers(_Var, []) --> [].
 code_info__reenter_registers(Var, [L|Ls]) -->
@@ -1510,8 +1523,10 @@ code_info__make_assignment_comment(Var, _Lval, Comment) -->
 	->
 		{ string__append("Assigning from ", Name, Comment) }
 	;
-		{ Comment = "Assigning from an anonymous variable" }
+		{ term__var_to_int(Var, Int) },
+		{ string__int_to_string(Int, IntString) },
+		{ string__append("Assigning from variable number ", IntString,
+			Comment) }
 	).
 
 %---------------------------------------------------------------------------%
-
