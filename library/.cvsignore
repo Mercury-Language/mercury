@@ -1,4 +1,5 @@
 sicstus_compile sicstus_saved_state
+io.h
 *.c
 *.prof
 library.nu.nl
