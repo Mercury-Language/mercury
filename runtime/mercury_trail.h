@@ -47,10 +47,10 @@
 	} while(0)
 
 	  /*
-	  ** Unwind restoration info back to old.  `kind' indicates
+	  ** Unwind restoration info back to `old'.  `kind' indicates
 	  ** whether we are restoring or just discarding the info.
 	  */
-#define MR_discard_ticket_because(old, kind)			\
+#define MR_reset_ticket(old, kind)				\
 	do {							\
 		MR_TrailEntry *old_trail_ptr =  		\
 			(MR_TrailEntry *)old;			\
@@ -59,18 +59,12 @@
 			MR_untrail_to(old_trail_ptr, kind);	\
 			restore_transient_registers();		\
 		}						\
-		--MR_ticket_counter;				\
 	} while(0)
 
-
-	/* restore to the state back to old and discard restoration info */
-#define MR_restore_and_discard_ticket(old)	\
-	MR_discard_ticket_because(old, MR_undo)
-
-	/* discard restoration info back to old */
-#define MR_discard_ticket(old) \
-	MR_discard_ticket_because(old, MR_commit)
-
+#define MR_discard_ticket()					\
+	do {							\
+		--MR_ticket_counter;				\
+	} while(0)
 
 /*---------------------------------------------------------------------------*/
 
