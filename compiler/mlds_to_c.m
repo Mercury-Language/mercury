@@ -1960,7 +1960,7 @@ mlds_output_stmt(Indent, FuncInfo, if_then_else(Cond, Then0, MaybeElse),
 	;
 		[]
 	).
-mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, Cases, Default),
+mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
 		Context) -->
 	mlds_indent(Context, Indent),
 	io__write_string("switch ("),

@@ -33,7 +33,8 @@
 
 :- implementation.
 
-:- import_module ml_code_gen, ml_switch_gen, builtin_ops, type_util.
+:- import_module ml_code_gen, ml_switch_gen, ml_simplify_switch.
+:- import_module builtin_ops, type_util.
 :- import_module globals, options.
 
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
@@ -67,7 +68,6 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	%
 	% Generate new labels
 	%
-	ml_gen_new_label(FailLabel),
 	ml_gen_new_label(EndLabel),
 	{ GotoEndStatement = mlds__statement(
 		goto(EndLabel),
@@ -100,8 +100,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 		% Generate the code etc. for the hash table
 		%
 	ml_string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-		Context, FailLabel, EndLabel, Strings, Labels, NextSlots,
-		SlotsStatements, SlotsCases),
+		Context, Strings, NextSlots, SlotsCases),
 
 	%
 	% Generate the following local constant declarations:
@@ -126,61 +125,35 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	ml_qualify_var(StringTableName, StringTableLval),
 	
 	%
-	% Generate code which does the hash table lookup
-	% Note that we generate both the switch version and the
-	% computed goto version, and then use whichever one is
-	% appropriate for the target.
+	% Generate code which does the hash table lookup.
 	%
 
-	ml_gen_info_get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, prefer_switch, PreferSwitch) },
-	(
-		{ target_supports_computed_goto(Globals) },
-		\+ {
-			PreferSwitch = yes,
-			target_supports_int_switch(Globals)
-		}
-	->
-		{ UseComputedGoto = yes },
-		{
-			FoundMatch = mlds__statement(
-				block([], [
-					mlds__statement(atomic(comment(
-						"we found a match")),
-						MLDS_Context),
-					mlds__statement(atomic(comment(
-					    "jump to the corresponding code")),
-						MLDS_Context),
-					mlds__statement(
-					    computed_goto(lval(SlotVarLval),
-							Labels),
-						MLDS_Context)
-				]),
-				MLDS_Context)
-		}
-	;
-		{ UseComputedGoto = no },
-		{
-			FoundMatch = mlds__statement(
-				block([], [
-					mlds__statement(atomic(comment(
-						"we found a match")),
-						MLDS_Context),
-					mlds__statement(atomic(comment(
-					"dispatch to the corresponding code")),
-						MLDS_Context),
-					mlds__statement(
-						switch(mlds__native_int_type,
-							lval(SlotVarLval),
-							SlotsCases,
-							default_is_unreachable),
-						MLDS_Context),
-					GotoEndStatement
-				]),
-				MLDS_Context)
-		}
-	),
+	{ SwitchStmt0 = switch(mlds__native_int_type, lval(SlotVarLval),
+		range(0, TableSize - 1),
+		SlotsCases, default_is_unreachable) },
+	ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement),
 	{
+		FoundMatchCond =
+			binop(and,
+				binop(ne,
+					lval(StringVarLval),
+					const(null(ml_string_type))),
+				binop(str_eq,
+					lval(StringVarLval),
+					VarRval)
+			),
+		FoundMatchCode = mlds__statement(
+			block([], [
+				mlds__statement(atomic(comment(
+					"we found a match")),
+					MLDS_Context),
+				mlds__statement(atomic(comment(
+				"dispatch to the corresponding code")),
+					MLDS_Context),
+				SwitchStatement,
+				GotoEndStatement
+			]),
+			MLDS_Context),
 		LoopBody = ml_gen_block([], [
 			mlds__statement(atomic(comment(
 				"lookup the string for this hash slot")),
@@ -195,19 +168,8 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 				"did we find a match?")),
 				MLDS_Context),
 			mlds__statement(
-				if_then_else(
-					binop(and,
-						binop(ne,
-							lval(StringVarLval),
-							const(null(
-								ml_string_type))),
-						binop(str_eq,
-							lval(StringVarLval),
-							VarRval)
-					),
-					FoundMatch,
-					no
-				),
+				if_then_else(FoundMatchCond, FoundMatchCode,
+					no),
 				MLDS_Context),
 			mlds__statement(atomic(comment(
 			      "no match yet, so get next slot in hash chain")),
@@ -242,10 +204,6 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 					yes), % this is a do...while loop
 				MLDS_Context)
 			],
-		FailLabelStatement =
-			mlds__statement(
-				label(FailLabel),
-				MLDS_Context),
 		FailComment =
 			mlds__statement(
 				atomic(comment("no match, so fail")),
@@ -266,69 +224,43 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 	%
 	{ MLDS_Decls = [NextSlotsDefn, StringTableDefn,
 		SlotVarDefn, StringVarDefn] },
-	{ UseComputedGoto = yes ->
-		MLDS_Statements =
-			HashLookupStatements ++
-			[FailLabelStatement, FailComment | FailStatements] ++
-			[GotoEndStatement] ++
-			SlotsStatements ++
-			[EndLabelStatement, EndComment]
-	;
-		MLDS_Statements = HashLookupStatements ++
+	{ MLDS_Statements = HashLookupStatements ++
 			[FailComment | FailStatements] ++
-			[EndLabelStatement, EndComment]
-	}.
+			[EndLabelStatement, EndComment] }.
 
 %-----------------------------------------------------------------------------%
 
 :- pred ml_string_switch__gen_hash_slots(int::in, int::in,
 		map(int, hash_slot)::in, code_model::in, prog_context::in,
-		mlds__label::in, mlds__label::in,
-		list(mlds__initializer)::out, list(mlds__label)::out,
-		list(mlds__initializer)::out, mlds__statements::out,
+		list(mlds__initializer)::out, list(mlds__initializer)::out,
 		list(mlds__switch_case)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
-		Context, FailLabel, EndLabel, Strings, Labels, NextSlots,
-		MLDS_Statements, MLDS_Cases) -->
-	{ MLDS_Context = mlds__make_context(Context) },
+		Context, Strings, NextSlots, MLDS_Cases) -->
 	( { Slot = TableSize } ->
-		{
-			Strings = [],
-			Labels = [],
-			NextSlots = [],
-			MLDS_Statements = [],
-			MLDS_Cases = []
-		}
+		{ Strings = [] },
+		{ NextSlots = [] },
+		{ MLDS_Cases = [] }
 	;
+		{ MLDS_Context = mlds__make_context(Context) },
 		ml_string_switch__gen_hash_slot(Slot, HashSlotMap,
-			CodeModel, MLDS_Context, FailLabel, EndLabel,
-			String, Label, NextSlot, SlotStatements, SlotCases),
-		{ Slot1 is Slot + 1 },
-		{ 
-			Strings = [String | Strings0],
-			Labels = [Label | Labels0],
-			NextSlots = [NextSlot | NextSlots0],
-			MLDS_Statements = SlotStatements ++ MLDS_Statements0,
-			MLDS_Cases = SlotCases ++ MLDS_Cases0
-		},
-		ml_string_switch__gen_hash_slots(Slot1, TableSize, HashSlotMap,
-			CodeModel, Context, FailLabel, EndLabel,
-			Strings0, Labels0, NextSlots0, MLDS_Statements0,
-			MLDS_Cases0)
+			CodeModel, MLDS_Context, String, NextSlot, SlotCases),
+		ml_string_switch__gen_hash_slots(Slot + 1, TableSize,
+			HashSlotMap, CodeModel, Context,
+			Strings0, NextSlots0, MLDS_Cases0),
+		{ Strings = [String | Strings0] },
+		{ NextSlots = [NextSlot | NextSlots0] },
+		{ MLDS_Cases = SlotCases ++ MLDS_Cases0 }
 	).
 
 :- pred ml_string_switch__gen_hash_slot(int::in, map(int, hash_slot)::in,
-		code_model::in, mlds__context::in, mlds__label::in,
-		mlds__label::in, mlds__initializer::out,
-		mlds__label::out, mlds__initializer::out,
-		mlds__statements::out, list(mlds__switch_case)::out,
+		code_model::in, mlds__context::in, mlds__initializer::out,
+		mlds__initializer::out, list(mlds__switch_case)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_string_switch__gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
-		FailLabel, EndLabel, init_obj(StringRval), Label,
-		init_obj(NextSlotRval), MLDS_Statements, MLDS_Cases) -->
+		init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases) -->
 	(
 		{ map__search(HashSlotMap, Slot, hash_slot(Case, Next)) }
 	->
@@ -340,31 +272,21 @@ ml_string_switch__gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
 			error("ml_string_switch__gen_hash_slots: string expected")
 		},
 		{ StringRval = const(string_const(String)) },
-		ml_gen_new_label(Label),
+		ml_gen_goal(CodeModel, Goal, GoalStatement),
+
 		{ string__append_list(["case """, String, """"],
 			CommentString) },
-		{ LabelComment = mlds__statement(
+		{ Comment = mlds__statement(
 			atomic(comment(CommentString)),
 			MLDS_Context) },
-		{ LabelStatement = mlds__statement(
-			label(Label),
+		{ CaseStatement = mlds__statement(
+			block([], [Comment, GoalStatement]),
 			MLDS_Context) },
-		ml_gen_goal(CodeModel, Goal, GoalStatement),
-		{ JumpComment = mlds__statement(
-			atomic(comment("jump to end of switch")),
-			MLDS_Context) },
-		{ JumpStatement = mlds__statement(
-			goto(EndLabel),
-			MLDS_Context) },
-		{ MLDS_Statements = [LabelComment, LabelStatement,
-			GoalStatement, JumpComment, JumpStatement] },
 		{ MLDS_Cases = [[match_value(const(int_const(Slot)))] -
-			GoalStatement] }
+			CaseStatement] }
 	;
 		{ StringRval = const(null(ml_string_type)) },
-		{ Label = FailLabel },
 		{ NextSlotRval = const(int_const(-2)) },
-		{ MLDS_Statements = [] },
 		{ MLDS_Cases = [] }
 	).
 

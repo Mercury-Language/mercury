@@ -234,10 +234,10 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 		% are in a tail position iff the switch is in a
 		% tail position.
 		%
-		Stmt0 = switch(Type, Val, Cases0, Default0),
+		Stmt0 = switch(Type, Val, Range, Cases0, Default0),
 		Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals),
 		Default = mark_tailcalls_in_default(Default0, AtTail, Locals),
-		Stmt = switch(Type, Val, Cases, Default)
+		Stmt = switch(Type, Val, Range, Cases, Default)
 	;
 		Stmt0 = label(_),
 		Stmt = Stmt0

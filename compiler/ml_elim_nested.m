@@ -670,11 +670,11 @@ flatten_stmt(Stmt0, Stmt) -->
 		flatten_maybe_statement(MaybeElse0, MaybeElse),
 		{ Stmt = if_then_else(Cond, Then, MaybeElse) }
 	;
-		{ Stmt0 = switch(Type, Val0, Cases0, Default0) },
+		{ Stmt0 = switch(Type, Val0, Range, Cases0, Default0) },
 		fixup_rval(Val0, Val),
 		list__map_foldl(flatten_case, Cases0, Cases),
 		flatten_default(Default0, Default),
-		{ Stmt = switch(Type, Val, Cases, Default) }
+		{ Stmt = switch(Type, Val, Range, Cases, Default) }
 	;
 		{ Stmt0 = label(_) },
 		{ Stmt = Stmt0 }
@@ -1190,7 +1190,7 @@ stmt_contains_defn(Stmt, Defn) :-
 		; maybe_statement_contains_defn(MaybeElse, Defn)
 		)
 	;
-		Stmt = switch(_Type, _Val, Cases, Default),
+		Stmt = switch(_Type, _Val, _Range, Cases, Default),
 		( cases_contains_defn(Cases, Defn)
 		; default_contains_defn(Default, Defn)
 		)
@@ -1339,7 +1339,7 @@ stmt_contains_var(Stmt, Name) :-
 		; maybe_statement_contains_var(MaybeElse, Name)
 		)
 	;
-		Stmt = switch(_Type, Val, Cases, Default),
+		Stmt = switch(_Type, Val, _Range, Cases, Default),
 		( rval_contains_var(Val, Name)
 		; cases_contains_var(Cases, Name)
 		; default_contains_var(Default, Name)

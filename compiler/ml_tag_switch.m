@@ -32,7 +32,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_module.
-:- import_module ml_code_gen, ml_switch_gen, ml_unify_gen.
+:- import_module ml_code_gen, ml_switch_gen, ml_unify_gen, ml_simplify_switch.
 :- import_module builtin_ops, type_util.
 
 :- import_module assoc_list, map, int, string, require, std_util.
@@ -56,7 +56,7 @@ ml_tag_switch__generate(Cases, Var, CodeModel, CanFail, Context,
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	ml_variable_type(Var, Type),
 	{ switch_util__get_ptag_counts(Type, ModuleInfo,
-		_MaxPrimary, PtagCountMap) },
+		MaxPrimary, PtagCountMap) },
 	{ map__to_assoc_list(PtagCountMap, PtagCountList) },
 	{ map__init(PtagCaseMap0) },
 	{ switch_util__group_cases_by_ptag(Cases, PtagCaseMap0,
@@ -72,10 +72,11 @@ ml_tag_switch__generate(Cases, Var, CodeModel, CanFail, Context,
 
 	% package up the results into a switch statement
 
-	{ SwitchStmt = switch(mlds__native_int_type, PTagRval, MLDS_Cases,
-		Default) },
-	{ SwitchStatement = mlds__statement(SwitchStmt,
-		mlds__make_context(Context)) },
+	{ Range = range(0, MaxPrimary) },
+	{ SwitchStmt0 = switch(mlds__native_int_type, PTagRval, Range,
+		MLDS_Cases, Default) },
+	{ MLDS_Context = mlds__make_context(Context) },
+	ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement),
 	{ MLDS_Decls = [] },
 	{ MLDS_Statements = [SwitchStatement] }.
 
@@ -180,11 +181,11 @@ ml_tag_switch__gen_stag_switch(Cases, PrimaryTag, StagLocn, Var,
 
 	% package up the results into a switch statement
 
-	{ SwitchStmt = switch(mlds__native_int_type, STagRval, MLDS_Cases,
-		Default) },
-	{ SwitchStatement = mlds__statement(SwitchStmt,
-		mlds__make_context(Context)) },
-	{ MLDS_Statement = SwitchStatement }.
+	{ Range = range_unknown }, % XXX could do better
+	{ SwitchStmt = switch(mlds__native_int_type, STagRval, Range,
+		MLDS_Cases, Default) },
+	{ MLDS_Context = mlds__make_context(Context) },
+	ml_simplify_switch(SwitchStmt, MLDS_Context, MLDS_Statement).
 
 :- pred ml_tag_switch__gen_stag_cases(stag_goal_list, code_model,
 		list(mlds__switch_case), ml_gen_info, ml_gen_info).

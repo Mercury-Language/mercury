@@ -705,8 +705,12 @@
 			mlds__type,
 			mlds__rval,
 
+			% The range of possible values which the
+			% value might take (if known)
+			mlds__switch_range,
+
 			% The different cases
-			list(mlds__switch_case),
+			mlds__switch_cases,
 
 			% What to do if none of the cases match
 			mlds__switch_default
@@ -816,11 +820,18 @@ XXX Full exception handling support is not yet implemented.
 %
 % Extra info for switches
 %
+	% The range of possible values which the
+	% switch variable might take (if known)
+:- type mlds__switch_range
+	--->	range_unknown
+	;	range(range_min::int, range_max::int).
+			% From range_min to range_max, inclusive.
 
 	% Each switch case consists of the conditions to match against,
 	% and the statement to execute if the match succeeds.
 	% Unlike C, cases do NOT fall through; if you want to achieve that
 	% effect, you need to use an explicit goto.
+:- type mlds__switch_cases == list(mlds__switch_case).
 :- type mlds__switch_case == pair(mlds__case_match_conds, mlds__statement).
 
 	% case_match_conds should be a _non-empty_ list of conditions;

@@ -111,7 +111,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
 		; maybe_statement_contains_statement(MaybeElse, SubStatement)
 		)
 	;
-		Stmt = switch(_Type, _Val, Cases, Default),
+		Stmt = switch(_Type, _Val, _Range, Cases, Default),
 		( cases_contains_statement(Cases, SubStatement)
 		; default_contains_statement(Default, SubStatement)
 		)

@@ -94,10 +94,8 @@
 
 :- implementation.
 
-% These ones are not yet implemented yet:
-% :- import_module ml_lookup_switch.
-:- import_module ml_tag_switch, ml_dense_switch, ml_string_switch.
-:- import_module ml_code_gen, ml_unify_gen, ml_code_util.
+:- import_module ml_tag_switch, ml_string_switch.
+:- import_module ml_code_gen, ml_unify_gen, ml_code_util, ml_simplify_switch.
 :- import_module switch_util, type_util.
 :- import_module options.
 
@@ -129,6 +127,8 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
 	(
 /**************
 XXX Lookup switches are NYI
+When we do get around to implementing them,
+they should probably be handled in ml_simplify_switch rather than here.
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
 		% Note that if/when the MLDS back-end supports execution
@@ -152,29 +152,6 @@ XXX Lookup switches are NYI
 	;
 **************/
 		%
-		% Try using a "dense" (computed goto) switch
-		%
-		{ Indexing = yes },
-		{ SwitchCategory = atomic_switch },
-		{ target_supports_computed_goto(Globals) },
-		\+ {
-			target_supports_int_switch(Globals),
-			globals__lookup_bool_option(Globals, prefer_switch, yes)
-		},
-		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, dense_switch_size,
-			DenseSize) },
-		{ NumCases >= DenseSize },
-		{ globals__lookup_int_option(Globals, dense_switch_req_density,
-			ReqDensity) },
-		ml_dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail,
-			ReqDensity, FirstVal, LastVal, CanFail1)
-	->
-		ml_dense_switch__generate(TaggedCases, FirstVal, LastVal,
-			CaseVar, CodeModel, CanFail1, Context,
-			MLDS_Decls, MLDS_Statements)
-	;
-		%
 		% Try using a string hash switch
 		%
 		{ Indexing = yes },
@@ -190,7 +167,8 @@ XXX Lookup switches are NYI
 		;
 			{ target_supports_int_switch(Globals) }
 		),
-		% XXX Currently string hash switches always use gotos.
+		% XXX Currently string hash switches always use gotos
+		% (to break out of the hash chain loop).
 		% We should change that, so that we can use string hash
 		% switches for the Java back-end too.
 		{ target_supports_goto(Globals) },
@@ -219,10 +197,19 @@ XXX Lookup switches are NYI
 			CanFail, Context, MLDS_Decls, MLDS_Statements)
 	;
 		%
-		% Try using a "direct-mapped" switch
+		% Try using a "direct-mapped" switch.
+		% This also handles dense (computed goto) switches --
+		% for those, we first generate a direct-mapped switch,
+		% and then convert it into a computed goto switch
+		% in ml_simplify_switch.
 		%
 		{ Indexing = yes },
-		{ target_supports_switch(SwitchCategory, Globals) }
+		(
+			{ target_supports_switch(SwitchCategory, Globals) }
+		;
+			{ SwitchCategory = atomic_switch },
+			{ target_supports_computed_goto(Globals) }
+		)
 	->
 		ml_switch_generate_mlds_switch(TaggedCases, CaseVar,
 			CodeModel, CanFail, Context,
@@ -384,13 +371,31 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
 	ml_gen_type(Type, MLDS_Type),
 	ml_gen_var(Var, Lval),
 	{ Rval = mlds__lval(Lval) },
+	ml_switch_gen_range(MLDS_Type, Range),
 	ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases),
 	ml_switch_generate_default(CanFail, CodeModel, Context, Default),
-	{ SwitchStmt = switch(MLDS_Type, Rval, MLDS_Cases, Default) },
-	{ SwitchStatement = mlds__statement(SwitchStmt,
-		mlds__make_context(Context)) },
+	{ SwitchStmt0 = switch(MLDS_Type, Rval, Range, MLDS_Cases, Default) },
+	{ MLDS_Context = mlds__make_context(Context) },
+	ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement),
 	{ MLDS_Decls = [] },
 	{ MLDS_Statements = [SwitchStatement] }.
+
+:- pred ml_switch_gen_range(mlds__type, mlds__switch_range,
+		ml_gen_info, ml_gen_info).
+:- mode ml_switch_gen_range(in, out, in, out) is det.
+
+ml_switch_gen_range(MLDS_Type, Range) -->
+	=(MLGenInfo),
+	{
+		MLDS_Type = mercury_type(Type, TypeCategory),
+		ml_gen_info_get_module_info(MLGenInfo, ModuleInfo),
+		switch_util__type_range(TypeCategory, Type, ModuleInfo,
+			MinRange, MaxRange)
+	->
+		Range = range(MinRange, MaxRange)
+	;
+		Range = range_unknown
+	}.
 
 :- pred ml_switch_generate_mlds_cases(list(extended_case),
 		code_model, list(mlds__switch_case), ml_gen_info, ml_gen_info).

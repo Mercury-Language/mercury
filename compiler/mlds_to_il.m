@@ -760,10 +760,11 @@ statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
 		instr_node(label(DoneLabel))
 		]) }.
 
-statement_to_il(statement(switch(_Type, _Val, _Cases, _Default),
+statement_to_il(statement(switch(_Type, _Val, _Range, _Cases, _Default),
 		_Context), _Instrs) -->
 	% The IL back-end only supports computed_gotos and if-then-else chains;
-	% the MLDS code generator should avoid generating MLDS switches.
+	% the MLDS code generator should either avoid generating MLDS switches,
+	% or should transform them into computed_gotos or if-then-else chains.
 	{ error("mlds_to_il.m: `switch' not supported") }.
 
 statement_to_il(statement(while(Condition, Body, AtLeastOnce), 

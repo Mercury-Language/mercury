@@ -44,6 +44,14 @@
 :- pred switch_util__switch_priority(cons_tag, int).
 :- mode switch_util__switch_priority(in, out) is det.
 
+	% switch_util__type_range(TypeCategory, Type, ModuleInfo, Min, Max):
+	% Determine the range [Min..Max] of an atomic type.
+	% Fail if the type isn't the sort of type that has a range
+	% or if the type's range is too big to switch on (e.g. int).
+	%
+:- pred switch_util__type_range(builtin_type, type, module_info, int, int).
+:- mode switch_util__type_range(in, in, in, out, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff for string hash switches
@@ -134,7 +142,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, string, require.
+:- import_module char, int, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -250,6 +258,7 @@ switch_util__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 % Stuff for categorizing switches
 %
 
+	% Convert a type category to a switch category
 switch_util__type_cat_to_switch_cat(enum_type, atomic_switch).
 switch_util__type_cat_to_switch_cat(int_type,  atomic_switch).
 switch_util__type_cat_to_switch_cat(char_type, atomic_switch).
@@ -278,6 +287,34 @@ switch_util__switch_priority(code_addr_constant(_, _), 6).
 switch_util__switch_priority(type_ctor_info_constant(_, _, _), 6).
 switch_util__switch_priority(base_typeclass_info_constant(_, _, _), 6).
 switch_util__switch_priority(tabling_pointer_constant(_, _), 6).
+
+	% Determine the range of an atomic type.
+	% Fail if the type isn't the sort of type that has a range
+	% or if the type's range is to big to switch on (e.g. int).
+	%
+switch_util__type_range(char_type, _, _, MinChar, MaxChar) :-
+	% XXX the following code uses the host's character size,
+	% not the target's, so it won't work if cross-compiling
+	% to a machine with a different character size.
+	% Note also that the code in dense_switch.m and the code
+	% in lookup_switch.m assume that char__min_char_value is 0.
+	char__min_char_value(MinChar),
+	char__max_char_value(MaxChar).
+switch_util__type_range(enum_type, Type, ModuleInfo, 0, MaxEnum) :-
+	( type_to_type_id(Type, TypeId0, _) ->
+		TypeId = TypeId0
+	;
+		error("dense_switch__type_range: invalid enum type?")
+	),
+	module_info_types(ModuleInfo, TypeTable),
+	map__lookup(TypeTable, TypeId, TypeDefn),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	( TypeBody = du_type(_, ConsTable, _, _) ->
+		map__count(ConsTable, TypeRange),
+		MaxEnum = TypeRange - 1
+	;
+		error("dense_switch__type_range: enum type is not d.u. type?")
+	).
 
 %-----------------------------------------------------------------------------%
 
