@@ -547,7 +547,8 @@ quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
 	quantification__get_vartypes(VarTypes0),
 	{ map__init(RenameMap0) },
 	{ goal_util__create_variables(RenameList,
-		Varset0, VarTypes0, RenameMap0,
+		Varset0, VarTypes0, RenameMap0, VarTypes0,
+			% ^ Accumulator		^ Reference
 		Varset, VarTypes, RenameMap) },
 	{ goal_util__rename_vars_in_goal(Goal0, RenameMap, Goal) },
 	quantification__set_varset(Varset),

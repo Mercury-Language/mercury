@@ -6,6 +6,22 @@
 
 :- module goal_util.
 % Main author: conway.
+%
+% This module provides some functionality for renaming variables in goals.
+% The predicates rename_var* take a structure and a mapping from var -> var
+% and apply that translation. If a var in the input structure does not
+% occur as a key in the mapping, then the variable is left unsubstituted.
+% NOTE: this is a danger for inlining, since the source and new variables
+% in question may be from different varsets.
+
+% goal_util__create_variables takes a list of variables, a varset an
+% initial translation mapping and an initial mapping from variable to
+% type, and creates new instances of each of the source variables in the
+% translation mapping, adding the new variable to the type mapping and
+% updating the varset. The type for each new variable is found by looking
+% in the type map given in the 5th argument - the last input.
+% (This interface will not easily admit uniqueness in the type map for this
+% reason - such is the sacrifice for generality.)
 
 %-----------------------------------------------------------------------------%
 
@@ -24,8 +40,9 @@
 
 :- pred goal_util__create_variables(list(var),
 			varset, map(var, type), map(var, var),
+			map(var, type),
 			varset, map(var, type), map(var, var)).
-:- mode goal_util__create_variables(in, in, in, in, out, out, out) is det.
+:- mode goal_util__create_variables(in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,8 +53,9 @@
 
 %-----------------------------------------------------------------------------%
 
-goal_util__create_variables([], Varset, VarTypes, Subn, Varset, VarTypes, Subn).
-goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0,
+goal_util__create_variables([], Varset, VarTypes, Subn, _OldVarTypes,
+		Varset, VarTypes, Subn).
+goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 						Varset, VarTypes, Subn) :-
 	(
 		map__contains(Subn0, V)
@@ -56,14 +74,14 @@ goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0,
 		),
 		map__set(Subn0, V, NV, Subn1),
 		(
-			map__search(VarTypes0, V, VT)
+			map__search(OldVarTypes, V, VT)
 		->
 			map__set(VarTypes0, NV, VT, VarTypes1)
 		;
 			VarTypes1 = VarTypes0
 		)
 	),
-	goal_util__create_variables(Vs, Varset2, VarTypes1, Subn1, 
+	goal_util__create_variables(Vs, Varset2, VarTypes1, Subn1, OldVarTypes,
 		Varset, VarTypes, Subn).
 
 %-----------------------------------------------------------------------------%
