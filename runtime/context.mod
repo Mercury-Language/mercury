@@ -140,7 +140,7 @@ new_context(void)
 	if (c->detstack_zone != NULL) {
 		reset_zone(c->detstack_zone);
 	} else {
-		c->detstack_zone = create_zone("new-detstack", 0,
+		c->detstack_zone = create_zone("detstack", 0,
 			detstack_size, next_offset(), detstack_zone_size, 
 			default_handler);
 	}
@@ -149,7 +149,7 @@ new_context(void)
 	if (c->nondetstack_zone != NULL) {
 		reset_zone(c->nondetstack_zone);
 	} else {
-		c->nondetstack_zone = create_zone("new-nondetstack", 0,
+		c->nondetstack_zone = create_zone("nondetstack", 0,
 			nondstack_size, next_offset(), nondstack_zone_size,
 			default_handler);
 	}
