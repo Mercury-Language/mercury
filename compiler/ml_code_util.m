@@ -92,6 +92,17 @@
 		mlds__statement, mlds__defn, ml_gen_info, ml_gen_info).
 :- mode ml_gen_label_func(in, in, in, in, out, in, out) is det.
 
+	%
+	% Test to see if the procedure is 
+	% a model_det function whose function result has an output mode
+	% (whose type is not a dummy argument type like io__state),
+	% and if so, bind RetVar to the procedure's return value.
+	% These procedures need to handled specially: for such functions,
+	% we map the Mercury function result to an MLDS return value.
+	%
+:- pred ml_is_output_det_function(module_info, pred_id, proc_id, prog_var).
+:- mode ml_is_output_det_function(in, in, in, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating types.
@@ -168,9 +179,9 @@
 		mlds__pred_label, mlds_module_name).
 :- mode ml_gen_pred_label(in, in, in, out, out) is det.
 
-:- pred ml_gen_pred_label_from_rtti(rtti_proc_label,
+:- pred ml_gen_pred_label_from_rtti(module_info, rtti_proc_label,
 		mlds__pred_label, mlds_module_name).
-:- mode ml_gen_pred_label_from_rtti(in, out, out) is det.
+:- mode ml_gen_pred_label_from_rtti(in, in, out, out) is det.
 
 	% Allocate a new label name, for use in label statements.
 	%
@@ -1115,6 +1126,26 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg) :-
 	Name = data(var(Var)),
 	FuncArg = Name - MLDS_ArgType.
 
+
+ml_is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
+			ProcInfo),
+	
+	pred_info_get_is_pred_or_func(PredInfo, function),
+	proc_info_interface_code_model(ProcInfo, model_det),
+
+	proc_info_argmodes(ProcInfo, Modes),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	proc_info_headvars(ProcInfo, ArgVars),
+	modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+	pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
+	pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+	pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
+
+	RetArgMode = top_out,
+	\+ type_util__is_dummy_argument_type(RetArgType).
+
+
 %-----------------------------------------------------------------------------%
 %
 % Code for generating mlds__entity_names.
@@ -1177,13 +1208,14 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval) -->
 	%
 ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
-	ml_gen_pred_label_from_rtti(RttiProcLabel,
+	ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,
 		MLDS_PredLabel, MLDS_Module).
 
-ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
+ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
+		MLDS_Module) :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,	
-		PredName, PredArity, ArgTypes, _PredId, ProcId,
-		_VarSet, _HeadVars, _ArgModes, _CodeModel,
+		PredName, PredArity, ArgTypes, PredId, ProcId,
+		_VarSet, _HeadVars, _ArgModes, CodeModel,
 		IsImported, _IsPseudoImported, _IsExported,
 		IsSpecialPredInstance),
 	(
@@ -1245,8 +1277,18 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 			DefiningModule = PredModule,
 			MaybeDeclaringModule = no
 		),
+		(
+			PredOrFunc = function,
+			ml_is_output_det_function(ModuleInfo, PredId,
+				ProcId, _)
+		->
+			NonOutputFunc = no
+		;
+			NonOutputFunc = yes
+		),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
-				PredName, PredArity)
+				PredName, PredArity, CodeModel,
+				NonOutputFunc)
 	),
 	MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 

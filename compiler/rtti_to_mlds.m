@@ -527,7 +527,8 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
 	% construct an rval for the address of this procedure
 	% (this is similar to ml_gen_proc_addr_rval)
 	%
-        ml_gen_pred_label_from_rtti(RttiProcId, PredLabel, PredModule),
+        ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcId, PredLabel,
+		PredModule),
 	ProcId = RttiProcId^proc_id,
         QualifiedProcLabel = qual(PredModule, PredLabel - ProcId),
 	Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),

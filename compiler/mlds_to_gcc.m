@@ -157,7 +157,7 @@
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, modules.
 :- import_module prog_data, prog_out, prog_util, type_util, error_util.
-:- import_module pseudo_type_info.
+:- import_module pseudo_type_info, code_model.
 
 :- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.
@@ -1562,7 +1562,8 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 		% necessarily need to be unique.
 		%
 		(
-			PredLabel = pred(_PorF, _ModuleName, PredName, _Arity),
+			PredLabel = pred(_PorF, _ModuleName, PredName, _Arity,
+				_CodeModel, _NonOutputFunc),
 		  	FuncName = PredName
 		;
 			PredLabel = special_pred(SpecialPredName, _ModuleName,
@@ -1578,8 +1579,8 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 :- pred get_pred_label_name(mlds__pred_label, string).
 :- mode get_pred_label_name(in, out) is det.
 
-get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity),
-		LabelName) :-
+get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
+			_CodeMode, _NonOutputFunc), LabelName) :-
 	( PredOrFunc = predicate, Suffix = "p"
 	; PredOrFunc = function, Suffix = "f"
 	),
@@ -2168,7 +2169,8 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 			% don't module-qualify main/2
 			%
 			Name = function(PredLabel, _, _, _),
-			PredLabel = pred(predicate, no, "main", 2)
+			PredLabel = pred(predicate, no, "main", 2,
+				model_det, no)
 		;
 			%
 			% don't module-qualify base_typeclass_infos

@@ -278,7 +278,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_data.
-:- import_module prog_data, builtin_ops, rtti.
+:- import_module prog_data, builtin_ops, rtti, code_model.
 :- import_module type_util.
 
 % To avoid duplication, we use a few things from the LLDS
@@ -1375,7 +1375,10 @@ XXX Full exception handling support is not yet implemented.
 				% if different to the defining module
 			maybe(mercury_module_name),
 			string,			% name
-			arity			% arity
+			arity,			% arity
+			code_model,		% code model
+			bool			% function without return value
+						% (i.e. non-default mode)
 		)
 			
 	;	special_pred(

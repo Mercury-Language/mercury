@@ -606,8 +606,8 @@ ml_env_name(export(_)) = _ :-
 
 :- func ml_pred_label_name(mlds__pred_label) = string.
 
-ml_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity))
-		= LabelName :-
+ml_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
+		_CodeModel, _NonOutputFunc)) = LabelName :-
 	( PredOrFunc = predicate, Suffix = "p"
 	; PredOrFunc = function, Suffix = "f"
 	),

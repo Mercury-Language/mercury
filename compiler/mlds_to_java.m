@@ -346,7 +346,7 @@ wrap_predicate(ModuleName, Defn, ClassDefn) :-
    	 	( 
 			Label = special_pred(PredName, _, _, _) 
 		;
-			Label = pred(_, _, PredName, _)
+			Label = pred(_, _, PredName, _, _, _)
 		)
 	->
 		
@@ -1119,7 +1119,8 @@ output_name(export(Name)) -->
 :- pred output_pred_label(mlds__pred_label, io__state, io__state).
 :- mode output_pred_label(in, di, uo) is det.
 
-output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity)) -->
+output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
+		_CodeModel, _NonOutputFunc)) -->
 	( { PredOrFunc = predicate, Suffix = "p" }
 	; { PredOrFunc = function, Suffix = "f" }
 	),

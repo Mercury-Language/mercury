@@ -52,7 +52,7 @@
 :- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
-:- import_module prog_data, prog_out, type_util, error_util.
+:- import_module prog_data, prog_out, type_util, error_util, code_model.
 
 :- import_module bool, int, string, library, list.
 :- import_module assoc_list, term, std_util, require.
@@ -1336,7 +1336,8 @@ mlds_output_fully_qualified_name(QualifiedName) -->
 			% don't module-qualify main/2
 			%
 			{ Name = function(PredLabel, _, _, _) },
-			{ PredLabel = pred(predicate, no, "main", 2) }
+			{ PredLabel = pred(predicate, no, "main", 2,
+				model_det, no) }
 		;
 			%
 			% don't module-qualify base_typeclass_infos
@@ -1369,7 +1370,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName) -->
 		%
 		{ QualifiedName = qual(_ModuleName, Name) },
 		{ Name = PredLabel - _ProcId },
-		{ PredLabel = pred(predicate, no, "main", 2) }
+		{ PredLabel = pred(predicate, no, "main", 2, model_det, no) }
 	->
 		mlds_output_proc_label(Name)
 	;
@@ -1422,7 +1423,8 @@ mlds_output_name(export(Name)) -->
 :- pred mlds_output_pred_label(mlds__pred_label, io__state, io__state).
 :- mode mlds_output_pred_label(in, di, uo) is det.
 
-mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity)) -->
+mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
+		_CodeModel, _NonOutputFunc)) -->
 	( { PredOrFunc = predicate, Suffix = "p" }
 	; { PredOrFunc = function, Suffix = "f" }
 	),

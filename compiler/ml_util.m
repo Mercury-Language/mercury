@@ -143,7 +143,7 @@ defns_contain_main(Defns) :-
 	list__member(Defn, Defns),
 	Defn = mlds__defn(Name, _, _, _),
 	Name = function(FuncName, _, _, _), 
-	FuncName = pred(predicate, _, "main", 2).
+	FuncName = pred(predicate, _, "main", 2, _, _).
 
 can_optimize_tailcall(Name, Call) :-
 	Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,

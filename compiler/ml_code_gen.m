@@ -858,35 +858,6 @@ ml_gen_pragma_export_proc(ModuleInfo,
 			MLDS_FuncParams, MLDS_Context).
 
 
-	%
-	% Test to see if the procedure is 
-	% a model_det function whose function result has an output mode
-	% (whose type is not a dummy argument type like io__state),
-	% and if so, bind RetVar to the procedure's return value.
-	% These procedures need to handled specially: for such functions,
-	% we map the Mercury function result to an MLDS return value.
-	%
-:- pred is_output_det_function(module_info, pred_id, proc_id, prog_var).
-:- mode is_output_det_function(in, in, in, out) is semidet.
-
-is_output_det_function(ModuleInfo, PredId, ProcId, RetArgVar) :-
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
-			ProcInfo),
-	
-	pred_info_get_is_pred_or_func(PredInfo, function),
-	proc_info_interface_code_model(ProcInfo, model_det),
-
-	proc_info_argmodes(ProcInfo, Modes),
-	pred_info_arg_types(PredInfo, ArgTypes),
-	proc_info_headvars(ProcInfo, ArgVars),
-	modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
-	pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
-	pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
-	pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
-
-	RetArgMode = top_out,
-	\+ type_util__is_dummy_argument_type(RetArgType).
-
 %-----------------------------------------------------------------------------%
 %
 % Stuff to generate MLDS code for HLDS predicates & functions.
@@ -1155,7 +1126,7 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars,
 		% variables are passed by reference
 		ml_gen_info_get_pred_id(MLDSGenInfo0, PredId),
 		ml_gen_info_get_proc_id(MLDSGenInfo0, ProcId),
-		is_output_det_function(ModuleInfo, PredId,
+		ml_is_output_det_function(ModuleInfo, PredId,
 			ProcId, ResultVar)
 	->
 		CopiedOutputVars = [ResultVar],
