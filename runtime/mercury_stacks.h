@@ -134,27 +134,30 @@
 				nondstack_overflow_check();		\
 			} while (0)
 
+/* convert a size in bytes to a size in words, rounding up if necessary */
+#define MR_bytes_to_words(x) (((x) + sizeof(Word) - 1) / sizeof(Word))
+
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	mkpragmaframe(prednm, numslots, structname, redoip)		\
-			do {						\
-				reg	Word	*prevfr;		\
-				reg	Word	*succfr;		\
+	do {								\
+		reg	Word	*prevfr;				\
+		reg	Word	*succfr;				\
 									\
-				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
-				MR_maxfr += (MR_NONDET_FIXED_SIZE + numslots \
-					+ sizeof(struct structname));	\
-				MR_curfr = MR_maxfr;			\
-				MR_redoip_slot(MR_curfr) = redoip;	\
-				MR_prevfr_slot(MR_curfr) = prevfr;	\
-				MR_succip_slot(MR_curfr) = MR_succip;	\
-				MR_succfr_slot(MR_curfr) = succfr;	\
-				MR_redofr_slot(MR_curfr) = MR_curfr;	\
-				mkframe_save_prednm(prednm);		\
-				debugmkframe();				\
-				nondstack_overflow_check();		\
-			} while (0)
+		prevfr = MR_maxfr;					\
+		succfr = MR_curfr;					\
+		MR_maxfr += MR_NONDET_FIXED_SIZE + numslots + 		\
+			MR_bytes_to_words(sizeof(struct structname));	\
+		MR_curfr = MR_maxfr;					\
+		MR_redoip_slot(MR_curfr) = redoip;			\
+		MR_prevfr_slot(MR_curfr) = prevfr;			\
+		MR_succip_slot(MR_curfr) = MR_succip;			\
+		MR_succfr_slot(MR_curfr) = succfr;			\
+		MR_redofr_slot(MR_curfr) = MR_curfr;			\
+		mkframe_save_prednm(prednm);				\
+		debugmkframe();						\
+		nondstack_overflow_check();				\
+	} while (0)
 
 #define	mktempframe(redoip)						\
 			do {						\
