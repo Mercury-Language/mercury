@@ -70,6 +70,9 @@
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(input, input, output).
 
+:- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
+:- mode map__from_corresponding_lists(input, input, output).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -133,6 +136,11 @@ map__inverse_search(Map, V, K) :-
 assoc_list_member(X, [X|_]).
 assoc_list_member(X, [_|Xs]) :-
 	assoc_list_member(X, Xs).
+
+%-----------------------------------------------------------------------------%
+
+map__from_corresponding_lists(Keys, Values, Map) :-
+	bintree__from_corresponding_lists(Keys, Values, Map).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -327,6 +327,17 @@ hlds_out__write_goal(Indent, unify(LTerm, RTerm, Mode, Uni)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string(")\n").
 
+	% XXX this output is terrible:
+
+hlds_out__write_goal(Indent, if_then_else(Vars, A, B, C)) -->
+	io__write_anything(if_then_else(Vars, A, B, C)).
+hlds_out__write_goal(Indent, not(Vars, G)) -->
+	io__write_anything(not(Vars, G)).
+hlds_out__write_goal(Indent, some(Vars, G)) -->
+	io__write_anything(some(Vars, G)).
+hlds_out__write_goal(Indent, all(Vars, G)) -->
+	io__write_anything(all(Vars, G)).
+
 :- pred hlds_out__write_argtypes(int, list(term), io_state, io_state).
 :- mode hlds_out__write_argtypes(input, input, input, output).
 

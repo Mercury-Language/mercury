@@ -46,6 +46,8 @@ spyHook(A,Term) :-
 	interactive_display(1, Term).
 
 interactive_display(Depth, Term) :-
+	flushOutput(user_output),
+	flushOutput(user_error),
 	( portray(Term) ->
 		true
 	;
@@ -54,24 +56,31 @@ interactive_display(Depth, Term) :-
 		write('>>')
 	),
 	nl,
+	flushOutput(user_output),
+	flushOutput(user_error),
 	( nonvar(Term) ->
-		write(Depth),
-		write('> select arg to display (h for help): '),
-		flushOutput(user_output),
+		write(user_error, Depth),
+		write(user_error, '> select arg to display (h for help): '),
+		flushOutput(user_error),
 		read(user_input, Num),
 		( Num = 'a' ->
-			write(Term), writeln('.')
+			write(user_error, Term),
+			writeln(user_error, '.')
 		; Num = 'e' ->
 			fail
+		; Num = 'r' ->
+			true
 		; Num = 0 ->
 			true
 		; Num = 'h' ->
 			write('h = help'), nl,
-			write('0 = return (1 level)'), nl,
+			write('r = return (1 level)'), nl,
 			write('e = exit (all levels)'), nl,
 			write('a = display all'), nl,
 			write('<number> = display nth argument'), nl,
 			nl,
+			flushOutput(user_output),
+			flushOutput(user_error),
 			interactive_display(Depth, Term)
 		; arg(Num, Term, Arg) ->
 			Depth1 is Depth + 1,
@@ -79,6 +88,8 @@ interactive_display(Depth, Term) :-
 			interactive_display(Depth, Term)
 		;
 			write('Invalid response'), nl,
+			flushOutput(user_output),
+			flushOutput(user_error),
 			interactive_display(Depth, Term)
 		)
 	;

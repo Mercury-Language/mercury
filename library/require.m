@@ -9,11 +9,13 @@
 %-----------------------------------------------------------------------------%
 :- interface.
 
+/***
 :- pred	require(pred, string).
 :- mode	require(input, input).
 
 %	require(Goal, Message).
 %		Call goal, and abort with error message if Goal fails.
+****/
 
 :- pred error(string).
 :- mode error(input).

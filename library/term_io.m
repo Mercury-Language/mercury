@@ -182,6 +182,10 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred io__write_term_args(list(term), varset, int, varset, int,
+				io__state, io__state).
+:- mode io__write_term_args(input, input, input, output, output, di, uo).
+
 	% write the remaining arguments
 io__write_term_args([], VarSet, N, VarSet, N) --> [].
 io__write_term_args(X.Xs, VarSet0, N0, VarSet, N) -->

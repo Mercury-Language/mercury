@@ -53,6 +53,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module list, int.
 
 :- type string == list(int).
 

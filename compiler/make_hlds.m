@@ -1,7 +1,6 @@
 %-----------------------------------------------------------------------------%
-:- module make_hlds.
-:- import_module prog_io, hlds.
 
+% File: make_hlds.nl.
 % Main author: fjh.
 
 % This module converts from the parse tree structure which is
@@ -11,10 +10,18 @@
 % table, and report any duplicate definition errors.  We also
 % transform clause bodies from (A,B,C) into conj([A,B,C]) form.
 
-%-----------------------------------------------------------------------------%
+:- module make_hlds.
+:- interface.
+:- import_module prog_io, hlds.
 
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(input, output, di, uo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module prog_out, require.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
@@ -29,6 +36,10 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 %-----------------------------------------------------------------------------%
 
 	% add the declarations one by one to the module
+
+:- pred add_item_list_decls(item_list, module_info, module_info,
+				io__state, io__state).
+:- mode add_item_list_decls(input, input, output, di, uo).
 
 add_item_list_decls([], Module, Module) --> [].
 add_item_list_decls([Item - Context | Items], Module0, Module) -->
@@ -48,6 +59,10 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 	add_item_list_decls(Items, Module1, Module).
 
 	% add the clauses one by one to the module
+
+:- pred add_item_list_clauses(item_list, module_info, module_info,
+				io__state, io__state).
+:- mode add_item_list_clauses(input, input, output, di, uo).
 
 add_item_list_clauses([], Module, Module) --> [].
 add_item_list_clauses([Item - Context | Items], Module0, Module) -->
@@ -70,6 +85,10 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 
 	% dispatch on the different types of items
 
+:- pred add_item_decl(item, term__context, module_info, module_info,
+			io__state, io__state).
+:- mode add_item_decl(input, input, input, output, di, uo).
+
 add_item_decl(clause(_, _, _, _), _, Module, Module) --> [].	% skip clauses
 
 add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Module0, Module) -->
@@ -91,9 +110,20 @@ add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Module0,
 	module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context,
 		Module).
 
-add_item_decl(module_defn(_VarSet, _ModuleDefn), Context, Module, Module) -->
-	prog_out__write_context(Context),
-	io__write_string("warning: module declarations not yet implemented.\n").
+add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Module, Module) -->
+	( { ModuleDefn = interface } ->
+		[]
+	; { ModuleDefn = implementation } ->
+		[]
+	; { ModuleDefn = import(module(_)) } ->
+		[]
+	;
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		io__write_string("warning: declaration not yet implemented.\n"),
+		io__set_output_stream(OldStream, _)
+	).
 
 add_item_decl(nothing, _, Module, Module) -->
 	[].
@@ -101,6 +131,10 @@ add_item_decl(nothing, _, Module, Module) -->
 %-----------------------------------------------------------------------------%
 
 	% dispatch on the different types of items
+
+:- pred add_item_clause(item, term__context, module_info, module_info,
+			io__state, io__state).
+:- mode add_item_clause(input, input, input, output, di, uo).
 
 add_item_clause(clause(VarSet, PredName, Args, Body), Context, Module0,
 			Module) -->
@@ -126,7 +160,7 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 	insts_add(Insts0, VarSet, InstDefn, Cond, Context, Insts),
 	{ moduleinfo_set_insts(Module0, Insts, Module) }.
 
-:- pred insts_add(inst_table, varset, hlds__inst_defn, condition, term__context,
+:- pred insts_add(inst_table, varset, inst_defn, condition, term__context,
 			inst_table, io__state, io__state).
 :- mode insts_add(input, input, input, input, input, output, di, uo).
 insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Context, Insts) -->
@@ -176,7 +210,7 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 	modes_add(Modes0, VarSet, ModeDefn, Cond, Context, Modes),
 	{ moduleinfo_set_modes(Module0, Modes, Module) }.
 
-:- pred modes_add(mode_table, varset, hlds__mode_defn, condition, term__context,
+:- pred modes_add(mode_table, varset, mode_defn, condition, term__context,
 			mode_table, io__state, io__state).
 :- mode modes_add(input, input, input, input, input, output, di, uo).
 
@@ -209,7 +243,7 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 	% e.g. `:- type t.', which is parsed as an type definition for
 	% t which defines t as an abstract_type.
 
-:- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
+:- pred module_add_type_defn(module_info, varset, type_defn, condition,
 			term__context, module_info, io__state, io__state).
 :- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
 
@@ -252,7 +286,17 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 			Module1 = Module0
 		  ),
 		  moduleinfo_set_types(Module1, Types, Module)
-		}
+		},
+		( { Body = uu_type(_) } ->
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			io__write_string(
+		"warning: undiscriminated union types not yet implemented.\n"),
+			io__set_output_stream(OldStream, _)
+		;
+			[]
+		)
 	).
 
 :- pred type_name_args(type_defn, sym_name, list(type_param), hlds__type_body).
@@ -401,8 +445,8 @@ pred_is_compat(predicate(_, Types, _, _, _, _),
 
 	% Add a mode declaration for a predicate.
 
-:- pred module_add_mode(module_info, varset, sym_name, list(mode), condition,
-			determinism, term__context, module_info,
+:- pred module_add_mode(module_info, varset, sym_name, list(mode), determinism,
+			condition, term__context, module_info,
 			io__state, io__state).
 :- mode module_add_mode(input, input, input, input, input, input, input, output,
 			di, uo).
@@ -444,8 +488,10 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, Det, _Cond,
 		{ varset__init(BodyVarSet) },
 		{ HeadVars = [] },
 		{ determinism_to_category(Det, Category) },
+		{ map__init(CallInfo) },
 		{ NewProc = procedure(Category, BodyVarSet, BodyTypes,
-			HeadVars, Modes, conj([]) - GoalInfo, MContext) },
+			HeadVars, Modes, conj([]) - GoalInfo, MContext,
+			CallInfo) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) },
 		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs,
 			TContext) },
@@ -540,7 +586,7 @@ make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
 		make_n_fresh_vars(N1, VarSet2, Vars1, VarSet)
 	).
 
-:- pred insert_head_unifications(list(term), list(term), goal, goal).
+:- pred insert_head_unifications(list(term), list(var), goal, goal).
 :- mode insert_head_unifications(input, input, input, output).
 
 insert_head_unifications([], [], Body, Body).
@@ -615,7 +661,7 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 transform_goal(unify(A, B), unify(A, B, Mode, UnifyInfo) - GoalInfo) :-
 	goalinfo_init(GoalInfo),
 		% fill in unused slots with garbage values
-	Mode = (free -> free),
+	Mode = ((free -> free) - (free -> free)),
 	UnifyInfo = complicated_unify(Mode, A, B).
 
 % get_conj(Goal, Conj0, Conj) :

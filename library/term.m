@@ -96,6 +96,10 @@
 %		true iff Var occurs in the term resulting after
 %		applying Substitution to Term0.
 
+:- pred term__occurs_list(list(term), variable, substitution).
+:- mode term__occurs_list(input, input, input).
+%		as above, except for a list of terms rather than a single term
+
 :- pred term__relabel_variable(term, variable, variable, term).
 :- mode term__relabel_variable(input, input, input, output) is det.
 %	term__relabel_variable(Term0, OldVar, NewVar, Term) :
@@ -104,14 +108,13 @@
 
 %-----------------------------------------------------------------------------%
 
-	% To manage a supply of variables, use the following 2 predicates
-	% XXX we need unique input and output to correctly manage the
-	% var_supply structure. fergus, can you correct the modes please?
+	% To manage a supply of variables, use the following 2 predicates.
+	% (We might want to give these a unique mode later.)
 
 :- pred term__init_var_supply(var_supply).
 :- mode term__init_var_supply(output) is det.
 %	term__init_var_supply(VarSupply) :
-%		returns an fresh var_supply for producing fresh variables.
+%		returns a fresh var_supply for producing fresh variables.
 
 :- pred term__create_var(var_supply, variable, var_supply).
 :- mode term__create_var(input, output, output) is det.
@@ -360,9 +363,6 @@ term__occurs(term_variable(X), Y, Bindings) :-
 	).
 term__occurs(term_functor(_F, As, _), Y, Bindings) :-
 	term__occurs_list(As, Y, Bindings).
-
-:- pred term__occurs_list(list(term), variable, substitution).
-:- mode term__occurs_list(input, input, input).
 
 term__occurs_list([Term | Terms], Y, Bindings) :-
 	(if

@@ -27,8 +27,9 @@
 :- interface.
 :- import_module string, term.
 
-:- type var_id.
 :- type varset.
+
+:- type var_id	==	variable.
 
 	% construct an empty varset.
 :- pred varset__init(varset).
@@ -39,26 +40,26 @@
 :- mode varset__is_empty(input).
 
 	% create a new variable
-:- pred varset__new_var(varset, var_id, varset).
+:- pred varset__new_var(varset, variable, varset).
 :- mode varset__new_var(input, output, output).
 
 	% set the name of a variable
 	% (if there is already a variable with the same name "Foo",
 	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
 	% an unused name is found.)
-:- pred varset__name_var(varset, var_id, string, varset).
+:- pred varset__name_var(varset, variable, string, varset).
 :- mode varset__name_var(input, input, input, output).
 
 	% lookup the name of a variable
-:- pred varset__lookup_name(varset, var_id, string).
+:- pred varset__lookup_name(varset, variable, string).
 :- mode varset__lookup_name(input, input, output).
 
 	% bind a value to a variable
-:- pred varset__bind_var(varset, var_id, term, varset).
+:- pred varset__bind_var(varset, variable, term, varset).
 :- mode varset__bind_var(input, input, input, output).
 
 	% lookup the value of a variable
-:- pred varset__lookup_var(varset, var_id, term).
+:- pred varset__lookup_var(varset, variable, term).
 :- mode varset__lookup_var(input, input, output).
 
 	% Combine two different varsets, renaming apart:
@@ -74,26 +75,30 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, map.
+:- import_module map.
 
-:- type var_id	==	variable.
-
-:- type varset	--->	varset(var_id, map(var_id, string), map(var_id, term)).
+:- type varset		--->	varset(
+					var_supply,
+					map(variable, string),
+					map(variable, term)
+				).
 
 %-----------------------------------------------------------------------------%
 
-varset__init(varset(0,Names,Vals)) :-
+varset__init(varset(VarSupply, Names, Vals)) :-
+	term__init_var_supply(VarSupply),
 	map__init(Names),
 	map__init(Vals).
 
 %-----------------------------------------------------------------------------%
 
-varset__is_empty(varset(0,_,_)).
+varset__is_empty(varset(VarSupply, _, _)) :-
+	term__init_var_supply(VarSupply).
 
 %-----------------------------------------------------------------------------%
 
-varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
-	MaxId is MaxId0 + 1.
+varset__new_var(varset(MaxId0,Names,Vals), Var, varset(MaxId,Names,Vals)) :-
+	term__create_var(MaxId0, Var, MaxId).
 
 %-----------------------------------------------------------------------------%
 
@@ -147,10 +152,10 @@ varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
 	varset__merge_2(0, MaxId, Names, Vals, VarSet0, Subst0, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-:- pred varset__merge_2(var_id, var_id, map(var_id, string), map(var_id, term),
-			varset, substitution, varset, substitution).
+:- pred varset__merge_2(variable, variable, map(variable, string),
+	map(variable, term), varset, substitution, varset, substitution).
 :- mode varset__merge_2(input, input, input, input, input, input,
-			output, output).
+	output, output).
 
 varset__merge_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	( N = Max ->
@@ -165,8 +170,8 @@ varset__merge_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		else
 			VarSet2 = VarSet1
 		),
-		map__insert(Subst0, N, term_variable(VarId), Subst1),
-		N1 is N + 1,
+		map__insert(Subst0, VarN, term_variable(VarId), Subst1),
+		map__create_var(N, VarN, N1),
 		varset__merge_2(N1, Max, Names, Vals, VarSet2, Subst1,
 				VarSet, Subst)
 	).

@@ -53,6 +53,9 @@
 :- pred bintree__from_list(list(pair(K,V)), bintree(K,V)).
 :- mode bintree__from_list(input, output).
 
+:- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
+:- mode bintree__from_corresponding_lists(input, input, output).
+
 :- pred bintree__to_list(bintree(K,V), list(pair(K,V))).
 :- mode bintree__to_list(input, output).
 
@@ -275,6 +278,20 @@ bintree__from_list_2([], Tree, Tree).
 bintree__from_list_2([K - V | List], Tree0, Tree) :-
 	bintree__insert(Tree0, K, V, Tree1),
 	bintree__from_list_2(List, Tree1, Tree).
+
+%-----------------------------------------------------------------------------%
+
+bintree__from_corresponding_lists(Keys, Values, Tree) :-
+	bintree__from_corresponding_lists_2(Keys, Values, empty, Tree).
+
+:- pred bintree__from_corresponding_lists_2(list(K), list(V), bintree(K,V),
+						bintree(K,V)).
+:- mode bintree__from_corresponding_lists_2(input, input, input, output).
+
+bintree__from_corresponding_lists_2([], [], Tree, Tree).
+bintree__from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-
+	bintree__insert(Tree0, K, V, Tree1),
+	bintree__from_corresponding_lists_2(Ks, Vs, Tree1, Tree).
 
 %-----------------------------------------------------------------------------%
 

@@ -15,6 +15,9 @@
 %
 % Although most of the data structures are private, it is a quite thin
 % layer of abstraction.
+%
+% WARNING: changes here will probably require changes in make_hlds.nl
+% and elsewhere.
 
 :- module hlds.
 :- interface.
@@ -51,27 +54,27 @@
 							% of the :- pred decl.
 				).
 
-:- type clause_list	=	list(clause).
+:- type clause_list	==	list(clause).
 
 :- type clause		--->	clause(
 					list(pred_mode_id),
 							% modes for which
 							% this clause applies
 					varset,		% variable names
-					map(var_id, type), % variable types
-					list(var_id),	% head vars
+					map(var, type), % variable types
+					list(var),	% head vars
 					hlds__goal,	% Body
 					term__context
 				).
 
 :- export_type proc_table.
-:- type proc_table	=	map(pred_mode_id, proc_info).
+:- type proc_table	==	map(pred_mode_id, proc_info).
 
 :- type proc_info	--->	procedure(
 					category,
 					varset,		% variable names
-					map(var_id, type), % variable types
-					list(var_id),	% head vars
+					map(var, type), % variable types
+					list(var),	% head vars
 					list(mode),
 					hlds__goal,	% Body
 					term__context,	% The context of
@@ -94,44 +97,44 @@
 			%	module, predname, arity
 
 :- export_type pred_table.
-:- type pred_table	=	map(pred_id, pred_info).
+:- type pred_table	==	map(pred_id, pred_info).
 
 :- type proc_id		--->	proc(pred_id, pred_mode_id).
 
 	% a pred_mode_id is a mode number within a particular predicate -
 	% not to be confused with a mode_id, which is the name of a
 	% user-defined mode.
-:- type pred_mode_id	=	int.
+:- type pred_mode_id	==	int.
 
 %-----------------------------------------------------------------------------%
 
 	% The symbol table for types.
 
-:- type type_id		= 	pair(sym_name, int).
+:- type type_id		== 	pair(sym_name, int).
 				% name, arity
 
 :- export_type type_table.
-:- type type_table	=	map(type_id, hlds__type_defn).
+:- type type_table	==	map(type_id, hlds__type_defn).
 
 %-----------------------------------------------------------------------------%
 
 	% The symbol table for modes.
 
-:- type mode_id		=	pair(sym_name, int).
+:- type mode_id		==	pair(sym_name, int).
 				% name, arity
 
 :- export_type mode_table.
-:- type mode_table	=	map(mode_id, hlds__mode_defn).
+:- type mode_table	==	map(mode_id, hlds__mode_defn).
 
 %-----------------------------------------------------------------------------%
 
 	% The symbol table for insts.
 
-:- type inst_id		=	pair(sym_name, int).
+:- type inst_id		==	pair(sym_name, int).
 				% name, arity.
 
 :- export_type inst_table.
-:- type inst_table	=	map(inst_id, hlds__inst_defn).
+:- type inst_table	==	map(inst_id, hlds__inst_defn).
 
 %-----------------------------------------------------------------------------%
 
@@ -143,7 +146,7 @@
 				% name, arity
 
 :- export_type cons_table.
-:- type cons_table	=	map(cons_id, hlds__cons_defn).
+:- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
 
 %-----------------------------------------------------------------------------%
 
@@ -167,7 +170,7 @@
 				% into case statements by the determinism
 				% analysis.
 				% Variable, functor-args-goal, followvars
-			;	switch(var_id, list(case), follow_vars)
+			;	switch(var, list(case), follow_vars)
 
 				% Initially only the two terms are filled
 				% in.  Mode analysis fills in the last
@@ -192,7 +195,7 @@
 			;	is_builtin.
 
 :- export_type call_info.
-:- type call_info	--->	map(var_id, int).
+:- type call_info	==	map(var, int).
 
 :- export_type case.
 :- type case		--->	case(cons_id, list(var), hlds__goal).
@@ -204,7 +207,7 @@
 	% these with various special cases.
 
 :- export_type follow_vars.
-:- type follow_vars	--->	map(var_id, register).
+:- type follow_vars	--->	map(var, register).
 
 :- type register	--->	r(int).
 
@@ -233,15 +236,15 @@
 				% using out-of-line call to  a compiler
 				% generated unification predicate for that
 				% type & mode.
-			;	complicated_unify(unify_mode, var, var).
+			;	complicated_unify(unify_mode, term, term).
 
 :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).
 
 :- type hlds__goal_info	--->	goalinfo(
-					map(var_id, is_live), 
+					map(var, is_live), 
 					category,
-					map(var_id, inst)
+					map(var, inst)
 				).
 
 :- export_type is_live.
@@ -525,7 +528,7 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 :- pred procinfo_callinfo(proc_info, call_info).
 :- mode procinfo_callinfo(input, output).
 
-:- pred procinfo_arg_registers(proc_info, list(var_id), map(var_id, int)).
+:- pred procinfo_arg_registers(proc_info, list(var), map(var, int)).
 :- mode procinfo_arg_registers(input, input, output).
 
 :- implementation.
@@ -565,10 +568,10 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 :- pred goalinfo_init(hlds__goal_info).
 :- mode goalinfo_init(output).
 
-:- pred goalinfo_liveness(hlds__goal_info, map(var_id, is_live)).
+:- pred goalinfo_liveness(hlds__goal_info, map(var, is_live)).
 :- mode goalinfo_liveness(input, output).
 
-:- pred goalinfo_set_liveness(hlds__goal_info, map(var_id, is_live),
+:- pred goalinfo_set_liveness(hlds__goal_info, map(var, is_live),
 				hlds__goal_info).
 :- mode goalinfo_set_liveness(input, input, output).
 
@@ -578,14 +581,14 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 :- pred goalinfo_set_category(hlds__goal_info, category, hlds__goal_info).
 :- mode goalinfo_set_category(input, input, output).
 
-:- pred goalinfo_instmap(hlds__goal_info, map(var_id, inst)).
+:- pred goalinfo_instmap(hlds__goal_info, map(var, inst)).
 :- mode goalinfo_instmap(input, output).
 
-:- pred goalinfo_set_instmap(hlds__goal_info, map(var_id, inst),
+:- pred goalinfo_set_instmap(hlds__goal_info, map(var, inst),
 				hlds__goal_info).
 :- mode goalinfo_set_instmap(input, input, output).
 
-:- pred liveness_livevars(map(var_id, is_live), list(var_id)).
+:- pred liveness_livevars(map(var, is_live), list(var)).
 :- mode liveness_livevars(input, output).
 
 %-----------------------------------------------------------------------------%
@@ -644,10 +647,10 @@ unqualify_name(qualified(_Module, Name), Name).
 
 :- interface.
 
-:- pred mode_is_input(mode_table, mode).
+:- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(input, input).
 
-:- pred mode_is_output(mode_table, mode).
+:- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(input, input).
 
 :- pred pred_mode_id_to_int(pred_mode_id, int).
@@ -656,6 +659,7 @@ unqualify_name(qualified(_Module, Name), Name).
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module require.
 
 	% A mode is considered an input mode if the top-level
 	% node is input.
@@ -678,6 +682,8 @@ mode_is_output(ModuleInfo, Mode) :-
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(input, input).
 
+:- inst_is_free(_, X) when X.		% NU-Prolog indexing.
+
 inst_is_free(_, free).
 inst_is_free(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
@@ -691,6 +697,8 @@ inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 :- pred inst_is_bound(module_info, inst).
 :- mode inst_is_bound(input, input).
 
+:- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
+
 inst_is_bound(_, ground).
 inst_is_bound(_, bound(_)).
 inst_is_bound(_, inst_var(_)) :-
@@ -699,15 +707,15 @@ inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_bound(ModuleInfo, Inst).
 
-:- pred inst_lookup(module_info, string, list(inst), inst).
+:- pred inst_lookup(module_info, sym_name, list(inst), inst).
 :- mode inst_lookup(input, input, input, output).
 
 inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),
-	moduleinfo_modes(ModuleInfo, Modes),
-	map__search(Modes, Name - Arity, ModeDefn),
-	ModeDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
-	inst_substitute_args(Inst0, Args, Params, Inst).
+	moduleinfo_insts(ModuleInfo, Insts),
+	map__search(Insts, Name - Arity, InstDefn),
+	InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _Context),
+	inst_substitute_arg_list(Inst0, Params, Args, Inst).
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
@@ -720,81 +728,104 @@ mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	length(Args, Arity),
 	moduleinfo_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, HLDS_Mode),
-	HLDS_Mode = hlds__mode_defn(_VarSet, Params, Mode0, _Cond),
-	mode_substitute_args(Args, Params, Mode0, Mode),
+	HLDS_Mode = hlds__mode_defn(_VarSet, Params, Mode0, _Cond, _Context),
+	mode_substitute_arg_list(Mode0, Params, Args, Mode),
 	mode_get_insts(ModuleInfo, Mode, Initial, Final).
 
-	% mode_substute_args(Args, Params, Mode0, Mode) is true
+	% mode_substitute_arg_list(Mode0, Params, Args, Mode) is true
 	% iff Mode is the mode that results from substituting all
 	% occurrences of Params in Mode0 with the corresponding
 	% value in Args.
 
-:- pred mode_substitute_args(list(inst), list(inst_param), mode, mode).
-:- mode mode_substitute_args(input, input, input, output).
+:- pred mode_substitute_arg_list(mode, list(inst_param), list(inst), mode).
+:- mode mode_substitute_arg_list(input, input, input, output).
 
-mode_substitute_args([], [], Mode, Mode).
-mode_substitute_args([Arg|Args], [Param|Params], Mode0, Mode) :-
-	mode_substitute_arg(Mode0, Arg, Param, Mode1),
-	mode_substitute_args(Args, Params, Mode1, Mode).
+mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
+	( Params = [] ->
+		Mode = Mode0	% optimize common case
+	;
+		map__from_corresponding_lists(Params, Args, Subst),
+		mode_apply_substitution(Mode0, Subst, Mode)
+	).
+		
+	% inst_substitute_arg_list(Inst0, Params, Args, Inst) is true
+	% iff Inst is the inst that results from substituting all
+	% occurrences of Params in Inst0 with the corresponding
+	% value in Args.
 
-	% mode_substitute_arg(Mode0, Arg, Param, Mode) is true
-	% iff Mode is the mode that results from substituting all
-	% occurrences of Param in Mode0 with Arg.
+:- pred inst_substitute_arg_list(inst, list(inst_param), list(inst), inst).
+:- mode inst_substitute_arg_list(input, input, input, output).
 
-:- pred mode_substitute_arg(mode, inst_param, mode, mode).
-:- mode mode_substitute_arg(input, input, input, output).
+inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
+	( Params = [] ->
+		Inst = Inst0	% optimize common case
+	;
+		map__from_corresponding_lists(Params, Args, Subst),
+		inst_apply_substitution(Inst0, Subst, Inst)
+	).
 
-mode_substitute_arg(I0 -> F0, Arg, Param, I -> F) :-
-	inst_substitute_arg(I0, Arg, Param, I),
-	inst_substitute_arg(F0, Arg, Param, F).
-mode_substitute_arg(user_defined_mode(Name, Args0), Arg, Param,
+	% mode_apply_substitution(Mode0, Subst, Mode) is true iff
+	% Mode is the mode that results from apply Subst to Mode0.
+
+:- type inst_subst == map(inst_param, inst).
+
+:- pred mode_apply_substitution(mode, inst_subst, mode).
+:- mode mode_apply_substitution(input, input, output).
+
+mode_apply_substitution(I0 -> F0, Subst, I -> F) :-
+	inst_apply_substitution(I0, Subst, I),
+	inst_apply_substitution(F0, Subst, F).
+mode_apply_substitution(user_defined_mode(Name, Args0), Subst,
 		    user_defined_mode(Name, Args)) :-
-	inst_substitute_args(Args0, Arg, Param, Args).
+	inst_list_apply_substitution(Args0, Subst, Args).
 
-	% inst_substitute_args(Inst0, Args, Params, Inst) is true
+	% inst_list_apply_substitution(Insts0, Subst, Insts) is true
+	% iff Inst is the inst that results from applying Subst to Insts0.
+
+:- pred inst_list_apply_substitution(list(inst), inst_subst, list(inst)).
+:- mode inst_list_apply_substitution(input, input, output).
+
+inst_list_apply_substitution([], _, []).
+inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
+	inst_apply_substitution(A0, Subst, A),
+	inst_list_apply_substitution(As0, Subst, As).
+
+	% inst_substitute_arg(Inst0, Subst, Inst) is true
 	% iff Inst is the inst that results from substituting all
 	% occurrences of Param in Inst0 with Arg.
 
-:- pred inst_substitute_args(list(inst), inst_param, mode, list(inst)).
-:- mode inst_substitute_args(input, input, input, output).
+:- pred inst_apply_substitution(inst, inst_subst, inst).
+:- mode inst_apply_substitution(input, input, output).
 
-inst_substitute_args([], _, _, []).
-inst_substitute_args([A0|As0], Arg, Param, [A|As]) :-
-	inst_substitute_arg(A0, Arg, Param, A),
-	inst_substitute_args(As0, Arg, Param, As).
-
-	% inst_substitute_arg(Inst0, Arg, Param, Inst) is true
-	% iff Inst is the inst that results from substituting all
-	% occurrences of Param in Inst0 with Arg.
-
-:- pred inst_substitute_arg(inst, inst_param, mode, inst).
-:- mode inst_substitute_arg(input, input, input, output).
-
-inst_substitute_arg(free, _, _, free).
-inst_substitute_arg(ground, _, _, ground).
-inst_substitute_arg(bound(Alts0), Arg, Param, bound(Alts)) :-
-	inst_substitute_alts(Alts0, Arg, Param, Alts).
-inst_substitute_arg(inst_var(Var), Arg, Param, Result) :-
-	Param = term_variable(ParamVar),	% XXX params should be vars!
-	(if Var = ParamVar then
-		Result = Arg
+inst_apply_substitution(free, _, free).
+inst_apply_substitution(ground, _, ground).
+inst_apply_substitution(bound(Alts0), Subst, bound(Alts)) :-
+	alt_list_apply_substitution(Alts0, Subst, Alts).
+inst_apply_substitution(inst_var(Var), Subst, Result) :-
+	(if some [Replacement]
+		% XXX should params be vars?
+		map__search(Subst, term_variable(Var), Replacement)
+	then
+		Result = Replacement
 	else
 		Result = inst_var(Var)
 	).
-inst_substitute_arg(user_defined_inst(Name, Args0), Arg, Param,
+inst_apply_substitution(user_defined_inst(Name, Args0), Subst,
 		    user_defined_inst(Name, Args)) :-
-	inst_substitute_args(Args0, Arg, Param, Args).
+	inst_list_apply_substitution(Args0, Subst, Args).
 
-:- pred inst_substitute_alts(list(bound_inst), inst, inst_param,
+:- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).
-:- mode inst_substitute_alts(input, input, input, output).
+:- mode alt_list_apply_substitution(input, input, output).
 
-inst_substitute_alts([], _, _, []).
-inst_substitute_alts([Alt0|Alts0], Arg, Param, [Alt|Alts]) :-
+alt_list_apply_substitution([], _, []).
+alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 	Alt0 = functor(Name, Args0),
-	inst_substitute_args(Args0, Arg, Param, Args),
+	inst_list_apply_substitution(Args0, Subst, Args),
 	Alt = functor(Name, Args),
-	inst_substitute_alts(Alts0, Arg, Param, Alts).
+	alt_list_apply_substitution(Alts0, Subst, Alts).
+
+%-----------------------------------------------------------------------------%
 
 	% In case we later decided to change the representation
 	% of mode_ids.
