@@ -114,6 +114,35 @@
 % Code for commits
 %
 
+% There's several different ways of handling commits:
+%	- using catch/throw
+%	- using setjmp/longjmp
+%	- exiting nested functions via gotos to
+%	  their containing functions
+% The MLDS data structure abstracts away these differences
+% using the `try_commit' and `do_commit' instructions.
+% The comments below show the MLDS try_commit/do_commit version first,
+% but for clarity I've also included sample code using each of the three
+% different techniques.
+
+%	model_non in semi context: (using try_commit/do_commit)
+%		<succeeded = Goal>
+% 	===>
+%		bool succeeded;
+%		MR_COMMIT_TYPE ref;
+%		void success() {
+%			succeeded = TRUE;
+%			MR_DO_COMMIT(ref);
+%		}
+%		MR_TRY_COMMIT(ref, {
+%			<Goal && success()>
+%			succeeded = FALSE;
+%		}, {
+%			succeeded = TRUE;
+%		})
+%
+%	done:
+
 %	model_non in semi context: (using catch/throw)
 %		<succeeded = Goal>
 % 	===>
@@ -142,6 +171,51 @@
 %			<Goal && success()>
 %			succeeded = FALSE;
 %		}
+
+%	model_non in semi context: (using GNU C nested functions,
+%				GNU C local labels, and exiting
+%				the nested function by a goto
+%				to a lable in the containing function)
+%		<succeeded = Goal>
+% 	===>
+%		bool succeeded;
+%		__label__ commit;
+%		void success() {
+%			goto commit;
+%		}
+%		<Goal && success()>
+%		succeeded = FALSE;
+%		goto commit_done;
+%	commit:
+%		succeeded = TRUE;
+%	commit_done:
+%		;
+
+%	model_non in det context: (using try_commit/do_commit)
+%		<do Goal>
+%	===>
+%		MR_COMMIT_TYPE ref;
+%		void success() {
+%			MR_DO_COMMIT(ref);
+%		}
+%		MR_TRY_COMMIT(ref, {
+%			<Goal && success()>
+%		}, {})
+
+%	model_non in det context (using GNU C nested functions,
+%				GNU C local labels, and exiting
+%				the nested function by a goto
+%				to a lable in the containing function)
+%		<do Goal>
+%	===>
+%		__label__ done;
+%		void success() {
+%			goto done;
+%		}
+%		try {
+%			<Goal && success()>
+%		} catch (COMMIT) {}
+%	done:	;
 
 %	model_non in det context (using catch/throw):
 %		<do Goal>
@@ -788,6 +862,17 @@ ml_gen_succeeded_var_decl(Context) = MLDS_Defn :-
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
 
+	% Generate the declaration for the `commit' variable.
+	%
+:- func ml_gen_commit_var_decl(mlds__context, mlds__var_name) = mlds__defn.
+ml_gen_commit_var_decl(Context, VarName) = MLDS_Defn :-
+	Name = data(var(VarName)),
+	Type = mlds__commit_type,
+	MaybeInitializer = no,
+	Defn = data(Type, MaybeInitializer),
+	DeclFlags = ml_gen_var_decl_flags,
+	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
+
 	% Generate the code for a procedure body.
 	%
 :- pred ml_gen_proc_body(code_model, hlds_goal, mlds__defns, mlds__statements,
@@ -987,11 +1072,106 @@ ml_gen_wrap_goal(model_semi, model_non, _, _, _) -->
 :- pred ml_gen_commit(hlds_goal, code_model, prog_context,
 			mlds__defns, mlds__statements,
 			ml_gen_info, ml_gen_info).
-:- mode ml_gen_commit(in, in, in, out, out, in, out) is erroneous.
+:- mode ml_gen_commit(in, in, in, out, out, in, out) is det.
 
-ml_gen_commit(_Goal, _CodeModel, _Context, _MLDS_Decls, _MLDS_Statements) -->
-	% XXX not yet implemented
-	{ sorry("commit") }.
+ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
+	{ Goal = _ - GoalInfo },
+	{ goal_info_get_code_model(GoalInfo, GoalCodeModel) },
+
+	( { GoalCodeModel = model_non, CodeModel = model_semi } ->
+
+		%	model_non in semi context: (using try_commit/do_commit)
+		%		<succeeded = Goal>
+		% 	===>
+		%		bool succeeded;
+		%		MR_COMMIT_TYPE ref;
+		%		void success() {
+		%			succeeded = TRUE;
+		%			MR_DO_COMMIT(ref);
+		%		}
+		%		MR_TRY_COMMIT(info, {
+		%			<Goal && success()>
+		%			succeeded = FALSE;
+		%		}, {
+		%			succeeded = TRUE;
+		%		})
+
+		% generate the `success()' function
+		ml_gen_new_func_label(SuccessFuncLabel, SuccessFuncLabelRval),
+		/* push nesting level */
+		{ MLDS_Context = mlds__make_context(Context) },
+		ml_gen_info_new_commit_label(CommitLabelNum),
+		{ string__format("commit_%d", [i(CommitLabelNum)], CommitRef) },
+		ml_commit_var(CommitRef, CommitRefVar),
+		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
+			CommitRef) },
+		{ DoCommitStmt = do_commit(CommitRefVar) },
+		{ DoCommitStatement = mlds__statement(DoCommitStmt,
+			MLDS_Context) },
+		/* pop nesting level */
+		ml_gen_label_func(SuccessFuncLabel, Context, DoCommitStatement,
+			SuccessFunc),
+
+		ml_gen_info_push_success_cont(SuccessFuncLabelRval),
+		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_info_pop_success_cont,
+		ml_gen_set_success(const(false), Context, SetSuccessFalse),
+		ml_gen_set_success(const(true), Context, SetSuccessTrue),
+		{ TryCommitStmt = try_commit(CommitRefVar,
+			ml_gen_block([], [GoalStatement, SetSuccessFalse],
+				Context),
+			SetSuccessTrue) },
+		{ TryCommitStatement = mlds__statement(TryCommitStmt,
+			MLDS_Context) },
+
+		{ MLDS_Decls = [CommitRefDecl, SuccessFunc] },
+		{ MLDS_Statements = [TryCommitStatement] }
+
+	; { GoalCodeModel = model_non, CodeModel = model_det } ->
+
+		%	model_non in det context: (using try_commit/do_commit)
+		%		<do Goal>
+		%	===>
+		%		MR_COMMIT_TYPE ref;
+		%		void success() {
+		%			MR_DO_COMMIT(ref);
+		%		}
+		%		MR_TRY_COMMIT(ref, {
+		%			<Goal && success()>
+		%		}, {})
+
+		% generate the `success()' function
+		ml_gen_new_func_label(SuccessFuncLabel, SuccessFuncLabelRval),
+		/* push nesting level */
+		{ MLDS_Context = mlds__make_context(Context) },
+		ml_gen_info_new_commit_label(CommitLabelNum),
+		{ string__format("commit_%d", [i(CommitLabelNum)], CommitRef) },
+		ml_commit_var(CommitRef, CommitRefVar),
+		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
+			CommitRef) },
+		{ DoCommitStmt = do_commit(CommitRefVar) },
+		{ DoCommitStatement = mlds__statement(DoCommitStmt,
+			MLDS_Context) },
+		/* pop nesting level */
+		ml_gen_label_func(SuccessFuncLabel, Context, DoCommitStatement,
+			SuccessFunc),
+
+		ml_gen_info_push_success_cont(SuccessFuncLabelRval),
+		ml_gen_goal(model_non, Goal, GoalStatement),
+		ml_gen_info_pop_success_cont,
+
+		{ TryCommitStmt = try_commit(CommitRefVar, GoalStatement,
+			ml_gen_block([], [], Context)) },
+		{ TryCommitStatement = mlds__statement(TryCommitStmt,
+			MLDS_Context) },
+
+		{ MLDS_Decls = [CommitRefDecl, SuccessFunc] },
+		{ MLDS_Statements = [TryCommitStatement] }
+	;
+		% no commit required
+		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
+	).
+
 
 	% Generate MLDS code for the different kinds of HLDS goals.
 	%
@@ -2984,6 +3164,18 @@ ml_cont_rval(ContRval) -->
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 	{ ContRval = lval(var(qual(MLDS_Module, "cont"))) }.
 
+	% Return the rval for the current function's `cont' argument.
+	% (The `cont' argument is a continuation function that
+	% will be called when a model_non goal succeeds.)
+	%
+:- pred ml_commit_var(mlds__var_name, mlds__var, ml_gen_info, ml_gen_info).
+:- mode ml_commit_var(in, out, in, out) is det.
+ml_commit_var(CommitRef, CommitVar) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
+	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+	{ CommitVar = qual(MLDS_Module, CommitRef) }.
+
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
 	%
@@ -3300,10 +3492,10 @@ sorry(What) :-
 % The `ml_gen_info' type holds information used during MLDS code generation
 % for a given procedure.
 %
-% Only the `func_sequence_num' field and the `stack(success_cont)' field
-% are mutable, the others are set when the `ml_gen_info' is created and then
-% never modified.
-%
+% Only the `func_sequence_num', `commit_sequence_num', and
+% `stack(success_cont)' fields are mutable; the others are set
+% when the `ml_gen_info' is created and then never modified.
+% 
 
 :- type ml_gen_info
 	--->	ml_gen_info(
@@ -3314,8 +3506,11 @@ sorry(What) :-
 			map(prog_var, prog_type),
 			list(prog_var),			% output arguments
 			mlds__func_sequence_num,
+			commit_sequence_num,
 			stack(success_cont)
 		).
+
+:- type commit_sequence_num == int.
 
 :- func ml_gen_info_init(module_info, pred_id, proc_id) = ml_gen_info.
 
@@ -3329,6 +3524,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
 		VarTypes),
 	FuncLabelCounter = 0,
+	CommitLabelCounter = 0,
 	stack__init(SuccContStack),
 	MLDSGenInfo = ml_gen_info(
 			ModuleInfo,
@@ -3338,13 +3534,14 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			VarTypes,
 			OutputVars,
 			FuncLabelCounter,
+			CommitLabelCounter,
 			SuccContStack
 		).
 
 :- pred ml_gen_info_get_module_info(ml_gen_info, module_info).
 :- mode ml_gen_info_get_module_info(in, out) is det.
 
-ml_gen_info_get_module_info(ml_gen_info(ModuleInfo, _, _, _, _, _, _, _),
+ml_gen_info_get_module_info(ml_gen_info(ModuleInfo, _, _, _, _, _, _, _, _),
 	ModuleInfo).
 
 :- pred ml_gen_info_get_module_name(ml_gen_info, mercury_module_name).
@@ -3357,36 +3554,45 @@ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) :-
 :- pred ml_gen_info_get_pred_id(ml_gen_info, pred_id).
 :- mode ml_gen_info_get_pred_id(in, out) is det.
 
-ml_gen_info_get_pred_id(ml_gen_info(_, PredId, _, _, _, _, _, _), PredId).
+ml_gen_info_get_pred_id(ml_gen_info(_, PredId, _, _, _, _, _, _, _), PredId).
 
 :- pred ml_gen_info_get_proc_id(ml_gen_info, proc_id).
 :- mode ml_gen_info_get_proc_id(in, out) is det.
 
-ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _), ProcId).
+ml_gen_info_get_proc_id(ml_gen_info(_, _, ProcId, _, _, _, _, _, _), ProcId).
 
 :- pred ml_gen_info_get_varset(ml_gen_info, prog_varset).
 :- mode ml_gen_info_get_varset(in, out) is det.
 
-ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _), VarSet).
+ml_gen_info_get_varset(ml_gen_info(_, _, _, VarSet, _, _, _, _, _), VarSet).
 
 :- pred ml_gen_info_get_var_types(ml_gen_info, map(prog_var, prog_type)).
 :- mode ml_gen_info_get_var_types(in, out) is det.
 
-ml_gen_info_get_var_types(ml_gen_info(_, _, _, _, VarTypes, _, _, _),
+ml_gen_info_get_var_types(ml_gen_info(_, _, _, _, VarTypes, _, _, _, _),
 	VarTypes).
 
 :- pred ml_gen_info_get_output_vars(ml_gen_info, list(prog_var)).
 :- mode ml_gen_info_get_output_vars(in, out) is det.
 
-ml_gen_info_get_output_vars(ml_gen_info(_, _, _, _, _, OutputVars, _, _),
+ml_gen_info_get_output_vars(ml_gen_info(_, _, _, _, _, OutputVars, _, _, _),
 	OutputVars).
 
 :- pred ml_gen_info_new_func_label(ml_label_func, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_new_func_label(out, in, out) is det.
 
-ml_gen_info_new_func_label(Label, ml_gen_info(A, B, C, D, E, F, Label0, H),
-			    ml_gen_info(A, B, C, D, E, F, Label, H)) :-
+ml_gen_info_new_func_label(Label, ml_gen_info(A, B, C, D, E, F, Label0, H, I),
+			    ml_gen_info(A, B, C, D, E, F, Label, H, I)) :-
 	Label is Label0 + 1.
+
+:- pred ml_gen_info_new_commit_label(commit_sequence_num,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_new_commit_label(out, in, out) is det.
+
+ml_gen_info_new_commit_label(CommitLabel,
+		ml_gen_info(A, B, C, D, E, F, G, CommitLabel0, I),
+		ml_gen_info(A, B, C, D, E, F, G, CommitLabel, I)) :-
+	CommitLabel is CommitLabel0 + 1.
 
 :- type success_cont == mlds__rval.
 
@@ -3396,15 +3602,15 @@ ml_gen_info_new_func_label(Label, ml_gen_info(A, B, C, D, E, F, Label0, H),
 :- mode ml_gen_info_get_success_cont_stack(in, out) is det.
 
 ml_gen_info_get_success_cont_stack(
-	ml_gen_info(_, _, _, _, _, _, _, SuccContStack), SuccContStack).
+	ml_gen_info(_, _, _, _, _, _, _, _, SuccContStack), SuccContStack).
 
 :- pred ml_gen_info_set_success_cont_stack(stack(success_cont),
 			ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_set_success_cont_stack(in, in, out) is det.
 
 ml_gen_info_set_success_cont_stack(SuccContStack,
-		ml_gen_info(A, B, C, D, E, F, G, _),
-		ml_gen_info(A, B, C, D, E, F, G, SuccContStack)).
+		ml_gen_info(A, B, C, D, E, F, G, H, _),
+		ml_gen_info(A, B, C, D, E, F, G, H, SuccContStack)).
 ********/
 
 :- pred ml_gen_info_push_success_cont(success_cont,
@@ -3412,16 +3618,16 @@ ml_gen_info_set_success_cont_stack(SuccContStack,
 :- mode ml_gen_info_push_success_cont(in, in, out) is det.
 
 ml_gen_info_push_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, Stack0),
-		ml_gen_info(A, B, C, D, E, F, G, Stack)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack0),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack)) :-
 	stack__push(Stack0, SuccCont, Stack).
 
 :- pred ml_gen_info_pop_success_cont(ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_pop_success_cont(in, out) is det.
 
 ml_gen_info_pop_success_cont(
-		ml_gen_info(A, B, C, D, E, F, G, Stack0),
-		ml_gen_info(A, B, C, D, E, F, G, Stack)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack0),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack)) :-
 	stack__pop_det(Stack0, _SuccCont, Stack).
 
 :- pred ml_gen_info_current_success_cont(success_cont,
@@ -3429,8 +3635,8 @@ ml_gen_info_pop_success_cont(
 :- mode ml_gen_info_current_success_cont(out, in, out) is det.
 
 ml_gen_info_current_success_cont(SuccCont,
-		ml_gen_info(A, B, C, D, E, F, G, Stack),
-		ml_gen_info(A, B, C, D, E, F, G, Stack)) :-
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack),
+		ml_gen_info(A, B, C, D, E, F, G, H, Stack)) :-
 	stack__top_det(Stack, SuccCont).
 
 %-----------------------------------------------------------------------------%

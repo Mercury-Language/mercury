@@ -90,6 +90,14 @@ defn_is_public(Defn) :-
 	Defn = mlds__defn(_Name, _Context, Flags, _Body),
 	access(Flags) \= private.
 
+:- pred defn_is_commit_type_var(mlds__defn).
+:- mode defn_is_commit_type_var(in) is semidet.
+
+defn_is_commit_type_var(Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = mlds__data(Type, _),
+	Type = mlds__commit_type.
+
 :- pred mlds_output_hdr_imports(int, mlds__imports, io__state, io__state).
 :- mode mlds_output_hdr_imports(in, in, di, uo) is det.
 
@@ -226,7 +234,13 @@ mlds_output_decls(Indent, ModuleName, Defns) -->
 :- mode mlds_output_defns(in, in, in, di, uo) is det.
 
 mlds_output_defns(Indent, ModuleName, Defns) -->
-	list__foldl(mlds_output_defn(Indent, ModuleName), Defns).
+	%
+	% GNU C __label__ declarations must precede
+	% ordinary variable declarations.
+	%
+	{ list__filter(defn_is_commit_type_var, Defns, LabelDecls, OtherDefns) },
+	list__foldl(mlds_output_defn(Indent, ModuleName), LabelDecls),
+	list__foldl(mlds_output_defn(Indent, ModuleName), OtherDefns).
 
 
 :- pred mlds_output_decl(int, mlds_module_name, mlds__defn,
@@ -396,8 +410,14 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 	;
 		{ MaybeBody = yes(Body) },
 		io__write_string("\n"),
-		% require Body0 = statement(block(_, _), _)
-		mlds_output_statement(Indent, Name, Body)
+		%
+		% C requires function bodies to be blocks
+		%
+		( { Body = statement(block(_, _), _) } ->
+			mlds_output_statement(Indent, Name, Body)
+		;
+			mlds_output_stmt(Indent, Name, block([], [Body]))
+		)
 	).
 
 :- pred mlds_output_func_decl(int, qualified_entity_name, func_params, 
@@ -570,6 +590,9 @@ mlds_output_type(mlds__char_type)  --> io__write_string("char").
 mlds_output_type(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
 	io__write_string(" *").
+mlds_output_type(mlds__commit_type) -->
+	% XXX this assumes GNU C
+	io__write_string("__label__").
 
 %-----------------------------------------------------------------------------%
 %
@@ -797,6 +820,43 @@ mlds_output_stmt(Indent, _FuncName, return(Results)) -->
 	),
 	io__write_string(";\n").
 	
+	%
+	% commits
+	% XXX Currently we handle these using GNU C constructs.
+	%
+mlds_output_stmt(Indent, _FuncName, do_commit(Ref)) -->
+	mlds_indent(Indent),
+	io__write_string("goto "),
+	mlds_output_fully_qualified_name(Ref, io__write_string),
+	io__write_string(";\n").
+mlds_output_stmt(Indent, FuncName, try_commit(Ref, Stmt, Handler)) -->
+	
+	% Output the following:
+	%
+	%               <Stmt>
+	%               goto <Ref>_done;
+	%       <Ref>:
+	%               <Handler>
+	%       <Ref>_done:
+	%               ;
+
+	mlds_output_statement(Indent, FuncName, Stmt),
+
+	mlds_indent(Indent),
+	io__write_string("goto "),
+	mlds_output_fully_qualified_name(Ref, io__write_string),
+	io__write_string("_done;\n"),
+
+	mlds_indent(Indent - 1),
+	mlds_output_fully_qualified_name(Ref, io__write_string),
+	io__write_string(":\n"),
+
+	mlds_output_statement(Indent, FuncName, Handler),
+
+	mlds_indent(Indent - 1),
+	mlds_output_fully_qualified_name(Ref, io__write_string),
+	io__write_string("_done:\t;\n").
+
 	%
 	% exception handling
 	%

@@ -11,7 +11,6 @@
 % The MLDS is an intermediate data structure used in compilation;
 % we compile Mercury source -> parse tree -> HLDS -> MLDS -> target (e.g. C).
 % See notes/compiler_design.html for more information about the MLDS & LLDS.
-% [XXX Need to document MLDS in notes/compiler_design.html.]
 %
 % The MLDS is intended to be suitable for generating target code in
 % languages such as Java, Java bytecode, high-level C, C++, or C--, etc.
@@ -456,6 +455,10 @@
 		% to handle nondeterminism
 	;	mlds__cont_type
 
+		% The type used for storing information about a commit.
+		% This may be `jmp_buf' or `__label__'.
+	;	mlds__commit_type
+
 		% MLDS native builtin types.
 		% These are the builtin types of the MLDS target language,
 		% whatever that may be.
@@ -638,10 +641,58 @@
 						% returning more than one value
 						
 	%
-	% exception handling
+	% commits (a specialized form of exception handling)
 	%
 
-	/* XXX not yet implemented */
+		% try_commit(Ref, GoalToTry, CommitHandlerGoal):
+		%	Execute GoalToTry.  If GoalToTry exits via a
+		%	`commit(Ref)' instruction, then execute
+		%	CommitHandlerGoal.
+		%
+		% do_commit(Ref):
+		%	Unwind the stack to the corresponding `try_commit'
+		%	statement for Ref, and branch to the CommitHandlerGoal
+		%	that was specified in that try_commit instruction.
+		%
+		% For both try_commit and commit instructions,
+		% Ref should be the name of a local variable of type
+		% mlds__commit_type.  There should be exactly
+		% one try_commit instruction for each Ref.
+		% do_commit(Ref) instructions should only be used
+		% in goals called from the GoalToTry goal in the
+		% try_commit instruction with the same Ref.
+		%	
+	;	try_commit(mlds__var, mlds__statement, mlds__statement)
+	;	do_commit(mlds__var)
+
+	%
+	% exception handling
+	%
+/*********
+XXX Full exception handling support is not yet implemented.
+
+	% We use C++-style exceptions.
+	% For C, the back-end can simulate them using setjmp/longjmp.
+	%
+	% XXX This is tentative -- the current definition may be
+	% a bit too specific to C++-style exceptions.
+	% It might not be a good choice for different target languages.
+
+		% throw the specified exception
+	;	throw(mlds__type, mlds__rval)
+
+		% rethrow the current exception
+		% (only valid inside an exception handler)
+	;	rethrow
+
+		% Execute the specified statement, and if it throws an exception,
+		% and the exception matches any of the exception handlers,
+		% then execute the first matching exception handler.
+	;	try_catch(
+			mlds__statement,
+			list(mlds__exception_handler)
+		)
+**********/
 
 	%
 	% atomic statements
@@ -658,6 +709,22 @@
 	--->	tail_call	% a tail call
 	;	call		% just an ordinary call
 	.
+
+
+	% XXX This is tentative -- the current definition may be
+	% a bit too specific to C++-style exceptions.
+	% It might not be a good choice for different target languages.
+:- type mlds__exception_handler
+	--->	handler(
+			maybe(mlds__type),
+				% if `yes(T)', specifies the type of exceptions to catch
+				% if `no', it means catch all exceptions
+
+			maybe(string)
+				% if `yes(Name)', gives the variable name to use for
+				%	the exception value
+				% if `no', then exception value will not be used
+		).
 
 
 	%
@@ -915,7 +982,7 @@
 			% module name; which var
 
 :- type mlds__data_name
-	--->	var(string)
+	--->	var(mlds__var_name)
 			% ordinary variables
 	;	common(int)
 			% Compiler-introduced constants representing
