@@ -242,7 +242,7 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(deterministic,
-				deterministic, PredTerm, Code)
+				PredTerm, Code)
 		;
 			{ error("call_gen__generate_det_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -279,7 +279,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(semideterministic,
-				semideterministic, PredTerm, Code)
+				PredTerm, Code)
 		;
 			{ error("call_gen__generate_semi_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -299,7 +299,7 @@ call_gen__generate_nondet_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(nondeterministic,
-				nondeterministic, PredTerm, Code)
+				PredTerm, Code)
 		;
 			{ error("call_gen__generate_non_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -460,11 +460,11 @@ call_gen__insert_arg_livelvals([L - _M|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_higher_call(category, category, var, code_tree,
+:- pred call_gen__generate_higher_call(category, var, code_tree,
 						code_info, code_info).
-:- mode call_gen__generate_higher_call(in, in, in, out, in, out) is det.
+:- mode call_gen__generate_higher_call(in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
+call_gen__generate_higher_call(PredDet, Var, Code) -->
 	call_gen__save_variables(SaveCode),
 	code_info__clear_reserved_registers,
 	code_info__generate_stack_livevals(LiveVals0),
@@ -486,7 +486,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 		{ CallCode = node([
 			livevals(yes, LiveVals) - "",
 			call_closure(no, label(ReturnLabel), OutLiveVals) -
-				"setup and call higher order pred",
+				"setup and call det higher order pred",
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
@@ -494,7 +494,7 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 		{ TryCallCode = node([
 			livevals(yes, LiveVals) - "",
 			call_closure(yes, label(ReturnLabel), OutLiveVals) -
-				"setup and call higher order pred",
+				"setup and call semidet higher order pred",
 			label(ReturnLabel) - "Continuation label"
 		]) },
 		code_info__generate_failure(FailCode),
@@ -506,28 +506,13 @@ call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 		{ CallCode = tree(TryCallCode, CheckReturnCode) }
 	;
 		{ PredDet = nondeterministic },
-		(
-			{ ContextDet = semideterministic }
-		->
-			code_info__generate_pre_commit(PreCommit, FailLabel),
-			{ DoCall = node([
-				livevals(yes, LiveVals) - "",
-				call_closure(no, label(ReturnLabel),
-							OutLiveVals)
-					- "setup and call higher order pred",
-				label(ReturnLabel) - "Continuation label"
-			]) },
-			code_info__generate_commit(FailLabel, Commit),
-			{ CallCode = tree(PreCommit, tree(DoCall, Commit)) }
-		;
-			{ CallCode = node([
-				livevals(yes, LiveVals) - "",
-				call_closure(no, label(ReturnLabel),
-							OutLiveVals)
-					- "setup and call higher order pred",
-				label(ReturnLabel) - "Continuation label"
-			]) }
-		)
+		{ CallCode = node([
+			livevals(yes, LiveVals) - "",
+			call_closure(no, label(ReturnLabel),
+						OutLiveVals)
+				- "setup and call nondet higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
 	),
 	{ Code = tree(tree(SaveCode, VarCode),
 		tree(CopyCode, CallCode)) },
