@@ -797,9 +797,9 @@ typedef struct {
 
 /*---------------------------------------------------------------------------*/
 
-Word * MR_create_type_info(Word *, Word *);
-Word * MR_create_type_info_maybe_existq(Word *, Word *, Word *, Word *);
-Word * MR_get_arg_type_info(Word *, Word *, Word *, Word *);
+Word * MR_create_type_info(const Word *, const Word *);
+Word * MR_create_type_info_maybe_existq(const Word *, const Word *,
+		const Word *, const Word *);
 int MR_compare_type_info(Word, Word);
 Word MR_collapse_equivalences(Word);
 
@@ -818,8 +818,8 @@ typedef struct MR_MemoryCellNode *MR_MemoryList;
 Word * MR_make_type_info(const Word *term_type_info, 
 	const Word *arg_pseudo_type_info, MR_MemoryList *allocated);
 Word * MR_make_type_info_maybe_existq(const Word *term_type_info, 
-	const Word *arg_pseudo_type_info, Word *data_value, 
-	Word *functor_descriptor, MR_MemoryList *allocated) ;
+	const Word *arg_pseudo_type_info, const Word *data_value, 
+	const Word *functor_descriptor, MR_MemoryList *allocated) ;
 void MR_deallocate(MR_MemoryList allocated_memory_cells);
 
 /*---------------------------------------------------------------------------*/

@@ -19,6 +19,13 @@ ENDINIT
 
 /*---------------------------------------------------------------------------*/
 
+static Word *
+MR_get_arg_type_info(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, const Word *data_value, 
+	const Word *functor_descriptor);
+
+/*---------------------------------------------------------------------------*/
+
 	/* type_ctor_layout for `pred' */
 	/* (this is used for all higher-order types) */
 
@@ -155,7 +162,7 @@ END_MODULE
 	** instead of on the Mercury heap.
 	*/
 Word * 
-MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
+MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info)
 {
 	return MR_create_type_info_maybe_existq(term_type_info, 
 		arg_pseudo_type_info, NULL, NULL);
@@ -171,9 +178,9 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	** well as the functor descriptor for that functor.
 	*/
 Word * 
-MR_create_type_info_maybe_existq(Word *term_type_info, 
-	Word *arg_pseudo_type_info, Word *data_value, 
-	Word *functor_descriptor)
+MR_create_type_info_maybe_existq(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, const Word *data_value, 
+	const Word *functor_descriptor)
 {
 	int i, arity, extra_args;
 	MR_TypeCtorInfo type_ctor_info;
@@ -201,7 +208,7 @@ MR_create_type_info_maybe_existq(Word *term_type_info,
 
 	/* no arguments - optimise common case */
 	if ((Word) type_ctor_info == (Word) arg_pseudo_type_info) {
-		return arg_pseudo_type_info;
+		return (Word *) arg_pseudo_type_info;
 	}
 
 	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
@@ -243,33 +250,33 @@ MR_create_type_info_maybe_existq(Word *term_type_info,
 		}
 	}
 	if (type_info == NULL) {
-		return arg_pseudo_type_info;
+		return (Word *) arg_pseudo_type_info;
 	} else {
 		return type_info;
 	}
 }
 
-Word *
-MR_get_arg_type_info(Word *term_type_info, 
-	Word *arg_pseudo_type_info, Word *data_value, 
-	Word *functor_descriptor)
+static Word *
+MR_get_arg_type_info(const Word *term_type_info, 
+	const Word *arg_pseudo_type_info, const Word *data_value, 
+	const Word *functor_descriptor)
 {
 	Word *arg_type_info;
-
 	int num_univ_type_infos;
 
 	num_univ_type_infos =
 		MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info)->arity;
 
 	if ((Word) arg_pseudo_type_info <= num_univ_type_infos) {
-
-		/* This is a universally quantified type variable */
-
+		/*
+		** This is a universally quantified type variable
+		*/
 		arg_type_info = (Word *) 
 			term_type_info[(Word) arg_pseudo_type_info];
 	} else {
-
-		/* This is an existentially quantified type variable */
+		/*
+		** This is an existentially quantified type variable
+		*/
 
 		Word type_info_locn;
 
@@ -280,7 +287,6 @@ MR_get_arg_type_info(Word *term_type_info,
 				- num_univ_type_infos - 1];
 
 		if (MR_TYPE_INFO_LOCN_IS_INDIRECT(type_info_locn)) {
-
 			/*
 			** This is indirect; the type-info
 			** is inside a typeclass-info 
@@ -289,19 +295,25 @@ MR_get_arg_type_info(Word *term_type_info,
 			int typeinfo_number;
 			int arg_number;
 
-			typeinfo_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_TYPEINFO_NUMBER(type_info_locn);
+			typeinfo_number =
+				MR_TYPE_INFO_LOCN_INDIRECT_GET_TYPEINFO_NUMBER(
+					type_info_locn);
 
-			arg_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(type_info_locn);
+			arg_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(
+					type_info_locn);
 
-			arg_type_info = 
-				MR_typeclass_info_type_info(
-					data_value[arg_number],
-					typeinfo_number);
+			arg_type_info = (Word *) MR_typeclass_info_type_info(
+				data_value[arg_number], typeinfo_number);
 		} else {
-			/* This is direct */
+			/*
+			** This is direct
+			*/
 
-			arg_type_info = 
-				(Word *) data_value[MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(type_info_locn)];
+			int typeinfo_number =
+				MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(
+					type_info_locn);
+
+			arg_type_info = (Word *) data_value[typeinfo_number];
 		}
 	}
 
@@ -525,8 +537,8 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	*/
 Word *
 MR_make_type_info_maybe_existq(const Word *term_type_info, 
-	const Word *arg_pseudo_type_info, Word *data_value, 
-	Word *functor_descriptor, MR_MemoryList *allocated) 
+	const Word *arg_pseudo_type_info, const Word *data_value, 
+	const Word *functor_descriptor, MR_MemoryList *allocated) 
 {
 	int i, arity, extra_args;
 	MR_TypeCtorInfo type_ctor_info;
@@ -558,10 +570,10 @@ MR_make_type_info_maybe_existq(const Word *term_type_info,
 
 	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
 		arity = MR_TYPEINFO_GET_HIGHER_ARITY(arg_pseudo_type_info);
-			extra_args = 2;
+		extra_args = 2;
 	} else {
 		arity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor_info);
-			extra_args = 1;
+		extra_args = 1;
 	}
 
 	/*
