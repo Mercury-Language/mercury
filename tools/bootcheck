@@ -170,7 +170,7 @@ then
 	cd $root/stage2_sicstus
 	mkdir library
 	cd library
-	ln -s $root/library/library.m.in .
+	ln -s $root/library/library.nu.nl.in .
 	ln -s $root/library/[a-l]*.m .
 	ln -s $root/library/[m-z]*.m .
 	ln -s $root/library/*.nl .
@@ -331,7 +331,7 @@ cp $root/compiler/Mmake* .
 cd $root/stage2
 mkdir library
 cd library
-ln -s $root/library/library.m.in .
+ln -s $root/library/library.nu.nl.in .
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
@@ -454,7 +454,7 @@ cp $root/compiler/Mmake* .
 cd $root/stage3
 mkdir library
 cd library
-ln -s $root/library/library.m.in .
+ln -s $root/library/library.nu.nl.in .
 ln -s $root/library/[a-l]*.m .
 ln -s $root/library/[m-z]*.m .
 ln -s $root/library/*.nl .
