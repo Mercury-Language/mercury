@@ -90,7 +90,7 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, Follow0, ModuleInfo,
 					Goal - GoalInfo, Liveness, Follow) :-
 	goal_info_pre_delta_liveness(GoalInfo0, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
-	goal_info_pre_delta_liveness(GoalInfo0, PostDelta),
+	goal_info_post_delta_liveness(GoalInfo0, PostDelta),
 	PostDelta = PostBirths - PostDeaths,
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
