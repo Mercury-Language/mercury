@@ -111,6 +111,7 @@
 			;	framevar(int)	% nondet stack slots
 			;	succip		% det return address
 			;	maxfr		% top of nondet stack
+			;	curfr		% nondet stack frame pointer
 			;	curredoip	% the redoip of the current
 						% nondet stack frame
 			;	hp		% heap pointer
@@ -613,6 +614,7 @@ output_lval_decls(stackvar(_)) --> [].
 output_lval_decls(framevar(_)) --> [].
 output_lval_decls(succip) --> [].
 output_lval_decls(maxfr) --> [].
+output_lval_decls(curfr) --> [].
 output_lval_decls(curredoip) --> [].
 output_lval_decls(hp) --> [].
 output_lval_decls(sp) --> [].
@@ -809,13 +811,14 @@ output_label_prefix -->
 :- mode output_reg(in, di, uo) is det.
 
 output_reg(r(N)) -->
-	{ (N < 1, N > 32) ->
-		error("Reg number out of range")
+	( { N > 32 } ->
+		io__write_string("r("),
+		io__write_int(N),
+		io__write_string(")")
 	;
-		true
-	},
-	io__write_string("r"),
-	io__write_int(N).
+		io__write_string("r"),
+		io__write_int(N)
+	).
 output_reg(f(_)) -->
 	{ error("Floating point registers not implemented") }.
 
@@ -986,6 +989,8 @@ output_lval(hp) -->
 	io__write_string("LVALUE_CAST(Word,hp)").
 output_lval(maxfr) -->
 	io__write_string("LVALUE_CAST(Word,maxfr)").
+output_lval(curfr) -->
+	io__write_string("LVALUE_CAST(Word,curfr)").
 output_lval(curredoip) -->
 	io__write_string("LVALUE_CAST(Word,curredoip)").
 output_lval(field(Tag, Rval, FieldNum)) -->
@@ -1034,6 +1039,8 @@ output_rval_lval(hp) -->
 	io__write_string("(Integer) hp").
 output_rval_lval(maxfr) -->
 	io__write_string("(Integer) maxfr").
+output_rval_lval(curfr) -->
+	io__write_string("(Integer) curfr").
 output_rval_lval(curredoip) -->
 	io__write_string("(Integer) curredoip").
 output_rval_lval(field(Tag, Rval, FieldNum)) -->

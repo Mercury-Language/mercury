@@ -481,6 +481,7 @@ opt_util__lval_refers_stackvars(framevar(_), _) :-
 	error("found framevar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
+opt_util__lval_refers_stackvars(curfr, no).
 opt_util__lval_refers_stackvars(curredoip, no).
 opt_util__lval_refers_stackvars(hp, no).
 opt_util__lval_refers_stackvars(sp, no).

@@ -2656,11 +2656,14 @@ code_info__failure_cont_address(unknown, do_redo).
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
-	code_info__push_temp(maxfr, MaxfrSlot),
+	code_info__push_temp(curfr, CurfrSlot),
 	code_info__push_temp(curredoip, RedoipSlot),
 	{ SaveCode = node([
-		assign(MaxfrSlot, lval(maxfr)) - "Save nondet stack pointer",
-		assign(RedoipSlot, lval(curredoip)) - "Save current redoip"
+		% XXX efficiency of this generated code could be improved
+		assign(CurfrSlot, lval(curfr)) -
+				"Save nondet frame pointer",
+		assign(curfr, lval(maxfr)) - "Point to top of nondet stack",
+		assign(RedoipSlot, lval(curredoip)) - "Save the top redoip"
 	]) },
 	code_info__push_failure_cont(known(FailLabel)),
 	{ SetRedoIp = node([
@@ -2679,17 +2682,20 @@ code_info__generate_commit(FailLabel, Commit) -->
 	]) },
 	code_info__pop_failure_cont,
 	code_info__pop_temp(RedoIpSlot),
-	code_info__pop_temp(MaxfrSlot),
-	{ RestoreRedoIp = node([
-		assign(curredoip, lval(RedoIpSlot)) - "Restore current redoip"
-	]) },
+	code_info__pop_temp(CurfrSlot),
 	{ RestoreMaxfr = node([
-		assign(maxfr, lval(MaxfrSlot)) - "Restore nondet stack pointer"
+		assign(maxfr, lval(curfr)) - "Prune away unwanted choice-points"
+	]) },
+	{ RestoreRedoIp = node([
+		assign(curredoip, lval(RedoIpSlot)) - "Restore the top redoip"
+	]) },
+	{ RestoreCurfr = node([
+		assign(curfr, lval(CurfrSlot)) -
+				"Restore nondet frame pointer"
 	]) },
 	code_info__generate_failure(Fail),
-	{ RestoreRegs = tree(RestoreRedoIp, RestoreMaxfr) },
-	{ FailCode = tree(RestoreRedoIp, Fail) },
-	{ SuccessCode = RestoreRegs },
+	{ SuccessCode = tree(RestoreMaxfr, tree(RestoreRedoIp, RestoreCurfr)) },
+	{ FailCode = tree(RestoreRedoIp, tree(RestoreCurfr, Fail)) },
 	{ Commit = tree(GotoSuccCode, tree(FailCode,
 		tree(SuccLabelCode, SuccessCode))) }.
 
@@ -2909,6 +2915,7 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 code_info__get_shape_num(succip, -1).
 code_info__get_shape_num(hp, -2).
 code_info__get_shape_num(maxfr, -3).
+code_info__get_shape_num(curfr, -7).	% XXX magic numbers! is this one right?
 code_info__get_shape_num(curredoip, -4).
 code_info__get_shape_num(sp, -5).
 code_info__get_shape_num(lvar(_), -6).
