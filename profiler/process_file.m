@@ -170,7 +170,7 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 		% Probably a better fix would be to ensure that 
 		% that line never gets generated.
 		% But really I have no idea what the right solution is. -fjh.
-		( { LabelAddr = 0, Count = 1 } ->
+		( { LabelAddr = 0 } ->
 			{ ProfNodeMap1 = ProfNodeMap0 },
 			{ TC1 = TotalCounts0 }
 		;
