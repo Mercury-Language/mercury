@@ -850,7 +850,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	while (MR_redoip_slot(MR_curfr) != ENTRY(exception_handler_do_fail)) {
 		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {
-			Word saved_regs[MAX_FAKE_REG];
+			Word *save_succip;
 			/*
 			** There was no exception handler.
 			** 
@@ -858,19 +858,26 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 			** print out some diagnostics,
 			** and then terminate execution.
 			**
-			** We need to save & restore the registers to a
-			** separate `saved_reg' array across the call to
-			** ML_report_uncaught_exception(), since that is
-			** Mercury code which may clobber both the real
-			** machine registers and also the fake_reg array.
+			** We need to save the registers to the fake_reg
+			** array using save_registers() before calling
+			** ML_report_uncaught_exception, since that is
+			** Mercury code and the C->Mercury interface expects
+			** the registers to be saved.
+			** We also need to save & restore the MR_succip
+			** across that call, since any call to Mercury code
+			** may clobber MR_succip (and also the Mercury
+			** registers r1, r2, r3, etc., but for those we don't
+			** care, since we don't use them).
+			** Note that the save_registers() alone is not
+			** sufficient since the Mercury code may clobber the
+			** copy of MR_succip in the fake_reg.
 			*/
 			MR_curfr = orig_curfr;
 			fflush(stdout);
-			MR_copy_regs_to_saved_regs(MR_MAX_SPECIAL_REG_MR + 1,
-				saved_regs);
+			save_succip = MR_succip;
+			save_registers();
 			ML_report_uncaught_exception(exception);
-			MR_copy_saved_regs_to_regs(MR_MAX_SPECIAL_REG_MR + 1,
-				saved_regs);
+			MR_succip = save_succip;
 			MR_trace_report(stderr);
 			if (exception_event_number > 0) {
 				fprintf(stderr, ""Last trace event before ""
