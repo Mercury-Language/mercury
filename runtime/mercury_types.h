@@ -231,11 +231,14 @@ typedef MR_TableNode                            *MR_TrieNode;
 typedef MR_TrieNode                             *MR_TrieNodePtr;
 
 typedef struct MR_HashTable_Struct              MR_HashTable;
+typedef struct MR_MemoNonRecord_Struct          MR_MemoNonRecord;
+typedef struct MR_MemoNonRecord_Struct          *MR_MemoNonRecordPtr;
+typedef struct MR_AnswerListNode_Struct         MR_AnswerListNode;
 typedef struct MR_Subgoal_Struct                MR_Subgoal;
 typedef struct MR_SubgoalListNode_Struct        MR_SubgoalListNode;
-typedef struct MR_AnswerListNode_Struct         MR_AnswerListNode;
 typedef struct MR_Consumer_Struct               MR_Consumer;
 typedef struct MR_ConsumerListNode_Struct       MR_ConsumerListNode;
+typedef struct MR_Generator_Struct              MR_Generator;
 
 typedef MR_SubgoalListNode                      *MR_SubgoalList;
 typedef MR_AnswerListNode                       *MR_AnswerList;
@@ -250,5 +253,12 @@ typedef MR_PNegConsumerListNode                 *MR_PNegConsumerList;
 
 typedef struct MR_ConsumerDebug_Struct          MR_ConsumerDebug;
 typedef struct MR_SubgoalDebug_Struct           MR_SubgoalDebug;
+typedef struct MR_ConsDebug_Struct              MR_ConsDebug;
+typedef struct MR_GenDebug_Struct               MR_GenDebug;
+
+typedef	MR_Word		                            *MR_AnswerBlock;
+typedef	MR_Subgoal	                            *MR_SubgoalPtr;
+typedef	MR_Consumer	                            *MR_ConsumerPtr;
+typedef	MR_Generator	                        *MR_GeneratorPtr;
 
 #endif /* not MERCURY_TYPES_H */

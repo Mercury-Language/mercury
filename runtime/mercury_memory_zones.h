@@ -176,7 +176,7 @@ extern	MR_MemoryZone	*MR_create_zone(const char *name, int id,
 
 /*
 ** MR_construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
-** has the same behaviour as MR_create_zone, except instread of allocating
+** has the same behaviour as MR_create_zone, except instead of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
 ** least Size + unit[*] bytes, or if MR_PROTECTPAGE is defined, then it
 ** must be at least Size + 2 * unit[*] bytes.
@@ -206,6 +206,13 @@ extern	void		MR_reset_redzone(MR_MemoryZone *zone);
 */
 
 extern	MR_MemoryZone	*MR_get_used_memory_zones(void);
+
+/*
+** Returns true iff ptr is the given zone.
+*/
+
+extern	MR_bool		MR_in_zone(const MR_Word *ptr,
+				const MR_MemoryZone *zone);
 
 /*
 ** MR_debug_memory() prints out debugging information about the current

@@ -719,7 +719,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
 		TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
 		goal_util__generate_simple_call(TermSizeProfBuiltin,
 			"increment_size", predicate, only_mode, det,
-			[Var, SizeVar], yes(impure), [], !.Info ^ module_info,
+			[Var, SizeVar], [impure], [], !.Info ^ module_info,
 			Context, UpdateGoal),
 		% Put UnifyGoal first in case it fails.
 		Goals = list__condense([[UnifyGoal], ArgGoals, SizeGoals,
@@ -788,7 +788,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
 		TermSizeProfModule = mercury_term_size_prof_builtin_module,
 		goal_util__generate_simple_call(TermSizeProfModule,
 			"term_size_plus", function, mode_no(0), det,
-			[SizeVar0, KnownSizeVar, SizeVar], no,
+			[SizeVar0, KnownSizeVar, SizeVar], [],
 			[SizeVar - ground(shared, none)],
 			!.Info ^ module_info, Context, AddGoal),
 		Goals = [KnownSizeGoal, AddGoal]
@@ -850,7 +850,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
 			goal_util__generate_simple_call(PrivateBuiltin,
 				"type_info_from_typeclass_info", predicate,
 				only_mode, det,
-				[TypeClassInfoVar, SlotVar, TypeInfoVar], no,
+				[TypeClassInfoVar, SlotVar, TypeInfoVar], [],
 				[TypeInfoVar - ground(shared, none)],
 				!.Info ^ module_info, Context, ExtractGoal),
 			record_type_info_var(Type, TypeInfoVar, !Info),
@@ -964,7 +964,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
 	),
 	TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
 	goal_util__generate_simple_call(TermSizeProfBuiltin, Pred, predicate,
-		only_mode, det, Args, no, [SizeVar - ground(shared, none)],
+		only_mode, det, Args, [], [SizeVar - ground(shared, none)],
 		!.Info ^ module_info, Context, SizeGoal),
 	MaybeSizeVar = yes(SizeVar).
 

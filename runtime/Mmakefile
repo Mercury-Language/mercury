@@ -29,8 +29,8 @@ HDRS		=	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
 			mercury_calls.h		\
-			mercury_conf.h		\
 			mercury_conf_bootstrap.h \
+			mercury_conf.h		\
 			mercury_conf_param.h	\
 			mercury_construct.h	\
 			mercury_context.h	\
@@ -64,19 +64,22 @@ HDRS		=	\
 			mercury_memory_zones.h	\
 			mercury_minimal_model.h	\
 			mercury_misc.h		\
+			mercury_mm_own_stacks.h	\
 			mercury_overflow.h	\
 			mercury_proc_id.h	\
 			mercury_prof.h		\
+			mercury_profiling_builtin.h	\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
 			mercury_profiling_builtin.h	\
 			mercury_reg_workarounds.h	\
 			mercury_regs.h		\
+			mercury_reg_workarounds.h	\
 			mercury_runtime_util.h	\
 			mercury_signal.h	\
 			mercury_stack_layout.h	\
-			mercury_stack_trace.h	\
 			mercury_stacks.h	\
+			mercury_stack_trace.h	\
 			mercury_std.h		\
 			mercury_string.h	\
 			mercury_tabling.h	\
@@ -88,11 +91,11 @@ HDRS		=	\
 			mercury_timing.h	\
 			mercury_trace_base.h	\
 			mercury_trail.h		\
+			mercury_typeclass_info.h	\
 			mercury_type_desc.h	\
 			mercury_type_info.h	\
-			mercury_type_tables.h	\
-			mercury_typeclass_info.h	\
 			mercury_types.h		\
+			mercury_type_tables.h	\
 			mercury_univ.h		\
 			mercury_wrapper.h
 
@@ -148,8 +151,8 @@ CFILES		= 	\
 			mercury_engine.c	\
 			mercury_file.c		\
 			mercury_float.c		\
-			mercury_getopt.c	\
 			mercury_getopt1.c	\
+			mercury_getopt.c	\
 			mercury_grade.c		\
 			mercury_hash_table.c	\
 			mercury_heap_profile.c	\
@@ -161,16 +164,17 @@ CFILES		= 	\
 			mercury_memory_zones.c	\
 			mercury_minimal_model.c	\
 			mercury_misc.c		\
+			mercury_mm_own_stacks.c	\
 			mercury_prof.c		\
+			mercury_profiling_builtin.c	\
 			mercury_prof_mem.c	\
 			mercury_prof_time.c	\
-			mercury_profiling_builtin.c	\
-			mercury_reg_workarounds.c	\
 			mercury_regs.c		\
+			mercury_reg_workarounds.c	\
 			mercury_runtime_util.c	\
 			mercury_signal.c	\
-			mercury_stack_trace.c	\
 			mercury_stacks.c	\
+			mercury_stack_trace.c	\
 			mercury_string.c	\
 			mercury_tabling.c	\
 			mercury_term_size.c	\

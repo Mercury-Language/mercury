@@ -36,17 +36,19 @@
 % automatically inserted by the table_gen pass of the compiler
 % into predicates that use tabling, and the types they use.
 %
-% The predicates fall into five categories:
+% The predicates fall into the following categories:
 %
-% (1)	Predicates that manage loop checking.
+% - Predicates that manage loop checking.
 %
-% (2)	Predicates that manage memoization in general.
+% - Predicates that manage memoization in general.
 %
-% (3)	Predicates that manage memoization of I/O procedures.
+% - Predicates that manage memoization of I/O procedures.
 %
-% (4)	Predicates that manage minimal model tabling.
+% - Predicates that manage minimal model tabling using stack copying.
 %
-% (5)	Utility predicates that are needed in the tabling of all predicates.
+% - Predicates that manage minimal model tabling using own stacks.
+%
+% - Utility predicates that are needed in the tabling of all predicates.
 %
 % The utility predicates that handle tries are combined lookup/insert
 % operations; if the item being searched for is not already in the trie,
@@ -78,11 +80,17 @@
 % distinguish the two, and because an answer block pointer can be
 % associated with only one status value (memo_succeeded).
 %
-% For minimal model goals, the word at the end of the call table trie always
-% points to a subgoal structure, with several fields. The status of the
-% subgoal and the list of answers are two of these fields. Other fields,
-% described in runtime/mercury_minimal_model.h, are used in the implementation
-% of the minimal model.
+% For minimal model goals with stack copying, the word at the end of the call
+% table trie always points to a subgoal structure, with several fields. The
+% status of the subgoal and the list of answers are two of these fields. Other
+% fields, described in runtime/mercury_minimal_model.h, are used in the
+% implementation of the minimal model.
+%
+% For minimal model goals with own stacks, the word at the end of the call
+% table trie always points to a consumer structure, with several fields. The
+% status of the consumer and the list of answers are two of these fields. Other
+% fields, described in runtime/mercury_mm_own_stack.h, are used in the
+% implementation of the minimal model.
 %
 % All of the predicates here with the impure declaration modify the tabling
 % structures. Because the structures are persistent through backtracking,
@@ -93,13 +101,6 @@
 % so in the next three type definitions, only the C definition is useful.
 % The Mercury and IL definitions are placeholders only, required to make
 % this module compile cleanly on the Java and .NET backends respectively.
-%
-% XXX
-% All the types defined ought to be abstract types. The only reason why their
-% implementation is exported is that if they aren't, C code inside and
-% outside the module would end up using different C types to represent
-% values of these Mercury types, and lcc treats those type disagreements
-% as errors.
 
 	% This type represents the interior pointers of both call
 	% tables and answer tables.
@@ -150,8 +151,17 @@
 	loop_status::out) is det.
 
 	% Mark the call represented by the given table as currently
-	% not being evaluated (working on an answer).
+	% not being evaluated.
 :- impure pred table_loop_mark_as_inactive(ml_trie_node::in) is det.
+
+	% Mark the call represented by the given table as currently
+	% not being evaluated, and fail.
+:- impure pred table_loop_mark_as_inactive_and_fail(ml_trie_node::in)
+	is failure.
+
+	% Mark the call represented by the given table as currently
+	% being evaluated, and fail.
+:- impure pred table_loop_mark_as_active_and_fail(ml_trie_node::in) is failure.
 
 	% N.B. interface continued below
 
@@ -180,6 +190,20 @@
 	MR_table_loop_mark_as_inactive(T);
 ").
 
+:- pragma foreign_proc("C",
+	table_loop_mark_as_inactive_and_fail(T::in),
+	[will_not_call_mercury],
+"
+	MR_table_loop_mark_as_inactive_and_fail(T);
+").
+
+:- pragma foreign_proc("C",
+	table_loop_mark_as_active_and_fail(T::in),
+	[will_not_call_mercury],
+"
+	MR_table_loop_mark_as_active_and_fail(T);
+").
+
 table_loop_setup(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -197,6 +221,20 @@ table_loop_mark_as_inactive(_) :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_loop_mark_as_inactive").
+
+table_loop_mark_as_inactive_and_fail(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_loop_mark_as_inactive"),
+	fail.
+
+table_loop_mark_as_active_and_fail(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_loop_mark_as_active"),
+	fail.
 
 %-----------------------------------------------------------------------------%
 
@@ -223,6 +261,17 @@ table_loop_mark_as_inactive(_) :-
 	;	memo_semi_succeeded
 	;	memo_semi_failed.
 
+	% This type should correspond exactly to the MR_MemoNonStatus type
+	% in runtime/mercury_tabling.h.
+
+:- type memo_non_status
+	--->	memo_non_inactive
+	;	memo_non_active
+	;	memo_non_incomplete
+	;	memo_non_complete.
+
+:- type memo_non_record.
+
 :- impure pred table_memo_det_setup(ml_trie_node::in, memo_det_status::out)
 	is det.
 
@@ -235,11 +284,25 @@ table_loop_mark_as_inactive(_) :-
 :- impure pred table_memo_semi_setup_shortcut(ml_trie_node::in,
 	ml_trie_node::out, memo_semi_status::out) is det.
 
+:- impure pred table_memo_non_setup(ml_trie_node::in,
+	memo_non_record::out, memo_non_status::out) is det.
+
 	% Save the fact that the call has failed in the given table.
 :- impure pred table_memo_mark_as_failed(ml_trie_node::in) is failure.
 
 	% Save the fact that the call has succeeded in the given table.
 :- impure pred table_memo_mark_as_succeeded(ml_trie_node::in) is det.
+
+	% Set the status of the given call to incomplete.
+:- impure pred table_memo_mark_as_incomplete(memo_non_record::in) is det.
+
+	% Set the status of the given call to active, and fail.
+:- impure pred table_memo_mark_as_active_and_fail(memo_non_record::in)
+	is failure.
+
+	% Set the status of the given call to complete, and fail.
+:- impure pred table_memo_mark_as_complete_and_fail(memo_non_record::in)
+	is failure.
 
 	% Create an answer block with the given number of slots and add it
 	% to the given table.
@@ -252,11 +315,41 @@ table_loop_mark_as_inactive(_) :-
 	ml_answer_block::out) is det.
 :- semipure pred table_memo_get_answer_block_shortcut(ml_trie_node::in) is det.
 
+	% Return the table of answers already returned to the given nondet
+	% table.
+:- semipure pred table_memo_non_get_answer_table(memo_non_record::in,
+	ml_trie_node::out) is det.
+
+	% If the answer represented by the given answer table
+	% has not been generated before by this subgoal,
+	% succeed and remember the answer as having been generated.
+	% If the answer has been generated before, fail.
+:- impure pred table_memo_non_answer_is_not_duplicate(ml_trie_node::in)
+	is semidet.
+:- impure pred table_memo_non_answer_is_not_duplicate_shortcut(
+	memo_non_record::in) is semidet.
+
+	% Add an answer block to the given table.
+:- impure pred table_memo_non_create_answer_block_shortcut(memo_non_record::in)
+	is det.
+
+	% Return all the answer blocks for the given model_non call.
+:- semipure pred table_memo_return_all_answers_nondet(memo_non_record::in,
+	ml_answer_block::out) is nondet.
+:- semipure pred table_memo_return_all_answers_multi(memo_non_record::in,
+	ml_answer_block::out) is multi.
+:- semipure pred table_memo_non_return_all_shortcut(memo_non_record::in)
+	is det.
+
 	% N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- type memo_non_record --->		memo_non_record(c_pointer).
+:- pragma foreign_type("C", memo_non_record, "MR_MemoNonRecordPtr",
+	[can_pass_as_mercury_type]).
 
 :- pragma foreign_proc("C",
 	table_memo_det_setup(T::in, Status::out),
@@ -287,6 +380,13 @@ table_loop_mark_as_inactive(_) :-
 ").
 
 :- pragma foreign_proc("C",
+	table_memo_non_setup(T0::in, Record::out, Status::out),
+	[will_not_call_mercury],
+"
+	MR_table_memo_non_setup(T0, Record, Status);
+").
+
+:- pragma foreign_proc("C",
 	table_memo_mark_as_failed(T::in),
 	[will_not_call_mercury],
 "
@@ -298,6 +398,27 @@ table_loop_mark_as_inactive(_) :-
 	[will_not_call_mercury],
 "
 	MR_table_memo_mark_as_succeeded(T);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_mark_as_incomplete(R::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_mark_as_incomplete(R);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_mark_as_active_and_fail(R::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_mark_as_active_and_fail(R);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_mark_as_complete_and_fail(R::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_mark_as_complete_and_fail(R);
 ").
 
 :- pragma foreign_proc("C",
@@ -327,6 +448,45 @@ table_loop_mark_as_inactive(_) :-
 "
 	MR_table_memo_get_answer_block_shortcut(T);
 ").
+
+:- pragma foreign_proc("C",
+	table_memo_non_get_answer_table(R::in, AT::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	MR_table_memo_non_get_answer_table(R, AT);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_non_answer_is_not_duplicate(T::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_non_answer_is_not_duplicate(T, SUCCESS_INDICATOR);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_non_answer_is_not_duplicate_shortcut(R::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_non_answer_is_not_duplicate_shortcut(R,
+		SUCCESS_INDICATOR);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_non_create_answer_block_shortcut(R::in),
+	[will_not_call_mercury],
+"
+	MR_table_memo_non_create_answer_block_shortcut(R::in);
+").
+
+:- pragma foreign_proc("C",
+	table_memo_non_return_all_shortcut(R::in),
+	[will_not_call_mercury, promise_semipure],
+"
+	MR_table_memo_non_return_all_shortcut(R);
+").
+
+:- external(table_memo_return_all_answers_nondet/2).
+:- external(table_memo_return_all_answers_multi/2).
 
 table_memo_det_setup(_, _) :-
 	% This version is only used for back-ends for which there is no
@@ -365,6 +525,24 @@ table_memo_mark_as_succeeded(_) :-
 	impure private_builtin__imp,
 	private_builtin__sorry("table_memo_mark_as_succeeded").
 
+table_memo_mark_as_incomplete(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_memo_mark_as_incomplete").
+
+table_memo_mark_as_active_and_fail(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_memo_mark_as_active_and_fail").
+
+table_memo_mark_as_complete_and_fail(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_memo_mark_as_complete_and_fail").
+
 table_memo_create_answer_block(_, _, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -383,11 +561,42 @@ table_memo_get_answer_block(_, _) :-
 	semipure private_builtin__semip,
 	private_builtin__sorry("table_memo_get_answer_block").
 
+table_memo_non_return_all_shortcut(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	semipure private_builtin__semip,
+	private_builtin__sorry("table_memo_non_return_all_shortcut").
+
 table_memo_get_answer_block_shortcut(_) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
 	semipure private_builtin__semip,
 	private_builtin__sorry("table_memo_get_answer_block_shortcut").
+
+table_memo_non_get_answer_table(_, _) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	semipure private_builtin__semip,
+	private_builtin__sorry("table_memo_non_get_answer_table").
+
+table_memo_non_answer_is_not_duplicate(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_memo_non_answer_is_not_duplicate").
+
+table_memo_non_answer_is_not_duplicate_shortcut(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry(
+		"table_memo_non_answer_is_not_duplicate_shortcut").
+
+table_memo_non_create_answer_block_shortcut(_) :-
+	% This version is only used for back-ends for which there is no
+	% matching foreign_proc version.
+	impure private_builtin__imp,
+	private_builtin__sorry("table_memo_non_create_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
 
@@ -554,7 +763,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 :- interface.
 
 %
-% Predicates that manage the tabling of model_non subgoals.
+% Predicates that manage the stack copy model of minimal model tabling.
 %
 
 	% This type should correspond exactly to the type MR_SubgoalStatus
@@ -566,7 +775,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 	;	mm_complete.
 
 	% This type represents the data structure at the tips of the call table
-	% in minimal_model predicates.
+	% in the stack copy implementation of minimal model tabling.
 :- type ml_subgoal.
 
 	% Check if this minimal_model subgoal has been called before.
@@ -699,6 +908,158 @@ table_mm_fill_answer_block_shortcut(_) :-
 	% matching foreign_proc version.
 	impure private_builtin__imp,
 	private_builtin__sorry("table_mm_fill_answer_block_shortcut").
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+%
+% Predicates that manage the own stack model of minimal model tabling.
+%
+
+	% This type represents the data structure at the tips of the call table
+	% in the own stack implementation of minimal model tabling.
+:- type ml_consumer.
+
+	% This type represents the generators in the own stack implementation
+	% of minimal model tabling.
+:- type ml_generator.
+
+	% Save the information that will be needed later about this subgoal
+	% in a temporary data structure in the runtime.
+:- impure pred table_mmos_save_inputs is det.
+
+	% The given trie node should be at the tip of a call table,
+	% indicating a subgoal. Create a generator for this subgoal if
+	% necessary (if the trie node indicates it has not been called before),
+	% and then register this call as a consumer of the answers of the
+	% generator.
+:- impure pred table_mmos_setup_consumer(ml_trie_node::in, c_pointer::in,
+	ml_consumer::out) is det.
+
+	% This predicate checks whether there is a next answer already listed
+	% for the consumer. If yes, it returns it. If not, it wakes up the
+	% generator to create more answers if possible.
+
+:- impure pred table_mmos_consume_next_answer_nondet(ml_consumer::in,
+	ml_answer_block::out) is nondet.
+:- impure pred table_mmos_consume_next_answer_multi(ml_consumer::in,
+	ml_answer_block::out) is multi.
+
+:- impure pred table_mmos_create_answer_block(ml_generator::in,
+	int::in, ml_answer_block::out) is det.
+
+	% Return the base of the answer table trie for the subgoal of the
+	% given generator.
+:- semipure pred table_mmos_get_answer_table(ml_generator::in,
+	ml_trie_node::out) is det.
+
+	% Return the given answer to the consumer(s) that requested it.
+:- impure pred table_mmos_return_answer(ml_generator::in, ml_answer_block::in)
+	is det.
+
+	% Resume all suspended subgoal calls. This predicate will resume each
+	% of the suspended subgoals that depend on it in turn until it reaches
+	% a fixed point, at which all depended suspended subgoals have had
+	% all available answers returned to them.
+:- impure pred table_mmos_completion(ml_generator::in) is det.
+
+:- implementation.
+
+	% This type represents the data structure at the tips of the call table
+	% in the own stack implementation of minimal model tabling.
+:- type ml_consumer --->	ml_consumer(c_pointer).
+:- pragma foreign_type("C", ml_consumer, "MR_ConsumerPtr",
+	[can_pass_as_mercury_type]).
+:- pragma foreign_type(il,  ml_consumer, "class [mscorlib]System.Object").
+
+	% This type represents the generators in the own stack implementation
+	% of minimal model tabling.
+:- type ml_generator --->	ml_generator(c_pointer).
+:- pragma foreign_type("C", ml_generator, "MR_GeneratorPtr",
+	[can_pass_as_mercury_type]).
+:- pragma foreign_type(il,  ml_generator, "class [mscorlib]System.Object").
+
+:- pragma foreign_proc("C",
+	table_mmos_save_inputs,
+	[will_not_call_mercury],
+"
+	/*
+	** The body of this predicate doesn't matter, because it will never be
+	** referred to. When the compiler creates references to this predicate,
+	** it always overrides the predicate body.
+	*/
+	MR_fatal_error(""table_mmos_save_inputs: direct call"");
+").
+
+:- pragma foreign_proc("C",
+	table_mmos_setup_consumer(T::in, GeneratorPred::in, Consumer::out),
+	[will_not_call_mercury],
+"
+	/*
+	** The body of this predicate doesn't matter, because it will never be
+	** referred to. When the compiler creates references to this predicate,
+	** it always overrides the predicate body.
+	*/
+	/* mention T, GeneratorPred, Consumer to shut up the warning */
+	MR_fatal_error(""table_mmos_setup_consumer: direct call"");
+").
+
+:- external(table_mmos_consume_next_answer_nondet/2).
+:- external(table_mmos_consume_next_answer_multi/2).
+
+:- pragma foreign_proc("C",
+	table_mmos_get_answer_table(Generator::in, TrieNode::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	MR_table_mmos_get_answer_table(Generator, TrieNode);
+").
+
+:- pragma foreign_proc("C",
+	table_mmos_create_answer_block(Generator::in, BlockSize::in,
+		AnswerBlock::out),
+	[will_not_call_mercury],
+"
+	MR_table_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
+").
+
+:- pragma foreign_proc("C",
+	table_mmos_return_answer(Generator::in, AnswerBlock::in),
+	[will_not_call_mercury],
+"
+	MR_table_mmos_return_answer(Generator, AnswerBlock);
+").
+
+:- pragma foreign_proc("C",
+	table_mmos_completion(Generator::in),
+	[will_not_call_mercury],
+"
+	MR_table_mmos_completion(Generator);
+").
+
+table_mmos_save_inputs :-
+	private_builtin__imp.
+
+table_mmos_setup_consumer(_, _, Consumer) :-
+	private_builtin__imp,
+	% Required only to avoid warnings; never executed.
+	private_builtin__unsafe_type_cast(0, Consumer).
+
+table_mmos_get_answer_table(_, TrieNode) :-
+	private_builtin__imp,
+	% Required only to avoid warnings; never executed.
+	private_builtin__unsafe_type_cast(0, TrieNode).
+
+table_mmos_create_answer_block(_, _, AnswerBlock) :-
+	private_builtin__imp,
+	% Required only to avoid warnings; never executed.
+	private_builtin__unsafe_type_cast(0, AnswerBlock).
+
+table_mmos_return_answer(_, _) :-
+	private_builtin__imp.
+
+table_mmos_completion(_) :-
+	private_builtin__imp.
 
 %-----------------------------------------------------------------------------%
 

@@ -85,54 +85,62 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Values of this type map the pred_id of a minimal_model tabled
+	% predicate to the pred_id of its generator variant.
+:- type generator_map	==	map(pred_id, pred_id).
+
 	% NOTE: following preds seem to duplicate the code in passes_aux.m.
 	% The reason for this duplication is that this module needs a variant
 	% of this code that is able to handle passing a module_info to
 	% polymorphism and getting an updated module_info back.
-table_gen__process_module(ModuleInfo0, ModuleInfo, S0, S) :-
-	module_info_preds(ModuleInfo0, Preds0),
+table_gen__process_module(!ModuleInfo, !IO) :-
+	module_info_preds(!.ModuleInfo, Preds0),
 	map__keys(Preds0, PredIds),
-	table_gen__process_preds(PredIds, ModuleInfo0, ModuleInfo, S0, S).
+	map__init(GenMap0),
+	table_gen__process_preds(PredIds, !ModuleInfo, GenMap0, _, !IO).
 
 :- pred table_gen__process_preds(list(pred_id)::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+	module_info::in, module_info::out,
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
 
-table_gen__process_preds([], ModuleInfo, ModuleInfo, S, S).
-table_gen__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo, S0, S) :-
-	table_gen__process_pred(PredId, ModuleInfo0, ModuleInfo1, S0, S1),
-	table_gen__process_preds(PredIds, ModuleInfo1, ModuleInfo, S1, S).
+table_gen__process_preds([], !ModuleInfo, !GenMap, !IO).
+table_gen__process_preds([PredId | PredIds], !ModuleInfo, !GenMap, !IO) :-
+	table_gen__process_pred(PredId, !ModuleInfo, !GenMap, !IO),
+	table_gen__process_preds(PredIds, !ModuleInfo, !GenMap, !IO).
 
 :- pred table_gen__process_pred(pred_id::in, module_info::in, module_info::out,
-	io::di, io::uo) is det.
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
 
-table_gen__process_pred(PredId, !ModuleInfo, !IO) :-
+table_gen__process_pred(PredId, !ModuleInfo, !GenMap, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	ProcIds = pred_info_procids(PredInfo),
-	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !IO).
+	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !IO).
 
 :- pred table_gen__process_procs(pred_id::in, list(proc_id)::in,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+	module_info::in, module_info::out,
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
 
-table_gen__process_procs(_PredId, [], !ModuleInfo, !IO).
-table_gen__process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !IO) :-
+table_gen__process_procs(_PredId, [], !ModuleInfo, !GenMap, !IO).
+table_gen__process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !GenMap,
+		!IO) :-
 	module_info_preds(!.ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo0),
 	table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo,
-		!ModuleInfo, !IO),
-	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !IO).
+		!ModuleInfo, !GenMap, !IO),
+	table_gen__process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !IO).
 
 :- pred table_gen__process_proc(pred_id::in, proc_id::in, proc_info::in,
-	pred_info::in, module_info::in, module_info::out, io::di, io::uo)
-	is det.
+	pred_info::in, module_info::in, module_info::out,
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
 
 table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
-		!ModuleInfo, !IO) :-
+		!ModuleInfo, !GenMap, !IO) :-
 	proc_info_eval_method(ProcInfo0, EvalMethod),
 	( eval_method_requires_tabling_transform(EvalMethod) = yes ->
 		table_gen__transform_proc(EvalMethod, PredId, ProcId,
-			ProcInfo0, _, PredInfo0, _, !ModuleInfo, !IO)
+			ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !IO)
 	;
 		module_info_globals(!.ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, trace_table_io, yes),
@@ -185,7 +193,7 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 				ProcInfo0, ProcInfo1),
 			table_gen__transform_proc(TableIoMethod,
 				PredId, ProcId, ProcInfo1, _, PredInfo0, _,
-				!ModuleInfo, !IO)
+				!ModuleInfo, !GenMap, !IO)
 		)
 	;
 		true
@@ -331,10 +339,12 @@ lookup_var_names(VarSet, [Var | Vars], Description) :-
 
 :- pred table_gen__transform_proc(eval_method::in, pred_id::in, proc_id::in,
 	proc_info::in, proc_info::out, pred_info::in, pred_info::out,
-	module_info::in, module_info::out, io::di, io::uo) is det.
+	module_info::in, module_info::out,
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
 
 table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
-		!ModuleInfo, !IO) :-
+		!ModuleInfo, !GenMap, !IO) :-
+	table_info_init(!.ModuleInfo, !.PredInfo, !.ProcInfo, TableInfo0),
 
 	% grab the appropriate fields from the pred_info and proc_info
 	proc_info_interface_determinism(!.ProcInfo, Detism),
@@ -357,9 +367,7 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 		% but prevent the creation of an executable.
 		module_info_incr_errors(!ModuleInfo)
 	),
-	table_info_init(!.ModuleInfo, PredId, ProcId, !.PredInfo, !.ProcInfo,
-		TableInfo0),
-
+	tabling_via_extra_args(!.ModuleInfo, TablingViaExtraArgs),
 	(
 		EvalMethod = eval_normal,
 		% This should have been caught by our caller.
@@ -370,14 +378,16 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 		globals__lookup_bool_option(Globals, trace_table_io_states,
 			TableIoStates),
 		table_gen__create_new_io_goal(OrigGoal, Decl, Unitize,
-			TableIoStates, HeadVars, InputVars, OutputVars,
+			TableIoStates, PredId, ProcId, TablingViaExtraArgs,
+			HeadVars, InputVars, OutputVars,
 			VarTypes0, VarTypes, VarSet0, VarSet,
 			TableInfo0, TableInfo, Goal, MaybeProcTableInfo),
 		MaybeCallTableTip = no
 	;
 		EvalMethod = eval_loop_check,
 		table_gen__create_new_loop_goal(Detism, OrigGoal,
-			PredId, ProcId, HeadVars, InputVars, OutputVars,
+			PredId, ProcId, TablingViaExtraArgs,
+			HeadVars, InputVars, OutputVars,
 			VarTypes0, VarTypes, VarSet0, VarSet,
 			TableInfo0, TableInfo, CallTableTip, Goal, Steps),
 		generate_gen_proc_table_info(TableInfo, Steps,
@@ -386,16 +396,27 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 		MaybeProcTableInfo = yes(ProcTableInfo)
 	;
 		EvalMethod = eval_memo,
-		table_gen__create_new_memo_goal(Detism, OrigGoal,
-			PredId, ProcId, HeadVars, InputVars, OutputVars,
-			VarTypes0, VarTypes, VarSet0, VarSet,
-			TableInfo0, TableInfo, CallTableTip, Goal, Steps),
+		( CodeModel = model_non ->
+			table_gen__create_new_memo_non_goal(Detism, OrigGoal,
+				PredId, ProcId,
+				HeadVars, InputVars, OutputVars,
+				VarTypes0, VarTypes, VarSet0, VarSet,
+				TableInfo0, TableInfo, CallTableTip, Goal,
+				Steps)
+		;
+			table_gen__create_new_memo_goal(Detism, OrigGoal,
+				PredId, ProcId, TablingViaExtraArgs,
+				HeadVars, InputVars, OutputVars,
+				VarTypes0, VarTypes, VarSet0, VarSet,
+				TableInfo0, TableInfo, CallTableTip, Goal,
+				Steps)
+		),
 		generate_gen_proc_table_info(TableInfo, Steps,
 			InputVars, OutputVars, ProcTableInfo),
 		MaybeCallTableTip = yes(CallTableTip),
 		MaybeProcTableInfo = yes(ProcTableInfo)
 	;
-		EvalMethod = eval_minimal,
+		EvalMethod = eval_minimal(MinimalMethod),
 		(
 			CodeModel = model_det,
 			error("table_gen__transform_proc: minimal det")
@@ -404,10 +425,21 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 			error("table_gen__transform_proc: minimal semi")
 		;
 			CodeModel = model_non,
+			MinimalMethod = stack_copy,
 			table_gen__create_new_mm_goal(Detism, OrigGoal,
-				PredId, ProcId, HeadVars,
-				InputVars, OutputVars, VarTypes0, VarTypes,
-				VarSet0, VarSet, TableInfo0, TableInfo,
+				PredId, ProcId, TablingViaExtraArgs,
+				HeadVars, InputVars, OutputVars,
+				VarTypes0, VarTypes, VarSet0, VarSet,
+				TableInfo0, TableInfo,
+				CallTableTip, Goal, Steps)
+		;
+			CodeModel = model_non,
+			MinimalMethod = own_stacks,
+			table_gen__do_own_stack_transform(Detism, OrigGoal,
+				PredId, ProcId, !.PredInfo, !.ProcInfo,
+				HeadVars, InputVars, OutputVars,
+				VarTypes0, VarTypes, VarSet0, VarSet,
+				TableInfo0, TableInfo, !GenMap,
 				CallTableTip, Goal, Steps)
 		),
 		generate_gen_proc_table_info(TableInfo, Steps,
@@ -416,8 +448,7 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 		MaybeProcTableInfo = yes(ProcTableInfo)
 	),
 
-	table_info_extract(TableInfo, !:ModuleInfo, _, _,
-		!:PredInfo, !:ProcInfo),
+	table_info_extract(TableInfo, !:ModuleInfo, !:PredInfo, !:ProcInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	% and save in the module info
@@ -498,19 +529,50 @@ table_gen__transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 %			B = C,
 %			impure table_loop_mark_as_inactive(T)
 %		else
-%			impure table_loop_mark_as_inactive(T),
-%			fail
+%			impure table_loop_mark_as_inactive_and_fail(T),
+%		)
+%	).
+%
+% Example of transformation for model_non loopcheck:
+%
+% :- pred p(int::in, int::out) is semidet.
+%
+% p(A, B) :-
+% 	<original code>.
+%
+% The transformed code would be :
+%
+% p(A, B) :-
+%	T0 = <table pointer for p/2>,
+%	impure table_lookup_insert_int(T0, A, T),
+%	impure table_loop_setup(T, Status),
+%	(
+%		Status = loop_active,
+%		error("detected infinite recursion in ...")
+%	;
+%		Status = loop_inactive,
+%		% status has been changed to active by the setup predicate
+%		(
+%			<original code>,
+%			(
+%				impure table_loop_mark_as_inactive(T)
+%			;
+%				impure table_loop_mark_as_active_and_fail(T),
+%				fail
+%			)
+%		;
+%			impure table_loop_mark_as_inactive_and_fail(T)
 %		)
 %	).
 
 :- pred create_new_loop_goal(determinism::in, hlds_goal::in,
-	pred_id::in, proc_id::in,
+	pred_id::in, proc_id::in, bool::in,
 	list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	table_info::in, table_info::out, prog_var::out, hlds_goal::out,
 	list(table_trie_step)::out) is det.
 
-create_new_loop_goal(Detism, OrigGoal, PredId, ProcId,
+create_new_loop_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
 		!TableInfo, TableTipVar, Goal, Steps) :-
 	% even if the original goal doesn't use all of the headvars,
@@ -525,15 +587,51 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId,
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	allocate_slot_numbers(InputVars, 0, NumberedInputVars),
 	generate_simple_call_table_lookup_goal(loop_status_type,
-		"table_loop_setup", NumberedInputVars, PredId, ProcId, Context,
-		!VarTypes, !VarSet, !TableInfo, TableTipVar, StatusVar,
-		LookUpGoal, Steps),
+		"table_loop_setup", NumberedInputVars, PredId, ProcId,
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		TableTipVar, StatusVar, LookUpGoal, Steps),
 
 	generate_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, ActiveGoal),
 
-	generate_call("table_loop_mark_as_inactive", det, [TableTipVar],
-		yes(impure), [], ModuleInfo, Context, MarkInactiveGoal),
+	MarkInactivePred = "table_loop_mark_as_inactive",
+	MarkInactiveFailPred = "table_loop_mark_as_inactive_and_fail",
+	MarkActiveFailPred = "table_loop_mark_as_active_and_fail",
+	(
+		TablingViaExtraArgs = no,
+		generate_call(MarkInactivePred, det,
+			[TableTipVar], impure_code, [], ModuleInfo,
+			Context, MarkInactiveGoal),
+		generate_call(MarkInactiveFailPred, failure,
+			[TableTipVar], impure_code, [], ModuleInfo,
+			Context, MarkInactiveFailGoal),
+		generate_call(MarkActiveFailPred, failure,
+			[TableTipVar], impure_code, [], ModuleInfo,
+			Context, MarkActiveFailGoal)
+	;
+		TablingViaExtraArgs = yes,
+		TableTipArg = foreign_arg(TableTipVar,
+			yes(cur_table_node_name - in_mode),
+			trie_node_type),
+		MarkInactiveCode = "\tMR_" ++ MarkInactivePred ++
+			"(" ++ cur_table_node_name ++ ");\n",
+		MarkInactiveFailCode = "\tMR_" ++ MarkInactiveFailPred ++
+			"(" ++ cur_table_node_name ++ ");\n",
+		MarkActiveFailCode = "\tMR_" ++ MarkActiveFailPred ++
+			"(" ++ cur_table_node_name ++ ");\n",
+		generate_foreign_proc(MarkInactivePred, det,
+			tabling_c_attributes, [TableTipArg], [],
+			"", MarkInactiveCode, "", impure_code, [],
+			ModuleInfo, Context, MarkInactiveGoal),
+		generate_foreign_proc(MarkInactiveFailPred, failure,
+			tabling_c_attributes, [TableTipArg], [],
+			"", MarkInactiveFailCode, "", impure_code, [],
+			ModuleInfo, Context, MarkInactiveFailGoal),
+		generate_foreign_proc(MarkActiveFailPred, failure,
+			tabling_c_attributes, [TableTipArg], [],
+			"", MarkActiveFailCode, "", impure_code, [],
+			ModuleInfo, Context, MarkActiveFailGoal)
+	),
 
 	determinism_to_code_model(Detism, CodeModel),
 	set__list_to_set([TableTipVar | HeadVars], InactiveNonLocals),
@@ -543,7 +641,6 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId,
 		InactiveGoalExpr = conj([OrigGoal, MarkInactiveGoal])
 	;
 		CodeModel = model_semi,
-
 		create_renaming(OutputVars, !VarTypes, !VarSet,
 			Unifies, NewVars, Renaming),
 		rename_vars_in_goal(OrigGoal, Renaming, RenamedOrigGoal),
@@ -555,13 +652,18 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId,
 			Detism, impure, Context, ThenGoalInfo),
 		ThenGoal = ThenGoalExpr - ThenGoalInfo,
 
-		append_fail(MarkInactiveGoal, ElseGoal),
-
 		InactiveGoalExpr = if_then_else([], RenamedOrigGoal,
-			ThenGoal, ElseGoal)
+			ThenGoal, MarkInactiveFailGoal)
 	;
 		CodeModel = model_non,
-		error("create_new_loop_goal: model_non")
+		AfterGoalExpr = disj([MarkInactiveGoal, MarkActiveFailGoal]),
+		instmap_delta_init_reachable(AfterInstMapDelta),
+		goal_info_init_hide(set__init, AfterInstMapDelta,
+			multidet, impure, Context, AfterGoalInfo),
+		AfterGoal = AfterGoalExpr - AfterGoalInfo,
+		FirstGoalExpr = conj([OrigGoal, AfterGoal]),
+		FirstGoal = FirstGoalExpr - OrigGoalInfo,
+		InactiveGoalExpr = disj([FirstGoal, MarkInactiveFailGoal])
 	),
 	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
 		Detism, impure, Context, InactiveGoalInfo),
@@ -652,17 +754,66 @@ create_new_loop_goal(Detism, OrigGoal, PredId, ProcId,
 %		)
 %	).
 %
+% Example of transformation for model_non memo:
+%
+% :- pred p(int::in, int::out) is semidet.
+%
+% p(A, B) :-
+% 	<original code>.
+%
+% The transformed code would be :
+%
+% p(A, B) :-
+%	CT0 = <table pointer for p/2>,
+%	impure table_lookup_insert_int(CT0, A, CT1),
+%	impure table_memo_non_setup(CT1, Record, Status),
+%	(
+%		Status = memo_non_complete,
+%		semipure table_memo_return_all_nondet(T, Block),
+%		semipure table_restore_int_answer(Block, 0, B)
+%	;
+%		Status = memo_non_incomplete,
+%		error("detected need for minimal model tabling in ...")
+%	;
+%		Status = memo_non_active,
+%		error("detected infinite recursion in ...")
+%	;
+%		Status = memo_non_inactive,
+%	   	(
+%			<original code>,
+%
+%				% Check for duplicate answers.
+%			semipure table_memo_get_answer_table(Record, AT0),
+%			impure table_lookup_insert_int(AT0, B, AT1),
+%				% Fail if the answer is already in the table;
+%				% otherwise, put it into the table.
+%			impure table_mm_answer_is_not_duplicate(AT1),
+%
+%				% Save the new answer in the table.
+%			impure table_memo_create_answer_block(Record, 1, Block),
+%			impure table_save_int_answer(Block, 0, B),
+%			(
+%				impure table_memo_mark_as_incomplete(R)
+%			;
+%				impure table_memo_mark_as_active_and_fail(R),
+%				fail
+%			)
+%		;
+%			impure table_memo_mark_as_complete_and_fail(R)
+%		)
+%	).
+%
 % If there are no output variables, then instead of creating an answer block
 % and filling it in, we call table_memo_mark_as_succeeded.
 
 :- pred create_new_memo_goal(determinism::in, hlds_goal::in,
-	pred_id::in, proc_id::in,
+	pred_id::in, proc_id::in, bool::in,
 	list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	table_info::in, table_info::out, prog_var::out, hlds_goal::out,
 	list(table_trie_step)::out) is det.
 
-create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
+create_new_memo_goal(Detism, OrigGoal, PredId, ProcId, TablingViaExtraArgs,
 		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
 		!TableInfo, TableTipVar, Goal, Steps) :-
 	% even if the original goal doesn't use all of the headvars,
@@ -690,8 +841,9 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 	),
 	allocate_slot_numbers(InputVars, 0, NumberedInputVars),
 	generate_simple_call_table_lookup_goal(StatusType, SetupPred,
-		NumberedInputVars, PredId, ProcId, Context, !VarTypes, !VarSet,
-		!TableInfo, TableTipVar, StatusVar, LookUpGoal, Steps),
+		NumberedInputVars, PredId, ProcId, TablingViaExtraArgs,
+		Context, !VarTypes, !VarSet, !TableInfo,
+		TableTipVar, StatusVar, LookUpGoal, Steps),
 
 	generate_error_goal(!.TableInfo, Context, infinite_recursion_msg,
 		!VarTypes, !VarSet, ActiveGoal),
@@ -699,10 +851,11 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
 	generate_memo_save_goals(NumberedOutputVars, TableTipVar, BlockSize,
-		Context, !VarTypes, !VarSet, !TableInfo, SaveAnswerGoals),
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		SaveAnswerGoals),
 	generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta,
-		TableTipVar, ModuleInfo, Context, !VarTypes, !VarSet,
-		RestoreAnswerGoal),
+		TableTipVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, RestoreAnswerGoal),
 	SucceededGoal = RestoreAnswerGoal,
 
 	set__list_to_set([TableTipVar | HeadVars], InactiveNonLocals),
@@ -736,7 +889,6 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 			det, impure, Context, ThenGoalInfo),
 		ThenGoal = ThenGoalExpr - ThenGoalInfo,
 
-		tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 		MarkAsFailedPred = "table_memo_mark_as_failed",
 		(
 			TablingViaExtraArgs = yes,
@@ -747,12 +899,12 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 				"(" ++ cur_table_node_name ++ ");",
 			generate_foreign_proc(MarkAsFailedPred, failure,
 				tabling_c_attributes, [TableTipArg], [],
-				"", MarkAsFailedCode, "", yes(impure), [],
+				"", MarkAsFailedCode, "", impure_code, [],
 				ModuleInfo, Context, ElseGoal)
 		;
 			TablingViaExtraArgs = no,
 			generate_call("table_memo_mark_as_failed", failure,
-				[TableTipVar], yes(impure), [], ModuleInfo,
+				[TableTipVar], impure_code, [], ModuleInfo,
 				Context, ElseGoal)
 		),
 		InactiveGoalExpr = if_then_else([], RenamedOrigGoal,
@@ -777,6 +929,116 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 		CodeModel = model_non,
 		error("create_new_memo_goal: model_non")
 	),
+
+	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
+	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
+		Detism, impure, Context, SwitchGoalInfo),
+	SwitchGoal = SwitchExpr - SwitchGoalInfo,
+
+	GoalExpr = conj([LookUpGoal, SwitchGoal]),
+	goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, Detism,
+		impure, Context, GoalInfo),
+	Goal = GoalExpr - GoalInfo.
+
+:- pred create_new_memo_non_goal(determinism::in, hlds_goal::in,
+	pred_id::in, proc_id::in,
+	list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out, prog_var::out, hlds_goal::out,
+	list(table_trie_step)::out) is det.
+
+create_new_memo_non_goal(Detism, OrigGoal, PredId, ProcId,
+		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
+		!TableInfo, RecordVar, Goal, Steps) :-
+	% even if the original goal doesn't use all of the headvars,
+	% the code generated by the tabling transformation does,
+	% so we need to compute the nonlocals from the headvars rather
+	% than getting it from the nonlocals field in the original goal
+	set__list_to_set(HeadVars, OrigNonLocals),
+	OrigGoal = _ - OrigGoalInfo,
+	goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
+	goal_info_get_context(OrigGoalInfo, Context),
+
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	allocate_slot_numbers(InputVars, 0, NumberedInputVars),
+	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
+	list__length(NumberedOutputVars, BlockSize),
+
+	generate_error_goal(!.TableInfo, Context, infinite_recursion_msg,
+		!VarTypes, !VarSet, InfiniteRecursionGoal),
+	generate_error_goal(!.TableInfo, Context, need_minimal_model_msg,
+		!VarTypes, !VarSet, NeedMinimalModelGoal),
+
+	generate_memo_non_call_table_lookup_goal(NumberedInputVars,
+		PredId, ProcId, Context, !VarTypes, !VarSet, !TableInfo,
+		RecordVar, StatusVar, LookUpGoal, Steps),
+	generate_memo_non_save_goals(NumberedOutputVars, RecordVar, BlockSize,
+		Context, !VarTypes, !VarSet, !TableInfo, SaveAnswerGoals),
+
+	generate_memo_non_restore_goal(Detism, NumberedOutputVars,
+		OrigInstMapDelta, RecordVar, ModuleInfo, Context,
+		!VarTypes, !VarSet, RestoreAllAnswerGoal),
+
+	RecordVarName = memo_non_record_name,
+	RecordArg = foreign_arg(RecordVar,
+		yes(RecordVarName - in_mode), memo_non_record_type),
+	MarkIncompletePred = "table_memo_mark_as_incomplete",
+	MarkActivePred = "table_memo_mark_as_active_and_fail",
+	MarkCompletePred = "table_memo_mark_as_complete_and_fail",
+	MarkIncompleteCode = "MR_" ++ MarkIncompletePred ++ "(" ++
+		RecordVarName ++ ");\n",
+	MarkActiveCode = "MR_" ++ MarkActivePred ++ "(" ++
+		RecordVarName ++ ");\n",
+	MarkCompleteCode = "MR_" ++ MarkCompletePred ++ "(" ++
+		RecordVarName ++ ");\n",
+	generate_foreign_proc(MarkIncompletePred, det,
+		tabling_c_attributes, [RecordArg], [],
+		"", MarkIncompleteCode, "", impure_code, [],
+		ModuleInfo, Context, MarkIncompleteGoal),
+	generate_foreign_proc(MarkActivePred, failure,
+		tabling_c_attributes, [RecordArg], [],
+		"", MarkActiveCode, "", impure_code, [],
+		ModuleInfo, Context, MarkActiveGoal),
+	generate_foreign_proc(MarkCompletePred, failure,
+		tabling_c_attributes, [RecordArg], [],
+		"", MarkCompleteCode, "", impure_code, [],
+		ModuleInfo, Context, MarkCompleteGoal),
+
+	OrigSaveExpr = conj([OrigGoal | SaveAnswerGoals]),
+	set__insert(OrigNonLocals, RecordVar, OrigSaveNonLocals),
+	create_instmap_delta([OrigGoal | SaveAnswerGoals], OrigSaveIMD0),
+	instmap_delta_restrict(OrigSaveIMD0, OrigSaveNonLocals, OrigSaveIMD),
+	goal_info_init_hide(OrigSaveNonLocals, OrigSaveIMD, nondet, impure,
+		Context, OrigSaveGoalInfo),
+	OrigSaveGoal = OrigSaveExpr - OrigSaveGoalInfo,
+
+	AfterExpr = disj([MarkIncompleteGoal, MarkActiveGoal]),
+	AfterNonLocals = set__make_singleton_set(RecordVar),
+	create_instmap_delta([], AfterInstMapDelta),
+	goal_info_init_hide(AfterNonLocals, AfterInstMapDelta, nondet, impure,
+		Context, AfterGoalInfo),
+	AfterGoal = AfterExpr - AfterGoalInfo,
+
+	OrigSaveAfterExpr = conj([OrigSaveGoal, AfterGoal]),
+	OrigSaveAfterGoal = OrigSaveAfterExpr - OrigSaveGoalInfo,
+
+	InactiveExpr = disj([OrigSaveAfterGoal, MarkCompleteGoal]),
+	InactiveGoal = InactiveExpr - OrigSaveGoalInfo,
+
+	set__list_to_set([RecordVar | HeadVars], InactiveNonLocals),
+	InactiveInstmapDelta = bind_vars(OutputVars),
+
+	mercury_table_builtin_module(TB),
+	SwitchArms = [
+		case(cons(qualified(TB, "memo_non_active"), 0),
+			InfiniteRecursionGoal),
+		case(cons(qualified(TB, "memo_non_inactive"), 0),
+			InactiveGoal),
+		case(cons(qualified(TB, "memo_non_incomplete"), 0),
+			NeedMinimalModelGoal),
+		case(cons(qualified(TB, "memo_non_complete"), 0),
+			RestoreAllAnswerGoal)
+	],
 
 	SwitchExpr = switch(StatusVar, cannot_fail, SwitchArms),
 	goal_info_init_hide(InactiveNonLocals, InactiveInstmapDelta,
@@ -858,12 +1120,14 @@ create_new_memo_goal(Detism, OrigGoal, PredId, ProcId,
 % it executes the original goal.
 
 :- pred table_gen__create_new_io_goal(hlds_goal::in, table_io_is_decl::in,
-	table_io_is_unitize::in, bool::in, list(prog_var)::in,
-	list(prog_var)::in, list(prog_var)::in, vartypes::in, vartypes::out,
-	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
+	table_io_is_unitize::in, bool::in, pred_id::in, proc_id::in, bool::in,
+	list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out,
 	hlds_goal::out, maybe(proc_table_info)::out) is det.
 
 table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
+		PredId, ProcId, TablingViaExtraArgs,
 		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
 		!TableInfo, Goal, MaybeProcTableInfo) :-
 	OrigGoal = _ - OrigGoalInfo,
@@ -892,20 +1156,18 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	generate_new_table_var("StartVar", int_type, !VarTypes, !VarSet,
 		StartVar),
 	generate_call("table_io_in_range", semidet,
-		[TableVar, CounterVar, StartVar], yes(impure),
+		[TableVar, CounterVar, StartVar], impure_code,
 		ground_vars([TableVar, CounterVar, StartVar]),
 		ModuleInfo, Context, InRangeGoal),
 	generate_new_table_var("TipVar", trie_node_type, !VarTypes, !VarSet,
 		TipVar),
 	generate_call("table_lookup_insert_start_int", det,
-		[TableVar, StartVar, CounterVar, TipVar], yes(impure),
+		[TableVar, StartVar, CounterVar, TipVar], impure_code,
 		ground_vars([TipVar]), ModuleInfo, Context, LookupGoal),
 	generate_call("table_io_has_occurred", semidet, [TipVar],
-		yes(semipure), [], ModuleInfo, Context, OccurredGoal),
+		semipure_code, [], ModuleInfo, Context, OccurredGoal),
 	(
 		TableDecl = table_io_decl,
-		PredId = !.TableInfo ^ table_cur_pred_id,
-		ProcId = !.TableInfo ^ table_cur_proc_id,
 		ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
 		TableIoDeclConsId = table_io_decl(ShroudedPredProcId),
 		make_const_construction(TableIoDeclConsId, c_pointer_type,
@@ -935,8 +1197,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 	list__length(NumberedSaveVars, BlockSize),
 	goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
 	generate_memo_restore_goal(NumberedRestoreVars, OrigInstMapDelta,
-		TipVar, ModuleInfo, Context, !VarTypes, !VarSet,
-		RestoreAnswerGoal0),
+		TipVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, RestoreAnswerGoal0),
 	(
 		TableIoStates = yes,
 		RestoreAnswerGoal = RestoreAnswerGoal0
@@ -955,7 +1217,7 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 			error("create_new_io_goal: one in / one out violation")
 		),
 		generate_call("table_io_copy_io_state", det,
-			[IoStateAssignFromVar, IoStateAssignToVar], no,
+			[IoStateAssignFromVar, IoStateAssignToVar], pure_code,
 			[IoStateAssignFromVar - ground(clobbered, none),
 			IoStateAssignToVar - ground(unique, none)],
 			ModuleInfo, Context, IoStateAssignGoal),
@@ -978,7 +1240,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 			- RestoreAnswerGoalInfo
 	),
 	generate_memo_save_goals(NumberedSaveVars, TipVar, BlockSize,
-		Context, !VarTypes, !VarSet, !TableInfo, SaveAnswerGoals),
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		SaveAnswerGoals),
 	(
 		Unitize = table_io_alone,
 		CallSaveAnswerGoalList = [OrigGoal, TableIoDeclGoal
@@ -988,11 +1251,11 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		generate_new_table_var("SavedTraceEnabled", int_type,
 			!VarTypes, !VarSet, SavedTraceEnabledVar),
 		generate_call("table_io_left_bracket_unitized_goal", det,
-			[SavedTraceEnabledVar], yes(impure),
+			[SavedTraceEnabledVar], impure_code,
 			ground_vars([SavedTraceEnabledVar]),
 			ModuleInfo, Context, LeftBracketGoal),
 		generate_call("table_io_right_bracket_unitized_goal", det,
-			[SavedTraceEnabledVar], yes(impure), [],
+			[SavedTraceEnabledVar], impure_code, [],
 			ModuleInfo, Context, RightBracketGoal),
 		CallSaveAnswerGoalList = [LeftBracketGoal, OrigGoal,
 			RightBracketGoal, TableIoDeclGoal | SaveAnswerGoals]
@@ -1098,18 +1361,18 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 %	).
 
 :- pred table_gen__create_new_mm_goal(determinism::in,
-	hlds_goal::in, pred_id::in, proc_id::in, list(prog_var)::in,
+	hlds_goal::in, pred_id::in, proc_id::in, bool::in, list(prog_var)::in,
 	list(prog_var)::in, list(prog_var)::in, vartypes::in, vartypes::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
 
 table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
-		HeadVars, InputVars, OutputVars, !VarTypes, !VarSet,
-		!TableInfo, SubgoalVar, Goal, Steps) :-
-	% even if the original goal doesn't use all of the headvars,
+		TablingViaExtraArgs, HeadVars, InputVars, OutputVars,
+		!VarTypes, !VarSet, !TableInfo, SubgoalVar, Goal, Steps) :-
+	% Even if the original goal doesn't use all of the headvars,
 	% the code generated by the tabling transformation does,
 	% so we need to compute the nonlocals from the headvars rather
-	% than getting it from the nonlocals field in the original goal
+	% than getting it from the nonlocals field in the original goal.
 	set__list_to_set(HeadVars, OrigNonLocals),
 	OrigGoal = _ - OrigGoalInfo,
 	goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
@@ -1120,16 +1383,17 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
 	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
 	list__length(NumberedOutputVars, BlockSize),
 	generate_mm_call_table_lookup_goal(NumberedInputVars, PredId, ProcId,
-		Context, !VarTypes, !VarSet, !TableInfo, SubgoalVar, StatusVar,
-		LookUpGoal, Steps),
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		SubgoalVar, StatusVar, LookUpGoal, Steps),
 	generate_mm_save_goals(NumberedOutputVars, SubgoalVar, BlockSize,
-		Context, !VarTypes, !VarSet, !TableInfo, SaveAnswerGoals),
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		SaveAnswerGoals),
 	generate_mm_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
-		SubgoalVar, ModuleInfo, Context, !VarTypes, !VarSet,
-		RestoreAllAnswerGoal),
+		SubgoalVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, RestoreAllAnswerGoal),
 	generate_mm_suspend_goal(NumberedOutputVars, OrigInstMapDelta,
-		SubgoalVar, ModuleInfo, Context, !VarTypes, !VarSet,
-		SuspendGoal),
+		SubgoalVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, SuspendGoal),
 
 	MainExpr = conj([OrigGoal | SaveAnswerGoals]),
 	set__insert(OrigNonLocals, SubgoalVar, MainNonLocals),
@@ -1140,7 +1404,7 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
 	MainGoal = MainExpr - MainGoalInfo,
 
 	generate_call("table_mm_completion", det, [SubgoalVar],
-		yes(impure), [], ModuleInfo, Context, ResumeGoal0),
+		impure_code, [], ModuleInfo, Context, ResumeGoal0),
 	append_fail(ResumeGoal0, ResumeGoal),
 	InactiveExpr = disj([MainGoal, ResumeGoal]),
 	InactiveGoal = InactiveExpr - MainGoalInfo,
@@ -1162,6 +1426,312 @@ table_gen__create_new_mm_goal(Detism, OrigGoal, PredId, ProcId,
 	goal_info_init_hide(OrigNonLocals, OrigInstMapDelta, nondet, impure,
 		Context, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
+
+%-----------------------------------------------------------------------------%
+
+% Example of transformation for nondet minimal_model_own_stack :
+%
+% :- pred p(int, int).
+% :- mode p(in, out) is nondet
+%
+% p(A, B) :- e(A, B).
+% p(A, B) :- p(A, C), e(C, B).
+%
+% The transformed code would be :
+%
+% p2_gen(A, B) :-
+%	impure table_mmos_pickup_generator(Generator),
+%	(
+%		(
+%			%
+%			% Original goals
+%			%
+%		),
+%
+%			% Check for duplicate answers.
+%		semipure table_mmos_get_answer_table(Generator, AT0),
+%		impure table_lookup_insert_int(AT0, B, AT1),
+%			Fail if the answer is already in the table;
+%			otherwise, put it into the table.
+%		impure table_mmos_answer_is_not_duplicate(AT1),
+%
+%			% Save the new answer in the table.
+%		impure table_mmos_create_answer_block(Generator, 1,
+%			AnswerBlock),
+%		impure table_save_int_ans(AnswerBlock, 0, B),
+%		impure table_mmos_return_answer(Generator, AnswerBlock)
+%	;
+%		impure table_mmos_completion(Generator)
+%	).
+%
+% p(A, B) :-
+%	table_mmos_save_inputs(1, A),		% into global variable
+%	CT0 = <table pointer for p/2>,
+%	impure table_lookup_insert_int(CT0, A, CT1),
+%	impure table_mmos_setup_consumer(CT1, 1, p2_gen, "p/2", Consumer),
+%	impure table_mmos_consume_next_answer_nondet(Consumer, AnswerBlock),
+%	impure table_restore_int_ans(AnswerBlock, 0, B).
+
+:- pred table_gen__do_own_stack_transform(determinism::in, hlds_goal::in,
+	pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+	list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out, generator_map::in, generator_map::out,
+	prog_var::out, hlds_goal::out, list(table_trie_step)::out) is det.
+
+table_gen__do_own_stack_transform(Detism, OrigGoal, PredId, ProcId,
+		PredInfo0, ProcInfo0, HeadVars, InputVars, OutputVars,
+		!VarTypes, !VarSet, !TableInfo, !GenMap, TableTipVar,
+		Goal, Steps) :-
+	PredName = pred_info_name(PredInfo0),
+	( map__search(!.GenMap, PredId, GeneratorPredIdPrime) ->
+		GeneratorPredId = GeneratorPredIdPrime
+	;
+		clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo),
+		map__det_insert(!.GenMap, PredId, GeneratorPredId, !:GenMap)
+	),
+
+	allocate_slot_numbers(InputVars, 0, NumberedInputVars),
+	allocate_slot_numbers(OutputVars, 0, NumberedOutputVars),
+
+	% Even if the original goal doesn't use all of the headvars,
+	% the code generated by the tabling transformation does,
+	% so we need to compute the nonlocals from the headvars rather
+	% than getting it from the nonlocals field in the original goal.
+	set__list_to_set(HeadVars, OrigNonLocals),
+	OrigGoal = _ - OrigGoalInfo,
+	goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
+	goal_info_get_context(OrigGoalInfo, Context),
+
+	list__length(InputVars, NumInputVars),
+	ModuleInfo = !.TableInfo ^ table_module_info,
+
+	SaveInputPred = "table_mmos_save_inputs",
+	generate_save_input_vars_code(NumberedInputVars, !.VarTypes,
+		SaveInputVarArgs, SaveInputVarCode),
+	SaveMainCode = "MR_" ++ SaveInputPred ++ "(" ++
+		int_to_string(NumInputVars) ++ ");",
+	generate_foreign_proc(SaveInputPred, det, tabling_c_attributes,
+		[], SaveInputVarArgs, "", SaveMainCode, SaveInputVarCode,
+		impure_code, ground_vars([]), ModuleInfo, Context, SaveGoal),
+
+		% The type is a lie, but a safe one: the variable we create
+		% is handled only by C code. The reason why we lie is that
+		% creating the right type would be quite complicated.
+	GeneratorPredType = c_pointer_type,
+
+	generate_new_table_var("GeneratorPredVar", GeneratorPredType,
+		!VarTypes, !VarSet, GeneratorPredVar),
+	generate_new_table_var("Consumer", consumer_type, !VarTypes, !VarSet,
+		ConsumerVar),
+
+	ShroudedPredProcId =
+		shroud_pred_proc_id(proc(GeneratorPredId, ProcId)),
+	GeneratorConsId = pred_const(ShroudedPredProcId, normal),
+	make_const_construction(GeneratorPredVar, GeneratorConsId,
+		MakeGeneratorVarGoal),
+
+	% XXX use tabling via foreign_proc
+	generate_call_table_lookup_goals(NumberedInputVars, PredId, ProcId,
+		Context, !VarTypes, !VarSet, !TableInfo, TableTipVar,
+		LookupGoals, Steps, _PredTableVar, _LookupForeignArgs,
+		_LookupPrefixGoals, _LookupCodeStr),
+
+	TableTipVarName = table_tip_node_name,
+	GeneratorPredVarName = generator_pred_name,
+	ConsumerVarName = consumer_name,
+
+	TableTipArg = foreign_arg(TableTipVar,
+		yes(TableTipVarName - in_mode), trie_node_type),
+	GeneratorPredArg = foreign_arg(GeneratorPredVar,
+		yes(generator_pred_name - in_mode), GeneratorPredType),
+	ConsumerArg = foreign_arg(ConsumerVar,
+		yes(ConsumerVarName - out_mode), consumer_type),
+
+	SetupPred = "table_mmos_setup_consumer",
+	SetupCode = "MR_" ++ SetupPred ++ "(" ++
+		TableTipVarName ++ ", " ++
+		int_to_string(NumInputVars) ++ ", " ++
+		GeneratorPredVarName ++ ", " ++
+		"""" ++ PredName ++ """, " ++
+		ConsumerVarName ++ ");",
+	generate_foreign_proc(SaveInputPred, det, tabling_c_attributes,
+		[TableTipArg, GeneratorPredArg, ConsumerArg], [],
+		"", SetupCode, "", impure_code, ground_vars([]), ModuleInfo,
+		Context, SetupGoal),
+
+	generate_new_table_var("AnswerBlock", answer_block_type,
+		!VarTypes, !VarSet, AnswerBlockVar),
+	DetismStr = determinism_to_string(Detism),
+	% XXX check that Detism is such that ConsumePredName exists
+	% XXX consider inlining the predicate being called
+	ConsumePredName = "table_consume_next_answer_" ++ DetismStr,
+	generate_call(ConsumePredName, Detism, [ConsumerVar, AnswerBlockVar],
+		impure_code, ground_vars([AnswerBlockVar]), ModuleInfo,
+		Context, GetNextAnswerGoal),
+	% XXX use foreign_proc
+	generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
+		AnswerBlockVar, ModuleInfo, Context, !VarTypes, !VarSet,
+		RestoreGoals, _RestoreInstMapDeltaSrc, _RestoreArgs,
+		_RestoreCodeStr),
+
+	GoalExpr = conj([SaveGoal | LookupGoals] ++
+		[MakeGeneratorVarGoal, SetupGoal, GetNextAnswerGoal
+		| RestoreGoals]),
+	goal_info_init(OrigNonLocals, OrigInstMapDelta, Detism, impure,
+		Context, GoalInfo),
+	Goal = GoalExpr - GoalInfo,
+
+	module_info_pred_info(ModuleInfo, GeneratorPredId, GeneratorPredInfo),
+	table_info_init(ModuleInfo, GeneratorPredInfo, ProcInfo0,
+		GeneratorTableInfo0),
+	do_own_stack_create_generator(GeneratorPredId, ProcId,
+		GeneratorPredInfo, ProcInfo0, Context,
+		GeneratorPredVar, NumberedOutputVars,
+		OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet,
+		GeneratorTableInfo0, GeneratorTableInfo),
+	!:TableInfo = !.TableInfo ^ table_module_info :=
+		GeneratorTableInfo ^ table_module_info.
+
+:- pred generate_save_input_vars_code(assoc_list(prog_var, int)::in,
+	vartypes::in, list(foreign_arg)::out, string::out) is det.
+
+generate_save_input_vars_code([], _, [], "").
+generate_save_input_vars_code([InputVar - Num | NumberedInputVars], VarTypes,
+		[InputVarArg | InputVarArgs],
+		SaveInputVarCode ++ SaveInputVarCodes) :-
+	map__lookup(VarTypes, InputVar, Type),
+	InputVarName = "save_input" ++ int_to_string(Num),
+	InputVarArg = foreign_arg(InputVar, yes(InputVarName - in_mode), Type),
+	SaveInputVarCode = "\tMR_mm_save_input_arg(" ++
+		int_to_string(Num) ++ ", " ++
+		InputVarName ++ ");\n",
+	generate_save_input_vars_code(NumberedInputVars, VarTypes,
+		InputVarArgs, SaveInputVarCodes).
+
+:- pred do_own_stack_create_generator(pred_id::in, proc_id::in,
+	pred_info::in, proc_info::in, term__context::in,
+	prog_var::in, assoc_list(prog_var, int)::in,
+	set(prog_var)::in, instmap_delta::in,
+	vartypes::in, prog_varset::in, table_info::in, table_info::out) is det.
+
+do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
+	Context, GeneratorVar, NumberedOutputVars,
+	OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet, !TableInfo) :-
+
+	proc_info_headvars(!.ProcInfo, HeadVars0),
+	proc_info_argmodes(!.ProcInfo, ArgModes0),
+	list__append(HeadVars0, [GeneratorVar], HeadVars),
+	list__append(ArgModes0, [in_mode], ArgModes),
+	proc_info_set_headvars(HeadVars, !ProcInfo),
+	proc_info_set_argmodes(ArgModes, !ProcInfo),
+
+	list__length(NumberedOutputVars, BlockSize),
+	generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar,
+		BlockSize, Context, !VarTypes, !VarSet, !TableInfo,
+		SaveAnswerGoals),
+
+	proc_info_goal(!.ProcInfo, OrigGoal),
+	GoalExpr = conj([OrigGoal | SaveAnswerGoals]),
+	OrigGoal = _ - OrigGoalInfo,
+	goal_info_get_determinism(OrigGoalInfo, Detism),
+	set__insert(OrigNonLocals, GeneratorVar, NonLocals),
+	goal_info_init(NonLocals, OrigInstMapDelta, Detism, impure,
+		Context, GoalInfo0),
+	goal_info_add_feature(GoalInfo0, hide_debug_event, GoalInfo),
+	Goal = GoalExpr - GoalInfo,
+	proc_info_set_goal(Goal, !ProcInfo),
+
+	proc_info_set_vartypes(!.VarTypes, !ProcInfo),
+	proc_info_set_varset(!.VarSet, !ProcInfo),
+	pred_info_procedures(!.PredInfo, ProcTable0),
+	map__det_insert(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+	pred_info_set_procedures(ProcTable, !PredInfo),
+
+	ModuleInfo0 = !.TableInfo ^ table_module_info,
+	module_info_preds(ModuleInfo0, PredTable0),
+	map__det_update(PredTable0, PredId, !.PredInfo, PredTable),
+	module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo),
+	!:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
+
+:- pred clone_pred_info(pred_info::in, pred_id::out,
+	table_info::in, table_info::out) is det.
+
+clone_pred_info(PredInfo0, GeneratorPredId, !TableInfo) :-
+	% We don't have any procedures for the generator yet. We will copy
+	% the consumers' procedures later, one by one, as they are transformed.
+
+	ModuleName = pred_info_module(PredInfo0),
+	PredName0 = pred_info_name(PredInfo0),
+	Arity0 = pred_info_arity(PredInfo0),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+	pred_info_context(PredInfo0, Context),
+	% The generator is local even if the original predicate is exported.
+	Status = local,
+	pred_info_get_goal_type(PredInfo0, GoalType),
+	pred_info_get_markers(PredInfo0, Markers0),
+	pred_info_arg_types(PredInfo0, ArgTypes0),
+	pred_info_typevarset(PredInfo0, TypeVarSet),
+	pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
+	pred_info_get_class_context(PredInfo0, ClassContext),
+	pred_info_get_constraint_proofs(PredInfo0, ClassProofs),
+	pred_info_get_aditi_owner(PredInfo0, Owner),
+	pred_info_clauses_info(PredInfo0, ClausesInfo),
+
+	PredName = qualified(ModuleName, "GeneratorFor_" ++ PredName0),
+	% PredName = transform_sym_base_name(NameTransform, PredName0),
+	Arity = Arity0 + 1,
+	ArgTypes = ArgTypes0 ++ [generator_type],
+
+	markers_to_marker_list(Markers0, MarkerList0),
+	list__filter(filter_marker, MarkerList0, MarkerList),
+	marker_list_to_markers(MarkerList, Markers),
+
+	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
+		Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
+		ClassContext, ClassProofs, Owner, ClausesInfo, PredInfo),
+
+	ModuleInfo0 = !.TableInfo ^ table_module_info,
+	module_info_get_predicate_table(ModuleInfo0, PredTable0),
+	predicate_table_insert(PredInfo, GeneratorPredId,
+		PredTable0, PredTable),
+	module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
+	!:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
+
+:- pred filter_marker(marker::in) is semidet.
+
+filter_marker(Marker) :-
+	keep_marker(Marker) = yes.
+
+:- func keep_marker(marker) = bool.
+
+keep_marker(stub) = no.
+keep_marker(infer_type) = no.
+keep_marker(infer_modes) = no.
+keep_marker(obsolete) = no.
+keep_marker(inline) = no.
+keep_marker(no_inline) = no.
+keep_marker(dnf) = no.
+keep_marker(aditi) = no.			% consider calling error
+keep_marker(base_relation) = no.		% consider calling error
+keep_marker(naive) = no.			% consider calling error
+keep_marker(psn) = no.				% consider calling error
+keep_marker(aditi_memo) = no.			% consider calling error
+keep_marker(aditi_no_memo) = no.		% consider calling error
+keep_marker(supp_magic) = no.			% consider calling error
+keep_marker(context) = no.			% consider calling error
+keep_marker(generate_inline) = no.		% consider calling error
+keep_marker(class_method) = no.
+keep_marker(class_instance_method) = no.
+keep_marker(named_class_instance_method) = no.
+keep_marker((impure)) = yes.
+keep_marker((semipure)) = yes.
+keep_marker(promised_pure) = yes.
+keep_marker(promised_semipure) = yes.
+keep_marker(terminates) = yes.
+keep_marker(does_not_terminate) = yes.
+keep_marker(check_termination) = no.
+keep_marker(calls_are_fully_qualified) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -1225,15 +1795,16 @@ generate_gen_proc_table_info(TableInfo, Steps, InputVars, OutputVars,
 	% loopcheck and memo predicates.
 
 :- pred generate_simple_call_table_lookup_goal((type)::in, string::in,
-	assoc_list(prog_var, int)::in, pred_id::in, proc_id::in,
+	assoc_list(prog_var, int)::in, pred_id::in, proc_id::in, bool::in,
 	term__context::in, vartypes::in, vartypes::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	prog_var::out, prog_var::out, hlds_goal::out,
 	list(table_trie_step)::out) is det.
 
 generate_simple_call_table_lookup_goal(StatusType, SetupPred, NumberedVars,
-		PredId, ProcId, Context, !VarTypes, !VarSet, !TableInfo,
-		TableTipVar, StatusVar, Goal, Steps) :-
+		PredId, ProcId, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, !TableInfo, TableTipVar, StatusVar,
+		Goal, Steps) :-
 	generate_call_table_lookup_goals(NumberedVars, PredId, ProcId, Context,
 		!VarTypes, !VarSet, !TableInfo, TableTipVar, LookupGoals,
 		Steps, PredTableVar, LookupForeignArgs, LookupPrefixGoals,
@@ -1241,7 +1812,6 @@ generate_simple_call_table_lookup_goal(StatusType, SetupPred, NumberedVars,
 	generate_new_table_var("Status", StatusType, !VarTypes, !VarSet,
 		StatusVar),
 	ModuleInfo = !.TableInfo ^ table_module_info,
-	tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 	(
 		TablingViaExtraArgs = yes,
 		PredTableVarName = pred_table_name,
@@ -1285,14 +1855,14 @@ generate_simple_call_table_lookup_goal(StatusType, SetupPred, NumberedVars,
 			TableTipAssignStr,
 		generate_foreign_proc(CalledPred, det, tabling_c_attributes,
 			Args, LookupForeignArgs, LookupDeclCodeStr,
-			PredCodeStr, "", yes(impure), ground_vars(BoundVars),
+			PredCodeStr, "", impure_code, ground_vars(BoundVars),
 			ModuleInfo, Context, SetupGoal0),
 		attach_call_table_tip(SetupGoal0, SetupGoal),
 		list__append(LookupPrefixGoals, [SetupGoal], LookupSetupGoals)
 	;
 		TablingViaExtraArgs = no,
 		generate_call(SetupPred, det, [TableTipVar, StatusVar],
-			yes(impure), ground_vars([StatusVar]),
+			impure_code, ground_vars([StatusVar]),
 			ModuleInfo, Context, SetupGoal0),
 		attach_call_table_tip(SetupGoal0, SetupGoal),
 		list__append(LookupGoals, [SetupGoal], LookupSetupGoals)
@@ -1305,17 +1875,74 @@ generate_simple_call_table_lookup_goal(StatusType, SetupPred, NumberedVars,
 	Goal = GoalExpr - GoalInfo.
 
 	% Generate a goal for doing lookups in call tables for
-	% minimal model predicates.
+	% model_non memo predicates.
 
-:- pred generate_mm_call_table_lookup_goal(assoc_list(prog_var, int)::in,
+:- pred generate_memo_non_call_table_lookup_goal(assoc_list(prog_var, int)::in,
 	pred_id::in, proc_id::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	table_info::in, table_info::out, prog_var::out, prog_var::out,
 	hlds_goal::out, list(table_trie_step)::out) is det.
 
-generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId, Context,
-		!VarTypes, !VarSet, !TableInfo, SubgoalVar, StatusVar,
+generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId, Context,
+		!VarTypes, !VarSet, !TableInfo, RecordVar, StatusVar,
 		Goal, Steps) :-
+	generate_call_table_lookup_goals(NumberedVars, PredId, ProcId, Context,
+		!VarTypes, !VarSet, !TableInfo, _TableTipVar, _LookupGoals,
+		Steps, PredTableVar, LookupForeignArgs, LookupPrefixGoals,
+		LookupCodeStr),
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	generate_new_table_var("Record", memo_non_record_type,
+		!VarTypes, !VarSet, RecordVar),
+	generate_new_table_var("Status", memo_non_status_type,
+		!VarTypes, !VarSet, StatusVar),
+	SetupPred = "table_memo_non_setup",
+	BoundVars = [RecordVar, StatusVar],
+	PredTableVarName = pred_table_name,
+	RecordVarName = memo_non_record_name,
+	StatusVarName = status_name,
+	PredTableArg = foreign_arg(PredTableVar,
+		yes(PredTableVarName - in_mode), trie_node_type),
+	RecordArg = foreign_arg(RecordVar,
+		yes(RecordVarName - out_mode), memo_non_record_type),
+	StatusArg = foreign_arg(StatusVar,
+		yes(StatusVarName - out_mode), memo_non_status_type),
+	Args = [PredTableArg, RecordArg, StatusArg],
+	LookupDeclCodeStr =
+		"\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
+		"\tMR_TrieNode " ++ next_table_node_name ++ ";\n" ++
+		"\t" ++ cur_table_node_name ++ " = " ++
+			PredTableVarName ++ ";\n" ++
+		LookupCodeStr,
+	PredCodeStr = "\tMR_" ++ SetupPred ++ "(" ++
+		cur_table_node_name ++ ", " ++
+		RecordVarName ++ ", " ++
+		StatusVarName ++ ");\n",
+	generate_foreign_proc(SetupPred, det, tabling_c_attributes,
+		Args, LookupForeignArgs, LookupDeclCodeStr,
+		PredCodeStr, "", impure_code, ground_vars(BoundVars),
+		ModuleInfo, Context, SetupGoal0),
+	attach_call_table_tip(SetupGoal0, SetupGoal),
+	list__append(LookupPrefixGoals, [SetupGoal], LookupSetupGoals),
+
+	GoalExpr = conj(LookupSetupGoals),
+	assoc_list__keys(NumberedVars, Vars),
+	set__list_to_set([StatusVar, RecordVar | Vars], NonLocals),
+	goal_info_init_hide(NonLocals, bind_vars([RecordVar, StatusVar]),
+		det, impure, Context, GoalInfo),
+	Goal = GoalExpr - GoalInfo.
+
+	% Generate a goal for doing lookups in call tables for
+	% minimal model predicates.
+
+:- pred generate_mm_call_table_lookup_goal(assoc_list(prog_var, int)::in,
+	pred_id::in, proc_id::in, bool::in, term__context::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out, prog_var::out, prog_var::out,
+	hlds_goal::out, list(table_trie_step)::out) is det.
+
+generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		SubgoalVar, StatusVar, Goal, Steps) :-
 	generate_call_table_lookup_goals(NumberedVars, PredId, ProcId, Context,
 		!VarTypes, !VarSet, !TableInfo, TableTipVar, LookupGoals,
 		Steps, PredTableVar, LookupForeignArgs, LookupPrefixGoals,
@@ -1327,7 +1954,6 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId, Context,
 		StatusVar),
 	SetupPred = "table_mm_setup",
 	BoundVars = [SubgoalVar, StatusVar],
-	tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 	(
 		TablingViaExtraArgs = yes,
 		PredTableVarName = pred_table_name,
@@ -1352,14 +1978,14 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId, Context,
 			StatusVarName ++ ");\n",
 		generate_foreign_proc(SetupPred, det, tabling_c_attributes,
 			Args, LookupForeignArgs, LookupDeclCodeStr,
-			PredCodeStr, "", yes(impure), ground_vars(BoundVars),
+			PredCodeStr, "", impure_code, ground_vars(BoundVars),
 			ModuleInfo, Context, SetupGoal0),
 		attach_call_table_tip(SetupGoal0, SetupGoal),
 		list__append(LookupPrefixGoals, [SetupGoal], LookupSetupGoals)
 	;
 		TablingViaExtraArgs = no,
 		generate_call(SetupPred, det,
-			[TableTipVar, SubgoalVar, StatusVar], yes(impure),
+			[TableTipVar, SubgoalVar, StatusVar], impure_code,
 			ground_vars(BoundVars), ModuleInfo, Context,
 			SetupGoal0),
 		attach_call_table_tip(SetupGoal0, SetupGoal),
@@ -1482,7 +2108,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 			LookupPredName = "table_lookup_insert_enum",
 			generate_call(LookupPredName, det,
 				[TableVar, RangeVar, ArgVar, NextTableVar],
-				yes(impure), BindNextTableVar,
+				impure_code, BindNextTableVar,
 				ModuleInfo, Context, LookupGoal),
 			Goals = [RangeUnifyGoal, LookupGoal],
 			Step = table_trie_step_enum(EnumRange),
@@ -1511,7 +2137,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 				!TableInfo, TypeInfoVar, ExtraGoals),
 			generate_call(LookupPredName, det,
 				[TypeInfoVar, TableVar, ArgVar, NextTableVar],
-				yes(impure), BindNextTableVar,
+				impure_code, BindNextTableVar,
 				ModuleInfo, Context, CallGoal),
 			Goals = ExtraGoals ++ [CallGoal],
 			PrefixGoals = ExtraGoals,
@@ -1532,7 +2158,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 				LookupPredName),
 			generate_call(LookupPredName, det,
 				[TableVar, ArgVar, NextTableVar],
-				yes(impure), BindNextTableVar, ModuleInfo,
+				impure_code, BindNextTableVar, ModuleInfo,
 				Context, Goal),
 			Goals = [Goal],
 			PrefixGoals = [],
@@ -1552,22 +2178,22 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 	% in memo predicates.
 
 :- pred generate_memo_save_goals(assoc_list(prog_var, int)::in,
-	prog_var::in, int::in, term__context::in,
+	prog_var::in, int::in, bool::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	table_info::in, table_info::out, list(hlds_goal)::out) is det.
 
-generate_memo_save_goals(NumberedSaveVars, TableTipVar, BlockSize, Context,
-		!VarTypes, !VarSet, !TableInfo, Goals) :-
+generate_memo_save_goals(NumberedSaveVars, TableTipVar, BlockSize,
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		Goals) :-
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	( BlockSize > 0 ->
 		CreatePredName = "table_memo_create_answer_block",
 		ShortcutPredName = "table_memo_fill_answer_block_shortcut",
 		generate_all_save_goals(NumberedSaveVars, TableTipVar,
 			trie_node_type, base_name, BlockSize,
-			CreatePredName, ShortcutPredName, Context,
-			!VarTypes, !VarSet, !TableInfo, Goals, _, _)
+			CreatePredName, ShortcutPredName, TablingViaExtraArgs,
+			Context, !VarTypes, !VarSet, !TableInfo, Goals, _, _)
 	;
-		tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 		MarkAsSucceededPred = "table_memo_mark_as_succeeded",
 		(
 			TablingViaExtraArgs = yes,
@@ -1578,32 +2204,103 @@ generate_memo_save_goals(NumberedSaveVars, TableTipVar, BlockSize, Context,
 				"(" ++ cur_table_node_name ++ ");",
 			generate_foreign_proc(MarkAsSucceededPred, det,
 				tabling_c_attributes, [TableArg], [],
-				"", MarkAsSucceededCode, "", yes(impure), [],
+				"", MarkAsSucceededCode, "", impure_code, [],
 				ModuleInfo, Context, Goal)
 		;
 			TablingViaExtraArgs = no,
 			generate_call(MarkAsSucceededPred, det, [TableTipVar],
-				yes(impure), [], ModuleInfo, Context, Goal)
+				impure_code, [], ModuleInfo, Context, Goal)
 		),
 		Goals = [Goal]
 	).
 
 	% Generate a goal for saving the output arguments in an answer block
-	% in minimal model predicates.
+	% in model_non memo predicates.
 
-:- pred generate_mm_save_goals(assoc_list(prog_var, int)::in,
+:- pred generate_memo_non_save_goals(assoc_list(prog_var, int)::in,
 	prog_var::in, int::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	table_info::in, table_info::out, list(hlds_goal)::out) is det.
 
-generate_mm_save_goals(NumberedSaveVars, TableVar, BlockSize, Context,
+generate_memo_non_save_goals(NumberedSaveVars, RecordVar, BlockSize, Context,
 		!VarTypes, !VarSet, !TableInfo, Goals) :-
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	generate_new_table_var("AnswerTableVar", trie_node_type,
 		!VarTypes, !VarSet, AnswerTableVar),
+	RecordName = memo_non_record_name,
+	AnswerTableName = "AnswerTableVar",
+	RecordArg = foreign_arg(RecordVar,
+		yes(RecordName - in_mode), memo_non_record_type),
+	AnswerTableArg = foreign_arg(AnswerTableVar,
+		yes(AnswerTableName - in_mode), trie_node_type),
+	GetPredName = "table_memo_non_get_answer_table",
+	GetPredCode = "\tMR_" ++ GetPredName ++ "(" ++
+		RecordName ++ ", " ++ AnswerTableName ++ ");\n",
+	generate_foreign_proc(GetPredName, det, tabling_c_attributes,
+		[RecordArg, AnswerTableArg], [], "", GetPredCode, "",
+		semipure_code, ground_vars([AnswerTableVar]),
+		ModuleInfo, Context, GetAnswerTableGoal),
+	generate_table_lookup_goals(NumberedSaveVars, "AnswerTableNode",
+		Context, AnswerTableVar, _AnswerTableTipVar,
+		!VarTypes, !VarSet, !TableInfo, _LookupAnswerGoals, _,
+		LookupForeignArgs, LookupPrefixGoals, LookupCodeStr),
+
+	CreateAnswerBlockPred = "table_memo_non_create_answer_block",
+	CreateAnswerBlockPredShortcut = CreateAnswerBlockPred ++ "_shortcut",
+	generate_all_save_goals(NumberedSaveVars, RecordVar,
+		memo_non_record_type, memo_non_record_name, BlockSize,
+		CreateAnswerBlockPred, CreateAnswerBlockPredShortcut, yes,
+		Context, !VarTypes, !VarSet, !TableInfo, _SaveGoals,
+		SaveDeclCode, CreateSaveCode),
+
+	GetPredName = "table_memo_non_get_answer_table",
+	DuplCheckPredName = "table_memo_non_answer_is_not_duplicate",
+	DuplCheckPredNameShortcut = DuplCheckPredName ++ "_shortcut",
+
+	SuccName = "succeeded",
+	LookupDeclCodeStr =
+		"\tMR_TrieNode " ++ cur_table_node_name ++ ";\n" ++
+		"\tMR_TrieNode " ++ next_table_node_name ++ ";\n" ++
+		"\tMR_bool " ++ SuccName ++ ";\n",
+	GetLookupCodeStr =
+		"\tMR_" ++ GetPredName ++ "(" ++ RecordName ++ ", " ++
+			cur_table_node_name ++ ");\n" ++
+		LookupCodeStr,
+	DuplCheckCodeStr =
+		"\tMR_" ++ DuplCheckPredName ++ "(" ++
+			cur_table_node_name ++ ", " ++
+			SuccName ++ ");\n",
+	AssignSuccessCodeStr =
+		"\t" ++ success_indicator_name ++ " = " ++
+			SuccName ++ ";\n",
+	PreStr = LookupDeclCodeStr ++ SaveDeclCode ++ GetLookupCodeStr,
+	PostStr = "\tif (" ++ SuccName ++ ") {\n" ++
+		CreateSaveCode ++ "\t}\n" ++
+		AssignSuccessCodeStr,
+	generate_foreign_proc(DuplCheckPredNameShortcut, semidet,
+		tabling_c_attributes, [RecordArg], LookupForeignArgs,
+		PreStr, DuplCheckCodeStr, PostStr, impure_code, [],
+		ModuleInfo, Context, DuplicateCheckSaveGoal),
+	Goals = [GetAnswerTableGoal | LookupPrefixGoals] ++
+		[DuplicateCheckSaveGoal].
+
+	% Generate a goal for saving the output arguments in an answer block
+	% in minimal model predicates.
+
+:- pred generate_mm_save_goals(assoc_list(prog_var, int)::in,
+	prog_var::in, int::in, bool::in, term__context::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out, list(hlds_goal)::out) is det.
+
+generate_mm_save_goals(NumberedSaveVars, SubgoalVar, BlockSize,
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		Goals) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	generate_new_table_var("AnswerTableVar", trie_node_type,
+		!VarTypes, !VarSet, AnswerTableVar),
 	GetPredName = "table_mm_get_answer_table",
-	generate_call(GetPredName, det, [TableVar, AnswerTableVar],
-		yes(semipure), ground_vars([AnswerTableVar]),
+	generate_call(GetPredName, det, [SubgoalVar, AnswerTableVar],
+		semipure_code, ground_vars([AnswerTableVar]),
 		ModuleInfo, Context, GetAnswerTableGoal),
 	generate_table_lookup_goals(NumberedSaveVars, "AnswerTableNode",
 		Context, AnswerTableVar, AnswerTableTipVar, !VarTypes, !VarSet,
@@ -1613,17 +2310,16 @@ generate_mm_save_goals(NumberedSaveVars, TableVar, BlockSize, Context,
 	CreatePredName = "table_mm_create_answer_block",
 	ShortcutCreatePredName = "table_mm_fill_answer_block_shortcut",
 	generate_all_save_goals(NumberedSaveVars,
-		TableVar, subgoal_type, subgoal_name, BlockSize,
-		CreatePredName, ShortcutCreatePredName, Context,
-		!VarTypes, !VarSet, !TableInfo, SaveGoals,
+		SubgoalVar, subgoal_type, subgoal_name, BlockSize,
+		CreatePredName, ShortcutCreatePredName, TablingViaExtraArgs,
+		Context, !VarTypes, !VarSet, !TableInfo, SaveGoals,
 		SaveDeclCode, CreateSaveCode),
 
 	DuplCheckPredName = "table_mm_answer_is_not_duplicate",
-	tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 	(
 		TablingViaExtraArgs = yes,
 		SubgoalName = subgoal_name,
-		Args = [foreign_arg(TableVar, yes(SubgoalName - in_mode),
+		Args = [foreign_arg(SubgoalVar, yes(SubgoalName - in_mode),
 			subgoal_type)],
 		SuccName = "succeeded",
 		LookupDeclCodeStr =
@@ -1647,14 +2343,14 @@ generate_mm_save_goals(NumberedSaveVars, TableVar, BlockSize, Context,
 			AssignSuccessCodeStr,
 		generate_foreign_proc(DuplCheckPredName, semidet,
 			tabling_c_attributes, Args, LookupForeignArgs,
-			PreStr, DuplCheckCodeStr, PostStr, yes(impure), [],
+			PreStr, DuplCheckCodeStr, PostStr, impure_code, [],
 			ModuleInfo, Context, DuplicateCheckSaveGoal),
 		list__append(LookupPrefixGoals, [DuplicateCheckSaveGoal],
 			Goals)
 	;
 		TablingViaExtraArgs = no,
 		generate_call(DuplCheckPredName, semidet, [AnswerTableTipVar],
-			yes(impure), [], ModuleInfo, Context,
+			impure_code, [], ModuleInfo, Context,
 			DuplicateCheckGoal),
 		list__append([GetAnswerTableGoal | LookupAnswerGoals],
 			[DuplicateCheckGoal], LookupCheckGoals),
@@ -1665,21 +2361,20 @@ generate_mm_save_goals(NumberedSaveVars, TableVar, BlockSize, Context,
 
 :- pred generate_all_save_goals(assoc_list(prog_var, int)::in,
 	prog_var::in, (type)::in, string::in, int::in, string::in, string::in,
-	term__context::in, vartypes::in, vartypes::out,
+	bool::in, term__context::in, vartypes::in, vartypes::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
 	list(hlds_goal)::out, string::out, string::out) is det.
 
 generate_all_save_goals(NumberedSaveVars, BaseVar, BaseVarType, BaseVarName,
-		BlockSize, CreatePredName, ShortcutPredName, Context,
-		!VarTypes, !VarSet, !TableInfo, Goals,
-		SaveDeclCodeStr, CreateSaveCodeStr) :-
+		BlockSize, CreatePredName, ShortcutPredName,
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, !TableInfo,
+		Goals, SaveDeclCodeStr, CreateSaveCodeStr) :-
 	generate_new_table_var("AnswerBlock", answer_block_type,
 		!VarTypes, !VarSet, AnswerBlockVar),
 	generate_save_goals(NumberedSaveVars, AnswerBlockVar, Context,
 		!VarTypes, !VarSet, !TableInfo, SaveGoals,
 		SaveArgs, SavePrefixGoals, SaveCodeStr),
 	ModuleInfo = !.TableInfo ^ table_module_info,
-	tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 	(
 		TablingViaExtraArgs = yes,
 		TableArg = foreign_arg(BaseVar, yes(BaseVarName - in_mode),
@@ -1687,19 +2382,17 @@ generate_all_save_goals(NumberedSaveVars, BaseVar, BaseVarType, BaseVarName,
 		Args = [TableArg],
 		SaveDeclCodeStr = "\tMR_AnswerBlock " ++
 			answer_block_name ++ ";\n",
-		CreateCodeStr =
-			"\tMR_" ++ CreatePredName ++ "(" ++
-				BaseVarName ++ ", " ++
-				int_to_string(BlockSize) ++ ", " ++
-				answer_block_name ++ ");\n",
+		CreateCodeStr = "\tMR_" ++ CreatePredName ++ "(" ++
+			BaseVarName ++ ", " ++
+			int_to_string(BlockSize) ++ ", " ++
+			answer_block_name ++ ");\n",
 		CreateSaveCodeStr = CreateCodeStr ++ SaveCodeStr,
-		ShortcutStr =
-			"\tMR_" ++ ShortcutPredName ++ "(" ++
-				BaseVarName ++ ");\n",
+		ShortcutStr = "\tMR_" ++ ShortcutPredName ++ "(" ++
+			BaseVarName ++ ");\n",
 		generate_foreign_proc(ShortcutPredName, det,
 			tabling_c_attributes, Args, SaveArgs,
 			SaveDeclCodeStr ++ CreateSaveCodeStr, ShortcutStr, "",
-			yes(impure), [], ModuleInfo, Context, ShortcutGoal),
+			impure_code, [], ModuleInfo, Context, ShortcutGoal),
 		list__append(SavePrefixGoals, [ShortcutGoal], Goals)
 	;
 		TablingViaExtraArgs = no,
@@ -1707,7 +2400,7 @@ generate_all_save_goals(NumberedSaveVars, BaseVar, BaseVarType, BaseVarName,
 			!VarSet, BlockSizeVar, BlockSizeVarUnifyGoal),
 		generate_call(CreatePredName, det,
 			[BaseVar, BlockSizeVar, AnswerBlockVar],
-			yes(impure), ground_vars([AnswerBlockVar]),
+			impure_code, ground_vars([AnswerBlockVar]),
 			ModuleInfo, Context, CreateAnswerBlockGoal),
 		Goals = [BlockSizeVarUnifyGoal, CreateAnswerBlockGoal |
 			SaveGoals],
@@ -1718,6 +2411,45 @@ generate_all_save_goals(NumberedSaveVars, BaseVar, BaseVarType, BaseVarName,
 %-----------------------------------------------------------------------------%
 
 	% Generate a sequence of save goals for the given variables.
+
+:- pred generate_own_stack_save_goal(assoc_list(prog_var, int)::in,
+	prog_var::in, int::in, term__context::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	table_info::in, table_info::out, list(hlds_goal)::out) is det.
+
+generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, BlockSize,
+		Context, !VarTypes, !VarSet, !TableInfo, Goals) :-
+	ModuleInfo = !.TableInfo ^ table_module_info,
+	generate_new_table_var("AnswerTableVar", trie_node_type,
+		!VarTypes, !VarSet, AnswerTableVar),
+	% XXX use foreign_proc
+	generate_call("table_generator_get_answer_table", det,
+		[GeneratorVar, AnswerTableVar], impure_code,
+		ground_vars([AnswerTableVar]), ModuleInfo, Context,
+		GetAnswerTableGoal),
+	% assoc_list__keys(NumberedOutputVars, OutputVars),
+	% XXX use foreign_proc
+	generate_table_lookup_goals(NumberedOutputVars, "AnswerTableNode",
+		Context, AnswerTableVar, AnswerTableTipVar, !VarTypes, !VarSet,
+		!TableInfo, LookupAnswerGoals, _, _, _, _),
+	generate_call("table_nondet_answer_is_not_duplicate", semidet,
+		[AnswerTableTipVar], impure_code,
+		[], ModuleInfo, Context, DuplicateCheckGoal),
+	generate_new_table_var("AnswerBlock", answer_block_type,
+		!VarTypes, !VarSet, AnswerBlockVar),
+	gen_int_construction("BlockSize", BlockSize, !VarTypes, !VarSet,
+		BlockSizeVar, BlockSizeVarUnifyGoal),
+	generate_call("table_generator_create_answer_block", det,
+		[GeneratorVar, BlockSizeVar, AnswerBlockVar], impure_code,
+		ground_vars([AnswerBlockVar]), ModuleInfo, Context,
+		CreateAnswerBlockGoal),
+	% use foreign_proc
+	generate_save_goals(NumberedOutputVars, AnswerBlockVar, Context,
+		!VarTypes, !VarSet, !TableInfo, SaveGoals, _X, _XX, _XXX),
+	TailGoals = SaveGoals,
+	Goals = [GetAnswerTableGoal | LookupAnswerGoals] ++
+		[DuplicateCheckGoal, BlockSizeVarUnifyGoal,
+		CreateAnswerBlockGoal | TailGoals].
 
 :- pred generate_save_goals(assoc_list(prog_var, int)::in, prog_var::in,
 	term__context::in, vartypes::in, vartypes::out,
@@ -1731,8 +2463,8 @@ generate_save_goals([NumberedVar | NumberedRest], TableVar, Context,
 		!VarTypes, !VarSet, !TableInfo, Goals, Args ++ RestArgs,
 		PrefixGoals ++ RestPrefixGoals, CodeStr ++ RestCodeStr) :-
 	NumberedVar = Var - Offset,
-	gen_int_construction("OffsetVar", Offset, !VarTypes,
-		!VarSet, OffsetVar, OffsetUnifyGoal),
+	gen_int_construction("OffsetVar", Offset, !VarTypes, !VarSet,
+		OffsetVar, OffsetUnifyGoal),
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	map__lookup(!.VarTypes, Var, VarType),
 	classify_type(ModuleInfo, VarType) = TypeCat,
@@ -1759,7 +2491,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
 	( type_util__type_is_io_state(Type) ->
 		SavePredName = "table_save_io_state_answer",
 		generate_call(SavePredName, det, [TableVar, OffsetVar, Var],
-			yes(impure), [], ModuleInfo, Context, Goal),
+			impure_code, [], ModuleInfo, Context, Goal),
 		Goals = [Goal],
 		Args = [ForeignArg],
 		PrefixGoals = [],
@@ -1782,7 +2514,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
 		SavePredName = "table_save_any_answer",
 		generate_call(SavePredName, det,
 			[TypeInfoVar, TableVar, OffsetVar, Var],
-			yes(impure), [], ModuleInfo, Context, CallGoal),
+			impure_code, [], ModuleInfo, Context, CallGoal),
 		Goals = ExtraGoals ++ [CallGoal],
 		Args = [GenericForeignArg, TypeInfoForeignArg],
 		PrefixGoals = ExtraGoals,
@@ -1796,7 +2528,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
 		string__append_list(["table_save_", CatString, "_answer"],
 			SavePredName),
 		generate_call(SavePredName, det, [TableVar, OffsetVar, Var],
-			yes(impure), [], ModuleInfo, Context, Goal),
+			impure_code, [], ModuleInfo, Context, Goal),
 		Goals = [Goal],
 		Args = [ForeignArg],
 		PrefixGoals = [],
@@ -1812,12 +2544,14 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, Offset, OffsetVar,
 	% an answer block in memo predicates.
 
 :- pred generate_memo_restore_goal(assoc_list(prog_var, int)::in,
-	instmap_delta::in, prog_var::in, module_info::in, term__context::in,
+	instmap_delta::in, prog_var::in, module_info::in,
+	bool::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	hlds_goal::out) is det.
 
 generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
-		ModuleInfo, Context, !VarTypes, !VarSet, Goal) :-
+		ModuleInfo, TablingViaExtraArgs, Context, !VarTypes, !VarSet,
+		Goal) :-
 	(
 		NumberedOutputVars = [_ | _],
 		assoc_list__keys(NumberedOutputVars, OutputVars),
@@ -1828,7 +2562,6 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
 			RestoreBlockVar, ModuleInfo, Context,
 			!VarTypes, !VarSet, RestoreGoals,
 			RestoreInstMapDeltaSrc, RestoreArgs, RestoreCodeStr),
-		tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 		(
 			TablingViaExtraArgs = yes,
 			BaseVarName = base_name,
@@ -1847,14 +2580,14 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
 			generate_foreign_proc(ShortcutPredName, det,
 				tabling_c_attributes, Args, RestoreArgs,
 				DeclCodeStr, ShortcutStr, GetRestoreCodeStr,
-				yes(impure), RestoreInstMapDeltaSrc,
+				impure_code, RestoreInstMapDeltaSrc,
 				ModuleInfo, Context, ShortcutGoal),
 			Goal = ShortcutGoal
 		;
 			TablingViaExtraArgs = no,
 			generate_call(GetPredName, det,
 				[TipVar, RestoreBlockVar],
-				yes(semipure), ground_vars([RestoreBlockVar]),
+				semipure_code, ground_vars([RestoreBlockVar]),
 				ModuleInfo, Context, GetBlockGoal),
 			GoalExpr = conj([GetBlockGoal | RestoreGoals]),
 			set__list_to_set([TipVar | OutputVars], NonLocals),
@@ -1868,15 +2601,61 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
 	).
 
 	% Generate a goal for restoring the output arguments from
-	% an answer block in minimal model predicates without a suspension.
+	% an answer block in model_non memo predicates.
 
-:- pred generate_mm_restore_goal(determinism::in,
+:- pred generate_memo_non_restore_goal(determinism::in,
 	assoc_list(prog_var, int)::in, instmap_delta::in, prog_var::in,
 	module_info::in, term__context::in, vartypes::in, vartypes::out,
 	prog_varset::in, prog_varset::out, hlds_goal::out) is det.
 
+generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
+		RecordVar, ModuleInfo, Context, !VarTypes, !VarSet, Goal) :-
+	( Detism = multidet ->
+		ReturnAllAns = "table_memo_return_all_answers_multi"
+	; Detism = nondet ->
+		ReturnAllAns = "table_memo_return_all_answers_nondet"
+	;
+		error("generate_mm_restore_goal: invalid determinism")
+	),
+	generate_new_table_var("AnswerBlock", answer_block_type,
+		!VarTypes, !VarSet, AnswerBlockVar),
+	generate_call(ReturnAllAns, Detism, [RecordVar, AnswerBlockVar],
+		semipure_code, ground_vars([AnswerBlockVar]), ModuleInfo,
+		Context, ReturnAnswerBlocksGoal),
+	generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
+		AnswerBlockVar, ModuleInfo, Context, !VarTypes, !VarSet,
+		_RestoreGoals, RestoreInstMapDeltaSrc, RestoreArgs,
+		RestoreCodeStr),
+	assoc_list__keys(NumberedOutputVars, OutputVars),
+	Arg = foreign_arg(AnswerBlockVar, yes(answer_block_name - in_mode),
+		answer_block_type),
+	Args = [Arg],
+	ShortcutPredName = "table_memo_non_return_all_shortcut",
+	ShortcutStr = "\tMR_" ++ ShortcutPredName ++ "(" ++
+		answer_block_name ++ ");\n",
+	generate_foreign_proc(ShortcutPredName, det, tabling_c_attributes,
+		Args, RestoreArgs, "", ShortcutStr, RestoreCodeStr,
+		impure_code, RestoreInstMapDeltaSrc, ModuleInfo, Context,
+		ShortcutGoal),
+
+	GoalExpr = conj([ReturnAnswerBlocksGoal, ShortcutGoal]),
+	set__list_to_set([RecordVar | OutputVars], NonLocals),
+	goal_info_init_hide(NonLocals, OrigInstMapDelta, Detism, semipure,
+		Context, GoalInfo),
+	Goal = GoalExpr - GoalInfo.
+
+	% Generate a goal for restoring the output arguments from
+	% an answer block in minimal model predicates without a suspension.
+
+:- pred generate_mm_restore_goal(determinism::in,
+	assoc_list(prog_var, int)::in, instmap_delta::in, prog_var::in,
+	module_info::in, bool::in, term__context::in,
+	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+	hlds_goal::out) is det.
+
 generate_mm_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
-		SubgoalVar, ModuleInfo, Context, !VarTypes, !VarSet, Goal) :-
+		SubgoalVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, Goal) :-
 	( Detism = multidet ->
 		ReturnAllAns = "table_mm_return_all_multi"
 	; Detism = nondet ->
@@ -1886,21 +2665,24 @@ generate_mm_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
 	),
 	generate_mm_restore_or_suspend_goal(ReturnAllAns, Detism, semipure,
 		NumberedOutputVars, OrigInstMapDelta, SubgoalVar, ModuleInfo,
-		Context, !VarTypes, !VarSet, Goal).
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, Goal).
 
 	% Generate a goal for restoring the output arguments from
 	% an answer block in minimal model predicates after a suspension.
 
 :- pred generate_mm_suspend_goal(assoc_list(prog_var, int)::in,
-	instmap_delta::in, prog_var::in, module_info::in, term__context::in,
+	instmap_delta::in, prog_var::in, module_info::in,
+	bool::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	hlds_goal::out) is det.
 
 generate_mm_suspend_goal(NumberedOutputVars, OrigInstMapDelta, SubgoalVar,
-		ModuleInfo, Context, !VarTypes, !VarSet, Goal) :-
+		ModuleInfo, TablingViaExtraArgs, Context, !VarTypes, !VarSet,
+		Goal) :-
 	generate_mm_restore_or_suspend_goal("table_mm_suspend_consumer",
 		nondet, impure, NumberedOutputVars, OrigInstMapDelta,
-		SubgoalVar, ModuleInfo, Context, !VarTypes, !VarSet, Goal).
+		SubgoalVar, ModuleInfo, TablingViaExtraArgs, Context,
+		!VarTypes, !VarSet, Goal).
 
 	% Generate a goal for restoring the output arguments from
 	% an answer block in minimal model predicates. Whether the restore
@@ -1908,24 +2690,23 @@ generate_mm_suspend_goal(NumberedOutputVars, OrigInstMapDelta, SubgoalVar,
 
 :- pred generate_mm_restore_or_suspend_goal(string::in, determinism::in,
 	purity::in, assoc_list(prog_var, int)::in, instmap_delta::in,
-	prog_var::in, module_info::in, term__context::in,
+	prog_var::in, module_info::in, bool::in, term__context::in,
 	vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
 	hlds_goal::out) is det.
 
 generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
 		NumberedOutputVars, OrigInstMapDelta, SubgoalVar, ModuleInfo,
-		Context, !VarTypes, !VarSet, Goal) :-
+		TablingViaExtraArgs, Context, !VarTypes, !VarSet, Goal) :-
 	generate_new_table_var("AnswerBlock", answer_block_type,
 		!VarTypes, !VarSet, AnswerBlockVar),
 	generate_call(PredName, Detism, [SubgoalVar, AnswerBlockVar],
-		yes(semipure), ground_vars([AnswerBlockVar]), ModuleInfo,
+		semipure_code, ground_vars([AnswerBlockVar]), ModuleInfo,
 		Context, ReturnAnswerBlocksGoal),
 	generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
 		AnswerBlockVar, ModuleInfo, Context, !VarTypes, !VarSet,
 		RestoreGoals, RestoreInstMapDeltaSrc, RestoreArgs,
 		RestoreCodeStr),
 	assoc_list__keys(NumberedOutputVars, OutputVars),
-	tabling_via_extra_args(ModuleInfo, TablingViaExtraArgs),
 	(
 		TablingViaExtraArgs = yes,
 		Arg = foreign_arg(AnswerBlockVar,
@@ -1937,7 +2718,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
 		generate_foreign_proc(ShortcutPredName, det,
 			tabling_c_attributes, Args, RestoreArgs,
 			"", ShortcutStr, RestoreCodeStr,
-			yes(impure), RestoreInstMapDeltaSrc, ModuleInfo,
+			impure_code, RestoreInstMapDeltaSrc, ModuleInfo,
 			Context, ShortcutGoal),
 		GoalExpr = conj([ReturnAnswerBlocksGoal, ShortcutGoal])
 	;
@@ -2008,7 +2789,7 @@ gen_restore_call_for_type(TypeCat, Type, OrigInstmapDelta, TableVar, Var,
 		int_to_string(Offset) ++ ", " ++
 		Name ++ ");\n",
 	generate_call(RestorePredName, det, [TableVar, OffsetVar, Var],
-		yes(semipure), [Var - Inst], ModuleInfo, Context, Goal).
+		semipure_code, [Var - Inst], ModuleInfo, Context, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -2016,9 +2797,9 @@ gen_restore_call_for_type(TypeCat, Type, OrigInstmapDelta, TableVar, Var,
 
 infinite_recursion_msg = "detected infinite recursion".
 
-:- func bad_fail_msg = string.
+:- func need_minimal_model_msg = string.
 
-bad_fail_msg = "failed subgoal in model_det predicate".
+need_minimal_model_msg = "detected need for minimal model".
 
 :- pred generate_error_goal(table_info::in, term__context::in,
 	string::in, vartypes::in, vartypes::out,
@@ -2040,7 +2821,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 
 	gen_string_construction("Message", Message, !VarTypes, !VarSet,
 		MessageVar, MessageStrGoal),
-	generate_call("table_error", erroneous, [MessageVar], no, [],
+	generate_call("table_error", erroneous, [MessageVar], pure_code, [],
 		ModuleInfo, Context, CallGoal),
 
 	GoalExpr = conj([MessageStrGoal, CallGoal]),
@@ -2058,30 +2839,46 @@ generate_new_table_var(Name, Type, !VarTypes, !VarSet, Var) :-
 	varset__new_named_var(!.VarSet, Name, Var, !:VarSet),
 	map__set(!.VarTypes, Var, Type, !:VarTypes).
 
+:- type impure_or_semipure
+	--->	impure_code
+	;	semipure_code
+	;	pure_code.
+
+:- func impure_or_semipure_to_features(impure_or_semipure)
+	= list(goal_feature).
+
+impure_or_semipure_to_features(impure_code) =
+	[impure, not_impure_for_determinism].
+impure_or_semipure_to_features(semipure_code) =
+	[semipure, not_impure_for_determinism].
+impure_or_semipure_to_features(pure_code) = [].
+
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	impure_or_semipure::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Args, MaybeFeature, InstMapSrc,
+generate_call(PredName, Detism, Args, Purity, InstMapSrc,
 		ModuleInfo, Context, Goal) :-
 	mercury_table_builtin_module(BuiltinModule),
+	Features = impure_or_semipure_to_features(Purity),
 	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
-		only_mode, Detism, Args, MaybeFeature, InstMapSrc, ModuleInfo,
+		only_mode, Detism, Args, Features, InstMapSrc, ModuleInfo,
 		Context, Goal).
 
 :- pred generate_foreign_proc(string::in, determinism::in,
 	pragma_foreign_proc_attributes::in,
 	list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
-	string::in, maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	string::in, impure_or_semipure::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
 generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
-		PrefixCode, Code, SuffixCode, MaybeFeature, InstMapSrc,
+		PrefixCode, Code, SuffixCode, Purity, InstMapSrc,
 		ModuleInfo, Context, Goal) :-
 	mercury_table_builtin_module(BuiltinModule),
+	Features = impure_or_semipure_to_features(Purity),
 	goal_util__generate_foreign_proc(BuiltinModule, PredName, predicate,
 		only_mode, Detism, Attributes, Args, ExtraArgs,
-		PrefixCode, Code, SuffixCode, MaybeFeature, InstMapSrc,
+		PrefixCode, Code, SuffixCode, Features, InstMapSrc,
 		ModuleInfo, Context, Goal).
 
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
@@ -2113,16 +2910,22 @@ gen_string_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
 		!VarTypes, !VarSet).
 
 :- func trie_node_type = (type).
+:- func memo_non_record_type = (type).
 :- func subgoal_type = (type).
 :- func answer_block_type = (type).
 :- func loop_status_type = (type).
 :- func memo_det_status_type = (type).
 :- func memo_semi_status_type = (type).
+:- func memo_non_status_type = (type).
 :- func mm_status_type = (type).
 
 trie_node_type = Type :-
 	mercury_table_builtin_module(TB),
 	construct_type(qualified(TB, "ml_trie_node") - 0, [], Type).
+
+memo_non_record_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "memo_non_record") - 0, [], Type).
 
 subgoal_type = Type :-
 	mercury_table_builtin_module(TB),
@@ -2144,11 +2947,27 @@ memo_semi_status_type = Type :-
 	mercury_table_builtin_module(TB),
 	construct_type(qualified(TB, "memo_semi_status") - 0, [], Type).
 
+memo_non_status_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "memo_non_status") - 0, [], Type).
+
 mm_status_type = Type :-
 	mercury_table_builtin_module(TB),
 	construct_type(qualified(TB, "mm_status") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
+
+:- func consumer_type = (type).
+
+consumer_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "ml_consumer") - 0, [], Type).
+
+:- func generator_type = (type).
+
+generator_type = Type :-
+	mercury_table_builtin_module(TB),
+	construct_type(qualified(TB, "ml_generator") - 0, [], Type).
 
 :- pred get_input_output_vars(list(prog_var)::in, list(mode)::in,
 	module_info::in, list(prog_var)::out,
@@ -2333,8 +3152,7 @@ table_gen__make_type_info_vars(Types, Context, !VarTypes, !VarSet, !TableInfo,
 	%
 	% Extract the information from table_info
 	%
-	table_info_extract(!.TableInfo, ModuleInfo0, PredId, ProcId,
-		PredInfo0, ProcInfo0),
+	table_info_extract(!.TableInfo, ModuleInfo0, PredInfo0, ProcInfo0),
 
 	%
 	% Put the varset and vartypes from the simplify_info
@@ -2362,8 +3180,7 @@ table_gen__make_type_info_vars(Types, Context, !VarTypes, !VarSet, !TableInfo,
 	% Put the new module_info, pred_info, and proc_info back in the
 	% table_info.
 	%
-	table_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-		!:TableInfo).
+	table_info_init(ModuleInfo, PredInfo, ProcInfo, !:TableInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -2402,45 +3219,57 @@ dummy_type_var = Type :-
 :- func next_table_node_name = string.
 :- func table_tip_node_name = string.
 :- func base_name = string.
+:- func memo_non_record_name = string.
 :- func subgoal_name = string.
 :- func status_name = string.
 :- func answer_block_name = string.
 :- func success_indicator_name = string.
 :- func arg_name(int) = string.
+:- func num_input_args_name = string.
+:- func pred_name_var_name = string.
+:- func answer_table_name = string.
+:- func consumer_name = string.
+:- func generator_name = string.
+:- func generator_pred_name = string.
 
 pred_table_name = "pred_table".
 cur_table_node_name = "cur_node".
 next_table_node_name = "next_node".
 table_tip_node_name = "table_tip".
 base_name = "base".
+memo_non_record_name = "record".
 subgoal_name = "subgoal".
 status_name = "status".
 answer_block_name = "answerblock".
 success_indicator_name = "SUCCESS_INDICATOR".
 arg_name(VarSeqNum) = "arg" ++ int_to_string(VarSeqNum).
+num_input_args_name = "num_input_args".
+pred_name_var_name = "pred_name".
+answer_table_name = "answer_table".
+consumer_name = "consumer".
+generator_name = "generator".
+generator_pred_name = "generator_pred".
 
 %-----------------------------------------------------------------------------%
 
 :- type table_info
 	---> table_info(
 			table_module_info	:: module_info,
-			table_cur_pred_id	:: pred_id,
-			table_cur_proc_id	:: proc_id,
 			table_cur_pred_info	:: pred_info,
 			table_cur_proc_info	:: proc_info
 		).
 
-:- pred table_info_init(module_info::in, pred_id::in, proc_id::in,
+:- pred table_info_init(module_info::in,
 	pred_info::in, proc_info::in, table_info::out) is det.
 
 :- pred table_info_extract(table_info::in, module_info::out,
-	pred_id::out, proc_id::out, pred_info::out, proc_info::out) is det.
+	% pred_id::out, proc_id::out,
+	pred_info::out, proc_info::out) is det.
 
-table_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, TableInfo) :-
-	TableInfo = table_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo).
+table_info_init(ModuleInfo, PredInfo, ProcInfo, TableInfo) :-
+	TableInfo = table_info(ModuleInfo, PredInfo, ProcInfo).
 
-table_info_extract(TableInfo, ModuleInfo, PredId, ProcId, PredInfo, ProcInfo)
-		:-
-	TableInfo = table_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo).
+table_info_extract(TableInfo, ModuleInfo, PredInfo, ProcInfo) :-
+	TableInfo = table_info(ModuleInfo, PredInfo, ProcInfo).
 
 %-----------------------------------------------------------------------------%

@@ -404,9 +404,20 @@ case $reserve_tag in
 	false)          RESERVE_TAG_OPTS="" ;;
 esac
 
+case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks in
+	true,true)	progname=`basename $0`
+			echo "$progname: can't enable both forms of minimal model tabling at once"
+			exit 1 ;;
+	true,false)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_STACK_COPY"
+			;;
+	false,true)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL_OWN_STACKS"
+			;;
+	false,false)	MINIMAL_MODEL_OPTS="" ;;
+esac
+
 case $use_minimal_model,$minimal_model_debug in
-	true,false)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL" ;;
-	true,true)	MINIMAL_MODEL_OPTS="-DMR_USE_MINIMAL_MODEL -DMR_MINIMAL_MODEL_DEBUG" ;;
+	true,false)	;; # MINIMAL_MODEL_OPTS is already set
+	true,true)	MINIMAL_MODEL_OPTS="$MINIMAL_MODEL_OPTS -DMR_MINIMAL_MODEL_DEBUG" ;;
 	*)		MINIMAL_MODEL_OPTS="" ;;
 esac
 

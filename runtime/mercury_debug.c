@@ -14,6 +14,33 @@
 #include	<stdio.h>
 #include	<stdarg.h>
 
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+  #define	MR_in_ctxt_det_zone(ptr, ctxt)			\
+		MR_in_zone(ptr, ctxt->MR_ctxt_detstack_zone)
+  #define	MR_in_ctxt_non_zone(ptr, ctxt)			\
+		MR_in_zone(ptr, ctxt->MR_ctxt_nondetstack_zone)
+
+  extern  const MR_Context	*MR_find_ctxt_for_det_ptr(const MR_Word *ptr);
+  extern  const MR_Context	*MR_find_ctxt_for_non_ptr(const MR_Word *ptr);
+
+  extern  MR_MemoryZone		*MR_find_zone_for_det_ptr(const MR_Word *ptr);
+  extern  MR_MemoryZone		*MR_find_zone_for_non_ptr(const MR_Word *ptr);
+
+  extern  MR_Generator		*MR_find_gen_for_det_ptr(const MR_Word *ptr);
+  extern  MR_Generator		*MR_find_gen_for_non_ptr(const MR_Word *ptr);
+
+  #define MR_det_zone(fr)	(MR_find_zone_for_det_ptr(fr))
+  #define MR_non_zone(fr)	(MR_find_zone_for_non_ptr(fr))
+#else
+  #define MR_det_zone(fr)	(MR_CONTEXT(MR_ctxt_detstack_zone))
+  #define MR_non_zone(fr)	(MR_CONTEXT(MR_ctxt_nondetstack_zone))
+#endif
+
+#define MR_det_stack_min(fr)	(MR_det_zone(fr)->min)
+#define MR_det_stack_offset(fr) (fr - MR_det_stack_min(fr))
+#define MR_non_stack_min(fr)	(MR_non_zone(fr)->min)
+#define MR_non_stack_offset(fr) (fr - MR_non_stack_min(fr))
+
 /*--------------------------------------------------------------------*/
 
 #ifdef	MR_DEEP_PROFILING
@@ -28,7 +55,6 @@ static void	MR_count_call(MR_Code *proc);
 static void	MR_print_ordinary_regs(void);
 static void	MR_do_watches(void);
 static MR_bool	MR_proc_matches_name(MR_Code *proc, const char *name);
-static void	MR_printdetslot_as_label(const MR_Integer offset);
 
 #ifdef	MR_LOWLEVEL_ADDR_DEBUG
   #define	MR_PRINT_RAW_ADDRS	MR_TRUE
@@ -37,6 +63,104 @@ static void	MR_printdetslot_as_label(const MR_Integer offset);
 #endif
 
 static	MR_bool	MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
+
+/* auxiliary routines for the code that prints debugging messages */
+
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+
+const MR_Context *
+MR_find_ctxt_for_det_ptr(const MR_Word *ptr)
+{
+	const MR_Dlist		*item;
+	const MR_Context	*ctxt;
+
+	if (MR_in_ctxt_det_zone(ptr, MR_ENGINE(MR_eng_main_context))) {
+		return MR_ENGINE(MR_eng_main_context);
+	}
+
+	MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
+		ctxt = (MR_Context *) MR_dlist_data(item);
+		if (MR_in_ctxt_det_zone(ptr, ctxt)) {
+			return ctxt;
+		}
+	}
+
+	return NULL;
+}
+
+const MR_Context *
+MR_find_ctxt_for_non_ptr(const MR_Word *ptr)
+{
+	const MR_Dlist		*item;
+	const MR_Context	*ctxt;
+
+	if (MR_in_ctxt_non_zone(ptr, MR_ENGINE(MR_eng_main_context))) {
+		return MR_ENGINE(MR_eng_main_context);
+	}
+
+	MR_for_dlist(item, MR_ENGINE(MR_eng_gen_contexts)) {
+		ctxt = (MR_Context *) MR_dlist_data(item);
+		if (MR_in_ctxt_non_zone(ptr, ctxt)) {
+			return ctxt;
+		}
+	}
+
+	return NULL;
+}
+
+MR_MemoryZone *
+MR_find_zone_for_det_ptr(const MR_Word *ptr)
+{
+	const MR_Context	*ctxt;
+
+	ctxt = MR_find_ctxt_for_det_ptr(ptr);
+	if (ctxt != NULL) {
+		return ctxt->MR_ctxt_detstack_zone;
+	}
+
+	MR_fatal_error("MR_find_zone_for_det_ptr: not in any context");
+}
+
+MR_MemoryZone *
+MR_find_zone_for_non_ptr(const MR_Word *ptr)
+{
+	const MR_Context	*ctxt;
+
+	ctxt = MR_find_ctxt_for_non_ptr(ptr);
+	if (ctxt != NULL) {
+		return ctxt->MR_ctxt_nondetstack_zone;
+	}
+
+	MR_fatal_error("MR_find_zone_for_non_ptr: not in any context");
+}
+
+MR_Generator *
+MR_find_gen_for_det_ptr(const MR_Word *ptr)
+{
+	const MR_Context	*ctxt;
+
+	ctxt = MR_find_ctxt_for_det_ptr(ptr);
+	if (ctxt != NULL) {
+		return ctxt->MR_ctxt_owner_generator;
+	}
+
+	MR_fatal_error("MR_find_gen_for_det_ptr: not in any context");
+}
+
+MR_Generator *
+MR_find_gen_for_non_ptr(const MR_Word *ptr)
+{
+	const MR_Context	*ctxt;
+
+	ctxt = MR_find_ctxt_for_non_ptr(ptr);
+	if (ctxt != NULL) {
+		return ctxt->MR_ctxt_owner_generator;
+	}
+
+	MR_fatal_error("MR_find_gen_for_non_ptr: not in any context");
+}
+
+#endif	/* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 /* debugging messages */
 
@@ -95,7 +219,7 @@ MR_mkframe_msg(const char *predname)
 	printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
 	printf("redo fr: "); MR_printnondstack(MR_redofr_slot(MR_curfr));
 	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_curfr));
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
 	printf("det fr:  "); MR_printdetstack(MR_table_detfr_slot(MR_curfr));
 #endif
 
@@ -543,8 +667,7 @@ MR_dumpframe(/* const */ MR_Word *fr)
 	}
 
 	printf("offset %3ld words\n",
-		(long) (MR_Integer)
-			(fr - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+		(long) (MR_Integer) MR_non_stack_offset(fr));
 	printf("\t succip    "); MR_printlabel(stdout, MR_succip_slot(fr));
 	printf("\t redoip    "); MR_printlabel(stdout, MR_redoip_slot(fr));
 	printf("\t succfr    "); MR_printnondstack(MR_succfr_slot(fr));
@@ -784,15 +907,6 @@ MR_proc_matches_name(MR_Code *proc, const char *name)
 
 #ifndef MR_HIGHLEVEL_CODE
 
-static void 
-MR_printdetslot_as_label(const MR_Integer offset)
-{
-	MR_printdetstackptr(&MR_CONTEXT(MR_ctxt_detstack_zone)->min[offset]);
-	printf(" ");
-	MR_printlabel(stdout,
-		(MR_Code *) (MR_CONTEXT(MR_ctxt_detstack_zone)->min[offset]));
-}
-
 void 
 MR_printdetstackptr(const MR_Word *s)
 {
@@ -803,8 +917,7 @@ void
 MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "det %3ld",
-		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+		(long) (MR_Integer) MR_det_stack_offset(s));
 
 	if (MR_print_raw_addrs) {
 		fprintf(fp, " (%p)", (const void *) s);
@@ -819,8 +932,7 @@ MR_printdetstack(const MR_Word *s)
 	}
 
 	printf("offset %3ld words\n",
-		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+		(long) (MR_Integer) MR_det_stack_offset(s));
 }
 
 void 
@@ -833,8 +945,7 @@ void
 MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "non %3ld",
-		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+		(long) (MR_Integer) MR_non_stack_offset(s));
 
 	if (MR_print_raw_addrs) {
 		fprintf(fp, " (%p)",
@@ -850,8 +961,7 @@ MR_printnondstack(const MR_Word *s)
 	}
 
 	printf("offset %3ld words\n",
-		(long) (MR_Integer)
-			(s - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+		(long) (MR_Integer) MR_non_stack_offset(s));
 }
 
 #endif /* !MR_HIGHLEVEL_CODE */

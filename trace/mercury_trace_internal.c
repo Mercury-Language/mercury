@@ -591,6 +591,12 @@ static	void	MR_trace_print_subgoal(const MR_Proc_Layout *proc,
 static	void	MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
 			MR_SubgoalDebug *subgoal_debug);
 
+/* Prints the given generator of the given procedure to MR_mdb_out. */
+static	void	MR_trace_print_generator(const MR_Proc_Layout *proc,
+			MR_Generator *generator);
+static	void	MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
+			MR_GenDebug *generator_debug);
+
 /* Prints the given consumer of the given procedure to MR_mdb_out. */
 static	void	MR_trace_print_consumer(const MR_Proc_Layout *proc,
 			MR_Consumer *consumer);
@@ -1519,11 +1525,13 @@ MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	MR_Determinism	detism = event_info->MR_event_sll->
-				MR_sll_entry->MR_sle_detism;
-	MR_Unsigned	depth = event_info->MR_call_depth;
+	MR_Determinism	detism;
+	MR_Unsigned	depth;
 	int		stop_depth;
 	int		n;
+
+	detism = event_info->MR_event_sll->MR_sll_entry->MR_sle_detism;
+	depth = event_info->MR_call_depth;
 
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_print_level = MR_default_print_level;
@@ -3475,7 +3483,7 @@ MR_trace_cmd_subgoal(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	MR_SubgoalDebug	*subgoal_debug;
 	MR_Subgoal	*subgoal;
@@ -3494,12 +3502,12 @@ MR_trace_cmd_subgoal(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "subgoal");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `subgoal' command is available "
-		"only in minimal model tabling grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -3509,7 +3517,7 @@ MR_trace_cmd_consumer(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	MR_ConsumerDebug	*consumer_debug;
 	MR_Consumer		*consumer;
@@ -3528,12 +3536,12 @@ MR_trace_cmd_consumer(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "consumer");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `consumer' command is available "
-		"only in minimal model tabling grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -3544,7 +3552,7 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	if (word_count == 1) {
 		MR_bool	saved_tabledebug;
@@ -3558,12 +3566,12 @@ MR_trace_cmd_gen_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "gen_stack");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `gen_stack' command is available "
-		"only in minimal model grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -3573,7 +3581,7 @@ MR_trace_cmd_cut_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	if (word_count == 1) {
 		MR_bool	saved_tabledebug;
@@ -3587,12 +3595,12 @@ MR_trace_cmd_cut_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "cut_stack");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `cut_stack' command is available "
-		"only in minimal model grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -3602,7 +3610,7 @@ MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	if (word_count == 1) {
 		MR_bool	saved_tabledebug;
@@ -3616,12 +3624,12 @@ MR_trace_cmd_pneg_stack(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "pneg_stack");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
-		"only in minimal model grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -3631,7 +3639,7 @@ MR_trace_cmd_mm_stacks(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 	if (word_count == 1) {
 		MR_bool	saved_tabledebug;
@@ -3649,12 +3657,12 @@ MR_trace_cmd_mm_stacks(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_trace_usage("developer", "pneg_stack");
 	}
 
-#else	/* MR_USE_MINIMAL_MODEL */
+#else	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	fprintf(MR_mdb_out, "mdb: the `pneg_stack' command is available "
-		"only in minimal model grades.\n");
+		"only in stack copy minimal model tabling grades.\n");
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 	return KEEP_INTERACTING;
 }
@@ -4108,7 +4116,8 @@ MR_trace_cmd_table(char **words, int word_count,
 
 		case MR_EVAL_METHOD_LOOP_CHECK:
 		case MR_EVAL_METHOD_MEMO:
-		case MR_EVAL_METHOD_MINIMAL:
+		case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
+		case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
 			break;
 
 		case MR_EVAL_METHOD_TABLE_IO:
@@ -4246,7 +4255,8 @@ MR_trace_cmd_table(char **words, int word_count,
 			fprintf(MR_mdb_out, ":\n");
 			break;
 
-		case MR_EVAL_METHOD_MINIMAL:
+		case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
+		case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
 			fprintf(MR_mdb_out, "minimal model table for ");
 			MR_print_proc_id(MR_mdb_out, proc);
 			fprintf(MR_mdb_out, ":\n");
@@ -4289,7 +4299,7 @@ MR_trace_cmd_table(char **words, int word_count,
 	** value of the last argument. We also do this whenever we run out of
 	** values in any trie.
 	**
-	** We step when we are about to backtrack out of the outermost loop.
+	** We stop when we are about to backtrack out of the outermost loop.
 	*/
 
 	cur_arg = word_count;
@@ -4619,7 +4629,8 @@ static void
 MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 	MR_Call_Table_Arg *call_table_args, MR_TrieNode table)
 {
-	int	i;
+	int		i;
+	MR_EvalMethod	eval_method;
 
 	fprintf(MR_mdb_out, "<");
 	for (i = 0; i < num_inputs; i++) {
@@ -4654,7 +4665,8 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 
 	fprintf(MR_mdb_out, ">: ");
 
-	if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_MINIMAL) {
+	eval_method = MR_sle_eval_method(proc);
+	if (eval_method == MR_EVAL_METHOD_MINIMAL_STACK_COPY) {
 		MR_Subgoal	*subgoal;
 		int		subgoal_num;
 
@@ -4665,39 +4677,30 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 		} else {
 			MR_trace_print_subgoal(proc, subgoal);
 		}
-	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_MEMO) {
-		switch (table->MR_memo_status) {
-			case MR_MEMO_INACTIVE:
-				fprintf(MR_mdb_out, "uninitialized\n");
-				break;
-			case MR_MEMO_ACTIVE:
-				fprintf(MR_mdb_out, "working\n");
-				break;
-			case MR_MEMO_FAILED:
-				fprintf(MR_mdb_out, "failed\n");
-				break;
-			case MR_MEMO_SUCCEEDED:
-				fprintf(MR_mdb_out, "succeeded (no outputs)\n");
-				break;
-			default:
-				fprintf(MR_mdb_out, "succeeded <");
-				MR_print_answerblock(MR_mdb_out, proc,
-					table->MR_answerblock);
-				fprintf(MR_mdb_out, ">\n");
-				break;
+	} else if (eval_method == MR_EVAL_METHOD_MINIMAL_OWN_STACKS) {
+		MR_Consumer	*consumer;
+
+		fprintf(MR_mdb_out, "trie node %p\n", table);
+		consumer = table->MR_consumer;
+		if (consumer == NULL) {
+			fprintf(MR_mdb_out, "uninitialized\n");
+		} else {
+			MR_trace_print_consumer(proc, consumer);
 		}
-	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_LOOP_CHECK) {
-		switch (table->MR_loop_status) {
-			case MR_LOOP_INACTIVE:
-				fprintf(MR_mdb_out, "uninitialized\n");
-				break;
-			case MR_LOOP_ACTIVE:
-				fprintf(MR_mdb_out, "working\n");
-				break;
-			default:
-				MR_fatal_error("MR_trace_cmd_table_print_tip: "
-					"bad loopcheck status");
+	} else if (eval_method == MR_EVAL_METHOD_MEMO) {
+		MR_Determinism	detism;
+		
+		detism = proc->MR_sle_detism;
+		if (MR_DETISM_DET_STACK(detism)) {
+			MR_print_memo_tip(MR_mdb_out, proc, table);
+		} else {
+			MR_MemoNonRecordPtr	record;
+
+			record = table->MR_memo_non_record;
+			MR_print_memo_non_record(MR_mdb_out, proc, record);
 		}
+	} else if (eval_method == MR_EVAL_METHOD_LOOP_CHECK) {
+		MR_print_loopcheck_tip(MR_mdb_out, proc, table);
 	} else {
 		MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
 	}
@@ -4706,7 +4709,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
 static void
 MR_trace_print_subgoal(const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_print_subgoal(MR_mdb_out, proc, subgoal);
 #else
 	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
@@ -4717,8 +4720,29 @@ static void
 MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
 	MR_SubgoalDebug *subgoal_debug)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_print_subgoal_debug(MR_mdb_out, proc, subgoal_debug);
+#else
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
+#endif
+}
+
+static void
+MR_trace_print_generator(const MR_Proc_Layout *proc, MR_Generator *generator)
+{
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+	MR_print_generator(MR_mdb_out, proc, generator);
+#else
+	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
+#endif
+}
+
+static void
+MR_trace_print_generator_debug(const MR_Proc_Layout *proc,
+	MR_GenDebug *generator_debug)
+{
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+	MR_print_generator_debug(MR_mdb_out, proc, generator_debug);
 #else
 	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
 #endif
@@ -4727,7 +4751,8 @@ MR_trace_print_subgoal_debug(const MR_Proc_Layout *proc,
 static void
 MR_trace_print_consumer(const MR_Proc_Layout *proc, MR_Consumer *consumer)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#if	defined(MR_USE_MINIMAL_MODEL_STACK_COPY) \
+		|| defined(MR_USE_MINIMAL_MODEL_OWN_STACKS)
 	MR_print_consumer(MR_mdb_out, proc, consumer);
 #else
 	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");
@@ -4738,7 +4763,8 @@ static void
 MR_trace_print_consumer_debug(const MR_Proc_Layout *proc,
 	MR_ConsumerDebug *consumer_debug)
 {
-#ifdef	MR_USE_MINIMAL_MODEL
+#if	defined(MR_USE_MINIMAL_MODEL_STACK_COPY) \
+		|| defined(MR_USE_MINIMAL_MODEL_OWN_STACKS)
 	MR_print_consumer_debug(MR_mdb_out, proc, consumer_debug);
 #else
 	fprintf(MR_mdb_out, "minimal model tabling is not enabled\n");

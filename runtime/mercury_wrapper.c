@@ -88,6 +88,8 @@ size_t		MR_debug_heap_size =		4096;
 size_t		MR_genstack_size =		  32;
 size_t		MR_cutstack_size =		  32;
 size_t		MR_pnegstack_size =		  32;
+size_t		MR_gen_detstack_size =		  64;
+size_t		MR_gen_nonstack_size =		  64;
 
 /*
 ** size of the redzones at the end of data areas, in kilobytes
@@ -121,6 +123,8 @@ size_t		MR_debug_heap_zone_size =	  16;
 size_t		MR_genstack_zone_size =		  16;
 size_t		MR_cutstack_zone_size =		  16;
 size_t		MR_pnegstack_zone_size =	  16;
+size_t		MR_gen_detstack_zone_size =	  16;
+size_t		MR_gen_nonstack_zone_size =	  16;
 
 /*
 ** MR_heap_margin_size is used for accurate GC with the MLDS->C back-end.
@@ -848,7 +852,7 @@ process_args(int argc, char **argv)
 static void
 process_environment_options(void)
 {
-	char*	env_options;
+	char 	*env_options;
 
 	env_options = getenv("MERCURY_OPTIONS");
 	if (env_options == NULL) {
@@ -911,6 +915,10 @@ enum MR_long_option {
 	MR_TRAIL_REDZONE_SIZE,
 	MR_HEAP_MARGIN_SIZE,
 	MR_HEAP_EXPANSION_FACTOR,
+	MR_GEN_DETSTACK_SIZE,
+	MR_GEN_NONSTACK_SIZE,
+	MR_GEN_DETSTACK_REDZONE_SIZE,
+	MR_GEN_NONSTACK_REDZONE_SIZE,
 	MR_MDB_TTY,
 	MR_MDB_IN,
 	MR_MDB_OUT,
@@ -936,6 +944,10 @@ struct MR_option MR_long_opts[] = {
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
 	{ "heap-margin-size", 		1, 0, MR_HEAP_MARGIN_SIZE },
 	{ "heap-expansion-factor", 	1, 0, MR_HEAP_EXPANSION_FACTOR },
+	{ "gen-detstack-size", 		1, 0, MR_GEN_DETSTACK_SIZE },
+	{ "gen-nonstack-size", 		1, 0, MR_GEN_NONSTACK_SIZE },
+	{ "gen-detstack-zone-size", 	1, 0, MR_GEN_DETSTACK_REDZONE_SIZE },
+	{ "gen-nonstack-zone-size", 	1, 0, MR_GEN_NONSTACK_REDZONE_SIZE },
 	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
 	{ "mdb-in", 			1, 0, MR_MDB_IN },
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
@@ -1044,6 +1056,34 @@ process_options(int argc, char **argv)
 			{
 				usage();
 			}
+			break;
+
+		case MR_GEN_DETSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_gen_detstack_size = size;
+			break;
+
+		case MR_GEN_NONSTACK_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_gen_nonstack_size = size;
+			break;
+
+		case MR_GEN_DETSTACK_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_gen_detstack_zone_size = size;
+			break;
+
+		case MR_GEN_NONSTACK_REDZONE_SIZE:
+			if (sscanf(MR_optarg, "%lu", &size) != 1)
+				usage();
+
+			MR_gen_nonstack_zone_size = size;
 			break;
 
 		case 'i':

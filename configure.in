@@ -2700,8 +2700,8 @@ fi
 
 # add `.mm' (--minimal-model) grades
 if test "$enable_mm_grades" = yes; then
-	LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.mm \
-		$BEST_LLDS_BASE_GRADE.gc.mm.debug"
+	LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.mmsc \
+		$BEST_LLDS_BASE_GRADE.gc.mmsc.debug"
 fi
 
 # add `.debug' (--debug) grades
@@ -2715,13 +2715,13 @@ fi
 # add .NET back-end grades
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
-    LIBGRADES="$LIBGRADES il"
+	LIBGRADES="$LIBGRADES il"
 fi
 
 # add Java back-end grade, if Java is installed
 if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
 then
-    LIBGRADES="$LIBGRADES java"
+	LIBGRADES="$LIBGRADES java"
 fi
 
 # Allow the user to override the default list of library grades
@@ -3192,56 +3192,57 @@ esac
 # Note that changes here may require changes in scripts/mgnuc.in.
 
 case "$CC" in
-    *gcc*)
-	COMPILER=gcc
-	CFLAGS_FOR_ANSI="-ansi"
+	*gcc*)
+		COMPILER=gcc
+		CFLAGS_FOR_ANSI="-ansi"
 
-	# For a full list of the other gcc warnings that we don't
-	# enable, and why, see scripts/mgnuc.in.
-	CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
+		# For a full list of the other gcc warnings that we don't
+		# enable, and why, see scripts/mgnuc.in.
+		CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
 
-	CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
-	CFLAGS_FOR_DEBUG="-g"
-	MCFLAGS_FOR_CC=
-	;;
-    *lcc*)
-	COMPILER=lcc
-	CFLAGS_FOR_ANSI=
+		CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
+		CFLAGS_FOR_DEBUG="-g"
+		MCFLAGS_FOR_CC=
+		;;
+	*lcc*)
+		COMPILER=lcc
+		CFLAGS_FOR_ANSI=
 
-	# turn off all warnings due to spurious warnings.
-	CFLAGS_FOR_WARNINGS="-w"
+		# turn off all warnings due to spurious warnings.
+		CFLAGS_FOR_WARNINGS="-w"
 
-	CFLAGS_FOR_OPT=
-	CFLAGS_FOR_DEBUG="-g"
-	MCFLAGS_FOR_CC=
-	;;
-    *cl* | *CL*)
-	COMPILER=cl
-	CFLAGS_FOR_ANSI=
-	CFLAGS_FOR_WARNINGS=
-	CFLAGS_FOR_OPT=
-	CFLAGS_FOR_DEBUG="/Zi"
+		CFLAGS_FOR_OPT=
+		CFLAGS_FOR_DEBUG="-g"
+		MCFLAGS_FOR_CC=
+		;;
+	*cl* | *CL*)
+		COMPILER=cl
+		CFLAGS_FOR_ANSI=
+		CFLAGS_FOR_WARNINGS=
+		CFLAGS_FOR_OPT=
+		CFLAGS_FOR_DEBUG="/Zi"
 
-	# Using the MSVC compiler implies that we must use a maximum jump
-	# table size of 512 to avoid a fixed limit in the compiler.
-	MCFLAGS_FOR_CC="--max-jump-table-size 512"
-	;;
-    cc* | */cc*)
-	COMPILER=cc
-	CFLAGS_FOR_ANSI=
-	CFLAGS_FOR_OPT="-O"
-	CFLAGS_FOR_WARNINGS=
-	CFLAGS_FOR_DEBUG="-g"
-	MCFLAGS_FOR_CC=
-	;;
-    *)
-	COMPILER=unknown
-	CFLAGS_FOR_ANSI=
-	CFLAGS_FOR_OPT="-O"
-	CFLAGS_FOR_WARNINGS=
-	CFLAGS_FOR_DEBUG="-g"
-	MCFLAGS_FOR_CC=
-	;;
+		# Using the MSVC compiler implies that we must use
+		# a maximum jump table size of 512 to avoid a fixed limit
+		# in the compiler.
+		MCFLAGS_FOR_CC="--max-jump-table-size 512"
+		;;
+	cc* | */cc*)
+		COMPILER=cc
+		CFLAGS_FOR_ANSI=
+		CFLAGS_FOR_OPT="-O"
+		CFLAGS_FOR_WARNINGS=
+		CFLAGS_FOR_DEBUG="-g"
+		MCFLAGS_FOR_CC=
+		;;
+	*)
+		COMPILER=unknown
+		CFLAGS_FOR_ANSI=
+		CFLAGS_FOR_OPT="-O"
+		CFLAGS_FOR_WARNINGS=
+		CFLAGS_FOR_DEBUG="-g"
+		MCFLAGS_FOR_CC=
+		;;
 esac
 
 CFLAGS_FOR_OPT="$CFLAGS_FOR_OPT $CFLAGS_FOR_NO_STRICT_ALIASING"
@@ -3319,7 +3320,6 @@ case "$LD_STATIC_FLAGS" in "")
 [\`mmc --linkage static' and \`ml --static' not implemented with
 ****	this C compiler (\`$CC').])
 esac
-
 
 #-----------------------------------------------------------------------------#
 

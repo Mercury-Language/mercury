@@ -115,9 +115,11 @@ case $reserve_tag in
 	false)		;;
 esac
 
-case $use_minimal_model,$minimal_model_debug in
-	true,false)	GRADE="$GRADE.mm" ;;
-	true,true)	GRADE="$GRADE.dmm" ;;
+case $use_minimal_model_stack_copy,$use_minimal_model_own_stack,$minimal_model_debug in
+	true,false,false)	GRADE="$GRADE.mmsc" ;;
+	true,false,true)	GRADE="$GRADE.dmmsc" ;;
+	false,true,false)	GRADE="$GRADE.mmos" ;;
+	false,true,true)	GRADE="$GRADE.dmmos" ;;
 	*)	;;
 esac
 

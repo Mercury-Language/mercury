@@ -327,7 +327,14 @@ purity_name((impure), "impure").
 eval_method_to_string(eval_normal) =		"normal".
 eval_method_to_string(eval_loop_check) =	"loop_check".
 eval_method_to_string(eval_memo) =		"memo".
-eval_method_to_string(eval_minimal) = 		"minimal_model".
+eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
+	(
+		MinimalMethod = own_stacks,
+		Str = "minimal_model_own_stacks"
+	;
+		MinimalMethod = stack_copy,
+		Str = "minimal_model_stack_copy"
+	).
 eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 	(
                 IsDecl = table_io_decl,

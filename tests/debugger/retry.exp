@@ -126,5 +126,32 @@ mdb> retry 1
      E17:    C10  2 CALL pred retry.fib/2-0 (det)
 mdb> finish -n
      E23:    C10  2 EXIT pred retry.fib/2-0 (det)
-mdb> continue -n -S
+mdb> delete *
+ 0: E stop  interface pred retry.fib/2-0 (det)
+mdb> break t
+ 0: + stop  interface pred retry.t/3-0 (nondet)
+mdb> continue
 987
+     E24:    C14  2 CALL pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+call table does not contain 1 in argument position 1.
+mdb> finish
+marker executed: t 1 2
+     E25:    C14  2 EXIT pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: incomplete
+answer #1: <120>
+mdb> retry
+     E24:    C14  2 CALL pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: inactive
+mdb> finish
+marker executed: t 1 2
+     E25:    C14  2 EXIT pred retry.t/3-0 (nondet)
+mdb> table t 1 2
+<1, 2>: incomplete
+answer #1: <120>
+mdb> delete *
+ 0: E stop  interface pred retry.t/3-0 (nondet)
+mdb> continue -n -S
+120 210 

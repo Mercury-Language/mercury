@@ -21,10 +21,10 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module list, bool, getopt, std_util, io.
+:- import_module list, bool, getopt, io.
 
-	% handle_options(Args, MaybeError, OptionArgs, NonOptionArgs, Link).
-:- pred handle_options(list(string)::in, maybe(string)::out, list(string)::out,
+	% handle_options(Args, Errors, OptionArgs, NonOptionArgs, Link).
+:- pred handle_options(list(string)::in, list(string)::out, list(string)::out,
 	list(string)::out, bool::out, io::di, io::uo) is det.
 
 	% process_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable).
@@ -35,16 +35,10 @@
 :- pred process_options(list(string)::in, list(string)::out, list(string)::out,
 	maybe_option_table(option)::out) is det.
 
-	% usage_error(Descr, Message)
+	% usage_errors(Message)
 	%
-	% Display the description of the error location, the error message
-	% and then a usage message.
-:- pred usage_error(string::in, string::in, io::di, io::uo) is det.
-
-	% usage_error(Message)
-	%
-	% Display error message and then usage message
-:- pred usage_error(string::in, io::di, io::uo) is det.
+	% Display given list of error messages and then the usage message.
+:- pred usage_errors(list(string)::in, io::di, io::uo) is det.
 
 	% Display usage message.
 :- pred usage(io::di, io::uo) is det.
@@ -74,18 +68,20 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_io_util.
 
-:- import_module char, dir, int, string, map, set, library.
+:- import_module char, dir, int, string, map, set, std_util, library.
 
-handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
+handle_options(Args0, Errors, OptionArgs, Args, Link) -->
 	% io__write_string("original arguments\n"),
 	% dump_arguments(Args0),
 	{ process_options(Args0, OptionArgs, Args, Result) },
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
-	postprocess_options(Result, MaybeError),
-	( { MaybeError = yes(_) } ->
+	postprocess_options(Result, Errors),
+	(
+		{ Errors = [_ | _] },
 		{ Link = no }
 	;
+		{ Errors = [] },
 		globals__io_lookup_bool_option(generate_dependencies,
 			GenerateDependencies),
 		globals__io_lookup_bool_option(make_interface, MakeInterface),
@@ -146,20 +142,20 @@ dump_arguments([Arg | Args], !IO) :-
 % and process implications among the options (i.e. situations where setting
 % one option implies setting/unsetting another one).
 
-:- pred postprocess_options(maybe_option_table(option)::in, maybe(string)::out,
-	io::di, io::uo) is det.
+:- pred postprocess_options(maybe_option_table(option)::in,
+	list(string)::out, io::di, io::uo) is det.
 
-postprocess_options(error(ErrorMessage), yes(ErrorMessage), !IO).
-postprocess_options(ok(OptionTable0), MaybeError, !IO) :-
+postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
+postprocess_options(ok(OptionTable0), Errors, !IO) :-
 	check_option_values(OptionTable0, OptionTable, Target, GC_Method,
-		TagsMethod, TermNorm, TraceLevel, TraceSuppress, [], Errors),
-	( Errors = [] ->
+		TagsMethod, TermNorm, TraceLevel, TraceSuppress,
+		[], CheckErrors),
+	( CheckErrors = [] ->
 		postprocess_options_2(OptionTable, Target, GC_Method,
 			TagsMethod, TermNorm, TraceLevel, TraceSuppress,
-			MaybeError, !IO)
+			[], Errors, !IO)
 	;
-		Error = string__join_list("\n", Errors),
-		MaybeError = yes(Error)
+		Errors = CheckErrors
 	).
 
 :- pred check_option_values(option_table::in, option_table::out,
@@ -225,7 +221,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 		TermNorm = simple,	% dummy
 		add_error("Invalid argument to option " ++
 			"`--termination-norm'\n\t(must be " ++
-			"`simple', `total' or  `num-data-elems').", !Errors)
+			"`simple', `total' or `num-data-elems').", !Errors)
 	),
 	map__lookup(OptionTable0, trace, Trace),
 	map__lookup(OptionTable0, exec_trace, ExecTraceOpt),
@@ -289,11 +285,11 @@ add_error(Error, Errors0, Errors) :-
 
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
 	gc_method::in, tags_method::in, termination_norm::in,
-	trace_level::in, trace_suppress_items::in, maybe(string)::out,
-	io::di, io::uo) is det.
+	trace_level::in, trace_suppress_items::in,
+	list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
-		TermNorm, TraceLevel, TraceSuppress, Error) -->
+		TermNorm, TraceLevel, TraceSuppress, !Errors) -->
 	{ unsafe_promise_unique(OptionTable0, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod0,
 		TermNorm, TraceLevel, TraceSuppress),
@@ -614,9 +610,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	globals__io_set_option(use_opt_files, bool(no)),
 
 	option_implies(smart_recompilation, generate_item_version_numbers,
-			bool(yes)),
+		bool(yes)),
 	option_implies(find_all_recompilation_reasons, verbose_recompilation,
-			bool(yes)),
+		bool(yes)),
 
 	%
 	% Disable `--smart-recompilation' for compilation options
@@ -717,16 +713,37 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
-	% Minimal model tabling is not compatible with trailing;
-	% see the comment in runtime/mercury_tabling.c.
+	% Minimal model tabling is not compatible with high level code
+	% or with trailing; see the comments in runtime/mercury_grade.h.
 
 	globals__io_lookup_bool_option(use_trail, UseTrail),
-	globals__io_lookup_bool_option(use_minimal_model, UseMinimalModel),
-	{ UseTrail = yes, UseMinimalModel = yes ->
-		Error = yes("trailing and minimal model tabling " ++
-			"are not compatible")
+	globals__io_lookup_bool_option(highlevel_code, HighLevel),
+	globals__io_lookup_bool_option(use_minimal_model_stack_copy,
+		UseMinimalModelStackCopy),
+	globals__io_lookup_bool_option(use_minimal_model_own_stacks,
+		UseMinimalModelOwnStacks),
+	{ bool__or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
+		UseMinimalModel) },
+	{
+		UseMinimalModelStackCopy = yes,
+		UseMinimalModelOwnStacks = yes
+	->
+		add_error("can't use both forms of minimal model tabling " ++
+			"at once", !Errors)
 	;
-		Error = no
+		UseMinimalModel = yes,
+		HighLevel = yes
+	->
+		add_error("minimal model tabling is incompatible "
+			++ "with high level code", !Errors)
+	;
+		UseMinimalModel = yes,
+		UseTrail = yes
+	->
+		add_error("minimal model tabling is incompatible " ++
+			"with trailing", !Errors)
+	;
+		true
 	},
 
 	option_implies(target_debug, strip, bool(no)),
@@ -865,7 +882,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
 	option_implies(profile_deep, procid_stack_layout, bool(yes)),
 	globals__io_lookup_bool_option(profile_deep, ProfileDeep),
-	globals__io_lookup_bool_option(highlevel_code, HighLevel),
 	( { ProfileDeep = yes } ->
 		(
 			{ HighLevel = no },
@@ -873,7 +889,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		->
 			[]
 		;
-			usage_error("deep profiling is incompatible with high level code")
+			{ add_error("deep profiling is incompatible " ++
+				"with high level code", !Errors) }
 		),
 		globals__io_lookup_bool_option(
 			use_lots_of_ho_specialization, LotsOfHOSpec),
@@ -897,15 +914,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		{ RecordTermSizesAsWords = yes },
 		{ RecordTermSizesAsCells = yes }
 	->
-		usage_error("we can't record term size as both words and cells")
+		{ add_error("we can't record term size " ++
+			"as both words and cells", !Errors) }
 	;
 		{ RecordTermSizesAsWords = yes
 		; RecordTermSizesAsCells = yes
 		},
 		{ HighLevel = yes }
 	->
-		usage_error("term size profiling is incompatible "
-			++ "with high level code")
+		{ add_error("term size profiling is incompatible "
+			++ "with high level code", !Errors) }
 	;
 		[]
 	),
@@ -918,7 +936,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	->
 		[]
 	;
-		usage_error("debugging is available only in low level C grades")
+		{ add_error("debugging is available only in " ++
+			"low level C grades", !Errors) }
 	),
 
 	% The pthreads headers on some architectures (Solaris, Linux)
@@ -1012,8 +1031,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		{ GC_Method = accurate },
 		{ PutNondetEnvOnHeap = yes }
 	->
-		usage_error("--gc accurate is incompatible with " ++
-			"--put-nondet-env-on-heap")
+		{ add_error("--gc accurate is incompatible with " ++
+			"--put-nondet-env-on-heap", !Errors) }
 	;
 		[]
 	),
@@ -1046,14 +1065,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% negation, disjunction, or commit.
 	option_implies(use_trail, middle_rec, bool(no)),
 
-	% Minimal model tabling needs to be able to rewrite all the redoips
-	% in a given nondet stack segments. If we allow hijacks, some of these
-	% redoips may have been saved in ordinary framevars, which means that
-	% tabling can't find them without label layout info. Since we want
-	% to allow tabling in grades that do not have label layout info,
-	% we disable hijacks instead.
+	% Stack copy minimal model tabling needs to be able to rewrite all
+	% the redoips in a given nondet stack segments. If we allow hijacks,
+	% some of these redoips may have been saved in ordinary framevars,
+	% which means that tabling can't find them without label layout info.
+	% Since we want to allow tabling in grades that do not have label
+	% layout info, we disable hijacks instead.
 	% XXX we should allow hijacks in table_builtin.m
-	option_implies(use_minimal_model, allow_hijacks, bool(no)),
+	option_implies(use_minimal_model_stack_copy, allow_hijacks, bool(no)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
@@ -1310,11 +1329,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% and --optimize-tailcalls.  It also doesn't work if you use
 	% --errorcheck-only.
 	option_requires(warn_non_tail_recursion, highlevel_code, bool(yes),
-		"--warn-non-tail-recursion requires --high-level-code"),
+		"--warn-non-tail-recursion requires --high-level-code",
+		!Errors),
 	option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
-		"--warn-non-tail-recursion requires --optimize-tailcalls"),
+		"--warn-non-tail-recursion requires --optimize-tailcalls",
+		!Errors),
 	option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
-		"--warn-non-tail-recursion is incompatible with --errorcheck-only"),
+		"--warn-non-tail-recursion is incompatible with " ++
+		"--errorcheck-only",
+		!Errors),
 
 	% The backend foreign languages depend on the target.
 	(
@@ -1438,20 +1461,20 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	).
 
 % option_requires(SourceBoolOption, RequiredOption, RequiredOptionValue,
-%	ErrorMsg):
+%	ErrorMsg, !Errors):
 % If the SourceBoolOption is set to yes, and RequiredOption is not set
-% to RequiredOptionValue, then report a usage error.
-:- pred option_requires(option::in, option::in, option_data::in,
-	string::in, io::di, io::uo) is det.
+% to RequiredOptionValue, then add the given error message to the list.
+:- pred option_requires(option::in, option::in, option_data::in, string::in,
+	list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 option_requires(SourceOption, RequiredOption, RequiredOptionValue,
-		ErrorMessage) -->
-	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
-	globals__io_lookup_option(RequiredOption, OptionValue),
-	( { SourceOptionValue = yes, OptionValue \= RequiredOptionValue } ->
-		usage_error(ErrorMessage)
+		ErrorMessage, !Errors, !IO) :-
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue, !IO),
+	globals__io_lookup_option(RequiredOption, OptionValue, !IO),
+	( SourceOptionValue = yes, OptionValue \= RequiredOptionValue ->
+		add_error(ErrorMessage, !Errors)
 	;
-		[]
+		true
 	).
 
 	% Smart recompilation does not yet work with all
@@ -1480,8 +1503,8 @@ disable_smart_recompilation(OptionDescr) -->
 	globals__io_lookup_bool_option(warn_smart_recompilation,
 		WarnSmart),
 	( { WarnSmart = yes } ->
-		io__write_string(
-	"Warning: smart recompilation does not yet work with "),
+		io__write_string("Warning: smart recompilation " ++
+			"does not yet work with "),
 		io__write_string(OptionDescr),
 		io__write_string(".\n"),
 		globals__io_lookup_bool_option(halt_at_warn, Halt),
@@ -1494,36 +1517,33 @@ disable_smart_recompilation(OptionDescr) -->
 		[]
 	).
 
-usage_error(ErrorDescr, ErrorMessage, !IO) :-
-	write_program_name(!IO),
-	io__write_string(ErrorDescr, !IO),
-	io__nl(!IO),
-	usage_error(ErrorMessage, !IO).
-
-usage_error(ErrorMessage, !IO) :-
-	write_program_name(!IO),
-	io__write_string(ErrorMessage, !IO),
-	io__write_string("\n", !IO),
+usage_errors(Errors, !IO) :-
+	io__progname_base("mercury_compile", ProgName, !IO),
+	list__foldl(write_error_plain_with_progname(ProgName), Errors, !IO),
 	io__set_exit_status(1, !IO),
 	usage(!IO).
 
-:- pred write_program_name(io__state::di, io__state::uo) is det.
-
-write_program_name(!IO) :-
-	io__progname_base("mercury_compile", ProgName, !IO),
-	io__write_string(ProgName, !IO),
-	io__write_string(": ", !IO).
-
 usage(!IO) :-
-	library__version(Version),
- 	io__write_strings([
-		"Mercury Compiler, version ", Version, "\n",
-		"Copyright (C) 1993-2004 The University of Melbourne\n",
-		"Usage: mmc [<options>] <arguments>\n",
-		"Use `mmc --help' for more information.\n"
-	], !IO).
+	% usage is called from many places; ensure that we don't print the
+	% duplicate copies of the message.
+	globals__io_printing_usage(AlreadyPrinted, !IO),
+	(
+		AlreadyPrinted = no,
+		library__version(Version),
+		io__write_strings([
+			"Mercury Compiler, version ", Version, "\n",
+			"Copyright (C) 1993-2004 The University of Melbourne\n",
+			"Usage: mmc [<options>] <arguments>\n",
+			"Use `mmc --help' for more information.\n"
+		], !IO)
+	;
+		AlreadyPrinted = yes
+	).
 
 long_usage(!IO) :-
+	% long_usage is called from only one place, so can't print duplicate
+	% copies of the long usage message. We can print both a short and along
+	% usage message, but there is no simple way to avoid that.
 	library__version(Version),
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
  	io__write_string("Copyright (C) 1993-2004 " ++
@@ -1573,8 +1593,7 @@ long_usage(!IO) :-
 	;	minimal_model	% whether we set up for minimal model tabling
 	;	pic		% Do we need to reserve a register for
 				% PIC (position independent code)?
-	;	trace		% tracing/debugging options
-	.
+	;	trace.		% tracing/debugging options
 
 convert_grade_option(GradeString, Options0, Options) :-
 	reset_grade_options(Options0, Options1),
@@ -1840,9 +1859,29 @@ grade_component_table("rt", tag, [reserve_tag - bool(yes)], no).
 
 	% Mimimal model tabling components
 grade_component_table("mm", minimal_model,
-	[use_minimal_model - bool(yes), minimal_model_debug - bool(no)], no).
+	[use_minimal_model_stack_copy - bool(yes),
+	use_minimal_model_own_stacks - bool(no),
+	minimal_model_debug - bool(no)], no).
 grade_component_table("dmm", minimal_model,
-	[use_minimal_model - bool(yes), minimal_model_debug - bool(yes)], no).
+	[use_minimal_model_stack_copy - bool(yes),
+	use_minimal_model_own_stacks - bool(no),
+	minimal_model_debug - bool(yes)], no).
+grade_component_table("mmsc", minimal_model,
+	[use_minimal_model_stack_copy - bool(yes),
+	use_minimal_model_own_stacks - bool(no),
+	minimal_model_debug - bool(no)], no).
+grade_component_table("dmmsc", minimal_model,
+	[use_minimal_model_stack_copy - bool(yes),
+	use_minimal_model_own_stacks - bool(no),
+	minimal_model_debug - bool(yes)], no).
+grade_component_table("mmos", minimal_model,
+	[use_minimal_model_stack_copy - bool(no),
+	use_minimal_model_own_stacks - bool(yes),
+	minimal_model_debug - bool(no)], no).
+grade_component_table("dmmos", minimal_model,
+	[use_minimal_model_stack_copy - bool(no),
+	use_minimal_model_own_stacks - bool(yes),
+	minimal_model_debug - bool(yes)], no).
 
 	% Pic reg components
 grade_component_table("picreg", pic, [pic_reg - bool(yes)], no).
@@ -1878,7 +1917,8 @@ grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
 grade_start_values(use_trail - bool(no)).
 grade_start_values(reserve_tag - bool(no)).
-grade_start_values(use_minimal_model - bool(no)).
+grade_start_values(use_minimal_model_stack_copy - bool(no)).
+grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).

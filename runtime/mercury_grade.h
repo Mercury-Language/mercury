@@ -23,6 +23,7 @@
 ** 	scripts/ml.in
 **	compiler/handle_options.m
 **	compiler/compile_target_code.m
+**	configure.in
 */
 
 #ifndef MERCURY_GRADES_H
@@ -207,13 +208,27 @@
   #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
 #endif
 
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
+  #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
+    #error "Invalid combination of minimal model tabling options"
+  #endif
+#endif
+
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
   #ifdef MR_MINIMAL_MODEL_DEBUG
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmm)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmm"
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmmsc)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmmsc"
   #else
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mm)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mm"
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mmsc)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mmsc"
+  #endif
+#elif MR_USE_MINIMAL_MODEL_OWN_STACKS
+  #ifdef MR_MINIMAL_MODEL_DEBUG
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmmos)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmmos"
+  #else
+    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mmos)
+    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mmos"
   #endif
 #else
   #define MR_GRADE_PART_8	MR_GRADE_PART_7
@@ -221,13 +236,17 @@
 #endif
 
 /*
-** Minimal model tabling works by saving and restoring segments of the nondet
-** stack. Since in high level code grades we don't have a nondet stack that
-** we can save and restore, minimal model tabling is fundamentally incompatible
+** One implementation of minimal model tabling works by saving and restoring
+** segments of the nondet stack, the other by creating a separate stack for
+** each generator. Since in high level code grades we don't have a nondet
+** stack that we can save and restore and we can't establish extra stacks,
+** both forms of minimal model tabling are fundamentally incompatible
 ** with high level code.
 */
 
-#if  defined(MR_USE_MINIMAL_MODEL) && defined(MR_HIGHLEVEL_CODE)
+#if defined(MR_HIGHLEVEL_CODE) && \
+	(defined(MR_USE_MINIMAL_MODEL_STACK_COPY) || \
+	defined(MR_USE_MINIMAL_MODEL_OWN_STACKS))
   #error "high level code and minimal model tabling are not compatible"
 #endif
 
@@ -253,17 +272,20 @@
 ** The trail handler will be thoroughly confused by such a sequence.
 **
 ** Until we can figure out (and implement) a fix for this problem,
-** minimal model tabling and trailing cannot be used together.
+** minimal model tabling (either form) and trailing cannot be used together.
 */
 
-#if defined(MR_USE_TRAIL) && defined(MR_USE_MINIMAL_MODEL)
+#if defined(MR_USE_TRAIL) && \
+	(defined(MR_USE_MINIMAL_MODEL_STACK_COPY) || \
+	defined(MR_USE_MINIMAL_MODEL_OWN_STACKS))
   #error "trailing and minimal model tabling are not compatible"
 #endif
 
 /*
 ** Native gc needs to be able to redirect pointers to the heap. Minimal model
 ** tabling takes snapshots of stack segments that may contain pointers to the
-** heap, but there is currently no mechanism implemented to trace and redirect
+** heap, or creates extra stacks that may contain pointers to the heap,
+** but there is currently no mechanism implemented to trace and redirect
 ** such pointers.
 **
 ** Minimal model tabling has no problems with conservative gc or with no gc,
@@ -272,7 +294,9 @@
 ** space.
 */
 
-#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_NATIVE_GC)
+#if defined(MR_NATIVE_GC) && \
+	(defined(MR_USE_MINIMAL_MODEL_STACK_COPY) || \
+	defined(MR_USE_MINIMAL_MODEL_OWN_STACKS))
     #error "minimal model tabling and native gc are not compatible"
 #endif
 

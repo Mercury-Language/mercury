@@ -4878,8 +4878,22 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 	pred_id::in, module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
-module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
+module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 		MaybeModes, Context, PredId, !ModuleInfo, !IO) :-
+
+	( EvalMethod0 = eval_minimal(_) ->
+		globals__io_lookup_bool_option(use_minimal_model_own_stacks,
+			OwnStacks, !IO),
+		(
+			OwnStacks = yes,
+			EvalMethod = eval_minimal(own_stacks)
+		;
+			OwnStacks = no,
+			EvalMethod = eval_minimal(stack_copy)
+		)
+	;
+		EvalMethod = EvalMethod0
+	),
 
 		% Lookup the pred_info for this pred,
 	module_info_get_predicate_table(!.ModuleInfo, PredicateTable),

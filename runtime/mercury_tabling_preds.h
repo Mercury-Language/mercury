@@ -173,17 +173,36 @@
   #define MR_table_loop_mark_as_inactive_msg(T)                         \
     do {                                                                \
         if (MR_tabledebug) {                                            \
-            printf("marking %p as uninitialized\n", T);                 \
+            printf("marking %p as inactive\n", T);                      \
+        }                                                               \
+    } while (0)
+  #define MR_table_loop_mark_as_active_msg(T)                           \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("marking %p as active\n", T);                        \
         }                                                               \
     } while (0)
 #else
   #define MR_table_loop_mark_as_inactive_msg(T)     ((void) 0)
+  #define MR_table_loop_mark_as_active_msg(T)       ((void) 0)
 #endif
 
 #define MR_table_loop_mark_as_inactive(T)                               \
     do {                                                                \
         MR_table_loop_mark_as_inactive_msg(T);                          \
         T->MR_loop_status = MR_LOOP_INACTIVE;                           \
+    } while (0)
+
+#define MR_table_loop_mark_as_inactive_and_fail(T)                      \
+    do {                                                                \
+        MR_table_loop_mark_as_inactive_msg(T);                          \
+        T->MR_loop_status = MR_LOOP_INACTIVE;                           \
+    } while (0)
+
+#define MR_table_loop_mark_as_active_and_fail(T)                        \
+    do {                                                                \
+        MR_table_loop_mark_as_active_msg(T);                            \
+        T->MR_loop_status = MR_LOOP_ACTIVE;                             \
     } while (0)
 
 /***********************************************************************/
@@ -197,8 +216,24 @@
                 (long) T->MR_memo_status);                              \
         }                                                               \
     } while(0)
+  #define MR_table_memo_non_setup_msg(T)                                \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("setting up of memo non table for %p\n", T);         \
+        }                                                               \
+    } while(0)
+  #define MR_table_memo_non_status_msg(R)                               \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("status of memo non table %p -> %p: %s\n",           \
+                R->MR_mn_back_ptr, R,                                   \
+                MR_memo_non_status(R->MR_mn_status));                   \
+        }                                                               \
+    } while(0)
 #else
   #define MR_table_memo_setup_msg(T)            ((void) 0)
+  #define MR_table_memo_non_setup_msg(T)        ((void) 0)
+  #define MR_table_memo_non_status_msg(R)       ((void) 0)
 #endif
 
 #define MR_table_memo_setup(T, Status)                                  \
@@ -221,9 +256,34 @@
 #define MR_table_memo_semi_setup(T, Status)                             \
     MR_table_memo_setup(T, Status)
 
+#define MR_table_memo_non_setup(T, Record, Status)                      \
+    do {                                                                \
+        MR_save_transient_registers();                                  \
+        if (T->MR_memo_non_record == NULL) {                            \
+            MR_table_memo_non_setup_msg(T);                             \
+            Status = MR_MEMO_NON_INACTIVE;                              \
+            Record = MR_TABLE_NEW(MR_MemoNonRecord);                    \
+            Record->MR_mn_back_ptr = T;                                 \
+            Record->MR_mn_status = MR_MEMO_NON_ACTIVE;                  \
+            Record->MR_mn_num_answers = 0;                              \
+            Record->MR_mn_answer_table.MR_integer = 0;                  \
+            Record->MR_mn_answer_list = NULL;                           \
+            Record->MR_mn_answer_list_tail = &Record->MR_mn_answer_list;\
+            T->MR_memo_non_record = Record;                             \
+        } else {                                                        \
+            Record = T->MR_memo_non_record;                             \
+            Status = Record->MR_mn_status;                              \
+        }                                                               \
+        MR_table_memo_non_status_msg(Record);                           \
+        MR_restore_transient_registers();                               \
+        Status = MR_CONVERT_C_ENUM_CONSTANT(Status);                    \
+    } while(0)
+
 #define MR_table_memo_det_setup_shortcut(T0, T, Status)     ((void) 0)
 
 #define MR_table_memo_semi_setup_shortcut(T0, T, Status)    ((void) 0)
+
+#define MR_table_memo_non_setup_shortcut(T0, T, R, Status)  ((void) 0)
 
 /***********************************************************************/
 
@@ -265,6 +325,51 @@
 
 /***********************************************************************/
 
+#ifdef  MR_TABLE_DEBUG
+  #define MR_table_memo_mark_as_complete_msg(R)                         \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("marking %p as complete\n", R);                      \
+        }                                                               \
+    } while (0)
+  #define MR_table_memo_mark_as_incomplete_msg(R)                       \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("marking %p as incomplete\n", R);                    \
+        }                                                               \
+    } while (0)
+  #define MR_table_memo_mark_as_active_msg(R)                           \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("marking %p as active\n", R);                        \
+        }                                                               \
+    } while (0)
+#else
+  #define MR_table_memo_mark_as_complete_msg(R)     ((void) 0)
+  #define MR_table_memo_mark_as_incomplete_msg(R)   ((void) 0)
+  #define MR_table_memo_mark_as_active_msg(R)       ((void) 0)
+#endif
+
+#define MR_table_memo_mark_as_incomplete(R)                             \
+    do {                                                                \
+        MR_table_memo_mark_as_incomplete_msg(R);                        \
+        R->MR_mn_status = MR_MEMO_NON_INCOMPLETE;                       \
+    } while (0)
+
+#define MR_table_memo_mark_as_active_and_fail(R)                        \
+    do {                                                                \
+        MR_table_memo_mark_as_active_msg(R);                            \
+        R->MR_mn_status = MR_MEMO_NON_ACTIVE;                           \
+    } while (0)
+
+#define MR_table_memo_mark_as_complete_and_fail(R)                      \
+    do {                                                                \
+        MR_table_memo_mark_as_complete_msg(R);                          \
+        R->MR_mn_status = MR_MEMO_NON_COMPLETE;                         \
+    } while (0)
+
+/***********************************************************************/
+
 #define MR_table_memo_create_answer_block(T, Size, AnswerBlock)         \
     do {                                                                \
         MR_TABLE_CREATE_ANSWER_BLOCK(T, Size);                          \
@@ -303,6 +408,106 @@
 /***********************************************************************/
 
 #define MR_table_memo_get_answer_block_shortcut(T)      ((void) 0)
+
+/***********************************************************************/
+
+#ifdef  MR_TABLE_DEBUG
+  #define MR_table_memo_non_get_answer_table_msg(Record)                \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("getting answer table %p -> %p\n",                   \
+                Record,                                                 \
+                &(Record->MR_mn_answer_table));                         \
+        }                                                               \
+    } while(0)
+#else
+  #define MR_table_memo_non_get_answer_table_msg(Record) ((void) 0)
+#endif
+
+#define MR_table_memo_non_get_answer_table(Record, AnswerTable)         \
+    do {                                                                \
+        MR_table_memo_non_get_answer_table_msg(Record);                 \
+        AnswerTable = &(Record->MR_mn_answer_table);                    \
+    } while(0)
+
+/***********************************************************************/
+
+#ifdef  MR_TABLE_DEBUG
+  #define MR_table_memo_non_create_answer_block_msg(Record, answer_node)\
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("new answer slot %d at %p(%p)\n",                    \
+                Record->MR_mn_num_answers, answer_node,                 \
+                &answer_node->MR_aln_answer_block);                     \
+            printf("\tstoring into %p\n",                               \
+                Record->MR_mn_answer_list_tail);                        \
+        }                                                               \
+    } while(0)
+#else
+  #define MR_table_memo_non_create_answer_block_msg(Record, answer_node)\
+    ((void) 0)
+#endif
+
+#define MR_table_memo_non_create_answer_block(Record, Size, AnswerBlock)\
+    do {                                                                \
+        MR_AnswerListNode   *answer_node;                               \
+        MR_Word             **Slot;                                     \
+                                                                        \
+        Record->MR_mn_num_answers++;                                    \
+                                                                        \
+        /*                                                              \
+        ** We fill in the answer_data slot with a dummy value.          \
+        ** This slot will be filled in by the next piece of code        \
+        ** to be executed after we return, which is why we return       \
+        ** its address.                                                 \
+        */                                                              \
+                                                                        \
+        answer_node = MR_TABLE_NEW(MR_AnswerListNode);                  \
+        answer_node->MR_aln_answer_block = NULL;                        \
+        answer_node->MR_aln_next_answer = NULL;                         \
+                                                                        \
+        MR_table_memo_non_create_answer_block_msg(Record, answer_node); \
+        *(Record->MR_mn_answer_list_tail) = answer_node;                \
+        Record->MR_mn_answer_list_tail =                                \
+            &(answer_node->MR_aln_next_answer);                         \
+        Slot = &(answer_node->MR_aln_answer_block);                     \
+        MR_TABLE_CREATE_NODE_ANSWER_BLOCK(Slot, Size);                  \
+        AnswerBlock = *Slot;                                            \
+    } while(0)
+
+#define MR_table_memo_non_create_answer_block_shortcut(Record)          \
+    ((void) 0)
+
+/***********************************************************************/
+
+#define MR_table_memo_non_return_all_shortcut(Record)                   \
+    ((void) 0)
+
+/***********************************************************************/
+
+#ifdef  MR_TABLE_DEBUG
+  #define MR_table_memo_non_answer_is_not_duplicate_msg(T)              \
+    do {                                                                \
+        if (MR_tabledebug) {                                            \
+            printf("checking if %p is a duplicate answer: %ld\n",       \
+                T, (long) T->MR_integer);                               \
+        }                                                               \
+    } while(0)
+#else
+  #define MR_table_memo_non_answer_is_not_duplicate_msg(T)    ((void) 0)
+#endif
+
+#define MR_table_memo_non_answer_is_not_duplicate(T, succ)              \
+    do {                                                                \
+        MR_bool     is_new_answer;                                      \
+        MR_table_memo_non_answer_is_not_duplicate_msg(T);               \
+        is_new_answer = (T->MR_integer == 0);                           \
+        T->MR_integer = 1;  /* any nonzero value will do */             \
+        succ = is_new_answer;                                           \
+    } while(0)
+
+#define MR_table_memo_non_answer_is_not_duplicate_shortcut(R, succ)     \
+    ((void) 0)
 
 /***********************************************************************/
 
@@ -397,7 +602,7 @@
 
 /***********************************************************************/
 
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
 /***********************************************************************/
 
@@ -484,16 +689,6 @@
 
 /***********************************************************************/
 
-#ifdef  MR_MINIMAL_MODEL_DEBUG
-  #define MR_table_mm_create_answer_block_set(Subgoal, answer_node)     \
-    do {                                                                \
-        answer_node->MR_aln_answer_num = Subgoal->MR_sg_num_ans;        \
-    } while(0)
-#else
-  #define MR_table_mm_create_answer_block_set(Subgoal, answer_node)     \
-    ((void) 0)
-#endif
-
 #ifdef  MR_TABLE_DEBUG
   #define MR_table_mm_create_answer_block_msg(Subgoal, answer_node)     \
     do {                                                                \
@@ -501,7 +696,7 @@
             printf("%s: new answer slot %d at %p(%p)\n",                \
                 MR_subgoal_addr_name(Subgoal),                          \
                 Subgoal->MR_sg_num_ans, answer_node,                    \
-                &answer_node->MR_aln_answer_data);                      \
+                &answer_node->MR_aln_answer_block);                     \
             printf("\tstoring into %p\n",                               \
                 Subgoal->MR_sg_answer_list_tail);                       \
         }                                                               \
@@ -514,7 +709,7 @@
 #define MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock)     \
     do {                                                                \
         MR_AnswerListNode   *answer_node;                               \
-        MR_TrieNode         Slot;                                       \
+        MR_Word             **Slot;                                     \
                                                                         \
         Subgoal->MR_sg_num_ans++;                                       \
                                                                         \
@@ -526,17 +721,16 @@
         */                                                              \
                                                                         \
         answer_node = MR_TABLE_NEW(MR_AnswerListNode);                  \
-        answer_node->MR_aln_answer_data.MR_integer = 0;                 \
+        answer_node->MR_aln_answer_block = NULL;                        \
         answer_node->MR_aln_next_answer = NULL;                         \
                                                                         \
-        MR_table_mm_create_answer_block_set(Subgoal, answer_node);      \
         MR_table_mm_create_answer_block_msg(Subgoal, answer_node);      \
         *(Subgoal->MR_sg_answer_list_tail) = answer_node;               \
         Subgoal->MR_sg_answer_list_tail =                               \
             &(answer_node->MR_aln_next_answer);                         \
-        Slot = &(answer_node->MR_aln_answer_data);                      \
-        MR_TABLE_CREATE_ANSWER_BLOCK(Slot, Size);                       \
-        AnswerBlock = Slot->MR_answerblock;                             \
+        Slot = &(answer_node->MR_aln_answer_block);                     \
+        MR_TABLE_CREATE_NODE_ANSWER_BLOCK(Slot, Size);                  \
+        AnswerBlock = *Slot;                                            \
     } while(0)
 
 /***********************************************************************/
@@ -545,33 +739,108 @@
 
 /***********************************************************************/
 
-#else   /* MR_USE_MINIMAL_MODEL */
+#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+
+#define MR_MMSC_ERROR  \
+        "stack copy minimal model code entered when not enabled"
 
 #define MR_table_mm_setup(T, Subgoal, Status)                           \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 #define MR_table_mm_setup_shortcut(Subgoal, Status)                     \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 #define MR_table_mm_return_all_shortcut(AnswerBlock)                    \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 #define MR_table_mm_get_answer_table(Subgoal, AnswerTable)              \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 #define MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock)     \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 #define MR_table_mm_fill_answer_block_shortcut(Subgoal)                 \
     do {                                                                \
-        MR_fatal_error("minimal model code entered when not enabled");  \
+        MR_fatal_error(MR_MMSC_ERROR);                                  \
     } while(0)
 
-#endif  /* MR_USE_MINIMAL_MODEL */
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+
+/***********************************************************************/
+
+#ifdef  MR_USE_MINIMAL_MODEL_OWN_STACKS
+
+#define MR_MMOS_ERROR  \
+        "own stack minimal model code entered when not enabled"
+
+#define MR_table_mmos_save_inputs_shortcut(num_inputs)                  \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_setup_consumer(t, num_inputs, gen_pred, name, consumer) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_consume_next_answer_nondet(consumer, answerblock, succ) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_get_answer_table(generator, trienode)             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_create_answer_block(generator, blocksize, answerblock) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_return_answer(generator, answerblock)             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_completion(generator)                             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+
+#else   /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
+
+#define MR_MMOS_ERROR  \
+        "own stack minimal model code entered when not enabled"
+
+#define MR_table_mmos_save_inputs_shortcut(num_inputs)                  \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_setup_consumer(t, num_inputs, gen_pred, name, consumer) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_consume_next_answer_nondet(consumer, answerblock, succ) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_get_answer_table(generator, trienode)             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_create_answer_block(generator, blocksize, answerblock) \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_return_answer(generator, answerblock)             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+#define MR_table_mmos_completion(generator)                             \
+    do {                                                                \
+        MR_fatal_error(MR_MMOS_ERROR);                                  \
+    } while(0)
+
+#endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
 /***********************************************************************/

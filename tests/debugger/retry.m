@@ -36,7 +36,9 @@ main -->
 	outputs(Ds),
 	outputs(Es),
 	{ fib(15, F) },
-	output(F).
+	output(F),
+	{ solutions(t(1, 2), T12) },
+	outputs(T12).
 
 %---------------------------------------------------------------------------%
 
@@ -119,6 +121,31 @@ fib(N, F) :-
 		fib(N - 2, F2),
 		F = F1 + F2
 	).
+
+:- pred t(int::in, int::in, int::out) is nondet.
+:- pragma memo(t/3).
+
+t(A, B, C) :-
+	marker("t", A, B, Zero),
+	( A = 1 ->
+		(
+			C = Zero + (A * 100) + (B * 10)
+		;
+			C = Zero + (B * 100) + (A * 10)
+		)
+	;
+		fail
+	).
+
+:- pred marker(string::in, int::in, int::in, int::out) is det.
+
+:- pragma foreign_proc("C",
+	marker(S::in, A::in, B::in, X::out),
+	[will_not_call_mercury, promise_pure],
+"
+	printf(""marker executed: %s %d %d\\n"", S, A, B);
+	X = 0;
+").
 
 %---------------------------------------------------------------------------%
 

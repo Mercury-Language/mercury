@@ -20,7 +20,7 @@
 :- import_module hlds__instmap.
 :- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, bool, list, set, map, term, std_util.
+:- import_module assoc_list, bool, list, set, map, term.
 
 % The predicates rename_var* take a structure and a mapping from var -> var
 % and apply that translation. If a var in the input structure does not
@@ -195,7 +195,7 @@
 	hlds_goal::in, hlds_goal::in) is semidet.
 
 	% generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
-	%	Detism, Args, MaybeFeature, InstMapDelta, ModuleInfo, Context,
+	%	Detism, Args, Features, InstMapDelta, ModuleInfo, Context,
 	%	CallGoal):
 	%
 	% Generate a call to a builtin procedure (e.g. from the private_builtin
@@ -210,12 +210,12 @@
 	%
 :- pred goal_util__generate_simple_call(module_name::in, string::in,
 	pred_or_func::in, mode_no::in, determinism::in, list(prog_var)::in,
-	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
 	% generate_foreign_proc(ModuleName, ProcName, PredOrFunc,
 	%	ModeNo, Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
-	%	SuffixCode, MaybeFeature, InstMapDelta, ModuleInfo, Context,
+	%	SuffixCode, Features, InstMapDelta, ModuleInfo, Context,
 	%	CallGoal):
 	%
 	% generate_foreign_proc is similar to generate_simple_call,
@@ -231,7 +231,7 @@
 	pred_or_func::in, mode_no::in, determinism::in,
 	pragma_foreign_proc_attributes::in,
 	list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
-	string::in, maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	string::in, list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
 :- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
@@ -254,7 +254,7 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, require, varset.
+:- import_module int, string, require, varset, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -1213,7 +1213,7 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 %-----------------------------------------------------------------------------%
 
 goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
-		Detism, Args, MaybeFeature, InstMap, ModuleInfo, Context,
+		Detism, Args, Features, InstMap, ModuleInfo, Context,
 		Goal) :-
 	list__length(Args, Arity),
 	lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
@@ -1240,18 +1240,12 @@ goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
 	pred_info_get_purity(PredInfo, Purity),
 	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
 		GoalInfo0),
-	(
-		MaybeFeature = yes(Feature),
-		goal_info_add_feature(GoalInfo0, Feature, GoalInfo)
-	;
-		MaybeFeature = no,
-		GoalInfo = GoalInfo0
-	),
+	goal_info_add_features(Features, GoalInfo0, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
 goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
 		Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
-		SuffixCode, MaybeFeature, InstMap, ModuleInfo, Context,
+		SuffixCode, Features, InstMap, ModuleInfo, Context,
 		Goal) :-
 	list__length(Args, Arity),
 	lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
@@ -1274,13 +1268,7 @@ goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
 	pred_info_get_purity(PredInfo, Purity),
 	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
 		GoalInfo0),
-	(
-		MaybeFeature = yes(Feature),
-		goal_info_add_feature(GoalInfo0, Feature, GoalInfo)
-	;
-		MaybeFeature = no,
-		GoalInfo = GoalInfo0
-	),
+	goal_info_add_features(Features, GoalInfo0, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
 generate_unsafe_cast(InArg, OutArg, Context, Goal) :-

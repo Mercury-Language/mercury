@@ -49,4 +49,15 @@ print *
 next
 retry 1
 finish -n
+delete *
+break t
+continue
+table t 1 2
+finish
+table t 1 2
+retry
+table t 1 2
+finish
+table t 1 2
+delete *
 continue -n -S

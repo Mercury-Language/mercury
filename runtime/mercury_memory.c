@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000,2002-2003 The University of Melbourne.
+** Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -102,7 +102,7 @@
 ** XXX All the zones should be in mercury_engine.h
 */
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
   MR_MemoryZone *MR_genstack_zone;
   MR_MemoryZone *MR_cutstack_zone;
   MR_MemoryZone *MR_pnegstack_zone;
@@ -168,10 +168,10 @@ MR_init_memory(void)
 					MR_unit);
 	MR_nondstack_zone_size	 = MR_round_up(MR_nondstack_zone_size * 1024,
 					MR_unit);
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_genstack_size	 = MR_round_up(MR_genstack_size * 1024,
 					MR_unit);
-	MR_genstack_zone_size = MR_round_up(
+	MR_genstack_zone_size	 = MR_round_up(
 					MR_genstack_zone_size * 1024,
 					MR_unit);
 	MR_cutstack_size	 = MR_round_up(MR_cutstack_size * 1024,
@@ -182,6 +182,31 @@ MR_init_memory(void)
 					MR_unit);
 	MR_pnegstack_zone_size	 = MR_round_up(MR_pnegstack_zone_size * 1024,
 					MR_unit);
+#else
+	MR_genstack_size	 = 0;
+	MR_genstack_zone_size	 = 0;
+	MR_cutstack_size	 = 0;
+	MR_cutstack_zone_size	 = 0;
+	MR_pnegstack_size	 = 0;
+	MR_pnegstack_zone_size	 = 0;
+#endif
+
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+	MR_gen_detstack_size	 = MR_round_up(MR_gen_detstack_size * 1024,
+					MR_unit);
+	MR_gen_nonstack_size	 = MR_round_up(MR_gen_nonstack_size * 1024,
+					MR_unit);
+	MR_gen_detstack_zone_size = MR_round_up(
+					MR_gen_detstack_zone_size * 1024,
+					MR_unit);
+	MR_gen_nonstack_zone_size = MR_round_up(
+					MR_gen_nonstack_zone_size * 1024,
+					MR_unit);
+#else
+	MR_gen_detstack_size	 = 0;
+	MR_gen_nonstack_size	 = 0;
+	MR_gen_detstack_zone_size = 0;
+	MR_gen_nonstack_zone_size = 0;
 #endif
 
 #ifdef	MR_USE_TRAIL

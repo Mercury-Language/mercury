@@ -2935,27 +2935,22 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 
 valid_determinism_for_eval_method(eval_normal, _) = yes.
 valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-
-	% We can't handle at_most_many because we don't mark the subgoal
-	% as active again when we backtrack into it.
 	determinism_components(Detism, _, MaxSoln),
-	( ( MaxSoln = at_most_one ; MaxSoln = at_most_many_cc ) ->
-		Valid = yes
-	;
+	( MaxSoln = at_most_zero ->
 		Valid = no
+	;
+		Valid = yes
 	).
 valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
-	% We can't handle at_most_many because the memoing data structures
-	% cannot record more than one answer, and the minimal model data
-	% structures are unsuitable.
 	determinism_components(Detism, _, MaxSoln),
-	( ( MaxSoln = at_most_one ; MaxSoln = at_most_many_cc ) ->
-		Valid = yes
-	;
+	( MaxSoln = at_most_zero ->
 		Valid = no
+	;
+		Valid = yes
 	).
 valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
 	error("valid_determinism_for_eval_method called after tabling phase").
-valid_determinism_for_eval_method(eval_minimal, Detism) = Valid :-
+valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
 	% Determinism analysis isn't yet smart enough to know whether
 	% a cannot_fail execution path is guaranteed not to go through
 	% a call to a predicate that is mutually recursive with this one,
@@ -2974,37 +2969,37 @@ eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
 eval_method_needs_stratification(eval_table_io(_, _)) = no.
 eval_method_needs_stratification(eval_memo) = no.
-eval_method_needs_stratification(eval_minimal) = yes.
+eval_method_needs_stratification(eval_minimal(_)) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_table_io(_, _)) = no.
 eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
-eval_method_has_per_proc_tabling_pointer(eval_minimal) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_minimal(_)) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
 eval_method_requires_tabling_transform(eval_table_io(_, _)) = yes.
 eval_method_requires_tabling_transform(eval_memo) = yes.
-eval_method_requires_tabling_transform(eval_minimal) = yes.
+eval_method_requires_tabling_transform(eval_minimal(_)) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
 eval_method_requires_ground_args(eval_table_io(_, _)) = yes.
 eval_method_requires_ground_args(eval_memo) = yes.
-eval_method_requires_ground_args(eval_minimal) = yes.
+eval_method_requires_ground_args(eval_minimal(_)) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
 eval_method_destroys_uniqueness(eval_table_io(_, _)) = no.
 eval_method_destroys_uniqueness(eval_memo) = yes.
-eval_method_destroys_uniqueness(eval_minimal) = yes.
+eval_method_destroys_uniqueness(eval_minimal(_)) = yes.
 
 eval_method_change_determinism(eval_normal, Detism) = Detism.
 eval_method_change_determinism(eval_loop_check, Detism) = Detism.
 eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
 eval_method_change_determinism(eval_memo, Detism) = Detism.
-eval_method_change_determinism(eval_minimal, Detism0) = Detism :-
+eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
 	det_conjunction_detism(semidet, Detism0, Detism).
 
 %-----------------------------------------------------------------------------%

@@ -157,7 +157,7 @@ goal_expr_add_heap_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 		% relies on, we need to make sure that it can't fail.
 		% So we use a call to `private_builtin__unused' (which
 		% will call error/1) rather than `fail' for the "then" part.
-		generate_call("unused", det, [], no, [], ModuleInfo, Context,
+		generate_call("unused", det, [], [], [], ModuleInfo, Context,
 			ThenGoal)
 	;
 		ThenGoal = Fail
@@ -217,7 +217,7 @@ goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
 		ModuleInfo = !.Info ^ module_info,
 		goal_info_get_context(GoalInfo, Context),
 		generate_call("reclaim_heap_nondet_pragma_foreign_code",
-			erroneous, [], no, [], ModuleInfo, Context,
+			erroneous, [], [], [], ModuleInfo, Context,
 			SorryNotImplementedCode),
 		Goal = SorryNotImplementedCode
 	;
@@ -305,14 +305,14 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
 	generate_call("mark_hp", det, [SavedHeapPointerVar],
-		yes(impure), [SavedHeapPointerVar - ground_inst],
+		[impure], [SavedHeapPointerVar - ground_inst],
 		!.Info ^ module_info, Context, MarkHeapPointerGoal).
 
 :- pred gen_restore_hp(prog_var::in, prog_context::in, hlds_goal::out,
 	heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-	generate_call("restore_hp", det, [SavedHeapPointerVar], yes(impure),
+	generate_call("restore_hp", det, [SavedHeapPointerVar], [impure],
 		[], !.Info ^ module_info, Context, RestoreHeapPointerGoal).
 
 :- func ground_inst = (inst).
@@ -340,14 +340,14 @@ new_var(Name, Type, Var, !Info) :-
 %-----------------------------------------------------------------------------%
 
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
+generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
 		Context, CallGoal) :-
 	mercury_private_builtin_module(BuiltinModule),
 	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
-		only_mode, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
+		only_mode, Detism, Args, Features, InstMap, ModuleInfo,
 		Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

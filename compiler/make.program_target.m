@@ -718,7 +718,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 	lookup_mmc_options(Info0 ^ options_variables, MaybeMCFlags, !IO),
 	(
 		MaybeMCFlags = yes(MCFlags),
-		handle_options(MCFlags ++ OptionArgs, OptionsError, _, _, _,
+		handle_options(MCFlags ++ OptionArgs, OptionsErrors, _, _, _,
 			!IO)
 	;
 		MaybeMCFlags = no,
@@ -726,12 +726,12 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 		error("install_library_grade: bad DEFAULT_MCFLAGS")
 	),
 
-	(
-		OptionsError = yes(OptionsMessage),
-		usage_error(OptionsMessage, !IO),
+	( 
+		OptionsErrors = [_ | _],
+		usage_errors(OptionsErrors, !IO),
 		Succeeded = no
 	;
-		OptionsError = no,
+		OptionsErrors = [],
 		%
 		% Remove the grade-dependent targets from the status map
 		% (we need to rebuild them in the new grade).

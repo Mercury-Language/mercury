@@ -8,8 +8,8 @@
 */
 
 /*
-** This module contains the functions related specifically to minimal model
-** tabling.
+** This module contains the functions related specifically to the stack copy
+** style of minimal model tabling.
 */
 
 #include "mercury_imp.h"
@@ -32,7 +32,7 @@
   #define   MR_TABLE_DEBUG
 #endif
 
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
 #ifdef  MR_TABLE_DEBUG
 static  MR_Word *saved_to_real_nondet_stack(MR_SavedState *saved_state,
@@ -396,6 +396,7 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
     MR_ConsumerList consumer;
     MR_AnswerList   answer_list;
     MR_Word         *answer;
+    int             answer_num;
 
     if (subgoal == NULL) {
         fprintf(fp, "NULL subgoal\n");
@@ -444,16 +445,13 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
 
     if (proc != NULL) {
         answer_list = subgoal->MR_sg_answer_list;
+        answer_num = 1;
         while (answer_list != NULL) {
-#ifdef  MR_MINIMAL_MODEL_DEBUG
-            fprintf(fp, "answer #%d: <", answer_list->MR_aln_answer_num);
-#else
-            fprintf(fp, "answer: <");
-#endif
-            MR_print_answerblock(fp, proc,
-                answer_list->MR_aln_answer_data.MR_answerblock);
+            fprintf(fp, "answer #%d: <", answer_num);
+            MR_print_answerblock(fp, proc, answer_list->MR_aln_answer_block);
             fprintf(fp, ">\n");
             answer_list = answer_list->MR_aln_next_answer;
+            answer_num++;
         }
     }
 }
@@ -504,11 +502,12 @@ MR_setup_subgoal(MR_TrieNode trie_node)
     ** In that case, we want to forget all about the old generator.
     */
 
+    MR_restore_transient_registers();
+
 #ifdef  MR_TABLE_STATISTICS
     MR_minmodel_stats_cnt_setup++;
 #endif
 
-    MR_restore_transient_registers();
     if (trie_node->MR_subgoal == NULL) {
         MR_Subgoal  *subgoal;
 
@@ -576,8 +575,8 @@ MR_setup_subgoal(MR_TrieNode trie_node)
         trie_node->MR_subgoal = subgoal;
     }
 
-    return trie_node->MR_subgoal;
     MR_save_transient_registers();
+    return trie_node->MR_subgoal;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -747,13 +746,13 @@ MR_minimal_model_report_stats(FILE *fp)
 */
 
 #define SUSPEND_LABEL(name)                                             \
-    MR_label_name(MR_SUSPEND_ENTRY, name)
+    MR_label_name(MR_MMSC_SUSPEND_ENTRY, name)
 #define COMPLETION_LABEL(name)                                          \
-    MR_label_name(MR_COMPLETION_ENTRY, name)
+    MR_label_name(MR_MMSC_COMPLETION_ENTRY, name)
 #define RET_ALL_MULTI_LABEL(name)                                       \
-    MR_label_name(MR_RET_ALL_MULTI_ENTRY, name)
+    MR_label_name(MR_MMSC_RET_ALL_MULTI_ENTRY, name)
 #define RET_ALL_NONDET_LABEL(name)                                      \
-    MR_label_name(MR_RET_ALL_NONDET_ENTRY, name)
+    MR_label_name(MR_MMSC_RET_ALL_NONDET_ENTRY, name)
 
 /*
 ** With debugging of tabling code enabled, define function versions
@@ -1407,7 +1406,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #endif  /* MR_TABLE_DEBUG */
 
             *MR_redoip_addr(saved_fr) =
-                (MR_Word) MR_ENTRY(MR_COMPLETION_ENTRY);
+                (MR_Word) MR_ENTRY(MR_MMSC_COMPLETION_ENTRY);
         } else if (!generator_is_at_bottom &&
             real_fr == MR_gen_stack[cur_gen].MR_gen_frame)
         {
@@ -1431,7 +1430,7 @@ prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
 #endif  /* MR_TABLE_DEBUG */
 
                 *MR_redoip_addr(saved_fr) =
-                    (MR_Word) MR_ENTRY(MR_COMPLETION_ENTRY);
+                    (MR_Word) MR_ENTRY(MR_MMSC_COMPLETION_ENTRY);
             } else {
                 /*
                 ** This is the nondet stack frame of some other generator.
@@ -1650,7 +1649,7 @@ print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
     }
 }
 
-#endif  /* MR_USE_MINIMAL_MODEL */
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 /*---------------------------------------------------------------------------*/
 
@@ -1659,9 +1658,9 @@ print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
 ** of derivations.
 **
 ** We need to define stubs for the predicates which are marked as `:- external'
-** in table_builtin.m, even if MR_USE_MINIMAL_MODEL is not enabled, because
-** in profiling grades the code generated for table_builtin.m will take their
-** address to store in the label table.
+** in table_builtin.m, even if MR_USE_MINIMAL_MODEL_STACK_COPY is not enabled,
+** because in profiling grades the code generated for table_builtin.m will
+** take their address to store in the label table.
 **
 ** We provide three definitions for these procedures: one for high level
 ** code (which is incompatible with minimal model tabling), and two for low
@@ -1670,19 +1669,6 @@ print_stack_segment(FILE *fp, MR_Word *segment, MR_Integer size)
 */
 
 #ifdef MR_HIGHLEVEL_CODE
-
-/* Declare them first, to avoid warnings from gcc -Wmissing-decls */
-void MR_CALL mercury__table_builtin__table_mm_completion_1_p_0(
-    MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
-    MR_Cont cont, void *cont_env_ptr);
-void MR_CALL mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
-    MR_C_Pointer subgoal_table_node);
-void MR_CALL mercury__table_builtin__table_mm_return_all_nondet_2_2_p_0(
-    MR_C_Pointer answer_list, MR_C_Pointer answer_block);
-void MR_CALL mercury__table_builtin__table_mm_return_all_multi_2_2_p_0(
-    MR_C_Pointer answer_list, MR_C_Pointer answer_block);
-void MR_CALL mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(
-    MR_C_Pointer subgoal_table_node);
 
 void MR_CALL
 mercury__table_builtin__table_mm_completion_1_p_0(
@@ -1727,11 +1713,11 @@ mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(
 
 #else   /* ! MR_HIGHLEVEL_CODE */
 
-MR_define_extern_entry(MR_SUSPEND_ENTRY);
-MR_define_extern_entry(MR_COMPLETION_ENTRY);
-MR_define_extern_entry(MR_RET_ALL_NONDET_ENTRY);
-MR_define_extern_entry(MR_RET_ALL_MULTI_ENTRY);
-MR_define_extern_entry(MR_IS_NOT_DUPL_ENTRY);
+MR_define_extern_entry(MR_MMSC_SUSPEND_ENTRY);
+MR_define_extern_entry(MR_MMSC_COMPLETION_ENTRY);
+MR_define_extern_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
+MR_define_extern_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
+MR_define_extern_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
 
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
     MR_PREDICATE, table_builtin, table_mm_suspend_consumer, 2, 0);
@@ -1744,39 +1730,39 @@ MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
 MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
     MR_PREDICATE, table_builtin, table_mm_answer_is_not_duplicate, 1, 0);
 
-#ifndef  MR_USE_MINIMAL_MODEL
+#ifndef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
-MR_BEGIN_MODULE(table_mm_suspend_completion_module)
-    MR_init_entry_sl(MR_SUSPEND_ENTRY);
-    MR_init_entry_sl(MR_COMPLETION_ENTRY);
-    MR_init_entry_sl(MR_RET_ALL_NONDET_ENTRY);
-    MR_init_entry_sl(MR_RET_ALL_MULTI_ENTRY);
-    MR_init_entry_sl(MR_IS_NOT_DUPL_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_SUSPEND_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_COMPLETION_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_RET_ALL_NONDET_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_RET_ALL_MULTI_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_IS_NOT_DUPL_ENTRY);
+MR_BEGIN_MODULE(mmsc_module)
+    MR_init_entry_sl(MR_MMSC_SUSPEND_ENTRY);
+    MR_init_entry_sl(MR_MMSC_COMPLETION_ENTRY);
+    MR_init_entry_sl(MR_MMSC_RET_ALL_NONDET_ENTRY);
+    MR_init_entry_sl(MR_MMSC_RET_ALL_MULTI_ENTRY);
+    MR_init_entry_sl(MR_MMSC_IS_NOT_DUPL_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_SUSPEND_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_COMPLETION_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_NONDET_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_MULTI_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_IS_NOT_DUPL_ENTRY);
 MR_BEGIN_CODE
 
-MR_define_entry(MR_SUSPEND_ENTRY);
+MR_define_entry(MR_MMSC_SUSPEND_ENTRY);
     MR_fatal_error("call to table_mm_suspend_consumer/2 in a grade "
-        "without minimal model tabling");
-MR_define_entry(MR_COMPLETION_ENTRY);
+        "without stack copy minimal model tabling");
+MR_define_entry(MR_MMSC_COMPLETION_ENTRY);
     MR_fatal_error("call to table_mm_completion/1 in a grade "
-        "without minimal model tabling");
-MR_define_entry(MR_RET_ALL_NONDET_ENTRY);
+        "without stack copy minimal model tabling");
+MR_define_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
     MR_fatal_error("call to table_mm_return_all_nondet/2 in a grade "
-        "without minimal model tabling");
-MR_define_entry(MR_RET_ALL_MULTI_ENTRY);
+        "without stack copy minimal model tabling");
+MR_define_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
     MR_fatal_error("call to table_mm_return_all_multi/2 in a grade "
-        "without minimal model tabling");
-MR_define_entry(MR_IS_NOT_DUPL_ENTRY);
+        "without stack copy minimal model tabling");
+MR_define_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
     MR_fatal_error("call to table_mm_answer_is_not_duplicate/1 in a grade "
-        "without minimal model tabling");
+        "without stack copy minimal model tabling");
 MR_END_MODULE
 
-#else   /* MR_USE_MINIMAL_MODEL */
+#else   /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 MR_Subgoal      *MR_cur_leader;
 
@@ -1820,13 +1806,13 @@ MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_mm_return_all_nondet, 2, 0,
 MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_mm_return_all_multi, 2, 0,
     Next);
 
-MR_BEGIN_MODULE(table_mm_suspend_completion_module)
-    MR_init_entry_sl(MR_SUSPEND_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_SUSPEND_ENTRY);
+MR_BEGIN_MODULE(mmsc_module)
+    MR_init_entry_sl(MR_MMSC_SUSPEND_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_SUSPEND_ENTRY);
     MR_init_label_sl(SUSPEND_LABEL(Call));
 
-    MR_init_entry_sl(MR_COMPLETION_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_COMPLETION_ENTRY);
+    MR_init_entry_sl(MR_MMSC_COMPLETION_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_COMPLETION_ENTRY);
     MR_init_label_sl(COMPLETION_LABEL(StartCompletionOp));
     MR_init_label_sl(COMPLETION_LABEL(LoopOverSubgoals));
     MR_init_label_sl(COMPLETION_LABEL(LoopOverSuspensions));
@@ -1838,18 +1824,18 @@ MR_BEGIN_MODULE(table_mm_suspend_completion_module)
 
     MR_init_entry_an(MR_table_mm_commit);
 
-    MR_init_entry_sl(MR_RET_ALL_NONDET_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_RET_ALL_NONDET_ENTRY);
+    MR_init_entry_sl(MR_MMSC_RET_ALL_NONDET_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_NONDET_ENTRY);
     MR_init_label_sl(RET_ALL_NONDET_LABEL(Next));
 
-    MR_init_entry_sl(MR_RET_ALL_MULTI_ENTRY);
-    MR_INIT_PROC_LAYOUT_ADDR(MR_RET_ALL_MULTI_ENTRY);
+    MR_init_entry_sl(MR_MMSC_RET_ALL_MULTI_ENTRY);
+    MR_INIT_PROC_LAYOUT_ADDR(MR_MMSC_RET_ALL_MULTI_ENTRY);
     MR_init_label_sl(RET_ALL_MULTI_LABEL(Next));
 
-    MR_init_entry_sl(MR_IS_NOT_DUPL_ENTRY);
+    MR_init_entry_sl(MR_MMSC_IS_NOT_DUPL_ENTRY);
 MR_BEGIN_CODE
 
-MR_define_entry(MR_SUSPEND_ENTRY);
+MR_define_entry(MR_MMSC_SUSPEND_ENTRY);
     /*
     ** The suspend procedure saves the state of the Mercury runtime so that
     ** it may be used in the table_mm_completion procedure below to return
@@ -1873,7 +1859,7 @@ MR_define_entry(MR_SUSPEND_ENTRY);
     ** nondet stack fragment. The framevar slot is for use by
     ** table_mm_completion.
     */
-    MR_mkframe(MR_STRINGIFY(MR_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
+    MR_mkframe(MR_STRINGIFY(MR_MMSC_SUSPEND_ENTRY), 1, MR_ENTRY(MR_do_fail));
 
 MR_define_label(SUSPEND_LABEL(Call));
 {
@@ -1951,7 +1937,7 @@ MR_define_label(SUSPEND_LABEL(Call));
 }
     MR_fail();
 
-MR_define_entry(MR_COMPLETION_ENTRY);
+MR_define_entry(MR_MMSC_COMPLETION_ENTRY);
     /*
     ** The completion procedure restores answers to suspended consumers.
     ** It works by restoring the consumer state saved by the consumer's call
@@ -2194,16 +2180,20 @@ MR_define_label(COMPLETION_LABEL(LoopOverSuspensions));
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
         MR_AnswerList   answer_list;
+        MR_Consumer     *consumer;
 
+        consumer = completion_info->MR_ri_cur_consumer;
         printf("returning answers to consumer %s\n",
-            MR_consumer_addr_name(completion_info->MR_ri_cur_consumer));
+            MR_consumer_addr_name(consumer));
   #ifdef    MR_MINIMAL_MODEL_DEBUG
         printf("the list of answers to return:");
         for (answer_list = cur_consumer_answer_list;
             answer_list != NULL;
             answer_list = answer_list->MR_aln_next_answer)
         {
-            printf(" #%d", answer_list->MR_aln_answer_num);
+            MR_print_answerblock(stdout,
+                    consumer->MR_cns_subgoal->MR_sg_proc_layout,
+                    answer_list->MR_aln_answer_block);
         }
   #endif  /* MR_MINIMAL_MODEL_DEBUG */
         printf("\n");
@@ -2237,20 +2227,19 @@ MR_define_label(COMPLETION_LABEL(ReturnAnswer));
     ** XXX we need to prove that assertion
     */
 
-    MR_r1 = (MR_Word) answer_list->MR_aln_answer_data.MR_answerblock;
+    MR_r1 = (MR_Word) answer_list->MR_aln_answer_block;
     consumer->MR_cns_remaining_answer_list_ptr =
         &(answer_list->MR_aln_next_answer);
     consumer->MR_cns_num_returned_answers++;
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-  #ifdef    MR_MINIMAL_MODEL_DEBUG
-        printf("returning answer %d to consumer %s\n",
-            answer_list->MR_aln_answer_num,
-            MR_consumer_addr_name(completion_info->MR_ri_cur_consumer));
-  #else
         printf("returning answer to consumer %s\n",
             MR_consumer_addr_name(completion_info->MR_ri_cur_consumer));
+  #ifdef MR_MINIMAL_MODEL_DEBUG
+            MR_print_answerblock(stdout, completion_info->MR_ri_cur_consumer->
+                MR_cns_subgoal->MR_sg_proc_layout,
+                answer_list->MR_aln_answer_block);
   #endif
     }
 #endif  /* MR_TABLE_DEBUG */
@@ -2264,7 +2253,7 @@ MR_define_label(COMPLETION_LABEL(ReturnAnswer));
 }
 
 MR_define_label(COMPLETION_LABEL(RedoPoint));
-    MR_update_prof_current_proc(MR_LABEL(MR_COMPLETION_ENTRY));
+    MR_update_prof_current_proc(MR_LABEL(MR_MMSC_COMPLETION_ENTRY));
 
 #ifdef  MR_TABLE_STATISTICS
     MR_minmodel_stats_cnt_completion_redo_point++;
@@ -2422,7 +2411,7 @@ MR_define_entry(MR_table_mm_commit);
     MR_commit_cut();
     MR_fail();
 
-MR_define_entry(MR_RET_ALL_NONDET_ENTRY);
+MR_define_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
 {
     MR_SubgoalPtr   Subgoal;
     MR_AnswerList   CurNode0;
@@ -2443,7 +2432,7 @@ MR_define_entry(MR_RET_ALL_NONDET_ENTRY);
         MR_redo();
     }
 
-    AnswerBlock = CurNode0->MR_aln_answer_data.MR_answerblock;
+    AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
 
     /* Consider not creating the stack frame if CurNode is NULL. */
@@ -2466,14 +2455,14 @@ MR_define_label(RET_ALL_NONDET_LABEL(Next));
         MR_fail();
     }
 
-    AnswerBlock = CurNode0->MR_aln_answer_data.MR_answerblock;
+    AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
     MR_framevar(1) = (MR_Word) CurNode;
     MR_r1 = (MR_Word) AnswerBlock;
 }
     MR_succeed();
 
-MR_define_entry(MR_RET_ALL_MULTI_ENTRY);
+MR_define_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
 {
     MR_SubgoalPtr   Subgoal;
     MR_AnswerList   CurNode0;
@@ -2494,7 +2483,7 @@ MR_define_entry(MR_RET_ALL_MULTI_ENTRY);
         MR_fatal_error("table_mm_return_all_multi: no answers");
     }
 
-    AnswerBlock = CurNode0->MR_aln_answer_data.MR_answerblock;
+    AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
 
     /* Consider not creating the stack frame if CurNode is NULL. */
@@ -2517,14 +2506,14 @@ MR_define_label(RET_ALL_MULTI_LABEL(Next));
         MR_fail();
     }
 
-    AnswerBlock = CurNode0->MR_aln_answer_data.MR_answerblock;
+    AnswerBlock = CurNode0->MR_aln_answer_block;
     CurNode = CurNode0->MR_aln_next_answer;
     MR_framevar(1) = (MR_Word) CurNode;
     MR_r1 = (MR_Word) AnswerBlock;
 }
     MR_succeed();
 
-MR_define_entry(MR_IS_NOT_DUPL_ENTRY);
+MR_define_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
 {
     MR_TrieNode T;
 
@@ -2535,38 +2524,40 @@ MR_define_entry(MR_IS_NOT_DUPL_ENTRY);
 
 MR_END_MODULE
 
-#endif /* MR_USE_MINIMAL_MODEL */
+#endif /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 #endif /* MR_HIGHLEVEL_CODE */
 
 /* Ensure that the initialization code for the above modules gets to run. */
 /*
-INIT mercury_sys_init_table_modules
+INIT mercury_sys_init_mmsc_modules
 */
 
-MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_mm_suspend_completion_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mmsc_module;
 
 /* forward declarations to suppress gcc -Wmissing-decl warnings */
-void mercury_sys_init_table_modules_init(void);
-void mercury_sys_init_table_modules_init_type_tables(void);
+void mercury_sys_init_mmsc_modules_init(void);
+void mercury_sys_init_mmsc_modules_init_type_tables(void);
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp);
+void mercury_sys_init_mmsc_modules_write_out_proc_statics(FILE *fp);
 #endif
 
-void mercury_sys_init_table_modules_init(void)
+void mercury_sys_init_mmsc_modules_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
-    table_mm_suspend_completion_module();
+    mmsc_module();
 #endif  /* MR_HIGHLEVEL_CODE */
 }
 
-void mercury_sys_init_table_modules_init_type_tables(void)
+void mercury_sys_init_mmsc_modules_init_type_tables(void)
 {
     /* no types to register */
 }
 
 #ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
+void mercury_sys_init_mmsc_modules_write_out_proc_statics(FILE *fp)
 {
     /* no proc_statics to write out */
+    /* XXX we need to fix the deep profiling */
+    /* of minimal model tabled predicates */
 }
 #endif

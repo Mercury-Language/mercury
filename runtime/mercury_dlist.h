@@ -31,7 +31,11 @@ struct	MR_Dlist_Struct {
 #define	MR_dlist_next(ptr)		(ptr)->MR_dlist_next
 #define	MR_dlist_prev(ptr)		(ptr)->MR_dlist_prev
 #define	MR_dlist_data(ptr)		(ptr)->MR_dlist_union.MR_dlist_data
-#define	MR_dlist_length(list)		((list)->MR_dlist_union.MR_dlist_length)
+#define	MR_dlist_length_field(list)	((list)->MR_dlist_union.\
+						MR_dlist_length)
+#define	MR_dlist_length(list)		((list) != NULL ?		\
+						MR_dlist_length_field(list) \
+						: 0)
 #define	MR_dlist_first_ptr(list)	((list)->MR_dlist_next)
 #define	MR_dlist_last_ptr(list)		((list)->MR_dlist_prev)
 #define	MR_dlist_first(list)		((list)->MR_dlist_next->	\

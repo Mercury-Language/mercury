@@ -466,6 +466,12 @@ MR_get_used_memory_zones(void)
 	return used_memory_zones;
 }
 
+MR_bool
+MR_in_zone(const MR_Word *ptr, const MR_MemoryZone *zone)
+{
+	return (zone->bottom <= ptr && ptr < zone->top);
+}
+
 void
 MR_debug_memory(void)
 {

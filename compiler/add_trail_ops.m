@@ -145,7 +145,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 		% will call error/1) rather than `fail' for the "then" part.
 		mercury_private_builtin_module(PrivateBuiltin),
 		generate_simple_call(PrivateBuiltin, "unused", predicate,
-			only_mode, det, [], no, [], ModuleInfo,
+			only_mode, det, [], [], [], ModuleInfo,
 			Context, ThenGoal)
 	;
 		ThenGoal = Fail
@@ -274,7 +274,7 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
 		ModuleInfo = !.Info^ module_info,
 		goal_info_get_context(GoalInfo, Context),
 		generate_call("trailed_nondet_pragma_foreign_code",
-			erroneous, [], no, [], ModuleInfo, Context,
+			erroneous, [], [], [], ModuleInfo, Context,
 			SorryNotImplementedCode),
 		Goal = SorryNotImplementedCode
 	;
@@ -363,7 +363,7 @@ cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
 	trail_ops_info::in) is det.
 
 gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
-	generate_call("store_ticket", det, [TicketVar], yes(impure),
+	generate_call("store_ticket", det, [TicketVar], [impure],
 		[TicketVar - ground_inst],
 		Info ^ module_info, Context, SaveTicketGoal).
 
@@ -371,35 +371,35 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
 	trail_ops_info::in) is det.
 
 gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
-	generate_call("reset_ticket_undo", det, [TicketVar], yes(impure),
+	generate_call("reset_ticket_undo", det, [TicketVar], [impure],
 		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_solve(prog_var::in, prog_context::in, hlds_goal::out,
 	trail_ops_info::in) is det.
 
 gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
-	generate_call("reset_ticket_solve", det, [TicketVar], yes(impure),
+	generate_call("reset_ticket_solve", det, [TicketVar], [impure],
 		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_commit(prog_var::in, prog_context::in, hlds_goal::out,
 	trail_ops_info::in) is det.
 
 gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
-	generate_call("reset_ticket_commit", det, [TicketVar], yes(impure),
+	generate_call("reset_ticket_commit", det, [TicketVar], [impure],
 		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_prune_ticket(prog_context::in, hlds_goal::out,
 	trail_ops_info::in) is det.
 
 gen_prune_ticket(Context, PruneTicketGoal, Info) :-
-	generate_call("prune_ticket", det, [], yes(impure),
+	generate_call("prune_ticket", det, [], [impure],
 		[], Info ^ module_info, Context, PruneTicketGoal).
 
 :- pred gen_discard_ticket(prog_context::in, hlds_goal::out,
 	trail_ops_info::in) is det.
 
 gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
-	generate_call("discard_ticket", det, [], yes(impure), [],
+	generate_call("discard_ticket", det, [], [impure], [],
 		Info ^ module_info, Context, DiscardTicketGoal).
 
 :- pred gen_mark_ticket_stack(prog_var::in, prog_context::in, hlds_goal::out,
@@ -408,7 +408,7 @@ gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
 gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
 		Info) :-
 	generate_call("mark_ticket_stack", det, [SavedTicketCounterVar],
-		yes(impure), [], Info ^ module_info, Context,
+		[impure], [], Info ^ module_info, Context,
 		MarkTicketStackGoal).
 
 :- pred gen_prune_tickets_to(prog_var::in, prog_context::in, hlds_goal::out,
@@ -417,7 +417,7 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
 gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
 		Info) :-
 	generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
-		yes(impure), [], Info ^ module_info, Context,
+		[impure], [], Info ^ module_info, Context,
 		PruneTicketsToGoal).
 
 :- func ground_inst = (inst).
@@ -459,14 +459,14 @@ ticket_counter_type = c_pointer_type.
 %-----------------------------------------------------------------------------%
 
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	list(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
+generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
 		Context, CallGoal) :-
 	mercury_private_builtin_module(BuiltinModule),
 	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
-		only_mode, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
+		only_mode, Detism, Args, Features, InstMap, ModuleInfo,
 		Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

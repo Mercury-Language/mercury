@@ -31,6 +31,9 @@ main -->
 	{ s(3.5, 2, "xyz", 3, SC, TC) },
 	{ s(3.5, 2, "xyz", 4, SD, TD) },
 	{ s(9.2, 2, "def", 5, SE, TE) },
+	{ solutions(t(1, 2), T12) },
+	{ solutions(t(2, 2), T22) },
+	{ tdone },
 	io__write_int(P55),
 	io__nl,
 	io__write_int(P43),
@@ -64,6 +67,10 @@ main -->
 	io__write_string(SE),
 	io__write_string(" "),
 	io__write_float(TE),
+	io__nl,
+	io__write(T12),
+	io__nl,
+	io__write(T22),
 	io__nl.
 
 :- pred p(int::in, int::in, int::out) is det.
@@ -112,3 +119,21 @@ s(A, B, C, D, S, T) :-
 	S = from_char_list(list__condense(
 		list__duplicate(D, to_char_list(S0)))),
 	T = A + float(D).
+
+:- pred t(int::in, int::in, int::out) is nondet.
+:- pragma memo(t/3).
+
+t(A, B, C) :-
+	( A = 1 ->
+		(
+			C = (A * 100) + (B * 10)
+		;
+			C = (B * 100) + (A * 10)
+		)
+	;
+		fail
+	).
+
+:- pred tdone is det.
+
+tdone.

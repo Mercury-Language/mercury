@@ -550,6 +550,11 @@
 % Stuff for tabling pragmas
 %
 
+:- type eval_minimal_method
+	--->	stack_copy		% saving and restoring stack segments
+					% as necessary
+	;	own_stacks.		% each generator has own stacks
+
 	% The evaluation method that should be used for a procedure.
 	% Ignored for Aditi procedures.
 :- type eval_method
@@ -561,8 +566,8 @@
 			table_io_is_decl,
 			table_io_is_unitize
 		)
-	;	eval_minimal.		% minimal model
-					% evaluation
+	;	eval_minimal(eval_minimal_method).
+					% minimal model evaluation
 
 :- type table_io_is_decl
 	--->	table_io_decl		% The procedure is tabled for

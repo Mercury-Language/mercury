@@ -40,7 +40,8 @@ Grade options:
 	--record-term-sizes-as-cells
 	--use-trail
 	--reserve-tag
-	--use-minimal-model
+	--use-minimal-model-stack-copy
+	--use-minimal-model-own-stacks
 	--minimal-model-debug
 	--pic-reg
 	--no-stack-trace
@@ -71,7 +72,8 @@ record_term_sizes_as_words=false
 record_term_sizes_as_cells=false
 use_trail=false
 reserve_tag=false
-use_minimal_model=false
+use_minimal_model_stack_copy=false
+use_minimal_model_own_stacks=false
 minimal_model_debug=false
 pic_reg=false
 debug=false

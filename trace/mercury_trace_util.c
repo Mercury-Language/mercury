@@ -112,7 +112,7 @@ MR_print_heap_regs(FILE *fp, MR_Word *saved_regs)
 void
 MR_print_tabling_regs(FILE *fp, MR_Word *saved_regs)
 {
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
 	fprintf(fp, "gen_next = %ld\n", (long) MR_saved_gen_next(saved_regs));
 	fprintf(fp, "cut_next = %ld\n", (long) MR_saved_cut_next(saved_regs));
 #endif

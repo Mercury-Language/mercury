@@ -92,4 +92,15 @@ table s 9.2 2 abc
 table s 9.2 2 def
 table s 9.2 2 xyz
 delete 1
+b t
+c
+table t
+s
+table t
+finish
+table t
+delete 1
+b tdone
+c
+table t
 c -S -n

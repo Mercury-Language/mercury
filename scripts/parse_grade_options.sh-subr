@@ -148,10 +148,15 @@
 	--no-reserve-tag)
 		reserve_tag=false ;;
 
-	--use-minimal-model)
-		use_minimal_model=true ;;
-	--no-use-minimal-model)
-		use_minimal_model=false ;;
+	--use-minimal-model-stack-copy)
+		use_minimal_model_stack_copy=true ;;
+	--no-use-minimal-model-stack-copy)
+		use_minimal_model_stack_copy=false ;;
+
+	--use-minimal-model-own-stacks)
+		use_minimal_model_own_stacks=true ;;
+	--no-use-minimal-model-own-stacks)
+		use_minimal_model_own_stacks=false ;;
 
 	--minimal-model-debug)
 		minimal_model_debug=true ;;
@@ -200,7 +205,8 @@
 		record_term_sizes_as_cells=false
 		use_trail=false
 		reserve_tag=false
-		use_minimal_model=false
+		use_minimal_model_stack_copy=false
+		use_minimal_model_own_stacks=false
 		minimal_model_debug=false
 		pic_reg=false
 		debug=false
@@ -397,12 +403,32 @@
 					;;
 
 				mm)
-					use_minimal_model=true
+					use_minimal_model_stack_copy=true
 					minimal_model_debug=false
 					;;
 
 				dmm)
-					use_minimal_model=true
+					use_minimal_model_stack_copy=true
+					minimal_model_debug=true
+					;;
+
+				mmsc)
+					use_minimal_model_stack_copy=true
+					minimal_model_debug=false
+					;;
+
+				dmmsc)
+					use_minimal_model_stack_copy=true
+					minimal_model_debug=true
+					;;
+
+				mmos)
+					use_minimal_model_own_stacks=true
+					minimal_model_debug=false
+					;;
+
+				dmmos)
+					use_minimal_model_own_stacks=true
 					minimal_model_debug=true
 					;;
 

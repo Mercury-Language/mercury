@@ -868,7 +868,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             return;
 
         case MR_TYPECTOR_REP_SUBGOAL:
-#if MR_USE_MINIMAL_MODEL
+#if MR_USE_MINIMAL_MODEL_STACK_COPY
             if (noncanon == MR_NONCANON_CC) {
                 handle_functor_name(MR_subgoal_addr_name(
                     (MR_SubgoalPtr) *data_word_ptr));

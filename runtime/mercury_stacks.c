@@ -116,7 +116,7 @@ MR_print_stack_frame_stats(void)
 
 #undef MR_TABLE_DEBUG
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 MR_Integer		MR_gen_next_var;
 MR_GenStackFrame	*MR_gen_stack_var;
@@ -609,4 +609,4 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
 
 /***************************************************************************/
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */

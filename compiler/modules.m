@@ -2327,7 +2327,10 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
 		% --trace-table-io is specified.
 		%
 		( contains_tabling_pragma(Items)
-		; globals__lookup_bool_option(Globals, use_minimal_model, yes)
+		; globals__lookup_bool_option(Globals,
+			use_minimal_model_stack_copy, yes)
+		; globals__lookup_bool_option(Globals,
+			use_minimal_model_own_stacks, yes)
 		; globals__lookup_bool_option(Globals, trace_table_io, yes)
 		)
 	->

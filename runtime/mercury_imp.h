@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998,2000,2003 The University of Melbourne.
+** Copyright (C) 1993-1998,2000,2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -81,8 +81,11 @@
 #include	"mercury_misc.h"
 
 #include	"mercury_tabling.h"
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
 #include	"mercury_minimal_model.h"
+#endif
+#ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
+#include	"mercury_mm_own_stacks.h"
 #endif
 
 #include	"mercury_univ.h"

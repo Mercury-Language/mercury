@@ -653,7 +653,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	),
 	pred_info_context(!.PredInfo, Context),
 	generate_simple_call(mercury_private_builtin_module, CalleeName,
-		predicate, only_mode, det, [PredNameVar], no, [], ModuleInfo,
+		predicate, only_mode, det, [PredNameVar], [], [], ModuleInfo,
 		Context, CallGoal),
 	%
 	% Combine the unification and call into a conjunction

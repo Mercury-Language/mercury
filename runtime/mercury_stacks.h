@@ -133,7 +133,7 @@
 
 #define	MR_NONDET_TEMP_SIZE	3 /* prevfr, redoip, redofr */
 #define	MR_DET_TEMP_SIZE	4 /* prevfr, redoip, redofr, detfr */
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 #define	MR_NONDET_FIXED_SIZE	6 /* prevfr, redoip, redofr, succip, succfr,
 				     sp */
 #else
@@ -179,7 +179,7 @@
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
   #define	MR_maybe_fill_table_detfr_slot()			\
 			do {						\
 				MR_table_detfr_slot_word(MR_curfr) =	\
@@ -476,7 +476,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef	MR_USE_MINIMAL_MODEL
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 /* DEFINITIONS FOR GENERATOR STACK FRAMES */
 
@@ -623,6 +623,6 @@ extern	void			MR_print_any_pneg_stack(FILE *fp,
 					MR_Integer pneg_next,
 					MR_PNegStackFrame *pneg_block);
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 #endif	/* not MERCURY_STACKS_H */

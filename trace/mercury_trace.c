@@ -93,7 +93,7 @@ static  MR_Word     MR_trace_find_input_arg(const MR_Label_Layout *label,
                         MR_Word *base_curfr, MR_uint_least16_t var_num,
                         MR_bool *succeeded);
 
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 static  MR_Retry_Result
                     MR_check_minimal_model_calls(MR_Event_Info *event_info,
                         int ancestor_level, MR_Word *target_maxfr,
@@ -148,7 +148,7 @@ MR_trace_real(const MR_Label_Layout *layout)
         depth = (MR_Unsigned) MR_call_depth_framevar(MR_curfr);
     }
 
-#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_MINIMAL_MODEL_DEBUG)
+#if defined(MR_USE_MINIMAL_MODEL_STACK_COPY) && defined(MR_MINIMAL_MODEL_DEBUG)
     if ((MR_Trace_Port) layout->MR_sll_port == MR_PORT_CALL) {
         MR_subgoal_debug_cur_proc = layout->MR_sll_entry;
     }
@@ -513,7 +513,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_bool                 has_io_state;
     MR_bool                 found_io_action_counter;
     MR_Unsigned             saved_io_action_counter;
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
     MR_Retry_Result         result;
 #endif
 
@@ -692,7 +692,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         }
     }
 
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
     result = MR_check_minimal_model_calls(event_info, ancestor_level,
             base_maxfr, problem);
@@ -717,7 +717,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
         goto report_problem;
     }
 
-#endif  /* MR_USE_MINIMAL_MODEL */
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
     /*
     ** At this point, we are now sure that we can carry out the retry
@@ -1136,7 +1136,7 @@ MR_trace_find_input_arg(const MR_Label_Layout *label_layout,
 
 /*****************************************************************************/
 
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
 /*
 ** MR_check_minimal_model_calls scans the nondet stack region about to be
@@ -1244,7 +1244,9 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
             return MR_RETRY_ERROR;
         }
 
-        if (MR_sle_eval_method(proc_layout) != MR_EVAL_METHOD_MINIMAL) {
+        if (MR_sle_eval_method(proc_layout)
+            != MR_EVAL_METHOD_MINIMAL_STACK_COPY)
+        {
             continue;
         }
 
@@ -1303,7 +1305,9 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
         label_layout = event_info->MR_event_sll;
         proc_layout = label_layout->MR_sll_entry;
 
-        if (MR_sle_eval_method(proc_layout) == MR_EVAL_METHOD_MINIMAL) {
+        if (MR_sle_eval_method(proc_layout)
+            == MR_EVAL_METHOD_MINIMAL_STACK_COPY)
+        {
             return MR_RETRY_OK_FAIL_FIRST;
         } else {
             return MR_RETRY_OK_FINISH_FIRST;
@@ -1313,7 +1317,7 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
     }
 }
 
-#endif  /* MR_USE_MINIMAL_MODEL */
+#endif  /* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
 /*****************************************************************************/
 
@@ -1348,7 +1352,8 @@ static void
 MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
     MR_Word *base_sp, MR_Word *base_curfr)
 {
-    MR_TrieNode call_table;
+    MR_TrieNode     call_table;
+    MR_EvalMethod   eval_method;
 
     if (! MR_PROC_LAYOUT_HAS_EXEC_TRACE(level_layout)) {
         /*
@@ -1357,10 +1362,11 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
         */
 
         MR_fatal_error("proc layout without exec trace "
-                "in MR_maybe_record_call_table");
+            "in MR_maybe_record_call_table");
     }
 
-    switch (MR_sle_eval_method(level_layout)) {
+    eval_method = MR_sle_eval_method(level_layout);
+    switch (eval_method) {
 
     case MR_EVAL_METHOD_NORMAL:
         /* nothing to do */
@@ -1372,8 +1378,21 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
             call_table = (MR_TrieNode) MR_based_stackvar(base_sp,
                 level_layout->MR_sle_maybe_call_table);
         } else {
-            call_table = (MR_TrieNode) MR_based_framevar(base_curfr,
-                level_layout->MR_sle_maybe_call_table);
+            if (eval_method == MR_EVAL_METHOD_MEMO) {
+                MR_MemoNonRecordPtr record;
+
+                record = (MR_MemoNonRecordPtr) MR_based_framevar(base_curfr,
+                    level_layout->MR_sle_maybe_call_table);
+                call_table = record->MR_mn_back_ptr;
+
+#ifdef  MR_DEBUG_RETRY
+                printf("reset: memo non record %p, call_table %p\n",
+                        record, call_table);
+#endif
+            } else {
+                call_table = (MR_TrieNode) MR_based_framevar(base_curfr,
+                    level_layout->MR_sle_maybe_call_table);
+            }
         }
 
         if (call_table != NULL) {
@@ -1386,7 +1405,11 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
 
         return;
 
-    case MR_EVAL_METHOD_MINIMAL:
+    case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
+        MR_fatal_error("retry with MR_EVAL_METHOD_MINIMAL_OWN_STACKS: "
+            "not yet implemented");
+
+    case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
         /*
         ** We want to process all the minimal model calls whose
         ** stack frames are in the part of the nondet stack to be
@@ -1409,8 +1432,8 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
         char    buf[256];
 
         sprintf(buf, "unknown evaluation method %d "
-                "in MR_maybe_record_call_table",
-                MR_sle_eval_method(level_layout));
+            "in MR_maybe_record_call_table",
+            MR_sle_eval_method(level_layout));
         MR_fatal_error(buf);
     }
 }

@@ -1320,7 +1320,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	% In all other grades, this predicate is a noop.
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_pneg_enter_cond();
 #endif
 ").
@@ -1331,7 +1331,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	% In all other grades, this predicate is a noop.
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_pneg_enter_then();
 #endif
 ").
@@ -1342,7 +1342,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	% In all other grades, this predicate is a noop.
 	[will_not_call_mercury, thread_safe],
 "
-#ifdef MR_USE_MINIMAL_MODEL
+#ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
 	MR_pneg_enter_else();
 #endif
 ").

@@ -1201,6 +1201,9 @@ then
 	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
 	export MERCURY_DEBUGGER_INIT
 
+	MERCURY_SUPPRESS_STACK_TRACE=yes
+	export MERCURY_SUPPRESS_STACK_TRACE
+
 	if test "$test_grade" != ""
 	then
 		test_grade_opt="GRADE=$test_grade"

@@ -906,6 +906,8 @@ echo "test_mercury running tests in grades $GRADES" 1>&2
 for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
+	MERCURY_SUPPRESS_STACK_TRACE=yes
+	export MERCURY_SUPPRESS_STACK_TRACE
 	case $BRANCH in
 	    0.10)
 		./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \

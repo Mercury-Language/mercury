@@ -261,6 +261,7 @@
 
 % Parse tree modules.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -1936,8 +1937,16 @@ hlds_out__write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums,
 	Arg = foreign_arg(Var, MaybeNameMode, Type),
 	mercury_output_var(Var, VarSet, AppendVarNums, !IO),
 	(
-		MaybeNameMode = yes(Name - _),
-		io__write_string("/" ++ Name, !IO)
+		MaybeNameMode = yes(Name - Mode),
+		io__write_string("/" ++ Name ++ "(", !IO),
+		( Mode = in_mode ->
+			io__write_string("in", !IO)
+		; Mode = out_mode ->
+			io__write_string("out", !IO)
+		;
+			io__write(Mode, !IO)
+		),
+		io__write_string(")", !IO)
 	;
 		MaybeNameMode = no
 	),

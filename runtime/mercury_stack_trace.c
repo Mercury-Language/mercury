@@ -70,9 +70,9 @@ static  void        MR_dump_stack_record_init(MR_bool include_trace_data,
                         MR_bool include_contexts);
 static  void        MR_dump_stack_record_frame(FILE *fp,
                         const MR_Label_Layout *label_layout,
-                        MR_Word *base_sp, MR_Word *base_curfr, 
+                        MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Print_Stack_Record print_stack_record);
-static  void        MR_dump_stack_record_flush(FILE *fp, 
+static  void        MR_dump_stack_record_flush(FILE *fp,
                         MR_Print_Stack_Record print_stack_record);
 
 static  void        MR_print_proc_id_internal(FILE *fp,
@@ -92,31 +92,43 @@ void
 MR_dump_stack(MR_Code *success_pointer, MR_Word *det_stack_pointer,
     MR_Word *current_frame, MR_bool include_trace_data)
 {
-#ifndef MR_STACK_TRACE
-    fprintf(stderr, "Stack dump not available in this grade.\n");
-#else
-
     const MR_Internal       *label;
     const MR_Label_Layout   *layout;
     const char              *result;
+    MR_bool                 stack_dump_available;
+    char                    *env_suppress;
 
-    fprintf(stderr, "Stack dump follows:\n");
-
-    MR_do_init_modules();
-    label = MR_lookup_internal_by_addr(success_pointer);
-    if (label == NULL) {
-        fprintf(stderr, "internal label not found\n");
-    } else {
-        layout = label->i_layout;
-        result = MR_dump_stack_from_layout(stderr, layout,
-            det_stack_pointer, current_frame, include_trace_data,
-            MR_TRUE, 0, &MR_dump_stack_record_print);
-
-        if (result != NULL) {
-            fprintf(stderr, "%s\n", result);
-        }
+    env_suppress = getenv("MERCURY_SUPPRESS_STACK_TRACE");
+    if (env_suppress != NULL) {
+        return;
     }
+
+#ifdef MR_STACK_TRACE
+    stack_dump_available = MR_TRUE;
+#else
+    stack_dump_available = MR_FALSE;
 #endif
+
+    if (stack_dump_available) {
+        fprintf(stderr, "Stack dump follows:\n");
+
+        MR_do_init_modules();
+        label = MR_lookup_internal_by_addr(success_pointer);
+        if (label == NULL) {
+            fprintf(stderr, "internal label not found\n");
+        } else {
+            layout = label->i_layout;
+            result = MR_dump_stack_from_layout(stderr, layout,
+                det_stack_pointer, current_frame, include_trace_data,
+                MR_TRUE, 0, &MR_dump_stack_record_print);
+
+            if (result != NULL) {
+                fprintf(stderr, "%s\n", result);
+            }
+        }
+    } else {
+        fprintf(stderr, "Stack dump not available in this grade.\n");
+    }
 }
 
 const char *
@@ -487,7 +499,7 @@ MR_dump_nondet_stack_from_layout(FILE *fp, MR_Word *limit_addr, int limit,
             fprintf(fp, " succfr: ");
             MR_print_nondstackptr(fp, MR_succfr_slot(base_maxfr));
             fprintf(fp, "\n");
-#ifdef  MR_USE_MINIMAL_MODEL
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
             fprintf(fp, " detfr:  ");
             MR_print_detstackptr(fp, MR_table_detfr_slot(base_maxfr));
             fprintf(fp, "\n");
@@ -670,7 +682,7 @@ MR_init_nondet_branch_infos(MR_Word *base_maxfr,
             &stack_pointer, &current_frame, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
-        } 
+        }
 
     } while (label_layout != NULL);
 
@@ -930,8 +942,8 @@ MR_nofail_ip(MR_Code *ip)
     if (ip == MR_ENTRY(MR_do_trace_redo_fail_deep)) {
         return MR_FALSE;
     }
-#ifdef  MR_USE_MINIMAL_MODEL
-    if (ip == MR_ENTRY(MR_COMPLETION_ENTRY)) {
+#ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
+    if (ip == MR_ENTRY(MR_MMSC_COMPLETION_ENTRY)) {
         return MR_FALSE;
     }
 #endif
@@ -1227,6 +1239,8 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
     }
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_TABLE_DEBUG)
+  #if 0
+    /* reenable this code if you need to */
     if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
         MR_print_detstackptr(fp, base_sp);
     } else {
@@ -1234,6 +1248,7 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
     }
 
     fprintf(fp, " ");
+  #endif
 #endif
 }
 
@@ -1430,8 +1445,8 @@ MR_maybe_print_parent_context(FILE *fp, MR_bool print_parent, MR_bool verbose,
 }
 
 /*
-** The different Mercury determinisms are internally represented by integers. 
-** This array gives the correspondance with the internal representation and 
+** The different Mercury determinisms are internally represented by integers.
+** This array gives the correspondance with the internal representation and
 ** the names that are usually used to denote determinisms.
 */
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995, 1997, 1999-2000 The University of Melbourne.
+** Copyright (C) 1995, 1997, 1999-2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ MR_dlist_addhead(MR_Dlist *list, const void *data)
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
-	MR_dlist_length(list)++;
+	MR_dlist_length_field(list)++;
 
 	/* item's pointers	*/
 	MR_dlist_next(item) = MR_dlist_next(list);
@@ -87,7 +87,7 @@ MR_dlist_addtail(MR_Dlist *list, const void *data)
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
-	MR_dlist_length(list)++;
+	MR_dlist_length_field(list)++;
 
 	/* item's pointers	*/
 	MR_dlist_next(item) = list;
@@ -125,13 +125,13 @@ MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
 			MR_dlist_prev(MR_dlist_next(list1)) = list1;
 			MR_dlist_next(MR_dlist_prev(list1)) = list1;
 		} else {
-			MR_dlist_length(list1) = MR_dlist_length(list1)
-					+ MR_dlist_length(list2);
+			MR_dlist_length_field(list1) = MR_dlist_length(list1)
+				+ MR_dlist_length(list2);
 			/* end of list 1 to start of list 2	*/
 			MR_dlist_next(MR_dlist_prev(list1)) =
-					MR_dlist_next(list2);
+				MR_dlist_next(list2);
 			MR_dlist_prev(MR_dlist_next(list2)) =
-					MR_dlist_prev(list1);
+				MR_dlist_prev(list1);
 			/* end of list 2 to start of list 1	*/
 			MR_dlist_next(MR_dlist_prev(list2)) = list1;
 			MR_dlist_prev(list1) = MR_dlist_prev(list2);
@@ -179,7 +179,7 @@ MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
-	MR_dlist_length(list)++;
+	MR_dlist_length_field(list)++;
 
 	/* item's pointers */
 	MR_dlist_next(item) = where;
@@ -200,7 +200,7 @@ MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
-	MR_dlist_length(list)++;
+	MR_dlist_length_field(list)++;
 
 	/* item's pointers */
 	MR_dlist_next(item) = MR_dlist_next(where);
@@ -246,7 +246,7 @@ MR_dlist_delete(MR_Dlist *list, MR_Dlist *item, void (* func)(const void *))
 		func(MR_dlist_data(item));
 	}
 
-	MR_dlist_length(list)--;
+	MR_dlist_length_field(list)--;
 	MR_dlist_next(MR_dlist_prev(item)) = MR_dlist_next(item);
 	MR_dlist_prev(MR_dlist_next(item)) = MR_dlist_prev(item);
 

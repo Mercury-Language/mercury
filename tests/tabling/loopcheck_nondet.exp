@@ -1,0 +1,2 @@
+Uncaught Mercury exception:
+Software Error: detected infinite recursion in pred loopcheck_nondet.loop/2

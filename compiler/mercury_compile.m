@@ -205,15 +205,15 @@ real_main(!IO) :-
 		%
 		% Find out which options files to read.
 		%
-		handle_options(Args0, MaybeError0, OptionArgs, NonOptionArgs,
+		handle_options(Args0, Errors0, OptionArgs, NonOptionArgs,
 			Link, !IO),
 		(
-			MaybeError0 = yes(Error0),
-			usage_error(Error0, !IO),
+			Errors0 = [_ | _],
+			usage_errors(Errors0, !IO),
 			Variables = options_variables_init,
 			MaybeMCFlags = no
 		;
-			MaybeError0 = no,
+			Errors0 = [],
 			read_options_files(options_variables_init,
 				MaybeVariables0, !IO),
 			(
@@ -240,7 +240,7 @@ real_main(!IO) :-
 	),
 	(
 		MaybeMCFlags = yes(MCFlags),
-		handle_options(MCFlags ++ OptionArgs, MaybeError, _, _, _,
+		handle_options(MCFlags ++ OptionArgs, Errors, _, _, _,
 			!IO),
 
 		%
@@ -248,7 +248,7 @@ real_main(!IO) :-
 		% to `--make', only include the command-line
 		% arguments, not the contents of DEFAULT_MCFLAGS.
 		%
-		main_2(MaybeError, Variables, OptionArgs, NonOptionArgs, Link,
+		main_2(Errors, Variables, OptionArgs, NonOptionArgs, Link,
 			!IO)
 	;
 		MaybeMCFlags = no,
@@ -264,14 +264,14 @@ real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
 	% Process the options again to find out
 	% which configuration file to read.
 	%
-	handle_options(MCFlags0 ++ Args0, MaybeError1, _, _, _, !IO),
+	handle_options(MCFlags0 ++ Args0, Errors, _, _, _, !IO),
 	(
-		MaybeError1 = yes(Error1),
-		usage_error(Error1, !IO),
+		Errors = [_ | _],
+		usage_errors(Errors, !IO),
 		Variables = options_variables_init,
 		MaybeMCFlags = no
 	;
-		MaybeError1 = no,
+		Errors = [],
 		globals__io_lookup_maybe_string_option(config_file,
 			MaybeConfigFile, !IO),
 		(
@@ -295,7 +295,7 @@ real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
 	).
 
 main(Args, !IO) :-
-	main_2(no, options_variables_init, [], Args, no, !IO).
+	main_2([], options_variables_init, [], Args, no, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -326,12 +326,12 @@ gc_init(!IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred main_2(maybe(string)::in, options_variables::in, list(string)::in,
+:- pred main_2(list(string)::in, options_variables::in, list(string)::in,
 	list(string)::in, bool::in, io::di, io::uo) is det.
 
-main_2(yes(ErrorMessage), _, _, _, _, !IO) :-
-	usage_error(ErrorMessage, !IO).
-main_2(no, OptionVariables, OptionArgs, Args, Link, !IO) :-
+main_2(Errors @ [_ | _], _, _, _, _, !IO) :-
+	usage_errors(Errors, !IO).
+main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
 	globals__io_get_globals(Globals, !IO),
 	globals__lookup_bool_option(Globals, help, Help),
 	globals__lookup_bool_option(Globals, generate_source_file_mapping,

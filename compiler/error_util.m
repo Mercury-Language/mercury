@@ -72,6 +72,12 @@
 :- pred write_error_pieces_plain(list(format_component)::in,
 	io::di, io::uo) is det.
 
+	% write_error_plain_with_progname(ProgName, Msg):
+	% Display Msg as the error string, with ProgName as a context
+	% and with standard indentation.
+:- pred write_error_plain_with_progname(string::in, string::in,
+	io::di, io::uo) is det.
+
 	% Display the given error message.
 :- pred write_error_pieces(prog_context::in, int::in,
 	list(format_component)::in, io::di, io::uo) is det.
@@ -174,6 +180,9 @@ component_lists_to_pieces(
 
 write_error_pieces_plain(Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, no, 0, Components, !IO).
+
+write_error_plain_with_progname(ProgName, Msg, !IO) :-
+	write_error_pieces_plain([fixed(ProgName ++ ":"), words(Msg)], !IO).
 
 write_error_pieces(Context, Indent, Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, yes(Context),

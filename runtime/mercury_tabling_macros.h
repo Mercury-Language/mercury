@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -371,6 +371,15 @@
 				(int) (num_slots));			\
 	} while(0)
 
+#define MR_TABLE_CREATE_NODE_ANSWER_BLOCK(block_ptr, num_slots)		\
+	do {								\
+		*block_ptr = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots));	\
+		if (MR_tabledebug)					\
+			printf("allocated node block %p -> %p, %d words\n",\
+				block_ptr, *block_ptr,			\
+				(int) (num_slots));			\
+	} while(0)
+
 #define MR_TABLE_GET_ANSWER(ab, offset)					\
 	(( MR_tabledebug ?						\
 		printf("using answer block: %p, slot %d\n",		\
@@ -396,6 +405,11 @@
 	do {								\
 		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
 			(num_slots));					\
+	} while(0)
+
+#define MR_TABLE_CREATE_NODE_ANSWER_BLOCK(block_ptr, num_slots)		\
+	do {								\
+		*block_ptr = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots));	\
 	} while(0)
 
 #define MR_TABLE_GET_ANSWER(ab, offset)					\

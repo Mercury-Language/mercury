@@ -132,6 +132,13 @@
 	%		part of SymName0 with the suffix added
 :- pred add_sym_name_suffix(sym_name::in, string::in, sym_name::out) is det.
 
+	% transform_sym_base_name(TransformFunc, SymName0) = SymName
+	% succeeds iff
+	%	SymName and SymName0 have the same module qualifier
+	%	and the unqualified part of SymName is the result of applying
+	%	TransformFunc to the unqualified part of SymName0.
+:- func transform_sym_base_name(func(string) = string, sym_name) = sym_name.
+
 	% insert_module_qualifier(ModuleName, SymName0, SymName):
 	%	prepend the specified ModuleName onto the module
 	%	qualifiers in SymName0, giving SymName.
@@ -521,6 +528,11 @@ add_sym_name_suffix(qualified(Module, Name0), Suffix,
 	string__append(Name0, Suffix, Name).
 add_sym_name_suffix(unqualified(Name0), Suffix, unqualified(Name)) :-
 	string__append(Name0, Suffix, Name).
+
+transform_sym_base_name(TransformFunc, qualified(Module, Name0)) =
+		qualified(Module, TransformFunc(Name0)).
+transform_sym_base_name(TransformFunc, unqualified(Name0)) =
+		unqualified(TransformFunc(Name0)).
 
 %-----------------------------------------------------------------------------%
 

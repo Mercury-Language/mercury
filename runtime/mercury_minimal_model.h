@@ -5,11 +5,11 @@
 */
 
 /*
-** mercury_minimal_model.h - definitions of some basic stuff used for tabling.
-** For tabling code, the Mercury compiler (compiler/table_gen.m) generates
-** references to special procedures defined in library/table_builtin.m.
-** The types and macros defined here are used by the procedures defined in
-** library/table_builtin.m.
+** mercury_minimal_model.h - definitions of some basic stuff used for the stack
+** copy style of minimal model tabling. For tabling code, the Mercury compiler
+** (compiler/table_gen.m) generates references to special procedures defined
+** in library/table_builtin.m. The types and macros defined here are used
+** by the procedures defined in library/table_builtin.m.
 */
 
 #ifndef	MERCURY_MINIMAL_MODEL_H
@@ -21,14 +21,7 @@
 #include "mercury_goto.h"		/* for MR_declare_entry */
 #include <stdio.h>
 
-struct MR_AnswerListNode_Struct {
-	MR_TableNode	MR_aln_answer_data;
-				/* always uses the MR_answerblock member */
-	MR_AnswerList	MR_aln_next_answer;
-#ifdef	MR_MINIMAL_MODEL_DEBUG
-	MR_Integer	MR_aln_answer_num;
-#endif
-};
+#ifdef	MR_USE_MINIMAL_MODEL_STACK_COPY
 
 /*
 ** The saved state of a generator or a consumer. While consumers get
@@ -104,6 +97,7 @@ typedef struct {
 ** subgoal. The list of answers it points to expands transparently whenever
 ** the generator subgoal adds an answer to its answer list.
 */
+
 struct MR_Consumer_Struct {
 	MR_SavedState		MR_cns_saved_state;
 	MR_Subgoal		*MR_cns_subgoal;
@@ -201,8 +195,6 @@ struct MR_Subgoal_Struct {
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef	MR_USE_MINIMAL_MODEL
-
 extern	const MR_Proc_Layout	*MR_subgoal_debug_cur_proc;
 
 extern	void		MR_enter_consumer_debug(MR_Consumer *consumer);
@@ -240,31 +232,50 @@ extern	int		MR_minmodel_stats_cnt_dupl_check_not_dupl;
 /* XXX */
 #endif
 
-#endif	/* MR_USE_MINIMAL_MODEL */
+#endif	/* MR_USE_MINIMAL_MODEL_STACK_COPY */
 
-#ifndef	MR_HIGHLEVEL_CODE
+#ifdef	MR_HIGHLEVEL_CODE
 
-  #define MR_SUSPEND_ENTRY						\
+  extern void MR_CALL
+  	mercury__table_builtin__table_mm_completion_1_p_0(
+		MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+		MR_Cont cont, void *cont_env_ptr);
+  extern void MR_CALL
+  	mercury__table_builtin__table_mm_suspend_consumer_2_p_0(
+		MR_C_Pointer subgoal_table_node);
+  extern void MR_CALL
+  	mercury__table_builtin__table_mm_return_all_nondet_2_2_p_0(
+		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
+  extern void MR_CALL
+  	mercury__table_builtin__table_mm_return_all_multi_2_2_p_0(
+		MR_C_Pointer answer_list, MR_C_Pointer answer_block);
+  extern void MR_CALL
+  	mercury__table_builtin__table_mm_answer_is_not_duplicate_1_p_0(
+		MR_C_Pointer subgoal_table_node);
+
+#else	/* ! MR_HIGHLEVEL_CODE */
+
+  #define MR_MMSC_SUSPEND_ENTRY						\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_suspend_consumer, 2, 0)
-  #define MR_COMPLETION_ENTRY						\
+  #define MR_MMSC_COMPLETION_ENTRY					\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_completion, 1, 0)
-  #define MR_RET_ALL_NONDET_ENTRY					\
+  #define MR_MMSC_RET_ALL_NONDET_ENTRY					\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_return_all_nondet, 2, 0)
-  #define MR_RET_ALL_MULTI_ENTRY					\
+  #define MR_MMSC_RET_ALL_MULTI_ENTRY					\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_return_all_multi, 2, 0)
-  #define MR_IS_NOT_DUPL_ENTRY						\
+  #define MR_MMSC_IS_NOT_DUPL_ENTRY					\
 	MR_proc_entry_user_name(table_builtin,				\
 		table_mm_answer_is_not_duplicate, 1, 0)
 
-  MR_declare_entry(MR_SUSPEND_ENTRY);
-  MR_declare_entry(MR_COMPLETION_ENTRY);
-  MR_declare_entry(MR_RET_ALL_NONDET_ENTRY);
-  MR_declare_entry(MR_RET_ALL_MULTI_ENTRY);
-  MR_declare_entry(MR_IS_NOT_DUPL_ENTRY);
+  MR_declare_entry(MR_MMSC_SUSPEND_ENTRY);
+  MR_declare_entry(MR_MMSC_COMPLETION_ENTRY);
+  MR_declare_entry(MR_MMSC_RET_ALL_NONDET_ENTRY);
+  MR_declare_entry(MR_MMSC_RET_ALL_MULTI_ENTRY);
+  MR_declare_entry(MR_MMSC_IS_NOT_DUPL_ENTRY);
 
 #endif	/* !MR_HIGHLEVEL_CODE */
 

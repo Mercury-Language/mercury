@@ -19,8 +19,20 @@
 #
 #---------------------------------------------------------------------------#
 
+use_minimal_model=false
+case $use_minimal_model_stack_copy in
+	true)
+		use_minimal_model=true
+		;;
+esac
+case $use_minimal_model_own_stacks in
+	true)
+		use_minimal_model=true
+		;;
+esac
+
 #
-# .tr grade is not compatible with .mm
+# .tr grade is not compatible with .*mm*
 #	(see comment in runtime/mercury_tabling.c for rationale)
 #
 case $use_trail,$use_minimal_model in true,true)
@@ -29,7 +41,7 @@ case $use_trail,$use_minimal_model in true,true)
 esac
 
 #
-# .debug grade implies --use-trail in the absence of .mm
+# .debug grade implies --use-trail in the absence of .*mm*
 #	(see comment in compiler/handle_options.m for rationale)
 #
 case $debug,$use_minimal_model in true,false)

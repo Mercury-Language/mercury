@@ -39,7 +39,7 @@ if $simple_only
 then
 	testcases=`mmake echo_simple_nonloop_progs`
 else
-	testcases=`mmake echo_nondet_nonloop_progs echo_simple_nonloop_progs`
+	testcases=`mmake echo_minimal_nonloop_progs echo_simple_nonloop_progs`
 fi
 
 status=0

@@ -365,14 +365,14 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
 		AllOptionArgs = list__condense([InvokedByMake,
 			ModuleOptionArgs, OptionArgs,
 			ExtraOptions, UseSubdirs]),
-		handle_options(AllOptionArgs, OptionsError, _, _, _, !IO),
+		handle_options(AllOptionArgs, OptionsErrors, _, _, _, !IO),
 		(
-			OptionsError = yes(OptionsMessage),
+			OptionsErrors = [_ | _],
 			Succeeded = no,
 			MaybeInfo = no,
-			usage_error(OptionsMessage, !IO)
+			usage_errors(OptionsErrors, !IO)
 		;
-			OptionsError = no,
+			OptionsErrors = [],
 			Build(AllOptionArgs, Succeeded, Info0, Info, !IO),
 			MaybeInfo = yes(Info),
 			globals__io_set_globals(unsafe_promise_unique(Globals),

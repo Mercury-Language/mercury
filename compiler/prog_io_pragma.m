@@ -869,8 +869,12 @@ parse_pragma_type(ModuleName, "loop_check", PragmaTerms,
 		PragmaTerms, ErrorTerm, Result).
 parse_pragma_type(ModuleName, "minimal_model", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
-	parse_tabling_pragma(ModuleName, "minimal_model", eval_minimal,
-		PragmaTerms, ErrorTerm, Result).
+	% We don't yet know whether we will use the stack_copy or the
+	% own_stacks technique for computing minimal models. The decision
+	% depends on the grade, and is made in make_hlds.m; the stack_copy here
+	% is just a placeholder.
+	parse_tabling_pragma(ModuleName, "minimal_model",
+		eval_minimal(stack_copy), PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-

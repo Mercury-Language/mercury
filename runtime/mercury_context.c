@@ -26,6 +26,9 @@ ENDINIT
 #include "mercury_engine.h"		/* for `MR_memdebug' */
 #include "mercury_reg_workarounds.h"	/* for `MR_fd*' stuff */
 
+static	void	MR_init_context_maybe_generator(MR_Context *c,
+			MR_Generator *gen);
+
 MR_Context	*MR_runqueue_head;
 MR_Context	*MR_runqueue_tail;
 #ifdef	MR_THREAD_SAFE
@@ -83,8 +86,9 @@ MR_finalize_runqueue(void)
 }
 
 void 
-MR_init_context(MR_Context *c)
+MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
 {
+	c->MR_ctxt_id = id;
 	c->MR_ctxt_next = NULL;
 	c->MR_ctxt_resume = NULL;
 #ifdef	MR_THREAD_SAFE
@@ -96,18 +100,26 @@ MR_init_context(MR_Context *c)
 
 	if (c->MR_ctxt_detstack_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_detstack_zone);
+	} else if (gen != NULL) {
+		c->MR_ctxt_detstack_zone = MR_create_zone("gen_detstack",
+			0, MR_gen_detstack_size, MR_next_offset(),
+			MR_gen_detstack_zone_size, MR_default_handler);
 	} else {
-		c->MR_ctxt_detstack_zone = MR_create_zone("detstack", 0,
-			MR_detstack_size, MR_next_offset(),
+		c->MR_ctxt_detstack_zone = MR_create_zone("detstack",
+			0, MR_detstack_size, MR_next_offset(),
 			MR_detstack_zone_size, MR_default_handler);
 	}
 	c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->min;
 
 	if (c->MR_ctxt_nondetstack_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_nondetstack_zone);
+	} else if (gen != NULL) {
+		c->MR_ctxt_nondetstack_zone = MR_create_zone("gen_nondetstack",
+			0, MR_gen_nonstack_size, MR_next_offset(),
+			MR_gen_nonstack_zone_size, MR_default_handler);
 	} else {
-		c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack", 0,
-			MR_nondstack_size, MR_next_offset(),
+		c->MR_ctxt_nondetstack_zone = MR_create_zone("nondetstack",
+			0, MR_nondstack_size, MR_next_offset(),
 			MR_nondstack_zone_size, MR_default_handler);
 	}
 	/*
@@ -127,7 +139,12 @@ MR_init_context(MR_Context *c)
 		MR_ENTRY(MR_do_not_reached);
 	MR_succfr_slot_word(c->MR_ctxt_curfr) = (MR_Word) NULL;
 
-  #ifdef MR_USE_MINIMAL_MODEL
+  #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
+	if (gen != NULL) {
+		MR_fatal_error("MR_init_context_maybe_generator: "
+			"generator and stack_copy");
+	}
+
 	if (c->MR_ctxt_genstack_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_genstack_zone);
 	} else {
@@ -154,10 +171,19 @@ MR_init_context(MR_Context *c)
 			MR_pnegstack_zone_size, MR_default_handler);
 	}
 	c->MR_ctxt_pneg_next = 0;
-  #endif /* MR_USE_MINIMAL_MODEL */
+  #endif /* MR_USE_MINIMAL_MODEL_STACK_COPY */
+
+  #ifdef MR_USE_MINIMAL_MODEL_OWN_STACKS
+	c->MR_ctxt_owner_generator = gen;
+  #endif /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 #endif /* !MR_HIGHLEVEL_CODE */
 
 #ifdef MR_USE_TRAIL
+	if (gen != NULL) {
+		MR_fatal_error("MR_init_context_maybe_generator: "
+			"generator and trail");
+	}
+
 	if (c->MR_ctxt_trail_zone != NULL) {
 		MR_reset_redzone(c->MR_ctxt_trail_zone);
 	} else {
@@ -170,11 +196,19 @@ MR_init_context(MR_Context *c)
 	c->MR_ctxt_ticket_high_water = 1;
 #endif
 
+#ifndef	MR_CONSERVATIVE_GC
+	if (is_generator) {
+		MR_fatal_error("MR_init_context_maybe_generator: "
+			"generator and no conservative gc");
+	}
+
 	c->MR_ctxt_hp = NULL;
+	c->MR_ctxt_min_hp_rec = NULL;
+#endif
 }
 
 MR_Context *
-MR_create_context(void)
+MR_create_context(const char *id, MR_Generator *gen)
 {
 	MR_Context *c;
 
@@ -195,7 +229,7 @@ MR_create_context(void)
 		MR_UNLOCK(&free_context_list_lock, "create_context ii");
 	}
 
-	MR_init_context(c);
+	MR_init_context(c, id, gen);
 
 	return c;
 }

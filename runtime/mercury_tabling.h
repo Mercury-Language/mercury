@@ -117,9 +117,6 @@
 ** MR_type_table field.
 */
 
-typedef	MR_Word		*MR_AnswerBlock;
-typedef	MR_Subgoal	*MR_SubgoalPtr;
-
 /* these macros are used to interpret the MR_loop_status field */
 #define	MR_LOOP_INACTIVE	0
 #define	MR_LOOP_ACTIVE		1
@@ -132,21 +129,44 @@ typedef	MR_Subgoal	*MR_SubgoalPtr;
 #define	MR_MEMO_BLOCK		4
 
 typedef enum {
+	MR_MEMO_NON_INACTIVE,
+	MR_MEMO_NON_ACTIVE,
+	MR_MEMO_NON_INCOMPLETE,
+	MR_MEMO_NON_COMPLETE
+} MR_MemoNonStatus;
+
+typedef enum {
 	MR_SUBGOAL_INACTIVE,
 	MR_SUBGOAL_ACTIVE,
 	MR_SUBGOAL_COMPLETE
 } MR_SubgoalStatus;
 
+struct MR_AnswerListNode_Struct {
+	MR_Word			*MR_aln_answer_block;
+	MR_AnswerList		MR_aln_next_answer;
+};
+
 union MR_TableNode_Union {
-	MR_Integer	MR_integer;
-	MR_HashTable	*MR_hash_table;
-	MR_TableNode	*MR_fix_table;
-	MR_TableNode	*MR_start_table;
-	MR_Unsigned	MR_loop_status;
-	MR_Unsigned	MR_memo_status;
-	MR_Subgoal	*MR_subgoal;
-	MR_AnswerBlock	MR_answerblock;
-	MR_Dlist	*MR_type_table;
+	MR_Integer		MR_integer;
+	MR_HashTable		*MR_hash_table;
+	MR_TableNode		*MR_fix_table;
+	MR_TableNode		*MR_start_table;
+	MR_Unsigned		MR_loop_status;
+	MR_Unsigned		MR_memo_status;
+	MR_Subgoal		*MR_subgoal;
+	MR_MemoNonRecordPtr	MR_memo_non_record;
+	MR_Consumer		*MR_consumer;
+	MR_AnswerBlock		MR_answerblock;
+	MR_Dlist		*MR_type_table;
+};
+
+struct MR_MemoNonRecord_Struct {
+	MR_TrieNode		MR_mn_back_ptr;
+	MR_MemoNonStatus	MR_mn_status;
+	int			MR_mn_num_answers;
+	MR_TableNode		MR_mn_answer_table;
+	MR_AnswerList		MR_mn_answer_list;
+	MR_AnswerList		*MR_mn_answer_list_tail;
 };
 
 /*---------------------------------------------------------------------------*/
@@ -247,8 +267,31 @@ extern	MR_bool		MR_get_string_hash_table_contents(MR_TrieNode t,
 extern	void		MR_table_report_statistics(FILE *fp);
 
 /*
+** These functions return printable representations of the MR_loop_status
+** MR_memo_status and MR_mn_status fields.
+*/
+
+extern	const char	*MR_loopcheck_status(MR_Unsigned);
+extern	const char	*MR_memo_status(MR_Unsigned);
+extern	const char	*MR_memo_non_status(MR_MemoNonStatus);
+
+/*
+** These functions print the tips of the call tables for loopcheck and memo
+** tabled predicates to fp.
+*/
+
+extern	void		MR_print_loopcheck_tip(FILE *fp,
+				const MR_Proc_Layout *proc, MR_TrieNode table);
+extern	void		MR_print_memo_tip(FILE *fp,
+				const MR_Proc_Layout *proc, MR_TrieNode table);
+extern	void		MR_print_memo_non_record(FILE *fp,
+				const MR_Proc_Layout *proc,
+				MR_MemoNonRecordPtr record);
+
+/*
 ** Prints the given answer_block of the given procedure to fp.
 */
+
 extern	void		MR_print_answerblock(FILE *fp,
 				const MR_Proc_Layout *proc,
 				MR_Word *answer_block);
@@ -350,6 +393,31 @@ extern	void		MR_print_answerblock(FILE *fp,
 	(MR_CHECK_EXPR_TYPE((source), type *),				\
 	MR_memcpy((char *) (dest), (char *) (source),			\
 		sizeof(type) * (num))))
+
+/*---------------------------------------------------------------------------*/
+
+#ifdef	MR_HIGHLEVEL_CODE
+
+  extern void MR_CALL
+	mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
+		MR_Box record, MR_Box *answer_block_ptr,
+		MR_Cont cont, void *cont_env_ptr);
+  extern void MR_CALL
+  	mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+		MR_Box record, MR_Box *answer_block_ptr,
+		MR_Cont cont, void *cont_env_ptr);
+
+#else	/* ! MR_HIGHLEVEL_CODE */
+  #define MR_MEMO_NON_RET_ALL_NONDET_ENTRY				\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_memo_return_all_answers_nondet, 2, 0)
+  #define MR_MEMO_NON_RET_ALL_MULTI_ENTRY				\
+	MR_proc_entry_user_name(table_builtin,				\
+		table_memo_return_all_answers_multi, 2, 0)
+
+  MR_declare_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
+  MR_declare_entry(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
+#endif	/* MR_HIGHLEVEL_CODE */
 
 /*---------------------------------------------------------------------------*/
 

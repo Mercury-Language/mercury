@@ -233,7 +233,8 @@
 		;	gc
 		;	parallel
 		;	use_trail
-		;	use_minimal_model
+		;	use_minimal_model_stack_copy
+		;	use_minimal_model_own_stacks
 		;	minimal_model_debug
 		;	type_layout
 
@@ -888,7 +889,8 @@ option_defaults_2(compilation_model_option, [
 	gc			-	string("boehm"),
 	parallel		-	bool(no),
 	use_trail		-	bool(no),
-	use_minimal_model	-	bool(no),
+	use_minimal_model_stack_copy	-	bool(no),
+	use_minimal_model_own_stacks	-	bool(no),
 	minimal_model_debug	-	bool(no),
 	type_layout		-	bool(yes),
 
@@ -1533,7 +1535,8 @@ long_option("use-trail",		use_trail).
 long_option("type-layout",		type_layout).
 	% Data represention options
 long_option("reserve-tag",		reserve_tag).
-long_option("use-minimal-model",	use_minimal_model).
+long_option("use-minimal-model-stack_copy",	use_minimal_model_stack_copy).
+long_option("use-minimal-model-own-stacks",	use_minimal_model_own_stacks).
 long_option("minimal-model-debug",	minimal_model_debug).
 long_option("pic",			pic).
 long_option("pic-reg",			pic_reg).
@@ -3289,9 +3292,13 @@ your program compiled with different options.
 	]),
 	io__write_string("\n      Developer optional features\n"),
 	write_tabbed_lines([
-		"--use-minimal-model",
+		"--use-minimal-model-stack-copy",
 		"(This option is not for general use.)",
-		"\tEnable the use of minimal model tabling.",
+		"\tEnable the use of the standard form of minimal model tabling.",
+
+		"--use-minimal-model-own-stacks",
+		"(This option is not for general use.)",
+		"\tEnable the use of an experimental form of minimal model tabling.",
 
 		"--minimal-model-debug",
 		"(This option is not for general use.)",

@@ -278,47 +278,69 @@ typedef struct MR_mercury_thread_list_struct {
 
 typedef struct MR_mercury_engine_struct {
 	MR_Word		MR_eng_fake_reg[MR_MAX_FAKE_REG];
-		/* The fake reg vector for this engine. */
+			/* The fake reg vector for this engine. */
 #ifndef MR_CONSERVATIVE_GC
 	MR_Word		*MR_eng_hp;
-		/* The heap pointer for this engine */
+			/* The heap pointer for this engine */
 	MR_Word		*MR_eng_sol_hp;
-		/* The solutions heap pointer for this engine */
+			/* The solutions heap pointer for this engine */
 	MR_Word		*MR_eng_global_hp;
-		/* The global heap pointer for this engine */
+			/* The global heap pointer for this engine */
 #endif
 	MR_Context	*MR_eng_this_context;
-		/*
-		** MR_eng_this_context points to the context currently
-		** executing in this engine.
-		*/
+			/*
+			** MR_eng_this_context points to the context currently
+			** executing in this engine.
+			*/
 	MR_Context	MR_eng_context;
-		/*
-		** MR_eng_context stores all the context information
-		** for the context executing in this engine.
-		*/
+			/*
+			** MR_eng_context stores all the context information
+			** for the context executing in this engine.
+			*/
+#ifdef	MR_USE_MINIMAL_MODEL_OWN_STACKS
+	MR_Context	*MR_eng_main_context;
+			/*
+			** The context of the main computation. The
+			** owner_generator field of this context must be NULL.
+			*/
+	MR_Dlist	*MR_eng_gen_contexts;	/* elements are MR_Context */
+			/*
+			** The contexts of the active generators. The
+			** owner_generator fields of these contexts will point
+			** to their generators.
+			*/
+	MR_Dlist	*MR_eng_free_contexts;	/* elements are MR_Context */
+			/*
+			** Contexts that used to belong to active generators,
+			** but which are no longer needed. They are cached here
+			** to allow new generators to be created without
+			** redoing the work required to allocate a new context.
+			*/
+#endif
 #ifdef	MR_THREAD_SAFE
 	MercuryThread	MR_eng_owner_thread;
 	unsigned	MR_eng_c_depth;
 	MercuryThreadList *MR_eng_saved_owners;
-		/*
-		** These three fields are used to ensure that when a
-		** thread executing C code calls the Mercury engine
-		** associated with that thread, the Mercury code
-		** will finish in the same engine and return appropriately.
-		** Each time C calls Mercury in a thread, the c_depth
-		** is incremented, and the owner_thread field of the current
-		** context is set to the id of the thread. While the
-		** owner_thread is set, the context will not be scheduled
-		** for execution by any other thread. When the call to
-		** the Mercury engine finishes, c_depth is decremented and
-		** the owner_thread field of the current context is restored
-		** to its previous value.
-		** The list `saved_owners' is used in call_engine_inner
-		** to store the owner of a context across calls into Mercury.
-		** At the moment this is only used for sanity checking - that
-		** execution never returns into C in the wrong thread.
-		*/
+			/*
+			** These three fields are used to ensure that when a
+			** thread executing C code calls the Mercury engine
+			** associated with that thread, the Mercury code
+			** will finish in the same engine and return
+			** appropriately. Each time C calls Mercury in a
+			** thread, the c_depth is incremented, and the
+			** owner_thread field of the current context is set
+			** to the id of the thread. While the owner_thread
+			** is set, the context will not be scheduled for
+			** execution by any other thread. When the call to
+			** the Mercury engine finishes, c_depth is decremented
+			** and the owner_thread field of the current context
+			** is restored to its previous value. The list
+			** `saved_owners' is used in call_engine_inner to store
+			** the owner of a context across calls into Mercury.
+			** At the moment this is only used for sanity checking
+			** - that execution never returns into C in the
+			** wrong thread.
+			*/
 #endif
 	jmp_buf		*MR_eng_jmp_buf;
 	MR_Word		*MR_eng_exception;
@@ -369,7 +391,7 @@ typedef struct MR_mercury_engine_struct {
 
 #else 	/* !MR_THREAD_SAFE */
 
-  extern MercuryEngine	MR_engine_base;
+  extern MercuryEngine		MR_engine_base;
   #define MR_ENGINE(x)		(MR_engine_base.x)
   #define MR_cur_engine()	(&MR_engine_base)
   #define MR_get_engine()	(&MR_engine_base)

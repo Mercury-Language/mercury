@@ -2245,8 +2245,8 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 	% is polymorphic.
 	goal_util__generate_simple_call(mercury_private_builtin_module,
 		"superclass_from_typeclass_info", predicate, only_mode, det,
-		[SubClassVar, IndexVar, Var], no,
-		[], ModuleInfo, term__context_init, SuperClassGoal),
+		[SubClassVar, IndexVar, Var], [], [], ModuleInfo,
+		term__context_init, SuperClassGoal),
 	!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
 :- pred polymorphism__construct_typeclass_info(list(prog_var)::in,
@@ -2897,7 +2897,7 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 		TypeInfoVar, !VarSet, !VarTypes),
 	goal_util__generate_simple_call(mercury_private_builtin_module,
 		"type_info_from_typeclass_info", predicate, only_mode, det,
-		[TypeClassInfoVar, IndexVar, TypeInfoVar], no,
+		[TypeClassInfoVar, IndexVar, TypeInfoVar], [],
 		[TypeInfoVar - ground(shared, none)], ModuleInfo,
 		term__context_init, CallGoal),
 	Goals = [IndexGoal, CallGoal].

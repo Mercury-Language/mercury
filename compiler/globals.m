@@ -75,11 +75,10 @@
 			% than the Boehm collector, so we don't really
 			% support this option anymore.
 
-	;	accurate
+	;	accurate.
 			% Our own home-grown copying collector.
 			% See runtime/mercury_accurate_gc.c
 			% and compiler/ml_elim_nested.m.
-	.
 
 	% Returns yes if the GC method is conservative,
 	% i.e. if it is `boehm' or `mps'.
@@ -230,6 +229,8 @@
 :- pred globals__io_lookup_accumulating_option(option::in, list(string)::out,
 	io::di, io::uo) is det.
 
+:- pred globals__io_printing_usage(bool::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -308,13 +309,14 @@ gc_is_conservative(automatic) = no.
 			termination_norm 	:: termination_norm,
 			trace_level 		:: trace_level,
 			trace_suppress_items	:: trace_suppress_items,
-			source_file_map		:: maybe(source_file_map)
+			source_file_map		:: maybe(source_file_map),
+			have_printed_usage	:: bool
 		).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
 		TerminationNorm, TraceLevel, TraceSuppress,
 	globals(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress, no)).
+		TerminationNorm, TraceLevel, TraceSuppress, no, no)).
 
 globals__get_options(Globals, Globals ^ options).
 globals__get_target(Globals, Globals ^ target).
@@ -588,4 +590,14 @@ globals__io_lookup_accumulating_option(Option, Value) -->
 	{ globals__lookup_accumulating_option(Globals, Option, Value) }.
 
 %-----------------------------------------------------------------------------%
+
+globals__io_printing_usage(AlreadyPrinted, !IO) :-
+	globals__io_get_globals(Globals0, !IO),
+	AlreadyPrinted = Globals0 ^ have_printed_usage,
+	Globals1 = Globals0 ^ have_printed_usage := yes,
+	unsafe_promise_unique(Globals1, Globals),
+		% XXX there is a bit of a design flaw with regard to
+		% uniqueness and io__set_globals
+	globals__io_set_globals(Globals, !IO).
+
 %-----------------------------------------------------------------------------%

@@ -578,19 +578,43 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 	;
 		ReserveTagOpt = ""
 	),
-	globals__io_lookup_bool_option(use_minimal_model, MinimalModel, !IO),
+	globals__io_lookup_bool_option(use_minimal_model_stack_copy,
+		MinimalModelStackCopy, !IO),
+	globals__io_lookup_bool_option(use_minimal_model_own_stacks,
+		MinimalModelOwnStacks, !IO),
+	(
+		MinimalModelStackCopy = yes,
+		MinimalModelOwnStacks = yes,
+		% this should have been caught in handle_options
+		error("compile_c_file: inconsistent minimal model options")
+	;
+		MinimalModelStackCopy = yes,
+		MinimalModelOwnStacks = no,
+		MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_STACK_COPY "
+	;
+		MinimalModelStackCopy = no,
+		MinimalModelOwnStacks = yes,
+		MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_OWN_STACKS "
+	;
+		MinimalModelStackCopy = no,
+		MinimalModelOwnStacks = no,
+		MinimalModelBaseOpt = ""
+	),
 	globals__io_lookup_bool_option(minimal_model_debug, MinimalModelDebug,
 		!IO),
-	( MinimalModel = yes ->
-		(
-			MinimalModelDebug = yes,
-			MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL -DMR_MINIMAL_MODEL_DEBUG"
+	(
+		MinimalModelDebug = yes,
+		( MinimalModelBaseOpt = "" ->
+			% We ignore the debug flag unless one of the base flags
+			% is set.
+			MinimalModelOpt = MinimalModelBaseOpt
 		;
-			MinimalModelDebug = no,
-			MinimalModelOpt = "-DMR_USE_MINIMAL_MODEL "
+			MinimalModelOpt = MinimalModelBaseOpt ++
+				"-DMR_MINIMAL_MODEL_DEBUG"
 		)
 	;
-		MinimalModelOpt = ""
+		MinimalModelDebug = no,
+		MinimalModelOpt = MinimalModelBaseOpt
 	),
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption, !IO),
 	( TypeLayoutOption = no ->

@@ -1154,9 +1154,13 @@ MR_table_report_statistics(FILE *fp)
         MR_table_hash_resize_new_entries);
     fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
 
-  #ifdef    MR_USE_MINIMAL_MODEL
+  #ifdef    MR_USE_MINIMAL_MODEL_STACK_COPY
     fprintf(fp, "\n");
     MR_minimal_model_report_stats(fp);
+  #endif
+  #ifdef    MR_USE_MINIMAL_MODEL_OWN_STACKS
+    fprintf(fp, "\n");
+    MR_mm_own_stacks_report_stats(fp);
   #endif
 #else
     fprintf(fp, "not enabled\n");
@@ -1165,53 +1169,414 @@ MR_table_report_statistics(FILE *fp)
 
 /*---------------------------------------------------------------------------*/
 
+const char *
+MR_loopcheck_status(MR_Unsigned status)
+{
+    switch (status) {
+        case MR_LOOP_INACTIVE:
+            return "INACTIVE";
+
+        case MR_LOOP_ACTIVE:
+            return "ACTIVE";
+    }
+
+    return "INVALID";
+}
+
+const char *
+MR_memo_status(MR_Unsigned status)
+{
+    switch (status) {
+        case MR_MEMO_INACTIVE:
+            return "INACTIVE";
+
+        case MR_MEMO_ACTIVE:
+            return "ACTIVE";
+
+        case MR_MEMO_SUCCEEDED:
+            return "SUCCEEDED";
+
+        case MR_MEMO_FAILED:
+            return "FAILED";
+
+        default:
+            return "SUCCESS_BLOCK";
+    }
+
+    return "INVALID";
+}
+
+const char *
+MR_memo_non_status(MR_MemoNonStatus status)
+{
+    switch (status) {
+        case MR_MEMO_NON_INACTIVE:
+            return "INACTIVE";
+
+        case MR_MEMO_NON_ACTIVE:
+            return "ACTIVE";
+
+        case MR_MEMO_NON_INCOMPLETE:
+            return "INCOMPLETE";
+
+        case MR_MEMO_NON_COMPLETE:
+            return "COMPLETE";
+    }
+
+    return "INVALID";
+}
+
+void
+MR_print_loopcheck_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
+{
+    switch (table->MR_loop_status) {
+        case MR_LOOP_INACTIVE:
+            fprintf(fp, "uninitialized\n");
+            break;
+        case MR_LOOP_ACTIVE:
+            fprintf(fp, "working\n");
+            break;
+        default:
+            MR_fatal_error("MR_print_loopcheck: bad status");
+    }
+}
+
+void
+MR_print_memo_tip(FILE *fp, const MR_Proc_Layout *proc, MR_TrieNode table)
+{
+    switch (table->MR_memo_status) {
+        case MR_MEMO_INACTIVE:
+            fprintf(fp, "uninitialized\n");
+            break;
+        case MR_MEMO_ACTIVE:
+            fprintf(fp, "working\n");
+            break;
+        case MR_MEMO_FAILED:
+            fprintf(fp, "failed\n");
+            break;
+        case MR_MEMO_SUCCEEDED:
+            fprintf(fp, "succeeded (no outputs)\n");
+            break;
+        default:
+            fprintf(fp, "succeeded <");
+            MR_print_answerblock(fp, proc, table->MR_answerblock);
+            fprintf(fp, ">\n");
+            break;
+    }
+}
+
+void
+MR_print_memo_non_record(FILE *fp, const MR_Proc_Layout *proc,
+    MR_MemoNonRecordPtr record)
+{
+    MR_AnswerList   answer_list;
+    int             i;
+
+    if (record == NULL) {
+        fprintf(fp, "inactive\n");
+        return;
+    }
+
+    switch (record->MR_mn_status) {
+        case MR_MEMO_NON_INACTIVE:
+            fprintf(fp, "inactive\n");
+            return;
+        case MR_MEMO_NON_ACTIVE:
+            fprintf(fp, "active\n");
+            break;
+        case MR_MEMO_NON_INCOMPLETE:
+            fprintf(fp, "incomplete\n");
+            break;
+        case MR_MEMO_NON_COMPLETE:
+            fprintf(fp, "complete\n");
+            break;
+        default:
+            MR_fatal_error("MR_print_memo_non_record: bad status");
+            break;
+    }
+
+    answer_list = record->MR_mn_answer_list;
+    i = 1;
+    while (answer_list != NULL) {
+        fprintf(fp, "answer #%d: <", i);
+        MR_print_answerblock(fp, proc, answer_list->MR_aln_answer_block);
+        fprintf(fp, ">\n");
+        answer_list = answer_list->MR_aln_next_answer;
+        i++;
+    }
+}
+
 void
 MR_print_answerblock(FILE *fp, const MR_Proc_Layout *proc,
-	MR_Word *answer_block)
+    MR_Word *answer_block)
 {
-	const MR_PseudoTypeInfo	*ptis;
-	MR_PseudoTypeInfo	pti;
-	MR_TypeCtorInfo		tci;
-	int			num_inputs;
-	int			num_outputs;
-	int			i;
+    const MR_PseudoTypeInfo *ptis;
+    MR_PseudoTypeInfo   pti;
+    MR_TypeCtorInfo     tci;
+    int         num_inputs;
+    int         num_outputs;
+    int         i;
 
-	num_inputs = proc->MR_sle_table_info.MR_table_gen->
-		MR_table_gen_num_inputs;
-	num_outputs = proc->MR_sle_table_info.MR_table_gen->
-		MR_table_gen_num_outputs;
+    num_inputs = proc->MR_sle_table_info.MR_table_gen->
+        MR_table_gen_num_inputs;
+    num_outputs = proc->MR_sle_table_info.MR_table_gen->
+        MR_table_gen_num_outputs;
 
-	ptis = proc->MR_sle_table_info.MR_table_gen->MR_table_gen_ptis;
-	ptis += num_inputs;
+    ptis = proc->MR_sle_table_info.MR_table_gen->MR_table_gen_ptis;
+    ptis += num_inputs;
 
-	for (i = 0; i < num_outputs; i++) {
-		if (i > 0) {
-			fprintf(fp, ", ");
-		}
+    for (i = 0; i < num_outputs; i++) {
+        if (i > 0) {
+            fprintf(fp, ", ");
+        }
 
-		pti = ptis[i];
-		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
-			fprintf(fp, "poly");
-			continue;
-		}
+        pti = ptis[i];
+        if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
+            fprintf(fp, "poly");
+            continue;
+        }
 
-		tci = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
-		if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)) {
-			fprintf(fp, "%ld", (long) answer_block[i]);
-		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)) {
-			fprintf(fp, "%f",
-#ifdef	MR_HIGHLEVEL_CODE
-				(double) MR_unbox_float(
-						(MR_Box) answer_block[i]));
+        tci = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+        if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)) {
+            fprintf(fp, "%ld", (long) answer_block[i]);
+        } else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)) {
+            fprintf(fp, "%f",
+#ifdef  MR_HIGHLEVEL_CODE
+                (double) MR_unbox_float(
+                        (MR_Box) answer_block[i]));
 #else
-				(double) MR_word_to_float(answer_block[i]));
+                (double) MR_word_to_float(answer_block[i]));
 #endif
-		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)) {
-			fprintf(fp, "\"%s\"", (char *) answer_block[i]);
-		} else {
-			fprintf(fp, "value of unsupported type");
-		}
-	}
+        } else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)) {
+            fprintf(fp, "\"%s\"", (char *) answer_block[i]);
+        } else {
+            fprintf(fp, "value of unsupported type");
+        }
+    }
 }
+
+#ifdef  MR_HIGHLEVEL_CODE
+
+static void MR_CALL
+    mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+        MR_AnswerList answer_list0, MR_Box *boxed_answer_block,
+        MR_Cont cont, void *cont_env_ptr);
+
+static void MR_CALL
+mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+    MR_AnswerList answer_list0, MR_Box *boxed_answer_block_ptr,
+    MR_Cont cont, void *cont_env_ptr)
+{
+    MR_AnswerList answer_list;
+
+    while (answer_list0 != NULL) {
+        answer_list = answer_list0->MR_aln_next_answer;
+        *boxed_answer_block_ptr = (MR_Box) answer_list0->MR_aln_answer_block;
+        cont(cont_env_ptr);
+        answer_list0 = answer_list;
+    }
+}
+
+void MR_CALL
+mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
+    MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+    MR_Cont cont, void *cont_env_ptr)
+{
+    MR_MemoNonRecordPtr record;
+    MR_AnswerList       list;
+
+    record = (MR_MemoNonRecordPtr) boxed_record;
+    list = record->MR_mn_answer_list;
+    if (list == NULL) {
+        MR_fatal_error("table_memo_return_all_answers_multi: no answers");
+    }
+    mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+        boxed_answer_block_ptr, cont, cont_env_ptr);
+}
+
+void MR_CALL
+mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+    MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+    MR_Cont cont, void *cont_env_ptr)
+{
+    MR_MemoNonRecordPtr record;
+    MR_AnswerList       list;
+
+    record = (MR_MemoNonRecordPtr) boxed_record;
+    list = record->MR_mn_answer_list;
+    mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+        boxed_answer_block_ptr, cont, cont_env_ptr);
+}
+
+#else   /* MR_HIGHLEVEL_CODE */
+
+MR_define_extern_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
+MR_define_extern_entry(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
+
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
+    MR_PREDICATE, table_builtin, table_memo_return_all_answers_nondet, 2, 0);
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
+    MR_PREDICATE, table_builtin, table_memo_return_all_answers_multi, 2, 0);
+
+#define MEMO_NON_RET_ALL_NONDET_LABEL(name)                             \
+    MR_label_name(MR_MEMO_NON_RET_ALL_NONDET_ENTRY, name)
+#define MEMO_NON_RET_ALL_MULTI_LABEL(name)                             \
+    MR_label_name(MR_MEMO_NON_RET_ALL_MULTI_ENTRY, name)
+
+MR_declare_label(MEMO_NON_RET_ALL_NONDET_LABEL(Next));
+MR_declare_label(MEMO_NON_RET_ALL_MULTI_LABEL(Next));
+
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin,
+    table_memo_return_all_answers_nondet, 2, 0, Next);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin,
+    table_memo_return_all_answers_multi, 2, 0, Next);
+
+MR_BEGIN_MODULE(table_memo_non_module)
+    MR_init_entry_sl(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
+    MR_init_label_sl(MEMO_NON_RET_ALL_NONDET_LABEL(Next));
+    MR_init_entry_sl(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
+    MR_init_label_sl(MEMO_NON_RET_ALL_MULTI_LABEL(Next));
+MR_BEGIN_CODE
+
+MR_define_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
+{
+    MR_MemoNonRecordPtr record;
+    MR_AnswerList       cur_node0;
+    MR_AnswerList       cur_node;
+    MR_AnswerBlock      answer_block;
+
+    record = (MR_MemoNonRecordPtr) MR_r1;
+    cur_node0 = record->MR_mn_answer_list;
+
+  #ifdef MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        printf("picking up all answers in %p -> %p\n",
+            record->MR_mn_back_ptr, record);
+    }
+  #endif
+
+    if (cur_node0 == NULL) {
+        MR_redo();
+    }
+
+    answer_block = cur_node0->MR_aln_answer_block;
+    cur_node = cur_node0->MR_aln_next_answer;
+
+    /* Consider not creating the stack frame if cur_node is NULL. */
+
+    MR_mkframe("pred table_builtin.table_memo_return_all_answers_nondet/2-0",
+        1, MR_LABEL(MEMO_NON_RET_ALL_NONDET_LABEL(Next)));
+    MR_framevar(1) = (MR_Word) cur_node;
+    MR_r1 = (MR_Word) answer_block;
+}
+    MR_succeed();
+
+MR_define_label(MEMO_NON_RET_ALL_NONDET_LABEL(Next));
+{
+    MR_AnswerList   cur_node0;
+    MR_AnswerList   cur_node;
+    MR_AnswerBlock  answer_block;
+
+    cur_node0 = (MR_AnswerList) MR_framevar(1);
+    if (cur_node0 == NULL) {
+        MR_fail();
+    }
+
+    answer_block = cur_node0->MR_aln_answer_block;
+    cur_node = cur_node0->MR_aln_next_answer;
+    MR_framevar(1) = (MR_Word) cur_node;
+    MR_r1 = (MR_Word) answer_block;
+}
+    MR_succeed();
+
+MR_define_entry(MR_MEMO_NON_RET_ALL_MULTI_ENTRY);
+{
+    MR_MemoNonRecordPtr record;
+    MR_AnswerList       cur_node0;
+    MR_AnswerList       cur_node;
+    MR_AnswerBlock      answer_block;
+
+    record = (MR_MemoNonRecordPtr) MR_r1;
+    cur_node0 = record->MR_mn_answer_list;
+
+  #ifdef MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        printf("picking up all answers in %p -> %p\n",
+            record->MR_mn_back_ptr, record);
+    }
+  #endif
+
+    if (cur_node0 == NULL) {
+        MR_fatal_error("table_memo_return_all_answers_multi: no answers");
+    }
+
+    answer_block = cur_node0->MR_aln_answer_block;
+    cur_node = cur_node0->MR_aln_next_answer;
+
+    /* Consider not creating the stack frame if cur_node is NULL. */
+
+    MR_mkframe("pred table_builtin.table_memo_return_all_answers_multi/2-0",
+        1, MR_LABEL(MEMO_NON_RET_ALL_MULTI_LABEL(Next)));
+    MR_framevar(1) = (MR_Word) cur_node;
+    MR_r1 = (MR_Word) answer_block;
+}
+    MR_succeed();
+
+MR_define_label(MEMO_NON_RET_ALL_MULTI_LABEL(Next));
+{
+    MR_AnswerList   cur_node0;
+    MR_AnswerList   cur_node;
+    MR_AnswerBlock  answer_block;
+
+    cur_node0 = (MR_AnswerList) MR_framevar(1);
+    if (cur_node0 == NULL) {
+        MR_fail();
+    }
+
+    answer_block = cur_node0->MR_aln_answer_block;
+    cur_node = cur_node0->MR_aln_next_answer;
+    MR_framevar(1) = (MR_Word) cur_node;
+    MR_r1 = (MR_Word) answer_block;
+}
+    MR_succeed();
+
+MR_END_MODULE
+
+#endif  /* MR_HIGHLEVEL_CODE */
+
+/* Ensure that the initialization code for the above modules gets to run. */
+/*
+INIT mercury_sys_init_table_modules
+*/
+
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_memo_non_module;
+
+/* forward declarations to suppress gcc -Wmissing-decl warnings */
+void mercury_sys_init_table_modules_init(void);
+void mercury_sys_init_table_modules_init_type_tables(void);
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp);
+#endif
+
+void mercury_sys_init_table_modules_init(void)
+{
+#ifndef MR_HIGHLEVEL_CODE
+    table_memo_non_module();
+#endif  /* MR_HIGHLEVEL_CODE */
+}
+
+void mercury_sys_init_table_modules_init_type_tables(void)
+{
+    /* no types to register */
+}
+
+#ifdef  MR_DEEP_PROFILING
+void mercury_sys_init_table_modules_write_out_proc_statics(FILE *fp)
+{
+    /* no proc_statics to write out */
+    /* XXX we need to fix the deep profiling */
+    /* of model_non memo tabled predicates */
+}
+#endif
 
 /*---------------------------------------------------------------------------*/
