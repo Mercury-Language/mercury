@@ -63,7 +63,8 @@
 
 #else
 
-#define	dump_push_msg(msg)			(((char **)(dumpstack_zone->min)[dumpindex++] = msg)
+#define	dump_push_msg(msg)	\
+	(((const char **)dumpstack_zone->min)[dumpindex++] = msg)
 #define	dump_pop_msg()				(--dumpindex)
 
 #define	debugcr1(val0, hp) \
