@@ -91,33 +91,33 @@
 :- pred set__insert_list(set(T), list(T), set(T)).
 :- mode set__insert_list(in, in, out) is det.
 
-	% `set__delete(Set0, X, Set)' is true iff `Set0' contains `X',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only `X', i.e.  if `Set' is the set which contains
-	% all the elements of `Set0' except `X'.
-
-:- pred set__delete(set(T), T, set(T)).
-:- mode set__delete(in, in, out) is det.
-
-	% `set__delete_list(Set0, Xs, Set)' is true iff Xs does not
-	% contain any duplicates, `Set0' contains every member of `Xs',
-	% and `Set' is the relative complement of `Set0' and the set
-	% containing only the members of `Xs'.
-
-:- pred set__delete_list(set(T), list(T), set(T)).
-:- mode set__delete_list(in, in, out) is det.
-
-	% `set__remove(Set0, X, Set)' is true iff `Set' is the relative
+	% `set__delete(Set0, X, Set)' is true iff `Set' is the relative
 	% complement of `Set0' and the set containing only `X', i.e.
 	% if `Set' is the set which contains all the elements of `Set0'
 	% except `X'.
 
+:- pred set__delete(set(T), T, set(T)).
+:- mode set__delete(in, in, out) is det.
+
+	% `set__delete_list(Set0, Xs, Set)' is true iff `Set' is the relative
+	% complement of `Set0' and the set containing only the members of
+	% `Xs'.
+
+:- pred set__delete_list(set(T), list(T), set(T)).
+:- mode set__delete_list(in, in, out) is det.
+
+	% `set__remove(Set0, X, Set)' is true iff `Set0' contains `X',
+	% and `Set' is the relative complement of `Set0' and the set
+	% containing only `X', i.e.  if `Set' is the set which contains
+	% all the elements of `Set0' except `X'.
+
 :- pred set__remove(set(T), T, set(T)).
 :- mode set__remove(in, in, out) is semidet.
 
-	% `set__remove_list(Set0, Xs, Set)' is true iff `Set' is the relative
-	% complement of `Set0' and the set containing only the members of
-	% `Xs'.
+	% `set__remove_list(Set0, Xs, Set)' is true iff Xs does not
+	% contain any duplicates, `Set0' contains every member of `Xs',
+	% and `Set' is the relative complement of `Set0' and the set
+	% containing only the members of `Xs'.
 
 :- pred set__remove_list(set(T), list(T), set(T)).
 :- mode set__remove_list(in, in, out) is semidet.
