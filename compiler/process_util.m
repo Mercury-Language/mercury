@@ -280,7 +280,7 @@ call_in_forked_process(P, AltP, Success) -->
 		call_in_forked_process_2(P, ForkStatus, CallStatus),
 		{ ForkStatus = 1 ->
 			Success = no
-	;
+		;
 			Status = io__handle_system_command_exit_status(
 					CallStatus),
 			Success = (Status = ok(exited(0)) -> yes ; no)
