@@ -13,6 +13,8 @@
 
 main --> bar(e).
 
+:- pragma no_inline(bar/3).
+
 :- pred bar(foo::in, io__state::di, io__state::uo) is det.
 bar(X) -->
 	(
