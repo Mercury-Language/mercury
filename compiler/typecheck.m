@@ -394,7 +394,7 @@ report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
 write_type_var_list([], _) -->
 	io__write_string("<none>").
 write_type_var_list([V|Vs], VarSet) -->
-	io__write_variable(V, VarSet),
+	mercury_output_var(V, VarSet),
 	write_type_var_list_2(Vs, VarSet).
 
 :- pred write_type_var_list_2(list(var), varset, io__state, io__state).
@@ -403,7 +403,7 @@ write_type_var_list([V|Vs], VarSet) -->
 write_type_var_list_2([], _) --> [].
 write_type_var_list_2([V|Vs], VarSet) -->
 	io__write_string(", "),
-	io__write_variable(V, VarSet),
+	mercury_output_var(V, VarSet),
 	write_type_var_list_2(Vs, VarSet).
 
 END JUNK ***************************/
@@ -2195,9 +2195,9 @@ report_error_unif(TypeInfo, X, Y, TypeAssignSet) -->
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	write_typeinfo_context(TypeInfo),
 	io__write_string("  type error in unification of term `"),
-	io__write_term(VarSet, X),
+	mercury_output_term(X, VarSet),
 	io__write_string("' and term `"),
-	io__write_term(VarSet, Y),
+	mercury_output_term(Y, VarSet),
 	io__write_string("'.\n"),
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 **********************/
@@ -2217,21 +2217,21 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 
 	prog_out__write_context(Context),
 	io__write_string("  type error in unification of variable `"),
-	io__write_variable(X, VarSet),
+	mercury_output_var(X, VarSet),
 	io__write_string("' and variable `"),
-	io__write_variable(Y, VarSet),
+	mercury_output_var(Y, VarSet),
 	io__write_string("'.\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	io__write_variable(X, VarSet),
+	mercury_output_var(X, VarSet),
 	io__write_string("' "),
 	write_type_of_var(TypeInfo, TypeAssignSet, X),
 	io__write_string(",\n"),
 
 	prog_out__write_context(Context),
 	io__write_string("  `"),
-	io__write_variable(Y, VarSet),
+	mercury_output_var(Y, VarSet),
 	io__write_string("' "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Y),
 	io__write_string(".\n"),
@@ -2256,7 +2256,7 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 	io__write_string("  type error in unification of "),
 	write_argument_name(VarSet, Var),
 	io__write_string(" and term `"),
-	io__write_term(VarSet, term_functor(Functor, Args, Context)),
+	mercury_output_term(term_functor(Functor, Args, Context), VarSet),
 	io__write_string("'.\n"),
 
 	prog_out__write_context(Context),
@@ -2274,7 +2274,7 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 write_argument_name(VarSet, VarId) -->
 	( { varset__lookup_name(VarSet, VarId, _) } ->
 		io__write_string("variable `"),
-		io__write_variable(VarId, VarSet),
+		mercury_output_var(VarId, VarSet),
 		io__write_string("'")
 	;
 		io__write_string("argument")
@@ -2365,7 +2365,7 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 		;
 			[]
 		),
-		io__write_variable(Var, VarSet),
+		mercury_output_var(Var, VarSet),
 		io__write_string(" :: "),
 		write_type_b(Type, TypeVarSet, TypeBindings),
 		write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings,
@@ -2382,7 +2382,7 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 
 write_type_b(Type, TypeVarSet, TypeBindings) -->
 	{ term__apply_rec_substitution(Type, TypeBindings, Type2) },
-	io__write_term(TypeVarSet, Type2).
+	mercury_output_term(Type2, TypeVarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -2515,7 +2515,7 @@ report_error_cons(TypeInfo, Functor, Args, Type, TypeAssignSet) -->
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: term `"),
-	io__write_term(VarSet, term_functor(Functor, Args, Context)),
+	mercury_output_term(term_functor(Functor, Args, Context), VarSet),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX type parameter names
 	io__write_string("'.\n"),
@@ -2571,7 +2571,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 		not (T1 = T2)
 	} ->
 		io__write_string("\t"),
-		io__write_variable(V, VarSet),
+		mercury_output_var(V, VarSet),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
 		{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
@@ -2591,7 +2591,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 
 write_type(Type) -->
 	{ varset__init(TVarSet) },	% XXX type parameter names
-	io__write_term(TVarSet, Type).
+	mercury_output_term(Type, TVarSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

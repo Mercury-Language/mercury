@@ -305,7 +305,7 @@ report_determinism_warning(PredId, ModeId, ModuleInfo) -->
 	% and returns the annotated goal in `Goal'.
 
 :- pred det_infer_goal(hlds__goal, miscinfo, hlds__goal, category).
-:- mode det_infer_goal(input, output, input, output).
+:- mode det_infer_goal(input, input, output, output).
 
 det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 	goalinfo_get_nonlocals(GoalInfo0, NonLocalVars),

@@ -11,6 +11,7 @@
 :- interface.
 
 :- import_module list, string, io, prog_io.
+:- import_module hlds.
 
 :- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
@@ -30,7 +31,11 @@
 :- pred mercury_output_vars(list(var), varset, io__state, io__state).
 :- mode mercury_output_vars(input, input, di, uo).
 
-:- import_module hlds.
+:- pred mercury_output_var(var, varset, io__state, io__state).
+:- mode mercury_output_var(input, input, di, uo).
+
+:- pred mercury_output_term(term, varset, io__state, io__state).
+:- mode mercury_output_term(input, input, di, uo).
 
 :- pred mercury_output_hlds_goal(hlds__goal, varset, int, io__state, io__state).
 :- mode mercury_output_hlds_goal(input, input, input, di, uo).
@@ -902,9 +907,6 @@ mercury_output_list_args(Term, VarSet) -->
 
 	% write a term to standard output.
 
-:- pred mercury_output_term(term, varset, io__state, io__state).
-:- mode mercury_output_term(input, input, di, uo).
-
 mercury_output_term(term_variable(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_term(term_functor(Functor, Args, _), VarSet) -->
@@ -985,9 +987,6 @@ mercury_output_vars_2([Var | Vars], VarSet) -->
 	% where <n> is there variable id.
 	% Variables whose name originally started with `V_' have their
 	% name changed to start with `V__' to avoid name clashes.
-
-:- pred mercury_output_var(var, varset, io__state, io__state).
-:- mode mercury_output_var(input, input, di, uo).
 
 mercury_output_var(Var, VarSet) -->
 	(

@@ -1374,7 +1374,10 @@ unravel_unification(term_functor(LeftF, LeftAs, LeftC),
 			term_functor(RightF, RightHeadArgs, RightC),
 			MainContext, SubContext, Goal1),
 	goalinfo_init(GoalInfo),
-	Goal2 = conj([Goal0, Goal1]) - GoalInfo,
+	goal_to_conj_list(Goal0, ConjList0),
+	goal_to_conj_list(Goal1, ConjList1),
+	append(ConjList0, ConjList1, ConjList),
+	Goal2 = conj(ConjList) - GoalInfo,
 	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext,
 				Goal2, VarSet3, Goal3, VarSet4),
 	insert_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
@@ -1429,7 +1432,8 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 		get_conj(A, Subst, Conj1, VarSet1, Conj, VarSet)
 	;
 		transform_goal(Goal, VarSet0, Subst, Goal1, VarSet),
-		Conj = [Goal1 | Conj0]
+		goal_to_conj_list(Goal1, ConjList),
+		append(ConjList, Conj0, Conj)
 	).
 
 % get_disj(Goal, Subst, Disj0, Disj) :
