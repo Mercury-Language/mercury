@@ -308,7 +308,7 @@
 % late-input modes.)
 
 prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
-	globals__lookup_option(search_directories, accumulating(Dirs)),
+	globals__lookup_accumulating_option(search_directories, Dirs),
 	search_for_file(Dirs, FileName, R),
 	( { R = ok } ->
 		read_all_items(RevMessages, RevItems0, Error0),
@@ -1239,13 +1239,15 @@ parse_type_decl_type("==", [H,B], Condition, R) :-
 parse_type_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, Determinism),
-	( Determinism = ok(Determinism1) ->
-		process_pred(VarSet, Body2, Determinism1, Condition, R)
-	;
-		% just pass the error up (after conversion to the right type)
-		Determinism = error(Term, Reason),
-		R = error(Term, Reason)
-	).
+	process_type_decl_pred(Determinism, VarSet, Body2, Condition, R).
+
+:- pred process_type_decl_pred(determinism, varset, term, condition,
+				maybe1(item)).
+:- mode process_type_decl_pred(in, in, in, in, out) is det.
+
+process_type_decl_pred(error(Term, Reason), _, _, _, error(Term, Reason)).
+process_type_decl_pred(ok(Determinism), VarSet, Body, Condition, R) :-
+	process_pred(VarSet, Body, Determinism, Condition, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1311,6 +1313,8 @@ get_determinism(B, Body, Determinism) :-
 	).
 
 :- pred standard_det(string, determinism).
+/*###1314 [cc] Warning: determinism declaration could be stricter.%%%*/
+/*###1314 [cc] Declared `semidet', inferred `det'.%%%*/
 :- mode standard_det(in, out) is semidet.
 standard_det("det", det).
 standard_det("nondet", nondet).
@@ -1434,6 +1438,8 @@ check_for_errors_2(ok(Name, Args), Body, Term, Result) :-
 	check_for_errors_3(Name, Args, Body, Term, Result).
 
 :- pred check_for_errors_3(sym_name, list(term), term, term, maybe_functor).
+/*###1437 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1437 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode check_for_errors_3(in, in, in, in, out) is det.
 check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% check that all the head args are variables
@@ -1473,7 +1479,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% in this case) into a list of constructors
 
 :- pred convert_constructors(term, list(constructor)).
-:- mode convert_constructors(in, out) is det.
+:- mode convert_constructors(in, out) is semidet.
 convert_constructors(Body, Constrs) :-
 	disjunction_to_list(Body, List),
 	convert_constructors_2(List, Constrs).
@@ -1481,7 +1487,7 @@ convert_constructors(Body, Constrs) :-
 	% true if input argument is a valid list of constructors
 
 :- pred convert_constructors_2(list(term), list(constructor)).
-:- mode convert_constructors_2(in, out) is det.
+:- mode convert_constructors_2(in, out) is semidet.
 convert_constructors_2([], []).
 convert_constructors_2([Term | Terms], [Constr | Constrs]) :-
 	convert_constructor(Term, Constr),
@@ -1493,7 +1499,7 @@ convert_constructors_2([Term | Terms], [Constr | Constrs]) :-
 	% This is to allow you to define ';'/2 constructors.
 
 :- pred convert_constructor(term, constructor).
-:- mode convert_constructor(in, out) is det.
+:- mode convert_constructor(in, out) is semidet.
 convert_constructor(Term, Result) :-
 	( 
 		Term = term__functor(term__atom("{}"), [Term1], _Context)
@@ -1655,7 +1661,10 @@ convert_inst_defn(Head, Body, Result) :-
 	convert_inst_defn_2(R, Head, Body, Result).
 
 :- pred convert_inst_defn_2(maybe_functor, term, term, maybe1(inst_defn)).
+/*###1658 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1658 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_inst_defn_2(in, in, in, out) is det.
+
 convert_inst_defn_2(error(M,T), _, _, error(M,T)).
 convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
@@ -1705,6 +1714,8 @@ convert_abstract_inst_defn(Head, Result) :-
 	convert_abstract_inst_defn_2(R, Head, Result).
 
 :- pred convert_abstract_inst_defn_2(maybe_functor, term, maybe1(inst_defn)).
+/*###1709 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1709 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_abstract_inst_defn_2(in, in, out) is det.
 convert_abstract_inst_defn_2(error(M,T), _, error(M,T)).
 convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
@@ -1732,14 +1743,14 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 	).
 
 :- pred convert_inst_list(list(term), list(inst)).
-:- mode convert_inst_list(in, out) is det.
+:- mode convert_inst_list(in, out) is semidet.
 convert_inst_list([], []).
 convert_inst_list([H0|T0], [H|T]) :-
 	convert_inst(H0, H),
 	convert_inst_list(T0, T).
 
 :- pred convert_inst(term, inst).
-:- mode convert_inst(in, out) is det.
+:- mode convert_inst(in, out) is semidet.
 convert_inst(term__variable(V), inst_var(V)).
 convert_inst(term__functor(Name, Args0, Context), Result) :-
 	( Name = term__atom("free"), Args0 = [] ->
@@ -1767,14 +1778,14 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	).
 
 :- pred convert_bound_inst_list(list(term), list(bound_inst)).
-:- mode convert_bound_inst_list(in, out) is det.
+:- mode convert_bound_inst_list(in, out) is semidet.
 convert_bound_inst_list([], []).
 convert_bound_inst_list([H0|T0], [H|T]) :-
 	convert_bound_inst(H0, H),
 	convert_bound_inst_list(T0, T).
 
 :- pred convert_bound_inst(term, bound_inst).
-:- mode convert_bound_inst(in, out) is det.
+:- mode convert_bound_inst(in, out) is semidet.
 convert_bound_inst(term__functor(Name, Args0, _), functor(Name, Args)) :-
 	convert_inst_list(Args0, Args).
 
@@ -1789,6 +1800,8 @@ process_inst_defn(ok(InstDefn), VarSet, Cond,
 	% parse a `:- mode foo :: ...' or `:- mode foo = ...' definition.
 
 :- pred parse_mode_decl(varset, term, maybe1(item)).
+/*###1793 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1793 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode parse_mode_decl(in, in, out) is det.
 parse_mode_decl(VarSet, ModeDefn, Result) :-
 	( %%% some [H,B]
@@ -1817,6 +1830,8 @@ convert_mode_defn(Head, Body, Result) :-
 	convert_mode_defn_2(R, Head, Body, Result).
 
 :- pred convert_mode_defn_2(maybe_functor, term, term, maybe1(mode_defn)).
+/*###1821 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1821 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_mode_defn_2(in, in, in, out) is det.
 convert_mode_defn_2(error(M,T), _, _, error(M,T)).
 convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
@@ -1870,6 +1885,8 @@ convert_type_and_mode_list([H0|T0], [H|T]) :-
 	convert_type_and_mode_list(T0, T).
 
 :- pred convert_type_and_mode(term, type_and_mode).
+/*###1874 [cc] Error: determinism declaration not satisfied.%%%*/
+/*###1874 [cc] Declared `det', inferred `semidet'.%%%*/
 :- mode convert_type_and_mode(in, out) is det.
 convert_type_and_mode(Term, Result) :-
 	(
@@ -1885,14 +1902,14 @@ convert_type_and_mode(Term, Result) :-
 	).
 
 :- pred convert_mode_list(list(term), list(mode)).
-:- mode convert_mode_list(in, out) is det.
+:- mode convert_mode_list(in, out) is semidet.
 convert_mode_list([], []).
 convert_mode_list([H0|T0], [H|T]) :-
 	convert_mode(H0, H),
 	convert_mode_list(T0, T).
 
 :- pred convert_mode(term, mode).
-:- mode convert_mode(in, out) is det.
+:- mode convert_mode(in, out) is semidet.
 convert_mode(Term, Mode) :-
 	(
 		Term = term__functor(term__atom("->"), [InstA, InstB], _Context)

@@ -51,7 +51,7 @@
 determinism_pass(ModuleInfo0, ModuleInfo) -->
 	{ determinism_declarations(ModuleInfo0, DeclaredProcs,
 		UndeclaredProcs) },
-	globals__lookup_option(verbose, bool(Verbose)),
+	globals__lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Doing determinism analysis pass(es) "),
 	maybe_flush_output(Verbose),
 	global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo1),
@@ -165,7 +165,7 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 	% Iterate until a fixpoint is reached
 
 global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
-	globals__lookup_option(verbose, bool(Verbose)),
+	globals__lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "."),
 	maybe_flush_output(Verbose),
 	{ global_analysis_single_pass(ModuleInfo0, ProcList, unchanged,
@@ -265,8 +265,8 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 	;
 		{ max_category(DeclaredCategory, InferredCategory, Category) },
 		( { Category = DeclaredCategory } ->
-			globals__lookup_option(warn_det_decls_too_lax,
-				bool(ShouldIssueWarning)),
+			globals__lookup_bool_option(warn_det_decls_too_lax,
+				ShouldIssueWarning),
 			( { ShouldIssueWarning = yes } ->
 				report_determinism_warning(PredId, ModeId,
 					InferredCategory, DeclaredCategory,

@@ -35,11 +35,11 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module1, Module2) },
-	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
@@ -176,12 +176,13 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
 	{ module_info_set_insts(Module0, InstTable, Module) }.
 
-	% XXX handle abstract insts
-
 :- pred insts_add(user_inst_table, varset, inst_defn, condition, term__context,
 			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo) is det.
 
+	% XXX handle abstract insts
+insts_add(_, _, abstract_inst(_, _), _, _, _) -->
+	{ error("sorry, abstract insts not implemented") }.
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ list__length(Args, Arity) },
 	(
@@ -393,7 +394,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% check that the determinism was specified
 		%
 	{ list__length(Modes, Arity) },
-	globals__lookup_option(warn_missing_det_decls, bool(ShouldWarn)),
+	globals__lookup_bool_option(warn_missing_det_decls, ShouldWarn),
 	(
 		{ Det = unspecified },
 		{ ShouldWarn = yes }
@@ -516,7 +517,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		%
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(Args, Arity) },
-	globals__lookup_option(very_verbose, bool(VeryVerbose)),
+	globals__lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Processing clause for pred `"),
 		hlds_out__write_pred_call_id(PredName/Arity),
@@ -588,7 +589,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 :- mode maybe_warn_singletons(in, in, in, in, in, di, uo) is det.
 
 maybe_warn_singletons(VarSet, PredCallId, Args, Body, Context) -->
-	globals__lookup_option(warn_singleton_vars, bool(WarnSingletonVars)),
+	globals__lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
 		{ term__vars_list(Args, VarList0) },
 		{ vars_in_goal(Body, VarList0, VarList) },
@@ -888,6 +889,12 @@ insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 				list(hlds__goal), varset).
 :- mode insert_arg_unifications_2(in, in, in, in, in, in, out, out) is det.
 
+:- insert_arg_unifications_2(A, B, _, _, _, _, _, _) when A and B.
+
+insert_arg_unifications_2([], [_|_], _, _, _, _, _, _) :-
+	error("insert_arg_unifications_2: length mismatch").
+insert_arg_unifications_2([_|_], [], _, _, _, _, _, _) :-
+	error("insert_arg_unifications_2: length mismatch").
 insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
 insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
@@ -929,6 +936,12 @@ append_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 				list(hlds__goal), varset).
 :- mode append_arg_unifications_2(in, in, in, in, in, in, out, out) is det.
 
+:- append_arg_unifications_2(A, B, _, _, _, _, _, _) when A and B.
+
+append_arg_unifications_2([], [_|_], _, _, _, _, _, _) :-
+	error("append_arg_unifications_2: length mismatch").
+append_arg_unifications_2([_|_], [], _, _, _, _, _, _) :-
+	error("append_arg_unifications_2: length mismatch").
 append_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
 append_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
@@ -1135,7 +1148,11 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 substitute_vars([], _, []).
 substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 	term__apply_substitution(term__variable(Var0), Subst, Term),
-	Term = term__variable(Var),
+	( Term = term__variable(Var1) ->
+		Var = Var1
+	;
+		error("substitute_vars: invalid substitution")
+	),
 	substitute_vars(Vars0, Subst, Vars).
 
 %-----------------------------------------------------------------------------%

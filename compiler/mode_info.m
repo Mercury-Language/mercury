@@ -474,7 +474,12 @@ mode_info_lock_vars(Vars, ModeInfo0, ModeInfo) :-
 	mode_info_set_locked_vars(ModeInfo0, [Vars | LockedVars], ModeInfo).
 
 mode_info_unlock_vars(_, ModeInfo0, ModeInfo) :-
-	mode_info_get_locked_vars(ModeInfo0, [_ | LockedVars]),
+	mode_info_get_locked_vars(ModeInfo0, LockedVars0),
+	( LockedVars0 = [_ | LockedVars1] ->
+		LockedVars = LockedVars1
+	;
+		error("mode_info_unlock_vars: stack is empty")
+	),
 	mode_info_set_locked_vars(ModeInfo0, LockedVars, ModeInfo).
 
 mode_info_var_is_locked(ModeInfo, Var) :-

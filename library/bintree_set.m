@@ -167,10 +167,10 @@ assoc_unit([X | Xs], [X - unit | Ys]) :-
 bintree_set__init(Set) :-
 	bintree__init(Set).
 
-bintree_set__equal(S0, S) :-
-	bintree__keys(S0, SortedElements0),
-	bintree__keys(S, SortedElements),
-	SortedElements0 = SortedElements. % work-around bug in det analysis
+bintree_set__equal(SetA, SetB) :-
+	bintree__keys(SetA, SortedElementsA),
+	bintree__keys(SetB, SortedElementsB),
+	SortedElementsA = SortedElementsB. % work-around bug in det analysis
 
 %--------------------------------------------------------------------------%
 

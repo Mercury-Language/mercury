@@ -90,8 +90,8 @@ a local variable, then report the error [this idea not yet implemented].
 %-----------------------------------------------------------------------------%
 
 modecheck(Module0, Module) -->
-	globals__lookup_option(statistics, bool(Statistics)),
-	globals__lookup_option(verbose, bool(Verbose)),
+	globals__lookup_bool_option(statistics, Statistics),
+	globals__lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -135,7 +135,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	( { Clauses0 = [] } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
-		globals__lookup_option(very_verbose, bool(VeryVerbose)),
+		globals__lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
 			hlds_out__write_pred_id(ModuleInfo0, PredId),
@@ -330,6 +330,10 @@ modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
 :- mode check_final_insts(in, in, in, in, in, mode_info_di, mode_info_uo)
 	is det.
 
+check_final_insts([], [_|_], _, _, _) -->
+	{ error("check_final_insts: length mismatch") }.
+check_final_insts([_|_], [], _, _, _) -->
+	{ error("check_final_insts: length mismatch") }.
 check_final_insts([], [], _, _, _) --> [].
 check_final_insts([Var | Vars], [Inst | Insts], ArgNum, InstMap, ModuleInfo)
 		-->
@@ -710,15 +714,15 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo0,
 			InstMapping0, ModuleInfo, InstMapping, ErrorList),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		( ErrorList = [] ->
-			ModeInfo2 = ModeInfo1
-		;
-			ErrorList = [Var - _|_], 
+		( ErrorList = [FirstError | _] ->
+			FirstError = Var - _,
 			set__singleton_set(WaitingVars, Var),
 			mode_info_error(WaitingVars,
 				mode_error_disj(MergeContext, ErrorList),
 				ModeInfo1, ModeInfo2
 			)
+		;
+			ModeInfo2 = ModeInfo1
 		),
 		InstMap = reachable(InstMapping)
 	;
@@ -889,10 +893,18 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 				ModeInfo0, ModeInfo1),
 	mode_info_get_errors(ModeInfo1, Errors),
 	(
-		Errors = [] 
+			% if error(s) occured, keep trying with the other modes
+			% for the called pred
+		Errors = [FirstError | _]
 	->
-			% if so, then set their insts to the final insts
-			% specified in the mode for the called pred
+		FirstError = mode_error_info(WaitingVars2, _, _, _),
+		set__union(WaitingVars, WaitingVars2, WaitingVars3),
+
+		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
+				WaitingVars3, TheProcId, ModeInfo0, ModeInfo)
+	;
+			% if there are no errors, then set their insts to the
+			% final insts specified in the mode for the called pred
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars, FinalInsts, ModeInfo1,
 			ModeInfo2),
@@ -903,14 +915,6 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 		;
 			ModeInfo = ModeInfo2
 		)
-	;
-			% otherwise, keep trying with the other modes
-			% for the called pred
-		Errors = [mode_error_info(WaitingVars2, _, _, _) | _],
-		set__union(WaitingVars, WaitingVars2, WaitingVars3),
-
-		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars,
-				WaitingVars3, TheProcId, ModeInfo0, ModeInfo)
 	).
 
 :- pred get_var_insts(list(var), instmap, list(inst)).
@@ -931,6 +935,10 @@ get_var_insts([Var | Vars], InstMap, [Inst | Insts]) :-
 					mode_info).
 :- mode modecheck_var_has_inst_list(in, in, mode_info_di, mode_info_uo) is det.
 
+modecheck_var_has_inst_list([_|_], []) -->
+	{ error("modecheck_var_has_inst_list: length mismatch") }.
+modecheck_var_has_inst_list([], [_|_]) -->
+	{ error("modecheck_var_has_inst_list: length mismatch") }.
 modecheck_var_has_inst_list([], []) --> [].
 modecheck_var_has_inst_list([Var|Vars], [Inst|Insts]) -->
 	modecheck_var_has_inst(Var, Inst),
@@ -1097,6 +1105,10 @@ modecheck_set_term_inst_list([Arg | Args], [Inst | Insts]) -->
 					mode_info, mode_info).
 :- mode modecheck_set_var_inst_list(in, in, mode_info_di, mode_info_uo) is det.
 
+modecheck_set_var_inst_list([_|_], []) -->
+	{ error("modecheck_set_var_inst_list: length mismatch") }.
+modecheck_set_var_inst_list([], [_|_]) -->
+	{ error("modecheck_set_var_inst_list: length mismatch") }.
 modecheck_set_var_inst_list([], []) --> [].
 modecheck_set_var_inst_list([Var | Vars], [Inst | Insts]) -->
 	modecheck_set_var_inst(Var, Inst),
@@ -1426,7 +1438,7 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
-        globals__lookup_option(debug_modes, bool(DoCheckPoint),
+        globals__lookup_bool_option(debug_modes, DoCheckPoint,
 		IOState0, IOState1),
 	( DoCheckPoint = yes ->
 		mode_checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
@@ -1456,7 +1468,7 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 	io__write_string(Msg),
 	( { Detail = yes } ->
 		io__write_string(":\n"),
-		globals__lookup_option(statistics, bool(Statistics)),
+		globals__lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 		{ mode_info_get_instmap(ModeInfo, InstMap) },
 		( { InstMap = reachable(InstMapping) } ->
@@ -1570,11 +1582,19 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 		Inst = not_reached
 	),
 	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-	bind_args(Inst, ArgVars, ModeInfo2, ModeInfo),
+	( bind_args(Inst, ArgVars, ModeInfo2, ModeInfo3) ->
+		ModeInfo = ModeInfo3
+	;
+		error("bind_args failed")
+	),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Mode = ModeX - ModeY,
-	get_mode_of_args(Inst, InstArgs, ModeArgs),
+	( get_mode_of_args(Inst, InstArgs, ModeArgs0) ->
+		ModeArgs = ModeArgs0
+	;
+		error("get_mode_of_args failed")
+	),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars,
@@ -1592,7 +1612,7 @@ modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
 %-----------------------------------------------------------------------------%
 
 :- pred bind_args(inst, list(var), mode_info, mode_info).
-:- mode bind_args(in, in, mode_info_di, mode_info_uo) is det.
+:- mode bind_args(in, in, mode_info_di, mode_info_uo) is semidet.
 
 		% This first clause shouldn't be necessary, but it is
 		% until the code below marked "Loses information" get fixed.
@@ -1610,7 +1630,7 @@ bind_args(bound(List), Args) -->
 	).
 
 :- pred bind_args_2(list(var), list(inst), mode_info, mode_info).
-:- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is det.
+:- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is semidet.
 
 bind_args_2([], []) --> [].
 bind_args_2([Arg | Args], [Inst | Insts]) -->
@@ -1628,7 +1648,7 @@ ground_args([Arg | Args]) -->
 %-----------------------------------------------------------------------------%
 
 :- pred get_mode_of_args(inst, list(inst), list(mode)).
-:- mode get_mode_of_args(in, in, out) is det.
+:- mode get_mode_of_args(in, in, out) is semidet.
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
@@ -1644,7 +1664,7 @@ get_mode_of_args(bound(List), ArgInstsA, ArgModes) :-
 	).
 
 :- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
-:- mode get_mode_of_args_2(in, in, out) is det.
+:- mode get_mode_of_args_2(in, in, out) is semidet.
 
 get_mode_of_args_2([], [], []).
 get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-

@@ -20,7 +20,7 @@ check_undefined_types(Module, Module) -->
 	{ module_info_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
-	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	{ module_info_preds(Module, Preds) },
 	{ module_info_predids(Module, PredIds) },

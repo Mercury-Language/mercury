@@ -42,7 +42,7 @@
 	% Given a non-variable type, return it's type-id and argument types.
 
 :- pred type_to_type_id(type, type_id, list(type)).
-:- mode type_to_type_id(in, out, out) is det.
+:- mode type_to_type_id(in, out, out) is semidet.
 
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.

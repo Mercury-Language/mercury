@@ -160,7 +160,7 @@ call_gen__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, Code) -->
 		(
 			code_info__variable_register(Var, Lval0),
 			{ Lval0 = reg(Reg0) },
-			{ \+ Reg = Reg0 }
+			{ Reg \= Reg0 }
 		->
 			code_info__shuffle_register(Var, Args, Reg, CodeA)
 		;

@@ -262,6 +262,8 @@ bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
 :- pred bintree__knock_left(bintree(K,V), K, V, bintree(K, V)).
 :- mode bintree__knock_left(in, out, out, out) is det.
 
+bintree__knock_left(empty, _, _, _) :-
+	error("bintree__knock_left: empty tree").
 bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(
 		Right = empty
@@ -277,6 +279,8 @@ bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 :- pred bintree__knock_right(bintree(K,V), K, V, bintree(K, V)).
 :- mode bintree__knock_right(in, out, out, out) is det.
 
+bintree__knock_right(empty, _, _, _) :-
+	error("bintree__knock_right: empty tree").
 bintree__knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(
 		Left = empty
@@ -314,6 +318,8 @@ bintree__from_sorted_list(List, Tree) :-
 
 :- pred bintree__from_sorted_list_2(int, assoc_list(K,V),
 				bintree(K,V), assoc_list(K, V)).
+:- mode bintree__from_sorted_list_2(in, in(non_empty_list),
+				out, out(non_empty_list)) is det.
 :- mode bintree__from_sorted_list_2(in, in, out, out) is det.
 
 bintree__from_sorted_list_2(Num, List0, Tree, List) :-

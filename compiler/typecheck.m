@@ -142,8 +142,8 @@
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
-	globals__lookup_option(statistics, bool(Statistics)),
-	globals__lookup_option(verbose, bool(Verbose)),
+	globals__lookup_bool_option(statistics, Statistics),
+	globals__lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -224,7 +224,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 :- mode write_progress_message(in, in, di, uo) is det.
 
 write_progress_message(PredId, ModuleInfo) -->
-	globals__lookup_option(very_verbose, bool(VeryVerbose)),
+	globals__lookup_bool_option(very_verbose, VeryVerbose),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Type-checking predicate "),
 		hlds_out__write_pred_id(ModuleInfo, PredId),
@@ -610,6 +610,10 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
 					type_info).
 :- mode typecheck_var_has_type_list(in, in, in, in, out) is det.
 
+typecheck_var_has_type_list([], [_|_], _) -->
+	{ error("typecheck_var_has_type_list: length mismatch") }.
+typecheck_var_has_type_list([_|_], [], _) -->
+	{ error("typecheck_var_has_type_list: length mismatch") }.
 typecheck_var_has_type_list([], [], _) --> [].
 typecheck_var_has_type_list([Var|Vars], [Type|Types], ArgNum) -->
 	type_info_set_arg_num(ArgNum),
@@ -714,6 +718,10 @@ type_assign_var_has_type(TypeAssign0, HeadTypeParams, VarId, Type,
 					type_info, type_info).
 :- mode typecheck_term_has_type_list(in, in, in, type_info_di, type_info_uo)		is det.
 
+typecheck_term_has_type_list([], [_|_], _) -->
+	{ error("typecheck_term_has_type_list: length mis-match") }.
+typecheck_term_has_type_list([_|_], [], _) -->
+	{ error("typecheck_term_has_type_list: length mis-match") }.
 typecheck_term_has_type_list([], [], _) --> [].
 typecheck_term_has_type_list([Arg | Args], [Type | Types], N) -->
 	{ N1 is N + 1 },
@@ -836,6 +844,10 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 :- mode type_assign_term_has_type_list(in, in, in, type_info_ui, in, out)
 	is det.
 
+type_assign_term_has_type_list([], [_|_], _, _, _, _) :-
+	error("type_assign_term_has_type_list: length mis-match").
+type_assign_term_has_type_list([_|_], [], _, _, _, _) :-
+	error("type_assign_term_has_type_list: length mis-match").
 type_assign_term_has_type_list([], [], TypeAssign, _,
 		TypeAssignSet, [TypeAssign|TypeAssignSet]).
 type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
@@ -915,7 +927,7 @@ check_warn_too_much_overloading(TypeInfo0, TypeInfo) :-
 
 checkpoint(Msg, T0, T) :-
 	type_info_get_io_state(T0, I0),
-	globals__lookup_option(debug_types, bool(DoCheckPoint), I0, I1),
+	globals__lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
 	;	
@@ -930,7 +942,7 @@ checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	io__write_string("\n"),
 	{ type_info_get_type_assign_set(T0, TypeAssignSet) },
@@ -1287,15 +1299,20 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	% and the types of it's arguments.
 	% (Optimize the common case of a non-polymorphic type)
 
-	ConsType0 = term__functor(_, ConsTypeParams, _),
-	( ConsTypeParams = [] ->
+	( ConsType0 = term__functor(_, [], _) ->
 		ConsType = ConsType0,
 		ArgTypes = ArgTypes0,
 		TypeAssign = TypeAssign0
 	;
 		type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
 			[ConsType0 | ArgTypes0],
-			TypeAssign, [ConsType | ArgTypes])
+			TypeAssign1, [ConsType1 | ArgTypes1])
+	->
+		ConsType = ConsType1,
+		ArgTypes = ArgTypes1,
+		TypeAssign = TypeAssign1
+	;
+		error("get_cons_stuff: type_assign_rename_apart failed")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1577,13 +1594,19 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 		PredArity >= FuncArity
 	->
 		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
-		list__split_list(FuncArity, CompleteArgTypes,
-			ArgTypes, PredTypeParams),
-		term__context_init("<builtin>", 0, Context),
-		PredType = term__functor(term__atom("pred"), PredTypeParams,
-				Context),
-		ConsInfo = cons_type_info(PredTypeVarSet, PredType, ArgTypes),
-		L = [ConsInfo | L0]
+		(
+			list__split_list(FuncArity, CompleteArgTypes,
+				ArgTypes, PredTypeParams)
+		->
+			term__context_init("<builtin>", 0, Context),
+			PredType = term__functor(term__atom("pred"),
+					PredTypeParams, Context),
+			ConsInfo = cons_type_info(PredTypeVarSet, PredType,
+					ArgTypes),
+			L = [ConsInfo | L0]
+		;
+			error("make_pred_cons_info: split_list failed")
+		)
 	;
 		L = L0
 	).
@@ -1832,10 +1855,26 @@ type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_),
 type_info_get_vartypes(TypeInfo, VarTypes) :-
 	type_info_get_type_assign_set(TypeInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
-		type_assign_get_var_types(TypeAssign, VarTypes)
+		type_assign_get_var_types(TypeAssign, VarTypes0),
+		type_assign_get_type_bindings(TypeAssign, TypeBindings),
+		map__keys(VarTypes0, Vars),
+		expand_types(Vars, TypeBindings, VarTypes0, VarTypes)
 	;
 		error("internal error in type_info_get_vartypes")
 	).
+
+	% fully expand the types of the variables by applying the type
+	% bindings
+
+:- pred expand_types(list(var), tsubst, map(var, type), map(var, type)).
+:- mode expand_types(in, in, in, out) is det.
+
+expand_types([], _, VarTypes, VarTypes).
+expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
+	map__lookup(VarTypes0, Var, Type0),
+	term__apply_rec_substitution(Type0, TypeSubst, Type),
+	map__set(VarTypes0, Var, Type, VarTypes1),
+	expand_types(Vars, TypeSubst, VarTypes1, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -2042,7 +2081,7 @@ report_warning_too_much_overloading(TypeInfo) -->
 	write_context_and_pred_id(TypeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  warning: highly ambiguous overloading.\n"),
-	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
 		io__write_string(
@@ -2264,7 +2303,7 @@ write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context) -->
 :- mode write_type_assign_set_msg(in, in, di, uo) is det.
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
-	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		( { TypeAssignSet = [_] } ->
 		    io__write_string("\tThe partial type assignment was:\n")
@@ -2376,7 +2415,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),
-		globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+		globals__lookup_bool_option(verbose_errors, VerboseErrors),
 		io__write_string("  which doesn't match the expected type.\n"),
 		( { VerboseErrors = yes } ->
 				% XXX improve error message: should output

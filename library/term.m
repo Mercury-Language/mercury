@@ -472,7 +472,7 @@ term__substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
 
 :- pred term__substitute_corresponding_2(list(var), list(term),
 					substitution, substitution).
-:- mode term__substitute_corresponding_2(in, in, in, out) is det.
+:- mode term__substitute_corresponding_2(in, in, in, out) is semidet.
 
 term__substitute_corresponding_2([], [], Subst, Subst).
 term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-

@@ -43,7 +43,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module std_util, require.
 
 implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
 	set__list_to_set(HeadVars, Set),
@@ -134,8 +134,12 @@ implicitly_quantify_conj(Goals0, OutsideVars, Goals, NonLocalVars) :-
 			list(hlds__goal), set(var)).
 :- mode implicitly_quantify_conj_2(in, in, in, out, out) is det.
 
+:- implicitly_quantify_conj_2(A, B, _, _, _) when A and B.
+
 implicitly_quantify_conj_2([], _, _, [], NonLocalVars) :-
 	set__init(NonLocalVars).
+implicitly_quantify_conj_2([_|_], [], _, _, _) :-
+	error("implicitly_quantify_conj_2: length mismatch").
 implicitly_quantify_conj_2([Goal0 | Goals0],
 			[FollowingVars | FollowingVarsList],
 			OutsideVars,

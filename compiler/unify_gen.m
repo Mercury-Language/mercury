@@ -314,10 +314,22 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 			list(uni_mode), code_tree, code_info, code_info).
 :- mode unify_gen__generate_det_unify_args(in, in, in, out, in, out) is det.
 
-unify_gen__generate_det_unify_args([], [], [], empty) --> [].
-unify_gen__generate_det_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
+unify_gen__generate_det_unify_args(Ls, Rs, Ms, Code) -->
+	( unify_gen__generate_det_unify_args_2(Ls, Rs, Ms, Code0) ->
+		{ Code = Code0 }
+	;
+		{ error("unify_gen__generate_det_unify_args: length mismatch") }
+	).
+
+:- pred unify_gen__generate_det_unify_args_2(list(uni_val), list(uni_val),
+			list(uni_mode), code_tree, code_info, code_info).
+:- mode unify_gen__generate_det_unify_args_2(in, in, in, out, in, out)
+	is semidet.
+
+unify_gen__generate_det_unify_args_2([], [], [], empty) --> [].
+unify_gen__generate_det_unify_args_2([L|Ls], [R|Rs], [M|Ms], Code) -->
 	unify_gen__generate_det_sub_unify(L, R, M, CodeA),
-	unify_gen__generate_det_unify_args(Ls, Rs, Ms, CodeB),
+	unify_gen__generate_det_unify_args_2(Ls, Rs, Ms, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
@@ -328,10 +340,22 @@ unify_gen__generate_det_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
 			list(uni_mode), code_tree, code_info, code_info).
 :- mode unify_gen__generate_semi_unify_args(in, in, in, out, in, out) is det.
 
-unify_gen__generate_semi_unify_args([], [], [], empty) --> [].
-unify_gen__generate_semi_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
+unify_gen__generate_semi_unify_args(Ls, Rs, Ms, Code) -->
+	( unify_gen__generate_semi_unify_args_2(Ls, Rs, Ms, Code0) ->
+	    { Code = Code0 }
+	;
+	    { error("unify_gen__generate_semi_unify_args: length mismatch") }
+	).
+
+:- pred unify_gen__generate_semi_unify_args_2(list(uni_val), list(uni_val),
+			list(uni_mode), code_tree, code_info, code_info).
+:- mode unify_gen__generate_semi_unify_args_2(in, in, in, out, in, out)
+	is semidet.
+
+unify_gen__generate_semi_unify_args_2([], [], [], empty) --> [].
+unify_gen__generate_semi_unify_args_2([L|Ls], [R|Rs], [M|Ms], Code) -->
 	unify_gen__generate_semi_sub_unify(L, R, M, CodeA),
-	unify_gen__generate_semi_unify_args(Ls, Rs, Ms, CodeB),
+	unify_gen__generate_semi_unify_args_2(Ls, Rs, Ms, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%

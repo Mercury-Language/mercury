@@ -10,6 +10,8 @@
 :- inst list_skel(I) = bound([] ; [I | list_skel(I)]).
 :- inst list_skel = list_skel(free).
 
+:- inst non_empty_list = bound([ground | ground]).
+
 :- mode input_list_skel :: list_skel -> list_skel.
 :- mode output_list_skel :: free -> list_skel.
 :- mode list_skel_output :: list_skel -> ground.
@@ -72,7 +74,7 @@
 	%	and a remainder `End'.
 
 :- pred list__split_list(int, list(T), list(T), list(T)).
-:- mode list__split_list(in, in, out, out) is det.
+:- mode list__split_list(in, in, out, out) is semidet.
 
 :- pred list__reverse(list(T), list(T)).
 :- mode list__reverse(in, out) is det.

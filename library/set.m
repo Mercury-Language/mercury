@@ -168,9 +168,9 @@ set__init([]).
 
 set__singleton_set([X], X).
 
-set__equal(S1, S2) :-
-	set__subset(S1, S2),
-	set__subset(S2, S1).
+set__equal(SetA, SetB) :-
+	set__subset(SetA, SetB),
+	set__subset(SetB, SetA).
 
 set__empty([]).
 

@@ -46,7 +46,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, list, int.
+:- import_module map, list, int, require.
 :- import_module globals, options, getopt.
 
 %-----------------------------------------------------------------------------%
@@ -55,9 +55,14 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 
 		% work out how many tag bits there are
 	globals__get_options(Globals, OptionTable),
-	map__lookup(OptionTable, num_tag_bits, int(NumTagBits0)),
+	map__lookup(OptionTable, num_tag_bits, OptionData),
+	( OptionData = int(NumTagBits0) ->
+		NumTagBits1 = NumTagBits0
+	;
+		error("assign_constructor_tags: invalid int option")
+	),
 	globals__get_tags_method(Globals, TagMethod),
-	adjust_num_tag_bits(TagMethod, NumTagBits0, NumTagBits),
+	adjust_num_tag_bits(TagMethod, NumTagBits1, NumTagBits),
 
 		% now assign them
 	map__init(CtorTags0),

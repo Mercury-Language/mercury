@@ -53,6 +53,9 @@
 :- mode in :: input.
 :- mode out :: output.
 
+:- mode in(Inst) :: Inst -> Inst.
+:- mode out(Inst) :: free -> Inst.
+
 % Unique modes.  Currently aliased to standard modes, since unique modes
 % aren't implemented yet.
 

@@ -211,14 +211,13 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
 
 hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) --> 
 	(
-		{ PredIds0 = [] }
+		{ PredIds0 = [PredId|PredIds] }
 	->
-		[]
-	;
-		{ PredIds0 = [PredId|PredIds] },
 		{ map__lookup(PredTable, PredId, PredInfo) },
 		hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo),
 		hlds_out__write_preds_2(Indent, ModuleInfo, PredIds, PredTable)
+	;
+		[]
 	).
 
 :- pred hlds_out__write_pred(int, module_info, pred_id, pred_info,
@@ -243,7 +242,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 
 		% Never write the clauses out verbosely -
 		% Temporarily disable the verbose_dump_hlds option
-	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
 	globals__set_option(verbose_dump_hlds, bool(no)),
 	hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars,
 			Clauses),
@@ -261,15 +260,14 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clauses0)
 		-->
 	(
-		{ Clauses0 = [] }
+		{ Clauses0 = [Clause|Clauses] }
 	->
-		[]
-	;
-		{ Clauses0 = [Clause|Clauses] },
 		hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 			HeadVars, Clause),
 		hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet,
 			HeadVars, Clauses)
+	;
+		[]
 	).
 
 :- pred hlds_out__write_clause(int, module_info, pred_id, varset, list(var),
@@ -285,7 +283,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
 		),
 		Indent1 is Indent + 1
 	},
-	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("% Modes for which this clause applies: "),
@@ -323,18 +321,17 @@ hlds_out__write_intlist(IntList) -->
 
 hlds_out__write_intlist_2(Ns0) -->
 	(
-		{ Ns0 = [] }
-	->
-		{ error("This should be unreachable.") }
-	;
 		{ Ns0 = [N] }
 	->
 		io__write_int(N)
 	;
-		{ Ns0 = [N|Ns] },
+		{ Ns0 = [N|Ns] }
+	->
 		io__write_int(N),
 		io__write_string(", "),
 		hlds_out__write_intlist_2(Ns)
+	;
+		{ error("This should be unreachable.") }
 	).
 
 :- pred hlds_out__write_clause_head(module_info, pred_id, varset, list(var),
@@ -351,7 +348,7 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	mercury_output_term(Term, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
-	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
@@ -465,7 +462,7 @@ hlds_out__write_goal_2(if_then_else(Vars, A, B, C), ModuleInfo, VarSet, Indent)
 	hlds_out__write_goal(B, ModuleInfo, VarSet, Indent1),
 	mercury_output_newline(Indent),
 	io__write_string("else"),
-	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	globals__lookup_bool_option(verbose_dump_hlds, Verbose),
 	(
 		{ Verbose = no },
 		{ C = if_then_else(_, _, _, _) - _ }
@@ -491,7 +488,7 @@ hlds_out__write_goal_2(not(Vars, Goal), ModuleInfo, VarSet, Indent) -->
 
 hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
-		globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+		globals__lookup_bool_option(verbose_dump_hlds, Verbose),
 		( { Verbose = yes } ->
 			{ Indent1 is Indent + 1 },
 			io__write_string("( % conjunction"),
@@ -792,10 +789,6 @@ hlds_out__write_varnames(Indent, VarNames) -->
 
 hlds_out__write_varnames_2(Indent, VarNameList0) -->
 	(
-		{ VarNameList0 = [] }
-	->
-		{ error("This cannot happen") }
-	;
 		{ VarNameList0 = [VarId - Name] }
 	->
 		{Indent1 is Indent + 1},
@@ -805,10 +798,9 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 		io__write_string(Name),
 		io__write_string("\n")
 	;
-		{
-			VarNameList0 = [VarId - Name|VarNameList],
-			Indent1 is Indent + 1
-		},
+		{ VarNameList0 = [VarId - Name|VarNameList] }
+	->
+		{ Indent1 is Indent + 1 },
 		hlds_out__write_indent(Indent1),
 		io__write_anything(VarId),
 		io__write_string(" - "),
@@ -816,6 +808,8 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 		io__write_string("\n"),
 		io__write_string(",\n"),
 		hlds_out__write_varnames_2(Indent, VarNameList)
+	->
+		{ error("This cannot happen") }
 	).
 
 :- pred hlds_out__write_vartypes(int, map(var, type), io__state, io__state).

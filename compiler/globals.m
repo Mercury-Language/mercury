@@ -66,6 +66,18 @@
 :- pred globals__io_get_tags_method(tags_method::out,
 				io__state::di, io__state::uo) is det.
 
+:- pred globals__lookup_bool_option(option::in, bool::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__lookup_int_option(option::in, int::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__lookup_string_option(option::in, string::out,
+			io__state::di, io__state::uo) is det.
+
+:- pred globals__lookup_accumulating_option(option::in, list(string)::out,
+			io__state::di, io__state::uo) is det.
+
 :- pred globals__lookup_option(option::in, option_data::out,
 			io__state::di, io__state::uo) is det.
 
@@ -128,6 +140,38 @@ globals__lookup_option(Option, OptionData) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_options(Globals, OptionTable) },
 	{ map__lookup(OptionTable, Option, OptionData) }.
+
+globals__lookup_bool_option(Option, Value) -->
+	globals__lookup_option(Option, OptionData),
+	{ OptionData = bool(Bool) ->
+		Value = Bool
+	;
+		error("globals__lookup_bool_option: invalid bool option")
+	}.
+
+globals__lookup_int_option(Option, Value) -->
+	globals__lookup_option(Option, OptionData),
+	{ OptionData = int(Int) ->
+		Value = Int
+	;
+		error("globals__lookup_int_option: invalid int option")
+	}.
+
+globals__lookup_accumulating_option(Option, Value) -->
+	globals__lookup_option(Option, OptionData),
+	{ OptionData = accumulating(StringList) ->
+		Value = StringList
+	;
+		error("globals__lookup_accumulating_option: invalid option")
+	}.
+
+globals__lookup_string_option(Option, Value) -->
+	globals__lookup_option(Option, OptionData),
+	{ OptionData = string(String) ->
+		Value = String
+	;
+		error("globals__lookup_string_option: invalid string option")
+	}.
 
 globals__set_option(Option, OptionData) -->
 	globals__io_get_globals(Globals0),

@@ -131,7 +131,7 @@ assoc_list__from_corresponding_lists(As, Bs, ABs) :-
 
 :- pred assoc_list__from_corresponding_lists_2(list(K), list(V), 
 							assoc_list(K, V)).
-:- mode assoc_list__from_corresponding_lists_2(in, in, out) is det.
+:- mode assoc_list__from_corresponding_lists_2(in, in, out) is semidet.
 
 assoc_list__from_corresponding_lists_2([], [], []).
 assoc_list__from_corresponding_lists_2([A|As], [B|Bs], [A - B|ABs]) :-

@@ -151,8 +151,8 @@ mode_is_unused(ModuleInfo, Mode) :-
 
 mode_util__modes_to_uni_modes(_X, [], _ModuleInfo, []).
 mode_util__modes_to_uni_modes(X, [M|Ms], ModuleInfo, [A|As]) :-
-	X = (Initial0 -> Final0),
-	M = (Initial1 -> Final1),
+	mode_get_insts(ModuleInfo, X, Initial0, Final0),
+	mode_get_insts(ModuleInfo, M, Initial1, Final1),
 	A = ((Initial0 - Initial1) -> (Final0 - Final1)),
 	mode_util__modes_to_uni_modes(X, Ms, ModuleInfo, As).
 
@@ -325,11 +325,17 @@ inst_lookup_2(typed_inst(Type, InstName), ModuleInfo, Inst) :-
 	% list of modes which includes the information provided by the
 	% corresponding types.
 
+:- propagate_type_info_mode_list(A, B, _, _) when A and B.
+
 propagate_type_info_mode_list([], _, [], []).
 propagate_type_info_mode_list([Type | Types], ModuleInfo, [Mode0 | Modes0],
 		[Mode | Modes]) :-
 	propagate_type_info_mode(Type, ModuleInfo, Mode0, Mode),
 	propagate_type_info_mode_list(Types, ModuleInfo, Modes0, Modes).
+propagate_type_info_mode_list([], _, [_|_], []) :-
+	error("propagate_type_info_mode_list: length mismatch").
+propagate_type_info_mode_list([_|_], _, [], []) :-
+	error("propagate_type_info_mode_list: length mismatch").
 
 	% Given a type and a mode, produce a new mode which includes
 	% the information provided by the type.

@@ -63,7 +63,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 	io__stderr_stream(StdErr),
 	io__tell(OutputFileName, Res),
 	( { Res = ok } ->
-		globals__lookup_option(verbose, bool(Verbose)),
+		globals__lookup_bool_option(verbose, Verbose),
 		( { Verbose = yes } ->
 			io__write_string(StdErr, "% Writing output to "),
 			io__write_string(StdErr, OutputFileName),
@@ -1039,7 +1039,7 @@ strip_trailing_primes(Name0, Name, Num) :-
 :- mode maybe_output_line_number(in, di, uo) is det.
 
 maybe_output_line_number(Context) -->
-	globals__lookup_option(line_numbers, bool(LineNumbers)),
+	globals__lookup_bool_option(line_numbers, LineNumbers),
 	( { LineNumbers = yes } ->
 		io__write_string("\t% "),
 		prog_out__write_context(Context),

@@ -1044,7 +1044,7 @@ convert_var_name(Name, GoedelName) :-
 :- mode maybe_write_line_number(in, di, uo) is det.
 
 maybe_write_line_number(Context) -->
-	globals__lookup_option(line_numbers, bool(LineNumbers)),
+	globals__lookup_bool_option(line_numbers, LineNumbers),
 	( { LineNumbers = yes } ->
 		io__write_string("\t% "),
 		prog_out__write_context(Context),
