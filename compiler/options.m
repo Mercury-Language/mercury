@@ -164,6 +164,7 @@
 		;	optimize_higher_order
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
+		;	constant_propagation
 		;	excess_assign
 		;	optimize_saved_vars
 		;	follow_code
@@ -411,6 +412,7 @@ option_defaults_2(optimization_option, [
 		% it affects the semantics
 	constraint_propagation	-	bool(no),
 	optimize_duplicate_calls -	bool(no),
+	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
 	optimize_saved_vars	-	bool(no),
 	prev_code		-	bool(no),
@@ -659,6 +661,8 @@ long_option("common-goal",		common_goal).
 long_option("excess-assign",		excess_assign).
 long_option("optimize-duplicate-calls", optimize_duplicate_calls).
 long_option("optimise-duplicate-calls", optimize_duplicate_calls).
+long_option("optimise-constant-propagation", constant_propagation).
+long_option("optimize-constant-propagation", constant_propagation).
 long_option("optimize-saved-vars",	optimize_saved_vars).
 long_option("optimise-saved-vars",	optimize_saved_vars).
 long_option("prev-code",		prev_code).
@@ -919,6 +923,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
+	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
 

@@ -791,7 +791,9 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
 	globals__io_lookup_bool_option(common_struct, Common),
 	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
-	simplify__proc(simplify(no, no, yes, yes, Common, ExcessAssign, Calls),
+	globals__io_lookup_bool_option(constant_propagation, Prop),
+	simplify__proc(
+		simplify(no, no, yes, yes, Common, ExcessAssign, Calls, Prop),
 		PredId, ProcId, ModuleInfo1, ModuleInfo2,
 		ProcInfo1, ProcInfo2, _, _),
 	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
@@ -968,6 +970,7 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(common_struct, Common),
 	globals__io_lookup_bool_option(excess_assign, Excess),
 	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
+	globals__io_lookup_bool_option(constant_propagation, Prop),
 	( { Warn = yes } ->
 		globals__io_lookup_bool_option(warn_duplicate_calls,
 			WarnCalls)
@@ -975,7 +978,7 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 		{ WarnCalls = no }
 	),
 	{ Simplify = simplify(Warn, WarnCalls, Once,
-			yes, Common, Excess, Calls) },
+			yes, Common, Excess, Calls, Prop) },
 	process_all_nonimported_procs(
 		update_proc_error(simplify__proc(Simplify)),
 		HLDS0, HLDS),

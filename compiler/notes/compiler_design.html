@@ -311,6 +311,8 @@ in an HLDS goal.
 	that construct a term that is the same as one that already exists,
 	or (b) repeated calls to a predicate with the same inputs, and replaces
 	them with assignment unifications.
+	simplify.m also attempts to partially evaluate calls to builtin
+	procedures if the inputs are all constants (see const_prop.m).
 
 </dl>
 
@@ -732,6 +734,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-07-24 03:41:14 $ by $Author: trd $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-08-25 02:25:02 $ by $Author: conway $@cs.mu.oz.au. <br>
 </body>
 </html>

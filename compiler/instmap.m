@@ -220,6 +220,15 @@
 		instmap_delta, module_info, module_info).
 :- mode merge_instmap_delta(in, in, in, in, out, in, out) is det.
 
+	% merge_instmap_deltas(Vars, InstMapDeltas,
+	%	MergedInstMapDelta, ModuleInfo0, ModuleInfo)
+	% takes a list of instmap deltas from the branches of an if-then-else,
+	% switch, or disj and merges them. This is used in situations
+	% where the bindings are known to be compatible.
+:- pred merge_instmap_deltas(instmap, set(var), list(instmap_delta),
+		instmap_delta, module_info, module_info).
+:- mode merge_instmap_deltas(in, in, in, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% `instmap_delta_apply_sub(InstmapDelta0, Must, Sub, InstmapDelta)'
@@ -597,6 +606,32 @@ instmap__merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 		ModuleInfo = ModuleInfo1,
 		Inst = not_reached
 	).
+
+%-----------------------------------------------------------------------------%
+
+merge_instmap_deltas(InstMap, NonLocals, InstMapDeltaList, MergedDelta,
+		ModuleInfo0, ModuleInfo) :-
+	(
+		InstMapDeltaList = [],
+		error("merge_instmap_deltas: empty instmap_delta list.")
+	;
+		InstMapDeltaList = [Delta|Deltas],
+		merge_instmap_deltas(InstMap, NonLocals, Delta, Deltas,
+			MergedDelta, ModuleInfo0, ModuleInfo)
+	).
+
+:- pred merge_instmap_deltas(instmap, set(var), instmap_delta,
+		list(instmap_delta), instmap_delta, module_info, module_info).
+:- mode merge_instmap_deltas(in, in, in, in, out, in, out) is det.
+
+merge_instmap_deltas(_InstMap, _NonLocals, MergedDelta, [], MergedDelta,
+		ModuleInfo, ModuleInfo).
+merge_instmap_deltas(InstMap, NonLocals, MergedDelta0, [Delta|Deltas],
+		MergedDelta, ModuleInfo0, ModuleInfo) :-
+	merge_instmap_delta(InstMap, NonLocals, MergedDelta0, Delta,
+		MergedDelta1, ModuleInfo0, ModuleInfo1),
+	merge_instmap_deltas(InstMap, NonLocals, MergedDelta1, Deltas,
+		MergedDelta, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

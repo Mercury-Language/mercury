@@ -1839,6 +1839,10 @@ Specialize calls to higher-order predicates where
 the higher-order arguments are known.
 
 @sp 1
+@item --optimize-constant-propagation
+Evaluate constant expressions at compile time.
+
+@sp 1
 @item --optimize-constructor-last-call
 Enable the optimization of ``last'' calls that are followed by
 constructor application.
