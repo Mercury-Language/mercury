@@ -3094,6 +3094,18 @@ mercury_format_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 		mercury_format_remaining_terms(Xs, VarSet, AppendVarnums),
 		add_string("}")
 	;
+		{ Args = [BinaryPrefixArg1, BinaryPrefixArg2] },
+		{ Functor = term__atom(FunctorName) },
+		{ mercury_binary_prefix_op(FunctorName) }
+	->
+		add_string("("),
+		add_string(FunctorName),
+		add_string(" "),
+		mercury_format_term(BinaryPrefixArg1, VarSet, AppendVarnums),
+		add_string(" "),
+		mercury_format_term(BinaryPrefixArg2, VarSet, AppendVarnums),
+		add_string(")")
+	;
 		{ Args = [PrefixArg] },
 		{ Functor = term__atom(FunctorName) },
 		{ mercury_unary_prefix_op(FunctorName) }
