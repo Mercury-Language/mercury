@@ -194,9 +194,12 @@
 **
 ** Also indended for use in handwritten C code.
 **
+** Note that TYPELAYOUT_UNASSIGNED_VALUE is not yet
+** used for anything.
+**
 */
 
-#define TYPELAYOUT_CONST_VALUE		((Integer) 0)
+#define TYPELAYOUT_UNASSIGNED_VALUE	((Integer) 0)
 #define TYPELAYOUT_UNUSED_VALUE		((Integer) 1)
 #define TYPELAYOUT_STRING_VALUE		((Integer) 2)
 #define TYPELAYOUT_FLOAT_VALUE		((Integer) 3)
