@@ -24,7 +24,6 @@ DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out) $(OTHER_TESTS:%=%.out)
 RESS=	$(PROGS:%=%.res) $(OTHER_TESTS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
 
@@ -33,8 +32,6 @@ dep:	$(DEPS)
 depend:	$(DEPENDS)
 
 check:	$(OUTS) $(RESS)
-
-mods:	$(MODS)
 
 all:	$(PROGS)
 

@@ -131,7 +131,6 @@ DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#
 
@@ -159,11 +158,6 @@ depend:	$(DEPENDS)
 check:	$(OUTS) $(RESS)
 	for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
-	done
-
-mods:	$(MODS)
-	for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) mods) || exit 1; \
 	done
 
 all:	$(PROGS)

@@ -86,15 +86,12 @@ DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
 RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
 
 depend: $(DEPENDS)
 
 exp:	$(EXPS)
 
 check:	$(OUTS) $(RESS)
-
-mods:	$(MODS)
 
 all:	$(PROGS)
 
