@@ -45,7 +45,7 @@
 @ifinfo
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2001 The University of Melbourne.
+Copyright (C) 1995-2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -77,7 +77,7 @@ into another language, under the above conditions for modified versions.
 @author Tyson Dowd
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2001 The University of Melbourne.
+Copyright @copyright{} 1995-2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -665,9 +665,10 @@ specified in @code{GRADEFLAGS}, not in @code{MLFLAGS}.)
 A list of @samp{-l} options specifying libraries used by the program
 (or library) that you are building.  @xref{Using libraries}.
 
-@item MLOBJS
+@item MLOBJS and EXTRA_MLOBJS
 @vindex MLOBJS
-A list of extra object files to link into any programs or libraries
+@vindex EXTRA_MLOBJS
+A list of extra object files to link into the program (or library)
 that you are building.
 
 @item C2INITFLAGS and EXTRA_C2INITFLAGS

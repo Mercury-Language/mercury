@@ -3514,9 +3514,18 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	{ Gmake = yes ->
 		append_list(["\\\n\t\t$(foreach @,", MakeVarName,
 				",$(ALL_MLLIBS_DEP))"],
-				All_MLLibsDepString)
+				All_MLLibsDepString),
+		append_list(["\\\n\t\t$(foreach @,", MakeVarName,
+				",$(ALL_MLOBJS))"],
+				All_MLObjsString),
+		append_list([
+		"\\\n\t\t$(patsubst %.o,%.$(EXT_FOR_PIC_OBJECTS),$(foreach @,",
+				MakeVarName, ",$(ALL_MLOBJS)))"],
+				All_MLPicObjsString)
 	;
-		All_MLLibsDepString = "$(ALL_MLLIBS_DEP)"
+		All_MLLibsDepString = "$(ALL_MLLIBS_DEP)",
+		All_MLObjsString = "$(ALL_MLOBJS)",
+		All_MLPicObjsString = "$(ALL_MLPICOBJS)"
 	},
 
 	%
@@ -3543,11 +3552,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	{ MainRule =
 		[ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".os) ",
-			InitObjFileName, " $(ALL_MLOBJS) ",
+			InitObjFileName, " ", All_MLObjsString, " ",
 			All_MLLibsDepString, "\n",
 		"\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -o ",
 			ExeFileName, " ", InitObjFileName, " \\\n",
-		"\t	$(", MakeVarName, ".os) $(ALL_MLOBJS) $(ALL_MLLIBS)\n"]
+		"\t	$(", MakeVarName, ".os) ", All_MLObjsString,
+			" $(ALL_MLLIBS)\n"]
 	},
 	{ EndIf = ["endif\n"] },
 
@@ -3576,11 +3586,11 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	io__write_strings(DepStream, [
-		SplitLibFileName,
-			" : $(", MakeVarName, ".dir_os) $(ALL_MLOBJS)\n",
+		SplitLibFileName, " : $(", MakeVarName, ".dir_os) ",
+					All_MLObjsString, "\n",
 		"\trm -f ", SplitLibFileName, "\n",
-		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)",
-		SplitLibFileName, " $(ALL_MLOBJS)\n",
+		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT) ",
+		SplitLibFileName, " ", All_MLObjsString, "\n",
 		"\tfind $(", MakeVarName, ".dirs) -name ""*.$O"" -print | \\\n",
 		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
@@ -3637,19 +3647,19 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		SharedLibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
 			"$(", MakeVarName, ".pic_os) ",
-			"$(ALL_MLPICOBJS) ", All_MLLibsDepString, "\n",
+			All_MLPicObjsString, " ", All_MLLibsDepString, "\n",
 		"\t$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) ",
 			"-o ", SharedLibFileName, " \\\n",
-		"\t\t$(", MakeVarName, ".pic_os) $(ALL_MLPICOBJS) ",
-			"$(ALL_MLLIBS)\n\n"
+		"\t\t$(", MakeVarName, ".pic_os) ", All_MLPicObjsString,
+			" $(ALL_MLLIBS)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
 		LibFileName, " : $(", MakeVarName, ".cs_or_ss) ",
-			"$(", MakeVarName, ".os) $(ALL_MLOBJS)\n",
+			"$(", MakeVarName, ".os) ", All_MLObjsString, "\n",
 		"\trm -f ", LibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
-			"$(", MakeVarName, ".os) $(ALL_MLOBJS)\n",
+			"$(", MakeVarName, ".os) ", All_MLObjsString, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
 

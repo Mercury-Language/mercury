@@ -118,6 +118,7 @@ ORDINARY_PROGS=	\
 	string_alignment \
 	string_alignment_bug \
 	string_loop \
+	target_mlobjs \
 	term_io_test \
 	term_to_univ_test \
 	test_bitset \
@@ -247,6 +248,8 @@ MCFLAGS-user_defined_equality	= --infer-all
 MCFLAGS-parse		=	--trace deep
 MCFLAGS-unused_float_box_test =	--infer-all
 
+MLOBJS-target_mlobjs	=	target_mlobjs_c.o
+
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
 # with `--no-strip', otherwise it gets a seg fault. 
@@ -298,6 +301,9 @@ dep_local:	$(DEPS)
 depend_local:	$(DEPENDS)
 check_local:	$(OUTS) $(RESS)
 all_local:	$(PROGS) $(SPLIT_PROGS:%=%.split)
+
+clean_local:
+	rm -f target_mlobjs_c.o		
 
 #-----------------------------------------------------------------------------#
 
