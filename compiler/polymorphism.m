@@ -229,7 +229,7 @@
 %	:- pred q(T2, T3) <= foo(T2), bar(T3).
 %	:- pred r(T4, T5) <= foo(T4).
 %
-%	p(X) :- q([X], 0), r(0, X).
+%	p(X) :- q([X], 0), r(X, 0).
 %
 % We add an extra argument for each typeclass constraint, and one argument for
 % each unconstrained type variable.
@@ -273,7 +273,7 @@
 %		TypeClassInfoT4 = typeclass_info(
 %			BaseTypeClassInfoT4,
 %			<type_info for int>),
-%		r(TypeClassInfoT1, <type_info for int>, 0, X).
+%		r(TypeClassInfoT1, <type_info for int>, X, 0).
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
