@@ -428,7 +428,7 @@
 			% refer to a Mercury label. If they do, we must
 			% prevent the label from being optimized away.
 			% To make it known to labelopt, we mention it in
-			% the fourth or the fifth arg. The fourth argument
+			% the fourth, fifth or sixth arg. The fourth argument
 			% may give the name of a label whose name is fixed
 			% because it embedded in raw C code, and which does
 			% not have a layout structure. The fifth argument
@@ -440,7 +440,7 @@
 			% in C code and has no associated layout structure,
 			% being mentioned only in pragma_c_fail_to components).
 			%
-			% The sixth argument says whether the contents
+			% The seventh argument says whether the contents
 			% of the pragma C code can refer to stack slots.
 			% User-written shouldn't refer to stack slots,
 			% the question is whether the compiler-generated
