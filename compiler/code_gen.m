@@ -211,7 +211,6 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		ModuleInfo, CellCount0, CodeInfo0),
 		% generate code for the procedure
 	globals__get_trace_level(Globals, TraceLevel),
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	( trace_level_trace_interface(TraceLevel, yes) ->
 		trace__setup(TraceLevel, CodeInfo0, CodeInfo1)
 	;
@@ -238,8 +237,10 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	),
 	( BasicStackLayout = yes ->
 		code_info__get_layout_info(LayoutInfo, CodeInfo, _CodeInfo2),
+		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
+			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
-			ProcLabel, TotalSlots, Detism, MaybeSuccipSlot,
+			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
 			MaybeTraceCallLabel, LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
