@@ -12,9 +12,11 @@
 %
 % Note that the predicates and functions in this module change
 % directory separators in paths passed to them to the normal
-% separator for the platform.  Duplicate directory separators
-% and trailing separators are also removed where that doesn't
-% change the meaning of the path name.
+% separator for the platform, if that doesn't change the meaning
+% of the path name.
+%
+% Duplicate directory separators and trailing separators are also
+% removed where that doesn't change the meaning of the path name.
 % 
 %-----------------------------------------------------------------------------%
 
@@ -64,6 +66,9 @@
 	% On Windows, drive current directories are handled correctly,
 	% for example `dir__split_name("C:foo", "C:", "foo")'.
 	% (`X:' is the current directory on drive `X').
+	% Note that Cygwin doesn't support drive current directories,
+	% so `dir__split_name("C:foo, _, _)' will fail when running
+	% under Cygwin.
 :- pred dir__split_name(string::in, string::out, string::out) is semidet.
 
 	% dir__basename(PathName) = BaseName.
@@ -235,7 +240,7 @@ dir__directory_separator = (if have_win32 then ('\\') else ('/')).
 
 :- func dir__alt_directory_separator = char.
 
-dir__alt_directory_separator = ('/').
+dir__alt_directory_separator = (io__have_cygwin -> ('\\') ; ('/')).
 :- pragma foreign_proc("C#", dir__alt_directory_separator = (Sep::out),
 	[promise_pure, will_not_call_mercury, thread_safe],
 "
@@ -373,7 +378,9 @@ dir__split_name_3(FileNameChars, DirName, BaseName) :-
 			\+ (
 				dir__is_directory_separator(Sep),
 				(
-					use_windows_paths,
+					( use_windows_paths
+					; io__have_cygwin
+					),
 					RevDirName1 = [(':'), Drive],
 					char__is_alpha(Drive)
 				;
@@ -436,17 +443,22 @@ canonicalize_path_chars(FileName0) = FileName :-
 	(
 		% Windows allows path names of the form "\\server\share".
 		% These path names are referred to as UNC path names.
-		use_windows_paths,
+		( use_windows_paths ; io__have_cygwin ),
 		FileName0 = [Char1 | FileName1],
 		is_directory_separator(Char1)
 	->
+		% On Cygwin "//" is different to "\\"
+		% ("//" is the Cygwin root directory, "\\" is
+		% the root directory of the current drive).
+		CanonicalChar1 =
+			( io__have_cygwin -> Char1 ; directory_separator ),
 		FileName2 = canonicalize_path_chars_2(FileName1, []),
 
 		% "\\" isn't a UNC path name, so it is equivalent to "\".
 		( FileName2 = [Char2], is_directory_separator(Char2) ->
-			FileName = FileName2	
+			FileName = [CanonicalChar1]
 		;
-			FileName = [directory_separator | FileName2]
+			FileName = [CanonicalChar1 | FileName2]
 		)
 	;	
 		FileName = canonicalize_path_chars_2(FileName0, [])
@@ -458,8 +470,14 @@ canonicalize_path_chars_2([], RevFileName) = reverse(RevFileName).
 canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
 		canonicalize_path_chars_2(FileName0, RevFileName) :-
 	% Convert all directory separators to the standard separator
-	% for the platform.
-	C = ( is_directory_separator(C0) -> directory_separator ; C0 ),
+	% for the platform, if that doesn't change the meaning.
+	% On Cygwin, "\foo\bar" (relative to root of current drive)
+	% is different to "/foo/bar" (relative to Cygwin root directory),
+	% so we can't convert separators.
+	C = ( if \+ io__have_cygwin, is_directory_separator(C0)
+	      then directory_separator
+	      else C0
+	    ),
 
 	% Remove repeated directory separators.
 	(
@@ -494,7 +512,7 @@ dir__path_name_is_root_directory(PathName) :-
 is_root_directory(FileName) :-
 	( have_dotnet ->
 		is_dotnet_root_directory(string__from_char_list(FileName))
-	; use_windows_paths ->
+	; ( use_windows_paths ; io__have_cygwin ) ->
 		strip_leading_win32_root_directory(FileName, [])
 	;
 		FileName = [Char],
@@ -517,11 +535,15 @@ strip_leading_win32_root_directory(!FileName) :-
 	).
 
 	% Check for `X:\'.
+	% XXX On Cygwin `C:' is treated as being identical to `C:\'.
+	% The comments in the Cygwin source imply that this behaviour
+	% may change, and it's pretty awful anyway (`C:foo' isn't the
+	% same as `C:\foo'), so we don't support it here.
 :- pred strip_leading_win32_drive_root_directory(list(char)::in,
 		list(char)::out) is semidet.
 
 strip_leading_win32_drive_root_directory(
-		[Letter, ':', Sep| !.FileName],
+		[Letter, ':', Sep | !.FileName],
 		!:FileName) :-
 	char__is_alpha(Letter),
 	dir__is_directory_separator(Sep).
@@ -606,7 +628,7 @@ is_dotnet_root_directory_2(_) :-
 dir__path_name_is_absolute(FileName) :-
 	( have_dotnet ->
 		dotnet_path_name_is_absolute(FileName)
-	; use_windows_paths ->
+	; ( use_windows_paths ; io__have_cygwin ) ->
 		strip_leading_win32_root_directory(
 			canonicalize_path_chars(
 				string__to_char_list(FileName)),

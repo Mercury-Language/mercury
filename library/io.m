@@ -1428,6 +1428,9 @@
 % Succeeds iff the Win32 API is available.
 :- pred have_win32 is semidet.
 
+% Succeeds iff the current process was compiled against the Cygwin library.
+:- pred have_cygwin is semidet.
+
 % Succeeds iff the .NET class library is available.
 :- pred have_dotnet is semidet.
 
@@ -2198,6 +2201,19 @@ have_win32 :- semidet_fail.
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 #ifdef MR_WIN32
+  SUCCESS_INDICATOR = MR_TRUE;
+#else
+  SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+
+have_cygwin :- semidet_fail.
+
+:- pragma foreign_proc("C",
+	have_cygwin,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+#ifdef __CYGWIN__
   SUCCESS_INDICATOR = MR_TRUE;
 #else
   SUCCESS_INDICATOR = MR_FALSE;
