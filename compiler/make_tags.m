@@ -118,11 +118,13 @@ assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 assign_simple_tags([], _, CtorTags, CtorTags).
 assign_simple_tags([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 	create_cons_id(Name, Args, ConsId),
-	max_num_tags(Max),
+	max_num_tags(NumTags),
+	Max is NumTags - 1,
 		% if we're about to run out of simple tags, start assigning
 		% complicated tags instead
 	( Val = Max, Rest \= [] ->
-		assign_complicated_tags(Rest, Max, 0, CtorTags0, CtorTags)
+		assign_complicated_tags([Name - Args | Rest], Max, 0,
+			CtorTags0, CtorTags)
 	;
 		Tag = simple_tag(Val),
 		map__set(CtorTags0, ConsId, Tag, CtorTags1),
