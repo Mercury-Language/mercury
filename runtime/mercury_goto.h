@@ -216,11 +216,25 @@
     */
     #if defined(__i386__)
 
-      #define MR_INLINE_ASM_FIXUP_REGS     			\
-    	"	call 0f\n"     					\
-    	"0:\n"       						\
-    	"	popl %%ebx\n"     				\
-    	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b],%%ebx\n\t"	\
+      #if __GNUC__ > 2 || __GNUC__ == 2 && __GNUC_MINOR__ >= 97
+        /*
+	** The gcc 2.97 snapshot that I tried didn't convert
+	** "%%" in inline asm into "%".  So for gcc >= 2.97,
+	** just use one % symbol.
+	** (This behaviour is contrary to the gcc manual, but
+	** using %% like it says in the manual doesn't work,
+	** so we have to use %.)
+	*/
+        #define MR_EBX "%ebx"
+      #else
+        #define MR_EBX "%%ebx"
+      #endif
+
+      #define MR_INLINE_ASM_FIXUP_REGS     				\
+    	"	call 0f\n"     						\
+    	"0:\n"       							\
+    	"	popl " MR_EBX "\n"     					\
+    	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b]," MR_EBX "\n\t"	\
     		: :
 #if 0
 	/*
