@@ -47,7 +47,8 @@ public class TypeCtorRep {
 	public static final int MR_TYPECTOR_REP_BASETYPECLASSINFO = 34;
 	public static final int MR_TYPECTOR_REP_TYPEDESC = 35;
 	public static final int MR_TYPECTOR_REP_TYPECTORDESC = 36;
-	public static final int MR_TYPECTOR_REP_UNKNOWN = 37;
+	public static final int MR_TYPECTOR_REP_FOREIGN = 37;
+	public static final int MR_TYPECTOR_REP_UNKNOWN = 38;
 	
 	// Instance variable for TypeCtorRep objects.
 	
