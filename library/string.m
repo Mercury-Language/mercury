@@ -1072,10 +1072,10 @@ string__combine_hash(H0, X, H) :-
 }").
 
 :- pragma foreign_proc("MC++", 
-	string__sub_string_search(_WholeString::in, _SubString::in,
-			_Index::out) , [will_not_call_mercury, thread_safe],
+	string__sub_string_search(WholeString::in, SubString::in,
+			Index::out) , [will_not_call_mercury, thread_safe],
 "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	Index = WholeString->IndexOf(SubString);
 }").
 
 %-----------------------------------------------------------------------------%
@@ -1939,9 +1939,14 @@ string__append(S1::out, S2::out, S3::in) :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__append_ioi(_S1::in, _S2::out, _S3::in),
+	string__append_ioi(S1::in, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	if (S3->StartsWith(S1)) {
+		S2 = S3->Remove(0, S1->Length);
+		SUCCESS_INDICATOR = TRUE;
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
 }").
 
 :- pred string__append_iio(string::in, string::in, string::out) is det.
