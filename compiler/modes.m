@@ -473,22 +473,40 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), _, Goal) -->
-	mode_checkpoint(enter, "call"),
+modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), NonLocals0, Goal)
+		-->
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
+	=(ModeInfo0),
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
 	{ Call = call(PredId, Mode, Args, Builtin, PredName, Follow) },
-	{ goal_info_init(GoalInfo) },	% XXX bug!
-	{ CallGoal = Call - GoalInfo },
-	{ ExtraGoals = BeforeGoals - AfterGoals },
-	{ list__append(BeforeGoals, [CallGoal | AfterGoals], GoalList) },
-	{ GoalList = [SingleGoal - _GoalInfo2] ->
-		Goal = SingleGoal
+
+	% did we introduced any extra variables (and code) for implied modes?
+	{ ExtraGoals = [] - [] ->
+		Goal = Call	% no
 	;
+		% recompute the new set of non-local variables for the call
+		term__vars_list(Args0, OldArgList),
+		set__insert_list(NonLocals0, OldArgList, OutsideVars),
+		term__vars_list(Args, NewArgList),
+		set__list_to_set(NewArgList, NewArgVars),
+		set__intersect(NewArgVars, OutsideVars, NonLocals),
+		goal_info_init(GoalInfo0),
+		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
+
+		% compute the instmap delta for the call
+		mode_info_get_vars_instmap(ModeInfo0, NewArgVars, InstMap0),
+		mode_info_get_vars_instmap(ModeInfo, NewArgVars, InstMap),
+		compute_instmap_delta(InstMap0, InstMap, NonLocals,
+			DeltaInstMap),
+		goal_info_set_instmap_delta(GoalInfo1, DeltaInstMap, GoalInfo),
+
+		CallGoal = Call - GoalInfo ,
+		ExtraGoals = BeforeGoals - AfterGoals ,
+		list__append(BeforeGoals, [CallGoal | AfterGoals], GoalList),
 		Goal = conj(GoalList)
 	},
 	mode_info_unset_call_context,
@@ -1262,6 +1280,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 				mode_info, mode_info).
 :- mode handle_implied_mode(in, in, in, in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
+
 handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		Var, Goals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -1305,17 +1324,42 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			categorize_unify_var_var(ModeVar0, ModeVar,
 				live, dead, Var0, Var, Det,
 				VarTypes, ModuleInfo, Unification),
+			mode_info_get_mode_context(ModeInfo, ModeContext),
+			mode_context_to_unify_context(ModeContext,
+				UnifyContext),
 			AfterGoal = unify(term__variable(Var0),
 					term__variable(Var),
 					ModeVar0 - ModeVar,
 					Unification,
-					unify_context(explicit, [])
-						% XXX context is wrong
+					UnifyContext
 			),
-			goal_info_init(GoalInfo), % XXX that is wrong!
+			% compute the goal_info nonlocal vars & instmap delta
+			set__list_to_set([Var0, Var], NonLocals),
+			map__init(InstMapDelta0),
+			( VarInst = VarInst0 ->
+				InstMapDelta1 = InstMapDelta0
+			;
+				map__set(InstMapDelta0, Var0, VarInst,
+					InstMapDelta1)
+			),
+			map__set(InstMapDelta1, Var, VarInst, InstMapDelta),
+			goal_info_init(GoalInfo0),
+			goal_info_set_nonlocals(GoalInfo0, NonLocals,
+				GoalInfo1),
+			goal_info_set_instmap_delta(GoalInfo1,
+				reachable(InstMapDelta), GoalInfo),
 			Goals = [] - [AfterGoal - GoalInfo]
 		)
 	).
+
+:- pred mode_context_to_unify_context(mode_context, unify_context).
+:- mode mode_context_to_unify_context(in, out) is det.
+
+mode_context_to_unify_context(unify(UnifyContext, _), UnifyContext).
+mode_context_to_unify_context(call(PredId, Arg),
+		unify_context(call(PredId, Arg), [])).
+mode_context_to_unify_context(uninitialized, _) :-
+	error("mode_context_to_unify_context: uninitialized context").
 
 %-----------------------------------------------------------------------------%
 
