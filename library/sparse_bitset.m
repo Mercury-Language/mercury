@@ -768,7 +768,7 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 	% to avoid unnecessary memory retention.
 	% Doing this slows down the compiler by about 1%,
 	% but in a library module it's better to be safe.
-:- pragma foreign_code("C", make_bitset_elem(A::in, B::in) = (Pair::out),
+:- pragma foreign_proc("C", make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
 	MR_incr_hp_atomic_msg(Pair, 2, MR_PROC_LABEL,
@@ -777,7 +777,7 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 	MR_field(MR_mktag(0), Pair, 1) = B;
 }").
 
-:- pragma foreign_code("MC++", make_bitset_elem(A::in, B::in) = (Pair::out),
+:- pragma foreign_proc("MC++", make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
 	MR_newobj((Pair), 0, 2);

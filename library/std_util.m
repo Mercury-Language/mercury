@@ -799,7 +799,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 %
 :- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
 	is det.
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 		get_registers(HeapPtr::out, SolutionsHeapPtr::out,
 		TrailPtr::out), will_not_call_mercury,
 "
@@ -819,7 +819,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 #endif
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 		get_registers(HeapPtr::out, SolutionsHeapPtr::out,
 		TrailPtr::out), will_not_call_mercury,
 "
@@ -840,7 +840,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 
 
 :- impure pred check_for_floundering(trail_ptr::in) is det.
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	check_for_floundering(TrailPtr::in), [will_not_call_mercury],
 "
 #ifdef MR_USE_TRAIL
@@ -848,7 +848,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	MR_reset_ticket(TrailPtr, MR_solve);
 #endif
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	check_for_floundering(_TrailPtr::in), [will_not_call_mercury],
 "
 #ifdef MR_USE_TRAIL
@@ -860,14 +860,14 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 % Discard the topmost trail ticket.
 %
 :- impure pred discard_trail_ticket is det.
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	discard_trail_ticket, [will_not_call_mercury],
 "
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	discard_trail_ticket, [will_not_call_mercury],
 "
 #ifdef MR_USE_TRAIL
@@ -879,7 +879,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 % Swap the heap with the solutions heap
 %
 :- impure pred swap_heap_and_solutions_heap is det.
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	swap_heap_and_solutions_heap,
 	will_not_call_mercury,
 "
@@ -897,7 +897,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
     }
 #endif
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	swap_heap_and_solutions_heap,
 	will_not_call_mercury,
 "
@@ -949,25 +949,25 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	partial_deep_copy(SolutionsHeapPtr::in,
 		OldVal::in, NewVal::out), will_not_call_mercury,
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	partial_deep_copy(SolutionsHeapPtr::in,
 		OldVal::mdi, NewVal::muo), will_not_call_mercury,
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
-:- pragma foreign_code("C", partial_deep_copy(SolutionsHeapPtr::in,
+:- pragma foreign_proc("C", partial_deep_copy(SolutionsHeapPtr::in,
 		OldVal::di, NewVal::uo), will_not_call_mercury,
 "
 	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	partial_deep_copy(_SolutionsHeapPtr::in,
 		OldVal::in, NewVal::out), will_not_call_mercury,
 "
@@ -978,13 +978,13 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	*/
 	NewVal = OldVal;
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	partial_deep_copy(_SolutionsHeapPtr::in,
 		OldVal::mdi, NewVal::muo), will_not_call_mercury,
 "
 	NewVal = OldVal;
 ").
-:- pragma foreign_code("MC++", partial_deep_copy(_SolutionsHeapPtr::in,
+:- pragma foreign_proc("MC++", partial_deep_copy(_SolutionsHeapPtr::in,
 		OldVal::di, NewVal::uo), will_not_call_mercury,
 "
 	NewVal = OldVal;
@@ -997,7 +997,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 %	heap since that value was obtained via get_registers/3.
 %
 :- impure pred reset_solutions_heap(heap_ptr::in) is det.
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	reset_solutions_heap(SolutionsHeapPtr::in),
 	will_not_call_mercury,
 "
@@ -1006,7 +1006,7 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 #endif
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	reset_solutions_heap(_SolutionsHeapPtr::in),
 	will_not_call_mercury,
 "
@@ -1052,48 +1052,48 @@ XXX `ui' modes don't work yet
 :- type mutvar(T) ---> mutvar(c_pointer).
 
 :- pragma inline(new_mutvar/2).
-:- pragma foreign_code("C", new_mutvar(X::in, Ref::out), will_not_call_mercury,
+:- pragma foreign_proc("C", new_mutvar(X::in, Ref::out), will_not_call_mercury,
 "
 	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
 	*(MR_Word *) Ref = X;
 ").
-:- pragma foreign_code("C", new_mutvar(X::di, Ref::uo), will_not_call_mercury,
+:- pragma foreign_proc("C", new_mutvar(X::di, Ref::uo), will_not_call_mercury,
 "
 	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
 	*(MR_Word *) Ref = X;
 ").
 
 :- pragma inline(get_mutvar/2).
-:- pragma foreign_code("C", get_mutvar(Ref::in, X::uo), will_not_call_mercury,
+:- pragma foreign_proc("C", get_mutvar(Ref::in, X::uo), will_not_call_mercury,
 "
 	X = *(MR_Word *) Ref;
 ").
 
 :- pragma inline(set_mutvar/2).
-:- pragma foreign_code("C", set_mutvar(Ref::in, X::in), will_not_call_mercury, "
+:- pragma foreign_proc("C", set_mutvar(Ref::in, X::in), will_not_call_mercury, "
 	*(MR_Word *) Ref = X;
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	new_mutvar(_X::in, _Ref::out), will_not_call_mercury,
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	new_mutvar(_X::di, _Ref::uo), will_not_call_mercury,
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma inline(get_mutvar/2).
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	get_mutvar(_Ref::in, _X::uo), will_not_call_mercury,
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- pragma inline(set_mutvar/2).
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	set_mutvar(_Ref::in, _X::in), will_not_call_mercury,
 "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -1148,28 +1148,28 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 % to make sure that the compiler doesn't issue any determinism warnings
 % for them.
 
-:- pragma foreign_code("C", semidet_succeed, 
+:- pragma foreign_proc("C", semidet_succeed, 
 		[will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = TRUE;").
-:- pragma foreign_code("C", semidet_fail, [will_not_call_mercury, thread_safe],
+:- pragma foreign_proc("C", semidet_fail, [will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = FALSE;").
-:- pragma foreign_code("C", cc_multi_equal(X::in, Y::out),
+:- pragma foreign_proc("C", cc_multi_equal(X::in, Y::out),
                [will_not_call_mercury, thread_safe],
 		"Y = X;").
-:- pragma foreign_code("C", cc_multi_equal(X::di, Y::uo),
+:- pragma foreign_proc("C", cc_multi_equal(X::di, Y::uo),
                [will_not_call_mercury, thread_safe],
 		"Y = X;").
 
-:- pragma foreign_code("MC++", semidet_succeed, 
+:- pragma foreign_proc("MC++", semidet_succeed, 
 		[will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = TRUE;").
-:- pragma foreign_code("MC++", semidet_fail, 
+:- pragma foreign_proc("MC++", semidet_fail, 
 		[will_not_call_mercury, thread_safe],
 		"SUCCESS_INDICATOR = FALSE;").
-:- pragma foreign_code("MC++", cc_multi_equal(X::in, Y::out),
+:- pragma foreign_proc("MC++", cc_multi_equal(X::in, Y::out),
                [will_not_call_mercury, thread_safe],
 		"Y = X;").
-:- pragma foreign_code("MC++", cc_multi_equal(X::di, Y::uo),
+:- pragma foreign_proc("MC++", cc_multi_equal(X::di, Y::uo),
                [will_not_call_mercury, thread_safe],
 		"Y = X;").
 
@@ -1519,7 +1519,7 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 	% so we use a separate type for it.
 :- type type_ctor_desc ---> type_ctor_desc(c_pointer).
 
-:- pragma foreign_code("C", type_of(_Value::unused) = (TypeInfo::out),
+:- pragma foreign_proc("C", type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, "
 {
 	TypeInfo = TypeInfo_for_T;
@@ -1540,7 +1540,7 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 }
 ").
 
-:- pragma foreign_code("MC++", type_of(_Value::unused) = (TypeInfo::out),
+:- pragma foreign_proc("MC++", type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, "
 {
 	TypeInfo = TypeInfo_for_T;
@@ -1548,12 +1548,12 @@ extern  MR_TypeInfo	    ML_make_type(int arity, MR_TypeCtorDesc type_ctor_desc,
 ").
 
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	has_type(_Arg::unused, TypeInfo::in), will_not_call_mercury, "
 	TypeInfo_for_T = TypeInfo;
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	has_type(_Arg::unused, TypeInfo::in), will_not_call_mercury, "
 	TypeInfo_for_T = TypeInfo;
 ").
@@ -1649,7 +1649,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 		error("det_make_type/2: make_type/2 failed (wrong arity)")
 	).
 
-:- pragma foreign_code("C", type_ctor(TypeInfo::in) = (TypeCtor::out),
+:- pragma foreign_proc("C", type_ctor(TypeInfo::in) = (TypeCtor::out),
 	will_not_call_mercury, "
 {
 	MR_TypeCtorInfo type_ctor_info;
@@ -1665,7 +1665,7 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 }
 ").
 
-:- pragma foreign_code("MC++", type_ctor(_TypeInfo::in) = (_TypeCtor::out),
+:- pragma foreign_proc("MC++", type_ctor(_TypeInfo::in) = (_TypeCtor::out),
 	will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""compare for type_desc"");
@@ -1750,7 +1750,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", type_ctor_and_args(TypeDesc::in,
+:- pragma foreign_proc("C", type_ctor_and_args(TypeDesc::in,
 		TypeCtorDesc::out, ArgTypes::out), will_not_call_mercury, "
 {
 	MR_TypeCtorDesc type_ctor_desc;
@@ -1766,7 +1766,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", type_ctor_and_args(_TypeDesc::in,
+:- pragma foreign_proc("MC++", type_ctor_and_args(_TypeDesc::in,
 		_TypeCtorDesc::out, _ArgTypes::out), will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""compare for type_desc"");
@@ -1782,7 +1782,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	** a new type with the specified arguments.
 	*/
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
 		will_not_call_mercury, "
 {
@@ -1819,7 +1819,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out),
 		will_not_call_mercury, "
 {
@@ -1834,7 +1834,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 	** arguments.
 	*/
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
 		will_not_call_mercury, "
 {
@@ -1851,7 +1851,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", type_ctor_name_and_arity(TypeCtorDesc::in,
+:- pragma foreign_proc("C", type_ctor_name_and_arity(TypeCtorDesc::in,
 		TypeCtorModuleName::out, TypeCtorName::out, TypeCtorArity::out),
         will_not_call_mercury, "
 {
@@ -1885,7 +1885,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", num_functors(TypeInfo::in) = (Functors::out),
+:- pragma foreign_proc("C", num_functors(TypeInfo::in) = (Functors::out),
 	will_not_call_mercury, "
 {
 	MR_save_transient_registers();
@@ -1894,7 +1894,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", get_functor(TypeDesc::in, FunctorNumber::in,
+:- pragma foreign_proc("C", get_functor(TypeDesc::in, FunctorNumber::in,
         FunctorName::out, Arity::out, TypeInfoList::out),
     will_not_call_mercury, "
 {
@@ -1947,7 +1947,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	get_functor_ordinal(TypeDesc::in, FunctorNumber::in,
 		Ordinal::out), will_not_call_mercury, "
 {
@@ -2000,7 +2000,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
 	will_not_call_mercury, "
 {
@@ -2166,7 +2166,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in),
 		will_not_call_mercury, "
 {
@@ -2174,7 +2174,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", type_ctor_name_and_arity(_TypeCtorDesc::in,
+:- pragma foreign_proc("MC++", type_ctor_name_and_arity(_TypeCtorDesc::in,
 		_TypeCtorModuleName::out, _TypeCtorName::out,
 		_TypeCtorArity::out),
         will_not_call_mercury, "
@@ -2183,14 +2183,14 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", num_functors(_TypeInfo::in) = (_Functors::out),
+:- pragma foreign_proc("MC++", num_functors(_TypeInfo::in) = (_Functors::out),
 	will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""compare for type_desc"");
 }
 ").
 
-:- pragma foreign_code("MC++", get_functor(_TypeDesc::in, _FunctorNumber::in,
+:- pragma foreign_proc("MC++", get_functor(_TypeDesc::in, _FunctorNumber::in,
         _FunctorName::out, _Arity::out, _TypeInfoList::out),
 		will_not_call_mercury, "
 {
@@ -2198,7 +2198,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	get_functor_ordinal(_TypeDesc::in, _FunctorNumber::in,
 		_Ordinal::out), will_not_call_mercury, "
 {
@@ -2206,7 +2206,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 }
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	construct(_TypeDesc::in, _FunctorNumber::in,
 		_ArgList::in) = (_Term::out), will_not_call_mercury, "
 {
@@ -2221,7 +2221,7 @@ construct_tuple(Args) =
 
 :- func construct_tuple_2(list(univ), list(type_desc), int) = univ.
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Term::out),
 		will_not_call_mercury, "
 {
@@ -2262,7 +2262,7 @@ construct_tuple(Args) =
 }
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	construct_tuple_2(_Args::in, _ArgTypes::in, _Arity::in) = (_Term::out),
 		will_not_call_mercury, "
 {
@@ -3463,7 +3463,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 
     % Code for functor, arg and deconstruct.
 
-:- pragma foreign_code("C", functor(Term::in, Functor::out, Arity::out),
+:- pragma foreign_proc("C", functor(Term::in, Functor::out, Arity::out),
     will_not_call_mercury, "
 {
     MR_TypeInfo     type_info;
@@ -3503,7 +3503,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 ** changes to store__arg_ref in store.m.
 */
 
-:- pragma foreign_code("C", arg(Term::in, ArgumentIndex::in) = (Argument::out),
+:- pragma foreign_proc("C", arg(Term::in, ArgumentIndex::in) = (Argument::out),
         will_not_call_mercury, "
 {
     MR_TypeInfo type_info;
@@ -3535,7 +3535,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     SUCCESS_INDICATOR = success;
 }").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	argument(Term::in, ArgumentIndex::in) = (ArgumentUniv::out),
         will_not_call_mercury, "
 {
@@ -3560,7 +3560,7 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
     SUCCESS_INDICATOR = success;
 }").
 
-:- pragma foreign_code("MC++", functor(_Term::in, _Functor::out, _Arity::out),
+:- pragma foreign_proc("MC++", functor(_Term::in, _Functor::out, _Arity::out),
     will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -3571,14 +3571,14 @@ ML_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
 ** changes to store__arg_ref in store.m.
 */
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	arg(_Term::in, _ArgumentIndex::in) = (_Argument::out),
         will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	argument(_Term::in, _ArgumentIndex::in) = (_ArgumentUniv::out),
         will_not_call_mercury, "
 {
@@ -3607,7 +3607,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
         error("det_argument: argument out of range")
     ).
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	deconstruct(Term::in, Functor::out, Arity::out,
         Arguments::out), will_not_call_mercury, "
 {
@@ -3671,7 +3671,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
     }
 }").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	deconstruct(_Term::in, _Functor::out, _Arity::out,
         _Arguments::out), will_not_call_mercury, "
 {
@@ -3709,7 +3709,7 @@ get_functor_info(Univ, FunctorInfo) :-
     % with the type of the single function symbol of the notag type.
 :- pred get_notag_functor_info(Univ::in, ExpUniv::out) is semidet.
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 	get_notag_functor_info(Univ::in, ExpUniv::out),
 	will_not_call_mercury, "
 {
@@ -3749,7 +3749,7 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 	get_notag_functor_info(_Univ::in, _ExpUniv::out),
 	will_not_call_mercury, "
 {
@@ -3762,7 +3762,7 @@ get_functor_info(Univ, FunctorInfo) :-
     % from the type stored in the univ.)
 :- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	get_equiv_functor_info(Univ::in, ExpUniv::out),
     will_not_call_mercury, "
 {
@@ -3797,7 +3797,7 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	get_equiv_functor_info(_Univ::in, _ExpUniv::out),
     will_not_call_mercury, "
 {
@@ -3808,7 +3808,7 @@ get_functor_info(Univ, FunctorInfo) :-
     % and return the integer value corresponding to the value.
 :- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	get_enum_functor_info(Univ::in, Enum::out),
 	will_not_call_mercury, "
 {
@@ -3831,7 +3831,7 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	get_enum_functor_info(_Univ::in, _Enum::out),
 	will_not_call_mercury, "
 {
@@ -3848,7 +3848,7 @@ get_functor_info(Univ, FunctorInfo) :-
 :- pred get_du_functor_info(univ::in, int::out, int::out, int::out,
     list(univ)::out) is semidet.
 
-:- pragma foreign_code("C", get_du_functor_info(Univ::in, Where::out,
+:- pragma foreign_proc("C", get_du_functor_info(Univ::in, Where::out,
     Ptag::out, Sectag::out, Args::out), will_not_call_mercury, "
 {
     MR_TypeInfo             type_info;
@@ -3933,7 +3933,7 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_code("MC++", get_du_functor_info(_Univ::in, _Where::out,
+:- pragma foreign_proc("MC++", get_du_functor_info(_Univ::in, _Where::out,
     _Ptag::out, _Sectag::out, _Args::out), will_not_call_mercury, "
 {
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
