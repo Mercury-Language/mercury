@@ -1092,10 +1092,20 @@ uniquely_used_vars_2(MI, call(PredId, ProcId, Args, _, _, _) - _) =
 uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
     list__filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
 
-uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _) =
+uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _) 
+        =
+    %
+    % XXX `Extras' should be empty for pure calls.  We cannot apply
+    % LIO to non-pure goals so we shoudn't need to consider `Extras'.
+    % However, we currently don't deal with the situation where we
+    % may be trying to apply LIO to a non-pure goal until *after* we
+    % have called this predicate, so `Extras' may not be empty.  As a
+    % work-around we just add any variables in `Extras' to the set of
+    % variables that cannot be hoisted.
+    %
     list__filter_map_corresponding(uniquely_used_args(MI),
-        list__map(foreign_arg_var, Args ++ Extras),
-        argmodes(MI,PredId,ProcId)).
+        list__map(foreign_arg_var, Args),
+        argmodes(MI,PredId,ProcId)) ++ list.map(foreign_arg_var, Extras).
 
     % XXX This is very conservative!
     %
