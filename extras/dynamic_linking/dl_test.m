@@ -63,8 +63,6 @@ main -->
 			%
 			{ wrapper(Add3Func) =
 				inst_cast_add3(wrapper(Add3Func0)) },
-			%%% { CastWrapper = inst_cast_add3(wrapper(Add3Func0)) },
-			%%% { CastWrapper = wrapper(Add3Func) },
 			%
 			% Call the procedure whose address
 			% we just obtained.
