@@ -82,6 +82,13 @@ do_handle_release () {
 	date=`expr "$file" : '.*\([0-9]\{4\}-[0-9][0-9]-[0-9][0-9]\).*'`
 
 	case $file in
+	    *.rpm|*.deb)
+	    	# XXX Currently we only produce RPMs and Debian
+		# packages for major releases.
+		version=`expr "$file" : ".*-\([0-9.]*[0-9]\)-[0-9].*"`
+		release_name="Release $version"
+		release_id="$version"
+		;;
 	    *-rotd*-unstable*)
 		release_name="Unstable snapshot $date"
 		release_id="rotd-$date-unstable"
