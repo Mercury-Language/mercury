@@ -11,6 +11,9 @@
 
 % This module defines some predicates that manipulate characters.
 
+% The set of characters which are supported and the mapping from
+% characters to integer values are both implementation-dependent.
+
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
@@ -33,7 +36,18 @@
 :- mode char__to_int(in, out) is det.
 :- mode char__to_int(in, in) is semidet.	% implied
 :- mode char__to_int(out, in) is semidet.
-	% Convert a character to it's corresponding numerical code.
+	% Convert a character to its corresponding numerical code
+	% (integer value).
+	% Beware that the mapping from characters to numerical codes
+	% is implementation-dependent; there is no guarantee that
+	% the integer values for characters will fit in 8 bits.
+	% Furthermore, the value returned from char__to_int might be
+	% different than the byte(s) used to store the character in a file.
+	% There is also no guarantee that characters created using 
+	% `char__to_int(out, in)' can be written to files or
+	% to the standard output or standard error streams.
+	% For example, an implementation might represent characters
+	% using Unicode, but store files in an 8-bit national character set.
 
 :- func char__max_char_value = int.
 :- pred char__max_char_value(int).
