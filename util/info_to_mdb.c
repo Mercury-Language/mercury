@@ -31,8 +31,7 @@ static	void	print_command_line(const char *line, bool is_concept);
 static	char	*get_next_line(FILE *infp);
 static	void	put_line_back(char *line);
 
-#define	concept_char(c)		(MR_isupper(c) ? tolower((unsigned char)c) : \
-					(MR_isspace(c) ? '_' : (c)))
+#define	concept_char(c)		(MR_isspace(c) ? '_' : (c))
 
 int
 main(int argc, char **argv)
@@ -89,8 +88,8 @@ main(int argc, char **argv)
 		printf("document %s %d ", category, slot);
 		if (is_concept) {
 			int	i;
-			for (i = 0; line[i] != '\n'; i++) {
-				command[i] = concept_char(line[i]);
+			for (i = 0; line[i + 2] != '\n'; i++) {
+				command[i] = concept_char(line[i + 1]);
 			}
 			command[i] = '\0';
 		} else {
@@ -181,7 +180,7 @@ is_command(const char *line, bool *is_concept)
 	if ((line[0] == '`') && (line[len-2] == '\'')) {
 		*is_concept = FALSE;
 		return TRUE;
-	} else if (MR_isupper(line[0]) && MR_isupper(line[1])) {
+	} else if ((line[0] == '_') && (line[len-2] == '_')) {
 		*is_concept = TRUE;
 		return TRUE;
 	} else {
@@ -206,18 +205,11 @@ print_command_line(const char *line, bool is_concept)
 	int	len;
 	int	i;
 
-	if (is_concept) {
-		for (i = 0; line[i] != '\n'; i++) {
-			putchar(concept_char(line[i]));
-		}
-		putchar('\n');
-	} else {
-		len = strlen(line);
-		for (i = 1; i < len - 2; i++) {
-			putchar(line[i]);
-		}
-		putchar('\n');
+	len = strlen(line);
+	for (i = 1; i < len - 2; i++) {
+		putchar(is_concept ? concept_char(line[i]) : line[i]);
 	}
+	putchar('\n');
 }
 
 static	char	*putback_line = NULL;
