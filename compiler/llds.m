@@ -237,7 +237,8 @@
 	;		exported(proc_label).
 
 :- type cont_type
-	--->		no
+	--->		unknown
+	;		no
 	;		local
 	;		exported.
 

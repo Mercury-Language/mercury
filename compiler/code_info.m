@@ -44,9 +44,8 @@
 			is det.
 
 		% Generate the next local label in sequence.
-		% Bool option is if the label can be accessed externally.
-:- pred code_info__get_next_label(label, bool, code_info, code_info).
-:- mode code_info__get_next_label(out, in, in, out) is det.
+:- pred code_info__get_next_label(label, code_info, code_info).
+:- mode code_info__get_next_label(out, in, out) is det.
 
 		% Generate the next local label number in sequence.
 :- pred code_info__get_next_label_number(int, code_info, code_info).
@@ -523,28 +522,12 @@ code_info__max_slot_2([L|Ls], Max0, Max) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-code_info__get_next_label(Label, Cont0) -->
+code_info__get_next_label(Label) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_next_label_number(N),
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	(
-		{ Cont0 = yes }
-	->
-		(
-			{ pred_info_is_exported(PredInfo) }
-		->
-			{ Cont = exported }
-		;
-			{ Cont = local }
-		)
-	;
-		{ Cont = no }
-	),
-	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Cont,
-		Label) 
-	}.
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
 
 code_info__get_next_label_number(N) -->
 	code_info__get_label_count(N0),
@@ -1344,7 +1327,7 @@ code_info__generate_pre_commit(RedoLab, PreCommit) -->
 				FailureMap0)),
 	code_info__relabel_failure_cont(FailureMap0, FailureMap),
 	code_info__push_failure_cont(failure_cont(known(yes), no, FailureMap)),
-	code_info__get_next_label(RedoLab, yes),
+	code_info__get_next_label(RedoLab),
 	{ HijackCode = node([
 		assign(redoip(lval(maxfr)),
 			const(address_const(label(RedoLab)))) -
@@ -1353,7 +1336,7 @@ code_info__generate_pre_commit(RedoLab, PreCommit) -->
 	{ PreCommit = tree(tree(PushCode, SaveCode), HijackCode) }.
 
 code_info__generate_commit(RedoLab, Commit) -->
-	code_info__get_next_label(SuccLabel, yes),
+	code_info__get_next_label(SuccLabel),
 	{ GotoSuccLabel = node([
 		goto(label(SuccLabel), label(SuccLabel)) -
 			"Jump to success continuation"
@@ -1444,8 +1427,8 @@ code_info__manufacture_failure_cont(IsNondet) -->
 	(
 		{ IsNondet = no }
 	->
-		code_info__get_next_label(ContLab1, yes),
-		code_info__get_next_label(ContLab2, yes),
+		code_info__get_next_label(ContLab1),
+		code_info__get_next_label(ContLab2),
 		{ Address1 = label(ContLab1) },
 		{ Address2 = label(ContLab2) }
 	;
@@ -1456,8 +1439,8 @@ code_info__manufacture_failure_cont(IsNondet) -->
 				no, [Empty - Address1, Empty - Address2])).
 
 code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
-	code_info__get_next_label(ContLab, yes),
-	code_info__get_next_label(StackLab, yes),
+	code_info__get_next_label(ContLab),
+	code_info__get_next_label(StackLab),
 	(
 		{ IsNondet = no }
 	->
@@ -1470,7 +1453,7 @@ code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
 	->
 			% efficiency of this code could be improved
 			% ("mkframe()" is a bit of a sledge hammer)
-		code_info__get_next_label(RedoLab, yes),
+		code_info__get_next_label(RedoLab),
 		{ MaybeRedoLab = yes(RedoLab) },
 		{ HijackCode =
 			node([
@@ -1554,7 +1537,7 @@ code_info__unset_failure_cont -->
 
 code_info__relabel_failure_cont([], []) --> [].
 code_info__relabel_failure_cont([Map - _|Rest0], [Map - L|Rest]) -->
-	code_info__get_next_label(L0, yes),
+	code_info__get_next_label(L0),
 	{ L = label(L0) },
 	code_info__relabel_failure_cont(Rest0, Rest).
 
@@ -1564,14 +1547,14 @@ code_info__modify_failure_cont(ModifyCode) -->
 	code_info__failure_cont(failure_cont(OldCont, MaybeRedo0, FailureMap)),
 	code_info__generate_failure_cont(FailureMap, FailureCode),
 	code_info__pop_failure_cont,
-	code_info__get_next_label(New0, yes),
-	code_info__get_next_label(New1, yes),
+	code_info__get_next_label(New0),
+	code_info__get_next_label(New1),
 	(
 		{ OldCont = unknown ; OldCont = known(yes) }
 	->
 		{ NewCont = known(yes) },
 		( { MaybeRedo0 = yes(_OldRedo) } ->
-			code_info__get_next_label(NewRedo, yes),
+			code_info__get_next_label(NewRedo),
 			{ MaybeRedo = yes(NewRedo) }
 		;
 			{ MaybeRedo = no }

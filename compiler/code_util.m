@@ -23,9 +23,8 @@
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
-:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, 
-					cont_type, label).
-:- mode code_util__make_local_label(in, in, in, in, in, out) is det.
+:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
+:- mode code_util__make_local_label(in, in, in, in, out) is det.
 
 :- pred code_util__make_proc_label(module_info, pred_id, proc_id, proc_label).
 :- mode code_util__make_proc_label(in, in, in, out) is det.
@@ -91,10 +90,9 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 		Label = local(ProcLabel)
 	).
 
-code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, ContLabel, 
-				Label) :-
+code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	Label = local(ProcLabel, LabelNum, ContLabel).
+	Label = local(ProcLabel, LabelNum, unknown).
 
 %-----------------------------------------------------------------------------%
 

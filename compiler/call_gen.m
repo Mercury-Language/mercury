@@ -70,7 +70,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__select_out_args(Args, OutArgs) },
 	call_gen__save_variables(OutArgs, CodeA),
 	code_info__setup_call(Args, caller, CodeB),
-	code_info__get_next_label(ReturnLabel, yes),
+	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
@@ -132,7 +132,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__select_out_args(Args, OutArgs) },
 	call_gen__save_variables(OutArgs, CodeA),
 	code_info__setup_call(Args, caller, CodeB),
-	code_info__get_next_label(ReturnLabel, yes),
+	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
@@ -150,7 +150,7 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	]) },
 	call_gen__rebuild_registers(Args),
 	code_info__generate_failure(FailCode),
-	code_info__get_next_label(ContLab, no),
+	code_info__get_next_label(ContLab),
 	{ CodeD = tree(node([
 		if_val(lval(reg(r(1))), label(ContLab)) -
 			"Test for success"
@@ -166,7 +166,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ call_gen__select_out_args(Args, OutArgs) },
 	call_gen__save_variables(OutArgs, CodeA),
 	code_info__setup_call(Args, caller, CodeB),
-	code_info__get_next_label(ReturnLabel, yes),
+	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
 	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
@@ -396,7 +396,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	{ call_gen__select_out_args(Args, OutArgs) },
 	call_gen__save_variables(OutArgs, CodeA),
 	code_info__setup_call(Args, caller, CodeB),
-	code_info__get_next_label(ReturnLabel, yes),
+	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	code_info__variable_type(Var1, VarType),
 	( { type_to_type_id(VarType, VarTypeId, _) } ->
@@ -461,7 +461,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 	(
 		{ CanFail = can_fail }
 	->
-		code_info__get_next_label(ContLab, no),
+		code_info__get_next_label(ContLab),
 		call_gen__rebuild_registers(Args),
 		code_info__generate_failure(FailCode),
 		{ CodeD = tree(node([
@@ -624,7 +624,7 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 				"Assign number of output arguments"
 		])
 	) },
-	code_info__get_next_label(ReturnLabel, yes),
+	code_info__get_next_label(ReturnLabel),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
 		call_closure(CodeModel, label(ReturnLabel), OutLiveVals) -
@@ -635,7 +635,7 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		{ CodeModel = model_semi }
 	->
 		code_info__generate_failure(FailCode),
-		code_info__get_next_label(ContLab, no),
+		code_info__get_next_label(ContLab),
 		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"

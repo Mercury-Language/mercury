@@ -159,7 +159,7 @@ unify_gen__generate_tag_test(Var, ConsId, ElseLab, Code) -->
 		{ unify_gen__generate_tag_rval_2(Tag, Rval, NegTestRval) },
 		{ code_util__neg_rval(NegTestRval, TestRval) }
 	),
-	code_info__get_next_label(ElseLab, yes),
+	code_info__get_next_label(ElseLab),
 	{ code_util__neg_rval(TestRval, TheRval) },
 	{ TestCode = node([
 		if_val(TheRval, label(ElseLab)) - "tag test"
@@ -277,8 +277,8 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		%	P = call(P0, ...)
 		% as a special case.
 		%
-		code_info__get_next_label(LoopEnd, no),
-		code_info__get_next_label(LoopStart, no),
+		code_info__get_next_label(LoopEnd),
+		code_info__get_next_label(LoopStart),
 		code_info__acquire_reg(LoopCounter),
 		code_info__acquire_reg(NumOldArgs),
 		code_info__acquire_reg(NewClosure),
@@ -499,7 +499,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	unify_gen__generate_tag_test(Var, Tag, ElseLab, CodeA),
 	unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, CodeB),
-	code_info__get_next_label(SkipLab, yes),
+	code_info__get_next_label(SkipLab),
 	code_info__generate_failure(FailCode),
 	{ CodeC = tree(
 		node([

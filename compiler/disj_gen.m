@@ -64,7 +64,7 @@ disj_gen__generate_non_disj(Goals0, Code) -->
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 
-	code_info__get_next_label(EndLab, yes),
+	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
 	{ Code = tree(HijackCode, tree(SaveHeapCode, GoalsCode)) },
 

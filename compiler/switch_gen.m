@@ -68,7 +68,7 @@
 
 switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 	switch_gen__determine_category(CaseVar, SwitchCategory),
-	code_info__get_next_label(EndLabel, no),
+	code_info__get_next_label(EndLabel),
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
 	{ list__sort(TaggedCases0, TaggedCases) },
 	code_info__get_globals(Globals),

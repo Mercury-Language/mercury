@@ -133,8 +133,8 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ middle_rec__generate_downloop_test(EntryTestList,
 			Loop1Label, Loop1Test) },
 
-		code_info__get_next_label(Loop1Label, no),
-		code_info__get_next_label(Loop2Label, no),
+		code_info__get_next_label(Loop1Label),
+		code_info__get_next_label(Loop2Label),
 		code_info__get_total_stackslot_count(StackSlots),
 
 		( { StackSlots = 0 } ->
