@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,7 @@
 	%
 	% Warning: support for existential types is still experimental.
 	%
-:- some [T] func univ_value(univ) = T.
+:- some([T], func univ_value(univ) = T).
 
 %-----------------------------------------------------------------------------%
 
