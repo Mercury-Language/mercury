@@ -3196,7 +3196,6 @@ expand_bodies(HLDSClassDefn, !ModuleInfo) :-
 	module_info::in, module_info::out) is det.
 
 expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
-	OldModuleInfo = !.ModuleInfo,	% see XXX below
 	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
@@ -3258,9 +3257,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
 
 		% Make the goal info for the call.
 	set__list_to_set(HeadVars0, NonLocals),
-		% XXX This reference to OldModuleInfo after !ModuleInfo
-		% has been updated looks suspicious.
-	instmap_delta_from_mode_list(HeadVars0, Modes0, OldModuleInfo,
+	instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
 		InstmapDelta),
 	pred_info_get_purity(PredInfo0, Purity),
 	goal_info_init(NonLocals, InstmapDelta, Detism, Purity, GoalInfo),
