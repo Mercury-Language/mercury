@@ -157,7 +157,7 @@
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out.
 :- import_module globals, options.
-:- import_module bool, int, string, set, term_io, std_util, require.
+:- import_module bool, int, string, set, term_io, lexer, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -1158,11 +1158,29 @@ mercury_output_bracketed_sym_name(Name) -->
 mercury_output_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, PredName) },
 		mercury_output_bracketed_constant(term__atom(ModuleName)),
-		io__write_char(':')
+		io__write_char(':'),
+		%
+		% If the symname is composed of only graphic token chars,
+		% then term_io__quote_atom will not quote it; but since
+		% ':' is a graphic token char, it needs to be quoted,
+		% otherwise the ':' would be considered part of the
+		% symbol name (e.g. "int:<" tokenizes as ["int", ":<"].)
+		%
+		(
+			{ string__to_char_list(PredName, Chars) },
+			{ \+ (  list__member(Char, Chars),
+				\+ lexer__graphic_token_char(Char)) }
+		->
+			io__write_string("'"),
+			io__write_string(PredName),
+			io__write_string("'")
+		;
+			term_io__quote_atom(PredName)
+		)
 	;
-		{ Name = unqualified(PredName) }
-	),
-	term_io__write_constant(term__atom(PredName)).
+		{ Name = unqualified(PredName) },
+		term_io__quote_atom(PredName)
+	).
 
 %-----------------------------------------------------------------------------%
 
