@@ -65,9 +65,23 @@ static void init_registers(void)
 **
 **	This routine calls a Mercury routine from C.
 **
-**	The called routine must be deterministic.
+**	The called routine should be det/semidet/cc_multi/cc_nondet.
 **	The virtual machine registers must be set up correctly
-**	before the call.
+**	before the call.  Specifically, the non-transient real registers
+**	must have valid values, and the fake_reg copies of the transient
+**	(register window) registers must have valid values; call_engine()
+**	will call restore_transient_registers() and will then assume that
+**	all the registers have been correctly set up.
+**
+**	call_engine() will call save_registers() before returning.
+**	That will copy the real registers we use to the fake_reg array.
+**
+**	Beware, however, that if you are planning to return to C code
+**	that did not #include "regs.h" (directly or via e.g. "imp.h"),
+**	and you have fiddled with the Mercury registers or invoked
+**	call_engine() or anything like that, then you will need to
+**	save the real registers that C is using before modifying the
+**	Mercury registers and then restore them afterwards.
 **
 **	The called routine may invoke C functions; currently this
 **	is done by just invoking them directly, although that will
