@@ -2262,7 +2262,7 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	},
 	globals__io_lookup_bool_option(profiling, Profiling),
 	{ Profiling = yes ->
-		ProfileOpt = "-DPROFILE_CALLS -DPROFILE_TIME"
+		ProfileOpt = "-DPROFILE_CALLS -DPROFILE_TIME "
 	;
 		ProfileOpt = ""
 	},
