@@ -1,0 +1,184 @@
+       1:      1  1 CALL pred browse_pretty:main/2-0 (det) browse_pretty.m:12
+mdb> echo on
+Command echo enabled.
+mdb> goto 3
+       3:      2  2 EXIT pred browse_pretty:big_data/1-0 (det) browse_pretty.m:19 (browse_pretty.m:13)
+mdb> print *
+       HeadVar__1             	big(big(big(small, ./2, small), .(1, ./2), small), .(1, .(2, ./2)), big(big(small, ./2, big/3), ./2, small))
+mdb> browse 1
+browser> set format pretty
+browser> set depth 10
+browser> ls
+big(
+  big(big(small, .(1, []), small), .(1, .(2, [])), small), 
+  .(1, .(2, .(3, []))), 
+  big(
+    big(
+      small, 
+      .(1, .(2, .(3, .(4, [])))), 
+      big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)
+    ), 
+    .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
+    small
+  )
+)
+browser> set clipx 131
+browser> ls
+big(
+  big(big(small, .(1, []), small), .(1, .(2, [])), small), 
+  .(1, .(2, .(3, []))), 
+  big(
+    big(small, .(1, .(2, .(3, .(4, [])))), big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
+    .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
+    small
+  )
+)
+browser> set clipx 30
+browser> ls
+big(
+  big(
+    big(
+      small, 
+      .(1, []), 
+      small
+    ), 
+    .(1, .(2, [])), 
+    small
+  ), 
+  .(1, .(2, .(3, []))), 
+  big(
+    big(
+      small, 
+      .(
+        1, 
+        .(2, .(3, .(4, [])))
+      ), 
+      big(
+        small, 
+        .(
+          1, 
+          .(
+            2, 
+            .(
+              3, 
+              .(4, .(5, []))
+            )
+          )
+        ), 
+        small
+      )
+    ), 
+    .(
+      1, 
+      .(
+        2, 
+        .(
+          3, 
+          .(4, .(5, .(6, [])))
+        )
+      )
+    ), 
+    small
+  )
+)
+browser> set clipx 10
+browser> ls
+big(
+  big(
+    big(
+      small, 
+      .(
+        1, 
+        []
+      ), 
+      small
+    ), 
+    .(
+      1, 
+      .(
+        2, 
+        []
+      )
+    ), 
+    small
+  ), 
+  .(
+    1, 
+    .(
+      2, 
+      .(
+        3, 
+        []
+      )
+    )
+  ), 
+  big(
+    big(
+      small, 
+      .(
+        1, 
+        .(
+          2, 
+          .(
+            3, 
+            .(
+              4, 
+              []
+            )
+          )
+        )
+      ), 
+      big(
+        small, 
+        .(
+          1, 
+          .(
+            2, 
+            .(
+              3, 
+              .(
+                4, 
+                .(
+                  5, 
+                  []
+                )
+              )
+            )
+          )
+        ), 
+        small
+      )
+    ), 
+    .(
+      1, 
+      .(
+        2, 
+        .(
+          3, 
+          .(
+            4, 
+            .(
+              5, 
+              .(
+                6, 
+                []
+              )
+            )
+          )
+        )
+      )
+    ), 
+    small
+  )
+)
+browser> set clipx 79
+browser> set depth 3
+browser> ls
+big(
+  big(big(small, .(...), small), .(1, .(...)), small), 
+  .(1, .(2, .(...))), 
+  big(big(small, .(...), big(...)), .(1, .(...)), small)
+)
+browser> quit
+mdb> continue
+big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small)).

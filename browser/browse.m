@@ -48,7 +48,7 @@
 :- implementation.
 
 :- import_module mdb__parse, mdb__util, mdb__frame.
-:- import_module string, list, parser, require, std_util, int, char.
+:- import_module string, list, parser, require, std_util, int, char, pprint.
 
 %---------------------------------------------------------------------------%
 %
@@ -431,12 +431,12 @@ portray_verbose(Debugger, State) -->
 :- pred portray_pretty(debugger, browser_state, io__state, io__state).
 :- mode portray_pretty(in, in, di, uo) is det.
 portray_pretty(Debugger, State) -->
-	{ get_size(State, MaxSize) },
+	{ get_clipx(State, Width) },
 	{ get_depth(State, MaxDepth) },
 	{ get_term(State, Univ) },
 	{ get_dirs(State, Dir) },
 	( { deref_subterm(Univ, Dir, SubUniv) } ->
-		{ term_to_string_pretty(SubUniv, MaxSize, MaxDepth, Str) },
+		{ term_to_string_pretty(SubUniv, Width, MaxDepth, Str) },
 		write_string_debugger(Debugger, Str)
 	;
 		write_string_debugger(Debugger, "error: no such subterm")
@@ -530,92 +530,18 @@ term_compress(Univ, Str) :-
 
 %---------------------------------------------------------------------------%
 %
-% Simple indented view of a term. This isn't really
-% pretty printing since parentheses and commas are omitted.
-% XXX: Should do proper pretty printing?
+% Print using the pretty printer from the standard library.
+% XXX the size of the term is not limited---the pretty printer
+% provides no way of doing this.
 %
 
 :- pred term_to_string_pretty(univ, int, int, string).
 :- mode term_to_string_pretty(in, in, in, out) is det.
-term_to_string_pretty(Univ, MaxSize, MaxDepth, Str) :-
-	CurSize = 0,
-	CurDepth = 0,
-	term_to_string_pretty_2(Univ, MaxSize, CurSize, _NewSize,
-		MaxDepth, CurDepth, Lines),
-	unlines(Lines, Str).
 
-:- pred term_to_string_pretty_2(univ, int, int, int, int, int, list(string)).
-:- mode term_to_string_pretty_2(in, in, in, out, in, in, out) is det.
-term_to_string_pretty_2(Univ, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lines) :-
-	( ((CurSize >= MaxSize) ; (CurDepth >= MaxDepth)) ->
-		term_compress(Univ, Line),
-		Lines = [Line],
-		% Lines = ["..."],
-		NewSize = CurSize
-	;
-		deconstruct(Univ, Functor, Arity, Args),
-		CurSize1 is CurSize + 1,
-		CurDepth1 is CurDepth + 1,
-		( Arity >= 1 ->
-			string__append(Functor, "(", Functor1)
-		;
-			Functor1 = Functor
-		),
-		term_to_string_pretty_list(Args, MaxSize, CurSize1,
-			NewSize, MaxDepth, CurDepth1, ArgsLines),
-		list__condense(ArgsLines, ArgsLineses),
-		map(indent, ArgsLineses, IndentedArgLines),
-		list__append([Functor1], IndentedArgLines, Lines1),
-		( Arity >= 1 ->
-			list__append(Lines1, [")"], Lines)
-		;
-			Lines = Lines1
-		)
-	).
-
-
-:- pred term_to_string_pretty_list(list(univ), int, int, int, int, int,
-	list(list(string))).
-:- mode term_to_string_pretty_list(in, in, in, out, in, in, out) is det.
-term_to_string_pretty_list([], _MaxSize, CurSize, NewSize,
-		_MaxDepth, _CurDepth, Lines) :-
-	Lines = [],
-	NewSize = CurSize.
-term_to_string_pretty_list([Univ], MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lineses) :-
-	term_to_string_pretty_2(Univ, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lines),
-	Lineses = [Lines].
-term_to_string_pretty_list([Univ1, Univ2 | Univs], MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Lineses) :-
-	term_to_string_pretty_2(Univ1, MaxSize, CurSize, NewSize1,
-		MaxDepth, CurDepth, Lines1),
-	comma_last(Lines1, Lines),
-	term_to_string_pretty_list([Univ2 | Univs], MaxSize, NewSize1, NewSize,
-		MaxDepth, CurDepth, RestLineses),
-	Lineses = [Lines | RestLineses].
-
-:- pred comma_last(list(string), list(string)).
-:- mode comma_last(in, out) is det.
-comma_last([], []).
-comma_last([S], [Sc]) :-
-	string__append(S, ",", Sc).
-comma_last([S1, S2 | Ss], [S1 | Rest]) :-
-	comma_last([S2 | Ss], Rest).
-
-	
-:- pred indent(string::in, string::out) is det.
-indent(Str, IndentedStr) :-
-	string__append("  ", Str, IndentedStr).
-
-:- pred unlines(list(string)::in, string::out) is det.
-unlines([], "").
-unlines([Line | Lines], Str) :-
-	string__append(Line, "\n", NLine),
-	unlines(Lines, Strs),
-	string__append(NLine, Strs, Str).
-
+term_to_string_pretty(Univ, Width, MaxDepth, Str) :-
+	Value = univ_value(Univ),
+	Doc = to_doc(MaxDepth, Value),
+	Str = to_string(Width, Doc).
 
 %---------------------------------------------------------------------------%
 %
@@ -686,6 +612,13 @@ term_to_string_verbose_list([Univ1, Univ2 | Univs], ArgNum, MaxSize, CurSize,
 	frame__vglue([BranchFrameS], VBranchFrame, LeftFrame),
 	frame__hglue(LeftFrame, TreeFrame, TopFrame),
 	frame__vglue(TopFrame, RestTreesFrame, Frame).
+
+:- pred unlines(list(string)::in, string::out) is det.
+unlines([], "").
+unlines([Line | Lines], Str) :-
+	string__append(Line, "\n", NLine),
+	unlines(Lines, Strs),
+	string__append(NLine, Strs, Str).
 
 %---------------------------------------------------------------------------%
 %

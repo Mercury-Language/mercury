@@ -19,6 +19,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
 DEBUGGER_PROGS=	\
 	breakpoints			\
+	browse_pretty			\
 	browser_test			\
 	debugger_regs			\
 	exception_vars			\
@@ -73,6 +74,12 @@ endif
 
 breakpoints.out: breakpoints breakpoints.inp
 	$(MDB) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
+
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+browse_pretty.out: browse_pretty browse_pretty.inp
+	$(MDB) ./browse_pretty < browse_pretty.inp 2>&1 | \
+		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browse_pretty.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
