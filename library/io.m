@@ -1665,7 +1665,7 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, io__write_float(Stream::in, Val::in, IO0::di, IO::uo), "{
 	MercuryFile *stream = (MercuryFile *) Stream;
-	if (fprintf(stream->file, ""%.15g"", Val) < 0) {
+	if (fprintf(stream->file, ""%#.15g"", Val) < 0) {
 		mercury_output_error(stream);
 	}
 	update_io(IO0, IO);

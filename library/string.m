@@ -276,15 +276,11 @@
 %	modifies the output string's format.  These options are normally put 
 %	directly after the '%'.
 %
-%
 %	Note:
 %		%#.0e, %#.0E won't print a '.' before the 'e' ('#' ignored).
 %
-%		Extra precision (as `0's) may be added to floats if the 
-%		precision value asks for this - IE numbers may come out more
-%		accurate than when they were typed.  A precision value of more
-%		than 15 will not find more accuracy, as
-%		string__f_float_to_string only generates 15 significant figures.
+%		Asking for more precision than a float actually has will
+%		result in potentially misleading output.
 %
 %		If a width or precision is specified, without a `.', a number
 %		is assumed to be a width and a `*' is assumed to be a precision.
@@ -292,7 +288,6 @@
 %		interpretation is non-standard and may change.
 %
 %		Numbers are truncated by a precision value, not rounded off.
-%
 
 %------------------------------------------------------------------------------%
 
@@ -1491,17 +1486,17 @@ string__special_precision_and_width(-1).
 
 %-----------------------------------------------------------------------------%
 
-	% Beware that the implementation of string__format depends
-	% on the details of what string__float_to_string/2 outputs.
-
 :- pragma(c_code, string__float_to_string(FloatVal::in, FloatString::out), "{
 	char buf[500];
 	Word tmp;
-	sprintf(buf, ""%.15g"", FloatVal);
+	sprintf(buf, ""%#.15g"", FloatVal);
 	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
 }").
+
+	% Beware that the implementation of string__format depends
+	% on the details of what string__float_to_f_string/2 outputs.
 
 :- pred string__float_to_f_string(float::in, string::out) is det.
 
