@@ -1386,9 +1386,9 @@ mercury_output_some(Vars, VarSet) -->
 %-----------------------------------------------------------------------------%
 
 mercury_output_pragma_c_header(C_HeaderString) -->
-	io__write_string(":- pragma c_header_code("""),
+	io__write_string(":- pragma c_header_code("),
 	term_io__quote_string(C_HeaderString),
-	io__write_string(""").\n").
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1397,9 +1397,9 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 :- mode mercury_output_pragma_source_file(in, di, uo) is det.
 
 mercury_output_pragma_source_file(SourceFileString) -->
-	io__write_string(":- pragma source_file("""),
+	io__write_string(":- pragma source_file("),
 	term_io__quote_string(SourceFileString),
-	io__write_string(""").\n").
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1408,9 +1408,9 @@ mercury_output_pragma_source_file(SourceFileString) -->
 :- mode mercury_output_pragma_c_body_code(in, di, uo) is det.
 
 mercury_output_pragma_c_body_code(C_CodeString) -->
-	io__write_string(":- pragma c_code("""),
+	io__write_string(":- pragma c_code("),
 	term_io__quote_string(C_CodeString),
-	io__write_string(""").\n").
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1459,9 +1459,8 @@ mercury_output_pragma_c_code(MayCallMercury, PredName, PredOrFunc, Vars0,
 		mercury_output_c_ident_list(LabelNames),
 		io__write_string(", ")
 	),
-	io__write_string(""""),
 	term_io__quote_string(C_CodeString),
-	io__write_string(""").\n").
+	io__write_string(").\n").
 
 :- pred mercury_output_c_ident_list(list(string), io__state, io__state).
 :- mode mercury_output_c_ident_list(in, di, uo) is det.
@@ -1552,9 +1551,9 @@ mercury_output_pragma_fact_table(Pred, Arity, FileName) -->
 	mercury_output_sym_name(Pred),
 	io__write_string("/"),
 	io__write_int(Arity),
-	io__write_string(","""),
+	io__write_string(", "),
 	term_io__quote_string(FileName),
-	io__write_string(""").\n").
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 

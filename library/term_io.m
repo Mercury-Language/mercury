@@ -275,9 +275,7 @@ term_io__write_constant(term__float(F)) -->
 term_io__write_constant(term__atom(A))  -->
 	term_io__quote_atom(A).
 term_io__write_constant(term__string(S)) -->
-	io__write_char('"'),
-	term_io__quote_string(S),
-	io__write_char('"').
+	term_io__quote_string(S).
 
 %-----------------------------------------------------------------------------%
 
@@ -295,14 +293,22 @@ term_io__quote_atom(S) -->
 		io__write_string(S)
 	;
 		io__write_char(''''),
-		term_io__quote_string(S),
+		term_io__write_quoted_string(S),
 		io__write_char('''')
 	).
 
-term_io__quote_string(S0) -->
+term_io__quote_string(S) -->
+	io__write_char('"'),
+	term_io__write_quoted_string(S),
+	io__write_char('"').
+
+:- pred term_io__write_quoted_string(string, io__state, io__state).
+:- mode term_io__write_quoted_string(in, di, uo) is det.
+
+term_io__write_quoted_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
 		term_io__quote_single_char(Char),
-		term_io__quote_string(S1)
+		term_io__write_quoted_string(S1)
 	;
 		[]
 	).
