@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -203,27 +203,26 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma c_header_code("
 	/* ML_arg() is defined in std_util.m */
-	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
-			Word *arg_type_info, Word **argument_ptr);
-
+extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
+		    MR_TypeInfo *arg_type_info_ptr, Word **argument_ptr);
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
+	MR_TypeInfo arg_type_info;
 	Word* arg_ref;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) Ref, ArgNum,
+	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		fatal_error(""tr_store__arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+	if (MR_compare_type_info(arg_type_info,
+		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
 	{
 		fatal_error(""tr_store__arg_ref: argument has wrong type"");
 	}
@@ -237,19 +236,19 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_code(new_arg_ref(Val::mdi, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "{
-	Word arg_type_info;
+	MR_TypeInfo arg_type_info;
 	Word* arg_ref;
 
 	save_transient_registers();
 
-	if (!ML_arg(TypeInfo_for_T, (Word *) &Val, ArgNum,
+	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 	      fatal_error(""tr_store__new_arg_ref: argument number out of range"");
 	}
 
-	if (MR_compare_type_info(arg_type_info, TypeInfo_for_ArgT) !=
-		COMPARE_EQUAL)
+	if (MR_compare_type_info(arg_type_info,
+		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
 	{
 	      fatal_error(""tr_store__new_arg_ref: argument has wrong type"");
 	}

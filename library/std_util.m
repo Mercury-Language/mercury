@@ -2378,7 +2378,10 @@ typedef struct ML_Expand_Info_Struct {
 extern  void    ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
                     ML_Expand_Info *expand_info);
 
-    /* NB. ML_arg() is also used by store__arg_ref in store.m */
+    /*
+    ** NB. ML_arg() is also used by arg_ref and new_arg_ref
+    ** in store.m and in extras/trailed_update/tr_store.m.
+    */
 extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
                     MR_TypeInfo *arg_type_info_ptr, Word **argument_ptr);
 
