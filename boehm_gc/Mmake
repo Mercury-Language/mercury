@@ -16,11 +16,12 @@ libgc.a: gc.a
 	rm -f libgc.a
 	ln -s gc.a libgc.a
 
-libgc.so: force
-	unset MAKEFLAGS; $(MAKE) libgc.so
+libgc.so: submake
 
-gc.a: force
-	unset MAKEFLAGS; $(MAKE) gc.a
+gc.a: submake
+
+submake: force
+	unset MAKEFLAGS; $(MAKE) $(MMAKEFLAGS) gc.a libgc.so
 
 .PHONY: force
 force:
