@@ -33,6 +33,13 @@ lazy_evaluation
 		of its use, including a module `lazy_list' that defines
 		a lazy list data type.
 
+moose		A parser generator for Mercury.  Moose works much like
+		yacc or bison, it takes a grammar and generates a table
+		driven LALR parser for it.  You can add code to the
+		grammar to handle synthesized or inherited attributes.
+		Currently you need to write your own lexer to interface
+		to moose.
+
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
 
