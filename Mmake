@@ -81,7 +81,15 @@ runtime: scripts boehm_gc
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	cd boehm_gc && $(SUBDIR_MMAKE)
+	case "$$grade" in \
+	    *.prof*) \
+		prof=_prof \
+		;; \
+	    *) \
+		prof= \
+		;; \
+	esac; \
+	cd boehm_gc && $(SUBDIR_MMAKE) PROF=$$prof
 
 .PHONY: library
 library: dep_library scripts runtime boehm_gc
@@ -185,7 +193,15 @@ install_runtime: runtime
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	cd boehm_gc && $(SUBDIR_MMAKE) install
+	case "$$grade" in \
+	    *.prof*) \
+		prof=_prof \
+		;; \
+	    *) \
+		prof= \
+		;; \
+	esac; \
+	cd boehm_gc && $(SUBDIR_MMAKE) install PROF=$$prof
 
 .PHONY: install_library
 install_library: dep_library library
