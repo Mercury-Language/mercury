@@ -245,7 +245,7 @@ MR_prof_turn_on_time_profiling(void)
 	itime.it_interval.tv_sec = 0;
 	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
 
-	MR_setup_signal(MR_itimer_sig, prof_time_profile, 
+	MR_setup_signal(MR_itimer_sig, prof_time_profile, FALSE,
 		"Mercury runtime: cannot install signal handler");
 	checked_setitimer(MR_itimer_type, &itime);
 }
