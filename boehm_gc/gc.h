@@ -184,7 +184,7 @@ extern void GC_clear_roots(NO_PARAMS);
 
 /* Add a root segment */
 # if defined(__STDC__) || defined(__cplusplus)
-extern void GC_add_roots(void * low_address, void * high_address_plus_1);
+extern void GC_add_roots(char * low_address, char * high_address_plus_1);
 # else
 extern void GC_add_roots(/* low_address, high_address_plus_1 */);
 # endif
@@ -202,7 +202,7 @@ extern void GC_add_roots(/* low_address, high_address_plus_1 */);
 /* This is a no-op if the collector was compiled with recognition of	*/
 /* arbitrary interior pointers enabled, which is now the default.	*/
 # if defined(__STDC__) || defined(__cplusplus)
-void GC_register_displacement(int n);
+void GC_register_displacement(GC_word n);
 # else
 void GC_register_displacement(/* n */);
 # endif
@@ -396,7 +396,7 @@ void GC_debug_end_stubborn_change(/* p */);
 /* code, and should not be considered in determining 		*/
 /* finalization order.						*/ 
 # if defined(__STDC__) || defined(__cplusplus)
-int GC_register_disappearing_link(void ** link);
+int GC_register_disappearing_link(void ** /* link */);
 # else
 int GC_register_disappearing_link(/* void ** link */);
 # endif
@@ -419,7 +419,7 @@ int GC_register_disappearing_link(/* void ** link */);
 	/* otherwise.						*/
 	/* Only exists for backward compatibility.  See below:	*/
 # if defined(__STDC__) || defined(__cplusplus)
-int GC_general_register_disappearing_link(void ** link, void * obj);
+int GC_general_register_disappearing_link(void ** /* link */, void * obj);
 # else
 int GC_general_register_disappearing_link(/* void ** link, void * obj */);
 # endif
@@ -439,7 +439,7 @@ int GC_general_register_disappearing_link(/* void ** link, void * obj */);
 	/* obj may or may not cause link to eventually be	*/
 	/* cleared.						*/
 # if defined(__STDC__) || defined(__cplusplus)
-int GC_unregister_disappearing_link(void ** link);
+int GC_unregister_disappearing_link(void ** /* link */);
 # else
 int GC_unregister_disappearing_link(/* void ** link */);
 # endif
