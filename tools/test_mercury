@@ -142,6 +142,7 @@ case $HOST in
 			;;
 
 	mars)		OPTIMIZE=-O5 ;;
+	ceres)		OPTIMIZE=-O5 ;;	# hlc
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
@@ -193,7 +194,7 @@ HOSTDIR=$TESTDIR/test_dirs/$HOST
 DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
 case $HOST in
-	hg|ender|roy|venus|earth|mars) 	
+	hg|ender|roy|venus|earth|mars|ceres) 	
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -246,13 +247,14 @@ case $HOST in
 	venus) 		PARALLEL= ;; 	# one CPU
 	earth) 		PARALLEL= ;; 	# one CPU
 	mars) 		PARALLEL= ;; 	# one CPU
+	ceres) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender|roy|venus|earth)
-		# XXX Add mars to the list above once a compiler
+	hg|ender|roy|venus|earth|mars)
+		# XXX Add ceres to the list above once a compiler
 		# is installed there.
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
@@ -323,7 +325,7 @@ case $HOST in
 		# to work
 		CONFIG_OPTS="--enable-hlc-prof-grades \
 			--enable-new-mercuryfile-struct" ;;
-	roy)
+	roy|ceres)
 		CONFIG_OPTS=""
 		DEFAULT_GRADE="hlc.gc"
 		export DEFAULT_GRADE
@@ -364,7 +366,7 @@ case $HOST in
 			;;
 		esac
 		;;
-	mars)
+	mars|ceres)
 		# Portable .NET is installed on mars, and the
 		# test in configure.in doesn't test whether the
 		# ilasm it finds is suitable for use with Mercury.
@@ -462,7 +464,7 @@ case $HOST in
 		;;
 esac
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth|mars)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth|mars|ceres)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -617,7 +619,7 @@ case $HOST in
 			*)	GRADES="" ;;
 		esac
 		;;
-	roy)
+	roy|ceres)
 		GRADES="hlc.gc.tr hl.gc.tr"
 		;;
 	*)
@@ -779,7 +781,7 @@ case $HOST in
 				hlc.gc hlc.par.gc" ;;
 		esac
 		;;
-	roy)
+	roy|ceres)
 		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
 			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
@@ -909,6 +911,9 @@ case $HOST in
 		;;
 	mars)	
 		fullname=i686-pc-linux-libc2.1-gnu-O5
+		;;
+	ceres)	
+		fullname=i686-pc-linux-libc2.1-gnu-O5-hlc
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
