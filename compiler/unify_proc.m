@@ -1070,35 +1070,7 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
 
 %-----------------------------------------------------------------------------%
 
-%	For a du type with one function symbol, such as 
-%
-%		:- type foo ---> f(a, b, c)
-%
-%   	the "quadratic" code we want to generate is
-%
-%		compare(Res, X, Y) :-
-%			X = f(X1, X2, X3), Y = f(Y1, Y2, Y3),
-%			( compare(R1, X1, Y1), R1 \= (=) ->
-%				R = R1
-%			; compare(R2, X2, Y2), R2 \= (=) ->
-%				R = R2
-%			; 
-%				compare(R, X3, Y3)
-%			).
-
-:- pred unify_proc__generate_du_one_compare_clause(constructor::in,
-	prog_var::in, prog_var::in, prog_var::in,
-	prog_context::in, list(clause)::out,
-	unify_proc_info::in, unify_proc_info::out) is det.
-
-unify_proc__generate_du_one_compare_clause(Ctor, R, X, Y, Context, Clauses) -->
-	unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Goal),
-	{ HeadVars = [R, X, Y] },
-	unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses).
-
-%-----------------------------------------------------------------------------%
-
-%	For a du type with N function symbols for N > 1, such as 
+%	For a du type, such as
 %
 %		:- type foo ---> f(a) ; g(a, b, c)
 %
