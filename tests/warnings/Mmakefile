@@ -4,7 +4,8 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-ERRORCHECKONLY_PROGS=	\
+PROGS=	\
+	arg_order_rearrangment \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
@@ -18,11 +19,6 @@ ERRORCHECKONLY_PROGS=	\
 	unused_args_test \
 	unused_import
 
-COMPILE_PROGS=			\
-	arg_order_rearrangment
-
-PROGS=$(ERRORCHECKONLY_PROGS) $(COMPILE_PROGS)
-
 #-----------------------------------------------------------------------------#
 
 # some files need to be compiled with special options
@@ -35,22 +31,20 @@ MCFLAGS-inference_test		= --infer-all
 
 #-----------------------------------------------------------------------------#
 
-%.res:	%.exp %.err
+%.res:	%.exp %.c
 	-rm -f $@
 	diff -c $*.exp $*.err > $@
 
 #-----------------------------------------------------------------------------#
 
 DEPENDS=$(PROGS:%=%.depend)
-ERRS=	$(ERRORCHECKONLY_PROGS:%=%.err)
-CS=	$(COMPILE_PROGS:%=%.c)
 RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
 
 depend:	$(DEPENDS)
 
-check:	$(ERRS) $(CS) $(RESS)
+check:	$(RESS)
 
 all:	$(PROGS)
 
