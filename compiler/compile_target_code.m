@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -707,7 +707,7 @@ compile_java_file(ErrorStream, JavaFile, Succeeded) -->
 	% Be careful with the order here!  Some options may override others.
 	% Also be careful that each option is separated by spaces.
 	{ string__append_list([JavaCompiler, " ", InclOpt, DestDir,
-		Target_DebugOpt, JAVAFLAGS, JavaFile], Command) },
+		Target_DebugOpt, JAVAFLAGS, " ", JavaFile], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
 
