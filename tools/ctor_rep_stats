@@ -10,9 +10,9 @@ END	{
 		{
 			for (r in rep)
 			{
-				printf "%-8s %-20s %15d (%5.2f%%)\n", p, r ":", kind[p "-" r], (100 * kind[p "-" r]) / pred[p];
+				printf "%-8s %-20s %15.0f (%5.2f%%, %5.2f%%)\n", p, r ":", kind[p "-" r], (100 * kind[p "-" r]) / pred[p], (100 * kind[p "-" r]) / all;
 			}
 
-			printf "%-29s %15d (%5.2f%%)\n\n", p ":", pred[p], (100 * pred[p]) / all;
+			printf "%-29s %15.0f (%7s %5.2f%%)\n\n", p ":", pred[p], "", (100 * pred[p]) / all;
 		}
 	}
