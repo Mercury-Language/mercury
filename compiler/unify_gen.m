@@ -24,8 +24,7 @@
 
 :- type test_sense --->
 		branch_on_success
-	;	branch_on_failure
-	.
+	;	branch_on_failure.
 
 	% Generate code for an assignment unification.
 	% (currently implemented as a cached assignment).

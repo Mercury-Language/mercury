@@ -135,6 +135,15 @@
 :- pred code_util__cannot_fail_before_stack_flush(hlds__goal).
 :- mode code_util__cannot_fail_before_stack_flush(in) is semidet.
 
+	% code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max)
+	% Given that we are in predicate PredId and procedure ProcId,
+	% return the minimum and maximum number of recursive calls that
+	% an execution of Goal may encounter.
+
+:- pred code_util__count_recursive_calls(hlds__goal, pred_id, proc_id,
+	int, int).
+:- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -747,3 +756,123 @@ code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+code_util__count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls_2(Goal, PredId, ProcId, Min, Max).
+
+:- pred code_util__count_recursive_calls_2(hlds__goal_expr, pred_id, proc_id,
+	int, int).
+:- mode code_util__count_recursive_calls_2(in, in, in, out, out) is det.
+
+code_util__count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
+code_util__count_recursive_calls_2(some(_, Goal), PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls(Goal, PredId, ProcId, Min, Max).
+code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
+code_util__count_recursive_calls_2(higher_order_call(_,_, _, _, _), _, _, 0, 0).
+code_util__count_recursive_calls_2(pragma_c_code(_, _, _, _, _, _), _, _, 0, 0).
+code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
+		PredId, ProcId, Count, Count) :-
+	(
+		PredId = CallPredId,
+		ProcId = CallProcId
+	->
+		Count = 1
+	;
+		Count = 0
+	).
+code_util__count_recursive_calls_2(conj(Goals), PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls_conj(Goals, PredId, ProcId, 0, 0,
+		Min, Max).
+code_util__count_recursive_calls_2(disj(Goals, _), PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls_disj(Goals, PredId, ProcId, Min, Max).
+code_util__count_recursive_calls_2(switch(_, _, Cases, _), PredId, ProcId,
+		Min, Max) :-
+	code_util__count_recursive_calls_cases(Cases, PredId, ProcId, Min, Max).
+code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
+		PredId, ProcId, Min, Max) :-
+	code_util__count_recursive_calls(Cond, PredId, ProcId, CMin, CMax),
+	code_util__count_recursive_calls(Then, PredId, ProcId, TMin, TMax),
+	code_util__count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
+	CTMin is CMin + TMin,
+	CTMax is CMax + TMax,
+	( CTMin < EMin ->
+		Min = CTMin
+	;
+		Min = EMin
+	),
+	( CTMax > EMax ->
+		Max = CTMax
+	;
+		Max = EMax
+	).
+
+:- pred code_util__count_recursive_calls_conj(list(hlds__goal),
+	pred_id, proc_id, int, int, int, int).
+:- mode code_util__count_recursive_calls_conj(in, in, in, in, in, out, out)
+	is det.
+
+code_util__count_recursive_calls_conj([], _, _, Min, Max, Min, Max).
+code_util__count_recursive_calls_conj([Goal | Goals], PredId, ProcId,
+		Min0, Max0, Min, Max) :-
+	code_util__count_recursive_calls(Goal, PredId, ProcId, Min1, Max1),
+	Min2 is Min0 + Min1,
+	Max2 is Max0 + Max1,
+	code_util__count_recursive_calls_conj(Goals, PredId, ProcId,
+		Min2, Max2, Min, Max).
+
+:- pred code_util__count_recursive_calls_disj(list(hlds__goal),
+	pred_id, proc_id, int, int).
+:- mode code_util__count_recursive_calls_disj(in, in, in, out, out) is det.
+
+code_util__count_recursive_calls_disj([], _, _, _, _) :-
+	error("empty disj in code_util__count_recursive_calls_disj").
+code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
+		Min, Max) :-
+	( Goals = [] ->
+		code_util__count_recursive_calls(Goal, PredId, ProcId,
+			Min, Max)
+	;
+		code_util__count_recursive_calls(Goal, PredId, ProcId,
+			Min0, Max0),
+		code_util__count_recursive_calls_disj(Goals, PredId, ProcId,
+			Min1, Max1),
+		( Min0 < Min1 ->
+			Min = Min0
+		;
+			Min = Min1
+		),
+		( Max1 > Max0 ->
+			Max = Max1
+		;
+			Max = Max0
+		)
+	).
+
+:- pred code_util__count_recursive_calls_cases(list(case),
+	pred_id, proc_id, int, int).
+:- mode code_util__count_recursive_calls_cases(in, in, in, out, out) is det.
+
+code_util__count_recursive_calls_cases([], _, _, _, _) :-
+	error("empty cases in code_util__count_recursive_calls_cases").
+code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
+		Min, Max) :-
+	( Cases = [] ->
+		code_util__count_recursive_calls(Goal, PredId, ProcId,
+			Min, Max)
+	;
+		code_util__count_recursive_calls(Goal, PredId, ProcId,
+			Min0, Max0),
+		code_util__count_recursive_calls_cases(Cases, PredId, ProcId,
+			Min1, Max1),
+		( Min0 < Min1 ->
+			Min = Min0
+		;
+			Min = Min1
+		),
+		( Max1 > Max0 ->
+			Max = Max1
+		;
+			Max = Max0
+		)
+	).

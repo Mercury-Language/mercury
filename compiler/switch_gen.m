@@ -229,88 +229,52 @@ switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
 	% After the last case, we put the end-of-switch label which other
 	% cases branch to after their case goals.
 	%
-	% In the important special case of a det switch with two cases, in
-	% which one case is a base case while the other is singly recursive,
-	% we put the code for the recursive case first, while using a negated
-	% form of the test for the base case. This form of the test is almost
-	% always cheaper, and putting the frequently executed case first
-	% minimizes the number of pipeline branches caused by taken branches.
+	% In the important special case of a det switch with two cases,
+	% we try to find out which case will be executed more frequently,
+	% and put that one first. This minimizes the number of pipeline
+	% breaks caused by taken branches.
 
 :- pred switch_gen__generate_all_cases(list(extended_case), var, code_model,
 	can_fail, store_map, label, code_tree, code_info, code_info).
 :- mode switch_gen__generate_all_cases(in, in, in, in, in, in, out, in, out)
 	is det.
 
-switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, StoreMap,
+switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, StoreMap,
 		EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, _Rval),
 	(
 		{ CodeModel = model_det },
 		{ CanFail = cannot_fail },
-		{ Cases = [Case1, Case2] },
-		{ Case1 = case(_, _, Cons1, Goal1) },
-		{ Case2 = case(_, _, Cons2, Goal2) }
+		{ Cases0 = [Case1, Case2] },
+		{ Case1 = case(_, _, _, Goal1) },
+		{ Case2 = case(_, _, _, Goal2) }
 	->
-		=(TestCodeInfo),
+		code_info__get_pred_id(PredId),
+		code_info__get_proc_id(ProcId),
+		{ code_util__count_recursive_calls(Goal1, PredId, ProcId,
+			Min1, Max1) },
+		{ code_util__count_recursive_calls(Goal2, PredId, ProcId,
+			Min2, Max2) },
 		{
-			code_aux__contains_only_builtins(Goal2),
-			code_aux__contains_simple_recursive_call(Goal1,
-				TestCodeInfo, _)
+			Max1 = 0,	% Goal1 is a base case
+			Min2 = 1	% Goal2 is probably singly recursive
 		->
-			RareGoal = Goal2,
-			FreqGoal = Goal1,
-			TestCons = Cons2
+			Cases = [Case2, Case1]
 		;
-			RareGoal = Goal1,
-			FreqGoal = Goal2,
-			TestCons = Cons1
+			Max2 = 0,	% Goal2 is a base case
+			Min1 > 1	% Goal1 is at least doubly recursive
+		->
+			Cases = [Case2, Case1]
+		;
+			Cases = Cases0
 		},
-		% XXX we should be using the predicate for generating
-		% the tag test in a reversed form in the first place
-		unify_gen__generate_tag_test(Var, TestCons, branch_on_failure,
-			NextLabel, TestCode),
-		{ tree__flatten(TestCode, TestListList) },
-		{ list__condense(TestListList, TestList) },
-		{ code_util__negate_the_test(TestList, RealTestList) },
-		{ RealTestCode = node(RealTestList) },
-
-		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_goal(CodeModel, FreqGoal, FreqGoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap,
-			FreqSaveCode),
-
-		{ MiddleCode = node([
-			goto(label(EndLabel)) -
-				"skip to the end of the switch",
-			label(NextLabel) -
-				"next case"
-		]) },
-
-		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_goal(CodeModel, RareGoal, RareGoalCode),
-		code_info__generate_branch_end(CodeModel, StoreMap,
-			RareSaveCode),
-
-		{ EndCode = node([
-			label(EndLabel) -
-				"end of switch"
-		]) },
-
-		{ Code =
-			tree(VarCode,
-			tree(RealTestCode,
-			tree(FreqGoalCode,
-			tree(FreqSaveCode,
-			tree(MiddleCode,
-			tree(RareGoalCode,
-			tree(RareSaveCode,
-			     EndCode)))))))
-		}
-	;
 		switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
-			StoreMap, EndLabel, CasesCode),
-		{ Code = tree(VarCode, CasesCode) }
-	).
+			StoreMap, EndLabel, CasesCode)
+	;
+		switch_gen__generate_cases(Cases0, Var, CodeModel, CanFail,
+			StoreMap, EndLabel, CasesCode)
+	),
+	{ Code = tree(VarCode, CasesCode) }.
 
 :- pred switch_gen__generate_cases(list(extended_case), var, code_model,
 	can_fail, store_map, label, code_tree, code_info, code_info).
