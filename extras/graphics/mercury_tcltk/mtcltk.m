@@ -138,7 +138,7 @@ int *tclDummyMathPtr = (int *) matherr;
     argc = 0;
     for(l = Args; l != MR_list_empty(); l = MR_list_tail(l))
 	argc++;
-    MR_incr_hp(LVALUE_CAST(Word, argv), argc + 1);
+    MR_incr_hp(MR_LVALUE_CAST(Word, argv), argc + 1);
 
     for(i = 0, l = Args; l != list_empty(); l = list_tail(l), i++)
 	argv[i] = (char *) MR_list_head(l);

@@ -1,5 +1,6 @@
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998,2000 The University of Melbourne.
+% Copyright (C) 2001 The Rationalizer Intelligent Software AG
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,8 +10,19 @@
 % main author: conway.
 % stability: very low.
 %
+%
 % This file provides an interface to the Tk widget set, [conceptually]
 % bypassing Tcl.
+%
+% 07/13/01 hkrug@rationalizer.com:
+%       * interface:
+%         - added constant root_window for access of the root window by
+%           the application  
+%       * implementation:
+%         - more carefull formation of internal Tk-names for created 
+%           widgets, when the parent is the root window:
+%	    string__format("%s.button%d", [s("."), i(13)], Widget)
+%           would result in the invalid name "..button13"
 %
 %-----------------------------------------------------------------------------%
 :- module mtk.
@@ -159,6 +171,15 @@
 :- inst toplevel = bound((
 		window(ground)
 	)).
+
+% A constant to access the root window in the Tk hierarchy,
+% comp. John K. Ousterhout, Tcl and the Tk Toolkit, 1994, p.151.
+% The root window is the one designated as "." in Tk way of 
+% speaking. It is necessary to access not only a top level window
+% created by the application, but the main application window
+% provided by the framework.
+:- func root_window = widget.
+:- mode root_window = out(toplevel) is det.	
 
 :- inst window = bound((
 		window(ground)
@@ -614,6 +635,9 @@
 
 %------------------------------------------------------------------------------%
 
+% The straightforward implementation of root_window.
+root_window = window(".").
+
 window(Interp, Configs, window(Widget)) -->
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
@@ -630,7 +654,7 @@ button(Interp, Configs, ParentWidget, button(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.button%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.button%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("button %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -667,7 +691,7 @@ canvas(Interp, Configs, ParentWidget, canvas(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.canvas%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.canvas%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("canvas %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -797,7 +821,7 @@ entry(Interp, Configs, ParentWidget, entry(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.entry%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.entry%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("entry %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -810,7 +834,7 @@ frame(Interp, Configs, ParentWidget, frame(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.frame%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.frame%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("frame %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -823,7 +847,7 @@ label(Interp, Configs, ParentWidget, label(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.label%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.label%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("label %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -836,7 +860,7 @@ listbox(Interp, Configs, ParentWidget, listbox(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.listbox%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.listbox%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("listbox %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -904,7 +928,7 @@ menubutton(Interp, Configs, ParentWidget, menubutton(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.menubutton%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.menubutton%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("menubutton %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -917,7 +941,7 @@ menu(Interp, Configs, ParentWidget, menu(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.menu%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.menu%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("menu %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -957,7 +981,7 @@ radiobutton(Interp, Configs, ParentWidget, RadioVar, Value,
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.radiobutton%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.radiobutton%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("radiobutton %s -indicatoron 0 -variable %s -value %s ",
 		[s(Widget), s(RadioVar), s(Value)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -971,7 +995,7 @@ scrollbar(Interp, Configs, ParentWidget, scrollbar(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.scrollbar%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.scrollbar%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("scrollbar %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -984,7 +1008,7 @@ text(Interp, Configs, ParentWidget, text(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
 	set_thingy_counter(Id + 1),
-	{ string__format("%s.text%d", [s(Parent), i(Id)], Widget) },
+	{ string__format("%s.text%d", [s(no_dot_wpath(Parent)), i(Id)], Widget) },
 	{ string__format("text %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
 	{ string__append(Str0, Str1, Str) },
@@ -1617,6 +1641,18 @@ unwrap(radiobutton(Path), Path).
 unwrap(scrollbar(Path), Path).
 unwrap(text(Path), Path).
 unwrap(window(Path), Path).
+
+% function to reduce the path "." of the root window to the 
+% empty string "", used when forming names for new widgets
+:- func no_dot_wpath(wpath) = wpath.
+:- mode no_dot_wpath(in) = out is det.
+
+no_dot_wpath(WPATH) = REDUCED_WPATH :-
+  unwrap( root_window, ROOT_WPATH ),
+  (  if WPATH = ROOT_WPATH
+     then REDUCED_WPATH = ""
+     else REDUCED_WPATH = WPATH
+  ).
 
 :- pred command_wrapper(pred(tcl_interp, io__state, io__state), tcl_interp,
 		list(string), tcl_status, string, io__state, io__state).

@@ -7,6 +7,9 @@
 %
 % A simple Tcl/Tk based calculator.
 %
+% 07/13/01 hkrug@rationalizer.com:
+%        * only one toplevel window is created
+% 
 %-----------------------------------------------------------------------------%
 :- module calc.
 
@@ -16,22 +19,18 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
+%-----------------------------------------------------------------------------%
 :- implementation.
+%-----------------------------------------------------------------------------%
 
 :- import_module mtcltk, mtk.
-:- import_module bool, list, string, int, float, std_util, require.
+:- import_module bool, list, string, char, int, float, std_util, require.
+
 
 main -->
-	main(mymain, ["calc"]).
-
-	% Main Tk callback
-:- pred mymain(tcl_interp, io__state, io__state).
-:- mode mymain(in, di, uo) is det.
-
-mymain(Interp) -->
-	window(Interp, [], Parent),
-	make_calculator(Interp, Parent),
-	eval(Interp, "wm iconify .", _, _).
+	mtcltk__main(pred(Interp::in, di, uo) is det -->
+	                 make_calculator(Interp, mtk__root_window)
+            , ["CALC"]).
 
 %-----------------------------------------------------------------------------%
 
@@ -73,9 +72,8 @@ mymain(Interp) -->
 :- mode make_calculator(in, in(window), di, uo) is det.
 
 make_calculator(Interp, Frame) -->
-	frame(Interp, [], Frame, Display),
-	label(Interp, [text("ArithMate (TM) C9+")], Display, DisLab),
-	label(Interp, [text("0"), relief("sunken")], Display, AnsLab),
+	label(Interp, [text("ArithMate (TM) C9+")], Frame, DisLab),
+	label(Interp, [text("0"), relief("sunken")], Frame, AnsLab),
 	pack(Interp, [pack(DisLab, [top, expand, fill_x]),
 		pack(AnsLab, [top, expand, fill_x])]),
 	
@@ -119,7 +117,7 @@ make_calculator(Interp, Frame) -->
 
 	config_calc(Interp, State0),
 
-	pack(Interp, [pack(Display, [top]), pack(NumPad, [top])]).
+	pack(Interp, [pack(NumPad, [top])]).
 
 :- pred init_calc_state(list(pair(widget, calc_button)), widget, widget,
 		calculator).
