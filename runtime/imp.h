@@ -230,6 +230,12 @@ extern	int	hash_string(const char *);
 
 /* DEFINITIONS FOR MANIPULATING THE HEAP */
 
+#ifdef CONSERVATIVE_GC
+
+#error "CONSERVATIVE_GC not yet implemented"
+
+#else
+
 #define	incr_hp(dest,count)	(				\
 				(dest) = (Word)hp,		\
 				debugincrhp(count, hp),		\
@@ -237,6 +243,18 @@ extern	int	hash_string(const char *);
 				heap_overflow_check(),		\
 				(void)0				\
 			)
+
+#define	mark_hp(dest)	(					\
+				(dest) = (Word)hp,		\
+				(void)0				\
+			)
+
+#define	restore_hp(src)	(					\
+				LVALUE_CAST(Word,hp) = (src),	\
+				(void)0				\
+			)
+
+#endif
 
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'
