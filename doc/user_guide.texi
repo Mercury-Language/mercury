@@ -76,7 +76,7 @@ into another language, under the above conditions for modified versions.
 * Using NU-Prolog:: Building and debugging Mercury programs with NU-Prolog
 * Using SICStus::   Building and debugging Mercury programs with SICStus Prolog
 * FAQs::            Frequently Asked Questions
-* Invokation::      List of options for the Mercury compiler
+* Invocation::      List of options for the Mercury compiler
 @end menu
 
 @node Filenames, Hello,, Top
@@ -85,7 +85,7 @@ into another language, under the above conditions for modified versions.
 Mercury source files should be named @file{*.nl}.
 (This will change to @file{*.m} sometime in the near future.)
 
-Files ending in @file{*.d} are automatically-generated Makefile
+Files ending in @file{.d} are automatically-generated Makefile
 fragments which contain the dependencies for each module.
 
 Files ending in @file{.int} and @file{.int2} are interface files;
@@ -138,10 +138,10 @@ to create these interface files.
 @subsection Compiling modules
 Use the command 
 @example
-mc -s asm_fast.gc --tags none -c @var{module}
+mc -s asm_fast.gc -c @var{module}
 @end example
 to compile each module.
-Many additional options are available (@pxref{Invokation}).
+Many additional options are available (@pxref{Invocation}).
 
 @subsection Creating the init file
 Before linking, you need create a small C file which calls the
@@ -171,8 +171,6 @@ but we don't really recommend this unless there is no alternative.
 Also, if you compiled with @samp{-s debug.gc} rather than @samp{-s asm_fast.gc},
 you can use the various debugging options to the Mercury runtime;
 for example @samp{-dg} dumps an execution trace.
-(However, @samp{-s debug.gc} doesn't work at the current time, due to lack
-of disk space(!).)
 
 @node Using NU-Prolog, Using SICStus, Using Mercury, Top
 @section Using NU-Prolog
@@ -213,7 +211,7 @@ change the behaviour after an error occurs.
 
 TBD.  (To Be Documented!)
     
-@node FAQs, Invokation, Using SICStus, Top
+@node FAQs, Invocation, Using SICStus, Top
 @chapter Mercury FAQs:
 @itemize @bullet
 @item
@@ -223,8 +221,8 @@ What do I do next?''
 Tell Fergus.
 @end itemize
 
-@node Invokation,, FAQs, Top
-@chapter Invokation
+@node Invocation,, FAQs, Top
+@chapter Invocation
 
 This section contains a brief description of all the options
 available for @samp{mc}, the Mercury compiler.
@@ -379,7 +377,9 @@ or one of those with @file{.gc} appended.
 @item --gc @{none, conservative, accurate@}
 @item --garbage-collection @{none, conservative, accurate@}
 Specify which method of garbage collection to use.
-[Currently only @samp{none} is implemented.]
+@samp{conservative} garbage collection also implies @samp{--tags none}.
+@samp{accurate} is not yet implemented.
+
 @item --no-follow-code
 Don't migrate builtin goals into branched goals
 

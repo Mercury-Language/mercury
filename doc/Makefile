@@ -12,7 +12,7 @@ install_dvi: dvi
 
 dvi: user_guide.dvi
 info: mercury.info
-html: user_guide.html
+html: user_guide_toc.html
 
 user_guide.dvi: user_guide.texi
 	texi2dvi user_guide.texi
@@ -20,8 +20,8 @@ user_guide.dvi: user_guide.texi
 mercury.info: user_guide.texi
 	makeinfo user_guide.texi
 
-user_guide.html: user_guide.texi
-	texi2html user_guide.texi
+user_guide_toc.html: user_guide.texi
+	texi2html -split_node user_guide.texi
 
 .PHONY: all install install_html install_info install_dvi dvi info html clean
 
