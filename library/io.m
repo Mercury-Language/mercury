@@ -1324,10 +1324,10 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		}
 	}
 	if (Res == 0) {
-		incr_hp_atomic(RetString,
+		incr_hp_atomic(LVALUE_CAST(Word, RetString),
 			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(Char)));
-		memcpy((void *) RetString, read_buffer, i * sizeof(Char));
-		((Char *) RetString)[i] = '\\0';
+		memcpy(RetString, read_buffer, i * sizeof(Char));
+		RetString[i] = '\\0';
 	} else {
 		RetString = NULL;
 	}
@@ -2493,7 +2493,7 @@ extern MercuryFile *mercury_current_binary_output;
 void 		mercury_init_io(void);
 MercuryFile*	mercury_open(const char *filename, const char *type);
 void		mercury_fatal_io_error(void);
-int		mercury_output_error(MercuryFile* mf);
+void		mercury_output_error(MercuryFile* mf);
 void		mercury_print_string(MercuryFile* mf, const char *s);
 void		mercury_print_binary_string(MercuryFile* mf, const char *s);
 int		mercury_getc(MercuryFile* mf);
@@ -2550,7 +2550,7 @@ mercury_fatal_io_error(void)
 
 :- pragma c_code("
 
-int
+void
 mercury_output_error(MercuryFile* mf)
 {
 	fprintf(stderr,

@@ -41,8 +41,15 @@
 % at configuration time, because that would cause bootstrapping problems --
 % might not have a Mercury compiler around to compile library.m with.
 
-:- pragma c_code(library__version(Version::out), will_not_call_mercury,
-	"Version = MR_VERSION "", configured for "" MR_FULLARCH;").
+:- pragma c_code(library__version(Version::out), will_not_call_mercury, "
+	ConstString version_string = 
+		MR_VERSION "", configured for "" MR_FULLARCH;
+	/*
+	** Cast away const needed here, because Mercury declares Version
+	** with type String rather than ConstString.
+	*/
+	Version = (String) (Word) version_string;
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
