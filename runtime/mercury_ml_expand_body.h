@@ -172,7 +172,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #endif  /* EXPAND_APPLY_LIMIT */
 #ifdef  EXPAND_CHOSEN_ARG
     int chosen,
-#endif  /* CHOSEN_ARG */
+#endif  /* EXPAND_CHOSEN_ARG */
     EXPAND_TYPE_NAME *expand_info)
 {
     MR_TypeCtorInfo type_ctor_info;
@@ -235,8 +235,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                         arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                         break;
                     case MR_SECTAG_VARIABLE:
-                        MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                            ": cannot expand variable");
+		        handle_functor_name("<<variable>>");
+		        handle_zero_arity_args();
+				/*
+				** XXX We should do something like the
+				** following, since deconstructing a value
+				** that might be a variable should be
+				** cc_multi rather than det. However, there
+				** is no such version of deconstruct yet,
+				** so we'll leave it out.
+				*/
+			/*expand_info->non_canonical_type = TRUE;*/
+		        return;
                 }
 
                 handle_functor_name(functor_desc->MR_du_functor_name);
