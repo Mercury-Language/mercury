@@ -28,13 +28,19 @@
 
 #ifdef	HIGHTAGS
 
-#define	mktag(t)	((t) << (WORDBITS - TAGBITS))
-#define	unmktag(w)	((Word) (w) >> (WORDBITS - TAGBITS))
+#define	mktag(t)	((Word)(t) << (WORDBITS - TAGBITS))
+#define	unmktag(w)	((Word)(w) >> (WORDBITS - TAGBITS))
 #define	tag(w)		((w) & ~(~(Word)0 >> TAGBITS))
 #define mkbody(i)	(i)
 #define unmkbody(w)	(w)
 #define	body(w, t)	((w) & (~(Word)0 >> TAGBITS))
-#define	mkword(t, p)	((Word)(t) + (Word)(p))
+/*
+** the result of mkword() is cast to (const Word *), not to (Word)
+** because mkword() may be used in initializers for static constants
+** and casts from pointers to integral types are not valid
+** constant-expressions in ANSI C.
+*/
+#define	mkword(t, p)	((const Word *)((const char *)(p) + (Word)(t)))
 #define	field(t, p, i)	((Word *) body((p), (t)))[i]
 
 #else
@@ -45,7 +51,14 @@
 #define mkbody(i)	((i) << TAGBITS)
 #define unmkbody(w)	((Word) (w) >> TAGBITS)
 #define	body(w, t)	((w) - (t))
-#define	mkword(t, p)	((Word)(t) + (Word)(p))
+/*
+** the result of mkword() is cast to (const Word *), not to (Word)
+** because mkword() may be used in initializers for static constants
+** and casts from pointers to integral types are not valid
+** constant-expressions in ANSI C.
+*/
+/* XXX can't implement the above comment yet due to bootstrapping problems! */
+#define	mkword(t, p)	((Word)((const char *)(p) + (t)))
 #define	field(t, p, i)	((Word *) body((p), (t)))[i]
 
 #endif

@@ -149,11 +149,19 @@
 #endif
 
 #if TAGBITS >= 2
+	typedef const Word *TypeLayoutField;
+	#define TYPE_LAYOUT_FIELDS \
+		TypeLayoutField f1,f2,f3,f4,f5,f6,f7,f8;
 	#define make_typelayout(Tag, Value) \
-		((Word *) (Integer) mkword(mktag(Tag), Value))
+		(const Word *) mkword(mktag(Tag), (Value))
 #else
+	typedef const Word *TypeLayoutField;
+	#define TYPE_LAYOUT_FIELDS \
+		TypeLayoutField f1,f2,f3,f4,f5,f6,f7,f8;
+		TypeLayoutField f9,f10,f11,f12,f13,f14,f15,f16;
 	#define make_typelayout(Tag, Value) \
-		((Word *) (Integer) Tag), ((Word *) (Integer) Value)
+		(const Word *) (Tag), \
+		(const Word *) (Value)
 #endif
 
 /*

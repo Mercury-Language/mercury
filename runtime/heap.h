@@ -11,9 +11,10 @@
 #include "gc.h"
 
 #define	tag_incr_hp_n(dest,tag,count) \
-	((dest) = mkword((tag), (Word)GC_MALLOC((count) * sizeof(Word))))
+	((dest) = (Word)mkword((tag), (Word)GC_MALLOC((count) * sizeof(Word))))
 #define	tag_incr_hp_atomic(dest,tag,count) \
-	((dest) = mkword((tag), (Word)GC_MALLOC_ATOMIC((count) * sizeof(Word))))
+	((dest) = (Word)mkword((tag), \
+			(Word)GC_MALLOC_ATOMIC((count) * sizeof(Word))))
 
 #ifdef INLINE_ALLOC
 
@@ -51,7 +52,7 @@
 		/* if size > 1, round up to an even number of words */	\
 		Word num_words = ((count) == 1 ? 1 : 2 * (((count) + 1) / 2)); \
 		GC_MALLOC_WORDS(temp, num_words);			\
-		(dest) = mkword((tag), temp);				\
+		(dest) = (Word)mkword((tag), temp);			\
 	  })								\
 	: tag_incr_hp_n((dest),(tag),(count))				\
 	)
@@ -75,7 +76,7 @@
 /* ! CONSERVATIVE_GC */
 
 #define	tag_incr_hp(dest,tag,count)	(			\
-				(dest) = mkword(tag, (Word)hp),	\
+				(dest) = (Word)mkword(tag, (Word)hp),	\
 				debugincrhp(count, hp),		\
 				hp += (count),			\
 				heap_overflow_check(),		\
