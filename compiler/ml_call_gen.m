@@ -543,6 +543,28 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) -->
 		{ ArgRval = unop(box(MLDS_SourceType), VarRval) }
 	;
 		%
+		% if converting to float, cast to mlds__generic_type
+		% and then unbox
+		%
+		{ DestType = term__functor(term__atom("float"), [], _) },
+		{ SourceType \= term__functor(term__atom("float"), [], _) }
+	->
+		ml_gen_type(DestType, MLDS_DestType),
+		{ ArgRval = unop(unbox(MLDS_DestType),
+			unop(cast(mlds__generic_type), VarRval)) }
+	;
+		%
+		% if converting from float, box and then cast the result
+		%
+		{ SourceType = term__functor(term__atom("float"), [], _) },
+		{ DestType \= term__functor(term__atom("float"), [], _) }
+	->
+		ml_gen_type(SourceType, MLDS_SourceType),
+		ml_gen_type(DestType, MLDS_DestType),
+		{ ArgRval = unop(cast(MLDS_DestType),
+			unop(box(MLDS_SourceType), VarRval)) }
+	;
+		%
 		% if converting from one concrete type to a different
 		% one, then cast
 		%

@@ -45,6 +45,7 @@ PROGS=	\
 	export_test \
 	factt \
 	factt_non \
+	float_field \
 	float_map \
 	float_reg \
 	float_rounding_bug \
