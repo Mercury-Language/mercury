@@ -169,7 +169,8 @@ clean_zip: ;
 else
 clean_zip:
 	for test in $(TESTS); do \
-		rm -f `basename $$test -nodepend`.gz; \
+		prog=`basename $$test -nodepend`; \
+		rm -f $$prog.gz $$prog.exe.gz; \
 	done
 endif
 
@@ -286,7 +287,8 @@ start_runtests_local:
 		if [ -f $*.failed ]; then \
 			rm -f $*.failed; \
 		    	if [ -f $$test ]; then \
-				rm -f $$test.gz; gzip $$test; \
+				rm -f $$test.gz $$test.exe.gz; \
+				gzip $$test || gzip $$test.exe; \
 			fi; \
 			echo FAILED TEST $(THIS_DIR)/$* $(PARAMS_MSG) \
 				| tee -a $@; \
