@@ -289,10 +289,14 @@ mlds_output_src_start(Indent, ModuleName) -->
 		mercury_module_name_to_mlds(ModuleName)),
 	io__nl.
 
+	%
+	% Output any #defines which are required to bootstrap in the hlc
+	% grade.
+	%
 :- pred mlds_output_src_bootstrap_defines(io__state::di, io__state::uo) is det.
 
 mlds_output_src_bootstrap_defines -->
-	io__write_string("#define MR_BOOTSTRAP_RTTI_CHANGE\n").
+	[].
 
 :- pred mlds_output_hdr_end(indent, mercury_module_name,
 		io__state, io__state).
