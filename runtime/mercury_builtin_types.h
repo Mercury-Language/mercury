@@ -89,7 +89,7 @@ MR_bool MR_CALL mercury__builtin____Unify____tuple_0_0(MR_Tuple x, MR_Tuple y);
 MR_bool MR_CALL mercury__type_desc____Unify____type_ctor_desc_0_0(
 	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y); 
 MR_bool MR_CALL mercury__type_desc____Unify____pseudo_type_desc_0_0(
-	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y); 
+	MR_Pseudo_Type_Desc x, MR_Pseudo_Type_Desc y); 
 MR_bool MR_CALL mercury__type_desc____Unify____type_desc_0_0(
 	MR_Type_Desc x, MR_Type_Desc y); 
 MR_bool MR_CALL mercury__private_builtin____Unify____type_ctor_info_1_0(
@@ -133,7 +133,7 @@ void MR_CALL mercury__type_desc____Compare____type_ctor_desc_0_0(
 	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y);
 void MR_CALL mercury__type_desc____Compare____pseudo_type_desc_0_0(
 	MR_Comparison_Result *result,
-	MR_Type_Ctor_Desc x, MR_Type_Ctor_Desc y);
+	MR_Pseudo_Type_Desc x, MR_Pseudo_Type_Desc y);
 void MR_CALL mercury__type_desc____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y);
 void MR_CALL mercury__private_builtin____Compare____type_ctor_info_1_0(
