@@ -76,11 +76,11 @@
 #define	SAVEVAL		(-NONDET_FIXED_SIZE)
 			/* saved values start at this offset	*/
 
-#define	bt_redoip(fr)	LVALUE_CAST(Code *, ((Word *) fr)[REDOIP])
-#define	bt_prevfr(fr)	LVALUE_CAST(Word *, ((Word *) fr)[PREVFR])
-#define	bt_succip(fr)	LVALUE_CAST(Code *, ((Word *) fr)[SUCCIP])
-#define	bt_succfr(fr)	LVALUE_CAST(Word *, ((Word *) fr)[SUCCFR])
-#define	bt_var(fr,n)	((Word *) fr)[SAVEVAL-n]
+#define	bt_redoip(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[REDOIP])
+#define	bt_prevfr(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[PREVFR])
+#define	bt_succip(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[SUCCIP])
+#define	bt_succfr(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[SUCCFR])
+#define	bt_var(fr,n)	(((Word *) (fr))[SAVEVAL-(n)])
 
 #define	curprednm	bt_prednm(curfr)
 #define	curredoip	bt_redoip(curfr)
