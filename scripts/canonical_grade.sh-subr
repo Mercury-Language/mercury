@@ -115,7 +115,7 @@ case $reserve_tag in
 	false)		;;
 esac
 
-case $use_minimal_model_stack_copy,$use_minimal_model_own_stack,$minimal_model_debug in
+case $use_minimal_model_stack_copy,$use_minimal_model_own_stacks,$minimal_model_debug in
 	true,false,false)	GRADE="$GRADE.mmsc" ;;
 	true,false,true)	GRADE="$GRADE.dmmsc" ;;
 	false,true,false)	GRADE="$GRADE.mmos" ;;
