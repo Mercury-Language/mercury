@@ -437,7 +437,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(static_ground_terms, bool(no)),
 		globals__io_set_option(put_nondet_env_on_heap, bool(yes)),
 
-		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
+		( { AutoIntermodOptimization = yes } ->
 			globals__io_set_option(intermodule_optimization,
 					bool(yes))
 		;
