@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,20 +18,18 @@
 
 :- interface.
 
-% Declaratively, `report_stats' is the same as `true'.
+% `report_stats' is a non-logical procedure intended for use in profiling
+% the performance of a program.
 % It has the side-effect of reporting some memory and time usage statistics
 % about the time period since the last call to report_stats to stdout.
-% (Technically, every Mercury implementation must offer a mode of invocation
-% which disables this side-effect.)
 
-:- pred report_stats is det.
+:- impure pred report_stats is det.
 
-% Declaratively, `report_full_memory_stats' is the same as `true'.
-% It has the side-effect of reporting a full memory profile
-% to stdout. (Technically, every Mercury implementation must offer
-% a mode of invocation which disables this side-effect.)
+% `report_full_memory_stats' is a non-logical procedure intended for use
+% in profiling the memory usage of a program.  It has the side-effect of
+% reporting a full memory profile to stdout.
 
-:- pred report_full_memory_stats is det.
+:- impure pred report_full_memory_stats is det.
 
 % benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the
 % det predicate Pred. We call Pred with the input In and the output Out,

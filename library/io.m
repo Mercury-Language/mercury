@@ -855,6 +855,7 @@
 
 	% Write complete memory usage statistics to stdout,
 	% including information about all procedures and types.
+	% (You need to compile with memory profiling enabled.)
 
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
@@ -1899,18 +1900,15 @@ io__set_environment_var(Var, Value) -->
 
 % memory management predicates
 
-% The implementation of io__report_stats/2 in terms of the non-logical
-% report_stats/0 causes problems with --optimize-duplicate-calls.
-% So we need to prevent inlining.  (If/when we support `impure' declarations,
-% it would probably be better to declare `report_stats' as `impure'.)
-
-:- pragma no_inline(io__report_stats/2).
+:- pragma promise_pure(io__report_stats/2).
 
 io__report_stats -->
-	{ report_stats }.
+	{ impure report_stats }.
+
+:- pragma promise_pure(io__report_full_memory_stats/2).
 
 io__report_full_memory_stats -->
-	{ report_full_memory_stats }.
+	{ impure report_full_memory_stats }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
