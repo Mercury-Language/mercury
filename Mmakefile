@@ -113,7 +113,7 @@ profiler: dep_profiler scripts util runtime boehm_gc library
 
 .PHONY: lp_solve
 lp_solve:
-	cd lp_solve && $(SUBDIR_MMAKE)
+	-cd lp_solve && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
@@ -302,7 +302,7 @@ install_split_library: scripts dep_library
 
 .PHONY: install_lp_solve
 install_lp_solve: lp_solve
-	cd lp_solve && $(SUBDIR_MMAKE) install
+	-cd lp_solve && $(SUBDIR_MMAKE) install
 
 #-----------------------------------------------------------------------------#
 
