@@ -361,7 +361,7 @@
 % package name unchanged.
 :- func mlds__append_wrapper_class(mlds_module_name) = mlds_module_name.
 
-% Append an arbitarty qualifier to the module name and leave the package
+% Append an arbitrary qualifier to the module name and leave the package
 % name unchanged.
 :- func mlds__append_name(mlds_module_name, string) = mlds_module_name.
 
