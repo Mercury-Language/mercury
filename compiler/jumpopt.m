@@ -315,6 +315,27 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			NewInstrs = [Instr0]
 		)
+	; Uinstr0 = if_val(Cond, label(TargetLabel)) ->
+		(
+			map__search(Instrmap, TargetLabel, TargetInstr)
+		->
+			jumpopt__final_dest(TargetLabel, TargetInstr,
+				Instrmap, DestLabel, _DestInstr),
+			( TargetLabel = DestLabel ->
+				NewInstrs = [Instr0],
+				Mod0 = no
+			;
+				string__append("shortcircuited jump: ",
+					Comment0, Shorted),
+				NewInstrs = [if_val(Cond, label(DestLabel))
+					- Shorted],
+				Mod0 = yes
+			)
+		;
+			% error("target label not in instrmap")
+			NewInstrs = [Instr0],
+			Mod0 = no
+		)
 	;
 		NewInstrs = [Instr0],
 		Mod0 = no
