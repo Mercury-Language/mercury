@@ -6,7 +6,7 @@
 @ifinfo
 @format
 START-INFO-DIR-ENTRY
-* Mercury: (mercury).			The Mercury User's Guide.
+* Mercury: (mercury).                The Mercury User's Guide.
 END-INFO-DIR-ENTRY
 @end format
 @end ifinfo
@@ -83,12 +83,9 @@ into another language, under the above conditions for modified versions.
 @node Filenames, Hello,, Top
 @section File naming conventions
 
-@c Mercury source files should be named @file{*.m}.
-@c (Note that for historical reasons, we also allow @file{*.nl},
-@c but the support for that will eventually be removed.)
-For the moment, Mercury source files should be named @file{*.nl}.
-In the near future, that will change to @file{*.m}.
-(The @file{.nl} extension is used for historical reasons.)
+Mercury source files should be named @file{*.m}.
+(Note that for historical reasons, we also allow @file{*.nl},
+but the support for that will eventually be removed.)
 
 Files ending in @file{.d} are automatically-generated Makefile
 fragments which contain the dependencies for each module.
@@ -136,12 +133,6 @@ mmake @var{main-module}.depend
 mmake @var{main-module}
 @end example
 
-To compile the program with NU-Prolog, use
-
-@example
-mmake @var{main-module}.nu
-@end example
-
 Mmake only recompiles those files that need to be recompiled,
 based on automatically generated dependency information.
 Most of the dependencies are stored in @samp{.d} files that are
@@ -155,40 +146,101 @@ getting an inconsistent executable if you forget this step --- instead
 you will get a link error.
 
 If there is a file called @samp{Mmake} in the current directory,
-@code{mmake} will include that file in its automatically-generated
+Mmake will include that file in its automatically-generated
 Makefile.  The @samp{Mmake} file can override the default values of
-various variables used by @code{mmake}'s builtin-rules, listed below,
+various variables used by Mmake's builtin rules, listed below,
 or it can add additional rules, dependencies, and actions.
 @{mmake allows you to build more than one program in the same directory.
 
-@example
-GRADE   	= asm_fast.gc
-MC		= mc
-MCG		= $(MC) -g
-MCFLAGS		=
-MCINTFLAGS	=
-MOD2C		= mod2c
-MOD2CFLAGS	= 
-MOD2INIT	= mod2init
-MOD2INITFLAGS	=
-MGNUC		= mgnuc
-MGNUCFLAGS	=
-ML		= ml
-MLFLAGS		=
-MNC		= mnc
-MNCFLAGS	=
-MNL		= mnl
-MNLFLAGS	=
-MNP		= mnp
-MNPFLAGS	=
-@end example
+Mmake's builtin rules are defined by the file 
+@file{@var{prefix}/lib/mercury/mmake/Mmake.rules} (where @var{prefix} is
+@file{/usr/local} by default), as well as the rules in the
+automatically-generated @file{.dep} files.  These rules define
+the following targets:
 
-@code{mmake} predefines the targets @samp{clean} and @samp{realclean}.
-@code{clean} removes all the automatically generated files except
-the executables and the dependency files; @code{realclean} removes those too.
+@table @file
+@item @var{main-module}.depend
+Creates the file @file{@var{main-module}.dep} from @file{@var{main-module}.m}
+and the modules it imports.  This step must be performed first.
+
+@item @var{main-module}.ints
+Ensure that the interface files for @var{main-module} and its imported
+modules are up-to-date.  (If the underlying @samp{make} program does
+not handle transitive dependencies, this step may be necessary before
+attempting to make @file{@var{main-module}.check} or @file{@var{main-module}};
+if the underlying @samp{make} is GNU Make, this step should not be
+necessary.)
+
+@item @var{main-module}.check
+Perform semantic checking on @var{main-module} and its imported modules.
+Error messages are placed in @file{.err} files.
+
+@item @var{main-module}
+Compiles and links @var{main-module} using the Mercury compiler.
+Error messages are placed in @file{.err2} files.
+
+@item @var{main-module}.nu
+Compiles and links @var{main-module} using NU-Prolog.
+
+@item @var{main-module}.nu.debug
+Compiles and links @var{main-module} using NU-Prolog.
+The resulting executable will start up in the NU-Prolog interpreter
+rather than calling main/2.
+
+@item @var{main-module}.sicstus
+Compiles and links @var{main-module} using SICStus Prolog.
+
+@item @var{main-module}.sicstus
+Compiles and links @var{main-module} using SICStus Prolog.
+The resulting executable will start up in the SICStus Prolog interpreter
+rather than calling main/2.
+
+@item clean
+Removes all the automatically generated files except
+the executables and the dependency files.
 (Note that the rule for @code{mmake clean} includes @samp{rm -f *.c},
-so be careful not to mix C source code and Mercury code in the same
-directory!  We might eventually do something to avoid that potential hazard.)
+so be careful if you mix C source code and Mercury code in the same directory!
+This behaviour can be overridden by resetting the CLEAN_C variable in
+your Mmake file.)
+
+@item realclean
+Like @samp{clean}, but also removes the executables and the dependency files.
+
+@end table
+
+The variables used by the builtin rules are defined in 
+@file{@var{prefix}/lib/mercury/mmake/Mmake.vars}.
+They are listed below, together with their default values.
+
+@example
+GRADE           = asm_fast.gc
+MC              = mc
+MCG             = $(MC) -g
+MCFLAGS         =
+MCINTFLAGS      =
+MOD2C           = mod2c
+MOD2CFLAGS      = 
+MOD2INIT        = mod2init
+MOD2INITFLAGS   =
+MGNUC           = mgnuc
+MGNUCFLAGS      =
+ML              = ml
+MLFLAGS         =
+MNC             = mnc
+MNCFLAGS        =
+MNL             = mnl
+MNLFLAGS        =
+MNP             = mnp
+MNPFLAGS        =
+MSC             = msc
+MSCFLAGS        =
+MSL             = msl
+MSLFLAGS        =
+MSP             = msp
+MSPFLAGS        =
+CLEAN_C         = -rm -f *.c
+CLEAN_MOD       = -rm -f *.mod
+@end example
 
 @node Using Mercury, Using NU-Prolog, Using Mmake, Top
 @section Using the Mercury compiler
@@ -291,6 +343,15 @@ default @samp{-s asm_fast.gc},
 you can use the various debugging options to the Mercury runtime;
 for example @samp{-dg} dumps an execution trace.
 
+@subsection Setting stack sizes
+With conservative garbage collection (the default), the heap will be
+dynamically expanded as needed, but the det stack and the nondet stack
+are allocated fixed sizes at program start-up.  The default size is
+512k for the det stack and 128k for the nondet stack, but these can be
+overridden with the @samp{-sd} and @samp{-sn} options. 
+The Mercury runtime will ensure that stack overflow is trapped by the
+virtual memory system, on operating systems that support that.
+
 @node Using NU-Prolog, Using SICStus, Using Mercury, Top
 @section Using NU-Prolog
 
@@ -304,7 +365,7 @@ could have detected for you.
 Use the command @samp{mnc @var{module}.m} or @samp{mnc @var{module}.nl}.
 (Ignore any warnings about "XXX is a system predicate.
 It shouldn't be used as a non-terminal.")
-	
+
 @subsection Linking
 Use the command @samp{mnl -o @var{module} *.no}.
 (Ignore any warnings about "XXX redefined".)
@@ -345,12 +406,12 @@ in Mercury the following predicate will usually succeed, whereas in
 NU-Prolog it will always fail.
 
 @example
-	:- pred p(list(int)::in, list(int)::out) is semidet.
-	p(L0, L) :-
-		L \= [],
-		q(L0, L).
+        :- pred p(list(int)::in, list(int)::out) is semidet.
+        p(L0, L) :-
+                L \= [],
+                q(L0, L).
 
-	:- pred q(list(int)::in, list(int)::out) is det.
+        :- pred q(list(int)::in, list(int)::out) is det.
 @end example
 
 @noindent
@@ -367,8 +428,17 @@ Another hazard is that NU-Prolog does not have a garbage collector :-(
 @node Using SICStus, FAQs, Using NU-Prolog, Top
 @section Using SICStus Prolog
 
-TBD.  (To Be Documented!)
-    
+Using SICStus Prolog is similar to using NU-Prolog,
+except that the commands to use are @samp{msc}, @samp{msl}, and
+@samp{msp} rather than @samp{mnc}, @samp{mnl}, and @samp{mnp}.
+
+Note that due to shortcomings in SICStus Prolog (in particular,
+the lack of backslash escapes in character strings), you need
+to use @samp{sicstus_conv} to convert Mercury @samp{.m} files
+to the @samp{.pl} files that SICStus Prolog expects before
+you can load them into the interpreter.  The command to use is just
+@samp{sicstus_conv @var{module}.m}.
+
 @node FAQs, Invocation, Using SICStus, Top
 @chapter Mercury FAQs
 @table @emph
@@ -514,13 +584,16 @@ the named modules, compile it, and then link all the
 object files to produce an executable.
 This option implies @samp{--compile}.
 
-@item --no-mod-comments
-Don't output comments in the @file{.mod} file.
+@item --mod-comments
+Output comments in the generated @file{.mod} file (and hence also in
+the @file{.c} file.  This is primarily useful for trying to understand
+how the generated C code relates to the source code, in order to
+debug the compiler.
 
 @item -l
 @itemx --line-numbers
-Output line numbers in the generated code.
-Currently only works with the -G and -M options.
+Output source line numbers in the generated code.
+Only works with the -G and -M options.
 @end table
 
 @section Code generation options
@@ -540,7 +613,6 @@ selecting a setting for the --c-optimize, --gc,
 @var{grade} should be one of
 @{debug, none, reg, jump, asm_jump, fast, asm_fast@}
 or one of those with @file{.gc} appended.
-(See the mgnuc shell script source code for details).
 
 @item --gc @{none, conservative, accurate@}
 @itemx --garbage-collection @{none, conservative, accurate@}
@@ -621,19 +693,19 @@ and storing them as static constants.
 Generate deterministic switches as a simple if-then-else chain;
 disable string hashing and integer table-lookup indexing.
 
-@item --req-density
+@item --req-density @var{percentage}
 The jump table generated for an atomic switch
 must have at least this percentage of full slots.
 
-@item --dense-switch-size
+@item --dense-switch-size @var{size}
 The jump table generated for an atomic switch
 must have at least this many entries.
 
-@item --string-switch-size
+@item --string-switch-size @var{size}
 The hash table generated for a string switch
 must have at least this many entries.
 
-@item --tag-switch-size
+@item --tag-switch-size @var{size}
 The number of alternatives in a tag switch
 must be at least this number.
 

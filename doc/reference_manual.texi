@@ -68,10 +68,12 @@ into another language, under the above conditions for modified versions.
 @node Top,,, (DIR)
 @menu
 * Introduction::      A brief introduction to Mercury
-* Syntax::     
-* Types::     
-* Modes::     
-* Determinism::     
+* Syntax::            Mercury's syntax is similar to ISO Prolog
+* Types::             Mercury has a strong parametric polymorphic type system
+* Modes::             Modes allow you to specify the direction of data flow
+* Determinism::       Determinism declarations let you specify that a predicate
+		      should never fail or should never succeed more than once
+* Modules::           Modules allow you to divide a program into smaller parts
 @end menu
 
 @node Introduction, Syntax,, Top
@@ -129,6 +131,119 @@ declaration, otherwise it is a clause.  If the top-level functor of the
 term is @samp{:-/2}, the item is a rule.  If the top-level functor is
 @samp{-->/2}, the item is a DCG rule.  Otherwise, the item is a fact.
 
+@section Declarations
+
+The allowed declarations are:
+
+@example
+:- type
+:- pred
+:- inst
+:- mode
+:- module
+:- interface
+:- implementation
+:- import_module
+:- external
+:- end_module
+@end example
+
+The @samp{type} and @samp{pred} declarations are used for the type system,
+the @samp{inst} and @samp{mode} declarations are for the mode system,
+and the remainder are for the module system.  They are described in
+more detail in their respective chapters.
+
+(Note that for historical reasons, the current implementation allows
+@samp{when/2} declarations, but ignores them.)
+
+@section Clauses
+
+A clause is an item of the form @samp{@var{Head} :- @var{Body}}.
+The @var{Head} term must not be a variable.  The top-level functor
+of the @var{Head} determines which predicate the clause belongs to;
+the predicate must have been declared in a previous @samp{pred}
+declaration in this module.  The @var{Body} must be a valid goal.
+
+@section Goals
+
+A goal is a term of one of the following forms:
+
+@table @code
+@item some @var{Vars} @var{Goal}
+An existential quantification.  @var{Vars} must be a list of variables.
+@var{Goal} must be a valid goal.
+
+@item all @var{Vars} @var{Goal}
+A universal quantification.  @var{Vars} must be a list of variables.
+@var{Goal} must be a valid goal.
+This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
+
+@item @var{Goal1}, @var{Goal2}
+A conjunction.  @var{Goal1} and @var{Goal2} must be valid goals.
+
+@item @var{Goal1} ; @var{Goal2}
+A disjunction.  @var{Goal1} and @var{Goal2} must be valid goals.
+@var{Goal1} must not be of the form @samp{Goal1a -> Goal1b}.
+(If it is, then the goal is an if-then-else, not a disjunction.)
+
+@item true
+The empty conjunction.  Always succeeds.
+
+@item fail
+The empty disjunction.  Always fails.
+
+@item not @var{Goal}
+@itemx \+ @var{Goal}
+A negation.  The two different syntaxes have identical semantics.
+@var{Goal} must be a valid goal.
+
+@item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
+@itemx @var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}
+An if-then-else.  The two different syntaxes have identical semantics.
+@var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid goals.
+
+@item @var{Term1} = @var{Term2}
+A unification.
+
+@item @var{Term1} \= @var{Term2}
+An inequality. 
+This is an abbreviation for @samp{not (@var{Term1} = @var{Term2})}.
+
+@item @var{Call}
+Any term which does not match any of the above forms must be
+a predicate call.  If the term is a variable @var{Var}, it is treated
+as if it were @samp{call(@var{Var})}.  Otherwise, the top-level
+functor of the term determines the predicate called; the predicate
+must be declared in a @code{pred} declaration in the module or in
+the interface of an imported module.
+
+@end table
+
+@section Implicit quantification
+
+The rule for implicit quantification in Mercury is not the same
+as the usual one in mathematical logic.  In Mercury variables
+are implicitly extentially quantified around their closest
+enclosing scope (in a sense to be made precise in the following
+paragraphs).  This allows most existential quantifiers to be omitted,
+and leads to more concise code.
+
+An occurence of a variable is @dfn{in a negated context} if it is
+inside a negation, inside a universal quantification, in the condition
+of an if-then-else, or in an inequality.
+
+Two goals are @dfn{parallel} if they are different disjuncts
+of the same disjunction, or if one is the ``else'' part of an
+if-then-else and the other goal is either the ``then'' part
+or the condition of the if-then-else.
+
+If a variable occurs in a negated context
+and which does not occur outside of that negated context
+other than in parallel goals (and in the case of a variable in the
+condition of an if-then-else, other than in the ``then'' part of the
+if-then-else), then that variable is implicitly existentially
+quantified inside the negation.
+
 @node Types, Modes, Syntax, Top
 @chapter Types
 
@@ -137,9 +252,7 @@ The type system is based on a polymorphic many-sorted logic.
 Certain special types are builtin, or are defined in the Mercury library:
 
 @table @asis
-@item Primitive types: @code{char}, @code{int},
-@code{float}@footnote{Note that @code{float} is not yet supported by the
-current Mercury implementation}, @code{string}.
+@item Primitive types: @code{char}, @code{int}, @code{float}, @code{string}.
 There is a special syntax for constants of type @code{int}, @code{float},
 and @code{string}.  (For @code{char}, the standard syntax suffices.)
 
@@ -155,7 +268,7 @@ With those predicates, any type can be converted to the universal type
 and back again.  The universal type is useful for situations where you need
 heterogeneous collections.
 
-@item The ``state-of-the-world type'': @code{io__state}.
+@item The ``state-of-the-world'' type: @code{io__state}.
 The type @code{io__state} is define in the standard library module
 @code{io}, and represents the state of the world.  Predicates which
 perform I/O are passed the old state of the world and produce a new
@@ -333,7 +446,7 @@ A @dfn{mode mapping} is a mapping
 from an initial instantiatedness tree to a final instantiatedness tree,
 with the constraint that no node of the type tree
 is transformed from bound to free.
-Our language allows the user to specify mode mappings directly
+Mercury allows the user to specify mode mappings directly
 by expressions such as @code{inst1 -> inst2},
 or to give them a name using declarations such as
 
@@ -341,7 +454,7 @@ or to give them a name using declarations such as
 :- mode m :: inst1 -> inst2.
 @end example
 
-We provide two standard shorthand modes
+Two standard shorthand modes are provided,
 corresponding to the standard notions of inputs and outputs:
 
 @example
@@ -352,27 +465,30 @@ corresponding to the standard notions of inputs and outputs:
 These two modes are enough for most predicates.
 Nevertheless, Mercury's mode system is sufficiently
 expressive to handle more complex data-flow patterns, including those
-involving partially instantiated data structures.  For example, consider an
+involving partially instantiated data structures.  
+[NOTE: The current implementation does not handle partially
+instantiatied data yet!]
+
+For example, consider an
 interface to a database that associates data with keys, and provides
 read and write access to the items it stores.  To represent accesses to
-the database over a network, we will need declarations such as
+the database over a network, you would need declarations such as
 
 @example
-:- type operation --->
-        lookup(key, data)
-      ; set(key, data).
-:- inst request ---> bound(
-        lookup(ground, free)
-      ; set(ground, ground)).
-:- mode create_request ::
-   free -> request.
-:- mode satisfy_request ::
-   request -> ground.
+:- type	operation
+        --->    lookup(key, data)
+        ;       set(key, data).
+:- inst request --->
+	bound(  lookup(ground, free)
+        ;       set(ground, ground)
+        ).
+:- mode create_request :: free -> request.
+:- mode satisfy_request :: request -> ground.
 @end example
 
 A @dfn{predicate mode declaration}
 assigns a mode mapping to each argument of a predicate.
-Given the mode names defined by
+For example, given the mode names defined by
 
 @example
 :- mode out_listskel ::
@@ -393,6 +509,13 @@ are as follows:
 	   list(T)).
 :- mode append(in, in, out).
 :- mode append(out, out, in).
+@end example
+
+If a predicate has only one mode, the @samp{pred} and @samp{mode}
+declaration can be combined:
+
+@example
+:- pred append(list(T)::in, list(T)::in, list(T)::out).
 @end example
 
 A predicate mode declaration is an assertion by the programmer
@@ -451,34 +574,13 @@ all the mode declarations in its mode set,
 and we say that a program is well-moded
 if all its predicates are well-moded.
 
-The bodies of clauses in Mercury
-may contain negations, disjunctions and if-then-elses.
-To remove one level of processing,
-the compiler converts any predicate definition with two or more clauses
-into a single clause with an explicit disjunction.
-The type and mode analysis algorithms work with such rich clauses
-that have been converted into @dfn{superhomogeneous form},
-where each atom is of one of the forms
-
-@example
-p(X_1, ..., X_n)
-Y = X
-Y = f(X_1, ..., X_n)
-@end example
-
-Any clause can be converted to superhomogeneous form
-by replacing with distinct variables
-the arguments in the head and in calls in the body,
-generating explicit unifications for these variables in the body,
-and then breaking complex unifications down into several simpler ones.
-
 The mode analysis algorithm checks one mode of one predicate at a time.
 It abstractly interprets the definition of the predicate,
 keeping track of the instantiatedness of each variable,
 and selecting a mode for each call and unification in the definition.
 To ensure that
 the mode set constraints of called predicates are satisfied,
-it may reorder the elements of conjunctions;
+the compiler may reorder the elements of conjunctions;
 it reports an error if no satisfactory order exists.
 Finally it checks that
 the resulting instantiatedness of the predicate's arguments
@@ -486,14 +588,7 @@ is the same as the one given by the predicate's mode declaration.
 
 The mode analysis algorithm annotates each call with the mode used.
 
-@ignore
-% Reordering of conjunctions for each mode means that the
-% order of execution is more flexible than standard Prolog,
-% although not quite as flexible as in coroutining languages such as
-% NU-Prolog, SICStus Prolog, and G\"odel.
-@end ignore
-
-@node Determinism,, Modes, Top
+@node Determinism, Modules, Modes, Top
 @chapter Determinism
 
 @subsection Determinism categories
@@ -682,15 +777,6 @@ For example, it cannot detect that the following two clauses
                 ..
 @end example
 
-The local determinism of a switch is @code{det} if the different
-cases of the switch cover all the possible alternatives for the
-input variable; otherwise, it is @code{semidet}.
-
-If the disjunction is not a switch, but some subset of the disjuncts
-form a @code{det} switch, then the determinism of the disjunction
-
-
-
 @noindent
 are disjoint, but it can index them if you write the code as
 
@@ -701,8 +787,14 @@ are disjoint, but it can index them if you write the code as
                 ).
 @end example
 
-If any of the disjuncts will never fail, then the disjunction
-will never fail
+The local determinism of a switch is @code{det} if the different
+cases of the switch cover all the possible alternatives for the
+input variable; otherwise, it is @code{semidet}.
+
+If the disjunction is not a switch, but one of the disjuncts is
+@code{det} or @code{erroneous} or some subset of the disjuncts form a
+@code{det} or @code{erroneous} switch, then the determinism of the
+disjunction is @code{multidet}.
 
 @item If-then-else
 
@@ -710,7 +802,9 @@ If the determinism of the condition of the if-then-else is
 @code{erroneous} or @code{failure}, the determinism of the if-then-else
 is @code{erroneous}.  If the condition is @code{det}, the determinism
 of the if-then-else is the same as the determinism of the @samp{then}
-part.  If the condition is @code{semidet}, the determinism 
+part.  If the condition is @code{semidet}, the determinism  of the
+if-then-else is the join (minimum) of the determinism of the
+``then'' part and the ``else'' part.
 
 @item Negations
 
@@ -761,6 +855,90 @@ determinism for the body of @code{p/1} is @code{det}.
 (Note that checking assumptions like this is good coding style anyway.
 The small amount of up-front work that Mercury requires is paid back in
 reduced debugging time.)
+
+@node Modules,, Determinism, Top
+@chapter Modules
+
+The mercury module system is simple and straightforward. 
+Each module must start with a @code{module} declaration,
+specifying the name of the module. 
+An @code{interface} declaration specifies
+the start of the module's interface section:
+this section contains declarations for the types, function symbols,
+instantiation states, modes, and predicates exported by this module.
+Mercury provides support for abstract data types,
+since the definition of a type may be kept hidden,
+with only the type name being exported.  
+An @code{implementation} declaration specifies
+the start of the module's implementation section. 
+Any entities declared in this section are local to the module
+and cannot be used by other modules.
+The implementation section must of course contain definitions
+for all abstract data types and predicates exported by the module,
+as well for all local types and predicates.
+The module may optionally end with an @code{end_module} declaration.
+
+If a module wishes to make use of entities exported by other modules,
+then it must explicitly import those modules
+using one or more @code{import_module} declarations.
+These declarations may occur
+either in the interface or the implementation section.
+
+For example, here is the definition of a simple module for managing queues:
+
+@example
+:- module queue.
+:- interface.
+
+% Declare an abstract data type.
+
+:- type queue(T).
+
+% Declare some predicates which
+% operate on the abstract data type.
+
+:- pred empty_queue(queue(T)).
+:- mode empty_queue(out) is det.
+:- mode empty_queue(in) is semidet.
+
+:- pred put(queue(T), T, queue(T)).
+:- mode put(in, in, out) is det.
+
+:- pred get(queue(T), T, queue(T)).
+:- mode get(in, out, out) is semidet.
+
+:- implementation.
+
+% Queues are implemented as lists.
+% We need the `list' module for the
+% declaration of the type list(T),
+% with its constructors '[]'/0
+% and '.'/2, and for the declaration
+% of the predicate append/3.
+
+:- import_module list.
+
+% Define the queue ADT.
+
+:- type queue(T) == list(T).
+
+% Declare the exported predicates.
+
+empty_queue([]).
+
+put(Queue0, Elem, Queue) :-
+         append(Queue0, [Elem], Queue).
+
+get([Elem | Queue], Elem, Queue).
+
+:- end_module queue.
+
+@end example
+
+Mercury has a standard library which includes modules for
+lists, stacks, queues, priority queues, sets, bags (multi-sets),
+maps (dictionaries), random number generation, input/output
+and filename and directory handling.
 
 @contents
 @bye
