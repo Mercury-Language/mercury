@@ -1790,14 +1790,14 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 		{ map__search(Classes, ClassId, _) }
 	->
 		{ map__init(Empty) },
-		{ NewValue = hlds_instance_defn(Status, Context,
+		{ NewInstanceDefn = hlds_instance_defn(Status, Context,
 			Constraints, Types, Body, no, VarSet, Empty) },
-		{ map__lookup(Instances0, ClassId, Values) },
-		check_for_overlapping_instances(NewValue, Values, ClassId),
-		{ map__det_update(Instances0, ClassId, [NewValue|Values], 
-			Instances) },
-		{ module_info_set_instances(Module0, Instances,
-			Module) }
+		{ map__lookup(Instances0, ClassId, InstanceDefns) },
+		check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
+			ClassId),
+		{ map__det_update(Instances0, ClassId,
+			[NewInstanceDefn | InstanceDefns], Instances) },
+		{ module_info_set_instances(Module0, Instances, Module) }
 	;
 		undefined_type_class_error(ClassName, ClassArity, Context,
 			"instance declaration"),
@@ -1808,14 +1808,15 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 		list(hlds_instance_defn), class_id, io__state, io__state).
 :- mode check_for_overlapping_instances(in, in, in, di, uo) is det.
 
-check_for_overlapping_instances(NewValue, Values, ClassId) -->
+check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
 	{ IsOverlapping = lambda([(Context - OtherContext)::out] is nondet, (
-		NewValue = hlds_instance_defn(_Status, Context,
+		NewInstanceDefn = hlds_instance_defn(_Status, Context,
 				_, Types, Body, _, VarSet, _),
 		Body \= abstract, % XXX
-		list__member(OtherValue, Values),
-		OtherValue = hlds_instance_defn(_OtherStatus, OtherContext,
-				_, OtherTypes, OtherBody, _, OtherVarSet, _),
+		list__member(OtherInstanceDefn, InstanceDefns),
+		OtherInstanceDefn = hlds_instance_defn(_OtherStatus,
+				OtherContext, _, OtherTypes, OtherBody,
+				_, OtherVarSet, _),
 		OtherBody \= abstract, % XXX
 		varset__merge(VarSet, OtherVarSet, OtherTypes,
 				_NewVarSet, NewOtherTypes),
