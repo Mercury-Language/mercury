@@ -1,0 +1,9 @@
+missing_parent_import.m:030: In clause for predicate `missing_parent_import:main/2':
+missing_parent_import.m:030:   error: undefined predicate `child:hello/2'
+missing_parent_import.m:030:   (the possible parent module `children' has not
+missing_parent_import.m:030:     been imported).
+missing_parent_import.m:033: In clause for predicate `missing_parent_import:main/2':
+missing_parent_import.m:033:   error: undefined predicate `child2:hello/2'
+missing_parent_import.m:033:   (the possible parent module `children' has not
+missing_parent_import.m:033:     been imported).
+For more information, try recompiling with `-E'.

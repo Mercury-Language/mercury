@@ -1,10 +1,12 @@
 transitive_import_class.m:017: In clause for function `transitive_import_class:semidet_id/1':
 transitive_import_class.m:017:   in function result term of clause head:
 transitive_import_class.m:017:   error: undefined symbol `transitive_import_class3:to_int/1'
-transitive_import_class.m:017:   (the module `transitive_import_class3' has not been imported).
+transitive_import_class.m:017:   (the module `transitive_import_class3' has not
+transitive_import_class.m:017:     been imported).
 transitive_import_class.m:017: In clause for function `transitive_import_class:semidet_id/1':
 transitive_import_class.m:017:   in function result term of clause head:
 transitive_import_class.m:017:   in argument 1 of functor `transitive_import_class3:to_int/1':
 transitive_import_class.m:017:   error: undefined symbol `transitive_import_class3:from_int/1'
-transitive_import_class.m:017:   (the module `transitive_import_class3' has not been imported).
+transitive_import_class.m:017:   (the module `transitive_import_class3' has not
+transitive_import_class.m:017:     been imported).
 For more information, try recompiling with `-E'.

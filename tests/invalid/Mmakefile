@@ -23,6 +23,7 @@ MULTIMODULE_SOURCES= \
 	duplicate_instance_2.m \
 	ho_default_func_2.sub.m \
 	imported_mode.m \
+	missing_parent_import.m \
 	partial_implied_mode.m \
 	sub_c.m \
 	test_nested.m \
