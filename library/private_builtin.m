@@ -937,33 +937,33 @@ Word ML_resumption_stack_size = 4;	/* Half the initial size of
 
 ResumeStackNode** ML_resumption_stack = NULL;
 
-#define ML_RESUME_PUSH()						\
-	do {								\
-		++ML_resumption_sp;					\
-		if (ML_resumption_sp >= ML_resumption_stack_size ||	\
-				ML_resumption_stack == NULL) 		\
-		{							\
-			ML_resumption_stack_size =			\
-				ML_resumption_stack_size*2;		\
-			ML_resumption_stack = table_reallocate(		\
-				ML_resumption_stack,			\
-				ML_resumption_stack_size*sizeof(	\
-					ResumeStackNode*));		\
-		}							\
-		ML_resumption_stack[ML_resumption_sp] = table_allocate(	\
-			sizeof(ResumeStackNode));			\
+#define ML_RESUME_PUSH()						\\
+	do {								\\
+		++ML_resumption_sp;					\\
+		if (ML_resumption_sp >= ML_resumption_stack_size ||	\\
+				ML_resumption_stack == NULL) 		\\
+		{							\\
+			ML_resumption_stack_size =			\\
+				ML_resumption_stack_size*2;		\\
+			ML_resumption_stack = table_reallocate(		\\
+				ML_resumption_stack,			\\
+				ML_resumption_stack_size*sizeof(	\\
+					ResumeStackNode*));		\\
+		}							\\
+		ML_resumption_stack[ML_resumption_sp] = table_allocate(	\\
+			sizeof(ResumeStackNode));			\\
 	} while (0)
 	
-#define ML_RESUME_POP()							\
-	do {								\
-		if (ML_resumption_sp < 0) {				\
-			fatal_error(""resumption stack underflow"");	\
-		}							\
-		table_free(ML_resumption_stack[ML_resumption_sp]);	\
-		--ML_resumption_sp;					\
+#define ML_RESUME_POP()							\\
+	do {								\\
+		if (ML_resumption_sp < 0) {				\\
+			fatal_error(""resumption stack underflow"");	\\
+		}							\\
+		table_free(ML_resumption_stack[ML_resumption_sp]);	\\
+		--ML_resumption_sp;					\\
 	} while (0)
 
-#define ML_RESUME_VAR							\
+#define ML_RESUME_VAR							\\
 	ML_resumption_stack[ML_resumption_sp]
 
 /*
@@ -1036,6 +1036,15 @@ Define_entry(mercury__table_resume_1_0);
 	ML_RESUME_VAR->s_p = MR_sp;
 	ML_RESUME_VAR->cur_fr = MR_curfr;
 	ML_RESUME_VAR->max_fr = MR_maxfr;
+
+#ifdef MR_USE_TRAIL
+	/*
+	** We ought to save the trail state here --
+	** this is not yet implemented.
+	*/
+	MR_fatal_error(""Sorry, not implemented: ""
+		""can't have both tabling and trailing"");
+#endif
 
 	ML_RESUME_VAR->changed = 1;
 	
