@@ -359,8 +359,12 @@ case $HOST in murlibobo)
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
 	rm -f mercury-latest-unstable/* &&
-	mv mercury-$version.tar.gz mercury-latest-unstable &&
-	mv mercury-$version-extras.tar.gz mercury-latest-unstable
+	mv mercury-compiler-$version.tar.gz	\
+	    mercury-latest-unstable/mercury-compiler-$version-unstable.tar.gz &&
+	mv mercury-extras-$version.tar.gz	\
+	    mercury-latest-unstable/mercury-extra-$version-unstable.tar.gz &&
+	mv mercury-tests-$version.tar.gz	\
+	    mercury-latest-unstable/mercury-tests-$version-unstable.tar.gz
 	} || status=1
 	;;
 esac
@@ -436,7 +440,20 @@ cd ..
 
 #-----------------------------------------------------------------------------#
 
+: update the unstable release
+
+BETA_FTPDIR = /home/tsa/ftp/pub/mercury/beta-releases
+
+rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
+cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+	$BETA_FTPDIR
+
+#-----------------------------------------------------------------------------#
+
 : check for success
+
+STABLE=mercury-latest-stable
+UNSTABLE=mercury-latest-unstable
 
 case $status in
     0)
@@ -445,16 +462,22 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
-	    rm -f mercury-latest-stable/* &&
-	    ln mercury-latest-unstable/mercury-$version.tar.gz \
-	        mercury-latest-stable/mercury-$version.tar.gz &&
-	    ln mercury-latest-unstable/mercury-$version-extras.tar.gz \
-	        mercury-latest-stable/mercury-$version-extras.tar.gz &&
-	    rm -f /home/tsa/ftp/pub/mercury/beta-releases/mercury-rotd-*.tar.gz
-	    cp mercury-latest-stable/mercury-$version.tar.gz \
-	        /home/tsa/ftp/pub/mercury/beta-releases
-	    cp mercury-latest-stable/mercury-$version-extras.tar.gz \
-	        /home/tsa/ftp/pub/mercury/beta-releases
+	    rm -f $STABLE/* &&
+	    ln $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
+	        $STABLE/mercury-compiler-$version.tar.gz &&
+	    ln $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
+	        $STABLE/mercury-extras-$version.tar.gz &&
+	    ln $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
+	        $STABLE/mercury-tests-$version.tar.gz &&
+
+		# Only delete the stable rotds.
+	    rm -f $BETA_FTPDIR/mercury-*-rotd-*[0-9].tar.gz &&
+	    ln $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
+	    ln $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-extras-$version.tar.gz &&
+	    ln $BETA_FTPDIR/mercury-tests-$version-unstable.tar.gz \
+	        $BETA_FTPDIR/mercury-tests-$version.tar.gz 
 	    ;;
 	esac
 	echo "test_mercury exiting successfully at `date`" 1>&2
