@@ -555,11 +555,6 @@ the @samp{pragma} declarations are for the C interface, and for
 compiler hints about inlining, and the remainder are for the module system. 
 They are described in more detail in their respective chapters.
 
-(The current implementation also allows @samp{when/2} declarations,
-but ignores them.
-This helps when one wants to write a program
-that is both a Mercury program and an NU-Prolog program.)
-
 @node Facts
 @section Facts
 
