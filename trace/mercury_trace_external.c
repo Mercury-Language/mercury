@@ -271,9 +271,10 @@ MR_trace_init_external(void)
 				"invalid port");
 		}
 
-		fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
-				hostname, port);
-	
+		if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
+				hostname, port);	
+		}
 		inet_address.sin_family = AF_INET;
 		inet_address.sin_addr.s_addr = host_addr;
 		inet_address.sin_port = htons(port);
@@ -444,8 +445,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			&debugger_request, &debugger_request_type);
 		switch((int) debugger_request_type) {
 			case MR_REQUEST_ABORT_PROG:
-				fatal_error("aborting the execution on "
-					"user request");
+				exit(EXIT_SUCCESS);
 
 			case MR_REQUEST_FORWARD_MOVE:
 				if (MR_debug_socket) {
