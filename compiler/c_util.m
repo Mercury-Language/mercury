@@ -8,7 +8,8 @@
 % Main author: fjh.
 
 % This module defines utility routines that are useful when
-% generating and/or emitting C code.
+% generating and/or emitting C code.  Changes to this module may require
+% changes to be made to java_util.m
 
 %-----------------------------------------------------------------------------%
 
