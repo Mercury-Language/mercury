@@ -46,6 +46,7 @@ RLO_PROGS= \
 
 	# Tests for which we should only produce a `.il' file.
 IL_PROGS = \
+	csharp_hello \
 	foreign_type_spec
 
 OTHER_PROGS= \

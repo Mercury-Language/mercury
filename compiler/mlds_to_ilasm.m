@@ -34,6 +34,7 @@
 :- import_module hlds__hlds_pred. % for `pred_proc_id'.
 :- import_module parse_tree__prog_data, parse_tree__prog_out.
 :- import_module backend_libs__rtti, check_hlds__type_util, hlds__error_util.
+:- import_module backend_libs__foreign.
 
 :- import_module ml_backend__ilds, ml_backend__ilasm, ml_backend__il_peephole.
 :- import_module ml_backend__ml_util, ml_backend__ml_code_util.
@@ -70,20 +71,30 @@ output_mlds(MLDS) -->
 
 output_foreign_file(MLDS, ForeignLang) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	{ handle_foreign_lang(ForeignLang, Extension, CodeGenerator) },
-	module_name_to_file_name(ModuleName, Extension, yes, File),
-	output_to_file(File, (pred(di, uo) is det --> CodeGenerator(MLDS))).
+	(
+		{ ForeignModuleName = foreign_language_module_name(ModuleName,
+					ForeignLang) },
+		{ Extension = foreign_language_file_extension(ForeignLang) }
+	->
+		{ handle_foreign_lang(ForeignLang, CodeGenerator) },
+		module_name_to_file_name(ForeignModuleName, Extension,
+			yes, File),
+		output_to_file(File,
+			(pred(di, uo) is det --> CodeGenerator(MLDS)))
+	;
+		{ error(
+		"mlds_to_ilasm__output_foreign_file: unexpected language") }
+	).
 
-:- pred handle_foreign_lang(foreign_language::in, string::out,
+:- pred handle_foreign_lang(foreign_language::in,
 		pred(mlds, io__state, io__state)::out(pred(in, di, uo) is det))
 		is det.
 
-handle_foreign_lang(managed_cplusplus, "__cpp_code.cpp",
-		output_managed_code(managed_cplusplus)).
-handle_foreign_lang(csharp, "__csharp_code.cs", output_managed_code(csharp)).
-handle_foreign_lang(c, _, _) :-
+handle_foreign_lang(managed_cplusplus, output_managed_code(managed_cplusplus)).
+handle_foreign_lang(csharp, output_managed_code(csharp)).
+handle_foreign_lang(c, _) :-
 	sorry(this_file, "language C foreign code not supported").
-handle_foreign_lang(il, _, _) :-
+handle_foreign_lang(il, _) :-
 	sorry(this_file, "language IL foreign code not supported").
 
 	%
