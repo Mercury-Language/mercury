@@ -29,6 +29,11 @@ MLFLAGS += --static
 
 #-----------------------------------------------------------------------------#
 
+# The Mmake.params file can be used to override definitions in this file
+-include ../../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
 # The "var_test" program does not work in ".rt" grades,
 # since it uses the "var" module which does not work in ".rt" grades.
 ifeq "$(findstring .rt,$(GRADE))" ".rt"
@@ -68,10 +73,5 @@ cs: $(CS)
 .PHONY: clean_local
 clean_local:
 	rm -f *.out *.res
-
-#-----------------------------------------------------------------------------#
-
-# The Mmake.params file can be used to override definitions in this file
--include ../../Mmake.params
 
 #-----------------------------------------------------------------------------#
