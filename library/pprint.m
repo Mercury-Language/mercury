@@ -4,7 +4,7 @@
 % Wed Mar 22 17:44:32  2000
 % vi: ts=4 sw=4 et tw=0 wm=0
 %
-% Main author: rwab1
+% Main author: rafe
 % Stability: medium
 %
 % This file is hereby contributed to the University of
@@ -15,10 +15,14 @@
 % ABOUT
 % -----
 %
-% This is pretty much a direct transliteration of Philip
-% Wadler's Haskell pretty printer described in "A Prettier
-% Printer", available at
+% This started off as pretty much a direct transliteration of Philip
+% Wadler's Haskell pretty printer described in "A Prettier Printer",
+% available at
 % http://cm.bell-labs.com/cm/cs/who/wadler/topics/recent.html
+%
+% Several changes have been made to the algorithm to preserve linear
+% running time under a strict language and to ensure scalability to
+% extremely large terms without thrashing the VM system.
 %
 % Wadler's approach has three main advantages:
 % 1. the layout algebra is small and quite intuitive (more
@@ -28,37 +32,46 @@
 %    unless that is unavoidable; and
 % 3. the pretty printer is bounded in that it never needs to
 %    look more than k characters ahead to make a formatting
-%    decision (although see the XXX comments below).
+%    decision.
 %
-% I have made three small changes:
+% I have made the following changes:
 %
-% (a) rather than having group/1 as a non-primitive function
-% (for allowing line-breaks to be converted into spaces at
-% the pretty printer's discretion) over docs, I have
-% extended the doc type to include a `GROUP' constructor and
-% altered flatten/1 and be/3 appropriately.  Because `UNION'
-% only arises as a consequence of processing a 'GROUP' it
-% turns out to be simpler to do away with `UNION' altogether
-% and convert clauses that process `UNION' terms to
+% (a) rather than having group/1 as a non-primitive function (for
+% allowing line-breaks to be converted into spaces at the pretty
+% printer's discretion) over docs, I have extended the doc type to
+% include a `GROUP' constructor and made the appropriate algorithmic
+% changes.  Because `UNION' only arises as a consequence of processing
+% a 'GROUP' it turns out to be simpler to do away with `UNION'
+% altogether and convert clauses that process `UNION' terms to
 % processing `GROUP's.
 %
-% (b) The second change is that flattened `line' breaks
-% become empty strings rather than spaces.
+% (b) Flattened `line' breaks become empty strings rather than spaces.
 %
-% (c) The third change is the introduction of the `LABEL'
-% constructor, which acts much like `NEST', except that
-% indentation is defined using a string rather than a number
-% of spaces.  This is useful for, e.g., multi-line compiler
-% errors and warnings that should be prefixed with the
-% offending source file and line number.
+% (c) The third change is the introduction of the `LABEL' constructor,
+% which acts much like `NEST', except that indentation is defined
+% using a string rather than a number of spaces.  This is useful for,
+% e.g., multi-line compiler errors and warnings that should be
+% prefixed with the offending source file and line number.
 %
-% Performance problems due to the current lack of support
-% for laziness in Mercury has meant that the formatting
-% decision procedure has had to be recoded to preserve
-% linear runtime behaviour in an eager language.
+% (d) The formatting decision procedure has been altered to preserve
+% linear runtime behaviour in a strict language.
 %
-% I have also added several obvious general purpose
-% formatting functions.
+% (e) Naively marking up a term as a doc has the drawback that the
+% resulting doc is significantly larger than the original term.
+% Worse, any sharing structure in the original term leads to
+% duplicated sub-docs, which can cause an exponential blow-up in the
+% size of the doc w.r.t. the source term.  To get around this problem
+% I have introduced the 'DOC' constructor which causes on-demand
+% conversion of arguments.
+%
+% [This is not true laziness in the sense that the 'DOC', once
+% evaluated, will be overwritten with its value.  This approach would
+% lead to garbage retention and not solve the page thrashing behaviour
+% otherwise experienced when converting extremely large terms.
+% Instead, each 'DOC' is reevaluated each time it is examined.  This
+% trades off computation time for space.]
+%
+% I have added several obvious general purpose formatting functions.
 %
 %
 % USAGE
@@ -322,7 +335,7 @@
 
 :- implementation.
 
-:- import_module char, array, map.
+:- import_module char, array, map, exception.
 
 :- type doc
     --->    'NIL'
@@ -331,13 +344,13 @@
     ;       'LABEL'(string, doc)
     ;       'TEXT'(string)
     ;       'LINE'
-    ;       'GROUP'(doc).
-
-:- type simple_doc
-    ==      list(string).
-
-:- type rev_simple_doc
-    ==      simple_doc.
+    ;       'GROUP'(doc)
+    ;       'DOC'(int, univ).
+                % 
+                % 'DOC'(MaxDepth, Univ)
+                % - Univ is the object to be converted to a doc via to_doc/3,
+                %   represented as a univ.
+                % - MaxDepth is the depth limit before using ellipsis.
 
     % This type is used to format key-value pairs in maps when
     % using the generic to_doc/[1,2] functions.
@@ -363,124 +376,133 @@ poly(f(F))              = text(string__format("%f", [f(F)])).
 %------------------------------------------------------------------------------%
 
 to_string(W, X) = S :-
-    pretty(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
+    layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
     S = string__append_list(list__reverse(Ss)).
 
-write(W, X)             --> pretty(io__write_string, W, X).
+write(W, X)             --> layout_best(io__write_string, W, X).
 
-write(Stream, W, X)     --> pretty(io__write_string(Stream), W, X).
-
-%------------------------------------------------------------------------------%
-
-:- pred pretty(pred(string, T, T), int, doc, T, T).
-:- mode pretty(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode pretty(pred(in, di, uo) is det, in, in, di, uo) is det.
-
-pretty(P, W, X)         --> layout(P, best(W, 0, X)).
+write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, X).
 
 %------------------------------------------------------------------------------%
 
-:- pred layout(pred(string, T, T), simple_doc, T, T).
-:- mode layout(pred(in, in, out) is det, in, in, out) is det.
-:- mode layout(pred(in, di, uo) is det, in, di, uo) is det.
-
-layout(P, Strings)      --> list__foldl(P, Strings).
-
-%------------------------------------------------------------------------------%
-
-:- func best(int, int, doc) = simple_doc.
-
-best(W, K, X)           = Best
-:-
-    be(W, K, ["" - X], [], RevBest),
-    Best = list__reverse(RevBest).
-
-%------------------------------------------------------------------------------%
-
-    % This predicate (and its children) is somewhat different to that
-    % described by Wadler.  In the first place, the decision procedure
-    % has been recoded (in flattening_works/3) to preserve linear
-    % running times under a strict language.  The second important
-    % change is that be/5 is now a predicate that accumulates its output
-    % as a list of strings, doing away with the need for a more elaborate
-    % simple_doc type.  The accumulated strings must be reversed to obtain
-    % the printing order.
+    % This is a contraction of Wadler's pretty, layout and be
+    % functions, adapted to work with a strict evaluation order.
     %
-    % W is the number of characters on a line.
-    % K is the number of characters for output on the current line so far.
-    % I is the current indentation string as affected by NEST and LABEL.
+:- pred layout_best(pred(string, T, T), int, doc, T, T).
+:- mode layout_best(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode layout_best(pred(in, in, out) is det, in, in, in, out) is det.
 
-:- pred be(int, int, list(pair(string, doc)), rev_simple_doc, rev_simple_doc).
-:- mode be(in, in, in, in, out) is det.
+layout_best(P, W, X, S0, S) :-
+    lb(P, W, 0, _, "", X, S0, S).
 
-be(_, _, [])                      -->
-    [].
 
-be(W, K, [_ - 'NIL'         | Z]) -->
-    be(W, K, Z).
+    % lb(P, W, K0, K, I, X, S0, S)
+    %
+    %   P  is the predicate for accumulating output strings;
+    %   W  is the number of characters on a line;
+    %   K0 is the number of characters laid out on the current line so far;
+    %   K  is the number of characters laid out on the current line after X;
+    %   I  is the indentation string to appear after newlines;
+    %   X  is the doc to lay out;
+    %   S0 is the layout stream value before laying out X;
+    %   S  is the resulting layout stream value after laying out X.
+    %
+    % This predicate is somewhat different to the function `be' described
+    % by Wadler.  In the first place, the decision procedure has been
+    % recoded (in fits_flat/2) to preserve linear running times under
+    % a strict language.  The second important change is that lb/8 
+    % handles output strings as they are identified (e.g. writing them
+    % out or accumulating them in a list), doing away with the need for
+    % a more elaborate simple_doc type.
+    %
+:- pred lb(pred(string, T, T), int, int, int, string, doc, T, T).
+:- mode lb(pred(in, di, uo) is det, in, in, out, in, in, di, uo) is det.
+:- mode lb(pred(in, in, out) is det, in, in, out, in, in, in, out) is det.
 
-be(W, K, [I - 'SEQ'(X, Y)   | Z]) -->
-    be(W, K, [I - X, I - Y | Z]).
+lb(_, _, K,  K, _, 'NIL',         S,  S).
 
-be(W, K, [I - 'NEST'(J, X)  | Z]) -->
-    be(W, K, [extend(I, J) - X | Z]).
+lb(P, W, K0, K, I, 'SEQ'(X, Y),   S0, S) :-
+    lb(P, W, K0, K1, I, X, S0, S1),
+    lb(P, W, K1, K,  I, Y, S1, S ).
 
-be(W, K, [I - 'LABEL'(L, X) | Z]) -->
-    be(W, K, [(I ++ L) - X | Z]).
+lb(P, W, K0, K, I, 'NEST'(J, X),  S0, S) :-
+    lb(P, W, K0, K, extend(I, J), X, S0, S).
 
-be(W, K, [_ - 'TEXT'(S)     | Z]) -->
-    push_string(S),
-    be(W, (K + string__length(S)), Z).
+lb(P, W, K0, K, I, 'LABEL'(L, X), S0, S) :-
+    lb(P, W, K0, K, I ++ L, X, S0, S).
 
-be(W, _, [I - 'LINE'        | Z]) -->
-    push_string("\n"),
-    push_string(I),
-    be(W, string__length(I), Z).
+lb(P, _, _,  K, I, 'LINE',        S0, S) :-
+    K = string__length(I),
+    P("\n", S0, S1),
+    P(I,    S1, S ).
 
-be(W, K, [I - 'GROUP'(X)    | Z]) -->
-    ( if   { fits_flattened([X], W - K) }
-      then be(W, K, [I - flatten(X) | Z])
-      else be(W, K, [I - X | Z])
+lb(P, W, K0, K, I, 'GROUP'(X),    S0, S) :-
+    ( if fits_flat(X, W - K0) then layout_flat(P, K0, K, X, S0, S)
+                              else lb(P, W, K0, K, I, X,  S0, S)
     ).
 
+lb(P, W, K0, K, I, 'DOC'(D, U),   S0, S) :-
+    lb(P, W, K0, K, I, to_doc(D, univ_value(U)), S0, S).
 
-
-:- pred push_string(string, rev_simple_doc, rev_simple_doc).
-:- mode push_string(in, in, out) is det.
-
-push_string(S, Ss, [S | Ss]).
+lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
+    K = K0 + string__length(T),
+    P(T, S0, S).
 
 %------------------------------------------------------------------------------%
 
-    % Decide if a flattened list of docs will fit on the remainder
-    % of the line.
+    % Decide if a flattened doc will fit on the remainder of the line.
     %
-:- pred fits_flattened(list(doc), int).
-:- mode fits_flattened(in, in) is semidet.
+:- pred fits_flat(doc, int).
+:- mode fits_flat(in, in) is semidet.
 
-fits_flattened([]                 , _).
-fits_flattened(['NIL'         | Z], R) :- fits_flattened(Z,          R).
-fits_flattened(['SEQ'(X, Y)   | Z], R) :- fits_flattened([X, Y | Z], R).
-fits_flattened(['NEST'(_, X)  | Z], R) :- fits_flattened([X | Z],    R).
-fits_flattened(['LABEL'(_, X) | Z], R) :- fits_flattened([X | Z],    R).
-fits_flattened(['LINE'        | Z], R) :- fits_flattened(Z,          R).
-fits_flattened(['GROUP'(X)    | Z], R) :- fits_flattened([X | Z],    R).
-fits_flattened(['TEXT'(S)     | Z], R) :-
+fits_flat(X, R) :-
+    ff(X, R) = _.
+
+
+:- func ff(doc, int) = int is semidet.
+
+ff('NIL',         R) = R.
+ff('SEQ'(X, Y),   R) = ff(Y, ff(X, R)).
+ff('NEST'(_, X),  R) = ff(X, R).
+ff('LABEL'(_, X), R) = ff(X, R).
+ff('LINE',        R) = R.
+ff('GROUP'(X),    R) = ff(X, R).
+ff('DOC'(D, U),   R) = ff(to_doc(D, univ_value(U)), R).
+ff('TEXT'(S),     R) = R - L :-
     L = string__length(S),
-    R > L,
-    fits_flattened(Z, R - L).
+    R > L.
 
 %------------------------------------------------------------------------------%
 
-:- func flatten(doc) = doc.
+    % Lay out a doc in its flattened form.
+    %
+:- pred layout_flat(pred(string, T, T), int, int, doc, T, T).
+:- mode layout_flat(pred(in, di, uo) is det, in, out, in, di, uo) is det.
+:- mode layout_flat(pred(in, in, out) is det, in, out, in, in, out) is det.
 
-flatten('NIL')          = 'NIL'.
-flatten('SEQ'(X, Y))    = 'SEQ'(flatten(X), flatten(Y)).
-flatten('NEST'(_, X))   = flatten(X).
-flatten('LABEL'(_, X))  = flatten(X).
-flatten('TEXT'(S))      = 'TEXT'(S).
-flatten('LINE')         = 'NIL'.
-flatten('GROUP'(X))     = flatten(X).
+layout_flat(_, K,  K, 'NIL',         S,  S).
+
+layout_flat(P, K0, K, 'SEQ'(X, Y),   S0, S) :-
+    layout_flat(P, K0, K1, X, S0, S1),
+    layout_flat(P, K1, K,  Y, S1, S ).
+
+layout_flat(P, K0, K, 'NEST'(_, X),  S0, S) :-
+    layout_flat(P, K0, K, X, S0, S).
+
+layout_flat(P, K0, K, 'LABEL'(_, X), S0, S) :-
+    layout_flat(P, K0, K, X, S0, S).
+
+layout_flat(_, K,  K, 'LINE',        S,  S).
+
+layout_flat(P, K0, K, 'GROUP'(X),    S0, S) :-
+    layout_flat(P, K0, K, X, S0, S).
+
+layout_flat(P, K0, K, 'DOC'(D, U),   S0, S) :-
+    layout_flat(P, K0, K, to_doc(D, univ_value(U)), S0, S).
+
+layout_flat(P, K0, K, 'TEXT'(T),     S0, S) :-
+    K = K0 + string__length(T),
+    P(T, S0, S).
 
 %------------------------------------------------------------------------------%
 
@@ -541,11 +563,8 @@ packed_cs_to_depth(Depth, Xs) =
 
 %------------------------------------------------------------------------------%
 
-packed_cs_univ_args(Depth, UnivArgs) = 
-    packed_cs(
-        Depth,
-        list__map(func(UnivArg) = to_doc(Depth, univ_value(UnivArg)), UnivArgs)
-    ).
+packed_cs_univ_args(Depth, UnivArgs) =
+    packed_cs(Depth, list__map(func(UA) = 'DOC'(Depth, UA), UnivArgs)).
 
 %------------------------------------------------------------------------------%
 
@@ -596,6 +615,7 @@ to_doc(Depth, X) =
 
       else    generic_term_to_doc(Depth, X)
     ).
+
 
 %------------------------------------------------------------------------------%
 
@@ -748,17 +768,15 @@ map_to_doc(Depth, X) = Doc :-
     KVs = list__map(mk_map_pair, map__to_assoc_list(X)),
     Doc =
         group(
-            text("map") `<>`
-                parentheses(list_to_doc(Depth - 1, KVs))
+            text("map") `<>` parentheses(list_to_doc(Depth - 1, KVs))
         ).
-
 
 
 :- func mk_map_pair(pair(K, V)) = map_pair(K, V).
 
 mk_map_pair(K - V) = map_pair(K, V).
 
-
+%------------------------------------------------------------------------------%
 
 :- func map_pair_to_doc(int, map_pair(T1, T2)) = doc.
 
@@ -775,10 +793,7 @@ map_pair_to_doc(Depth, map_pair(Key, Value)) =
 
 tuple_to_doc(Depth, Tuple) = Doc :-
     deconstruct(Tuple, _Name, _Arity, UnivArgs),
-    Doc =
-        group(
-            braces(nest(1, packed_cs_univ_args(Depth - 1, UnivArgs)))
-        ).
+    Doc = group(braces(nest(1, packed_cs_univ_args(Depth - 1, UnivArgs)))).
 
 %------------------------------------------------------------------------------%
 

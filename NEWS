@@ -65,6 +65,10 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* Performance bugs in `pprint__to_doc' have now been fixed.  Even
+  very large terms can now be converted to docs and pretty printed without
+  causing a machine to thrash or run out of memory.
+
 * `io__read_file' and `io__read_file_as_string' now have better error
   handling. The result types have changed, so code using these predicates
   will need minor modifications.
