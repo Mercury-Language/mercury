@@ -1,0 +1,10 @@
+lcc.orig: -lc ignored
+lcc.orig: -lgcc ignored
+lcc.orig: -lc ignored
+lcc.orig: -lgcc ignored
+lcc.orig: -lc ignored
+lcc.orig: -lgcc ignored
+duplicate_instance_2.o(.data+0x0): multiple definition of `<instance declaration for duplicate_instance_1:foo(int/0)>'
+duplicate_instance_1.o(.data+0x0): first defined here
+Error: system command returned non-zero exit status.
+Error: link failed.

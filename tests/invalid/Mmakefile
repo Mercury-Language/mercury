@@ -181,14 +181,17 @@ duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
 	then false; else true; fi
 
 # Some tests have more than one possible valid output, so
-# we allow the test to pass if it matches *either* the .err_exp
-# or the .err_exp2 file. 
+# we allow the test to pass if it matches any of the .err_exp* files.
 DIFF_OPTS=-c
 %.err_res: %.err %.err_exp
 	-rm -f $@
 	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
 		{ [ -f $*.err_exp2 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; }
+		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
+		{ [ -f $*.err_exp3 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
+		{ [ -f $*.err_exp4 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; }
 
 all:	check
 
