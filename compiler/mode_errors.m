@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module prog_io, mode_info.
+:- import_module prog_data, mode_info.
 :- import_module set, assoc_list.
 
 %-----------------------------------------------------------------------------%

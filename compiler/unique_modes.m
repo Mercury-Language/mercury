@@ -52,7 +52,7 @@
 :- import_module hlds_data.
 :- import_module bool, int, list, map, set, std_util, require, term, varset.
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
-:- import_module modes, inst_match, prog_io, mode_errors, llds, unify_proc.
+:- import_module modes, inst_match, prog_data, mode_errors, llds, unify_proc.
 
 %-----------------------------------------------------------------------------%
 

@@ -61,7 +61,7 @@
 
 :- import_module string, assoc_list, map, std_util, require.
 :- import_module term, term_io, varset.
-:- import_module prog_io, type_util, shapes.
+:- import_module prog_data, type_util, shapes.
 
 %-----------------------------------------------------------------------------%
 % Out main predicate, it just collects and outputs the garbage.

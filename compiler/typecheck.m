@@ -134,7 +134,7 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
-:- import_module prog_io, prog_out, hlds_out, mercury_to_mercury.
+:- import_module prog_data, prog_io, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals, passes_aux, clause_to_proc.
 
 :- import_module int, list, map, string, require, std_util, tree234.

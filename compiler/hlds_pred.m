@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module bool, int, string, list, map, std_util, varset.
-:- import_module hlds_data, hlds_goal, hlds_module, prog_io.
+:- import_module hlds_data, hlds_goal, hlds_module, prog_data.
 
 :- implementation.
 

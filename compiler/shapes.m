@@ -42,7 +42,7 @@
 :- module shapes.
 :- interface.
 
-:- import_module hlds_module, prog_io, type_util.
+:- import_module hlds_module, prog_data, type_util.
 :- import_module int, map, list, string, term, io, std_util, require.
 
 :- type tagged_num	==	pair(shape_num, tag_type).

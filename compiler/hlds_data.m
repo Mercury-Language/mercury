@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, llds, prog_io.
+:- import_module hlds_pred, llds, prog_data.
 :- import_module bool, float, int, string, list, map, varset.
 
 %-----------------------------------------------------------------------------%
@@ -29,17 +29,9 @@
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
-
 			;	pred_const(pred_id, proc_id)
-				% Currently not used - preds are
-				% currently just stored as cons(Name, Arity).
-				% But that causes problems for preds
-				% that are overloaded or have multiple
-				% modes, so eventually we will need to
-				% use `pred_const(PredId, ProcId)'.
-
 			;	address_const(pred_id, proc_id).
-				% used for constructing type_infos
+				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
 				% whereas an address_const is just an address.
 

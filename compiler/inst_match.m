@@ -37,7 +37,7 @@ insert explicit calls to initialize constraint variables.
 
 :- interface.
 
-:- import_module hlds_module, prog_io.
+:- import_module hlds_module, prog_data.
 
 %-----------------------------------------------------------------------------%
 
@@ -1137,7 +1137,7 @@ abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 	% The only way this predicate can fail (indicating a unique mode error)
 	% is if we are attempting to unify with a clobbered value, and
 	% this was a "real" unification, not a "fake" one.
-	% (See comment in prog_io.m for more info on "real" v.s. "fake".)
+	% (See comment in prog_data.m for more info on "real" v.s. "fake".)
 
 unify_uniq(_,      _,          shared,   shared,    	    shared).
 unify_uniq(_,      _,          shared,   unique,    	    shared).

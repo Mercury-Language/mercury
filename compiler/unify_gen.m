@@ -60,7 +60,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, prog_io, mode_util, code_aux, hlds_out.
+:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module mode_util, code_aux, hlds_out.
 :- import_module string, tree, int, map, term, require, std_util.
 
 :- type uni_val		--->	ref(var)

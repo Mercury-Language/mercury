@@ -79,7 +79,7 @@
 :- import_module hlds_goal.
 :- import_module bool, list, map, set, std_util, require.
 
-:- import_module det_report, prog_io, mode_util, globals, options, passes_aux.
+:- import_module det_report, mode_util, globals, options, passes_aux.
 
 %-----------------------------------------------------------------------------%
 

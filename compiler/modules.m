@@ -14,9 +14,11 @@
 %-----------------------------------------------------------------------------%
 
 :- module modules.
+
 :- interface.
+
+:- import_module prog_data, prog_io.
 :- import_module string, list, io.
-:- import_module prog_io.
 
 	% read_mod(ModuleName, Extension, Descr, Items, Error):
 	%	Given a module name and a file extension (e.g. `.m',

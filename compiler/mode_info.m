@@ -233,7 +233,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module delay_info, mode_errors, prog_io.
+
+:- import_module delay_info, mode_errors, prog_data.
 :- import_module require.
 
 :- type mode_info 

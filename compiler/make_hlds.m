@@ -21,7 +21,7 @@
 
 :- module make_hlds.
 :- interface.
-:- import_module prog_io, hlds_module, hlds_pred, hlds_goal, hlds_data, io.
+:- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data, io.
 
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
@@ -50,7 +50,7 @@
 :- import_module string, char, int, set, bintree, list, map, require, std_util.
 :- import_module bool, assoc_list, term, term_io, varset.
 
-:- import_module prog_util, prog_out, hlds_out.
+:- import_module prog_util, prog_io, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, special_pred, type_util.
@@ -1848,7 +1848,7 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context,
 
 %-----------------------------------------------------------------------------%
 
-	% Convert goals from the prog_io `goal' structure into the
+	% Convert goals from the prog_data `goal' structure into the
 	% hlds `hlds__goal' structure.  At the same time, convert
 	% it to super-homogeneous form by unravelling all the complex
 	% unifications, and annotate those unifications with a unify_context

@@ -48,7 +48,7 @@
 
 :- interface.
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module llds, modes, prog_io, special_pred.
+:- import_module llds, modes, prog_data, special_pred.
 :- import_module bool, std_util, io, list.
 
 :- type unify_requests.

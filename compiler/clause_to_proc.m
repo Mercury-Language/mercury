@@ -41,7 +41,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_io, make_hlds.
+:- import_module hlds_goal, hlds_data, prog_data, make_hlds.
 :- import_module int, list, set, map, std_util.
 
 maybe_add_default_mode(PredInfo0, PredInfo) :-

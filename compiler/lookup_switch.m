@@ -69,7 +69,7 @@
 
 :- import_module set, code_gen, type_util, map, tree, int, std_util, require.
 :- import_module dense_switch, bool, assoc_list, globals, options, mode_util.
-:- import_module exprn_aux, getopt, prog_io.
+:- import_module exprn_aux, getopt, prog_data.
 
 	% Most of this predicate is taken from dense_switch.m
 

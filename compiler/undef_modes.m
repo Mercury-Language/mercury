@@ -26,7 +26,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_data, prog_io, prog_out, hlds_out.
+:- import_module hlds_pred, hlds_data, prog_data, prog_out, hlds_out.
 :- import_module list, map, std_util, require.
 
 	% Check for any possible undefined insts/modes.

@@ -32,7 +32,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module code_util, globals, make_hlds, mode_util.
-:- import_module options, prog_io, quantification.
+:- import_module options, prog_data, quantification.
 
 :- import_module bool, int, list, map, require, set, std_util, string.
 

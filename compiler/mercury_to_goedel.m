@@ -31,8 +31,8 @@
 :- module mercury_to_goedel.
 :- interface.
 
-:- import_module bool, string, list, prog_io, io.
-:- import_module globals, options, require.
+:- import_module prog_data, globals, options.
+:- import_module bool, string, list, io, require.
 
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
 :- mode convert_to_goedel(in, in, di, uo) is det.

@@ -19,11 +19,21 @@
 :- pred dead_proc_elim(module_info, module_info, io__state, io__state).
 :- mode dead_proc_elim(in, out, di, uo) is det.
 
+:- pred dead_proc_elim__analyze(module_info, needed_map).
+:- mode dead_proc_elim__analyze(in, out) is det.
+
+:- pred dead_proc_elim__eliminate(module_info, needed_map, module_info,
+	io__state, io__state).
+:- mode dead_proc_elim__eliminate(in, in, out, di, uo) is det.
+
+:- type needed_map ==	map(pred_proc_id, maybe(int)).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_pred, hlds_goal, hlds_data, passes_aux, globals, options.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module passes_aux, globals, options.
 :- import_module int, list, set, queue, map, bool, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -48,19 +58,21 @@
 % The final pass of the algorithm deletes from the HLDS any procedure
 % that is not in the needed map.
 
-:- type needed_map ==	map(pred_proc_id, maybe(int)).
 :- type proc_queue ==	queue(pred_proc_id).
 :- type examined_set ==	set(pred_proc_id).
 
 dead_proc_elim(ModuleInfo0, ModuleInfo, State0, State) :-
-	set__init(Examined0),
-	dead_proc_elim__initialize(ModuleInfo0, Queue0, Needed0),
-	dead_proc_elim__examine(Queue0, Examined0, ModuleInfo0,
-		Needed0, Needed),
+	dead_proc_elim__analyze(ModuleInfo0, Needed),
 	dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo,
 		State0, State).
 
 %-----------------------------------------------------------------------------%
+
+dead_proc_elim__analyze(ModuleInfo0, Needed) :-
+	set__init(Examined0),
+	dead_proc_elim__initialize(ModuleInfo0, Queue0, Needed0),
+	dead_proc_elim__examine(Queue0, Examined0, ModuleInfo0,
+		Needed0, Needed).
 
 :- pred dead_proc_elim__initialize(module_info, proc_queue, needed_map).
 :- mode dead_proc_elim__initialize(in, out, out) is det.
@@ -252,10 +264,6 @@ dead_proc_elim__traverse_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 	% XXX I am not sure about the handling of pragmas and unifications.
 
 %-----------------------------------------------------------------------------%
-
-:- pred dead_proc_elim__eliminate(module_info, needed_map, module_info,
-	io__state, io__state).
-:- mode dead_proc_elim__eliminate(in, in, out, di, uo) is det.
 
 dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo, State0, State) :-
 	module_info_predids(ModuleInfo0, PredIds),

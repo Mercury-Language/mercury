@@ -106,7 +106,7 @@
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
 		;	use_macro_for_redo_fail
-		;	branch_delay_slot
+		;	have_delay_slot
 		;	num_real_r_regs
 		;	num_real_temps
 		;	cc
@@ -189,22 +189,8 @@
 	;	miscellaneous_option.
 
 option_defaults(Option, Default) :-
-	%
-	% for non-optimization options, we just look up the default
-	% value in the table
-	%
-	option_defaults_2(Category, OptionsList),
-	Category \= optimization_option,
+	option_defaults_2(_Category, OptionsList),
 	list__member(Option - Default, OptionsList).
-option_defaults(Option, Default) :-
-	%
-	% for optimization options, we get the defaults from
-	% use the default optimization level
-	% of two.
-	%
-	map__init(OptionTable0),
-	set_opt_level(2, OptionTable0, OptionTable),
-	map__member(OptionTable, Option, Default).
 
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
 :- mode option_defaults_2(in, out) is det.
@@ -300,7 +286,7 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
-	branch_delay_slot	-	bool(no),
+	have_delay_slot		-	bool(no),
 					% the `mc' script may override the
 					% above default if configure says
 					% the machine has branch delay slots
@@ -498,7 +484,6 @@ long_option("profiling",		profiling).
 long_option("debug",			debug).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
-long_option("word-size",		bits_per_word).	% for bootstrapping
 long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
@@ -521,7 +506,8 @@ long_option("reclaim-heap-on-semidet-failure",
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
-long_option("branch-delay-slot",	branch_delay_slot).
+long_option("branch-delay-slot",	have_delay_slot).
+long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
 long_option("num-real-temps",		num_real_temps).
 long_option("cc",			cc).
@@ -727,7 +713,7 @@ opt_level(0, _, [
 % Optimization level 1: apply optimizations which are cheap and
 % have a good payoff while still keeping compilation time small
 
-opt_level(1, _OptionTable, [
+opt_level(1, OptionTable, [
 	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
@@ -738,15 +724,7 @@ opt_level(1, _OptionTable, [
 	emit_c_loops		-	bool(yes)
 	% dups?
 ]) :-
-	option_defaults_2(code_gen_option, OptionList),
-	(
-		assoc_list__search(OptionList, branch_delay_slot, Option),
-		Option = bool(_Configured)
-	->
-		DelaySlot = no
-	;
-		error("couldn't find the configured value of branch-delay-slot")
-	).
+	getopt__lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations

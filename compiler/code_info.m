@@ -427,7 +427,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_data.
-:- import_module code_exprn, set, varset, term, stack, prog_io.
+:- import_module code_exprn, set, varset, term, stack, prog_data.
 :- import_module type_util, mode_util, options, shapes.
 :- import_module string, require, char, list, map, bimap, tree, int.
 

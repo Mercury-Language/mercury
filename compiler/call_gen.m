@@ -53,9 +53,10 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data.
-:- import_module prog_io, arg_info, type_util, mode_util, shapes, unify_proc.
-:- import_module bool, tree, list, map, std_util, require, set, int, assoc_list.
+:- import_module hlds_module, hlds_data, prog_data.
+:- import_module arg_info, type_util, mode_util, shapes, unify_proc.
+:- import_module bool, int, list, assoc_list, tree, set, map.
+:- import_module std_util, require.
 
 	% To generate a call to a deterministic predicate, first
 	% we get the arginfo for the callee.

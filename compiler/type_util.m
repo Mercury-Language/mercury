@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_io.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
 
 %-----------------------------------------------------------------------------%
 

@@ -35,7 +35,7 @@
 
 :- interface. 
 
-:- import_module hlds_module, hlds_pred, prog_io.
+:- import_module hlds_module, hlds_pred, prog_data.
 :- import_module list, set, map, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).

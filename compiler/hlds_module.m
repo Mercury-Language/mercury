@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, prog_io, shapes.
+:- import_module hlds_data, prog_data, shapes.
 :- import_module require, int, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%

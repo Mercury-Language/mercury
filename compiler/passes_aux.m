@@ -4,10 +4,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% Author: zs
-
 % This file contains auxiliary routines for the passes of the front and back
 % ends of the compiler.
+
+% Author: zs
 
 :- module passes_aux.
 
@@ -22,7 +22,7 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred maybe_report_stats(bool::in, io__state::di, io__state::uo) is det.
-:- pred maybe_write_string(bool::input, string::input,
+:- pred maybe_write_string(bool::in, string::in,
 	io__state::di, io__state::uo) is det.
 :- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
 

@@ -222,7 +222,7 @@ a variable live if its value will be used later on in the computation.
 
 :- import_module hlds_goal, hlds_data, unique_modes.
 :- import_module mode_info, delay_info, mode_errors, inst_match.
-:- import_module type_util, mode_util, code_util, prog_io, unify_proc.
+:- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 :- import_module passes_aux.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.

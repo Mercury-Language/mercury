@@ -15,7 +15,7 @@
 %	term_io.m
 %
 % mercury_to_mercury.m prints the parse tree data structure defined
-% in prog_io.m.  hlds_out.m does a similar task, but for the data
+% in prog_data.m.  hlds_out.m does a similar task, but for the data
 % structure defined in hlds.m.  term_io.m prints terms.
 
 % There are two different ways of printing variables.
@@ -32,7 +32,8 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, llds.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module prog_data, llds.
 :- import_module int, io.
 
 %-----------------------------------------------------------------------------%
@@ -116,7 +117,7 @@
 :- import_module term, term_io, varset, getopt.
 
 :- import_module mercury_to_mercury, globals, options.
-:- import_module prog_io, prog_out, prog_util.
+:- import_module prog_out, prog_util.
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),

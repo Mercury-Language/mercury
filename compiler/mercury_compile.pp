@@ -38,9 +38,9 @@
 :- import_module code_gen, optimize, export, llds.
 
 	% miscellaneous compiler modules
-:- import_module hlds_module, hlds_pred, prog_util, hlds_out, dependency_graph.
+:- import_module hlds_module, hlds_pred, prog_data, prog_util, hlds_out.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
-:- import_module garbage_out, shapes.
+:- import_module dependency_graph, garbage_out, shapes.
 :- import_module options, globals, passes_aux.
 
 %-----------------------------------------------------------------------------%
@@ -626,23 +626,10 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		{ ModuleInfo1 = ModuleInfo0 },
 		{ Code1 = [] }
 	;
-		globals__io_lookup_bool_option(verbose, Verbose),
-		( { Verbose = yes } ->
-			io__write_string("% Processing "),
-			hlds_out__write_pred_id(ModuleInfo0, PredId),
-			io__write_string(" ...\n"),
-			io__flush_output
-		;
-			[]
-		),
+		write_progress_message("% Generating code for ",
+			PredId, ModuleInfo0),
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
-			PredInfo, ModuleInfo0, ModuleInfo1, Code1),
-		( { Verbose = yes } ->
-			io__write_string("% done.\n"),
-			io__flush_output
-		;
-			[]
-		)
+			PredInfo, ModuleInfo0, ModuleInfo1, Code1)
 	),
 	mercury_compile__backend_pass_by_preds_2(PredIds,
 		ModuleInfo1, ModuleInfo, Code2),
@@ -853,8 +840,9 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 		{ ModuleInfo0 = ModuleInfo }
 	).
 
-        % Output's the file <module_name>.prof, which contains the static
+        % Outputs the file <module_name>.prof, which contains the static
         % call graph in terms of label names, if the profiling flag is enabled.
+
 :- pred mercury_compile__maybe_output_prof_call_graph(module_info, module_info,
 						        io__state, io__state).
 :- mode mercury_compile__maybe_output_prof_call_graph(in, out, di, uo) is det.
@@ -948,10 +936,10 @@ mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 		{ Inlining = yes, ErrorCheckOnly = no }
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
-		maybe_write_string(Verbose, "% Inlining..."),
+		maybe_write_string(Verbose, "% Inlining...\n"),
 		maybe_flush_output(Verbose),
-		{ inlining(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n")
+		inlining(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ HLDS = HLDS0 }
 	).

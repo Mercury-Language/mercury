@@ -6,7 +6,7 @@
 
 :- module prog_util.
 :- interface.
-:- import_module string, varset, prog_io, list.
+:- import_module string, varset, prog_data, list.
 
 %-----------------------------------------------------------------------------%
 

@@ -53,7 +53,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module prog_out, mercury_to_mercury, prog_io, globals, options.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 :- import_module string, map, list, require, std_util, term, term_io, getopt.

@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module llds.
+:- import_module llds, options.
 :- import_module list, std_util, bool, assoc_list.
 
 :- type exprn_opts
