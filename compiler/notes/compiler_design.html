@@ -189,12 +189,20 @@ stored in the io__state, using the type globals defined in globals.m.
 	</ul>
  
 
-<li> reading and writing of optimization interfaces (intermod.m). <br>
+<li> reading and writing of optimization interfaces
+     (intermod.m and trans_opt.m). <br>
 	
 	&lt;module&gt;.opt contains clauses for exported preds suitable for
 	inlining or higher-order specialization. The `.opt' file for the
 	current module is written after type-checking. `.opt' files
 	for imported modules are read here.
+	&lt;module&gt;.opt contains termination analysis information
+	for exported preds (eventually it ought to contain other
+	"transitive" information too, e.g. for optimization, but
+	currently it is only used for termination analysis).
+	`.trans_opt' files for imported modules are read here.
+	The `.trans_opt' file for the current module is written
+	after the end of semantic analysis.
 
 <li> expansion of equivalence types (equiv_type.m) <br>
 
@@ -436,6 +444,13 @@ so that the compiler does the right thing for options such as
 	Note that what unique_modes.m does is quite similar to
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
+
+<dt> stratification checking
+
+	<dd>
+	The module stratify.m implements the `--warn-non-stratification'
+	warning, which is an optional warning that checks for loops
+	through negation.
 
 <dt> simplification (simplify.m)
 
@@ -1080,6 +1095,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 1999-12-02 05:48:24 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-12-20 18:08:39 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
