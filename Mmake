@@ -270,7 +270,7 @@ clean_subdirs:
 realclean: realclean_subdirs realclean_config
 
 .PHONY: realclean_subdirs
-realclean_subdirs:
+realclean_subdirs: clean_subdirs
 	rm -rf stage[1-4]
 	for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
