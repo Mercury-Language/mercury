@@ -21,7 +21,7 @@ main -->
 
 :- pred csharp_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma(foreign_code, "C#",
+:- pragma(foreign_proc, "C#",
 	csharp_write_string(Message::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
