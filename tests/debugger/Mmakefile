@@ -11,7 +11,7 @@ DEBUGGER_PROGS=	\
 	interpreter	\
 	queens
 
-MCFLAGS = --generate-trace
+MCFLAGS = --generate-trace $(EXTRA_MCFLAGS)
 
 # Not all grades can be used with stack layouts
 #
