@@ -622,7 +622,7 @@ polymorphism__get_special_proc_list([Id | Ids],
 		Type, ModuleInfo, VarSet0, VarTypes0,
 		[Var | Vars], [Goal | Goals], VarSet, VarTypes) :-
 
-	% introduce a fresh variable of the appropriate higher-oder pred type
+	% introduce a fresh variable of the appropriate higher-order pred type
 
 	special_pred_info(Id, Type, PredName, TypeArgs, _Modes, _Det),
 	varset__new_var(VarSet0, Var, VarSet1a),

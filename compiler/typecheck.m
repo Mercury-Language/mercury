@@ -248,12 +248,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.
-	    pred_info_name(PredInfo0, PredName),
-	    pred_info_arity(PredInfo0, PredArity),
-	    ( PredName = "__Unify__", PredArity = 2
-	    ; PredName = "__Compare__", PredArity = 3
-	    ; PredName = "__Index__", PredArity = 2
-	    )
+	    code_util__compiler_generated(PredInfo0)
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars, Clauses0),
