@@ -105,8 +105,7 @@ big(
   small)
 browser> quit
 mdb> print goal
-big_data(
-  big(big/3, [|]/2, big/3))
+big_data(big(big(big/3, [|]/2, small), [|](1, [|]/2), big(big/3, [|]/2, small)))
 mdb> browse goal
 browser> ls
 big_data(

@@ -198,7 +198,7 @@ browse__print_format_synthetic(FunctorString, Args, IsFunc, OutputStream,
 	is cc_multi.
 
 browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State) -->
-	{ Info = browser_info__init(BrowserTerm, MaybeFormat, State) },
+	{ Info = browser_info__init(BrowserTerm, Caller, MaybeFormat, State) },
 	io__set_output_stream(OutputStream, OldStream),
 	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
 	%
@@ -257,7 +257,7 @@ browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 		MaybeMark, State0, State) -->
-	{ Info0 = browser_info__init(Object, MaybeFormat, State0) },
+	{ Info0 = browser_info__init(Object, browse, MaybeFormat, State0) },
 	io__set_input_stream(InputStream, OldInputStream),
 	io__set_output_stream(OutputStream, OldOutputStream),
 	% startup_message,
@@ -350,7 +350,8 @@ run_command(Debugger, Command, Quit, Info0, Info) -->
 		{ Quit = no },
 		{ Info = Info0 }
 	; { Command = set(Setting) },
-		{ set_browse_param(Setting, Info0, Info) },
+		{ set_browse_param(Info0 ^ caller_type, Setting,
+			Info0, Info) },
 		{ Quit = no }
 	; { Command = ls },
 		portray(Debugger, browse, no, Info0),
@@ -416,15 +417,15 @@ run_command(Debugger, Command, Quit, Info0, Info) -->
 		{ true }
 	).
 
-:- pred set_browse_param(setting, browser_info, browser_info).
-:- mode set_browse_param(in, in, out) is det.
+:- pred set_browse_param(browse_caller_type::in, setting::in,
+	browser_info::in, browser_info::out) is det.
 
-set_browse_param(Setting, Info0, Info) :-
+set_browse_param(CallerType, Setting, Info0, Info) :-
 	%
 	% XXX We can't yet give options to the `set' command.
 	%
 	No = bool__no,
-	browser_info__set_param(No, No, No, No, No, No, No, Setting, 
+	browser_info__set_param(yes(CallerType), No, No, No, No, Setting, 
 			Info0 ^ state, NewState),
 	Info = Info0 ^ state := NewState.
 
