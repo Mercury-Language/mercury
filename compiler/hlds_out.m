@@ -268,7 +268,14 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		{ map__lookup(PredTable, PredId, PredInfo) },
 		( { pred_info_is_imported(PredInfo) } ->
 			[]
-		; { pred_info_is_pseudo_imported(PredInfo) } ->
+		;
+			% for psuedo-imported predicates (i.e. unification
+			% preds), only print them if we are using a local
+			% mode for them
+			{ pred_info_is_pseudo_imported(PredInfo) },
+			{ pred_info_procids(PredInfo, ProcIds) },
+			{ ProcIds \= [0] }
+		->
 			[]
 		;
 			hlds_out__write_pred(Indent, ModuleInfo, PredId,
@@ -291,11 +298,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_name(PredInfo, PredName) },
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
 		no, Context),
-	{ pred_info_is_imported(PredInfo) ->
-		Imported = yes
-	;
-		Imported = no
-	},
+	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 
@@ -308,7 +311,8 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		% Re-enable it
 	globals__io_set_option(verbose_dump_hlds, bool(Verbose)),
 
-	hlds_out__write_procs(Indent, ModuleInfo, PredId, Imported, ProcTable),
+	hlds_out__write_procs(Indent, ModuleInfo, PredId, ImportStatus,
+		ProcTable),
 	io__write_string("\n").
 
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clauses0)
@@ -891,35 +895,34 @@ hlds_out__write_mode_list(Indent, _X) -->
 	% XXX
 	io__write_string("\n").
 
-:- pred hlds_out__write_procs(int, module_info, pred_id, bool, proc_table,
-				io__state, io__state).
+:- pred hlds_out__write_procs(int, module_info, pred_id, import_status,
+		proc_table, io__state, io__state).
 :- mode hlds_out__write_procs(in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_procs(Indent, ModuleInfo, PredId, IsImported, ProcTable) -->
+hlds_out__write_procs(Indent, ModuleInfo, PredId, ImportStatus, ProcTable) -->
 	{ map__keys(ProcTable, ProcIds) },
 	hlds_out__write_procs_2(ProcIds, ModuleInfo, Indent, PredId,
-		IsImported, ProcTable).
+		ImportStatus, ProcTable).
 
 :- pred hlds_out__write_procs_2(list(proc_id), module_info, int, pred_id,
-				bool, proc_table, io__state, io__state).
+			import_status, proc_table, io__state, io__state).
 :- mode hlds_out__write_procs_2(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_procs_2([], _ModuleInfo, _Indent, _PredId, _, _ProcTable) -->
 	[].
 hlds_out__write_procs_2([ProcId | ProcIds], ModuleInfo, Indent, PredId,
-		IsImported,
-		ProcTable) --> 
+		ImportStatus, ProcTable) --> 
 	{ map__lookup(ProcTable, ProcId, ProcInfo) },
-	hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId,
-		IsImported, ProcInfo),
+	hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus,
+		ProcInfo),
 	hlds_out__write_procs_2(ProcIds, ModuleInfo, Indent, PredId,
-		IsImported, ProcTable).
+		ImportStatus, ProcTable).
 
-:- pred hlds_out__write_proc(int, module_info, pred_id, proc_id, bool,
+:- pred hlds_out__write_proc(int, module_info, pred_id, proc_id, import_status,
 				proc_info, io__state, io__state).
 :- mode hlds_out__write_proc(in, in, in, in, in, in, di, uo) is det.
 
-hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
+hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 	{ proc_info_declared_determinism(Proc, DeclaredDeterminism) },
 	{ proc_info_inferred_determinism(Proc, InferredDeterminism) },
 	{ proc_info_variables(Proc, VarSet) },
@@ -944,7 +947,9 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	mercury_output_mode_decl(ModeVarSet, unqualified(PredName), 
 			HeadModes, DeclaredDeterminism, ModeContext),
 
-	( { IsImported = no } ->
+	( { ImportStatus = pseudo_imported, ProcId = 0 } ->
+		[]
+	;
 		% { proc_info_call_info(Proc, CallInfo) },
 		% hlds_out__write_indent(Indent),
 		% hlds_out__write_call_info(Indent, CallInfo, VarSet),
@@ -956,8 +961,6 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 		hlds_out__write_indent(Indent1),
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
 		io__write_string(".\n")
-	;
-		[]
 	).
 
 :- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
