@@ -49,6 +49,10 @@
 :- pred benchmark_func(func(T1) = T2, T1, T2, int, int).
 :- mode benchmark_func(func(in) = out is det, in, out, in, out) is cc_multi.
 
+:- pred benchmark_det_io(pred(T1, T2, T3, T3), T1, T2, T3, T3, int, int).
+:- mode benchmark_det_io(pred(in, out, di, uo) is det, in, out, di, uo,
+		in, out) is cc_multi.
+
 % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
 % the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
 % but it returns only a count of the solutions, rather than solutions
@@ -634,6 +638,32 @@ benchmark_func_loop(Func, In, Out, Repeats) :-
 		impure benchmark_func_loop(Func, In, Out, Repeats - 1)
 	;
 		Out = Out0
+	).
+
+:- pragma promise_pure(benchmark_det_io/7).
+benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
+	impure get_user_cpu_miliseconds(StartTime),
+	impure benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats),
+	impure get_user_cpu_miliseconds(EndTime),
+	Time = EndTime - StartTime.
+	% XXX cc_multi_equal(Time0, Time).
+
+:- impure pred benchmark_det_loop_io(pred(T1, T2, T3, T3), T1, T2,
+	T3, T3, int).
+:- mode benchmark_det_loop_io(pred(in, out, di, uo) is det, in, out,
+	di, uo, in) is cc_multi.
+
+benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
+	% The call to do_nothing/1 here is to make sure the compiler
+	% doesn't optimize away the call to `Pred'.
+	Pred(InA, OutA0, InB, OutB0),
+	impure do_nothing(OutA0),
+	( Repeats > 1 ->
+		impure benchmark_det_loop_io(Pred, InA, OutA, OutB0, OutB,
+			Repeats - 1)
+	;
+		OutA = OutA0,
+		OutB = OutB0
 	).
 
 :- pragma promise_pure(benchmark_nondet/5).

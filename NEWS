@@ -260,6 +260,8 @@ Changes to the Mercury standard library:
 
 * New convenience/readability predicates `int__even/1' and `int__odd/1'.
 
+* New predicate benchmark_det_io for benchmarking code that performs I/O.
+
 * We've removed the long obsolete `int__builtin_*' and
   `float__builtin_float_*' predicates, which were synonyms
   for the arithmetic functions dating from when Mercury didn't
