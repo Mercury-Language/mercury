@@ -582,22 +582,6 @@ process_options(int argc, char **argv)
 
 			break;
 		}
-		case 'm': {
-			Label *which_label;
-
-			which_label = lookup_label_name(optarg);
-			if (which_label == NULL)
-			{
-				fprintf(stderr, "Mercury runtime: "
-					"label name `%s' unknown\n",
-					optarg);
-				exit(1);
-			}
-
-			program_entry_point = which_label->e_addr;
-
-			break;
-		}
 		case 'x':
 #ifdef CONSERVATIVE_GC
 			GC_dont_gc = 1;
@@ -654,7 +638,7 @@ usage(void)
 {
 	printf("Mercury runtime usage:\n"
 		"MERCURY_OPTIONS=\"[-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
-	"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name] [-m name]\"\n"
+	"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name]\"\n"
 		"-h \t\tprint this usage message\n"
 		"-c \t\tcheck cross-function stack usage\n"
 		"-l \t\tprint all labels\n"
@@ -688,8 +672,7 @@ usage(void)
 		"\t\tapplies only if Mercury is configured with --enable-parallel\n"
 		"-p<n> \t\tprimary cache size in kbytes\n"
 		"-r<n> \t\trepeat n times\n"
-	"-m<name> \tcall I/O predicate with given name (default: main/2)\n"
-		"-w<name> \tcall predicate with given name\n"
+		"-w<name> \tcall predicate with given name (default: main/2)\n"
 		"-1<x> \t\tinitialize register r1 with value x\n"
 		"-2<x> \t\tinitialize register r2 with value x\n"
 		"-3<x> \t\tinitialize register r3 with value x\n");
