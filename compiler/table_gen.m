@@ -191,7 +191,7 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 			TableIoMethod = eval_table_io(Decl, Unitize),
 			proc_info_set_eval_method(TableIoMethod,
 				ProcInfo0, ProcInfo1),
-			table_gen__transform_proc(TableIoMethod,
+			table_gen__transform_proc_if_possible(TableIoMethod,
 				PredId, ProcId, ProcInfo1, _, PredInfo0, _,
 				!ModuleInfo, !GenMap, !IO)
 		)
@@ -336,6 +336,32 @@ lookup_var_names(VarSet, [Var | Vars], Description) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred table_gen__transform_proc_if_possible(eval_method::in,
+	pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+	pred_info::in, pred_info::out, module_info::in, module_info::out,
+	generator_map::in, generator_map::out, io::di, io::uo) is det.
+
+table_gen__transform_proc_if_possible(EvalMethod, PredId, ProcId,
+		!ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO) :-
+	globals__io_get_target(Target, !IO),
+	( Target = c ->
+		table_gen__transform_proc(EvalMethod, PredId, ProcId,
+			!ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !IO)
+	;
+		% We don't want to increment the error count, since that
+		% would combine with --halt-at-warn to prevent the clean
+		% compilation of the library.
+
+		pred_info_context(!.PredInfo, Context),
+		describe_one_proc_name(!.ModuleInfo, should_module_qualify,
+			proc(PredId, ProcId), Name),
+		EvalMethodStr = eval_method_to_string(EvalMethod),
+		Msg = [words("Ignoring the pragma"), fixed(EvalMethodStr),
+			words("for"), fixed(Name), words("due to lack of"),
+			words("support on this back end."), nl],
+		error_util__write_error_pieces(Context, 0, Msg, !IO)
+	).
 
 :- pred table_gen__transform_proc(eval_method::in, pred_id::in, proc_id::in,
 	proc_info::in, proc_info::out, pred_info::in, pred_info::out,
