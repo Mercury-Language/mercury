@@ -788,7 +788,7 @@ instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 :- mode modecheck_call_pred(in, in, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
-	term_list_to_var_list(Args, ArgVars),
+	term__term_list_to_var_list(Args, ArgVars),
 
 		% Get the list of different possible modes for the called
 		% predicate
@@ -1503,7 +1503,7 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	instmap_lookup_var(InstMap0, X, InstX),
 	instmap_lookup_arg_list(Args, InstMap0, InstArgs),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
-	term_list_to_var_list(Args, ArgVars),
+	term__term_list_to_var_list(Args, ArgVars),
 	mode_info_var_list_is_live(ArgVars, ModeInfo0, LiveArgs),
 	InstY = bound([functor(Name, InstArgs)]),
 	(
@@ -1519,7 +1519,6 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo1, ModeInfo1)
 	;
-		term_list_to_var_list(Args, ArgVars),
 		set__list_to_set([X | ArgVars], WaitingVars), % conservative
 		mode_info_error(WaitingVars,
 			mode_error_unify_var_functor(X, Name, Args,
@@ -1537,7 +1536,7 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	Mode = ModeX - ModeY,
 	get_mode_of_args(Inst, InstArgs, ModeArgs),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, Args,
+	categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars,
 			ModuleInfo, Unification).
 
 modecheck_unification(term__functor(F, As, Context), term__variable(Y),
@@ -2012,14 +2011,13 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 	).
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
-				list(term), module_info, unification).
+				list(var), module_info, unification).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, out).
 
-categorize_unify_var_functor(ModeX, ArgModes0, X, Name, Args, ModuleInfo,
+categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 		Unification) :-
-	list__length(Args, Arity),
+	list__length(ArgVars, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
-	term_list_to_var_list(Args, ArgVars),
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
 						ModuleInfo, ArgModes),
 	(

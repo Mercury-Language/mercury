@@ -152,10 +152,10 @@ typecheck(Module0, Module, FoundError) -->
 	check_undefined_types(Module0, Module1),
 	maybe_report_stats(Statistics),
 
-	maybe_write_string(Verbose,
-		"% Checking for circular type definitions...\n"),
+	%%% maybe_write_string(Verbose,
+	%%% 	"% Checking for circular type definitions...\n"),
 	check_circular_types(Module1, Module2),
-	maybe_report_stats(Statistics),
+	%%% maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
 	check_pred_types(Module2, Module, FoundError),
@@ -662,7 +662,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
-		list__member_chk(TypeStuff, L0)
+		list__member(TypeStuff, L0)
 	->
 		L = L0
 	;
@@ -2064,7 +2064,7 @@ report_error_unif_var_functor(TypeInfo, Var, ConsDefnList, Functor, Args,
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 
-	{ term_list_to_var_list(Args, ArgVars) },
+	{ term__term_list_to_var_list(Args, ArgVars) },
 	write_types_of_vars(ArgVars, VarSet, Context, TypeInfo, TypeAssignSet),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
@@ -2421,7 +2421,7 @@ report_error_cons(TypeInfo, Functor, ConsDefnList, Args, Type, TypeAssignSet)
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 
-	{ term_list_to_var_list(Args, ArgVars) },
+	{ term__term_list_to_var_list(Args, ArgVars) },
 	write_types_of_vars(ArgVars, VarSet, Context, TypeInfo, TypeAssignSet),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).

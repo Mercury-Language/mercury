@@ -183,17 +183,24 @@
 :- mode term__context_init(in, in, out) is det.
 
 	% Convert a list of terms which are all vars into a list
+	% of vars.  Abort (call error/1) if the list contains
+	% any non-variables.
+
+:- pred term__term_list_to_var_list(list(term), list(var)).
+:- mode term__term_list_to_var_list(in, out) is det.
+
+	% Convert a list of terms which are all vars into a list
 	% of vars (or vice versa).
 
-:- pred term_list_to_var_list(list(term), list(var)).
-:- mode term_list_to_var_list(in, out) is semidet.
-:- mode term_list_to_var_list(out, in) is det.
+:- pred term__var_list_to_term_list(list(var), list(term)).
+:- mode term__var_list_to_term_list(in, out) is semidet.
+:- mode term__var_list_to_term_list(out, in) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -273,8 +280,7 @@ term__subterm(term__functor(_, Args, _), SubTerm) :-
 
 	% Access predicates for the term__context data structure.
 	% At the moment, the only context we store is the line
-	% number (and even that is only the line number at the
-	% end of the entire read-term).
+	% number.
 
 :- type term__context	--->	term__context(string, int).
 				% file, line number.
@@ -289,8 +295,8 @@ term__context_file(term__context(FileName, _), FileName).
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
-	% term__context_init/3 is for old code; use
-	% term__context_init/4 if possible.
+	% term__context_init/2 is for old code; use
+	% term__context_init/3 if possible.
 	% XXX should this be /2?
 
 term__context_init(LineNumber, term__context("", LineNumber)).
@@ -552,9 +558,18 @@ term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 
 :- term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
 
-term_list_to_var_list([], []).
-term_list_to_var_list([term__variable(Var) | Terms], [Var | Vars]) :-
-	term_list_to_var_list(Terms, Vars).
+term__term_list_to_var_list(Terms, Vars) :-
+	( term__var_list_to_term_list(Vars0, Terms) ->
+		Vars = Vars0
+	;
+		error("term__term_list_to_var_list")
+	).
+
+:- term__var_list_to_term_list(Terms, Vars) when Terms or Vars. % Indexing
+
+term__var_list_to_term_list([], []).
+term__var_list_to_term_list([Var | Vars], [term__variable(Var) | Terms]) :-
+	term__var_list_to_term_list(Vars, Terms).
 
 %-----------------------------------------------------------------------------%
 

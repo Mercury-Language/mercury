@@ -40,16 +40,8 @@
 :- mode list__merge(in, in, out) is det.
 
 :- pred list__member(T, list(T)).
-:- mode list__member(out, in) is nondet.
 :- mode list__member(in, in) is semidet.
-
-	% member_chk/2 is just a particular mode of member/2.
-	% The reason that it is a separate predicate is because
-	% the usual implementation of member/2 leaves choice points
-	% around if you call it with both args input.
-
-:- pred list__member_chk(T, list(T)).
-:- mode list__member_chk(in, in) is semidet.
+:- mode list__member(out, in) is nondet.
 
 :- pred list__member(T, list(T), list(T)).
 :- mode list__member(out, in, out) is nondet.
@@ -145,13 +137,6 @@ list__condense([L|Ls], R) :-
 list__same_length([], []).
 list__same_length([_|L1], [_|L2]) :-
 	list__same_length(L1, L2).
-
-list__member_chk(X, [Y | Ys]) :-
-	( X = Y ->
-		true
-	;
-		list__member_chk(X, Ys)
-	).
 
 list__split_list(N, List, Start, End) :-
 	( N = 0 ->

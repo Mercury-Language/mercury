@@ -1141,8 +1141,9 @@ process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
 :- pred parse_type_decl(varset, term, maybe(item)).
 :- mode parse_type_decl(in, in, out) is det.
 parse_type_decl(VarSet, TypeDecl, Result) :-
-	( %%% some [R, Cond]
-		parse_type_decl_type(TypeDecl, Cond, R) 
+	( 
+		TypeDecl = term__functor(term__atom(Name), Args, _),
+		parse_type_decl_type(Name, Args, Cond, R) 
 	->
 		R1 = R,
 		Cond1 = Cond
@@ -1183,18 +1184,20 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 
-:- pred parse_type_decl_type(term, condition, maybe(type_defn)).
-:- mode parse_type_decl_type(in, out, out) is semidet.
+:- pred parse_type_decl_type(string, list(term), condition, maybe(type_defn)).
+:- mode parse_type_decl_type(in, in, out, out) is semidet.
 
-parse_type_decl_type(term__functor(term__atom("--->"),[H,B],_), Condition, R) :-
+:- parse_type_decl([A|B], _, _, _) when A and B.
+
+parse_type_decl_type("--->", [H,B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_du_type(H, Body, R).
 
-parse_type_decl_type(term__functor(term__atom("="),[H,B],_), Condition, R) :-
+parse_type_decl_type("=", [H,B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_uu_type(H, Body, R).
 	
-parse_type_decl_type(term__functor(term__atom("=="),[H,B],_), Condition, R) :-
+parse_type_decl_type("==", [H,B], Condition, R) :-
 	get_condition(B, Body, Condition),
 	process_eqv_type(H, Body, R).
 
@@ -1426,7 +1429,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	; %%% some [Var2]
 		(
 			term__contains_var(Body, Var2),
-			not term__contains_var_list(Args, Var2)
+			\+ term__contains_var_list(Args, Var2)
 		)
 	->
 		Result = error("Free type parameter in RHS of type definition",
@@ -1650,7 +1653,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	%%%	some [Var2]
 		(
 			term__contains_var(Body, Var2),
-			not term__contains_var_list(Args, Var2)
+			\+ term__contains_var_list(Args, Var2)
 		)
 	->
 		Result = error("Free inst parameter in RHS of inst definition",
@@ -1811,7 +1814,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	; %%% some [Var2]
 		(
 			term__contains_var(Body, Var2),
-			not term__contains_var_list(Args, Var2)
+			\+ term__contains_var_list(Args, Var2)
 		)
 	->
 		Result = error("Free inst parameter in RHS of mode definition",

@@ -337,7 +337,7 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	{
 		predicate_name(ModuleInfo, PredId, PredName),
 		term__context_init(0, Context),
-		term_list_to_var_list(HeadTerms, HeadVars),
+		term__var_list_to_term_list(HeadVars, HeadTerms),
 		Term = term__functor(term__atom(PredName), HeadTerms, Context)
 	},
 	mercury_output_term(Term, VarSet).
