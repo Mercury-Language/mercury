@@ -635,7 +635,8 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 
 	=(ModeInfo),
 	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args1, Args,
+	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
+				[FuncVar | Args1], [FuncVar | Args],
 				InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
