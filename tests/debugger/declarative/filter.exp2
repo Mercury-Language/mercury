@@ -9,6 +9,8 @@ mdb> continue
 mdb> finish
       14:      2  2 EXIT pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
+p([1, 2, 9])
+Valid? no
 s1([1, 2])
 Valid? yes
 s2([9])
@@ -24,6 +26,8 @@ mdb> continue
 mdb> finish
       29:      2  2 EXIT pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
+p([1, 2, 7, 8, 9])
+Valid? no
 s2([7, 8, 9])
 Valid? yes
 my_append([1, 2], [7, 8, 9], [1, 2, 7, 8, 9])
@@ -37,6 +41,8 @@ mdb> continue
 mdb> finish
       49:      2  2 EXIT pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
+p([1, 2, 3, 9])
+Valid? no
 s1([1, 2, 3])
 Valid? yes
 my_append([1, 2, 3], [9], [1, 2, 3, 9])
@@ -50,6 +56,8 @@ mdb> continue
 mdb> finish
       64:      2  2 EXIT pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
+p([1, 2, 3, 7, 8, 9])
+Valid? no
 my_append
 	[1, 2, 3]
 	[7, 8, 9]
@@ -64,6 +72,13 @@ mdb> continue
 mdb> finish
       76:      2  2 FAIL pred filter:p/1-0 (multi) filter.m:20 (filter.m:10)
 mdb> dd
+Call p(_)
+Solutions:
+	p([1, 2, 9])
+	p([1, 2, 7, 8, 9])
+	p([1, 2, 3, 9])
+	p([1, 2, 3, 7, 8, 9])
+Complete? no
 Call s2(_)
 Solutions:
 	s2([9])

@@ -209,7 +209,7 @@ diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
 :- mode handle_analyser_response(in, in, out, in, out, di, uo) is det.
 
 handle_analyser_response(_, no_suspects, no_bug_found, D, D) -->
-	[].
+	io__write_string("No bug found.\n").
 
 handle_analyser_response(_, bug_found(Bug), Response, Diagnoser0,
 		Diagnoser) -->

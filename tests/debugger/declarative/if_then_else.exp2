@@ -9,6 +9,8 @@ mdb> continue
 mdb> finish
        9:      2  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
 mdb> dd
+ite(0, 1)
+Valid? no
 a(0)
 Valid? yes
 b(1)
@@ -23,6 +25,8 @@ ite(0, 1).
 mdb> finish
       23:      8  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> dd
+ite(1, 0)
+Valid? no
 Call a(1)
 No solutions.
 Complete? yes

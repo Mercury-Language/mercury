@@ -111,8 +111,10 @@
 analyser_state_init(analyser(no, [], [])).
 
 start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
-	create_suspect(Store, Tree, Suspect),
-	make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser).
+	make_suspects(Store, [Tree], Suspects, Queries),
+	get_all_prime_suspects(Analyser0, OldPrimes),
+	Analyser = analyser(no, Suspects, OldPrimes),
+	Response = oracle_queries(Queries).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 	(
@@ -151,15 +153,7 @@ find_incorrect_suspect([Answer | Answers], Analyser, Child) :-
 :- mode make_new_prime_suspect(in, in, out, in, out) is det.
 
 make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
-	Analyser0 = analyser(MaybeOldPrime, _, OldPrimes0),
-	(
-		MaybeOldPrime = yes(OldPrime0)
-	->
-		prime_suspect_get_suspect(OldPrime0, OldPrime),
-		OldPrimes = [OldPrime | OldPrimes0]
-	;
-		OldPrimes = OldPrimes0
-	),
+	get_all_prime_suspects(Analyser0, OldPrimes),
 	suspect_get_edt_node(Suspect, Tree),
 	(
 		edt_children(Store, Tree, Children)
@@ -184,6 +178,22 @@ make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
 		Response = require_explicit(Tree)
 	),
 	Analyser = analyser(MaybePrime, Suspects, OldPrimes).
+
+	% Make a list of previous prime suspects, and include the current
+	% one if it exists.
+	%
+:- pred get_all_prime_suspects(analyser_state(T), list(suspect(T))).
+:- mode get_all_prime_suspects(in, out) is det.
+
+get_all_prime_suspects(analyser(MaybePrime, _, OldPrimes0), OldPrimes) :-
+	(
+		MaybePrime = yes(Prime)
+	->
+		prime_suspect_get_suspect(Prime, Suspect),
+		OldPrimes = [Suspect | OldPrimes0]
+	;
+		OldPrimes = OldPrimes0
+	).
 
 :- pred make_suspects(S, list(T), list(suspect(T)), list(decl_question))
 		<= mercury_edt(S, T).

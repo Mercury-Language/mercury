@@ -11,6 +11,9 @@ mdb> continue
 mdb> finish
       34:      3  3 EXCP pred throw:p/1-0 (cc_nondet) throw.m:22 (exception.m:320)
 mdb> dd
+Call p(_)
+Throws "Too big"
+Expected? no
 a(3)
 Valid? yes
 Call b(3, _)
@@ -27,6 +30,9 @@ exception(univ("Too big" : string))
 mdb> finish
       76:     11  3 EXCP pred throw:q/1-0 (semidet) throw.m:52 (exception.m:320)
 mdb> dd
+Call q(_)
+Throws "Too big"
+Expected? no
 a2(3)
 Valid? yes
 Call b2(3, _)

@@ -11,6 +11,8 @@ mdb> continue
 mdb> finish
       11:      2  2 EXIT pred propositional:a/0-0 (semidet) propositional.m:27 (propositional.m:10)
 mdb> dd
+a
+Valid? no
 c
 Valid? yes
 Found incorrect contour:
@@ -22,6 +24,8 @@ mdb> continue
 mdb> finish
       22:      5  2 EXIT pred propositional:b/0-0 (semidet) propositional.m:29 (propositional.m:10)
 mdb> dd
+b
+Valid? no
 f
 Valid? no
 i
