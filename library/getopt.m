@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999,2001-2003 The University of Melbourne.
+% Copyright (C) 1994-1999,2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General 
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,7 +141,7 @@
 				maybe_option_table(OptionType))
 		).
 
-:- inst option_ops =
+:- inst option_ops ==
 	bound((
 		option_ops(
 			pred(in, out) is semidet,	% short_option

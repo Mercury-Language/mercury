@@ -63,7 +63,7 @@
 
 :- type array(T).
 
-:- inst array(I) = bound(array(I)).
+:- inst array(I) == bound(array(I)).
 :- inst array == array(ground).
 :- inst array_skel == array(free).
 
@@ -71,9 +71,9 @@
 	% so to work-around that problem, we currently don't use
 	% unique modes in this module.
 
-% :- inst uniq_array(I) = unique(array(I)).
+% :- inst uniq_array(I) == unique(array(I)).
 % :- inst uniq_array == uniq_array(unique).
-:- inst uniq_array(I) = bound(array(I)). % XXX work-around
+:- inst uniq_array(I) == bound(array(I)). % XXX work-around
 :- inst uniq_array == uniq_array(ground). % XXX work-around
 :- inst uniq_array_skel == uniq_array(free).
 
@@ -81,9 +81,9 @@
 :- mode array_uo == out(uniq_array).
 :- mode array_ui == in(uniq_array).
 
-% :- inst mostly_uniq_array(I) = mostly_unique(array(I)).
+% :- inst mostly_uniq_array(I) == mostly_unique(array(I)).
 % :- inst mostly_uniq_array == mostly_uniq_array(mostly_unique).
-:- inst mostly_uniq_array(I) = bound(array(I)).	% XXX work-around
+:- inst mostly_uniq_array(I) == bound(array(I)).	% XXX work-around
 :- inst mostly_uniq_array == mostly_uniq_array(ground).	% XXX work-around
 :- inst mostly_uniq_array_skel == mostly_uniq_array(free).
 

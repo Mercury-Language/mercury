@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -200,8 +200,8 @@
 
 :- import_module int, require, bool, std_util.
 
-:- type tree234(K, V)	--->
-		empty
+:- type tree234(K, V)
+	--->	empty
 	;	two(K, V, tree234(K, V), tree234(K, V))
 	;	three(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V))
 	;	four(K, V, K, V, K, V, tree234(K, V), tree234(K, V),
@@ -209,7 +209,7 @@
 
 :- interface.
 
-:- inst uniq_tree234(K, V) =
+:- inst uniq_tree234(K, V) ==
 	unique((
 		empty
 	;	two(K, V, uniq_tree234(K, V), uniq_tree234(K, V))
@@ -219,7 +219,7 @@
 			uniq_tree234(K, V), uniq_tree234(K, V))
 	)).
 
-:- inst uniq_tree234_gg =
+:- inst uniq_tree234_gg ==
 	unique((
 		empty
 	;	two(ground, ground, uniq_tree234_gg, uniq_tree234_gg)
@@ -230,10 +230,10 @@
 			uniq_tree234_gg, uniq_tree234_gg)
 	)).
 
-:- mode di_tree234(K, V) :: uniq_tree234(K, V) -> dead.
-:- mode di_tree234       :: uniq_tree234(ground, ground) -> dead.
-:- mode uo_tree234(K, V) :: free -> uniq_tree234(K, V).
-:- mode uo_tree234       :: free -> uniq_tree234(ground, ground).
+:- mode di_tree234(K, V) == uniq_tree234(K, V) >> dead.
+:- mode di_tree234       == uniq_tree234(ground, ground) >> dead.
+:- mode uo_tree234(K, V) == free >> uniq_tree234(K, V).
+:- mode uo_tree234       == free >> uniq_tree234(ground, ground).
 
 :- implementation.
 
@@ -746,51 +746,29 @@ tree234__update(Tin, K, V, Tout) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-:- inst two(K, V, T) =
-	bound(
-		two(K, V, T, T)
-	).
+:- inst two(K, V, T)   ---> two(K, V, T, T).
+:- inst three(K, V, T) ---> three(K, V, K, V, T, T, T).
+:- inst four(K, V, T)  ---> four(K, V, K, V, K, V, T, T, T, T).
 
-:- inst uniq_two(K, V, T) =
-	unique(
-		two(K, V, T, T)
-	).
+:- inst uniq_two(K, V, T)   == unique(two(K, V, T, T)).
+:- inst uniq_three(K, V, T) == unique(three(K, V, K, V, T, T, T)).
+:- inst uniq_four(K, V, T)  == unique(four(K, V, K, V, K, V, T, T, T, T)).
 
-:- inst three(K, V, T) =
-	bound(
-		three(K, V, K, V, T, T, T)
-	).
+:- mode uo_two  == out(uniq_two(unique, unique, unique)).
+:- mode suo_two == out(uniq_two(ground, ground, uniq_tree234_gg)).
+:- mode out_two == out(two(ground, ground, ground)).
 
-:- inst uniq_three(K, V, T) =
-	unique(
-		three(K, V, K, V, T, T, T)
-	).
+:- mode di_two  == di(uniq_two(unique, unique, unique)).
+:- mode sdi_two == di(uniq_two(ground, ground, uniq_tree234_gg)).
+:- mode in_two  == in(two(ground, ground, ground)).
 
-:- inst four(K, V, T) =
-	bound(
-		four(K, V, K, V, K, V, T, T, T, T)
-	).
+:- mode di_three  == di(uniq_three(unique, unique, unique)).
+:- mode sdi_three == di(uniq_three(ground, ground, uniq_tree234_gg)).
+:- mode in_three  == in(three(ground, ground, ground)).
 
-:- inst uniq_four(K, V, T) =
-	unique(
-		four(K, V, K, V, K, V, T, T, T, T)
-	).
-
-:- mode uo_two :: out(uniq_two(unique, unique, unique)).
-:- mode suo_two :: out(uniq_two(ground, ground, uniq_tree234_gg)).
-:- mode out_two :: out(two(ground, ground, ground)).
-
-:- mode di_two :: di(uniq_two(unique, unique, unique)).
-:- mode sdi_two :: di(uniq_two(ground, ground, uniq_tree234_gg)).
-:- mode in_two :: in(two(ground, ground, ground)).
-
-:- mode di_three :: di(uniq_three(unique, unique, unique)).
-:- mode sdi_three :: di(uniq_three(ground, ground, uniq_tree234_gg)).
-:- mode in_three :: in(three(ground, ground, ground)).
-
-:- mode di_four :: di(uniq_four(unique, unique, unique)).
-:- mode sdi_four :: di(uniq_four(ground, ground, uniq_tree234_gg)).
-:- mode in_four :: in(four(ground, ground, ground)).
+:- mode di_four  == di(uniq_four(unique, unique, unique)).
+:- mode sdi_four == di(uniq_four(ground, ground, uniq_tree234_gg)).
+:- mode in_four  == in(four(ground, ground, ground)).
 
 %------------------------------------------------------------------------------%
 

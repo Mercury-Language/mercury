@@ -32,27 +32,27 @@
 	% Partially instantiated mode aren't fully implemented yet,
 	% so don't try to use these.
 
-:- inst list_skel(I) = bound(([] ; [I | list_skel(I)])).
-:- inst list_skel = list_skel(free).
+:- inst list_skel(I) ---> [] ; [I | list_skel(I)].
+:- inst list_skel == list_skel(free).
 
-:- inst non_empty_list = bound([ground | ground]).
+:- inst non_empty_list ---> [ground | ground].
 
-:- mode in_list_skel :: list_skel -> list_skel.
-:- mode out_list_skel :: free -> list_skel.
-:- mode list_skel_out :: list_skel -> ground.
+:- mode in_list_skel  == list_skel >> list_skel.
+:- mode out_list_skel == free >> list_skel.
+:- mode list_skel_out == list_skel >> ground.
 
 	% These more verbose versions are deprecated.
 	% They exist only for backwards compatibility,
 	% and will be removed in a future release.
-:- mode input_list_skel :: in_list_skel.
-:- mode output_list_skel :: out_list_skel.
-:- mode list_skel_output :: list_skel_out.
+:- mode input_list_skel  == in_list_skel.
+:- mode output_list_skel == out_list_skel.
+:- mode list_skel_output == list_skel_out.
 
 	% These modes are particularly useful for passing around lists
 	% of higher order terms, since they have complicated insts
 	% which are not correctly approximated by "ground".
-:- mode list_skel_in(I) :: list_skel(I) -> list_skel(I).
-:- mode list_skel_out(I) :: free -> list_skel(I).
+:- mode list_skel_in(I)  == list_skel(I) >> list_skel(I).
+:- mode list_skel_out(I) == free >> list_skel(I).
 
 %-----------------------------------------------------------------------------%
 

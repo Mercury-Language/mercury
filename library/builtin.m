@@ -46,8 +46,8 @@
 % The name `dead' is allowed as a synonym for `clobbered'.
 % Similarly `mostly_dead' is a synonym for `mostly_clobbered'.
 
-:- inst dead = clobbered.
-:- inst mostly_dead = mostly_clobbered.
+:- inst dead == clobbered.
+:- inst mostly_dead == mostly_clobbered.
 
 % The `any' inst used for the constraint solver interface is also builtin.
 
@@ -61,40 +61,40 @@
 
 % The standard modes.
 
-:- mode unused :: (free -> free).
-:- mode output :: (free -> ground).
-:- mode input :: (ground -> ground).
+:- mode unused == free >> free.
+:- mode output == free >> ground.
+:- mode input  == ground >> ground.
 
-:- mode in :: (ground -> ground).
-:- mode out :: (free -> ground).
+:- mode in  == ground >> ground.
+:- mode out == free >> ground.
 
-:- mode in(Inst) :: (Inst -> Inst).
-:- mode out(Inst) :: (free -> Inst).
-:- mode di(Inst) :: (Inst -> clobbered).
-:- mode mdi(Inst) :: (Inst -> mostly_clobbered).
+:- mode in(Inst)  == Inst >> Inst.
+:- mode out(Inst) == free >> Inst.
+:- mode di(Inst)  == Inst >> clobbered.
+:- mode mdi(Inst) == Inst >> mostly_clobbered.
 
 % Unique modes.  These are still not fully implemented.
 
 % unique output
-:- mode uo :: free -> unique.
+:- mode uo == free >> unique.
 
 % unique input
-:- mode ui :: unique -> unique.
+:- mode ui == unique >> unique.
 
 % destructive input
-:- mode di :: unique -> clobbered.
+:- mode di == unique >> clobbered.
 
 % "Mostly" unique modes (unique except that that may be referenced
 % again on backtracking).
 
 % mostly unique output
-:- mode muo :: free -> mostly_unique.
+:- mode muo == free >> mostly_unique.
 
 % mostly unique input
-:- mode mui :: mostly_unique -> mostly_unique.
+:- mode mui == mostly_unique >> mostly_unique.
 
 % mostly destructive input
-:- mode mdi :: mostly_unique -> mostly_clobbered.
+:- mode mdi == mostly_unique >> mostly_clobbered.
 
 % Higher-order predicate modes are builtin.
 
