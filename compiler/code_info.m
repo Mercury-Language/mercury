@@ -663,91 +663,10 @@ code_info__get_variable_slot(Var, Slot) -->
 	% type of the constructor), determine correct tag (representation)
 	% of that constructor.
 
-:- code_info__cons_id_to_tag(_, X, _, _, _) when X. % NU-Prolog indexing.
-
-code_info__cons_id_to_tag(_Var, int_const(X), int_constant(X)) --> [].
-code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
-code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
-code_info__cons_id_to_tag(_Var, address_const(P,M), address_constant(P,M))
-	--> [].
-code_info__cons_id_to_tag(_Var, pred_const(P,M), pred_closure_tag(P,M)) --> [].
-code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
-		%
-		% Lookup the type of the variable
-		%
+code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
-	(
-		% handle the `character' type specially
-		{ Type = term__functor(term__atom("character"), [], _) },
-	 	{ string__char_to_string(Char, Name) }
-	->
-		{ char__to_int(Char, CharCode) },
-		{ Tag = int_constant(CharCode) }
-	;
-		% handle higher-order pred types specially
-		{ type_is_higher_order(Type, _PredOrFunc, PredArgTypes) }
-	->
-		{ list__length(PredArgTypes, PredArity) },
-		code_info__get_module_info(ModuleInfo),
-		{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
-		{ TotalArity is Arity + PredArity },
-		{
-		    predicate_table_search_name_arity(PredicateTable,
-			Name, TotalArity, PredIds)
-		->
-		    (
-			PredIds = [PredId]
-		    ->
-			predicate_table_get_preds(PredicateTable, Preds),
-			map__lookup(Preds, PredId, PredInfo),
-			pred_info_procedures(PredInfo, Procs),
-			map__keys(Procs, ProcIds),
-			(
-			    ProcIds = [ProcId]
-			->
-			    Tag = pred_closure_tag(PredId, ProcId)
-			;
-			    error("sorry, not implemented: taking address of predicate with multiple modes")
-			)
-		    ;
-			% cons_id ought to include the module prefix, so
-			% that we could use predicate_table__search_m_n_a to 
-			% prevent this from happening
-			string__append("code_info__cons_id_to_tag: ambiguous pred ", Name, Msg),
-			error(Msg)
-		    )
-		;
-		    % the type-checker should ensure that this never happens
-		    error("code_info__cons_id_to_tag: invalid pred")
-		}
-	;
-			% Use the type to determine the type_id
-		{ type_to_type_id(Type, TypeId0, _) ->
-			TypeId = TypeId0
-		;
-			% the type-checker should ensure that this never happens
-			error("code_info__cons_id_to_tag: invalid type")
-		},
-
-			% Given the type_id, lookup up the constructor tag
-			% table for that type
-		code_info__get_module_info(ModuleInfo),
-		{ module_info_types(ModuleInfo, TypeTable) },
-		{ map__lookup(TypeTable, TypeId, TypeDefn) },
-		{
-			TypeDefn = hlds__type_defn(_, _,
-				du_type(_, ConsTable0, _), _, _)
-		->
-			ConsTable = ConsTable0
-		;
-			% this should never happen
-			error(
-			"code_info__cons_id_to_tag: type is not d.u. type?"
-			)
-		},
-			% Finally look up the cons_id in the table
-		{ map__lookup(ConsTable, cons(Name, Arity), Tag) }
-	).
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, ConsTag) }.
 
 %---------------------------------------------------------------------------%
 

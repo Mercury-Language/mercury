@@ -77,6 +77,10 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
 
+	proc_info_goal(ProcInfo, Goal),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	bytecode_gen__init_byte_info(ModuleInfo, VarTypes, Goal, ByteInfo),
+
 	proc_info_headvars(ProcInfo, ArgVars),
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
@@ -87,13 +91,10 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	call_gen__output_arg_locs(Args, OutputArgs),
 	bytecode_gen__gen_places(OutputArgs, ByteInfo, PlaceCode),
 
-	proc_info_goal(ProcInfo, Goal),
-	bytecode_gen__init_byte_info(ModuleInfo, Goal, ByteInfo),
-
 	bytecode_gen__goal(Goal, ByteInfo, 0, N, GoalCode),
 
 	proc_info_interface_determinism(ProcInfo, Detism),
-	Code = tree(
+	CodeTree = tree(
 		tree(
 			node([enter_proc(ProcId, Detism, N)]),
 			PickupCode),
@@ -101,15 +102,24 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 			GoalCode,
 			tree(
 				PlaceCode,
-				node([endof_proc])))).
+				node([endof_proc])))),
+	tree__flatten(CodeTree, CodeList),
+	list__condense(CodeList, Code0),
+	( list__member(not_supported, Code0) ->
+		Code = node([not_supported])
+	;
+		Code = node(Code0)
+	).
 
 %---------------------------------------------------------------------------%
 
 :- pred bytecode_gen__goal(hlds__goal::in, byte_info::in, int::in, int::out,
 	byte_tree::out) is det.
 
-bytecode_gen__goal(GoalExpr - _GoalInfo, ByteInfo, N0, N, Code) :-
-	bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code).
+bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo, N0, N, Code) :-
+	bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, GoalCode),
+	goal_info_context(GoalInfo, term__context(_, Line)),
+	Code = tree(node([context(Line)]), GoalCode).
 
 :- pred bytecode_gen__goal_expr(hlds__goal_expr::in, byte_info::in,
 	int::in, int::out, byte_tree::out) is det.
@@ -163,13 +173,14 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 			node([endof_disjunction, label(N1)]))
 	;
 		GoalExpr = switch(Var, _, CasesList, _),
-		bytecode_gen__switch(CasesList, ByteInfo, N0, N1, DisjCode),
+		bytecode_gen__switch(CasesList, Var, ByteInfo, N0, N1,
+			SwitchCode),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 		N is N1 + 1,
 		Code = tree(
 			tree(
 				node([enter_switch(ByteVar, N1)]),
-				DisjCode),
+				SwitchCode),
 			node([endof_switch, label(N1)]))
 	;
 		GoalExpr = if_then_else(_Vars, Cond, Then, Else, _),
@@ -193,7 +204,7 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 					node([endof_else, label(N4)]))))
 	;
 		GoalExpr = pragma_c_code(_, _, _, _, _),
-		Code = node([pragma_c_code]),
+		Code = node([not_supported]),
 		N = N0
 	).
 
@@ -245,27 +256,53 @@ bytecode_gen__call(PredId, ProcId, ArgVars, ByteInfo, Code) :-
 :- pred bytecode_gen__builtin(pred_id::in, proc_id::in, list(var)::in,
 	byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__builtin(PredId, _ProcId, Args, ByteInfo, Code) :-
+bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
 	(
-		code_util__builtin_binop(ModuleName, PredName, 3, Binop),
-		Args = [X, Y, Var]
+		code_util__translate_builtin(ModuleName, PredName, ProcId,
+			Args, MaybeVar, Rval)
 	->
-		bytecode_gen__map_var(ByteInfo, X, ByteX),
-		bytecode_gen__map_var(ByteInfo, Y, ByteY),
-		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
-		Code = node([builtin_binop(Binop, ByteX, ByteY, ByteVar)])
-	;
-		code_util__builtin_unop(ModuleName, PredName, 2, Unop),
-		Args = [X, Var]
-	->
-		bytecode_gen__map_var(ByteInfo, X, ByteX),
-		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
-		Code = node([builtin_unop(Unop, ByteX, ByteVar)])
+		( Rval = binop(Binop, X, Y) ->
+			bytecode_gen__map_arg(ByteInfo, X, ByteX),
+			bytecode_gen__map_arg(ByteInfo, Y, ByteY),
+			( MaybeVar = yes(Var) ->
+				bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+				Code = node([builtin_binop(Binop,
+					ByteX, ByteY, ByteVar)])
+			;
+				Code = node([builtin_bintest(Binop,
+					ByteX, ByteY)])
+			)
+		; Rval = unop(Unop, X) ->
+			bytecode_gen__map_arg(ByteInfo, X, ByteX),
+			( MaybeVar = yes(Var) ->
+				bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+				Code = node([builtin_unop(Unop, ByteX,
+					ByteVar)])
+			;
+				Code = node([builtin_untest(Unop, ByteX)])
+			)
+		;
+			error("unknown builtin predicate")
+		)
 	;
 		error("unknown builtin predicate")
+	).
+
+:- pred bytecode_gen__map_arg(byte_info::in, rval::in, byte_arg::out) is det.
+
+bytecode_gen__map_arg(ByteInfo, Rval, ByteArg) :-
+	( Rval = var(Var) ->
+		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+		ByteArg = var(ByteVar)
+	; Rval = const(int_const(IntVal)) ->
+		ByteArg = int_const(IntVal)
+	; Rval = const(float_const(FloatVal)) ->
+		ByteArg = float_const(FloatVal)
+	;
+		error("unknown kind of builtin argument")
 	).
 
 %---------------------------------------------------------------------------%
@@ -275,16 +312,18 @@ bytecode_gen__builtin(PredId, _ProcId, Args, ByteInfo, Code) :-
 :- pred bytecode_gen__unify(unification::in, var::in, unify_rhs::in,
 	byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__unify(construct(Var, ConsId, Args, Modes), _, _, ByteInfo,
+bytecode_gen__unify(construct(Var, ConsId, Args, _Modes), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
-	Code = node([construct(ByteVar, ConsId, ByteArgs)]).
-bytecode_gen__unify(deconstruct(Var, ConsId, Args, Modes, _), _, _, ByteInfo,
+	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
+	Code = node([construct(ByteVar, ByteConsId, ByteArgs)]).
+bytecode_gen__unify(deconstruct(Var, ConsId, Args, _Modes, _), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
-	Code = node([deconstruct(ByteVar, ConsId, ByteArgs)]).
+	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
+	Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)]).
 bytecode_gen__unify(assign(Target, Source), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Target, ByteTarget),
 	bytecode_gen__map_var(ByteInfo, Source, ByteSource),
@@ -333,17 +372,19 @@ bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo, N0, N, Code) :-
 
 	% Generate bytecode for each arm of a switch.
 
-:- pred bytecode_gen__switch(list(case)::in, byte_info::in,
+:- pred bytecode_gen__switch(list(case)::in, var::in, byte_info::in,
 	int::in, int::out, byte_tree::out) is det.
 
-bytecode_gen__switch([], _, N, N, empty).
-bytecode_gen__switch([case(ConsId, Goal) | Cases], ByteInfo, N0, N, Code) :-
+bytecode_gen__switch([], _, _, N, N, empty).
+bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, ByteInfo, N0, N, Code)
+		:-
+	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	bytecode_gen__goal(Goal, ByteInfo, N0, N1, ThisCode),
 	N2 is N1 + 1,
-	bytecode_gen__switch(Cases, ByteInfo, N2, N, OtherCode),
+	bytecode_gen__switch(Cases, Var, ByteInfo, N2, N, OtherCode),
 	Code = tree(
 		tree(
-			node([enter_switch_arm(ConsId, N1)]),
+			node([enter_switch_arm(ByteConsId, N1)]),
 			ThisCode),
 		tree(
 			node([endof_switch_arm, label(N1)]),
@@ -351,28 +392,91 @@ bytecode_gen__switch([case(ConsId, Goal) | Cases], ByteInfo, N0, N, Code) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred bytecode_gen__map_cons_id(byte_info::in, var::in, cons_id::in,
+	byte_cons_id::out) is det.
+
+bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
+	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	(
+		ConsId = cons(Functor, Arity),
+		bytecode_gen__get_var_type(ByteInfo, Var, Type),
+		code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, ConsTag),
+		bytecode_gen__map_cons_tag(ConsTag, ByteConsTag),
+		ByteConsId = cons(Functor, Arity, ByteConsTag)
+	;
+		ConsId = int_const(IntVal),
+		ByteConsId = int_const(IntVal)
+	;
+		ConsId = string_const(StringVal),
+		ByteConsId = string_const(StringVal)
+	;
+		ConsId = float_const(FloatVal),
+		ByteConsId = float_const(FloatVal)
+	;
+		ConsId = pred_const(PredId, ProcId),
+		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+		ByteConsId = pred_const(ModuleName, PredName, Arity, ProcId)
+	;
+		ConsId = address_const(PredId, ProcId),
+		predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
+		ByteConsId = address_const(ModuleName, PredName, Arity, ProcId)
+	).
+
+:- pred bytecode_gen__map_cons_tag(cons_tag::in, byte_cons_tag::out) is det.
+
+bytecode_gen__map_cons_tag(no_tag, no_tag).
+bytecode_gen__map_cons_tag(simple_tag(Primary), simple_tag(Primary)).
+bytecode_gen__map_cons_tag(complicated_tag(Primary, Secondary),
+	complicated_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(complicated_constant_tag(Primary, Secondary),
+	complicated_constant_tag(Primary, Secondary)).
+bytecode_gen__map_cons_tag(string_constant(_), _) :-
+	error("string_constant cons tag for non-string_constant cons id").
+bytecode_gen__map_cons_tag(int_constant(_), _) :-
+	error("int_constant cons tag for non-int_constant cons id").
+bytecode_gen__map_cons_tag(float_constant(_), _) :-
+	error("float_constant cons tag for non-float_constant cons id").
+bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
+	error("pred_closure_tag cons tag for non-pred_const cons id").
+bytecode_gen__map_cons_tag(address_constant(_, _), _) :-
+	error("address_constant cons tag for non-address_const cons id").
+
+%---------------------------------------------------------------------------%(
+
 :- type byte_info	--->	byte_info(
 					map(var, byte_var),
+					map(var, type),
 					module_info).
 
-:- pred bytecode_gen__init_byte_info(module_info::in, hlds__goal::in,
-	byte_info::out) is det.
+:- pred bytecode_gen__init_byte_info(module_info::in, map(var, type)::in,
+	hlds__goal::in, byte_info::out) is det.
 
-bytecode_gen__init_byte_info(ModuleInfo, Goal, ByteInfo) :-
+bytecode_gen__init_byte_info(ModuleInfo, VarTypes, Goal, ByteInfo) :-
 	map__init(VarMap0),
 	goal_util__goal_vars(Goal, Vars),
 	set__to_sorted_list(Vars, VarList),
 	bytecode_gen__create_varmap(VarList, 0, VarMap0, VarMap),
-	ByteInfo = byte_info(VarMap, ModuleInfo).
+	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo).
+
+:- pred bytecode_gen__create_varmap(list(var)::in, int::in,
+	map(var, byte_var)::in, map(var, byte_var)::out) is det.
+
+bytecode_gen__create_varmap([], _, VarMap, VarMap).
+bytecode_gen__create_varmap([Var | VarList], N0, VarMap0, VarMap) :-
+	map__det_insert(VarMap0, Var, N0, VarMap1),
+	N1 is N0 + 1,
+	bytecode_gen__create_varmap(VarList, N1, VarMap1, VarMap).
+
+%---------------------------------------------------------------------------%
 
 :- pred bytecode_gen__get_module_info(byte_info::in, module_info::out) is det.
 
-bytecode_gen__get_module_info(byte_info(_, ModuleInfo), ModuleInfo).
+bytecode_gen__get_module_info(byte_info(_, _, ModuleInfo), ModuleInfo).
 
 :- pred bytecode_gen__map_vars(byte_info::in,
 	list(var)::in, list(byte_var)::out) is det.
 
-bytecode_gen__map_vars(byte_info(VarMap, _), Vars, ByteVars) :-
+bytecode_gen__map_vars(byte_info(VarMap, _, _), Vars, ByteVars) :-
 	bytecode_gen__map_vars_2(VarMap, Vars, ByteVars).
 
 :- pred bytecode_gen__map_vars_2(map(var, byte_var)::in,
@@ -385,16 +489,12 @@ bytecode_gen__map_vars_2(VarMap, [Var | Vars], [ByteVar | ByteVars]) :-
 
 :- pred bytecode_gen__map_var(byte_info::in, var::in, byte_var::out) is det.
 
-bytecode_gen__map_var(byte_info(VarMap, _), Var, ByteVar) :-
+bytecode_gen__map_var(byte_info(VarMap, _, _), Var, ByteVar) :-
 	map__lookup(VarMap, Var, ByteVar).
 
-:- pred bytecode_gen__create_varmap(list(var)::in, int::in,
-	map(var, byte_var)::in, map(var, byte_var)::out) is det.
+:- pred bytecode_gen__get_var_type(byte_info::in, var::in, (type)::out) is det.
 
-bytecode_gen__create_varmap([], _, VarMap, VarMap).
-bytecode_gen__create_varmap([Var | VarList], N0, VarMap0, VarMap) :-
-	map__det_insert(VarMap0, Var, N0, VarMap1),
-	N1 is N0 + 1,
-	bytecode_gen__create_varmap(VarList, N1, VarMap1, VarMap).
+bytecode_gen__get_var_type(byte_info(_, VarTypes, _), Var, Type) :-
+	map__lookup(VarTypes, Var, Type).
 
 %---------------------------------------------------------------------------%

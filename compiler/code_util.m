@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, llds.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, llds.
 :- import_module list, string.
 
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
@@ -67,19 +67,30 @@
 :- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
 :- mode code_util__is_builtin(in, in, in, out) is det.
 
-:- pred code_util__builtin_binop(string, string, int, binary_op).
-:- mode code_util__builtin_binop(in, in, in, out) is semidet.
-% :- mode code_util__builtin_binop(out, out, out, in) is semidet.
+	% Given a module name, a predicate name, a proc_id and a list of
+	% variables as the arguments, find out if that procedure of that
+	% predicate is a builtin. If yes, return the variable being
+	% constructed (if any) and an rval giving its value.
+	%
+	% This rval is guaranteed to be either a unop or a binop, applied
+	% to arguments that are either variables (from the argument list)
+	% or constants.
 
-:- pred code_util__builtin_unop(string, string, int, unary_op).
-:- mode code_util__builtin_unop(in, in, in, out) is semidet.
-% :- mode code_util__builtin_unop(out, out, out, in) is semidet.
+:- pred code_util__translate_builtin(string, string, proc_id, list(var),
+	maybe(var), rval).
+:- mode code_util__translate_builtin(in, in, in, in, out, out) is semidet.
+
+	% Find out how a function symbol (constructor) is represented
+	% in the given type.
+
+:- pred code_util__cons_id_to_tag(cons_id, type, module_info, cons_tag).
+:- mode code_util__cons_id_to_tag(in, in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, list, map, require, std_util.
 :- import_module type_util, special_pred.
+:- import_module bool, char, int, list, map, varset, require, std_util.
 
 %---------------------------------------------------------------------------%
 
@@ -149,81 +160,199 @@ code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
 code_util__predinfo_is_builtin(_ModuleInfo, PredInfo) :-
 	pred_info_module(PredInfo, ModuleName),
 	pred_info_name(PredInfo, PredName),
+%	code_util__translate_builtin(ModuleName, PredName, _, _, _, _).
 	pred_info_arity(PredInfo, Arity),
-	code_util__builtin(ModuleName, PredName, Arity).
+	( code_util__builtin(ModuleName, PredName, 0, Arity)
+	; code_util__builtin(ModuleName, PredName, 10000, Arity)
+	).
 
-code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
+code_util__is_builtin(ModuleInfo, PredId0, ProcId, IsBuiltin) :-
 	predicate_module(ModuleInfo, PredId0, ModuleName),
 	predicate_name(ModuleInfo, PredId0, PredName),
 	predicate_arity(ModuleInfo, PredId0, Arity),
 	(
-		(
-			code_util__builtin_binop(ModuleName, PredName, Arity, _)
-		;
-			code_util__builtin_unop(ModuleName, PredName, Arity, _)
-		)
+		code_util__builtin(ModuleName, PredName, ProcId, Arity)
 	->
 		hlds__is_builtin_make_builtin(yes, yes, IsBuiltin)
 	;
 		hlds__is_builtin_make_builtin(no, no, IsBuiltin)
 	).
 
-:- pred code_util__builtin(string, string, int).
-:- mode code_util__builtin(in, in, in) is semidet.
+:- pred code_util__builtin(string, string, proc_id, int).
+:- mode code_util__builtin(in, in, in, in) is semidet.
 
-code_util__builtin(ModuleName, PredName, Arity) :-
-	( code_util__builtin_binop(ModuleName, PredName, Arity, _)
-	; code_util__builtin_unop(ModuleName, PredName, Arity, _)
-	).
+code_util__builtin(ModuleName, PredName, ProcId, Arity) :-
+	Arity =< 3,
+	varset__init(VarSet),
+	varset__new_vars(VarSet, Arity, Args, _),
+	code_util__translate_builtin(ModuleName, PredName, ProcId, Args, _, _).
 
-code_util__builtin_binop("int", "builtin_plus", 3, (+)).
-code_util__builtin_binop("int", "+", 3, (+)).
-code_util__builtin_binop("int", "builtin_minus", 3, (-)).
-code_util__builtin_binop("int", "-", 3, (-)).
-code_util__builtin_binop("int", "builtin_times", 3, (*)).
-code_util__builtin_binop("int", "*", 3, (*)).
-code_util__builtin_binop("int", "builtin_div", 3, (/)).
-code_util__builtin_binop("int", "//", 3, (/)).
-code_util__builtin_binop("int", "builtin_mod", 3, (mod)).
-code_util__builtin_binop("int", "mod", 3, (mod)).
-code_util__builtin_binop("int", "builtin_left_shift", 3, (<<)).
-code_util__builtin_binop("int", "<<", 3, (<<)).
-code_util__builtin_binop("int", "builtin_right_shift", 3, (>>)).
-code_util__builtin_binop("int", ">>", 3, (>>)).
-code_util__builtin_binop("int", "builtin_bit_and", 3, (&)).
-code_util__builtin_binop("int", "/\\", 3, ('&')).
-			% Need single quotes around '|' for Sicstus Prolog
-code_util__builtin_binop("int", "builtin_bit_or", 3, ('|')).
-code_util__builtin_binop("int", "\\/", 3, ('|')).
-code_util__builtin_binop("int", "builtin_bit_xor", 3, (^)).
-code_util__builtin_binop("int", "^", 3, (^)).
-code_util__builtin_binop("int", ">", 2, (>)).
-code_util__builtin_binop("int", "<", 2, (<)).
-code_util__builtin_binop("mercury_builtin", "builtin_int_gt", 2, (>)).
-code_util__builtin_binop("mercury_builtin", "builtin_int_lt", 2, (<)).
-code_util__builtin_binop("mercury_builtin", ">", 2, (>)).
-code_util__builtin_binop("mercury_builtin", "<", 2, (<)).
-code_util__builtin_binop("int", ">=", 2, (>=)).
-code_util__builtin_binop("int", "=<", 2, (<=)).
-code_util__builtin_binop("float", "builtin_float_plus", 3, float_plus).
-code_util__builtin_binop("float", "+", 3, float_plus).
-code_util__builtin_binop("float", "builtin_float_minus", 3, float_minus).
-code_util__builtin_binop("float", "-", 3, float_minus).
-code_util__builtin_binop("float", "builtin_float_times", 3, float_times).
-code_util__builtin_binop("float", "*", 3, float_times).
-code_util__builtin_binop("float", "builtin_float_divide", 3, float_divide).
-code_util__builtin_binop("float", "/", 3, float_divide).
-code_util__builtin_binop("float", "builtin_float_gt", 2, float_gt).
-code_util__builtin_binop("float", ">", 2, float_gt).
-code_util__builtin_binop("float", "builtin_float_lt", 2, float_lt).
-code_util__builtin_binop("float", "<", 2, float_lt).
-code_util__builtin_binop("float", "builtin_float_ge", 2, float_ge).
-code_util__builtin_binop("float", ">=", 2, float_ge).
-code_util__builtin_binop("float", "builtin_float_le", 2, float_le).
-code_util__builtin_binop("float", "=<", 2, float_le).
+code_util__translate_builtin("mercury_builtin", "builtin_int_gt", 0, [X, Y],
+	no, binop((>), var(X), var(Y))).
+code_util__translate_builtin("mercury_builtin", "builtin_int_lt", 0, [X, Y],
+	no, binop((<), var(X), var(Y))).
 
-code_util__builtin_unop("int", "builtin_bit_neg", 2, bitwise_complement).
-code_util__builtin_unop("int", "\\", 2, bitwise_complement).
+code_util__translate_builtin("int", "builtin_plus", 10000, [X, Y, Z],
+	yes(Z), binop((+), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_plus", 10001, [X, Y, Z],
+	yes(X), binop((-), var(Z), var(Y))).
+code_util__translate_builtin("int", "builtin_plus", 10002, [X, Y, Z],
+	yes(Y), binop((-), var(Z), var(X))).
+code_util__translate_builtin("int", "+", 10000, [X, Y, Z],
+	yes(Z), binop((+), var(X), var(Y))).
+code_util__translate_builtin("int", "+", 10001, [X, Y, Z],
+	yes(X), binop((-), var(Z), var(Y))).
+code_util__translate_builtin("int", "+", 10002, [X, Y, Z],
+	yes(Y), binop((-), var(Z), var(X))).
+code_util__translate_builtin("int", "builtin_minus", 10000, [X, Y, Z],
+	yes(Z), binop((-), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_minus", 10001, [X, Y, Z],
+	yes(X), binop((+), var(Y), var(Z))).
+code_util__translate_builtin("int", "builtin_minus", 10002, [X, Y, Z],
+	yes(Y), binop((-), var(X), var(Z))).
+code_util__translate_builtin("int", "-", 10000, [X, Y, Z],
+	yes(Z), binop((-), var(X), var(Y))).
+code_util__translate_builtin("int", "-", 10001, [X, Y, Z],
+	yes(X), binop((+), var(Y), var(Z))).
+code_util__translate_builtin("int", "-", 10002, [X, Y, Z],
+	yes(Y), binop((-), var(X), var(Z))).
+code_util__translate_builtin("int", "builtin_times", 10000, [X, Y, Z],
+	yes(Z), binop((*), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_times", 10001, [X, Y, Z],
+	yes(X), binop((/), var(Z), var(Y))).
+code_util__translate_builtin("int", "builtin_times", 10002, [X, Y, Z],
+	yes(Y), binop((/), var(Z), var(X))).
+code_util__translate_builtin("int", "*", 10000, [X, Y, Z],
+	yes(Z), binop((*), var(X), var(Y))).
+code_util__translate_builtin("int", "*", 10001, [X, Y, Z],
+	yes(X), binop((/), var(Z), var(Y))).
+code_util__translate_builtin("int", "*", 10002, [X, Y, Z],
+	yes(Y), binop((/), var(Z), var(X))).
+code_util__translate_builtin("int", "builtin_div", 10000, [X, Y, Z],
+	yes(Z), binop((/), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_div", 10001, [X, Y, Z],
+	yes(X), binop((*), var(Y), var(Z))).
+code_util__translate_builtin("int", "builtin_div", 10002, [X, Y, Z],
+	yes(Y), binop((/), var(X), var(Z))).
+code_util__translate_builtin("int", "//", 10000, [X, Y, Z],
+	yes(Z), binop((/), var(X), var(Y))).
+code_util__translate_builtin("int", "//", 10001, [X, Y, Z],
+	yes(X), binop((*), var(Y), var(Z))).
+code_util__translate_builtin("int", "//", 10002, [X, Y, Z],
+	yes(Y), binop((/), var(X), var(Z))).
+code_util__translate_builtin("int", "builtin_mod", 10000, [X, Y, Z],
+	yes(Z), binop((mod), var(X), var(Y))).
+code_util__translate_builtin("int", "mod", 10000, [X, Y, Z],
+	yes(Z), binop((mod), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_left_shift", 10000, [X, Y, Z],
+	yes(Z), binop((<<), var(X), var(Y))).
+code_util__translate_builtin("int", "<<", 10000, [X, Y, Z],
+	yes(Z), binop((<<), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_right_shift", 10000, [X, Y, Z],
+	yes(Z), binop((>>), var(X), var(Y))).
+code_util__translate_builtin("int", ">>", 10000, [X, Y, Z],
+	yes(Z), binop((>>), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_bit_and", 10000, [X, Y, Z],
+	yes(Z), binop((&), var(X), var(Y))).
+code_util__translate_builtin("int", "/\\", 10000, [X, Y, Z],
+	yes(Z), binop((&), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_bit_or", 10000, [X, Y, Z],
+	yes(Z), binop(('|'), var(X), var(Y))).
+code_util__translate_builtin("int", "\\/", 10000, [X, Y, Z],
+	yes(Z), binop(('|'), var(X), var(Y))).
+code_util__translate_builtin("int", "builtin_bit_xor", 10000, [X, Y, Z],
+	yes(Z), binop((^), var(X), var(Y))).
+code_util__translate_builtin("int", "^", 10000, [X, Y, Z],
+	yes(Z), binop((^), var(X), var(Y))).
+% code_util__translate_builtin("int", "builtin_unary_plus", 10000, [X, Y],
+% 	yes(Y), var(X)).
+% code_util__translate_builtin("int", "+", 10000, [X, Y],
+% 	yes(Y), var(X)).
+% code_util__translate_builtin("int", "builtin_unary_minus", 10000, [X, Y],
+% 	yes(Y), binop((-), const(int_const(0)), var(X))).
+% code_util__translate_builtin("int", "-", 10000, [X, Y],
+% 	yes(Y), binop((-), const(int_const(0)), var(X))).
+code_util__translate_builtin("int", "builtin_bit_neg", 10000, [X, Y],
+	yes(Y), unop(bitwise_complement, var(X))).
+code_util__translate_builtin("int", "\\", 10000, [X, Y],
+	yes(Y), unop(bitwise_complement, var(X))).
+code_util__translate_builtin("int", ">", 0, [X, Y],
+	no, binop((>), var(X), var(Y))).
+code_util__translate_builtin("int", "<", 0, [X, Y],
+	no, binop((<), var(X), var(Y))).
+code_util__translate_builtin("int", ">=", 0, [X, Y],
+	no, binop((>=), var(X), var(Y))).
+code_util__translate_builtin("int", "=<", 0, [X, Y],
+	no, binop((<=), var(X), var(Y))).
+
+code_util__translate_builtin("float", "builtin_float_plus", 10000, [X, Y, Z],
+	yes(Z), binop(float_plus, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_plus", 10001, [X, Y, Z],
+	yes(X), binop(float_minus, var(Z), var(Y))).
+code_util__translate_builtin("float", "builtin_float_plus", 10002, [X, Y, Z],
+	yes(Y), binop(float_minus, var(Z), var(X))).
+code_util__translate_builtin("float", "+", 10000, [X, Y, Z],
+	yes(Z), binop(float_plus, var(X), var(Y))).
+code_util__translate_builtin("float", "+", 10001, [X, Y, Z],
+	yes(X), binop(float_minus, var(Z), var(Y))).
+code_util__translate_builtin("float", "+", 10002, [X, Y, Z],
+	yes(Y), binop(float_minus, var(Z), var(X))).
+code_util__translate_builtin("float", "builtin_float_minus", 10000, [X, Y, Z],
+	yes(Z), binop(float_minus, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_minus", 10001, [X, Y, Z],
+	yes(X), binop(float_plus, var(Y), var(Z))).
+code_util__translate_builtin("float", "builtin_float_minus", 10002, [X, Y, Z],
+	yes(Y), binop(float_minus, var(X), var(Z))).
+code_util__translate_builtin("float", "-", 10000, [X, Y, Z],
+	yes(Z), binop(float_minus, var(X), var(Y))).
+code_util__translate_builtin("float", "-", 10001, [X, Y, Z],
+	yes(X), binop(float_plus, var(Y), var(Z))).
+code_util__translate_builtin("float", "-", 10002, [X, Y, Z],
+	yes(Y), binop(float_minus, var(X), var(Z))).
+code_util__translate_builtin("float", "builtin_float_times", 10000, [X, Y, Z],
+	yes(Z), binop(float_times, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_times", 10001, [X, Y, Z],
+	yes(X), binop(float_divide, var(Z), var(Y))).
+code_util__translate_builtin("float", "builtin_float_times", 10002, [X, Y, Z],
+	yes(Y), binop(float_divide, var(Z), var(X))).
+code_util__translate_builtin("float", "*", 10000, [X, Y, Z],
+	yes(Z), binop(float_times, var(X), var(Y))).
+code_util__translate_builtin("float", "*", 10001, [X, Y, Z],
+	yes(X), binop(float_divide, var(Z), var(Y))).
+code_util__translate_builtin("float", "*", 10002, [X, Y, Z],
+	yes(Y), binop(float_divide, var(Z), var(X))).
+code_util__translate_builtin("float", "builtin_float_divide", 10000, [X, Y, Z],
+	yes(Z), binop(float_divide, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_divide", 10001, [X, Y, Z],
+	yes(X), binop(float_times, var(Y), var(Z))).
+code_util__translate_builtin("float", "builtin_float_divide", 10002, [X, Y, Z],
+	yes(Y), binop(float_divide, var(X), var(Z))).
+code_util__translate_builtin("float", "/", 10000, [X, Y, Z],
+	yes(Z), binop(float_divide, var(X), var(Y))).
+code_util__translate_builtin("float", "/", 10001, [X, Y, Z],
+	yes(X), binop(float_times, var(Y), var(Z))).
+code_util__translate_builtin("float", "/", 10002, [X, Y, Z],
+	yes(Y), binop(float_divide, var(X), var(Z))).
+% code_util__translate_builtin("float", "+", 10000, [X, Y],
+% 	yes(Y), var(X)).
+% code_util__translate_builtin("float", "-", 10000, [X, Y],
+% 	yes(Y), binop(float_minus, const(float_const(0.0)), var(X))).
+code_util__translate_builtin("float", "builtin_float_gt", 0, [X, Y],
+	no, binop(float_gt, var(X), var(Y))).
+code_util__translate_builtin("float", ">", 0, [X, Y],
+	no, binop(float_gt, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_lt", 0, [X, Y],
+	no, binop(float_lt, var(X), var(Y))).
+code_util__translate_builtin("float", "<", 0, [X, Y],
+	no, binop(float_lt, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_ge", 0, [X, Y],
+	no, binop(float_ge, var(X), var(Y))).
+code_util__translate_builtin("float", ">=", 0, [X, Y],
+	no, binop(float_ge, var(X), var(Y))).
+code_util__translate_builtin("float", "builtin_float_le", 0, [X, Y],
+	no, binop(float_le, var(X), var(Y))).
+code_util__translate_builtin("float", "=<", 0, [X, Y],
+	no, binop(float_le, var(X), var(Y))).
 
 %-----------------------------------------------------------------------------%
 
@@ -344,6 +473,83 @@ code_util__negate_the_test([Instr0 | Instrs0], Instrs) :-
 	;
 		code_util__negate_the_test(Instrs0, Instrs1),
 		Instrs = [Instr0 | Instrs1]
+	).
+
+%-----------------------------------------------------------------------------%
+
+code_util__cons_id_to_tag(int_const(X), _, _, int_constant(X)).
+code_util__cons_id_to_tag(float_const(X), _, _, float_constant(X)).
+code_util__cons_id_to_tag(string_const(X), _, _, string_constant(X)).
+code_util__cons_id_to_tag(address_const(P,M), _, _, address_constant(P,M)).
+code_util__cons_id_to_tag(pred_const(P,M), _, _, pred_closure_tag(P,M)).
+code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
+	(
+			% handle the `character' type specially
+		Type = term__functor(term__atom("character"), [], _),
+	 	string__char_to_string(Char, Name)
+	->
+		char__to_int(Char, CharCode),
+		Tag = int_constant(CharCode)
+	;
+			% handle higher-order pred types specially
+		type_is_higher_order(Type, _PredOrFunc, PredArgTypes)
+	->
+		list__length(PredArgTypes, PredArity),
+		module_info_get_predicate_table(ModuleInfo, PredicateTable),
+		TotalArity is Arity + PredArity,
+		(
+			predicate_table_search_name_arity(PredicateTable,
+				Name, TotalArity, PredIds)
+		->
+			( PredIds = [PredId] ->
+				predicate_table_get_preds(PredicateTable,
+					Preds),
+				map__lookup(Preds, PredId, PredInfo),
+				pred_info_procedures(PredInfo, Procs),
+				map__keys(Procs, ProcIds),
+				( ProcIds = [ProcId] ->
+					Tag = pred_closure_tag(PredId, ProcId)
+				;
+					error("sorry, not implemented: taking address of predicate with multiple modes")
+				)
+			;
+					% cons_id ought to include the module
+					% prefix, so that we could use
+					% predicate_table__search_m_n_a to 
+					% prevent this from happening
+				string__append("code_util__cons_id_to_tag: ambiguous pred ", Name, Msg),
+				error(Msg)
+			)
+		;
+			% the type-checker should ensure that this never happens
+			error("code_util__cons_id_to_tag: invalid pred")
+		)
+	;
+			% Use the type to determine the type_id
+		( type_to_type_id(Type, TypeId0, _) ->
+			TypeId = TypeId0
+		;
+			% the type-checker should ensure that this never happens
+			error("code_util__cons_id_to_tag: invalid type")
+		),
+
+			% Given the type_id, lookup up the constructor tag
+			% table for that type
+		module_info_types(ModuleInfo, TypeTable),
+		map__lookup(TypeTable, TypeId, TypeDefn),
+		(
+			TypeDefn = hlds__type_defn(_, _,
+				du_type(_, ConsTable0, _), _, _)
+		->
+			ConsTable = ConsTable0
+		;
+			% this should never happen
+			error(
+			"code_util__cons_id_to_tag: type is not d.u. type?"
+			)
+		),
+			% Finally look up the cons_id in the table
+		map__lookup(ConsTable, cons(Name, Arity), Tag)
 	).
 
 %-----------------------------------------------------------------------------%

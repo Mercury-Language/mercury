@@ -30,7 +30,7 @@
 			;	endof_disjunct
 			;	enter_switch(byte_var, byte_label_id)
 			;	endof_switch
-			;	enter_switch_arm(cons_id, byte_label_id)
+			;	enter_switch_arm(byte_cons_id, byte_label_id)
 			;	endof_switch_arm
 			;	enter_if(byte_label_id, byte_label_id)
 			;	enter_then
@@ -42,21 +42,24 @@
 			;	endof_commit
 			;	assign(byte_var, byte_var)
 			;	test(byte_var, byte_var)
-			;	construct(byte_var, cons_id,
+			;	construct(byte_var, byte_cons_id,
 					list(byte_var))
-			;	deconstruct(byte_var, cons_id,
+			;	deconstruct(byte_var, byte_cons_id,
 					list(byte_var))
 			;	place_arg(reg, byte_var)
 			;	call(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
 			;	pickup_arg(reg, byte_var)
-			;	builtin_binop(binary_op, byte_var, byte_var,
+			;	builtin_binop(binary_op, byte_arg, byte_arg,
 					byte_var)
-			;	builtin_unop(unary_op, byte_var, byte_var)
-			;	pragma_c_code
+			;	builtin_unop(unary_op, byte_arg, byte_var)
+			;	builtin_bintest(binary_op, byte_arg, byte_arg)
+			;	builtin_untest(unary_op, byte_arg)
+			;	context(int)
+			;	not_supported
 			.
 
-:- type byte_cons_id	--->	cons(string, arity, byte_tag)
+:- type byte_cons_id	--->	cons(string, arity, byte_cons_tag)
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
@@ -66,12 +69,22 @@
 					arity, byte_proc_id)
 			.
 
+:- type byte_cons_tag	--->	no_tag
+			;	simple_tag(tag_bits)
+			;	complicated_tag(tag_bits, int)
+			;	complicated_constant_tag(tag_bits, int)
+			.
+
+:- type byte_arg	--->	var(byte_var)
+			;	int_const(int)
+			;	float_const(float)
+			.
+
 :- type byte_module_id	==	string.
 :- type byte_pred_id	==	string.
 :- type byte_proc_id	==	int.
 :- type byte_label_id	==	int.
 :- type byte_var	==	int.
-:- type byte_tag	==	string.
 
 :- pred output_bytecode_file(string::in, list(byte_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -85,16 +98,19 @@
 
 :- import_module library, int, require.
 
+:- pred bytecode__version(int::out) is det.
+
+bytecode__version(1).
+
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
 	(
 		{ Result = ok }
 	->
-		{ library__version(Version) },
-		io__write_string(Version),
-		io__write_string("\n"),
+		{ bytecode__version(Version) },
+		output_two_byte(Version),
 		output_bytecode_list(ByteCodes),
-		io__told
+		io__told_binary
 	;
 		io__progname_base("byte.m", ProgName),
 		io__write_string("\n"),
@@ -110,8 +126,8 @@ debug_bytecode_file(FileName, ByteCodes) -->
 	(
 		{ Result = ok }
 	->
-		{ library__version(Version) },
-		io__write_string(Version),
+		{ bytecode__version(Version) },
+		io__write_int(Version),
 		io__write_string("\n"),
 		debug_bytecode_list(ByteCodes),
 		io__told
@@ -125,7 +141,8 @@ debug_bytecode_file(FileName, ByteCodes) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_bytecode_list(list(byte_code), io__state, io__state).
+:- pred output_bytecode_list(list(byte_code),
+	io__state, io__state).
 :- mode output_bytecode_list(in, di, uo) is det.
 
 output_bytecode_list([]) --> [].
@@ -133,10 +150,10 @@ output_bytecode_list([ByteCode | ByteCodes]) -->
 	{ byte_code(ByteCode, Byte) },
 	io__write_byte(Byte),
 	output_args(ByteCode),
-	io__write_char('\n'),
 	output_bytecode_list(ByteCodes).
 
-:- pred debug_bytecode_list(list(byte_code), io__state, io__state).
+:- pred debug_bytecode_list(list(byte_code),
+	io__state, io__state).
 :- mode debug_bytecode_list(in, di, uo) is det.
 
 debug_bytecode_list([]) --> [].
@@ -217,14 +234,23 @@ output_args(pickup_arg(Reg, Var)) -->
 	output_var(Var).
 output_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	output_binop(Binop),
-	output_var(Var1),
-	output_var(Var2),
+	output_arg(Var1),
+	output_arg(Var2),
 	output_var(Var3).
 output_args(builtin_unop(Unop, Var1, Var2)) -->
 	output_unop(Unop),
-	output_var(Var1),
+	output_arg(Var1),
 	output_var(Var2).
-output_args(pragma_c_code) --> [].
+output_args(builtin_bintest(Binop, Var1, Var2)) -->
+	output_binop(Binop),
+	output_arg(Var1),
+	output_arg(Var2).
+output_args(builtin_untest(Unop, Var1)) -->
+	output_unop(Unop),
+	output_arg(Var1).
+output_args(context(Line)) -->
+	output_two_byte(Line).
+output_args(not_supported) --> [].
 
 :- pred debug_args(byte_code, io__state, io__state).
 :- mode debug_args(in, di, uo) is det.
@@ -296,25 +322,36 @@ debug_args(pickup_arg(Reg, Var)) -->
 	debug_var(Var).
 debug_args(builtin_binop(Binop, Var1, Var2, Var3)) -->
 	debug_binop(Binop),
-	debug_var(Var1),
-	debug_var(Var2),
+	debug_arg(Var1),
+	debug_arg(Var2),
 	debug_var(Var3).
 debug_args(builtin_unop(Unop, Var1, Var2)) -->
 	debug_unop(Unop),
-	debug_var(Var1),
+	debug_arg(Var1),
 	debug_var(Var2).
-debug_args(pragma_c_code) --> [].
+debug_args(builtin_bintest(Binop, Var1, Var2)) -->
+	debug_binop(Binop),
+	debug_arg(Var1),
+	debug_arg(Var2).
+debug_args(builtin_untest(Unop, Var1)) -->
+	debug_unop(Unop),
+	debug_arg(Var1).
+debug_args(context(Line)) -->
+	debug_int(Line).
+debug_args(not_supported) --> [].
 
 %---------------------------------------------------------------------------%
 
-:- pred output_determinism(determinism, io__state, io__state).
+:- pred output_determinism(determinism,
+	io__state, io__state).
 :- mode output_determinism(in, di, uo) is det.
 
 output_determinism(Detism) -->
 	{ determinism_code(Detism, Code) },
 	output_byte(Code).
 
-:- pred debug_determinism(determinism, io__state, io__state).
+:- pred debug_determinism(determinism,
+	io__state, io__state).
 :- mode debug_determinism(in, di, uo) is det.
 
 debug_determinism(Detism) -->
@@ -355,13 +392,42 @@ debug_length(Length) -->
 
 %---------------------------------------------------------------------------%
 
+:- pred output_arg(byte_arg, io__state, io__state).
+:- mode output_arg(in, di, uo) is det.
+
+output_arg(var(Var)) -->
+	output_byte(0),
+	output_var(Var).
+output_arg(int_const(IntVal)) -->
+	output_byte(1),
+	output_int(IntVal).
+output_arg(float_const(FloatVal)) -->
+	output_byte(2),
+	output_float(FloatVal).
+
+:- pred debug_arg(byte_arg, io__state, io__state).
+:- mode debug_arg(in, di, uo) is det.
+
+debug_arg(var(Var)) -->
+	debug_string("var"),
+	debug_var(Var).
+debug_arg(int_const(IntVal)) -->
+	debug_string("int"),
+	debug_int(IntVal).
+debug_arg(float_const(FloatVal)) -->
+	debug_string("float"),
+	debug_float(FloatVal).
+
+%---------------------------------------------------------------------------%
+
 :- pred output_var(byte_var, io__state, io__state).
 :- mode output_var(in, di, uo) is det.
 
 output_var(Var) -->
 	output_two_byte(Var).
 
-:- pred output_vars(list(byte_var), io__state, io__state).
+:- pred output_vars(list(byte_var),
+	io__state, io__state).
 :- mode output_vars(in, di, uo) is det.
 
 output_vars([]) --> [].
@@ -375,7 +441,8 @@ output_vars([Var | Vars]) -->
 debug_var(Var) -->
 	debug_int(Var).
 
-:- pred debug_vars(list(byte_var), io__state, io__state).
+:- pred debug_vars(list(byte_var),
+	io__state, io__state).
 :- mode debug_vars(in, di, uo) is det.
 
 debug_vars([]) --> [].
@@ -385,13 +452,15 @@ debug_vars([Var | Vars]) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_id(byte_module_id, io__state, io__state).
+:- pred output_module_id(byte_module_id,
+	io__state, io__state).
 :- mode output_module_id(in, di, uo) is det.
 
 output_module_id(ModuleId) -->
 	output_string(ModuleId).
 
-:- pred debug_module_id(byte_module_id, io__state, io__state).
+:- pred debug_module_id(byte_module_id,
+	io__state, io__state).
 :- mode debug_module_id(in, di, uo) is det.
 
 debug_module_id(ModuleId) -->
@@ -399,13 +468,15 @@ debug_module_id(ModuleId) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pred_id(byte_pred_id, io__state, io__state).
+:- pred output_pred_id(byte_pred_id,
+	io__state, io__state).
 :- mode output_pred_id(in, di, uo) is det.
 
 output_pred_id(PredId) -->
 	output_string(PredId).
 
-:- pred debug_pred_id(byte_pred_id, io__state, io__state).
+:- pred debug_pred_id(byte_pred_id,
+	io__state, io__state).
 :- mode debug_pred_id(in, di, uo) is det.
 
 debug_pred_id(PredId) -->
@@ -413,17 +484,21 @@ debug_pred_id(PredId) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_proc_id(byte_proc_id, io__state, io__state).
+:- pred output_proc_id(byte_proc_id,
+	io__state, io__state).
 :- mode output_proc_id(in, di, uo) is det.
 
 output_proc_id(ProcId) -->
-	output_two_byte(ProcId).
+	{ ModeId is ProcId mod 10000 },
+	output_byte(ModeId).
 
-:- pred debug_proc_id(byte_proc_id, io__state, io__state).
+:- pred debug_proc_id(byte_proc_id,
+	io__state, io__state).
 :- mode debug_proc_id(in, di, uo) is det.
 
 debug_proc_id(ProcId) -->
-	debug_int(ProcId).
+	{ ModeId is ProcId mod 10000 },
+	debug_int(ModeId).
 
 %---------------------------------------------------------------------------%
 
@@ -441,31 +516,105 @@ debug_label_id(LabelId) -->
 
 %---------------------------------------------------------------------------%
 
-% XXX incomplete
-
-:- pred output_cons_id(cons_id, io__state, io__state).
+:- pred output_cons_id(byte_cons_id,	
+	io__state, io__state).
 :- mode output_cons_id(in, di, uo) is det.
 
-output_cons_id(_) --> [].
+output_cons_id(cons(Functor, Arity, Tag)) -->
+	output_byte(0),
+	output_string(Functor),
+	output_two_byte(Arity),
+	output_tag(Tag).
+output_cons_id(int_const(IntVal)) -->
+	output_byte(1),
+	output_int(IntVal).
+output_cons_id(string_const(StringVal)) -->
+	output_byte(2),
+	output_string(StringVal).
+output_cons_id(float_const(FloatVal)) -->
+	output_byte(3),
+	output_float(FloatVal).
+output_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
+	output_byte(4),
+	output_module_id(ModuleId),
+	output_pred_id(PredId),
+	output_length(Arity),
+	output_proc_id(ProcId).
+output_cons_id(address_const(ModuleId, PredId, Arity, ProcId)) -->
+	output_byte(5),
+	output_module_id(ModuleId),
+	output_pred_id(PredId),
+	output_length(Arity),
+	output_proc_id(ProcId).
 
-:- pred debug_cons_id(cons_id, io__state, io__state).
+:- pred debug_cons_id(byte_cons_id,
+	io__state, io__state).
 :- mode debug_cons_id(in, di, uo) is det.
 
-debug_cons_id(_) --> [].
+debug_cons_id(cons(Functor, Arity, Tag)) -->
+	debug_string("functor"),
+	debug_string(Functor),
+	debug_int(Arity),
+	debug_tag(Tag).
+debug_cons_id(int_const(IntVal)) -->
+	debug_string("int_const"),
+	debug_int(IntVal).
+debug_cons_id(string_const(StringVal)) -->
+	debug_string("string_const"),
+	debug_string(StringVal).
+debug_cons_id(float_const(FloatVal)) -->
+	debug_string("float_const"),
+	debug_float(FloatVal).
+debug_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
+	debug_string("pred_const"),
+	debug_module_id(ModuleId),
+	debug_pred_id(PredId),
+	debug_length(Arity),
+	debug_proc_id(ProcId).
+debug_cons_id(address_const(ModuleId, PredId, Arity, ProcId)) -->
+	debug_string("address_const"),
+	debug_module_id(ModuleId),
+	debug_pred_id(PredId),
+	debug_length(Arity),
+	debug_proc_id(ProcId).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_tag(int, io__state, io__state).
+:- pred output_tag(byte_cons_tag,
+	io__state, io__state).
 :- mode output_tag(in, di, uo) is det.
 
-output_tag(Tag) -->
-	output_two_byte(Tag).
+output_tag(simple_tag(Primary)) -->
+	output_byte(0),
+	output_byte(Primary).
+output_tag(complicated_tag(Primary, Secondary)) -->
+	output_byte(1),
+	output_byte(Primary),
+	output_int(Secondary).
+output_tag(complicated_constant_tag(Primary, Secondary)) -->
+	output_byte(2),
+	output_byte(Primary),
+	output_int(Secondary).
+output_tag(no_tag) -->
+	output_byte(3).
 
-:- pred debug_tag(int, io__state, io__state).
+:- pred debug_tag(byte_cons_tag,
+	io__state, io__state).
 :- mode debug_tag(in, di, uo) is det.
 
-debug_tag(Tag) -->
-	debug_int(Tag).
+debug_tag(simple_tag(Primary)) -->
+	debug_string("simple_tag"),
+	debug_int(Primary).
+debug_tag(complicated_tag(Primary, Secondary)) -->
+	debug_string("complicated_tag"),
+	debug_int(Primary),
+	debug_int(Secondary).
+debug_tag(complicated_constant_tag(Primary, Secondary)) -->
+	debug_string("complicated_constant_tag"),
+	debug_int(Primary),
+	debug_int(Secondary).
+debug_tag(no_tag) -->
+	debug_string("no_tag").
 
 %---------------------------------------------------------------------------%
 
@@ -481,8 +630,7 @@ output_binop(Binop) -->
 
 debug_binop(Binop) -->
 	{ binop_debug(Binop, Debug) },
-	io__write_string(Debug),
-	io__write_char(' ').
+	debug_string(Debug).
 
 %---------------------------------------------------------------------------%
 
@@ -498,8 +646,7 @@ output_unop(Unop) -->
 
 debug_unop(Unop) -->
 	{ unop_debug(Unop, Debug) },
-	io__write_string(Debug),
-	io__write_char(' ').
+	debug_string(Debug).
 
 %---------------------------------------------------------------------------%
 
@@ -536,7 +683,10 @@ byte_code(call(_, _, _, _),			26).
 byte_code(pickup_arg(_, _),			27).
 byte_code(builtin_binop(_, _, _, _),		28).
 byte_code(builtin_unop(_, _, _),		29).
-byte_code(pragma_c_code,			30).
+byte_code(builtin_bintest(_, _, _),		30).
+byte_code(builtin_untest(_, _),			31).
+byte_code(context(_),				32).
+byte_code(not_supported,			33).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -571,7 +721,10 @@ byte_debug(call(_, _, _, _),			"call").
 byte_debug(pickup_arg(_, _),			"pickup_arg").
 byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
-byte_debug(pragma_c_code,			"pragma_c_code").
+byte_debug(builtin_bintest(_, _, _),		"builtin_bintest").
+byte_debug(builtin_untest(_, _),		"builtin_untest").
+byte_debug(context(_),				"context").
+byte_debug(not_supported,			"not_supported").
 
 :- pred determinism_code(determinism, int).
 :- mode determinism_code(in, out) is det.
@@ -709,7 +862,7 @@ unop_debug((not),		"not").
 :- mode output_string(in, di, uo) is det.
 
 output_string(Val) -->
-	io__write_string(Val),
+	io__write_bytes(Val),
 	io__write_byte(0).
 
 :- pred output_byte(int, io__state, io__state).
@@ -726,14 +879,37 @@ output_byte(Val) -->
 :- mode output_two_byte(in, di, uo) is det.
 
 output_two_byte(Val) -->
-	( { Val < 256*256 } ->
-		{ Val1 is Val >> 8 },
-		{ Val2 is Val mod 256 },
+	{ Val1 is Val >> 8 },
+	{ Val2 is Val mod 256 },
+	( { Val1 < 256 } ->
 		io__write_byte(Val1),
 		io__write_byte(Val2)
 	;
-		{ error("byte does not fit in eight bits") }
+		{ error("small integer does not fit in sixteen bits") }
 	).
+
+:- pred output_int(int, io__state, io__state).
+:- mode output_int(in, di, uo) is det.
+
+output_int(Val) -->
+	{ Val1 is Val >> 24 },
+	{ Val2 is Val >> 16 mod 256 },
+	{ Val3 is Val >> 8 mod 256 },
+	{ Val4 is Val mod 256 },
+	( { Val1 < 256 } ->
+		io__write_byte(Val1),
+		io__write_byte(Val2),
+		io__write_byte(Val3),
+		io__write_byte(Val4)
+	;
+		{ error("integer does not fit in thirtytwo bits") }
+	).
+
+:- pred output_float(float, io__state, io__state).
+:- mode output_float(in, di, uo) is det.
+
+output_float(_Val) -->
+	{ error("output of floats not supported yet") }.
 
 %---------------------------------------------------------------------------%
 
@@ -749,6 +925,13 @@ debug_string(Val) -->
 
 debug_int(Val) -->
 	io__write_int(Val),
+	io__write_char(' ').
+
+:- pred debug_float(float, io__state, io__state).
+:- mode debug_float(in, di, uo) is det.
+
+debug_float(Val) -->
+	io__write_float(Val),
 	io__write_char(' ').
 
 %---------------------------------------------------------------------------%
