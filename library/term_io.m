@@ -288,7 +288,7 @@ term_io__quote_char(C) -->
 term_io__quote_atom(S) -->
 	(
 		{ string__first_char(S, FirstChar, Rest) },
-		{ char__is_alpha(FirstChar) },
+		{ char__is_lower(FirstChar) },
 		{ string__is_alnum_or_underscore(Rest) }
 	->
 		io__write_string(S)
