@@ -23,6 +23,12 @@ graphics	A couple of packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to tcl/tk
 		and a Mercury binding to OpenGL.
 
+lazy_evaluation
+		A library module `lazy' containing support for optional
+		lazy evaluation in Mercury, together with some examples
+		of its use, including a module `lazy_list' that defines
+		a lazy list data type.
+
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
 
