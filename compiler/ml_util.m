@@ -624,6 +624,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	mercury_private_builtin_module(PrivateBuiltin),
 	RttiImplementation = unqualified("rtti_implementation"),
 	StdUtil = unqualified("std_util"),
+	TypeDesc = unqualified("type_desc"),
 	( TypeName = qualified(PrivateBuiltin, "base_typeclass_info")
 	; TypeName = qualified(PrivateBuiltin, "type_ctor_info")
 	; TypeName = qualified(PrivateBuiltin, "typeclass_info")
@@ -640,11 +641,19 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	; TypeName = qualified(RttiImplementation, "type_info")
 	; TypeName = qualified(RttiImplementation, "type_layout")
 
+	; TypeName = qualified(TypeDesc, "type_desc")
+	; TypeName = qualified(TypeDesc, "type_ctor_desc")
+
+		% Types which don't have a Mercury representation.
+	; TypeName = qualified(PrivateBuiltin, "heap_pointer")
+	; TypeName = qualified(Builtin, "c_pointer")
+
 		% XXX These two types are referenced in IL and C# code,
 		% so it is easier to just keep their low level representation
 		% for the moment.
 	; TypeName = qualified(Builtin, "comparison_result")
 	; TypeName = qualified(StdUtil, "univ")
+	; TypeName = qualified(StdUtil, "mutvar")
 	).
 	
 
