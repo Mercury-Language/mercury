@@ -36,3 +36,7 @@ name_mangling
 division_test
 cycles
 deep_copy_bug
+agg
+boyer
+test_imported_no_tag
+construct
