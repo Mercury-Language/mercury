@@ -188,28 +188,32 @@ tar: README INSTALL
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
 	-rm -f Mmake.common
-	# Package up the mercury directory and the tests directory, 
-	# but with some subdirectories excluded, into a gzipped tar
-	# archive that will unpack into mercury-$(VERSION).
+	# Package up the mercury directory with some subdirectories
+	# excluded, into a gzipped tar archive that will unpack into
+	# mercury-compiler-$(VERSION).
 	# Put the extras directory into a gzipped tar archive that
-	# will unpack into mercury-$(VERSION)-extras.
+	# will unpack into mercury-extras-$(VERSION).
+	# Put the tests directory into a gzipped tar archive that
+	# will unpack into mercury-tests-$(VERSION).
 	cd .. && (							\
-		mv mercury mercury-$(VERSION);				\
-		mv tests mercury-$(VERSION)/tests;			\
 		mkdir stuff-to-exclude;					\
-		mv mercury-$(VERSION)/trial	stuff-to-exclude;	\
-		mv mercury-$(VERSION)/bytecode	stuff-to-exclude;	\
-		mv mercury-$(VERSION)/lp_solve	stuff-to-exclude;	\
-		mv mercury-$(VERSION)/extras mercury-$(VERSION)-extras; \
-		tar -cf - mercury-$(VERSION) |				\
-			gzip -9 > mercury-$(VERSION).tar.gz;		\
-		mv stuff-to-exclude/* mercury-$(VERSION);		\
+		mv mercury/trial	stuff-to-exclude;		\
+		mv mercury/bytecode	stuff-to-exclude;		\
+		mv mercury/lp_solve	stuff-to-exclude;		\
+		mv mercury/extras	mercury-extras-$(VERSION);	\
+		mv mercury		mercury-compiler-$(VERSION);	\
+		mv tests		mercury-tests-$(VERSION);	\
+		tar -cf - mercury-compiler-$(VERSION) |			\
+			gzip -9 > mercury-compiler-$(VERSION).tar.gz;	\
+		tar -cf - mercury-extras-$(VERSION) |			\
+			gzip -9 > mercury-extras-$(VERSION).tar.gz;	\
+		tar -cf - mercury-tests-$(VERSION) |			\
+			gzip -9 > mercury-tests-$(VERSION).tar.gz;	\
+		mv mercury-compiler-$(VERSION)	mercury;		\
+		mv mercury-extras-$(VERSION)	mercury/extras;		\
+		mv mercury-tests-$(VERSION)	tests;			\
+		mv stuff-to-exclude/*		mercury;		\
 		rmdir stuff-to-exclude;					\
-		mv mercury-$(VERSION)-extras mercury-$(VERSION)/extras; \
-		tar -cf - mercury-$(VERSION)/extras |			\
-			gzip -9 > mercury-$(VERSION)-extras.tar.gz;	\
-		mv mercury-$(VERSION)/tests tests;			\
-		mv mercury-$(VERSION) mercury				\
 	)
 
 .PHONY: version
