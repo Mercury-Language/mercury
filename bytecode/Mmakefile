@@ -40,11 +40,12 @@ LIBS		= -lmer ` \
                         *.gc) echo "-lgc" ;; \
                   esac \
                   `
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
 
-all: mdis mbi libmbi
+all: mdb mdis mbi libmbi
 
 MDIS_OBJS = bytecode.o disasm.o mdis.o mem.o util.o
 mdis: $(MDIS_OBJS)
@@ -66,6 +67,10 @@ libmbi.a: $(LIBMBI_OBJS)
 libmbi.so: $(LIBMBI_OBJS)
 	$(LINK_SHARED_OBJ) -o libmbi.so $(LIBMBI_PIC_OBJS) \
 		$(LIBPATH) $(LIBS) $(SHARED_LIBS)
+
+mdb: libmbi.so mdb.m
+	$(MC) -o mdb mdb.m -L. -lmbi
+
 
 #-----------------------------------------------------------------------------#
 
@@ -103,7 +108,8 @@ clean:
 	rm -f *.o *.pic_o
 
 realclean: clean
-	-$(RM) mbi mdis depend.mk* libmbi.a libmbi.so
+	-$(RM) mbi mdis depend.mk* libmbi.a libmbi.so \
+		mdb mdb.c mdb.d mdb_init.c
 
 #-----------------------------------------------------------------------------#
 
