@@ -1,10 +1,12 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000 The University of Melbourne.
+# Copyright (C) 2000, 2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 -include ../Mmake.params
+
+INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 # This library has some parts that are implemented in C
 # rather than in Mercury.  The following lines ensure that
