@@ -1154,6 +1154,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 
+:- pred pred_info_set_status(pred_info::in, import_status::in,
+				pred_info::out) is det.
+
 :- pred pred_info_typevarset(pred_info, tvarset).
 :- mode pred_info_typevarset(in, out) is det.
 
@@ -1263,6 +1266,10 @@ pred_info_is_exported(PredInfo) :-
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K).
+	
+pred_info_set_status(PredInfo0, Status, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K).
 	
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet).

@@ -299,44 +299,26 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 		{ TypeId = Name - Arity },
 		{ map__set(Types0, TypeId, T, Types) },
 		(
-			{ Body = du_type(ConsList, _, IsEnum) }
+			{ Body = du_type(ConsList, _, _) }
 		->
 			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
-			{ module_info_set_ctors(Module0, Ctors, Module1) },
-			( { IsEnum = no } ->
-				{ unqualify_name(Name, UnqualifiedName) },
-				{ TypeFunctor = term__atom(UnqualifiedName) },
-				{ Type = term__functor(TypeFunctor, Args,
-					Context) },
-				{ add_unify_pred(Module1, TVarSet, Type, TypeId,
-					unify_du_type(ConsList), Context,
-					Status, Module2) }
-			;
-				{ Module2 = Module1 }
-			)
+			{ module_info_set_ctors(Module0, Ctors, Module1) }
 		;
-			{ Body = eqv_type(EqvType) }
-		->
-			{ unqualify_name(Name, UnqualifiedName) },
-			{ TypeFunctor = term__atom(UnqualifiedName) },
-			{ Type = term__functor(TypeFunctor, Args,
-				Context) },
-			{ add_unify_pred(Module0, TVarSet, Type, TypeId,
-				unify_eqv_type(EqvType), Context,
-				Status, Module2) }
-		;
+			{ Module1 = Module0 }
+		),
+		{ unqualify_name(Name, UnqualifiedName) },
+		{ TypeFunctor = term__atom(UnqualifiedName) },
+		{ Type = term__functor(TypeFunctor, Args, Context) },
+		(
 			{ Body = abstract_type }
 		->
-			{ unqualify_name(Name, UnqualifiedName) },
-			{ TypeFunctor = term__atom(UnqualifiedName) },
-			{ Type = term__functor(TypeFunctor, Args,
-				Context) },
-			{ add_unify_pred_decl(Module0, TVarSet, Type, TypeId,
+			{ add_unify_pred_decl(Module1, TVarSet, Type, TypeId,
 					Context, Status, Module2) }
-			
 		;
-			{ Module2 = Module0 }
+			{ add_unify_pred(Module1, TVarSet, Type, TypeId,
+				Body, Context,
+				Status, Module2) }
 		),
 		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
@@ -452,12 +434,12 @@ preds_add(Module0, TVarSet, PredName, Types, Cond, Context, Status, Module) -->
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 
-:- pred add_unify_pred(module_info, tvarset, type, type_id, unify_type,
+:- pred add_unify_pred(module_info, tvarset, type, type_id, hlds__type_body,
 			term__context, import_status,
 			module_info).
 :- mode add_unify_pred(in, in, in, in, in, in, in, out) is det.
 
-add_unify_pred(Module0, TVarSet, Type, TypeId, UnifyType, Context, Status,
+add_unify_pred(Module0, TVarSet, Type, TypeId, TypeBody, Context, Status,
 		Module) :-
 	module_info_get_unify_pred_map(Module0, UnifyPredMap0),
 	( map__contains(UnifyPredMap0, TypeId) ->
@@ -470,8 +452,9 @@ add_unify_pred(Module0, TVarSet, Type, TypeId, UnifyType, Context, Status,
 	map__lookup(UnifyPredMap1, TypeId, PredId),
 	module_info_preds(Module1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	unify_proc__generate_clause_info(Type, UnifyType, ClausesInfo),
-	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo),
+	pred_info_set_status(PredInfo0, Status, PredInfo1),
+	unify_proc__generate_clause_info(Type, TypeBody, ClausesInfo),
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 	map__set(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 

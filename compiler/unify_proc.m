@@ -65,11 +65,7 @@
 				unify_proc_num).
 :- mode unify_proc__lookup_num(in, in, in, out) is det.
 
-:- type unify_type
-	--->    unify_du_type(list(constructor))
-	;       unify_eqv_type(type).
-
-:- pred unify_proc__generate_clause_info(type, unify_type, clauses_info).
+:- pred unify_proc__generate_clause_info(type, hlds__type_body, clauses_info).
 :- mode unify_proc__generate_clause_info(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -268,27 +264,16 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 
 :- unify_proc__generate_clause_info(_, X, _) when X. % NU-Prolog indexing.
 
-unify_proc__generate_clause_info(Type, unify_eqv_type(EqvType), ClauseInfo) :-
+unify_proc__generate_clause_info(Type, TypeBody, ClauseInfo) :-
 	var_type_info__init(VarTypeInfo0),
-	unify_proc__generate_head_vars(EqvType, H1, H2,
-					VarTypeInfo0, VarTypeInfo),
-	create_atomic_unification(term__variable(H1), term__variable(H2),
-					explicit, [], Goal),
-	implicitly_quantify_clause_body([H1, H2], Goal, Body),
-	( Type = term__functor(_, _, TypeContext) ->
-		Context = TypeContext
+	( TypeBody = eqv_type(EqvType) ->
+		HeadVarType = EqvType
 	;
-		term__context_init(Context)
+		HeadVarType = Type
 	),
-	Clause = clause([], Body, Context),
-	var_type_info__extract(VarTypeInfo, VarSet, Types),
-	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], [Clause]).
-
-unify_proc__generate_clause_info(Type, unify_du_type(Ctors), ClauseInfo) :-
-	var_type_info__init(VarTypeInfo0),
-	unify_proc__generate_head_vars(Type, H1, H2,
+	unify_proc__generate_head_vars(HeadVarType, H1, H2,
 					VarTypeInfo0, VarTypeInfo1),
-	unify_proc__generate_clauses(Ctors, H1, H2, Clauses,
+	unify_proc__generate_clauses(TypeBody, H1, H2, Clauses,
 					VarTypeInfo1, VarTypeInfo),
 	var_type_info__extract(VarTypeInfo, VarSet, Types),
 	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], Clauses).
@@ -301,12 +286,27 @@ unify_proc__generate_head_vars(Type, H1, H2) -->
 	var_type_info__new_var(Type, H1),
 	var_type_info__new_var(Type, H2).
 
-:- pred unify_proc__generate_clauses(list(constructor), var, var, list(clause),
+:- pred unify_proc__generate_clauses(hlds__type_body, var, var, list(clause),
 					var_type_info, var_type_info).
 :- mode unify_proc__generate_clauses(in, in, in, out, in, out) is det.
 
-unify_proc__generate_clauses([], _H1, _H2, []) --> [].
-unify_proc__generate_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
+unify_proc__generate_clauses(TypeBody, H1, H2, Clauses) -->
+	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
+		unify_proc__generate_du_clauses(Ctors, H1, H2, Clauses)
+	;
+		{ create_atomic_unification(term__variable(H1),
+			term__variable(H2), explicit, [], Goal) },
+		{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
+		{ term__context_init(Context) },
+		{ Clauses = [clause([], Body, Context)] }
+	).
+
+:- pred unify_proc__generate_du_clauses(list(constructor), var, var,
+				list(clause), var_type_info, var_type_info).
+:- mode unify_proc__generate_du_clauses(in, in, in, out, in, out) is det.
+
+unify_proc__generate_du_clauses([], _H1, _H2, []) --> [].
+unify_proc__generate_du_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
 	{ Functor = term__atom(UnqualifiedFunctorName) },
@@ -329,7 +329,7 @@ unify_proc__generate_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
 	{ Clause = clause([], Body, Context) },
-	unify_proc__generate_clauses(Ctors, H1, H2, Clauses).
+	unify_proc__generate_du_clauses(Ctors, H1, H2, Clauses).
 
 :- pred unify_proc__make_fresh_vars(list(type), list(var),
 					var_type_info, var_type_info).
