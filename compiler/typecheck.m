@@ -1520,18 +1520,26 @@ find_undef_type_du_body([Constructor | Constructors], ErrorContext,
 
 find_undef_type(term_variable(_), _ErrorContext, _TypeDefns) --> [].
 find_undef_type(term_functor(F, As, _), ErrorContext, TypeDefns) -->
-		% could efficiency be improved here?
-	{ length(As, Arity) },
-	{ make_type_id(F, Arity, TypeId) },
+	% Efficiency is very important here - this is the inner loop
+	% of checking for undefined types.
+	% The tests are ordered so as to maximize effiency.
+	% Could efficiency be improved further?
 	(
-		{ \+ map__contains(TypeDefns, TypeId), 
-		  \+ is_builtin_atomic_type(TypeId),
-		  \+ is_builtin_pred_type(TypeId)
-		}
+		{ is_builtin_atomic_type(TypeId) }
 	->
-		report_undef_type(TypeId, ErrorContext)
-	;
 		[]
+	;
+		{ length(As, Arity) },
+		{ make_type_id(F, Arity, TypeId) },
+		{ map__contains(TypeDefns, TypeId) }
+	->
+		[]
+	;
+		is_builtin_pred_type(TypeId)
+	->
+		[]
+	;
+		report_undef_type(TypeId, ErrorContext)
 	),
 	find_undef_type_list(As, ErrorContext, TypeDefns).
 
