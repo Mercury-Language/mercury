@@ -7,8 +7,13 @@ NEWS for Mercury release 0.6
   predicates that are local to a module; the compiler will infer
   the types and modes automatically.
 
-  This support is not yet complete -- there are a number of known problems --
-  but it is nevertheless a useful tool.
+  This support is not yet complete, and so type and mode inference are
+  not enabled by default.  They can be enabled using the `--infer-types'
+  and `--infer-modes' options.  The limitations of the current
+  implementation are: (1) type inference loops for certain very rare
+  type-incorrect programs; (2) mode inference doesn't support
+  reordering; (3) there are some modes which the current mode inference
+  algorithm is not capable of inferring.
 
   Note that omitting type and mode declarations can significantly
   reduce the quality of the compiler's error messages; if you have
@@ -165,16 +170,9 @@ NEWS for Mercury release 0.6
 
 * We now support a C-to-Mercury interface, ie. we allow C code to call
   Mercury predicates, using a new `pragma export' declaration.
-  (XXX This is not yet documented.  There is however a fairly detailed
-  and reasonably well-documented example in the
+  (Unfortunately, this is not yet documented.  There is however a
+  fairly detailed and reasonably well-documented example in the
   samples/c_interface/c_calls_mercury directory.)
-
-* Some work has been done on integrating constraints into the language.
-  It is fairly untested, but works on a simple interface with CLP(R).
-  In a compilation grade ending in `.cnstr', eg. `asm_fast.gc.cnstr',
-  macros are emitted into the generated code to allow a solver to
-  backtrack.  These are defined in runtime/mercury_solver_backtrack.h.
-  This should be more complete in a future release.
 
 * We have added a little bit of inline assembler code for the Alpha so
   that we can support the use of gcc non-local gotos and asm labels.
