@@ -130,7 +130,7 @@ if test "$HAVE_SYS_PARAM_H" = 1; then
 fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/time.h, HAVE_SYS_TIME_H=1)
-if test "$HAVE_SYS_SYS_TIME_H" = 1; then
+if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
@@ -344,12 +344,16 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 			fprintf(fp, "2\n");
 			exit(0);
 		}
-
 		if (sizeof(void *) == 8)
 		{
 			fprintf(fp, "3\n");
+			exit(0);
 		}
-
+		if (sizeof(void *) == 16)
+		{
+			fprintf(fp, "4\n");
+			exit(0);
+		}
 		fprintf(fp, "0\n");
 		exit(1);
 	}],
@@ -359,8 +363,12 @@ AC_CACHE_VAL(mercury_cv_low_tag_bits,
 )
 AC_MSG_RESULT($mercury_cv_low_tag_bits)
 # XXX tag bits != 2 causes bootstrapping problems
-if test "$mercury_cv_low_tag_bits" != 2; then
-	AC_MSG_ERROR("cannot bootstrap: low tag bits not equal to 2")
+if test "$mercury_cv_low_tag_bits" -lt 2; then
+	AC_MSG_ERROR("cannot bootstrap: low tag bits less than 2")
+fi
+if test "$mercury_cv_low_tag_bits" -gt 2; then
+	AC_MSG_WARN("bootstrapping using only 2 low tag bits")
+	mercury_cv_low_tag_bits=2
 fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
 LOW_TAG_BITS=$mercury_cv_low_tag_bits
@@ -422,7 +430,6 @@ if test $mercury_cv_gcc_labels = yes; then
 	AC_MSG_CHECKING(whether we can use asm labels)
 	AC_CACHE_VAL(mercury_cv_asm_labels,
 	AC_TRY_RUN([
-	#include "imp.h"
 	void *volatile volatile_global_pointer;
 	extern void mercury__label1 (void) __asm__("entry_" "mercury__label1" );
 	main() {
@@ -491,6 +498,9 @@ typedef	unsigned int Word;
 #define USE_GCC_GLOBAL_REGISTERS
 #include "regs.h"
 #include "memory.h"
+changequote(<<,>>) 
+Word fake_reg[MAX_FAKE_REG];
+changequote([,]) 
 main() {
 	mr0 = 20;
 	mr7 = 22;
