@@ -36,8 +36,8 @@
 :- pred array__bounds(array(_T), int, int).
 :- mode array__bounds(in, out, out) is det.
 
-	% array__lookup returns the Nth element of an array 
-	% or aborts if the index is out of bounds.
+	% array__lookup returns the Nth element of an array.
+	% It is an error if the index is out of bounds.
 :- pred array__lookup(array(T), int, T).
 :- mode array__lookup(in, in, out) is det.
 
@@ -46,9 +46,9 @@
 :- pred array__semidet_lookup(array(T), int, T).
 :- mode array__semidet_lookup(in, in, out) is semidet.
 
-	% array__set sets the nth element of an array, and returns the resulting
-	% array (good oppertunity for destructive update ;-). It aborts if the
-	% index is out of bounds.
+	% array__set sets the nth element of an array, and returns the
+	% resulting array (good opportunity for destructive update ;-).  
+	% It is an error if the index is out of bounds.
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(in, in, in, out) is det.
 
@@ -64,18 +64,25 @@
 :- pred array__from_list(list(T), array(T)).
 :- mode array__from_list(in, out) is det.
 
-	% array__to_list takes an array and returns a list containing the
-	% elements of the array in the same order that they
-	% occured in the array.
+	% array__to_list takes an array and returns a list containing
+	% the elements of the array in the same order that they
+	% occurred in the array.
 :- pred array__to_list(array(T), list(T)).
 :- mode array__to_list(in, out) is det.
+
+	% array__fetch_items takes an array and a lower and upper
+	% index, and places those items in the array between these
+	% indices into a list.  It is an error if either index is
+	% out of bounds.
+:- pred array__fetch_items(array(T), int, int, list(T)).
+:- mode array__fetch_items(in, in, in, out) is det.
 
 	% array__bsearch takes an array, an element to be found
 	% and a comparison predicate and returns the position of
 	% the element in the array.  Assumes the array is in sorted
 	% order.  Fails if the element is not present.  If the
 	% element to be found appears multiple times, the index of
-	% the first occurrence will be returned.
+	% the first occurrence is returned.
 	% call/N currently does not allow output arguments to come
 	% before input arguments, so you can't just pass compare/3
 	% in here. :-(
@@ -173,9 +180,6 @@ array__to_list(Array, List) :-
         array__fetch_items(Array, Low, High, List).
 
 %-----------------------------------------------------------------------------%
-
-:- pred array__fetch_items(array(T), int, int, list(T)).
-:- mode array__fetch_items(in, in, in, out) is det.
 
 array__fetch_items(Array, Low, High, List) :-
         (
