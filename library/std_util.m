@@ -2019,8 +2019,10 @@ construct_tuple(Args) =
 	/*
 	** Construct a type_info for the tuple.
 	*/
+	save_transient_registers();
 	type_info = ML_make_type(Arity, MR_TYPECTOR_DESC_MAKE_TUPLE(Arity),
 			ArgTypes);
+	restore_transient_registers();
 
 	/*
 	** Create the tuple.
@@ -2042,7 +2044,7 @@ construct_tuple(Args) =
 	** Create a univ.
 	*/
 	incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
-    MR_define_univ_fields(Term, type_info, new_data);
+	MR_define_univ_fields(Term, type_info, new_data);
 }
 ").
 
