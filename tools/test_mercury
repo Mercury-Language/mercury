@@ -172,7 +172,8 @@ esac
 # directories to use
 
 TESTDIR=/home/mercury/public/test_mercury
-DIR=$TESTDIR/test_dirs/$HOST
+HOSTDIR=$TESTDIR/test_dirs/$HOST
+DIR=$HOSTDIR/build.$BRANCH.$C_COMPILER
 
 case $HOST in
 	hg|ender|roy|venus|earth|mars) 	
@@ -190,8 +191,8 @@ BETA_FTPDIR=/home/ftp/pub/mercury/beta-releases
 BETA_WEBDIR=/home/mercury5/installed_w3/download/files/beta-releases
 BETA_WEBDIR_TOP=/home/mercury5/installed_w3/download/files
 
-STABLE=$DIR/$INSTALL_DIR_NAME-stable
-UNSTABLE=$DIR/$INSTALL_DIR_NAME-unstable
+STABLE=$HOSTDIR/$INSTALL_DIR_NAME-stable
+UNSTABLE=$HOSTDIR/$INSTALL_DIR_NAME-unstable
 
 case $ARCH in
 	alpha)
@@ -270,9 +271,9 @@ fi
 # to make sure we don't try to run two tests in parallel,
 # we use a lock file in the test directory
 
-lockfile=$DIR/lockfile
+lockfile=$HOSTDIR/lockfile
 if [ -f $lockfile ]; then
-	echo "Directory $DIR is locked:" 1>&2
+	echo "Directory $HOSTDIR is locked:" 1>&2
 	cat $lockfile 1>&2
 	echo "Perhaps the previous test is still running?" 1>&2
 	echo "(Remove $lockfile manually if necessary.)" 1>&2
@@ -364,6 +365,21 @@ install_anyway=false
 
 #-----------------------------------------------------------------------------#
 
+: clean up any directories from previous test runs
+
+cd $HOSTDIR
+rm -rf build.*/mercury
+rm -rf build.*/tests
+rm -rf build.*/mercury-cvs
+# Note that we do NOT want to clean out the GCC directory,
+# because checking out the GCC sources from the FSF's repository in
+# California takes a *long* time and a *lot* of network bandwidth,
+# and we're currently using a fixed snapshot anyway, so we don't
+# bother to check it out at all.
+### rm -rf build.*/gcc
+
+#-----------------------------------------------------------------------------#
+
 : checkout sources and run bootcheck
 
 echo "test_mercury starting cvs checkout at `date`" 1>&2
@@ -398,14 +414,14 @@ case $HOST in
 		# Once it is done once, it will be saved in the user's
 		# ~/.cvspass file, so it doesn't need to be done again.
 		#
-		# XXX This should be commented out soon, to save bandwidth,
-		#     since currently we're using a fixed snapshot
-		#     (`-r gcc_3_0_release') anyway.
-		#     Eventually this should change to use
-		#     `-r gcc_latest_snapshot'.
-		date
-		cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
-		 	checkout -r gcc_3_0_release gcc || { false; exit 1; }
+		# This is commented out, to save bandwidth,
+		# since currently we're using a fixed snapshot
+		# (`-r gcc_3_0_release') anyway.
+		# Perhaps this should eventually change to use
+		# `-r gcc_latest_snapshot'.
+		#date
+		#cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
+		# 	checkout -r gcc_3_0_release gcc || { false; exit 1; }
 		date
 		# Link the Mercury gcc back-end interface sources
 		# into the appropriate place in the gcc sources
