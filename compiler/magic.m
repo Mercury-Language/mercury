@@ -169,7 +169,7 @@
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl.
 :- import_module globals, options, hlds_out, prog_out, goal_util, type_util.
-:- import_module polymorphism, quantification.
+:- import_module polymorphism, quantification, saved_vars.
 
 :- import_module int, list, map, require, set, std_util, string, term, varset.
 :- import_module assoc_list, bool, simplify.
@@ -1385,18 +1385,27 @@ magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 	{ simplify__proc_2(Simplifications, PredId, ProcId, 
 		ModuleInfo2, ModuleInfo3, ProcInfo3, ProcInfo4, _) },
 
-	{ proc_info_goal(ProcInfo4, Goal2) },
+	%
+	% Run saved_vars so that constructions of constants are close
+	% to their uses, and constant attributes aren't unnecessarily
+	% added to relations. We should be more aggressive about this -
+	% constructions of constant compound terms should also be pushed.
+	%
+	{ saved_vars_proc_no_io(PredId, ProcId, ProcInfo4, ProcInfo5,
+		ModuleInfo3, ModuleInfo4) },
+
+	{ proc_info_goal(ProcInfo5, Goal2) },
 	magic_info_set_curr_pred_proc_id(PredProcId),
 	magic_info_set_pred_info(PredInfo),
-	magic_info_set_proc_info(ProcInfo4),
-	magic_info_set_module_info(ModuleInfo3),
+	magic_info_set_proc_info(ProcInfo5),
+	magic_info_set_module_info(ModuleInfo4),
 	{ Goal2 = _ - GoalInfo2 },
 	{ goal_to_disj_list(Goal2, GoalList2) },
 	list__map_foldl(magic__preprocess_disjunct, 
 			GoalList2, GoalList),
 	{ disj_list_to_goal(GoalList, GoalInfo2, Goal) },
-	magic_info_get_proc_info(ProcInfo5),
-	{ proc_info_set_goal(ProcInfo5, Goal, ProcInfo) }.
+	magic_info_get_proc_info(ProcInfo6),
+	{ proc_info_set_goal(ProcInfo6, Goal, ProcInfo) }.
 
 	% Undo common structure elimination of higher-order terms in an
 	% attempt to avoid creating procedures with higher-order arguments
