@@ -251,6 +251,18 @@ make__process_args(OptionArgs, Targets0) -->
 	    (pred(TargetStr::in, Success0::out,
 	    		Info0::in, Info::out, di, uo) is det -->	
 		(
+			% Accept and ignore `.depend' targets.
+			% `mmc --make' does not need a separate
+			% make depend step. The dependencies for
+			% each module are regenerated on demand.
+			{ string__length(TargetStr, NameLength) },
+			{ search_backwards_for_dot(TargetStr,
+				NameLength - 1, DotLocn) },
+			{ string__split(TargetStr, DotLocn, _, ".depend") }
+		->
+			{ Success0 = yes },
+			{ Info = Info0 }
+		;
 			{ target_file(Globals, TargetStr,
 				ModuleName, TargetType) }
 		->
@@ -269,18 +281,6 @@ make__process_args(OptionArgs, Targets0) -->
 			    make_misc_target(ModuleName - MiscTargetType,
 			    	Success0, Info0, Info)
 			)
-		;
-			% Accept and ignore `.depend' targets.
-			% `mmc --make' does not need a separate
-			% make depend step. The dependencies for
-			% each module are regenerated on demand.
-			{ string__length(TargetStr, NameLength) },
-			{ search_backwards_for_dot(TargetStr,
-				NameLength - 1, DotLocn) },
-			{ string__split(TargetStr, DotLocn, _, ".depend") }
-		->
-			{ Success0 = yes },
-			{ Info = Info0 }
 		;
 			{ Info = Info0 },
 			{ Success0 = no },
