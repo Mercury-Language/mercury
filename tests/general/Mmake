@@ -6,7 +6,7 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	arithmetic string_test interpreter
+PROGS=	arithmetic string_test string_test_2 interpreter
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
 EXPS=	$(PROGS:%=%.exp)
