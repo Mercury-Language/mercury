@@ -768,6 +768,64 @@ special__Compare____base_typeclass_info_1_0(
 #endif
 ").
 
+:- pragma foreign_proc("Java",
+	store_ticket(Ticket::out),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+	Ticket = null;
+").
+
+:- pragma foreign_proc("Java",
+	reset_ticket_undo(_Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
+:- pragma foreign_proc("Java",
+	reset_ticket_commit(_Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
+:- pragma foreign_proc("Java",
+	reset_ticket_solve(_Ticket::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
+:- pragma foreign_proc("Java",
+	discard_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
+:- pragma foreign_proc("Java",
+	prune_ticket,
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
+:- pragma foreign_proc("Java",
+	mark_ticket_stack(TicketCounter::out),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+	TicketCounter = null;
+").
+
+:- pragma foreign_proc("Java",
+	prune_tickets_to(_TicketCounter::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* XXX No trailing for the Java back-end, so take no action. */
+").
+
 trailed_nondet_pragma_foreign_code :-
 	Msg = string__append_list([
 		"Sorry, not implemented:\n",
@@ -914,6 +972,41 @@ trailed_nondet_pragma_foreign_code :-
 	[will_not_call_mercury, thread_safe],
 "
 	/* We can't do heap reclamation on failure in the .NET back-end. */
+").
+
+:- pragma foreign_proc("Java",
+	gc_trace(_Pointer::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/*
+	** For the Java back-end, we use the Java garbage collector, so we
+	** take no action here.
+	*/
+").
+
+:- pragma foreign_proc("Java",
+	free_heap(_Val::di),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+        /*
+        ** For the Java back-end, as for the .NET back-end, we don't define
+        ** our own heaps.  So take no action here.
+        */
+").
+
+:- pragma foreign_proc("Java",
+	mark_hp(SavedHeapPointer::out),
+	[will_not_call_mercury, thread_safe],
+"
+	/* We can't do heap reclamation on failure in the Java back-end. */
+	SavedHeapPointer = null;
+").
+
+:- pragma foreign_proc("Java",
+	restore_hp(_SavedHeapPointer::in),
+	[will_not_call_mercury, thread_safe],
+"
+	/* We can't do heap reclamation on failure in the Java back-end. */
 ").
 
 reclaim_heap_nondet_pragma_foreign_code :-
@@ -1128,6 +1221,10 @@ no_clauses(PredName) :-
 :- pragma foreign_proc(il,	
 	imp,
 	[will_not_call_mercury, thread_safe, max_stack_size(0)],
+"").
+:- pragma foreign_proc("Java",
+	imp,
+	[will_not_call_mercury, thread_safe],
 "").
 
 %-----------------------------------------------------------------------------%
