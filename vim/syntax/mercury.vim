@@ -45,8 +45,8 @@ syn keyword mercuryPragma       type_spec source_file fact_table
 syn keyword mercuryPragma       memo loop_check minimal_model
 syn keyword mercuryPragma       terminates does_not_terminate check_termination
 syn keyword mercuryCInterface   c_header_code c_code
-syn keyword mercuryCInterface   foreign_proc foreign_header foreign_code
-syn keyword mercuryCInterface   foreign_type
+syn keyword mercuryCInterface   foreign_proc foreign_decl foreign_code
+syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
