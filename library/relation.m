@@ -596,8 +596,10 @@ relation__sc(Rel, Sc) :-
 	%	- Compute the reflexive transitive closure.
 	%	- Find the "fake reflexives", that is, the
 	%	  set of elements x for which xR+x should
-	%	  not be true.  This is done using a breadth-
-	%	  first search.
+	%	  not be true.  This is done by noting that
+	%	  R+ = R . R* (where '.' denotes composition).
+	%	  Therefore x is a fake reflexive iff the set
+	%	  { x | yRx and xR*y } is empty.
 	%	- Remove those elements from the reflexive
 	%	  transitive closure computed above.
 relation__tc(Rel, Tc) :-
@@ -646,6 +648,21 @@ relation__rtc(Rel, Rtc) :-
 	Inf is (DomLen + 2) * 2,	% This is close enough to infinity.
 	relation__rtc_2(Inf, Rel, DomList, Map, RtcIn, Rtc).
 
+	% rtc__init_map takes a domain Xs and creates a map
+	% Map such that:
+	%
+	%	all [X]
+	%	    (
+	%		list__member(X, Xs) =>
+	%		map__lookup(Map, X, 0)
+	%	    ).
+	%
+	% Question: Would an "array" type which allows an
+	% arbitrary domain (not just integers) be a better
+	% solution?  About the only differences between this
+	% and a "map" would be the ease of initialisation,
+	% and the semi-static nature of the domain.  (Arrays
+	% can be resized.)
 :- pred rtc__init_map(map(T, int), list(T), map(T, int)).
 :- mode rtc__init_map(in, in, out) is det.
 rtc__init_map(Map, [], Map).
@@ -684,9 +701,7 @@ rtc(Inf, Rel, A, K, S0, S1, MapIn, MapOut, RtcIn, RtcOut) :-
 	;
 	    Map2=Map3, S3=S4, Rtc2=Rtc3
 	),
-	Map3=MapOut, Rtc3=RtcOut,
-%	stack__pop_det(S4, _, S1).
-	S1=S4.
+	Map3=MapOut, Rtc3=RtcOut, S1=S4.
 
 :- pred rtc_2(int, relation(T), T, int, list(T), stack(T), stack(T), 
 		map(T, int), map(T, int), relation(T), relation(T)).
