@@ -52,7 +52,7 @@
 #    if defined(ultrix) || defined(__ultrix)
 #	define ULTRIX
 #    else
-#	ifdef _SYSTYPE_SVR4
+#	if defined(_SYSTYPE_SVR4) || defined(__SYSTYPE_SVR4)
 #	  define IRIX5
 #	else
 #	  define RISCOS  /* or IRIX 4.X */
