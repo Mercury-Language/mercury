@@ -13,4 +13,3 @@ baz(X) = (pred(Y) :- X > Y).	% modes & determinism not specified
 baz2(X) = (pred(Y::in) :- X > Y).	% determinism not specified
 baz3(X) = (pred(Y) is semidet :- X > Y). % mode not specified
 baz4(X) = (pred(A) = B :- X = A + B).	% mixing `func' and `pred' notation
-

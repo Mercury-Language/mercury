@@ -33,10 +33,10 @@ p(X) :-
 		;
 			Y = 2
 		),
-		Z is Y + W
+		Z = Y + W
 	),
 	q(V),
-	X is Z * V.
+	X = Z * V.
 
 :- pred q(int::out) is multi.
 

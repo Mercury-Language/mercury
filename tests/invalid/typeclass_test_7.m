@@ -8,7 +8,7 @@
 p(X, Y) :-
 	F = 42,
 	N = type_num(X),	% error should be reported on *this* line
-	N2 is N * 2,
+	N2 = N * 2,
 	Y = N2 + F.
 
 :- typeclass numbered_type(T) where [

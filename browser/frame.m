@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -122,7 +122,7 @@ add_right_padding(Strs, Lens, PaddedFrame) :-
 :- pred subtract(int, int, int).
 :- mode subtract(in, in, out) is det.
 subtract(M, X, Z) :-
-	Z is M - X.
+	Z = M - X.
 
 	% Add empty lines of padding to the bottom of a frame.
 :- pred frame_lower_pad(frame, int, frame).

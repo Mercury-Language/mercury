@@ -37,7 +37,7 @@ collect_answer(Limit, R, More, Rs0, [R|Rs0]) :-
 
 r(Mult, Z) :-
 	q(X, Y),
-	Z is X * Mult + Y.
+	Z = X * Mult + Y.
 
 :- pred q(int::out, int::out) is nondet.
 

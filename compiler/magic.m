@@ -948,7 +948,7 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 magic__interface_call_args([], _, _, _, _, []) --> [].
 magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,	
 		CalledPredIndex, CurrVar, InputGoals) -->
-	{ NextVar is CurrVar + 1 },
+	{ NextVar = CurrVar + 1 },
 	magic__interface_call_args(MagicInputs, MagicTypes, MagicModes,
 		CalledPredIndex, NextVar, InputGoals1),
 	( { CurrVar = CalledPredIndex } ->

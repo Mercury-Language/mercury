@@ -231,7 +231,7 @@ term_errors__output_errors([], _, _, _, _) --> [].
 term_errors__output_errors([Error | Errors], Single, ErrNum0, Indent, Module)
 		-->
 	term_errors__output_error(Error, Single, yes(ErrNum0), Indent, Module),
-	{ ErrNum1 is ErrNum0 + 1 },
+	{ ErrNum1 = ErrNum0 + 1 },
 	term_errors__output_errors(Errors, Single, ErrNum1, Indent, Module).
 
 :- pred term_errors__output_error(term_errors__error::in,

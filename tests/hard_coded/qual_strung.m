@@ -243,9 +243,9 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 		(
 			I < 0
 		->
-			Mv_width is 1
+			Mv_width = 1
 		;
-			Mv_width is 0 
+			Mv_width = 0 
 		)
 			
 	; 
@@ -266,7 +266,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 				Pfix_len = 0
 			)
 		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
+		( I < 0 -> Mv_width = Pfix_len + 1 ; Mv_width = Pfix_len )
 	;
 	Conv_c = 'x' ,
 		Poly_t = i(I),
@@ -287,7 +287,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 				Pfix_len = 0
 			)
 		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
+		( I < 0 -> Mv_width = Pfix_len + 1 ; Mv_width = Pfix_len )
 	;
 	Conv_c = 'X',
 		Poly_t = i(I),
@@ -307,7 +307,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags,
 				Pfix_len = 0
 			)
 		),
-		( I < 0 -> Mv_width is Pfix_len + 1 ; Mv_width is Pfix_len )
+		( I < 0 -> Mv_width = Pfix_len + 1 ; Mv_width = Pfix_len )
 	;
 	Conv_c = 'u' ,
 		Poly_t = i(I),
@@ -374,9 +374,9 @@ format_int_precision(S, Ostring, Precision, Added_width) :-
 	),
 	length(S, L),
 	( first_char(S, '-', _) ->
-		Xzeros is Prec - L + 1
+		Xzeros = Prec - L + 1
 	;
-		Xzeros is Prec - L
+		Xzeros = Prec - L
 	),
 	Added_width = Xzeros,
 	( Xzeros > 0 ->	
@@ -406,12 +406,12 @@ format_calc_exp(F, Fstring, Precision, Exp) :-
 		first_char(Fstring, '-', Tst)
 	;
 		( F < 1.0 ->
-			Texp is Exp - 1,
+			Texp = Exp - 1,
 			FF = F * 10.0,
 			format_calc_exp( FF, Fstring, Precision, Texp)
 		;
 		( F >= 10.0 ->
-			Texp is Exp + 1,
+			Texp = Exp + 1,
 			FF = F / 10.0,
 			format_calc_exp( FF, Fstring, Precision, Texp)
 		;
@@ -446,10 +446,10 @@ format_calc_prec(Istring, Ostring, Precision) :-
 	(
 		find_index( Istring, '.', Index)
 	->
-		Spa is Prec + Index
+		Spa = Prec + Index
 	;
 		length(Istring, Spa_0),
-		Spa is Spa_0 + 1
+		Spa = Spa_0 + 1
 		%  This branch should never be called if mercury is implemented
 		%  in ansi-C, according to Kernighan and Ritchie p244, as a 
 		%  float converted to a string using sprintf should always have
@@ -473,7 +473,7 @@ format_calc_prec(Istring, Ostring, Precision) :-
 	(
 		Precision = 0
 	->
-		Space is Spa - 1
+		Space = Spa - 1
 	;
 		Space = Spa
 	),
@@ -498,7 +498,7 @@ find_index_2([X|Xs], C, Index) :-
 		Index = 1
 	;
 		find_index_2(Xs, C, Index0),
-		Index is Index0 + 1
+		Index = Index0 + 1
 	).
 
 %find_index( A, Ch, Check, Ret) :-
@@ -524,7 +524,7 @@ find_index_2([X|Xs], C, Index) :-
 :- mode format_add_sign( out, in, in, in, in, out) is det.
 %			Mvw is the prefix-length in front of the number.
 format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
-	T1 is Mvw1 - 1,
+	T1 = Mvw1 - 1,
 	(
 		index(Istring, T1, '-')
 	->
@@ -537,14 +537,14 @@ format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 		->
 			append( "+", Rstring, Astring),
 			append( Lstring, Astring, Ostring),
-			Mvw2 is Mvw1 + 1
+			Mvw2 = Mvw1 + 1
 		;
 			(
 				list__member(' ', Flags)
 			->
 				append( " ", Rstring, Astring),
 				append( Lstring, Astring, Ostring),
-				Mvw2 is Mvw1 + 1
+				Mvw2 = Mvw1 + 1
 			; 
 				Ostring = Istring,
 				Mvw2 = Mvw1
@@ -563,7 +563,7 @@ format_pad_width( Istring, Width, Flags, Out_string, Mv_cs) :-
 	length(Istring, Len),
 	(Len < Width ->
 		% time for some FLAG tests
-		Xspace is Width - Len,
+		Xspace = Width - Len,
 		(
 			list__member('0', Flags)
 		->

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -377,7 +377,7 @@ bintree__fixup(Left, Right, Tree) :-
 bintree__right_depth(empty, 0).
 bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
 	bintree__right_depth(Right, M),
-	N is M + 1.
+	N = M + 1.
 
 :- pred bintree__left_depth(bintree(_K,_V), int).
 :- mode bintree__left_depth(in, out) is det.
@@ -385,7 +385,7 @@ bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
 bintree__left_depth(empty, 0).
 bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
 	bintree__left_depth(Left, M),
-	N is M + 1.
+	N = M + 1.
 
 :- pred bintree__knock_left(bintree(K,V), K, V, bintree(K, V)).
 :- mode bintree__knock_left(in, out, out, out) is det.
@@ -454,9 +454,9 @@ bintree__from_sorted_list_2(Num, List0, Tree, List) :-
 		List = List0,
 		Tree = empty
 	;
-		Num1 is Num - 1,
-		SmallHalf is Num1 // 2,
-		BigHalf is Num1 - SmallHalf,
+		Num1 = Num - 1,
+		SmallHalf = Num1 // 2,
+		BigHalf = Num1 - SmallHalf,
 		bintree__from_sorted_list_2(SmallHalf, List0, LeftSubTree,
 				List1),
 		( List1 = [HeadKey - HeadValue | List2] ->
@@ -542,15 +542,15 @@ bintree__count(empty, 0).
 bintree__count(tree(_K, _V, Left, Right), Count) :-
 	bintree__count(Right, RightCount),
 	bintree__count(Left, LeftCount),
-	ChildCount is LeftCount + RightCount,
-	Count is ChildCount + 1.
+	ChildCount = LeftCount + RightCount,
+	Count = ChildCount + 1.
 
 bintree__depth(empty, 0).
 bintree__depth(tree(_K, _V, Left, Right), Depth) :-
 	bintree__depth(Right, RightDepth),
 	bintree__depth(Left, LeftDepth),
 	int__max(LeftDepth, RightDepth, SubDepth),
-	Depth is SubDepth + 1.
+	Depth = SubDepth + 1.
 
 bintree__branching_factor(empty, 0, 0).
 bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
@@ -564,20 +564,20 @@ bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
 			Twos = 0
 		;
 			bintree__branching_factor(R, Ones0, Twos),
-			Ones is Ones0 + 1
+			Ones = Ones0 + 1
 		)
 	;
 		(
 			R = empty
 		->
 			bintree__branching_factor(L, Ones0, Twos),
-			Ones is Ones0 + 1
+			Ones = Ones0 + 1
 		;
 			bintree__branching_factor(L, Ones1, Twos1),
 			bintree__branching_factor(R, Ones2, Twos2),
-			Ones is Ones1 + Ones2,
-			Twos0 is Twos1 + Twos2,
-			Twos is Twos0 + 1
+			Ones = Ones1 + Ones2,
+			Twos0 = Twos1 + Twos2,
+			Twos = Twos0 + 1
 		)
 	).
 

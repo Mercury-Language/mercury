@@ -9,11 +9,13 @@
 %
 
 :- interface.
-:- import_module io, list, string, qual_strang, qual_strung.
+:- import_module io.
 
 :- pred qual_adv_test:main(io__state::di, io__state::uo) is det.
 
 :- implementation.
+
+:- import_module list, string, qual_strang, qual_strung.
 
 main -->
 	{ String = "asdfjkfhaslks" },

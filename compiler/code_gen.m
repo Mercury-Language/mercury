@@ -742,7 +742,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		% Do we need to use a general slot for storing succip?
 		{ CodeModel \= model_non }
 	->
-		{ SuccipSlot is MainSlots + 1 },
+		{ SuccipSlot = MainSlots + 1 },
 		{ SaveSuccipCode = node([
 			assign(stackvar(SuccipSlot), lval(succip)) -
 				"Save the success ip"

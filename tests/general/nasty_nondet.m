@@ -18,7 +18,7 @@ p(Z, Y) :-
 		X = R
 	)
 	then
-		Y is X * X + R
+		Y = X * X + R
 	else
 		Y = 42
 	).

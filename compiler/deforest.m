@@ -794,7 +794,7 @@ deforest__can_optimize_conj(EarlierGoal, BetweenGoals,
 	pd_info_get_pred_info(PredInfo),
 	pd_info_lookup_option(deforestation_depth_limit, DepthLimitOpt),
 	pd_info_get_depth(Depth0),
-	{ Depth is Depth0 + 1 },
+	{ Depth = Depth0 + 1 },
 	pd_info_set_depth(Depth),
 	pd_info_lookup_option(deforestation_size_threshold, SizeLimitOpt),
 	pd_info_get_module_info(ModuleInfo),
@@ -959,7 +959,7 @@ deforest__call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
 		),
 		pd_info_incr_cost_delta(FoldCostDelta),
 		{ goals_size([EarlierGoal | BetweenGoals], NegSizeDelta) },
-		{ SizeDelta is - NegSizeDelta },
+		{ SizeDelta = - NegSizeDelta },
 		pd_info_incr_size_delta(SizeDelta),
 		deforest__create_call_goal(VersionPredProcId, 
 			VersionInfo, Renaming, TypeRenaming, Goal),
@@ -1058,7 +1058,7 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 					
 			{ list__length(GoalVarsList1, NumVars1) },
 			{ list__length(GoalVarsList3, NumVars3) },
-			{ NumVars is NumVars1 + NumVars3 },
+			{ NumVars = NumVars1 + NumVars3 },
 			{ VarsOpt = int(MaxVars) },
 			{ NumVars < MaxVars }
 		)
@@ -1709,7 +1709,7 @@ deforest__append_goal_to_disjuncts([Goal0 | Goals0], BetweenGoals,
 	pd_info_get_instmap(InstMap0),
 	deforest__append_goal(Goal0, BetweenGoals, GoalToAppend,
 		NonLocals, CurrBranch, Branches, Goal),
-	{ NextBranch is CurrBranch + 1 },
+	{ NextBranch = CurrBranch + 1 },
 	pd_info_set_instmap(InstMap0),
 	deforest__append_goal_to_disjuncts(Goals0, BetweenGoals, GoalToAppend, 
 		NonLocals, NextBranch, Branches, Goals).
@@ -1727,7 +1727,7 @@ deforest__append_goal_to_cases(Var, [case(ConsId, Goal0) | Cases0],
 	pd_info_bind_var_to_functor(Var, ConsId),
 	deforest__append_goal(Goal0, BetweenGoals, 
 		GoalToAppend, NonLocals, CurrCase, Branches, Goal),
-	{ NextCase is CurrCase + 1 },
+	{ NextCase = CurrCase + 1 },
 	pd_info_set_instmap(InstMap0),
 	deforest__append_goal_to_cases(Var, Cases0, BetweenGoals, GoalToAppend,
 		NonLocals, NextCase, Branches, Cases).
@@ -1927,7 +1927,7 @@ deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
 		pd_util__simplify_goal(Simplifications, Goal3, Goal4),
 
 		pd_info_get_cost_delta(CostDelta1),
-		{ CostDelta is CostDelta1 - CostDelta0 },
+		{ CostDelta = CostDelta1 - CostDelta0 },
 		{ goal_size(Goal4, GoalSize) },
 		{ pd_cost__call(CallCost) },
 		{ SizeDelta = GoalSize - CallCost },
@@ -2022,7 +2022,7 @@ deforest__check_improvement(_Factor, Size, OriginalCost, CostDelta) :-
 			% accept any amount of optimization.
 		CostDelta > 0
 	;
-		PercentChange is CostDelta * 100 // OriginalCost,
+		PercentChange = CostDelta * 100 // OriginalCost,
 		PercentChange >= 5
 	).
 
@@ -2040,8 +2040,8 @@ deforest__check_deforestation_improvement(Factor, CostDelta, SizeChange) :-
 			% Note that folding is heavily rewarded by pd_cost.m, 
 			% so this isn't very restrictive if a fold occurs.
 		pd_cost__heap_incr(HeapCost),		
-		ExpectedCostDelta is 1000 * HeapCost * SizeChange // 3,
-		FudgedCostDelta is CostDelta * Factor,
+		ExpectedCostDelta = 1000 * HeapCost * SizeChange // 3,
+		FudgedCostDelta = CostDelta * Factor,
 		FudgedCostDelta >= ExpectedCostDelta
 	).
 	

@@ -525,7 +525,7 @@ opt_debug__dump_maybe_rvals([MR | MRs], N, Str) :-
 		;
 			MR_str = "no"
 		),
-		N1 is N - 1,
+		N1 = N - 1,
 		opt_debug__dump_maybe_rvals(MRs, N1, MRs_str),
 		string__append_list([MR_str, ", ", MRs_str], Str)
 	;

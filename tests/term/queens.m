@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 queens(X, Y) :-
 	perm(X, Y),

@@ -777,7 +777,7 @@ rl__ascending_sort_spec(Schema, Attrs) :-
 	GetAttr =
 		lambda([_::in, Attr::out, Index0::in, Index::out] is det, (
 			Attr = Index0 - ascending,
-			Index is Index0 + 1
+			Index = Index0 + 1
 		)),
 	list__map_foldl(GetAttr, Schema, Attrs, 1, _).
 
@@ -789,7 +789,7 @@ rl__attr_list(Schema, Attrs) :-
 
 rl__attr_list_2(_, [], []).
 rl__attr_list_2(Index, [_ | Types], [Index | Attrs]) :-
-	NextIndex is Index + 1,
+	NextIndex = Index + 1,
 	rl__attr_list_2(NextIndex, Types, Attrs).
 
 %-----------------------------------------------------------------------------%

@@ -395,12 +395,12 @@ rl_info_set_rule_number(RuleNumber, RLInfo0, RLInfo) :-
 
 rl_info_get_next_label_id(NextLabelId, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C,D,E,F,G,H,I,J,K,LabelId,M,N,O,P,Q,R,S),
-	NextLabelId is LabelId + 1,
+	NextLabelId = LabelId + 1,
 	RLInfo = rl_info(A,B,C,D,E,F,G,H,I,J,K,NextLabelId,M,N,O,P,Q,R,S).
 
 rl_info_get_next_relation_id(NextRelationId, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C,D,E,F,G,H,I,J,K,L,RelationId,N,O,P,Q,R,S),
-	NextRelationId is RelationId + 1,
+	NextRelationId = RelationId + 1,
 	RLInfo = rl_info(A,B,C,D,E,F,G,H,I,J,K,L,NextRelationId,N,O,P,Q,R,S).
 
 rl_info_get_pred_proc_id(PredProcId, RLInfo, RLInfo) :-

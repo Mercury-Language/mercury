@@ -3674,8 +3674,8 @@ code_info__acquire_temp_slot(Item, StackVar) -->
 		{ UsableLvals = [] },
 		code_info__get_var_slot_count(VarSlots),
 		code_info__get_max_temp_slot_count(TempSlots0),
-		{ TempSlots is TempSlots0 + 1 },
-		{ Slot is VarSlots + TempSlots },
+		{ TempSlots = TempSlots0 + 1 },
+		{ Slot = VarSlots + TempSlots },
 		code_info__stack_variable(Slot, StackVar),
 		code_info__set_max_temp_slot_count(TempSlots),
 		{ map__det_insert(TempContentMap0, StackVar, Item,
@@ -3709,7 +3709,7 @@ code_info__get_variable_slot(Var, Slot) -->
 code_info__get_total_stackslot_count(NumSlots) -->
 	code_info__get_var_slot_count(SlotsForVars),
 	code_info__get_max_temp_slot_count(SlotsForTemps),
-	{ NumSlots is SlotsForVars + SlotsForTemps }.
+	{ NumSlots = SlotsForVars + SlotsForTemps }.
 
 :- pred code_info__max_var_slot(stack_slots, int).
 :- mode code_info__max_var_slot(in, out) is det.

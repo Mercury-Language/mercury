@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997-1999 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -172,7 +172,7 @@ queue__get(On0 - [Elem | Off0], Elem, On - Off) :-
 queue__length(On - Off, Length) :-
 	list__length(On, LengthOn),
 	list__length(Off, LengthOff),
-	Length is LengthOn + LengthOff.
+	Length = LengthOn + LengthOff.
 
 queue__list_to_queue(List, [] - List).
 

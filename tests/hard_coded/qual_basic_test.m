@@ -15,8 +15,8 @@
 
 qual_basic_test:main -->
 	io:write_string("Gotcha1!\n"),
-	{ A is qual_basic_test:test },
-	{ X is int:(A + 2) },
+	{ A = qual_basic_test:test },
+	{ X = int:(A + 2) },
 	io:write_int(X),	
 	io__write_string("\n"),
 	{ Pred = int:max },

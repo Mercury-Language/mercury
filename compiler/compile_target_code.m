@@ -354,7 +354,7 @@ split_c_to_obj(ErrorStream, ModuleName,
 		( { Succeeded0 = no } ->
 			{ Succeeded = no }
 		;
-			{ Chunk1 is Chunk + 1 },
+			{ Chunk1 = Chunk + 1 },
 			split_c_to_obj(ErrorStream,
 				ModuleName, Chunk1, NumChunks, Succeeded)
 		)

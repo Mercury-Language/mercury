@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -120,7 +120,7 @@ group__init(G) :-
 
 group__insert(G0, S, G) :-
 	group__get_group_count(G0, C0),
-	C is C0 + 1,
+	C = C0 + 1,
 	group__get_sets(G0, Ss0),
 	map__set(Ss0, C, S, Ss),
 	group__get_elements(G0, Es0),

@@ -174,7 +174,7 @@ doit(N, Trans, Qual, Chord0, Rnd0) -->
 			{ random_random(I, Rnd0, Rnd) },
 			{ next_chord(Chord0, Qual, I, Chord1) }
 		->
-			{ N1 is N - 1 },
+			{ N1 = N - 1 },
 			doit(N1, Trans, Qual, Chord1, Rnd)
 		;
 			io__write_string("next_chord failed\n")
@@ -200,7 +200,7 @@ write_chord([Note|Notes]) -->
 :- mode write_note(in, in, in, di, uo) is det.
 
 write_note(c, flat, Oct) -->
-	{ Oct1 is Oct - 1 },
+	{ Oct1 = Oct - 1 },
 	{ string__format("b%d", [i(Oct1)], Str) },
 	io__write_string(Str).
 write_note(c, natural, Oct) -->
@@ -261,7 +261,7 @@ write_note(b, natural, Oct) -->
 	{ string__format("b%d", [i(Oct)], Str) },
 	io__write_string(Str).
 write_note(b, sharp, Oct) -->
-	{ Oct1 is Oct + 1 },
+	{ Oct1 = Oct + 1 },
 	{ string__format("c%d", [i(Oct1)], Str) },
 	io__write_string(Str).
 
@@ -288,7 +288,7 @@ next_chord(Chord0, Qual, Pr, Chord) :-
 	solutions(try_next_chord(Qual, Int0, TopNote0), List),
 	list__length(List, Len),
 	Len > 0,
-	Ind is Pr mod Len,
+	Ind = Pr mod Len,
 	list__index0(List, Ind, Chord).
 
 :- pred try_next_chord(qualifier::in, interval::in, note::in, chord::out)
@@ -310,13 +310,13 @@ rotate(I, [X|Xs], Zs) :-
 		I > 0
 	->
 		list__append(Xs, [X], Ys),
-		I1 is I - 1,
+		I1 = I - 1,
 		rotate(I1, Ys, Zs)
 	;
 		I < 0
 	->
 		list__append(Xs, [X], Ys),
-		I1 is I + 1,
+		I1 = I + 1,
 		rotate(I1, Ys, Zs)
 	;
 		Zs = [X|Xs]
@@ -423,7 +423,7 @@ note_to_interval(note(b, natural, Oct), maj, vii, Oct).
 :- mode adj_interval(in, in, out, out) is multi.
 
 adj_interval(i, Oct, vii, Oct1) :-
-	Oct1 is Oct - 1.
+	Oct1 = Oct - 1.
 adj_interval(i, Oct, ii, Oct).
 adj_interval(ii, Oct, i, Oct).
 adj_interval(ii, Oct, iii, Oct).
@@ -437,7 +437,7 @@ adj_interval(vi, Oct, v, Oct).
 adj_interval(vi, Oct, vii, Oct).
 adj_interval(vii, Oct, vi, Oct).
 adj_interval(vii, Oct, i, Oct1) :-
-	Oct1 is Oct + 1.
+	Oct1 = Oct + 1.
 
 %------------------------------------------------------------------------------%
 
@@ -522,7 +522,7 @@ base_notes(dim, Notes) :-
 transpose(Trans, Qual, Note0, Note) :-
 	interval_to_int(Trans, Qual, TNum),
 	note_to_int(Note0, NNum0),
-	NNum is TNum + NNum0,
+	NNum = TNum + NNum0,
 	int_to_note(NNum, Note).
 
 :- pred trans(note, note, note).
@@ -531,7 +531,7 @@ transpose(Trans, Qual, Note0, Note) :-
 trans(Trans, Note0, Note) :-
 	note_to_int(Trans, TNum),
 	note_to_int(Note0, NNum0),
-	NNum is TNum + NNum0,
+	NNum = TNum + NNum0,
 	int_to_note(NNum, Note).
 
 %------------------------------------------------------------------------------%
@@ -559,14 +559,14 @@ invert_list(Notes0, Dir, N, Notes) :-
 	->
 		shift(Dir, Note0, Note),
 		list__append(Notes1, [Note], Notes2),
-		N1 is N - 1,
+		N1 = N - 1,
 		invert_list(Notes2, Dir, N1, Notes)
 	;
 		N < 0,
 		last(Notes0, Note0, Notes1)
 	->
 		shift(Dir, Note0, Note),
-		N1 is N + 1,
+		N1 = N + 1,
 		invert_list([Note|Notes1], Dir, N1, Notes)
 	;
 		Notes = Notes0
@@ -576,9 +576,9 @@ invert_list(Notes0, Dir, N, Notes) :-
 :- mode shift(in, in, out) is det.
 
 shift(up, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
-	Oct1 is Oct + 1.
+	Oct1 = Oct + 1.
 shift(down, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
-	Oct1 is Oct - 1.
+	Oct1 = Oct - 1.
 
 :- pred last(list(T), T, list(T)).
 :- mode last(in, out, out) is semidet.
@@ -622,54 +622,54 @@ interval_to_int(vii, maj, 11).
 :- mode note_to_int(in, out) is det.
 
 note_to_int(note(c, flat, Oct),		I) :-
-	I is -1 + 12 * Oct.
+	I = -1 + 12 * Oct.
 note_to_int(note(c, natural, Oct),	I) :-
-	I is 0 + 12 * Oct.
+	I = 0 + 12 * Oct.
 note_to_int(note(c, sharp, Oct),	I) :-
-	I is 1 + 12 * Oct.
+	I = 1 + 12 * Oct.
 note_to_int(note(d, flat, Oct),		I) :-
-	I is 1 + 12 * Oct.
+	I = 1 + 12 * Oct.
 note_to_int(note(d, natural, Oct),	I) :-
-	I is 2 + 12 * Oct.
+	I = 2 + 12 * Oct.
 note_to_int(note(d, sharp, Oct),	I) :-
-	I is 3 + 12 * Oct.
+	I = 3 + 12 * Oct.
 note_to_int(note(e, flat, Oct),		I) :-
-	I is 3 + 12 * Oct.
+	I = 3 + 12 * Oct.
 note_to_int(note(e, natural, Oct),	I) :-
-	I is 4 + 12 * Oct.
+	I = 4 + 12 * Oct.
 note_to_int(note(f, flat, Oct),		I) :-
-	I is 4 + 12 * Oct.
+	I = 4 + 12 * Oct.
 note_to_int(note(e, sharp, Oct),	I) :-
-	I is 5 + 12 * Oct.
+	I = 5 + 12 * Oct.
 note_to_int(note(f, natural, Oct),	I) :-
-	I is 5 + 12 * Oct.
+	I = 5 + 12 * Oct.
 note_to_int(note(f, sharp, Oct),	I) :-
-	I is 6 + 12 * Oct.
+	I = 6 + 12 * Oct.
 note_to_int(note(g, flat, Oct),		I) :-
-	I is 6 + 12 * Oct.
+	I = 6 + 12 * Oct.
 note_to_int(note(g, natural, Oct),	I) :-
-	I is 7 + 12 * Oct.
+	I = 7 + 12 * Oct.
 note_to_int(note(g, sharp, Oct),	I) :-
-	I is 8 + 12 * Oct.
+	I = 8 + 12 * Oct.
 note_to_int(note(a, flat, Oct),		I) :-
-	I is 8 + 12 * Oct.
+	I = 8 + 12 * Oct.
 note_to_int(note(a, natural, Oct),	I) :-
-	I is 9 + 12 * Oct.
+	I = 9 + 12 * Oct.
 note_to_int(note(a, sharp, Oct),	I) :-
-	I is 10 + 12 * Oct.
+	I = 10 + 12 * Oct.
 note_to_int(note(b, flat, Oct),		I) :-
-	I is 10 + 12 * Oct.
+	I = 10 + 12 * Oct.
 note_to_int(note(b, natural, Oct),	I) :-
-	I is 11 + 12 * Oct.
+	I = 11 + 12 * Oct.
 note_to_int(note(b, sharp, Oct),	I) :-
-	I is 12 + 12 * Oct.
+	I = 12 + 12 * Oct.
 
 :- pred int_to_note(int, note).
 :- mode int_to_note(in, out) is det.
 
 int_to_note(Num, note(Rank, Mod, Oct)) :-
-	Oct is Num // 12,
-	Off is Num mod 12,
+	Oct = Num // 12,
+	Off = Num mod 12,
 	(
 		(
 			Off = 0, Rank0 = c, Mod0 = natural
@@ -766,9 +766,9 @@ random_init(Seed, Supply) :-
 random_random(Value, Supply0, Supply) :-
 	Value = Supply0,
 	( Supply0 < 100 ->
-		Supply is Supply0 + 1
+		Supply = Supply0 + 1
 	;
-		Supply is 0
+		Supply = 0
 	).
 
 %------------------------------------------------------------------------------%

@@ -29,13 +29,13 @@ main -->
 
 middle(A0) :-
 	(
-		A is A0 + 10
+		A = A0 + 10
 	;
-		A is A0 + 20
+		A = A0 + 20
 	),
 	A > 200,
 	(
-		B is A
+		_B = A
 	;
-		B is A * 2
+		_B = A * 2
 	).

@@ -179,13 +179,13 @@ output_int(Writer, Bits, IntVal) -->
 		true
 	},
 	{ Bits > IntBits ->
-		ZeroPadBytes is (Bits - IntBits) // bits_per_byte
+		ZeroPadBytes = (Bits - IntBits) // bits_per_byte
 	;
 		ZeroPadBytes = 0
 	},
 	output_padding_zeros(Writer, ZeroPadBytes),
 	{ BytesToDump = Bits // bits_per_byte },
-	{ FirstByteToDump is BytesToDump - ZeroPadBytes - 1 },
+	{ FirstByteToDump = BytesToDump - ZeroPadBytes - 1 },
 	output_int_bytes(Writer, FirstByteToDump, IntVal).
 
 :- func bytecode_int_bits = int.
@@ -210,7 +210,7 @@ bits_per_byte = 8.
 output_padding_zeros(Writer, NumBytes) -->
 	( { NumBytes > 0 } ->
 		call(Writer, 0),
-		{ NumBytes1 is NumBytes - 1 },
+		{ NumBytes1 = NumBytes - 1 },
 		output_padding_zeros(Writer, NumBytes1)
 	;
 		[]
@@ -222,9 +222,9 @@ output_padding_zeros(Writer, NumBytes) -->
 
 output_int_bytes(Writer, ByteNum, IntVal) -->
 	( { ByteNum >= 0 } ->
-		{ BitShifts is ByteNum * bits_per_byte },
-		{ Byte is (IntVal >> BitShifts) mod (1 << bits_per_byte) },
-		{ ByteNum1 is ByteNum - 1 },
+		{ BitShifts = ByteNum * bits_per_byte },
+		{ Byte = (IntVal >> BitShifts) mod (1 << bits_per_byte) },
+		{ ByteNum1 = ByteNum - 1 },
 		call(Writer, Byte),
 		output_int_bytes(Writer, ByteNum1, IntVal)
 	;

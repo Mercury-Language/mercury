@@ -58,23 +58,22 @@ do_test2(Pred) -->
 :- mode foo(in, in, out) is det.
 
 foo(X, Y, Z) :-
-	Z is 100 * X + 10 * Y.
+	Z = 100 * X + 10 * Y.
 
 :- pred bar(int, int, int, int).
 :- mode bar(in, in, in, out) is det.
 
 bar(A, B, C, D) :-
-	D is 1000 * A + 100 * B + 10 * C.
+	D = 1000 * A + 100 * B + 10 * C.
 
 :- pred foo2(int, int, int).
 :- mode foo2(in, out, in) is det.
 
 foo2(X, Z, Y) :-
-	Z is 100 * X + 10 * Y.
+	Z = 100 * X + 10 * Y.
 
 :- pred bar2(int, int, int, int).
 :- mode bar2(in, in, out, in) is det.
 
 bar2(A, B, D, C) :-
-	D is 1000 * A + 100 * B + 10 * C.
-
+	D = 1000 * A + 100 * B + 10 * C.

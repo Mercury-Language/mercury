@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002 The University of Melbourne.
+% Copyright (C) 1997,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,7 @@ lp_solve2(Eqns0, Dir, Obj0, Result, IO0, IO, Info0, Info) :-
 			Result = Result0
 		;
 			Result0 = satisfiable(NOptVal, OptCoffs),
-			OptVal is -NOptVal,
+			OptVal = -NOptVal,
 			Result = satisfiable(OptVal, OptCoffs)
 		)
 	).
@@ -302,11 +302,11 @@ negate_equation(eqn(Coeffs0, Op0, Const0), eqn(Coeffs, Op, Const)) :-
 	),
 	Neg = lambda([Pair0::in, Pair::out] is det, (
 		Pair0 = V - X0,
-		X is -X0,
+		X = -X0,
 		Pair = V - X
 	)),
 	list__map(Neg, Coeffs0, Coeffs),
-	Const is -Const0.
+	Const = -Const0.
 
 :- pred simplify(equation, equation).
 :- mode simplify(in, out) is det.
@@ -335,7 +335,7 @@ add_var(Map0, Var, Coeff, Map) :-
 	;
 		Acc1 = 0.0
 	),
-	Acc is Acc1 + Coeff,
+	Acc = Acc1 + Coeff,
 	map__set(Map0, Var, Acc, Map).
 
 :- pred expand_urs_vars_e(equation, map(var, pair(var)), equation).
@@ -358,7 +358,7 @@ expand_urs_vars(Coeffs0, Vars, Coeffs) :-
 expand_urs_vars([], _Vars, Coeffs, Coeffs).
 expand_urs_vars([Var - Coeff|Rest], Vars, Coeffs0, Coeffs) :-
 	( map__search(Vars, Var, PVar - NVar) ->
-		NCoeff is -Coeff,
+		NCoeff = -Coeff,
 		Coeffs1 = [NVar - NCoeff, PVar - Coeff|Coeffs0]
 	;
 		Coeffs1 = [Var - Coeff|Coeffs0]
@@ -391,7 +391,7 @@ collect_vars(Eqns, Obj, Vars) :-
 number_vars([], _, VarNums, VarNums).
 number_vars([Var|Vars], N, VarNums0, VarNums) :-
 	map__det_insert(VarNums0, Var, N, VarNums1),
-	N1 is N + 1,
+	N1 = N + 1,
 	number_vars(Vars, N1, VarNums1, VarNums).
 
 :- pred insert_equations(equations, int, int, map(var, int), tableau, tableau).
@@ -402,7 +402,7 @@ insert_equations([Eqn|Eqns], Row, ConstCol, VarNums, Tableau0, Tableau) :-
 	Eqn = eqn(Coeffs, _Op, Const),
 	insert_coeffs(Coeffs, Row, VarNums, Tableau0, Tableau1),
 	set_index(Tableau1, Row, ConstCol, Const, Tableau2),
-	Row1 is Row + 1,
+	Row1 = Row + 1,
 	insert_equations(Eqns, Row1, ConstCol, VarNums, Tableau2, Tableau).
 
 :- pred insert_coeffs(list(coeff), int, map(var, int), tableau, tableau).
@@ -449,7 +449,7 @@ extract_obj_var(Tab, Var, Map0, Map) :-
 	( map__search(Vars, Var, Pos - Neg) ->
 		extract_obj_var2(Tab, Pos, PosVal),
 		extract_obj_var2(Tab, Neg, NegVal),
-		Val is PosVal - NegVal
+		Val = PosVal - NegVal
 	;
 		extract_obj_var2(Tab, Var, Val)
 	),
@@ -513,7 +513,7 @@ simplex(A0, A, Result, IO0, IO) :-
 				( MaxVal > 0.0 ->
 					rhs_col(A0, RHSC),
 					index(A0, Row, RHSC, MVal),
-					CVal is MVal/MaxVal,
+					CVal = MVal/MaxVal,
 					Max = yes(Row - CVal)
 				;
 					Max = no
@@ -525,7 +525,7 @@ simplex(A0, A, Result, IO0, IO) :-
 				index(A0, Row, RHSC, MVal),
 				(
 					CellVal > 0.0,
-					MaxVal1 is MVal/CellVal,
+					MaxVal1 = MVal/CellVal,
 					MaxVal1 =< MaxVal0
 				->
 					Max = yes(Row - MaxVal1)
@@ -568,7 +568,7 @@ ensure_zero_obj_coeffs([V|Vs], Tableau0, Tableau) :-
 		solutions(FindOne, Ones),
 		(
 			Ones = [Row - Fac0|_],
-			Fac is -Val/Fac0,
+			Fac = -Val/Fac0,
 			row_op(Fac, Row, 0, Tableau0, Tableau1),
 			ensure_zero_obj_coeffs(Vs, Tableau1, Tableau)
 		;
@@ -638,7 +638,7 @@ pivot(P, Q, A0, A) :-
 		index(T0, J, K, Ajk),
 		index(T0, J, Q, Ajq),
 		index(T0, P, K, Apk),
-		NewAjk is Ajk - Apk * Ajq / Apq,
+		NewAjk = Ajk - Apk * Ajq / Apq,
 		set_index(T0, J, K, NewAjk, T)
 	)),
 	aggregate(MostCells, ScaleCell, A0, A1),
@@ -654,7 +654,7 @@ pivot(P, Q, A0, A) :-
 	PRow = all_cols0(A2),
 	ScaleRow = lambda([K::in, T0::in, T::out] is det, (
 		index(T0, P, K, Apk),
-		NewApk is Apk / Apq,
+		NewApk = Apk / Apq,
 		set_index(T0, P, K, NewApk, T)
 	)),
 	aggregate(PRow, ScaleRow, A2, A3),
@@ -668,7 +668,7 @@ row_op(Scale, From, To, A0, A) :-
 	AddRow = lambda([Col::in, T0::in, T::out] is det, (
 		index(T0, From, Col, X),
 		index(T0, To, Col, Y),
-		Z is Y + (Scale * X),
+		Z = Y + (Scale * X),
 		set_index(T0, To, Col, Z, T)
 	)),
 	aggregate(AllCols, AddRow, A0, A).
@@ -770,7 +770,7 @@ all_cols0(Tableau, Col) :-
 
 all_cols(Tableau, Col) :-
 	Tableau = tableau(_Rows, Cols, _, _, _, SC, _),
-	Cols1 is Cols - 1,
+	Cols1 = Cols - 1,
 	between(0, Cols1, Col),
 	\+ list__member(Col, SC).
 
@@ -941,7 +941,7 @@ between(Min, Max, I) :-
 	(
 		I = Min
 	;
-		Min1 is Min + 1,
+		Min1 = Min + 1,
 		between(Min1, Max, I)
 	).
 

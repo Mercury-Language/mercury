@@ -382,7 +382,7 @@ middle_rec__find_unused_register_2([H | T], N, Reg) :-
 	( N < H ->
 		Reg = reg(r, N)
 	;
-		N1 is N + 1,
+		N1 = N + 1,
 		middle_rec__find_unused_register_2(T, N1, Reg)
 	).
 

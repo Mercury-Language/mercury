@@ -477,7 +477,7 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 			NewNotation = no
 		;
 			OldNotation = yes(Count0),
-			Count is Count0 + 1,
+			Count = Count0 + 1,
 			NewNotation = yes(Count)
 		),
 		map__det_update(Needed0, proc(PredId, ProcId), NewNotation,

@@ -247,7 +247,7 @@ write_lines([Line | Lines], MaybeContext, Indent) -->
 	{ string__pad_left("", ' ', Indent, IndentStr) },
 	io__write_string(IndentStr),
 	write_line(Line),
-	{ Indent2 is Indent + 2 },
+	{ Indent2 = Indent + 2 },
 	write_nonfirst_lines(Lines, MaybeContext, Indent2).
 
 :- pred write_nonfirst_lines(list(list(string))::in, maybe(prog_context)::in,
@@ -321,9 +321,9 @@ break_into_words(String, Words0, Words) :-
 break_into_words_from(String, Cur, Words0, Words) :-
 	( find_word_start(String, Cur, Start) ->
 		find_word_end(String, Start, End),
-		Length is End - Start + 1,
+		Length = End - Start + 1,
 		string__substring(String, Start, Length, Word),
-		Next is End + 1,
+		Next = End + 1,
 		break_into_words_from(String, Next, [Word | Words0], Words)
 	;
 		Words = Words0
@@ -334,7 +334,7 @@ break_into_words_from(String, Cur, Words0, Words) :-
 find_word_start(String, Cur, WordStart) :-
 	string__index(String, Cur, Char),
 	( char__is_whitespace(Char) ->
-		Next is Cur + 1,
+		Next = Cur + 1,
 		find_word_start(String, Next, WordStart)
 	;
 		WordStart = Cur
@@ -343,7 +343,7 @@ find_word_start(String, Cur, WordStart) :-
 :- pred find_word_end(string::in, int::in, int::out) is det.
 
 find_word_end(String, Cur, WordEnd) :-
-	Next is Cur + 1,
+	Next = Cur + 1,
 	( string__index(String, Next, Char) ->
 		( char__is_whitespace(Char) ->
 			WordEnd = Cur
@@ -378,7 +378,7 @@ group_words(IsFirst, Paras, Max, Lines) :-
 			get_line_of_words(FirstWord, LaterWords,
 				Max, Line, RestWords),
 			( IsFirst = yes ->
-				Max2 is Max - 2
+				Max2 = Max - 2
 			;
 				Max2 = Max
 			),
@@ -417,7 +417,7 @@ get_line_of_words(FirstWord, LaterWords, MaxLen, Line, RestWords) :-
 get_later_words([], _, _, Line, Line, []).
 get_later_words([Word | Words], OldLen, MaxLen, Line0, Line, RestWords) :-
 	string__length(Word, WordLen),
-	NewLen is OldLen + 1 + WordLen,
+	NewLen = OldLen + 1 + WordLen,
 	( NewLen =< MaxLen ->
 		list__append(Line0, [Word], Line1),
 		get_later_words(Words, NewLen, MaxLen,

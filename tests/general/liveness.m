@@ -71,9 +71,9 @@ p3(X) :-
 
 q(2).
 r(3).
-s(X, Y4) :- Y4 is X + 10.
-t(X, Y5, Z) :- Z is X * 100 + Y5.
+s(X, Y4) :- Y4 = X + 10.
+t(X, Y5, Z) :- Z = X * 100 + Y5.
 u(A,B,C,D,E) :-
-	Sum is A+B+C+D+E,
+	Sum = A+B+C+D+E,
 	Sum > 200.
 v(yes).

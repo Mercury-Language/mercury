@@ -232,7 +232,7 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 		ForkCode,
 		tree(ThisGoalCode, tree(tree(SaveCode, CopyCode), JoinCode))
 	) },
-	{ N1 is N + 1 },
+	{ N1 = N + 1 },
 	par_conj_gen__generate_det_par_conj_2(Goals, N1, SyncTerm, SpSlot,
 			Initial, MaybeEnd, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
@@ -267,7 +267,7 @@ par_conj_gen__copy_outputs([Var|Vars], SpSlot, Code) -->
 	(
 		{ SrcSlot = stackvar(SlotNum) }
 	->
-		{ NegSlotNum is (- SlotNum) },
+		{ NegSlotNum = (- SlotNum) },
 		{ DestSlot = field(yes(0), lval(SpSlot),
 			const(int_const(NegSlotNum))) }
 	;

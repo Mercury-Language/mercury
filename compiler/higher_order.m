@@ -1308,7 +1308,7 @@ find_higher_order_args(_, _, [_|_], [], _, _, _, _, _) :-
 find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 		[CalleeArgType | CalleeArgTypes], VarTypes,
 		PredVars, ArgNo, HOArgs0, HOArgs) :-
-	NextArg is ArgNo + 1,
+	NextArg = ArgNo + 1,
 	(
 		% We don't specialize arguments whose declared type is
 		% polymorphic. The closure they pass cannot possibly
@@ -2559,7 +2559,7 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName,
 		[]
 	),
 	io__write_string(" with higher-order arguments:\n"),
-	{ NumToDrop is ActualArity - Arity },
+	{ NumToDrop = ActualArity - Arity },
 	output_higher_order_args(ModuleInfo, NumToDrop, 0, HOArgs).
 
 :- pred output_higher_order_args(module_info::in, int::in, int::in,
@@ -2582,7 +2582,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs]) -->
 		{ pred_info_name(PredInfo, Name) },
 		{ pred_info_arity(PredInfo, Arity) },
 			% adjust message for type_infos
-		{ DeclaredArgNo is ArgNo - NumToDrop },
+		{ DeclaredArgNo = ArgNo - NumToDrop },
 		io__write_string("HeadVar__"),
 		io__write_int(DeclaredArgNo),
 		io__write_string(" = `"),

@@ -1142,7 +1142,7 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	unify_proc__quantify_clause_body([X, Index], Goal, Context, Clause),
-	{ N1 is N + 1 },
+	{ N1 = N + 1 },
 	unify_proc__generate_du_index_clauses(Ctors, X, Index, Context, N1,
 		Clauses).
 

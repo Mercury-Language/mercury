@@ -26,11 +26,11 @@ main -->
 
 test(X, Y, Z) -->
 	{
-		Plus is X + Y,
-		Times is X * Y,
-		Minus is X - Y,
-		Div is Y // X,
-		Rem is Y rem X,
+		Plus = X + Y,
+		Times = X * Y,
+		Minus = X - Y,
+		Div = Y // X,
+		Rem = Y rem X,
 		integer:pow(X,Z,Pow),
 		fac(Z,Fac)
 	},

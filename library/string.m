@@ -781,7 +781,7 @@ string__left(String, Count, LeftString) :-
 
 string__right(String, RightCount, RightString) :-
 	string__length(String, Length),
-	LeftCount is Length - RightCount,
+	LeftCount = Length - RightCount,
 	string__split(String, LeftCount, _LeftString, RightString).
 
 string__remove_suffix(A, B, C) :-
@@ -888,7 +888,7 @@ string__int_to_base_string_1(N, Base, Str) :-
 		string__int_to_base_string_2(N, Base, Str1),
 		string__append("-", Str1, Str)
 	;
-		N1 is 0 - N,
+		N1 = 0 - N,
 		string__int_to_base_string_2(N1, Base, Str)
 	).
 
@@ -899,12 +899,12 @@ string__int_to_base_string_2(NegN, Base, Str) :-
 	(
 		NegN > -Base
 	->
-		N is -NegN,
+		N = -NegN,
 		char__det_int_to_digit(N, DigitChar),
 		string__char_to_string(DigitChar, Str)
 	;
-		NegN1 is NegN // Base,
-		N10 is (NegN1 * Base) - NegN,
+		NegN1 = NegN // Base,
+		N10 = (NegN1 * Base) - NegN,
 		char__det_int_to_digit(N10, DigitChar),
 		string__char_to_string(DigitChar, DigitString),
 		string__int_to_base_string_2(NegN1, Base, Str1),
@@ -1133,7 +1133,7 @@ string__is_alnum_or_underscore(S) :-
 string__pad_left(String0, PadChar, Width, String) :-
 	string__length(String0, Length),
 	( Length < Width ->
-		Count is Width - Length,
+		Count = Width - Length,
 		string__duplicate_char(PadChar, Count, PadString),
 		string__append(PadString, String0, String)
 	;
@@ -1143,7 +1143,7 @@ string__pad_left(String0, PadChar, Width, String) :-
 string__pad_right(String0, PadChar, Width, String) :-
 	string__length(String0, Length),
 	( Length < Width ->
-		Count is Width - Length,
+		Count = Width - Length,
 		string__duplicate_char(PadChar, Count, PadString),
 		string__append(String0, PadString, String)
 	;

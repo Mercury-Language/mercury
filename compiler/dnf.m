@@ -73,6 +73,7 @@
 :- import_module transform_hlds__dependency_graph.
 
 :- import_module require, map, list, string, int, bool, std_util, term, varset.
+:- import_module counter.
 
 	% Traverse the module structure.
 
@@ -195,8 +196,8 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	(
 		GoalExpr0 = conj(Goals0),
 		dnf__transform_conj(Goals0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, 0, _, DnfInfo,
-			Goals, NewPredIds0, NewPredIds),
+			ModuleInfo0, ModuleInfo, Base, counter__init(0), _,
+			DnfInfo, Goals, NewPredIds0, NewPredIds),
 		Goal = conj(Goals) - GoalInfo
 	;
 		GoalExpr0 = par_conj(_Goals0),
@@ -204,33 +205,36 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 	;
 		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
 		dnf__make_goal_literal(SomeGoal0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, no, yes, Base, 0, _, 
-			DnfInfo, SomeGoal, NewPredIds0, NewPredIds),
+			ModuleInfo0, ModuleInfo, no, yes, Base,
+			counter__init(0), _, DnfInfo, SomeGoal,
+			NewPredIds0, NewPredIds),
 		Goal = some(Vars, CanRemove, SomeGoal) - GoalInfo
 	;
 		GoalExpr0 = not(NegGoal0),
 		dnf__make_goal_literal(NegGoal0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, yes, no, Base, 0, _, 
-			DnfInfo, NegGoal, NewPredIds0, NewPredIds),
+			ModuleInfo0, ModuleInfo, yes, no, Base,
+			counter__init(0), _, DnfInfo, NegGoal,
+			NewPredIds0, NewPredIds),
 		Goal = not(NegGoal) - GoalInfo
 	;
 		GoalExpr0 = disj(Goals0),
 		dnf__transform_disj(Goals0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
-			Goals, NewPredIds0, NewPredIds),
+			ModuleInfo0, ModuleInfo, Base, counter__init(0),
+			DnfInfo, Goals, NewPredIds0, NewPredIds),
 		Goal = disj(Goals) - GoalInfo
 	;
 		GoalExpr0 = switch(Var, CanFail, Cases0),
 		dnf__transform_switch(Cases0, InstMap0, MaybeNonAtomic,
-			ModuleInfo0, ModuleInfo, Base, 0, DnfInfo,
-			Cases, NewPredIds0, NewPredIds),
+			ModuleInfo0, ModuleInfo, Base, counter__init(0),
+			DnfInfo, Cases, NewPredIds0, NewPredIds),
 		Goal = switch(Var, CanFail, Cases) - GoalInfo
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
 		% XXX should handle nonempty Vars
 		dnf__transform_ite(Cond0, Then0, Else0, InstMap0,
-			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base, 0,
-			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
+			MaybeNonAtomic, ModuleInfo0, ModuleInfo, Base,
+			counter__init(0), DnfInfo, Cond, Then, Else,
+			NewPredIds0, NewPredIds),
 		Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
@@ -262,7 +266,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 
 :- pred dnf__transform_disj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, dnf_info::in, list(hlds_goal)::out,
+	string::in, counter::in, dnf_info::in, list(hlds_goal)::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_disj([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
@@ -282,7 +286,7 @@ dnf__transform_disj([Goal0 | Goals0], InstMap0, MaybeNonAtomic,
 
 :- pred dnf__transform_switch(list(case)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, dnf_info::in, list(case)::out,
+	string::in, counter::in, dnf_info::in, list(case)::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_switch([], _, _, ModuleInfo, ModuleInfo, _, _, _, [],
@@ -305,7 +309,7 @@ dnf__transform_switch([Case0 | Cases0], InstMap0, MaybeNonAtomic,
 
 :- pred dnf__transform_ite(hlds_goal::in, hlds_goal::in, hlds_goal::in,
 	instmap::in, maybe(set(pred_proc_id))::in, module_info::in,
-	module_info::out, string::in, int::in, dnf_info::in,
+	module_info::out, string::in, counter::in, dnf_info::in,
 	hlds_goal::out, hlds_goal::out, hlds_goal::out,
 	list(pred_id)::in, list(pred_id)::out) is det.
 
@@ -335,8 +339,8 @@ dnf__transform_ite(Cond0, Then0, Else0, InstMap0, MaybeNonAtomic,
 
 :- pred dnf__transform_conj(list(hlds_goal)::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	string::in, int::in, int::out, dnf_info::in, list(hlds_goal)::out,
-	list(pred_id)::in, list(pred_id)::out) is det.
+	string::in, counter::in, counter::out, dnf_info::in,
+	list(hlds_goal)::out, list(pred_id)::in, list(pred_id)::out) is det.
 
 dnf__transform_conj([], _, _, ModuleInfo, ModuleInfo, _, Counter, Counter,
 		_, [], NewPreds, NewPreds).
@@ -357,8 +361,9 @@ dnf__transform_conj([Goal0 | Goals0], InstMap0, MaybeNonAtomic,
 
 :- pred dnf__make_goal_literal(hlds_goal::in, instmap::in,
 	maybe(set(pred_proc_id))::in, module_info::in, module_info::out,
-	bool::in, bool::in, string::in, int::in, int::out, dnf_info::in,
-	hlds_goal::out, list(pred_id)::in, list(pred_id)::out) is det.
+	bool::in, bool::in, string::in, counter::in, counter::out,
+	dnf_info::in, hlds_goal::out, list(pred_id)::in, list(pred_id)::out)
+	is det.
 
 dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0,
 		ModuleInfo, InNeg, InSome, Base, Counter0, Counter,
@@ -381,17 +386,17 @@ dnf__make_goal_literal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0,
 	).
 
 :- pred dnf__get_new_pred_name(predicate_table::in, string::in, string::out,
-	int::in, int::out) is det.
+	counter::in, counter::out) is det.
 
-dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
-	string__int_to_string(N0, Suffix),
+dnf__get_new_pred_name(PredTable, Base, Name, Counter0, Counter) :-
+	counter__allocate(N, Counter0, Counter1),
+	string__int_to_string(N, Suffix),
 	string__append_list([Base, "__part_", Suffix], TrialName),
-	N1 is N0 + 1,
 	( predicate_table_search_name(PredTable, TrialName, _) ->
-		dnf__get_new_pred_name(PredTable, Base, Name, N1, N)
+		dnf__get_new_pred_name(PredTable, Base, Name, Counter1, Counter)
 	;
 		Name = TrialName,
-		N = N1
+		Counter = Counter1
 	).
 
 :- pred dnf__define_new_pred(hlds_goal::in, hlds_goal::out, instmap::in,

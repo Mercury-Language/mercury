@@ -602,11 +602,13 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	(	{ PredOrFunc = predicate },
-		io__write_string("  expecting higher-order pred inst (of arity "),
+		io__write_string(
+			"  expecting higher-order pred inst (of arity "),
 		io__write_int(Arity)
 	;	{ PredOrFunc = function },
-		io__write_string("  expecting higher-order func inst (of arity "),
-		{ Arity1 is Arity - 1 },
+		io__write_string(
+			"  expecting higher-order func inst (of arity "),
+		{ Arity1 = Arity - 1 },
 		io__write_int(Arity1)
 	),
 	io__write_string(").\n").
@@ -1061,7 +1063,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo) -->
 	% front by polymorphism.m - we only want the last `PredArity' of them.
 	%
 	{ list__length(ArgModes0, NumArgModes) },
-	{ NumToDrop is NumArgModes - PredArity },
+	{ NumToDrop = NumArgModes - PredArity },
 	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
 		{ ArgModes2 = ArgModes1 }
 	;

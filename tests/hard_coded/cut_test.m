@@ -71,11 +71,11 @@ best(A) :-
 
 middle(A0) :-
 	(
-		A1 is A0 + 10
+		A1 = A0 + 10
 	;
-		A1 is A0 + 20
+		A1 = A0 + 20
 	;
-		A1 is A0 + 30
+		A1 = A0 + 30
 	),
 	test(A1, _).
 
@@ -89,11 +89,11 @@ worst(A0) :-
 
 addsome(A0, A1) :-
 	(
-		A1 is A0 + 10
+		A1 = A0 + 10
 	;
-		A1 is A0 + 20
+		A1 = A0 + 20
 	;
-		A1 is A0 + 30
+		A1 = A0 + 30
 	).
 
 :- pred test(int::in, int::out) is nondet.
@@ -101,9 +101,9 @@ addsome(A0, A1) :-
 test(A, B) :-
 	A > 200,
 	(
-		B is A
+		B = A
 	;
-		B is A * 2
+		B = A * 2
 	;
-		B is A * 3
+		B = A * 3
 	).

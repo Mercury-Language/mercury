@@ -493,7 +493,7 @@ pd_util__get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
 	;
 		OpaqueArgs1 = OpaqueArgs0
 	),
-	NextArg is ArgNo + 1,
+	NextArg = ArgNo + 1,
 	pd_util__get_opaque_args(ModuleInfo, NextArg, ArgModes,
 		ExtraInfoArgs, OpaqueArgs1, OpaqueArgs).
 
@@ -520,7 +520,7 @@ pd_util__get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
 	;
 		ThisProcLeftVars1 = ThisProcLeftVars0
 	),
-	NextArgNo is ArgNo + 1,
+	NextArgNo = ArgNo + 1,
 	pd_util__get_extra_info_headvars(HeadVars, NextArgNo,
 		LeftVars, VarInfo, ThisProcArgs1, ThisProcArgs, 
 		ThisProcLeftVars1, ThisProcLeftVars).
@@ -665,7 +665,7 @@ pd_util__get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
 	;
 		ExtraVars2 = ExtraVars1
 	),
-	NextBranch is BranchNo + 1,
+	NextBranch = BranchNo + 1,
 	pd_util__get_branch_vars(ModuleInfo, Goal, InstMapDeltas, InstMap, 
 		NextBranch, ExtraVars2, ExtraVars).
 
@@ -716,7 +716,7 @@ pd_util__examine_branch_list(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
 	goal_to_conj_list(Goal, GoalList),
 	pd_util__examine_branch(ModuleInfo, ProcArgInfo, BranchNo, GoalList,
 		VarTypes, InstMap, Vars0, Vars1),
-	NextBranch is BranchNo + 1,
+	NextBranch = BranchNo + 1,
 	pd_util__examine_branch_list(ModuleInfo, ProcArgInfo, NextBranch,
 		Goals, VarTypes, InstMap, Vars1, Vars).
 
@@ -735,7 +735,7 @@ pd_util__examine_case_list(ModuleInfo0, ProcArgInfo, BranchNo, Var,
 	goal_to_conj_list(Goal, GoalList),
 	pd_util__examine_branch(ModuleInfo1, ProcArgInfo, BranchNo, GoalList,
 		VarTypes, InstMap1, Vars0, Vars1),
-	NextBranch is BranchNo + 1,
+	NextBranch = BranchNo + 1,
 	pd_util__examine_case_list(ModuleInfo1, ProcArgInfo, NextBranch,
 		Var, Goals, VarTypes, InstMap, Vars1, Vars, ModuleInfo).
 
@@ -970,7 +970,7 @@ pd_util__bound_inst_size(ModuleInfo, [functor(_, ArgInsts) | Insts],
 		Expansions, Size0, Size) :-
 	pd_util__inst_list_size(ModuleInfo, ArgInsts,
 		Expansions, Size0, Size1),
-	Size2 is Size1 + 1,
+	Size2 = Size1 + 1,
 	pd_util__bound_inst_size(ModuleInfo, Insts, Expansions, Size2, Size).
 
 pd_util__inst_list_size(ModuleInfo, Insts, Size) :-
@@ -984,7 +984,7 @@ pd_util__inst_list_size(_, [], _, Size, Size).
 pd_util__inst_list_size(ModuleInfo, [Inst | Insts],
 		Expansions, Size0, Size) :-
 	pd_util__inst_size_2(ModuleInfo, Inst, Expansions, Size1),
-	Size2 is Size0 + Size1,
+	Size2 = Size0 + Size1,
 	pd_util__inst_list_size(ModuleInfo, Insts, Expansions, Size2, Size).
 
 %-----------------------------------------------------------------------------%

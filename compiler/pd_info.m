@@ -23,6 +23,7 @@
 :- import_module transform_hlds__pd_term.
 
 :- import_module bool, map, list, io, set, std_util, getopt.
+:- import_module counter.
 
 :- type pd_info 
 	---> pd_info(
@@ -32,7 +33,7 @@
 		goal_version_index :: goal_version_index,
 		versions :: version_index,
 		proc_arg_info :: pd_arg_info,
-		counter :: int,
+		counter :: counter,
 		global_term_info :: global_term_info,
 		parent_versions :: set(pred_proc_id),
 		depth :: int,
@@ -83,7 +84,7 @@
 :- pred pd_info_get_proc_arg_info(pd_arg_info, pd_info, pd_info).
 :- mode pd_info_get_proc_arg_info(out, pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_get_counter(int, pd_info, pd_info).
+:- pred pd_info_get_counter(counter, pd_info, pd_info).
 :- mode pd_info_get_counter(out, pd_info_di, pd_info_uo) is det.
 
 :- pred pd_info_get_global_term_info(global_term_info, pd_info, pd_info).
@@ -119,7 +120,7 @@
 :- pred pd_info_set_proc_arg_info(pd_arg_info, pd_info, pd_info).
 :- mode pd_info_set_proc_arg_info(in, pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_set_counter(int, pd_info, pd_info).
+:- pred pd_info_set_counter(counter, pd_info, pd_info).
 :- mode pd_info_set_counter(in, pd_info_di, pd_info_uo) is det.
 
 :- pred pd_info_set_global_term_info(global_term_info, pd_info, pd_info).
@@ -185,8 +186,8 @@ pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
 	pd_term__global_term_info_init(GlobalInfo),
 	set__init(CreatedVersions),
 	set__init(UselessVersions),
-	PdInfo = pd_info(IO, ModuleInfo, no, GoalVersionIndex, Versions, 
-		ProcArgInfos, 0, GlobalInfo, ParentVersions, 0, 
+	PdInfo = pd_info(IO, ModuleInfo, no, GoalVersionIndex, Versions,
+		ProcArgInfos, counter__init(0), GlobalInfo, ParentVersions, 0,
 		CreatedVersions, UselessVersions).
 
 pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo) -->
@@ -463,12 +464,12 @@ pd_info_set_rerun_det(Rerun) -->
 
 pd_info_incr_cost_delta(Delta1) -->
 	pd_info_get_cost_delta(Delta0),
-	{ Delta is Delta0 + Delta1 },
+	{ Delta = Delta0 + Delta1 },
 	pd_info_set_cost_delta(Delta).
 
 pd_info_incr_size_delta(Delta1) -->
 	pd_info_get_size_delta(Delta0),
-	{ Delta is Delta0 + Delta1 },
+	{ Delta = Delta0 + Delta1 },
 	pd_info_set_size_delta(Delta).
 
 %-----------------------------------------------------------------------------%
@@ -701,7 +702,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ set__to_sorted_list(NonLocals, Args) },
 	pd_info_get_counter(Counter0),
-	{ Counter is Counter0 + 1 },
+	{ counter__allocate(Count, Counter0, Counter) },
 	pd_info_set_counter(Counter),
 	pd_info_get_pred_info(PredInfo),
 	{ pred_info_name(PredInfo, PredName) },
@@ -710,7 +711,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	pd_info_get_module_info(ModuleInfo0),
 	{ module_info_name(ModuleInfo0, ModuleName) },	
 	{ make_pred_name_with_context(ModuleName, "DeforestationIn",
-		predicate, PredName, Line, Counter0, SymName) },
+		predicate, PredName, Line, Count, SymName) },
 	{ unqualify_name(SymName, Name) },
 
 	pd_info_get_proc_info(ProcInfo),

@@ -19,7 +19,7 @@
 :- import_module int, float.
 
 main -->
-	{ Pred = lambda([Int::in, Float::out] is det, Float is float(Int)) },
+	{ Pred = lambda([Int::in, Float::out] is det, Float = float(Int)) },
 	{ test(Pred, error("error"), Output1) },
 	{ test(Pred, ok(1), Output2) },
 	io__write(Output1),

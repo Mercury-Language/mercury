@@ -37,7 +37,7 @@ write_s(S) --> io__write_string(S).
 
 %% Description: Speed tests for meta predicates.
 
-%% RCS: $Id: mode_inf_bug.m,v 1.4 1997-08-09 03:36:26 fjh Exp $
+%% RCS: $Id: mode_inf_bug.m,v 1.5 2003-05-26 09:00:59 zs Exp $
 
 %%% Simple test predicate --------------------------------------------
 :- mode is_a(in) is semidet.
@@ -75,7 +75,7 @@ gen_a_list(N,L) :-
 		L = []
 	;
 		L = [a|R],
-		N1 is N - 1,
+		N1 = N - 1,
 		gen_a_list(N1,R)
 	).
 

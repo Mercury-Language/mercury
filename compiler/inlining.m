@@ -588,7 +588,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
         	proc_info_varset(ProcInfo, CalleeVarSet),
 		varset__vars(CalleeVarSet, CalleeListOfVars),
 		list__length(CalleeListOfVars, CalleeThisMany),
-		TotalVars is ThisMany + CalleeThisMany,
+		TotalVars = ThisMany + CalleeThisMany,
 		TotalVars =< VarThresh
 	->
 		inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, 

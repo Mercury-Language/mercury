@@ -331,7 +331,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
 	;
 		{ Result0 = term(_VarSet, Term) },
 		fact_table_size(FactTableSize),
-		( { 0 is NumFacts0 mod FactTableSize } ->
+		( { 0 = NumFacts0 mod FactTableSize } ->
 			globals__io_lookup_bool_option(very_verbose,
 				VeryVerbose),
 			( { VeryVerbose = yes } ->
@@ -348,7 +348,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
 			Result1),
 		{
 			Result1 = ok,
-			NumFacts1 is NumFacts0 + 1
+			NumFacts1 = NumFacts0 + 1
 		;
 			Result1 = error,
 			NumFacts1 = NumFacts0
@@ -395,7 +395,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 		    { FuncHeadTerm = term__functor(
 		    	term__atom(PredString), Terms1, _) },
 		    { list__append(Terms1, [FuncResultTerm], Terms) },
-		    { Arity is Arity0 + 1 }
+		    { Arity = Arity0 + 1 }
 		)
 	    ->
 		% Check that arity of the fact is correct
@@ -469,7 +469,7 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 check_fact_type_and_mode(_, [], _, _, _, ok) --> [].
 check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
 		Context0, Result) -->
-	{ ArgNum is ArgNum0 + 1 },
+	{ ArgNum = ArgNum0 + 1 },
 	(
 		{ Term = term__variable(_) },
 		prog_out__write_context(Context0),
@@ -682,7 +682,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 	(
 		{ Type = term__functor(term__atom("string"), [], _) }
 	->
-		{ I1 is I + 1 },
+		{ I1 = I + 1 },
 		write_fact_table_struct(Infos, I1, Context,
 			StructContents1, Result),
 		{
@@ -698,7 +698,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 	;
 		{ Type = term__functor(term__atom("int"), [], _) }
 	->
-		{ I1 is I + 1 },
+		{ I1 = I + 1 },
 		write_fact_table_struct(Infos, I1, Context,
 			StructContents1, Result),
 		{
@@ -714,7 +714,7 @@ write_fact_table_struct([Info | Infos], I, Context, StructContents, Result) -->
 	;
 		{ Type = term__functor(term__atom("float"), [], _) }
 	->
-		{ I1 is I + 1 },
+		{ I1 = I + 1 },
 		write_fact_table_struct(Infos, I1, Context,
 			StructContents1, Result),
 		{
@@ -1283,7 +1283,7 @@ write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
 write_fact_table_data(_, [], _, _) --> [].
 write_fact_table_data(FactNum, [Args | ArgsList], StructName, OutputStream) -->
 	write_fact_data(FactNum, Args, StructName, OutputStream),
-	{ NextFactNum is FactNum + 1 },
+	{ NextFactNum = FactNum + 1 },
 	write_fact_table_data(NextFactNum, ArgsList, StructName, OutputStream).
 
 
@@ -1297,7 +1297,7 @@ write_fact_table_data(FactNum, [Args | ArgsList], StructName, OutputStream) -->
 
 write_fact_data(FactNum, Args, StructName, OutputStream) -->
 	fact_table_size(FactTableSize),
-	( { 0 is FactNum mod FactTableSize } ->
+	( { 0 = FactNum mod FactTableSize } ->
 		( { FactNum = 0 } ->
 			[]
 		;
@@ -1656,7 +1656,7 @@ build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName, TableNum0,
 		TableNum0, TableNum1, IsPrimaryTable, OutputStream,
 		MatchingFacts, FactMap1, HashList0, HashList1),
 	{ list__length(MatchingFacts, Len) },
-	{ NextFactNum is FactNum + Len },
+	{ NextFactNum = FactNum + Len },
 	build_hash_table_2(NextFactNum, InputArgNum, HashTableName, StructName,
 		TableNum1, ArgModes, ModuleInfo, Infos, IsPrimaryTable,
 		OutputStream, MaybeNextFact, MaybeDataStream, CreateFactMap,
@@ -1702,7 +1702,7 @@ build_hash_table_lower_levels_2(FactNum, InputArgNum, HashTableName,
 		TableNum0, TableNum1, IsPrimaryTable, OutputStream,
 		MatchingFacts, FactMap, HashList0, HashList1),
 	{ list__length(MatchingFacts, Len) },
-	{ NextFactNum is FactNum + Len },
+	{ NextFactNum = FactNum + Len },
 	build_hash_table_lower_levels_2(NextFactNum, InputArgNum,
 		HashTableName, TableNum1, TableNum, IsPrimaryTable,
 		OutputStream, Facts1, FactMap, HashList1, HashList).
@@ -1742,12 +1742,12 @@ do_build_hash_table(FactNum, InputArgNum, HashTableName, TableNum0,
 			{ TableNum = TableNum0 }
 		;
 			% see if there are any more input arguments
-			{ NextInputArgNum is InputArgNum + 1 },
+			{ NextInputArgNum = InputArgNum + 1 },
 			{ Fact = sort_file_line(InputArgs, _, _) },
-			{ N is NextInputArgNum + 1 },
+			{ N = NextInputArgNum + 1 },
 			{ list__drop(N, InputArgs, _) }
 		->
-			{ TableNum1 is TableNum0 + 1 },
+			{ TableNum1 = TableNum0 + 1 },
 			build_hash_table_lower_levels(FactNum, NextInputArgNum,
 				HashTableName, TableNum1, TableNum,
 				IsPrimaryTable, OutputStream, Facts, FactMap),
@@ -1875,7 +1875,7 @@ update_fact_map(_, [], FactMap, FactMap).
 update_fact_map(FactNum, [Fact | Facts], FactMap0, FactMap) :-
 	Fact = sort_file_line(_, Index, _),
 	map__set(FactMap0, Index, FactNum, FactMap1),
-	NextFactNum is FactNum + 1,
+	NextFactNum = FactNum + 1,
 	update_fact_map(NextFactNum, Facts, FactMap1, FactMap).
 
 %---------------------------------------------------------------------------%
@@ -2088,7 +2088,7 @@ calculate_hash_table_size(NumEntries, HashTableSize) -->
 		524309, 1048627, 2097257, 4194493, 8388949, 16777903,
 		33555799, 67108879, 134217757, 268435459, 536870923,
 		1073741827, 2147483647 ] },
-	{ N is (NumEntries * 100) // PercentFull },
+	{ N = (NumEntries * 100) // PercentFull },
 	{ calculate_hash_table_size_2(N, Primes, HashTableSize) }.
 
 :- pred calculate_hash_table_size_2(int, list(int), int).
@@ -2159,14 +2159,14 @@ hash_table_insert_2(HashTable0, HashVal, FreeVal, Index0, Key0, HashTable) :-
 
 get_free_hash_slot(HashTable, Start, Free) :-
 	HashTable = hash_table(Size, _),
-	Max is Size - 1,
+	Max = Size - 1,
 	get_free_hash_slot_2(HashTable, Start, Max, Free).
 
 :- pred get_free_hash_slot_2(hash_table, int, int, int).
 :- mode get_free_hash_slot_2(in, in, in, out) is det.
 
 get_free_hash_slot_2(HashTable, Start, Max, Free) :-
-	Next is (Start + 1) mod Max,
+	Next = (Start + 1) mod Max,
 	(
 		hash_table_search(HashTable, Next, _)
 	->
@@ -2213,7 +2213,7 @@ fact_table_hash(HashSize, Key, HashVal) :-
 
 fact_table_hash_2(_, [], HashVal, HashVal).
 fact_table_hash_2(HashSize, [N | Ns], HashVal0, HashVal) :-
-	HashVal1 is (N + 31 * HashVal0) mod HashSize,
+	HashVal1 = (N + 31 * HashVal0) mod HashSize,
 	fact_table_hash_2(HashSize, Ns, HashVal1, HashVal).
 
 :- pred hash_list_insert_many(list(hash_entry), list(sort_file_line), bool,
@@ -2278,7 +2278,7 @@ write_hash_table(BaseName, TableNum, HashTable, OutputStream) -->
 	io__set_output_stream(OutputStream, OldOutputStream),
 	io__write_strings([HashTableDataName, " = {\n"]),
 	{ HashTable = hash_table(Size, _) },
-	{ MaxIndex is Size - 1 },
+	{ MaxIndex = Size - 1 },
 	write_hash_table_2(HashTable, 0, MaxIndex),
 	io__write_string("};\n\n"),
 	io__format("
@@ -2340,7 +2340,7 @@ write_hash_table_2(HashTable, CurrIndex, MaxIndex) -->
 			"0, MR_FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ")
 		),
 		io__write_string("},\n"),
-		{ NextIndex is CurrIndex + 1 },
+		{ NextIndex = CurrIndex + 1 },
 		write_hash_table_2(HashTable, NextIndex, MaxIndex)
 	).
 
@@ -2386,7 +2386,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
 			error("get_hash_table_type: invalid term")
 		)
 	;
-		NextIndex is Index + 1,
+		NextIndex = Index + 1,
 		get_hash_table_type_2(Map, NextIndex, TableType)
 	).
 
@@ -2422,7 +2422,7 @@ write_fact_table_pointer_array_2(CurrFact, NumFacts, StructName, OutputStream)
 		io__format(OutputStream, "\t%s%d,\n",
 			[s(StructName), i(CurrFact)]),
 		fact_table_size(FactTableSize),
-		{ NextFact is CurrFact + FactTableSize },
+		{ NextFact = CurrFact + FactTableSize },
 		write_fact_table_pointer_array_2(NextFact, NumFacts, StructName,
 			OutputStream)
 	).
@@ -2697,7 +2697,7 @@ generate_cc_multi_code_2([pragma_var(_, VarName, _)|PragmaVars], StructName,
 	string__format("\t\t%s = %s[0][0].V_%d;\n", [s(VarName), s(StructName),
 		i(ArgNum)], ProcCode1),
 	string__append(ProcCode1, ProcCode0, ProcCode2),
-	NextArgNum is ArgNum + 1,
+	NextArgNum = ArgNum + 1,
 	generate_cc_multi_code_2(PragmaVars, StructName, NextArgNum, ProcCode2,
 		ProcCode).
 
@@ -2809,7 +2809,7 @@ generate_hash_code([_|_], [], _, _, _, _, _, _, _) :-
 generate_hash_code([pragma_var(_, Name, Mode)|PragmaVars], [Type | Types],
 		ModuleInfo, LabelName, LabelNum, PredName, ArgNum,
 		FactTableSize, C_Code) :-
-	NextArgNum is ArgNum + 1,
+	NextArgNum = ArgNum + 1,
 	( mode_is_fully_input(ModuleInfo, Mode) ->
 		(
 			Type = term__functor(term__atom("int"), [], _)
@@ -2832,7 +2832,7 @@ generate_hash_code([pragma_var(_, Name, Mode)|PragmaVars], [Type | Types],
 		;
 			error("generate_hash_code: unsupported type")
 		),
-		NextLabelNum is LabelNum + 1,
+		NextLabelNum = LabelNum + 1,
 		generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
 			NextLabelNum, PredName, NextArgNum, FactTableSize,
 			C_Code1),
@@ -3020,7 +3020,7 @@ generate_fact_lookup_code(_, [], [_|_], _, _, _, _) :-
 	error("generate_fact_lookup_code: too many types").
 generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 		[Type | Types], ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-	NextArgNum is ArgNum + 1,
+	NextArgNum = ArgNum + 1,
 	( mode_is_fully_output(ModuleInfo, Mode) ->
 	    TableEntryTemplate = 
 		"mercury__%s_fact_table[ind/%d][ind%%%d].V_%d",
@@ -3241,7 +3241,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
 	->
 		generate_arg_decl_code(VarName, Type, Module, DeclCode0),
 		( ArgMode = top_in ->
-			NumInputArgs1 is NumInputArgs0 + 1,
+			NumInputArgs1 = NumInputArgs0 + 1,
 			generate_arg_input_code(VarName, Type, Loc,
 				NumInputArgs1, InputCode0, SaveRegsCode0,
 				GetRegsCode0),
@@ -3361,7 +3361,7 @@ generate_test_condition_code(FactTableName, [PragmaVar|PragmaVars],
 		CondCode1 = "",
 		IsFirstInputArg = IsFirstInputArg0
 	),
-	NextArgNum is ArgNum + 1,
+	NextArgNum = ArgNum + 1,
 	generate_test_condition_code(FactTableName, PragmaVars, Types,
 		ModuleInfo, NextArgNum, IsFirstInputArg, FactTableSize,
 		CondCode2),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -187,7 +187,7 @@ help__search_entry_list([Entry | Tail], Name, C0, C, Stream) -->
 	( { Name = EntryName } ->
 		% We print this node, but don't search its children.
 		help__print_node(Node, Stream),
-		{ C is C0 + 1 }
+		{ C = C0 + 1 }
 	;
 		help__search_node(Node, Name, C0, C1, Stream),
 		help__search_entry_list(Tail, Name, C1, C, Stream)

@@ -143,7 +143,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 				Gamma0, InVars0, OutVars)
 		->
 			bag__insert(InVars0, InVar, InVars),
-			Gamma is 0 - Gamma0,
+			Gamma = 0 - Gamma0,
 			record_change(InVars, OutVars, Gamma, [], Info0, Info)
 		;
 			error("higher order deconstruction")
@@ -482,7 +482,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
 	Path0 = path_info(ProcData, Start, Gamma0, PPIds0, Vars0),
 	( bag__intersect(OutVars, Vars0) ->
 		% The change produces some active variables.
-		Gamma is CallGamma + Gamma0,
+		Gamma = CallGamma + Gamma0,
 		list__append(CallPPIds, PPIds0, PPIds),
 		bag__subtract(Vars0, OutVars, Vars1),
 		bag__union(InVars, Vars1, Vars),

@@ -21,10 +21,9 @@ some_array_stuff(X, Y) :-
 	array__set(A0, 37, X, A1),
 	array__lookup(A1, 37, Y).
 
-some_backtracking_stuff(X, Y, Z) :- Y is X + 1, p(Z).
-some_backtracking_stuff(X, Y, Z) :- Y is X + 2, p(Z).
-some_backtracking_stuff(X, Y, Z) :- Y is X + 3, p(Z).
+some_backtracking_stuff(X, Y, Z) :- Y = X + 1, p(Z).
+some_backtracking_stuff(X, Y, Z) :- Y = X + 2, p(Z).
+some_backtracking_stuff(X, Y, Z) :- Y = X + 3, p(Z).
 
 p(1).
 p(2).
-

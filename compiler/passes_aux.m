@@ -722,7 +722,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	% front by polymorphism.m - we only want the last `PredArity' of them.
 	%
 	{ list__length(ArgModes0, NumArgModes) },
-	{ NumToDrop is NumArgModes - Arity },
+	{ NumToDrop = NumArgModes - Arity },
 	( { list__drop(NumToDrop, ArgModes0, ArgModes1) } ->
 		{ ArgModes = ArgModes1 }
 	;	

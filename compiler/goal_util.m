@@ -740,7 +740,7 @@ goals_size([], 0).
 goals_size([Goal | Goals], Size) :-
 	goal_size(Goal, Size1),
 	goals_size(Goals, Size2),
-	Size is Size1 + Size2.
+	Size = Size1 + Size2.
 
 clause_list_size(Clauses, GoalSize) :-
 	GetClauseSize =
@@ -764,7 +764,7 @@ cases_size([], 0).
 cases_size([case(_, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
 	cases_size(Cases, Size2),
-	Size is Size1 + Size2.
+	Size = Size1 + Size2.
 
 :- pred goal_expr_size(hlds_goal_expr, int).
 :- mode goal_expr_size(in, out) is det.
@@ -773,24 +773,24 @@ goal_expr_size(conj(Goals), Size) :-
 	goals_size(Goals, Size).
 goal_expr_size(par_conj(Goals), Size) :-
 	goals_size(Goals, Size1),
-	Size is Size1 + 1.
+	Size = Size1 + 1.
 goal_expr_size(disj(Goals), Size) :-
 	goals_size(Goals, Size1),
-	Size is Size1 + 1.
+	Size = Size1 + 1.
 goal_expr_size(switch(_, _, Goals), Size) :-
 	cases_size(Goals, Size1),
-	Size is Size1 + 1.
+	Size = Size1 + 1.
 goal_expr_size(if_then_else(_, Cond, Then, Else), Size) :-
 	goal_size(Cond, Size1),
 	goal_size(Then, Size2),
 	goal_size(Else, Size3),
-	Size is Size1 + Size2 + Size3 + 1.
+	Size = Size1 + Size2 + Size3 + 1.
 goal_expr_size(not(Goal), Size) :-
 	goal_size(Goal, Size1),
-	Size is Size1 + 1.
+	Size = Size1 + 1.
 goal_expr_size(some(_, _, Goal), Size) :-
 	goal_size(Goal, Size1),
-	Size is Size1 + 1.
+	Size = Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
@@ -804,7 +804,7 @@ goal_expr_size(shorthand(ShorthandGoal), Size) :-
 goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
 	goal_size(LHS, Size1),
 	goal_size(RHS, Size2),
-	Size is Size1 + Size2 + 1.
+	Size = Size1 + Size2 + 1.
 
 %-----------------------------------------------------------------------------%
 %

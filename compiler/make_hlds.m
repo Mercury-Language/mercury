@@ -187,7 +187,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
 
 	{ module_info_num_errors(Module5, NumErrors5) },
-	{ NumErrors is NumErrors5 + MQ_NumErrors },
+	{ NumErrors = NumErrors5 + MQ_NumErrors },
 	{ module_info_set_num_errors(Module5, NumErrors, Module6) },
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
@@ -7622,13 +7622,11 @@ insert_arg_unifications_2([], [], _, _, _, List, VarSet, List, VarSet,
 insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext,
 		N0, List0, VarSet0, List, VarSet,
 		Info0, Info, SInfo0, SInfo) -->
-	{ N1 is N0 + 1 },
+	{ N1 = N0 + 1 },
 	insert_arg_unification(Var, Arg, Context, ArgContext,
 		N1, List0, VarSet0, List1, VarSet1, ArgUnifyConj,
 		Info0, Info1, SInfo0, SInfo1),
-	(
-		{ ArgUnifyConj = [] }
-	->
+	( { ArgUnifyConj = [] } ->
 		insert_arg_unifications_2(Vars, Args, Context, ArgContext,
 			N1, List1, VarSet1, List, VarSet,
 			Info1, Info, SInfo1, SInfo)
@@ -7777,7 +7775,7 @@ append_arg_unifications_2([], [], _, _, _, List, VarSet, List, VarSet,
 append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 		List0, VarSet0, List, VarSet,
 		Info0, Info, SInfo0, SInfo) -->
-	{ N1 is N0 + 1 },
+	{ N1 = N0 + 1 },
 	append_arg_unification(Var, Arg, Context, ArgContext,
 		N1, ConjList, VarSet0, VarSet1,
 		Info0, Info1, SInfo0, SInfo1),

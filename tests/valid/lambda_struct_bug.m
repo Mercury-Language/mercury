@@ -28,16 +28,16 @@
 adj(pos(X, Y), Adjs) :-
 	Pred = lambda([Adj::out] is nondet, (
 			(
-				X1 is X - 1,
+				X1 = X - 1,
 				Adj = adj(pos(X1, Y), pos(X, Y))
 			;
-				X1 is X + 1,
+				X1 = X + 1,
 				Adj = adj(pos(X1, Y), pos(X, Y))
 			;
-				Y1 is Y + 1,
+				Y1 = Y + 1,
 				Adj = adj(pos(X, Y1), pos(X, Y))
 			;
-				Y1 is Y - 1,
+				Y1 = Y - 1,
 				Adj = adj(pos(X, Y1), pos(X, Y))
 			),
 			Adj = adj(pos(A, B), _),

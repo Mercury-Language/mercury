@@ -162,7 +162,7 @@ switch_util__string_hash_cases([Case | Cases], HashMask, Map) :-
 		error("switch_util__string_hash_cases: non-string case?")
 	),
 	string__hash(String, HashVal0),
-	HashVal is HashVal0 /\ HashMask,
+	HashVal = HashVal0 /\ HashMask,
 	( map__search(Map0, HashVal, CaseList0) ->
 		map__det_update(Map0, HashVal, [Case | CaseList0], Map)
 	;
@@ -248,7 +248,7 @@ switch_util__follow_hash_chain(Map, Slot, LastSlot) :-
 :- mode switch_util__next_free_hash_slot(in, in, in, out) is det.
 
 switch_util__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
-	NextSlot is LastUsed + 1,
+	NextSlot = LastUsed + 1,
 	(
 		\+ map__contains(Map, NextSlot),
 		\+ map__contains(H_Map, NextSlot)
@@ -541,7 +541,7 @@ switch_util__select_frequent_ptag([PtagCount0 | PtagCountList1], Primary, Count,
 
 switch_util__order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
 	( MaxPtag >= Ptag ->
-		NextPtag is Ptag + 1,
+		NextPtag = Ptag + 1,
 		( map__search(PtagCaseMap0, Ptag, PtagCase) ->
 			map__delete(PtagCaseMap0, Ptag, PtagCaseMap1),
 			switch_util__order_ptags_by_value(NextPtag, MaxPtag,

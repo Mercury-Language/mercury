@@ -225,7 +225,7 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 			[]
 		),
 	 
-		{ NumErrors1 is NumErrors0 + UnboundTypeErrsInThisPred }
+		{ NumErrors1 = NumErrors0 + UnboundTypeErrsInThisPred }
 	),
 	{ module_info_set_pred_info(ModuleInfo0, PredId,
 		PredInfo, ModuleInfo1) },
@@ -535,7 +535,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		AdjustArgTypes =
 		    (pred(Types0::in, Types::out) is det :-
 			list__length(Types0, Length),
-			HalfLength is Length // 2,
+			HalfLength = Length // 2,
 			( list__split_list(HalfLength, Types0, Types1, _) ->
 				Types = Types1
 			;

@@ -393,7 +393,7 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 			% simple goal in each disjunct.  The
 			% disjunction adds one to the goal size,
 			% hence the `+1'.
-			DeforestThreshold is InlineThreshold * 2 + 1,
+			DeforestThreshold = InlineThreshold * 2 + 1,
 			inlining__is_simple_clause_list(Clauses,
 				DeforestThreshold + Arity),
 			clause_list_is_deforestable(PredId, Clauses)

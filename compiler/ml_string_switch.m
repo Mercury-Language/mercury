@@ -97,8 +97,8 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 		list__length(Cases, NumCases),
 		int__log2(NumCases, LogNumCases),
 		int__pow(2, LogNumCases, RoundedNumCases),
-		TableSize is 2 * RoundedNumCases,
-		HashMask is TableSize - 1,
+		TableSize = 2 * RoundedNumCases,
+		HashMask = TableSize - 1,
 
 		% Compute the hash table
 		%

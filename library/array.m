@@ -1283,7 +1283,7 @@ array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	    ;
 	        % Otherwise find the middle element of the range
 	        % and check against that.
-	        Mid is (Lo + Hi) >> 1,	% `>> 1' is hand-optimized `div 2'.
+	        Mid = (Lo + Hi) >> 1,	% `>> 1' is hand-optimized `div 2'.
 	        array__lookup(Array, Mid, XMid),
 	        call(Compare, XMid, El, Comp),
 	        ( Comp = (<),

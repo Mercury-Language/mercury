@@ -29,7 +29,7 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module prolog, require.
 
 main1(Out) :-	
 	crypt(Out).

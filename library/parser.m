@@ -337,7 +337,7 @@ parser__parse_left_term(MaxPriority, TermKind, OpPriority, Term) -->
 			parser__get_token(integer(X), _IntContext)
 		->
 			parser__get_term_context(Context, TermContext),
-			{ NegX is 0 - X },
+			{ NegX = 0 - X },
 			{ Term = ok(term__functor(term__integer(NegX), [],
 						TermContext)) },
 			{ OpPriority = 0 }
@@ -347,7 +347,7 @@ parser__parse_left_term(MaxPriority, TermKind, OpPriority, Term) -->
 			parser__get_token(float(F), _FloatContext)
 		->
 			parser__get_term_context(Context, TermContext),
-			{ NegF is 0.0 - F },
+			{ NegF = 0.0 - F },
 			{ Term = ok(term__functor(term__float(NegF), [],
 				TermContext)) },
 			{ OpPriority = 0 }
@@ -1014,7 +1014,7 @@ parser__get_ops_table(OpTable, ParserState, ParserState) :-
 
 parser__adjust_priority(y, Priority, Priority).
 parser__adjust_priority(x, OldPriority, NewPriority) :-
-	NewPriority is OldPriority - 1.
+	NewPriority = OldPriority - 1.
 
 :- pred parser__check_priority(ops__assoc, int, int).
 :- mode parser__check_priority(in, in, in) is semidet.

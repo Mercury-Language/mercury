@@ -221,7 +221,7 @@ term_io__write_variable_2(Ops, Id, VarSet0, N0, VarSet, N) -->
 		{ string__int_to_string(VarNum, Num) },
 		{ string__append("_", Num, VarName) },
 		{ varset__name_var(VarSet0, Id, VarName, VarSet) },
-		{ N is N0 + 1 },
+		{ N = N0 + 1 },
 		io__write_string(VarName)
 	).
 

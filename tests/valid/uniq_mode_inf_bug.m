@@ -31,7 +31,7 @@ occur(X,[Y|Z],W) :-
 		count(X,Y,A),
 		occur(X,Z,B)
 	->
-		W is A + B
+		W = A + B
 	;
 		fail
 	).
@@ -45,6 +45,6 @@ count(X,[Y|Z],W) :-
 	).
 
 addx(X,X,W1,W) :-
-	W is W1 + 1.
+	W = W1 + 1.
 addx(X,Y,W1,W1) :-
 	X \= Y.

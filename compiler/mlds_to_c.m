@@ -922,7 +922,7 @@ mlds_output_pragma_export_arg(ModuleName, Arg) -->
 
 det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
 	list__length(Args, NumArgs),
-	NumFuncArgs is NumArgs - 1,
+	NumFuncArgs = NumArgs - 1,
 	( list__split_list(NumFuncArgs, Args, InputArgs0, [ReturnArg0]) ->
 		InputArgs = InputArgs0,
 		ReturnArg = ReturnArg0

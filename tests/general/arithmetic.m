@@ -25,19 +25,19 @@ main -->
 
 test(X, Y) -->
 	{
-		Plus is X + Y,
-		Times is X * Y,
-		Minus is X - Y,
-		Div is X // Y,
-		Mod is X mod Y,
-		LeftShift is X << Y,
-		RightShift is X >> Y,
-		BitAnd is X /\ Y,
-		BitOr is X \/ Y,
-		BitXor is X `xor` Y,
-		X is BitXor2 `xor` Y,
-		Y is X `xor` BitXor3,
-		BitNeg is \ X
+		Plus = X + Y,
+		Times = X * Y,
+		Minus = X - Y,
+		Div = X // Y,
+		Mod = X mod Y,
+		LeftShift = X << Y,
+		RightShift = X >> Y,
+		BitAnd = X /\ Y,
+		BitOr = X \/ Y,
+		BitXor = X `xor` Y,
+		X = BitXor2 `xor` Y,
+		Y = X `xor` BitXor3,
+		BitNeg = \ X
 	},
 	write_message("X: ", X),
 	write_message("Y: ", Y),
@@ -60,4 +60,3 @@ test(X, Y) -->
 
 write_message(String, Int) -->
 	io__write_string(String), io__write_int(Int), io__write_string("\n").
-

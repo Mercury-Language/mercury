@@ -26,9 +26,8 @@ recursive(Useless, Used1, Used2) :-
 		Used1 = f2(_)
 	), 
 	nonrecursive(Useless),
-	Used3 is Used2 + 1,
+	Used3 = Used2 + 1,
 	recursive(Useless, Used1, Used3).
-
 
 nonrecursive(Useless) :-
 	(

@@ -74,8 +74,8 @@ safe([N|L]) :-
 
 nodiag(_, _, []).
 nodiag(B, D, [N|L]) :-
-	NmB is N - B,
-	BmN is B - N,
+	NmB = N - B,
+	BmN = B - N,
 	( D = NmB ->
 		fail
 	; D = BmN ->
@@ -83,7 +83,7 @@ nodiag(B, D, [N|L]) :-
 	;
 		true
 	),
-	D1 is D + 1,
+	D1 = D + 1,
 	nodiag(B, D1, L).
 
 :- pred print_list(list(int), io__state, io__state).

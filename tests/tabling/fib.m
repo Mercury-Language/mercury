@@ -58,7 +58,7 @@ fib(N, F) :-
 	;
 		fib(N - 1, F1),
 		fib(N - 2, F2),
-		F is F1 + F2
+		F = F1 + F2
 	).
 
 :- pred mfib(int::in, int::out) is det.
@@ -70,5 +70,5 @@ mfib(N, F) :-
 	;
 		mfib(N - 1, F1),
 		mfib(N - 2, F2),
-		F is F1 + F2
+		F = F1 + F2
 	).

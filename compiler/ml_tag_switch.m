@@ -133,7 +133,7 @@ ml_tag_switch__gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap,
 			{ CaseCanFail = cannot_fail }
 		;
 			{ list__length(GoalList, GoalCount) },
-			{ FullGoalCount is MaxSecondary + 1 },
+			{ FullGoalCount = MaxSecondary + 1 },
 			{ FullGoalCount = GoalCount }
 		->
 			{ CaseCanFail = cannot_fail }

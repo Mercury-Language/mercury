@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -196,7 +196,7 @@ lexer_dots([C | Cs], Toks) :-
 dig_to_int(C, N) :-
 	char__to_int('0', Zero),
 	char__to_int(C, CN),
-	N is CN - Zero.
+	N = CN - Zero.
 
 :- pred lexer_num(int, list(char), list(token)).
 :- mode lexer_num(in, in, out) is det.
@@ -212,7 +212,7 @@ lexer_num(N, Cs, Toks) :-
 digits_to_int_acc(Acc, [], Acc).
 digits_to_int_acc(Acc, [C | Cs], Num) :-
 	dig_to_int(C, D),
-	Acc2 is 10 * Acc + D,
+	Acc2 = 10 * Acc + D,
 	digits_to_int_acc(Acc2, Cs, Num).
 	
 

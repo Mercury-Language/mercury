@@ -293,7 +293,7 @@ varset__new_vars_2(Varset0, NumVars, NewVars0, NewVars, Varset) :-
 	(
 		NumVars > 0
 	->
-		NumVars1 is NumVars - 1,
+		NumVars1 = NumVars - 1,
 		varset__new_var(Varset0, Var, Varset1),
 		varset__new_vars_2(Varset1, NumVars1, [Var | NewVars0],
 							NewVars, Varset)

@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2002 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -511,13 +511,13 @@ set_bbbtree__delete(tree(V, N, L, R), X, Set) :-
 			% delete X from left subtree
 		Result = (<),
 		set_bbbtree__delete(L, X, NewL), % X in left tree
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, NewL, R)
 	;
 			% delete X from right subtree
 		Result = (>),
 		set_bbbtree__delete(R, X, NewR), % X in right tree
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, L, NewR)
 	;
 			% found X so just concatenate its two subtrees together
@@ -565,13 +565,13 @@ set_bbbtree__remove(tree(V, N, L, R), X, Set) :-
 			% remove X from left subtree
 		Result = (<),
 		set_bbbtree__remove(L, X, NewL), % X in left tree
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, NewL, R)
 	;
 			% remove X from right subtree
 		Result = (>),
 		set_bbbtree__remove(R, X, NewR), % X in right tree
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, L, NewR)
 	;
 			% found X so just concatenate its two subtrees together
@@ -604,7 +604,7 @@ set_bbbtree__remove_least(tree(V, N, L, R), X, Set) :-
 			% search further in the left subtree
 		L = tree(_V, _N, _L, _R),
 		set_bbbtree__remove_least(L, X, NewL),
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, NewL, R)
 	).
 
@@ -625,7 +625,7 @@ set_bbbtree__remove_largest(tree(V, N, L, R), X, Set) :-
 			% search further in the right subtree
 		R = tree(_V, _N, _L, _R),
 		set_bbbtree__remove_largest(R, X, NewR),
-		NewN is N - 1,
+		NewN = N - 1,
 		Set = tree(V, NewN, L, NewR)
 	).
 
@@ -685,8 +685,8 @@ set_bbbtree__sorted_list_to_set_len2(List, RestOfList, N, Set) :-
 	(
 		N > 3
 	->
-		NL is N//2,
-		NR is N - NL - 1,
+		NL = N//2,
+		NR = N - NL - 1,
 		set_bbbtree__sorted_list_to_set_len2(List, RestOfList0, NL, L),
 		(
 			RestOfList0 = [V | RestOfList1],
@@ -963,7 +963,7 @@ set_bbbtree__superset(SetA, SetB) :-
 set_bbbtree__build_node(X, L, R, Tree) :-
 	set_bbbtree__size(L, LSize),
 	set_bbbtree__size(R, RSize),
-	N is 1 + LSize + RSize,
+	N = 1 + LSize + RSize,
 	Tree0 = tree(X, N, L, R),
 	unsafe_promise_unique(Tree0, Tree).
 
@@ -1077,13 +1077,13 @@ set_bbbtree__balance(V, L, R, Set, Ratio) :-
 	set_bbbtree__size(L, LSize),
 	set_bbbtree__size(R, RSize),
 	(
-		Val is LSize + RSize,
+		Val = LSize + RSize,
 		Val < 2
 	->
 			% The two trees are too small to bother rebalancing
 		set_bbbtree__build_node(V, L, R, Set)
 	;
-		Val is Ratio * LSize,
+		Val = Ratio * LSize,
 		RSize > Val
 	->
 		(
@@ -1103,7 +1103,7 @@ set_bbbtree__balance(V, L, R, Set, Ratio) :-
 			error("set_bbbtree__balance.1")
 		)
 	;
-		Val is Ratio * RSize,
+		Val = Ratio * RSize,
 		LSize > Val
 	->
 		(
@@ -1207,14 +1207,14 @@ set_bbbtree__concat4(tree(LV, LN, LL, LR), R, V, Set, Ratio) :-
 	;
 		R = tree(RV, RN, RL, RR),
 		(
-			Val is Ratio * LN,	% Right too big
+			Val = Ratio * LN,	% Right too big
 			Val < RN
 		->
 			set_bbbtree__concat4(tree(LV,LN,LL,LR), RL, V,
 								NewL, Ratio),
 			set_bbbtree__balance(RV, NewL, RR, Set, Ratio)
 		;
-			Val is Ratio * RN,	% Left too big
+			Val = Ratio * RN,	% Left too big
 			Val < LN
 		->
 			set_bbbtree__concat4(LR, tree(RV,RN,RL,RR), V,

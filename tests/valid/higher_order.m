@@ -11,7 +11,7 @@ map_list(P, [X|Xs], [Y|Ys]) :-
 
 :- pred plus2(int, int).
 :- mode plus2(in, out) is det.
-plus2(X, Y) :- Y is X + 2.
+plus2(X, Y) :- Y = X + 2.
 
 :- pred test(list(int), list(int)).
 :- mode test(in, out) is det.

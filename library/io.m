@@ -1781,7 +1781,7 @@ io__read_file_as_string(Stream, Result) -->
 	%
 	io__stream_file_size(Stream, FileSize),
 	{ FileSize >= 0 ->
-		BufferSize0 is FileSize + 1
+		BufferSize0 = FileSize + 1
 	;
 		BufferSize0 = 4000
 	},
@@ -1821,7 +1821,7 @@ io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 		{ Buffer = Buffer1 }
 	; { Pos1 = Size0 } ->
 		% full buffer
-		{ Size1 is Size0 * 2 },
+		{ Size1 = Size0 * 2 },
 		{ io__resize_buffer(Buffer1, Size0, Size1, Buffer2) },
 		io__read_file_as_string_2(Stream, Buffer2, Pos1, Size1,
 			Buffer, Pos, Size)

@@ -57,7 +57,7 @@
 :- import_module parse_tree__prog_out.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
-:- import_module std_util, require, term.
+:- import_module std_util, require, term, counter.
 
 %---------------------------------------------------------------------------%
 
@@ -813,7 +813,7 @@ bytecode_gen__create_varmap([], _, _, _, VarMap, VarMap, []).
 bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 		VarMap0, VarMap, VarInfos) :-
 	map__det_insert(VarMap0, Var, N0, VarMap1),
-	N1 is N0 + 1,
+	N1 = N0 + 1,
 	varset__lookup_name(VarSet, Var, VarName),
 	map__lookup(VarTypes, Var, VarType),
 	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, N1,
@@ -824,28 +824,30 @@ bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 
 :- type byte_info
 	--->	byte_info(
-			map(prog_var, byte_var),
-			map(prog_var, type),
-			module_info,
-			int,		% next label number to use
-			int		% next temp number to use
+			byteinfo_varmap		:: map(prog_var, byte_var),
+			byteinfo_vartypes	:: map(prog_var, type),
+			byteinfo_moduleinfo	:: module_info,
+			byteinfo_label_counter	:: counter,
+			byteinfo_temp_counter	:: counter
 		).
 
 :- pred bytecode_gen__init_byte_info(module_info::in,
 	map(prog_var, byte_var)::in, map(prog_var, type)::in,
 	byte_info::out) is det.  
+
 bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
-	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo, 0, 0).
+	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo,
+		counter__init(0), counter__init(0)).
 
 :- pred bytecode_gen__get_module_info(byte_info::in, module_info::out) is det.
 
-bytecode_gen__get_module_info(byte_info(_, _, ModuleInfo, _, _), ModuleInfo).
+bytecode_gen__get_module_info(ByteInfo, ByteInfo ^ byteinfo_moduleinfo).
 
 :- pred bytecode_gen__map_vars(byte_info::in,
 	list(prog_var)::in, list(byte_var)::out) is det.
 
-bytecode_gen__map_vars(byte_info(VarMap, _, _, _, _), Vars, ByteVars) :-
-	bytecode_gen__map_vars_2(VarMap, Vars, ByteVars).
+bytecode_gen__map_vars(ByteInfo, Vars, ByteVars) :-
+	bytecode_gen__map_vars_2(ByteInfo ^ byteinfo_varmap, Vars, ByteVars).
 
 :- pred bytecode_gen__map_vars_2(map(prog_var, byte_var)::in,
 	list(prog_var)::in, list(byte_var)::out) is det.
@@ -858,34 +860,38 @@ bytecode_gen__map_vars_2(VarMap, [Var | Vars], [ByteVar | ByteVars]) :-
 :- pred bytecode_gen__map_var(byte_info::in, prog_var::in,
 	byte_var::out) is det.
 
-bytecode_gen__map_var(byte_info(VarMap, _, _, _, _), Var, ByteVar) :-
-	map__lookup(VarMap, Var, ByteVar).
+bytecode_gen__map_var(ByteInfo, Var, ByteVar) :-
+	map__lookup(ByteInfo ^ byteinfo_varmap, Var, ByteVar).
 
 :- pred bytecode_gen__get_var_type(byte_info::in, prog_var::in,
 	(type)::out) is det.
 
-bytecode_gen__get_var_type(byte_info(_, VarTypes, _, _, _), Var, Type) :-
-	map__lookup(VarTypes, Var, Type).
+bytecode_gen__get_var_type(ByteInfo, Var, Type) :-
+	map__lookup(ByteInfo ^ byteinfo_vartypes, Var, Type).
 
 :- pred bytecode_gen__get_next_label(byte_info::in, int::out, byte_info::out)
 	is det.
 
-bytecode_gen__get_next_label(ByteInfo0, Label0, ByteInfo) :-
-	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label0, Temp),
-	Label is Label0 + 1,
-	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label,  Temp).
+bytecode_gen__get_next_label(ByteInfo0, Label, ByteInfo) :-
+	LabelCounter0 = ByteInfo0 ^ byteinfo_label_counter,
+	counter__allocate(Label, LabelCounter0, LabelCounter),
+	ByteInfo = ByteInfo0 ^ byteinfo_label_counter := LabelCounter.
 
 :- pred bytecode_gen__get_next_temp(byte_info::in, int::out, byte_info::out)
 	is det.
 
-bytecode_gen__get_next_temp(ByteInfo0, Temp0, ByteInfo) :-
-	ByteInfo0 = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp0),
-	Temp is Temp0 + 1,
-	ByteInfo  = byte_info(VarMap, VarTypes, ModuleInfo, Label, Temp).
+bytecode_gen__get_next_temp(ByteInfo0, Temp, ByteInfo) :-
+	TempCounter0 = ByteInfo0 ^ byteinfo_temp_counter,
+	counter__allocate(Temp, TempCounter0, TempCounter),
+	ByteInfo = ByteInfo0 ^ byteinfo_temp_counter := TempCounter.
 
 :- pred bytecode_gen__get_counts(byte_info::in, int::out, int::out) is det.
 
-bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp), Label, Temp).
+bytecode_gen__get_counts(ByteInfo0, Label, Temp) :-
+	LabelCounter0 = ByteInfo0 ^ byteinfo_label_counter,
+	counter__allocate(Label, LabelCounter0, _LabelCounter),
+	TempCounter0 = ByteInfo0 ^ byteinfo_temp_counter,
+	counter__allocate(Temp, TempCounter0, _TempCounter).
 
 %---------------------------------------------------------------------------%
 
@@ -894,9 +900,10 @@ bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp), Label, Temp).
 
 bytecode_gen__get_is_func(PredInfo, IsFunc) :-
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	(	PredOrFunc = predicate
-	->	IsFunc = 0
-	;	IsFunc = 1
+	( PredOrFunc = predicate ->
+		IsFunc = 0
+	;
+		IsFunc = 1
 	).
 
 %---------------------------------------------------------------------------%

@@ -6,17 +6,19 @@
 
 :- interface.
 
-:- import_module string, io, list, int, float.
+:- import_module io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
 :- implementation.
 
+:- import_module string, list, int, float.
+
 main -->
-	{ Numba_0 is 32} ,
-	{ Numba_1 is Numba_0 - 5 } ,
-	{ Numba_2 is Numba_0 + 5 } ,
+	{ Numba_0 = 32} ,
+	{ Numba_1 = Numba_0 - 5 } ,
+	{ Numba_2 = Numba_0 + 5 } ,
 	{ Mg_poly = s("In the beginning there was the text, and the text was words, and yea, verily, I say unto you, there was too much of it and it had to be compressed.") } ,
 	[],
 	{ Num_nr_1 = 9.9999 } ,

@@ -31,7 +31,7 @@ test(A) :-
 	p(A),
 	some [B] (
 		q(A, B),
-		C is B + 1,
+		C = B + 1,
 		some [D] (
 			r(C, D),
 			D > 25

@@ -31,7 +31,9 @@ maybe_to_string(P, yes(T), S) :-
 	call(P, T, S0), string__append_list(["yes(", S0, ")"], S).
 
 :- pred pos_inc(int::in, int::out) is semidet.
-pos_inc(X, Y) :- X > 0, Y is X + 1.
+pos_inc(X, Y) :-
+	X > 0,
+	Y = X + 1.
 
 meta_semidet_map(_, [],  []).
 meta_semidet_map(P, [H0|T0], [H|T]) :-

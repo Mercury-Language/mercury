@@ -252,7 +252,7 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
 	{ list__sort(ConstsLA0, ConstsLA) },
 	{ list__length(ConstsLA, ConstTableSize0) },
-	{ ConstTableSize is ConstTableSize0 + 1 },
+	{ ConstTableSize = ConstTableSize0 + 1 },
 	{ set__to_sorted_list(PermRelsSet, PermRels) },
 	{ list__length(PermRels, NumPermRels) },
 	{ list__length(RLProcs, NumProcs) },
@@ -778,7 +778,7 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 		% relations before dropping the pointers to them.
 	{ DropCode = rl_PROC_unsetrel(Addr) },
 
-	{ Counter is Counter0 + 1 },
+	{ Counter = Counter0 + 1 },
 	rl_out__collect_memoed_relations(Owner, ProcName, Rels, Counter,
 		GetCodes, NameCodes).
 
@@ -2065,7 +2065,7 @@ rl_out__generate_union(UnionCode, Exprn, Inputs, InstrCode) -->
 		{ InstrCode = node([rl_PROC_var(Addr, LockSpec)]) }
 	;		
 		{ list__length(Inputs, NumInputs) },
-		{ SplitPoint is NumInputs // 2 },
+		{ SplitPoint = NumInputs // 2 },
 		( { list__split_list(SplitPoint, Inputs, Inputs1, Inputs2) } ->
 			rl_out__generate_union(UnionCode, Exprn, 
 				Inputs1, StreamCode1),
@@ -2170,13 +2170,13 @@ rl_out__instr_code_size(node(Instrs), Size) :-
 	AddSize = lambda([Instr::in, S0::in, S::out] is det, (
 			bytecode_to_intlist(Instr, IntList),
 			list__length(IntList, S1),
-			S is S0 + S1
+			S = S0 + S1
 		)),
 	list__foldl(AddSize, Instrs, 0, Size).
 rl_out__instr_code_size(tree(CodeA, CodeB), Size) :-
 	rl_out__instr_code_size(CodeA, SizeA),
 	rl_out__instr_code_size(CodeB, SizeB),
-	Size is SizeA + SizeB.
+	Size = SizeA + SizeB.
 
 %-----------------------------------------------------------------------------%
 
@@ -2309,7 +2309,7 @@ rl_out__generate_key_range(Range, RangeExprn) -->
 	% Terms take 2 slots in the stack, so to be safe we
 	% multiply the depth by 2. The +10 is for temporary storage
 	% and probably isn't used.
-	{ StackSize is TermDepth * 2 + 10 },
+	{ StackSize = TermDepth * 2 + 10 },
 	rl_out__package_exprn(ExprnCode, NumParams, generate2,
 		Output1SchemaOffset, Output2SchemaOffset, StackSize,
 		Decls, RangeExprn).

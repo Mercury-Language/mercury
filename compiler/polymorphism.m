@@ -420,7 +420,7 @@ polymorphism__fixup_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	pred_info_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
 	list__length(ArgTypes0, NumOldArgs),
 	list__length(HeadVars, NumNewArgs),
-	NumExtraArgs is NumNewArgs - NumOldArgs,
+	NumExtraArgs = NumNewArgs - NumOldArgs,
 	(
 		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars0,
 				OldHeadVars0)
@@ -1631,9 +1631,9 @@ polymorphism__process_c_code(PredInfo, NumExtraVars, Impl, OrigArgTypes0,
 		% sanity check
 	list__length(UnivCs, NUCs),
 	list__length(ExistCs, NECs),
-	NCs is NUCs + NECs,
+	NCs = NUCs + NECs,
 	list__length(PredTypeVars, NTs),
-	NEVs is NCs + NTs,
+	NEVs = NCs + NTs,
 	require(unify(NEVs, NumExtraVars), 
 		"list length mismatch in polymorphism processing pragma_c"),
 
@@ -3140,12 +3140,12 @@ polymorphism__make_typeclass_info_head_var(C, ExtraHeadVar, Info0, Info) :-
 
 			% The first type_info will be just after the superclass
 			% infos
-		First is NumSuperClasses + 1,
+		First = NumSuperClasses + 1,
 		term__vars_list(ClassTypes, ClassTypeVars0),
 		MakeIndex = (pred(Elem0::in, Elem::out, 
 					Index0::in, Index::out) is det :-
 				Elem = Elem0 - Index0,
-				Index is Index0 + 1,
+				Index = Index0 + 1,
 				% the following call is a work-around for a
 				% compiler bug with intermodule optimization: 
 				% it is needed to resolve a type ambiguity
@@ -3407,15 +3407,13 @@ expand_one_body(hlds_class_proc(PredId, ProcId), ProcNum0, ProcNum,
 	map__det_update(PredTable0, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo),
 
-	ProcNum is ProcNum0 + 1.
+	ProcNum = ProcNum0 + 1.
 	
 :- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.
 
 delete_nth([X|Xs], N0, Result) :-
-	(
-		N0 > 1
-	->
-		N is N0 - 1,
+	( N0 > 1 ->
+		N = N0 - 1,
 		delete_nth(Xs, N, TheRest),
 		Result = [X|TheRest]
 	;

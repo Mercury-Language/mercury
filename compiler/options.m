@@ -2156,7 +2156,7 @@ enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
 	; opt_level(N0, OptionTable0, OptionSettingsList) ->
 		override_options(OptionSettingsList, OptionTable0,
 			OptionTable1),
-		N1 is N0 + 1,
+		N1 = N0 + 1,
 		enable_opt_levels(N1, N, OptionTable1, OptionTable)
 	;
 		error("Unknown optimization level")

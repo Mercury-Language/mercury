@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -965,11 +965,11 @@ rbtree__count(empty, 0).
 rbtree__count(red(_K, _V, L, R), N) :-
 	rbtree__count(L, NO),
 	rbtree__count(R, N1),
-	N is 1 + NO + N1.
+	N = 1 + NO + N1.
 rbtree__count(black(_K, _V, L, R), N) :-
 	rbtree__count(L, NO),
 	rbtree__count(R, N1),
-	N is 1 + NO + N1.
+	N = 1 + NO + N1.
 
 %-----------------------------------------------------------------------------%
 

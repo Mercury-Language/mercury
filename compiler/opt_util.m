@@ -1688,7 +1688,7 @@ opt_util__count_incr_hp(Instrs, N) :-
 opt_util__count_incr_hp_2([], N, N).
 opt_util__count_incr_hp_2([Uinstr0 - _ | Instrs], N0, N) :-
 	( Uinstr0 = incr_hp(_, _, _, _) ->
-		N1 is N0 + 1
+		N1 = N0 + 1
 	;
 		N1 = N0
 	),

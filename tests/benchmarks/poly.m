@@ -26,6 +26,8 @@
 
 :- implementation.
 
+:- import_module prolog.
+
 main --> main3(_).
 
 main3(Out) -->

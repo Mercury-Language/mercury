@@ -13,23 +13,23 @@
 
 %	in Mercury by Bart Demoen - started 17 Jan 1997
 
-:- module boyer .
+:- module boyer.
 
 :- interface.
-:- import_module io, int.
+:- import_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-% :- type list(T) ---> [] ; [T|list(T)].
-:- import_module list.
+
+:- import_module int, list.
 
 main --> b(3) .
 
 % :- pred b(int,io__state,io__state) .
 :- mode b(in,di,uo) is det .
 
-b(X) --> {X > 0} -> boyer , {Y is X - 1} , b(Y) ; {true} .
+b(X) --> {X > 0} -> boyer , {Y = X - 1} , b(Y) ; {true} .
 
 :- pred boyer(io__state::di, io__state::uo) is det .
 
@@ -90,7 +90,6 @@ tautology(Wff,Tlist,Flist) :-
 
 % :- pred rewrite(type_wff,type_wff) .
 :- mode rewrite(in,out) is det .
-
 
 rewrite(a1,a1) .
 rewrite(b1,b1) .
@@ -318,7 +317,4 @@ remainder1(U,V,zero) :-
 		(U = V -> true ;
 		 U = my_times(A,B) , (B = V -> true ; A = V)
 		) .
-
-
-
 

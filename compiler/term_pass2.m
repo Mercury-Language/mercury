@@ -189,7 +189,7 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
 	( Termination = cannot_loop ->
 		true
 	;
-		ArgNum1 is ArgNum0 + 1,
+		ArgNum1 = ArgNum0 + 1,
 		prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC,
 			ArgNum1, Module, PassInfo)
 	).
@@ -235,7 +235,7 @@ init_rec_input_suppliers_add_single_arg([Mode | Modes], ArgNum, Module,
 			mode_is_input(Module, Mode),
 			ArgNum > 1
 		->
-			NextArgNum is ArgNum - 1
+			NextArgNum = ArgNum - 1
 		;
 			fail
 		)
@@ -562,7 +562,7 @@ zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
 zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),
 		LookforPPId, ProcContext, WeightSoFar0, VisitedCalls,
 		CallWeights, Cycles) :-
-	WeightSoFar1 is WeightSoFar0 + EdgeWeight,
+	WeightSoFar1 = WeightSoFar0 + EdgeWeight,
 	(
 		CurPPId = LookforPPId
 	->

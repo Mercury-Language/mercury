@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -159,7 +159,7 @@ eqvclass__new_element(EqvClass0, Element, EqvClass) :-
 eqvclass__add_element(EqvClass0, Element, Id, EqvClass) :-
 	EqvClass0 = eqvclass(NextId0, PartitionMap0, ElementMap0),
 	Id = NextId0,
-	NextId is NextId0 + 1,
+	NextId = NextId0 + 1,
 	map__det_insert(ElementMap0, Element, Id, ElementMap),
 	set__singleton_set(Partition, Element),
 	map__det_insert(PartitionMap0, NextId0, Partition, PartitionMap),
@@ -299,7 +299,7 @@ eqvclass__partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
 	    PartitionMap0 = PartitionMap
 	;
 	    Id = NextId0,
-	    NextId is NextId0 + 1,
+	    NextId = NextId0 + 1,
 	    eqvclass__make_partition(Elements, Id, ElementMap0, ElementMap),
 	    map__det_insert(PartitionMap0, Id, Partition, PartitionMap)
 	),

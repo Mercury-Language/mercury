@@ -559,7 +559,7 @@ hlds_out__write_arg_number(generic_call(
 			io__write_string(" term")
 		;
 			io__write_string("argument "),
-			{ ArgNum1 is ArgNum - 1 },
+			{ ArgNum1 = ArgNum - 1 },
 			io__write_int(ArgNum1),
 			io__write_string(" of the called "),
 			hlds_out__write_pred_or_func(PredOrFunc)
@@ -1090,7 +1090,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 			Lang,
 			Context
 		),
-		Indent1 is Indent + 1
+		Indent1 = Indent + 1
 	},
 	globals__io_lookup_string_option(dump_hlds_options, Verbose),
 	( { string__contains_char(Verbose, 'm') } ->
@@ -1414,7 +1414,7 @@ hlds_out__write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet,
 	io__write_string(" switch on `"),
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string("'\n"),
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	( { CasesList = [Case | Cases] } ->
 		hlds_out__write_case(Case, Var, ModuleInfo,
 			VarSet, AppendVarnums, Indent1, TypeQual),
@@ -1440,7 +1440,7 @@ hlds_out__write_goal_2(some(Vars, CanRemove, Goal), ModuleInfo,
 		[]
 	),
 	io__nl,
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 		Indent1, "\n", TypeQual),
 	hlds_out__write_indent(Indent),
@@ -1453,7 +1453,7 @@ hlds_out__write_goal_2(if_then_else(Vars, Cond, Then, Else), ModuleInfo,
 	io__write_string("(if"),
 	hlds_out__write_some(Vars, VarSet),
 	io__write_string("\n"),
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	hlds_out__write_goal_a(Cond, ModuleInfo, VarSet, AppendVarnums,
 		Indent1, "\n", TypeQual),
 	hlds_out__write_indent(Indent),
@@ -1481,7 +1481,7 @@ hlds_out__write_goal_2(not(Goal), ModuleInfo, VarSet, AppendVarnums,
 		Indent, Follow, TypeQual) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("\\+ (\n"),
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 		Indent1, "\n", TypeQual),
 	hlds_out__write_indent(Indent),
@@ -1493,7 +1493,7 @@ hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, AppendVarnums,
 	( { List = [Goal | Goals] } ->
 		globals__io_lookup_string_option(dump_hlds_options, Verbose),
 		( { Verbose \= "" } ->
-			{ Indent1 is Indent + 1 },
+			{ Indent1 = Indent + 1 },
 			hlds_out__write_indent(Indent),
 			io__write_string("( % conjunction\n"),
 			hlds_out__write_conj(Goal, Goals, ModuleInfo, VarSet,
@@ -1518,7 +1518,7 @@ hlds_out__write_goal_2(par_conj(List), ModuleInfo, VarSet, AppendVarnums,
 	hlds_out__write_indent(Indent),
 	( { List = [Goal | Goals] } ->
 		io__write_string("( % parallel conjunction\n"),
-		{ Indent1 is Indent + 1 },
+		{ Indent1 = Indent + 1 },
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent1, "\n", TypeQual),
 			% See comments at hlds_out__write_goal_list.
@@ -1537,7 +1537,7 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarnums,
 	hlds_out__write_indent(Indent),
 	( { List = [Goal | Goals] } ->
 		io__write_string("( % disjunction\n"),
-		{ Indent1 is Indent + 1 },
+		{ Indent1 = Indent + 1 },
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent1, "\n", TypeQual),
 		hlds_out__write_goal_list(Goals, ModuleInfo, VarSet,
@@ -1824,7 +1824,7 @@ hlds_out__write_goal_2_shorthand(bi_implication(LHS, RHS), ModuleInfo,
 		VarSet,	AppendVarnums, Indent, Follow, TypeQual) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("( % bi-implication\n"),
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	hlds_out__write_goal_a(LHS, ModuleInfo, VarSet, AppendVarnums,
 		Indent1, "\n", TypeQual),
 	hlds_out__write_indent(Indent),
@@ -2308,7 +2308,7 @@ hlds_out__write_unify_rhs_3(
 		ModuleInfo, VarSet, InstVarSet, AppendVarnums, Indent,
 		MaybeType, TypeQual)
 		-->
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	write_purity_prefix(Purity),
 	{
 		EvalMethod = normal,
@@ -2601,7 +2601,7 @@ hlds_out__write_goal_list(GoalList, ModuleInfo, VarSet, AppendVarnums, Indent,
 	->
 		hlds_out__write_indent(Indent),
 		io__write_string(Separator),
-		{ Indent1 is Indent + 1 },
+		{ Indent1 = Indent + 1 },
 		hlds_out__write_goal_a(Goal, ModuleInfo, VarSet,
 			AppendVarnums, Indent1, "\n", TypeQual),
 		hlds_out__write_goal_list(Goals, ModuleInfo, VarSet,
@@ -2641,7 +2641,7 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarnums,
 	->
 		hlds_out__write_indent(Indent),
 		io__write_string(";\n"),
-		{ Indent1 is Indent + 1 },
+		{ Indent1 = Indent + 1 },
 		hlds_out__write_case(Case, Var, ModuleInfo,
 			VarSet, AppendVarnums, Indent1, VarTypes),
 		hlds_out__write_cases(Cases, Var, ModuleInfo,
@@ -2932,7 +2932,7 @@ hlds_out__write_types_2(Indent, [TypeCtor - TypeDefn | Types]) -->
 	io__write_string(":- type "),
 	hlds_out__write_type_name(TypeCtor),
 	hlds_out__write_type_params(TVarSet, TypeParams),
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 	hlds_out__write_type_body(Indent1, TVarSet, TypeBody),
 	hlds_out__write_types_2(Indent, Types).
 
@@ -3393,7 +3393,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
 	{ proc_info_get_call_table_tip(Proc, MaybeCallTableTip) },
 	{ proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo) },
-	{ Indent1 is Indent + 1 },
+	{ Indent1 = Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
 	io__write_string("% pred id "),
@@ -3547,7 +3547,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 % 	;
 % 		hlds_out__write_indent(Indent),
 % 		io__write_string("[\n"),
-% 		{Indent1 is Indent + 1},
+% 		{Indent1 = Indent + 1},
 % 		hlds_out__write_varnames_2(Indent1, VarNameList),
 % 		hlds_out__write_indent(Indent),
 % 		io__write_string("]\n")
@@ -3561,7 +3561,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 % 	(
 % 		{ VarNameList0 = [VarId - Name|VarNameList] }
 % 	->
-% 		{ Indent1 is Indent + 1 },
+% 		{ Indent1 = Indent + 1 },
 % 		hlds_out__write_indent(Indent1),
 % 		{ term__var_to_int(VarId, VarNum) },
 % 		io__write_int(VarNum),
@@ -3646,7 +3646,7 @@ hlds_out__write_indent(Indent) -->
 		[]
 	;
 		io__write_char('\t'),
-		{ Indent1 is Indent - 1 },
+		{ Indent1 = Indent - 1 },
 		hlds_out__write_indent(Indent1)
 	).
 

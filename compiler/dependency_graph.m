@@ -493,7 +493,7 @@ dependency_graph__write_dependency_ordering([Clique | Rest], ModuleInfo, N) -->
 	io__write_int(N),
 	io__write_string("\n"),
 	dependency_graph__write_clique(Clique, ModuleInfo),
-	{ N1 is N + 1 },
+	{ N1 = N + 1 },
 	dependency_graph__write_dependency_ordering(Rest, ModuleInfo, N1).
 
 :- pred dependency_graph__write_clique(list(pred_proc_id),
@@ -951,7 +951,7 @@ aditi_scc_info_add_no_merge_scc(SCCid, Info0, Info) :-
 aditi_scc_info_add_scc(SCC, HigherSCCs, SCCid, Info0, Info) :-
 	Info0 = aditi_scc_info(ModuleInfo, PredSCC0, SCCPred0, AditiPreds0, 
 			SCCRel0, NoMerge, LastSCC),
-	SCCid is LastSCC + 1,
+	SCCid = LastSCC + 1,
 	dependency_graph__get_scc_entry_points(SCC, HigherSCCs,
 		ModuleInfo, EntryPoints),
 	map__det_insert(SCCPred0, SCCid, SCC - EntryPoints, SCCPred),

@@ -335,7 +335,7 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
 		NonRecArgs = NonRecArgs0,
 		ArgInfo = [yes | ArgInfo0]
 	;
-		NonRecArgs is NonRecArgs0 + 1,
+		NonRecArgs = NonRecArgs0 + 1,
 		ArgInfo = [no | ArgInfo0]
 	).
 

@@ -51,7 +51,7 @@ pd_cost__goal(par_conj(Goals) - _, Cost) :-
 pd_cost__goal(disj(Goals) - _, Cost) :-
 	pd_cost__goals(Goals, 0, Cost0),
 	pd_cost__stack_flush(Cost1),
-	Cost is Cost0 + Cost1.
+	Cost = Cost0 + Cost1.
 
 pd_cost__goal(switch(_, _, Cases) - _, Cost) :-
 	pd_cost__simple_test(Cost0),
@@ -61,7 +61,7 @@ pd_cost__goal(if_then_else(_, Cond, Then, Else) - _, Cost) :-
 	pd_cost__goal(Cond, Cost1),
 	pd_cost__goal(Then, Cost2),
 	pd_cost__goal(Else, Cost3),
-	Cost is Cost1 + Cost2 + Cost3.
+	Cost = Cost1 + Cost2 + Cost3.
 
 pd_cost__goal(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
 	( BuiltinState = inline_builtin ->
@@ -69,10 +69,10 @@ pd_cost__goal(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
 	;
 		pd_cost__stack_flush(Cost1),
 		list__length(Args, Arity),
-		InputArgs is Arity // 2,	% rough
+		InputArgs = Arity // 2,	% rough
 		pd_cost__reg_assign(AssignCost),
 		pd_cost__call(Cost2),
-		Cost is Cost1 + Cost2 + AssignCost * InputArgs
+		Cost = Cost1 + Cost2 + AssignCost * InputArgs
 	).
 
 pd_cost__goal(not(Goal) - _, Cost) :-
@@ -87,7 +87,7 @@ pd_cost__goal(generic_call(_, Args, _, _) - _, Cost) :-
 	Cost0 = AssignCost * Arity // 2,
 	pd_cost__stack_flush(Cost1),
 	pd_cost__higher_order_call(Cost2),
-	Cost is Cost0 + Cost1 + Cost2.
+	Cost = Cost0 + Cost1 + Cost2.
 
 pd_cost__goal(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -102,9 +102,9 @@ pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _, _) - _,
 	),
 	pd_cost__call(Cost2),
 	list__length(Args, Arity),
-	InputArgs is Arity // 2,	% rough
+	InputArgs = Arity // 2,	% rough
 	pd_cost__reg_assign(AssignCost),
-	Cost is Cost1 + Cost2 + AssignCost * InputArgs.
+	Cost = Cost1 + Cost2 + AssignCost * InputArgs.
 
 pd_cost__goal(shorthand(_) - _, _) :-
 	% these should have been expanded out by now
@@ -150,7 +150,7 @@ pd_cost__unify(NonLocals, deconstruct(_, _, Args, _, CanFail, _), Cost) :-
 pd_cost__goals([], Cost, Cost).
 pd_cost__goals([Goal | Goals], Cost0, Cost) :-
 	pd_cost__goal(Goal, Cost1),
-	Cost2 is Cost0 + Cost1,
+	Cost2 = Cost0 + Cost1,
 	pd_cost__goals(Goals, Cost2, Cost).
 
 :- pred pd_cost__cases(list(case)::in, int::in, int::out) is det.
@@ -158,7 +158,7 @@ pd_cost__goals([Goal | Goals], Cost0, Cost) :-
 pd_cost__cases([], Cost, Cost).
 pd_cost__cases([case(_, Goal) | Cases], Cost0, Cost) :-
 	pd_cost__goal(Goal, Cost1),
-	Cost2 is Cost0 + Cost1,
+	Cost2 = Cost0 + Cost1,
 	pd_cost__cases(Cases, Cost2, Cost).
 
 %-----------------------------------------------------------------------------%

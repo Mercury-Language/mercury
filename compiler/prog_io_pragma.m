@@ -1554,7 +1554,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
 	    	PredAndModesResult = ok(PredName - PredOrFunc, Modes),
                 list__length(Modes, Arity0),
                 ( PredOrFunc = function ->
-                    Arity is Arity0 - 1
+                    Arity = Arity0 - 1
                 ;
                     Arity = Arity0
                 ),

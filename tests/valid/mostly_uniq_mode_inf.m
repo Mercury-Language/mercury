@@ -16,7 +16,7 @@ q :- foo(42, Z), ( baz(Z, B), bar(B, A), A > 100 ; Z > 100 ).
 
 foo(X, Y) :- foo2(X, Y).
 
-foo2(X, Y) :- Y is X + 10.
+foo2(X, Y) :- Y = X + 10.
 foo2(X, Y) :- Y = X.
 
 baz(X, X).

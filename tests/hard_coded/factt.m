@@ -25,7 +25,7 @@ show_examples(Num) -->
             print("Example call failed."),nl
         ),
 
-        {Num1 is Num + 1},
+        {Num1 = Num + 1},
 
         ({Num1 < 51} ->
             show_examples(Num1);

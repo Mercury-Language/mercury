@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 sum([], [], []).
 sum([X1 | Y1], [X2 | Y2], [X3 | Y3]) :-

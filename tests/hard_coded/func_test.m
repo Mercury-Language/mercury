@@ -24,7 +24,7 @@ main -->
 :- func f(int) = int.
 :- mode f(in) = test2 is det.
 
-f(X) = Y :- Y is X + 1.
+f(X) = Y :- Y = X + 1.
 
 :- func g(int) = int.
 
@@ -39,4 +39,3 @@ test = 123.
 % test type inference
 
 test2 = 456.
-

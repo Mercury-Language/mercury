@@ -17,7 +17,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 mmultiply([], _, []).
 mmultiply([V0 | Rest], V1, [Result | Others]) :-

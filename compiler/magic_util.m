@@ -297,7 +297,7 @@ magic_util__adjust_index(ArgTypes, index_spec(IndexType, Attrs0),
 			( Attr0 < StateIndex ->
 				Attr = Attr0
 			; Attr0 > StateIndex ->
-				Attr is Attr0 - 1
+				Attr = Attr0 - 1
 			;
 	 			error("base relation indexed on aditi__state attribute")
 			))),
@@ -731,7 +731,7 @@ magic_util__create_input_closures([_ | MagicVars], InputArgs,
 	magic_util__create_closure(CurrVar, ClosureVar, ClosureVarMode,
 		LambdaGoal, LambdaInputs, LambdaVars, InputGoal),
 
-	{ NextIndex is CurrVar + 1 },
+	{ NextIndex = CurrVar + 1 },
 	magic_util__create_input_closures(MagicVars, InputArgs,
 		InputArgModes, SuppCall, ThisProcInfo, NextIndex, 
 		InputGoals, ClosureVars).

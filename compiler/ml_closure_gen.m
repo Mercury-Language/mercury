@@ -502,7 +502,7 @@ ml_stack_layout_construct_type_param_locn_vector([], _, []).
 ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 		CurSlot, Vector) :-
 	term__var_to_int(TVar, TVarNum),
-	NextSlot is CurSlot + 1,
+	NextSlot = CurSlot + 1,
 	( TVarNum = CurSlot ->
 		( set__remove_least(Locns, LeastLocn, _) ->
 			Locn = LeastLocn

@@ -131,7 +131,7 @@ rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
 	Writer =
 	    lambda([Byte::in, Pair0::di, Pair::uo] is det, (
 		Pair0 = Len0 - IOState0,
-		Len is Len0 + 1,			
+		Len = Len0 + 1,			
 		call(ByteWriter, Byte, IOState0, IOState),
 	    	Pair = Len - IOState
 	    )),
@@ -509,7 +509,7 @@ rl_file__write_instruction(Bytecode) -->
 		io__state::di, io__state::uo) is det.
 
 rl_file__write_exprn(Exprn, ExprnNum0, ExprnNum) -->
-	{ ExprnNum is ExprnNum0 + 1 },
+	{ ExprnNum = ExprnNum0 + 1 },
 	io__write_string(",\n\n\t"),
 	rl_file__write_exprn_2(Exprn, ExprnNum0).
 

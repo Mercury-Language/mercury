@@ -504,7 +504,7 @@ tag_switch__generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary,
 		{ Labels = [] },
 		{ Code = empty }
 	;
-		{ NextPrimary is CurPrimary + 1 },
+		{ NextPrimary = CurPrimary + 1 },
 		( { PtagGroups = [CurPrimary - PrimaryInfo | PtagGroups1] } ->
 			{ PrimaryInfo = StagLoc - StagGoalMap },
 			{ map__lookup(PtagCountMap, CurPrimary, CountInfo) },
@@ -607,8 +607,8 @@ tag_switch__generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag,
 			{ error("caselist not singleton or empty when binary search ends") }
 		)
 	;
-		{ LowRangeEnd is (MinPtag + MaxPtag) // 2 },
-		{ HighRangeStart is LowRangeEnd + 1 },
+		{ LowRangeEnd = (MinPtag + MaxPtag) // 2 },
+		{ HighRangeStart = LowRangeEnd + 1 },
 		{ InLowGroup = lambda([PtagGroup::in] is semidet, (
 			PtagGroup = Ptag - _,
 			Ptag =< LowRangeEnd
@@ -753,7 +753,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 
 		(
 			{ list__length(GoalList, GoalCount) },
-			{ FullGoalCount is MaxSecondary + 1 },
+			{ FullGoalCount = MaxSecondary + 1 },
 			{ FullGoalCount = GoalCount }
 		->
 			{ CanFail = cannot_fail }
@@ -981,7 +981,7 @@ tag_switch__generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
 		{ Labels = [] },
 		{ Code = empty }
 	;
-		{ NextSecondary is CurSecondary + 1 },
+		{ NextSecondary = CurSecondary + 1 },
 		( { CaseList = [CurSecondary - Goal | CaseList1] } ->
 			code_info__get_next_label(NewLabel),
 			{ LabelCode = node([
@@ -1075,8 +1075,8 @@ tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
 			{ error("goallist not singleton or empty when binary search ends") }
 		)
 	;
-		{ LowRangeEnd is (MinStag + MaxStag) // 2 },
-		{ HighRangeStart is LowRangeEnd + 1 },
+		{ LowRangeEnd = (MinStag + MaxStag) // 2 },
+		{ HighRangeStart = LowRangeEnd + 1 },
 		{ InLowGroup = lambda([StagGoal::in] is semidet, (
 			StagGoal = Stag - _,
 			Stag =< LowRangeEnd

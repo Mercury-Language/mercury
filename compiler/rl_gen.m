@@ -70,7 +70,7 @@ rl_gen__scc_lists([aditi_scc(SubModule, EntryPoints) | SubModules],
 	rl_gen__scc_list(SubModule, EntryPoints, RLProcId0,
 		Procs0, Procs1, RLInfo0, RLInfo),
 	rl_info_get_io_state(IO1, RLInfo, _),
-	RLProcId is RLProcId0 + 1,
+	RLProcId = RLProcId0 + 1,
 	rl_gen__scc_lists(SubModules, ModuleInfo, RLProcId, 
 		Procs1, Procs, IO1, IO).
 
@@ -156,7 +156,7 @@ rl_gen__proc_name(EntryPoints, RLProcId, ProcName) -->
 		{ string__int_to_string(RLProcId, ProcStr) },
 		{ string__append("rl_proc_", ProcStr, Name) },
 		{ list__length(EntryPoints, NumEntries) },
-		{ ProcArity is NumEntries * 2 },
+		{ ProcArity = NumEntries * 2 },
 		{ ProcName = rl_proc_name(Owner, ModuleName, Name, ProcArity) }
 	;
 		{ error("rl_gen__proc_name: module with no entry-points") }
@@ -247,7 +247,7 @@ rl_gen__scc_list_input_args(EntryPoint, ArgNo, ArgModes, ArgTypes,
 			{ RevInputRels1 = RevInputRels0 },
 			{ InputMap1 = InputMap0 }
 		),
-		{ NextArgNo is ArgNo + 1 },
+		{ NextArgNo = ArgNo + 1 },
 		rl_gen__scc_list_input_args(EntryPoint, NextArgNo, Modes, 
 			Types, RevInputRels1, InputRels, InputMap1, InputMap)
 	;
@@ -810,7 +810,7 @@ rl_gen__proc_input_args([], _, _) --> [].
 rl_gen__proc_input_args([Arg | Args], ArgNo, InputMap) -->
 	{ map__lookup(InputMap, ArgNo, InputRel) },
 	rl_info_bind_var_to_relation(Arg, InputRel),
-	{ NextArgNo is ArgNo + 1 },
+	{ NextArgNo = ArgNo + 1 },
 	rl_gen__proc_input_args(Args, NextArgNo, InputMap).
 
 %-----------------------------------------------------------------------------%
@@ -835,7 +835,7 @@ rl_gen__rules([Rule | Rules], RuleNo, NonRecRLCode,
 		RuleCode, RuleType, Rel),
 	rl_info_set_var_rels(VarRels0),
 	rl_info_set_var_stats(VarStat0),
-	{ NextRule is RuleNo + 1 },
+	{ NextRule = RuleNo + 1 },
 	rl_gen__rules(Rules, NextRule, NonRecRLCode1, RecRLCode1,
 		NonRecRels1, RecRels1),
 	( 

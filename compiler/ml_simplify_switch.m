@@ -169,7 +169,7 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
 
 :- func calc_density(int, int) = int.
 calc_density(NumCases, Range) = Density :-
-	Density is (NumCases * 100) // Range.
+	Density = (NumCases * 100) // Range.
 
 %-----------------------------------------------------------------------------%
 
@@ -280,7 +280,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
 	(
 		{ NeedRangeCheck = yes }
 	->
-		{ Difference is LastVal - FirstVal },
+		{ Difference = LastVal - FirstVal },
 		{ InRange = binop(unsigned_le, Index,
 				const(int_const(Difference))) },
 		{ Else = yes(mlds__statement(

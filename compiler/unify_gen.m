@@ -553,7 +553,7 @@ unify_gen__generate_construction_2(
 		{ Three = const(int_const(3)) },
 		{ list__length(CallArgs, NumNewArgs) },
 		{ NumNewArgs_Rval = const(int_const(NumNewArgs)) },
-		{ NumNewArgsPlusThree is NumNewArgs + 3 },
+		{ NumNewArgsPlusThree = NumNewArgs + 3 },
 		{ NumNewArgsPlusThree_Rval =
 			const(int_const(NumNewArgsPlusThree)) },
 		code_info__produce_variable(CallPred, OldClosureCode,
@@ -775,7 +775,7 @@ unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
 		[F | Fs], [A | As]) :-
 	F = lval(field(yes(TagNum), Rval, const(int_const(Field0)))),
 	A = ref(Var),
-	Field1 is Field0 + 1,
+	Field1 = Field0 + 1,
 	unify_gen__make_fields_and_argvars(Vars, Rval, Field1, TagNum, Fs, As).
 
 %---------------------------------------------------------------------------%

@@ -381,7 +381,7 @@ rl_exprn__generate_bound_2(ModuleInfo, MaybeArgTypes, TupleNum, IsSubTerm,
 	rl_exprn__generate_bound_3(ModuleInfo, MaybeArgTypes, IsSubTerm,
 		Index0, TupleNum, Attr, AttrCode, Depth),
 	{ int__max(MaxDepth0, Depth, MaxDepth1) },
-	{ Index is Index0 + 1 },
+	{ Index = Index0 + 1 },
 	rl_exprn__generate_bound_2(ModuleInfo, MaybeArgTypes, TupleNum,
 		IsSubTerm, Attrs, tree(Code0, AttrCode),
 		Code, Index, MaxDepth1, MaxDepth).
@@ -422,7 +422,7 @@ rl_exprn__generate_bound_3(ModuleInfo, MaybeArgTypes, IsSubTerm, FieldNum,
 	;
 		Code = Code0
 	},
-	{ Depth is Depth0 + 1 }.
+	{ Depth = Depth0 + 1 }.
 
 :- pred rl_exprn__get_key_arg(maybe(list(T))::in, int::in, T::out) is det.
 
@@ -783,7 +783,7 @@ rl_exprn__deconstruct_input_tuple(TupleNo, FieldNo, [Var | Vars],
 	;
 		{ Code0 = empty }
 	),
-	{ NextField is FieldNo + 1 },
+	{ NextField = FieldNo + 1 },
 	rl_exprn__deconstruct_input_tuple(TupleNo, NextField, Vars,
 		NonLocals, Code1),
 	{ Code = tree(Code0, Code1) }.
@@ -812,7 +812,7 @@ rl_exprn__construct_output_tuple_2(FieldNo, [Var | Vars], Code) -->
 	rl_exprn_info_lookup_var(Var, VarReg),
 	rl_exprn_info_lookup_var_type(Var, Type),
 	rl_exprn__assign(output_field(FieldNo), reg(VarReg), Type, Code0),
-	{ NextField is FieldNo + 1 },
+	{ NextField = FieldNo + 1 },
 	rl_exprn__construct_output_tuple_2(NextField, Vars, Code1),
 	{ Code = tree(Code0, Code1) }.
 
@@ -1307,7 +1307,7 @@ rl_exprn__handle_functor_args([_|_], [], _, _, _, _) -->
 rl_exprn__handle_functor_args([], [], _, _, _, empty) --> [].
 rl_exprn__handle_functor_args([Arg | Args], [Mode | Modes], NonLocals,
 		Index, ConsId, Code) -->
-	{ NextIndex is Index + 1 },
+	{ NextIndex = Index + 1 },
 	rl_exprn__handle_functor_args(Args, Modes, NonLocals,
 		NextIndex, ConsId, Code0),
 	( { set__member(Arg, NonLocals) } ->
@@ -2122,7 +2122,7 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 		PC1 = PC0
 	;
 		functor(Instr, _, Arity),
-		PC1 is PC0 + Arity + 1		% +1 for the opcode
+		PC1 = PC0 + Arity + 1		% +1 for the opcode
 	),
 	rl_exprn__get_exprn_labels_list(PC1, PC, Labels0, Labels1,
 		Instrs0, Instrs1),
@@ -2321,7 +2321,7 @@ id_map_lookup(Id, IdIndex, Added, Map0 - Index0, Map - Index) :-
 		Added = no
 	;
 		IdIndex = Index0,
-		Index is Index0 + 1,
+		Index = Index0 + 1,
 		Added = yes,
 		map__det_insert(Map0, Id, Index0, Map)
 	).
@@ -2384,7 +2384,7 @@ rl_exprn_info_set_parent_pred_proc_ids(I, Info0, Info) :-
 rl_exprn_info_get_free_reg(Type, Loc, Info0, Info) :-
 	Info0 = rl_exprn_info(A,B,C,D,VarMap0,F,G,H,I,RegTypes0),
 	VarMap0 = Map - Loc,
-	Loc1 is Loc + 1,
+	Loc1 = Loc + 1,
 	VarMap = Map - Loc1,
 	RegTypes = [Type | RegTypes0],
 	Info = rl_exprn_info(A,B,C,D,VarMap,F,G,H,I,RegTypes).
@@ -2400,7 +2400,7 @@ rl_exprn_info_lookup_var(Var, Loc, Info0, Info) :-
 	Info = rl_exprn_info(A,B,VarTypes,D,VarMap,F,G,H,I,RegTypes).
 rl_exprn_info_get_next_label_id(Label0, Info0, Info) :-
 	Info0 = rl_exprn_info(A,B,C,D,E,Label0,G,H,I,J),
-	Label is Label0 + 1,
+	Label = Label0 + 1,
 	Info = rl_exprn_info(A,B,C,D,E,Label,G,H,I,J).
 rl_exprn_info_lookup_const(Const, Loc, Info0, Info) :-
 	Info0 = rl_exprn_info(A,B,C,D,E,F,Consts0,H,I,J),

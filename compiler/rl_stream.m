@@ -242,7 +242,7 @@ rl_stream__inside_and_after(CalledBlocks, BlockId,
 		BlockIds, InsideLaterCalledBlocks) :-
 	(
 		list__nth_member_search(BlockIds, BlockId, N),
-		N1 is N - 1,
+		N1 = N - 1,
 		list__split_list(N1, BlockIds, _, AfterBlockIds0),
 		AfterBlockIds0 = [BlockId | AfterBlockIds]
 	->
@@ -338,7 +338,7 @@ rl_stream__end_block_check_relation(Uses, Aliases, Relation,
 	( set__empty(Intersect) ->
 		set__to_sorted_list(Relations, RelationsList),
 		list__map(bag__count_value(Uses), RelationsList, Counts),
-		list__foldl(lambda([X::in, Y::in, Z::out] is det, Z is X + Y),
+		list__foldl(lambda([X::in, Y::in, Z::out] is det, Z = X + Y),
 			Counts, 0, NumUses),
 		( NumUses = 1 ->
 			Materialise = Materialise0

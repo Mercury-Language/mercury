@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -243,10 +243,8 @@ bag__init(Bag) :-
 %---------------------------------------------------------------------------%
 
 bag__insert(Bag0, Item, Bag) :-
-	(
-		map__search(Bag0, Item, Count0)
-	->
-		Count is Count0 + 1
+	( map__search(Bag0, Item, Count0) ->
+		Count = Count0 + 1
 	;
 		Count = 1
 	),
@@ -275,7 +273,7 @@ bag__to_list_2([X - Int | Xs ], Out) :-
 	( Int =< 0 ->
 		bag__to_list_2(Xs, Out)
 	;
-		NewInt is Int - 1,
+		NewInt = Int - 1,
 		bag__to_list_2([X - NewInt | Xs], Out0),
 		Out = [X | Out0]
 	).
@@ -300,7 +298,7 @@ bag__remove(Bag0, Item, Bag) :- 	% semidet
 	(
 		Count0 > 1
 	->
-		Count is Count0 - 1,
+		Count = Count0 - 1,
 		map__set(Bag0, Item, Count, Bag)
 	;
 		map__delete(Bag0, Item, Bag)
@@ -367,7 +365,7 @@ bag__subtract(Bag0, SubBag, Bag) :-
 bag__union(A, B, Out) :-
 	( map__remove_smallest(B, Key, BVal, B0) ->
 		( map__search(A, Key, AVal) ->
-			NewVal is AVal + BVal,
+			NewVal = AVal + BVal,
 			map__det_update(A, Key, NewVal, A0)
 		;
 			map__det_insert(A, Key, BVal, A0)

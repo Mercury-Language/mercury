@@ -205,7 +205,7 @@ c_util__reset_line_num -->
 		{ LineNumbers = yes }
 	->
 		io__write_string("#line "),
-		{ NextLine is Line + 1 },
+		{ NextLine = Line + 1 },
 		io__write_int(NextLine),
 		io__write_string(" """),
 		c_util__output_quoted_string(FileName),

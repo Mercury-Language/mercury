@@ -973,7 +973,7 @@ type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 		% to a machine with a different size character.
 		char__max_char_value(MaxChar),
 		char__min_char_value(MinChar),
-		NumFunctors is MaxChar - MinChar + 1
+		NumFunctors = MaxChar - MinChar + 1
 	; type_ctor_is_tuple(TypeCtor) ->
 		NumFunctors = 1
 	;

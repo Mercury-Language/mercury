@@ -607,7 +607,7 @@ rl_opt_info_init(ModuleInfo, RelationInfoMap, Inputs, Outputs,
 
 	map__sorted_keys(RelationInfoMap, RelationIds),
 	( list__last(RelationIds, HighestRelationId) ->
-		NextRelationId is HighestRelationId + 1
+		NextRelationId = HighestRelationId + 1
 	;
 		NextRelationId = 0
 	),
@@ -621,7 +621,7 @@ rl_opt_info_init(ModuleInfo, RelationInfoMap, Inputs, Outputs,
 
 rl_opt_info_get_next_block_id(BlockId1, Info0, Info) :-
 	Info0 = rl_opt_info(BlockId,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q),
-	BlockId1 is BlockId + 1,
+	BlockId1 = BlockId + 1,
 	Info = rl_opt_info(BlockId1,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q).
 
 %-----------------------------------------------------------------------------%
@@ -680,7 +680,7 @@ rl_opt_info_set_block(BlockId, Block) -->
 rl_opt_info_get_new_label(Label, Block) -->
 	rl_opt_info_get_next_block_id(Block),
 	rl_opt_info_get_highest_label_id(Label0),
-	{ Label is Label0 + 1 },
+	{ Label = Label0 + 1 },
 	rl_opt_info_set_highest_label_id(Label).
 
 %-----------------------------------------------------------------------------%
@@ -696,7 +696,7 @@ rl_opt_info_set_relation_info(RelationId, RelationInfo) -->
 
 rl_opt_info_add_relation(Schema, RelationId) -->
 	rl_opt_info_get_next_relation_id(RelationId),	
-	{ NextRelationId is RelationId + 1 },
+	{ NextRelationId = RelationId + 1 },
 	rl_opt_info_set_next_relation_id(NextRelationId),
 	{ rl__relation_id_to_string(RelationId, RelName) },
 	rl_opt_info_get_module_info(ModuleInfo),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -195,7 +195,7 @@ graph__init(Graph) :-
 
 graph__set_node(G0, NInfo, node(N), G) :-
 	graph__get_node_supply(G0, NS0),
-	NS is NS0 + 1,
+	NS = NS0 + 1,
 	N = NS,
 	graph__set_node_supply(G0, NS, G1),
 
@@ -225,7 +225,7 @@ graph__insert_node(G0, NInfo, node(N), G) :-
 	\+ map__member(Nodes0, _, NInfo),
 
 	graph__get_node_supply(G0, NS0),
-	NS is NS0 + 1,
+	NS = NS0 + 1,
 	N = NS,
 	graph__set_node_supply(G0, NS, G1),
 
@@ -285,7 +285,7 @@ graph__nodes(G, Ns) :-
 
 graph__set_edge(G0, Start, End, Info, Arc, G) :-
 	graph__get_arc_supply(G0, AS0),
-	AS is AS0 + 1,
+	AS = AS0 + 1,
 	Arc = arc(AS),
 	graph__set_arc_supply(G0, AS, G1),
 
@@ -313,7 +313,7 @@ graph__det_insert_edge(G0, Start, End, Info, Arc, G) :-
 
 graph__insert_edge(G0, Start, End, Info, Arc, G) :-
 	graph__get_arc_supply(G0, AS0),
-	AS is AS0 + 1,
+	AS = AS0 + 1,
 	Arc = arc(AS),
 	graph__set_arc_supply(G0, AS, G1),
 

@@ -421,7 +421,7 @@ string_to_sym_name(String, ModuleSeparator, Result) :-
 	string__left(String, LeftLength, ModuleName),
 	string__length(String, StringLength),
 	string__length(ModuleSeparator, SeparatorLength),
-	RightLength is StringLength - LeftLength - SeparatorLength,
+	RightLength = StringLength - LeftLength - SeparatorLength,
 	string__right(String, RightLength, Name),
 	string_to_sym_name(Name, ModuleSeparator, NameSym),
 	insert_module_qualifier(ModuleName, NameSym, Result)

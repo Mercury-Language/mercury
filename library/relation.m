@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002 The University of Melbourne.
+% Copyright (C) 1995-1999,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -345,7 +345,7 @@ relation__add_element(relation(Key0, ElMap0, Fwd, Rev),
 		Key = Key0, NewKey = NewKey0, ElMap = ElMap0
 	;
 		NewKey = Key0,
-		Key is Key0 + 1,
+		Key = Key0 + 1,
 		bimap__set(ElMap0, Elem, NewKey, ElMap)
 	).
 

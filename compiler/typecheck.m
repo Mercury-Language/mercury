@@ -2062,7 +2062,7 @@ typecheck_var_has_arg_type_list([], _, ArgTypeAssignSet,
 typecheck_var_has_arg_type_list([Var|Vars], ArgNum, ArgTypeAssignSet0) -->
 	typecheck_info_set_arg_num(ArgNum),
 	typecheck_var_has_arg_type(Var, ArgTypeAssignSet0, ArgTypeAssignSet1),
-	{ ArgNum1 is ArgNum + 1 },
+	{ ArgNum1 = ArgNum + 1 },
 	typecheck_var_has_arg_type_list(Vars, ArgNum1, ArgTypeAssignSet1).
 
 :- pred convert_args_type_assign_set(args_type_assign_set, type_assign_set).
@@ -2206,7 +2206,7 @@ typecheck_var_has_type_list([], [], _) --> [].
 typecheck_var_has_type_list([Var|Vars], [Type|Types], ArgNum) -->
 	typecheck_info_set_arg_num(ArgNum),
 	typecheck_var_has_type(Var, Type),
-	{ ArgNum1 is ArgNum + 1 },
+	{ ArgNum1 = ArgNum + 1 },
 	typecheck_var_has_type_list(Vars, Types, ArgNum1).
 
 :- pred typecheck_var_has_type(prog_var, type, typecheck_info, typecheck_info).
@@ -3153,7 +3153,7 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 		)
 	;
 		IsPredOrFunc = function,
-		PredAsFuncArity is PredArity - 1,
+		PredAsFuncArity = PredArity - 1,
 		PredAsFuncArity >= FuncArity,
 		% We don't support first-class polymorphism,
 		% so you can't take the address of an existentially
@@ -3203,7 +3203,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	; ApplyName = "semipure_apply", Purity = (semipure)
 	),
 	Arity >= 1,
-	Arity1 is Arity - 1,
+	Arity1 = Arity - 1,
 	higher_order_func_type(Purity, Arity1, normal, TypeVarSet,
 		FuncType, ArgTypes, RetType),
 	ExistQVars = [],
@@ -4582,7 +4582,7 @@ find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		Constraint = constraint(ClassName, Types),
 		map__set(Proofs0, Constraint, NewProof, Proofs)
 	;
-		N is N0 + 1,
+		N = N0 + 1,
 		find_matching_instance_rule_2(Is, N, ClassName,
 			Types, TVarSet, NewTVarSet, Proofs0,
 			Proofs, NewConstraints)
@@ -5260,7 +5260,7 @@ report_error_lambda_var(TypeCheckInfo, PredOrFunc, EvalMethod, Var, ArgVars,
 		;
 			io__write_string("(_"),
 			{ list__length(ArgVars, NumArgVars) },
-			{ NumArgVars1 is NumArgVars - 1 },
+			{ NumArgVars1 = NumArgVars - 1 },
 			{ list__duplicate(NumArgVars1, ", _", Strings) },
 			io__write_strings(Strings),
 			io__write_string(")")
@@ -5274,7 +5274,7 @@ report_error_lambda_var(TypeCheckInfo, PredOrFunc, EvalMethod, Var, ArgVars,
 		;
 			io__write_string("(_"),
 			{ list__length(FuncArgs2, NumArgVars) },
-			{ NumArgVars1 is NumArgVars - 1 },
+			{ NumArgVars1 = NumArgVars - 1 },
 			{ list__duplicate(NumArgVars1, ", _", Strings) },
 			io__write_strings(Strings),
 			io__write_string(")")
@@ -5388,7 +5388,7 @@ report_error_functor_arg_types(TypeCheckInfo, Var, ConsDefnList,
 find_mismatched_args([], _, _, []).
 find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
 		Mismatched) :-
-	ArgNum1 is ArgNum0 + 1,
+	ArgNum1 = ArgNum0 + 1,
 	find_mismatched_args(ArgExpTypes, TypeAssignSet, ArgNum1, Mismatched1),
 	get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
 	TypeStuffList = [type_stuff(ArgType, TVarSet, TypeBindings,

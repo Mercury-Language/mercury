@@ -14,6 +14,8 @@
 
 :- implementation.
 
+:- import_module prolog.
+
 main1(Out) :-	
 	data(Data),
 	queen(Data, Out).

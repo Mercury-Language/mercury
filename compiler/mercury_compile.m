@@ -3606,7 +3606,7 @@ mercury_compile__construct_c_file(_Module,
 	{ list__length(GlobalVars, CompGenVarCount) },
 	{ list__length(AllData, CompGenDataCount) },
 	{ list__length(ChunkedModules, CompGenCodeCount) },
-	{ ComponentCount is UserCCodeCount + ExportCount
+	{ ComponentCount = UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
 :- pred make_decl_guards(sym_name::in,
@@ -3677,7 +3677,7 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	string__int_to_string(Num, NumString),
 	string__append(ModuleName, NumString, ThisModuleName),
 	Module = comp_gen_c_module(ThisModuleName, Chunk),
-	Num1 is Num + 1,
+	Num1 = Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name, c_file,
@@ -3687,8 +3687,7 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 
 mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 		Verbose, Stats) -->
-	maybe_write_string(Verbose,
-		"% Writing output to `"),
+	maybe_write_string(Verbose, "% Writing output to `"),
 	module_name_to_file_name(ModuleName, ".c", yes, FileName),
 	maybe_write_string(Verbose, FileName),
 	maybe_write_string(Verbose, "'..."),

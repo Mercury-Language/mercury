@@ -802,7 +802,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 	->
 		{ ClausesWithSoln1 = ClausesWithSoln0 }
 	;
-		{ ClausesWithSoln1 is ClausesWithSoln0 + 1 }
+		{ ClausesWithSoln1 = ClausesWithSoln0 + 1 }
 	),
 	det_diagnose_disj(Goals, Desired, Actual, SwitchContext, DetInfo,
 		ClausesWithSoln1, ClausesWithSoln, Diagnosed2),
@@ -1039,15 +1039,15 @@ det_report_msgs_2([Msg | Msgs], WarnSimple, WarnCalls, ModuleInfo,
 		det_report_msg(Msg, ModuleInfo),
 		(
 			{ MsgType = simple_code_warning },
-			{ WarnCnt1 is WarnCnt0 + 1 },
+			{ WarnCnt1 = WarnCnt0 + 1 },
 			{ ErrCnt1 = ErrCnt0 }
 		;
 			{ MsgType = call_warning },
-			{ WarnCnt1 is WarnCnt0 + 1 },
+			{ WarnCnt1 = WarnCnt0 + 1 },
 			{ ErrCnt1 = ErrCnt0 }
 		;
 			{ MsgType = error },
-			{ ErrCnt1 is ErrCnt0 + 1 },
+			{ ErrCnt1 = ErrCnt0 + 1 },
 			{ WarnCnt1 = WarnCnt0 }
 		)
 	),

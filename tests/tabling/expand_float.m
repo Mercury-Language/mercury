@@ -67,5 +67,5 @@ sum(N, F) :-
 		F = 1.0
 	;
 		sum(N - 1.0, F1),
-		F is N + F1
+		F = N + F1
 	).

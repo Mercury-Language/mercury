@@ -1043,7 +1043,7 @@ rl_sort__interpret_project(RLGoal, sort(SortSpec0) - Reqs,
 
 rl_sort__all_positions([], _, _, []). 
 rl_sort__all_positions([Arg | Args], Index0, Var, Attrs) :-
-	Index is Index0 + 1,
+	Index = Index0 + 1,
 	( Arg = Var ->
 		Attrs = [Index0 | Attrs1],
 		rl_sort__all_positions(Args, Index, Var, Attrs1)

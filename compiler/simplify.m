@@ -2418,10 +2418,8 @@ simplify_info_do_add_msg(Info0, Msg, Info) :-
 
 simplify_info_enter_lambda(SI, SI^lambdas := SI^lambdas + 1).
 simplify_info_leave_lambda(SI, SI^lambdas := LambdaCount) :-
-	LambdaCount1 is SI^lambdas - 1,
-	(
-		LambdaCount1 >= 0
-	->
+	LambdaCount1 = SI^lambdas - 1,
+	( LambdaCount1 >= 0 ->
 		LambdaCount = LambdaCount1
 	;
 		error("simplify_info_leave_lambda: Left too many lambdas")

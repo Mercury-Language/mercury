@@ -911,7 +911,7 @@ exprn_aux__substitute_rvals_in_rval(RvalPairs, Rval0, Rval) :-
 exprn_aux__substitute_rvals_in_rval_1([], _, [], []).
 exprn_aux__substitute_rvals_in_rval_1([Rval1 - Rval2 | RvalPairList], N0,
 		[Rval1 - Uniq | RvalUniqList], [Uniq - Rval2 | UniqRvalList]) :-
-	N1 is N0 - 1,
+	N1 = N0 - 1,
 	Uniq = lval(framevar(N1)),
 	exprn_aux__substitute_rvals_in_rval_1(RvalPairList, N1,
 		RvalUniqList, UniqRvalList).

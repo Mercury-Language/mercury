@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997, 2000, 2002 The University of Melbourne.
+% Copyright (C) 1995, 1997, 2000, 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -298,7 +298,7 @@ multi_map__all_count(MultiMap, Count) :-
 
 multi_map__count_list([], X, X).
 multi_map__count_list([_A|As], Count0, Count) :-
-	Count1 is Count0 + 1,
+	Count1 = Count0 + 1,
 	multi_map__count_list(As, Count1, Count).
 
 %-----------------------------------------------------------------------------%

@@ -498,17 +498,20 @@
 
 :- implementation.
 
-:- pred module_info_get_lambda_count(module_info, int).
-:- mode module_info_get_lambda_count(in, out) is det.
+:- import_module counter.
 
-:- pred module_info_set_lambda_count(module_info, int, module_info).
-:- mode module_info_set_lambda_count(in, in, out) is det.
+:- pred module_info_get_lambda_counter(module_info, counter).
+:- mode module_info_get_lambda_counter(in, out) is det.
 
-:- pred module_info_get_model_non_pragma_count(module_info, int).
-:- mode module_info_get_model_non_pragma_count(in, out) is det.
+:- pred module_info_set_lambda_counter(module_info, counter, module_info).
+:- mode module_info_set_lambda_counter(in, in, out) is det.
 
-:- pred module_info_set_model_non_pragma_count(module_info, int, module_info).
-:- mode module_info_set_model_non_pragma_count(in, in, out) is det.
+:- pred module_info_get_model_non_pragma_counter(module_info, counter).
+:- mode module_info_get_model_non_pragma_counter(in, out) is det.
+
+:- pred module_info_set_model_non_pragma_counter(module_info, counter,
+	module_info).
+:- mode module_info_set_model_non_pragma_counter(in, in, out) is det.
 
 :- pred module_info_set_maybe_dependency_info(module_info,
 	maybe(dependency_info), module_info).
@@ -549,7 +552,6 @@
 			% (that includes opt_imported procedures).
 		maybe_dependency_info ::	maybe(dependency_info),
 		num_errors ::			int,
-		last_lambda_number ::		int,
 		pragma_exported_procs ::	list(pragma_exported_proc),
 					% list of the procs for which
 					% there is a pragma export(...)
@@ -562,7 +564,8 @@
 					% predicates in the current
 					% module which has been exported
 					% in .opt files.
-		model_non_pragma_types_so_far :: int,
+		lambda_number_counter ::	counter,
+		model_non_pragma_counter ::	counter,
 					% number of the structure types defined
 					% so far for model_non pragma C codes
 		imported_module_specifiers ::	set(module_specifier),
@@ -625,10 +628,11 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
-	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], no, 0, 0, [], 
-		[], StratPreds, UnusedArgInfo, 0, ImportedModules,
-		IndirectlyImportedModules, no_aditi_compilation,
-		TypeSpecInfo, NoTagTypes, init_analysis_info(mmc)),
+	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], no, 0, [], 
+		[], StratPreds, UnusedArgInfo, counter__init(1),
+		counter__init(1), ImportedModules, IndirectlyImportedModules,
+		no_aditi_compilation, TypeSpecInfo,
+		NoTagTypes, init_analysis_info(mmc)),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -692,14 +696,14 @@ module_info_get_foreign_import_module(MI,
 module_info_get_maybe_dependency_info(MI,
 	MI ^ sub_info ^ maybe_dependency_info).
 module_info_num_errors(MI, MI ^ sub_info ^ num_errors).
-module_info_get_lambda_count(MI, MI ^ sub_info ^ last_lambda_number).
 module_info_get_pragma_exported_procs(MI,
 	MI ^ sub_info ^ pragma_exported_procs).
 module_info_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
 module_info_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
-module_info_get_model_non_pragma_count(MI,
-	MI ^ sub_info ^ model_non_pragma_types_so_far).
+module_info_get_lambda_counter(MI, MI ^ sub_info ^ lambda_number_counter).
+module_info_get_model_non_pragma_counter(MI,
+	MI ^ sub_info ^ model_non_pragma_counter).
 module_info_get_imported_module_specifiers(MI,
 	MI ^ sub_info ^ imported_module_specifiers).
 module_info_get_indirectly_imported_module_specifiers(MI,
@@ -729,8 +733,6 @@ module_info_set_maybe_dependency_info(MI, NewVal,
 	MI ^ sub_info ^ maybe_dependency_info := NewVal).
 module_info_set_num_errors(MI, NewVal,
 	MI ^ sub_info ^ num_errors := NewVal).
-module_info_set_lambda_count(MI, NewVal,
-	MI ^ sub_info ^ last_lambda_number := NewVal).
 module_info_set_pragma_exported_procs(MI, NewVal,
 	MI ^ sub_info ^ pragma_exported_procs := NewVal).
 module_info_set_type_ctor_gen_infos(MI, NewVal,
@@ -739,8 +741,10 @@ module_info_set_stratified_preds(MI, NewVal,
 	MI ^ sub_info ^ must_be_stratified_preds := NewVal).
 module_info_set_unused_arg_info(MI, NewVal,
 	MI ^ sub_info ^ unused_arg_info := NewVal).
-module_info_set_model_non_pragma_count(MI, NewVal,
-	MI ^ sub_info ^ model_non_pragma_types_so_far := NewVal).
+module_info_set_lambda_counter(MI, NewVal,
+	MI ^ sub_info ^ lambda_number_counter := NewVal).
+module_info_set_model_non_pragma_counter(MI, NewVal,
+	MI ^ sub_info ^ model_non_pragma_counter := NewVal).
 module_add_imported_module_specifiers(ModuleSpecifiers, MI,
 	MI ^ sub_info ^ imported_module_specifiers :=
 		set__insert_list(
@@ -871,18 +875,18 @@ module_info_clobber_dependency_info(MI0, MI) :-
 
 module_info_incr_errors(MI0, MI) :-
 	module_info_num_errors(MI0, Errs0),
-	Errs is Errs0 + 1,
+	Errs = Errs0 + 1,
 	module_info_set_num_errors(MI0, Errs, MI).
 
 module_info_next_lambda_count(MI0, Count, MI) :-
-	module_info_get_lambda_count(MI0, Count0),
-	Count is Count0 + 1,
-	module_info_set_lambda_count(MI0, Count, MI).
+	module_info_get_lambda_counter(MI0, Counter0),
+	counter__allocate(Count, Counter0, Counter),
+	module_info_set_lambda_counter(MI0, Counter, MI).
 
 module_info_next_model_non_pragma_count(MI0, Count, MI) :-
-	module_info_get_model_non_pragma_count(MI0, Count0),
-	Count is Count0 + 1,
-	module_info_set_model_non_pragma_count(MI0, Count, MI).
+	module_info_get_model_non_pragma_counter(MI0, Counter0),
+	counter__allocate(Count, Counter0, Counter),
+	module_info_set_model_non_pragma_counter(MI0, Counter, MI).
 
 	% After we have finished constructing the symbol tables,
 	% we balance all the binary trees, to improve performance
@@ -1414,7 +1418,7 @@ predicate_table_remove_predicate(PredicateTable0, PredId, PredicateTable) :-
 			PredN, PredNA, PredMNA, FuncN0, FuncNA0, FuncMNA0)
 	;
 		IsPredOrFunc = function,
-		FuncArity is Arity - 1,
+		FuncArity = Arity - 1,
 		predicate_table_remove_from_index(Module, Name, FuncArity, 
 			PredId, FuncN0, FuncN, FuncNA0, FuncNA, 
 			FuncMNA0, FuncMNA),
@@ -1720,22 +1724,22 @@ maybe_filter_pred_ids_matching_module(is_fully_qualified, ModuleName,
 predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
 		predicate, Module, Name, Arity, PredIds) :-
 	predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
-			Module, Name, Arity, PredIds).
+		Module, Name, Arity, PredIds).
 predicate_table_search_pf_m_n_a(PredicateTable, IsFullyQualified,
 		function, Module, Name, Arity, PredIds) :-
-	FuncArity is Arity - 1,
+	FuncArity = Arity - 1,
 	predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
-			Module, Name, FuncArity, PredIds).
+		Module, Name, FuncArity, PredIds).
 
 predicate_table_search_pf_name_arity(PredicateTable, predicate, Name, Arity,
 		PredIds) :-
 	predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
-			PredIds).
+		PredIds).
 predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
 		PredIds) :-
-	FuncArity is Arity - 1,
+	FuncArity = Arity - 1,
 	predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
-			PredIds).
+		PredIds).
 
 predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
 		PredOrFunc, qualified(Module, Name), Arity, PredIdList) :-
@@ -1856,9 +1860,7 @@ predicate_table_insert_2(PredicateTable0, MaybePredId, PredInfo0,
 		Func_MNA_Index = Func_MNA_Index0
 	;
 		PredOrFunc = function,
-
-		FuncArity is Arity - 1,
-
+		FuncArity = Arity - 1,
 		predicate_table_do_insert(Module, Name, FuncArity,
 			NeedQual, MaybeQualInfo, PredId,
 			Func_N_Index0, Func_N_Index, 

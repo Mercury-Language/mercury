@@ -824,7 +824,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			CountSemis = lambda([Char::in, Count0::in, Count::out]
 				is det,
 				( Char = (;) ->
-					Count is Count0 + 1
+					Count = Count0 + 1
 				;
 					Count = Count0
 				)

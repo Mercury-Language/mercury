@@ -74,8 +74,8 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		FirstCase = case(_, int_constant(FirstCaseVal), _, _),
 		list__index1_det(TaggedCases, NumCases, LastCase),
 		LastCase = case(_, int_constant(LastCaseVal), _, _),
-		Span is LastCaseVal - FirstCaseVal,
-		Range is Span + 1,
+		Span = LastCaseVal - FirstCaseVal,
+		Range = Span + 1,
 		dense_switch__calc_density(NumCases, Range, Density),
 		Density > ReqDensity
 	},
@@ -96,7 +96,7 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		->
 			{ CanFail = cannot_fail },
 			{ FirstVal = 0 },
-			{ LastVal is TypeRange - 1 }
+			{ LastVal = TypeRange - 1 }
 		;
 			{ CanFail = CanFail0 },
 			{ FirstVal = FirstCaseVal },
@@ -114,8 +114,8 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 	% and the number of cases.
 
 dense_switch__calc_density(NumCases, Range, Density) :-
-	N1 is NumCases * 100,
-	Density is N1 // Range.
+	N1 = NumCases * 100,
+	Density = N1 // Range.
 
 %---------------------------------------------------------------------------%
 
@@ -147,7 +147,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 		% appropriate range
 	(
 		{ CanFail = can_fail },
-		{ Difference is EndVal - StartVal },
+		{ Difference = EndVal - StartVal },
 		code_info__fail_if_rval_is_false(
 			binop(unsigned_le, Index,
 				const(int_const(Difference))), RangeCheck)
@@ -205,7 +205,7 @@ dense_switch__generate_cases(Cases0, NextVal, EndVal, CodeModel,
 				- "branch to end of dense switch"
 		]) },
 			% generate the rest of the cases.
-		{ NextVal1 is NextVal + 1 },
+		{ NextVal1 = NextVal + 1 },
 		dense_switch__generate_cases(Cases1, NextVal1, EndVal,
 			CodeModel, SwitchGoalInfo, EndLabel,
 			MaybeEnd1, MaybeEnd, Labels1, OtherCasesCode),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -77,7 +77,7 @@ pqueue__init(empty).
 
 pqueue__insert(empty, K, V, pqueue(0, K, V, empty, empty)).
 pqueue__insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ) :-
-	D is D0 + 1,
+	D = D0 + 1,
 	compare(CMP, K, K0),
 	(
 		CMP = (<)
@@ -130,12 +130,12 @@ pqueue__remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
 	(
 		CMP = (<)
 	->
-		D0M1 is D0 - 1,
+		D0M1 = D0 - 1,
 		int__max(D0M1, D1, D),
 		pqueue__remove_2(L0, R0, PQ0),
 		PQ = pqueue(D, K0, V0, PQ0, pqueue(D1, K1, V1, L1, R1))
 	;
-		D1M1 is D0 - 1,
+		D1M1 = D0 - 1,
 		int__max(D1M1, D1, D),
 		pqueue__remove_2(L1, R1, PQ1),
 		PQ = pqueue(D, K1, V1, PQ1, pqueue(D0, K0, V0, L0, R0))

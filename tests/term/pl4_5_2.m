@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 s(A+(B+C), D) :-
 	s((A+B)+C, D).

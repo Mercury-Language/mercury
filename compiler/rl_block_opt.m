@@ -291,7 +291,7 @@ rl_block_opt__add_output([OutputRel0 | Outputs0], Index0, TheIndex,
 		Outputs = Outputs0
 	;
 		OutputRel = OutputRel0,
-		Index is Index0 + 1,
+		Index = Index0 + 1,
 		rl_block_opt__add_output(Outputs0, Index, TheIndex,
 			Relation, RelIndex, Outputs)
 	).
@@ -458,7 +458,7 @@ rl_block_opt__set_relation_node(NodeId, Output, Index0, Index) -->
 		{ map__det_insert(Locs0, OutputId, InputRel, Locs) },
 		dag_set_output_loc_map(Locs)
 	),
-	{ Index is Index0 + 1 },
+	{ Index = Index0 + 1 },
 	dag_get_rel_node_map(RelNodeMap0),
 	{ map__set(RelNodeMap0, Output, OutputId, RelNodeMap) },
 	dag_set_rel_node_map(RelNodeMap).
@@ -695,7 +695,7 @@ rl_block_opt__update_node_index(Update, OutputId, AddedIndexes) -->
 		{ call(Update, Schema, Index0, Index, AddedIndexes) },
 
 		{ OutputRel = output_node(Schema, Index, RelationIds0) },
-		{ N is OutputNo + 1 },
+		{ N = OutputNo + 1 },
 		{ list__replace_nth(OutputRels0, N, OutputRel, OutputRels1) ->
 			OutputRels = OutputRels1
 		;
@@ -872,7 +872,7 @@ rl_block_opt__find_output_project_nodes(NodeId, Index,
 	;
 		{ OutputProjns1 = OutputProjns0 }
 	),
-	{ NextIndex is Index + 1 },
+	{ NextIndex = Index + 1 },
 	rl_block_opt__find_output_project_nodes(NodeId, NextIndex,
 		OutputNodes, OutputProjns1, OutputProjns).
 
@@ -1034,8 +1034,8 @@ rl_block_opt__collect_project_outputs_2(ProjNode, OutputIndex0,
 	rl_block_opt__rename_node(ProjNode, OldOutputLoc,
 		input_node(NewNode, NewIndex0)),
 
-	{ OutputIndex is OutputIndex0 + 1 },
-	{ NewIndex1 is NewIndex0 + 1 },
+	{ OutputIndex = OutputIndex0 + 1 },
+	{ NewIndex1 = NewIndex0 + 1 },
 	rl_block_opt__collect_project_outputs_2(ProjNode, OutputIndex,
 		OutputNodes, NewNode, NewIndex1, NewIndex,
 		[OutputNode | NewOutputs0], NewOutputs).
@@ -1115,7 +1115,7 @@ rl_block_opt__get_single_projects(Node, Index0, FoundSingle0, FoundSingle,
 		{ Goal = Goal0 },
 		{ OutputRel = OutputRel0 }
 	),
-	{ Index is Index0 + 1 },
+	{ Index = Index0 + 1 },
 	rl_block_opt__get_single_projects(Node, Index,
 		FoundSingle1, FoundSingle, Goals0, Goals,
 		OutputRels0, OutputRels).
@@ -1711,12 +1711,12 @@ dag_set_flags(L, Dag0, Dag) :-
 
 dag_get_next_node_id(A0, Dag0, Dag) :-
 	Dag0 = dag(A0,B,C,D,E,F,G,H,I,J,K,L,M),
-	A is A0 + 1,
+	A = A0 + 1,
 	Dag = dag(A,B,C,D,E,F,G,H,I,J,K,L,M).
 
 dag_get_next_output_id(B0, Dag0, Dag) :-
 	Dag0 = dag(A,B0,C,D,E,F,G,H,I,J,K,L,M),
-	B is B0 + 1,
+	B = B0 + 1,
 	Dag = dag(A,B,C,D,E,F,G,H,I,J,K,L,M).
 
 :- pred dag_get_relation_info(relation_id::in, relation_info::out,

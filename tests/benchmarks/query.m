@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 :- type quad ---> quad(string, int, string, int).
 

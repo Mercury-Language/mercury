@@ -180,7 +180,7 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 				ReservedAddresses, CtorTags2, CtorTags)
 		;
 			max_num_tags(NumTagBits, MaxNumTags),
-			MaxTag is MaxNumTags - 1,
+			MaxTag = MaxNumTags - 1,
 			split_constructors(Ctors, Constants, Functors),
 			assign_constant_tags(Constants, CtorTags0,
 						CtorTags1, InitTag, NextTag),
@@ -199,7 +199,7 @@ assign_enum_constants([Ctor | Rest], Val, CtorTags0, CtorTags) :-
 	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = int_constant(Val),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
-	Val1 is Val + 1,
+	Val1 = Val + 1,
 	assign_enum_constants(Rest, Val1, CtorTags1, CtorTags).
 
 	% assign the representations null_pointer, small_pointer(1),
@@ -300,7 +300,7 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
 		Tag = maybe_add_reserved_addresses(ReservedAddresses,
 			unshared_tag(Val)),
 		map__set(CtorTags0, ConsId, Tag, CtorTags1),
-		Val1 is Val + 1,
+		Val1 = Val + 1,
 		assign_unshared_tags(Rest, Val1, MaxTag,
 			ReservedAddresses, CtorTags1, CtorTags)
 	).
@@ -317,7 +317,7 @@ assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 	Tag = maybe_add_reserved_addresses(ReservedAddresses,
 		shared_remote_tag(PrimaryVal, SecondaryVal)),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
-	SecondaryVal1 is SecondaryVal + 1,
+	SecondaryVal1 = SecondaryVal + 1,
 	assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
 		ReservedAddresses, CtorTags1, CtorTags).
 
@@ -332,12 +332,13 @@ assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
 	make_cons_id_from_qualified_sym_name(Name, Args, ConsId),
 	Tag = shared_local_tag(PrimaryVal, SecondaryVal),
 	map__set(CtorTags0, ConsId, Tag, CtorTags1),
-	SecondaryVal1 is SecondaryVal + 1,
+	SecondaryVal1 = SecondaryVal + 1,
 	assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1,
 		CtorTags1, CtorTags).
 
 :- func maybe_add_reserved_addresses(list(reserved_address), cons_tag) =
 	cons_tag.
+
 maybe_add_reserved_addresses(ReservedAddresses, Tag) =
 	( ReservedAddresses = [] ->
 		Tag

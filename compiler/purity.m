@@ -284,7 +284,7 @@ check_preds_purity(FoundTypeError, ModuleInfo0,
 	check_preds_purity_2(PredIds, ModuleInfo1, ModuleInfo2,
 		NumErrors1, NumErrors),
 	{ module_info_num_errors(ModuleInfo2, Errs0) },
-	{ Errs is Errs0 + NumErrors },
+	{ Errs = Errs0 + NumErrors },
 	{ module_info_set_num_errors(ModuleInfo2, Errs, ModuleInfo) }.
 
 :- pred check_preds_purity_2(list(pred_id), module_info, module_info,
@@ -377,7 +377,7 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	{ perform_pred_purity_checks(PredInfo, Purity, DeclPurity,
 		PromisedPurity, PurityCheckResult) },
 	( { PurityCheckResult = inconsistent_promise },
-		{ NumErrors is NumErrors0 + 1 },
+		{ NumErrors = NumErrors0 + 1 },
 		error_inconsistent_promise(ModuleInfo, PredInfo, PredId,
 					  DeclPurity)
 	; { PurityCheckResult = unnecessary_decl },
@@ -385,7 +385,7 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 		warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 					     DeclPurity, WorstPurity)
 	; { PurityCheckResult = insufficient_decl },
-		{ NumErrors is NumErrors0 + 1 },
+		{ NumErrors = NumErrors0 + 1 },
 		error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity)
 	; { PurityCheckResult = unnecessary_promise_pure },
 		{ NumErrors = NumErrors0 },

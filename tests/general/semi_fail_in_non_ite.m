@@ -42,10 +42,10 @@ p(A, X) :-
 	( if
 		some [B] ( q(A, B) ; r(A, B) )
 	then
-		C is B * 10
+		C = B * 10
 		% s(B, C)
 	else
-		C is A * 10
+		C = A * 10
 		% s(A, C)
 	),
 	% The second if-then-else cannot hijack the redoip/redofr slots
@@ -91,9 +91,9 @@ r(370, 698).
 s(F, G) :-
 	F < 695,
 	(
-		G is 10 * F
+		G = 10 * F
 	;
-		G is 10 * F + 1
+		G = 10 * F + 1
 	).
 
 :- pred print_list(list(int), io__state, io__state).

@@ -86,7 +86,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 		% fail must be explicitly declared as semidet.)
 		%
 		pred_info_arity(PredInfo0, PredArity),
-		FuncArity is PredArity - 1,
+		FuncArity = PredArity - 1,
 		in_mode(InMode),
 		out_mode(OutMode),
 		list__duplicate(FuncArity, InMode, FuncArgModes),

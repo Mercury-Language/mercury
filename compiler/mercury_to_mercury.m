@@ -3163,7 +3163,7 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 	{ PredOrFunc = predicate,
 		DeclaredArity = Arity
 	; PredOrFunc = function,
-		DeclaredArity is Arity - 1
+		DeclaredArity = Arity - 1
 	},
 	add_string(":- pragma "),
 	add_string(PragmaName),
@@ -3776,7 +3776,7 @@ mercury_convert_var_name(Name, ConvertedName) :-
 strip_trailing_primes(Name0, Name, Num) :-
 	( string__remove_suffix(Name0, "'", Name1) ->
 		strip_trailing_primes(Name1, Name, Num0),
-		Num is Num0 + 1
+		Num = Num0 + 1
 	;
 		Num = 0,
 		Name = Name0

@@ -269,7 +269,7 @@ pd_term__update_global_term_info(TermInfo0, ProcPair,
 pd_term__initial_sizes(_, _, [], _, []).
 pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo, 
 		[ArgNo - Size | Sizes]) :-
-	NextArgNo is ArgNo + 1,
+	NextArgNo = ArgNo + 1,
 	pd_term__initial_sizes(ModuleInfo, InstMap, Args, NextArgNo, Sizes),
 	instmap__lookup_var(InstMap, Arg, ArgInst),
 	pd_util__inst_size(ModuleInfo, ArgInst, Size).

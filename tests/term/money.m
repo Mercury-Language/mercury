@@ -22,7 +22,7 @@ Notes:
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 solve([S, E, N, D, M, O, R, Y]) :-
 	money(S, E, N, D, M, O, R, Y).

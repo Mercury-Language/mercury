@@ -9,4 +9,4 @@
 :- import_module int.
 
 p(X) :-
-	X is 1 \/ 1 \/ 1.
+	X = 1 \/ 1 \/ 1.

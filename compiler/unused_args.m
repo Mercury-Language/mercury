@@ -1161,7 +1161,7 @@ remove_listof_elements(List0, ArgNo, ElemsToRemove, List) :-
 	;
 		(
 			List0 = [Head | Tail],
-			NextArg is ArgNo + 1,
+			NextArg = ArgNo + 1,
 			(
 				list__member(ArgNo, ElemsToRemove)
 			->
@@ -1183,7 +1183,7 @@ remove_listof_elements(List0, ArgNo, ElemsToRemove, List) :-
 
 get_unused_arg_nos(_, [], _, []).
 get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
-	NextArg is ArgNo + 1,
+	NextArg = ArgNo + 1,
 	(
 		map__contains(LocalVars, HeadVar)
 	->
@@ -1579,7 +1579,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 				string__sub_string_search(Name, "__ho",
 						Position),
 				string__length(Name, Length),
-				IdLen is Length - Position - 4,
+				IdLen = Length - Position - 4,
 				string__right(Name, IdLen, Id),
 				string__to_int(Id, _)
 			)
@@ -1647,7 +1647,7 @@ maybe_warn_unused_args(yes, _ModuleInfo, PredInfo, PredId, ProcId,
 		% Strip off the extra type_info arguments 
 		% inserted at the front by polymorphism.m
 		pred_info_arity(PredInfo, Arity),
-		NumToDrop is NumHeadVars - Arity,
+		NumToDrop = NumHeadVars - Arity,
 		adjust_unused_args(NumToDrop,
 			UnusedArgs0, UnusedArgs)
 		},
@@ -1701,10 +1701,8 @@ report_unused_args(PredInfo, UnusedArgs) -->
 
 adjust_unused_args(_, [], []).
 adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
-	NewArg is UnusedArgNo - NumToDrop,
-	(
-		NewArg < 1
-	->
+	NewArg = UnusedArgNo - NumToDrop,
+	( NewArg < 1 ->
 		AdjUnusedArgs = AdjUnusedArgs1
 	;
 		AdjUnusedArgs = [NewArg | AdjUnusedArgs1]

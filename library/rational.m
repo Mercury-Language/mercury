@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,7 +117,7 @@ rational:'+'(Rat) = Rat.
 rational:'-'(r(Num, Den)) = r(-Num, Den).
 
 rational:'+'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, M) :-
-	Numer is An * CA + Bn * CB,
+	Numer = An * CA + Bn * CB,
 	M = lcm(Ad, Bd),
 	CA = M // Ad,
 	CB = M // Bd.
@@ -127,8 +127,8 @@ rational:'-'(R1, R2) =
 
 	% XXX: need we call rational_norm here?
 rational:'*'(r(An, Ad), r(Bn, Bd)) = rational_norm(Numer, Denom) :-
-	Numer is (An//G1) * (Bn//G2),
-	Denom is (Ad//G2) * (Bd//G1),
+	Numer = (An//G1) * (Bn//G2),
+	Denom = (Ad//G2) * (Bd//G1),
 	G1 = gcd(An, Bd),
 	G2 = gcd(Ad, Bn).
 

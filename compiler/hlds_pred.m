@@ -925,7 +925,7 @@ hlds_pred__initial_pred_id(0).
 hlds_pred__initial_proc_id(0).
 
 hlds_pred__next_pred_id(PredId, NextPredId) :-
-	NextPredId is PredId + 1.
+	NextPredId = PredId + 1.
 
 pred_id_to_int(PredId, PredId).
 
@@ -2663,7 +2663,7 @@ make_n_fresh_vars_2(BaseName, N, Max, VarSet0, Vars, VarSet) :-
 		VarSet = VarSet0,
 		Vars = []
 	;
-		N1 is N + 1,
+		N1 = N + 1,
 		varset__new_var(VarSet0, Var, VarSet1),
 		string__int_to_string(N1, Num),
 		string__append(BaseName, Num, VarName),
@@ -2674,7 +2674,7 @@ make_n_fresh_vars_2(BaseName, N, Max, VarSet0, Vars, VarSet) :-
 
 pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
 	list__length(PredArgs, NumPredArgs),
-	NumFuncArgs is NumPredArgs - 1,
+	NumFuncArgs = NumPredArgs - 1,
 	( list__split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) ->
 		FuncArgs = FuncArgs0,
 		FuncReturn = FuncReturn0

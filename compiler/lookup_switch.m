@@ -117,8 +117,8 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 		FirstCase = case(_, int_constant(FirstCaseVal), _, _),
 		list__index1_det(TaggedCases, NumCases, LastCase),
 		LastCase = case(_, int_constant(LastCaseVal), _, _),
-		Span is LastCaseVal - FirstCaseVal,
-		Range is Span + 1,
+		Span = LastCaseVal - FirstCaseVal,
+		Range = Span + 1,
 		dense_switch__calc_density(NumCases, Range, Density),
 		Density > ReqDensity
 	},
@@ -153,7 +153,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 			{ NeedRangeCheck = cannot_fail },
 			{ NeedBitVecTest = can_fail },
 			{ FirstVal = 0 },
-			{ LastVal is TypeRange - 1 }
+			{ LastVal = TypeRange - 1 }
 		;
 			{ NeedRangeCheck = SwitchCanFail },
 			{ NeedBitVecTest = NeedBitVecTest0 },
@@ -297,7 +297,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		% appropriate range.
 	(
 		{ NeedRangeCheck = can_fail },
-		{ Difference is EndVal - StartVal },
+		{ Difference = EndVal - StartVal },
 		code_info__fail_if_rval_is_false(
 			binop(unsigned_le, Index,
 				const(int_const(Difference))), RangeCheck)

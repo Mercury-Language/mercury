@@ -33,6 +33,8 @@
 
 :- implementation.
 
+:- import_module prolog.
+
 main -->
 	( { main4(E1, E2, E3, E4) } ->
 		print_expr(E1),

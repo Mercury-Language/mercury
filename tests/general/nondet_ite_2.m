@@ -37,7 +37,7 @@ p(2).
 
 r(Z) :-
 	q(X, Y),
-	Z is X * 100 + Y.
+	Z = X * 100 + Y.
 
 main -->
 	{ solutions(r, List) },

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -251,9 +251,9 @@ lexer__string_read_char(String, Len, Char, Posn0, Posn) :-
 	Posn0 = posn(LineNum0, LineOffset0, Offset0),
 	Offset0 < Len,
 	string__unsafe_index(String, Offset0, Char),
-	Offset is Offset0 + 1,
+	Offset = Offset0 + 1,
 	( Char = '\n' ->
-		LineNum is LineNum0 + 1,
+		LineNum = LineNum0 + 1,
 		Posn = posn(LineNum, Offset, Offset)
 	;
 		Posn = posn(LineNum0, LineOffset0, Offset)
@@ -264,10 +264,10 @@ lexer__string_read_char(String, Len, Char, Posn0, Posn) :-
 
 lexer__string_ungetchar(String, Posn0, Posn) :-
 	Posn0 = posn(LineNum0, LineOffset0, Offset0),
-	Offset is Offset0 - 1,
+	Offset = Offset0 - 1,
 	string__unsafe_index(String, Offset, Char),
 	( Char = '\n' ->
-		LineNum is LineNum0 - 1,
+		LineNum = LineNum0 - 1,
 		Posn = posn(LineNum, Offset, Offset)
 	;
 		Posn = posn(LineNum0, LineOffset0, Offset)
@@ -279,7 +279,7 @@ lexer__string_ungetchar(String, Posn0, Posn) :-
 lexer__grab_string(String, Posn0, SubString, Posn, Posn) :-
 	Posn0 = posn(_, _, Offset0),
 	Posn = posn(_, _, Offset),
-	Count is Offset - Offset0,
+	Count = Offset - Offset0,
 	string__unsafe_substring(String, Offset0, Count, SubString).
 
 :- pred lexer__string_set_line_number(int, posn, posn).

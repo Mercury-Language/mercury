@@ -464,7 +464,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 					ModuleInfo3, ModuleInfo4) }
 			),
 
-			{ MaxIterations1 is MaxIterations - 1 },
+			{ MaxIterations1 = MaxIterations - 1 },
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
 				WhatToCheck, MayChangeCalledProc,
 				ModuleInfo4, ModuleInfo, UnsafeToContinue)
@@ -580,13 +580,13 @@ modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
 			ModuleInfo3 = ModuleInfo1
 		;
 			module_info_num_errors(ModuleInfo1, ModNumErrors0),
-			ModNumErrors1 is ModNumErrors0 + ErrsInThisPred,
+			ModNumErrors1 = ModNumErrors0 + ErrsInThisPred,
 			module_info_set_num_errors(ModuleInfo1, ModNumErrors1,
 				ModuleInfo2),
 			module_info_remove_predid(ModuleInfo2, PredId,
 				ModuleInfo3)
 		},
-		{ NumErrors1 is NumErrors0 + ErrsInThisPred }
+		{ NumErrors1 = NumErrors0 + ErrsInThisPred }
 	),
 	modecheck_pred_modes_2(PredIds, WhatToCheck, MayChangeCalledProc,
 		ModuleInfo3, ModuleInfo, Changed1, Changed,
@@ -672,7 +672,7 @@ modecheck_procs([ProcId|ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
 	modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 				ModuleInfo0, Changed0,
 				ModuleInfo1, Changed1, NumErrors),
-	{ Errs1 is Errs0 + NumErrors },
+	{ Errs1 = Errs0 + NumErrors },
 		% recursively process the remaining modes
 	modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
 				ModuleInfo1, Changed1, Errs1,
@@ -954,7 +954,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 					Var, VarInst, Inst, Reason))
 			)
 		),
-		{ ArgNum1 is ArgNum + 1 },
+		{ ArgNum1 = ArgNum + 1 },
 		check_final_insts(Vars1, Insts1, VarInsts1, InferModes, ArgNum1,
 			ModuleInfo, Changed1, Changed)
 	;
@@ -1793,7 +1793,7 @@ modecheck_var_list_is_live([], [_|_], _, _) -->
 modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum) --> [].
 modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], NeedExactMatch,
 		ArgNum0) -->
-	{ ArgNum is ArgNum0 + 1 },
+	{ ArgNum = ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
 	modecheck_var_is_live(Var, IsLive, NeedExactMatch),
 	modecheck_var_list_is_live(Vars, IsLives, NeedExactMatch, ArgNum).
@@ -1847,7 +1847,7 @@ modecheck_var_has_inst_list_2([], [_|_], _, _, _, _) -->
 modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, Subst, Subst) --> [].
 modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts],
 		NeedExactMatch, ArgNum0, Subst0, Subst) -->
-	{ ArgNum is ArgNum0 + 1 },
+	{ ArgNum = ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
 	modecheck_var_has_inst(Var, Inst, NeedExactMatch, Subst0, Subst1),
 	modecheck_var_has_inst_list_2(Vars, Insts,
@@ -1924,7 +1924,7 @@ modecheck_set_var_inst_list_2([], [], [], ExtraGoals, _, [], ExtraGoals) -->
 modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 			[FinalInst | FinalInsts], ExtraGoals0, ArgNum0,
 			[Var | Vars], ExtraGoals) -->
-	{ ArgNum is ArgNum0 + 1 },
+	{ ArgNum = ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
 	modecheck_set_var_inst(Var0, InitialInst, FinalInst,
 				Var, ExtraGoals0, ExtraGoals1),

@@ -459,7 +459,7 @@ artificial_lval(reg(_Type, Num)) :-
 
 next_free_reg(N0, Values, N) :-
 	( set__member(reg(r, N0), Values) ->
-		N1 is N0 + 1,
+		N1 = N0 + 1,
 		next_free_reg(N1, Values, N)
 	;
 		N = N0

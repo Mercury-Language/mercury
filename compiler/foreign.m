@@ -575,7 +575,7 @@ create_pragma_vars([Var|Vars], [Mode|Modes], ArgNum0,
 	%
 	% Figure out a name for the C variable which will hold this argument
 	%
-	ArgNum is ArgNum0 + 1,
+	ArgNum = ArgNum0 + 1,
 	string__int_to_string(ArgNum, ArgNumString),
 	string__append("Arg", ArgNumString, ArgName),
 

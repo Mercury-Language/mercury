@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999-2000, 2002 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000, 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,12 +192,12 @@
 %-----------------------------------------------------------------------------%
 
 bt_array__make_empty_array(Low, bt_array(Low, High, ListOut)) :-
-	High is Low - 1,
+	High = Low - 1,
 	ra_list_nil(ListOut).
 
 bt_array__init(Low, High, Item, bt_array(Low, High, ListOut)) :-
 	ra_list_nil(ListIn),
-	ElemsToAdd is High - Low + 1,
+	ElemsToAdd = High - Low + 1,
 	bt_array__add_elements(ElemsToAdd, Item, ListIn, ListOut).
 
 :- pred bt_array__add_elements(int, T, ra_list(T), ra_list(T)).
@@ -208,7 +208,7 @@ bt_array__add_elements(ElemsToAdd, Item, RaList0, RaList) :-
 		RaList0 = RaList
 	;
 		ra_list_cons(Item, RaList0, RaList1),
-		ElemsToAdd1 is ElemsToAdd - 1,
+		ElemsToAdd1 = ElemsToAdd - 1,
 		bt_array__add_elements(ElemsToAdd1, Item, RaList1, RaList)
 	).
 
@@ -219,7 +219,7 @@ bt_array__min(bt_array(Low, _, _), Low).
 bt_array__max(bt_array(_, High, _), High).
 
 bt_array__size(bt_array(Low, High, _), Size) :-
-	Size is High - Low + 1.
+	Size = High - Low + 1.
 
 bt_array__bounds(bt_array(Low, High, _), Low, High).
 
@@ -233,7 +233,7 @@ bt_array__in_bounds(bt_array(Low, High, _), Index) :-
 :- mode actual_position(in, in, in, out) is det.
 
 actual_position(Low, High, Index, Pos) :-
-	Pos is High - Low - Index.
+	Pos = High - Low - Index.
 
 bt_array__lookup(bt_array(Low, High, RaList), Index, Item) :-
 	actual_position(Low, High, Index, Pos),
@@ -270,7 +270,7 @@ bt_array__resize(Array0, L, H, Item, Array) :-
 		% the same.
 
 		( H < H0 ->
-			SizeDiff is H0 - H,
+			SizeDiff = H0 - H,
 			( ra_list_drop(SizeDiff, RaList0, RaList1) ->
 				RaList = RaList1
 			;
@@ -278,7 +278,7 @@ bt_array__resize(Array0, L, H, Item, Array) :-
 			),
 			Array = bt_array(L, H, RaList)
 		; H > H0 ->
-			SizeDiff is H - H0,
+			SizeDiff = H - H0,
 			bt_array__add_elements(SizeDiff, Item, RaList0, RaList),
 			Array = bt_array(L, H, RaList)
 		;
@@ -300,7 +300,7 @@ bt_array__shrink(Array0, L, H, Array) :-
 		% Optimise the common case where the lower bounds are
 		% the same.
 
-		SizeDiff is H0 - H,
+		SizeDiff = H0 - H,
 		( ra_list_drop(SizeDiff, RaList0, RaList1) ->
 			RaList = RaList1
 		;
@@ -324,7 +324,7 @@ bt_array__shrink(Array0, L, H, Array) :-
 
 bt_array__from_list(Low, List, bt_array(Low, High, RaList)) :-
 	list__length(List, Len),
-	High is Low + Len - 1,
+	High = Low + Len - 1,
 	ra_list_nil(RaList0),
 	bt_array__reverse_into_ra_list(List, RaList0, RaList).
 
@@ -344,7 +344,7 @@ bt_array__reverse_into_ra_list([X | Xs], RaList0, RaList) :-
 bt_array__insert_items(Array, _N, [], Array).
 bt_array__insert_items(Array0, N, [Head|Tail], Array) :-
 	bt_array__set(Array0, N, Head, Array1),
-	N1 is N + 1,
+	N1 = N + 1,
 	bt_array__insert_items(Array1, N1, Tail, Array).
 
 %-----------------------------------------------------------------------------%
@@ -372,7 +372,7 @@ bt_array__fetch_items(bt_array(ALow, AHigh, RaList0), Low, High, List) :-
 	;
 		actual_position(ALow, AHigh, High, Drop),
 		ra_list_drop(Drop, RaList0, RaList),
-		Take is High - Low + 1,
+		Take = High - Low + 1,
 		bt_array__reverse_from_ra_list_count(Take, RaList, [], List0)
 	->
 		List = List0
@@ -388,7 +388,7 @@ bt_array__reverse_from_ra_list_count(I, RaList0, Xs0, Xs) :-
 		ra_list_head_tail(RaList0, X, RaList1),
 		I >= 0
 	->
-		I1 is I - 1,
+		I1 = I - 1,
 		bt_array__reverse_from_ra_list_count(I1, RaList1, [X | Xs0], Xs)
 	;
 		Xs0 = Xs
@@ -408,7 +408,7 @@ bt_array__bsearch(A, El, Compare, I) :-
 :- mode bt_array__bsearch_2(in, in, in, in, pred(in, in, out) is det,
 				out) is semidet.
 bt_array__bsearch_2(A, Lo, Hi, El, Compare, I) :-
-	Width is Hi - Lo,
+	Width = Hi - Lo,
 
 	% If Width < 0, there is no range left.
 	Width >= 0,
@@ -430,16 +430,16 @@ bt_array__bsearch_2(A, Lo, Hi, El, Compare, I) :-
 		% 2.  Until such time as we implement strength
 		% reduction, the >> 1 stays.
 
-		Mid is (Lo + Hi) >> 1,
+		Mid = (Lo + Hi) >> 1,
 		bt_array__lookup(A, Mid, XMid),
 		call(Compare, XMid, El, Comp),
 		( Comp = (<),
-			Mid1 is Mid + 1,
+			Mid1 = Mid + 1,
 			bt_array__bsearch_2(A, Mid1, Hi, El, Compare, I)
 		; Comp = (=),
 			bt_array__bsearch_2(A, Lo, Mid, El, Compare, I)
 		; Comp = (>),
-			Mid1 is Mid - 1,
+			Mid1 = Mid - 1,
 			bt_array__bsearch_2(A, Lo, Mid1, El, Compare, I)
 		)
 	).
@@ -522,7 +522,7 @@ ra_list_cons(X, List0, List) :-
 		List0 = cons(Size1, T1, cons(Size2, T2, Rest)),
 		Size1 = Size2
 	->
-		NewSize is 1 + Size1 + Size2,
+		NewSize = 1 + Size1 + Size2,
 		List = cons(NewSize, node(X, T1, T2), Rest)
 	;
 		List = cons(1, leaf(X), List0)
@@ -562,7 +562,7 @@ ra_list_lookup_2(I, cons(Size, T, Rest), X) :-
 	( I < Size ->
 		ra_list_bintree_lookup(Size, T, I, X)
 	;
-		NewI is I - Size,
+		NewI = I - Size,
 		ra_list_lookup_2(NewI, Rest, X)
 	).
 
@@ -576,10 +576,10 @@ ra_list_bintree_lookup(Size, node(X0, T1, T2), I, X) :-
 	;
 		Size2 = Size // 2,
 		( I =< Size2 ->
-			NewI is I - 1,
+			NewI = I - 1,
 			ra_list_bintree_lookup(Size2, T1, NewI, X)
 		;
-			NewI is I - 1 - Size2,
+			NewI = I - 1 - Size2,
 			ra_list_bintree_lookup(Size2, T2, NewI, X)
 		)
 	).
@@ -600,7 +600,7 @@ ra_list_update_2(cons(Size, T0, Rest), I, X, List) :-
 		ra_list_bintree_update(Size, T0, I, X, T),
 		List = cons(Size, T, Rest)
 	;
-		NewI is I - Size,
+		NewI = I - Size,
 		ra_list_update_2(Rest, NewI, X, List0),
 		List = cons(Size, T0, List0)
 	).
@@ -616,11 +616,11 @@ ra_list_bintree_update(Size, node(X0, T1, T2), I, X, T) :-
 	;
 		Size2 = Size // 2,
 		( I =< Size2 ->
-			NewI is I - 1,
+			NewI = I - 1,
 			ra_list_bintree_update(Size2, T1, NewI, X, T0),
 			T = node(X0, T0, T2)
 		;
-			NewI is I - 1 - Size2,
+			NewI = I - 1 - Size2,
 			ra_list_bintree_update(Size2, T2, NewI, X, T0),
 			T = node(X0, T1, T0)
 		)
@@ -634,7 +634,7 @@ ra_list_drop(N, As, Bs) :-
 	->
 		As = cons(Size, _, Cs),
 		( Size < N ->
-			N1 is N - Size,
+			N1 = N - Size,
 			ra_list_drop(N1, Cs, Bs)
 		;
 			ra_list_slow_drop(N, As, Bs)
@@ -650,7 +650,7 @@ ra_list_slow_drop(N, As, Bs) :-
 	(
 		N > 0
 	->
-		N1 is N - 1,
+		N1 = N - 1,
 		ra_list_tail(As, Cs),
 		ra_list_slow_drop(N1, Cs, Bs)
 	;

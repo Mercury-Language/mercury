@@ -73,7 +73,7 @@ between(Min, Max, I) :-
 	(
 		I = Min
 	;
-		Min1 is Min + 1,
+		Min1 = Min + 1,
 		between(Min1, Max, I)
 	).
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1077,7 +1077,7 @@ term__init_var_supply(var_supply(0)).
 	% We number variables using sequential numbers,
 
 term__create_var(var_supply(V0), var(V), var_supply(V)) :-
-	V is V0 + 1.
+	V = V0 + 1.
 
 %------------------------------------------------------------------------------%
 

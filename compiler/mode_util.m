@@ -846,7 +846,7 @@ default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 	In = (ground(shared, none) -> ground(shared, none)),
 	Out = (free -> ground(shared, none)),
 	list__length(PredArgTypes, NumPredArgs),
-	NumFuncArgs is NumPredArgs - 1,
+	NumFuncArgs = NumPredArgs - 1,
 	list__duplicate(NumFuncArgs, In, FuncArgModes),
 	FuncRetMode = Out,
 	list__append(FuncArgModes, [FuncRetMode], PredArgModes0),

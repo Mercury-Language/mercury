@@ -84,7 +84,7 @@ dir__split_name(FileName, DirName, BaseName) :-
 	is det.
 
 dir__split_name_2(FileName, N, DirName, BaseName) :-
-	N1 is N - 1,
+	N1 = N - 1,
 	(
 		N1 < 0
 	->

@@ -13,7 +13,7 @@
 dup_call(Int1, Int2, Int) :-
 	called(Int1, Int2, Int3),
 	called(Int1, Int2, Int4),
-	Int is Int3 + Int4.
+	Int = Int3 + Int4.
 
 called(Int1, Int2, Int) :-
-	Int is Int1 + Int2.
+	Int = Int1 + Int2.

@@ -440,7 +440,7 @@ get_argument_declarations([X|Xs], NameThem, Module, Result) :-
 get_argument_declarations_2([], _, _, _, "").
 get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
 	AT = ArgInfo - Type,
-	Num is Num0 + 1,
+	Num = Num0 + 1,
 	get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 			TypeString, ArgName),
 	(
@@ -484,7 +484,7 @@ get_input_args([], _, _, "").
 get_input_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
-	Num is Num0 + 1,
+	Num = Num0 + 1,
 	(
 		Mode = top_in,
 
@@ -523,7 +523,7 @@ copy_output_args([], _, _, "").
 copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	AT = ArgInfo - Type,
 	ArgInfo = arg_info(ArgLoc, Mode),
-	Num is Num0 + 1,
+	Num = Num0 + 1,
 	(
 		Mode = top_in,
 		OutputArg = ""

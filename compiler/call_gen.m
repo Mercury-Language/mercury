@@ -256,7 +256,7 @@ call_gen__extra_livevals(FirstInput, ExtraLiveVals) :-
 call_gen__extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
 	( Reg < FirstInput ->
 		ExtraLiveVals = [reg(r, Reg) | ExtraLiveVals1],
-		NextReg is Reg + 1,
+		NextReg = Reg + 1,
 		call_gen__extra_livevals(NextReg, FirstInput, ExtraLiveVals1)
 	;
 		ExtraLiveVals = []

@@ -19,7 +19,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, prolog.
 
 occurall([], _X, []).
 occurall([X | Y], Z, [[X, W] | V]) :-
