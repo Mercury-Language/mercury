@@ -56,13 +56,13 @@
 	% subset of `SetB'.
 
 :- pred bintree_set__subset(bintree_set(T), bintree_set(T)).
-:- mode bintree_set__subset(in, in).
+:- mode bintree_set__subset(in, in) is semidet.
 
 	% `bintree_set__superset(SetA, SetB)' is true iff `SetA' is a
 	% superset of `SetB'.
 
 :- pred bintree_set__superset(bintree_set(T), bintree_set(T)).
-:- mode bintree_set__superset(in, in).
+:- mode bintree_set__superset(in, in) is semidet.
 
 	% `bintree_set_member(X, Set)' is true iff `X' is a member of `Set'.
 
@@ -88,37 +88,38 @@
 :- pred bintree_set__insert_list(bintree_set(T), list(T), bintree_set(T)).
 :- mode bintree_set__insert_list(in, in, out) is det.
 
-	% `bintree_set__delete(Set0, X, Set)' is true iff `Set0' contains `X',
+	% `bintree_set__remove(Set0, X, Set)' is true iff `Set0' contains `X',
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only `X', i.e.  if `Set' is the set which contains
 	% all the elements of `Set0' except `X'.
 
-:- pred bintree_set__delete(bintree_set(T), T, bintree_set(T)).
-:- mode bintree_set__delete(in, out, out) is nondet.
-:- mode bintree_set__delete(in, in, out) is semidet.
+:- pred bintree_set__remove(bintree_set(T), T, bintree_set(T)).
+:- mode bintree_set__remove(in, in, out) is semidet.
+% The following mode could be implemented, but hasn't been:
+% :- mode bintree_set__remove(in, out, out) is nondet. 
 
-	% `bintree_set__delete_list(Set0, Xs, Set)' is true iff Xs does
+	% `bintree_set__remove_list(Set0, Xs, Set)' is true iff Xs does
 	% not contain any duplicates, `Set0' contains every member of
 	% `Xs', and `Set' is the relative complement of `Set0' and the
 	% set containing only the members of `Xs'.
 
-:- pred bintree_set__delete_list(bintree_set(T), list(T), bintree_set(T)).
-:- mode bintree_set__delete_list(in, in, out) is semidet.
+:- pred bintree_set__remove_list(bintree_set(T), list(T), bintree_set(T)).
+:- mode bintree_set__remove_list(in, in, out) is semidet.
 
-	% `bintree_set__remove(Set0, X, Set)' is true iff `Set' is the relative
+	% `bintree_set__delete(Set0, X, Set)' is true iff `Set' is the relative
 	% complement of `Set0' and the set containing only `X', i.e.
 	% if `Set' is the set which contains all the elements of `Set0'
 	% except `X'.
 
-:- pred bintree_set__remove(bintree_set(T), T, bintree_set(T)).
-:- mode bintree_set__remove(in, in, out) is det.
+:- pred bintree_set__delete(bintree_set(T), T, bintree_set(T)).
+:- mode bintree_set__delete(in, in, out) is det.
 
-	% `bintree_set__remove_list(Set0, Xs, Set)' is true iff `Set'
+	% `bintree_set__delete_list(Set0, Xs, Set)' is true iff `Set'
 	% is the relative complement of `Set0' and the set containing
 	% only the members of `Xs'.
 
-:- pred bintree_set__remove_list(bintree_set(T), list(T), bintree_set(T)).
-:- mode bintree_set__remove_list(in, in, out) is det.
+:- pred bintree_set__delete_list(bintree_set(T), list(T), bintree_set(T)).
+:- mode bintree_set__delete_list(in, in, out) is det.
 
 	% `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
 	% `SetA' and `SetB'.  If the sets are known to be of different
@@ -131,7 +132,7 @@
 	% intersection of `SetA' and `SetB'.
 
 :- pred bintree_set__intersect(bintree_set(T), bintree_set(T), bintree_set(T)).
-:- mode bintree_set__intersect(in, in, out).
+:- mode bintree_set__intersect(in, in, out) is det.
 
 %--------------------------------------------------------------------------%
 
@@ -167,8 +168,9 @@ bintree_set__init(Set) :-
 	bintree__init(Set).
 
 bintree_set__equal(S0, S) :-
-	bintree__keys(S0, SortedElements),
-	bintree__keys(S, SortedElements).
+	bintree__keys(S0, SortedElements0),
+	bintree__keys(S, SortedElements),
+	SortedElements0 = SortedElements. % work-around bug in det analysis
 
 %--------------------------------------------------------------------------%
 
@@ -209,27 +211,27 @@ bintree_set__insert(S0, E, S) :-
 
 %--------------------------------------------------------------------------%
 
-:- bintree_set__delete_list(_, Xs, _) when Xs.
-
-bintree_set__delete_list(S, [], S).
-bintree_set__delete_list(S0, [X | Xs], S) :-
-	bintree_set__member(X, S0),
-	bintree_set__delete(S0, X, S1),
-	bintree_set__delete_list(S1, Xs, S).
-
-bintree_set__delete(S0, E, S) :-
-	bintree__delete(S0, E, S).
-
-%--------------------------------------------------------------------------%
-
 :- bintree_set__remove_list(_, Xs, _) when Xs.
 
 bintree_set__remove_list(S, [], S).
 bintree_set__remove_list(S0, [X | Xs], S) :-
+	bintree_set__member(X, S0),
 	bintree_set__remove(S0, X, S1),
 	bintree_set__remove_list(S1, Xs, S).
 
 bintree_set__remove(S0, E, S) :-
+	bintree__remove(S0, E, _, S).
+
+%--------------------------------------------------------------------------%
+
+:- bintree_set__delete_list(_, Xs, _) when Xs.
+
+bintree_set__delete_list(S, [], S).
+bintree_set__delete_list(S0, [X | Xs], S) :-
+	bintree_set__delete(S0, X, S1),
+	bintree_set__delete_list(S1, Xs, S).
+
+bintree_set__delete(S0, E, S) :-
 	bintree__delete(S0, E, S).
 
 %--------------------------------------------------------------------------%
@@ -242,6 +244,6 @@ bintree_set__union(S0, S1, S) :-
 
 bintree_set__intersect(S0, S1, S) :-
 	bintree__keys(S1, L1),
-	bintree_set__remove_list(S0, L1, S).
+	bintree_set__delete_list(S0, L1, S).
 
 %--------------------------------------------------------------------------%

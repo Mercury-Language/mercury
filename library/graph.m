@@ -33,19 +33,19 @@
 
 	% initialize a graph
 :- pred graph__init(graph(_T)).
-:- mode graph__init(out).
+:- mode graph__init(out) is det.
 
 	% create a new node with the specified value
 :- pred graph__new_node(graph(T), T, node_id(T), graph(T)).
-:- mode graph__new_node(in, in, out, out).
+:- mode graph__new_node(in, in, out, out) is det.
 
 	% replace the value stored in a given node
 :- pred graph__set_node(graph(T), node_id(T), T, graph(T)).
-:- mode graph__set_node(in, in, in, out).
+:- mode graph__set_node(in, in, in, out) is det.
 
 	% lookup the value stored in a given node
 :- pred graph__lookup_node(graph(T), node_id(T), T).
-:- mode graph__lookup_node(in, in, out).
+:- mode graph__lookup_node(in, in, out) is det.
 
 % Axioms:
 %	% (also determinism of graph__init, graph__new_node, graph__set_node)
@@ -102,7 +102,7 @@ graph__set_node(graph(MaxId, Nodes0), Id, Val, graph(MaxId, Nodes)) :-
 
 	% lookup the value stored in a given node
 graph__lookup_node(graph(_, Nodes), Id, Val) :-
-	map__search(Nodes, Id, Val).
+	map__lookup(Nodes, Id, Val).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -301,6 +301,17 @@
 %		collect any garbage created during it's execution.
 
 %-----------------------------------------------------------------------------%
+
+% Miscellaneous predicates
+
+:- pred io__call_system(string, io__res(int), io__state, io__state).
+:- mode io__call_system(in, out, di, uo) is det.
+%	io__call_system(Command, Result, IO0, IO1).
+%		Invokes the operating system shell with the specified
+%		Command.  Result is either `ok(ExitStatus)', if it was
+%		possible to invoke the command, or `error' if not.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

@@ -20,27 +20,27 @@
 
 	% Create an empty priority queue
 :- pred pqueue__init(pqueue(_K, _V)).
-:- mode pqueue__init(out).
+:- mode pqueue__init(out) is det.
 
 	% Insert a value V with key K into a priority queue
 	% and return the new priority queue.
 :- pred pqueue__insert(pqueue(K, V), K, V, pqueue(K, V)).
-:- mode pqueue__insert(in, in, in, out).
+:- mode pqueue__insert(in, in, in, out) is det.
 
 	% Remove the smallest item from the priority queue.
 :- pred pqueue__remove(pqueue(K, V), K, V, pqueue(K, V)).
-:- mode pqueue__remove(in, out, out, out).
+:- mode pqueue__remove(in, out, out, out) is semidet.
 
 	% Extract all the items from a priority queue by
 	% repeated removal, and place them in an associative
 	% list.
 :- pred pqueue__to_assoc_list(pqueue(K, V), assoc_list(K, V)).
-:- mode pqueue__to_assoc_list(in, out).
+:- mode pqueue__to_assoc_list(in, out) is det.
 
 	% Insert all the key-value pairs in an association list
 	% into a priority queue.
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V), pqueue(K, V)).
-:- mode pqueue__assoc_list_to_pqueue(in, out).
+:- mode pqueue__assoc_list_to_pqueue(in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -76,7 +76,7 @@ pqueue__insert(pqueue(D0, K0, V0, L0, R0), K, V, PQ) :-
 
 :- pred pqueue__insert_2(K, V, pqueue(K, V), pqueue(K, V),
 						pqueue(K, V), pqueue(K, V)).
-:- mode pqueue__insert_2(in, in, in, in, out, out).
+:- mode pqueue__insert_2(in, in, in, in, out, out) is det.
 
 pqueue__insert_2(K, V, empty, empty, pqueue(0, K, V, empty, empty), empty).
 pqueue__insert_2(K, V, pqueue(D0, K0, V0, L0, R0), empty,
@@ -102,7 +102,7 @@ pqueue__remove(pqueue(_, K, V, L0, R0), K, V, PQ) :-
 	pqueue__remove_2(L0, R0, PQ).
 
 :- pred pqueue__remove_2(pqueue(K, V), pqueue(K, V), pqueue(K, V)).
-:- mode pqueue__remove_2(in, in, out).
+:- mode pqueue__remove_2(in, in, out) is det.
 
 pqueue__remove_2(empty, empty, empty).
 pqueue__remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).

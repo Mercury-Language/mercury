@@ -21,16 +21,16 @@
 :- type random__supply.
 
 :- pred random__init(int, random__supply).
-:- mode random__init(in, uo).
+:- mode random__init(in, uo) is det.
 
 :- pred random__random(int, random__supply, random__supply).
-:- mode random__random(out, di, uo).
+:- mode random__random(out, di, uo) is det.
 
 :- pred random__randmax(int, random__supply, random__supply).
-:- mode random__randmax(out, di, uo).
+:- mode random__randmax(out, di, uo) is det.
 
 :- pred random__test(int, int, list(int), int).
-:- mode random__test(in, in, out, out).
+:- mode random__test(in, in, out, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -67,7 +67,7 @@ random__test(Seed, N, Nums, Max) :-
 	random__test_2(N, Nums, RS1, _RS2).
 
 :- pred random__test_2(int, list(int), random__supply, random__supply).
-:- mode random__test_2(in, out, in, out).
+:- mode random__test_2(in, out, in, out) is det.
 
 random__test_2(N, Is, RS0, RS) :-
 	(

@@ -67,7 +67,8 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 		( { Verbose = yes } ->
 			io__write_string(StdErr, "% Writing output to "),
 			io__write_string(StdErr, OutputFileName),
-			io__write_string(StdErr, "...\n")
+			io__write_string(StdErr, "..."),
+			io__flush_output(StdErr)
 		;
 			[]
 		),
@@ -76,7 +77,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 		io__write_string(".\n"),
 		mercury_output_item_list(Items),
 		( { Verbose = yes } ->
-			io__write_string(StdErr, "% done\n")
+			io__write_string(StdErr, " done\n")
 		;
 			[]
 		),
