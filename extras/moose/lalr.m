@@ -301,7 +301,11 @@ lookaheads1([BItem|BItems], I, Gotos, Rules, First, Index,
 	BItem = item(Bp, Bd),
 	BItem0 = item(Bp, Bd, (*)),
 	J0 = closure({ BItem0 }, Rules, First, Index),
-	set__to_sorted_list(J0, JList),
+	set__to_sorted_list(J0, JList0),
+	    % Reverse the list so that in add_spontaneous, the 
+	    % set insertions are in reverse sorted order not
+	    % sorted order thereby taking to cost from O(n) to O(1).
+	reverse(JList0, JList),
 	lookaheads2(JList, BItem, I, Gotos, Rules, Lookaheads0, Lookaheads1),
 	lookaheads1(BItems, I, Gotos, Rules, First, Index,
 		Lookaheads1, Lookaheads).
@@ -344,10 +348,17 @@ closure1([AItem|AItems], Rules, First, Index, I0, I) :-
 			;
 				Bf = Bf0
 			),
-			set__to_sorted_list(Bf, BfList),
+			set__to_sorted_list(Bf, BfList0),
+			    % Reverse the list so that we construct
+			    % the new items in reverse sorted order
+			    % so that the accumulated list is in
+			    % sorted order. Thus we don't have to
+			    % sort the list to turn it into a set.
+			    % Reduces running time by > 10%
+			reverse(BfList0, BfList),
 			lookup(Index, Bn, Bps),
 			make_items(Bps, BfList, [], NList),
-			set__list_to_set(NList, N),
+			set__sorted_list_to_set(NList, N),
 			I1 = [N|I0]
 		;
 			I1 = I0

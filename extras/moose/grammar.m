@@ -229,7 +229,18 @@ construct_grammar(Start, _End, AllClauses, XForms, Grammar) :-
 		First0, Follow0),
 	foldl(transform_clause_list, ClauseList, Grammar0, Grammar1),
 	compute_first0(Grammar1, Grammar2),
-	compute_follow0(Grammar2, Grammar).
+	compute_follow0(Grammar2, Grammar3),
+	Grammar3 = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex3,
+		First3, Follow3),
+		
+		% Keep the nonterminals in reverse sorted order
+		% for efficient processing in lalr.m
+	map__map_values((pred(_K::in, V0::in, V::out) is det :-
+	    sort(V0, V1),
+	    reverse(V1, V)
+	), ClauseIndex3, ClauseIndex4),
+	Grammar = grammar(Rules3, AllClauses3, XForms3, Nont3, ClauseIndex4,
+		First3, Follow3).
 
 :- pred start_rule(nonterminal, rule).
 :- mode start_rule(in, out) is det.
