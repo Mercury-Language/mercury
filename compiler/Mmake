@@ -7,6 +7,8 @@ include ../Mmake.common
 
 MAIN_TARGET=mercury_compile
 
+VPATH=../library
+
 #-----------------------------------------------------------------------------#
 
 # Specify which compilers to use to compile the compiler.
