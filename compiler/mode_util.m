@@ -156,7 +156,7 @@
 :- implementation.
 :- import_module require, map, set, term, std_util.
 :- import_module prog_util, type_util.
-:- import_module modes.
+:- import_module inst_match.
 
 mode_list_get_final_insts([], _ModuleInfo, []).
 mode_list_get_final_insts([Mode | Modes], ModuleInfo, [Inst | Insts]) :-
