@@ -362,6 +362,18 @@ init_heap(void)
 	solutions_heap_pointer = solutions_heap_zone->min;
 
 #endif
+
+#ifndef SPEED
+	/*
+	** Create the dumpstack, used for debugging stack traces.
+	** Note that we can just make the dumpstack the same size as
+	** the detstack and we never have to worry about the dumpstack
+	** overflowing.
+	*/
+
+	dumpstack_zone = create_zone("dumpstack", 1, detstack_size,
+			next_offset(), detstack_zone_size, default_handler);
+#endif
 } /* end init_heap() */
 
 MemoryZone *
@@ -721,7 +733,7 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	}
 	sprintf(buf, "\nMercury runtime: memory zone %s#%d overflowed\n",
 		zone->name, zone->id);
-	fatal_abort(context, buf, FALSE);
+	fatal_abort(context, buf, TRUE);
     }
 
     return FALSE;
