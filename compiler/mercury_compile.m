@@ -32,11 +32,11 @@
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
 :- import_module equiv_type, make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module check_typeclass, simplify, intermod, trans_opt.
+:- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
-:- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
-:- import_module lco, liveness, stratify.
+:- import_module deforest, dnf, constraint, unused_args, dead_proc_elim.
+:- import_module lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, llds_out, continuation_info, stack_layout.
@@ -685,8 +685,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 		mercury_compile__maybe_dump_hlds(HLDS11, "11",
 			"stratification"), !,
 
-		globals__io_lookup_bool_option(warn_simple_code, Warn),
-		mercury_compile__simplify(HLDS11, Warn, no,
+		mercury_compile__simplify(HLDS11, yes, no,
 			Verbose, Stats, HLDS12), !,
 		mercury_compile__maybe_dump_hlds(HLDS12, "12", "simplify"), !,
 
@@ -750,7 +749,26 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
 	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
 
-	mercury_compile__maybe_termination(HLDS26, Verbose, Stats, HLDS28),
+	%
+	% Uncomment the following code to check that unique mode analysis
+	% works after polymorphism has been run. Currently it does not
+	% because common.m does not preserve unique mode correctness
+	% (this test fails on about five modules in the compiler and library).
+	% It is important that unique mode analysis work most of the time
+	% after optimizations and polymorphism because deforestation reruns it.
+	%
+
+	{ HLDS27 = HLDS26 },
+	%mercury_compile__check_unique_modes(HLDS26, Verbose, Stats,
+	%		HLDS27, FoundUniqError), !,
+	%
+	%{ FoundUniqError = yes ->
+	%	error("unique modes failed")
+	%;
+	%	true
+	%},
+
+	mercury_compile__maybe_termination(HLDS27, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
@@ -772,9 +790,13 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34), !,
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"), !,
 
+	mercury_compile__maybe_deforestation(HLDS34, 
+			Verbose, Stats, HLDS36), !,
+	mercury_compile__maybe_dump_hlds(HLDS36, "36", "deforestation"), !,
+
 	% dnf transformations should be after inlining
 	% magic sets transformations should be before constraints
-	mercury_compile__maybe_transform_dnf(HLDS34, Verbose, Stats, HLDS38), !,
+	mercury_compile__maybe_transform_dnf(HLDS36, Verbose, Stats, HLDS38), !,
 	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"), !,
 
 	mercury_compile__maybe_constraints(HLDS38, Verbose, Stats, HLDS40), !,
@@ -944,15 +966,9 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ProcInfo1 = ProcInfo0 },
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
-	{ globals__lookup_bool_option(Globals, excess_assign, ExcessAssign) },
-	{ globals__lookup_bool_option(Globals, common_struct, Common) },
-	{ globals__lookup_bool_option(Globals, optimize_duplicate_calls,
-		Calls) },
-	{ globals__lookup_bool_option(Globals, constant_propagation, Prop) },
-	simplify__proc(
-		simplify(no, no, yes, yes, Common, ExcessAssign, Calls, Prop),
-		PredId, ProcId, ModuleInfo1, ModuleInfo2,
-		ProcInfo1, ProcInfo2, _, _),
+	{ simplify__find_simplifications(no, Globals, Simplifications) },
+	simplify__proc([do_once | Simplifications], PredId, ProcId,
+		ModuleInfo1, ModuleInfo2, ProcInfo1, ProcInfo2, _, _),
 	{ globals__lookup_bool_option(Globals, optimize_saved_vars,
 		SavedVars) },
 	( { SavedVars = yes } ->
@@ -1189,20 +1205,15 @@ mercury_compile__check_stratification(HLDS0, Verbose, Stats, HLDS,
 mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Simplifying goals...\n"),
 	maybe_flush_output(Verbose),
-	globals__io_lookup_bool_option(common_struct, Common),
-	globals__io_lookup_bool_option(excess_assign, Excess),
-	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
-	globals__io_lookup_bool_option(constant_propagation, Prop),
-	( { Warn = yes } ->
-		globals__io_lookup_bool_option(warn_duplicate_calls,
-			WarnCalls)
+	globals__io_get_globals(Globals),
+	{ simplify__find_simplifications(Warn, Globals, Simplifications0) },
+	( { Once = yes } ->
+		{ Simplifications = [do_once | Simplifications0] }
 	;
-		{ WarnCalls = no }
+		{ Simplifications = Simplifications0 }
 	),
-	{ Simplify = simplify(Warn, WarnCalls, Once,
-			yes, Common, Excess, Calls, Prop) },
 	process_all_nonimported_procs(
-		update_proc_error(simplify__proc(Simplify)),
+		update_proc_error(simplify__proc(Simplifications)),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
@@ -1404,6 +1415,22 @@ mercury_compile__maybe_do_inlining(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_report_stats(Stats)
 	;
 		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_deforestation(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_deforestation(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_deforestation(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(deforestation, Deforest),
+	( { Deforest = yes } ->
+		maybe_write_string(Verbose, "% Deforestation...\n"),
+		maybe_flush_output(Verbose),
+		deforestation(HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
 	).
 
 :- pred mercury_compile__maybe_transform_dnf(module_info, bool, bool,

@@ -90,6 +90,12 @@ mercury__lp__IntroducedFrom__pred__simplex__262__9_7_0_i5
 mercury__lp__IntroducedFrom__func__collect_vars__153__4_3_0
 <func goal (#4) from 'collect_vars' in module 'lp' line 153>
 
+	procedures introduced by deforestation
+mercury__lp__DeforestationIn__pred__simplex__262__9_7_0_i5
+<deforestation procedure (#9) from 'simplex' in module 'lp' line 262 label 5>
+mercury__lp__DeforestationIn__pred__collect_vars__153__4_3_0
+<deforestation procedure (#4) from 'collect_vars' in module 'lp' line 153>
+
 	A realistic test
 ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
 interpreter.o -lcfloat_lib 

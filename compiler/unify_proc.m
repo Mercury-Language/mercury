@@ -47,7 +47,7 @@
 
 :- interface.
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module modes, prog_data, special_pred.
+:- import_module mode_info, prog_data, special_pred.
 :- import_module bool, std_util, io, list.
 
 :- type proc_requests.
@@ -110,7 +110,7 @@
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, prog_util, prog_out, inst_match.
 :- import_module quantification, clause_to_proc.
-:- import_module globals, options, mode_util, (inst).
+:- import_module globals, options, modes, mode_util, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 
 	% We keep track of all the complicated unification procs we need
@@ -340,7 +340,7 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
 		%
 		% print progress message
 		%
-		( { HowToCheckGoal = check_unique_modes } ->
+		( { HowToCheckGoal = check_unique_modes(_) } ->
 			io__write_string(
 		    "% Analyzing modes, determinism, and unique-modes for\n% ")
 		;
@@ -396,7 +396,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, ModuleInfo0, ModuleInfo,
 		{ ModuleInfo = ModuleInfo2 },
 		{ Changed = Changed1 }
 	;
-		( { HowToCheckGoal = check_unique_modes } ->
+		( { HowToCheckGoal = check_unique_modes(_) } ->
 			{ detect_switches_in_proc(ProcId, PredId,
 						ModuleInfo2, ModuleInfo3) },
 			detect_cse_in_proc(ProcId, PredId,

@@ -70,7 +70,8 @@
 		;	debug_modes
 		;	debug_det
 		;	debug_opt
-		;	debug_vn
+		;	debug_vn	% vn = value numbering
+		;	debug_pd	% pd = partial deduction/deforestation
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -214,6 +215,10 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
+		;	deforestation
+		;	deforestation_depth_limit
+		;	deforestation_cost_factor
+		;	deforestation_vars_threshold
 		;	termination
 		;	check_termination
 		;	verbose_check_termination
@@ -296,7 +301,6 @@ option_defaults(Option, Default) :-
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
 :- mode option_defaults_2(in, out) is det.
 :- mode option_defaults_2(out, out) is multidet.
-:- mode option_defaults_2(in(bound(optimization_option)), out) is det.
 
 option_defaults_2(warning_option, [
 		% Warning Options
@@ -333,7 +337,8 @@ option_defaults_2(verbosity_option, [
 	debug_modes		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
-	debug_vn		- 	int(0)
+	debug_vn		- 	int(0),
+	debug_pd		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -508,6 +513,10 @@ option_defaults_2(optimization_option, [
 	optimize_higher_order	-	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
+	deforestation		-	bool(no),
+	deforestation_depth_limit	-	int(4),
+	deforestation_cost_factor	-	int(1000),
+	deforestation_vars_threshold 	-	int(200),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -631,6 +640,7 @@ long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
+long_option("debug-pd",			debug_pd).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -797,6 +807,10 @@ long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
+long_option("deforestation",		deforestation).
+long_option("deforestation-depth-limit",	deforestation_depth_limit).
+long_option("deforestation-cost-factor",	deforestation_cost_factor).
+long_option("deforestation-vars-threshold",	deforestation_vars_threshold).
 long_option("enable-termination",	termination).
 long_option("enable-term",		termination).
 long_option("check-termination",	check_termination).
@@ -1087,6 +1101,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
+	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
@@ -1235,7 +1250,10 @@ options_help_verbosity -->
 	io__write_string("\t\tOutput detailed debugging traces of the value numbering\n"),
 	io__write_string("\t\toptimization pass. The different bits in the number\n"),
 	io__write_string("\t\targument of this option control the printing of\n"),
-	io__write_string("\t\tdifferent types of tracing messages.\n").
+	io__write_string("\t\tdifferent types of tracing messages.\n"),
+	io__write_string("\t--debug-pd\n"),
+	io__write_string("\t\tOutput detailed debugging traces of the partial\n"),
+	io__write_string("\t\tdeduction and deforestation process.\n").
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
 
@@ -1711,7 +1729,20 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tEnable specialization higher-order predicates.\n"),
 	io__write_string("\t--optimize-constructor-last-call\n"),
 	io__write_string("\t\tEnable the optimization of ""last"" calls that are followed by\n"),
-	io__write_string("\t\tconstructor application.\n").
+	io__write_string("\t\tconstructor application.\n"),
+	io__write_string("\t--deforestation\n"),
+	io__write_string("\t\tEnable deforestation. Deforestation is a program\n"),
+	io__write_string("\t\ttransformation whose aim is to avoid the construction of\n"),
+	io__write_string("\t\tintermediate data structures and to avoid repeated traversals\n"),
+	io__write_string("\t\tover data structures within a conjunction.\n"),
+	io__write_string("\t--deforestation-depth-limit\n"),
+	io__write_string("\t\tSpecify a depth limit for the deforestation algorithm\n"),
+	io__write_string("\t\tin addition to the usual termination checks.\n"),
+	io__write_string("\t\tA value of -1 specifies no depth limit. The default is 4.\n"),
+	io__write_string("\t--deforestation-vars-threshold\n"),
+	io__write_string("\t\tSpecify a rough limit on the number of variables\n"),
+	io__write_string("\t\tin a procedure created by deforestation.\n"),
+	io__write_string("\t\tA value of -1 specifies no limit. The default is 200.\n").
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 

@@ -190,12 +190,6 @@ a variable live if its value will be used later on in the computation.
 
 	% Modecheck a unification.
 
-	% This argument specifies how to recursively process lambda goals -
-	% using either modes.m or unique_modes.m.
-:- type how_to_check_goal
-	--->	check_modes
-	;	check_unique_modes.
-
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
 	%
@@ -336,7 +330,7 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 		MaxIterations),
 	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
 					ModuleInfo, UnsafeToContinue),
-	( { WhatToCheck = check_unique_modes },
+	( { WhatToCheck = check_unique_modes(_) },
 		write_mode_inference_messages(PredIds, yes, ModuleInfo)
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
@@ -463,7 +457,7 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 		(	{ WhatToCheck = check_modes },
 			write_pred_progress_message("% Mode-analysing ",
 				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+		;	{ WhatToCheck = check_unique_modes(_) },
 			write_pred_progress_message("% Unique-mode-analysing ",
 				PredId, ModuleInfo)
 		)
@@ -471,7 +465,7 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 		(	{ WhatToCheck = check_modes },
 			write_pred_progress_message("% Mode-checking ",
 				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+		;	{ WhatToCheck = check_unique_modes(_) },
 			write_pred_progress_message("% Unique-mode-checking ",
 				PredId, ModuleInfo)
 		)
@@ -676,12 +670,12 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 	set__list_to_set(LiveVarsList, LiveVars),
 
 		% initialize the mode info
-	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId,
-			Context, LiveVars, InstMap0, ModeInfo0),
+	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context,
+			LiveVars, InstMap0, WhatToCheck, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
 
 		% modecheck the procedure body
-	( WhatToCheck = check_unique_modes ->
+	( WhatToCheck = check_unique_modes(_) ->
 		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2)
 	;
 		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2)
@@ -963,7 +957,7 @@ modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	mode_checkpoint(enter, "unify"),
 	mode_info_set_call_context(unify(UnifyContext)),
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-		check_modes, Goal),
+		Goal),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 

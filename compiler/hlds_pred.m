@@ -20,7 +20,8 @@
 
 :- implementation.
 
-:- import_module make_hlds, prog_util, mode_util, type_util.
+:- import_module code_aux, goal_util, make_hlds, prog_util.
+:- import_module mode_util, type_util, options.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -238,10 +239,6 @@
 				% If the compiler cannot guarantee termination
 				% then it must give an error message.
 	.
-	
-:- type marker_status
-	--->	request(marker)
-	;	done(marker).
 
 :- type type_info_locn	
 	--->	type_info(var)		% it is a normal type info 
@@ -256,17 +253,17 @@
 		type_info_locn::out) is det.
 
 	% hlds_pred__define_new_pred(Goal, CallGoal, Args, InstMap, PredName,
-	% 	TVarSet, VarTypes, ClassContext, VarSet, Markers, ModuleInfo0,
-	% 	ModuleInfo, PredProcId)
+	% 	TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, 
+	%	VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId)
 	%
 	% Create a new predicate for the given goal, returning a goal to 
-	% call the created predicate. This must only be called after 
-	% polymorphism.m.
+	% call the created predicate.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(var),
 		instmap, string, tvarset, map(var, type),
-		list(class_constraint), varset, 
-		pred_markers, module_info, module_info, pred_proc_id).
-:- mode hlds_pred__define_new_pred(in, out, in, in, in, 
+		list(class_constraint), map(tvar, type_info_locn),
+		map(class_constraint, var), varset, pred_markers, 
+		module_info, module_info, pred_proc_id).
+:- mode hlds_pred__define_new_pred(in, out, in, in, in, in, in,
 		in, in, in, in, in, in, out, out) is det.
 
 	% Various predicates for accessing the information stored in the
@@ -747,27 +744,56 @@ markers_to_marker_list(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 
-hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName, TVarSet, 
-		VarTypes, ClassContext, VarSet, Markers, ModuleInfo0,
-		ModuleInfo, PredProcId) :-
+hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, InstMap0, PredName, TVarSet, 
+		VarTypes0, ClassContext, TVarMap, TCVarMap, VarSet0, 
+		Markers, ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
+	% If typeinfo_liveness is set, all type_infos for the argument
+	% variables need to be passed in, not just the ones that are used.
+	module_info_globals(ModuleInfo0, Globals),
+	globals__lookup_bool_option(Globals, typeinfo_liveness,
+		TypeInfoLiveness),
+	( TypeInfoLiveness = yes ->
+		goal_util__extra_nonlocal_typeinfos(TVarMap, VarTypes0,
+			Goal0, ExtraTypeInfos0),
+		set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos),
+		set__to_sorted_list(ExtraTypeInfos, ExtraArgs),
+		list__append(ExtraArgs, ArgVars0, ArgVars)
+	;
+		ArgVars = ArgVars0
+	),
+
 	goal_info_get_context(GoalInfo, Context),
 	goal_info_get_determinism(GoalInfo, Detism),
-	compute_arg_types_modes(ArgVars, VarTypes, InstMap0, InstMap,
+	compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
 		ArgTypes, ArgModes),
 
 	module_info_name(ModuleInfo0, ModuleName),
 	SymName = qualified(ModuleName, PredName),
-	map__init(TVarMap), % later, polymorphism.m will fill this in. 
-	map__init(TCVarMap), % later, polymorphism.m will fill this in. 
 
-	module_info_globals(ModuleInfo0, Globals),
+		% Remove unneeded variables from the vartypes and varset.
+	goal_util__goal_vars(Goal0, GoalVars0), 
+	set__insert_list(GoalVars0, ArgVars, GoalVars),
+	map__select(VarTypes0, GoalVars, VarTypes),
+	varset__select(VarSet0, GoalVars, VarSet),
+
+		% Approximate the termination information 
+		% for the new procedure.
+	( code_aux__goal_cannot_loop(ModuleInfo0, Goal0) ->
+		TermInfo = yes(cannot_loop)
+	;
+		TermInfo = no
+	),
+
 	globals__get_args_method(Globals, ArgsMethod),
+
 	proc_info_create(VarSet, VarTypes, ArgVars, ArgModes, Detism,
-		Goal0, Context, TVarMap, TCVarMap, ArgsMethod, ProcInfo),
+		Goal0, Context, TVarMap, TCVarMap, ArgsMethod, ProcInfo0),
+	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
+
 	pred_info_create(ModuleName, SymName, TVarSet, ArgTypes, true,
 		Context, local, Markers, predicate, ClassContext, 
 		ProcInfo, ProcId, PredInfo),

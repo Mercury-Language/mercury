@@ -277,6 +277,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		globals__io_set_option(inline_compound_threshold, int(0)),
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		globals__io_set_option(optimize_higher_order, bool(no)),
+		globals__io_set_option(deforestation, bool(no)),
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
 			bool(no)),
@@ -308,6 +309,9 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
+	% --no-reorder-conj implies --no-deforestation.
+	option_neg_implies(reorder_conj, deforestation, bool(no)),
 
 	% --stack-trace requires `procid' stack layouts
 	option_implies(stack_trace, procid_stack_layout, bool(yes)),
@@ -380,6 +384,20 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
 	( { SourceOptionValue = yes } ->
+		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
+	;
+		[]
+	).
+
+% option_neg_implies(SourceBoolOption, ImpliedOption, 
+%	ImpliedOptionValue, IO0, IO).
+% If the SourceBoolOption is set to no, then the ImpliedOption is set
+% to ImpliedOptionValue.
+:- pred option_neg_implies(option::in, option::in, option_data::in, 
+	io__state::di, io__state::uo) is det.
+option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
+	( { SourceOptionValue = no } ->
 		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
 	;
 		[]

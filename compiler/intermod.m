@@ -94,8 +94,9 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		{ init_intermod_info(ModuleInfo0, IntermodInfo0) },
 		globals__io_lookup_int_option(
 			intermod_inline_simple_threshold, Threshold),
+		globals__io_lookup_bool_option(deforestation, Deforestation),
 		{ intermod__gather_preds(PredIds, yes, Threshold,
-				IntermodInfo0, IntermodInfo1) },
+			Deforestation, IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_abstract_exported_types(IntermodInfo1,
 				IntermodInfo2) },
 		{ intermod_info_get_pred_decls(PredDeclsSet,
@@ -157,10 +158,11 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	% Predicates to gather stuff to output to .opt file.
 
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
-		intermod_info::in, intermod_info::out) is det.
+		bool::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_preds([], _CollectTypes, _) --> [].
-intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
+intermod__gather_preds([], _CollectTypes, _, _) --> [].
+intermod__gather_preds([PredId | PredIds], CollectTypes,
+		InlineThreshold, Deforestation) -->
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
 	{ map__lookup(PredTable0, PredId, PredInfo0) },
@@ -184,6 +186,19 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 				{ pred_info_requested_inlining(PredInfo0) }
 			;
 				{ has_ho_input(ModuleInfo0, ProcInfo) }
+			;
+				{ Deforestation = yes },
+				% Double the inline-threshold since
+				% goals we want to deforest will have
+				% at least two disjuncts. This allows 
+				% one simple goal in each disjunct.
+				% The disjunction adds one to the goal
+				% size, hence the `+1'.
+				{ DeforestThreshold is
+					InlineThreshold * 2 + 1},
+				{ inlining__is_simple_goal(Goal,
+					DeforestThreshold) },
+				{ goal_is_deforestable(PredId, Goal) }
 			)
 		)
 	->
@@ -228,7 +243,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 	;
 		[]
 	),
-	intermod__gather_preds(PredIds, CollectTypes, InlineThreshold).
+	intermod__gather_preds(PredIds, CollectTypes,
+		InlineThreshold, Deforestation).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -265,6 +281,31 @@ check_for_ho_input_args(ModuleInfo, [HeadVar | HeadVars],
 		check_for_ho_input_args(ModuleInfo, HeadVars,
 							ArgModes, VarTypes)
 	).
+
+	% Rough guess: a goal is deforestable if it contains a single
+	% top-level branched goal and is recursive.
+:- pred goal_is_deforestable(pred_id::in, hlds_goal::in) is semidet.
+
+goal_is_deforestable(PredId, Goal)  :-
+	goal_calls_pred_id(Goal, PredId),
+	goal_to_conj_list(Goal, GoalList),
+	goal_contains_one_branched_goal(GoalList, no).
+
+:- pred goal_contains_one_branched_goal(list(hlds_goal)::in,
+		bool::in) is semidet.
+
+goal_contains_one_branched_goal([], yes).
+goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
+	Goal = GoalExpr - _,
+	(
+		goal_is_branched(GoalExpr),
+		FoundBranch0 = no,
+		FoundBranch = yes
+	;
+		goal_is_atomic(GoalExpr),
+		FoundBranch = FoundBranch0
+	),
+	goal_contains_one_branched_goal(Goals, FoundBranch).
 
 	% Add all local types used in a type to the intermod info.
 	% It may be sufficient (and much more efficient! to just export
@@ -1163,7 +1204,9 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
-	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
+	globals__lookup_bool_option(Globals, deforestation, Deforestation),
+	intermod__gather_preds(PredIds, yes, Threshold,
+		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module).
 

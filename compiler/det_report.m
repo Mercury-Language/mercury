@@ -837,7 +837,7 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 
 %-----------------------------------------------------------------------------%
 
-:- type det_msg_type	--->	warning ; error.
+:- type det_msg_type	--->	simple_code_warning ; call_warning ; error.
 
 det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 	( { Msgs = [] } ->
@@ -862,24 +862,34 @@ det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 	).
 
 det_report_msgs(Msgs, ModuleInfo, WarnCnt, ErrCnt) -->
-	globals__io_lookup_bool_option(warn_simple_code, Warn),
-	det_report_msgs_2(Msgs, Warn, ModuleInfo, 0, WarnCnt, 0, ErrCnt).
+	globals__io_lookup_bool_option(warn_simple_code, WarnSimple),
+	globals__io_lookup_bool_option(warn_duplicate_calls, WarnCalls),
+	det_report_msgs_2(Msgs, WarnSimple, WarnCalls, ModuleInfo,
+		0, WarnCnt, 0, ErrCnt).
 
-:- pred det_report_msgs_2(list(det_msg), bool,  module_info, int, int,
+:- pred det_report_msgs_2(list(det_msg), bool, bool, module_info, int, int,
 	int, int, io__state, io__state).
-:- mode det_report_msgs_2(in, in, in, in, out, in, out, di, uo) is det.
+:- mode det_report_msgs_2(in, in, in, in, in, out, in, out, di, uo) is det.
 
-det_report_msgs_2([], _, _ModuleInfo, WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
-det_report_msgs_2([Msg | Msgs], Warn, ModuleInfo,
+det_report_msgs_2([], _, _, _ModuleInfo,
+		WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
+det_report_msgs_2([Msg | Msgs], WarnSimple, WarnCalls, ModuleInfo,
 		WarnCnt0, WarnCnt, ErrCnt0, ErrCnt) -->
 	{ det_msg_get_type(Msg, MsgType) },
-	( { Warn = no, MsgType = warning } ->
+	( { WarnSimple = no, MsgType = simple_code_warning } ->
+		{ WarnCnt1 = WarnCnt0 },
+		{ ErrCnt1 = ErrCnt0 }
+	; { WarnCalls = no, MsgType = call_warning } ->
 		{ WarnCnt1 = WarnCnt0 },
 		{ ErrCnt1 = ErrCnt0 }
 	;
 		det_report_msg(Msg, ModuleInfo),
 		(
-			{ MsgType = warning },
+			{ MsgType = simple_code_warning },
+			{ WarnCnt1 is WarnCnt0 + 1 },
+			{ ErrCnt1 = ErrCnt0 }
+		;
+			{ MsgType = call_warning },
 			{ WarnCnt1 is WarnCnt0 + 1 },
 			{ ErrCnt1 = ErrCnt0 }
 		;
@@ -888,24 +898,26 @@ det_report_msgs_2([Msg | Msgs], Warn, ModuleInfo,
 			{ WarnCnt1 = WarnCnt0 }
 		)
 	),
-	det_report_msgs_2(Msgs, Warn, ModuleInfo,
+	det_report_msgs_2(Msgs, WarnSimple, WarnCalls, ModuleInfo,
 		WarnCnt1, WarnCnt, ErrCnt1, ErrCnt).
 
 :- pred det_msg_get_type(det_msg, det_msg_type).
 :- mode det_msg_get_type(in, out) is det.
 
-det_msg_get_type(multidet_disj(_, _), warning).
-det_msg_get_type(det_disj(_, _), warning).
-det_msg_get_type(semidet_disj(_, _), warning).
-det_msg_get_type(zero_soln_disj(_, _), warning).
-det_msg_get_type(zero_soln_disjunct(_), warning).
-det_msg_get_type(ite_cond_cannot_fail(_), warning).
-det_msg_get_type(ite_cond_cannot_succeed(_), warning).
-det_msg_get_type(negated_goal_cannot_fail(_), warning).
-det_msg_get_type(negated_goal_cannot_succeed(_), warning).
-det_msg_get_type(warn_obsolete(_, _), warning).
-det_msg_get_type(warn_infinite_recursion(_), warning).
-det_msg_get_type(duplicate_call(_, _, _), warning).
+det_msg_get_type(multidet_disj(_, _), simple_code_warning).
+det_msg_get_type(det_disj(_, _), simple_code_warning).
+det_msg_get_type(semidet_disj(_, _), simple_code_warning).
+det_msg_get_type(zero_soln_disj(_, _), simple_code_warning).
+det_msg_get_type(zero_soln_disjunct(_), simple_code_warning).
+det_msg_get_type(ite_cond_cannot_fail(_), simple_code_warning).
+det_msg_get_type(ite_cond_cannot_succeed(_), simple_code_warning).
+det_msg_get_type(negated_goal_cannot_fail(_), simple_code_warning).
+det_msg_get_type(negated_goal_cannot_succeed(_), simple_code_warning).
+	% XXX this isn't really a simple code warning.
+	% We should add a separate warning type for this.
+det_msg_get_type(warn_obsolete(_, _), simple_code_warning).
+det_msg_get_type(warn_infinite_recursion(_), simple_code_warning).
+det_msg_get_type(duplicate_call(_, _, _), call_warning).
 det_msg_get_type(cc_unify_can_fail(_, _, _, _, _), error).
 det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).

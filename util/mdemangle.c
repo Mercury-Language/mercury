@@ -106,6 +106,7 @@ demangle(char *name)
 	   avoid a naming conflict with strchr's alter ego index() */
 
 	static const char introduced[]  = "IntroducedFrom__";
+	static const char deforestation[]  = "DeforestationIn__";
 	static const char pred[]  = "pred__";
 	static const char func[]  = "func__";
 
@@ -119,7 +120,12 @@ demangle(char *name)
 	static const char base_type_functors[] = "base_type_functors_";
 	static const char common[] = "common";
 
-	static const char * trailing_context_1[] = { introduced, NULL };
+	static const char * trailing_context_1[] = {
+		introduced,
+		deforestation,
+		NULL
+	};
+
 	static const char * trailing_context_2[] = {
 		base_type_layout,
 		base_type_info,
@@ -143,7 +149,8 @@ demangle(char *name)
 	int lambda_seq_number = 0;
 	char *lambda_pred_name = NULL;
 	const char *lambda_kind = NULL;
-	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA } category;
+	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA, DEFORESTATION }
+		category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 
 	/*
@@ -305,12 +312,17 @@ demangle(char *name)
 	module = strip_module_name(&start, end, trailing_context_1);
 
 	/*
-	** look for "IntroducedFrom"
+	** look for "IntroducedFrom" or "DeforestationIn"
 	*/
-	if (category == ORDINARY
-			&& strip_prefix(&start, introduced))
-	{
-		category = LAMBDA;
+	if (category == ORDINARY) {
+		if (strip_prefix(&start, introduced)) {
+			category = LAMBDA;
+		} else if (strip_prefix(&start, deforestation)) {
+			category = DEFORESTATION;
+		}
+	}
+
+	if (category == LAMBDA || category == DEFORESTATION) {
 		if (strip_prefix(&start, pred)) {
 			lambda_kind = "pred";
 		} else if (strip_prefix(&start, func)) {
@@ -359,6 +371,11 @@ demangle(char *name)
 		printf("%s goal (#%d) from '%s' in module '%s' line %d",
 			lambda_kind, lambda_seq_number,
 			lambda_pred_name, module, lambda_line);
+		break;
+	case DEFORESTATION:
+		printf("deforestation procedure (#%d) from '%s' in module '%s' line %d",
+			lambda_seq_number, lambda_pred_name,
+			module, lambda_line);
 		break;
 	default:
 		if (*module == '\0') {

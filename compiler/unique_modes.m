@@ -64,11 +64,12 @@
 %-----------------------------------------------------------------------------%
 
 unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
-	check_pred_modes(check_unique_modes, ModuleInfo0, ModuleInfo,
-			_UnsafeToContinue).
+	check_pred_modes(check_unique_modes(may_change_called_proc),
+			ModuleInfo0, ModuleInfo, _UnsafeToContinue).
 
 unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, Changed) -->
-	modecheck_proc(ProcId, PredId, check_unique_modes,
+	modecheck_proc(ProcId, PredId,
+		check_unique_modes(may_change_called_proc),
 		ModuleInfo0, ModuleInfo, NumErrors, Changed),
 	( { NumErrors \= 0 } ->
 		io__set_exit_status(1)
@@ -403,7 +404,7 @@ unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 	mode_info_set_call_context(unify(UnifyContext)),
 
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-		check_unique_modes, Goal),
+		Goal),
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
@@ -467,9 +468,16 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	%
 	mode_info_get_errors(ModeInfo2, Errors),
 	mode_info_set_errors(OldErrors, ModeInfo2, ModeInfo3),
+	mode_info_get_how_to_check(ModeInfo3, HowToCheck),
 	( Errors = [] ->
 		ProcId = ProcId0,
 		ModeInfo = ModeInfo3
+	; HowToCheck = check_unique_modes(may_not_change_called_proc) ->
+		% We're not allowed to try a different procedure
+		% here, so just return all the errors.
+		ProcId = ProcId0,
+		list__append(OldErrors, Errors, AllErrors),
+		mode_info_set_errors(AllErrors, ModeInfo3, ModeInfo)
 	;
 		%
 		% If it didn't work, restore the original instmap,

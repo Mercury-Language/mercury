@@ -278,6 +278,10 @@
 :- pred module_info_set_pred_info(module_info, pred_id, pred_info, module_info).
 :- mode module_info_set_pred_info(in, in, in, out) is det.
 
+:- pred module_info_set_pred_proc_info(module_info,
+	pred_id, proc_id, pred_info, proc_info, module_info).
+:- mode module_info_set_pred_proc_info(in, in, in, in, in, out) is det.
+
 :- pred module_info_typeids(module_info, list(type_id)).
 :- mode module_info_typeids(in, out) is det.
 
@@ -902,6 +906,12 @@ module_info_set_pred_info(MI0, PredId, PredInfo, MI) :-
 	module_info_preds(MI0, Preds0),
 	map__set(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(MI0, Preds, MI).
+
+module_info_set_pred_proc_info(MI0, PredId, ProcId, PredInfo0, ProcInfo, MI) :-
+	pred_info_procedures(PredInfo0, Procs0),
+	map__set(Procs0, ProcId, ProcInfo, Procs),
+	pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+	module_info_set_pred_info(MI0, PredId, PredInfo, MI).
 
 module_info_typeids(MI, TypeIds) :-
 	module_info_types(MI, Types),

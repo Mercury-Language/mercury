@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module std_util, list, term.
-:- import_module prog_data.
+:- import_module hlds_pred, prog_data.
 
 %-----------------------------------------------------------------------------%
 
@@ -69,6 +69,17 @@
 
 :- pred construct_qualified_term(sym_name, list(term), term__context, term).
 :- mode construct_qualified_term(in, in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
+	%	Line, Counter, SymName).
+	%
+	% Create a predicate name with context, e.g. for introduced
+	% lambda or deforestation predicates.
+:- pred make_pred_name_with_context(module_name, string, pred_or_func,
+		string, int, int, sym_name).
+:- mode make_pred_name_with_context(in, in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -280,5 +291,20 @@ match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
 	match_sym_name(Module1, Module2).
 match_sym_name(unqualified(Name), unqualified(Name)).
 match_sym_name(unqualified(Name), qualified(_, Name)).
+
+%-----------------------------------------------------------------------------%
+
+make_pred_name_with_context(ModuleName, Prefix,
+		PredOrFunc, PredName, Line, Counter, SymName) :-
+	(
+		PredOrFunc = predicate,
+		PFS = "pred"
+	;
+		PredOrFunc = function,
+		PFS = "func"
+	),
+	string__format("%s__%s__%s__%d__%d",
+		[s(Prefix), s(PFS), s(PredName), i(Line), i(Counter)], Name),
+		SymName = qualified(ModuleName, Name).
 
 %-----------------------------------------------------------------------------%

@@ -414,6 +414,27 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 <li> pushing constraints as far left as possible (constraint.m);
   this does not yet work.
 
+<li> deforestation and partial evaluation (deforest.m). This optimizes
+  multiple traversals of data structures within a conjunction, and
+  avoids creating intermediate data structures. It also performs
+  loop unrolling where the clause used is known at compile time.
+  deforest.m makes use of the following sub-modules
+  (`pd_' stands for "partial deduction"):
+  <ul>
+  <li>
+  pd_cost.m contains some predicates to estimate the improvement
+  caused by deforest.m.
+  <li>
+  pd_debug.m produces debugging output.
+  <li>
+  pd_info.m contains a state type for deforestation.
+  <li>
+  pd_term.m contains predicates to check that the deforestation algorithm
+  terminates.
+  <li>
+  pd_util.m contains various utility predicates.
+  </ul>
+
 <li> issue warnings about unused arguments from predicates, and create
   specialized versions without them (unused_args.m); type_infos are
   often unused
@@ -809,6 +830,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-01-10 09:14:51 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-04-27 04:03:05 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -34,7 +34,14 @@
 	;	unify
 	;	compare
 	;	ordinary
-	;	lambda(int, int, string). % line, sequence number, pred name
+	;	introduced(introduced_pred_type, int, int, string)
+			% type, line, sequence number, pred name
+	.
+
+:- type introduced_pred_type
+	--->	(lambda)
+	;	deforestation
+	.
 
 :- type data_category
 	--->	common
@@ -200,11 +207,11 @@ demangle_proc -->
 	( { Category0 \= ordinary } ->
 		remove_prefix("_"),
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__"]),
+			["IntroducedFrom__", "DeforestationIn__"]),
 		{ MaybeModule \= yes("") }
 	;
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__"])
+			["IntroducedFrom__", "DeforestationIn__"])
 	),
 
 	%
@@ -214,7 +221,14 @@ demangle_proc -->
 
 	=(PredName0),
 
-	( remove_prefix("IntroducedFrom__") ->
+	(
+		( remove_prefix("IntroducedFrom__") ->
+			{ IntroducedPredType = (lambda) }
+		;
+			remove_prefix("DeforestationIn__"),
+			{ IntroducedPredType = deforestation }
+		)
+	->
 		( remove_prefix("pred__") ->
 			{ LambdaPredOrFunc = "pred" }
 		; remove_prefix("func__") ->
@@ -227,7 +241,8 @@ demangle_proc -->
 		remove_int(Line),
 		remove_prefix("__"),
 		remove_int(Seq),
-		{ Category = lambda(Line, Seq, LambdaPredOrFunc) }
+		{ Category = introduced(IntroducedPredType, Line,
+			Seq, LambdaPredOrFunc) }
 	;
 		{ Category = Category0 },
 		{ PredName = PredName0 }
@@ -271,10 +286,18 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 			[s(PredOrFunc), s(QualifiedName), i(Arity), i(ModeNum)],
 			MainPart)
 	;
-		Category = lambda(Line, Seq, LambdaPredOrFunc),
-		string__format("%s goal (#%d) from %s line %d",
-			[s(LambdaPredOrFunc), i(Seq), s(QualifiedName),
-			i(Line)], MainPart)
+		Category = introduced(Type, Line, Seq, IntroPredOrFunc),
+		(
+			Type = (lambda),
+			string__format("%s goal (#%d) from %s line %d",
+				[s(IntroPredOrFunc), i(Seq), s(QualifiedName),
+				i(Line)], MainPart)
+		;
+			Type = deforestation,
+			string__format(
+				"deforestation procedure (#%d) from %s line %d",
+				[i(Seq), s(QualifiedName), i(Line)], MainPart)
+		)
 	},
 	[MainPart],
 	( { HigherOrder = yes } ->

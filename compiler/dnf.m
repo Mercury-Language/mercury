@@ -118,8 +118,7 @@ dnf__transform_procs([ProcId | ProcIds], PredId, MaybeNonAtomic,
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	excess_assignments_proc(ProcInfo0, ModuleInfo0, ProcInfo1),
-	dnf__transform_proc(ProcInfo1, PredInfo0, MaybeNonAtomic,
+	dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 		ModuleInfo0, ModuleInfo1, ProcInfo, NewPredIds0, NewPredIds1),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -142,7 +141,10 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_varset(ProcInfo0, VarSet),
 	proc_info_vartypes(ProcInfo0, VarTypes),
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers),
+	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
+	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
+			VarSet, Markers, TVarMap, TCVarMap),
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap),
 	dnf__transform_goal(Goal0, InstMap, MaybeNonAtomic,
@@ -157,7 +159,9 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 				map(var, type),
 				list(class_constraint),
 				varset,
-				pred_markers
+				pred_markers,
+				map(tvar, type_info_locn),
+				map(class_constraint, var)	
 			).
 
 :- pred dnf__transform_goal(hlds_goal::in, instmap::in,
@@ -369,7 +373,8 @@ dnf__get_new_pred_name(PredTable, Base, Name, N0, N) :-
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, VarSet, Markers),
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
+			VarSet, Markers, TVarMap, TCVarMap),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars),
@@ -377,8 +382,8 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% We could get rid of some constraints on variables
 		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, InstMap0, PredName,
-		TVarSet, VarTypes, ClassContext, VarSet, Markers, 
-		ModuleInfo0, ModuleInfo, PredProcId),
+		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
+		VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
 :- pred dnf__compute_arg_types_modes(list(var)::in, map(var, type)::in,

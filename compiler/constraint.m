@@ -95,7 +95,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_context(ProcInfo0, Context),
 	mode_info_init(IoState0, ModuleInfo0, PredId, ProcId,
-			Context, VarSet1, InstMap0, ModeInfo0),
+			Context, VarSet1, InstMap0, check_modes, ModeInfo0),
 
 	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),
 

@@ -2363,9 +2363,11 @@ Optimize away multiple calls to a predicate with the same input arguments.
 Reorder goals to minimize the number of variables
 that have to be saved across calls.
 
-@c @sp 1
-@c @item --no-specialize
-@c Disable the specialization of procedures.
+@sp 1
+@item --deforestation
+Enable deforestation. Deforestation is a program transformation whose aim
+is to avoid the construction of intermediate data structures and to avoid
+repeated traversals over data structures within a conjunction.
 
 @end table
 

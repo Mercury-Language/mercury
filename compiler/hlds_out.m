@@ -33,7 +33,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module prog_data, llds.
+:- import_module prog_data, llds, instmap.
 :- import_module io, bool, term, map, list, varset.
 
 %-----------------------------------------------------------------------------%
@@ -154,6 +154,10 @@
 :- pred hlds_out__write_var_modes(list(var), list(mode), varset, bool,
 	io__state, io__state).
 :- mode hlds_out__write_var_modes(in, in, in, in, di, uo) is det.
+
+:- pred hlds_out__write_instmap(instmap, varset, bool, int,
+	io__state, io__state).
+:- mode hlds_out__write_instmap(in, in, in, in, di, uo) is det.
 
 	% find the name of a marker
 
@@ -1427,7 +1431,7 @@ hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums) -->
 
 hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 		AppendVarnums) -->
-	prog_out__write_sym_name(ModuleName),
+	mercury_output_bracketed_sym_name(ModuleName),
 	io__write_string(":"),
 	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums).
 
@@ -1604,10 +1608,6 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarnums,
 	% quantification is all implicit by the time we get to the hlds.
 
 hlds_out__write_some(_Vars, _VarSet) --> [].
-
-:- pred hlds_out__write_instmap(instmap, varset, bool, int,
-	io__state, io__state).
-:- mode hlds_out__write_instmap(in, in, in, in, di, uo) is det.
 
 hlds_out__write_instmap(InstMap, VarSet, AppendVarnums, Indent) -->
 	( { instmap__is_unreachable(InstMap) } ->

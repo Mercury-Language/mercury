@@ -349,8 +349,9 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 					ModuleInfo1),
 		goal_info_get_context(LambdaGoalInfo, OrigContext),
 		term__context_line(OrigContext, OrigLine),
-		make_lambda_name(ModuleName, PredOrFunc, OrigPredName,
-			OrigLine, LambdaCount, PredName),
+		make_pred_name_with_context(ModuleName, "IntroducedFrom",
+			PredOrFunc, OrigPredName, OrigLine,
+			LambdaCount, PredName),
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
@@ -416,21 +417,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
-
-:- pred make_lambda_name(module_name, pred_or_func, string, int, int, sym_name).
-:- mode make_lambda_name(in, in, in, in, in, out) is det.
-
-make_lambda_name(ModuleName, PredOrFunc, PredName, Line, Counter, SymName) :-
-	(
-		PredOrFunc = predicate,
-		PFS = "pred"
-	;
-		PredOrFunc = function,
-		PFS = "func"
-	),
-	string__format("IntroducedFrom__%s__%s__%d__%d",
-		[s(PFS), s(PredName), i(Line), i(Counter)], Name),
-		SymName = qualified(ModuleName, Name).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
 :- mode lambda__uni_modes_to_modes(in, out) is det.
