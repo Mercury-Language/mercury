@@ -5611,7 +5611,8 @@ expand_set_field_function_call(Context, MainContext, SubContext0,
 		SubContext0, FieldNames, FieldValueVar, TermInputVar,
 		TermOutputVar, VarSet0, VarSet,
 		Functor, FieldSubContext, Goals, Info0, Info),
-	{ wrap_field_access_goals(Context, Goals, Goal) }.
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 
 :- pred expand_set_field_function_call_2(prog_context,
 		unify_main_context, unify_sub_contexts,
@@ -5710,7 +5711,8 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 		FieldNames, FieldValueVar, TermOutputVar, VarSet0, VarSet,
 		Functor, FieldSubContext, Goals1, Info0, Info),
 	{ Goals = [UnifyDCG | Goals1] },
-	{ wrap_field_access_goals(Context, Goals, Goal) }.
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 	
 	% Expand a field extraction function call into a list of goals which
 	% each get one level of the structure.
@@ -5736,7 +5738,8 @@ expand_get_field_function_call(Context, MainContext, SubContext0,
 	expand_get_field_function_call_2(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar,
 		VarSet0, VarSet, Functor, FieldSubContext, Goals, Info0, Info),
-	{ wrap_field_access_goals(Context, Goals, Goal) }.
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 
 :- pred expand_get_field_function_call_2(prog_context, unify_main_context,
 		unify_sub_contexts, field_list, prog_var,
@@ -5800,24 +5803,6 @@ construct_field_access_function_call(AccessType, Context,
 	Functor = cons(FuncName, Arity),
 	create_atomic_unification(RetArg, functor(Functor, Args),
 		Context, MainContext, SubContext, Goal).
-
-	% Wrap the list of goals for a record syntax expression
-	% so that mode analysis treats them as an atomic goal -- if
-	% the user writes an atomic goal which is expanded into multiple
-	% goals by the compiler, the mode correctness of the goal should
-	% not depend on the ability of mode analysis to interleave the
-	% expanded parts with other goals.
-:- pred wrap_field_access_goals(prog_context, list(hlds_goal), hlds_goal).
-:- mode wrap_field_access_goals(in, in, out) is det.
-
-wrap_field_access_goals(Context, Goals, Goal) :-
-	( Goals = [Goal0] ->
-		Goal = Goal0
-	;
-		goal_info_init(Context, GoalInfo),
-		Conj = conj(Goals) - GoalInfo,
-		Goal = some([], can_remove, Conj) - GoalInfo
-	).
 
 :- type field_list == assoc_list(ctor_field_name, list(prog_term)).
 
