@@ -38,8 +38,8 @@ export TMPDIR
 # Make the files writable by group mercury.
 umask 002
 
-# Stop looping tests after 5 minutes of CPU time.
-ulimit -S -t 300
+# Stop looping tests after 10 minutes of CPU time.
+ulimit -S -t 600
 
 # Host to use to build the release of the day.
 ROTD_HOST=earth
