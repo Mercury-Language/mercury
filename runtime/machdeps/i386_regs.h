@@ -60,7 +60,6 @@
 
 register	Word	mr0 __asm__("esi");	/* sp */
 register	Word	mr1 __asm__("edi");	/* succip */
-#endif
 
 #if PIC_REG
   #define mr2	MR_fake_reg[2]
