@@ -32,14 +32,14 @@ MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h \
 		  machdeps/alpha_regs.h machdeps/pa_regs.h \
 		  machdeps/rs6000_regs.h
-MODS		= engine.mod wrapper.mod call.mod solutions.mod
-MOD_CS		= engine.c wrapper.c call.c solutions.c
+MODS		= engine.mod wrapper.mod call.mod
+MOD_CS		= engine.c wrapper.c call.c
 MOD_OS		= $(MOD_CS:.c=.o)
 ORIG_CS		= access.c deep_copy.c dlist.c dummy.c label.c \
 		  memory.c misc.c table.c timing.c prof.c prof_mem.c
 ORIG_OS		= $(ORIG_CS:.c=.o)
 OBJS		= $(MOD_OS) $(ORIG_OS)
-# OBJS		= engine.o wrapper.o call.o solutions.o \
+# OBJS		= engine.o wrapper.o call.o \
 # 		  access.o misc.o dlist.o dummy.o label.o \
 # 		  memory.o table.o timing.o
 PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
@@ -111,7 +111,7 @@ install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
 #-----------------------------------------------------------------------------#
 
 # prevent GNU make from removing these intermediate files
-dont_remove: engine.c wrapper.c call.c solutions.c
+dont_remove: engine.c wrapper.c call.c 
 
 # prevent Mmake from removing C files
 RM_C=:
