@@ -1,7 +1,0 @@
-prog_io_erroneous.m:001: Warning: incorrect module name in `:- module' declaration.
-prog_io_erroneous.m:012: Error: no clauses for predicate `prog_io_erroneous:q/2'
-prog_io_erroneous.m:007: In clause for `p(in, out, out)':
-prog_io_erroneous.m:007:   in argument 1 of call to predicate `prog_io_erroneous:q/2':
-prog_io_erroneous.m:007:   mode error: variable `Y' has instantiatedness `free',
-prog_io_erroneous.m:007:   expected instantiatedness was `ground'.
-For more information, try recompiling with `-E'.

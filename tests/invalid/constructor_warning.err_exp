@@ -1,9 +1,0 @@
-constructor_warning.m:016: In clause for predicate `constructor_warning:bar/1':
-constructor_warning.m:016:   in argument 1 of clause head:
-constructor_warning.m:016:   error: wrong number of arguments (0; should be 1 or 2)
-constructor_warning.m:016:   in use of constructor `foo_baz'.
-constructor_warning.m:017: In clause for predicate `constructor_warning:bar/1':
-constructor_warning.m:017:   in argument 1 of clause head:
-constructor_warning.m:017:   error: wrong number of arguments (1; should be 0)
-constructor_warning.m:017:   in use of constructor `fanta_fanta_fanta'.
-For more information, try recompiling with `-E'.

@@ -1,4 +1,0 @@
-unused_args_test.m:009: In predicate `unused_args_test:recursive'/3:
-unused_args_test.m:009:   warning: argument 1 is unused.
-unused_args_test.m:011: In predicate `unused_args_test:nonrecursive'/1:
-unused_args_test.m:011:   warning: argument 1 is unused.

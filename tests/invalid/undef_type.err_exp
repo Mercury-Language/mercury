@@ -1,6 +1,0 @@
-undef_type.m:001: Warning: incorrect module name in `:- module' declaration.
-undef_type.m:003: In definition of type `undef_type:t1'/0:
-undef_type.m:003:   error: undefined type `undef1'/0.
-undef_type.m:010: In definition of predicate `undef_type:q'/1:
-undef_type.m:010:   error: undefined type `undef2'/0.
-For more information, try recompiling with `-E'.

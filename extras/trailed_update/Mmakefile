@@ -1,6 +1,0 @@
-GRADE = asm_fast.gc.tr
-RM_C = :
-
-MAIN_TARGET = libtrailed_update
-
-depend : trailed_update.depend

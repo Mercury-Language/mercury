@@ -1,3 +1,0 @@
-Variable "PATH" is set (passed)
-Variable "SHOULD_NOT_BE_SET" is set not set (passed)
-Variable "SHOULD_NOT_BE_SET" is set to "Hello World!" (passed)

@@ -1,2 +1,0 @@
-predmode.m:005: Error: some but not all arguments have modes: p((int '::' in), int).
-For more information, try recompiling with `-E'.

@@ -1,9 +1,0 @@
-simple_code.m:010: Warning: this disjunct will never have any solutions.
-simple_code.m:015: Warning: the condition of this if-then-else cannot fail.
-simple_code.m:035: Warning: the condition of this if-then-else cannot fail.
-simple_code.m:042: Warning: the condition of this if-then-else cannot fail.
-simple_code.m:020: Warning: the condition of this if-then-else cannot succeed.
-simple_code.m:025: Warning: the condition of this if-then-else cannot succeed.
-simple_code.m:030: Warning: the condition of this if-then-else cannot succeed.
-simple_code.m:033: Warning: the negated goal cannot succeed.
-simple_code.m:039: Warning: call to obsolete predicate `simple_code:obsolete/0'.

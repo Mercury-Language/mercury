@@ -1,2 +1,0 @@
-duplicate_call.m:015: Warning: redundant call to predicate `duplicate_call:called/3'.
-duplicate_call.m:014: Here is the previous call to predicate `duplicate_call:called/3'.

@@ -1,5 +1,0 @@
-modes_erroneous.m:009: In clause for `p((ground -> ground), (free -> ground))':
-modes_erroneous.m:009:   in argument 1 of call to predicate `modes_erroneous:p/2':
-modes_erroneous.m:009:   mode error: variable `V_5' has instantiatedness `free',
-modes_erroneous.m:009:   expected instantiatedness was `ground'.
-For more information, try recompiling with `-E'.

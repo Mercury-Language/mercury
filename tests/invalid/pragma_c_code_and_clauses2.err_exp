@@ -1,6 +1,0 @@
-pragma_c_code_and_clauses2.m:009: Error: clause for predicate `pragma_c_code_and_clauses2:foo/1'
-pragma_c_code_and_clauses2.m:009:   with `:- pragma c_code' declaration preceding.
-pragma_c_code_and_clauses2.m:005: In `foo(in)':
-pragma_c_code_and_clauses2.m:005:   warning: determinism declaration could be tighter.
-pragma_c_code_and_clauses2.m:005:   Declared `multi', inferred `det'.
-For more information, try recompiling with `-E'.
