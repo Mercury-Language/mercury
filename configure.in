@@ -766,6 +766,7 @@ else
 	AC_CACHE_VAL(mercury_cv_int_least16_type,
 		AC_TRY_RUN([
 		#include <stdio.h>
+		#include <limits.h>
 		int main() {
 			FILE *fp;
 
