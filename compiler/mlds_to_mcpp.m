@@ -94,7 +94,7 @@ generate_mcplusplus_code(MLDS) -->
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	{ ClassName = mlds_module_name_to_class_name(
-		mercury_module_name_to_mlds(ModuleName)) },
+		mercury_module_name_to_mlds(ModuleName), yes) },
 
 	io__nl,
 	io__write_strings([

@@ -91,7 +91,7 @@ generate_csharp_code(MLDS) -->
 
 	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
 	{ ClassName = mlds_module_name_to_class_name(
-		mercury_module_name_to_mlds(ModuleName)) },
+		mercury_module_name_to_mlds(ModuleName), yes) },
 
 	io__nl,
 	io__write_strings([
