@@ -4,11 +4,12 @@
 */
 
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.3 1993-12-02 05:17:16 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_s.l,v 1.4 1993-12-02 06:59:30 zs Exp $";
 
 #include	<string.h>
 #include	"imp.h"
 #include	"table.h"
+#include	"iface.h"
 #include	"iface_g.h"
 
 extern	char	*cmdline;
@@ -28,14 +29,21 @@ extern	int	cmdcur;
 			strncpy(buf, cmdline+cmdcur, more);	\
 			cmdcur += more;				\
 			if (more > 0)				\
+			{					\
 				result = more;			\
+				buf[more+1] = '\0';		\
+			}					\
 			else					\
+			{					\
 				result = YY_NULL;		\
+				buf[0] = '\0';			\
+			}					\
 								\
-			buf[more+1] = '\0';			\
+			/*					\
 			printf("new buf <%s>\n", buf);		\
 			printf("more %d, max %d, res %d\n",	\
 				more, max_size, result);	\
+			*/					\
 		}
 #else
 #define	YY_INPUT(buf,result,max_size)	\
@@ -45,13 +53,17 @@ extern	int	cmdcur;
 				buf[0] = cmdline[cmdcur];	\
 				cmdcur += 1;			\
 				result = 1;			\
+				/*				\
 				printf("new bufchar <%c>\n",	\
 					buf[0]);		\
+				*/				\
 			}					\
 			else					\
 			{					\
 				result = YY_NULL;		\
+				/*				\
 				printf("no bufchar\n");		\
+				*/				\
 			}					\
 		}
 #endif
@@ -142,6 +154,19 @@ yykwinit(void)
 	mkkwentry("help", HELP);
 	mkkwentry("call", CALL);
 	mkkwentry("redo", REDO);
+	mkkwentry("debug", DEBUG);
+	mkkwentry("nodebug", NODEBUG);
+	mkkwentry("det", DETTOKEN);
+	mkkwentry("nondet", NONDETTOKEN);
+	mkkwentry("heap", HEAPTOKEN);
+	mkkwentry("call", CALLTOKEN);
+	mkkwentry("goto", GOTOTOKEN);
+	mkkwentry("final", FINALTOKEN);
+	mkkwentry("detail", DETAILTOKEN);
+	mkkwentry("all", ALLTOKEN);
+	mkkwentry("printregs", PRINTREGS);
+	mkkwentry("dumpframe", DUMPFRAME);
+	mkkwentry("dumpnondet", DUMPCPSTACK);
 	mkkwentry("tag", TAG);
 	mkkwentry("body", BODY);
 	mkkwentry("field", FIELD);

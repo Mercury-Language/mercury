@@ -62,38 +62,38 @@ Word set_reg(int num, Word val)
 	restore_registers();
  	switch (num) {
 
-	case 1:  r1  = val; return val;
-	case 2:  r2  = val; return val;
-	case 3:  r3  = val; return val;
-	case 4:  r4  = val; return val;
-	case 5:  r5  = val; return val;
-	case 6:  r6  = val; return val;
-	case 7:  r7  = val; return val;
-	case 8:  r8  = val; return val;
-	case 9:  r9  = val; return val;
-	case 10: r10 = val; return val;
-	case 11: r11 = val; return val;
-	case 12: r12 = val; return val;
-	case 13: r13 = val; return val;
-	case 14: r14 = val; return val;
-	case 15: r15 = val; return val;
-	case 16: r16 = val; return val;
-	case 17: r17 = val; return val;
-	case 18: r18 = val; return val;
-	case 19: r19 = val; return val;
-	case 20: r20 = val; return val;
-	case 21: r21 = val; return val;
-	case 22: r22 = val; return val;
-	case 23: r23 = val; return val;
-	case 24: r24 = val; return val;
-	case 25: r25 = val; return val;
-	case 26: r26 = val; return val;
-	case 27: r27 = val; return val;
-	case 28: r28 = val; return val;
-	case 29: r29 = val; return val;
-	case 30: r30 = val; return val;
-	case 31: r31 = val; return val;
-	case 32: r32 = val; return val;
+	case 1:  r1  = val; save_registers(); return val;
+	case 2:  r2  = val; save_registers(); return val;
+	case 3:  r3  = val; save_registers(); return val;
+	case 4:  r4  = val; save_registers(); return val;
+	case 5:  r5  = val; save_registers(); return val;
+	case 6:  r6  = val; save_registers(); return val;
+	case 7:  r7  = val; save_registers(); return val;
+	case 8:  r8  = val; save_registers(); return val;
+	case 9:  r9  = val; save_registers(); return val;
+	case 10: r10 = val; save_registers(); return val;
+	case 11: r11 = val; save_registers(); return val;
+	case 12: r12 = val; save_registers(); return val;
+	case 13: r13 = val; save_registers(); return val;
+	case 14: r14 = val; save_registers(); return val;
+	case 15: r15 = val; save_registers(); return val;
+	case 16: r16 = val; save_registers(); return val;
+	case 17: r17 = val; save_registers(); return val;
+	case 18: r18 = val; save_registers(); return val;
+	case 19: r19 = val; save_registers(); return val;
+	case 20: r20 = val; save_registers(); return val;
+	case 21: r21 = val; save_registers(); return val;
+	case 22: r22 = val; save_registers(); return val;
+	case 23: r23 = val; save_registers(); return val;
+	case 24: r24 = val; save_registers(); return val;
+	case 25: r25 = val; save_registers(); return val;
+	case 26: r26 = val; save_registers(); return val;
+	case 27: r27 = val; save_registers(); return val;
+	case 28: r28 = val; save_registers(); return val;
+	case 29: r29 = val; save_registers(); return val;
+	case 30: r30 = val; save_registers(); return val;
+	case 31: r31 = val; save_registers(); return val;
+	case 32: r32 = val; save_registers(); return val;
 
 	}
 
@@ -149,14 +149,16 @@ Word set_mem(Word *addr, Word val)
 Word createn(List *exprs)
 {
 	reg	List	*p;
+	reg	Word	*oldhp;
 
+	oldhp = hp;
 	for_list(p, exprs)
 	{
 		hp += 1;
 		hp[-1] = (Word) ldata(p);
 	}
 
-	return (Word) hp;
+	return (Word) oldhp;
 }
 
 /*

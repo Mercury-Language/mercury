@@ -29,13 +29,7 @@ Word	*cpstackmax;
 
 /* debugging options */
 
-bool	gotodebug    = FALSE;
-bool	calldebug    = FALSE;
-bool	heapdebug    = FALSE;
-bool	stackdebug   = FALSE;
-bool	cpstackdebug = FALSE;
-bool	detaildebug  = FALSE;
-bool	finaldebug   = FALSE;
+bool	debugflag[MAXFLAG];
 
 /* label table */
 

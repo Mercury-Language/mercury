@@ -20,6 +20,26 @@ typedef void	Code;
 
 #define IF(cond, val)	((cond) ? ((val),(void)0) : (void)0)
 
+/* DEFINITIONS FOR DEBUGGING FLAGS */
+
+#define	GOTOFLAG	0
+#define	CALLFLAG	1
+#define	HEAPFLAG	2
+#define	STACKFLAG	3
+#define	CPSTACKFLAG	4
+#define	FINALFLAG	5
+#define	DETAILFLAG	6
+#define	MAXFLAG		7
+/* DETAILFLAG should be the last real flag */
+
+#define	gotodebug	debugflag[GOTOFLAG]
+#define	calldebug	debugflag[CALLFLAG]
+#define	heapdebug	debugflag[HEAPFLAG]
+#define	stackdebug	debugflag[STACKFLAG]
+#define	cpstackdebug	debugflag[CPSTACKFLAG]
+#define	finaldebug	debugflag[FINALFLAG]
+#define	detaildebug	debugflag[DETAILFLAG]
+
 /* DEFINITIONS FOR THE LABEL TABLE */
 
 typedef struct s_label
@@ -513,13 +533,7 @@ extern	Word	do_mklist(int start, int len);
 #define mklist(start,len) do_mklist(start,len)
 #endif
 
-extern	bool	gotodebug;
-extern	bool	calldebug;
-extern	bool	heapdebug;
-extern	bool	stackdebug;
-extern	bool	cpstackdebug;
-extern	bool	detaildebug;
-extern	bool	finaldebug;
+extern	bool	debugflag[];
 
 /* debugging messages, defined in aux.c */
 

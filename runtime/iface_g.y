@@ -5,7 +5,7 @@
 
 #ifndef	lint
 static	char
-rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.3 1993-12-02 05:17:15 zs Exp $";
+rcs_id[] = "$Header: /srv/scratch/dev/togit/repository/mercury/runtime/Attic/iface_g.y,v 1.4 1993-12-02 06:59:29 zs Exp $";
 #endif
 
 #include	<ctype.h>
@@ -30,8 +30,11 @@ extern	void	yyerror(const char *);
 	List	*Ulist;
 }
 
-%token		RESET HELP
-%token		CALL REDO
+%token		RESET HELP CALL REDO
+%token		DEBUG NODEBUG
+%token		DETTOKEN NONDETTOKEN HEAPTOKEN CALLTOKEN
+%token		GOTOTOKEN FINALTOKEN DETAILTOKEN ALLTOKEN
+%token		PRINTREGS DUMPFRAME DUMPCPSTACK
 %token		TAG BODY FIELD
 %token		SETREG GETREG SETMEM GETMEM
 %token		CREATE PUSH POP
@@ -41,6 +44,8 @@ extern	void	yyerror(const char *);
 %token	<Ustr>	ID
 %token		GARBAGE
 
+%type	<Uint>	debug
+%type	<Uint>	flag
 %type	<Uword>	cmd
 %type	<Uword>	expr
 %type	<Ulist>	expr_l
@@ -74,10 +79,62 @@ line	:	RESET
 			action = Print;
 			act_value = $1;
 		}
+	|	debug flag
+		{
+			action = Null;
+			if ($2 >= 0)
+				debugflag[$2] = $1;
+			else
+			{
+				reg	int	i;
+
+				for (i = 0; i < DETAILFLAG; i++)
+					debugflag[i] = $1;
+			}
+		}
+	|	PRINTREGS
+		{
+			action = Null;
+			printregs("");
+		}
+	|	DUMPFRAME
+		{
+			action = Null;
+			dumpframe(curcp);
+		}
+	|	DUMPCPSTACK
+		{
+			action = Null;
+			dumpcpstack();
+		}
 	|	/* empty */
 		{
 			action = Null;
 		}
+	;
+
+debug	:	DEBUG
+		{	$$ = 1;				}
+	|	NODEBUG
+		{	$$ = 0;				}
+	;
+
+flag	:	DETTOKEN
+		{	$$ = STACKFLAG;			}
+	|	NONDETTOKEN
+		{	$$ = CPSTACKFLAG;		}
+	|	HEAPTOKEN
+		{	$$ = HEAPFLAG;			}
+	|	CALLTOKEN
+		{	$$ = CALLFLAG;			}
+	|	GOTOTOKEN
+		{	$$ = CALLFLAG;			}
+	|	FINALTOKEN
+		{	$$ = FINALFLAG;			}
+	|	DETAILTOKEN
+		{	$$ = DETAILFLAG;		}
+	|	ALLTOKEN
+		{	$$ = -1;			}
 	;
 
 cmd	:	TAG NUM expr
@@ -99,7 +156,15 @@ cmd	:	TAG NUM expr
 	|	PUSH expr
 		{	push($2); $$ = $2;		}
 	|	POP
-		{	$$ = pop();			}
+		{
+			$$ = pop();
+			if (sp < ifacestackmin)
+			{
+				printf("stack underflow\n");
+				push($$);
+				$$ = 0;
+			}
+		}
 	;
 
 expr	:	NUM

@@ -14,6 +14,8 @@ int	cmdsize;
 int	cmdlen;
 int	cmdcur;
 
+Word	*ifacestackmin;
+
 static	Word	*cmdcp;
 static	int	cmdtarget;
 
@@ -29,6 +31,7 @@ do_iface_input:
 
 do_iface:
 	cmdcp = maxcp;
+	ifacestackmin = sp;
 
 /*
 ** we use gotos instead of a while loop because we want
@@ -37,7 +40,7 @@ do_iface:
 
 get_cmd:
 	cmdlen = getflexline(PROMPT, stdin, &cmdline, &cmdsize);
-	printf("got len %d, line <%s>\n", cmdlen, cmdline);
+	/* printf("got len %d, line <%s>\n", cmdlen, cmdline); */
 	if (cmdlen <= 0)
 	{
 		printf("normal exit\n");
