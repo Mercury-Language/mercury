@@ -113,6 +113,7 @@ mutvar__put(mutvar(Full, Empty, Ref), Data) -->
 		[will_not_call_mercury, thread_safe],
 "
 	X = *(MR_Word *) Ref;
+	*(MR_Word *) Ref = NULL;
 ").
 
 :- pragma inline(set_ref/2).
