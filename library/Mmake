@@ -161,7 +161,7 @@ install: install_mercury $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 install_all: install_mercury install_nuprolog install_sicstus
 
 .PHONY: install_mercury
-install_mercury: install_ints install_mods install_library
+install_mercury: install_ints install_init install_library
 
 .PHONY: install_ints
 install_ints: $(library.ints)
