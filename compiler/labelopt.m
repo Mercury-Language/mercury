@@ -32,9 +32,9 @@
 
 :- type usemap == bintree_set(label).
 
-labelopt__main(Instrs0, Final, Instrs, Mod) :-
+labelopt__main(Instrs0, _Final, Instrs, Mod) :-
 	bintree_set__init(Usemap0),
-	labelopt__build_usemap(Instrs0, yes, no, Usemap0, Usemap),
+	labelopt__build_usemap(Instrs0, Usemap0, Usemap),
 	labelopt__instr_list(Instrs0, yes, Usemap, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
 		labelopt__main(Instrs1, Final, Instrs, _)
@@ -46,62 +46,40 @@ labelopt__main(Instrs0, Final, Instrs, Mod) :-
 
 	% Build up a set showing which labels are branched to.
 
-:- pred labelopt__build_usemap(list(instruction), bool, maybe(label),
-	usemap, usemap).
-:- mode labelopt__build_usemap(in, in, in, di, uo) is det.
+:- pred labelopt__build_usemap(list(instruction), usemap, usemap).
+:- mode labelopt__build_usemap(in, di, uo) is det.
 
-labelopt__build_usemap([], _, _, Usemap, Usemap).
-labelopt__build_usemap([Instr | Instructions], FallInto, CurLabel0,
-		Usemap0, Usemap) :-
+labelopt__build_usemap([], Usemap, Usemap).
+labelopt__build_usemap([Instr | Instructions], Usemap0, Usemap) :-
 	Instr = Uinstr - _Comment,
 	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
-	labelopt__label_list_build_usemap(Labels, CurLabel, Usemap0, Usemap1),
-	labelopt__code_addr_list_build_usemap(CodeAddresses, CurLabel,
-		Usemap1, Usemap2),
-	( Uinstr = label(Label) ->
-		( Label = local(_,_,_), FallInto = no ->
-			CurLabel = yes(Label)
-		;
-			CurLabel = no
-		)
-	;
-		CurLabel = CurLabel0
-	),
-	opt_util__can_instr_fall_through(Uinstr, FallThrough),
-	labelopt__build_usemap(Instructions, FallThrough, CurLabel,
-		Usemap2, Usemap).
+	labelopt__label_list_build_usemap(Labels, Usemap0, Usemap1),
+	labelopt__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
+	labelopt__build_usemap(Instructions, Usemap2, Usemap).
 
 	% We are not interested in code addresses that are not labels.
 
-:- pred labelopt__code_addr_list_build_usemap(list(code_addr), maybe(label),
-	usemap, usemap).
-:- mode labelopt__code_addr_list_build_usemap(in, in, di, uo) is det.
+:- pred labelopt__code_addr_list_build_usemap(list(code_addr), usemap, usemap).
+:- mode labelopt__code_addr_list_build_usemap(in, di, uo) is det.
 
-labelopt__code_addr_list_build_usemap([], _, Usemap, Usemap).
-labelopt__code_addr_list_build_usemap([Code_addr | Rest], CurLabel,
-		Usemap0, Usemap) :-
-	( Code_addr = label(Label), CurLabel \= yes(Label) ->
+labelopt__code_addr_list_build_usemap([], Usemap, Usemap).
+labelopt__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
+	( Code_addr = label(Label) ->
 		copy(Label, Label1),
 		bintree_set__insert(Usemap0, Label1, Usemap1)
 	;
 		Usemap1 = Usemap0
 	),
-	labelopt__code_addr_list_build_usemap(Rest, CurLabel, Usemap1, Usemap).
+	labelopt__code_addr_list_build_usemap(Rest, Usemap1, Usemap).
 
-:- pred labelopt__label_list_build_usemap(list(label), maybe(label),
-	usemap, usemap).
-:- mode labelopt__label_list_build_usemap(in, in, di, uo) is det.
+:- pred labelopt__label_list_build_usemap(list(label), usemap, usemap).
+:- mode labelopt__label_list_build_usemap(in, di, uo) is det.
 
-labelopt__label_list_build_usemap([], _, Usemap, Usemap).
-labelopt__label_list_build_usemap([Label | Labels], CurLabel,
-		Usemap0, Usemap) :-
-	( CurLabel \= yes(Label) ->
-		copy(Label, Label1),
-		bintree_set__insert(Usemap0, Label1, Usemap1)
-	;
-		Usemap1 = Usemap0
-	),
-	labelopt__label_list_build_usemap(Labels, CurLabel, Usemap1, Usemap).
+labelopt__label_list_build_usemap([], Usemap, Usemap).
+labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
+	copy(Label, Label1),
+	bintree_set__insert(Usemap0, Label1, Usemap1),
+	labelopt__label_list_build_usemap(Labels, Usemap1, Usemap).
 
 %-----------------------------------------------------------------------------%
 
@@ -120,10 +98,10 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 		Fallthrough, Usemap, MoreInstrs, Mod) :-
 	( Instr0 = label(Label) - Comment ->
 		(
-			( Label = exported(_)
-			; Label = local(_)
-			; bintree_set__is_member(Label, Usemap)
-			)
+		    (   Label = exported(_)
+		    ;	Label = local(_)
+		    ;   bintree_set__is_member(Label, Usemap)
+		    )
 		->
 			ReplInstrs = [Instr0],
 			Fallthrough1 = yes,
@@ -158,7 +136,7 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 	).
 
 	% Instead of removing eliminated instructions from the instruction list,
-	% we can replace them by placeholder comments. The original comment
+	% we can replace them by placeholder comments. The original comment field
 	% on the instruction is often enough to deduce what the eliminated
 	% instruction was.
 
