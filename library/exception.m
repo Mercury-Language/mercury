@@ -1289,7 +1289,7 @@ namespace mercury {
 
 :- pragma foreign_proc("C#",
 	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, ordinary_despite_detism],
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -1299,7 +1299,7 @@ namespace mercury {
 ).
 :- pragma foreign_proc("C#",
 	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, ordinary_despite_detism],
 	local_vars(""),
 	first_code(""),
 	retry_code(""),
@@ -1401,13 +1401,13 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 }").
 :- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
 	throw new java.lang.Error(""catch_impl not yet implemented"");
 ").
 :- pragma foreign_proc("Java",
 	catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
-	[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
 	throw new java.lang.Error(""catch_impl not yet implemented"");
 ").
