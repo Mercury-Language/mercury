@@ -11,8 +11,8 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 # Beware that the order of suffixes is significant.
-.SUFFIXES: .pp .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
-		.date .mod .c .nu .o .pic_o .i .s .garb .mod_h .ql .pl
+.SUFFIXES: .pp .m .nl .no .err .int .int2 .int3 .dep .depend .doit .ugly \
+		.date .date3 .mod .c .nu .o .pic_o .i .s .garb .mod_h .ql .pl
 
 .PRECIOUS: %.date
 
@@ -55,12 +55,19 @@ main_target: $(MAIN_TARGET)
 .m.date:
 	$(MCI) $(MCIFLAGS) $<
 
-# do not remove the whitespace in the following two rules!
+.m.date3:
+	$(MCSI) $(MCSIFLAGS) $<
+
+
+# do not remove the whitespace in the following three rules!
 
 .date.int:
 	
 
 .date.int2:
+	
+
+.date3.int3:
 	
 
 .m.garb:
