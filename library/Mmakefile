@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne.
+# Copyright (C) 1997-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -41,20 +41,34 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
 		$(SCRIPTS_DIR)/msl
 
+INTERMODULE_OPTS = --transitive-intermodule-optimization
+ENABLE_TERM_OPTS = --enable-termination
+# CHECK_TERM_OPTS = --check-termination
+
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--generate-dependencies --intermodule-optimization
+			--generate-dependencies $(INTERMODULE_OPTS)
 MCI	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--make-interface --intermodule-optimization
+			--make-interface $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCOI	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-opt-int $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCTOI	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-trans-opt $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--compile-to-c --intermodule-optimization
+			--compile-to-c $(INTERMODULE_OPTS) \
+			$(CHECK_TERM_OPTS)
 MCS	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
 		--split-c-files -c \
 		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
-		--intermodule-optimization
+		$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
 		$(DLL_CFLAGS) $(EXTRA_CFLAGS)
@@ -125,6 +139,10 @@ ints		: library.ints
 .PHONY: opts 
 opts		: library.opts
 library.opts	: $(library.opts)
+
+.PHONY: trans_opts 
+trans_opts		: library.trans_opts
+library.trans_opts	: $(library.trans_opts)
 
 #-----------------------------------------------------------------------------#
 
@@ -252,9 +270,12 @@ install_all: install_mercury install_nuprolog install_sicstus
 install_mercury: install_ints install_init install_library
 
 .PHONY: install_ints
-install_ints: $(library.ints) $(library.int3s) $(library.opts)
+install_ints: $(library.ints) $(library.int3s) \
+		$(library.opts) $(library.trans_opts)
 	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
-	for file in $(library.ints) $(library.int3s) $(library.opts); do \
+	for file in $(library.ints) $(library.int3s) 
+			$(library.opts) $(library.trans_opts); \
+	do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
 		if cmp -s $$file $$target; then \
 			echo "$$target unchanged"; \
