@@ -17,7 +17,7 @@
 ** We should modify this to optionally use the caller-save registers.
 */
 
-#define NUM_REAL_REGS 7
+#define NUM_REAL_REGS 6
 
 register 	Word	mr0 __asm__("$9");
 register	Word	mr1 __asm__("$10");
