@@ -1320,7 +1320,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 		)
 	    ;
 		prog_out__write_context(Context),
-		io__write_string("Error: ambiguous predicate name"),
+		io__write_string("Error: ambiguous predicate name "),
 		hlds_out__write_simple_call_id(PredOrFunc, SymName/Arity),
 		io__nl,
 		prog_out__write_context(Context),
