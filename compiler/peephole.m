@@ -401,3 +401,15 @@ peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 peephole__match(decr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [incr_sp(N) - _ | Instrs].
+
+peephole__match(assign(Lval, Rval), Comment, _, _, Instrs0, Instrs) :-
+	Lval = succip,
+	Rval = lval(stackvar(N)),
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = decr_sp(N) - _,
+	opt_util__skip_comments_livevals(Instrs2, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = assign(stackvar(0), lval(succip)) - _,
+	Instr0 = assign(Lval, Rval) - Comment,
+	Instrs = [Instr0, Instr1 | Instrs4].

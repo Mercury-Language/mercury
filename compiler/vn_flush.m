@@ -1042,7 +1042,8 @@ vn__maybe_save_prev_value(Vnlval, Vn, Forbidden,
 		VnTables0, VnTables, Templocs0, Templocs, Instrs) :-
 	(
 		vn__search_uses(Vn, Uses, VnTables0),
-		Uses = [_|_],
+		vn__real_uses(Uses, RealUses, VnTables0),
+		\+ RealUses = [],
 		vn__is_const_expr(Vn, no, VnTables0),
 		vn__lookup_current_locs(Vn, Locs0, "vn__maybe_save_prev_value",
 			VnTables0),
@@ -1059,7 +1060,7 @@ vn__maybe_save_prev_value(Vnlval, Vn, Forbidden,
 				( list__member(PresumedLval, Forbidden) ->
 					vn__next_temploc(Templocs0, Templocs1,
 						Chosen)
-				; Uses = [_,_|_], \+ Presumed = vn_reg(_) ->
+				; RealUses = [_,_|_], \+ Presumed = vn_reg(_) ->
 					vn__next_temploc(Templocs0, Templocs1,
 						Chosen)
 				;

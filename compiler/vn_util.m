@@ -586,6 +586,17 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 		;
 			Uses = [Use0 | Uses1]
 		)
+	; Use0 = src_access(Vnlval) ->
+		(
+			vn__search_desired_value(Vnlval, Vn, VnTables),
+			vn__search_current_value(Vnlval, Vn, VnTables),
+			vn__search_uses(Vn, AccessUses, VnTables),
+			vn__real_uses(AccessUses, [], VnTables)
+		->
+			Uses = Uses1
+		;
+			Uses = [Use0 | Uses1]
+		)
 	;
 		Uses = [Use0 | Uses1]
 	).
