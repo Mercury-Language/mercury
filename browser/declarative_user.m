@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,15 +32,15 @@
 	% and is asked to respond about the truth of the node in the
 	% intended interpretation.
 	%
-:- pred query_user(list(decl_question), user_response, user_state, user_state,
-		io__state, io__state).
-:- mode query_user(in, out, in, out, di, uo) is det.
+:- pred query_user(list(decl_question)::in, user_response::out,
+	user_state::in, user_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.
 	%
-:- pred user_confirm_bug(decl_bug, decl_confirmation, user_state, user_state,
-		io__state, io__state).
-:- mode user_confirm_bug(in, out, in, out, di, uo) is det.
+:- pred user_confirm_bug(decl_bug::in, decl_confirmation::out,
+	user_state::in, user_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,9 +65,9 @@ user_state_init(InStr, OutStr, User) :-
 query_user(Nodes, Response, User0, User) -->
 	query_user_2(Nodes, [], Response, User0, User).
 
-:- pred query_user_2(list(decl_question), list(decl_question), user_response,
-		user_state, user_state, io__state, io__state).
-:- mode query_user_2(in, in, out, in, out, di, uo) is det.
+:- pred query_user_2(list(decl_question)::in, list(decl_question)::in,
+	user_response::out, user_state::in, user_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 query_user_2([], _, no_user_answer, User, User) -->
 	[].
@@ -129,8 +129,8 @@ decl_question_prompt(missing_answer(_, _), "Complete? ").
 decl_question_prompt(unexpected_exception(_, _), "Expected? ").
 
 :- pred browse_edt_node(decl_question::in, int::in, maybe(term_path)::out,
-		user_state::in, user_state::out, io__state::di,
-		io__state::uo) is det.
+	user_state::in, user_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 browse_edt_node(Node, ArgNum, MaybeMark, User0, User) -->
 	{
@@ -142,9 +142,8 @@ browse_edt_node(Node, ArgNum, MaybeMark, User0, User) -->
 	},
 	browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User).
 
-:- pred browse_decl_bug(decl_bug, int, user_state, user_state,
-		io__state, io__state).
-:- mode browse_decl_bug(in, in, in, out, di, uo) is det.
+:- pred browse_decl_bug(decl_bug::in, int::in, user_state::in, user_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 browse_decl_bug(Bug, ArgNum, User0, User) -->
 	{
@@ -162,8 +161,8 @@ browse_decl_bug(Bug, ArgNum, User0, User) -->
 	browse_atom_argument(Atom, ArgNum, _, User0, User).
 
 :- pred browse_atom_argument(decl_atom::in, int::in, maybe(term_path)::out,
-		user_state::in, user_state::out, io__state::di,
-		io__state::uo) is det.
+	user_state::in, user_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
 	{ Atom = atom(_, _, Args) },
@@ -332,8 +331,8 @@ user_confirm_bug(Bug, Response, User0, User) -->
 	% Display the node in user readable form on the current
 	% output stream.
 	%
-:- pred write_decl_question(decl_question, user_state, io__state, io__state).
-:- mode write_decl_question(in, in, di, uo) is det.
+:- pred write_decl_question(decl_question::in, user_state::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_question(wrong_answer(Atom), User) -->
 	write_decl_atom(User, "", Atom).
@@ -355,8 +354,8 @@ write_decl_question(unexpected_exception(Call, Exception), User) -->
 	io__print(User^outstr, Exception),
 	io__nl(User^outstr).
 
-:- pred write_decl_bug(decl_bug, user_state, io__state, io__state).
-:- mode write_decl_bug(in, in, di, uo) is det.
+:- pred write_decl_bug(decl_bug::in, user_state::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_bug(e_bug(EBug), User) -->
 	(
@@ -382,8 +381,8 @@ write_decl_bug(i_bug(IBug), User) -->
 	write_decl_atom(User, "Parent ", Parent),
 	write_decl_atom(User, "Call ", Call).
 
-:- pred write_decl_atom(user_state, string, decl_atom, io__state, io__state).
-:- mode write_decl_atom(in, in, in, di, uo) is det.
+:- pred write_decl_atom(user_state::in, string::in, decl_atom::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_atom(User, Indent, Atom) -->
 	io__write_string(User^outstr, Indent),
@@ -394,28 +393,26 @@ write_decl_atom(User, Indent, Atom) -->
 		% it out directly so that all arguments are put on the
 		% same line.
 		%
-	(
-		{ check_decl_atom_size(Indent, Atom) }
-	->
+	{ check_decl_atom_size(Indent, Atom, RemSize) },
+	( { RemSize > 0 } ->
 		write_decl_atom_direct(User^outstr, Atom)
 	;
 		write_decl_atom_limited(Atom, User)
 	).
 
-:- pred check_decl_atom_size(string, decl_atom).
-:- mode check_decl_atom_size(in, in) is semidet.
+:- pred check_decl_atom_size(string, decl_atom, int).
+:- mode check_decl_atom_size(in, in, out) is cc_multi.
 
-check_decl_atom_size(Indent, atom(_, Functor, Args)) :-
+check_decl_atom_size(Indent, atom(_, Functor, Args), RemSize) :-
 	decl_atom_size_limit(RemSize0),
 	string__length(Indent, I),
 	string__length(Functor, F),
 	P = 2,		% parentheses
 	RemSize1 = RemSize0 - I - F - P,
-	size_left_after_args(Args, RemSize1, RemSize),
-	RemSize > 0.
+	size_left_after_args(Args, RemSize1, RemSize).
 
 :- pred size_left_after_args(list(maybe(univ)), int, int).
-:- mode size_left_after_args(in, in, out) is det.
+:- mode size_left_after_args(in, in, out) is cc_multi.
 
 size_left_after_args([]) -->
 	[].
@@ -430,8 +427,8 @@ size_left_after_args([no | As]) -->
 
 decl_atom_size_limit(79).
 
-:- pred write_decl_atom_limited(decl_atom, user_state, io__state, io__state).
-:- mode write_decl_atom_limited(in, in, di, uo) is det.
+:- pred write_decl_atom_limited(decl_atom::in, user_state::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 write_decl_atom_limited(atom(PredOrFunc, Functor, Args), User) -->
 	write_decl_atom_category(User^outstr, PredOrFunc),
@@ -448,8 +445,8 @@ write_decl_atom_category(OutStr, predicate) -->
 write_decl_atom_category(OutStr, function) -->
 	io__write_string(OutStr, "func ").
 
-:- pred print_decl_atom_arg(user_state, maybe(univ), io__state, io__state).
-:- mode print_decl_atom_arg(in, in, di, uo) is det.
+:- pred print_decl_atom_arg(user_state::in, maybe(univ)::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 print_decl_atom_arg(User, yes(Arg)) -->
 	io__write_string(User^outstr, "\t"),

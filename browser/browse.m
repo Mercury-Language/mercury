@@ -26,17 +26,17 @@
 	% The interactive term browser.  The caller type will be `browse', and
 	% the default format for the `browse' caller type will be used.
 	%
-:- pred browse__browse(T, io__input_stream, io__output_stream,
-			maybe(list(dir)), browser_persistent_state,
-			browser_persistent_state, io__state, io__state).
-:- mode browse__browse(in, in, in, out, in, out, di, uo) is det.
+:- pred browse__browse(T::in, io__input_stream::in,
+	io__output_stream::in, maybe(list(dir))::out,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
-:- pred browse__browse_format(T, io__input_stream, io__output_stream,
-			portray_format, browser_persistent_state,
-			browser_persistent_state, io__state, io__state).
-:- mode browse__browse_format(in, in, in, in, in, out, di, uo) is det.
+:- pred browse__browse_format(T::in, io__input_stream::in,
+	io__output_stream::in, portray_format::in,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 	% A version of browse__browse that works on synthetic terms
 	% in the sense of browser_info:browser_term.
@@ -44,7 +44,7 @@
 :- pred browse__browse_synthetic(string::in, list(univ)::in, bool::in,
 	io__input_stream::in, io__output_stream::in, maybe(list(dir))::out,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 	% A version of browse__browse_format that works on synthetic terms
 	% in the sense of browser_info:browser_term.
@@ -52,42 +52,46 @@
 :- pred browse__browse_format_synthetic(string::in, list(univ)::in, bool::in,
 	io__input_stream::in, io__output_stream::in, portray_format::in,
 	browser_persistent_state::in, browser_persistent_state::out,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 	% The browser interface for the external debugger.  The caller type
 	% will be `browse', and the default format will be used.
 	%
-:- pred browse__browse_external(T, io__input_stream, io__output_stream,
-			browser_persistent_state, browser_persistent_state,
-			io__state, io__state).
-:- mode browse__browse_external(in, in, in, in, out, di, uo) is det.
+:- pred browse__browse_external(T::in, io__input_stream::in,
+	io__output_stream::in,
+	browser_persistent_state::in, browser_persistent_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 	% The non-interactive term browser.  The caller type should be either
 	% `print' or `print_all'.  The default portray format for that
 	% caller type is used.
 	%
 :- pred browse__print(T::in, io__output_stream::in, browse_caller_type::in,
-	browser_persistent_state::in, io__state::di, io__state::uo) is det.
+	browser_persistent_state::in, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% A version of browse__print that works on synthetic terms
 	% in the sense of browser_info:browser_term.
 	%
 :- pred browse__print_synthetic(string::in, list(univ)::in, bool::in,
 	io__output_stream::in, browse_caller_type::in,
-	browser_persistent_state::in, io__state::di, io__state::uo) is det.
+	browser_persistent_state::in, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% As above, except that the supplied format will override the default.
 	%
 :- pred browse__print_format(T::in, io__output_stream::in,
 	browse_caller_type::in, portray_format::in,
-	browser_persistent_state::in, io__state::di, io__state::uo) is det.
+	browser_persistent_state::in, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% A version of browse__print_format that works on synthetic terms
 	% in the sense of browser_info:browser_term.
 	%
 :- pred browse__print_format_synthetic(string::in, list(univ)::in, bool::in,
 	io__output_stream::in, browse_caller_type::in, portray_format::in,
-	browser_persistent_state::in, io__state::di, io__state::uo) is det.
+	browser_persistent_state::in, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% Estimate the total term size, in characters,
 	% We count the number of characters in the functor,
@@ -105,10 +109,10 @@
 	% negative, term_size_left_from_max will return a negative difference
 	% but the value will usually not be accurate, since in such cases
 	% by definition the caller is not interested in the accurate value.
-:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is cc_multi.
 
 :- pred browser_term_size_left_from_max(browser_term::in,
-	int::in, int::out) is det.
+	int::in, int::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -189,7 +193,8 @@ browse__print_format_synthetic(FunctorString, Args, IsFunc, OutputStream,
 
 :- pred browse__print_common(browser_term::in, io__output_stream::in,
 	browse_caller_type::in, maybe(portray_format)::in,
-	browser_persistent_state::in, io__state::di, io__state::uo) is det.
+	browser_persistent_state::in, io__state::di, io__state::uo)
+	is cc_multi.
 
 browse__print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State) -->
 	{ Info = browser_info__init(BrowserTerm, MaybeFormat, State) },
@@ -246,7 +251,8 @@ browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
 :- pred browse_common(debugger::in, browser_term::in, io__input_stream::in,
 	io__output_stream::in, maybe(portray_format)::in,
 	maybe(list(dir))::out, browser_persistent_state::in,
-	browser_persistent_state::out, io__state::di, io__state::uo) is det.
+	browser_persistent_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 		MaybeMark, State0, State) -->
@@ -283,9 +289,8 @@ synthetic_term_to_browser_term(FunctorString, Args, IsFunc, BrowserTerm) :-
 			yes(Return))
 	).
 
-:- pred browse_main_loop(debugger, browser_info, browser_info, 
-		io__state, io__state).
-:- mode browse_main_loop(in, in, out, di, uo) is det.
+:- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out, 
+	io__state::di, io__state::uo) is cc_multi.
 
 browse_main_loop(Debugger, Info0, Info) -->
 	(
@@ -313,15 +318,17 @@ browse_main_loop(Debugger, Info0, Info) -->
 	).
 
 :- pred startup_message(debugger::in, io__state::di, io__state::uo) is det.
+
 startup_message(Debugger) -->
 	write_string_debugger(Debugger, "-- Simple Mercury Term Browser.\n"),
 	write_string_debugger(Debugger, "-- Type \"help\" for help.\n\n").
 
 :- pred prompt(string::out) is det.
+
 prompt("browser> ").
 
 :- pred run_command(debugger::in, command::in, bool::out, browser_info::in,
-		browser_info::out, io__state::di, io__state::uo) is det.
+	browser_info::out, io__state::di, io__state::uo) is cc_multi.
 
 run_command(Debugger, Command, Quit, Info0, Info) -->
 	% XXX The commands `set', `ls' and `print' should allow the format
@@ -452,9 +459,9 @@ help(Debugger) -->
 % Various pretty-print routines
 %
 
-:- pred portray(debugger, browse_caller_type, maybe(portray_format),
-		browser_info, io__state, io__state).
-:- mode portray(in, in, in, in, di, uo) is det.
+:- pred portray(debugger::in, browse_caller_type::in,
+	maybe(portray_format)::in, browser_info::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 portray(Debugger, Caller, MaybeFormat, Info) -->
 	{ browser_info__get_format(Info, Caller, MaybeFormat, Format) },
@@ -480,17 +487,16 @@ portray(Debugger, Caller, MaybeFormat, Info) -->
 	),
 	nl_debugger(Debugger).
 
-
-:- pred portray_path(debugger, browse_caller_type, maybe(portray_format),
-		browser_info, path, io__state, io__state).
-:- mode portray_path(in, in, in, in, in, di, uo) is det.
+:- pred portray_path(debugger::in, browse_caller_type::in,
+	maybe(portray_format)::in, browser_info::in, path::in,
+	io__state::di, io__state::uo) is cc_multi.
 
 portray_path(Debugger, Caller, MaybeFormat, Info0, Path) -->
 	{ set_path(Path, Info0, Info) },
 	portray(Debugger, Caller, MaybeFormat, Info).
 
 :- pred portray_flat(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 portray_flat(Debugger, BrowserTerm, Params) -->
 	%
@@ -536,7 +542,7 @@ portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
 	).
 
 :- pred portray_verbose(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 portray_verbose(Debugger, BrowserTerm, Params) -->
 	{ browser_term_to_string_verbose(BrowserTerm, Params ^ size,
@@ -552,7 +558,7 @@ portray_raw_pretty(Debugger, BrowserTerm, Params) -->
 	write_string_debugger(Debugger, Str).
 
 :- pred portray_pretty(debugger::in, browser_term::in, format_params::in,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 portray_pretty(Debugger, BrowserTerm, Params) -->
 	{ sized_pretty__browser_term_to_string_line(BrowserTerm,
@@ -570,7 +576,7 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 	->
 		RemainingSize = MaxSize
 	;
-		limited_deconstruct(univ_value(Univ), MaxSize,
+		limited_deconstruct_cc(univ_value(Univ), MaxSize,
 			Functor, Arity, Args)
 	->
 		string__length(Functor, FunctorSize),
@@ -611,7 +617,7 @@ browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
 %
 
 :- pred browser_term_to_string(browser_term::in, int::in, int::in,
-	string::out) is det.
+	string::out) is cc_multi.
 
 browser_term_to_string(BrowserTerm, MaxSize, MaxDepth, Str) :-
 	CurSize = 0,
@@ -623,15 +629,15 @@ browser_term_to_string(BrowserTerm, MaxSize, MaxDepth, Str) :-
 	% further subterms compressed. We don't just stop printing.
 	% XXX: Is this reasonable?
 :- pred browser_term_to_string_2(browser_term::in, int::in, int::in, int::out,
-	int::in, int::in, string::out) is det.
+	int::in, int::in, string::out) is cc_multi.
 
 browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Str) :-
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
-		limited_deconstruct_browser_term(BrowserTerm, MaxSize, Functor,
-			_Arity, Args, MaybeReturn)
+		limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
+			Functor, _Arity, Args, MaybeReturn)
 	->
 		CurSize1 = CurSize + 1,
 		CurDepth1 = CurDepth + 1,
@@ -657,7 +663,7 @@ browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, NewSize,
 	).
 
 :- pred args_to_string_list(list(univ)::in, int::in, int::in, int::out,
-	int::in, int::in, list(string)::out) is det.
+	int::in, int::in, list(string)::out) is cc_multi.
 
 args_to_string_list([], _MaxSize, CurSize, NewSize,
 		_MaxDepth, _CurDepth, Strs) :-
@@ -695,10 +701,10 @@ comma_string_list(Args) = Str :-
 		string__append_list([S1, ", ", Rest], Str)
 	).
 
-:- pred browser_term_compress(browser_term::in, string::out) is det.
+:- pred browser_term_compress(browser_term::in, string::out) is cc_multi.
 
 browser_term_compress(BrowserTerm, Str) :-
-	functor_browser_term(BrowserTerm, Functor, Arity, IsFunc),
+	functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc),
 	( Arity = 0 ->
 		Str = Functor
 	;
@@ -738,7 +744,7 @@ browser_term_to_string_raw_pretty(synthetic_term(Functor, Args, MaybeReturn),
 %
 
 :- pred browser_term_to_string_verbose(browser_term::in, int::in, int::in,
-	int::in, int::in, string::out) is det.
+	int::in, int::in, string::out) is cc_multi.
 
 browser_term_to_string_verbose(BrowserTerm, MaxSize, MaxDepth, X, Y, Str) :-
 	CurSize = 0,
@@ -749,15 +755,15 @@ browser_term_to_string_verbose(BrowserTerm, MaxSize, MaxDepth, X, Y, Str) :-
 	unlines(ClippedFrame, Str).
 
 :- pred browser_term_to_string_verbose_2(browser_term::in, int::in, int::in,
-	int::out, int::in, int::in, frame::out) is det.
+	int::out, int::in, int::in, frame::out) is cc_multi.
 
 browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Frame) :-
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
-		limited_deconstruct_browser_term(BrowserTerm, MaxSize, Functor,
-			_Arity, Args0, MaybeReturn)
+		limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
+			Functor, _Arity, Args0, MaybeReturn)
 	->
 		% XXX we should consider formatting function terms differently.
 		(
@@ -780,7 +786,7 @@ browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize, NewSize,
 	).
 
 :- pred args_to_string_verbose_list(list(univ)::in, int::in, int::in,
-	int::in, int::out, int::in, int::in, frame::out) is det.
+	int::in, int::out, int::in, int::in, frame::out) is cc_multi.
 
 args_to_string_verbose_list([], _ArgNum, _MaxSize, CurSize, NewSize,
 		_MaxDepth, _CurDepth, []) :-

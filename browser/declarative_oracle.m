@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,15 +51,15 @@
 	% state is threaded through so its contents can be updated after
 	% user responses.
 	%
-:- pred query_oracle(list(decl_question), oracle_response, oracle_state,
-		oracle_state, io__state, io__state).
-:- mode query_oracle(in, out, in, out, di, uo) is det.
+:- pred query_oracle(list(decl_question)::in, oracle_response::out,
+	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 	% Confirm that the node found is indeed an e_bug or an i_bug.
 	%
-:- pred oracle_confirm_bug(decl_bug, decl_confirmation, oracle_state,
-		oracle_state, io__state, io__state).
-:- mode oracle_confirm_bug(in, out, in, out, di, uo) is det.
+:- pred oracle_confirm_bug(decl_bug::in, decl_confirmation::out,
+	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 %-----------------------------------------------------------------------------%
 

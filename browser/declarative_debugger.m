@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,10 +161,9 @@
 		diagnoser_state(R)).
 :- mode diagnoser_state_init(in, in, out) is det.
 
-:- pred diagnosis(S, R, diagnoser_response, diagnoser_state(R),
-		diagnoser_state(R), io__state, io__state)
-			<= annotated_trace(S, R).
-:- mode diagnosis(in, in, out, in, out, di, uo) is det.
+:- pred diagnosis(S::in, R::in, diagnoser_response::out,
+	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -214,10 +213,10 @@ diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
 	handle_analyser_response(Store, AnalyserResponse, Response,
 			Diagnoser1, Diagnoser).
 
-:- pred handle_analyser_response(S, analyser_response(edt_node(R)),
-		diagnoser_response, diagnoser_state(R), diagnoser_state(R),
-		io__state, io__state) <= annotated_trace(S, R).
-:- mode handle_analyser_response(in, in, out, in, out, di, uo) is det.
+:- pred handle_analyser_response(S::in, analyser_response(edt_node(R))::in,
+	diagnoser_response::out,
+	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
 handle_analyser_response(_, no_suspects, no_bug_found, D, D) -->
 	io__write_string("No bug found.\n").
@@ -244,10 +243,10 @@ handle_analyser_response(Store, require_explicit(Tree), Response,
 		Response = require_subtree(Event, Seqno)
 	}.
 
-:- pred handle_oracle_response(S, oracle_response, diagnoser_response,
-		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
-			<= annotated_trace(S, R).
-:- mode handle_oracle_response(in, in, out, in, out, di, uo) is det.
+:- pred handle_oracle_response(S::in, oracle_response::in,
+	diagnoser_response::out,
+	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
 handle_oracle_response(Store, oracle_answers(Answers), Response, Diagnoser0,
 		Diagnoser) -->
@@ -265,9 +264,9 @@ handle_oracle_response(_, no_oracle_answers, no_bug_found, D, D) -->
 handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 	io__write_string("Diagnosis aborted.\n").
 
-:- pred confirm_bug(decl_bug, diagnoser_response, diagnoser_state(R),
-		diagnoser_state(R), io__state, io__state).
-:- mode confirm_bug(in, out, in, out, di, uo) is det.
+:- pred confirm_bug(decl_bug::in, diagnoser_response::out,
+	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
 	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
@@ -301,10 +300,10 @@ diagnoser_state_init_store(InStr, OutStr, Diagnoser) :-
 	% Export a monomorphic version of diagnosis/9, to make it
 	% easier to call from C code.
 	%
-:- pred diagnosis_store(trace_node_store, trace_node_id, diagnoser_response,
-		diagnoser_state(trace_node_id), diagnoser_state(trace_node_id),
-		io__state, io__state).
-:- mode diagnosis_store(in, in, out, in, out, di, uo) is det.
+:- pred diagnosis_store(trace_node_store::in, trace_node_id::in,
+	diagnoser_response::out, diagnoser_state(trace_node_id)::in,
+	diagnoser_state(trace_node_id)::out, io__state::di, io__state::uo)
+	is cc_multi.
 
 :- pragma export(diagnosis_store(in, in, out, in, out, di, uo),
 		"MR_DD_decl_diagnosis").

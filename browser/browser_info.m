@@ -140,21 +140,21 @@
 
 %---------------------------------------------------------------------------%
 
-% These three predicates are like the deconstruct, limited_deconstruct and
-% functor procedures in std_util, except they work on browser_terms.
+% These three predicates are like the deconstruct_cc, limited_deconstruct_cc
+% and functor_cc procedures in std_util, except they work on browser_terms.
 % This requires them to have an extra argument (the last). For deconstruct
 % and limited_deconstruct, this returns the return value if the browser term
 % represents a function call. For functor, it says whether the browser term
 % represents a function call.
 
-:- pred deconstruct_browser_term(browser_term::in,
-	string::out, int::out, list(univ)::out, maybe(univ)::out) is det.
+:- pred deconstruct_browser_term_cc(browser_term::in,
+	string::out, int::out, list(univ)::out, maybe(univ)::out) is cc_multi.
 
-:- pred limited_deconstruct_browser_term(browser_term::in, int::in,
-	string::out, int::out, list(univ)::out, maybe(univ)::out) is semidet.
+:- pred limited_deconstruct_browser_term_cc(browser_term::in, int::in,
+	string::out, int::out, list(univ)::out, maybe(univ)::out) is cc_nondet.
 
-:- pred functor_browser_term(browser_term::in, string::out, int::out,
-	bool::out) is det.
+:- pred functor_browser_term_cc(browser_term::in, string::out, int::out,
+	bool::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
@@ -448,21 +448,21 @@ browser_persistent_state_type(type_of(State)) :-
 
 %---------------------------------------------------------------------------%
 
-deconstruct_browser_term(BrowserTerm, Functor, Arity, Args, MaybeReturn) :-
+deconstruct_browser_term_cc(BrowserTerm, Functor, Arity, Args, MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		deconstruct(univ_value(Univ), Functor, Arity, Args),
+		deconstruct_cc(univ_value(Univ), Functor, Arity, Args),
 		MaybeReturn = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
 		list__length(Args, Arity)
 	).
 
-limited_deconstruct_browser_term(BrowserTerm, Limit, Functor, Arity, Args,
+limited_deconstruct_browser_term_cc(BrowserTerm, Limit, Functor, Arity, Args,
 		MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		limited_deconstruct(univ_value(Univ), Limit,
+		limited_deconstruct_cc(univ_value(Univ), Limit,
 			Functor, Arity, Args),
 		MaybeReturn = no
 	;
@@ -470,10 +470,10 @@ limited_deconstruct_browser_term(BrowserTerm, Limit, Functor, Arity, Args,
 		list__length(Args, Arity)
 	).
 
-functor_browser_term(BrowserTerm, Functor, Arity, IsFunc) :-
+functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		functor(univ_value(Univ), Functor, Arity),
+		functor_cc(univ_value(Univ), Functor, Arity),
 		IsFunc = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),

@@ -169,12 +169,12 @@
 	% of width LineWidth. It may throw an exception or cause a runtime
 	% abort if the term in question has no canonical representation.
 :- pred sized_pretty__univ_to_string_line(univ::in, int::in, int::in,
-	string::out) is det.
+	string::out) is cc_multi.
 
 	% The same as sized_pretty__univ_to_string_line, except works on
 	% browser_terms.
 :- pred sized_pretty__browser_term_to_string_line(browser_term::in,
-	int::in, int::in, string::out) is det.
+	int::in, int::in, string::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
@@ -249,7 +249,7 @@
 		%	- adjusted measure parameter(s).
 	pred measured_split(browser_term::in, MeasureParams::in, T::in,
 		int::in, bool::in, T::out, maybe(T)::out, T::out,
-		MeasureParams::out) is det
+		MeasureParams::out) is cc_multi
 ].
 
 %---------------------------------------------------------------------------%
@@ -270,7 +270,7 @@ sized_pretty__univ_to_string_line(Univ, LineWidth, Lines, String) :-
 sized_pretty__browser_term_to_string_line(BrowserTerm, LineWidth, Lines,
 		String) :-
 	Params = measure_params(LineWidth),
-	functor_browser_term(BrowserTerm, _Functor, Arity, _MaybeReturn),
+	functor_browser_term_cc(BrowserTerm, _Functor, Arity, _MaybeReturn),
 	(
 		Arity \= 0,
 		Lines \= 0,
@@ -294,7 +294,7 @@ sized_pretty__browser_term_to_string_line(BrowserTerm, LineWidth, Lines,
 	% In the Second pass the space is evenly distributed between
 	% the terms and therefore the subterms are deconstructed evenly.
 :- pred annotate_with_size(browser_term::in, MeasureParams::in, T::in,
-	size_annotated_term(T)::out) is det
+	size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
 
 annotate_with_size(BrowserTerm, Params, Limit, SizedTerm2) :-
@@ -304,13 +304,13 @@ annotate_with_size(BrowserTerm, Params, Limit, SizedTerm2) :-
 %---------------------------------------------------------------------------%
 	
 :- pred first_pass(browser_term::in, MeasureParams::in, T::in,
-	size_annotated_term(T)::out) is det
+	size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
 
 first_pass(BrowserTerm, Params, Limit, Size) :-
 	MaxFunctors = maximum_functors(Limit, Params),
 	(
-		limited_deconstruct_browser_term(BrowserTerm, MaxFunctors,
+		limited_deconstruct_browser_term_cc(BrowserTerm, MaxFunctors,
 			Functor, Arity, Args, _MaybeReturn)
 	->
 		measured_split(BrowserTerm, Params, Limit, Arity, yes,
@@ -341,7 +341,7 @@ first_pass(BrowserTerm, Params, Limit, Size) :-
 	% annotating the arguments.
 :- pred annotate_args_with_size(list(univ)::in, maybe(T)::in,
 	MeasureParams::in, T::in, T::in, T::out, bool::in, bool::out, 
-	size_annotated_args(T)::out) is det <= measure_with_params(T, 
+	size_annotated_args(T)::out) is cc_multi <= measure_with_params(T, 
 	MeasureParams).
 
 annotate_args_with_size([], _, _, _, SoFar, SoFar, Exact, Exact, []).
@@ -407,7 +407,7 @@ extract_browser_term_from_annotation(at_least(BrowserTerm, _, _)) =
 	% If a term can be fully printed within the given space,
 	% ("exact" type) then the Term is not altered.
 :- pred second_pass(size_annotated_term(T)::in, MeasureParams::in, T::in,
-	size_annotated_term(T)::out) is det 
+	size_annotated_term(T)::out) is cc_multi 
 	<= measure_with_params(T, MeasureParams).
 
 second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
@@ -499,7 +499,7 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
 	% represented would be annoted again with a new limit
 	% (SplitLimit). The rest of the terms are left alone.
 :- pred process_args(MeasureParams::in, size_annotated_args(T)::in, T::in, 
-	T::in, size_annotated_args(T)::out, T::out) is det <= 
+	T::in, size_annotated_args(T)::out, T::out) is cc_multi <= 
 	measure_with_params(T, MeasureParams).
 
 process_args(_, [], _, _, [], zero_measure).
@@ -644,13 +644,16 @@ zero_functor_count = functor_count(0).
 :- pred functor_count_split(browser_term::in, no_measure_params::in,
 	functor_count::in, int::in, bool::in, functor_count::out,
 	maybe(functor_count)::out, functor_count::out, no_measure_params::out)
-	is det.
+	is cc_multi.
 
 functor_count_split(_, Params, functor_count(Limit), Arity, _,
 		functor_count(1), MaybeArgLimit, functor_count(Limit),
 		Params) :-
 	( Arity = 0 ->
-		MaybeArgLimit = no
+		% This artificial detism cast shuts up a warning about
+		% the true detism of functor_count_split being det.
+		MaybeArgLimit0 = no,
+		cc_multi_equal(MaybeArgLimit0, MaybeArgLimit)
 	;
 		( Limit =< Arity + 1 ->			
 			MaybeArgLimit = no
@@ -714,12 +717,13 @@ zero_char_count = char_count(0).
 :- pred char_count_split(browser_term::in, no_measure_params::in,
 	char_count::in, int::in, bool::in, char_count::out,
 	maybe(char_count)::out, char_count::out, no_measure_params::out)
-	is det.
+	is cc_multi.
 
 char_count_split(BrowserTerm, Params, char_count(Limit), Arity, Check, 
 		char_count(FunctorSize), MaybeArgLimit, char_count(Limit),
 		Params) :-
-	deconstruct_browser_term(BrowserTerm, Functor, _, Args, MaybeReturn),
+	deconstruct_browser_term_cc(BrowserTerm, Functor, _, Args,
+		MaybeReturn),
 	( Check = yes ->
 		get_arg_length(Args, TotalLength, _)
 	;
@@ -884,13 +888,13 @@ zero_size_count = character_count(0).
 	% the whole term should be printed on a single line.
 :- pred size_count_split(browser_term::in, measure_params::in, size_count::in,
 	int::in, bool::in, size_count::out, maybe(size_count)::out,
-	size_count::out, measure_params::out) is det.
+	size_count::out, measure_params::out) is cc_multi.
 
 size_count_split(BrowserTerm, Params, Limit, Arity, Check, FunctorSize, 
 		MaybeArgLimit, NewLimit, NewParams) :-
 	% LineWidth is length of the line in which the functor is printed.
 	Params = measure_params(LineWidth),
-	deconstruct_browser_term(BrowserTerm, Functor, ActualArity, Args,
+	deconstruct_browser_term_cc(BrowserTerm, Functor, ActualArity, Args,
 		MaybeReturn),
 	FSize = string__length(Functor) + 2 * (ActualArity),
 	( Check = yes ->
