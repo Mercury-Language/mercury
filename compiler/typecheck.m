@@ -23,30 +23,6 @@
 % 	Access predicates for the typecheck_info data structure are called
 % 	typecheck_info_*.
 %
-% Note that DCGS are used for THREE different purposes in this file:
-%
-%	1.  For accumulating io__states as usual.
-%
-%	2.  For accumulating typecheck_infos, which contain:
-%		- an io_state, which is modified if we need to
-%		  write out an error message
-%		- various semi-global info which doesn't change often,
-%		  namely the pred_id and prog_context of the clause
-%		  we are type-checking
-%		- a type_assign_set which stores the set of possible
-%		  type assignments and is modified as we traverse through
-%		  the clause
-%
-%	3.  For accumulating type_assign_sets.  This is when we are
-%	    type-checking a single atomic construct (unification or
-%	    predicate), and we are iterating through all the
-%	    possible existing type-assignments to accumulate a new
-%	    type-assignment set.
-%
-% This can be a little confusing if you're not aware of it, so be
-% careful to look at the pred declarations to see what each DCG predicate
-% is actually accumulating.
-%
 % There are four sorts of types:
 %
 % 1) discriminated unions:
@@ -192,7 +168,7 @@ typecheck(!Module, FoundError, ExceededIterationLimit, !IO) :-
 	% Type-check the code for all the predicates in a module.
 
 :- pred typecheck_module(module_info::in, module_info::out,
-	bool::out, bool::out, io__state::di, io__state::uo) is det.
+	bool::out, bool::out, io::di, io::uo) is det.
 
 typecheck_module(!Module, FoundError, ExceededIterationLimit, !IO) :-
 	module_info_predids(!.Module, PredIds),
@@ -207,7 +183,7 @@ typecheck_module(!Module, FoundError, ExceededIterationLimit, !IO) :-
 
 :- pred typecheck_to_fixpoint(int::in, int::in, list(pred_id)::in,
 	module_info::in, module_info::out, bool::out, bool::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
 		FoundError, ExceededIterationLimit, !IO) :-
@@ -256,7 +232,7 @@ typecheck_report_max_iterations_exceeded -->
 
 :- pred typecheck_module_one_iteration(int::in, list(pred_id)::in,
 	module_info::in, module_info::out, bool::in, bool::out,
-	bool::in, bool::out, io__state::di, io__state::uo) is det.
+	bool::in, bool::out, io::di, io::uo) is det.
 
 typecheck_module_one_iteration(_, [], !ModuleInfo, !Error, !Changed, !IO).
 typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
@@ -308,7 +284,7 @@ typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
 
 :- pred typecheck_pred_if_needed(int::in, pred_id::in,
 	pred_info::in, pred_info::out, module_info::in, module_info::out,
-	bool::out, bool::out, io__state::di, io__state::uo) is det.
+	bool::out, bool::out, io::di, io::uo) is det.
 
 typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
 		Error, Changed, !IO) :-
@@ -344,7 +320,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
 
 :- pred typecheck_pred(int::in, pred_id::in,
 	pred_info::in, pred_info::out, module_info::in, module_info::out,
-	bool::out, bool::out, io__state::di, io__state::uo) is det.
+	bool::out, bool::out, io::di, io::uo) is det.
 
 typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		!IO) :-
@@ -5415,7 +5391,7 @@ output_type(Type0, TVarSet, HeadTypeParams, !IO) :-
 	mercury_output_term(Type, TVarSet, no, !IO).
 
 :- pred write_types_list(prog_context::in, list(string)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 write_types_list(_Context, []) --> [].
 write_types_list(Context, [Type | Types]) -->
@@ -6220,4 +6196,6 @@ find_first(Pred, [X | Xs], Result) :-
 		find_first(Pred, Xs, Result)
 	).
 
+%-----------------------------------------------------------------------------%
+:- end_module typecheck.
 %-----------------------------------------------------------------------------%
