@@ -355,7 +355,7 @@ constraint__checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 %       globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
 %		IOState0, IOState1),
 	IOState0 = IOState1,
-	( true ->
+	( semidet_succeed ->
 		constraint__checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
 	;
 		IOState = IOState1
@@ -439,7 +439,7 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 %       globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
 %		IOState0, IOState1),
 	IOState0 = IOState1,
-	( true ->
+	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent,

@@ -109,21 +109,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 
 mercury_output_item_list([]) --> [].
 mercury_output_item_list([Item - Context | Items]) -->
-	( mercury_output_item(Item, Context) ->
-		[]
-	;
-		% mercury_output_item should always succeed
-		% if it fails, report an internal error
-		io__stderr_stream(StdErr),
-		io__set_output_stream(StdErr, OldStream),
-		io__write_string("\n"),
-		prog_out__write_context(Context),
-		io__write_string("mercury_to_mercury internal error.\n"),
-		io__write_string("Failed to process the following item:\n"),
-		io__write_anything(Item),
-		io__write_string("\n"),
-		io__set_output_stream(OldStream, _)
-	),
+	mercury_output_item(Item, Context),
 	mercury_output_item_list(Items).
 
 %-----------------------------------------------------------------------------%
