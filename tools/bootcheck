@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne.
+# Copyright (C) 1995-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -309,10 +309,8 @@ then
 	cd $root/stage2
 	mkdir library
 	cd library
-	$LN_S $root/library/library.nu.nl.in .
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
-	$LN_S $root/library/*.nl .
 	cp $root/library/Mmake* .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage2
@@ -518,10 +516,8 @@ then
 	cd $root/stage3
 	mkdir library
 	cd library
-	$LN_S $root/library/library.nu.nl.in .
 	$LN_S $root/library/[a-l]*.m .
 	$LN_S $root/library/[m-z]*.m .
-	$LN_S $root/library/*.nl .
 	cp $root/library/Mmake* .
 	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage3
