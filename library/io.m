@@ -5751,8 +5751,7 @@ io__getenv(_, _) :-
 
 
 io__setenv(Var, Value) :-
-	string__format("%s=%s", [s(Var), s(Value)], EnvString),
-	impure io__putenv(EnvString).
+	impure io__putenv(Var ++ "=" ++ Value).
 
 
 :- impure pred io__putenv(string).
