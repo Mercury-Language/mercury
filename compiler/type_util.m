@@ -400,6 +400,11 @@
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
 
+	% This does the same as type_list_subsumes, but aborts instead of
+	% failing.
+:- pred type_list_subsumes_det(list(type), list(type), tsubst).
+:- mode type_list_subsumes_det(in, in, out) is det.
+
 	% arg_type_list_subsumes(TVarSet, ArgTypes,
 	%       CalleeTVarSet, CalleeExistQVars, CalleeArgTypes).
 	%
@@ -1487,6 +1492,13 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
+
+type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
+	( type_list_subsumes(TypesA, TypesB, TypeSubstPrime) ->
+		TypeSubst = TypeSubstPrime
+	;
+		error("type_list_subsumes_det: type_list_subsumes failed")
+	).
 
 arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
 		CalleeExistQVars0, CalleeArgTypes0) :-

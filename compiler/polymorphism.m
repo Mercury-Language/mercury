@@ -533,7 +533,7 @@ polymorphism__process_pred(PredId, !ModuleInfo) :-
 	pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
 
 	%
-	% do a pass over the proc_infos, copying the relevant information
+	% Do a pass over the proc_infos, copying the relevant information
 	% from the clauses_info and the poly_info, and updating all
 	% the argmodes with modes for the extra arguments.
 	%
@@ -570,7 +570,7 @@ polymorphism__process_clause_info(PredInfo0, ModuleInfo0,
 		Clauses0, Clauses, Info1, Info),
 
 	%
-	% set the new values of the fields in clauses_info
+	% Set the new values of the fields in clauses_info.
 	%
 	poly_info_get_varset(Info, VarSet),
 	poly_info_get_var_types(Info, VarTypes),
@@ -593,7 +593,7 @@ polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 	( pred_info_is_imported(PredInfo0) ->
 		true
 	;
-		!.Clause = clause(ProcIds, Goal0, Lang, Context),
+		Goal0 = !.Clause ^ clause_body,
 		%
 		% process any polymorphic calls inside the goal
 		%
@@ -610,7 +610,7 @@ polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 		pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
 		polymorphism__fixup_quantification(NewHeadVars, ExistQVars,
 			Goal2, Goal, !Info),
-		!:Clause = clause(ProcIds, Goal, Lang, Context)
+		!:Clause = !.Clause ^ clause_body := Goal
 	).
 
 :- pred polymorphism__process_proc_in_table(pred_info::in, clauses_info::in,
@@ -900,26 +900,26 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 		!Info) :-
 	poly_info_get_var_types(!.Info, VarTypes0),
 	pred_info_arg_types(PredInfo, ArgTypes),
-	pred_info_get_class_context(PredInfo, ClassContext),
+	pred_info_get_class_context(PredInfo, PredClassContext),
 
 	%
 	% Figure out the bindings for any existentially quantified
 	% type variables in the head.
 	%
-	ClassContext = constraints(_UnivConstraints, ExistConstraints0),
+	PredExistConstraints = PredClassContext ^ exist_constraints,
 	( map__is_empty(VarTypes0) ->
 		% this can happen for compiler-generated procedures
-		map__init(TypeSubst)
+		map__init(PredToActualTypeSubst)
 	;
 		map__apply_to_list(HeadVars0, VarTypes0, ActualArgTypes),
 		type_list_subsumes(ArgTypes, ActualArgTypes, ArgTypeSubst)
 	->
-		TypeSubst = ArgTypeSubst
+		PredToActualTypeSubst = ArgTypeSubst
 	;
 		% this can happen for unification procedures
 		% of equivalence types
 		% error("polymorphism.m: type_list_subsumes failed")
-		map__init(TypeSubst)
+		map__init(PredToActualTypeSubst)
 	),
 
 	%
@@ -929,16 +929,15 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 	ExistQVarsForCall = [],
 	Goal0 = _ - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
-	apply_rec_subst_to_constraint_list(TypeSubst, ExistConstraints0,
-		ExistConstraints),
-	polymorphism__make_typeclass_info_vars(ExistConstraints,
+	apply_rec_subst_to_constraint_list(PredToActualTypeSubst,
+		PredExistConstraints, ActualExistConstraints),
+	polymorphism__make_typeclass_info_vars(ActualExistConstraints,
 		ExistQVarsForCall, Context, ExistTypeClassVars,
 		ExtraTypeClassGoals, !Info),
-	polymorphism__update_typeclass_infos(ExistConstraints,
+	polymorphism__update_typeclass_infos(ActualExistConstraints,
 		ExistTypeClassVars, !Info),
-	polymorphism__assign_var_list(
-		ExistTypeClassInfoHeadVars, ExistTypeClassVars,
-		ExtraTypeClassUnifyGoals),
+	polymorphism__assign_var_list(ExistTypeClassInfoHeadVars,
+		ExistTypeClassVars, ExtraTypeClassUnifyGoals),
 
 	%
 	% apply the type bindings to the unconstrained type variables
@@ -948,15 +947,13 @@ polymorphism__produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
 	term__var_list_to_term_list(UnconstrainedTVars,
 		UnconstrainedTVarTerms),
 	term__apply_substitution_to_list(UnconstrainedTVarTerms,
-		TypeSubst, ActualTypes),
+		PredToActualTypeSubst, ActualTypes),
 	polymorphism__make_type_info_vars(ActualTypes, Context,
 		TypeInfoVars, ExtraTypeInfoGoals, !Info),
 	polymorphism__assign_var_list(TypeInfoHeadVars, TypeInfoVars,
 		ExtraTypeInfoUnifyGoals),
-	list__condense([[Goal0],
-		ExtraTypeClassGoals, ExtraTypeClassUnifyGoals,
-		ExtraTypeInfoGoals, ExtraTypeInfoUnifyGoals],
-		GoalList),
+	list__condense([[Goal0], ExtraTypeClassGoals, ExtraTypeClassUnifyGoals,
+		ExtraTypeInfoGoals, ExtraTypeInfoUnifyGoals], GoalList),
 	conj_list_to_goal(GoalList, GoalInfo, Goal).
 
 :- pred polymorphism__assign_var_list(list(prog_var)::in, list(prog_var)::in,
@@ -1001,72 +998,29 @@ polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
 	GoalExpr = generic_call(_, _, _, _),
 	Goal = GoalExpr - GoalInfo.
 
-polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, !Info) :-
-	Goal0 = call(PredId, ProcId, ArgVars0, Builtin, UnifyContext, Name),
-	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
-		ArgVars, _ExtraVars, CallGoalInfo, ExtraGoals, !Info),
-	CallExpr = call(PredId, ProcId, ArgVars, Builtin, UnifyContext, Name),
-	Call = CallExpr - CallGoalInfo,
+polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
+	PredId = Goal0 ^ call_pred_id,
+	ArgVars0 = Goal0 ^ call_args,
+	polymorphism__process_call(PredId, ArgVars0, ArgVars,
+		GoalInfo0, GoalInfo, _ExtraVars, ExtraGoals, !Info),
+	CallExpr = Goal0 ^ call_args := ArgVars,
+	Call = CallExpr - GoalInfo,
 	list__append(ExtraGoals, [Call], GoalList),
-	conj_list_to_goal(GoalList, GoalInfo, Goal).
+	conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
-polymorphism__process_goal_expr(Goal0, GoalInfo, Goal, !Info) :-
-	Goal0 = foreign_proc(Attributes, PredId, ProcId,
-		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode0),
-	polymorphism__process_call(PredId, ArgVars0, GoalInfo,
-		ArgVars, ExtraVars, CallGoalInfo, ExtraGoals, !Info),
-
-	%
-	% insert the type_info vars into the arg-name map,
-	% so that the foreign_proc can refer to the type_info variable
-	% for type T as `TypeInfo_for_T'.
-	%
+polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
+	Goal0 = foreign_proc(_, PredId, _, _, _, _, _),
 	poly_info_get_module_info(!.Info, ModuleInfo),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-
 	PredModule = pred_info_module(PredInfo),
 	PredName = pred_info_name(PredInfo),
 	PredArity = pred_info_arity(PredInfo),
 
 	( no_type_info_builtin(PredModule, PredName, PredArity) ->
-		Goal = Goal0 - GoalInfo
+		Goal = Goal0 - GoalInfo0
 	;
-		list__length(ExtraVars, NumExtraVars),
-		polymorphism__process_foreign_proc(PredInfo, NumExtraVars,
-			PragmaCode0, OrigArgTypes0, OrigArgTypes,
-			ArgInfo0, ArgInfo),
-
-		%
-		% Add the type info arguments to the list of variables
-		% to call for a pragma import.
-		%
-		(
-			PragmaCode0 = import(Name, HandleReturn,
-				Variables0, MaybeContext)
-		->
-			(
-				list__remove_suffix(ArgInfo, ArgInfo0,
-					TypeVarArgInfos)
-			->
-				Variables = type_info_vars(ModuleInfo,
-					TypeVarArgInfos, Variables0)
-			;
-				error("polymorphism__process_goal_expr")
-			),
-			PragmaCode = import(Name, HandleReturn,
-				Variables, MaybeContext)
-		;
-			PragmaCode = PragmaCode0
-		),
-
-		%
-		% plug it all back together
-		%
-		CallExpr = foreign_proc(Attributes, PredId, ProcId, ArgVars,
-			ArgInfo, OrigArgTypes, PragmaCode),
-		Call = CallExpr - CallGoalInfo,
-		list__append(ExtraGoals, [Call], GoalList),
-		conj_list_to_goal(GoalList, GoalInfo, Goal)
+		polymorphism__process_foreign_proc(ModuleInfo, PredInfo,
+			Goal0, GoalInfo0, Goal, !Info)
 	).
 
 polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
@@ -1305,7 +1259,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 
 		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, Purity, _PredOrFunc,
-			EvalMethod, PredArgTypes),
+			EvalMethod, CalleeArgTypes),
 		ConsId0 = pred_const(PredId, ProcId, _)
 	->
 		%
@@ -1314,7 +1268,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		poly_info_get_varset(!.Info, VarSet0),
 		goal_info_get_context(GoalInfo0, Context),
 		convert_pred_to_lambda_goal(Purity, EvalMethod,
-			X0, PredId, ProcId, ArgVars0, PredArgTypes,
+			X0, PredId, ProcId, ArgVars0, CalleeArgTypes,
 			UnifyContext, GoalInfo0, Context, ModuleInfo0,
 			Functor0, VarSet0, VarSet, VarTypes0, VarTypes),
 		poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
@@ -1482,21 +1436,24 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 		ActualArgTypes, ActualRetType, Context,
 		ExtraVars, ExtraGoals, !Info) :-
 
-	CtorDefn = ctor_defn(CtorTypeVarSet, ExistQVars0,
-		ExistentialConstraints0, CtorArgTypes0, CtorRetType0),
+	CtorDefn = ctor_defn(CtorTypeVarSet, CtorExistQVars,
+		CtorExistentialConstraints, CtorArgTypes, CtorRetType),
 
 	%
 	% rename apart the type variables in the constructor definition
 	%
 	poly_info_get_typevarset(!.Info, TypeVarSet0),
-	varset__merge_subst(TypeVarSet0, CtorTypeVarSet, TypeVarSet, Subst),
-	term__var_list_to_term_list(ExistQVars0, ExistQVarTerms0),
-	term__apply_substitution_to_list(ExistQVarTerms0, Subst,
-		ExistQVarsTerms1),
-	apply_subst_to_constraint_list(Subst, ExistentialConstraints0,
-		ExistentialConstraints1),
-	term__apply_substitution_to_list(CtorArgTypes0, Subst, CtorArgTypes1),
-	term__apply_substitution(CtorRetType0, Subst, CtorRetType1),
+	varset__merge_subst(TypeVarSet0, CtorTypeVarSet, TypeVarSet,
+		CtorToParentSubst),
+	term__var_list_to_term_list(CtorExistQVars, CtorExistQVarTerms),
+	term__apply_substitution_to_list(CtorExistQVarTerms, CtorToParentSubst,
+		ParentExistQVarsTerms),
+	apply_subst_to_constraint_list(CtorToParentSubst,
+		CtorExistentialConstraints, ParentExistentialConstraints),
+	term__apply_substitution_to_list(CtorArgTypes, CtorToParentSubst,
+		ParentArgTypes),
+	term__apply_substitution(CtorRetType, CtorToParentSubst,
+		ParentRetType),
 	poly_info_set_typevarset(TypeVarSet, !Info),
 
 	%
@@ -1504,21 +1461,15 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 	% argument and return types.
 	% These are the ones that might bind the ExistQVars.
 	%
-	(
-		type_list_subsumes([CtorRetType1 | CtorArgTypes1],
-			[ActualRetType | ActualArgTypes], TypeSubst1)
-	->
-		TypeSubst = TypeSubst1
-	;
-		error("polymorphism__process_existq_unify_functor: " ++
-			"type unification failed")
-	),
+	type_list_subsumes_det([ParentRetType | ParentArgTypes],
+		[ActualRetType | ActualArgTypes], ParentToActualTypeSubst),
 
 	%
 	% Apply those type bindings to the existential type class constraints
 	%
-	apply_rec_subst_to_constraint_list(TypeSubst, ExistentialConstraints1,
-		ExistentialConstraints),
+	apply_rec_subst_to_constraint_list(ParentToActualTypeSubst,
+		ParentExistentialConstraints,
+		ActualExistentialConstraints),
 
 	%
 	% create type_class_info variables for the
@@ -1528,14 +1479,14 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 	(
 		IsConstruction = yes,
 		% assume it's a construction
-		polymorphism__make_typeclass_info_vars(ExistentialConstraints,
-			[], Context, ExtraTypeClassVars, ExtraTypeClassGoals,
-			!Info)
+		polymorphism__make_typeclass_info_vars(
+			ActualExistentialConstraints, [], Context,
+			ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
 	;
 		IsConstruction = no,
 		% assume it's a deconstruction
 		polymorphism__make_existq_typeclass_info_vars(
-			ExistentialConstraints, ExtraTypeClassVars,
+			ActualExistentialConstraints, ExtraTypeClassVars,
 			ExtraTypeClassGoals, !Info)
 	),
 
@@ -1544,20 +1495,21 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 	% variables, and then apply the type bindings to those type variables
 	% to figure out what types they are bound to.
 	%
-	constraint_list_get_tvars(ExistentialConstraints1,
-		ExistConstrainedTVars),
-	term__var_list_to_term_list(ExistConstrainedTVars,
-		ExistConstrainedTVarTerms),
-	list__delete_elems(ExistQVarsTerms1, ExistConstrainedTVarTerms,
-		UnconstrainedExistQVarTerms),
-	term__apply_rec_substitution_to_list(UnconstrainedExistQVarTerms,
-		TypeSubst, ExistentialTypes),
+	constraint_list_get_tvars(ParentExistentialConstraints,
+		ParentExistConstrainedTVars),
+	term__var_list_to_term_list(ParentExistConstrainedTVars,
+		ParentExistConstrainedTVarTerms),
+	list__delete_elems(ParentExistQVarsTerms,
+		ParentExistConstrainedTVarTerms,
+		ParentUnconstrainedExistQVarTerms),
+	term__apply_rec_substitution_to_list(ParentUnconstrainedExistQVarTerms,
+		ParentToActualTypeSubst, ActualExistentialTypes),
 
 	%
 	% create type_info variables for the _unconstrained_
 	% existentially quantified type variables
 	%
-	polymorphism__make_type_info_vars(ExistentialTypes, Context,
+	polymorphism__make_type_info_vars(ActualExistentialTypes, Context,
 		ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
 
 	%
@@ -1570,13 +1522,60 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__process_foreign_proc(pred_info::in, int::in,
+:- pred polymorphism__process_foreign_proc(module_info::in, pred_info::in,
+	hlds_goal_expr::in(bound(foreign_proc(ground,ground,ground,ground,
+	ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
+	poly_info::in, poly_info::out) is det.
+
+polymorphism__process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0,
+		Goal, !Info) :-
+	%
+	% insert the type_info vars into the arg-name map,
+	% so that the foreign_proc can refer to the type_info variable
+	% for type T as `TypeInfo_for_T'.
+	%
+	Goal0 = foreign_proc(Attributes, PredId, ProcId,
+		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode0),
+	polymorphism__process_call(PredId, ArgVars0, ArgVars,
+		GoalInfo0, GoalInfo, ExtraVars, ExtraGoals, !Info),
+	list__length(ExtraVars, NumExtraVars),
+	polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars,
+		PragmaCode0, OrigArgTypes0, OrigArgTypes,
+		ArgInfo0, ArgInfo),
+
+	%
+	% Add the type info arguments to the list of variables
+	% to call for a pragma import.
+	%
+	( PragmaCode0 = import(Name, HandleReturn, Variables0, MaybeContext) ->
+		( list__remove_suffix(ArgInfo, ArgInfo0, TypeVarArgInfos) ->
+			Variables = type_info_vars(ModuleInfo,
+				TypeVarArgInfos, Variables0)
+		;
+			error("polymorphism__process_goal_expr")
+		),
+		PragmaCode = import(Name, HandleReturn,
+			Variables, MaybeContext)
+	;
+		PragmaCode = PragmaCode0
+	),
+
+	%
+	% plug it all back together
+	%
+	CallExpr = foreign_proc(Attributes, PredId, ProcId, ArgVars,
+		ArgInfo, OrigArgTypes, PragmaCode),
+	Call = CallExpr - GoalInfo,
+	list__append(ExtraGoals, [Call], GoalList),
+	conj_list_to_goal(GoalList, GoalInfo0, Goal).
+
+:- pred polymorphism__process_foreign_proc_args(pred_info::in, int::in,
 	pragma_foreign_code_impl::in, list(type)::in, list(type)::out,
 	list(maybe(pair(string, mode)))::in,
 	list(maybe(pair(string, mode)))::out) is det.
 
-polymorphism__process_foreign_proc(PredInfo, NumExtraVars, Impl, OrigArgTypes0,
-		OrigArgTypes, ArgInfo0, ArgInfo) :-
+polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars, Impl,
+		OrigArgTypes0, OrigArgTypes, ArgInfo0, ArgInfo) :-
 	pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
 		PredArgTypes),
 
@@ -1770,40 +1769,52 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], !Info) :-
 % existential/universal type_infos and type_class_infos
 % in a more consistent manner.
 
-:- pred polymorphism__process_call(pred_id::in, list(prog_var)::in,
-	hlds_goal_info::in, list(prog_var)::out, list(prog_var)::out,
-	hlds_goal_info::out, list(hlds_goal)::out,
+:- pred polymorphism__process_call(pred_id::in,
+	list(prog_var)::in, list(prog_var)::out,
+	hlds_goal_info::in, hlds_goal_info::out,
+	list(prog_var)::out, list(hlds_goal)::out,
 	poly_info::in, poly_info::out) is det.
 
-polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
-		ArgVars, ExtraVars, GoalInfo, ExtraGoals, !Info) :-
+polymorphism__process_call(PredId, ArgVars0, ArgVars, GoalInfo0, GoalInfo,
+		ExtraVars, ExtraGoals, !Info) :-
 	poly_info_get_var_types(!.Info, VarTypes),
 	poly_info_get_typevarset(!.Info, TypeVarSet0),
 	poly_info_get_module_info(!.Info, ModuleInfo),
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars0,
-		PredArgTypes0),
-	pred_info_get_class_context(PredInfo, PredClassContext0),
-		% rename apart
-		% (this merge might be a performance bottleneck?)
+	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+		PredArgTypes),
+	pred_info_get_class_context(PredInfo, PredClassContext),
+
+		% VarTypes, TypeVarSet* etc come from the caller.
+		% PredTypeVarSet, PredArgTypes, PredExistQVarTerms, etc come
+		% directly from the callee.
+		% ParentArgTypes, ParentExistQVarTerms etc come from a version
+		% of the callee that has been renamed apart from the caller.
+		%
+		% The difference between e.g. PredArgTypes and ParentArgTypes
+		% is the application of PredToParentTypeSubst, which maps the
+		% type variables in the callee to new type variables in the
+		% caller. Adding the new type variables to TypeVarSet0 yields
+		% TypeVarSet.
 	( varset__is_empty(PredTypeVarSet) ->
-		% optimize common case
-		PredArgTypes = PredArgTypes0,
-		PredExistQVarTerms1 = [],
-		PredTypeVars0 = [],
+		% optimize a common case
+		map__init(PredToParentTypeSubst),
 		TypeVarSet = TypeVarSet0,
-		map__init(Subst)
+		ParentArgTypes = PredArgTypes,
+		ParentTypeVars0 = [],
+		ParentExistQVarTerms1 = []
 	;
-		varset__merge_subst(TypeVarSet0, PredTypeVarSet,
-			TypeVarSet, Subst),
-		term__apply_substitution_to_list(PredArgTypes0, Subst,
-			PredArgTypes),
-		term__var_list_to_term_list(PredExistQVars0,
-			PredExistQVarTerms0),
-		term__apply_substitution_to_list(PredExistQVarTerms0, Subst,
-			PredExistQVarTerms1),
-		term__vars_list(PredArgTypes, PredTypeVars0)
+		% (this merge might be a performance bottleneck?)
+		varset__merge_subst(TypeVarSet0, PredTypeVarSet, TypeVarSet,
+			PredToParentTypeSubst),
+		term__apply_substitution_to_list(PredArgTypes,
+			PredToParentTypeSubst, ParentArgTypes),
+		term__vars_list(ParentArgTypes, ParentTypeVars0),
+		term__var_list_to_term_list(PredExistQVars,
+			PredExistQVarTerms),
+		term__apply_substitution_to_list(PredExistQVarTerms,
+			PredToParentTypeSubst, ParentExistQVarTerms1)
 	),
 
 	PredModule = pred_info_module(PredInfo),
@@ -1811,12 +1822,12 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 	PredArity = pred_info_arity(PredInfo),
 	(
 		(
-			% optimize for common case of non-polymorphic call
-			% with no constraints
-			PredTypeVars0 = [],
-			PredClassContext0 = constraints([], [])
+			% Optimize for the common case of non-polymorphic call
+			% with no constraints.
+			ParentTypeVars0 = [],
+			PredClassContext = constraints([], [])
 		;
-			% some builtins don't need the type_info
+			% Some builtins don't need or want the type_info.
 			no_type_info_builtin(PredModule, PredName, PredArity)
 		;
 			% Leave Aditi relations alone, since they must
@@ -1831,20 +1842,12 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		ExtraGoals = [],
 		ExtraVars = []
 	;
-		list__remove_dups(PredTypeVars0, PredTypeVars1),
+		list__remove_dups(ParentTypeVars0, ParentTypeVars1),
 		map__apply_to_list(ArgVars0, VarTypes, ActualArgTypes),
-		(
-			type_list_subsumes(PredArgTypes, ActualArgTypes,
-				TypeSubst1)
-		->
-			TypeSubst = TypeSubst1
-		;
-			error("polymorphism__process_goal_expr: " ++
-				"type unification failed")
-		),
-
-		apply_subst_to_constraints(Subst, PredClassContext0,
-			PredClassContext1),
+		type_list_subsumes_det(ParentArgTypes, ActualArgTypes,
+			ParentToActualTypeSubst),
+		apply_subst_to_constraints(PredToParentTypeSubst,
+			PredClassContext, ParentClassContext),
 
 		poly_info_set_typevarset(TypeVarSet, !Info),
 
@@ -1852,52 +1855,54 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 			% for the call, and return a list of which type
 			% variables were constrained by those constraints
 		goal_info_get_context(GoalInfo0, Context),
-		PredClassContext1 = constraints(UniversalConstraints1,
-			ExistentialConstraints1),
+		ParentClassContext = constraints(ParentUniversalConstraints,
+			ParentExistentialConstraints),
 
-			% compute which type variables are constrained
-			% by the type class constraints
-		constraint_list_get_tvars(ExistentialConstraints1,
-			ExistConstrainedTVars),
-		constraint_list_get_tvars(UniversalConstraints1,
-			UnivConstrainedTVars),
+			% Compute which type variables are constrained
+			% by the type class constraints.
+		constraint_list_get_tvars(ParentExistentialConstraints,
+			ParentExistConstrainedTVars),
+		constraint_list_get_tvars(ParentUniversalConstraints,
+			ParentUnivConstrainedTVars),
 
-		apply_rec_subst_to_constraint_list(TypeSubst,
-			UniversalConstraints1, UniversalConstraints2),
+		apply_rec_subst_to_constraint_list(ParentToActualTypeSubst,
+			ParentUniversalConstraints,
+			ActualUniversalConstraints),
 
-		term__apply_rec_substitution_to_list(PredExistQVarTerms1,
-			TypeSubst, PredExistQVarTerms),
-		term__term_list_to_var_list(PredExistQVarTerms,
-			PredExistQVars),
+		term__apply_rec_substitution_to_list(ParentExistQVarTerms1,
+			ParentToActualTypeSubst, ParentExistQVarTerms),
+		term__term_list_to_var_list(ParentExistQVarTerms,
+			ParentExistQVars),
 
-		polymorphism__make_typeclass_info_vars(UniversalConstraints2,
-			PredExistQVars, Context, UnivTypeClassVars,
-			ExtraTypeClassGoals, !Info),
+		polymorphism__make_typeclass_info_vars(
+			ActualUniversalConstraints, ParentExistQVars, Context,
+			UnivTypeClassVars, ExtraTypeClassGoals, !Info),
 
 			% Make variables to hold any existentially
 			% quantified typeclass_infos in the call,
 			% insert them into the typeclass_info map
-		apply_rec_subst_to_constraint_list(TypeSubst,
-			ExistentialConstraints1, ExistentialConstraints),
+		apply_rec_subst_to_constraint_list(ParentToActualTypeSubst,
+			ParentExistentialConstraints,
+			ActualExistentialConstraints),
 		polymorphism__make_existq_typeclass_info_vars(
-			ExistentialConstraints, ExistTypeClassVars,
+			ActualExistentialConstraints, ExistTypeClassVars,
 			ExtraExistClassGoals, !Info),
 
 		list__append(UnivTypeClassVars, ExistTypeClassVars,
 			ExtraTypeClassVars),
 
-			% No need to make typeinfos for the constrained vars
-		list__delete_elems(PredTypeVars1, UnivConstrainedTVars,
-			PredTypeVars2),
-		list__delete_elems(PredTypeVars2, ExistConstrainedTVars,
-			PredTypeVars),
+			% No need to make typeinfos for the constrained vars.
+		list__delete_elems(ParentTypeVars1,
+			ParentUnivConstrainedTVars, ParentTypeVars2),
+		list__delete_elems(ParentTypeVars2,
+			ParentExistConstrainedTVars, ParentTypeVars),
 
-		term__var_list_to_term_list(PredTypeVars, PredTypes0),
-		term__apply_rec_substitution_to_list(PredTypes0, TypeSubst,
-			PredTypes),
+		term__var_list_to_term_list(ParentTypeVars, ParentTypes),
+		term__apply_rec_substitution_to_list(ParentTypes,
+			ParentToActualTypeSubst, ActualTypes),
 
-		polymorphism__make_type_info_vars(PredTypes,
-			Context, ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
+		polymorphism__make_type_info_vars(ActualTypes, Context,
+			ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
 		list__append(ExtraTypeClassVars, ArgVars0, ArgVars1),
 		list__append(ExtraTypeInfoVars, ArgVars1, ArgVars),
 		ExtraGoals = ExtraTypeClassGoals ++ ExtraExistClassGoals
@@ -2022,6 +2027,8 @@ polymorphism__fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars,
 % and create a list of goals to initialize those typeclass_info variables
 % to the appropriate typeclass_info structures for the constraints.
 %
+% Constraints should be renamed-apart and actual-to-formal substituted constraints.
+%
 % Constraints which are already in the TypeClassInfoMap are assumed to
 % have already had their typeclass_infos initialized; for them, we
 % just return the variable in the TypeClassInfoMap.
@@ -2031,21 +2038,22 @@ polymorphism__fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars,
 	list(prog_var)::out, list(hlds_goal)::out,
 	poly_info::in, poly_info::out) is det.
 
-polymorphism__make_typeclass_info_vars(PredClassContext, ExistQVars, Context,
+polymorphism__make_typeclass_info_vars(Constraints, ExistQVars, Context,
 		ExtraVars, ExtraGoals, !Info) :-
 		% initialise the accumulators
-	ExtraVars0 = [],
-	ExtraGoals0 = [],
+	RevExtraVars0 = [],
+	RevExtraGoals0 = [],
 	SeenInstances = [],
 		% do the work
-	polymorphism__make_typeclass_info_vars_2(PredClassContext,
-		SeenInstances, ExistQVars, Context, ExtraVars0, ExtraVars1,
-		ExtraGoals0, ExtraGoals1, !Info),
+	polymorphism__make_typeclass_info_vars_2(Constraints, SeenInstances,
+		ExistQVars, Context, RevExtraVars0, RevExtraVars,
+		RevExtraGoals0, RevExtraGoals, !Info),
 		% We build up the vars and goals in reverse order
-	list__reverse(ExtraVars1, ExtraVars),
-	list__reverse(ExtraGoals1, ExtraGoals).
+	list__reverse(RevExtraVars, ExtraVars),
+	list__reverse(RevExtraGoals, ExtraGoals).
 
 % Accumulator version of the above.
+
 :- pred polymorphism__make_typeclass_info_vars_2(
 	list(class_constraint)::in, list(class_constraint)::in,
 	existq_tvars::in, prog_context::in,
@@ -2134,23 +2142,18 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 			% type variables that are created are bound
 			% when we call type_list_subsumes then apply
 			% the resulting bindings.
+			% XXX expand comment
 		varset__merge_subst(TypeVarSet, InstanceTVarset,
 			_NewTVarset, RenameSubst),
 		term__apply_substitution_to_list(InstanceTypes0,
 			RenameSubst, InstanceTypes),
-		(
-			type_list_subsumes(InstanceTypes,
-				ConstrainedTypes, InstanceSubst0)
-		->
-			InstanceSubst = InstanceSubst0
-		;
-			error("poly: wrong instance decl")
-		),
-
+		type_list_subsumes_det(InstanceTypes, ConstrainedTypes,
+			InstanceSubst),
 		apply_subst_to_constraint_list(RenameSubst,
 			InstanceConstraints0, InstanceConstraints1),
 		apply_rec_subst_to_constraint_list(InstanceSubst,
 			InstanceConstraints1, InstanceConstraints2),
+		% XXX document diamond as guess
 		InstanceConstraints =
 			InstanceConstraints2 `list__delete_elems` Seen,
 		apply_subst_to_constraint_proofs(RenameSubst,
@@ -2166,6 +2169,7 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 			UnconstrainedTypes1, InstanceSubst,
 			UnconstrainedTypes),
 
+			% XXX why name of output?
 		map__overlay(Proofs, SuperClassProofs2, SuperClassProofs),
 
 			% Make the type_infos for the types
@@ -2210,6 +2214,7 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 		list__condense([RevUnconstrainedTypeInfoGoals, NewGoals,
 			!.ExtraGoals, RevTypeInfoGoals], !:ExtraGoals)
 	;
+		% XXX MR_Dictionary should have MR_Dictionaries for superclass
 			% We have to extract the typeclass_info from
 			% another one
 		Proof = superclass(SubClassConstraint),

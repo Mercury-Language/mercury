@@ -133,21 +133,32 @@
 :- func varset__lookup_vars(varset(T)) = substitution(T).
 
 	% Combine two different varsets, renaming apart:
-	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms) is
+	% varset__merge(VarSet0, NewVarSet, VarSet, Subst) is
 	% true iff VarSet is the varset that results from joining
-	% VarSet0 to a suitably renamed version of NewVarSet,
-	% and Terms is Terms0 renamed accordingly.
+	% a suitably renamed version of NewVarSet to VarSet0.
 	% (Any bindings in NewVarSet are ignored.)
+	% Subst is a substitution which maps the variables in NewVarSet
+	% into the corresponding fresh variable in VarSet.
+
+:- pred varset__merge_subst(varset(T), varset(T), varset(T), substitution(T)).
+:- mode varset__merge_subst(in, in, out, out) is det.
+
+	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
+	% As varset__merge_subst, except instead of returning the substitution,
+	% this predicate applies it to the given list of terms.
 
 :- pred varset__merge(varset(T), varset(T), list(term(T)),
 		varset(T), list(term(T))).
 :- mode varset__merge(in, in, in, out, out) is det.
 
-	% As above, except return the substitution directly
-	% rather than applying it to a list of terms.
+	% Same as varset__merge_subst, except that the names of variables
+	% in NewVarSet are not included in the final varset.
+	% This is useful if varset__create_name_var_map needs
+	% to be used on the resulting varset.
 
-:- pred varset__merge_subst(varset(T), varset(T), varset(T), substitution(T)).
-:- mode varset__merge_subst(in, in, out, out) is det.
+:- pred varset__merge_subst_without_names(varset(T),
+		varset(T), varset(T), substitution(T)).
+:- mode varset__merge_subst_without_names(in, in, out, out) is det.
 
 	% Same as varset__merge, except that the names of variables
 	% in NewVarSet are not included in the final varset.
@@ -157,13 +168,6 @@
 :- pred varset__merge_without_names(varset(T), varset(T), list(term(T)),
 		varset(T), list(term(T))).
 :- mode varset__merge_without_names(in, in, in, out, out) is det.
-
-	% As above, except return the substitution directly
-	% rather than applying it to a list of terms.
-
-:- pred varset__merge_subst_without_names(varset(T),
-		varset(T), varset(T), substitution(T)).
-:- mode varset__merge_subst_without_names(in, in, out, out) is det.
 
 	% get the bindings for all the bound variables.
 :- pred varset__get_bindings(varset(T), substitution(T)).

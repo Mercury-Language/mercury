@@ -638,8 +638,10 @@
 
 :- type class_constraints
 	---> constraints(
-		list(class_constraint),	% ordinary (universally quantified)
-		list(class_constraint)	% existentially quantified constraints
+		univ_constraints	:: list(class_constraint),
+					% universally quantified constraints
+		exist_constraints	:: list(class_constraint)
+					% existentially quantified constraints
 	).
 
 :- type class_name == sym_name.
