@@ -1117,7 +1117,7 @@ options_help_aux_output -->
 	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
 	io__write_string("\t\tDump the HLDS (intermediate representation) after\n"),
 	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
-	io__write_string("\t\tStage numbers range from 1-19.\n"),
+	io__write_string("\t\tStage numbers range from 1-99.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds <fields>\n"),
 	io__write_string("\t\tWith `--dump-hlds', include extra detail in the dump.\n"),
