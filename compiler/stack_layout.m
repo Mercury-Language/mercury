@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 University of Melbourne.
+% Copyright (C) 1997-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -153,9 +153,15 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 
 	% concat_string_list appends a list of strings together,
 	% appending a null character after each string.
-	% The resulting string will contain embedded null characters.
+	% The resulting string will contain embedded null characters,
 :- pred stack_layout__concat_string_list(list(string)::in, int::in,
 	string_with_0s::out) is det.
+
+concat_string_list(Strings, Len, string_with_0s(Result)) :-
+	concat_string_list_2(Strings, Len, Result).
+
+:- pred stack_layout__concat_string_list_2(list(string)::in, int::in,
+	string::out) is det.
 
 :- pragma c_header_code("
 	#include ""mercury_tags.h""	/* for MR_list_*() */
@@ -164,7 +170,7 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 ").
 
 :- pragma foreign_proc("C",
-	stack_layout__concat_string_list(StringList::in, ArenaSize::in,
+	stack_layout__concat_string_list_2(StringList::in, ArenaSize::in,
 		Arena::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
@@ -200,7 +206,7 @@ stack_layout__data_addr_to_maybe_rval(DataAddr, yes(Rval)) :-
 % Note that this version only works if the Mercury implementation's
 % string representation allows strings to contain embedded null
 % characters.  So we check that.
-concat_string_list(StringsList, _Len, string_with_0s(StringWithNulls)) :-
+concat_string_list_2(StringsList, _Len, StringWithNulls) :-
 	(	
 		char__to_int(NullChar, 0),
 		NullCharString = string__char_to_string(NullChar),
