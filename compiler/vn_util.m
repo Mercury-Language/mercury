@@ -660,7 +660,7 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval1 = vn_const(int_const(I1)),
 			Vnrval2 = vn_const(int_const(I2))
 		->
-			I is I1 >> I2,
+			I = unchecked_right_shift(I1, I2),
 			Vnrval = vn_const(int_const(I)),
 			VnTables = VnTables0
 		;
@@ -679,7 +679,7 @@ vn_util__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval1 = vn_const(int_const(I1)),
 			Vnrval2 = vn_const(int_const(I2))
 		->
-			I is I1 << I2,
+			I = unchecked_left_shift(I1, I2),
 			Vnrval = vn_const(int_const(I)),
 			VnTables = VnTables0
 		;
