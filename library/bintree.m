@@ -328,7 +328,7 @@ bintree__from_list_2([K - V | List], Tree0, Tree) :-
 %-----------------------------------------------------------------------------%
 
 bintree__from_sorted_list(List, Tree) :-
-	length(List, Length),
+	list__length(List, Length),
 	bintree__from_sorted_list_2(Length, List, Tree, _).
 
 :- pred bintree__from_sorted_list_2(int, assoc_list(K,V),

@@ -24,30 +24,30 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred delay_info_check_invariant(delay_info).
-:- mode delay_info_check_invariant(in) is det.
+:- pred delay_info__check_invariant(delay_info).
+:- mode delay_info__check_invariant(in) is det.
 
-:- pred delay_info_init(delay_info).
-:- mode delay_info_init(out) is det.
+:- pred delay_info__init(delay_info).
+:- mode delay_info__init(out) is det.
 
-:- pred delay_info_enter_conj(delay_info, delay_info).
-:- mode delay_info_enter_conj(in, out) is det.
+:- pred delay_info__enter_conj(delay_info, delay_info).
+:- mode delay_info__enter_conj(in, out) is det.
 
-:- pred delay_info_leave_conj(delay_info, list(delayed_goal), delay_info).
-:- mode delay_info_leave_conj(in, out, out) is det.
+:- pred delay_info__leave_conj(delay_info, list(delayed_goal), delay_info).
+:- mode delay_info__leave_conj(in, out, out) is det.
 
-:- pred delay_info_delay_goal(delay_info, mode_error_info,
+:- pred delay_info__delay_goal(delay_info, mode_error_info,
 				hlds__goal, delay_info).
-:- mode delay_info_delay_goal(in, in, in, out) is det.
+:- mode delay_info__delay_goal(in, in, in, out) is det.
 
-:- pred delay_info_bind_var_list(list(var), delay_info, delay_info).
-:- mode delay_info_bind_var_list(in, in, out).
+:- pred delay_info__bind_var_list(list(var), delay_info, delay_info).
+:- mode delay_info__bind_var_list(in, in, out).
 
-:- pred delay_info_bind_var(delay_info, var, delay_info).
-:- mode delay_info_bind_var(in, in, out) is det.
+:- pred delay_info__bind_var(delay_info, var, delay_info).
+:- mode delay_info__bind_var(in, in, out) is det.
 
-:- pred delay_info_wakeup_goal(delay_info, hlds__goal, delay_info).
-:- mode delay_info_wakeup_goal(in, out, out) is semidet.
+:- pred delay_info__wakeup_goal(delay_info, hlds__goal, delay_info).
+:- mode delay_info__wakeup_goal(in, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -108,7 +108,7 @@
 	% Check that the invariants for the delay_info structure
 	% hold, and if not, call error/1.
 
-delay_info_check_invariant(DelayInfo) :-
+delay_info__check_invariant(DelayInfo) :-
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, _PendingGoals, NextSeqNums),
 	(
@@ -173,7 +173,7 @@ waiting_goal_vars_check_invariant([V|Vs], GoalNum, Vars, WaitingGoalsTable) :-
 	% Initialize the delay info structure in preparation for
 	% mode analysis of a goal.
 
-delay_info_init(DelayInfo) :-
+delay_info__init(DelayInfo) :-
 	CurrentDepth = 0,
 	stack__init(DelayedGoalStack),
 	map__init(WaitingGoalsTable),
@@ -181,12 +181,12 @@ delay_info_init(DelayInfo) :-
 	stack__init(NextSeqNums),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
-	delay_info_check_invariant(DelayInfo).
+	delay_info__check_invariant(DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
-delay_info_enter_conj(DelayInfo0, DelayInfo) :-
-	delay_info_check_invariant(DelayInfo0),
+delay_info__enter_conj(DelayInfo0, DelayInfo) :-
+	delay_info__check_invariant(DelayInfo0),
 	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
 				WaitingGoalsTable, PendingGoals, NextSeqNums0),
 	map__init(DelayedGoals),
@@ -195,12 +195,12 @@ delay_info_enter_conj(DelayInfo0, DelayInfo) :-
 	CurrentDepth is CurrentDepth0 + 1,
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
-	delay_info_check_invariant(DelayInfo).
+	delay_info__check_invariant(DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
-delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
-	delay_info_check_invariant(DelayInfo0),
+delay_info__leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
+	delay_info__check_invariant(DelayInfo0),
 	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 	stack__pop(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
@@ -212,7 +212,7 @@ delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 	map__values(DelayedGoals, DelayedGoalsList),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
-	delay_info_check_invariant(DelayInfo).
+	delay_info__check_invariant(DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -241,8 +241,8 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
 	% We are going to delay a goal.
 	% Update the delay info structure to record the delayed goal.
 
-delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
-	delay_info_check_invariant(DelayInfo0),
+delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
+	delay_info__check_invariant(DelayInfo0),
 	Error = mode_error_info(Vars, _, _, _),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
@@ -266,7 +266,7 @@ delay_info_delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
-	delay_info_check_invariant(DelayInfo).
+	delay_info__check_invariant(DelayInfo).
 
 
 	% add_waiting_vars(Vars, Goal, AllVars, WGT0, WGT):
@@ -296,10 +296,10 @@ add_waiting_vars([Var | Vars], Goal, AllVars, WaitingGoalsTable0,
 
 %-----------------------------------------------------------------------------%
 
-delay_info_bind_var_list([], DelayInfo, DelayInfo).
-delay_info_bind_var_list([Var|Vars], DelayInfo0, DelayInfo) :-
-	delay_info_bind_var(DelayInfo0, Var, DelayInfo1),
-	delay_info_bind_var_list(Vars, DelayInfo1, DelayInfo).
+delay_info__bind_var_list([], DelayInfo, DelayInfo).
+delay_info__bind_var_list([Var|Vars], DelayInfo0, DelayInfo) :-
+	delay_info__bind_var(DelayInfo0, Var, DelayInfo1),
+	delay_info__bind_var_list(Vars, DelayInfo1, DelayInfo).
 
 	% Whenever we bind a variable, we also check to see whether
 	% we need to wake up some goals.  If so, we remove those
@@ -307,8 +307,8 @@ delay_info_bind_var_list([Var|Vars], DelayInfo0, DelayInfo) :-
 	% goals table.  They will be woken up next time we get back
 	% to their conjunction.
 
-delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
-	delay_info_check_invariant(DelayInfo0),
+delay_info__bind_var(DelayInfo0, Var, DelayInfo) :-
+	delay_info__check_invariant(DelayInfo0),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable0, PendingGoals0, NextSeqNums),
 	(
@@ -320,7 +320,7 @@ delay_info_bind_var(DelayInfo0, Var, DelayInfo) :-
 				WaitingGoalsTable0, WaitingGoalsTable),
 		DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
 				WaitingGoalsTable, PendingGoals, NextSeqNums),
-		delay_info_check_invariant(DelayInfo)
+		delay_info__check_invariant(DelayInfo)
 	;
 		DelayInfo = DelayInfo0
 	).
@@ -350,7 +350,7 @@ add_pending_goals([Depth - SeqNum | Rest], WaitingVarsTable,
 		% add the goal to the pending goals table
 	( map__search(PendingGoals0, Depth, PendingSeqNums0) ->
 		% XXX should use a queue
-		append(PendingSeqNums0, [SeqNum], PendingSeqNums)
+		list__append(PendingSeqNums0, [SeqNum], PendingSeqNums)
 	;
 		PendingSeqNums = [SeqNum]
 	),
@@ -385,14 +385,14 @@ delete_waiting_vars([Var | Vars], GoalNum, WaitingGoalsTable0,
 
 %-----------------------------------------------------------------------------%
 
-	% delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff
+	% delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo) is true iff
 	% DelayInfo0 specifies that there is at least one goal which is
 	% pending, Goal is the pending goal which should be reawakened first,
 	% and DelayInfo is the new delay_info, updated to reflect the fact
 	% that Goal has been woken up and is hence no longer pending.
 
-delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
-	delay_info_check_invariant(DelayInfo0),
+delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
+	delay_info__check_invariant(DelayInfo0),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
 				PendingGoalsTable0, NextSeqNums),
 
@@ -411,7 +411,7 @@ delay_info_wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
 				PendingGoalsTable, NextSeqNums),
-	delay_info_check_invariant(DelayInfo).
+	delay_info__check_invariant(DelayInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -80,6 +80,6 @@ stack__top([Elem | _], Elem).
 stack__pop([Elem | Stack], Elem, Stack).
 
 stack__depth(Stack, Depth) :-
-	length(Stack, Depth).
+	list__length(Stack, Depth).
 
 %--------------------------------------------------------------------------%

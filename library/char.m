@@ -28,46 +28,46 @@
 :- mode char_to_int(out, in).
 	% Convert a character to it's corresponding numerical code.
 
-:- pred to_upper(character, character).
-:- mode to_upper(in, out).
+:- pred char__to_upper(character, character).
+:- mode char__to_upper(in, out).
 	% Convert a character to uppercase.
 
-:- pred to_lower(character, character).
-:- mode to_lower(in, out).
+:- pred char__to_lower(character, character).
+:- mode char__to_lower(in, out).
 	% Convert a character to lowercase.
 
-:- pred is_upper(character).
-:- mode is_upper(in).
+:- pred char__is_upper(character).
+:- mode char__is_upper(in).
 	% True iff the character is an uppercase letter.
 
-:- pred is_alpha(character).
-:- mode is_alpha(in).
+:- pred char__is_alpha(character).
+:- mode char__is_alpha(in).
 	% True iff the character is a letter.
 
-:- pred is_alnum(character).
-:- mode is_alnum(in).
+:- pred char__is_alnum(character).
+:- mode char__is_alnum(in).
 	% True iff the character is a letter or digit.
 
-:- pred is_alpha_or_underscore(character).
-:- mode is_alpha_or_underscore(in).
+:- pred char__is_alpha_or_underscore(character).
+:- mode char__is_alpha_or_underscore(in).
 	% True iff the character is a letter or an underscore.
 
-:- pred is_alnum_or_underscore(character).
-:- mode is_alnum_or_underscore(in).
+:- pred char__is_alnum_or_underscore(character).
+:- mode char__is_alnum_or_underscore(in).
 	% True iff the character is a letter, a digit or an underscore.
 
-:- pred is_digit(character).
-:- mode is_digit(in).
+:- pred char__is_digit(character).
+:- mode char__is_digit(in).
 	% True iff the character is a decimal digit.
 
-:- pred is_lower(character).
-:- mode is_lower(in).
+:- pred char__is_lower(character).
+:- mode char__is_lower(in).
 	% True iff the character is a lowercase letter.
 
-:- pred lower_upper(character, character).
-:- mode lower_upper(in, out).
-:- mode lower_upper(out, in).
-	% lower_upper(Lower, Upper) is true iff
+:- pred char__lower_upper(character, character).
+:- mode char__lower_upper(in, out).
+:- mode char__lower_upper(out, in).
+	% char__lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
 
@@ -76,62 +76,62 @@
 
 :- implementation.
 
-is_alpha(Char) :-
-	( is_lower(Char) ->
+char__is_alpha(Char) :-
+	( char__is_lower(Char) ->
 		true
-	; is_upper(Char) ->
-		true
-	;
-		fail
-	).
-
-is_alnum(Char) :-
-	( is_alpha(Char) ->
-		true
-	; is_digit(Char) ->
+	; char__is_upper(Char) ->
 		true
 	;
 		fail
 	).
 
-is_alpha_or_underscore(Char) :-
+char__is_alnum(Char) :-
+	( char__is_alpha(Char) ->
+		true
+	; char__is_digit(Char) ->
+		true
+	;
+		fail
+	).
+
+char__is_alpha_or_underscore(Char) :-
 	( Char = '_' ->
 		true
 	;	
-		is_alpha(Char)
+		char__is_alpha(Char)
 	).
 
-is_alnum_or_underscore(Char) :-
-	( is_digit(Char) ->
+char__is_alnum_or_underscore(Char) :-
+	( char__is_digit(Char) ->
 		true
 	;	
-		is_alpha_or_underscore(Char)
+		char__is_alpha_or_underscore(Char)
 	).
 
-is_lower(Lower) :-
-	lower_upper(Lower, _).
+char__is_lower(Lower) :-
+	char__lower_upper(Lower, _).
 
-is_upper(Upper) :-
+char__is_upper(Upper) :-
 	(
-		lower_upper(_, Upper)
+		char__lower_upper(_, Upper)
 	->
 		true
 	;
 		fail
 	).
 
-to_lower(Char, Lower) :-
+char__to_lower(Char, Lower) :-
 	(
-		lower_upper(LowerChar, Char)
+		char__lower_upper(LowerChar, Char)
 	->
 		Lower = LowerChar
 	;
 		Lower = Char
 	).
 
-to_upper(Char, Upper) :-
+char__to_upper(Char, Upper) :-
 	(
-		lower_upper(Char, UpperChar)
+		char__lower_upper(Char, UpperChar)
 	->
 		Upper = UpperChar
 	;
@@ -147,16 +147,16 @@ to_upper(Char, Upper) :-
 
 %-----------------------------------------------------------------------------%
 
-is_digit('0').
-is_digit('1').
-is_digit('2').
-is_digit('3').
-is_digit('4').
-is_digit('5').
-is_digit('6').
-is_digit('7').
-is_digit('8').
-is_digit('9').
+char__is_digit('0').
+char__is_digit('1').
+char__is_digit('2').
+char__is_digit('3').
+char__is_digit('4').
+char__is_digit('5').
+char__is_digit('6').
+char__is_digit('7').
+char__is_digit('8').
+char__is_digit('9').
 
 %%% char_to_int('\000', 0).	% not supported by NU-Prolog
 char_to_int('\001', 1).
@@ -423,33 +423,33 @@ char_to_int('\377', 255).
 
 %-----------------------------------------------------------------------------%
 
-:- lower_upper(X, Y) when X or Y.
+:- char__lower_upper(X, Y) when X or Y.
 
-lower_upper('a', 'A').
-lower_upper('b', 'B').
-lower_upper('c', 'C').
-lower_upper('d', 'D').
-lower_upper('e', 'E').
-lower_upper('f', 'F').
-lower_upper('g', 'G').
-lower_upper('h', 'H').
-lower_upper('i', 'I').
-lower_upper('j', 'J').
-lower_upper('k', 'K').
-lower_upper('l', 'L').
-lower_upper('m', 'M').
-lower_upper('n', 'N').
-lower_upper('o', 'O').
-lower_upper('p', 'P').
-lower_upper('q', 'Q').
-lower_upper('r', 'R').
-lower_upper('s', 'S').
-lower_upper('t', 'T').
-lower_upper('u', 'U').
-lower_upper('v', 'V').
-lower_upper('w', 'W').
-lower_upper('x', 'X').
-lower_upper('y', 'Y').
-lower_upper('z', 'Z').
+char__lower_upper('a', 'A').
+char__lower_upper('b', 'B').
+char__lower_upper('c', 'C').
+char__lower_upper('d', 'D').
+char__lower_upper('e', 'E').
+char__lower_upper('f', 'F').
+char__lower_upper('g', 'G').
+char__lower_upper('h', 'H').
+char__lower_upper('i', 'I').
+char__lower_upper('j', 'J').
+char__lower_upper('k', 'K').
+char__lower_upper('l', 'L').
+char__lower_upper('m', 'M').
+char__lower_upper('n', 'N').
+char__lower_upper('o', 'O').
+char__lower_upper('p', 'P').
+char__lower_upper('q', 'Q').
+char__lower_upper('r', 'R').
+char__lower_upper('s', 'S').
+char__lower_upper('t', 'T').
+char__lower_upper('u', 'U').
+char__lower_upper('v', 'V').
+char__lower_upper('w', 'W').
+char__lower_upper('x', 'X').
+char__lower_upper('y', 'Y').
+char__lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%

@@ -4,7 +4,7 @@
 :- interface.
 :- import_module options, map, list, string.
 
-	% process_options(Args, NonOptionArgs, Result)
+	% getopt__process_options(Args, NonOptionArgs, Result)
 	%
 	%	Scans through 'Args' looking for options, places all the
 	%	non-option arguments in 'NonOptionArgs', and record the
@@ -27,13 +27,13 @@
 :- type maybe_option_table	--->	ok(option_table)
 				;	error(string).
 
-:- pred process_options(list(string)::in, list(string)::out,
+:- pred getopt__process_options(list(string)::in, list(string)::out,
 			maybe_option_table::out) is det.
 
 :- implementation.
 :- import_module std_util.
 
-process_options(Args0, Args, Result) :-
+getopt__process_options(Args0, Args, Result) :-
 	option_defaults(OptionDefaultsList),
 	map__from_assoc_list(OptionDefaultsList, OptionTable0),
 	process_options_2(Args0, OptionTable0, Args, Result).
@@ -201,7 +201,7 @@ process_option_2(int(_), Flag, Args0, OptionTable0, Args, Result) :-
 process_option_2(accumulating(List0), Flag, Args0, OptionTable0, Args, Result)
 		:-
 	( Args0 = [Arg | Args1] ->
-		append(List0, [Arg], List),
+		list__append(List0, [Arg], List),
 		map__set(OptionTable0, Flag, accumulating(List), OptionTable1),
 		process_options_2(Args1, OptionTable1, Args, Result)
 	;

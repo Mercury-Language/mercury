@@ -304,14 +304,14 @@
 % late-input modes.)
 
 prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
-	lookup_option(search_directories, accumulating(Dirs)),
+	globals__lookup_option(search_directories, accumulating(Dirs)),
 	search_for_file(Dirs, FileName, R),
 	( { R = ok } ->
 		read_all_items(RevMessages, RevItems0, Error0),
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
-		  reverse(RevMessages, Messages0),
-		  reverse(RevItems, Items0),
+		  list__reverse(RevMessages, Messages0),
+		  list__reverse(RevItems, Items0),
 		  check_begin_module(ModuleName,
 				Messages0, Items0, Error0, EndModule,
 				FileName, Messages, Items, Error)
@@ -408,7 +408,7 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
             ThisError = 
 "Error: `:- end_module' declaration doesn't match `:- module' declaration"
 			- Term,
-            append([ThisError], Messages0, Messages),
+            list__append([ThisError], Messages0, Messages),
 	    Items = Items1,
             Error = yes
         ;
@@ -563,7 +563,7 @@ read_items_loop_2(ok(Item, Context), Msgs0, Items0, Error0,
 :- mode read_item(out, di, uo).
 
 read_item(MaybeItem) -->
-	io__read_term(MaybeTerm),
+	term_io__read_term(MaybeTerm),
 	{ process_read_term(MaybeTerm, MaybeItem) }.
 
 :- pred process_read_term(read_term, maybe_item_or_eof).
@@ -779,7 +779,7 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
 		( Term0 = term__functor(term__atom(Functor), Args0, Context) ->
-			append(Args0, [
+			list__append(Args0, [
 					term__variable(Var0),
 					term__variable(Var)
 				], Args),
@@ -986,7 +986,7 @@ term_list_append_term(List0, Term, List) :-
 :- mode process_dcg_clause(in, in, in, in, in, out).
 process_dcg_clause(ok(Name, Args0), VarSet, Var0, Var, Body,
 		ok(clause(VarSet, Name, Args, Body))) :-
-		append(Args0, [term__variable(Var0), term__variable(Var)], Args).
+		list__append(Args0, [term__variable(Var0), term__variable(Var)], Args).
 process_dcg_clause(error(ErrMessage, Term), _, _, _, _,
 		error(ErrMessage, Term)).
 
@@ -1393,7 +1393,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
-			member(Arg, Args),
+			list__member(Arg, Args),
 			Arg \= term__variable(_)
 		)
 	->
@@ -1402,8 +1402,8 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% check that all the head arg variables are distinct
 	  %%%	some [Arg2, OtherArgs]
 		(
-			member(Arg2, Args, [Arg2|OtherArgs]),
-			member(Arg2, OtherArgs)
+			list__member(Arg2, Args, [Arg2|OtherArgs]),
+			list__member(Arg2, OtherArgs)
 		)
 	->
 		Result = error("Repeated type parameters in LHS of type defn", Term)
@@ -1568,7 +1568,7 @@ process_rule_2(error(M, T), _, _, error(M, T)).
 process_rule(VarSet, RuleType, Cond, Result) :-
 	varset__new_var(VarSet, Var, VarSet1),
 	RuleType = term__functor(F, RuleArgs, _),
-	append(RuleArgs, [Var, Var], PredArgs),
+	list__append(RuleArgs, [Var, Var], PredArgs),
 	PredType = term__functor(F, PredArgs, _),
 	process_pred(VarSet1, PredType, Cond, Result).
 ***/
@@ -1615,7 +1615,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
-			member(Arg, Args),
+			list__member(Arg, Args),
 			Arg \= term__variable(_)
 		)
 	->
@@ -1624,8 +1624,8 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
 		(
-			member(Arg2, Args, [Arg2|OtherArgs]),
-			member(Arg2, OtherArgs)
+			list__member(Arg2, Args, [Arg2|OtherArgs]),
+			list__member(Arg2, OtherArgs)
 		)
 	->
 		Result = error("Repeated inst parameters in LHS of inst defn",
@@ -1665,7 +1665,7 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 	% check that all the head args are variables
 	( %%%	some [Arg]
 		(
-			member(Arg, Args),
+			list__member(Arg, Args),
 			Arg \= term__variable(_)
 		)
 	->
@@ -1674,8 +1674,8 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
 		(
-			member(Arg2, Args, [Arg2|OtherArgs]),
-			member(Arg2, OtherArgs)
+			list__member(Arg2, Args, [Arg2|OtherArgs]),
+			list__member(Arg2, OtherArgs)
 		)
 	->
 		Result = error(
@@ -1711,7 +1711,7 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
-		sort(Functors0, Functors),
+		list__sort(Functors0, Functors),
 		Result = bound(Functors)
 	;
 		parse_qualified_term(term__functor(Name, Args0, Context),
@@ -1773,7 +1773,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head args are variables
 	( %%% some [Arg]
 		(
-			member(Arg, Args),
+			list__member(Arg, Args),
 			Arg \= term__variable(_)
 		)
 	->
@@ -1782,8 +1782,8 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	% check that all the head arg variables are distinct
 		%%% some [Arg2, OtherArgs]
 		(
-			member(Arg2, Args, Arg2.OtherArgs),
-			member(Arg2, OtherArgs)
+			list__member(Arg2, Args, Arg2.OtherArgs),
+			list__member(Arg2, OtherArgs)
 		)
 	->
 		Result = error("Repeated parameters in LHS of mode defn",

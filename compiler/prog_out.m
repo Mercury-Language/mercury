@@ -296,13 +296,13 @@ prog_out__indent(N) -->
 	% XXX problems with precedence
 
 prog_out__qwrite(_Prec, VarSet, X) -->
-	io__write_term(VarSet, X).
+	term_io__write_term(VarSet, X).
 
 :- pred prog_out__get_op_prec(string, int, int, io__state, io__state).
 :- mode prog_out__get_op_prec(in, in, out, di, uo).
 
 prog_out__get_op_prec(Op, Pos, Prec) -->
-	io__current_ops(Ops),
+	term_io__current_ops(Ops),
 	{ get_prec_and_type(Op, Ops, Prec1, Type),
 	  prog_out__op_adj(Pos, Type, Adj),
 	  Prec is Prec1 - Adj

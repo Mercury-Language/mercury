@@ -128,7 +128,7 @@ varset__new_var(varset(MaxId0,Names,Vals), Var, varset(MaxId,Names,Vals)) :-
 varset__vars(varset(MaxId0,_,_), L) :-
 	term__init_var_supply(V0),
 	varset__vars_2(V0, MaxId0, [], L1),
-	reverse(L1, L).
+	list__reverse(L1, L).
 
 :- pred varset__vars_2(var_supply, var_supply, list(var),
 			list(var)).

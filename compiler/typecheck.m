@@ -141,8 +141,8 @@
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
-	lookup_option(statistics, bool(Statistics)),
-	lookup_option(verbose, bool(Verbose)),
+	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -223,7 +223,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 :- mode write_progress_message(in, di, uo) is det.
 
 write_progress_message(PredId) -->
-	lookup_option(very_verbose, bool(VeryVerbose)),
+	globals__lookup_option(very_verbose, bool(VeryVerbose)),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Type-checking predicate "),
 		hlds_out__write_pred_id(PredId),
@@ -380,7 +380,7 @@ report_unresolved_type_error_2(TypeInfo, TVars, TVarSet) -->
 	io__write_string("  Unbound type vars were: "),
 	write_type_var_list(TVars, TVarSet),
 	io__write_string(".\n"),
-	lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tThe body of the clause contains a call to a polymorphic predicate,\n"),
 		io__write_string("\tbut I can't determine which version should be called,\n"),
@@ -652,7 +652,7 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
-		member_chk(TypeStuff, L0)
+		list__member_chk(TypeStuff, L0)
 	->
 		L = L0
 	;
@@ -715,7 +715,7 @@ typecheck_term_has_type(term__variable(Var), Type, TypeInfo0, TypeInfo) :-
 	typecheck_var_has_type(Var, Type, TypeInfo0, TypeInfo).
 
 typecheck_term_has_type(term__functor(F, As, _), Type, TypeInfo0, TypeInfo) :-
-	length(As, Arity),
+	list__length(As, Arity),
 	type_info_get_ctor_list(TypeInfo0, F, Arity, ConsDefnList),
 	( ConsDefnList = [] ->
 	    type_info_get_io_state(TypeInfo0, IOState0),
@@ -816,7 +816,7 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 	% 	Let TAs = { TA | TA is a an extension of TypeAssign
 	%		    	 for which the types of the Terms unify with
 	%		    	 their respective Types },
-	% 	append(TAs, TypeAssignSet0, TypeAssignSet).
+	% 	list__append(TAs, TypeAssignSet0, TypeAssignSet).
 
 :- pred type_assign_term_has_type_list(list(term), list(type), type_assign,
 			type_info, type_assign_set, type_assign_set).
@@ -837,7 +837,7 @@ type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
 	% 	Let TAs2 = { TA | TA is a an extension of a member of TAs
 	%		    	  for which the types of the Terms unify with
 	%		    	  their respective Types },
-	% 	append(TAs, TypeAssignSet0, TypeAssignSet).
+	% 	list__append(TAs, TypeAssignSet0, TypeAssignSet).
 
 :- pred type_assign_list_term_has_type_list(type_assign_set, list(term),
 		list(type), type_info, type_assign_set, type_assign_set).
@@ -858,7 +858,7 @@ type_assign_term_has_type(term__variable(V), Type, TypeAssign, TypeInfo) -->
 	type_assign_var_has_type(TypeAssign, HeadTypeParams, V, Type).
 type_assign_term_has_type(term__functor(F, Args, _Context), Type, TypeAssign,
 		TypeInfo) -->
-	{ length(Args, Arity) },
+	{ list__length(Args, Arity) },
 	{ type_info_get_ctor_list(TypeInfo, F, Arity, ConsDefnList) },
 	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
 		TypeInfo).
@@ -872,7 +872,7 @@ type_assign_term_has_type(term__functor(F, Args, _Context), Type, TypeAssign,
 
 checkpoint(Msg, T0, T) :-
 	type_info_get_io_state(T0, I0),
-	lookup_option(debug, bool(DoCheckPoint), I0, I1),
+	globals__lookup_option(debug, bool(DoCheckPoint), I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
 	;	
@@ -887,7 +887,7 @@ checkpoint_2(Msg, T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	io__write_string("\n"),
 	{ type_info_get_type_assign_set(T0, TypeAssignSet) },
@@ -937,7 +937,7 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 
 typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 	type_info_set_context(Context, TypeInfo9, TypeInfo0),
-	length(Args, Arity),
+	list__length(Args, Arity),
 	type_info_get_ctor_list(TypeInfo0, Functor, Arity, ConsDefnList),
 	( ConsDefnList = [] ->
 		type_info_get_io_state(TypeInfo0, IOState0),
@@ -994,7 +994,7 @@ typecheck_unify_var_functor_2a([TypeAssign0 | TypeAssigns], TypeInfo,
 		ConsDefns) -->
 	{ typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
 		TypeAssign0, TypeAssign, [], ConsTypeAssignSet) },
-	append([TypeAssign - ConsTypeAssignSet]),
+	list__append([TypeAssign - ConsTypeAssignSet]),
 	typecheck_unify_var_functor_2a(TypeAssigns, TypeInfo, ConsDefns).
 
 	% Iterate over all the different cons defns.
@@ -1010,7 +1010,7 @@ typecheck_unify_var_functor_2b([ConsDefn | ConsDefns], TypeInfo, TypeAssign0,
 		-->
 	{ get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
 			ConsType, ArgTypes, TypeAssign1) },
-	append([cons_type(ConsType, ArgTypes)]),
+	list__append([cons_type(ConsType, ArgTypes)]),
 	typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
 			TypeAssign1, TypeAssign).
 
@@ -1136,7 +1136,7 @@ type_assign_unify_term(term__variable(X), term__variable(Y), TypeAssign0,
 
 type_assign_unify_term(term__functor(Functor, Args, _), term__variable(Y),
 		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	length(Args, Arity),
+	list__length(Args, Arity),
 	type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList),
 	type_assign_unify_var_functor(ConsDefnList, Args, Y, TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet).
@@ -1284,10 +1284,10 @@ type_assign_unify_type(TypeAssign0, HeadTypeParams, X, Y, TypeAssign) :-
 
 type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 		Bindings) :-
-	( member(Y, HeadTypeParams) ->
+	( list__member(Y, HeadTypeParams) ->
 		type_unify_head_type_param(X, Y, HeadTypeParams,
 			Bindings0, Bindings)
-	; member(X, HeadTypeParams) ->
+	; list__member(X, HeadTypeParams) ->
 		type_unify_head_type_param(Y, X, HeadTypeParams,
 			Bindings0, Bindings)
 	; map__search(Bindings0, X, BindingOfX) ->
@@ -1341,7 +1341,7 @@ type_unify(term__variable(X), term__functor(F, As, C), HeadTypeParams, Bindings0
 			Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
-		\+ member(X, HeadTypeParams),
+		\+ list__member(X, HeadTypeParams),
 		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
@@ -1354,14 +1354,14 @@ type_unify(term__functor(F, As, C), term__variable(X), HeadTypeParams, Bindings0
 			Bindings0, Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
-		\+ member(X, HeadTypeParams),
+		\+ list__member(X, HeadTypeParams),
 		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
 type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 		HeadTypeParams, Bindings0, Bindings) :-
-	length(AsX, ArityX),
-	length(AsY, ArityY),
+	list__length(AsX, ArityX),
+	list__length(AsY, ArityY),
 	(
 		FX = FY,
 		ArityX = ArityY
@@ -1436,7 +1436,7 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 		( Var = HeadVar ->
 			Bindings = Bindings0
 		;
-			\+ member(Var, HeadTypeParams),
+			\+ list__member(Var, HeadTypeParams),
 			map__set(Bindings0, Var, term__variable(HeadVar),
 				Bindings)
 		)
@@ -1480,7 +1480,7 @@ check_undefined_types(Module, Module) -->
 	{ module_info_types(Module, TypeDefns) },
 	{ map__keys(TypeDefns, TypeIds) },
 	find_undef_type_bodies(TypeIds, TypeDefns),
-	lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	{ module_info_preds(Module, Preds) },
 	{ module_info_predids(Module, PredIds) },
@@ -1568,7 +1568,7 @@ find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
 	% of checking for undefined types.
 	% The tests are ordered so as to maximize effiency.
 	% Could efficiency be improved further?
-	{ length(As, Arity) },
+	{ list__length(As, Arity) },
 	{ make_type_id(F, Arity, TypeId) },
 	(
 		{ is_builtin_atomic_type(TypeId) }
@@ -1686,7 +1686,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, L0, L) :-
 		PredArity >= FuncArity
 	->
 		pred_info_arg_types(PredInfo, PredTypeVarSet, CompleteArgTypes),
-		split_list(FuncArity, CompleteArgTypes,
+		list__split_list(FuncArity, CompleteArgTypes,
 			ArgTypes, PredTypeParams),
 		term__context_init("<builtin>", 0, Context),
 		PredType = term__functor(term__atom("pred"), PredTypeParams,
@@ -2064,7 +2064,7 @@ type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
 	(
 		builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList)
 	->
-		append(ConsInfoList1, PredConsInfoList, ConsInfoList)
+		list__append(ConsInfoList1, PredConsInfoList, ConsInfoList)
 	;
 		ConsInfoList = ConsInfoList1
 	).
@@ -2234,7 +2234,7 @@ report_error_unif_var_functor(TypeInfo, Var, ConsDefnList, Functor, Args,
 
 	prog_out__write_context(Context),
 	io__write_string("  "),
-	{ length(Args, Arity) },
+	{ list__length(Args, Arity) },
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 
@@ -2275,10 +2275,10 @@ write_argument_name(VarSet, VarId) -->
 write_functor_name(Functor, Arity) -->
 	( { Arity = 0 } ->
 		io__write_string("constant `"),
-		io__write_constant(Functor)
+		term_io__write_constant(Functor)
 	;
 		io__write_string("functor `"),
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		io__write_string("/"),
 		io__write_int(Arity)
 	),
@@ -2367,7 +2367,7 @@ write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context) -->
 :- mode write_type_assign_set_msg(in, in, di, uo) is det.
 
 write_type_assign_set_msg(TypeAssignSet, VarSet) -->
-	lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		( { TypeAssignSet = [_] } ->
 		    io__write_string("\tThe partial type assignment was:\n")
@@ -2479,7 +2479,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),
-		lookup_option(verbose_errors, bool(VerboseErrors)),
+		globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 		io__write_string("  which doesn't match the expected type.\n"),
 		( { VerboseErrors = yes } ->
 				% XXX improve error message: should output
@@ -2543,7 +2543,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  error: undefined symbol `"),
-	io__write_constant(Functor),
+	term_io__write_constant(Functor),
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("'.\n").
@@ -2589,7 +2589,7 @@ report_error_cons(TypeInfo, Functor, ConsDefnList, Args, Type, TypeAssignSet)
 
 	prog_out__write_context(Context),
 	io__write_string("  "),
-	{ length(Args, Arity) },
+	{ list__length(Args, Arity) },
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 

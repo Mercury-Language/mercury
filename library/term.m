@@ -249,7 +249,7 @@ term__contains_var_list(_.Ts, V) :-
 
 term__contains_functor(term__functor(Functor, Args, _), Functor, Args).
 term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
- 	member(SubTerm, Args),
+ 	list__member(SubTerm, Args),
  	term__contains_functor(SubTerm, SubFunctor, SubArgs).
 
 %-----------------------------------------------------------------------------%
@@ -265,7 +265,7 @@ term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
 
 term__subterm(Term, Term).
 term__subterm(term__functor(_, Args, _), SubTerm) :-
-	member(Term, Args),
+	list__member(Term, Args),
 	term__subterm(Term, SubTerm).
 
 %-----------------------------------------------------------------------------%

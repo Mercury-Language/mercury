@@ -171,7 +171,7 @@ group__largest_group_key(G, GK) :-
 group__largest_group_key_2([], _, GK, GK).
 group__largest_group_key_2([GK0-S0|Ss], Sz0, GK1, GK) :-
 	set__to_sorted_list(S0, S1),
-	length(S1, Sz1),
+	list__length(S1, Sz1),
 	compare(R, Sz1, Sz0),
 	(
 		R = (>)

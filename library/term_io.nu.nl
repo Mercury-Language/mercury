@@ -12,13 +12,13 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- io__op(P, T, O, IO0, _) when P and T and ground(O) and IO0.
-io__op(Prec, Type, OpName) -->
+:- term_io__op(P, T, O, IO0, _) when P and T and ground(O) and IO0.
+term_io__op(Prec, Type, OpName) -->
 	{ name(Op, OpName), op(Prec, Type, Op) },
 	io__update_state.
 
-:- io__current_ops(_, IO0, _) when IO0.
-io__current_ops(Ops) -->
+:- term_io__current_ops(_, IO0, _) when IO0.
+term_io__current_ops(Ops) -->
 	{ findall(op(Prec, Type, OpName),
 		  (currentOp(Prec, Type, Op), name(Op, OpName)),
 		  Ops)
@@ -27,8 +27,8 @@ io__current_ops(Ops) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- io__read_term(_, IO0, _) when IO0.
-io__read_term(Result) -->
+:- term_io__read_term(_, IO0, _) when IO0.
+term_io__read_term(Result) -->
 	io__input_stream(Stream),
 	io__stream_name(Stream, StreamName),
 	{

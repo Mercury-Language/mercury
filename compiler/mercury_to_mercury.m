@@ -52,7 +52,7 @@ convert_to_mercury(ProgName, OutputFileName, Items) -->
 	io__stderr_stream(StdErr),
 	io__tell(OutputFileName, Res),
 	( { Res = ok } ->
-		lookup_option(verbose, bool(Verbose)),
+		globals__lookup_option(verbose, bool(Verbose)),
 		( { Verbose = yes } ->
 			io__write_string(StdErr, "% Writing output to "),
 			io__write_string(StdErr, OutputFileName),
@@ -235,7 +235,7 @@ mercury_output_inst_name(user_inst(Name, Args), VarSet) -->
 		io__write_string(")")
 	).
 mercury_output_inst_name(merge_inst(InstA, InstB), VarSet) -->
-	io__write_string("$merge("),
+	io__write_string("$list__merge("),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
 mercury_output_inst_name(unify_inst(InstA, InstB), VarSet) -->
@@ -256,7 +256,7 @@ mercury_output_bound_insts([functor(Name, Args) | BoundInsts], VarSet) -->
 	( { Args = [] } ->
 		mercury_output_bracketed_constant(Name)
 	;
-		io__write_constant(Name),
+		term_io__write_constant(Name),
 		io__write_string("("),
 		mercury_output_inst_list(Args, VarSet),
 		io__write_string(")")
@@ -364,7 +364,7 @@ mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 mercury_output_ctors([], _) --> [].
 mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 	% we need to quote ';'/2 and '{}'/2
-	{ length(ArgTypes, Arity) },
+	{ list__length(ArgTypes, Arity) },
 	(
 		{ Arity = 2 },
 		{ Name = unqualified(";") ; Name = unqualified("{}") }
@@ -445,7 +445,7 @@ mercury_output_pred_type(VarSet, PredName, Types, _Context) -->
 
 	(
 		{ PredName = unqualified("is") },
-		{ length(Types, 2) }
+		{ list__length(Types, 2) }
 	->
 		io__write_string(" is det")
 	;
@@ -517,7 +517,7 @@ mercury_output_bracketed_sym_name(Name) -->
 
 mercury_output_sym_name(Name) -->
 	{ unqualify_name(Name, Name2) },
-	io__write_constant(term__atom(Name2)).
+	term_io__write_constant(term__atom(Name2)).
 
 %-----------------------------------------------------------------------------%
 
@@ -980,7 +980,7 @@ mercury_output_term(term__functor(Functor, Args, _), VarSet) -->
 	;
 		{ Args = [Y | Ys] }
 	->
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		io__write_string("("),
 		mercury_output_term(Y, VarSet),
 		mercury_output_remaining_terms(Ys, VarSet),
@@ -1031,10 +1031,10 @@ mercury_output_var(Var, VarSet) -->
 mercury_output_bracketed_constant(Const) -->
 	( { Const= term__atom(Op), mercury_op(Op) } ->
 		io__write_string("("),
-		io__write_constant(Const),
+		term_io__write_constant(Const),
 		io__write_string(")")
 	;
-		io__write_constant(Const)
+		term_io__write_constant(Const)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1211,7 +1211,7 @@ strip_trailing_primes(Name0, Name, Num) :-
 :- mode maybe_output_line_number(in, di, uo) is det.
 
 maybe_output_line_number(Context) -->
-	lookup_option(line_numbers, bool(LineNumbers)),
+	globals__lookup_option(line_numbers, bool(LineNumbers)),
 	( { LineNumbers = yes } ->
 		io__write_string("\t% "),
 		prog_out__write_context(Context),

@@ -52,7 +52,7 @@
 determinism_pass(ModuleInfo0, ModuleInfo) -->
 	{ determinism_declarations(ModuleInfo0, DeclaredProcs,
 		UndeclaredProcs) },
-	lookup_option(verbose, bool(Verbose)),
+	globals__lookup_option(verbose, bool(Verbose)),
 	maybe_write_string(Verbose, "% Doing determinism analysis pass(es) "),
 	maybe_flush_output(Verbose),
 	global_analysis_pass(ModuleInfo0, UndeclaredProcs, ModuleInfo1),
@@ -166,7 +166,7 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 	% Iterate until a fixpoint is reached
 
 global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
-	lookup_option(verbose, bool(Verbose)),
+	globals__lookup_option(verbose, bool(Verbose)),
 	maybe_write_string(Verbose, "."),
 	maybe_flush_output(Verbose),
 	{ global_analysis_single_pass(ModuleInfo0, ProcList, unchanged,

@@ -144,7 +144,7 @@
 %--------------------------------------------------------------------------%
 
 bintree_set__list_to_set(List, Set) :-
-	sort(List, SortedList),
+	list__sort(List, SortedList),
 	bintree_set__sorted_list_to_set(SortedList, Set).
 
 bintree_set__sorted_list_to_set(List, Set) :-
@@ -190,7 +190,7 @@ bintree_set__superset(S0, S1) :-
 
 bintree_set__member(E, S) :-
 	bintree__keys(S, Elements),
-	member(E, Elements).
+	list__member(E, Elements).
 
 bintree_set__is_member(E, S) :-
 	bintree__search(S, E, _).
@@ -237,7 +237,7 @@ bintree_set__remove(S0, E, S) :-
 bintree_set__union(S0, S1, S) :-
 	bintree__to_list(S0, L0),
 	bintree__to_list(S1, L1),
-	merge(L0, L1, L),
+	list__merge(L0, L1, L),
 	bintree__from_sorted_list(L, S).
 
 bintree_set__intersect(S0, S1, S) :-

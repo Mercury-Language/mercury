@@ -201,7 +201,7 @@ array__from_list([], _Array) :-
 	error("Cannot create an array with zero elements").
 
 array__from_list(List, Array) :-
-	length(List, Len),
+	list__length(List, Len),
 	Len1 is Len - 1,
 	List = [Head | Tail],
 	array__init(0, Len1, Head, Array0),

@@ -33,16 +33,16 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	{ module_balance(Module1, Module2) },
-	lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
 		% effiency, so we return it to the correct order here.
 	{ module_info_predids(Module3, RevPredIds) },
-	{ reverse(RevPredIds, PredIds) },
+	{ list__reverse(RevPredIds, PredIds) },
 	{ module_info_set_predids(Module3, PredIds, Module) }.
 
 	% After we have finished constructing the symbol tables,
@@ -218,7 +218,7 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo).
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
-	{ length(Args, Arity),
+	{ list__length(Args, Arity),
 	  I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond, Context) },
 	(
 		% some [I2]		% NU-Prolog inconsistency
@@ -262,7 +262,7 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 :- mode modes_add(in, in, in, in, in, out, di, uo).
 
 modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
-	{ length(Args, Arity),
+	{ list__length(Args, Arity),
 	  I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond, Context) },
 	(
 		% some [I2]		% NU-Prolog inconsistency
@@ -305,7 +305,7 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 	{ module_info_types(Module0, Types0) },
 	{ type_name_args(TypeDefn, Name, Args, Body),
-	  length(Args, Arity),
+	  list__length(Args, Arity),
 	  T = hlds__type_defn(VarSet, Args, Body, Cond, Context) },
 	(
 		% if there was an existing non-abstract definition for the type
@@ -387,7 +387,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	;
 		{ ConsDefns1 = [] }
 	),
-	( { member(hlds__cons_defn(_, TypeId, _), ConsDefns1) } ->
+	( { list__member(hlds__cons_defn(_, TypeId, _), ConsDefns1) } ->
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
@@ -434,7 +434,7 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_preds(Module0, Preds0) },
-	{ length(Types, Arity),
+	{ list__length(Types, Arity),
 	  map__init(Procs),
 	  make_predid(ModuleName, Name, Arity, PredId),
 	  clauses_info_init(Arity, ClausesInfo),
@@ -513,7 +513,7 @@ module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
 
 pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 		MContext, Preds) -->
-	{ length(Modes, Arity),
+	{ list__length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
 	(
 		% some [P0]
@@ -568,7 +568,7 @@ var_list_to_term_list([V | Vs0], [term__variable(V) | Vs]) :-
 
 next_mode_id(Procs, ModeId) :-
 	map__to_assoc_list(Procs, List),
-	length(List, ModeId).
+	list__length(List, ModeId).
 
 %-----------------------------------------------------------------------------%
 
@@ -591,9 +591,9 @@ module_add_clause(Module0, VarSet, PredName, Args, Body, Context, Module) -->
 
 clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		Preds) -->
-	{ length(Args, Arity) },
+	{ list__length(Args, Arity) },
 	{ make_predid(ModuleName, PredName, Arity, PredId) },
-	lookup_option(very_verbose, bool(VeryVerbose)),
+	globals__lookup_option(very_verbose, bool(VeryVerbose)),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Processing clause for pred `"),
 		{ predicate_name(PredId, PName) },
@@ -640,7 +640,7 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 :- mode maybe_warn_singletons(in, in, in, in, in, di, uo).
 
 maybe_warn_singletons(VarSet, PredId, Args, Body, Context) -->
-	lookup_option(warn_singleton_vars, bool(WarnSingletonVars)),
+	globals__lookup_option(warn_singleton_vars, bool(WarnSingletonVars)),
 	( { WarnSingletonVars = yes } ->
 		{ term__vars_list(Args, VarList0) },
 		{ vars_in_goal(Body, VarList0, VarList) },
@@ -669,7 +669,7 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 				io__write_string("':\n"),
 				prog_out__write_context(Context),
 				io__write_string("  Warning: variable `"),
-				io__write_variable(Var, VarSet),
+				term_io__write_variable(Var, VarSet),
 				io__write_string("' occurs more than once.\n")
 			;
 				[]
@@ -684,7 +684,7 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 				io__write_string("':\n"),
 				prog_out__write_context(Context),
 				io__write_string("  Warning: variable `"),
-				io__write_variable(Var, VarSet),
+				term_io__write_variable(Var, VarSet),
 				io__write_string("' occurs only once.\n")
 			;
 				[]
@@ -728,13 +728,13 @@ vars_in_goal((A;B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
 vars_in_goal(not(Vs, G)) -->
-	append(Vs),
+	list__append(Vs),
 	vars_in_goal(G).
 vars_in_goal(some(Vs, G)) -->
-	append(Vs),
+	list__append(Vs),
 	vars_in_goal(G).
 vars_in_goal(all(Vs, G)) -->
-	append(Vs),
+	list__append(Vs),
 	vars_in_goal(G).
 vars_in_goal(unify(A, B)) -->
 	vars_in_term(A),
@@ -742,11 +742,11 @@ vars_in_goal(unify(A, B)) -->
 vars_in_goal(call(Term)) -->
 	vars_in_term(Term).
 vars_in_goal(if_then(Vars,A,B)) -->
-	append(Vars),
+	list__append(Vars),
 	vars_in_goal(A),
 	vars_in_goal(B).
 vars_in_goal(if_then_else(Vars,A,B,C)) -->
-	append(Vars),
+	list__append(Vars),
 	vars_in_goal(A),
 	vars_in_goal(B),
 	vars_in_goal(C).
@@ -776,7 +776,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 	varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
 	transform(Subst, HeadVars, Args, Body, VarSet1, Goal, VarSet),
 		% XXX we should avoid append - this gives O(N*N)
-	append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
+	list__append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
 
 %-----------------------------------------------------------------------------
@@ -882,7 +882,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 			PredName = "call",
 			Args = [Goal1]
 		),
-		length(Args, Arity),
+		list__length(Args, Arity),
 		make_predid(ModuleName, unqualified(PredName), Arity, PredId),
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		var_list_to_term_list(HeadVars, HeadArgs),
@@ -954,7 +954,7 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 		unravel_unification(term__variable(Var), Arg, UnifyMainContext,
 				UnifySubContext, VarSet0, Goal, VarSet1),
 		( Goal = (conj(ConjList) - _) ->
-			append(ConjList, List1, List)
+			list__append(ConjList, List1, List)
 		;
 			List = [Goal | List1]
 		),
@@ -1019,7 +1019,7 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 
 make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
 	make_fresh_arg_vars_2(Args, [], VarSet0, Vars1, VarSet),
-	reverse(Vars1, Vars).
+	list__reverse(Vars1, Vars).
 
 :- pred make_fresh_arg_vars_2(list(term), list(var), varset,
 				list(var), varset).
@@ -1027,7 +1027,7 @@ make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
 
 make_fresh_arg_vars_2([], Vars, VarSet, Vars, VarSet).
 make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
-	( Arg = term__variable(ArgVar), \+ member(ArgVar, Vars0) ->
+	( Arg = term__variable(ArgVar), \+ list__member(ArgVar, Vars0) ->
 		Var = ArgVar,
 		VarSet1 = VarSet0
 	;
@@ -1154,7 +1154,7 @@ implicitly_quantify_goal_2(unify(A, B, X, Y, Z), OutsideVars,
 			unify(A, B, X, Y, Z), NonLocalVars) :-
 	term__vars(A, VarsA),
 	term__vars(B, VarsB),
-	append(VarsA, VarsB, Vars),
+	list__append(VarsA, VarsB, Vars),
 	set__list_to_set(Vars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
@@ -1347,7 +1347,7 @@ unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
 		create_atomic_unification(term__variable(X),
 				term__functor(F, HeadArgs, C),
 				MainContext, SubContext, Goal0),
-		length(Args, Arity),
+		list__length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
 		insert_arg_unifications(HeadVars, Args, ArgContext,
@@ -1374,8 +1374,8 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	make_fresh_arg_vars(RightAs, VarSet1, RightHeadVars, VarSet2),
 	var_list_to_term_list(LeftHeadVars, LeftHeadArgs),
 	var_list_to_term_list(RightHeadVars, RightHeadArgs),
-	length(LeftAs, LeftArity),
-	length(RightAs, RightArity),
+	list__length(LeftAs, LeftArity),
+	list__length(RightAs, RightArity),
 	make_functor_cons_id(LeftF, LeftArity, LeftConsId),
 	make_functor_cons_id(RightF, RightArity, RightConsId),
 	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
@@ -1390,7 +1390,7 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),
-	append(ConjList0, ConjList1, ConjList),
+	list__append(ConjList0, ConjList1, ConjList),
 	Goal2 = conj(ConjList) - GoalInfo,
 	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext,
 				Goal2, VarSet3, Goal3, VarSet4),
@@ -1447,7 +1447,7 @@ get_conj(Goal, Subst, Conj0, VarSet0, Conj, VarSet) :-
 	;
 		transform_goal(Goal, VarSet0, Subst, Goal1, VarSet),
 		goal_to_conj_list(Goal1, ConjList),
-		append(ConjList, Conj0, Conj)
+		list__append(ConjList, Conj0, Conj)
 	).
 
 % get_disj(Goal, Subst, Disj0, Disj) :

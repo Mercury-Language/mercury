@@ -95,8 +95,8 @@ a local variable, then report the error [this idea not yet implemented].
 %-----------------------------------------------------------------------------%
 
 modecheck(Module0, Module) -->
-	lookup_option(statistics, bool(Statistics)),
-	lookup_option(verbose, bool(Verbose)),
+	globals__lookup_option(statistics, bool(Statistics)),
+	globals__lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	maybe_report_stats(Statistics),
@@ -140,7 +140,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	( { Clauses0 = [] } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
-		lookup_option(very_verbose, bool(VeryVerbose)),
+		globals__lookup_option(very_verbose, bool(VeryVerbose)),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
 			hlds_out__write_pred_id(PredId),
@@ -219,7 +219,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 	Clause = clause(ProcIds, _, _),
-	( member(ProcId, ProcIds) ->
+	( list__member(ProcId, ProcIds) ->
 		MatchingClauses = [Clause | MatchingClauses1]
 	;
 		MatchingClauses = MatchingClauses1
@@ -541,7 +541,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	mode_info_set_errors([]),
 
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
-	{ delay_info_enter_conj(DelayInfo0, DelayInfo1) },
+	{ delay_info__enter_conj(DelayInfo0, DelayInfo1) },
 	mode_info_set_delay_info(DelayInfo1),
 	mode_info_add_goals_live_vars(Goals0),
 
@@ -549,11 +549,11 @@ modecheck_conj_list(Goals0, Goals) -->
 
 	=(ModeInfo3),
 	{ mode_info_get_errors(ModeInfo3, NewErrors) },
-	{ append(OldErrors, NewErrors, Errors) },
+	{ list__append(OldErrors, NewErrors, Errors) },
 	mode_info_set_errors(Errors),
 
 	{ mode_info_get_delay_info(ModeInfo3, DelayInfo4) },
-	{ delay_info_leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
+	{ delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
 	mode_info_set_delay_info(DelayInfo5),
 
 	( { DelayedGoals = [] } ->
@@ -602,7 +602,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 		mode_info_set_errors([]),
 		mode_info_set_instmap(InstMap0),
 		mode_info_add_live_vars(NonLocalVars),
-		{ delay_info_delay_goal(DelayInfo0, FirstError, Goal0,
+		{ delay_info__delay_goal(DelayInfo0, FirstError, Goal0,
 					DelayInfo1) }
 	;
 		{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) }
@@ -610,7 +610,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 
 		% Next, we attempt to wake up any pending goals,
 		% and then continue scheduling the rest of the goal.
-	( { delay_info_wakeup_goal(DelayInfo1, WokenGoal, DelayInfo2) } ->
+	( { delay_info__wakeup_goal(DelayInfo1, WokenGoal, DelayInfo2) } ->
 		mode_checkpoint(wakeup, "goal"),
 		{ DelayInfo = DelayInfo2 },
 		{ Goals1 = [WokenGoal | Goals0] }
@@ -826,7 +826,7 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 
 			% restore the error list, appending any new error(s)
 		mode_info_get_errors(ModeInfo2, NewErrors),
-		append(OldErrors, NewErrors, Errors),
+		list__append(OldErrors, NewErrors, Errors),
 		mode_info_set_errors(Errors, ModeInfo2, ModeInfo)
 	).
 
@@ -999,8 +999,8 @@ bound_inst_list_matches_initial([], _, _, _).
 bound_inst_list_matches_initial([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 	X = functor(NameX, ArgsX),
 	Y = functor(NameY, ArgsY),
-	length(ArgsX, ArityX),
-	length(ArgsY, ArityY),
+	list__length(ArgsX, ArityX),
+	list__length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
 		inst_list_matches_initial(ArgsX, ArgsY, ModuleInfo, Expansions),
 		bound_inst_list_matches_initial(Xs, Ys, ModuleInfo, Expansions)
@@ -1094,7 +1094,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 			InstMap = reachable(InstMapping),
 			mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
 			mode_info_get_delay_info(ModeInfo1, DelayInfo0),
-			delay_info_bind_var(DelayInfo0, Var, DelayInfo),
+			delay_info__bind_var(DelayInfo0, Var, DelayInfo),
 			mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo)
 		)
 	;
@@ -1211,8 +1211,8 @@ bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo) :-
 		Ys = [Y | Ys1],
 		X = functor(NameX, ArgsX),
 		Y = functor(NameY, ArgsY),
-		length(ArgsX, ArityX),
-		length(ArgsY, ArityY),
+		list__length(ArgsX, ArityX),
+		list__length(ArgsY, ArityY),
 		( NameX = NameY, ArityX = ArityY ->
 			inst_list_merge(ArgsX, ArgsY, ModuleInfo0,
 					Args, ModuleInfo1),
@@ -1329,8 +1329,8 @@ bound_inst_list_matches_final([], _, _, _).
 bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 	X = functor(NameX, ArgsX),
 	Y = functor(NameY, ArgsY),
-	length(ArgsX, ArityX),
-	length(ArgsY, ArityY),
+	list__length(ArgsX, ArityX),
+	list__length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
 		inst_list_matches_final(ArgsX, ArgsY, ModuleInfo, Expansions),
 		bound_inst_list_matches_final(Xs, Ys, ModuleInfo, Expansions)
@@ -1359,7 +1359,7 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
-        lookup_option(debug, bool(DoCheckPoint), IOState0, IOState1),
+        globals__lookup_option(debug, bool(DoCheckPoint), IOState0, IOState1),
 	( DoCheckPoint = yes ->
 		mode_checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
 	;
@@ -1388,7 +1388,7 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 	io__write_string(Msg),
 	( { Detail = yes } ->
 		io__write_string(":\n"),
-		lookup_option(statistics, bool(Statistics)),
+		globals__lookup_option(statistics, bool(Statistics)),
 		maybe_report_stats(Statistics),
 		{ mode_info_get_instmap(ModeInfo, InstMap) },
 		( { InstMap = reachable(InstMapping) } ->
@@ -1840,9 +1840,9 @@ abstractly_unify_bound_inst_list(_, [_|_], [], _ModuleInfo,  _Expansions,[]).
 abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], ModuleInfo, Expansions,
 		L) :-
 	X = functor(NameX, ArgsX),
-	length(ArgsX, ArityX),
+	list__length(ArgsX, ArityX),
 	Y = functor(NameY, ArgsY),
-	length(ArgsY, ArityY),
+	list__length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
 	    ( abstractly_unify_inst_list(ArgsX, ArgsY, Live, ModuleInfo,
 			Expansions, Args)
@@ -1872,8 +1872,8 @@ abstractly_unify_bound_inst_list_lives([], _, _, _, _ModuleInfo, []).
 abstractly_unify_bound_inst_list_lives([X|Xs], NameY, ArgsY, LivesY,
 		ModuleInfo, L) :-
 	X = functor(NameX, ArgsX),
-	length(ArgsX, ArityX),
-	length(ArgsY, ArityY),
+	list__length(ArgsX, ArityX),
+	list__length(ArgsY, ArityY),
 	( 
 		NameX = NameY,
 		ArityX = ArityY
@@ -1924,7 +1924,7 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 
 categorize_unify_var_functor(ModeX, ArgModes, X, Name, Args, ModuleInfo,
 		Unification) :-
-	length(Args, Arity),
+	list__length(Args, Arity),
 	make_functor_cons_id(Name, Arity, ConsId),
 	term_list_to_var_list(Args, ArgVars),
 	( mode_is_output(ModuleInfo, ModeX) ->
@@ -1966,7 +1966,7 @@ mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
 
 mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
 	mode_info_get_errors(ModeInfo0, Errors0),
-	append(Errors0, [ModeErrorInfo], Errors),
+	list__append(Errors0, [ModeErrorInfo], Errors),
 	mode_info_set_errors(Errors, ModeInfo0, ModeInfo).
 
 %-----------------------------------------------------------------------------%

@@ -73,7 +73,7 @@ hlds_out__write_pred_id(PredId) -->
 hlds_out__write_unify_context(unify_context(MainContext, RevSubContexts),
 		Context) -->
 	hlds_out__write_unify_main_context(MainContext, Context),
-	{ reverse(RevSubContexts, SubContexts) },
+	{ list__reverse(RevSubContexts, SubContexts) },
 	hlds_out__write_unify_sub_contexts(SubContexts, Context).
 
 :- pred hlds_out__write_unify_main_context(unify_main_context, term__context,

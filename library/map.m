@@ -202,7 +202,7 @@ map__from_corresponding_lists(Keys, Values, Map) :-
 map__merge(M0, M1, M) :-
 	map__to_assoc_list(M0, ML0),
 	map__to_assoc_list(M1, ML1),
-	merge(ML0, ML1, ML),
+	list__merge(ML0, ML1, ML),
 	map__from_sorted_assoc_list(ML, M).
 
 %-----------------------------------------------------------------------------%

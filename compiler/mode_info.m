@@ -114,7 +114,7 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context, LiveVars,
 		InstMapping0, ModeInfo) :-
 	mode_context_init(ModeContext),
 	LockedVars = [],
-	delay_info_init(DelayInfo),
+	delay_info__init(DelayInfo),
 	ErrorList = [],
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, Context, ModeContext,
@@ -304,7 +304,7 @@ mode_info_get_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors,_), Errors).
 :- mode mode_info_get_num_errors(mode_info_ui, out) is det.
 
 mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors,_), NumErrors) :-
-	length(Errors, NumErrors).
+	list__length(Errors, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
@@ -339,7 +339,7 @@ mode_info_add_live_vars(NewLiveVars,
 mode_info_remove_live_vars(OldLiveVars, ModeInfo0, ModeInfo) :-
 	ModeInfo0 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars0),
 	ModeInfo1 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars),
-	( delete_first(LiveVars0, OldLiveVars, LiveVars1) ->
+	( list__delete_first(LiveVars0, OldLiveVars, LiveVars1) ->
 		LiveVars = LiveVars1
 	;
 		error("mode_info_remove_live_vars: delete_first failed")
@@ -348,7 +348,7 @@ mode_info_remove_live_vars(OldLiveVars, ModeInfo0, ModeInfo) :-
 		% up a goal which is waiting on that variable
 	set__to_sorted_list(OldLiveVars, VarList),
 	mode_info_get_delay_info(ModeInfo1, DelayInfo0),
-	delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
+	delay_info__bind_var_list(VarList, DelayInfo0, DelayInfo),
 	mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo).
 
 	% Check whether a list of variables are live or not
@@ -370,7 +370,7 @@ mode_info_var_is_live(mode_info(_,_,_,_,_,_,_,_,_,_,LiveVarsList), Var,
 		Result) :-
 	(
 		% some [LiveVars] 
-		member(LiveVars, LiveVarsList),
+		list__member(LiveVars, LiveVarsList),
 		set__member(Var, LiveVars)
 	->
 		Result = live

@@ -106,7 +106,7 @@ constructors_are_all_constants([_Name - ArgTypes | Constructors]) :-
 :- mode type_to_type_id(in, out) is det.
 
 type_to_type_id(term__functor(Name, Args, _), TypeId) :-
-	length(Args, Arity),
+	list__length(Args, Arity),
 	make_type_id(Name, Arity, TypeId).
 
 %-----------------------------------------------------------------------------%

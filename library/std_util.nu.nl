@@ -9,12 +9,12 @@
 
 report_stats :-
 	statistics(L),
-	member(global=[Heap,_], L),
-	member(local=[Stack,_], L),
-	member(trail=[Trail,_], L),
-	member(program=[Prog,_], L),
-	member(memory=[Total,_], L),
-	member(time=[Time,_], L),
+	list__member(global=[Heap,_], L),
+	list__member(local=[Stack,_], L),
+	list__member(trail=[Trail,_], L),
+	list__member(program=[Prog,_], L),
+	list__member(memory=[Total,_], L),
+	list__member(time=[Time,_], L),
 	StackPlusTrail is Stack + Trail,
 	format(user_error,
 		"[Heap ~3dk, Stack+Trail ~3dk, Prog ~3dk, Tot ~3dk, Time ~3d]\n",

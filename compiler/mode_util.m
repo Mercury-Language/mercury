@@ -231,7 +231,7 @@ inst_lookup_2(ground_inst(A), InstTable, Inst) :-
 	).
 inst_lookup_2(user_inst(Name, Args), InstTable, Inst) :-
 	inst_table_get_user_insts(InstTable, UserInstTable),
-	length(Args, Arity),
+	list__length(Args, Arity),
 	( map__search(UserInstTable, Name - Arity, InstDefn) ->
 		InstDefn = hlds__inst_defn(_VarSet, Params, Inst0, _Cond, _C),
 		inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
@@ -256,7 +256,7 @@ inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 
 mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
-	length(Args, Arity),
+	list__length(Args, Arity),
 	module_info_modes(ModuleInfo, Modes),
 	map__search(Modes, Name - Arity, HLDS_Mode),
 	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond, _Context),

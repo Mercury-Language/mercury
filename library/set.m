@@ -155,12 +155,12 @@ set__list_to_set(List, List).
 set__sorted_list_to_set(List, List).
 
 set__to_sorted_list(Set, List) :-
-	sort(Set, List).
+	list__sort(Set, List).
 
 :- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
 
 set__insert_list(Set0, List, Set) :-
-	append(List, Set0, Set).
+	list__append(List, Set0, Set).
 
 set__insert(S0, E, [E|S0]).
 
@@ -183,7 +183,7 @@ set__superset(S0, S1) :-
 	set__subset(S1, S0).
 
 set__member(E, S) :-
-	member(E, S).
+	list__member(E, S).
 
 :- set__delete_list(_, Xs, _) when Xs.
 
@@ -193,7 +193,7 @@ set__delete_list(S0, [X | Xs], S) :-
 	set__delete_list(S1, Xs, S).
 
 set__delete(S0, E, S) :-
-	member(E, S0),
+	list__member(E, S0),
 	set__remove(S0, E, S).
 
 :- set__remove_list(_, Xs, _) when Xs.
@@ -204,14 +204,14 @@ set__remove_list(S0, [X | Xs], S) :-
 	set__remove_list(S1, Xs, S).
 
 set__remove(Set0, Elem, Set) :-
-	delete_all(Set0, Elem, Set).
+	list__delete_all(Set0, Elem, Set).
 
 set__remove_least(Set0, E, Set) :-
 	Set0 = [_|_],	% fail early on an empty set
 	set__to_sorted_list(Set0, [E|Set]).
 
 set__union(Set0, Set1, Set) :-
-	append(Set1, Set0, Set).
+	list__append(Set1, Set0, Set).
 
 set__power_union(PS, S) :-
 	set__to_sorted_list(PS, SL),
@@ -235,7 +235,7 @@ set__intersect(S0, S1, S) :-
 set__intersect_2([], _, S, S).
 set__intersect_2([E|S0], S1, S2, S) :-
 	(
-		member(E, S1)
+		list__member(E, S1)
 	->
 		S3 = [E|S2]
 	;

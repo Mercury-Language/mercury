@@ -129,7 +129,7 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error in conjunction. The next "),
-	{ length(Errors, NumErrors) },
+	{ list__length(Errors, NumErrors) },
 	io__write_int(NumErrors),
 	io__write_string(" error messages\n"),
 	prog_out__write_context(Context),
@@ -148,7 +148,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	{ set__to_sorted_list(Vars, VarList) },
 	mercury_output_vars(VarList, VarSet),
 	io__write_string(" } :\n"),
-	lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\t\t"),
 		mercury_output_hlds_goal(Goal, VarSet, 2),
@@ -225,7 +225,7 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("  expected instantiatedness was `"),
 	mercury_output_inst(Inst, InstVarSet),
 	io__write_string("'.\n"),
-	lookup_option(verbose_errors, bool(VerboseErrors)),
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
 		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
@@ -330,7 +330,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	io__write_string("  mode error in unification of `"),
 	mercury_output_var(X, VarSet),
 	io__write_string("' and `"),
-	io__write_term(VarSet, Term),
+	term_io__write_term(VarSet, Term),
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
@@ -340,18 +340,18 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
-	io__write_term(VarSet, Term),
+	term_io__write_term(VarSet, Term),
 	( { Args \= [] } ->
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  has instantiatedness `"),
-		io__write_constant(Name),
+		term_io__write_constant(Name),
 		io__write_string("("),
 		mercury_output_inst_list(ArgInsts, InstVarSet),
 		io__write_string(")")
 	;
 		io__write_string("' has instantiatedness `"),
-		io__write_constant(Name)
+		term_io__write_constant(Name)
 	),
 	io__write_string("'.\n").
 

@@ -253,7 +253,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 
 goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
 	maybe_write_line_number(Context),
-	{ length(Args, Arity) },
+	{ list__length(Args, Arity) },
 	(
 		{ Arity = 0 }
 	->
@@ -282,7 +282,7 @@ goedel_output_ctors([Name - ArgTypes | Ctors], Type, VarSet) -->
 	->
 		io__write_string("FUNCTION     "),
 		io__write_string(Name3),
-		{ length(ArgTypes, Arity) },
+		{ list__length(ArgTypes, Arity) },
 		(
 			{ Arity = 2, goedel_infix_op(Name2) }
 		->
@@ -340,7 +340,7 @@ goedel_output_pred_type(VarSet, PredName, Types, _Context) -->
 	->
 		io__write_string("PREDICATE    "),
 		io__write_string(PredName3),
-		{ length(Types, Arity) },
+		{ list__length(Types, Arity) },
 		(
 			{ Arity = 2, goedel_infix_pred(PredName2) }
 		->
@@ -891,7 +891,7 @@ goedel_infix_pred("is").
 convert_functor_name(Name, GoedelName) :-
 	(
 		string__first_char(Name, Char, Rest),
-		is_lower(Char),
+		char__is_lower(Char),
 		valid_functor_tail(Rest)
 	->
 		string__capitalize_first(Name, GoedelName0),
@@ -912,8 +912,8 @@ convert_functor_name(Name, GoedelName) :-
 valid_functor_tail(String) :-
 	( string__first_char(String, Char, Rest) ->
 		(
-			is_alpha(Char) ;
-			is_digit(Char) ;
+			char__is_alpha(Char) ;
+			char__is_digit(Char) ;
 			Char = '_'
 		->
 			valid_functor_tail(Rest)
@@ -930,7 +930,7 @@ valid_functor_tail(String) :-
 convert_to_valid_functor_name(String, Name) :-	
 	(
 		string__first_char(String, Char, ""),
-		is_upper(Char)
+		char__is_upper(Char)
 	->
 		string__append("F_", String, Name)
 	;
@@ -1045,7 +1045,7 @@ convert_var_name(Name, GoedelName) :-
 :- mode maybe_write_line_number(in, di, uo).
 
 maybe_write_line_number(Context) -->
-	lookup_option(line_numbers, bool(LineNumbers)),
+	globals__lookup_option(line_numbers, bool(LineNumbers)),
 	( { LineNumbers = yes } ->
 		io__write_string("\t% "),
 		prog_out__write_context(Context),

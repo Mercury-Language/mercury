@@ -649,7 +649,7 @@ module_info_incr_warnings(ModuleInfo0, ModuleInfo) :-
 
 module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) :-
 	module_info_predids(ModuleInfo0, PredIds0),
-	delete_all(PredIds0, PredId, PredIds),
+	list__delete_all(PredIds0, PredId, PredIds),
 	module_info_set_predids(ModuleInfo0, PredIds, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -683,9 +683,9 @@ cons_id_get_name(string_const(String), term__string(String)).
 cons_id_get_name(float_const(Float), term__float(Float)).
 
 make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
+	list__length(Args, Arity).
 make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
-	length(Args, Arity).
+	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

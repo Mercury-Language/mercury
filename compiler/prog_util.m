@@ -40,9 +40,9 @@
 %-----------------------------------------------------------------------------%
 
 	% A pred declaration may contains just types, as in
-	%	:- pred append(list(T), list(T), list(T)).
+	%	:- pred list__append(list(T), list(T), list(T)).
 	% or it may contain both types and modes, as in
-	%	:- pred append(list(T)::in, list(T)::in,
+	%	:- pred list__append(list(T)::in, list(T)::in,
 	%			list(T)::output).
 	%
 	% This predicate takes the argument list of a pred declaration,
@@ -65,7 +65,7 @@
 
 goedel_expand_eqv_types(Items0, Items) :-
 	goedel_replace_all_eqv_types(Items0, [], Items1),
-	reverse(Items1, Items).
+	list__reverse(Items1, Items).
 
 :- pred goedel_replace_all_eqv_types(list(item_and_context),
 		list(item_and_context), list(item_and_context)).
@@ -179,7 +179,7 @@ goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 		TArgs1, Found1),
 	(	
 		F = term__atom(Name),
-		same_length(TArgs1, Args)
+		list__same_length(TArgs1, Args)
 	->
 		type_param_to_var_list(Args, Args2),
 		term__substitute_corresponding(Args2, TArgs1, Body, Type),

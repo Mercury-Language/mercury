@@ -77,10 +77,10 @@
 queue__init([] - []).
 
 queue__equal(On0 - Off0, On1 - Off1) :-
-	reverse(On0, On0R),
-	append(Off0, On0R, Q0),
-	reverse(On1, On1R),
-	append(Off1, On1R, Q1),
+	list__reverse(On0, On0R),
+	list__append(Off0, On0R, Q0),
+	list__reverse(On1, On1R),
+	list__append(Off1, On1R, Q1),
 	Q0 = Q1.
 
 queue__is_empty([] - []).
@@ -95,11 +95,11 @@ queue__first(_On - [Elem | _Off], Elem).
 
 queue__get(On - [Elem | Off], Elem, On - Off).
 queue__get(On - [], Elem, [] - Off) :-
-	reverse(On, [Elem | Off]).
+	list__reverse(On, [Elem | Off]).
 
 queue__length(On - Off, Length) :-
-	length(On, LengthOn),
-	length(Off, LengthOff),
+	list__length(On, LengthOn),
+	list__length(Off, LengthOff),
 	Length is LengthOn + LengthOff.
 
 %--------------------------------------------------------------------------%

@@ -26,61 +26,61 @@
 % External interface: imported predicate
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
-:- pred io__op(int, op_type, string, io__state, io__state).
-:- mode io__op(in, in, in, di, uo).
-%	io__op(Prec, Type, OpName, IOState0, IOState1).
+:- pred term_io__op(int, op_type, string, io__state, io__state).
+:- mode term_io__op(in, in, in, di, uo).
+%	term_io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
 :- type op_details ---> op(int, op_type, string).
-:- pred io__current_ops(list(op_details), io__state, io__state).
-:- mode io__current_ops(out, di, uo).
+:- pred term_io__current_ops(list(op_details), io__state, io__state).
+:- mode term_io__current_ops(out, di, uo).
 %		Return a list containing all the current operator definitions.
 %		Does not modify the io__state.
 
 :- type read_term ---> eof ; error(string, int) ; term(varset, term).
-:- pred io__read_term(read_term, io__state, io__state).
-:- mode io__read_term(out, di, uo).
+:- pred term_io__read_term(read_term, io__state, io__state).
+:- mode term_io__read_term(out, di, uo).
 
-%	io__read_term(Result, IO0, IO1).
+%	term_io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
 %		read_term/2, except that resulting term is in the ground
 %		representation. Binds Result to either `eof',
 %		`term(VarSet, Term)', or `error(Message, LineNumber)'.
 
-:- pred io__write_term(varset, term, io__state, io__state).
-:- mode io__write_term(in, in, di, uo).
+:- pred term_io__write_term(varset, term, io__state, io__state).
+:- mode term_io__write_term(in, in, di, uo).
 %		Writes a term to standard output.
 
 :- pred io__write_term_nl(varset, term, io__state, io__state).
 :- mode io__write_term_nl(in, in, di, uo).
 %		As above, except it appends a period and new-line.
 
-:- pred io__write_constant(const, io__state, io__state).
-:- mode io__write_constant(in, di, uo).
+:- pred term_io__write_constant(const, io__state, io__state).
+:- mode term_io__write_constant(in, di, uo).
 %		Writes a constant (integer, float, or atom) to stdout.
 
-:- pred io__write_variable(var, varset, io__state, io__state).
-:- mode io__write_variable(in, in, di, uo).
+:- pred term_io__write_variable(var, varset, io__state, io__state).
+:- mode term_io__write_variable(in, in, di, uo).
 %		Writes a variable to stdout.
 
-:- pred mercury_quote_string(string, io__state, io__state).
-:- mode mercury_quote_string(in, di, uo).
+:- pred term_io__quote_string(string, io__state, io__state).
+:- mode term_io__quote_string(in, di, uo).
 	% Given a string S, write S in double-quotes, with characters
 	% escaped if necessary, to stdout.
 
-:- pred mercury_quote_atom(string, io__state, io__state).
-:- mode mercury_quote_atom(in, di, uo).
+:- pred term_io__quote_atom(string, io__state, io__state).
+:- mode term_io__quote_atom(in, di, uo).
 	% Given an atom-name A, write A, enclosed in single-quotes if necessary,
 	% with characters escaped if necessary, to stdout.
 
-:- pred mercury_quote_char(character, io__state, io__state).
-:- mode mercury_quote_char(in, di, uo).
+:- pred term_io__quote_char(character, io__state, io__state).
+:- mode term_io__quote_char(in, di, uo).
 	% Given a character C, write C in single-quotes,
 	% escaped if necessary, to stdout.
 
-:- pred mercury_quote_single_char(character, io__state, io__state).
-:- mode mercury_quote_single_char(in, di, uo).
+:- pred term_io__quote_single_char(character, io__state, io__state).
+:- mode term_io__quote_single_char(in, di, uo).
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
 
@@ -106,7 +106,7 @@
 	% use the variable names specified by varset and write _N
 	% for all unnamed variables with N starting at 0.
 
-io__write_variable(Variable, VarSet) -->
+term_io__write_variable(Variable, VarSet) -->
 	io__write_variable_2(Variable, VarSet, 0, _, _).
 
 :- pred io__write_variable_2(var, varset, int, varset, int,
@@ -140,7 +140,7 @@ io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	% use the variable names specified by varset and write _N
 	% for all unnamed variables with N starting at 0.
 
-io__write_term(VarSet, Term) -->
+term_io__write_term(VarSet, Term) -->
 	io__write_term_2(Term, VarSet, 0, _, _).
 
 :- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
@@ -170,7 +170,7 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		{ Result = yes }
 	->
 		io__write_char('('),
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		io__write_char(' '),
 		io__write_term_2(PrefixArg, VarSet0, N0, VarSet, N),
 		io__write_char(')')
@@ -182,7 +182,7 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char('('),
 		io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
 		io__write_char(' '),
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
@@ -192,12 +192,12 @@ io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 		io__write_char('('),
 		io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		io__write_char(' '),
 		io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
 		io__write_char(')')
 	;
-		io__write_constant(Functor),
+		term_io__write_constant(Functor),
 		(
 			{ Args = [X|Xs] }
 		->
@@ -268,42 +268,42 @@ io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 %-----------------------------------------------------------------------------%
 
 	% write the functor
-io__write_constant(term__integer(I)) -->
+term_io__write_constant(term__integer(I)) -->
 	io__write_int(I).
-io__write_constant(term__float(F)) -->
+term_io__write_constant(term__float(F)) -->
 	io__write_float(F).
-io__write_constant(term__atom(A))  -->
-	mercury_quote_atom(A).
-io__write_constant(term__string(S)) -->
+term_io__write_constant(term__atom(A))  -->
+	term_io__quote_atom(A).
+term_io__write_constant(term__string(S)) -->
 	io__write_char('"'),
-	mercury_quote_string(S),
+	term_io__quote_string(S),
 	io__write_char('"').
 
 %-----------------------------------------------------------------------------%
 
-mercury_quote_char(C) -->
+term_io__quote_char(C) -->
 	io__write_char('\''),
-	mercury_quote_single_char(C),
+	term_io__quote_single_char(C),
 	io__write_char('\'').
 
-mercury_quote_atom(S) -->
+term_io__quote_atom(S) -->
 	( { string__is_alnum_or_underscore(S) } ->
 		io__write_string(S)
 	;
 		io__write_char('\''),
-		mercury_quote_string(S),
+		term_io__quote_string(S),
 		io__write_char('\'')
 	).
 
-mercury_quote_string(S0) -->
+term_io__quote_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
-		mercury_quote_single_char(Char),
-		mercury_quote_string(S1)
+		term_io__quote_single_char(Char),
+		term_io__quote_string(S1)
 	;
 		[]
 	).
 
-mercury_quote_single_char(Char) -->
+term_io__quote_single_char(Char) -->
 	( { mercury_quote_special_char(Char, QuoteChar) } ->
 		io__write_char('\\'),
 		io__write_char(QuoteChar)
@@ -332,7 +332,7 @@ mercury__escape_char(Char, EscapeCode) :-
 	% Mercury string and character literals.
 
 is_mercury_source_char(Char) :-
-	( is_alnum(Char) ->
+	( char__is_alnum(Char) ->
 		true
 	; is_mercury_punctuation_char(Char) ->
 		true
@@ -398,7 +398,7 @@ mercury_quote_special_char('\b', 'b').
 %-----------------------------------------------------------------------------%
 
 io__write_term_nl(VarSet, Term) -->
-	io__write_term(VarSet, Term),
+	term_io__write_term(VarSet, Term),
 	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%

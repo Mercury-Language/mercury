@@ -122,13 +122,13 @@ string__to_int(String, Int) :-
 
 string__length(String, Length) :-
 	string__to_int_list(String, List),
-	length(List, Length).
+	list__length(List, Length).
 
 string__append(A, B, C) :-
 	string__to_int_list(A, LA),
 	string__to_int_list(B, LB),
 	string__to_int_list(C, LC),
-	append(LA, LB, LC).
+	list__append(LA, LB, LC).
 
 string__prefix(String, Prefix) :-
 	string__append(Prefix, _, String).
@@ -236,17 +236,17 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 
 string__capitalize_first(S0, S) :-
 	string__first_char(S0, C, S1),
-	to_upper(C, UpperC),
+	char__to_upper(C, UpperC),
 	string__first_char(S, UpperC, S1).
 
 string__uncapitalize_first(S0, S) :-
 	string__first_char(S0, C, S1),
-	to_lower(C, LowerC),
+	char__to_lower(C, LowerC),
 	string__first_char(S, LowerC, S1).
 
 string__is_alpha(S) :-
 	( string__first_char(S, C, S1) ->
-		is_alpha(C),
+		char__is_alpha(C),
 		string__is_alpha(S1)
 	;
 		true
@@ -254,7 +254,7 @@ string__is_alpha(S) :-
 
 string__is_alpha_or_underscore(S) :-
 	( string__first_char(S, C, S1) ->
-		is_alpha_or_underscore(C),
+		char__is_alpha_or_underscore(C),
 		string__is_alpha_or_underscore(S1)
 	;
 		true
@@ -262,7 +262,7 @@ string__is_alpha_or_underscore(S) :-
 
 string__is_alnum_or_underscore(S) :-
 	( string__first_char(S, C, S1) ->
-		is_alnum_or_underscore(C),
+		char__is_alnum_or_underscore(C),
 		string__is_alnum_or_underscore(S1)
 	;
 		true
