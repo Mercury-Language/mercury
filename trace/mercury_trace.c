@@ -1395,6 +1395,7 @@ MR_abandon_call_table_array(void)
 {
 	if (MR_call_table_ptrs != NULL) {
 		MR_free(MR_call_table_ptrs);
+		MR_call_table_ptrs = NULL;
 	}
 }
 
