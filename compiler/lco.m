@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,6 +29,7 @@
 
 :- import_module hlds_goal, passes_aux, hlds_out, (inst), instmap, inst_match.
 :- import_module mode_util, hlds_data, prog_data, type_util, globals, options.
+:- import_module arg_info.
 :- import_module list, std_util, map, assoc_list, require.
 :- import_module bool, set, int, varset.
 
@@ -40,8 +41,8 @@ lco_modulo_constructors(PredId, ProcId, ProcInfo0, ProcInfo, ModuleInfo0,
 		PredId, ProcId, ModuleInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
-	{ lco_in_goal(Goal0, Goal, ModuleInfo0, ModuleInfo1,
-		InstMap0, ProcInfo0, ProcInfo1, Changed) },
+	{ lco_in_goal(proc(PredId, ProcId), Goal0, Goal, ModuleInfo0,
+		ModuleInfo1, InstMap0, ProcInfo0, ProcInfo1, Changed) },
 	( { Changed = yes } ->
 		{ proc_info_set_goal(ProcInfo1, Goal, ProcInfo) },
 		{ ModuleInfo = ModuleInfo1 },
@@ -56,13 +57,13 @@ lco_modulo_constructors(PredId, ProcId, ProcInfo0, ProcInfo, ModuleInfo0,
 %-----------------------------------------------------------------------------%
 
 % Do the LCO optimisation and recompute the instmap deltas.
-:- pred lco_in_goal(hlds_goal, hlds_goal, module_info, module_info, 
-		instmap, proc_info, proc_info, bool).
-:- mode lco_in_goal(in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_goal(pred_proc_id, hlds_goal, hlds_goal, module_info,
+		module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_goal(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_goal(Goal0, Goal, Module0, Module, InstMap0, ProcInfo0, ProcInfo,
-		Changed):-
-	lco_in_sub_goal(Goal0, Goal1, Module0, Module1, InstMap0,
+lco_in_goal(PredProcId, Goal0, Goal, Module0, Module, InstMap0,
+		ProcInfo0, ProcInfo, Changed):-
+	lco_in_sub_goal(PredProcId, Goal0, Goal1, Module0, Module1, InstMap0,
 		ProcInfo0, ProcInfo1, Changed),
 	(
 		Changed = yes,
@@ -83,103 +84,107 @@ lco_in_goal(Goal0, Goal, Module0, Module, InstMap0, ProcInfo0, ProcInfo,
 	).
 
 % Do the LCO optimisation without recomputing instmap deltas.
-:- pred lco_in_sub_goal(hlds_goal, hlds_goal, module_info, module_info,
-		instmap, proc_info, proc_info, bool).
-:- mode lco_in_sub_goal(in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_sub_goal(pred_proc_id, hlds_goal, hlds_goal, module_info,
+		module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_sub_goal(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_sub_goal(Goal0 - GoalInfo, Goal - GoalInfo, Module0, Module,
+lco_in_sub_goal(PredProcId, Goal0 - GoalInfo, Goal - GoalInfo, Module0, Module,
 		InstMap0, Proc0, Proc, Changed) :-
-	lco_in_goal_2(Goal0, Goal, Module0, Module, InstMap0,
+	lco_in_goal_2(PredProcId, Goal0, Goal, Module0, Module, InstMap0,
 		Proc0, Proc, Changed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_goal_2(hlds_goal_expr, hlds_goal_expr, module_info, 
-		module_info, instmap, proc_info, proc_info, bool).
-:- mode lco_in_goal_2(in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_goal_2(pred_proc_id, hlds_goal_expr, hlds_goal_expr,
+		module_info, module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_goal_2(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_goal_2(conj(Goals0), conj(Goals), Module0, Module, InstMap0,
+lco_in_goal_2(PredProcId, conj(Goals0), conj(Goals), Module0, Module, InstMap0,
 		Proc0, Proc, Changed) :-
 	list__reverse(Goals0, RevGoals0),
-	lco_in_conj(RevGoals0, [], Goals, Module0, Module, InstMap0,
+	lco_in_conj(PredProcId, RevGoals0, [], Goals, Module0, Module, InstMap0,
 		Proc0, Proc, Changed).
 
 	% XXX Some execution algorithm issues here.
-lco_in_goal_2(par_conj(Goals, SM), par_conj(Goals, SM), Module, Module,
+lco_in_goal_2(_, par_conj(Goals, SM), par_conj(Goals, SM), Module, Module,
 		_, Proc, Proc, no).
 
-lco_in_goal_2(disj(Goals0, SM), disj(Goals, SM), Module0, Module, InstMap0,
-		Proc0, Proc, Changed) :-
-	lco_in_disj(Goals0, Goals, Module0, Module, InstMap0, Proc0, Proc,
-		Changed).
+lco_in_goal_2(PredProcId, disj(Goals0, SM), disj(Goals, SM), Module0, Module,
+		InstMap0, Proc0, Proc, Changed) :-
+	lco_in_disj(PredProcId, Goals0, Goals, Module0, Module, InstMap0,
+		Proc0, Proc, Changed).
 
-lco_in_goal_2(switch(Var, Det, Cases0, SM), switch(Var, Det, Cases, SM),
+lco_in_goal_2(PredProcId, switch(Var, Det, Cases0, SM),
+		switch(Var, Det, Cases, SM),
 		Module0, Module, InstMap0, Proc0, Proc, Changed) :-
-	lco_in_cases(Cases0, Cases, Module0, Module, InstMap0, Proc0, Proc,
-		Changed).
+	lco_in_cases(PredProcId, Cases0, Cases, Module0, Module, InstMap0,
+		Proc0, Proc, Changed).
 
-lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0, SM),
+lco_in_goal_2(PredProcId, if_then_else(Vars, Cond, Then0, Else0, SM),
 		if_then_else(Vars, Cond, Then, Else, SM), Module0, Module,
 		InstMap0, Proc0, Proc, Changed) :-
 	Cond = _ - CondInfo,
 	goal_info_get_instmap_delta(CondInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
-	lco_in_sub_goal(Then0, Then, Module0, Module1, InstMap1,
+	lco_in_sub_goal(PredProcId, Then0, Then, Module0, Module1, InstMap1,
 			Proc0, Proc1, Changed0),
-	lco_in_sub_goal(Else0, Else, Module1, Module, InstMap0,
+	lco_in_sub_goal(PredProcId, Else0, Else, Module1, Module, InstMap0,
 			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
-lco_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Module0, Module,
+lco_in_goal_2(PredProcId, some(Vars, Goal0), some(Vars, Goal), Module0, Module,
 		InstMap0, Proc0, Proc, Changed) :-
-	lco_in_sub_goal(Goal0, Goal, Module0, Module, InstMap0,
+	lco_in_sub_goal(PredProcId, Goal0, Goal, Module0, Module, InstMap0,
 		Proc0, Proc, Changed).
 
-lco_in_goal_2(not(Goal), not(Goal), Module, Module, _, Proc, Proc, no).
+lco_in_goal_2(_, not(Goal), not(Goal), Module, Module, _, Proc, Proc, no).
 
-lco_in_goal_2(higher_order_call(A,B,C,D,E,F), higher_order_call(A,B,C,D,E,F),
+lco_in_goal_2(_, higher_order_call(A,B,C,D,E,F),
+		higher_order_call(A,B,C,D,E,F),
 		Module, Module, _, Proc, Proc, no).
 
-lco_in_goal_2(class_method_call(A,B,C,D,E,F), class_method_call(A,B,C,D,E,F),
+lco_in_goal_2(_, class_method_call(A,B,C,D,E,F),
+		class_method_call(A,B,C,D,E,F),
 		Module, Module, _, Proc, Proc, no).
 
-lco_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), Module, Module,
+lco_in_goal_2(_, call(A,B,C,D,E,F), call(A,B,C,D,E,F), Module, Module,
 		_, Proc, Proc, no).
 
-lco_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module,
+lco_in_goal_2(_, unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module,
 		_, Proc, Proc, no).
 
-lco_in_goal_2(pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G), 
+lco_in_goal_2(_, pragma_c_code(A,B,C,D,E,F,G), pragma_c_code(A,B,C,D,E,F,G), 
 		Module, Module, _, Proc, Proc, no).
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_disj(list(hlds_goal), list(hlds_goal), module_info, 
-		module_info, instmap, proc_info, proc_info, bool).
-:- mode lco_in_disj(in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_disj(pred_proc_id, list(hlds_goal), list(hlds_goal),
+		module_info, module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_disj(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_disj([], [], Module, Module, _, Proc, Proc, no).
-lco_in_disj([Goal0 | Goals0], [Goal | Goals], Module0, Module, InstMap0,
-		Proc0, Proc, Changed) :-
-	lco_in_sub_goal(Goal0, Goal, Module0, Module1, InstMap0,
+lco_in_disj(_, [], [], Module, Module, _, Proc, Proc, no).
+lco_in_disj(PredProcId, [Goal0 | Goals0], [Goal | Goals], Module0, Module,
+		InstMap0, Proc0, Proc, Changed) :-
+	lco_in_sub_goal(PredProcId, Goal0, Goal, Module0, Module1, InstMap0,
 			Proc0, Proc1, Changed0),
-	lco_in_disj(Goals0, Goals, Module1, Module, InstMap0,
+	lco_in_disj(PredProcId, Goals0, Goals, Module1, Module, InstMap0,
 			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_cases(list(case), list(case), module_info, module_info,
-		instmap, proc_info, proc_info, bool).
-:- mode lco_in_cases(in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_cases(pred_proc_id, list(case), list(case), module_info,
+		module_info, instmap, proc_info, proc_info, bool).
+:- mode lco_in_cases(in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_cases([], [], Module, Module, _, Proc, Proc, no).
-lco_in_cases([case(Cons, IMD, Goal0) | Cases0], [case(Cons, IMD, Goal) | Cases],
+lco_in_cases(_, [], [], Module, Module, _, Proc, Proc, no).
+lco_in_cases(PredProcId, [case(Cons, IMD, Goal0) | Cases0],
+		[case(Cons, IMD, Goal) | Cases],
 		Module0, Module, InstMap0, Proc0, Proc, Changed) :-
 	instmap__apply_instmap_delta(InstMap0, IMD, InstMap1),
-	lco_in_sub_goal(Goal0, Goal, Module0, Module1, InstMap1,
+	lco_in_sub_goal(PredProcId, Goal0, Goal, Module0, Module1, InstMap1,
 			Proc0, Proc1, Changed0),
-	lco_in_cases(Cases0, Cases, Module1, Module, InstMap0,
+	lco_in_cases(PredProcId, Cases0, Cases, Module1, Module, InstMap0,
 			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
@@ -199,13 +204,14 @@ lco_in_cases([case(Cons, IMD, Goal0) | Cases0], [case(Cons, IMD, Goal) | Cases],
 %
 % invariant: append(reverse(RevGoals), Unifies) = original conjunction
 
-:- pred lco_in_conj(list(hlds_goal), list(hlds_goal), list(hlds_goal),
-	module_info, module_info, instmap, proc_info, proc_info, bool).
-:- mode lco_in_conj(in, in, out, in, out, in, in, out, out) is det.
+:- pred lco_in_conj(pred_proc_id, list(hlds_goal), list(hlds_goal),
+	list(hlds_goal), module_info, module_info, instmap, proc_info,
+	proc_info, bool).
+:- mode lco_in_conj(in, in, in, out, in, out, in, in, out, out) is det.
 
-lco_in_conj([], Unifies, Unifies, Module, Module, _, Proc, Proc, no).
-lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
-		Proc0, Proc, Changed) :-
+lco_in_conj(_, [], Unifies, Unifies, Module, Module, _, Proc, Proc, no).
+lco_in_conj(PredProcId, [Goal0 | Goals0], Unifies0, Goals, Module0, Module,
+		InstMap0, Proc0, Proc, Changed) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
@@ -219,8 +225,8 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 		ConsId \= pred_const(_, _)
 	->
 		Unifies1 = [Goal0 | Unifies0],
-		lco_in_conj(Goals0, Unifies1, Goals, Module0, Module, InstMap1,
-			Proc0, Proc, Changed)
+		lco_in_conj(PredProcId, Goals0, Unifies1, Goals,
+			Module0, Module, InstMap1, Proc0, Proc, Changed)
 	;
 		GoalExpr0 = call(CalledPredId, ProcId, Vars, _, _, _),
 
@@ -267,10 +273,10 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 				CalledDet),
 			determinism_components(CallingDet, _, at_most_many),
 			determinism_components(CalledDet,  _, at_most_many)
-		)
-	->
+		),
+
 		set__init(ChangedVarsSet0),
-		Proc = Proc0,
+		Proc1 = Proc0,
 		Goal1 = Goal0,
 		Unifies = Unifies1,
 		list__foldl(lambda([G::in, Vs0::in, Vs::out] is det,
@@ -284,14 +290,17 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 				Vs = Vs0
 			)), Unifies, ChangedVarsSet0, ChangedVarsSet),
 
-		Changed = yes,
-
-		maybe_create_new_proc(ChangedVarsSet, Module0, Module,
-			Goal1, Goal),
+		maybe_create_new_proc(PredProcId, ChangedVarsSet,
+			Module0, Module1, Goal1, Goal, yes),
 
 		list__append(Unifies, [Goal | NoTagUnifies], LaterGoals),
 		list__reverse(Goals0, FrontGoals),
-		list__append(FrontGoals, LaterGoals, Goals)
+		list__append(FrontGoals, LaterGoals, Goals1)
+	->
+		Proc = Proc1,
+		Goals = Goals1,
+		Module = Module1,
+		Changed = yes
 	;
 		% The conjunction does not follow the pattern "unify*, goal"
 		% so we cannot optimize it; reconstruct the original goal list
@@ -304,8 +313,8 @@ lco_in_conj([Goal0 | Goals0], Unifies0, Goals, Module0, Module, InstMap0,
 		( RevGoals0 = [Last0 | RevGoals1] ->
 			apply_penultimate_instmap_deltas(Goals1, InstMap0,
 				InstMap),
-			lco_in_sub_goal(Last0, Last, Module0, Module,
-				InstMap, Proc0, Proc, Changed),
+			lco_in_sub_goal(PredProcId, Last0, Last,
+				Module0, Module, InstMap, Proc0, Proc, Changed),
 			list__reverse([Last | RevGoals1], Goals)
 		;
 			Goals = Goals1,
@@ -438,11 +447,12 @@ check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, CalledInstMap,
 % some of the output variables.  See if the required proc already exists
 % and if it doesn't, create it.
 
-:- pred maybe_create_new_proc(set(prog_var), module_info, module_info,
-		hlds_goal, hlds_goal).
-:- mode maybe_create_new_proc(in, in, out, in, out) is det.
+:- pred maybe_create_new_proc(pred_proc_id, set(prog_var), module_info,
+		module_info, hlds_goal, hlds_goal, bool).
+:- mode maybe_create_new_proc(in, in, in, out, in, out, out) is det.
 
-maybe_create_new_proc(ChangedVars, Module0, Module, Goal0, Goal) :-
+maybe_create_new_proc(CallingPredProcId, ChangedVars, Module0, Module,
+		Goal0, Goal, DoOpt) :-
 	(
 	    Goal0 = call(PredId, ProcId0, Vars, A,B,C) - GoalInfo
 	->
@@ -459,66 +469,126 @@ maybe_create_new_proc(ChangedVars, Module0, Module, Goal0, Goal) :-
 		    VarModes0, Modes),
 	    ArgModes = argument_modes(ArgInstTable, Modes),
 
-		% See if a procedure with these modes already exists
 	    (
+		% See if a procedure with these modes already exists
 		find_matching_proc(ProcTable0, InstMap0, ArgModes, Module0,
 				ProcId1)
 	    ->
-		Goal = call(PredId, ProcId1, Vars, A,B,C) - GoalInfo,
-		Module = Module0
+		Module = Module0,
+		(
+		    % Make sure the output arguments of the two procs match up
+		    % so that we get a tail call.
+		    output_arguments_match(Module, CallingPredProcId,
+			proc(PredId, ProcId1), Vars)
+		->
+		    Goal = call(PredId, ProcId1, Vars, A,B,C) - GoalInfo,
+		    DoOpt = yes
+		;
+		    Goal = Goal0,
+		    DoOpt = no
+		)
 	    ;
 		create_new_proc(ProcTable0, ProcId0, ArgModes, InstTable0,
 		    ProcTable1, ProcId),
-		Goal = call(PredId, ProcId, Vars, A,B,C) - GoalInfo,
+		Goal1 = call(PredId, ProcId, Vars, A,B,C) - GoalInfo,
 		pred_info_set_procedures(PredInfo0, ProcTable1, PredInfo1),
 		module_info_set_pred_info(Module0, PredId, PredInfo1, Module1),
 
 		% Run lco on the new proc.
 		map__lookup(ProcTable1, ProcId, ProcInfo1),
 		proc_info_goal(ProcInfo1, ProcGoal0),
-		lco_in_goal(ProcGoal0, ProcGoal1, Module1, Module2, InstMap0,
-			ProcInfo1, ProcInfo2, _),
+		lco_in_goal(proc(PredId, ProcId), ProcGoal0, ProcGoal1,
+			Module1, Module2, InstMap0,
+			ProcInfo1, ProcInfo2, DoOpt),
 
-		% Fix modes of unifications and calls in the new proc
-		% that bind aliased output arguments.
-		proc_info_headvars(ProcInfo2, HeadVars),
-		proc_info_vartypes(ProcInfo2, Types0),
-		proc_info_inst_table(ProcInfo2, ProcInstTable0),
-		proc_info_get_initial_instmap(ProcInfo2, Module2, ProcInstMap2),
-		assoc_list__from_corresponding_lists(HeadVars, Modes, VarModes),
-		Filter = lambda([VarMode::in, Var::out] is semidet,
-		    (
-			VarMode = Var - Mode,
-			map__lookup(Types0, Var, Type),
-			mode_to_arg_mode(ProcInstMap2, ProcInstTable0,
+		( DoOpt = yes ->
+		    Goal = Goal1,
+
+		    % Fix modes of unifications and calls in the new proc
+		    % that bind aliased output arguments.
+		    proc_info_headvars(ProcInfo2, HeadVars),
+		    proc_info_vartypes(ProcInfo2, Types0),
+		    proc_info_inst_table(ProcInfo2, ProcInstTable0),
+		    proc_info_get_initial_instmap(ProcInfo2, Module2,
+			ProcInstMap2),
+		    assoc_list__from_corresponding_lists(HeadVars, Modes,
+			VarModes),
+		    Filter = lambda([VarMode::in, Var::out] is semidet,
+			(
+			    VarMode = Var - Mode,
+			    map__lookup(Types0, Var, Type),
+			    mode_to_arg_mode(ProcInstMap2, ProcInstTable0,
 				Module2, Mode, Type, ref_in)
-		    )),
-		list__filter_map(Filter, VarModes, AliasedVars),
+			)),
+		    list__filter_map(Filter, VarModes, AliasedVars),
 
-		proc_info_varset(ProcInfo2, VarSet0),
-		proc_info_get_initial_instmap(ProcInfo2, Module2, InstMap),
+		    proc_info_varset(ProcInfo2, VarSet0),
+		    proc_info_get_initial_instmap(ProcInfo2, Module2, InstMap),
 
-		FMI0 = fix_modes_info(VarSet0, Types0, ProcInstTable0, InstMap),
-		set__list_to_set(AliasedVars, AliasedVarSet),
-		list__foldl2(
-		    lambda([V::in, G0::in, G::out, F0::in, F::out] is det,(
-			fix_modes_of_binding_goal(Module2, AliasedVarSet, V,
-			    G0, G, F0, F1),
-			fix_modes_info_set_instmap(F1, InstMap, F)
-		    )), AliasedVars, ProcGoal1, ProcGoal, FMI0, FMI),
+		    FMI0 = fix_modes_info(VarSet0, Types0, ProcInstTable0,
+			InstMap),
+		    set__list_to_set(AliasedVars, AliasedVarSet),
+		    list__foldl2(
+			lambda([V::in, G0::in, G::out, F0::in, F::out] is det,(
+			    fix_modes_of_binding_goal(Module2, AliasedVarSet, V,
+				G0, G, F0, F1),
+			    fix_modes_info_set_instmap(F1, InstMap, F)
+			)), AliasedVars, ProcGoal1, ProcGoal, FMI0, FMI),
 
-		proc_info_set_goal(ProcInfo2, ProcGoal, ProcInfo3),
-		FMI = fix_modes_info(VarSet, Types, ProcInstTable, _),
-		proc_info_set_varset(ProcInfo3, VarSet, ProcInfo4),
-		proc_info_set_vartypes(ProcInfo4, Types, ProcInfo5),
-		proc_info_set_inst_table(ProcInfo5, ProcInstTable, ProcInfo),
-		map__set(ProcTable1, ProcId, ProcInfo, ProcTable),
-		pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
-		module_info_set_pred_info(Module2, PredId, PredInfo, Module)
+		    proc_info_set_goal(ProcInfo2, ProcGoal, ProcInfo3),
+		    FMI = fix_modes_info(VarSet, Types, ProcInstTable, _),
+		    proc_info_set_varset(ProcInfo3, VarSet, ProcInfo4),
+		    proc_info_set_vartypes(ProcInfo4, Types, ProcInfo5),
+		    proc_info_set_inst_table(ProcInfo5, ProcInstTable,
+			ProcInfo),
+		    map__set(ProcTable1, ProcId, ProcInfo, ProcTable),
+		    pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
+		    module_info_set_pred_info(Module2, PredId, PredInfo, Module)
+		;
+		    Goal = Goal0,
+		    Module = Module0
+		)
 	    )
 	;
 		error("lco:maybe_create_new_proc: internal error")
 	).
+
+:- pred output_arguments_match(module_info, pred_proc_id, pred_proc_id,
+		list(prog_var)).
+:- mode output_arguments_match(in, in, in, in) is semidet.
+
+output_arguments_match(Module, PredProcIdA, PredProcIdB, CallVars) :-
+	module_info_pred_proc_info(Module, PredProcIdA, PredA, ProcA),
+	proc_info_headvars(ProcA, HeadVarsA),
+	get_top_out_arg_locs(Module, PredA, ProcA, HeadVarsA, VarLocsA),
+
+	module_info_pred_proc_info(Module, PredProcIdB, PredB, ProcB),
+	get_top_out_arg_locs(Module, PredB, ProcB, CallVars, VarLocsB),
+
+	all [VarLoc] (
+		list__member(VarLoc, VarLocsA)
+	=>
+		list__member(VarLoc, VarLocsB)
+	).
+
+:- pred get_top_out_arg_locs(module_info, pred_info, proc_info,
+		list(prog_var), assoc_list(prog_var, arg_loc)).
+:- mode get_top_out_arg_locs(in, in, in, in, out) is det.
+
+get_top_out_arg_locs(Module, Pred, Proc, Vars, VarLocs) :-
+	pred_info_arg_types(Pred, Types),
+	proc_info_argmodes(Proc, argument_modes(InstTable, Modes)),
+	proc_info_args_method(Proc, Method),
+	proc_info_interface_code_model(Proc, CodeModel),
+	proc_info_get_initial_instmap(Proc, Module, InstMap),
+
+	make_arg_infos(Method, Types, Modes, CodeModel, InstMap,
+		InstTable, Module, ArgInfos),
+
+	assoc_list__from_corresponding_lists(Vars, ArgInfos, VarInfos),
+	list__filter_map(pred((V - arg_info(Loc, top_out))::in,
+			(V - Loc)::out) is semidet,
+		VarInfos, VarLocs).
 
 :- pred get_unused_proc_id(proc_id, proc_table, proc_id).
 :- mode get_unused_proc_id(in, in, out) is det.
