@@ -33,8 +33,8 @@ Here's what new in this release:
 	* We generate better code for calls to `\='.
 	* We generate better code for `compare/3'.
 	* A few other new optimizations.
-	* The profiler now works (documentation is sparse, though - see
-	  the file profiler/README).
+	* The profiler now works (see the documentation in the
+	  Mercury User's Guide).
 	* Some new library predicates, including `string__format'
 	  (like C's sprintf).
 	* `set__join/2' has been renamed as `set__power_union/2'.
@@ -56,7 +56,7 @@ The main features of Mercury are:
 	requires that I/O take place only in parts of the program that
 	are guaranteed to succeed exactly once, so that backtracking
 	across the update will never be necessary.  The current
-	implementation does not check either condition, but a planned
+	implementation does not check the latter condition, but a planned
 	future implementation will.
 
 	Mercury handles dynamic data structures not through Prolog's
