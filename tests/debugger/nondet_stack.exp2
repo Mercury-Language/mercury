@@ -6,6 +6,19 @@ Contexts will not be printed.
 mdb> register --quiet
 mdb> goto 22
       E2:     C2  6 SWTC pred nondet_stack.qperm/2-0 (nondet) s2;
+mdb> nondet_stack 3
+non 162: ordinary, 16 words
+ redoip: unnamed label
+ redofr: non 162
+ succip: unnamed label
+ succfr: non 123
+non 146: temp
+ redoip: label UNKNOWN
+ redofr: non 140
+non 143: temp
+ redoip: unnamed label
+ redofr: non 140
+<more stack frames snipped>
 mdb> nondet_stack
 non 162: ordinary, 16 words
  redoip: unnamed label

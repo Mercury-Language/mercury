@@ -143,6 +143,14 @@ mdb> stack -d
    3      E5      C4    3 pred queens.qperm/2-0 (nondet) (queens.m:49) s2;c3;
    4      E4      C3    2 pred queens.queen/2-0 (nondet) (queens.m:42) c2;
    5      E1      C1    1 pred queens.main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
+mdb> stack 3
+   0    3* pred queens.qperm/2-0 (nondet) (queens.m:45 and others)
+<more stack frames snipped>
+mdb> stack -d 3
+   0     E20     C10    6 pred queens.qperm/2-0 (nondet) (queens.m:45) (empty)
+   1     E15      C8    5 pred queens.qperm/2-0 (nondet) (queens.m:49) s2;c3;
+   2     E10      C6    4 pred queens.qperm/2-0 (nondet) (queens.m:49) s2;c3;
+<more stack frames snipped>
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> 
