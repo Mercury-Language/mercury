@@ -273,7 +273,7 @@ install_mercury: install_ints install_init install_library
 install_ints: $(library.ints) $(library.int3s) \
 		$(library.opts) $(library.trans_opts)
 	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
-	for file in $(library.ints) $(library.int3s) 
+	for file in $(library.ints) $(library.int3s) \
 			$(library.opts) $(library.trans_opts); \
 	do \
 		target=$(INSTALL_INT_DIR)/`basename $$file`; \
