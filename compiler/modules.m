@@ -645,8 +645,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% we need to handle a few cases specially
 		%
 		{
-			( Ext = ".dir/*.$O"
-			; Ext = ".dir/*.o"
+			( Ext = ".dir/*.o"
+			; Ext = ".dir/*.$O"
 			)
 
 		->
@@ -655,15 +655,19 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 			% .$O and .pic_o files need to go in the
 			% same directory, so that using
 			% .$(EXT_FOR_PIC_OBJECTS) will work.
-			( Ext = ".$O"
-			; Ext = ".o"
+			( Ext = ".o"
+			; Ext = ".$O"
 			; Ext = ".pic_o"
 			; Ext = "$(EXT_FOR_PIC_OBJECTS)"
+			; Ext = "_init.o"
+			; Ext = "_init.$O"
+			; Ext = "_init.pic_o"
+			; Ext = "_init.$(EXT_FOR_PIC_OBJECTS)"
 			)
 		->
 			SubDirName = "os"
 		;
-			% _init.c, _init.s, _init.$O etc. files
+			% _init.c, _init.s, _init.o etc. files
 			% go in the cs, ss, os etc. subdirectories
 			string__append("_init.", ExtName, Ext)
 		->
