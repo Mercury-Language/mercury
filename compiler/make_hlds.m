@@ -892,18 +892,18 @@ convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 
 ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
 ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
-	{ make_cons_id(Name, Args, TypeId, ConsId) },
+	{ make_cons_id(Name, Args, TypeId, QualifiedConsId) },
 	{ assoc_list__values(Args, Types) },
 	{ ConsDefn = hlds_cons_defn(Types, TypeId, Context) },
-	( %%% some [ConsDefns0]
-		{ map__search(Ctors0, ConsId, ConsDefns0) }
+	(
+		{ map__search(Ctors0, QualifiedConsId, QualifiedConsDefns0) }
 	->
-		{ ConsDefns1 = ConsDefns0 }
+		{ QualifiedConsDefns1 = QualifiedConsDefns0 }
 	;
-		{ ConsDefns1 = [] }
+		{ QualifiedConsDefns1 = [] }
 	),
 	(
-		{ list__member(OtherConsDefn, ConsDefns1) },
+		{ list__member(OtherConsDefn, QualifiedConsDefns1) },
 		{ OtherConsDefn = hlds_cons_defn(_, TypeId, _) }
 	->
 		% XXX we should record each error using module_info_incr_errors
@@ -911,23 +911,26 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
 		io__write_string("Error: constructor `"),
-		hlds_out__write_cons_id(ConsId),
+		hlds_out__write_cons_id(QualifiedConsId),
 		io__write_string("' for type `"),
 		hlds_out__write_type_id(TypeId),
 		io__write_string("' multiply defined.\n"),
 		io__set_exit_status(1),
 		io__set_output_stream(OldStream, _),
-		{ ConsDefns2 = ConsDefns1 }
+		{ QualifiedConsDefns = QualifiedConsDefns1 }
 	;
-		{ ConsDefns2 = [ConsDefn | ConsDefns1] }	
+		{ QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1] }	
 	),
-	{ map__set(Ctors0, ConsId, ConsDefns2, Ctors1) },
-	{ ConsId = cons(qualified(_, ConsName), Arity) ->
+	{ map__set(Ctors0, QualifiedConsId, QualifiedConsDefns, Ctors1) },
+	{ QualifiedConsId = cons(qualified(_, ConsName), Arity) ->
 		% Add an unqualified version of the cons_id to the cons_table.
 		UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-		( map__search(Ctors1, UnqualifiedConsId, ConsDefns3) ->
+		(
+			map__search(Ctors1, UnqualifiedConsId,
+				UnqualifiedConsDefns)
+		->
 			map__set(Ctors1, UnqualifiedConsId,
-				[ConsDefn | ConsDefns3], Ctors2)
+				[ConsDefn | UnqualifiedConsDefns], Ctors2)
 		;
 			map__set(Ctors1, UnqualifiedConsId, 
 				[ConsDefn], Ctors2)
