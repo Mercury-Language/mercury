@@ -9,8 +9,6 @@
 % each of these variables, and stores this information in the call_info
 % structure in the proc_info.
 
-% TODO: Put variables whose scopes don't overlap into the same stack slot.
-
 %-----------------------------------------------------------------------------%
 
 :- interface.
@@ -67,13 +65,10 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 	proc_info_interface_determinism(ProcInfo0, Category),
 
 	detect_initial_live_vars(ProcInfo0, ModuleInfo0, Liveness0),
-	set__init(LiveVars0),
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo0, _Liveness, LiveVars),
-
-	set__to_sorted_list(LiveVars, LiveVarList),
 	map__init(CallInfo0),
-	allocate_live_vars(LiveVarList, 1, Category, CallInfo0, CallInfo),
+	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
+				Category - ModuleInfo0, _Liveness, CallInfo),
+
 	proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo),
 
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -85,12 +80,16 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_goal(hlds__goal, liveness_info, set(var),
-				module_info, liveness_info, set(var)).
+% The call_info structure (map(var, lval)) is threaded through the traversal
+% of the goal. The liveness information is computed from the liveness
+% delta annotations.
+
+:- pred detect_live_vars_in_goal(hlds__goal, liveness_info, map(var, lval),
+		pair(category,module_info), liveness_info, map(var, lval)).
 :- mode detect_live_vars_in_goal(in, in, in, in, out, out) is det.
 
-detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
-					Liveness, LiveVars) :-
+detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, CallInfo0, Misc,
+					Liveness, CallInfo) :-
 	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
 	goal_info_post_delta_liveness(GoalInfo, PostDelta),
@@ -99,8 +98,8 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
 	set__union(Liveness1, PreBirths, Liveness2),
 	set__difference(Liveness2, PostDeaths, Liveness3),
 
-	detect_live_vars_in_goal_2(Goal0, Liveness3, LiveVars0,
-					ModuleInfo, Liveness4, LiveVars),
+	detect_live_vars_in_goal_2(Goal0, Liveness3, CallInfo0,
+					Misc, Liveness4, CallInfo),
 
         set__union(Liveness4, PostBirths, Liveness).
 
@@ -108,131 +107,136 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveVars0, ModuleInfo,
 	% Here we process each of the different sorts of goals.
 	% `Liveness' is the set of live variables, i.e. vars which
 	% have been referenced and will be referenced again.
-	% `LiveVars' is the accumulated set of variables which need a
-	% stack slot, i.e. they are live across calls or at the start of
-	% a disjunction.
 
-:- pred detect_live_vars_in_goal_2(hlds__goal_expr, liveness_info, set(var),
-				module_info, liveness_info, set(var)).
+:- pred detect_live_vars_in_goal_2(hlds__goal_expr, liveness_info, map(var, lval),
+				pair(category, module_info), liveness_info, map(var, lval)).
 :- mode detect_live_vars_in_goal_2(in, in, in, in, out, out) is det.
 
-detect_live_vars_in_goal_2(conj(Goals0), Liveness0, LiveVars0, ModuleInfo,
-							Liveness, LiveVars) :-
-	detect_live_vars_in_conj(Goals0, Liveness0, LiveVars0, ModuleInfo,
-							Liveness, LiveVars).
+detect_live_vars_in_goal_2(conj(Goals0), Liveness0, CallInfo0, Misc,
+							Liveness, CallInfo) :-
+	detect_live_vars_in_conj(Goals0, Liveness0, CallInfo0, Misc,
+							Liveness, CallInfo).
 
-detect_live_vars_in_goal_2(disj(Goals0), Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars) :-
-	set__union(Liveness0, LiveVars0, LiveVars1),
-	detect_live_vars_in_disj(Goals0, Liveness0, LiveVars1,
-					ModuleInfo, Liveness, LiveVars).
+detect_live_vars_in_goal_2(disj(Goals0), Liveness0, CallInfo0,
+					Misc, Liveness, CallInfo) :-
+	Misc = Category - _ModuleInfo,
+	allocate_live_vars(Liveness0, Liveness0, Category,
+						CallInfo0, CallInfo1),
+	detect_live_vars_in_disj(Goals0, Liveness0, CallInfo1,
+					Misc, Liveness, CallInfo).
 
-detect_live_vars_in_goal_2(not(_Vars, Goal0), Liveness0, LiveVars0, ModuleInfo,
-					Liveness, LiveVars) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars).
+detect_live_vars_in_goal_2(not(_Vars, Goal0), Liveness0, CallInfo0, Misc,
+					Liveness, CallInfo) :-
+	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
+					Misc, Liveness, CallInfo).
 
-detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), Liveness0, LiveVars0,
-			ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_cases(Cases0, Liveness0, LiveVars0,
-				ModuleInfo, Liveness, LiveVars).
+detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), Liveness0, CallInfo0,
+			Misc, Liveness, CallInfo) :-
+	detect_live_vars_in_cases(Cases0, Liveness0, CallInfo0,
+				Misc, Liveness, CallInfo).
 
 detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
-			Liveness0, LiveVars0, ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_goal(Cond0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness1, LiveVars1),
-	detect_live_vars_in_goal(Then0, Liveness1, LiveVars1,
-					ModuleInfo, _Liveness2, LiveVars2),
-	detect_live_vars_in_goal(Else0, Liveness0, LiveVars2,
-					ModuleInfo, Liveness, LiveVars).
+			Liveness0, CallInfo0, Misc, Liveness, CallInfo) :-
+	detect_live_vars_in_goal(Cond0, Liveness0, CallInfo0,
+					Misc, Liveness1, CallInfo1),
+	detect_live_vars_in_goal(Then0, Liveness1, CallInfo1,
+					Misc, _Liveness2, CallInfo2),
+	detect_live_vars_in_goal(Else0, Liveness0, CallInfo2,
+					Misc, Liveness, CallInfo).
 
-detect_live_vars_in_goal_2(some(_Vars, Goal0), Liveness0, LiveVars0,
-			ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars).
+detect_live_vars_in_goal_2(some(_Vars, Goal0), Liveness0, CallInfo0,
+			Misc, Liveness, CallInfo) :-
+	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
+					Misc, Liveness, CallInfo).
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgTerms, Builtin, _SymName, _Follow),
-			Liveness, LiveVars0, ModuleInfo, Liveness, LiveVars) :-
+		Liveness, CallInfo0, Category - ModuleInfo,
+			Liveness, CallInfo) :-
 	(
 		Builtin = is_builtin
 	->
-		LiveVars = LiveVars0
+		CallInfo = CallInfo0
 	;
 		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
-		set__difference(Liveness, OutVars, NewLiveVars),
-		set__union(NewLiveVars, LiveVars0, LiveVars)
+		set__difference(Liveness, OutVars, LiveVars),
+		allocate_live_vars(LiveVars, Liveness, Category, CallInfo0,
+					CallInfo)
 	).
 
-detect_live_vars_in_goal_2(unify(_,_,_,D,_), Liveness, LiveVars0,
-					_ModuleInfo, Liveness, LiveVars) :-
+detect_live_vars_in_goal_2(unify(_,_,_,D,_), Liveness, CallInfo0,
+				Category - _ModuleInfo, Liveness, CallInfo) :-
 	(
 		D = complicated_unify(_, _, _)
 	->
 			% we have to save all live variables
 			% across complicated unifications.
-		set__union(Liveness, LiveVars0, LiveVars)
+		allocate_live_vars(Liveness, Liveness, Category, CallInfo0,
+					CallInfo)
 	;
-		LiveVars = LiveVars0
+		CallInfo = CallInfo0
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_conj(list(hlds__goal), liveness_info, set(var),
-					module_info, liveness_info, set(var)).
+:- pred detect_live_vars_in_conj(list(hlds__goal), liveness_info, map(var, lval),
+					pair(category, module_info), liveness_info, map(var, lval)).
 :- mode detect_live_vars_in_conj(in, in, in, in, out, out) is det.
 
 detect_live_vars_in_conj([], Liveness, LiveVars, _M, Liveness, LiveVars).
 detect_live_vars_in_conj([Goal0|Goals0], Liveness0, LiveVars0,
-			ModuleInfo, Liveness, LiveVars) :-
+			Misc, Liveness, LiveVars) :-
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
 		detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars)
+					Misc, Liveness, LiveVars)
 	;
 		detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness1, LiveVars1),
+					Misc, Liveness1, LiveVars1),
 		detect_live_vars_in_conj(Goals0, Liveness1, LiveVars1,
-					ModuleInfo, Liveness, LiveVars)
+					Misc, Liveness, LiveVars)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_disj(list(hlds__goal), liveness_info, set(var),
-					module_info, liveness_info,
-						set(var)).
+% The current implementation simply threads the call_info through each of the
+% disjuncts to ensure that variables don't get allocated different slots
+% in different branches. This is not an *optimal* solution, but it is a
+% simple one.
+
+:- pred detect_live_vars_in_disj(list(hlds__goal), liveness_info, map(var, lval),
+					pair(category, module_info), liveness_info,
+						map(var, lval)).
 :- mode detect_live_vars_in_disj(in, in, in, in, out, out) is det.
 
-detect_live_vars_in_disj([], Liveness, LiveVars,
-					_ModuleInfo, Liveness, LiveVars).
-detect_live_vars_in_disj([Goal0|Goals0], Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-				ModuleInfo, Liveness1, LiveVars1),
-	detect_live_vars_in_disj(Goals0, Liveness0, LiveVars0,
-				ModuleInfo, Liveness2, LiveVars2),
-	set__union(Liveness1, Liveness2, Liveness),
-	set__union(LiveVars1, LiveVars2, LiveVars).
+detect_live_vars_in_disj([], Liveness, CallInfo,
+					_Misc, Liveness, CallInfo).
+detect_live_vars_in_disj([Goal0|Goals0], Liveness0, CallInfo0,
+					Misc, Liveness, CallInfo) :-
+	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
+				Misc, Liveness1, CallInfo1),
+	detect_live_vars_in_disj(Goals0, Liveness0, CallInfo1,
+				Misc, Liveness2, CallInfo),
+	set__union(Liveness1, Liveness2, Liveness).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_cases(list(case), liveness_info, set(var),
-					module_info, liveness_info, set(var)).
+:- pred detect_live_vars_in_cases(list(case), liveness_info, map(var, lval),
+					pair(category, module_info), liveness_info, map(var, lval)).
 :- mode detect_live_vars_in_cases(in, in, in, in, out, out) is det.
 
-detect_live_vars_in_cases([], Liveness, LiveVars,
-				_ModuleInfo, Liveness, LiveVars).
-detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-			ModuleInfo, Liveness1, LiveVars1),
-	detect_live_vars_in_cases(Goals0, Liveness0, LiveVars0,
-			ModuleInfo, Liveness2, LiveVars2),
-	set__union(Liveness1, Liveness2, Liveness),
-	set__union(LiveVars1, LiveVars2, LiveVars).
+detect_live_vars_in_cases([], Liveness, CallInfo,
+				_Misc, Liveness, CallInfo).
+detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], Liveness0, CallInfo0,
+					Misc, Liveness, CallInfo) :-
+	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
+			Misc, Liveness1, CallInfo1),
+	detect_live_vars_in_cases(Goals0, Liveness0, CallInfo1,
+			Misc, Liveness2, CallInfo),
+	set__union(Liveness1, Liveness2, Liveness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -294,23 +298,141 @@ find_output_vars_2([Var - arg_info(_, Mode)|Rest], OutVars0, OutVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_live_vars(list(var), int, category,
+:- pred allocate_live_vars(set(var), set(var), category,
 					map(var, lval), map(var, lval)).
 :- mode allocate_live_vars(in, in, in, in, out) is det.
 
-allocate_live_vars([], _N, _Category, CallInfo, CallInfo).
-allocate_live_vars([Var|Vars], N0, Category, CallInfo0, CallInfo) :-
+allocate_live_vars(Vars, LiveVars, Category, CallInfo0, CallInfo) :-
+	map__keys(CallInfo0, CallInfoKeys),
+	set__list_to_set(CallInfoKeys, KeySet),
+	set__difference(KeySet, LiveVars, ReuseSet), % Slots for dead vars
+	set__to_sorted_list(Vars, VarList),
+	set__to_sorted_list(ReuseSet, ReuseList0),
+	remove_invalid_reuse_slots(ReuseList0, LiveVars, CallInfo0, ReuseList),
+	allocate_live_vars_2(VarList, ReuseList, LiveVars, Category,
+							CallInfo0, CallInfo).
+
+:- pred allocate_live_vars_2(list(var), list(var), set(var), category,
+					map(var, lval), map(var, lval)).
+:- mode allocate_live_vars_2(in, in, in, in, in, out) is det.
+
+allocate_live_vars_2([], _Reuse, _Live, _Category, CallInfo, CallInfo).
+allocate_live_vars_2([V|Vs], [], Live, Category, CallInfo0, CallInfo) :-
+	(
+		% if V has a slot already
+		map__search(CallInfo0, V, Slot0)
+	->
+		(
+			% if some other LIVE variable uses that slot
+			% some [W] (
+				set__member(W, Live),
+				W \= V,
+				map__search(CallInfo0, W, Slot0)
+			% )
+		->
+			% then allocate a new slot
+			allocate_next_slot(CallInfo0, Category, Slot)
+		;
+			% else still use that slot
+			Slot = Slot0
+		)
+	;
+		% V had no slot yet, so allocate a new one
+		allocate_next_slot(CallInfo0, Category, Slot)
+	),
+	map__set(CallInfo0, V, Slot, CallInfo1),
+	allocate_live_vars_2(Vs, [], Live, Category, CallInfo1, CallInfo).
+allocate_live_vars_2([V|Vs], [R|Rs], Live, Category, CallInfo0, CallInfo) :-
+	(
+		% if V has a slot already
+		map__search(CallInfo0, V, Slot0)
+	->
+		(
+			% if some other LIVE variable uses that slot
+			% some [W] (
+				set__member(W, Live),
+				W \= V,
+				map__search(CallInfo0, W, Slot0)
+			% )
+		->
+			% then allocate a new slot
+			allocate_next_slot(CallInfo0, Category, Slot)
+		;
+			% else still use that slot
+			Slot = Slot0
+		),
+		Rs1 = [R|Rs]
+	;
+		% V had no slot yet, so try reusing an old one.
+		map__lookup(CallInfo0, R, Slot),
+		Rs1 = Rs
+	),
+	map__set(CallInfo0, V, Slot, CallInfo1),
+	allocate_live_vars_2(Vs, Rs1, Live, Category, CallInfo1, CallInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred remove_invalid_reuse_slots(list(var), set(var),
+						map(var, lval), list(var)).
+:- mode remove_invalid_reuse_slots(in, in, in, out) is det.
+
+remove_invalid_reuse_slots([], _Live, _CallInfo, []).
+remove_invalid_reuse_slots([V|Vs], Live, CallInfo, Ws) :-
+	map__lookup(CallInfo, V, Slot),
+	(
+		% some [W] ( % XXX quantification bug
+			set__member(W, Live),
+			map__search(CallInfo, W, Slot)
+		% )
+	->
+		remove_invalid_reuse_slots(Vs, Live, CallInfo, Ws)
+	;
+		remove_invalid_reuse_slots(Vs, Live, CallInfo, Ws0),
+		Ws = [V|Ws0]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred allocate_next_slot(map(var, lval), category, lval).
+:- mode allocate_next_slot(in, in, out) is det.
+
+allocate_next_slot(CallInfo0, Category, Slot) :-
+	map__values(CallInfo0, Values),
 	(
 		Category = nondeterministic
 	->
-		N0_Minus_1 is N0 - 1,		% framevars start at zero
-		Lval = framevar(N0_Minus_1)
+		FirstSlot = -1	% one below the first framevar
 	;
-		Lval = stackvar(N0)
+		FirstSlot = 0	% one below the first stackvar
 	),
-	map__set(CallInfo0, Var, Lval, CallInfo1),
-	N1 is N0 + 1,
-	allocate_live_vars(Vars, N1, Category, CallInfo1, CallInfo).
+	allocate_next_slot_2(Values, Category, FirstSlot, HighestSlot),
+	SlotNum is HighestSlot + 1,
+	(
+		Category = nondeterministic
+	->
+		Slot = framevar(SlotNum)
+	;
+		Slot = stackvar(SlotNum)
+	).
+
+:- pred allocate_next_slot_2(list(lval), category, int, int).
+:- mode allocate_next_slot_2(in, in, in, out) is det.
+
+allocate_next_slot_2([], _Category, SlotNum, SlotNum).
+allocate_next_slot_2([L|Ls], Category, FirstSlot, HighestSlot) :-
+	(
+		Category = nondeterministic,
+		L = framevar(FN)
+	->
+		int__max(FirstSlot, FN, NextSlot)
+	;
+		L = stackvar(SN)
+	->
+		int__max(FirstSlot, SN, NextSlot)
+	;
+		NextSlot = FirstSlot
+	),
+	allocate_next_slot_2(Ls, Category, NextSlot, HighestSlot).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

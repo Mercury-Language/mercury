@@ -168,9 +168,9 @@
 :- pred code_info__get_headvars(list(var), code_info, code_info).
 :- mode code_info__get_headvars(out, in, out) is det.
 
-:- pred code_info__generate_expression(rval, lval, code_tree,
+:- pred code_info__generate_expression(var, rval, lval, code_tree,
 							code_info, code_info).
-:- mode code_info__generate_expression(in, in, out, in, out) is det.
+:- mode code_info__generate_expression(in, in, in, out, in, out) is det.
 
 :- pred code_info__get_variable_register(var, lval, code_info, code_info).
 :- mode code_info__get_variable_register(in, out, in, out) is det.
@@ -704,16 +704,9 @@ code_info__flush_variable(Var, Code) -->
 	->
 		code_info__target_to_lvalue(Target, Exprn, Var, TargetReg),
 			% Generate code to evaluate the expression.
-		code_info__generate_expression(Exprn, TargetReg, Code),
+		code_info__generate_expression(Var, Exprn, TargetReg, Code),
 			% Mark the register as taken, so that
 			% it doesn't get allocated
-			% NOTE:
-			%	1. The mode analysis ensures that
-			%	the variable does not depend on
-			%	itself (occurs check!)
-			%	2. Code reordering guarantees that
-			%	there is no other value that _requires_
-			%	this register.
 		(
 			{ TargetReg = reg(Reg) },
 			{ Code \= empty }
@@ -791,7 +784,40 @@ code_info__args_are_constant([yes(Arg) | Args]) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_expression(lval(Lval), TargetReg, Code) -->
+% Before generating code for an expression, we make sure that if
+% the target location is a used stackslot, we swap the value stored
+% there out of the way first.
+
+code_info__generate_expression(Var, Exprn, TargetReg, Code) -->
+	(
+		{ some [N]
+			(
+				TargetReg = stackvar(N)
+			;
+				TargetReg = framevar(N)
+			)
+		},
+		code_info__get_variables(Variables),
+		{ map__to_assoc_list(Variables, VarList) },
+		{ code_info__slot_occupied(VarList, Var, TargetReg) }
+	->
+		code_info__get_free_register(Reg),
+		code_info__relocate_slot(VarList, Reg, TargetReg, NewVarList),
+		{ map__from_assoc_list(NewVarList, Variables1) },
+		code_info__set_variables(Variables1),
+		{ SaveCode = node([assign(reg(Reg), lval(TargetReg))
+				- "Move value in slot out of the way"]) }
+	;
+		{ SaveCode = empty }
+	),
+	code_info__generate_expression_2(Exprn, TargetReg, ECode),
+	{ Code = tree(SaveCode, ECode) }.
+
+:- pred code_info__generate_expression_2(rval, lval, code_tree,
+							code_info, code_info).
+:- mode code_info__generate_expression_2(in, in, out, in, out) is det.
+
+code_info__generate_expression_2(lval(Lval), TargetReg, Code) -->
 	(
 		{ Lval = TargetReg }
 	->
@@ -810,7 +836,7 @@ code_info__generate_expression(lval(Lval), TargetReg, Code) -->
 			assign(TargetReg, lval(Lval)) - "Copy lvalue"
 		]) }
 	).
-code_info__generate_expression(var(Var), TargetReg, Code) -->
+code_info__generate_expression_2(var(Var), TargetReg, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
 		{ VarStat = evaluated(Lvals0) }
@@ -833,7 +859,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		(
 			{ TargetReg \= TargetReg1 }
 		->
-			code_info__generate_expression(Exprn,
+			code_info__generate_expression(Var, Exprn,
 							TargetReg1, Code0),
 				% Mark the target register.
 			code_info__add_lvalue_to_variable(TargetReg1, Var),
@@ -851,7 +877,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	;
 		{ VarStat = cached(Exprn, none) }
 	->
-		code_info__generate_expression(Exprn, TargetReg, Code0),
+		code_info__generate_expression(Var, Exprn, TargetReg, Code0),
 			% Mark the target register.
 		code_info__add_lvalue_to_variable(TargetReg, Var),
 			% Assemble the code
@@ -859,7 +885,7 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	;
 		{ error("invalid variable status") }
 	).
-code_info__generate_expression(create(Tag, Args, Label), TargetReg, Code) -->
+code_info__generate_expression_2(create(Tag, Args, Label), TargetReg, Code) -->
 	{ list__length(Args, Arity) }, % includes possible tag word
 	(
 		{ Arity = 0 }
@@ -889,23 +915,23 @@ code_info__generate_expression(create(Tag, Args, Label), TargetReg, Code) -->
 		code_info__generate_cons_args(TargetReg, Tag, 0, Args, CodeB),
 		{ Code = tree(CodeA, CodeB) }
 	).
-code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
+code_info__generate_expression_2(mkword(Tag, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
 		assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"
 	]) },
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(unop(Unop, Rval0), TargetReg, Code) -->
+code_info__generate_expression_2(unop(Unop, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
 		assign(TargetReg, unop(Unop, Rval)) - "Apply unary operator"
 	]) },
 	{ Code = tree(Code0, Code1) }.
-code_info__generate_expression(const(Const), TargetReg, Code) -->
+code_info__generate_expression_2(const(Const), TargetReg, Code) -->
 	{ Code = node([
 		assign(TargetReg, const(Const)) - "Make a constant"
 	]) }.
-code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
+code_info__generate_expression_2(field(Tag, Rval0, Field), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
 	{ Code1 = node([
 		assign(TargetReg, field(Tag, Rval, Field)) -
@@ -913,7 +939,7 @@ code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
 	]) },
 	{ Code = tree(Code0, Code1) }.
 
-code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
+code_info__generate_expression_2(binop(Op, L0, R0), TargetReg, Code) -->
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
 	{ ThisCode = node([
@@ -941,7 +967,10 @@ code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
 	(
 		{ Arg = yes(Rval) }
 	->
-		code_info__generate_expression(Rval, field(Tag, Reg, Field0),
+		% since the target is a field, we won't need to swap
+		% a stackslot out of the way, so we call ..._2
+		% directly.
+		code_info__generate_expression_2(Rval, field(Tag, Reg, Field0),
 			Code0)
 	;
 		{ Code0 = empty }
@@ -1187,7 +1216,7 @@ code_info__shuffle_register(Var, Args, Reg, Code) -->
 	),
 		% generate the code to place the variable in
 		% the desired register
-	code_info__generate_expression(var(Var), reg(Reg), CodeB),
+	code_info__generate_expression(Var, var(Var), reg(Reg), CodeB),
 	code_info__add_lvalue_to_variable(reg(Reg), Var),
 	code_info__add_variable_to_register(Var, Reg),
 	{ Code = tree(CodeA, CodeB) }.
@@ -1241,13 +1270,56 @@ code_info__save_variable_on_stack(Var, Code) -->
 	;
 		{ VarStat = cached(Exprn, target(TargetReg)) }
 	->
-		code_info__generate_expression(Exprn, TargetReg, Code0),
+		code_info__generate_expression(Var, Exprn, TargetReg, Code0),
 		code_info__add_lvalue_to_variable(TargetReg, Var),
 		code_info__save_variable_in_slot(Var, Code1),
 		{ Code = tree(Code0, Code1) }
 	;
 		{ error("This should never happen") }
 	).
+
+%---------------------------------------------------------------------------%
+
+% code_info__slot_occupied succeeds if the given lval (a stackvar/framevar)
+% is used to store a variable other than the given one.
+
+:- pred code_info__slot_occupied(assoc_list(var, variable_stat), var, lval).
+:- mode code_info__slot_occupied(in, in, in) is semidet.
+
+code_info__slot_occupied([], _Var, _Slot) :- fail.
+code_info__slot_occupied([V - Stat|Rest], Var, Slot) :-
+	(
+		Stat = evaluated(Set),
+		V \= Var,
+		set__member(Slot, Set)
+	->
+		true
+	;
+		code_info__slot_occupied(Rest, Var, Slot)
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__relocate_slot(assoc_list(var, variable_stat), reg, lval,
+					assoc_list(var, variable_stat),
+						code_info, code_info).
+:- mode code_info__relocate_slot(in, in, in, out, in, out) is det.
+
+code_info__relocate_slot([], _Reg, _Slot, []) --> [].
+code_info__relocate_slot([V - S0|Rest0], Reg, Slot, [V - S|Rest]) -->
+	(
+		{ S0 = evaluated(Set0) },
+		{ set__member(Slot, Set0) }
+	->
+		{ set__singleton_set(SSet, Slot) },
+		{ set__difference(Set0, SSet, Set1) },
+		{ set__insert(Set1, reg(Reg), Set2) },
+		{ S = evaluated(Set2) },
+		code_info__add_variable_to_register(V, Reg)
+	;
+		{ S = S0 }
+	),
+	code_info__relocate_slot(Rest0, Reg, Slot, Rest).
 
 %---------------------------------------------------------------------------%
 
@@ -1357,7 +1429,7 @@ code_info__reset_variable_target(Var, Lval) -->
 
 code_info__save_variable_in_slot(Var, Code) -->
 	code_info__get_variable_slot(Var, Slot),
-	code_info__generate_expression(var(Var), Slot, Code),
+	code_info__generate_expression(Var, var(Var), Slot, Code),
 	code_info__add_lvalue_to_variable(Slot, Var).
 
 %---------------------------------------------------------------------------%
@@ -1649,7 +1721,7 @@ code_info__generate_forced_saves_2([Var|Vars], Code) -->
 			;
 				code_info__swap_out_reg(Reg, CodeA)
 			),
-			code_info__generate_expression(var(Var), Lval, CodeB),
+			code_info__generate_expression(Var, var(Var), Lval, CodeB),
 			code_info__add_lvalue_to_variable(Lval, Var),
 			(
 				{ Lval = reg(R) }
@@ -1667,7 +1739,7 @@ code_info__generate_forced_saves_2([Var|Vars], Code) -->
 			(
 				{ map__search(CallInfo, Var, StackThing) }
 			->
-				code_info__generate_expression(var(Var),
+				code_info__generate_expression(Var, var(Var),
 							StackThing, Code0),
 				code_info__add_lvalue_to_variable(StackThing,
 									Var)
@@ -1734,7 +1806,7 @@ code_info__generate_nondet_saves_2([Var - StackThing|VarSlots], Code) -->
 		code_info__get_variables(Variables),
 		{ map__contains(Variables, Var) }
 	->
-		code_info__generate_expression(var(Var), StackThing, Code0),
+		code_info__generate_expression(Var, var(Var), StackThing, Code0),
 		code_info__add_lvalue_to_variable(StackThing, Var),
 		code_info__generate_nondet_saves_2(VarSlots, RestCode),
 		{ Code = tree(Code0, RestCode) }
