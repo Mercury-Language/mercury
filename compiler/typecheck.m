@@ -359,8 +359,8 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    pred_info_import_status(PredInfo0, Status),
-	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, _,
-	    				HeadVars, Clauses0),
+	    ClausesInfo0 = clauses_info(VarSet, ExplicitVarTypes,
+				_OldInferredVarTypes, HeadVars, Clauses0),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -390,25 +390,26 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 		bool(Inferring), % dummy pred call to avoid type ambiguity
 
 		typecheck_info_init(IOState1, ModuleInfo, PredId,
-				TypeVarSet0, VarSet, VarTypes0, HeadTypeParams,
-				Status, TypeCheckInfo1),
+				TypeVarSet0, VarSet, ExplicitVarTypes,
+				HeadTypeParams, Status, TypeCheckInfo1),
 		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
 				TypeCheckInfo1, TypeCheckInfo2),
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo2, TypeCheckInfo3),
 		typecheck_info_get_final_info(TypeCheckInfo3, TypeVarSet, 
-				VarTypes1),
-		map__optimize(VarTypes1, VarTypes),
-		ClausesInfo = clauses_info(VarSet, VarTypes0, VarTypes,
-				HeadVars, Clauses),
+				InferredVarTypes0),
+		map__optimize(InferredVarTypes0, InferredVarTypes),
+		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+				InferredVarTypes, HeadVars, Clauses),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
 		( Inferring = no ->
 			PredInfo = PredInfo2,
 			Changed = no
 		;
-			map__apply_to_list(HeadVars, VarTypes, ArgTypes),
-			pred_info_set_arg_types(PredInfo1, TypeVarSet,
+			map__apply_to_list(HeadVars, InferredVarTypes,
+				ArgTypes),
+			pred_info_set_arg_types(PredInfo2, TypeVarSet,
 				ArgTypes, PredInfo),
 			( identical_up_to_renaming(ArgTypes0, ArgTypes) ->
 				Changed = no
@@ -2515,14 +2516,64 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 :- pred typecheck_info_get_final_info(typecheck_info, tvarset, map(var, type)).
 :- mode typecheck_info_get_final_info(in, out, out) is det.
 
-typecheck_info_get_final_info(TypeCheckInfo, TypeVarSet, VarTypes) :-
+typecheck_info_get_final_info(TypeCheckInfo, NewTypeVarSet, NewVarTypes) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
-		type_assign_get_typevarset(TypeAssign, TypeVarSet),
+		type_assign_get_typevarset(TypeAssign, OldTypeVarSet),
 		type_assign_get_var_types(TypeAssign, VarTypes0),
 		type_assign_get_type_bindings(TypeAssign, TypeBindings),
 		map__keys(VarTypes0, Vars),
-		expand_types(Vars, TypeBindings, VarTypes0, VarTypes)
+		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
+
+		%
+		% We used to just use the OldTypeVarSet that we got
+		% from the type assignment.
+		%
+		% However, that caused serious efficiency problems,
+		% because the typevarsets get bigger and bigger with each
+		% inference step.  Instead, we now construct a new
+		% typevarset NewTypeVarSet which contains only the
+		% variables we want, and we rename the type variables
+		% so that they fit into this new typevarset.
+		%
+
+		%
+		% First, find the set (sorted list) of type variables
+		% that we need.
+		%
+		map__values(VarTypes, Types),
+		term__vars_list(Types, TypeVars0),
+		list__sort_and_remove_dups(TypeVars0, TypeVars),
+		%
+		% Next, create a new typevarset with the same number of
+		% variables. 
+		%
+		list__length(TypeVars, NumTypeVars),
+		varset__init(NewTypeVarSet0),
+		varset__new_vars(NewTypeVarSet0, NumTypeVars, 
+			NewTypeVars0, NewTypeVarSet1),
+		%
+		% We need to sort the fresh variables, to
+		% ensure that the type substitution that we create below
+		% does not alter the relative ordering of the type variables
+		% (since that affects the order in which type_info
+		% parameters will be passed).
+		%
+		list__sort(NewTypeVars0, NewTypeVars),
+		%
+		% Copy the type variable names across from the old
+		% typevarset to the new typevarset.
+		%
+		varset__var_name_list(OldTypeVarSet, TypeVarNames),
+		map__from_corresponding_lists(TypeVars, NewTypeVars, TSubst),
+		copy_type_var_names(TypeVarNames, TSubst, NewTypeVarSet1,
+			NewTypeVarSet),
+		%
+		% Finally, rename the types to use the new typevarset
+		% type variables.
+		%
+		term__apply_variable_renaming_to_list(Types, TSubst, NewTypes),
+		map__from_corresponding_lists(Vars, NewTypes, NewVarTypes)
 	;
 		error("internal error in typecheck_info_get_vartypes")
 	).
@@ -2539,6 +2590,21 @@ expand_types([Var | Vars], TypeSubst, VarTypes0, VarTypes) :-
 	term__apply_rec_substitution(Type0, TypeSubst, Type),
 	map__det_update(VarTypes0, Var, Type, VarTypes1),
 	expand_types(Vars, TypeSubst, VarTypes1, VarTypes).
+
+:- pred copy_type_var_names(assoc_list(tvar, string), map(tvar, tvar),
+				tvarset, tvarset).
+:- mode copy_type_var_names(in, in, in, out) is det.
+
+copy_type_var_names([], _TSubst, NewTypeVarSet, NewTypeVarSet).
+copy_type_var_names([OldTypeVar - Name | Rest], TypeSubst, NewTypeVarSet0,
+			NewTypeVarSet) :-
+	( map__search(TypeSubst, OldTypeVar, NewTypeVar) ->
+		varset__name_var(NewTypeVarSet0, NewTypeVar, Name,
+			NewTypeVarSet1)
+	;
+		NewTypeVarSet1 = NewTypeVarSet0
+	),
+	copy_type_var_names(Rest, TypeSubst, NewTypeVarSet1, NewTypeVarSet).
 
 %-----------------------------------------------------------------------------%
 
