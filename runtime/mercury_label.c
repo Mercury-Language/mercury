@@ -248,5 +248,6 @@ hash_addr(const void *addr)
 void
 MR_process_all_internal_labels(void f(const void *))
 {
+	MR_do_init_label_tables();
 	MR_process_all_entries(internal_addr_table, f);
 }
