@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2002 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,6 +37,12 @@
 % XXX Here too the current Mercury implementation does not
 % implement the intended semantics correctly on all platforms.
 %
+% XXX On machines such as x86 which support extra precision
+% for intermediate results, the results may depend on the
+% level of optimization, in particular inlining and evaluation
+% of constant expressions.
+% For example, the goal `1.0/9.0 = std_util__id(1.0)/9.0' may fail.
+
 %---------------------------------------------------------------------------%
 
 :- module float.

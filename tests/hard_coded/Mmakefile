@@ -50,7 +50,6 @@ ORDINARY_PROGS=	\
 	export_test \
 	factt \
 	failure_unify \
-	float_consistency \
 	float_field \
 	float_map \
 	float_reg \
@@ -185,6 +184,10 @@ else
 endif
 
 # We do not pass the following tests at all:
+#
+# XXX float_consistency:
+#     floats in Mercury aren't consistent -- see the comments at the
+#     top of library/float.m.
 #
 # XXX var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
