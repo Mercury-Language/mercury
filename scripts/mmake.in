@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne.
+# Copyright (C) 1995-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -71,6 +71,7 @@ MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
 
 MMAKE=$0
+include_makefile=
 verbose=false
 save_makefile=false
 if [ -d Mercury ]; then
@@ -120,6 +121,13 @@ while [ $# -gt 0 ]; do
 			;;
 		-w-|--no-warn-undefined-vars)
 			warn_undefined_vars=false
+			shift
+			;;
+		--include-makefile)
+			MMAKE="$MMAKE $1 $2"
+			include_makefile="$include_makefile $2"
+			shift
+			# XXX check that $2 exists first
 			shift
 			;;
 		--)	
@@ -246,7 +254,7 @@ if $verbose; then
 	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
-	echo cat ${MMAKE_VARS} $dvs $ds $mmake $deps ${MMAKE_RULES} ">>" $tmp
+	echo cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps ${MMAKE_RULES} ">>" $tmp
 	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
 fi
 export MMAKE
@@ -254,7 +262,7 @@ export MMAKE_MAKE_CMD
 export MMAKE_USE_SUBDIRS
 export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
-cat ${MMAKE_VARS} $dvs $ds $mmake $deps ${MMAKE_RULES} > $tmp
+cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps ${MMAKE_RULES} > $tmp
 case $# in
 	# Note that we can't use `exec' here, because if we did that,
 	# that `trap' code which removes $tmp would never get executed.
