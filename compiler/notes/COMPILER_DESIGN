@@ -183,7 +183,7 @@ The first two passes of this stage are code simplifications.
 To improve efficiency, the above two passes are actually combined into
 one - polymorphism.m calls calls lambda__transform_lambda directly.
 
-The remaining HLDS-to-HLDS transformations are optimizations:
+Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 * specialization of higher-order predicates where the value of the
   higher-order arguments are known (higher_order.m)
@@ -210,10 +210,14 @@ The remaining HLDS-to-HLDS transformations are optimizations:
 
 * removal of excess assignment unifications (excess.m)
 
-* migration of builtins following branched structures (follow_code.m)
-
 The module transform.m contains stuff that is supposed to be useful
 for high-level optimizations (but which is not yet used).
+
+Eventually we plan to make Mercury the programming language of the Aditi
+deductive database system. When this happens, we will need to be able to
+apply the magic set transformation, which is defined for predicates
+whose definitions are disjunctive normal form. The module dnf.m translates
+definitions into DNF, introducing auxiliary predicates as necessary.
 
 4. Code generation
 
@@ -233,12 +237,14 @@ for high-level optimizations (but which is not yet used).
 			out which variables need to be saved on the
 			stack when, and then uses graph_colour.m to determine
 			a good allocation of variables to stack slots.
+		migration of builtins following branched structures
+			This transformation, which is performed by
+			follow_code.m, improves the results of follow_vars.
 		allocating the follow vars (follow_vars.m)
-			Traverses backwards over the HLDS,
-			annotating each call with the variable target
-			locations for the following call, so we can
-			generate efficient code by putting variables in
-			the right spot.
+			Traverses backwards over the HLDS, annotating each
+			call and branched structue with the variable target
+			locations for the following call, so we can generate
+			efficient code by putting variables in the right spot.
 		allocating the store map (store_alloc.m)
 			Allocates locations for variables at the end of
 			branched goals.  Annotates the goal_info for
@@ -302,18 +308,44 @@ They are:
 
 	This is done by value_number.m, which has the following sub-modules:
 
-		vn_block.m
-		vn_cost.m
-		vn_debug.m
-		vn_flush.m
-		vn_order.m
-			atsort.m ("approximate topological sort" predicates)
-		vn_table.m
-		vn_temploc.m
-		vn_type.m
-		vn_util.m
+	vn_block.m
+		Traverse an extended basic block, building up tables showing
+		the actions that must be taken, and the current and desired
+		contents of locations.
+	vn_cost.m
+		Computes the cost of instruction sequences.
+		Value numbering should never replace an instruction
+		sequence with a more expensive sequence. Unfortunately,
+		computing costs accurately is very difficult.
+	vn_debug.m
+		Predicates to dump data structures used in value
+		numbering.
+	vn_filter.m
+		Module to eliminate useless temporaries introduced by
+		value numbering. Not generating them in the first place
+		would be better, but would be quite difficult.
+	vn_flush.m
+		Given tables built up by vn_block showing the actions that
+		must be taken, and the current and desired contents of
+		locations, generate code to take these actions and to
+		achieve the desired contents of locations in what is
+		hopefully the fastest and most compact way.
+	vn_order.m
+		atsort.m ("approximate topological sort" predicates)
+	vn_table.m
+		Abstract data type showing the current and desired
+		contents of locations.
+	vn_temploc.m
+		Abstract data type to keep track of the availability
+		of registers and temporaries.
+	vn_type.m
+		This module defines the types used by the other
+		modules of the value numbering optimization.
+	vn_util.m
+		Utility predicates.
 
-	Several of these modules (and also frameopt, above) use livemap.m.
+	Several of these modules (and also frameopt, above) use livemap.m,
+	which finds the set of locations live at each label.
 
 * peephole optimization (peephole.m)
 
