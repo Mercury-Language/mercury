@@ -2416,7 +2416,7 @@ esac
 # "DEFAULT_GRADE" in the environment before invoking configure.
 
 AC_ARG_WITH(default-grade,
-    AS_HELP_STRING([--with-default-grade=GRADE],
+    AC_HELP_STRING([--with-default-grade=GRADE],
                    [Have the built compiler default to using GRADE instead of the default asm_fast.gc]),
     [case "$withval" in
       # Handle `--with-default-grade' (no `=GRADE') and
