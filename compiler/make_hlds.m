@@ -10403,7 +10403,7 @@ report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
 	report_error(string__format("\
 cannot use !:%s in this context;", [s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("however !.%s may be used here.\n", [s(Name)], !IO).
+	io__format("  however !.%s may be used here.\n", [s(Name)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -10440,7 +10440,7 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
 	report_error(string__format("!%s cannot be a function result.",
 		[s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
+	io__format("  You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
   		!IO).
 
 %-----------------------------------------------------------------------------%
@@ -10454,7 +10454,7 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
 	report_error(string__format("!%s cannot be a lambda argument.",
 		[s(Name)]), !IO),
 	prog_out__write_context(Context, !IO),
-	io__format("Perhaps you meant !.%s or !:%s.\n",
+	io__format("  Perhaps you meant !.%s or !:%s.\n",
 		[s(Name), s(Name)], !IO).
 
 %-----------------------------------------------------------------------------%
