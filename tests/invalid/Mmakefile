@@ -72,6 +72,7 @@ SOURCES= \
 	undef_type.m \
 	unify_mode_error.m \
 	uniq_modes.m \
+	uniq_neg.m \
 	uu_type.m \
 	vars_in_wrong_places.m
 

@@ -388,15 +388,34 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 
 unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
+	%
+	% We need to mark all the variables which are live
+	% after the negation as nondet-live for the negated
+	% goal, since if the negated goal fails, then the
+	% negation will succeed, and so these variables
+	% can be accessed again after backtracking.
+	%
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
 	=(ModeInfo),
 	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
 	make_var_list_mostly_uniq(LiveNonLocals),
+	%
+	% But nothing is forward-live for the negated goal, since
+	% if the goal succeeds then execution will immediately backtrack.
+	% So we need to set the live variables set to empty here.
+	%
+	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
+	mode_info_set_live_vars([]),
+	%
+	% We need to lock the non-local variables, to ensure
+	% that the negation does not bind them.
+	%
 	mode_info_lock_vars(negation, NonLocals),
 	unique_modes__check_goal(A0, A),
 	mode_info_unlock_vars(negation, NonLocals),
+	mode_info_set_live_vars(LiveVars0),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 

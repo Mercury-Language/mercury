@@ -1040,6 +1040,10 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
+	%
+	% We need to lock the non-local variables, to ensure
+	% that the condition of the if-then-else does not bind them.
+	%
 	mode_info_lock_vars(if_then_else, NonLocals),
 	mode_info_add_live_vars(B_Vars),
 	modecheck_goal(A0, A),
@@ -1068,8 +1072,26 @@ modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
+	%
+	% when analyzing a negated goal, nothing is forward-live
+	% (live on forward executution after that goal), because
+	% if the goal succeeds then execution will immediately backtrack.
+	% So we need to set the live variables set to empty here.
+	% This allows those variables to be backtrackably
+	% destructively updated.  (If you try to do non-backtrackable
+	% destructive update on such a variable, it will be caught
+	% later on by unique_modes.m.)
+	%
+	=(ModeInfo),
+	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
+	mode_info_set_live_vars([]),
+	%
+	% We need to lock the non-local variables, to ensure
+	% that the negation does not bind them.
+	%
 	mode_info_lock_vars(negation, NonLocals),
 	modecheck_goal(A0, A),
+	mode_info_set_live_vars(LiveVars0),
 	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
