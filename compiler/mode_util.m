@@ -328,8 +328,7 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
 	%
 	(
 		% is this a no_tag type?
-		type_constructors(Type, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, FunctorName, ArgType),
+		type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
 		% avoid infinite recursion
 		type_to_type_id(Type, TypeId, _TypeArgs),
 		\+ list__member(TypeId, ContainingTypes)

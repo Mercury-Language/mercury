@@ -1717,8 +1717,8 @@ specialize_special_pred(CalledPred, CalledProc, Args,
 		% be implemented in C code in the runtime system.
 
 		specializeable_special_call(SpecialId, CalledProc),
-		type_constructors(SpecialPredType, ModuleInfo, Constructors),
-		type_is_no_tag_type(Constructors, Constructor, WrappedType),
+		type_is_no_tag_type(ModuleInfo, SpecialPredType, 
+			Constructor, WrappedType),
 		\+ type_has_user_defined_equality_pred(ModuleInfo,
 			WrappedType, _),
 

@@ -69,6 +69,9 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		% now assign them
 	map__init(CtorTags0),
 	(
+			% All the constructors must be constant, and we
+			% must be allowed to make unboxed enums.
+		globals__lookup_bool_option(Globals, unboxed_enums, yes),
 		ctors_are_all_constants(Ctors)
 	->
 		IsEnum = yes,
@@ -78,7 +81,10 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		(
 			% assign single functor of arity one a `no_tag' tag
 			% (unless it is type_info/1)
-			type_is_no_tag_type(Ctors, SingleFunc, SingleArg)
+			globals__lookup_bool_option(Globals,
+				unboxed_no_tag_types, yes),
+			type_constructors_are_no_tag_type(Ctors, SingleFunc,
+				SingleArg)
 		->
 			make_cons_id_from_qualified_sym_name(SingleFunc,
 				[SingleArg], SingleConsId),

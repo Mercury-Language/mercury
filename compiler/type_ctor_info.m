@@ -247,6 +247,7 @@ type_ctor_info_rtti_version = 4.
 type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		ModuleInfo, TypeCtorRep, NumFunctors,
 		FunctorsInfo, LayoutInfo, NumPtags, TypeTables) :-
+	module_info_globals(ModuleInfo, Globals),
 	hlds_data__get_type_defn_body(HldsDefn, TypeBody),
 	(
 		TypeBody = uu_type(_Alts),
@@ -297,7 +298,11 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			NumPtags = -1
 		;
 			Enum = no,
-			( type_is_no_tag_type(Ctors, Name, ArgType) ->
+			globals__lookup_bool_option(Globals,
+				unboxed_no_tag_types, NoTagOption),
+			( NoTagOption = yes,
+			  type_constructors_are_no_tag_type(Ctors, Name,
+			  	ArgType) ->
 				( term__is_ground(ArgType) ->
 					Inst = equiv_type_is_ground
 				;
@@ -309,7 +314,6 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 					TypeTables, FunctorsInfo, LayoutInfo),
 				NumPtags = -1
 			;
-				module_info_globals(ModuleInfo, Globals),
 				globals__lookup_int_option(Globals,
 					num_tag_bits, NumTagBits),
 				int__pow(2, NumTagBits, NumTags),

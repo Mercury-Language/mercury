@@ -166,6 +166,8 @@
 		;	highlevel_data
 		;	gcc_nested_functions
 		;	unboxed_float
+		;       unboxed_enums
+		;       unboxed_no_tag_types
 		;	sync_term_size % in words
 		;	type_layout
 	% Options for internal use only
@@ -561,7 +563,9 @@ option_defaults_2(compilation_model_option, [
 	highlevel_code		-	bool(no),
 	highlevel_data		-	bool(no),
 	gcc_nested_functions	-	bool(no),
-	unboxed_float		-	bool(no)
+	unboxed_float           -       bool(no),
+	unboxed_enums           -       bool(yes),
+	unboxed_no_tag_types    -       bool(yes)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -935,6 +939,9 @@ long_option("highlevel-data",		highlevel_data).
 long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("unboxed-float",		unboxed_float).
+long_option("unboxed-enums",		unboxed_enums).
+long_option("unboxed-no-tag-types",	unboxed_no_tag_types).
+
 
 % code generation options
 long_option("low-level-debug",		low_level_debug).
@@ -1932,6 +1939,16 @@ your program compiled with different options.
 		"\tIt may also need to be compiled with",
 		"\t`-DUSE_SINGLE_PREC_FLOAT', if double precision",
 		"\tfloats don't fit into a word."
+
+		% This is a developer only option.
+%		"--no-unboxed-enums",
+%		"(This option is not for general use.)",
+%		"\tBox enumerations.  This option is disabled by default.",
+
+		% This is a developer only option.
+%		"--no-unboxed-no-tag-types",
+%		"(This option is not for general use.)",
+%		"\tBox no-tag types.  This option is disabled by default."
 	]).
 
 :- pred options_help_code_generation(io__state::di, io__state::uo) is det.

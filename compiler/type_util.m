@@ -211,15 +211,28 @@
 			(type)		% functor result type
 		).
 
-	% Given a list of constructors for a type,
-	% check whether that type is a no_tag type
+	% Check whether a type is a no_tag type
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument,
 	% and which is not private_builtin:type_info/1),
 	% and if so, return its constructor symbol and argument type.
 
-:- pred type_is_no_tag_type(list(constructor), sym_name, type).
-:- mode type_is_no_tag_type(in, out, out) is semidet.
+:- pred type_is_no_tag_type(module_info, type, sym_name, type).
+:- mode type_is_no_tag_type(in, in, out, out) is semidet.
+
+	% Check whether some constructors are a no_tag type
+	% (i.e. one with only one constructor, and
+	% whose one constructor has only one argument,
+	% and which is not private_builtin:type_info/1),
+	% and if so, return its constructor symbol and argument type.
+	%
+	% This doesn't do any checks for options that might be set
+	% (such as turning off no_tag_types).  If you want those checks
+	% you should use type_is_no_tag_type/4, or if you really know
+	% what you are doing, perform the checks yourself.
+
+:- pred type_constructors_are_no_tag_type(list(constructor), sym_name, type).
+:- mode type_constructors_are_no_tag_type(in, out, out) is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -385,7 +398,7 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, prog_util.
+:- import_module prog_io, prog_io_goal, prog_util, options, globals.
 :- import_module bool, char, int, string.
 :- import_module assoc_list, require, std_util, varset.
 
@@ -806,6 +819,14 @@ type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn) :-
 	
 %-----------------------------------------------------------------------------%
 
+type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
+		% Make sure no_tag_types are allowed
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes),
+		% Check for a single ctor with a single arg
+	type_constructors(Type, ModuleInfo, Ctors),
+	type_constructors_are_no_tag_type(Ctors, Ctor, ArgType).
+
 	% The checks for type_info and type_ctor_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
@@ -815,11 +836,11 @@ type_util__get_cons_defn(ModuleInfo, TypeId, ConsId, ConsDefn) :-
 	% etc. rather than just checking the unqualified type name,
 	% but I found it difficult to verify that the constructors
 	% would always be fully module-qualified at points where
-	% type_is_no_tag_type/3 is called.
+	% type_constructors_are_no_tag_type/3 is called.
 
-type_is_no_tag_type(Ctors, Ctor, Type) :-
+type_constructors_are_no_tag_type(Ctors, Ctor, ArgType) :-
 	Ctors = [SingleCtor],
-	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FieldName - Type]),
+	SingleCtor = ctor(ExistQVars, _Constraints, Ctor, [_FName - ArgType]),
 	ExistQVars = [],
 	unqualify_name(Ctor, Name),
 	Name \= "type_info",
