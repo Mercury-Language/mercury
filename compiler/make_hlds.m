@@ -1780,6 +1780,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			( 
 				{ Body = abstract_type }
 			;
+				{ Body = uu_type(_) }
+			;
 				{ type_id_is_hand_defined(TypeId) }
 			)
 		->

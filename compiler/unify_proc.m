@@ -502,7 +502,8 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	is det.
 
 unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
-	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no } ->
+	(
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
 		( { MaybeEqPred = yes(PredName) } ->
 			%
 			% Just generate a call to the specified predicate,
@@ -521,24 +522,63 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			{ Goal = Call - GoalInfo },
 			unify_proc__quantify_clause_body([H1, H2], Goal,
 				Context, Clauses)
-		;
-			unify_proc__generate_du_unify_clauses(Ctors, H1, H2,
+		; { IsEnum = yes } ->
+			{ IntType = int_type },
+			unify_proc__info_new_var(IntType, TC1),
+			unify_proc__info_new_var(IntType, TC2),
+			{ TC1ArgVars = [H1, TC1] },
+			unify_proc__build_call("unsafe_type_cast",
+				TC1ArgVars, Context, TC1Goal),
+			{ TC2ArgVars = [H2, TC2] },
+			unify_proc__build_call("unsafe_type_cast",
+				TC2ArgVars, Context, TC2Goal),
+			{ UnifyArgVars = [TC1, TC2] },
+			unify_proc__build_call("unify",
+				UnifyArgVars, Context, UnifyGoal),
+			{ goal_info_init(GoalInfo0) },
+			{ goal_info_set_context(GoalInfo0, Context,
+				GoalInfo) },
+			{ conj_list_to_goal([TC1Goal, TC2Goal, UnifyGoal],
+				GoalInfo, Goal) },
+			{ ArgVars = [H1, H2] },
+			unify_proc__quantify_clause_body(ArgVars, Goal,
 				Context, Clauses)
+		;
+			unify_proc__generate_du_unify_clauses(Ctors,
+				H1, H2, Context, Clauses)
 		)
 	;
+		{ TypeBody = eqv_type(_Type) },
+		% We should check whether _Type is a type variable,
+		% an abstract type or a concrete type.
+		% If it is type variable, then we should generate the same code
+		% we generate now. If it is an abstract type, we should call
+		% its unification procedure directly; if it is a concrete type,
+		% we should generate the body of its unification procedure
+		% inline here.
+		%
+		% XXX Somebody should document here what the later stages
+		% of the compiler do to prevent an infinite recursion here.
 		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
 			Goal) },
 		unify_proc__quantify_clause_body([H1, H2], Goal, Context,
 			Clauses)
+	;
+		{ TypeBody = uu_type(_) },
+		{ error("trying to create unify proc for uu type") }
+	;
+		{ TypeBody = abstract_type },
+		{ error("trying to create unify proc for abstract type") }
 	).
 
 :- pred unify_proc__generate_index_clauses(hlds_type_body, prog_var, prog_var,
-		prog_context, list(clause), unify_proc_info, unify_proc_info).
+	prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_index_clauses(in, in, in, in, out, in, out)
 	is det.
 
 unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
-	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no } ->
+	(
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% For non-canonical types, we just give up and
@@ -551,26 +591,49 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 				ArgVars, Context, Goal),
 			unify_proc__quantify_clause_body(ArgVars, Goal,
 				Context, Clauses)
+		; { IsEnum = yes } ->
+			{ ArgVars = [X, Index] },
+			unify_proc__build_call("unsafe_type_cast",
+				ArgVars, Context, Goal),
+			unify_proc__quantify_clause_body(ArgVars, Goal,
+				Context, Clauses)
 		;
 			unify_proc__generate_du_index_clauses(Ctors, X, Index,
 				Context, 0, Clauses)
 		)
 	;
+		{ TypeBody = eqv_type(_Type) },
+		% We should check whether _Type is a type variable,
+		% an abstract type or a concrete type.
+		% If it is type variable, then we should generate the same code
+		% we generate now. If it is an abstract type, we should call
+		% its index procedure directly; if it is a concrete type,
+		% we should generate the body of its index procedure
+		% inline here.
+		%
+		% XXX Somebody should document here what the later stages
+		% of the compiler do to prevent an infinite recursion here.
 		{ ArgVars = [X, Index] },
 		unify_proc__build_call("index", ArgVars, Context, Goal),
 		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
 			Clauses)
+	;
+		{ TypeBody = uu_type(_) },
+		{ error("trying to create index proc for uu type") }
+	;
+		{ TypeBody = abstract_type },
+		{ error("trying to create index proc for abstract type") }
 	).
 
 :- pred unify_proc__generate_compare_clauses(hlds_type_body, prog_var, prog_var,
-		prog_var, prog_context, list(clause),
-		unify_proc_info, unify_proc_info).
+	prog_var, prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_compare_clauses(in, in, in, in, in, out, in, out)
 	is det.
 
 unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 		-->
-	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no } ->
+	(
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% just generate code that will call error/1
@@ -581,15 +644,53 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 				ArgVars, Context, Goal),
 			unify_proc__quantify_clause_body(ArgVars, Goal,
 				Context, Clauses)
+		; { IsEnum = yes } ->
+			{ IntType = int_type },
+			unify_proc__info_new_var(IntType, TC1),
+			unify_proc__info_new_var(IntType, TC2),
+			{ TC1ArgVars = [H1, TC1] },
+			unify_proc__build_call("unsafe_type_cast",
+				TC1ArgVars, Context, TC1Goal),
+			{ TC2ArgVars = [H2, TC2] },
+			unify_proc__build_call("unsafe_type_cast",
+				TC2ArgVars, Context, TC2Goal),
+			{ CompareArgVars = [Res, TC1, TC2] },
+			unify_proc__build_call("builtin_compare_int",
+				CompareArgVars, Context, CompareGoal),
+			{ goal_info_init(GoalInfo0) },
+			{ goal_info_set_context(GoalInfo0, Context,
+				GoalInfo) },
+			{ conj_list_to_goal([TC1Goal, TC2Goal, CompareGoal],
+				GoalInfo, Goal) },
+			{ ArgVars = [Res, H1, H2] },
+			unify_proc__quantify_clause_body(ArgVars, Goal,
+				Context, Clauses)
 		;
 			unify_proc__generate_du_compare_clauses(Ctors,
 				Res, H1, H2, Context, Clauses)
 		)
 	;
+		{ TypeBody = eqv_type(_) },
+		% We should check whether _Type is a type variable,
+		% an abstract type or a concrete type.
+		% If it is type variable, then we should generate the same code
+		% we generate now. If it is an abstract type, we should call
+		% its compare procedure directly; if it is a concrete type,
+		% we should generate the body of its compare procedure
+		% inline here.
+		%
+		% XXX Somebody should document here what the later stages
+		% of the compiler do to prevent an infinite recursion here.
 		{ ArgVars = [Res, H1, H2] },
 		unify_proc__build_call("compare", ArgVars, Context, Goal),
 		unify_proc__quantify_clause_body(ArgVars, Goal, Context,
 			Clauses)
+	;
+		{ TypeBody = uu_type(_) },
+		{ error("trying to create compare proc for uu type") }
+	;
+		{ TypeBody = abstract_type },
+		{ error("trying to create compare proc for abstract type") }
 	).
 
 :- pred unify_proc__quantify_clause_body(list(prog_var), hlds_goal,
@@ -797,7 +898,7 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, Context, [Clause]) -->
 		out, in, out) is det.
 
 unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
-	{ construct_type(unqualified("int") - 0, [], IntType) },
+	{ IntType = int_type },
 	{ mercury_public_builtin_module(MercuryBuiltin) },
 	{ construct_type(qualified(MercuryBuiltin, "comparison_result") - 0,
 					[], ResType) },
