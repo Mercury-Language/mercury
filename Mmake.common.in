@@ -112,6 +112,9 @@ BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
 COMPILER_DIR = $(MERCURY_DIR)/compiler
 UTIL_DIR = $(MERCURY_DIR)/util
 
+# Options to pass to the Mercury compiler
+MCFLAGS	= --no-infer-types --no-infer-modes --halt-at-warn $(EXTRA_MCFLAGS)
+
 #-----------------------------------------------------------------------------#
 
 # The Mmake.params file can be used to override definitions in this file
