@@ -62,4 +62,6 @@ extern	Word	do_mklist(int start, int len);
 #endif
 extern	void	fatal_error(const char *msg) NO_RETURN;
 
+void *checked_malloc(size_t n);
+
 #endif

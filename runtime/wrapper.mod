@@ -43,6 +43,13 @@ int		r1val = -1;
 int		r2val = -1;
 int		r3val = -1;
 
+/* constraints solver */
+#ifdef CONSTRAINTS
+int *mercury_solver_sp;
+int *mercury_solver_sp_old;
+int solver_ticket_stack_size = SOLVER_STACK_SIZE;
+#endif
+
 bool		check_space = FALSE;
 static	bool	benchmark_all_solns = FALSE;
 static	bool	use_own_timer = FALSE;
@@ -147,6 +154,14 @@ int mercury_main(int argc, char **argv)
 #endif
 
 	(*address_of_mercury_init_io)();
+
+#ifdef CONSTRAINTS
+	perform_solver_initialisations();
+		/* convert the stack size to bytes from kb */
+	solver_ticket_stack_size *= 1024;
+	mercury_solver_sp =checked_malloc(solver_ticket_stack_size*sizeof(int));
+	mercury_solver_sp_old = mercury_solver_sp;
+#endif
 
 	/* execute the selected entry point */
 	init_engine();
@@ -444,6 +459,10 @@ process_options(int argc, char **argv)
 				else if (optarg[0] == 'l')
 					entry_table_size = val *
 						1024 / (2 * sizeof(List *));
+#ifdef CONSTRAINTS
+				else if (optarg[0] == 's')
+					solver_ticket_stack_size = val;
+#endif
 				else
 					usage();
 
@@ -559,6 +578,9 @@ static void usage(void)
 		"-sh<n> \t\tallocate n kb for the heap\n"
 		"-sd<n> \t\tallocate n kb for the det stack\n"
 		"-sn<n> \t\tallocate n kb for the nondet stack\n"
+#ifdef CONSTRAINTS
+		"-ss<n> \t\tallocate n kb for the solver ticket stack\n"
+#endif
 		"-sl<n> \t\tallocate n kb for the label table\n"
 		"-zh<n> \t\tallocate n kb for the heap redzone\n"
 		"-zd<n> \t\tallocate n kb for the det stack redzone\n"

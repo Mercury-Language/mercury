@@ -373,6 +373,23 @@ void fatal_error(const char *message) {
 	exit(1);
 }
 
+		/* Note: checked_malloc()ed structures */
+		/* never contain pointers into GCed    */
+		/* memory, so we don't need to         */
+		/* GC_malloc() them. (cf. newmem())    */
+void *checked_malloc(size_t n)
+{
+	reg	void	*p;
+
+	p = malloc(n);
+	if (p == NULL && n != 0)
+	{
+		fatal_error("ran out of memory");
+	}
+
+	return p;
+}
+
 #ifndef __GNUC__
 
 /*

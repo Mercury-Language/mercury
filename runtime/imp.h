@@ -264,5 +264,8 @@ static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 #include	"label.h"
 #include	"memory.h"
 #include	"wrapper.h"
+#ifdef CONSTRAINTS
+#include	"mercury_solver_backtrack.h"
+#endif
 
 #endif /* IMP_H */
