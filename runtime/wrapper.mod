@@ -18,7 +18,6 @@
 #include	"timing.h"
 #include	"getopt.h"
 #include	"init.h"
-#include	"prof.h"
 #include	<ctype.h>
 #include	<string.h>
 
@@ -145,10 +144,6 @@ int mercury_main(int argc, char **argv)
 #if (defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)) || \
 		defined(PROFILE_CALLS) || defined(PROFILE_TIME)
 	do_init_modules();
-#endif
-
-#ifdef	PROFILE_TIME
-	prof_init_time_profile();
 #endif
 
 	(*address_of_mercury_init_io)();
@@ -699,7 +694,7 @@ do_interpreter:
 	if (library_entry_point == NULL) {
 		fatal_error("no library entry point supplied");
 	}
-	call(library_entry_point, LABEL(global_success), LABEL(do_interpreter));
+	noprof_call(library_entry_point, LABEL(global_success));
 
 global_success:
 #ifndef	SPEED

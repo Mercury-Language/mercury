@@ -88,6 +88,22 @@ typedef void (*Cont) (void);
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
+#define	noprof_localcall(label, succ_cont)			\
+		do {						\
+			debugcall(LABEL(label), (succ_cont));	\
+			succip = (succ_cont);			\
+			set_prof_current_proc(LABEL(label));	\
+			GOTO_LABEL(label);			\
+		} while (0)
+
+#define	noprof_call(proc, succ_cont)				\
+		do {						\
+			debugcall((proc), (succ_cont));		\
+			succip = (succ_cont);			\
+			set_prof_current_proc(proc);		\
+			GOTO(proc);				\
+		} while (0)
+
 #define	localcall(label, succ_cont, current_label)		\
 		do {						\
 			debugcall(LABEL(label), (succ_cont));	\

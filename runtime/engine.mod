@@ -6,7 +6,6 @@
 
 #include	"imp.h"
 #include	"dummy.h"
-#include	"prof.h"
 
 #include 	<string.h>
 
@@ -109,19 +108,6 @@ void call_engine(Code *entry_point)
 }
 #endif
 
-#ifdef PROFILE_CALLS
-call_engine_label:
-{
-	/* ensure that we only make the label once */
-	static	bool	prof_initialized = FALSE;
-
-	if (!prof_initialized)
-	{
-		make_entry("call_engine_label", LABEL(call_engine_label));
-		prof_initialized = TRUE;
-	}
-}
-#endif
 
 	/*
 	** restore any registers that get clobbered by the C function
@@ -146,7 +132,7 @@ call_engine_label:
 	** Now just call the entry point
 	*/
 
-	call(entry_point, LABEL(engine_done), LABEL(call_engine_label));
+	noprof_call(entry_point, LABEL(engine_done));
 
 engine_done:
 	/*
@@ -194,13 +180,6 @@ engine_done:
 	}
 #endif
 
-#ifdef 	PROFILE_TIME
-	prof_turn_off_time_profiling();
-	prof_output_addr_table();
-#endif
-#ifdef 	PROFILE_CALLS
-	prof_output_addr_pair_table();
-#endif
 }
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -230,13 +209,6 @@ static Code *engine_done(void)
 {
 	save_transient_registers();
 
-#ifdef 	PROFILE_TIME
-	prof_turn_off_time_profiling();
-	prof_output_addr_table();
-#endif
-#ifdef	PROFILE_CALLS
-	prof_output_addr_pair_table();
-#endif
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
 }

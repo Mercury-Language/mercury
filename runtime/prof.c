@@ -355,9 +355,9 @@ prof_output_addr_pair_table(void)
 	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 		current = addr_pair_table[i];
 		while (current) {
-			fprintf(fptr, "%lx %lx %lu\n",
-				(unsigned long) current->Caller,
-				(unsigned long) current->Callee,
+			fprintf(fptr, "%ld %ld %lu\n",
+				(long) current->Caller,
+				(long) current->Callee,
 				current->count);
 			current = current->next;
 		}
@@ -384,7 +384,7 @@ prof_output_addr_decls(const char *name, const Code *address)
 	if (!declfptr) {
 		declfptr = checked_fopen("Prof.Decl", "create", "w");
 	}
-	fprintf(declfptr, "%lx\t%s\n", (unsigned long) address, name);
+	fprintf(declfptr, "%ld\t%s\n", (long) address, name);
 }
 
 #endif /* PROFILE_CALLS */
@@ -410,8 +410,8 @@ prof_output_addr_table()
 	for (i = 0; i < TIME_TABLE_SIZE ; i++) {
 		current = addr_table[i];
 		while (current) {
-			fprintf(fptr, "%lx %lu\n",
-				(unsigned long) current->Addr,
+			fprintf(fptr, "%ld %lu\n",
+				(long) current->Addr,
 				current->count);
 			current = current->next;
 		}
