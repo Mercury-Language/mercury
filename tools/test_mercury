@@ -38,8 +38,8 @@ export TMPDIR
 # Make the files writable by group mercury.
 umask 002
 
-# Stop looping tests after 10 minutes of CPU time.
-ulimit -S -t 600
+# Stop looping tests after 5 minutes of CPU time.
+ulimit -S -t 300
 
 # Host to use to build the release of the day.
 ROTD_HOST=earth
@@ -910,6 +910,8 @@ esac
 
 : build the binary distribution
 
+echo "test_mercury starting to create binary distribution at `date`" 1>&2
+
 # For the Linux systems, we need to distinguish them based
 # on the version of GNU libc.
 # Also we distinguish them based on what optimization level
@@ -967,6 +969,9 @@ esac
 # cvs does not allow `.' or space in tag names, so we use `_' instead
 fullname_tag=`echo $fullname | tr ' .' __`
 
+# On murlibobo building the binary distribution takes a lot of CPU time.
+ulimit -S -t unlimited
+
 {
 	cd $DIR/mercury &&
 	mmake bindist &&
@@ -1000,6 +1005,7 @@ case $status in
     ;;
 esac
 
+echo "test_mercury finished binary distribution at `date`" 1>&2
 #-----------------------------------------------------------------------------#
 
 case $status in
