@@ -2595,8 +2595,9 @@ The @code{typeclass} declaration gives the name of the type class, the
 names of the type variables which are parameters to the type class, and the
 operations ("methods") which form the interface of the type class.
 
-For example
+For example,
 
+@example
 :- typeclass point(T) where [
 	% coords(Point, X, Y):
 	%       X and Y are the cartesian coordinates of Point
@@ -2608,8 +2609,9 @@ For example
 	%       and Y_Offset units in the Y direction
 	func translate(T, float, float) = T
 ].
+@end example
 
-
+@noindent
 declares the typeclass @code{point}, which refers to points in two dimensional
 space. 
 
@@ -3698,7 +3700,7 @@ One important aim of Mercury's impurity system is to make the
 distinction between the pure and impure code very clear.  This is done
 by requiring every impure predicate to be so declared, and by requiring
 every call to an impure predicate to be flagged as such.  Predicates
-that are implemented in terms of impure predictes are assumed to be
+that are implemented in terms of impure predicates are assumed to be
 impure themselves unless they are explicitly promised to be pure.
 
 Please note that the facilities described here are needed only very
@@ -3715,7 +3717,7 @@ Newcomers to Mercury are hence encouraged to @strong{skip this section}.
 * Impurity semantics::  What impure code means
 * Declaring impurity::  Declaring predicates impure
 * Impure calls::        Marking a call as impure
-* Promising purity::    Promising a predicate is pure
+* Promising purity::    Promising that a predicate is pure
 * Impurity Example::    A simple example using impurity
 @end menu
 
@@ -3835,7 +3837,7 @@ declarative semantics, without hidden side-effects.
 
 
 @node Promising purity
-@subsection Promising a predicate is pure
+@subsection Promising that a predicate is pure
 
 Some predicates which call impure or semipure predicates are themselves
 pure.  In fact, the main purpose of the Mercury impurity system is to
