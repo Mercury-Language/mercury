@@ -1,5 +1,5 @@
 % Causes the following assertion failure in rotd-2005-02-07
-% before:
+% and before:
 %
 %	Uncaught Mercury exception:
 %	Software Error: map__lookup: key not found
