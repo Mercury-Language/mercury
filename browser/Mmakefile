@@ -72,9 +72,10 @@ endif
 .PHONY: all
 all : library browse_test declarative_test
 
+DEPENDS = $(BROWSER_LIB_NAME).depend browse_test.depend declarative_test.depend
 .PHONY: depend
-depend		: Mercury.modules $(BROWSER_LIB_NAME).depend \
-			browse_test.depend declarative_test.depend
+depend		: $(DEPENDS)
+$(DEPENDS)	: Mercury.modules
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
