@@ -106,7 +106,7 @@ SHARED_GC_LIBS =						\
 	`							\
 	    case $(GRADE) in					\
 		*.par*.gc*.prof*) echo -lpar_gc_prof ;;		\
-		*.par*.gc*)	echo -libpar_gc ;;		\
+		*.par*.gc*)	echo -lpar_gc ;;		\
 		*.gc*.prof*)	echo -lgc_prof ;;		\
 		*.gc*)		echo -lgc ;;			\
 	    esac						\
