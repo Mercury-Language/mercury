@@ -1,9 +1,9 @@
-test_typeclass_2.m:001: Warning: incorrect module name in `:- module' declaration.
-test_typeclass_2.m:015: Error: expected `pred(<Name> / <Arity>) is <InstanceName>': type_num / 0 is foo_type_num.
-test_typeclass_2.m:018: Error: clause for function `test_typeclass_2:foo_type_num/1'
-test_typeclass_2.m:018:   without preceding `func' declaration.
-test_typeclass_2.m:008: In clause for predicate `test_typeclass_2:main/2':
-test_typeclass_2.m:008:   unsatisfied typeclass constraint(s):
-test_typeclass_2.m:008:   test_typeclass_2:numbered_type(int)
-test_typeclass_2.m:018: Inferred :- func foo_type_num(T1) = int.
+typeclass_test_2.m:001: Warning: incorrect module name in `:- module' declaration.
+typeclass_test_2.m:015: Error: expected `pred(<Name> / <Arity>) is <InstanceName>': type_num / 0 is foo_type_num.
+typeclass_test_2.m:018: Error: clause for function `typeclass_test_2:foo_type_num/1'
+typeclass_test_2.m:018:   without preceding `func' declaration.
+typeclass_test_2.m:008: In clause for predicate `typeclass_test_2:main/2':
+typeclass_test_2.m:008:   unsatisfied typeclass constraint(s):
+typeclass_test_2.m:008:   typeclass_test_2:numbered_type(int)
+typeclass_test_2.m:018: Inferred :- func foo_type_num(T1) = int.
 For more information, try recompiling with `-E'.
