@@ -51,6 +51,7 @@ PROGS=		\
 		partition \
 		petdr1 \
 		prune_switch \
+		semi_fail_in_non_ite \
 		semidet_lambda \
 		semidet_map \
 		set_test \

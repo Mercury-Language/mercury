@@ -135,6 +135,9 @@ only if it did not hijack any frames anywhere to the left of that point.
 
 The proposed code generator uses two data structures for managing failure:
 the resume point stack and the left context.
+It also consults the option --allow-hijacks
+that says whether hijacks (see below) of nondet stack frames are allowed.
+Grades that call for accurate garbage collection imply --no-allow-hijacks.
 
 <h3> The resume point stack </h3>
 
@@ -217,21 +220,20 @@ The answer is yes if all of the following conditions hold:
 	</ul>
 
 <li>
-The hijacks_allowed subfield can take on
-one of the two values allowed and not_allowed,
-saying whether the code generator is allowed to hijack
-the redoip and redofr slots of the top nondet stack frame.
+The condition_environment subfield can take on
+one of the two values inside_non_condition and not_inside_non_condition,
+saying whether we are inside a model_non goal
+that is the condition of an if-then-else.
 </ul>
 
 <p>
 
 The resume_point_known subfield is initialized to known in all procedures.
-curfr_maxfr is initialized to must_be_equal in model_non procedures,
+The curfr_maxfr subfield is initialized to
+must_be_equal in model_non procedures,
 and to may_be_different in other procedures.
-The hijacks_allowed subfield is initialized to not_allowed
-if the compiler is given the --no-allow-hijacks compiler option,
-and to allowed otherwise.
-Grades that call for accurate garbage collection imply --no-allow-hijacks.
+The condition_environment subfield
+is always initialized to not_inside_non_condition.
 
 <p>
 
@@ -315,17 +317,26 @@ liveness.m ensures that the resumption point includes a stack label.
 
 <h3> Classifying left contexts </h3>
 
-In many cases, the code generator classifies left contexts into four cases:
+The code generator classifies left contexts
+into those in which hijacking is allowed,
+and those in which hijacking is not allowed.
+Hijacking is allowed only if the --allow-hijacks option is set,
+and the condition_environment subfield is not_inside_non_condition.
+
+<p>
+
+The code generator further classifies left contexts
+in which hijacking is allowed into the following three categories:
 
 <p>
 
 <ul>
-<li> no-hijack case: hijacks_allowed is not allowed
-<li> best case: hijacks_allowed is allowed,
+<li> best case:
 resume_point_known is known and curfr_maxfr is must_be_equal
-<li> middle case: hijacks_allowed is allowed,
+<li> middle case:
 resume_point_known is unknown and curfr_maxfr is must_be_equal
-<li> worst case: hijacks_allowed is allowed and curfr_maxfr is may_be_different
+<li> worst case:
+curfr_maxfr is may_be_different
 </ul>
 
 <p>
@@ -532,22 +543,54 @@ If the condition hijacks this slot, this scheme will not work.
 will restore it to its original value before finally failing,
 that is too late in this case.)
 Therefore before entering the condition,
-the code generator sets the hijacks_allowed subfield to not_allowed; 
+the code generator sets condition_environment to inside_non_condition; 
 on exit from the condition, it restores the original value.
-(This is the only time the value of hijacks_allowed is ever changed,
-so if hijacks_allowed starts out as not_allowed,
-it will always stay not_allowed.)
+(These are the only times the value of condition_environment is ever changed.)
 
 <p>
 
 Before entering the condition, the code generator will set resume_point_known
-to yes, since the resumption point to go to on failure of the condition is
+to known, since the resumption point to go to on failure of the condition is
 known (it is the start of the else part). However, this resumption point
 does not apply to failures in the then part. Therefore before entering the
 then part, the code generator will reset resume_point_known to the value
 it had before entering the if-then-else, except if resume_point_known
 has become unknown during the generation of code for the condition, in which
 case it will continue to be unknown.
+
+<p>
+
+A failure inside the condition should cause
+a branch to the start of the else case
+only if the condition has not already succeeded.
+In general, the code inside the condition
+may branch directly to the start of the else case
+only up to the first goal that can succeed more than once;
+any other goal following such a goal should branch through the redoip slot
+on which the if-then-else performs the soft cut.
+There are only two kinds of constructs that can succeed more than once:
+calls (including higher order and method calls) and disjunctions.
+When the code generator processes a call that can succeed more than once,
+it sets resume_point_known to unknown,
+which causes later failures to perform a redo.
+To ensure that code in the last disjunct of a model_non disjunction
+and code following a model_non disjunction also fail via a redo,
+the code generator will,
+on entering the last disjunct of a model_non disjunction,
+check whether condition_environment is inside_non_condition,
+and if yes, it will set resume_point_known to unknown.
+(We do not do this in disjuncts other than the last
+because non-last disjuncts fail to the start of the next disjunct).
+Since at the end of branched control structures such as disjunctions
+the code generator sets resume_point_known to unknown
+if resume_point_known was unknown at the end of any branch,
+this ensures that resume_point_known will stay unknown after the disjunction.
+(The end of branched control structures
+treat the curfr_vs_maxfr subfield similarly, i.e. set it to may_be_different
+if it was may_be_different at the end of any branch.
+The condition_environment subfield must, by construction,
+have the same value at the end of every branch,
+and this is the value it will have after the branched control structure.)
 
 <h3> Handling nondet if-then-elses with semi or det conditions </h3>
 
@@ -689,6 +732,6 @@ and thus do not need to set any redoips or hijack anything.
 
 <hr>
 <!-------------------------->
-Last update was $Date: 1998-07-29 08:54:48 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-08-07 05:12:29 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

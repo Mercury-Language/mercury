@@ -3,7 +3,7 @@
 % by the disjunction's clobbering some of the same redoip/redofr slots used
 % for the soft cut in the if-then-else.
 
-:- module complex_failure.
+:- module semi_fail_in_non_ite.
 
 :- interface.
 
@@ -17,11 +17,7 @@
 
 main -->
 	{ solutions(p1, Xs1) },
-	print_list(Xs1),
-	{ solutions(p2, Xs2) },
-	print_list(Xs2),
-	{ solutions(p3, Xs3) },
-	print_list(Xs3).
+	print_list(Xs1).
 
 :- pred p1(int::out) is nondet.
 
@@ -56,7 +52,12 @@ p(A, X) :-
 	% of p's frame, since this may not be (and usually won't be)
 	% on top when execution gets here.
 	( if
-		some [D] ( q(C, D) ; r(C, D) )
+		some [D] (
+			q(C, D)
+		;
+			C = 260,
+			D = 690
+		)
 	then
 		s(D, X)
 	else
