@@ -3803,10 +3803,15 @@ static const MercuryFile MR_closed_stream = {
 void
 mercury_close(MercuryFile* mf)
 {
-	if (mf != &mercury_stdin &&
-	    mf != &mercury_stdout &&
-	    mf != &mercury_stderr)
+	if (mf == &mercury_stdin ||
+	    mf == &mercury_stdout ||
+	    mf == &mercury_stderr ||
+	    mf == &mercury_stdin_binary ||
+	    mf == &mercury_stdout_binary)
 	{
+		mercury_io_error(mf,
+			""attempt to close stdin, stdout or stderr"");	
+	} else {
 		if (MR_CLOSE(*mf) < 0) {
 			mercury_io_error(mf, ""error closing file: %s"",
 				strerror(errno));
@@ -3879,10 +3884,15 @@ mercury_close(MercuryFile* mf)
 static void
 mercury_close(MR_MercuryFile mf)
 {
-        if (mf != mercury_stdin &&
-            mf != mercury_stdout &&
-            mf != mercury_stderr)
+        if (mf == mercury_stdin ||
+            mf == mercury_stdout ||
+            mf == mercury_stderr ||
+            mf == mercury_stdin_binary ||
+            mf == mercury_stdout_binary)
         {
+                // XXX We should throw an exception here.
+                ;	
+        } else {
                 mf->stream->Close();
                 mf->stream = NULL;
         }
