@@ -1630,6 +1630,48 @@ parse_pragma_type(ModuleName, "obsolete", PragmaTerms,
 			Pragma = obsolete(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+parse_pragma_type(ModuleName, "fact_table", PragmaTerms, 
+		ErrorTerm, _VarSet, Result) :-
+	(
+	    PragmaTerms = [PredAndArityTerm, FileNameTerm]
+	->
+	    (
+		PredAndArityTerm = term__functor(term__atom("/"), 
+			[PredNameTerm, ArityTerm], _)
+	    ->
+	    	(
+		    parse_qualified_term(ModuleName, PredNameTerm,
+			    "pragma fact_table declaration", ok(PredName, [])),
+		    ArityTerm = term__functor(term__integer(Arity), [], _)
+		->
+		    (
+			FileNameTerm = 
+				term__functor(term__string(FileName), [], _)
+		    ->
+			Result = ok(pragma(fact_table(PredName, Arity, 
+				FileName)))
+		    ;
+			Result = error(
+			    "expected string for fact table filename",
+			    FileNameTerm)
+		    )
+		;
+		    Result = error(
+		    "expected predname/arity for `pragma fact_table(..., ...)'",
+		    	PredAndArityTerm)
+		)
+	    ;
+		Result = error(
+		    "expected predname/arity for `pragma fact_table(..., ...)'",
+		    PredAndArityTerm)
+	    )
+	;
+	    Result = 
+		error(
+	"wrong number of arguments in pragma fact_table(..., ...) declaration.",
+		ErrorTerm)
+	).
+
 :- pred parse_simple_pragma(module_name, string,
 			pred(sym_name, int, pragma_type),
 			list(term), term, maybe1(item)).
@@ -1688,15 +1730,37 @@ parse_c_code_recursiveness(term__functor(term__atom("non_recursive"), [], _),
 				varset, maybe1(item)).
 :- mode parse_pragma_c_code(in, in, in, in, in, out) is det.
 
-parse_pragma_c_code(ModuleName, Recursiveness, PredAndVarsTerm, C_CodeTerm,
+parse_pragma_c_code(ModuleName, Recursiveness, PredAndVarsTerm0, C_CodeTerm,
 			VarSet, Result) :-
     (
-	PredAndVarsTerm = term__functor(_, _, _)
+	PredAndVarsTerm0 = term__functor(Const, Terms0, _)
     ->
+    	(
+	    % is this a function or a predicate?
+	    Const = term__atom("="),
+	    Terms0 = [FuncAndVarsTerm, FuncResultTerm0]
+	->
+	    % function
+	    PredOrFunc = function,
+	    PredAndVarsTerm = FuncAndVarsTerm,
+	    FuncResultTerms = [ FuncResultTerm0 ]
+	;
+	    % predicate
+	    PredOrFunc = predicate,
+	    PredAndVarsTerm = PredAndVarsTerm0,
+	    FuncResultTerms = []
+	),
 	parse_qualified_term(ModuleName, PredAndVarsTerm,
 			"pragma c_code declaration", PredNameResult),
 	(
-	    PredNameResult = ok(PredName, VarList),
+	    PredNameResult = ok(PredName, VarList0),
+	    (
+	    	PredOrFunc = predicate,
+	    	VarList = VarList0
+	    ;
+	    	PredOrFunc = function,
+	    	list__append(VarList0, FuncResultTerms, VarList)
+	    ),
 	    (
 		C_CodeTerm = term__functor(term__string(C_Code), [], _)
 	    ->
@@ -1705,7 +1769,7 @@ parse_pragma_c_code(ModuleName, Recursiveness, PredAndVarsTerm, C_CodeTerm,
 	        (
 		    Error = no,
 		    Result = ok(pragma(c_code(Recursiveness, PredName,
-					PragmaVars, VarSet, C_Code)))
+				    PredOrFunc, PragmaVars, VarSet, C_Code)))
 	    	;
 		    Error = yes(ErrorMessage),
 		    Result = error(ErrorMessage, PredAndVarsTerm)
@@ -1719,7 +1783,7 @@ parse_pragma_c_code(ModuleName, Recursiveness, PredAndVarsTerm, C_CodeTerm,
 	)
     ;
 	Result = error("unexpected variable in pragma(c_code, ...)",
-						PredAndVarsTerm)
+						PredAndVarsTerm0)
     ).
 
 	% parse the variable list in the pragma c code declaration.

@@ -79,10 +79,11 @@
 
 :- type pragma_type --->	c_header_code(string)
 			;	c_code(string)
-			;	c_code(c_is_recursive, sym_name, 
+			;	c_code(c_is_recursive, sym_name, pred_or_func,
 					list(pragma_var), varset, string)
 				% Whether or not the C code may call Mercury,
-				% PredName, Vars/Mode, VarNames, C Code
+				% PredName, Predicate or Function, Vars/Mode, 
+				% VarNames, C Code
 			;	memo(sym_name, int)
 				% Predname, Arity
 			;	inline(sym_name, int)
@@ -91,8 +92,11 @@
 				% Predname, Arity
 			;	export(sym_name, list(mode), string)
 				% Predname, Modes, C function name.
-			;	source_file(string).
+			;	source_file(string)
 				% Source file name.
+			;	fact_table(sym_name, arity, string)
+				% Predname, Arity, Fact file name.
+			.
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another

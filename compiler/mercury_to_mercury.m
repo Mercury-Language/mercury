@@ -14,7 +14,7 @@
 :- module mercury_to_mercury.
 :- interface.
 
-:- import_module hlds_goal, hlds_data, prog_data.
+:- import_module hlds_goal, hlds_data, hlds_pred, prog_data.
 :- import_module list, io, varset, term.
 
 %	convert_to_mercury(ProgName, OutputFileName, Items)
@@ -46,9 +46,9 @@
 		maybe(determinism), term__context, io__state, io__state).
 :- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name,
+:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name, pred_or_func,
 		list(pragma_var), varset, string, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in, in, in, in, in, di, uo) is det.
+:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
 
 	% Output the given c_header_code declaration
 :- pred mercury_output_pragma_c_header(string, io__state, io__state).
@@ -234,10 +234,10 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = c_code(Code) }, 
 		mercury_output_pragma_c_body_code(Code)
 	;
-		{ Pragma = c_code(IsRecursive, Pred, Vars, VarSet,
+		{ Pragma = c_code(IsRecursive, Pred, PredOrFunc, Vars, VarSet,
 				C_CodeString) }, 
-		mercury_output_pragma_c_code(IsRecursive, Pred, Vars, VarSet,
-				C_CodeString)
+		mercury_output_pragma_c_code(IsRecursive, Pred, PredOrFunc, 
+				Vars, VarSet, C_CodeString)
 	;
 		{ Pragma = export(Pred, ModeList, C_Function) },
 		mercury_output_pragma_export(Pred, ModeList, C_Function)
@@ -250,6 +250,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 	;
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "inline")
+	;
+		{ Pragma = fact_table(Pred, Arity, FileName) },
+		mercury_output_pragma_fact_table(Pred, Arity, FileName)
 	).
 
 
@@ -1124,7 +1127,7 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 %-----------------------------------------------------------------------------%
 
 	% Output the given pragma c_code declaration
-mercury_output_pragma_c_code(IsRecursive, PredName, Vars, VarSet,
+mercury_output_pragma_c_code(IsRecursive, PredName, PredOrFunc, Vars0, VarSet,
 		C_CodeString) -->
 	io__write_string(":- pragma c_code("),
 	(	{ IsRecursive = recursive },
@@ -1133,11 +1136,28 @@ mercury_output_pragma_c_code(IsRecursive, PredName, Vars, VarSet,
 		io__write_string("non_recursive, ")
 	),
 	mercury_output_sym_name(PredName),
+	{
+		PredOrFunc = predicate,
+		Vars = Vars0,
+		ResultVars = []
+	;
+		PredOrFunc = function,
+		pred_args_to_func_args(Vars0, Vars, ResultVar),
+		ResultVars = [ResultVar]
+	},
 	( { Vars = [] } ->
 		[]
 	;
 		io__write_string("("),
 		mercury_output_pragma_c_code_vars(Vars, VarSet),
+		io__write_string(")")
+	),
+	(
+		{ PredOrFunc = predicate }
+	;
+		{ PredOrFunc = function },
+		io__write_string(" = ("),
+		mercury_output_pragma_c_code_vars(ResultVars, VarSet),
 		io__write_string(")")
 	),
 	io__write_string(", """),
@@ -1198,6 +1218,21 @@ mercury_output_pragma_export(Pred, ModeList, C_Function) -->
 	io__write_string("), "),
 	io__write_string(C_Function),
 	io__write_string(").\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_fact_table(sym_name, arity, string,
+		io__state, io__state).
+:- mode mercury_output_pragma_fact_table(in, in, in, di, uo) is det.
+
+mercury_output_pragma_fact_table(Pred, Arity, FileName) -->
+	io__write_string(":- pragma fact_table("),
+	mercury_output_sym_name(Pred),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(","""),
+	term_io__quote_string(FileName),
+	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
 

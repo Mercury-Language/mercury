@@ -883,7 +883,7 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
-		intermod__write_c_code(SymName, HeadVars, Varset,
+		intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 						Clauses, Procs)
 	;
 		{ pred_info_typevarset(PredInfo, _TVarSet) },
@@ -924,11 +924,13 @@ intermod__write_pragmas(SymName, Arity, [MarkerStatus | Markers]) -->
 	intermod__write_pragmas(SymName, Arity, Markers).
 
 	% Some pretty kludgy stuff to get c code written correctly.
-:- pred intermod__write_c_code(sym_name::in, list(var)::in, varset::in,
+:- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 
+	list(var)::in, varset::in,
 	list(clause)::in, proc_table::in, io__state::di, io__state::uo) is det.
 
-intermod__write_c_code(_, _, _, [], _) --> [].
-intermod__write_c_code(SymName, HeadVars, Varset, [Clause | Clauses], Procs) -->
+intermod__write_c_code(_, _, _, _, [], _) --> [].
+intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
+		[Clause | Clauses], Procs) -->
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
 		(
@@ -946,27 +948,28 @@ intermod__write_c_code(SymName, HeadVars, Varset, [Clause | Clauses], Procs) -->
 						_, _, Vars, _) - _ }
 		)
 	->	
-		intermod__write_c_clauses(Procs, ProcIds, CCode, IsRec, Vars,
-							Varset, SymName)
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, 
+					IsRec, Vars, Varset, SymName)
 	;
 		{ error("intermod__write_c_code called with non c_code goal") }
 	),
-	intermod__write_c_code(SymName, HeadVars, Varset, Clauses, Procs).
+	intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
+				Clauses, Procs).
 
-:- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in,
-		string::in, c_is_recursive::in, list(var)::in, varset::in,
-		sym_name::in, io__state::di, io__state::uo) is det.
+:- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
+		pred_or_func::in, string::in, c_is_recursive::in, list(var)::in,
+		varset::in, sym_name::in, io__state::di, io__state::uo) is det.
 
-intermod__write_c_clauses(_, [], _, _, _, _, _) --> [].
-intermod__write_c_clauses(Procs, [ProcId | ProcIds],
+intermod__write_c_clauses(_, [], _, _, _, _, _, _) --> [].
+intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 			CCode, IsRec, Vars, Varset, SymName) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
-	mercury_output_pragma_c_code(IsRec, SymName, PragmaVars,
+	mercury_output_pragma_c_code(IsRec, SymName, PredOrFunc, PragmaVars,
 						Varset, CCode),
-	intermod__write_c_clauses(Procs, ProcIds, CCode, IsRec, Vars,
-					Varset, SymName).
+	intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode, IsRec, 
+					Vars, Varset, SymName).
 
 :- pred get_pragma_c_code_vars(list(var)::in, varset::in,
 		list(mode)::in, list(pragma_var)::out) is det.

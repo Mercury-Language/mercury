@@ -206,6 +206,9 @@
 :- pred module_info_set_preds(module_info, pred_table, module_info).
 :- mode module_info_set_preds(in, in, out) is det.
 
+:- pred module_info_set_pred_info(module_info, pred_id, pred_info, module_info).
+:- mode module_info_set_pred_info(in, in, in, out) is det.
+
 :- pred module_info_set_unify_requests(module_info, unify_requests,
 					module_info).
 :- mode module_info_set_unify_requests(in, in, out) is det.
@@ -538,6 +541,11 @@ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo) :-
 	predicate_table_set_preds(PredicateTable0, Preds, PredicateTable),
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo).
+
+module_info_set_pred_info(ModuleInfo0, PredID, PredInfo, ModuleInfo) :-
+	module_info_preds(ModuleInfo0, Preds0),
+	map__set(Preds0, PredID, PredInfo, Preds),
+	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo).
 
 module_info_set_unify_requests(ModuleInfo0, Requests, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, _, E, F, G, H, I, J, K, L, M, N, 

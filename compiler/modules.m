@@ -66,12 +66,14 @@
 :- pred make_short_interface(string, item_list, io__state, io__state).
 :- mode make_short_interface(in, in, di, uo) is det.
 
-	% grab_imported_modules(ModuleName, Items, Module, Error)
+	% grab_imported_modules(ModuleName, Items, Module, FactDeps, Error)
 	%	Given a module name and the list of items in that module,
 	%	read in the full interface files for all the imported modules,
 	%	and the short interface files for all the indirectly imported
 	%	modules, and return a `module_imports' structure containing the
 	%	relevant information.
+	%	Also returns FactDeps list of filenames for fact tables in this
+	%	module.
 	%
 :- type module_imports --->
 	module_imports(
@@ -82,18 +84,19 @@
 		module_error	% Whether an error has been encountered
 	).
 
-:- pred grab_imported_modules(string, item_list, module_imports, module_error,
-				io__state, io__state).
-:- mode grab_imported_modules(in, in, out, out, di, uo) is det.
+:- pred grab_imported_modules(string, item_list, module_imports, list(string), 
+			module_error, io__state, io__state).
+:- mode grab_imported_modules(in, in, out, out, out, di, uo) is det.
 
-	% write_dependency_file(ModuleName, LongDeps, ShortDeps):
+	% write_dependency_file(ModuleName, LongDeps, ShortDeps, FactDeps):
 	%	Write out the per-module makefile dependencies (`.d') file
 	%	for a module `ModuleName' which depends directly on the
 	% 	modules `LongDeps' and indirectly on the modules `ShortDeps'.
+	%	FactDeps is the list of filenames of fact tables in the module.
 	%
-:- pred write_dependency_file(string, list(string), list(string),
+:- pred write_dependency_file(string, list(string), list(string), list(string),
 				io__state, io__state).
-:- mode write_dependency_file(in, in, in, di, uo) is det.
+:- mode write_dependency_file(in, in, in, in, di, uo) is det.
 
 	% generate_dependencies(ModuleName):
 	%	Generate the per-program makefile dependencies (`.dep') file
@@ -349,8 +352,9 @@ touch_interface_datestamp(ModuleName, Ext) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-grab_imported_modules(ModuleName, Items0, Module, Error) -->
+grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
 	{ get_dependencies(Items0, ImportedModules) },
+	{ get_fact_table_dependencies(Items0, FactDeps) },
 
 		% we add a pseudo-declaration `:- imported' at the end
 		% of the item list, so that make_hlds knows which items
@@ -367,7 +371,7 @@ grab_imported_modules(ModuleName, Items0, Module, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
+write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
@@ -381,6 +385,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps1) },
 		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
 		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
+		{ list__sort_and_remove_dups(FactDeps0, FactDeps) },
 
 		io__write_strings(DepStream, [
 			ModuleName, ".optdate ",
@@ -391,6 +396,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		] ),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
+		write_dependencies_list(FactDeps, "", DepStream),
 
 		globals__io_lookup_bool_option(intermodule_optimization,
 							Intermod),
@@ -466,7 +472,7 @@ generate_dependencies(Module) -->
 	%
 	% check whether we couldn't read the main `.m' file
 	%
-	{ map__lookup(DepsMap, Module, deps(_, Error, _, _)) },
+	{ map__lookup(DepsMap, Module, deps(_, Error, _, _, _)) },
 	( { Error = fatal } ->
 	    { string__append_list(["fatal error reading module `",
 				Module, "'."], Message) },
@@ -501,7 +507,8 @@ generate_dependencies(Module) -->
 		bool,		% have we processed this module yet?
 		module_error,	% if we did, where there any errors?
 		list(string),	% interface dependencies
-		list(string)	% implementation dependencies
+		list(string),	% implementation dependencies
+		list(string)	% fact table dependencies
 	).
 
 % This is the predicate which creates the above data structure.
@@ -515,7 +522,7 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% Look up the module's dependencies, and determine whether
 		% it has been processed yet.
 	lookup_dependencies(Module, DepsMap0, no, Done, Error, ImplDeps, 
-				IntDeps, DepsMap1),
+				IntDeps, FactDeps, DepsMap1),
 		% If the module hadn't been processed yet, compute its
 		% transitive dependencies (we already know its primary ones),
 		% (1) output this module's dependencies to its `.d' file
@@ -524,11 +531,13 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 		% been processed.
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module,
-			deps(yes, Error, IntDeps, ImplDeps), DepsMap2) },
+			deps(yes, Error, IntDeps, ImplDeps, FactDeps), 
+			DepsMap2) },
 		transitive_dependencies(ImplDeps, DepsMap2, no, SecondaryDeps,
 			DepsMap3),
 		( { Error \= fatal } ->
-			write_dependency_file(Module, ImplDeps, SecondaryDeps)
+			write_dependency_file(Module, ImplDeps, SecondaryDeps,
+			FactDeps)
 		;
 			[]
 		),
@@ -577,6 +586,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		{ Basis = no }
 	),
 
+	{ get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
+
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".nos = "),
 	write_compact_dependencies_list(Modules, ".no", Basis, DepStream),
@@ -595,6 +606,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".os = "),
 	write_compact_dependencies_list(Modules, ".o", Basis, DepStream),
+	write_dependencies_list(ExtraLinkObjs, ".o", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_string(DepStream, ModuleName),
@@ -857,13 +869,35 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	]).
 
 %-----------------------------------------------------------------------------%
+	% get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
+	% Find any extra .o files that should be linked into the executable.
+	% Currently only looks for fact table object files.
+:- pred get_extra_link_objects(list(string), deps_map, list(string)).
+:- mode get_extra_link_objects(in, in, out) is det.
+
+get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) :-
+	get_extra_link_objects_2(Modules, DepsMap, [], ExtraLinkObjs).
+
+:- pred get_extra_link_objects_2(list(string), deps_map, 
+		list(string), list(string)).
+:- mode get_extra_link_objects_2(in, in, in, out) is det.
+
+get_extra_link_objects_2([], _DepsMap, ExtraLinkObjs, ExtraLinkObjs).
+get_extra_link_objects_2([Module | Modules], DepsMap, 
+		ExtraLinkObjs0, ExtraLinkObjs) :-
+	map__lookup(DepsMap, Module, deps(_, _, _, _, ObjList)),
+	list__append(ObjList, ExtraLinkObjs0, ExtraLinkObjs1),
+	get_extra_link_objects_2(Modules, DepsMap, ExtraLinkObjs1, 
+		ExtraLinkObjs).
+
+%-----------------------------------------------------------------------------%
 
 :- pred select_ok_modules(list(string), deps_map, list(string)).
 :- mode select_ok_modules(in, in, out) is det.
 
 select_ok_modules([], _, []).
 select_ok_modules([Module | Modules0], DepsMap, Modules) :-
-	map__lookup(DepsMap, Module, deps(_, Error, _, _)),
+	map__lookup(DepsMap, Module, deps(_, Error, _, _, _)),
 	( Error = fatal ->
 		Modules = Modules1
 	;
@@ -940,8 +974,8 @@ transitive_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
 		{ Modules1 = Modules0 }
 	;
 		{ set__insert(Deps0, Module, Deps1) },
-		lookup_dependencies(Module, DepsMap0, Search, 
-					_, _, IntDeps, _ImplDeps, DepsMap1),
+		lookup_dependencies(Module, DepsMap0, Search, _, _, 
+			IntDeps, _ImplDeps, _FactDeps, DepsMap1),
 		{ list__append(IntDeps, Modules0, Modules1) }
 	),
 	transitive_dependencies_2(Modules1, Deps1, DepsMap1, Search, Deps, 
@@ -977,8 +1011,8 @@ trans_impl_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
                 { Modules2 = Modules0 }
         ;
                 { set__insert(Deps0, Module, Deps1) },
-                lookup_dependencies(Module, DepsMap0, Search,
-                                        _, _, IntDeps, ImplDeps, DepsMap1),
+                lookup_dependencies(Module, DepsMap0, Search, _, _, IntDeps, 
+                	ImplDeps, _FactDeps, DepsMap1),
                 { list__append(IntDeps, Modules0, Modules1) },
                 { list__append(ImplDeps, Modules1, Modules2) }
         ),
@@ -992,36 +1026,40 @@ trans_impl_dependencies_2([Module | Modules0], Deps0, DepsMap0, Search, Deps,
 	% module and save the dependencies in the dependency map.
 
 :- pred lookup_dependencies(string, deps_map, bool,
-		bool, module_error, list(string), list(string), deps_map,
-		io__state, io__state).
-:- mode lookup_dependencies(in, in, in, out, out, out, out, out, di, uo) is det.
+		bool, module_error, list(string), list(string), list(string),
+		deps_map, io__state, io__state).
+:- mode lookup_dependencies(in, in, in, out, out, out, out, out, out, 
+		di, uo) is det.
 
 lookup_dependencies(Module, DepsMap0, Search, Done, Error, IntDeps, 
-		ImplDeps, DepsMap)
+		ImplDeps, FactDeps, DepsMap)
 		-->
 	(
 		{ map__search(DepsMap0, Module,
-			deps(Done0, Error0, IntDeps0, ImplDeps0)) }
+			deps(Done0, Error0, IntDeps0, ImplDeps0, FactDeps0)) }
 	->
 		{ Done = Done0 },
 		{ Error = Error0 },
 		{ IntDeps = IntDeps0 },
 		{ ImplDeps = ImplDeps0 },
+		{ FactDeps = FactDeps0 },
 		{ DepsMap = DepsMap0 }
 	;
-		read_dependencies(Module, Search, ImplDeps, IntDeps, Error),
-		{ map__set(DepsMap0, Module, deps(no, Error, IntDeps, ImplDeps),
-			DepsMap) },
+		read_dependencies(Module, Search, ImplDeps, IntDeps, FactDeps, 
+				Error),
+		{ map__set(DepsMap0, Module, 
+		    deps(no, Error, IntDeps, ImplDeps, FactDeps), DepsMap) },
 		{ Done = no }
 	).
 
 	% Read a module to determine its dependencies.
 
-:- pred read_dependencies(string, bool, list(string), list(string), 
-				module_error, io__state, io__state).
-:- mode read_dependencies(in, in, out, out, out, di, uo) is det.
+:- pred read_dependencies(string, bool, list(string), list(string),
+			list(string), module_error, io__state, io__state).
+:- mode read_dependencies(in, in, out, out, out, out, di, uo) is det.
 
-read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps, Error) -->
+read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps, 
+		FactTableDeps, Error) -->
 	io__gc_call(read_mod_ignore_errors(Module, ".m",
 			"Getting dependencies for module", Search, Items0, Error)),
 	( { Items0 = [], Error = fatal } ->
@@ -1034,7 +1072,8 @@ read_dependencies(Module, Search, InterfaceDeps, ImplementationDeps, Error) -->
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, no, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
-	{ ImplementationDeps = ["mercury_builtin" | ImplementationDeps0] }.
+	{ ImplementationDeps = ["mercury_builtin" | ImplementationDeps0] },
+	{ get_fact_table_dependencies(Items, FactTableDeps) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1238,12 +1277,37 @@ get_dependencies(Items, Deps) :-
 
 get_dependencies_2([], Deps, Deps).
 get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
-	( Item = module_defn(_VarSet, import(module(Modules))) ->
+	( 
+		Item = module_defn(_VarSet, import(module(Modules)))
+	->
 		list__append(Deps0, Modules, Deps1)
 	;
 		Deps1 = Deps0
 	),
 	get_dependencies_2(Items, Deps1, Deps).
+
+%-----------------------------------------------------------------------------%
+	% get the fact table dependencies for a module
+:- pred get_fact_table_dependencies(item_list, list(string)).
+:- mode get_fact_table_dependencies(in, out) is det.
+
+get_fact_table_dependencies(Items, Deps) :-
+	get_fact_table_dependencies_2(Items, [], Deps).
+
+
+:- pred get_fact_table_dependencies_2(item_list, list(string), list(string)).
+:- mode get_fact_table_dependencies_2(in, in, out) is det.
+
+get_fact_table_dependencies_2([], Deps, Deps).
+get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
+	(
+		Item = pragma(fact_table(_SymName, _Arity, FileName))
+	->
+		Deps1 = [FileName | Deps0]
+	;
+		Deps1 = Deps0
+	),
+	get_fact_table_dependencies_2(Items, Deps1, Deps).
 
 %-----------------------------------------------------------------------------%
 

@@ -61,6 +61,7 @@
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
+:- import_module fact_table.
 
 parse_tree_to_hlds(module(Name, Items), EqvMap, Module, UndefTypes, UndefModes)
 		-->
@@ -261,7 +262,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		% Handle pragma c_code decls later on (when we process
 		% clauses).
-		{ Pragma = c_code(_, _, _, _, _) },
+		{ Pragma = c_code(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;
 		{ Pragma = memo(Name, Arity) },
@@ -312,6 +313,11 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 				"`:- pragma export' declaration"),
 			{ module_info_incr_errors(Module0, Module) }
 		)
+	;
+		% Handle pragma fact_table decls later on (when we process
+		% clauses).
+		{ Pragma = fact_table(_, _, _) },
+		{ Module = Module0 }
 	).
 
 add_item_decl_pass_2(func(_VarSet, FuncName, TypesAndModes, _RetTypeAndMode,
@@ -402,12 +408,20 @@ add_item_clause(module_defn(_, Defn), Status0, Status, _,
 add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
-		{ Pragma = c_code(IsRecursive, Pred, Vars, VarSet, C_Code) }
+		{ Pragma = c_code(IsRecursive, Pred, PredOrFunc, Vars, 
+			VarSet, C_Code) }
 	->
-		module_add_pragma_c_code(IsRecursive, Pred, Vars, VarSet,
-			C_Code, Status, Context, Module0, Module, Info0, Info)
+		module_add_pragma_c_code(IsRecursive, Pred, PredOrFunc, Vars, 
+			VarSet, C_Code, Status, Context, 
+			Module0, Module, Info0, Info)
 	;
-		% don't worry about any pragma decs but c_code here
+		{ Pragma = fact_table(Pred, Arity, File) }
+	->
+		module_add_pragma_fact_table(Pred, Arity, File, 
+			Status, Context, Module0, Module, Info0, Info)
+	;
+		% don't worry about any pragma decs but c_code and fact_table
+		% here
 		{ Module = Module0 },
 		{ Info = Info0 }	
 	).
@@ -1506,20 +1520,18 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 	
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(c_is_recursive, sym_name, list(pragma_var),
-		varset, string, import_status, term__context, module_info,
-		module_info, qual_info, qual_info, io__state, io__state).
-:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, out,
+:- pred module_add_pragma_c_code(c_is_recursive, sym_name, pred_or_func, 
+		list(pragma_var), varset, string, import_status, term__context, 
+		module_info, module_info, qual_info, qual_info, 
+		io__state, io__state).
+:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
 		in, out, di, uo) is det.  
-module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Status,
-			Context, ModuleInfo0, ModuleInfo, Info0, Info) --> 
-		% XXX we should allow pragma c_code for functions as well
-		% as for predicates, but currently we don't
-	{ PredOrFunc = predicate },
-
-		% print out a progress message
+module_add_pragma_c_code(IsRecursive, PredName, PredOrFunc, PVars, VarSet, 
+			C_Code, Status, Context, ModuleInfo0, ModuleInfo, 
+			Info0, Info) --> 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(PVars, Arity) },
+		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( 
 		{ VeryVerbose = yes }
@@ -1530,6 +1542,7 @@ module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Status,
 	;
 		[]
 	),
+
 		% Lookup the pred declaration in the predicate table.
 		% (if it's not there, print an error message and insert
 		% a dummy declaration for the predicate.) 
@@ -1610,11 +1623,9 @@ module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Status,
 			prog_out__write_context(Context),
 			io__write_string("Error: `:- pragma c_code' "),
 			io__write_string("declaration for undeclared mode "),
-			io__write_string("of `"),
-			prog_out__write_sym_name(PredName),
-			io__write_string("/"),
-			io__write_int(Arity),
-			io__write_string("'.\n"),
+			io__write_string("of "),
+			hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+			io__write_string(".\n"),
 			io__set_output_stream(OldStream, _),
 			{ Info = Info0 }
 		)
@@ -3158,5 +3169,131 @@ unqualified_pred_error(PredName, Arity, Context) -->
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  should have been qualified by prog_io.m.\n").
+
+%-----------------------------------------------------------------------------%
+%	module_add_pragma_fact_table(PredName, Arity, FileName, 
+%		Status, Context, Module0, Module, Info0, Info)
+% Add a `pragma fact_table' declaration to the HLDS.  This predicate calls the 
+% fact table compiler (fact_table_compile_facts) to create a separate `.o' file
+% for the fact_table and then creates separate pieces of `pragma c_code' to 
+% access the table in each mode of the fact table predicate.
+
+:- pred module_add_pragma_fact_table(sym_name, arity, string, 
+		import_status, term__context, module_info, module_info,
+		qual_info, qual_info, io__state, io__state).
+:- mode module_add_pragma_fact_table(in, in, in, in, in, in, out, in, out,
+		di, uo) is det.
+
+module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
+		Module0, Module, Info0, Info) -->
+	{ module_info_get_predicate_table(Module0, PredicateTable) },
+	(
+	    { predicate_table_search_sym_arity(PredicateTable, Pred, 
+		    Arity, PredIDs0) },
+	    { PredIDs0 = [PredID | PredIDs1] }
+	->
+	    (
+		{ PredIDs1 = [] }, 		% only one predicate found
+		{ module_info_pred_info(Module0, PredID, PredInfo0) },
+
+		    % compile the fact table into a separate .o file
+		fact_table_compile_facts(Pred, Arity, FileName, 
+			PredInfo0, PredInfo, Context),
+
+		{module_info_set_pred_info(Module0, PredID, PredInfo, Module1)},
+		{ pred_info_procedures(PredInfo, ProcTable) },
+		{ pred_info_procids(PredInfo, ProcIDs) },
+		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+		{
+		    PredOrFunc = predicate,
+		    NumArgs = Arity
+		;
+		    PredOrFunc =  function,
+		    NumArgs is Arity + 1
+		},
+
+		    % create some pragma c_code to access table in each mode
+		module_add_fact_table_procedures(ProcIDs, ProcTable, Pred,
+		    PredOrFunc, NumArgs, Status, Context, 
+		    Module1, Module, Info0, Info)
+	    ;
+	    	{ PredIDs1 = [_ | _] },		% >1 predicate found
+	    	io__set_exit_status(1),
+	    	prog_out__write_context(Context),
+		io__write_string("In pragma fact_table for `"),
+		hlds_out__write_pred_call_id(Pred/Arity),
+		io__write_string("':\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+			"  error: ambiguous predicate/function name.\n"),
+		{ Module = Module0 },
+		{ Info = Info0 }
+	    )
+	;
+	    undefined_pred_or_func_error(Pred, Arity, Context, 
+	    	"pragma fact_table"),
+	    { Module = Module0 },
+	    { Info = Info0 }
+	).
+
+
+	% Add a `pragma c_code' for each mode of the fact table lookup to the
+	% HLDS.
+	% `pragma fact_table's are represented in the HLDS by a 
+	% `pragma c_code' for each mode of the predicate.
+
+:- pred module_add_fact_table_procedures(list(proc_id), proc_table, sym_name, 
+		pred_or_func, arity, import_status, term__context, module_info, 
+		module_info, qual_info, qual_info, io__state, io__state).
+:- mode module_add_fact_table_procedures(in, in, in, in, in, in, in, in, out,
+		in, out, di, uo) is det.
+
+module_add_fact_table_procedures([],_,_,_,_,_,_, Mod, Mod, Inf, Inf) --> [].
+module_add_fact_table_procedures([ProcID | ProcIDs], ProcTable, SymName, 
+		PredOrFunc, Arity, Status, Context, 
+		Module0, Module, Info0, Info) -->
+	module_add_fact_table_proc(ProcID, ProcTable, SymName, PredOrFunc, 
+			Arity, Status, Context, Module0, Module1, Info0, Info1),
+	module_add_fact_table_procedures(ProcIDs, ProcTable, SymName, 
+		PredOrFunc, Arity, Status, Context, 
+		Module1, Module, Info1, Info).
+
+:- pred module_add_fact_table_proc(proc_id, proc_table, sym_name, pred_or_func, 
+		arity, import_status, term__context, module_info, module_info, 
+		qual_info, qual_info, io__state, io__state).
+:- mode module_add_fact_table_proc(in, in, in, in, in, in, in, in, out,
+		in, out, di, uo) is det.
+
+module_add_fact_table_proc(ProcID, ProcTable, SymName, PredOrFunc, Arity, 
+		Status, Context, Module0, Module, Info0, Info) -->
+	{ map__lookup(ProcTable, ProcID, ProcInfo) },
+	{ varset__init(VarSet0) },
+	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
+	{ proc_info_argmodes(ProcInfo, Modes) },
+	{ fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars) },
+	{ fact_table_generate_c_code(SymName, PragmaVars, C_Code) },
+	module_add_pragma_c_code(non_recursive, SymName, PredOrFunc, PragmaVars,
+		VarSet, C_Code, Status, Context, Module0, Module, Info0, Info).
+
+	% Create a list(pragma_var) that looks like the ones that are created
+	% for pragma c_code in prog_io.m.
+	% This is required by module_add_pragma_c_code to add the C code for
+	% the procedure to the HLDS.
+
+:- pred fact_table_pragma_vars(list(var), list(mode), varset, list(pragma_var)).
+:- mode fact_table_pragma_vars(in, in, in, out) is det.
+
+fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
+	(
+		Vars0 = [Var | Vars1],
+		Modes0 = [Mode | Modes1]
+	->
+		varset__lookup_name(VarSet, Var, Name),
+		PragmaVar = pragma_var(Var, Name, Mode),
+		fact_table_pragma_vars(Vars1, Modes1, VarSet, PragmaVars1),
+		PragmaVars0 = [PragmaVar | PragmaVars1]
+	;
+		PragmaVars0 = []
+	).
 
 %-----------------------------------------------------------------------------%

@@ -167,9 +167,10 @@ process_module_2(ModuleName) -->
 	; { ConvertToGoedel = yes } ->
 		convert_to_goedel(ModuleName, Items0)
 	;
-		grab_imported_modules(ModuleName, Items0, Module, Error2),
+		grab_imported_modules(ModuleName, Items0, Module, FactDeps,
+			Error2),
 		( { Error2 \= fatal } ->
-			mercury_compile(Module)
+			mercury_compile(Module, FactDeps)
 		;
 			[]
 		)
@@ -190,12 +191,12 @@ process_module_2(ModuleName) -->
 	% The initial arrangement has the stage numbers increasing by three
 	% so that new stages can be slotted in without too much trouble.
 
-:- pred mercury_compile(module_imports, io__state, io__state).
-:- mode mercury_compile(in, di, uo) is det.
+:- pred mercury_compile(module_imports, list(string), io__state, io__state).
+:- mode mercury_compile(in, in, di, uo) is det.
 
-mercury_compile(Module) -->
+mercury_compile(Module, FactDeps) -->
 	{ Module = module_imports(ModuleName, _, _, _, _) },
-	mercury_compile__pre_hlds_pass(Module, HLDS1, UndefTypes,
+	mercury_compile__pre_hlds_pass(Module, FactDeps, HLDS1, UndefTypes,
 						UndefModes, Errors1),
 	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
 						UndefModes, Errors2),
@@ -242,18 +243,19 @@ mercury_compile(Module) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__pre_hlds_pass(module_imports, module_info, bool,
-	bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, out, out, out, out, di, uo) is det.
+:- pred mercury_compile__pre_hlds_pass(module_imports, list(string), 
+		module_info, bool, bool, bool, io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, 
+		di, uo) is det.
 
-mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
-		FoundError) -->
+mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes, 
+		UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
 	{ ModuleImports0 = module_imports(Module, LongDeps,
 					ShortDeps, Items0, _) },
-	write_dependency_file(Module, LongDeps, ShortDeps),
+	write_dependency_file(Module, LongDeps, ShortDeps, FactDeps),
 	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
 					Stats, _, UndefTypes0, UndefModes0),
 		% Items from optimization interfaces are needed before
