@@ -190,7 +190,7 @@ option_defaults_2(warning_option, [
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
-	warn_unused_args	-	bool(yes)
+	warn_unused_args	-	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -498,8 +498,8 @@ options_help -->
 	io__write_string("\t\twhich could have been stricter.\n"),
 	io__write_string("\t--no-warn-nothing-exported\n"),
 	io__write_string("\t\tDon't warn about modules which export nothing.\n"),
-	io__write_string("\t--no-warn-unused-args\n"),
-	io__write_string("\t\tDon't warn about predicate arguments which are not used\n"),
+	io__write_string("\t--warn-unused-args\n"),
+	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
 
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
