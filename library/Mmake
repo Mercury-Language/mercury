@@ -113,6 +113,9 @@ cs: $(library.cs)
 #-----------------------------------------------------------------------------#
 
 .PHONY: libmercury
+# the following dependency is just there to improve compilation speed;
+# making tree234.o first improves effective parallelism with parallel makes.
+libmercury : tree234.o
 libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) library.init
 
 libmercury.a : $(library.os)
