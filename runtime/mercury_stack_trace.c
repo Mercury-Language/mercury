@@ -15,7 +15,8 @@
 #include <stdio.h>
 
 void
-MR_dump_stack(Code *success_pointer, Word *det_stack_pointer)
+MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
+		Word *current_frame)
 {
 	Label *label;
 	MR_Live_Lval location;
@@ -28,7 +29,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer)
 #ifndef MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
 #else
-	fprintf(stderr, "Stack dump follows (deterministic stack only):\n");
+	fprintf(stderr, "Stack dump follows:\n");
 
 	do {
 		label = lookup_label_addr(success_pointer);
@@ -61,8 +62,12 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer)
 			}
 			det_stack_pointer = det_stack_pointer - 
 				entry_layout->MR_sle_stack_slots;
+		} else if (determinism != -1) {
+			fprintf(stderr, "\t%s\n", label->e_name);
+			success_pointer = bt_succip(current_frame);
+			current_frame = bt_succfr(current_frame);
 		}
-	} while (MR_DETISM_DET_CODE_MODEL(determinism));
+	} while (determinism != -1);
 #endif /* MR_STACK_TRACE */
 }
 

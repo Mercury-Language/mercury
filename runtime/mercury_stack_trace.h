@@ -17,13 +17,10 @@
 /*
 ** MR_dump_stack:
 ** 	Given the succip and det stack pointer, generate a stack dump
-** 	showing then name of each procedure on the stack.
-** 	XXX 
-** 	Currently only deterministic stack frames are handled, if a
-** 	nondeterministic stack frame is found while tracing down the
-** 	stack, the stack dump ends.
+** 	showing then name of each active procedure on the stack.
 */
 
-extern void MR_dump_stack(Code *success_pointer, Word *det_stack_pointer);
+extern void MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
+		Word *current_frame);
 
 #endif /* MERCURY_STACK_TRACE_H */
