@@ -399,7 +399,7 @@ maybe_pred(Pred, X, Y) :-
 #include ""deep_copy.h""
 
 MR_DECLARE_STRUCT(
-	mercury_data_mercury_builtin__base_type_info_list_1);
+	mercury_data_list__base_type_info_list_1);
 
 Declare_entry(do_call_nondet_closure);
 
@@ -551,7 +551,7 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	  Word solutions_copy;
 	 
 	  new_type_info[0] = (Word *) (Word)
-	  	&mercury_data_mercury_builtin__base_type_info_list_1;
+	  	&mercury_data_list__base_type_info_list_1;
 	  new_type_info[1] = (Word *) type_info_fv;
 
 	  /*
