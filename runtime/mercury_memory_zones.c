@@ -76,7 +76,7 @@ int
 MR_protect_pages(void *addr, size_t size, int prot_flags)
 {
 	int rc;
-	DWORD Flags, OldFlags;
+	DWORD flags;
 
 	if (prot_flags & PROT_WRITE) {
 		flags = PAGE_READWRITE;
