@@ -178,7 +178,7 @@ c++: gc_cpp.o $(srcdir)/gc_cpp.h test_cpp
 	./test_cpp 1
 
 dyn_load_sunos53.o: dyn_load.c
-	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c dyn_load.c -o $@
+	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c $(srcdir)/dyn_load.c -o $@
 
 # shared library version of the collector
 libgc.so: $(OBJS) # dyn_load_sunos53.o
