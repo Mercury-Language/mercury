@@ -36,6 +36,10 @@ EXT_FOR_EXE	= @EXT_FOR_EXE@
 # or as `a' if it doesn't.
 EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
+# XXX This is only needed until the change to remove RM_C is installed.
+#
+RM_C = :
+
 # Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs
 USE_DLLS		= @USE_DLLS@
 
