@@ -8,6 +8,7 @@ include ../Mmake.common
 
 SOURCES= \
 	complicated_unify.m \
+	compl_unify_bug.m \
 	constructor_arg_names.m \
 	dcg_test.m \
 	det_condition.m \
@@ -76,6 +77,10 @@ two_way_unif.c: two_way_unif.m
 simplify_bug.c:	simplify_bug.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 \
 		simplify_bug.m > simplify_bug.err 2>&1
+
+compl_unify_bug.c: compl_unify_bug.m
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O3 \
+		compl_unify_bug.m > compl_unify_bug.err 2>&1
 
 vn_float.c: vn_float.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O5 vn_float.m > vn_float.err 2>&1
