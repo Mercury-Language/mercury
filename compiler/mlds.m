@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -779,6 +779,16 @@
 		% do_commit(Ref) instructions should only be used
 		% in goals called from the GoalToTry goal in the
 		% try_commit instruction with the same Ref.
+		%
+		% The C and GCC back-ends require each try_commit
+		% to be put in its own nested function, to avoid
+		% problems with setjmp() and local vars not declared
+		% volatile.  They also require each do_commit
+		% to be put in its own function -- this is needed when
+		% using __builtin_setjmp()/__builtin_longjmp() to
+		% ensure that the call to __builtin_longjmp() is
+		% not in the same function as the call to
+		% __builtin_setjmp().
 		%	
 	;	try_commit(mlds__lval, mlds__statement, mlds__statement)
 	;	do_commit(mlds__rval)

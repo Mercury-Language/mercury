@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,6 +150,7 @@
 % There's several different ways of handling commits:
 %	- using catch/throw
 %	- using setjmp/longjmp
+%	- using GCC's __builtin_setjmp/__builtin_longjmp
 %	- exiting nested functions via gotos to
 %	  their containing functions
 %
@@ -158,6 +159,17 @@
 % The comments below show the MLDS try_commit/do_commit version first,
 % but for clarity I've also included sample code using each of the three
 % different techniques.
+%
+% Note that if we're using GCC's __builtin_longjmp(),
+% then it is important that the call to __builtin_longjmp() be
+% put in its own function, to ensure that it is not in the same
+% function as the __builtin_setjmp().
+% The code generation schema below does that automatically.
+% We will need to be careful with MLDS optimizations to
+% ensure that we preserve that invariant, though.
+% (Alternatively, we could just call a function that
+% calls __builtin_longjmp() rather than calling it directly.
+% But that would be a little less efficient.)
 %
 % If those methods turn out to be too inefficient,
 % another alternative would be to change the generated

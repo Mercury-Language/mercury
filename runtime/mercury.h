@@ -70,6 +70,22 @@ typedef void MR_CALL (*MR_NestedCont) (void); /* for --gcc-nested-functions */
 typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
 
 /*
+** The jmp_buf type used by MR_builtin_setjmp()
+** to save the stack context when implementing commits.
+*/
+#ifdef __GNUC__
+  /*
+  ** For GCC, we use `__builtin_setjmp' and `__builtin_longjmp'.
+  ** These are documented (in gcc/builtins.c in the GCC source code)
+  ** as taking for their parameter a pointer to an array of five words. 
+  */
+  typedef void *MR_builtin_jmp_buf[5];
+#else
+  /* Otherwise we use the standard jmp_buf type */
+  typedef jmp_buf MR_builtin_jmp_buf;
+#endif
+
+/*
 ** The types uses to represent the Mercury builtin types,
 ** MR_Char, MR_Float, MR_Integer, MR_String, and MR_ConstString,
 ** are defined in mercury_types.h and mercury_float.h.
@@ -277,6 +293,24 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 /*
 ** Macro / inline function definitions
 */
+
+/*
+** These macros expand to the either the standard setjmp()/longjmp()
+** or to the GNU __builtin_setjmp() and __builtin_longjmp().
+** The GNU versions are the same as the standard versions,
+** except that they are more efficient, and that they have two
+** restrictions:
+**	1.  The second argument to __builtin_longjmp() must always be `1'.
+**	2.  The call to __builtin_longjmp() must not be in the same
+**	    function as the call to __builtin_setjmp().
+*/
+#ifdef __GNUC__
+  #define MR_builtin_setjmp(buf)	__builtin_setjmp((buf))
+  #define MR_builtin_longjmp(buf, val)	__builtin_longjmp((buf), (val))
+#else
+  #define MR_builtin_setjmp(buf)	setjmp((buf))
+  #define MR_builtin_longjmp(buf, val)	longjmp((buf), (val))
+#endif
 
 /*
 ** MR_new_object():

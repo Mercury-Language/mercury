@@ -1952,9 +1952,11 @@ mlds_output_stmt(Indent, FuncInfo, switch(_Type, Val, _Range, Cases, Default),
 	io__write_string("switch ("),
 	mlds_output_rval(Val),
 	io__write_string(") {\n"),
+	% we put the default case first, so that if it is unreachable,
+	% it will get merged in with the first case.
+	mlds_output_switch_default(Indent + 1, FuncInfo, Context, Default),
 	list__foldl(mlds_output_switch_case(Indent + 1, FuncInfo, Context),
 		Cases),
-	mlds_output_switch_default(Indent + 1, FuncInfo, Context, Default),
 	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 
@@ -2086,8 +2088,12 @@ mlds_output_stmt(Indent, _FuncInfo, do_commit(Ref), _) -->
 		io__write_string("goto "),
 		mlds_output_rval(Ref)
 	;
-		% output "longjmp(<Ref>, 1)"
-		io__write_string("longjmp("),
+		% output "MR_builtin_longjmp(<Ref>, 1)".
+		% This is a macro that expands to either the standard longjmp()
+		% or the GNU C's __builtin_longjmp().
+		% Note that the second argument to GNU C's
+		% __builtin_longjmp() *must* be `1'.
+		io__write_string("MR_builtin_longjmp("),
 		mlds_output_rval(Ref),
 		io__write_string(", 1)")
 	),
@@ -2132,14 +2138,26 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 
 		% Output the following:
 		%
-		%	if (setjmp(<Ref>) == 0)
+		%	if (MR_builtin_setjmp(<Ref>) == 0)
 		%               <Stmt>
 		%       else
 		%               <Handler>
-
 		%
-		% XXX we need to declare the local variables as volatile,
-		% because of the setjmp()!
+		% MR_builtin_setjmp() expands to either the
+		% standard setjmp() or GNU C's __builtin_setjmp().
+		%
+		% Note that ISO C says that any non-volatile variables
+		% that are local to the function containing the setjmp()
+		% and which are modified between the setjmp() and the
+		% longjmp() become indeterminate after the longjmp(). 
+		% The MLDS code generator handles that by generating
+		% each commit in its own nested function, with the
+		% local variables remaining in the containing function.
+		% This ensures that none of the variables which get
+		% modified between the setjmp() and the longjmp() and
+		% which get referenced after the longjmp() are local
+		% variables in the function containing the setjmp(),
+		% so we don't need to mark them as volatile.
 		%
 
 		%
@@ -2155,7 +2173,7 @@ mlds_output_stmt(Indent, FuncInfo, try_commit(Ref, Stmt0, Handler), Context) -->
 		},
 
 		mlds_indent(Indent),
-		io__write_string("if (setjmp("),
+		io__write_string("if (MR_builtin_setjmp("),
 		mlds_output_lval(Ref),
 		io__write_string(") == 0)\n"),
 
@@ -2208,12 +2226,14 @@ mlds_output_case_cond(Indent, Context, match_range(Low, High)) -->
 
 mlds_output_switch_default(Indent, _FuncInfo, Context, default_is_unreachable) -->
 	mlds_indent(Context, Indent),
-	io__write_string("default: /*NOTREACHED*/ assert(0);\n").
+	io__write_string("default: /*NOTREACHED*/ MR_assert(0);\n").
 mlds_output_switch_default(_Indent, _FuncInfo, _Context, default_do_nothing) --> [].
 mlds_output_switch_default(Indent, FuncInfo, Context, default_case(Statement)) -->
 	mlds_indent(Context, Indent),
 	io__write_string("default:\n"),
-	mlds_output_statement(Indent + 1, FuncInfo, Statement).
+	mlds_output_statement(Indent + 1, FuncInfo, Statement),
+	mlds_indent(Context, Indent + 1),
+	io__write_string("break;\n").
 
 %-----------------------------------------------------------------------------%
 
