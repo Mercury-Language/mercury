@@ -76,14 +76,14 @@
 		++MR_ticket_counter;				\
 	} while(0)
 
-	  /*
-	  ** Unwind restoration info back to `old'.  `kind' indicates
-	  ** whether we are restoring or just discarding the info.
-	  ** 
-	  ** Note that the commented out calls to save/restore
-	  ** transient registers are not needed because
-	  ** MR_trail_ptr is never a real register.
-	  */
+	/*
+	** Unwind restoration info back to `old'.  `kind' indicates
+	** whether we are restoring or just discarding the info.
+	** 
+	** Note that the commented out calls to save/restore
+	** transient registers are not needed because
+	** MR_trail_ptr is never a real register.
+	*/
 /* void MR_reset_ticket(Word, MR_untrail_reason); */
 #define MR_reset_ticket(old, kind)				\
 	do {							\
