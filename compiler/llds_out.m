@@ -17,9 +17,8 @@
 
 :- interface.
 
-:- import_module llds, tree, shapes, export.
-:- import_module io, bool, string, int, float, list, set, term, std_util.
-:- import_module library.	% for the version number.
+:- import_module llds.
+:- import_module io, list, term.
 
 	% Given a 'c_file' structure, open the appropriate .mod file
 	% and output the code into that file.
@@ -70,8 +69,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module char, require, globals, options.
+
+:- import_module shapes, export.
 :- import_module exprn_aux, prog_data, prog_out.
+:- import_module bool, int, char, string, set, std_util.
+:- import_module require, globals, options.
+:- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
 

@@ -36,7 +36,8 @@
 :- import_module higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
-:- import_module code_gen, optimize, export, llds_out.
+:- import_module code_gen, optimize, export.
+:- import_module llds_out.
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds.
@@ -643,8 +644,14 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		{ ModuleInfo1 = ModuleInfo0 },
 		{ Code1 = [] }
 	;
-		write_pred_progress_message("% Generating code for ",
-			PredId, ModuleInfo0),
+		globals__io_lookup_bool_option(verbose, Verbose),
+		( { Verbose = yes } ->
+			io__write_string("% Generating code for "),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
+			io__write_string("\n")
+		;
+			[]
+		),
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
 			PredInfo, ModuleInfo0, ModuleInfo1, Code1)
 	),
@@ -690,7 +697,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	globals__io_lookup_bool_option(prev_code, PrevCode),
 	( { FollowCode = yes ; PrevCode = yes } ->
 		{ move_follow_code_in_proc(ProcInfo1, ProcInfo2,
-			FollowCode - PrevCode, ModuleInfo0, ModuleInfo1) }
+			ModuleInfo0, ModuleInfo1) }
 	;
 		{ ProcInfo2 = ProcInfo1 },
 		{ ModuleInfo1 = ModuleInfo0 }
@@ -698,7 +705,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	{ detect_liveness_proc(ProcInfo2, ModuleInfo1, ProcInfo3) },
 	globals__io_lookup_bool_option(follow_vars, FollowVars),
 	( { FollowVars = yes } ->
-		find_follow_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4)
+		{ find_follow_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4) }
 	;
 		{ ProcInfo4 = ProcInfo3 }
 	),
@@ -1089,7 +1096,8 @@ mercury_compile__maybe_excess_assigns(HLDS0, Verbose, Stats, HLDS) -->
 	( { ExcessAssign = yes } ->
 		maybe_write_string(Verbose, "% Removing excess assignments..."),
 		maybe_flush_output(Verbose),
-		{ excess_assignments(HLDS0, HLDS) },
+		process_all_nonimported_procs(update_proc(
+			excess_assignments_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1107,7 +1115,8 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 	( { FollowCode = yes ; PrevCode = yes } ->
 		maybe_write_string(Verbose, "% Migrating branch code..."),
 		maybe_flush_output(Verbose),
-		{ move_follow_code(HLDS0, FollowCode - PrevCode, HLDS) },
+		process_all_nonimported_procs(update_module(
+			move_follow_code_in_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1121,7 +1130,8 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing liveness..."),
 	maybe_flush_output(Verbose),
-	{ detect_liveness(HLDS0, HLDS) },
+	process_all_nonimported_procs(update_proc(detect_liveness_proc),
+		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
@@ -1135,7 +1145,8 @@ mercury_compile__maybe_followvars(HLDS0, Verbose, Stats, HLDS) -->
 	( { FollowVars = yes } ->
 		maybe_write_string(Verbose, "% Computing followvars..."),
 		maybe_flush_output(Verbose),
-		find_follow_vars(HLDS0, HLDS),
+		process_all_nonimported_procs(update_proc(
+			find_follow_vars_in_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1149,7 +1160,8 @@ mercury_compile__maybe_followvars(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Computing stack vars..."),
 	maybe_flush_output(Verbose),
-	{ detect_live_vars(HLDS0, HLDS) },
+	process_all_nonimported_procs(update_proc(detect_live_vars_in_proc),
+		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
@@ -1160,7 +1172,8 @@ mercury_compile__compute_stack_vars(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Allocating store map..."),
 	maybe_flush_output(Verbose),
-	{ store_alloc(HLDS0, HLDS) },
+	process_all_nonimported_procs(update_proc(store_alloc_in_proc),
+		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 

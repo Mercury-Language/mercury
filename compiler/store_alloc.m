@@ -23,9 +23,6 @@
 
 :- import_module hlds_module, hlds_pred, llds.
 
-:- pred store_alloc(module_info, module_info).
-:- mode store_alloc(in, out) is det.
-
 :- pred store_alloc_in_proc(proc_info, module_info, proc_info).
 :- mode store_alloc_in_proc(in, in, out) is det.
 
@@ -40,53 +37,12 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Traverse the module structure, calling `store_alloc_in_goal'
-	% for each procedure body.
-
-store_alloc(ModuleInfo0, ModuleInfo1) :-
-	module_info_predids(ModuleInfo0, PredIds),
-	store_alloc_in_preds(PredIds, ModuleInfo0, ModuleInfo1).
-
-:- pred store_alloc_in_preds(list(pred_id), module_info, module_info).
-:- mode store_alloc_in_preds(in, in, out) is det.
-
-store_alloc_in_preds([], ModuleInfo, ModuleInfo).
-store_alloc_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	store_alloc_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
-	store_alloc_in_preds(PredIds, ModuleInfo1, ModuleInfo).
-
-:- pred store_alloc_in_procs(list(proc_id), pred_id, module_info,
-					module_info).
-:- mode store_alloc_in_procs(in, in, in, out) is det.
-
-store_alloc_in_procs([], _PredId, ModuleInfo, ModuleInfo).
-store_alloc_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	store_alloc_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
-
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-
-	store_alloc_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
-
 store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
-
 	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
 	store_alloc_in_goal(Goal0, Liveness0, ModuleInfo, Goal, _Liveness),
-
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred store_alloc_in_goal(hlds__goal, liveness_info, module_info,
@@ -107,7 +63,7 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 	set__difference(Liveness3, PostDeaths, Liveness4),
 	% If any variables magically become live in the PostBirths,
 	% then they have to mundanely become live somewhere else,
-	% so we don't need to allocate anything for them.
+	% so we don't need to allocate anything for them here.
 	set__union(Liveness4, PostBirths, Liveness),
 	(
 		Goal1 = disj(Disjuncts, FollowVars)

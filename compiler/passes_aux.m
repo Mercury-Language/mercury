@@ -14,27 +14,24 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred.
-:- import_module string, io.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-:- type task --->	update_module(pred(
-				pred_id, proc_id,
-				module_info, module_info,
-				io__state, io__state))
-		;	update_proc(pred(
-				pred_id, proc_id, module_info,
-				proc_info, proc_info,
-				io__state, io__state))
+:- type task --->	update_proc(pred(
+				proc_info, module_info, proc_info))
 		;	update_proc_error(pred(
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, int, int,
-				io__state, io__state)).
+				io__state, io__state))
+		;	update_module(pred(
+				proc_info, proc_info,
+				module_info, module_info)).
 
-:- inst task =	bound((update_module(pred(in, in, in, out, di, uo) is det)
-		;	update_proc(pred(in, in, in, in, out, di, uo) is det)
+:- inst task =	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_error(pred(in, in, in, in, out, out, out,
 				di, uo) is det)
+		;	update_module(pred(in, out, in, out) is det)
 		)).
 
 :- mode task ::	task -> task.
@@ -98,41 +95,25 @@ process__nonimported_procs([], _PredId, _Task,
 		ModuleInfo, ModuleInfo, State, State).
 process__nonimported_procs([ProcId | ProcIds], PredId, Task,
 		ModuleInfo0, ModuleInfo, State0, State) :-
+
+	module_info_preds(ModuleInfo0, Preds0),
+	map__lookup(Preds0, PredId, Pred0),
+	pred_info_procedures(Pred0, Procs0),
+	map__lookup(Procs0, ProcId, Proc0),
+
 	(
 		Task = update_module(Closure),
-		call(Closure, ProcId, PredId,
-			ModuleInfo0, ModuleInfo9, State0, State9)
+		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		State9 = State0
 	;
 		Task = update_proc(Closure),
-
-		module_info_preds(ModuleInfo0, Preds0),
-		map__lookup(Preds0, PredId, Pred0),
-		pred_info_procedures(Pred0, Procs0),
-		map__lookup(Procs0, ProcId, Proc0),
-
-		call(Closure, PredId, ProcId, ModuleInfo0,
-			Proc0, Proc, State0, State9),
-
-		map__set(Procs0, ProcId, Proc, Procs),
-		pred_info_set_procedures(Pred0, Procs, Pred),
-		map__set(Preds0, PredId, Pred, Preds),
-		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo9)
+		call(Closure, Proc0, ModuleInfo0, Proc),
+		ModuleInfo8 = ModuleInfo0,
+		State9 = State0
 	;
 		Task = update_proc_error(Closure),
-
-		module_info_preds(ModuleInfo0, Preds0),
-		map__lookup(Preds0, PredId, Pred0),
-		pred_info_procedures(Pred0, Procs0),
-		map__lookup(Procs0, ProcId, Proc0),
-
 		call(Closure, PredId, ProcId, ModuleInfo0,
 			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
-
-		map__set(Procs0, ProcId, Proc, Procs),
-		pred_info_set_procedures(Pred0, Procs, Pred),
-		map__set(Preds0, PredId, Pred, Preds),
-		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-
 		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
 			State1, State9),
 		(
@@ -143,11 +124,17 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task,
 				HaltAtWarn = yes
 			)
 		->
-			module_info_incr_errors(ModuleInfo1, ModuleInfo9)
+			module_info_incr_errors(ModuleInfo0, ModuleInfo8)
 		;
-			ModuleInfo9 = ModuleInfo1
+			ModuleInfo8 = ModuleInfo0
 		)
 	),
+
+	map__set(Procs0, ProcId, Proc, Procs),
+	pred_info_set_procedures(Pred0, Procs, Pred),
+	map__set(Preds0, PredId, Pred, Preds),
+	module_info_set_preds(ModuleInfo8, Preds, ModuleInfo9),
+
 	process__nonimported_procs(ProcIds, PredId, Task,
 		ModuleInfo9, ModuleInfo, State9, State).
 

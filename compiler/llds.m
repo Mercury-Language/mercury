@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module tree, shapes.
-:- import_module bool, string, int, float, list, set, term, std_util.
+:- import_module bool, list, set, term, std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_gen, code_info, code_util, std_util.
+:- import_module hlds_goal, llds, code_info.
 
 :- pred disj_gen__generate_det_disj(list(hlds__goal),
 					code_tree, code_info, code_info).
@@ -30,10 +30,11 @@
 :- mode disj_gen__generate_non_disj(in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module hlds_data, code_gen, code_util, options, globals.
 :- import_module bool, set, tree, list, map, std_util, require.
-:- import_module hlds_data, options, globals.
 
 %---------------------------------------------------------------------------%
 

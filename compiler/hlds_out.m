@@ -34,7 +34,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module prog_data, llds.
-:- import_module int, io.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -144,8 +144,8 @@
 :- import_module mercury_to_mercury, globals, options.
 :- import_module llds_out, prog_out, prog_util.
 
-:- import_module bool, string, list, set, map, require, std_util, assoc_list.
-:- import_module term, term_io, varset, getopt.
+:- import_module bool, int, string, list, set, map, std_util, assoc_list.
+:- import_module term, term_io, varset, require, getopt.
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),

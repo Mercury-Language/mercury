@@ -37,7 +37,7 @@
 
 :- interface.
 
-:- import_module hlds_module, llds.
+:- import_module hlds_module.
 :- import_module int, io.
 
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,7 @@
 :- implementation.
 
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module llds_out, prog_out, prog_io, mercury_to_mercury.
+:- import_module llds, llds_out, prog_out, prog_io, mercury_to_mercury.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 :- import_module globals, options.
 :- import_module string, map, list, require, std_util, term, term_io, getopt.

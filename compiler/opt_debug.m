@@ -14,10 +14,10 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, vn_util, livemap, opt_util.
+:- import_module vn_type, vn_table, livemap.
 :- import_module llds, atsort.
 
-:- import_module io, bool, int, list, assoc_list, std_util.
+:- import_module io, bool, list, assoc_list, std_util.
 
 :- pred opt_debug__msg(bool, string, io__state, io__state).
 :- mode opt_debug__msg(in, in, di, uo) is det.
@@ -179,8 +179,8 @@
 
 :- implementation.
 
-:- import_module llds_out.
-:- import_module set, map, string.
+:- import_module llds_out, opt_util, vn_util.
+:- import_module int, set, map, string.
 
 opt_debug__msg(OptDebug, Msg) -->
 	(

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module int, string, list.
+:- import_module list.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.

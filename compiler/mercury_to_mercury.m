@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, prog_data.
-:- import_module bool, list, string, io, varset, term.
+:- import_module list, io, varset, term.
 
 %	convert_to_mercury(ProgName, OutputFileName, Items)
 :- pred convert_to_mercury(string, string, list(item_and_context),
@@ -86,9 +86,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, set, term_io, std_util.
+
 :- import_module prog_out, prog_util, hlds_pred.
-:- import_module globals, options, require.
+:- import_module globals, options.
+:- import_module bool, int, string, set, term_io, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

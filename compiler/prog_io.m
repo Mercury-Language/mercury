@@ -56,7 +56,7 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module string, list, varset, term, io.
+:- import_module list, varset, term, io.
 
 %-----------------------------------------------------------------------------%
 
@@ -149,7 +149,7 @@
 :- implementation.
 
 :- import_module hlds_data, hlds_pred, prog_util, globals, options.
-:- import_module bool, int, std_util, parser, term_io, dir, require.
+:- import_module bool, int, string, std_util, parser, term_io, dir, require.
 
 %-----------------------------------------------------------------------------%
 

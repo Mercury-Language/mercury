@@ -15,9 +15,11 @@
 % the parse tree which we built here into the HLDS.
 
 :- module prog_data.
+
 :- interface.
+
 :- import_module hlds_pred.
-:- import_module string, int, list, varset, term, std_util, require.
+:- import_module list, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 

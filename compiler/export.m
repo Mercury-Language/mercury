@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module hlds_module.
-:- import_module io, list, string, term.
+:- import_module io, list, term.
 
 	% From the module_info, get a list of functions, each of which allows
 	% a call to be made to a Mercury procedure from C
@@ -36,7 +36,7 @@
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds, llds_out.
-:- import_module library, map, int, std_util, assoc_list, require.
+:- import_module library, map, int, string, std_util, assoc_list, require.
 
 export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
@@ -328,8 +328,7 @@ export__produce_header_file(Module, ModuleName) -->
 						UpperFileName,
 						"\n"
 						]),
-			export__produce_header_file_2(Preds, ExportedProcs, 
-				Module),
+			export__produce_header_file_2(Preds, ExportedProcs),
 			io__write_string("#endif\n"),
 			io__told
 		;
@@ -346,10 +345,10 @@ export__produce_header_file(Module, ModuleName) -->
 	).
 
 :- pred export__produce_header_file_2(pred_table, list(pragma_exported_proc),
-	module_info, io__state, io__state).
-:- mode export__produce_header_file_2(in, in, in, di, uo) is det.
-export__produce_header_file_2(_Preds, [], _Module) --> [].
-export__produce_header_file_2(Preds, [E|ExportedProcs], Module) -->
+	io__state, io__state).
+:- mode export__produce_header_file_2(in, in, di, uo) is det.
+export__produce_header_file_2(_Preds, []) --> [].
+export__produce_header_file_2(Preds, [E|ExportedProcs]) -->
 	{ E = pragma_exported_proc(PredId, ProcId, C_Function) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, ProcTable) },
@@ -371,7 +370,7 @@ export__produce_header_file_2(Preds, [E|ExportedProcs], Module) -->
 	io__write_string(ArgDecls),
 	io__write_string(");\n"),
 
-	export__produce_header_file_2(Preds, ExportedProcs, Module).
+	export__produce_header_file_2(Preds, ExportedProcs).
 
 	% Convert a term representation of a variable type to a string which
 	% represents the C type of the variable

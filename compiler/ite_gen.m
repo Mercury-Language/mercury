@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_gen, code_info, code_util.
+:- import_module hlds_goal, llds, code_info.
 
 :- pred ite_gen__generate_det_ite(hlds__goal, hlds__goal, hlds__goal,
 	follow_vars, code_tree, code_info, code_info).
@@ -33,8 +33,8 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
+:- import_module code_gen, code_util, options, globals.
 :- import_module bool, set, tree, list, map, std_util, require.
-:- import_module options, globals.
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, _FollowVars, Instr) -->
 	code_info__get_globals(Options),

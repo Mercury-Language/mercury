@@ -27,75 +27,26 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, llds.
+:- import_module hlds_module, hlds_pred.
 
-:- pred find_follow_vars(module_info, module_info, io__state, io__state).
-:- mode find_follow_vars(in, out, di, uo) is det.
-
-:- pred find_follow_vars_in_proc(proc_info, module_info, proc_info,
-		io__state, io__state).
-% :- mode find_follow_vars_in_proc(di, in, uo, di, uo) is det.
-:- mode find_follow_vars_in_proc(in, in, out, di, uo) is det.
+:- pred find_follow_vars_in_proc(proc_info, module_info, proc_info).
+% :- mode find_follow_vars_in_proc(di, in, uo) is det.
+:- mode find_follow_vars_in_proc(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, mode_util, term, require.
+:- import_module hlds_goal, hlds_data, llds, mode_util.
 :- import_module code_util, quantification, arg_info, globals.
-:- import_module list, map, set, std_util.
+:- import_module list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 
-	% Traverse the module structure, calling `find_follow_vars_in_goal'
-	% for each procedure body.
-
-find_follow_vars(ModuleInfo0, ModuleInfo1) -->
-	{ module_info_predids(ModuleInfo0, PredIds) },
-	find_follow_vars_in_preds(PredIds, ModuleInfo0, ModuleInfo1).
-
-:- pred find_follow_vars_in_preds(list(pred_id), module_info, module_info,
-				io__state, io__state).
-:- mode find_follow_vars_in_preds(in, in, out, di, uo) is det.
-
-find_follow_vars_in_preds([], ModuleInfo, ModuleInfo) --> [].
-find_follow_vars_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
-	{ module_info_preds(ModuleInfo0, PredTable) },
-	{ map__lookup(PredTable, PredId, PredInfo) },
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	find_follow_vars_in_procs(ProcIds, PredId, ModuleInfo0,
-		ModuleInfo1),
-	find_follow_vars_in_preds(PredIds, ModuleInfo1, ModuleInfo).
-
-:- pred find_follow_vars_in_procs(list(proc_id), pred_id, module_info,
-					module_info, io__state, io__state).
-:- mode find_follow_vars_in_procs(in, in, in, out, di, uo) is det.
-
-find_follow_vars_in_procs([], _PredId, ModuleInfo, ModuleInfo) --> [].
-find_follow_vars_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
-					ModuleInfo) -->
-	{
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0)
-	},
-
-	find_follow_vars_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
-
-	{
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1)
-	},
-
-	find_follow_vars_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
-
-find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) -->
-	globals__io_get_args_method(ArgsMethod),
-	{
+find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_args_method(Globals, ArgsMethod),
 	proc_info_goal(ProcInfo0, Goal0),
 
 	find_final_follow_vars(ProcInfo0, FollowVars0),
@@ -103,8 +54,7 @@ find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) -->
 		Goal, FollowVars),
 
 	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo)
-	}.
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -213,8 +163,7 @@ find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), _ArgsMethod, ModuleInfo,
 		FollowVars = FollowVars0
 	;
 		% XXX this code should pay attention to ArgsMethod
-		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars0,
-			FollowVars)
+		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars)
 	).
 
 find_follow_vars_in_goal_2(unify(A,B,C,D0,E), ArgsMethod, _ModuleInfo,
@@ -239,10 +188,10 @@ find_follow_vars_in_goal_2(pragma_c_code(A,B,C,D,E,F), _ArgInfo, _ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred find_follow_vars_in_call(pred_id, proc_id, list(var), module_info,
-						follow_vars, follow_vars).
-:- mode find_follow_vars_in_call(in, in, in, in, in, out) is det.
+						follow_vars).
+:- mode find_follow_vars_in_call(in, in, in, in, out) is det.
 
-find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo, _Follow, Follow) :-
+find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo, Follow) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),

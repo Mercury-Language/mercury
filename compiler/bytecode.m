@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, llds, tree.
+:- import_module hlds_data, llds, tree.
 :- import_module list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
@@ -106,6 +106,7 @@
 
 :- implementation.
 
+:- import_module hlds_pred.
 :- import_module library, int, require.
 
 :- pred bytecode__version(int::out) is det.

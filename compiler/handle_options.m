@@ -15,7 +15,7 @@
 :- module handle_options.
 
 :- interface.
-:- import_module list, string, bool, std_util, io.
+:- import_module list, bool, std_util, io.
 
 :- pred handle_options(maybe(string), list(string), bool, io__state, io__state).
 :- mode handle_options(out, out, out, di, uo) is det.
@@ -33,8 +33,8 @@
 
 :- implementation.
 
-:- import_module int, map, getopt, library.
 :- import_module options, globals, prog_io.
+:- import_module int, string, map, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
 	io__command_line_arguments(Args0),

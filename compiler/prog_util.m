@@ -10,8 +10,10 @@
 % structure defined in prog_data.m.
 
 :- module prog_util.
+
 :- interface.
-:- import_module string, list, term.
+
+:- import_module list, term.
 :- import_module prog_data.
 
 %-----------------------------------------------------------------------------%

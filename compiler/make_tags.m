@@ -37,8 +37,9 @@
 
 :- module make_tags.
 :- interface.
-:- import_module bool, std_util.
-:- import_module prog_data, prog_util, hlds_data, globals.
+
+:- import_module prog_data, hlds_data, globals.
+:- import_module bool.
 
 % assign_constructor_tags(Constructors, Globals, TagValues, IsEnum):
 %	Assign a constructor tag to each constructor for a discriminated
@@ -54,8 +55,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, list, int, require.
-:- import_module globals, options.
+
+:- import_module prog_util, globals, options.
+:- import_module int, map, list, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

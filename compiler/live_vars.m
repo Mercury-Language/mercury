@@ -17,10 +17,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, llds.
-
-:- pred detect_live_vars(module_info, module_info).
-:- mode detect_live_vars(in, out) is det.
+:- import_module hlds_module, hlds_pred.
 
 :- pred detect_live_vars_in_proc(proc_info, module_info, proc_info).
 % :- mode detect_live_vars_in_proc(di, in, uo) is det.
@@ -31,51 +28,12 @@
 
 :- implementation.
 
-:- import_module arg_info, prog_data, hlds_goal, hlds_data, mode_util.
+:- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
 :- import_module globals, graph_colour.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 
 %-----------------------------------------------------------------------------%
-
-	% Traverse the module structure, calling `detect_live_vars_in_goal'
-	% for each procedure body.
-
-detect_live_vars(ModuleInfo0, ModuleInfo1) :-
-	module_info_predids(ModuleInfo0, PredIds),
-	detect_live_vars_in_preds(PredIds, ModuleInfo0, ModuleInfo1).
-
-:- pred detect_live_vars_in_preds(list(pred_id), module_info, module_info).
-:- mode detect_live_vars_in_preds(in, in, out) is det.
-
-detect_live_vars_in_preds([], ModuleInfo, ModuleInfo).
-detect_live_vars_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	detect_live_vars_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
-	detect_live_vars_in_preds(PredIds, ModuleInfo1, ModuleInfo).
-
-:- pred detect_live_vars_in_procs(list(proc_id), pred_id, module_info,
-					module_info).
-:- mode detect_live_vars_in_procs(in, in, in, out) is det.
-
-detect_live_vars_in_procs([], _PredId, ModuleInfo, ModuleInfo).
-detect_live_vars_in_procs([ProcId | ProcIds], PredId,
-						ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	detect_live_vars_in_proc(ProcInfo0, ModuleInfo0, ProcInfo),
-
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-
-	detect_live_vars_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
 
 detect_live_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),

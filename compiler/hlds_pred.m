@@ -13,13 +13,13 @@
 
 :- interface.
 
-:- import_module bool, int, string, list, map, std_util, varset.
 :- import_module hlds_data, hlds_goal, hlds_module, prog_data.
+:- import_module bool, list, map, std_util, varset.
 
 :- implementation.
 
 :- import_module make_hlds, prog_util, mode_util, type_util.
-:- import_module set, require.
+:- import_module int, string, set, require.
 
 %-----------------------------------------------------------------------------%
 

@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module hlds_module, llds.
-:- import_module int, list, io.
+:- import_module list, io.
 
 :- type garbage_output --->	garbage_output(
 					cont_list,

@@ -26,11 +26,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, llds.
-
-	% optimize away excess assignments for a whol module
-:- pred excess_assignments(module_info, module_info).
-:- mode excess_assignments(in, out) is det.
+:- import_module hlds_module, hlds_pred.
 
 	% optimize away excess assignments for a single procedure
 :- pred excess_assignments_proc(proc_info, module_info, proc_info).
@@ -46,50 +42,6 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Traverse the module structure, calling `excess_assignments_in_goal'
-	% for each procedure body.
-
-excess_assignments(ModuleInfo0, ModuleInfo1) :-
-	module_info_predids(ModuleInfo0, PredIds),
-	excess_assignments_in_preds(PredIds, ModuleInfo0, ModuleInfo1).
-
-:- pred excess_assignments_in_preds(list(pred_id), module_info, module_info).
-:- mode excess_assignments_in_preds(in, in, out) is det.
-
-excess_assignments_in_preds([], ModuleInfo, ModuleInfo).
-excess_assignments_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	excess_assignments_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
-	excess_assignments_in_preds(PredIds, ModuleInfo1, ModuleInfo).
-
-:- pred excess_assignments_in_procs(list(proc_id), pred_id,
-	module_info, module_info).
-:- mode excess_assignments_in_procs(in, in, in, out) is det.
-
-excess_assignments_in_procs([], _PredId, ModuleInfo, ModuleInfo).
-excess_assignments_in_procs([ProcId | ProcIds], PredId,
-		ModuleInfo0, ModuleInfo) :-
-	excess_assignments_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
-	excess_assignments_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
-
-:- pred excess_assignments_in_proc(proc_id, pred_id, module_info, module_info).
-:- mode excess_assignments_in_proc(in, in, in, out) is det.
-
-excess_assignments_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	excess_assignments_proc(ProcInfo0, ModuleInfo0, ProcInfo),
-
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
-
 excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	excess_assignments_in_goal(Goal0, [], Goal, ElimVars),
@@ -101,18 +53,20 @@ excess_assignments_proc(ProcInfo0, _ModuleInfo, ProcInfo) :-
 	proc_info_set_varset(ProcInfo1, Varset, ProcInfo).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 % We want to replace code sequences of the form
 %
-%	(  <Foo>,
-%	   LocalVar = OtherVar,
-%	   <Bar>
+%	(
+%		<Foo>,
+%		LocalVar = OtherVar,
+%		<Bar>
 %	)
 %
 % with
-%	( <Foo> [LocalVar/OtherVar],
-%	  <Bar> [LocalVar/OtherVar],
+%
+%	(
+%		<Foo> [LocalVar/OtherVar],
+%		<Bar> [LocalVar/OtherVar],
 %	)
 %
 % where <Foo> and <Bar> are sequences of conjuncts,
@@ -178,7 +132,7 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 %-----------------------------------------------------------------------------%
 
 	% We apply each substitution as soon as we find the need for it.
-	% This us to handle code which has V_4 = V_5, V_5 = V_6. If at most
+	% This is to handle code which has V_4 = V_5, V_5 = V_6. If at most
 	% one of these variables is nonlocal, we can eliminate both assignments.
 	% If (say) V_4 and V_6 are nonlocal, then after the V_5 => V_4
 	% substitution has been made, the second assignment V_4 = V_6

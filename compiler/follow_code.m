@@ -14,15 +14,11 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, llds.
-:- import_module bool, std_util.
-
-:- pred move_follow_code(module_info, pair(bool), module_info).
-:- mode move_follow_code(in, in, out) is det.
 
 :- pred move_follow_code_in_proc(proc_info, proc_info,
-	pair(bool), module_info, module_info).
-% :- mode move_follow_code_in_proc(di, uo, in, di, uo) is det.
-:- mode move_follow_code_in_proc(in, out, in, in, out) is det.
+	module_info, module_info).
+% :- mode move_follow_code_in_proc(di, uo, di, uo) is det.
+:- mode move_follow_code_in_proc(in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -30,54 +26,17 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, goal_util, mode_util.
-:- import_module det_analysis, quantification.
-:- import_module list, map, set.
-:- import_module term, require.
+:- import_module globals, options, det_analysis, quantification.
+:- import_module bool, list, map, set.
+:- import_module term, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code(ModuleInfo0, Flags, ModuleInfo1) :-
-	module_info_predids(ModuleInfo0, PredIds),
-	move_follow_code_in_preds(PredIds, Flags, ModuleInfo0, ModuleInfo1).
-
-:- pred move_follow_code_in_preds(list(pred_id), pair(bool),
-	module_info, module_info).
-:- mode move_follow_code_in_preds(in, in, in, out) is det.
-
-move_follow_code_in_preds([], _Flags, ModuleInfo, ModuleInfo).
-move_follow_code_in_preds([PredId | PredIds], Flags,
-		ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable),
-	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	move_follow_code_in_procs(ProcIds, PredId, Flags,
-		ModuleInfo0, ModuleInfo1),
-	move_follow_code_in_preds(PredIds, Flags, ModuleInfo1, ModuleInfo).
-
-:- pred move_follow_code_in_procs(list(proc_id), pred_id, pair(bool),
-	module_info, module_info).
-:- mode move_follow_code_in_procs(in, in, in, in, out) is det.
-
-move_follow_code_in_procs([], _PredId, _Flags, ModuleInfo, ModuleInfo).
-move_follow_code_in_procs([ProcId | ProcIds], PredId,
-		Flags, ModuleInfo0, ModuleInfo) :-
-	module_info_preds(ModuleInfo0, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_procedures(PredInfo0, ProcTable0),
-	map__lookup(ProcTable0, ProcId, ProcInfo0),
-
-	move_follow_code_in_proc(ProcInfo0, ProcInfo, Flags,
-		ModuleInfo0, ModuleInfo1),
-
-	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
-	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
-	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
-	move_follow_code_in_procs(ProcIds, PredId, Flags,
-		ModuleInfo2, ModuleInfo).
-
-move_follow_code_in_proc(ProcInfo0, ProcInfo, Flags,
-		ModuleInfo0, ModuleInfo) :-
+move_follow_code_in_proc(ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+	module_info_globals(ModuleInfo0, Globals),
+	globals__lookup_bool_option(Globals, follow_code, FollowCode),
+	globals__lookup_bool_option(Globals, prev_code, PrevCode),
+	Flags = FollowCode - PrevCode,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),

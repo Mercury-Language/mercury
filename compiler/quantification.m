@@ -34,7 +34,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, prog_io.
+:- import_module hlds_goal.
 :- import_module list, set, term.
 
 :- pred implicitly_quantify_clause_body(list(var),

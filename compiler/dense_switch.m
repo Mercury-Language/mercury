@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, switch_gen, code_info.
+:- import_module llds, switch_gen, code_info, type_util.
 :- import_module list.
 
 	% Should this switch be implemented as a dense jump table?
@@ -49,7 +49,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_gen, type_util.
+:- import_module hlds_module, hlds_goal, hlds_data, code_gen.
 :- import_module map, tree, int, std_util, require.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,

@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module prog_data, prog_io.
-:- import_module string, list, io.
+:- import_module list, io.
 
 	% read_mod(ModuleName, Extension, Descr, Items, Error):
 	%	Given a module name and a file extension (e.g. `.m',
@@ -82,9 +82,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, set, map, term, varset, dir, std_util, library.
-:- import_module globals, options, passes_aux, prog_out, mercury_to_mercury.
-:- import_module module_qual.
+:- import_module passes_aux, prog_out, mercury_to_mercury.
+:- import_module globals, options, module_qual.
+:- import_module bool, string, set, map, term, varset, dir, std_util, library.
 
 
 	% The interface system works as follows:
