@@ -191,6 +191,13 @@ in an HLDS goal.
 
 <p>
 
+Any pass which can report errors or warnings must be part of this stage,
+so that the compiler does the right thing for options such as
+`--halt-at-warn' (which turns warnings into errors) and
+`--error-check-only' (which makes the compiler only compile up to this stage).
+
+<p>
+
 <dl>
 
 <dt> implicit quantification
@@ -331,7 +338,8 @@ in an HLDS goal.
 	massage the code into a form the code generator will accept.
 	It also warns the programmer about any constructs that are so simple
 	that they should not have been included in the program in the first
-	place.
+	place.  (That's why this pass needs to be part of semantic analysis:
+	because it can report warnings.)
 	simplify.m calls common.m which looks for (a) construction unifications
 	that construct a term that is the same as one that already exists,
 	or (b) repeated calls to a predicate with the same inputs, and replaces
@@ -801,6 +809,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-01-09 11:53:06 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-01-10 09:14:51 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
