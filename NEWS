@@ -166,7 +166,9 @@ Changes to the Mercury implementation:
   sometimes it is better than the old back-end, sometimes it is worse.
   There are a few optimizations that we have not yet implemented for
   the new back-end that might make a significant difference for some
-  applications.  But we encourage those for whom performance is
+  applications.  But there are also some optimizations which we have
+  implemented for the new back-end that have not been implemented for
+  the old back-end.  We encourage those for whom performance is
   important to try their application with both the old and new
   back-ends and compare for themselves.
 
@@ -185,6 +187,9 @@ Changes to the Mercury implementation:
 	- the Aditi deductive database interface
   	- the `--split-c-files' option
   	- the `--introduce-accumulators' option
+	- dynamic linking (via the dl__mercury_sym procedure in
+	  extras/dynamic/dl.m in the mercury-extras distribution)
+	  for procedures with arguments of type `float' or `char'
 
 Changes to the development environment:
 

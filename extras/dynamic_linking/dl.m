@@ -40,11 +40,16 @@
 % it; see dl_test.m for an example of this.
 %
 % The type `T' below must be a higher-order type whose arity and
-% argument types match that of the specified procedure.
+% argument types exactly match that of the specified procedure.
 % The implementation may check this at runtime, but is not required
 % to do so.  (The current implementation checks that the type is a
 % higher-order type with the appropriate arity, but it does not
 % check the argument types.)
+%
+% WARNING: for the `--high-level-code' back-end (the `hl*' grades),
+% calling dl__mercury_sym for procedures with argument types `float'
+% or `char' is not supported.
+
 :- pred dl__mercury_sym(handle::in, mercury_proc::in, dl__result(T)::out,
 	io__state::di, io__state::uo) is det.
 
@@ -53,7 +58,7 @@
 	io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module std_util, require, string, list.
+:- import_module std_util, require, string, list, int.
 
 :- pragma c_header_code("
 	#include <stdio.h>
@@ -123,7 +128,8 @@ open(FileName, Mode, Scope, Result) -->
 
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
-		MercuryProc0, MercuryProc) },
+		MercuryProc0, MercuryProc1) },
+	{ check_type_is_supported(Result, _, MercuryProc1, MercuryProc) },
 	{ MangledName = proc_name_mangle(MercuryProc) },
 	sym(Handle, MangledName, Result0),
 	{
@@ -152,6 +158,11 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 	Proc0 = mercury_proc(IsPredOrFunc, _Module, _Name, ProcArity, _Mode),
 	type_ctor_name_and_arity(type_ctor(type_of(Value)),
 		TypeModule, TypeName, TypeArity),
+	( TypeName = "func" ->
+		TypeProcArity = TypeArity - 1
+	;
+		TypeProcArity = TypeArity
+	),
 	(
 		( TypeModule \= "builtin"
 		; TypeName \= "pred", TypeName \= "func"
@@ -176,16 +187,56 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 			Msg),
 		error(Msg)
 	;
-		ProcArity \= TypeArity
+		ProcArity \= TypeProcArity
 	->
 		string__int_to_string(ProcArity, ProcArityString),
-		string__int_to_string(TypeArity, TypeArityString),
+		string__int_to_string(TypeProcArity, TypeArityString),
 		string__append_list([
 			"dl__mercury_sym: arity mismatch: ",
 			"argument has ", ProcArityString, " argument(s), ",
 			"result type has ", TypeArityString, " arguments(s)"],
 			Msg),
 		error(Msg)
+	;
+		Proc = Proc0
+	).
+
+%
+% Check that the given higher-order type is supported.
+%
+% For the MLDS back-end, we normally need wrapper functions
+% for closures; the wrapper functions convert from type MR_Box
+% to the appropriate argument type, and then call the function
+% with the unboxed argument types.  Generating those on-the-fly
+% here would be tricky!  Instead, we only try to handle the cases
+% where wrappers are normally not needed, i.e. arguments with
+% types other than `char' or `float'.  All other argument types
+% are word-sized, and will hopefully be passed in the same way
+% by the C compiler.
+%
+% This procedure checks, for the MLDS back-end, that you're
+% not using it on a procedure with argument types `char' or
+% `float'.
+%
+% XXX this doesn't catch the case of no_tag types that
+% end up being equivalent to `float' or `char'.
+%
+:- pred check_type_is_supported(dl__result(T)::unused, T::unused,
+		mercury_proc::in, mercury_proc::out) is det.
+check_type_is_supported(_Result, Value, Proc0, Proc) :-
+	(
+		high_level_code,
+		list__member(ArgType, type_args(type_of(Value))),
+		% The following line might be more efficient,
+		% but is not yet supported by the MLDS back-end
+		% ArgType = type_of(_ `with_type` float))
+		ArgTypeCtor = type_ctor(ArgType),
+		( type_ctor_name(ArgTypeCtor) = "float"
+		; type_ctor_name(ArgTypeCtor) = "char"
+		),
+		type_ctor_module_name(ArgTypeCtor) = "builtin"
+	->
+		error("sorry, not implemented: dl__mercury_sym for procedure with argument type `float' or `char'")
 	;
 		Proc = Proc0
 	).
@@ -244,3 +295,16 @@ close(handle(Handle), Result) -->
 	dlclose((void *)Handle)
 #endif
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pred high_level_code is semidet.
+:- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
+#ifdef MR_HIGHLEVEL_CODE
+	SUCCESS_INDICATOR = TRUE;
+#else
+	SUCCESS_INDICATOR = FALSE;
+#endif
+").
+
+%-----------------------------------------------------------------------------%
