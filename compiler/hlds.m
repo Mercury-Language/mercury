@@ -263,9 +263,9 @@
 :- type hlds__goals		==	list(hlds__goal).
 
 :- type hlds__goal_info	--->	goalinfo(
-					map(var, is_live), 
+					map(var, is_live), % XXX this is O(N*N)
 					category,
-					map(var, inst),
+					map(var, inst),	   % XXX this is O(N*N)
 					term__context
 				).
 
