@@ -1158,7 +1158,10 @@ magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
 	instmap_delta_init_reachable(Delta0),
 	instmap_delta_insert(Delta0, Var, Inst, Delta),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
-	Uni = construct(Var, ConsId, [], [], no, cell_is_unique, no),
+	ReuseVar = no,
+	RLExprnId = no,
+	Uni = construct(Var, ConsId, [], [],
+		ReuseVar, cell_is_unique, RLExprnId),
 	Context = unify_context(explicit, []),
 	goal_info_init(NonLocals, Delta, det, GoalInfo),
 	Goal = unify(Var, functor(ConsId, []), UnifyMode, Uni, Context) -
