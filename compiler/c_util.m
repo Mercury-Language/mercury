@@ -151,6 +151,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module backend_libs__name_mangle.
+:- import_module parse_tree__prog_foreign.
 
 :- import_module list, bool.
 

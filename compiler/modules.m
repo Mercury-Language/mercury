@@ -777,14 +777,13 @@
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__name_mangle.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module make.              % XXX undesirable dependency
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.

@@ -49,6 +49,7 @@
 :- import_module ll_backend__use_local_vars.
 :- import_module ll_backend__wrap_blocks.
 :- import_module mdbcomp__prim_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
 :- import_module bool, int, string.

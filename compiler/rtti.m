@@ -790,6 +790,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
 :- import_module parse_tree__prog_out.
 

@@ -15,7 +15,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module backend_libs. % XXX for `foreign'
 :- import_module mdbcomp.
 :- import_module recompilation.
 
@@ -35,6 +34,7 @@
 :- include_module prog_out.
 
 % Utility routines.
+:- include_module prog_foreign.
 :- include_module prog_mode.
 :- include_module prog_util.
 :- include_module prog_type.

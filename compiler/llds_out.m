@@ -181,6 +181,7 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 

@@ -133,6 +133,7 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_dcg.
 :- import_module parse_tree__prog_io_goal.
@@ -6494,7 +6495,7 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
         ClauseLang = foreign_language(OldLang),
         ( list__member(ProcId, ProcIds) ->
             (
-                yes = foreign__prefer_foreign_language(Globals, Target,
+                yes = prefer_foreign_language(Globals, Target,
                     OldLang, NewLang)
             ->
                 % This language is preferred to the old

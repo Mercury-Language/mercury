@@ -61,6 +61,7 @@
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_type.
 
 :- import_module bool, string, int, assoc_list, set, map.

@@ -117,26 +117,6 @@
 :- func to_type_string(foreign_language, exported_type) = string.
 :- func to_type_string(foreign_language, module_info, (type)) = string.
 
-	%
-	% foreign_import_module_name(ForeignImport)
-	%
-	% returns the module name which represents the ForeignImport.
-	%
-	% For instance for the foreign_import_module representing
-	% 	:- foreign_import_module("MC++", module)
-	% would return the module_name
-	% 	unqualified("module__cpp_code")
-	%
-:- func foreign_import_module_name(foreign_import_module) = module_name.
-
-	% foreign_import_module_name(ForeignImport, CurrentModule)
-	%
-	% returns the module name needed to refer to ForeignImport from the
-	% CurrentModule.
-	%
-:- func foreign_import_module_name(foreign_import_module, module_name) =
-	module_name.
-
 	% Filter the decls for the given foreign language.
 	% The first return value is the list of matches, the second is
 	% the list of mis-matches.
@@ -185,51 +165,12 @@
 	prog_varset::out, list(pragma_var)::out, list(type)::out, arity::out,
 	pred_or_func::out) is det.
 
-	% It is possible that more than one foreign language could be used to
-	% implement a particular piece of code.
-	% Therefore, foreign languages have an order of preference, from most
-	% preferred to least perferred.
-	% prefer_foreign_language(Globals, Target, Lang1, Lang2) returns the
-	% yes if Lang2 is preferred over Lang1.
-	%
-	% Otherwise it will return no.
-
-:- func prefer_foreign_language(globals, compilation_target,
-	foreign_language, foreign_language) = bool.
-
-	% Sub-type of foreign_language for languages for which
-	% we generate external files for foreign code.
-:- inst lang_gen_ext_file
-	--->	c
-	;	managed_cplusplus
-	;	csharp.
-
-	% The file extension used for this foreign language (including
-	% the dot).
-	% Not all foreign languages generate external files,
-	% so this function only succeeds for those that do.
-:- func foreign_language_file_extension(foreign_language) = string.
-:- mode foreign_language_file_extension(in) = out is semidet.
-:- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
-
-	% The module name used for this foreign language.
-	% Not all foreign languages generate external modules
-	% so this function only succeeds for those that do.
-:- func foreign_language_module_name(module_name, foreign_language) =
-		module_name.
-:- mode foreign_language_module_name(in, in) = out is semidet.
-:- mode foreign_language_module_name(in, in(lang_gen_ext_file)) = out is det.
-
 	% The name of the #define which can be used to guard declarations with
 	% to prevent entities being declared twice.
 :- func decl_guard(sym_name) = string.
 
-:- func foreign_type_language(foreign_language_type) = foreign_language.
-
-	% The `multi' mode returns all supported foreign languages.
-:- pred foreign_language(foreign_language).
-:- mode foreign_language(in) is det.
-:- mode foreign_language(out) is multi.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -243,55 +184,13 @@
 :- import_module libs__globals.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
 :- import_module list, map, assoc_list, std_util, string, varset, int, term.
 :- import_module require.
-
-	% Currently we don't use the globals to compare foreign language
-	% interfaces, but if we added appropriate options we might want
-	% to do this later.
-
-	% When compiling to C, C is always preferred over any other language.
-prefer_foreign_language(_Globals, c, Lang1, Lang2) =
-	( Lang2 = c, not Lang1 = c ->
-		yes
-	;
-		no
-	).
-
-	% When compiling to asm, C is always preferred over any other language.
-prefer_foreign_language(_Globals, asm, Lang1, Lang2) =
-	( Lang2 = c, not Lang1 = c ->
-		yes
-	;
-		no
-	).
-
-	% Whe compiling to il, first we prefer il, then csharp, then
-	% managed_cplusplus, after that we don't care.
-prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
-	PreferredList = [il, csharp, managed_cplusplus],
-
-	FindLangPriority = (func(L) = X :-
-		( list__nth_member_search(PreferredList, L, X0) ->
-			X = X0
-		;
-			X = list__length(PreferredList) + 1
-		)),
-	N1 = FindLangPriority(Lang1),
-	N2 = FindLangPriority(Lang2),
-	( N2 < N1 ->
-		Comp = yes
-	;
-		Comp = no
-	).
-
-	% Nothing useful to do here, but when we add Java as a
-	% foreign language, we should add it here.
-prefer_foreign_language(_Globals, java, _Lang1, _Lang2) = no.
 
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
@@ -619,23 +518,6 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 
 	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
 
-foreign_language_file_extension(c) = ".c".
-foreign_language_file_extension(managed_cplusplus) = ".cpp".
-foreign_language_file_extension(csharp) = ".cs".
-foreign_language_file_extension(java) = ".java".
-foreign_language_file_extension(il) = _ :- fail.
-
-foreign_language_module_name(M, L) = FM :-
-		% Only succeed if this language generates external files.
-	_ = foreign_language_file_extension(L),
-
-	Ending = "__" ++ simple_foreign_language_string(L) ++ "_code",
-	( M = unqualified(Name),
-		FM = unqualified(Name ++ Ending)
-	; M = qualified(Module, Name),
-		FM = qualified(Module, Name ++ Ending)
-	).
-
 %-----------------------------------------------------------------------------%
 
 have_foreign_type_for_backend(c, ForeignTypeBody,
@@ -793,90 +675,9 @@ to_type_string(java, mercury(Type)) = Result :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_import_module_name(
-		foreign_import_module(Lang, ForeignImportModule, _)) =
-		ModuleName :-
-	(
-		Lang = c,
-		ModuleName = ForeignImportModule
-	;
-		Lang = il,
-		ModuleName = ForeignImportModule
-	;
-		Lang = java,
-		ModuleName = ForeignImportModule
-	;
-		Lang = managed_cplusplus,
-		ModuleName = foreign_language_module_name(ForeignImportModule,
-				Lang)
-	;
-		Lang = csharp,
-		ModuleName = foreign_language_module_name(ForeignImportModule,
-				Lang)
-	).
-
-foreign_import_module_name(ModuleForeignImported, CurrentModule) =
-		ImportedForeignCodeModuleName :-
-	ModuleForeignImported = foreign_import_module(Lang, _, _),
-	ImportedForeignCodeModuleName1 = ModuleForeignImported ^
-		foreign_import_module_name,
-	(
-		Lang = c,
-		ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
-	;
-		Lang = il,
-		ImportedForeignCodeModuleName = handle_std_library(
-			CurrentModule, ImportedForeignCodeModuleName1)
-	;
-		Lang = managed_cplusplus,
-		ImportedForeignCodeModuleName = handle_std_library(
-			CurrentModule, ImportedForeignCodeModuleName1)
-	;
-		Lang = csharp,
-		ImportedForeignCodeModuleName = handle_std_library(
-			CurrentModule, ImportedForeignCodeModuleName1)
-	;
-		Lang = java,
-		ImportedForeignCodeModuleName = handle_std_library(
-			CurrentModule, ImportedForeignCodeModuleName1)
-	).
-
-	%
-	% On the il backend, we need to refer to the module "mercury" when
-	% referencing a std library module when we are not actually building
-	% the std library.
-	%
-:- func handle_std_library(module_name, module_name) = module_name.
-
-handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
-	(
-		mercury_std_library_module_name(ModuleName0),
-		\+ mercury_std_library_module_name(CurrentModule)
-	->
-		ModuleName = unqualified("mercury")
-	;
-		ModuleName = ModuleName0
-	).
-
-%-----------------------------------------------------------------------------%
-
 decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
 	MangledModuleName = sym_name_mangle(ModuleName),
 	string__to_upper(MangledModuleName, UppercaseModuleName).
-
-%-----------------------------------------------------------------------------%
-
-foreign_type_language(il(_)) = il.
-foreign_type_language(c(_)) = c.
-foreign_type_language(java(_)) = java.
-
-%-----------------------------------------------------------------------------%
-
-foreign_language(c).
-foreign_language(java).
-foreign_language(csharp).
-foreign_language(managed_cplusplus).
-foreign_language(il).
 
 %-----------------------------------------------------------------------------%
 
@@ -885,4 +686,5 @@ foreign_language(il).
 this_file = "foreign.m".
 
 %-----------------------------------------------------------------------------%
+:- end_module foreign.
 %-----------------------------------------------------------------------------%

@@ -86,6 +86,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_util.
 
 :- import_module term, varset.

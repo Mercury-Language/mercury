@@ -62,7 +62,6 @@
 :- import_module make__util.
 
 :- import_module backend_libs__compile_target_code.
-:- import_module backend_libs__foreign.
 :- import_module libs__globals.
 :- import_module libs__handle_options.
 :- import_module libs__options.
@@ -72,6 +71,7 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.

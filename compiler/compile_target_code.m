@@ -164,6 +164,7 @@
 :- import_module libs__options.
 :- import_module libs__trace_params.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
 :- import_module char, dir, getopt_io, int, require, string.

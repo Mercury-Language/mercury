@@ -278,7 +278,8 @@ such as pretty-printing.
 	for printing the parse tree.  prog_util.m contains some utility
 	predicates for manipulating the parse tree, prog_mode contains utility
 	predicates for manipulating insts and modes, prog_type contains utility
-	predicates for manipulating types, while error_util.m contains
+	predicates for manipulating types, prog_foreign contains utility
+	predicates for manipulating foreign code, while error_util.m contains
 	predicates for printing nicely formatting error messages.
 
 <li><p> imports and exports are handled at this point (modules.m)
@@ -305,13 +306,13 @@ such as pretty-printing.
 	<p>
  	Notes on module qualification:
 	<ul>
-	<li> all types, typeclasses, insts and modes occuring in pred, func,
+	<li> all types, typeclasses, insts and modes occurring in pred, func,
 	  type, typeclass and mode declarations are module qualified by
 	  module_qual.m.
- 	<li> all types, insts and modes occuring in lambda expressions,
+ 	<li> all types, insts and modes occurring in lambda expressions,
  	  explicit type qualifications, and clause mode annotations
 	  are module qualified in make_hlds.m.
- 	<li> constructors occuring in predicate and function mode declarations
+ 	<li> constructors occurring in predicate and function mode declarations
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
  	  are module qualified during mode analysis.
@@ -523,7 +524,7 @@ so that the compiler does the right thing for options such as
 	  type checking that can't be done in the main type checking pass.
 	  It also removes assertions from further processing.
 	  post_typecheck.m reports errors for unbound type and inst variables,
-	  for unsatisified type class constraints, for indistinguishable
+	  for unsatisfied type class constraints, for indistinguishable
 	  predicate or function modes, and for invalid Aditi calls and updates.
 	</ul>
 	<p>
@@ -840,7 +841,7 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <li> attempt to introduce accumulators (accumulator.m).  This optimizes
   procedures whose tail consists of independent associative computations
-  or independant chains of commutative computations into a tail
+  or independent chains of commutative computations into a tail
   recursive form by the introduction of accumulators.  If lco is turned
   on it can also transform some procedures so that only construction
   unifications are after the recursive call.  This pass must come before
@@ -964,7 +965,7 @@ or perform LLDS-specific transformations on the HLDS:
 			transformations have created new opportunities for
 			simplification.  It needs to be run immediately
 			before code generation, because it enforces some
-			invariants tha the LLDS code generator relies on.
+			invariants that the LLDS code generator relies on.
 		<dt> annotation of goals with liveness information (liveness.m)
 			<dd>
 			This records the birth and death of each variable
@@ -1083,7 +1084,7 @@ or perform LLDS-specific transformations on the HLDS:
 		</dl>
 
 <dt> code generation for `pragma export' declarations (export.m)
-<dd> This is handled seperately from the other parts of code generation.
+<dd> This is handled separately from the other parts of code generation.
      mercury_compile.m calls the procedures `export__produce_header_file'
      and `export__get_pragma_exported_procs' to produce C code fragments
      which declare/define the C functions which are the interface stubs
@@ -1606,6 +1607,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-02-22 12:33:50 $ by $Author: richardf $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-03-21 04:45:51 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

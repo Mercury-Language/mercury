@@ -38,6 +38,7 @@
 
 	% semantic analysis
 :- import_module libs__handle_options.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__modules.

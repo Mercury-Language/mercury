@@ -86,6 +86,7 @@
 % Parse tree modules
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.

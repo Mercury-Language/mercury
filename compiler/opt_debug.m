@@ -109,6 +109,7 @@
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__opt_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, set, map, string.

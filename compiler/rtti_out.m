@@ -96,6 +96,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, string, assoc_list, map, multi_map.

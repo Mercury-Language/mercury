@@ -95,6 +95,7 @@
 :- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__mercury_to_mercury.
 

@@ -11,9 +11,13 @@
 % syntactically acceptable in all our target languages, meaning C, Java
 % and MSIL.
 
+% NOTE: some parts of the name mangling routines are defined in 
+% prog_foreign.m because they are required by the frontend of the compiler,
+% for generating makefile fragments etc.
+
 % Warning: any changes to the name mangling algorithms implemented in this
-% module will also require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
+% module may also require changes to extras/dynamic_linking/name_mangle.m,
+% profiler/demangle.m, util/mdemangle.c and compiler/prog_foreign.m.
 
 %-----------------------------------------------------------------------------%
 
@@ -25,90 +29,73 @@
 
 :- import_module io, bool, string.
 
-	% Output a proc label.
+%-----------------------------------------------------------------------------%
 
+	% Output a proc label.
+	%
 :- pred output_proc_label(proc_label::in, io::di, io::uo) is det.
 
 	% Output a proc label. The boolean controls whether
 	% mercury_label_prefix is added to it.
-
+	%
 :- pred output_proc_label(proc_label::in, bool::in, io::di, io::uo) is det.
 
 	% Get a proc label string (used by procs which are exported to C).
 	% The boolean controls whether label_prefix is added to the string.
-
+	%
 :- func proc_label_to_c_string(proc_label, bool) = string.
 
-	% Mangle an arbitrary name into a C etc identifier
-
-:- func name_mangle(string) = string.
-
-	% Mangle a possibly module-qualified Mercury symbol name
-	% into a C identifier.
-
-:- func sym_name_mangle(sym_name) = string.
-
 	% Succeed iff the given name or sym_name doesn't need mangling.
-
+	%
 :- pred name_doesnt_need_mangling(string::in) is semidet.
 :- pred sym_name_doesnt_need_mangling(sym_name::in) is semidet.
 
-	% Produces a string of the form Module__Name.
-
-:- func qualify_name(string, string) = string.
-
 	% Create a name for base_typeclass_info.
-
+	%
 :- func make_base_typeclass_info_name(tc_name, string) = string.
 
 	% Output the name for base_typeclass_info,
 	% with the appropriate mercury_data_prefix.
-
+	%
 :- pred output_base_typeclass_info_name(tc_name::in, string::in,
 	io::di, io::uo) is det.
 
 	% Prints the name of the initialization function
 	% for a given module.
-
+	%
 :- pred output_init_name(module_name::in, io::di, io::uo) is det.
-
-	% Returns the name of the initialization function
-	% for a given module.
-
-:- func make_init_name(module_name) = string.
-
-	% Returns the name of the Aditi-RL code constant
-	% for a given module.
-
-:- func make_rl_data_name(module_name) = string.
 
 	% Print out the name of the tabling variable for the specified
 	% procedure.
-
+	%
 :- pred output_tabling_pointer_var_name(proc_label::in, io::di, io::uo) is det.
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.
-
+	%
 :- func mercury_label_prefix = string.
 
 	% All the C data structures we generate which are either fully static
 	% or static after initialization should have one of these two prefixes,
 	% to ensure that Mercury global variables don't clash with C symbols.
-
+	%
 :- func mercury_data_prefix = string.
 :- func mercury_common_prefix = string.
 
 	% All the C types we generate should have this prefix to ensure
 	% that they don't clash with C symbols.
-
+	%
 :- func mercury_common_type_prefix = string.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_util.
 
 :- import_module char, int, list, std_util.
@@ -138,6 +125,7 @@ proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
 
 	% For a special proc, output a label of the form:
 	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
+	%
 proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 		TypeName, TypeArity, ModeInt), AddPrefix) = ProcLabelString :-
 	% figure out the LabelName
@@ -180,9 +168,9 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
 	arity, bool) = string.
 
 %
-% Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m, profiler/demangle.m
-% and util/mdemangle.c.
+% Warning: any changes to the name mangling algorithm here may also
+% require changes to extras/dynamic_linking/name_mangle.m, profiler/demangle.m,
+% util/mdemangle.c and compiler/prog_foreign.m.
 %
 make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 		Name0, Arity, AddPrefix) = LabelName :-
@@ -227,34 +215,6 @@ dont_module_qualify_name(Name, Arity) :-
 		string__prefix(Name, "__")
 	).
 
-%
-% Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
-%
-
-name_mangle(Name) = MangledName :-
-	( string__is_alnum_or_underscore(Name) ->
-		% any names that start with `f_' are changed so that
-		% they start with `f__', so that we can use names starting
-		% with `f_' (followed by anything except an underscore)
-		% without fear of name collisions
-		( string__append("f_", Suffix, Name) ->
-			string__append("f__", Suffix, MangledName)
-		;
-			MangledName = Name
-		)
-	;
-		MangledName = convert_to_valid_c_identifier(Name)
-	).
-
-sym_name_mangle(unqualified(Name)) =
-	name_mangle(Name).
-sym_name_mangle(qualified(ModuleName, PlainName)) = MangledName :-
-	MangledModuleName = sym_name_mangle(ModuleName),
-	MangledPlainName = name_mangle(PlainName),
-	MangledName = qualify_name(MangledModuleName, MangledPlainName).
-
 	% Convert a Mercury predicate name into something that can form
 	% part of a C identifier.  This predicate is necessary because
 	% quoted names such as 'name with embedded spaces' are valid
@@ -270,19 +230,6 @@ sym_name_doesnt_need_mangling(qualified(ModuleName, PlainName)) :-
 	sym_name_doesnt_need_mangling(ModuleName),
 	name_doesnt_need_mangling(PlainName).
 
-:- func convert_to_valid_c_identifier(string) = string.
-
-convert_to_valid_c_identifier(String) = Name :-
-	( name_conversion_table(String, Name0) ->
-		Name = Name0
-	;
-		Name0 = convert_to_valid_c_identifier_2(String),
-		string__append("f", Name0, Name)
-	).
-
-qualify_name(Module0, Name0) = Name :-
-	string__append_list([Module0, "__", Name0], Name).
-
 	% Produces a string of the form Module__Name, unless Module__
 	% is already a prefix of Name.
 
@@ -294,59 +241,6 @@ maybe_qualify_name(Module0, Name0) = Name :-
 		Name = Name0
 	;
 		string__append(UnderscoresModule, Name0, Name)
-	).
-
-	% A table used to convert Mercury functors into
-	% C identifiers.  Feel free to add any new translations you want.
-	% The C identifiers should start with "f_",
-	% to avoid introducing name clashes.
-	% If the functor name is not found in the table, then
-	% we use a fall-back method which produces ugly names.
-
-:- pred name_conversion_table(string::in, string::out) is semidet.
-
-name_conversion_table("\\=", "f_not_equal").
-name_conversion_table(">=", "f_greater_or_equal").
-name_conversion_table("=<", "f_less_or_equal").
-name_conversion_table("=", "f_equal").
-name_conversion_table("<", "f_less_than").
-name_conversion_table(">", "f_greater_than").
-name_conversion_table("-", "f_minus").
-name_conversion_table("+", "f_plus").
-name_conversion_table("*", "f_times").
-name_conversion_table("/", "f_slash").
-name_conversion_table(",", "f_comma").
-name_conversion_table(";", "f_semicolon").
-name_conversion_table("!", "f_cut").
-name_conversion_table("{}", "f_tuple").
-name_conversion_table("[|]", "f_cons").
-name_conversion_table("[]", "f_nil").
-
-	% This is the fall-back method.
-	% Given a string, produce a C identifier
-	% for that string by concatenating the decimal
-	% expansions of the character codes in the string,
-	% separated by underlines.
-	% The C identifier will start with "f_"; this predicate
-	% constructs everything except the initial "f".
-	%
-	% For example, given the input "\n\t" we return "_10_8".
-
-:- func convert_to_valid_c_identifier_2(string) = string.
-
-convert_to_valid_c_identifier_2(String) = Name :-
-	( string__first_char(String, Char, Rest) ->
-		% XXX This will cause ABI incompatibilities between
-		%     compilers which are built in grades that have
-		%     different character representations.
-		char__to_int(Char, Code),
-		string__int_to_string(Code, CodeString),
-		string__append("_", CodeString, ThisCharString),
-		Name0 = convert_to_valid_c_identifier_2(Rest),
-		string__append(ThisCharString, Name0, Name)
-	;
-		% String is the empty string
-		Name = String
 	).
 
 %-----------------------------------------------------------------------------%
@@ -372,15 +266,6 @@ output_init_name(ModuleName, !IO) :-
 	InitName = make_init_name(ModuleName),
 	io__write_string(InitName, !IO).
 
-make_init_name(ModuleName) = InitName :-
-	MangledModuleName = sym_name_mangle(ModuleName),
-	string__append_list(["mercury__", MangledModuleName, "__"], InitName).
-
-make_rl_data_name(ModuleName) = RLDataConstName :-
-	MangledModuleName = sym_name_mangle(ModuleName),
-	string__append("mercury__aditi_rl_data__", MangledModuleName,
-		RLDataConstName).
-
 output_tabling_pointer_var_name(ProcLabel, !IO) :-
 	io__write_string("mercury_var__table_root__", !IO),
 	output_proc_label(ProcLabel, !IO).
@@ -395,4 +280,6 @@ mercury_common_prefix = "mercury_common_".
 
 mercury_common_type_prefix = "mercury_type_".
 
+%-----------------------------------------------------------------------------%
+:- end_module name_mangle.
 %-----------------------------------------------------------------------------%
