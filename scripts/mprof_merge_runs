@@ -1,0 +1,151 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1997 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# mprof_merge_counts - 
+#
+# Merges the profiling counts from different runs of a profiled program.
+#
+# Usage: see below.
+
+Help="\
+Name: mprof_merge_runs - Mercury Profiling utility
+
+Description:
+	mprof_merge_runs merges the profiling data from different
+	runs of a profiled Mercury program, for use by \`mprof'.
+
+Usage:
+	First, compile with profiling enabled:
+
+		mmc --profiling my_program	
+
+	Then, collect the profiling data:
+
+		./my_program  args for first run
+		mprof_merge_runs
+		./my_program  args for second run
+		mprof_merge_runs
+		./my_program  args for third run
+		mprof_merge_runs
+
+	Finally, display the profile:
+
+		mprof -c | more
+
+	Note:
+		If you just want to run your program N times with
+		the same arguments, a simpler way of achieving this
+		is to instead use the \`-r<N>' (\"repeat N times\")
+		option to the Mercury runtime, which you can pass by
+		setting the environment variable MERCURY_OPTIONS, e.g.
+
+			env MERCURY_OPTIONS="-r100" ./my_program
+
+Options:
+	-h, --help
+		Print this help message."
+
+while true; do
+    case "$1" in
+	-h|--help|"-?")
+		echo "$Help"
+		exit 0
+		;;
+	--)
+		shift
+		break ;;
+	*)
+		break ;;
+    esac
+done
+
+case $# in
+	0) ;;
+	*) echo "$Help" 1>&2; exit 1 ;;
+esac
+
+#
+# The Prof.Counts file format is as follows:
+#	clock-frequency	tick-rate
+#	address1 count1
+#	address2 count2
+#	...
+#	addressN countN
+#
+# To merge two different count files, we just need to
+# add up the counts for each address.
+#
+touch Prof.Counts.total &&
+awk '
+	FNR == 1 { clock = $1; rate = $2; }
+	FNR != 1 { counts[$1] += $2; }
+	END {
+		printf("%d %d\n", clock, rate); 
+		for (addr in counts) {
+			printf("%d %d\n", addr, counts[addr]);
+		}
+	}
+' Prof.Counts.total Prof.Counts > Prof.Counts.newtotal &&
+#
+# The Prof.CallPair file format is as follows:
+#	caller1 callee1 count1
+#	caller2 callee2 count2
+#	...
+#	callerN calleeN countN
+#
+# To merge two different count files, we just need to
+# add up the counts for each pair of addresses.
+#
+touch Prof.CallPair.total &&
+awk '
+	{ pair_counts[$1 " " $2] += $3; }
+	END {
+		for (addrpair in pair_counts) {
+			printf("%s %d\n", addrpair, pair_counts[addr]);
+		}
+	}
+' Prof.CallPair.total Prof.CallPair > Prof.CallPair.newtotal &&
+#
+# The Prof.Decl file format is as follows:
+#	addr1 name1
+#	addr2 name2
+#	...
+#	addrN nameN
+#
+# To merge two different Prof.Decl files, we need to
+# add up the counts for each pair of addresses.
+#
+touch Prof.Decl.total &&
+: > Prof.Decl.warnings &&
+awk '
+	{ 
+		addr = $1; nm = $2;
+		if (name[addr] == "") {
+			name[addr] = nm;
+		} else {
+			if (name[addr] != nm) {
+				printf("Warning: multiple names for address %s: %s and %s.\n", addr, name[addr], nm) >> "Prof.Decl.warnings" ;
+				printf "Name %s ignored.", nm >> "Prof.Decl.warnings" ;
+			}
+		}
+	}
+	END {
+		for (addr in name) {
+			printf("%s %s\n", addr, name[addr]);
+		}
+	}
+' Prof.Decl.total Prof.Decl > Prof.Decl.newtotal &&
+cat Prof.Decl.warnings >& 2 &&
+rm -f Prof.Decl.warnings &&
+mv Prof.Counts.newtotal Prof.Counts.total &&
+mv Prof.CallPair.newtotal Prof.CallPair.total &&
+mv Prof.Decl.newtotal Prof.Decl.total &&
+cp Prof.Counts.total Prof.Counts &&
+cp Prof.CallPair.total Prof.CallPair &&
+cp Prof.Decl.total Prof.Decl &&
+exit 0
