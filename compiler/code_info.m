@@ -354,7 +354,7 @@
 :- implementation.
 
 :- import_module string, require, char, list, map, bimap, tree, int.
-:- import_module varset, term, stack.
+:- import_module bintree_set, varset, term, stack.
 :- import_module type_util, options.
 
 :- type code_info	--->
@@ -2346,46 +2346,33 @@ code_info__current_store_map(Map) -->
 	% XXX generate_livevals is broken
 
 code_info__generate_call_livevals(ArgVars, Code) -->
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, peephole_value_number,
-		ValueNumber) },
-	( { ValueNumber = no } ->
-		{ Code = empty }
-	;
-		code_info__get_live_variables(LiveVars),
-		{ set__list_to_set(ArgVars, VarSet0) },
-		{ set__list_to_set(LiveVars, VarSet1) },
-		{ set__union(VarSet0, VarSet1, VarSet) },
-		{ set__to_sorted_list(VarSet, VarList) },
-		code_info__generate_livevals_2(VarList, LiveVals),
-		{ Code = node([livevals(LiveVals) - ""]) }
-	).
+	code_info__get_live_variables(LiveVars),
+	{ set__list_to_set(ArgVars, VarSet0) },
+	{ set__list_to_set(LiveVars, VarSet1) },
+	{ set__union(VarSet0, VarSet1, VarSet) },
+	{ set__to_sorted_list(VarSet, VarList) },
+	code_info__generate_livevals_2(VarList, LiveVals),
+	{ Code = node([livevals(LiveVals) - ""]) }.
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_livevals(Code) -->
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, peephole_value_number,
-		ValueNumber) },
-	( { ValueNumber = no } ->
-		{ Code = empty }
-	;
-		code_info__get_live_variables(LiveVars),
-		code_info__generate_livevals_2(LiveVars, LiveVals),
-		{ Code = node([livevals(LiveVals) - ""]) }
-	).
+	code_info__get_live_variables(LiveVars),
+	code_info__generate_livevals_2(LiveVars, LiveVals),
+	{ Code = node([livevals(LiveVals) - ""]) }.
 
-:- pred code_info__generate_livevals_2(list(var), list(lval),
+:- pred code_info__generate_livevals_2(list(var), bintree_set(lval),
 						code_info, code_info).
 :- mode code_info__generate_livevals_2(in, out, in, out) is det.
 
-code_info__generate_livevals_2([], []) --> [].
+code_info__generate_livevals_2([], Vals) -->
+	{ bintree_set__init(Vals) }.
 code_info__generate_livevals_2([V|Vs], Vals) -->
 	code_info__generate_livevals_2(Vs, Vals1),
 	(
 		code_info__variable_register(V, Val0)
 	->
-		{ Vals = [Val0|Vals1] }
+		{ bintree_set__insert(Vals1, Val0, Vals) }
 	;
 		{ Vals = Vals1 }
 	).

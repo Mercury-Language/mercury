@@ -166,15 +166,25 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	Instr3 = decr_sp(_) - _,
 	opt_util__skip_comments_labels(Instrs4, Instrs5),
 	Instrs5 = [Instr5 | Instrs6],
-	Instr5 = livevals(_) - _,
-	opt_util__skip_comments_labels(Instrs6, Instrs7),
-	Instrs7 = [Instr7 | _],
-	Instr7 = goto(succip) - _,
-	Instrs_between = [Instr1, Instr3, Instr5].
+	( Instr5 = livevals(_) - _ ->
+		opt_util__skip_comments_labels(Instrs6, Instrs7),
+		Instrs7 = [Instr7 | _],
+		Instr7 = goto(succip) - _,
+		Instrs_between = [Instr1, Instr3, Instr5]
+	; Instr5 = goto(succip) - _ ->
+		Instrs_between = [Instr1, Instr3]
+	;
+		fail
+	).
 
-opt_util__proceed_no_livevals(Instrs0, Instrs) :-
-	Instrs0 = [I1, I2, _I3],
-	Instrs = [I1, I2].
+opt_util__proceed_no_livevals([], []).
+opt_util__proceed_no_livevals([Instr0 | Instrs0], Instrs) :-
+	opt_util__proceed_no_livevals(Instrs0, Instrs1),
+	( Instr0 = livevals(_) - _Comment ->
+		Instrs = Instrs1
+	;
+		Instrs = [Instr0 | Instrs1]
+	).
 
 opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).

@@ -365,9 +365,10 @@ peephole__opt_instr_2(livevals(Livevals), Comment, Instrs0, Instrs) :-
 	opt_util__is_this_label_next(ContLabel, Instrs2, Instrs3),
 	opt_util__is_proceed_next(Instrs3, Instrs_to_proceed),
 	opt_util__proceed_no_livevals(Instrs_to_proceed, Instrs_to_insert),
+	string__append(Comment, " (redirected return)", Redirect),
 	list__append(Instrs_to_insert,
 		[livevals(Livevals) - Comment2,
-		goto(CodeAddress) - Comment | Instrs0], Instrs).
+		goto(CodeAddress) - Redirect | Instrs0], Instrs).
 
 	% if a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the

@@ -8,7 +8,7 @@
 
 :- module llds.		
 :- interface.
-:- import_module io, std_util, list, term, string, int.
+:- import_module io, std_util, list, bintree_set, term, string, int.
 		% and float, eventually.
 
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
 	--->	comment(string)
 			% Insert a comment into the output code.
 
-	;	livevals(list(lval))
+	;	livevals(bintree_set(lval))
 			% A list of which registers and stack locations
 			% are currently live.
 
@@ -301,7 +301,8 @@ output_instruction(livevals(LiveVals)) -->
 		{ PrintModComments = yes }
 	->
 		io__write_string("/*\n * Live Lvalues:\n"),
-		output_livevals(LiveVals),
+		{ bintree_set__to_sorted_list(LiveVals, LiveValsList) },
+		output_livevals(LiveValsList),
 		io__write_string(" */")
 	;
 		[]
