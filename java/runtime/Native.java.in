@@ -22,17 +22,30 @@ public class Native {
 			"Native.@EXT_FOR_SHARED_LIB@";
 
 	/*
+	** attemptedLoad records whether or not the user has yet attempted to
+	** load the shared library.
+	*/
+	private static boolean			attemptedLoad = false;
+
+	/*
 	** available and isAvailable() are true when native functionality
 	** is available. (ie SHARED_OBJ was loaded successfully)
 	*/
 	private	static boolean			available  = false;
 
+	/*
+	** isAvailable() as the side effect of attempting to load the library
+	** if this has not already been done.
+	*/
 	public static boolean isAvailable() {
+		if (!attemptedLoad) {
+			load_library();
+		}
 		return available;
 	}
 
 	static {
-		available = load_library();
+		load_library();
 	}
 
 	/*
@@ -42,9 +55,11 @@ public class Native {
 	** 	the shared object SHARED_OBJ and attempts to load this file
 	** 	if found.
 	**	Also searches in the subdirectory Constants.MR_FULLARCH.
-	** 	Returns true if successful, false otherwise.
+	** 	Sets available to true if successful, false otherwise.
 	*/
-	private static boolean load_library() {
+	private static void load_library() {
+		attemptedLoad = true;
+
 		java.util.StringTokenizer classpath =
 				new java.util.StringTokenizer(
 				java.lang.System.getProperty("java.class.path")
@@ -77,14 +92,15 @@ public class Native {
 				}
 
 				java.lang.System.load(match.getAbsolutePath());
-				return true;
+				available = true;
+				return;
 			}
 			catch (java.lang.Exception e) {
 				continue;
 			}
 		} // while classpath.hasMoreTokens()
 
-		return false;
+		return;
 	} // load_library()
 
 	/*

@@ -93,6 +93,18 @@ extern void ML_report_full_memory_stats(void);
 #endif
 ").
 
+:- pragma foreign_proc("Java", report_stats,
+	[may_call_mercury],
+"
+	ML_report_stats();
+").
+
+:- pragma foreign_proc("Java", report_full_memory_stats,
+	[will_not_call_mercury],
+"
+	ML_report_full_memory_stats();
+").
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("C", "
@@ -579,6 +591,52 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 }
 
 #endif /* MR_MPROF_PROFILE_MEMORY */
+").
+
+:- pragma foreign_code("Java",
+"
+private static int time_at_start	= 0;
+private static int time_at_last_stat	= 0;
+
+static {
+	if (mercury.runtime.Native.isAvailable()) {
+		time_at_start = mercury.runtime.Native.
+				get_user_cpu_miliseconds();
+		time_at_last_stat = time_at_start;
+	}
+}
+
+private static void
+ML_report_stats() {
+	int time_at_prev_stat = time_at_last_stat;
+	time_at_last_stat = get_user_cpu_miliseconds_1_p_0();
+
+	System.err.print(""[Time: "" +
+			((time_at_last_stat - time_at_prev_stat) / 1000.0) +
+			"", "" +
+			((time_at_last_stat - time_at_start) / 1000.0)
+			);
+
+	/*
+	** XXX	At this point there should be a whole bunch of memory usage
+	**	statistics.  Unfortunately the Java back-end does not yet
+	**	support this amount of profiling, so cpu time is all you get.
+	*/
+
+	System.err.println(""]"");
+}
+
+private static void
+ML_report_full_memory_stats() {
+	/*
+	** XXX	The support for this predicate is even worse.  Since we don't
+	**	have access to memory usage statistics, all you get here is an
+	**	apology.  But at least it doesn't just crash with an error.
+	*/
+
+	System.err.println(""Sorry, report_full_memory_stats is not yet "" +
+			""implemented for the Java back-end."");
+}
 ").
 
 %-----------------------------------------------------------------------------%
