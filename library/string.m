@@ -609,7 +609,9 @@ string__replace(Str, Pat, Subst, Result) :-
 
 string__replace_all(Str, Pat, Subst, Result) :-
 	( Pat = "" ->
-		copy(Str, Result)
+		F = (func(C, L) = [char_to_string(C) ++ Subst | L]),
+		Foldl = string__foldl(F, Str, []),
+		Result = append_list([Subst | list__reverse(Foldl)])
 	;
 		PatLength = string__length(Pat),
 		ReversedChunks = replace_all(Str, Pat, Subst, PatLength, 0, []),
