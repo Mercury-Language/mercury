@@ -133,15 +133,6 @@
 :- pred pd_util__can_reorder_goals(module_info::in, bool::in, hlds_goal::in,
 		hlds_goal::in) is semidet.
 
-	% pd_util__reordering_maintains_termination(FullyStrict, Goal1, Goal2)
-	%
-	% Succeeds if any possible change in termination behaviour from
-	% reordering the goals is allowed according to the semantics options.
-	% The information computed by termination analysis is used when
-	% making this decision.
-:- pred pd_util__reordering_maintains_termination(module_info::in, bool::in, 
-		hlds_goal::in, hlds_goal::in) is semidet.
-
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -1175,7 +1166,7 @@ pd_util__can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
 	\+ goal_info_is_impure(EarlierGoalInfo),
 	\+ goal_info_is_impure(LaterGoalInfo),
 
-	pd_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
+	goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
 		EarlierGoal, LaterGoal),
 
 	%
@@ -1201,35 +1192,6 @@ goal_depends_on_goal(_ - GoalInfo1, _ - GoalInfo2) :-
 	goal_info_get_nonlocals(GoalInfo2, NonLocals2),
 	set__intersect(ChangedVars1, NonLocals2, Intersection),
 	\+ set__empty(Intersection).
-
-pd_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
-		EarlierGoal, LaterGoal) :-
-	EarlierGoal = _ - EarlierGoalInfo,
-	LaterGoal = _ - LaterGoalInfo,
-
-	goal_info_get_determinism(EarlierGoalInfo, EarlierDetism),
-	determinism_components(EarlierDetism, EarlierCanFail, _),
-	goal_info_get_determinism(LaterGoalInfo, LaterDetism),
-	determinism_components(LaterDetism, LaterCanFail, _),
-
-		% If --fully-strict was specified, don't convert 
-		% (can_loop, can_fail) into (can_fail, can_loop). 
-	( 
-		FullyStrict = yes, 
-		\+ goal_cannot_loop(ModuleInfo, EarlierGoal)
-	->
-		LaterCanFail = cannot_fail
-	;
-		true
-	),
-		% Don't convert (can_fail, can_loop) into 
-		% (can_loop, can_fail), since this could worsen 
-		% the termination properties of the program.
-	( EarlierCanFail = can_fail ->
-		goal_cannot_loop(ModuleInfo, LaterGoal)
-	;
-		true
-	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

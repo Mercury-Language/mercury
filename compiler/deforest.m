@@ -887,7 +887,7 @@ deforest__can_optimize_conj(EarlierGoal, BetweenGoals,
 		{ list__member(OtherGoal, BetweenGoals)
 		; MaybeLaterGoal = yes(LaterGoal), OtherGoal = LaterGoal
 		},
-		\+ { pd_util__reordering_maintains_termination(ModuleInfo,
+		\+ { goal_util__reordering_maintains_termination(ModuleInfo,
 			FullyStrict, EarlierGoal, OtherGoal) }
 	->
 		pd_debug__message(

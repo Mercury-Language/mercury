@@ -417,7 +417,7 @@ constraint__annotate_conj_constraints(ModuleInfo,
 		{ goal_info_is_pure(GoalInfo) },
 
 		% Don't propagate goals that can loop. 
-		{ goal_cannot_loop(ModuleInfo, Goal) }
+		{ goal_cannot_loop_or_throw(Goal) }
 	->
 		% It's a constraint, add it to the list of constraints
 		% to be attached to goals earlier in the conjunction.
@@ -473,7 +473,7 @@ constraint__annotate_conj_constraints(ModuleInfo,
 	;
 		% Don't move goals which can fail before a goal which
 		% can loop if `--fully-strict' is set.
-		{ \+ goal_cannot_loop(ModuleInfo, Goal) },
+		{ \+ goal_cannot_loop_or_throw(Goal) },
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, fully_strict, yes) }
 	->

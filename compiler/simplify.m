@@ -338,7 +338,6 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism),
 	simplify_info_get_det_info(Info0, DetInfo),
-	simplify_info_get_module_info(Info0, ModuleInfo),
 	(
 		%
 		% if --no-fully-strict,
@@ -348,7 +347,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% ensure goal is pure or semipure
 		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
-		; goal_cannot_loop(ModuleInfo, Goal0)
+		; goal_cannot_loop_or_throw(Goal0)
 		)
 	->
 		% warn about this, unless the goal was an explicit
@@ -398,7 +397,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% ensure goal is pure or semipure
 		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
-		; goal_cannot_loop(ModuleInfo, Goal0)
+		; goal_cannot_loop_or_throw(Goal0)
 		)
 	->
 /******************
