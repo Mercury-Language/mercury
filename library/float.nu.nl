@@ -40,7 +40,12 @@ float__max(X) :-
 		X is 1.79769313486231 * Exp
 	).
 
-float__min(2.2250738585072014e-308).
+	% really float__min(2.2250738585072014e-308).
+	% but if we put in the last two digits, then
+	% NU-Prolog (1.6.12) will underflow to zero.
+	% (This happens with compiled code (nc), but not
+	% with consulted code (np).)
+float__min(2.22507385850721e-308).
 
 float__epsilon(2.2204460492503131e-16).
 
