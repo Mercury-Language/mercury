@@ -18,6 +18,7 @@ GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
+GRADEFLAGS-csharp_hello		= --grade il
 GRADEFLAGS-foreign_type_spec	= --grade il
 GRADEFLAGS-foreign_type_spec.foreign	= --grade il
 
