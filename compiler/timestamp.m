@@ -61,6 +61,10 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 :- func gmtime_to_timestamp(int, int, int, int,
 		int, int, int, int, int) = timestamp.
 
+:- pragma foreign_decl("C", "
+	#include ""mercury_string.h""
+	#include <time.h>
+").
 :- pragma foreign_proc("C",
 	gmtime_to_timestamp(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
 		YD::in, WD::in, N::in) = (Result::out),
