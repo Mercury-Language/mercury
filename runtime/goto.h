@@ -136,11 +136,24 @@
   	goto *(label)
   #endif
 
+#ifdef __sparc
+  /* For Solaris 5.5.1, we need to declare that the type of labels is
+     #function (i.e. code, not data), otherwise the dynamic linker seems
+     to get confused, and we end up jumping into the data section.
+     Hence the `.type' directive below. */
+  #define ASM_ENTRY(label) 				\
+  	entry(label):					\
+	__asm__(".globl entry_" stringify(label) "\n\t"	\
+		".type entry_" stringify(label) ",#function\n\t" \
+		"entry_" stringify(label) ":" 		\
+		);
+#else
   #define ASM_ENTRY(label) 				\
   	entry(label):					\
 	__asm__(".globl entry_" stringify(label) "\n\t"	\
 		"entry_" stringify(label) ":" 		\
 		);
+#endif
   #define ASM_STATIC_ENTRY(label) 			\
   	entry(label):					\
 	__asm__ (					\
