@@ -8,13 +8,20 @@
 % Authors: Renaud Paquay (rpa@miscrit.be), stayl
 % ODBC version: 2.0
 %
-% The transaction interface used here is described in
+% The transaction interface used here is described in the following paper:
+%
 %	Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi,
 % 	"Database transactions in a purely declarative 
-%		logic programming language", 
+%		logic programming language".
+%	In Proceedings of the Fifth International Conference on Database
+%	Systems for Advanced Applications, pp. 283-292.
+%	Melbourne, Australia, 1-4 April, 1997.
+%
+%	An earlier(?) version of this paper is available as
 %	Technical Report 96/45, Department of Computer Science, 
 % 	University of Melbourne, December 1996,
-%	http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45.ps.gz
+%	<http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45_cover.ps.gz>
+%	and <http://www.cs.mu.OZ.AU/publications/tr_db/mu_96_45.ps.gz>.
 %
 % This has been tested with MySQL 3.20.19 and iODBC 2.12 under Solaris 2.5,
 % and with Microsoft SQL Server 6.5 under Windows NT 4.0 with the GNU-Win32 
