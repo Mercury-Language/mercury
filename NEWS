@@ -306,6 +306,11 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 ****************************************
 
+* There is also a new builtin function promise_only_soln/1,
+  for calling `cc_multi' or `cc_nondet' code from `det' or `semidet'
+  procedures.  See the "builtin" chapter of the Mercury Library
+  Reference Manual for details.
+
 * The getopt module now supports a new type of option data, namely
   `maybe_int(maybe(int))', to allow optional arguments with integer values.
   There is also a new corresponding lookup predicate,

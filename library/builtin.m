@@ -116,9 +116,38 @@
 % It is used to work around limitations in the current support for unique
 % modes.  `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
 % the compiler will assume that `Y' is unique.
+%
+% Note that misuse of this predicate may lead to unsound results:
+% if there is more than one reference to the data in question,
+% i.e. it is not `unique', then the behaviour is undefined.
+% (If you lie to the compiler, the compiler will get its revenge!)
 
 :- pred unsafe_promise_unique(T, T).
 :- mode unsafe_promise_unique(in, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+% A call to the function `promise_only_solution(Pred)' constitutes a
+% promise on the part of the caller that `Pred' has at most one solution,
+% i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)'.
+% `promise_only_solution(Pred)' presumes that this assumption is
+% satisfied, and returns the X for which Pred(X) is true, if
+% there is one.
+%
+% You can use `promise_only_solution' as a way of 
+% introducing `cc_multi' or `cc_nondet' code inside a
+% `det' or `semidet' procedure.
+%
+% Note that misuse of this function may lead to unsound results:
+% if the assumption is not satisfied, the behaviour is undefined.
+% (If you lie to the compiler, the compiler will get its revenge!)
+
+:- func promise_only_solution(pred(T)) = T.
+:- mode promise_only_solution(pred(out) is cc_multi) = out is det.
+:- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
+
+%-----------------------------------------------------------------------------%
+
 
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
@@ -176,6 +205,24 @@
 
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
+
+%-----------------------------------------------------------------------------%
+
+promise_only_solution(Pred) = OutVal :-
+        call(cc_cast(Pred), OutVal).
+
+:- func cc_cast(pred(T)) = pred(T).
+:- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
+:- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
+
+:- pragma c_code(cc_cast(X::(pred(out) is cc_multi)) =
+                        (Y::out(pred(out) is det)),
+                [will_not_call_mercury, thread_safe],
+                "Y = X;").
+:- pragma c_code(cc_cast(X::(pred(out) is cc_nondet)) =
+                        (Y::out(pred(out) is semidet)),
+                [will_not_call_mercury, thread_safe],
+                "Y = X;").
 
 %-----------------------------------------------------------------------------%
 
