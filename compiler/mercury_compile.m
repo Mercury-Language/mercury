@@ -561,6 +561,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	% typecheck would get internal errors
 	%
 	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_write_string(Verbose, "% Type-checking...\n"),
 	( { FoundUndefTypeError = yes } ->
 	    { HLDS = HLDS1 },
@@ -592,7 +593,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2a, HLDS3, FoundUndefModeError, FoundTypeError), !,
+	    typecheck(HLDS2a, HLDS3, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -603,51 +604,62 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    mercury_compile__maybe_dump_hlds(HLDS3, "03", "typecheck"),
 
 	    %
-	    % Now continue, even if we got a type error,
-	    % unless `--typecheck-only' was specified.
+	    % We can't continue after an undefined inst/mode
+	    % error, since propagate_types_into_proc_modes
+	    % (in post_typecheck.m -- called by purity.m)
+	    % and mode analysis would get internal errors
 	    %
-	    globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
-	    ( { TypecheckOnly = yes } ->
+	    ( { FoundUndefModeError = yes } ->
+		{ FoundError = yes },
 		{ HLDS = HLDS3 },
-		{ bool__or(FoundTypeError, FoundTypeclassError, FoundError) }
+		maybe_write_string(Verbose,
+	"% Program contains undefined inst or undefined mode error(s).\n"),
+		io__set_exit_status(1)
 	    ;
-		% only write out the `.opt' file if there are no type errors
-		% or undefined modes
-		( { FoundTypeError = no, FoundUndefModeError = no } ->
+	        %
+	        % Run purity checking
+	        %
+		mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
+		mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
+
+	        %
+	        % Stop here if `--typecheck-only' was specified.
+	        %
+	        globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
+	        ( { TypecheckOnly = yes } ->
+		    { HLDS = HLDS4 },
+		    { bool__or(FoundTypeError, FoundTypeclassError,
+		    	FoundError) }
+	        ;
+		    % only write out the `.opt' file if there are no type errors
+		    % or undefined modes
+		    ( { FoundTypeError = no, FoundUndefModeError = no } ->
 			mercury_compile__maybe_write_optfile(MakeOptInt,
 		    		HLDS3, HLDS4), !
-		;
-			{ HLDS4 = HLDS3 }
-		),
-		%
-		% We can't continue after an undefined inst/mode
-		% error, since mode analysis would get internal errors
-		%
-		( { FoundUndefModeError = yes } ->
-		    { FoundError = yes },
-		    { HLDS = HLDS4 },
-		    maybe_write_string(Verbose,
-		"% Program contains undefined inst or undefined mode error(s).\n"),
-			    io__set_exit_status(1)
-		;
-			% if our job was to write out the `.opt' file,
-			% then we're done
-			( { MakeOptInt = yes } ->
-				{ HLDS = HLDS4 },
-				{ bool__or(FoundTypeError, FoundTypeclassError,
-					FoundError) }
-			;
+		    ;
+			    mercury_compile__maybe_write_optfile(MakeOptInt,
+		    		    HLDS4, HLDS5), !
+		    ;
+			    { HLDS5 = HLDS4 }
+		    ),
+		    % if our job was to write out the `.opt' file,
+		    % then we're done
+		    ( { MakeOptInt = yes } ->
+		    	    { HLDS = HLDS5 },
+			    { bool__or(FoundTypeError, FoundTypeclassError,
+				    FoundError) }
+		    ;
 			    %
 			    % Now go ahead and do the rest of mode checking and
 			    % determinism analysis
 			    %
-			    mercury_compile__frontend_pass_2_by_phases(HLDS4,
+			    mercury_compile__frontend_pass_2_by_phases(HLDS5,
 			    		HLDS, FoundModeOrDetError),
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
 					FoundError0) },
 			    { bool__or(FoundError0, FoundTypeclassError,
 				FoundError) }
-			)
+		    )
 		)
 	    )
 	).
@@ -743,12 +755,9 @@ mercury_compile__frontend_pass_2(HLDS0, HLDS, FoundError) -->
 % is det.
 :- mode mercury_compile__frontend_pass_2_by_phases(in, out, out, di, uo) is det.
 
-mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
+mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-
-	mercury_compile__puritycheck(HLDS3, Verbose, Stats, HLDS4),
-	mercury_compile__maybe_dump_hlds(HLDS4, "04", "puritycheck"),
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
 		FoundModeError, UnsafeToContinue),

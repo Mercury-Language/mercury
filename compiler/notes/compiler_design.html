@@ -216,7 +216,9 @@ so that the compiler does the right thing for options such as
 	  pred_info.  However, typecheck.m doesn't figure out the pred_id
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
-	  later on in modes.m.  Typeclass constraints are checked here, and
+	  later on (in post_typecheck.m, for preds, and in
+	  modecheck_unify.m, for function calls).
+	  Typeclass constraints are checked here, and
 	  any redundant constraints that are eliminated are recorded (as
 	  constraint_proofs) in the pred_info for future reference. When it has
 	  finished, typecheck.m calls clause_to_proc.m to make duplicate copies
@@ -224,6 +226,10 @@ so that the compiler does the right thing for options such as
 	  stages work on procedures, not predicates.
 	<li> type_util.m contains utility predicates dealing with types
 	  that are used in a variety of different places within the compiler
+	<li> post_typecheck.m may also be considered to logically be a part
+	  of typechecking, but it is actually called from purity
+	  analysis (see below).  It contains the stuff related to
+	  type checking that can't be done in the main type checking pass.
 	</ul>
 
 <dt> purity analysis
@@ -231,9 +237,12 @@ so that the compiler does the right thing for options such as
 	<dd>
 	purity.m is responsible for purity checking, as well as
 	defining the <CODE>purity</CODE> type and a few public
-	operations on it.  It also completes the handling of predicate
+	operations on it.  It also calls post_typecheck.m to
+	complete the handling of predicate
 	overloading for cases which typecheck.m is unable to handle,
-	and checks for unbound type variables.
+	to check for unbound type variables,
+	and to copy the clauses to the proc_infos in
+	preparation for mode analysis.
 
 <dt> mode analysis
 
@@ -836,6 +845,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-05-15 07:08:30 $ by $Author: ohutch $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-06-04 17:26:23 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
