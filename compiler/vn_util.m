@@ -15,7 +15,7 @@
 
 :- implementation.
 
-:- import_module vn_table, opt_debug.
+:- import_module vn_table.
 :- import_module string, require, std_util, map.
 
 %-----------------------------------------------------------------------------%
@@ -97,6 +97,14 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 :- pred vn__find_sub_vns_vnlval(vnlval, list(vn)).
 :- mode vn__find_sub_vns_vnlval(in, out) is det.
+
+	% Find all lvals inside a given rval.
+
+:- pred vn__find_lvals_in_rval(rval, list(lval)).
+:- mode vn__find_lvals_in_rval(in, out) is det.
+
+:- pred vn__find_lvals_in_rvals(list(rval), list(lval)).
+:- mode vn__find_lvals_in_rvals(in, out) is det.
 
 :- implementation.
 
@@ -414,6 +422,40 @@ vn__find_sub_vns_vnlval(vn_sp, []).
 vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
 vn__find_sub_vns_vnlval(vn_temp(_), []).
 
+vn__find_lvals_in_rval(Rval, Lvals) :-
+	(
+		Rval = lval(Lval),
+		vn__lval_access_rval(Lval, Rvals),
+		vn__find_lvals_in_rvals(Rvals, Lvals1),
+		Lvals = [Lval | Lvals1]
+	;
+		Rval = var(_),
+		error("var found in vn__find_lvals_in_rval")
+	;
+		Rval = create(_, _, _),
+		Lvals = []
+	;
+		Rval = mkword(_, Rval1),
+		vn__find_lvals_in_rval(Rval1, Lvals)
+	;
+		Rval = const(_),
+		Lvals = []
+	;
+		Rval = unop(_, Rval1),
+		vn__find_lvals_in_rval(Rval1, Lvals)
+	;
+		Rval = binop(_, Rval1, Rval2),
+		vn__find_lvals_in_rval(Rval1, Lvals1),
+		vn__find_lvals_in_rval(Rval2, Lvals2),
+		list__append(Lvals1, Lvals2, Lvals)
+	).
+
+vn__find_lvals_in_rvals([], []).
+vn__find_lvals_in_rvals([Rval | Rvals], Lvals) :-
+	vn__find_lvals_in_rval(Rval, Lvals1),
+	vn__find_lvals_in_rvals(Rvals, Lvals2),
+	list__append(Lvals1, Lvals2, Lvals).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -558,7 +600,8 @@ vn__record_use_list([Vn | Vns], Src, Vn_tables0, Vn_tables) :-
 :- implementation.
 
 vn__block_cost(Instrs, Cost) :-
-	vn__block_cost_2(Instrs, 0, Assigns, 0, Ops, 0, StackRefs, 0, HeapRefs),
+	list__reverse(Instrs, Rev),
+	vn__block_cost_2(Rev, 0, Assigns, 0, Ops, 0, StackRefs, 0, HeapRefs),
 	AssignCost is Assigns * 1,
 	OpsCost is Ops * 1,
 	StackCost is StackRefs * 2,
@@ -638,8 +681,10 @@ vn__block_cost_2([Uinstr - _Comment | Instrs],  A0, A, O0, O, S0, S, H0, H) :-
 		error("c_code found in vn_block_cost")
 	;
 		Uinstr = if_val(Rval, _),
-		A1 = A0,
-		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
+		vn__rval_cost(Rval, O0, O1, S0, S1, H0, H1),
+		% count the earlier instructions twice,
+		% to favor code sequences that move code after ifs
+		vn__block_cost_2(Instrs, A0, A1, O1, O2, S1, S2, H1, H2)
 	;
 		Uinstr = incr_hp(Lval, _, Rval),
 		A1 is A0 + 2,

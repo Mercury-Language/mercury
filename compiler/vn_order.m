@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module vn_flush, vn_temploc, vn_util, opt_debug, opt_util.
+:- import_module vn_flush, vn_temploc, vn_util, vn_debug, opt_util.
 :- import_module atsort, map, bintree_set, string, int, require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -43,81 +43,49 @@ vn__flush_all_nodes(Livevals, Vn_tables0, Incrhp,
 	list__reverse(RevInstrs, OrigInstrs),
 	bintree_set__to_sorted_list(Livevals, Live),
 	vn__build_uses(Livevals, Ctrlmap, Vn_tables0, Vn_tables1),
-	vn__init_templocs(5, 5, Livevals, Vn_tables0, Templocs0),
+	vn__max_real_regs(MaxRealRegs),
+	vn__max_real_temps(MaxRealTemps),
+	vn__init_templocs(MaxRealRegs, MaxRealTemps, Livevals, Vn_tables0,
+		Templocs0),
 
-	opt_debug__write("\n\n"),
-	opt_debug__dump_ctrlmap(Ctrlmap, Ctrl_str),
-	opt_debug__write(Ctrl_str),
-	opt_debug__dump_flushmap(Flushmap, Flush_str),
-	opt_debug__write(Flush_str),
-	opt_debug__dump_tables(Vn_tables1, Tables_str),
-	opt_debug__write(Tables_str),
+	vn__order_start_msg(Ctrlmap, Flushmap, Vn_tables1),
 
 	(
 		vn__req_order(Ctrlmap, Flushmap, Incrhp, Vn_tables1,
-			MustSuccmap, MustPredmap)
+			MustSuccmap0, MustPredmap0)
 	->
-		Succmap0 = MustSuccmap,
-		Predmap0 = MustPredmap,
 		vn__prod_cons_order(Live, Vn_tables1, Vn_tables2,
-			Succmap0, Succmap1, Predmap0, Predmap1),
-		vn__use_before_redef(Succmap1, Succmap2, Predmap1, Predmap2),
+			MustSuccmap0, MustSuccmap1, MustPredmap0, MustPredmap1),
+		vn__ctrl_vn_order(0, Flushmap,
+			MustSuccmap1, MustSuccmap2, MustPredmap1, MustPredmap2),
 		vn__vn_ctrl_order(0, Ctrlmap, Vn_tables2, Vn_tables3,
-			Succmap2, Succmap3, Predmap2, Predmap3),
-		vn__ctrl_vn_order(0, Flushmap, [],
-			Succmap3, Succmap4, Predmap3, Predmap4),
-		vn__pref_order(Succmap4, PrefOrder),
+			MustSuccmap2, Succmap1, MustPredmap2, Predmap1),
+		vn__use_before_redef(Vn_tables3,
+			Succmap1, Succmap2, Predmap1, Predmap2),
+		vn__pref_order(Succmap2, PrefOrder),
 
-		opt_debug__write("\nMustSuccmap:\n"),
-		opt_debug__dump_node_relmap(MustSuccmap, MS_str),
-		opt_debug__write(MS_str),
-		opt_debug__write("\nMustPredmap:\n"),
-		opt_debug__dump_node_relmap(MustPredmap, MP_str),
-		opt_debug__write(MP_str),
-		opt_debug__write("\nSuccmap:\n"),
-		opt_debug__dump_node_relmap(Succmap4, S_str),
-		opt_debug__write(S_str),
-		opt_debug__write("\nPredmap:\n"),
-		opt_debug__dump_node_relmap(Predmap4, P_str),
-		opt_debug__write(P_str),
+		vn__order_map_msg(MustSuccmap2, MustPredmap2,
+			Succmap2, Predmap2),
 
-		atsort(Succmap4, Predmap4, MustSuccmap, MustPredmap,
+		atsort(Succmap2, Predmap2, MustSuccmap2, MustPredmap2,
 			PrefOrder, Blocks),
 		LastCtrl is Ctrl - 1,
 		vn__blockorder_to_order(Blocks, LastCtrl, Vn_tables3, Order),
 
-		opt_debug__dump_longnodelist(Order, O_str),
-		opt_debug__write("\nOrder:\n"),
-		opt_debug__write(O_str),
-		opt_debug__write("\n"),
+		vn__order_order_msg(Order),
 
 		vn__flush_nodelist(Order, Ctrlmap, Vn_tables3, _Vn_tables,
 			Templocs0, Templocs, Instrs0),
 
-		(
-			opt_util__has_both_incr_decr_sp(Instrs0),
-			opt_util__block_refers_stackvars(Instrs0, no)
-		->
-			opt_util__remove_both_incr_decr_sp(Instrs0, Instrs2)
-		;
-			vn__push_decr_sp_back(Instrs0, Instrs1),
-			vn__push_incr_sp_forw(Instrs1, Instrs2)
-		),
+		vn__push_decr_sp_back(Instrs0, Instrs1),
+		vn__push_incr_sp_forw(Instrs1, Instrs2),
 
 		vn__block_cost(OrigInstrs, OrigCost),
 		vn__block_cost(Instrs2, VnCost),
 
-		opt_debug__write("Old cost: "),
-		string__int_to_string(OrigCost, OC_str),
-		opt_debug__write(OC_str),
-		opt_debug__write("\n"),
-		opt_debug__write("New cost: "),
-		string__int_to_string(VnCost, VC_str),
-		opt_debug__write(VC_str),
-		opt_debug__write("\n"),
+		vn__order_cost_msg(OrigCost, VnCost),
 
 		( VnCost < OrigCost ->
-			opt_debug__write("Result: improvement\n"),
 			vn__max_temploc(Templocs, Max),
 			( Max > 0 ->
 				Instrs = [block(Max, Instrs2) - ""]
@@ -125,7 +93,6 @@ vn__flush_all_nodes(Livevals, Vn_tables0, Incrhp,
 				Instrs = Instrs2
 			)
 		;
-			opt_debug__write("Result: no improvement\n"),
 			Instrs = OrigInstrs
 		)
 	;
@@ -203,6 +170,96 @@ vn__record_ctrl_deps([Vnlval - Vn | FlushList], Sink, Vn_tables,
 		MustSuccmap0, MustSuccmap1, MustPredmap0, MustPredmap1),
 	vn__record_ctrl_deps(FlushList, Sink, Vn_tables,
 		MustSuccmap1, MustSuccmap, MustPredmap1, MustPredmap).
+
+%-----------------------------------------------------------------------------%
+
+	% Record the natural producer-consumer relationships
+	% induced by the live vnlvals.
+
+:- pred vn__prod_cons_order(list(vnlval), vn_tables, vn_tables,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__prod_cons_order(in, di, uo, di, uo, di, uo) is det.
+
+vn__prod_cons_order([], Vn_tables, Vn_tables,
+		Succmap, Succmap, Predmap, Predmap).
+vn__prod_cons_order([Vnlval | Vnlvals], Vn_tables0, Vn_tables,
+		Succmap0, Succmap, Predmap0, Predmap) :-
+	vn__lookup_desired_value(Vnlval, NewVn, Vn_tables0),
+	vn__lookup_current_value(Vnlval, OldVn, Vn_tables0),
+	( OldVn = NewVn ->
+		Vn_tables1 = Vn_tables0,
+		Succmap1 = Succmap0,
+		Predmap1 = Predmap0
+	;
+		vn__find_links(NewVn, node_lval(Vnlval), Vn_tables0, Vn_tables1,
+			Succmap0, Succmap1, Predmap0, Predmap1)
+	),
+	vn__prod_cons_order(Vnlvals, Vn_tables1, Vn_tables,
+		Succmap1, Succmap, Predmap1, Predmap).
+
+%-----------------------------------------------------------------------------%
+
+	% Record the requirement of not producing any lvals before a control
+	% node except those we absolutely have to, since any such production
+	% will be wasted on one control path, and may cause dereferencing of
+	% a word whose tag has not yet been checked, which will to a segfault.
+
+:- pred vn__ctrl_vn_order(int, flushmap,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__ctrl_vn_order(in, in, di, uo, di, uo) is det.
+
+vn__ctrl_vn_order(Ctrl, Flushmap, Succmap0, Succmap, Predmap0, Predmap) :-
+	map__keys(Succmap0, AllNodes),
+	vn__ctrl_vn_order_2(Ctrl, Flushmap, AllNodes, [],
+		Succmap0, Succmap, Predmap0, Predmap).
+
+:- pred vn__ctrl_vn_order_2(int, flushmap, list(vn_node), list(vn_node),
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__ctrl_vn_order_2(in, in, in, in, di, uo, di, uo) is det.
+
+vn__ctrl_vn_order_2(Ctrl, Flushmap, AllNodes, Prednodes0,
+		Succmap0, Succmap, Predmap0, Predmap) :-
+	( map__search(Flushmap, Ctrl, FlushEntry) ->
+		map__keys(FlushEntry, FlushVnlvals),
+		vn__append_vnlval_nodes(FlushVnlvals, Prednodes0, Prednodes1),
+		atsort__closure(Prednodes1, Predmap0, Prednodes2),
+		vn__record_antideps(AllNodes, Prednodes2, node_ctrl(Ctrl),
+			Succmap0, Succmap1, Predmap0, Predmap1),
+		NextCtrl is Ctrl + 1,
+		vn__ctrl_vn_order_2(NextCtrl, Flushmap, AllNodes, Prednodes2,
+			Succmap1, Succmap, Predmap1, Predmap)
+	;
+		Succmap = Succmap0,
+		Predmap = Predmap0
+	).
+
+:- pred vn__append_vnlval_nodes(list(vnlval), list(vn_node), list(vn_node)).
+:- mode vn__append_vnlval_nodes(in, di, uo) is det.
+
+vn__append_vnlval_nodes([], Prednodes, Prednodes).
+vn__append_vnlval_nodes([Vnlval | Vnlvals], Prednodes0, Prednodes) :-
+	Prednodes1 = [node_lval(Vnlval) | Prednodes0],
+	vn__append_vnlval_nodes(Vnlvals, Prednodes1, Prednodes).
+
+:- pred vn__record_antideps(list(vn_node), list(vn_node), vn_node,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__record_antideps(in, in, in, di, uo, di, uo) is det.
+
+vn__record_antideps([], _, _, Succmap, Succmap, Predmap, Predmap).
+vn__record_antideps([Node | Nodes], Prednodes, CtrlNode,
+		Succmap0, Succmap, Predmap0, Predmap) :-
+	(
+		( Node = node_lval(_) ; Node = node_shared(_) ),
+		\+ list__member(Node, Prednodes)
+	->
+		vn__add_link(CtrlNode, Node,
+			Succmap0, Succmap1, Predmap0, Predmap1)
+	;
+		Succmap1 = Succmap0,
+		Predmap1 = Predmap0
+	),
+	vn__record_antideps(Nodes, Prednodes, CtrlNode,
+		Succmap1, Succmap, Predmap1, Predmap).
 
 %-----------------------------------------------------------------------------%
 
@@ -291,104 +348,139 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, Vn_tables0, Vn_tables,
 
 %-----------------------------------------------------------------------------%
 
-	% Record the desirability of not producing any lvals before a control
-	% node expect those we absolutely have to, since any such production
-	% will be wasted on one control path.
+	% Try to make sure that all immediate users of the original value
+	% of a vnlval are done before the vnlval is redefined. This avoids
+	% an instruction to save the original value somewhere else.
 
-:- pred vn__ctrl_vn_order(int, flushmap, list(vnlval),
+:- pred vn__use_before_redef(vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__ctrl_vn_order(in, in, in, di, uo, di, uo) is det.
+:- mode vn__use_before_redef(in, di, uo, di, uo) is det.
 
-vn__ctrl_vn_order(Ctrl, Flushmap, FlushBefore,
+vn__use_before_redef(Vn_tables, Succmap0, Succmap, Predmap0, Predmap) :-
+	map__keys(Predmap0, Sinks),
+	vn__use_sinks_before_redef(Sinks, Vn_tables,
+		Succmap0, Succmap, Predmap0, Predmap).
+
+:- pred vn__use_sinks_before_redef(list(vn_node), vn_tables,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__use_sinks_before_redef(in, in, di, uo, di, uo) is det.
+
+vn__use_sinks_before_redef([], _Vn_tables, Succmap, Succmap, Predmap, Predmap).
+vn__use_sinks_before_redef([Sink | Sinks], Vn_tables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
-	( map__search(Flushmap, Ctrl, FlushEntry) ->
-		map__keys(Succmap0, Nodes),
-		map__keys(FlushEntry, FlushVnlvals),
-		list__append(FlushBefore, FlushVnlvals, FlushNow),
-		vn__record_antideps(Nodes, FlushNow, Ctrl,
+	vn__use_sink_before_redef(Sink, Vn_tables,
+		Succmap0, Succmap1, Predmap0, Predmap1),
+	vn__use_sinks_before_redef(Sinks, Vn_tables,
+		Succmap1, Succmap, Predmap1, Predmap).
+
+:- pred vn__use_sink_before_redef(vn_node, vn_tables,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__use_sink_before_redef(in, in, di, uo, di, uo) is det.
+
+vn__use_sink_before_redef(Sink, Vn_tables,
+		Succmap0, Succmap, Predmap0, Predmap) :-
+	vn__order_sink_msg(Sink),
+	(
+		Sink = node_lval(Vnlval),
+		vn__search_desired_value(Vnlval, OldVn, Vn_tables),
+		vn__search_current_value(Vnlval, NewVn, Vn_tables),
+		OldVn \= NewVn,
+		map__search(Succmap0, node_origlval(Vnlval), Users)
+	->
+		vn__add_users(Users, Sink, Vn_tables,
 			Succmap0, Succmap1, Predmap0, Predmap1),
-		NextCtrl is Ctrl + 1,
-		vn__ctrl_vn_order(NextCtrl, Flushmap, FlushNow,
-			Succmap1, Succmap, Predmap1, Predmap)
+		(
+			vn__search_desired_value(Vnlval, Vn, Vn_tables),
+			map__search(Succmap1, node_shared(Vn), _)
+		->
+			vn__add_users(Users, node_shared(Vn), Vn_tables,
+				Succmap1, Succmap, Predmap1, Predmap)
+		;
+			Succmap = Succmap1,
+			Predmap = Predmap1
+		)
 	;
 		Succmap = Succmap0,
 		Predmap = Predmap0
 	).
 
-:- pred vn__record_antideps(list(vn_node), list(vnlval), int,
+:- pred vn__add_users(list(vn_node), vn_node, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__record_antideps(in, in, in, di, uo, di, uo) is det.
+:- mode vn__add_users(in, in, in, di, uo, di, uo) is det.
 
-vn__record_antideps([], _, _, Succmap, Succmap, Predmap, Predmap).
-vn__record_antideps([Node | Nodelist], FlushVnlvals, Ctrl,
+vn__add_users([], _Sink, _Vn_tables, Succmap, Succmap, Predmap, Predmap).
+vn__add_users([User | Users], Sink, Vn_tables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
-	(
-		% once upon a time any shared node was also included
-		Node = node_lval(Vnlval),
-		\+ list__member(Vnlval, FlushVnlvals)
-	->
-		vn__add_link(node_ctrl(Ctrl), Node,
-			Succmap0, Succmap1, Predmap0, Predmap1)
-	;
-		Succmap1 = Succmap0,
-		Predmap1 = Predmap0
-	),
-	vn__record_antideps(Nodelist, FlushVnlvals, Ctrl,
-		Succmap1, Succmap, Predmap1, Predmap).
-
-%-----------------------------------------------------------------------------%
-
-	% Record the natural producer-consumer relationships
-	% induced by the live vnlvals.
-
-:- pred vn__prod_cons_order(list(vnlval), vn_tables, vn_tables,
-	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__prod_cons_order(in, di, uo, di, uo, di, uo) is det.
-
-vn__prod_cons_order([], Vn_tables, Vn_tables,
-		Succmap, Succmap, Predmap, Predmap).
-vn__prod_cons_order([Vnlval | Vnlvals], Vn_tables0, Vn_tables,
-		Succmap0, Succmap, Predmap0, Predmap) :-
-	vn__lookup_desired_value(Vnlval, Vn, Vn_tables0),
-	vn__find_links(Vn, node_lval(Vnlval), Vn_tables0, Vn_tables1,
+	vn__add_user(User, Sink, Vn_tables,
 		Succmap0, Succmap1, Predmap0, Predmap1),
-	vn__prod_cons_order(Vnlvals, Vn_tables1, Vn_tables,
+	vn__add_users(Users, Sink, Vn_tables,
 		Succmap1, Succmap, Predmap1, Predmap).
 
-%-----------------------------------------------------------------------------%
-
-	% Try to make sure that all immediate users of the original value
-	% of a vnlval are done before the vnlval is redefined. This avoids
-	% an instruction to save the original value somewhere else.
-
-:- pred vn__use_before_redef(relmap(vn_node), relmap(vn_node),
-	relmap(vn_node), relmap(vn_node)).
-:- mode vn__use_before_redef(di, uo, di, uo) is det.
-
-vn__use_before_redef(Succmap0, Succmap, Predmap0, Predmap) :-
-	map__keys(Predmap0, Sinks),
-	vn__use_sinks_before_redef(Sinks, Succmap0, Succmap, Predmap0, Predmap).
-
-:- pred vn__use_sinks_before_redef(list(vn_node),
+:- pred vn__add_user(vn_node, vn_node, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__use_sinks_before_redef(in, di, uo, di, uo) is det.
+:- mode vn__add_user(in, in, in, di, uo, di, uo) is det.
 
-vn__use_sinks_before_redef([], Succmap, Succmap, Predmap, Predmap).
-vn__use_sinks_before_redef([Sink | Sinks],
-		Succmap0, Succmap, Predmap0, Predmap) :-
+vn__add_user(User, Sink, Vn_tables, Succmap0, Succmap, Predmap0, Predmap) :-
+	vn__order_link_msg(User, Sink, yes),
+	vn__add_link(User, Sink, Succmap0, Succmap1, Predmap0, Predmap1),
 	(
-		Sink = node_lval(Vnlval),
-		map__search(Succmap0, node_origlval(Vnlval), Users)
+		User = node_shared(Vn)
 	->
-		vn__add_links(Users, Sink,
+		vn__get_vnlval_vn_list(Vn_tables, VnlvalVns),
+		vn__add_aliases(VnlvalVns, Vn, Sink,
+			Succmap1, Succmap, Predmap1, Predmap)
+	;
+		Succmap = Succmap1,
+		Predmap = Predmap1
+	).
+
+:- pred vn__add_aliases(assoc_list(vnlval, vn), vn, vn_node,
+	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
+:- mode vn__add_aliases(in, in, in, di, uo, di, uo) is det.
+
+vn__add_aliases([], _Vn, _Sink, Succmap, Succmap, Predmap, Predmap).
+vn__add_aliases([Pair | Pairs], Vn, Sink,
+		Succmap0, Succmap, Predmap0, Predmap) :-
+	Pair = PairVnlval - PairVn,
+	( PairVn = Vn ->
+		vn__order_link_msg(node_lval(PairVnlval), Sink, no),
+		vn__add_link(node_lval(PairVnlval), Sink,
 			Succmap0, Succmap1, Predmap0, Predmap1)
 	;
 		Succmap1 = Succmap0,
 		Predmap1 = Predmap0
 	),
-	vn__use_sinks_before_redef(Sinks, Succmap1, Succmap, Predmap1, Predmap).
+	vn__add_aliases(Pairs, Vn, Sink, Succmap1, Succmap, Predmap1, Predmap).
 
 %-----------------------------------------------------------------------------%
+
+:- pred vn__is_vn_shared(vn, vnrval, list(vn_src), vn_tables).
+:- mode vn__is_vn_shared(in, in, in, in) is semidet.
+
+vn__is_vn_shared(Vn, Vnrval, Uses0, Vn_tables) :-
+	vn__is_const_expr(Vn, no, Vn_tables),
+	\+ Vnrval = vn_origlval(vn_hp),
+	vn__real_uses(Uses0, Uses1, Vn_tables),
+	Uses1 = [_,_|_].
+
+:- pred vn__real_uses(list(vn_src), list(vn_src), vn_tables).
+:- mode vn__real_uses(di, uo, in) is semidet.
+
+vn__real_uses([], [], _Vn_tables).
+vn__real_uses([Use0 | Uses0], Uses, Vn_tables) :-
+	vn__real_uses(Uses0, Uses1, Vn_tables),
+	( ( Use0 = src_liveval(Vnlval) ; Use0 = src_access(Vnlval) ) ->
+		(
+			vn__search_desired_value(Vnlval, Vn, Vn_tables),
+			vn__search_current_value(Vnlval, Vn, Vn_tables)
+		->
+			Uses = [Use0 | Uses1]
+		;
+			Uses = Uses1
+		)
+	;
+		Uses = [Use0 | Uses1]
+	).
 
 	% Record the dependency of the nodes inside the given vn
 	% on the given node.
@@ -402,10 +494,8 @@ vn__find_links(Vn, Sink, Vn_tables0, Vn_tables,
 	vn__lookup_uses(Vn, Uses0, Vn_tables0),
 	vn__lookup_defn(Vn, Vnrval, Vn_tables0),
 	(
-		Uses0 = [_,_|_],
-		\+ Sink = node_shared(_),
-		\+ Vnrval = vn_origlval(vn_hp),
-		vn__is_const_expr(Vn, no, Vn_tables0)
+		vn__is_vn_shared(Vn, Vnrval, Uses0, Vn_tables0),
+		\+ Sink = node_shared(_)
 	->
 		vn__add_link(node_shared(Vn), Sink,
 			Succmap0, Succmap1, Predmap0, Predmap1),
@@ -781,3 +871,15 @@ vn__boundary_instr(mark_hp(_), no).
 vn__boundary_instr(restore_hp(_), no).
 vn__boundary_instr(incr_sp(_), yes).
 vn__boundary_instr(decr_sp(_), yes).
+
+	% The best values of these two parameters are platform dependent.
+
+:- pred vn__max_real_regs(int).
+:- mode vn__max_real_regs(out) is det.
+
+vn__max_real_regs(5).
+
+:- pred vn__max_real_temps(int).
+:- mode vn__max_real_temps(out) is det.
+
+vn__max_real_temps(5).

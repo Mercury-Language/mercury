@@ -18,6 +18,9 @@
 	list(list(T))).
 :- mode atsort(in, in, in, in, in, out) is det.
 
+:- pred atsort__closure(list(T), relmap(T), list(T)).
+:- mode atsort__closure(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -268,46 +271,41 @@ atsort__map_delete_all_nodes([Node | Nodes], Map0, Map) :-
 	atsort__map_delete_all_nodes(Nodes, Map1, Map).
 
 %-----------------------------------------------------------------------------%
-% 
-% :- pred atsort__in_circle(T, relmap(T)).
-% :- mode atsort__in_circle(in, in) is semidet.
-% 
-% atsort__in_circle(Node, Succmap) :-
-% 	atsort__successors(Node, Succmap, Successors),
-% 	list__member(Node, Successors).
-% 
-% :- pred atsort__successors(T, relmap(T), list(T)).
-% :- mode atsort__successors(in, in, out) is det.
-% 
-% atsort__successors(Node, Succmap, Successors) :-
-% 	map__lookup(Succmap, Node, ImmedSuccessors),
-% 	atsort__rec_successors(ImmedSuccessors, Succmap,
-% 		ImmedSuccessors, Successors).
-% 
-% :- pred atsort__rec_successors(list(T), relmap(T), list(T), list(T)).
-% :- mode atsort__rec_successors(in, in, di, uo) is det.
-% 
-% atsort__rec_successors([], _, Successors, Successors).
-% atsort__rec_successors([Node | Nodes], Succmap, Successors0, Successors) :-
-% 	( list__member(Node, Successors0) ->
-% 		Successors1 = Successors0
-% 	;
-% 		map__lookup(Succmap, Node, ImmedSuccessors),
-% 		atsort__insert_successors(ImmedSuccessors,
-% 			Successors0, Successors1)
-% 	),
-% 	atsort__rec_successors(Nodes, Succmap, Successors1, Successors).
-% 
-% :- pred atsort__insert_successors(list(T), list(T), list(T)).
-% :- mode atsort__insert_successors(in, di, uo) is det.
-% 
-% atsort__insert_successors([], Successors, Successors).
-% atsort__insert_successors([Node | Nodes], Successors0, Successors) :-
-% 	( list__member(Node, Successors0) ->
-% 		Successors1 = Successors0
-% 	;
-% 		Successors1 = [Node | Successors0]
-% 	),
-% 	atsort__insert_successors(Nodes, Successors1, Successors).
-% 
+
+atsort__closure(Nodes, Map, Reachable) :-
+	atsort__closure_2(Nodes, Map, [], Reachable).
+
+	% The first argument is a list of nodes to look at. If they have
+	% not been seen before, we insert them into the reachable list,
+	% and schedule their neighbours to be looked at too.
+
+	% XXX Should think about making Reachable be a bintree set.
+
+:- pred atsort__closure_2(list(T), relmap(T), list(T), list(T)).
+:- mode atsort__closure_2(in, in, di, uo) is det.
+
+atsort__closure_2([], _, Reachable, Reachable).
+atsort__closure_2([Node | Nodes0], Map, Reachable0, Reachable) :-
+	( list__member(Node, Reachable0) ->
+		Nodes1 = Nodes0,
+		Reachable1 = Reachable0
+	;
+		map__lookup(Map, Node, Neighbours),
+		atsort__maybe_insert(Neighbours, Nodes0, Nodes1),
+		Reachable1 = [Node | Reachable0]
+	),
+	atsort__closure_2(Nodes1, Map, Reachable1, Reachable).
+
+:- pred atsort__maybe_insert(list(T), list(T), list(T)).
+:- mode atsort__maybe_insert(in, di, uo) is det.
+
+atsort__maybe_insert([], List, List).
+atsort__maybe_insert([Node | Nodes], List0, List) :-
+	( list__member(Node, List0) ->
+		List1 = List0
+	;
+		List1 = [Node | List0]
+	),
+	atsort__maybe_insert(Nodes, List1, List).
+
 %-----------------------------------------------------------------------------%

@@ -23,14 +23,21 @@
 
 :- implementation.
 
-:- import_module vn_table, vn_util, opt_debug.
+:- import_module vn_table, vn_util, vn_debug, opt_debug.
 :- import_module map, int, string, require, std_util.
 
 vn__flush_nodelist([], _Ctrlmap, Vn_tables, Vn_tables, Templocs, Templocs, []).
 vn__flush_nodelist([Node0 | Nodes0], Ctrlmap, Vn_tables0, Vn_tables,
 		Templocs0, Templocs, Instrs) :-
-	vn__flush_node(Node0, Ctrlmap, Nodes0, Nodes1, Vn_tables0, Vn_tables1,
-		Templocs0, Templocs1, Instrs0),
+	( Node0 = node_origlval(_) ->
+		Nodes1 = Nodes0,
+		Vn_tables1 = Vn_tables0,
+		Templocs1 = Templocs0,
+		Instrs0 = []
+	;
+		vn__flush_node(Node0, Ctrlmap, Nodes0, Nodes1,
+			Vn_tables0, Vn_tables1, Templocs0, Templocs1, Instrs0)
+	),
 	vn__flush_nodelist(Nodes1, Ctrlmap, Vn_tables1, Vn_tables,
 		Templocs1, Templocs, Instrs1),
 	list__append(Instrs0, Instrs1, Instrs).
@@ -43,20 +50,14 @@ vn__flush_nodelist([Node0 | Nodes0], Ctrlmap, Vn_tables0, Vn_tables,
 
 vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, Vn_tables0, Vn_tables,
 		Templocs0, Templocs, Instrs) :-
-	opt_debug__write("at node "),
-	opt_debug__dump_node(Node, N_str),
-	opt_debug__write(N_str),
-	opt_debug__write("\n"),
+	vn__flush_start_msg(Node),
+
 	(
 		Node = node_shared(Vn),
-		Debug = yes,
 		vn__choose_best_loc(Vn, Vnlval, Vn_tables0,
 			Templocs0, Templocs1),
 		( vn__search_desired_value(Vnlval, Vn, Vn_tables0) ->
-			opt_debug__write("took care of node_lval for "),
-			opt_debug__dump_vnlval(Vnlval, Vn_str),
-			opt_debug__write(Vn_str),
-			opt_debug__write("\n"),
+			vn__flush_also_msg(Vnlval),
 			list__delete_all(Nodes0, node_lval(Vnlval), Nodes)
 		;
 			Nodes = Nodes0
@@ -68,21 +69,18 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, Vn_tables0, Vn_tables,
 			Vn_tables0, Vn_tables, Templocs1, Templocs, Instrs)
 	;
 		Node = node_lval(Vnlval),
-		Debug = yes,
 		Nodes = Nodes0,
 		vn__lookup_desired_value(Vnlval, Vn, Vn_tables0),
 		vn__ensure_assignment(Vnlval, Vn,
 			Vn_tables0, Vn_tables, Templocs0, Templocs, Instrs)
 	;
 		Node = node_origlval(Vnlval),
-		Debug = no,
 		Nodes = Nodes0,
 		Vn_tables = Vn_tables0,
 		Templocs = Templocs0,
 		Instrs = []
 	;
 		Node = node_ctrl(N),
-		Debug = yes,
 		Nodes = Nodes0,
 		map__lookup(Ctrlmap, N, Vn_instr),
 		(
@@ -161,27 +159,8 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, Vn_tables0, Vn_tables,
 			Instrs = [decr_sp(Decr) - ""]
 		)
 	),
-	(
-		Debug = yes,
-		opt_debug__write("generated instrs:\n"),
-		opt_debug__dump_fullinstrs(Instrs, I_str),
-		opt_debug__write(I_str),
-		opt_debug__write("new use info\n"),
-		opt_debug__dump_useful_vns(Vn_tables, U_str),
-		opt_debug__write(U_str),
-		true
-	;
-		Debug = no,
-		true
-	).
 
-% :- pred vn__compensate_for_access_vns(list(vn), vnlval, vn_tables, vn_tables).
-% :- mode vn__compensate_for_access_vns(in, in, di, uo) is det.
-% 
-% vn__compensate_for_access_vns([], _Vnlval, Vn_tables, Vn_tables).
-% vn__compensate_for_access_vns([Vn | Vns], Vnlval, Vn_tables0, Vn_tables) :-
-%	vn__add_new_use(Vn, src_access(Vnlval), Vn_tables0, Vn_tables1),
-%	vn__compensate_for_access_vns(Vns, Vnlval, Vn_tables1, Vn_tables).
+	vn__flush_end_msg(Instrs, Vn_tables).
 
 %-----------------------------------------------------------------------------%
 
@@ -202,26 +181,35 @@ vn__choose_best_loc(Vn, Chosen, Vn_tables, Templocs0, Templocs) :-
 	->
 		vn__choose_cheapest_loc(CurrentLocs, no, no, Presumed),
 		(
-			Presumed = vn_field(_, _, _),
+			\+ Presumed = vn_reg(_),
 			vn__lookup_uses(Vn, Uses, Vn_tables),
 			list__delete_first(Uses, src_liveval(Presumed),
 				NewUses),
 			NewUses = [_,_|_]
 		->
-			vn__next_temploc(Templocs0, Templocs, Chosen)
+			vn__choose_best_user(Vn, Chosen, Vn_tables,
+				Templocs0, Templocs)
 		;
 			Chosen = Presumed,
 			Templocs = Templocs0
 		)
 	;
-		vn__find_cheap_users(Vn, Locs, Vn_tables),
-		Locs = [_|_]
+		vn__choose_best_user(Vn, Chosen, Vn_tables, Templocs0, Templocs)
+	).
+
+:- pred vn__choose_best_user(vn, vnlval, vn_tables, templocs, templocs).
+:- mode vn__choose_best_user(in, out, in, di, uo) is det.
+
+vn__choose_best_user(Vn, Chosen, Vn_tables, Templocs0, Templocs) :-
+	(
+		vn__find_cheap_users(Vn, Users, Vn_tables),
+		Users = [_|_]
 	->
-		vn__choose_cheapest_loc(Locs, no, no, Presumed),
+		vn__choose_cheapest_loc(Users, no, no, Presumed),
 		(
-			% assign directly to a field only if that is the only
-			% user of this vn
-			Presumed = vn_field(_, _, _),
+			% assign directly to a non-reg location
+			% only if that is the only user of this vn
+			\+ Presumed = vn_reg(_),
 			vn__lookup_uses(Vn, Uses, Vn_tables),
 			list__delete_first(Uses, src_liveval(Presumed),
 				NewUses),
@@ -404,8 +392,9 @@ vn__generate_assignment(Vnlval, Vn, Vn_tables0, Vn_tables,
 	% involves a reference to the old value of hp.
 	(
 		SaveVn = yes(OldVn),
-		vn__maybe_save_prev_value(Vnlval, OldVn, Vn_tables2, Vn_tables3,
-			Templocs3, Templocs, SaveInstrs)
+		vn__find_lvals_in_rval(Rval, ForbiddenLvals),
+		vn__maybe_save_prev_value(Vnlval, OldVn, ForbiddenLvals,
+			Vn_tables2, Vn_tables3, Templocs3, Templocs, SaveInstrs)
 	;
 		SaveVn = no,
 		Vn_tables3 = Vn_tables2,
@@ -684,8 +673,9 @@ vn__flush_old_hp(Srcs0, ReturnRval, Vn_tables0, Vn_tables, Templocs0, Templocs,
 
 	% Save the old value if necessary.
 	( vn__search_current_value(Vnlval, OldVn, Vn_tables3) ->
-		vn__maybe_save_prev_value(Vnlval, OldVn, Vn_tables3, Vn_tables4,
-			Templocs2, Templocs, SaveInstrs)
+		vn__find_lvals_in_rval(Rval, ForbiddenLvals),
+		vn__maybe_save_prev_value(Vnlval, OldVn, ForbiddenLvals,
+			Vn_tables3, Vn_tables4, Templocs2, Templocs, SaveInstrs)
 	;
 		Vn_tables4 = Vn_tables2,
 		Templocs = Templocs2,
@@ -887,6 +877,8 @@ vn__flush_access_path(Vnlval, Srcs, Lval, Vn_tables0, Vn_tables,
 	% and if it cannot be recreated blind (or at least not cheaply),
 	% then save the value somewhere else. We prefer the somewhere else
 	% to be a location where we have to store tha value anyway.
+	% However, we must not choose a location that is used in the expression
+	% being assigned to the vnlval.
 
 	% If we are overwriting a temporary location, it may not have
 	% a current value entry in the vn tables.
@@ -894,12 +886,12 @@ vn__flush_access_path(Vnlval, Srcs, Lval, Vn_tables0, Vn_tables,
 	% We cannot look up the old contents of the Vnlval here, because
 	% it may have been already overwritten in flush_old_hp.
 
-:- pred vn__maybe_save_prev_value(vnlval, vn, vn_tables, vn_tables,
-	templocs, templocs, list(instruction)).
-:- mode vn__maybe_save_prev_value(in, in, di, uo, di, uo, out) is det.
+:- pred vn__maybe_save_prev_value(vnlval, vn, list(lval),
+	vn_tables, vn_tables, templocs, templocs, list(instruction)).
+:- mode vn__maybe_save_prev_value(in, in, in, di, uo, di, uo, out) is det.
 
-vn__maybe_save_prev_value(Vnlval, Vn, Vn_tables0, Vn_tables,
-		Templocs0, Templocs, Instrs) :-
+vn__maybe_save_prev_value(Vnlval, Vn, ForbiddenLvals,
+		Vn_tables0, Vn_tables, Templocs0, Templocs, Instrs) :-
 	(
 		vn__search_uses(Vn, Uses, Vn_tables0),
 		Uses = [_|_],
@@ -912,8 +904,27 @@ vn__maybe_save_prev_value(Vnlval, Vn, Vn_tables0, Vn_tables,
 			vn__find_cheap_users(Vn, ReqLocs, Vn_tables0),
 			ReqLocs = [_|_]
 		->
-			vn__choose_cheapest_loc(ReqLocs, no, no, Chosen),
-			Templocs1 = Templocs0
+			vn__choose_cheapest_loc(ReqLocs, no, no, Presumed),
+			vn__no_heap_vnlval_to_lval(Presumed, MaybePresumed),
+			(
+				MaybePresumed = yes(PresumedLval),
+				( list__member(PresumedLval, ForbiddenLvals) ->
+					vn__next_temploc(Templocs0, Templocs1,
+						Chosen)
+				; Uses = [_,_|_], \+ Presumed = vn_reg(_) ->
+					vn__next_temploc(Templocs0, Templocs1,
+						Chosen)
+				;
+					Chosen = Presumed,
+					Templocs1 = Templocs0
+				)
+			;
+				MaybePresumed = no,
+				% we cannot use Presumed even if it is not
+				% in ForbiddenLvals
+				vn__next_temploc(Templocs0, Templocs1,
+					Chosen)
+			)
 		;
 			vn__next_temploc(Templocs0, Templocs1, Chosen)
 		),

@@ -826,13 +826,17 @@ output_rval(unop(UnaryOp, Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(binop(Op, X, Y)) -->
-	( { Op = array_index } ->
+	(
+		{ Op = array_index }
+	->
 		io__write_string("((Word *)"),
 		output_rval(X),
 		io__write_string(")["),
 		output_rval(Y),
 		io__write_string("]")
-	; { llds__string_op(Op, OpStr) } ->
+	;
+		{ llds__string_op(Op, OpStr) }
+	->
 		io__write_string("(strcmp((char *)"),
 		output_rval(X),
 		io__write_string(", (char *)"),
@@ -841,6 +845,21 @@ output_rval(binop(Op, X, Y)) -->
 		io__write_string(" "),
 		io__write_string(OpStr),
 		io__write_string("0)")
+	;
+		{ Op = (+) },
+		{ Y = const(int_const(C)) },
+		{ C < 0 }
+	->
+		{ NewOp = (-) },
+		{ NewC is 0 - C },
+		{ NewY = const(int_const(NewC)) },
+		io__write_string("("),
+		output_rval(X),
+		io__write_string(" "),
+		output_binary_op(NewOp),
+		io__write_string(" "),
+		output_rval(NewY),
+		io__write_string(")")
 	;
 		io__write_string("("),
 		output_rval(X),

@@ -308,7 +308,6 @@ opt_debug__dump_useful_vns(Vn_tables, Str) :-
 	map__to_assoc_list(Vn_to_uses_table, Vn_to_uses_list),
 	opt_debug__dump_vn_to_uses(Vn_to_uses_list, no, Str).
 
-/*###304 [cc] Warning: variable `Rval_to_vn_str' occurs only once.%%%*/
 opt_debug__dump_tables(Vn_tables, Str) :-
 	Vn_tables = vn_tables(Next_vn,
 		Lval_to_vn_table, Rval_to_vn_table,

@@ -715,7 +715,8 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		CodeAddr = label(Label),
 		\+ frameopt__label_without_frame(Label,
 			FrameSet, TeardownMap, _),
-		opt_util__block_refers_stackvars(Instrs0, yes)
+		opt_util__block_refers_stackvars(Instrs0, yes),
+		\+ frameopt__detstack_teardown(Instrs0, FrameSize, _, _, _)
 	->
 		frameopt__generate_setup(SetupFrame0, yes,
 			SetupSuccip0, yes, FrameSize, SetupCode),
@@ -785,7 +786,11 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		% If it does, put the setup code immediately after the if.
 		% This will be faster because the sp won't be assigned to
 		% just before it is referenced by a detstackvar.
-		( opt_util__block_refers_stackvars(Instrs0, yes) ->
+		(
+			opt_util__block_refers_stackvars(Instrs0, yes),
+			\+ frameopt__detstack_teardown(Instrs0, FrameSize,
+				_, _, _)
+		->
 			SetupFrame2 = yes,
 			SetupSuccip2 = yes,
 			frameopt__generate_setup(SetupFrame1, SetupFrame2,

@@ -25,11 +25,8 @@
 
 :- implementation.
 
-:- import_module vn_table, vn_block, vn_util.
-:- import_module opt_util, opt_debug, map, bintree_set, require, std_util.
-
-% :- import_module atsort, vn_util, opt_util, opt_debug, map, bintree_set.
-% :- import_module int, string, require, std_util.
+:- import_module vn_table, vn_block, vn_debug, vn_util.
+:- import_module opt_util, map, bintree_set, require, std_util.
 
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
@@ -70,9 +67,7 @@ vn__repeat_build_livemap_2(Backinstrs, Livemap0, Ccode, Livemap) :-
 	bintree_set__init(Livevals0),
 	vn__build_livemap(Backinstrs, Livevals0, no, Ccode1,
 		Livemap0, Livemap1),
-	opt_debug__dump_livemap(Livemap1, L_str),
-	opt_debug__write("\n\nLivemap:\n\n"),
-	opt_debug__write(L_str),
+	vn__livemap_msg(Livemap1),
 	( Ccode1 = yes ->
 		Ccode = yes,
 		Livemap = Livemap1
@@ -302,12 +297,6 @@ vn__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 		Moreinstrs2 = Moreinstrs,
 		Ccode1 = Ccode0
 	),
-	%% opt_debug__dump_instr(Uinstr, Instr_str),
-	%% opt_debug__write("\nInstr: "),
-	%% opt_debug__write(Instr_str),
-	%% opt_debug__dump_livevals(Livevals2, Live_str),
-	%% opt_debug__write("\nLivevals: "),
-	%% opt_debug__write(Live_str),
 	vn__build_livemap(Moreinstrs2, Livevals2, Ccode1, Ccode,
 		Livemap1, Livemap).
 
