@@ -49,12 +49,12 @@ lcss__add_memo(X, Y, Length, Lcss, MemoIn, MemoOut) :-
 %-----------------------------------------------------------------------------%
 
 lcss__show_diff(File1, File2) -->
-	io__write_string("Finding LCSS...\n"),
+%	io__write_string("Finding LCSS...\n"),
 	{ lcss__find_lcss(File1, File2, Lcss) },
-	lcss__show_lcss(Lcss),
-	io__write_string("Converting to diff...\n"),
+%	lcss__show_lcss(Lcss),
+%	io__write_string("Converting to diff...\n"),
 	{ lcss__to_diff(File1, File2, Lcss, Diff) },
-	io__write_string("Writing...\n"),
+%	io__write_string("Writing...\n"),
 	lcss__display_diff(File1, File2, Diff).
 
 %-----------------------------------------------------------------------------%
