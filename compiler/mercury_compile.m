@@ -2100,8 +2100,16 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	mercury_compile__maybe_termination(HLDS27, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"),
 
-	mercury_compile__maybe_type_ctor_infos(HLDS28, Verbose, Stats, HLDS30),
-	mercury_compile__maybe_dump_hlds(HLDS30, "30", "type_ctor_infos"),
+	mercury_compile__maybe_type_ctor_infos(HLDS28, Verbose, Stats, HLDS29),
+	mercury_compile__maybe_dump_hlds(HLDS29, "29", "type_ctor_infos"),
+
+	% warn_dead_procs must come after type_ctor_infos, so that it
+	% handles unification & comparison procedures correctly,
+	% but it must also come before optimizations such as higher-order
+	% specialization and inlining, which can make the original code
+	% for a procedure dead by inlining/specializing all uses of it.
+	mercury_compile__maybe_warn_dead_procs(HLDS29, Verbose, Stats, HLDS30),
+	mercury_compile__maybe_dump_hlds(HLDS30, "30", "warn_dead_procs"),
 
 	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
 
@@ -2148,10 +2156,13 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 
 	% Magic sets should be the last thing done to Aditi procedures
 	% before RL code generation, and must come immediately after DNF.
+	% Note that if this pass is done, it will also invokes dead_proc_elim
+	% (XXX which means dead_proc_elim may get done twice).
 	mercury_compile__maybe_magic(HLDS45, Verbose, Stats, HLDS47),
 	mercury_compile__maybe_dump_hlds(HLDS47, "47", "magic"),
 
-	mercury_compile__maybe_dead_procs(HLDS47, Verbose, Stats, HLDS49),
+	mercury_compile__maybe_eliminate_dead_procs(HLDS47, Verbose, Stats,
+		HLDS49),
 	mercury_compile__maybe_dump_hlds(HLDS49, "49", "dead_procs"),
 
 	% Deep profiling transformation should be done late in the piece
@@ -2676,6 +2687,42 @@ mercury_compile__check_stratification(HLDS0, Verbose, Stats, HLDS,
 		{ HLDS = HLDS0 }
 	).
 
+:- pred mercury_compile__maybe_warn_dead_procs(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_warn_dead_procs(in, in, in, out, di, uo)
+	is det.
+
+mercury_compile__maybe_warn_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(warn_dead_procs, WarnDead),
+	( { WarnDead = yes } ->
+		maybe_write_string(Verbose,
+			"% Warning about dead procedures...\n"),
+		maybe_flush_output(Verbose),
+		dead_proc_elim(warning_pass, HLDS0, _HLDS1),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats),
+
+%		XXX The warning pass also does all the work of optimizing
+%		    away the dead procedures.  If we're optimizing, then
+%		    it would be nice if we could keep the HLDS that results.
+%                   However, because this pass gets run before type
+%		    specialization, dead code elimination at this point
+%		    incorrectly optimizes away procedures created for
+%		    `pragma type_spec' declarations.  So we can't use the
+%		    code below.  Instead we need to keep original HLDS.
+%
+%		%%% globals__io_lookup_bool_option(optimize_dead_procs,
+%		%%% 	OptimizeDead),
+%		%%% ( { OptimizeDead = yes } ->
+%		%%% 	{ HLDS = HLDS1 }
+%		%%% ;
+%		%%% 	{ HLDS = HLDS0 }
+%		%%% )
+		{ HLDS = HLDS0 }
+	;
+		{ HLDS = HLDS0 }
+	).
+
 :- pred mercury_compile__simplify(module_info, bool, bool, bool, bool,
 	pred(task, module_info, module_info, io__state, io__state), 
 	module_info, io__state, io__state).
@@ -3177,18 +3224,18 @@ mercury_compile__maybe_magic(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS0 = HLDS }
 	).
 
-:- pred mercury_compile__maybe_dead_procs(module_info, bool, bool,
+:- pred mercury_compile__maybe_eliminate_dead_procs(module_info, bool, bool,
 	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_dead_procs(in, in, in, out, di, uo)
+:- mode mercury_compile__maybe_eliminate_dead_procs(in, in, in, out, di, uo)
 	is det.
 
-mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__maybe_eliminate_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(optimize_dead_procs, Dead),
 	( { Dead = yes } ->
 		maybe_write_string(Verbose,
 			"% Eliminating dead procedures...\n"),
 		maybe_flush_output(Verbose),
-		dead_proc_elim(HLDS0, HLDS),
+		dead_proc_elim(final_optimization_pass, HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

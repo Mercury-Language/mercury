@@ -221,7 +221,7 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	%
 	% No optimizations which could optimize away calls to Aditi
 	% procedures (e.g. simplify.m) should be run after this is done.
-	dead_proc_elim(ModuleInfo1, ModuleInfo2),
+	dead_proc_elim(final_optimization_pass, ModuleInfo1, ModuleInfo2),
 
 	{ module_info_ensure_aditi_dependency_info(ModuleInfo2, ModuleInfo3) },
 	{ module_info_aditi_dependency_ordering(ModuleInfo3, Ordering) },

@@ -94,6 +94,7 @@
 		;	warn_target_code
 		;	warn_up_to_date
 		;	warn_stubs
+		;	warn_dead_procs
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -723,7 +724,8 @@ option_defaults_2(warning_option, [
 	warn_non_tail_recursion -	bool(no),
 	warn_target_code	-	bool(yes),
 	warn_up_to_date -		bool(yes),
-	warn_stubs		-	bool(yes)
+	warn_stubs		-	bool(yes),
+	warn_dead_procs	-		bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -1334,6 +1336,7 @@ long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
 long_option("warn-target-code",		warn_target_code).
 long_option("warn-up-to-date",		warn_up_to_date).
 long_option("warn-stubs",		warn_stubs).
+long_option("warn-dead-procs",		warn_dead_procs).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -2020,7 +2023,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_undefined_options_variables - bool(Enable),
 			warn_target_code	-	bool(Enable),
 			warn_up_to_date -		bool(Enable),
-			warn_stubs	-		bool(Enable)
+			warn_stubs	-		bool(Enable),
+			warn_dead_procs	-		bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -2497,6 +2501,8 @@ options_help_warning -->
 		"\tclauses.  Note that this option only has any effect if",
 		"\tthe `--allow-stubs' option (described in the ""Language",
 		"\tSemantics Options"" section below) is enabled.",
+		"--warn-dead-procs",
+		"\tWarn about procedures which are never called.",
 		"--no-warn-target-code",
 		"\tDisable warnings from the compiler used to process the",
 		"\ttarget code (e.g. gcc)."

@@ -10,6 +10,8 @@
 % It also computes the usage counts that inlining.m uses for the
 % `--inline-single-use' option.
 %
+% It also issues warnings about unused procedures.
+%
 % Main author: zs.
 %
 %-----------------------------------------------------------------------------%
@@ -24,16 +26,27 @@
 
 :- import_module map, std_util, io.
 
-:- pred dead_proc_elim(module_info, module_info, io__state, io__state).
-:- mode dead_proc_elim(in, out, di, uo) is det.
+:- type dead_proc_pass
+	--->	warning_pass
+	;	final_optimization_pass
+	.
 
+	% Eliminate dead procedures.
+	% If the first argument is `warning_pass',
+	% also warn about any user-defined procedures that are dead.
+	% If the first argument is `final_optimization_pass',
+	% also eliminate any opt_imported procedures.
+:- pred dead_proc_elim(dead_proc_pass, module_info, module_info,
+		io__state, io__state).
+:- mode dead_proc_elim(in, in, out, di, uo) is det.
+
+	% Analyze which entities are needed, and for those entities
+	% which are needed, record how many times they are referenced
+	% (this information is used by our inlining heuristics).
 :- pred dead_proc_elim__analyze(module_info, needed_map).
 :- mode dead_proc_elim__analyze(in, out) is det.
 
-:- pred dead_proc_elim__eliminate(module_info, needed_map, module_info,
-	io__state, io__state).
-:- mode dead_proc_elim__eliminate(in, in, out, di, uo) is det.
-
+	% Optimize away any dead predicates.
 	% This is performed immediately after make_hlds.m to avoid doing
 	% semantic checking and optimization on predicates from `.opt' 
 	% files which are not used in the current module. This assumes that
@@ -56,6 +69,7 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__passes_aux.
+:- import_module hlds__error_util.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module ll_backend__llds.
@@ -90,9 +104,9 @@
 :- type entity_queue	==	queue(entity).
 :- type examined_set	==	set(entity).
 
-dead_proc_elim(ModuleInfo0, ModuleInfo, State0, State) :-
+dead_proc_elim(Pass, ModuleInfo0, ModuleInfo, State0, State) :-
 	dead_proc_elim__analyze(ModuleInfo0, Needed),
-	dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo,
+	dead_proc_elim__eliminate(Pass, ModuleInfo0, Needed, ModuleInfo,
 		State0, State).
 
 %-----------------------------------------------------------------------------%
@@ -527,14 +541,21 @@ dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 			bool		% has anything changed
 		).
 			
-dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
+	% Given the information about which entities are needed,
+	% eliminate procedures which are not needed.
+:- pred dead_proc_elim__eliminate(dead_proc_pass, module_info, needed_map,
+		module_info, io__state, io__state).
+:- mode dead_proc_elim__eliminate(in, in, in, out, di, uo) is det.
+
+dead_proc_elim__eliminate(Pass, ModuleInfo0, Needed0, ModuleInfo,
+		State0, State) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	module_info_preds(ModuleInfo0, PredTable0),
 
 	Changed0 = no,
 	ElimInfo0 = elimination_info(Needed0, ModuleInfo0,
 			PredTable0, Changed0),
-	list__foldl2(dead_proc_elim__eliminate_pred, PredIds, ElimInfo0, 
+	list__foldl2(dead_proc_elim__eliminate_pred(Pass), PredIds, ElimInfo0, 
 		ElimInfo, State0, State),
 	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable, Changed),
 
@@ -557,11 +578,12 @@ dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 
 		% eliminate any unused procedures for this pred
 
-:- pred dead_proc_elim__eliminate_pred(pred_id, elim_info, elim_info,
-	io__state, io__state).
-:- mode dead_proc_elim__eliminate_pred(in, in, out, di, uo) is det.
+:- pred dead_proc_elim__eliminate_pred(dead_proc_pass, pred_id,
+	elim_info, elim_info, io__state, io__state).
+:- mode dead_proc_elim__eliminate_pred(in, in, in, out, di, uo) is det.
 
-dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
+dead_proc_elim__eliminate_pred(Pass, PredId, ElimInfo0, ElimInfo,
+		State0, State) :-
 	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0, Changed0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
@@ -570,25 +592,56 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 		% If yes, find out also whether any of its procedures
 		% must be kept.
 		( Status = local,
-			Keep = no
+			Keep = no,
+			(
+				% Don't warn for unify or comparison preds,
+				% since they may be automatically generated
+				is_unify_or_compare_pred(PredInfo0)
+			->
+				WarnForThisProc = no
+			;
+				% Don't warn for procedures introduced from
+				% lambda expressions.  The only time those
+				% procedures will be unused is if the procedure
+				% containing the lambda expression is unused,
+				% and in that case, we already warn for that
+				% containing procedure if appropriate.
+				% Likewise, don't warn for procedures
+				% introduced for type specialization.
+				pred_info_name(PredInfo0, PredName),
+				( string__prefix(PredName, "IntroducedFrom__")
+				; string__prefix(PredName, "TypeSpecOf__")
+				)
+			->
+				WarnForThisProc = no
+			;
+				WarnForThisProc = yes
+			)
 		; Status = pseudo_imported,
-			Keep = no
+			Keep = no,
+			WarnForThisProc = no
 		; Status = pseudo_exported,
 			hlds_pred__in_in_unification_proc_id(InitProcId),
-			Keep = yes(InitProcId)
+			Keep = yes(InitProcId),
+			WarnForThisProc = no
 		)
 	->
 		pred_info_procids(PredInfo0, ProcIds),
 		pred_info_procedures(PredInfo0, ProcTable0),
-		list__foldl2(dead_proc_elim__eliminate_proc(PredId, Keep, 
-			ElimInfo0),
+		list__foldl2(dead_proc_elim__eliminate_proc(Pass, PredId,
+			Keep, WarnForThisProc, ElimInfo0),
 			ProcIds, Changed0 - ProcTable0, Changed - ProcTable,
 			State0, State),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
 		% Don't generate code in the current module for
-		% unoptimized opt_imported preds
+		% unoptimized opt_imported preds (that is, for
+		% opt_imported preds which we have not by this point
+		% managed to inline or specialize; this code should be
+		% called with `Pass = final_optimization_pass'
+		% only after inlining and specialization is complete).
+		Pass = final_optimization_pass,
 		Status = opt_imported
 	->
 		Changed = yes,
@@ -630,13 +683,15 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 
 		% eliminate a procedure, if unused
 
-:- pred dead_proc_elim__eliminate_proc(pred_id, maybe(proc_id), elim_info,
-	proc_id, pair(bool, proc_table), pair(bool, proc_table),
+:- pred dead_proc_elim__eliminate_proc(dead_proc_pass, pred_id, maybe(proc_id),
+	bool, elim_info, proc_id,
+	pair(bool, proc_table), pair(bool, proc_table),
 	io__state, io__state).
-:- mode dead_proc_elim__eliminate_proc(in, in, in, in, in, out, di, uo) is det.
+:- mode dead_proc_elim__eliminate_proc(in, in, in, in, in, in, in, out, di, uo)
+	is det.
 
-dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId, 
-		Changed0 - ProcTable0, Changed - ProcTable) -->
+dead_proc_elim__eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
+		ProcId, Changed0 - ProcTable0, Changed - ProcTable) -->
 	{ ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable, _) },
 	(
 		% Keep the procedure if it is in the needed map
@@ -657,8 +712,32 @@ dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId,
 		;
 			[]
 		),
+		(
+			{ Pass = warning_pass },
+			{ WarnForThisProc = yes }
+			% we don't need to check the warn_dead_procs option
+			% since that is already checked by mercury_compile.m
+			% when deciding whether to invoke this warning_pass
+		->
+			{ proc_info_context(ProcTable0 ^ det_elem(ProcId),
+				Context) },
+			warn_dead_proc(PredId, ProcId, Context, ModuleInfo)
+		;
+			[]
+		),
 		{ map__delete(ProcTable0, ProcId, ProcTable) }
 	).
+
+:- pred warn_dead_proc(pred_id, proc_id, prog_context, module_info,
+		io__state, io__state).
+:- mode warn_dead_proc(in, in, in, in, di, uo) is det.
+
+warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
+	error_util__describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), 
+		ProcName),
+	Components = [words("Warning:"), fixed(ProcName),
+			words("is never called.")],
+	error_util__report_warning(Context, 0, Components, !IO).
 
 :- pred dead_proc_elim__eliminate_base_gen_infos(list(type_ctor_gen_info),
 	needed_map, list(type_ctor_gen_info)).

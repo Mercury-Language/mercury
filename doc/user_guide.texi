@@ -4274,6 +4274,11 @@ Disable warnings about procedures for which there are no
 clauses.  Note that this option only has any effect if
 the @samp{--allow-stubs} option (@pxref{Language semantics options})
 is enabled.
+
+@sp 1
+@item --warn-dead-procs
+@findex --warn-dead-procs
+Warn about procedures which are never called.
 @end table
 
 @node Verbosity options
