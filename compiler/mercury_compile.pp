@@ -84,20 +84,23 @@ main_predicate_2(ok(OptionTable0), Args) -->
 	        { map__lookup(OptionTable0, tags, Tags_Method0) },
 	        ( 
 		    { Tags_Method0 = string(Tags_Method_String) },
-		    { convert_tags_method(Tags_Method_String, Tags_Method) }
+		    { convert_tags_method(Tags_Method_String, Tags_Method1) }
 		->
 		    { map__lookup(OptionTable0, grade, GradeOpt) },
 		    (   
 			{ GradeOpt = string(GradeString) },
-		        { convert_grade_option(GradeString, OptionTable0,
+		        { convert_gc_grade_option(GradeString, OptionTable0,
 				OptionTable) }
 		    ->
+			{ GC_Method = conservative ->
+				Tags_Method = none
+			;
+				Tags_Method = Tags_Method1
+			},
 		        globals__io_init(OptionTable, GC_Method, Tags_Method),
 		        process_module_list(Args)
 		    ;
-			usage_error(
-"Invalid grade option\n(must be `debug', `none', `reg', `jump', or `fast')"
-				)
+			usage_error("Invalid grade option")
 		    )
 		;
 		    usage_error(
@@ -111,41 +114,76 @@ main_predicate_2(ok(OptionTable0), Args) -->
 	    )
 	).
 
+:- pred convert_gc_grade_option(string::in, option_table::in, option_table::out)
+	is semidet.
+
+convert_gc_grade_option(GC_Grade) -->
+	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
+		set_string_opt(gc, "conservative"),
+		convert_grade_option(Grade)
+	;
+		set_string_opt(gc, "none"),
+		convert_grade_option(GC_Grade)
+	).
+
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
 convert_grade_option("") --> [].
+convert_grade_option("asm_fast") -->
+	set_bool_opt(debug, no),
+	set_bool_opt(c_optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, yes),
+	set_bool_opt(gcc_global_registers, yes),
+	set_bool_opt(asm_labels, yes).
 convert_grade_option("fast") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, yes).
+	set_bool_opt(gcc_global_registers, yes),
+	set_bool_opt(asm_labels, no).
+convert_grade_option("asm_jump") -->
+	set_bool_opt(debug, no),
+	set_bool_opt(c_optimize, yes),
+	set_bool_opt(gcc_non_local_gotos, yes),
+	set_bool_opt(gcc_global_registers, no),
+	set_bool_opt(asm_labels, yes).
 convert_grade_option("jump") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
-	set_bool_opt(gcc_global_registers, no).
+	set_bool_opt(gcc_global_registers, no),
+	set_bool_opt(asm_labels, no).
 convert_grade_option("reg") -->
 	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, yes).
+	set_bool_opt(gcc_global_registers, yes),
+	set_bool_opt(asm_labels, no).
 convert_grade_option("none") -->
 	set_bool_opt(debug, yes),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no).
+	set_bool_opt(gcc_global_registers, no),
+	set_bool_opt(asm_labels, no).
 convert_grade_option("debug") -->
 	set_bool_opt(debug, yes),
 	set_bool_opt(c_optimize, no),
 	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no).
+	set_bool_opt(gcc_global_registers, no),
+	set_bool_opt(asm_labels, no).
 
 :- pred set_bool_opt(option, bool, option_table, option_table).
 :- mode set_bool_opt(in, in, in, out) is det.
 
 set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
 	map__set(OptionTable0, Option, bool(Value), OptionTable).
+
+:- pred set_string_opt(option, string, option_table, option_table).
+:- mode set_string_opt(in, in, in, out) is det.
+
+set_string_opt(Option, Value, OptionTable0, OptionTable) :-
+	map__set(OptionTable0, Option, string(Value), OptionTable).
 
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
@@ -1570,6 +1608,12 @@ mercury_compile__c_to_obj(Module, Succeeded) -->
 	;
 		GotoOpt = ""
 	},
+	globals__io_lookup_bool_option(asm_labels, ASM_Labels),
+	{ ASM_Labels = yes ->
+		AsmOpt = "-DUSE_ASM_LABELS "
+	;
+		AsmOpt = ""
+	},
 	globals__io_lookup_bool_option(debug, Debug),
 	{ Debug = yes ->
 		DebugOpt = "-g "
@@ -1582,7 +1626,7 @@ mercury_compile__c_to_obj(Module, Succeeded) -->
 	;
 		OptimizeOpt = ""
 	},
-	{ string__append_list( [CC, " ", InclOpt, RegOpt, GotoOpt,
+	{ string__append_list( [CC, " ", InclOpt, RegOpt, GotoOpt, AsmOpt,
 		DebugOpt, OptimizeOpt, CFLAGS, " -c ", Module, ".c"],
 		Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded).
