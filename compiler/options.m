@@ -1,11 +1,14 @@
 %-----------------------------------------------------------------------------%
 
-
 	% Define the stuff necessary so that getopt.nl
 	% can parse the command-line options.
 	% When we implement higher-order preds, this and 
 	% getopt.nl should be rewritten to use them.
 	% Currently the interface dependencies are very hairy.
+
+	% IMPORTANT NOTE: any changes to the options should be
+	% reflected in both the help message produced below,
+	% and in the Mercury User's Guide (../doc/user_guide.texi).
 
 :- module options.
 :- interface.
@@ -104,6 +107,7 @@
 		;	c_optimize
 		;	debug
 		;	grade
+		;	procs_per_c_function
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -208,7 +212,8 @@ option_defaults_2(optimization_option, [
 	tag_switch_size		-	int(8),
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
-	common_subexpression	-	bool(no)
+	common_subexpression	-	bool(no),
+	procs_per_c_function	-	int(1)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
@@ -322,6 +327,8 @@ long_option("tag-switch-size",		tag_switch_size).
 long_option("middle-rec",		middle_rec).
 long_option("inlining",			inlining).
 long_option("common-subexpression",	common_subexpression).
+long_option("procs-per-c-function",	procs_per_c_function).
+long_option("procs-per-C-function",	procs_per_c_function).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -413,7 +420,6 @@ options_help -->
 	io__write_string("\t\t\tdebug, none, reg, jump, asm_jump, fast, asm_fast\n"),
 	io__write_string("\t\tor one of those with `.gc' appended.\n"),
 	io__write_string("\t\t(See the mgnuc shell script source code for details).\n"),
-
 	io__write_string("\t--gc {none, conservative, accurate}\n"),
 	io__write_string("\t--garbage-collection {none, conservative, accurate}\n"),
 	io__write_string("\t\tSpecify which method of garbage collection to use.\n"),
@@ -447,6 +453,7 @@ options_help -->
 	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
 	io__write_string("\t--debug\n"),
 	io__write_string("\t\tEnable debugging.\n"),
+
 	io__write_string("\nOptimization Options\n"),
 	io__write_string("\t--no-optimize\n"),
 	io__write_string("\t\tDisable the optimisation passes.\n"),
@@ -469,24 +476,29 @@ options_help -->
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate deterministic switches as a simple if-then-else chain;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
-	io__write_string("\t--req-density\n"),
+	io__write_string("\t--req-density <percentage>\n"),
 	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
-	io__write_string("\t\tmust have at least this percentage of full slots\n"),
-	io__write_string("\t--dense-switch-size\n"),
+	io__write_string("\t\tmust have at least this percentage of full slots.\n"),
+	io__write_string("\t--dense-switch-size <n>\n"),
 	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
-	io__write_string("\t\tmust have at least this many entries\n"),
-	io__write_string("\t--string-switch-size\n"),
+	io__write_string("\t\tmust have at least <n> entries.\n"),
+	io__write_string("\t--string-switch-size <n>\n"),
 	io__write_string("\t\tThe hash table generated for a string switch\n"),
-	io__write_string("\t\tmust have at least this many entries\n"),
-	io__write_string("\t--tag-switch-size\n"),
+	io__write_string("\t\tmust have at least <n> entries.\n"),
+	io__write_string("\t--tag-switch-size <n>\n"),
 	io__write_string("\t\tThe number of alternatives in a tag switch\n"),
-	io__write_string("\t\tmust be at least this number\n"),
+	io__write_string("\t\tmust be at least <n>.\n"),
 	io__write_string("\t--no-middle-rec\n"),
 	io__write_string("\t\tDisable the middle recursion optimization.\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--no-common-subexpression\n"),
 	io__write_string("\t\tDisable common subexpression optimisation.\n"),
+	io__write_string("\t--procs-per-c-function <n>\n"),
+	io__write_string("\t\tDon't put the code for more than <n> Mercury\n"),
+	io__write_string("\t\tprocedures in a single C function.  The default\n"),
+	io__write_string("\t\t value of <n> is one.  Increasing <n> can produce\n"),
+	io__write_string("\t\tslightly more efficient code, but makes compilation slower.\n"),
 	io__write_string("\t--no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 
