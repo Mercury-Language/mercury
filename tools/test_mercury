@@ -300,7 +300,6 @@ do
 			 mmake install	$PARALLEL MMAKEFLAGS=$PARALLEL &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
-			;;
 	fi
 done
 
