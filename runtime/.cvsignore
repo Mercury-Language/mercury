@@ -1,7 +1,2 @@
-conf.h
-call.c
-context.c
-engine.c
-type_info.c
-wrapper.c
+mercury_conf.h
 runtime.init
