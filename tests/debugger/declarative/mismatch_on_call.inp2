@@ -1,0 +1,12 @@
+register --quiet
+untrust 0
+context none
+echo on
+
+f
+dd
+b 4
+mark
+n
+y
+quit -y

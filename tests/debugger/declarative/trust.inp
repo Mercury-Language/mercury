@@ -19,6 +19,8 @@ untrust 3
 trust trust_1
 trust no_such_module
 trust trust_2.
+trust std lib
+trust standard library
 trusted
 untrust 4
 trusted

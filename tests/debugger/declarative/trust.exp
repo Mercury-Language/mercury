@@ -47,16 +47,22 @@ mdb> trust no_such_module
 mdb: there is no such module, predicate or function.
 mdb> trust trust_2.
 Trusting pred trust_2.concat/3
+mdb> trust std lib
+Trusting the Mercury standard library
+mdb> trust standard library
+Trusting the Mercury standard library
 mdb> trusted
 Trusted Objects:
 4: predicate trust.main/2
 5: module trust_1
 6: predicate trust_2.concat/3
+7: the Mercury standard library
 mdb> untrust 4
 mdb> trusted
 Trusted Objects:
 5: module trust_1
 6: predicate trust_2.concat/3
+7: the Mercury standard library
 mdb> untrust 4
 mdb: no such trusted object
 mdb> untrust 99
