@@ -1081,11 +1081,11 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		% check that the type of the functor matches the type
 		% of the variable
 		%
-		typecheck_unify_var_functor_4( ConsTypeAssignSet, Var,
+		typecheck_functor_type( ConsTypeAssignSet, Var,
 			TypeInfo0, [], ArgsTypeAssignSet),
 		( ArgsTypeAssignSet = [], ConsTypeAssignSet \= [] ->
 			type_info_get_io_state(TypeInfo0, IOState0),
-			report_error_unif_var_functor_4(TypeInfo0,
+			report_error_functor_type(TypeInfo0,
 				Var, ConsDefnList, Functor, Arity,
 				TypeAssignSet0,
 				IOState0, IOState1),
@@ -1099,11 +1099,11 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		% check that the type of the arguments of the functor matches
 		% their expected type for this functor
 		%
-		typecheck_unify_var_functor_5( ArgsTypeAssignSet, Args,
+		typecheck_functor_arg_types( ArgsTypeAssignSet, Args,
 			TypeInfo2, [], TypeAssignSet),
 		( TypeAssignSet = [], ArgsTypeAssignSet \= [] ->
 			type_info_get_io_state(TypeInfo2, IOState2),
-			report_error_unif_var_functor_5(TypeInfo2,
+			report_error_functor_arg_types(TypeInfo2,
 				Var, ConsDefnList, Functor, Args,
 				TypeAssignSet0,
 				IOState2, IOState3),
@@ -1174,40 +1174,40 @@ typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], TypeInfo,
 	typecheck_unify_var_functor_get_ctors_2(ConsDefns, TypeInfo,
 			TypeAssign0).
 
-	% typecheck_unify_var_functor_4(ConsTypeAssignSet, Var, ...):
+	% typecheck_functor_type(ConsTypeAssignSet, Var, ...):
 	%
 	% For each possible cons type assignment in `ConsTypeAssignSet',
 	% for each possible constructor type,
 	% check that the type of `Var' matches this type.
 
-:- pred typecheck_unify_var_functor_4(cons_type_assign_set, var, type_info,
+:- pred typecheck_functor_type(cons_type_assign_set, var, type_info,
 				args_type_assign_set, args_type_assign_set).
-:- mode typecheck_unify_var_functor_4(in, in, type_info_ui, in, out) is det.
+:- mode typecheck_functor_type(in, in, type_info_ui, in, out) is det.
 
-typecheck_unify_var_functor_4([], _, _) --> [].
-typecheck_unify_var_functor_4([TypeAssign - ConsType | ConsTypeAssigns],
+typecheck_functor_type([], _, _) --> [].
+typecheck_functor_type([TypeAssign - ConsType | ConsTypeAssigns],
 			Var, TypeInfo) -->
 	{ ConsType = cons_type(Type, ArgTypes) },
-	type_assign_unify_var_functor_4(Type, ArgTypes, Var,
+	type_assign_check_functor_type(Type, ArgTypes, Var,
 					TypeAssign, TypeInfo),
-	typecheck_unify_var_functor_4(ConsTypeAssigns, Var, TypeInfo).
+	typecheck_functor_type(ConsTypeAssigns, Var, TypeInfo).
 
-	% typecheck_unify_var_functor_5(ConsTypeAssignSet, Var, Args, ...):
+	% typecheck_functor_arg_types(ConsTypeAssignSet, Var, Args, ...):
 	%
 	% For each possible cons type assignment in `ConsTypeAssignSet',
 	% for each possible constructor argument types,
 	% check that the types of `Args' matches these types.
 
-:- pred typecheck_unify_var_functor_5(args_type_assign_set, list(term),
+:- pred typecheck_functor_arg_types(args_type_assign_set, list(term),
 				type_info, type_assign_set, type_assign_set).
-:- mode typecheck_unify_var_functor_5(in, in, type_info_ui, in, out)
+:- mode typecheck_functor_arg_types(in, in, type_info_ui, in, out)
 	is det.
 
-typecheck_unify_var_functor_5([], _, _) --> [].
-typecheck_unify_var_functor_5([TypeAssign - ArgTypes | ConsTypeAssigns],
+typecheck_functor_arg_types([], _, _) --> [].
+typecheck_functor_arg_types([TypeAssign - ArgTypes | ConsTypeAssigns],
 			Args, TypeInfo) -->
 	type_assign_term_has_type_list(Args, ArgTypes, TypeAssign, TypeInfo),
-	typecheck_unify_var_functor_5(ConsTypeAssigns, Args, TypeInfo).
+	typecheck_functor_arg_types(ConsTypeAssigns, Args, TypeInfo).
 
 	% iterate over all the possible type assignments.
 
@@ -1337,13 +1337,13 @@ type_assign_unify_var_functor_2(ConsType, ArgTypes, Args, Y, TypeAssign1,
 			TypeInfo, TypeAssignSet0, TypeAssignSet)
 	).
 
-:- pred type_assign_unify_var_functor_4(type, list(type), 
+:- pred type_assign_check_functor_type(type, list(type), 
 		var, type_assign, type_info,
 		args_type_assign_set, args_type_assign_set).
-:- mode type_assign_unify_var_functor_4(in, in, in, in, type_info_ui,
+:- mode type_assign_check_functor_type(in, in, in, in, type_info_ui,
 		in, out) is det.
 
-type_assign_unify_var_functor_4(ConsType, ArgTypes, Y, TypeAssign1,
+type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 
 		% unify the type of Var with the type of the constructor
@@ -2060,14 +2060,14 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
-:- pred report_error_unif_var_functor_4(type_info, var, list(cons_type_info),
+:- pred report_error_functor_type(type_info, var, list(cons_type_info),
 					const, int,
 					type_assign_set,
 					io__state, io__state).
-:- mode report_error_unif_var_functor_4(type_info_no_io, in, in, in, in, in,
+:- mode report_error_functor_type(type_info_no_io, in, in, in, in, in,
 					di, uo) is det.
 
-report_error_unif_var_functor_4(TypeInfo, Var, ConsDefnList, Functor, Arity,
+report_error_functor_type(TypeInfo, Var, ConsDefnList, Functor, Arity,
 		TypeAssignSet) -->
 
 	{ type_info_get_context(TypeInfo, Context) },
@@ -2100,14 +2100,14 @@ report_error_unif_var_functor_4(TypeInfo, Var, ConsDefnList, Functor, Arity,
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
-:- pred report_error_unif_var_functor_5(type_info, var, list(cons_type_info),
+:- pred report_error_functor_arg_types(type_info, var, list(cons_type_info),
 					const, list(term),
 					type_assign_set,
 					io__state, io__state).
-:- mode report_error_unif_var_functor_5(type_info_no_io, in, in, in, in, in,
+:- mode report_error_functor_arg_types(type_info_no_io, in, in, in, in, in,
 					di, uo) is det.
 
-report_error_unif_var_functor_5(TypeInfo, Var, ConsDefnList, Functor, Args,
+report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 		TypeAssignSet) -->
 
 	{ type_info_get_context(TypeInfo, Context) },
