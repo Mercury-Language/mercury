@@ -88,7 +88,7 @@ static  const MR_Label_Layout
 static  const char  *MR_undo_updates_of_maxfr(const MR_Proc_Layout
                         *level_layout, MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Word **maxfr_ptr);
-static  MR_Word     MR_trace_find_input_arg(const MR_Label_Layout *label, 
+static  MR_Word     MR_trace_find_input_arg(const MR_Label_Layout *label,
                         MR_Word *saved_regs, MR_Word *base_sp,
                         MR_Word *base_curfr, MR_uint_least16_t var_num,
                         MR_bool *succeeded);
@@ -205,7 +205,7 @@ MR_trace_real(const MR_Label_Layout *layout)
 #endif
 
             goto check_stop_print;
-          } 
+          }
 
         case MR_CMD_GOTO:
             if (MR_trace_event_number >= MR_trace_ctrl.MR_trace_stop_event) {
