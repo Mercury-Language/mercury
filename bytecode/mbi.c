@@ -3,7 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.c,v 1.7 1997-04-26 05:56:56 fjh Exp $
+** $Id: mbi.c,v 1.8 1997-05-07 12:12:27 fjh Exp $
 */
 
 /* Imports */
@@ -29,7 +29,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mbi.c,v 1.7 1997-04-26 05:56:56 fjh Exp $";
+rcs_id[]	= "$Id: mbi.c,v 1.8 1997-05-07 12:12:27 fjh Exp $";
 
 static void
 usage(void);
@@ -39,10 +39,8 @@ program_name	= NULL;
 
 /* Implementation */
 
-#if	! defined(UNIT_TESTING)
-
 int
-main(int argc, char* argv[])
+BC_mbi_main(int argc, char* argv[])
 {
 	int	c;
 
@@ -110,8 +108,6 @@ main(int argc, char* argv[])
 
 	exit(EXIT_SUCCESS);
 } /* end main() */
-
-#endif	/* ! UNIT_TESTING */
 
 static void
 usage(void)

@@ -1,7 +1,7 @@
 This directory holds the source code for the Mercury bytecode
 utilities. `mdis' is the Mercury bytecode disassembler.
 `mbi' is the Mercury bytecode interpreter.
-(XXX should it be a stand-alone program, or should it just be a library?)
+`libmbi' is the same thing, minus main().
 
 All exported symbols defined in modules in this directory should be prefixed
 with `MB_', for "Mercury Bytecode", to avoid clashes with names defined in
