@@ -155,12 +155,20 @@ static Word deref(Word p) {
 #ifdef __GNUC__
 
 #define LABEL(label)		(&&label)
+#ifdef SPEED
 #define GOTO(label)		goto *(label)
+#else
+#define GOTO(label)		do { assert(label); goto *(label); } while(0)
+#endif
 
 #else
 
 #define LABEL(label)		(label)
+#ifdef SPEED
 #define GOTO(label)		return (label)
+#else
+#define GOTO(label)		do { assert(label); return (label); } while(0)
+#endif
 
 #endif
 
