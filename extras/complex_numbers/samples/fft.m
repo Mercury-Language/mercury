@@ -25,7 +25,7 @@
 %------------------------------------------------------------------------------%
 :- interface.
 
-:- import_module list, complex.
+:- import_module list, complex_numbers:complex.
 
 :- pred fft(list(complex), list(complex)).
 :- mode fft(in, out) is det.
