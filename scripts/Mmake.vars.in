@@ -121,7 +121,6 @@ ECHO_MERCURY_OPTIONS = { \
 	echo MS_CLFLAGS += '$(ALL_MS_CLFLAGS)'; \
 	echo MS_ILASMFLAGS += '$(ALL_MS_ILASMFLAGS)'; \
 	echo C2INITARGS += '$(ALL_C2INITARGS)'; \
-	echo MLFLAGS += '$(ALL_MLFLAGS)'; \
 	echo MLLIBS += '$(ALL_MLLIBS)'; \
 	echo MLOBJS += '$(ALL_MLOBJS)'; \
 	echo LDFLAGS += '$(ALL_LDFLAGS)'; \
