@@ -227,12 +227,23 @@ sub output_single_name() {
 		    $name, $file, $match_line;
 	    } else {
 		# Works with vi or vim 5.0+.  The ex command searches
-		# for the matching line and then places the tag in the 
-		# search buffer so that if this is a pred/func 
-		# declaration you can do `n' to go to the pred/func 
-		# body.
-		printf out "%s\t%s\t/^%s\$/;-;/%s/\n",
-		    $name, $file, $match_line, $name;
+		# for the matching line and then places a new search
+		# string in the search buffer.  If this is a pred/func 
+		# declaration, the new search string is the tag name,
+		# anchored to start in column 1.  The lets you type
+		# `n' to go to the pred/func body.  For other declarations,
+		# we just put the (unanchored) tag name in the string
+		# buffer, so typing `n' will take you to uses of that name.
+		# The way it places the tag in the search buffer
+		# is by making a mark, doing a search, and then
+		# returning to the marked position.
+		if ($kind eq "pred" || $kind eq "func") {
+		    printf out "%s\t%s\t/^%s\$/;kq|/^\\<%s\\>/;'q\n",
+		        $name, $file, $match_line, $name;
+		} else {
+		    printf out "%s\t%s\t/^%s\$/;kq|-;/\\<%s\\>/;'q\n",
+		        $name, $file, $match_line, $name;
+		}
 	    }
 	    $seen{$name} = 1;
 	    $prev_file{$name} = $file;
