@@ -3917,15 +3917,24 @@ il_system_namespace_name = "System".
 
 mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 		SeparateAssemblies, Imports, AllDecls) :-
-	( SignAssembly = yes,
-		AsmDecls = mercury_strong_name_assembly_decls
-	; SignAssembly = no,
-		AsmDecls = []
-	),
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		( Import = mercury_import(ImportName)
+		( Import = mercury_import(ImportName),
+			( SignAssembly = yes,
+				AsmDecls = mercury_strong_name_assembly_decls
+			; SignAssembly = no,
+				AsmDecls = []
+			)
 		; Import = foreign_import(ForeignImportName),
-			ForeignImportName = il_assembly_name(ImportName)
+			ForeignImportName = il_assembly_name(ImportName),
+			PackageName = mlds_module_name_to_package_name(
+					ImportName),
+			prog_out__sym_name_to_string(PackageName,
+					ForeignPackageStr),
+			( string__prefix(ForeignPackageStr, "System") ->
+				AsmDecls = dotnet_system_assembly_decls
+			;
+				AsmDecls = []
+			)
 		),
 		AsmName = mlds_module_name_to_assembly_name(ImportName),
 		( AsmName = assembly(Assembly),
@@ -3958,13 +3967,9 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 				int8(0x12), int8(0xAA), int8(0x0B), int8(0x0B)
 			])
 		]),
-		extern_assembly("mscorlib", [
-			version(1, 0, 2411, 0),
-			public_key_token([
-				int8(0xb7), int8(0x7a), int8(0x5c), int8(0x56),
-				int8(0x19), int8(0x34), int8(0xE0), int8(0x89)
-			]),
-			hash([
+		extern_assembly("mscorlib",
+			dotnet_system_assembly_decls ++ 
+			[hash([
 				int8(0xb0), int8(0x73), int8(0xf2), int8(0x4c),
 				int8(0x14), int8(0x39), int8(0x0a), int8(0x35),
 				int8(0x25), int8(0xea), int8(0x45), int8(0x0f),
@@ -3972,6 +3977,17 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 				int8(0xe0), int8(0x3b), int8(0xe0), int8(0x95)
 			])
 		]) | Decls].
+
+:- func dotnet_system_assembly_decls = list(assembly_decl).
+
+dotnet_system_assembly_decls
+	= [
+		version(1, 0, 2411, 0),
+		public_key_token([
+			int8(0xb7), int8(0x7a), int8(0x5c), int8(0x56),
+			int8(0x19), int8(0x34), int8(0xE0), int8(0x89)
+		])
+	].
 
 :- func mercury_strong_name_assembly_decls = list(assembly_decl).
 
