@@ -112,7 +112,7 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		map__lookup(Preds, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
 		(
-			ArgTypes = [Type, Type],
+			ArgTypes = [Type | _],
 			type_to_type_id(Type, TypeId0, _)
 		->
 			TypeId = TypeId0
