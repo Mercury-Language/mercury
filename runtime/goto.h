@@ -54,12 +54,19 @@
 
     #define Declare_entry(label)	\
 	extern void label(void) __asm__("entry_" stringify(label))
+    #define Declare_static(label)	\
+	static void label(void) __asm__("entry_" stringify(label))
     #define Define_extern_entry(label)	Declare_entry(label)
     #define Define_entry(label)	\
 	}	\
 	label:	\
 		__asm__(".globl entry_" stringify(label) "\n"	\
 			"entry_" stringify(label) ":");	\
+	{
+    #define Define_static(label)	\
+	}	\
+	label:	\
+		__asm__("entry_" stringify(label) ":");	\
 	{
     #define init_entry(label)	\
 	/* prevent over-zealous optimization */	\
@@ -71,8 +78,13 @@
     /* !defined(USE_ASM_LABELS) */
 
     #define Declare_entry(label)	extern Code * entry(label)
+    #define Declare_static(label)	static Code * entry(label)
     #define Define_extern_entry(label)	Code * entry(label)
     #define Define_entry(label)	\
+	}	\
+	label:	\
+	{
+    #define Define_static(label)	\
 	}	\
 	label:	\
 	{
@@ -116,11 +128,16 @@
   #define END_MODULE			}
 
   #define Declare_entry(label)		extern void *label(void)
+  #define Declare_static(label)		static void *label(void)
   #define Define_extern_entry(label)	void *label(void)
   #define Define_entry(label)	\
 		GOTO(label);	\
 	}			\
 	Code* label(void) {
+  #define Define_static(label)	\
+		GOTO(label);	\
+	}			\
+	static Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label)
 
   #define Declare_local(label)	static Code *label(void)
