@@ -615,6 +615,9 @@ repeat(N) :-
 */
 
 :- pragma c_header_code("
+	extern volatile Word ML_benchmarking_dummy_word;
+").
+:- pragma c_code("
 	volatile Word ML_benchmarking_dummy_word;
 ").
 
