@@ -33,11 +33,14 @@ case "$CC" in
     *gcc*)
 	ANSI_OPTS="-ansi"
 	CHECK_OPTS="
-	      -Wall -Wwrite-strings -Wpointer-arith
+	      -Wall -Wwrite-strings
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 
 # Note: we do not enable the following gcc warnings:
 # -Wredundant-decls	causes too many complaints in system header files
+# -Wpointer-arith	causes too many complaints in system header files
+#			(fixed in gcc 3.0, though, so at some point
+#			we should re-enable this)
 # -Wtraditional		we don't care about compatibility with pre-ANSI C
 # -Wconversion		really only intended to help people using \`unprotoize'
 # -Waggregate-return	not useful, IMHO
