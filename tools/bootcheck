@@ -560,8 +560,18 @@ then
 	then
 		echo "building of stage 3 library successful"
 	else
-		echo "building of stage 3 library not successful"
-		exit 1
+		echo "building of stage 3 library initially not successful"
+		df .
+		# try again, in case the failure cause was transient
+		if 	(cd stage3/library &&
+			$MMAKE $mmake_opts $jfactor all-ints &&
+			$MMAKE $mmake_opts $jfactor cs)
+		then
+			echo "building of stage 3 library successful"
+		else
+			echo "building of stage 3 library not successful"
+			exit 1
+		fi
 	fi
 
 	# We delay deleting the stage 2 compiler objects until now,
@@ -583,16 +593,32 @@ then
 	then
 		echo "building of stage 3 browser successful"
 	else
-		echo "building of stage 3 browser not successful"
-		exit 1
+		echo "building of stage 3 browser initially not successful"
+		df .
+		# try again, in case the failure cause was transient
+		if (cd stage3/browser && $MMAKE $mmake_opts $jfactor cs)
+		then
+			echo "building of stage 3 browser successful"
+		else
+			echo "building of stage 3 browser not successful"
+			exit 1
+		fi
 	fi
 
 	if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor cs)
 	then
 		echo "building of stage 3 compiler successful"
 	else
-		echo "building of stage 3 compiler not successful"
-		exit 1
+		echo "building of stage 3 compiler initially not successful"
+		df .
+		# try again, in case the failure cause was transient
+		if (cd stage3/compiler && $MMAKE $mmake_opts $jfactor cs)
+		then
+			echo "building of stage 3 compiler successful"
+		else
+			echo "building of stage 3 compiler not successful"
+			exit 1
+		fi
 	fi
 
 	diff_status=0
