@@ -81,28 +81,19 @@ library-menu.texi: ../library/*.m
 	} > library-menu.texi
 
 library-chapters.texi: ../library/*.m
-	for filename in ../library/*.m ""; do \
-		file=$$next; \
-		f=$$n; \
-		if [ "$$filename" = "" ]; then \
-			next=""; \
-		else \
-			n="$$filename"; \
-			next=" `basename $$filename .m`"; \
-		fi; \
-		if [ "$$file" = "" ]; then continue; fi; \
-		echo "@node$$file,$$next,$$prev,Top"; \
-		echo "@chapter$$file"; \
+	for filename in ../library/*.m; do \
+		file="`basename $$filename .m`"; \
+		echo "@node $$file"; \
+		echo "@chapter $$file"; \
 		echo "@example"; \
 		sed -n -e '/:- implementation/q' \
 			-e 's/^%----*----% *$$/%--------------------------------------------------%/' \
 			-e 's/{/@{/g' \
 			-e 's/}/@}/g' \
 			-e 'p' \
-			"$$f"; \
+			"$$filename"; \
 		echo "@end example"; \
 		echo ""; \
-		prev=" $$file"; \
 	done > library-chapters.texi
 
 #-----------------------------------------------------------------------------#

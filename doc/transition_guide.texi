@@ -14,7 +14,7 @@ END-INFO-DIR-ENTRY
 
 @c @smallbook
 @c @cropmarks
-@c @finalout
+@finalout
 @setchapternewpage on
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
@@ -285,9 +285,9 @@ For example
 @end example
 
 @noindent
-where @code{solve(Goal)} does some IO can be transformed into
+where @samp{solve(Goal)} does some IO can be transformed into
 valid Mercury in at least two ways. The first is to make
-@code{solve} deterministic and return a status:
+@samp{solve} deterministic and return a status:
 
 @example
     ...
@@ -300,7 +300,7 @@ valid Mercury in at least two ways. The first is to make
     ...
 @end example
 
-The other way is to transform @code{solve} so that all the input
+The other way is to transform @samp{solve} so that all the input
 and output takes place outside it:
 
 @example
@@ -333,18 +333,24 @@ to be less clear and harder to maintain than those that do not.
 
 The use of assert and retract should be replaced with
 a collection data structure threaded through the relevant part of the program.
+Data which is truly global may be stored in the @samp{io__state} using
+the predicates @samp{io__get_globals} and @samp{io__set_globals}.
+These predicates take an argument of type @samp{univ}, the universal
+type, so that by using @samp{type_to_univ} and @samp{univ_to_type} it
+is possible to store data of any type in the @samp{io__state}.
+
 The standard library contains
 several abstract data types for storing collections,
 each of which will be useful for different classes of problems.
 
-The @code{list} ADT is useful if the order of the asserted facts is important.
-The @code{set} ADT is useful if the order is not important,
+The @samp{list} ADT is useful if the order of the asserted facts is important.
+The @samp{set} ADT is useful if the order is not important,
 and if the asserted facts are not key-value pairs.
 If the asserted facts are not key-value pairs,
 you can choose among several ADTs,
-including @code{map}, @code{bintree}, @code{rbtree}, and @code{tree234}.
-We recommend the @code{map} ADT for generic use.
-Its current implementation is as a 234 tree (using @code{tree234}),
+including @samp{map}, @samp{bintree}, @samp{rbtree}, and @samp{tree234}.
+We recommend the @samp{map} ADT for generic use.
+Its current implementation is as a 234 tree (using @samp{tree234}),
 but in the future it may change to a hash table, or a trie,
 or it may become a module that chooses among several implementation methods
 dynamically depending on the size and characteristics of the data.
@@ -377,7 +383,7 @@ If there are multiple solutions to the condition,
 they will all be found on backtracking.
 
 Prolog programs that use cuts and a `catch-all' clause should be
-transformed to use @code{-> ;}.
+transformed to use if-then-else.
 
 For example
 
@@ -433,39 +439,55 @@ can implement an indexed disjunction (which we call a @emph{switch})
 using a jump table or a hash table,
 which is faster than a chain of if-then-elses.
 
-@node Accumulators, Determinism, Commits, Top
-@section Accumulators and Difference lists
+@node Accumulators
+@chapter Accumulators and Difference lists
 
 Mercury does not allow the kind of aliasing that is used
 in difference lists. Prolog programs using difference lists fall
-in to two categories --- those that contain circular dataflow
-and thoes that contain ``left-to-right'' dataflow.
-Programs in the former category are more difficult to translate
-into Mercury since the current implementation supports only programs
-that have a left-to-right dataflow.
+in to two categories --- programs whose data flow is ``left-to-right'',
+or can be made left-to-right by reordering conjunctions (the
+Mercury compiler automatically reorders conjunctions so that all
+consumers of a variable come after the producer), and 
+those that contain circular dataflow.
 
-Prolog programs that use difference lists but still have a left-to-right
-dataflow can mostly translated into Mercury fairly easily. The way to
-do this is to transform the difference list into an accumulator,
-possibly introducing a call to @code{list__reverse} at the end.
+Programs which do not contain circular dataflow do not cause any trouble
+in Mercury, although the implicit reordering can sometimes mean that programs
+which are tail recursive in Prolog are not tail recursive in Mercury.
+If this causes efficiency problems, or if the program contains
+circular data flow, then a different solution must be adopted.
+
+One way to translate such programs
+is to transform the difference list into an accumulator.
+Instead of appending elements to the end of a difference list by
+binding the tail pointer, you simply insert elements onto the
+front of a list accumulator.  At the end of the loop, you can
+call @samp{list__reverse} to put the elements in the correct order
+if necessary.  Although this may require two traversals of the list,
+it is still linear in complexity, and it probably still runs faster
+than the Prolog code using difference lists.
+
 In most circumstances, the need for difference lists is negated by
 the simple fact that Mercury is efficient enough for them to be
-unnecessary. Occasionally they can lead to a significant improvement
-in the complexity of an operation (insertions into a long queue,
-for example) and in these situations an alternative solution should
+unnecessary.  Occasionally they can lead to a significant improvement
+in the complexity of an operation (mixed insertions and deletions
+from a long queue, for example) and in these situations an alternative
+solution should
 be sought (in the case of queues, the Mercury library uses the
 pair of lists proposed by Richard O'Keefe).
 
-@node Determinism,, Accumulators, Top
-@section Determinism
+@node Determinism
+@chapter Determinism
 
 The Mercury language requires that the determinism of all predicates
 exported by a module be declared. The determinism of predicates that
 are local to a module may either be declared or infered. By default,
 the compiler issues a warning message where such declarations are
-omitted.
+omitted, but this warning can be disabled using the
+@samp{--no-warn-missing-det-decls} option if you want to use
+determinism inference.
 
-Determinism inference is undecidable in general, so it is possible
+Determinism checking and inference is an undecidable problem in the
+general case, so it is possible
 to write programs that are deterministic, and have the compiler
 fail to prove the fact. The most important aspect of this problem
 is that the Mercury compiler only detects the clauses of a predicate
@@ -495,11 +517,11 @@ factorial(N, F) :-
 @noindent
 would be infered ``nondeterministic''. The compiler would infer that
 the two clauses are not mutually exclusive because it does not know
-about the semantics of @code{>/2}, and it would infer that
-the predicate as a whole could fail because the call to @code{>/2}
+about the semantics of @samp{>/2}, and it would infer that
+the predicate as a whole could fail because the call to @samp{>/2}
 can fail.
 
-The best way to rewrite this predicate would be:
+The general solution to such problems is to use an if-then-else:
 
 @example
 :- pred factorial(int, int).

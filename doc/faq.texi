@@ -67,7 +67,7 @@ into another language, under the above conditions for modified versions.
 @page
 
 @ifinfo
-@node Top,,, (DIR)
+@node Top
 @top The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
 @menu
 * Programming::     Common programming errors
@@ -76,8 +76,8 @@ into another language, under the above conditions for modified versions.
 @end menu
 @end ifinfo
 
-@node Programming, Unimplemented,, Top
-@section Common programming errors
+@node Programming
+@chapter Common programming errors
 
 @enumerate
 
@@ -182,8 +182,8 @@ lookup(Map, Key, Value) :-
 
 @end enumerate
 
-@node Unimplemented, Last resort, Programming, Top
-@section Problems caused by unimplemented Mercury features
+@node Unimplemented
+@chapter Problems caused by unimplemented Mercury features
 
 @enumerate
 @item
@@ -198,6 +198,7 @@ must temporarily alias two variables together,
 and the current mode checker does not allow this.
 This limitation will go away in the future.
 
+@sp 1
 @item
 @emph{I'm getting an error from the C compiler:}
 @example
@@ -212,8 +213,8 @@ The work-around is to compile with the @samp{--no-static-ground-terms} option.
 
 @end enumerate
 
-@node Last resort,, Unimplemented, Top
-@section What to do when all else fails
+@node Last resort
+@chapter What to do when all else fails
 
 @enumerate
 

@@ -626,9 +626,11 @@ e.g. @samp{--no-verbose}.
 @itemx --inhibit-warnings
 Disable all warning messages.
 
+@sp 1
 @item --no-warn-singleton-variables
 Don't warn about variables which only occur once.
 
+@sp 1
 @item --no-warn-missing-det-decls
 For predicate that are local to a module (those that
 are not exported), don't issue a warning if the @samp{pred}
@@ -636,6 +638,7 @@ or @samp{mode} declaration does not have a determinism annotation.
 Use this option if you want the compiler to perform automatic
 determinism inference for non-exported predicates.
 
+@sp 1
 @item --no-warn-det-decls-too-lax
 Don't warn about determinism declarations
 which could have been stricter.
@@ -648,29 +651,35 @@ which could have been stricter.
 @itemx --verbose
 Output progress messages at each stage in the compilation.
 
+@sp 1
 @item -V
 @itemx --very_verbose
 Output very verbose progress messages.
 
+@sp 1
 @item -E
 @itemx --verbose-error-messages
 Explain error messages.  Asks the compiler to give you a more
 detailed explanation of any errors it finds in your program.
 
+@sp 1
 @item -S
 @itemx --statistics
 Output messages about the compiler's time/space usage.
 At the moment this option implies @samp{--no-trad-passes},
 so you get information at the boundaries between phases of the compiler.
 
+@sp 1
 @item -T
 @itemx --debug-types
 Output detailed debugging traces of the type checking.
 
+@sp 1
 @item -N
 @itemx --debug-modes
 Output detailed debugging traces of the mode checking.
 
+@sp 1
 @item --vndebug <n>
 Output detailed debugging traces of the value numbering optimization pass.
 The different bits in the number argument of this option control the
@@ -692,17 +701,20 @@ an executable.
 Output `Make'-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 
+@sp 1
 @item -i
 @itemx --make-interface
 Write the module interface to @file{@var{module}.int}.
 Also write the short interface to @file{@var{module}.int2}.
 
+@sp 1
 @item -G
 @itemx --convert-to-goedel
 Convert the Mercury code to Goedel. Output to file @file{@var{module}.loc}.
 The translation is not perfect; some Mercury constructs cannot be easily
 translated into Goedel.
 
+@sp 1
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury
@@ -712,6 +724,7 @@ This option acts as a Mercury ugly-printer.
 and nested if-then-elses are indented too much --- so the result
 is rather ugly.)
 
+@sp 1
 @item --typecheck-only
 Just check the syntax and type-correctness of the code.
 Don't invoke the mode analysis and later passes of the compiler.
@@ -720,15 +733,18 @@ it can sometimes be useful to get the types right first
 and worry about modes second;
 this option supports that approach.
 
+@sp 1
 @item -e
 @itemx --errorcheck-only
 Check the module for errors, but do not generate any code.
 
+@sp 1
 @item -C
 @itemx --compile-to-c
 @itemx --compile-to-C
 Generate C code in @file{@var{module}.c}, but not object code.
 
+@sp 1
 @item -c
 @itemx --compile-only
 Generate C code in @file{@var{module}.c}
@@ -745,14 +761,17 @@ This is primarily useful for trying to understand
 how the generated C code relates to the source code,
 e.g. in order to debug the compiler.
 
+@sp 1
 @item -l
 @itemx --line-numbers
 Output source line numbers in the generated code.
 Only works with the -G and -M options.
 
+@sp 1
 @item --show-dependency-graph
 Write out the dependency graph to @var{module}.dependency_graph.
 
+@sp 1
 @item -d @var{stage}
 @itemx --dump-hlds @var{stage}
 Dump the HLDS (intermediate representation) after
@@ -761,10 +780,12 @@ the specified stage number or stage name to
 Stage numbers range from 0 to 17.
 Multiple dump options accumulate.
 
+@sp 1
 @item -D
 @itemx --verbose-dump-hlds
 With @samp{--dump-hlds}, dumps some additional info.
 
+@c @sp 1
 @c @item -p
 @c @itemx --profiling
 @c Output to file <module>.prof the profiling info.
@@ -776,11 +797,13 @@ With @samp{--dump-hlds}, dumps some additional info.
 @item --no-trad-passes
 Generate code by phases, not by predicates.
 
+@c @sp 1
 @c @item --no-polymorphism
 @c Don't handle polymorphic types.
 @c (Generates slightly more efficient code, but stops
 @c polymorphism from working except in special cases.)
 
+@sp 1
 @item -s @var{grade}
 @itemx --grade @var{grade}
 Select the compilation model.  This is a convenient way of
@@ -792,64 +815,81 @@ The @var{grade} should be one of
 @samp{fast}, or @samp{asm_fast},
 or one of those with @file{.gc} appended.
 
+@sp 1
 @item --gc @{none, conservative, accurate@}
 @itemx --garbage-collection @{none, conservative, accurate@}
 Specify which method of garbage collection to use
 (default: @samp{conservative}).
 @samp{accurate} is not yet implemented.
 
+@sp 1
 @item --no-follow-code
 Don't migrate builtin goals into branched goals.
 
+@sp 1
 @item --no-follow-vars
 Don't optimize the assignment of registers in branched goals.
 
+@sp 1
 @item --no-reclaim-heap-on-nondet-failure
 Don't reclaim heap on backtracking in nondet code.
 
+@sp 1
 @item --no-reclaim-heap-on-semidet-failure
 Don't reclaim heap on backtracking in semidet code.
 
+@sp 1
 @item --use-macro-for-redo-fail
 Emit the fail or redo macro instead of a branch
 to the fail or redo code in the runtime system.
 
+@sp 1
 @item --no-gcc-global-registers
 Don't use GNU C's global register variables extension.
 
+@sp 1
 @item --no-gcc-non-local-gotos
 Don't use GNU C's ``labels as values'' extension.
 
+@sp 1
 @item --no-asm-labels
 Don't use inline assembler labels.
 
+@sp 1
 @item --tags @{none, low, high@}
 Specify whether to use the low bits or the high bits of
 each word as tag bits (default: low).
 
+@sp 1
 @item --num-tag-bits @var{n}
 Use @var{n} tag bits.  This is only used with @samp{--tags high}.
 With @samp{--tags low}, the number of tag bits to use is determined
 by the auto-configuration script.
 
+@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 
+@sp 1
 @item --c-include-directory @var{dir}
 Specify the directory containing the Mercury C header files.
 
+@sp 1
 @item --cflags @var{options}
 Specify options to be passed to the C compiler.
 
+@sp 1
 @item -o @var{filename}
 @itemx --output-file @var{filename}
 Specify the name of the final executable.
 (The default executable name is the same as the name of the
 first module on the command line, but without the @samp{.m} extension.)
 
+@sp 1
 @item --link-flags @var{options}
 Specify options to be passed to @samp{ml}, the Mercury linker.
 
+@sp 1
 @item --debug
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
 to enable debugging of the generated C code. 
@@ -863,18 +903,23 @@ This option is probably not useful to anyone except the Mercury implementors.
 @item --no-optimize
 Disable the optimization passes.
 
+@sp 1
 @item --no-optimize-peep
 Disable local peephole optimizations.
 
+@sp 1
 @item --no-optimize-jumps
 Disable elimination of jumps to jumps.
 
+@sp 1
 @item --no-optimize-fulljumps
 Disable elimination of jumps to ordinary code.
 
+@sp 1
 @item --no-optimize-labels
 Disable elimination of dead labels and code.
 
+@sp 1
 @item --optimize-value-number
 Perform value numbering. Use of this option together with
 conservative garbage collection requires a collector compiled
@@ -883,48 +928,60 @@ with @samp{-DALL_INTERIOR_POINTERS}.
 @c @item --pred-value-number
 @c Extend value numbering to whole predicates, rather than just basic blocks.
 
+@sp 1
 @item --no-optimize-frames
 Disable stack frame optimizations.
 
+@sp 1
 @item --optimize-repeat @var{n}
 Iterate most optimizations at most @var{n} times (default: 3).
 
+@sp 1
 @item --optimize-vnrepeat @var{n}
 Iterate value numbering at most @var{n} times (default: 1).
 
+@sp 1
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
 
+@sp 1
 @item --no-smart-indexing
 Generate switches as a simple if-then-else chains;
 disable string hashing and integer table-lookup indexing.
 
+@sp 1
 @item --req-density @var{percentage}
 The jump table generated for an atomic switch
 must have at least this percentage of full slots (default: 25).
 
+@sp 1
 @item --dense-switch-size @var{size}
 The jump table generated for an atomic switch
 must have at least this many entries (default: 4).
 
+@sp 1
 @item --string-switch-size @var{size}
 The hash table generated for a string switch
 must have at least this many entries (default: 8).
 
+@sp 1
 @item --tag-switch-size @var{size}
 The number of alternatives in a tag switch
 must be at least this number (default: 8).
 
+@sp 1
 @item --no-middle-rec
 Disable the middle recursion optimization.
 
+@sp 1
 @item --no-inlining
 Disable the inlining of simple procedures.
 
 @c @item --common-struct
 @c Enable optimization of common term structures.
 
+@sp 1
 @item --no-common-goal
 Disable optimization of common goals.
 At the moment this optimization
@@ -932,6 +989,7 @@ detects only common deconstruction unifications.
 Disabling this optimization reduces the class of predicates
 that the compiler considers to be deterministic.
 
+@sp 1
 @item --procs-per-c-function @var{n}
 Don't put the code for more than @var{n} Mercury
 procedures in a single C function.  The default
@@ -945,6 +1003,7 @@ but tends to severely stress the C compiler.
 @c @item --constraint-propagation
 @c Enable the constraint propagation transformation.
 
+@sp 1
 @item --no-c-optimize
 Don't enable the C compiler's optimizations.
 @end table
@@ -957,11 +1016,14 @@ Don't enable the C compiler's optimizations.
 Use @var{builtin} instead of @samp{mercury_builtin} as the
 module which always gets automatically imported.
 
+@sp 1
 @item -I @var{dir}
 @itemx --search-directory @var{dir}
 Append @var{dir} to the list of directories to be searched for 
 imported modules.
 
+@sp 1
+@item -?
 @item -h
 @itemx --help
 Print a usage message.
@@ -986,43 +1048,54 @@ values will generally work fine.
 @item MERCURY_C_INCL_DIR
 Directory for the Mercury C header files (@file{*.h}).
 
+@sp 1
 @item MERCURY_INT_DIR
 Directory for the Mercury library interface
 files (@file{*.int} and @file{*.int2}).
 
+@sp 1
 @item MERCURY_NC_BUILTIN
 Filename of the Mercury `nc'-compatibility file (nc_builtin.nl).
 
+@sp 1
 @item MERCURY_C_LIB_DIR
 Base directory containing the Mercury libraries (@file{libmer.a} and
 possibly @file{libmer.so}) for each configuration and grade.
 The libraries for each configuration and grade should
 be in the subdirectory @var{config}/@var{grade} of @code{$MERCURY_C_LIB_DIR}.
 
+@sp 1
 @item MERCURY_MOD_LIB_DIR
 The directory containing the .init files in the Mercury library.
 They are used to create the initialization file @file{*_init.c}.
 
+@sp 1
 @item MERCURY_MOD_LIB_MODS
 The names of the .init files in the Mercury library.
 
+@sp 1
 @item MERCURY_NU_LIB_DIR
 Directory for the NU-Prolog object files (@file{*.no}) for the
 NU-Prolog Mercury library.
 
+@sp 1
 @item MERCURY_NU_LIB_OBJS
 List of the NU-Prolog object files (@file{*.no}) for the Mercury
 library.
 
+@sp 1
 @item MERCURY_COMPILER
 Filename of the Mercury Compiler.
 
+@sp 1
 @item MERCURY_INTERPRETER
 Filename of the Mercury Interpreter.
 
+@sp 1
 @item MERCURY_MKINIT
 Filename of the program to create the @file{*_init.c} file.
 
+@sp 1
 @item MERCURY_DEFAULT_GRADE
 The default grade to use if no @samp{--grade} option is specified.
 

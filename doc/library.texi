@@ -42,7 +42,7 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@c @finalout
+@finalout
 @title The Mercury Library Reference Manual
 @subtitle BETA TEST version - July, 1995
 @c @author Fergus Henderson
@@ -67,9 +67,9 @@ into another language, under the above conditions for modified versions.
 @page
 @c ---------------------------------------------------------------------------
 
-@node Top,,, (DIR)
 @ifinfo
-@chapter Mercury Library Reference Manual - BETA TEST version, July 1995
+@node Top
+@top Mercury Library Reference Manual - BETA TEST version, July 1995
 @end ifinfo
 
 The Mercury standard library contains a variety of modules which we
