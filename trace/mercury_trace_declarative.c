@@ -15,7 +15,7 @@
 ** browse/declarative_debugger.m.
 **
 ** The interface between the front and back ends is via the
-** execution_tree/2 typeclass, which is documented in
+** annotated_trace/2 typeclass, which is documented in
 ** browse/declarative_debugger.m.  It would be possible to replace
 ** the front end or the back end with an alternative implementation
 ** which also conforms to the typeclass constraints.  For example:
@@ -56,7 +56,7 @@
 ** adjust this factor based on profiling information.
 */
 
-#define MR_EDT_DEPTH_STEP_SIZE		128
+#define MR_EDT_DEPTH_STEP_SIZE		6
 
 /*
 ** These macros are to aid debugging of the code which constructs
@@ -66,7 +66,10 @@
 #ifdef MR_DEBUG_DD_BACK_END
 
 #define MR_decl_checkpoint_event(event_info)				\
-		MR_decl_checkpoint_event_imp(event_info)
+		MR_decl_checkpoint_event_imp("EVENT", event_info)
+
+#define MR_decl_checkpoint_filter(event_info)				\
+		MR_decl_checkpoint_event_imp("FILTER", event_info)
 
 #define MR_decl_checkpoint_find(location)				\
 		MR_decl_checkpoint_loc("FIND", location)
@@ -83,6 +86,7 @@
 #else /* !MR_DEBUG_DD_BACK_END */
 
 #define MR_decl_checkpoint_event(event_info)
+#define MR_decl_checkpoint_filter(event_info)
 #define MR_decl_checkpoint_find(location)
 #define MR_decl_checkpoint_step(location)
 #define MR_decl_checkpoint_match(location)
@@ -95,15 +99,18 @@
 ** settings of the following variables.  They are set in
 ** MR_trace_start_decl_debug when the back end is started.  They
 ** are used by MR_trace_decl_debug to decide what action to
-** take for a particular trace event.  Events that are outside
-** the given depth range are ignored.  Events that are beyond the
-** given last event cause the internal debugger to be switched
-** back into interactive mode.
+** take for a particular trace event.
+**
+** Events that are deeper than the maximum depth, or which are
+** outside the top call being debugged, are ignored.  Events which
+** are beyond the given last event cause the internal debugger to
+** be switched back into interactive mode.
 */
 
-static	Unsigned	MR_edt_min_depth;
 static	Unsigned	MR_edt_max_depth;
 static	Unsigned	MR_edt_last_event;
+static	bool		MR_edt_inside;
+static	Unsigned	MR_edt_start_seqno;
 
 /*
 ** This is used as the abstract map from node identifiers to nodes
@@ -133,7 +140,9 @@ static	MR_Trace_Node	MR_trace_current_node;
 
 /*
 ** When in test mode, MR_trace_store_file points to an open file to
-** which the store should be written when built.
+** which the store should be written when built.  This global is
+** set in MR_trace_start_decl_debug, and keeps the same value
+** throughout the declarative debugging session.
 */
 
 static	FILE		*MR_trace_store_file;
@@ -212,11 +221,26 @@ MR_decl_atom_name(const MR_Stack_Layout_Entry *entry);
 static	Word
 MR_decl_atom_args(const MR_Stack_Layout_Label *layout, Word *saved_regs);
 
-static	void
-MR_decl_diagnosis(MR_Trace_Node root);
+static	const char *
+MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
+		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details, Code **jumpaddr);
+
+static	Code *
+MR_trace_restart_decl_debug(Unsigned event, Unsigned seqno,
+		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details);
+
+static	Code *
+MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
+		MR_Event_Info *event_info, MR_Event_Details *event_details);
 
 static	void
 MR_decl_diagnosis_test(MR_Trace_Node root);
+
+static	Code *
+MR_decl_handle_bug_found(Unsigned event, MR_Trace_Cmd_Info *cmd,
+		MR_Event_Info *event_info, MR_Event_Details *event_details);
 
 static	String
 MR_trace_node_path(MR_Trace_Node node);
@@ -237,7 +261,7 @@ static	MR_Trace_Node
 MR_trace_find_prev_contour(MR_Trace_Node node);
 
 static	void
-MR_decl_checkpoint_event_imp(MR_Event_Info *event_info);
+MR_decl_checkpoint_event_imp(const char *str, MR_Event_Info *event_info);
 
 static	void
 MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node);
@@ -248,6 +272,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Stack_Layout_Entry 	*entry;
 	Unsigned		depth;
 	MR_Trace_Node		trace;
+	MR_Event_Details	event_details;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -267,15 +292,39 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		MR_fatal_error("layout has no execution tracing");
 	}
 
-	if (depth > MR_edt_max_depth || depth < MR_edt_min_depth) {
+	if (depth > MR_edt_max_depth) {
 		/*
-		** We filter out events with a depth outside the range
-		** given by MR_edt_{min,max}_depth.  These events are
-		** either irrelevant, or else implicitly represented in
-		** the structure being built.  See comment in
-		** trace/mercury_trace_declarative.h.
+		** We filter out events which are deeper than a certain
+		** limit given by MR_edt_max_depth.  These events are
+		** implicitly represented in the structure being built.
 		*/
 		return NULL;
+	}
+
+	if (MR_edt_inside) {
+		if (event_info->MR_call_seqno == MR_edt_start_seqno &&
+			MR_port_is_final(event_info->MR_trace_port))
+		{
+			/*
+			** We are leaving the topmost call.
+			*/
+			MR_edt_inside = FALSE;
+		}
+	} else {
+		if (event_info->MR_call_seqno == MR_edt_start_seqno) {
+			/*
+			** The port must be either CALL or REDO;
+			** we are (re)entering the topmost call.
+			*/
+			MR_edt_inside = TRUE;
+		} else {
+			/*
+			** Ignore this event---it is outside the
+			** topmost call.
+			*/
+			MR_decl_checkpoint_filter(event_info);
+			return NULL;
+		}
 	}
 
 #ifdef MR_USE_DECL_STACK_SLOT
@@ -288,6 +337,10 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return NULL;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
+
+	event_details.MR_call_seqno = MR_trace_call_seqno;
+	event_details.MR_call_depth = MR_trace_call_depth;
+	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_enabled = FALSE;
 	MR_decl_checkpoint_event(event_info);
@@ -342,12 +395,22 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_decl_checkpoint_alloc(trace);
 	MR_trace_current_node = trace;
 	
+	/*
+	** Restore globals from the saved copies.
+	*/
+	MR_trace_call_seqno = event_details.MR_call_seqno;
+	MR_trace_call_depth = event_details.MR_call_depth;
+	MR_trace_event_number = event_details.MR_event_number;
+
 	if (MR_trace_event_number == MR_edt_last_event) {
+		/*
+		** Call the front end.
+		*/
 		switch (MR_trace_decl_mode) {
 			case MR_TRACE_DECL_DEBUG:
-				/* Call the front end */
-				MR_decl_diagnosis(MR_trace_current_node);
-				break;
+				return MR_decl_diagnosis(
+						MR_trace_current_node, cmd,
+						event_info, &event_details);
 
 			case MR_TRACE_DECL_DEBUG_TEST:
 				MR_decl_diagnosis_test(MR_trace_current_node);
@@ -357,17 +420,11 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				MR_fatal_error("MR_trace_decl_debug: "
 						"unexpected mode");
 		}
-
-		/*
-		** XXX we should return to the CALL event of the buggy
-		** node, if one was found.
-		*/
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
 
 	MR_trace_enabled = TRUE;
-
 	return NULL;
 }
 
@@ -376,14 +433,23 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node			node;
 	Word				atom;
+	bool				at_depth_limit;
 	const MR_Stack_Layout_Label	*layout = event_info->MR_event_sll;
+
+	if (event_info->MR_call_depth == MR_edt_max_depth) {
+		at_depth_limit = TRUE;
+	} else {
+		at_depth_limit = FALSE;
+	}
 
 	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
 			MR_PORT_CALL);
 	MR_TRACE_CALL_MERCURY(
 		node = (MR_Trace_Node) MR_DD_construct_call_node(
 					(Word) prev, atom,
-					(Word) event_info->MR_call_seqno);
+					(Word) event_info->MR_call_seqno,
+					(Word) event_info->MR_event_number,
+					(Word) at_depth_limit);
 	);
 
 #ifdef MR_USE_DECL_STACK_SLOT
@@ -418,8 +484,8 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 		last_interface = MR_DD_call_node_get_last_interface(
 				(Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_exit_node(
-				(Word) prev, (Word) call,
-				last_interface, atom);
+				(Word) prev, (Word) call, last_interface,
+				atom, (Word) event_info->MR_event_number);
 		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
 	);
 
@@ -502,9 +568,8 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_TRACE_CALL_MERCURY(
 		redo = MR_DD_call_node_get_last_interface( (Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
-						(Word) prev,
-						(Word) call,
-						(Word) redo);
+					(Word) prev, (Word) call, (Word) redo,
+					(Word) event_info->MR_event_number);
 		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
 	);
 	return node;
@@ -992,8 +1057,8 @@ static	void
 MR_trace_decl_ensure_init(void)
 {
 	static bool		done = FALSE;
-	static MercuryFile		mdb_in;
-	static MercuryFile		mdb_out;
+	static MercuryFile	mdb_in;
+	static MercuryFile	mdb_out;
 
 	mdb_in.file = MR_mdb_in;
 	mdb_in.line_number = 1;
@@ -1002,6 +1067,7 @@ MR_trace_decl_ensure_init(void)
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
+			MR_trace_node_store = 0;
 			MR_DD_decl_diagnosis_state_init(
 					(Word) &mdb_in,
 					(Word) &mdb_out,
@@ -1017,25 +1083,29 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		Code **jumpaddr)
 {
 	MR_Stack_Layout_Entry 	*entry;
-	const char		*message;
 	FILE			*out;
+	Unsigned		depth_limit;
+	const char		*message;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
+				"because this procedure was not\n"
+				"compiled with execution tracing enabled.\n");
 		return FALSE;
 	}
 
 #ifdef MR_USE_DECL_STACK_SLOT
 	if (entry->MR_sle_maybe_decl_debug < 1) {
 		/* No slots are reserved for declarative debugging */
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
+				"because this procedure was not\n"
+				"compiled with stack slots reserved.\n");
 		return FALSE;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
-
-	message = MR_trace_retry(event_info, event_details, jumpaddr);
-	if (message != NULL) {
-		return FALSE;
-	}
 
 	if (outfile == (const char *) NULL) {
 		/* Normal debugging mode */
@@ -1056,25 +1126,102 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 	}
 
 	MR_trace_decl_ensure_init();
+	depth_limit = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
+	message = MR_trace_start_collecting(event_info->MR_event_number,
+			event_info->MR_call_seqno, depth_limit, cmd,
+			event_info, event_details, jumpaddr);
 
-	MR_edt_last_event = event_info->MR_event_number;
-	MR_edt_min_depth = event_info->MR_call_depth;
-	MR_edt_max_depth = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
-	MR_trace_node_store = 0;
-	MR_trace_current_node = (MR_Trace_Node) NULL;
+	if (message == NULL) {
+		return TRUE;
+	} else {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err,
+			"mdb: failed to start collecting events:\n%s\n",
+			message);
 
-	cmd->MR_trace_cmd = MR_CMD_GOTO;
-	cmd->MR_trace_stop_event = MR_trace_event_number + 1;
-	cmd->MR_trace_strict = FALSE;
-	cmd->MR_trace_print_level = MR_PRINT_LEVEL_ALL;
-
-	return TRUE;
+		return FALSE;
+	}
 }
 
-static	void
-MR_decl_diagnosis(MR_Trace_Node root)
+static	Code *
+MR_trace_restart_decl_debug(Unsigned event, Unsigned seqno,
+		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details)
+{
+	Unsigned		depth_limit;
+	const char		*message;
+	Code			*jumpaddr;
+
+	depth_limit = MR_edt_max_depth + MR_EDT_DEPTH_STEP_SIZE;
+	message = MR_trace_start_collecting(event, seqno, depth_limit,
+			cmd, event_info, event_details, &jumpaddr);
+
+	if (message != NULL) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
+		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+		MR_trace_enabled = TRUE;
+		return MR_trace_event_internal(cmd, TRUE, event_info);
+	}
+
+	return jumpaddr;
+}
+
+static	const char *
+MR_trace_start_collecting(Unsigned event, Unsigned seqno, Unsigned maxdepth,
+		MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details, Code **jumpaddr)
+{
+	const char		*message;
+
+	/*
+	** Go back to an event before the topmost call.
+	*/
+	message = MR_trace_retry(event_info, event_details, jumpaddr);
+	if (message != NULL) {
+		return message;
+	}
+
+	/*
+	** Start collecting the trace from the desired call, with the
+	** desired depth bound.
+	*/
+	MR_edt_last_event = event;
+	MR_edt_inside = FALSE;
+	MR_edt_start_seqno = seqno;
+	MR_edt_max_depth = maxdepth;
+	MR_trace_current_node = (MR_Trace_Node) NULL;
+
+	/*
+	** Restore globals from the saved copies.
+	*/
+        MR_trace_call_seqno = event_details->MR_call_seqno;
+	MR_trace_call_depth = event_details->MR_call_depth;
+	MR_trace_event_number = event_details->MR_event_number;
+
+	/*
+	** Single step through every event.
+	*/
+	cmd->MR_trace_cmd = MR_CMD_GOTO;
+	cmd->MR_trace_stop_event = 0;
+	cmd->MR_trace_strict = TRUE;
+	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
+	cmd->MR_trace_must_check = FALSE;
+
+	MR_trace_enabled = TRUE;
+	return NULL;
+}
+
+static	Code *
+MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
+		MR_Event_Info *event_info, MR_Event_Details *event_details)
 {
 	Word			response;
+	bool			bug_found;
+	bool			require_subtree;
+	Unsigned		bug_event;
+	Unsigned		final_event;
+	Unsigned		topmost_seqno;
 
 #if 0
 	/*
@@ -1088,13 +1235,66 @@ MR_decl_diagnosis(MR_Trace_Node root)
 				MR_trace_front_end_state,
 				&MR_trace_front_end_state
 			);
+		bug_found = MR_DD_diagnoser_bug_found(response,
+				(Word *) &bug_event);
+		require_subtree = MR_DD_diagnoser_require_subtree(response,
+				(Word *) &final_event,
+				(Word *) &topmost_seqno);
 	);
 
+	if (bug_found) {
+		return MR_decl_handle_bug_found(bug_event, cmd,
+				event_info, event_details);
+	}
+
+	if (require_subtree) {
+		/*
+		** Front end requires a subtree to be made explicit.
+		** Restart the declarative debugger with deeper
+		** depth limit.
+		*/
+		return MR_trace_restart_decl_debug(final_event, topmost_seqno,
+				cmd, event_info, event_details);
+	}
+
 	/*
-	** XXX We don't do anything with the response yet.
-	** We should set the current event to the call of the buggy node
-	** (if there is one), or we should handle requests for subtrees.
+	** No bug found.  Return to the procedural debugger at the
+	** current event, which was the event it was left from.
 	*/
+	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+	MR_trace_enabled = TRUE;
+	return MR_trace_event_internal(cmd, TRUE, event_info);
+}
+
+static	Code *
+MR_decl_handle_bug_found(Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
+		MR_Event_Info *event_info, MR_Event_Details *event_details)
+{
+	const char		*message;
+	Code			*jumpaddr;
+
+	/*
+	** Perform a retry to get to somewhere before the
+	** bug event.  Then set the command to go to the bug
+	** event and return to interactive mode.
+	*/
+	message = MR_trace_retry(event_info, event_details, &jumpaddr);
+	if (message != NULL) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
+		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+		MR_trace_enabled = TRUE;
+		return MR_trace_event_internal(cmd, TRUE, event_info);
+	}
+
+	cmd->MR_trace_cmd = MR_CMD_GOTO;
+	cmd->MR_trace_stop_event = bug_event;
+	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
+	cmd->MR_trace_strict = TRUE;
+	cmd->MR_trace_must_check = FALSE;
+	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+	MR_trace_enabled = TRUE;
+	return jumpaddr;
 }
 
 static	void
@@ -1201,9 +1401,10 @@ MR_trace_find_prev_contour(MR_Trace_Node node)
 #ifdef MR_DEBUG_DD_BACK_END
 
 static	void
-MR_decl_checkpoint_event_imp(MR_Event_Info *event_info)
+MR_decl_checkpoint_event_imp(const char *str, MR_Event_Info *event_info)
 {
-	fprintf(MR_mdb_out, "DD EVENT %ld: #%ld %ld %s ",
+	fprintf(MR_mdb_out, "DD %s %ld: #%ld %ld %s ",
+			str,
 			(long) event_info->MR_event_number,
 			(long) event_info->MR_call_seqno,
 			(long) event_info->MR_call_depth,

@@ -11,9 +11,6 @@ mdb> continue
 mdb> finish
      161:      3  2 FAIL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> dd
-Call queen([1, 2, 3, 4, 5], _)
-No solutions.
-Complete? no
 Call qperm([1, 2, 3, 4, 5], _)
 No solutions.
 Complete? no
@@ -54,6 +51,8 @@ Complete? yes
 Found partially uncovered atom:
 qperm([1], _)
 Is this a bug? yes
+      60:     16  7 FAIL pred queens:qperm/2-0 (nondet) queens.m:45 (queens.m:49)
+mdb> continue
      161:      3  2 FAIL pred queens:queen/2-0 (nondet) queens.m:41 (queens.m:15)
 mdb> continue
 No solution

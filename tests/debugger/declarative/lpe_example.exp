@@ -11,8 +11,6 @@ mdb> continue
 mdb> finish
       10:      2  2 EXIT pred lpe_example:p/2-0 (nondet)
 mdb> dd
-p(1, 13)
-Valid? no
 q(3)
 Valid? yes
 r(3, 13)
@@ -26,8 +24,6 @@ mdb> continue
 mdb> finish
       15:      2  2 EXIT pred lpe_example:p/2-0 (nondet)
 mdb> dd
-p(1, 23)
-Valid? no
 r(3, 23)
 Valid? yes
 Found incorrect contour:
@@ -39,8 +35,6 @@ mdb> continue
 mdb> finish
       20:      2  2 EXIT pred lpe_example:p/2-0 (nondet)
 mdb> dd
-p(1, 3)
-Valid? no
 Found incorrect contour:
 p(1, 3)
 Is this a bug? yes
@@ -50,12 +44,6 @@ mdb> continue
 mdb> finish
       22:      2  2 FAIL pred lpe_example:p/2-0 (nondet)
 mdb> dd
-Call p(1, _)
-Solutions:
-	p(1, 13)
-	p(1, 23)
-	p(1, 3)
-Complete? no
 Call r(3, _)
 Solutions:
 	r(3, 13)

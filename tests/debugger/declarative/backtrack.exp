@@ -9,8 +9,6 @@ mdb> continue
 mdb> finish
       17:      2  2 EXIT pred backtrack:p/2-0 (det) backtrack.m:23 (backtrack.m:9)
 mdb> dd
-p(1, no)
-Valid? no
 q(1, 1)
 Valid? yes
 q(1, 2)

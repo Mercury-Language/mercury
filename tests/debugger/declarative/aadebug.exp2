@@ -9,8 +9,6 @@ mdb> continue
 mdb> finish
       15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-p('a', 30)
-Valid? no
 q('a', 'a')
 Valid? yes
 r('a', 10)
@@ -26,8 +24,6 @@ mdb> continue
 mdb> finish
       22:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-p('a', 31)
-Valid? no
 Found incorrect contour:
 p('a', 31)
 Is this a bug? yes
@@ -37,8 +33,6 @@ mdb> continue
 mdb> finish
       39:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-p('a', 32)
-Valid? no
 q('a', 'b')
 Valid? yes
 Call r('b', _)
@@ -56,12 +50,6 @@ mdb> continue
 mdb> finish
       47:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:24 (aadebug.m:9)
 mdb> dd
-Call p('a', _)
-Solutions:
-	p('a', 30)
-	p('a', 31)
-	p('a', 32)
-Complete? no
 Call q('a', _)
 Solutions:
 	q('a', 'a')

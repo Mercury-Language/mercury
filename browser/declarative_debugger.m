@@ -56,11 +56,13 @@
 	--->	incorrect_contour(
 			decl_atom,	% The head of the clause, in its
 					% final state of instantiation.
-			decl_contour	% The path taken through the body.
+			decl_contour,	% The path taken through the body.
+			event_number	% The exit event.
 		)
 	;	partially_uncovered_atom(
-			decl_atom	% The called atom, in its initial
+			decl_atom,	% The called atom, in its initial
 					% state.
+			event_number	% The fail event.
 		).
 
 :- type decl_i_bug
@@ -69,8 +71,9 @@
 					% state.
 			decl_position,	% The location of the call in the
 					% parent's body.
-			decl_atom	% The inadmissible child, in its
+			decl_atom,	% The inadmissible child, in its
 					% initial state.
+			event_number	% The call event.
 		).
 
 	% XXX not yet implemented.
@@ -103,11 +106,28 @@
 	% The diagnoser eventually responds with a value of this type
 	% after it is called.
 	%
-	% XXX need to have a case for expanding an implicit tree.
-	%
 :- type diagnoser_response
-	--->	bug_found
-	;	no_bug_found.
+			
+			% There was a bug found and confirmed.  The
+			% event number is for a call port (inadmissible
+			% call), an exit port (incorrect contour),
+			% or a fail port (partially uncovered atom).
+			%
+	--->	bug_found(event_number)
+
+			% There was no symptom found, or the diagnoser
+			% aborted before finding a bug.
+			%
+	;	no_bug_found
+
+			% The analyser requires the back end to reproduce
+			% part of the annotated trace, with a greater
+			% depth bound.  The event number and sequence
+			% number are for the final event required (the
+			% first event required is the call event with
+			% the same sequence number).
+			%
+	;	require_subtree(event_number, sequence_number).
 
 :- type diagnoser_state(R).
 
@@ -190,8 +210,13 @@ handle_analyser_response(Store, oracle_queries(Queries), Response,
 	handle_oracle_response(Store, OracleResponse, Response, Diagnoser1,
 			Diagnoser).
 
-handle_analyser_response(_, require_explicit(_), _, _, _) -->
-	{ error("diagnosis: implicit representation not yet implemented") }.
+handle_analyser_response(Store, require_explicit(Tree), Response,
+		Diagnoser, Diagnoser) -->
+
+	{
+		edt_subtree_details(Store, Tree, Event, Seqno),
+		Response = require_subtree(Event, Seqno)
+	}.
 
 :- pred handle_oracle_response(S, oracle_response, diagnoser_response,
 		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
@@ -224,7 +249,8 @@ confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
 	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser) },
 	{
 		Confirmation = confirm_bug,
-		Response = bug_found
+		decl_bug_get_event_number(Bug, Event),
+		Response = bug_found(Event)
 	;
 		Confirmation = overrule_bug,
 		Response = no_bug_found
@@ -260,6 +286,25 @@ diagnoser_state_init_store(InStr, OutStr, Diagnoser) :-
 diagnosis_store(Store, Node, Response, State0, State) -->
 	diagnosis(Store, Node, Response, State0, State).
 
+	% Export some predicates so that C code can interpret the
+	% diagnoser response.
+	%
+:- pred diagnoser_bug_found(diagnoser_response, event_number).
+:- mode diagnoser_bug_found(in, out) is semidet.
+
+:- pragma export(diagnoser_bug_found(in, out), "MR_DD_diagnoser_bug_found").
+
+diagnoser_bug_found(bug_found(Event), Event).
+
+:- pred diagnoser_require_subtree(diagnoser_response, event_number,
+		sequence_number).
+:- mode diagnoser_require_subtree(in, out, out) is semidet.
+
+:- pragma export(diagnoser_require_subtree(in, out, out),
+		"MR_DD_diagnoser_require_subtree").
+
+diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
+
 %-----------------------------------------------------------------------------%
 
 	%
@@ -287,20 +332,16 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 :- mode trace_root_question(in, in, out) is det.
 
 trace_root_question(wrap(Store), dynamic(Ref), Root) :-
-	det_trace_node_from_id(Store, Ref, Node),
+	det_edt_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(_, CallId, RedoId)
-	->
+		Node = fail(_, CallId, RedoId, _),
 		call_node_from_id(Store, CallId, Call),
-		Call = call(_, _, CallAtom, _),
+		Call = call(_, _, CallAtom, _, _, _),
 		get_answers(Store, RedoId, [], Answers),
 		Root = missing_answer(CallAtom, Answers)
 	;
-		Node = exit(_, _, _, ExitAtom)
-	->
+		Node = exit(_, _, _, ExitAtom, _),
 		Root = wrong_answer(ExitAtom)
-	;
-		error("trace_root: not an EXIT or FAIL node")
 	).
 
 :- pred get_answers(S, R, list(decl_atom), list(decl_atom))
@@ -311,7 +352,7 @@ get_answers(Store, RedoId, As0, As) :-
 	(
 		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId))
 	->
-		exit_node_from_id(Store, ExitId, exit(_, _, NextId, Atom)),
+		exit_node_from_id(Store, ExitId, exit(_, _, NextId, Atom, _)),
 		get_answers(Store, NextId, [Atom | As0], As)
 	;
 		As = As0
@@ -321,14 +362,16 @@ get_answers(Store, RedoId, As0, As) :-
 		<= annotated_trace(S, R).
 :- mode trace_root_e_bug(in, in, out) is det.
 
-trace_root_e_bug(S, T, Bug) :-
-	trace_root_question(S, T, Q),
+trace_root_e_bug(wrap(S), dynamic(Ref), Bug) :-
+	det_edt_node_from_id(S, Ref, Node),
 	(
-		Q = wrong_answer(Atom),
-		Bug = incorrect_contour(Atom, unit)
+		Node = exit(_, _, _, Atom, Event),
+		Bug = incorrect_contour(Atom, unit, Event)
 	;
-		Q = missing_answer(Atom, _),
-		Bug = partially_uncovered_atom(Atom)
+		Node = fail(_, CallId, _, Event),
+		call_node_from_id(S, CallId, Call),
+		Call = call(_, _, CallAtom, _, _, _),
+		Bug = partially_uncovered_atom(CallAtom, Event)
 	).
 
 :- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))
@@ -336,24 +379,22 @@ trace_root_e_bug(S, T, Bug) :-
 :- mode trace_children(in, in, out) is semidet.
 
 trace_children(wrap(Store), dynamic(Ref), Children) :-
-		
-		% This is meant to fail if the children are implicit,
-		% but this is not yet implemented.
-		%
-	semidet_succeed,
-
-	det_trace_node_from_id(Store, Ref, Node),
+	det_edt_node_from_id(Store, Ref, Node),
 	(
-		Node = fail(PrecId, _, _)
-	->
+		Node = fail(PrecId, CallId, _, _),
+		not_at_depth_limit(Store, CallId),
 		missing_answer_children(Store, PrecId, [], Children)
 	;
-		Node = exit(PrecId, _, _, _)
-	->
+		Node = exit(PrecId, CallId, _, _, _),
+		not_at_depth_limit(Store, CallId),
 		wrong_answer_children(Store, PrecId, [], Children)
-	;
-		error("trace_children: not an EXIT or FAIL node")
 	).
+
+:- pred not_at_depth_limit(S, R) <= annotated_trace(S, R).
+:- mode not_at_depth_limit(in, in) is semidet.
+
+not_at_depth_limit(Store, Ref) :-
+	call_node_from_id(Store, Ref, call(_, _, _, _, _, no)).
 
 :- pred wrong_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
 		<= annotated_trace(S, R).
@@ -362,21 +403,21 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _, _),
+		Node = call(_, _, _, _, _, _),
 		Ns = Ns0
 	;
 		Node = neg(_, _, _),
 		Ns = Ns0
 	;
-		Node = exit(_, Call, _, _),
-		call_node_from_id(Store, Call, call(Prec, _, _, _)),
+		Node = exit(_, Call, _, _, _),
+		call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)),
 		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
 	;
 		Node = redo(_, _),
 		error("wrong_answer_children: unexpected REDO node")
 	;
-		Node = fail(_, Call, _),
-		call_node_from_id(Store, Call, call(Prec, _, _, _)),
+		Node = fail(_, Call, _, _),
+		call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)),
 		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
 	;
 		Node = cond(Prec, _, Flag),
@@ -424,28 +465,29 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 missing_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		Node = call(_, _, _, _),
+		Node = call(_, _, _, _, _, _),
 		Ns = Ns0
 	;
 		Node = neg(_, _, _),
 		Ns = Ns0
 	;
-		Node = exit(_, Call, Redo, _),
+		Node = exit(_, Call, Redo, _, _),
 		(
 			maybe_redo_node_from_id(Store, Redo, redo(Prec0, _))
 		->
 			Prec = Prec0
 		;
-			call_node_from_id(Store, Call, call(Prec, _, _, _))
+			call_node_from_id(Store, Call, CallNode),
+			CallNode = call(Prec, _, _, _, _, _)
 		),
 		missing_answer_children(Store, Prec, [dynamic(NodeId) | Ns0],
 				Ns)
 	;
 		Node = redo(_, Exit),
-		exit_node_from_id(Store, Exit, exit(Prec, _, _, _)),
+		exit_node_from_id(Store, Exit, exit(Prec, _, _, _, _)),
 		missing_answer_children(Store, Prec, Ns0, Ns)
 	;
-		Node = fail(_, CallId, MaybeRedo),
+		Node = fail(_, CallId, MaybeRedo, _),
 		(
 			maybe_redo_node_from_id(Store, MaybeRedo, Redo)
 		->
@@ -453,7 +495,7 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 			Next = Prec
 		;
 			call_node_from_id(Store, CallId, Call),
-			Call = call(Back, _, _, _),
+			Call = call(Back, _, _, _, _, _),
 			Next = Back
 		),
 		missing_answer_children(Store, Next, [dynamic(NodeId) | Ns0],
@@ -495,3 +537,52 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		neg_node_from_id(Store, Neg, neg(Back, _, _)),
 		missing_answer_children(Store, Back, Ns1, Ns)
 	).
+
+:- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number)
+		<= annotated_trace(S, R).
+:- mode edt_subtree_details(in, in, out, out) is det.
+
+edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
+	det_edt_node_from_id(Store, Ref, Node),
+	(
+		Node = exit(_, Call, _, _, Event)
+	;
+		Node = fail(_, Call, _, Event)
+	),
+	call_node_from_id(Store, Call, call(_, _, _, SeqNo, _, _)).
+
+:- inst trace_node_edt_node =
+		bound(	exit(ground, ground, ground, ground, ground)
+		;	fail(ground, ground, ground, ground)).
+
+:- pred det_edt_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
+:- mode det_edt_node_from_id(in, in, out(trace_node_edt_node)) is det.
+
+det_edt_node_from_id(Store, Ref, Node) :-
+	(
+		trace_node_from_id(Store, Ref, Node0),
+		(
+			Node0 = exit(_, _, _, _, _)
+		;
+			Node0 = fail(_, _, _, _)
+		)
+	->
+		Node = Node0
+	;
+		error("det_edt_node_from_id: not an EXIT or FAIL node")
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred decl_bug_get_event_number(decl_bug, event_number).
+:- mode decl_bug_get_event_number(in, out) is det.
+
+decl_bug_get_event_number(e_bug(EBug), Event) :-
+	(
+		EBug = incorrect_contour(_, _, Event)
+	;
+		EBug = partially_uncovered_atom(_, Event)
+	).
+decl_bug_get_event_number(i_bug(IBug), Event) :-
+	IBug = inadmissible_call(_, _, _, Event).
+

@@ -101,16 +101,18 @@
 
 				% Current suspects.
 				%
+			list(suspect(T)),
+
+				% Previous prime suspects.
+				%
 			list(suspect(T))
 	).
 
-analyser_state_init(analyser(no, [])).
+analyser_state_init(analyser(no, [], [])).
 
-start_analysis(Store, Tree, Response, _, Analyser) :-
-	edt_root_question(Store, Tree, Question),
-	Response = oracle_queries([Question]),
+start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
 	create_suspect(Store, Tree, Suspect),
-	Analyser = analyser(no, [Suspect]).
+	make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 	(
@@ -131,7 +133,7 @@ continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 :- mode find_incorrect_suspect(in, in, out) is semidet.
 
 find_incorrect_suspect([Answer | Answers], Analyser, Child) :-
-	Analyser = analyser(_, Suspects),
+	Analyser = analyser(_, Suspects, _),
 	(
 		Answer = _ - no,
 		find_matching_suspects(Answer, Suspects, [Match | _], _)
@@ -149,12 +151,21 @@ find_incorrect_suspect([Answer | Answers], Analyser, Child) :-
 :- mode make_new_prime_suspect(in, in, out, in, out) is det.
 
 make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
-	Analyser0 = analyser(MaybeOldPrime, _),
+	Analyser0 = analyser(MaybeOldPrime, _, OldPrimes0),
+	(
+		MaybeOldPrime = yes(OldPrime0)
+	->
+		prime_suspect_get_suspect(OldPrime0, OldPrime),
+		OldPrimes = [OldPrime | OldPrimes0]
+	;
+		OldPrimes = OldPrimes0
+	),
 	suspect_get_edt_node(Suspect, Tree),
-	create_prime_suspect(Suspect, MaybeOldPrime, Prime),
 	(
 		edt_children(Store, Tree, Children)
 	->
+		create_prime_suspect(Suspect, Prime),
+		MaybePrime = yes(Prime),
 		make_suspects(Store, Children, Suspects, Queries),
 		(
 			Queries = []
@@ -169,9 +180,10 @@ make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
 			% just use the empty list.
 			%
 		Suspects = [],
+		MaybePrime = no,
 		Response = require_explicit(Tree)
 	),
-	Analyser = analyser(yes(Prime), Suspects).
+	Analyser = analyser(MaybePrime, Suspects, OldPrimes).
 
 :- pred make_suspects(S, list(T), list(suspect(T)), list(decl_question))
 		<= mercury_edt(S, T).
@@ -191,7 +203,7 @@ make_suspects(Store, [Tree | Trees], [Suspect | Ss], [Query | Qs]) :-
 :- mode remove_suspects(in, in, out, in, out) is det.
 
 remove_suspects(Store, [], Response, Analyser, Analyser) :-
-	Analyser = analyser(MaybePrime, Suspects),
+	Analyser = analyser(MaybePrime, Suspects, _),
 	(
 		Suspects = []
 	->
@@ -215,9 +227,9 @@ remove_suspects(Store, [Answer | Answers], Response, Analyser0,
 	(
 		Answer = _ - yes
 	->
-		Analyser0 = analyser(MaybeTree, Suspects0),
+		Analyser0 = analyser(MaybePrime, Suspects0, OldPrimes),
 		find_matching_suspects(Answer, Suspects0, _, Suspects),
-		Analyser1 = analyser(MaybeTree, Suspects),
+		Analyser1 = analyser(MaybePrime, Suspects, OldPrimes),
 		remove_suspects(Store, Answers, Response, Analyser1, Analyser)
 	;
 		error("remove_suspects: unexpected incorrect node")
@@ -276,35 +288,26 @@ find_matching_suspects(Answer, Suspects, Matches, NoMatches) :-
 				% is also included in the list of
 				% evidence.
 				%
-			maybe(suspect(T)),
-
-				% Previous prime suspects.
-				%
-			list(suspect(T))
+			maybe(suspect(T))
 		).
 
-	% Create a prime suspect from a suspect, and maybe the previous
-	% prime suspect (if there was one).
+	% Create a prime suspect from a suspect.
 	%
-:- pred create_prime_suspect(suspect(T), maybe(prime_suspect(T)),
-		prime_suspect(T)).
-:- mode create_prime_suspect(in, in, out) is det.
+:- pred create_prime_suspect(suspect(T), prime_suspect(T)).
+:- mode create_prime_suspect(in, out) is det.
 
-create_prime_suspect(Suspect, MaybeOldPrime, Prime) :-
-	(
-		MaybeOldPrime = yes(OldPrime)
-	->
-		OldPrime = prime_suspect(OldSuspect, _, _, Previous0),
-		PreviousPrimes = [OldSuspect | Previous0]
-	;
-		PreviousPrimes = []
-	),
-	Prime = prime_suspect(Suspect, [], no, PreviousPrimes).
+create_prime_suspect(Suspect, Prime) :-
+	Prime = prime_suspect(Suspect, [], no).
+
+:- pred prime_suspect_get_suspect(prime_suspect(T), suspect(T)).
+:- mode prime_suspect_get_suspect(in, out) is det.
+
+prime_suspect_get_suspect(prime_suspect(Suspect, _, _), Suspect).
 
 :- pred prime_suspect_get_edt_node(prime_suspect(T), T).
 :- mode prime_suspect_get_edt_node(in, out) is det.
 
-prime_suspect_get_edt_node(prime_suspect(Suspect, _, _, _), EDT) :-
+prime_suspect_get_edt_node(prime_suspect(Suspect, _, _), EDT) :-
 	suspect_get_edt_node(Suspect, EDT).
 
 	% Get all the suspects who are children of the prime suspect,
@@ -315,7 +318,7 @@ prime_suspect_get_edt_node(prime_suspect(Suspect, _, _, _), EDT) :-
 		maybe(suspect(T))).
 :- mode prime_suspect_get_evidence(in, out, out) is det.
 
-prime_suspect_get_evidence(prime_suspect(_, E, M, _), E, M).
+prime_suspect_get_evidence(prime_suspect(_, E, M), E, M).
 
 	% Add to the evidence against the prime suspect a child who
 	% is deemed correct or inadmissible.
@@ -327,9 +330,9 @@ prime_suspect_get_evidence(prime_suspect(_, E, M, _), E, M).
 :- mode prime_suspect_add_evidence(in, in, in, out) is det.
 
 prime_suspect_add_evidence(Prime0, Suspect, yes, Prime) :-
-	Prime0 = prime_suspect(S, Evidence0, M, P),
+	Prime0 = prime_suspect(S, Evidence0, M),
 	Evidence = [Suspect | Evidence0],
-	Prime = prime_suspect(S, Evidence, M, P).
+	Prime = prime_suspect(S, Evidence, M).
 
 prime_suspect_add_evidence(_, _, no, _) :-
 	error("prime_suspect_add_evidence: not evidence").

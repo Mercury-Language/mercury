@@ -23,6 +23,7 @@ DECLARATIVE_PROGS=		\
 	args			\
 	backtrack		\
 	big			\
+	filter			\
 	gcf			\
 	if_then_else		\
 	lpe_example		\
@@ -88,6 +89,9 @@ big.out: big big.inp
 
 family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1
+
+filter.out: filter filter.inp
+	$(MDB) ./filter < filter.inp > filter.out 2>&1
 
 gcf.out: gcf gcf.inp
 	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1

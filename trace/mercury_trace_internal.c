@@ -210,9 +210,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	}
 
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
-	if (MR_trace_decl_mode == MR_TRACE_DECL_DEBUG
-		|| MR_trace_decl_mode == MR_TRACE_DECL_DEBUG_TEST)
-	{
+	if (MR_trace_decl_mode != MR_TRACE_INTERACTIVE) {
 		return MR_trace_decl_debug(cmd, event_info);
 	}
 #endif	MR_USE_DECLARATIVE_DEBUGGER
@@ -1609,12 +1607,6 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			{
 				return STOP_INTERACTING;
 			}
-			else
-			{
-				fflush(MR_mdb_out);
-				fprintf(MR_mdb_err, "mdb: unable to start "
-						"declarative debugging.\n");
-			}
 		} else {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
@@ -1634,12 +1626,6 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 						jumpaddr))
 			{
 				return STOP_INTERACTING;
-			}
-			else
-			{
-				fflush(MR_mdb_out);
-				fprintf(MR_mdb_err, "mdb: unable to start "
-						"declarative debugging.\n");
 			}
 		} else {
 			fflush(MR_mdb_out);

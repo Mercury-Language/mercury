@@ -6,7 +6,6 @@ continue
 finish
 dd
 no
-no
 yes
 yes
 no
@@ -22,4 +21,5 @@ no
 yes
 yes
 yes
+continue
 continue

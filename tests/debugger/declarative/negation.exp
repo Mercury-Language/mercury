@@ -9,8 +9,6 @@ mdb> continue
 mdb> finish
       23:      2  2 EXIT pred negation:p/2-0 (det) negation.m:29 (negation.m:14)
 mdb> dd
-p(1, 42)
-Valid? no
 r(1, 11)
 Valid? yes
 q(11)

@@ -9,8 +9,6 @@ mdb> continue
 mdb> finish
        3:      2  2 EXIT pred small:p/1-0 (det) small.m:14 (small.m:8)
 mdb> dd
-p(42)
-Valid? no
 Found incorrect contour:
 p(42)
 Is this a bug? yes

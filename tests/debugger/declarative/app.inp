@@ -8,6 +8,7 @@ continue
 finish -n
 dd
 yes
+yes
 continue
 continue
 continue
@@ -16,6 +17,9 @@ no
 no
 no
 yes
+continue
+continue
+continue
 continue
 finish -n
 dd
@@ -31,4 +35,6 @@ no
 no
 yes
 continue
+quit
+y
 

@@ -279,18 +279,18 @@ write_decl_question(missing_answer(Call, Solns), User) -->
 write_decl_bug(e_bug(EBug), User) -->
 	{ User = user(_, OutStr) },
 	(
-		{ EBug = incorrect_contour(Atom, _) },
+		{ EBug = incorrect_contour(Atom, _, _) },
 		io__write_string(OutStr, "Found incorrect contour:\n"),
 		write_decl_atom(OutStr, "", Atom)
 	;
-		{ EBug = partially_uncovered_atom(Atom) },
+		{ EBug = partially_uncovered_atom(Atom, _) },
 		io__write_string(OutStr, "Found partially uncovered atom:\n"),
 		write_decl_atom(OutStr, "", Atom)
 	).
 
 write_decl_bug(i_bug(IBug), User) -->
 	{ User = user(_, OutStr) },
-	{ IBug = inadmissible_call(Parent, _, Call) },
+	{ IBug = inadmissible_call(Parent, _, Call, _) },
 	io__write_string(OutStr, "Found inadmissible call:\n"),
 	write_decl_atom(OutStr, "Parent", Parent),
 	write_decl_atom(OutStr, "Call ", Call).
