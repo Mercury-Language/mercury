@@ -100,7 +100,7 @@
 	% generate_dependencies(ModuleName):
 	%	Generate the per-program makefile dependencies (`.dep') file
 	%	for a program whose top-level module is `ModuleName'.
-	%	This involes first transitively reading in all imported
+	%	This involves first transitively reading in all imported
 	%	modules.  While we're at it, we also save the per-module
 	%	makefile dependency (`.d') files for all those modules.
 	%
