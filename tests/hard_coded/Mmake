@@ -12,7 +12,7 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 	no_fully_strict float_rounding_bug string_loop func_and_pred \
 	cc_nondet_disj bidirectional address_of_builtins \
 	reverse_arith curry curry2 higher_order_syntax \
-	ho_func_reg float_reg
+	ho_func_reg float_reg write expand ho_solns write_reg1
 
 #-----------------------------------------------------------------------------#
 
