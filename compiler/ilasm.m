@@ -47,7 +47,7 @@
 			extends,		% what is the parent class
 			implements, 		% what interfaces are 
 						% implemented
-			list(classdecl)		% methods and fields
+			list(class_member)		% methods and fields
 		)
 		% .namespace declaration
 	;	namespace(
@@ -110,7 +110,7 @@
 			list(implattr)		% implementation attributes
 	).
 
-:- type classdecl
+:- type class_member
 		% .method (a class method)
 	--->	method(
 			methodhead,		% name, signature, attributes
@@ -138,7 +138,7 @@
 			extends,		% what is the parent class
 			implements, 		% what interfaces are 
 						% implemented
-			list(classdecl)		% methods and fields
+			list(class_member)	% methods and fields
 		)
 		% comments
 	;	comment_term(term)
@@ -335,7 +335,7 @@ ilasm__output_decl(class(Attrs, Id, Extends, Implements, Contents),
 		{ Info2 = Info1 }
 	),
 	io__write_string(" {\n"),
-	ilasm__write_list(Contents, "\n", output_classdecl, Info2, Info),
+	ilasm__write_list(Contents, "\n", output_class_member, Info2, Info),
 	io__write_string("\n}").
 ilasm__output_decl(namespace(DottedName, Contents), Info0, Info) --> 
 	( { DottedName \= [] } ->
@@ -412,10 +412,10 @@ ilasm__output_decl(assembly(AsmName), Info0, Info) -->
 	{ Info = Info0 ^ current_assembly := AsmName },
 	io__write_string(" { }").
 
-:- pred ilasm__output_classdecl(classdecl::in, ilasm_info::in, ilasm_info::out,
-	io__state::di, io__state::uo) is det.
+:- pred ilasm__output_class_member(class_member::in, ilasm_info::in,
+	ilasm_info::out, io__state::di, io__state::uo) is det.
 
-ilasm__output_classdecl(method(MethodHead, MethodDecls), Info0, Info) -->
+ilasm__output_class_member(method(MethodHead, MethodDecls), Info0, Info) -->
 		% Don't do debug output on class constructors, since
 		% they are automatically generated and take forever to
 		% run.
@@ -438,7 +438,7 @@ ilasm__output_decl(extern_module(ModName), Info, Info) -->
 	io__write_string(".module extern "),
 	output_id(ModName).
 
-ilasm__output_classdecl(
+ilasm__output_class_member(
 		field(FieldAttrs, Type, IlId, MaybeOffset, Initializer),
 		Info0, Info) -->
 	io__write_string(".field "),
@@ -455,7 +455,7 @@ ilasm__output_classdecl(
 	output_id(IlId),
 	output_field_initializer(Initializer).
 
-ilasm__output_classdecl(
+ilasm__output_class_member(
 		property(Type, Name, MaybeGet, MaybeSet), Info0, Info) -->
 	io__write_string(".property instance "),
 	output_type(Type, Info0, Info1),
@@ -480,12 +480,12 @@ ilasm__output_classdecl(
 	),
 	io__write_string("\n}\n").
 
-ilasm__output_classdecl(nested_class(Attrs, Id, Extends, Implements,
+ilasm__output_class_member(nested_class(Attrs, Id, Extends, Implements,
 		Contents), Info0, Info) --> 
 	ilasm__output_decl(class(Attrs, Id, Extends, Implements, Contents),
 		Info0, Info).
 
-ilasm__output_classdecl(comment(CommentStr), Info, Info) --> 
+ilasm__output_class_member(comment(CommentStr), Info, Info) --> 
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		output_comment_string(CommentStr)
@@ -493,7 +493,7 @@ ilasm__output_classdecl(comment(CommentStr), Info, Info) -->
 		[]
 	).
 
-ilasm__output_classdecl(comment_term(CommentTerm), Info, Info) --> 
+ilasm__output_class_member(comment_term(CommentTerm), Info, Info) --> 
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("// "),
@@ -504,7 +504,7 @@ ilasm__output_classdecl(comment_term(CommentTerm), Info, Info) -->
 		[]
 	).
 
-ilasm__output_classdecl(comment_thing(Thing), Info, Info) --> 
+ilasm__output_class_member(comment_thing(Thing), Info, Info) --> 
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		{ Doc = label("// ", to_doc(Thing)) },
