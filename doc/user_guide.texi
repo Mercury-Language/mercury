@@ -1327,6 +1327,7 @@ The debugger will treat the former as the latter,
 even if the number and the command are not separated by white space.
 
 @menu
+* Interactive query commands::
 * Forward movement commands::
 * Backward movement commands::
 * Browsing commands::
@@ -1337,6 +1338,56 @@ even if the number and the command are not separated by white space.
 * Developer commands::
 * Miscellaneous commands::
 @end menu
+
+@node Interactive query commands
+@subsection Interactive query commands
+
+@table @code
+@item query @var{module1} @var{module2} @dots{}
+@itemx cc_query @var{module1} @var{module2} @dots{}
+@itemx io_query @var{module1} @var{module2} @dots{}
+These commands allow you to type in queries (goals) interactively
+in the debugger.  When you use one of these commands, the debugger
+will respond with a query prompt (@samp{?-} or @samp{run <--}),
+at which you can type in a goal; the debugger will the compile
+and execute the goal and display the answer(s).
+You can return from the query prompt to the @samp{mdb>} prompt
+by typing the end-of-file indicator (typically control-D or control-Z),
+or by typing @samp{quit.}.
+
+The module names @var{module1}, @var{module2}, @dots{} specify
+which modules will be imported.  Note that you can also
+add new modules to the list of imports directly at the query prompt,
+by using a command of the form @samp{["@var{module}"]}, e.g. @samp{["int"]}.
+You need to import all the modules that define symbols used in your query.
+Queries can only use symbols that are exported from a module;
+entities which are declared in a module's implementation section
+only cannot be used.
+
+The three variants differ in what kind of goals they allow. 
+For goals which perform I/O, you need to use @samp{io_query};
+this lets you type in the goal using DCG syntax.
+For goals which don't do I/O, but which have determinism
+@samp{cc_nondet} or @samp{cc_multi}, you you need to use @samp{cc_query};
+this finds only one solution to the specified goal.
+For all other goals, you can use plain @samp{query}, which
+finds all the solutions to the goal.
+
+For @samp{query} and @samp{cc_query}, the debugger will print
+out all the variables in the goal using @samp{io__write}.
+The goal must bind all of its variables to ground terms,
+otherwise you will get a mode error.
+
+The current implementation works by compiling the queries on-the-fly
+and then dynamically linking them into the program being debugged.
+Thus it make take a little while for your query to be executed.
+Each query will be written to a file named @file{query.m} in the current
+directory, so make sure you don't name your source file @file{query.m}.
+Note that dynamic linking may not be supported on some systems;
+if you are using a system for which dynamic linking is not supported,
+you will get an error message when you try to run these commands.
+
+@end table
 
 @node Forward movement commands
 @subsection Forward movement commands
@@ -1673,6 +1724,13 @@ and when listing debuggable modules and/or procedures.
 @subsection Parameter commands
 @sp 1
 @table @code
+@item mmc_options @var{option1} @var{option2} @dots{}
+This command sets the options that will be passed to @samp{mmc}
+to compile your query when you use one of the query commands
+(@samp{query}, @samp{cc_query}, or @samp{io_query}.
+For example, if a query results in a compile error,
+it may sometimes be helpful to use @samp{mmc_options --verbose-errors}.
+@sp 1
 @item printlevel none
 Sets the default print level to @samp{none}.
 @sp 1

@@ -403,6 +403,8 @@ MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
 	MR_print_proc_id_for_debugger(fp, entry_layout);
 }
 
+/* Options to pass to mmc when compiling queries. */
+static char *MR_mmc_options = NULL;
 
 static MR_Next
 MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
@@ -976,6 +978,33 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("parameter", "printlevel");
 		}
+	} else if (streq(words[0], "query")) {
+		MR_trace_query(MR_NORMAL_QUERY, MR_mmc_options,
+			word_count - 1, words + 1);
+	} else if (streq(words[0], "cc_query")) {
+		MR_trace_query(MR_CC_QUERY, MR_mmc_options,
+			word_count - 1, words + 1);
+	} else if (streq(words[0], "io_query")) {
+		MR_trace_query(MR_IO_QUERY, MR_mmc_options,
+			word_count - 1, words + 1);
+	} else if (streq(words[0], "mmc_options")) {
+		size_t len;
+
+		/* allocate the right amount of space */
+		len = 0;
+		for (i = 1; i < word_count; i++) {
+			len += strlen(words[i]) + 1;
+		}
+		MR_mmc_options = realloc(MR_mmc_options, len);
+
+		/* copy the arguments to MR_mmc_options */
+		MR_mmc_options[0] = '\0';
+		for (i = 1; i < word_count; i++) {
+			strcat(MR_mmc_options, words[i]);
+			strcat(MR_mmc_options, " ");
+		}
+		MR_mmc_options[len] = '\0';
+
 	} else if (streq(words[0], "scroll")) {
 		if (word_count == 2) {
 			if (streq(words[1], "off")) {

@@ -282,6 +282,12 @@ if test "$HAVE_SYS_TIME_H" = 1; then
 	AC_DEFINE(HAVE_SYS_TIME)
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+if test "$HAVE_DLFCN_H" = 1; then
+	AC_DEFINE(HAVE_DLFCN_H)
+fi
+AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+#-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction
 #

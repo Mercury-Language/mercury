@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,7 +9,8 @@
 **
 ** Main author: fjh
 **
-** This file provides the C interface to browser/browse.m.
+** This file provides the C interface to browser/browse.m
+** and browser/interactive_query.m.
 */
 
 /*
@@ -26,6 +27,7 @@
 #include "mercury_trace_internal.h"
 #include "mercury_deep_copy.h"
 #include "browse.h"
+#include "interactive_query.h"
 #include "std_util.h"
 #include <stdio.h>
 
@@ -97,4 +99,35 @@ MR_trace_browse_ensure_init(void)
 					(Word *) MR_trace_browser_state_type);
 		done = TRUE;
 	}
+}
+
+void
+MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
+	char *imports[])
+{
+	ConstString options_on_heap;
+	Word imports_list;
+	MercuryFile mdb_in, mdb_out;
+	int i;
+
+	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+
+	if (options == NULL) options = "";
+
+        MR_TRACE_USE_HP(
+		make_aligned_string(options_on_heap, options);
+
+		imports_list = list_empty();
+		for (i = num_imports; i > 0; i--) {
+			ConstString this_import;
+			make_aligned_string(this_import, imports[i - 1]);
+			imports_list = list_cons(this_import, imports_list);
+		}
+	);
+
+	MR_TRACE_CALL_MERCURY(
+		ML_query(type, imports_list, (String) options_on_heap,
+			(Word) &mdb_in, (Word) &mdb_out);
+	);
 }
