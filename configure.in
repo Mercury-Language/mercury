@@ -456,7 +456,7 @@ case "$host" in
 		ac_cv_func_mprotect=no ;;
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer)
-AC_HAVE_FUNCS(strerror memmove fileno fdopen fstat)
+AC_HAVE_FUNCS(strerror memmove dup fileno fdopen fstat)
 AC_HAVE_FUNCS(vsnprintf _vsnprintf)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(unistd.h, HAVE_UNISTD_H=1)
