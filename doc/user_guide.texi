@@ -1165,6 +1165,11 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
+@item --num-real-regs @var{n}
+(This option is not intended for general use.)
+Assume r1 up to r@var{n} are real machine registers.
+
+@sp 1
 @item --profiling (grades: any grade ending in `.prof')
 Enable profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
@@ -1198,6 +1203,14 @@ before going on the next phase on all predicates.
 @c Don't handle polymorphic types.
 @c (Generates slightly more efficient code, but stops
 @c polymorphism from working except in special cases.)
+
+@sp 1
+@item --excess-assign
+Remove excess assignment unifications.
+
+@c @sp 1
+@c @item --prev-code
+@c Migrate into the start of branched goals.
 
 @sp 1
 @item --no-follow-code
