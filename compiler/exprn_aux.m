@@ -24,6 +24,11 @@
 
 :- pred exprn_aux__rval_contains_rval(rval, rval).
 :- mode exprn_aux__rval_contains_rval(in, in) is semidet.
+:- mode exprn_aux__rval_contains_rval(in, out) is multidet.
+
+:- pred exprn_aux__args_contain_rval(list(maybe(rval)), rval).
+:- mode exprn_aux__args_contain_rval(in, in) is semidet.
+:- mode exprn_aux__args_contain_rval(in, out) is nondet.
 
 :- pred exprn_aux__substitute_lval_in_rval(lval, lval, rval, rval).
 :- mode exprn_aux__substitute_lval_in_rval(in, in, in, out) is det.
@@ -164,8 +169,6 @@ exprn_aux__args_contain_lval([M | Ms], Lval) :-
 exprn_aux__rval_contains_rval(Rval0, Rval) :-
 	(
 		Rval0 = Rval
-	->
-		true
 	;
 		(
 			Rval0 = lval(Lval),
@@ -191,6 +194,7 @@ exprn_aux__rval_contains_rval(Rval0, Rval) :-
 
 :- pred exprn_aux__lval_contains_rval(lval, rval).
 :- mode exprn_aux__lval_contains_rval(in, in) is semidet.
+:- mode exprn_aux__lval_contains_rval(in, out) is nondet.
 
 exprn_aux__lval_contains_rval(field(_, Rval0, Rval1), Rval) :-
 	(
@@ -199,15 +203,10 @@ exprn_aux__lval_contains_rval(field(_, Rval0, Rval1), Rval) :-
 		exprn_aux__rval_contains_rval(Rval1, Rval)
 	).
 
-:- pred exprn_aux__args_contain_rval(list(maybe(rval)), rval).
-:- mode exprn_aux__args_contain_rval(in, in) is semidet.
-
 exprn_aux__args_contain_rval([M | Ms], Rval) :-
 	(
 		M = yes(Rval0),
 		exprn_aux__rval_contains_rval(Rval0, Rval)
-	->
-		true
 	;
 		exprn_aux__args_contain_rval(Ms, Rval)
 	).

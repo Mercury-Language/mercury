@@ -1343,11 +1343,10 @@ output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
 	%
 	%	static const Word * mercury_const_...[] = { (Word *)... };
 	%
-	% if the constant refers to any code addresses.
+	% if the constant refers to any code addresses or data addresses.
+	% This includes string literals, and references to other constants.
 	% We output the original format if possible, since we want it
 	% to go in rdata if it can, because rdata is shared.
-	% References to other static consts should be resolved at compile time,
-	% not link time, so should not cause problems.
 	%
 output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 	( { set__member(Label, DeclSet0) } ->
@@ -1355,18 +1354,36 @@ output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 	;
 		{ set__insert(DeclSet0, Label, DeclSet1) },
 		output_cons_arg_decls(ArgVals, DeclSet1, DeclSet),
-		{ exprn_aux__maybe_rval_list_code_addrs(ArgVals, CodeAddrs) },
-		( { CodeAddrs = [] } ->
-			io__write_string("static const Word mercury_const_"),
-			io__write_int(Label),
-			io__write_string("[] = {\n\t\t"),
-			output_cons_args(ArgVals, no),
-			io__write_string("};\n\t  ")
-		;
+		(
+			% must we use use `Word *'?
+			{   
+			    % yes if the constant refers to any code addresses
+			    exprn_aux__maybe_rval_list_code_addrs(ArgVals,
+					CodeAddrs),
+			    CodeAddrs \= []
+			;   
+			    % yes if the constant contains any string constants
+			    % or any sub-constants
+			    exprn_aux__args_contain_rval(ArgVals, Rval),
+			    (   Rval = const(string_const(_))
+			    ;   Rval = create(_, _, Label1),
+				% every create contains a create - itself.
+				% We don't want to count that one,
+				% so we check that the labels are different:
+				Label1 \= Label 
+			    )
+			}
+		->
 			io__write_string("static const Word * mercury_const_"),
 			io__write_int(Label),
 			io__write_string("[] = {\n\t\t"),
 			output_cons_args(ArgVals, yes),
+			io__write_string("};\n\t  ")
+		;
+			io__write_string("static const Word mercury_const_"),
+			io__write_int(Label),
+			io__write_string("[] = {\n\t\t"),
+			output_cons_args(ArgVals, no),
 			io__write_string("};\n\t  ")
 		)
 	).
