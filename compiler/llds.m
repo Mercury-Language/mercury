@@ -995,7 +995,7 @@ output_lval(curfr) -->
 output_lval(redoip(Rval)) -->
 	io__write_string("LVALUE_CAST(Word,bt_redoip("),
 	output_rval(Rval),
-	io__write_string(")").
+	io__write_string("))").
 output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
