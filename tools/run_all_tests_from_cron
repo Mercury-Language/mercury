@@ -145,9 +145,6 @@ then
 		echo "test passed"
 	fi
 	echo
-	echo last 20 lines of log file:
-	tail -20 $logfile
-	echo
 	case $HOST in
 		hg) base=/home/hg ;;
 		*) base=/home/mercury ;;
@@ -167,6 +164,13 @@ else
 	echo test FAILED
 	echo log file in $logfile
 	echo log file summary in $logfile.errs
+fi
+
+if [ -s $logfile.errs ]; then
+	echo
+	echo first 100 lines of log file summary:
+	head -100 $logfile
+elif [ $test_status = "FAILED" ]; then
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
