@@ -197,7 +197,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 
 :- pred typecheck_clause_list(list(clause), pred_id, tvarset, list(type),
 		module_info, bool, list(clause), bool, io__state, io__state).
-:- mode typecheck_clause_list(input, input, input, input, input, input, input,
+:- mode typecheck_clause_list(input, input, input, input, input, input,
 			output, output, di, uo).
 
 typecheck_clause_list([], _PredId, _TypeVarSet, _ArgTypes, _ModuleInfo, Error,
@@ -663,7 +663,7 @@ checkpoint(Msg, T0, T) :-
 :- mode checkpoint_2(input, typeinfo_ui, di, uo).
 
 checkpoint_2(Msg, T0) -->
-	io__write_string("Typechecking "),
+	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
 	{ report_stats },
@@ -909,25 +909,9 @@ make_n_fresh_var_terms(VarSet0, N, VarSet, VarTerms) :-
 :- mode type_assign_unify_type(input, input, input, output).
 
 type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
-	% debugging crap
-	/****
-	io__init_state(IO0),
-	t2(TypeAssign0, X, Y, IO0, IO1),
-	io__final_state(IO1),
-	****/
-
 	type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 	type_unify(X, Y, TypeBindings0, TypeBindings),
 	type_assign_set_type_bindings(TypeAssign0, TypeBindings, TypeAssign).
-
-t2(TypeAssign, X, Y) -->
-	{ type_assign_get_type_bindings(TypeAssign, TypeBindings) },
-	io__write_string("unifying types: "),
-	io__write_term(TypeBindings, term_functor(term_atom("="), [X, Y],
-		term__context("", 0))),
-	io__write_string("\ntype assignment (minus var names) is:\n"),
-	{ varset__init(VarSet) },
-	write_type_assign(TypeAssign, VarSet).
 
 %-----------------------------------------------------------------------------%
 
