@@ -90,6 +90,6 @@ errs:	$(ERRS)
 depend:	test_nested.depend
 
 clean:
-	rm -f *.c *.o *.err *.err2 *.d *.err_res
+	rm -f *.err *.err_res
 
 #-----------------------------------------------------------------------------#

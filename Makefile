@@ -1,4 +1,8 @@
 #-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
 #
 # This Makefile just invokes `mmake' to do the real work.
 # Standard targets include `all', `install', and `clean'.
@@ -36,15 +40,19 @@ install:
 .PHONY: clean
 clean:
 	-rm -f */*.o */*.pic_o */*.a */*.so */*.no */*.ql */*.pl
+	-rm -rf */Mercury/os */Mercury/pic_os */Mercury/libs
+	-rm -rf */Mercury/qls */Mercury/nos
 	-rm -f compiler/mercury_compile profiler/mercury_profile 
 	-rm -f library/library.nu* library/library.sicstus*
-	-rm -f library/sicstus_compile util/mdemangle util/mkinit
+	-rm -f library/sicstus_compile library/sicstus_saved_state
+	-rm -f util/mdemangle util/mkinit
 	cd boehm_gc; $(MMAKE_SUBDIR) clean
 
 .PHONY: distclean
 distclean: clean
 	cd scripts; for file in *.in; do rm -f `basename $file .in`; done
-	-rm -f Mmake.common runtime/mercury_conf.h bindist/bindist.build_vars
+	-rm -f Mmake.common runtime/mercury_conf.h
+	-rm -f boehm_gc/mercury_boehm_gc_conf.h bindist/bindist.build_vars
 	-rm -f config.cache config.status config.log
 
 .PHONY: maintainer-clean
