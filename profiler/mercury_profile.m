@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999, 2002 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,7 +105,7 @@ usage -->
 	{ library__version(Version) },
         io__write_strings(StdErr,
 		["Mercury Profiler, version ", Version, "\n"]),
-        io__write_string(StdErr, "Copyright (C) 1995-2002 The University of Melbourne\n"),
+        io__write_string(StdErr, "Copyright (C) 1995-2004 The University of Melbourne\n"),
         io__write_string(StdErr, "Usage: "),
         io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] [<files>]\n"),

@@ -1469,7 +1469,7 @@ usage -->
 	{ library__version(Version) },
  	io__write_strings([
 		"Mercury Compiler, version ", Version, "\n",
-		"Copyright (C) 1993-2002 The University of Melbourne\n",
+		"Copyright (C) 1993-2004 The University of Melbourne\n",
 		"Usage: mmc [<options>] <arguments>\n",
 		"Use `mmc --help' for more information.\n"
 	]).
@@ -1477,7 +1477,7 @@ usage -->
 long_usage -->
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string("Copyright (C) 1993-2002 The University of Melbourne\n"),
+ 	io__write_string("Copyright (C) 1993-2004 The University of Melbourne\n"),
 	io__write_string("Usage: mmc [<options>] <arguments>\n"),
 	io__write_string("Arguments:\n"),
 	io__write_string("\tArguments ending in `.m' are assumed to be source file names.\n"),
