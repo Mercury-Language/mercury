@@ -780,7 +780,6 @@ struct MR_TypeCtorInfo_Struct {
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, cm, n, a, cr, u, c)    \
     Declare_entry(u);                                                   \
-    Declare_entry(i);                                                   \
     Declare_entry(c);                                                   \
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct                  \
     MR_PASTE6(mercury_data_, cm, __type_ctor_info_, n, _, a) = {        \
