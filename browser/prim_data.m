@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mdbcomp__prim_data.
+:- module mdbcomp.prim_data.
 
 :- interface.
 

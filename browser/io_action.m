@@ -12,12 +12,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mdb__io_action.
+:- module mdb.io_action.
 
 :- interface.
 
-:- import_module mdb__browser_term.
-:- import_module mdbcomp__prim_data.
+:- import_module mdb.browser_term.
+:- import_module mdbcomp.prim_data.
+
 :- import_module list, map, std_util, io.
 
 :- type io_action

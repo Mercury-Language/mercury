@@ -12,12 +12,12 @@
 % responses to debugger queries from the user.
 %
 
-:- module mdb__declarative_user.
+:- module mdb.declarative_user.
 
 :- interface.
 
-:- import_module mdb__declarative_debugger.
 :- import_module mdb.browser_info.
+:- import_module mdb.declarative_debugger.
 
 :- import_module io.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2002, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,7 @@
 % 	execution. When the end of the execution is reached, the last value of
 % 	the collecting variable is send to the debugger.
 
-:- module mdb__collect_lib.
+:- module mdb.collect_lib.
 :- interface.
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.

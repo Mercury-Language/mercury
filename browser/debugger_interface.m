@@ -13,7 +13,7 @@
 %
 % This module corresponds to what is called the "Query Handler" in Opium.
 
-:- module mdb__debugger_interface.
+:- module mdb.debugger_interface.
 :- interface. 
 
 % This module exports the following C functions:
@@ -31,11 +31,11 @@
 
 :- implementation.
 
-:- import_module list, bool, std_util.
-:- import_module mdb__interactive_query.
-:- import_module mdb__util.
-:- import_module mdbcomp__prim_data.
+:- import_module mdb.interactive_query.
+:- import_module mdb.util.
+:- import_module mdbcomp.prim_data.
 
+:- import_module list, bool, std_util.
 :- import_module io, require.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.

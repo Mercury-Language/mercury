@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -7,7 +7,7 @@
 % This module defines a type to represent both natural and synthetic terms
 % for use by the browser.
 
-:- module mdb__browser_term.
+:- module mdb.browser_term.
 
 :- interface.
 

@@ -4,11 +4,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module mdb__util.
+:- module mdb.util.
 
 :- interface.
 
-:- import_module mdbcomp__prim_data.
+:- import_module mdbcomp.prim_data.
 
 :- import_module list, string, io, bool.
 
@@ -52,6 +52,7 @@
 :- type unbound ---> '_'.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int, require.

@@ -13,12 +13,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module mdbcomp__trace_counts.
+:- module mdbcomp.trace_counts.
 
 :- interface.
 
-:- import_module mdbcomp__prim_data.
-:- import_module mdbcomp__program_representation.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module io, map.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002 The University of Melbourne.
+% Copyright (C) 1998-2000,2002, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,9 @@
 % it can be easily changed if the representation of `mercury_proc' changes.
 
 %-----------------------------------------------------------------------------%
-:- module mdb__name_mangle.
+
+:- module mdb.name_mangle.
+
 :- interface.
 
 	% Given a mercury_proc specifying the module name,
@@ -56,6 +58,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module string, char, int, list.
 
 % XXX most of the code below is very similar to the code in
@@ -72,6 +75,7 @@ proc_name_mangle(MercuryProc) =
 	).
 		
 :- func llds_proc_name_mangle(mercury_proc) = string.
+
 llds_proc_name_mangle(MercuryProc) = LabelName :-
 	MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
 	sym_name_mangle(Module, ModuleName),
@@ -109,6 +113,7 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
 	).
 
 :- func mlds_proc_name_mangle(mercury_proc) = string.
+
 mlds_proc_name_mangle(MercuryProc) = LabelName :-
 	MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
 	sym_name_mangle(Module, ModuleName),
@@ -139,8 +144,7 @@ mlds_proc_name_mangle(MercuryProc) = LabelName :-
 		PredOrFuncString, "_", ModeNumString],
 		LabelName).
 
-:- pred sym_name_mangle(sym_name, string).
-:- mode sym_name_mangle(in, out) is det.
+:- pred sym_name_mangle(sym_name::in, string::out) is det.
 
 sym_name_mangle(unqualified(Name), MangledName) :-
 	name_mangle(Name, MangledName).
@@ -155,8 +159,7 @@ sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
 	% quoted names such as 'name with embedded spaces' are valid
 	% predicate names in Mercury.
 
-:- pred name_mangle(string, string).
-:- mode name_mangle(in, out) is det.
+:- pred name_mangle(string::in, string::out) is det.
 
 name_mangle(Name, MangledName) :-
 	(
@@ -177,8 +180,7 @@ name_mangle(Name, MangledName) :-
 		convert_to_valid_c_identifier(Name, MangledName)
 	).
 
-:- pred convert_to_valid_c_identifier(string, string).
-:- mode convert_to_valid_c_identifier(in, out) is det.
+:- pred convert_to_valid_c_identifier(string::in, string::out) is det.
 
 convert_to_valid_c_identifier(String, Name) :-	
 	(
@@ -190,8 +192,7 @@ convert_to_valid_c_identifier(String, Name) :-
 		string__append("f", Name0, Name)
 	).
 
-:- pred qualify_name(string, string, string).
-:- mode qualify_name(in, in, out) is det.
+:- pred qualify_name(string::in, string::in, string::out) is det.
 
 qualify_name(Module0, Name0, Name) :-
 	string__append_list([Module0, "__", Name0], Name).
@@ -203,8 +204,7 @@ qualify_name(Module0, Name0, Name) :-
 	% If the functor name is not found in the table, then
 	% we use a fall-back method which produces ugly names.
 
-:- pred name_conversion_table(string, string).
-:- mode name_conversion_table(in, out) is semidet.
+:- pred name_conversion_table(string::in, string::out) is semidet.
 
 name_conversion_table("\\=", "f_not_equal").
 name_conversion_table(">=", "f_greater_or_equal").
@@ -230,8 +230,7 @@ name_conversion_table("!", "f_cut").
 	%
 	% For example, given the input "\n\t" we return "_10_8".
 
-:- pred convert_to_valid_c_identifier_2(string, string).
-:- mode convert_to_valid_c_identifier_2(in, out) is det.
+:- pred convert_to_valid_c_identifier_2(string::in, string::out) is det.
 
 convert_to_valid_c_identifier_2(String, Name) :-	
 	(
@@ -248,6 +247,7 @@ convert_to_valid_c_identifier_2(String, Name) :-
 	).
 
 :- pred use_asm_labels is semidet.
+
 :- pragma foreign_proc("C", use_asm_labels,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
@@ -261,6 +261,7 @@ use_asm_labels :-
 	private_builtin__sorry("use_asm_labels").
 
 :- pred high_level_code is semidet.
+
 :- pragma foreign_proc("C", high_level_code,
 	[will_not_call_mercury, promise_pure, thread_safe],
 "

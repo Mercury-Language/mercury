@@ -31,10 +31,10 @@
 
 :- implementation.
 
-:- type term_rep 
-	---> term_rep(univ) 
-	where 
-		equality is term_rep_equal, 
+:- type term_rep
+	---> term_rep(univ)
+	where
+		equality is term_rep_equal,
 		comparison is term_rep_compare.
 
 :- pred term_rep_equal(term_rep::in, term_rep::in) is semidet.

@@ -14,14 +14,14 @@
 % end (in browser/declarative_debugger.m) where it is analysed
 % to produce a bug diagnosis.
 
-:- module mdb__declarative_execution.
+:- module mdb.declarative_execution.
 
 :- interface.
 
-:- import_module mdb__util.
+:- import_module mdb.util.
 :- import_module mdb.term_rep.
-:- import_module mdbcomp__prim_data.
-:- import_module mdbcomp__program_representation.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module list, std_util, io, bool.
 

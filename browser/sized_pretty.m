@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
 % sized_pretty-	When printing a term during debugging this module allows
 %		the user to put a limit on the size of the term displayed.
-%               This limit is specified by setting the number of lines you 
-%               want and the width of these lines. 
+%               This limit is specified by setting the number of lines you
+%               want and the width of these lines.
 %
 %
 % author: sthur
@@ -55,114 +55,115 @@
 % big(
 %   big(
 %     big(
-%       small, 
-%       "Level 3", 
-%       small), 
-%     "Level 2", 
-%     small), 
-%   "Level 1", 
+%       small,
+%       "Level 3",
+%       small),
+%     "Level 2",
+%     small),
+%   "Level 1",
 %   big(
 %     big(
-%       small, 
-%       "Level 3", 
-%       small), 
-%     "Level 2", 
+%       small,
+%       "Level 3",
+%       small),
+%     "Level 2",
 %     small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 16, Line(s) = 16
-% 
+%
 % big(
 %   big(
-%     big/3, 
-%     "Level 2", 
-%     small), 
-%   "Level 1", 
+%     big/3,
+%     "Level 2",
+%     small),
+%   "Level 1",
 %   big(
-%     big/3, 
-%     "Level 2", 
+%     big/3,
+%     "Level 2",
 %     small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 50, Line(s) = 4
-% 
+%
 % big(
-%   big(big/3, "Level 2", small), 
-%  "Level 1", 
+%   big(big/3, "Level 2", small),
+%  "Level 1",
 %   big(big/3, "Level 2", small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 56, Line(s) = 4
-% 
+%
 % big(
-%   big(big(small, "Level 3", small), "Level 2", small), 
-%   "Level 1", 
+%   big(big(small, "Level 3", small), "Level 2", small),
+%   "Level 1",
 %   big(big(small, "Level 3", small), "Level 2", small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 30, Line(s) = 5
-% 
+%
 % big(big/3, "Level 1", big/3)
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 33, Line(s) = 5
-% 
+%
 % big(
-%   big(big/3, "Level 2", small), 
-%   "Level 1", 
+%   big(big/3, "Level 2", small),
+%   "Level 1",
 %   big(big/3, "Level 2", small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 75, Line(s) = 1
-% 
+%
 % big(big(big/3, "Level 2", small), "Level 1", big(big/3, "Level 2", small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 20, Line(s) = 10
-% 
+%
 % big(
 %   big(
-%     big/3, 
-%     "Level 2", 
-%     small), 
-%   "Level 1", 
+%     big/3,
+%     "Level 2",
+%     small),
+%   "Level 1",
 %   big(
-%     big/3, 
-%     "Level 2", 
+%     big/3,
+%     "Level 2",
 %     small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 40, Line(s) = 10
-% 
+%
 % big(
 %   big(
-%     big(small, "Level 3", small), 
-%     "Level 2", 
-%     small), 
-%   "Level 1", 
+%     big(small, "Level 3", small),
+%     "Level 2",
+%     small),
+%   "Level 1",
 %   big(
-%     big(small, "Level 3", small), 
-%     "Level 2", 
+%     big(small, "Level 3", small),
+%     "Level 2",
 %     small))
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 29, Line(s) = 1
-% 
+%
 % big(big/3, "Level 1", big/3)
-% 
+%
 %---------------------------------------------------------------------------%
 % Width = 20, Line(s) = 1
-% 
+%
 % big/3
-% 
+%
 %---------------------------------------------------------------------------%
 
-:- module mdb__sized_pretty.
+:- module mdb.sized_pretty.
 
 :- interface.
 
-:- import_module mdb__browser_info.
-:- import_module mdb__browser_term.
+:- import_module mdb.browser_info.
+:- import_module mdb.browser_term.
+
 :- import_module std_util, int, string.
 
 	% sized_pretty__univ_to_string_line(Univ, LineWidth, Lines, String)
@@ -187,11 +188,10 @@
 :- type measure_params
 	--->	measure_params(int).	% This parameter specifies Linewidth
 
-
 :- type maybe_deconstructed(T)
 	--->	not_deconstructed
 	;	deconstructed(
-			string,			% Functor 
+			string,			% Functor
 			int,			% Arity
 			size_annotated_args(T) 	% arguments
 		).
@@ -215,8 +215,8 @@
 			maybe_deconstructed(T)
 		).
 
-:- type size_annotated_args(T) == 
-	list(maybe(pair(T, size_annotated_term(T)))). 
+:- type size_annotated_args(T) ==
+	list(maybe(pair(T, size_annotated_term(T)))).
 
 :- typeclass measure(T) where [
 	func max_measure(T, T) = T is det,
@@ -276,7 +276,7 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 	(
 		Arity \= 0,
 		Lines \= 0,
-		(Lines - 1) // Arity = 0 
+		(Lines - 1) // Arity = 0
 	->
 		% "- 1" is to account for the newline character
 		Limit = character_count(LineWidth - 1)
@@ -288,11 +288,11 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 		MaybeReturn = yes,
 		BrowserTerm = synthetic_term(_, _, yes(ReturnValue))
 	->
-		annotate_with_size(BrowserDb, plain_term(ReturnValue), 
+		annotate_with_size(BrowserDb, plain_term(ReturnValue),
 			Params, Limit, AnnotReturn),
 		Doc = group(
 			to_doc_sized(AnnotTerm)
-			`<>` line 
+			`<>` line
 			`<>` nest(2, text(" = ")
 				`<>` to_doc_sized(AnnotReturn))
 		)
@@ -306,7 +306,7 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 	% first_pass gives an idea of how much space each term takes
 	% In this pass the space is unevenly distributed. First come first
 	% served. And once the space runs out, the term is not deconstructed
-	% further. 
+	% further.
 	% In the Second pass the space is evenly distributed between
 	% the terms and therefore the subterms are deconstructed evenly.
 :- pred annotate_with_size(browser_db::in, browser_term::in, MeasureParams::in,
@@ -318,7 +318,7 @@ annotate_with_size(BrowserDb, BrowserTerm, Params, Limit, SizedTerm2) :-
 	second_pass(BrowserDb, SizedTerm1, Params, Limit, SizedTerm2).
 
 %---------------------------------------------------------------------------%
-	
+
 :- pred first_pass(browser_db::in, browser_term::in, MeasureParams::in, T::in,
 	size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
@@ -358,8 +358,8 @@ first_pass(BrowserDb, BrowserTerm, Params, Limit, Size) :-
 
 	% annotating the arguments.
 :- pred annotate_args_with_size(browser_db::in, list(univ)::in, maybe(T)::in,
-	MeasureParams::in, T::in, T::in, T::out, bool::in, bool::out, 
-	size_annotated_args(T)::out) is cc_multi <= measure_with_params(T, 
+	MeasureParams::in, T::in, T::in, T::out, bool::in, bool::out,
+	size_annotated_args(T)::out) is cc_multi <= measure_with_params(T,
 	MeasureParams).
 
 annotate_args_with_size(_, [], _, _, _, SoFar, SoFar, Exact, Exact, []).
@@ -426,7 +426,7 @@ extract_browser_term_from_annotation(at_least(BrowserTerm, _, _)) =
 	% If a term can be fully printed within the given space,
 	% ("exact" type) then the Term is not altered.
 :- pred second_pass(browser_db::in, size_annotated_term(T)::in,
-	MeasureParams::in, T::in, size_annotated_term(T)::out) is cc_multi 
+	MeasureParams::in, T::in, size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
 
 second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
@@ -443,9 +443,9 @@ second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
 		measured_split(BrowserDb, BrowserTerm, Params, Limit, Arity,
 			yes, FSize, MaybeInitLimit, NewLimit, NewParams),
 		( MaybeInitLimit = yes(InitLimit) ->
-	    		check_args(NewParams, MaybeArgs, InitLimit, Passed, 
+	    		check_args(NewParams, MaybeArgs, InitLimit, Passed,
 				FSize, Used),
-			LeftOver = add_measures(subtract_measures(NewLimit, 
+			LeftOver = add_measures(subtract_measures(NewLimit,
 			  	Used, Params), FSize, Params),
 	    		measured_split(BrowserDb, BrowserTerm, Params,
 				LeftOver, Arity - Passed, no, _,
@@ -454,22 +454,22 @@ second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
 	        		process_args(BrowserDb, NewParams, MaybeArgs,
 					InitLimit, SplitLimit,
 					NewArgs, NewSize0),
-				NewSize = add_measures(FSize, NewSize0, 
+				NewSize = add_measures(FSize, NewSize0,
 					NewParams),
 				Result0 = list__map(check_if_exact, NewArgs),
     				list__remove_adjacent_dups(Result0, Result),
 				( Result = [yes] ->
 					NewSizeTerm = exact(BrowserTerm,
 						NewSize, Functor, Arity,
-						NewArgs) 	
+						NewArgs)
 	        		;
 					NewSizeTerm = at_least(BrowserTerm,
-						NewSize, 
-						deconstructed(Functor, Arity, 
+						NewSize,
+						deconstructed(Functor, Arity,
 							NewArgs))
 				)
 	    		;
-	        		NewSizeTerm = at_least(BrowserTerm, FSize, 
+	        		NewSizeTerm = at_least(BrowserTerm, FSize,
 					not_deconstructed)
 	    		)
 		;
@@ -477,15 +477,15 @@ second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
 				not_deconstructed)
 		)
 	).
-	
+
 %---------------------------------------------------------------------------%
 
 	% Given a list of size annotated terms(ie arguments) and a
-	% Limit, this predicate returns the values "Passed" and 
+	% Limit, this predicate returns the values "Passed" and
 	% "Used". Where "Passed" represents the number of terms that
 	% obey the Limit and are fully represented("exact") and "Used"
 	% represents the space that these terms take up.
-:- pred check_args(MeasureParams::in, size_annotated_args(T)::in, T::in, 
+:- pred check_args(MeasureParams::in, size_annotated_args(T)::in, T::in,
 	int::out, T::in, T::out) is det
 	<= measure_with_params(T, MeasureParams).
 
@@ -493,15 +493,15 @@ check_args(_, [], _, 0, Used0, Used0).
 check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
 	( HeadArg = yes(X) ->
 		X = _ - STerm,
-		Size = extract_size_from_annotation(STerm), 
+		Size = extract_size_from_annotation(STerm),
 		( STerm = exact(_, _, _, _, _) ->
 	    		( compare_measures(ArgLimit, Size) = (<) ->
-	    			check_args(Params, Rest, ArgLimit, Passed, 
+	    			check_args(Params, Rest, ArgLimit, Passed,
 					Used0, Used)
 	    		;
 	    			Passed = 1 + PassedRest,
 				UsedSofar = add_measures(Used0, Size, Params),
-	    			check_args(Params, Rest, ArgLimit, PassedRest, 
+	    			check_args(Params, Rest, ArgLimit, PassedRest,
 					UsedSofar, Used)
 	    		)
 		;
@@ -516,7 +516,7 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
 	% This predicate accepts a list of size annotated terms(paired
 	% with a flag) and returns a list of the same type. This new
 	% list would consist of the same number of terms as the other
-	% but the terms which do not obey the limit or not fully 
+	% but the terms which do not obey the limit or not fully
 	% represented would be annoted again with a new limit
 	% (SplitLimit). The rest of the terms are left alone.
 :- pred process_args(browser_db::in, MeasureParams::in,
@@ -524,13 +524,13 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
 	T::out) is cc_multi <= measure_with_params(T, MeasureParams).
 
 process_args(_, _, [], _, _, [], zero_measure).
-process_args(BrowserDb, Params, [HeadArg | Rest], ArgLimit, SplitLimit, 
+process_args(BrowserDb, Params, [HeadArg | Rest], ArgLimit, SplitLimit,
 		[NewHeadArg | NewRest], SizeOut) :-
     	( HeadArg = yes(X) ->
 		X = _ - STerm,
-		Size = extract_size_from_annotation(STerm), 
-        	BrowserTerm = extract_browser_term_from_annotation(STerm), 
-		( 
+		Size = extract_size_from_annotation(STerm),
+        	BrowserTerm = extract_browser_term_from_annotation(STerm),
+		(
 			STerm = exact(_, _, _, _, _),
 	    		(
 				compare_measures(ArgLimit, Size) = (>)
@@ -569,7 +569,7 @@ check_if_exact(yes(_ - Term)) = Result:-
 	;
 		Term = at_least(_, _, _),
 		Result = no
-	).	
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -612,18 +612,18 @@ to_doc_sized_2(Functor, _Arity, []) = text(Functor).
 to_doc_sized_2(Functor, Arity, [HeadArg|Tail]) = Doc :-
     	Args = list__map(handle_arg, [HeadArg|Tail]),
     	list__remove_adjacent_dups(Args, NewArgs),
-    	( NewArgs \= [nil] -> 
-        	Doc = text(Functor) `<>` parentheses(group(nest(2, line `<>` 
+    	( NewArgs \= [nil] ->
+        	Doc = text(Functor) `<>` parentheses(group(nest(2, line `<>`
 			separated(id,comma_space_line, Args))))
     	;
         	Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
     	).
-	
+
 %---------------------------------------------------------------------------%
 
 :- func handle_arg(maybe(pair(T,size_annotated_term(T)))) = doc.
 
-handle_arg(yes(_ - Arg_Term)) = to_doc_sized(Arg_Term). 
+handle_arg(yes(_ - Arg_Term)) = to_doc_sized(Arg_Term).
 handle_arg(no) = nil.
 
 %---------------------------------------------------------------------------%
@@ -634,12 +634,12 @@ handle_arg(no) = nil.
 :- type functor_count
 	--->	functor_count(int). 	% No of function symbols
 
-:- func add_functor_count(functor_count, functor_count, 
+:- func add_functor_count(functor_count, functor_count,
 	no_measure_params) = functor_count.
 
 add_functor_count(functor_count(A), functor_count(B), _) = functor_count(A + B).
 
-:- func subtract_functor_count(functor_count, functor_count, 
+:- func subtract_functor_count(functor_count, functor_count,
 	no_measure_params) = functor_count.
 
 subtract_functor_count(functor_count(A), functor_count(B), _) =
@@ -662,7 +662,7 @@ max_functor_count(functor_count(A), functor_count(B)) = functor_count(Max) :-
 :- func zero_functor_count = functor_count.
 
 zero_functor_count = functor_count(0).
-	
+
 :- pred functor_count_split(browser_db::in, browser_term::in,
 	no_measure_params::in, functor_count::in, int::in, bool::in,
 	functor_count::out, maybe(functor_count)::out, functor_count::out,
@@ -677,7 +677,7 @@ functor_count_split(_, _, Params, functor_count(Limit), Arity, _,
 		MaybeArgLimit0 = no,
 		cc_multi_equal(MaybeArgLimit0, MaybeArgLimit)
 	;
-		( Limit =< Arity + 1 ->			
+		( Limit =< Arity + 1 ->
 			MaybeArgLimit = no
 		;
 			RoundUp = (Limit + Arity - 1) // Arity,
@@ -710,7 +710,7 @@ functor_count_split(_, _, Params, functor_count(Limit), Arity, _,
 
 add_char_count(char_count(A), char_count(B), _) = char_count(A + B).
 
-:- func subtract_char_count(char_count, char_count, 
+:- func subtract_char_count(char_count, char_count,
 	no_measure_params) = char_count.
 
 subtract_char_count(char_count(A), char_count(B), _) =
@@ -805,14 +805,14 @@ add_size_count(character_count(A), character_count(B), Params) = Result :-
 	).
 
 add_size_count(character_count(A), line_count(B), _) = Result :-
-	( A > 0 -> 
+	( A > 0 ->
 		Result = line_count(B + 1)
 	;
 		Result = line_count(B)
 	).
 
 add_size_count(line_count(A), character_count(B), _) = Result :-
-	( B > 0 -> 
+	( B > 0 ->
 		Result = line_count(A + 1)
 	;
 		Result = line_count(A)
@@ -821,17 +821,17 @@ add_size_count(line_count(A), character_count(B), _) = Result :-
 add_size_count(line_count(A), line_count(B), _) = line_count(A + B).
 
 	% Rounding up the Lines and subtracting works because we assume
-	% that each argument is a different line or they are all on 
+	% that each argument is a different line or they are all on
 	% the same line. But this requires you to determine which case
 	% likely to happen before hand. For example if a term is to be
 	% on one line, you should do subtract_size_count(character_count(
 	% LineLength), charater_count(arglength)) rather than
 	% subtract_size_count(line_count(1), character_count(arglength)).
 	% The reason that this situation cannot be detected in this code is:
-	% A term can be printed on a single line only if, all of it's 
+	% A term can be printed on a single line only if, all of it's
 	% arguments can be printed on the same line. And you cannot determine
-	% which case is likely to happen in this code using the information 
-	% it has. Therefore size_count_split determines which case is true 
+	% which case is likely to happen in this code using the information
+	% it has. Therefore size_count_split determines which case is true
 	% (and changes the limit accordingly).
 :- func subtract_size_count(size_count, size_count,measure_params) = size_count.
 
@@ -844,14 +844,14 @@ subtract_size_count(character_count(A), character_count(B), _) = Result :-
 	).
 
 subtract_size_count(character_count(A), line_count(B), _) = Result :-
-	( B = 0 -> 
+	( B = 0 ->
 		Result = character_count(A)
 	;
 		Result = character_count(0)
 	).
 
 subtract_size_count(line_count(A), character_count(B), _) = Result :-
-	( B = 0 -> 
+	( B = 0 ->
 		Result = line_count(A)
 	;
 		( A - 1 >= 0 ->
@@ -906,7 +906,7 @@ max_size_count(A, B) = Max :-
 
 zero_size_count = character_count(0).
 
-	% We assume that all arguments have to be on separate lines, or 
+	% We assume that all arguments have to be on separate lines, or
 	% the whole term should be printed on a single line.
 :- pred size_count_split(browser_db::in, browser_term::in, measure_params::in,
 	size_count::in, int::in, bool::in, size_count::out,
@@ -927,7 +927,7 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
 	;
 		TotalLength = 0,
 		MaxLength = 0
-	), 
+	),
 	( Arity = 0 ->
 		MaybeArgLimit = no,
 		FunctorSize = character_count(FSize),
@@ -936,7 +936,7 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
 	;
 		(
 			Limit = line_count(LineLimit),
-			% we need one line for the functor and atleast 
+			% we need one line for the functor and atleast
 			% one line for each argument
 			LineLimit >= (Arity + 1),
 			% linewidth is decreased by two characters
@@ -955,7 +955,7 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
 			% (in this  context anyway) it will have a
 			% comma, space and a  newline at the end of it
 			% (Hence the "- 3").
-			LineWidth - 3 >= (FSize + TotalLength) 
+			LineWidth - 3 >= (FSize + TotalLength)
 		->
 			% "Arity - 1" is for rounding up.
 			Char = (LineWidth - 3 - FSize + Arity - 1)
@@ -992,7 +992,7 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
 			string__length(ArityStr, ArityChars),
 			FunctorSize = character_count(FunctorLength + 1
 				+ ArityChars + FuncSuffixChars),
-			NewLimit = Limit, 
+			NewLimit = Limit,
 			NewParams = Params
 		)
 	).
@@ -1025,7 +1025,7 @@ get_arg_length([HeadUniv | Rest], TotalLength, MaxLength) :-
 	;
 		Correction = 3
 	),
-	( Arity = 0 -> 
+	( Arity = 0 ->
 		Length = string__length(Functor)
 	;
 		% 2 is added because if a term has arguments then the

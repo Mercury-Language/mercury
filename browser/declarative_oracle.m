@@ -22,13 +22,13 @@
 % the user will not be asked the same question twice.
 %
 
-:- module mdb__declarative_oracle.
+:- module mdb.declarative_oracle.
 
 :- interface.
 
-:- import_module mdb__declarative_debugger.
-:- import_module mdb__declarative_execution.
 :- import_module mdb.browser_info.
+:- import_module mdb.declarative_debugger.
+:- import_module mdb.declarative_execution.
 
 :- import_module io, bool, string.
 

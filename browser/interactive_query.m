@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,8 @@
 % procedure query/2 in that module, calls that procedure, and then
 % cleans up the generated files.
 
-:- module mdb__interactive_query.
+:- module mdb.interactive_query.
+
 :- interface.
 
 :- import_module io, list.
@@ -34,9 +35,9 @@
 
 :- implementation.
 
-:- import_module mdb__dl.
-:- import_module mdb__name_mangle.
-:- import_module mdb__util.
+:- import_module mdb.dl.
+:- import_module mdb.name_mangle.
+:- import_module mdb.util.
 
 :- import_module std_util, bool, string, term, varset, term_io, parser.
 

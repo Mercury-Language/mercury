@@ -16,12 +16,13 @@
 % authors: aet
 % stability: low
 
-:- module mdb__browse.
+:- module mdb.browse.
 
 :- interface.
 
-:- import_module mdb__browser_info.
-:- import_module mdb__browser_term.
+:- import_module mdb.browser_info.
+:- import_module mdb.browser_term.
+
 :- import_module io, std_util, list.
 
 	% The interactive term browser.  The caller type will be `browse', and

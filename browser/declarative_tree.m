@@ -10,13 +10,13 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module mdb__declarative_tree.
+:- module mdb.declarative_tree.
 
 :- interface.
 
 :- import_module mdb.declarative_edt.
-:- import_module mdb__declarative_execution.
-:- import_module mdbcomp__program_representation.
+:- import_module mdb.declarative_execution.
+:- import_module mdbcomp.program_representation.
 
 	% The type of nodes in our implementation of EDTs.  The parameter
 	% is meant to be the type of references to trace nodes.  In
@@ -45,11 +45,11 @@
 
 :- implementation.
 
-:- import_module mdb__declarative_debugger.
-:- import_module mdb__io_action.
-:- import_module mdbcomp__prim_data.
-:- import_module mdbcomp__program_representation.
-:- import_module mdb__util.
+:- import_module mdb.declarative_debugger.
+:- import_module mdb.io_action.
+:- import_module mdb.util.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 
 :- import_module assoc_list, bool, exception, int, list, map, std_util, string.
 :- import_module io.

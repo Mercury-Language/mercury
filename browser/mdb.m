@@ -36,6 +36,7 @@
 :- include_module parse.
 :- include_module sized_pretty.
 :- include_module util.
+:- include_module term_rep.
 
 :- include_module set_cc.
 :- include_module tree234_cc.

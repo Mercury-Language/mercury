@@ -10,14 +10,13 @@
 % Basic data structures used by the browser.
 %
 
-:- module mdb__browser_info.
+:- module mdb.browser_info.
 
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp__program_representation.
-:- import_module mdb__browser_term.
+:- import_module mdb.browser_term.
 :- import_module mdb.parse.
+:- import_module mdbcomp.program_representation.
 
 :- import_module bool, list, std_util, io, getopt.
 

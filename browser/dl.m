@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 The University of Melbourne.
+% Copyright (C) 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,10 +14,13 @@
 % see the documentation for those procedures (i.e. `man dlopen').
 
 %-----------------------------------------------------------------------------%
-:- module mdb__dl.
+
+:- module mdb.dl.
+
 :- interface.
+
+:- import_module mdb.name_mangle.
 :- import_module io.
-:- import_module mdb__name_mangle.
 
 :- type (mode) ---> lazy ; now.		% RTLD_LAZY or RTLD_NOW
 :- type scope ---> local ; global.	% RTLD_GLOBAL or not.
@@ -78,6 +81,7 @@
 :- pred dl__close(handle::in, dl__result::out, io::di, io::uo) is det.
 
 :- implementation.
+
 :- import_module std_util, require, string, list, int.
 
 :- pragma foreign_decl("C", "

@@ -101,11 +101,11 @@
 %		".."
 %
 
-:- module mdb__parse.
+:- module mdb.parse.
 
 :- interface.
 
-:- import_module mdb__browser_info.
+:- import_module mdb.browser_info.
 
 :- import_module io, string, list, std_util, getopt.
 
@@ -167,7 +167,7 @@
 
 :- implementation.
 
-:- import_module mdb__util.
+:- import_module mdb.util.
 
 :- import_module bool, list, char, int.
 

@@ -53,16 +53,15 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module mdb__declarative_debugger.
+:- module mdb.declarative_debugger.
 
 :- interface.
 
-:- import_module mdb__declarative_execution.
-:- import_module mdb__io_action.
-:- import_module mdbcomp__program_representation.
 :- import_module mdb.browser_info.
-
+:- import_module mdb.declarative_execution.
+:- import_module mdb.io_action.
 :- import_module mdb.term_rep.
+:- import_module mdbcomp.program_representation.
 
 :- import_module io, list, std_util, string.
 
