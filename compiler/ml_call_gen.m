@@ -960,9 +960,22 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 		(
 			{ SimpleCode = assign(Lval, SimpleExpr) }
 		->
-			{ Rval = ml_gen_simple_expr(SimpleExpr) },
-			{ MLDS_Statement = ml_gen_assign(Lval, Rval,
-				Context) }
+			( 
+				% we need to avoid generating assignments to
+				% dummy variables introduced for types such
+				% as io__state
+				{ Lval = var(_VarName, VarType) },
+				{ VarType = mercury_type(ProgDataType, _, _) },
+				{ type_util__is_dummy_argument_type(
+					ProgDataType) }
+			->
+				{ MLDS_Statements = [] }
+			;
+				{ Rval = ml_gen_simple_expr(SimpleExpr) },
+				{ MLDS_Statement = ml_gen_assign(Lval, Rval,
+					Context) },
+				{ MLDS_Statements = [MLDS_Statement] }
+			)
 		;
 			{ error("Malformed det builtin predicate") }
 		)
@@ -972,7 +985,8 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 			{ SimpleCode = test(SimpleTest) }
 		->
 			{ TestRval = ml_gen_simple_expr(SimpleTest) },
-			ml_gen_set_success(TestRval, Context, MLDS_Statement)
+			ml_gen_set_success(TestRval, Context, MLDS_Statement),
+			{ MLDS_Statements = [MLDS_Statement] }
 		;
 			{ error("Malformed semi builtin predicate") }
 		)
@@ -980,7 +994,6 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 		{ CodeModel = model_non },
 		{ error("Nondet builtin predicate") }
 	),
-	{ MLDS_Statements = [MLDS_Statement] },
 	{ MLDS_Decls = [] }.
 
 :- func ml_gen_simple_expr(simple_expr(mlds__lval)) = mlds__rval.

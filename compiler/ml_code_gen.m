@@ -2104,11 +2104,15 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 			{ ArgLvals = [SrcLval, DestLval] },
 			{ ArgTypes = [SrcType, DestType] }
 		->
-			ml_gen_box_or_unbox_rval(SrcType, DestType,
-				lval(SrcLval), CastRval),
-			{ Assign = ml_gen_assign(DestLval, CastRval,
-				Context) },
-			{ MLDS_Statements = [Assign] },
+			( { type_util__is_dummy_argument_type(DestType) } ->
+				{ MLDS_Statements = [] }
+			;
+				ml_gen_box_or_unbox_rval(SrcType, DestType,
+					lval(SrcLval), CastRval),
+				{ Assign = ml_gen_assign(DestLval, CastRval,
+					Context) },
+				{ MLDS_Statements = [Assign] }
+			),
 			{ MLDS_Decls = [] }
 		;
 			{ error("wrong number of args for unsafe_type_cast") }
