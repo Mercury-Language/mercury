@@ -16,7 +16,7 @@
 :- module llds.		
 :- interface.
 :- import_module io, std_util, list, set, term, string, int, float.
-:- import_module tree, shapes.
+:- import_module tree, shapes, library.
 
 %-----------------------------------------------------------------------------%
 
@@ -302,7 +302,11 @@ output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 	(
 		{ Result = ok }
 	->
-		io__write_string("/* this code automatically generated - do not edit.*/\n\n"),
+		{ library__version(Version) },
+		io__write_strings(
+			["/*\n** Automatically generated from `", BaseName,
+			".m' by the\n** Mercury compiler, version ", Version,
+			".  Do not edit.\n*/\n"]),
 		io__write_string("/*\n"),
 		io__write_string("INIT "),
 		output_init_name(BaseName),
@@ -329,12 +333,16 @@ output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 :- mode output_c_module_init_list(in, in, di, uo) is det.
 
 output_c_module_init_list(BaseName, Modules) -->
+	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
+	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
+	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
+	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n"),
 	io__write_string("static void "),
 	output_bunch_name(BaseName, 0),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
 	output_c_module_init_list_2(Modules, BaseName, 0, 40, 0, InitFuncs),
-	io__write_string("}\n\n"),
+	io__write_string("}\n\n#endif\n\n"),
 	io__write_string("void "),
 	output_init_name(BaseName),
 	io__write_string("(void); /* suppress gcc warning */\n"),
@@ -342,8 +350,12 @@ output_c_module_init_list(BaseName, Modules) -->
 	output_init_name(BaseName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
+	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
+	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
+	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
+	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED)\n\n"),
 	output_c_module_init_list_3(0, BaseName, InitFuncs),
-	io__write_string("}\n").
+	io__write_string("#endif\n}\n").
 
 :- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
 	io__state, io__state).
