@@ -29,7 +29,8 @@
 :- implementation.
 :- import_module int, list, char, std_util, bool, require.
 
-:- type pred_category ---> index ; unify ; compare ; ordinary.
+:- type pred_category ---> index ; unify ; compare ; ordinary ;
+		lambda(int, string).
 :- type data_category ---> common ; info ; layout ; functors.
 
 demangle(MangledName, Name) :-
@@ -113,17 +114,17 @@ demangle_proc -->
 	% skip past the prefix.
 	%
 	( remove_prefix("__Unify__") ->
-		{ Category = unify }
+		{ Category0 = unify }
 	; remove_prefix("__Compare__") ->
-		{ Category = compare },
+		{ Category0 = compare },
 		% there should only be one mode for compare/3 preds
 		{ ModeNum0 = 0 }
 	; remove_prefix("__Index__") ->
-		{ Category = index },
+		{ Category0 = index },
 		% there should only be one mode for index/2 preds
 		{ ModeNum0 = 0 }
 	;	
-		{ Category = ordinary }
+		{ Category0 = ordinary }
 	),
 
 	%
@@ -173,29 +174,53 @@ demangle_proc -->
 	% Separate the module name from the type name for the compiler
 	% generated predicates.
 	%
-	( { Category \= ordinary } ->
+	( { Category0 \= ordinary } ->
 		remove_prefix("_"),
 		remove_maybe_module_prefix(MaybeModule),
 		{ MaybeModule \= yes("") }
 	;
 		remove_maybe_module_prefix(MaybeModule)
 	),
-		
+
 	%
 	% Make sure special predicates with unused_args 
 	% are reported correctly.
 	%
 
-	( { UnusedArgs = yes, Category \= ordinary } ->
+	( { UnusedArgs = yes, Category0 \= ordinary } ->
 		remove_trailing_int(Arity)
 	;
 		{ true }
 	),
 
 	%
+	% Now we need to look at the pred name and see if it is an
+	% introduced lambda predicate.
+	%
+
+	=(PredName0),
+
+	( remove_prefix("IntroducedFrom__") ->
+		( remove_prefix("pred__") ->
+			{ LambdaPredOrFunc = "pred" }
+		; remove_prefix("func__") ->
+			{ LambdaPredOrFunc = "func" }
+		;
+			{ fail }
+		),
+		remove_maybe_module_prefix(MPredName),
+		{ MPredName = yes(PredName) },
+		remove_int(Line),
+		{ Category = lambda(Line, LambdaPredOrFunc) }
+	;
+		{ Category = Category0 },
+		{ PredName = PredName0 }
+	),
+
+
+	%
 	% Now, finally, we can construct the demangled symbol name
 	%
-	=(PredName),
 	{ format_proc(Category, MaybeModule, PredOrFunc, PredName,
 		Arity, ModeNum, HigherOrder, UnusedArgs, MaybeInternalLabelNum,
 		Parts, []) },
@@ -229,6 +254,11 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 		string__format("%s %s/%d mode %d",
 			[s(PredOrFunc), s(QualifiedName), i(Arity), i(ModeNum)],
 			MainPart)
+	;
+		Category = lambda(Line, LambdaPredOrFunc),
+		string__format("%s goal from %s, line %d",
+			[s(LambdaPredOrFunc), s(QualifiedName), i(Line)],
+				MainPart)
 	},
 	[MainPart],
 	( { HigherOrder = yes } ->

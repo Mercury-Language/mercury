@@ -41,11 +41,11 @@
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, list(var), list(mode), 
+:- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
 		determinism, set(var), hlds_goal, unification,
 		varset, map(var, type), tvarset, map(tvar, var), module_info,
 		unify_rhs, unification, module_info).
-:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
+:- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in, in,
 		in, out, out, out) is det.
 
 	% Permute the list of variables so that inputs come before outputs.
@@ -69,6 +69,8 @@
 			map(var, type),		% from the proc_info
 			tvarset,		% from the proc_info
 			map(tvar, var),		% from the proc_info (typeinfos)
+			pred_or_func,
+			string,			% pred/func name
 			module_info
 		).
 
@@ -115,6 +117,8 @@ lambda__process_proc(PredId, ProcId, ModuleInfo0, ModuleInfo) :-
 lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 				ProcInfo, PredInfo, ModuleInfo) :-
 	% grab the appropriate fields from the pred_info and proc_info
+	pred_info_name(PredInfo0, PredName),
+	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	pred_info_typevarset(PredInfo0, TypeVarSet0),
 	proc_info_variables(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
@@ -123,9 +127,11 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, TypeVarSet0, TVarMap0, 
+		PredOrFunc, PredName,
 		ModuleInfo0),
 	lambda__process_goal(Goal0, Goal, Info0, Info),
 	Info = lambda_info(VarSet, VarTypes, TypeVarSet, TVarMap, 
+		_, _,
 		ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
@@ -219,16 +225,18 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-			ModuleInfo0),
-	lambda__transform_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, 
-		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet, TVarMap, 
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+			POF, PredName, ModuleInfo0),
+	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
+		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
+		TVarSet, TVarMap, ModuleInfo0, Functor,
+		Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet, TVarMap, 
-		ModuleInfo).
+			POF, PredName, ModuleInfo).
 
-lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0, 
-		LambdaGoal, Unification0, VarSet, VarTypes, TVarSet, TVarMap, 
-		ModuleInfo0, Functor, Unification, ModuleInfo) :-
+lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
+		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
+		TVarSet, TVarMap, ModuleInfo0, Functor,
+		Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
 	->
@@ -308,10 +316,10 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		module_info_name(ModuleInfo0, ModuleName),
 		module_info_next_lambda_count(ModuleInfo0, LambdaCount,
 					ModuleInfo1),
-		string__int_to_string(LambdaCount, LambdaCountStr),
-		string__append("__LambdaGoal__", LambdaCountStr, PName0),
-		string__append(ModuleName, PName0, PName),
-		PredName = qualified(ModuleName, PName),
+		goal_info_get_context(LambdaGoalInfo, OrigContext),
+		term__context_line(OrigContext, OrigLine),
+		make_lambda_name(ModuleName, PredOrFunc, OrigPredName,
+			OrigLine, LambdaCount, PredName),
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
@@ -369,6 +377,21 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
+
+:- pred make_lambda_name(string, pred_or_func, string, int, int, sym_name).
+:- mode make_lambda_name(in, in, in, in, in, out) is det.
+
+make_lambda_name(ModuleName, PredOrFunc, PredName, Line, Counter, SymName) :-
+	(
+		PredOrFunc = predicate,
+		PFS = "pred"
+	;
+		PredOrFunc = function,
+		PFS = "func"
+	),
+	string__format("IntroducedFrom__%s__%s__%d__%d",
+		[s(PFS), s(PredName), i(Line), i(Counter)], Name),
+		SymName = qualified(ModuleName, Name).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
 :- mode lambda__uni_modes_to_modes(in, out) is det.

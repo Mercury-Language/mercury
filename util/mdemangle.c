@@ -93,6 +93,10 @@ demangle(char *name) {
 	/* we call it `mindex' rather than `index' to
 	   avoid a naming conflict with strchr's alter ego index() */
 
+	static const char introduced[]  = "IntroducedFrom__";
+	static const char pred[]  = "pred__";
+	static const char func[]  = "func__";
+
 	static const char ua_suffix[] = "__ua"; /* added by unused_args.m */
 	static const char ua_suffix2[] = "__uab"; /* added by unused_args.m */
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
@@ -114,7 +118,10 @@ demangle(char *name) {
 	bool unused_args = FALSE; /* does this proc have any unused arguments */
 	bool higher_order = FALSE; /* has this proc been specialized */
 	int internal = -1;
-	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
+	int lambda_line = 0;
+	char *lambda_pred_name;
+	const char *lambda_kind;
+	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA } category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 
 	/*
@@ -284,6 +291,28 @@ demangle(char *name) {
 		}
 	}
 
+	if (category == ORDINARY && strip_prefix(&start, introduced)) {
+		category = LAMBDA;
+		if (strip_prefix(&start, pred)) {
+			lambda_kind = "pred";
+		} else if (strip_prefix(&start, func)) {
+			lambda_kind = "func";
+		} else {
+			goto wrong_format;
+		}
+		lambda_pred_name = start;
+		if (!cut_at_double_underscore(&start, end)) {
+			goto wrong_format;
+		}
+		lambda_line = 0;
+		while (start < end && isdigit(*start)) {
+			lambda_line = lambda_line * 10 + (*start - '0');
+			start++;
+		}
+	}
+
+			
+
 	/*
 	** Now, finally, we can print the demangled symbol name
 	*/
@@ -300,6 +329,10 @@ demangle(char *name) {
 	case INDEX:
 		printf("index/2 predicate for type '%s:%s'/%d",
 			type_module, start, arity);
+		break;
+	case LAMBDA:
+		printf("%s goal from '%s' line %d",
+			lambda_kind, lambda_pred_name, lambda_line);
 		break;
 	default:
 		printf("%s '%s'/%d mode %d",
