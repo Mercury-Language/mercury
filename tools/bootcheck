@@ -79,6 +79,10 @@ fi
 
 echo "starting at `date`"
 
+root=`/bin/pwd`
+PATH=$root/tools:$PATH
+export PATH
+
 set -x
 
 if mmake $mmake_opts MMAKEFLAGS=$jfactor all
@@ -111,44 +115,44 @@ echo linking stage 2... 1>&2
 cd stage2
 mkdir compiler
 cd compiler
-ln -s ../../compiler/*.m .
-cp ../../compiler/Mmake* .
-cd ..
+ln -s $root/compiler/*.m .
+cp $root/compiler/Mmake* .
+cd $root/stage2
 mkdir library
 cd library
-ln -s ../../library/*.m .
-ln -s ../../library/*.nl .
-cp ../../library/Mmake* .
-ln -s ../../library/library.init .
-cd ..
+ln -s $root/library/*.m .
+ln -s $root/library/*.nl .
+cp $root/library/Mmake* .
+ln -s $root/library/library.init .
+cd $root/stage2
 if test "$copy_runtime" = "true"
 then
 	mkdir runtime
 	cd runtime
-	ln -s ../../runtime/*.h .
-	ln -s ../../runtime/*.c .
-	ln -s ../../runtime/*.mod .
-	ln -s ../../runtime/*.in .
-	cp ../../runtime/Mmake* .
-	ln -s ../../runtime/machdeps .
-	cd ..
+	ln -s $root/runtime/*.h .
+	ln -s $root/runtime/*.c .
+	ln -s $root/runtime/*.mod .
+	ln -s $root/runtime/*.in .
+	cp $root/runtime/Mmake* .
+	ln -s $root/runtime/machdeps .
+	cd $root/stage2
 else
-	ln -s ../runtime .
+	ln -s $root/runtime .
 fi
-ln -s ../boehm_gc .
-ln -s ../doc .
-ln -s ../scripts .
-ln -s ../util .
-ln -s ../profiler .
-ln -s ../conf* .
+ln -s $root/boehm_gc .
+ln -s $root/doc .
+ln -s $root/scripts .
+ln -s $root/util .
+ln -s $root/profiler .
+ln -s $root/conf* .
 rm -f config*.log
-cp ../Mmake* .
-if test -f ../Mmake.stage.params
+cp $root/Mmake* .
+if test -f $root/Mmake.stage.params
 then
 	/bin/rm -f Mmake.params
-	cp ../Mmake.stage.params Mmake.params
+	cp $root/Mmake.stage.params Mmake.params
 fi
-cd ..
+cd $root
 
 set -x
 
@@ -170,7 +174,7 @@ fi
 
 MMAKE_VPATH=.
 export MMAKE_VPATH
-MMAKE_DIR=../scripts
+MMAKE_DIR=$root/scripts
 export MMAKE_DIR
 
 # the `RM_C=:' ensures that the `.c' files do not get deleted
@@ -216,31 +220,31 @@ set +x
 cd stage3
 mkdir compiler
 cd compiler
-ln -s ../../compiler/*.m .
-cp ../../compiler/Mmake* .
-cd ..
+ln -s $root/compiler/*.m .
+cp $root/compiler/Mmake* .
+cd $root/stage3
 mkdir library
 cd library
-ln -s ../../library/*.m .
-ln -s ../../library/*.nl .
-cp ../../library/Mmake* .
-ln -s ../../library/library.init .
-cd ..
-ln -s ../boehm_gc .
-ln -s ../doc .
-ln -s ../runtime .
-ln -s ../scripts .
-ln -s ../util .
-ln -s ../profiler .
-ln -s ../conf* .
+ln -s $root/library/*.m .
+ln -s $root/library/*.nl .
+cp $root/library/Mmake* .
+ln -s $root/library/library.init .
+cd $root/stage3
+ln -s $root/boehm_gc .
+ln -s $root/doc .
+ln -s $root/runtime .
+ln -s $root/scripts .
+ln -s $root/util .
+ln -s $root/profiler .
+ln -s $root/conf* .
 rm -f config*.log
-cp ../Mmake* .
-if test -f ../Mmake.stage.params
+cp $root/Mmake* .
+if test -f $root/Mmake.stage.params
 then
 	/bin/rm -f Mmake.params
-	ln -s ../Mmake.stage.params Mmake.params
+	ln -s $root/Mmake.stage.params Mmake.params
 fi
-cd ..
+cd $root
 set -x
 
 if (cd stage3 ; mmake $mmake_opts depend_library depend_compiler)
@@ -253,7 +257,7 @@ fi
 
 MMAKE_VPATH=.
 export MMAKE_VPATH
-MMAKE_DIR=../scripts
+MMAKE_DIR=$root/scripts
 export MMAKE_DIR
 
 if (cd stage3/library ; mmake $mmake_opts $jfactor cs)
