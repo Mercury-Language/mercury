@@ -22,7 +22,7 @@
 
 :- import_module hlds_module, list, llds, prog_data.
 
-:- pred base_typeclass_info__generate_llds(module_info, list(c_module)).
+:- pred base_typeclass_info__generate_llds(module_info, list(comp_gen_c_data)).
 :- mode base_typeclass_info__generate_llds(in, out) is det.
 
 	% Given a list of types, mangle the names so into a string which
@@ -47,7 +47,8 @@ base_typeclass_info__generate_llds(ModuleInfo, CModules) :-
 		ModuleInfo, CModules).
 
 :- pred base_typeclass_info__gen_infos_for_classes(assoc_list(class_id,
-	list(hlds_instance_defn)), module_name, module_info, list(c_module)).
+	list(hlds_instance_defn)), module_name, module_info,
+	list(comp_gen_c_data)).
 :- mode base_typeclass_info__gen_infos_for_classes(in, in, in, out) is det.
 
 base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo, []).
@@ -63,7 +64,7 @@ base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo,
 	% XXX make it use an accumulator
 :- pred base_typeclass_info__gen_infos_for_instance_list(
 	pair(class_id, list(hlds_instance_defn)), module_name, module_info,
-	list(c_module)).
+	list(comp_gen_c_data)).
 :- mode base_typeclass_info__gen_infos_for_instance_list(in, in, in, out) 
 	is det.
 
@@ -102,7 +103,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 			% that we do.)
 		Status = yes,
 
-		CModule = c_data(ModuleName, DataName, Status, Rvals, Procs),
+		CModule = comp_gen_c_data(ModuleName, DataName,
+			Status, Rvals, Procs),
 		CModules = [CModule | CModules1]
 	;
 			% The instance decl is from another module, so

@@ -225,7 +225,7 @@
 :- mode base_type_layout__generate_hlds(in, out) is det.
 
 :- pred base_type_layout__generate_llds(module_info, module_info,
-		list(c_module)).
+		list(comp_gen_c_data)).
 :- mode base_type_layout__generate_llds(in, out, out) is det.
 
 	% stack_layout.m uses this.
@@ -248,7 +248,7 @@
 		int,		% number of tags available
 		int,		% next available label 
 		type_id,	% type_id of type being currently examined
-		list(c_module)	% generated data
+		list(comp_gen_c_data)	% generated data
 	).
 
 :- type tag_category	--->	simple 		% tagged pointer
@@ -419,13 +419,15 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 	->
 		LayoutInfo5 = LayoutInfo3
 	;
-		CModule = c_data(ModuleName, base_type(layout, TypeName, 
-			TypeArity), Exported, LayoutTypeData, []),
-		CModule2 = c_data(ModuleName, base_type(functors, TypeName, 
-			TypeArity), Exported, FunctorsTypeData, []),
-		base_type_layout__add_cmodule(LayoutInfo3, CModule, 
+		LayoutDataName = base_type(layout, TypeName, TypeArity),
+		LayoutCData = comp_gen_c_data(ModuleName, LayoutDataName,
+			Exported, LayoutTypeData, []),
+		FunctorsDataName = base_type(functors, TypeName, TypeArity),
+		FunctorsCData = comp_gen_c_data(ModuleName, FunctorsDataName,
+			Exported, FunctorsTypeData, []),
+		base_type_layout__add_c_data(LayoutInfo3, LayoutCData, 
 			LayoutInfo4),
-		base_type_layout__add_cmodule(LayoutInfo4, CModule2, 
+		base_type_layout__add_c_data(LayoutInfo4, FunctorsCData, 
 			LayoutInfo5)
 	),
 	base_type_layout__construct_base_type_data(BaseGenInfos, LayoutInfo5,
@@ -1277,14 +1279,15 @@ base_type_layout__get_cell_number(LayoutInfo, NextCNum) :-
 base_type_layout__get_type_id(LayoutInfo, TypeId) :-
 	LayoutInfo = layout_info(_, _, _, _, TypeId, _).
 
-:- pred base_type_layout__get_cmodules(layout_info, list(c_module)).
-:- mode base_type_layout__get_cmodules(in, out) is det.
-base_type_layout__get_cmodules(LayoutInfo, CModules) :-
+:- pred base_type_layout__get_c_data(layout_info, list(comp_gen_c_data)).
+:- mode base_type_layout__get_c_data(in, out) is det.
+base_type_layout__get_c_data(LayoutInfo, CModules) :-
 	LayoutInfo = layout_info(_, _, _, _, _, CModules).
 
-:- pred base_type_layout__add_cmodule(layout_info, c_module, layout_info).
-:- mode base_type_layout__add_cmodule(in, in, out) is det.
-base_type_layout__add_cmodule(LayoutInfo0, CModule, LayoutInfo) :-
+:- pred base_type_layout__add_c_data(layout_info, comp_gen_c_data,
+	layout_info).
+:- mode base_type_layout__add_c_data(in, in, out) is det.
+base_type_layout__add_c_data(LayoutInfo0, CModule, LayoutInfo) :-
 	LayoutInfo0 = layout_info(A, B, C, D, E, CModules0),
 	CModules = [CModule | CModules0],
 	LayoutInfo = layout_info(A, B, C, D, E, CModules).
