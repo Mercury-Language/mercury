@@ -83,7 +83,7 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module int, require, bool.
 
 :- type tree234(K, V)	--->
 		empty
@@ -397,6 +397,7 @@ tree234__lookup(T, K, V) :-
 		error("tree234__lookup: key not found.")
 	).
 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- inst two(K, V, T) =
@@ -1065,254 +1066,916 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	).
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
-tree234__delete(empty, _K, empty).
+tree234__delete(Tin, K, Tout) :-
+	tree234__delete_2(Tin, K, Tout, _).
 
-tree234__delete(two(K0, V0, T0, T1), K, Tree) :-
-	compare(Result0, K, K0),
+	% When deleting an item from a tree, the height of the tree may be
+	% reduced by one. The last argument says whether this has occurred.
+
+:- pred tree234__delete_2(tree234(K, V), K, tree234(K, V), bool).
+:- mode tree234__delete_2(di, in, uo, out) is det.
+:- mode tree234__delete_2(in, in, out, out) is det.
+
+tree234__delete_2(Tin, K, Tout, RH) :-
 	(
-		Result0 = (<),
-		tree234__delete(T0, K, T2),
-		Tree = two(K0, V0, T2, T1)
+		Tin = empty,
+		Tout = empty,
+		RH = no
 	;
-		Result0 = (=),
-		tree234__glue(T0, T1, Tree)
-	;
-		Result0 = (>),
-		tree234__delete(T1, K, T2),
-		Tree = two(K0, V0, T0, T2)
-	).
-
-tree234__delete(three(K0, V0, K1, V1, T0, T1, T2), K, Tree) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__delete(T0, K, T3),
-		Tree = three(K0, V0, K1, V1, T3, T1, T2)
-	;
-		Result0 = (=),
-		tree234__glue(T0, T1, T3),
-		Tree = two(K1, V1, T3, T2)
-	;
-		Result0 = (>),
-		compare(Result1, K, K1),
+		Tin = two(K0, V0, T0, T1),
+		compare(Result0, K, K0),
 		(
-			Result1 = (<),
-			tree234__delete(T1, K, T3),
-			Tree = three(K0, V0, K1, V1, T0, T3, T2)
+			Result0 = (<),
+			tree234__delete_2(T0, K, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
+			;
+				Tout = two(K0, V0, NewT0, T1),
+				RH = no
+			)
 		;
-			Result1 = (=),
-			tree234__glue(T1, T2, T3),
-			Tree = two(K0, V0, T0, T3)
+			Result0 = (=),
+			(
+				tree234__remove_smallest_2(T1, ST1K, ST1V,
+					NewT1, RHT1)
+			->
+				( RHT1 = yes ->
+					fix_2node_t1(ST1K, ST1V, T0, NewT1,
+						Tout, RH)
+				;
+					Tout = two(ST1K, ST1V, T0, NewT1),
+					RH = no
+				)
+			;
+				% T1 must be empty
+				Tout = T0,
+				RH = yes
+			)
 		;
-			Result1 = (>),
-			tree234__delete(T2, K, T3),
-			Tree = three(K0, V0, K1, V1, T0, T1, T3)
+			Result0 = (>),
+			tree234__delete_2(T1, K, NewT1, RHT1),
+			( RHT1 = yes ->
+				fix_2node_t1(K0, V0, T0, NewT1, Tout, RH)
+			;
+				Tout = two(K0, V0, T0, NewT1),
+				RH = no
+			)
 		)
-	).
-
-tree234__delete(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, Tree) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__delete(T0, K, NewT0),
-		Tree = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
 	;
-		Result0 = (=),
-		tree234__glue(T0, T1, T0_and_1),
-		Tree = three(K1, V1, K2, V2, T0_and_1, T2, T3)
+		Tin = three(K0, V0, K1, V1, T0, T1, T2),
+		compare(Result0, K, K0),
+		(
+			Result0 = (<),
+			tree234__delete_2(T0, K, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2,
+					Tout, RH)
+			;
+				Tout = three(K0, V0, K1, V1, NewT0, T1, T2),
+				RH = no
+			)
+		;
+			Result0 = (=),
+			(
+				tree234__remove_smallest_2(T1, ST1K, ST1V,
+					NewT1, RHT1)
+			->
+				( RHT1 = yes ->
+					fix_3node_t1(ST1K, ST1V, K1, V1,
+						T0, NewT1, T2, Tout, RH)
+				;
+					Tout = three(ST1K, ST1V, K1, V1,
+						T0, NewT1, T2),
+					RH = no
+				)
+			;
+				% T1 must be empty
+				Tout = two(K1, V1, T0, T2),
+				RH = no
+			)
+		;
+			Result0 = (>),
+			compare(Result1, K, K1),
+			(
+				Result1 = (<),
+				tree234__delete_2(T1, K, NewT1, RHT1),
+				( RHT1 = yes ->
+					fix_3node_t1(K0, V0, K1, V1,
+						T0, NewT1, T2, Tout, RH)
+				;
+					Tout = three(K0, V0, K1, V1,
+						T0, NewT1, T2),
+					RH = no
+				)
+			;
+				Result1 = (=),
+				(
+					tree234__remove_smallest_2(T2,
+						ST2K, ST2V, NewT2, RHT2)
+				->
+					( RHT2 = yes ->
+						fix_3node_t2(K0, V0, ST2K, ST2V,
+							T0, T1, NewT2, Tout, RH)
+					;
+						Tout = three(K0, V0, ST2K, ST2V,
+							T0, T1, NewT2),
+						RH = no
+					)
+				;
+					% T2 must be empty
+					Tout = two(K0, V0, T0, T1),
+					RH = no
+				)
+			;
+				Result1 = (>),
+				tree234__delete_2(T2, K, NewT2, RHT2),
+				( RHT2 = yes ->
+					fix_3node_t2(K0, V0, K1, V1,
+						T0, T1, NewT2, Tout, RH)
+				;
+					Tout = three(K0, V0, K1, V1,
+						T0, T1, NewT2),
+					RH = no
+				)
+			)
+		)
 	;
-		Result0 = (>),
+		Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, K, K1),
 		(
 			Result1 = (<),
-			tree234__delete(T1, K, NewT1),
-			Tree = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
+			compare(Result0, K, K0),
+			(
+				Result0 = (<),
+				tree234__delete_2(T0, K, NewT0, RHT0),
+				( RHT0 = yes ->
+					fix_4node_t0(K0, V0, K1, V1, K2, V2,
+						NewT0, T1, T2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						NewT0, T1, T2, T3),
+					RH = no
+				)
+			;
+				Result0 = (=),
+				(
+					tree234__remove_smallest_2(T1,
+						ST1K, ST1V, NewT1, RHT1)
+				->
+					( RHT1 = yes ->
+						fix_4node_t1(ST1K, ST1V, K1, V1,
+							K2, V2,
+							T0, NewT1, T2, T3,
+							Tout, RH)
+					;
+						Tout = four(ST1K, ST1V, K1, V1,
+							K2, V2,
+							T0, NewT1, T2, T3),
+						RH = no
+					)
+				;
+					% T1 must be empty
+					Tout = three(K1, V1, K2, V2,
+						T0, T2, T3),
+					RH = no
+				)
+			;
+				Result0 = (>),
+				tree234__delete_2(T1, K, NewT1, RHT1),
+				( RHT1 = yes ->
+					fix_4node_t1(K0, V0, K1, V1, K2, V2,
+						T0, NewT1, T2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, NewT1, T2, T3),
+					RH = no
+				)
+			)
 		;
 			Result1 = (=),
-			tree234__glue(T1, T2, T1_and_2),
-			Tree = three(K0, V0, K2, V2, T0, T1_and_2, T3)
+			(
+				tree234__remove_smallest_2(T2, ST2K, ST2V,
+					NewT2, RHT2)
+			->
+				( RHT2 = yes ->
+					fix_4node_t2(K0, V0, ST2K, ST2V, K2, V2,
+						T0, T1, NewT2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, ST2K, ST2V, K2, V2,
+						T0, T1, NewT2, T3),
+					RH = no
+				)
+			;
+				% T2 must be empty
+				Tout = three(K0, V0, K2, V2, T0, T1, T3),
+				RH = no
+			)
 		;
 			Result1 = (>),
 			compare(Result2, K, K2),
 			(
 				Result2 = (<),
-				tree234__delete(T2, K, NewT2),
-				Tree = four(K0, V0, K1, V1, K2, V2,
-						T0, T1, NewT2, T3)
+				tree234__delete_2(T2, K, NewT2, RHT2),
+				( RHT2 = yes ->
+					fix_4node_t2(K0, V0, K1, V1, K2, V2,
+						T0, T1, NewT2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, NewT2, T3),
+					RH = no
+				)
 			;
 				Result2 = (=),
-				tree234__glue(T2, T3, T2_and_3),
-				Tree = three(K0, V0, K1, V1, T0, T1, T2_and_3)
+				(
+					tree234__remove_smallest_2(T3,
+						ST3K, ST3V, NewT3, RHT3)
+				->
+					( RHT3 = yes ->
+						fix_4node_t3(K0, V0, K1, V1,
+							ST3K, ST3V,
+							T0, T1, T2, NewT3,
+							Tout, RH)
+					;
+						Tout = four(K0, V0, K1, V1,
+							ST3K, ST3V,
+							T0, T1, T2, NewT3),
+						RH = no
+					)
+				;
+					% T3 must be empty
+					Tout = three(K0, V0, K1, V1,
+						T0, T1, T2),
+					RH = no
+				)
 			;
 				Result2 = (>),
-				tree234__delete(T3, K, NewT3),
-				Tree = four(K0, V0, K1, V1, K2, V2,
-						T0, T1, T2, NewT3)
+				tree234__delete_2(T3, K, NewT3, RHT3),
+				( RHT3 = yes ->
+					fix_4node_t3(K0, V0, K1, V1, K2, V2,
+						T0, T1, T2, NewT3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, T2, NewT3),
+					RH = no
+				)
 			)
 		)
 	).
 
-
 %------------------------------------------------------------------------------%
 
-tree234__remove(empty, _K, _V, empty) :- fail.
+	% We use the same algorithm as tree234__delete.
 
-tree234__remove(two(K0, V0, T0, T1), K, V, Tree) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__remove(T0, K, V, T2),
-		Tree = two(K0, V0, T2, T1)
-	;
-		Result0 = (=),
-		tree234__glue(T0, T1, Tree),
-		V = V0
-	;
-		Result0 = (>),
-		tree234__remove(T1, K, V, T2),
-		Tree = two(K0, V0, T0, T2)
-	).
+tree234__remove(Tin, K, V, Tout) :-
+	tree234__remove_2(Tin, K, V, Tout, _).
 
-tree234__remove(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
-	compare(Result0, K, K0),
+:- pred tree234__remove_2(tree234(K, V), K, V, tree234(K, V), bool).
+:- mode tree234__remove_2(di, in, uo, uo, out) is semidet.
+:- mode tree234__remove_2(in, in, out, out, out) is semidet.
+
+tree234__remove_2(Tin, K, V, Tout, RH) :-
 	(
-		Result0 = (<),
-		tree234__remove(T0, K, V, T3),
-		Tree = three(K0, V0, K1, V1, T3, T1, T2)
+		Tin = empty,
+		fail
 	;
-		Result0 = (=),
-		tree234__glue(T0, T1, T3),
-		Tree = two(K1, V1, T3, T2),
-		V = V0
-	;
-		Result0 = (>),
-		compare(Result1, K, K1),
+		Tin = two(K0, V0, T0, T1),
+		compare(Result0, K, K0),
 		(
-			Result1 = (<),
-			tree234__remove(T1, K, V, T3),
-			Tree = three(K0, V0, K1, V1, T0, T3, T2)
+			Result0 = (<),
+			tree234__remove_2(T0, K, V, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
+			;
+				Tout = two(K0, V0, NewT0, T1),
+				RH = no
+			)
 		;
-			Result1 = (=),
-			tree234__glue(T1, T2, T3),
-			Tree = two(K0, V0, T0, T3),
-			V = V1
+			Result0 = (=),
+			(
+				tree234__remove_smallest_2(T1, ST1K, ST1V,
+					NewT1, RHT1)
+			->
+				( RHT1 = yes ->
+					fix_2node_t1(ST1K, ST1V, T0, NewT1,
+						Tout, RH)
+				;
+					Tout = two(ST1K, ST1V, T0, NewT1),
+					RH = no
+				)
+			;
+				% T1 must be empty
+				Tout = T0,
+				RH = yes
+			),
+			V = V0
 		;
-			Result1 = (>),
-			tree234__remove(T2, K, V, T3),
-			Tree = three(K0, V0, K1, V1, T0, T1, T3)
+			Result0 = (>),
+			tree234__remove_2(T1, K, V, NewT1, RHT1),
+			( RHT1 = yes ->
+				fix_2node_t1(K0, V0, T0, NewT1, Tout, RH)
+			;
+				Tout = two(K0, V0, T0, NewT1),
+				RH = no
+			)
 		)
-	).
-
-tree234__remove(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
-	compare(Result0, K, K0),
-	(
-		Result0 = (<),
-		tree234__remove(T0, K, V, NewT0),
-		Tree = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
 	;
-		Result0 = (=),
-		tree234__glue(T0, T1, T0_and_1),
-		Tree = three(K1, V1, K2, V2, T0_and_1, T2, T3),
-		V = V0
+		Tin = three(K0, V0, K1, V1, T0, T1, T2),
+		compare(Result0, K, K0),
+		(
+			Result0 = (<),
+			tree234__remove_2(T0, K, V, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2,
+					Tout, RH)
+			;
+				Tout = three(K0, V0, K1, V1, NewT0, T1, T2),
+				RH = no
+			)
+		;
+			Result0 = (=),
+			(
+				tree234__remove_smallest_2(T1, ST1K, ST1V,
+					NewT1, RHT1)
+			->
+				( RHT1 = yes ->
+					fix_3node_t1(ST1K, ST1V, K1, V1,
+						T0, NewT1, T2, Tout, RH)
+				;
+					Tout = three(ST1K, ST1V, K1, V1,
+						T0, NewT1, T2),
+					RH = no
+				)
+			;
+				% T1 must be empty
+				Tout = two(K1, V1, T0, T2),
+				RH = no
+			),
+			V = V0
+		;
+			Result0 = (>),
+			compare(Result1, K, K1),
+			(
+				Result1 = (<),
+				tree234__remove_2(T1, K, V, NewT1, RHT1),
+				( RHT1 = yes ->
+					fix_3node_t1(K0, V0, K1, V1,
+						T0, NewT1, T2, Tout, RH)
+				;
+					Tout = three(K0, V0, K1, V1,
+						T0, NewT1, T2),
+					RH = no
+				)
+			;
+				Result1 = (=),
+				(
+					tree234__remove_smallest_2(T2,
+						ST2K, ST2V, NewT2, RHT2)
+				->
+					( RHT2 = yes ->
+						fix_3node_t2(K0, V0, ST2K, ST2V,
+							T0, T1, NewT2, Tout, RH)
+					;
+						Tout = three(K0, V0, ST2K, ST2V,
+							T0, T1, NewT2),
+						RH = no
+					)
+				;
+					% T2 must be empty
+					Tout = two(K0, V0, T0, T1),
+					RH = no
+				),
+				V = V1
+			;
+				Result1 = (>),
+				tree234__remove_2(T2, K, V, NewT2, RHT2),
+				( RHT2 = yes ->
+					fix_3node_t2(K0, V0, K1, V1,
+						T0, T1, NewT2, Tout, RH)
+				;
+					Tout = three(K0, V0, K1, V1,
+						T0, T1, NewT2),
+					RH = no
+				)
+			)
+		)
 	;
-		Result0 = (>),
+		Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		compare(Result1, K, K1),
 		(
 			Result1 = (<),
-			tree234__remove(T1, K, V, NewT1),
-			Tree = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
+			compare(Result0, K, K0),
+			(
+				Result0 = (<),
+				tree234__remove_2(T0, K, V, NewT0, RHT0),
+				( RHT0 = yes ->
+					fix_4node_t0(K0, V0, K1, V1, K2, V2,
+						NewT0, T1, T2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						NewT0, T1, T2, T3),
+					RH = no
+				)
+			;
+				Result0 = (=),
+				(
+					tree234__remove_smallest_2(T1,
+						ST1K, ST1V, NewT1, RHT1)
+				->
+					( RHT1 = yes ->
+						fix_4node_t1(ST1K, ST1V, K1, V1,
+							K2, V2,
+							T0, NewT1, T2, T3,
+							Tout, RH)
+					;
+						Tout = four(ST1K, ST1V, K1, V1,
+							K2, V2,
+							T0, NewT1, T2, T3),
+						RH = no
+					)
+				;
+					% T1 must be empty
+					Tout = three(K1, V1, K2, V2,
+						T0, T2, T3),
+					RH = no
+				),
+				V = V0
+			;
+				Result0 = (>),
+				tree234__remove_2(T1, K, V, NewT1, RHT1),
+				( RHT1 = yes ->
+					fix_4node_t1(K0, V0, K1, V1, K2, V2,
+						T0, NewT1, T2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, NewT1, T2, T3),
+					RH = no
+				)
+			)
 		;
 			Result1 = (=),
-			tree234__glue(T1, T2, T1_and_2),
-			Tree = three(K0, V0, K2, V2, T0, T1_and_2, T3),
+			(
+				tree234__remove_smallest_2(T2, ST2K, ST2V,
+					NewT2, RHT2)
+			->
+				( RHT2 = yes ->
+					fix_4node_t2(K0, V0, ST2K, ST2V, K2, V2,
+						T0, T1, NewT2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, ST2K, ST2V, K2, V2,
+						T0, T1, NewT2, T3),
+					RH = no
+				)
+			;
+				% T2 must be empty
+				Tout = three(K0, V0, K2, V2, T0, T1, T3),
+				RH = no
+			),
 			V = V1
 		;
 			Result1 = (>),
 			compare(Result2, K, K2),
 			(
 				Result2 = (<),
-				tree234__remove(T2, K, V, NewT2),
-				Tree = four(K0, V0, K1, V1, K2, V2,
-						T0, T1, NewT2, T3)
+				tree234__remove_2(T2, K, V, NewT2, RHT2),
+				( RHT2 = yes ->
+					fix_4node_t2(K0, V0, K1, V1, K2, V2,
+						T0, T1, NewT2, T3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, NewT2, T3),
+					RH = no
+				)
 			;
 				Result2 = (=),
-				tree234__glue(T2, T3, T2_and_3),
-				Tree = three(K0, V0, K1, V1, T0, T1, T2_and_3),
+				(
+					tree234__remove_smallest_2(T3,
+						ST3K, ST3V, NewT3, RHT3)
+				->
+					( RHT3 = yes ->
+						fix_4node_t3(K0, V0, K1, V1,
+							ST3K, ST3V,
+							T0, T1, T2, NewT3,
+							Tout, RH)
+					;
+						Tout = four(K0, V0, K1, V1,
+							ST3K, ST3V,
+							T0, T1, T2, NewT3),
+						RH = no
+					)
+				;
+					% T3 must be empty
+					Tout = three(K0, V0, K1, V1,
+						T0, T1, T2),
+					RH = no
+				),
 				V = V2
 			;
 				Result2 = (>),
-				tree234__remove(T3, K, V, NewT3),
-				Tree = four(K0, V0, K1, V1, K2, V2,
-						T0, T1, T2, NewT3)
+				tree234__remove_2(T3, K, V, NewT3, RHT3),
+				( RHT3 = yes ->
+					fix_4node_t3(K0, V0, K1, V1, K2, V2,
+						T0, T1, T2, NewT3, Tout, RH)
+				;
+					Tout = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, T2, NewT3),
+					RH = no
+				)
 			)
 		)
 	).
 
 %------------------------------------------------------------------------------%
 
-tree234__remove_smallest(empty, _K, _V, empty) :- fail.
+	% The algorithm we use similar to tree234__delete, except that we
+	% always go down the left subtree.
 
-tree234__remove_smallest(two(K0, V0, T0, T1), K, V, Tree) :-
-	(
-		T0 = empty
-	->
-		K = K0,
-		V = V0,
-		Tree = T1
-	;
-		tree234__remove_smallest(T0, K, V, NewT0),
-		Tree = two(K0, V0, NewT0, T1)
-	).
+tree234__remove_smallest(Tin, K, V, Tout) :-
+	tree234__remove_smallest_2(Tin, K, V, Tout, _).
 
-tree234__remove_smallest(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
-	(
-		T0 = empty
-	->
-		K = K0,
-		V = V0,
-		Tree = two(K1, V1, T1, T2)
-	;
-		tree234__remove_smallest(T0, K, V, NewT0),
-		Tree = three(K0, V0, K1, V1, NewT0, T1, T2)
-	).
+:- pred tree234__remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
+:- mode tree234__remove_smallest_2(di, uo, uo, uo, out) is semidet.
+:- mode tree234__remove_smallest_2(in, out, out, out, out) is semidet.
 
-tree234__remove_smallest(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-								K, V, Tree) :-
+tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
 	(
-		T0 = empty
-	->
-		K = K0,
-		V = V0,
-		Tree = three(K1, V1, K2, V2, T1, T2, T3)
+		Tin = empty,
+		fail
 	;
-		tree234__remove_smallest(T0, K, V, NewT0),
-		Tree = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
+		Tin = two(K0, V0, T0, T1),
+		(
+			T0 = empty
+		->
+			K = K0,
+			V = V0,
+			Tout = T1,
+			RH = yes
+		;
+			tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
+			;
+				Tout = two(K0, V0, NewT0, T1),
+				RH = no
+			)
+		)
+	;
+		Tin = three(K0, V0, K1, V1, T0, T1, T2),
+		(
+			T0 = empty
+		->
+			K = K0,
+			V = V0,
+			Tout = two(K1, V1, T1, T2),
+			RH = no
+		;
+			tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2,
+					Tout, RH)
+			;
+				Tout = three(K0, V0, K1, V1, NewT0, T1, T2),
+				RH = no
+			)
+		)
+	;
+		Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		(
+			T0 = empty
+		->
+			K = K0,
+			V = V0,
+			Tout = three(K1, V1, K2, V2, T1, T2, T3),
+			RH = no
+		;
+			tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+			( RHT0 = yes ->
+				fix_4node_t0(K0, V0, K1, V1, K2, V2,
+					NewT0, T1, T2, T3, Tout, RH)
+			;
+				Tout = four(K0, V0, K1, V1, K2, V2,
+					NewT0, T1, T2, T3),
+				RH = no
+			)
+		)
 	).
 
 %------------------------------------------------------------------------------%
 
-% tree234__glue(A, B, C) is true iff C is a 234-tree which is the
-% same as the 234-tree A with the 234-tree B attatched to the right-most
-% node. It is used when removing a node from the a tree to glue the two
-% resulting fragments together.
-% XXX a better algorithm could be devised that leaves the tree more
-% balanced (this algorithm is not the *proper* way to join 2 234 trees).
+	% The input to the following group of predicates are the components
+	% of a two-, three- or four-node in which the height of the indicated
+	% subtree is one less that it should be. If it is possible to increase
+	% the height of that subtree by moving into it elements from its
+	% neighboring subtrees, do so, and return the resulting tree with RH
+	% set to no. Otherwise, return a balanced tree whose height is reduced
+	% by one, with RH set to yes to indicate the reduced height.
 
-:- pred tree234__glue(tree234(K, V), tree234(K, V), tree234(K, V)).
-:- mode tree234__glue(di, di, uo) is det.
-% :- mode tree234__glue(di_tree234, di_tree234, uo_tree234) is det.
-:- mode tree234__glue(in, in, out) is det.
+:- pred fix_2node_t0(K, V, tree234(K, V), tree234(K, V), tree234(K, V), bool).
+:- mode fix_2node_t0(di, di, di, di, uo, out) is det.
+:- mode fix_2node_t0(in, in, in, in, out, out) is det.
 
-tree234__glue(empty, T, T).
-tree234__glue(two(K0, V0, T0, T1), T, two(K0, V0, T0, NewT1)) :-
-	tree234__glue(T1, T, NewT1).
-tree234__glue(three(K0, V0, K1, V1, T0, T1, T2), T,
-		three(K0, V0, K1, V1, T0, T1, NewT2)) :-
-	tree234__glue(T2, T, NewT2).
-tree234__glue(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), T,
-		four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)) :-
-	tree234__glue(T3, T, NewT3).
+fix_2node_t0(K0, V0, T0, T1, Tout, RH) :-
+	(
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
+		NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
+		Node = two(K0, V0, T0, T10),
+		Tout = two(K10, V10, Node, NewT1),
+		RH = no
+	;
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = three(K10, V10, K11, V11, T10, T11, T12),
+		NewT1 = two(K11, V11, T11, T12),
+		Node = two(K0, V0, T0, T10),
+		Tout = two(K10, V10, Node, NewT1),
+		RH = no
+	;
+		% move T0 one level down and combine it with the subtrees of T1
+		% this reduces the depth of the tree
+		T1 = two(K10, V10, T10, T11),
+		Tout = three(K0, V0, K10, V10, T0, T10, T11),
+		RH = yes
+	;
+		T1 = empty,
+		error("unbalanced 234 tree")
+		% Tout = two(K0, V0, T0, T1),
+		% RH = yes
+	).
+
+:- pred fix_2node_t1(K, V, tree234(K, V), tree234(K, V), tree234(K, V), bool).
+:- mode fix_2node_t1(di, di, di, di, uo, out) is det.
+:- mode fix_2node_t1(in, in, in, in, out, out) is det.
+
+fix_2node_t1(K0, V0, T0, T1, Tout, RH) :-
+	(
+		% steal T0's leftmost subtree and combine it with T1
+		T0 = four(K00, V00, K01, V01, K02, V02, T00, T01, T02, T03),
+		NewT0 = three(K00, V00, K01, V01, T00, T01, T02),
+		Node = two(K0, V0, T03, T1),
+		Tout = two(K02, V02, NewT0, Node),
+		RH = no
+	;
+		% steal T0's leftmost subtree and combine it with T1
+		T0 = three(K00, V00, K01, V01, T00, T01, T02),
+		NewT0 = two(K00, V00, T00, T01),
+		Node = two(K0, V0, T02, T1),
+		Tout = two(K01, V01, NewT0, Node),
+		RH = no
+	;
+		% move T1 one level down and combine it with the subtrees of T0
+		% this reduces the depth of the tree
+		T0 = two(K00, V00, T00, T01),
+		Tout = three(K00, V00, K0, V0, T00, T01, T1),
+		RH = yes
+	;
+		T0 = empty,
+		error("unbalanced 234 tree")
+		% Tout = two(K0, V0, T0, T1),
+		% RH = yes
+	).
+
+:- pred fix_3node_t0(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_3node_t0(di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_3node_t0(in, in, in, in, in, in, in, out, out) is det.
+
+fix_3node_t0(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
+	(
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
+		NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
+		Node = two(K0, V0, T0, T10),
+		Tout = three(K10, V10, K1, V1, Node, NewT1, T2),
+		RH = no
+	;
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = three(K10, V10, K11, V11, T10, T11, T12),
+		NewT1 = two(K11, V11, T11, T12),
+		Node = two(K0, V0, T0, T10),
+		Tout = three(K10, V10, K1, V1, Node, NewT1, T2),
+		RH = no
+	;
+		% move T0 one level down to become the leftmost subtree of T1
+		T1 = two(K10, V10, T10, T11),
+		NewT1 = three(K0, V0, K10, V10, T0, T10, T11),
+		Tout = two(K1, V1, NewT1, T2),
+		RH = no
+	;
+		T1 = empty,
+		error("unbalanced 234 tree")
+		% Tout = three(K0, V0, K1, V1, T0, T1, T2),
+		% The heights of T1 and T2 are unchanged
+		% RH = no
+	).
+
+:- pred fix_3node_t1(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_3node_t1(di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_3node_t1(in, in, in, in, in, in, in, out, out) is det.
+
+fix_3node_t1(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
+	(
+		% steal T0's rightmost subtree and combine it with T1
+		T0 = four(K00, V00, K01, V01, K02, V02, T00, T01, T02, T03),
+		NewT0 = three(K00, V00, K01, V01, T00, T01, T02),
+		Node = two(K0, V0, T03, T1),
+		Tout = three(K02, V02, K1, V1, NewT0, Node, T2),
+		RH = no
+	;
+		% steal T0's rightmost subtree and combine it with T1
+		T0 = three(K00, V00, K01, V01, T00, T01, T02),
+		NewT0 = two(K00, V00, T00, T01),
+		Node = two(K0, V0, T02, T1),
+		Tout = three(K01, V01, K1, V1, NewT0, Node, T2),
+		RH = no
+	;
+		% move T1 one level down to become the rightmost subtree of T0
+		T0 = two(K00, V00, T00, T01),
+		NewT0 = three(K00, V00, K0, V0, T00, T01, T1),
+		Tout = two(K1, V1, NewT0, T2),
+		RH = no
+	;
+		T0 = empty,
+		error("unbalanced 234 tree")
+		% Tout = three(K0, V0, K1, V1, T0, T1, T2),
+		% The heights of T0 and T2 are unchanged
+		% RH = no
+	).
+
+:- pred fix_3node_t2(K, V, K, V, tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_3node_t2(di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_3node_t2(in, in, in, in, in, in, in, out, out) is det.
+
+fix_3node_t2(K0, V0, K1, V1, T0, T1, T2, Tout, RH) :-
+	(
+		% steal T1's rightmost subtree and combine it with T2
+		T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
+		NewT1 = three(K10, V10, K11, V11, T10, T11, T12),
+		Node = two(K1, V1, T13, T2),
+		Tout = three(K0, V0, K12, V12, T0, NewT1, Node),
+		RH = no
+	;
+		% steal T1's rightmost subtree and combine it with T2
+		T1 = three(K10, V10, K11, V11, T10, T11, T12),
+		NewT1 = two(K10, V10, T10, T11),
+		Node = two(K1, V1, T12, T2),
+		Tout = three(K0, V0, K11, V11, T0, NewT1, Node),
+		RH = no
+	;
+		% move T2 one level down to become the rightmost subtree of T1
+		T1 = two(K10, V10, T10, T11),
+		NewT1 = three(K10, V10, K1, V1, T10, T11, T2),
+		Tout = two(K0, V0, T0, NewT1),
+		RH = no
+	;
+		T1 = empty,
+		error("unbalanced 234 tree")
+		% Tout = three(K0, V0, K1, V1, T0, T1, T2),
+		% The heights of T0 and T1 are unchanged
+		% RH = no
+	).
+
+:- pred fix_4node_t0(K, V, K, V, K, V,
+	tree234(K, V), tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_4node_t0(di, di, di, di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_4node_t0(in, in, in, in, in, in, in, in, in, in, out, out) is det.
+
+fix_4node_t0(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
+	(
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = four(K10, V10, K11, V11, K12, V12, T10, T11, T12, T13),
+		NewT1 = three(K11, V11, K12, V12, T11, T12, T13),
+		Node = two(K0, V0, T0, T10),
+		Tout = four(K10, V10, K1, V1, K2, V2, Node, NewT1, T2, T3),
+		RH = no
+	;
+		% steal T1's leftmost subtree and combine it with T0
+		T1 = three(K10, V10, K11, V11, T10, T11, T12),
+		NewT1 = two(K11, V11, T11, T12),
+		Node = two(K0, V0, T0, T10),
+		Tout = four(K10, V10, K1, V1, K2, V2, Node, NewT1, T2, T3),
+		RH = no
+	;
+		% move T0 one level down to become the leftmost subtree of T1
+		T1 = two(K10, V10, T10, T11),
+		NewT1 = three(K0, V0, K10, V10, T0, T10, T11),
+		Tout = three(K1, V1, K2, V2, NewT1, T2, T3),
+		RH = no
+	;
+		T1 = empty,
+		error("unbalanced 234 tree")
+		% Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		% The heights of T1, T2 and T3 are unchanged
+		% RH = no
+	).
+
+:- pred fix_4node_t1(K, V, K, V, K, V,
+	tree234(K, V), tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_4node_t1(di, di, di, di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_4node_t1(in, in, in, in, in, in, in, in, in, in, out, out) is det.
+
+fix_4node_t1(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
+	(
+		% steal T2's leftmost subtree and combine it with T1
+		T2 = four(K20, V20, K21, V21, K22, V22, T20, T21, T22, T23),
+		NewT2 = three(K21, V21, K22, V22, T21, T22, T23),
+		Node = two(K1, V1, T1, T20),
+		Tout = four(K0, V0, K20, V20, K2, V2, T0, Node, NewT2, T3),
+		RH = no
+	;
+		% steal T2's leftmost subtree and combine it with T1
+		T2 = three(K20, V20, K21, V21, T20, T21, T22),
+		NewT2 = two(K21, V21, T21, T22),
+		Node = two(K1, V1, T1, T20),
+		Tout = four(K0, V0, K20, V20, K2, V2, T0, Node, NewT2, T3),
+		RH = no
+	;
+		% move T1 one level down to become the leftmost subtree of T2
+		T2 = two(K20, V20, T20, T21),
+		NewT2 = three(K1, V1, K20, V20, T1, T20, T21),
+		Tout = three(K0, V0, K2, V2, T0, NewT2, T3),
+		RH = no
+	;
+		T2 = empty,
+		error("unbalanced 234 tree")
+		% Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		% The heights of T0, T2 and T3 are unchanged
+		% RH = no
+	).
+
+:- pred fix_4node_t2(K, V, K, V, K, V,
+	tree234(K, V), tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_4node_t2(di, di, di, di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_4node_t2(in, in, in, in, in, in, in, in, in, in, out, out) is det.
+
+fix_4node_t2(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
+	(
+		% steal T3's leftmost subtree and combine it with T2
+		T3 = four(K30, V30, K31, V31, K32, V32, T30, T31, T32, T33),
+		NewT3 = three(K31, V31, K32, V32, T31, T32, T33),
+		Node = two(K2, V2, T2, T30),
+		Tout = four(K0, V0, K1, V1, K30, V30, T0, T1, Node, NewT3),
+		RH = no
+	;
+		% steal T3's leftmost subtree and combine it with T2
+		T3 = three(K30, V30, K31, V31, T30, T31, T32),
+		NewT3 = two(K31, V31, T31, T32),
+		Node = two(K2, V2, T2, T30),
+		Tout = four(K0, V0, K1, V1, K30, V30, T0, T1, Node, NewT3),
+		RH = no
+	;
+		% move T2 one level down to become the leftmost subtree of T3
+		T3 = two(K30, V30, T30, T31),
+		NewT3 = three(K2, V2, K30, V30, T2, T30, T31),
+		Tout = three(K0, V0, K1, V1, T0, T1, NewT3),
+		RH = no
+	;
+		T3 = empty,
+		error("unbalanced 234 tree")
+		% Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		% The heights of T0, T1 and T3 are unchanged
+		% RH = no
+	).
+
+:- pred fix_4node_t3(K, V, K, V, K, V,
+	tree234(K, V), tree234(K, V), tree234(K, V), tree234(K, V),
+	tree234(K, V), bool).
+:- mode fix_4node_t3(di, di, di, di, di, di, di, di, di, di, uo, out) is det.
+:- mode fix_4node_t3(in, in, in, in, in, in, in, in, in, in, out, out) is det.
+
+fix_4node_t3(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
+	(
+		% steal T2's rightmost subtree and combine it with T3
+		T2 = four(K20, V20, K21, V21, K22, V22, T20, T21, T22, T23),
+		NewT2 = three(K20, V20, K21, V21, T20, T21, T22),
+		Node = two(K2, V2, T23, T3),
+		Tout = four(K0, V0, K1, V1, K22, V22, T0, T1, NewT2, Node),
+		RH = no
+	;
+		% steal T2's rightmost subtree and combine it with T3
+		T2 = three(K20, V20, K21, V21, T20, T21, T22),
+		NewT2 = two(K20, V20, T20, T21),
+		Node = two(K2, V2, T22, T3),
+		Tout = four(K0, V0, K1, V1, K21, V21, T0, T1, NewT2, Node),
+		RH = no
+	;
+		% move T3 one level down to become the rightmost subtree of T2
+		T2 = two(K20, V20, T20, T21),
+		NewT2 = three(K20, V20, K2, V2, T20, T21, T3),
+		Tout = three(K0, V0, K1, V1, T0, T1, NewT2),
+		RH = no
+	;
+		T2 = empty,
+		error("unbalanced 234 tree")
+		% Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+		% The heights of T0, T1 and T2 are unchanged
+		% RH = no
+	).
 
 %------------------------------------------------------------------------------%
 
@@ -1325,16 +1988,16 @@ tree234__keys(Tree, Keys) :-
 tree234__keys_2(empty, List, List).
 tree234__keys_2(two(K0, _V0, T0, T1), L0, L) :-
 	tree234__keys_2(T1, L0, L1),
-	tree234__keys_2(T0, [K0|L1], L).
+	tree234__keys_2(T0, [K0 | L1], L).
 tree234__keys_2(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
 	tree234__keys_2(T2, L0, L1),
-	tree234__keys_2(T1, [K1|L1], L2),
-	tree234__keys_2(T0, [K0|L2], L).
+	tree234__keys_2(T1, [K1 | L1], L2),
+	tree234__keys_2(T0, [K0 | L2], L).
 tree234__keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
 	tree234__keys_2(T3, L0, L1),
-	tree234__keys_2(T2, [K2|L1], L2),
-	tree234__keys_2(T1, [K1|L2], L3),
-	tree234__keys_2(T0, [K0|L3], L).
+	tree234__keys_2(T2, [K2 | L1], L2),
+	tree234__keys_2(T1, [K1 | L2], L3),
+	tree234__keys_2(T0, [K0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
@@ -1347,16 +2010,16 @@ tree234__values(Tree, Values) :-
 tree234__values_2(empty, List, List).
 tree234__values_2(two(_K0, V0, T0, T1), L0, L) :-
 	tree234__values_2(T1, L0, L1),
-	tree234__values_2(T0, [V0|L1], L).
+	tree234__values_2(T0, [V0 | L1], L).
 tree234__values_2(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
 	tree234__values_2(T2, L0, L1),
-	tree234__values_2(T1, [V1|L1], L2),
-	tree234__values_2(T0, [V0|L2], L).
+	tree234__values_2(T1, [V1 | L1], L2),
+	tree234__values_2(T0, [V0 | L2], L).
 tree234__values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
 	tree234__values_2(T3, L0, L1),
-	tree234__values_2(T2, [V2|L1], L2),
-	tree234__values_2(T1, [V1|L2], L3),
-	tree234__values_2(T0, [V0|L3], L).
+	tree234__values_2(T2, [V2 | L1], L2),
+	tree234__values_2(T1, [V1 | L2], L3),
+	tree234__values_2(T0, [V0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
