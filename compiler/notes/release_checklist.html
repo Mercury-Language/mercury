@@ -136,6 +136,13 @@ taken when releasing a new version of Mercury.
      version number, date, file sizes, and file names need to be updated
      for a new release.
 
+<li> Create new binary packages for Linux packaging systems.
+     The .spec file can be used to create .rpm packages.
+     The command <i>dpkg-buildpackage -rfakeroot</i> on hydra can be
+     used to create .deb packages, although you should probably
+     let (or make) the official maintainer do this so it can be
+     PGP signed and uploaded.
+
 <li> Upload "mercury-VERSION-compiler.tar.gz" and "mercury-VERSION.lsm" to
      ftp://sunsite.unc.edu/incoming/Linux. They will be moved to
      /pub/Linux/Incoming fairly quickly, and eventually should be moved
@@ -159,6 +166,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-04-16 06:05:09 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-04-16 06:20:47 $ by $Author: trd $@cs.mu.oz.au. <br>
 </body>
 </html>
