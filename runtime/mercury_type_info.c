@@ -432,10 +432,20 @@ MR_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
 	MR_restore_transient_registers();
 	arg_names_list = MR_list_empty();
 
-	while (arity > 0) {
-		--arity;
-		arg_names_list = MR_list_cons((MR_Word) arg_names[arity],
-			arg_names_list);
+	if (arg_names == NULL) {
+		/* No arguments have names. */
+		while (arity > 0) {
+			--arity;
+			arg_names_list =
+				MR_list_cons((MR_Word) NULL, arg_names_list);
+		}
+	} else {
+		while (arity > 0) {
+			--arity;
+			arg_names_list =
+				MR_list_cons((MR_Word) arg_names[arity],
+					arg_names_list);
+		}
 	}
 
 	MR_save_transient_registers();
