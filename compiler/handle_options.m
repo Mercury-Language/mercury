@@ -274,9 +274,6 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
 
-	% --trace-just-in-case does not work with --split-c-files
-	option_implies(split_c_files, trace_just_in_case, bool(no)),
-
 	% Minimal model tabling is not compatible with trailing;
 	% see the comment in runtime/mercury_tabling.c.
 

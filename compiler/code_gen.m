@@ -216,6 +216,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
 		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
 		CodeInfo0, CodeInfo),
+	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
 	code_info__get_cell_count(CellCount, CodeInfo, _),
 
 		% Turn the code tree into a list.
@@ -243,7 +244,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 			no, EntryLabel),
 		ProcLayout = proc_layout_info(EntryLabel, Detism, TotalSlots,
-			MaybeSuccipSlot, MaybeTraceCallLabel,
+			MaybeSuccipSlot, MaybeTraceCallLabel, MaxTraceReg,
 			TraceSlotInfo, ForceProcId, InternalMap),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)

@@ -598,7 +598,9 @@
 			;	ite_then
 			;	ite_else
 			;	neg
-			;	exist.
+			;	exist
+			;	first
+			;	later.
 
 :- type goal_path == list(goal_path_step).
 

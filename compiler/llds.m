@@ -150,26 +150,6 @@
 						% arguments of the create.
 			list(pred_proc_id)	% The procedures referenced.
 						% Used by dead_proc_elim.
-		)
-	;	trace_call_info(
-			% This structure contains all the information
-			% we pass to a particular call to MR_trace_struct.
-
-			label,			% The label corresponding
-						% to this point in the code,
-						% whose layout structure
-						% describes the current
-						% contents of registers and
-						% stack slots.
-			string,			% A representation of the
-						% goal_path of the current
-						% position in the procedure.
-			int,			% The number of the highest
-						% numbered r register that is
-						% in use at the time of the
-						% call.
-			trace_port		% The type of port we are
-						% tracing.
 		).
 
 :- type comp_gen_c_module
@@ -533,15 +513,15 @@
 	.
 
 	% The kinds of ports for which the code we generate will
-	% call MR_trace. The redo port is not on this list, because for that
-	% port the code that calls MR_trace is not in compiler-generated code,
-	% but in the runtime system.  Likewise for the exception port.
-	% (The same comment applies to the type `external_trace_port'
-	% in trace.m.)
+	% call MR_trace. The exception port is not on this list, because for
+	% that port the code that calls MR_trace is not in compiler-generated
+	% code, but in the runtime system. (The same comment applies to the
+	% type `external_trace_port' in trace.m.)
 :- type trace_port
 	--->	call
 	;	exit
 	;	fail
+	;	redo
 	;	ite_cond
 	;	ite_then
 	;	ite_else

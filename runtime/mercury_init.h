@@ -144,12 +144,10 @@ extern	void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
 extern	String	ML_type_name(Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *, MR_Trace_Port,
-			const char *, int);
+extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
 
 /* in trace/mercury_trace.c */
-extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *, MR_Trace_Port,
-			const char *, int);
+extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *);
 
 /* in trace/mercury_trace_tables.c */
 extern	void	MR_register_module_layout_real(const MR_Module_Layout *);

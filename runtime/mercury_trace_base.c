@@ -108,6 +108,7 @@ const char	*MR_port_names[] =
 	"EXIT",
 	"REDO",
 	"FAIL",
+	"EXCP",
 	"COND",
 	"THEN",
 	"ELSE",
@@ -118,31 +119,16 @@ const char	*MR_port_names[] =
 	"SWTC",
 	"FRST",
 	"LATR",
-	"EXCP",
 };
 
 Code *
-MR_trace_struct(const MR_Trace_Call_Info *trace_call_info)
+MR_trace(const MR_Stack_Layout_Label *layout)
 {
 	if (! MR_trace_enabled) {
 		return NULL;
 	}
 
-	return (*MR_trace_func_ptr)(trace_call_info->MR_trace_sll,
-			trace_call_info->MR_trace_port,
-			trace_call_info->MR_trace_path,
-			trace_call_info->MR_trace_max_r_num);
-}
-
-Code *
-MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	const char *path, int max_r_num)
-{
-	if (! MR_trace_enabled) {
-		return NULL;
-	}
-
-	return (*MR_trace_func_ptr)(layout, port, path, max_r_num);
+	return (*MR_trace_func_ptr)(layout);
 }
 
 void
@@ -161,8 +147,7 @@ MR_tracing_not_enabled(void)
 }
 
 Code *
-MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	const char *path, int max_r_num)
+MR_trace_fake(const MR_Stack_Layout_Label *layout)
 {
 	MR_tracing_not_enabled();
 	/*NOTREACHED*/
@@ -292,22 +277,6 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
-/*
-** This structure is only used by MR_do_trace_redo_fail.
-** Every call to MR_trace_struct from MR_do_trace_redo_fail will set the
-** label layout field to the value it finds in the stack slot reserved
-** for this purpose. The other three fields ("", 0, and MR_PORT_REDO)
-** are the same for all calls to MR_trace_struct from here.
-*/
-
-static	MR_Trace_Call_Info	MR_retry_trace_call_info =
-					{
-						NULL,
-						"",
-						0,
-						MR_PORT_REDO
-					};
-
 Define_extern_entry(MR_do_trace_redo_fail_shallow);
 Define_extern_entry(MR_do_trace_redo_fail_deep);
 
@@ -324,11 +293,9 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 	if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
 	{
 		Code	*MR_jumpaddr;
-		MR_retry_trace_call_info.MR_trace_sll = 
-			(const MR_Stack_Layout_Label *)
-			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr));
 		save_transient_registers();
-		MR_jumpaddr = MR_trace_struct(&MR_retry_trace_call_info);
+		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 		restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
 			GOTO(MR_jumpaddr);
@@ -348,15 +315,13 @@ Define_entry(MR_do_trace_redo_fail_deep);
 #endif
 	/*
 	** If this code ever needs changing, you may also need to change
-	** the code in extras/exceptions/exception.m similarly.
+	** the code in library/exception.m similarly.
 	*/
 	{
 		Code	*MR_jumpaddr;
-		MR_retry_trace_call_info.MR_trace_sll = 
-			(const MR_Stack_Layout_Label *)
-			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr));
 		save_transient_registers();
-		MR_jumpaddr = MR_trace_struct(&MR_retry_trace_call_info);
+		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 		restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
 			GOTO(MR_jumpaddr);

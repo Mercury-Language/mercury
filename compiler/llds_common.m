@@ -123,10 +123,6 @@ llds_common__process_data(
 		comp_gen_c_data(Name, DataName, Export, Args, ArgTypes, Refs),
 		Info0, Info) :-
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info).
-llds_common__process_data(
-		trace_call_info(Label, Path, MaxRegInUse, Port),
-		trace_call_info(Label, Path, MaxRegInUse, Port),
-		Info, Info).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.

@@ -348,8 +348,8 @@ typedef struct MR_Stack_Layout_User_Proc_Struct {
 	ConstString		MR_user_decl_module;
 	ConstString		MR_user_def_module;
 	ConstString		MR_user_name;
-	Integer			MR_user_arity;
-	Integer			MR_user_mode;
+	MR_int_least16_t	MR_user_arity;
+	MR_int_least16_t	MR_user_mode;
 } MR_Stack_Layout_User_Proc;
 
 typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
@@ -357,8 +357,8 @@ typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
 	ConstString		MR_comp_type_module;
 	ConstString		MR_comp_def_module;
 	ConstString		MR_comp_pred_name;
-	Integer			MR_comp_arity;
-	Integer			MR_comp_mode;
+	MR_int_least16_t	MR_comp_arity;
+	MR_int_least16_t	MR_comp_mode;
 } MR_Stack_Layout_Compiler_Proc;
 
 typedef union MR_Stack_Layout_Proc_Id_Union {
@@ -381,9 +381,10 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 				*MR_sle_call_label;
 	struct MR_Module_Layout_Struct
 				*MR_sle_module_layout;
+	MR_int_least16_t	MR_sle_max_r_num;
 	MR_int_least8_t		MR_sle_maybe_from_full;
-	MR_int_least8_t		MR_sle_maybe_decl_debug;
 	MR_int_least8_t		MR_sle_maybe_trail;
+	MR_int_least8_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
@@ -510,6 +511,8 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 
 typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Entry	*MR_sll_entry;
+	MR_int_least16_t	MR_sll_port;
+	MR_int_least16_t	MR_sll_goal_path;
 	MR_Stack_Layout_Vars	MR_sll_var_info;
 } MR_Stack_Layout_Label;
 
@@ -537,6 +540,8 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 #define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
 	MR_Stack_Layout_Label mercury_data__layout__##label = {		\
 		&mercury_data__layout__##entry,				\
+		-1,							\
+		-1,							\
 		{							\
 			-1,		/* No info about live values */	\
 			NULL,						\

@@ -93,15 +93,13 @@ extern	void		(*MR_address_of_trace_final_external)(void);
 extern	Code		*MR_library_trace_browser;
 
 /*
-** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c), or
-** MR_trace_fake (runtime/mercury_trace_base.c),
+** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
+** or MR_trace_fake (runtime/mercury_trace_base.c),
 ** depending on whether tracing was enabled when creating the _init.c
 ** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
 */
 
-extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
-				MR_Trace_Port, const char *, int);
-
+extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 extern	void		do_init_modules(void);

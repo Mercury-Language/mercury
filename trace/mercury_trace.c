@@ -56,12 +56,10 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
 	TRUE	/* must check */
 };
 
-Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, const char *path, int max_r_num);
+Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout);
 static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
-			const char *path, int max_r_num);
+			MR_Trace_Port port, Unsigned seqno, Unsigned depth);
 static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
 			Word *saved_regs, MR_uint_least16_t var_num,
 			bool *succeeded);
@@ -79,14 +77,14 @@ static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 */
 
 Code *
-MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	const char *path, int max_r_num)
+MR_trace_real(const MR_Stack_Layout_Label *layout)
 {
 	Integer		maybe_from_full;
 	Unsigned	seqno;
 	Unsigned	depth;
 	MR_Spy_Action	action;
 	bool		match;
+	MR_Trace_Port	port;
 
 	/* in case MR_sp or MR_curfr is transient */
 	restore_transient_registers();
@@ -132,62 +130,66 @@ MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 
 	switch (MR_trace_ctrl.MR_trace_cmd) {
 		case MR_CMD_FINISH:
-			if (MR_trace_ctrl.MR_trace_stop_depth == depth
-					&& MR_port_is_final(port))
-			{
-				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
-			} else {
+			if (MR_trace_ctrl.MR_trace_stop_depth != depth) {
 				goto check_stop_print;
+			} else {
+				port = (MR_Trace_Port) layout->MR_sll_port;
+
+				if (! MR_port_is_final(port)) {
+				goto check_stop_print;
+				} else {
+					return MR_trace_event(&MR_trace_ctrl,
+						TRUE, layout, port,
+						seqno, depth);
+				}
 			}
 
 		case MR_CMD_GOTO:
 			if (MR_trace_event_number >=
 					MR_trace_ctrl.MR_trace_stop_event)
 			{
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_RESUME_FORWARD:
+			port = (MR_Trace_Port) layout->MR_sll_port;
 			if (port != MR_PORT_REDO &&
 			    port != MR_PORT_FAIL &&
 			    port != MR_PORT_EXCEPTION)
 			{
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_RETURN:
+			port = (MR_Trace_Port) layout->MR_sll_port;
 			if (port != MR_PORT_EXIT) {
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_MIN_DEPTH:
 			if (MR_trace_ctrl.MR_trace_stop_depth <= depth) {
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
 
 		case MR_CMD_MAX_DEPTH:
 			if (MR_trace_ctrl.MR_trace_stop_depth >= depth) {
+				port = (MR_Trace_Port) layout->MR_sll_port;
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			} else {
 				goto check_stop_print;
 			}
@@ -213,28 +215,27 @@ check_stop_print:
 		** very frequent case that MR_trace_must_check is false.
 		*/
 
+		port = (MR_Trace_Port) layout->MR_sll_port;
 		match = MR_event_matches_spy_point(layout, port, &action);
 		if (! match) {
 			if (MR_trace_ctrl.MR_trace_print_level ==
 					MR_PRINT_LEVEL_ALL)
 			{
 				return MR_trace_event(&MR_trace_ctrl, FALSE,
-						layout, port, seqno, depth,
-						path, max_r_num);
+						layout, port, seqno, depth);
 			}
 
 			return NULL;
 		}
 
-		if ((! MR_trace_ctrl.MR_trace_strict)
-				&& action == MR_SPY_STOP)
+		if ((! MR_trace_ctrl.MR_trace_strict) && action == MR_SPY_STOP)
 		{
 			return MR_trace_event(&MR_trace_ctrl, TRUE,
-					layout, port, seqno, depth,
-					path, max_r_num);
+					layout, port, seqno, depth);
 		}
 
-		if (MR_trace_ctrl.MR_trace_print_level != MR_PRINT_LEVEL_NONE) {
+		if (MR_trace_ctrl.MR_trace_print_level != MR_PRINT_LEVEL_NONE)
+		{
 			/*
 			** It doesn't matter whether action is MR_SPY_STOP or
 			** MR_SPY_PRINT; even if it is MR_SPY_STOP, we want
@@ -243,8 +244,7 @@ check_stop_print:
 			*/
 
 			return MR_trace_event(&MR_trace_ctrl, FALSE,
-					layout, port, seqno, depth,
-					path, max_r_num);
+					layout, port, seqno, depth);
 		}
 	}
 
@@ -254,19 +254,22 @@ check_stop_print:
 static Code *
 MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
+	Unsigned seqno, Unsigned depth)
 {
 	Code		*jumpaddr;
 	MR_Event_Info	event_info;
 	Word		*saved_regs = event_info.MR_saved_regs;
+	int		max_r_num;
 
 	event_info.MR_event_number = MR_trace_event_number;
 	event_info.MR_call_seqno = seqno;
 	event_info.MR_call_depth = depth;
 	event_info.MR_trace_port = port;
 	event_info.MR_event_sll = layout;
-	event_info.MR_event_path = path;
+	event_info.MR_event_path = layout->MR_sll_entry->MR_sle_module_layout
+			->MR_ml_string_table + layout->MR_sll_goal_path;
 
+	max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
 		event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
 	} else {

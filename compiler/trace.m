@@ -118,7 +118,7 @@
 :- pred trace__setup(globals::in, trace_slot_info::out, trace_info::out,
 	code_info::in, code_info::out) is det.
 
-	% Generate code to fill in the reserevd stack slots.
+	% Generate code to fill in the reserved stack slots.
 :- pred trace__generate_slot_fill_code(trace_info::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -553,6 +553,65 @@ trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
 
 trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		Label, TvarDataMap, Code) -->
+	code_info__get_next_label(Label),
+	code_info__get_known_variables(LiveVars0),
+	(
+		{ PortInfo = external },
+		{ LiveVars = LiveVars0 },
+		{ Path = [] }
+	;
+		{ PortInfo = internal(Path, PreDeaths) },
+		code_info__current_resume_point_vars(ResumeVars),
+		{ set__difference(PreDeaths, ResumeVars, RealPreDeaths) },
+		{ set__to_sorted_list(RealPreDeaths, RealPreDeathList) },
+		{ list__delete_elems(LiveVars0, RealPreDeathList, LiveVars) }
+	;
+		{ PortInfo = negation_end(Path) },
+		{ LiveVars = LiveVars0 }
+	;
+		{ PortInfo = nondet_pragma },
+		{ LiveVars = [] },
+		{ Port = nondet_pragma_first ->
+			Path = [first]
+		; Port = nondet_pragma_later ->
+			Path = [later]
+		;
+			error("bad nondet pragma port")
+		}
+	),
+	code_info__get_varset(VarSet),
+	code_info__get_instmap(InstMap),
+	{ set__init(TvarSet0) },
+	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
+		VarInfoList, ProduceCode),
+	code_info__max_reg_in_use(MaxReg),
+	code_info__get_max_reg_in_use_at_trace(MaxTraceReg0),
+	( { MaxTraceReg0 < MaxReg } ->
+		code_info__set_max_reg_in_use_at_trace(MaxReg)
+	;
+		[]
+	),
+	code_info__variable_locations(VarLocs),
+	code_info__get_proc_info(ProcInfo),
+	{
+	set__to_sorted_list(TvarSet, TvarList),
+	continuation_info__find_typeinfos_for_tvars(TvarList,
+		VarLocs, ProcInfo, TvarDataMap),
+	set__list_to_set(VarInfoList, VarInfoSet),
+	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
+	llds_out__get_label(Label, yes, LabelStr),
+	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
+	SaveStmt = "\t\tsave_transient_registers();\n",
+	RestoreStmt = "\t\trestore_transient_registers();\n",
+	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);"
+	},
+		{ string__append_list([
+			"\t\tMR_jumpaddr = MR_trace(\n",
+			"\t\t\t(const MR_Stack_Layout_Label *)\n",
+		"\t\t\t&mercury_data__layout__", LabelStr, ");\n"],
+		CallStmt) },
+	code_info__add_trace_layout_for_label(Label, Context, Port, Path,
+		LayoutLabelInfo),
 	(
 		{ Port = fail },
 		{ trace_info_get_maybe_redo_layout_slot(TraceInfo,
@@ -566,80 +625,13 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context,
 		% On the other hand, the address of the layout structure
 		% for the redo event should be put into its fixed stack slot
 		% at procedure entry. Therefore trace__setup reserves a label
-		% whose layout structure serves for both the fail and redo
-		% events.
-		{ Label = RedoLabel }
+		% for the redo event, whose layout information is filled in
+		% when we get to the fail event.
+		code_info__add_trace_layout_for_label(RedoLabel, Context, redo,
+			Path, LayoutLabelInfo)
 	;
-		code_info__get_next_label(Label)
+		[]
 	),
-	code_info__get_known_variables(LiveVars0),
-	(
-		{ PortInfo = external },
-		{ LiveVars = LiveVars0 },
-		{ PathStr = "" }
-	;
-		{ PortInfo = internal(Path, PreDeaths) },
-		code_info__current_resume_point_vars(ResumeVars),
-		{ set__difference(PreDeaths, ResumeVars, RealPreDeaths) },
-		{ set__to_sorted_list(RealPreDeaths, RealPreDeathList) },
-		{ list__delete_elems(LiveVars0, RealPreDeathList, LiveVars) },
-		{ trace__path_to_string(Path, PathStr) }
-	;
-		{ PortInfo = negation_end(Path) },
-		{ LiveVars = LiveVars0 },
-		{ trace__path_to_string(Path, PathStr) }
-	;
-		{ PortInfo = nondet_pragma },
-		{ LiveVars = [] },
-		{ PathStr = "" }
-	),
-	code_info__get_varset(VarSet),
-	code_info__get_instmap(InstMap),
-	{ set__init(TvarSet0) },
-	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
-		VarInfoList, ProduceCode),
-	code_info__max_reg_in_use(MaxReg),
-	code_info__get_globals(Globals),
-	code_info__variable_locations(VarLocs),
-	code_info__get_proc_info(ProcInfo),
-	{
-	set__to_sorted_list(TvarSet, TvarList),
-	continuation_info__find_typeinfos_for_tvars(TvarList,
-		VarLocs, ProcInfo, TvarDataMap),
-	set__list_to_set(VarInfoList, VarInfoSet),
-	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
-	llds_out__get_label(Label, yes, LabelStr),
-	DeclStmt = "\t\tCode *MR_jumpaddr;\n",
-	SaveStmt = "\t\tsave_transient_registers();\n",
-	RestoreStmt = "\t\trestore_transient_registers();\n",
-	GotoStmt = "\t\tif (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);",
-	globals__lookup_bool_option(Globals, trace_just_in_case,
-		TraceJustInCase)
-	},
-	( { TraceJustInCase = yes } ->
-		{ string__append_list([
-			"\t\tMR_jumpaddr = MR_trace_struct(\n",
-			"\t\t\t&mercury_data__tci__", LabelStr, ");\n"],
-			CallStmt) },
-		{ TraceCallInfo = trace_call_info(Label, PathStr,
-			MaxReg, Port) },
-		code_info__add_non_common_static_data(TraceCallInfo)
-	;
-		{
-		Quote = """",
-		Comma = ", ",
-		llds_out__trace_port_to_string(Port, PortStr),
-		string__int_to_string(MaxReg, MaxRegStr),
-		string__append_list([
-			"\t\tMR_jumpaddr = MR_trace(\n",
-			"\t\t\t(const MR_Stack_Layout_Label *)\n",
-			"\t\t\t&mercury_data__layout__", LabelStr, Comma, "\n",
-			"\t\t\t", PortStr, Comma, Quote, PathStr, Quote, Comma,
-			MaxRegStr, ");\n"],
-			CallStmt)
-		}
-	),
-	code_info__add_trace_layout_for_label(Label, Context, LayoutLabelInfo),
 	{
 	string__append_list([DeclStmt, SaveStmt, CallStmt, RestoreStmt,
 		GotoStmt], TraceStmt),
@@ -798,6 +790,8 @@ trace__path_step_to_string(ite_then, "t;").
 trace__path_step_to_string(ite_else, "e;").
 trace__path_step_to_string(neg, "~;").
 trace__path_step_to_string(exist, "q;").
+trace__path_step_to_string(first, "f;").
+trace__path_step_to_string(later, "l;").
 
 :- pred trace__convert_external_port_type(external_trace_port::in,
 	trace_port::out) is det.

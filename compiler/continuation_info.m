@@ -51,7 +51,7 @@
 
 :- interface.
 
-:- import_module llds, hlds_module, hlds_pred, prog_data.
+:- import_module llds, hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module (inst), instmap, trace, globals.
 :- import_module bool, std_util, list, assoc_list, set, map.
 
@@ -70,6 +70,10 @@
 					% with the call event, whose stack
 					% layout says which variables were
 					% live and where on entry.
+			int,		% The number of the highest numbered
+					% rN register that can contain useful
+					% information during a call to MR_trace
+					% from within this procedure.
 			trace_slot_info,% Info about the stack slots used
 					% for tracing.
 			bool,		% Do we require the procedure id
@@ -164,9 +168,17 @@
 	%
 :- type internal_layout_info
 	--->	internal_layout_info(
-			maybe(pair(prog_context, layout_label_info)),
+			maybe(trace_port_layout_info),
 			maybe(layout_label_info),
 			maybe(return_layout_info)
+		).
+
+:- type trace_port_layout_info
+	--->	trace_port_layout_info(
+			prog_context,
+			trace_port,
+			goal_path,
+			layout_label_info
 		).
 
 :- type return_layout_info
@@ -326,7 +338,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 
 		% Get all the continuation info from the call instructions.
 	global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo0),
-	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, Internals0),
+	ProcLayoutInfo0 = proc_layout_info(A, B, C, D, E, F, G, H, Internals0),
 	GetCallInfo = lambda([Instr::in, Call::out] is semidet, (
 		Instr = call(Target, label(ReturnLabel), LiveInfo, Context, _)
 			- _Comment,
@@ -338,7 +350,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	list__foldl(continuation_info__process_continuation(WantReturnInfo),
 		Calls, Internals0, Internals),
 
-	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, Internals),
+	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, F, G, H, Internals),
 	global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayoutInfo,
 		GlobalData).
 

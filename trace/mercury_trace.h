@@ -121,8 +121,7 @@ typedef struct {
 					 (port) == MR_PORT_FAIL || \
 					 (port) == MR_PORT_EXCEPTION)
 
-#define	MR_port_is_interface(port)	((port) <= MR_PORT_FAIL || \
-					 (port) == MR_PORT_EXCEPTION)
+#define	MR_port_is_interface(port)	((port) <= MR_PORT_EXCEPTION)
 
 #define	MR_port_is_entry(port)		((port) == MR_PORT_CALL)
 

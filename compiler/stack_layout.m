@@ -40,12 +40,12 @@
 % information on the identity of the procedure. This information will take
 % one of two forms. Almost all procedures use the first form:
 %
-%	predicate/function	(Int) actually, MR_pred_func
+%	predicate/function	(Integer) actually, MR_pred_func
 %	declaring module name	(String)
 %	defining module name	(String)
 %	predicate name		(String)
-%	predicate arity		(Integer)
-%	procedure number	(Integer)
+%	predicate arity		(int_least16_t)
+%	procedure number	(int_least16_t)
 %
 % Automatically generated unification, index and comparison predicates
 % use the second form:
@@ -54,8 +54,8 @@
 %	type module's name	(String)
 %	defining module name	(String)
 %	predicate name		(String)
-%	predicate arity		(Integer)
-%	procedure number	(Integer)
+%	predicate arity		(int_least16_t)
+%	procedure number	(int_least16_t)
 %
 % The runtime system can figure out which form is present by testing
 % the value of the first slot. A value of 0 or 1 indicates the first form;
@@ -72,15 +72,18 @@
 %				layout structure of the call event
 %	module layout		(MR_Module_Layout *) - points to the layout
 %				struct of the containing module.
+%	max reg at trace event	(int_least16_t) - the number of the highest
+%				numbered rN register live at a trace event
+%				inside the procedure
 %	maybe from full		(int_least8_t) - number of the stack slot of
 %				the from_full flag, if the procedure is
 %				shallow traced
-%	maybe decl debug	(int_least8_t) - number of the first of two
-%				stack slots used by the declarative debugger,
-%				if --trace-decl is set
 %	maybe trail		(int_least8_t) - number of the first of two
 %				stack slots used for recording the state of
 %				the trail, if trailing is enabled
+%	maybe decl debug	(int_least8_t) - number of the first of two
+%				stack slots used by the declarative debugger,
+%				if --trace-decl is set
 %
 % The first will point to the per-label layout info for the label associated
 % with the call event at the entry to the procedure. The purpose of this
@@ -90,14 +93,14 @@
 % (If trace_stack_layout is not set, this field will be present,
 % but it will be set to NULL.)
 %
-% If the procedure is compiled with deep tracing, the third field will contain
+% If the procedure is compiled with deep tracing, the fourth field will contain
 % a negative number. If it is compiled with shallow tracing, it will contain
 % the number of the stack slot that holds the flag that says whether this
 % incarnation of the procedure was called from deeply traced code or not.
 % (The determinism of the procedure decides whether the stack slot refers
 % to a stackvar or a framevar.)
 %
-% If --trace-decl is not set, the fourth field will contain a negative number.
+% If --trace-decl is not set, the sixth field will contain a negative number.
 % If it is set, it will contain the number of the first of two stack slots
 % used by the declarative debugger; the other slot is the next higher numbered
 % one. (The determinism of the procedure decides whether the stack slot refers
@@ -111,6 +114,11 @@
 %
 %	proc layout		(Word *) - pointer to the layout structure of
 %				the procedure containing this label
+% 	trace port		(int_least16) - a representation of the trace
+%				port associated with the label, or -1
+% 	goal path		(int_least16) - an index into the module's
+%				string table giving the goal path associated
+%				with the trace port of the label, or -1
 % 	# of live data items	(Integer) - an encoded representation of
 %				the number of live data items at the label
 % 	live data types locns 	(void *) - pointer to an area of memory
@@ -509,11 +517,11 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, TraceSlotInfo,
-		ForceProcIdLayout, InternalMap) },
+		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
+		TraceSlotInfo, ForceProcIdLayout, InternalMap) },
 	stack_layout__construct_proc_layout(EntryLabel, Detism,
-		StackSlots, SuccipLoc, MaybeCallLabel, TraceSlotInfo,
-		ForceProcIdLayout),
+		StackSlots, SuccipLoc, MaybeCallLabel, MaxTraceReg,
+		TraceSlotInfo, ForceProcIdLayout),
 	{ map__to_assoc_list(InternalMap, Internals) },
 	list__foldl(stack_layout__construct_internal_layout(EntryLabel),
 		Internals),
@@ -540,7 +548,7 @@ stack_layout__update_label_table(Label - InternalInfo) -->
 		},
 		stack_layout__update_label_table_2(Label, Context, IsReturn)
 	;
-		{ Port = yes(Context - _) },
+		{ Port = yes(trace_port_layout_info(Context, _, _, _)) },
 		{ stack_layout__context_is_valid(Context) }
 	->
 		stack_layout__update_label_table_2(Label, Context,
@@ -610,11 +618,12 @@ stack_layout__context_is_valid(Context) :-
 	% Construct a procedure-specific layout.
 
 :- pred stack_layout__construct_proc_layout(label::in, determinism::in,
-	int::in, maybe(int)::in, maybe(label)::in, trace_slot_info::in,
-	bool::in, stack_layout_info::in, stack_layout_info::out) is det.
+	int::in, maybe(int)::in, maybe(label)::in, int::in,
+	trace_slot_info::in, bool::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
-		MaybeSuccipLoc, MaybeCallLabel, TraceSlotInfo,
+		MaybeSuccipLoc, MaybeCallLabel, MaxTraceReg, TraceSlotInfo,
 		ForceProcIdLayout) -->
 	{
 		MaybeSuccipLoc = yes(Location0)
@@ -680,7 +689,7 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		{ stack_layout__construct_procid_rvals(ProcLabel, IdRvals,
 			IdArgTypes) },
 		stack_layout__construct_trace_layout(MaybeCallLabel,
-			TraceSlotInfo, TraceRvals, TraceArgTypes),
+			MaxTraceReg, TraceSlotInfo, TraceRvals, TraceArgTypes),
 		{ list__append(IdRvals, TraceRvals, IdTraceRvals) },
 		{ IdTraceArgTypes = initial(IdArgTypes, TraceArgTypes) }
 	;
@@ -702,12 +711,12 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		Rvals, ArgTypes, []) },
 	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
 
-:- pred stack_layout__construct_trace_layout(maybe(label)::in,
+:- pred stack_layout__construct_trace_layout(maybe(label)::in, int::in,
 	trace_slot_info::in, list(maybe(rval))::out, create_arg_types::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
-		Rvals, ArgTypes) -->
+stack_layout__construct_trace_layout(MaybeCallLabel, MaxTraceReg,
+		TraceSlotInfo, Rvals, ArgTypes) -->
 	stack_layout__get_module_name(ModuleName),
 	stack_layout__get_trace_stack_layout(TraceLayout),
 	{
@@ -722,6 +731,7 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		),
 		ModuleRval = yes(const(data_addr_const(
 				data_addr(ModuleName, module_layout)))),
+		MaxTraceRegRval = yes(const(int_const(MaxTraceReg))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 			MaybeDeclSlots, MaybeTrailSlot),
 		( MaybeFromFullSlot = yes(FromFullSlot) ->
@@ -740,8 +750,11 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 			TrailRval = yes(const(int_const(-1)))
 		),
 		Rvals = [CallRval, ModuleRval,
-			FromFullRval, DeclRval, TrailRval],
-		ArgTypes = initial([2 - yes(data_ptr), 3 - yes(int_least8)],
+			MaxTraceRegRval, FromFullRval, TrailRval, DeclRval],
+		ArgTypes = initial([
+			2 - yes(data_ptr),
+			1 - yes(int_least16),
+			3 - yes(int_least8)],
 			none)
 	;
 		% Indicate the absence of the trace layout fields.
@@ -770,7 +783,7 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
 			],
-		ArgTypes = [6 - no]
+		ArgTypes = [4 - no, 2 - yes(int_least16)]
 	;
 		ProcLabel = special_proc(DefModule, PredName, TypeModule,
 			TypeName, Arity, ProcId),
@@ -785,7 +798,7 @@ stack_layout__construct_procid_rvals(ProcLabel, Rvals, ArgTypes) :-
 				yes(const(int_const(Arity))),
 				yes(const(int_const(Mode)))
 			],
-		ArgTypes = [6 - no]
+		ArgTypes = [4 - no, 2 - yes(int_least16)]
 	).
 
 :- pred stack_layout__represent_pred_or_func(pred_or_func::in, int::out) is det.
@@ -821,15 +834,25 @@ stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
-	{ Internal = internal_layout_info(Port, Resume, Return) },
-	{
-		Port = no,
-		set__init(PortLiveVarSet),
-		map__init(PortTypeVarMap)
+	{ Internal = internal_layout_info(Trace, Resume, Return) },
+	(
+		{ Trace = no },
+		{ set__init(TraceLiveVarSet) },
+		{ map__init(TraceTypeVarMap) },
+		{ TraceRvals = [yes(const(int_const(-1))),
+				yes(const(int_const(-1)))] }
 	;
-		Port = yes(_ - PortLayout),
-		PortLayout = layout_label_info(PortLiveVarSet, PortTypeVarMap)
-	},
+		{ Trace = yes(trace_port_layout_info(_, Port, Path,
+			TraceLayout)) },
+		{ TraceLayout = layout_label_info(TraceLiveVarSet,
+			TraceTypeVarMap) },
+		{ llds_out__trace_port_to_num(Port, PortNum) },
+		{ trace__path_to_string(Path, PathStr) },
+		stack_layout__lookup_string_in_table(PathStr, PathNum),
+		{ TraceRvals = [yes(const(int_const(PortNum))),
+				yes(const(int_const(PathNum)))] }
+	),
+	{ TraceArgTypes = [2 - yes(int_least16)] },
 	{
 		Resume = no,
 		set__init(ResumeLiveVarSet),
@@ -866,7 +889,7 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		)
 	},
 	(
-		{ Port = no },
+		{ Trace = no },
 		{ Resume = no },
 		{ Return = no }
 	->
@@ -878,14 +901,16 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		{ ArgTypes = initial([1 - yes(integer)], none) }
 	;
 			% XXX ignore differences in insts inside var_infos
-		{ set__union(PortLiveVarSet, ResumeLiveVarSet, LiveVarSet0) },
+		{ set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0) },
 		{ set__union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet) },
-		{ map__union(set__intersect, PortTypeVarMap, ResumeTypeVarMap,
+		{ map__union(set__intersect, TraceTypeVarMap, ResumeTypeVarMap,
 			TypeVarMap0) },
 		{ map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap,
 			TypeVarMap) },
 		stack_layout__construct_livelval_rvals(LiveVarSet,
-			TypeVarMap, RvalList, ArgTypes)
+			TypeVarMap, LivelvalRvalList, LivelvalArgTypes),
+		{ append(TraceRvals, LivelvalRvalList, RvalList) },
+		{ ArgTypes = initial(TraceArgTypes, LivelvalArgTypes) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -918,6 +943,7 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap,
 
 :- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
 	rval::out, int::in, int::out) is det.
+
 stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, CNum0, CNum) :-
 	( map__is_empty(TVarLocnMap) ->
 		TypeParamRval = const(int_const(0)),
