@@ -109,7 +109,7 @@ test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 		{ Constructed = construct(TypeInfo, FunctorNumber, Args) }
 	->
 		io__write_string("Constructed: "),
-		io__write(Constructed),
+		io__print(Constructed),
 		newline
 	;
 		io__write_string("Construction failed.\n")

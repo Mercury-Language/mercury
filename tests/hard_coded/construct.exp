@@ -184,9 +184,9 @@ TESTING OTHER TYPES
 About to construct three/0
 Constructed: three
 About to construct apple/1
-Constructed: apple(.(1, .(2, .(3, []))))
+Constructed: apple([1, 2, 3])
 About to construct banana/1
-Constructed: banana(.(one, .(two, .(three, []))))
+Constructed: banana([one, two, three])
 About to construct foo/0
 Constructed: foo
 About to construct bar/1

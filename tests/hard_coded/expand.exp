@@ -12,24 +12,24 @@ no arguments
 expand: functor three arity 0 arguments []
 
 apple/1
-argument 1 of functor apple was:.(9, .(5, .(1, [])))
-expand: functor apple arity 1 arguments .(.(9, .(5, .(1, []))), [])
+argument 1 of functor apple was:[9, 5, 1]
+expand: functor apple arity 1 arguments [[9, 5, 1]]
 
 banana/1
-argument 1 of functor banana was:.(three, .(one, .(two, [])))
-expand: functor banana arity 1 arguments .(.(three, .(one, .(two, []))), [])
+argument 1 of functor banana was:[three, one, two]
+expand: functor banana arity 1 arguments [[three, one, two]]
 
 zop/2
 argument 2 of functor zop was:2.03000000000000
-expand: functor zop arity 2 arguments .(3.30000000000000, .(2.03000000000000, []))
+expand: functor zop arity 2 arguments [3.30000000000000, 2.03000000000000]
 
 zip/2
 argument 2 of functor zip was:2
-expand: functor zip arity 2 arguments .(3, .(2, []))
+expand: functor zip arity 2 arguments [3, 2]
 
 zap/2
 argument 2 of functor zap was:-2.11100000000000
-expand: functor zap arity 2 arguments .(3, .(-2.11100000000000, []))
+expand: functor zap arity 2 arguments [3, -2.11100000000000]
 
 wombat/0
 no arguments
@@ -43,15 +43,15 @@ expand: functor foo arity 0 arguments []
 TESTING POLYMORPHISM
 poly_two/1
 argument 1 of functor poly_two was:3
-expand: functor poly_two arity 1 arguments .(3, [])
+expand: functor poly_two arity 1 arguments [3]
 
 poly_three/3
 argument 3 of functor poly_three was:poly_one(9.11000000000000)
-expand: functor poly_three arity 3 arguments .(3.33000000000000, .(4, .(poly_one(9.11000000000000), [])))
+expand: functor poly_three arity 3 arguments [3.33000000000000, 4, poly_one(9.11000000000000)]
 
 poly_one/1
-argument 1 of functor poly_one was:.(2399.30000000000, [])
-expand: functor poly_one arity 1 arguments .(.(2399.30000000000, []), [])
+argument 1 of functor poly_one was:[2399.30000000000]
+expand: functor poly_one arity 1 arguments [[2399.30000000000]]
 
 
 TESTING BUILTINS
@@ -103,7 +103,7 @@ expand: functor 4 arity 0 arguments []
 
 ./2
 argument 2 of functor . was:[]
-expand: functor . arity 2 arguments .("hi! I'm a univ!", .([], []))
+expand: functor . arity 2 arguments ["hi! I\'m a univ!", []]
 
 <<predicate>>/0
 no arguments
@@ -129,6 +129,6 @@ expand: functor empty arity 0 arguments []
 
 qwerty/1
 argument 1 of functor qwerty was:4
-expand: functor qwerty arity 1 arguments .(4, [])
+expand: functor qwerty arity 1 arguments [4]
 
 

@@ -89,7 +89,7 @@ test_arg(T) -->
 		{ string__format("argument %d of functor %s was:", [i(Arity),
 			s(Functor)], Str) },
 		io__write_string(Str),
-		io__write(Argument)
+		io__print(Argument)
 	;
 		io__write_string("no arguments")
 	).
@@ -99,7 +99,9 @@ test_expand(T) -->
 	{ string__format("expand: functor %s arity %d arguments ", [s(Functor),
 		i(Arity)], Str) },
 	io__write_string(Str),
-	io__write(Arguments).
+	io__write_string("["),
+	io__write_list(Arguments, ", ", io__print),
+	io__write_string("]").
 
 
 test_polymorphism -->

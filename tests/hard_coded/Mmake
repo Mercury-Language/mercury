@@ -44,6 +44,10 @@ PROGS=	\
 	write \
 	write_reg1
 
+# deep_copy_bug.exp and write.exp are broken; io__write doesn't write
+# equivalence types correctly, due to a bug in mercury_compare_type_info()
+# in library/std_util.m
+
 #-----------------------------------------------------------------------------#
 
 # some tests need to be compiled with particular options
