@@ -257,12 +257,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			% We treat foreign_types as equivalent to the
 			% type builtin__c_pointer.
 		TypeBody = foreign_type(_, _),
-		Ctxt = term__context("builtin.m", 1),
-		Type = functor(term__atom(":"), [
-				functor(term__atom("builtin"), [], Ctxt),
-				functor(term__atom("c_pointer"), [], Ctxt)],
-				Ctxt),
-		gen_layout_info_eqv_type(Type, TypeArity,
+		gen_layout_info_eqv_type(c_pointer_type, TypeArity,
 				TypeCtorRep, NumFunctors, FunctorsInfo,
 				LayoutInfo, NumPtags, TypeTables)
 	;

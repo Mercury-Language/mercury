@@ -744,12 +744,8 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		% We treat foreign_type as if they were an equivalent to
 		% the builtin type c_pointer.
 		{ TypeBody = foreign_type(_, _) },
-		{ Ctxt = term__context("builtin.m", 1) },
-		{ Type = functor(term__atom(":"), [
-				functor(term__atom("builtin"), [], Ctxt),
-				functor(term__atom("c_pointer"), [], Ctxt)],
-				Ctxt) },
-		generate_unify_clauses_eqv_type(Type, H1, H2, Context, Clauses)
+		generate_unify_clauses_eqv_type(c_pointer_type,
+				H1, H2, Context, Clauses)
 	;
 		{ TypeBody = abstract_type },
 		{ error("trying to create unify proc for abstract type") }
@@ -886,12 +882,7 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 				Res, H1, H2, Context, Clauses)
 	;
 		{ TypeBody = foreign_type(_, _) },
-		{ Ctxt = term__context("builtin.m", 1) },
-		{ CPointerType = functor(term__atom(":"), [
-				functor(term__atom("builtin"), [], Ctxt),
-				functor(term__atom("c_pointer"), [], Ctxt)],
-				Ctxt) },
-		generate_compare_clauses_eqv_type(CPointerType,
+		generate_compare_clauses_eqv_type(c_pointer_type,
 				Res, H1, H2, Context, Clauses)
 	;
 		{ TypeBody = abstract_type },
