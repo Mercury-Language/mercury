@@ -742,7 +742,7 @@ output_rval(mkword(Tag, Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
-	io__write_string("field("),
+	io__write_string("(int)field("),
 	output_tag(Tag),
 	io__write_string(","),
 	output_rval(Rval),
@@ -810,6 +810,7 @@ output_rval_const(true) -->
 output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(pred_const(CodeAddress)) -->
+	io__write_string("(int)"),
 	output_code_addr(CodeAddress).
 
 :- pred output_lval(lval, io__state, io__state).
