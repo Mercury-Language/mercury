@@ -17,12 +17,9 @@
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
-	% XXX this is commmented out until it works
 	add_item_list_decls(Items, Module0, Module1),
 	{ statistics },
 	add_item_list_clauses(Items, Module1, Module).
-	% instead we just use this stub
-	%%%% add_item_list_decls(Items, Module0, Module).
 
 %-----------------------------------------------------------------------------%
 
