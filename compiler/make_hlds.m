@@ -344,7 +344,7 @@ insts_add(_, _, abstract_inst(_, _), _, _, _) -->
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-	 	{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
+		{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 			Context) },
 		{ map__insert(Insts0, Name - Arity, I, Insts1) }
 	->
@@ -352,7 +352,9 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	;
 		{ Insts = Insts0 },
 		% XXX we should record each error using module_info_incr_errors
-		multiple_def_error(Name, Arity, "inst", Context)
+		{ map__lookup(Insts, Name - Arity, OrigI) },
+		{ OrigI = hlds__inst_defn(_, _, _, _, OrigContext) },
+		multiple_def_error(Name, Arity, "inst", Context, OrigContext)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -380,8 +382,10 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 		{ Modes = Modes1 }
 	;
 		{ Modes = Modes0 },
+		{ map__lookup(Modes, Name - Arity, OrigI) },
+		{ OrigI = hlds__mode_defn(_, _, _, _, OrigContext) },
 		% XXX we should record each error using module_info_incr_errors
-		multiple_def_error(Name, Arity, "mode", Context)
+		multiple_def_error(Name, Arity, "mode", Context, OrigContext)
 	).
 
 :- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds__mode_body).
@@ -411,7 +415,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
-		{ T2 = hlds__type_defn(_, _, Body_2, _, _) },
+		{ T2 = hlds__type_defn(_, _, Body_2, _, OrigContext) },
 		{ Body_2 \= abstract_type }
 	->
 	  	(
@@ -422,7 +426,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 		;
 			% otherwise issue an error message
 			{ module_info_incr_errors(Module0, Module) },
-			multiple_def_error(Name, Arity, "type", Context)
+			multiple_def_error(Name, Arity, "type", Context,
+				OrigContext)
 		)
 	;
 		{ TypeId = Name - Arity },
@@ -575,9 +580,16 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 				Cond, Context, ClausesInfo, Status, no, none,	
 				PredInfo0) },
 		(
-			{ \+ predicate_table_search_m_n_a(PredicateTable0,
-				MNameOfPred, PName, Arity, _) }
+			{ predicate_table_search_m_n_a(PredicateTable0,
+				MNameOfPred, PName, Arity, [OrigPred|_]) }
 		->
+			{ module_info_incr_errors(Module1, Module) },
+			{ module_info_pred_info(Module, OrigPred,
+				OrigPredInfo) },
+			{ pred_info_context(OrigPredInfo, OrigContext) },
+			multiple_def_error(PredName, Arity, "pred", Context,
+				OrigContext)
+		;
 			( 
 				{ code_util__predinfo_is_builtin(Module1, 
 						PredInfo0) }
@@ -591,9 +603,6 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 					_PredId, PredicateTable) },
 			{ module_info_set_predicate_table(Module1, 
 					PredicateTable, Module) }
-		;
-			{ module_info_incr_errors(Module1, Module) },
-			multiple_def_error(PredName, Arity, "pred", Context)
 		)
 	).
 
@@ -2147,11 +2156,11 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet) :-
 
 	% Predicates to write out the different warning and error messages.
 
-:- pred multiple_def_error(sym_name, int, string, term__context,
+:- pred multiple_def_error(sym_name, int, string, term__context, term__context,
 				io__state, io__state).
-:- mode multiple_def_error(in, in, in, in, di, uo) is det.
+:- mode multiple_def_error(in, in, in, in, in, di, uo) is det.
 
-multiple_def_error(Name, Arity, DefType, Context) -->
+multiple_def_error(Name, Arity, DefType, Context, OrigContext) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: "),
@@ -2160,7 +2169,16 @@ multiple_def_error(Name, Arity, DefType, Context) -->
 	prog_out__write_sym_name(Name),
 	io__write_string("/"),
 	io__write_int(Arity),
-	io__write_string("' multiply defined\n").
+	io__write_string("' multiply defined.\n"),
+	prog_out__write_context(OrigContext),
+	io__write_string(
+		"  Here is the previous definition of "),
+	io__write_string(DefType),
+	io__write_string(" `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("'.\n").
 
 :- pred undefined_pred_error(sym_name, int, term__context, string,
 				io__state, io__state).
