@@ -64,14 +64,20 @@
 	% addition
 :- func int + int = int.
 :- mode in  + in  = uo  is det.
+% :- mode uo  + in  = in  is det.
+% :- mode in  + uo  = in  is det.
 
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
+% :- mode uo  * in  = in  is det.
+% :- mode in  * uo  = in  is det.
 
 	% subtraction
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
+% :- mode uo  - in  = in  is det.
+% :- mode in  - uo  = in  is det.
 
 	% modulus (or is it remainder?)
 :- func int mod int = int.
@@ -82,6 +88,8 @@
 	% (if it doesn't, file a bug report)
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
+% :- mode uo  // in  = in  is det.
+% :- mode in  // uo  = in  is det.
 
 	% left shift
 :- func int << int = int.

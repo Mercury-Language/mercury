@@ -411,15 +411,27 @@
 
 % Binary output predicates.
 
+% XXX what about wide characters?
+
 :- pred io__write_byte(int, io__state, io__state).
 :- mode io__write_byte(in, di, uo) is det.
 %		Writes a single byte to the current binary output stream.
 %		The byte is taken from the bottom 8 bits of an int.
 
-:- pred io__write_byte(io__output_stream, char, io__state, io__state).
+:- pred io__write_byte(io__binary_output_stream, int, io__state, io__state).
 :- mode io__write_byte(in, in, di, uo) is det.
-%		Writes a character to the specified binary output stream.
+%		Writes a single byte to the specified binary output stream.
 %		The byte is taken from the bottom 8 bits of an int.
+
+:- pred io__write_bytes(string, io__state, io__state).
+:- mode io__write_bytes(in, di, uo) is det.
+%		Writes several bytes to the current binary output stream.
+%		The bytes are taken from a string.
+
+:- pred io__write_bytes(io__binary_output_stream, string, io__state, io__state).
+:- mode io__write_bytes(in, in, di, uo) is det.
+%		Writes several bytes to the specified binary output stream.
+%		The bytes are taken from a string.
 
 :- pred io__flush_binary_output(io__state, io__state).
 :- mode io__flush_binary_output(di, uo) is det.
@@ -1337,6 +1349,7 @@ void 		mercury_init_io(void);
 MercuryFile*	mercury_open(const char *filename, const char *type);
 int		mercury_output_error(MercuryFile* mf);
 void		mercury_print_string(MercuryFile* mf, const char *s);
+void		mercury_print_binary_string(MercuryFile* mf, const char *s);
 int		mercury_getc(MercuryFile* mf);
 void		mercury_close(MercuryFile* mf);
 ").
@@ -1404,6 +1417,18 @@ mercury_print_string(MercuryFile* mf, const char *s)
 		if (*s++ == '\\n') {
 			mf->line_number++;
 		}
+	}
+}
+
+").
+
+:- pragma(c_code, "
+
+void
+mercury_print_binary_string(MercuryFile* mf, const char *s)
+{
+	if (fprintf(mf->file, ""%s"", s) < 0) {
+		mercury_output_error(mf);
 	}
 }
 
@@ -1589,6 +1614,11 @@ void sys_init_io_run_module(void) {
 	update_io(IO0, IO);
 ").
 
+:- pragma(c_code, io__write_bytes(Message::in, IO0::di, IO::uo), "{
+	mercury_print_binary_string(mercury_current_binary_output, Message);
+	update_io(IO0, IO);
+}").
+
 :- pragma(c_code, io__flush_output(IO0::di, IO::uo), "
 	if (fflush(mercury_current_text_output->file) < 0) {
 		mercury_output_error(mercury_current_text_output);
@@ -1647,6 +1677,12 @@ void sys_init_io_run_module(void) {
 	if (putc(Byte, stream->file) < 0) {
 		mercury_output_error(stream);
 	}
+	update_io(IO0, IO);
+}").
+
+:- pragma(c_code, io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo), "{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	mercury_print_binary_string(stream, Message);
 	update_io(IO0, IO);
 }").
 

@@ -50,18 +50,26 @@
 	% addition
 :- func float + float = float.
 :- mode in    + in    = uo  is det.
+% :- mode uo  + in  = in  is det.
+% :- mode in  + uo  = in  is det.
 
 	% subtraction
 :- func float - float = float.
 :- mode in    - in    = uo  is det.
+% :- mode uo  - in  = in  is det.
+% :- mode in  - uo  = in  is det.
 
 	% multiplication
 :- func float * float = float.
 :- mode in    * in    = uo  is det.
+% :- mode uo  * in  = in  is det.
+% :- mode in  * uo  = in  is det.
 
 	% division
 :- func float / float = float.
 :- mode in    / in    = uo  is det.
+% :- mode uo  / in  = in  is det.
+% :- mode in  / uo  = in  is det.
 
 	% unary plus
 :- func + float = float.
