@@ -349,7 +349,11 @@ set__subset(SetA, SetB) :-
 set__superset(SetA, SetB) :-
 	set_ordlist__superset(SetA, SetB).
 
-set__member(X, Set) :-
+:- pragma promise_pure(set__member/2).
+
+set__member(X::in, Set::in) :-
+	set_ordlist__is_member(X, Set, yes).
+set__member(X::out, Set::in) :-
 	set_ordlist__member(X, Set).
 
 set__is_member(X, Set, Result) :-

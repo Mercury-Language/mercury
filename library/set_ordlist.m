@@ -317,13 +317,24 @@ set_ordlist__subset(Subset, Set) :-
 set_ordlist__superset(Superset, Set) :-
 	set_ordlist__subset(Set, Superset).
 
-set_ordlist__member(E, S) :-
-	list__member(E, S).
+:- pragma promise_pure(set_ordlist__member/2).
 
-set_ordlist__is_member(E, S, R) :-
-	( set_ordlist__member(E, S) ->
+set_ordlist__member(E::out, S::in) :-
+	list__member(E, S).
+set_ordlist__member(E::in, S::in) :-
+	set_ordlist__is_member(E, S, yes).
+
+set_ordlist__is_member(_E, [], no).
+set_ordlist__is_member(E, [H | T], R) :-
+	compare(Res, H, E),
+	(
+		Res = (<),
+		set_ordlist__is_member(E, T, R)
+	;
+		Res = (=),
 		R = yes
 	;
+		Res = (>),
 		R = no
 	).
 
