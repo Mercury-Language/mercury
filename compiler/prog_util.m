@@ -79,7 +79,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% First we build up a mapping which records the equivlance type
+	% First we build up a mapping which records the equivalence type
 	% definitions.  Then we go through the item list and replace
 	% them.
 
@@ -107,7 +107,7 @@ prog_util__build_eqv_map([Item - _Context | Items], EqvMap0, EqvMap) :-
 	),
 	prog_util__build_eqv_map(Items, EqvMap1, EqvMap).
 
-	% The following predicate prog_util__replace_eqv_type_list
+	% The following predicate prog_util__replace_eqv_type_item_list
 	% performs substititution of a single type on a list
 	% of items.
 
@@ -202,12 +202,23 @@ prog_util__replace_eqv_type_ctor(TName - Targs0, VarSet0, EqvMap, Found0,
 					bool, list(type), tvarset, bool).
 :- mode prog_util__replace_eqv_type_list(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_list([], VarSet, _EqvMap, Found, [], VarSet, Found).
-prog_util__replace_eqv_type_list([T0|Ts0], VarSet0, EqvMap, Found0,
+prog_util__replace_eqv_type_list(Ts0, VarSet0, EqvMap, Found0,
+				Ts, VarSet, Found) :-
+	prog_util__replace_eqv_type_list_2(Ts0, VarSet0, EqvMap, Found0, [],
+					Ts, VarSet, Found).
+
+:- pred prog_util__replace_eqv_type_list_2(list(type), tvarset, eqv_map,
+			bool, list(type_id), list(type), tvarset, bool).
+:- mode prog_util__replace_eqv_type_list_2(in, in, in, in, in, out, out, out)
+	is det.
+
+prog_util__replace_eqv_type_list_2([], VarSet, _EqvMap, Found, _Seen,
+					[], VarSet, Found).
+prog_util__replace_eqv_type_list_2([T0|Ts0], VarSet0, EqvMap, Found0, Seen,
 				[T|Ts], VarSet, Found) :-
-	prog_util__replace_eqv_type_type(T0, VarSet0, EqvMap, Found0,
+	prog_util__replace_eqv_type_type_2(T0, VarSet0, EqvMap, Found0, Seen,
 					T, VarSet1, Found1),
-	prog_util__replace_eqv_type_list(Ts0, VarSet1, EqvMap, Found1,
+	prog_util__replace_eqv_type_list_2(Ts0, VarSet1, EqvMap, Found1, Seen,
 					Ts, VarSet, Found).
 
 :- pred prog_util__replace_eqv_type_type(type, tvarset, eqv_map, bool,
@@ -234,9 +245,11 @@ prog_util__replace_eqv_type_type_2(Type0, VarSet0, EqvMap, Found0,
 	(
 		type_to_type_id(Type0, EqvTypeId, TArgs0)
 	->
+		TypeIdsAlreadyExpanded1 = [EqvTypeId | TypeIdsAlreadyExpanded],
 
-		prog_util__replace_eqv_type_list(TArgs0, VarSet0, EqvMap,
-				Found0, TArgs1, VarSet1, Found1),
+		prog_util__replace_eqv_type_list_2(TArgs0, VarSet0, EqvMap,
+				Found0, TypeIdsAlreadyExpanded1,
+				TArgs1, VarSet1, Found1),
 
 		(	
 			\+ list__member(EqvTypeId, TypeIdsAlreadyExpanded),
@@ -249,8 +262,7 @@ prog_util__replace_eqv_type_type_2(Type0, VarSet0, EqvMap, Found0,
 			term__substitute_corresponding(Args2, TArgs1,
 							Body, Type1),
 			prog_util__replace_eqv_type_type_2(Type1, VarSet2,
-				EqvMap, yes,
-				[EqvTypeId | TypeIdsAlreadyExpanded],
+				EqvMap, yes, TypeIdsAlreadyExpanded1,
 				Type, VarSet, Found)
 		;
 			VarSet = VarSet1,
