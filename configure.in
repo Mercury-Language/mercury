@@ -267,21 +267,30 @@ if test "$HAVE_SYS_STAT_H" = 1; then
 	AC_DEFINE(HAVE_SYS_STAT_H)
 fi
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
-if test "$HAVE_DLFCN_H" = 1; then
-	AC_DEFINE(HAVE_DLFCN_H)
+#
+# Check for dynamic linking, unless the --disable-dynamic-link option
+# was specified.
+#
+AC_ARG_ENABLE(dynamic-link,
+[  --disable-dynamic-link  disable the use of dynamic linking],
+mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+if test "$mercury_cv_enable_dynamic_link" = "yes"; then
+	AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+	if test "$HAVE_DLFCN_H" = 1; then
+		AC_DEFINE(HAVE_DLFCN_H)
+	fi
+	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
+	AC_SUBST(DL_LIBRARY)
+
+	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+	save_LIBS="$LIBS"
+	LIBS="$LIBS $DL_LIBRARY"
+
+	AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+
+	# restore old value of LIBS
+	LIBS="$save_LIBS"
 fi
-AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
-AC_SUBST(DL_LIBRARY)
-
-# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
-save_LIBS="$LIBS"
-LIBS="$LIBS $DL_LIBRARY"
-
-AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
-
-# restore old value of LIBS
-LIBS="$save_LIBS"
 #-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction
