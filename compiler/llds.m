@@ -185,11 +185,13 @@
 			% any mutable global state to the state it was in when
 			% the ticket was obtained with store_ticket();
 			% invalidates any tickets allocated after this one.
-			% If undo_reason is `commit', leave the state
-			% unchanged, just discard the trail entries and
-			% any associated baggage; invalidates this
-			% ticket as well as any tickets allocated after this
-			% one.
+			% If undo_reason is `commit' or `solve', leave the state
+			% unchanged, just check that it is safe to commit
+			% to this solution (i.e. that there are no outstanding
+			% delayed goals -- this is the "floundering" check).
+			% Note that we do not discard trail entries after
+			% commits, because that would in general be unsafe.
+			%
 			% Any invalidated ticket is useless and should
 			% be deallocated with either `discard_ticket'
 			% or `discard_tickets_to'.
@@ -256,6 +258,7 @@
 :- type reset_trail_reason
 	--->	undo
 	;	commit
+	;	solve
 	;	exception
 	;	gc
 	.

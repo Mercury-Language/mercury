@@ -1205,6 +1205,8 @@ output_reset_trail_reason(undo) -->
 	io__write_string("MR_undo").
 output_reset_trail_reason(commit) -->
 	io__write_string("MR_commit").
+output_reset_trail_reason(solve) -->
+	io__write_string("MR_solve").
 output_reset_trail_reason(exception) -->
 	io__write_string("MR_exception").
 output_reset_trail_reason(gc) -->

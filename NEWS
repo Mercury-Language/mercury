@@ -14,15 +14,11 @@ Changes to the Mercury language:
   more flexible.  There is a new inst `any' for variables whose value
   is unknown but which may have constraints on them. 
 
-  The support for `any' insts is not quite complete; in particular, we
+  The support for `any' insts is not 100% complete; in particular, we
   do not support passing values of inst `free' where values of inst
   `any' are expected, so sometimes you have to explicitly call a predicate
   to initialize a free variable to inst `any'.  Also the Mercury language
   reference manual does not yet contain any documentation on `any' insts.
-
-  Another limitation is that we don't yet do a perfect job of floundering
-  detection; floundering in solutions/2 or in if-then-elses with nondet
-  conditions may go undetected.
 
   The `extras' distribution includes packages for doing constraint
   solving on (a) floating point numbers and (b) terms containing
@@ -30,8 +26,8 @@ Changes to the Mercury language:
 
 * The C interface now includes generalized trailing support.
 
-  There is a new set of grades `*.tr' (e.g. `asm_fast.gc.tr') which
-  provide support for trailing.  This could be used by predicates or
+  The compiler has a new set of grades `*.tr' (e.g. `asm_fast.gc.tr')
+  which provide support for trailing.  They could be used by predicates or
   functions defined using the C interface to perform such things as
   constraint solving, backtrackable destructive update, or even automatic
   unwinding of database transactions on backtracking.  See the
@@ -135,7 +131,7 @@ New library packages in the `extras' distribution:
 Changes to the Mercury compiler:
 ********************************
 
-* We've added termination analysis to the compiler.
+* We've added support for termination analysis.
 
   For details, see the "Termination analysis" subsection of the
   "Implementation-dependent pragmas" section of the "Pragmas" chapter

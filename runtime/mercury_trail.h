@@ -33,7 +33,11 @@
 **	called when creating a choice point, or before a commit
 ** MR_reset_ticket()
 **	called when resuming forward execution after failing (MR_undo),
-**	or after a commit (MR_commit)
+**	or after a commit (MR_commit), or after a "soft commit"
+**	[one that doesn't prune away all the alternative solutions,
+**	but which does require us to commit to this goal being solvable]
+**	in an if-then-else with a nondet condition, or in solutions/2
+**	(MR_solve).
 ** MR_discard_ticket()
 **	called when cutting away or failing over the topmost choice point
 ** MR_mark_ticket_stack()
@@ -102,20 +106,50 @@
 ** traversed.
 */
 typedef enum {
-        MR_undo,        /* Ordinary backtracking on failure.  Function */
-                        /* trail entries are invoked and value trail */
-                        /* entries are used to restore memory.  Then */
-                        /* these trail entries are discarded. */
-        MR_commit,      /* Pruning.  Function trail entries are invoked */
-                        /* and discarded; value trail entries are just */
-                        /* discarded. */
-        MR_exception,   /* (reserved for future use) An exception was */
-                        /* thrown.  Behaves as MR_undo, except that */
-                        /* function trail entries may choose to behave */
-                        /* differently for exceptions than for failure. */
-        MR_gc           /* (reserved for future use) Garbage collection. */
-                        /* The interface between the trail and accurate */
-                        /* garbage collection is not yet designed. */
+	/*
+	** MR_undo:
+	** Ordinary backtracking on failure.
+	** Function trail entries are invoked and value
+	** trail entries are used to restore memory.
+	** Then these trail entries are discarded.
+	*/
+	MR_undo,       
+
+	/*
+	** MR_commit:
+	** A hard (pruning) commit.
+	** Occurs when nondet/multi goal is called in a cc_nondet/cc_multi
+	** context, or when a nondet/multi goal has no output variables.
+	** Function trail entries are invoked.
+	*/
+	MR_commit,     
+
+	/*
+	** MR_solve:
+	** A soft (non-pruning) commit.
+	** Used for the check for floundering in solutions/2
+	** and in nondet if-the-elses.
+	** Function trail entries are invoked.
+	*/
+	MR_solve,      
+
+	/*
+	** MR_exception:
+	** (reserved for future use)
+	** An exception was thrown.
+	** Behaves as MR_undo, except that function trail entries may
+	** choose to behave differently for exceptions than for failure.
+	*/
+	MR_exception,  
+
+	/*
+	** MR_gc:
+	** Reserved for future use.
+	** The interface between the trail and accurate
+	** garbage collection is not yet designed.
+	*/
+	MR_gc
+
 } MR_untrail_reason;
 
 typedef enum {

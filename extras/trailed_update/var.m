@@ -438,6 +438,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 			break;
 
 		case MR_commit:
+		case MR_solve:
 			/*
 			** Skip past any goals that were created before
 			** the choice point which we're committing over,
