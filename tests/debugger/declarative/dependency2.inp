@@ -1,0 +1,16 @@
+echo on
+register --quiet
+break test
+continue
+finish
+dd
+browse 1
+^2^1
+mark
+browse 2
+print
+mark
+yes
+yes
+yes
+continue

@@ -67,7 +67,7 @@ Valid? no
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-     348:     59  4 FAIL pred family:common_father/2-0 (nondet) family.m:58 (family.m:77)
+     401:     70  4 FAIL pred family:common_father/2-0 (nondet) family.m:58 (family.m:77)
 mdb> continue
      530:      2  2 EXIT pred family:half_siblings/2-0 (nondet) family.m:82 (family.m:9)
 mdb> continue
@@ -83,5 +83,5 @@ Complete? no
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-      86:     15  4 FAIL pred family:common_father/2-0 (nondet) family.m:58 (family.m:77)
+     401:     70  4 FAIL pred family:common_father/2-0 (nondet) family.m:58 (family.m:77)
 mdb> quit -y

@@ -17,8 +17,8 @@
 :- import_module mdb__declarative_debugger.
 :- import_module list, io.
 
-:- type user_response
-	--->	user_answer(decl_answer)
+:- type user_response(T)
+	--->	user_answer(decl_question(T), decl_answer(T))
 	;	no_user_answer
 	;	abort_diagnosis.
 
@@ -32,7 +32,7 @@
 	% and is asked to respond about the truth of the node in the
 	% intended interpretation.
 	%
-:- pred query_user(list(decl_question)::in, user_response::out,
+:- pred query_user(list(decl_question(T))::in, user_response(T)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
@@ -62,45 +62,49 @@ user_state_init(InStr, OutStr, User) :-
 
 %-----------------------------------------------------------------------------%
 
-query_user(Nodes, Response, User0, User) -->
-	query_user_2(Nodes, [], Response, User0, User).
+query_user(Questions, Response, User0, User) -->
+	query_user_2(Questions, [], Response, User0, User).
 
-:- pred query_user_2(list(decl_question)::in, list(decl_question)::in,
-	user_response::out, user_state::in, user_state::out,
+:- pred query_user_2(list(decl_question(T))::in, list(decl_question(T))::in,
+	user_response(T)::out, user_state::in, user_state::out,
 	io__state::di, io__state::uo) is cc_multi.
 
 query_user_2([], _, no_user_answer, User, User) -->
 	[].
-query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
-	write_decl_question(Node, User0),
-	{ decl_question_prompt(Node, Question) },
-	get_command(Question, Command, User0, User1),
+query_user_2([Question | Questions], Skipped, Response, User0, User) -->
+	write_decl_question(Question, User0),
+	{ Node = get_decl_question_node(Question) },
+	{ decl_question_prompt(Question, Prompt) },
+	get_command(Prompt, Command, User0, User1),
 	(
 		{ Command = yes },
-		{ Response = user_answer(truth_value(Node, yes)) },
+		{ Response = user_answer(Question, truth_value(Node, yes)) },
 		{ User = User1 }
 	;
 		{ Command = no },
-		{ Response = user_answer(truth_value(Node, no)) },
+		{ Response = user_answer(Question, truth_value(Node, no)) },
 		{ User = User1 }
 	;
 		{ Command = inadmissible },
 		io__write_string("Sorry, not implemented,\n"),
-		query_user_2([Node | Nodes], Skipped, Response, User1, User)
+		query_user_2([Question | Questions], Skipped, Response,
+				User1, User)
 	;
 		{ Command = skip },
-		query_user_2(Nodes, [Node | Skipped], Response, User1, User)
+		query_user_2(Questions, [Question | Skipped], Response,
+				User1, User)
 	;
 		{ Command = restart },
-		{ reverse_and_append(Skipped, [Node | Nodes], Questions) },
-		query_user_2(Questions, [], Response, User1, User)
+		{ reverse_and_append(Skipped, [Question | Questions],
+				RestartedQuestions) },
+		query_user(RestartedQuestions, Response, User1, User)
 	;
 		{ Command = browse(ArgNum) },
-		browse_edt_node(Node, ArgNum, MaybeMark, User1, User2),
+		browse_edt_node(Question, ArgNum, MaybeMark, User1, User2),
 		(
 			{ MaybeMark = no },
-			query_user_2([Node | Nodes], Skipped, Response, User2,
-					User)
+			query_user_2([Question | Questions], Skipped, Response,
+					User2, User)
 		;
 			{ MaybeMark = yes(Mark) },
 			{ Which = chosen_head_vars_presentation },
@@ -112,7 +116,7 @@ query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
 				ArgPos = any_head_var(ArgNum)
 			},
 			{ Answer = suspicious_subterm(Node, ArgPos, Mark) },
-			{ Response = user_answer(Answer) },
+			{ Response = user_answer(Question, Answer) },
 			{ User = User2 }
 		)
 	;
@@ -122,31 +126,33 @@ query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
 	;
 		{ Command = help },
 		user_help_message(User1),
-		query_user_2([Node | Nodes], Skipped, Response, User1, User)
+		query_user_2([Question | Questions], Skipped, Response,
+				User1, User)
 	;
 		{ Command = illegal_command },
 		io__write_string("Unknown command, 'h' for help.\n"),
-		query_user_2([Node | Nodes], Skipped, Response, User1, User)
+		query_user_2([Question | Questions], Skipped, Response,
+				User1, User)
 	).
 
-:- pred decl_question_prompt(decl_question, string).
+:- pred decl_question_prompt(decl_question(T), string).
 :- mode decl_question_prompt(in, out) is det.
 
-decl_question_prompt(wrong_answer(_), "Valid? ").
-decl_question_prompt(missing_answer(_, _), "Complete? ").
-decl_question_prompt(unexpected_exception(_, _), "Expected? ").
+decl_question_prompt(wrong_answer(_, _), "Valid? ").
+decl_question_prompt(missing_answer(_, _, _), "Complete? ").
+decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
 
-:- pred browse_edt_node(decl_question::in, int::in, maybe(term_path)::out,
+:- pred browse_edt_node(decl_question(T)::in, int::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
 browse_edt_node(Node, ArgNum, MaybeMark, User0, User) -->
 	{
-		Node = wrong_answer(Atom)
+		Node = wrong_answer(_, Atom)
 	;
-		Node = missing_answer(Atom, _)
+		Node = missing_answer(_, Atom, _)
 	;
-		Node = unexpected_exception(Atom, _)
+		Node = unexpected_exception(_, Atom, _)
 	},
 	browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User).
 
@@ -341,13 +347,13 @@ user_confirm_bug(Bug, Response, User0, User) -->
 	% Display the node in user readable form on the current
 	% output stream.
 	%
-:- pred write_decl_question(decl_question::in, user_state::in,
+:- pred write_decl_question(decl_question(T)::in, user_state::in,
 	io__state::di, io__state::uo) is cc_multi.
 
-write_decl_question(wrong_answer(Atom), User) -->
+write_decl_question(wrong_answer(_, Atom), User) -->
 	write_decl_atom(User, "", Atom).
 	
-write_decl_question(missing_answer(Call, Solns), User) -->
+write_decl_question(missing_answer(_, Call, Solns), User) -->
 	write_decl_atom(User, "Call ", Call),
 	(
 		{ Solns = [] }
@@ -358,7 +364,7 @@ write_decl_question(missing_answer(Call, Solns), User) -->
 		list__foldl(write_decl_atom(User, "\t"), Solns)
 	).
 
-write_decl_question(unexpected_exception(Call, Exception), User) -->
+write_decl_question(unexpected_exception(_, Call, Exception), User) -->
 	write_decl_atom(User, "Call ", Call),
 	io__write_string(User ^ outstr, "Throws "),
 	io__write(User ^ outstr, include_details_cc, univ_value(Exception)),

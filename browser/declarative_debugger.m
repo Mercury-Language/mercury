@@ -87,43 +87,53 @@
 :- type decl_contour == unit.
 :- type decl_position == unit.
 
-	% Values of this type represent goal behaviour.  This representation
-	% is used by the front end (in this module), as well as the
-	% oracle and user interface.
+	% Values of the following two types represent questions from the
+	% analyser to the oracle about some aspect of program behaviour,
+	% and responses from the oracle, respectively.  In both cases the
+	% type parameter is for the type of EDT nodes -- each question and
+	% answer keeps a reference to the node which generated it, so that
+	% the analyser is able to figure out what to do when the answer
+	% arrives back from the oracle.
 	%
-:- type decl_question
-			% The node is a suspected wrong answer.  The
-			% argument is the atom in its final state of
-			% instantiatedness (ie. at the EXIT event).
+:- type decl_question(T)
+			% The node is a suspected wrong answer.  The first
+			% argument is the EDT node the question came from.
+			% The second argument is the atom in its final
+			% state of instantiatedness (ie. at the EXIT event).
 			%
-	--->	wrong_answer(decl_atom)
+	--->	wrong_answer(T, decl_atom)
 
 			% The node is a suspected missing answer.  The
-			% first argument is the atom in its initial state
-			% of instantiatedness (ie. at the CALL event),
-			% and the second argument is the list of solutions.
+			% first argument is the EDT node the question came
+			% from. The second argument is the atom in its
+			% initial state of instantiatedness (ie. at the
+			% CALL event), and the third argument is the list
+			% of solutions.
 			%
-	;	missing_answer(decl_atom, list(decl_atom))
+	;	missing_answer(T, decl_atom, list(decl_atom))
 
 			% The node is a possibly unexpected exception.
-			% The first argument is the atom in its initial
-			% state of instantiation, and the second argument
-			% is the exception thrown.
+			% The first argument is the EDT node the question
+			% came from.  The second argument is the atom in
+			% its initial state of instantiation, and the third
+			% argument is the exception thrown.
 			%
-	;	unexpected_exception(decl_atom, decl_exception).
+	;	unexpected_exception(T, decl_atom, decl_exception).
 
-	% These are the possible answers that the oracle can give.
-	%
-:- type decl_answer
+:- type decl_answer(T)
 			% The oracle knows the truth value of this node.
 			%
-	--->	truth_value(decl_question, decl_truth)
+	--->	truth_value(T, decl_truth)
 
 			% The oracle does not say anything about the truth
 			% value, but is suspicious of the subterm at the
 			% given term_path and arg_pos.
 			%
-	;	suspicious_subterm(decl_question, arg_pos, term_path).
+	;	suspicious_subterm(T, arg_pos, term_path).
+
+	% Extract the EDT node from a question.
+	%
+:- func get_decl_question_node(decl_question(T)) = T.
 
 :- type decl_atom == trace_atom.
 
@@ -170,6 +180,12 @@
 :- implementation.
 :- import_module mdb__declarative_analyser, mdb__declarative_oracle.
 :- import_module require, int, char, string, assoc_list.
+
+get_decl_question_node(wrong_answer(Node, _)) = Node.
+get_decl_question_node(missing_answer(Node, _, _)) = Node.
+get_decl_question_node(unexpected_exception(Node, _, _)) = Node.
+
+%-----------------------------------------------------------------------------%
 
 :- type diagnoser_state(R)
 	--->	diagnoser(
@@ -253,7 +269,7 @@ handle_analyser_response(Store, require_explicit(Tree), _, Response,
 		Response = require_subtree(Event, Seqno)
 	}.
 
-:- pred handle_oracle_response(S::in, oracle_response::in,
+:- pred handle_oracle_response(S::in, oracle_response(edt_node(R))::in,
 	diagnoser_response::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
 	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
@@ -369,7 +385,7 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred trace_root_question(wrap(S), edt_node(R), decl_question)
+:- pred trace_root_question(wrap(S), edt_node(R), decl_question(edt_node(R)))
 		<= annotated_trace(S, R).
 :- mode trace_root_question(in, in, out) is det.
 
@@ -380,15 +396,15 @@ trace_root_question(wrap(Store), dynamic(Ref), Root) :-
 		call_node_from_id(Store, CallId, Call),
 		Call = call(_, _, CallAtom, _, _, _, _, _),
 		get_answers(Store, RedoId, [], Answers),
-		Root = missing_answer(CallAtom, Answers)
+		Root = missing_answer(dynamic(Ref), CallAtom, Answers)
 	;
 		Node = exit(_, _, _, ExitAtom, _),
-		Root = wrong_answer(ExitAtom)
+		Root = wrong_answer(dynamic(Ref), ExitAtom)
 	;
 		Node = excp(_, CallId, _, Exception, _),
 		call_node_from_id(Store, CallId, Call),
 		Call = call(_, _, CallAtom, _, _, _, _, _),
-		Root = unexpected_exception(CallAtom, Exception)
+		Root = unexpected_exception(dynamic(Ref), CallAtom, Exception)
 	).
 
 :- pred get_answers(S, R, list(decl_atom), list(decl_atom))

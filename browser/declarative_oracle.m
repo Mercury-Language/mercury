@@ -30,8 +30,8 @@
 	% A response that the oracle gives to a query about the
 	% truth of an EDT node.
 	%
-:- type oracle_response
-	--->	oracle_answers(list(decl_answer))
+:- type oracle_response(T)
+	--->	oracle_answers(list(decl_answer(T)))
 	;	no_oracle_answers
 	;	abort_diagnosis.
 
@@ -51,7 +51,7 @@
 	% state is threaded through so its contents can be updated after
 	% user responses.
 	%
-:- pred query_oracle(list(decl_question)::in, oracle_response::out,
+:- pred query_oracle(list(decl_question(T))::in, oracle_response(T)::out,
 	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
@@ -67,17 +67,17 @@
 :- import_module mdb__declarative_user, mdb__util.
 :- import_module bool, std_util, map, set, require.
 
-query_oracle(Queries, Response, Oracle0, Oracle) -->
+query_oracle(Questions, Response, Oracle0, Oracle) -->
 	{ get_oracle_kb(Oracle0, KB0) },
-	{ list__filter_map(query_oracle_kb(KB0), Queries, Answers) },
+	{ list__filter_map(query_oracle_kb(KB0), Questions, Answers) },
 	(
 		{ Answers = [] }
 	->
 		{ get_oracle_user(Oracle0, User0) },
-		query_user(Queries, UserResponse, User0, User),
+		query_user(Questions, UserResponse, User0, User),
 		{
-			UserResponse = user_answer(Answer),
-			assert_oracle_kb(Answer, KB0, KB),
+			UserResponse = user_answer(Question, Answer),
+			assert_oracle_kb(Question, Answer, KB0, KB),
 			Response = oracle_answers([Answer])
 		;
 			UserResponse = no_user_answer,
@@ -234,16 +234,16 @@ set_kb_exceptions_map(oracle_kb(G, Y, N, _), X, oracle_kb(G, Y, N, X)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred query_oracle_kb(oracle_kb, decl_question, decl_answer).
+:- pred query_oracle_kb(oracle_kb, decl_question(T), decl_answer(T)).
 :- mode query_oracle_kb(in, in, out) is semidet.
 
-query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
-	Node = wrong_answer(Atom),
+query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+	Question = wrong_answer(Node, Atom),
 	get_kb_ground_map(KB, Map),
 	map__search(Map, Atom, Truth).
 
-query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
-	Node = missing_answer(Call, Solns),
+query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+	Question = missing_answer(Node, Call, Solns),
 	set__list_to_set(Solns, Ss),
 	get_kb_complete_map(KB, CMap),
 	(
@@ -258,8 +258,8 @@ query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
 		Truth = no
 	).
 
-query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
-	Node = unexpected_exception(Call, Exception),
+query_oracle_kb(KB, Question, truth_value(Node, Truth)) :-
+	Question = unexpected_exception(Node, Call, Exception),
 	get_kb_exceptions_map(KB, XMap),
 	map__search(XMap, Call, known_excp(Possible, Impossible)),
 	(
@@ -276,17 +276,19 @@ query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
 	% case, since the user will never be asked questions which
 	% the knowledge base knows anything about.
 	%
-:- pred assert_oracle_kb(decl_answer, oracle_kb, oracle_kb).
-:- mode assert_oracle_kb(in, in, out) is det.
+:- pred assert_oracle_kb(decl_question(T), decl_answer(T), oracle_kb,
+		oracle_kb).
+:- mode assert_oracle_kb(in, in, in, out) is det.
 
-assert_oracle_kb(suspicious_subterm(_, _, _), KB, KB).
+assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 
-assert_oracle_kb(truth_value(wrong_answer(Atom), Truth), KB0, KB) :-
+assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
 	map__det_insert(Map0, Atom, Truth, Map),
 	set_kb_ground_map(KB0, Map, KB).
 
-assert_oracle_kb(truth_value(missing_answer(Call, Solns), yes), KB0, KB) :-
+assert_oracle_kb(missing_answer(_, Call, Solns), truth_value(_, yes),
+		KB0, KB) :-
 	get_kb_complete_map(KB0, Map0),
 	set__list_to_set(Solns, Ss0),
 	(
@@ -302,7 +304,7 @@ assert_oracle_kb(truth_value(missing_answer(Call, Solns), yes), KB0, KB) :-
 	),
 	set_kb_complete_map(KB0, Map, KB).
 
-assert_oracle_kb(truth_value(missing_answer(Call, Solns), no), KB0, KB) :-
+assert_oracle_kb(missing_answer(_, Call, Solns), truth_value(_, no), KB0, KB) :-
 	get_kb_incomplete_map(KB0, Map0),
 	set__list_to_set(Solns, Ss),
 		%
@@ -312,9 +314,8 @@ assert_oracle_kb(truth_value(missing_answer(Call, Solns), no), KB0, KB) :-
 	map__set(Map0, Call, Ss, Map),
 	set_kb_incomplete_map(KB0, Map, KB).
 
-assert_oracle_kb(truth_value(unexpected_exception(Call, Exception), Truth),
-		KB0, KB) :-
-
+assert_oracle_kb(unexpected_exception(_, Call, Exception),
+		truth_value(_, Truth), KB0, KB) :-
 	get_kb_exceptions_map(KB0, Map0),
 	(
 		map__search(Map0, Call, known_excp(Possible0, Impossible0))
