@@ -129,8 +129,14 @@
 :- pred get_dependencies(item_list, list(string), list(string)).
 :- mode get_dependencies(in, out, out) is det.
 
-	% Do the importing of the interface files of imported modules.
 
+	% process_module_interfaces(DirectImports, IndirectImports, 
+	% 			Module0, Module)
+	%  	Read the long interfaces for the modules in DirectImports
+	%	then read the short interfaces for modules in IndirectImports
+	% 	and modules indirectly imported from DirectImports, taking
+	%	care not to read both the long and short interfaces for 
+	%	a module.
 :- pred process_module_interfaces(list(string), list(string),
 				module_imports, module_imports,
 				io__state, io__state).
@@ -466,7 +472,7 @@ grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
 
 	{ get_fact_table_dependencies(Items0, FactDeps) },
 
-		% we add a pseudo-declarations `:- imported' at the end
+		% We add a pseudo-declarations `:- imported' at the end
 		% of the item list. Uses of the items with declarations 
 		% following this do not need module qualifiers.
 	{ varset__init(VarSet) },
@@ -475,18 +481,25 @@ grab_imported_modules(ModuleName, Items0, Module, FactDeps, Error) -->
 	{ dir__basename(ModuleName, BaseModuleName) },
 	{ Module1 = module_imports(BaseModuleName, [], [], Items1, no) },
 
-	process_module_interfaces(["mercury_builtin" | ImportedModules], 
-		[], Module1, Module2),
+		% Process the modules imported using `import_module'.
+	process_module_interfaces_2(["mercury_builtin" | ImportedModules], 
+		[], IndirectImports, Module1, Module2),
 	{ Module2 = module_imports(_, Direct2, Indirect2, Items2, Error2) },
 
-		% we add a pseudo-declarations `:- used' at the end
+		% We add a pseudo-declarations `:- used' at the end
 		% of the item list. Uses of the items with declarations 
 		% following this must be module qualified.
 	{ list__append(Items2,
 		[module_defn(VarSet, used) - Context], Items3) },
 	{ Module3 = module_imports(BaseModuleName, Direct2, Indirect2, 
 		Items3, Error2) },
-	process_module_interfaces(UsedModules, [], Module3, Module),
+
+		% Process the modules imported using `use_module' 
+		% and the short interfaces for indirectly imported
+		% modules. The short interfaces are treated as if
+		% they are imported using `use_module'.
+	process_module_interfaces(UsedModules, IndirectImports,
+		Module3, Module),
 
 	{ Module = module_imports(_, _, _, _, Error) }.
 
@@ -1516,11 +1529,19 @@ read_mod_interface(Module, Descr, Search, Items, Error) -->
 
 %-----------------------------------------------------------------------------%
 
-process_module_interfaces([], IndirectImports, Module0, Module) -->
-	process_module_short_interfaces(IndirectImports, Module0, Module).
+process_module_interfaces(Imports, IndirectImports0, Module0, Module) -->
+	process_module_interfaces_2(Imports, IndirectImports0,
+		IndirectImports, Module0, Module1),
+	process_module_short_interfaces(IndirectImports, Module1, Module).
 
-process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
-		-->
+:- pred process_module_interfaces_2(list(string), list(string), 
+	list(string), module_imports, module_imports, io__state, io__state).
+:- mode process_module_interfaces_2(in, in, out, in, out, di, uo) is det.
+
+process_module_interfaces_2([], IndirectImports, IndirectImports, 
+		Module, Module) --> [].
+process_module_interfaces_2([Import | Imports], IndirectImports0,
+		IndirectImports, Module0, Module) -->
 	{ Module0 = module_imports(ModuleName, DirectImports0,
 				OldIndirectImports, Items0, Error0) },
 	(
@@ -1540,13 +1561,13 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 				[]
 			)
 		),
-		process_module_interfaces(Imports, IndirectImports0,
-					Module0, Module)
+		process_module_interfaces_2(Imports, IndirectImports0,
+				IndirectImports, Module0, Module)
 	;
 		{ list__member(Import, DirectImports0) }
 	->
-		process_module_interfaces(Imports, IndirectImports0,
-					Module0, Module)
+		process_module_interfaces_2(Imports, IndirectImports0,
+				IndirectImports, Module0, Module)
 	;
 		read_mod_interface(Import,
 			"Reading interface for module", yes, 
@@ -1581,9 +1602,9 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 			IndirectImports3) },
 		{ list__append(Items0, Items1, Items2) },
 		{ Module1 = module_imports(ModuleName, DirectImports1, 
-					OldIndirectImports, Items2, Error2) },
-		process_module_interfaces(Imports, IndirectImports3,
-				Module1, Module)
+				OldIndirectImports, Items2, Error2) },
+		process_module_interfaces_2(Imports, IndirectImports3,
+				IndirectImports, Module1, Module)
 	).
 
 %-----------------------------------------------------------------------------%
