@@ -204,6 +204,8 @@ mmake depend $PARALLEL || { false; exit 1; }
 mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
+version=`mmake version` || { false; exit 1; }
+fullarch=`mmake fullarch` || { false; exit 1; }
 tools/bootcheck -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
@@ -363,7 +365,6 @@ case $HOST in murlibobo)
 	mercury_cv_bits_per_word=32 \
 	mercury_cv_unboxed_floats=no \
 	sh configure --prefix=$INSTALL_DIR &&
-	version=`mmake version` &&
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
 	rm -f mercury-latest-unstable/* &&
@@ -471,8 +472,6 @@ esac
 
 {
 	cd $DIR/mercury &&
-	version=`mmake version` &&
-	fullarch=`mmake fullarch` &&
 	mmake bindist &&
 	cd .. &&
 	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
