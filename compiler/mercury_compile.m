@@ -2410,6 +2410,24 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		UseTrailOpt = ""
 	},
+	globals__io_lookup_bool_option(reserve_tag, ReserveTag),
+	{ ReserveTag = yes ->
+		ReserveTagOpt = "-DMR_RESERVE_TAG "
+	;
+		ReserveTagOpt = ""
+	},
+	globals__io_lookup_bool_option(use_solve_equal, UseSolveEqual),
+	{ UseSolveEqual = yes ->
+		UseSolveEqualOpt = "-DMR_USE_SOLVE_EQUAL "
+	;
+		UseSolveEqualOpt = ""
+	},
+	globals__io_lookup_bool_option(use_init, UseInit),
+	{ UseInit = yes ->
+		UseInitOpt = "-DMR_USE_INIT "
+	;
+		UseInitOpt = ""
+	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->
 		TypeLayoutOpt = "-DNO_TYPE_LAYOUT "
@@ -2459,7 +2477,8 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		C_DebugOpt, LL_DebugOpt,
 		StackTraceOpt, RequireTracingOpt,
-		UseTrailOpt, TypeLayoutOpt,
+		UseTrailOpt, ReserveTagOpt, UseSolveEqualOpt, UseInitOpt,
+		TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
