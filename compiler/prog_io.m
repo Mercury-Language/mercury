@@ -47,9 +47,6 @@
 :- interface.
 
 %-----------------------------------------------------------------------------%
-
-:- type int		==	integer. % XXX put this somewhere central
-
 %-----------------------------------------------------------------------------%
 
 	% This is how programs (and parse errors) are represented.
@@ -117,10 +114,9 @@
 			;	uu_type(sym_name, list(type_param), list(type))
 			;	eqv_type(sym_name, list(type_param), type).
 
-	% XXX constructor should be pair(sym_name, list(type)) not term.
-:- type constructor	==	term.
+:- type constructor	==	pair(sym_name, list(type)).
 
-	% XXX type parameters should be variables not terms
+	% XXX should type parameters be variables not terms ??
 :- type type_param	=	term.
 
 :- type (type)		=	term.
@@ -144,7 +140,7 @@
 
 :- type inst_defn	--->	inst_defn(sym_name, list(inst_param), inst).
 
-	% XXX inst parameters should be variables not terms.
+	% XXX should inst parameters be variables not terms ??
 :- type inst_param	==	term.
 
 :- type (inst)		--->	free
@@ -242,7 +238,6 @@
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
 :- type maybe_functor	== 	maybe2(sym_name, list(term)).
-:- type maybe_constructor ==	maybe2(sym_name, list(type)).
 
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
@@ -862,7 +857,10 @@ convert_constructors_2(Term.Terms, Constr.Constrs) :-
 
 :- pred convert_constructor(term, constructor).
 :- mode convert_constructor(input, output).
-convert_constructor(term_functor(Functor,Args), term_functor(Functor,Args)).
+convert_constructor(Term, Result) :-
+	parse_qualified_term(Term, "constructor definition", ok(F, As))
+	convert_type_list(As, ArgTypes),
+	Result = F - ArgTypes.
 
 %-----------------------------------------------------------------------------%
 
@@ -1951,6 +1949,13 @@ process_op_specifier(error(M,T), error(M,T)).
 :- pred parse_type(term, maybe(type)).
 :- mode parse_type(input, output).
 parse_type(T, ok(T)).
+
+:- pred convert_type_list(list(term), list(type)).
+:- mode convert_type_list(input, output).
+convert_type_list([], []).
+convert_type_list([H0|T0], [H|T]) :-
+	convert_type(H0, H),
+	convert_type_list(T0, T).
 
 :- pred convert_type(term, type).
 :- mode convert_type(input, output).
