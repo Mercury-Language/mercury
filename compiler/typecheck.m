@@ -2298,7 +2298,11 @@ write_inference_messages([], _) --> [].
 write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_get_marker_list(PredInfo, Markers) },
-	( { list__member(request(infer_type), Markers) } ->
+	(
+		{ list__member(request(infer_type), Markers) },
+		{ module_info_predids(ModuleInfo, ValidPredIds) },
+		{ list__member(PredId, ValidPredIds) }
+	->
 		write_inference_message(PredInfo)
 	;
 		[]
@@ -2952,26 +2956,89 @@ write_arg_type_stuff_list_2([arg_type_stuff(T, VT, TVarSet) | Ts]) -->
 :- pred report_error_undef_pred(type_info, pred_call_id, io__state, io__state).
 :- mode report_error_undef_pred(type_info_no_io, in, di, uo) is det.
 
-report_error_undef_pred(TypeInfo, PredId) -->
+report_error_undef_pred(TypeInfo, PredCallId) -->
+	{ PredCallId = PredName/Arity },
+	{ type_info_get_context(TypeInfo, Context) },
 	write_type_info_context(TypeInfo),
-	io__write_string("  error: undefined predicate `"),
-	hlds_out__write_pred_call_id(PredId),
-	io__write_string("'.\n").
+	(
+		{ PredName = unqualified("->"), Arity = 2 }
+	->
+		io__write_string("  error: `->' without `;'.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Note: the else part is not optional.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Every if-then must have an else.\n")
+		;
+			[]
+		)
+	;
+		{ PredName = unqualified("else"), Arity = 2 }
+	->
+		io__write_string("  error: unmatched `else'.\n")
+	;
+		{ PredName = unqualified("if"), Arity = 2 }
+	->
+		io__write_string("  error: `if' without `then' or `else'.\n")
+	;
+		{ PredName = unqualified("then"), Arity = 2 }
+	->
+		io__write_string("  error: `then' without `if' or `else'.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Note: the `else' part is not optional.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Every if-then must have an `else'.\n")
+		;
+			[]
+		)
+	;
+		{ PredName = unqualified("apply"), Arity >= 2 }
+	->
+		report_error_apply_instead_of_pred(TypeInfo)
+	;
+		io__write_string("  error: undefined predicate `"),
+		hlds_out__write_pred_call_id(PredCallId),
+		io__write_string("'.\n")
+	).
 
 :- pred report_error_func_instead_of_pred(type_info, pred_call_id,
 					io__state, io__state).
 :- mode report_error_func_instead_of_pred(type_info_no_io, in, di, uo) is det.
 
-report_error_func_instead_of_pred(TypeInfo, PredId) -->
-	write_type_info_context(TypeInfo),
-	io__write_string("  error: undefined predicate `"),
-	hlds_out__write_pred_call_id(PredId),
-	io__write_string("'.\n"),
+report_error_func_instead_of_pred(TypeInfo, PredCallId) -->
+	report_error_undef_pred(TypeInfo, PredCallId),
 	{ type_info_get_context(TypeInfo, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  (There is a *function* with that name, however.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Perhaps you forgot to add ` = ...'?)\n").
+
+:- pred report_error_apply_instead_of_pred(type_info, io__state, io__state).
+:- mode report_error_apply_instead_of_pred(type_info_no_io, di, uo) is det.
+
+report_error_apply_instead_of_pred(TypeInfo) -->
+	io__write_string("  error: the language construct `apply' should\n"),
+	{ type_info_get_context(TypeInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("  be used as an expression, not as a goal.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("  (Perhaps you forgot to add ` = ...'?)\n"),
+		prog_out__write_context(Context),
+		io__write_string("  If you're trying to invoke a higher-order\n"),
+		prog_out__write_context(Context),
+		io__write_string("  predicate, use `call', not `apply'.\n")
+	;
+		[]
+	).
 
 :- pred report_error_pred_num_args(type_info, pred_call_id, list(int),
 					io__state, io__state).
@@ -3016,11 +3083,93 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	write_context_and_pred_id(TypeInfo),
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
-	io__write_string("  error: undefined symbol `"),
-	term_io__write_constant(Functor),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'.\n").
+	%
+	% check for some special cases, so that we can give
+	% clearer error messages
+	%
+	( { Functor = term__atom(Name), language_builtin(Name, Arity) } ->
+		io__write_string("  error: the language construct "),
+		term_io__write_constant(Functor),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string(" should be\n"),
+		prog_out__write_context(Context),
+		io__write_string("  used as a goal, not as an expression.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+		"  If you are trying to use a goal as a boolean function,\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+		"  you should write `if <goal> then yes else no' instead.\n"),
+			( { Name = "call" } ->
+				prog_out__write_context(Context),
+				io__write_string(
+		"  If you are trying to invoke a higher-order\n"),
+				prog_out__write_context(Context),
+				io__write_string(
+		"  function, you should use `apply', not `call'.\n")
+			;
+			    []
+			)
+		;
+			[]
+		)
+	; { Functor = term__atom("else"), Arity = 2 } ->
+		io__write_string("  error: unmatched `else'.\n")
+	; { Functor = term__atom("if"), Arity = 2 } ->
+		io__write_string("  error: `if' without `then' or `else'.\n")
+	; { Functor = term__atom("then"), Arity = 2 } ->
+		io__write_string("  error: `then' without `if' or `else'.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Note: the `else' part is not optional.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Every if-then must have an `else'.\n")
+		;
+			[]
+		)
+	; { Functor = term__atom("->"), Arity = 2 } ->
+		io__write_string("  error: `->' without `;'.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Note: the else part is not optional.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+				"  Every if-then must have an else.\n")
+		;
+			[]
+		)
+	;
+		io__write_string("  error: undefined symbol `"),
+		term_io__write_constant(Functor),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("'.\n")
+	).
+
+% language_builtin(Name, Arity) is true iff Name/Arity
+% is the name of a builtin language construct that should be
+% used as a goal, not as an expression.
+
+:- pred language_builtin(string::in, arity::in) is semidet.
+
+language_builtin("=", 2).
+language_builtin("\\=", 2).
+language_builtin(",", 2).
+language_builtin(";", 2).
+language_builtin("\\+", 2).
+language_builtin("not", 2).
+language_builtin("<=>", 2).
+language_builtin("=>", 2).
+language_builtin("<=", 2).
+language_builtin("call", _).
 
 :- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).

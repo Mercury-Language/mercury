@@ -595,7 +595,8 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	map__init(BodyTypes),
 	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
-	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
+	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
+		HeadVars, BodyVarSet),
 	( MaybeDet = yes(erroneous) ->
 		InferredDet = erroneous
 	; MaybeDet = yes(failure) ->
@@ -753,12 +754,14 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 
 :- interface.
 
-	% make_n_fresh_vars(N, VarSet0, Vars, VarSet):
+	% make_n_fresh_vars(Name, N, VarSet0, Vars, VarSet):
 	%	`Vars' is a list of `N' fresh variables allocated from
-	%	`VarSet0'. `VarSet' is the resulting varset.
+	%	`VarSet0'.  The variables will be named "<Name>1", "<Name>2",
+	%	"<Name>3", and so on, where <Name> is the value of `Name'.
+	%	`VarSet' is the resulting varset.
 
-:- pred make_n_fresh_vars(int, varset, list(var), varset).
-:- mode make_n_fresh_vars(in, in, out, out) is det.
+:- pred make_n_fresh_vars(string, int, varset, list(var), varset).
+:- mode make_n_fresh_vars(in, in, in, out, out) is det.
 
 	% given the list of predicate arguments for a predicate that
 	% is really a function, split that list into the function arguments
@@ -768,13 +771,13 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 
 :- implementation.
 
-make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
-	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
+make_n_fresh_vars(BaseName, N, VarSet0, Vars, VarSet) :-
+	make_n_fresh_vars_2(BaseName, 0, N, VarSet0, Vars, VarSet).
 
-:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
-:- mode make_n_fresh_vars_2(in, in, in, out, out) is det.
+:- pred make_n_fresh_vars_2(string, int, int, varset, list(var), varset).
+:- mode make_n_fresh_vars_2(in, in, in, in, out, out) is det.
 
-make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
+make_n_fresh_vars_2(BaseName, N, Max, VarSet0, Vars, VarSet) :-
 	(N = Max ->
 		VarSet = VarSet0,
 		Vars = []
@@ -782,10 +785,10 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 		N1 is N + 1,
 		varset__new_var(VarSet0, Var, VarSet1),
 		string__int_to_string(N1, Num),
-		string__append("HeadVar__", Num, VarName),
+		string__append(BaseName, Num, VarName),
 		varset__name_var(VarSet1, Var, VarName, VarSet2),
 		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
+		make_n_fresh_vars_2(BaseName, N1, Max, VarSet2, Vars1, VarSet)
 	).
 
 pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-

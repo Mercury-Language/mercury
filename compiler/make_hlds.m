@@ -908,7 +908,7 @@ preds_add_implicit(PredicateTable0,
 			ModuleName, PredName, Arity, Context, PredOrFunc,
 			PredId, PredicateTable) :-
 	varset__init(TVarSet0),
-	make_n_fresh_vars(Arity, TVarSet0, TypeVars, TVarSet),
+	make_n_fresh_vars("T", Arity, TVarSet0, TypeVars, TVarSet),
 	term__var_list_to_term_list(TypeVars, Types),
 	Cond = true,
 	clauses_info_init(Arity, ClausesInfo),
@@ -1746,7 +1746,7 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 	map__init(VarTypes),
 	varset__init(VarSet0),
-	make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet).
+	make_n_fresh_vars("HeadVar__", Arity, VarSet0, HeadVars, VarSet).
 
 :- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, varset::in, list(term)::in, goal::in,
