@@ -343,13 +343,6 @@ typed_compare(R, X, Y) :-
 
 	% The definitions for type_ctor_info/1 and type_info/1.
 
-	% XXX probably redundant
-% :- pragma c_header_code("
-% #ifdef MR_DEEP_PROFILING
-% #include ""mercury_deep_profiling.h""
-% #endif
-% ").
-
 :- pragma foreign_code("MC++", "
 
 static MR_TypeInfo MR_typeclass_info_type_info(

@@ -46,7 +46,7 @@
 :- import_module private_builtin, table_builtin, profiling_builtin.
 :- import_module rtti_implementation.
 
-% library__version must be implemented using pragma c_code,
+% library__version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
 % at configuration time, because that would cause bootstrapping problems --

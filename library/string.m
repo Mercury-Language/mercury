@@ -2783,7 +2783,8 @@ is_exponent('E').
 
 % The remaining routines are implemented using the C interface.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
@@ -3053,7 +3054,8 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 
 /*-----------------------------------------------------------------------*/
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 #ifdef MR_USE_GCC_GLOBAL_REGISTERS
 	/*
 	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden
@@ -3067,7 +3069,8 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 #endif
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C",
+"
 #ifdef MR_USE_GCC_GLOBAL_REGISTERS
 	/*
 	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden

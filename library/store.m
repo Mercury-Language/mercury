@@ -287,23 +287,26 @@ Then we could do something like this:
 I wonder whether it is worth it?  Hmm, probably not.
 */
 
-:- pragma foreign_proc("C", new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	* (MR_Word *) Mutvar = Val;
 	S = S0;
 ").
 
-:- pragma foreign_proc("C", get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	Val = * (MR_Word *) Mutvar;
 	S = S0;
 ").
 
-:- pragma foreign_proc("C", set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	* (MR_Word *) Mutvar = Val;
 	S = S0;
@@ -318,8 +321,8 @@ copy_mutvar(Mutvar, Copy) -->
 :- mode store__unsafe_new_uninitialized_mutvar(out, di, uo) is det.
 
 :- pragma foreign_proc("C",
-		unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
 	S = S0;
@@ -332,8 +335,9 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C", new_ref(Val::di, Ref::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	new_ref(Val::di, Ref::out, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
 	* (MR_Word *) Ref = Val;
@@ -350,8 +354,10 @@ copy_ref_value(Ref, Val) -->
 	% value.
 :- pred store__unsafe_ref_value(generic_ref(T, S), T, S, S) <= store(S).
 :- mode store__unsafe_ref_value(in, uo, di, uo) is det.
-:- pragma foreign_proc("C", unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+
+:- pragma foreign_proc("C",
+	unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	Val = * (MR_Word *) Ref;
 	S = S0;
@@ -361,17 +367,17 @@ ref_functor(Ref, Functor, Arity) -->
 	unsafe_ref_value(Ref, Val),
 	{ functor(Val, Functor, Arity) }.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 	#include ""mercury_type_info.h""
 	#include ""mercury_heap.h""
 	#include ""mercury_misc.h""		/* for MR_fatal_error() */
 	#include ""mercury_deconstruct.h""	/* for MR_arg() */
-
 ").
 
 :- pragma foreign_proc("C", 
 	arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "{
 	MR_TypeInfo	type_info;
 	MR_TypeInfo	arg_type_info;
@@ -404,7 +410,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma foreign_proc("C", 
 	new_arg_ref(Val::di, ArgNum::in, ArgRef::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "{
 	MR_TypeInfo	type_info;
 	MR_TypeInfo	arg_type_info;
@@ -450,7 +456,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma foreign_proc("C", 
 	set_ref(Ref::in, ValRef::in, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	* (MR_Word *) Ref = * (MR_Word *) ValRef;
 	S = S0;
@@ -458,7 +464,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma foreign_proc("C",	
 	set_ref_value(Ref::in, Val::di, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	* (MR_Word *) Ref = Val;
 	S = S0;
@@ -466,7 +472,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma foreign_proc("C",
 	extract_ref_value(_S::di, Ref::in, Val::out),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	Val = * (MR_Word *) Ref;
 ").
@@ -475,7 +481,7 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma foreign_proc("C",
 	unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
 	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Ref);
@@ -483,13 +489,12 @@ ref_functor(Ref, Functor, Arity) -->
 	S = S0;
 }").
 
-:- pragma foreign_proc("C", unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out,
-				S0::di, S::uo),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, S0::di, S::uo),
+	[will_not_call_mercury, promise_pure],
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
 	MR_Word *Ptr = (MR_Word *) MR_strip_tag((MR_Word) Val);
 	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
-

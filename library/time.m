@@ -182,7 +182,8 @@
 % is not very portable.
 :- type time_t == int.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 	#include <time.h>
 	#ifdef MR_HAVE_SYS_TYPES_H
 		#include <sys/types.h>
@@ -287,8 +288,9 @@ time__clk_tck = Ret :-
 
 :- func time__c_clk_tck = int.
 
-:- pragma foreign_proc("C", time__c_clk_tck = (Ret::out),
-		[will_not_call_mercury, promise_pure],
+:- pragma foreign_proc("C",
+	time__c_clk_tck = (Ret::out),
+	[will_not_call_mercury, promise_pure],
 "{
 #if defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
 	Ret = (MR_Integer) sysconf(_SC_CLK_TCK);

@@ -483,7 +483,8 @@ is_nan_or_inf(Float) :-
 % is a reasonable default these days, and doing that might improve
 % the compiler's optimization.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 
 	#define	ML_FLOAT_RADIX	FLT_RADIX	/* There is no DBL_RADIX. */
 

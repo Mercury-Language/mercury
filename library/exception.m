@@ -649,7 +649,8 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 #endif /* ML_HLC_EXCEPTION_GUARD */
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C",
+"
 #ifdef MR_HIGHLEVEL_CODE
 
 /*
@@ -1237,7 +1238,8 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 % The --no-high-level-code implementation
 %
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C",
+"
 #ifndef MR_HIGHLEVEL_CODE
 	#include <assert.h>
 	#include <stdio.h>
@@ -1252,8 +1254,8 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 #endif
 ").
 
-:- pragma c_code("
-
+:- pragma foreign_code("C",
+"
 /* forward decls, to suppress gcc -Wmissing-decl warnings */
 void mercury_sys_init_exceptions_init(void);
 void mercury_sys_init_exceptions_init_type_tables(void);
