@@ -1168,6 +1168,10 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		% XXX as a temporary hack, due to bugs elsewhere,
 		% we need to swap out *any* argument, even if it's
 		% not live.
+		% YYY this is not quite the case - it is possible
+		% for a value to be in a register, be needed, and
+		% NOT be live. Eg, a parameter to a call not yet
+		% positioned, etc.
 			{ Contents = vars(Vars) },
 			{ set__member(Var, Vars) },
 			{ list__member(Var, Args) }
@@ -1692,12 +1696,23 @@ code_info__get_headvars(HeadVars) -->
 
 %---------------------------------------------------------------------------%
 
+% code_info__remake_with_store_map rebuilds the register info and
+% variable info data structures. It operates under the assumption
+% that if a variable is live, it is stored somewhere. What is more,
+% it assumes that if a variable is live, then there is a copy of it
+% stored on the stack in the location given by the store map. This
+% means that it only makes sense to call this predicate in situations
+% such as the start of disjuncts where it only makes sense to have
+% variables on the stack. (Note that disj_gen contains a piece of
+% magic to use the register versions of variables if possible in the
+% first disjunct).
+
 code_info__remake_with_store_map -->
 	code_info__current_store_map(StoreMap),
 	{ map__to_assoc_list(StoreMap, StoreList) },
 	{ map__init(Variables0) },
 	code_info__set_variables(Variables0),
-	code_info__remake_with_store_map_2(StoreList),
+	code_info__remake_with_store_map_2(StoreList), % XXX is this in the right place?
 	code_info__get_variables(Variables1),
 	{ map__to_assoc_list(Variables1, VarList) },
 	{ map__init(Registers) },
@@ -1736,6 +1751,13 @@ code_info__remake_with_store_map_2([V - ST|VSs]) -->
 	code_info__remake_with_store_map_2(VSs).
 
 %---------------------------------------------------------------------------%
+
+% code_info__remake_with_call_info rebuilds the register info and the
+% variable info structures. It operates under the assumption that if
+% a variable is live, then it should be located in the storage indicated
+% by the call info information. This is for use at the end of the branches
+% in branched structures, where we need to ensure that variables are
+% stored in consistient places.
 
 code_info__remake_with_call_info -->
 	code_info__get_call_info(CallInfo),
@@ -1779,6 +1801,12 @@ code_info__update_deadness_info(_Births - Deaths) -->
 	code_info__set_liveness_info(Liveness).
 
 %---------------------------------------------------------------------------%
+
+% code_info__reduce_variables_and_registers is called at the end of
+% each goal to clear out anything in the register info or the variable
+% info structures which is not needed any longer. A variable is not
+% needed if it is not live, and there are no cached expressions which
+% depend upon it.
 
 code_info__reduce_variables_and_registers -->
 	code_info__get_live_variables(Vars),
@@ -1833,22 +1861,6 @@ code_info__expressions_dependencies([R|Rs], V0, V) -->
 	code_info__expression_dependencies(R, V0, V1),
 	code_info__expressions_dependencies(Rs, V1, V).
 
-:- pred code_info__expression_cons_dependencies(list(maybe(rval)),
-						variable_info, variable_info,
-						code_info, code_info).
-:- mode code_info__expression_cons_dependencies(in, in, out, in, out) is det.
-
-code_info__expression_cons_dependencies([], V, V) --> [].
-code_info__expression_cons_dependencies([R|Rs], V0, V) -->
-	(
-		{ R = yes(Rval) }
-	->
-		code_info__expression_dependencies(Rval, V0, V1)
-	;
-		{ V1 = V0 }
-	),
-	code_info__expression_cons_dependencies(Rs, V1, V).
-
 :- pred code_info__expression_dependencies(rval,
 				variable_info, variable_info,
 						code_info, code_info).
@@ -1877,6 +1889,24 @@ code_info__expression_dependencies(field(_, Rval,_), V0, V) -->
 code_info__expression_dependencies(binop(_, E0, E1), V0, V) -->
 	code_info__expression_dependencies(E0, V0, V1),
 	code_info__expression_dependencies(E1, V1, V).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__expression_cons_dependencies(list(maybe(rval)),
+						variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__expression_cons_dependencies(in, in, out, in, out) is det.
+
+code_info__expression_cons_dependencies([], V, V) --> [].
+code_info__expression_cons_dependencies([R|Rs], V0, V) -->
+	(
+		{ R = yes(Rval) }
+	->
+		code_info__expression_dependencies(Rval, V0, V1)
+	;
+		{ V1 = V0 }
+	),
+	code_info__expression_cons_dependencies(Rs, V1, V).
 
 %---------------------------------------------------------------------------%
 
@@ -1943,7 +1973,8 @@ code_info__reenter_registers(Var, [L|Ls]) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__set_register_contents(reg, register_stat, code_info, code_info).
+:- pred code_info__set_register_contents(reg, register_stat,
+						code_info, code_info).
 :- mode code_info__set_register_contents(in, in, in, out) is det.
 
 code_info__set_register_contents(Reg, Contents) -->
@@ -1959,6 +1990,8 @@ code_info__unset_register_contents(Reg) -->
 	{ map__delete(Registers0, Reg, Registers) },
 	code_info__set_registers(Registers).
 
+%---------------------------------------------------------------------------%
+
 :- pred code_info__add_variable_to_register(var, reg, code_info, code_info).
 :- mode code_info__add_variable_to_register(in, in, in, out) is det.
 
@@ -1973,6 +2006,8 @@ code_info__add_variable_to_register(Var, Reg) -->
 	),
 	{ map__set(Registers0, Reg, vars(Vars), Registers) },
 	code_info__set_registers(Registers).
+
+%---------------------------------------------------------------------------%
 
 :- pred code_info__add_variables_to_register(set(var), reg,
 						code_info, code_info).
@@ -2004,6 +2039,8 @@ code_info__add_lvalue_to_variable(Lval, Var) -->
 	),
 	{ map__set(Variables0, Var, evaluated(Lvals), Variables) },
 	code_info__set_variables(Variables).
+
+%---------------------------------------------------------------------------%
 
 :- pred code_info__add_lvalues_to_variable(set(lval), var,
 						code_info, code_info).
