@@ -96,6 +96,12 @@ MCFLAGS-rnd		=	-O6
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
+# these tests run out of memory unless we have GC
+GRADEFLAGS-integer_test		=	--gc conservative
+GRADEFLAGS-integer_test_init	=	--gc conservative
+GRADEFLAGS-rational_test 	=	--gc conservative
+GRADEFLAGS-rational_test_init	=	--gc conservative
+
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
 no_fully_strict.out: no_fully_strict
