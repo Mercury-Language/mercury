@@ -289,7 +289,7 @@ convert_grade_option_2("reg") -->
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("none") -->
-	set_bool_opt(debug, yes),
+	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no),
