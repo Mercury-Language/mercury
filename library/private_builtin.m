@@ -33,8 +33,8 @@
 
 	% free_heap/1 is used internally by the compiler to implement
 	% compile-time garbage collection. Don't use it in programs.
-	% The `di' mode on the argument is a lie - it only clobbers the
-	% top-level cell. This is handled correctly by
+	% The `di' mode on the argument is overly conservative -- only
+	% the top-level cell is clobbered. This is handled correctly by
 	% mode_util__recompute_instmap_delta.
 :- pred free_heap(_T).
 :- mode free_heap(di) is det.
