@@ -131,7 +131,7 @@ case "`hostname`" in
 	cadillac.*)
 		GCC=/usr/local/bin/gcc ;;
 	kryten.*)
-		GCC=/usr/local/contrib/bin/gcc -V2.6.3
+		GCC="/usr/local/contrib/bin/gcc -V2.6.3"
 		HOST_OPTS="-msupersparc" ;;
 	*)
 		GCC=gcc
