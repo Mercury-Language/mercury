@@ -133,9 +133,9 @@ server(TimeOut, Debug, CanonicalClique, Deep) -->
 		** now to let the io__call_system in the cgi script succeed.
 		*/
 
-		extern	bool	process_is_detached_server;
+		extern	bool	MP_process_is_detached_server;
 
-		process_is_detached_server = TRUE;
+		MP_process_is_detached_server = TRUE;
 		exit(0);
 	}
 

@@ -61,18 +61,16 @@ extern	char		*MP_timeout_file1;
 extern	char		*MP_timeout_file2;
 extern	char		*MP_timeout_file3;
 
-#define	MDPROF_NUM_SIGNAL_NUMBERS	11
+extern	const int	MP_signal_numbers[];
 
-extern	const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS];
-
-extern	void		delete_timeout_files(void);
-extern	void		delete_timeout_files_and_exit_success(void);
-extern	void		delete_timeout_files_and_exit_failure(void);
+extern	void		MP_delete_timeout_files(void);
+extern	void		MP_delete_timeout_files_and_exit_success(void);
+extern	void		MP_delete_timeout_files_and_exit_failure(void);
 ").
 
 :- pragma foreign_code("C",
 "
-bool	process_is_detached_server = FALSE;
+bool	MP_process_is_detached_server = FALSE;
 char	*MP_timeout_file1;
 char	*MP_timeout_file2;
 char	*MP_timeout_file3;
@@ -83,33 +81,58 @@ char	*MP_timeout_file3;
 ** during development, both intentional ones where the programmer sends the
 ** signal and those caused by bugs in the server code. We would like to include
 ** all catchable, fatal signals in this list, but that set is somewhat OS
-** dependent. The set here is the widely portable subset.
+** dependent. The set whose existence we test for here includes all the
+** signals that are at all likely to be sent to server process.
+**
+** We don't test for the existence of SIGALRM, because we want compilation to
+** fail if it does not exist. Without alarm signals, server processes will
+** never be timed out, and thus constitute a resource leak (mostly of virtual
+** memory/swap space).
 **
 ** We could avoid this problem if we had a version of atexit that executed
 ** its actions even when the program exits after a signal.
 */
 
-const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS] =
+const int	MP_signal_numbers[] =
 {
 	SIGALRM,
+#ifdef SIGTERM
 	SIGTERM,
+#endif
+#ifdef SIGHUP
 	SIGHUP,
+#endif
+#ifdef SIGINT
 	SIGINT,
+#endif
+#ifdef SIGQUIT
 	SIGQUIT,
-
+#endif
+#ifdef SIGILL
 	SIGILL,
+#endif
+#ifdef SIGABRT
 	SIGABRT,
+#endif
+#ifdef SIGBUS
 	SIGBUS,
+#endif
+#ifdef SIGFPE
 	SIGFPE,
-
+#endif
+#ifdef SIGSEGV
 	SIGSEGV,
-	SIGPIPE
+#endif
+#ifdef SIGPIPE
+	SIGPIPE,
+#endif
+	-1
 };
 
 void
-delete_timeout_files(void)
+MP_delete_timeout_files(void)
 {
-	if (! process_is_detached_server) {
+	if (! MP_process_is_detached_server) {
 		if (remove(MP_timeout_file1) != 0) {
 			perror(MP_timeout_file1);
 		}
@@ -125,16 +148,16 @@ delete_timeout_files(void)
 }
 
 void
-delete_timeout_files_and_exit_success(void)
+MP_delete_timeout_files_and_exit_success(void)
 {
-	delete_timeout_files();
+	MP_delete_timeout_files();
 	exit(EXIT_SUCCESS);
 }
 
 void
-delete_timeout_files_and_exit_failure(void)
+MP_delete_timeout_files_and_exit_failure(void)
 {
-	delete_timeout_files();
+	MP_delete_timeout_files();
 	exit(EXIT_FAILURE);
 }
 ").
@@ -150,18 +173,18 @@ delete_timeout_files_and_exit_failure(void)
 	MP_timeout_file2 = File2;
 	MP_timeout_file3 = File3;
 
-	for (i = 0; i < MDPROF_NUM_SIGNAL_NUMBERS; i++) {
-		if (signal_numbers[i] == SIGALRM) {
-			handler = delete_timeout_files_and_exit_success;
+	for (i = 0; MP_signal_numbers[i] >= 0; i++) {
+		if (MP_signal_numbers[i] == SIGALRM) {
+			handler = MP_delete_timeout_files_and_exit_success;
 		} else {
-			handler = delete_timeout_files_and_exit_failure;
+			handler = MP_delete_timeout_files_and_exit_failure;
 		}
 
-		MR_setup_signal(signal_numbers[i], handler, FALSE,
+		MR_setup_signal(MP_signal_numbers[i], handler, FALSE,
 			""Mercury deep profiler: cannot setup signal exit"");
 	}
 
-	if (atexit(delete_timeout_files) != 0) {
+	if (atexit(MP_delete_timeout_files) != 0) {
 		MR_fatal_error(""Mercury deep profiler: cannot setup exit"");
 	}
 
