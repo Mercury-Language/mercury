@@ -154,7 +154,7 @@ io__op(Prec, Type, OpName) -->
 
 :- io__current_ops(_, IO0, _) when IO0.
 io__current_ops(Ops) -->
-	findall(op(Prec, Type, Op), currentOp(Prec, Type, Op), Ops). 
+	{ findall(op(Prec, Type, Op), currentOp(Prec, Type, Op), Ops) }. 
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
