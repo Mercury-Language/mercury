@@ -94,7 +94,6 @@
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__matching.
 :- import_module libs__trace_params, libs__globals, libs__options.
-:- import_module util.
 
 :- import_module counter, bool, int, list, assoc_list.
 :- import_module map, set, std_util, require, term, varset.
@@ -2243,6 +2242,10 @@ dump_matching_result(MatchingResult) -->
 	io__write_string("insert anchors: "),
 	io__write_list(set__to_sorted_list(InsertAnchors), " ", io__write),
 	io__write_string("\n").
+
+:- pred write_int_list(list(int)::in, io__state::di, io__state::uo) is det.
+
+write_int_list(List) --> io__write_list(List, ", ", io__write_int).
 
 :- func interval_id_to_int(interval_id) = int.
 
