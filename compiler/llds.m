@@ -23,7 +23,7 @@
 :- type llds__pred_mode_id == int.
 
 			%	predicate name, arity, mode, code
-:- type instruction	--->	instr - string.	
+:- type instruction	==	pair(inst, string).
 			%	 instruction, comment
 
 :- type instr		--->	assign(lval, rval)
