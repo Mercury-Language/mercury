@@ -740,8 +740,8 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
 if test $GRADE != $DEFAULT_GRADE; then
 	LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
 fi
-# remove DEFAULT_GRADE from LIBGRADES
-LIBGRADES=` echo " $LIBGRADES " | sed "s/ $DEFAULT_GRADE / /" `
+# remove GRADE from LIBGRADES
+LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
