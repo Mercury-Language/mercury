@@ -197,8 +197,7 @@
 :- pred string__right(string, int, string).
 :- mode string__right(in, in, out) is det.
 %	string__right(String, Count, RightSubstring):
-%	`RightSubstring' is what would remain of `String' if the
-%	left-most `Count' characters were removed.
+%	`RightSubstring' is the right-most `Count' characters of `String'.
 %	(If `Count' is out of the range [0, length of `String'], it is
 %	treated as if it were the nearest end-point of that range.)
 
