@@ -1342,9 +1342,13 @@ io__write_ordinary_term(Term, Priority) -->
 		maybe_write_char('(', Priority, OpPriority),
 		{ adjust_priority(OpPriority, LeftAssoc, LeftPriority) },
 		io__write_univ(Arg1, LeftPriority),
-		io__write_char(' '),
-		term_io__quote_atom(Functor),
-		io__write_char(' '),
+		( { Functor = "," } ->
+			io__write_string(", ")
+		;
+			io__write_char(' '),
+			term_io__quote_atom(Functor),
+			io__write_char(' ')
+		),
 		{ adjust_priority(OpPriority, RightAssoc, RightPriority) },
 		io__write_univ(Arg2, RightPriority),
 		maybe_write_char(')', Priority, OpPriority)

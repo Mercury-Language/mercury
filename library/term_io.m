@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995 University of Melbourne.
+% Copyright (C) 1994-1997 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -80,6 +80,12 @@
 :- mode term_io__quote_single_char(in, di, uo) is det.
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
+
+:- pred term_io__write_quoted_string(string, io__state, io__state).
+:- mode term_io__write_quoted_string(in, di, uo) is det.
+	% Given a string S, write S, with characters
+	% escaped if necessary, to stdout.
+	% The string is not enclosed in quotes.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -223,9 +229,13 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 		{ adjust_priority(OpPriority, LeftAssoc, LeftPriority) },
 		term_io__write_term_3(Arg1, LeftPriority,
 				VarSet0, N0, VarSet1, N1),
-		io__write_char(' '),
-		term_io__write_constant(Functor),
-		io__write_char(' '),
+		( { OpName = "," } ->
+			io__write_string(", ")
+		;
+			io__write_char(' '),
+			term_io__write_constant(Functor),
+			io__write_char(' ')
+		),
 		{ adjust_priority(OpPriority, RightAssoc, RightPriority) },
 		term_io__write_term_3(Arg2, RightPriority,
 				VarSet1, N1, VarSet, N),
@@ -351,28 +361,36 @@ term_io__quote_char(C) -->
 
 term_io__quote_atom(S) -->
 	(
-		% I didn't make these rules up: see ISO Prolog 6.4.2
+		% I didn't make these rules up: see ISO Prolog 6.3.1.3
+		% and 6.4.2.
 		(
+			% letter digit token (6.4.2)
 			{ string__first_char(S, FirstChar, Rest) },
 			{ char__is_lower(FirstChar) },
 			{ string__is_alnum_or_underscore(Rest) }
 		;
+			% semicolon token (6.4.2)
 			{ S = ";" }
 		;
+			% cut token (6.4.2)
 			{ S = "!" }
 		;
-			{ S = "," }
-		;
-			{ S = "[]" }
-		;
+			% graphic token (6.4.2)
 			{ string__to_char_list(S, Chars) },
 			{ \+ (  list__member(Char, Chars),
 				\+ lexer__graphic_token_char(Char)) },
-			{ S \= "" }
+			{ Chars \= [] }
+		;
+			% 6.3.1.3: atom = open list, close list ;
+			{ S = "[]" }
+		;
+			% 6.3.1.3: atom = open curly, close curly ;
+			{ S = "{}" }
 		)
 	->
 		io__write_string(S)
 	;
+		% anything else must be output as a quoted token (6.4.2)
 		io__write_char(''''),
 		term_io__write_quoted_string(S),
 		io__write_char('''')
@@ -382,9 +400,6 @@ term_io__quote_string(S) -->
 	io__write_char('"'),
 	term_io__write_quoted_string(S),
 	io__write_char('"').
-
-:- pred term_io__write_quoted_string(string, io__state, io__state).
-:- mode term_io__write_quoted_string(in, di, uo) is det.
 
 term_io__write_quoted_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->

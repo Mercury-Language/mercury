@@ -1159,27 +1159,33 @@ mercury_output_sym_name(Name) -->
 	(	{ Name = qualified(ModuleName, PredName) },
 		mercury_output_bracketed_constant(term__atom(ModuleName)),
 		io__write_char(':'),
-		%
-		% If the symname is composed of only graphic token chars,
-		% then term_io__quote_atom will not quote it; but since
-		% ':' is a graphic token char, it needs to be quoted,
-		% otherwise the ':' would be considered part of the
-		% symbol name (e.g. "int:<" tokenizes as ["int", ":<"].)
-		%
-		(
-			{ string__to_char_list(PredName, Chars) },
-			{ \+ (  list__member(Char, Chars),
-				\+ lexer__graphic_token_char(Char)) }
-		->
-			io__write_string("'"),
-			io__write_string(PredName),
-			io__write_string("'")
-		;
-			term_io__quote_atom(PredName)
-		)
+		mercury_quote_qualified_atom(PredName)
 	;
 		{ Name = unqualified(PredName) },
 		term_io__quote_atom(PredName)
+	).
+
+:- pred mercury_quote_qualified_atom(string, io__state, io__state).
+:- mode mercury_quote_qualified_atom(in, di, uo) is det.
+
+mercury_quote_qualified_atom(Name) -->
+	%
+	% If the symname is composed of only graphic token chars,
+	% then term_io__quote_atom will not quote it; but since
+	% ':' is a graphic token char, it needs to be quoted,
+	% otherwise the ':' would be considered part of the
+	% symbol name (e.g. "int:<" tokenizes as ["int", ":<"].)
+	%
+	(
+		{ string__to_char_list(Name, Chars) },
+		{ \+ (  list__member(Char, Chars),
+			\+ lexer__graphic_token_char(Char)) }
+	->
+		io__write_string("'"),
+		term_io__write_quoted_string(Name),
+		io__write_string("'")
+	;
+		term_io__quote_atom(Name)
 	).
 
 %-----------------------------------------------------------------------------%
