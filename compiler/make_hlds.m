@@ -205,6 +205,17 @@ inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
 make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
 make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
 
+:- pred make_functor_cons_id(const, int, cons_id).
+:- mode make_functor_cons_id(in, in, out).
+
+make_functor_cons_id(Constant, Arity, ConsId) :-
+	( Constant = term_atom(Name) ->
+		ConsId = cons(Name, Arity)
+	;
+		% The cons_id produced here will never actually be used
+		ConsId = cons("", 0)
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_mode_defn(module_info, varset, mode_defn, condition,
@@ -597,6 +608,8 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 			Body, Context, Preds)
 	).
 
+%-----------------------------------------------------------------------------
+
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
 clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
@@ -624,8 +637,10 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
-	insert_head_unifications(HeadVars, Args, head, Goal1, VarSet1,
+	insert_arg_unifications(HeadVars, Args, head, Goal1, VarSet1,
 		Goal, VarSet).
+
+%-----------------------------------------------------------------------------%
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(input, input, output, output).
@@ -650,52 +665,80 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 		make_n_fresh_vars_2(N1, Max, VarSet1, Vars1, VarSet)
 	).
 
-:- type head_context ---> head ; call(pred_id).
+%-----------------------------------------------------------------------------
 
-:- pred insert_head_unifications(list(var), list(term), head_context,
+	% `insert_arg_unifications' takes a list of variables,
+	% a list of terms to unify them with, and a goal, and
+	% inserts the appropriate unifications onto the front of
+	% the goal.  It calls `unravel_unification' to ensure
+	% that each unification gets reduced to superhomogeneous form.
+	% It also gets passed a `arg_context', which indicates
+	% where the terms came from.
+
+:- type arg_context
+	--->	head		% the arguments in the head of the clause
+	;	call(pred_id)	% the arguments in a call to a predicate
+	;	functor(cons_id, unify_main_context, unify_sub_contexts).
+				% the arguments in a functor
+
+:- pred insert_arg_unifications(list(var), list(term), arg_context,
 				hlds__goal, varset, hlds__goal, varset).
-:- mode insert_head_unifications(input, input, input, input, input, 
+:- mode insert_arg_unifications(input, input, input, input, input, 
 				output, output).
 
-insert_head_unifications(HeadVars, Args, HeadContext, Goal0, VarSet0,
+insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
 			Goal, VarSet) :-
 	( HeadVars = [] ->
 		Goal = Goal0,
 		VarSet = VarSet0
 	;
-		insert_head_unifications_2(HeadVars, Args, HeadContext, 0,
-			[Goal0], VarSet0, List, VarSet),
+		goal_to_conj_list(Goal0, List0),
+		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
+			List0, VarSet0, List, VarSet),
 		goalinfo_init(GoalInfo),
 		Goal = conj(List) - GoalInfo
 	).
 
-:- pred insert_head_unifications_2(list(var), list(term), head_context, int,
+:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
+:- mode goal_to_conj_list(in, out).
+
+goal_to_conj_list(Goal, ConjList) :-
+	( Goal = (conj(List) - _) ->
+		ConjList = List
+	;
+		ConjList = [Goal]
+	).
+
+:- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
 				list(hlds__goal), varset,
 				list(hlds__goal), varset).
-:- mode insert_head_unifications_2(input, input, input, input, input, input,
-				output, output).
+:- mode insert_arg_unifications_2(input, input, input, input, input, input,
+				output, output) is det.
 
-insert_head_unifications_2([], [], _, _, List, VarSet, List, VarSet).
-insert_head_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
+insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
+insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
 	N1 is N0 + 1,
-	Goal = unify(Arg, term_variable(Var), Mode, UnifyInfo, UnifyC) -
-		GoalInfo,
-	goalinfo_init(GoalInfo),
-	head_context_to_unify_context(Context, N1, UnifyMainContext),
-	UnifyC = unify_context(UnifyMainContext, []),
-		% fill in unused slots with garbage values
-	Mode = ((free -> free) - (free -> free)),
-	UnifyInfo = complicated_unify(Mode, Arg, term_variable(Var)),
-	List = [Goal | List1],
-	insert_head_unifications_2(Vars, Args, Context, N1, List0, VarSet0,
+	arg_context_to_unify_context(Context, N1,
+			UnifyMainContext, UnifySubContext),
+	unravel_unification(term_variable(Var), Arg, UnifyMainContext,
+			UnifySubContext, VarSet0, Goal, VarSet1),
+	( Goal = (conj(ConjList) - _) ->
+		append(ConjList, List1, List)
+	;
+		List = [Goal | List1]
+	),
+	insert_arg_unifications_2(Vars, Args, Context, N1, List0, VarSet1,
 				List1, VarSet).
 
-:- pred head_context_to_unify_context(head_context, int, unify_main_context).
-:- mode head_context_to_unify_context(input, input, output) is det.
+:- pred arg_context_to_unify_context(arg_context, int,
+				unify_main_context, unify_sub_contexts).
+:- mode arg_context_to_unify_context(input, input, output, output) is det.
 
-head_context_to_unify_context(head, N, head(N)).
-head_context_to_unify_context(call(PredId), N, call(PredId, N)).
+arg_context_to_unify_context(head, N, head(N), []).
+arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
+arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
+			MainContext, [ConsId - N | SubContexts]).
 
 :- pred transform_goal(goal, varset, substitution, hlds__goal, varset).
 :- mode transform_goal(input, input, input, output, output).
@@ -776,18 +819,106 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	var_list_to_term_list(HeadVars, HeadArgs),
 	Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
 	goalinfo_init(GoalInfo),
-	insert_head_unifications(HeadVars, Args, call(PredId), Goal2,
+	insert_arg_unifications(HeadVars, Args, call(PredId), Goal2,
 	 	VarSet1, Goal, VarSet).
 
-transform_goal(unify(A0, B0), VarSet, Subst,
-		unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo, VarSet) :-
+transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
 	term__apply_substitution(B0, Subst, B),
-	goalinfo_init(GoalInfo),
-	UnifyC = unify_context(explicit, []),
-		% fill in unused slots with garbage values
+	unravel_unification(A, B, explicit, [], VarSet0, Goal, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred unravel_unification(term, term, unify_main_context,
+				unify_sub_contexts, varset, hlds__goal, varset).
+:- mode unravel_unification(in, in, in, in, in, out, out).
+
+	% `X = Y' needs no unravelling.
+
+unravel_unification(term_variable(X), term_variable(Y), MainContext,
+			SubContext, VarSet0, Goal, VarSet) :-
+	create_atomic_unification(term_variable(X), term_variable(Y),
+			MainContext, SubContext, Goal),
+	VarSet0 = VarSet.
+
+	% If we find a unification of the form
+	%	X = f(A1, A2, A3)
+	% we replace it with
+	%	NewVar1 = A1,
+	%	NewVar2 = A2,
+	%	NewVar3 = A3,
+	%	X = f(NewVar1, NewVar2, NewVar3).
+	% In the trivial case `X = c', no unravelling occurs.
+
+unravel_unification(term_variable(X), term_functor(F, Args, C), MainContext,
+			SubContext, VarSet0, Goal, VarSet) :-
+	( Args = [] ->
+		create_atomic_unification(term_variable(X),
+				term_functor(F, Args, C),
+				MainContext, SubContext, Goal),
+		VarSet = VarSet0
+	;
+		length(Args, Arity),
+		make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
+		var_list_to_term_list(HeadVars, HeadArgs),
+		create_atomic_unification(term_variable(X),
+				term_functor(F, HeadArgs, C),
+				MainContext, SubContext, Goal0),
+		make_functor_cons_id(F, Arity, ConsId),
+		ArgContext = functor(ConsId, MainContext, SubContext),
+		insert_arg_unifications(HeadVars, Args, ArgContext,
+					Goal0, VarSet1, Goal, VarSet)
+	).
+
+	% Handle `f(...) = X' in the same way as `X = f(...)'.
+
+unravel_unification(term_functor(F, As, C), term_variable(Y), MC, SC,
+			VarSet0, Goal, VarSet) :-
+	unravel_unification(term_variable(Y), term_functor(F, As, C), MC, SC,
+			VarSet0, Goal, VarSet).
+
+	% If we find a unification of the form `f1(...) = f2(...)',
+	% then we replace it with `NewVars1 = ..., NewVars2 = ...,
+	% f1(NewVars1) = f2(NewVars2)'.  Note that we can't simplify it
+	% yet, because we might simplify away type errors.
+
+unravel_unification(term_functor(LeftF, LeftAs, LeftC),
+			term_functor(RightF, RightAs, RightC),
+			MainContext, SubContext, VarSet0, Goal, VarSet) :-
+	length(LeftAs, LeftArity),
+	length(RightAs, RightArity),
+	make_n_fresh_vars(LeftArity, VarSet0, LeftHeadVars, VarSet1),
+	make_n_fresh_vars(RightArity, VarSet1, RightHeadVars, VarSet2),
+	var_list_to_term_list(LeftHeadVars, LeftHeadArgs),
+	var_list_to_term_list(RightHeadVars, RightHeadArgs),
+	make_functor_cons_id(LeftF, LeftArity, LeftConsId),
+	make_functor_cons_id(RightF, RightArity, RightConsId),
+	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
+	RightArgContext = functor(RightConsId, MainContext, SubContext),
+	create_atomic_unification(term_functor(LeftF, LeftHeadArgs, LeftC),
+			term_functor(RightF, RightHeadArgs, RightC),
+			MainContext, SubContext, Goal0),
+	insert_arg_unifications(RightHeadVars, RightAs, RightArgContext, Goal0,
+				VarSet2, Goal1, VarSet3),
+	insert_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal1,
+				VarSet3, Goal, VarSet).
+
+	% create the hlds__goal for a unification which cannot be
+	% further simplified, filling in all the as yet
+	% unknown slots with dummy values
+
+:- pred create_atomic_unification(term, term, unify_main_context,
+				unify_sub_contexts, hlds__goal).
+:- mode create_atomic_unification(in, in, in, in, out).
+
+create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	Mode = ((free -> free) - (free -> free)),
-	UnifyInfo = complicated_unify(Mode, A, B).
+	UnifyInfo = complicated_unify(Mode, A, B),
+	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
+	goalinfo_init(GoalInfo),
+	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
+
+%-----------------------------------------------------------------------------%
 
 % substitute_vars(Vars0, Subst, Vars)
 %	apply substitiution `Subst' (which must only rename vars) to `Vars0',
@@ -801,6 +932,8 @@ substitute_vars([Var0 | Vars0], Subst, [Var | Vars]) :-
 	term__apply_substitution(term_variable(Var0), Subst, Term),
 	Term = term_variable(Var),
 	substitute_vars(Vars0, Subst, Vars).
+
+%-----------------------------------------------------------------------------%
 
 % get_conj(Goal, Conj0, Subst, Conj) :
 % 	Goal is a tree of conjuncts.  Flatten it into a list (applying Subst),
