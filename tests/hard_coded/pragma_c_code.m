@@ -18,6 +18,8 @@ main -->
 	c_write_float(Z),
 	c_write_cosine(Z).		% test c_header_code
 
+:- pragma(c_header_code, "#include <stdio.h>").
+
 :- pred c_write_string(string::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_string(Message::in, IO0::di, IO::uo), "

@@ -16,6 +16,8 @@ main -->
 	{ string__append_list(["He", LL, "o, world\n"], String) },
 	c_write_string(String).
 
+:- pragma(c_header_code, "#include <stdio.h>").
+
 :- pred c_write_string(string::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_string(Message::in, IO0::di, IO::uo),
