@@ -79,6 +79,13 @@ A \= B :- \+ A = B.
 
 %-----------------------------------------------------------------------------%
 
+error(Message) :-
+	format("Software Error: ~s\n", [Message]),
+	atom_chars(Msg, Message),
+	raise_exception(software_error(Msg)).
+
+%-----------------------------------------------------------------------------%
+
 % Various hacks to get things to work
 
 
