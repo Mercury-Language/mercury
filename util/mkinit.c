@@ -181,7 +181,7 @@ static const char main_func[] =
 
 
 static const char if_need_to_init[] = 
-	"#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"
+	"#if defined(MR_MAY_NEED_INITIALIZATION)\n\n"
 	;
 
 
