@@ -236,17 +236,17 @@ unify_gen__generate_tag_rval_2(tabling_pointer_constant(_, _), _, _) :-
 	error("Attempted tabling_pointer unification").
 unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
 	TestRval = const(true).
-unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
+unify_gen__generate_tag_rval_2(unshared_tag(UnsharedTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
-				unop(mktag, const(int_const(SimpleTag)))).
-unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
+				unop(mktag, const(int_const(UnsharedTag)))).
+unify_gen__generate_tag_rval_2(shared_remote_tag(Bits, Num), Rval, TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
 			binop(eq,	lval(field(yes(Bits), Rval,
 						const(int_const(0)))),
 					const(int_const(Num)))).
-unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
+unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 		TestRval) :-
 	TestRval = binop(eq,	Rval,
 			mkword(Bits, unop(mkbody, const(int_const(Num))))).
@@ -293,7 +293,7 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, Code) -->
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
-unify_gen__generate_construction_2(simple_tag(SimpleTag),
+unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_next_cell_number(CellNo),
@@ -305,9 +305,9 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
 	% XXX Later we will need to worry about
 	% whether the cell must be unique or not.
-	{ Expr = create(SimpleTag, RVals, no, CellNo, VarTypeMsg) },
+	{ Expr = create(UnsharedTag, RVals, no, CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr).
-unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
+unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_next_cell_number(CellNo),
@@ -323,7 +323,7 @@ unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 	% whether the cell must be unique or not.
 	{ Expr = create(Bits0, RVals, no, CellNo, VarTypeMsg) },
 	code_info__cache_expression(Var, Expr).
-unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
+unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
 	code_info__cache_expression(Var,
@@ -706,15 +706,15 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
 	;
-		{ Tag = simple_tag(SimpleTag) },
+		{ Tag = unshared_tag(UnsharedTag) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
-			SimpleTag, Fields, ArgVars) },
+			UnsharedTag, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, Code)
 	;
-		{ Tag = complicated_tag(Bits0, _Num0) },
+		{ Tag = shared_remote_tag(Bits0, _Num0) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
 			Bits0, Fields, ArgVars) },
@@ -722,7 +722,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, Code)
 	;
-		{ Tag = complicated_constant_tag(_Bits1, _Num1) },
+		{ Tag = shared_local_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens
 	).
 

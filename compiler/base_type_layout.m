@@ -73,16 +73,16 @@
 % 					  vector.
 %
 % enum vector:
-%	- 1 or 0 (1 = enumeration, 0 = complicated constant)
+%	- 1 or 0 (1 = enumeration, 0 = shared local)
 %	- S, the number of constants sharing this tag
 %	- S strings (functor names)
 %
 % Note that tag 0 value 0 is presently unassigned. This may be used
 % in future for some common case optimization.
 %
-% Tag 1 - 	SIMPLE  Word = pointer to simple vector
+% Tag 1 - 	UNSHARED  Word = pointer to functor descriptor
 %
-% SIMPLE: Simple vector contains 
+% UNSHARED: Functor descriptor contains 
 % 	  - the arity of the functor (N)
 % 	  - N pointers to pseudo-typeinfos (of each argument),
 % 	  - a pointer to a string containing the name of this
@@ -100,14 +100,14 @@
 %         No further indexing is required. The data word points to a
 %         vector of its argument data.
 %
-% Tag 2 - 	COMPLIC Word = pointer to multiple argument vector
+% Tag 2 - 	SHARED Word = pointer to functor descriptor vector
 %
-% COMPLIC: Multi-argument vector contains F, the number of sharing
-% 	   functors, then F pointers to argument vectors. Data word
-% 	   contains a pointer to a secondary tag word, then argument
-% 	   data. Use the secondary tag to index into the F argument
-% 	   pointers, which point to an argument vector just as in
-% 	   SIMPLE above. 
+% SHARED:  Multi-argument vector contains F, the number of sharing
+% 	   functors, then F pointers to functor descriptors.
+%	   Data word contains a pointer to a secondary tag word, then
+%	   argument data. Use the secondary tag to index into the F
+%	   argument pointers, which point to a functors descriptors just
+%	   as in UNSHARED above. 
 %
 % Tag 3 - 	VAR/EQ  Word = type variable number, or pointer to 
 % 		 		indicator, equivalent type_ctor_info
@@ -134,8 +134,7 @@
 %	   the same as an equivalence - the data word has a type
 %	   given by the pseudo-typeinfo (it might be worth taking
 %	   advantage of the fact that the vector for a no_tag type
-%	   is exactly the same vector that a simple tag type would
-%	   have - one argument, type of argument, functor).
+%	   is exactly the same as a functors descriptor).
 %
 % 	   In any case, you need to look at the equivalent type
 % 	   to find out what the data word represents.
@@ -174,11 +173,11 @@
 % For discriminated unions, the tables contain:
 % 	- disc. union indicator
 % 	- number of functors this type has
-% 	- vector of pointers to a simple vector, one for each functor
+% 	- vector of pointers to functor descriptors, one for each functor
 %
 % For no_tag types, the tables contain:
 % 	- no_tag indicator
-% 	- pointers to a simple vector, for the functor
+% 	- pointers to a functor descriptor, for the functor
 %
 % For enumerations, the tables contain:
 % 	- enumeration indicator
@@ -208,7 +207,7 @@
 % 	  etc).
 %
 % 	This means the only information needed in the layout tables is
-% 	the simple and complicated tag meanings for discriminated unions
+% 	the unshared and shared tag meanings for discriminated unions
 % 	that don't fall into any of the above categories (not no_tag and
 % 	not enum). In addition, the code for testing which category a 
 % 	particular type belongs to could be greatly simplified.
@@ -252,9 +251,9 @@
 		list(comp_gen_c_data)	% generated data
 	).
 
-:- type tag_category	--->	simple 		% tagged pointer
-			; 	complicated 	% shared tagged pointer
-			;	comp_const	% shared constants
+:- type tag_category	--->	unshared 	% tagged pointer
+			; 	shared_remote 	% shared tagged pointer
+			;	shared_local	% shared constants
 			; 	no_tag 		% special case of equivalence 
 			; 	unused.		% unused tag
 
@@ -369,8 +368,8 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		TypeBody = du_type(Ctors, ConsTagMap, Enum, _EqualityPred),
 
 			% sort list on tags, so that 
-			% enums, complicated constants and
-			% complicated tags have their shared
+			% enums, shared local tag and
+			% shared remote tags have their shared
 			% functors in the right order.
 		map__to_assoc_list(ConsTagMap, UnsortedConsTags),
 		assoc_list__reverse_members(UnsortedConsTags, RevConsList),
@@ -479,9 +478,9 @@ base_type_layout__max_varint(1024).
 	% Tag values
 	
 :- pred base_type_layout__tag_value(tag_category::in, int::out) is det.
-base_type_layout__tag_value(comp_const, 0).
-base_type_layout__tag_value(simple, 1).
-base_type_layout__tag_value(complicated, 2).
+base_type_layout__tag_value(shared_local, 0).
+base_type_layout__tag_value(unshared, 1).
+base_type_layout__tag_value(shared_remote, 2).
 base_type_layout__tag_value(no_tag, 3).
 base_type_layout__tag_value(unused, 0).
 
@@ -547,7 +546,7 @@ base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber,
 			"type_layout"))]
 	).
 
-	% Encode a cons tag (simple or complicated) in rvals.
+	% Encode a cons tag (unshared or shared) in rvals.
 
 :- pred base_type_layout__encode_cons_tag(cons_tag, list(maybe(rval)), 
 	layout_info, layout_info).
@@ -555,20 +554,20 @@ base_type_layout__encode_create(LayoutInfo, Tag, Rvals0, Unique, CellNumber,
 base_type_layout__encode_cons_tag(ConsTag, ConsTagRval, LayoutInfo, 
 		LayoutInfo) :-
 	( 
-		ConsTag = simple_tag(Tag0) 
+		ConsTag = unshared_tag(Tag0) 
 	->
 		SecTag = 0, Tag = Tag0
 	; 
-		ConsTag = complicated_tag(Tag0, SecTag0) 
+		ConsTag = shared_remote_tag(Tag0, SecTag0) 
 	->
 		SecTag = SecTag0, Tag = Tag0
 	;
-		ConsTag = complicated_constant_tag(Tag0, SecTag0) 
+		ConsTag = shared_local_tag(Tag0, SecTag0) 
 	->
 		SecTag = SecTag0, Tag = Tag0
 	; 
 		error(
-		"type_ctor_layout: cons_tag not simple or complicated in du")
+		"type_ctor_layout: cons_tag not shared or unshared in du")
 	),
 	base_type_layout__encode_mkword(LayoutInfo, Tag, 
 		const(int_const(SecTag)), ConsTagRval).
@@ -716,7 +715,7 @@ base_type_layout__layout_no_tag_vector(SymName, Type, LayoutInfo0,
 		% since it's a no_tag, we'll give it a tag value of 0
 		% to be consistent, but this doesn't really have any
 		% meaning.
-	base_type_layout__encode_cons_tag(simple_tag(0), ConsTagRvals, 
+	base_type_layout__encode_cons_tag(unshared_tag(0), ConsTagRvals, 
 		LayoutInfo1, LayoutInfo),
 
 	Rvals = [Rval0, Rval1, Rval2 | ConsTagRvals].
@@ -761,7 +760,7 @@ base_type_layout__layout_eqv(Type, LayoutInfo0, LayoutInfo, Rvals) :-
 
 	% For discriminated unions:
 	%
-	% Mixture of simple, complicated and complicated_constant
+	% Mixture of unshared, shared_local and shared_remote
 	% tags. For each primary tag value, we have a word that
 	% describes what it represents. The list of words will
 	% form an array that can be indexed by primary tag.
@@ -799,19 +798,19 @@ base_type_layout__generate_rvals([], LayoutInfo, LayoutInfo, Rvals, Rvals).
 base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 		LayoutInfo, Rvals0, Rvals) :-
 	(
-		Tag = simple,
-		base_type_layout__handle_simple(ConsList, LayoutInfo0, 
+		Tag = unshared,
+		base_type_layout__handle_unshared(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 	;
-		Tag = complicated,
-		base_type_layout__handle_complicated(ConsList, LayoutInfo0, 
+		Tag = shared_remote,
+		base_type_layout__handle_shared_remote(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 
 	;
-		Tag = comp_const,
-		base_type_layout__handle_comp_const(ConsList, LayoutInfo0, 
+		Tag = shared_local,
+		base_type_layout__handle_shared_local(ConsList, LayoutInfo0, 
 			LayoutInfo1, Rval),
 		list__append(Rval, Rvals0, Rvals1)
 	;
@@ -830,20 +829,21 @@ base_type_layout__generate_rvals([Tag - ConsList | Rest], LayoutInfo0,
 		Rvals1, Rvals).
 
 
-	% For complicated constants:
+	% For shared local tags:
 	%
 	% tag is 0, rest of word is pointer to 
 	% 	- enum indicator (no, this isn't an enum)
 	% 	- S, the number of constants sharing this tag 
 	% 	- S strings of constant names
 
-:- pred base_type_layout__handle_comp_const(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_shared_local(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_comp_const(in, in, out, out) is det.
+:- mode base_type_layout__handle_shared_local(in, in, out, out) is det.
 
-base_type_layout__handle_comp_const([], _, _, _) :-
-	error("type_ctor_layout: no constructors for complicated constant tag").
-base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
+base_type_layout__handle_shared_local([], _, _, _) :-
+	error("type_ctor_layout: no constructors for shared local tag").
+base_type_layout__handle_shared_local([C | Cs], LayoutInfo0, LayoutInfo,
+		Rval) :-
 	list__length([C | Cs], NumCtors), 		% Number of sharers
 	Rval1 = yes(const(int_const(NumCtors))),
 
@@ -862,49 +862,49 @@ base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo0,
 		LayoutInfo),
-	base_type_layout__tag_value(comp_const, Tag),
+	base_type_layout__tag_value(shared_local, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
 		[Rval0, Rval1 | CtorNameRvals], no, NextCellNumber, Rval).
 
 
-	% For simple tags:
+	% For unshared tags:
 	%
-	% Tag 1, with a pointer to a simple vector.
+	% Tag 1, with a pointer to a functor descriptor
 
-:- pred base_type_layout__handle_simple(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_unshared(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_simple(in, in, out, out) is det.
+:- mode base_type_layout__handle_unshared(in, in, out, out) is det.
 
-base_type_layout__handle_simple(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
-	base_type_layout__simple_vector(ConsList, LayoutInfo0, LayoutInfo1,
+base_type_layout__handle_unshared(ConsList, LayoutInfo0, LayoutInfo, Rval) :-
+	base_type_layout__functor_descriptor(ConsList, LayoutInfo0, LayoutInfo1,
 		EndRvals),
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo1,
 		LayoutInfo),
-	base_type_layout__tag_value(simple, Tag),
+	base_type_layout__tag_value(unshared, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, EndRvals, no, 
 		NextCellNumber, Rval).
 
-	% Create a simple vector.
+	% Create a functor descriptor.
 	%
 	%	N - the arity of this functor 
 	%	N pseudo-typeinfos (of the arguments)
 	%	- a string constant (the name of the functor)
 	%	- tag information
 
-:- pred base_type_layout__simple_vector(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__functor_descriptor(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__simple_vector(in, in, out, out) is det.
+:- mode base_type_layout__functor_descriptor(in, in, out, out) is det.
 
-base_type_layout__simple_vector([], _, _, _) :-
-	error("type_ctor_layout: no constructors for simple tag").
-base_type_layout__simple_vector([ConsId - ConsTag | _], LayoutInfo0, 
+base_type_layout__functor_descriptor([], _, _, _) :-
+	error("type_ctor_layout: no constructors for unshared tag").
+base_type_layout__functor_descriptor([ConsId - ConsTag | _], LayoutInfo0, 
 		LayoutInfo, EndRvals) :-
 	( 
 		ConsId = cons(SymName, _Arity)
 	->
 		unqualify_name(SymName, ConsString)
 	;
-		error("type_ctor_layout: simple tag with no constructor")
+		error("type_ctor_layout: unshared tag with no constructor")
 	),
 	base_type_layout__get_cons_args(LayoutInfo0, ConsId, ConsArgs),
 	list__length(ConsArgs, NumArgs),
@@ -917,20 +917,20 @@ base_type_layout__simple_vector([ConsId - ConsTag | _], LayoutInfo0,
 		EndRvals).
 
 
-	% For complicated tags:
+	% For shared remote tags:
 	%
 	% Tag 2, with a pointer to an array containing:
 	% 	F - the number of functors sharing this tag
-	% 	F pointers to vectors, with the same info as
-	% 		a functor with a simple tag.
+	% 	F pointers to functor descriptors
 
-:- pred base_type_layout__handle_complicated(list(pair(cons_id, cons_tag)), 
+:- pred base_type_layout__handle_shared_remote(list(pair(cons_id, cons_tag)), 
 	layout_info, layout_info, list(maybe(rval))).
-:- mode base_type_layout__handle_complicated(in, in, out, out) is det.
+:- mode base_type_layout__handle_shared_remote(in, in, out, out) is det.
 
-base_type_layout__handle_complicated([], _, _, _) :-
-	error("type_ctor_layout: no constructors for complicated tag").
-base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
+base_type_layout__handle_shared_remote([], _, _, _) :-
+	error("type_ctor_layout: no constructors for shared remote tag").
+base_type_layout__handle_shared_remote([C | Cs], LayoutInfo0, LayoutInfo,
+		Rval) :-
 	base_type_layout__get_next_cell_number(NextCellNumber, LayoutInfo0,
 		LayoutInfo1),
 
@@ -939,11 +939,11 @@ base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 	NumSharersRval = yes(const(int_const(NumCtors))),
 
 		% Create rvals for sharers
-		% (just like a lot of simples)
+		% (just like a series of unshared tags)
 	list__foldr(
 		lambda([Cons::in, Acc::in, NewAcc::out] is det, (
 			Acc = Rvals0 - LayoutInfoA,
-			base_type_layout__handle_simple([Cons], LayoutInfoA,
+			base_type_layout__handle_unshared([Cons], LayoutInfoA,
 				LayoutInfoB, Rval1),
 			list__append(Rval1, Rvals0, Rvals1),
 			NewAcc = Rvals1 - LayoutInfoB)),
@@ -951,7 +951,7 @@ base_type_layout__handle_complicated([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 		[] - LayoutInfo1, 
 		SharedRvals - LayoutInfo),
 
-	base_type_layout__tag_value(complicated, Tag),
+	base_type_layout__tag_value(shared_remote, Tag),
 	base_type_layout__encode_create(LayoutInfo, Tag, 
 		[NumSharersRval | SharedRvals], no, NextCellNumber, Rval).
 
@@ -1004,9 +1004,7 @@ base_type_layout__functors_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	% type_ctor_functors of a no_tag:
 	%
 	% - no_tag indicator
-	% - pointer to simple vector (same as for simple tag functors
-	% 			in type_ctor_layouts).
-	% (the simple vector describes the functor).
+	% - pointer to functor descriptor
 
 :- pred base_type_layout__functors_no_tag(sym_name, type, layout_info, 
 		layout_info, list(maybe(rval))).
@@ -1031,9 +1029,7 @@ base_type_layout__functors_no_tag(SymName, Type, LayoutInfo0,
 	%
 	% - du indicator
 	% - number of functors
-	% - vector of pointers to simple vector (same as for simple tag 
-	% 			functors in type_ctor_layouts).
-	% (each simple vector describes a functor).
+	% - vector of pointers to functor descriptor 
 
 :- pred base_type_layout__functors_du(assoc_list(cons_id, cons_tag), 
 	layout_info, layout_info, list(maybe(rval))).
@@ -1046,8 +1042,8 @@ base_type_layout__functors_du(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
 	list__foldr(
 		lambda([ConsPair::in, Acc::in, NewAcc::out] is det, (
 			Acc = Rvals0 - LayoutInfoA,
-			base_type_layout__simple_vector([ConsPair], LayoutInfoA,
-				LayoutInfoB, VectorRvalList),
+			base_type_layout__functor_descriptor([ConsPair],
+				LayoutInfoA, LayoutInfoB, VectorRvalList),
 			base_type_layout__get_next_cell_number(NextCellNumber,
 				LayoutInfoB, LayoutInfoC),
 			VectorRval = yes(create(0, VectorRvalList, no, 
@@ -1216,10 +1212,11 @@ base_type_layout__get_tags([ConsPair | ConsRest], Tag, TagList, TagType) :-
 :- pred base_type_layout__tag_type_and_value(cons_tag, int, tag_category).
 :- mode base_type_layout__tag_type_and_value(in, out, out) is det.
 
-base_type_layout__tag_type_and_value(simple_tag(Tag), Tag, simple).
-base_type_layout__tag_type_and_value(complicated_tag(Tag, _), Tag, complicated).
-base_type_layout__tag_type_and_value(complicated_constant_tag(Tag, _), Tag, 
-	comp_const).
+base_type_layout__tag_type_and_value(unshared_tag(Tag), Tag, unshared).
+base_type_layout__tag_type_and_value(shared_remote_tag(Tag, _), Tag,
+	shared_remote).
+base_type_layout__tag_type_and_value(shared_local_tag(Tag, _), Tag, 
+	shared_local).
 base_type_layout__tag_type_and_value(no_tag, -1, no_tag). 
 base_type_layout__tag_type_and_value(string_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(float_constant(_), -1, unused). 
