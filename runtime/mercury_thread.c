@@ -21,6 +21,7 @@
 #endif
 
 MR_bool	MR_exit_now;
+MR_bool MR_debug_threads = MR_FALSE;
 
 #ifdef MR_THREAD_SAFE
 
@@ -156,7 +157,7 @@ MR_destroy_thread(void *eng0)
 
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_DEBUG_THREADS)
+#if defined(MR_THREAD_SAFE)
 
 void
 MR_mutex_lock(MercuryLock *lock, const char *from)

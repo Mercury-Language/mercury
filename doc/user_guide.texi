@@ -6952,6 +6952,16 @@ to the file or device specified by @var{filename}.
 @c --mdb-in-window is for use only by the mdb script, so it's
 @c not documented here.
 
+@sp 1
+@item --debug-threads
+@findex --debug-threads (runtime option)
+@cindex Debugging Threads
+@cindex Threads, Debugging
+
+Output information to the standard error stream about the locking and
+unlocking occuring in each module which has been compiled with the C macro
+symbol @samp{MR_DEBUG_THREADS} defined.
+
 @end table
 
 @sp 1
