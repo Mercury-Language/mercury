@@ -83,7 +83,7 @@ index   %mem    self descendents  called+self    name           index
 
                 0.00       39.05       1/1           <predicate 'main'/2 mode 0> [1]
 [2]     99.9    0.00       39.05       1         <predicate poly:'main3'/3 mode 0> [2] 
-                0.00        0.00       5/2307        <predicate io:'write_string'/3 mode 0> [22]
+                0.00        0.00       5/2307        <predicate io:'write_string'/3 mode 0> [23]
                 0.00       39.05       1/1           <predicate poly:'main1'/1 mode 0> [3]
                 0.00        0.00       1/66          <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
 
@@ -209,23 +209,28 @@ index   %mem    self descendents  called+self    name           index
                                       65             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
                 0.00        0.00       1/66          <predicate poly:'main3'/3 mode 0> [2]
 [19]     0.0    0.00        0.00      66         <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19] 
-                0.00        0.00     132/2307        <predicate io:'write_string'/3 mode 0> [22]
+                0.00        0.00     132/2307        <predicate io:'write_string'/3 mode 0> [23]
                                       66             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
 
 -----------------------------------------------
 
                                       66             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
 [20]     0.0    0.00        0.00      66         <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20] 
-                0.00        0.00     285/2307        <predicate io:'write_string'/3 mode 0> [22]
+                0.00        0.00     285/2307        <predicate io:'write_string'/3 mode 0> [23]
                                      351             <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
 
 -----------------------------------------------
 
                                      351             <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
 [21]     0.0    0.00        0.00     351         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21] 
-                0.00        0.00     637/637         <predicate io:'write_int'/3 mode 0> [23]
-                0.00        0.00    1885/2307        <predicate io:'write_string'/3 mode 0> [22]
+                0.00        0.00     637/637         <predicate io:'write_int'/3 mode 0> [24]
+                0.00        0.00    1885/2307        <predicate io:'write_string'/3 mode 0> [23]
                                       65             <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
+
+-----------------------------------------------
+
+                0.00        0.00       3/3           <predicate 'compare'/3 mode 3> [27]
+[22]     0.0    0.00        0.00       3         <compare/3 predicate for type builtin:'c_pointer'/0> [22] 
 
 -----------------------------------------------
 
@@ -233,17 +238,12 @@ index   %mem    self descendents  called+self    name           index
                 0.00        0.00    1885/2307        <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
                 0.00        0.00     132/2307        <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19]
                 0.00        0.00     285/2307        <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20]
-[22]     0.0    0.00        0.00    2307         <predicate io:'write_string'/3 mode 0> [22] 
+[23]     0.0    0.00        0.00    2307         <predicate io:'write_string'/3 mode 0> [23] 
 
 -----------------------------------------------
 
                 0.00        0.00     637/637         <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21]
-[23]     0.0    0.00        0.00     637         <predicate io:'write_int'/3 mode 0> [23] 
-
------------------------------------------------
-
-                0.00        0.00       3/3           <predicate 'compare'/3 mode 3> [27]
-[24]     0.0    0.00        0.00       3         <compare/3 predicate for type mercury_builtin:'c_pointer'/0> [24] 
+[24]     0.0    0.00        0.00     637         <predicate io:'write_int'/3 mode 0> [24] 
 
 -----------------------------------------------
 
@@ -261,7 +261,7 @@ index   %mem    self descendents  called+self    name           index
                 0.00        0.00       1/3           <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18]
                 0.00        0.00       2/3           <predicate tree234:'set3'/4 mode 1 (minus unused args)> [17]
 [27]     0.0    0.00        0.00       3         <predicate 'compare'/3 mode 3> [27] 
-                0.00        0.00       3/3           <compare/3 predicate for type mercury_builtin:'c_pointer'/0> [24]
+                0.00        0.00       3/3           <compare/3 predicate for type builtin:'c_pointer'/0> [22]
 
 -----------------------------------------------
 
@@ -298,14 +298,14 @@ name		the name of the procedure followed by its index number.
   0.0      39.06     0.01        1    10.00    10.00 <predicate tree234:'set3'/4 mode 1 (minus unused args)> [17] 
   0.0      39.07     0.00        1     7.00     7.00 <predicate tree234:'set2'/4 mode 1 (minus unused args)> [18] 
   0.0      39.07     0.00        3     1.33     7.00 <predicate tree234:'set'/4 mode 1 (minus unused args)> [14] 
-  0.0      39.07     0.00     2307     0.00     0.00 <predicate io:'write_string'/3 mode 0> [22] 
-  0.0      39.07     0.00      637     0.00     0.00 <predicate io:'write_int'/3 mode 0> [23] 
+  0.0      39.07     0.00     2307     0.00     0.00 <predicate io:'write_string'/3 mode 0> [23] 
+  0.0      39.07     0.00      637     0.00     0.00 <predicate io:'write_int'/3 mode 0> [24] 
   0.0      39.07     0.00      351     0.00     0.00 <predicate poly:'print_term'/3 mode 0>  <cycle 2> [21] 
   0.0      39.07     0.00     1215     0.00    15.51 <predicate poly:'term_mul'/3 mode 0>  <cycle 3> [5] 
   0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms'/3 mode 0>  <cycle 2> [19] 
   0.0      39.07     0.00       66     0.00     0.00 <predicate poly:'print_terms_2'/3 mode 0>  <cycle 2> [20] 
+  0.0      39.07     0.00        3     0.00     0.00 <compare/3 predicate for type builtin:'c_pointer'/0> [22] 
   0.0      39.07     0.00        3     0.00     7.00 <predicate map:'set'/4 mode 1> [13] 
-  0.0      39.07     0.00        3     0.00     0.00 <compare/3 predicate for type mercury_builtin:'c_pointer'/0> [24] 
   0.0      39.07     0.00        3     0.00     7.00 <predicate tree234:'set'/4 mode 1> [15] 
   0.0      39.07     0.00        3     0.00     0.00 <predicate 'compare'/3 mode 3> [27] 
   0.0      39.07     0.00        1     0.00 39055.00 <predicate poly:'main3'/3 mode 0> [2] 
@@ -321,13 +321,13 @@ name		the name of the procedure followed by its index number.
 
 alphabetic listing:
 
-[24]	<compare/3 predicate for type mercury_builtin:'c_pointer'/0>
+[22]	<compare/3 predicate for type builtin:'c_pointer'/0>
 [27]	<predicate 'compare'/3 mode 3>
 [1]	<predicate 'main'/2 mode 0>   
 [11]	<predicate io:'init_state'/2 mode 0>
 [12]	<predicate io:'insert_std_stream_names'/2 mode 0>
-[23]	<predicate io:'write_int'/3 mode 0>
-[22]	<predicate io:'write_string'/3 mode 0>
+[24]	<predicate io:'write_int'/3 mode 0>
+[23]	<predicate io:'write_string'/3 mode 0>
 [13]	<predicate map:'set'/4 mode 1>
 [16]	<predicate poly:'add_to_order_zero_term'/3 mode 0>
 [3]	<predicate poly:'main1'/1 mode 0>
