@@ -66,7 +66,7 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 			VnTables0, VnTables, Templocs0, Templocs, Instrs)
 	;
-		{ Node = node_origlval(Vnlval) },
+		{ Node = node_origlval(_Vnlval) },
 		{ Nodes = Nodes0 },
 		{ VnTables = VnTables0 },
 		{ Templocs = Templocs0 },

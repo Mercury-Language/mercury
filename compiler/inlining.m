@@ -224,7 +224,6 @@ inlining__create_variables([V|Vs], Varset0, VarTypes0, Subn0, CVars,
 	(
 		map__contains(Subn0, V)
 	->
-		NV = V,
 		Varset1 = Varset0,
 		Subn1 = Subn0,
 		VarTypes1 = VarTypes0

@@ -245,9 +245,9 @@ vn__separate_tag_test([Instr0 | Instrs0], Instrs) :-
 	vn__separate_tag_test(Instrs0, Instrs1),
 	Instr0 = Uinstr0 - Comment,
 	(
-		Uinstr0 = if_val(binop(and, Test1, Test2), Addr),
+		Uinstr0 = if_val(binop(and, Test1, Test2), _Addr),
 		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
-		Test2 = binop(eq, lval(field(Tag, Rval, Index)), FieldVal)
+		Test2 = binop(eq, lval(field(Tag, Rval, _Index)), _FieldVal)
 	->
 		% separating these tests would require introducing nested ifs,
 		% which would break up the extended basic block
@@ -771,7 +771,7 @@ vn__process_parallels(Pars, Livemap, Instr0, Instr, AllBlocks, Extras) -->
 		{ Uinstr0 = if_val(Rval, label(Label)) }
 	->
 		( { Pars = [Par] } ->
-			( { Par = parallel(Label, NewLabel, ParEntries) } ->
+			( { Par = parallel(Label, _NewLabel, _ParEntries) } ->
 				vn__process_parallel(Par, Livemap, AllBlocks,
 					FinalLabel, Extras),
 				{ Instr = if_val(Rval, label(FinalLabel))
@@ -786,7 +786,7 @@ vn__process_parallels(Pars, Livemap, Instr0, Instr, AllBlocks, Extras) -->
 		{ Uinstr0 = goto(label(Label)) }
 	->
 		( { Pars = [Par] } ->
-			( { Par = parallel(Label, NewLabel, ParEntries) } ->
+			( { Par = parallel(Label, _NewLabel, _ParEntries) } ->
 				vn__process_parallel(Par, Livemap, AllBlocks,
 					FinalLabel, Extras),
 				{ Instr = goto(label(FinalLabel)) - Comment }

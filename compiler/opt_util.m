@@ -256,12 +256,6 @@
 :- pred opt_util__has_both_incr_decr_sp(list(instruction)).
 :- mode opt_util__has_both_incr_decr_sp(in) is semidet.
 
-	% Remove all incr_sp and decr_sp from an instruction sequence.
-
-:- pred opt_util__remove_both_incr_decr_sp(list(instruction),
-	list(instruction)).
-:- mode opt_util__remove_both_incr_decr_sp(di, uo) is det.
-
 	% Find out what rvals, if any, are needed to access an lval.
 
 :- pred opt_util__lval_access_rvals(lval, list(rval)).
@@ -1145,17 +1139,6 @@ opt_util__has_both_incr_decr_sp_2([Uinstr - _ | Instrs],
 	),
 	opt_util__has_both_incr_decr_sp_2(Instrs,
 		HasIncr1, HasIncr, HasDecr1, HasDecr).
-
-opt_util__remove_both_incr_decr_sp([], []).
-opt_util__remove_both_incr_decr_sp([Instr0 | Instrs0], Instrs) :-
-	opt_util__remove_both_incr_decr_sp(Instrs0, Instrs1),
-	( Uinstr = incr_sp(_) - _ ->
-		Instrs = Instrs1
-	; Uinstr = decr_sp(_) - _ ->
-		Instrs = Instrs1
-	;
-		Instrs = [Instr0 | Instrs1]
-	).
 
 opt_util__touches_nondet_ctrl([], no).
 opt_util__touches_nondet_ctrl([Uinstr - _ | Instrs], Touch) :-

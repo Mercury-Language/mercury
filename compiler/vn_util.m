@@ -248,8 +248,8 @@ vn__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval = vn_binop((+), Vn21, VnConst)
 		;
 						% c1+e2 => e2+c1
-			Vnrval1 = vn_const(int_const(I1)),
-			Vnrval2 = vn_binop((+), Vn21, Vn22)
+			Vnrval1 = vn_const(int_const(_I1)),
+			Vnrval2 = vn_binop((+), _Vn21, _Vn22)
 		->
 			Vnrval = vn_binop((+), Vn2, Vn1),
 			VnTables = VnTables0
@@ -287,8 +287,8 @@ vn__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 			Vnrval1 = vn_binop((+), Vn11, Vn12),
 			vn__lookup_defn(Vn12, Vnrval12, "vn__simplify_vnrval",
 				VnTables0),
-			Vnrval12 = vn_const(int_const(I12)),
-			Vnrval2 = vn_binop((+), Vn21, Vn22)
+			Vnrval12 = vn_const(int_const(_I12)),
+			Vnrval2 = vn_binop((+), _Vn21, _Vn22)
 		->
 			vn__vnrval_to_vn(vn_binop((+), Vn11, Vn2), VnExpr,
 				VnTables0, VnTables),

@@ -211,7 +211,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			map__search(Instrmap, RetLabel, RetInstr)
 		->
 			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
-				DestLabel, DestInstr),
+				DestLabel, _DestInstr),
 			( RetLabel = DestLabel ->
 				NewInstrs = [Instr0],
 				Mod0 = no
@@ -268,7 +268,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		;
 			map__search(Instrmap, TargetLabel, TargetInstr),
 			jumpopt__final_dest(TargetLabel, TargetInstr,
-				Instrmap, DestLabel, DestInstr),
+				Instrmap, DestLabel, _DestInstr),
 			map__search(Blockmap, DestLabel, Block)
 		->
 			opt_util__filter_out_labels(Block, NewInstrs0),

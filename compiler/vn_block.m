@@ -320,7 +320,7 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_label(Label),
+		Vn_instr = vn_label(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,

@@ -96,7 +96,8 @@ labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 labelopt__instr_list([], _Fallthrough, _Usemap, [], no).
 labelopt__instr_list([Instr0 | MoreInstrs0],
 		Fallthrough, Usemap, MoreInstrs, Mod) :-
-	( Instr0 = label(Label) - Comment ->
+	Instr0 = Uinstr0 - _Comment,
+	( Uinstr0 = label(Label) ->
 		(
 		    (   Label = exported(_)
 		    ;	Label = local(_)
@@ -118,7 +119,6 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 		;
 			labelopt__eliminate(Instr0, no, ReplInstrs, Mod0)
 		),
-		Instr0 = Uinstr0 - Comment,
 		opt_util__can_instr_fall_through(Uinstr0, Canfallthrough),
 		( Canfallthrough = yes ->
 			Fallthrough1 = Fallthrough
