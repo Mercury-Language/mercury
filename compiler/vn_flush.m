@@ -15,8 +15,8 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, vn_temploc.
-:- import_module llds, list, io.
+:- import_module llds, vn_type, vn_table, vn_temploc.
+:- import_module list, io.
 
 	% Flush the given nodes in the given order.
 
