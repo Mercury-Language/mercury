@@ -59,7 +59,7 @@ The module system has the following high-level constructs.
 	(Use of this declaration in large programs is probably a bad idea,
 	but it may be useful for small programs. Also, it would probably
 	not be a good idea to use this declaration together with low-level
-	`export' directives [described below] that don't specify an
+	export directives [described below] that don't specify an
 	explicit module qualifier, because it could cause accidental
 	re-exporting of imported symbols.)
 
@@ -95,7 +95,7 @@ than entire modules.
 They can be used instead of (or in conjunction with) the higher-level
 declarations.
 
-:- export Sym1, Sym2, ..., SumN.
+:- export_sym Sym1, Sym2, ..., SumN.
 	Sym1, Sym2, ..., SymN may be any symbol specifiers.
 	All symbols matching those symbol specifiers are exported.
 
@@ -116,9 +116,9 @@ declarations.
 			Matches type names matched by the SymbolNameSpecifier,
 			and also matches any constructors for the matched type
 			names.
-		op(SymbolNameSpecifier)
-			Matches only operators.
-		module(Module)
+		op(OpSpecifier)
+			Matches any operators matched by OpSpecifier.
+		module(ModuleSpecifier)
 			Matches all symbols in the specified module.
 
 	A ConstructorSpecifier is one of
@@ -142,6 +142,16 @@ declarations.
 			types.
 		SymbolSpecifier
 
+	An OpSpecifier is one of
+		SymbolSpecifier
+			Matches any operators matched by SymbolSpecifier
+		infix(SymbolSpecifier)
+			Matches only infix operators
+		postfix(SymbolSpecifier)
+			Matches only postfix operators
+		prefix(SymbolSpecifier)
+			Matches only prefix operators
+
 	A SymbolSpecifier is one of
 		SymbolName
 		SymbolName/Arity
@@ -151,19 +161,21 @@ declarations.
 		Name
 			Matches symbols with the specified name in the
 			current namespace.
-		Module:Name
+		ModuleSpecifier:Name
 			Matches symbols with the specified name exported
 			by the specified module.
 
+	A ModuleSpecifier is just an identifier.
+
 :- export_pred Pred1, ..., PredN.
 	This is just an abbreviation for
-		:- export pred(Pred1), ..., pred(PredN).
+		:- export_sym pred(Pred1), ..., pred(PredN).
 	All predicates matched by the listed PredicateSpecifiers are exported.
 	If there is any ambiguity, *all* matching predicates are exported.
 
 :- export_adt Type1, ..., TypeN.
 	This is just an abbreviation for 
-		:- export adt(Type1), ..., adt(TypeN).
+		:- export_sym adt(Type1), ..., adt(TypeN).
 	The listed types are exported.  Constructors for these types
 	are not exported, so this can be used to create abstract data types,
 	hence the name. (However this declaration does not prevent
@@ -172,15 +184,15 @@ declarations.
 	
 :- export_cons Cons1, ..., ConsN.
 	This is just an abbreviation for
-		:- export cons(Cons1), ..., cons(ConsN).
+		:- export_sym cons(Cons1), ..., cons(ConsN).
 
 :- export_op Op1, ..., OpN.
 	This is just an abbreviation for
-		:- export op(Op1), ..., op(OpN).
+		:- export_sym op(Op1), ..., op(OpN).
 
 :- export_type Type1, ..., TypeN.
 	This is just an abbreviation for
-		:- export type(Type1), ..., type(TypeN).
+		:- export_sym type(Type1), ..., type(TypeN).
 	The listed types and all the constructors for the listed types
 	are exported.
 
@@ -220,7 +232,7 @@ just `module', `import_sym', and `export_sym'.
 SOME EXAMPLE MODULES
 %-----------------------------------------------------------------------------%
 
-	% Version using explicit `export' declaration.
+	% Version using explicit export declaration.
 
 	% Bag ADT.
 	% Implemented as unsorted lists.
