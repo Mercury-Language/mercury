@@ -1953,6 +1953,26 @@ List of the NU-Prolog object files (@file{*.no}) for the Mercury
 library.
 
 @sp 1
+@item MERCURY_NU_OVERRIDING_LIB_OBJS
+List of the NU-Prolog object files (@file{*.no}) for the Mercury
+library which override definitions given in @samp{MERCURY_NU_LIB_OBJS}.
+
+@sp 1
+@item MERCURY_SP_LIB_DIR
+Directory for the Sicstus-Prolog object files (@file{*.ql}) for the
+Sicstus-Prolog Mercury library.
+
+@sp 1
+@item MERCURY_SP_LIB_OBJS
+List of the Sicstus-Prolog object files (@file{*.ql}) for the Mercury
+library.
+
+@sp 1
+@item MERCURY_SP_OVERRIDING_LIB_OBJS
+List of the Sicstus-Prolog object files (@file{*.ql}) for the Mercury
+library which override definitions given in @samp{MERCURY_SP_LIB_OBJS}.
+
+@sp 1
 @item MERCURY_COMPILER
 Filename of the Mercury Compiler.
 
