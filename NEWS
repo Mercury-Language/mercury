@@ -36,6 +36,14 @@ Changes to the Mercury language:
   information, see the "Impurity" chapter of the Mercury Language
   Reference Manual.
 
+* We've added `:- pragma c_import_module' declarations, which are
+  used to make the C declarations for predicates and functions with
+  `:- pragma export' declarations in the imported module visible
+  to any C code in the importing module. `mmake' uses
+  `:- pragma c_import_module' declarations to make sure that the
+  header file for the imported module is built before it is needed,
+  which it can't do if the header file is explicitly #included.
+
 * We've removed the undocumented operators `export_adt', `export_cons',
   `export_module', `export_op', `export_pred', `export_sym', `export_type',
   `import_adt', `import_cons', `import_op', `import_pred', `import_sym',

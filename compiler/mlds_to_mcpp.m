@@ -44,7 +44,7 @@
 :- import_module builtin_ops, c_util, modules, tree.
 :- import_module hlds_pred. % for `pred_proc_id'.
 :- import_module prog_data, prog_out, llds_out.
-:- import_module rtti, type_util, error_util.
+:- import_module foreign, rtti, type_util, error_util.
 
 :- import_module ilds, ilasm, il_peephole.
 :- import_module ml_util, ml_code_util.
@@ -172,11 +172,11 @@ generate_mcplusplus_code(MLDS) -->
 		io__state, io__state).
 :- mode generate_foreign_code(in, in, di, uo) is det.
 generate_foreign_code(_ModuleName, 
-		mlds__foreign_code(_RevHeaderCode, RevBodyCode,
+		mlds__foreign_code(_RevHeaderCode, _RevImports, RevBodyCode,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", 
-		(pred(llds__user_foreign_code(Lang, Code, Context)::in,
+		(pred(user_foreign_code(Lang, Code, Context)::in,
 				di, uo) is det -->
 			( { Lang = managed_cplusplus } ->
 				mlds_to_c__output_context(mlds__make_context(
@@ -193,11 +193,11 @@ generate_foreign_code(_ModuleName,
 		io__state, io__state).
 :- mode generate_foreign_header_code(in, in, di, uo) is det.
 generate_foreign_header_code(_ModuleName, 
-		mlds__foreign_code(RevHeaderCode, _RevBodyCode,
+		mlds__foreign_code(RevHeaderCode, _RevImports, _RevBodyCode,
 			_ExportDefns)) -->
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
-		(pred(llds__foreign_decl_code(Lang, Code, _Context)::in,
+		(pred(foreign_decl_code(Lang, Code, _Context)::in,
 			di, uo) is det -->
 			( { Lang = managed_cplusplus } ->
 				io__write_string(Code)

@@ -39,7 +39,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io, globals, timestamp.
+:- import_module foreign, prog_data, prog_io, globals, timestamp.
 :- import_module std_util, bool, list, map, set, io.
 
 %-----------------------------------------------------------------------------%
@@ -277,6 +277,9 @@
 		foreign_code :: contains_foreign_code,
 				% Whether or not the module contains
 				% foreign code (and which languages if it does)
+		foreign_import_module_info :: foreign_import_module_info,
+				% The `:- pragma foreign_import_module'
+				% declarations.
 		items :: item_list,
 				% The contents of the module and its imports
 		error :: module_error,
@@ -1139,6 +1142,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % header file, which currently we don't.
 
 pragma_allowed_in_interface(foreign_decl(_, _), no).
+pragma_allowed_in_interface(foreign_import_module(_, _), no).
 pragma_allowed_in_interface(foreign_code(_, _), no).
 pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
 pragma_allowed_in_interface(foreign_type(_, _, _, _), yes).
@@ -1555,7 +1559,7 @@ find_read_module(ReadModules, ModuleName, Suffix, ReturnTimestamp,
 init_module_imports(SourceFileName, ModuleName, Items, PublicChildren,
 			FactDeps, MaybeTimestamps, Module) :-
 	Module = module_imports(SourceFileName, ModuleName, [], [], [], [],
-		PublicChildren, FactDeps, unknown, Items, no_module_errors,
+		PublicChildren, FactDeps, unknown, [], Items, no_module_errors,
 		MaybeTimestamps).
 
 module_imports_get_source_file_name(Module, Module ^ source_file_name).
@@ -1785,7 +1789,8 @@ warn_if_duplicate_use_import_decls(ModuleName,
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
 			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
-			ContainsForeignCode, Items, _Error, _Timestamps) },
+			ContainsForeignCode, ForeignImports0,
+			Items, _Error, _Timestamps) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ module_name_to_make_var_name(ModuleName, MakeVarName) },
 	module_name_to_file_name(ModuleName, ".d", yes, DependencyFileName),
@@ -2006,25 +2011,35 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				ObjFileName, " ",
 				SplitObjPattern, " :"
 			]),
-			write_dependencies_list(AllDeps, ".h", DepStream),
-
-			%
-			% We also need to tell make how to make the header
-			% files.  The header files are actually built by
-			% the same command that creates the .c files, so
-			% we just make them depend on the .c files.
-			%
-			module_name_to_file_name(ModuleName, ".c", no,
-							CFileName),
-			module_name_to_file_name(ModuleName, ".h", no,
-							HeaderFileName),
-			io__write_strings(DepStream, [
-					"\n\n", HeaderFileName, 
-					" : ", CFileName
-			])
+			write_dependencies_list(AllDeps, ".h", DepStream)
 		;
 			[]
 		),
+
+		%
+		% We need to tell make how to make the header
+		% files.  The header files are actually built by
+		% the same command that creates the .c or .s file,
+		% so we just make them depend on the .c or .s files.
+		% This is needed for the --high-level-code rule above,
+		% and for the rules introduced for
+		% `:- pragma foreign_import_module' declarations.
+		% In some grades the header file won't actually be built
+		% (e.g. LLDS grades for modules not containing
+		% `:- pragma export' declarations), but this
+		% rule won't do any harm.
+		%
+		module_name_to_file_name(ModuleName, ".c", no, CFileName),
+		module_name_to_file_name(ModuleName, ".s", no, AsmFileName),
+		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
+		io__write_strings(DepStream, [
+				"\n\n",
+				"ifeq ($(TARGET_ASM),yes)\n",
+				HeaderFileName, " : ", AsmFileName, "\n",
+				"else\n",
+				HeaderFileName, " : ", CFileName, "\n",
+				"endif"
+		]),
 
 		module_name_to_file_name(ModuleName, ".date", no,
 						DateFileName),
@@ -2072,12 +2087,36 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			[]
 		),
 		
-		{ ContainsForeignCode = contains_foreign_code(LangSet)
+		{ ContainsForeignCode = contains_foreign_code(LangSet),
+			ForeignImports = ForeignImports0
 		; ContainsForeignCode = unknown,
-			get_item_list_foreign_code(Globals, Items, LangSet)
+			get_item_list_foreign_code(Globals, Items,
+				LangSet, ForeignImports)
 		; ContainsForeignCode = no_foreign_code,
-			set__init(LangSet)
+			set__init(LangSet),
+			ForeignImports = ForeignImports0
 		},
+
+		%
+		% Handle dependencies introduced by
+		% `:- pragma foreign_import_module' declarations.
+		%
+		{ ForeignImportedModules =
+		    list__map(
+			(func(foreign_import_module(_, ForeignImportModule, _))
+				= ForeignImportModule),
+			ForeignImports) },
+		( { ForeignImports = [] } ->
+			[]
+		;
+			io__write_string(DepStream, "\n\n"),
+			io__write_string(DepStream, ObjFileName),
+			io__write_string(DepStream, " : "),
+			write_dependencies_list(ForeignImportedModules, ".h",
+				DepStream),
+			io__write_string(DepStream, "\n\n")
+		),
+
 		(
 			{ Target = il },
 			{ not set__empty(LangSet) }
@@ -2787,11 +2826,17 @@ generate_deps_map([Module | Modules], DepsMap0, DepsMap) -->
 	( { Done = no } ->
 		{ map__set(DepsMap1, Module, deps(yes, ModuleImports),
 			DepsMap2) },
+		{ ForeignImportedModules =
+		    list__map(
+			(func(foreign_import_module(_, ImportedModule, _))
+				= ImportedModule),
+			ModuleImports ^ foreign_import_module_info) },
 		{ list__condense(
 			[ModuleImports ^ parent_deps,
 			ModuleImports ^ int_deps,
 			ModuleImports ^ impl_deps,
 			ModuleImports ^ public_children, % a.k.a. incl_deps
+			ForeignImportedModules,
 			Modules],
 			Modules1) }
 	;
@@ -3936,15 +3981,15 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 		ExtraLinkObjs).
 
 :- pred get_item_list_foreign_code(globals::in, item_list::in,
-		set(foreign_language)::out) is det.
+	set(foreign_language)::out, foreign_import_module_info::out) is det.
 
-get_item_list_foreign_code(Globals, Items, LangSet) :-
+get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports) :-
 	globals__get_backend_foreign_languages(Globals, BackendLangs),
 	globals__get_target(Globals, Target),
-	list__foldl2((pred(Item::in, Set0::in, Set::out, Seen0::in, Seen::out)
-			is det :-
+	list__foldl3((pred(Item::in, Set0::in, Set::out, Seen0::in, Seen::out,
+			Imports0::in, Imports::out) is det :-
 		(
-			Item = pragma(Pragma) - _Context
+			Item = pragma(Pragma) - Context
 		->
 			% The code here should match the way that mlds_to_gcc.m
 			% decides whether or not to call mlds_to_c.m.  XXX Note
@@ -3959,7 +4004,8 @@ get_item_list_foreign_code(Globals, Items, LangSet) :-
 				list__member(Lang, BackendLangs)
 			->
 				set__insert(Set0, Lang, Set),
-				Seen = Seen0
+				Seen = Seen0,
+				Imports = Imports0
 			;	
 				Pragma = foreign_proc(Attrs, Name, _, _, _, _)
 			->
@@ -3990,7 +4036,8 @@ get_item_list_foreign_code(Globals, Items, LangSet) :-
 						Seen = Seen0
 					)
 				),
-				Set = Set0
+				Set = Set0,
+				Imports = Imports0
 			;	
 				% XXX `pragma export' should not be treated as
 				% foreign, but currently mlds_to_gcc.m doesn't
@@ -4005,15 +4052,30 @@ get_item_list_foreign_code(Globals, Items, LangSet) :-
 				% XXX we assume lang = c for exports
 				Lang = c,
 				set__insert(Set0, Lang, Set),
-				Seen = Seen0
+				Seen = Seen0,
+				Imports = Imports0
+			;
+				% XXX handle lang \= c for
+				% `:- pragma foreign_import_module'.
+				Pragma = foreign_import_module(Lang, Import),
+				Lang = c,
+				list__member(c, BackendLangs)
+			->
+				Set = Set0,
+				Seen = Seen0,
+				Imports = [foreign_import_module(Lang,
+						Import, Context) | Imports0]
 			;
 				Set = Set0,
-				Seen = Seen0
+				Seen = Seen0,
+				Imports = Imports0
 			)
 		;
 			Set = Set0,
-			Seen = Seen0
-		)), Items, set__init, LangSet0, map__init, LangMap),
+			Seen = Seen0,
+			Imports = Imports0
+		)), Items, set__init, LangSet0, map__init, LangMap,
+				[], ForeignImports),
 		Values = map__values(LangMap),
 		LangSet = set__insert_list(LangSet0, Values).
 
@@ -4312,27 +4374,20 @@ init_dependencies(FileName, Error, Globals, ModuleName - Items,
 	get_fact_table_dependencies(Items, FactTableDeps),
 
 	% Figure out whether the items contain foreign code.
-	% As an optimization, we do this only if target = asm or target = il
-	% since those are the only times we'll need that field.
-	globals__get_target(Globals, Target),
+	get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports),
 	ContainsForeignCode =
-		(if (Target = asm ; Target = il) then
-			(if 
-				get_item_list_foreign_code(Globals,
-					Items, LangSet),
-				not set__empty(LangSet)
-			then
-				contains_foreign_code(LangSet)
-			else
-				no_foreign_code
-			)
+		(if 
+			not set__empty(LangSet)
+		then
+			contains_foreign_code(LangSet)
 		else
-			unknown
+			no_foreign_code
 		),
 
 	ModuleImports = module_imports(FileName, ModuleName, ParentDeps,
 		InterfaceDeps, ImplementationDeps, IndirectDeps, IncludeDeps,
-		FactTableDeps, ContainsForeignCode, [], Error, no).
+		FactTableDeps, ContainsForeignCode, ForeignImports,
+		[], Error, no).
 
 %-----------------------------------------------------------------------------%
 

@@ -283,7 +283,7 @@ get_il_data_rep(ILDataRep, IO0, IO) :-
 transform_mlds(MLDS0) = MLDS :-
 	AllExports = list__condense(
 		list__map(
-			(func(mlds__foreign_code(_, _, Exports)) = Exports),
+			(func(mlds__foreign_code(_, _, _, Exports)) = Exports),
 			map__values(MLDS0 ^ foreign_code))
 		),
 

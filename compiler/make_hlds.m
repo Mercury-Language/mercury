@@ -386,6 +386,10 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ module_add_foreign_decl(Lang, C_Header, Context,
 			Module0, Module) }
 	;
+		{ Pragma  = foreign_import_module(Lang, Import) },
+		{ module_add_foreign_import_module(Lang, Import, Context,
+			Module0, Module) }
+	;
 		% Handle pragma foreign procs later on (when we process
 		% clauses).
 		{ Pragma = foreign_proc(_, _, _, _, _, _) },

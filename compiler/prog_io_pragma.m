@@ -171,6 +171,41 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		    ErrorTerm)
 	).
 
+parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms,
+		ErrorTerm, _VarSet, Result) :-
+	(
+		PragmaTerms = [ImportTerm],
+		sym_name_and_args(ImportTerm, Import, [])
+	->
+		Result = ok(pragma(foreign_import_module(c, Import)))	
+	;
+		Result = error("wrong number of arguments or invalid module name in `:- pragma c_import_module' declaration", 
+			ErrorTerm)
+	).
+
+parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms,
+		ErrorTerm, _VarSet, Result) :-
+	(
+	    PragmaTerms = [LangTerm, ImportTerm],
+	    sym_name_and_args(ImportTerm, Import, [])
+	->
+	    ( parse_foreign_language(LangTerm, Language) ->
+		( Language = c ->
+		    Result = ok(pragma(
+		    	foreign_import_module(Language, Import)))
+		;
+		    Result = error("`:- pragma foreign_import_module' not yet supported for languages other than C", LangTerm)
+		)
+	    ;
+		Result = error("invalid foreign language in `:- pragma foreign_import_module' declaration",
+			LangTerm)
+	    )
+	;
+	    Result = error("wrong number of arguments or invalid module name in `:- pragma foreign_import_module' declaration", 
+			ErrorTerm)
+			
+	).
+
 :- pred parse_foreign_language(term, foreign_language).
 :- mode parse_foreign_language(in, out) is semidet.
 

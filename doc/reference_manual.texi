@@ -4923,10 +4923,37 @@ and linking that source file with the Mercury program
 (after having compiled it with a compiler for the specified programming
 language, if appropriate).
 
-Entities declared in @samp{pragma foreign_decl} declarations should be
+Entities declared in @samp{pragma foreign_decl} declarations are
 visible in @samp{pragma foreign_code} and @samp{pragma foreign_proc}
 declarations that specify the same foreign language and occur in in the
 same Mercury module.
+
+To make the declarations for Mercury predicates or functions
+exported to a foreign language using a @samp{pragma export}
+declaration visible to foreign code in a @samp{pragma foreign_code}
+or @samp{pragma foreign_proc} declaration, use a declaration of the form
+
+@example
+:- pragma foreign_import_module("@var{Lang}", @var{ImportedModule}).
+@end example
+
+where @var{ImportedModule} is the name of the module containing
+the @samp{pragma export} declarations.
+
+If @var{Lang} is @code{"C"} this is equivalent to
+@example
+:- pragma foreign_decl("C", "#include ""@var{ImportedModule.h}""").
+@end example
+
+where @file{@var{ImportedModule}.h} is the automatically generated
+header file containing the C declarations for the predicates
+and functions exported to C.
+
+@samp{pragma foreign_import_module} should be used instead of the
+explicit @code{#include} because @samp{pragma foreign_import_module}
+tells the implementation that @file{@var{ImportedModule}.h} must be built
+before the object file for the module containing the
+@samp{pragma foreign_import_module} declaration.
 
 @node Adding foreign definitions
 @section Adding foreign definitions
@@ -4939,13 +4966,13 @@ variables) may be included using a declaration of the form
 @end example
 
 This declaration will have effects equivalent to including the specified
-@var{DeclCode} in an automatically-generated source file of the specified
+@var{Code} in an automatically-generated source file of the specified
 programming language, in a place appropriate for definitions,
 and linking that source file with the Mercury program
 (after having compiled it with a compiler for the specified programming
 language, if appropriate).
 
-Entities declared in @samp{pragma foreign_code} declarations should be
+Entities declared in @samp{pragma foreign_code} declarations are
 visible in @samp{pragma foreign_proc} declarations that specify the same
 foreign language and occur in in the same Mercury module.
 
@@ -5004,8 +5031,7 @@ Use the string "MC++" to set the foreign language to Managed C++.
 
 The input and output variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-``Passing data to and from C'' in the ``C Interface''
-chapter of the Mercury Language Reference Manual.
+@ref{Passing data to and from C}.
 
 The C code fragment may declare local variables, but it should not
 declare any labels or static variables unless there is also a Mercury
@@ -5088,6 +5114,17 @@ or it may contain any C declarations, for example
 Mercury automatically includes certain headers such as @code{<stdlib.h>},
 but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
+
+If a Mercury predicate or function exported using 
+a @samp{pragma export} declaration is to be used within a
+@samp{:- pragma foreign_code} or @samp{:- pragma foreign_proc}
+declaration the header file for the module containing the
+@samp{pragma export} declaration should be included using a
+@samp{pragma foreign_import_module} declaration, for example 
+
+@example
+:- pragma foreign_import_module("C", exporting_module).
+@end example
 
 @node Using pragma foreign_code for C
 @subsubsection Using pragma foreign_code for C
@@ -5820,6 +5857,22 @@ in appropriate @samp{type_info} values corresponding to the types
 of the other arguments passed.  These @samp{type_info} arguments can
 be obtained using the Mercury @samp{type_of} function in the Mercury
 standard library module @samp{std_util}.
+
+To use the C declarations produced for @samp{pragma export} declarations
+in C code within a Mercury module, use a @samp{pragma c_import_module}
+declaration, for example 
+
+@example
+:- pragma c_import_module(imported_module).
+@end example
+
+This is equivalent to
+@example
+:- pragma c_header_code("#include ""imported_module.h""").
+@end example
+but it tells the implementation that the object file for the
+module containing the @samp{pragma c_import_module} declaration
+should not be built before @file{imported_module.h} is built.
 
 @node Linking with C object files 
 @section Linking with C object files 

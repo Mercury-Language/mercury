@@ -291,11 +291,6 @@
 :- import_module prog_data, builtin_ops, rtti, code_model.
 :- import_module foreign, type_util.
 
-% To avoid duplication, we use a few things from the LLDS
-% (specifically stuff for the C interface).
-% It would be nice to avoid this dependency...
-:- import_module llds.
-
 :- import_module bool, list, assoc_list, std_util, map.
 
 %-----------------------------------------------------------------------------%
@@ -759,6 +754,7 @@
 :- type mlds__foreign_code
 	---> mlds__foreign_code(
 		foreign_decl_info,
+		foreign_import_module_info,
 		list(user_foreign_code),
 		list(mlds__pragma_export)
 	).

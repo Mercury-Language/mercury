@@ -805,6 +805,7 @@ ml_code_gen(ModuleInfo, MLDS) -->
 
 ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 	{ module_info_get_foreign_decl(ModuleInfo, ForeignDecls) },
+	{ module_info_get_foreign_import_module(ModuleInfo, ForeignImports) },
 	{ module_info_get_foreign_body_code(ModuleInfo, ForeignBodys) },
 	globals__io_get_backend_foreign_languages(BackendForeignLanguages),
 	
@@ -812,6 +813,9 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 			foreign__filter_decls(Lang,
 				ForeignDecls, WantedForeignDecls, 
 				_OtherForeignDecls),
+			foreign__filter_imports(Lang,
+				ForeignImports, WantedForeignImports, 
+				_OtherForeignImports),
 			foreign__filter_bodys(Lang,
 				ForeignBodys, WantedForeignBodys,
 				_OtherForeignBodys),
@@ -828,8 +832,8 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 				MLDS_PragmaExports = []
 			),
 			MLDS_ForeignCode = mlds__foreign_code(
-				WantedForeignDecls, MLDSWantedForeignBodys,
-				MLDS_PragmaExports),
+				WantedForeignDecls, WantedForeignImports,
+				MLDSWantedForeignBodys, MLDS_PragmaExports),
 			map__det_insert(Map0, Lang, 
 				MLDS_ForeignCode, Map)
 		), BackendForeignLanguages, map__init, All_MLDS_ForeignCode) }.

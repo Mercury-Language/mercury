@@ -171,6 +171,10 @@
 :- func mercury_pragma_foreign_decl_to_string(foreign_language, string)
 	= string.
 
+:- pred mercury_output_pragma_foreign_import_module(foreign_language,
+		module_name, io__state, io__state).
+:- mode mercury_output_pragma_foreign_import_module(in, in, di, uo) is det.
+
 :- pred mercury_output_ctor(constructor, tvarset, io__state, io__state).
 :- mode mercury_output_ctor(in, in, di, uo) is det.
 
@@ -450,6 +454,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 	;
 		{ Pragma = foreign_decl(Lang, ForeignHeaderString) },
 		mercury_output_pragma_foreign_decl(Lang, ForeignHeaderString)
+	;
+		{ Pragma = foreign_import_module(Lang, ModuleName) },
+		mercury_output_pragma_foreign_import_module(Lang, ModuleName)
 	;
 		{ Pragma = foreign_code(Lang, Code) }, 
 		mercury_output_pragma_foreign_body_code(Lang, Code)
@@ -2390,6 +2397,14 @@ mercury_format_pragma_foreign_decl(Lang, ForeignDeclString) -->
 
 mercury_format_foreign_language_string(Lang) -->
 	add_string("""" ++ foreign_language_string(Lang) ++ """").
+
+mercury_output_pragma_foreign_import_module(Lang, ModuleName) -->
+	io__write_string(":- pragma foreign_import_module("),
+	mercury_format_foreign_language_string(Lang),
+	io__write_string(", "),
+	mercury_output_bracketed_sym_name(ModuleName,
+		not_next_to_graphic_token),
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 

@@ -1300,7 +1300,8 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
 				_IndirectImports, _PublicChildren, _FactDeps,
-				_ForeignCode, _Items, _Error, _Timestamps) },
+				_ForeignCode, _ForeignImports, _Items,
+				_Error, _Timestamps) },
 			{ list__condense([Ancestors, InterfaceImports,
 				ImplementationImports], TransOptFiles) },
 			trans_opt__grab_optfiles(Imports1, TransOptFiles,
@@ -2954,16 +2955,34 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, GlobalData0, LLDS0,
 get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	module_info_name(HLDS, ModuleName),
 	module_info_get_foreign_decl(HLDS, ForeignDecls),
+	module_info_get_foreign_import_module(HLDS, ForeignImports),
 	module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
 	foreign__filter_decls(UseForeignLanguage, ForeignDecls, 
 		WantedForeignDecls, _OtherDecls),
+	foreign__filter_imports(UseForeignLanguage, ForeignImports, 
+		WantedForeignImports0, _OtherImports),
 	foreign__filter_bodys(UseForeignLanguage, ForeignBodyCode,
 		WantedForeignBodys, _OtherBodys),
 	export__get_foreign_export_decls(HLDS, Foreign_ExportDecls),
 	export__get_foreign_export_defns(HLDS, Foreign_ExportDefns),
+
+	% If this module contains `:- pragma export' declarations,
+	% add a "#include <module>.h" declaration.
+	% XXX pragma export is only supported for C.
+	( UseForeignLanguage = c, Foreign_ExportDecls \= [] ->
+		% We put the new include at the end since the list is
+		% stored in reverse, and we want this include to come
+		% first.
+		Import = foreign_import_module(c, ModuleName,
+				term__context_init),
+		WantedForeignImports = WantedForeignImports0 ++ [Import]
+	;
+		WantedForeignImports = WantedForeignImports0
+	),
+
 	Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
-		WantedForeignDecls, WantedForeignBodys,
-		Foreign_ExportDecls, Foreign_ExportDefns).
+		WantedForeignDecls, WantedForeignImports,
+		WantedForeignBodys, Foreign_ExportDecls, Foreign_ExportDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3025,7 +3044,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 
-	{ C_InterfaceInfo = foreign_interface_info(_, _, _, C_ExportDecls, _) },
+	{ C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _) },
 	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	%
@@ -3050,7 +3069,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		AllData, CFile, ComponentCount) -->
 	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
-		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
+		C_HeaderCode0, C_Includes, C_BodyCode0,
+		_C_ExportDecls, C_ExportDefns) },
 	{ llds_out__sym_name_mangle(ModuleSymName, MangledModuleName) },
 	{ string__append(MangledModuleName, "_module", ModuleName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
@@ -3065,8 +3085,9 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		{ mercury_compile__combine_chunks(ChunkedProcs, ModuleName,
 			ChunkedModules) }
 	),
-	maybe_add_header_file_include(C_ExportDecls, ModuleSymName,
-		C_HeaderCode0, C_HeaderCode),
+	list__map_foldl(make_foreign_import_header_code, C_Includes,
+		C_HeaderCode1),
+	{ C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1 },
 	{ CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
 		C_ExportDefns, GlobalVars, AllData, ChunkedModules) },
 	{ list__length(C_BodyCode, UserCCodeCount) },
@@ -3077,29 +3098,29 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 	{ ComponentCount is UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
-:- pred maybe_add_header_file_include(foreign_export_decls, module_name,
-	foreign_decl_info, foreign_decl_info, io__state, io__state).
-:- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
+:- pred make_foreign_import_header_code(foreign_import_module,
+		foreign_decl_code, io__state, io__state).
+:- mode make_foreign_import_header_code(in, out, di, uo) is det.
 
-maybe_add_header_file_include(C_ExportDecls, ModuleName, 
-		C_HeaderCode0, C_HeaderCode) -->
+make_foreign_import_header_code(
+		foreign_import_module(Lang, ModuleName, Context),
+		Include) -->
 	(
-		{ C_ExportDecls = [] },
-		{ C_HeaderCode = C_HeaderCode0 }
-	;
-		{ C_ExportDecls = [_|_] },
+		{ Lang = c },
 		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
 		{ string__append_list(
 			["#include """, HeaderFileName, """\n"],
 			IncludeString) },
-
-		{ term__context_init(Context) },
-		{ Include = foreign_decl_code(c, IncludeString, Context) },
-
-			% We put the new include at the end since the list is
-			% stored in reverse, and we want this include to come
-			% first.
-		{ list__append(C_HeaderCode0, [Include], C_HeaderCode) }
+		{ Include = foreign_decl_code(c, IncludeString, Context) }
+	;
+		{ Lang = csharp },
+		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for C#") }
+	;
+		{ Lang = managed_cplusplus },
+		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for Managed C++") }
+	;
+		{ Lang = il },
+		{ error("sorry, not yet implemented: `:- pragma foreign_import_module' for IL") }
 	).
 
 :- pred get_c_body_code(foreign_body_info, list(user_foreign_code)).

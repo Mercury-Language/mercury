@@ -29,11 +29,10 @@
 :- import_module builtin_ops, c_util, modules, tree.
 :- import_module hlds_pred. % for `pred_proc_id'.
 :- import_module prog_data, prog_out.
-:- import_module rtti, type_util, error_util.
+:- import_module foreign, rtti, type_util, error_util.
 
 :- import_module ilds, ilasm, il_peephole.
 :- import_module ml_util, ml_code_util.
-:- use_module llds. /* for user_c_code */
 
 :- import_module bool, int, map, string, list, assoc_list, term, std_util.
 :- import_module library, require, counter.
@@ -153,16 +152,17 @@ generate_csharp_code(MLDS) -->
 	io__nl.
 
 
-	% XXX we don't handle export decls.
+	% XXX we don't handle export decls or
+	% `:- pragma foreign_import_module'.
 :- pred generate_foreign_code(mlds_module_name, mlds__foreign_code,
 		io__state, io__state).
 :- mode generate_foreign_code(in, in, di, uo) is det.
 generate_foreign_code(_ModuleName, 
-		mlds__foreign_code(_RevHeaderCode, RevBodyCode,
+		mlds__foreign_code(_RevHeaderCode, _RevImports, RevBodyCode,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", 
-		(pred(llds__user_foreign_code(Lang, Code, _Context)::in,
+		(pred(user_foreign_code(Lang, Code, _Context)::in,
 				di, uo) is det -->
 			( { Lang = csharp } ->
 				io__write_string(Code)
@@ -172,16 +172,17 @@ generate_foreign_code(_ModuleName,
 			)					
 	)).
 
-	% XXX we don't handle export decls.
+	% XXX we don't handle export decls or
+	% `:- pragma foreign_import_module'.
 :- pred generate_foreign_header_code(mlds_module_name, mlds__foreign_code,
 		io__state, io__state).
 :- mode generate_foreign_header_code(in, in, di, uo) is det.
 generate_foreign_header_code(_ModuleName, 
-		mlds__foreign_code(RevHeaderCode, _RevBodyCode,
+		mlds__foreign_code(RevHeaderCode, _RevImports, _RevBodyCode,
 			_ExportDefns)) -->
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
-		(pred(llds__foreign_decl_code(Lang, Code, _Context)::in,
+		(pred(foreign_decl_code(Lang, Code, _Context)::in,
 			di, uo) is det -->
 			( { Lang = csharp } ->
 				io__write_string(Code)

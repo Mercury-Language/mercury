@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_module, llds.
+:- import_module prog_data, hlds_module, foreign.
 :- import_module io.
 
 	% From the module_info, get a list of foreign_export_decls,

@@ -250,7 +250,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% that were defined in other modules, but to call mlds_to_c
 		% for foreign_decls that were defined in the module that
 		% we're compiling.
-		{ ForeignCode = mlds__foreign_code(_Decls, [], []) },
+		{ ForeignCode = mlds__foreign_code(_Decls, _Imports, [], []) },
 		{ ForeignDefns = [] }
 	->
 		{ ContainsCCode = no },

@@ -90,7 +90,7 @@
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
 :- import_module mercury_to_mercury, mode_util, modules.
 :- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
-:- import_module special_pred, typecheck, type_util, instmap, (inst).
+:- import_module special_pred, typecheck, type_util, instmap, (inst), foreign.
 
 %-----------------------------------------------------------------------------%
 
@@ -1115,8 +1115,50 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_lookup_string_option(dump_hlds_options, VerboseDump),
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
-		{ module_info_get_foreign_decl(ModuleInfo, ForeignDecl) },
-		intermod__write_foreign_decl(ForeignDecl)
+		{ module_info_get_foreign_decl(ModuleInfo, RevForeignDecls) },
+		{ module_info_get_foreign_import_module(ModuleInfo,
+			RevForeignImports) },
+		{ module_info_get_pragma_exported_procs(ModuleInfo,
+			PragmaExportedProcs) },
+		{ ForeignDecls = list__reverse(RevForeignDecls) },
+		{ ForeignImports0 = list__reverse(RevForeignImports) },
+
+		%
+		% If this module contains `:- pragma export' declarations,
+		% they may be referred to by the C code we are writing
+		% to the `.opt' file, so write the implicit
+		% `:- pragma foreign_import_module("C", ModuleName).' 
+		% to the `.opt' file.
+		%
+		% XXX We should do this, but mmake can't handle
+		% the extra dependencies properly yet, so building
+		% the standard library fails (mmake attempts to build
+		% tree234.o before std_util.h is built).
+		%
+		{ semidet_fail, PragmaExportedProcs \= [] ->
+			% XXX Currently we only handle procedures
+			% exported to C.
+			module_info_name(ModuleInfo, ModuleName),
+			ForeignImportThisModule = foreign_import_module(c,
+				ModuleName, term__context_init),
+			ForeignImports =
+				[ForeignImportThisModule | ForeignImports0]
+		;
+			ForeignImports = ForeignImports0
+		},
+		list__foldl(
+		    (pred(ForeignImport::in, di, uo) is det -->
+		    	{ ForeignImport = foreign_import_module(Lang,
+						Import, _) },
+		    	mercury_output_pragma_foreign_import_module(Lang,
+				Import)
+		    ), ForeignImports),
+
+		list__foldl(
+		    (pred(ForeignDecl::in, di, uo) is det -->
+		    	{ ForeignDecl = foreign_decl_code(Lang, Header, _) },
+		    	mercury_output_pragma_foreign_decl(Lang, Header)
+		    ), ForeignDecls)
 	;
 		[]
 	),
@@ -1138,15 +1180,6 @@ intermod__write_modules([Module | Rest]) -->
 		io__write_string(", "),
 		intermod__write_modules(Rest)
 	).
-
-:- pred intermod__write_foreign_decl(list(foreign_decl_code)::in,
-				io__state::di, io__state::uo) is det.
-
-intermod__write_foreign_decl([]) --> [].
-intermod__write_foreign_decl(
-		[foreign_decl_code(Language, Header, _) | Headers]) -->
-        intermod__write_foreign_decl(Headers),
-        mercury_output_pragma_foreign_decl(Language, Header).
 
 :- pred intermod__write_types(assoc_list(type_id, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
@@ -2013,7 +2046,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .opt files for imported and ancestor modules.
 		%
 	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
-				ImplementationDeps0, _, _, _, _, _, _, _) },
+				ImplementationDeps0, _, _, _, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),

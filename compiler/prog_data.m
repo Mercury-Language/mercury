@@ -156,27 +156,17 @@
 			%	whether or not the code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, Foreign Code Implementation Info
-	
-	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
-			maybe(list(mode)), type_subst, tvarset, set(type_id))
-			% PredName, SpecializedPredName, Arity,
-			% PredOrFunc, Modes if a specific procedure was
-			% specified, type substitution (using the variable
-			% names from the pred declaration), TVarSet,
-			% Equivalence types used
 
 	;	foreign_type(backend, (type), sym_name, sym_name)
 			% Backend, MercuryType, MercuryTypeName,
 			% ForeignType, ForeignTypeLocation
 
-	;	inline(sym_name, arity)
-			% Predname, Arity
-
-	;	no_inline(sym_name, arity)
-			% Predname, Arity
-
-	;	obsolete(sym_name, arity)
-			% Predname, Arity
+	;	foreign_import_module(foreign_language, module_name)
+			% Equivalent to
+			% `:- pragma foreign_decl(Lang, "#include <module>.h").'
+			% except that the name of the header file is not
+			% hard-coded, and mmake can use the dependency
+			% information.
 
 	;	export(sym_name, pred_or_func, list(mode),
 			string)
@@ -190,6 +180,23 @@
 			%    whether or not the foreign code may call Mercury,
 			%    whether or not the foreign code is thread-safe
 			% foreign function name.
+	
+	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
+			maybe(list(mode)), type_subst, tvarset, set(type_id))
+			% PredName, SpecializedPredName, Arity,
+			% PredOrFunc, Modes if a specific procedure was
+			% specified, type substitution (using the variable
+			% names from the pred declaration), TVarSet,
+			% Equivalence types used
+
+	;	inline(sym_name, arity)
+			% Predname, Arity
+
+	;	no_inline(sym_name, arity)
+			% Predname, Arity
+
+	;	obsolete(sym_name, arity)
+			% Predname, Arity
 
 	;	source_file(string)
 			% Source file name.

@@ -449,6 +449,7 @@ item_to_item_id_2(nothing(_), no).
 		maybe(maybe_pred_or_func_id)::out) is det.
 
 is_pred_pragma(foreign_decl(_, _), no).
+is_pred_pragma(foreign_import_module(_, _), no).
 is_pred_pragma(foreign_code(_, _), no).
 is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)) :-

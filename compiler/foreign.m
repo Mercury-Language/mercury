@@ -20,9 +20,48 @@
 
 :- import_module prog_data, globals.
 :- import_module hlds_module, hlds_pred.
-:- import_module llds.
 
-:- import_module bool, list, string.
+:- import_module bool, list, string, term.
+
+:- type foreign_decl_info ==	list(foreign_decl_code).	
+		% in reverse order
+:- type foreign_import_module_info == list(foreign_import_module).
+		% in reverse order
+:- type foreign_body_info   ==	list(foreign_body_code).
+		% in reverse order
+
+:- type foreign_decl_code	--->	
+		foreign_decl_code(foreign_language, string, prog_context).
+:- type foreign_import_module	--->
+		foreign_import_module(foreign_language, module_name,
+			prog_context).
+:- type foreign_body_code	--->
+		foreign_body_code(foreign_language, string, prog_context).
+
+:- type foreign_export_defns == list(foreign_export).
+:- type foreign_export_decls == list(foreign_export_decl).
+
+:- type foreign_export_decl
+	---> foreign_export_decl(
+		foreign_language,	% language of the export
+		string,		% return type
+		string,		% function name
+		string		% argument declarations
+	).
+
+	% Some code from a `pragma foreign_code' declaration that is not
+	% associated with a given procedure.
+:- type user_foreign_code
+	--->	user_foreign_code(
+			foreign_language,	% language of this code
+			string,			% code
+			term__context		% source code location
+		).
+
+	% the code for `pragma export' is generated directly as strings
+	% by export.m.
+:- type foreign_export	==	string.
+
 	% A type which is used to determine the string representation of a
 	% mercury type for various foreign languages.
 :- type exported_type.
@@ -46,6 +85,13 @@
 :- pred foreign__filter_decls(foreign_language, foreign_decl_info,
 		foreign_decl_info, foreign_decl_info).
 :- mode foreign__filter_decls(in, in, out, out) is det.
+
+	% Filter the module imports for the given foreign language. 
+	% The first return value is the list of matches, the second is
+	% the list of mis-matches.
+:- pred foreign__filter_imports(foreign_language, foreign_import_module_info,
+		foreign_import_module_info, foreign_import_module_info).
+:- mode foreign__filter_imports(in, in, out, out) is det.
 
 	% Filter the bodys for the given foreign language. 
 	% The first return value is the list of matches, the second is
@@ -178,6 +224,12 @@ foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _)::in) is semidet :-
 			WantedLang = Lang),
 		Decls0, LangDecls, NotLangDecls).
+
+foreign__filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
+	list__filter(
+		(pred(foreign_import_module(Lang, _, _)::in) is semidet :-
+			WantedLang = Lang),
+		Imports0, LangImports, NotLangImports).
 
 foreign__filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
 	list__filter((pred(foreign_body_code(Lang, _, _)::in) is semidet :-

@@ -49,7 +49,6 @@
 :- implementation.
 
 :- import_module ml_util.
-:- import_module llds.		% XXX needed for C interface types
 :- import_module llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
 				% llds_out__make_base_typeclass_info_name,
@@ -387,7 +386,7 @@ mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
 	;
 		% this can occur when compiling to a non-C target
 		% using "--mlds-dump all"
-		ForeignCode = foreign_code([], [], [])
+		ForeignCode = foreign_code([], [], [], [])
 	).
 
 %-----------------------------------------------------------------------------%
@@ -523,8 +522,8 @@ mlds_output_calls_to_register_tci(ModuleName,
 :- mode mlds_output_c_hdr_decls(in, in, in, di, uo) is det.
 
 mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
-	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevBodyCode,
-		ExportDefns) },
+	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevImports,
+		_RevBodyCode, ExportDefns) },
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)),
 	io__write_string("\n"),
@@ -556,8 +555,20 @@ mlds_output_c_decls(_, _) --> [].
 :- mode mlds_output_c_defns(in, in, in, di, uo) is det.
 
 mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
-	{ ForeignCode = mlds__foreign_code(_RevHeaderCode, RevBodyCode,
-		ExportDefns) },
+	{ ForeignCode = mlds__foreign_code(_RevHeaderCode, RevImports,
+		RevBodyCode, ExportDefns) },
+	{ Imports = list__reverse(RevImports) },
+	list__foldl(
+	    (pred(ForeignImport::in, di, uo) is det -->
+	    	{ ForeignImport = foreign_import_module(Lang, Import, _) },
+		( { Lang = c } ->
+			mlds_output_src_import(Indent,
+				mercury_import(
+					mercury_module_name_to_mlds(Import)))
+	    	;
+			{ sorry(this_file, "foreign code other than C") }
+		)
+	    ), Imports),
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", mlds_output_c_defn(Indent)),
 	io__write_string("\n"),

@@ -259,7 +259,7 @@
 :- import_module rtti, rtti_out, layout, layout_out, options, trace_params.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules, passes_aux.
-:- import_module c_util.
+:- import_module c_util, foreign.
 
 :- import_module int, char, string, std_util.
 :- import_module set, bintree_set, assoc_list, require.
