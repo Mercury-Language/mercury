@@ -977,7 +977,11 @@ Output detailed debugging traces of the mode checking.
 Output detailed debugging traces of deterministic analysis.
 
 @sp 1
-@item --vndebug <n>
+@item --debug-opt
+Output detailed debugging traces of the optimization process.
+
+@sp 1
+@item --debug-vn <n>
 Output detailed debugging traces of the value numbering optimization pass.
 The different bits in the number argument of this option control the
 printing of different types of tracing messages.
