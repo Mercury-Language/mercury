@@ -423,11 +423,14 @@
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
-			maybe(cell_to_reuse),
-					% Cell to destructively update.
+			how_to_construct,
+					% Specify whether to allocate
+					% statically, to allocate dynamically,
+					% or to reuse an existing cell
+					% (and if so, which cell).
 					% Constructions for which this
-					% field is `yes(_)' are described
-					% as "reconstructions".
+					% field is `reuse_cell(_)' are
+					% described as "reconstructions".
 			cell_is_unique,	% Can the cell be allocated
 					% in shared data.
 			maybe(rl_exprn_id)
@@ -569,6 +572,36 @@
 			prog_var,	% the LHS of the unification
 			unify_rhs,	% the RHS of the unification
 			unify_context	% the context of the unification
+		).
+
+	% Information on how to construct the cell for a
+	% construction unification.  The `construct_statically'
+	% alternative is set by the `mark_static_terms.m' pass,
+	% and is currently only used for the MLDS back-end
+	% (for the LLDS back-end, the same optimization is
+	% handled by code_exprn.m).
+	% The `reuse_cell' alternative is not yet used.
+:- type how_to_construct
+	--->	construct_statically(		% Use a statically initialized
+						% constant
+			args :: list(static_cons)
+		)
+	;	construct_dynamically		% Allocate a new term on the
+						% heap
+	;	reuse_cell(cell_to_reuse)	% Reuse an existing heap cell
+	.
+
+	% Information on how to construct an argument for
+	% a static construction unification.  Each such
+	% argument must itself have been constructed
+	% statically; we store here a subset of the fields
+	% of the original `construct' unification for the arg.
+	% This is used by the MLDS back-end.
+:- type static_cons
+	--->	static_cons(
+			cons_id,		% the cons_id of the functor
+			list(prog_var),		% the list of arg variables
+			list(static_cons)	% how to construct the args
 		).
 
 	% Information used to perform structure reuse on a cell.
@@ -1528,10 +1561,9 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	RHS = functor(ConsId, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	Mode = (free -> Inst) - (Inst -> Inst),
-	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, [], [],
-		VarToReuse, cell_is_unique, RLExprnId),
+		construct_dynamically, cell_is_unique, RLExprnId),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context),
 	set__singleton_set(NonLocals, Var),

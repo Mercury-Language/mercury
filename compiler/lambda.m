@@ -549,10 +549,9 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId, EvalMethod),
 
-	VarToReuse = no,
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,
-		VarToReuse, cell_is_unique, RLExprnId),
+		construct_dynamically, cell_is_unique, RLExprnId),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
 		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
 		ModuleInfo, MustRecomputeNonLocals).

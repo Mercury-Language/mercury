@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1038,7 +1038,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 			RHS = RHS0
 		),
 		Unification = construct(X, ConsId, ArgVars, ArgModes,
-			no, cell_is_unique, AditiInfo),
+			construct_dynamically, cell_is_unique, AditiInfo),
 		ModeInfo = ModeInfo0
 	;
 		instmap__is_reachable(InstMap)
@@ -1093,10 +1093,9 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		mode_is_output(ModuleInfo, ModeOfX)
 	->
 		% It's a construction.
-		ReuseVar = no,
 		RLExprnId = no,
 		Unification = construct(X, ConsId, ArgVars, ArgModes,
-			ReuseVar, cell_is_unique, RLExprnId),
+			construct_dynamically, cell_is_unique, RLExprnId),
 
 		% For existentially quantified data types,
 		% check that any type_info or type_class_info variables in the

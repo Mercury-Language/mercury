@@ -489,10 +489,9 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		{ Rhs = functor(cons(qualified(PredModule, PredName),
 				Arity), InputVars) },
 
-		{ VarToReuse = no },
 		{ RLExprnId = no },
 		{ Uni = construct(Var, ConsId, InputVars, Modes,
-			VarToReuse, cell_is_unique, RLExprnId) },
+			construct_dynamically, cell_is_unique, RLExprnId) },
 		{ Goal1 = unify(Var, Rhs, UniMode, Uni, Context) - Info },
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
@@ -828,11 +827,10 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Rhs = functor(cons(qualified(SuppModule, SuppName), 
 				SuppArity), LambdaInputs) },
 
-		{ VarToReuse = no },
 		{ RLExprnId = no },
 		{ Unify = construct(InputVar, 
 			pred_const(SuppPredId, SuppProcId, (aditi_bottom_up)), 
-			LambdaInputs, UniModes, VarToReuse,
+			LambdaInputs, UniModes, construct_dynamically,
 			cell_is_unique, RLExprnId) },
 		{ UnifyContext = unify_context(explicit, []) },
 

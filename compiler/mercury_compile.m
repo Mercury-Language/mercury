@@ -60,10 +60,11 @@
 :- import_module bytecode_gen, bytecode.
 
 	% the MLDS back-end
-:- import_module mlds.
-:- import_module ml_code_gen, ml_elim_nested, ml_tailcall.
-:- import_module rtti_to_mlds.
-:- import_module mlds_to_c.
+:- import_module mark_static_terms.		% HLDS -> HLDS
+:- import_module mlds.				% MLDS data structure
+:- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
+:- import_module ml_elim_nested, ml_tailcall.	% MLDS -> MLDS
+:- import_module mlds_to_c.			% MLDS -> C
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
@@ -1496,6 +1497,27 @@ mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, Process, HLDS) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_compile__maybe_mark_static_terms(module_info, bool, bool,
+		module_info, io__state, io__state).
+:- mode mercury_compile__maybe_mark_static_terms(in, in, in, out, di, uo)
+		is det.
+
+mercury_compile__maybe_mark_static_terms(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
+	( { StaticGroundTerms = yes } ->
+		maybe_write_string(Verbose,
+			"% Marking static ground terms...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_proc(mark_static_terms),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_compile__maybe_write_dependency_graph(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_write_dependency_graph(in, in, in, out, di, uo)
@@ -2253,7 +2275,11 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 		process_all_nonimported_nonaditi_procs, HLDS53),
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
-	{ HLDS = HLDS53 },
+	mercury_compile__maybe_mark_static_terms(HLDS53, Verbose, Stats,
+		HLDS60),
+	mercury_compile__maybe_dump_hlds(HLDS60, "60", "mark_static"),
+
+	{ HLDS = HLDS60 },
 	mercury_compile__maybe_dump_hlds(HLDS, "99", "final"),
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),

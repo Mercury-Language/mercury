@@ -445,8 +445,11 @@ implicitly_quantify_goal_2(
 	quantification__get_lambda_outside(LambdaOutsideVars),
 	{ quantification__get_unify_typeinfos(Unification0, TypeInfoVars) },
 
-	{ Unification0 = construct(_, _, _, _, CellToReuse0, _, _) ->
-		CellToReuse = CellToReuse0
+	{
+		Unification0 = construct(_, _, _, _,
+			reuse_cell(CellToReuse0), _, _)
+	->
+		CellToReuse = yes(CellToReuse0)
 	;
 		CellToReuse = no
 	},
@@ -692,13 +695,13 @@ implicitly_quantify_unify_rhs(
 	%
 	{
 		Unification0 = construct(ConstructVar, ConsId, Args0,
-			ArgModes0, Reuse, Uniq, AditiInfo)
+			ArgModes0, HowToConstruct, Uniq, AditiInfo)
 	->
 		map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
 		set__to_sorted_list(NonLocals, Args),
 		map__apply_to_list(Args, ArgModesMap, ArgModes),
 		Unification = construct(ConstructVar, ConsId, Args,
-			ArgModes, Reuse, Uniq, AditiInfo)
+			ArgModes, HowToConstruct, Uniq, AditiInfo)
 	;
 		% after mode analysis, unifications with lambda variables
 		% should always be construction unifications, but
@@ -891,8 +894,8 @@ quantification__goal_vars_2(NonLocalsToRecompute,
 		unify(A, B, _, Unification, _), Set0, LambdaSet0,
 		Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
-	( Unification = construct(_, _, _, _, Reuse0, _, _) ->
-		Reuse = Reuse0
+	( Unification = construct(_, _, _, _, reuse_cell(Reuse0), _, _) ->
+		Reuse = yes(Reuse0)
 	;
 		Reuse = no
 	),

@@ -433,9 +433,10 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 :- mode mlds_output_data_decl(in, in, di, uo) is det.
 
 mlds_output_data_decl(Name, Type) -->
-	mlds_output_type(Type),
+	mlds_output_type_prefix(Type),
 	io__write_char(' '),
-	mlds_output_fully_qualified_name(Name).
+	mlds_output_fully_qualified_name(Name),
+	mlds_output_type_suffix(Type).
 
 :- pred mlds_output_data_defn(mlds__qualified_entity_name, mlds__type,
 			mlds__initializer, io__state, io__state).
@@ -590,13 +591,18 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 	( { RetTypes = [] } ->
 		io__write_string("void")
 	; { RetTypes = [RetType] } ->
-		mlds_output_type(RetType)
+		mlds_output_type_prefix(RetType)
 	;
 		{ error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
 	mlds_output_fully_qualified_name(Name),
-	mlds_output_params(Indent, Name, Parameters).
+	mlds_output_params(Indent, Name, Parameters),
+	( { RetTypes = [RetType2] } ->
+		mlds_output_type_suffix(RetType2)
+	;
+		[]
+	).
 
 :- pred mlds_output_params(indent, qualified_entity_name, mlds__arguments,
 		io__state, io__state).
@@ -617,23 +623,31 @@ mlds_output_params(Indent, FuncName, Parameters) -->
 :- mode mlds_output_param(in, in, in, di, uo) is det.
 
 mlds_output_param(_Indent, qual(ModuleName, _FuncName), Name - Type) -->
-	mlds_output_type(Type),
-	io__write_char(' '),
-	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
+	mlds_output_data_decl(qual(ModuleName, Name), Type).
 
-:- pred mlds_output_func_type(func_params, io__state, io__state).
-:- mode mlds_output_func_type(in, di, uo) is det.
+:- pred mlds_output_func_type_prefix(func_params, io__state, io__state).
+:- mode mlds_output_func_type_prefix(in, di, uo) is det.
 
-mlds_output_func_type(Params) -->
-	{ Params = mlds__func_params(Parameters, RetTypes) },
+mlds_output_func_type_prefix(Params) -->
+	{ Params = mlds__func_params(_Parameters, RetTypes) },
 	( { RetTypes = [] } ->
 		io__write_string("void")
 	; { RetTypes = [RetType] } ->
 		mlds_output_type(RetType)
 	;
-		{ error("mlds_output_func_type: multiple return types") }
+		{ error("mlds_output_func_type_prefix: multiple return types") }
 	),
-	io__write_string(" (*)"),
+	% Note that mlds__func_type actually corresponds to a
+	% function _pointer_ type in C.  This is necessary because
+	% function types in C are not first class.
+	io__write_string(" (*").
+
+:- pred mlds_output_func_type_suffix(func_params, io__state, io__state).
+:- mode mlds_output_func_type_suffix(in, di, uo) is det.
+
+mlds_output_func_type_suffix(Params) -->
+	{ Params = mlds__func_params(Parameters, _RetTypes) },
+	io__write_string(")"),
 	mlds_output_param_types(Parameters).
 
 :- pred mlds_output_param_types(mlds__arguments, io__state, io__state).
@@ -811,10 +825,26 @@ mlds_output_data_name(tabling_pointer(ProcLabel)) -->
 % Code to output types
 %
 
+%
+% Because of the joys of C syntax, the code for outputting
+% types needs to be split into two parts; first the prefix,
+% i.e. the part of the type name that goes before the variable
+% name in a variable declaration, and then the suffix, i.e.
+% the part which goes after the variable name, e.g. the "[]"
+% for array types.
+%
+
 :- pred mlds_output_type(mlds__type, io__state, io__state).
 :- mode mlds_output_type(in, di, uo) is det.
 
-mlds_output_type(mercury_type(Type)) -->
+mlds_output_type(Type) -->
+	mlds_output_type_prefix(Type),
+	mlds_output_type_suffix(Type).
+
+:- pred mlds_output_type_prefix(mlds__type, io__state, io__state).
+:- mode mlds_output_type_prefix(in, di, uo) is det.
+
+mlds_output_type_prefix(mercury_type(Type)) -->
 	( { Type = term__functor(term__atom("character"), [], _) } ->
 		io__write_string("Char")
 	; { Type = term__functor(term__atom("int"), [], _) } ->
@@ -830,46 +860,67 @@ mlds_output_type(mercury_type(Type)) -->
 		% so that distinct Mercury types map to distinct C types
 		io__write_string("MR_Word")
 	).
-mlds_output_type(mlds__native_int_type)   --> io__write_string("int").
-mlds_output_type(mlds__native_float_type) --> io__write_string("float").
-mlds_output_type(mlds__native_bool_type)  --> io__write_string("bool").
-mlds_output_type(mlds__native_char_type)  --> io__write_string("char").
-mlds_output_type(mlds__class_type(Name, Arity)) -->
+mlds_output_type_prefix(mlds__native_int_type)   --> io__write_string("int").
+mlds_output_type_prefix(mlds__native_float_type) --> io__write_string("float").
+mlds_output_type_prefix(mlds__native_bool_type)  --> io__write_string("bool").
+mlds_output_type_prefix(mlds__native_char_type)  --> io__write_string("char").
+mlds_output_type_prefix(mlds__class_type(Name, Arity)) -->
 	io__write_string("struct "),
 	mlds_output_fully_qualified(Name, io__write_string),
 	io__format("_%d", [i(Arity)]).
-mlds_output_type(mlds__ptr_type(Type)) -->
+mlds_output_type_prefix(mlds__ptr_type(Type)) -->
 	mlds_output_type(Type),
 	io__write_string(" *").
-mlds_output_type(mlds__func_type(FuncParams)) -->
-	% XXX C syntax sucks, there's no easy way of
-	% writing these types that will work in all
-	% situations.  Currently we rely on the MLDS code
-	% generator only using function types in certain situations.
-	mlds_output_func_type(FuncParams).
-mlds_output_type(mlds__generic_type) -->
+mlds_output_type_prefix(mlds__array_type(Type)) -->
+	% Here we just output the element type.
+	% The "[]" goes in the type suffix.
+	mlds_output_type(Type).
+mlds_output_type_prefix(mlds__func_type(FuncParams)) -->
+	mlds_output_func_type_prefix(FuncParams).
+mlds_output_type_prefix(mlds__generic_type) -->
 	io__write_string("MR_Box").
-mlds_output_type(mlds__generic_env_ptr_type) -->
+mlds_output_type_prefix(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
-mlds_output_type(mlds__pseudo_type_info_type) -->
+mlds_output_type_prefix(mlds__pseudo_type_info_type) -->
 	io__write_string("MR_PseudoTypeInfo").
-mlds_output_type(mlds__cont_type) -->
+mlds_output_type_prefix(mlds__cont_type) -->
 	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
 	( { GCC_NestedFuncs = yes } ->
 		io__write_string("MR_NestedCont")
 	;
 		io__write_string("MR_Cont")
 	).
-mlds_output_type(mlds__commit_type) -->
+mlds_output_type_prefix(mlds__commit_type) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
 	( { GCC_LocalLabels = yes } ->
 		io__write_string("__label__")
 	;
 		io__write_string("jmp_buf")
 	).
-mlds_output_type(mlds__rtti_type(RttiName)) -->
+mlds_output_type_prefix(mlds__rtti_type(RttiName)) -->
 	io__write_string("MR_"),
 	io__write_string(mlds_rtti_type_name(RttiName)).
+
+:- pred mlds_output_type_suffix(mlds__type, io__state, io__state).
+:- mode mlds_output_type_suffix(in, di, uo) is det.
+
+mlds_output_type_suffix(mercury_type(_)) --> [].
+mlds_output_type_suffix(mlds__native_int_type) --> [].
+mlds_output_type_suffix(mlds__native_float_type) --> [].
+mlds_output_type_suffix(mlds__native_bool_type) --> [].
+mlds_output_type_suffix(mlds__native_char_type) --> [].
+mlds_output_type_suffix(mlds__class_type(_, _)) --> [].
+mlds_output_type_suffix(mlds__ptr_type(_)) --> [].
+mlds_output_type_suffix(mlds__array_type(_)) -->
+	io__write_string("[]").
+mlds_output_type_suffix(mlds__func_type(FuncParams)) -->
+	mlds_output_func_type_suffix(FuncParams).
+mlds_output_type_suffix(mlds__generic_type) --> [].
+mlds_output_type_suffix(mlds__generic_env_ptr_type) --> [].
+mlds_output_type_suffix(mlds__pseudo_type_info_type) --> [].
+mlds_output_type_suffix(mlds__cont_type) --> [].
+mlds_output_type_suffix(mlds__commit_type) --> [].
+mlds_output_type_suffix(mlds__rtti_type(_)) --> [].
 
 %-----------------------------------------------------------------------------%
 %

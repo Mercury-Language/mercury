@@ -482,6 +482,15 @@
 		% MLDS types defined using mlds__class_defn
 	;	mlds__class_type(mlds__class, arity)	% name, arity
 
+		% MLDS array types.
+		% These are single-dimensional, and can be indexed
+		% using the `field' lval with an `offset' field_id;
+		% indices start at zero.
+		% Currently these are used for static constants
+		% that would otherwise be allocated with a `new_object'
+		% statement.
+	;	mlds__array_type(mlds__type)
+
 		% Pointer types.
 		% Currently these are used for handling output arguments.
 	;	mlds__ptr_type(mlds__type)

@@ -431,16 +431,21 @@ goal_util__rename_unify_rhs(
 :- mode goal_util__rename_unify(in, in, in, out) is det.
 
 goal_util__rename_unify(
-		construct(Var0, ConsId, Vars0, Modes, Reuse0, Uniq, Aditi),
+		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, Aditi),
 		Must, Subn,
-		construct(Var, ConsId, Vars, Modes, Reuse, Uniq, Aditi)) :-
+		construct(Var, ConsId, Vars, Modes, How, Uniq, Aditi)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
-	( Reuse0 = yes(cell_to_reuse(ReuseVar0, B, C)) ->
+	(
+		How0 = reuse_cell(cell_to_reuse(ReuseVar0, B, C)),
 		goal_util__rename_var(ReuseVar0, Must, Subn, ReuseVar),
-		Reuse = yes(cell_to_reuse(ReuseVar, B, C))
+		How = reuse_cell(cell_to_reuse(ReuseVar, B, C))
 	;
-		Reuse = no
+		How0 = construct_dynamically,
+		How = How0
+	;
+		How0 = construct_statically(_),
+		How = How0
 	).
 goal_util__rename_unify(deconstruct(Var0, ConsId, Vars0, Modes, Cat),
 		Must, Subn, deconstruct(Var, ConsId, Vars, Modes, Cat)) :-
@@ -556,7 +561,7 @@ goal_util__goal_vars(Goal - _GoalInfo, Set) :-
 goal_util__goal_vars_2(unify(Var, RHS, _, Unif, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
 	( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
-		( CellToReuse = yes(cell_to_reuse(Var, _, _)) ->
+		( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
 			set__insert(Set1, Var, Set2)
 		;
 			Set2 = Set1
@@ -898,8 +903,8 @@ goal_expr_contains_reconstruction(not(Goal)) :-
 goal_expr_contains_reconstruction(some(_, _, Goal)) :-
 	goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
-	Unify = construct(_, _, _, _, Reuse, _, _),
-	Reuse = yes(_).
+	Unify = construct(_, _, _, _, HowToConstruct, _, _),
+	HowToConstruct = reuse_cell(_).
 
 :- pred goals_contain_reconstruction(list(hlds_goal)).
 :- mode goals_contain_reconstruction(in) is semidet.

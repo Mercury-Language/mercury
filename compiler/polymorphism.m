@@ -2191,10 +2191,9 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	BaseTypeClassInfoTerm = functor(ConsId, []),
 
 		% create the construction unification to initialize the variable
-	ReuseVar = no,
 	RLExprnId = no,
 	BaseUnification = construct(BaseVar, ConsId, [], [],
-			ReuseVar, cell_is_shared, RLExprnId),
+			construct_dynamically, cell_is_shared, RLExprnId),
 	BaseUnifyMode = (free -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	BaseUnifyContext = unify_context(explicit, []),
@@ -2228,7 +2227,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	list__length(NewArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars,
-		UniModes, ReuseVar, cell_is_unique, RLExprnId),
+		UniModes, construct_dynamically, cell_is_unique, RLExprnId),
 	UnifyMode = (free -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
@@ -2516,10 +2515,9 @@ polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
 polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountConsId = int_const(Num),
-	ReuseVar = no,
 	RLExprnId = no,
 	CountUnification = construct(CountVar, CountConsId, [], [],
-		ReuseVar, cell_is_shared, RLExprnId),
+		construct_dynamically, cell_is_shared, RLExprnId),
 
 	CountTerm = functor(CountConsId, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
@@ -2632,10 +2630,9 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		   ground(shared, no) - ground(shared, no)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
-	ReuseVar = no,
 	RLExprnId = no,
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes,
-			ReuseVar, cell_is_unique, RLExprnId),
+			construct_dynamically, cell_is_unique, RLExprnId),
 	UnifyMode = (free -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
@@ -2688,10 +2685,9 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeId,
 		VarSet0, VarTypes0, TypeCtorInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
-	ReuseVar = no,
 	RLExprnId = no,
 	Unification = construct(TypeCtorInfoVar, ConsId, [], [],
-			ReuseVar, cell_is_shared, RLExprnId),
+			construct_dynamically, cell_is_shared, RLExprnId),
 	UnifyMode = (free -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),

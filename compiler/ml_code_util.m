@@ -962,13 +962,15 @@ ml_gen_var(Var, Lval) -->
 		{ Lval = var(qual(MLDS_Module, "dummy_var")) }
 	;
 		=(MLDSGenInfo),
-		{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
 		{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 		{ VarName = ml_gen_var_name(VarSet, Var) },
 		ml_qualify_var(VarName, VarLval),
-		{ MLDS_Type = mercury_type_to_mlds_type(Type) },
+		%
 		% output variables are passed by reference...
+		%
+		{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
 		{ list__member(Var, OutputVars) ->
+			MLDS_Type = mercury_type_to_mlds_type(Type),
 			Lval = mem_ref(lval(VarLval), MLDS_Type)
 		;
 			Lval = VarLval
