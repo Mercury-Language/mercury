@@ -225,6 +225,17 @@
 
 %-----------------------------------------------------------------------------%
 
+	% isnt(Pred, X) <=> not Pred(X)
+	%
+	% This is useful in higher order programming, e.g.
+	% 	Odds  = list__filter(odd, Xs)
+	% 	Evens = list__filter(isnt(odd), Xs)
+	%
+:- pred isnt(pred(T), T).
+:- mode isnt(pred(in) is semidet, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+
 	% `semidet_succeed' is exactly the same as `true', except that
 	% the compiler thinks that it is semi-deterministic.  You can
 	% use calls to `semidet_succeed' to suppress warnings about
@@ -3143,6 +3154,10 @@ get_type_info_for_type_info(TypeInfo) :-
     % Function exponentiation.
 :- func pow(func(T) = T, int, T) = T.
 
+    % The identity function.
+    %
+:- func id(T) = T.
+
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
 
@@ -3162,3 +3177,8 @@ converse(F, X, Y) =
 
 pow(F, N, X) =
     ( if N = 0 then X else pow(F, N - 1, F(X)) ).
+
+isnt(P, X) :-
+	not P(X).
+
+id(X) = X.

@@ -763,15 +763,19 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__min(array(_T)) = int.
 :- mode array__min(array_ui) = out is det.
+:- mode array__min(in) = out is det.
 
 :- func array__max(array(_T)) = int.
 :- mode array__max(array_ui) = out is det.
+:- mode array__max(in) = out is det.
 
 :- func array__size(array(_T)) = int.
 :- mode array__size(array_ui) = out is det.
+:- mode array__size(in) = out is det.
 
 :- func array__lookup(array(T), int) = T.
 :- mode array__lookup(array_ui, in) = out is det.
+:- mode array__lookup(in, in) = out is det.
 
 :- func array__set(array(T), int, T) = array(T).
 :- mode array__set(array_di, in, in) = array_uo is det.
@@ -782,6 +786,7 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__copy(array(T)) = array(T).
 :- mode array__copy(array_ui) = array_uo is det.
+:- mode array__copy(in) = array_uo is det.
 
 :- func array__resize(array(T), int, T) = array(T).
 :- mode array__resize(array_di, in, in) = array_uo is det.
@@ -794,12 +799,15 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 :- func array__to_list(array(T)) = list(T).
 :- mode array__to_list(array_ui) = out is det.
+:- mode array__to_list(in) = out is det.
 
 :- func array__fetch_items(array(T), int, int) = list(T).
 :- mode array__fetch_items(array_ui, in, in) = out is det.
+:- mode array__fetch_items(in, in, in) = out is det.
 
 :- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
 :- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
+:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
 
 :- func array__map(func(T1) = T2, array(T1)) = array(T2).
 :- mode array__map(func(in) = out is det, array_di) = array_uo is det.
