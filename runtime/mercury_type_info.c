@@ -59,7 +59,8 @@ mercury_data___type_ctor_info_func_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
 	string_const("builtin", 7),
-	string_const("func", 4)
+	string_const("func", 4),
+	MR_RTTI_VERSION
 };
 
 	/*
@@ -80,7 +81,8 @@ mercury_data___type_ctor_info_pred_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
 	string_const("builtin", 7),
-	string_const("pred", 4)
+	string_const("pred", 4),
+	MR_RTTI_VERSION
 };
 
 Define_extern_entry(mercury__builtin_unify_pred_2_0);

@@ -518,7 +518,8 @@ mercury_data___type_ctor_info_int_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_int_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_int_0,
 	string_const(""builtin"", 7),
-	string_const(""int"", 3)
+	string_const(""int"", 3),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `character' */
@@ -536,7 +537,8 @@ mercury_data___type_ctor_info_character_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_character_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_character_0,
 	string_const(""builtin"", 7),
-	string_const(""character"", 9)
+	string_const(""character"", 9),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `string' */
@@ -554,7 +556,8 @@ mercury_data___type_ctor_info_string_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_string_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_string_0,
 	string_const(""builtin"", 7),
-	string_const(""string"", 6)
+	string_const(""string"", 6),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `float' */
@@ -572,7 +575,8 @@ mercury_data___type_ctor_info_float_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_float_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_float_0,
 	string_const(""builtin"", 7),
-	string_const(""float"", 5)
+	string_const(""float"", 5),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `void' */
@@ -588,7 +592,8 @@ mercury_data___type_ctor_info_void_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_void_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_void_0,
 	string_const(""builtin"", 7),
-	string_const(""void"", 4)
+	string_const(""void"", 4),
+	MR_RTTI_VERSION
 };
 
 #ifdef	NATIVE_GC
@@ -606,7 +611,8 @@ mercury_data___type_ctor_info_succip_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_succip_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_succip_0,
 	string_const(""builtin"", 7),
-	string_const(""succip"", 6)
+	string_const(""succip"", 6),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `hp' (only used by accurate gc) */
@@ -622,7 +628,8 @@ mercury_data___type_ctor_info_hp_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_hp_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_hp_0,
 	string_const(""builtin"", 7),
-	string_const(""hp"", 2)
+	string_const(""hp"", 2),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `curfr' (only used by accurate gc) */
@@ -638,7 +645,8 @@ mercury_data___type_ctor_info_curfr_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_curfr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_curfr_0,
 	string_const(""builtin"", 7),
-	string_const(""curfr"", 5)
+	string_const(""curfr"", 5),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `maxfr' (only used by accurate gc) */
@@ -654,7 +662,8 @@ mercury_data___type_ctor_info_maxfr_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_maxfr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_maxfr_0,
 	string_const(""builtin"", 7),
-	string_const(""maxfr"", 5)
+	string_const(""maxfr"", 5),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `redofr' (only used by accurate gc) */
@@ -670,7 +679,8 @@ mercury_data___type_ctor_info_redofr_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redofr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redofr_0,
 	string_const(""builtin"", 7),
-	string_const(""redofr"", 6)
+	string_const(""redofr"", 6),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `redoip' (only used by accurate gc) */
@@ -686,7 +696,8 @@ mercury_data___type_ctor_info_redoip_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_redoip_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_redoip_0,
 	string_const(""builtin"", 7),
-	string_const(""redoip"", 6)
+	string_const(""redoip"", 6),
+	MR_RTTI_VERSION
 };
 
 #endif /* NATIVE_GC */
@@ -704,7 +715,8 @@ mercury_data___type_ctor_info_trail_ptr_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_trail_ptr_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_trail_ptr_0,
 	string_const(""builtin"", 7),
-	string_const(""trail_ptr"", 9)
+	string_const(""trail_ptr"", 9),
+	MR_RTTI_VERSION
 };
 
 	/* type_ctor_info for `ticket' (only used by agc and debugger) */
@@ -720,7 +732,8 @@ mercury_data___type_ctor_info_ticket_0 = {
 	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_ticket_0,
 	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_ticket_0,
 	string_const(""builtin"", 7),
-	string_const(""ticket"", 6)
+	string_const(""ticket"", 6),
+	MR_RTTI_VERSION
 };
 
 BEGIN_MODULE(builtin_types_module)
@@ -882,7 +895,8 @@ mercury_data_builtin__type_ctor_info_c_pointer_0 = {
 	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
 	(MR_TypeCtorLayout) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
 	string_const(""builtin"", 7),
-	string_const(""c_pointer"", 9)
+	string_const(""c_pointer"", 9),
+	MR_RTTI_VERSION
 };
 
 

@@ -55,7 +55,8 @@ mercury_data_std_util__type_ctor_info_type_info_0 = {
 	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0_bootstrap,
 	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0_bootstrap,
 	string_const("std_util", 8),
-	string_const("type_info", 9)
+	string_const("type_info", 9),
+	MR_RTTI_VERSION
 };
 
 #else /* defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS) */

@@ -123,6 +123,21 @@ base_type_info__gen_proc_list([Special | Specials], SpecMap, TypeId,
 
 %---------------------------------------------------------------------------%
 
+	% The version of the RTTI data structures -- useful for bootstrapping.
+	% If you write runtime code that checks this version number and
+	% can at least handle the previous version of the data
+	% structure, it makes it easier to bootstrap changes to the data
+	% structures used for RTTI.
+	%
+	% This number should be kept in sync with MR_RTTI_VERSION in
+	% runtime/mercury_type_info.h.  This means you need to update
+	% the handwritten type_ctor_info structures and the code in the
+	% runtime that uses RTTI to conform to whatever changes the new
+	% version introduces.
+
+:- func type_ctor_info_version = int.
+type_ctor_info_version = 2.
+
 base_type_info__generate_llds(ModuleInfo, CModules) :-
 	module_info_base_gen_infos(ModuleInfo, BaseGenInfos),
 	base_type_info__construct_type_ctor_infos(BaseGenInfos, ModuleInfo,
@@ -167,8 +182,9 @@ from the data_name, for use in forward declarations.
 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
 		ModuleArg = yes(const(string_const(ModuleNameString))),
+		VersionArg = yes(const(int_const(type_ctor_info_version))),
 		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
-			ModuleArg, NameArg], FinalArgs)
+			ModuleArg, NameArg, VersionArg], FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
 	),

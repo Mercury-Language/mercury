@@ -315,7 +315,8 @@ mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
 	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
 	string_const(""private_builtin"", 15),
-	string_const(""type_ctor_info"", 14)
+	string_const(""type_ctor_info"", 14),
+	MR_RTTI_VERSION
 };
 
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
@@ -333,7 +334,8 @@ mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
 	string_const(""private_builtin"", 15),
-	string_const(""type_info"", 9)
+	string_const(""type_info"", 9),
+	MR_RTTI_VERSION
 };
 
 
@@ -376,7 +378,8 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
 	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	string_const(""private_builtin"", 15),
-	string_const(""base_typeclass_info"", 19)
+	string_const(""base_typeclass_info"", 19),
+	MR_RTTI_VERSION
 };
 
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
@@ -394,7 +397,8 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
 	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	string_const(""private_builtin"", 15),
-	string_const(""typeclass_info"", 14)
+	string_const(""typeclass_info"", 14),
+	MR_RTTI_VERSION
 };
 
 const struct

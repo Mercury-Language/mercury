@@ -1021,7 +1021,8 @@ mercury_data_std_util__type_ctor_info_univ_0 = {
 	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
 	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
 	string_const(""std_util"", 8),
-	string_const(""univ"", 4)
+	string_const(""univ"", 4),
+	MR_RTTI_VERSION
 };
 
 
