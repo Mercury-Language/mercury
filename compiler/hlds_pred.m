@@ -1965,14 +1965,18 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred non_special_body_should_use_typeinfo_liveness(globals::in,
 	bool::out) is det.
 
-	% unsafe_type_cast and unsafe_promise_unique are polymorphic
-	% builtins which do not need their type_infos. unsafe_type_cast
-	% can be introduced by common.m after polymorphism is run, so it
-	% is much simpler to avoid introducing type_info arguments for it.
-	% Since both of these are really just assignment unifications, it
-	% is desirable to generate them inline.
-	% There are also some predicates in private_builtin.m to
-	% manipulate typeclass_infos which don't need their type_infos.
+	% Some predicates that operate on polymorphic values do not need
+	% the type_infos describing the types bound to the variables.
+	% It is of course faster not to pass type_infos to such predicates
+	% (especially since may also be able to avoid constructing those
+	% type_infos), and it can also be easier for a compiler module
+	% (e.g. common.m, size_prof.m) that generates calls to such predicates
+	% not to have to create those type_infos.
+	%
+	% All the predicates for whose names no_type_info_builtin succeeds
+	% are defined by compiler implementors. They are all predicates
+	% implemented by foreign language code in the standard library.
+	% For some, but not all, the compiler generates code inline.
 :- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
 
 	% If the procedure has a input/output pair of io__state arguments,
