@@ -519,6 +519,12 @@ is(X, X).
 "
 	FloatVal = (double) IntVal;
 ").
+:- pragma foreign_proc("Java",
+	int__to_float(IntVal::in, FloatVal::out),
+	[will_not_call_mercury, promise_pure],
+"
+	FloatVal = (double) IntVal;
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -600,6 +606,28 @@ is(X, X).
 "
 	// we are using int32 in the compiler.
 	// XXX would be better to avoid hard-coding this here.
+	Bits = 32;
+").
+
+:- pragma foreign_proc("Java",
+	int__max_int(Max::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Max = java.lang.Integer.MAX_VALUE;
+").
+
+:- pragma foreign_proc("Java",
+	int__min_int(Min::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Min = java.lang.Integer.MIN_VALUE;
+").
+
+:- pragma foreign_proc("Java",
+        int__bits_per_int(Bits::out),
+	        [will_not_call_mercury, promise_pure, thread_safe],
+"
+	// Java ints are 32 bits.
 	Bits = 32;
 ").
 
