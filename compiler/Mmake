@@ -5,7 +5,7 @@
 MERCURY_DIR=..
 include ../Mmake.common
 
-MAIN_TARGET=mercury_compile
+MAIN_TARGET=mercury
 
 VPATH=../library
 
@@ -50,7 +50,16 @@ depend : mercury_compile.depend
 mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
 
 .PHONY: all
-all : mercury_compile
+all : mercury nuprolog sicstus
+
+.PHONY: mercury
+mercury: mercury_compile
+
+.PHONY: nuprolog
+nuprolog: mercury_compile.nu
+
+.PHONY: sicstus
+sicstus: mercury_compile.sicstus
 
 #-----------------------------------------------------------------------------#
 
@@ -114,12 +123,12 @@ install_sicstus: install_compiler_sicstus
 
 .PHONY: install_compiler
 install_compiler: mercury_compile
-	mkdir -p $(INSTALL_MERC_BIN_DIR)
+	[ -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
 
 .PHONY: install_compiler_nu
 install_compiler_nu: mercury_compile.nu
-	mkdir -p $(INSTALL_NU_ARCH_DIR) 
+	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
 	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
 		> $(INSTALL_NU_ARCH_DIR)/mercury_compile
 	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile
@@ -127,6 +136,7 @@ install_compiler_nu: mercury_compile.nu
 
 .PHONY: install_compiler_sicstus
 install_compiler_sicstus: mercury_compile.sicstus
+	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
 	mkdir -p $(INSTALL_SP_ARCH_DIR) 
 	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
 
