@@ -164,6 +164,8 @@ get_module_dependencies_2(RebuildDeps, ModuleName,
 			io__write_string("' to generate dependencies: "),
 			io__write_string(Message),
 			io__write_string(".\n"),
+			maybe_write_importing_module(ModuleName,
+				Info5 ^ importing_module),
 		    	{ Info6 = Info5 }
 		    )
 		;
@@ -498,6 +500,7 @@ make_module_dependencies(ModuleName, Info0, Info) -->
 	    io__write_string("** Error: error reading file `"),
 	    io__write_string(SourceFileName),
 	    io__write_string("' to generate dependencies.\n"),
+	    maybe_write_importing_module(ModuleName, Info0 ^ importing_module),
 
 	    % Display the contents of the `.err' file, then remove it
 	    % so we don't leave `.err' files lying around for nonexistent
@@ -602,5 +605,16 @@ cleanup_module_dep_files(SubModuleNames, Info0, Info) -->
 		remove_file(SubModuleName, module_dep_file_extension,
 			Info1, Info2)
 	    ), SubModuleNames, Info0, Info).
+
+:- pred maybe_write_importing_module(module_name::in, maybe(module_name)::in,
+		io__state::di, io__state::uo) is det.
+
+maybe_write_importing_module(_, no) --> [].
+maybe_write_importing_module(ModuleName, yes(ImportingModuleName)) -->
+	io__write_string("** Module `") ,
+	prog_out__write_sym_name(ModuleName),
+	io__write_string("' is imported or included by module `"),
+	prog_out__write_sym_name(ImportingModuleName),
+	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%

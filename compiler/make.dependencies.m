@@ -692,12 +692,15 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
 					Imports ^ foreign_import_module_info)
 			    ])
 		},
+		{ ImportingModule = Info1 ^ importing_module },
+		{ Info2 = Info1 ^ importing_module := yes(ModuleName) },
 		foldl3_maybe_stop_at_error(KeepGoing,
 			find_transitive_module_dependencies_2(KeepGoing,
 				DependenciesType, ModuleLocn),
 				ImportsToCheck, Success,
 				set__insert(Modules0, ModuleName), Modules,
-				Info1, Info)
+				Info2, Info3),
+		{ Info = Info3 ^ importing_module := ImportingModule }
 	    ;
 		{ Success = yes },
 		{ Modules = Modules0 },

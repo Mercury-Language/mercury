@@ -82,6 +82,7 @@ SINGLEMODULE_SOURCES= \
 	multisoln_func.m \
 	nested_impl_in_int.m \
 	no_exports.m \
+	nonexistent_import.m \
 	not_a_switch.m \
 	nullary_ho_func_error.m \
 	occurs.m \
@@ -188,6 +189,7 @@ MCFLAGS-missing_parent_import = --no-intermodule-optimization
 MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-no_exports = 		--halt-at-warn
+MCFLAGS-nonexistent_import =	--no-verbose-make --make nonexistent_import
 MCFLAGS-overloading = 		--no-intermodule-optimization
 MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization
 MCFLAGS-record_syntax_errors =	--verbose-error-messages

@@ -102,7 +102,11 @@
 
 			% Modules for which we have redirected output
 			% to a `.err' file during this invocation of mmc.
-		error_file_modules :: set(module_name)
+		error_file_modules :: set(module_name),
+
+			% Used for reporting which module imported
+			% a nonexistent module.
+		importing_module :: maybe(module_name)
 	).
 
 :- type make_error
@@ -244,7 +248,7 @@ make__process_args(OptionArgs, Targets0) -->
 		OptionArgs, Variables, map__init,
 		init_cached_direct_imports,
 		init_cached_transitive_dependencies,
-		ShouldRebuildDeps, KeepGoing, set__init) },
+		ShouldRebuildDeps, KeepGoing, set__init, no) },
 
 	globals__io_get_globals(Globals),
 	foldl2_maybe_stop_at_error(KeepGoing,

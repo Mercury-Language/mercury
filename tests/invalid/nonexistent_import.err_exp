@@ -1,0 +1,3 @@
+** Error: error reading file `nonexistent.m' to generate dependencies.
+** Module `nonexistent' is imported or included by module `nonexistent_import'.
+mercury_compile: can't find source for module `nonexistent'.
