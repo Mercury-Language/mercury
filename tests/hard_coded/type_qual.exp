@@ -1,0 +1,3 @@
+ok(42)
+list:list(io:state)
+list:list(list:list(io:state))

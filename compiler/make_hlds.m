@@ -6812,8 +6812,7 @@ unravel_unification(term__variable(X), RHS,
 	{ RHS = term__functor(F, Args, FunctorContext) },
 	(
 		% Handle explicit type qualification.
-		{ semidet_fail },
-		{ F = term__atom("TYPE_QUAL_OP") },
+		{ F = term__atom("with_type") },
 		{ Args = [RVal, DeclType0] }
 	->
 		{ term__coerce(DeclType0, DeclType) },

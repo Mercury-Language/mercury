@@ -160,6 +160,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * DCG-rules::
 * DCG-goals::
 * Data-terms::
+* Variable scoping::
 * Implicit quantification::
 * Elimination of double negation::
 @end menu
@@ -925,12 +926,16 @@ Syntactically, a data-term is just a term.
 There are a couple of differences from Prolog.
 The first one is that double-quoted strings are atomic in
 Mercury, they are not abbreviations for lists of character codes.
-The second is that Mercury terms may contain function applications,
-higher-order function applications, and lambda expressions.
+The second is that Mercury provides several extensions to Prolog's
+term syntax: Mercury terms may contain record field selection and
+field update expressions, conditional (if-then-else) expressions,
+function applications, higher-order function applications, lambda
+expressions, and explicit type qualifications.
 
-A data-term is either a variable, a data-functor,
-a conditional expression, a lambda expression,
-or a higher-order function application.
+A data-term is either a variable, a data-functor, or a special data-term.
+A special data-term is a conditional expression, a record syntax expression,
+a lambda expression, a higher-order function application,
+or an explicit type qualification.
 
 @menu
 * Data-functors::
@@ -938,6 +943,7 @@ or a higher-order function application.
 * Conditional expressions::
 * Lambda expressions::
 * Higher-order function applications::
+* Explicit type qualification::
 @end menu
 
 @node Data-functors
@@ -945,9 +951,9 @@ or a higher-order function application.
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
-A compound data-term is a compound term whose form
-does not match the form of a lambda expression or higher-order
-function application and whose arguments are data-terms.
+A compound data-term is a compound term which does not match
+the form of a special data-term (@pxref{Data-terms}),
+and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
@@ -960,6 +966,8 @@ of data constructors, independent of the definition of the constructor.
 
 Record syntax expressions are transformed into sequences of calls
 to field selection or update functions (@pxref{Field access functions}).
+
+Record syntax expressions have one of the following forms:
 
 @table @code
 @item @var{Term} ^ @var{field}
@@ -1098,6 +1106,61 @@ of that type, and
 The type of the higher-order function application term is @var{T}.
 It denotes the result of applying the specified function to the
 specified arguments.  @xref{Higher-order}.
+
+@node Explicit type qualification
+@subsection Explicit type qualification
+
+Explicit type qualifications are occaisionally useful
+to resolve ambiguities that can arise from overloading
+or polymorphic types.
+
+An explicit type qualification expression is a term of the form
+
+@example
+with_type(@var{Term}, @var{Type})
+@end example
+
+@noindent
+or equivalently, as it is more commonly written,
+
+@example
+@var{Term} `with_type` @var{Type}
+@end example
+
+@noindent
+@var{Term} must be a valid data-term.
+@var{Type} must be a valid type (@pxref{Types}).
+
+An explicit type qualification expression constrains
+the specified term to have the specified type.
+Apart from that, the meaning of an explicit type qualification
+expression is just the same as the specified @var{Term}.
+
+@node Variable scoping
+@section Variable scoping
+
+Variables occurring in data-terms, other than in the right-hand
+(@var{Type}) operand of an explicit type qualification,
+are called ordinary variables,
+while variables occurring in types are called type variables.
+Type variables and ordinary variables occupy different namespaces:
+there is no semantic relationship between a type variable and
+an ordinary variable even if they happen to share the same name.
+(However, as a matter of programming style, it is generally a
+bad idea to use the same name for both a type variable and
+an ordinary variable in the same clause.)
+
+The scope of ordinary variables is the clause or declaration in which
+they occur, unless they are quantified, either explicitly
+(@pxref{Goals}) or implicitly (@pxref{Implicit quantification}).
+
+The scope of type variables in a predicate or function's type
+declaration extends over any explicit type qualifications in the
+clauses for that predicate or function, so explicit type
+qualifications can refer to those type variables.
+The scope of any type variables in an explicit type qualification
+which do not occur in the predicate or function's type declaration
+is the clause in which they occur.
 
 @node Implicit quantification
 @section Implicit quantification

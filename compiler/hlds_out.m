@@ -1849,7 +1849,7 @@ hlds_out__write_unify_rhs_3(functor(ConsId, ArgVars), ModuleInfo, VarSet, _,
 	hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		AppendVarnums),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
-		io__write_string(" TYPE_QUAL_OP "),
+		io__write_string(" `with_type` "),
 		mercury_output_term(Type, TVarSet, no, next_to_graphic_token)
 	;
 		[]
@@ -1907,7 +1907,7 @@ hlds_out__write_unify_rhs_3(
 		io__write_string(")")
 	),
 	( { MaybeType = yes(Type), TypeQual = yes(TVarSet, _) } ->
-		io__write_string(" TYPE_QUAL_OP "),
+		io__write_string(" `with_type` "),
 		mercury_output_term(Type, TVarSet, AppendVarnums,
 			next_to_graphic_token)
 	;
