@@ -50,7 +50,7 @@ syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
-syn keyword mercuryCInterface   tabled_for_io
+syn keyword mercuryCInterface   tabled_for_io local
 syn keyword mercuryCInterface   can_pass_as_mercury_type stable
 syn keyword mercuryCInterface   will_not_throw_exception
 syn keyword mercuryCInterface   export import
