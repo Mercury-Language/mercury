@@ -1,123 +1,123 @@
 TESTING DISCRIMINATED UNIONS
 3 functors in this type
-2 - two/0
-1 - three/0
-0 - one/0
+2 - two/0 []
+1 - three/0 []
+0 - one/0 []
 
 
 3 functors in this type
-2 - two/0
-1 - three/0
-0 - one/0
+2 - two/0 []
+1 - three/0 []
+0 - one/0 []
 
 
 3 functors in this type
-2 - two/0
-1 - three/0
-0 - one/0
+2 - two/0 []
+1 - three/0 []
+0 - one/0 []
 
 
 2 functors in this type
-1 - banana/1
-0 - apple/1
+1 - banana/1 [banana_list]
+0 - apple/1 [apple_list]
 
 
 2 functors in this type
-1 - banana/1
-0 - apple/1
+1 - banana/1 [banana_list]
+0 - apple/1 [apple_list]
 
 
 11 functors in this type
-10 - zop/2
-9 - zoom/1
-8 - zip/2
-7 - zap/2
-6 - wombat/0
-5 - qux/1
-4 - quux/1
-3 - quuux/2
-2 - foo/0
-1 - bar/2
-0 - bar/1
+10 - zop/2 [_, _]
+9 - zoom/1 [_]
+8 - zip/2 [_, _]
+7 - zap/2 [_, _]
+6 - wombat/0 []
+5 - qux/1 [_]
+4 - quux/1 [_]
+3 - quuux/2 [_, _]
+2 - foo/0 []
+1 - bar/2 [_, _]
+0 - bar/1 [_]
 
 
 11 functors in this type
-10 - zop/2
-9 - zoom/1
-8 - zip/2
-7 - zap/2
-6 - wombat/0
-5 - qux/1
-4 - quux/1
-3 - quuux/2
-2 - foo/0
-1 - bar/2
-0 - bar/1
+10 - zop/2 [_, _]
+9 - zoom/1 [_]
+8 - zip/2 [_, _]
+7 - zap/2 [_, _]
+6 - wombat/0 []
+5 - qux/1 [_]
+4 - quux/1 [_]
+3 - quuux/2 [_, _]
+2 - foo/0 []
+1 - bar/2 [_, _]
+0 - bar/1 [_]
 
 
 11 functors in this type
-10 - zop/2
-9 - zoom/1
-8 - zip/2
-7 - zap/2
-6 - wombat/0
-5 - qux/1
-4 - quux/1
-3 - quuux/2
-2 - foo/0
-1 - bar/2
-0 - bar/1
+10 - zop/2 [_, _]
+9 - zoom/1 [_]
+8 - zip/2 [_, _]
+7 - zap/2 [_, _]
+6 - wombat/0 []
+5 - qux/1 [_]
+4 - quux/1 [_]
+3 - quuux/2 [_, _]
+2 - foo/0 []
+1 - bar/2 [_, _]
+0 - bar/1 [_]
 
 
 11 functors in this type
-10 - zop/2
-9 - zoom/1
-8 - zip/2
-7 - zap/2
-6 - wombat/0
-5 - qux/1
-4 - quux/1
-3 - quuux/2
-2 - foo/0
-1 - bar/2
-0 - bar/1
+10 - zop/2 [_, _]
+9 - zoom/1 [_]
+8 - zip/2 [_, _]
+7 - zap/2 [_, _]
+6 - wombat/0 []
+5 - qux/1 [_]
+4 - quux/1 [_]
+3 - quuux/2 [_, _]
+2 - foo/0 []
+1 - bar/2 [_, _]
+0 - bar/1 [_]
 
 
 11 functors in this type
-10 - zop/2
-9 - zoom/1
-8 - zip/2
-7 - zap/2
-6 - wombat/0
-5 - qux/1
-4 - quux/1
-3 - quuux/2
-2 - foo/0
-1 - bar/2
-0 - bar/1
+10 - zop/2 [_, _]
+9 - zoom/1 [_]
+8 - zip/2 [_, _]
+7 - zap/2 [_, _]
+6 - wombat/0 []
+5 - qux/1 [_]
+4 - quux/1 [_]
+3 - quuux/2 [_, _]
+2 - foo/0 []
+1 - bar/2 [_, _]
+0 - bar/1 [_]
 
 
 
 TESTING POLYMORPHISM
 4 functors in this type
-3 - poly_two/1
-2 - poly_three/3
-1 - poly_one/1
-0 - poly_four/2
+3 - poly_two/1 [_]
+2 - poly_three/3 [_, _, _]
+1 - poly_one/1 [_]
+0 - poly_four/2 [_, _]
 
 
 4 functors in this type
-3 - poly_two/1
-2 - poly_three/3
-1 - poly_one/1
-0 - poly_four/2
+3 - poly_two/1 [_]
+2 - poly_three/3 [_, _, _]
+1 - poly_one/1 [_]
+0 - poly_four/2 [_, _]
 
 
 4 functors in this type
-3 - poly_two/1
-2 - poly_three/3
-1 - poly_one/1
-0 - poly_four/2
+3 - poly_two/1 [_]
+2 - poly_three/3 [_, _, _]
+1 - poly_one/1 [_]
+0 - poly_four/2 [_, _]
 
 
 
@@ -159,32 +159,32 @@ TESTING BUILTINS
 
 
 1 functors in this type
-0 - {}/4
+0 - {}/4 [_, _, _, _]
 
 
 
 TESTING OTHER TYPES
 1 functors in this type
-0 - var/1
+0 - var/1 [_]
 
 
 1 functors in this type
-0 - var_supply/1
+0 - var_supply/1 [_]
 
 
 1 functors in this type
-0 - var_supply/1
+0 - var_supply/1 [_]
 
 
 4 functors in this type
-3 - two/4
-2 - three/7
-1 - four/10
-0 - empty/0
+3 - two/4 [_, _, _, _]
+2 - three/7 [_, _, _, _, _, _, _]
+1 - four/10 [_, _, _, _, _, _, _, _, _, _]
+0 - empty/0 []
 
 
 1 functors in this type
-0 - qwerty/1
+0 - qwerty/1 [qwerty_field]
 
 
 

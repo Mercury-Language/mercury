@@ -1553,6 +1553,9 @@ extern  MR_Word     MR_type_params_vector_to_list(int arity,
 ** Copy `arity' argument names from the `arg_names' vector, which starts
 ** at index 0, onto the Mercury heap in a list.
 **
+** If `arg_names' is NULL (meaning that none of the arguments were named),
+** the output list will contain `arity' NULL entries.
+**
 ** You need to save and restore transient registers around
 ** calls to this function.
 */

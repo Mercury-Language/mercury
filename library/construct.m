@@ -235,11 +235,16 @@ null(_) :-
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
                         MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
+	    int i;
             MR_save_transient_registers();
             TypeInfoList = MR_type_params_vector_to_list(Arity,
                     MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
             ArgNameList = MR_list_empty();
-                MR_restore_transient_registers();
+            for (i = 0; i < Arity; i++) {
+                ArgNameList = MR_list_cons_msg((MR_Word) NULL,
+                                ArgNameList, MR_PROC_LABEL);
+            }
+            MR_restore_transient_registers();
         } else {
             MR_save_transient_registers();
             TypeInfoList = MR_pseudo_type_info_vector_to_type_info_list(

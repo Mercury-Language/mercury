@@ -26,8 +26,8 @@
 
 :- type enum	--->	one	;	two	;	three.
 
-:- type fruit	--->	apple(list(int))
-		;	banana(list(enum)).
+:- type fruit	--->	apple(apple_list :: list(int))
+		;	banana(banana_list :: list(enum)).
 
 :- type thingie	--->	foo ; bar(int) ; bar(int, int) ; qux(int) ;
 			quux(int) ; quuux(int, int) ; wombat ; 
@@ -38,7 +38,7 @@
 				poly_three(B, A, poly(B, A));
 				poly_four(A, B).
 
-:- type no_tag		---> 	qwerty(int).
+:- type no_tag		---> 	qwerty(qwerty_field :: int).
 
 %----------------------------------------------------------------------------%
 
@@ -174,13 +174,24 @@ test_all_functors(TypeInfo, N) -->
 	;
 		io__write_int(N),
 		( 
-			{ get_functor(TypeInfo, N, Name, Arity, _List) }
+			{ get_functor(TypeInfo, N, Name, Arity, _List, Names) }
 		->
 			io__write_string(" - "),
 			io__write_string(Name),
 			io__write_string("/"),
 			io__write_int(Arity),
-			newline
+			io__write_string(" ["),
+			io__write_list(Names, ", ",
+			    (pred(MaybeName::in, di, uo) is det -->
+				(
+					{ MaybeName = yes(FieldName) },
+					io__write_string(FieldName)
+				;
+					{ MaybeName = no },
+					io__write_string("_")
+				)
+			    )),
+			io__write_string("]\n")
 		;
 			io__write_string(" failed "),
 			newline
