@@ -25,6 +25,11 @@
 	% about its argument passing interface.
 :- pred generate_arg_info(module_info::in, module_info::out) is det.
 
+	% Annotate a single procedure with information
+	% about its argument passing interface.
+:- pred generate_proc_arg_info(proc_info::in, list(type)::in, module_info::in,
+	proc_info::out) is det.
+
 	% Given the list of types and modes of the arguments of a procedure
 	% and its code model, return its argument passing interface.
 :- pred make_arg_infos(list(type)::in, list(mode)::in, code_model::in,
@@ -137,9 +142,6 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1)
 	),
 	generate_proc_list_arg_info(PredId, ProcIds, ModuleInfo1, ModuleInfo).
-
-:- pred generate_proc_arg_info(proc_info::in, list(type)::in, module_info::in,
-	proc_info::out) is det.
 
 generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, ArgModes),

@@ -273,6 +273,10 @@ Changes to the Mercury compiler:
   causes the compiler to issue a warning about any directly recursive
   call that is not a tail call.
 
+* The automatically generated header files for modules containing
+  `pragma export' declarations are now named `<module>.mh', not
+  `<module>.h'. This avoids conflicts with system header files.
+
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in
   its interface section, then any types, insts, modes and typeclasses defined

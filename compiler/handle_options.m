@@ -879,8 +879,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	%
-	% Handle library search directories. These couldn't be handled
-	% by options.m because they are grade dependent.
+	% Handle C header and library search directories. These couldn't
+	% be handled by options.m because they are grade dependent.
 	%
 	globals__io_lookup_accumulating_option(mercury_library_directories,
 		MercuryLibDirs),
@@ -899,7 +899,20 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_lookup_accumulating_option(
 			link_library_directories, LinkLibDirs),
 		globals__io_set_option(link_library_directories,
-			accumulating(LinkLibDirs ++ ExtraLinkLibDirs))
+			accumulating(LinkLibDirs ++ ExtraLinkLibDirs)),
+
+		{ ExtraCIncludeDirs = list__map(
+				(func(MercuryLibDir) =
+					dir__make_path_name(MercuryLibDir,
+					dir__make_path_name("lib",
+					dir__make_path_name(GradeString,
+					dir__make_path_name(FullArch,
+					"inc"))))
+				), MercuryLibDirs) },
+		globals__io_lookup_accumulating_option(c_include_directory,
+			CIncludeDirs),
+		globals__io_set_option(c_include_directory,
+			accumulating(CIncludeDirs ++ ExtraCIncludeDirs))
 	;
 		{ MercuryLibDirs = [] }
 	),

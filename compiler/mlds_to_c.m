@@ -79,18 +79,6 @@
 
 mlds_to_c__output_mlds(MLDS, Suffix) -->
 	%
-	% We need to use the MLDS package name to compute the header file
-	% names, giving e.g. `mercury.io.h', `mercury.time.h' etc.,
-	% rather than using just the Mercury module name, which would give
-	% just `io.h', `time.h', etc.  The reason for this is that if we
-	% don't, then we get name clashes with the standard C header files.
-	% For example, `time.h' clashes with the standard <time.h> header.
-	%
-	% But to keep the Mmake auto-dependencies working, we still
-	% want to name the `.c' file based on just the Mercury module
-	% name, giving e.g. `time.c', not `mercury.time.c'.
-	% Hence the different treatment of SourceFile and HeaderFile below.
-	%
 	% We write the header file out to <module>.h.tmp and then
 	% call `update_interface' to move the <module>.h.tmp file to
 	% <module>.h; this avoids updating the timestamp on the `.h'
@@ -105,11 +93,9 @@ mlds_to_c__output_mlds(MLDS, Suffix) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
 	module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes,
 		SourceFile),
-	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
-	{ ModuleSymName = mlds_module_name_to_sym_name(MLDS_ModuleName) },
-	module_name_to_file_name(ModuleSymName, ".h" ++ Suffix ++ ".tmp", yes,
-		TmpHeaderFile),
-	module_name_to_file_name(ModuleSymName, ".h" ++ Suffix, yes,
+	module_name_to_file_name(ModuleName, ".mih" ++ Suffix ++ ".tmp",
+		yes, TmpHeaderFile),
+	module_name_to_file_name(ModuleName, ".mih" ++ Suffix, yes,
 		HeaderFile),
 	{ Indent = 0 },
 	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)),
@@ -182,12 +168,30 @@ mlds_output_src_imports(Indent, Imports) -->
 :- mode mlds_output_src_import(in, in, di, uo) is det.
 
 mlds_output_src_import(_Indent, Import) -->
-	{ Import = mercury_import(ImportName)
-	; Import = foreign_import(_),
+	{
+		Import = mercury_import(ImportType, ImportName),
+		ModuleName0 = mlds_module_name_to_sym_name(ImportName),
+		( ImportType = user_visible_interface, HeaderExt = ".mh"
+		; ImportType = compiler_visible_interface, HeaderExt = ".mih"
+		),
+
+		% Strip off the "mercury" qualifier for standard
+		% library modules.
+		(
+			ModuleName0 = qualified(unqualified("mercury"),
+					ModuleName1),
+			mercury_std_library_module(ModuleName1)
+		->
+			ModuleName = unqualified(ModuleName1)
+		;
+			ModuleName = ModuleName0
+		)
+	;
+		Import = foreign_import(_),
 		unexpected(this_file, "foreign import in C backend")
 	},
-	{ SymName = mlds_module_name_to_sym_name(ImportName) },
-	module_name_to_file_name(SymName, ".h", no, HeaderFile),
+
+	module_name_to_file_name(ModuleName, HeaderExt, no, HeaderFile),
 	io__write_strings(["#include """, HeaderFile, """\n"]).
 
 
@@ -204,11 +208,12 @@ mlds_output_src_import(_Indent, Import) -->
 
 mlds_output_src_file(Indent, MLDS) -->
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
-	mlds_output_src_start(Indent, ModuleName), io__nl,
-	mlds_output_src_imports(Indent, Imports), io__nl,
-
 		% Get the foreign code for C
 	{ ForeignCode = mlds_get_c_foreign_code(AllForeignCode) },
+
+	mlds_output_src_start(Indent, ModuleName, ForeignCode), io__nl,
+	mlds_output_src_imports(Indent, Imports), io__nl,
+
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
 	%
 	% The public types have already been defined in the
@@ -290,11 +295,11 @@ mlds_output_hdr_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("#include ""mercury.h""\n").
 
-:- pred mlds_output_src_start(indent, mercury_module_name,
+:- pred mlds_output_src_start(indent, mercury_module_name, mlds__foreign_code,
 		io__state, io__state).
-:- mode mlds_output_src_start(in, in, di, uo) is det.
+:- mode mlds_output_src_start(in, in, in, di, uo) is det.
 
-mlds_output_src_start(Indent, ModuleName) -->
+mlds_output_src_start(Indent, ModuleName, ForeignCode) -->
 	mlds_output_auto_gen_comment(ModuleName),
 	mlds_indent(Indent),
 	io__write_string("/* :- module "),
@@ -303,8 +308,23 @@ mlds_output_src_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("/* :- implementation. */\n"),
 	mlds_output_src_bootstrap_defines, io__nl,
+
+	%
+	% If there are `:- pragma export' declarations,
+	% #include the `.mh' file.
+	%
+	( { ForeignCode = mlds__foreign_code(_, _, _, []) } ->
+		[]
+	;
+		mlds_output_src_import(Indent,
+			mercury_import(
+			user_visible_interface,
+			mercury_module_name_to_mlds(ModuleName)))
+	),
 	mlds_output_src_import(Indent,
-		mercury_import(mercury_module_name_to_mlds(ModuleName))),
+		mercury_import(
+			compiler_visible_interface,
+			mercury_module_name_to_mlds(ModuleName))),
 	io__nl.
 
 	%
@@ -527,14 +547,11 @@ mlds_output_calls_to_register_tci(ModuleName,
 		io__state, io__state).
 :- mode mlds_output_c_hdr_decls(in, in, in, di, uo) is det.
 
-mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
+mlds_output_c_hdr_decls(_ModuleName, Indent, ForeignCode) -->
 	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevImports,
-		_RevBodyCode, ExportDefns) },
+		_RevBodyCode, _ExportDefns) },
 	{ HeaderCode = list__reverse(RevHeaderCode) },
-	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)),
-	io__write_string("\n"),
-	io__write_list(ExportDefns, "\n",
-			mlds_output_pragma_export_decl(ModuleName, Indent)).
+	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)).
 
 :- pred mlds_output_c_hdr_decl(indent,
 	foreign_decl_code, io__state, io__state).
@@ -569,7 +586,7 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
 	    	{ ForeignImport = foreign_import_module(Lang, Import, _) },
 		( { Lang = c } ->
 			mlds_output_src_import(Indent,
-				mercury_import(
+				mercury_import(user_visible_interface,
 					mercury_module_name_to_mlds(Import)))
 	    	;
 			{ sorry(this_file, "foreign code other than C") }
@@ -594,14 +611,6 @@ mlds_output_c_defn(_Indent, user_foreign_code(csharp, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
 mlds_output_c_defn(_Indent, user_foreign_code(il, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
-
-:- pred mlds_output_pragma_export_decl(mlds_module_name, indent,
-		mlds__pragma_export, io__state, io__state).
-:- mode mlds_output_pragma_export_decl(in, in, in, di, uo) is det.
-
-mlds_output_pragma_export_decl(ModuleName, Indent, PragmaExport) -->
-	mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport),
-	io__write_string(";").
 
 :- pred mlds_output_pragma_export_defn(mlds_module_name, indent,
 		mlds__pragma_export, io__state, io__state).
@@ -656,7 +665,7 @@ mlds_output_pragma_export_type(prefix, mlds__cont_type(_)) -->
 mlds_output_pragma_export_type(prefix, mlds__commit_type) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__native_bool_type) -->
-	io__write_string("MR_Word").
+	io__write_string("MR_bool").
 mlds_output_pragma_export_type(prefix, mlds__native_int_type) -->
 	io__write_string("MR_Integer").
 mlds_output_pragma_export_type(prefix, mlds__native_float_type) -->

@@ -1543,7 +1543,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set(maybe(determinism), prog_varset, vartypes,
 	list(prog_var), list(mode), inst_varset, maybe(list(is_live)), 
 	hlds_goal, prog_context, stack_slots, determinism, bool,
-	list(arg_info), liveness_info, type_info_varmap,
+	maybe(list(arg_info)), liveness_info, type_info_varmap,
 	typeclass_info_varmap, maybe(arg_size_info),
 	maybe(termination_info), is_address_taken, proc_info).
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in,
@@ -1647,6 +1647,9 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 
 :- pred proc_info_arg_info(proc_info, list(arg_info)).
 :- mode proc_info_arg_info(in, out) is det.
+
+:- pred proc_info_maybe_arg_info(proc_info, maybe(list(arg_info))).
+:- mode proc_info_maybe_arg_info(in, out) is det.
 
 :- pred proc_info_set_arg_info(proc_info, list(arg_info), proc_info).
 :- mode proc_info_set_arg_info(in, in, out) is det.
@@ -1883,7 +1886,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% mode checking etc. for complicated
 					% modes of unification procs until
 					% the end of the unique_modes pass.)
-			arg_pass_info	:: list(arg_info),
+			arg_pass_info	:: maybe(list(arg_info)),
 					% calling convention of each arg:
 					% information computed by arg_info.m
 					% (based on the modes etc.)
@@ -2004,7 +2007,7 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	InferredDet = erroneous,
 	map__init(StackSlots),
 	set__init(InitialLiveness),
-	ArgInfo = [],
+	ArgInfo = no,
 	goal_info_init(GoalInfo),
 	ClauseBody = conj([]) - GoalInfo,
 	CanProcess = yes,
@@ -2050,7 +2053,7 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
 	ModeErrors = [],
 	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
-		MaybeDeclaredDetism, Detism, yes, [], Liveness, TVarMap,
+		MaybeDeclaredDetism, Detism, yes, no, Liveness, TVarMap,
 		TCVarsMap, eval_normal, no, no, no, IsAddressTaken,
 		RLExprn, no, no, no, no).
 
@@ -2128,7 +2131,14 @@ proc_info_context(ProcInfo, ProcInfo^proc_context).
 proc_info_stack_slots(ProcInfo, ProcInfo^stack_slots).
 proc_info_inferred_determinism(ProcInfo, ProcInfo^inferred_detism).
 proc_info_can_process(ProcInfo, ProcInfo^can_process).
-proc_info_arg_info(ProcInfo, ProcInfo^arg_pass_info).
+proc_info_maybe_arg_info(ProcInfo, ProcInfo^arg_pass_info).
+proc_info_arg_info(ProcInfo, ArgInfo) :-
+	( yes(ArgInfo0) = ProcInfo^arg_pass_info ->
+		ArgInfo = ArgInfo0
+
+	;
+		error("proc_info_arg_info: arg_pass_info not set")
+	).
 proc_info_liveness_info(ProcInfo, ProcInfo^initial_liveness).
 proc_info_typeinfo_varmap(ProcInfo, ProcInfo^proc_type_info_varmap).
 proc_info_typeclass_info_varmap(ProcInfo, ProcInfo^proc_typeclass_info_varmap).
@@ -2156,7 +2166,7 @@ proc_info_set_stack_slots(ProcInfo, SS, ProcInfo^stack_slots := SS).
 proc_info_set_inferred_determinism(ProcInfo, ID,
 	ProcInfo^inferred_detism := ID).
 proc_info_set_can_process(ProcInfo, CP, ProcInfo^can_process := CP).
-proc_info_set_arg_info(ProcInfo, AP, ProcInfo^arg_pass_info := AP).
+proc_info_set_arg_info(ProcInfo, AP, ProcInfo^arg_pass_info := yes(AP)).
 proc_info_set_liveness_info(ProcInfo, IL, ProcInfo^initial_liveness := IL).
 proc_info_set_typeinfo_varmap(ProcInfo, TI,
 	ProcInfo^proc_type_info_varmap := TI).

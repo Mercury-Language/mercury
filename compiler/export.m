@@ -71,7 +71,7 @@
 :- import_module hlds__hlds_pred, check_hlds__type_util.
 :- import_module backend_libs__code_model.
 :- import_module ll_backend__code_gen, ll_backend__code_util.
-:- import_module ll_backend__llds_out.
+:- import_module ll_backend__llds_out, ll_backend__arg_info.
 :- import_module libs__globals, libs__options.
 
 :- import_module term, varset.
@@ -319,8 +319,15 @@ get_export_info(Preds, PredId, ProcId, Globals, Module,
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
-	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
 	pred_info_arg_types(PredInfo, ArgTypes),
+	( MaybeArgInfos = yes(ArgInfos0) ->
+		ArgInfos = ArgInfos0
+	;
+		generate_proc_arg_info(ProcInfo, ArgTypes,
+			Module, NewProcInfo),
+		proc_info_arg_info(NewProcInfo, ArgInfos)
+	),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	assoc_list__from_corresponding_lists(ArgInfos, ArgTypes,
 		ArgInfoTypes0),
@@ -593,7 +600,29 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 export__produce_header_file([], _) --> [].
 export__produce_header_file(C_ExportDecls, ModuleName) -->
 	{ C_ExportDecls = [_|_] },
-	module_name_to_file_name(ModuleName, ".h", yes, FileName),
+	export__produce_header_file(C_ExportDecls, ModuleName, ".mh"),
+
+	% XXX  We still need to produce the `.h' file for bootstrapping.
+	% The C files in the trace directory refer to std_util.h and io.h.
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	{
+		HighLevelCode = yes,
+		ModuleName = unqualified(StdLibModule),
+		mercury_std_library_module(StdLibModule)
+	->
+		HeaderModuleName = qualified(unqualified("mercury"),
+			       StdLibModule)
+	;
+		HeaderModuleName = ModuleName
+	},
+	export__produce_header_file(C_ExportDecls, HeaderModuleName, ".h").
+
+:- pred export__produce_header_file(foreign_export_decls, module_name, string,
+					io__state, io__state).
+:- mode export__produce_header_file(in, in, in, di, uo) is det.
+
+export__produce_header_file(C_ExportDecls, ModuleName, HeaderExt) -->
+	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName),
 	io__open_output(FileName, Result),
 	(
 		{ Result = ok(FileStream) }
@@ -616,8 +645,12 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 			"extern ""C"" {\n",
 			"#endif\n",
 			"\n",
-			"#ifndef MERCURY_HDR_EXCLUDE_IMP_H\n",
-			"#include ""mercury_imp.h""\n",
+			"#ifdef MR_HIGHLEVEL_CODE\n",
+			"#include ""mercury.h""\n",
+			"#else\n",
+			"  #ifndef MERCURY_HDR_EXCLUDE_IMP_H\n",
+			"  #include ""mercury_imp.h""\n",
+			"  #endif\n",
 			"#endif\n",
 			"#ifdef MR_DEEP_PROFILING\n",
 			"#include ""mercury_deep_profiling.h""\n",

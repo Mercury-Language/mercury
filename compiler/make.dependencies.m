@@ -143,7 +143,8 @@ target_dependencies(_, long_interface) = interface_file_dependencies.
 target_dependencies(_, short_interface) = interface_file_dependencies.
 target_dependencies(_, unqualified_short_interface) = source `of` self.
 target_dependencies(Globals, aditi_code) = compiled_code_dependencies(Globals).
-target_dependencies(Globals, c_header) = target_dependencies(Globals, c_code).
+target_dependencies(Globals, c_header(_)) =
+		target_dependencies(Globals, c_code).
 target_dependencies(Globals, c_code) = compiled_code_dependencies(Globals).
 target_dependencies(Globals, il_code) = compiled_code_dependencies(Globals).
 target_dependencies(_, il_asm) = il_code `of` self.
@@ -162,18 +163,17 @@ target_dependencies(Globals, object_code(PIC)) = Deps :-
 	HeaderDeps =
 	    ( CompilationTarget = c, HighLevelCode = yes ->
 		combine_deps_list([
-		    c_header `of` direct_imports,
-		    c_header `of` indirect_imports,
-		    c_header `of` parents,
-		    c_header `of` intermod_imports,
-		    c_header `of` foreign_imports
+		    c_header(mih) `of` direct_imports,
+		    c_header(mih) `of` indirect_imports,
+		    c_header(mih) `of` parents,
+		    c_header(mih) `of` intermod_imports
 		])
 	    ;
 		no_deps
 	    ),
 	Deps = combine_deps_list([
 		TargetCode `of` self,
-		c_header `of` foreign_imports,
+		c_header(mh) `of` foreign_imports,
 		HeaderDeps
 	]).
 target_dependencies(_, intermodule_interface) =

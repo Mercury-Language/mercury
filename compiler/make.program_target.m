@@ -425,7 +425,7 @@ make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 
 make_clean(ModuleName, Info0, Info) -->
 	list__foldl2(remove_target_file(ModuleName),
-		[errors, c_code, c_header,
+		[errors, c_code, c_header(mih),
 		object_code(pic), object_code(non_pic),
 		asm_code(pic), asm_code(non_pic),
 		il_code, java_code
@@ -463,7 +463,7 @@ make_realclean(ModuleName, Info0, Info) -->
 	list__foldl2(remove_target_file(ModuleName),
 		[private_interface, long_interface, short_interface,
 		unqualified_short_interface, intermodule_interface,
-		aditi_code, c_header
+		aditi_code, c_header(mh)
 		],
 		Info1, Info2),
 	remove_file(ModuleName, module_dep_file_extension, Info2, Info3),

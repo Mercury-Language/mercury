@@ -459,7 +459,7 @@ clean_local: clean_prof_files
 
 # Note: the `lib%.install_ints' rule is generated in each module's `.dep'
 # file so it can be more easily customised based on the desired level of
-# intermodule optimisation.  Likewise the `lib%.install_hdrs' is also
+# intermodule optimisation.  Likewise the `lib%.install_grade_hdrs' is also
 # generated in the `.dep' file, since it depends on the setting of
 # the `--high-level-code' option.
 
@@ -489,17 +489,17 @@ lib%.install_split_library: %.split.a install_grade_dirs
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) $($*.c_dates) $($*.os) \
-		$($*.pic_os) *.a *.so tmp_dir || true; } && \
+	{ mv -f $(deps_subdir)$*.dep $($*.mihs) $($*.cs) $($*.c_dates) \
+		$($*.os) $($*.pic_os) *.a *.so tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
-			$(MMAKE) GRADE=$$grade lib$*.install_hdrs || \
+			$(MMAKE) GRADE=$$grade lib$*.install_grade_hdrs || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
-			rm -f $(deps_subdir)$*.dep $($*.hs) $($*.cs) \
+			rm -f $(deps_subdir)$*.dep $($*.mihs) $($*.cs) \
 				$($*.c_dates) $($*.os) $($*.pic_os) *.a *.so; \
 		fi; \
 	done && \
@@ -513,7 +513,7 @@ lib%.install_grades:
 lib%.install_split_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f $(deps_subdir)$*.dep $($*.hs) $($*.dirs) *.a *.so \
+	{ mv -f $(deps_subdir)$*.dep $($*.mihs) $($*.dirs) *.a *.so \
 		tmp_dir || true; } && \
 	for grade in x $(ALL_LIBGRADES); do \
 		if [ "$$grade" != "x" ]; then \
@@ -521,7 +521,7 @@ lib%.install_split_grades:
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_split_library || \
 				exit 1; \
-			rm -rf $(deps_subdir)$*.dep $($*.hs) $($*.dirs) \
+			rm -rf $(deps_subdir)$*.dep $($*.mihs) $($*.dirs) \
 				*.a *.so; \
 		fi; \
 	done && \
@@ -543,5 +543,10 @@ install_lib_dirs:
 install_grade_dirs: #install_lib_dirs
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || \
 		$(INSTALL_MKDIR) $(INSTALL_MERC_LIB_DIR)
+	-[ -d $(INSTALL_GRADE_INC_DIR) ] || \
+		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)
+	# The following is needed to support the `--use-subdirs' option
+	-[ -d $(INSTALL_GRADE_INC_DIR)/Mercury ] || \
+		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
 
 #-----------------------------------------------------------------------------#

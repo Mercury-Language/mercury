@@ -316,9 +316,17 @@ output_imports(Imports) -->
 :- mode output_import(in, di, uo) is det.
 
 output_import(Import) -->
-	{ Import = mercury_import(ImportName)
+	% XXX Handle `:- pragma export' to Java.
+	{ Import = mercury_import(ImportType, ImportName),
+		(
+			ImportType = user_visible_interface,
+			unexpected(this_file,
+		"import_type `user_visible_interface' in Java backend")
+		;
+			ImportType = compiler_visible_interface
+		)
 	; Import = foreign_import(_),
-		unexpected(this_file, "foreign import in java backend")
+		unexpected(this_file, "foreign import in Java backend")
 	},
 	{ SymName = mlds_module_name_to_sym_name(ImportName) },
 	{ JavaSafeSymName = valid_module_name(SymName) },

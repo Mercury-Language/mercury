@@ -857,7 +857,9 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	module_info_get_all_deps(ModuleInfo, AllImports),
-	P = (func(Name) = mercury_import(mercury_module_name_to_mlds(Name))),
+	P = (func(Name) = mercury_import(
+				compiler_visible_interface,
+				mercury_module_name_to_mlds(Name))),
 
 		% For every foreign type determine the import needed to
 		% find the declaration for that type.

@@ -224,10 +224,12 @@ Files ending in @file{.dv} are automatically-generated Makefile fragments
 which contain variable definitions for an entire program.
 
 As usual, @file{.c} files are C source code,
-@file{.h} files are C header files,
 and @file{.o} files are object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
+@file{.mh} and @file{.mih} files are C header files generated
+by the Mercury compiler. The non-standard extensions are necessary
+to avoid conflicts with system header files.
 @file{.s} files and @file{.pic_s} files are assembly language.
 @file{.java} and @file{.class} files are Java source code
 and Java bytecode respectively.
@@ -572,8 +574,9 @@ that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 @samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql}, @samp{.used},
+@samp{.mih},
 @ifset aditi
-@samp{.schema},
+@samp{.derived_schema}, @samp{.base_schema}
 @end ifset
 and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
@@ -593,7 +596,7 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @ifset aditi
 @samp{.rlo},
 @end ifset
-@samp{.h} and @samp{.d} files
+@samp{.mh} and @samp{.d} files
 belonging to one of the modules of the program,
 and also the various possible executables, libraries and dependency files
 for the program as a whole ---

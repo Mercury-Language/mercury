@@ -22,7 +22,8 @@ MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
 EXTRA_C_LIB_DIRS	= \
 	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@,$(EXTRA_LIB_DIRS)) \
 	$(patsubst %,%/lib/@FULLARCH@,$(EXTRA_LIB_DIRS))
-EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
+EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS)) \
+	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@/inc,$(EXTRA_LIB_DIRS))
 EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
 MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
 else
@@ -545,6 +546,7 @@ date3s_subdir=$(SUBDIR)date3s/
 optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 useds_subdir=$(SUBDIR)useds/
+mihs_subdir=$(SUBDIR)mihs/
 cs_subdir=$(SUBDIR)cs/
 dlls_subdir=$(SUBDIR)dlls/
 ss_subdir=$(SUBDIR)ss/
@@ -584,6 +586,7 @@ date3s_subdir=
 optdates_subdir=
 trans_opt_dates_subdir=
 useds_subdir=
+mihs_subdir=
 cs_subdir=
 dlls_subdir=
 ss_subdir=
@@ -679,6 +682,8 @@ INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
 INSTALL_MERC_GRADELESS_LIB_DIR = $(INSTALL_LIBDIR)/lib/$(FULLARCH)
 FINAL_INSTALL_MERC_GRADELESS_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
 INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
+INSTALL_GRADE_INC_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)/inc
+INSTALL_GRADE_INC_SUBDIR = $(INSTALL_GRADE_INC_DIR)/Mercury/mihs
 FINAL_INSTALL_MERC_LIB_DIR = \
 		$(FINAL_INSTALL_LIBDIR)/lib/$(GRADESTRING)/$(FULLARCH)
 

@@ -1119,6 +1119,18 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 		( { NumErrors = 0 } ->
 		    mercury_compile__maybe_generate_rl_bytecode(HLDS50,
 				Verbose, MaybeRLFile),
+		    ( { Target = c ; Target = asm } ->
+			%
+			% Produce the grade independent header file
+			% <module>.mh containing function prototypes
+			% for the `:- pragma export'ed procedures.
+			%
+		    	{ export__get_foreign_export_decls(HLDS50,
+				ExportDecls) },
+			export__produce_header_file(ExportDecls, ModuleName)
+		    ;
+		    	[]
+		    ),
 		    ( { AditiOnly = yes } ->
 		    	{ HLDS = HLDS50 }
 		    ; { Target = il } ->
@@ -3233,7 +3245,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 
-	{ C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _) },
+	{ C_InterfaceInfo = foreign_interface_info(_, _, _, _,
+					C_ExportDecls, _) },
 	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	%
@@ -3298,7 +3311,8 @@ make_foreign_import_header_code(
 		Include) -->
 	(
 		{ Lang = c },
-		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
+		module_name_to_file_name(ModuleName, ".mh",
+			no, HeaderFileName),
 		{ string__append_list(
 			["#include """, HeaderFileName, """\n"],
 			IncludeString) },

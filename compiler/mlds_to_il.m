@@ -305,7 +305,8 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 			% reference
 		list__map((pred(F::in, I::out) is det :-
 				mangle_foreign_code_module(ModuleName, F, N),
-				I = mercury_import(N)
+				I = mercury_import(compiler_visible_interface,
+					N)
 			),
 			set__to_sorted_list(ForeignLangs),
 			ForeignCodeAssemblerRefs),
@@ -2835,7 +2836,8 @@ make_class_constructor_class_member(DoneFieldRef, Imports, AllocInstrs,
 	set_rtti_initialization_field(DoneFieldRef, SetInstrs),
 	{ CCtorCalls = list__filter_map(
 		(func(I::in) = (C::out) is semidet :-
-			I = mercury_import(ImportName),
+			I = mercury_import(compiler_visible_interface,
+				ImportName),
 			C = call_class_constructor(
 				class_name(ImportName, wrapper_class_name))
 		), Imports) },
@@ -4002,7 +4004,8 @@ il_system_namespace_name = "System".
 mlds_to_il__generate_extern_assembly(CurrentAssembly, Version, SignAssembly,
 		SeparateAssemblies, Imports, AllDecls) :-
 	Gen = (pred(Import::in, Decl::out) is semidet :-
-		( Import = mercury_import(ImportName),
+		( Import = mercury_import(compiler_visible_interface,
+				ImportName),
 			( SignAssembly = yes,
 				AsmDecls = mercury_strong_name_assembly_decls
 			; SignAssembly = no,

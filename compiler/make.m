@@ -140,13 +140,18 @@
 	;	unqualified_short_interface
 	;	intermodule_interface
 	;	aditi_code
-	;	c_header
+	;	c_header(c_header_type)
 	;	c_code
 	;	il_code
 	;	il_asm
 	;	java_code
 	;	asm_code(pic)
 	;	object_code(pic)
+	.
+
+:- type c_header_type
+	--->	mh	% For `:- pragma export' declarations.
+	;	mih	% Declarations for hlc grades, for compiler use only.
 	.
 
 % :- type linked_target_type in mercury_compile.m.

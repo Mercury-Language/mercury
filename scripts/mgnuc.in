@@ -219,9 +219,17 @@ done
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
 
+# compute the canonical grade name from the options settings
+#
+
+# include the file `canonical_grade.sh-subr'
+@CANONICAL_GRADE@
+
 case "$mercury_stdlib_dir" in
-    "")	MERC_ALL_C_INCL_DIRS=$MERCURY_ALL_C_INCL_DIRS ;;
-    *)	MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS="-I$mercury_stdlib_dir/inc"} ;;
+    "")	MERC_ALL_C_INCL_DIRS=$MERCURY_ALL_C_INCL_DIRS
+    	;;
+    *)  MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS="-I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"}
+	;;
 esac
 
 LOCAL_C_INCL_DIR=${MERCURY_LOCAL_C_INCL_DIR=/usr/local/include}

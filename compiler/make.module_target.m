@@ -409,7 +409,7 @@ compilation_task(_, intermodule_interface) =
 			["--make-optimization-interface"].
 compilation_task(_, aditi_code) =
 		process_module(compile_to_target_code) - ["--aditi-only"].
-compilation_task(Globals, c_header) = compilation_task(Globals, c_code).
+compilation_task(Globals, c_header(_)) = compilation_task(Globals, c_code).
 compilation_task(_, c_code) = process_module(compile_to_target_code) -
 					["--compile-to-c"].
 compilation_task(_, il_code) = process_module(compile_to_target_code) -
@@ -497,23 +497,12 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 		    % When compiling to high-level C, we always generate
 		    % a header file.
 		    %
-		    { HeaderModuleNames = SourceFileModuleNames }
+		    { HeaderModuleNames = SourceFileModuleNames },
+		    { HeaderTargets0 = make_target_list(HeaderModuleNames,
+		    			c_header(mih)) }
 		;
-		    %
-		    % When compiling to low-level C, we only generate a
-		    % header file if the module contains `:- pragma export'
-		    % declarations.
-		    %
-		    { HeaderModuleNames =
-			list__filter_map(
-			    (func(MImports) =
-			    		MImports ^ module_name is semidet :-
-				contains_foreign_export =
-				    MImports ^ contains_foreign_export
-			    ), ModuleImportsList) }
-		),
-		{ HeaderTargets = make_target_list(HeaderModuleNames,
-					c_header) }
+		    { HeaderTargets0 = [] }	
+		)
 	    ;
 	        { CompilationTarget = asm },
 		%
@@ -525,15 +514,34 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 			(func(MImports) = MImports ^ module_name is semidet :-
 			    contains_foreign_code(_) = MImports ^ foreign_code
 			), ModuleImportsList) },
-		{ HeaderTargets = make_target_list(HeaderModuleNames,
-					c_header) }
+		{ HeaderTargets0 = make_target_list(HeaderModuleNames,
+					c_header(mih)) }
 	    ;
 	    	{ CompilationTarget = il },
-		{ HeaderTargets = [] }
+		{ HeaderTargets0 = [] }
 	    ;
 	    	{ CompilationTarget = java },
-		{ HeaderTargets = [] }
+		{ HeaderTargets0 = [] }
 	    ),
+
+	    { ( CompilationTarget = c ; CompilationTarget = asm ) ->
+		    %
+		    % We only generate a `.mh' file if the module contains
+		    % `:- pragma export' declarations.
+		    %
+	    	PragmaExportModuleNames =
+			list__filter_map(
+			    (func(MImports) =
+			    		MImports ^ module_name is semidet :-
+				contains_foreign_export =
+				    MImports ^ contains_foreign_export
+			    ), ModuleImportsList),
+	    	HeaderTargets =
+			make_target_list(PragmaExportModuleNames, c_header(mh))
+			++ HeaderTargets0
+	    ;
+		HeaderTargets = HeaderTargets0
+	    },
 
 	    { TouchedTargetFiles0 =
 			make_target_list(TargetModuleNames, FileType) },
