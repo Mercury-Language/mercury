@@ -21,7 +21,7 @@
 # completion.
 
 usage="Usage: makebatch [-jN] [-t] batchname"
-jfactor=-j5
+jfactor=-j1
 runtests=""
 
 while test $# -gt 0
