@@ -22,7 +22,7 @@
 ** 	scripts/mgnuc.in
 ** 	scripts/ml.in
 **	compiler/handle_options.m
-**	compiler/mercury_compile.m
+**	compiler/compile_target_code.m
 */
 
 #ifndef MERCURY_GRADES_H

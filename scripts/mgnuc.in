@@ -12,7 +12,7 @@
 		
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
-# *** changes to compiler/mercury_compile.m                             ***
+# *** changes to compiler/compile_target_code.m                         ***
 # *************************************************************************
 
 FULLARCH=@FULLARCH@
@@ -239,7 +239,7 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=-I$LOCAL_C_INCL_DIR}
 # convert non-grade mgnuc options into gcc options
 #
 # IMPORTANT: any changes here will require similar changes to
-# compiler/mercury_compile.m.
+# compiler/compile_target_code.m.
 #
 
 case $c_debug in
