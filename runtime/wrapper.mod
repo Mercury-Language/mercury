@@ -28,7 +28,7 @@
 
 /* size of data areas, in kilobytes */
 unsigned	heap_size =      4096;
-unsigned	detstack_size =   512;
+unsigned	detstack_size =  2048;
 unsigned	nondstack_size =  128;
 
 /* size of the redzones at the end of data areas, in kilobytes */

@@ -5,12 +5,12 @@
 */
 
 /*
- * file: solutions.mod
- * authors: conway, fjh.
- *
- * this module defines solutions/2 which takes a closure of type
- * pred(T) in which the remaining argument is output.
- */
+** file: solutions.mod
+** authors: conway, fjh.
+**
+** this module defines solutions/2 which takes a closure of type
+** pred(T) in which the remaining argument is output.
+*/
 
 #include "imp.h"
 
@@ -52,12 +52,24 @@ BEGIN_CODE
 */
 
 /*
-:- pred builtin_solutions(pred(T), list(T)).
-:- mode builtin_solutions(complicated_mode, out) is det.
-	% r1 - typeinfo for T (unused)
-	% r2 - closure
-	% r3 - output list
+** :- pred builtin_solutions(pred(T), list(T)).
+** :- mode builtin_solutions(pred(out) is multi/nondet, out) is det.
+**
+** Polymorphism will add an extra input parameter, a type_info for T,
+** which we don't use at the moment (later it could be used to find
+** the address of the deep copy routine).
+**
+** The type_info structure will be in r1 and the closure will be in r2
+** with both caling conventions. The output should go either in r3
+** (for the normal parameter convention) or r1 (for the compact parameter
+** convention).
 */
+
+#ifdef	COMPACT_ARGS
+#define	solutions_output	r1
+#else
+#define	solutions_output	r3
+#endif
 
 mercury__std_util__builtin_solutions_2_0:
 mercury__std_util__builtin_solutions_2_1:
@@ -80,10 +92,11 @@ mercury__std_util__builtin_solutions_2_1:
 		LABEL(mercury__std_util__builtin_solutions_2_0_i2));
 	framevar(0) = list_empty();
 
+	/* we do not (yet) need the type_info we are passed in r1 */
 	/* call the higher-order pred closure that we were passed in r2 */
 	r1 = r2;
-	r2 = (Word) 0;	/* the closure has no input arguments */
-	r3 = (Word) 1;	/* the closure has one argument */
+	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
+	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	{ 
 		Declare_entry(do_call_nondet_closure);
 		call(ENTRY(do_call_nondet_closure),
@@ -99,8 +112,8 @@ mercury__std_util__builtin_solutions_2_0_i1:
 
 mercury__std_util__builtin_solutions_2_0_i2:
 	/* no more solutions */
-	/* put the list in r3, discard the frame we made, and return */
-	r3 = framevar(0);
+	/* return the solutions list and discard the frame we made */
+	solutions_output = framevar(0);
 	succeed_discard();
 
 END_MODULE
