@@ -222,8 +222,7 @@ main_2(no, OptionArgs, Args, Link) -->
 		( { ExitStatus = 0 } ->
 			( { Link = yes } ->
 				compile_target_code__link_module_list(
-					ModulesToLink, Succeeded),
-				maybe_set_exit_status(Succeeded)
+					ModulesToLink, _Succeeded)
 			;
 				[]
 			)
@@ -384,8 +383,7 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 		( { Result = ok, TargetCodeOnly = no } ->
 			io__output_stream(OutputStream),
 			compile_target_code__assemble(OutputStream,
-				non_pic, ModuleName, AssembleOK),
-			maybe_set_exit_status(AssembleOK)
+				non_pic, ModuleName, _AssembleOK)
 		;
 			[]
 		)
@@ -1148,8 +1146,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 				mercury_compile__mlds_to_il_assembler(MLDS),
 				io__output_stream(OutputStream),
 				compile_target_code__il_assemble(OutputStream,
-					ModuleName, HasMain, Succeeded),
-				maybe_set_exit_status(Succeeded)
+					ModuleName, HasMain, _Succeeded)
 			)
 		    ; { Target = java } ->
 			{ HLDS = HLDS50 },
@@ -1160,8 +1157,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 			;
 				io__output_stream(OutputStream),
 				compile_target_code__compile_java_file(
-					OutputStream, ModuleName, Succeeded),
-				maybe_set_exit_status(Succeeded)
+					OutputStream, ModuleName, _Succeeded)
 			)
 		    ; { Target = asm } ->
 		    	% compile directly to assembler using the gcc back-end
@@ -1196,8 +1192,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 					compile_target_code__compile_c_file(
 						OutputStream, non_pic,
 						CCode_C_File, CCode_O_File,
-						CompileOK),
-					maybe_set_exit_status(CompileOK),
+						_CompileOK),
 					% add this object file to the list
 					% of extra object files to link in
 					globals__io_lookup_accumulating_option(
@@ -1225,8 +1220,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 				io__output_stream(OutputStream),
 				compile_target_code__compile_c_file(
 					OutputStream, non_pic, C_File, O_File,
-					CompileOK),
-				maybe_set_exit_status(CompileOK)
+					_CompileOK)
 			)
 		    ;
 			mercury_compile__backend_pass(HLDS50, HLDS,
@@ -3265,7 +3259,6 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 		io__output_stream(OutputStream),
 		mercury_compile__c_to_obj(OutputStream,
 			ModuleName, NumChunks, CompileOK),
-		maybe_set_exit_status(CompileOK),
 		{ bool__not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
