@@ -1235,11 +1235,11 @@ mercury_compile__maybe_excess_assigns(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__maybe_saved_vars(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
 	( { SavedVars = yes } ->
-		maybe_write_string(Verbose, "% Reordering to minimize variable saves..."),
+		maybe_write_string(Verbose, "% Reordering to minimize variable saves...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(update_proc_io(
 			saved_vars_proc), HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n"),
+		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;
 		{ HLDS0 = HLDS }
