@@ -34,8 +34,10 @@
 :- use_module std_util.
 :- use_module type_desc.
 
-:- type type_info == type_desc__type_desc.
-:- type type_ctor_info == type_desc__type_ctor_desc.
+	% Our type_info and type_ctor_info implementations are both
+	% abstract types.
+:- type type_info.
+:- type type_ctor_info.
 
 :- func get_type_info(T::unused) = (type_info::out) is det.
 
@@ -128,6 +130,8 @@
 
 	% We keep all the other types abstract.
 
+:- type type_ctor_info ---> type_ctor_info(c_pointer).
+:- type type_info ---> type_info(c_pointer).
 :- type compare_pred ---> compare_pred(c_pointer).
 :- type type_functors ---> type_functors(c_pointer).
 :- type type_layout ---> type_layout(c_pointer).
@@ -141,8 +145,8 @@
 %
 
 	% See MR_get_num_functors in runtime/mercury_construct.c
-num_functors(TypeInfo) = NumFunctors :-
-	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+num_functors(TypeDesc) = NumFunctors :-
+	TypeCtorInfo = get_type_ctor_info(unsafe_cast(TypeDesc)),
 	TypeCtorRep = TypeCtorInfo ^ type_ctor_rep,
 	( TypeCtorRep = du,
 		NumFunctors = TypeCtorInfo ^ type_ctor_num_functors
