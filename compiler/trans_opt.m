@@ -15,7 +15,7 @@
 % other .trans_opt files introduces the possibility of circular
 % dependencies occuring. These circular dependencies would occur if the
 % data in A.trans_opt depended on the data in B.trans_opt being correct,
-% and vice-versa.  
+% and vice-versa.
 %
 % The following system is used to ensure that circular dependencies cannot
 % occur:
@@ -57,16 +57,14 @@
 
 :- import_module io, bool, list.
 
-:- pred trans_opt__write_optfile(module_info, io__state, io__state).
-:- mode trans_opt__write_optfile(in, di, uo) is det.
+:- pred trans_opt__write_optfile(module_info::in, io::di, io::uo) is det.
 
-	% trans_opt__grab_optfiles(ModuleImports0, ModuleList, ModuleImports, 
-	% 	Error, IO0, IO).
+	% trans_opt__grab_optfiles(ModuleList, !ModuleImports, Error, !IO):
 	% Add the items from each of the modules in ModuleList.trans_opt to
 	% the items in ModuleImports.
-:- pred trans_opt__grab_optfiles(module_imports, list(module_name), 
-	module_imports, bool, io__state, io__state).
-:- mode trans_opt__grab_optfiles(in, in, out, out, di, uo) is det.
+:- pred trans_opt__grab_optfiles(list(module_name)::in,
+	module_imports::in, module_imports::out, bool::out, io::di, io::uo)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -90,92 +88,90 @@
 % Open the file "<module-name>.trans_opt.tmp", and write out the
 % declarations.
 
-trans_opt__write_optfile(Module) -->
-	{ module_info_name(Module, ModuleName) },
-	module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes,
-					TmpOptName),
-	io__open_output(TmpOptName, Result),
+trans_opt__write_optfile(Module, !IO) :-
+	module_info_name(Module, ModuleName),
+	module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes, TmpOptName,
+		!IO),
+	io__open_output(TmpOptName, Result, !IO),
 	(
-		{ Result = error(Error) },
-		{ io__error_message(Error, Msg) },
-		io__progname_base("trans_opt.m", ProgName),
-		io__write_string(ProgName),
+		Result = error(Error),
+		io__error_message(Error, Msg),
+		io__progname_base("trans_opt.m", ProgName, !IO),
+		io__write_string(ProgName, !IO),
 		io__write_string(
-			": cannot open transitive optimisation file `"),
-		io__write_string(TmpOptName),
-		io__write_string("' \n"),
-		io__write_string(ProgName),
-		io__write_string(": for output: "),
-		io__write_string(Msg),
-		io__nl,
-		io__set_exit_status(1)
+			": cannot open transitive optimisation file `", !IO),
+		io__write_string(TmpOptName, !IO),
+		io__write_string("' \n", !IO),
+		io__write_string(ProgName, !IO),
+		io__write_string(": for output: ", !IO),
+		io__write_string(Msg, !IO),
+		io__nl(!IO),
+		io__set_exit_status(1, !IO)
 	;
-		{ Result = ok(Stream) },
-		io__set_output_stream(Stream, OldStream),
-		{ module_info_name(Module, ModName) },
-		io__write_string(":- module "),
-		mercury_output_bracketed_sym_name(ModName),
-		io__write_string(".\n"),
+		Result = ok(Stream),
+		io__set_output_stream(Stream, OldStream, !IO),
+		module_info_name(Module, ModName),
+		io__write_string(":- module ", !IO),
+		mercury_output_bracketed_sym_name(ModName, !IO),
+		io__write_string(".\n", !IO),
 
-		% All predicates to write global items into the .trans_opt 
+		% All predicates to write global items into the .trans_opt
 		% file should go here.
 
-		{ module_info_predids(Module, PredIds) },
+		module_info_predids(Module, PredIds),
 		list__foldl(termination__write_pred_termination_info(Module),
-			PredIds),
+			PredIds, !IO),
 
-		io__set_output_stream(OldStream, _),
-		io__close_output(Stream),
+		io__set_output_stream(OldStream, _, !IO),
+		io__close_output(Stream, !IO),
 
 		module_name_to_file_name(ModuleName, ".trans_opt", no,
-				OptName),
-		update_interface(OptName),
-		touch_interface_datestamp(ModuleName, ".trans_opt_date")
+			OptName, !IO),
+		update_interface(OptName, !IO),
+		touch_interface_datestamp(ModuleName, ".trans_opt_date", !IO)
 	).
 
 %-----------------------------------------------------------------------------%
+
 	% Read in and process the transitive optimization interfaces.
 
-trans_opt__grab_optfiles(Module0, TransOptDeps, Module, FoundError) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Reading .trans_opt files..\n"),
-	maybe_flush_output(Verbose),
+trans_opt__grab_optfiles(TransOptDeps, !Module, FoundError, !IO) :-
+	globals__io_lookup_bool_option(verbose, Verbose, !IO),
+	maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
+	maybe_flush_output(Verbose, !IO),
 
-	read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError),
+	read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError, !IO),
 
-	{ append_pseudo_decl(opt_imported, Module0, Module1) },
-	{ module_imports_get_items(Module1, Items0) },
-	{ list__append(Items0, OptItems, Items) },
-	{ module_imports_set_items(Module1, Items, Module2) },
-	{ module_imports_set_error(Module2, no_module_errors, Module) },
+	append_pseudo_decl(opt_imported, !Module),
+	module_imports_get_items(!.Module, Items0),
+	list__append(Items0, OptItems, Items),
+	module_imports_set_items(Items, !Module),
+	module_imports_set_error(no_module_errors, !Module),
 
-	maybe_write_string(Verbose, "% Done.\n").
+	maybe_write_string(Verbose, "% Done.\n", !IO).
 
-:- pred read_trans_opt_files(list(module_name), item_list,
-	item_list, bool, bool, io__state, io__state).
-:- mode read_trans_opt_files(in, in, out, in, out, di, uo) is det.
+:- pred read_trans_opt_files(list(module_name)::in, item_list::in,
+	item_list::out, bool::in, bool::out, io::di, io::uo) is det.
 
-read_trans_opt_files([], Items, Items, Error, Error) --> [].
-read_trans_opt_files([Import | Imports],
-		Items0, Items, Error0, Error) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+read_trans_opt_files([], !Items, !Error, !IO).
+read_trans_opt_files([Import | Imports], !Items, !Error, !IO) :-
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 	maybe_write_string(VeryVerbose,
-		"% Reading transitive optimization interface for module"),
-	maybe_write_string(VeryVerbose, " `"),
-	{ prog_out__sym_name_to_string(Import, ImportString) },
-	maybe_write_string(VeryVerbose, ImportString),
-	maybe_write_string(VeryVerbose, "'... "),
-	maybe_flush_output(VeryVerbose),
+		"% Reading transitive optimization interface for module", !IO),
+	maybe_write_string(VeryVerbose, " `", !IO),
+	prog_out__sym_name_to_string(Import, ImportString),
+	maybe_write_string(VeryVerbose, ImportString, !IO),
+	maybe_write_string(VeryVerbose, "'... ", !IO),
+	maybe_flush_output(VeryVerbose, !IO),
 
-	module_name_to_search_file_name(Import, ".trans_opt", FileName),
+	module_name_to_search_file_name(Import, ".trans_opt", FileName, !IO),
 	prog_io__read_opt_file(FileName, Import,
-			ModuleError, Messages, Items1),
+		ModuleError, Messages, NewItems, !IO),
 
-	maybe_write_string(VeryVerbose, " done.\n"),
+	maybe_write_string(VeryVerbose, " done.\n", !IO),
 
 	intermod__update_error_status(trans_opt, FileName, ModuleError,
-		Messages, Error0, Error1),
+		Messages, !Error, !IO),
 
-	{ list__append(Items0, Items1, Items2) },
-	read_trans_opt_files(Imports, Items2, Items, Error1, Error).
-
+	list__append(!.Items, NewItems, !:Items),
+	read_trans_opt_files(Imports, !Items, !Error, !IO).

@@ -338,7 +338,7 @@ invariant_goal_candidates_2(_PPId,
         IGCs).
 
 invariant_goal_candidates_2(_PPId,
-        ForeignProc @ foreign_proc(_,_,_,_,_,_,_)   - GoalInfo,  IGCs) =
+        ForeignProc @ foreign_proc(_,_,_,_,_,_)   - GoalInfo,  IGCs) =
     invariant_goal_candidates_handle_non_recursive_call(ForeignProc - GoalInfo,
         IGCs).
 
@@ -879,7 +879,7 @@ gen_aux_proc_2(Info, Call @ generic_call(_, _, _, _) - GoalInfo) =
 gen_aux_proc_2(Info, Unification @ unify(_, _, _, _, _) - GoalInfo) =
     gen_aux_proc_handle_non_recursive_call(Info, Unification - GoalInfo).
 
-gen_aux_proc_2(Info, ForeignProc @ foreign_proc(_, _, _, _, _, _, _) -
+gen_aux_proc_2(Info, ForeignProc @ foreign_proc(_, _, _, _, _, _) -
         GoalInfo) =
     gen_aux_proc_handle_non_recursive_call(Info, ForeignProc - GoalInfo).
 
@@ -999,7 +999,7 @@ gen_out_proc_2(_PPId, _CallAux,
     Unification - GoalInfo.
 
 gen_out_proc_2(_PPId, _CallAux,
-        ForeignProc @ foreign_proc(_,_,_,_,_,_,_)    - GoalInfo) =
+        ForeignProc @ foreign_proc(_,_,_,_,_,_)      - GoalInfo) =
     ForeignProc - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
@@ -1098,19 +1098,16 @@ uniquely_used_vars(ModuleInfo, Goal) =
 :- func uniquely_used_vars_2(module_info, hlds_goal) = prog_vars.
 
 uniquely_used_vars_2(MI, call(PredId, ProcId, Args, _, _, _) - _) =
-    list__filter_map_corresponding(uniquely_used_args(MI),
-                                   Args,
-                                   argmodes(MI,PredId,ProcId)).
+    list__filter_map_corresponding(uniquely_used_args(MI), Args,
+        argmodes(MI,PredId,ProcId)).
 
 uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
-    list__filter_map_corresponding(uniquely_used_args(MI),
-                                   Args,
-                                   Modes).
+    list__filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
 
-uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, _, _, _) - _) =
+uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _) =
     list__filter_map_corresponding(uniquely_used_args(MI),
-                                   Args,
-                                   argmodes(MI,PredId,ProcId)).
+        list__map(foreign_arg_var, Args ++ Extras),
+        argmodes(MI,PredId,ProcId)).
 
     % XXX This is very conservative!
     %
@@ -1174,9 +1171,9 @@ goal_inputs(MI, generic_call(_, Args, ArgModes, _) - _) =
     list__filter_map_corresponding(
             input_arg(MI), Args, ArgModes).
 
-goal_inputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _, _) - _) =
-    list__filter_map_corresponding(
-            input_arg(MI), Args, argmodes(MI, PredId, ProcId)).
+goal_inputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _) - _) =
+    list__filter_map_corresponding(input_arg(MI),
+        list__map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
 
 goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
     (
@@ -1258,9 +1255,10 @@ goal_outputs(MI, generic_call(_, Args, ArgModes, _) - _) =
     list__filter_map_corresponding(
             output_arg(MI), Args, ArgModes).
 
-goal_outputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _, _) - _) =
+goal_outputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _) - _) =
     list__filter_map_corresponding(
-            output_arg(MI), Args, argmodes(MI, PredId, ProcId)).
+            output_arg(MI), list__map(foreign_arg_var, Args),
+            argmodes(MI, PredId, ProcId)).
 
 goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
     (

@@ -44,7 +44,8 @@ end
 document_category 700 parameter
 parameter  - Commands that let users access debugger parameters.
              The parameter commands are `set', `printlevel', `echo', `context',
-             `scroll', `mmc_options', `scope', `alias' and `unalias'.
+             `goal_paths' `scroll', `mmc_options', `scope', `alias' and
+             `unalias'.
 
 end
 document_category 800 help

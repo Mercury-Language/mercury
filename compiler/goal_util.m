@@ -196,9 +196,10 @@
 :- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
 	hlds_goal::in, hlds_goal::in) is semidet.
 
-	% generate_simple_call(ModuleName, ProcName, PredOrFunc, Args, ModeNo,
-	%		Detism, MaybeFeature, InstMapDelta,
-	%		ModuleInfo, Context, CallGoal):
+	% generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
+	%	Detism, Args, MaybeFeature, InstMapDelta, ModuleInfo, Context,
+	%	CallGoal):
+	%
 	% Generate a call to a builtin procedure (e.g.
 	% from the private_builtin or table_builtin module).
 	% This is used by HLDS->HLDS transformation passes that introduce
@@ -211,8 +212,29 @@
 	% from 0.
 	%
 :- pred goal_util__generate_simple_call(module_name::in, string::in,
-	pred_or_func::in, list(prog_var)::in, mode_no::in, determinism::in,
+	pred_or_func::in, mode_no::in, determinism::in, list(prog_var)::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	module_info::in, term__context::in, hlds_goal::out) is det.
+
+	% generate_foreign_proc(ModuleName, ProcName, PredOrFunc,
+	%	ModeNo, Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
+	%	SuffixCode, MaybeFeature, InstMapDelta, ModuleInfo, Context,
+	%	CallGoal):
+	%
+	% generate_foreign_proc is similar to generate_simple_call,
+	% but also assumes that the called predicate is defined via a
+	% foreign_proc, that the foreign_proc's arguments are as given in
+	% Args, its attributes are Attributes, and its code is Code.
+	% As well as returning a foreign_code instead of a call, effectively
+	% inlining the call, generate_foreign_proc also puts PrefixCode
+	% before Code, SuffixCode after Code, and passes ExtraArgs as well
+	% as Args.
+	%
+:- pred goal_util__generate_foreign_proc(module_name::in, string::in,
+	pred_or_func::in, mode_no::in, determinism::in,
+	pragma_foreign_proc_attributes::in,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
+	string::in, maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
 :- pred goal_util__generate_unsafe_cast(prog_var::in, prog_var::in,
@@ -373,20 +395,23 @@ goal_util__rename_vars_in_goal_expr(
 		call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
 	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
-goal_util__rename_vars_in_goal_expr(unify(TermL0,TermR0,Mode,Unify0,Context),
-		Must, Subn, unify(TermL,TermR,Mode,Unify,Context)) :-
-	goal_util__rename_var(TermL0, Must, Subn, TermL),
-	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
+goal_util__rename_vars_in_goal_expr(unify(LHS0, RHS0, Mode, Unify0, Context),
+		Must, Subn, unify(LHS, RHS, Mode, Unify, Context)) :-
+	goal_util__rename_var(LHS0, Must, Subn, LHS),
+	goal_util__rename_unify_rhs(RHS0, Must, Subn, RHS),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__rename_vars_in_goal_expr(foreign_proc(A,B,C,Vars0,E,F,G),
-		Must, Subn, foreign_proc(A,B,C,Vars,E,F,G)) :-
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
+goal_util__rename_vars_in_goal_expr(foreign_proc(A,B,C,Args0,Extra0,F),
+		Must, Subn, foreign_proc(A,B,C,Args,Extra,F)) :-
+	goal_util__rename_arg_list(Args0, Must, Subn, Args),
+	goal_util__rename_arg_list(Extra0, Must, Subn, Extra).
 
 goal_util__rename_vars_in_goal_expr(shorthand(ShorthandGoal0), Must, Subn,
 		shorthand(ShrothandGoal)) :-
 	goal_util__rename_vars_in_shorthand(ShorthandGoal0, Must, Subn,
 		ShrothandGoal).
+
+%-----------------------------------------------------------------------------%
 
 :- pred goal_util__rename_vars_in_shorthand(shorthand_goal_expr::in, bool::in,
 	map(prog_var, prog_var)::in, shorthand_goal_expr::out) is det.
@@ -395,6 +420,23 @@ goal_util__rename_vars_in_shorthand(bi_implication(LHS0, RHS0), Must, Subn,
 		bi_implication(LHS, RHS)) :-
 	goal_util__rename_vars_in_goal(LHS0, Must, Subn, LHS),
 	goal_util__rename_vars_in_goal(RHS0, Must, Subn, RHS).
+
+%-----------------------------------------------------------------------------%
+
+:- pred goal_util__rename_arg_list(list(foreign_arg)::in, bool::in,
+	map(prog_var, prog_var)::in, list(foreign_arg)::out) is det.
+
+goal_util__rename_arg_list([], _Must, _Subn, []).
+goal_util__rename_arg_list([Arg0 | Args0], Must, Subn, [Arg | Args]) :-
+	goal_util__rename_arg(Arg0, Must, Subn, Arg),
+	goal_util__rename_arg_list(Args0, Must, Subn, Args).
+
+:- pred goal_util__rename_arg(foreign_arg::in, bool::in,
+	map(prog_var, prog_var)::in, foreign_arg::out) is det.
+
+goal_util__rename_arg(foreign_arg(Var0, B, C), Must, Subn,
+		foreign_arg(Var, B, C)) :-
+	goal_util__rename_var(Var0, Must, Subn, Var).
 
 %-----------------------------------------------------------------------------%
 
@@ -592,8 +634,10 @@ goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _), !Set) :-
 	goal_util__goal_vars_2(B, !Set),
 	goal_util__goal_vars_2(C, !Set).
 
-goal_util__goal_vars_2(foreign_proc(_, _, _, ArgVars, _, _, _), !Set) :-
-	set__insert_list(!.Set, ArgVars, !:Set).
+goal_util__goal_vars_2(foreign_proc(_, _, _, Args, ExtraArgs, _), !Set) :-
+	ArgVars = list__map(foreign_arg_var, Args),
+	ExtraVars = list__map(foreign_arg_var, ExtraArgs),
+	set__insert_list(!.Set, list__append(ArgVars, ExtraVars), !:Set).
 
 goal_util__goal_vars_2(shorthand(ShorthandGoal), !Set) :-
 	goal_util__goal_vars_2_shorthand(ShorthandGoal, !Set).
@@ -742,7 +786,7 @@ goal_expr_size(some(_, _, Goal), Size) :-
 goal_expr_size(call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(foreign_proc(_, _, _, _, _, _, _), 1).
+goal_expr_size(foreign_proc(_, _, _, _, _, _), 1).
 goal_expr_size(shorthand(ShorthandGoal), Size) :-
 	goal_expr_size_shorthand(ShorthandGoal, Size).
 	
@@ -1170,42 +1214,76 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, Args, ModeNo,
-		Detism, MaybeFeature, InstMap, Module, Context, CallGoal) :-
+goal_util__generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
+		Detism, Args, MaybeFeature, InstMap, ModuleInfo, Context,
+		Goal) :-
 	list__length(Args, Arity),
-	lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
-		Arity, ModeNo, PredId, ProcId),
+	lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
+		PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
 	% builtin_state only uses this to work out whether
 	% this is the "recursive" clause generated for the compiler
 	% for each builtin, so an invalid pred_id won't cause problems.
 	InvalidPredId = invalid_pred_id,
-	BuiltinState = builtin_state(Module, InvalidPredId, PredId, ProcId),
+	BuiltinState = builtin_state(ModuleInfo, InvalidPredId,
+		PredId, ProcId),
 
-	Call = call(PredId, ProcId, Args, BuiltinState, no,
+	GoalExpr = call(PredId, ProcId, Args, BuiltinState, no,
 		qualified(ModuleName, ProcName)),
 	set__init(NonLocals0),
 	set__insert_list(NonLocals0, Args, NonLocals),
 	determinism_components(Detism, _CanFail, NumSolns),
-	(
-		NumSolns = at_most_zero
-	->
+	( NumSolns = at_most_zero ->
 		instmap_delta_init_unreachable(InstMapDelta)
 	;
 		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
 	),
-	module_info_pred_info(Module, PredId, PredInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_get_purity(PredInfo, Purity),
 	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
-		CallGoalInfo0),
+		GoalInfo0),
 	(
 		MaybeFeature = yes(Feature),
-		goal_info_add_feature(CallGoalInfo0, Feature, CallGoalInfo)
+		goal_info_add_feature(GoalInfo0, Feature, GoalInfo)
 	;
 		MaybeFeature = no,
-		CallGoalInfo = CallGoalInfo0
+		GoalInfo = GoalInfo0
 	),
-	CallGoal = Call - CallGoalInfo.
+	Goal = GoalExpr - GoalInfo.
+
+goal_util__generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo,
+		Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
+		SuffixCode, MaybeFeature, InstMap, ModuleInfo, Context,
+		Goal) :-
+	list__length(Args, Arity),
+	lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
+		PredOrFunc, Arity, ModeNo, PredId, ProcId),
+
+	AllCode = PrefixCode ++ Code ++ SuffixCode,
+	GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+		ordinary(AllCode, no)),
+	ArgVars = list__map(foreign_arg_var, Args),
+	ExtraArgVars = list__map(foreign_arg_var, ExtraArgs),
+	Vars = ArgVars ++ ExtraArgVars,
+	set__list_to_set(Vars, NonLocals),
+	determinism_components(Detism, _CanFail, NumSolns),
+	( NumSolns = at_most_zero ->
+		instmap_delta_init_unreachable(InstMapDelta)
+	;
+		instmap_delta_from_assoc_list(InstMap, InstMapDelta)
+	),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_purity(PredInfo, Purity),
+	goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
+		GoalInfo0),
+	(
+		MaybeFeature = yes(Feature),
+		goal_info_add_feature(GoalInfo0, Feature, GoalInfo)
+	;
+		MaybeFeature = no,
+		GoalInfo = GoalInfo0
+	),
+	Goal = GoalExpr - GoalInfo.
 
 generate_unsafe_cast(InArg, OutArg, Context, Goal) :-
 	set__list_to_set([InArg, OutArg], NonLocals),

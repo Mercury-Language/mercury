@@ -484,5 +484,5 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
 	;
 		Uinstr0 = c_code(_, _)
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _)
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _)
 	).

@@ -91,54 +91,54 @@ add_trail_ops(ModuleInfo0, !Proc) :-
 	requantify_proc(!Proc).
 
 :- pred goal_add_trail_ops(hlds_goal::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in, trail_ops_info::out) is det.
 
-goal_add_trail_ops(GoalExpr0 - GoalInfo, Goal) -->
-	goal_expr_add_trail_ops(GoalExpr0, GoalInfo, Goal).
+goal_add_trail_ops(GoalExpr0 - GoalInfo, Goal, !Info) :-
+	goal_expr_add_trail_ops(GoalExpr0, GoalInfo, Goal, !Info).
 
 :- pred goal_expr_add_trail_ops(hlds_goal_expr::in, hlds_goal_info::in,
-		hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	hlds_goal::out, trail_ops_info::in, trail_ops_info::out) is det.
 
-goal_expr_add_trail_ops(conj(Goals0), GI, conj(Goals) - GI) -->
-	conj_add_trail_ops(Goals0, Goals).
+goal_expr_add_trail_ops(conj(Goals0), GI, conj(Goals) - GI, !Info) :-
+	conj_add_trail_ops(Goals0, Goals, !Info).
 
-goal_expr_add_trail_ops(par_conj(Goals0), GI, par_conj(Goals) - GI) -->
-	conj_add_trail_ops(Goals0, Goals).
+goal_expr_add_trail_ops(par_conj(Goals0), GI, par_conj(Goals) - GI, !Info) :-
+	conj_add_trail_ops(Goals0, Goals, !Info).
 
-goal_expr_add_trail_ops(disj([]), GI, disj([]) - GI) --> [].
+goal_expr_add_trail_ops(disj([]), GI, disj([]) - GI, !Info).
 
-goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo) -->
-	{ Goals0 = [_|_] },
+goal_expr_add_trail_ops(disj(Goals0), GoalInfo, Goal - GoalInfo, !Info) :-
+	Goals0 = [_ | _],
 
-	{ goal_info_get_context(GoalInfo, Context) },
-	{ goal_info_get_code_model(GoalInfo, CodeModel) },
+	goal_info_get_context(GoalInfo, Context),
+	goal_info_get_code_model(GoalInfo, CodeModel),
 
 	%
 	% Allocate a new trail ticket so that we can
 	% restore things on back-tracking
 	%
-	new_ticket_var(TicketVar),
-	gen_store_ticket(TicketVar, Context, StoreTicketGoal),
-	disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals),
-	{ Goal = conj([StoreTicketGoal, disj(Goals) - GoalInfo]) }.
+	new_ticket_var(TicketVar, !Info),
+	gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
+	disj_add_trail_ops(Goals0, yes, CodeModel, TicketVar, Goals, !Info),
+	Goal = conj([StoreTicketGoal, disj(Goals) - GoalInfo]).
 
-goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI) -->
-	cases_add_trail_ops(Cases0, Cases).
+goal_expr_add_trail_ops(switch(A, B, Cases0), GI, switch(A, B, Cases) - GI,
+		!Info) :-
+	cases_add_trail_ops(Cases0, Cases, !Info).
 
-goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
+goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
 	%
 	% We handle negations by converting them into if-then-elses:
 	%	not(G)  ===>  (if G then fail else true)
 	%
-	{ goal_info_get_context(OuterGoalInfo, Context) },
-	{ InnerGoal = _ - InnerGoalInfo },
-	{ goal_info_get_determinism(InnerGoalInfo, Determinism) },
-	{ determinism_components(Determinism, _CanFail, NumSolns) },
-	{ true_goal(Context, True) },
-	{ fail_goal(Context, Fail) },
-	ModuleInfo =^ module_info,
-	{ NumSolns = at_most_zero ->
+	goal_info_get_context(OuterGoalInfo, Context),
+	InnerGoal = _ - InnerGoalInfo,
+	goal_info_get_determinism(InnerGoalInfo, Determinism),
+	determinism_components(Determinism, _CanFail, NumSolns),
+	true_goal(Context, True),
+	fail_goal(Context, Fail),
+	ModuleInfo = !.Info ^ module_info,
+	( NumSolns = at_most_zero ->
 		% The "then" part of the if-then-else will be unreachable,
 		% but to preserve the invariants that the MLDS back-end
 		% relies on, we need to make sure that it can't fail.
@@ -146,22 +146,22 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal) -->
 		% will call error/1) rather than `fail' for the "then" part.
 		mercury_private_builtin_module(PrivateBuiltin),
 		generate_simple_call(PrivateBuiltin, "unused", predicate,
-			[], only_mode, det,
-			no, [], ModuleInfo, Context, ThenGoal)
+			only_mode, det, [], no, [], ModuleInfo,
+			Context, ThenGoal)
 	;
 		ThenGoal = Fail
-	},
-	{ NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True) },
-	goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal).
+	),
+	NewOuterGoal = if_then_else([], InnerGoal, ThenGoal, True),
+	goal_expr_add_trail_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info).
 
 goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
-		Goal - OuterGoalInfo) -->
-	{ Goal0 = _ - InnerGoalInfo },
-	{ goal_info_get_code_model(InnerGoalInfo, InnerCodeModel) },
-	{ goal_info_get_code_model(OuterGoalInfo, OuterCodeModel) },
+		Goal - OuterGoalInfo, !Info) :-
+	Goal0 = _ - InnerGoalInfo,
+	goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
+	goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
 	(
-		{ InnerCodeModel = model_non },
-		{ OuterCodeModel \= model_non }
+		InnerCodeModel = model_non,
+		OuterCodeModel \= model_non
 	->
 		% handle commits
 
@@ -169,16 +169,16 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 		% before executing the goal, we save the ticket counter,
 		% and allocate a new trail ticket
 		%
-		{ goal_info_get_context(OuterGoalInfo, Context) },
-		new_ticket_counter_var(SavedTicketCounterVar),
-		new_ticket_var(TicketVar),
+		goal_info_get_context(OuterGoalInfo, Context),
+		new_ticket_counter_var(SavedTicketCounterVar, !Info),
+		new_ticket_var(TicketVar, !Info),
 		gen_mark_ticket_stack(SavedTicketCounterVar, Context,
-			MarkTicketStackGoal),
-		gen_store_ticket(TicketVar, Context, StoreTicketGoal),
+			MarkTicketStackGoal, !.Info),
+		gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
 		%
 		% next we execute the goal that we're committing across
 		%
-		goal_add_trail_ops(Goal0, Goal1),
+		goal_add_trail_ops(Goal0, Goal1, !Info),
 		%
 		% if the goal succeeds, then we have committed to that
 		% goal, so we need to commit the trail entries
@@ -186,87 +186,85 @@ goal_expr_add_trail_ops(some(A, B, Goal0), OuterGoalInfo,
 		% since we saved the ticket counter
 		%
 		gen_reset_ticket_commit(TicketVar, Context,
-			ResetTicketCommitGoal),
+			ResetTicketCommitGoal, !.Info),
 		gen_prune_tickets_to(SavedTicketCounterVar, Context,
-			PruneTicketsToGoal),
+			PruneTicketsToGoal, !.Info),
 		%
 		% if the goal fails, then we should undo the trail
 		% entries and discard this trail ticket before
 		% backtracking over it
 		%
 		gen_reset_ticket_undo(TicketVar, Context,
-			ResetTicketUndoGoal),
-		gen_discard_ticket(Context, DiscardTicketGoal),
-		{ fail_goal(Context, FailGoal) },
+			ResetTicketUndoGoal, !.Info),
+		gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
+		fail_goal(Context, FailGoal),
 
 		% put it all together
-		{ Goal2 = some(A, B, Goal1) - OuterGoalInfo },
-		{ SuccCode = conj([Goal2, ResetTicketCommitGoal,
-				PruneTicketsToGoal]) - OuterGoalInfo },
-		( { OuterCodeModel = model_semi } ->
-			{ FailGoal = _ - FailGoalInfo },
-			{ FailCode = conj([ResetTicketUndoGoal,
-				DiscardTicketGoal, FailGoal]) - FailGoalInfo },
-			{ Goal3 = disj([SuccCode, FailCode]) - OuterGoalInfo }
+		Goal2 = some(A, B, Goal1) - OuterGoalInfo,
+		SuccCode = conj([Goal2, ResetTicketCommitGoal,
+			PruneTicketsToGoal]) - OuterGoalInfo,
+		( OuterCodeModel = model_semi ->
+			FailGoal = _ - FailGoalInfo,
+			FailCode = conj([ResetTicketUndoGoal,
+				DiscardTicketGoal, FailGoal]) - FailGoalInfo,
+			Goal3 = disj([SuccCode, FailCode]) - OuterGoalInfo
 		;
-			{ Goal3 = SuccCode }
+			Goal3 = SuccCode
 		),
-		{ Goal = conj([MarkTicketStackGoal, StoreTicketGoal, Goal3]) }
+		Goal = conj([MarkTicketStackGoal, StoreTicketGoal, Goal3])
 	;
-		goal_add_trail_ops(Goal0, Goal1),
-		{ Goal = some(A, B, Goal1) }
+		goal_add_trail_ops(Goal0, Goal1, !Info),
+		Goal = some(A, B, Goal1)
 	).
 
 goal_expr_add_trail_ops(if_then_else(A, Cond0, Then0, Else0), GoalInfo,
-		Goal - GoalInfo) -->
-	goal_add_trail_ops(Cond0, Cond),
-	goal_add_trail_ops(Then0, Then1),
-	goal_add_trail_ops(Else0, Else1),
+		Goal - GoalInfo, !Info) :-
+	goal_add_trail_ops(Cond0, Cond, !Info),
+	goal_add_trail_ops(Then0, Then1, !Info),
+	goal_add_trail_ops(Else0, Else1, !Info),
 	%
 	% Allocate a new trail ticket so that we can
 	% restore things if the condition fails.
 	%
-	new_ticket_var(TicketVar),
-	{ goal_info_get_context(GoalInfo, Context) },
-	gen_store_ticket(TicketVar, Context, StoreTicketGoal),
+	new_ticket_var(TicketVar, !Info),
+	goal_info_get_context(GoalInfo, Context),
+	gen_store_ticket(TicketVar, Context, StoreTicketGoal, !.Info),
 
 	%
 	% Commit the trail ticket entries if the condition
 	% succeeds.
 	%
-	{ Then1 = _ - Then1GoalInfo },
-	{ Cond = _ - CondGoalInfo },
-	{ goal_info_get_code_model(CondGoalInfo, CondCodeModel) },
-	( { CondCodeModel = model_non } ->
+	Then1 = _ - Then1GoalInfo,
+	Cond = _ - CondGoalInfo,
+	goal_info_get_code_model(CondGoalInfo, CondCodeModel),
+	( CondCodeModel = model_non ->
 		gen_reset_ticket_solve(TicketVar, Context,
-			ResetTicketSolveGoal),
-		{ Then = conj([ResetTicketSolveGoal, Then1]) - Then1GoalInfo }
+			ResetTicketSolveGoal, !.Info),
+		Then = conj([ResetTicketSolveGoal, Then1]) - Then1GoalInfo
 	;
 		gen_reset_ticket_commit(TicketVar, Context,
-			ResetTicketCommitGoal),
-		gen_prune_ticket(Context, PruneTicketGoal),
-		{ Then = conj([ResetTicketCommitGoal, PruneTicketGoal, Then1])
-			- Then1GoalInfo }
+			ResetTicketCommitGoal, !.Info),
+		gen_prune_ticket(Context, PruneTicketGoal, !.Info),
+		Then = conj([ResetTicketCommitGoal, PruneTicketGoal, Then1])
+			- Then1GoalInfo
 	),
-	gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal),
-	gen_discard_ticket(Context, DiscardTicketGoal),
-	{ Else1 = _ - Else1GoalInfo },
-	{ Else = conj([ResetTicketUndoGoal, DiscardTicketGoal, Else1])
-		- Else1GoalInfo },
-	{ IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo },
-	{ Goal = conj([StoreTicketGoal, IfThenElse]) }.
+	gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal, !.Info),
+	gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
+	Else1 = _ - Else1GoalInfo,
+	Else = conj([ResetTicketUndoGoal, DiscardTicketGoal, Else1])
+		- Else1GoalInfo,
+	IfThenElse = if_then_else(A, Cond, Then, Else) - GoalInfo,
+	Goal = conj([StoreTicketGoal, IfThenElse]).
 
+goal_expr_add_trail_ops(Goal @ call(_, _, _, _, _, _), GI, Goal - GI, !Info).
 
-goal_expr_add_trail_ops(call(A,B,C,D,E,F), GI, call(A,B,C,D,E,F) - GI) --> [].
+goal_expr_add_trail_ops(Goal @ generic_call(_, _, _, _), GI, Goal - GI, !Info).
 
-goal_expr_add_trail_ops(generic_call(A,B,C,D), GI, generic_call(A,B,C,D) - GI)
-	--> [].
+goal_expr_add_trail_ops(Goal @ unify(_, _, _, _, _), GI, Goal - GI, !Info).
 
-goal_expr_add_trail_ops(unify(A,B,C,D,E), GI, unify(A,B,C,D,E) - GI) --> [].
-
-goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal) -->
-	{ PragmaForeign = foreign_proc(_,_,_,_,_,_,Impl) },
-	( { Impl = nondet(_,_,_,_,_,_,_,_,_) } ->
+goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
+	PragmaForeign = foreign_proc(_, _, _, _, _, Impl),
+	( Impl = nondet(_,_,_,_,_,_,_,_,_) ->
 		% XXX Implementing trailing for nondet pragma foreign_code
 		% via transformation is difficult, because there's nowhere
 		% in the HLDS pragma_foreign_code goal where we can insert
@@ -274,189 +272,182 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal) -->
 		% Instead, we just generate a call to a procedure which
 		% will at runtime call error/1 with an appropriate
 		% "Sorry, not implemented" error message.
-		ModuleInfo =^ module_info,
-		{ goal_info_get_context(GoalInfo, Context) },
-		{ generate_call("trailed_nondet_pragma_foreign_code",
-			[], erroneous, no, [], ModuleInfo, Context,
-			SorryNotImplementedCode) },
-		{ Goal = SorryNotImplementedCode }
+		ModuleInfo = !.Info^ module_info,
+		goal_info_get_context(GoalInfo, Context),
+		generate_call("trailed_nondet_pragma_foreign_code",
+			erroneous, [], no, [], ModuleInfo, Context,
+			SorryNotImplementedCode),
+		Goal = SorryNotImplementedCode
 	;
-		{ Goal = PragmaForeign - GoalInfo }
+		Goal = PragmaForeign - GoalInfo
 	).
 
-goal_expr_add_trail_ops(shorthand(_), _, _) -->
+goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
 	% these should have been expanded out by now
-	{ error("goal_expr_add_trail_ops: unexpected shorthand") }.
+	error("goal_expr_add_trail_ops: unexpected shorthand").
 
 :- pred conj_add_trail_ops(hlds_goals::in, hlds_goals::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
-conj_add_trail_ops(Goals0, Goals) -->
-	list__map_foldl(goal_add_trail_ops, Goals0, Goals).
+	trail_ops_info::in, trail_ops_info::out) is det.
+
+conj_add_trail_ops(Goals0, Goals, !Info) :-
+	list__map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
 	
 :- pred disj_add_trail_ops(hlds_goals::in, bool::in, code_model::in,
-		prog_var::in, hlds_goals::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	prog_var::in, hlds_goals::out,
+	trail_ops_info::in, trail_ops_info::out) is det.
 
-disj_add_trail_ops([], _, _, _, []) --> [].
+disj_add_trail_ops([], _, _, _, [], !Info).
 disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, CodeModel, TicketVar,
-		[Goal | Goals]) -->
-	{ Goal0 = _ - GoalInfo0 },
-	{ goal_info_get_context(GoalInfo0, Context) },
+		[Goal | Goals], !Info) :-
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_context(GoalInfo0, Context),
 	%
 	% First undo the effects of any earlier branches
 	%
-	( { IsFirstBranch = yes } ->
-		{ UndoList = [] }
+	( IsFirstBranch = yes ->
+		UndoList = []
 	;
-		gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal),
-		( { Goals0 = [] } ->
+		gen_reset_ticket_undo(TicketVar, Context, ResetTicketUndoGoal,
+			!.Info),
+		( Goals0 = [] ->
 			%
 			% Once we've reached the last disjunct,
 			% we can discard the trail ticket
 			%
-			gen_discard_ticket(Context, DiscardTicketGoal),
-			{ UndoList = [ResetTicketUndoGoal, DiscardTicketGoal] }
+			gen_discard_ticket(Context, DiscardTicketGoal, !.Info),
+			UndoList = [ResetTicketUndoGoal, DiscardTicketGoal]
 		;
-			{ UndoList = [ResetTicketUndoGoal] }
+			UndoList = [ResetTicketUndoGoal]
 		)
 	),
 	%
 	% Then execute the disjunct goal
 	%
-	goal_add_trail_ops(Goal0, Goal1),
+	goal_add_trail_ops(Goal0, Goal1, !Info),
 	%
 	% For model_semi and model_det disjunctions,
 	% once we reach the end of the disjunct goal,
 	% we're committing to this disjunct, so we need
 	% to prune the trail ticket.
 	%
-	( { CodeModel = model_non } ->
-		{ PruneList = [] }
+	( CodeModel = model_non ->
+		PruneList = []
 	;
 		gen_reset_ticket_commit(TicketVar, Context,
-			ResetTicketCommitGoal),
-		gen_prune_ticket(Context, PruneTicketGoal),
-		{ PruneList = [ResetTicketCommitGoal, PruneTicketGoal] }
+			ResetTicketCommitGoal, !.Info),
+		gen_prune_ticket(Context, PruneTicketGoal, !.Info),
+		PruneList = [ResetTicketCommitGoal, PruneTicketGoal]
 	),
 	%
 	% Package up the stuff we built earlier.
 	%
-	{ Goal1 = _ - GoalInfo1 },
-	{ conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1,
-		Goal) },
+	Goal1 = _ - GoalInfo1,
+	conj_list_to_goal(UndoList ++ [Goal1] ++ PruneList, GoalInfo1,
+		Goal),
 
 	% Recursively handle the remaining disjuncts
-	disj_add_trail_ops(Goals0, no, CodeModel, TicketVar, Goals).
+	disj_add_trail_ops(Goals0, no, CodeModel, TicketVar, Goals, !Info).
 
 :- pred cases_add_trail_ops(list(case)::in, list(case)::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
-cases_add_trail_ops([], []) --> [].
-cases_add_trail_ops([Case0 | Cases0], [Case | Cases]) -->
-	{ Case0 = case(ConsId, Goal0) },
-	{ Case = case(ConsId, Goal) },
-	goal_add_trail_ops(Goal0, Goal),
-	cases_add_trail_ops(Cases0, Cases).
+	trail_ops_info::in, trail_ops_info::out) is det.
+
+cases_add_trail_ops([], [], !Info).
+cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
+	Case0 = case(ConsId, Goal0),
+	Case = case(ConsId, Goal),
+	goal_add_trail_ops(Goal0, Goal, !Info),
+	cases_add_trail_ops(Cases0, Cases, !Info).
 
 %-----------------------------------------------------------------------------%
 
 :- pred gen_store_ticket(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_store_ticket(TicketVar, Context, SaveTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("store_ticket", [TicketVar],
-		det, yes(impure),
+gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
+	generate_call("store_ticket", det, [TicketVar], yes(impure),
 		[TicketVar - ground_inst],
-		ModuleInfo, Context, SaveTicketGoal) }.
+		Info ^ module_info, Context, SaveTicketGoal).
 
 :- pred gen_reset_ticket_undo(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("reset_ticket_undo", [TicketVar],
-		det, yes(impure), [],
-		ModuleInfo, Context, ResetTicketGoal) }.
+gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
+	generate_call("reset_ticket_undo", det, [TicketVar], yes(impure),
+		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_solve(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("reset_ticket_solve", [TicketVar],
-		det, yes(impure), [],
-		ModuleInfo, Context, ResetTicketGoal) }.
+gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
+	generate_call("reset_ticket_solve", det, [TicketVar], yes(impure),
+		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_reset_ticket_commit(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("reset_ticket_commit", [TicketVar],
-		det, yes(impure), [],
-		ModuleInfo, Context, ResetTicketGoal) }.
+gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
+	generate_call("reset_ticket_commit", det, [TicketVar], yes(impure),
+		[], Info ^ module_info, Context, ResetTicketGoal).
 
 :- pred gen_prune_ticket(prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_prune_ticket(Context, PruneTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("prune_ticket", [], det, yes(impure), [],
-		ModuleInfo, Context, PruneTicketGoal) }.
+gen_prune_ticket(Context, PruneTicketGoal, Info) :-
+	generate_call("prune_ticket", det, [], yes(impure),
+		[], Info ^ module_info, Context, PruneTicketGoal).
 
 :- pred gen_discard_ticket(prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_discard_ticket(Context, DiscardTicketGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("discard_ticket", [], det, yes(impure), [],
-		ModuleInfo, Context, DiscardTicketGoal) }.
+gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
+	generate_call("discard_ticket", det, [], yes(impure), [],
+		Info ^ module_info, Context, DiscardTicketGoal).
 
 :- pred gen_mark_ticket_stack(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("mark_ticket_stack", [SavedTicketCounterVar],
-		det, yes(impure), [],
-		ModuleInfo, Context, MarkTicketStackGoal) }.
+gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
+		Info) :-
+	generate_call("mark_ticket_stack", det, [SavedTicketCounterVar],
+		yes(impure), [], Info ^ module_info, Context,
+		MarkTicketStackGoal).
 
 :- pred gen_prune_tickets_to(prog_var::in, prog_context::in, hlds_goal::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in) is det.
 
-gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal) -->
-	ModuleInfo =^ module_info,
-	{ generate_call("prune_tickets_to", [SavedTicketCounterVar],
-		det, yes(impure), [],
-		ModuleInfo, Context, PruneTicketsToGoal) }.
+gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
+		Info) :-
+	generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
+		yes(impure), [], Info ^ module_info, Context,
+		PruneTicketsToGoal).
 
 :- func ground_inst = (inst).
+
 ground_inst = ground(unique, none).
 
 %-----------------------------------------------------------------------------%
 
 :- pred new_ticket_var(prog_var::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in, trail_ops_info::out) is det.
 
-new_ticket_var(Var) -->
-	new_var("TrailTicket", ticket_type, Var).
+new_ticket_var(Var, !Info) :-
+	new_var("TrailTicket", ticket_type, Var, !Info).
 	
 :- pred new_ticket_counter_var(prog_var::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in, trail_ops_info::out) is det.
 
-new_ticket_counter_var(Var) -->
-	new_var("SavedTicketCounter", ticket_counter_type, Var).
+new_ticket_counter_var(Var, !Info) :-
+	new_var("SavedTicketCounter", ticket_counter_type, Var, !Info).
 	
 :- pred new_var(string::in, (type)::in, prog_var::out,
-		trail_ops_info::in, trail_ops_info::out) is det.
+	trail_ops_info::in, trail_ops_info::out) is det.
 
-new_var(Name, Type, Var, TOI0, TOI) :-
-	VarSet0 = TOI0 ^ varset,
-	VarTypes0 = TOI0 ^ var_types,
+new_var(Name, Type, Var, !Info) :-
+	VarSet0 = !.Info ^ varset,
+	VarTypes0 = !.Info ^ var_types,
 	varset__new_named_var(VarSet0, Name, Var, VarSet),
 	map__det_insert(VarTypes0, Var, Type, VarTypes),
-	TOI = ((TOI0 ^ varset := VarSet)
-		     ^ var_types := VarTypes).
+	!:Info = ((!.Info ^ varset := VarSet) ^ var_types := VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -468,15 +459,15 @@ ticket_counter_type = c_pointer_type.
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_call(string::in, list(prog_var)::in, determinism::in,
+:- pred generate_call(string::in, determinism::in, list(prog_var)::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-generate_call(PredName, Args, Detism, MaybeFeature, InstMap, Module, Context,
-		CallGoal) :-
+generate_call(PredName, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
+		Context, CallGoal) :-
 	mercury_private_builtin_module(BuiltinModule),
 	goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
-		Args, only_mode, Detism, MaybeFeature, InstMap, Module,
+		only_mode, Detism, Args, MaybeFeature, InstMap, ModuleInfo,
 		Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

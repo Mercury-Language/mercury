@@ -16,6 +16,7 @@ SIMPLE_NONLOOP_PROGS = \
 	fib_string \
 	loopcheck_no_loop \
 	oota \
+	table_foreign_output \
 	unused_args
 
 SIMPLE_LOOP_PROGS = \

@@ -450,7 +450,7 @@ dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		NewNotation = yes(1),
 		map__set(!.Needed, proc(PredId, ProcId), NewNotation, !:Needed)
 	).
-dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _, _, _, _),
+dead_proc_elim__examine_expr(foreign_proc(_, PredId, ProcId, _, _, _),
 		_CurrProc, !Queue, !Needed) :-
 	queue__put(!.Queue, proc(PredId, ProcId), !:Queue),
 	map__set(!.Needed, proc(PredId, ProcId), no, !:Needed).
@@ -835,8 +835,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 	),
 	DeadInfo = dead_pred_info(ModuleInfo, Q, Ex, Needed, NeededNames).
 
-:- pred dead_pred_elim_analyze(dead_pred_info::in,
-		dead_pred_info::out) is det.
+:- pred dead_pred_elim_analyze(dead_pred_info::in, dead_pred_info::out) is det.
 
 dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex0, Needed0, NeededNames),
@@ -860,59 +859,59 @@ dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 		DeadInfo = DeadInfo0
 	).
 
-:- pred dead_pred_elim_process_clause(clause::in, dead_pred_info::in,
-		dead_pred_info::out) is det.
+:- pred dead_pred_elim_process_clause(clause::in,
+	dead_pred_info::in, dead_pred_info::out) is det.
 
-dead_pred_elim_process_clause(clause(_, Goal, _, _)) -->
-	pre_modecheck_examine_goal(Goal).
+dead_pred_elim_process_clause(clause(_, Goal, _, _), !DeadInfo) :-
+	pre_modecheck_examine_goal(Goal, !DeadInfo).
 
 :- pred pre_modecheck_examine_goal(hlds_goal::in,
 		dead_pred_info::in, dead_pred_info::out) is det.
 
-pre_modecheck_examine_goal(conj(Goals) - _) -->
-	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(par_conj(Goals) - _) -->
-	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(disj(Goals) - _) -->
-	list__foldl(pre_modecheck_examine_goal, Goals).
-pre_modecheck_examine_goal(if_then_else(_, If, Then, Else) - _) -->
-	list__foldl(pre_modecheck_examine_goal, [If, Then, Else]).
-pre_modecheck_examine_goal(switch(_, _, Cases) - _) -->
-	{ ExamineCase = (pred(Case::in, Info0::in, Info::out) is det :-
+pre_modecheck_examine_goal(conj(Goals) - _, !DeadInfo) :-
+	list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
+pre_modecheck_examine_goal(par_conj(Goals) - _, !DeadInfo) :-
+	list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
+pre_modecheck_examine_goal(disj(Goals) - _, !DeadInfo) :-
+	list__foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
+pre_modecheck_examine_goal(if_then_else(_, If, Then, Else) - _, !DeadInfo) :-
+	list__foldl(pre_modecheck_examine_goal, [If, Then, Else], !DeadInfo).
+pre_modecheck_examine_goal(switch(_, _, Cases) - _, !DeadInfo) :-
+	ExamineCase = (pred(Case::in, Info0::in, Info::out) is det :-
 		Case = case(_, Goal),
 		pre_modecheck_examine_goal(Goal, Info0, Info)
-	) },
-	list__foldl(ExamineCase, Cases).
-pre_modecheck_examine_goal(generic_call(_,_,_,_) - _) --> [].
-pre_modecheck_examine_goal(not(Goal) - _) -->
-	pre_modecheck_examine_goal(Goal).
-pre_modecheck_examine_goal(some(_, _, Goal) - _) -->
-	pre_modecheck_examine_goal(Goal).
-pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
-	dead_pred_info_add_pred_name(PredName).
-pre_modecheck_examine_goal(foreign_proc(_, _, _, _, _, _, _) - _) -->
-	[].
-pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _) -->
-	pre_modecheck_examine_unify_rhs(Rhs).
-pre_modecheck_examine_goal(shorthand(_) - _) -->
+	),
+	list__foldl(ExamineCase, Cases, !DeadInfo).
+pre_modecheck_examine_goal(generic_call(_,_,_,_) - _, !DeadInfo).
+pre_modecheck_examine_goal(not(Goal) - _, !DeadInfo) :-
+	pre_modecheck_examine_goal(Goal, !DeadInfo).
+pre_modecheck_examine_goal(some(_, _, Goal) - _, !DeadInfo) :-
+	pre_modecheck_examine_goal(Goal, !DeadInfo).
+pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _, !DeadInfo) :-
+	dead_pred_info_add_pred_name(PredName, !DeadInfo).
+pre_modecheck_examine_goal(foreign_proc(_, _, _, _, _, _) - _, !DeadInfo).
+pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _, !DeadInfo) :-
+	pre_modecheck_examine_unify_rhs(Rhs, !DeadInfo).
+pre_modecheck_examine_goal(shorthand(_) - _, !DeadInfo) :-
 	% these should have been expanded out by now
-	{ error("pre_modecheck_examine_goal: unexpected shorthand") }.
+	error("pre_modecheck_examine_goal: unexpected shorthand").
 
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in,
 		dead_pred_info::in, dead_pred_info::out) is det.
 
-pre_modecheck_examine_unify_rhs(var(_)) --> [].
-pre_modecheck_examine_unify_rhs(functor(Functor, _, _)) -->
-	( { Functor = cons(Name, _) } ->
-		dead_pred_info_add_pred_name(Name)
+pre_modecheck_examine_unify_rhs(var(_), !DeadInfo).
+pre_modecheck_examine_unify_rhs(functor(Functor, _, _), !DeadInfo) :-
+	( Functor = cons(Name, _) ->
+		dead_pred_info_add_pred_name(Name, !DeadInfo)
 	;
-		[]
+		true
 	).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, Goal)) -->
-	pre_modecheck_examine_goal(Goal).
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, Goal),
+		!DeadInfo) :-
+	pre_modecheck_examine_goal(Goal, !DeadInfo).
 
-:- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in,
-		dead_pred_info::out) is det.
+:- pred dead_pred_info_add_pred_name(sym_name::in,
+	dead_pred_info::in, dead_pred_info::out) is det.
 
 dead_pred_info_add_pred_name(Name, DeadInfo0, DeadInfo) :-
 	DeadInfo0 = dead_pred_info(ModuleInfo, Q0, Ex, Needed, NeededNames0),

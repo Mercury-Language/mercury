@@ -2526,28 +2526,9 @@ MR_define_label(RET_ALL_MULTI_LABEL(Next));
 MR_define_entry(MR_IS_NOT_DUPL_ENTRY);
 {
     MR_TrieNode T;
-    MR_bool     is_new_answer;
 
     T = (MR_TrieNode) MR_r1;
-
-#ifdef  MR_TABLE_DEBUG
-    if (MR_tabledebug) {
-        printf("checking if %p is a duplicate answer: %ld\n",
-            T, (long) T->MR_integer);
-    }
-#endif
-
-    is_new_answer = (T->MR_integer == 0);
-
-#ifdef  MR_TABLE_STATISTICS
-    MR_minmodel_stats_cnt_dupl_check++;
-    if (is_new_answer) {
-        MR_minmodel_stats_cnt_dupl_check_not_dupl++;
-    }
-#endif
-
-    T->MR_integer = 1;  /* any nonzero value will do */
-    MR_r1 = is_new_answer;
+    MR_table_mm_answer_is_not_duplicate(T, MR_r1);
 }
     MR_proceed();
 

@@ -1833,7 +1833,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal, !Info) :-
 		MercuryBuiltin = mercury_private_builtin_module
 	),
 	goal_util__generate_simple_call(MercuryBuiltin, Name, predicate,
-		ArgVars, mode_no(0), erroneous, no, [], ModuleInfo,
+		mode_no(0), erroneous, ArgVars, no, [], ModuleInfo,
 		Context, Goal).
 
 :- pred unify_proc__build_specific_call((type)::in, special_pred_id::in,

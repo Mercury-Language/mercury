@@ -1,5 +1,6 @@
 echo on
 context none
+goal_paths off
 register --quiet
 b p
 c

@@ -697,6 +697,8 @@ instr_may_be_duplicated(Instr) = InstrMayBeDuplicated :-
 		% When debugging is enabled, size is in any case more important
 		% than the last bit of speed.
 		InstrMayBeDuplicated = no
+	; Instr ^ pragma_c_maybe_dupl = no ->
+		InstrMayBeDuplicated = no
 	;
 		InstrMayBeDuplicated = yes
 	).

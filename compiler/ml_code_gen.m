@@ -2101,9 +2101,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 
 ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		CodeModel, Context, Decls, Statements, !Info) :-
-	(
-		BuiltinState = not_builtin
-	->
+	( BuiltinState = not_builtin ->
 		ml_gen_var_list(!.Info, ArgVars, ArgLvals),
 		ml_gen_info_get_varset(!.Info, VarSet),
 		ArgNames = ml_gen_var_names(VarSet, ArgVars),
@@ -2115,40 +2113,44 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 			Decls, Statements, !Info)
 	).
 
-ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
-		Decls, Statements, !Info) :-
+ml_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
+		CodeModel, Context, Decls, Statements, !Info) :-
 	ml_gen_unification(Unification, CodeModel, Context,
 		Decls, Statements, !Info).
 
-ml_gen_goal_expr(foreign_proc(Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
-		CodeModel, OuterContext, Decls, Statements, !Info) :-
+ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+		PragmaImpl), CodeModel, OuterContext, Decls, Statements,
+		!Info) :-
 	(
-		PragmaImpl = ordinary(Foreign_Code, MaybeContext),
+		PragmaImpl = ordinary(ForeignCode, MaybeContext),
 		( MaybeContext = yes(Context)
 		; MaybeContext = no,
 			Context = OuterContext
 		),
 		ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			Foreign_Code, Context, Decls, Statements, !Info)
+			PredId, ProcId, Args, ExtraArgs, ForeignCode,
+			Context, Decls, Statements, !Info)
 	;
 		PragmaImpl = nondet(
 			LocalVarsDecls, LocalVarsContext,
 			FirstCode, FirstContext, LaterCode, LaterContext,
 			_Treatment, SharedCode, SharedContext),
+		require(unify(ExtraArgs, []),
+			"ml_gen_goal_expr: extra args"),
 		ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			OuterContext, LocalVarsDecls, LocalVarsContext,
+			PredId, ProcId, Args, OuterContext,
+			LocalVarsDecls, LocalVarsContext,
 			FirstCode, FirstContext, LaterCode, LaterContext,
 			SharedCode, SharedContext, Decls, Statements, !Info)
 	;
 		PragmaImpl = import(Name, HandleReturn, Vars, _Context),
+		require(unify(ExtraArgs, []),
+			"ml_gen_goal_expr: extra args"),
 		ForeignCode = string__append_list([HandleReturn, " ",
 			Name, "(", Vars, ");"]),
 		ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			ForeignCode, OuterContext, Decls, Statements, !Info)
+			PredId, ProcId, Args, ExtraArgs, ForeignCode,
+			OuterContext, Decls, Statements, !Info)
 	).
 
 ml_gen_goal_expr(shorthand(_), _, _, _, _, !Info) :-
@@ -2163,8 +2165,7 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _, !Info) :-
 
 :- pred ml_gen_nondet_pragma_foreign_proc(code_model::in,
 	pragma_foreign_proc_attributes::in,
-	pred_id::in, proc_id::in, list(prog_var)::in,
-	list(maybe(pair(string, mode)))::in, list(prog_type)::in,
+	pred_id::in, proc_id::in, list(foreign_arg)::in,
 	prog_context::in, string::in, maybe(prog_context)::in, string::in,
 	maybe(prog_context)::in, string::in, maybe(prog_context)::in,
 	string::in, maybe(prog_context)::in,
@@ -2223,11 +2224,10 @@ ml_gen_goal_expr(shorthand(_), _, _, _, _, !Info) :-
 	% gets inlined and optimized away. Of course we also need to
 	% #undef it afterwards.
 	%
-ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
-		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
-		LocalVarsDecls, LocalVarsContext, FirstCode, FirstContext,
-		LaterCode, LaterContext, SharedCode, SharedContext,
-		Decls, Statements, !Info) :-
+ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
+		Args, Context, LocalVarsDecls, LocalVarsContext,
+		FirstCode, FirstContext, LaterCode, LaterContext,
+		SharedCode, SharedContext, Decls, Statements, !Info) :-
 
 	Lang = foreign_language(Attributes),
 	( Lang = csharp ->
@@ -2236,14 +2236,9 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 		true
 	),
 	%
-	% Combine all the information about the each arg
-	%
-	ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList),
-
-	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	ml_gen_pragma_c_decls(!.Info, Lang, ArgList, ArgDeclsList),
+	ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
 	%
 	% Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
@@ -2265,12 +2260,12 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	%
 	% Generate code to set the values of the input variables.
 	%
-	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList, !Info),
+	ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	ml_gen_pragma_c_output_arg_list(Lang, ArgList, Context,
+	ml_gen_pragma_c_output_arg_list(Lang, Args, Context,
 		AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
 	%
@@ -2364,74 +2359,70 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	Decls = ConvDecls.
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
-	pragma_foreign_proc_attributes::in,
-	pred_id::in, proc_id::in, list(prog_var)::in,
-	list(maybe(pair(string, mode)))::in, list(prog_type)::in,
-	string::in, prog_context::in,
-	mlds__defns::out, mlds__statements::out,
+	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		Foreign_Code, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
+		Args, ExtraArgs, Foreign_Code, Context, Decls, Statements,
+		!Info) :-
 	Lang = foreign_language(Attributes),
 	(
 		Lang = c,
 		ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = managed_cplusplus,
 		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = csharp,
 		ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = il,
 		ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	;
 		Lang = java,
 		ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
-			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+			PredId, ProcId, Args, ExtraArgs,
 			Foreign_Code, Context, Decls, Statements, !Info)
 	).
 
 :- pred ml_gen_ordinary_pragma_java_proc(code_model::in,
 	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(prog_var)::in, list(maybe(pair(string, mode)))::in,
-	list(prog_type)::in, string::in, prog_context::in, mlds__defns::out,
-	mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
+	ml_gen_info::in, ml_gen_info::out) is det.
 
 	% For ordinary (not model_non) pragma foreign_code in Java.
 	%
-ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes,
-		_PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		JavaCode, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
+		Args, ExtraArgs, JavaCode, Context, Decls, Statements,
+		!Info) :-
 
 	Lang = foreign_language(Attributes),
 	%
-	% Combine all the information about the each arg
-	%
-	ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList),
-	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	ml_gen_pragma_c_decls(!.Info, Lang, ArgList, ArgDeclsList),
+	ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
+	require(unify(ExtraArgs, []),
+		"ml_gen_ordinary_pragma_java_proc: extra args"),
 	%
 	% Generate code to set the values of the input variables.
 	%
-	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList, !Info),
+	ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
 	%
 	% Generate MLDS statements to assign the values of the output
 	% variables.
 	%
-	ml_gen_pragma_java_output_arg_list(Lang, ArgList, Context,
+	ml_gen_pragma_java_output_arg_list(Lang, Args, Context,
 		AssignOutputsList, ConvDecls, ConvStatements, !Info),
 	%
 	% Put it all together
@@ -2456,21 +2447,21 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes,
 
 :- pred ml_gen_ordinary_pragma_managed_proc(code_model::in,
 	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(prog_var)::in, list(maybe(pair(string, mode)))::in,
-	list(prog_type)::in, string::in, prog_context::in,
-	mlds__defns::out, mlds__statements::out,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 	% For ordinary (not model_non) pragma foreign_code in C# or MC++,
 	% we generate a call to an out-of-line procedure that contains
 	% the user's code.
 
-ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
-		_PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		ForeignCode, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes, _PredId, _ProcId,
+		Args, ExtraArgs, ForeignCode, Context, Decls, Statements,
+		!Info) :-
 
-	ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgList),
-	ml_gen_outline_args(ArgList, OutlineArgs, !Info),
+	ml_gen_outline_args(Args, OutlineArgs, !Info),
+	require(unify(ExtraArgs, []),
+		"ml_gen_ordinary_pragma_managed_proc: extra args"),
 
 	ForeignLang = foreign_language(Attributes),
 	MLDSContext = mlds__make_context(Context),
@@ -2511,11 +2502,11 @@ ml_gen_ordinary_pragma_managed_proc(CodeModel, Attributes,
 		],
 	Decls = SuccessVarLocals.
 
-:- pred ml_gen_outline_args(list(ml_c_arg)::in, list(outline_arg)::out,
+:- pred ml_gen_outline_args(list(foreign_arg)::in, list(outline_arg)::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_outline_args([], [], !Info).
-ml_gen_outline_args([ml_c_arg(Var, MaybeVarMode, OrigType) | Args],
+ml_gen_outline_args([foreign_arg(Var, MaybeVarMode, OrigType) | Args],
 		[OutlineArg | OutlineArgs], !Info) :-
 	ml_gen_outline_args(Args, OutlineArgs, !Info),
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -2540,14 +2531,16 @@ ml_gen_outline_args([ml_c_arg(Var, MaybeVarMode, OrigType) | Args],
 
 :- pred ml_gen_ordinary_pragma_il_proc(code_model::in,
 	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(prog_var)::in, list(maybe(pair(string, mode)))::in,
-	list(prog_type)::in, string::in, prog_context::in,
-	mlds__defns::out, mlds__statements::out,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
-	PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-	ForeignCode, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
+		Args, ExtraArgs, ForeignCode, Context, Decls, Statements,
+		!Info) :-
+
+	require(unify(ExtraArgs, []),
+		"ml_gen_ordinary_pragma_managed_proc: extra args"),
 
 	% XXX FIXME need to handle model_semi code here,
 	% i.e. provide some equivalent to SUCCESS_INDICATOR.
@@ -2563,13 +2556,10 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 %	proc_info_vartypes(ProcInfo, VarTypes),
 	% note that for headvars we must use the types from
 	% the procedure interface, not from the procedure body
-	HeadVarTypes = map__from_corresponding_lists(ArgVars, OrigArgTypes),
 	ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
 	ml_gen_info_get_value_output_vars(!.Info, CopiedOutputVars),
 	module_info_name(ModuleInfo, ModuleName),
 	MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
-
-	ArgVarDataMap = map__from_corresponding_lists(ArgVars, ArgDatas),
 
 	% XXX in the code to marshall parameters, fjh says:
 	% We need to handle the case where the types in the procedure interface
@@ -2579,23 +2569,24 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 	% generate here with ml_gen_assign won't be type-correct. In general
 	% you may need to box/unbox the arguments.
 
+	build_arg_map(Args, map__init, ArgMap),
+
 		% Generate statements to assign by-ref output arguments
 	list__filter_map(ml_gen_pragma_il_proc_assign_output(ModuleInfo,
-			MLDSModuleName, HeadVarTypes, VarSet, Context,
-			ArgVarDataMap, yes),
+			MLDSModuleName, ArgMap, VarSet, Context, yes),
 		ByRefOutputVars, ByRefAssignStatements),
 
 		% Generate statements to assign copied output arguments
 	list__filter_map(ml_gen_pragma_il_proc_assign_output(ModuleInfo,
-			MLDSModuleName, HeadVarTypes, VarSet, Context,
-			ArgVarDataMap, no),
+			MLDSModuleName, ArgMap, VarSet, Context, no),
 		CopiedOutputVars, CopiedOutputStatements),
 
+	ArgVars = list__map(foreign_arg_var, Args),
 		% Generate declarations for all the variables, and
 		% initializers for input variables.
 	list__map(ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo,
-			MLDSModuleName, HeadVarTypes, VarSet, MLDSContext,
-			ArgVarDataMap, ByRefOutputVars, CopiedOutputVars),
+			MLDSModuleName, ArgMap, VarSet, MLDSContext,
+			ByRefOutputVars, CopiedOutputVars),
 		ArgVars, VarLocals),
 
 	OutlineStmt = inline_target_code(lang_il, [
@@ -2611,14 +2602,24 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 		mlds__make_context(Context))],
 	Decls = [].
 
-:- pred ml_gen_pragma_il_proc_assign_output(module_info::in,
-	mlds_module_name::in, vartypes::in, prog_varset::in, prog_context::in,
-	map(prog_var, maybe(pair(string, mode)))::in, bool::in,
-	prog_var::in, mlds__statement::out) is semidet.
+:- pred build_arg_map(list(foreign_arg)::in, map(prog_var, foreign_arg)::in,
+	map(prog_var, foreign_arg)::out) is det.
 
-ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, HeadVarTypes,
-		VarSet, Context, ArgVarDataMap, IsByRef, Var, Statement) :-
-	map__lookup(HeadVarTypes, Var, Type),
+build_arg_map([], !ArgMap).
+build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
+	ForeignArg = foreign_arg(Var, _, _),
+	map__det_insert(!.ArgMap, Var, ForeignArg, !:ArgMap),
+	build_arg_map(ForeignArgs, !ArgMap).
+
+:- pred ml_gen_pragma_il_proc_assign_output(module_info::in,
+	mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
+	prog_context::in, bool::in, prog_var::in, mlds__statement::out)
+	is semidet.
+
+ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
+		VarSet, Context, IsByRef, Var, Statement) :-
+	map__lookup(ArgMap, Var, ForeignArg),
+	ForeignArg = foreign_arg(_, MaybeNameMode, Type),
 	not type_util__is_dummy_argument_type(Type),
 	MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type),
 
@@ -2633,8 +2634,7 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, HeadVarTypes,
 		OutputVarLval = var(QualVarName, MLDSType)
 	),
 
-	map__lookup(ArgVarDataMap, Var, MaybeVarName),
-	MaybeVarName = yes(UserVarNameString - _),
+	MaybeNameMode = yes(UserVarNameString - _),
 	NonMangledVarName = mlds__var_name(UserVarNameString, no),
 	QualLocalVarName= qual(MLDSModuleName, NonMangledVarName),
 	LocalVarLval = var(QualLocalVarName, MLDSType),
@@ -2642,19 +2642,16 @@ ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, HeadVarTypes,
 	Statement = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context).
 
 :- pred ml_gen_pragma_il_proc_var_decl_defn(module_info::in,
-	mlds_module_name::in, vartypes::in, prog_varset::in,
-	mlds__context::in, map(prog_var, maybe(pair(string, mode)))::in,
-	list(prog_var)::in, list(prog_var)::in,
+	mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
+	mlds__context::in, list(prog_var)::in, list(prog_var)::in,
 	prog_var::in, mlds__defn::out) is det.
 
-ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName,
-		HeadVarTypes, VarSet, MLDSContext, ArgVarDataMap,
-		ByRefOutputVars, CopiedOutputVars, Var, Defn) :-
-	map__lookup(HeadVarTypes, Var, Type),
+ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
+		MLDSContext, ByRefOutputVars, CopiedOutputVars, Var, Defn) :-
+	map__lookup(ArgMap, Var, ForeignArg),
+	ForeignArg = foreign_arg(_, MaybeNameMode, Type),
 	VarName = ml_gen_var_name(VarSet, Var),
-
-	map__lookup(ArgVarDataMap, Var, MaybeVarName),
-	( MaybeVarName = yes(UserVarNameString - _) ->
+	( MaybeNameMode = yes(UserVarNameString - _) ->
 		NonMangledVarName = mlds__var_name(UserVarNameString, no)
 	;
 		sorry(this_file, "no variable name for var")
@@ -2688,9 +2685,8 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName,
 
 :- pred ml_gen_ordinary_pragma_c_proc(code_model::in,
 	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(prog_var)::in, list(maybe(pair(string, mode)))::in,
-	list(prog_type)::in, string::in, prog_context::in,
-	mlds__defns::out, mlds__statements::out,
+	list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+	prog_context::in, mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 	% For ordinary (not model_non) pragma c_proc,
@@ -2751,32 +2747,27 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName,
 	% different for targets other than C, e.g. when compiling to
 	% Java.
 	%
-ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
-		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		C_Code, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes, PredId, _ProcId,
+		OrigArgs, ExtraArgs, C_Code, Context, Decls, Statements,
+		!Info) :-
 
 	Lang = foreign_language(Attributes),
 
 	%
-	% Combine all the information about the each arg
-	%
-	ml_make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes,
-		ArgList),
-
-	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	ml_gen_pragma_c_decls(!.Info, Lang, ArgList, ArgDeclsList),
+	list__append(OrigArgs, ExtraArgs, Args),
+	ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
 	%
 	% Generate code to set the values of the input variables.
 	%
-	ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputsList, !Info),
+	ml_gen_pragma_c_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	ml_gen_pragma_c_output_arg_list(Lang, ArgList, Context,
+	ml_gen_pragma_c_output_arg_list(Lang, Args, Context,
 		AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
 	%
@@ -2910,47 +2901,11 @@ get_target_code_attributes(Lang, [max_stack_size(N) | Xs]) =
 
 %---------------------------------------------------------------------------%
 
-%
-% we gather all the information about each pragma_c argument
-% together into this struct
-%
-
-:- type ml_c_arg
-	--->	ml_c_arg(
-			prog_var,
-			maybe(pair(string, mode)),	% name and mode
-			prog_type	% original type before
-					% inlining/specialization
-					% (the actual type may be an instance
-					% of this type, if this type is
-					% polymorphic).
-		).
-
-:- pred ml_make_c_arg_list(list(prog_var)::in,
-	list(maybe(pair(string, mode)))::in, list(prog_type)::in,
-	list(ml_c_arg)::out) is det.
-
-	% XXX Maybe this ought to be renamed as it works for, and
-	% is used by the Java back-end as well.
-	%
-ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
-	( Vars = [], ArgDatas = [], Types = [] ->
-		ArgList = []
-	; Vars = [V | Vs], ArgDatas = [N | Ns], Types = [T | Ts] ->
-		Arg = ml_c_arg(V, N, T),
-		ml_make_c_arg_list(Vs, Ns, Ts, Args),
-		ArgList = [Arg | Args]
-	;
-		error("ml_code_gen:make_c_arg_list - length mismatch")
-	).
-
-%---------------------------------------------------------------------------%
-
 % ml_gen_pragma_c_decls generates C code to declare the arguments
 % for a `pragma foreign_proc' declaration.
 %
 :- pred ml_gen_pragma_c_decls(ml_gen_info::in, foreign_language::in,
-	list(ml_c_arg)::in, list(target_code_component)::out) is det.
+	list(foreign_arg)::in, list(target_code_component)::out) is det.
 
 	% XXX Maybe this ought to be renamed as it works for, and
 	% is used by the Java back-end as well.
@@ -2964,9 +2919,9 @@ ml_gen_pragma_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
 % of a `pragma foreign_proc' declaration.
 %
 :- pred ml_gen_pragma_c_decl(ml_gen_info::in, foreign_language::in,
-	ml_c_arg::in, target_code_component::out) is det.
+	foreign_arg::in, target_code_component::out) is det.
 
-ml_gen_pragma_c_decl(Info, Lang, ml_c_arg(_Var, MaybeNameAndMode, Type),
+ml_gen_pragma_c_decl(Info, Lang, foreign_arg(_Var, MaybeNameAndMode, Type),
 		Decl) :-
 	ml_gen_info_get_module_info(Info, ModuleInfo),
 	(
@@ -3002,7 +2957,7 @@ var_is_singleton(Name) :-
 %-----------------------------------------------------------------------------%
 
 :- pred ml_gen_pragma_c_input_arg_list(foreign_language::in,
-	list(ml_c_arg)::in, list(target_code_component)::out,
+	list(foreign_arg)::in, list(target_code_component)::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
 	% XXX Maybe this ought to be renamed as it works for, and
@@ -3016,11 +2971,11 @@ ml_gen_pragma_c_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
 % ml_gen_pragma_c_input_arg generates C code to assign the value of an
 % input arg for a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_input_arg(foreign_language::in, ml_c_arg::in,
+:- pred ml_gen_pragma_c_input_arg(foreign_language::in, foreign_arg::in,
 	list(target_code_component)::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
+ml_gen_pragma_c_input_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
 		AssignInput, !Info) :-
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
 	(
@@ -3108,7 +3063,7 @@ ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 	).
 
 :- pred ml_gen_pragma_java_output_arg_list(foreign_language::in,
-	list(ml_c_arg)::in, prog_context::in, mlds__statements::out,
+	list(foreign_arg)::in, prog_context::in, mlds__statements::out,
 	mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -3128,13 +3083,13 @@ ml_gen_pragma_java_output_arg_list(Lang, [Java_Arg | Java_Args], Context,
 % declaration.
 %
 :- pred ml_gen_pragma_java_output_arg(foreign_language::in,
-	ml_c_arg::in, prog_context::in, mlds__statements::out,
+	foreign_arg::in, prog_context::in, mlds__statements::out,
 	mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_java_output_arg(_Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
-		Context, AssignOutput, ConvDecls, ConvOutputStatements,
-		!Info) :-
+ml_gen_pragma_java_output_arg(_Lang, ForeignArg, Context, AssignOutput,
+		ConvDecls, ConvOutputStatements, !Info) :-
+	ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType),
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),
 	(
 		MaybeNameAndMode = yes(ArgName - Mode),
@@ -3179,16 +3134,16 @@ ml_gen_pragma_java_output_arg(_Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 	).
 
 :- pred ml_gen_pragma_c_output_arg_list(foreign_language::in,
-	list(ml_c_arg)::in, prog_context::in, list(target_code_component)::out,
-	mlds__defns::out, mlds__statements::out,
-	ml_gen_info::in, ml_gen_info::out) is det.
+	list(foreign_arg)::in, prog_context::in,
+	list(target_code_component)::out, mlds__defns::out,
+	mlds__statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg_list(_, [], _, [], [], [], !Info).
-ml_gen_pragma_c_output_arg_list(Lang, [C_Arg | C_Args], Context,
+ml_gen_pragma_c_output_arg_list(Lang, [ForeignArg | ForeignArgs], Context,
 		Components, ConvDecls, ConvStatements, !Info) :-
-	ml_gen_pragma_c_output_arg(Lang, C_Arg, Context, Components1,
+	ml_gen_pragma_c_output_arg(Lang, ForeignArg, Context, Components1,
 		ConvDecls1, ConvStatements1, !Info),
-	ml_gen_pragma_c_output_arg_list(Lang, C_Args, Context,
+	ml_gen_pragma_c_output_arg_list(Lang, ForeignArgs, Context,
 		Components2, ConvDecls2, ConvStatements2, !Info),
 	Components = list__append(Components1, Components2),
 	ConvDecls = list__append(ConvDecls1, ConvDecls2),
@@ -3197,12 +3152,12 @@ ml_gen_pragma_c_output_arg_list(Lang, [C_Arg | C_Args], Context,
 % ml_gen_pragma_c_output_arg generates C code to assign the value of an output
 % arg for a `pragma foreign_proc' declaration.
 %
-:- pred ml_gen_pragma_c_output_arg(foreign_language::in, ml_c_arg::in,
+:- pred ml_gen_pragma_c_output_arg(foreign_language::in, foreign_arg::in,
 	prog_context::in, list(target_code_component)::out,
 	mlds__defns::out, mlds__statements::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_output_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
+ml_gen_pragma_c_output_arg(Lang, foreign_arg(Var, MaybeNameAndMode, OrigType),
 		Context, AssignOutput, ConvDecls, ConvOutputStatements,
 		!Info) :-
 	ml_gen_info_get_module_info(!.Info, ModuleInfo),

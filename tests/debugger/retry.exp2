@@ -6,6 +6,8 @@ mdb> scroll off
 Scroll control disabled.
 mdb> context none
 Contexts will not be printed.
+mdb> goal_paths off
+Goal path printing is now off.
 mdb> break det_without_cut_1
  0: + stop  interface pred retry.det_without_cut_1/2-0 (det)
 mdb> continue -a
@@ -49,7 +51,7 @@ mdb> break det_with_cut_1
  0: + stop  interface pred retry.det_with_cut_1/2-0 (nondet)
 mdb> continue -a
       E9:     C6  2 CALL pred retry.det_with_cut/2-0 (det)
-     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det) ?;
+     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det)
      E11:     C7  3 CALL pred retry.det_with_cut_1/2-0 (nondet)
 mdb> delete *
  0: E stop  interface pred retry.det_with_cut_1/2-0 (nondet)
@@ -78,9 +80,9 @@ mdb> continue -a
       E6:     C4  3 EXIT pred retry.det_without_cut_1/2-0 (det)
       E8:     C2  2 EXIT pred retry.det_without_cut/2-0 (det)
       E9:     C6  2 CALL pred retry.det_with_cut/2-0 (det)
-     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det) ?;
+     E10:     C6  2 COND pred retry.det_with_cut/2-0 (det)
      E11:     C7  3 CALL pred retry.det_with_cut_1/2-0 (nondet)
-     E17:     C7  3 DISJ pred retry.det_with_cut_1/2-0 (nondet) c2;d1;
+     E17:     C7  3 DISJ pred retry.det_with_cut_1/2-0 (nondet)
      E18:     C9  4 CALL pred retry.det_with_cut_2/2-0 (det)
 mdb> delete *
  0: E stop  interface pred retry.det_with_cut_2/2-0 (det)
@@ -121,13 +123,13 @@ mdb> continue
 mdb> continue
      E24:    C15  5 CALL pred retry.fib/2-0 (det)
 mdb> step
-     E25:    C15  5 COND pred retry.fib/2-0 (det) c4;s2;c1;?;
+     E25:    C15  5 COND pred retry.fib/2-0 (det)
 mdb> retry 2
      E22:    C13  3 CALL pred retry.fib/2-0 (det)
 mdb> print *
        N (arg 1)              	14
 mdb> next
-     E26:    C13  3 COND pred retry.fib/2-0 (det) c4;s2;c1;?;
+     E26:    C13  3 COND pred retry.fib/2-0 (det)
 mdb> retry 1
      E21:    C12  2 CALL pred retry.fib/2-0 (det)
 mdb> finish -n

@@ -268,7 +268,7 @@ livemap__build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
 		livemap__build_live_lval_info(LiveLvalInfo,
 			!Livevals, !ContainsUserCode)
 	;
-		Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _),
+		Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _, _),
 		livemap__build_livemap_pragma_components(Components,
 			!Livevals, !ContainsUserCode)
 	).

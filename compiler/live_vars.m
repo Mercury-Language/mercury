@@ -330,11 +330,12 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo, GoalInfo,
 
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 		AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-	Goal = foreign_proc(Attributes, PredId, ProcId, ArgVars, _, _, _),
+	Goal = foreign_proc(Attributes, PredId, ProcId, Args, _, _),
 	ModuleInfo = AllocData ^ module_info,
 	CallerProcInfo = AllocData ^ proc_info,
 	proc_info_vartypes(CallerProcInfo, VarTypes),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	ArgVars = list__map(foreign_arg_var, Args),
 	arg_info__partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
 		ArgVars, _InVars, OutVars, _UnusedVars),
 	goal_info_get_code_model(GoalInfo0, CodeModel),

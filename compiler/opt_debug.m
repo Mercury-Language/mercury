@@ -838,7 +838,7 @@ opt_debug__dump_instr(join_and_continue(Lval, Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["join(", LvalStr, ", ", LabelStr, ")"], Str).
 % XXX  should probably give more info than this
-opt_debug__dump_instr(pragma_c(_, Comps, _, _, _, _, _, _), Str) :-
+opt_debug__dump_instr(pragma_c(_, Comps, _, _, _, _, _, _, _), Str) :-
 	opt_debug__dump_components(Comps, C_str),
 	string__append_list(["pragma_c(", C_str, ")"], Str).
 

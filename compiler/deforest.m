@@ -315,7 +315,7 @@ deforest__goal(switch(Var, CanFail, Cases0) - Info,
 	deforest__cases(Var, Cases0, Cases).
 
 deforest__goal(Goal, Goal) -->
-	{ Goal = foreign_proc(_, _, _, _, _, _, _) - _ }.
+	{ Goal = foreign_proc(_, _, _, _, _, _) - _ }.
 
 deforest__goal(Goal, Goal) -->
 	{ Goal = generic_call(_, _, _, _) - _ }.

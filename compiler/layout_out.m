@@ -1616,6 +1616,14 @@ output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
 		Step = table_trie_step_poly,
 		StepType = "MR_TABLE_STEP_POLY",
 		MaybeEnumParam = no
+	;
+		Step = table_trie_step_typeinfo,
+		StepType = "MR_TABLE_STEP_TYPEINFO",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_typeclassinfo,
+		StepType = "MR_TABLE_STEP_TYPECLASSINFO",
+		MaybeEnumParam = no
 	),
 	io__write_string(StepType, !IO),
 	io__write_string(",\n", !IO),

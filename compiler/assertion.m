@@ -551,8 +551,15 @@ equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
 	equal_goals(IfA, IfB, !Subst),
 	equal_goals(ThenA, ThenB, !Subst),
 	equal_goals(ElseA, ElseB, !Subst).
-equal_goals(foreign_proc(Attribs, PredId, _, VarsA, _,_,_) - _,
-		foreign_proc(Attribs, PredId, _, VarsB, _,_,_) - _, !Subst) :-
+equal_goals(foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, _) - _,
+		foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, _) - _,
+		!Subst) :-
+	% foreign_procs with extra args are compiler generated,
+	% and as such will not participate in assertions.
+	ExtraA = [],
+	ExtraB = [],
+	VarsA = list__map(foreign_arg_var, ArgsA),
+	VarsB = list__map(foreign_arg_var, ArgsB),
 	equal_vars(VarsA, VarsB, !Subst).
 equal_goals(par_conj(GoalAs) - _, par_conj(GoalBs) - _, !Subst) :-
 	equal_goals_list(GoalAs, GoalBs, !Subst).
@@ -649,11 +656,11 @@ update_pred_info(AssertId, PredId, !Module) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-assertion__normalise_goal(call(A,B,C,D,E,F) - GI, call(A,B,C,D,E,F) - GI).
-assertion__normalise_goal(generic_call(A,B,C,D) - GI, generic_call(A,B,C,D)-GI).
-assertion__normalise_goal(unify(A,B,C,D,E) - GI, unify(A,B,C,D,E) - GI).
-assertion__normalise_goal(foreign_proc(A,B,C,D,E,F,G) - GI,
-		foreign_proc(A,B,C,D,E,F,G) - GI).
+assertion__normalise_goal(Goal @ call(_, _, _, _, _, _) - GI, Goal - GI).
+assertion__normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
+assertion__normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
+assertion__normalise_goal(Goal @ foreign_proc(_, _, _, _, _, _) - GI,
+		Goal - GI).
 assertion__normalise_goal(conj(Goals0) - GI, conj(Goals) - GI) :-
 	assertion__normalise_conj(Goals0, Goals).
 assertion__normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
@@ -739,7 +746,7 @@ assertion__in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo,
 	goal_info_get_context(GoalInfo, Context),
 	assertion__in_interface_check_unify_rhs(RHS, Var, Context,
 		PredInfo, !Module, !IO).
-assertion__in_interface_check(foreign_proc(_, PredId, _, _, _, _, _) -
+assertion__in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
 		GoalInfo, _PredInfo, !Module, !IO) :-
 	module_info_pred_info(!.Module, PredId, PragmaPredInfo),
 	pred_info_import_status(PragmaPredInfo, ImportStatus),

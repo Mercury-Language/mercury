@@ -165,21 +165,9 @@
 					% The called predicate
 			foreign_proc_id	:: proc_id,
 					% The mode of the predicate
-			foreign_args	:: list(prog_var),
-					% The (Mercury) argument variables
-			foreign_names	:: list(maybe(pair(string, mode))),
-					% Foreign variable names and the
-					% original mode declaration for each
-					% of the arguments. A no for a
-					% particular argument means that it is
-					% not used by the foreign code.  (In
-					% particular, the type_info variables
-					% introduced by polymorphism.m might
-					% be represented in this way).
-			foreign_types	:: list(type),
-					% The original types of the arguments.
-					% (With inlining, the actual types may
-					% be instances of the original types.)
+			foreign_args	:: list(foreign_arg),
+			foreign_extra_args :: list(foreign_arg),
+					% XXX
 			foreign_impl	:: pragma_foreign_code_impl
 					% Extra information for model_non
 					% pragma_foreign_codes; none for others.
@@ -208,6 +196,62 @@
 		% of bi-implications is done before implicit quantification,
 		% then the quantification would be wrong
 	--->	bi_implication(hlds_goal, hlds_goal).
+
+%-----------------------------------------------------------------------------%
+%
+% Information for calls
+%
+
+	% There may be two sorts of "builtin" predicates - those that we
+	% open-code using inline instructions (e.g. arithmetic predicates),
+	% and those which are still "internal", but for which we generate
+	% a call to an out-of-line procedure. At the moment there are no
+	% builtins of the second sort, although we used to handle call/N
+	% that way.
+
+:- type builtin_state
+	--->	inline_builtin
+	;	out_of_line_builtin
+	;	not_builtin.
+
+%-----------------------------------------------------------------------------%
+%
+% Information for foreign_proc
+%
+
+	% In the usual case, the arguments of a foreign_proc are the
+	% arguments of the call to the predicate whose implementation
+	% is in the foreign language. Each such argument is described
+	% by a foreign_arg.
+	%
+	% The arg_var field gives the identity of the actual parameter.
+	%
+	% The arg_name_mode field gives the foreign variable name and the
+	% original mode declaration for the argument; a no means that the
+	% argument is not used by the foreign code. (In particular, the
+	% type_info variables introduced by polymorphism.m might be
+	% represented in this way).
+	%
+	% The arg_type field gives the original types of the arguments.
+	% (With inlining, the actual types may be instances of the original
+	% types.)
+
+:- type foreign_arg
+	--->	foreign_arg(
+			arg_var		:: prog_var,
+			arg_name_mode	:: maybe(pair(string, mode)),
+			arg_type	:: (type)
+		).
+
+	% Some compiler transforms give to XXX
+
+:- func foreign_arg_var(foreign_arg) = prog_var.
+:- func foreign_arg_maybe_name_mode(foreign_arg) = maybe(pair(string, mode)).
+:- func foreign_arg_type(foreign_arg) = (type).
+
+:- pred make_foreign_args(list(prog_var)::in,
+	list(maybe(pair(string, mode)))::in, list(type)::in,
+	list(foreign_arg)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -246,56 +290,6 @@
 	% Determine whether a generic_call is calling
 	% a predicate or a function
 :- func generic_call_pred_or_func(generic_call) = pred_or_func.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for quantifications
-%
-
-	% The second argument of explicit quantification goals
-	% is `can_remove' if the quantification is allowed to
-	% be removed.  A non-removable explicit
-	% quantification may be introduced to keep related goals
-	% together where optimizations that separate the goals
-	% can only result in worse behaviour. An example is the
-	% closures for the builtin aditi update predicates -
-	% they should be kept close to the update call where
-	% possible to make it easier to use indexes for the update.
-	%
-	% See also the closely related `keep_this_commit' goal_feature.
-	% XXX Why do we have both cannot_remove and keep_this_commit?
-	%     Do we really need both?
-:- type can_remove
-	--->	can_remove
-	;	cannot_remove.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for calls
-%
-
-	% There may be two sorts of "builtin" predicates - those that we
-	% open-code using inline instructions (e.g. arithmetic predicates),
-	% and those which are still "internal", but for which we generate
-	% a call to an out-of-line procedure. At the moment there are no
-	% builtins of the second sort, although we used to handle call/N
-	% that way.
-
-:- type builtin_state
-	--->	inline_builtin
-	;	out_of_line_builtin
-	;	not_builtin.
-
-%-----------------------------------------------------------------------------%
-%
-% Information for switches
-%
-
-:- type case
-	--->	case(
-			cons_id,	% functor to match with,
-			hlds_goal 	% goal to execute if match succeeds.
-		).
 
 %-----------------------------------------------------------------------------%
 %
@@ -614,6 +608,39 @@
 					% of insts to a pair of new insts
 					% Each pair represents the insts
 					% of the LHS and the RHS respectively
+
+%-----------------------------------------------------------------------------%
+%
+% Information for switches
+%
+
+:- type case
+	--->	case(
+			cons_id,	% functor to match with,
+			hlds_goal 	% goal to execute if match succeeds.
+		).
+
+%-----------------------------------------------------------------------------%
+%
+% Information for quantifications
+%
+
+	% The second argument of explicit quantification goals
+	% is `can_remove' if the quantification is allowed to
+	% be removed.  A non-removable explicit
+	% quantification may be introduced to keep related goals
+	% together where optimizations that separate the goals
+	% can only result in worse behaviour. An example is the
+	% closures for the builtin aditi update predicates -
+	% they should be kept close to the update call where
+	% possible to make it easier to use indexes for the update.
+	%
+	% See also the closely related `keep_this_commit' goal_feature.
+	% XXX Why do we have both cannot_remove and keep_this_commit?
+	%     Do we really need both?
+:- type can_remove
+	--->	can_remove
+	;	cannot_remove.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1078,6 +1105,32 @@
 :- import_module map, require, string, term, varset.
 
 %-----------------------------------------------------------------------------%
+
+foreign_arg_var(Arg) = Arg ^ arg_var.
+foreign_arg_maybe_name_mode(Arg) = Arg ^ arg_name_mode.
+foreign_arg_type(Arg) = Arg ^ arg_type.
+
+make_foreign_args(Vars, NamesModes, Types, Args) :-
+	(
+		Vars = [Var | VarsTail],
+		NamesModes = [NameMode | NamesModesTail],
+		Types = [Type | TypesTail]
+	->
+		make_foreign_args(VarsTail, NamesModesTail, TypesTail,
+			ArgsTail),
+		Arg = foreign_arg(Var, NameMode, Type),
+		Args = [Arg | ArgsTail]
+	;
+		Vars = [],
+		NamesModes = [],
+		Types = []
+	->
+		Args = []
+	;
+		error("make_foreign_args: unmatched lists")
+	).
+
+%-----------------------------------------------------------------------------%
 %
 % Predicates dealing with generic_calls
 %
@@ -1512,7 +1565,7 @@ goal_has_foreign(Goal) = HasForeign :-
 			HasForeign = no
 		)
 	;
-		GoalExpr = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr = foreign_proc(_, _, _, _, _, _),
 		HasForeign = yes
 	;
 		GoalExpr = par_conj(Goals),
@@ -1549,7 +1602,7 @@ goal_is_atomic(disj([])).
 goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(foreign_proc(_,_,_,_,_,_,_)).
+goal_is_atomic(foreign_proc(_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1644,7 +1697,7 @@ set_goal_contexts_2(_, Goal, Goal) :-
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
-	Goal = foreign_proc(_, _, _, _, _, _, _).
+	Goal = foreign_proc(_, _, _, _, _, _).
 set_goal_contexts_2(Context, shorthand(ShorthandGoal0),
 		shorthand(ShorthandGoal)) :-
 	set_goal_contexts_2_shorthand(Context, ShorthandGoal0,

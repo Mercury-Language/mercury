@@ -299,7 +299,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 		KnownContentsMap = map__init,
 		DepLvalMap = map__init
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
 		RevInstrs1 = [Instr0 | RevInstrs0],
 			% The C code may clobber any lval.
 		KnownContentsMap = map__init,

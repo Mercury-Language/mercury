@@ -661,8 +661,8 @@ det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
 	det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo,
 		Diagnosed, !IO).
 
-det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _, _), GoalInfo,
-		Desired, _, _, _, yes, !IO) :-
+det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _), GoalInfo, Desired,
+		_, _, _, yes, !IO) :-
 	goal_info_get_context(GoalInfo, Context),
 	DesiredStr = determinism_to_string(Desired),
 	Pieces = [words("Determinism declaration not satisfied."),

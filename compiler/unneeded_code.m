@@ -605,7 +605,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
 		demand_inputs(Goal, ModuleInfo, InitInstMap,
 			everywhere, !WhereNeededMap)
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		Goal = Goal0,
 		demand_inputs(Goal, ModuleInfo, InitInstMap,
 			everywhere, !WhereNeededMap)
@@ -921,7 +921,7 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
 		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = Goal0
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		Goal = Goal0
 	;
 		GoalExpr0 = par_conj(_),

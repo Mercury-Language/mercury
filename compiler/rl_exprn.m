@@ -881,7 +881,7 @@ rl_exprn__goal(switch(Var, _, Cases) - _, Fail, Code) -->
 	{ Code = tree(SwitchCode, node([rl_PROC_label(EndSwitch)])) }.
 rl_exprn__goal(generic_call(_, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: higher-order and class-method calls not yet implemented") }.
-rl_exprn__goal(foreign_proc(_, _, _, _, _, _, _) - _, _, _) -->
+rl_exprn__goal(foreign_proc(_, _, _, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: foreign_proc not yet implemented") }.
 rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code).

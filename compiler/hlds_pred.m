@@ -1693,7 +1693,9 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 						% type, and thus the size of
 						% the corresponding trie node.
 	;	table_trie_step_user(type)
-	;	table_trie_step_poly.
+	;	table_trie_step_poly
+	;	table_trie_step_typeinfo
+	;	table_trie_step_typeclassinfo.
 
 :- type table_arg_infos
 	--->	table_arg_infos(
@@ -2547,6 +2549,8 @@ no_type_info_builtin_2(private_builtin,
 			"unconstrained_type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(table_builtin, "table_restore_any_answer", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
 no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-

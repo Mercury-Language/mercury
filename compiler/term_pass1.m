@@ -349,7 +349,7 @@ check_goal_expr_non_term_calls(Module, PPId, VarTypes,
 		if_then_else(_, Cond, Then, Else), _, !Errors) :-
 	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes),
 		[Cond, Then, Else], !Errors).	
-check_goal_expr_non_term_calls(_, _, _, foreign_proc(_, _, _, _, _, _, _),
+check_goal_expr_non_term_calls(_, _, _, foreign_proc(_, _, _, _, _, _),
 		_, !Errors). 
 check_goal_expr_non_term_calls(Module, PPId, VarTypes, par_conj(Goals), _,
 		!Errors) :-

@@ -832,8 +832,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		code_info__resume_point_stack_addr(OutsideResumePoint,
 			OutsideResumeAddress),
 		(
-			Goal = foreign_proc(_, _, _, _, _, _,
-				PragmaCode) - _,
+			Goal = foreign_proc(_, _, _, _, _, PragmaCode) - _,
 			PragmaCode = nondet(Fields, FieldsContext,
 				_,_,_,_,_,_,_)
 		->
@@ -853,7 +852,7 @@ code_gen__generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
 					- "Allocate stack frame",
 				pragma_c([], DefineComponents,
 					will_not_call_mercury, no, no, no, no,
-					no)
+					no, no)
 					- ""
 			]),
 			NondetPragma = yes
@@ -939,7 +938,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			live_lvals_info(set__init))],
 		UndefCode = node([
 			pragma_c([], UndefComponents,
-				will_not_call_mercury, no, no, no, no, no)
+				will_not_call_mercury, no, no, no, no, no, no)
 				- ""
 		]),
 		RestoreDeallocCode = empty,	% always empty for nondet code
@@ -1292,12 +1291,12 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _,_),
 			Code, !CI)
 	).
 code_gen__generate_goal_2(foreign_proc(Attributes, PredId, ProcId,
-		Args, ArgNames, OrigArgTypes, PragmaCode),
+		Args, ExtraArgs, PragmaCode),
 		GoalInfo, CodeModel, Code, !CI) :-
 	( c = foreign_language(Attributes) ->
 		pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-			PredId, ProcId, Args, ArgNames, OrigArgTypes,
-			GoalInfo, PragmaCode, Code, !CI)
+			PredId, ProcId, Args, ExtraArgs, GoalInfo, PragmaCode,
+			Code, !CI)
 	;
 		error("code_gen__generate_goal_2: " ++
 			"foreign code other than C unexpected")
@@ -1435,7 +1434,7 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 	BytecodeInstructions = [
 		label(Entry) - "Procedure entry point",
 		pragma_c([], BytecodeInstructionsComponents,
-			may_call_mercury, no, no, no, no, no)
+			may_call_mercury, no, no, no, no, no, no)
 			- "Entry stub"
 	].
 

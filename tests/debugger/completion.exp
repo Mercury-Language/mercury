@@ -3,29 +3,29 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  disable            level              save_to_file
-P                  document           maxdepth           scope
-alias              document_category  mindepth           scroll
-all_class_decls    down               mm_stacks          set
-all_regs           e                  mmc_options        source
-all_type_ctors     echo               modules            stack
-b                  enable             next               stack_regs
-break              exception          nondet_stack       step
-browse             excp               p                  subgoal
-c                  f                  pneg_stack         table
-cc_query           finish             print              table_io
-class_decl         flag               print_optionals    term_size
-clear_histogram    forward            printlevel         type_ctor
-consumer           g                  proc_stats         unalias
-context            gen_stack          procedures         unhide_events
-continue           goto               query              up
-current            h                  quit               v
-cut_stack          help               r                  var_name_stats
-d                  histogram_all      register           vars
-dd                 histogram_exp      retry              view
-dd_dd              ignore             return             
-debug_vars         io_query           s                  
-delete             label_stats        save               
+?                  disable            label_stats        save
+P                  document           level              save_to_file
+alias              document_category  maxdepth           scope
+all_class_decls    down               mindepth           scroll
+all_regs           e                  mm_stacks          set
+all_type_ctors     echo               mmc_options        source
+b                  enable             modules            stack
+break              exception          next               stack_regs
+browse             excp               nondet_stack       step
+c                  f                  p                  subgoal
+cc_query           finish             pneg_stack         table
+class_decl         flag               print              table_io
+clear_histogram    forward            print_optionals    term_size
+consumer           g                  printlevel         type_ctor
+context            gen_stack          proc_stats         unalias
+continue           goal_paths         procedures         unhide_events
+current            goto               query              up
+cut_stack          h                  quit               v
+d                  help               r                  var_name_stats
+dd                 histogram_all      register           vars
+dd_dd              histogram_exp      retry              view
+debug_vars         ignore             return             
+delete             io_query           s                  
 h              help           histogram_all  histogram_exp  
 var_name_stats  vars            view            
 var_name_stats  vars            

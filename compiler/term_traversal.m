@@ -195,13 +195,14 @@ traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, !Info) :-
 	traverse_goal(Else, Params, !.Info, ElseInfo),
 	combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
 
-traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _,_,_),
+traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
 		GoalInfo, Params, !Info) :-
 	params_get_module_info(Params, Module),
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
 		CallProcInfo),
 	proc_info_argmodes(CallProcInfo, CallArgModes),
-	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
+	ArgVars = list__map(foreign_arg_var, Args),
+	partition_call_args(Module, CallArgModes, ArgVars, _InVars, OutVars),
 	goal_info_get_context(GoalInfo, Context),
 		
 	( is_termination_known(Module, proc(CallPredId, CallProcId)) ->

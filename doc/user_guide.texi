@@ -3114,6 +3114,16 @@ after the identification of the event or call to which they refer.
 @item context
 Reports where contexts are being printed.
 @sp 1
+@item goal_paths on
+@kindex goal_path (mdb command)
+Turns on printing of goal paths at events.
+@sp 1
+@item goal_paths off
+Turns off printing of goal paths at events.
+@sp 1
+@item goal_paths
+Reports whether goal paths are printed at events.
+@sp 1
 @item scope all
 Sets the default scope of new breakpoints to ``all'',
 i.e.@: by default, new breakpoints on procedures
@@ -4797,6 +4807,14 @@ However, it will not do this if this option is given.
 Enable stack traces through predicates and functions with
 higher-order arguments, even if stack tracing is not
 supported in general.
+
+@c @item --no-tabling-via-extra-args
+@c @findex --no-tabling-via-extra-args
+@c Make the tabling transformation emit each primitive operation
+@c as a separate call to a predicate,
+@c instead of consolidating sequences of primitives
+@c into a single piece of foreign language code
+@c and passing the required data as extra arguments.
 
 @item --generate-bytecode
 @findex --generate-bytecode

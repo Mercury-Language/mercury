@@ -47,7 +47,7 @@
 	MR_type_info_lookup_or_add((table), (type_info))
 
 #define MR_RAW_TABLE_TYPECLASSINFO(table, typeclass_info)		\
-	MR_type_info_lookup_or_add((table), (typeclass_info))
+	MR_type_class_info_lookup_or_add((table), (typeclass_info))
 
 #ifdef	MR_TABLE_DEBUG
 
@@ -63,8 +63,8 @@
 #define	MR_DEBUG_TABLE_ANY(table, type_info, value)			\
 	do {								\
 		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_ANY((table), 		\
-					(type_info), (value));		\
+		(table) = MR_RAW_TABLE_ANY((table), 			\
+			(type_info), (value));				\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: any %x type %p => %p\n",	\
 				prev_table, (value), (type_info),	\
@@ -386,8 +386,8 @@
 			printf("saving to answer block: %p, "		\
 				"slot %d = %lx\n",			\
 				(ab), (int) (offset), (long) (value));	\
-		(ab)[offset] =	MR_make_permanent((value),		\
-					(MR_TypeInfo) (type_info));	\
+		(ab)[offset] = MR_make_permanent((value),		\
+			(MR_TypeInfo) (type_info));			\
 	} while(0)
 
 #else

@@ -541,14 +541,13 @@ traverse_goal(_, generic_call(GenericCall, Args, _, _), UseInf0, UseInf) :-
 
 % handle pragma foreign_proc(...) -
 % only those arguments which have names can be used in the foreign code.
-traverse_goal(_, foreign_proc(_, _, _, Args, Names, _, _),
+traverse_goal(_, foreign_proc(_, _, _, Args, _, _),
 		UseInf0, UseInf) :-
-	assoc_list__from_corresponding_lists(Args, Names, ArgsAndNames),
-	ArgIsUsed = (pred(ArgAndName::in, Arg::out) is semidet :-
-			ArgAndName = Arg - MaybeName,
-			MaybeName = yes(_)
+	ArgIsUsed = (pred(Arg::in, Var::out) is semidet :-
+			Arg = foreign_arg(Var, MaybeNameAndMode, _),
+			MaybeNameAndMode = yes(_)
 		),
-	list__filter_map(ArgIsUsed, ArgsAndNames, UsedArgs),
+	list__filter_map(ArgIsUsed, Args, UsedArgs),
 	set_list_vars_used(UseInf0, UsedArgs, UseInf).
 
 % cases to handle all the different types of unification
@@ -1338,7 +1337,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 		GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = foreign_proc(_, _, _, _, _, _, _).
+	GoalExpr = foreign_proc(_, _, _, _, _, _).
 
 fixup_goal_expr(_, _, _, _, shorthand(_) - _, _) :-
 	% these should have been expanded out by now

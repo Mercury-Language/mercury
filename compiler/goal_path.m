@@ -90,11 +90,10 @@ fill_expr_slots(if_then_else(A, Cond0, Then0, Else0), _, Path0, SlotInfo,
 	fill_goal_slots(Cond0, [ite_cond | Path0], SlotInfo, Cond),
 	fill_goal_slots(Then0, [ite_then | Path0], SlotInfo, Then),
 	fill_goal_slots(Else0, [ite_else | Path0], SlotInfo, Else).
-fill_expr_slots(call(A,B,C,D,E,F), _, _, _, call(A,B,C,D,E,F)).
-fill_expr_slots(generic_call(A,B,C,D), _, _, _, generic_call(A,B,C,D)).
-fill_expr_slots(unify(A,B,C,D,E), _, _, _, unify(A,B,C,D,E)).
-fill_expr_slots(foreign_proc(A,B,C,D,E,F,G), _, _, _,
-		foreign_proc(A,B,C,D,E,F,G)).
+fill_expr_slots(Goal @ call(_, _, _, _, _, _), _, _, _, Goal).
+fill_expr_slots(Goal @ generic_call(_, _, _, _), _, _, _, Goal).
+fill_expr_slots(Goal @ unify(_, _, _, _, _), _, _, _, Goal).
+fill_expr_slots(Goal @ foreign_proc(_, _, _, _, _, _), _, _, _, Goal).
 fill_expr_slots(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
 	error("fill_expr_slots: unexpected shorthand").

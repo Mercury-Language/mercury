@@ -425,15 +425,15 @@ make_pneg_context_wrappers(Globals, PNegCondCode, PNegThenCode, PNegElseCode)
 		],
 		PNegCondCode = node([
 			pragma_c([], PNegCondComponents, will_not_call_mercury,
-				no, no, no, no, yes) - ""
+				no, no, no, no, yes, yes) - ""
 		]),
 		PNegThenCode = node([
 			pragma_c([], PNegThenComponents, will_not_call_mercury,
-				no, no, no, no, yes) - ""
+				no, no, no, no, yes, yes) - ""
 		]),
 		PNegElseCode = node([
 			pragma_c([], PNegElseComponents, will_not_call_mercury,
-				no, no, no, no, yes) - ""
+				no, no, no, no, yes, yes) - ""
 		])
 	;
 		UseMinimalModel = no,

@@ -179,7 +179,7 @@ propagate_conj_sub_goal_2(Goal, Constraints0,
 
 propagate_conj_sub_goal_2(Goal, Constraints0,
 		[Goal | Constraints], !Info) :-
-	Goal = foreign_proc(_, _, _, _, _, _, _) - _,
+	Goal = foreign_proc(_, _, _, _, _, _) - _,
 	flatten_constraints(Constraints0, Constraints).
 
 propagate_conj_sub_goal_2(Goal, _, _, !Info) :-
@@ -812,7 +812,7 @@ strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else)) =
 strip_constraint_markers_expr(par_conj(Goals)) =
 		par_conj(list__map(strip_constraint_markers, Goals)).
 strip_constraint_markers_expr(Goal) = Goal :-
-	Goal = foreign_proc(_, _, _, _, _, _, _).
+	Goal = foreign_proc(_, _, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
 	Goal = generic_call(_, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-

@@ -2,6 +2,7 @@ echo on
 register --quiet
 scroll off
 context none
+goal_paths off
 break det_without_cut_1
 continue -a
 disable 0

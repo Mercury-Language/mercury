@@ -177,6 +177,12 @@ static	MR_bool			MR_print_optionals = MR_FALSE;
 
 static	MR_Context_Position	MR_context_position = MR_CONTEXT_AFTER;
 
+/*
+** MR_print_goal_paths specifies whether we print goal paths at events.
+*/
+
+static	MR_bool			MR_print_goal_paths = MR_TRUE;
+
 typedef struct MR_Line_Struct {
 	char			*MR_line_contents;
 	struct MR_Line_Struct	*MR_line_next;
@@ -424,6 +430,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_printlevel;
 static	MR_TraceCmdFunc	MR_trace_cmd_mmc_options;
 static	MR_TraceCmdFunc	MR_trace_cmd_scroll;
 static	MR_TraceCmdFunc	MR_trace_cmd_context;
+static	MR_TraceCmdFunc	MR_trace_cmd_goal_paths;
 static	MR_TraceCmdFunc	MR_trace_cmd_scope;
 static	MR_TraceCmdFunc	MR_trace_cmd_echo;
 static	MR_TraceCmdFunc	MR_trace_cmd_alias;
@@ -2969,6 +2976,37 @@ MR_trace_cmd_context(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 	} else {
 		MR_trace_usage("parameter", "context");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_goal_paths(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	if (word_count == 2) {
+		if (MR_streq(words[1], "off")) {
+			MR_print_goal_paths = MR_FALSE;
+			fprintf(MR_mdb_out,
+				"Goal path printing is now off.\n");
+		} else if (MR_streq(words[1], "on")) {
+			MR_print_goal_paths = MR_TRUE;
+			fprintf(MR_mdb_out,
+				"Goal path printing is now on.\n");
+		} else {
+			MR_trace_usage("parameter", "goal_paths");
+			return KEEP_INTERACTING;
+		}
+	} else if (word_count == 1) {
+		if (MR_print_goal_paths) {
+			fprintf(MR_mdb_out, "Goal path printing is on.\n");
+		} else {
+			fprintf(MR_mdb_out, "Goal path printing is off.\n");
+		}
+	} else {
+		MR_trace_usage("parameter", "goal_paths");
 	}
 
 	return KEEP_INTERACTING;
@@ -6864,7 +6902,8 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 
 	MR_print_proc_id_trace_and_context(MR_mdb_out, MR_FALSE,
 		MR_context_position, event_info->MR_event_sll->MR_sll_entry,
-		base_sp, base_curfr, event_info->MR_event_path,
+		base_sp, base_curfr,
+		( MR_print_goal_paths ? event_info->MR_event_path : "" ),
 		filename, lineno,
 		MR_port_is_interface(event_info->MR_trace_port),
 		parent_filename, parent_lineno, indent);
@@ -7038,6 +7077,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "parameter", "context", MR_trace_cmd_context,
 		MR_trace_context_cmd_args, MR_trace_null_completer },
+	{ "parameter", "goal_paths", MR_trace_cmd_goal_paths,
+		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "parameter", "scope", MR_trace_cmd_scope,
 		MR_trace_scope_cmd_args, MR_trace_null_completer },
 	{ "parameter", "echo", MR_trace_cmd_echo,

@@ -57,7 +57,7 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, bool, int, set, map, varset.
+:- import_module assoc_list, bool, int, set, map, varset, require.
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
@@ -155,16 +155,15 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	get_clause_goals(MatchingClauses, GoalList),
 	( GoalList = [SingleGoal] ->
 		SingleGoal = SingleExpr - _,
-		( SingleExpr = foreign_proc(_, _, _, Args, ArgNames, _, _) ->
+		( SingleExpr = foreign_proc(_, _, _, Args, ExtraArgs, _) ->
 			%
 			% Use the original variable names for the headvars
 			% of foreign_proc clauses, not the introduced
 			% `HeadVar__n' names.
 			%
-			ArgsAndNames = assoc_list__from_corresponding_lists(
-				Args, ArgNames),
-			VarSet = list__foldl(set_arg_names, ArgsAndNames,
-				VarSet0)
+			VarSet = list__foldl(set_arg_names, Args, VarSet0),
+			require(unify(ExtraArgs, []),
+				"copy_clauses_to_proc: extra_args")
 		;
 			VarSet = VarSet0
 		),
@@ -218,15 +217,14 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, Proc).
 
-:- func set_arg_names(pair(prog_var, maybe(pair(string, mode))), prog_varset)
-	= prog_varset.
+:- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
 
-set_arg_names(Arg - MaybeArgName, Vars0) = Vars :-
+set_arg_names(foreign_arg(Arg, MaybeNameMode, _), Vars0) = Vars :-
 	(
-		MaybeArgName = yes(ArgName - _),
-		varset__name_var(Vars0, Arg, ArgName, Vars)
+		MaybeNameMode = yes(Name - _),
+		varset__name_var(Vars0, Arg, Name, Vars)
 	;
-		MaybeArgName = no,
+		MaybeNameMode = no,
 		Vars = Vars0
 	).
 

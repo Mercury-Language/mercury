@@ -613,6 +613,8 @@ typedef enum {
 	MR_TABLE_STEP_ENUM,
 	MR_TABLE_STEP_USER,
 	MR_TABLE_STEP_POLY,
+	MR_TABLE_STEP_TYPEINFO,
+	MR_TABLE_STEP_TYPECLASSINFO
 } MR_Table_Trie_Step;
 
 typedef struct MR_Table_Gen_Struct {

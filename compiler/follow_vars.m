@@ -195,11 +195,11 @@ find_follow_vars_in_goal_expr(some(Vars, CanRemove, Goal0),
 	find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
 		!FollowVarsMap, !NextNonReserved).
 
-find_follow_vars_in_goal_expr(unify(A,B,C,D,E), unify(A,B,C,D,E),
+find_follow_vars_in_goal_expr(Goal @ unify(_, _, _, Unify, _), Goal,
 		GoalInfo, GoalInfo, _VarTypes, _ModuleInfo,
 		!FollowVarsMap, !NextNonReserved) :-
 	(
-		D = assign(LVar, RVar),
+		Unify = assign(LVar, RVar),
 		map__search(!.FollowVarsMap, LVar, DesiredLoc)
 	->
 		map__set(!.FollowVarsMap, RVar, DesiredLoc, !:FollowVarsMap)
@@ -207,9 +207,8 @@ find_follow_vars_in_goal_expr(unify(A,B,C,D,E), unify(A,B,C,D,E),
 		true
 	).
 
-find_follow_vars_in_goal_expr(foreign_proc(A,B,C,D,E,F,G),
-		foreign_proc(A,B,C,D,E,F,G), GoalInfo, GoalInfo,
-		_, _, !FollowVarsMap, !NextNonReserved).
+find_follow_vars_in_goal_expr(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
+		GoalInfo, GoalInfo, _, _, !FollowVarsMap, !NextNonReserved).
 
 find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _, _, _) :-
 	% these should have been expanded out by now

@@ -124,7 +124,7 @@ dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
 		(
 			Instr = pragma_c(_, _, _,
 				MaybeFixedLabel, MaybeLayoutLabel,
-				MaybeOnlyLayoutLabel, _, _) - _
+				MaybeOnlyLayoutLabel, _, _, _) - _
 		->
 			( MaybeFixedLabel = yes(FixedLabel) ->
 				set__insert(FoldFixed0, FixedLabel, FoldFixed1)
@@ -397,7 +397,7 @@ standardize_instr(Instr1, Instr) :-
 		standardize_lval(Lval1, Lval),
 		Instr = join_and_continue(Lval, N)
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -701,7 +701,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _, _, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).

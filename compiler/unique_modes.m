@@ -513,14 +513,15 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
 unique_modes__check_goal_2(foreign_proc(Attributes, PredId, ProcId0,
-		Args, ArgNameMap, OrigArgTypes, PragmaCode), _GoalInfo, Goal,
-		!ModeInfo, !IO) :-
+		Args, ExtraArgs, PragmaCode),
+		_GoalInfo, Goal, !ModeInfo, !IO) :-
 	mode_checkpoint(enter, "foreign_proc", !ModeInfo, !IO),
 	mode_info_get_call_id(!.ModeInfo, PredId, CallId),
 	mode_info_set_call_context(call(call(CallId)), !ModeInfo),
-	unique_modes__check_call(PredId, ProcId0, Args, ProcId, !ModeInfo),
-	Goal = foreign_proc(Attributes, PredId, ProcId, Args, ArgNameMap,
-		OrigArgTypes, PragmaCode),
+	ArgVars = list__map(foreign_arg_var, Args),
+	unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo),
+	Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+		PragmaCode),
 	mode_info_unset_call_context(!ModeInfo),
 	mode_checkpoint(exit, "foreign_proc", !ModeInfo, !IO).
 

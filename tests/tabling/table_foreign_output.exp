@@ -1,0 +1,8 @@
+make_foreign(1, one)
+make_foreign(2, two)
+make_foreign(2, two)
+make_foreign(1, one)
+make_foreign_memo(1, one)
+make_foreign_memo(2, two)
+4
+2

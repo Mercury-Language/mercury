@@ -140,8 +140,8 @@ extern MR_Word *MR_has_forwarding_pointer;
 #ifndef MR_MIGHT_RECLAIM_HP_ON_FAILURE
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
-  extern	MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info,
-		  MR_Word *lower_limit);
+  extern MR_Word	MR_make_long_lived(MR_Word term, MR_TypeInfo type_info,
+				MR_Word *lower_limit);
 #endif
 
 #endif /* not MERCURY_DEEP_COPY_H */

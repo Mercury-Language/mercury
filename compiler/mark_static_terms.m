@@ -98,18 +98,17 @@ goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
 	goal_mark_static_terms(Then0, Then, SI_Cond, _SI_Then),
 	goal_mark_static_terms(Else0, Else, SI0, _SI_Else).
 
-goal_expr_mark_static_terms(call(A,B,C,D,E,F), call(A,B,C,D,E,F), SI, SI).
+goal_expr_mark_static_terms(Goal @ call(_, _, _, _, _, _), Goal, SI, SI).
 
-goal_expr_mark_static_terms(generic_call(A,B,C,D), generic_call(A,B,C,D),
-	SI, SI).
+goal_expr_mark_static_terms(Goal @ generic_call(_, _, _, _), Goal, SI, SI).
 
-goal_expr_mark_static_terms(unify(A,B,C, Unification0, E),
-		unify(A,B,C, Unification, E), SI0, SI) :-
+goal_expr_mark_static_terms(unify(LHS, RHS, Mode, Unification0, Context),
+		unify(LHS, RHS, Mode, Unification, Context), SI0, SI) :-
 	unification_mark_static_terms(Unification0, Unification,
 		SI0, SI).
 
-goal_expr_mark_static_terms(foreign_proc(A,B,C,D,E,F,G),
-		foreign_proc(A,B,C,D,E,F,G), SI, SI).
+goal_expr_mark_static_terms(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
+		SI, SI).
 
 goal_expr_mark_static_terms(shorthand(_), _, _, _) :-
 	% these should have been expanded out by now
@@ -117,11 +116,13 @@ goal_expr_mark_static_terms(shorthand(_), _, _, _) :-
 
 :- pred conj_mark_static_terms(hlds_goals::in, hlds_goals::out,
 		static_info::in, static_info::out) is det.
+
 conj_mark_static_terms(Goals0, Goals) -->
 	list__map_foldl(goal_mark_static_terms, Goals0, Goals).
 	
 :- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
 		static_info::in) is det.
+
 disj_mark_static_terms([], [], _).
 disj_mark_static_terms([Goal0 | Goals0], [Goal | Goals], SI0) :-
 	% we throw away the static_info obtained after each branch
@@ -130,6 +131,7 @@ disj_mark_static_terms([Goal0 | Goals0], [Goal | Goals], SI0) :-
 
 :- pred cases_mark_static_terms(list(case)::in, list(case)::out,
 		static_info::in) is det.
+
 cases_mark_static_terms([], [], _SI0).
 cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
 	Case0 = case(ConsId, Goal0),
@@ -140,6 +142,7 @@ cases_mark_static_terms([Case0 | Cases0], [Case | Cases], SI0) :-
 
 :- pred unification_mark_static_terms(unification::in, unification::out,
 		static_info::in, static_info::out) is det.
+
 unification_mark_static_terms(Unification0, Unification,
 		StaticVars0, StaticVars) :-
 	(
@@ -175,21 +178,19 @@ unification_mark_static_terms(Unification0, Unification,
 			_CanFail, _CanCGC),
 		Unification = Unification0,
 		StaticVars = StaticVars0
-/*****************
-		(
-			% if the variable being deconstructed is static,
-			% and the deconstruction cannot fail,
-			% then the newly extracted argument variables
-			% are static too
-			% (XXX is the "cannot fail" bit really necessary?)
-			map__search(StaticVars0, Var, Data),
-			CanFail = cannot_fail
-		->
-			XXX insert ArgVars into StaticVars0
-		;
-			StaticVars = StaticVars0
-		)
-*****************/
+%		(
+%			% if the variable being deconstructed is static,
+%			% and the deconstruction cannot fail,
+%			% then the newly extracted argument variables
+%			% are static too
+%			% (XXX is the "cannot fail" bit really necessary?)
+%			map__search(StaticVars0, Var, Data),
+%			CanFail = cannot_fail
+%		->
+%			XXX insert ArgVars into StaticVars0
+%		;
+%			StaticVars = StaticVars0
+%		)
 	;
 		Unification0 = assign(TargetVar, SourceVar),
 		Unification = Unification0,
@@ -212,4 +213,3 @@ unification_mark_static_terms(Unification0, Unification,
 		Unification = Unification0,
 		StaticVars = StaticVars0
 	).
-

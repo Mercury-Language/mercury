@@ -156,6 +156,7 @@
 		;	delay_death
 		;	suppress_trace
 		;	stack_trace_higher_order
+		;	tabling_via_extra_args
 		;	generate_bytecode
 		;	line_numbers
 		;	auto_comments
@@ -812,6 +813,7 @@ option_defaults_2(aux_output_option, [
 	suppress_trace		-	string(""),
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
+	tabling_via_extra_args	-	bool(yes),
 	generate_bytecode	-	bool(no),
 	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
@@ -1452,6 +1454,7 @@ long_option("trace-table-io-all",	trace_table_io_all).
 long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
+long_option("tabling-via-extra-args",	tabling_via_extra_args).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
@@ -2790,6 +2793,8 @@ options_help_aux_output -->
 		"\tEnable stack traces through predicates and functions with",
 		"\thigher-order arguments, even if stack tracing is not",
 		"\tsupported in general.",
+%		"--tabling-via-extra-args",
+%		"\tGenerate output via extra_args in foreign_procs.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",

@@ -159,7 +159,7 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 		GoalExpr0 = unify(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0
 	;
 		GoalExpr0 = shorthand(_),

@@ -216,18 +216,17 @@ store_alloc_in_goal_2(some(Vars, CanRemove, Goal0),
 	store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,
 		ResumeVars0, StoreAllocInfo).
 
-store_alloc_in_goal_2(generic_call(A, B, C, D), generic_call(A, B, C, D),
+store_alloc_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
 		!Liveness, !LastLocns, _, _, _).
 
-store_alloc_in_goal_2(call(A, B, C, D, E, F), call(A, B, C, D, E, F),
+store_alloc_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal,
 		!Liveness, !LastLocns, _, _, _).
 
-store_alloc_in_goal_2(unify(A, B, C, D, E), unify(A, B, C, D, E),
+store_alloc_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
 		!Liveness, !LastLocns, _, _, _).
 
-store_alloc_in_goal_2(foreign_proc(A, B, C, D, E, F, G),
-		foreign_proc(A, B, C, D, E, F, G), !Liveness, !LastLocns,
-		_, _, _).
+store_alloc_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
+		!Liveness, !LastLocns, _, _, _).
 
 store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-
 	% these should have been expanded out by now

@@ -433,7 +433,7 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 
 % There can be no dependencies within a foreign_proc
 dependency_graph__add_arcs_in_goal_2(
-	foreign_proc(_, _, _, _, _, _, _), _, !DepGraph).
+	foreign_proc(_, _, _, _, _, _), _, !DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(shorthand(ShorthandGoal), Caller,
 		!DepGraph) :-
@@ -822,7 +822,7 @@ process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, !Map, !Info) :-
 		true
 	).
 process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, !Map, !Info).
-process_aditi_goal(_IsNeg, foreign_proc(_, _, _, _, _, _, _) - _, !Map, !Info).
+process_aditi_goal(_IsNeg, foreign_proc(_, _, _, _, _, _) - _, !Map, !Info).
 process_aditi_goal(_, shorthand(_) - _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("process_aditi_goal: unexpected shorthand").

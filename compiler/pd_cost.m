@@ -93,7 +93,7 @@ pd_cost__goal(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	pd_cost__unify(NonLocals, Unification, Cost).
 
-pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _, _) - _,
+pd_cost__goal(foreign_proc(Attributes, _, _, Args, _, _) - _,
 		Cost) :-
 	( may_call_mercury(Attributes) = will_not_call_mercury ->
 		Cost1 = 0

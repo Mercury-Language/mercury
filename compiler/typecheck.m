@@ -653,7 +653,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
 	),
 	pred_info_context(!.PredInfo, Context),
 	generate_simple_call(mercury_private_builtin_module, CalleeName,
-		predicate, [PredNameVar], only_mode, det, no, [], ModuleInfo,
+		predicate, only_mode, det, [PredNameVar], no, [], ModuleInfo,
 		Context, CallGoal),
 	%
 	% Combine the unification and call into a conjunction
@@ -1382,15 +1382,16 @@ typecheck_goal_2(unify(LHS, RHS0, C, D, UnifyContext),
 typecheck_goal_2(switch(_, _, _), _, !Info, !IO) :-
 	error("unexpected switch").
 
-typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _, _), Goal,
+typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal,
 		!Info, !IO) :-
 	% foreign_procs are automatically generated, so they will
 	% always be type-correct, but we need to do the type analysis in order
 	% to correctly compute the HeadTypeParams that result from
 	% existentially typed foreign_procs. (We could probably do that
-	% more efficiently that the way it is done below, though.)
+	% more efficiently than the way it is done below, though.)
 	typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
-	typecheck_call_pred_id(PredId, Args, !Info, !IO),
+	ArgVars = list__map(foreign_arg_var, Args),
+	typecheck_call_pred_id(PredId, ArgVars, !Info, !IO),
 	perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 
 typecheck_goal_2(shorthand(ShorthandGoal0), shorthand(ShorthandGoal), !Info,

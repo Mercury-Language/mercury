@@ -244,8 +244,7 @@ code_util__goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
 	% temporary nondet frames without knowing all the #defined macros
 	% that expand to mktempframe and variants thereof. The performance
 	% impact of being too conservative is probably not too bad.
-code_util__goal_may_alloc_temp_frame_2(foreign_proc(_,_,_,_,_,_,_),
-		yes).
+code_util__goal_may_alloc_temp_frame_2(foreign_proc(_, _, _, _, _, _), yes).
 code_util__goal_may_alloc_temp_frame_2(some(_Vars, _, Goal), May) :-
 	Goal = _ - GoalInfo,
 	goal_info_get_code_model(GoalInfo, CodeModel),

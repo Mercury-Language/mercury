@@ -185,7 +185,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal,
 		FoundTailCall0, FoundTailCall, Continue) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	(
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		Goal = Goal0,
 		FoundTailCall = FoundTailCall0,
 		Continue = no
@@ -356,7 +356,7 @@ apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
 figure_out_rec_call_numbers(Goal, N0, N, TailCallSites0, TailCallSites) :-
 	Goal = GoalExpr - GoalInfo,
 	(
-		GoalExpr = foreign_proc(Attrs, _, _, _, _, _, _),
+		GoalExpr = foreign_proc(Attrs, _, _, _, _, _),
 		( may_call_mercury(Attrs) = may_call_mercury ->
 			N = N0 + 1
 		;
@@ -471,7 +471,7 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, ProcTable0, ProcTable) :-
 	predicate_module(ModuleInfo, PredId, PredModuleName),
 	(
 		% XXX We need to eliminate nondet C code...
-		Goal0 = foreign_proc(_,_,_,_,_,_, Impl) - _,
+		Goal0 = foreign_proc(_, _, _, _, _, Impl) - _,
 		Impl = nondet(_, _, _, _, _, _, _, _, _)
 	->
 		error("deep profiling is incompatible with nondet foreign code")
@@ -1031,7 +1031,7 @@ transform_goal(_, shorthand(_) - _, _, _, !DeepInfo) :-
 
 transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
 		!DeepInfo) :-
-	Goal0 = foreign_proc(Attrs, _, _, _, _, _, _),
+	Goal0 = foreign_proc(Attrs, _, _, _, _, _),
 	( may_call_mercury(Attrs) = may_call_mercury ->
 		wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo,
 			!DeepInfo),

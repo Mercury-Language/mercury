@@ -302,7 +302,7 @@ process_goal(Goal0, Goal, !Info) :-
 		!:Info = !.Info ^ type_ctor_map := map__init,
 		GoalExpr = GoalExpr0
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		GoalExpr = GoalExpr0
 	;
 		GoalExpr0 = conj(Goals0),
@@ -719,9 +719,8 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
 		% so we make it a no_type_info_builtin.
 		TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
 		goal_util__generate_simple_call(TermSizeProfBuiltin,
-			"increment_size", predicate,
-			[Var, SizeVar], only_mode, det,
-			yes(impure), [], !.Info ^ module_info,
+			"increment_size", predicate, only_mode, det,
+			[Var, SizeVar], yes(impure), [], !.Info ^ module_info,
 			Context, UpdateGoal),
 		% Put UnifyGoal first in case it fails.
 		Goals = list__condense([[UnifyGoal], ArgGoals, SizeGoals,
@@ -789,8 +788,8 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
 		get_new_var(int_type, "FinalSizeVar", SizeVar, !Info),
 		TermSizeProfModule = mercury_term_size_prof_builtin_module,
 		goal_util__generate_simple_call(TermSizeProfModule,
-			"term_size_plus", function,
-			[SizeVar0, KnownSizeVar, SizeVar], mode_no(0), det, no,
+			"term_size_plus", function, mode_no(0), det,
+			[SizeVar0, KnownSizeVar, SizeVar], no,
 			[SizeVar - ground(shared, none)],
 			!.Info ^ module_info, Context, AddGoal),
 		Goals = [KnownSizeGoal, AddGoal]
@@ -851,8 +850,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
 			PrivateBuiltin = mercury_private_builtin_module,
 			goal_util__generate_simple_call(PrivateBuiltin,
 				"type_info_from_typeclass_info", predicate,
-				[TypeClassInfoVar, SlotVar, TypeInfoVar],
-				only_mode, det, no,
+				only_mode, det,
+				[TypeClassInfoVar, SlotVar, TypeInfoVar], no,
 				[TypeInfoVar - ground(shared, none)],
 				!.Info ^ module_info, Context, ExtractGoal),
 			record_type_info_var(Type, TypeInfoVar, !Info),
@@ -966,7 +965,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
 	),
 	TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
 	goal_util__generate_simple_call(TermSizeProfBuiltin, Pred, predicate,
-		Args, only_mode, det, no, [SizeVar - ground(shared, none)],
+		only_mode, det, Args, no, [SizeVar - ground(shared, none)],
 		!.Info ^ module_info, Context, SizeGoal),
 	MaybeSizeVar = yes(SizeVar).
 

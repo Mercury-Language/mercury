@@ -388,34 +388,26 @@
 
 :- pred module_imports_get_source_file_name(module_imports::in, file_name::out)
 	is det.
-
 :- pred module_imports_get_module_name(module_imports::in, module_name::out)
 	is det.
-
 :- pred module_imports_get_impl_deps(module_imports::in,
 	list(module_name)::out) is det.
-
 :- pred module_imports_get_items(module_imports::in, item_list::out) is det.
-
-:- pred module_imports_set_items(module_imports::in, item_list::in,
-	module_imports::out) is det.
-
 :- pred module_imports_get_error(module_imports::in, module_error::out) is det.
 
-:- pred module_imports_set_error(module_imports::in, module_error::in,
-	module_imports::out) is det.
-
+:- pred module_imports_set_items(item_list::in,
+	module_imports::in, module_imports::out) is det.
+:- pred module_imports_set_error(module_error::in,
+	module_imports::in, module_imports::out) is det.
 	% set the interface dependencies
-:- pred module_imports_set_int_deps(module_imports::in, list(module_name)::in,
-	module_imports::out) is det.
-
+:- pred module_imports_set_int_deps(list(module_name)::in,
+	module_imports::in, module_imports::out) is det.
 	% set the implementation dependencies
-:- pred module_imports_set_impl_deps(module_imports::in, list(module_name)::in,
-	module_imports::out) is det.
-
+:- pred module_imports_set_impl_deps(list(module_name)::in,
+	module_imports::in, module_imports::out) is det.
 	% set the indirect dependencies
-:- pred module_imports_set_indirect_deps(module_imports::in,
-	list(module_name)::in, module_imports::out) is det.
+:- pred module_imports_set_indirect_deps(list(module_name)::in,
+	module_imports::in, module_imports::out) is det.
 
 	% make an item_and_context for a module declaration
 	% or pseudo-declaration such as `:- imported'
@@ -2070,7 +2062,7 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 			[[make_pseudo_decl(interface) | InterfaceItems],
 			[make_pseudo_decl(private_interface) | ImplDecls],
 			[make_pseudo_decl(implementation) | Clauses]], Items1),
-		module_imports_set_items(!.Module, Items1, !:Module)
+		module_imports_set_items(Items1, !Module)
 	),
 
 		% Add `builtin' and `private_builtin' to the
@@ -2296,14 +2288,14 @@ module_imports_get_source_file_name(Module, Module ^ source_file_name).
 module_imports_get_module_name(Module, Module ^ module_name).
 module_imports_get_impl_deps(Module, Module ^ impl_deps).
 module_imports_get_items(Module, Module ^ items).
-module_imports_set_items(Module, Items, Module ^ items := Items).
 module_imports_get_error(Module, Module ^ error).
-module_imports_set_error(Module, Error, Module ^ error := Error).
-module_imports_set_int_deps(Module, IntDeps, Module ^ int_deps := IntDeps).
-module_imports_set_impl_deps(Module, ImplDeps,
-	Module ^ impl_deps := ImplDeps).
-module_imports_set_indirect_deps(Module, IndirectDeps,
-	Module ^ indirect_deps := IndirectDeps).
+module_imports_set_items(Items, Module, Module ^ items := Items).
+module_imports_set_error(Error, Module, Module ^ error := Error).
+module_imports_set_int_deps(IntDeps, Module, Module ^ int_deps := IntDeps).
+module_imports_set_impl_deps(ImplDeps, Module,
+		Module ^ impl_deps := ImplDeps).
+module_imports_set_indirect_deps(IndirectDeps, Module,
+		Module ^ indirect_deps := IndirectDeps).
 
 append_pseudo_decl(PseudoDecl, Module0, Module) :-
 	Items0 = Module0 ^ items,
@@ -3822,10 +3814,9 @@ generate_dependencies_write_d_files([Dep | Deps],
 		!:Module = !.Module ^ foreign_import_module_info
 			:= ForeignImports,
 
-		module_imports_set_int_deps(!.Module, IntDeps, !:Module),
-		module_imports_set_impl_deps(!.Module, ImplDeps, !:Module),
-		module_imports_set_indirect_deps(!.Module, IndirectDeps,
-			!:Module),
+		module_imports_set_int_deps(IntDeps, !Module),
+		module_imports_set_impl_deps(ImplDeps, !Module),
+		module_imports_set_indirect_deps(IndirectDeps, !Module),
 
 		%
 		% Compute the trans-opt dependencies for this module.

@@ -485,8 +485,11 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	quantification__set_nonlocals(NonLocalVars, !Info).
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
-	Expr = foreign_proc(_, _, _, Vars, _, _, _),
-	implicitly_quantify_atomic_goal(Vars, !Info).
+	Expr = foreign_proc(_, _, _, Args, ExtraArgs, _),
+	Vars = list__map(foreign_arg_var, Args),
+	ExtraVars = list__map(foreign_arg_var, ExtraArgs),
+	list__append(Vars, ExtraVars, AllVars),
+	implicitly_quantify_atomic_goal(AllVars, !Info).
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 	Expr0 = shorthand(ShorthandGoal),
@@ -992,9 +995,12 @@ quantification__goal_vars_2(NonLocalsToRecompute,
 	union(!.Set, ElseSet, !:Set),
 	union(!.LambdaSet, ElseLambdaSet, !:LambdaSet).
 
-quantification__goal_vars_2(_, foreign_proc(_,_,_, ArgVars, _, _, _),
+quantification__goal_vars_2(_, foreign_proc(_, _, _, Args, ExtraArgs, _),
 		!Set, !LambdaSet) :-
-	insert_list(!.Set, ArgVars, !:Set).
+	Vars = list__map(foreign_arg_var, Args),
+	ExtraVars = list__map(foreign_arg_var, ExtraArgs),
+	list__append(Vars, ExtraVars, AllVars),
+	insert_list(!.Set, AllVars, !:Set).
 
 quantification__goal_vars_2(NonLocalsToRecompute, shorthand(ShorthandGoal),
 		!Set, !LambdaSet) :-

@@ -1815,8 +1815,8 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 		( MaybeTransOptDeps = yes(TransOptDeps) ->
 			% When creating the trans_opt file, only import the
 			% trans_opt files which are lower in the ordering.
-			trans_opt__grab_optfiles(Imports1, TransOptDeps,
-				Imports, Error2, !IO)
+			trans_opt__grab_optfiles(TransOptDeps,
+				Imports1, Imports, Error2, !IO)
 		;
 			Imports = Imports1,
 			Error2 = no,
@@ -1861,8 +1861,8 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			list__condense([Imports0 ^ parent_deps,
 				Imports0 ^ int_deps, Imports0 ^ impl_deps],
 				TransOptFiles),
-			trans_opt__grab_optfiles(Imports1, TransOptFiles,
-				Imports, Error2, !IO)
+			trans_opt__grab_optfiles(TransOptFiles,
+				Imports1, Imports, Error2, !IO)
 		;
 			Imports = Imports1,
 			Error2 = no

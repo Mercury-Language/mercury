@@ -701,15 +701,20 @@ replace_in_goal_expr(EqvMap, Goal0 @ if_then_else(Vars, Cond0, Then0, Else0),
 	; Changed = no, Goal = Goal0
 	).
 replace_in_goal_expr(_, Goal @ call(_, _, _, _, _, _), Goal, no, !Info).
-replace_in_goal_expr(EqvMap, Goal0 @ foreign_proc(_, _, _, _, _, _, _), Goal,
+replace_in_goal_expr(EqvMap, Goal0 @ foreign_proc(_, _, _, _, _, _), Goal,
 		Changed, !Info) :-
 	TVarSet0 = !.Info ^ tvarset,
-	replace_in_type_list(EqvMap, Goal0 ^ foreign_types, Types,
-		Changed, TVarSet0, TVarSet, no, _),
-	( Changed = yes,
+	replace_in_foreign_arg_list(EqvMap, Goal0 ^ foreign_args,
+		Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
+	replace_in_foreign_arg_list(EqvMap, Goal0 ^ foreign_extra_args,
+		ExtraArgs, ChangedExtraArgs, TVarSet1, TVarSet, no, _),
+	( ( ChangedArgs = yes ; ChangedExtraArgs = yes ) ->
+		Changed = yes,
 		!:Info = !.Info ^ tvarset := TVarSet,
-		Goal = Goal0 ^ foreign_types := Types
-	; Changed = no,
+		Goal = (Goal0 ^ foreign_args := Args)
+			^ foreign_extra_args := ExtraArgs
+	;
+		Changed = no,
 		Goal = Goal0
 	).
 replace_in_goal_expr(EqvMap, Goal0 @ generic_call(A, B, Modes0, D), Goal,
@@ -878,3 +883,41 @@ replace_in_list(Repl, List0 @ [H0 | T0], List, Changed, !Acc) :-
 	( Changed = yes, List = [H | T]
 	; Changed = no, List = List0
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% Replace equivalence types in a given type.
+	% The bool output is `yes' if anything changed.
+:- pred replace_in_foreign_arg(eqv_map::in,
+	foreign_arg::in, foreign_arg::out, bool::out,
+	tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
+	is det.
+
+replace_in_foreign_arg(EqvMap, Arg0, Arg, Changed, !VarSet, !Info) :-
+	Arg0 = foreign_arg(Var, NameMode, Type0),
+	replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info),
+	( Changed = yes ->
+		Arg = foreign_arg(Var, NameMode, Type)
+	;
+		Arg = Arg0
+	).
+
+:- pred replace_in_foreign_arg_list(eqv_map::in,
+	list(foreign_arg)::in, list(foreign_arg)::out, bool::out,
+	tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out)
+	is det.
+
+replace_in_foreign_arg_list(_EqvMap, [], [], no, !VarSet, !Info).
+replace_in_foreign_arg_list(EqvMap, List0 @ [A0 | As0], List,
+		Changed, !VarSet, !Info) :-
+	replace_in_foreign_arg(EqvMap, A0, A, Changed0, !VarSet, !Info),
+	replace_in_foreign_arg_list(EqvMap, As0, As, Changed1, !VarSet, !Info),
+	( ( Changed0 = yes ; Changed1 = yes ) ->
+		Changed = yes,
+		List = [A | As]
+	;
+		Changed = no,
+		List = List0
+	).
+
+%-----------------------------------------------------------------------------%

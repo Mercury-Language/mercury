@@ -662,7 +662,7 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			;
 				Uinstr = pragma_c(_, _, MayCallMercury,
 					_, MaybeLayout, MaybeOnlyLayout, _,
-					NeedStack),
+					NeedStack, _),
 				(
 					MayCallMercury = may_call_mercury
 				;
@@ -799,7 +799,7 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
 			Uinstr = pragma_c(_, _, may_call_mercury,
-				_, _, _, _, _)
+				_, _, _, _, _, _)
 		)
 	->
 		CanClobberSuccip = yes

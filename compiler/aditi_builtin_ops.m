@@ -150,7 +150,7 @@ transform_aditi_builtins_in_goal_expr(some(A, B, Goal0), _,
 		some(A, B, Goal)) -->
 	transform_aditi_builtins_in_goal(Goal0, Goal).
 transform_aditi_builtins_in_goal_expr(Goal, _, Goal) -->
-	{ Goal = foreign_proc(_, _, _, _, _, _, _) }.
+	{ Goal = foreign_proc(_, _, _, _, _, _) }.
 transform_aditi_builtins_in_goal_expr(Goal, _, Goal) -->
 	{ Goal = call(_, _, _, _, _, _) }.
 transform_aditi_builtins_in_goal_expr(shorthand(_), _, _) -->

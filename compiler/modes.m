@@ -1275,20 +1275,24 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for
 	% which it is the goal.
-modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0,
-		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
-		GoalInfo, Goal, !ModeInfo, !IO) :-
+modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0, Args0, ExtraArgs,
+		PragmaCode), GoalInfo, Goal, !ModeInfo, !IO) :-
 	mode_checkpoint(enter, "pragma_foreign_code", !ModeInfo, !IO),
 	mode_info_get_call_id(!.ModeInfo, PredId, CallId),
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	DeterminismKnown = no,
 	mode_info_set_call_context(call(call(CallId)), !ModeInfo),
+	ArgVars0 = list__map(foreign_arg_var, Args0),
 	modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-		Args0, Args, ExtraGoals, !ModeInfo),
+		ArgVars0, ArgVars, ExtraGoals, !ModeInfo),
 
-	Pragma = foreign_proc(Attributes, PredId, ProcId, Args0, ArgNameMap,
-		OrigArgTypes, PragmaCode),
-	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
+	% zs: The assignment to Pragma looks wrong: instead of Args0,
+	% I think we should use Args after the following call:
+	% replace_foreign_arg_vars(Args0, ArgVars, Args)
+	% or is there some reason why Args0 and Args would be the same?
+	Pragma = foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
+		PragmaCode),
+	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, ArgVars0, ArgVars,
 		InstMap0, Goal, !ModeInfo, !IO),
 
 	mode_info_unset_call_context(!ModeInfo),

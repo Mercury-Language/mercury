@@ -1395,8 +1395,7 @@ magic__preprocess_goal_2(par_conj(_) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: parallel conjunction in Aditi procedures") }.
 magic__preprocess_goal_2(generic_call(_, _, _, _) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: higher-order or class-method calls in Aditi procedures") }.
-magic__preprocess_goal_2(foreign_proc(_, _, _, _, _, _, _) -
-	_, _, _, _) -->
+magic__preprocess_goal_2(foreign_proc(_, _, _, _, _, _) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: foreign_proc calls in Aditi procedures") }.
 magic__preprocess_goal_2(conj(Goals0) - GoalInfo, [conj(Goals) - GoalInfo],
 		HOMap0, HOMap) -->

@@ -998,15 +998,16 @@ polymorphism__process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
 polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
 	PredId = Goal0 ^ call_pred_id,
 	ArgVars0 = Goal0 ^ call_args,
-	polymorphism__process_call(PredId, ArgVars0, ArgVars,
-		GoalInfo0, GoalInfo, _ExtraVars, ExtraGoals, !Info),
+	polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
+		ExtraVars, ExtraGoals, !Info),
+	ArgVars = ExtraVars ++ ArgVars0,
 	CallExpr = Goal0 ^ call_args := ArgVars,
 	Call = CallExpr - GoalInfo,
 	list__append(ExtraGoals, [Call], GoalList),
 	conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
 polymorphism__process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
-	Goal0 = foreign_proc(_, PredId, _, _, _, _, _),
+	Goal0 = foreign_proc(_, PredId, _, _, _, _),
 	poly_info_get_module_info(!.Info, ModuleInfo),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredModule = pred_info_module(PredInfo),
@@ -1066,13 +1067,14 @@ polymorphism__process_goal_expr(GoalExpr, _GoalInfo, _Goal, !Info) :-
 	% onto a string of variables.
 	% It places an & at the start of the variable name if the variable
 	% is an output variable.
-:- func type_info_vars(module_info, list(maybe(pair(string, mode))),
-	string) = string.
+:- func type_info_vars(module_info, list(foreign_arg), string) = string.
 
 type_info_vars(_ModuleInfo, [], InitString) = InitString.
-type_info_vars(ModuleInfo, [ArgInfo | ArgInfos], InitString) = String :-
-	String0 = type_info_vars(ModuleInfo, ArgInfos, InitString),
-	( ArgInfo = yes(ArgName0 - Mode) ->
+type_info_vars(ModuleInfo, [Arg | Args], InitString) = String :-
+	String0 = type_info_vars(ModuleInfo, Args, InitString),
+	Arg = foreign_arg(_, MaybeNameMode, _),
+	(
+		MaybeNameMode = yes(ArgName0 - Mode),
 		( mode_is_output(ModuleInfo, Mode) ->
 			string__append("&", ArgName0, ArgName)
 		;
@@ -1084,6 +1086,7 @@ type_info_vars(ModuleInfo, [ArgInfo | ArgInfos], InitString) = String :-
 			String = string__append_list([ArgName, ", ", String0])
 		)
 	;
+		MaybeNameMode = no,
 		String = String0
 	).
 
@@ -1521,7 +1524,7 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 
 :- pred polymorphism__process_foreign_proc(module_info::in, pred_info::in,
 	hlds_goal_expr::in(bound(foreign_proc(ground,ground,ground,ground,
-	ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
+	ground,ground))), hlds_goal_info::in, hlds_goal::out,
 	poly_info::in, poly_info::out) is det.
 
 polymorphism__process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0,
@@ -1531,26 +1534,21 @@ polymorphism__process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0,
 	% so that the foreign_proc can refer to the type_info variable
 	% for type T as `TypeInfo_for_T'.
 	%
-	Goal0 = foreign_proc(Attributes, PredId, ProcId,
-		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode0),
-	polymorphism__process_call(PredId, ArgVars0, ArgVars,
-		GoalInfo0, GoalInfo, ExtraVars, ExtraGoals, !Info),
-	list__length(ExtraVars, NumExtraVars),
-	polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars,
-		PragmaCode0, OrigArgTypes0, OrigArgTypes,
-		ArgInfo0, ArgInfo),
+	Goal0 = foreign_proc(Attributes, PredId, ProcId, Args0,
+		ProcExtraArgs, PragmaCode0),
+	ArgVars0 = list__map(foreign_arg_var, Args0),
+	polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
+		ExtraVars, ExtraGoals, !Info),
+	polymorphism__process_foreign_proc_args(PredInfo, PragmaCode0,
+		ExtraVars, ExtraArgs),
+	Args = ExtraArgs ++ Args0,
 
 	%
 	% Add the type info arguments to the list of variables
 	% to call for a pragma import.
 	%
 	( PragmaCode0 = import(Name, HandleReturn, Variables0, MaybeContext) ->
-		( list__remove_suffix(ArgInfo, ArgInfo0, TypeVarArgInfos) ->
-			Variables = type_info_vars(ModuleInfo,
-				TypeVarArgInfos, Variables0)
-		;
-			error("polymorphism__process_goal_expr")
-		),
+		Variables = type_info_vars(ModuleInfo, ExtraArgs, Variables0),
 		PragmaCode = import(Name, HandleReturn,
 			Variables, MaybeContext)
 	;
@@ -1560,19 +1558,17 @@ polymorphism__process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0,
 	%
 	% plug it all back together
 	%
-	CallExpr = foreign_proc(Attributes, PredId, ProcId, ArgVars,
-		ArgInfo, OrigArgTypes, PragmaCode),
+	CallExpr = foreign_proc(Attributes, PredId, ProcId, Args,
+		ProcExtraArgs, PragmaCode),
 	Call = CallExpr - GoalInfo,
 	list__append(ExtraGoals, [Call], GoalList),
 	conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
-:- pred polymorphism__process_foreign_proc_args(pred_info::in, int::in,
-	pragma_foreign_code_impl::in, list(type)::in, list(type)::out,
-	list(maybe(pair(string, mode)))::in,
-	list(maybe(pair(string, mode)))::out) is det.
+:- pred polymorphism__process_foreign_proc_args(pred_info::in,
+	pragma_foreign_code_impl::in, list(prog_var)::in,
+	list(foreign_arg)::out) is det.
 
-polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars, Impl,
-		OrigArgTypes0, OrigArgTypes, ArgInfo0, ArgInfo) :-
+polymorphism__process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 	pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars,
 		PredArgTypes),
 
@@ -1589,30 +1585,32 @@ polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars, Impl,
 	list__delete_elems(PredTypeVars1, UnivConstrainedVars, PredTypeVars2),
 	list__delete_elems(PredTypeVars2, ExistConstrainedVars, PredTypeVars),
 
-		% sanity check
-	list__length(UnivCs, NUCs),
-	list__length(ExistCs, NECs),
-	NCs = NUCs + NECs,
-	list__length(PredTypeVars, NTs),
-	NEVs = NCs + NTs,
-	require(unify(NEVs, NumExtraVars),
-		"list length mismatch in polymorphism processing pragma_c"),
-
 %	The argument order is as follows:
 %	first the UnivTypeInfos (for universally quantified type variables)
 % 	then the ExistTypeInfos (for existentially quantified type variables)
 %	then the UnivTypeClassInfos (for universally quantified constraints)
 %	then the ExistTypeClassInfos (for existentially quantified constraints)
 %	and finally the original arguments of the predicate.
-%
-%	But since we're building ArgInfo by starting with the original
-%	arguments and prepending things as we go, we need to do it in
-%	reverse order.
 
-	polymorphism__foreign_proc_add_typeclass_infos(UnivCs, ExistCs,
-		PredTypeVarSet, Impl, ArgInfo0, ArgInfo1),
-	polymorphism__foreign_proc_add_typeinfos( PredTypeVars, PredTypeVarSet,
-		ExistQVars, Impl, ArgInfo1, ArgInfo),
+	in_mode(In),
+	out_mode(Out),
+
+	list__map(polymorphism__foreign_proc_add_typeclass_info(Out, Impl,
+		PredTypeVarSet), ExistCs, ExistTypeClassArgInfos),
+	list__map(polymorphism__foreign_proc_add_typeclass_info(In, Impl,
+		PredTypeVarSet), UnivCs, UnivTypeClassArgInfos),
+	TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
+
+	list__filter((pred(X::in) is semidet :- list__member(X, ExistQVars)),
+		PredTypeVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
+
+	list__map(polymorphism__foreign_proc_add_typeinfo(Out, Impl,
+		PredTypeVarSet), ExistUnconstrainedVars, ExistTypeArgInfos),
+	list__map(polymorphism__foreign_proc_add_typeinfo(In, Impl,
+		PredTypeVarSet), UnivUnconstrainedVars, UnivTypeArgInfos),
+	TypeInfoArgInfos = UnivTypeArgInfos ++ ExistTypeArgInfos,
+
+	ArgInfos = TypeInfoArgInfos ++ TypeClassArgInfos,
 
 	%
 	% insert type_info/typeclass_info types for all the inserted
@@ -1623,36 +1621,16 @@ polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars, Impl,
 		TypeInfoTypes),
 	list__map(polymorphism__build_typeclass_info_type, UnivCs, UnivTypes),
 	list__map(polymorphism__build_typeclass_info_type, ExistCs, ExistTypes),
-	list__append(ExistTypes, OrigArgTypes0, OrigArgTypes1),
-	list__append(UnivTypes, OrigArgTypes1, OrigArgTypes2),
-	list__append(TypeInfoTypes, OrigArgTypes2, OrigArgTypes).
+	OrigArgTypes = TypeInfoTypes ++ UnivTypes ++ ExistTypes,
 
-:- pred polymorphism__foreign_proc_add_typeclass_infos(
-	list(class_constraint)::in, list(class_constraint)::in,
-	tvarset::in, pragma_foreign_code_impl::in,
-	list(maybe(pair(string, mode)))::in,
-	list(maybe(pair(string, mode)))::out) is det.
+	make_foreign_args(Vars, ArgInfos, OrigArgTypes, Args).
 
-polymorphism__foreign_proc_add_typeclass_infos(UnivCs, ExistCs,
-		PredTypeVarSet, Impl, ArgInfo0, ArgInfo) :-
-	in_mode(In),
-	out_mode(Out),
-	polymorphism__foreign_proc_add_typeclass_infos_2(ExistCs, Out,
-		PredTypeVarSet, Impl, ArgInfo0, ArgInfo1),
-	polymorphism__foreign_proc_add_typeclass_infos_2(UnivCs, In,
-		PredTypeVarSet, Impl, ArgInfo1, ArgInfo).
+:- pred polymorphism__foreign_proc_add_typeclass_info((mode)::in,
+	pragma_foreign_code_impl::in, tvarset::in, class_constraint::in, 
+	maybe(pair(string, mode))::out) is det.
 
-:- pred polymorphism__foreign_proc_add_typeclass_infos_2(
-	list(class_constraint)::in, (mode)::in, tvarset::in,
-	pragma_foreign_code_impl::in,
-	list(maybe(pair(string, mode)))::in,
-	list(maybe(pair(string, mode)))::out) is det.
-
-polymorphism__foreign_proc_add_typeclass_infos_2([], _, _, _, !ArgNames).
-polymorphism__foreign_proc_add_typeclass_infos_2([Constraint | Constraints],
-		Mode, TypeVarSet, Impl, !ArgNames) :-
-	polymorphism__foreign_proc_add_typeclass_infos_2(Constraints,
-		Mode, TypeVarSet, Impl, !ArgNames),
+polymorphism__foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,
+		Constraint, MaybeArgName) :-
 	Constraint = constraint(Name0, Types),
 	prog_out__sym_name_to_string(Name0, "__", Name),
 	term__vars_list(Types, TypeVars),
@@ -1660,61 +1638,35 @@ polymorphism__foreign_proc_add_typeclass_infos_2([Constraint | Constraints],
 		list__map(underscore_and_tvar_name(TypeVarSet), TypeVars),
 	string__append_list(["TypeClassInfo_for_", Name | TypeVarNames],
 		ConstraintVarName),
-	(
 		% If the variable name corresponding to the
 		% typeclass-info isn't mentioned in the C code
 		% fragment, don't pass the variable to the
 		% C code at all.
-
-		foreign_code_does_not_use_variable(Impl, ConstraintVarName)
-	->
-		!:ArgNames = [no | !.ArgNames]
+	( foreign_code_does_not_use_variable(Impl, ConstraintVarName) ->
+		MaybeArgName = no
 	;
-		!:ArgNames = [yes(ConstraintVarName - Mode) | !.ArgNames]
+		MaybeArgName = yes(ConstraintVarName - Mode)
 	).
 
-:- pred polymorphism__foreign_proc_add_typeinfos(list(tvar)::in, tvarset::in,
-	existq_tvars::in, pragma_foreign_code_impl::in,
-	list(maybe(pair(string, mode)))::in,
-	list(maybe(pair(string, mode)))::out) is det.
+:- pred polymorphism__foreign_proc_add_typeinfo((mode)::in,
+	pragma_foreign_code_impl::in, tvarset::in, tvar::in,
+	maybe(pair(string, mode))::out) is det.
 
-polymorphism__foreign_proc_add_typeinfos(TVars, TypeVarSet,
-		ExistQVars, Impl, ArgNames0, ArgNames) :-
-	list__filter((pred(X::in) is semidet :- list__member(X, ExistQVars)),
-		TVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
-	in_mode(In),
-	out_mode(Out),
-	polymorphism__foreign_proc_add_typeinfos_2(ExistUnconstrainedVars,
-		TypeVarSet, Out, Impl, ArgNames0, ArgNames1),
-	polymorphism__foreign_proc_add_typeinfos_2(UnivUnconstrainedVars,
-		TypeVarSet, In, Impl, ArgNames1, ArgNames).
-
-:- pred polymorphism__foreign_proc_add_typeinfos_2(list(tvar)::in, tvarset::in,
-	(mode)::in, pragma_foreign_code_impl::in,
-	list(maybe(pair(string, mode)))::in,
-	list(maybe(pair(string, mode)))::out) is det.
-
-polymorphism__foreign_proc_add_typeinfos_2([], _, _, _, !ArgNames).
-polymorphism__foreign_proc_add_typeinfos_2([TVar | TVars], TypeVarSet, Mode,
-		Impl, !ArgNames) :-
-	polymorphism__foreign_proc_add_typeinfos_2(TVars, TypeVarSet, Mode,
-		Impl, !ArgNames),
+polymorphism__foreign_proc_add_typeinfo(Mode, Impl, TypeVarSet, TVar,
+		MaybeArgName) :-
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		(
 			% If the variable name corresponding to the
 			% type-info isn't mentioned in the C code
 			% fragment, don't pass the variable to the
 			% C code at all.
-
-			foreign_code_does_not_use_variable(Impl, C_VarName)
-		->
-			!:ArgNames = [no | !.ArgNames]
+		( foreign_code_does_not_use_variable(Impl, C_VarName) ->
+			MaybeArgName = no
 		;
-			!:ArgNames = [yes(C_VarName - Mode) | !.ArgNames]
+			MaybeArgName = yes(C_VarName - Mode)
 		)
 	;
-		!:ArgNames = [no | !.ArgNames]
+		MaybeArgName = no
 	).
 
 :- pred foreign_code_does_not_use_variable(pragma_foreign_code_impl::in,
@@ -1766,13 +1718,12 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases], !Info) :-
 % existential/universal type_infos and type_class_infos
 % in a more consistent manner.
 
-:- pred polymorphism__process_call(pred_id::in,
-	list(prog_var)::in, list(prog_var)::out,
+:- pred polymorphism__process_call(pred_id::in, list(prog_var)::in,
 	hlds_goal_info::in, hlds_goal_info::out,
 	list(prog_var)::out, list(hlds_goal)::out,
 	poly_info::in, poly_info::out) is det.
 
-polymorphism__process_call(PredId, ArgVars0, ArgVars, GoalInfo0, GoalInfo,
+polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		ExtraVars, ExtraGoals, !Info) :-
 	poly_info_get_var_types(!.Info, VarTypes),
 	poly_info_get_typevarset(!.Info, TypeVarSet0),
@@ -1834,7 +1785,6 @@ polymorphism__process_call(PredId, ArgVars0, ArgVars, GoalInfo0, GoalInfo,
 			hlds_pred__pred_info_is_aditi_aggregate(PredInfo)
 		)
 	->
-		ArgVars = ArgVars0,
 		GoalInfo = GoalInfo0,
 		ExtraGoals = [],
 		ExtraVars = []
@@ -1900,11 +1850,9 @@ polymorphism__process_call(PredId, ArgVars0, ArgVars, GoalInfo0, GoalInfo,
 
 		polymorphism__make_type_info_vars(ActualTypes, Context,
 			ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
-		list__append(ExtraTypeClassVars, ArgVars0, ArgVars1),
-		list__append(ExtraTypeInfoVars, ArgVars1, ArgVars),
 		ExtraGoals = ExtraTypeClassGoals ++ ExtraExistClassGoals
-				++ ExtraTypeInfoGoals,
-		ExtraVars = ExtraTypeClassVars ++ ExtraTypeInfoVars,
+			++ ExtraTypeInfoGoals,
+		ExtraVars = ExtraTypeInfoVars ++ ExtraTypeClassVars,
 
 		%
 		% update the non-locals
@@ -2294,8 +2242,8 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 	% extra type_info arguments even though its declaration
 	% is polymorphic.
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"superclass_from_typeclass_info", predicate,
-		[SubClassVar, IndexVar, Var], only_mode, det, no,
+		"superclass_from_typeclass_info", predicate, only_mode, det,
+		[SubClassVar, IndexVar, Var], no,
 		[], ModuleInfo, term__context_init, SuperClassGoal),
 	!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
@@ -2946,8 +2894,8 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	polymorphism__new_type_info_var_raw(term__variable(TypeVar), type_info,
 		TypeInfoVar, !VarSet, !VarTypes),
 	goal_util__generate_simple_call(mercury_private_builtin_module,
-		"type_info_from_typeclass_info", predicate,
-		[TypeClassInfoVar, IndexVar, TypeInfoVar], only_mode, det, no,
+		"type_info_from_typeclass_info", predicate, only_mode, det,
+		[TypeClassInfoVar, IndexVar, TypeInfoVar], no,
 		[TypeInfoVar - ground(shared, none)], ModuleInfo,
 		term__context_init, CallGoal),
 	Goals = [IndexGoal, CallGoal].

@@ -5300,12 +5300,13 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-warn_singletons_in_goal_2(foreign_proc(Attrs, _, _, _, ArgInfo, _, PragmaImpl),
+warn_singletons_in_goal_2(foreign_proc(Attrs, _, _, Args, _, PragmaImpl),
 		GoalInfo, _QuantVars, _VarSet, PredCallId, MI) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ Lang = foreign_language(Attrs) },
+	{ NamesModes = list__map(foreign_arg_maybe_name_mode, Args) },
 	warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
-		ArgInfo, Context, PredCallId, MI).
+		NamesModes, Context, PredCallId, MI).
 
 warn_singletons_in_goal_2(shorthand(ShorthandGoal), GoalInfo, QuantVars,
 		VarSet, PredCallId, MI) -->
@@ -5414,17 +5415,18 @@ maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI,
 	prog_context::in, simple_call_id::in, module_info::in,
 	io::di, io::uo) is det.
 
-warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
+warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
 		PredOrFuncCallId, ModuleInfo, !IO) :-
 	LangStr = foreign_language_string(Lang),
 	(
 		PragmaImpl = ordinary(C_Code, _),
 		c_code_to_name_list(C_Code, C_CodeList),
-		solutions((pred(Name::out) is nondet :-
-				list__member(yes(Name - _), ArgInfo),
+		Filter = (pred(Name::out) is nondet :-
+			list__member(yes(Name - _), Args),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, C_CodeList)
-			), UnmentionedVars),
+		),
+		solutions(Filter, UnmentionedVars),
 		( UnmentionedVars = [] ->
 			true
 		;
@@ -5444,12 +5446,13 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
 		c_code_to_name_list(FirstCode, FirstCodeList),
 		c_code_to_name_list(LaterCode, LaterCodeList),
 		c_code_to_name_list(SharedCode, SharedCodeList),
-		solutions((pred(Name::out) is nondet :-
-				list__member(yes(Name - Mode), ArgInfo),
+		InputFilter = (pred(Name::out) is nondet :-
+			list__member(yes(Name - Mode), Args),
 				mode_is_input(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList)
-			), UnmentionedInputVars),
+		),
+		solutions(InputFilter, UnmentionedInputVars),
 		( UnmentionedInputVars = [] ->
 			true
 		;
@@ -5463,13 +5466,14 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
 			io__write_string("not occur in the first " ++
 				LangStr ++ " code.\n ", !IO)
 		),
-		solutions((pred(Name::out) is nondet :-
-				list__member(yes(Name - Mode), ArgInfo),
+		FirstOutputFilter = (pred(Name::out) is nondet :-
+			list__member(yes(Name - Mode), Args),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, FirstCodeList),
 				\+ list__member(Name, SharedCodeList)
-			), UnmentionedFirstOutputVars),
+		),
+		solutions(FirstOutputFilter, UnmentionedFirstOutputVars),
 		( UnmentionedFirstOutputVars = [] ->
 			true
 		;
@@ -5485,13 +5489,14 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, ArgInfo, Context,
 				LangStr ++ " code or the shared " ++ LangStr ++
 				" code.\n ", !IO)
 		),
-		solutions((pred(Name::out) is nondet :-
-				list__member(yes(Name - Mode), ArgInfo),
+		LaterOutputFilter = (pred(Name::out) is nondet :-
+			list__member(yes(Name - Mode), Args),
 				mode_is_output(ModuleInfo, Mode),
 				\+ string__prefix(Name, "_"),
 				\+ list__member(Name, LaterCodeList),
 				\+ list__member(Name, SharedCodeList)
-			), UnmentionedLaterOutputVars),
+		),
+		solutions(LaterOutputFilter, UnmentionedLaterOutputVars),
 		( UnmentionedLaterOutputVars = [] ->
 			true
 		;
@@ -5943,8 +5948,10 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
 		% Put the purity in the goal_info in case
 		% this foreign code is inlined
 		add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-		HldsGoal0 = foreign_proc(Attributes, PredId,
-			ProcId, HeadVars, ArgInfo, OrigArgTypes, PragmaImpl)
+		make_foreign_args(HeadVars, ArgInfo, OrigArgTypes,
+			ForeignArgs),
+		HldsGoal0 = foreign_proc(Attributes, PredId, ProcId,
+			ForeignArgs, [], PragmaImpl)
 			- GoalInfo,
 		map__init(EmptyVarTypes),
 		implicitly_quantify_clause_body(HeadVars, _Warnings, HldsGoal0,

@@ -722,11 +722,11 @@ det_infer_goal_2(some(Vars, CanRemove, Goal0), _, InstMap0, SolnContext,
 		Goal, Det, Msgs).
 
 	% pragma foregin_codes are handled in the same way as predicate calls
-det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId,
-			Args, ArgNameMap, OrigArgTypes, PragmaCode), 
+det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+			PragmaCode), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
-		foreign_proc(Attributes, PredId, ProcId, Args,
-			ArgNameMap, OrigArgTypes, PragmaCode),
+		foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+			PragmaCode),
 		Detism, Msgs) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),

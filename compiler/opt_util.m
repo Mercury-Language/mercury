@@ -899,7 +899,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = decr_sp(_),
 		Need = no
 	;
-		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _),
+		Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
 		Need = no
 	;
 		Uinstr0 = init_sync_term(Lval, _),
@@ -1014,7 +1014,7 @@ opt_util__can_instr_branch_away(init_sync_term(_, _), no).
 opt_util__can_instr_branch_away(fork(_, _, _), yes).
 opt_util__can_instr_branch_away(join_and_terminate(_), no).
 opt_util__can_instr_branch_away(join_and_continue(_, _), yes).
-opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _),
+opt_util__can_instr_branch_away(pragma_c(_, Comps, _, _, _, _, _, _, _),
 		BranchAway) :-
 	opt_util__can_components_branch_away(Comps, BranchAway).
 
@@ -1082,7 +1082,7 @@ opt_util__can_instr_fall_through(init_sync_term(_, _), yes).
 opt_util__can_instr_fall_through(fork(_, _, _), no).
 opt_util__can_instr_fall_through(join_and_terminate(_), no).
 opt_util__can_instr_fall_through(join_and_continue(_, _), no).
-opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _), yes).
+opt_util__can_instr_fall_through(pragma_c(_, _, _, _, _, _, _, _, _), yes).
 
 	% Check whether an instruction sequence can possibly fall through
 	% to the next instruction without using its label.
@@ -1128,7 +1128,7 @@ opt_util__can_use_livevals(init_sync_term(_, _), no).
 opt_util__can_use_livevals(fork(_, _, _), no).
 opt_util__can_use_livevals(join_and_terminate(_), no).
 opt_util__can_use_livevals(join_and_continue(_, _), no).
-opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _, _, _), no).
+opt_util__can_use_livevals(pragma_c(_, _, _, _, _, _, _, _, _), no).
 
 % determine all the labels and code_addresses that are referenced by Instr
 
@@ -1193,7 +1193,7 @@ opt_util__instr_labels_2(fork(Child, Parent, _), [Child, Parent], []).
 opt_util__instr_labels_2(join_and_terminate(_), [], []).
 opt_util__instr_labels_2(join_and_continue(_, Label), [Label], []).
 opt_util__instr_labels_2(pragma_c(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
-		MaybeOnlyLayoutLabel, MaybeSubLabel, _), Labels, []) :-
+		MaybeOnlyLayoutLabel, MaybeSubLabel, _, _), Labels, []) :-
 	opt_util__pragma_c_labels(MaybeFixLabel, MaybeLayoutLabel,
 		MaybeOnlyLayoutLabel, MaybeSubLabel, Labels).
 
@@ -1241,7 +1241,7 @@ opt_util__possible_targets(fork(Child, Parent, _), [Child, Parent]).
 opt_util__possible_targets(join_and_terminate(_), []).
 opt_util__possible_targets(join_and_continue(_, L), [L]).
 opt_util__possible_targets(pragma_c(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
-		_, MaybeSubLabel, _), Labels) :-
+		_, MaybeSubLabel, _, _), Labels) :-
 	opt_util__pragma_c_labels(MaybeFixedLabel, MaybeLayoutLabel,
 		no, MaybeSubLabel, Labels).
 
@@ -1305,7 +1305,7 @@ opt_util__instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 opt_util__instr_rvals_and_lvals(fork(_, _, _), [], []).
 opt_util__instr_rvals_and_lvals(join_and_terminate(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _),
+opt_util__instr_rvals_and_lvals(pragma_c(_, Cs, _, _, _, _, _, _, _),
 		Rvals, Lvals) :-
 	pragma_c_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
@@ -1400,76 +1400,73 @@ opt_util__livevals_addr(do_call_closure, yes).
 opt_util__livevals_addr(do_call_class_method, yes).
 opt_util__livevals_addr(do_not_reached, no).
 
-opt_util__count_temps_instr_list([], R, R, F, F).
-opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], R0, R, F0, F) :-
-	opt_util__count_temps_instr(Uinstr, R0, R1, F0, F1),
-	opt_util__count_temps_instr_list(Instrs, R1, R, F1, F).
+opt_util__count_temps_instr_list([], !R, !F).
+opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], !R, !F) :-
+	opt_util__count_temps_instr(Uinstr, !R, !F),
+	opt_util__count_temps_instr_list(Instrs, !R, !F).
 
-opt_util__count_temps_instr(comment(_), R, R, F, F).
-opt_util__count_temps_instr(livevals(_), R, R, F, F).
-opt_util__count_temps_instr(block(_, _, _), R, R, F, F).
-opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
-	opt_util__count_temps_rval(Rval, R1, R, F1, F).
-opt_util__count_temps_instr(call(_, _, _, _, _, _), R, R, F, F).
-opt_util__count_temps_instr(mkframe(_, _), R, R, F, F).
-opt_util__count_temps_instr(label(_), R, R, F, F).
-opt_util__count_temps_instr(goto(_), R, R, F, F).
-opt_util__count_temps_instr(computed_goto(Rval, _), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(if_val(Rval, _), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(c_code(_, _), R, R, F, F).
-opt_util__count_temps_instr(incr_hp(Lval, _, _, Rval, _), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
-	opt_util__count_temps_rval(Rval, R1, R, F1, F).
-opt_util__count_temps_instr(mark_hp(Lval), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(restore_hp(Rval), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(free_heap(Rval), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(store_ticket(Lval), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(reset_ticket(Rval, _Reason), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(discard_ticket, R, R, F, F).
-opt_util__count_temps_instr(prune_ticket, R, R, F, F).
-opt_util__count_temps_instr(mark_ticket_stack(Lval), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(prune_tickets_to(Rval), R0, R, F0, F) :-
-	opt_util__count_temps_rval(Rval, R0, R, F0, F).
-opt_util__count_temps_instr(incr_sp(_, _), R, R, F, F).
-opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
-opt_util__count_temps_instr(init_sync_term(Lval, _), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(fork(_, _, _), R, R, F, F).
-opt_util__count_temps_instr(join_and_terminate(Lval), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(join_and_continue(Lval, _), R0, R, F0, F) :-
-	opt_util__count_temps_lval(Lval, R0, R, F0, F).
-opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(comment(_), !R, !F).
+opt_util__count_temps_instr(livevals(_), !R, !F).
+opt_util__count_temps_instr(block(_, _, _), !R, !F).
+opt_util__count_temps_instr(assign(Lval, Rval), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F),
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(call(_, _, _, _, _, _), !R, !F).
+opt_util__count_temps_instr(mkframe(_, _), !R, !F).
+opt_util__count_temps_instr(label(_), !R, !F).
+opt_util__count_temps_instr(goto(_), !R, !F).
+opt_util__count_temps_instr(computed_goto(Rval, _), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(if_val(Rval, _), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(c_code(_, _), !R, !F).
+opt_util__count_temps_instr(incr_hp(Lval, _, _, Rval, _), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F),
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(mark_hp(Lval), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(restore_hp(Rval), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(free_heap(Rval), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(store_ticket(Lval), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(reset_ticket(Rval, _Reason), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(discard_ticket, !R, !F).
+opt_util__count_temps_instr(prune_ticket, !R, !F).
+opt_util__count_temps_instr(mark_ticket_stack(Lval), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
+	opt_util__count_temps_rval(Rval, !R, !F).
+opt_util__count_temps_instr(incr_sp(_, _), !R, !F).
+opt_util__count_temps_instr(decr_sp(_), !R, !F).
+opt_util__count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(fork(_, _, _), !R, !F).
+opt_util__count_temps_instr(join_and_terminate(Lval), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
+	opt_util__count_temps_lval(Lval, !R, !F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _, _, _, _, _, _), !R, !F).
 
 :- pred opt_util__count_temps_lval(lval, int, int, int, int).
 :- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
 
-opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
+opt_util__count_temps_lval(Lval, !R, !F) :-
 	( Lval = temp(Type, N) ->
 		(
 			Type = r,
-			int__max(R0, N, R),
-			F = F0
+			int__max(N, !R)
 		;
 			Type = f,
-			int__max(F0, N, F),
-			R = R0
+			int__max(N, !F)
 		)
 	; Lval = field(_, Rval, FieldNum) ->
-		opt_util__count_temps_rval(Rval, R0, R1, F0, F1),
-		opt_util__count_temps_rval(FieldNum, R1, R, F1, F)
+		opt_util__count_temps_rval(Rval, !R, !F),
+		opt_util__count_temps_rval(FieldNum, !R, !F)
 	;
-		R = R0,
-		F = F0
+		true
 	).
 
 :- pred opt_util__count_temps_rval(rval, int, int, int, int).
@@ -1477,7 +1474,7 @@ opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
 
 % XXX assume that we don't generate code
 % that uses a temp var without defining it.
-opt_util__count_temps_rval(_, R, R, F, F).
+opt_util__count_temps_rval(_, !R, !F).
 
 opt_util__format_label(internal(_, ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).
@@ -1553,7 +1550,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
 		opt_util__touches_nondet_ctrl_rval(Rval, Touch)
-	; Uinstr = pragma_c(_, Components, _, _, _, _, _, _) ->
+	; Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _) ->
 		opt_util__touches_nondet_ctrl_components(Components, Touch)
 	;
 		Touch = yes
@@ -1906,9 +1903,9 @@ opt_util__replace_labels_instr(join_and_continue(Lval0, Label0),
 	opt_util__replace_labels_label(Label0, Replmap, Label),
 	opt_util__replace_labels_lval(Lval0, Replmap, Lval).
 opt_util__replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
-		MaybeOnlyLayout, MaybeSub0, F), ReplMap, _,
+		MaybeOnlyLayout, MaybeSub0, H, I), ReplMap, _,
 		pragma_c(A, Comps, C, MaybeFix, MaybeLayout, MaybeOnlyLayout,
-			MaybeSub, F)) :-
+			MaybeSub, H, I)) :-
 	(
 		MaybeFix = no
 	;

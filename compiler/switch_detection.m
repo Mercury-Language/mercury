@@ -217,7 +217,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap, _,
 		switch(Var, CanFail, Cases0), switch(Var, CanFail, Cases)) :-
 	detect_switches_in_cases(ModuleInfo, VarTypes, InstMap, Cases0, Cases).
 
-detect_switches_in_goal_2(_, _, _, _, Goal @ foreign_proc(_, _, _, _, _, _, _),
+detect_switches_in_goal_2(_, _, _, _, Goal @ foreign_proc(_, _, _, _, _, _),
 		Goal).
 detect_switches_in_goal_2(_, _, _, _, shorthand(_), _) :-
 	% these should have been expanded out by now

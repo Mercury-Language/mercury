@@ -689,7 +689,7 @@ compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
 	worst_purity(Purity1, Purity2) = Purity12,
 	worst_purity(Purity12, Purity3) = Purity.
 compute_expr_purity(ForeignProc0, ForeignProc, _, Purity, !Info) :-
-	ForeignProc0 = foreign_proc(_, _, _, _, _, _, _),
+	ForeignProc0 = foreign_proc(_, _, _, _, _, _),
 	Attributes = ForeignProc0 ^ foreign_attr,
 	PredId = ForeignProc0 ^ foreign_pred_id,
 	ModuleInfo = !.Info ^ module_info,

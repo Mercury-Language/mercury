@@ -20,9 +20,8 @@
 
 :- import_module io.
 
-:- pred lco_modulo_constructors(pred_id, proc_id, module_info,
-	proc_info, proc_info, io__state, io__state).
-:- mode lco_modulo_constructors(in, in, in, in, out, di, uo) is det.
+:- pred lco_modulo_constructors(pred_id::in, proc_id::in, module_info::in,
+	proc_info::in, proc_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,67 +36,54 @@
 
 %-----------------------------------------------------------------------------%
 
-lco_modulo_constructors(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
-	{ proc_info_goal(ProcInfo0, Goal0) },
-	{ lco_in_goal(Goal0, ModuleInfo, Goal) },
-	( { Goal = Goal0 } ->
-		{ ProcInfo = ProcInfo0 }
+lco_modulo_constructors(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
+	proc_info_goal(!.ProcInfo, Goal0),
+	lco_in_goal(Goal0, ModuleInfo, Goal),
+	( Goal = Goal0 ->
+		true
 	;
-		{ ProcInfo = ProcInfo0 },			% for now
-		% { proc_info_set_goal(ProcInfo0, Goal, ProcInfo) },
-		io__write_string("% Can introduce LCO in "),
-		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId),
-		io__write_string("\n")
+		% proc_info_set_goal(!.ProcInfo, Goal, !:ProcInfo),
+		io__write_string("% Can introduce LCO in ", !IO),
+		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+		io__write_string("\n", !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_goal(hlds_goal, module_info, hlds_goal).
-:- mode lco_in_goal(in, in, out) is det.
+:- pred lco_in_goal(hlds_goal::in, module_info::in, hlds_goal::out) is det.
 
 lco_in_goal(Goal0 - GoalInfo, ModuleInfo, Goal - GoalInfo) :-
 	lco_in_goal_2(Goal0, ModuleInfo, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_goal_2(hlds_goal_expr, module_info, hlds_goal_expr).
-:- mode lco_in_goal_2(in, in, out) is det.
+:- pred lco_in_goal_2(hlds_goal_expr::in, module_info::in, hlds_goal_expr::out)
+	is det.
 
 lco_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals)) :-
 	list__reverse(Goals0, RevGoals0),
 	lco_in_conj(RevGoals0, [], ModuleInfo, Goals).
-
 	% XXX Some execution algorithm issues here.
 lco_in_goal_2(par_conj(_Goals0), _ModuleInfo, par_conj(_Goals)) :-
 	error("sorry: lco of parallel conjunction not implemented").
-
 lco_in_goal_2(disj(Goals0), ModuleInfo, disj(Goals)) :-
 	lco_in_disj(Goals0, ModuleInfo, Goals).
-
 lco_in_goal_2(switch(Var, Det, Cases0), ModuleInfo,
 		switch(Var, Det, Cases)) :-
 	lco_in_cases(Cases0, ModuleInfo, Cases).
-
 lco_in_goal_2(if_then_else(Vars, Cond, Then0, Else0), ModuleInfo,
 		if_then_else(Vars, Cond, Then, Else)) :-
 	lco_in_goal(Then0, ModuleInfo, Then),
 	lco_in_goal(Else0, ModuleInfo, Else).
-
 lco_in_goal_2(some(Vars, CanRemove, Goal0), ModuleInfo,
 		some(Vars, CanRemove, Goal)) :-
 	lco_in_goal(Goal0, ModuleInfo, Goal).
-
 lco_in_goal_2(not(Goal), _ModuleInfo, not(Goal)).
-
-lco_in_goal_2(generic_call(A,B,C,D), _ModuleInfo, generic_call(A,B,C,D)).
-
-lco_in_goal_2(call(A,B,C,D,E,F), _ModuleInfo, call(A,B,C,D,E,F)).
-
-lco_in_goal_2(unify(A,B,C,D,E), _ModuleInfo, unify(A,B,C,D,E)).
-
-lco_in_goal_2(foreign_proc(A,B,C,D,E,F,G), _,
-		foreign_proc(A,B,C,D,E,F,G)).
+lco_in_goal_2(Goal @ generic_call(_, _, _, _), _ModuleInfo, Goal).
+lco_in_goal_2(Goal @ call(_, _, _, _, _, _), _ModuleInfo, Goal).
+lco_in_goal_2(Goal @ unify(_, _, _, _, _), _ModuleInfo, Goal).
+lco_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), _, Goal).
 
 lco_in_goal_2(shorthand(_), _, _) :-
 	% these should have been expanded out by now
@@ -105,8 +91,8 @@ lco_in_goal_2(shorthand(_), _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_disj(list(hlds_goal), module_info, list(hlds_goal)).
-:- mode lco_in_disj(in, in, out) is det.
+:- pred lco_in_disj(list(hlds_goal)::in, module_info::in, list(hlds_goal)::out)
+	is det.
 
 lco_in_disj([], __ModuleInfo, []).
 lco_in_disj([Goal0 | Goals0], ModuleInfo, [Goal | Goals]) :-
@@ -115,8 +101,8 @@ lco_in_disj([Goal0 | Goals0], ModuleInfo, [Goal | Goals]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred lco_in_cases(list(case), module_info, list(case)).
-:- mode lco_in_cases(in, in, out) is det.
+:- pred lco_in_cases(list(case)::in, module_info::in, list(case)::out)
+	is det.
 
 lco_in_cases([], __ModuleInfo, []).
 lco_in_cases([case(Cons, Goal0) | Cases0], ModuleInfo,
@@ -144,9 +130,8 @@ lco_in_cases([case(Cons, Goal0) | Cases0], ModuleInfo,
 %
 % invariant: append(reverse(RevGoals), Unifies) = original conjunction
 
-:- pred lco_in_conj(list(hlds_goal), list(hlds_goal), module_info,
-	list(hlds_goal)).
-:- mode lco_in_conj(in, in, in, out) is det.
+:- pred lco_in_conj(list(hlds_goal)::in, list(hlds_goal)::in, module_info::in,
+	list(hlds_goal)::out) is det.
 
 lco_in_conj([], Unifies, __ModuleInfo, Unifies).
 lco_in_conj([Goal0 | Goals0], Unifies0, ModuleInfo, Goals) :-

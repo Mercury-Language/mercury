@@ -403,16 +403,16 @@ detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, _, LiveInfo,
 		Liveness, some(Vars, CanRemove, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _) :-
+detect_liveness_in_goal_2(generic_call(_, _, _, _), _, _, _, _, _) :-
 	error("higher-order-call in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
+detect_liveness_in_goal_2(call(_, _, _, _, _, _), _, _, _, _, _) :-
 	error("call in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _) :-
+detect_liveness_in_goal_2(unify(_, _, _, _, _), _, _, _, _, _) :-
 	error("unify in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(foreign_proc(_,_,_,_,_,_,_),
+detect_liveness_in_goal_2(foreign_proc(_, _, _, _, _, _),
 		_, _, _, _, _) :-
 	error("foreign_proc in detect_liveness_in_goal_2").
 
@@ -655,7 +655,7 @@ detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _, _) :-
 detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _, _) :-
 	error("unify in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(foreign_proc(_, _, _, _, _, _, _),
+detect_deadness_in_goal_2(foreign_proc(_, _, _, _, _, _),
 		_, _, _, _, _, _) :-
 	error("foreign_proc in detect_deadness_in_goal_2").
 
@@ -861,8 +861,7 @@ update_liveness_goal(GoalExpr - GoalInfo, LiveInfo, Liveness0, Liveness) :-
 update_liveness_expr(call(_, _, _, _, _, _), _, _, Liveness, Liveness).
 update_liveness_expr(generic_call(_, _, _, _), _, _, Liveness, Liveness).
 update_liveness_expr(unify(_, _, _, _, _), _, _, Liveness, Liveness).
-update_liveness_expr(foreign_proc(_, _, _, _, _, _, _), _, _,
-		Liveness, Liveness).
+update_liveness_expr(foreign_proc(_, _, _, _, _, _), _, _, Liveness, Liveness).
 update_liveness_expr(conj(Goals), _, LiveInfo, Liveness0, Liveness) :-
 	update_liveness_conj(Goals, LiveInfo, Liveness0, Liveness).
 update_liveness_expr(par_conj(Goals), _, LiveInfo, Liveness0, Liveness) :-
@@ -1034,7 +1033,7 @@ delay_death_goal_expr(GoalExpr0, GoalInfo0, BornVars0, DelayedDead0, VarSet,
 		BornVars = BornVars0,
 		DelayedDead = DelayedDead0
 	;
-		GoalExpr0 = foreign_proc(_, _, _, _, _, _, _),
+		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
 		GoalExpr = GoalExpr0,
 		GoalInfo = GoalInfo0,
 		BornVars = BornVars0,
@@ -1361,17 +1360,17 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
-detect_resume_points_in_goal_2(generic_call(A,B,C,D), _, Liveness,
-		_, _, generic_call(A,B,C,D), Liveness).
+detect_resume_points_in_goal_2(Goal @ generic_call(_, _, _, _), _,
+		Liveness, _, _, Goal, Liveness).
 
-detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
-		call(A,B,C,D,E,F), Liveness).
+detect_resume_points_in_goal_2(Goal @ call(_, _, _, _, _, _), _,
+		Liveness, _, _, Goal, Liveness).
 
-detect_resume_points_in_goal_2(unify(A,B,C,D,E), _, Liveness, _, _,
-		unify(A,B,C,D,E), Liveness).
+detect_resume_points_in_goal_2(Goal @ unify(_, _, _, _, _), _,
+		Liveness, _, _, Goal, Liveness).
 
-detect_resume_points_in_goal_2(foreign_proc(A,B,C,D,E,F,G), _,
-		Liveness, _, _, foreign_proc(A,B,C,D,E,F,G), Liveness).
+detect_resume_points_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), _,
+		Liveness, _, _, Goal, Liveness).
 
 detect_resume_points_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
 	% these should have been expanded out by now

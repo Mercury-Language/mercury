@@ -4,7 +4,6 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-:- module transform_hlds__higher_order.
 % Main author: stayl
 %
 % Specializes calls to higher order or polymorphic predicates where the value
@@ -23,6 +22,8 @@
 % is a number that uniquely identifies this specialized version.
 %-------------------------------------------------------------------------------
 
+:- module transform_hlds__higher_order.
+
 :- interface.
 
 :- import_module hlds__hlds_module.
@@ -30,7 +31,7 @@
 :- import_module io.
 
 :- pred specialize_higher_order(module_info::in, module_info::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-------------------------------------------------------------------------------
 
@@ -133,8 +134,7 @@ specialize_higher_order(ModuleInfo0, ModuleInfo) -->
 	% Process one lot of requests, returning requests for any
 	% new specializations made possible by the first lot.
 :- pred process_requests(higher_order_global_info::in,
-		higher_order_global_info::out,
-		io__state::di, io__state::uo) is det.
+	higher_order_global_info::out, io::di, io::uo) is det.
 
 process_requests(Info0, Info) -->
 	filter_requests(Requests, LoopRequests, Info0, Info1),
@@ -164,7 +164,7 @@ process_requests(Info0, Info) -->
 
 	% Process requests until there are no new requests to process.
 :- pred recursively_process_requests(higher_order_global_info::in, 
-	higher_order_global_info::out, io__state::di, io__state::uo) is det.
+	higher_order_global_info::out, io::di, io::uo) is det.
 
 recursively_process_requests(Info0, Info) -->
 	( { set__empty(Info0 ^ requests) } ->
@@ -178,18 +178,21 @@ recursively_process_requests(Info0, Info) -->
 
 :- type higher_order_global_info
 	---> higher_order_global_info(
-		requests :: set(request),	% Requested versions.
+		requests			:: set(request),
+						% Requested versions.
 		new_preds :: new_preds,
 						% Specialized versions for
 						% each predicate not changed
 						% by traverse_goal
-		version_info :: map(pred_proc_id, version_info),
+		version_info			:: map(pred_proc_id,
+							version_info),
 						% Extra information about
 						% each specialized version.
 		module_info :: module_info,
 		goal_sizes :: goal_sizes,
 		ho_params :: ho_params,
-		next_higher_order_id :: int	% Number identifying
+		next_higher_order_id		:: int
+						% Number identifying
 						% a specialized version.
 	).
 
@@ -197,13 +200,17 @@ recursively_process_requests(Info0, Info) -->
 :- type higher_order_info
 	---> higher_order_info(
 		global_info :: higher_order_global_info,
-		pred_vars :: pred_vars,		% higher_order variables
+		pred_vars			:: pred_vars,
+						% higher_order variables
 		pred_proc_id :: pred_proc_id,
-				% pred_proc_id of goal being traversed
+						% pred_proc_id of goal being
+						% traversed
 		pred_info :: pred_info,
-				% pred_info of goal being traversed
+						% pred_info of goal being
+						% traversed
 		proc_info :: proc_info,
-				% proc_info of goal being traversed
+						% proc_info of goal being
+						% traversed
 		changed :: changed
 	).
 
@@ -498,7 +505,7 @@ traverse_goal_2(some(Vars, CanRemove, Goal0) - Info,
 	traverse_goal_2(Goal0, Goal).
 
 traverse_goal_2(Goal, Goal) -->
-	{ Goal = foreign_proc(_, _, _, _, _, _, _) - _ }.
+	{ Goal = foreign_proc(_, _, _, _, _, _) - _ }.
 
 traverse_goal_2(Goal0, Goal) -->
 	{ Goal0 = GoalExpr0 - _ },
@@ -2259,7 +2266,7 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg,
 		% this can create ridiculous numbers of versions.
 :- pred filter_requests(list(request)::out, list(request)::out,
 	higher_order_global_info::in, higher_order_global_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 filter_requests(FilteredRequests, LoopRequests, Info0, Info) -->
 	{ Requests0 = set__to_sorted_list(Info0 ^ requests) },
@@ -2269,7 +2276,7 @@ filter_requests(FilteredRequests, LoopRequests, Info0, Info) -->
 
 :- pred filter_requests_2(higher_order_global_info::in, request::in,
 	pair(list(request))::in, pair(list(request))::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 filter_requests_2(Info, Request, AcceptedRequests0 - LoopRequests0,
 		AcceptedRequests - LoopRequests) -->
@@ -2369,7 +2376,7 @@ filter_requests_2(Info, Request, AcceptedRequests0 - LoopRequests0,
 :- pred create_new_preds(list(request)::in, list(new_pred)::in,
 	list(new_pred)::out, set(pred_proc_id)::in, set(pred_proc_id)::out,
 	higher_order_global_info::in, higher_order_global_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 create_new_preds([], NewPredList, NewPredList, ToFix, ToFix,
 		Info, Info, IO, IO).
@@ -2433,7 +2440,7 @@ check_loop_request(Info, Request, PredsToFix0, PredsToFix) :-
 		% Here we create the pred_info for the new predicate.
 :- pred create_new_pred(request::in, new_pred::out,
 	higher_order_global_info::in, higher_order_global_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 create_new_pred(Request, NewPred, !Info, !IO) :-
 	Request = request(Caller, CalledPredProc, CallArgs, ExtraTypeInfoTVars,
@@ -2547,8 +2554,7 @@ add_new_pred(CalledPredProcId, NewPred, Info0, Info) :-
 
 :- pred maybe_write_request(bool::in, module_info::in, string::in,
 	sym_name::in, arity::in, arity::in, maybe(string)::in,
-	list(higher_order_arg)::in, prog_context::in,
-	io__state::di, io__state::uo) is det.
+	list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
 
 maybe_write_request(no, _, _, _, _, _, _, _, _) --> [].
 maybe_write_request(yes, ModuleInfo, Msg, SymName,
@@ -2570,7 +2576,7 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName,
 	output_higher_order_args(ModuleInfo, NumToDrop, 0, HOArgs).
 
 :- pred output_higher_order_args(module_info::in, int::in, int::in,
-	list(higher_order_arg)::in, io__state::di, io__state::uo) is det.
+	list(higher_order_arg)::in, io::di, io::uo) is det.
 
 output_higher_order_args(_, _, _, []) --> [].
 output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs]) -->

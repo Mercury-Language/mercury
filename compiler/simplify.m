@@ -1081,12 +1081,14 @@ simplify__goal_2(some(Vars1, CanRemove0, Goal1), GoalExpr, SomeInfo, GoalInfo,
 	).
 
 simplify__goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info) :-
-	Goal0 = foreign_proc(_, PredId, ProcId, Args, _, _, _),
+	Goal0 = foreign_proc(_, PredId, ProcId, Args, ExtraArgs, _),
 	(
 		simplify_do_calls(!.Info),
-		goal_info_is_pure(GoalInfo)
+		goal_info_is_pure(GoalInfo),
+		ExtraArgs = []
 	->
-		common__optimise_call(PredId, ProcId, Args, GoalInfo,
+		ArgVars = list__map(foreign_arg_var, Args),
+		common__optimise_call(PredId, ProcId, ArgVars, GoalInfo,
 			Goal0, Goal, !Info)
 	;
 		Goal = Goal0
@@ -1139,7 +1141,7 @@ simplify__inequality_goal(TI, X, Y, Inequality, Invert,
 	Unique   = ground(unique, none),
 	ArgInsts = [R - Unique],
 	goal_util__generate_simple_call(BuiltinModule, "compare", predicate,
-		Args, mode_no(ModeNo), det, no, ArgInsts, ModuleInfo, Context,
+		mode_no(ModeNo), det, Args, no, ArgInsts, ModuleInfo, Context,
 		CmpGoal0),
 	CmpGoal0 = CmpExpr - CmpInfo0,
 	goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
@@ -1378,9 +1380,8 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		%
 		goal_info_get_context(GoalInfo0, GContext),
 		generate_simple_call(mercury_private_builtin_module,
-			"builtin_unify_pred", predicate, [XVar, YVar],
-			mode_no(0), semidet, no, [], ModuleInfo,
-			GContext, Call0 - _),
+			"builtin_unify_pred", predicate, mode_no(0), semidet,
+			[XVar, YVar], no, [], ModuleInfo, GContext, Call0 - _),
 		simplify__goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info),
 		Call = Call1 - GoalInfo,
 		ExtraGoals = []
@@ -1456,7 +1457,7 @@ simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _,
 	ArgVars = [TypeInfoVar, XVar, YVar],
 	goal_info_get_context(GoalInfo, Context),
 	goal_util__generate_simple_call(mercury_public_builtin_module,
-		"unify", predicate, ArgVars, mode_no(0), semidet, no, [],
+		"unify", predicate, mode_no(0), semidet, ArgVars, no, [],
 		ModuleInfo, Context, Call).
 
 :- pred simplify__call_specific_unify(type_ctor::in, list(prog_var)::in,
@@ -2488,7 +2489,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
 			GoalExpr \= generic_call(_, _, _, _),
-			GoalExpr \= foreign_proc(_, _, _, _, _, _, _)
+			GoalExpr \= foreign_proc(_, _, _, _, _, _)
 		)
 	->
 		simplify_info_get_common_info(!.Info, CommonInfo0),

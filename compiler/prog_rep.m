@@ -237,10 +237,10 @@ prog_rep__represent_goal_expr(call(PredId, _, Args, _, _, _),
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,
 		ChangedVarsRep, AtomicGoalRep).
-prog_rep__represent_goal_expr(foreign_proc(_,
-		_PredId, _, Args, _, _, _),
+prog_rep__represent_goal_expr(foreign_proc(_, _PredId, _, Args, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
-	list__map(term__var_to_int, Args, ArgsRep),
+	ArgVars = list__map(foreign_arg_var, Args),
+	list__map(term__var_to_int, ArgVars, ArgsRep),
 	AtomicGoalRep = pragma_foreign_code_rep(ArgsRep),
 	prog_rep__represent_atomic_goal(GoalInfo, InstMap0, Info,
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),

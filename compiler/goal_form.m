@@ -223,7 +223,7 @@ goal_is_flat_expr(some(_Vars, _, Goal)) :-
 goal_is_flat_expr(generic_call(_, _, _, _)).
 goal_is_flat_expr(call(_, _, _, _, _, _)).
 goal_is_flat_expr(unify(_, _, _, _, _)).
-goal_is_flat_expr(foreign_proc(_, _, _, _, _, _, _)).
+goal_is_flat_expr(foreign_proc(_, _, _, _, _, _)).
 
 :- pred goal_is_flat_list(list(hlds_goal)::in) is semidet.
 
@@ -265,7 +265,7 @@ goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
 	% expand to incr_hp and variants thereof.
 	% XXX although you could make it an attribute of the foreign code and
 	% trust the programmer
-goal_may_allocate_heap_2(foreign_proc(_,_,_,_,_,_,_), yes).
+goal_may_allocate_heap_2(foreign_proc(_, _, _, _, _, _), yes).
 goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
 	goal_may_allocate_heap(Goal, May).
 goal_may_allocate_heap_2(not(Goal), May) :-
@@ -424,7 +424,7 @@ count_recursive_calls_2(some(_, _, Goal), PredId, ProcId, Min, Max) :-
 	count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 count_recursive_calls_2(generic_call(_, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(foreign_proc(_, _, _, _, _, _, _), _, _, 0, 0).
+count_recursive_calls_2(foreign_proc(_, _, _, _, _, _), _, _, 0, 0).
 count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 		PredId, ProcId, Count, Count) :-
 	(

@@ -94,43 +94,30 @@ move_follow_code_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, Flags, !R) :-
 
 move_follow_code_in_goal_2(conj(Goals0), conj(Goals), Flags, !R) :-
 	move_follow_code_in_conj(Goals0, Goals, Flags, !R).
-
 move_follow_code_in_goal_2(par_conj(Goals0), par_conj(Goals), Flags, !R) :-
 		% move_follow_code_in_disj treats its list of goals as
 		% independent goals, so we can use it to process the
 		% independent parallel conjuncts.
 	move_follow_code_in_disj(Goals0, Goals, Flags, !R).
-
 move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, !R) :-
 	move_follow_code_in_disj(Goals0, Goals, Flags, !R).
-
 move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R).
-
 move_follow_code_in_goal_2(switch(Var, Det, Cases0),
 		switch(Var, Det, Cases), Flags, !R) :-
 	move_follow_code_in_cases(Cases0, Cases, Flags, !R).
-
 move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
 		if_then_else(Vars, Cond, Then, Else), Flags, !R) :-
 	move_follow_code_in_goal(Cond0, Cond, Flags, !R),
 	move_follow_code_in_goal(Then0, Then, Flags, !R),
 	move_follow_code_in_goal(Else0, Else, Flags, !R).
-
 move_follow_code_in_goal_2(some(Vars, CanRemove, Goal0),
 		some(Vars, CanRemove, Goal), Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R).
-
-move_follow_code_in_goal_2(generic_call(A,B,C,D),
-			generic_call(A,B,C,D), _, R, R).
-
-move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
-
-move_follow_code_in_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E), _, R, R).
-
-move_follow_code_in_goal_2(foreign_proc(A,B,C,D,E,F,G), 
-			foreign_proc(A,B,C,D,E,F,G), _, R, R).
-
+move_follow_code_in_goal_2(Goal @ generic_call(_, _, _, _), Goal, _, !R).
+move_follow_code_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal, _, !R).
+move_follow_code_in_goal_2(Goal @ unify(_, _, _, _, _), Goal, _, !R).
+move_follow_code_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
 	% these should have been expanded out by now
 	error("move_follow_code_in_goal_2: unexpected shorthand").
@@ -153,7 +140,7 @@ move_follow_code_in_disj([Goal0|Goals0], [Goal|Goals], Flags, !R) :-
 :- pred move_follow_code_in_cases(list(case)::in, list(case)::out,
 	pair(bool)::in, bool::in, bool::out) is det.
 
-move_follow_code_in_cases([], [], _, R, R).
+move_follow_code_in_cases([], [], _, !R).
 move_follow_code_in_cases([case(Cons, Goal0)|Goals0], [case(Cons, Goal)|Goals],
 		Flags, !R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, !R),

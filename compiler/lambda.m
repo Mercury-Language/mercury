@@ -72,11 +72,10 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- pred lambda__process_module(module_info, module_info).
-:- mode lambda__process_module(in, out) is det.
+:- pred lambda__process_module(module_info::in, module_info::out) is det.
 
-:- pred lambda__process_pred(pred_id, module_info, module_info).
-:- mode lambda__process_pred(in, in, out) is det.
+:- pred lambda__process_pred(pred_id::in, module_info::in, module_info::out)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -136,8 +135,8 @@ lambda__process_module(ModuleInfo0, ModuleInfo) :-
 	% Need update the dependency graph to include the lambda predicates. 
 	module_info_clobber_dependency_info(ModuleInfo1, ModuleInfo).
 
-:- pred lambda__process_preds(list(pred_id), module_info, module_info).
-:- mode lambda__process_preds(in, in, out) is det.
+:- pred lambda__process_preds(list(pred_id)::in,
+	module_info::in, module_info::out) is det.
 
 lambda__process_preds([], ModuleInfo, ModuleInfo).
 lambda__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
@@ -149,16 +148,16 @@ lambda__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 	ProcIds = pred_info_procids(PredInfo),
 	lambda__process_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo).
 
-:- pred lambda__process_procs(pred_id, list(proc_id), module_info, module_info).
-:- mode lambda__process_procs(in, in, in, out) is det.
+:- pred lambda__process_procs(pred_id::in, list(proc_id)::in,
+	module_info::in, module_info::out) is det.
 
 lambda__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
 lambda__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 	lambda__process_proc(PredId, ProcId, ModuleInfo0, ModuleInfo1),
 	lambda__process_procs(PredId, ProcIds, ModuleInfo1, ModuleInfo).
 
-:- pred lambda__process_proc(pred_id, proc_id, module_info, module_info).
-:- mode lambda__process_proc(in, in, in, out) is det.
+:- pred lambda__process_proc(pred_id::in, proc_id::in,
+	module_info::in, module_info::out) is det.
 
 lambda__process_proc(PredId, ProcId, !ModuleInfo) :-
 	module_info_preds(!.ModuleInfo, PredTable0),
@@ -225,96 +224,91 @@ lambda__process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 	pred_info_set_typevarset(TypeVarSet, !PredInfo),
 	pred_info_set_class_context(Constraints, !PredInfo).
 
-:- pred lambda__process_goal(hlds_goal, hlds_goal,
-					lambda_info, lambda_info).
-:- mode lambda__process_goal(in, out, in, out) is det.
+:- pred lambda__process_goal(hlds_goal::in, hlds_goal::out,
+	lambda_info::in, lambda_info::out) is det.
 
-lambda__process_goal(Goal0 - GoalInfo0, Goal) -->
-	lambda__process_goal_2(Goal0, GoalInfo0, Goal).
+lambda__process_goal(Goal0 - GoalInfo0, Goal, !Info) :-
+	lambda__process_goal_2(Goal0, GoalInfo0, Goal, !Info).
 
-:- pred lambda__process_goal_2(hlds_goal_expr, hlds_goal_info,
-					hlds_goal, lambda_info, lambda_info).
-:- mode lambda__process_goal_2(in, in, out, in, out) is det.
+:- pred lambda__process_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
+	hlds_goal::out, lambda_info::in, lambda_info::out) is det.
 
 lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
-			Unify - GoalInfo) -->
-	( { Y = lambda_goal(Purity, PredOrFunc, EvalMethod, _, NonLocalVars,
-			Vars, Modes, Det, LambdaGoal0) } ->
+			Unify - GoalInfo, !Info) :-
+	(
+		Y = lambda_goal(Purity, PredOrFunc, EvalMethod, _,
+			NonLocalVars, Vars, Modes, Det, LambdaGoal0)
+	->
 		% first, process the lambda goal recursively, in case it
 		% contains some nested lambda expressions.
-		lambda__process_goal(LambdaGoal0, LambdaGoal1),
+		lambda__process_goal(LambdaGoal0, LambdaGoal1, !Info),
 
 		% then, convert the lambda expression into a new predicate
 		lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars,
 			Modes, Det, NonLocalVars, LambdaGoal1, 
-			Unification, Y1, Unification1),
-		{ Unify = unify(XVar, Y1, Mode, Unification1, Context) }
+			Unification, Y1, Unification1, !Info),
+		Unify = unify(XVar, Y1, Mode, Unification1, Context)
 	;
 		% ordinary unifications are left unchanged
-		{ Unify = unify(XVar, Y, Mode, Unification, Context) }
+		Unify = unify(XVar, Y, Mode, Unification, Context)
 	).
 
 	% the rest of the clauses just process goals recursively
 
-lambda__process_goal_2(conj(Goals0), GoalInfo, conj(Goals) - GoalInfo) -->
-	lambda__process_goal_list(Goals0, Goals).
+lambda__process_goal_2(conj(Goals0), GoalInfo, conj(Goals) - GoalInfo,
+		!Info) :-
+	lambda__process_goal_list(Goals0, Goals, !Info).
 lambda__process_goal_2(par_conj(Goals0), GoalInfo,
-		par_conj(Goals) - GoalInfo) -->
-	lambda__process_goal_list(Goals0, Goals).
-lambda__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo)
-		-->
-	lambda__process_goal_list(Goals0, Goals).
-lambda__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo) -->
-	lambda__process_goal(Goal0, Goal).
+		par_conj(Goals) - GoalInfo, !Info) :-
+	lambda__process_goal_list(Goals0, Goals, !Info).
+lambda__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo,
+		!Info) :-
+	lambda__process_goal_list(Goals0, Goals, !Info).
+lambda__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo, !Info) :-
+	lambda__process_goal(Goal0, Goal, !Info).
 lambda__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo, 
-			switch(Var, CanFail, Cases) - GoalInfo) -->
-	lambda__process_cases(Cases0, Cases).
+		switch(Var, CanFail, Cases) - GoalInfo, !Info) :-
+	lambda__process_cases(Cases0, Cases, !Info).
 lambda__process_goal_2(some(Vars, CanRemove, Goal0), GoalInfo,
-			some(Vars, CanRemove, Goal) - GoalInfo) -->
-	lambda__process_goal(Goal0, Goal).
-lambda__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
-			if_then_else(Vars, A, B, C) - GoalInfo) -->
-	lambda__process_goal(A0, A),
-	lambda__process_goal(B0, B),
-	lambda__process_goal(C0, C).
-lambda__process_goal_2(generic_call(A,B,C,D), GoalInfo,
-			generic_call(A,B,C,D) - GoalInfo) -->
-	[].
-lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
-			call(A,B,C,D,E,F) - GoalInfo) -->
-	[].
-lambda__process_goal_2(foreign_proc(A,B,C,D,E,F,G), GoalInfo,
-			foreign_proc(A,B,C,D,E,F,G) - GoalInfo) -->
-	[].
-lambda__process_goal_2(shorthand(_), _, _) -->
+		some(Vars, CanRemove, Goal) - GoalInfo, !Info) :-
+	lambda__process_goal(Goal0, Goal, !Info).
+lambda__process_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo,
+		if_then_else(Vars, Cond, Then, Else) - GoalInfo, !Info) :-
+	lambda__process_goal(Cond0, Cond, !Info),
+	lambda__process_goal(Then0, Then, !Info),
+	lambda__process_goal(Else0, Else, !Info).
+lambda__process_goal_2(Goal @ generic_call(_, _, _, _), GoalInfo,
+		Goal - GoalInfo, !Info).
+lambda__process_goal_2(Goal @ call(_, _, _, _, _, _), GoalInfo,
+		Goal - GoalInfo, !Info).
+lambda__process_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), GoalInfo,
+		Goal - GoalInfo, !Info).
+lambda__process_goal_2(shorthand(_), _, _, !Info) :-
 	% these should have been expanded out by now
-	{ error("lambda__process_goal_2: unexpected shorthand") }.
+	error("lambda__process_goal_2: unexpected shorthand").
 
-:- pred lambda__process_goal_list(list(hlds_goal), list(hlds_goal),
-					lambda_info, lambda_info).
-:- mode lambda__process_goal_list(in, out, in, out) is det.
+:- pred lambda__process_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
+	lambda_info::in, lambda_info::out) is det.
 
-lambda__process_goal_list([], []) --> [].
-lambda__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
-	lambda__process_goal(Goal0, Goal),
-	lambda__process_goal_list(Goals0, Goals).
+lambda__process_goal_list([], [], !Info).
+lambda__process_goal_list([Goal0 | Goals0], [Goal | Goals], !Info) :-
+	lambda__process_goal(Goal0, Goal, !Info),
+	lambda__process_goal_list(Goals0, Goals, !Info).
 
-:- pred lambda__process_cases(list(case), list(case),
-					lambda_info, lambda_info).
-:- mode lambda__process_cases(in, out, in, out) is det.
+:- pred lambda__process_cases(list(case)::in, list(case)::out,
+	lambda_info::in, lambda_info::out) is det.
 
-lambda__process_cases([], []) --> [].
+lambda__process_cases([], [], !Info).
 lambda__process_cases([case(ConsId, Goal0) | Cases0],
-		[case(ConsId, Goal) | Cases]) -->
-	lambda__process_goal(Goal0, Goal),
-	lambda__process_cases(Cases0, Cases).
+		[case(ConsId, Goal) | Cases], !Info) :-
+	lambda__process_goal(Goal0, Goal, !Info),
+	lambda__process_cases(Cases0, Cases, !Info).
 
-:- pred lambda__process_lambda(purity, pred_or_func, lambda_eval_method,
-		list(prog_var), list(mode), determinism, list(prog_var),
-		hlds_goal, unification, unify_rhs, unification,
-		lambda_info, lambda_info).
-:- mode lambda__process_lambda(in, in, in, in, in, in, in, in, in, out, out,
-		in, out) is det.
+:- pred lambda__process_lambda(purity::in, pred_or_func::in,
+	lambda_eval_method::in, list(prog_var)::in, list(mode)::in,
+	determinism::in, list(prog_var)::in, hlds_goal::in, unification::in,
+	unify_rhs::out, unification::out, lambda_info::in, lambda_info::out)
+	is det.
 
 lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		OrigNonLocals0, LambdaGoal, Unification0, Functor,
@@ -583,8 +577,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		InstVarSet, TVarMap, TCVarMap, Markers, POF, OrigPredName,
 		Owner, ModuleInfo, MustRecomputeNonLocals).
 
-:- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
-:- mode lambda__constraint_contains_vars(in, in) is semidet.
+:- pred lambda__constraint_contains_vars(list(tvar)::in, class_constraint::in)
+	is semidet.
 
 lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 	ClassConstraint = constraint(_, ConstraintTypes),
@@ -596,8 +590,8 @@ lambda__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 	set__list_to_set(ConstraintVars, ConstraintVarsSet),
 	set__subset(ConstraintVarsSet, LambdaVarsSet).
 
-:- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
-:- mode lambda__uni_modes_to_modes(in, out) is det.
+:- pred lambda__uni_modes_to_modes(list(uni_mode)::in, list(mode)::out)
+	is det.
 
 	% This predicate works out the modes of the original non-local
 	% variables of a lambda expression based on the list of uni_mode

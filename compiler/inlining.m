@@ -567,7 +567,7 @@ inlining__inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
 		Goal = Goal0,
 		GoalInfo = GoalInfo0
 	;
-		Goal0 = foreign_proc(_, _, _, _, _, _, _),
+		Goal0 = foreign_proc(_, _, _, _, _, _),
 		Goal = Goal0,
 		GoalInfo = GoalInfo0
 	;
@@ -911,7 +911,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	proc_info_goal(ProcInfo, CalledGoal),
 	\+ (
 		HighLevelCode = no,
-		CalledGoal = foreign_proc(_,_,_,_,_,_,_) - _,
+		CalledGoal = foreign_proc(_, _, _, _, _, _) - _,
 		proc_info_interface_determinism(ProcInfo, Detism),
 		( Detism = nondet ; Detism = multidet )
 	),
@@ -923,7 +923,7 @@ inlining__can_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	(
 		(
 			CalledGoal = foreign_proc(ForeignAttributes,
-				_,_,_,_,_,_) - _,
+				_, _, _, _, _) - _,
 			ForeignLanguage = foreign_language(ForeignAttributes)
 		)
 	=>

@@ -456,12 +456,12 @@ exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, N0, N)
 	;
 		Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
 			MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
-			ReferStackSlot),
+			ReferStackSlot, MayDupl),
 		list__map_foldl(exprn_aux__substitute_lval_in_component(
 			OldLval, NewLval), Components0, Components, N0, N),
 		Uinstr = pragma_c(Decls, Components, MayCallMercury,
 			MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
-			ReferStackSlot)
+			ReferStackSlot, MayDupl)
 	;
 		Uinstr0 = init_sync_term(Lval0, BranchCount),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,

@@ -582,7 +582,7 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
 	TraceCode1 = node([
 		pragma_c([], [pragma_c_raw_code(TraceStmt1,
 			live_lvals_info(set__init))], will_not_call_mercury,
-			no, no, MaybeLayoutLabel, no, yes)
+			no, no, MaybeLayoutLabel, no, yes, no)
 			- ""
 	]),
 	(
@@ -603,7 +603,7 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
 		TraceCode3 = node([
 			pragma_c([], [pragma_c_raw_code(TraceStmt3,
 				live_lvals_info(set__init))],
-				will_not_call_mercury, no, no, no, no, yes)
+				will_not_call_mercury, no, no, no, no, yes, no)
 				- ""
 		])
 	;
@@ -861,7 +861,8 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
 				% eliminate this other label.
 			pragma_c([], [pragma_c_raw_code(TraceStmt,
 				live_lvals_info(LiveLvalSet))],
-				may_call_mercury, no, no, yes(Label), no, yes)
+				may_call_mercury, no, no, yes(Label), no, yes,
+				no)
 				- ""
 		]),
 	Code = tree(ProduceCode, TraceCode).

@@ -1689,7 +1689,7 @@ output_instr_decls(_, prune_tickets_to(Rval), !DeclSet, !IO) :-
 output_instr_decls(_, incr_sp(_, _), !DeclSet, !IO).
 output_instr_decls(_, decr_sp(_), !DeclSet, !IO).
 output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
-		MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _),
+		MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _),
 		!DeclSet, !IO) :-
 	( MaybeLayoutLabel = yes(Label) ->
 		map__lookup(StackLayoutLabels, Label, DataAddr),
@@ -2124,7 +2124,7 @@ output_instruction(decr_sp(N), _, !IO) :-
 	io__write_int(N, !IO),
 	io__write_string(");\n", !IO).
 
-output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _), _, !IO) :-
+output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _, _), _, !IO) :-
 	io__write_string("\t{\n", !IO),
 	output_pragma_decls(Decls, !IO),
 	list__foldl(output_pragma_c_component, Components, !IO),

@@ -416,7 +416,8 @@
 			pragma_c_fix_layout	:: maybe(label),
 			pragma_c_fix_onlylayout	:: maybe(label),
 			pragma_c_nofix		:: maybe(label),
-			pragma_c_stack_slot_ref	:: bool
+			pragma_c_stack_slot_ref	:: bool,
+			pragma_c_maybe_dupl	:: bool
 		)
 			% The first argument says what local variable
 			% declarations are required for the following
@@ -455,11 +456,14 @@
 			% structure, being mentioned only in pragma_c_fail_to
 			% components).
 			%
-			% The last argument says whether the contents
+			% The stack_slot_ref argument says whether the contents
 			% of the pragma C code can refer to stack slots.
 			% User-written shouldn't refer to stack slots,
 			% the question is whether the compiler-generated
 			% C code does.
+			%
+			% The maybe_dupl says whether this instruction may be
+			% duplicated by jump optimization.
 
 	;	init_sync_term(lval, int)
 			% Initialize a synchronization term.
