@@ -33,8 +33,10 @@ typedef struct {
 MercuryFile mercury_stdin = { NULL, 0 };
 MercuryFile mercury_stdout = { NULL, 0 };
 MercuryFile mercury_stderr = { NULL, 0 };
-MercuryFile *mercury_current_input = &mercury_stdin;
-MercuryFile *mercury_current_output = &mercury_stdout;
+MercuryFile *mercury_current_text_input = &mercury_stdin;
+MercuryFile *mercury_current_text_output = &mercury_stdout;
+MercuryFile *mercury_current_binary_input = &mercury_stdin;
+MercuryFile *mercury_current_binary_output = &mercury_stdout;
 
 #define initial_external_state()	0	/* some random number */
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
@@ -208,10 +210,21 @@ mercury__io__putback_char_4_0:
 	update_io(r3, r4);
 	proceed();
 
-/* output predicates - with output to mercury_current_output */
+mercury__io__putback_byte_4_0:
+	if (r2 == '\n') {
+		((MercuryFile*)r1)->line_number--;
+	}
+	/* XXX should work even if ungetc() fails */
+	if (ungetc(r2, ((MercuryFile*)r1)->file) == EOF) {
+		fatal_error("io__putback_byte: ungetc failed");
+	}
+	update_io(r3, r4);
+	proceed();
+
+/* output predicates - with output to mercury_current_text_output */
 
 mercury__io__write_string_3_0:
-	mercury_print_string(mercury_current_output, (char *) r1);
+	mercury_print_string(mercury_current_text_output, (char *) r1);
 	update_io(r2, r3);
 	proceed();
 
@@ -221,35 +234,55 @@ mercury__io__write_char_3_0:
 		   more importantly it avoids a gcc internal
 		   error for gcc-2.7.0 on i386.
 		*/
-	if (fprintf(mercury_current_output->file, "%c", (int) r1) < 0) {
-		mercury_output_error(mercury_current_output);
+	if (fprintf(mercury_current_text_output->file, "%c", (int) r1) < 0) {
+		mercury_output_error(mercury_current_text_output);
 	}
 	if ((int) r1 == '\n') {
-		mercury_current_output->line_number++;
+		mercury_current_text_output->line_number++;
+	}
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__write_byte_3_0:
+		/* Note!  We cast r1 to int, not to char.
+		   This is very slightly more efficient, but
+		   more importantly it avoids a gcc internal
+		   error for gcc-2.7.0 on i386.
+		*/
+	if (fprintf(mercury_current_binary_output->file, "%c", (int) r1) < 0) {
+		mercury_output_error(mercury_current_binary_output);
 	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__write_int_3_0:
-	if (fprintf(mercury_current_output->file, "%ld",
+	if (fprintf(mercury_current_text_output->file, "%ld",
 			(long) (Integer) r1) < 0)
 	{
-		mercury_output_error(mercury_current_output);
+		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__write_float_3_0:
-	if (fprintf(mercury_current_output->file, "%f", word_to_float(r1)) < 0)
+	if (fprintf(mercury_current_text_output->file, "%f",
+					word_to_float(r1)) < 0)
 	{
-		mercury_output_error(mercury_current_output);
+		mercury_output_error(mercury_current_text_output);
 	}
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__flush_output_2_0:
-	if (fflush(mercury_current_output->file) < 0) {
-		mercury_output_error(mercury_current_output);
+	if (fflush(mercury_current_text_output->file) < 0) {
+		mercury_output_error(mercury_current_text_output);
+	}
+	update_io(r1, r2);
+	proceed();
+
+mercury__io__flush_binary_output_2_0:
+	if (fflush(mercury_current_binary_output->file) < 0) {
+		mercury_output_error(mercury_current_binary_output);
 	}
 	update_io(r1, r2);
 	proceed();
@@ -271,6 +304,13 @@ mercury__io__write_char_4_0:
 	update_io(r3, r4);
 	proceed();
 
+mercury__io__write_byte_4_0:
+	if (fprintf(((MercuryFile*)r1)->file, "%c", (char) r2) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
+	update_io(r3, r4);
+	proceed();
+
 mercury__io__write_int_4_0:
 	if (fprintf(((MercuryFile*)r1)->file, "%ld", (long) (Integer) r2) < 0) {
 		mercury_output_error((MercuryFile*)r1);
@@ -286,6 +326,13 @@ mercury__io__write_float_4_0:
 	proceed();
 
 mercury__io__flush_output_3_0:
+	if (fflush(((MercuryFile*)r1)->file) < 0) {
+		mercury_output_error((MercuryFile*)r1);
+	}
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__flush_binary_output_3_0:
 	if (fflush(((MercuryFile*)r1)->file) < 0) {
 		mercury_output_error((MercuryFile*)r1);
 	}
@@ -331,13 +378,34 @@ mercury__io__stderr_stream_3_0:
 	update_io(r2, r3);
 	proceed();
 
+	/* XXX These should be done with separate structures
+	 * to the text IO ones. Ideally, the std{in,out} streams
+	 * should probably be freopend or fdopend in the text/binary
+	 * mode before each operation, but that would incur unreasonable
+	 * overhead, and is unnecessary for UNIX platforms.
+	 */
+mercury__io__stdin_binary_stream_3_0:
+	r1 = (Word) &mercury_stdin;
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__stdout_binary_stream_3_0:
+	r1 = (Word) &mercury_stdout;
+	update_io(r2, r3);
+	proceed();
+
 mercury__io__input_stream_3_0:
-	r1 = (Word) mercury_current_input;
+	r1 = (Word) mercury_current_text_input;
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__binary_input_stream_3_0:
+	r1 = (Word) mercury_current_binary_input;
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__get_line_number_3_0:
-	r1 = mercury_current_input->line_number;
+	r1 = mercury_current_text_input->line_number;
 	update_io(r2, r3);
 	proceed();
 	
@@ -347,7 +415,12 @@ mercury__io__get_line_number_4_0:
 	proceed();
 	
 mercury__io__output_stream_3_0:
-	r1 = (Word) mercury_current_output;
+	r1 = (Word) mercury_current_text_output;
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__binary_output_stream_3_0:
+	r1 = (Word) mercury_current_binary_output;
 	update_io(r2, r3);
 	proceed();
 
@@ -360,14 +433,26 @@ mercury__io__output_stream_3_0:
 %               Returns the previous stream.
 */
 mercury__io__set_input_stream_4_0:
-	r2 = (Word) mercury_current_input;
-	mercury_current_input = (MercuryFile*) r1;
+	r2 = (Word) mercury_current_text_input;
+	mercury_current_text_input = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
 
 mercury__io__set_output_stream_4_0:
-	r2 = (Word) mercury_current_output;
-	mercury_current_output = (MercuryFile*) r1;
+	r2 = (Word) mercury_current_text_output;
+	mercury_current_text_output = (MercuryFile*) r1;
+	update_io(r3, r4);
+	proceed();
+
+mercury__io__set_binary_input_stream_4_0:
+	r2 = (Word) mercury_current_binary_input;
+	mercury_current_binary_input = (MercuryFile*) r1;
+	update_io(r3, r4);
+	proceed();
+
+mercury__io__set_binary_output_stream_4_0:
+	r2 = (Word) mercury_current_binary_output;
+	mercury_current_binary_output = (MercuryFile*) r1;
 	update_io(r3, r4);
 	proceed();
 
@@ -386,6 +471,12 @@ mercury__io__do_open_input_5_0:
 	update_io(r4, r5);
 	proceed();
 
+mercury__io__do_open_binary_input_5_0:
+	r3 = (Word) mercury_open((char *) r1, "rb");
+	r2 = (r3 ? 0 : -1);
+	update_io(r4, r5);
+	proceed();
+
 /*
 :- pred io__do_open_output(string, int, io__output_stream, io__state,
 							io__state).
@@ -396,6 +487,12 @@ mercury__io__do_open_input_5_0:
 */
 mercury__io__do_open_output_5_0:
 	r3 = (Word) mercury_open((char *) r1, "w");
+	r2 = (r3 ? 0 : -1);
+	update_io(r4, r5);
+	proceed();
+
+mercury__io__do_open_binary_output_5_0:
+	r3 = (Word) mercury_open((char *) r1, "wb");
 	r2 = (r3 ? 0 : -1);
 	update_io(r4, r5);
 	proceed();
@@ -414,12 +511,28 @@ mercury__io__do_open_append_5_0:
 	update_io(r4, r5);
 	proceed();
 
+mercury__io__do_open_binary_append_5_0:
+	r3 = (Word) mercury_open((char *) r1, "ab");
+	r2 = (r3 ? 0 : -1);
+	update_io(r4, r5);
+	proceed();
+
 mercury__io__close_input_3_0:
 	mercury_close((MercuryFile*)r1);
 	update_io(r2, r3);
 	proceed();
 
 mercury__io__close_output_3_0:
+	mercury_close((MercuryFile*)r1);
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__close_binary_input_3_0:
+	mercury_close((MercuryFile*)r1);
+	update_io(r2, r3);
+	proceed();
+
+mercury__io__close_binary_output_3_0:
 	mercury_close((MercuryFile*)r1);
 	update_io(r2, r3);
 	proceed();
@@ -520,7 +633,7 @@ mercury__io__putenv_1_0:
 /* report_stats/0 and type_to_univ/2, from std_util.m */
 
 mercury__std_util__report_stats_0_0:
-	fprintf(mercury_current_output->file, 
+	fprintf(mercury_current_text_output->file, 
 		"[Heap: %.3fk, D Stack: %.3fk, ND Stack: %.3fk]\n",
 		((char *)hp - (char *)heapmin) / 1000.0,
 		((char *)sp - (char *)detstackmin) / 1000.0,
