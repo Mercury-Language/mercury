@@ -1246,19 +1246,38 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 		(
 			code_info__pick_failure(FailureMap, FailureAddress0)
 		->
-			{ FailureAddress = FailureAddress0 }
+				% We branch away if the test *fails*
+			{ code_util__neg_rval(Rval0, Rval) },
+			{ Code = node([ if_val(Rval, FailureAddress0) -
+						"Test for failure" ]) }
 		;
-			% XXX this needs to be fixed
+			{ FailureMap = [Map - Addr|_] }
+		->
+			{ FailureAddress = Addr },
+			{ map__to_assoc_list(Map, AssocList) },
+			code_info__place_vars(AssocList, PlaceCode),
+			code_info__get_next_label(SuccessLabel),
+			{ SuccessAddress = label(SuccessLabel) },
+				% We branch away if the test Succeeds
+			{ TestCode = node([ if_val(Rval0, SuccessAddress) -
+					"Test for failure" ]) },
+			{ FailCode = tree(PlaceCode, node([
+				goto(FailureAddress, SuccessAddress) - ""
+			])) },
+			{ Code = tree(tree(TestCode, FailCode), node([
+				label(SuccessLabel) - "success continuation"
+			])) }
+		;
 			{ error("code_info__generate_test_and_fail: no valid failmap") }
 		)
 	;
 		{ Cont = unknown },
-		{ FailureAddress = do_redo }
-	),
-		% We branch away if the test *fails*
-	{ code_util__neg_rval(Rval0, Rval) },
-	{ Code = node([ if_val(Rval, FailureAddress) -
-				"Test for failure" ]) }.
+		{ FailureAddress = do_redo },
+			% We branch away if the test *fails*
+		{ code_util__neg_rval(Rval0, Rval) },
+		{ Code = node([ if_val(Rval, FailureAddress) -
+					"Test for failure" ]) }
+	).
 
 :- pred code_info__pick_failure(assoc_list(map(var, set(rval)), code_addr),
 			code_addr, code_info, code_info).
