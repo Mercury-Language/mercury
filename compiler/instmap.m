@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -702,7 +702,7 @@ merge_instmap_deltas(InstMap, NonLocals, InstMapDeltaList, MergedDelta,
 		InstMapDeltaList = [],
 		error("merge_instmap_deltas: empty instmap_delta list.")
 	;
-		InstMapDeltaList = [Delta|Deltas],
+		InstMapDeltaList = [Delta | Deltas],
 		merge_instmap_deltas(InstMap, NonLocals, Delta, Deltas,
 			MergedDelta, ModuleInfo0, ModuleInfo)
 	).
@@ -948,10 +948,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 	;
 		instmap__lookup_var(InstMap, Var, InstB)
 	),
-	(
-		inst_merge(InstA, InstB, ModuleInfo0,
-			Inst, ModuleInfoPrime)
-	->
+	( inst_merge(InstA, InstB, ModuleInfo0, Inst, ModuleInfoPrime) ->
 		ModuleInfo1 = ModuleInfoPrime,
 		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
 	;
