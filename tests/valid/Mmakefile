@@ -51,7 +51,6 @@ IL_SOURCES = \
 	foreign_type_spec.m
 
 OTHER_SOURCES= \
-	any_functor_unify.m \
 	any_inst_merge.m \
 	common_struct_bug.m \
 	compl_unify_bug.m \
