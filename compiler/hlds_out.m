@@ -1835,6 +1835,7 @@ hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
 hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
 		Constraint, Var) -->
 	hlds_out__write_indent(Indent),
+	io__write_string("% "),
 	mercury_output_constraint(TVarSet, Constraint),
 	io__write_string(" -> "),
 	mercury_output_var(Var, VarSet, AppendVarnums),
