@@ -574,13 +574,19 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	% #else
 	%	void
 	% #endif
-	%	foo_wrapper(void *closure_arg,
+	%	foo_wrapper(
+	%		void *closure_arg /* with appropriate GC trace code */,
 	%			MR_Box wrapper_arg1, MR_Box *wrapper_arg2,
 	%			..., MR_Box wrapper_argn)
-	%		/* No GC tracing code needed for the parameters,
-	%		   because output parameters point to the stack,
-	%		   and input parameters won't be live across a GC.
-	%		   Likewise for the local var `closure' below. */
+	%		/* No GC tracing code needed for the wrapper_*
+	%		   parameters, because output parameters point to
+	%		   the stack, and input parameters won't be live
+	%		   across a GC.
+	%		   Likewise for the local var `closure' below.
+	%		   But we do need GC tracing code for closure_arg
+	%		   parameter since that may be referenced _during_ GC,
+	%		   because it is mentioned in the GC tracing code
+	%		   for the conv_* variables below.  */
 	%	{
 	% #if 0 /* XXX we should do this for HIGH_LEVEL_DATA */
 	%		FooClosure *closure;
@@ -707,8 +713,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
-	%{ pred_info_purity(PredInfo, Purity) },
-	%{ pred_info_arg_types(PredInfo, ProcArgTypes) },
+	{ pred_info_get_purity(PredInfo, Purity) },
+	{ pred_info_arg_types(PredInfo, ProcArgTypes) },
 	{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
 	{ proc_info_argmodes(ProcInfo, ProcArgModes) },
@@ -734,13 +740,13 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 	{ 
 		list__drop(NumClosureArgs, ProcHeadVars, WrapperHeadVars0),
 		list__drop(NumClosureArgs, ProcArgModes, WrapperArgModes0),
-		%list__drop(NumClosureArgs, ProcArgTypes, WrapperArgTypes0),
+		list__drop(NumClosureArgs, ProcArgTypes, WrapperArgTypes0),
 		list__drop(NumClosureArgs, ProcBoxedArgTypes,
 			WrapperBoxedArgTypes0)
 	->
 		WrapperHeadVars = WrapperHeadVars0,
 		WrapperArgModes = WrapperArgModes0,
-		%WrapperArgTypes = WrapperArgTypes0,
+		WrapperArgTypes = WrapperArgTypes0,
 		WrapperBoxedArgTypes = WrapperBoxedArgTypes0
 	;
 		unexpected(this_file,
@@ -766,22 +772,10 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 	% then insert the `closure_arg' parameter
 	{ ClosureArgType = mlds__generic_type },
 	{ ClosureArgName = mlds__var_name("closure_arg", no) },
-	% If we were to generate GC tracing code for the closure arg,
-	% it would look like this:
-	%	{ ClosureArgDeclType = list__det_head(ml_make_boxed_types(1)) },
-	%	{ gen_closure_gc_trace_code(ClosureArgName, ClosureArgDeclType,
-	% 		ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
-	%		ClosureArgGCTraceCode) },
-	% But we don't need any GC tracing code for the closure arg,
-	% because it won't be live across an allocation.
-	% However, we do need to give it a yes(_) GC tracing code,
-	% because it is referred to from other GC tracing code;
-	% without this, ml_elim_nested.m won't put it into the GC stack frame
-	% struct, and then those other references will be dangling.
-	% (XXX Maybe ml_elim_nested should be smarter about that.)
-	{ MLDS_Context = mlds__make_context(Context) },
-	{ ClosureArgGCTraceCode = yes(mlds__statement(block([],[]),
-					MLDS_Context)) },
+	{ ClosureArgDeclType = list__det_head(ml_make_boxed_types(1)) },
+	gen_closure_gc_trace_code(ClosureArgName, ClosureArgDeclType,
+		ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
+		Context, ClosureArgGCTraceCode),
 	{ ClosureArg = mlds__argument(
 		data(var(ClosureArgName)),
 		ClosureArgType,
@@ -810,13 +804,18 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 	%
 	{ ClosureName = mlds__var_name("closure", no) },
 	{ ClosureType = mlds__generic_type },
-	% The GC tracing code for `closure' is essentially the same as
-	% for `closure_arg' (see above).
-	% { ClosureDeclType = list__det_head(ml_make_boxed_types(1)) },
-	% { gen_closure_gc_trace_code(ClosureName, ClosureDeclType,
-	% 	ClosureKind, WrapperArgTypes, ClosureGCTraceCode) },
-	{ ClosureGCTraceCode = yes(mlds__statement(block([],[]),
-		MLDS_Context)) },
+	% If we were to generate GC tracing code for the closure pointer,
+	% it would look like this:
+	%	{ ClosureDeclType = list__det_head(ml_make_boxed_types(1)) },
+	%	gen_closure_gc_trace_code(ClosureName, ClosureDeclType,
+	%		ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
+	%		Context, ClosureGCTraceCode),
+	% But we don't need any GC tracing code for the closure pointer,
+	% because it won't be live across an allocation, and because
+	% (unlike the closure_arg parameter) it isn't referenced from
+	% the GC tracing for other variables.
+	{ ClosureGCTraceCode = no },
+	{ MLDS_Context = mlds__make_context(Context) },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
 		ClosureType, ClosureGCTraceCode, MLDS_Context) },
 	ml_gen_var_lval(ClosureName, ClosureType, ClosureLval),
@@ -948,7 +947,7 @@ arg_delete_gc_trace_code(Argument0) = Argument :-
 	% generate the GC tracing code for `closure_arg' or `closure'
 	% (see ml_gen_closure_wrapper above).
 :- pred gen_closure_gc_trace_code(mlds__var_name, prog_type, closure_kind,
-	list(mlds__type), purity, pred_or_func, prog_context,
+	list(prog_type), purity, pred_or_func, prog_context,
 	mlds__maybe_gc_trace_code, ml_gen_info, ml_gen_info) is det.
 :- mode gen_closure_gc_trace_code(in, in, in, in, in, in, in, out, in, out)
 	is det.
