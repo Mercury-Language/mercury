@@ -20,12 +20,23 @@ Options:
 		Pass <mmake-args> as options to \`mmake'.
 	-o <filename>, --output-file <filename>
 		Output results to <filename>.
-	-r, --copy-runtime
-		Copy the runtime directory instead of linking it.
-		This is necessary if one wants to bootcheck a grade
-		that is not compatible with the standard one.
+	-G <grade>, --grade <grade>
+		Specify the grade to use in creating stages 2 and 3.
+		The tests will also be executed in this grade, unless
+		the --test-grade option says otherwise. Implies -r -g.
+	--test-grade <grade>
+		Specify the grade to use in executing the tests.
+		If this is the same as the grade of stages 2 and 3, then
+		we use the stage 2 runtime, library etc for the tests.
+		Otherwise, we use the stage 1 runtime, library etc,
+		and trust that these are compatible with the given grade.
+		Implies -r -g.
 	-g, --copy-boehm-gc
 		Copy the bohem_gc directory instead of linking it.
+		This is necessary if one wants to bootcheck a grade
+		that is not compatible with the standard one.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
 		This is necessary if one wants to bootcheck a grade
 		that is not compatible with the standard one.
 	-p, --copy-profiler
@@ -57,6 +68,8 @@ mmake_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
+grade=
+test_grade=
 copy_runtime=false
 copy_boehm_gc=false
 copy_profiler=false
@@ -106,14 +119,22 @@ while [ $# -gt 0 ]; do
 	-o*)
 		outfile="` expr $1 : '-o\(.*\)' `"; ;;
 
-	-p|--copy-profiler)
-		copy_profiler=true ;;
+	-G|--grade)
+		grade="$2"; shift ;;
+	-G*)
+		grade="` expr $1 : '-G\(.*\)' `"; ;;
+
+	--test-grade)
+		test_grade="$2"; shift ;;
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
 
 	-g|--copy-boehm-gc)
 		copy_boehm_gc=true ;;
+
+	-p|--copy-profiler)
+		copy_profiler=true ;;
 
 	-t|--no-test-suite)
 		runtests=false ;;
@@ -150,12 +171,23 @@ if [ $# -ne 0 ]; then
 	exit 1
 fi
 
+if test "$grade" != "" -a "$test_grade" = ""
+then
+	test_grade="$grade"
+fi
+
 case $use_subdirs in
 	yes)	cs_subdir=Mercury/cs/
 		;;
 	no)	cs_subdir=
 		;;
 esac
+
+if test "$grade" != "" -o "$test_grade" != ""
+then
+	copy_runtime=true
+	copy_boehm_gc=true
+fi
 
 MMAKE_USE_SUBDIRS=$use_subdirs
 export MMAKE_USE_SUBDIRS
@@ -267,7 +299,7 @@ then
 	cp $root/browser/Mmake* .
 	ln -s $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage2
-	if "$copy_runtime"
+	if $copy_runtime
 	then
 		# Remove symbolic link to the stage 1 runtime if it's present,
 		# which it can be with the -2 option.
@@ -291,8 +323,10 @@ then
 		ln -s $root/runtime .
 		ln -s $root/trace .
 	fi
-	if "$copy_boehm_gc"
-	then
+	if $copy_boehm_gc
+		# Remove symbolic link to the stage 1 gc if it's present,
+		# which it can be with the -2 option.
+		rm boehm_gc
 		mkdir boehm_gc
 		cd boehm_gc
 		ln -s $root/boehm_gc/*.h .
@@ -309,7 +343,7 @@ then
 	ln -s $root/doc .
 	ln -s $root/scripts .
 	ln -s $root/util .
-	if "$copy_profiler"
+	if $copy_profiler
 	then
 		mkdir profiler
 		cd profiler
@@ -329,6 +363,10 @@ then
 	then
 		/bin/rm -f Mmake.params
 		cp $root/Mmake.stage.params Mmake.params
+	fi
+	if test "$grade" != ""
+	then
+		echo "GRADE = $grade" >> Mmake.params
 	fi
 	cd $root
 
@@ -471,12 +509,7 @@ then
 	ln -s $root/VERSION .
 	ln -s $root/.*.in .
 	rm -f config*.log
-	cp $root/Mmake* .
-	if test -f $root/Mmake.stage.params
-	then
-		/bin/rm -f Mmake.params
-		ln -s $root/Mmake.stage.params Mmake.params
-	fi
+	cp $root/stage2/Mmake* .
 	cd $root
 	set -x
 
@@ -573,85 +606,51 @@ fi
 
 if $runtests
 then
-	# Use everything from stage 2, unless we copied the runtime.
-	# In that case, the grades of stage 1 & 2 may be different,
-	# which means we have a choice between
-	#
-	# (a) using the stage 2 runtime and library, and the stage 2 flags, or
-	# (b) using the stage 1 runtime and library, and the default flags
-	#
-	# Some tests/ directories have several dozen executables. Compiling
-	# all these with debugging on yields far too many large (14 Mb +)
-	# executables. Since stage 2 is much more likely to have flags
-	# that turn on debugging, we prefer alternative (b).
+	# Use everything from stage 2, the options say that the tests
+	# should be done in grade different from the grade of stage 2,
+	# in which case use everything from stage 1, trusting the user
+	# that the grade of the tests and the grade of stage 1 are compatible.
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 	export MERCURY_COMPILER
 
-	if $copy_runtime
+	if test "$test_grade" != "$grade"
 	then
-		MERCURY_INT_DIR=$root/library
-		export MERCURY_INT_DIR
-
-		MERCURY_LIBS="
-			$root/trace/lib$TRACE_LIB_NAME.a
-			$root/browser/lib$BROWSER_LIB_NAME.a
-			$root/library/lib$STD_LIB_NAME.a
-			$root/runtime/lib$RT_LIB_NAME.a
-			$root/boehm_gc/libgc.a
-			-lm"
-		export MERCURY_LIBS
-
-		MERCURY_ALL_C_INCL_DIRS="-I$root/trace
-			-I$root/runtime
-			-I$root/boehm_gc
-			-I$root/boehm_gc/include"
-		export MERCURY_ALL_C_INCL_DIRS
-
-		MMAKE_DIR="$root/scripts"
-		export MMAKE_DIR
-
-		MERCURY_MOD_LIB_MODS="
-			$root/browser/$BROWSER_LIB_NAME.init
-			$root/library/$STD_LIB_NAME.init
-			$root/runtime/$RT_LIB_NAME.init"
-		export MERCURY_MOD_LIB_MODS
-
-			# for mkinit, mmc, mgnuc, ml etc
-		PATH=$root/util:$root/scripts:$PATH
-		export PATH
+		stage2_insert="stage2/"
 	else
-		MERCURY_INT_DIR=$root/stage2/library
-		export MERCURY_INT_DIR
-
-		MERCURY_LIBS="
-			$root/stage2/trace/lib$TRACE_LIB_NAME.a
-			$root/stage2/browser/lib$BROWSER_LIB_NAME.a
-			$root/stage2/library/lib$STD_LIB_NAME.a
-			$root/stage2/runtime/lib$RT_LIB_NAME.a
-			$root/stage2/boehm_gc/libgc.a
-			-lm"
-		export MERCURY_LIBS
-
-		MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/trace
-			-I$root/stage2/runtime
-			-I$root/stage2/boehm_gc
-			-I$root/stage2/boehm_gc/include"
-		export MERCURY_ALL_C_INCL_DIRS
-
-		MMAKE_DIR="$root/stage2/scripts"
-		export MMAKE_DIR
-
-		MERCURY_MOD_LIB_MODS="
-			$root/stage2/browser/$BROWSER_LIB_NAME.init
-			$root/stage2/library/$STD_LIB_NAME.init
-			$root/stage2/runtime/$RT_LIB_NAME.init"
-		export MERCURY_MOD_LIB_MODS
-
-			# for mkinit, mmc, mgnuc, ml etc
-		PATH=$root/stage2/util:$root/stage2/scripts:$PATH
-		export PATH
+		stage2_insert=""
 	fi
+
+	MERCURY_INT_DIR=$root/${stage2_insert}library
+	export MERCURY_INT_DIR
+
+	MERCURY_LIBS="
+		$root/${stage2_insert}trace/lib$TRACE_LIB_NAME.a
+		$root/${stage2_insert}browser/lib$BROWSER_LIB_NAME.a
+		$root/${stage2_insert}library/lib$STD_LIB_NAME.a
+		$root/${stage2_insert}runtime/lib$RT_LIB_NAME.a
+		$root/${stage2_insert}boehm_gc/libgc.a
+		-lm"
+	export MERCURY_LIBS
+
+	MERCURY_ALL_C_INCL_DIRS="-I$root/${stage2_insert}trace
+		-I$root/${stage2_insert}runtime
+		-I$root/${stage2_insert}boehm_gc
+		-I$root/${stage2_insert}boehm_gc/include"
+	export MERCURY_ALL_C_INCL_DIRS
+
+	MMAKE_DIR="$root/${stage2_insert}scripts"
+	export MMAKE_DIR
+
+	MERCURY_MOD_LIB_MODS="
+		$root/${stage2_insert}browser/$BROWSER_LIB_NAME.init
+		$root/${stage2_insert}library/$STD_LIB_NAME.init
+		$root/${stage2_insert}runtime/$RT_LIB_NAME.init"
+	export MERCURY_MOD_LIB_MODS
+
+		# for mkinit, mmc, mgnuc, ml etc
+	PATH=$root/${stage2_insert}util:$root/${stage2_insert}scripts:$PATH
+	export PATH
 
 	# We need to give tests/debugger access to the mdbrc and mdb_doc
 	# files in the doc and scripts directories, without hardcoding their
@@ -663,16 +662,23 @@ then
 	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
 	export MERCURY_DEBUGGER_INIT
 
+	if test "$test_grade" != ""
+	then
+		test_grade_opt="-g $test_grade"
+	else
+		test_grade_opt=""
+	fi
+
 	if test -d ../tests
 	then
 		cp $root/doc/mdb_command_test.inp ../tests/debugger
 		if test "$testdir" = ""
 		then
 			cd ../tests
-			./runtests $jfactor
+			./runtests $jfactor $test_grade_opt
 		else
 			cd ../tests/$testdir
-			./runtests $jfactor
+			./runtests $jfactor $test_grade_opt
 		fi
 		test_status=$?
 		cd $root
@@ -682,10 +688,10 @@ then
 		if test "$testdir" = ""
 		then
 			cd tests
-			./runtests $jfactor
+			./runtests $jfactor $test_grade_opt
 		else
 			cd tests/$testdir
-			./runtests $jfactor
+			./runtests $jfactor $test_grade_opt
 		fi
 		test_status=$?
 		cd $root
