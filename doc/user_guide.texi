@@ -916,6 +916,11 @@ Mmake will then ensure that the appropriate directories are searched for
 the relevant interface files, module initialisation files, compiled
 libraries, etc.
 
+Beware that the directory name that you must use in @samp{EXTRA_LIB_DIRS}
+is not quite the same as the name that was specified in the
+@samp{INSTALL_PREFIX} when the library was installed --- the name in
+@samp{EXTRA_LIB_DIRS} needs to have @samp{/lib/mercury} appended.
+
 One can specify extra libraries to be used on a program-by-program
 basis.  For instance, if the program @samp{foo} also uses the library
 @samp{mylib4foo}, but the other programs governed by the Mmakefile don't,
