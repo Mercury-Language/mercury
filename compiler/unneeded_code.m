@@ -84,7 +84,6 @@
 :- import_module libs__options.
 :- import_module ll_backend__code_aux.
 :- import_module parse_tree__prog_data.
-:- import_module parse_tree__prog_data.
 
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 

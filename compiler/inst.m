@@ -9,7 +9,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module (parse_tree__inst).
+:- module parse_tree__inst.
 :- interface.
 
 % This module should NOT import hlds*.m.  Any types which are needed in
