@@ -13,8 +13,8 @@
 :- implementation.
 
 main --> 
-	io__read_file_as_string(Res, Str),
-	( { Res = ok } ->
+	io__read_file_as_string(Res),
+	( { Res = ok(Str) } ->
 		io__write_string(Str)
 	;
 		io__write_string("Error reading file.\n")

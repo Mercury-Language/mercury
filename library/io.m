@@ -69,6 +69,12 @@
 :- type io__res(T)	--->	ok(T)
 			;	error(io__error).
 
+	% io__maybe_partial_res is used where it is possible to return
+	% a partial result when an error occurs,
+:- type io__maybe_partial_res(T)
+			--->	ok(T)
+			;	error(T, io__error).
+
 :- type io__result	--->	ok
 			;	eof
 			;	error(io__error).
@@ -128,16 +134,44 @@
 %		Reads a line from the current input stream, returns the
 %		result as a string.
 
-:- pred io__read_file(io__result(list(char)), io__state, io__state).
+:- pred io__read_file(io__maybe_partial_res(list(char)), io__state, io__state).
 :- mode io__read_file(out, di, uo) is det.
 %		Reads all the characters from the current input stream until
 %		eof or error.
 
-:- pred io__read_file_as_string(io__res, string, io__state, io__state).
-:- mode io__read_file_as_string(out, out, di, uo) is det.
+:- pred io__read_file_as_string(io__maybe_partial_res(string),
+			io__state, io__state).
+:- mode io__read_file_as_string(out, di, uo) is det.
 %		Reads all the characters from the current input stream until
 %		eof or error.  Returns the result as a string rather than
 %		as a list of char.
+
+:- pred io__input_stream_foldl(pred(char, T, T),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl((pred(in, in, out) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl((pred(in, in, out) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
+
+:- pred io__input_stream_foldl_io(pred(char, io__state, io__state),
+			io__res, io__state, io__state).
+:- mode io__input_stream_foldl_io((pred(in, di, uo) is det),
+			out, di, uo) is det.
+:- mode io__input_stream_foldl_io((pred(in, di, uo) is cc_multi),
+			out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
+
+:- pred io__input_stream_foldl2_io(pred(char, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
 
 :- pred io__putback_char(char, io__state, io__state).
 :- mode io__putback_char(in, di, uo) is det.
@@ -166,23 +200,52 @@
 %		as a list of chars.
 
 :- pred io__read_line_as_string(io__input_stream, io__result(string),
-		io__state, io__state).
+			io__state, io__state).
 :- mode io__read_line_as_string(in, out, di, uo) is det.
 %		Reads a line from specified stream, returning the
 %		result as a string.
 
-:- pred io__read_file(io__input_stream, io__result(list(char)),
-							io__state, io__state).
+:- pred io__read_file(io__input_stream, io__maybe_partial_res(list(char)),
+			io__state, io__state).
 :- mode io__read_file(in, out, di, uo) is det.
 %		Reads all the characters from the given input stream until
 %		eof or error.
 
-:- pred io__read_file_as_string(io__input_stream, io__res, string,
-							io__state, io__state).
-:- mode io__read_file_as_string(in, out, out, di, uo) is det.
+:- pred io__read_file_as_string(io__input_stream,
+			io__maybe_partial_res(string), io__state, io__state).
+:- mode io__read_file_as_string(in, out, di, uo) is det.
 %		Reads all the characters from the given input stream until
 %		eof or error.  Returns the result as a string rather than
 %		as a list of char.
+
+:- pred io__input_stream_foldl(io__input_stream, pred(char, T, T),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl(in, (pred(in, in, out) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl(in, (pred(in, in, out) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
+
+:- pred io__input_stream_foldl_io(io__input_stream,
+			pred(char, io__state, io__state), io__res,
+			io__state, io__state).
+:- mode io__input_stream_foldl_io(in, (pred(in, di, uo) is det),
+			out, di, uo) is det.
+:- mode io__input_stream_foldl_io(in, (pred(in, di, uo) is cc_multi),
+			out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
+
+:- pred io__input_stream_foldl2_io(io__input_stream,
+			pred(char, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__input_stream_foldl2_io(in, (pred(in, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__input_stream_foldl2_io(in, (pred(in, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each character read from
+%		the input stream in turn, until eof or error.
 
 :- pred io__putback_char(io__input_stream, char, io__state, io__state).
 :- mode io__putback_char(in, in, di, uo) is det.
@@ -1462,19 +1525,18 @@ io__read_file(Result) -->
 io__read_file(Stream, Result) -->
 	io__read_file_2(Stream, [], Result).
 
-:- pred io__read_file_2(io__input_stream, list(char), io__result(list(char)),
-		io__state, io__state).
+:- pred io__read_file_2(io__input_stream, list(char),
+		io__maybe_partial_res(list(char)), io__state, io__state).
 :- mode io__read_file_2(in, in, out, di, uo) is det.
 
 io__read_file_2(Stream, Chars0, Result) -->
 	io__read_char(Stream, Result0),
 	(
 		{ Result0 = eof },
-		{ list__reverse(Chars0, Chars) },
-		{ Result = ok(Chars) }
+		{ Result = ok(list__reverse(Chars0)) }
 	;
 		{ Result0 = error(Err) },
-		{ Result = error(Err) }
+		{ Result = error(list__reverse(Chars0), Err) }
 	;
 		{ Result0 = ok(Char) },
 		io__read_file_2(Stream, [Char|Chars0], Result)
@@ -1482,11 +1544,11 @@ io__read_file_2(Stream, Chars0, Result) -->
 
 %-----------------------------------------------------------------------------%
 
-io__read_file_as_string(Result, String) -->
+io__read_file_as_string(Result) -->
 	io__input_stream(Stream),
-	io__read_file_as_string(Stream, Result, String).
+	io__read_file_as_string(Stream, Result).
 
-io__read_file_as_string(Stream, Result, String) -->
+io__read_file_as_string(Stream, Result) -->
 	%
 	% check if the stream is a regular file;
 	% if so, allocate a buffer according to the
@@ -1512,7 +1574,14 @@ io__read_file_as_string(Stream, Result, String) -->
 		Buffer, Pos, BufferSize),
 	{ require(Pos < BufferSize, "io__read_file_as_string: overflow") },
 	{ io__buffer_to_string(Buffer, Pos, String) },
-	io__check_err(Stream, Result).
+	io__check_err(Stream, Result0),
+	{
+		Result0 = ok,
+		Result = ok(String)
+	;
+		Result0 = error(Error),
+		Result = error(String, Error)
+	}.
 
 :- pred io__read_file_as_string_2(io__input_stream, buffer, int, int,
 		buffer, int, int, io__state, io__state).
@@ -1538,6 +1607,62 @@ io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 			Buffer, Pos, Size)
 	).
 	
+%-----------------------------------------------------------------------------%
+
+io__input_stream_foldl(Pred, T0, Res) -->
+	io__input_stream(Stream),
+	io__input_stream_foldl(Stream, Pred, T0, Res).
+
+io__input_stream_foldl(Stream, Pred, T0, Res) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = ok(Char) },
+		{ Pred(Char, T0, T1) },
+		io__input_stream_foldl(Stream, Pred, T1, Res)
+	;
+		{ CharResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ CharResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
+io__input_stream_foldl_io(Pred, Res) -->
+	io__input_stream(Stream),
+	io__input_stream_foldl_io(Stream, Pred, Res).
+
+io__input_stream_foldl_io(Stream, Pred, Res) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = ok(Char) },
+		Pred(Char),
+		io__input_stream_foldl_io(Stream, Pred, Res)
+	;
+		{ CharResult = eof },
+		{ Res = ok }
+	;
+		{ CharResult = error(Error) },
+		{ Res = error(Error) }
+	).
+
+io__input_stream_foldl2_io(Pred, T0, Res) -->
+	io__input_stream(Stream),
+	io__input_stream_foldl2_io(Stream, Pred, T0, Res).
+
+io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
+	io__read_char(Stream, CharResult),
+	(
+		{ CharResult = ok(Char) },
+		Pred(Char, T0, T1),
+		io__input_stream_foldl2_io(Stream, Pred, T1, Res)
+	;
+		{ CharResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ CharResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- pred io__clear_err(stream, io__state, io__state).

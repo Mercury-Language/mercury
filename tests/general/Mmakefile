@@ -37,6 +37,7 @@ PROGS=		\
 		higher_order \
 		intermod_type \
 		interpreter \
+		io_foldl \
 		io_regression \
 		liveness \
 		liveness2 \
@@ -119,6 +120,10 @@ string_format_test_3.out: string_format_test_3
 		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
 		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 		| tr -d '\r' > string_format_test_3.out
+
+	# io_foldl `cat's its input to its output.
+io_foldl.out: io_foldl io_foldl.exp
+	./io_foldl < io_foldl.exp > io_foldl.out 2>&1
 
 #-----------------------------------------------------------------------------#
 

@@ -62,12 +62,9 @@ load(Name, Dirs, Res) -->
 		format(StdErr, "%s: %s\n", [s(Path), s(Msg)])
 	    ), Errors)
 	;
-	    { Res1 = error(Err) },
+	    { Res1 = error(_, Err) },
 	    { io__error_message(Err, Msg) },
 	    { Res = error(Msg) }
-	;
-	    { Res1 = eof },
-	    { Res = error("empty catalog file") }
 	)
     ;
         { Res0 = error(Msg) },

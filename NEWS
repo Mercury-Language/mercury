@@ -65,6 +65,14 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* `io__read_file' and `io__read_file_as_string' now have better error
+  handling. The result types have changed, so code using these predicates
+  will need minor modifications.
+
+* We've added predicates `io__input_stream_foldl', `io__input_stream_foldl_io'
+  and `io__input_stream_foldl2_io', which apply a predicate to each character
+  of an input stream in turn.
+
 * We've added four functions to list.m for mapping functions over
   corresponding members of lists: list__map_corresponding/3,
   list__map_corresponding3/4, list__filter_map_corresponding/3

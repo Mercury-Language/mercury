@@ -31,7 +31,14 @@ main([]) --> [].
 main([File|Files]) -->
     see(File, Res0),		
     ( { Res0 = ok } ->
-	    io__read_file_as_string(_, Text),
+	io__read_file_as_string(TextResult),
+	(
+	    { TextResult = error(_, TextErr) },
+	    stderr_stream(StdErr0),
+	    format(StdErr0, "error reading file `%s': %s\n",
+	    	[s(File), s(io__error_message(TextErr))])
+	;
+    	    { TextResult = ok(Text) },
 	    pstate(mkEntity(Text), mkEncoding(utf8), init),
 	    io((pred(Dirs0::out, di, uo) is det -->
 		get_environment_var("XML_DIRS", MStr),
@@ -84,6 +91,7 @@ main([File|Files]) -->
 	    ),
 	    nl,
 	    []
+        )
     ;
 	[]
     ),
