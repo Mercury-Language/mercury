@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module std_util, list, string, set_bbbtree.
+:- import_module bool, list, string, set_bbbtree.
 
 
 main -->
@@ -24,26 +24,26 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__empty/set_bbbtree__size failed on empty set.")
+		io__write_string("set_bbbtree__empty/set_bbbtree__size failed on empty set.\n")
 	),
 	(
 		{ set_bbbtree__is_member(5, Set0, no) }
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__is_member should have failed on empty set")
+		io__write_string("set_bbbtree__is_member should have failed on empty set\n")
 	),
 	{ set_bbbtree__insert(Set0, 5, Set10) },
 	(
-		{ set_bbbtree__is_member(5, Set0, yes) },
-		{ set_bbbtree__is_member(6, Set0, no) },
+		{ set_bbbtree__is_member(5, Set10, yes) },
+		{ set_bbbtree__is_member(6, Set10, no) },
 		{ set_bbbtree__singleton_set(Set10, 5) },
 		{ set_bbbtree__least(Set10, 5) },
 		{ set_bbbtree__largest(Set10, 5) }
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__is_member/set_bbbtree__singleton_set/set_bbbtree__least/set_bbbtree__largest failed")
+		io__write_string("set_bbbtree__is_member/set_bbbtree__singleton_set/set_bbbtree__least/set_bbbtree__largest failed\n")
 	),
 	{ set_bbbtree__delete(Set10, 5, Set20) },
 	(
@@ -51,7 +51,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__empty failed as set was not empty")
+		io__write_string("set_bbbtree__empty failed as set was not empty\n")
 	),
 	{ set_bbbtree__delete(Set20, 5, Set30) },
 	(
@@ -59,7 +59,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__empty failed as set was not empty")
+		io__write_string("set_bbbtree__empty failed as set was not empty\n")
 	),
 
 	{ set_bbbtree__delete_list(Set10,[0, 1, 2, 3, 4, 5, 6, 100000], Set40)},
@@ -68,7 +68,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__empty failed as set was not empty")
+		io__write_string("set_bbbtree__empty failed as set was not empty\n")
 	),
 	{ set_bbbtree__list_to_set([-2, 10, 0, -1, 2, -2, -2, 0], Set50) },
 	(
@@ -81,7 +81,7 @@ main -->
 		->
 			{ true }
 		;
-			io__write_string("set_bbbtree__is_member failed")
+			io__write_string("set_bbbtree__is_member failed\n")
 		),
 		{ set_bbbtree__delete_list(Set60, [-2, -2, -2, 10], Set70) },
 		(
@@ -94,10 +94,10 @@ main -->
 		->
 			{ true }
 		;
-			io__write_string("set_bbbtree__is_member/set_bbbtree__largest/set_bbbtree__least failed")
+			io__write_string("set_bbbtree__is_member/set_bbbtree__largest/set_bbbtree__least failed\n")
 		)
 	;
-		io__write_string("set_bbbtree__size/set_bbbtree__remove_least failed")
+		io__write_string("set_bbbtree__size/set_bbbtree__remove_least failed\n")
 	),
 
 	{ set_bbbtree__list_to_set([4, -1, 0], Set80) },
@@ -107,7 +107,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("conversion of list to set and back to list failed.")
+		io__write_string("conversion of list to set and back to list failed.\n")
 	),
 
 	{ set_bbbtree__list_to_set([1, 2, 3], Set90) },
@@ -121,7 +121,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__union/set_bbbtree__equal failed")
+		io__write_string("set_bbbtree__union/set_bbbtree__equal failed\n")
 	),
 	{ set_bbbtree__intersect(Set90, Set100, SetIntersection0) },
 	(
@@ -129,7 +129,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__intersect/set_bbbtree__equal failed")
+		io__write_string("set_bbbtree__intersect/set_bbbtree__equal failed\n")
 	),
 	{ set_bbbtree__difference(Set90, Set100, SetDifference0) },
 	(
@@ -137,7 +137,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__difference/set_bbbtree__equal failed")
+		io__write_string("set_bbbtree__difference/set_bbbtree__equal failed\n")
 	),
 
 	(
@@ -146,7 +146,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__subset failed")
+		io__write_string("set_bbbtree__subset failed\n")
 	),
 
 	{ set_bbbtree__init(Set110) },
@@ -160,7 +160,7 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__power_union/set_bbbtree__equal failed")
+		io__write_string("set_bbbtree__power_union/set_bbbtree__equal failed\n")
 	),
 	{ set_bbbtree__power_intersect(Set150, SetIntersection10)},
 	(
@@ -168,5 +168,5 @@ main -->
 	->
 		{ true }
 	;
-		io__write_string("set_bbbtree__power_intersect/set_bbbtree__equal failed")
+		io__write_string("set_bbbtree__power_intersect/set_bbbtree__equal failed\n")
 	).

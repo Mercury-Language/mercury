@@ -1,6 +1,6 @@
 % A regression test: mercury-0.4 miscompiled this program.
 
-:- module solutions1.
+:- module hello_again.
 :- interface.
 :- import_module io.
 

@@ -10,7 +10,7 @@
 :- pred main(io__state :: di, io__state :: uo) is det.
 
 :- implementation.
-:- import_module list, std_util, string.
+:- import_module list, bool, std_util, string.
 
 :- pred environment__test(string, bool, io__state, io__state).
 :- mode environment__test(in, in, di, uo) is det.
@@ -22,7 +22,7 @@ environment__test(Var, ShouldBeSet) -->
 	    { Ok = ShouldBeSet }
 	;
 	    io__write_string("not set. "),
-	    { std_util__bool_not(ShouldBeSet, Ok) }
+	    { bool__not(ShouldBeSet, Ok) }
 	),
 	( { Ok = yes } ->
 	    io__write_string("(passed)\n")
