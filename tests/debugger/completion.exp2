@@ -44,7 +44,7 @@ stack --detailed
    0       1       1    1 pred completion:main/2-0 (det) (completion.m:13) (empty)
 mdb> proc
 proc_stats  procedures  
-mdb> procedures compl
+mdb> procedures complet
 completion            completion:sub2       
 completion:sub1       completion:sub2:sub3  
 mdb> procedures completion:
@@ -52,7 +52,7 @@ completion:sub1       completion:sub2       completion:sub2:sub3
 mdb> procedures completion:sub1
 procedures completion:sub1
 Registering debuggable procedures... done.
-There are 4 debuggable modules, with a total of 7 procedures.
+There are NNN debuggable modules, with a total of NNN procedures.
 List of procedures in module `completion:sub1'
 
 pred completion:sub1:zp/1-0 (det)
@@ -62,19 +62,18 @@ set --flat format pretty
 mdb> unalias excp 
 unalias excp 
 Alias `excp' removed.
-mdb> b z
-z      z1     z2     zabc3  zp     zz     
 mdb> b zabc3 
 b zabc3 
  0: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
-mdb> b pred*
-pred*completion:            pred*completion:sub2:sub3:
-pred*completion:sub1:       pred*main
-pred*completion:sub2:       pred*zp
-mdb> b pred*zp 
-b pred*zp 
- 1: + stop  interface pred completion:sub1:zp/1-0 (det)
-mdb> b compl
+mdb> b func*complet
+func*completion:            func*completion:sub2:
+func*completion:sub1:       func*completion:sub2:sub3:
+mdb> b func*completion:z
+func*completion:z   func*completion:zz  
+mdb> b func*completion:z
+b func*completion:z
+ 1: + stop  interface func completion:z/0-0 (det)
+mdb> b complet
 completion:            completion:sub2:       
 completion:sub1:       completion:sub2:sub3:  
 mdb> b completion:s
@@ -84,7 +83,7 @@ completion:sub1:z1  completion:sub1:zp
 mdb> b completion:sub1:z1
 b completion:sub1:z1
  2: + stop  interface func completion:sub1:z1/0-0 (det)
-mdb> b compl
+mdb> b complet
 completion:            completion:sub2:       
 completion:sub1:       completion:sub2:sub3:  
 mdb> b completion:s

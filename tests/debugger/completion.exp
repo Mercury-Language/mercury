@@ -47,7 +47,7 @@ completion:sub1       completion:sub2:sub3
 completion:sub1       completion:sub2       completion:sub2:sub3
 procedures completion:sub1
 Registering debuggable procedures... done.
-There are 4 debuggable modules, with a total of 7 procedures.
+There are NNN debuggable modules, with a total of NNN procedures.
 List of procedures in module `completion:sub1'
 
 pred completion:sub1:zp/1-0 (det)
@@ -55,16 +55,15 @@ func completion:sub1:z1/0-0 (det)
 mdb> set --flat format pretty 
 mdb> unalias excp 
 Alias `excp' removed.
-mdb> 
-z      z1     z2     zabc3  zp     zz     
-b zabc3 
+mdb> b zabc3 
  0: + stop  interface func completion:sub2:sub3:zabc3/0-0 (det)
 mdb> 
-pred*completion:            pred*completion:sub2:sub3:
-pred*completion:sub1:       pred*main
-pred*completion:sub2:       pred*zp
-b pred*zp 
- 1: + stop  interface pred completion:sub1:zp/1-0 (det)
+func*completion:            func*completion:sub2:
+func*completion:sub1:       func*completion:sub2:sub3:
+
+func*completion:z   func*completion:zz  
+b func*completion:z
+ 1: + stop  interface func completion:z/0-0 (det)
 mdb> 
 completion:            completion:sub2:       
 completion:sub1:       completion:sub2:sub3:  
