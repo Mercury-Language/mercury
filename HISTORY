@@ -38,7 +38,7 @@ post-processed by a Perl script (improves compilation speed, reduces
 disk space requirements, removes dependency on Perl).
 Lots of bug fixes.
 
-Mercury 0.3
+Mercury 0.3, 18 July 1995
 -----------
 The first public release.
 Better type error messages.

@@ -11,7 +11,7 @@ These features are also not yet documented. :-(
 
 When the above features are implemented, we will consider the
 implementation to be in some sense "complete", and release version 1.0.
-Of course, those are not the only things we're working on.  Amoung
+Of course, those are not the only things we're working on.  Among
 other things, we'd like to provide a much better C interface and a
 better garbage collector.  We're also working on a parallel/multithreaded
 version of Mercury.

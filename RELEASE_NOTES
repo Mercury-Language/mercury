@@ -157,7 +157,7 @@ The main features of Mercury are:
 	provide the compiler with the information it needs to generate
 	very efficient code.
 
-The Mercury compiler is written in Mercury itself.  It was boostrapped
+The Mercury compiler is written in Mercury itself.  It was bootstrapped
 using NU-Prolog and SICStus Prolog.  This was possible because after
 stripping away the declarations of a Mercury program, the syntax of the
 remaining part of the program is mostly compatible with Prolog syntax.
