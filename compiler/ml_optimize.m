@@ -301,8 +301,9 @@ generate_assign_args(_, [_|_], [], [], []) :-
 generate_assign_args(_, [], [_|_], [], []) :-
 	error("generate_assign_args: length mismatch").
 generate_assign_args(_, [], [], [], []).
-generate_assign_args(OptInfo, [mlds__argument(Name, Type, GC_TraceCode) | Rest],
-		[Arg | Args], Statements, TempDefns) :-
+generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
+		Statements, TempDefns) :-
+	Arg = mlds__argument(Name, Type, _ArgGCTraceCode),
 	(
 		%
 		% extract the variable name
@@ -314,9 +315,9 @@ generate_assign_args(OptInfo, [mlds__argument(Name, Type, GC_TraceCode) | Rest],
 			% 
 			% don't bother assigning a variable to itself
 			%
-			Arg = lval(var(QualVarName, _VarType))
+			ArgRval = lval(var(QualVarName, _VarType))
 		->
-			generate_assign_args(OptInfo, Rest, Args, 
+			generate_assign_args(OptInfo, Args, ArgRvals, 
 				Statements, TempDefns)
 		;
 
@@ -325,34 +326,49 @@ generate_assign_args(OptInfo, [mlds__argument(Name, Type, GC_TraceCode) | Rest],
 			% args, and then assign the temporary to the
 			% parameter:
 			%
-			%	SomeType argN__tmp_copy = new_argN_value;
+			%	SomeType argN__tmp_copy;
+			%	argN__tmp_copy = new_argN_value;
 			%	...
-			%	new_argN_value = argN_tmp_copy;
+			%	argN = argN_tmp_copy;
 			%
 			% The temporaries are needed for the case where
 			% we are e.g. assigning v1, v2 to v2, v1;
 			% they ensure that we don't try to reference the old
 			% value of a parameter after it has already been
 			% clobbered by the new value.
+			%
+			% Note that we have to use an assignment rather
+			% than an initializer to initialize the temp,
+			% because this pass comes before ml_elem_nested.m,
+			% and ml_elim_nested.m doesn't handle code containing
+			% initializers.
 
 			VarName = mlds__var_name(VarNameStr, MaybeNum),
 			TempName = mlds__var_name(VarNameStr ++ "__tmp_copy",
 				MaybeNum),
 			QualTempName = qual(OptInfo ^ module_name, 
 				TempName),
-			Initializer = init_obj(Arg),
+			Initializer = no_initializer,
+			% We don't need to trace the temporary variables
+			% for GC, since they are not live across a call
+			% or a heap allocation
+			GC_TraceCode = no,
 			TempDefn = ml_gen_mlds_var_decl(var(TempName),
 				Type, Initializer, GC_TraceCode,
 				OptInfo ^ context),
-
-			Statement = statement(
+			TempInitStatement = statement(
+				atomic(assign(var(QualTempName, Type),
+					ArgRval)), 
+				OptInfo ^ context),
+			AssignStatement = statement(
 				atomic(assign(
 					var(QualVarName, Type),
 					lval(var(QualTempName, Type)))), 
 				OptInfo ^ context),
-			generate_assign_args(OptInfo, Rest, Args, Statements0,
-				TempDefns0),
-			Statements = [Statement | Statements0],
+			generate_assign_args(OptInfo, Args, ArgRvals,
+				Statements0, TempDefns0),
+			Statements = [TempInitStatement | Statements0] ++
+				[AssignStatement],
 			TempDefns = [TempDefn | TempDefns0]
 		)
 	;
