@@ -916,8 +916,8 @@ process_non_event_goals_2(Goal, Cont, MaybeArgs) -->
 	->
 		{ MaybeArgs = yes(Args) }
 	;
-		[ unify_info(Goal) ],
-		process_non_event_goals(Cont, MaybeArgs)
+		process_non_event_goals(Cont, MaybeArgs),
+		[ unify_info(Goal) ]
 	).
 
 	% Scan through the information derived from the contour, and
