@@ -20,7 +20,6 @@
 #include "mercury_memory.h"
 #include "mercury_accurate_gc.h"
 
-
 /*
 ** MR_deep_copy(): see mercury_deep_copy.h for documentation.
 */
@@ -51,7 +50,6 @@
 #define found_out_of_range_pointer(Data)
 
 #include "mercury_deep_copy_body.h"
-
 
 /*
 ** agc_deep_copy(): see mercury_deep_copy.h for documentation.
