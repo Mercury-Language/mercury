@@ -30,7 +30,8 @@ static bool cut_trailing_integer(char *str, char **end, int *num);
 static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
 static bool strip_prefix(char **str, const char *prefix);
 
-int main(int argc, char **argv)
+int 
+main(int argc, char **argv)
 {
 	if (argc > 1) {
 		/*
@@ -78,7 +79,8 @@ int main(int argc, char **argv)
 ** better string-handling facilities than C!
 */
 
-static void demangle(char *name) {
+static void 
+demangle(char *name) {
 	static const char entry[]   = "entry_";
 	static const char mercury[] = "mercury__";
 	static const char func_prefix[] = "fn__"; /* added for functions */
@@ -378,7 +380,7 @@ not_plain_mercury:
 wrong_format:
 	printf("%s", name);
 	return;
-}
+} /* end demangle() */
 
 	/*
 	** Remove the prefix from a string, if it has 
@@ -388,7 +390,8 @@ wrong_format:
 	** If the string doesn't have that prefix, newstr will
 	** be unchanged, and the function will return FALSE.
 	*/
-static bool strip_prefix(char **str, const char *prefix) 
+static bool 
+strip_prefix(char **str, const char *prefix) 
 {
 	int len;
 
@@ -408,7 +411,8 @@ static bool strip_prefix(char **str, const char *prefix)
 	** If false is returned, the string will not be cut.
 	** `real_end' is updated with the new end of the string
 	*/
-static bool cut_trailing_integer(char *str, char **real_end, int *num) 
+static bool 
+cut_trailing_integer(char *str, char **real_end, int *num) 
 {
 	char *end = *real_end;
 
@@ -433,7 +437,8 @@ static bool cut_trailing_integer(char *str, char **real_end, int *num)
 	** underscore and the integer. If it returns FALSE, the
 	** `real_end' is unchanged.
 	*/
-static bool cut_trailing_underscore_integer(char *str, char **real_end, 
+static bool 
+cut_trailing_underscore_integer(char *str, char **real_end, 
 	int *num) 
 {
 	char *end = *real_end;
@@ -456,7 +461,8 @@ static bool cut_trailing_underscore_integer(char *str, char **real_end,
 	** supplied end.
 	*/
 
-static char *cut_at_double_underscore(char *str, char *end) 
+static char *
+cut_at_double_underscore(char *str, char *end) 
 {
 	while (*str != '_' || *(str + 1) != '_') {
 		if (str == end) {
@@ -485,7 +491,8 @@ static char *cut_at_double_underscore(char *str, char *end)
 	** readable.
 	*/
 
-static char *fix_mangled_ascii(char *str, char **real_end)
+static char *
+fix_mangled_ascii(char *str, char **real_end)
 {
 	char *end = *real_end;
 
@@ -519,7 +526,8 @@ static char *fix_mangled_ascii(char *str, char **real_end)
 }
 
 
-static bool check_for_suffix(char *start, char *position, const char *suffix,
+static bool 
+check_for_suffix(char *start, char *position, const char *suffix,
 		int sizeof_suffix, int *mode_num2)
 {
 	const int suffix_len = sizeof_suffix - 1;

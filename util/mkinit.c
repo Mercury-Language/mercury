@@ -146,7 +146,8 @@ static	int getline(FILE *file, char *line, int line_max);
 extern int sys_nerr;
 extern char *sys_errlist[];
 
-char *strerror(int errnum) {
+char *
+strerror(int errnum) {
 	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
 		return sys_errlist[errnum];
 	} else {
@@ -160,7 +161,8 @@ char *strerror(int errnum) {
 
 /*---------------------------------------------------------------------------*/
 
-int main(int argc, char **argv)
+int 
+main(int argc, char **argv)
 {
 	progname = argv[0];
 
@@ -184,7 +186,8 @@ int main(int argc, char **argv)
 
 /*---------------------------------------------------------------------------*/
 
-static void parse_options(int argc, char *argv[])
+static void 
+parse_options(int argc, char *argv[])
 {
 	int	c;
 	while ((c = getopt(argc, argv, "c:w:l")) != EOF)
@@ -214,7 +217,8 @@ static void parse_options(int argc, char *argv[])
 	files = argv + optind;
 }
 
-static void usage(void)
+static void 
+usage(void)
 {
 	fprintf(stderr,
 		"Usage: mkinit [-c maxcalls] [-w entry] [-l] files...\n");
@@ -223,7 +227,8 @@ static void usage(void)
 
 /*---------------------------------------------------------------------------*/
 
-static void output_headers(void)
+static void 
+output_headers(void)
 {
 	int filenum;
 
@@ -239,7 +244,8 @@ static void output_headers(void)
 	fputs(header2, stdout);
 }
 
-static void output_sub_init_functions(void)
+static void 
+output_sub_init_functions(void)
 {
 	int filenum;
 
@@ -261,7 +267,8 @@ static void output_sub_init_functions(void)
 	fputs("\n#endif\n\n", stdout);
 }
 
-static void output_main_init_function(void)
+static void 
+output_main_init_function(void)
 {
 	int i;
 
@@ -280,7 +287,8 @@ static void output_main_init_function(void)
 	fputs("}\n", stdout);
 }
 
-static void output_main(void)
+static void 
+output_main(void)
 {
 	printf(mercury_main_func, entry_point, entry_point);
 	if (output_main_func) {
@@ -290,7 +298,8 @@ static void output_main(void)
 
 /*---------------------------------------------------------------------------*/
 
-static void process_file(char *filename) {
+static void 
+process_file(char *filename) {
 	int len = strlen(filename);
 	if (strcmp(filename + len - 2, ".m") == 0) {
 		char func_name[1000];
@@ -309,7 +318,8 @@ static void process_file(char *filename) {
 	}
 }
 
-static void process_init_file(const char *filename) {
+static void 
+process_init_file(const char *filename) {
 	const char * const	init_str = "INIT ";
 	const char * const	endinit_str = "ENDINIT ";
 	const int		init_strlen = strlen(init_str);
@@ -318,41 +328,41 @@ static void process_init_file(const char *filename) {
 	FILE *			cfile;
 
 	cfile = fopen(filename, "r");
-	if (cfile == NULL)
-	{
+	if (cfile == NULL) {
 		fprintf(stderr, "%s: error opening file `%s': %s\n",
 			progname, filename, strerror(errno));
 		num_errors++;
 		return;
 	}
 
-	while (getline(cfile, line, MAXLINE) > 0)
-	{
-		if (strncmp(line, init_str, init_strlen) == 0)
-		{
+	while (getline(cfile, line, MAXLINE) > 0) {
+		if (strncmp(line, init_str, init_strlen) == 0) {
 			int	j;
 
 			for (j = init_strlen; isalnum(line[j]) ||
 						line[j] == '_'; j++)
-				;
+			{
+				/* VOID */
+			}
 			line[j] = '\0';
 
 			output_init_function(line+init_strlen);
 		}
 
-		if (strncmp(line, endinit_str, endinit_strlen) == 0)
+		if (strncmp(line, endinit_str, endinit_strlen) == 0) {
 			break;
+		}
 	}
 
 	fclose(cfile);
 }
 
-static void output_init_function(const char *func_name)
+static void 
+output_init_function(const char *func_name)
 {
 	static int num_calls = 0;
 
-	if (num_calls >= maxcalls)
-	{
+	if (num_calls >= maxcalls) {
 		printf("}\n\n");
 
 		num_modules++;
@@ -369,18 +379,22 @@ static void output_init_function(const char *func_name)
 
 /*---------------------------------------------------------------------------*/
 
-static int getline(FILE *file, char *line, int line_max)
+static int 
+getline(FILE *file, char *line, int line_max)
 {
 	int	c, num_chars, limit;
 
 	num_chars = 0;
 	limit = line_max - 2;
-	while ((c = getc(file)) != EOF && c != '\n')
-		if (num_chars < limit)
+	while ((c = getc(file)) != EOF && c != '\n') {
+		if (num_chars < limit) {
 			line[num_chars++] = c;
+		}
+	}
 	
-	if (c == '\n' || num_chars > 0)
+	if (c == '\n' || num_chars > 0) {
 		line[num_chars++] = '\n';
+	}
 
 	line[num_chars] = '\0';
 	return num_chars;
