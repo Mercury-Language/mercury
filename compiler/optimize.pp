@@ -211,11 +211,7 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 	;
 		{ Instructions3 = Instructions2 }
 	),
-	{ ( Mod1 = yes ; ValueNumber = yes ) ->
-		Mod2 = yes
-	;
-		Mod2 = no
-	},
+	{ bool__or(Mod1, ValueNumber, Mod2) },
 	( { Mod2 = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing jumps for "),
