@@ -95,8 +95,7 @@ int main(int argc, char **argv)
 	  }
 	}
 #endif
-	/* initialize label table to be empty */
-	init_entries();
+
 #if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS)
 	do_init_modules();
 #endif
@@ -116,6 +115,7 @@ void do_init_modules(void)
 {
 	static bool done = FALSE;
 	if (!done) {
+		init_entries();
 		init_modules();
 		done = TRUE;
 	}
@@ -205,6 +205,9 @@ static void process_options(int argc, char **argv)
 					gotodebug      = TRUE;
 					sregdebug      = TRUE;
 					finaldebug     = TRUE;
+#ifdef CONSERVATIVE_GC
+					GC_quiet = FALSE;
+#endif
 				}
 				else
 					usage();
@@ -242,6 +245,9 @@ static void process_options(int argc, char **argv)
 					detstack_size = val;
 				or (optarg[0] == 'n')
 					nondstack_size = val;
+				or (optarg[0] == 'l')
+					entry_table_size = val *
+						1024 / (2 * sizeof(List *));
 				else
 					usage();
 
@@ -301,6 +307,7 @@ static void usage(void)
 	printf("-sh<n> \t\tallocate n kb for the heap\n");
 	printf("-sd<n> \t\tallocate n kb for the det stack\n");
 	printf("-sn<n> \t\tallocate n kb for the nondet stack\n");
+	printf("-sl<n> \t\tallocate n kb for the label table\n");
 	printf("-zh<n> \t\tallocate n kb for the heap redzone\n");
 	printf("-zd<n> \t\tallocate n kb for the det stack redzone\n");
 	printf("-zn<n> \t\tallocate n kb for the nondet stack redzone\n");

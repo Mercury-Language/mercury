@@ -9,8 +9,6 @@
 #include	"prof.h"
 #include	"init.h"
 
-#define	ENTRY_TABLE_SIZE	(1 << 16)	/* 64k */
-
 static	const void	*entry_name(const void *entry);
 static	const void	*entry_addr(const void *entry);
 static	bool		equal_name(const void *name1, const void *name2);
@@ -18,13 +16,17 @@ static	bool		equal_addr(const void *addr1, const void *addr2);
 static	int		hash_name(const void *name);
 static	int		hash_addr(const void *addr);
 
+int	entry_table_size = (1 << 16);	/* 64k */
+
 Table	entry_name_table =
-	{ENTRY_TABLE_SIZE, NULL, entry_name, hash_name, equal_name};
+	{0, NULL, entry_name, hash_name, equal_name};
 Table	entry_addr_table =
-	{ENTRY_TABLE_SIZE, NULL, entry_addr, hash_addr, equal_addr};
+	{0, NULL, entry_addr, hash_addr, equal_addr};
 
 void init_entries(void)
 {
+	entry_name_table.ta_size = entry_table_size;
+	entry_addr_table.ta_size = entry_table_size;
 	init_table(entry_name_table);
 	init_table(entry_addr_table);
 }
@@ -107,10 +109,10 @@ static bool equal_addr(const void *addr1, const void *addr2)
 
 static int hash_name(const void *name)
 {
-	return str_to_int(((const char *) name)) % ENTRY_TABLE_SIZE;
+	return str_to_int(((const char *) name)) % entry_table_size;
 }
 
 static int hash_addr(const void *addr)
 {
-	return (((unsigned int) ((const Code *) addr)) >> 3) % ENTRY_TABLE_SIZE;
+	return (((unsigned int) ((const Code *) addr)) >> 3) % entry_table_size;
 }

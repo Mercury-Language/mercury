@@ -21,4 +21,8 @@ extern	Label	*lookup_label_name(const char *name);
 extern	Label	*lookup_label_addr(const Code *addr);
 extern	List	*get_all_labels(void);
 
+extern  int 	entry_table_size;
+	/* expected number of entries in the table */
+	/* we allocate 8 bytes per entry */
+
 #endif
