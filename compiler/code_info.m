@@ -173,10 +173,10 @@
 :- pred code_info__remake_with_stack_slots(code_info, code_info).
 :- mode code_info__remake_with_stack_slots(in, out) is det.
 
-:- pred code_info__update_liveness_info(delta_liveness, code_info, code_info).
+:- pred code_info__update_liveness_info(set(var), code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
 
-:- pred code_info__update_deadness_info(delta_liveness, code_info, code_info).
+:- pred code_info__update_deadness_info(set(var), code_info, code_info).
 :- mode code_info__update_deadness_info(in, in, out) is det.
 
 :- pred code_info__set_var_location(var, lval, code_info, code_info).
@@ -1013,12 +1013,12 @@ code_info__fixup_lvallist([V - L | Ls], [V - lval(L) | Rs]) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__update_liveness_info(Births - _Deaths) -->
+code_info__update_liveness_info(Births) -->
 	code_info__get_liveness_info(Liveness0),
 	{ set__union(Liveness0, Births, Liveness) },
 	code_info__set_liveness_info(Liveness).
 
-code_info__update_deadness_info(_Births - Deaths) -->
+code_info__update_deadness_info(Deaths) -->
 	code_info__get_liveness_info(Liveness0),
 	{ set__difference(Liveness0, Deaths, Liveness) },
 	code_info__set_liveness_info(Liveness).

@@ -67,11 +67,7 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 					Liveness, Goal - GoalInfo) :-
-	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
-	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	PreDelta0 = _PreBirths0 - PreDeaths,
-	PostDelta0 = _PostBirths0 - PostDeaths,
 		% work out which variables get born in this goal
 	set__difference(NonLocals, Liveness0, NewVarsSet),
 	set__to_sorted_list(NewVarsSet, NewVarsList),
@@ -84,18 +80,16 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		goal_is_atomic(Goal0)
 	->
 		PreBirths = Births,
-		Goal = Goal0,
-		PostDelta = PostDelta0
+		set__init(PostBirths),
+		Goal = Goal0
 	;
 		set__init(PreBirths),
 		detect_liveness_in_goal_2(Goal0, Liveness0, ModuleInfo,
 						Liveness1, Goal),
-		set__difference(Births, Liveness1, PostBirths),
-		PostDelta = PostBirths - PostDeaths
+		set__difference(Births, Liveness1, PostBirths)
 	),
-	PreDelta = PreBirths - PreDeaths,
-	goal_info_set_pre_delta_liveness(GoalInfo0, PreDelta, GoalInfo1),
-	goal_info_set_post_delta_liveness(GoalInfo1, PostDelta, GoalInfo).
+	goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
+	goal_info_set_post_births(GoalInfo1, PostBirths, GoalInfo).
 
 :- pred detect_liveness_in_goal(hlds__goal, liveness_info, module_info,
 				hlds__goal).
@@ -103,8 +97,6 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 
 detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, _, Goal).
-
-	% Here we process each of the different sorts of goals.
 
 %-----------------------------------------------------------------------------%
 
@@ -129,6 +121,8 @@ find_binding_occurrences([Var | Vars], ModuleInfo, InstMapDelta, BoundVars0,
 		BoundVars).
 
 %-----------------------------------------------------------------------------%
+
+	% Here we process each of the different sorts of goals.
 
 :- pred detect_liveness_in_goal_2(hlds__goal_expr, liveness_info,
 				module_info, liveness_info, hlds__goal_expr).
@@ -251,11 +245,7 @@ detect_liveness_in_cases([case(Cons, Goal0)|Goals0], Liveness, ModuleInfo,
 
 detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo, ProcInfo,
 					Deadness, Goal - GoalInfo) :-
-	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
-	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
-	PostDelta0 = PostBirths - _PostDeaths0,
-	PreDelta0 = PreBirths - _PreDeaths0,
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_gc_method(Globals, GC_Method),
 	(
@@ -270,10 +260,10 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo, ProcInfo,
 		;
 			NonLocals1 = NonLocals
 		),
+		set__init(PreDeaths),
 		set__difference(NonLocals1, Deadness0, PostDeaths),
 		set__union(Deadness0, PostDeaths, Deadness),
-		Goal = Goal0,
-		PreDelta = PreDelta0
+		Goal = Goal0
 	;
 		set__union(Deadness0, NonLocals, Deadness_Nonlocals),
 		(
@@ -289,12 +279,10 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo, ProcInfo,
 		set__init(PostDeaths),
 		detect_deadness_in_goal_2(Goal0, GoalInfo0, Deadness0,
 				ModuleInfo, ProcInfo, Deadness1, Goal),
-		set__difference(Deadness, Deadness1, PreDeaths),
-		PreDelta = PreBirths - PreDeaths
+		set__difference(Deadness, Deadness1, PreDeaths)
 	),
-	PostDelta = PostBirths - PostDeaths,
-	goal_info_set_post_delta_liveness(GoalInfo0, PostDelta, GoalInfo1),
-	goal_info_set_pre_delta_liveness(GoalInfo1, PreDelta, GoalInfo).
+	goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo1),
+	goal_info_set_pre_deaths(GoalInfo1, PreDeaths, GoalInfo).
 
 :- pred detect_deadness_in_goal(hlds__goal, liveness_info,
 				module_info, proc_info, hlds__goal).
@@ -544,9 +532,9 @@ detect_initial_deadness_2([V - M|VAs], ModuleInfo, Deadness0, Deadness) :-
 :- mode stuff_liveness_residue_after_goal(in, in, out) is det.
 
 stuff_liveness_residue_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
-	goal_info_post_delta_liveness(GoalInfo0, Births0 - Deaths),
-	set__union(Births0, Residue, Births),
-	goal_info_set_post_delta_liveness(GoalInfo0, Births - Deaths, GoalInfo).
+	goal_info_post_births(GoalInfo0, PostBirths0),
+	set__union(PostBirths0, Residue, PostBirths),
+	goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -556,9 +544,9 @@ stuff_liveness_residue_after_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 
 stuff_deadness_residue_before_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo)
 		:-
-	goal_info_pre_delta_liveness(GoalInfo0, Births - Deaths0),
-	set__union(Deaths0, Residue, Deaths),
-	goal_info_set_pre_delta_liveness(GoalInfo0, Births - Deaths, GoalInfo).
+	goal_info_pre_deaths(GoalInfo0, PreDeaths0),
+	set__union(PreDeaths0, Residue, PreDeaths),
+	goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -578,19 +566,21 @@ stuff_deadness_residue_after_goal(Goal0 - GoalInfo0, Residue, Goal - GoalInfo)
 		% conjunction.  This technique is probably a bit fragile,
 		% since other parts of the compiler aren't very keen on
 		% singleton disjunctions.
+		% XXX The unconditional overwriting of the three other fields
+		% is also worrying.
 		Goal = conj([Goal0 - GoalInfo0]),
-		set__init(Births),
-		set__init(Deaths),
-		goal_info_set_pre_delta_liveness(GoalInfo0, Births - Deaths,
-				GoalInfo1),
-		goal_info_set_post_delta_liveness(GoalInfo1, Births - Residue,
-				GoalInfo)
+		set__init(PreBirths),
+		set__init(PostBirths),
+		set__init(PreDeaths),
+		goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
+		goal_info_set_post_births(GoalInfo1, PostBirths, GoalInfo2),
+		goal_info_set_pre_deaths(GoalInfo2, PreDeaths, GoalInfo3),
+		goal_info_set_post_deaths(GoalInfo3, Residue, GoalInfo)
 	;
 		Goal = Goal0,
-		goal_info_post_delta_liveness(GoalInfo0, Births - Deaths0),
-		set__union(Deaths0, Residue, Deaths),
-		goal_info_set_post_delta_liveness(GoalInfo0, Births - Deaths,
-			GoalInfo)
+		goal_info_post_deaths(GoalInfo0, PostDeaths0),
+		set__union(PostDeaths0, Residue, PostDeaths),
+		goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -609,12 +599,10 @@ stuff_deadness_residue_after_goal(Goal0 - GoalInfo0, Residue, Goal - GoalInfo)
 
 add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 				Extras0, Goal - GoalInfo, Liveness, Extras) :-
-	goal_info_pre_delta_liveness(GoalInfo0, PreDelta0),
-	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
-
-	PreDelta0 = PreBirths0 - PreDeaths0,
-
-	PostDelta0 = PostBirths0 - PostDeaths0,
+	goal_info_pre_births(GoalInfo0, PreBirths0),
+	goal_info_post_births(GoalInfo0, PostBirths0),
+	goal_info_pre_deaths(GoalInfo0, PreDeaths0),
+	goal_info_post_deaths(GoalInfo0, PostDeaths0),
 
 	set__difference(Liveness0, PreDeaths0, Liveness1),
 

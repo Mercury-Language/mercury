@@ -629,7 +629,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
-		{ goal_info_pre_delta_liveness(GoalInfo, PreBirths - PreDeaths) },
+		{ goal_info_pre_births(GoalInfo, PreBirths) },
 		{ set__to_sorted_list(PreBirths, PreBirthList) },
 		( { PreBirthList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -639,6 +639,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
+		{ goal_info_pre_deaths(GoalInfo, PreDeaths) },
 		{ set__to_sorted_list(PreDeaths, PreDeathList) },
 		( { PreDeathList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -693,7 +694,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 				Indent),
 			io__write_string("\n")
 		),
-		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
+		{ goal_info_post_births(GoalInfo, PostBirths) },
 		{ set__to_sorted_list(PostBirths, PostBirthList) },
 		( { PostBirthList \= [] } ->
 			hlds_out__write_indent(Indent),
@@ -703,6 +704,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
+		{ goal_info_post_deaths(GoalInfo, PostDeaths) },
 		{ set__to_sorted_list(PostDeaths, PostDeathList) },
 		( { PostDeathList \= [] } ->
 			hlds_out__write_indent(Indent),

@@ -214,14 +214,14 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 code_aux__pre_goal_update(GoalInfo, Atomic) -->
 	{ goal_info_nondet_lives(GoalInfo, NondetLives) },
 	code_info__set_nondet_lives(NondetLives),
-	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
-	code_info__update_liveness_info(PreDelta),
-	code_info__update_deadness_info(PreDelta),
-	{ PreDelta = _ - PreDeaths },
+	{ goal_info_pre_births(GoalInfo, PreBirths) },
+	{ goal_info_pre_deaths(GoalInfo, PreDeaths) },
+	code_info__update_liveness_info(PreBirths),
+	code_info__update_deadness_info(PreDeaths),
 	code_info__make_vars_dead(PreDeaths),
 	( { Atomic = yes } ->
-		{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-		code_info__update_deadness_info(PostDelta)
+		{ goal_info_post_deaths(GoalInfo, PostDeaths) },
+		code_info__update_deadness_info(PostDeaths)
 	;
 		[]
 	).
@@ -229,10 +229,10 @@ code_aux__pre_goal_update(GoalInfo, Atomic) -->
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
 code_aux__post_goal_update(GoalInfo) -->
-	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_liveness_info(PostDelta),
-	code_info__update_deadness_info(PostDelta),
-	{ PostDelta = PostBirths - PostDeaths },
+	{ goal_info_post_births(GoalInfo, PostBirths) },
+	{ goal_info_post_deaths(GoalInfo, PostDeaths) },
+	code_info__update_liveness_info(PostBirths),
+	code_info__update_deadness_info(PostDeaths),
 	code_info__make_vars_dead(PostDeaths),
 	code_info__make_vars_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },

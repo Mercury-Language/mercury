@@ -64,10 +64,11 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 		LiveSets0, ModuleInfo, ProcInfo,
 			Liveness, LiveSets) :-
-	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
-	PreDelta = PreBirths - PreDeaths,
-	goal_info_post_delta_liveness(GoalInfo, PostDelta),
-	PostDelta = PostBirths - PostDeaths,
+	goal_info_pre_births(GoalInfo, PreBirths),
+	goal_info_pre_deaths(GoalInfo, PreDeaths),
+	goal_info_post_births(GoalInfo, PostBirths),
+	goal_info_post_deaths(GoalInfo, PostDeaths),
+
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
 	%

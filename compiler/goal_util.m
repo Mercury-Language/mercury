@@ -329,37 +329,41 @@ goal_util__rename_follow_vars_2([V - L | Vs], Must, Subn, [N - L | Ns]) :-
 :- mode goal_util__name_apart_goalinfo(in, in, in, out) is det.
 
 goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
-	goal_info_pre_delta_liveness(GoalInfo0, PreBirths0 - PreDeaths0),
+	goal_info_pre_births(GoalInfo0, PreBirths0),
 	goal_util__name_apart_set(PreBirths0, Must, Subn, PreBirths),
+	goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo1),
+
+	goal_info_pre_deaths(GoalInfo1, PreDeaths0),
 	goal_util__name_apart_set(PreDeaths0, Must, Subn, PreDeaths),
-	goal_info_set_pre_delta_liveness(GoalInfo0, PreBirths - PreDeaths,
-						GoalInfo1),
+	goal_info_set_pre_deaths(GoalInfo1, PreDeaths, GoalInfo2),
 
-	goal_info_post_delta_liveness(GoalInfo1, PostBirths0 - PostDeaths0),
+	goal_info_post_births(GoalInfo2, PostBirths0),
 	goal_util__name_apart_set(PostBirths0, Must, Subn, PostBirths),
+	goal_info_set_post_births(GoalInfo2, PostBirths, GoalInfo3),
+
+	goal_info_post_deaths(GoalInfo3, PostDeaths0),
 	goal_util__name_apart_set(PostDeaths0, Must, Subn, PostDeaths),
-	goal_info_set_post_delta_liveness(GoalInfo1, PostBirths - PostDeaths,
-						GoalInfo2),
+	goal_info_set_post_deaths(GoalInfo3, PostDeaths, GoalInfo4),
 
-	goal_info_get_nonlocals(GoalInfo2, NonLocals0),
+	goal_info_get_nonlocals(GoalInfo4, NonLocals0),
 	goal_util__name_apart_set(NonLocals0, Must, Subn, NonLocals),
-	goal_info_set_nonlocals(GoalInfo2, NonLocals, GoalInfo3),
+	goal_info_set_nonlocals(GoalInfo4, NonLocals, GoalInfo5),
 
-	goal_info_get_instmap_delta(GoalInfo3, InstMap0),
+	goal_info_get_instmap_delta(GoalInfo5, InstMap0),
 	instmap_delta_apply_sub(InstMap0, Must, Subn, InstMap),
-	goal_info_set_instmap_delta(GoalInfo3, InstMap, GoalInfo4),
+	goal_info_set_instmap_delta(GoalInfo5, InstMap, GoalInfo6),
 
-	goal_info_nondet_lives(GoalInfo4, NondetLives0),
+	goal_info_nondet_lives(GoalInfo6, NondetLives0),
 	goal_util__name_apart_set(NondetLives0, Must, Subn, NondetLives),
-	goal_info_set_nondet_lives(GoalInfo4, NondetLives, GoalInfo5),
+	goal_info_set_nondet_lives(GoalInfo6, NondetLives, GoalInfo7),
 
-	goal_info_cont_lives(GoalInfo5, MaybeContLives0),
+	goal_info_cont_lives(GoalInfo7, MaybeContLives0),
 	( MaybeContLives0 = yes(ContLives0) ->
 		goal_util__name_apart_set(ContLives0, Must, Subn, ContLives),
 		MaybeContLives = yes(ContLives),
-		goal_info_set_cont_lives(GoalInfo5, MaybeContLives, GoalInfo)
+		goal_info_set_cont_lives(GoalInfo7, MaybeContLives, GoalInfo)
 	;
-		GoalInfo = GoalInfo5
+		GoalInfo = GoalInfo7
 	).
 
 %-----------------------------------------------------------------------------%

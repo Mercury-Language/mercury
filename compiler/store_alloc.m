@@ -7,13 +7,13 @@
 % Original author: conway.
 % Extensive modification by zs.
 
-% Allocates the storage location for each variable
-% at the end of branched structures, so that the code generator
+% Allocates the storage location for each live variable
+% at the end of each branched structure, so that the code generator
 % will generate code which puts the variable in the same place
 % in each branch.
 
-% This module requires arg_info, liveness, and follow_vars to have
-% already been computed.
+% This module requires arg_infos and livenesses to have already been computed,
+% and stack slots allocated.
 
 %-----------------------------------------------------------------------------%
 
@@ -66,13 +66,14 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 		Goal - GoalInfo0, Liveness) :-
 	goal_info_get_code_model(GoalInfo0, CodeModel),
-	goal_info_pre_delta_liveness(GoalInfo0, PreDelta),
-	PreDelta = PreBirths - PreDeaths,
-	goal_info_post_delta_liveness(GoalInfo0, PostDelta),
-	PostDelta = PostBirths - PostDeaths,
+	goal_info_pre_births(GoalInfo0, PreBirths),
+	goal_info_pre_deaths(GoalInfo0, PreDeaths),
+	goal_info_post_births(GoalInfo0, PostBirths),
+	goal_info_post_deaths(GoalInfo0, PostDeaths),
+	goal_info_nondet_lives(GoalInfo0, NondetLives0),
+
 	set__difference(Liveness0,  PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
-	goal_info_nondet_lives(GoalInfo0, NondetLives0),
 	store_alloc_in_goal_2(Goal0, Liveness2, NondetLives0,
 			ModuleInfo, Goal1, Liveness3),
 	set__difference(Liveness3, PostDeaths, Liveness4),
@@ -150,8 +151,7 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	store_alloc_in_goal(Cond0, Liveness0, ModuleInfo, Cond1, Liveness1),
 	Cond1 = CondGoal - GoalInfo0,
 	Else0 = _ElseGoal - ElseGoalInfo,
-	goal_info_pre_delta_liveness(ElseGoalInfo, ElseDelta),
-	ElseDelta = _Births - Deaths,
+	goal_info_pre_deaths(ElseGoalInfo, Deaths),
 	set__intersect(Liveness1, Liveness0, ContLiveness0),
 	set__difference(ContLiveness0, Deaths, ContLiveness),
 	set__union(ContLiveness, NondetLives, ContLives),
