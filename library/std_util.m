@@ -1202,9 +1202,19 @@ type_name(Type) = TypeName :-
 		TypeName = Name
 	;
 		( Name = "func" -> IsFunc = yes ; IsFunc = no ),
-		type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
-		string__append_list([Name, "(" | ArgTypeNames], 
-			TypeName)
+		(
+			IsFunc = yes,
+			ArgTypes = [FuncRetType]
+		->
+			FuncRetTypeName = type_name(FuncRetType),
+			string__append_list(
+				["((func) = ", FuncRetTypeName, ")"],
+				TypeName)
+		;
+			type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
+			string__append_list([Name, "(" | ArgTypeNames], 
+				TypeName)
+		)
 	).
 
 :- pred type_arg_names(list(type_info), bool, list(string)).
