@@ -65,6 +65,7 @@ Mmake.common
 *.*date*
 rl_file.m
 rl_out.m
+maybe_mlds_to_gcc.m
 "
 
 exclude_c="
@@ -88,6 +89,7 @@ mercury_library.info*
 *.aux
 *.toc
 *.log
+*.dvi_log
 *.info
 *.info-*
 "
