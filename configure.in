@@ -604,7 +604,7 @@ DEFAULT_GRADE=$GRADE
 echo "using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
-LIBGRADES="debug none"
+LIBGRADES="none"
 if test $mercury_cv_gcc_labels = yes; then
 	LIBGRADES="$LIBGRADES jump"
 fi
