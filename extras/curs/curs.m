@@ -364,7 +364,7 @@ void free(void *ptr)
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", start(IO0::di, IO::uo),
+:- pragma foreign_proc("C", start(IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     initscr();                          /* Start the show */
@@ -449,7 +449,7 @@ init_pair(FG_BG(COLOR_WHITE, COLOR_WHITE),      COLOR_WHITE, COLOR_WHITE);
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", stop(IO0::di, IO::uo),
+:- pragma foreign_proc("C", stop(IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     endwin();
@@ -466,7 +466,7 @@ session(P) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", rows_cols(Rows::out, Cols::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C", rows_cols(Rows::out, Cols::out, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     getmaxyx(stdscr, Rows, Cols);
@@ -476,7 +476,7 @@ session(P) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", move(Row::in, Col::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", move(Row::in, Col::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     move(Row, Col);
@@ -486,7 +486,7 @@ session(P) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", clear(IO0::di, IO::uo),
+:- pragma foreign_proc("C", clear(IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     clear();
@@ -496,7 +496,7 @@ session(P) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", addch(Attr::in, CharCode::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", addch(Attr::in, CharCode::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     addch((chtype)Attr | (chtype)CharCode);
@@ -514,21 +514,21 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", attr_on(Attr::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", attr_on(Attr::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     attron(Attr);
     IO = IO0;
 
 ").
-:- pragma foreign_code("C", attr_off(Attr::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", attr_off(Attr::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     attroff(Attr);
     IO = IO0;
 
 ").
-:- pragma foreign_code("C", attr_set(Attr::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", attr_set(Attr::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     attrset(Attr);
@@ -538,7 +538,7 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", doupdate(IO0::di, IO::uo),
+:- pragma foreign_proc("C", doupdate(IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     doupdate();
@@ -548,7 +548,7 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", getch(CharCode::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C", getch(CharCode::out, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     CharCode = getch();
@@ -558,217 +558,217 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", key_down = (K::out),
+:- pragma foreign_proc("C", key_down = (K::out),
     [will_not_call_mercury], "
     K = KEY_DOWN;
 ").
-:- pragma foreign_code("C", key_up = (K::out),
+:- pragma foreign_proc("C", key_up = (K::out),
     [will_not_call_mercury], "
     K = KEY_UP;
 ").
-:- pragma foreign_code("C", key_left = (K::out),
+:- pragma foreign_proc("C", key_left = (K::out),
     [will_not_call_mercury], "
     K = KEY_LEFT;
 ").
-:- pragma foreign_code("C", key_right = (K::out),
+:- pragma foreign_proc("C", key_right = (K::out),
     [will_not_call_mercury], "
     K = KEY_RIGHT;
 ").
-:- pragma foreign_code("C", key_home = (K::out),
+:- pragma foreign_proc("C", key_home = (K::out),
     [will_not_call_mercury], "
     K = KEY_HOME;
 ").
-:- pragma foreign_code("C", key_backspace = (K::out),
+:- pragma foreign_proc("C", key_backspace = (K::out),
     [will_not_call_mercury], "
     K = KEY_BACKSPACE;
 ").
-:- pragma foreign_code("C", key_f(N::in) = (K::out),
+:- pragma foreign_proc("C", key_f(N::in) = (K::out),
     [will_not_call_mercury], "
     K = KEY_F( N);
 ").
-:- pragma foreign_code("C", key_del = (K::out),
+:- pragma foreign_proc("C", key_del = (K::out),
     [will_not_call_mercury], "
     K = KEY_DC;
 ").
-:- pragma foreign_code("C", key_ins = (K::out),
+:- pragma foreign_proc("C", key_ins = (K::out),
     [will_not_call_mercury], "
     K = KEY_IC;
 ").
-:- pragma foreign_code("C", key_pageup = (K::out),
+:- pragma foreign_proc("C", key_pageup = (K::out),
     [will_not_call_mercury], "
     K = KEY_NPAGE;
 ").
-:- pragma foreign_code("C", key_pagedown = (K::out),
+:- pragma foreign_proc("C", key_pagedown = (K::out),
     [will_not_call_mercury], "
     K = KEY_PPAGE;
 ").
-:- pragma foreign_code("C", key_a1 = (K::out),
+:- pragma foreign_proc("C", key_a1 = (K::out),
     [will_not_call_mercury], "
     K = KEY_A1;
 ").
-:- pragma foreign_code("C", key_a3 = (K::out),
+:- pragma foreign_proc("C", key_a3 = (K::out),
     [will_not_call_mercury], "
     K = KEY_A3;
 ").
-:- pragma foreign_code("C", key_b2 = (K::out),
+:- pragma foreign_proc("C", key_b2 = (K::out),
     [will_not_call_mercury], "
     K = KEY_B2;
 ").
-:- pragma foreign_code("C", key_c1 = (K::out),
+:- pragma foreign_proc("C", key_c1 = (K::out),
     [will_not_call_mercury], "
     K = KEY_C1;
 ").
-:- pragma foreign_code("C", key_c3 = (K::out),
+:- pragma foreign_proc("C", key_c3 = (K::out),
     [will_not_call_mercury], "
     K = KEY_C3;
 ").
-:- pragma foreign_code("C", key_enter = (K::out),
+:- pragma foreign_proc("C", key_enter = (K::out),
     [will_not_call_mercury], "
     K = KEY_ENTER;
 ").
-:- pragma foreign_code("C", key_end = (K::out),
+:- pragma foreign_proc("C", key_end = (K::out),
     [will_not_call_mercury], "
     K = KEY_END;
 ").
-:- pragma foreign_code("C", key_resize = (K::out),
+:- pragma foreign_proc("C", key_resize = (K::out),
     [will_not_call_mercury], "
     K = KEY_RESIZE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", acs_block = (C::out),
+:- pragma foreign_proc("C", acs_block = (C::out),
     [will_not_call_mercury], "
     C = ACS_BLOCK;
 ").
-:- pragma foreign_code("C", acs_board = (C::out),
+:- pragma foreign_proc("C", acs_board = (C::out),
     [will_not_call_mercury], "
     C = ACS_BOARD;
 ").
-:- pragma foreign_code("C", acs_btee = (C::out),
+:- pragma foreign_proc("C", acs_btee = (C::out),
     [will_not_call_mercury], "
     C = ACS_BTEE;
 ").
-:- pragma foreign_code("C", acs_bullet = (C::out),
+:- pragma foreign_proc("C", acs_bullet = (C::out),
     [will_not_call_mercury], "
     C = ACS_BULLET;
 ").
-:- pragma foreign_code("C", acs_ckboard = (C::out),
+:- pragma foreign_proc("C", acs_ckboard = (C::out),
     [will_not_call_mercury], "
     C = ACS_CKBOARD;
 ").
-:- pragma foreign_code("C", acs_darrow = (C::out),
+:- pragma foreign_proc("C", acs_darrow = (C::out),
     [will_not_call_mercury], "
     C = ACS_DARROW;
 ").
-:- pragma foreign_code("C", acs_degree = (C::out),
+:- pragma foreign_proc("C", acs_degree = (C::out),
     [will_not_call_mercury], "
     C = ACS_DEGREE;
 ").
-:- pragma foreign_code("C", acs_diamond = (C::out),
+:- pragma foreign_proc("C", acs_diamond = (C::out),
     [will_not_call_mercury], "
     C = ACS_DIAMOND;
 ").
-:- pragma foreign_code("C", acs_gequal = (C::out),
+:- pragma foreign_proc("C", acs_gequal = (C::out),
     [will_not_call_mercury], "
     C = ACS_GEQUAL;
 ").
-:- pragma foreign_code("C", acs_hline = (C::out),
+:- pragma foreign_proc("C", acs_hline = (C::out),
     [will_not_call_mercury], "
     C = ACS_HLINE;
 ").
-:- pragma foreign_code("C", acs_lantern = (C::out),
+:- pragma foreign_proc("C", acs_lantern = (C::out),
     [will_not_call_mercury], "
     C = ACS_LANTERN;
 ").
-:- pragma foreign_code("C", acs_larrow = (C::out),
+:- pragma foreign_proc("C", acs_larrow = (C::out),
     [will_not_call_mercury], "
     C = ACS_LARROW;
 ").
-:- pragma foreign_code("C", acs_lequal = (C::out),
+:- pragma foreign_proc("C", acs_lequal = (C::out),
     [will_not_call_mercury], "
     C = ACS_LEQUAL;
 ").
-:- pragma foreign_code("C", acs_llcorner = (C::out),
+:- pragma foreign_proc("C", acs_llcorner = (C::out),
     [will_not_call_mercury], "
     C = ACS_LLCORNER;
 ").
-:- pragma foreign_code("C", acs_lrcorner = (C::out),
+:- pragma foreign_proc("C", acs_lrcorner = (C::out),
     [will_not_call_mercury], "
     C = ACS_LRCORNER;
 ").
-:- pragma foreign_code("C", acs_ltee = (C::out),
+:- pragma foreign_proc("C", acs_ltee = (C::out),
     [will_not_call_mercury], "
     C = ACS_LTEE;
 ").
-:- pragma foreign_code("C", acs_nequal = (C::out),
+:- pragma foreign_proc("C", acs_nequal = (C::out),
     [will_not_call_mercury], "
     C = ACS_NEQUAL;
 ").
-:- pragma foreign_code("C", acs_pi = (C::out),
+:- pragma foreign_proc("C", acs_pi = (C::out),
     [will_not_call_mercury], "
     C = ACS_PI;
 ").
-:- pragma foreign_code("C", acs_plminus = (C::out),
+:- pragma foreign_proc("C", acs_plminus = (C::out),
     [will_not_call_mercury], "
     C = ACS_PLMINUS;
 ").
-:- pragma foreign_code("C", acs_plus = (C::out),
+:- pragma foreign_proc("C", acs_plus = (C::out),
     [will_not_call_mercury], "
     C = ACS_PLUS;
 ").
-:- pragma foreign_code("C", acs_rarrow = (C::out),
+:- pragma foreign_proc("C", acs_rarrow = (C::out),
     [will_not_call_mercury], "
     C = ACS_RARROW;
 ").
-:- pragma foreign_code("C", acs_rtee = (C::out),
+:- pragma foreign_proc("C", acs_rtee = (C::out),
     [will_not_call_mercury], "
     C = ACS_RTEE;
 ").
-:- pragma foreign_code("C", acs_s1 = (C::out),
+:- pragma foreign_proc("C", acs_s1 = (C::out),
     [will_not_call_mercury], "
     C = ACS_S1;
 ").
-:- pragma foreign_code("C", acs_s3 = (C::out),
+:- pragma foreign_proc("C", acs_s3 = (C::out),
     [will_not_call_mercury], "
     C = ACS_S3;
 ").
-:- pragma foreign_code("C", acs_s7 = (C::out),
+:- pragma foreign_proc("C", acs_s7 = (C::out),
     [will_not_call_mercury], "
     C = ACS_S7;
 ").
-:- pragma foreign_code("C", acs_s9 = (C::out),
+:- pragma foreign_proc("C", acs_s9 = (C::out),
     [will_not_call_mercury], "
     C = ACS_S9;
 ").
-:- pragma foreign_code("C", acs_sterling = (C::out),
+:- pragma foreign_proc("C", acs_sterling = (C::out),
     [will_not_call_mercury], "
     C = ACS_STERLING;
 ").
-:- pragma foreign_code("C", acs_ttee = (C::out),
+:- pragma foreign_proc("C", acs_ttee = (C::out),
     [will_not_call_mercury], "
     C = ACS_TTEE;
 ").
-:- pragma foreign_code("C", acs_uarrow = (C::out),
+:- pragma foreign_proc("C", acs_uarrow = (C::out),
     [will_not_call_mercury], "
     C = ACS_UARROW;
 ").
-:- pragma foreign_code("C", acs_ulcorner = (C::out),
+:- pragma foreign_proc("C", acs_ulcorner = (C::out),
     [will_not_call_mercury], "
     C = ACS_ULCORNER;
 ").
-:- pragma foreign_code("C", acs_urcorner = (C::out),
+:- pragma foreign_proc("C", acs_urcorner = (C::out),
     [will_not_call_mercury], "
     C = ACS_URCORNER;
 ").
-:- pragma foreign_code("C", acs_vline = (C::out),
+:- pragma foreign_proc("C", acs_vline = (C::out),
     [will_not_call_mercury], "
     C = ACS_VLINE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", curs:((Attr1::in) + (Attr2::in)) = (Attr::out),
+:- pragma foreign_proc("C", curs:((Attr1::in) + (Attr2::in)) = (Attr::out),
     [will_not_call_mercury], "
 
     Attr = (chtype)Attr1 | (chtype)Attr2;
@@ -777,81 +777,81 @@ addstr(Attr, Str) -->
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", normal = (A::out),
+:- pragma foreign_proc("C", normal = (A::out),
     [will_not_call_mercury], "
     A = A_NORMAL;
 ").
-:- pragma foreign_code("C", standout = (A::out),
+:- pragma foreign_proc("C", standout = (A::out),
     [will_not_call_mercury], "
     A = A_STANDOUT;
 ").
-:- pragma foreign_code("C", underline = (A::out),
+:- pragma foreign_proc("C", underline = (A::out),
     [will_not_call_mercury], "
     A = A_UNDERLINE;
 ").
-:- pragma foreign_code("C", reverse = (A::out),
+:- pragma foreign_proc("C", reverse = (A::out),
     [will_not_call_mercury], "
     A = A_REVERSE;
 ").
-:- pragma foreign_code("C", blink = (A::out),
+:- pragma foreign_proc("C", blink = (A::out),
     [will_not_call_mercury], "
     A = A_BLINK;
 ").
-:- pragma foreign_code("C", dim = (A::out),
+:- pragma foreign_proc("C", dim = (A::out),
     [will_not_call_mercury], "
     A = A_DIM;
 ").
-:- pragma foreign_code("C", bold = (A::out),
+:- pragma foreign_proc("C", bold = (A::out),
     [will_not_call_mercury], "
     A = A_BOLD;
 ").
-:- pragma foreign_code("C", invis = (A::out),
+:- pragma foreign_proc("C", invis = (A::out),
     [will_not_call_mercury], "
     A = A_INVIS;
 ").
-:- pragma foreign_code("C", fg_bg(Fg::in, Bg::in) = (A::out),
+:- pragma foreign_proc("C", fg_bg(Fg::in, Bg::in) = (A::out),
     [will_not_call_mercury], "
     A = COLOR_PAIR(FG_BG(Fg, Bg));
 ").
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", black = (C::out),
+:- pragma foreign_proc("C", black = (C::out),
     [will_not_call_mercury], "
     C = COLOR_BLACK;
 ").
-:- pragma foreign_code("C", red = (C::out),
+:- pragma foreign_proc("C", red = (C::out),
     [will_not_call_mercury], "
     C = COLOR_RED;
 ").
-:- pragma foreign_code("C", green = (C::out),
+:- pragma foreign_proc("C", green = (C::out),
     [will_not_call_mercury], "
     C = COLOR_GREEN;
 ").
-:- pragma foreign_code("C", yellow = (C::out),
+:- pragma foreign_proc("C", yellow = (C::out),
     [will_not_call_mercury], "
     C = COLOR_YELLOW;
 ").
-:- pragma foreign_code("C", blue = (C::out),
+:- pragma foreign_proc("C", blue = (C::out),
     [will_not_call_mercury], "
     C = COLOR_BLUE;
 ").
-:- pragma foreign_code("C", magenta = (C::out),
+:- pragma foreign_proc("C", magenta = (C::out),
     [will_not_call_mercury], "
     C = COLOR_MAGENTA;
 ").
-:- pragma foreign_code("C", cyan = (C::out),
+:- pragma foreign_proc("C", cyan = (C::out),
     [will_not_call_mercury], "
     C = COLOR_CYAN;
 ").
-:- pragma foreign_code("C", white = (C::out),
+:- pragma foreign_proc("C", white = (C::out),
     [will_not_call_mercury], "
     C = COLOR_WHITE;
 ").
 
 % ---------------------------------------------------------------------------- %
 
-:- pragma foreign_code("C", border(IO0::di, IO::uo),
+:- pragma foreign_proc("C", border(IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     border(0, 0, 0, 0, 0, 0, 0, 0);
@@ -859,7 +859,7 @@ addstr(Attr, Str) -->
 
 ").
 
-:- pragma foreign_code("C", hline(C::in, N::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", hline(C::in, N::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     hline(C, N);
@@ -867,7 +867,7 @@ addstr(Attr, Str) -->
 
 ").
 
-:- pragma foreign_code("C", vline(C::in, N::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C", vline(C::in, N::in, IO0::di, IO::uo),
     [will_not_call_mercury], "
 
     vline(C, N);
@@ -895,7 +895,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", new(Rows::in, Cols::in, Row::in, Col::in, Attr::in,
+    :- pragma foreign_proc("C", new(Rows::in, Cols::in, Row::in, Col::in, Attr::in,
                             Panel::out, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
@@ -912,7 +912,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", delete(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", delete(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         delwin(panel_window((PANEL *)Panel));
@@ -924,7 +924,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", raise(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", raise(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         top_panel((PANEL *)Panel);
@@ -935,7 +935,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", lower(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", lower(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         bottom_panel((PANEL *)Panel);
@@ -946,7 +946,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", hide(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", hide(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         hide_panel((PANEL *)Panel);
@@ -957,7 +957,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", reveal(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", reveal(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         show_panel((PANEL *)Panel);
@@ -968,7 +968,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", relocate(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", relocate(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         move_panel((PANEL *)Panel, Row, Col);
@@ -979,7 +979,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", clear(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", clear(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wclear(panel_window((PANEL *)Panel));
@@ -990,7 +990,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", move(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", move(Panel::in, Row::in, Col::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wmove(panel_window((PANEL *)Panel), Row, Col);
@@ -1001,7 +1001,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", addch(Panel::in, Attr::in, CharCode::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", addch(Panel::in, Attr::in, CharCode::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         waddch(panel_window((PANEL *)Panel), (chtype)Attr | (chtype)CharCode);
@@ -1022,21 +1022,21 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", attr_on(Panel::in, Attr::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", attr_on(Panel::in, Attr::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wattron(panel_window((PANEL *)Panel), Attr);
         IO = IO0;
 
     ").
-    :- pragma foreign_code("C", attr_off(Panel::in, Attr::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", attr_off(Panel::in, Attr::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wattroff(panel_window((PANEL *)Panel), Attr);
         IO = IO0;
 
     ").
-    :- pragma foreign_code("C", attr_set(Panel::in, Attr::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", attr_set(Panel::in, Attr::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wattrset(panel_window((PANEL *)Panel), Attr);
@@ -1046,7 +1046,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", update_panels(IO0::di, IO::uo),
+    :- pragma foreign_proc("C", update_panels(IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         update_panels();
@@ -1058,7 +1058,7 @@ addstr(Attr, Str) -->
 
     % ------------------------------------------------------------------------ %
 
-    :- pragma foreign_code("C", border(Panel::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", border(Panel::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wborder(panel_window((PANEL *)Panel), 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1066,7 +1066,7 @@ addstr(Attr, Str) -->
 
     ").
 
-    :- pragma foreign_code("C", hline(Panel::in, C::in, N::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", hline(Panel::in, C::in, N::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         whline(panel_window((PANEL *)Panel), C, N);
@@ -1074,7 +1074,7 @@ addstr(Attr, Str) -->
 
     ").
 
-    :- pragma foreign_code("C", vline(Panel::in, C::in, N::in, IO0::di, IO::uo),
+    :- pragma foreign_proc("C", vline(Panel::in, C::in, N::in, IO0::di, IO::uo),
         [will_not_call_mercury], "
 
         wvline(panel_window((PANEL *)Panel), C, N);
