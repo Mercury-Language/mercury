@@ -281,7 +281,7 @@ clean_local:
 	
 runtime: $(DOTNET_DLLS)
 
-mercury_mcpp.dll: mercury_il.dll
+mercury_mcpp.dll: mercury_il.dll $(MCPP_HDRS)
  
 else
 
