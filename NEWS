@@ -21,7 +21,8 @@ Changes to the Mercury standard library:
   version_array2d, version_bitmap, version_hash_table, and version_store,
   implementing non-unique versions of these types supporting O(1) access for
   non-persistent use.  A new module term_to_xml has been added for converting
-  arbitrary terms to XML documents.
+  arbitrary terms to XML documents. A new module svmap now provides a more
+  convenient way to update maps in code that uses state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file
