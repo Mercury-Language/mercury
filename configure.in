@@ -1174,10 +1174,19 @@ fi
 AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
 #
+# On sparc, x86, and probably on other architectures,
+# for egcs 1.1, if we're using non-local gotos, then we need
+# `-fno-gcse -fno-function-cse'.
+# (Actually I don't know if _both_ of these are needed.
+# Maybe you can get away with just one of them.)
+# Earlier versions of gcc will just ignore those arguments,
+# so we don't need to conditionalize that on the gcc version.
+#
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,
 # which means passing -non_shared and -mno-abicalls and also setting
 # LIBRARY_PATH.
+#
 # For x86, gcc global registers only work with -fno-builtin
 # and -fno-omit-frame-pointer.
 #
@@ -1186,11 +1195,11 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
-CFLAGS_FOR_GOTOS=-fno-defer-pop
+CFLAGS_FOR_GOTOS=-fno-defer-pop -fno-function-cse -fno-gcse
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
-		CFLAGS_FOR_GOTOS="-fno-defer-pop -non_shared -mno-abicalls"
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
@@ -1209,7 +1218,7 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		MERCURY_MSG("but plain gcc labels do not")
 		mercury_cv_asm_labels=yes
 		mercury_cv_gcc_labels=no
-		CFLAGS_FOR_GOTOS="-fno-defer-pop -fomit-frame-pointer"
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
 	# Similarly for rs6000
 	rs6000-*)
@@ -1219,15 +1228,10 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		;;
 	sparc*)
 		case "`$CC --version`" in
-		    egcs*)
-		    	# I don't know if _both_ of these are needed
-			CFLAGS_FOR_GOTOS="-fno-gcse -fno-function-cse"
-			;;
 		    gcc-2.8*)
 			AC_MSG_WARN(*** Mercury might not work with " \
 				"gcc 2.8 on sparc!)
 			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
-			CFLAGS_FOR_GOTOS="-fno-function-cse"
 			;;
 		esac
 		;;
