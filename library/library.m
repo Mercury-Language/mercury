@@ -18,7 +18,7 @@
 :- import_module float, graph, group, int, io.
 :- import_module list, map, pqueue, queue, random, require.
 :- import_module set, stack, std_util, string, term, term_io.
-:- import_module varset.
+:- import_module varset, store.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
