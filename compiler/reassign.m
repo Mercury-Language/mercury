@@ -316,7 +316,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 			% next instruction (which must be a label) will
 			% reset it to empty anyway.
 		KnownContentsMap = map__init,
-		DepLvalMap = map__init,
+		DepLvalMap = map__init
 	;
 		Uinstr0 = join_and_terminate(_),
 		RevInstrs1 = [Instr0 | RevInstrs0],
