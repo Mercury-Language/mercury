@@ -54,7 +54,6 @@
 	% lookup the name of a variable, or the variable with a given name.
 :- pred varset__lookup_name(varset, var, string).
 :- mode varset__lookup_name(in, in, out) is semidet.
-:- mode varset__lookup_name(in, out, in) is semidet.
 
 	% bind a value to a variable
 	% (will overwrite any existing binding).
@@ -100,34 +99,37 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, bimap, list, std_util.
+:- import_module int, list, map, std_util, require.
 
 :- type varset		--->	varset(
 					var_supply,
-					bimap(var, string),
+					map(var, string),
+					map(string, int),
 					map(var, term)
 				).
 
 %-----------------------------------------------------------------------------%
 
-varset__init(varset(VarSupply, Names, Vals)) :-
+varset__init(varset(VarSupply, Names, NameCounts, Vals)) :-
 	term__init_var_supply(VarSupply),
-	bimap__init(Names),
+	map__init(Names),
+	map__init(NameCounts),
 	map__init(Vals).
 
 %-----------------------------------------------------------------------------%
 
-varset__is_empty(varset(VarSupply, _, _)) :-
+varset__is_empty(varset(VarSupply, _, _, _)) :-
 	term__init_var_supply(VarSupply).
 
 %-----------------------------------------------------------------------------%
 
-varset__new_var(varset(MaxId0,Names,Vals), Var, varset(MaxId,Names,Vals)) :-
+varset__new_var(varset(MaxId0, Names, Counts, Vals), Var,
+		varset(MaxId, Names, Counts, Vals)) :-
 	term__create_var(MaxId0, Var, MaxId).
 
 %-----------------------------------------------------------------------------%
 
-varset__vars(varset(MaxId0,_,_), L) :-
+varset__vars(varset(MaxId0, _, _, _), L) :-
 	term__init_var_supply(V0),
 	varset__vars_2(V0, MaxId0, [], L1),
 	list__reverse(L1, L).
@@ -146,29 +148,41 @@ varset__vars_2(N, Max, L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
-	% possible efficiency problem: attempting to name
-	% N variables the same name is O(N*N).
+	% If you attempt to name a variable a name which is already
+	% in use, we append sufficient primes ("'") to make the name unique.
+	% Potential efficiency problem: this means that giving N variables
+	% the same name costs O(N*N) time and space.
 
 varset__name_var(VarSet0, Id, Name, VarSet) :-
-	VarSet0 = varset(MaxId, Names0, Vals),
-	(
-		bimap__insert(Names0, Id, Name, Names)
-	->
-		VarSet = varset(MaxId, Names, Vals)
+	( string__remove_suffix(Name, "'", _) ->
+		error("varset__name_var: name is already primed")
 	;
-		string__append(Name, "'", Name2),
-		varset__name_var(VarSet0, Id, Name2, VarSet)
-	).
+		true
+	),
+	VarSet0 = varset(MaxId, Names0, Counts0, Vals),
+	(
+		map__search(Counts0, Name, Count)
+	->
+		string__duplicate_char('\'', Count, Primes),
+		string__append(Name, Primes, Name2),
+		map__set(Names0, Id, Name2, Names),
+		Count1 is Count + 1,
+		map__set(Counts0, Name, Count1, Counts)
+	;
+		map__set(Names0, Id, Name, Names),
+		map__set(Counts0, Name, 1, Counts)
+	),
+	VarSet = varset(MaxId, Names, Counts, Vals).
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_name(varset(_, Names, _), Id, Name) :-
-	bimap__search(Names, Id, Name).
+varset__lookup_name(varset(_, Names, _, _), Id, Name) :-
+	map__search(Names, Id, Name).
 
 %-----------------------------------------------------------------------------%
 
-varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
-		varset(MaxId, Names, Vals)) :-
+varset__bind_var(varset(MaxId, Names, Counts, Vals0), Id, Val,
+		varset(MaxId, Names, Counts, Vals)) :-
 	map__set(Vals0, Id, Val, Vals).
 
 %-----------------------------------------------------------------------------%
@@ -187,18 +201,18 @@ varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_var(varset(_, _, Vals), Id, Val) :-
+varset__lookup_var(varset(_, _, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
 
 %-----------------------------------------------------------------------------%
 
-varset__lookup_vars(varset(_,_,Subst), Subst).
+varset__lookup_vars(varset(_, _, _, Subst), Subst).
 
 %-----------------------------------------------------------------------------%
 
-varset__get_bindings(varset(_,_,Subst), Subst).
+varset__get_bindings(varset(_, _, _, Subst), Subst).
 
-varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
+varset__set_bindings(varset(C, N, NC, _), S, varset(C, N, NC, S)).
 
 %-----------------------------------------------------------------------------%
 
@@ -213,13 +227,14 @@ varset__merge(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
 	varset__merge_subst(VarSet0, VarSet1, VarSet, Subst),
 	term__apply_substitution_to_list(TermList0, Subst, TermList).
 
-varset__merge_subst(VarSet0, varset(MaxId, Names, Vals), VarSet, Subst) :-
+varset__merge_subst(VarSet0, varset(MaxId, Names, _Counts, Vals),
+			VarSet, Subst) :-
 	term__init_var_supply(N),
 	map__init(Subst0),
 	varset__merge_subst_2(N, MaxId, Names, Vals, VarSet0, Subst0,
 				VarSet, Subst).
 
-:- pred varset__merge_subst_2(var_supply, var_supply, bimap(var, string),
+:- pred varset__merge_subst_2(var_supply, var_supply, map(var, string),
 	map(var, term), varset, substitution, varset, substitution).
 :- mode varset__merge_subst_2(in, in, in, in, in, in, out, out) is det.
 
@@ -231,7 +246,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		varset__new_var(VarSet0, VarId, VarSet1),
 		term__create_var(N, VarN, N1),
 		(
-			bimap__search(Names, VarN, Name)
+			map__search(Names, VarN, Name)
 		->
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
 		;
