@@ -11,7 +11,13 @@
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
-MAIN_TARGET=mdprof_cgi mdprof_server
+ifeq ("$(ENABLE_DEEP_PROFILER)","yes")
+	MAIN_TARGET=mdprof_cgi mdprof_server
+	DEPEND=mdprof_cgi.depend mdprof_server.depend
+else
+	MAIN_TARGET=nothing
+	DEPEND=nothing
+endif
 
 VPATH=$(LIBRARY_DIR)
 
@@ -61,8 +67,11 @@ MTAGS	=	$(SCRIPTS_DIR)/mtags
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: nothing
+nothing:
+
 .PHONY: depend
-depend:	mdprof_cgi.depend mdprof_server.depend
+depend:	$(DEPEND)
 
 .PHONY: all
 all:	mdprof_cgi mdprof_server
