@@ -70,6 +70,13 @@ disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
 	code_info__generate_nondet_saves(SaveCode),
 	code_info__get_next_label(ContLab),
 	code_info__push_failure_cont(ContLab),
+	(
+		code_info__get_continuation(no)
+	->
+		code_info__set_continuation(yes(ContLab))
+	;
+		{ true }
+	),
 	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode).
 
@@ -101,7 +108,8 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		)
 	;
 		(
-			code_info__pop_failure_cont(ContLab1)
+			code_info__pop_failure_cont(_),
+			code_info__failure_cont(ContLab1)
 		->
 			{ ContCode = node([
 				modframe(yes(ContLab1)) -
@@ -119,10 +127,10 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_forced_non_goal(Goal, GoalCode),
 	(
-		{ Goals = [_|_] }
-	->
+		{ Goals = [_|_] },
 		code_info__slap_code_info(CodeInfo),
-		code_info__pop_failure_cont(_),
+		code_info__pop_failure_cont(_)
+	->
 		code_info__get_next_label(NextCont),
 		code_info__push_failure_cont(NextCont)
 	;

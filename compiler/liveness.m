@@ -197,7 +197,7 @@ detect_liveness_in_conj([Goal0|Goals0], Liveness0,
 	->
 		Goal = Goal0,
 		Goals = Goals0,
-		Liveness = Liveness1
+		Liveness = Liveness0
 	;
 		detect_liveness_in_goal(Goal0, Liveness0,
 						ModuleInfo, Liveness1, Goal),
