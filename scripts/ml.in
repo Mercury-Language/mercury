@@ -24,7 +24,8 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # include the file `parse_ml_options.sh-subr'
 @PARSE_ML_OPTIONS@
 
-
+# add /usr/local/lib to the default search path, if needed
+ALL_LOCAL_C_LIB_DIRS=${MERCURY_ALL_LOCAL_C_LIB_DIRS=@ALL_LOCAL_C_LIB_DIRS@}
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER="@CC@"}
@@ -127,7 +128,12 @@ case $all_libs in default)
 	case $FULLARCH in i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
-		# Likewise for FreeBSD
+		# Likewise for FreeBSD and Cygwin
+		#
+		# We don't do this for Solaris/x86 because -ldl is
+		# only available for dynamically linked executables
+		# XXX With these defaults linking with Mercury libraries
+		# other than the standard library will fail.
 		case $make_shared_lib in false)
 			all_libs=static
 			;;
@@ -351,9 +357,12 @@ merc_libdir_opts="\
 	@LIB_LIBPATH@$LIBDIR/$GRADE/$FULLARCH
 	@LIB_LIBPATH@$LIBDIR/$FULLARCH
 "
-system_libdir_opts="\
-	@LIB_LIBPATH@/usr/local/lib
-"
+system_libdir_opts=
+for dir in $ALL_LOCAL_C_LIB_DIRS kludge_for_broken_shells; do
+	if [ "$dir" != "kludge_for_broken_shells" ]; then
+		system_libdir_opts="@LIB_LIBPATH@$dir $system_libdir_opts"
+	fi
+done
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts $system_libdir_opts"
 
 case $mercury_libs in
@@ -379,12 +388,17 @@ case $mercury_libs in
 		;;
 esac
 
+case $all_libs in
+	shared) system_shlib_dirs=$ALL_LOCAL_C_LIB_DIRS ;;
+	static)	system_shlib_dirs="" ;;
+esac
 
 RPATH_OPT_LIST=
 # only set RPATH_OPT_LIST if the system supports shared libraries
 case $EXT_FOR_SHARED_LIB in so)
 	prev=""
-	for dir in $user_shlib_dirs $merc_shlib_dirs 'kludge for broken shells'
+	for dir in $user_shlib_dirs $merc_shlib_dirs \
+			$system_shlib_dirs 'kludge for broken shells'
 	do
 	    case "$dir" in
 		'kludge for broken shells')

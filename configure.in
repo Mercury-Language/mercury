@@ -406,9 +406,13 @@ CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
 # doesn't search either of those by default.
 MERCURY_CHECK_LOCAL_C_INCL_DIRS
 CPPFLAGS="$ALL_LOCAL_C_INCL_DIRS $CPPFLAGS"
-if test -d /usr/local/lib/.; then
-	LIBS="-L/usr/local/lib $LIBS"
-fi
+MERCURY_CHECK_LOCAL_C_LIB_DIRS
+for dir in $ALL_LOCAL_C_LIB_DIRS kludge_for_broken_shells
+do
+	if test "$dir" != "kludge_for_broken_shells"; then
+		LIBS="-L$dir $LIBS"
+	fi
+done
 
 AC_PROG_CPP
 #-----------------------------------------------------------------------------#

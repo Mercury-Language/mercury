@@ -72,15 +72,33 @@ if test "$GCC" = yes; then
 else
 	# It's some other compiler.  We don't know if it searches
 	# /usr/local/include by default, so add it.
-	if test -d /usr/local/include; then
+	if test -d /usr/local/include/.; then
 		AC_MSG_RESULT(yes)
 		ALL_LOCAL_C_INCL_DIRS="-I/usr/local/include "
 	else
-		AC_MSG_RESULT(nos)
+		AC_MSG_RESULT(no)
 	fi
 fi
 AC_SUBST(ALL_LOCAL_C_INCL_DIRS)
 ])
+#-----------------------------------------------------------------------------#
+#
+# Set ALL_LOCAL_C_LIB_DIRS to any extra directories we need to add to the
+# search path for libraries.
+#
+AC_DEFUN(MERCURY_CHECK_LOCAL_C_LIB_DIRS,
+[
+AC_MSG_CHECKING(whether to pass -L/usr/local/lib to the linker)
+if test -d /usr/local/lib/.; then
+	AC_MSG_RESULT(yes)
+	ALL_LOCAL_C_LIB_DIRS=/usr/local/lib
+else
+	AC_MSG_RESULT(no)
+	ALL_LOCAL_C_LIB_DIRS=
+fi
+AC_SUBST(ALL_LOCAL_C_LIB_DIRS)
+])
+
 #-----------------------------------------------------------------------------#
 #
 # Check for readline and related header files and libraries
