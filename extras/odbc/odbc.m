@@ -24,24 +24,19 @@
 %
 % 	Binary data is converted to a string of hexadecimal digits.
 %
-%	This requires a compilation grade with conservative garbage 
+%	This module requires a compilation grade with conservative garbage 
 % 	collection. Any grade containing .gc in its name, such as asm_fast.gc,
 %	will do. See the section "Compilation model options" in the Mercury
 %	User's Guide for more information.
 %
-%
 % 	The header files distributed with the Microsoft ODBC SDK require
-% 	some modification for compilation with gcc. For legal reasons a 
-%	patch cannot be included in the Mercury distribution.
-%
-%	In particular, the line
-% 		#define SQL_API		__attribute__ ((stdcall))
-%	must be added to sqltypes.h in place of the existing definition
-%	of SQL_API.
-%
-% 	Also some C++ style comments and some typedef conflicts must be 
-%	removed from some of the header files. The error messages should 
-%	make it obvious which ones. 
+% 	some modification for compilation with gcc.  In particular,
+% 	some conflicting typedefs for SQLUINTEGER and SQLSCHAR must be
+% 	removed from sqltypes.h.
+% 	(For legal reasons a patch cannot be included in the Mercury
+% 	distribution.)
+%	The Microsoft ODBC header files also use some C++ style comments,
+%	so you need to use the `--no-ansi' option to mgnuc.
 %
 % To do:
 %
@@ -331,6 +326,19 @@
 	** functionality but compiles with the ODBC 3.0 header files.
 	*/
 #define ODBC_VER 0x0250
+
+/*
+** The following is needed to allow the Microsoft headers to
+** compile with GNU C under gnu-win32.
+*/
+
+#if defined(__GNUC__) && !defined(__stdcall)
+  #define __stdcall __attribute__((stdcall))
+#endif
+
+#if defined(__CYGWIN32__) && !defined(WIN32)
+  #define WIN32 1
+#endif
 
 #include <windows.h>
 #include ""sql.h""
