@@ -1306,6 +1306,8 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 			GCC_InitExpr),
 		gcc__build_static_var_decl(VarName, GCC_Type, GCC_InitExpr,
 			GCC_Defn),
+		{ llds_out__name_mangle(VarName, MangledVarName) },
+		gcc__set_var_decl_asm_name(GCC_Defn, MangledVarName),
 		add_var_decl_flags(Flags, GCC_Defn),
 		gcc__finish_static_var_decl(GCC_Defn)
 	).
