@@ -1809,6 +1809,7 @@ options_help_link -->
 	io__write_string("\t-o <filename>, --output-file <filename>\n"),
 	io__write_string("\t\tSpecify the name of the final executable.\n"),
 	io__write_string("\t\t(The default executable name is the same as the name\n"),
+	io__write_string("\t\tof the first module on the command line.)\n"),
 	io__write_string("\t--link-flags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the linker.\n"),
 	io__write_string("\t-L <directory>, --library-directory <directory>\n"),
@@ -1817,8 +1818,7 @@ options_help_link -->
 	io__write_string("\t-l <library>, --library <library>\n"),
 	io__write_string("\t\tLink with the specified library.\n"),
 	io__write_string("\t--link-object <object-file>\n"),
-	io__write_string("\t\tLink with the specified object file.\n"),
-	io__write_string("\t\tof the first module on the command line.)\n").
+	io__write_string("\t\tLink with the specified object file.\n").
 
 :- pred options_help_misc(io__state::di, io__state::uo) is det.
 
