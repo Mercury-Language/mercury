@@ -33,7 +33,7 @@
   void MR_cond_signal(MercuryCond *cond);
   void MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
 
-  extern bool MR_debug_threads;
+  extern MR_bool MR_debug_threads;
 
   #ifndef MR_DEBUG_THREADS
 	/*
