@@ -124,7 +124,7 @@ esac
 # Sometimes, bootstrapping problems mean that we need to install
 # even if the bootstrap check failed.
 
-install_anyway=true	# because of changes to integer division/remainder
+install_anyway=false
 
 #-----------------------------------------------------------------------------#
 
