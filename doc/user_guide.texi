@@ -2853,6 +2853,17 @@ Prints statistics about label layout structures in the program.
 @item label_stats @var{filename}
 Prints statistics about label layout structures in the program
 to the file @var{filename}.
+@sp 1
+@item print_optionals
+@kindex print_optionals (mdb command)
+Reports whether optionally-printed values such as typeinfos
+that are usually of interest only to implementors are being printed or not.
+@sp 1
+@item print_optionals on
+Tells the debugger to print optionally-printed values.
+@sp 1
+@item print_optionals off
+Tells the debugger not to print optionally-printed values.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands

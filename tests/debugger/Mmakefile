@@ -33,6 +33,7 @@ NONRETRY_PROGS = \
 	exception_vars			\
 	existential_type_classes	\
 	field_names			\
+	higher_order			\
 	implied_instance		\
 	interpreter			\
 	loopcheck			\
@@ -207,6 +208,9 @@ existential_type_classes.out: existential_type_classes \
 
 field_names.out: field_names field_names.inp
 	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
+
+higher_order.out: higher_order higher_order.inp
+	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1
 
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \

@@ -193,12 +193,14 @@ MR_trace_real(const MR_Label_Layout *layout)
 				->MR_ml_string_table + layout->MR_sll_goal_path;
 			MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, 
 				saved_regs);
-			MR_trace_init_point_vars(layout, saved_regs, port);
+			MR_trace_init_point_vars(layout, saved_regs, port,
+				MR_FALSE);
 
 			lineno = MR_get_line_number(saved_regs, layout, port);
 
 			MR_COLLECT_filter(MR_trace_ctrl.MR_filter_ptr, seqno,
-				depth, port, layout, path, lineno, &stop_collecting);
+				depth, port, layout, path, lineno,
+				&stop_collecting);
 			MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, 
 				saved_regs);
 			if (stop_collecting) {

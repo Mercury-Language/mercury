@@ -504,7 +504,7 @@ try_again:
                 ** with the values from the closure.
                 */
                 type_info_arg_vector = MR_materialize_closure_typeinfos(
-                    closure_layout->type_params, old_closure);
+                    old_closure);
 
                 /* copy the arguments */
                 for (i = 0; i < args; i++) {
@@ -515,7 +515,7 @@ try_again:
                     MR_fatal_error("Sorry, not implemented: copying closures");
 #endif
                     arg_pseudo_type_info =
-                        closure_layout->arg_pseudo_type_info[i];
+                        closure_layout->MR_closure_arg_pseudo_type_info[i];
                     new_closure->MR_closure_hidden_args_0[i] =
                         copy_arg(NULL,
                             &old_closure->MR_closure_hidden_args_0[i], NULL,

@@ -118,7 +118,8 @@
 :- implementation.
 
 :- import_module mdb__parse, mdb__util, mdb__frame, mdb__sized_pretty.
-:- import_module string, parser, require, std_util, int, char, pprint.
+:- import_module string, int, char, std_util.
+:- import_module parser, require, pprint, deconstruct.
 
 %---------------------------------------------------------------------------%
 %
@@ -520,23 +521,26 @@ portray_flat(Debugger, BrowserTerm, Params) -->
 	).
 
 :- pred portray_flat_write_browser_term(browser_term::in,
-	io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is cc_multi.
 
 portray_flat_write_browser_term(plain_term(Univ)) -->
-	io__write_univ(Univ).
+	io__current_output_stream(Stream),
+	io__write_univ(Stream, include_details_cc, Univ).
 portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
 	io__write_string(Functor),
+	io__current_output_stream(Stream),
 	( { Args = [] } ->
 		[]
 	;
 		io__write_string("("),
-		io__write_list(Args, ", ", io__write_univ),
+		io__write_list(Args, ", ", pred(U::in, di, uo) is cc_multi -->
+			io__write_univ(Stream, include_details_cc, U)),
 		io__write_string(")")
 	),
 	(
 		{ MaybeReturn = yes(Return) },
 		io__write_string(" = "),
-		io__write_univ(Return)
+		io__write_univ(Stream, include_details_cc, Return)
 	;
 		{ MaybeReturn = no }
 	).

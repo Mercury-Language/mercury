@@ -82,6 +82,7 @@ main -->
 	test_all(set([1,2,3,3])), newline,
 		% test predicates	
 	test_all(newline), newline,
+	test_all(test_all([1, 2])), newline,
 		% test tuples
 	test_all({1, 'b'}), newline,
 	test_all({1, 'b', "third"}), newline,

@@ -209,7 +209,7 @@ char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char	*(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
 const char *
 	(*MR_address_of_trace_browse_all_on_level)(FILE *,
-		const MR_Label_Layout *, MR_Word *, MR_Word *, int);
+		const MR_Label_Layout *, MR_Word *, MR_Word *, int, MR_bool);
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);

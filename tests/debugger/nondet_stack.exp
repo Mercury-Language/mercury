@@ -86,6 +86,7 @@ non 135: ordinary, 13 words
  succfr: non 103 
  on main nondet branch non 135
        HeadVar__1             [4, 5]
+       TypeInfo_for_T         int
 non 122: temp
  redoip: label UNKNOWN
  redofr: non 116 
@@ -99,6 +100,7 @@ non 116: ordinary, 13 words
  succfr: non 103 
  top frame of a nondet side branch non 116
        HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
 non 103: ordinary, 13 words
  redoip: unnamed label
  redofr: non 103 
@@ -106,6 +108,7 @@ non 103: ordinary, 13 words
  succfr: non  71 
  on main nondet branch non 135
        HeadVar__1             [3, 4, 5]
+       TypeInfo_for_T         int
        U                      3
        Z                      [4, 5]
 non  90: temp
@@ -121,6 +124,7 @@ non  84: ordinary, 13 words
  succfr: non  71 
  top frame of a nondet side branch non  84
        HeadVar__2             [2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  71: ordinary, 13 words
  redoip: unnamed label
  redofr: non  71 
@@ -128,6 +132,7 @@ non  71: ordinary, 13 words
  succfr: non  39 
  on main nondet branch non 135
        HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      2
        Z                      [3, 4, 5]
 non  58: temp
@@ -143,6 +148,7 @@ non  52: ordinary, 13 words
  succfr: non  39 
  top frame of a nondet side branch non  52
        HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  39: ordinary, 13 words
  redoip: unnamed label
  redofr: non  39 
@@ -150,6 +156,7 @@ non  39: ordinary, 13 words
  succfr: non  26 
  on main nondet branch non 135
        HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
 non  26: ordinary, 12 words
@@ -159,6 +166,7 @@ non  26: ordinary, 12 words
  succfr: non  10 
  on main nondet branch non 135
        HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_5             int
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10 
@@ -318,6 +326,7 @@ non 199: ordinary, 13 words
  succfr: non 167 
  top frame of a nondet side branch non 199
        HeadVar__1             []
+       TypeInfo_for_T         int
 non 186: temp
  redoip: label UNKNOWN
  redofr: non 180 
@@ -331,6 +340,7 @@ non 180: ordinary, 13 words
  succfr: non 167 
  top frame of a nondet side branch non 180
        HeadVar__2             [5]
+       TypeInfo_for_T         int
 non 167: ordinary, 13 words
  redoip: unnamed label
  redofr: non 167 
@@ -338,6 +348,7 @@ non 167: ordinary, 13 words
  succfr: non 135 
  internal frame on nondet side branch non 199
        HeadVar__1             [5]
+       TypeInfo_for_T         int
        U                      5
        Z                      []
 non 154: temp
@@ -353,6 +364,7 @@ non 148: ordinary, 13 words
  succfr: non 135 
  top frame of a nondet side branch non 148
        HeadVar__2             [4, 5]
+       TypeInfo_for_T         int
 non 135: ordinary, 13 words
  redoip: unnamed label
  redofr: non 135 
@@ -360,6 +372,7 @@ non 135: ordinary, 13 words
  succfr: non 103 
  internal frame on nondet side branch non 199
        HeadVar__1             [4, 5]
+       TypeInfo_for_T         int
        U                      4
        Z                      [5]
 non 122: temp
@@ -375,6 +388,7 @@ non 116: ordinary, 13 words
  succfr: non 103 
  top frame of a nondet side branch non 116
        HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
 non 103: ordinary, 13 words
  redoip: unnamed label
  redofr: non 103 
@@ -382,6 +396,7 @@ non 103: ordinary, 13 words
  succfr: non  71 
  internal frame on nondet side branch non 199
        HeadVar__1             [3, 4, 5]
+       TypeInfo_for_T         int
        U                      3
        Z                      [4, 5]
 non  90: temp
@@ -397,6 +412,7 @@ non  84: ordinary, 13 words
  succfr: non  71 
  top frame of a nondet side branch non  84
        HeadVar__2             [2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  71: ordinary, 13 words
  redoip: unnamed label
  redofr: non  71 
@@ -404,6 +420,7 @@ non  71: ordinary, 13 words
  succfr: non  39 
  internal frame on nondet side branch non 199
        HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      2
        Z                      [3, 4, 5]
 non  58: temp
@@ -419,6 +436,7 @@ non  52: ordinary, 13 words
  succfr: non  39 
  top frame of a nondet side branch non  52
        HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  39: ordinary, 13 words
  redoip: unnamed label
  redofr: non  39 
@@ -426,6 +444,7 @@ non  39: ordinary, 13 words
  succfr: non  26 
  internal frame on nondet side branch non 199
        HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
 non  26: ordinary, 12 words
@@ -646,6 +665,7 @@ non 247: ordinary, 13 words
  succfr: non 215 
  top frame of a nondet side branch non 247
        HeadVar__1             []
+       TypeInfo_for_T         int
 non 234: temp
  redoip: label UNKNOWN
  redofr: non 228 
@@ -659,6 +679,7 @@ non 228: ordinary, 13 words
  succfr: non 215 
  top frame of a nondet side branch non 228
        HeadVar__2             [4]
+       TypeInfo_for_T         int
 non 215: ordinary, 13 words
  redoip: unnamed label
  redofr: non 215 
@@ -666,6 +687,7 @@ non 215: ordinary, 13 words
  succfr: non 183 
  internal frame on nondet side branch non 247
        HeadVar__1             [4]
+       TypeInfo_for_T         int
        U                      4
        Z                      []
 non 202: temp
@@ -681,6 +703,7 @@ non 196: ordinary, 13 words
  succfr: non 183 
  top frame of a nondet side branch non 196
        HeadVar__2             [2, 4]
+       TypeInfo_for_T         int
 non 183: ordinary, 13 words
  redoip: unnamed label
  redofr: non 183 
@@ -688,6 +711,7 @@ non 183: ordinary, 13 words
  succfr: non 119 
  internal frame on nondet side branch non 247
        HeadVar__1             [2, 4]
+       TypeInfo_for_T         int
        U                      2
        Z                      [4]
 non 170: temp
@@ -709,6 +733,7 @@ non 158: ordinary, 13 words
  succfr: non 145 
  top frame of a nondet side branch non 158
        HeadVar__2             [5]
+       TypeInfo_for_T         int
 non 145: ordinary, 13 words
  redoip: unnamed label
  redofr: non 145 
@@ -716,6 +741,7 @@ non 145: ordinary, 13 words
  succfr: non 132 
  internal frame on nondet side branch non 158
        HeadVar__2             [4, 5]
+       TypeInfo_for_T         int
 non 132: ordinary, 13 words
  redoip: unnamed label
  redofr: non 132 
@@ -723,6 +749,7 @@ non 132: ordinary, 13 words
  succfr: non 119 
  internal frame on nondet side branch non 158
        HeadVar__2             [2, 4, 5]
+       TypeInfo_for_T         int
 non 119: ordinary, 13 words
  redoip: unnamed label
  redofr: non 119 
@@ -730,6 +757,7 @@ non 119: ordinary, 13 words
  succfr: non  71 
  internal frame on nondet side branch non 247
        HeadVar__1             [2, 4, 5]
+       TypeInfo_for_T         int
        U                      5
        Z                      [2, 4]
 non 106: temp
@@ -748,6 +776,7 @@ non  97: ordinary, 13 words
  succfr: non  84 
  top frame of a nondet side branch non  97
        HeadVar__2             [3, 4, 5]
+       TypeInfo_for_T         int
 non  84: ordinary, 13 words
  redoip: unnamed label
  redofr: non  84 
@@ -755,6 +784,7 @@ non  84: ordinary, 13 words
  succfr: non  71 
  internal frame on nondet side branch non  97
        HeadVar__2             [2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  71: ordinary, 13 words
  redoip: unnamed label
  redofr: non  71 
@@ -762,6 +792,7 @@ non  71: ordinary, 13 words
  succfr: non  39 
  internal frame on nondet side branch non 247
        HeadVar__1             [2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      3
        Z                      [2, 4, 5]
 non  58: temp
@@ -777,6 +808,7 @@ non  52: ordinary, 13 words
  succfr: non  39 
  top frame of a nondet side branch non  52
        HeadVar__2             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
 non  39: ordinary, 13 words
  redoip: unnamed label
  redofr: non  39 
@@ -784,6 +816,7 @@ non  39: ordinary, 13 words
  succfr: non  26 
  internal frame on nondet side branch non 247
        HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_for_T         int
        U                      1
        Z                      [2, 3, 4, 5]
 non  26: ordinary, 12 words
@@ -793,6 +826,7 @@ non  26: ordinary, 12 words
  succfr: non  10 
  internal frame on nondet side branch non 247
        HeadVar__1             [1, 2, 3, 4, 5]
+       TypeInfo_5             int
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10 

@@ -126,7 +126,8 @@ extern	char	*MR_trace_get_command(const char *, FILE *, FILE *);
 
 /* in trace/mercury_trace_vars.h */
 extern	const char *MR_trace_browse_all_on_level(FILE *,
-			const MR_Label_Layout *, MR_Word *, MR_Word *, int);
+			const MR_Label_Layout *, MR_Word *, MR_Word *,
+			int, MR_bool);
 
 /* in trace/mercury_trace_external.h */
 extern	void	MR_trace_init_external(void);

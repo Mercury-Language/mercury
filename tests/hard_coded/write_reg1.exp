@@ -29,6 +29,7 @@ TESTING BUILTINS
 4
 univ_cons(["hi! I\'m a univ!"])
 '<<predicate>>'
+newline
 
 TESTING OTHER TYPES
 var(1)

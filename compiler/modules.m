@@ -661,7 +661,6 @@ mercury_std_library_module("library").
 mercury_std_library_module("list").
 mercury_std_library_module("map").
 mercury_std_library_module("math").
-mercury_std_library_module("mercury_builtin").
 mercury_std_library_module("multi_map").
 mercury_std_library_module("ops").
 mercury_std_library_module("parser").

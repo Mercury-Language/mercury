@@ -126,7 +126,7 @@ extern	char *		(*MR_address_of_trace_get_command)(const char *,
 
 extern	const char *	(*MR_address_of_trace_browse_all_on_level)(FILE *,
 				const MR_Label_Layout *, MR_Word *, MR_Word *,
-				int);
+				int, MR_bool);
 
 /*
 ** MR_trace_init_external() and MR_trace_final_external() are defined 

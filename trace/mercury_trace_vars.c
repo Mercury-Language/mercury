@@ -108,7 +108,8 @@ typedef struct {
 } MR_Point;
 
 static	MR_bool		MR_trace_type_is_ignored(
-				MR_PseudoTypeInfo pseudo_type_info);
+				MR_PseudoTypeInfo pseudo_type_info,
+				MR_bool print_optionals);
 static	int		MR_trace_compare_var_details(const void *arg1,
 				const void *arg2);
 static	void		MR_generate_proc_name_from_layout(const MR_Proc_Layout
@@ -180,22 +181,15 @@ static	MR_Point			MR_point;
 #endif
 
 static	MR_TypeCtorInfo
-MR_trace_ignored_type_ctors[] =
+MR_trace_always_ignored_type_ctors[] =
 {
-	/* we ignore these until the debugger can handle their varying arity */
 #ifndef MR_HIGHLEVEL_CODE
-	&mercury_data_private_builtin__type_ctor_info_type_info_1,
-	&mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
-	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
-	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
-	&mercury_data_std_util__type_ctor_info_type_desc_0,
-	&mercury_data_std_util__type_ctor_info_type_ctor_desc_0,
+	/* we ignore these until the browser can handle their varying arity, */
+	/* or their definitions are updated. XXX */
 	&mercury_data_type_desc__type_ctor_info_type_desc_0,
 	&mercury_data_type_desc__type_ctor_info_type_ctor_desc_0,
-
-	/* we ignore these until the debugger can print higher-order terms */
-	&mercury_data___type_ctor_info_func_0,
-	&mercury_data___type_ctor_info_pred_0,
+	&mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
+	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
 
 	/* we ignore these because they should never be needed */
 	&mercury_data___type_ctor_info_void_0,
@@ -214,11 +208,28 @@ MR_trace_ignored_type_ctors[] =
 	NULL
 };
 
+static	MR_TypeCtorInfo
+MR_trace_maybe_ignored_type_ctors[] =
+{
+#ifndef MR_HIGHLEVEL_CODE
+	/*
+	** We can print values of these types (after a fashion),
+	** but users are usually not interested in their values.
+	*/
+	&mercury_data_private_builtin__type_ctor_info_type_info_1,
+	&mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
+#endif
+	/* dummy member */
+	NULL
+};
+
 static MR_bool
-MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
+MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info,
+	MR_bool print_optionals)
 {
 	MR_TypeCtorInfo	type_ctor_info;
-	int		ignore_type_ctor_count;
+	int		always_ignore_type_ctor_count;
+	int		maybe_ignore_type_ctor_count;
 	int		i;
 
 	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
@@ -227,11 +238,24 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 
 	type_ctor_info =
 		MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
-	ignore_type_ctor_count =
-		sizeof(MR_trace_ignored_type_ctors) / sizeof(MR_Word *);
+	always_ignore_type_ctor_count =
+		sizeof(MR_trace_always_ignored_type_ctors) / sizeof(MR_Word *);
 
-	for (i = 0; i < ignore_type_ctor_count; i++) {
-		if (type_ctor_info == MR_trace_ignored_type_ctors[i]) {
+	for (i = 0; i < always_ignore_type_ctor_count; i++) {
+		if (type_ctor_info == MR_trace_always_ignored_type_ctors[i]) {
+			return MR_TRUE;
+		}
+	}
+
+	if (print_optionals) {
+		return MR_FALSE;
+	}
+
+	maybe_ignore_type_ctor_count =
+		sizeof(MR_trace_maybe_ignored_type_ctors) / sizeof(MR_Word *);
+
+	for (i = 0; i < maybe_ignore_type_ctor_count; i++) {
+		if (type_ctor_info == MR_trace_maybe_ignored_type_ctors[i]) {
 			return MR_TRUE;
 		}
 	}
@@ -241,17 +265,17 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 
 void
 MR_trace_init_point_vars(const MR_Label_Layout *top_layout,
-	MR_Word *saved_regs, MR_Trace_Port port)
+	MR_Word *saved_regs, MR_Trace_Port port, MR_bool print_optionals)
 {
 	MR_point.MR_point_top_layout = top_layout;
 	MR_point.MR_point_top_saved_regs = saved_regs;
 	MR_point.MR_point_top_port = port;
 	MR_point.MR_point_level = 0;
-	MR_point.MR_point_problem = MR_trace_set_level(0);
+	MR_point.MR_point_problem = MR_trace_set_level(0, print_optionals);
 }
 
 const char *
-MR_trace_set_level(int ancestor_level)
+MR_trace_set_level(int ancestor_level, MR_bool print_optionals)
 {
 	const char			*problem;
 	MR_Word				*base_sp;
@@ -268,7 +292,7 @@ MR_trace_set_level(int ancestor_level)
 
 	if (level_layout != NULL) {
 		return MR_trace_set_level_from_layout(level_layout,
-				base_sp, base_curfr, ancestor_level);
+			base_sp, base_curfr, ancestor_level, print_optionals);
 	} else {
 		if (problem == NULL) {
 			MR_fatal_error("MR_find_nth_ancestor failed "
@@ -281,7 +305,8 @@ MR_trace_set_level(int ancestor_level)
 
 const char *
 MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
-	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level)
+	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level,
+	MR_bool print_optionals)
 {
 	const MR_Proc_Layout		*entry;
 	MR_Word				*valid_saved_regs;
@@ -407,7 +432,9 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 		}
 
 		pseudo_type_info = MR_var_pti(level_layout, i);
-		if (MR_trace_type_is_ignored(pseudo_type_info)) {
+		if (MR_trace_type_is_ignored(pseudo_type_info,
+			print_optionals))
+		{
 			continue;
 		}
 
@@ -1018,12 +1045,13 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 
 const char *
 MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
-	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level)
+	MR_Word *base_sp, MR_Word *base_curfr, int ancestor_level,
+	MR_bool print_optionals)
 {
 	const char	*problem;
 
 	problem = MR_trace_set_level_from_layout(level_layout,
-			base_sp, base_curfr, ancestor_level);
+			base_sp, base_curfr, ancestor_level, print_optionals);
 	if (problem != NULL) {
 		return problem;
 	}

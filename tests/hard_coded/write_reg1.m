@@ -15,18 +15,18 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map.
+:- import_module list, int, std_util, term, map, deconstruct.
 
-:- pred test_builtins(io__state::di, io__state::uo) is det.
+:- pred test_builtins(io__output_stream::in, io__state::di, io__state::uo)
+	is cc_multi.
 :- pred test_discriminated(io__state::di, io__state::uo) is det.
 :- pred test_polymorphism(io__state::di, io__state::uo) is det.
 :- pred test_other(io__state::di, io__state::uo) is det.
 :- pred newline(io__state::di, io__state::uo) is det.
-
 
 :- type enum	--->	one	;	two	;	three.
 
@@ -48,9 +48,8 @@ main -->
 	io__set_output_stream(StdErr, _StdOut),
 	test_discriminated,
 	test_polymorphism,
-	test_builtins, 
+	test_builtins(StdErr), 
 	test_other.
-
 
 test_discriminated -->
 	io__write_string("TESTING DISCRIMINATED UNIONS\n"),
@@ -83,8 +82,7 @@ test_polymorphism -->
 
 	newline.
 
-
-test_builtins -->
+test_builtins(StdErr) -->
 	io__write_string("TESTING BUILTINS\n"),
 
 		% test strings
@@ -112,9 +110,9 @@ test_builtins -->
 	
 		% test predicates	
 	io__write(newline), newline,
+	io__write(StdErr, include_details_cc, newline), newline,
 
 	newline.
-
 
 	% Note: testing abstract types is always going to have results
 	% that are dependent on the implementation. If someone changes
@@ -140,5 +138,4 @@ test_other -->
 
 newline -->
 	io__write_char('\n').
-
 

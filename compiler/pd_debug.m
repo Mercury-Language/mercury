@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 University of Melbourne.
+% Copyright (C) 1998-2002 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,7 +161,7 @@ pd_debug__write_instmap -->
 
 pd_debug__write_pred_proc_id_list(PredProcIds) -->
 	pd_info_get_module_info(ModuleInfo),
-	pd_debug__do_io(
+	pd_debug__do_io(pred(di, uo) is det -->
 		io__write_list(PredProcIds, ", ",
 			pd_debug__write_pred_proc_id(ModuleInfo))
 	).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1052,7 +1052,7 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	MR_TypeInfoParams		type_params;
 	const MR_Proc_Layout		*entry = layout->MR_sll_entry;
 
-	MR_trace_init_point_vars(layout, saved_regs, port);
+	MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
 
 	name = MR_decl_atom_name(entry);
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {

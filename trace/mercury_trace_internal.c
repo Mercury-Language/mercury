@@ -137,6 +137,21 @@ static	MR_Trace_Source_Server	MR_trace_source_server = { NULL, NULL };
 
 static	MR_bool			MR_trace_internal_interacting = MR_FALSE;
 
+static	MR_bool			MR_saved_io_tabling_enabled;
+
+/*
+** We include values of sometimes-useful types such as typeinfos in the set of
+** variables whose values we collect at events for possible later printing
+** only if MR_print_optionals is true.
+*/
+
+static	MR_bool			MR_print_optionals = MR_FALSE;
+
+/*
+** MR_context_position specifies whether we print context at events,
+** and if so, where.
+*/
+
 static	MR_Context_Position	MR_context_position = MR_CONTEXT_AFTER;
 
 typedef struct MR_Line_Struct {
@@ -255,7 +270,7 @@ static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
-			MR_bool detailed);
+			MR_bool detailed, MR_bool print_optionals);
 static	void	MR_trace_browse_internal(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 static	void	MR_trace_browse_goal_internal(MR_ConstString name,
@@ -282,8 +297,6 @@ static	void	MR_trace_event_print_internal_report(
 			MR_Event_Info *event_info);
 
 static	MR_bool	MR_trace_valid_command(const char *word);
-
-MR_bool		MR_saved_io_tabling_enabled;
 
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
@@ -336,7 +349,8 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
-		event_info->MR_saved_regs, event_info->MR_trace_port);
+		event_info->MR_saved_regs, event_info->MR_trace_port,
+		MR_print_optionals);
 
 	/* by default, return where we came from */
 	jumpaddr = NULL;
@@ -731,7 +745,8 @@ MR_trace_internal_init_from_home_dir(void)
 }
 
 static void
-MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed)
+MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed,
+	MR_bool print_optionals)
 {
 	const char		*problem;
 	const MR_Proc_Layout	*entry;
@@ -741,7 +756,7 @@ MR_trace_set_level_and_report(int ancestor_level, MR_bool detailed)
 	int			lineno;
 	int			indent;
 
-	problem = MR_trace_set_level(ancestor_level);
+	problem = MR_trace_set_level(ancestor_level, print_optionals);
 	if (problem == NULL) {
 		fprintf(MR_mdb_out, "Ancestor level set to %d:\n",
 			ancestor_level);
@@ -1297,7 +1312,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 2 &&
 				MR_trace_is_number(words[1], &n))
 		{
-			MR_trace_set_level_and_report(n, detailed);
+			MR_trace_set_level_and_report(n, detailed,
+				MR_print_optionals);
 		} else {
 			MR_trace_usage("browsing", "level");
 		}
@@ -1314,10 +1330,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				MR_trace_is_number(words[1], &n))
 		{
 			MR_trace_set_level_and_report(
-				MR_trace_current_level() + n, detailed);
+				MR_trace_current_level() + n, detailed,
+				MR_print_optionals);
 		} else if (word_count == 1) {
 			MR_trace_set_level_and_report(
-				MR_trace_current_level() + 1, detailed);
+				MR_trace_current_level() + 1, detailed,
+				MR_print_optionals);
 		} else {
 			MR_trace_usage("browsing", "up");
 		}
@@ -1334,10 +1352,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				MR_trace_is_number(words[1], &n))
 		{
 			MR_trace_set_level_and_report(
-				MR_trace_current_level() - n, detailed);
+				MR_trace_current_level() - n, detailed,
+				MR_print_optionals);
 		} else if (word_count == 1) {
 			MR_trace_set_level_and_report(
-				MR_trace_current_level() - 1, detailed);
+				MR_trace_current_level() - 1, detailed,
+				MR_print_optionals);
 		} else {
 			MR_trace_usage("browsing", "down");
 		}
@@ -2406,7 +2426,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs));
-				MR_trace_set_level(saved_level);
+				MR_trace_set_level(saved_level,
+					MR_print_optionals);
 			} else {
 				MR_dump_nondet_stack(MR_mdb_out,
 					MR_saved_maxfr(saved_regs));
@@ -2515,6 +2536,26 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("developer", "table_io");
 		}
+	} else if (MR_streq(words[0], "proc_stats")) {
+		if (word_count == 1) {
+			MR_proc_layout_stats(MR_mdb_out);
+		} else if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: error opening `%s': %s.\n",
+					words[1], strerror(errno));
+				return KEEP_INTERACTING;
+			}
+
+			MR_proc_layout_stats(fp);
+			(void) fclose(fp);
+		} else {
+			MR_trace_usage("developer", "proc_stats");
+		}
 	} else if (MR_streq(words[0], "label_stats")) {
 		if (word_count == 1) {
 			MR_label_layout_stats(MR_mdb_out);
@@ -2535,26 +2576,18 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("developer", "label_stats");
 		}
-	} else if (MR_streq(words[0], "proc_stats")) {
-		if (word_count == 1) {
-			MR_proc_layout_stats(MR_mdb_out);
-		} else if (word_count == 2) {
-			FILE	*fp;
-
-			fp = fopen(words[1], "w");
-			if (fp == NULL) {
-				fflush(MR_mdb_out);
-				fprintf(MR_mdb_err,
-					"mdb: error opening `%s': %s.\n",
-					words[1], strerror(errno));
-				return KEEP_INTERACTING;
-			}
-
-			MR_proc_layout_stats(fp);
-			(void) fclose(fp);
-		} else {
-			MR_trace_usage("developer", "label_stats");
+	} else if (MR_streq(words[0], "print_optionals")) {
+		if (word_count == 2 && MR_streq(words[1], "off")) {
+			MR_print_optionals = MR_FALSE;
+		} else if (word_count == 2 && MR_streq(words[1], "on")) {
+			MR_print_optionals = MR_TRUE;
+		} else if (word_count != 1)  {
+			MR_trace_usage("developer", "print_optionals");
 		}
+
+		fprintf(MR_mdb_out,
+			"optional values are %s being printed\n",
+			MR_print_optionals? "" : "not");
 	} else if (MR_streq(words[0], "source")) {
 		MR_bool	ignore_errors;
 
@@ -4032,6 +4065,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "developer", "table_io" },
 	{ "developer", "proc_stats" },
 	{ "developer", "label_stats" },
+	{ "developer", "print_optionals" },
 	{ "misc", "source" },
 	{ "misc", "save" },
 	{ "misc", "quit" },

@@ -46,6 +46,7 @@ all_regs             xyzzy xyzzy xyzzy xyzzy xyzzy
 table_io             xyzzy xyzzy xyzzy xyzzy xyzzy
 proc_stats           xyzzy xyzzy xyzzy xyzzy xyzzy
 label_stats          xyzzy xyzzy xyzzy xyzzy xyzzy
+print_optionals      xyzzy xyzzy xyzzy xyzzy xyzzy
 source               xyzzy xyzzy xyzzy xyzzy xyzzy
 save                 xyzzy xyzzy xyzzy xyzzy xyzzy
 quit                 xyzzy xyzzy xyzzy xyzzy xyzzy

@@ -461,6 +461,8 @@
 :- pred io__write_list(list(T), string, pred(T, io__state, io__state),
 	io__state, io__state).
 :- mode io__write_list(in, in, pred(in, di, uo) is det, di, uo) is det.
+:- mode io__write_list(in, in, pred(in, di, uo) is cc_multi, di, uo)
+	is cc_multi.
 	% io__write_list(List, Separator, OutputPred, IO0, IO)
 	% applies OutputPred to each element of List, printing Separator
 	% between each element. Outputs to the current output stream.
@@ -527,6 +529,12 @@
 :- pred io__stdin_stream(io__input_stream, io__state, io__state).
 :- mode io__stdin_stream(out, di, uo) is det.
 %		Retrieves the standard input stream.
+%		Does not modify the IO state.
+
+:- pred io__current_input_stream(io__input_stream, io__state, io__state).
+:- mode io__current_input_stream(out, di, uo) is det.
+%       io__current_input_stream(CurrentStream, IO0, IO1)
+%		Returns the current input stream in CurrentStream.
 %		Does not modify the IO state.
 
 :- pred io__input_stream_name(string, io__state, io__state).
@@ -624,6 +632,12 @@
 :- pred io__stderr_stream(io__output_stream, io__state, io__state).
 :- mode io__stderr_stream(out, di, uo) is det.
 %		Retrieves the standard error stream.
+%		Does not modify the IO state.
+
+:- pred io__current_output_stream(io__output_stream, io__state, io__state).
+:- mode io__current_output_stream(out, di, uo) is det.
+%       io__current_output_stream(CurrentStream, IO0, IO1)
+%		Returns the current output stream in CurrentStream.
 %		Does not modify the IO state.
 
 :- pred io__output_stream_name(string, io__state, io__state).
@@ -834,6 +848,13 @@
 %		Retrieves the standard binary input stream.
 %		Does not modify the IO state.
 
+:- pred io__current_binary_input_stream(io__binary_input_stream,
+			io__state, io__state).
+:- mode io__current_binary_input_stream(out, di, uo) is det.
+%       io__current_binary_input_stream(CurrentStream, IO0, IO1)
+%		Returns the current binary input stream in CurrentStream.
+%		Does not modify the IO state.
+
 :- pred io__binary_input_stream_name(string, io__state, io__state).
 :- mode io__binary_input_stream_name(out, di, uo) is det.
 %	Retrieves the human-readable name associated with the current binary
@@ -909,6 +930,13 @@
 %		Changes the current binary output stream to the stream
 %		specified. Returns the previous stream.
 
+:- pred io__current_binary_output_stream(io__binary_output_stream,
+			io__state, io__state).
+:- mode io__current_binary_output_stream(out, di, uo) is det.
+%       io__current_binary_output_stream(CurrentStream, IO0, IO1)
+%		Returns the current binary output stream in CurrentStream.
+%		Does not modify the IO state.
+
 :- pred io__binary_output_stream_name(string, io__state, io__state).
 :- mode io__binary_output_stream_name(out, di, uo) is det.
 %	Retrieves the human-readable name associated with the current
@@ -932,7 +960,7 @@
 %		Returns the name that the program was invoked with,
 %		if available, or DefaultProgname if the name is not
 %		available.
-%		
+%
 %		Does not modify the IO state.
 
 :- pred io__progname_base(string, string, io__state, io__state).
@@ -946,7 +974,7 @@
 % 	io__command_line_arguments(Args)
 %		Returns the arguments that the program was invoked with,
 %		if available, otherwise an empty list.
-%		
+%
 %		Does not modify the IO state.
 
 % The io__state contains an integer used to record the program's exit
@@ -1185,6 +1213,16 @@
 :- pred io__write_univ(univ, io__state, io__state).
 :- mode io__write_univ(in, di, uo) is det.
 
+:- pred io__write_univ(io__output_stream, univ, io__state, io__state).
+:- mode io__write_univ(in, in, di, uo) is det.
+
+:- pred io__write_univ(io__output_stream, deconstruct__noncanon_handling, univ,
+	io__state, io__state).
+:- mode io__write_univ(in, in(do_not_allow), in, di, uo) is det.
+:- mode io__write_univ(in, in(canonicalize), in, di, uo) is det.
+:- mode io__write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
+:- mode io__write_univ(in, in, in, di, uo) is cc_multi.
+
 % This is the same as io__read_from_string, except that an integer
 % is allowed where a character is expected. This is needed by
 % extras/aditi/aditi.m because Aditi does not have a builtin
@@ -1353,7 +1391,7 @@ io__read_byte(Stream, Result) -->
 io__read_word(Result) -->
 	io__input_stream(Stream),
 	io__read_word(Stream, Result).
-	
+
 io__read_word(Stream, Result) -->
 	io__ignore_whitespace(Stream, WSResult),
 	(
@@ -1626,7 +1664,7 @@ io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 		io__read_file_as_string_2(Stream, Buffer1, Pos1, Size0,
 			Buffer, Pos, Size)
 	).
-	
+
 %-----------------------------------------------------------------------------%
 
 io__input_stream_foldl(Pred, T0, Res) -->
@@ -2294,6 +2332,18 @@ io__do_write(NonCanon, Term) -->
 io__write_univ(Univ) -->
 	io__get_op_table(OpTable),
 	io__do_write_univ(canonicalize, Univ, ops__max_priority(OpTable) + 1).
+
+io__write_univ(Stream, Univ) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__get_op_table(OpTable),
+	io__do_write_univ(canonicalize, Univ, ops__max_priority(OpTable) + 1),
+	io__set_output_stream(OrigStream, _Stream).
+
+io__write_univ(Stream, NonCanon, Univ) -->
+	io__set_output_stream(Stream, OrigStream),
+	io__get_op_table(OpTable),
+	io__do_write_univ(NonCanon, Univ, ops__max_priority(OpTable) + 1),
+	io__set_output_stream(OrigStream, _Stream).
 
 :- pred io__do_write_univ(deconstruct__noncanon_handling, univ,
 	io__state, io__state).
@@ -3415,7 +3465,7 @@ mercury_open(const char *filename, const char *type)
 {
 	MercuryFile *mf;
 	FILE *f;
-	
+
 	f = fopen(filename, type);
 	if (!f) return NULL;
 	mf = MR_GC_NEW(MercuryFile);
@@ -3642,7 +3692,7 @@ ME_closed_stream_write(MR_StreamInfo *info, const void *buffer, size_t size)
 	errno = MR_CLOSED_FILE_ERROR;
 	return -1;	/* XXX should this be 0? */
 }
-  
+
 static int
 ME_closed_stream_flush(MR_StreamInfo *info)
 {
@@ -4370,7 +4420,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	LineNum = MR_line_number(*mercury_current_text_input);
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("C",
 	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4379,7 +4429,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	LineNum = MR_line_number(*stream);
 	update_io(IO0, IO);
 }").
-	
+
 :- pragma foreign_proc("C",
 	io__set_line_number(LineNum::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4387,7 +4437,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	MR_line_number(*mercury_current_text_input) = LineNum;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("C",
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4396,7 +4446,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	MR_line_number(*stream) = LineNum;
 	update_io(IO0, IO);
 }").
-	
+
 :- pragma foreign_proc("C",
 	io__get_output_line_number(LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4421,7 +4471,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	MR_line_number(*mercury_current_text_output) = LineNum;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("C",
 	io__set_output_line_number(Stream::in, LineNum::in,
 		IO0::di, IO::uo),
@@ -4431,7 +4481,39 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	MR_line_number(*stream) = LineNum;
 	update_io(IO0, IO);
 }").
-	
+
+:- pragma foreign_proc("C",
+	io__current_input_stream(OutStream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	OutStream = (MR_Word) mercury_current_text_input;
+	update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C",
+	io__current_output_stream(OutStream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	OutStream = (MR_Word) mercury_current_text_output;
+	update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C",
+	io__current_binary_input_stream(OutStream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	OutStream = (MR_Word) mercury_current_binary_input;
+	update_io(IO0, IO);
+").
+
+:- pragma foreign_proc("C",
+	io__current_binary_output_stream(OutStream::out, IO0::di, IO::uo),
+		[will_not_call_mercury, promise_pure, tabled_for_io],
+"
+	OutStream = (MR_Word) mercury_current_binary_output;
+	update_io(IO0, IO);
+").
+
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
 %	Returns the previous stream.
@@ -4559,7 +4641,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	LineNum = mercury_current_text_input->line_number;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("MC++",
 	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4569,7 +4651,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	LineNum = stream->line_number;
 	update_io(IO0, IO);
 }").
-	
+
 :- pragma foreign_proc("MC++",
 	io__set_line_number(LineNum::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4577,7 +4659,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	mercury_current_text_input->line_number = LineNum;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("MC++",
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4587,14 +4669,14 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	stream->line_number = LineNum;
 	update_io(IO0, IO);
 }").
-	
+
 :- pragma foreign_proc("MC++",
 	io__get_output_line_number(LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io], "
 	LineNum = mercury_current_text_output->line_number;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("MC++",
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io], "{
@@ -4610,7 +4692,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	mercury_current_text_output->line_number = LineNum;
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("MC++",
 	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io], "{
@@ -4619,7 +4701,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	stream->line_number = LineNum;
 	update_io(IO0, IO);
 }").
-	
+
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
 %	Returns the previous stream.
@@ -4800,7 +4882,7 @@ io__close_binary_output(Stream) -->
 			Status = -WTERMSIG(Status);
 		else
 			Status = 127;
-	
+
 		#else
 		if (Status & 0xff != 0) 
 			/* the process was killed by a signal */
@@ -4808,7 +4890,7 @@ io__close_binary_output(Stream) -->
 		else 
 			/* the process terminated normally */
 			Status = (Status & 0xff00) >> 8;
-	
+
 		#endif
 	}
 	update_io(IO0, IO);

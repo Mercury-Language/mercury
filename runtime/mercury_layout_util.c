@@ -18,7 +18,7 @@
 static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn,
 	MR_Closure *closure, MR_bool *succeeded);
 static MR_Word MR_lookup_answer_block_long_lval(MR_Long_Lval locn,
-	MR_Word *answer_block, int block_size, bool *succeeded);
+	MR_Word *answer_block, int block_size, MR_bool *succeeded);
 
 void
 MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
@@ -117,9 +117,11 @@ MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 }
 
 MR_TypeInfoParams
-MR_materialize_closure_typeinfos(const MR_Type_Param_Locns *tvar_locns,
-	MR_Closure *closure)
+MR_materialize_closure_typeinfos(MR_Closure *closure)
 {
+	const MR_Type_Param_Locns *tvar_locns;
+
+	tvar_locns = closure->MR_closure_layout->MR_closure_type_params;
 	if (tvar_locns != NULL) {
 		MR_TypeInfoParams	type_params;
 		MR_bool			succeeded;
@@ -157,7 +159,7 @@ MR_materialize_answer_block_typeinfos(const MR_Type_Param_Locns *tvar_locns,
 {
 	if (tvar_locns != NULL) {
 		MR_TypeInfoParams	type_params;
-		bool			succeeded;
+		MR_bool			succeeded;
 		MR_Integer		count;
 		int			i;
 
@@ -328,7 +330,7 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 
 static MR_Word
 MR_lookup_answer_block_long_lval(MR_Long_Lval locn, MR_Word *answer_block,
-	int block_size, bool *succeeded)
+	int block_size, MR_bool *succeeded)
 {
 	int	locn_num;
 	int	offset;

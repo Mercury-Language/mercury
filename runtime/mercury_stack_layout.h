@@ -924,27 +924,27 @@ struct MR_Module_Layout_Struct {
 */
 
 typedef struct MR_Closure_Id_Struct {
-	MR_Proc_Id		proc_id;
-	MR_ConstString		module_name;
-	MR_ConstString		file_name;
-	MR_Integer		line_number;
-	MR_ConstString		goal_path;
+	MR_Proc_Id		MR_closure_proc_id;
+	MR_ConstString		MR_closure_module_name;
+	MR_ConstString		MR_closure_file_name;
+	MR_Integer		MR_closure_line_number;
+	MR_ConstString		MR_closure_goal_path;
 } MR_Closure_Id;
 
 typedef struct MR_User_Closure_Id_Struct {
-	MR_User_Proc_Id		proc_id;
-	MR_ConstString		module_name;
-	MR_ConstString		file_name;
-	MR_Integer		line_number;
-	MR_ConstString		goal_path;
+	MR_User_Proc_Id		MR_user_closure_proc_id;
+	MR_ConstString		MR_user_closure_module_name;
+	MR_ConstString		MR_user_closure_file_name;
+	MR_Integer		MR_user_closure_line_number;
+	MR_ConstString		MR_user_closure_goal_path;
 } MR_User_Closure_Id;
 
 typedef struct MR_Compiler_Closure_Id_Struct {
-	MR_Compiler_Proc_Id	proc_id;
-	MR_ConstString		module_name;
-	MR_ConstString		file_name;
-	MR_Integer		line_number;
-	MR_ConstString		goal_path;
+	MR_Compiler_Proc_Id	MR_comp_closure_proc_id;
+	MR_ConstString		MR_comp_closure_module_name;
+	MR_ConstString		MR_comp_closure_file_name;
+	MR_Integer		MR_comp_closure_line_number;
+	MR_ConstString		MR_comp_closure_goal_path;
 } MR_Compiler_Closure_Id;
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

@@ -116,8 +116,10 @@
 **  instead, but it is not yet safe to throw exceptions across the C interface.
 */
 
-#include    <stdio.h>
-#include    "mercury_library_types.h"       /* for MR_ArrayType */
+#include <stdio.h>
+#include "mercury_library_types.h"   /* for MR_ArrayType */
+#include "mercury_layout_util.h"     /* for MR_materialize_closure_typeinfos */
+#include "mercury_ho_call.h"         /* for MR_Closure_Id etc */
 
 #ifdef MR_DEEP_PROFILING
   #include  "mercury_deep_profiling.h"
@@ -580,9 +582,9 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 expand_info->chosen_index_exists = MR_TRUE;
                 expand_info->chosen_value_ptr = data_word_ptr;
                 expand_info->chosen_type_info =
-                MR_pseudo_type_info_is_ground(
-                    MR_type_ctor_layout(type_ctor_info).layout_notag
-                        ->MR_notag_functor_arg_type);
+                    MR_pseudo_type_info_is_ground(
+                        MR_type_ctor_layout(type_ctor_info).layout_notag
+                            ->MR_notag_functor_arg_type);
             } else {
                 expand_info->chosen_index_exists = MR_FALSE;
             }
@@ -690,11 +692,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
                 break;
+            } else if (noncanon == MR_NONCANON_ALLOW) {
+                handle_functor_name("<<function>>");
+                handle_zero_arity_args();
+                break;
+            } else {
+                goto predfunc;
             }
-
-            handle_functor_name("<<function>>");
-            handle_zero_arity_args();
-            break;
 
         case MR_TYPECTOR_REP_PRED:
             if (noncanon == MR_NONCANON_ABORT) {
@@ -702,10 +706,101 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
                     ": attempt to deconstruct noncanonical term");
                 break;
+            } else if (noncanon == MR_NONCANON_ALLOW) {
+                handle_functor_name("<<predicate>>");
+                handle_zero_arity_args();
+                break;
+            } else {
+                goto predfunc;
             }
 
-            handle_functor_name("<<predicate>>");
-            handle_zero_arity_args();
+			/*
+			** This label handles the MR_NONCANON_CC case of both predicates
+            ** and functions.
+			*/
+        predfunc:
+            {
+                MR_Closure          *closure;
+                MR_Closure_Layout   *closure_layout;
+                MR_Proc_Id          *proc_id;
+                MR_User_Proc_Id     *user_proc_id;
+                MR_Compiler_Proc_Id *comp_proc_id;
+                MR_ConstString      name;
+                int                 num_args;
+                int                 i;
+
+                closure = (MR_Closure *) *data_word_ptr;
+                closure_layout = closure->MR_closure_layout;
+                num_args = closure->MR_closure_num_hidden_args;
+                expand_info->arity = num_args;
+
+#ifdef  EXPAND_FUNCTOR_FIELD
+                proc_id = &closure_layout->MR_closure_id->MR_closure_proc_id;
+                if (proc_id->MR_proc_user.MR_user_arity < 0) {
+                    name = "dynlink_proc";  /* XXX */
+                } else if (MR_PROC_ID_COMPILER_GENERATED(*proc_id)) {
+                    name = proc_id->MR_proc_comp.MR_comp_pred_name;
+                } else {
+                    name = proc_id->MR_proc_user.MR_user_name;
+                }
+                handle_functor_name(name);
+#endif  /* EXPAND_FUNCTOR_FIELD */
+
+#ifdef  EXPAND_ARGS_FIELD
+  #ifdef    EXPAND_APPLY_LIMIT
+                if (num_args > max_arity) {
+                    expand_info->limit_reached = MR_TRUE;
+                } else
+  #endif    /* EXPAND_APPLY_LIMIT */
+                {
+                    MR_TypeInfo *type_params;
+
+                    type_params =
+                        MR_materialize_closure_typeinfos(closure);
+                    expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
+                    expand_info->EXPAND_ARGS_FIELD.arg_values = &closure->
+                        MR_closure_hidden_args_0[0];
+                    expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
+                        MR_GC_NEW_ARRAY(MR_TypeInfo, num_args);
+                    expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
+                        MR_TRUE;
+                    for (i = 0; i < num_args ; i++) {
+                        expand_info->EXPAND_ARGS_FIELD.arg_type_infos[i] =
+                            MR_create_type_info(type_params,
+                                closure_layout->
+                                    MR_closure_arg_pseudo_type_info[i]);
+                    }
+                    if (type_params != NULL) {
+                        MR_free(type_params);
+                    }
+                }
+#endif  /* EXPAND_ARGS_FIELD */
+
+#ifdef  EXPAND_CHOSEN_ARG
+                if (0 <= chosen && chosen < num_args) {
+                    MR_TypeInfo *type_params;
+
+                    expand_info->chosen_index_exists = MR_TRUE;
+                    expand_info->chosen_value_ptr = 
+                        &closure->MR_closure_hidden_args_0[chosen];
+                    /* the following code could be improved */
+                    type_params = MR_materialize_closure_typeinfos(closure);
+                    expand_info->chosen_type_info =
+                        MR_create_type_info(type_params,
+                            closure_layout->
+                                MR_closure_arg_pseudo_type_info[chosen]);
+                    if (type_params != NULL) {
+                        MR_free(type_params);
+                    }
+                } else {
+                    expand_info->chosen_index_exists = MR_FALSE;
+                }
+#endif  /* EXPAND_CHOSEN_ARG */
+#ifdef  EXPAND_NAMED_ARG
+                expand_info->chosen_index_exists = MR_FALSE;
+#endif  /* EXPAND_NAMED_ARG */
+            }
+
             break;
 
         case MR_TYPECTOR_REP_TUPLE:
@@ -784,27 +879,129 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             break;
 
         case MR_TYPECTOR_REP_TYPEINFO:
-            if (noncanon == MR_NONCANON_ABORT) {
-                /* XXX should throw an exception */
-                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                    ": attempt to deconstruct noncanonical term");
-                break;
+            {
+                MR_TypeInfo     data_type_info;
+                MR_TypeCtorInfo data_type_ctor_info;
+                MR_Word         *arg_type_infos;
+                int             num_args;
+
+                if (noncanon == MR_NONCANON_ABORT) {
+                    /* XXX should throw an exception */
+                    MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                        ": attempt to deconstruct noncanonical term");
+                }
+
+                /*
+                ** The only source of noncanonicality in typeinfos is due
+                ** to type equivalences, so we can eliminate noncanonicality
+                ** by expanding out equivalences.
+                */
+
+                data_type_info = (MR_TypeInfo) *data_word_ptr;
+                if (noncanon == MR_NONCANON_ALLOW) {
+                    data_type_info = MR_collapse_equivalences(data_type_info);
+                }
+
+                data_type_ctor_info =
+                    MR_TYPEINFO_GET_TYPE_CTOR_INFO(data_type_info);
+                handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
+
+                if (MR_type_ctor_rep_is_variable_arity(
+                    MR_type_ctor_rep(data_type_ctor_info)))
+                {
+                    num_args =
+                        MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(data_type_info);
+                    arg_type_infos = (MR_Word *)
+                        MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(data_type_info);
+                } else {
+                    num_args = data_type_ctor_info->MR_type_ctor_arity;
+                    arg_type_infos = (MR_Word *)
+                        MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(data_type_info);
+                }
+                expand_info->arity = num_args;
+                /* switch from 1-based to 0-based array indexing */
+                arg_type_infos++;
+
+#ifdef  EXPAND_ARGS_FIELD
+  #ifdef    EXPAND_APPLY_LIMIT
+                if (num_args > max_arity) {
+                    expand_info->limit_reached = MR_TRUE;
+                } else
+  #endif    /* EXPAND_APPLY_LIMIT */
+                {
+                    int i;
+
+                    expand_info->EXPAND_ARGS_FIELD.num_extra_args = 0;
+                    expand_info->EXPAND_ARGS_FIELD.arg_values = arg_type_infos;
+
+                    expand_info->EXPAND_ARGS_FIELD.arg_type_infos =
+                        MR_GC_NEW_ARRAY(MR_TypeInfo, num_args);
+                    expand_info->EXPAND_ARGS_FIELD.can_free_arg_type_infos =
+                        MR_TRUE;
+                    for (i = 0; i < num_args ; i++) {
+                        /*
+                        ** The arguments of a typeinfo are themselves of type
+                        ** ``typeinfo''.
+                        */
+                        expand_info->EXPAND_ARGS_FIELD.arg_type_infos[i] =
+                            type_info;
+                    }
+                }
+#endif  /* EXPAND_ARGS_FIELD */
+
+#ifdef  EXPAND_ONE_ARG
+                if (0 <= chosen && chosen < expand_info->arity) {
+                    MR_Word *arg_vector;
+
+                    arg_vector = (MR_Word *) data_type_info;
+                    expand_info->chosen_index_exists = MR_TRUE;
+                    expand_info->chosen_value_ptr = &arg_type_infos[chosen];
+                    expand_info->chosen_type_info = type_info;
+                } else {
+                    expand_info->chosen_index_exists = MR_FALSE;
+                }
+#endif  /* EXPAND_ONE_ARG */
             }
 
-            handle_functor_name("<<typeinfo>>");
-            handle_zero_arity_args();
             break;
 
         case MR_TYPECTOR_REP_TYPECTORINFO:
-            if (noncanon == MR_NONCANON_ABORT) {
-                /* XXX should throw an exception */
-                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                    ": attempt to deconstruct noncanonical term");
-                break;
+            {
+                MR_TypeCtorInfo data_type_ctor_info; 
+
+                /*
+                ** The only source of noncanonicality in typeinfos is due
+                ** to type equivalences, Unfortunately, for type_ctor_infos,
+                ** there is another source: after expanding out equivalences,
+                ** the resulting `type' may be a type variable. Since the
+                ** printable representation of this type variable is arbitrary,
+                ** we avoid noncanonicality by always printing it the same way.
+                ** Note that the outermost type_ctor_info cannot be a variable.
+                */
+
+                if (noncanon == MR_NONCANON_ABORT) {
+                    /* XXX should throw an exception */
+                    MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                        ": attempt to deconstruct noncanonical term");
+                }
+
+
+                data_type_ctor_info = (MR_TypeCtorInfo) *data_word_ptr;
+
+                if (noncanon == MR_NONCANON_ALLOW) {
+                    data_type_ctor_info =
+                        MR_collapse_ctor_equivalences(data_type_ctor_info);
+                }
+
+                if (data_type_ctor_info == NULL) {
+                    handle_functor_name("<<typevariable>>");
+                } else {
+                    handle_functor_name(MR_type_ctor_name(data_type_ctor_info));
+                }
+
+                handle_zero_arity_args();
             }
 
-            handle_functor_name("<<typectorinfo>>");
-            handle_zero_arity_args();
             break;
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2001 The University of Melbourne.
+** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -73,16 +73,17 @@
 */
 
 typedef struct MR_Closure_Layout_Struct {
-	MR_Closure_Id		*closure_id;
-	MR_Type_Param_Locns	*type_params;
-	MR_Integer		num_all_args;
-	MR_PseudoTypeInfo	arg_pseudo_type_info[MR_VARIABLE_SIZED];
+	MR_Closure_Id		*MR_closure_id;
+	MR_Type_Param_Locns	*MR_closure_type_params;
+	MR_Integer		MR_closure_num_all_args;
+	MR_PseudoTypeInfo	MR_closure_arg_pseudo_type_info
+					[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
 
 typedef struct MR_Closure_Dyn_Link_Layout_Struct {
-	MR_Closure_Id		*closure_id;
-	MR_Type_Param_Locns	*type_params;
-	MR_Integer		num_all_args;
+	MR_Closure_Id		*MR_closure_dl_id;
+	MR_Type_Param_Locns	*MR_closure_dl_type_params;
+	MR_Integer		MR_closure_dl_num_all_args;
 } MR_Closure_Dyn_Link_Layout;
 
 /*

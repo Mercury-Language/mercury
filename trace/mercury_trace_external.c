@@ -523,7 +523,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	event_details.MR_event_number = MR_trace_event_number;
 
 	MR_trace_init_point_vars(event_info->MR_event_sll,
-		event_info->MR_saved_regs, event_info->MR_trace_port);
+		event_info->MR_saved_regs, event_info->MR_trace_port,
+		MR_FALSE);
 
 	switch(external_debugger_mode) {
 		case MR_searching:

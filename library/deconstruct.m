@@ -49,34 +49,42 @@
 	% The string representation of the functor that these predicates
 	% return is:
 	%
-	% 	- for user defined types, the functor that is given
-	% 	  in the type definition. For lists, this
-	% 	  means the functors [|]/2 and []/0 are used, even if
-	% 	  the list uses the [....] shorthand.
-	%	  For types with user-defined equality, the functor will be
-	%	  a constant of the form <<module:type/arity>>/0 except
-	%	  with include_details_cc.
-	%	- for integers, the string is a base 10 number,
+	% 	- for user defined types with standard equality, the functor
+	%	  that is given in the type definition. For lists, this means
+	%	  the functors [|]/2 and []/0 are used, even if the list uses
+	%	  the [....] shorthand.
+	%	- for user-defined types with user-defined equality, the
+	%	  functor will be of the form <<module:type/arity>>/0, except
+	%	  with include_details_cc, in which case the type will be
+	%	  handled as if it had standard equality.
+	%	- for integers, the string is a base 10 number;
 	%	  positive integers have no sign.
-	%	- for floats, the string is a floating point,
-	%	  base 10 number, positive floating point numbers have
-	%	  no sign.
+	%	- for floats, the string is a floating point, base 10 number;
+	%	  positive floating point numbers have no sign.
 	%	- for strings, the string, inside double quotation marks
 	%	- for characters, the character inside single quotation marks
-	%	- for predicates, the string <<predicate>>
-	%	- for functions, the string <<function>>
-	%	- for tuples, the string {}
-	%	- for arrays, the string <<array>>
+	%	- for predicates, the string <<predicate>>, and for functions,
+	%	  the string <<function>>, except with include_details_cc,
+	%	  in which case it will be the predicate or function name.
+	%	  (The predicate or function name will be artificial for
+	%	  predicate and function values created by lambda expressions.)
+	%	- for tuples, the string {}.
+	%	- for arrays, the string <<array>>.
 	%
 	% The arity that these predicates return is:
 	%
-	% 	- for user defined types, the arity of the functor.
+	% 	- for user defined types with standard equality, the arity
+	%	  of the functor.
+	% 	- for user defined types with user-defined equality, zero,
+	%	  except with include_details_cc, in which case the type
+	%	  will be handled as if it had standard equality.
 	%	- for integers, zero.
 	%	- for floats, zero.
 	%	- for strings, zero.
 	%	- for characters, zero.
-	%	- for predicates and functions, zero; we do not return the
-	%	  number of arguments expected by the predicate or function.
+	%	- for predicates and functions, zero, except with
+	%	  include_details_cc, in which case it will be the number of
+	%	  arguments hidden in the closure.
 	%	- for tuples, the number of elements in the tuple.
 	%	- for arrays, the number of elements in the array.
 

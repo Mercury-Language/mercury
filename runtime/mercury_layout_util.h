@@ -62,7 +62,6 @@ extern	MR_TypeInfoParams	MR_materialize_typeinfos_base(
 					MR_Word *saved_regs,
 					MR_Word *base_sp, MR_Word *base_curfr);
 extern	MR_TypeInfoParams	MR_materialize_closure_typeinfos(
-					const MR_Type_Param_Locns *tvar_locns,
 					MR_Closure *closure);
 extern	MR_TypeInfoParams	MR_materialize_answer_block_typeinfos(
 					const MR_Type_Param_Locns *tvar_locns,

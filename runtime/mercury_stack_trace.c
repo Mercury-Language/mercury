@@ -446,8 +446,8 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
 			MR_printnondstackptr(topfr);
 			fprintf(fp, "\n");
 		}
-		(*MR_address_of_trace_browse_all_on_level)(fp,
-			label_layout, base_sp, base_curfr, level_number);
+		(*MR_address_of_trace_browse_all_on_level)(fp, label_layout,
+			base_sp, base_curfr, level_number, MR_TRUE);
 		MR_erase_temp_redoip(fr);
 		proc_layout = label_layout->MR_sll_entry;
 
@@ -515,8 +515,8 @@ MR_step_over_nondet_frame(FILE *fp, int level_number, MR_Word *fr)
 		fprintf(fp, " top frame of a nondet side branch ");
 		MR_printnondstackptr(fr);
 		fprintf(fp, "\n");
-		(*MR_address_of_trace_browse_all_on_level)(fp,
-			label_layout, NULL, fr, level_number);
+		(*MR_address_of_trace_browse_all_on_level)(fp, label_layout,
+			NULL, fr, level_number, MR_TRUE);
 		MR_erase_temp_redoip(fr);
 
 		/*

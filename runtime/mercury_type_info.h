@@ -1228,7 +1228,7 @@ extern  int     MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2);
 */
 
 extern  int     MR_compare_type_ctor_info(MR_TypeCtorInfo tci1,
-			MR_TypeCtorInfo tci2);
+                    MR_TypeCtorInfo tci2);
 
 /*
 ** MR_collapse_equivalences expands out all the top-level equivalences in
@@ -1243,6 +1243,19 @@ extern  int     MR_compare_type_ctor_info(MR_TypeCtorInfo tci1,
 */
 
 extern  MR_TypeInfo MR_collapse_equivalences(MR_TypeInfo type_info);
+
+/*
+** MR_collapse_ctor_equivalences expands out all the top-level equivalences in
+** the argument type constructor. It guarantees that the returned type
+** constructor will not have a MR_TYPE_CTOR_REP_EQUIV* representation.
+** However, it is possible that a chain of equivalences ends in a type
+** variable. If this happens, MR_collapse_ctor_equivalences will return NULL.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  MR_TypeCtorInfo MR_collapse_ctor_equivalences(MR_TypeCtorInfo tci);
 
 /* 
 ** MR_create_type and MR_make_type_info both turn a pseudo typeinfo into

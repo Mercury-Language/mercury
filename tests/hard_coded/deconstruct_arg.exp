@@ -203,7 +203,7 @@ deconstruct limited deconstruct 3 of '<<deconstruct_arg:set/1>>'
 functor set_rep arity 1 [[1, 2, 3, 3]]
 
 std_util    functor: <<predicate>>/0
-deconstruct functor: <<predicate>>/0
+deconstruct functor: newline/0
 std_util    argument 0 of '<<predicate>>' doesn't exist
 deconstruct argument 0 of '<<predicate>>' doesn't exist
 std_util    argument 1 of '<<predicate>>' doesn't exist
@@ -212,12 +212,29 @@ std_util    argument 2 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
 std_util    deconstruct: functor <<predicate>> arity 0
 []
-deconstruct deconstruct: functor <<predicate>> arity 0
+deconstruct deconstruct: functor newline arity 0
 []
 std_util    limited deconstruct 3 of '<<predicate>>'
 functor <<predicate>> arity 0 []
 deconstruct limited deconstruct 3 of '<<predicate>>'
+functor newline arity 0 []
+
+std_util    functor: <<predicate>>/0
+deconstruct functor: IntroducedFrom__pred__main__85__1/1
+std_util    argument 0 of '<<predicate>>' doesn't exist
+deconstruct argument 0 of '<<predicate>>' is [1, 2]
+std_util    argument 1 of '<<predicate>>' doesn't exist
+deconstruct argument 1 of '<<predicate>>' doesn't exist
+std_util    argument 2 of '<<predicate>>' doesn't exist
+deconstruct argument 2 of '<<predicate>>' doesn't exist
+std_util    deconstruct: functor <<predicate>> arity 0
+[]
+deconstruct deconstruct: functor IntroducedFrom__pred__main__85__1 arity 1
+[[1, 2]]
+std_util    limited deconstruct 3 of '<<predicate>>'
 functor <<predicate>> arity 0 []
+deconstruct limited deconstruct 3 of '<<predicate>>'
+functor IntroducedFrom__pred__main__85__1 arity 1 [[1, 2]]
 
 std_util    functor: {}/2
 deconstruct functor: {}/2
