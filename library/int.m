@@ -594,7 +594,8 @@ is(X, X).
 	int__bits_per_int(Bits::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	// XXX we are using int32 in the compiler.
+	// we are using int32 in the compiler.
+	// XXX would be better to avoid hard-coding this here.
 	Bits = 32;
 ").
 
