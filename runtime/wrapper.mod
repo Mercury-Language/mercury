@@ -9,7 +9,7 @@
 /* command-line options */
 
 /* size of data areas, in kilobytes */
-int		heap_size =      1024;
+int		heap_size =      8192;
 int		detstack_size =   128;
 int		nondstack_size =  128;
 
