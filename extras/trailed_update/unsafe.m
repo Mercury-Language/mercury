@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,19 +53,24 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(unsafe_promise_ground(X::in(any)) = (Y::out), "Y = X;").
+:- pragma foreign_proc("C",
+	unsafe_promise_ground(X::in(any)) = (Y::out),
+	[will_not_call_mercury, promise_pure],
+"
+	Y = X;
+").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(
-unsafe_perform_io(P::(pred(di, uo) is det)),
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	unsafe_perform_io(P::(pred(di, uo) is det)),
+	[may_call_mercury],
 "{
 	call_io_pred_det(P);
 }").
-:- pragma c_code(
-unsafe_perform_io(P::(pred(di, uo) is cc_multi)),
-	may_call_mercury,
+:- pragma foreign_proc("C",
+	unsafe_perform_io(P::(pred(di, uo) is cc_multi)),
+	[may_call_mercury],
 "{
 	call_io_pred_cc_multi(P);
 }").

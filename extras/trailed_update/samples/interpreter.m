@@ -171,7 +171,7 @@ consult_until_eof_2(term(VarSet, Term), Database0, Database) -->
 % using the tr_store module.
 
 :- type my_var(S)
-	==	mutvar(my_term(S), S).
+	==	generic_mutvar(my_term(S), S).
 
 :- type my_term(S)
 	--->	var(my_var(S))
