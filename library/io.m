@@ -8,11 +8,6 @@
 % We implement a purely logical I/O system using Prolog's horrible
 % non-logical I/O primitives.
 %
-% This library is still pretty yucko because it's based on
-% the old dec-10 Prolog I/O (see, seeing, seen, tell, telling, told)
-% instead of the stream-based I/O. 
-% TODO: fix this.
-%
 %-----------------------------------------------------------------------------%
 
 :- module io.
@@ -27,7 +22,9 @@
 
 % External interface: exported types
 
-:- export_type io__state.
+:- type io__state.
+
+:- type io__stream.
 
 % External interface: exported predicates
 
@@ -164,7 +161,7 @@
 :- mode io__flush_output(input, di, uo).
 %	Flush the output buffer of the specified output stream.
 
-:- pred io__stream_name(io__stream, io__filename, io__state, io__state).
+:- pred io__stream_name(io__stream, string, io__state, io__state).
 :- mode io__stream_name(input, output, di, uo).
 %	Retrieves the human-readable name associated with a stream.
 %	For file streams, this is the filename.

@@ -22,9 +22,46 @@
 %-----------------------------------------------------------------------------%
 
 :- module varset.
-:- export_pred	varset__init, varset__new_var, varset__name_var,
-		varset__lookup_name, varset__bind_var, varset__lookup_var.
+:- interface.
 
+:- type var_id.
+:- type varset.
+
+	% initialize a varset
+:- pred varset__init(varset).
+:- mode varset__init(output).
+
+	% create a new variable
+:- pred varset__new_var(varset, var_id, varset).
+:- mode varset__new_var(input, output, output).
+
+	% set the name of a variable
+	% (if there is already a variable with the same name "Foo",
+	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
+	% an unused name is found.)
+:- pred varset__name_var(varset, var_id, string, varset).
+:- mode varset__name_var(input, input, input, output).
+
+	% lookup the name of a variable
+:- pred varset__lookup_name(varset, var_id, string).
+:- mode varset__lookup_name(input, input, output).
+
+	% bind a value to a variable
+:- pred varset__bind_var(varset, var_id, term, varset).
+:- mode varset__bind_var(input, input, input, output).
+
+	% lookup the value of a variable
+:- pred varset__lookup_var(varset, var_id, term).
+:- mode varset__lookup_var(input, input, output).
+
+	% Combine two different varsets, renaming apart.
+	% For efficiency, the biggest one should be the
+	% first parameter, as this is O(size of second parameter).
+:- pred varset__merge(varset, varset, varset).
+:- mode varset__merge(input, input, output).
+%-----------------------------------------------------------------------------%
+
+:- implementation.
 :- import_module int, string, map, term.
 
 :- type var_id	==	variable.
@@ -32,30 +69,17 @@
 
 %-----------------------------------------------------------------------------%
 
-	% initialize a varset
-:- pred varset__init(varset).
-:- mode varset__init(output).
 varset__init(varset(0,Names,Vals)) :-
 	map__init(Names),
 	map__init(Vals).
 
 %-----------------------------------------------------------------------------%
 
-	% create a new variable
-:- pred varset__new_var(varset, var_id, varset).
-:- mode varset__new_var(input, output, output).
 varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
 	MaxId is MaxId0 + 1.
 
 %-----------------------------------------------------------------------------%
 
-	% set the name of a variable
-	% (if there is already a variable with the same name "Foo",
-	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
-	% an unused name is found.)
-
-:- pred varset__name_var(varset, var_id, string, varset).
-:- mode varset__name_var(input, input, input, output).
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
 	(if some []
@@ -70,37 +94,22 @@ varset__name_var(VarSet0, Id, Name, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-	% lookup the name of a variable
-:- pred varset__lookup_name(varset, var_id, string).
-:- mode varset__lookup_name(input, input, output).
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name).
 
 %-----------------------------------------------------------------------------%
 
-	% bind a value to a variable
-:- pred varset__bind_var(varset, var_id, term, varset).
-:- mode varset__bind_var(input, input, input, output).
 varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
 		varset(MaxId, Names, Vals)) :-
 	map__search_insert(Vals0, Id, Val, Vals).
 
 %-----------------------------------------------------------------------------%
 
-	% lookup the value of a variable
-:- pred varset__lookup_var(varset, var_id, term).
-:- mode varset__lookup_var(input, input, output).
 varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
 
 %-----------------------------------------------------------------------------%
 
-	% Combine two different varsets, renaming apart.
-	% For efficiency, the biggest one should be the
-	% first parameter, as this is O(size of second parameter).
-
-:- pred varset__merge(varset, varset, varset).
-:- mode varset__merge(input, input, output).
 varset__merge(VarSet0, varset(MaxId, Names, Vals),
 		VarSet) :-
 	varset__merge_2(0, MaxId, Names, Vals, VarSet0, VarSet).

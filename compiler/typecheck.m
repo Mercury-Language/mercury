@@ -484,7 +484,7 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 	;
 	    typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
 	    typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,
-			TypeInfo, [], TypeAssignSet),
+			TypeInfo0, [], TypeAssignSet),
 	    (
 		TypeAssignSet = [],
 		(\+ TypeAssignSet0 = [])
@@ -577,7 +577,8 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 :- mode type_assign_term_has_type_list(input, input, input,
 			typeinfo_ui, input, output).
 
-type_assign_term_has_type_list([], [], _, _, TypeAssignSet, TypeAssignSet).
+type_assign_term_has_type_list([], [], TypeAssign, _,
+		TypeAssignSet, [TypeAssign|TypeAssignSet]).
 type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
 		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	type_assign_term_has_type(Arg, Type, TypeAssign0, TypeInfo,

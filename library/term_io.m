@@ -26,13 +26,13 @@
 % External interface: imported predicate
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
-:- pred io__op(integer, op_type, string, io__state, io__state).
+:- pred io__op(int, op_type, string, io__state, io__state).
 :- mode io__op(input, input, input, di, uo).
 %	io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
-:- type op_details ---> op(integer, op_type, string).
+:- type op_details ---> op(int, op_type, string).
 :- pred io__current_ops(list(op_details), io__state, io__state).
 :- mode io__current_ops(output, di, uo).
 %		Return a list containing all the current operator definitions.

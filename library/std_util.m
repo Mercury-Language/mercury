@@ -27,6 +27,8 @@
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 
+:- type (pred).
+
 :- pred gc_call(pred).
 
 :- pred report_stats.

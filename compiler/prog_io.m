@@ -48,7 +48,7 @@
 
 :- module prog_io.
 :- interface.
-:- import_module string, int, list, varset, term, io.
+:- import_module string, int, list, varset, term, io, term_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -226,7 +226,7 @@
 			;	fixity(sym_name_specifier, fixity).
 :- type fixity		--->	infix ; prefix ; postfix.
 :- type sym_name_specifier ---> name(sym_name)
-			;	name_arity(sym_name, integer).
+			;	name_arity(sym_name, int).
 :- type sym_name 	--->	unqualified(string)
 			;	qualified(module_specifier, string).
 
@@ -237,11 +237,11 @@
 
 % This module (prog_io) exports the following predicate:
 
-:- pred prog_io__read_program(string, bool, message_list, item_list,
+:- pred prog_io__read_module(string, bool, message_list, item_list,
 				io__state, io__state).
-:- mode prog_io__read_program(input, output, output, output, di, uo).
+:- mode prog_io__read_module(input, output, output, output, di, uo).
 
-% 	read_program(ModuleName, Error, Messages, Program)
+% 	read_module(ModuleName, Error, Messages, Program)
 %	- reads and parses the module 'ModuleName'.  Error is `yes'
 %	  if a syntax error was detected and `no' otherwise,
 %	  Messages is a list of warning/error messages,
@@ -1002,8 +1002,8 @@ process_du_type_2(ok(Functor,Args), Body, Result) :-
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 
-:- pred process_abstract_type(term, term, maybe(type_defn)).
-:- mode process_abstract_type(input, input, output).
+:- pred process_abstract_type(term, maybe(type_defn)).
+:- mode process_abstract_type(input, output).
 process_abstract_type(Head, Result) :-
 	dummy_term(Body),
 	check_for_errors(Head, Body, Result0),
