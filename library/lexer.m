@@ -223,6 +223,7 @@ lexer__get_dot(Token) -->
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char, '.'], Token)
 		;
+			io__putback_char(Char),
 			{ Token = name(".") }
 		)
 	).
@@ -257,14 +258,14 @@ lexer__get_slash(Token) -->
 	( { Result = error(Error) }, !,
 		{ Token = io_error(Error) }
 	; { Result = eof }, !,
-		% should we allow this?
-		{ Token = error("unterminated '%' comment") }
+		{ Token = name("/") }
 	; { Result = ok(Char) },
 		( { Char = '*' } ->
 			lexer__get_comment(Token)
 		; { lexer__graphic_token_char(Char) } ->
 			lexer__get_graphic([Char, '/'], Token)
 		;
+			io__putback_char(Char),
 			{ Token = name("/") }
 		)
 	).
