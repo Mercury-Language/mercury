@@ -52,13 +52,11 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 	code_info__get_next_label(LoopLabel),
 	code_info__get_next_label(FailLabel),
 	code_info__get_next_label(JumpLabel),
-	code_info__get_next_cell_number(NextSlotsTableNo),
-	code_info__get_next_cell_number(StringTableNo),
 	{
 		% Determine how big to make the hash table.
-		% Currently we round the number of cases up to the nearest power
-		% of two, and then double it.  This should hopefully ensure that
-		% we don't get too many hash collisions.
+		% Currently we round the number of cases up to the nearest
+		% power of two, and then double it.  This should hopefully
+		% ensure that we don't get too many hash collisions.
 		%
 		list__length(Cases, NumCases),
 		int__log2(NumCases, LogNumCases),
@@ -99,10 +97,10 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 	{
 		Reuse = no,
 		NextSlotsTable = create(0, NextSlots, uniform(no),
-			must_be_static, NextSlotsTableNo,
+			must_be_static,
 			"string_switch_next_slots_table", Reuse),
 		StringTable = create(0, Strings, uniform(no),
-			must_be_static, StringTableNo,
+			must_be_static,
 			"string_switch_string_table", Reuse),
 		HashLookupCode = node([
 			comment("hashed string switch") -

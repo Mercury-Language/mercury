@@ -89,7 +89,7 @@
 		% stack slots used for tracing purposes.
 :- pred code_info__init(bool::in, globals::in, pred_id::in, proc_id::in,
 	pred_info::in, proc_info::in, follow_vars::in, module_info::in,
-	counter::in, resume_point_info::out, trace_slot_info::out,
+	resume_point_info::out, trace_slot_info::out,
 	code_info::out) is det.
 
 		% Get the globals table.
@@ -144,15 +144,6 @@
 
 		% The number of the last local label allocated.
 :- pred code_info__get_label_counter(counter::out,
-	code_info::in, code_info::out) is det.
-
-		% The current value of the counter we use to give
-		% each "create" rval its unique cell number, for use
-		% in case the cell can be allocated statically.
-:- pred code_info__get_cell_counter(counter::out,
-	code_info::in, code_info::out) is det.
-
-:- pred code_info__set_cell_counter(counter::in,
 	code_info::in, code_info::out) is det.
 
 		% Get the flag that indicates whether succip is used or not.
@@ -338,8 +329,6 @@
  		label_num_src :: counter,
 				% Counter for the local labels used
 				% by this procedure.
-		cell_num_src :: counter,
-				% Counter for cells in this proc.
 		store_succip :: bool,
 				% do we need to store succip?
 		label_info :: map(label, internal_layout_info),
@@ -387,8 +376,8 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
-		FollowVars, ModuleInfo, CellCounter, ResumePoint,
-		TraceSlotInfo, CodeInfo) :-
+		FollowVars, ModuleInfo, ResumePoint, TraceSlotInfo,
+		CodeInfo) :-
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -464,7 +453,6 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 		),
 		code_info_persistent(
 			counter__init(1),
-			CellCounter,
 			SaveSuccip,
 			LayoutMap,
 			0,
@@ -515,7 +503,6 @@ code_info__get_var_locns_info(CI^code_info_loc_dep^var_locns_info, CI, CI).
 code_info__get_temps_in_use(CI^code_info_loc_dep^temps_in_use, CI, CI).
 code_info__get_fail_info(CI^code_info_loc_dep^fail_info, CI, CI).
 code_info__get_label_counter(CI^code_info_persistent^label_num_src, CI, CI).
-code_info__get_cell_counter(CI^code_info_persistent^cell_num_src, CI, CI).
 code_info__get_succip_used(CI^code_info_persistent^store_succip, CI, CI).
 code_info__get_layout_info(CI^code_info_persistent^label_info, CI, CI).
 code_info__get_max_temp_slot_count(CI^code_info_persistent^stackslot_max,
@@ -544,8 +531,6 @@ code_info__set_temps_in_use(TI, CI, CI^code_info_loc_dep^temps_in_use := TI).
 code_info__set_fail_info(FI, CI, CI^code_info_loc_dep^fail_info := FI).
 code_info__set_label_counter(LC, CI,
 	CI^code_info_persistent^label_num_src := LC).
-code_info__set_cell_counter(CC, CI,
-	CI^code_info_persistent^cell_num_src := CC).
 code_info__set_succip_used(SU, CI, CI^code_info_persistent^store_succip := SU).
 code_info__set_layout_info(LI, CI, CI^code_info_persistent^label_info := LI).
 code_info__set_max_temp_slot_count(TM, CI,
@@ -670,10 +655,6 @@ code_info__set_created_temp_frame(MR, CI,
 	% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
 :- mode code_info__get_next_label(out, in, out) is det.
-
-	% Generate the next cell number in sequence.
-:- pred code_info__get_next_cell_number(int, code_info, code_info).
-:- mode code_info__get_next_cell_number(out, in, out) is det.
 
 	% Note that the succip slot is used, and thus cannot be
 	% optimized away.
@@ -899,11 +880,6 @@ code_info__get_next_label(Label) -->
 	code_info__set_label_counter(C),
 	{ code_util__make_internal_label(ModuleInfo, PredId, ProcId, N,
 		Label) }.
-
-code_info__get_next_cell_number(N) -->
-	code_info__get_cell_counter(C0),
-	{ counter__allocate(N, C0, C) },
-	code_info__set_cell_counter(C).
 
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
@@ -3373,21 +3349,20 @@ code_info__assign_expr_to_var(Var, Rval, Code) -->
 
 code_info__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code) -->
 	code_info__get_var_locns_info(VarInfo0),
-	code_info__get_next_cell_number(CellNum),
 	{
 		VarInfo0 = exprn_info(Exprn0),
 			% XXX Later we will need to worry about
 			% whether the cell must be unique or not.
 		Reuse = no,
 		Rval = create(Ptag, Vector, uniform(no), can_be_either,
-			CellNum, TypeMsg, Reuse),
+			TypeMsg, Reuse),
 		code_exprn__cache_exprn(Var, Rval, Exprn0, Exprn),
 		VarInfo = exprn_info(Exprn),
 		Code = empty
 	;
 		VarInfo0 = var_locn_info(VarLocInfo0),
-		var_locn__assign_cell_to_var(Var, Ptag, Vector, CellNum,
-			TypeMsg, Code, VarLocInfo0, VarLocInfo),
+		var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg,
+			Code, VarLocInfo0, VarLocInfo),
 		VarInfo = var_locn_info(VarLocInfo)
 	},
 	code_info__set_var_locns_info(VarInfo).

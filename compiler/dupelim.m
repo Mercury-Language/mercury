@@ -477,7 +477,7 @@ standardize_rval(Rval1, Rval) :-
 		Rval1 = var(_),
 		error("var in standardize_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval = Rval1
 	;
 		Rval1 = mkword(_, _),
@@ -809,7 +809,7 @@ most_specific_rval(Rval1, Rval2, Rval) :-
 		Rval1 = var(_),
 		error("var in most_specific_rval")
 	;
-		Rval1 = create(_, _, _, _, _, _, _),
+		Rval1 = create(_, _, _, _, _, _),
 		Rval2 = Rval1,
 		Rval = Rval1
 	;

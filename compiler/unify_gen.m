@@ -634,11 +634,9 @@ unify_gen__generate_construction_2(
 				yes(const(string_const(RLProcNameStr))),
 				yes(const(string_const(InputSchemaStr)))
 			] },
-			code_info__get_next_cell_number(AditiCallCellNo),
 			{ Reuse = no },
 			{ AddrConst = create(0, AditiCallArgs, uniform(no),
-				must_be_static, AditiCallCellNo,
-				"aditi_call_info", Reuse) }
+				must_be_static, "aditi_call_info", Reuse) }
 		;
 			{ EvalMethod = (aditi_top_down) },
 			% XXX Need to work out how to encode the procedure
@@ -657,19 +655,16 @@ unify_gen__generate_construction_2(
 		{ goal_path_to_string(GoalPath, GoalPathStr) },
 		code_info__get_cur_proc_label(CallerProcLabel),
 		code_info__get_next_closure_seq_no(SeqNo),
-		code_info__get_cell_counter(C0),
 		{ stack_layout__construct_closure_layout(CallerProcLabel,
 			SeqNo, ClosureInfo, ProcLabel, ModuleName,
 			FileName, LineNumber, GoalPathStr,
 			ClosureLayoutMaybeRvals, ClosureLayoutArgTypes,
-			Data, C0, C) },
+			Data) },
 		code_info__add_closure_layout(Data),
-		code_info__set_cell_counter(C),
-		code_info__get_next_cell_number(ClosureLayoutCellNo),
 		{ Reuse = no },
 		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals,
 			ClosureLayoutArgTypes, must_be_static,
-			ClosureLayoutCellNo, "closure_layout", Reuse) },
+			"closure_layout", Reuse) },
 		{ list__length(Args, NumArgs) },
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },

@@ -2194,7 +2194,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-output_rval_decls(create(_, _, _, _, _, _, _), _, _, _, _, _, _) -->
+output_rval_decls(create(_, _, _, _, _, _), _, _, _, _, _, _) -->
 	% These should have all been converted to data_addrs by llds_common.
 	{ error("output_rval_decls: create") }.
 output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
@@ -3418,7 +3418,7 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(_, _, _, _, _, _, _)) -->
+output_rval(create(_, _, _, _, _, _)) -->
 	% These should have all been converted to data_addrs by llds_common.
 	{ error("output_rval: create") }.
 output_rval(var(_)) -->

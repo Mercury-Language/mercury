@@ -2264,7 +2264,7 @@ mercury_compile__backend_pass(HLDS50, HLDS, DeepProfilingStructures,
 :- mode mercury_compile__backend_pass_by_phases(in, out, in, out, out, di, uo)
 	is det.
 
-mercury_compile__backend_pass_by_phases(HLDS51, HLDS99,
+mercury_compile__backend_pass_by_phases(HLDS51, HLDS90,
 		GlobalData0, GlobalData, LLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
@@ -2291,19 +2291,13 @@ mercury_compile__backend_pass_by_phases(HLDS51, HLDS99,
 	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68),
 	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"),
 
-	mercury_compile__maybe_goal_paths(HLDS68, Verbose, Stats, HLDS72),
-	mercury_compile__maybe_dump_hlds(HLDS72, "72", "goal_path"),
-
-	maybe_report_sizes(HLDS72),
-
-	{ HLDS90 = HLDS72 },
+	mercury_compile__maybe_goal_paths(HLDS68, Verbose, Stats, HLDS90),
 	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"),
 
 	mercury_compile__generate_code(HLDS90, GlobalData0, Verbose, Stats,
-		HLDS99, GlobalData1, LLDS1),
-	mercury_compile__maybe_dump_hlds(HLDS99, "99", "codegen"),
+		GlobalData1, LLDS1),
 
-	mercury_compile__maybe_generate_stack_layouts(HLDS99, GlobalData1,
+	mercury_compile__maybe_generate_stack_layouts(HLDS90, GlobalData1,
 		LLDS1, Verbose, Stats, GlobalData),
 	% mercury_compile__maybe_dump_global_data(GlobalData),
 
@@ -2490,10 +2484,8 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 		PredId, ProcId, ModuleInfoSimplify),
-	{ module_info_get_cell_counter(ModuleInfoSimplify, CellCounter0) },
 	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId,
-		ModuleInfoSimplify, GlobalData0, GlobalData1,
-		CellCounter0, CellCounter, ProcCode0) },
+		ModuleInfoSimplify, GlobalData0, GlobalData1, ProcCode0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	(
 		{ Optimize = yes },
@@ -2508,8 +2500,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		PredId, ProcId, ModuleInfoSimplify),
 	{ continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
 		ModuleInfoSimplify, GlobalData1, GlobalData) },
-	{ module_info_set_cell_counter(ModuleInfoSimplify, CellCounter,
-		ModuleInfo) }.
+	{ ModuleInfo = ModuleInfoSimplify }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3405,15 +3396,15 @@ mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
 	).
 
 :- pred mercury_compile__generate_code(module_info, global_data, bool, bool,
-	module_info, global_data, list(c_procedure), io__state, io__state).
-:- mode mercury_compile__generate_code(in, in, in, in, out, out, out, di, uo)
+	global_data, list(c_procedure), io__state, io__state).
+:- mode mercury_compile__generate_code(in, in, in, in, out, out, di, uo)
 	is det.
 
 mercury_compile__generate_code(HLDS0, GlobalData0, Verbose, Stats,
-		HLDS, GlobalData, LLDS) -->
+		GlobalData, LLDS) -->
 	maybe_write_string(Verbose, "% Generating code...\n"),
 	maybe_flush_output(Verbose),
-	generate_code(HLDS0, HLDS, GlobalData0, GlobalData, LLDS),
+	generate_code(HLDS0, GlobalData0, GlobalData, LLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 

@@ -32,7 +32,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module recompilation.
 
-:- import_module relation, map, std_util, list, set, multi_map, counter.
+:- import_module relation, map, std_util, list, set, multi_map.
 
 :- implementation.
 
@@ -221,14 +221,6 @@
 :- pred module_info_set_ctor_field_table(module_info,
 	ctor_field_table, module_info).
 :- mode module_info_set_ctor_field_table(in, in, out) is det.
-
-	% The cell count is used as a unique cell number for
-	% constants in the generated C code.
-:- pred module_info_get_cell_counter(module_info, counter).
-:- mode module_info_get_cell_counter(in, out) is det.
-
-:- pred module_info_set_cell_counter(module_info, counter, module_info).
-:- mode module_info_set_cell_counter(in, in, out) is det.
 
 :- pred module_info_get_maybe_recompilation_info(module_info,
 		maybe(recompilation_info)).
@@ -539,12 +531,6 @@
 		assertion_table ::		assertion_table,
 		exclusive_table ::		exclusive_table,
 		ctor_field_table ::		ctor_field_table,
-		cell_counter ::			counter,
-					% cell count, passed into code_info
-					% and used to generate unique label
-					% numbers for constant terms in the
-					% generated C code
-
 		maybe_recompilation_info ::	maybe(recompilation_info)
 	).
 
@@ -646,7 +632,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
-		ExclusiveTable, FieldNameTable, counter__init(1), RecompInfo).
+		ExclusiveTable, FieldNameTable, RecompInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -666,7 +652,6 @@ module_info_superclasses(MI, MI ^ superclass_table).
 module_info_assertion_table(MI, MI ^ assertion_table).
 module_info_exclusive_table(MI, MI ^ exclusive_table).
 module_info_ctor_field_table(MI, MI ^ ctor_field_table).
-module_info_get_cell_counter(MI, MI ^ cell_counter).
 module_info_get_maybe_recompilation_info(MI, MI ^ maybe_recompilation_info).
 
 %-----------------------------------------------------------------------------%
@@ -688,7 +673,6 @@ module_info_set_superclasses(MI, S, MI ^ superclass_table := S).
 module_info_set_assertion_table(MI, A, MI ^ assertion_table := A).
 module_info_set_exclusive_table(MI, PXT, MI ^ exclusive_table := PXT).
 module_info_set_ctor_field_table(MI, CF, MI ^ ctor_field_table := CF).
-module_info_set_cell_counter(MI, CC, MI ^ cell_counter := CC).
 module_info_set_maybe_recompilation_info(MI, I,
 	MI ^ maybe_recompilation_info := I).
 

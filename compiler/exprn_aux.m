@@ -179,7 +179,7 @@ exprn_aux__label_is_constant(local(_, _), _NonLocalGotos, _AsmLabels, yes).
 
 exprn_aux__rval_contains_lval(lval(Lval0), Lval) :-
 	exprn_aux__lval_contains_lval(Lval0, Lval).
-exprn_aux__rval_contains_lval(create(_, Rvals, _, _, _, _, Reuse), Lval) :-
+exprn_aux__rval_contains_lval(create(_, Rvals, _, _, _, Reuse), Lval) :-
 	exprn_aux__args_contain_lval([Reuse | Rvals], Lval).
 exprn_aux__rval_contains_lval(mkword(_, Rval), Lval) :-
 	exprn_aux__rval_contains_lval(Rval, Lval).
@@ -238,7 +238,7 @@ exprn_aux__rval_contains_rval(Rval0, Rval) :-
 			Rval0 = lval(Lval),
 			exprn_aux__lval_contains_rval(Lval, Rval)
 		;
-			Rval0 = create(_, Rvals, _, _, _, _, Reuse),
+			Rval0 = create(_, Rvals, _, _, _, Reuse),
 			exprn_aux__args_contain_rval([Reuse | Rvals], Rval)
 		;
 			Rval0 = mkword(_, Rval1),
@@ -280,7 +280,7 @@ exprn_aux__args_contain_rval([M | Ms], Rval) :-
 exprn_aux__vars_in_rval(lval(Lval), Vars) :-
 	exprn_aux__vars_in_lval(Lval, Vars).
 exprn_aux__vars_in_rval(var(Var), [Var]).
-exprn_aux__vars_in_rval(create(_, Rvals, _, _, _, _, Reuse), Vars) :-
+exprn_aux__vars_in_rval(create(_, Rvals, _, _, _, Reuse), Vars) :-
 	exprn_aux__vars_in_args([Reuse | Rvals], Vars).
 exprn_aux__vars_in_rval(mkword(_, Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
@@ -599,13 +599,12 @@ exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
 		Rval = Rval0,
 		N = N0
 	;
-		Rval0 = create(Tag, Rvals0, ArgTypes, StatDyn,
-				Num, Msg, Reuse0),
+		Rval0 = create(Tag, Rvals0, ArgTypes, StatDyn, Msg, Reuse0),
 		exprn_aux__substitute_lval_in_args(OldLval, NewLval,
 			Rvals0, Rvals, N0, N1),
 		exprn_aux__substitute_lval_in_arg(OldLval, NewLval,
 			Reuse0, Reuse, N1, N),
-		Rval = create(Tag, Rvals, ArgTypes, StatDyn, Num, Msg, Reuse)
+		Rval = create(Tag, Rvals, ArgTypes, StatDyn, Msg, Reuse)
 	;
 		Rval0 = mkword(Tag, Rval1),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
@@ -790,13 +789,12 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 			Rval = Rval0
 		;
 			Rval0 = create(Tag, Rvals0, ATs, StatDyn,
-					Num, Msg, Reuse0),
+				Msg, Reuse0),
 			exprn_aux__substitute_rval_in_args(OldRval, NewRval,
 				Rvals0, Rvals),
 			exprn_aux__substitute_rval_in_arg(OldRval, NewRval,
 				Reuse0, Reuse),
-			Rval = create(Tag, Rvals, ATs, StatDyn,
-					Num, Msg, Reuse)
+			Rval = create(Tag, Rvals, ATs, StatDyn, Msg, Reuse)
 		;
 			Rval0 = mkword(Tag, Rval1),
 			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
@@ -992,7 +990,7 @@ exprn_aux__simplify_rval(Rval0, Rval) :-
 exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	(
 		Rval0 = lval(field(MaybeTag, Base, Field)),
-		Base = create(Tag, Args, _, _, _, _, _),
+		Base = create(Tag, Args, _, _, _, _),
 		(
 			MaybeTag = yes(Tag)
 		;
@@ -1007,15 +1005,14 @@ exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	->
 		Rval = lval(field(MaybeTag, Rval2, Num))
 	;
-		Rval0 = create(Tag, Args0, ArgTypes, StatDyn,
-				CNum, Msg, Reuse0),
+		Rval0 = create(Tag, Args0, ArgTypes, StatDyn, Msg, Reuse0),
 		exprn_aux__simplify_args(Args0, Args),
 		exprn_aux__simplify_arg(Reuse0, Reuse),
 		( Args \= Args0
 		; Reuse \= Reuse0
 		)
 	->
-		Rval = create(Tag, Args, ArgTypes, StatDyn, CNum, Msg, Reuse)
+		Rval = create(Tag, Args, ArgTypes, StatDyn, Msg, Reuse)
 	;
 		Rval0 = unop(UnOp, Rval1),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
@@ -1063,7 +1060,7 @@ exprn_aux__simplify_arg(MR0, MR) :-
 exprn_aux__rval_addrs(lval(Lval), CodeAddrs, DataAddrs) :-
 	exprn_aux__lval_addrs(Lval, CodeAddrs, DataAddrs).
 exprn_aux__rval_addrs(var(_Var), [], []).
-exprn_aux__rval_addrs(create(_, MaybeRvals, _, _, _, _, Reuse),
+exprn_aux__rval_addrs(create(_, MaybeRvals, _, _, _, Reuse),
 		CodeAddrs, DataAddrs) :-
 	exprn_aux__maybe_rval_list_addrs([Reuse | MaybeRvals],
 		CodeAddrs, DataAddrs).

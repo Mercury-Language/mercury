@@ -1,4 +1,4 @@
-%---------------------------------------------------------------------------%
+
 % Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -148,14 +148,14 @@
 :- pred var_locn__assign_expr_to_var(prog_var::in, rval::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-%	var_locn__assign_cell_to_var(Var, Ptag, Vector, CellNum, TypeMsg, Code,
+%	var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code,
 %			VarLocnInfo0, VarLocnInfo)
 %		Generates code to assign to Var a pointer, tagged by Ptag, to
 %		the cell whose contents are given by the other arguments,
 %		and updates the state of VarLocnInfo0 accordingly.
 
 :- pred var_locn__assign_cell_to_var(prog_var::in, tag::in,
-	list(maybe(rval))::in, int::in, string::in, code_tree::out,
+	list(maybe(rval))::in, string::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo)
@@ -673,9 +673,10 @@ var_locn__assign_lval_to_var(Var, Lval0, Code) -->
 			_MaybeExprRval, _UsingVars, _DeadOrAlive) },
 		(
 			{ MaybeConstBaseVarRval = yes(BaseVarRval) },
-			{ BaseVarRval = create(Ptag, BaseVarArgs, _,_,_,_,_) }
+			{ BaseVarRval = create(Ptag, BaseVarArgs, _,_,_,_) }
 		->
-			{ list__index0_det(BaseVarArgs, Offset, SelectedArg) },
+			{ list__index0_det(BaseVarArgs, Offset,
+				SelectedArg) },
 			{ MaybeConstRval = SelectedArg },
 			{ Lvals = set__map(var_locn__add_field_offset(
 				yes(Ptag), const(int_const(Offset))),
@@ -782,10 +783,10 @@ var_locn__add_use_ref(ContainedVar, UsingVar, VarStateMap0, VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_cell_to_var(Var, Ptag, Vector, CellNum, TypeMsg, Code) -->
+var_locn__assign_cell_to_var(Var, Ptag, Vector, TypeMsg, Code) -->
 	{ Reuse = no },
 	{ CellRval0 = create(Ptag, Vector, uniform(no), can_be_either,
-		CellNum, TypeMsg, Reuse) },
+		TypeMsg, Reuse) },
 	(
 		var_locn__get_var_state_map(VarStateMap),
 		var_locn__get_exprn_opts(ExprnOpts),
@@ -844,7 +845,7 @@ var_locn__assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
 			{ Rval = Rval0 },
 			{ EvalCode = empty },
 			{ Comment = "assigning field from const" }
-		; { Rval0 = create(_, _, _, _, _, _, _) } ->
+		; { Rval0 = create(_, _, _, _, _, _) } ->
 			{ Rval = Rval0 },
 			{ EvalCode = empty },
 			{ Comment = "assigning field from const struct" }
@@ -1845,21 +1846,18 @@ var_locn__expr_is_constant(mkword(Tag, Expr0), VarStateMap, ExprnOpts,
 		mkword(Tag, Expr)) :-
 	var_locn__expr_is_constant(Expr0, VarStateMap, ExprnOpts, Expr).
 
-var_locn__expr_is_constant(create(Tag, Args0, ArgTypes, StatDyn,
-		Label, Msg, Reuse),
+var_locn__expr_is_constant(create(Tag, Args0, ArgTypes, StatDyn, Msg, Reuse),
 		VarStateMap, ExprnOpts, NewRval) :-
 	Reuse = no,
 	( StatDyn = must_be_static ->
-		NewRval = create(Tag, Args0, ArgTypes, StatDyn,
-			Label, Msg, Reuse)
+		Args = Args0
 	;
 		ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
 		StaticGroundTerms = yes,
 		var_locn__args_are_constant(Args0, VarStateMap, ExprnOpts,
-			Args),
-		NewRval = create(Tag, Args, ArgTypes, StatDyn,
-			Label, Msg, Reuse)
-	).
+			Args)
+	),
+	NewRval = create(Tag, Args, ArgTypes, StatDyn, Msg, Reuse).
 
 var_locn__expr_is_constant(var(Var), VarStateMap, ExprnOpts, Rval) :-
 	map__search(VarStateMap, Var, State),
@@ -2009,7 +2007,7 @@ var_locn__materialize_vars_in_rval(Rval0, MaybePrefer, Avoid, Rval, Code) -->
 		{ Code = empty }
 	;
 			% If we get here, the cell must be a constant.
-		{ Rval0 = create(_, _, _, _, _, _, _) },
+		{ Rval0 = create(_, _, _, _, _, _) },
 		{ Rval = Rval0 },
 		{ Code = empty }
 	;
@@ -2164,7 +2162,7 @@ var_locn__rval_depends_on_search_lval(lval(Lval), SearchLval) :-
 	var_locn__lval_depends_on_search_lval(Lval, SearchLval).
 var_locn__rval_depends_on_search_lval(var(_Var), _SearchLval) :-
 	error("var_locn__rval_depends_on_search_lval: var").
-var_locn__rval_depends_on_search_lval(create(_, Rvals, _, _, _, _, Reuse),
+var_locn__rval_depends_on_search_lval(create(_, Rvals, _, _, _, Reuse),
 		SearchLval) :-
 	var_locn__args_depend_on_search_lval([Reuse | Rvals], SearchLval).
 var_locn__rval_depends_on_search_lval(mkword(_Tag, Rval), SearchLval) :-

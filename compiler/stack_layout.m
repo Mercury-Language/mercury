@@ -35,7 +35,7 @@
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, list, map, counter.
+:- import_module std_util, list, map.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
 	global_data::in, list(comp_gen_c_data)::out,
@@ -44,8 +44,7 @@
 :- pred stack_layout__construct_closure_layout(proc_label::in, int::in,
 	closure_layout_info::in, proc_label::in, module_name::in,
 	string::in, int::in, string::in, list(maybe(rval))::out,
-	create_arg_types::out, comp_gen_c_data::out,
-	counter::in, counter::out) is det.
+	create_arg_types::out, comp_gen_c_data::out) is det.
 
 	% Construct a representation of a variable location as a 32-bit
 	% integer.
@@ -550,10 +549,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		{ prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
 			ModuleInfo, ProcRep) },
 		{ type_to_univ(ProcRep, ProcRepUniv) },
-		stack_layout__get_cell_counter(CellCounter0),
-		{ static_term__term_to_rval(ProcRepUniv, MaybeProcRepRval,
-			CellCounter0, CellCounter) },
-		stack_layout__set_cell_counter(CellCounter)
+		{ static_term__term_to_rval(ProcRepUniv, MaybeProcRepRval) }
 	),
 	{
 		MaybeCallLabel = yes(CallLabelPrime),
@@ -780,25 +776,20 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, EncodedLength,
 	{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
 	stack_layout__construct_liveval_arrays(SortedLiveLvals,
 		EncodedLength, LiveValRval, NamesRval),
-	stack_layout__get_cell_counter(C0),
 	{ stack_layout__construct_tvar_vector(TVarLocnMap,
-		TypeParamRval, C0, C) },
-	stack_layout__set_cell_counter(C).
+		TypeParamRval) }.
 
 :- pred stack_layout__construct_tvar_vector(map(tvar, set(layout_locn))::in,
-	rval::out, counter::in, counter::out) is det.
+	rval::out) is det.
 
-stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval, C0, C) :-
+stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval) :-
 	( map__is_empty(TVarLocnMap) ->
-		TypeParamRval = const(int_const(0)),
-		C = C0
+		TypeParamRval = const(int_const(0))
 	;
 		stack_layout__construct_tvar_rvals(TVarLocnMap,
 			Vector, VectorTypes),
-		counter__allocate(CNum, C0, C),
 		Reuse = no,
-		TypeParamRval = create(0, Vector, VectorTypes,
-			must_be_static, CNum,
+		TypeParamRval = create(0, Vector, VectorTypes, must_be_static,
 			"stack_layout_type_param_locn_vector", Reuse)
 	).
 
@@ -984,10 +975,9 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 	{ LocnArgTypes = [IntArrayLength - yes(uint_least32),
 			ByteArrayLength - yes(uint_least8)] },
 	{ list__append(AllTypeTypes, LocnArgTypes, ArgTypes) },
-	stack_layout__get_next_cell_number(CNum1),
 	{ Reuse = no },
 	{ TypeLocnVector = create(0, TypeLocnVectorRvals,
-		initial(ArgTypes, none), must_be_static, CNum1,
+		initial(ArgTypes, none), must_be_static,
 		"stack_layout_locn_vector", Reuse) },
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
@@ -995,10 +985,9 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 		{ list__foldl(AddRevNums, AllArrayInfo,
 			[], RevVarNumRvals) },
 		{ list__reverse(RevVarNumRvals, VarNumRvals) },
-		stack_layout__get_next_cell_number(CNum2),
 		{ NumVector = create(0, VarNumRvals,
 			uniform(yes(uint_least16)), must_be_static,
-			CNum2, "stack_layout_var_num_vector", Reuse) }
+			"stack_layout_var_num_vector", Reuse) }
 	;
 		{ NumVector = const(int_const(0)) }
 	).
@@ -1081,9 +1070,8 @@ stack_layout__convert_var_to_int(Var, VarNum) :-
 	% the data structures we build here.
 
 stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
-		ClosureLayoutInfo, ClosureProcLabel,
-		ModuleName, FileName, LineNumber, GoalPath,
-		Rvals, ArgTypes, Data, C0, C) :-
+		ClosureLayoutInfo, ClosureProcLabel, ModuleName,
+		FileName, LineNumber, GoalPath, Rvals, ArgTypes, Data) :-
 	DataAddr = layout_addr(
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
 	Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
@@ -1092,9 +1080,8 @@ stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
 	ProcIdType = 1 - yes(data_ptr),
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
-		MaybeClosureArgRvals, ClosureArgTypes, C0, C1),
-	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
-		C1, C),
+		MaybeClosureArgRvals, ClosureArgTypes),
+	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval),
 	MaybeTVarVectorRval = yes(TVarVectorRval),
 	TVarVectorType = 1 - yes(data_ptr),
 	Rvals = [MaybeProcIdRval, MaybeTVarVectorRval | MaybeClosureArgRvals],
@@ -1102,13 +1089,12 @@ stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
 		none).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
-	list(maybe(rval))::out, initial_arg_types::out,
-	counter::in, counter::out) is det.
+	list(maybe(rval))::out, initial_arg_types::out) is det.
 
 stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
-		ClosureArgTypes, C0, C) :-
-	list__map_foldl(stack_layout__construct_closure_arg_rval,
-		ClosureArgs, MaybeArgRvalsTypes, C0, C),
+		ClosureArgTypes) :-
+	list__map(stack_layout__construct_closure_arg_rval,
+		ClosureArgs, MaybeArgRvalsTypes),
 	assoc_list__keys(MaybeArgRvalsTypes, MaybeArgRvals),
 	list__map(stack_layout__add_one, MaybeArgRvalsTypes, ArgRvalTypes),
 	list__length(MaybeArgRvals, Length),
@@ -1116,10 +1102,10 @@ stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
 	ClosureArgTypes = [1 - yes(integer) | ArgRvalTypes].
 
 :- pred stack_layout__construct_closure_arg_rval(closure_arg_info::in,
-	pair(maybe(rval), llds_type)::out, counter::in, counter::out) is det.
+	pair(maybe(rval), llds_type)::out) is det.
 
 stack_layout__construct_closure_arg_rval(ClosureArg,
-		yes(ArgRval) - ArgRvalType, C0, C) :-
+		yes(ArgRval) - ArgRvalType) :-
 	ClosureArg = closure_arg_info(Type, _Inst),
 
 		% For a stack layout, we can treat all type variables as
@@ -1131,7 +1117,7 @@ stack_layout__construct_closure_arg_rval(ClosureArg,
 	NumUnivQTvars = -1,
 
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, C0, C).
+		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType).
 
 :- pred stack_layout__add_one(pair(maybe(rval), llds_type)::in,
 	pair(int, maybe(llds_type))::out) is det.
@@ -1173,22 +1159,17 @@ stack_layout__convert_table_arg_info(TableArgInfos, NumPTIs,
 		PTIVectorRval, TVarVectorRval) -->
 	{ TableArgInfos = table_arg_infos(Args, TVarSlotMap) },
 	{ list__length(Args, NumPTIs) },
-	stack_layout__get_cell_counter(C0),
-	{ list__map_foldl(stack_layout__construct_table_arg_pti_rval,
-		Args, MaybePTIRvalTypes, C0, C1) },
+	{ list__map(stack_layout__construct_table_arg_pti_rval,
+		Args, MaybePTIRvalTypes) },
 	{ list__map(stack_layout__add_one, MaybePTIRvalTypes, PTITypes) },
 	{ assoc_list__keys(MaybePTIRvalTypes, MaybePTIRvals) },
 	{ PTIVectorTypes = initial(PTITypes, none) },
-	{ counter__allocate(CNum, C1, C2) },
 	{ Reuse = no },
 	{ PTIVectorRval = create(0, MaybePTIRvals, PTIVectorTypes,
-		must_be_static, CNum,
-		"stack_layout_table_ptis", Reuse) },
+		must_be_static, "stack_layout_table_ptis", Reuse) },
 	{ map__map_values(stack_layout__convert_slot_to_locn_map,
 		TVarSlotMap, TVarLocnMap) },
-	{ stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
-		C2, C) },
-	stack_layout__set_cell_counter(C).
+	{ stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval) }.
 
 :- pred stack_layout__convert_slot_to_locn_map(tvar::in, table_locn::in,
 	set(layout_locn)::out) is det.
@@ -1204,16 +1185,15 @@ stack_layout__convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
 	LvalLocns = set__make_singleton_set(LvalLocn).
 
 :- pred stack_layout__construct_table_arg_pti_rval(
-	table_arg_info::in, pair(maybe(rval), llds_type)::out,
-	counter::in, counter::out) is det.
+	table_arg_info::in, pair(maybe(rval), llds_type)::out) is det.
 
 stack_layout__construct_table_arg_pti_rval(ClosureArg,
-		yes(ArgRval) - ArgRvalType, C0, C) :-
+		yes(ArgRval) - ArgRvalType) :-
 	ClosureArg = table_arg_info(_, _, Type),
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType, C0, C).
+		NumUnivQTvars, ExistQTvars, ArgRval, ArgRvalType).
 
 %---------------------------------------------------------------------------%
 
@@ -1269,8 +1249,6 @@ stack_layout__represent_live_value_type(unwanted, Rval, data_ptr) -->
 	{ Rval = const(data_addr_const(DataAddr)) }.
 stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 		-->
-	stack_layout__get_cell_counter(C0),
-
 		% For a stack layout, we can treat all type variables as
 		% universally quantified. This is not the argument of a
 		% constructor, so we do not need to distinguish between type
@@ -1279,9 +1257,7 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType)
 	{ ExistQTvars = [] },
 	{ NumUnivQTvars = -1 },
 	{ ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
-		NumUnivQTvars, ExistQTvars,
-		Rval, LldsType, C0, C) },
-	stack_layout__set_cell_counter(C).
+		NumUnivQTvars, ExistQTvars, Rval, LldsType) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1627,13 +1603,6 @@ stack_layout__get_module_name(ModuleName) -->
 	stack_layout__get_module_info(ModuleInfo),
 	{ module_info_name(ModuleInfo, ModuleName) }.
 
-:- pred stack_layout__get_cell_counter(counter::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__get_cell_counter(CellCounter) -->
-	stack_layout__get_module_info(ModuleInfo),
-	{ module_info_get_cell_counter(ModuleInfo, CellCounter) }.
-
 :- pred stack_layout__add_table_data(layout_data::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -1671,23 +1640,6 @@ stack_layout__add_internal_layout_data(InternalLayout, Label, LayoutName,
 	map__det_insert(LabelSet0, Label, layout_addr(LayoutName), LabelSet),
 	LI = ((LI0 ^ internal_layouts := InternalLayouts)
 		^ label_set := LabelSet).
-
-:- pred stack_layout__get_next_cell_number(int::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__get_next_cell_number(CellNum) -->
-	stack_layout__get_cell_counter(CellCounter0),
-	{ counter__allocate(CellNum, CellCounter0, CellCounter) },
-	stack_layout__set_cell_counter(CellCounter).
-
-:- pred stack_layout__set_cell_counter(counter::in,
-	stack_layout_info::in, stack_layout_info::out) is det.
-
-stack_layout__set_cell_counter(CellCounter) -->
-	stack_layout__get_module_info(ModuleInfo0),
-	{ module_info_set_cell_counter(ModuleInfo0, CellCounter,
-		ModuleInfo) },
-	stack_layout__set_module_info(ModuleInfo).
 
 :- pred stack_layout__set_module_info(module_info::in,
 	stack_layout_info::in, stack_layout_info::out) is det.

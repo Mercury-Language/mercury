@@ -269,7 +269,7 @@ lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn1, ExprnOpts).
 lookup_switch__rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn0, ExprnOpts).
-lookup_switch__rval_is_constant(create(_, Args, _, StatDyn, _, _, _),
+lookup_switch__rval_is_constant(create(_, Args, _, StatDyn, _, _),
 		ExprnOpts) :-
 	(
 		StatDyn = must_be_static
@@ -362,7 +362,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		CheckCode) -->
 	lookup_switch__get_word_bits(WordBits, Log2WordBits),
-	generate_bit_vec(CaseVals, Start, WordBits, BitVec),
+	{ generate_bit_vec(CaseVals, Start, WordBits, BitVec) },
 
 		%
 		% Optimize the single-word case:
@@ -373,7 +373,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		% low bits specify which bit.
 		%
 	{
-		BitVec = create(_, [yes(SingleWord)], _, _, _, _, _)
+		BitVec = create(_, [yes(SingleWord)], _, _, _, _)
 	->
 		Word = SingleWord,
 		BitNum = Index
@@ -419,22 +419,20 @@ lookup_switch__get_word_bits(WordBits, Log2WordBits) -->
 log2_rounded_down(X) = Log :-
 	int__log2(X + 1, Log + 1).  % int__log2 rounds up
 
-:- pred generate_bit_vec(case_consts::in, int::in, int::in, rval::out,
-	code_info::in, code_info::out) is det.
+:- pred generate_bit_vec(case_consts::in, int::in, int::in, rval::out) is det.
 
 	% we generate the bitvector by iterating through the cases
 	% marking the bit for each case. (We represent the bitvector
 	% here as a map from the word number in the vector to the bits
 	% for that word.
-generate_bit_vec(CaseVals, Start, WordBits, BitVec) -->
-	{ map__init(Empty) },
-	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
-	{ map__to_assoc_list(BitMap, WordVals) },
-	{ generate_bit_vec_args(WordVals, 0, Args) },
-	code_info__get_next_cell_number(CellNo),
-	{ Reuse = no },
-	{ BitVec = create(0, Args, uniform(no), must_be_static,
-		CellNo, "lookup_switch_bit_vector", Reuse) }.
+generate_bit_vec(CaseVals, Start, WordBits, BitVec) :-
+	map__init(Empty),
+	generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap),
+	map__to_assoc_list(BitMap, WordVals),
+	generate_bit_vec_args(WordVals, 0, Args),
+	Reuse = no,
+	BitVec = create(0, Args, uniform(no), must_be_static,
+		"lookup_switch_bit_vector", Reuse).
 
 :- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
 	map(int, int)::in, map(int, int)::out) is det.
@@ -496,10 +494,9 @@ lookup_switch__generate_terms_2(Index, [Var | Vars], Map) -->
 	{ map__lookup(Map, Var, Vals0) },
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
-	code_info__get_next_cell_number(CellNo),
 	{ Reuse = no },
 	{ ArrayTerm = create(0, Args, uniform(no), must_be_static,
-		CellNo, "lookup_switch_data", Reuse) },
+		"lookup_switch_data", Reuse) },
 	{ LookupLval = field(yes(0), ArrayTerm, Index) },
 	code_info__assign_lval_to_var(Var, LookupLval, Code),
 	{ require(tree__is_empty(Code),

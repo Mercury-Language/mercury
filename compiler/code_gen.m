@@ -37,23 +37,20 @@
 :- import_module ll_backend__code_info.
 :- import_module ll_backend__llds.
 
-:- import_module list, io, counter.
+:- import_module list, io.
 
 		% Translate a HLDS module to LLDS.
 
-:- pred generate_code(module_info::in, module_info::out,
-	global_data::in, global_data::out, list(c_procedure)::out,
-	io__state::di, io__state::uo) is det.
+:- pred generate_code(module_info::in, global_data::in, global_data::out,
+	list(c_procedure)::out, io__state::di, io__state::uo) is det.
 
 		% Translate a HLDS procedure to LLDS, threading through
 		% the data structure that records information about layout
-		% structures and the counter for ensuring the uniqueness
-		% of cell numbers.
+		% structures.
 
 :- pred generate_proc_code(pred_info::in, proc_info::in,
 	proc_id::in, pred_id::in, module_info::in,
-	global_data::in, global_data::out, counter::in, counter::out,
-	c_procedure::out) is det.
+	global_data::in, global_data::out, c_procedure::out) is det.
 
 		% Translate a HLDS goal to LLDS.
 
@@ -111,44 +108,43 @@
 % Standard library modules
 :- import_module bool, char, int, string.
 :- import_module map, assoc_list, set, term, libs__tree, std_util, require.
-:- import_module varset.
+:- import_module counter, varset.
 
 %---------------------------------------------------------------------------%
 
-generate_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, Procedures) -->
+generate_code(ModuleInfo0, !GlobalData, Procedures) -->
 		% get a list of all the predicate ids
 		% for which we are going to generate code.
 	{ module_info_predids(ModuleInfo0, PredIds) },
 		% now generate the code for each predicate
-	generate_pred_list_code(ModuleInfo0, ModuleInfo,
-		GlobalData0, GlobalData, PredIds, Procedures).
+	generate_pred_list_code(ModuleInfo0, !GlobalData, PredIds,
+		Procedures).
 
 	% Translate a list of HLDS predicates to LLDS.
 
-:- pred generate_pred_list_code(module_info::in, module_info::out,
+:- pred generate_pred_list_code(module_info::in,
 	global_data::in, global_data::out,
 	list(pred_id)::in, list(c_procedure)::out,
 	io__state::di, io__state::uo) is det.
 
-:- pred generate_maybe_pred_code(module_info::in, module_info::out,
-	global_data::in, global_data::out, pred_id::in, list(c_procedure)::out,
-	io__state::di, io__state::uo) is det.
-
-generate_pred_list_code(ModuleInfo, ModuleInfo, GlobalData, GlobalData,
-		[], []) --> [].
-generate_pred_list_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
-		[PredId | PredIds], Predicates) -->
-	generate_maybe_pred_code(ModuleInfo0, ModuleInfo1,
-		GlobalData0, GlobalData1, PredId, Predicates0),
-	generate_pred_list_code(ModuleInfo1, ModuleInfo,
-		GlobalData1, GlobalData, PredIds, Predicates1),
+generate_pred_list_code(_ModuleInfo, !GlobalData, [], []) --> [].
+generate_pred_list_code(ModuleInfo, !GlobalData, [PredId | PredIds],
+		Predicates) -->
+	generate_maybe_pred_code(ModuleInfo, !GlobalData, PredId,
+		Predicates0),
+	generate_pred_list_code(ModuleInfo, !GlobalData, PredIds,
+		Predicates1),
 	{ list__append(Predicates0, Predicates1, Predicates) }.
+
+:- pred generate_maybe_pred_code(module_info::in,
+	global_data::in, global_data::out, pred_id::in,
+	list(c_procedure)::out, io__state::di, io__state::uo) is det.
 
 	% Note that some of the logic of generate_maybe_pred_code is duplicated
 	% by mercury_compile__backend_pass_by_preds, so modifications here may
 	% also need to be repeated there.
 
-generate_maybe_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
+generate_maybe_pred_code(ModuleInfo0, GlobalData0, GlobalData,
 		PredId, Predicates) -->
 	{ module_info_preds(ModuleInfo0, PredInfos) },
 		% get the pred_info structure for this predicate
@@ -162,7 +158,6 @@ generate_maybe_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 		}
 	->
 		{ Predicates = [] },
-		{ ModuleInfo = ModuleInfo0 },
 		{ GlobalData = GlobalData0 }
 	;
 		{ module_info_globals(ModuleInfo0, Globals0) },
@@ -189,20 +184,14 @@ generate_maybe_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 				% Since they may be opt_imported into other
 				% modules, we must switch off the tracing
 				% of such preds on a pred-by-pred basis.
-			globals__get_trace_level(Globals0, TraceLevel),
 			globals__set_trace_level_none(Globals0, Globals1),
 			module_info_set_globals(ModuleInfo0, Globals1,
 				ModuleInfo1),
-			generate_pred_code(ModuleInfo1, ModuleInfo2,
+			generate_pred_code(ModuleInfo1,
 				GlobalData0, GlobalData,
-				PredId, PredInfo, ProcIds, Predicates),
-			module_info_globals(ModuleInfo2, Globals2),
-			globals__set_trace_level(Globals2, TraceLevel,
-				Globals),
-			module_info_set_globals(ModuleInfo2, Globals,
-				ModuleInfo)
+				PredId, PredInfo, ProcIds, Predicates)
 		;
-			generate_pred_code(ModuleInfo0, ModuleInfo,
+			generate_pred_code(ModuleInfo0,
 				GlobalData0, GlobalData,
 				PredId, PredInfo, ProcIds, Predicates)
 		}
@@ -210,38 +199,31 @@ generate_maybe_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
 
 	% Translate a HLDS predicate to LLDS.
 
-:- pred generate_pred_code(module_info::in, module_info::out,
-	global_data::in, global_data::out, pred_id::in, pred_info::in,
-	list(proc_id)::in, list(c_procedure)::out) is det.
+:- pred generate_pred_code(module_info::in, global_data::in, global_data::out,
+	pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out)
+	is det.
 
-generate_pred_code(ModuleInfo0, ModuleInfo, GlobalData0, GlobalData,
+generate_pred_code(ModuleInfo, GlobalData0, GlobalData,
 		PredId, PredInfo, ProcIds, Code) :-
-	module_info_get_cell_counter(ModuleInfo0, CellCounter0),
-	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		GlobalData0, GlobalData, CellCounter0, CellCounter,
-		[], Code),
-	module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo).
+	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo,
+		GlobalData0, GlobalData, [], Code).
 
 	% Translate all the procedures of a HLDS predicate to LLDS.
 
 :- pred generate_proc_list_code(list(proc_id)::in, pred_id::in, pred_info::in,
 	module_info::in, global_data::in, global_data::out,
-	counter::in, counter::out,
 	list(c_procedure)::in, list(c_procedure)::out) is det.
 
 generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
-		GlobalData, GlobalData, CellCounter, CellCounter,
-		Procs, Procs).
+		GlobalData, GlobalData, Procs, Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		GlobalData0, GlobalData, CellCounter0, CellCounter,
-		Procs0, Procs) :-
+		GlobalData0, GlobalData, Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
 	map__lookup(ProcInfos, ProcId, ProcInfo),
 	generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
-		GlobalData0, GlobalData1, CellCounter0, CellCounter1, Proc),
+		GlobalData0, GlobalData1, Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		GlobalData1, GlobalData, CellCounter1, CellCounter,
-		[Proc | Procs0], Procs).
+		GlobalData1, GlobalData, [Proc | Procs0], Procs).
 
 %---------------------------------------------------------------------------%
 
@@ -263,7 +245,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
-		GlobalData0, GlobalData, CellCounter0, CellCounter, Proc) :-
+		GlobalData0, GlobalData, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
@@ -293,15 +275,14 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
 	code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
-		ProcInfo, FollowVars, ModuleInfo, CellCounter0,
-		OutsideResumePoint, TraceSlotInfo, CodeInfo0),
+		ProcInfo, FollowVars, ModuleInfo, OutsideResumePoint,
+		TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
 		TraceSlotInfo, CodeTree, MaybeTraceCallLabel, FrameInfo,
 		CodeInfo0, CodeInfo),
 	code_info__get_max_reg_in_use_at_trace(MaxTraceReg, CodeInfo, _),
-	code_info__get_cell_counter(CellCounter, CodeInfo, _),
 
 	globals__get_trace_level(Globals, TraceLevel),
 	code_info__get_created_temp_frame(CreatedTempFrame, CodeInfo, _),

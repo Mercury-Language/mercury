@@ -496,7 +496,7 @@ livemap__make_live_in_rval(lval(Lval), Live0, Live) :-
 	),
 	opt_util__lval_access_rvals(Lval, AccessRvals),
 	livemap__make_live_in_rvals(AccessRvals, Live1, Live).
-livemap__make_live_in_rval(create(_, _, _, _, _, _, _), Live, Live).
+livemap__make_live_in_rval(create(_, _, _, _, _, _), Live, Live).
 	% All terms inside creates in the optimizer must be static.
 livemap__make_live_in_rval(mkword(_, Rval), Live0, Live) :-
 	livemap__make_live_in_rval(Rval, Live0, Live).

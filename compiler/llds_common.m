@@ -531,8 +531,7 @@ llds_common__process_rval(Rval0, Rval, Info0, Info) :-
 		Rval0 = var(_),
 		error("var rval found in llds_common__process_rval")
 	;
-		Rval0 = create(Tag, Args, ArgTypes, StatDyn,
-				_LabelNo, _Msg, _Reuse),
+		Rval0 = create(Tag, Args, ArgTypes, StatDyn, _Msg, _Reuse),
 		( StatDyn \= must_be_dynamic ->
 			llds_common__process_create(Tag, Args, ArgTypes, Rval,
 				Info0, Info)

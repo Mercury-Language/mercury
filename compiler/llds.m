@@ -765,9 +765,9 @@
 		% stage after code generation.
 
 	;	create(tag, list(maybe(rval)), create_arg_types,
-			static_or_dynamic, int, string, maybe(rval))
+			static_or_dynamic, string, maybe(rval))
 		% create(Tag, Arguments, MaybeArgTypes, StaticOrDynamic,
-		%	LabelNumber, CellKind, CellToReuse):
+		%	CellKind, CellToReuse):
 		% A `create' instruction is used during code generation
 		% for creating a term, either on the heap or
 		% (if the term is constant) as a static constant.
@@ -789,10 +789,6 @@
 		% subject to other constraints (e.g. a cell cannot be allocated
 		% statically unless all of its components are statically
 		% allocated as well).
-		%
-		% The label number is needed for the case when
-		% we can construct the term at compile-time
-		% and just reference the label.
 		%
 		% The string argument gives the name of the type constructor
 		% of the function symbol of which this is a cell, for use
@@ -1061,7 +1057,7 @@ llds__rval_type(lval(Lval), Type) :-
 	llds__lval_type(Lval, Type).
 llds__rval_type(var(_), _) :-
 	error("var unexpected in llds__rval_type").
-llds__rval_type(create(_, _, _, _, _, _, _), data_ptr).
+llds__rval_type(create(_, _, _, _, _, _), data_ptr).
 	%
 	% Note that create and mkword must both be of type data_ptr,
 	% not of type word, to ensure that static consts containing
