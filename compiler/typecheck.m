@@ -762,20 +762,26 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 :- mode report_pred_call_error(type_info_di, in, in,
 			in, type_info_uo) is det.
 
-report_pred_call_error(TypeInfo1, ModuleInfo, PredicateTable,
+report_pred_call_error(TypeInfo1, _ModuleInfo, PredicateTable,
 			PredCallId, TypeInfo) :-
 	PredCallId = PredName/_Arity,
 	type_info_get_io_state(TypeInfo1, IOState0),
 	(
 		predicate_table_search_pred_sym(PredicateTable,
-			PredName, OtherIds)
+			PredName, OtherIds0),
+		predicate_table_get_preds(PredicateTable, Preds),
+		typecheck_filter_optdecls(Preds, OtherIds0, OtherIds),
+		OtherIds \= []
 	->
-		typecheck_find_arities(ModuleInfo, OtherIds, Arities),
+		typecheck_find_arities(Preds, OtherIds, Arities),
 		report_error_pred_num_args(TypeInfo1, PredCallId,
 			Arities, IOState0, IOState)
 	;
 		predicate_table_search_func_sym(PredicateTable,
-			PredName, _OtherIds)
+			PredName, OtherIds0),
+		predicate_table_get_preds(PredicateTable, Preds),
+		typecheck_filter_optdecls(Preds, OtherIds0, OtherIds),
+		OtherIds \= []
 	->
 		report_error_func_instead_of_pred(TypeInfo1, PredCallId,
 			IOState0, IOState)
@@ -786,14 +792,28 @@ report_pred_call_error(TypeInfo1, ModuleInfo, PredicateTable,
 	type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
 	type_info_set_found_error(TypeInfo2, yes, TypeInfo).
 
-:- pred typecheck_find_arities(module_info, list(pred_id), list(int)).
+:- pred typecheck_find_arities(pred_table, list(pred_id), list(int)).
 :- mode typecheck_find_arities(in, in, out) is det.
 
-typecheck_find_arities(_ModuleInfo, [], []).
-typecheck_find_arities(ModuleInfo, [PredId | PredIds], [Arity | Arities]) :-
-	predicate_arity(ModuleInfo, PredId, Arity),
-	typecheck_find_arities(ModuleInfo, PredIds, Arities).
+typecheck_find_arities(_, [], []).
+typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_arity(PredInfo, Arity),
+	typecheck_find_arities(Preds, PredIds, Arities).
 
+	% Since .opt files are guaranteed to be type correct, and only
+	% preds defined in .opt files can "see" predicates declared in
+	% .opt files, filter out the opt_decl preds when working out
+	% a type error message.
+:- pred typecheck_filter_optdecls(pred_table, list(pred_id), list(pred_id)).
+:- mode typecheck_filter_optdecls(in, in, out) is det.
+
+typecheck_filter_optdecls(Preds, PredIds0, PredIds) :-
+	FilterOptDecls = lambda([PredId::in] is semidet, (
+			map__lookup(Preds, PredId, PredInfo),
+			\+ pred_info_import_status(PredInfo, opt_decl)
+		)),
+	list__filter(FilterOptDecls, PredIds0, PredIds).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id), list(var),
 				import_status, type_info, type_info).
