@@ -162,7 +162,7 @@ option_defaults_2(output_option, [
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
 	tags			-	string("low"),
-	polymorphism		-	bool(no),
+	polymorphism		-	bool(yes),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
 	lazy_code		-	bool(yes),
@@ -369,8 +369,10 @@ options_help -->
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 
 	io__write_string("\nCode generation options\n"),
-	io__write_string("\t-p, --polymorphism\n"),
-	io__write_string("\t\tHandle test unifications for variables of polymorphic types.\n"),
+	io__write_string("\t-p-, --no-polymorphism\n"),
+	io__write_string("\t\tDon't handle test unifications for variables of polymorphic types.\n"),
+	io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
+	io__write_string("\t\t(polymorphism from working except in special cases.)\n"),
 	io__write_string("\t-s {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t--grade {debug, none, reg, jump, fast}\n"),
 	io__write_string("\t\tSelect the compilation model.  This is a convenient way of\n"),
