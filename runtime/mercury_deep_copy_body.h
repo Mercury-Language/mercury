@@ -197,8 +197,10 @@ try_again:
                 }
 
                 break;
-                }
             }
+	    default:
+	        fatal_error("copy(): unknown tag representation");
+            } /* end switch */
         } else {
             MR_DuPtagLayout     *ptag_layout;
             int                 ptag;
@@ -435,7 +437,11 @@ try_again:
                     found_forwarding_pointer(data);
                 }
                 break;
-            }
+
+	    default:
+	    	fatal_error("copy(): unknown sectag_locn");
+
+            } /* end switch on sectag_locn */
         }
         break;
 
