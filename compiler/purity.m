@@ -17,8 +17,8 @@
 %	- it resolves predicate overloading
 %	  (perhaps it ought to also resolve function overloading,
 %	  converting unifications that are function calls into
-%	  HLDS call instructions, but currently that is still done
-%	  in modecheck_unify.m)
+%	  HLDS call instructions, but currently that is done
+%	  in polymorphism.m)
 %	- it checks for unbound type variables and if there are any,
 %	  it reports an error (or a warning, binding them to the type `void').
 %  These actions cannot be done until after type inference is complete,
@@ -139,7 +139,7 @@
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
-:- import_module modecheck_unify, modecheck_call, inst_util, prog_out.
+:- import_module inst_util, prog_out.
 :- import_module post_typecheck.
 
 :- import_module list, map, varset, term, string, require, std_util.

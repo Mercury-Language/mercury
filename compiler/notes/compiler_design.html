@@ -241,7 +241,7 @@ so that the compiler does the right thing for options such as
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
 	  later on (in post_typecheck.m, for preds, and in
-	  modecheck_unify.m, for function calls).
+	  polymorphism.m, for function calls).
 	  Typeclass constraints are checked here, and
 	  any redundant constraints that are eliminated are recorded (as
 	  constraint_proofs) in the pred_info for future reference. When it has
@@ -984,6 +984,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-07-14 05:41:49 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-29 07:51:39 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>

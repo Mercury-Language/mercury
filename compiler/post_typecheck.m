@@ -13,8 +13,8 @@
 %	- it resolves predicate overloading
 %	  (perhaps it ought to also resolve function overloading,
 %	  converting unifications that are function calls into
-%	  HLDS call instructions, but currently that is still done
-%	  in modecheck_unify.m)
+%	  HLDS call instructions, but currently that is done
+%	  in polymorphism.m)
 %
 %	- it checks for unbound type variables and if there are any,
 %	  it reports an error (or a warning, binding them to the type `void').
