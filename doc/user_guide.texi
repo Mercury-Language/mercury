@@ -412,14 +412,14 @@ Error messages are placed in @file{.err} files.
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
 with the Mercury compiler's @samp{--split-c-files} option enabled.
-@xref{Output-level (LLDS -> C) optimization options} for more information
-about @samp{--split-c-files}.
+For more information about @samp{--split-c-files}, see
+@ref{Output-level (LLDS -> C) optimization options}.
 
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.
 This will build a static object library, a shared object library
 (for platforms that support it), and the necessary interface files.
-@xref{Libraries} for more information.
+For more information, see @ref{Libraries}.
 
 @item @var{main-module}.clean
 Removes the automatically generated files
@@ -1951,8 +1951,8 @@ to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
 seperately).  If you are using Mmake, then
 you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
 e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
-@xref{Compilation model options} for more information about the
-different grades.
+For more information about the different grades, see
+@ref{Compilation model options}.
 
 Enabling profiling has several effects.  Firstly, it causes the
 compiler to generate slightly modified code which counts the number
