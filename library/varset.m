@@ -152,13 +152,12 @@ varset__vars_2(N, Max, L0, L) :-
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
 	(
-		bimap__search(Names0, _, Name)
+		bimap__insert(Names0, Id, Name, Names)
 	->
+		VarSet = varset(MaxId, Names, Vals)
+	;
 		string__append(Name, "'", Name2),
 		varset__name_var(VarSet0, Id, Name2, VarSet)
-	;
-		bimap__insert(Names0, Id, Name, Names),
-		VarSet = varset(MaxId, Names, Vals)
 	).
 
 %-----------------------------------------------------------------------------%

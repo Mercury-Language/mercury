@@ -32,7 +32,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, std_util, io.
+:- import_module map, std_util, io, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -50,16 +50,28 @@ globals__set_options(_, Globals, Globals).
 
 globals__lookup_option(Option, OptionData) -->
 	io__get_globals(UnivGlobals),
-	{ univ_to_type(UnivGlobals, Globals) },
-	{ globals__get_options(Globals, OptionTable) },
-	{ map__search(OptionTable, Option, OptionData) }.
+	{
+		univ_to_type(UnivGlobals, Globals),
+		globals__get_options(Globals, OptionTable),
+		map__search(OptionTable, Option, OptionData0)
+	->
+		OptionData = OptionData0
+	;
+		error("globals__lookup_option: failed")
+	}.
 
 globals__set_option(Option, OptionData) -->
 	io__get_globals(UnivGlobals0),
-	{ univ_to_type(UnivGlobals0, Globals0) },
-	{ globals__get_options(Globals0, OptionTable0) },
+	{
+		univ_to_type(UnivGlobals0, Globals0)
+	->
+		Globals1 = Globals0
+	;
+		error("globals__set_option: univ_to_type failed")
+	},
+	{ globals__get_options(Globals1, OptionTable0) },
 	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
-	{ globals__set_options(Globals0, OptionTable, Globals) },
+	{ globals__set_options(Globals1, OptionTable, Globals) },
 	{ type_to_univ(Globals, UnivGlobals) },
 	io__set_globals(UnivGlobals).
 

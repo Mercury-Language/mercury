@@ -129,7 +129,7 @@ check_pred_modes(Module0, Module) -->
 modecheck_pred_modes_2([], ModuleInfo, ModuleInfo) --> [].
 modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
-	{ map__search(Preds0, PredId, PredInfo0) },
+	{ map__lookup(Preds0, PredId, PredInfo0) },
 	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 	{ ClausesInfo0 = clauses_info(_, _, _, Clauses0) },
 	( { Clauses0 = [] } ->

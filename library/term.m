@@ -84,8 +84,10 @@
 :- mode term__substitute_corresponding(in, in, in, out) is det.
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
 %		replace all occurrences of variables in Vars with
-%		the corresponding term in Repls (which should be the
-%		same length as Vars!), and return the result in Term.
+%		the corresponding term in Repls, and return the result in Term.
+%		If Vars contains duplicates, or if Vars is not the same
+%	        length as Repls, the behaviour is undefined and probably
+%		harmful.
 
 :- pred term__apply_rec_substitution(term, substitution, term).
 :- mode term__apply_rec_substitution(in, in, out) is det.
@@ -133,11 +135,13 @@
 %		in Term are non-ground in Bindings.
 
 :- pred term__compare(comparison, term, term, substitution).
-:- mode term__compare(out, in, in, in) is det.
+:- mode term__compare(out, in, in, in) is semidet.
 %	term__compare(Comparison, Term1, Term2, Bindings) is true iff
 %		there is a binding of Comparison to <, =, or > such
 %		that the binding holds for the two ground terms Term1
 %		and Term2 with respect to the bindings in Bindings.
+%		Fails if Term1 or Term2 is not ground (with respect to
+%		the bindings in Bindings).
 
 %-----------------------------------------------------------------------------%
 
@@ -193,8 +197,8 @@
 	% of vars (or vice versa).
 
 :- pred term__var_list_to_term_list(list(var), list(term)).
-:- mode term__var_list_to_term_list(in, out) is semidet.
-:- mode term__var_list_to_term_list(out, in) is det.
+:- mode term__var_list_to_term_list(in, out) is det.
+:- mode term__var_list_to_term_list(out, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -471,7 +475,7 @@ term__substitute_corresponding(Ss, Rs, Term0, Term) :-
 
 term__substitute_corresponding_2([], [], Subst, Subst).
 term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-
-	map__insert(Subst0, S, R, Subst1),
+	map__set(Subst0, S, R, Subst1),
 	term__substitute_corresponding_2(Ss, Rs, Subst1, Subst).
 
 %-----------------------------------------------------------------------------%

@@ -34,7 +34,7 @@ check_undefined_modes(Module, Module) -->
 
 find_undef_pred_modes([], _Preds, _ModeDefns, _InstDefns) --> [].
 find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
-	{ map__search(Preds, PredId, PredDefn) },
+	{ map__lookup(Preds, PredId, PredDefn) },
 	{ pred_info_procedures(PredDefn, Procs) },
 	{ map__keys(Procs, ProcIds) },
 	find_undef_proc_modes(ProcIds, PredId, Procs, ModeDefns, InstDefns),
@@ -47,7 +47,7 @@ find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
 find_undef_proc_modes([], _PredId, _Procs, _ModeDefns, _InstDefns) --> [].
 find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
 		InstDefns) -->
-	{ map__search(Procs, ProcId, ProcDefn) },
+	{ map__lookup(Procs, ProcId, ProcDefn) },
 	{ proc_info_argmodes(ProcDefn, ArgModes) },
 	{ proc_info_context(ProcDefn, Context) },
 	find_undef_mode_list(ArgModes, pred(PredId) - Context, ModeDefns, 
@@ -65,7 +65,7 @@ find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
 
 find_undef_mode_bodies([], _, _) --> [].
 find_undef_mode_bodies([ModeId | ModeIds], ModeDefns, InstDefns) -->
-	{ map__search(ModeDefns, ModeId, HLDS_ModeDefn) },
+	{ map__lookup(ModeDefns, ModeId, HLDS_ModeDefn) },
 		% XXX abstract hlds__mode_defn/5
 	{ HLDS_ModeDefn = hlds__mode_defn(_, _, Mode, _, Context) },
 	find_undef_mode_body(Mode, mode(ModeId) - Context, ModeDefns,
@@ -129,7 +129,7 @@ find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 
 find_undef_inst_bodies([], _) --> [].
 find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
-	{ map__search(InstDefns, InstId, HLDS_InstDefn) },
+	{ map__lookup(InstDefns, InstId, HLDS_InstDefn) },
 		% XXX abstract hlds__inst_defn/5
 	{ HLDS_InstDefn = hlds__inst_defn(_, _, Inst, _, Context) },
 	find_undef_inst_body(Inst, inst(InstId) - Context, InstDefns),

@@ -203,11 +203,11 @@ delay_info__leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 	delay_info__check_invariant(DelayInfo0),
 	DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
-	stack__pop(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
+	stack__pop_det(DelayedGoalStack0, DelayedGoals, DelayedGoalStack),
 	map__keys(DelayedGoals, SeqNums),
 	remove_delayed_goals(SeqNums, DelayedGoals, CurrentDepth0,
 				WaitingGoalsTable0, WaitingGoalsTable),
-	stack__pop(NextSeqNums0, _, NextSeqNums),
+	stack__pop_det(NextSeqNums0, _, NextSeqNums),
 	CurrentDepth is CurrentDepth0 - 1,
 	map__values(DelayedGoals, DelayedGoalsList),
 	DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
@@ -248,12 +248,12 @@ delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 
 		% Get the next sequence number
-	stack__pop(NextSeqNums0, SeqNum, NextSeqNums1),
+	stack__pop_det(NextSeqNums0, SeqNum, NextSeqNums1),
 	NextSeq is SeqNum + 1,
 	stack__push(NextSeqNums1, NextSeq, NextSeqNums),
 
 		% Store the goal in the delayed goal stack
-	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+	stack__pop_det(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
 	map__set(DelayedGoals0, SeqNum, delayed_goal(Vars, Error, Goal),
 			DelayedGoals),
 	stack__push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
@@ -404,7 +404,7 @@ delay_info__wakeup_goal(DelayInfo0, Goal, DelayInfo) :-
 	PendingGoals0 = [SeqNum | PendingGoals],
 	map__set(PendingGoalsTable0, CurrentDepth, PendingGoals,
 			PendingGoalsTable),
-	stack__pop(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
+	stack__pop_det(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
 	map__lookup(DelayedGoals0, SeqNum, DelayedGoal),
 	DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal),
 	map__delete(DelayedGoals0, SeqNum, DelayedGoals),

@@ -346,12 +346,17 @@ det_infer_goal(Goal0 - GoalInfo0, MiscInfo, Goal - GoalInfo, Category) :-
 		Category0 = nondeterministic,
 		no_output_vars(NonLocalVars, DeltaInstMap, MiscInfo)
 	->
-		Category = semideterministic
+		Category1 = semideterministic
 	;
-		Category = Category0
+		Category1 = Category0
 	),
 
-	goal_info_set_inferred_determinism(GoalInfo0, Category, GoalInfo).
+	% We need to take into account the `local' determinism of the goal,
+	% which will get computed during mode analysis and/or switch detection.
+	goal_info_get_local_determinism(GoalInfo0, LocalDeterminism),
+	max_category(Category1, LocalDeterminism, Category),
+
+	goal_info_set_determinism(GoalInfo0, Category, GoalInfo).
 
 :- pred det_infer_goal_2(hlds__goal_expr, misc_info, set(var), instmap_delta,
 				hlds__goal_expr, category).
@@ -379,10 +384,11 @@ det_infer_goal_2(disj(Goals0), MiscInfo, _, _, disj(Goals), D) :-
 	).
 
 	% the category of a switch is the worst of the category of each of
-	% the cases, and (if only a subset of the constructors are handled)
-	% semideterministic
+	% the cases and (if only a subset of the constructors are handled)
+	% semideterministic.
+
 det_infer_goal_2(switch(Var, Cases0, Follow), MiscInfo, _, _,
-		switch(Var, Cases, Follow), D) :-
+				switch(Var, Cases, Follow), D) :-
 	det_infer_switch(Cases0, MiscInfo, Cases, Cons, D1),
 	test_to_see_that_all_constructors_are_tested(Cons, MiscInfo, D2),
 	max_category(D1, D2, D).
@@ -401,6 +407,7 @@ det_infer_goal_2(switch(Var, Cases0, Follow), MiscInfo, _, _,
 det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name), MiscInfo, _, _,
 		call(PredId, ModeId, Args, BuiltIn, Name), Category) :-
 	detism_lookup(MiscInfo, PredId, ModeId, Category).
+		% XXX need to handle calls to inferred modes!
 
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
@@ -494,16 +501,22 @@ det_infer_unify(assign(_, _), _MiscInfo, deterministic).
 
 det_infer_unify(construct(_, _, _, _), _MiscInfo, deterministic).
 
-	% XXX - This is deterministic if the type only has one constructor.
-	% XXX - or if the variable is known to be already bound
-	% to the appropriate functor.
+	% Deconstruction unifications are deterministic if the type
+	% only has one constructor, or if the variable is known to be
+	% already bound to the appropriate functor.
+	% 
+	% This will (XXX eventually!) be handled by modes.nl setting
+	% the local_determinism field in the goal_info to semidet for
+	% those deconstruction unifications which might fail.
+	% (And switch_detection may set it back to det again, if it moves
+	% the functor test into a switch instead.)
 
-det_infer_unify(deconstruct(_, _, _, _), _MiscInfo, semideterministic).
+det_infer_unify(deconstruct(_, _, _, _), _MiscInfo, deterministic).
 
 det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
 
-	% XXX - Some of these could be deterministic.
-det_infer_unify(complicated_unify(_, _, _), _MiscInfo, semideterministic).
+	% XXX - Many of these will be semideterministic!
+det_infer_unify(complicated_unify(_, _, _), _MiscInfo, deterministic).
 
 :- pred det_infer_switch(list(case), misc_info, list(case), 
 			list(cons_id), category).
@@ -574,9 +587,10 @@ detism_lookup(MiscInfo, PredId, ModeId, Category) :-
 
 :- pred test_to_see_that_all_constructors_are_tested(list(cons_id),
 		misc_info, category).
-:- mode test_to_see_that_all_constructors_are_tested(in, in, out) is semidet.
+:- mode test_to_see_that_all_constructors_are_tested(in, in, out) is det.
 	
-test_to_see_that_all_constructors_are_tested(_, _, semideterministic) :-
-	semidet_succeed.  % XXX stub only!
+test_to_see_that_all_constructors_are_tested(_, _, deterministic).
+		% Actually, we may handle this via the local_det field
+		% in the goal_info, so this stub may be unnecessary.
 	
 %-----------------------------------------------------------------------------%

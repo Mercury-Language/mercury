@@ -367,8 +367,12 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		io__write_string("% pre-deaths: "),
 		mercury_output_vars(PreDeathList, VarSet),
 		mercury_output_newline(Indent),
+		io__write_string("% `local' determinism: "),
+		{ goal_info_get_local_determinism(GoalInfo, LocalCategory) },
+		hlds_out__write_category(LocalCategory),
+		mercury_output_newline(Indent),
 		io__write_string("% determinism: "),
-		{ goal_info_inferred_determinism(GoalInfo, Category) },
+		{ goal_info_determinism(GoalInfo, Category) },
 		hlds_out__write_category(Category),
 		mercury_output_newline(Indent)
 	;

@@ -45,7 +45,7 @@
 
 :- pred string__char_to_string(character, string).
 :- mode string__char_to_string(in, out) is det.
-:- mode string__char_to_string(out, in) is det.
+:- mode string__char_to_string(out, in) is semidet.
 %	string__char_to_string(Char, String).
 %		Converts a character (single-character atom) to a string
 %		or vice versa.
@@ -76,7 +76,6 @@
 
 :- pred string__to_char_list(string, list(character)).
 :- mode string__to_char_list(in, out) is det.
-:- mode string__to_char_list(out, in) is det.
 
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
@@ -120,7 +119,7 @@
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out) is det.
-:- mode string__to_int_list(out, in) is semidet.
+:- mode string__to_int_list(out, in) is det.
 
 :- pred intToString(int, string).
 :- mode intToString(out, in) is semidet.
@@ -161,7 +160,19 @@ string__int_to_string(N, Str) :-
 	string__int_to_base_string(N, 10, Str).
 
 string__int_to_base_string(N, Base, Str) :-
-	Base >= 2, Base =< 36,
+	(
+		Base >= 2, Base =< 36
+	->
+		true
+	;
+		error("string__int_to_base_string: invalid base")
+	),
+	string__int_to_base_string_1(N, Base, Str).
+
+:- pred string__int_to_base_string_1(int, int, string).
+:- mode string__int_to_base_string_1(in, in, out) is det.
+
+string__int_to_base_string_1(N, Base, Str) :-
 	(
 		N < 0
 	->
@@ -179,17 +190,23 @@ string__int_to_base_string_2(N, Base, Str) :-
 	(
 		N < Base
 	->
-		string__digit_to_string(N,Str)
+		string__digit_to_string_det(N, Str)
 	;
 		N10 is N mod Base,
 		N1 is N // Base,
-		( string__digit_to_string(N10, Digit0) ->
-			Digit = Digit0
-		;
-			error("string__int_to_base_string_2: string__digit_to_string failed")
-		),
+		string__digit_to_string_det(N10, Digit),
 		string__int_to_base_string_2(N1, Base, Str1),
 		string__append(Str1, Digit, Str)
+	).
+
+:- pred string__digit_to_string_det(int, string).
+:- mode string__digit_to_string_det(in, out) is det.
+
+string__digit_to_string_det(Digit, String) :-
+	( string__digit_to_string(Digit, String0) ->
+		String = String0
+	;
+		error("string__digit_to_string failed")
 	).
 
 % Simple-minded, but extremely portable.
@@ -245,23 +262,32 @@ string__to_char_list(String, CharList) :-
 	string__int_list_to_char_list(IntList, CharList).
 
 :- pred string__int_list_to_char_list(list(int), list(character)).
-:- mode string__int_list_to_char_list(in, out) is semidet.
-:- mode string__int_list_to_char_list(out, in) is semidet.
+:- mode string__int_list_to_char_list(in, out) is det.
 
 string__int_list_to_char_list([], []).
 string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
-	char_to_int(Char, Code),
+	( char_to_int(Char0, Code) ->
+		Char = Char0
+	;
+		error("string__int_list_to_char_list: char_to_int failed")
+	),
 	string__int_list_to_char_list(Codes, Chars).
 
 string__capitalize_first(S0, S) :-
-	string__first_char(S0, C, S1),
-	char__to_upper(C, UpperC),
-	string__first_char(S, UpperC, S1).
+	( string__first_char(S0, C, S1) ->
+		char__to_upper(C, UpperC),
+		string__first_char(S, UpperC, S1)
+	;
+		S = S0
+	).
 
 string__uncapitalize_first(S0, S) :-
-	string__first_char(S0, C, S1),
-	char__to_lower(C, LowerC),
-	string__first_char(S, LowerC, S1).
+	( string__first_char(S0, C, S1) ->
+		char__to_lower(C, LowerC),
+		string__first_char(S, LowerC, S1)
+	;
+		S = S0
+	).
 
 string__is_alpha(S) :-
 	( string__first_char(S, C, S1) ->

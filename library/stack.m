@@ -46,12 +46,18 @@
 :- pred stack__top(stack(T), T).
 :- mode stack__top(in, out) is semidet.
 
-	% `stack__push(Stack0, Elem, Stack)' is true iff `Stack0' is
+	% `stack__pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
 	% the stack which results from popping `Elem' off `Stack0'.
 
 :- pred stack__pop(stack(T), T, stack(T)).
 :- mode stack__pop(in, out, out) is semidet.
+
+	% `stack__pop_det' is like `stack__pop' except that it will
+	% call error/1 rather than failing if given an empty list.
+
+:- pred stack__pop_det(stack(T), T, stack(T)).
+:- mode stack__pop_det(in, out, out) is det.
 
 	% `stack__depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
@@ -63,7 +69,7 @@
 
 :- implementation.
 
-:- import_module list.
+:- import_module list, require.
 
 :- type stack(T) == list(T).
 
@@ -78,6 +84,14 @@ stack__push(Stack, Elem, [Elem | Stack]).
 stack__top([Elem | _], Elem).
 
 stack__pop([Elem | Stack], Elem, Stack).
+
+stack__pop_det(Stack0, Elem, Stack) :-
+	( Stack0 = [Elem1 | Stack1] ->
+		Elem = Elem1,
+		Stack = Stack1
+	;
+		error("stack__pop_det: pop from empty stack")
+	).
 
 stack__depth(Stack, Depth) :-
 	list__length(Stack, Depth).

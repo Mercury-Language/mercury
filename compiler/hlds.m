@@ -111,9 +111,6 @@
 			;	semideterministic	% just functional
 			;	nondeterministic.	% neither
 
-:- type det_source	--->	declared
-			;	inferred.
-
 :- type procedure_id	--->	proc(pred_id, proc_id).
 
 :- type liveness_info   ==      set(var).	% The live variables
@@ -353,11 +350,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
-		determinism,	% the declared determinism
-				% (current always unspecified, since
-				% there's no way to declare the determinism
-				% of a goal.)
-		category, 	% the inferred determinism
+		category,	% the `local' determinism of the goal
+		category, 	% the overall determinism of the goal
 		instmap_delta,
 		term__context,
 		set(var),	% the non-local vars in the goal
@@ -1295,15 +1289,19 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 :- pred goal_info_determinism(hlds__goal_info, category).
 :- mode goal_info_determinism(in, out) is det.
 
-:- pred goal_info_declared_determinism(hlds__goal_info, determinism).
-:- mode goal_info_declared_determinism(in, out) is det.
+:- pred goal_info_set_determinism(hlds__goal_info, category, hlds__goal_info).
+:- mode goal_info_set_determinism(in, in, out) is det.
 
-:- pred goal_info_inferred_determinism(hlds__goal_info, category).
-:- mode goal_info_inferred_determinism(in, out) is det.
+	% The `local' determinism is used that part of the determinism
+	% which is computed before the determinism analysis computes
+	% the overall determinism for a goal.
 
-:- pred goal_info_set_inferred_determinism(hlds__goal_info, category,
-					  hlds__goal_info).
-:- mode goal_info_set_inferred_determinism(in, in, out) is det.
+:- pred goal_info_get_local_determinism(hlds__goal_info, category).
+:- mode goal_info_get_local_determinism(in, out) is det.
+
+:- pred goal_info_set_local_determinism(hlds__goal_info, category,
+					hlds__goal_info).
+:- mode goal_info_set_local_determinism(in, in, out) is det.
 
 :- pred goal_info_get_nonlocals(hlds__goal_info, set(var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
@@ -1347,15 +1345,15 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 :- implementation.
 
 goal_info_init(GoalInfo) :-
-	DeclaredDet = unspecified,
-	InferredDet = nondeterministic, 
+	LocalDet = deterministic,
+	Det = nondeterministic,
 	set__init(Births),
 	set__init(Deaths),
 	DeltaLiveness = Births - Deaths,
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
-	GoalInfo = goal_info(DeltaLiveness, DeclaredDet, InferredDet,
+	GoalInfo = goal_info(DeltaLiveness, LocalDet, Det,
 			InstMapDelta, Context, NonLocals, DeltaLiveness).
 
 goal_info_pre_delta_liveness(GoalInfo, DeltaLiveness) :-
@@ -1372,18 +1370,19 @@ goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, F, _),
 	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness).
 
+goal_info_get_local_determinism(GoalInfo, LocalDeterminism) :-
+	GoalInfo = goal_info(_, LocalDeterminism, _, _, _, _, _).
+
+goal_info_set_local_determinism(GoalInfo0, LocalDeterminism, GoalInfo) :-
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G),
+	GoalInfo = goal_info(A, LocalDeterminism, C, D, E, F, G).
+
 goal_info_determinism(GoalInfo, Determinism) :-
-	goal_info_inferred_determinism(GoalInfo, Determinism).
+	GoalInfo = goal_info(_, _, Determinism, _, _, _, _).
 
-goal_info_declared_determinism(GoalInfo, DeclaredDeterminism) :-
-	GoalInfo = goal_info(_, DeclaredDeterminism, _, _, _, _, _).
-
-goal_info_inferred_determinism(GoalInfo, InferredDeterminism) :-
-	GoalInfo = goal_info(_, _, InferredDeterminism, _, _, _, _).
-
-goal_info_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
+goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, _, D, E, F, G),
-	GoalInfo = goal_info(A, B, InferredDeterminism, D, E, F, G).
+	GoalInfo = goal_info(A, B, Determinism, D, E, F, G).
 
 goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
 	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _).

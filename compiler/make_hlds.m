@@ -181,17 +181,18 @@ module_add_inst_defn(Module0, VarSet, InstDefn, Cond, Context, Module) -->
 :- pred insts_add(user_inst_table, varset, inst_defn, condition, term__context,
 			user_inst_table, io__state, io__state).
 :- mode insts_add(in, in, in, in, in, out, di, uo) is det.
+
 insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	{ list__length(Args, Arity) },
 	(
-		{ map__contains(Insts0, Name - Arity) }
-	->
-		{ Insts = Insts0 },
-		multiple_def_error(Name, Arity, "inst", Context)
-	;
 	 	{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 			Context) },
-		{ map__insert(Insts0, Name - Arity, I, Insts) }
+		{ map__insert(Insts0, Name - Arity, I, Insts1) }
+	->
+		{ Insts = Insts1 }
+	;
+		{ Insts = Insts0 },
+		multiple_def_error(Name, Arity, "inst", Context)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -212,14 +213,14 @@ module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module) -->
 modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	{ list__length(Args, Arity) },
 	(
-		{ map__contains(Modes0, Name - Arity) }
-	->
-		{ Modes = Modes0 },
-		multiple_def_error(Name, Arity, "mode", Context)
-	;
 		{ I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond,
 			Context) },
-		{ map__insert(Modes0, Name - Arity, I, Modes) }
+		{ map__insert(Modes0, Name - Arity, I, Modes1) }
+	->
+		{ Modes = Modes1 }
+	;
+		{ Modes = Modes0 },
+		multiple_def_error(Name, Arity, "mode", Context)
 	).
 
 :- pred mode_name_args(mode_defn, sym_name, list(inst_param), hlds__mode_body).
@@ -431,7 +432,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% isn't the same as an existing one
 	{ next_mode_id(Procs0, ModeId) },
 	{ proc_info_init(Modes, Det, MContext, NewProc) },
-	{ map__insert(Procs0, ModeId, NewProc, Procs) },
+	{ map__set(Procs0, ModeId, NewProc, Procs) },
 	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
 	{ map__set(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable0, Preds, PredicateTable) },

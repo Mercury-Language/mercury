@@ -41,7 +41,7 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 generate_pred_arg_info([], ModuleInfo, ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable),
-	map__search(PredTable, PredId, PredInfo),
+	map__lookup(PredTable, PredId, PredInfo),
 	pred_info_procids(PredInfo, ProcIds),
 	generate_proc_arg_info(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
 	generate_pred_arg_info(PredIds, ModuleInfo1, ModuleInfo).
