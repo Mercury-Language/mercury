@@ -740,11 +740,11 @@ parse_arith_expression("-", 2, "builtin_minus").
 parse_arith_expression("*", 2, "builtin_times").
 parse_arith_expression("//", 2, "builtin_div").
 parse_arith_expression("mod", 2, "builtin_mod").
-parse_arith_expression("<<", 1, "builtin_left_shift").
-parse_arith_expression(">>", 1, "builtin_right_shift").
-parse_arith_expression("\\/", 1, "builtin_bit_or").
-parse_arith_expression("/\\", 1, "builtin_bit_and").
-parse_arith_expression("^", 1, "builtin_bit_xor").
+parse_arith_expression("<<", 2, "builtin_left_shift").
+parse_arith_expression(">>", 2, "builtin_right_shift").
+parse_arith_expression("\\/", 2, "builtin_bit_or").
+parse_arith_expression("/\\", 2, "builtin_bit_and").
+parse_arith_expression("^", 2, "builtin_bit_xor").
 parse_arith_expression("\\", 1, "builtin_bit_neg").
 
 :- pred parse_some_vars_goal(term, vars, goal).
@@ -851,6 +851,13 @@ parse_dcg_goal(Term0, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 :- pred parse_dcg_goal_2(string, list(term), term__context, varset, int, var,
 				goal, varset, int, var).
 :- mode parse_dcg_goal_2(in, in, in, in, in, in, out, out, out, out) is semidet.
+
+	% The following is a temporary and gross hack to strip out
+	% calls to `io__gc_call', since the mode checker can't handle
+	% them yet.
+parse_dcg_goal_2("io__gc_call", [Goal0],
+		_, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
+	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal, VarSet, N, Var).
 
 	% Ordinary goal inside { curly braces }.
 parse_dcg_goal_2("{}", [G], _, VarSet, N, Var,

@@ -56,6 +56,7 @@
 
 :- pred compare(comparison_result, T, T).
 :- mode compare(out, in, in) is det.
+:- mode compare(in, in, in) is semidet.	% implied
 
 %-----------------------------------------------------------------------------%
 

@@ -22,6 +22,7 @@
 
 :- pred list__append(list(T), list(T), list(T)).
 :- mode list__append(in, in, out) is det.
+:- mode list__append(in, in, in) is semidet.	% implied
 :- mode list__append(in, out, in) is semidet.
 :- mode list__append(out, out, in) is nondet.
 %	The following mode is semidet in the sense that it doesn't
@@ -55,6 +56,7 @@
 *****/
 :- mode list__length(in, out) is det.
 :- mode list__length(output_list_skel, in) is det.
+:- mode list__length(in, in) is semidet.	% implied
 
 :- pred list__condense(list(list(T)), list(T)).
 :- mode list__condense(in, out) is det.
@@ -208,8 +210,8 @@ list__append([X | Xs], Ys, [X | Zs]) :-
 :- list__remove_suffix(_List, Suffix, _Prefix) when Suffix.
 
 list__remove_suffix(List, Suffix, Prefix) :-
-	length(List, ListLength),
-	length(Suffix, SuffixLength),
+	list__length(List, ListLength),
+	list__length(Suffix, SuffixLength),
 	PrefixLength is ListLength - SuffixLength,
 	list__split_list(PrefixLength, List, Prefix, Suffix0),
 	Suffix = Suffix0.	% work around bug in determinism analysis
@@ -229,6 +231,8 @@ list__member(X, [_ | Xs]) :-
 :- mode member(out, in, out) is nondet.
 
 :- pred length(list(_T), int).
+:- mode length(in, in) is semidet.	% implied
+:- mode length(in, out) is det.		% implied
 :- mode length(input_list_skel, out) is det.
 :- mode length(output_list_skel, in) is det.
 
@@ -286,8 +290,8 @@ list__split3(As, Bs, Cs, Ds) :-
 	list__take(BL, Ts, Bs).
 
 :- pred list__take(int, list(T), list(T)).
+:- mode list__take(in, in, in) is semidet.	% implied
 :- mode list__take(in, in, out) is semidet.
-:- mode list__take(in, in, in) is semidet.
 
 list__take(N, As, Bs) :-
 	(
@@ -302,8 +306,8 @@ list__take(N, As, Bs) :-
 	).
 
 :- pred list__drop(int, list(T), list(T)).
+:- mode list__drop(in, in, in) is semidet.	% implied
 :- mode list__drop(in, in, out) is semidet.
-:- mode list__drop(in, in, in) is semidet.
 
 list__drop(N, As, Bs) :-
 	(

@@ -21,6 +21,7 @@
 
 :- pred string__append(string, string, string).
 :- mode string__append(in, in, out) is det.
+:- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
 :- mode string__append(out, out, in) is nondet.
 %	Append two strings together.
@@ -60,6 +61,9 @@
 %	Convert an integer to a string in a given Base (between 2 and 36).
 
 :- pred string__first_char(string, character, string).
+:- mode string__first_char(in, in, in) is semidet.	% implied
+:- mode string__first_char(in, out, in) is semidet.	% implied
+:- mode string__first_char(in, in, out) is semidet.	% implied
 :- mode string__first_char(in, out, out) is semidet.
 :- mode string__first_char(out, in, in) is det.
 %	string__first_char(String, Char, Rest) is true iff
@@ -177,6 +181,7 @@
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out) is det.
 :- mode string__to_int_list(out, in) is det.
+:- mode string__to_int_list(in, in) is semidet. % implied
 
 :- pred intToString(int, string).
 :- mode intToString(out, in) is semidet.

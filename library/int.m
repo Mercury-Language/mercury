@@ -91,6 +91,12 @@
 :- pred builtin_mod(int, int, int).
 :- mode builtin_mod(in, in, out) is det.
 
+:- pred builtin_left_shift(int, int, int).
+:- mode builtin_left_shift(in, in, out) is det.
+
+:- pred builtin_right_shift(int, int, int).
+:- mode builtin_right_shift(in, in, out) is det.
+
 :- pred builtin_bit_or(int, int, int).
 :- mode builtin_bit_or(in, in, out) is det.
 

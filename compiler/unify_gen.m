@@ -118,6 +118,9 @@ unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 	error("Sorry, float tests not implemented").
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
+unify_gen__generate_tag_rval_2(pred_constant(_, _), _Rval, _TestRval) :-
+	% XXX We should report a proper error message rather than just aborting
+	error("Attempted higher-order unification").
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
 				unop(mktag, const(int_const(SimpleTag)))).
@@ -143,57 +146,64 @@ unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 
 unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
-	(
-		{ Tag = string_constant(String) }
-	->
-		{ Code = empty },
-		code_info__cache_expression(Var, const(string_const(String)))
+	unify_gen__generate_construction_2(Tag, Var, Args, Modes, Code).
+
+:- pred unify_gen__generate_construction_2(cons_tag, var, 
+					list(var), list(uni_mode),
+					code_tree, code_info, code_info).
+:- mode unify_gen__generate_construction_2(in, in, in, in, out,
+					in, out) is det.
+
+unify_gen__generate_construction_2(string_constant(String),
+		Var, _Args, _Modes, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(string_const(String))).
+unify_gen__generate_construction_2(int_constant(Int),
+		Var, _Args, _Modes, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var, const(int_const(Int))).
+unify_gen__generate_construction_2(float_constant(_Float),
+		_Var, _Args, _Modes, _Code) -->
+	{ error("Float constructions unimplemented") }.
+unify_gen__generate_construction_2(simple_tag(SimpleTag),
+		Var, Args, Modes, Code) -->
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_next_label_number(LabelCount),
+	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals) },
+	code_info__cache_expression(Var, create(SimpleTag, RVals, LabelCount)),
+		% we need to flush the expression immediately,
+		% since the expression cache doesn't handle the
+		% dependencies in create expressions
+	code_info__produce_variable(Var, Code, _).
+unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
+		Var, Args, Modes, Code) -->
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_next_label_number(LabelCount),
+	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals0) },
+		% the first field holds the secondary tag
+	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
+	code_info__cache_expression(Var, create(Bits0, RVals, LabelCount)),
+		% we need to flush the expression immediately,
+		% since the expression cache doesn't handle the
+		% dependencies in create expressions
+	code_info__produce_variable(Var, Code, _).
+unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
+		Var, _Args, _Modes, Code) -->
+	{ Code = empty },
+	code_info__cache_expression(Var,
+		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
+unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
+		Var, Args, _Modes, Code) -->
+	( { Args = [] } ->
+		[]
 	;
-		{ Tag = int_constant(Int) }
-	->
-		{ Code = empty },
-		code_info__cache_expression(Var, const(int_const(Int)))
-	;
-		{ Tag = float_constant(_Float) }
-	->
-		{ error("Float constructions unimplemented") }
-	;
-		{ Tag = simple_tag(SimpleTag) }
-	->
-		code_info__get_module_info(ModuleInfo),
-		code_info__get_next_label_number(LabelCount),
-		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
-			RVals) },
-		code_info__cache_expression(Var, create(SimpleTag, RVals,
-						LabelCount)),
-			% we need to flush the expression immediately,
-			% since the expression cache doesn't handle the
-			% dependencies in create expressions
-		code_info__produce_variable(Var, Code, _)
-	;
-		{ Tag = complicated_tag(Bits0, Num0) }
-	->
-		code_info__get_module_info(ModuleInfo),
-		code_info__get_next_label_number(LabelCount),
-		{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes,
-			RVals0) },
-			% the first field holds the secondary tag
-		{ RVals = [yes(const(int_const(Num0))) | RVals0] },
-		code_info__cache_expression(Var, create(Bits0, RVals,
-						LabelCount)),
-			% we need to flush the expression immediately,
-			% since the expression cache doesn't handle the
-			% dependencies in create expressions
-		code_info__produce_variable(Var, Code, _)
-	;
-		{ Tag = complicated_constant_tag(Bits1, Num1) }
-	->
-		code_info__cache_expression(Var,
-			mkword(Bits1, unop(mkbody, const(int_const(Num1))))),
-		{ Code = empty }
-	;
-		{ error("Unrecognised tag type in construction") }
-	).
+		{ error("Sorry, not implemented: higher order pred closures") }
+	),
+	{ Code = empty },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId,
+			CodeAddress) },
+	code_info__cache_expression(Var, const(pred_const(CodeAddress))).
 
 :- pred unify_gen__generate_cons_args(list(var), module_info, list(uni_mode),
 					list(maybe(rval))).
@@ -268,6 +278,10 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Code = empty }
 	;
 		{ Tag = float_constant(_Float) }
+	->
+		{ Code = empty }
+	;
+		{ Tag = pred_constant(_, _) }
 	->
 		{ Code = empty }
 	;

@@ -37,7 +37,9 @@
 
 :- pred bimap__lookup(bimap(K,V), K, V).
 :- mode bimap__lookup(in, in, out) is det.
-:- mode bimap__lookup(in, out, in) is det.
+
+:- pred bimap__reverse_lookup(bimap(K,V), K, V).
+:- mode bimap__reverse_lookup(in, out, in) is det.
 
 :- pred bimap__insert(bimap(K,V), K, V, bimap(K,V)).
 :- mode bimap__insert(in, in, in, out) is semidet.
@@ -94,8 +96,10 @@ bimap__search(bimap(O, C), K, V) :-
 	map__search(O, K, V),
 	map__search(C, V, K).
 
-bimap__lookup(bimap(O, C), K, V) :-
-	map__lookup(O, K, V),
+bimap__lookup(bimap(O, _C), K, V) :-
+	map__lookup(O, K, V).
+
+bimap__reverse_lookup(bimap(_O, C), K, V) :-
 	map__lookup(C, V, K).
 
 bimap__insert(bimap(O0, C0), K, V, bimap(O, C)) :-

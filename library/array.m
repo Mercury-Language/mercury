@@ -99,9 +99,10 @@ array__init(Low, High, Init, Array) :-
 	->
 		Array = three(Low, High, node(Init), node(Init), node(Init))
 	;
-		0 is Size mod 2,
-		M is Size mod 3,
-		not(M = 3)
+		Mod2 is Size mod 2,
+		Mod2 = 0,
+		Mod3 is Size mod 3,
+		Mod3 \= 3	% XXX huh? this is a bug
 	->
 		N is Size // 2,
 		L2 is Low + N,

@@ -45,7 +45,7 @@
 :- pred code_util__neg_rval(rval, rval).
 :- mode code_util__neg_rval(in, out) is det.
 
-:- pred code_util__atom_to_binop(string, operator).
+:- pred code_util__atom_to_binop(string, binary_op).
 :- mode code_util__atom_to_binop(in, out) is semidet.
 :- mode code_util__atom_to_binop(out, in) is semidet.
 
@@ -113,15 +113,15 @@ code_util__atom_to_binop("builtin_div", (/)).
 code_util__atom_to_binop("builtin_mod", (mod)).
 code_util__atom_to_binop("builtin_left_shift", (<<)).
 code_util__atom_to_binop("builtin_right_shift", (>>)).
-code_util__atom_to_binop("builtin_and", (&)).
-code_util__atom_to_binop("builtin_or", (|)).
-code_util__atom_to_binop("builtin_xor", (^)).
+code_util__atom_to_binop("builtin_bit_and", (&)).
+code_util__atom_to_binop("builtin_bit_or", (|)).
+code_util__atom_to_binop("builtin_bit_xor", (^)).
 code_util__atom_to_binop(">", (>)).
 code_util__atom_to_binop("<", (<)).
 code_util__atom_to_binop(">=", (>=)).
 code_util__atom_to_binop("=<", (<=)).
 
-code_util__atom_to_unop("\\", bitwise_complement).
+code_util__atom_to_unop("builtin_bit_neg", bitwise_complement).
 
 %-----------------------------------------------------------------------------%
 
@@ -191,7 +191,7 @@ code_util__neg_rval_2(unop(not, Rval), Rval).
 code_util__neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 	code_util__neg_op(Op, NegOp).
 	
-:- pred code_util__neg_op(operator, operator).
+:- pred code_util__neg_op(binary_op, binary_op).
 :- mode code_util__neg_op(in, out) is semidet.
 
 code_util__neg_op(eq, ne).

@@ -2306,7 +2306,8 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 			% If the type has only one constructor, then the
 			% unification must be deterministic
 			map__lookup(VarTypes, X, TypeX),
-			type_constructors(TypeX, ModuleInfo, [_])
+			type_constructors(TypeX, ModuleInfo, Constructors),
+			Constructors = [_]
 		->
 			Det = deterministic
 		;

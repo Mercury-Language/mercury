@@ -423,6 +423,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	;	int_constant(int)
 			% This is used for enumerations and character
 			% constants as well as for int constants.
+	;	pred_constant(pred_id, proc_id)
+			% Higher-order pred constants
+			% (We don't handle closures yet.)
 	;	simple_tag(tag_bits)	
 			% This is for constants or functors which only
 			% require a simple (two-bit) tag.
@@ -1377,6 +1380,7 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 
 :- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.
+:- mode goal_info_get_instmap_delta(in, in) is semidet. % implied
 
 :- pred goal_info_set_instmap_delta(hlds__goal_info, instmap_delta,
 				hlds__goal_info).

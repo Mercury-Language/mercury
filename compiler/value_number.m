@@ -51,7 +51,7 @@
 			;	vn_const(rval_const)
 			;       vn_field(tag, vn, int)		% rval
 			;	vn_unop(unary_op, vn)		% rval
-			;	vn_binop(operator, vn, vn).	% rval, rval
+			;	vn_binop(binary_op, vn, vn).	% rval, rval
 
 			% these rvals do not have vn_rval parallels
 			%	vn_create(tag, list(rval))

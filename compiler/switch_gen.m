@@ -154,6 +154,7 @@ switch_gen__priority(simple_tag(_), 2).
 switch_gen__priority(float_constant(_), 3).
 switch_gen__priority(complicated_tag(_, _), 4).
 switch_gen__priority(string_constant(_), 5).
+switch_gen__priority(pred_constant(_, _), 6).
 
 %---------------------------------------------------------------------------%
 
@@ -637,11 +638,11 @@ switch_gen__gen_hash_slot(Slot, TblSize, HashSlotMap, Det, FailLabel, EndLabel,
 			{ switch_gen__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
 		->
+			code_gen__generate_forced_goal(Det, Goal, GoalCode)
+		;
 			code_info__grab_code_info(CodeInfo),
 			code_gen__generate_forced_goal(Det, Goal, GoalCode),
 			code_info__slap_code_info(CodeInfo)
-		;
-			code_gen__generate_forced_goal(Det, Goal, GoalCode)
 		),
 		{ Code = tree(LabelCode, tree(GoalCode, FinishCode)) }
 	;

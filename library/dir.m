@@ -13,11 +13,18 @@
 
 	% predicates to isolate system dependencies 
 
-:- pred dir__directory_seperator(character::out) is det. % Returns '/'.
-:- pred dir__this_directory(string::out) is det.	 % Returns ".".
+:- pred dir__directory_seperator(character).
+:- mode dir__directory_seperator(out) is det.
+:- mode dir__directory_seperator(in) is semidet.
+	% Returns '/'.
 
-	% predicates for splitting filenames into a directory
-	% part and a filename part.
+:- pred dir__this_directory(string).
+:- mode dir__this_directory(out) is det.	
+:- mode dir__this_directory(in) is semidet.	 % Implied
+	% Returns ".".
+
+	% predicates for splitting filenames into a directory part and
+	% a filename part.
 
 :- pred dir__split_name(string::in, string::out, string::out) is det.
 :- pred dir__basename(string::in, string::out) is det.

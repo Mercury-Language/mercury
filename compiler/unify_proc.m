@@ -142,19 +142,19 @@ unify_proc__lookup_num(Requests, TypeId, UniMode, Num) :-
 
 unify_proc__request_unify(UnifyId, Requests0, Requests) :-
 	unify_proc__get_req_map(Requests0, ReqMap0),
-	Requests0 = unify_requests(Num0, ReqMap0, ReqQueue0),
+	Requests0 = unify_requests(Num0, ReqMap0, _ReqQueue0),
 	( map__contains(ReqMap0, UnifyId) ->
 		Requests = Requests0
 	;
 		map__set(ReqMap0, UnifyId, Num0, ReqMap),
 		unify_proc__set_req_map(Requests0, ReqMap, Requests1),
 
-		unify_proc__get_num(Requests1, Num0),
-		Num is Num0 + 1,
+		unify_proc__get_num(Requests1, Num1),
+		Num is Num1 + 1,
 		unify_proc__set_num(Requests1, Num, Requests2),
 
-		unify_proc__get_req_queue(Requests1, ReqQueue0),
-		queue__put(ReqQueue0, UnifyId, ReqQueue),
+		unify_proc__get_req_queue(Requests1, ReqQueue1),
+		queue__put(ReqQueue1, UnifyId, ReqQueue),
 		unify_proc__set_req_queue(Requests2, ReqQueue, Requests)
 	).
 

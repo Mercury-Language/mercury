@@ -39,7 +39,6 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	maybe_report_stats(Statistics),
 		% balance the binary trees
 	{ module_info_optimize(Module1, Module2) },
-	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
@@ -316,7 +315,10 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	;
 		{ ConsDefns1 = [] }
 	),
-	( { list__member(hlds__cons_defn(_, TypeId, _), ConsDefns1) } ->
+	(
+		{ list__member(OtherConsDefn, ConsDefns1) },
+		{ OtherConsDefn = hlds__cons_defn(_, TypeId, _) }
+	->
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
@@ -495,7 +497,9 @@ next_mode_id(Procs, Det, ModeId) :-
 
 	% If we can call a predicate in either of two different modes,
 	% we should prefer to call it in a deterministic mode
-	% rather than a non-deterministic one.
+	% rather than a non-deterministic one, and we should prefer
+	% to call it in a semideterministic mode rather than a deterministic
+	% one.
 	% Higher numbers mean lower priority.
 	% This works because mode analysis tries each mode in turn,
 	% starting with the lowest-numbered modes.
@@ -503,12 +507,12 @@ next_mode_id(Procs, Det, ModeId) :-
 :- pred determinism_priority(determinism, int).
 :- mode determinism_priority(in, out) is det.
 
-determinism_priority(det, 0).
-determinism_priority(erroneous, 0).
-determinism_priority(failure, 10000).
-determinism_priority(semidet, 10000).
-determinism_priority(unspecified, 15000).
-determinism_priority(nondet, 20000).
+determinism_priority(semidet, 0).
+determinism_priority(failure, 0).
+determinism_priority(det, 10000).
+determinism_priority(erroneous, 10000).
+determinism_priority(unspecified, 20000).
+determinism_priority(nondet, 30000).
 
 %-----------------------------------------------------------------------------%
 
@@ -536,7 +540,6 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		% (if it's not there, print an error message and insert
 		% a dummy declaration for the predicate.)
 		%
-	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(

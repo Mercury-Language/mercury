@@ -112,7 +112,7 @@
 			;       field(tag, rval, int)
 			;	const(rval_const)
 			;	unop(unary_op, rval)
-			;	binop(operator, rval, rval).
+			;	binop(binary_op, rval, rval).
 
 			/* any additions to `rval' also require additions in
 			   code_info__generate_expression
@@ -133,10 +133,10 @@
 :- type rval_const	--->	true
 			;	false
 			;	int_const(int)
-			;	string_const(string).
+			;	string_const(string)
+			;	pred_const(code_addr).
 
-% should be renamed binary_op
-:- type operator	--->	(+)	% integer arithmetic
+:- type binary_op	--->	(+)	% integer arithmetic
 			;	(-)
 			;	(*)
 			;	(/)
@@ -197,8 +197,8 @@
 :- pred llds__lval_to_string(lval, string).
 :- mode llds__lval_to_string(in, out) is semidet.
 
-:- pred llds__operator_to_string(operator, string).
-:- mode llds__operator_to_string(in, out) is det.
+:- pred llds__binary_op_to_string(binary_op, string).
+:- mode llds__binary_op_to_string(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -266,7 +266,7 @@ output_c_procedure_list([P|Ps]) -->
 :- pred output_c_procedure(c_procedure, io__state, io__state).
 :- mode output_c_procedure(in, di, uo) is det.
 
-output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
+output_c_procedure(c_procedure(Name,Arity,ModeNum0,Instructions)) -->
 	io__write_string("\n/*-------------------------------------"),
 	io__write_string("------------------------------------*/\n"),
 	io__write_string("/* code for predicate "),
@@ -274,7 +274,8 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string(" in mode "),
-	io__write_int(Mode),
+	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
+	io__write_int(ModeNum),
 	io__write_string(" */\n"),
 	output_instruction_list(Instructions).
 
@@ -646,16 +647,17 @@ output_label(local(ProcLabel, Num)) -->
 
 	% XXX we need to do something with the module name.
 
-output_proc_label(proc(_Module, Pred, Arity, Mode)) -->
+output_proc_label(proc(_Module, Pred, Arity, ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
-	io__write_int(Mode).
+	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
+	io__write_int(ModeNum).
 
-output_proc_label(unify_proc(_Module, TypeName, TypeArity, ModeNum)) -->
+output_proc_label(unify_proc(_Module, TypeName, TypeArity, ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
 	io__write_string("unify_"),
@@ -663,6 +665,7 @@ output_proc_label(unify_proc(_Module, TypeName, TypeArity, ModeNum)) -->
 	io__write_string("_"),
 	io__write_int(TypeArity),
 	io__write_string("_"),
+	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
@@ -727,7 +730,7 @@ output_rval(binop(Op, X, Y)) -->
 		io__write_string("("),
 		output_rval(X),
 		io__write_string(" "),
-		output_operator(Op),
+		output_binary_op(Op),
 		io__write_string(" "),
 		output_rval(Y),
 		io__write_string(")")
@@ -780,7 +783,7 @@ output_unary_op(not) -->
 output_unary_op(cast_to_unsigned) -->
 	io__write_string("(unsigned)").
 
-:- pred llds__string_op(operator, string).
+:- pred llds__string_op(binary_op, string).
 :- mode llds__string_op(in, out) is semidet.
 
 llds__string_op(str_eq, "==").
@@ -806,6 +809,8 @@ output_rval_const(true) -->
 	io__write_string("TRUE").
 output_rval_const(false) -->
 	io__write_string("FALSE").
+output_rval_const(pred_const(CodeAddress)) -->
+	output_code_addr(CodeAddress).
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.
@@ -931,40 +936,40 @@ quote_c_char('\b', 'b').
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_operator(operator, io__state, io__state).
-:- mode output_operator(in, di, uo) is det.
+:- pred output_binary_op(binary_op, io__state, io__state).
+:- mode output_binary_op(in, di, uo) is det.
 
-output_operator(Op) -->
-	{ llds__operator_to_string(Op, String) },
+output_binary_op(Op) -->
+	{ llds__binary_op_to_string(Op, String) },
 	io__write_string(String).
 
-llds__operator_to_string(+, "+").
-llds__operator_to_string(-, "-").
-llds__operator_to_string(*, "*").
-llds__operator_to_string(/, "/").
-llds__operator_to_string(<<, "<<").
-llds__operator_to_string(>>, ">>").
-llds__operator_to_string(&, "&").
-llds__operator_to_string(|, "|").
-llds__operator_to_string(^, "^").
-llds__operator_to_string(mod, "%").
-llds__operator_to_string(eq, "==").
-llds__operator_to_string(ne, "!=").
-llds__operator_to_string(and, "&&").
-llds__operator_to_string(or, "||").
-llds__operator_to_string(<, "<").
-llds__operator_to_string(>, ">").
-llds__operator_to_string(<=, "<=").
-llds__operator_to_string(>=, ">=").
+llds__binary_op_to_string(+, "+").
+llds__binary_op_to_string(-, "-").
+llds__binary_op_to_string(*, "*").
+llds__binary_op_to_string(/, "/").
+llds__binary_op_to_string(<<, "<<").
+llds__binary_op_to_string(>>, ">>").
+llds__binary_op_to_string(&, "&").
+llds__binary_op_to_string(|, "|").
+llds__binary_op_to_string(^, "^").
+llds__binary_op_to_string(mod, "%").
+llds__binary_op_to_string(eq, "==").
+llds__binary_op_to_string(ne, "!=").
+llds__binary_op_to_string(and, "&&").
+llds__binary_op_to_string(or, "||").
+llds__binary_op_to_string(<, "<").
+llds__binary_op_to_string(>, ">").
+llds__binary_op_to_string(<=, "<=").
+llds__binary_op_to_string(>=, ">=").
 	% The following is just for debugging purposes -
 	% string operators are not output as `str_eq', etc.
-llds__operator_to_string(array_index, "array_index").
-llds__operator_to_string(str_eq, "str_eq").
-llds__operator_to_string(str_ne, "str_ne").
-llds__operator_to_string(str_lt, "str_lt").
-llds__operator_to_string(str_gt, "str_gt").
-llds__operator_to_string(str_le, "str_le").
-llds__operator_to_string(str_ge, "str_ge").
+llds__binary_op_to_string(array_index, "array_index").
+llds__binary_op_to_string(str_eq, "str_eq").
+llds__binary_op_to_string(str_ne, "str_ne").
+llds__binary_op_to_string(str_lt, "str_lt").
+llds__binary_op_to_string(str_gt, "str_gt").
+llds__binary_op_to_string(str_le, "str_le").
+llds__binary_op_to_string(str_ge, "str_ge").
 
 %-----------------------------------------------------------------------------%
 

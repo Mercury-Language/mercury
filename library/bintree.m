@@ -36,6 +36,7 @@
 :- mode bintree__set(in, in, in, out) is det.
 
 :- pred bintree__search(bintree(K,V), K, V).
+:- mode bintree__search(in, in, in) is semidet.	% implied
 :- mode bintree__search(in, in, out) is semidet.
 
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).

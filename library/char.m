@@ -25,6 +25,7 @@
 
 :- pred char_to_int(character, int).
 :- mode char_to_int(in, out) is det.
+:- mode char_to_int(in, in) is semidet.	% implied
 :- mode char_to_int(out, in) is semidet.
 	% Convert a character to it's corresponding numerical code.
 

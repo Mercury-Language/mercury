@@ -50,7 +50,7 @@
 :- pred opt_debug__dump_unop(unary_op, string).
 :- mode opt_debug__dump_unop(in, out) is det.
 
-:- pred opt_debug__dump_binop(operator, string).
+:- pred opt_debug__dump_binop(binary_op, string).
 :- mode opt_debug__dump_binop(in, out) is det.
 
 :- pred opt_debug__dump_label(label, string).
@@ -210,6 +210,7 @@ opt_debug__dump_const(int_const(I), Str) :-
 	string__int_to_string(I, Str).
 opt_debug__dump_const(string_const(I), Str) :-
 	string__append_list(["\"", I, "\""], Str).
+opt_debug__dump_const(pred_const(_CodeAddress), "pred_const(<code address>)").
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
@@ -221,5 +222,5 @@ opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
 opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 
 opt_debug__dump_binop(Op, String) :-
-	llds__operator_to_string(Op, String).
+	llds__binary_op_to_string(Op, String).
 

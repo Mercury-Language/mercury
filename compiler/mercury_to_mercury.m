@@ -1013,7 +1013,7 @@ mercury_unary_postfix_op("sorted").
 :- mode mercury_convert_var_name(in, out) is det.
 
 mercury_convert_var_name(Name, ConvertedName) :-
-	( string__append(_, "'", Name) ->
+	( string__remove_suffix(Name, "'", _) ->
 		strip_trailing_primes(Name, StrippedName, NumPrimes),
 		string__append("V_", StrippedName, Tmp1),
 		string__int_to_string(NumPrimes, NumString),

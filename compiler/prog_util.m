@@ -146,6 +146,7 @@ goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
 :- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
 					type, bool, list(type), bool).
 :- mode goedel_replace_eqv_type_uu(in, in, in, in, in, out, out) is det.
+:- mode goedel_replace_eqv_type_uu(in, in, in, in, in, out, in) is semidet. % implied
 
 goedel_replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
@@ -155,6 +156,7 @@ goedel_replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 :- pred goedel_replace_eqv_type_du(list(constructor), string, list(type_param),
 				type, bool, list(constructor), bool).
 :- mode goedel_replace_eqv_type_du(in, in, in, in, in, out, out) is det.
+:- mode goedel_replace_eqv_type_du(in, in, in, in, in, out, in) is semidet. % implied
 
 goedel_replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
@@ -164,6 +166,7 @@ goedel_replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0, [T|Ts], Found) :-
 :- pred goedel_replace_eqv_type_ctor(constructor, string, list(type_param),
 				type, bool, constructor, bool).
 :- mode goedel_replace_eqv_type_ctor(in, in, in, in, in, out, out) is det.
+:- mode goedel_replace_eqv_type_ctor(in, in, in, in, in, out, in) is semidet. % implied
 
 goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 		TName - Targs, Found) :-
@@ -173,6 +176,7 @@ goedel_replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
 :- pred goedel_replace_eqv_type_type(type, string, list(type_param),
 				type, bool, type, bool).
 :- mode goedel_replace_eqv_type_type(in, in, in, in, in, out, out) is det.
+:- mode goedel_replace_eqv_type_type(in, in, in, in, in, out, in) is semidet. % implied
 
 goedel_replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
 		term__variable(V), Found).
@@ -197,6 +201,7 @@ goedel_replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
 :- pred goedel_replace_eqv_type_pred(list(type_and_mode), string,
 	list(type_param), type, bool, list(type_and_mode), bool).
 :- mode goedel_replace_eqv_type_pred(in, in, in, in, in, out, out) is det.
+:- mode goedel_replace_eqv_type_pred(in, in, in, in, in, out, in) is semidet. % implied
 
 goedel_replace_eqv_type_pred([], _Name, _Args, _Body, Found, [], Found).
 goedel_replace_eqv_type_pred([TM0|TMs0], Name, Args, Body, Found0,

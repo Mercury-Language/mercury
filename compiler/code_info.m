@@ -713,13 +713,28 @@ code_info__flush_variable(Var, Code) -->
 	% that can be represented just by an rval which doesn't require
 	% any code to be generated.  Note that variables whose value is
 	% cached can be constants.  Note also that create() expressions whose
-	% arguments are constants are themselves constants -- unless the
+	% arguments are constants are themselves constants - unless the
 	% --static-ground-terms option was disabled.
+	% Note also that addresses of imported predicates are not constant
+	% if we are using GNU C non-local gotos.
 
 :- pred code_info__expr_is_constant(rval, code_info, code_info).
 :- mode code_info__expr_is_constant(in, in, out) is semidet.
 
-code_info__expr_is_constant(const(_)) --> [].
+code_info__expr_is_constant(const(Const)) -->
+	( { Const = pred_const(CodeAddress) } ->
+		( { CodeAddress = succip } ->
+			{ fail }
+		; { CodeAddress = label(_) } ->
+			{ true }
+		;
+			code_info__get_globals(Globals),
+			{ globals__lookup_bool_option(Globals,
+				gcc_non_local_gotos, no) }
+		)
+	;
+		{ true }
+	).
 
 code_info__expr_is_constant(unop(_Op, Expr)) -->
 	code_info__expr_is_constant(Expr).
@@ -1166,8 +1181,8 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 	->
 		{ error("Cannot shuffle a reserved register.") }
 	;
+		{ Contents = vars(Vars) },
 		(
-			{ Contents = vars(Vars) },
 			code_info__must_be_swapped(Vars, Args, reg(Reg))
 		;
 		% XXX as a temporary hack, due to bugs elsewhere,
@@ -1177,7 +1192,6 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		% for a value to be in a register, be needed, and
 		% NOT be live. Eg, a parameter to a call not yet
 		% positioned, etc.
-			{ Contents = vars(Vars) },
 			{ set__member(Var, Vars) },
 			{ list__member(Var, Args) }
 		)
@@ -1404,7 +1418,7 @@ code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
 code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
-		% Use the variable to determine the type_id
+		% Lookup the type of the variable
 		%
 	code_info__variable_type(Var, Type),
 	(
@@ -1415,9 +1429,48 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		{ char_to_int(Char, CharCode) },
 		{ Tag = int_constant(CharCode) }
 	;
+		% handle higher-order pred types specially
+		{ Type = term__functor(term__atom("pred"), PredArgTypes, _) }
+	->
+		{ list__length(PredArgTypes, PredArity) },
+		code_info__get_module_info(ModuleInfo),
+		{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
+		{
+		    predicate_table_search_name_arity(PredicateTable,
+			Name, PredArity, PredIds)
+		->
+		    (
+			PredIds = [PredId]
+		    ->
+			predicate_table_get_preds(PredicateTable, Preds),
+			map__lookup(Preds, PredId, PredInfo),
+			pred_info_procedures(PredInfo, Procs),
+			map__keys(Procs, ProcIds),
+			(
+			    ProcIds = [ProcId]
+			->
+			    Tag = pred_constant(PredId, ProcId)
+			;
+			    error("sorry, not implemented: taking address of predicate with multiple modes")
+			)
+		    ;
+			% cons_id ought to include the module prefix, so
+			% that we could use predicate_table__search_m_n_a to 
+			% prevent this from happening
+			error("cons_info__cons_id_to_tag: ambiguous pred")
+		    )
+		;
+		    % the type-checker should ensure that this never happens
+		    error("cons_info__cons_id_to_tag: invalid pred")
+		}
+	;
+			%
+			% Use the type to determine the type_id
+			%
 		{ type_to_type_id(Type, TypeId0, _) ->
 			TypeId = TypeId0
 		;
+			% the type-checker should ensure that this never happens
 			error("cons_info__cons_id_to_tag: invalid type")
 		},
 
@@ -1434,6 +1487,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		->
 			ConsTable = ConsTable0
 		;
+			% this should never happen
 			error(
 			"code_info__cons_id_to_tag: type is not d.u. type?"
 			)

@@ -157,6 +157,7 @@
 
 :- pred term__init_var_supply(var_supply).
 :- mode term__init_var_supply(out) is det.
+:- mode term__init_var_supply(in) is semidet. % implied
 %	term__init_var_supply(VarSupply) :
 %		returns a fresh var_supply for producing fresh variables.
 

@@ -64,6 +64,7 @@
 
 :- pred stack__depth(stack(_T), int).
 :- mode stack__depth(in, out) is det.
+:- mode stack__depth(in, in) is semidet. % implied
 
 %--------------------------------------------------------------------------%
 
