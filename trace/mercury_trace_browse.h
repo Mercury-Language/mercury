@@ -106,4 +106,16 @@ extern	void	MR_trace_query_external(MR_Query_Type type, MR_String options,
 			int num_imports, MR_Word imports_list);
 #endif
 
+/* 
+** Points to the state of the interactive term browser that should persist
+** between browsing sessions, like the format settings.
+*/
+extern	MR_Word	MR_trace_browser_persistent_state;
+
+/*
+** Initializes the interactive term browser persistent state or does nothing
+** if it's already been initialized.
+*/
+extern	void	MR_trace_browse_ensure_init(void);
+
 #endif	/* MERCURY_TRACE_BROWSE_H */

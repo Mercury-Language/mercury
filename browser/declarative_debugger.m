@@ -41,6 +41,7 @@
 :- import_module mdb__declarative_execution.
 :- import_module mdb__io_action.
 :- import_module mdbcomp__program_representation.
+:- import_module mdb.browser_info.
 
 :- import_module io, bool, list, std_util, string.
 
@@ -218,11 +219,14 @@
 :- type diagnoser_state(R).
 
 :- pred diagnoser_state_init(io_action_map::in, io__input_stream::in,
-	io__output_stream::in, diagnoser_state(R)::out) is det.
+	io__output_stream::in, browser_info.browser_persistent_state::in,
+	diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, R::in, int::in, int::in, int::in,
 	diagnoser_response::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	browser_info.browser_persistent_state::in,
+	browser_info.browser_persistent_state::out,
 	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
 :- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
@@ -304,36 +308,44 @@ diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 
 diagnoser_set_oracle(diagnoser(A, _), B, diagnoser(A, B)).
 
-diagnoser_state_init(IoActionMap, InStr, OutStr, Diagnoser) :-
+diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, Diagnoser) :-
 	analyser_state_init(IoActionMap, Analyser),
-	oracle_state_init(InStr, OutStr, Oracle),
+	oracle_state_init(InStr, OutStr, Browser, Oracle),
 	Diagnoser = diagnoser(Analyser, Oracle).
 
 diagnosis(Store, NodeId, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, Diagnoser0, Diagnoser) -->
-	( { UseOldIoActionMap > 0 } ->
-		{ Diagnoser1 = Diagnoser0 }
+		Response, !Diagnoser, !Browser, !IO) :-
+	mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
+		oracle_state, Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+	( 
+		UseOldIoActionMap > 0
+	->
+		true
 	;
-		make_io_action_map(IoActionStart, IoActionEnd, IoActionMap),
-		{ Analyser0 = Diagnoser0 ^ analyser_state },
-		{ analyser_state_replace_io_map(IoActionMap,
-			Analyser0, Analyser1) },
-		{ Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser1 }
+		make_io_action_map(IoActionStart, IoActionEnd, IoActionMap, 
+			!IO),
+		Analyser0 = !.Diagnoser ^ analyser_state,
+		analyser_state_replace_io_map(IoActionMap,
+			Analyser0, Analyser1),
+		!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser1
 	),
-	try_io(diagnosis_2(Store, NodeId, Diagnoser1), Result),
+	try_io(diagnosis_2(Store, NodeId, !.Diagnoser), Result, !IO),
 	(
-		{ Result = succeeded({Response, Diagnoser}) }
+		Result = succeeded({Response, !:Diagnoser})
 	;
-		{ Result = exception(UnivException) },
+		Result = exception(UnivException),
 		(
-			{ univ_to_type(UnivException, DiagnoserException) }
+			univ_to_type(UnivException, DiagnoserException)
 		->
 			handle_diagnoser_exception(DiagnoserException,
-				Response, Diagnoser1, Diagnoser)
+				Response, !Diagnoser, !IO)
 		;
-			{ rethrow(Result) }
+			rethrow(Result)
 		)
-	).
+	),
+	!:Browser = mdb.declarative_oracle.get_browser_state(
+		!.Diagnoser ^ oracle_state).
 
 :- pred diagnosis_2(S::in, R::in, diagnoser_state(R)::in,
 	{diagnoser_response, diagnoser_state(R)}::out,
@@ -452,15 +464,15 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser) -->
 	% Export a monomorphic version of diagnosis_state_init/4, to
 	% make it easier to call from C code.
 	%
-:- pred diagnoser_state_init_store(io__input_stream, io__output_stream,
-		diagnoser_state(trace_node_id)).
-:- mode diagnoser_state_init_store(in, in, out) is det.
+:- pred diagnoser_state_init_store(io__input_stream::in, io__output_stream::in,
+	browser_info.browser_persistent_state::in, 
+	diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(diagnoser_state_init_store(in, in, out),
+:- pragma export(diagnoser_state_init_store(in, in, in, out),
 		"MR_DD_decl_diagnosis_state_init").
 
-diagnoser_state_init_store(InStr, OutStr, Diagnoser) :-
-	diagnoser_state_init(map__init, InStr, OutStr, Diagnoser).
+diagnoser_state_init_store(InStr, OutStr, Browser, Diagnoser) :-
+	diagnoser_state_init(map__init, InStr, OutStr, Browser, Diagnoser).
 
 	% Export a monomorphic version of diagnosis/10, to make it
 	% easier to call from C code.
@@ -468,16 +480,18 @@ diagnoser_state_init_store(InStr, OutStr, Diagnoser) :-
 :- pred diagnosis_store(trace_node_store::in, trace_node_id::in,
 	int::in, int::in, int::in, diagnoser_response::out,
 	diagnoser_state(trace_node_id)::in,
-	diagnoser_state(trace_node_id)::out, io__state::di, io__state::uo)
-	is cc_multi.
+	diagnoser_state(trace_node_id)::out, 
+	browser_info.browser_persistent_state::in, 
+	browser_info.browser_persistent_state::out, io__state::di, 
+	io__state::uo) is cc_multi.
 
-:- pragma export(diagnosis_store(in, in, in, in, in, out, in, out, di, uo),
-		"MR_DD_decl_diagnosis").
+:- pragma export(diagnosis_store(in, in, in, in, in, out, in, out, in, out, 
+	di, uo), "MR_DD_decl_diagnosis").
 
 diagnosis_store(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, State0, State) -->
+		Response, !State, !Browser, !IO) :-
 	diagnosis(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, State0, State).
+		Response, !State, !Browser, !IO).
 
 	% Export some predicates so that C code can interpret the
 	% diagnoser response.

@@ -17,6 +17,7 @@
 :- interface.
 
 :- import_module mdb__declarative_debugger.
+:- import_module mdb.browser_info.
 
 :- import_module list, io.
 
@@ -32,8 +33,8 @@
 
 :- type user_state.
 
-:- pred user_state_init(io__input_stream, io__output_stream, user_state).
-:- mode user_state_init(in, in, out) is det.
+:- pred user_state_init(io__input_stream::in, io__output_stream::in, 
+	browser_info.browser_persistent_state::in, user_state::out) is det.
 
 	% This predicate handles the interactive part of the declarative
 	% debugging process.  The user is presented with a question,
@@ -50,12 +51,20 @@
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
+	% Returns the state of the term browser.
+	%
+:- func get_browser_state(user_state) = browser_info.browser_persistent_state.
+
+	% Sets the state of the term browser.
+	%
+:- pred set_browser_state(browser_info.browser_persistent_state::in, 
+	user_state::in, user_state::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdb__browse.
-:- import_module mdb__browser_info.
 :- import_module mdb__browser_term.
 :- import_module mdb__io_action.
 :- import_module mdb__util.
@@ -71,9 +80,7 @@
 			browser	:: browser_persistent_state
 		).
 
-user_state_init(InStr, OutStr, User) :-
-	browser_info__init_persistent_state(Browser),
-	User = user(InStr, OutStr, Browser).
+user_state_init(InStr, OutStr, Browser, user(InStr, OutStr, Browser)).
 
 %-----------------------------------------------------------------------------%
 
@@ -748,5 +755,12 @@ print_io_action(User, IoAction, !IO) :-
 	Term = io_action_to_browser_term(IoAction),
 	browse__print_browser_term(Term, User ^ outstr, print_all,
 		User ^ browser, !IO).
+
+%-----------------------------------------------------------------------------%
+
+get_browser_state(User) = User ^ browser.
+
+set_browser_state(Browser, !User) :-
+	!:User = !.User ^ browser := Browser.
 
 %-----------------------------------------------------------------------------%

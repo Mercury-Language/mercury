@@ -38,10 +38,9 @@
 
 #include <stdio.h>
 
-static	MR_Word		MR_trace_browser_persistent_state;
 static	MR_TypeInfo	MR_trace_browser_persistent_state_type;
 
-static	void		MR_trace_browse_ensure_init(void);
+MR_Word	MR_trace_browser_persistent_state;
 
 static	MR_bool		MR_trace_is_portray_format(const char *str,
 				MR_Browse_Format *format);
@@ -356,7 +355,7 @@ MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
 	return MR_FALSE;
 }
 
-static void
+void
 MR_trace_browse_ensure_init(void)
 {
 	static	MR_bool	done = MR_FALSE;

@@ -28,6 +28,7 @@
 
 :- import_module mdb__declarative_debugger.
 :- import_module mdb__declarative_execution.
+:- import_module mdb.browser_info.
 
 :- import_module list, io, bool, string.
 
@@ -47,8 +48,8 @@
 
 	% Produce a new oracle state.
 	%
-:- pred oracle_state_init(io__input_stream, io__output_stream, oracle_state).
-:- mode oracle_state_init(in, in, out) is det.
+:- pred oracle_state_init(io__input_stream::in, io__output_stream::in, 
+	browser_info.browser_persistent_state::in, oracle_state::out) is det.
 
 	% Add a module to the set of modules trusted by the oracle
 	%
@@ -95,6 +96,16 @@
 :- pred oracle_confirm_bug(decl_bug::in, decl_evidence(T)::in,
 	decl_confirmation::out, oracle_state::in, oracle_state::out,
 	io__state::di, io__state::uo) is cc_multi.
+
+	% Returns the state of the term browser.
+	%
+:- func get_browser_state(oracle_state) 
+	= browser_info.browser_persistent_state.
+
+	% Sets the state of the term browser.
+	%
+:- pred set_browser_state(browser_info.browser_persistent_state::in,
+	oracle_state::in, oracle_state::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -219,10 +230,10 @@ revise_oracle(Question, Oracle0, Oracle) :-
 				% by the oracle.
 		).
 
-oracle_state_init(InStr, OutStr, Oracle) :-
+oracle_state_init(InStr, OutStr, Browser, Oracle) :-
 	oracle_kb_init(Current),
 	oracle_kb_init(Old),
-	user_state_init(InStr, OutStr, User),
+	user_state_init(InStr, OutStr, Browser, User),
 	set.init(TrustedModules),
 	Oracle = oracle(Current, Old, User, TrustedModules).
 	
@@ -581,3 +592,12 @@ retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), KB0, KB) :-
 	),
 	KB = KB0 ^ kb_exceptions_map := ExceptionsMap.
 
+%-----------------------------------------------------------------------------%
+
+get_browser_state(Oracle) = 
+	mdb.declarative_user.get_browser_state(Oracle ^ user_state).
+
+set_browser_state(Browser, !Oracle) :-
+	mdb.declarative_user.set_browser_state(Browser, !.Oracle ^ user_state,
+		User),
+	!:Oracle = !.Oracle ^ user_state := User.

@@ -1006,9 +1006,11 @@ MR_trace_decl_ensure_init(void)
 	MR_mercuryfile_init(MR_mdb_out, 1, &mdb_out);
 
 	if (! done) {
+		MR_trace_browse_ensure_init();
 		MR_TRACE_CALL_MERCURY(
 			MR_trace_node_store = 0;
 			MR_DD_decl_diagnosis_state_init(&mdb_in, &mdb_out,
+				MR_trace_browser_persistent_state,
 				&MR_trace_front_end_state);
 		);
 		done = MR_TRUE;
@@ -1333,7 +1335,9 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				MR_io_action_map_cache_start,
 				MR_io_action_map_cache_end,
 				&response, MR_trace_front_end_state,
-				&MR_trace_front_end_state
+				&MR_trace_front_end_state,
+				MR_trace_browser_persistent_state,
+				&MR_trace_browser_persistent_state
 			);
 		bug_found = MR_DD_diagnoser_bug_found(response,
 				(MR_Integer *) &bug_event);
