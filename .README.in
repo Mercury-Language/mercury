@@ -54,9 +54,14 @@ Some of the files in the `extras' subdirectory (which is now distributed
 separately in the `mercury-extras' package) have fairly restrictive
 copyright licences:  
 
-	The `Togl' library in extras/graphics/Togl-1.2 is copyright by
+	The `Togl' library in extras/graphics/mtogl/togl.* is copyright by
 	Brian Paul and Ben Bederson; see the file
-	extras/graphics/Togl-1.2/LICENCE.
+	extras/graphics/mtogl/LICENSE.TOGL.
+
+	The Tk files in extras/graphics/mtogl/tk.* are copyright
+	by the Regents of the University of California,
+	Sun Microsystems, Inc., and other parties. 
+	See the file extras/graphics/mtogl/LICENSE.TK.
 
 	The CLP(R) v1.2 implementation in extras/clpr/clpr is copyright
 	by IBM; see the file extras/clpr/clpr/README for details, in
@@ -97,7 +102,7 @@ There are also some additional Mercury programs and libraries
 in the `extras' directory.
 
 For more information about Mercury, see the Mercury WWW home page at
-http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
+<http://www.cs.mu.oz.au/mercury/>, or send mail to mercury@cs.mu.oz.au.
 
 If you would like to join the Mercury mailing lists (there are two,
 mercury-users for general discussion, and mercury-announce for
@@ -114,8 +119,8 @@ The Mercury distribution is available via anonymous ftp or WWW
 from the following locations:
 
 	Australia:
-		ftp://turiel.cs.mu.oz.au/pub/mercury
+		ftp://turiel.cs.mu.oz.au/pub/mercury/
 	USA:
-		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury/
 	Europe:
-		ftp://ftp.csd.uu.se/pub/Mercury
+		ftp://ftp.csd.uu.se/pub/Mercury/
