@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -629,16 +629,23 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 			{ ConvOutputStatements = ConvOutputStatements1 }
 		;
 			%
-			% it's an output argument
+			% it's an output argument, or an unused argument
 			%
 			ml_gen_box_or_unbox_lval(CallerType, CalleeType,
 				VarLval, VarName, Context, ArgLval,
 				ThisArgConvDecls, _ThisArgConvInput,
 				ThisArgConvOutput),
-			{ ConvDecls = list__append(ThisArgConvDecls,
-				ConvDecls1) },
-			{ ConvOutputStatements = list__append(
-				ThisArgConvOutput, ConvOutputStatements1) },
+			{ ConvDecls = ThisArgConvDecls ++ ConvDecls1 },
+			{ ConvOutputStatements =
+				(if ArgMode = top_out then
+					ThisArgConvOutput
+				else
+					% don't unbox arguments
+					% with mode `top_unused'
+					[]
+				)
+				++ ConvOutputStatements1 },
+
 			ml_gen_info_get_globals(Globals),
 			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
 			(
@@ -646,6 +653,10 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 					%
 					% if the target language allows
 					% multiple return values, then use them
+					%
+					% XXX for top_unused argument modes,
+					% the generated code will copy an
+					% uninitialized value
 					%
 					{ CopyOut = yes }
 				;
