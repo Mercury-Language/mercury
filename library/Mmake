@@ -35,15 +35,18 @@ MSL	=	MERCURY_SP_LIB_DIR=. \
 
 MCD	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--generate-dependencies
+			--generate-dependencies --intermodule-optimization
 MCI	=	MERCURY_INT_DIR=. \
-		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --make-interface
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-interface --intermodule-optimization
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
-			--compile-to-c
+			--compile-to-c --intermodule-optimization
 MCS	=	MERCURY_INT_DIR=. \
-		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --split-c-files -c \
-		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)"
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+		--split-c-files -c \
+		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
+		--intermodule-optimization
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
