@@ -66,6 +66,37 @@ typedef void (*Cont) (void);
 			GOTO_LABEL(label);			\
 		} while (0)
 
+#if defined(__alpha__) && defined(USE_ASM_LABELS)
+#define	noprof_call(proc, succ_cont)				\
+		({						\
+			__label__ fixup_gp;			\
+			debugcall((proc), (succ_cont));		\
+			succip = (&&fixup_gp);			\
+			set_prof_current_proc(proc);		\
+			GOTO(proc);				\
+		fixup_gp:					\
+			__asm__ __volatile__ (			\
+				"ldgp $gp, 0($27)"		\
+				: : : "memory"			\
+			);					\
+			GOTO(succ_cont); 			\
+		})
+	/* same as above, but with GOTO_LABEL rather than GOTO */
+#define	noprof_call_localret(proc, succ_cont)			\
+		({						\
+			__label__ fixup_gp;			\
+			debugcall((proc), (succ_cont));		\
+			succip = (&&fixup_gp);			\
+			set_prof_current_proc(proc);		\
+			GOTO(proc);				\
+		fixup_gp:					\
+			__asm__ __volatile__ (			\
+				"ldgp $gp, 0($27)"		\
+				: : : "memory"			\
+			);					\
+			GOTO_LABEL(succ_cont); 			\
+		})
+#else
 #define	noprof_call(proc, succ_cont)				\
 		do {						\
 			debugcall((proc), (succ_cont));		\
@@ -73,6 +104,9 @@ typedef void (*Cont) (void);
 			set_prof_current_proc(proc);		\
 			GOTO(proc);				\
 		} while (0)
+#define noprof_call_localret(proc, succ_cont) 			\
+		noprof_call((proc), LABEL(succ_cont))
+#endif
 
 #define	localcall(label, succ_cont, current_label)		\
 		do {						\
@@ -85,11 +119,14 @@ typedef void (*Cont) (void);
 
 #define	call(proc, succ_cont, current_label)			\
 		do {						\
-			debugcall((proc), (succ_cont));		\
-			succip = (succ_cont);			\
 			PROFILE((proc), (current_label));	\
-			set_prof_current_proc(proc);		\
-			GOTO(proc);				\
+			noprof_call((proc), (succ_cont));	\
+		} while (0)
+
+#define	call_localret(proc, succ_cont, current_label)		\
+		do {						\
+			PROFILE((proc), (current_label));	\
+			noprof_call_localret(proc, succ_cont); \
 		} while (0)
 
 #define	call_det_closure(succ_cont, current_label)		\

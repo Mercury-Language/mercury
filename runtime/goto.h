@@ -35,12 +35,91 @@
 #define paste(a,b) a##b
 #define stringify(string) #string
 #define entry(label) paste(entry_,label)
+#define skip(label) paste(skip_,label)
 
 #ifdef SPLIT_C_FILES
 #define MODULE_STATIC_OR_EXTERN extern
 #else
 #define MODULE_STATIC_OR_EXTERN static
 #endif
+
+/*---------------------------------------------------------------------------*/
+
+/* MACHINE SPECIFIC STUFF REQUIRED FOR NON-LOCAL GOTOS */
+
+#if defined(__alpha__)
+
+  /* when doing a jump, we need to set $27, the "procedure value" register,
+     to the address we are jumping to, so that we can use an `ldgp'
+     instruction in ASM_ENTRY to set up the right gp value.
+  */
+  #define ASM_JUMP(address)				\
+	__asm__("bis %0, %0, $27\n\t" 			\
+		: : "r"(address) : "$27");		\
+	goto *(address)
+	/* Explanation:
+		Move `address' to register $27
+		Jump to `address'
+	*/
+
+  /* on entry to a procedure, we need to load the $gp register
+     with the correct value relative to the current address in $27 */
+  #define ASM_ENTRY(label) \
+	/* on fall-thru, we need to skip the ldgp instruction */ \
+  	goto skip(label);				\
+	entry(label):					\
+	__asm__ __volatile__ (				\
+		".globl entry_" stringify(label) "\n"	\
+		"entry_" stringify(label) ":\n\t" 	\
+		"ldgp $gp, 0($27)"			\
+		: : : "memory"				\
+	);						\
+	skip(label):
+  /* even static entry points must fix up the $gp register, since
+     although there won't be any direct calls to them from another
+     C file, their address may be taken and so there may be indirect
+     calls */
+  #define ASM_STATIC_ENTRY(label) \
+	/* on fall-thru, we need to skip the ldgp instruction */ \
+  	goto skip(label);				\
+	entry(label):					\
+	__asm__ __volatile__ (				\
+		"entry_" stringify(label) ":\n\t" 	\
+		"ldgp $gp, 0($27)"			\
+		: : : "memory"				\
+	);						\
+	skip(label):
+  /* even local entry points must fix up the $gp register, since
+     although there won't be any direct calls to them from another
+     C file, their address may be taken and so there may be indirect
+     calls */
+  #define ASM_LOCAL_ENTRY(label) \
+	/* on fall-thru, we need to skip the ldgp instruction */ \
+  	goto skip(label);				\
+	entry(label):					\
+	__asm__ __volatile__ (				\
+		"ldgp $gp, 0($27)"			\
+		: : : "memory"				\
+	);						\
+	skip(label):
+#else
+
+  #define ASM_JUMP(label)	goto *(label)
+  #define ASM_ENTRY(label) 				\
+  	entry(label):					\
+	__asm__(".globl entry_" stringify(label) "\n\t"	\
+		"entry_" stringify(label) ":" 		\
+		);
+  #define ASM_STATIC_ENTRY(label) 			\
+  	entry(label):					\
+	__asm__ (					\
+		"entry_" stringify(label) ":" 		\
+		);
+  #define ASM_LOCAL_ENTRY(label) 			\
+  	entry(label): ;
+#endif
+
+/*---------------------------------------------------------------------------*/
 
 #if defined(USE_GCC_NONLOCAL_GOTOS)
 
@@ -97,22 +176,24 @@
   /* body of module goes here */
   #define END_MODULE } }
 
+
   #if defined(USE_ASM_LABELS)
     #define Declare_entry(label)	\
 	extern void label(void) __asm__("entry_" stringify(label))
     #define Declare_static(label)	\
 	static void label(void) __asm__("entry_" stringify(label))
     #define Define_extern_entry(label)	Declare_entry(label)
-    #define Define_entry(label)	\
-	}	\
-	label:	\
-		__asm__(".globl entry_" stringify(label) "\n"	\
-			"entry_" stringify(label) ":");	\
+    #define Define_entry(label)		\
+		ASM_ENTRY(label)	\
+	}				\
+	label:				\
+	PRETEND_ADDRESS_IS_USED(&&entry(label));	\
 	{
     #define Define_static(label)	\
-	}	\
-	label:	\
-		__asm__("entry_" stringify(label) ":");	\
+		ASM_STATIC_ENTRY(label) \
+	}				\
+	label:				\
+	PRETEND_ADDRESS_IS_USED(&&entry(label));	\
 	{
     /*
        The PRETEND_ADDRESS_IS_USED macro is necessary to 
@@ -124,6 +205,8 @@
 	make_entry(stringify(label), label)
 
     #define ENTRY(label) 	(&label)
+
+    #define JUMP(label)		ASM_JUMP(label)
 
   #else
     /* !defined(USE_ASM_LABELS) */
@@ -144,24 +227,24 @@
 	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
 
+    #define JUMP(label)		goto (*label)
+
   #endif
 
   #define Declare_local(label)	/* no declaration required */
   #define Define_local(label)	\
+  		ASM_LOCAL_ENTRY(label)	\
 	}	\
 	label:	\
 	{
   #define init_local(label)	make_local(stringify(label), &&label)
   #define Declare_label(label)	/* no declaration required */
-  #define Define_label(label)	\
-	}	\
-	label:	\
-	{
+  #define Define_label(label)	Define_local(label)
   #define init_label(label)	make_label(stringify(label), &&label)
 
-  #define LOCAL(label)		(&&label)
-  #define LABEL(label)		(&&label)
-  #define GOTO(label)		do { debuggoto(label); goto *(label); } while(0)
+  #define LOCAL(label)		(&&entry(label))
+  #define LABEL(label)		(&&entry(label))
+  #define GOTO(label)		do { debuggoto(label); JUMP(label); } while(0)
   #define GOTO_ENTRY(label) 	GOTO(ENTRY(label))
   #define GOTO_LOCAL(label) 	GOTO_LABEL(label)
   #define GOTO_LABEL(label) 	do { debuggoto(&&label); goto label; } while(0)

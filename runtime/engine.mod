@@ -80,7 +80,7 @@ static void init_registers(void)
 /* The gcc-specific version */
 
 void call_engine(Code *entry_point)
-{
+{{
 	/*
 	** Allocate some space for local variables in other
 	** procedures. This used to be done by just calling
@@ -134,7 +134,7 @@ void call_engine(Code *entry_point)
 
 	noprof_call(entry_point, LABEL(engine_done));
 
-engine_done:
+Define_label(engine_done);
 	/*
 	** Save any registers which will get clobbered by the normal
 	** C function call / return mechanism
@@ -180,7 +180,7 @@ engine_done:
 	}
 #endif
 
-}
+}}
 
 /* with nonlocal gotos, we don't save the previous locations */
 void dump_prev_locations(void) {}
