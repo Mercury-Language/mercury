@@ -1,21 +1,33 @@
 
 This directory contains the package `mercury_opengl', which is a Mercury
-binding for OpenGL, using tcl/tk.
+binding for OpenGL  and the package `mtogl' which is a tk widget for 
+creating and managing OpenGL rendering contexts.
 
-You will need:
-	- the Mercury system.
-	- Tcl/Tk (Tk 4.0 or later).
-	- the `mercury_tcltk' package.
+For `mercury_opengl', you will need:
+	- the Mercury system
 	- an OpenGL implementation such as Mesa.
 
-It contains the following modules:
+In order to use it you will also need some way for your program to
+create and manage rendering contexts (mtogl is one such way).
 
-	mglu.m		- provides Mercury bindings to the GLU library.
-	mogl.m		- provides Mercury bindings to Open GL 1.1
-	mtogl.m		- provides Mercury bindings to Togl, a
-			  tcl/tk Open GL binding.
+For `mtogl' you will need:
+	- the Mercury system.
+	- Tcl/Tk (Tk 4.0 or later)
+	- the `mercury_tcltk' package
+
+NOTES:
+	- You must link `mtogl' against the same version of Tcl/Tk as the
+	  `mercury_tcltk' package.
+	- mtogl will probably not work versions of Tcl/Tk greater than 8.0.
+
+This directory contains the following modules.
 	
-	togl.c, togl.h  - Togl 1.5 
+	mglu.m	- provides Mercury bindings to (some of) the GLU library.
+	mogl.m	- provides Mercury bindings to (some of) Open GL 1.1
+	mtogl.m	- provides a Mercury binding to Togl, a
+			  tcl/tk OpenGL widget.
+	
+	togl.c, togl.h  - Togl 1.5
 
 	other .c and .h - Internals of Tk.
 	files

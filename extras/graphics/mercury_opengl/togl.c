@@ -1,4 +1,4 @@
-/* $Id: togl.c,v 1.1 1998-03-10 06:32:02 trd Exp $ */
+/* $Id: togl.c,v 1.2 2003-08-13 05:49:46 juliensf Exp $ */
 
 /*
  * Togl - a Tk OpenGL widget
@@ -10,7 +10,56 @@
 
 /*
  * $Log: togl.c,v $
- * Revision 1.1  1998-03-10 06:32:02  trd
+ * Revision 1.2  2003-08-13 05:49:46  juliensf
+ * Estimated hours taken: 14.
+ * Branches: main.
+ *
+ * Remove dependency between mercury_opengl and mercury_tcltk by making
+ * mtogl a separate library.
+ *
+ * Modify togl so that it works with Tcl/Tk 8.0.5
+ * (XXX It doesn't work (easily) with versions of Tcl/Tk greater than 8.0,
+ *  we probably ought to consider using togl 1.6 at some point).
+ *
+ * Make a number of small changes (mainly adding casts and missing MR_* prefixes)
+ * to prevent compiler warnings.
+ *
+ * extras/graphics/README:
+ * 	Mention the `mtogl' package.
+ *
+ * extras/graphics/mercury_opengl/mercury_opengl.m:
+ * extras/graphics/mercury_opengl/mglu.m:
+ * extras/graphics/mercury_opengl/mogl.m:
+ * 	Remove mtogl from mercury_opengl package.
+ * 	Define quadric using pragma foreign_type
+ * 	Add some missing MR_* prefixes.
+ *
+ * extras/graphics/mercury_opengl/mtogl:
+ * 	Remove references to header files that are no longer generated
+ * 	by the compiler.
+ * 	Use the new foreign language interface.
+ * 	Add some missing MR_* prefixes.
+ *
+ * extras/graphics/mercury_opengl/togl.c:
+ * 	Allow the use of tk version 8.0.5
+ * extras/graphics/mercury_opengl/tkInt8.0p5.h:
+ * 	New file.  (This is a part of tk)
+ *
+ * extras/graphics/mercury_opengl/Mmakefile:
+ * 	Update mmakefile to reflect above changes.
+ *
+ * extras/graphics/mercury_opengl/README:
+ * 	Mention mtogl.
+ *
+ * extras/graphics/samples/calc/calc.m:
+ * 	Add some missing underscores; this prevents compiler warnings
+ * 	when compiling with intermodule-optimization enabled.
+ *
+ * extras/graphics/samples/maze/Mmakefile:
+ * extras/graphics/samples/pent/Mmakefile:
+ * 	Update mmakefiles to reflect above changes.
+ *
+ * Revision 1.1  1998/03/10 06:32:02  trd
  * Estimated hours taken: 3
  *
  * Add mercury_opengl as a library.
@@ -236,6 +285,8 @@
 #  include "tkInt8.0.h"
 #elif TK_MAJOR_VERSION==8 && TK_MINOR_VERSION==0 && TK_RELEASE_SERIAL==2
 #  include "tkInt8.0p2.h"
+#elif TK_MAJOR_VERSION==8 && TK_MINOR_VERSION==0 && TK_RELEASE_SERIAL==5
+#  include "tkInt8.0p5.h"
 #else
    Sorry, you will have to edit togl.c to include the right tkInt.h file
 #endif

@@ -135,7 +135,7 @@ init_calc_state(Buttons, Clear, Answer, Calc) :-
 :- mode config_calc(in, in, di, uo) is det.
 
 config_calc(Interp, State) -->
-	{ State = calc(Ans, Store, Clr, Buttons, Clear, AnsLab) },
+	{ State = calc(Ans, _Store, Clr, Buttons, Clear, AnsLab) },
 	{ Pred = (pred((Wid - _)::in, IO0::di, IO::uo) is det :-
 		unbind_command(Interp, Wid, IO0, IO)
 	) },
@@ -310,7 +310,7 @@ compute(equal, Acc, [Op|Ops], NewAcc, DispAcc, Stack) :-
 compute(dot, _, _, _, _, _) :-
 	error("dot").
 compute(lpar, Acc, Store, 0, Acc, [mark|Store]).
-compute(rpar, Acc0, [], 0, 0, []). % error!
+compute(rpar, _Acc0, [], 0, 0, []). % error!
 compute(rpar, Acc, [Op|Ops], NewAcc, DispAcc, Stack) :-
 	( Op = times(Fac),
 		compute(rpar, Fac*Acc, Ops, NewAcc, DispAcc, Stack)

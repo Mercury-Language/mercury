@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,28 +52,29 @@
 
 :- type togl == c_pointer.
 
-:- pragma c_header_code("
+:- pragma foreign_import_module("C", mtcltk).
+
+:- pragma foreign_decl("C", "
 	#include ""togl.h""
-	#include ""mtcltk.h""
-	#include ""mtogl.h""
-	extern Word	mtogl_create_callback;
+	extern MR_Word	mtogl_create_callback;
 	void create_callback(struct Togl *togl);
-	extern Word	mtogl_display_callback;
+	extern MR_Word	mtogl_display_callback;
 	void display_callback(struct Togl *togl);
-	extern Word	mtogl_reshape_callback;
+	extern MR_Word	mtogl_reshape_callback;
 	void reshape_callback(struct Togl *togl);
-	extern Word	mtogl_destroy_callback;
+	extern MR_Word	mtogl_destroy_callback;
 	void destroy_callback(struct Togl *togl);
 ").
 
-:- pragma c_code("
-	Word	mtogl_create_callback;
-	Word	mtogl_display_callback;
-	Word	mtogl_reshape_callback;
-	Word	mtogl_destroy_callback;
+:- pragma foreign_code("C", "
+	MR_Word	mtogl_create_callback;
+	MR_Word	mtogl_display_callback;
+	MR_Word	mtogl_reshape_callback;
+	MR_Word	mtogl_destroy_callback;
 ").
 
-:- pragma c_code(mtogl__init(Interp::in, Stat::out, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", mtogl__init(Interp::in, Stat::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], "
 {
 	int err;
 
@@ -104,17 +105,18 @@ do_create_callback(Closure, Togl) -->
 :- pragma export(do_create_callback(pred(in, di, uo) is det, in, di, uo),
 		"do_create_callback").
 
-:- pragma c_code(mtogl__create(Closure::pred(in, di, uo) is det,
-		IO0::di, IO::uo),"
+:- pragma foreign_proc("C", mtogl__create(Closure::pred(in, di, uo) is det,
+		IO0::di, IO::uo),
+	[may_call_mercury, promise_pure], "
 	mtogl_create_callback = Closure;
 	Togl_CreateFunc(create_callback);
 	IO = IO0;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 void create_callback(struct Togl *togl)
 {
-	do_create_callback(mtogl_create_callback, (Word) togl);
+	do_create_callback(mtogl_create_callback, (MR_Word) togl);
 }
 ").
 
@@ -130,14 +132,15 @@ do_display_callback(Closure, Togl) -->
 :- pragma export(do_display_callback(pred(in, di, uo) is det, in, di, uo),
 		"do_display_callback").
 
-:- pragma c_code(mtogl__display(Closure::pred(in, di, uo) is det,
-		IO0::di, IO::uo),"
+:- pragma foreign_proc("C", mtogl__display(Closure::pred(in, di, uo) is det,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], "
 	mtogl_display_callback = Closure;
 	Togl_DisplayFunc(display_callback);
 	IO = IO0;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 void display_callback(struct Togl *togl)
 {
 	do_display_callback(mtogl_display_callback, (Word) togl);
@@ -156,17 +159,18 @@ do_reshape_callback(Closure, Togl) -->
 :- pragma export(do_reshape_callback(pred(in, di, uo) is det, in, di, uo),
 		"do_reshape_callback").
 
-:- pragma c_code(mtogl__reshape(Closure::pred(in, di, uo) is det,
-		IO0::di, IO::uo),"
+:- pragma foreign_proc("C", mtogl__reshape(Closure::pred(in, di, uo) is det,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], "
 	mtogl_reshape_callback = Closure;
 	Togl_ReshapeFunc(reshape_callback);
 	IO = IO0;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 void reshape_callback(struct Togl *togl)
 {
-	do_reshape_callback(mtogl_reshape_callback, (Word) togl);
+	do_reshape_callback(mtogl_reshape_callback, (MR_Word) togl);
 }
 ").
 
@@ -189,7 +193,7 @@ do_destroy_callback(Closure, Togl) -->
 	IO = IO0;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 void destroy_callback(struct Togl *togl)
 {
 	do_destroy_callback(mtogl_destroy_callback, (Word) togl);
@@ -198,16 +202,20 @@ void destroy_callback(struct Togl *togl)
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(mtogl__post_redisplay(Togl::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", mtogl__post_redisplay(Togl::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure], "
 	Togl_PostRedisplay((struct Togl *) Togl);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(mtogl__swap_buffers(Togl::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", mtogl__swap_buffers(Togl::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure], "
 	Togl_SwapBuffers((struct Togl *) Togl);
 	IO = IO0;
 ").
 
+%------------------------------------------------------------------------------%
+:- end_module mtogl.
 %------------------------------------------------------------------------------%

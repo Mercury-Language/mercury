@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -876,7 +876,7 @@ edge_flag(yes) -->
 %------------------------------------------------------------------------------%
 
 :- pragma c_code(vertex2(X::in, Y::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex2f((GLfloat) X, (GLfloat) Y);
 	}
@@ -888,7 +888,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(vertex3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	}
@@ -900,7 +900,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(vertex4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z, (GLfloat) W);
 	}
@@ -915,7 +915,7 @@ edge_flag(yes) -->
 %------------------------------------------------------------------------------%
 
 :- pragma c_code(tex_coord1(X::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord1f((GLfloat) X);
 	}
@@ -927,7 +927,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(tex_coord2(X::in, Y::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord2f((GLfloat) X, (GLfloat) Y);
 	}
@@ -939,7 +939,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(tex_coord3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	}
@@ -951,7 +951,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(tex_coord4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
 			(GLfloat) W);
@@ -967,7 +967,7 @@ edge_flag(yes) -->
 %------------------------------------------------------------------------------%
 
 :- pragma c_code(normal3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glNormal3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	}
@@ -981,7 +981,7 @@ edge_flag(yes) -->
 %------------------------------------------------------------------------------%
 
 :- pragma c_code(color3(R::in, G::in, B::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glColor3f((GLfloat) R, (GLfloat) G, (GLfloat) B);
 	}
@@ -993,7 +993,7 @@ edge_flag(yes) -->
 ").
 
 :- pragma c_code(color4(R::in, G::in, B::in, A::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glColor4f((GLfloat) R, (GLfloat) G, (GLfloat) B, (GLfloat) A);
 	}
@@ -1164,7 +1164,7 @@ mult_matrix(Matrix) -->
 ").
 
 :- pragma c_code(rotate(Theta::in, X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRotatef((GLfloat) Theta,
 			(GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -1176,7 +1176,7 @@ mult_matrix(Matrix) -->
 ").
 
 :- pragma c_code(translate(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTranslatef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
@@ -1186,7 +1186,7 @@ mult_matrix(Matrix) -->
 ").
 
 :- pragma c_code(scale(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glScalef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
@@ -1322,7 +1322,7 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 %------------------------------------------------------------------------------%
 
 :- pragma c_code(raster_pos2(X::in, Y::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos2f((GLfloat) X, (GLfloat) Y);
 	} else {
@@ -1332,7 +1332,7 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 ").
 
 :- pragma c_code(raster_pos3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
 	} else {
@@ -1342,7 +1342,7 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 ").
 
 :- pragma c_code(raster_pos4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
-	if(sizeof(Float) == sizeof(GLfloat))
+	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
 			(GLfloat) W);

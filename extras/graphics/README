@@ -7,8 +7,10 @@ and we'll see about incorporating enhancements in the main distribution.
 
 	mercury_tcltk/		A Mercury binding to Tcl/Tk.
 
-	mercury_opengl/		A Mercury binding to OpenGL (or the
-				free alternative, Mesa).
+	mercury_opengl/		A Mercury binding to OpenGL.  This 
+                                directory also contains `mtogl' which
+                                is a Mercury binding to Togl, a Tk widget
+                                for OpenGL.
 	samples/
 		calc/		A calculator that uses mercury_tcltk
 
