@@ -14,7 +14,7 @@ fi
 problemdir="$1"
 module="$2"
 cnt="$3"
-shift 3
+shift; shift; shift
 tested="$@"
 
 cat /dev/null > stage2/$problemdir/$module.c
