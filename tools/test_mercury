@@ -269,7 +269,7 @@ mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 mmake depend $PARALLEL || { false; exit 1; }
 version=`mmake version` || { false; exit 1; }
 fullarch=`mmake fullarch` || { false; exit 1; }
-tools/bootcheck -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
+tools/bootcheck -k -r -p -t $PARALLEL || $install_anyway || { false; exit 1; }
 cd .. || { false; exit 1; }
 
 #-----------------------------------------------------------------------------#
