@@ -75,15 +75,41 @@
 
 #ifdef PROFILE_TIME
   #ifdef PROFILE_CALLS
-    #define MR_GRADE_PART_4	_prof
+    #ifdef PROFILE_MEMORY
+      #define MR_GRADE_PART_4	_profall
+    #else
+      #define MR_GRADE_PART_4	_prof
+    #endif
   #else
-    #define MR_GRADE_PART_4	_proftime
+    #ifdef PROFILE_MEMORY
+      /*
+      ** Memory profiling interferes with time profiling,
+      ** so there's no point in allowing this.
+      */
+      #error "Invalid combination of profiling options"
+    #else
+      /* Currently useless, but... */
+      #define MR_GRADE_PART_4	_proftime
+    #endif
   #endif
 #else
   #ifdef PROFILE_CALLS
-    #define MR_GRADE_PART_4	_profcalls
+    #ifdef PROFILE_MEMORY
+      #define MR_GRADE_PART_4	_memprof
+    #else
+      #define MR_GRADE_PART_4	_profcalls
+    #endif
   #else
-    #define MR_GRADE_PART_4
+    #ifdef PROFILE_MEMORY
+      /*
+      ** Call-graph memory profiling requires call profiling,
+      ** and call profiling is reasonably cheap, so there's
+      ** no point in allowing this.
+      */
+      #error "Invalid combination of profiling options"
+    #else
+      #define MR_GRADE_PART_4
+    #endif
   #endif
 #endif
 

@@ -45,6 +45,26 @@ Define_extern_entry(mercury__compare_3_2);
 Define_extern_entry(mercury__compare_3_3);
 Declare_label(mercury__compare_3_0_i1);
 
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_det_closure);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(det_closure_return, 
+	do_call_det_closure);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_semidet_closure);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(semidet_closure_return,
+	do_call_semidet_closure);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_call_nondet_closure);
+MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(nondet_closure_return,
+	do_call_nondet_closure);
+
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__unify_2_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__index_2_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__index_2_0, 1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_2);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__compare_3_3);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__compare_3_0, 1);
+
+
 BEGIN_MODULE(call_module)
 	init_entry(do_call_det_closure);
 	init_label(det_closure_return);

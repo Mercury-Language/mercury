@@ -29,8 +29,9 @@ ENDINIT
 static	void	call_engine_inner(Code *entry_point);
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-static	Code	*engine_done(void);
-static	Code	*engine_init_registers(void);
+  static Code	*engine_done(void);
+  static Code	*engine_init_registers(void);
+  MR_MAKE_STACK_LAYOUT_ENTRY(engine_done);
 #endif
 
 bool	debugflag[MAXFLAG];
@@ -62,11 +63,10 @@ init_engine(void)
 	init_memory();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-	make_label("engine_done", LABEL(engine_done));
+	make_label("engine_done", LABEL(engine_done), engine_done);
 #endif
 
 	init_process_context();
-
 }
 
 /*---------------------------------------------------------------------------*/
@@ -177,7 +177,7 @@ call_engine_inner(Code *entry_point)
 
 	if (!initialized)
 	{
-		make_label("engine_done", LABEL(engine_done));
+		make_label("engine_done", LABEL(engine_done), engine_done);
 		initialized = TRUE;
 	}
 }
@@ -395,6 +395,12 @@ Define_extern_entry(do_fail);
 Define_extern_entry(do_succeed);
 Define_extern_entry(do_last_succeed);
 Define_extern_entry(do_not_reached);
+
+MR_MAKE_STACK_LAYOUT_ENTRY(do_redo);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_fail);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_succeed);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_last_succeed);
+MR_MAKE_STACK_LAYOUT_ENTRY(do_not_reached);
 
 BEGIN_MODULE(special_labels_module)
 	init_entry(do_redo);

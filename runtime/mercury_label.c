@@ -9,6 +9,8 @@
 ** that map from procedure names to addresses and vice versa.
 */
 
+#include	"mercury_imp.h"	/* we need libmer_dll.h for Windows DLLs */
+
 #include	<stdio.h>
 #include	<string.h>
 
@@ -16,9 +18,8 @@
 
 #include	"mercury_label.h"
 
-#include	"mercury_imp.h"		/* we need libmer_globals.h for Windows DLLs */
 #include	"mercury_table.h"	/* for `Table' */
-#include	"mercury_prof.h"	/* for prof_output_addr_decls() */
+#include	"mercury_prof.h"	/* for prof_output_addr_decl() */
 #include	"mercury_engine.h"	/* for `progdebug' */
 #include	"mercury_wrapper.h"	/* for do_init_modules() */
 
@@ -50,18 +51,33 @@ do_init_entries(void)
 }
 
 Label *
-insert_entry(const char *name, Code *addr)
+insert_entry(const char *name, Code *addr, Word *entry_layout_info)
 {
 	Label	*entry;
 
 	do_init_entries();
 
+
+#ifdef MR_USE_STACK_LAYOUTS
+	/* 
+	** The succip will be set to the address stored in the
+	** layout info. For some reason, this is different to
+	** the address passed to insert_entry.
+	** XXX This should be fixed.
+	*/
+	addr = entry_layout_info[0];
+#endif /* MR_USE_STACK_LAYOUTS */
+
+
+
+
 	entry = make(Label);
 	entry->e_name  = name;
 	entry->e_addr  = addr;
+	entry->e_layout = entry_layout_info;
 
 #ifdef	PROFILE_CALLS
-	prof_output_addr_decls(name, addr);
+	if (MR_profiling) MR_prof_output_addr_decl(name, addr);
 #endif
 
 #ifndef	SPEED

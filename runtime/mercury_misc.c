@@ -20,7 +20,7 @@ static void print_ordinary_regs(void);
 #ifndef SPEED
 
 void 
-mkframe_msg(void)
+mkframe_debug(void)
 {
 	restore_transient_registers();
 
@@ -39,7 +39,7 @@ mkframe_msg(void)
 }
 
 void 
-modframe_msg(void)
+modframe_debug(void)
 {
 	restore_transient_registers();
 
@@ -54,7 +54,7 @@ modframe_msg(void)
 }
 
 void 
-succeed_msg(void)
+succeed_debug(void)
 {
 	restore_transient_registers();
 
@@ -71,7 +71,7 @@ succeed_msg(void)
 }
 
 void 
-succeeddiscard_msg(void)
+succeeddiscard_debug(void)
 {
 	restore_transient_registers();
 
@@ -88,7 +88,7 @@ succeeddiscard_msg(void)
 }
 
 void 
-fail_msg(void)
+fail_debug(void)
 {
 	restore_transient_registers();
 
@@ -101,7 +101,7 @@ fail_msg(void)
 }
 
 void 
-redo_msg(void)
+redo_debug(void)
 {
 	restore_transient_registers();
 
@@ -114,7 +114,7 @@ redo_msg(void)
 }
 
 void 
-call_msg(/* const */ Code *proc, /* const */ Code *succcont)
+call_debug(/* const */ Code *proc, /* const */ Code *succcont)
 {
 	printf("\ncalling      "); printlabel(proc);
 	printf("continuation "); printlabel(succcont);
@@ -124,7 +124,7 @@ call_msg(/* const */ Code *proc, /* const */ Code *succcont)
 }
 
 void 
-tailcall_msg(/* const */ Code *proc)
+tailcall_debug(/* const */ Code *proc)
 {
 	restore_transient_registers();
 
@@ -136,7 +136,7 @@ tailcall_msg(/* const */ Code *proc)
 }
 
 void 
-proceed_msg(void)
+proceed_debug(void)
 {
 	printf("\nreturning from determinate procedure\n");
 	printregs("registers at proceed");
@@ -145,7 +145,7 @@ proceed_msg(void)
 }
 
 void 
-cr1_msg(Word val0, const Word *addr)
+cr1_debug(Word val0, const Word *addr)
 {
 	printf("put value %9lx at ", (long) (Integer) val0);
 	printheap(addr);
@@ -154,7 +154,7 @@ cr1_msg(Word val0, const Word *addr)
 }
 
 void 
-cr2_msg(Word val0, Word val1, const Word *addr)
+cr2_debug(Word val0, Word val1, const Word *addr)
 {
 	printf("put values %9lx,%9lx at ",	
 		(long) (Integer) val0, (long) (Integer) val1);
@@ -164,7 +164,7 @@ cr2_msg(Word val0, Word val1, const Word *addr)
 }
 
 void 
-incr_hp_msg(Word val, const Word *addr)
+incr_hp_debug(Word val, const Word *addr)
 {
 #ifdef CONSERVATIVE_GC
 	printf("allocated %ld words at 0x%p\n", (long) (Integer) val, addr);
@@ -176,7 +176,7 @@ incr_hp_msg(Word val, const Word *addr)
 }
 
 void 
-incr_sp_msg(Word val, const Word *addr)
+incr_sp_debug(Word val, const Word *addr)
 {
 	printf("increment sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
@@ -185,7 +185,7 @@ incr_sp_msg(Word val, const Word *addr)
 }
 
 void 
-decr_sp_msg(Word val, const Word *addr)
+decr_sp_debug(Word val, const Word *addr)
 {
 	printf("decrement sp by %ld from ", (long) (Integer) val);
 	printdetstack(addr);
@@ -194,7 +194,7 @@ decr_sp_msg(Word val, const Word *addr)
 }
 
 void 
-push_msg(Word val, const Word *addr)
+push_debug(Word val, const Word *addr)
 {
 	printf("push value %9lx to ", (long) (Integer) val);
 	printdetstack(addr);
@@ -203,7 +203,7 @@ push_msg(Word val, const Word *addr)
 }
 
 void 
-pop_msg(Word val, const Word *addr)
+pop_debug(Word val, const Word *addr)
 {
 	printf("pop value %9lx from ", (long) (Integer) val);
 	printdetstack(addr);
@@ -216,7 +216,7 @@ pop_msg(Word val, const Word *addr)
 #if !defined(SPEED) || defined(DEBUG_GOTOS)
 
 void 
-goto_msg(/* const */ Code *addr)
+goto_debug(/* const */ Code *addr)
 {
 	printf("\ngoto ");
 	printlabel(addr);
@@ -229,7 +229,7 @@ goto_msg(/* const */ Code *addr)
 }
 
 void 
-reg_msg(void)
+reg_debug(void)
 {
 	int	i;
 	Integer	x;

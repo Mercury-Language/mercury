@@ -23,14 +23,6 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #		  keep this list in alphabetical order, please
 HDRS		=	\
-		  	mercury_engine.h	\
-			mercury_getopt.h	\
-			mercury_goto.h		\
-			mercury_heap.h		\
-			mercury_imp.h		\
-			mercury_init.h		\
-			mercury_label.h		\
-			mercury_memory.h	\
 			mercury_accurate_gc.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
@@ -39,11 +31,17 @@ HDRS		=	\
 			mercury_deep_copy.h	\
 			mercury_dummy.h		\
 			mercury_dlist.h		\
+		  	mercury_engine.h	\
 			mercury_float.h		\
-			mercury_string.h	\
-			mercury_trace.h		\
-			mercury_trail.h		\
-			mercury_types.h		\
+			mercury_getopt.h	\
+			mercury_goto.h		\
+			mercury_grade.h		\
+			mercury_heap.h		\
+			mercury_heap_profile.h	\
+			mercury_imp.h		\
+			mercury_init.h		\
+			mercury_label.h		\
+			mercury_memory.h	\
 			mercury_misc.h		\
 			mercury_overflow.h	\
 			mercury_prof.h		\
@@ -53,9 +51,13 @@ HDRS		=	\
 			mercury_spinlock.h	\
 			mercury_std.h		\
 			mercury_stacks.h	\
+			mercury_string.h	\
 			mercury_table.h		\
 			mercury_tags.h		\
 			mercury_timing.h	\
+			mercury_trace.h		\
+			mercury_trail.h		\
+			mercury_types.h		\
 			mercury_type_info.h	\
 			mercury_wrapper.h	\
 			$(LIBMER_DLL_H)
@@ -74,19 +76,15 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/rs6000_regs.h
 
 
-# XXX .mod support is being removed. This will soon disappear.
-MODS		= 
-MOD_CS		= 
-MOD_OS		= $(MOD_CS:.c=.o)
-
 #		  keep this list in alphabetical order, please
-ORIG_CS		= 	mercury_context.c	\
+CFILES		= 	mercury_context.c	\
 			mercury_deep_copy.c	\
 			mercury_dlist.c		\
 			mercury_dummy.c		\
 			mercury_engine.c	\
 			mercury_float.c		\
 			mercury_grade.c		\
+			mercury_heap_profile.c	\
 			mercury_ho_call.c	\
 			mercury_label.c		\
 			mercury_memory.c	\
@@ -102,9 +100,8 @@ ORIG_CS		= 	mercury_context.c	\
 			mercury_type_info.c	\
 			mercury_wrapper.c
 
-ORIG_OS		= $(ORIG_CS:.c=.o)
-OBJS		= $(MOD_OS) $(ORIG_OS)
-PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+OBJS		= $(CFILES:.c=.o)
+PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
 LDFLAGS		= -L$(BOEHM_GC_DIR)
 LDLIBS		= \
@@ -122,6 +119,7 @@ ifeq ($(USE_DLLS),yes)
 
 DLL_CFLAGS	= -Dlibmer_DEFINE_DLL
 
+# the following header files are created automatically by Makefile.DLLs
 LIBMER_DLL_H	 = libmer_dll.h
 LIBMER_GLOBALS_H = libmer_globals.h
 
@@ -150,8 +148,8 @@ libmer.so: $(PIC_OBJS)
 		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
-runtime.init: $(ORIG_CS)
-	cat `vpath_find $(ORIG_CS)` | grep '^INIT ' > runtime.init
+runtime.init: $(CFILES)
+	cat `vpath_find $(CFILES)` | grep '^INIT ' > runtime.init
 
 mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
 	CONFIG_FILES= CONFIG_HEADERS=mercury_conf.h $(MERCURY_DIR)/config.status
@@ -161,10 +159,10 @@ mercury_conf.h: mercury_conf.h.date
 	@true
 
 .PHONY: cs
-cs: $(MOD_CS)
+cs: $(CFILES)
 
-tags: $(MODS) $(ORIG_CS)
-	ctags $(MODS) $(ORIG_CS) $(HDRS)
+tags: $(CFILES) $(HDRS)
+	ctags $(CFILES) $(HDRS)
 
 .PHONY: check_headers
 check_headers:
@@ -203,23 +201,16 @@ install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
 
 #-----------------------------------------------------------------------------#
 
-# prevent GNU make from removing these intermediate files
-dont_remove: engine.c wrapper.c call.c 
-
 # prevent Mmake from removing C files
 RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_o clean_mod_c
+clean: clean_o
 
 .PHONY: clean_o
 clean_o:
-	rm -f $(MOD_OS) $(OBJS) $(PIC_OBJS) 
-
-.PHONY: clean_mod_c
-clean_mod_c:
-	rm -f $(MOD_OS)
+	rm -f $(OBJS) $(PIC_OBJS) 
 
 realclean:
 	rm -f libmer.a libmer.so runtime.init

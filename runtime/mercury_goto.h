@@ -12,36 +12,46 @@
 #include "mercury_types.h"	/* for `Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
 
-/*
-** Taking the address of a label can inhibit gcc's optimization,
-** because it assumes that anything can jump there.
-** Therefore we want to do it only if we're debugging,
-** or if we need the label address for profiling.
-*/
-
-#if defined(SPEED) && !defined(DEBUG_GOTOS)
-#define	make_label(n, a)	/* nothing */
-#else
-#define	make_label(n, a)	make_entry(n, a)
-#endif
-
-#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS)
-#define make_local(n, a)	/* nothing */
-#else 
-#define make_local(n, a)	make_entry(n, a)
-#endif
-
-#if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
-			&& !defined(PROFILE_CALLS)
-#define make_entry(n, a)	/* nothing */
-#else
-#define make_entry(n, a)	insert_entry(n, a)
-#endif
-
 #define paste(a,b) a##b
 #define stringify(string) #string
 #define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
+
+#ifdef MR_USE_STACK_LAYOUTS
+ #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
+	&(paste(mercury_data__stack_layout__,label))
+#else
+ #define MR_STACK_LAYOUT(label) (Word *) NULL
+#endif /* MR_USE_STACK_LAYOUTS */
+
+
+/*
+** Taking the address of a label can inhibit gcc's optimization,
+** because it assumes that anything can jump there.
+** Therefore we want to do it only if we're debugging,
+** or if we need the label address for profiling or
+** accurate garbage collection.
+*/
+
+#if defined(SPEED) && !defined(DEBUG_GOTOS)
+#define	make_label(n, a, l)	/* nothing */
+#else
+#define	make_label(n, a, l)	make_entry(n, a, l)
+#endif
+
+#if defined(SPEED) && !defined(DEBUG_GOTOS) && !defined(PROFILE_CALLS)
+#define make_local(n, a, l)	/* nothing */
+#else 
+#define make_local(n, a, l)	make_entry(n, a, l)
+#endif
+
+#if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
+			&& !defined(PROFILE_CALLS)
+#define make_entry(n, a, l)	/* nothing */
+#else
+#define make_entry(n, a, l)	insert_entry(n, a, MR_STACK_LAYOUT(l))
+#endif
+
 
 #ifdef SPLIT_C_FILES
 #define MODULE_STATIC_OR_EXTERN extern
@@ -459,7 +469,7 @@
     */
     #define init_entry(label)	\
 	PRETEND_ADDRESS_IS_USED(&&label); \
-	make_entry(stringify(label), label)
+	make_entry(stringify(label), label, label)
 
     #define ENTRY(label) 	(&label)
     #define STATIC(label) 	(&label)
@@ -485,7 +495,7 @@
 	label:	\
 	{
     #define init_entry(label)	\
-	make_entry(stringify(label), &&label);	\
+	make_entry(stringify(label), &&label, label);	\
 	entry(label) = &&label
     #define ENTRY(label) 	(entry(label))
     #define STATIC(label) 	(entry(label))
@@ -502,10 +512,15 @@
 	}	\
 	label:	\
 	{
-  #define init_local(label)	make_local(stringify(label), &&label)
-  #define Declare_label(label)	/* no declaration required */
-  #define Define_label(label)	Define_local(label)
-  #define init_label(label)	make_label(stringify(label), &&label)
+  #define init_local(label)	make_local(stringify(label), &&label, label)
+  #ifdef NATIVE_GC
+   #define Declare_label(label)	Define_extern_entry(label)
+   #define Define_label(label)	Define_entry(label)
+  #else
+   #define Declare_label(label)	/* no declaration required */
+   #define Define_label(label)	Define_local(label)
+  #endif
+  #define init_label(label)	make_label(stringify(label), &&label, label)
 
   #define LOCAL(label)		(&&entry(label))
   #define LABEL(label)		(&&entry(label))
@@ -543,21 +558,21 @@
 		GOTO(label);	\
 	}			\
 	static Code* label(void) {
-  #define init_entry(label)	make_entry(stringify(label), label)
+  #define init_entry(label)	make_entry(stringify(label), label, label)
 
   #define Declare_local(label)	static Code *label(void)
   #define Define_local(label)	\
 		GOTO(label);	\
 	}			\
 	static Code* label(void) {
-  #define init_local(label)	make_local(stringify(label), label)
+  #define init_local(label)	make_local(stringify(label), label, label)
 
   #define Declare_label(label)	static Code *label(void)
   #define Define_label(label)	\
 		GOTO(label);	\
 	}			\
 	static Code* label(void) {
-  #define init_label(label)	make_label(stringify(label), label)
+  #define init_label(label)	make_label(stringify(label), label, label)
 
   #define ENTRY(label) 		(label)
   #define STATIC(label) 	(label)

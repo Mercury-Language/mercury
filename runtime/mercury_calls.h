@@ -26,8 +26,15 @@
 ** On some systems [basically those using PIC (Position Independent Code)],
 ** if we're using gcc non-local gotos to jump between functions then
 ** we need to do ASM_FIXUP_REGS after each return from a procedure call.
+**
+** We *don't* need to do this if we are using NATIVE_GC, because all
+** labels are defined as entry labels anyway. Entry labels do 
+** ASM_FIXUP_REGS immediately. Also, for NATIVE_GC we need the succip
+** set to the address of the continuation label, not the fixup_gp:
+** label.
 */
-#if defined(USE_GCC_NONLOCAL_GOTOS) && defined(NEED_ASM_FIXUP_REGS)
+#if defined(USE_GCC_NONLOCAL_GOTOS) && defined(NEED_ASM_FIXUP_REGS) &&	\
+	!defined(NATIVE_GC)
   #define	noprof_call(proc, succ_cont)			\
 		({						\
 			__label__ fixup_gp;			\

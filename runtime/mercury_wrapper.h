@@ -95,4 +95,6 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
+extern  bool MR_profiling;
+
 #endif /* not MERCURY_WRAPPER_H */

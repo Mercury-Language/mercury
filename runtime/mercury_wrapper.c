@@ -88,6 +88,8 @@ int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
 
+bool		MR_profiling = TRUE;
+
 /*
 ** EXTERNAL DEPENDENCIES
 **
@@ -220,6 +222,9 @@ mercury_runtime_init(int argc, char **argv)
 
 	/* start up the Mercury engine */
 	init_engine();
+
+	/* initialize profiling */
+	if (MR_profiling) MR_prof_init();
 
 	/*
 	** We need to call save_registers(), since we're about to
@@ -427,7 +432,7 @@ process_options(int argc, char **argv)
 	unsigned long size;
 	int c;
 
-	while ((c = getopt(argc, argv, "acd:hLlP:p:r:s:tT:w:xz:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "acC:d:hLlP:pr:s:tT:w:xz:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
@@ -438,6 +443,14 @@ process_options(int argc, char **argv)
 
 		case 'c':
 			check_space = TRUE;
+			break;
+
+		case 'C':
+			if (sscanf(optarg, "%lu", &size) != 1)
+				usage();
+
+			pcache_size = size * 1024;
+
 			break;
 
 		case 'd':	
@@ -513,6 +526,10 @@ process_options(int argc, char **argv)
 			exit(0);
 		}
 
+		case 'p':
+			MR_profiling = FALSE;
+			break;
+
 #ifdef	PARALLEL
 		case 'P':
 				if (sscanf(optarg, "%u", &numprocs) != 1)
@@ -523,14 +540,6 @@ process_options(int argc, char **argv)
 
 				break;
 #endif
-
-		case 'p':
-			if (sscanf(optarg, "%lu", &size) != 1)
-				usage();
-
-			pcache_size = size * 1024;
-
-			break;
 
 		case 'r':	
 			if (sscanf(optarg, "%d", &repeats) != 1)
@@ -603,7 +612,7 @@ process_options(int argc, char **argv)
 		}
 		case 'x':
 #ifdef CONSERVATIVE_GC
-			GC_dont_gc = 1;
+			GC_dont_gc = TRUE;
 #endif
 
 			break;
@@ -656,17 +665,18 @@ static void
 usage(void)
 {
 	printf("Mercury runtime usage:\n"
-		"MERCURY_OPTIONS=\"[-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
-	"                 [-p#] [-r#] [-1#] [-2#] [-3#] [-w name]\"\n"
+		"MERCURY_OPTIONS=\"[-hclLtxp] [-T[rvp]] [-d[abcdghs]]\n"
+        "                  [-[szt][hdn]#] [-C#] [-r#]  [-w name] [-[123]#]\"\n"
 		"-h \t\tprint this usage message\n"
 		"-c \t\tcheck cross-function stack usage\n"
 		"-l \t\tprint all labels\n"
 		"-L \t\tcheck for duplicate labels\n"
 		"-t \t\ttime program execution\n"
+		"-x \t\tdisable garbage collection\n"
+		"-p \t\tdisable profiling\n"
 		"-Tr \t\tprofile real time (using ITIMER_REAL)\n"
 		"-Tv \t\tprofile user time (using ITIMER_VIRTUAL)\n"
 		"-Tp \t\tprofile user + system time (using ITIMER_PROF)\n"
-		"-x \t\tdisable garbage collection\n"
 		"-dg \t\tdebug gotos\n"
 		"-dc \t\tdebug calls\n"
 		"-db \t\tdebug backtracking\n"
@@ -690,9 +700,11 @@ usage(void)
 #ifdef MR_USE_TRAIL
 		"-zt<n> \t\tallocate n kb for the trail redzone\n"
 #endif
+		"-C<n> \t\tprimary cache size in kbytes\n"
+#ifdef PARALLEL
 		"-P<n> \t\tnumber of processes to use for parallel execution\n"
 		"\t\tapplies only if Mercury is configured with --enable-parallel\n"
-		"-p<n> \t\tprimary cache size in kbytes\n"
+#endif
 		"-r<n> \t\trepeat n times\n"
 		"-w<name> \tcall predicate with given name (default: main/2)\n"
 		"-1<x> \t\tinitialize register r1 with value x\n"
@@ -872,7 +884,7 @@ Define_entry(do_interpreter);
 	}
 
 #ifdef  PROFILE_TIME
-	prof_init_time_profile();
+	if (MR_profiling) MR_prof_turn_on_time_profiling();
 #endif
 
 	noprof_call(program_entry_point, LABEL(global_success));
@@ -904,12 +916,9 @@ Define_label(global_fail);
 #endif
 
 Define_label(all_done);
+
 #ifdef  PROFILE_TIME
-	prof_turn_off_time_profiling();
-	prof_output_addr_table();
-#endif
-#ifdef  PROFILE_CALLS
-	prof_output_addr_pair_table();
+	if (MR_profiling) MR_prof_turn_off_time_profiling();
 #endif
 
 	MR_maxfr = (Word *) pop();
@@ -946,6 +955,8 @@ mercury_runtime_terminate(void)
 	save_regs_to_mem(c_regs);
 
 	(*MR_library_finalizer)();
+
+	if (MR_profiling) MR_prof_finish();
 
 	terminate_engine();
 

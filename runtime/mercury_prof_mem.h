@@ -23,8 +23,12 @@
 ** from a profiling interrupt that interrupted another call to newmem().
 ** Doing that is bad news, because newmem() is not re-entrant.
 */
-void *prof_malloc(size_t);
+extern void *MR_prof_malloc(size_t);
 
-#define prof_make(t)	((t *) prof_malloc(sizeof(t)))
+/*
+** Use the following macros rather than calling MR_prof_malloc() directly.
+*/
+#define MR_PROF_NEW(t)		((t *) MR_prof_malloc(sizeof(t)))
+#define MR_PROF_NEW_ARRAY(t,n)	((t *) MR_prof_malloc(sizeof(t) * (n)))
 
 #endif /* not MERCURY_PROF_MEM_H */
