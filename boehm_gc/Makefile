@@ -388,6 +388,14 @@ user_namespace: $(SRCS)
 		cp tmp $$file; \
 		done
 
+#-----------------------------------------------------------------------------#
+
+# The Mmakefile invokes `make $(EXT_FOR_SHARED_LIB)',
+# so we need targets `a', `so', and `dll'.
+
+.PHONY: a
+a: libgc$(PROF).a
+
 .PHONY: so
 so: libgc$(PROF).so
 
