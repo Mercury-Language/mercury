@@ -17,7 +17,6 @@
 
 :- module mercury_builtin.
 :- interface.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -255,6 +254,7 @@
 			;	term__integer(int)
 			;	term__string(string)
 			;	term__float(float).
+:- type var.
 
 % The type list should be defined in list.m, but we define it here since
 % it's need for the implementation of term_to_type/2 and type_to_term/2.
@@ -266,6 +266,9 @@
 
 :- type term__context	--->	term__context(string, int).
 				% file, line number.
+
+:- pred term__context_init(term__context).
+:- mode term__context_init(out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -386,6 +389,8 @@ builtin_index_pred(_, -1).
 	% This is used by the code that the compiler generates for compare/3.
 compare_error :-
 	error("internal error in compare/3").
+
+term__context_init(term__context("", 0)).
 
 :- end_module mercury_builtin.
 

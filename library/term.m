@@ -198,8 +198,8 @@
 	% without calling term__context_init to avoid the
 	% prob of including the term module in everything.
 
-:- pred term__context_init(term__context).
-:- mode term__context_init(out) is det.
+% :- pred term__context_init(term__context).
+% :- mode term__context_init(out) is det.
 
 :- pred term__context_init(string, int, term__context).
 :- mode term__context_init(in, in, out) is det.
@@ -314,7 +314,7 @@ term__context_file(term__context(FileName, _), FileName).
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
 
-term__context_init(term__context("", 0)).
+% term__context_init(term__context("", 0)).
 
 term__context_init(File, LineNumber, term__context(File, LineNumber)).
 
