@@ -214,6 +214,16 @@
 %		list__foldl(Closure, Chars, Acc0, Acc)
 %	but is implemented more efficiently.)
 
+:- func string__words(pred(char), string) = list(string).
+:- mode string__words(pred(in) is semidet, in) = out is det.
+%	string__words(SepP, String) returns the list of
+%	non-empty substrings of String (in first to last
+%	order) that are delimited by non-empty sequences
+%	of chars matched by SepP.  For example,
+%
+%	string__words(char__is_whitespace, " the cat  sat on the  mat") =
+%		["the", "cat", "sat", "on", "the", "mat"]
+
 :- pred string__split(string, int, string, string).
 :- mode string__split(in, in, out, out) is det.
 %	string__split(String, Count, LeftSubstring, RightSubstring):
@@ -1988,6 +1998,8 @@ string__special_precision_and_width(-1).
 
 :- interface.
 
+:- func string__length(string) = int.
+
 :- func string__append(string, string) = string.
 
 :- func string__char_to_string(char) = string.
@@ -2044,6 +2056,9 @@ string__special_precision_and_width(-1).
 % ---------------------------------------------------------------------------- %
 
 :- implementation.
+
+string__length(S) = L :-
+	string__length(S, L).
 
 string__append(S1, S2) = S3 :-
 	string__append(S1, S2, S3).
@@ -2123,6 +2138,48 @@ string__hash(S) = N :-
 
 string__format(S1, PT) = S2 :-
 	string__format(S1, PT, S2).
+
+% ---------------------------------------------------------------------------- %
+
+string__words(SepP, String) = Words :-
+	I = preceding_boundary(isnt(SepP), String, string__length(String) - 1).
+	Words = words_2(SepP, String, I, []).
+
+% ---------------------------------------------------------------------------- %
+
+:- func words_2(pred(char), string, int, list(string)) = list(string).
+:- mode words_2(pred(in) is semidet, in, in, in) = out is det.
+
+words_2(SepP, String, WordEnd, Words0) = Words :-
+	( if WordEnd < 0 then
+		Words = Words0
+	  else
+		WordPre = preceding_boundary(SepP, String, WordEnd),
+		Word = string__unsafe_substring(String, WordPre + 1,
+				WordEnd - WordPre),
+		PrevWordEnd = preceding_boundary(isnt(SepP), String, WordPre),
+		Words = words_2(SepP, String, PrevWordEnd, [Word | Words0])
+	).
+
+% ---------------------------------------------------------------------------- %
+
+	% preceding_boundary(SepP, String, I) returns the largest index J =< I
+	% in String of the char that is SepP and min(-1, I) if there is no
+	% such J.  preceding_boundary/3 is intended for finding (in reverse)
+	% consecutive maximal sequences of chars satisfying some property.
+	% Note that I *must not* exceed the largest valid index for String.
+
+:- func preceding_boundary(pred(char), string, int) = int.
+:- mode preceding_boundary(pred(in) is semidet, in, in) = out is det.
+
+preceding_boundary(SepP, String, I) =
+	( if I < 0 then
+		I
+	  else if SepP(string__unsafe_index(String, I)) then
+		I
+	  else
+		preceding_boundary(SepP, String, I - 1)
+	).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
