@@ -5,16 +5,16 @@
 ** The registers of the Mercury virtual machine are built up using
 ** two levels of abstraction.
 **
-** The first level defines mr0 through mr36. The lower the number,
+** The first level defines mr0 through mr69. The lower the number,
 ** the greater the probability that the storage referred to will be
 ** a real machine register, and not a simulated one. The number of
 ** real machine registers is given by the macro NUM_REAL_REGS.
 **
 ** The second level maps the Mercury virtual machine registers
 **
-**	succip, hp, sp, curfr, maxfr and r1 - r32
+**	succip, hp, sp, curfr, maxfr and r1 - r65
 **
-** to the set mr0..mr36.
+** to the set mr0..mr69.
 **
 ** Since the set of most frequently used Mercury virtual machine
 ** registers can be different for each program, we want to make
@@ -28,12 +28,12 @@
 */
 
 #define	SI_RN	 0
-#define	ORD_RN	32
-#define	HP_RN	33
-#define	SP_RN	34
-#define	CF_RN	35
-#define	MF_RN	36
-#define	MAX_RN	37
+#define	ORD_RN	65
+#define	HP_RN	66
+#define	SP_RN	67
+#define	CF_RN	68
+#define	MF_RN	69
+#define	MAX_RN	70
 
 #if defined(USE_GCC_GLOBAL_REGISTERS)
   #ifndef __GNUC__
