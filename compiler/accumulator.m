@@ -1109,7 +1109,7 @@ accumulator__orig_recursive_case(DP, R0, HeadVars, PredId, ProcId, Name,
 	DP = goal(DecomposeProcess, _InstMapBeforeDecomposeProcess),
 	R0 = goal(Recursive, _InstMapBeforeRecursive),
 	(
-		Recursive = GoalExpr0 - GoalInfo,
+		Recursive = GoalExpr0 - GoalInfo0,
 		GoalExpr0 = call(_, _, Vars, Builtin, Context, _)
 	->
 			% Calculate what vars the new call should use.
@@ -1119,6 +1119,9 @@ accumulator__orig_recursive_case(DP, R0, HeadVars, PredId, ProcId, Name,
 		list__append(CallVars0, ExtraVars, CallVars),
 		GoalExpr = call(PredId, ProcId, CallVars,
 				Builtin, Context, Name),
+
+		goal_info_set_nonlocals(GoalInfo0, set__list_to_set(CallVars),
+				GoalInfo),
 
 			% Rename the variables in the goal.
 		map__init(Subst0),
