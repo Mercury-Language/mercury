@@ -1021,11 +1021,14 @@ case $HOST in $ROTD_HOST)
 		$BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt" &&
 	scp $UNSTABLE/mercury-*-$version-unstable.* \
 		$BETA_FTPHOST:$BETA_FTPDIR &&
+	ssh $BETA_FTPHOST "\
+		echo $version > $BETA_FTPDIR/latest-unstable-version" &&
 	rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN-unstable.tar.gz &&
 	rm -f $BETA_WEBDIR/mercury-*-$RELEASE_VERSION_PATTERN-unstable.txt &&
-	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR \
+	cp $UNSTABLE/mercury-*-$version-unstable.* $BETA_WEBDIR &&
+	echo $version > $BETA_WEBDIR/latest-unstable-version \
 	|| set_status "copying ROTD"
 	;;
 esac
@@ -1245,11 +1248,14 @@ case $status in
 	    $LN $BETA_FTPDIR/mercury-NEWS-$version-unstable.txt \
 	        $BETA_FTPDIR/mercury-NEWS-$version.txt &&
 	    $LN $BETA_FTPDIR/mercury-INSTALL-$version-unstable.txt \
-	        $BETA_FTPDIR/mercury-INSTALL-$version.txt" &&
+	        $BETA_FTPDIR/mercury-INSTALL-$version.txt &&
+            echo $version > $BETA_FTPDIR/latest-stable-version" &&
 
 	    rm -f $BETA_WEBDIR/mercury-compiler-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
 	    rm -f $BETA_WEBDIR/mercury-extras-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
 	    rm -f $BETA_WEBDIR/mercury-tests-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $BETA_WEBDIR/mercury-NEWS-$RELEASE_VERSION_PATTERN[0-9].txt &&
+	    rm -f $BETA_WEBDIR/mercury-INSTALL-$RELEASE_VERSION_PATTERN[0-9].txt &&
 	    $LN $BETA_WEBDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_WEBDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_WEBDIR/mercury-extras-$version-unstable.tar.gz \
@@ -1259,7 +1265,9 @@ case $status in
 	    $LN $BETA_WEBDIR/mercury-NEWS-$version-unstable.txt \
 	        $BETA_WEBDIR/mercury-NEWS-$version.txt &&
 	    $LN $BETA_WEBDIR/mercury-INSTALL-$version-unstable.txt \
-	        $BETA_WEBDIR/mercury-INSTALL-$version.txt
+	        $BETA_WEBDIR/mercury-INSTALL-$version.txt &&
+
+            echo $version > $BETA_WEBDIR/latest-stable-version
 	    ;;
 	esac || set_status "updating stable mercury source distribution"
 
