@@ -23,9 +23,9 @@
 
 main -->
 	( { test(ok), test2(ok) } ->
-		io__write_string("ok")
+		io__write_string("ok\n")
 	;
-		io__write_string("error")
+		io__write_string("error\n")
 	).
 
 test2(ok).
