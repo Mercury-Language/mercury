@@ -1218,7 +1218,7 @@ inst_merge_3(not_reached, Inst, M, Inst, M).
 inst_list_merge([], [], ModuleInfo, [], ModuleInfo).
 inst_list_merge([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo0,
 		[Arg | Args], ModuleInfo) :-
-	inst_merge_2(ArgA, ArgB, ModuleInfo0, Arg, ModuleInfo1),
+	inst_merge(ArgA, ArgB, ModuleInfo0, Arg, ModuleInfo1),
 	inst_list_merge(ArgsA, ArgsB, ModuleInfo1, Args, ModuleInfo).
 
 	% bound_inst_list_merge(Xs, Ys, ModuleInfo0, Zs, ModuleInfo):
