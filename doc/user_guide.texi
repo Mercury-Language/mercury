@@ -1175,12 +1175,12 @@ contains more detailed documentation.
 To use the debugger, you must
 first compile your program with debugging enabled.
 You can do this by using
-@c XXX .decldebug isn't usefull different from .debug
+@c XXX .decldebug isn't usefully different from .debug
 @c one of the @samp{--debug} and @samp{--decl-debug} options
 the @samp{--debug} option
 when invoking @samp{mmc},
 or by including @samp{GRADEFLAGS = --debug}
-@c XXX .decldebug isn't usefull different from .debug
+@c XXX .decldebug isn't usefully different from .debug
 @c or @samp{GRADEFLAGS = --decl-debug}
 in your @file{Mmakefile}.
 
@@ -1611,7 +1611,7 @@ Mercury supports two broad ways of preparing a program for debugging.
 The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
 that includes the word ``debug'' (e.g.@: @samp{asm_fast.gc.debug}),
-@c XXX .decldebug isn't usefull different from .debug
+@c XXX .decldebug isn't usefully different from .debug
 @c or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
 @c grade options to the compiler, linker, and other tools
 or indirectly by specifying the @samp{--debug}
@@ -4323,7 +4323,7 @@ This can make these files significantly larger.
 @findex --trace-level @var{level}
 Generate code that includes the specified level of execution tracing.
 The @var{level} should be one of
-@samp{none}, @samp{shallow}, @samp{deep}, and @samp{default}.
+@samp{none}, @samp{shallow}, @samp{deep}, @samp{rep} and @samp{default}.
 See @ref{Debugging}.
 
 @item --trace-optimized
@@ -4703,7 +4703,8 @@ The set of aspects and their alternatives are:
 @cindex .agc (grade modifier)
 @cindex .rt (grade modifier)
 @cindex .debug (grade modifier)
-@cindex .decldebug (grade modifier)
+@c XXX .decldebug isn't usefully different from .debug
+@c @cindex .decldebug (grade modifier)
 @cindex .par (grade modifier)
 @cindex prof (grade modifier)
 @cindex memprof (grade modifier)
@@ -4713,7 +4714,8 @@ The set of aspects and their alternatives are:
 @cindex agc (grade modifier)
 @cindex rt (grade modifier)
 @cindex debug (grade modifier)
-@cindex decldebug (grade modifier)
+@c XXX .decldebug isn't usefully different from .debug
+@c @cindex decldebug (grade modifier)
 @cindex par (grade modifier)
 @table @asis
 @item What target language to use, and (for C) what combination of GNU C extensions to use:
@@ -4737,7 +4739,9 @@ The set of aspects and their alternatives are:
 @samp{rt} (the default is no reserved tag)
 
 @item What debugging features to enable:
-@samp{debug} and @samp{decldebug} (the default is no debugging features).
+@c XXX .decldebug isn't usefully different from .debug
+@c @samp{debug} and @samp{decldebug} (the default is no debugging features).
+@samp{debug} (the default is no debugging features).
 
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
@@ -4846,7 +4850,7 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{.debug}
 @code{--debug}.
 
-@c XXX .decldebug isn't usefull different from .debug
+@c XXX .decldebug isn't usefully different from .debug
 @c @item @samp{.decldebug}
 @c @code{--decl-debug}.
 
@@ -4977,7 +4981,7 @@ Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
 This option is not yet supported for the @samp{--high-level-code} back-ends.
 
-@c XXX .decldebug isn't usefull different from .debug
+@c XXX .decldebug isn't usefully different from .debug
 @c @sp 1
 @c @item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
 @c @findex --decl-debug

@@ -52,6 +52,20 @@
 	% Quote an argument to a shell command.
 :- func quote_arg(string) = string.
 
+	% NOTE: ALL OPTIONS SHOULD BE DOCUMENTED!
+	%
+	% Officially supported options should be documented both in the
+	% help message output by options_help/2, and also in the
+	% "invocation" chapter of doc/user_guide.texi.
+	%
+	% Options which are not officially supported (e.g. those used
+	% internally by the Mercury implementation, those which are not
+	% sufficiently useful to be worth mentioning in the User Guide,
+	% or options for experimental features that are not yet stable
+	% enough to be officially supported should still be documented.
+	% The documentation can go either next to the option definition
+	% here, or as commented-out code in the appropriate subroutine
+	% of options_help/2.
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
@@ -173,6 +187,12 @@
 		% Compilation model options for optional features:
 
 		%   (a) Debugging
+		%	For documentation of the stack_trace, require_tracing,
+		%	and decl_debug options, see the documentation for
+		%	MR_STACK_TRACE, MR_REQUIRE_TRACING, and MR_DECL_DEBUG
+		%	in runtime/mercury_conf_param.h.
+		%	The debug option just means both stack_trace and
+		%	require_tracing.
 		;	debug
 		;	stack_trace
 		;	require_tracing
@@ -2407,9 +2427,10 @@ options_help_aux_output -->
 		"\twhen using Mmake. This is recommended when building a",
 		"\tlibrary for installation.",
 
-% declarative debugging is not documented yet, since it is still experimental
+% "--trace decl" is not documented, because it is for backwards
+% compatibility only.  It is now equivalent to `--trace rep'.
 %		"--trace {minimum, shallow, deep, decl, rep, default}",
-		"--trace {minimum, shallow, deep, default}",
+		"--trace {minimum, shallow, deep, rep, default}",
 		"\tGenerate code that includes the specified level", 
 		"\tof execution tracing.",
 		"\tSee the Debugging chapter of the Mercury User's Guide",
@@ -2667,13 +2688,17 @@ options_help_compilation_model -->
 		"\tSee the Debugging chapter of the Mercury User's Guide",
 		"\tfor details.",
 		"\tThis option is not yet supported for the `--high-level-code'",
-		"\tback-ends.",
-		"--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
-		"\tEnable declarative debugging.",
-		"\tSee the Debugging chapter of the Mercury User's Guide",
-		"\tfor details.",
-		"\tThis option is not yet supported for the `--high-level-code'",
 		"\tback-ends."
+% The --decl-debug option is not documented because the .decldebug grade
+% is not installed by default, and because the .decldebug grade is not
+% usefully different from the .debug grade.
+%		"--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
+%		"\tEnable full support for declarative debugging.",
+%		"\tThis ensures that .",
+%		"\tSee the Debugging chapter of the Mercury User's Guide",
+%		"\tfor details.",
+%		"\tThis option is not yet supported for the `--high-level-code'",
+%		"\tback-ends."
 	]),
 	io__write_string("      Profiling\n"),
 	write_tabbed_lines([
@@ -2911,7 +2936,7 @@ your program compiled with different options.
 %		"\tBox no-tag types.  This option is disabled by default."
 
 	]),
-	io__write_string("\n      Developer Optional features\n"),
+	io__write_string("\n      Developer optional features\n"),
 	write_tabbed_lines([
 		"--use-minimal-model",
 		"(This option is not for general use.)",
