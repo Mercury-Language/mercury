@@ -1,0 +1,261 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2005 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# mdbcomp/Mmakefile - this is the Mmakefile for building the Mercury
+# library shared by the debugger and the compiler.
+
+# Specify which files to check for namespace cleanliness, and which name
+# prefixes are allowed.
+
+CHECK_HDRS  =
+CHECK_MHDRS = $(mer_mdbcomp.mhs)
+CHECK_OBJS  = $(mer_mdbcomp.os)
+ALLOW_LIB_PREFIX=yes
+ALLOW_BROWSER_PREFIX=no
+ALLOW_MDBCOMP_PREFIX=yes
+
+MERCURY_DIR=..
+LINK_STDLIB_ONLY=yes
+include $(MERCURY_DIR)/Mmake.common
+-include Mmake.mdbcomp.params
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+MAIN_TARGET=main
+
+MERCURY_MAIN_LIB_MODULES=$(MDBCOMP_LIB_NAME)
+MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES)
+
+DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
+INT3S_TARGETS =	$(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
+LIBS =		$(patsubst %,lib%,$(MERCURY_MAIN_LIB_MODULES))
+CHECKS =	$(patsubst %,%.check,$(MERCURY_MAIN_LIB_MODULES))
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the library.
+# Don't change these without good reason - if you want to do a temporary
+# change, change ../Mmake.params, or create Mmake.mdbcomp.params.
+
+CFLAGS	+=	$(DLL_CFLAGS) -I$(TRACE_DIR)
+MLFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+MCFLAGS +=	-R$(FINAL_INSTALL_MERC_LIB_DIR)	\
+		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+MLLIBS +=	$(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY)	\
+		$(READLINE_LIBRARIES)
+
+#-----------------------------------------------------------------------------#
+
+# Set the install name for Darwin shared libraries.  We disable the
+# --shlib-linker-use-install-name mmc option so that the -install_name linker
+# option is not passed in the .dep files.  We do this to avoid a problem when
+# building from the C source distribution:  if the C source distribution is
+# generated on a non-Darwin system then the -install_name option is not passed
+# in the .dep files, so it must be passed here, however if a C source
+# distribution is generated on a Darwin system then by default the
+# -install_name option will be passed in the .dep files which will cause it to
+# be passed twice (here and in the .dep files) which is not allowed by the 
+# linker, so we disable the mmc option which causes the -install_name option
+# to be passed in the .dep files.
+
+MCFLAGS += --no-shlib-linker-use-install-name
+LD_LIBFLAGS-libmer_mdbcomp.dylib = -install_name \
+	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_mdbcomp.dylib
+
+#-----------------------------------------------------------------------------#
+
+JAVACFLAGS = -classpath $(LIBRARY_DIR)
+
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+LN	=	ln
+
+#-----------------------------------------------------------------------------#
+
+# The IL and Java implementations of the standard library are not yet complete,
+# so we need to pass `--allow-stubs' to get them to compile.
+# Since the standard library is compiled with `--halt-at-warn',
+# we also need `--no-warn-stubs'.
+ifneq ("$(filter il% java%,$(GRADE))","")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+# XXX what do we need here for MDBCOMP_LIB_NAME?
+DLL_CFLAGS = -Dlib$(BROWSER_LIB_NAME)_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: main
+main:	library $(TAGS_FILE_EXISTS)
+
+.PHONY: all
+all:	library $(TAGS_FILE_EXISTS)
+
+.PHONY: library
+library: $(LIBS)
+
+.PHONY: depend
+depend:	$(DEPENDS)
+$(DEPENDS): Mercury.modules
+
+# $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
+# 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
+
+# This directory contains source files for which the module
+# name doesn't match the file name, so smart recompilation
+# won't work without the Mercury.modules file.
+.PHONY: Mercury.modules
+Mercury.modules:
+	$(MC) $(ALL_MCFLAGS) -f *.m
+
+.PHONY: check
+check:	$(CHECKS)
+
+.PHONY: all-ints 
+all-ints: ints int3s
+
+.PHONY: ints 
+ints:	$(INTS_TARGETS)
+
+.PHONY: int3s 
+int3s:	$(INT3S_TARGETS)
+
+#-----------------------------------------------------------------------------#
+
+tags:	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms)
+	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms) ../library/*.m
+
+.PHONY: tags_file_exists
+tags_file_exists:
+	@if test ! -f tags; then echo making tags; \
+	$(MTAGS) $($(MDBCOMP_LIB_NAME).ms) ../library/*.m ; fi
+
+$(MDBCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
+		$($(MDBCOMP_LIB_NAME).ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk \
+		`vpath_find $($(MDBCOMP_LIB_NAME).ms)` > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates:
+	touch $($(MDBCOMP_LIB_NAME).dates)
+
+#-----------------------------------------------------------------------------#
+
+#
+# Some Java compilers require the Java source files to be put in directories
+# which match their package names.  But the Mercury compiler generates them
+# with the package name prefixed to the file name with a ".", not a "/".
+# So we copy the Java source files to where the Java compiler expects them
+# to be.
+#
+# XXX This is a hack.  We ought to change the Mercury compiler so that it
+# generates the Java files with the right names in the first place.
+#
+
+mdbcomp/%.java: mdbcomp.%.java
+	[ -d mdbcomp ] || mkdir mdbcomp
+	cp $< $@
+
+RENAMED_JAVAS = $($(MDBCOMP_LIB_NAME).javas:mdbcomp.%.java=mdbcomp/%.java)
+
+RENAMED_CLASSES = $($(MDBCOMP_LIB_NAME).classes:mdbcomp.%.class=mdbcomp/%.class)
+
+.PHONY: javas
+javas: $(RENAMED_JAVAS)
+
+.PHONY: classes
+classes: $(RENAMED_JAVAS)
+	$(JAVAC) $(ALL_JAVACFLAGS) -d $(classes_subdir) $(RENAMED_JAVAS)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs ss ils
+ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+os: $($(MDBCOMP_LIB_NAME).os)
+cs: $($(MDBCOMP_LIB_NAME).cs)
+ss: $($(MDBCOMP_LIB_NAME).ss)
+ils: $($(MDBCOMP_LIB_NAME).ils)
+else
+os: $(MDBCOMP_LIB_NAME).os
+cs: $(MDBCOMP_LIB_NAME).cs
+ss: $(MDBCOMP_LIB_NAME).ss
+ils: $(MDBCOMP_LIB_NAME).ils
+endif
+
+#-----------------------------------------------------------------------------#
+
+# Ensure we recompile mdb__version if VERSION is changed.
+$(os_subdir)mdb.o \
+$(os_subdir)mdb.pic_o \
+	: $(RUNTIME_DIR)/mercury_conf.h
+
+#-----------------------------------------------------------------------------#
+
+realclean_local:
+	rm -f Mercury.modules tags
+
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_init install_library
+
+.PHONY: install_dirs
+install_dirs:
+	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+
+ifneq ("$(filter il% java%,$(GRADE))","")
+
+# there is no debugger in the .NET and Java backends
+
+.PHONY: install_init
+install_init: 
+
+.PHONY: install_library
+install_library:
+
+else 
+
+.PHONY: install_init
+install_init: $(MDBCOMP_LIB_NAME).init install_dirs
+	cp `vpath_find $(MDBCOMP_LIB_NAME).init` $(INSTALL_MODULE_DIR)
+
+.PHONY: install_library
+install_library: \
+		lib$(MDBCOMP_LIB_NAME).$A \
+		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
+		install_dirs
+	cp `vpath_find lib$(MDBCOMP_LIB_NAME).$A \
+		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(MDBCOMP_LIB_NAME).$A
+
+endif
