@@ -39,11 +39,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module hlds_pred, prog_data, prog_util, type_util.
+:- import_module hlds_pred, prog_data, prog_util, type_util, polymorphism.
 :- import_module ml_code_util.
 :- import_module globals, options.
 
-:- import_module bool, int, string, list, map, std_util, require.
+:- import_module bool, int, string, list, map, std_util, term, require.
 
 ml_gen_types(ModuleInfo, MLDS_TypeDefns) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
@@ -304,7 +304,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 		)
 	),
 
-	% generate the nested derived classes
+	% generate the nested derived classes for the constructors
 	list__foldl(ml_gen_du_ctor_type(ModuleInfo, BaseClassId, TagClassId,
 		TypeDefn, TagValues), Ctors, [], CtorMembers),
 
@@ -422,7 +422,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId, Member
 ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 		TypeDefn, ConsTagValues, Ctor,
 		MLDS_Defns0, MLDS_Defns) :-
-	Ctor = ctor(_ExistQTVars, _Constraints, CtorName, Args),
+	Ctor = ctor(ExistQTVars, Constraints, CtorName, Args),
 
 	% XXX we should keep a context for the constructor,
 	% but we don't, so we just use the context from the type.
@@ -433,10 +433,36 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 	unqualify_name(CtorName, CtorClassName),
 	list__length(Args, CtorArity),
 
-	% generate the class members,
-	% numbering any unnamed fields starting from 1
+	% number any unnamed fields starting from 1
+	ArgNum0 = 1,
+
+	% generate class members for the type_infos and typeclass_infos
+	% that hold information about existentially quantified
+	% type variables and type class constraints
+	( ExistQTVars = [] ->
+		% optimize common case
+		ExtraMembers = [],
+		ArgNum2 = ArgNum0
+	;
+		list__map_foldl(ml_gen_typeclass_info_member(ModuleInfo,
+			Context), Constraints, TypeClassInfoMembers,
+			ArgNum0, ArgNum1),
+		constraint_list_get_tvars(Constraints, ConstrainedTVars),
+		list__delete_elems(ExistQTVars, ConstrainedTVars,
+			UnconstrainedTVars),
+		list__map_foldl(ml_gen_type_info_member(ModuleInfo, Context),
+			UnconstrainedTVars, TypeInfoMembers,
+			ArgNum1, ArgNum2),
+		list__append(TypeClassInfoMembers, TypeInfoMembers,
+			ExtraMembers)
+	),
+
+	% generate the class members for the ordinary fields
+	% of this constructor
 	list__map_foldl(ml_gen_du_ctor_member(ModuleInfo, Context),
-		Args, Members, 1, _),
+		Args, OrdinaryMembers, ArgNum2, _ArgNum3),
+
+	list__append(ExtraMembers, OrdinaryMembers, Members),
 
 	% we inherit either the base class for this type,
 	% or the secondary tag class, depending on whether
@@ -460,18 +486,46 @@ ml_gen_du_ctor_type(ModuleInfo, BaseClassId, SecondaryTagClassId,
 	
 	MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0].
 
-:- pred ml_gen_du_ctor_member(module_info, prog_context,
-		constructor_arg, mlds__defn, int, int).
+:- pred ml_gen_typeclass_info_member(module_info, prog_context,
+		class_constraint, mlds__defn, int, int).
+:- mode ml_gen_typeclass_info_member(in, in, in, out, in, out) is det.
+
+ml_gen_typeclass_info_member(ModuleInfo, Context, Constraint, MLDS_Defn,
+		ArgNum0, ArgNum) :-
+	polymorphism__build_typeclass_info_type(Constraint, Type),
+	ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn,
+		ArgNum0, ArgNum).
+
+:- pred ml_gen_type_info_member(module_info, prog_context, tvar, mlds__defn,
+		int, int).
+:- mode ml_gen_type_info_member(in, in, in, out, in, out) is det.
+
+ml_gen_type_info_member(ModuleInfo, Context, TypeVar, MLDS_Defn,
+		ArgNum0, ArgNum) :-
+	polymorphism__build_type_info_type(term__variable(TypeVar), Type),
+	ml_gen_field(ModuleInfo, Context, no, Type, MLDS_Defn, ArgNum0, ArgNum).
+
+:- pred ml_gen_du_ctor_member(module_info, prog_context, constructor_arg,
+		mlds__defn, int, int).
 :- mode ml_gen_du_ctor_member(in, in, in, out, in, out) is det.
 
 ml_gen_du_ctor_member(ModuleInfo, Context, MaybeFieldName - Type, MLDS_Defn,
 		ArgNum0, ArgNum) :-
-	FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
+	ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
+		ArgNum0, ArgNum).
+
+:- pred ml_gen_field(module_info, prog_context, maybe(ctor_field_name),
+		prog_type, mlds__defn, int, int).
+:- mode ml_gen_field(in, in, in, in, out, in, out) is det.
+
+ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
+		ArgNum0, ArgNum) :-
 	( ml_must_box_field_type(Type, ModuleInfo) ->
 		MLDS_Type = mlds__generic_type
 	;
 		MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
 	),
+	FieldName = ml_gen_field_name(MaybeFieldName, ArgNum0),
 	MLDS_Defn = ml_gen_mlds_var_decl(var(FieldName), MLDS_Type,
 		mlds__make_context(Context)),
 	ArgNum = ArgNum0 + 1.
