@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -312,7 +312,7 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	globals__io_lookup_bool_option(generate_schemas, GenSchemas),
 	( { GenSchemas = yes } ->
 		module_name_to_file_name(ModuleName0, ".derived_schema",
-			no, SchemaFileName),
+			yes, SchemaFileName),
 		io__open_output(SchemaFileName, SchemaResult),
 		( { SchemaResult = ok(SchemaStream) } ->
 			io__set_output_stream(SchemaStream, OldStream),
@@ -1227,7 +1227,9 @@ rl_out__compute_join_bytecode(nested_loop, yes(Tuple),
 rl_out__compute_join_bytecode(sort_merge(_, _), no, rl_PROC_join_sm, no).
 rl_out__compute_join_bytecode(sort_merge(_, _), yes(Tuple),
 		rl_PROC_semijoin_sm, Swap) :-
-	rl_out__should_swap_inputs(Tuple, Swap).
+	rl_out__should_swap_inputs(Tuple, Swap),
+	error(
+"rl_out__compute_join_bytecode: sort-merge semi-joins not yet implemented in Aditi").
 
 rl_out__compute_join_bytecode(hash(_, _), no, rl_PROC_join_hj, no).
 rl_out__compute_join_bytecode(hash(_, _), yes(Tuple),

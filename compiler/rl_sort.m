@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1405,6 +1405,9 @@ rl_sort__introduce_sort_join(SortMap, Output, Input1, Input2, _JoinType0,
 		RLInfo, RLInfo) :-
 	Exprn = rl_goal(_, _, _, _, Inputs, _, _, VarBounds),
 	(
+		% XXX Sort-merge semi-joins are not yet implemented in Aditi.
+		SemiJoin = no,
+
 		rl_key__is_equijoin(Inputs, VarBounds, Attrs1, Attrs2),
 
 		map__search(SortMap, Input1, SortSpecs1),
