@@ -52,7 +52,6 @@ SINGLEMODULE_SOURCES= \
 	ext_type_bug.m \
 	exported_mode.m \
 	field_syntax_error.m \
-	foreign_type.m \
 	func_errors.m \
 	funcs_as_preds.m \
 	ho_default_func_1.m \
@@ -147,6 +146,8 @@ SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 #	ho_default_func_4.m (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
 #	inst_matches_final_bug.m (due to same bug as ho_default_func_4.m)
+#	foreign_type (the error is only detected when trying to compile 
+#		the generated C code).
 
 # Inter-module optimization changes the diagnostics for some
 # tests (in most cases reporting diagnostics when writing the `.opt'
@@ -167,6 +168,7 @@ MCFLAGS-assert_in_interface =	--no-intermodule-optimization
 
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-foreign_type =		--compile-only
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-missing_det_decls =	--no-infer-det
 MCFLAGS-missing_interface_import = --make-interface

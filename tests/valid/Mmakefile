@@ -135,8 +135,6 @@ OTHER_SOURCES= \
 	nested_mod_type_bug.m \
 	nondet_live.m \
 	parsing_bug_main.m \
-	pragma_c_code_and_clauses1.m \
-	pragma_c_code_and_clauses2.m \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	quantifier_warning.m \
