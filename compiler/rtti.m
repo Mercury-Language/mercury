@@ -1700,6 +1700,28 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
 	->
 		JavaTypeName = string__append("mercury.runtime.", GenTypeName1)
 	;
+		% In C, we do some nasty hacks to represent type class
+		% constraints of different arities as different structures
+		% ending with arrays of the appropriate length, but in
+		% Java we just use a single type for all of them
+		% (with an extra level of indirection for the array).
+		string__prefix(GenTypeName0, "TypeClassConstraint_")
+	->
+		JavaTypeName = "mercury.runtime.TypeClassConstraint"
+	;
+		% In C, we do some nasty hacks to represent type infos
+		% different arities as different structures
+		% ending with arrays of the appropriate length, but in
+		% Java we just use a single type for all of them
+		% (with an extra level of indirection for the array).
+		( string__prefix(GenTypeName0, "FA_PseudoTypeInfo_Struct")
+		; string__prefix(GenTypeName0, "FA_TypeInfo_Struct")
+		; string__prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
+		; string__prefix(GenTypeName0, "VA_TypeInfo_Struct")
+		)
+	->
+		JavaTypeName = "mercury.runtime.TypeInfo_Struct"
+	;
 		JavaTypeName = string__append("mercury.runtime.", GenTypeName0)
 	).
 

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001-2003 The University of Melbourne.
+// Copyright (C) 2001-2004 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -51,6 +51,19 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		args = new PseudoTypeInfo[] { a1, a2 };
 	}
 
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc,
+			// XXX "as" should have type PseudoTypeInfo[],
+			//     but mlds_to_java.m uses Object[]
+			//     because init_array/1 does not store the type.
+			Object[] as)
+	{
+		type_ctor = tc;
+		args = new PseudoTypeInfo[as.length];
+		for (int i = 0; i < as.length; i++) {
+			args[i] = (PseudoTypeInfo) as[i];
+		}
+	}
+
 	//
 	// constructors for variable-arity type_infos (tuple, pred, func)
 	//
@@ -62,20 +75,36 @@ public class TypeInfo_Struct extends PseudoTypeInfo {
 		args = new PseudoTypeInfo[] { };
 	}
 
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity, PseudoTypeInfo a1)
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
+			PseudoTypeInfo a1)
 	{
 		// assert arity == 1;
 		type_ctor = tc;
 		args = new PseudoTypeInfo[] { a1 };
 	}
 
-	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity, PseudoTypeInfo a1,
-				PseudoTypeInfo a2)
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
+			PseudoTypeInfo a1, PseudoTypeInfo a2)
 	{
 		// assert arity == 2;
 		type_ctor = tc;
 		args = new PseudoTypeInfo[] { a1, a2 };
 	}
+
+	public TypeInfo_Struct(TypeCtorInfo_Struct tc, int arity,
+			// XXX "as" should have type PseudoTypeInfo[],
+			//     but mlds_to_java.m uses Object[]
+			//     because init_array/1 does not store the type.
+			Object[] as)
+	{
+		// assert arity == as.length;
+		type_ctor = tc;
+		args = new PseudoTypeInfo[as.length];
+		for (int i = 0; i < as.length; i++) {
+			args[i] = (PseudoTypeInfo) as[i];
+		}
+	}
+
 
 	// XXX a temp hack just to get things to run
 	public TypeInfo_Struct(java.lang.Object obj)
