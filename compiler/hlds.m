@@ -247,7 +247,8 @@
 :- type hlds__goal_info	--->	goalinfo(
 					map(var, is_live), 
 					category,
-					map(var, inst)
+					map(var, inst),
+					term__context
 				).
 
 %%% :- export_type is_live.
@@ -604,37 +605,51 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 :- pred liveness_livevars(map(var, is_live), list(var)).
 :- mode liveness_livevars(input, output).
 
+:- pred goalinfo_context(hlds__goal_info, term__context).
+:- mode goalinfo_context(input, output).
+
+:- pred goalinfo_set_context(hlds__goal_info, term__context, hlds__goal_info).
+:- mode goalinfo_set_context(input, input, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-goalinfo_init(goalinfo(Liveness, unspecified, InstMap)) :-
+goalinfo_init(goalinfo(Liveness, unspecified, InstMap, Context)) :-
 	map__init(Liveness),
-	map__init(InstMap).
+	map__init(InstMap),
+	term__context_init("", 0, Context).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goalinfo(Liveness, _Detism, _InstMap).
+	GoalInfo = goalinfo(Liveness, _Detism, _InstMap, _Context).
 
 goalinfo_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
-	GoalInfo0 = goalinfo(_, Detism, InstMap),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap).
+	GoalInfo0 = goalinfo(_, Detism, InstMap, Context),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
 
 goalinfo_category(GoalInfo, Detism) :-
-	GoalInfo = goalinfo(_Liveness, Detism, _InstMap).
+	GoalInfo = goalinfo(_Liveness, Detism, _InstMap, _Context).
 
 goalinfo_set_category(GoalInfo0, Detism, GoalInfo) :-
-	GoalInfo0 = goalinfo(Liveness, _, InstMap),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap).
+	GoalInfo0 = goalinfo(Liveness, _, InstMap, Context),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
 
 goalinfo_instmap(GoalInfo, InstMap) :-
-	GoalInfo = goalinfo(_Liveness, _Detism, InstMap).
+	GoalInfo = goalinfo(_Liveness, _Detism, InstMap, _Context).
 
 goalinfo_set_instmap(GoalInfo0, InstMap, GoalInfo) :-
-	GoalInfo0 = goalinfo(Liveness, Detism, _),
-	GoalInfo = goalinfo(Liveness, Detism, InstMap).
+	GoalInfo0 = goalinfo(Liveness, Detism, _, Context),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
 
 liveness_livevars(Liveness, LiveVars) :-
 	findall([X], map__search(Liveness, X, live), LiveVars).
+
+goalinfo_context(GoalInfo, Context) :-
+	GoalInfo = goalinfo(_Liveness, _Detism, _InstMap, Context).
+
+goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
+	GoalInfo0 = goalinfo(Liveness, Detism, InstMap, _),
+	GoalInfo = goalinfo(Liveness, Detism, InstMap, Context).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -843,7 +858,7 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 	% In case we later decided to change the representation
 	% of mode_ids.
 
-mode_id_to_int(X, X).
+mode_id_to_int(_ - X, X).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
