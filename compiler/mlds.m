@@ -611,7 +611,10 @@
 
 		% This is a type of the MLDS target language.  Currently
 		% this is only used by the il backend.
-	;	mlds__foreign_type(sym_name, string)
+	;	mlds__foreign_type(
+			sym_name,	% structured name representing the type
+			string		% location of the type (ie assembly)
+		)
 
 		% MLDS types defined using mlds__class_defn
 	;	mlds__class_type(
