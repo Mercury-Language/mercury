@@ -53,13 +53,14 @@ equiv_type__expand_eqv_types(Items0, Items, CircularTypes, EqvMap) -->
 	{ map__init(EqvMap0) },
 	{ equiv_type__build_eqv_map(Items0, EqvMap0, EqvMap) },
 	{ equiv_type__replace_in_item_list(Items0, EqvMap,
-		Items, [], CircularTypeList0) },
-	{ list__reverse(CircularTypeList0, CircularTypeList) },
+		[], RevItems, [], RevCircularTypeList) },
+	{ list__reverse(RevItems, Items) },
 	(
-		{ CircularTypeList = [] }
+		{ RevCircularTypeList = [] }
 	->
 		{ CircularTypes = no }	
 	;
+		{ list__reverse(RevCircularTypeList, CircularTypeList) },
 		equiv_type__report_circular_types(CircularTypeList),
 		{ CircularTypes = yes },
 		io__set_exit_status(1)
@@ -88,24 +89,28 @@ equiv_type__build_eqv_map([Item - _Context | Items], EqvMap0, EqvMap) :-
 	% follow perform substitution of equivalence types on <foo>s.
 
 :- pred equiv_type__replace_in_item_list(list(item_and_context), eqv_map,
-	list(item_and_context), list(item_and_context), list(item_and_context)).
-:- mode equiv_type__replace_in_item_list(in, in, out, in, out) is det.
+	list(item_and_context), list(item_and_context),
+	list(item_and_context), list(item_and_context)).
+:- mode equiv_type__replace_in_item_list(in, in, in, out, in, out) is det.
 
-equiv_type__replace_in_item_list([], _, [], Circ, Circ).
-equiv_type__replace_in_item_list([Item0 - Context | Items0], EqvMap,
-		[Item - Context | Items], Circ0, Circ) :-
-	( equiv_type__replace_in_item(Item0, EqvMap, Item1, ContainsCirc) ->
-		Item = Item1,
+equiv_type__replace_in_item_list([], _, Items, Items, Circ, Circ).
+equiv_type__replace_in_item_list([ItemAndContext0 | Items0], EqvMap,
+		ReplItems0, ReplItems, Circ0, Circ) :-
+	ItemAndContext0 = Item0 - Context,
+	( equiv_type__replace_in_item(Item0, EqvMap, Item, ContainsCirc) ->
+		ItemAndContext = Item - Context,
 		( ContainsCirc = yes ->
-			Circ1 = [Item - Context | Circ0]
+			Circ1 = [ItemAndContext | Circ0]
 		;
 			Circ1 = Circ0
 		)
 	;
-		Item = Item0,
+		ItemAndContext = ItemAndContext0,
 		Circ1 = Circ0
 	),
-	equiv_type__replace_in_item_list(Items0, EqvMap, Items, Circ1, Circ).
+	ReplItems1 = [ItemAndContext | ReplItems0],
+	equiv_type__replace_in_item_list(Items0, EqvMap, ReplItems1, ReplItems,
+		Circ1, Circ).
 
 :- pred equiv_type__replace_in_item(item, eqv_map, item, bool).
 :- mode equiv_type__replace_in_item(in, in, out, out) is semidet.

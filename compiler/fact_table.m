@@ -2694,6 +2694,7 @@ generate_all_in_code(PredName, PragmaVars, ProcID, ArgTypes, ModuleInfo,
 		failure_code_%s:
 			SUCCESS_INDICATOR = FALSE;
 		skip_%s:
+			;
 	",
 	string__format(SuccessCodeTemplate, [s(LabelName), s(LabelName),
 		s(LabelName), s(LabelName)], SuccessCode),
@@ -2730,9 +2731,10 @@ generate_semidet_in_out_code(PredName, PragmaVars, ProcID, ArgTypes,
 
 	FailCodeTemplate = "
 			goto skip_%s;
-			failure_code_%s:
+		failure_code_%s:
 			SUCCESS_INDICATOR = FALSE;
-			skip_%s:
+		skip_%s:
+			;
 	",
 	string__format(FailCodeTemplate, [s(LabelName), s(LabelName),
 		s(LabelName)], FailCode),

@@ -27,7 +27,7 @@
 #define in_range(X)	(lower_limit == NULL || \
 				((X) >= lower_limit && (X) <= upper_limit))
 
-#undef  in_traverse_range(X)
+#undef  in_traverse_range
 #define in_traverse_range(X)	(FALSE)
 
 #undef	maybeconst

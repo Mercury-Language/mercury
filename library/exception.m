@@ -533,8 +533,8 @@ static void
 ML_call_goal_det(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result)
 {
-	typedef void FuncType(void *, MR_Box *);
-	FuncType *code = (FuncType *)
+	typedef void DetFuncType(void *, MR_Box *);
+	DetFuncType *code = (DetFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result);
 }
@@ -543,8 +543,8 @@ static bool
 ML_call_goal_semi(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result)
 {
-	typedef bool FuncType(void *, MR_Box *);
-	FuncType *code = (FuncType *)
+	typedef bool SemidetFuncType(void *, MR_Box *);
+	SemidetFuncType *code = (SemidetFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	return (*code)((void *) closure, result);
 }
@@ -555,8 +555,8 @@ static void
 ML_call_goal_non(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result, MR_NestedCont cont)
 {
-	typedef void FuncType(void *, MR_Box *, MR_NestedCont);
-	FuncType *code = (FuncType *)
+	typedef void NondetFuncType(void *, MR_Box *, MR_NestedCont);
+	NondetFuncType *code = (NondetFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result, cont);
 }
@@ -567,8 +567,8 @@ static void
 ML_call_goal_non(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Box *result, MR_Cont cont, void *cont_env)
 {
-	typedef void FuncType(void *, MR_Box *, MR_Cont, void *);
-	FuncType *code = (FuncType *)
+	typedef void NondetFuncType(void *, MR_Box *, MR_Cont, void *);
+	NondetFuncType *code = (NondetFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, result, cont, cont_env);
 }
@@ -581,8 +581,8 @@ static void
 ML_call_handler_det(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Univ exception, MR_Box *result)
 {
-	typedef void FuncType(void *, MR_Box, MR_Box *);
-	FuncType *code = (FuncType *)
+	typedef void HandlerFuncType(void *, MR_Box, MR_Box *);
+	HandlerFuncType *code = (HandlerFuncType *)
 		MR_field(MR_mktag(0), closure, (MR_Integer) 1);
 	(*code)((void *) closure, (MR_Box) exception, result);
 }

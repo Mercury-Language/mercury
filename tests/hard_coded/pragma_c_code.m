@@ -37,7 +37,7 @@ main -->
 :- pred c_write_integer(int::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_integer(Int::in, IO0::di, IO::uo), "
-	printf(""%ld\n"", (long) Int);
+	printf(""%ld\\n"", (long) Int);
 	IO = IO0;
 ").
 
@@ -48,7 +48,7 @@ main -->
 :- pred c_write_float(float::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_float(X::in, IO0::di, IO::uo), "
-	printf(""%.1f\n"", X);
+	printf(""%.1f\\n"", X);
 	IO = IO0;
 ").
 
@@ -57,6 +57,6 @@ main -->
 :- pred c_write_cosine(float::in, io__state::di, io__state::uo) is det.
 
 :- pragma(c_code, c_write_cosine(X::in, IO0::di, IO::uo), "
-	printf(""%.3f\n"", cos(X));
+	printf(""%.3f\\n"", cos(X));
 	IO = IO0;
 ").

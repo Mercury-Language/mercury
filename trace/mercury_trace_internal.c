@@ -226,7 +226,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	if (MR_trace_decl_mode != MR_TRACE_INTERACTIVE) {
 		return MR_trace_decl_debug(cmd, event_info);
 	}
-#endif	MR_USE_DECLARATIVE_DEBUGGER
+#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 	/*
 	** We want to make sure that the Mercury code used to implement some

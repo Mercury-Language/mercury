@@ -623,7 +623,7 @@ mercury__std_util____Compare____univ_0_0(MR_Comparison_Result *result,
 		return;
 	}
 
-	return mercury__builtin__compare_3_p_0((MR_Mercury_Type_Info) typeinfo_x,
+	mercury__builtin__compare_3_p_0((MR_Mercury_Type_Info) typeinfo_x,
 			result, (MR_Box) value_x, (MR_Box) value_y);
 }
 
