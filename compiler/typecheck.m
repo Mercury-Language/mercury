@@ -2389,18 +2389,24 @@ write_context_and_pred_id(TypeInfo) -->
 report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_type_info_context(TypeInfo),
 	io__write_string("  error: ambiguous overloading causes type ambiguity.\n"),
-	io__write_string("\tPossible type assignments include:\n"),
+	{ type_info_get_context(TypeInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("  Possible type assignments include:\n"),
 	{ type_info_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ map__keys(VarTypes1, Vars1) },
-	report_ambiguity_error_2(Vars1, VarSet, TypeAssign1, TypeAssign2).
+	report_ambiguity_error_2(Vars1, VarSet, TypeInfo,
+					TypeAssign1, TypeAssign2).
 
-:- pred report_ambiguity_error_2(list(var), varset, type_assign, type_assign,
+:- pred report_ambiguity_error_2(list(var), varset, type_info,
+				type_assign, type_assign,
 				io__state, io__state).
-:- mode report_ambiguity_error_2(in, in, in, in, di, uo) is det.
+:- mode report_ambiguity_error_2(in, in, type_info_no_io, in, in, di, uo)
+				is det.
 
-report_ambiguity_error_2([], _VarSet, _TypeAssign1, _TypeAssign2) --> [].
-report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
+report_ambiguity_error_2([], _VarSet, _, _TypeAssign1, _TypeAssign2) --> [].
+report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2)
+		-->
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
 	{ type_assign_get_type_bindings(TypeAssign1, TypeBindings1) },
@@ -2412,7 +2418,8 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 		term__apply_rec_substitution(Type2, TypeBindings2, T2),
 		T1 \= T2
 	} ->
-		io__write_string("\t"),
+		{ type_info_get_context(TypeInfo, Context) },
+		prog_out__write_context(Context),
 		mercury_output_var(V, VarSet),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
@@ -2424,7 +2431,8 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeAssign1, TypeAssign2) -->
 	;
 		[]
 	),
-	report_ambiguity_error_2(Vs, VarSet, TypeAssign1, TypeAssign2).
+	report_ambiguity_error_2(Vs, VarSet, TypeInfo,
+				TypeAssign1, TypeAssign2).
 
 :- pred write_type(type, io__state, io__state).
 :- mode write_type(in, di, uo) is det.
