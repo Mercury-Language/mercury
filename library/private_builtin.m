@@ -296,6 +296,12 @@ typed_compare(R, X, Y) :-
 						/*, ... */).
 :- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */).
 
+	% The following types are used by compiler/ml_code_util.m
+	% as the types used for copying type_info/1 and typeclass_info/1
+	% types.  XXX Document me better
+:- type sample_type_info ---> sample_type_info(type_info(int)).
+:- type sample_typeclass_info ---> sample_typeclass_info(typeclass_info(int)).
+
 	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)
 	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
 	% type_info in the typeclass_info.
@@ -1097,8 +1103,8 @@ gc_trace(_::in) :-
 	*(MR_Word *)Pointer =
 		MR_agc_deep_copy((MR_Word *) Pointer,
 			(MR_TypeInfo) TypeInfo_for_T,
-			MR_ENGINE(heap_zone2->min),
-                        MR_ENGINE(heap_zone2->hardmax));
+			MR_ENGINE(MR_eng_heap_zone2->min),
+                        MR_ENGINE(MR_eng_heap_zone2->hardmax));
 #else
 	MR_fatal_error(""private_builtin__gc_trace/2: ""
 		""called when accurate GC not enabled"");

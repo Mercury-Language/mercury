@@ -489,13 +489,37 @@
 % Code to handle accurate GC
 %
 
+	% ml_gen_maybe_gc_trace_code(Var, Type, Context, Code):
+	%
 	% If accurate GC is enabled, and the specified
 	% variable might contain pointers, generate code to call
 	% `private_builtin__gc_trace' to trace the variable.
-	% 
 :- pred ml_gen_maybe_gc_trace_code(var_name, prog_type, prog_context,
 		maybe(mlds__statement), ml_gen_info, ml_gen_info).
 :- mode ml_gen_maybe_gc_trace_code(in, in, in, out, in, out) is det.
+
+	% ml_gen_maybe_gc_trace_code(Var, DeclType, ActualType, Context, Code):
+	%
+	% This is the same as the //4 version (above), except that it takes
+	% two type arguments, rather than one.  The first
+	% (DeclType) is the type that the variable was declared with,
+	% while the second (ActualType) is that type that the variable
+	% is known to have.  This is used to generate GC tracing code
+	% for the temporaries variables used when calling procedures with
+	% polymorphically-typed output arguments.
+	% In that case, DeclType may be a type variable from the callee's
+	% type declaration, but ActualType will be the type from the caller.
+	%
+	% We can't just use DeclType to generate the GC trace code,
+	% because there's no way to compute the type_info for type variables
+	% that come from the callee rather than the current procedure.
+	% And we can't just use ActualType, since DeclType may contain
+	% pointers even when ActualType doesn't (e.g. because DeclType
+	% may be a boxed float).  So we need to pass both.
+	% 
+:- pred ml_gen_maybe_gc_trace_code(var_name, prog_type, prog_type, prog_context,
+		maybe(mlds__statement), ml_gen_info, ml_gen_info).
+:- mode ml_gen_maybe_gc_trace_code(in, in, in, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -747,7 +771,7 @@
 
 :- implementation.
 
-:- import_module prog_data.
+:- import_module prog_data, prog_io.
 :- import_module hlds_goal, (inst), instmap, polymorphism.
 :- import_module foreign.
 :- import_module prog_util, type_util, mode_util, special_pred, error_util.
@@ -1058,8 +1082,20 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, MLGenInfo0, MLGenInfo) :-
 	proc_info_argmodes(ProcInfo, HeadModes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	HeadVarNames = ml_gen_var_names(VarSet, HeadVars),
-	ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
-		CodeModel, FuncParams, MLGenInfo0, MLGenInfo).
+	% we must not generate GC tracing code for no_type_info_builtin
+	% procedures, because the generated GC tracing code would refer
+	% to type_infos that don't get passed
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, PredArity),
+	( no_type_info_builtin(PredModule, PredName, PredArity) ->
+		FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
+			HeadModes, PredOrFunc, CodeModel),
+		MLGenInfo = MLGenInfo0
+	;
+		ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
+			CodeModel, FuncParams, MLGenInfo0, MLGenInfo)
+	).
 
 	% As above, but from the rtti_proc_id rather than
 	% from the module_info, pred_id, and proc_id.
@@ -1990,36 +2026,49 @@ ml_declare_env_ptr_arg(mlds__argument(Name, Type, GC_TraceCode)) -->
 	% `private_builtin__gc_trace' to trace the variable.
 	%
 ml_gen_maybe_gc_trace_code(VarName, Type, Context, Maybe_GC_TraceCode) -->
+	ml_gen_maybe_gc_trace_code(VarName, Type, Type, Context,
+		Maybe_GC_TraceCode).
+
+ml_gen_maybe_gc_trace_code(VarName, DeclType, ActualType0, Context,
+		Maybe_GC_TraceCode) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_globals(ModuleInfo, Globals) },
 	{ globals__get_gc_method(Globals, GC) },
 	(
 		{ GC = accurate },
-		{ MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type) },
-		{ ml_type_might_contain_pointers(MLDS_Type) = yes },
-		% check that the Type is not `constraint(...)',
-		% which is a special case
-		% XXX maybe there is a better way of handling this...
-		% XXX FIXME this doesn't work, since it doesn't
-		% catch types which _contain_ `constraint(...)'.
-		{ Type = term__variable(_)
-		; type_to_type_id(Type, _, _)
-		}
+		{ MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo,
+			DeclType) },
+		{ ml_type_might_contain_pointers(MLDS_DeclType) = yes },
+		% don't generate GC tracing code in no_type_info_builtins
+		{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+		{ predicate_id(ModuleInfo, PredId,
+			PredModule, PredName, PredArity) },
+		\+ { no_type_info_builtin(PredModule, PredName, PredArity) }
 	->
-		ml_gen_gc_trace_code(VarName, Type, Context, GC_TraceCode),
+		% We need to handle type_info/1 and typeclass_info/1 types
+		% specially, to avoid infinite recursion here...
+		{ trace_type_info_type(ActualType0, ActualType1) ->
+			ActualType = ActualType1
+		;
+			ActualType = ActualType0
+		},
+		ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context,
+			GC_TraceCode),
 		{ Maybe_GC_TraceCode = yes(GC_TraceCode) }
 	;
 		{ Maybe_GC_TraceCode = no }
-	 ).
+	).
 
 	% Return `yes' if the type needs to be traced by
 	% the accurate garbage collector, i.e. if it might
 	% contain pointers.
 	%
-	% It's always safe to return `yes' here, so if in doubt, we do.
+	% Any type for which we return `yes' here must be word-sized,
+	% because we will call private_builtin__gc_trace with its address,
+	% and that procedure assumes that its argument is an `MR_Word *'.
 	%
-	% For floats, we can return `no' even though they might
+	% For floats, we can (and must) return `no' even though they might
 	% get boxed in some circumstances, because if they are
 	% boxed then they will be represented as mlds__generic_type.
 	%
@@ -2042,7 +2091,14 @@ ml_type_might_contain_pointers(mlds__native_int_type) = no.
 ml_type_might_contain_pointers(mlds__native_float_type) = no.
 ml_type_might_contain_pointers(mlds__native_bool_type) = no.
 ml_type_might_contain_pointers(mlds__native_char_type) = no.
-ml_type_might_contain_pointers(mlds__foreign_type(_, _, _)) = yes.
+ml_type_might_contain_pointers(mlds__foreign_type(_, _, _)) = _ :-
+	% It might contain pointers, so it's not safe to return `no',
+	% but it also might not be word-sized, so it's not safe to
+	% return `yes'.  Currently this case should not occur, since
+	% currently `foreign_type' is only used for the IL back-end,
+	% where GC is handled by the target language.
+	unexpected(this_file, "--gc accurate and foreign_type").
+	
 ml_type_might_contain_pointers(mlds__class_type(_, _, Category)) =
 	(if Category = mlds__enum then no else yes).
 ml_type_might_contain_pointers(mlds__ptr_type(_)) = yes.
@@ -2067,17 +2123,31 @@ ml_type_category_might_contain_pointers(enum_type) = no.
 ml_type_category_might_contain_pointers(polymorphic_type) = yes.
 ml_type_category_might_contain_pointers(user_type) = yes.
 
+	% trace_type_info_type(Type, RealType):
+	%	Succeed iff Type is a type_info-related type
+	%	which needs to be copied as if it were some other type,
+	%	binding RealType to that other type.
+:- pred trace_type_info_type(prog_type::in, prog_type::out) is semidet.
+trace_type_info_type(Type, RealType) :-
+	sym_name_and_args(Type, TypeName, _),
+	TypeName = qualified(PrivateBuiltin, Name),
+	mercury_private_builtin_module(PrivateBuiltin),
+	( Name = "type_info", RealType = sample_type_info_type
+	; Name = "type_ctor_info", RealType = c_pointer_type
+	; Name = "typeclass_info", RealType = sample_typeclass_info_type
+	; Name = "base_typeclass_info", RealType = c_pointer_type
+	).
 
 	% Generate code to call to `private_builtin__gc_trace'
 	% to trace the specified variable.
 	%
-:- pred ml_gen_gc_trace_code(var_name, prog_type, prog_context,
+:- pred ml_gen_gc_trace_code(var_name, prog_type, prog_type, prog_context,
 		mlds__statement, ml_gen_info, ml_gen_info).
-:- mode ml_gen_gc_trace_code(in, in, in, out, in, out) is det.
+:- mode ml_gen_gc_trace_code(in, in, in, in, out, in, out) is det.
 
-ml_gen_gc_trace_code(VarName, Type, Context, GC_TraceCode) -->
+ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode) -->
 	% Build HLDS code to construct the type_info for this type.
-	ml_gen_make_type_info_var(Type, Context,
+	ml_gen_make_type_info_var(ActualType, Context,
 		TypeInfoVar, HLDS_TypeInfoGoals),
 	{ NonLocalsList = list__map(
 		(func(_G - GI) = NL :- goal_info_get_nonlocals(GI, NL)),
@@ -2092,7 +2162,7 @@ ml_gen_gc_trace_code(VarName, Type, Context, GC_TraceCode) -->
 	ml_gen_goal(model_det, Conj, MLDS_TypeInfoStatement),
 
 	% Build MLDS code to trace the variable
-	ml_gen_trace_var(VarName, Type, TypeInfoVar, Context,
+	ml_gen_trace_var(VarName, DeclType, TypeInfoVar, Context,
 		MLDS_TraceStatement),
 
 	% Generate declarations for any type_info variables used.
@@ -2472,6 +2542,13 @@ get_copy_out_option(Globals, CodeModel) = CopyOut :-
 		globals__lookup_bool_option(Globals,
 			det_copy_out, CopyOut)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "ml_code_util.m".
+
+:- end_module ml_code_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

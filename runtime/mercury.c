@@ -27,7 +27,7 @@
 */
 
 #ifdef NATIVE_GC
-  void *mercury__private_builtin____stack_chain;
+  void *mercury__private_builtin__stack_chain;
 #endif
 
 MR_Word mercury__private_builtin__dummy_var;

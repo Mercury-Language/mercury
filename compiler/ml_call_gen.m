@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -837,17 +837,32 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		%
 
 		% generate a declaration for the fresh variable
+		%
+		% Note that generating accurate GC tracing code for this
+		% variable requires some care, because CalleeType might be a
+		% type variable from the callee, not from the caller,
+		% and we can't generate type_infos for type variables
+		% from the callee.  Hence we need to call the version of
+		% ml_gen_maybe_gc_trace_code which takes two types:
+		% the CalleeType is used to determine the type for the
+		% temporary variable declaration, but the CallerType is
+		% used to construct the type_info.
+
 		ml_gen_info_new_conv_var(ConvVarNum),
 		{ VarName = mlds__var_name(VarNameStr, MaybeNum) },
 		{ ArgVarName = mlds__var_name(string__format(
 			"conv%d_%s", [i(ConvVarNum), s(VarNameStr)]),
 			MaybeNum) },
-		ml_gen_var_decl(ArgVarName, CalleeType, Context, ArgVarDecl),
+		ml_gen_type(CalleeType, MLDS_CalleeType),
+		ml_gen_maybe_gc_trace_code(ArgVarName, CalleeType, CallerType,
+			Context, GC_TraceCode),
+		{ ArgVarDecl = ml_gen_mlds_var_decl(var(ArgVarName),
+			MLDS_CalleeType, GC_TraceCode,
+			mlds__make_context(Context)) },
 		{ ConvDecls = [ArgVarDecl] },
 
 		% create the lval for the variable and use it for the
 		% argument lval
-		ml_gen_type(CalleeType, MLDS_CalleeType),
 		ml_gen_var_lval(ArgVarName, MLDS_CalleeType, ArgLval),
 
 		( { type_util__is_dummy_argument_type(CallerType) } ->

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,15 +12,22 @@
 #include "mercury_file.h"
 #include "mercury_std.h"	/* for MR_assert */
 
+#ifdef NATIVE_GC
+  static int next_id = 0;
+#endif
+
 #ifndef MR_NEW_MERCURYFILE_STRUCT
   void
   MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
   {
 	MR_file(*mf)	    = file;
 	MR_line_number(*mf) = line_number;
+  #ifdef NATIVE_GC
+	mf->id = ++next_id;
+  #endif
   }
 
-#else
+#else /* MR_NEW_MERCURYFILE_STRUCT */
 
   void
   MR_mercuryfile_init(FILE *file, int line_number, MercuryFile *mf)
@@ -38,6 +45,9 @@
 	mf->getc		= MR_getch;
 	mf->vprintf		= MR_vfprintf;
 	mf->putc		= MR_putch;
+  #ifdef NATIVE_GC
+	mf->id = ++next_id;
+  #endif
   }
 
   int

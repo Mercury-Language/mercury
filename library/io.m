@@ -2895,19 +2895,19 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 :- pragma foreign_proc("C",
 	io__get_stream_id(Stream::in, Id::out), 
 		[will_not_call_mercury, promise_pure], "
+
+#ifndef NATIVE_GC
 	/* 
 	** Most of the time, we can just use the pointer to the stream
 	** as a unique identifier.
 	*/
-	
 	Id = (MR_Word) Stream;
-
-#ifdef NATIVE_GC
+#else
 	/* 
-	** XXX for accurate GC we should embed an ID in the MercuryFile
+	** for accurate GC we embed an ID in the MercuryFile
 	** and retrieve it here.
 	*/
-	MR_fatal_error(""not implemented -- stream ids in native GC grades"");
+	Id = ((MercuryFile *) Stream)->id;
 #endif
 ").
 

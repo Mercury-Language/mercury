@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -165,6 +165,8 @@
 :- func float_type = (type).
 :- func char_type = (type).
 :- func c_pointer_type = (type).
+:- func sample_type_info_type = (type).
+:- func sample_typeclass_info_type = (type).
 
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.
@@ -789,6 +791,16 @@ char_type = Type :-
 c_pointer_type = Type :-
 	mercury_public_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).
+
+sample_type_info_type = Type :-
+	mercury_private_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule,
+		"sample_type_info") - 0, [], Type).
+
+sample_typeclass_info_type = Type :-
+	mercury_private_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule,
+		"sample_typeclass_info") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
 

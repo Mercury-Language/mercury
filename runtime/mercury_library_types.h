@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,6 +27,9 @@
   typedef struct mercury_file {
 	FILE *file1;
 	int line_number1;
+  #ifdef NATIVE_GC
+	int id;
+  #endif
   } MercuryFile;
 
   #define MR_file(mf)		(mf).file1
@@ -101,6 +104,9 @@
 	MR_StreamType	stream_type;
 	MR_StreamInfo	stream_info;
 	int		line_number;
+  #ifdef NATIVE_GC
+	int id;
+  #endif
 
 		/* UNBUFFERED FUNCTIONS */
 	MR_Stream_close	*close;    
