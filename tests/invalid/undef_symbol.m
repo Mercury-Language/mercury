@@ -10,7 +10,8 @@
 
 main -->
 	p,
-	q.
+	q,
+	undef_symbol__r.
 
 :- pred p(io__state::di, io__state::uo) is det.
 
@@ -23,4 +24,6 @@ p -->
 q -->
 	{ Context = term__context("random", 17) },
 	write(Context), nl.
+
+% :- pred r(io__state::di, io__state::uo) is det.
 
