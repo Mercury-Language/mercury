@@ -905,13 +905,20 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
 hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
 			_ModuleInfo, VarSet, Indent, Follow, _TypeQual) -->
 		% XXX we should print more info here
-	( { hlds__is_builtin_is_internal(Builtin) } ->
+	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
+	(
+		{ Verbose = yes },
+		{ hlds__is_builtin_is_internal(Builtin) }
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("% internal\n")
 	;
 		[]
 	),
-	( { hlds__is_builtin_is_inline(Builtin) } ->
+	(
+		{ Verbose = yes },
+		{ hlds__is_builtin_is_inline(Builtin) }
+	->
 		hlds_out__write_indent(Indent),
 		io__write_string("% inline\n")
 	;
