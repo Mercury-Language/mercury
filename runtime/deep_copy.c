@@ -20,6 +20,8 @@
 static Word get_base_type_layout_entry(Word data, Word *type_info);
 static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	bool *allocated);
+static Word * deep_copy_type_info(Word *type_info,
+	Word *lower_limit, Word *upper_limit);
 
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.
@@ -76,8 +78,20 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                         break;
 
                     case TYPELAYOUT_FLOAT_VALUE:
-                        new_data = data;
-                        break;
+			#ifdef BOXED_FLOAT
+                	    if (in_range(data_value)) {
+				/*
+				** force a deep copy by converting to float
+				** and back
+				*/
+	 			new_data = float_to_word(word_to_float(data));
+			    } else {
+				new_data = data;
+			    }
+			#else
+			    new_data = data;
+			#endif
+			break;
 
                     case TYPELAYOUT_INT_VALUE:
                         new_data = data;
@@ -96,7 +110,9 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                             incr_saved_hp(new_data, 2);
                             new_data_ptr = (Word *) new_data;
                             new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
-                                data_value[UNIV_OFFSET_FOR_TYPEINFO];
+				(Word) deep_copy_type_info( (Word *)
+				    data_value[UNIV_OFFSET_FOR_TYPEINFO],
+				    lower_limit, upper_limit);
                             new_data_ptr[UNIV_OFFSET_FOR_DATA] = deep_copy(
                                 data_value[UNIV_OFFSET_FOR_DATA], 
                                 (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
@@ -108,40 +124,89 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     case TYPELAYOUT_PREDICATE_VALUE:
                     {
-                        /* predicate closures store the number of curried
-                         * arguments as their first argument, the
-                         * Code * as their second, and then the
-                         * arguments
-                         *
-                         * Their type-infos have a pointer to
-                         * base_type_info for pred/0, arity, and then
-                         * argument typeinfos.
-                         */
-                        int args;
-                        Word *new_closure;
+                        /*
+			** predicate closures store the number of curried
+                        ** arguments as their first argument, the
+                        ** Code * as their second, and then the
+                        ** arguments
+                        **
+                        ** Their type-infos have a pointer to
+                        ** base_type_info for pred/0, arity, and then
+                        ** argument typeinfos.
+                        **/
+                        if (in_range(data_value)) {
+                            int args;
+                            Word *new_closure;
 
                             /* get number of curried arguments */
-                        args = data_value[0];
+                            args = data_value[0];
 
                             /* create new closure */
-                        incr_saved_hp(LVALUE_CAST(Word, new_closure), args + 2);
+                            incr_saved_hp(LVALUE_CAST(Word, new_closure),
+				args + 2);
 
                             /* copy number of arguments */
-                        new_closure[0] = args;
+                            new_closure[0] = args;
 
                             /* copy pointer to code for closure */
-                        new_closure[1] = data_value[1];
+                            new_closure[1] = data_value[1];
 
                             /* copy arguments */
-                        for (i = 0; i < args; i++) {
-                            new_closure[i + 2] = deep_copy(data_value[i + 2],
-                                (Word *)
-                                type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
-                                lower_limit, upper_limit);
-                        }
-                        new_data = (Word) new_closure;
+                            for (i = 0; i < args; i++) {
+                                new_closure[i + 2] = deep_copy(
+				    data_value[i + 2],
+                                    (Word *) type_info[i +
+					TYPEINFO_OFFSET_FOR_PRED_ARGS],
+                                    lower_limit, upper_limit);
+                            }
+                            new_data = (Word) new_closure;
+			} else {
+			    new_data = data;
+			}
                         break;
                     }
+
+                    case TYPELAYOUT_VOID_VALUE:
+                        fatal_error("Attempt to use a VOID tag in deep_copy");
+                        break;
+
+                    case TYPELAYOUT_UNIQ_ARRAY_VALUE:
+                        if (in_range(data_value)) {
+			    MR_UniqArrayType *new_array;
+			    MR_UniqArrayType *old_array;
+			    Integer array_size;
+
+			    old_array = (MR_UniqArrayType *) data_value;
+			    array_size = old_array->size;
+			    new_array = MR_make_uniq_array(array_size);
+			    new_array->size = array_size;
+			    for (i = 0; i < array_size; i++) {
+				new_array->elements[i] = old_array->elements[i];
+			    }
+			    new_data = (Word) new_array;
+			} else {
+			    new_data = data;
+			}
+			break;
+
+                    case TYPELAYOUT_TYPEINFO_VALUE:
+			new_data = (Word) deep_copy_type_info(data_value,
+			    lower_limit, upper_limit);
+                        break;
+
+                    case TYPELAYOUT_C_POINTER_VALUE:
+                        if (in_range(data_value)) {
+			    /*
+			    ** This error occurs if we try to deep_copy() a
+			    ** `c_pointer' type that points to memory allocated
+			    ** on the Mercury heap.
+			    */
+                            fatal_error("Attempt to use a C_POINTER tag "
+				    "in deep_copy");
+                        } else {
+                            new_data = data;
+                        }
+                        break;
 
                     default:
                         fatal_error("Invalid tag value in deep_copy");
@@ -157,9 +222,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
             argument_vector = data_value;
 
-                /* If the argument vector is in range, copy the
-                 * arguments.
-                 */
+                /*
+		** If the argument vector is in range, copy the
+                ** arguments.
+                */
             if (in_range(argument_vector)) {
                 arity = entry_value[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
                 type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
@@ -190,10 +256,11 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             Word secondary_tag;
             Word *new_entry;
 
-                /* if the vector containing the secondary
-                 * tags and the arguments is in range, 
-                 * copy it.
-                 */
+                /*
+		** if the vector containing the secondary
+                ** tags and the arguments is in range, 
+                ** copy it.
+                */
             if (in_range(data_value)) {
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
@@ -202,9 +269,10 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                 type_info_vector = new_entry + 
                     TYPELAYOUT_SIMPLE_ARGS_OFFSET;
 
-                /* allocate space for new args, and 
-                 * secondary tag 
-                 */
+                /*
+		** allocate space for new args, and 
+                ** secondary tag 
+                */
                 incr_saved_hp(new_data, arity + 1);
 
                     /* copy secondary tag */
@@ -365,3 +433,28 @@ make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 		return arg_pseudo_type_info;
 	}
 } /* end make_type_info() */
+
+Word *
+deep_copy_type_info(Word *type_info, Word *lower_limit, Word *upper_limit)
+{
+	if (in_range(type_info)) {
+		Word *base_type_info;
+		Word *new_type_info;
+		Integer arity, i;
+
+		/* XXX this doesn't handle higher-order types properly */
+
+		base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+		arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+		new_type_info = make_many(Word, arity + 1);
+		new_type_info[0] = type_info[0];
+		for (i = 1; i < arity + 1; i++) {
+			new_type_info[i] = (Word) deep_copy_type_info(
+				(Word *) type_info[i],
+				lower_limit, upper_limit);
+		}
+		return new_type_info;
+	} else {
+		return type_info;
+	}
+}

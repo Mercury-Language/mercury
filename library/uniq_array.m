@@ -6,7 +6,8 @@
 
 % File: uniq_array.m
 % Main author: fjh
-% Stability: VERY LOW
+% Stability: low
+%	This module will probably be renamed as `array'.
 
 % This module provides dynamically-sized one-dimensional arrays.
 % Array indices start at zero.
@@ -24,8 +25,8 @@
 	% so to work-around that problem, we currently don't use
 	% unique modes in this module.
 
-% :- inst uniq_array(I) = unique(unique_array(I)).
-:- inst uniq_array(I) = bound(unique_array(I)).
+% :- inst uniq_array(I) = unique(uniq_array(I)).
+:- inst uniq_array(I) = bound(uniq_array(I)).
 :- inst uniq_array == uniq_array(ground).
 :- inst uniq_array_skel == uniq_array(free).
 
@@ -43,6 +44,13 @@
 	% with bounds from 0 to Size-1, with each element initialized to Init.
 :- pred uniq_array__init(int, T, uniq_array(T)).
 :- mode uniq_array__init(in, in, uniq_array_uo) is det.
+
+	% uniq_array/1 is a function that constructs an array from a list.
+	% (It does the same thing as the predicate uniq_array__from_list/2.)
+	% The syntax `uniq_array([...])' is used to represent uniq_arrays
+	% for io__read, io__write, term_to_type, and type_to_term.
+:- func uniq_array(list(T)) = uniq_array(T).
+:- mode uniq_array(in) = uniq_array_uo is det.
 
 	% uniq_array__max returns the upper bound of the array
 :- pred uniq_array__max(uniq_array(_T), int).
@@ -118,7 +126,7 @@
 :- pred uniq_array__resize(uniq_array(T), int, T, uniq_array(T)).
 :- mode uniq_array__resize(uniq_array_di, in, in, uniq_array_uo) is det.
 
-	% uniq_array__from_list takes a list (of nonzero length),
+	% uniq_array__from_list takes a list,
 	% and returns a uniq_array containing those elements in
 	% the same order that they occured in the list.
 :- pred uniq_array__from_list(list(T), uniq_array(T)).
@@ -186,14 +194,8 @@ lower bounds other than zero are not supported
 
 % Arrays are implemented using the C interface.
 
-:- pragma(c_header_code, "
-
-	typedef struct {
-		Integer size;
-		Word *elements;
-	} UniqArrayType;
-
-").
+% The C type which defines the representation of arrays is
+% MR_UniqArrayType; it is defined in runtime/type_info.h.
 
 %-----------------------------------------------------------------------------%
 
@@ -207,15 +209,11 @@ Define_extern_entry(mercury____TypeToTerm___uniq_array__uniq_array_1_0);
 
 #ifdef  USE_TYPE_LAYOUT
 
-	/* This isn't really an integer, but we don't yet have a way of
-	 * describing C types.
-	 */
-
 const struct mercury_data_uniq_array__base_type_layout_uniq_array_1_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data_uniq_array__base_type_layout_uniq_array_1 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_INT_VALUE))
+		mkbody(TYPELAYOUT_UNIQ_ARRAY_VALUE))
 };
 
 const struct mercury_data_uniq_array__base_type_functors_uniq_array_1_struct {
@@ -226,6 +224,11 @@ const struct mercury_data_uniq_array__base_type_functors_uniq_array_1_struct {
 
 #endif
 
+Declare_entry(mercury__uniq_array__equal_2_0);
+Declare_entry(mercury__uniq_array__compare_3_0);
+Declare_entry(mercury__uniq_array__to_term_2_0);
+Declare_entry(mercury__uniq_array__from_term_2_0);
+
 BEGIN_MODULE(uniq_array_module)
 	init_entry(mercury____Unify___uniq_array__uniq_array_1_0);
 	init_entry(mercury____Index___uniq_array__uniq_array_1_0);
@@ -235,19 +238,28 @@ BEGIN_MODULE(uniq_array_module)
 BEGIN_CODE
 
 Define_entry(mercury____Unify___uniq_array__uniq_array_1_0);
-	fatal_error(""cannot unify uniq_arrays"");
+	/* this is implemented in Mercury, not hand-coded low-level C */
+	tailcall(ENTRY(mercury__uniq_array__equal_2_0),
+		ENTRY(mercury____Unify___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____Index___uniq_array__uniq_array_1_0);
-	fatal_error(""cannot index uniq_array"");
+	index_output = -1;
+	proceed();
 
 Define_entry(mercury____Compare___uniq_array__uniq_array_1_0);
-	fatal_error(""cannot compare uniq_arrays"");
+	/* this is implemented in Mercury, not hand-coded low-level C */
+	tailcall(ENTRY(mercury__uniq_array__compare_3_0),
+		ENTRY(mercury____Compare___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____TermToType___uniq_array__uniq_array_1_0);
-	fatal_error(""cannot term_to_type uniq_array"");
+	/* this is implemented in Mercury, not hand-coded low-level C */
+	tailcall(ENTRY(mercury__uniq_array__from_term_2_0),
+		ENTRY(mercury____TermToType___uniq_array__uniq_array_1_0));
 
 Define_entry(mercury____TypeToTerm___uniq_array__uniq_array_1_0);
-	fatal_error(""cannot type_to_term uniq_array"");
+	/* this is implemented in Mercury, not hand-coded low-level C */
+	tailcall(ENTRY(mercury__uniq_array__to_term_2_0),
+		ENTRY(mercury____TypeToTerm___uniq_array__uniq_array_1_0));
 
 END_MODULE
 
@@ -265,25 +277,106 @@ void sys_init_uniq_array_module(void) {
 
 %-----------------------------------------------------------------------------%
 
+	% unify/2 for uniq_arrays
+
+:- pred uniq_array__equal(uniq_array(T), uniq_array(T)).
+:- mode uniq_array__equal(in, in) is semidet.
+
+uniq_array__equal(Array1, Array2) :-
+	uniq_array__size(Array1, Size),
+	uniq_array__size(Array2, Size),
+	uniq_array__equal_elements(0, Size, Array1, Array2).
+
+:- pred uniq_array__equal_elements(int, int, uniq_array(T), uniq_array(T)).
+:- mode uniq_array__equal_elements(in, in, in, in) is semidet.
+
+uniq_array__equal_elements(N, Size, Array1, Array2) :-
+	( N = Size ->
+		true
+	;
+		uniq_array__lookup(Array1, N, Elem),
+		uniq_array__lookup(Array2, N, Elem),
+		N1 is N + 1,
+		uniq_array__equal_elements(N1, Size, Array1, Array2)
+	).
+
+
+	% compare/3 for uniq_arrays
+
+:- pred uniq_array__compare(comparison_result, uniq_array(T), uniq_array(T)).
+:- mode uniq_array__compare(out, in, in) is det.
+
+uniq_array__compare(Result, Array1, Array2) :-
+	uniq_array__size(Array1, Size1),
+	uniq_array__size(Array2, Size2),
+	compare(SizeResult, Size1, Size2),
+	( SizeResult = (=) ->
+		uniq_array__compare_elements(0, Size1, Array1, Array2, Result)
+	;
+		Result = SizeResult
+	).
+
+:- pred uniq_array__compare_elements(int, int, uniq_array(T), uniq_array(T),
+			comparison_result).
+:- mode uniq_array__compare_elements(in, in, in, in, out) is det.
+
+uniq_array__compare_elements(N, Size, Array1, Array2, Result) :-
+	( N = Size ->
+		Result = (=)
+	;
+		uniq_array__lookup(Array1, N, Elem1),
+		uniq_array__lookup(Array2, N, Elem2),
+		compare(ElemResult, Elem1, Elem2),
+		( ElemResult = (=) ->
+			N1 is N + 1,
+			uniq_array__compare_elements(N1, Size, Array1, Array2,
+				Result)
+		;
+			Result = ElemResult
+		)
+	).
+
+
+	% type_to_term for uniq_arrays
+
+:- pred uniq_array__to_term(uniq_array(T), term).
+:- mode uniq_array__to_term(in, out) is det.
+
+uniq_array__to_term(Array, Term) :-
+	uniq_array__to_list(Array, List),
+	type_to_term(List, ListTerm),
+	term__context_init(Context),
+	Term = term__functor(term__atom("uniq_array"), [ListTerm], Context).
+
+
+	% term_to_type for uniq_arrays
+
+:- pred uniq_array__from_term(term, uniq_array(T)).
+:- mode uniq_array__from_term(in, out) is semidet.
+
+uniq_array__from_term(Term, Array) :-
+	Term = term__functor(term__atom("uniq_array"), [ListTerm], _),
+	term_to_type(ListTerm, List),
+	uniq_array__from_list(List, Array).
+
+%-----------------------------------------------------------------------------%
+
 :- pragma(c_header_code, "
-UniqArrayType *mercury_make_uniq_array(Integer size, Word item);
+MR_UniqArrayType *ML_make_uniq_array(Integer size, Word item);
 ").
 
 :- pragma(c_code, "
-UniqArrayType *
-mercury_make_uniq_array(Integer size, Word item)
+MR_UniqArrayType *
+ML_make_uniq_array(Integer size, Word item)
 {
 	Integer i;
-	Word *array_elements;
-	UniqArrayType *array;
+	MR_UniqArrayType *array;
 
-	array_elements = make_many(Word, size);
-	for (i = 0; i < size; i++) {
-		array_elements[i] = item;
-	}
-	array = make(UniqArrayType);
-	array->elements = array_elements;
+	array = MR_make_uniq_array(size);
 	array->size = size;
+	for (i = 0; i < size; i++) {
+		array->elements[i] = item;
+	}
 	return array;
 }
 ").
@@ -291,13 +384,13 @@ mercury_make_uniq_array(Integer size, Word item)
 :- pragma(c_code,
 	uniq_array__init(Size::in, Item::in, UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) mercury_make_uniq_array(Size, Item);
+	UniqArray = (Word) ML_make_uniq_array(Size, Item);
 ").
 
 :- pragma(c_code,
 	uniq_array__make_empty_array(UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) mercury_make_uniq_array(0, 0);
+	UniqArray = (Word) ML_make_uniq_array(0, 0);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -312,10 +405,10 @@ mercury_make_uniq_array(Integer size, Word item)
 ").
 
 :- pragma(c_code, uniq_array__max(UniqArray::uniq_array_ui, Max::out), "
-	Max = ((UniqArrayType *)UniqArray)->size - 1;
+	Max = ((MR_UniqArrayType *)UniqArray)->size - 1;
 ").
 :- pragma(c_code, uniq_array__max(UniqArray::in, Max::out), "
-	Max = ((UniqArrayType *)UniqArray)->size - 1;
+	Max = ((MR_UniqArrayType *)UniqArray)->size - 1;
 ").
 
 uniq_array__bounds(Array, Min, Max) :-
@@ -325,10 +418,10 @@ uniq_array__bounds(Array, Min, Max) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_code, uniq_array__size(UniqArray::uniq_array_ui, Max::out), "
-	Max = ((UniqArrayType *)UniqArray)->size;
+	Max = ((MR_UniqArrayType *)UniqArray)->size;
 ").
 :- pragma(c_code, uniq_array__size(UniqArray::in, Max::out), "
-	Max = ((UniqArrayType *)UniqArray)->size;
+	Max = ((MR_UniqArrayType *)UniqArray)->size;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -357,14 +450,14 @@ uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
 
 :- pragma(c_code, uniq_array__lookup(UniqArray::uniq_array_ui, Index::in,
 		Item::out), "{
-	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
+	MR_UniqArrayType *uniq_array = (MR_UniqArrayType *)UniqArray;
 	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
 	Item = uniq_array->elements[Index];
 }").
 :- pragma(c_code, uniq_array__lookup(UniqArray::in, Index::in, Item::out), "{
-	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
+	MR_UniqArrayType *uniq_array = (MR_UniqArrayType *)UniqArray;
 	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
@@ -375,7 +468,7 @@ uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
 
 :- pragma(c_code, uniq_array__set(UniqArray0::uniq_array_di, Index::in,
 		Item::in, UniqArray::uniq_array_uo), "{
-	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray0;
+	MR_UniqArrayType *uniq_array = (MR_UniqArrayType *)UniqArray0;
 	if ((Unsigned) Index >= (Unsigned) uniq_array->size) {
 		fatal_error(""uniq_array__set: array index out of bounds"");
 	}
@@ -386,43 +479,37 @@ uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
-UniqArrayType * mercury_resize_uniq_array(UniqArrayType *old_array,
+MR_UniqArrayType * ML_resize_uniq_array(MR_UniqArrayType *old_array,
 					Integer array_size, Word item);
 ").
 
 :- pragma(c_code, "
-UniqArrayType *
-mercury_resize_uniq_array(UniqArrayType *old_array, Integer array_size,
+MR_UniqArrayType *
+ML_resize_uniq_array(MR_UniqArrayType *old_array, Integer array_size,
 				Word item)
 {
 	Integer i;
-	Word *array_elements;
-	UniqArrayType* array;
+	MR_UniqArrayType* array;
 	Integer old_array_size;
-	Word *old_array_elements;
 
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
-	old_array_elements = old_array->elements;
 
-	array_elements = make_many(Word, array_size);
+	array = (MR_UniqArrayType *) make_many(Word, array_size + 1);
+	array->size = array_size;
 	for (i = 0; i < old_array_size; i++) {
-		array_elements[i] = old_array_elements[i];
+		array->elements[i] = old_array->elements[i];
 	}
 	for (; i < array_size; i++) {
-		array_elements[i] = item;
+		array->elements[i] = item;
 	}
 
 	/*
 	** since the mode on the old array is `uniq_array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	oldmem(old_array->elements);
 	oldmem(old_array);
 
-	array = make(UniqArrayType);
-	array->elements = array_elements;
-	array->size = array_size;
 	return array;
 }
 ").
@@ -431,37 +518,35 @@ mercury_resize_uniq_array(UniqArrayType *old_array, Integer array_size,
 	uniq_array__resize(UniqArray0::uniq_array_di, Size::in, Item::in,
 		UniqArray::uniq_array_uo),
 "
-	UniqArray = (Word) mercury_resize_uniq_array(
-				(UniqArrayType *) UniqArray0, Size, Item);
+	UniqArray = (Word) ML_resize_uniq_array(
+				(MR_UniqArrayType *) UniqArray0, Size, Item);
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
-UniqArrayType *mercury_copy_uniq_array(UniqArrayType *old_array);
+MR_UniqArrayType *ML_copy_uniq_array(MR_UniqArrayType *old_array);
 ").
 
 :- pragma(c_code, "
-UniqArrayType *
-mercury_copy_uniq_array(UniqArrayType *old_array)
+MR_UniqArrayType *
+ML_copy_uniq_array(MR_UniqArrayType *old_array)
 {
+	/*
+	** Any changes to this function will probably also require
+	** changes to deepcopy() in runtime/deep_copy.c.
+	*/
+
 	Integer i;
-	Word *array_elements;
-	UniqArrayType* array;
+	MR_UniqArrayType* array;
 	Integer array_size;
-	Word *old_array_elements;
 
 	array_size = old_array->size;
-	old_array_elements = old_array->elements;
-
-	array_elements = make_many(Word, array_size);
-	for (i = 0; i < array_size; i++) {
-		array_elements[i] = old_array_elements[i];
-	}
-
-	array = make(UniqArrayType);
-	array->elements = array_elements;
+	array = MR_make_uniq_array(array_size);
 	array->size = array_size;
+	for (i = 0; i < array_size; i++) {
+		array->elements[i] = old_array->elements[i];
+	}
 	return array;
 }
 ").
@@ -470,17 +555,20 @@ mercury_copy_uniq_array(UniqArrayType *old_array)
 	uniq_array__copy(UniqArray0::uniq_array_ui, UniqArray::uniq_array_uo),
 "
 	UniqArray =
-		(Word) mercury_copy_uniq_array((UniqArrayType *) UniqArray0);
+		(Word) ML_copy_uniq_array((MR_UniqArrayType *) UniqArray0);
 ").
 
 :- pragma(c_code,
 	uniq_array__copy(UniqArray0::in, UniqArray::uniq_array_uo),
 "
 	UniqArray =
-		(Word) mercury_copy_uniq_array((UniqArrayType *) UniqArray0);
+		(Word) ML_copy_uniq_array((MR_UniqArrayType *) UniqArray0);
 ").
 
 %-----------------------------------------------------------------------------%
+
+uniq_array(List) = Array :-
+	uniq_array__from_list(List, Array).
 
 uniq_array__from_list([], Array) :-
 	uniq_array__make_empty_array(Array).
@@ -549,11 +637,8 @@ uniq_array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 	        )
 	    ;
 	        % Otherwise find the middle element of the range
-	        % and check against that.  NOTE: I used ">> 1"
-	        % rather than "// 2" because division always
-	        % rounds towards zero whereas shift right always
-	        % rounds down.  (Indices can be negative.)
-	        Mid is (Lo + Hi) >> 1,
+	        % and check against that.
+	        Mid is (Lo + Hi) >> 1,	% `>> 1' is hand-optimized `div 2'.
 	        uniq_array__lookup(Array, Mid, XMid),
 	        call(Compare, XMid, El, Comp),
 	        ( Comp = (<),
