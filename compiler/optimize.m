@@ -38,8 +38,8 @@ optimize__main([Proc0|Procs0], [Proc|Procs]) -->
 	optimize__proc(Proc0, Proc), !,
 	optimize__main(Procs0, Procs).
 
-optimize__proc(c_procedure(Name, Arity, Mode, PredProcId, Instrs0),
-		   c_procedure(Name, Arity, Mode, PredProcId, Instrs)) -->
+optimize__proc(c_procedure(Name, Arity, PredProcId, Instrs0),
+		   c_procedure(Name, Arity, PredProcId, Instrs)) -->
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	opt_debug__msg(DebugOpt, "before optimization"),
 	opt_debug__dump_instrs(DebugOpt, Instrs0),

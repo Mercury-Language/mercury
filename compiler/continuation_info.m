@@ -30,7 +30,8 @@
 
 :- interface.
 
-:- import_module list, llds, hlds_pred.
+:- import_module llds, hlds_pred.
+:- import_module list.
 
 	%
 	% Information used by the continuation_info module.
@@ -166,7 +167,7 @@ continuation_info__init(ContInfo) :-
 
 continuation_info__process_llds([]) --> [].
 continuation_info__process_llds([Proc|Procs]) -->
-	{ Proc = c_procedure(_, _, _, PredProcId, Instrs) },
+	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
 	continuation_info__process_instructions(PredProcId, Instrs),
 	continuation_info__process_llds(Procs).
 

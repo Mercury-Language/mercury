@@ -907,7 +907,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	),
 	{ globals__lookup_bool_option(Globals, stack_layout, StackLayout) },
 	( { StackLayout = yes } ->
-		{ Proc = c_procedure(_, _, _, PredProcId, Instructions) },
+		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
 		write_proc_progress_message(
 			"% Generating stack layout information for ",

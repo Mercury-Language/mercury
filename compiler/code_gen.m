@@ -243,9 +243,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	predicate_name(ModuleInfo, PredId, Name),
 	predicate_arity(ModuleInfo, PredId, Arity),
 		% construct a c_procedure structure with all the information
-	proc_id_to_int(ProcId, LldsProcId),
-	Proc = c_procedure(Name, Arity, LldsProcId, proc(PredId, ProcId),
-		Instructions).
+	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
 
 :- pred generate_category_code(code_model, hlds_goal, code_tree, frame_info,
 				code_info, code_info).

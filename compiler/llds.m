@@ -74,7 +74,6 @@
 	--->	c_procedure(
 			string,			% predicate name
 			int,			% arity
-			llds_proc_id,		% mode number
 			pred_proc_id,		% the pred_proc_id this code
 			list(instruction)	% the code for this procedure
 		).

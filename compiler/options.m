@@ -137,6 +137,10 @@
 		;	args
 		;	type_info
 		;	type_layout
+				% XXX stack_layout is a development only 
+				% option. It will eventually be replaced
+				% by new options handling different
+				% sorts of stack_layouts.
 		;	stack_layout
 		;	highlevel_c
 		;	unboxed_float
@@ -1442,10 +1446,11 @@ your program compiled with different options.
 	io__write_string("\t\tDon't output base_type_layout structures or references\n"),
 	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
 	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
-
-	io__write_string("\t--stack-layout\n"),
-	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tGenerate stack_layout structures.\n"),
+	
+		% This is a developer only option at the moment.
+%	io__write_string("\t--stack-layout\n"),
+%	io__write_string("\t(This option is not for general use.)\n"),
+%	io__write_string("\t\tGenerate stack_layout structures.\n"),
 
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),

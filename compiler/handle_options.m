@@ -559,6 +559,7 @@ convert_grade_option(Grade0) -->
 	( 
 		{ GC = accurate }, 
 		set_string_opt(gc, "accurate"), 
+			% we need stack layouts for accurate gc
 		set_bool_opt(stack_layout, yes) 
 	; 
 		{ GC = conservative },
