@@ -2240,7 +2240,7 @@ if test "$enable_mm_grades" = yes; then
 fi
 
 # add `.debug' (--debug) grades
-LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.tr.debug"
+LIBGRADES="$LIBGRADES $BEST_DEBUG_BASE_GRADE.gc.tr.debug"
 
 # Add the .par (thread-safe) grade
 if test "$enable_par_grades" = yes; then
