@@ -63,47 +63,51 @@
 :- op(740, xfy, (or)).
 :- op(720, xfy, (and)).
 
-% Prevent warnings about undefined predicates
+% Use term_expansion/2 to prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 
-rule(_).
+mercury_declaration(rule(_)).
 
-type(_).
-pred(_).
-% mode(_).
-inst(_).
+mercury_declaration(type(_)).
+mercury_declaration(pred(_)).
+mercury_declaration(mode(_)).
+mercury_declaration(inst(_)).
 
-% module(_).
-end_module(_).
-interface.
-implementation.
+mercury_declaration(module(_)).
+mercury_declaration(end_module(_)).
+mercury_declaration(interface).
+mercury_declaration(implementation).
 
-import_module(_).
-import_sym(_).
-import_pred(_).
-import_cons(_).
-import_type(_).
-import_adt(_).
-import_op(_).
+mercury_declaration(import_module(_)).
+mercury_declaration(import_sym(_)).
+mercury_declaration(import_pred(_)).
+mercury_declaration(import_cons(_)).
+mercury_declaration(import_type(_)).
+mercury_declaration(import_adt(_)).
+mercury_declaration(import_op(_)).
 
-export_module(_).
-export_sym(_).
-export_pred(_).
-export_cons(_).
-export_type(_).
-export_adt(_).
-export_op(_).
+mercury_declaration(export_module(_)).
+mercury_declaration(export_sym(_)).
+mercury_declaration(export_pred(_)).
+mercury_declaration(export_cons(_)).
+mercury_declaration(export_type(_)).
+mercury_declaration(export_adt(_)).
+mercury_declaration(export_op(_)).
 
-% use_module(_).
-use_sym(_).
-use_pred(_).
-use_cons(_).
-use_type(_).
-use_adt(_).
-use_op(_).
+mercury_declaration(use_module(_)).
+mercury_declaration(use_sym(_)).
+mercury_declaration(use_pred(_)).
+mercury_declaration(use_cons(_)).
+mercury_declaration(use_type(_)).
+mercury_declaration(use_adt(_)).
+mercury_declaration(use_op(_)).
 
-external(_).
+mercury_declaration(external(_)).
 
-% when(_,_).
+mercury_declaration(when(_,_)).
+
+term_expansion((:- Term), Clauses) :-
+	mercury_declaration(Term),
+	Clauses = [].
 
 %-----------------------------------------------------------------------------%
