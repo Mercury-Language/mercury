@@ -174,6 +174,8 @@
 
 :- implementation.
 
+:- import_module assoc_list.
+
 :- type option_category
 	--->	warning_option
 	;	verbosity_option
@@ -205,6 +207,7 @@ option_defaults(Option, Default) :-
 	map__member(OptionTable, Option, Default).
 
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
+:- mode option_defaults_2(in, out) is det.
 :- mode option_defaults_2(out, out) is multidet.
 :- mode option_defaults_2(in(bound(optimization_option)), out) is det.
 
@@ -729,19 +732,21 @@ opt_level(1, _OptionTable, [
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
 	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
+	optimize_delay_slot	-	bool(DelaySlot),
 	middle_rec		-	bool(yes),
 	follow_code		-	bool(yes),
 	emit_c_loops		-	bool(yes)
 	% dups?
-]).
-% This doesn't work at startup because the table is empty then
-%	map__lookup(OptionTable, branch_delay_slot, Option),
-%	( Option = bool(Configured) ->
-%		DelaySlot = Configured
-%	;
-%		error("configured value of branch-delay-slot is not boolean")
-%	).
+]) :-
+	option_defaults_2(code_gen_option, OptionList),
+	(
+		assoc_list__search(OptionList, branch_delay_slot, Option),
+		Option = bool(_Configured)
+	->
+		DelaySlot = no
+	;
+		error("couldn't find the configured value of branch-delay-slot")
+	).
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations
