@@ -319,7 +319,8 @@ if test "$ac_cv_func_sigaction" = yes; then
 			   are autoconf quote characters */
 			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
 					+ REG_PC);
-		}], [mercury_cv_pc_access='gregs[REG_PC]'], [true], [true])
+		}], [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
+			[true], [true])
 		AC_TRY_RUN([
 		#include <stdio.h>
 		#include <signal.h>
@@ -366,7 +367,8 @@ if test "$ac_cv_func_sigaction" = yes; then
 			save_cause = info->si_code;
 			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
 					+ CTX_EPC);
-		}], [mercury_cv_pc_access='gregs[CTX_EPC]'], [true], [true])
+		}], [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
+			[true], [true])
 		AC_TRY_RUN([
 		#include <stdio.h>
 		#include <signal.h>
@@ -412,11 +414,15 @@ if test "$ac_cv_func_sigaction" = yes; then
 			}
 			save_cause = info->si_code;
 			save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
-		}], [mercury_cv_pc_access=sc_pc], [true], [true])
+		}], [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
+			[true], [true])
 		)
 		AC_MSG_RESULT($mercury_cv_pc_access)
 		if test $mercury_cv_pc_access != no; then
 			AC_DEFINE_UNQUOTED(PC_ACCESS,$mercury_cv_pc_access)
+			if test $mercury_cv_pc_access_greg != no; then
+				AC_DEFINE(PC_ACCESS_GREG)
+			fi
 		fi
 	fi
 fi
