@@ -60,7 +60,9 @@ extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
+
 #ifdef CONSERVATIVE_GC
+#include "gc.h"
 extern	void		(*address_of_init_gc)(void);
 #endif
 
