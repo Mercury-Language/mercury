@@ -865,8 +865,7 @@ Note that @samp{--use-subdirs} is automatically enabled if you specify
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}
 file has the same syntax as an Mmakefile, but only variable assignments and
-@samp{include} directives are allowed.  All variables in the Mercury.options
-are treated as if they are assigned using @samp{:=}. Variables may also
+@samp{include} directives are allowed.  All variables in @file{Mercury.options} are treated as if they are assigned using @samp{:=}. Variables may also
 be set in the environment, overriding settings in options files.
 
 @samp{mmc --make} can be used in conjunction with Mmake. This is useful
