@@ -880,7 +880,7 @@ Mercury's mode system allows users
 to declare names for instantiatedness trees using declarations such as
 
 @example
-:- inst listskel ---> bound( [] ; [free | listskel] ).
+:- inst listskel = bound( [] ; [free | listskel] ).
 @end example
 
 This instantiatedness tree describes lists
@@ -933,7 +933,7 @@ the database over a network, you would need declarations such as
 :- type operation
         --->    lookup(key, data)
         ;       set(key, data).
-:- inst request --->
+:- inst request =
         bound(  lookup(ground, free)
         ;       set(ground, ground)
         ).
