@@ -1726,7 +1726,10 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 		% to speed up compilation. This must be done after
 		% typeclass instances have been checked, since that
 		% fills in which pred_ids are needed by instance decls.
+		maybe_write_string(Verbose,
+			"% Eliminating dead predicates... "),
 		{ dead_pred_elim(HLDS2a, HLDS2b) },
+		maybe_write_string(Verbose, "done.\n"),
 		mercury_compile__maybe_dump_hlds(HLDS2b, "02b",
 				"dead_pred_elim")
 	    ;
