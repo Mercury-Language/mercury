@@ -8630,18 +8630,18 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 			PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 			adjust_func_arity(PredOrFunc, Arity, NumArgs),
 
-				% create pragma c_header_code to declare
+				% create foreign_decls to declare
 				% extern variables
 			module_add_foreign_decl(c, C_HeaderCode, Context,
 				!Module),
 
+			module_add_fact_table_file(FileName, !Module),
+
 			io__get_exit_status(ExitStatus, !IO),
-			(
-				ExitStatus = 1
-			->
+			( ExitStatus = 1 ->
 				true
 			;
-				% create some pragma c_code to access table
+				% create foreign_procs to access the table
 				% in each mode
 				module_add_fact_table_procedures(ProcIDs,
 					PrimaryProcID, ProcTable, Pred,

@@ -84,12 +84,13 @@
 :- pred link(io__output_stream::in, linked_target_type::in, module_name::in,
 	list(string)::in, bool::out, io::di, io::uo) is det.
 
-	% link_module_list(ModulesToLink, Succeeded).
+	% link_module_list(ModulesToLink, FactTableObjFiles, Succeeded).
 	%
 	% The elements of ModulesToLink are the output of
 	% `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
 	% for each module in the program.
-:- pred link_module_list(list(string)::in, bool::out, io::di, io::uo) is det.
+:- pred link_module_list(list(string)::in, list(string)::in, bool::out,
+	io::di, io::uo) is det.
 
 	% get_object_code_type(TargetType, PIC)
 	%
@@ -157,12 +158,12 @@
 
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
+:- import_module hlds__error_util.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module libs__trace_params.
-:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 
 :- import_module char, dir, getopt, int, require, string.
@@ -808,7 +809,7 @@ make_init_file_aditi(InitFileStream, Aditi, ModuleName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-link_module_list(Modules, Succeeded, !IO) :-
+link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 	globals__io_lookup_string_option(output_file_name, OutputFileName0,
 		!IO),
 	( OutputFileName0 = "" ->
@@ -860,7 +861,6 @@ link_module_list(Modules, Succeeded, !IO) :-
 		Succeeded = no
 	;
 		( TargetType = executable ->
-			
 			list__map(
 				(pred(ModuleStr::in, ModuleName::out) is det :-
 					file_name_to_module_name(
@@ -878,7 +878,8 @@ link_module_list(Modules, Succeeded, !IO) :-
 			InitObjResult = yes(InitObjFileName),
 			globals__io_lookup_accumulating_option(link_objects,
 				ExtraLinkObjectsList, !IO),
-			AllObjects0 = ObjectsList ++ ExtraLinkObjectsList,
+			AllObjects0 = ObjectsList ++ ExtraLinkObjectsList
+				++ FactTableObjFiles,
 			AllObjects =
 				( InitObjFileName = "" ->
 					AllObjects0

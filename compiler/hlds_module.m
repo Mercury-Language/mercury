@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -274,11 +274,16 @@
 :- pred module_add_foreign_decl(foreign_language::in, string::in,
 	prog_context::in, module_info::in, module_info::out) is det.
 
+:- pred module_add_foreign_body_code(foreign_language::in, string::in,
+	prog_context::in, module_info::in, module_info::out) is det.
+
 :- pred module_add_foreign_import_module(foreign_language::in, module_name::in,
 	prog_context::in, module_info::in, module_info::out) is det.
 
-:- pred module_add_foreign_body_code(foreign_language::in, string::in,
-	prog_context::in, module_info::in, module_info::out) is det.
+:- pred module_get_fact_table_files(module_info::in, list(string)::out) is det.
+
+:- pred module_add_fact_table_file(string::in,
+	module_info::in, module_info::out) is det.
 
 	% Please see module_info_ensure_dependency_info for the
 	% constraints on this dependency_info.
@@ -485,6 +490,11 @@
 		foreign_decl_info		:: foreign_decl_info,
 		foreign_body_info		:: foreign_body_info,
 		foreign_import_module_info	:: foreign_import_module_info,
+		fact_table_file_names		:: list(string),
+						% The names of the files
+						% containing fact tables
+						% implementing predicates
+						% defined in this module.
 			
 		maybe_dependency_info		:: maybe(dependency_info),
 						% This dependency info is
@@ -588,8 +598,8 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
-	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], no, 0, [], 
-		[], StratPreds, UnusedArgInfo, counter__init(1),
+	ModuleSubInfo = module_sub(Name, Globals, no, [], [], [], [], no, 0,
+		[], [], StratPreds, UnusedArgInfo, counter__init(1),
 		counter__init(1), ImportedModules, IndirectlyImportedModules,
 		no_aditi_compilation, TypeSpecInfo,
 		NoTagTypes, init_analysis_info(mmc)),
@@ -904,6 +914,15 @@ module_add_foreign_decl(Lang, ForeignDecl, Context, !Module) :-
 		ForeignDeclIndex0],
 	module_info_set_foreign_decl(ForeignDeclIndex, !Module).
 
+module_add_foreign_body_code(Lang, Foreign_Body_Code, Context, !Module) :-
+	module_info_get_foreign_body_code(!.Module, Foreign_Body_List0),
+		% store the decls in reverse order and reverse them later
+		% for efficiency
+	Foreign_Body_List = 
+		[foreign_body_code(Lang, Foreign_Body_Code, Context) |
+			Foreign_Body_List0],
+	module_info_set_foreign_body_code(Foreign_Body_List, !Module).
+
 module_add_foreign_import_module(Lang, ModuleName, Context, !Module) :-
 	module_info_get_foreign_import_module(!.Module, ForeignImportIndex0),
 		% store the decls in reverse order and reverse them later
@@ -913,14 +932,13 @@ module_add_foreign_import_module(Lang, ModuleName, Context, !Module) :-
 			ForeignImportIndex0],
 	module_info_set_foreign_import_module(ForeignImportIndex, !Module).
 
-module_add_foreign_body_code(Lang, Foreign_Body_Code, Context, !Module) :-
-	module_info_get_foreign_body_code(!.Module, Foreign_Body_List0),
-		% store the decls in reverse order and reverse them later
-		% for efficiency
-	Foreign_Body_List = 
-		[foreign_body_code(Lang, Foreign_Body_Code, Context) |
-			Foreign_Body_List0],
-	module_info_set_foreign_body_code(Foreign_Body_List, !Module).
+module_get_fact_table_files(Module, FileNames) :-
+	FileNames = Module ^ sub_info ^ fact_table_file_names.
+
+module_add_fact_table_file(FileName, !Module) :-
+	FileNames = !.Module ^ sub_info ^ fact_table_file_names,
+	!:Module = !.Module ^ sub_info ^ fact_table_file_names
+		:= [FileName | FileNames].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -44,7 +44,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type build(T, Info) == pred(T, bool, Info, Info, io__state, io__state).
+:- type build(T, Info1, Info2) == pred(T, bool, Info1, Info2,
+	io__state, io__state).
+:- type build(T, Info) == build(T, Info, Info).
 :- type build(T) == build(T, make_info).
 :- inst build == (pred(in, out, in, out, di, uo) is det).
 
@@ -74,8 +76,8 @@
 	% The old option table will be restored afterwards.
 :- pred build_with_module_options(module_name::in, options_variables::in,
 	list(string)::in, list(string)::in,
-	build(list(string), Info)::in(build),
-	bool::out, Info::in, Info::out, io__state::di, io__state::uo) is det.
+	build(list(string), Info1, Info2)::in(build),
+	bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
 	% Perform the given closure with an output stream created
 	% to append to the error file for the given module.
@@ -306,10 +308,16 @@ build_with_output_redirect(ModuleName, Build, Succeeded, Info0, Info) -->
 	).
 
 build_with_module_options(ModuleName, ExtraOptions,
-		Build, Succeeded, Info0, Info) -->
+		Build, Succeeded, Info0, Info, !IO) :-
 	build_with_module_options(yes, ModuleName, Info0 ^ options_variables,
 		Info0 ^ option_args, ExtraOptions, Build, Succeeded,
-		Info0, Info).
+		Info0, MaybeInfo, !IO),
+	(
+		MaybeInfo = yes(Info)
+	;
+		MaybeInfo = no,
+		Info = Info0
+	).
 
 build_with_module_options(ModuleName, OptionVariables,
 		OptionArgs, ExtraOptions, Build, Succeeded, Info0, Info) -->
@@ -318,19 +326,21 @@ build_with_module_options(ModuleName, OptionVariables,
 
 :- pred build_with_module_options(bool::in, module_name::in,
 	options_variables::in, list(string)::in, list(string)::in,
-	build(list(string), Info)::in(build),
-	bool::out, Info::in, Info::out, io__state::di, io__state::uo) is det.
+	build(list(string), Info1, Info2)::in(build),
+	bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 
 build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
-		OptionArgs, ExtraOptions, Build, Succeeded, Info0, Info) -->
-	lookup_mmc_module_options(OptionVariables, ModuleName, OptionsResult),
+		OptionArgs, ExtraOptions, Build, Succeeded, Info0, MaybeInfo,
+		!IO) :-
+	lookup_mmc_module_options(OptionVariables, ModuleName, OptionsResult,
+		!IO),
 	(
-		{ OptionsResult = no },
-		{ Info = Info0 },
-		{ Succeeded = no }
+		OptionsResult = no,
+		MaybeInfo = no,
+		Succeeded = no
 	;
-		{ OptionsResult = yes(ModuleOptionArgs) }, 
-		globals__io_get_globals(Globals),
+		OptionsResult = yes(ModuleOptionArgs), 
+		globals__io_get_globals(Globals, !IO),
 
 		% --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
 		% from the environment (DEFAULT_MCFLAGS is included in
@@ -338,27 +348,29 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
 		% --use-subdirs is needed because the code to install
 		% libraries uses `--use-grade-subdirs' and assumes the
 		% interface files were built with `--use-subdirs'.
-		{ InvokedByMmcMake = yes ->
+		( InvokedByMmcMake = yes ->
 			UseSubdirs = ["--use-subdirs"],
 			InvokedByMake = ["--invoked-by-mmc-make"]
 		;
 			UseSubdirs = [],
 			InvokedByMake = []
-		},
+		),
 
-		{ AllOptionArgs = list__condense([InvokedByMake,
+		AllOptionArgs = list__condense([InvokedByMake,
 			ModuleOptionArgs, OptionArgs,
-			ExtraOptions, UseSubdirs]) },
-		handle_options(AllOptionArgs, OptionsError, _, _, _),
+			ExtraOptions, UseSubdirs]),
+		handle_options(AllOptionArgs, OptionsError, _, _, _, !IO),
 		(
-			{ OptionsError = yes(OptionsMessage) },
-			{ Succeeded = no },
-			{ Info = Info0 },
-			usage_error(OptionsMessage)
+			OptionsError = yes(OptionsMessage),
+			Succeeded = no,
+			MaybeInfo = no,
+			usage_error(OptionsMessage, !IO)
 		;
-			{ OptionsError = no },
-			Build(AllOptionArgs, Succeeded, Info0, Info),
-			globals__io_set_globals(unsafe_promise_unique(Globals))
+			OptionsError = no,
+			Build(AllOptionArgs, Succeeded, Info0, Info, !IO),
+			MaybeInfo = yes(Info),
+			globals__io_set_globals(unsafe_promise_unique(Globals),
+				!IO)
 		)
 	).
 

@@ -378,7 +378,7 @@ main_2(no, OptionVariables, OptionArgs, Args, Link, !IO) :-
 		usage(!IO)
 	;
 		process_all_args(OptionVariables, OptionArgs,
-			Args, ModulesToLink, !IO),
+			Args, ModulesToLink, FactTableObjFiles, !IO),
 		io__get_exit_status(ExitStatus, !IO),
 		( ExitStatus = 0 ->
 			(
@@ -399,8 +399,9 @@ main_2(no, OptionVariables, OptionArgs, Args, Link, !IO) :-
 					compile_with_module_options(
 						MainModuleName,
 						OptionVariables, OptionArgs,
-					 compile_target_code__link_module_list(
-							ModulesToLink),
+						link_module_list(
+							ModulesToLink,
+							FactTableObjFiles),
 						Succeeded, !IO)
 				),
 				maybe_set_exit_status(Succeeded, !IO)
@@ -430,9 +431,11 @@ main_2(no, OptionVariables, OptionArgs, Args, Link, !IO) :-
 	).
 
 :- pred process_all_args(options_variables::in, list(string)::in,
-	list(string)::in, list(string)::out, io::di, io::uo) is det.
+	list(string)::in, list(string)::out, list(string)::out,
+	io::di, io::uo) is det.
 
-process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink, !IO) :-
+process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
+		FactTableObjFiles, !IO) :-
 	% Because of limitations in the GCC back-end,
 	% we can only call the GCC back-end once (per process),
 	% to generate a single assembler file, rather than
@@ -452,9 +455,9 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink, !IO) :-
 				% the output assembler file even if
 				% recompilation is found to be unnecessary.
 					mercury_compile__process_args(
-						OptionVariables,
-						OptionArgs, Args,
-						ModulesToLink, !IO)
+						OptionVariables, OptionArgs,
+						Args, ModulesToLink,
+						FactTableObjFiles, !IO)
 				;
 					Msg = "Sorry, not implemented: " ++
 						"`--target asm' with " ++
@@ -464,29 +467,33 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink, !IO) :-
 					write_error_pieces_plain([words(Msg)],
 						!IO),
 					io__set_exit_status(1, !IO),
-					ModulesToLink = []
+					ModulesToLink = [],
+					FactTableObjFiles = []
 				)
 			;
 				compile_using_gcc_backend(OptionVariables,
 					OptionArgs,
 					string_to_file_or_module(FirstArg),
-				mercury_compile__process_args(OptionVariables,
-					OptionArgs, Args),
-				ModulesToLink, !IO)
+					process_args_no_fact_table(
+						OptionVariables,
+						OptionArgs, Args),
+					ModulesToLink, !IO),
+				FactTableObjFiles = []
 			)
 		;
 			Msg = "Sorry, not implemented: `--target asm' " ++
 				"with `--filenames-from-stdin",
 			write_error_pieces_plain([words(Msg)], !IO),
 			io__set_exit_status(1, !IO),
-			ModulesToLink = []
+			ModulesToLink = [],
+			FactTableObjFiles = []
 		)
 	;
 		% If we're NOT using the GCC back-end,
 		% then we can just call process_args directly,
 		% rather than via GCC.
 		mercury_compile__process_args(OptionVariables, OptionArgs,
-			Args, ModulesToLink, !IO)
+			Args, ModulesToLink, FactTableObjFiles, !IO)
 	).
 
 :- pred compiling_to_asm(globals::in) is semidet.
@@ -658,24 +665,35 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
 		Result = Result0
 	).
 
-:- pred process_args(options_variables::in, list(string)::in, list(string)::in,
-	list(string)::out, io::di, io::uo) is det.
+:- pred process_args_no_fact_table(options_variables::in, list(string)::in,
+	list(string)::in, list(string)::out, io::di, io::uo) is det.
 
-process_args(OptionVariables, OptionArgs, Args, ModulesToLink, !IO) :-
+process_args_no_fact_table(OptionVariables, OptionArgs, Args, ModulesToLink,
+		!IO) :-
+	process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
+		_FactTableObjFiles, !IO).
+
+:- pred process_args(options_variables::in, list(string)::in, list(string)::in,
+	list(string)::out, list(string)::out, io::di, io::uo) is det.
+
+process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
+		FactTableObjFiles, !IO) :-
 	globals__io_lookup_bool_option(filenames_from_stdin,
 		FileNamesFromStdin, !IO),
 	( FileNamesFromStdin = yes ->
 		process_stdin_arg_list(OptionVariables, OptionArgs,
-			[], ModulesToLink, !IO)
+			[], ModulesToLink, [], FactTableObjFiles, !IO)
 	;
 		process_arg_list(OptionVariables, OptionArgs,
-			Args, ModulesToLink, !IO)
+			Args, ModulesToLink, FactTableObjFiles, !IO)
 	).
 
 :- pred process_stdin_arg_list(options_variables::in, list(string)::in,
+	list(string)::in, list(string)::out,
 	list(string)::in, list(string)::out, io::di, io::uo) is det.
 
-process_stdin_arg_list(OptionVariables, OptionArgs, !Modules, !IO) :-
+process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
+		!FactTableObjFiles, !IO) :-
 	( !.Modules \= [] ->
 		garbage_collect(!IO)
 	;
@@ -689,10 +707,12 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules, !IO) :-
 		;
 			Arg = Line
 		),
-		process_arg(OptionVariables, OptionArgs, Arg, Module, !IO),
+		process_arg(OptionVariables, OptionArgs, Arg, Module,
+			FactTableObjFileList, !IO),
 		list__append(Module, !Modules),
+		list__append(FactTableObjFileList, !FactTableObjFiles),
 		process_stdin_arg_list(OptionVariables, OptionArgs,
-			!Modules, !IO)
+			!Modules, !FactTableObjFiles, !IO)
 	;
 		FileResult = eof
 	;
@@ -704,27 +724,33 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules, !IO) :-
 	).
 
 :- pred process_arg_list(options_variables::in, list(string)::in,
-	list(string)::in, list(string)::out, io::di, io::uo) is det.
+	list(string)::in, list(string)::out, list(string)::out,
+	io::di, io::uo) is det.
 
-process_arg_list(OptionVariables, OptionArgs, Args, Modules, !IO) :-
+process_arg_list(OptionVariables, OptionArgs, Args, Modules, FactTableObjFiles,
+		!IO) :-
 	process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList,
-		!IO),
-	list__condense(ModulesList, Modules).
+		FactTableObjFileLists, !IO),
+	list__condense(ModulesList, Modules),
+	list__condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred process_arg_list_2(options_variables::in, list(string)::in,
-	list(string)::in, list(list(string))::out, io::di, io::uo) is det.
+	list(string)::in, list(list(string))::out, list(list(string))::out,
+	io::di, io::uo) is det.
 
-process_arg_list_2(_, _, [], [], !IO).
+process_arg_list_2(_, _, [], [], [], !IO).
 process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
-		[Modules | ModulesList], !IO) :-
-	process_arg(OptionVariables, OptionArgs, Arg, Modules, !IO),
+		[Modules | ModulesList],
+		[FactTableObjFiles | FactTableObjFileLists], !IO) :-
+	process_arg(OptionVariables, OptionArgs, Arg, Modules,
+		FactTableObjFiles, !IO),
 	( Args \= [] ->
 		garbage_collect(!IO)
 	;
 		true
 	),
 	process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList,
-		!IO).
+		FactTableObjFileLists, !IO).
 
 	% Figure out whether the argument is a module name or a file name.
 	% Open the specified file or module, and process it.
@@ -733,9 +759,10 @@ process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
 	% that should be linked into the final executable.
 
 :- pred process_arg(options_variables::in, list(string)::in, string::in,
-	list(string)::out, io::di, io::uo) is det.
+	list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, !IO) :-
+process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
+		!IO) :-
 	FileOrModule = string_to_file_or_module(Arg),
 	globals__io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake,
 		!IO),
@@ -745,29 +772,40 @@ process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, !IO) :-
 			OptionVariables, OptionArgs, [],
 			process_arg_build(FileOrModule, OptionVariables,
 				OptionArgs),
-			_, [], ModulesToLink, !IO)
+			_, [], MaybePair, !IO),
+		(
+			MaybePair = yes(ModulesToLink - FactTableObjFiles)
+		;
+			MaybePair = no,
+			ModulesToLink = [],
+			FactTableObjFiles = []
+		)
 	;
 		% `mmc --make' has already set up the options.
-		process_arg_2(OptionVariables, OptionArgs,
-			FileOrModule, ModulesToLink, !IO)
+		process_arg_2(OptionVariables, OptionArgs, FileOrModule,
+			ModulesToLink, FactTableObjFiles, !IO)
 	).
 
 :- pred process_arg_build(file_or_module::in, options_variables::in,
 	list(string)::in, list(string)::in, bool::out,
-	list(string)::in, list(string)::out, io::di, io::uo) is det.
+	list(string)::in, pair(list(string))::out, io::di, io::uo) is det.
 
 process_arg_build(FileOrModule, OptionVariables, OptionArgs, _, yes,
-		_, Modules, !IO) :-
-	process_arg_2(OptionVariables, OptionArgs, FileOrModule, Modules, !IO).
+		_, Modules - FactTableObjFiles, !IO) :-
+	process_arg_2(OptionVariables, OptionArgs, FileOrModule, Modules,
+		FactTableObjFiles, !IO).
 
 :- pred process_arg_2(options_variables::in, list(string)::in,
-	file_or_module::in, list(string)::out, io::di, io::uo) is det.
+	file_or_module::in, list(string)::out, list(string)::out,
+	io::di, io::uo) is det.
 
-process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink, !IO) :-
+process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
+		FactTableObjFiles, !IO) :-
 	globals__io_lookup_bool_option(generate_dependencies, GenerateDeps,
 		!IO),
 	( GenerateDeps = yes ->
 		ModulesToLink = [],
+		FactTableObjFiles = [],
 		(
 			FileOrModule = file(FileName),
 			generate_file_dependencies(FileName, !IO)
@@ -777,7 +815,7 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink, !IO) :-
 		)
 	;
 		process_module(OptionVariables, OptionArgs,
-			FileOrModule, ModulesToLink, !IO)
+			FileOrModule, ModulesToLink, FactTableObjFiles, !IO)
 	).
 
 :- type file_or_module
@@ -918,10 +956,11 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
 	string__append(FileName, ".m", SourceFileName).
 
 :- pred process_module(options_variables::in, list(string)::in,
-	file_or_module::in, list(string)::out, io::di, io::uo) is det.
+	file_or_module::in, list(string)::out, list(string)::out,
+	io::di, io::uo) is det.
 
 process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
-		!IO) :-
+		FactTableObjFiles, !IO) :-
 	globals__io_get_globals(Globals, !IO),
 	globals__lookup_bool_option(Globals, halt_at_syntax_errors,
 		HaltSyntax),
@@ -960,13 +999,13 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 				FileName, ModuleName, MaybeTimestamp),
 				SubModuleList, !IO)
 		),
-		ModulesToLink = []
+		ModulesToLink = [],
+		FactTableObjFiles = []
 	;
 		ConvertToMercury = yes
 	->
 		read_module(FileOrModule, no, ModuleName, _, _,
 			Items, Error, map__init, _, !IO),
-
 		( halt_at_module_error(HaltSyntax, Error) ->
 			true
 		;
@@ -975,7 +1014,8 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 			convert_to_mercury(ModuleName, OutputFileName, Items,
 				!IO)
 		),
-		ModulesToLink = []
+		ModulesToLink = [],
+		FactTableObjFiles = []
 	;
 		globals__lookup_bool_option(Globals, smart_recompilation,
 			Smart),
@@ -1027,7 +1067,8 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 			% doesn't know how to check whether all the
 			% necessary intermediate files are present
 			% and up-to-date.
-			ModulesToLink = []
+			ModulesToLink = [],
+			FactTableObjFiles = []
 		;
 			(
 				Target = asm,
@@ -1036,14 +1077,16 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 				% See the comment in process_all_args.
 				compile_using_gcc_backend(OptionVariables,
 					OptionArgs, FileOrModule,
-					process_module_2(FileOrModule,
+					process_module_2_no_fact_table(
+						FileOrModule,
 						ModulesToRecompile,
 						ReadModules),
-					ModulesToLink, !IO)
+					ModulesToLink, !IO),
+				FactTableObjFiles = []
 			;
 				process_module_2(FileOrModule,
 					ModulesToRecompile, ReadModules,
-					ModulesToLink, !IO)
+					ModulesToLink, FactTableObjFiles, !IO)
 			)
 		)
 	).
@@ -1059,16 +1102,27 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
 		SubModule, !IO) :-
 	ProcessModule(FileName, ModuleName, MaybeTimestamp, SubModule, !IO).
 
+:- pred process_module_2_no_fact_table(file_or_module::in,
+	modules_to_recompile::in, read_modules::in, list(string)::out,
+	io::di, io::uo) is det.
+
+process_module_2_no_fact_table(FileOrModule, MaybeModulesToRecompile,
+		ReadModules0, ModulesToLink, !IO) :-
+	process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
+		ModulesToLink, _FactTableObjFiles, !IO).
+
 :- pred process_module_2(file_or_module::in, modules_to_recompile::in,
-	read_modules::in, list(string)::out, io::di, io::uo) is det.
+	read_modules::in, list(string)::out, list(string)::out,
+	io::di, io::uo) is det.
 
 process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
-		ModulesToLink, !IO) :-
+		ModulesToLink, FactTableObjFiles, !IO) :-
 	read_module(FileOrModule, yes, ModuleName, FileName,
 		MaybeTimestamp, Items, Error, ReadModules0, ReadModules, !IO),
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax, !IO),
 	( halt_at_module_error(HaltSyntax, Error) ->
-		ModulesToLink = []
+		ModulesToLink = [],
+		FactTableObjFiles = []
 	;
 		split_into_submodules(ModuleName, Items, SubModuleList0, !IO),
 		( MaybeModulesToRecompile = some(ModulesToRecompile) ->
@@ -1086,9 +1140,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 
 		globals__io_get_globals(Globals, !IO),
 		find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
-		(
-			any_mercury_builtin_module(ModuleName)
-		->
+		( any_mercury_builtin_module(ModuleName) ->
 			% Some predicates in the builtin modules are missing
 			% typeinfo arguments, which means that execution
 			% tracing will not work on them. Predicates defined
@@ -1103,21 +1155,19 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 				!IO),
 			globals__io_set_trace_level_none(!IO),
 
-			compile_all_submodules(FileName,
-				ModuleName, NestedSubModules,
-				MaybeTimestamp, ReadModules,
+			compile_all_submodules(FileName, ModuleName,
+				NestedSubModules, MaybeTimestamp, ReadModules,
 				FindTimestampFiles, SubModuleListToCompile,
-				ModulesToLink, !IO),
+				ModulesToLink, FactTableObjFiles, !IO),
 
 			globals__io_set_option(trace_stack_layout, bool(TSL),
 				!IO),
 			globals__io_set_trace_level(TraceLevel, !IO)
 		;
-			compile_all_submodules(FileName,
-				ModuleName, NestedSubModules,
-				MaybeTimestamp, ReadModules,
+			compile_all_submodules(FileName, ModuleName,
+				NestedSubModules, MaybeTimestamp, ReadModules,
 				FindTimestampFiles, SubModuleListToCompile,
-				ModulesToLink, !IO)
+				ModulesToLink, FactTableObjFiles, !IO)
 		)
 	).
 
@@ -1136,16 +1186,17 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 	list(module_name)::in, maybe(timestamp)::in, read_modules::in,
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	list(pair(module_name, item_list))::in, list(string)::out,
-	io::di, io::uo) is det.
+	list(string)::out, io::di, io::uo) is det.
 
 compile_all_submodules(FileName, SourceFileModuleName, NestedSubModules,
 		MaybeTimestamp, ReadModules, FindTimestampFiles,
-		SubModuleList, ModulesToLink, !IO) :-
-	list__foldl(
+		SubModuleList, ModulesToLink, FactTableObjFiles, !IO) :-
+	list__map_foldl(
 		compile(FileName, SourceFileModuleName, NestedSubModules,
 			MaybeTimestamp, ReadModules, FindTimestampFiles),
-		SubModuleList, !IO),
-	list__map(module_to_link, SubModuleList, ModulesToLink).
+		SubModuleList, FactTableObjFileLists, !IO),
+	list__map(module_to_link, SubModuleList, ModulesToLink),
+	list__condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred make_interface(file_name::in, module_name::in, maybe(timestamp)::in,
 	pair(module_name, item_list)::in, io::di, io::uo) is det.
@@ -1327,11 +1378,12 @@ find_timestamp_files_2(CompilationTarget, TimestampSuffix,
 :- pred compile(file_name::in, module_name::in, list(module_name)::in,
 	maybe(timestamp)::in, read_modules::in,
 	find_timestamp_file_names::in(find_timestamp_file_names),
-	pair(module_name, item_list)::in, io::di, io::uo) is det.
+	pair(module_name, item_list)::in, list(string)::out,
+	io::di, io::uo) is det.
 
 compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
 		MaybeTimestamp, ReadModules, FindTimestampFiles,
-		ModuleName - Items, !IO) :-
+		ModuleName - Items, FactTableObjFiles, !IO) :-
 	check_for_no_exports(Items, ModuleName, !IO),
 	( ModuleName = SourceFileModuleName ->
 		NestedSubModules = NestedSubModules0
@@ -1343,16 +1395,17 @@ compile(SourceFileName, SourceFileModuleName, NestedSubModules0,
 		Items, Module, Error2, !IO),
 	( Error2 \= fatal_module_errors ->
 		mercury_compile(Module, NestedSubModules, FindTimestampFiles,
-			!IO)
+			FactTableObjFiles, !IO)
 	;
-		true
+		FactTableObjFiles = []
 	).
 
 :- pred mercury_compile(module_imports::in, list(module_name)::in,
 	find_timestamp_file_names::in(find_timestamp_file_names),
-	io::di, io::uo) is det.
+	list(string)::out, io::di, io::uo) is det.
 
-mercury_compile(Module, NestedSubModules, FindTimestampFiles, !IO) :-
+mercury_compile(Module, NestedSubModules, FindTimestampFiles,
+		FactTableObjFiles, !IO) :-
 	module_imports_get_module_name(Module, ModuleName),
 	% If we are only typechecking or error checking, then we should not
 	% modify any files, this includes writing to .d files.
@@ -1376,7 +1429,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles, !IO) :-
 		globals__io_lookup_bool_option(make_transitive_opt_interface,
 			MakeTransOptInt, !IO),
 		( TypeCheckOnly = yes ->
-			true
+			FactTableObjFiles = []
 		; ErrorCheckOnly = yes ->
 			% we may still want to run `unused_args' so that we get
 			% the appropriate warnings
@@ -1394,16 +1447,18 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles, !IO) :-
 			mercury_compile__maybe_transform_dnf(Verbose, Stats,
 				HLDS22, HLDS23, !IO),
 			mercury_compile__maybe_magic(Verbose, Stats,
-				HLDS23, _, !IO)
+				HLDS23, _, !IO),
+			FactTableObjFiles = []
 		; MakeOptInt = yes ->
 			% only run up to typechecking when making the .opt file
-			true
+			FactTableObjFiles = []
 		; MakeTransOptInt = yes ->
-			mercury_compile__output_trans_opt_file(HLDS21, !IO)
+			mercury_compile__output_trans_opt_file(HLDS21, !IO),
+			FactTableObjFiles = []
 		;
 			mercury_compile_after_front_end(NestedSubModules,
 				FindTimestampFiles, MaybeTimestamps,
-				ModuleName, HLDS21, !IO)
+				ModuleName, HLDS21, FactTableObjFiles, !IO)
 		)
 	;
 		% If the number of errors is > 0, make sure that the compiler
@@ -1413,16 +1468,18 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles, !IO) :-
 			io__set_exit_status(1, !IO)
 		;
 			true
-		)
+		),
+		FactTableObjFiles = []
 	).
 
 :- pred mercury_compile_after_front_end(list(module_name)::in,
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	maybe(module_timestamps)::in, module_name::in, module_info::in,
-	io::di, io::uo) is det.
+	list(string)::out, io::di, io::uo) is det.
 
 mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
-		MaybeTimestamps, ModuleName, HLDS21, !IO) :-
+		MaybeTimestamps, ModuleName, HLDS21, FactTableBaseFiles,
+		!IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 	mercury_compile__maybe_output_prof_call_graph(Verbose, Stats,
@@ -1476,7 +1533,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			true
 		),
 		( AditiOnly = yes ->
-			HLDS = HLDS50
+			HLDS = HLDS50,
+			FactTableBaseFiles = []
 		; Target = il ->
 			HLDS = HLDS50,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
@@ -1492,7 +1550,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 				compile_target_code__il_assemble(OutputStream,
 					ModuleName, HasMain, Succeeded, !IO),
 				maybe_set_exit_status(Succeeded, !IO)
-			)
+			),
+			FactTableBaseFiles = []
 		; Target = java ->
 			HLDS = HLDS50,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
@@ -1506,7 +1565,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 				compile_target_code__compile_java_file(
 					OutputStream, JavaFile, Succeeded, !IO),
 				maybe_set_exit_status(Succeeded, !IO)
-			)
+			),
+			FactTableBaseFiles = []
 		; Target = asm ->
 			% compile directly to assembler using the gcc back-end
 			HLDS = HLDS50,
@@ -1531,7 +1591,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 				;
 					true
 				)
-			)
+			),
+			FactTableBaseFiles = []
 		; HighLevelCode = yes ->
 			HLDS = HLDS50,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
@@ -1552,13 +1613,15 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 					OutputStream, PIC, C_File, O_File,
 					CompileOK, !IO),
 				maybe_set_exit_status(CompileOK, !IO)
-			)
+			),
+			FactTableBaseFiles = []
 		;
 			mercury_compile__backend_pass(HLDS50, HLDS,
 				DeepProfilingStructures, GlobalData, LLDS,
 				!IO),
 			mercury_compile__output_pass(HLDS, GlobalData, LLDS,
-				MaybeRLFile, ModuleName, _CompileErrors, !IO)
+				MaybeRLFile, ModuleName, _CompileErrors,
+				FactTableBaseFiles, !IO)
 		),
 		recompilation__usage__write_usage_file(HLDS,
 			NestedSubModules, MaybeTimestamps, !IO),
@@ -1570,9 +1633,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 		io__get_exit_status(ExitStatus, !IO),
 		( ExitStatus = 0 ->
 			io__set_exit_status(1, !IO)
-			;
+		;
 			true
-		)
+		),
+		FactTableBaseFiles = []
 	).
 
 :- pred mercury_compile_asm_c_code(module_name::in, io::di, io::uo) is det.
@@ -3659,10 +3723,10 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 
 :- pred mercury_compile__output_pass(module_info::in, global_data::in,
 	list(c_procedure)::in, maybe(rl_file)::in, module_name::in, bool::out,
-	io::di, io::uo) is det.
+	list(string)::out, io::di, io::uo) is det.
 
 mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
-		ModuleName, CompileErrors, !IO) :-
+		ModuleName, CompileErrors, FactTableObjFiles, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 	%
@@ -3720,10 +3784,16 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 		io__output_stream(OutputStream, !IO),
 		mercury_compile__c_to_obj(OutputStream,
 			ModuleName, NumChunks, CompileOK, !IO),
-		maybe_set_exit_status(CompileOK, !IO),
-		bool__not(CompileOK, CompileErrors)
+		module_get_fact_table_files(HLDS, FactTableBaseFiles),
+		list__map2_foldl(compile_fact_table_file(OutputStream),
+			FactTableBaseFiles, FactTableObjFiles,
+			FactTableCompileOKs, !IO),
+		bool__and_list([CompileOK | FactTableCompileOKs], AllOk),
+		maybe_set_exit_status(AllOk, !IO),
+		bool__not(AllOk, CompileErrors)
 	;
-		CompileErrors = no
+		CompileErrors = no,
+		FactTableObjFiles = []
 	).
 
 	% Split the code up into bite-size chunks for the C compiler.
@@ -3871,6 +3941,18 @@ mercury_compile__c_to_obj(ErrorStream, ModuleName, NumChunks, Succeeded,
 		compile_target_code__compile_c_file(ErrorStream, PIC,
 			C_File, O_File, Succeeded, !IO)
 	).
+
+:- pred compile_fact_table_file(io__output_stream::in, string::in,
+	string::out, bool::out, io::di, io::uo) is det.
+
+compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
+	get_linked_target_type(LinkedTargetType, !IO),
+	get_object_code_type(LinkedTargetType, PIC, !IO),
+	maybe_pic_object_file_extension(PIC, Obj, !IO),
+	string__append(BaseName, ".c", C_File),
+	string__append(BaseName, Obj, O_File),
+	compile_target_code__compile_c_file(ErrorStream, PIC,
+		C_File, O_File, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
