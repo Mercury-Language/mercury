@@ -50,7 +50,6 @@
 
 :- implementation.
 
-:- import_module llds.  % XXX for code_addr
 :- import_module rtti, pseudo_type_info.
 :- import_module hlds_data, hlds_pred, hlds_out.
 :- import_module make_tags, prog_data, prog_util, prog_out.
@@ -182,11 +181,11 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		TypeArity, _Status, HldsDefn,
 		MaybeUnify, MaybeCompare,
 		MaybeSolver, MaybeInit, MaybePretty),
-	type_ctor_info__make_pred_addr(MaybeUnify,   ModuleInfo, Unify),
-	type_ctor_info__make_pred_addr(MaybeCompare, ModuleInfo, Compare),
-	type_ctor_info__make_pred_addr(MaybeSolver,  ModuleInfo, Solver),
-	type_ctor_info__make_pred_addr(MaybeInit,    ModuleInfo, Init),
-	type_ctor_info__make_pred_addr(MaybePretty,  ModuleInfo, Pretty),
+	type_ctor_info__make_proc_label(MaybeUnify,   ModuleInfo, Unify),
+	type_ctor_info__make_proc_label(MaybeCompare, ModuleInfo, Compare),
+	type_ctor_info__make_proc_label(MaybeSolver,  ModuleInfo, Solver),
+	type_ctor_info__make_proc_label(MaybeInit,    ModuleInfo, Init),
+	type_ctor_info__make_proc_label(MaybePretty,  ModuleInfo, Pretty),
 
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
@@ -212,13 +211,13 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo,
 		TypeCtorRep, Solver, Init, Version, NumPtags, NumFunctors,
 		MaybeFunctors, MaybeLayout, no, Pretty).
 
-:- pred type_ctor_info__make_pred_addr(maybe(pred_proc_id)::in,
-	module_info::in, maybe(code_addr)::out) is det.
+:- pred type_ctor_info__make_proc_label(maybe(pred_proc_id)::in,
+	module_info::in, maybe(rtti_proc_label)::out) is det.
 
-type_ctor_info__make_pred_addr(no, _ModuleInfo, no).
-type_ctor_info__make_pred_addr(yes(PredProcId), ModuleInfo, yes(PredAddr)) :-
+type_ctor_info__make_proc_label(no, _ModuleInfo, no).
+type_ctor_info__make_proc_label(yes(PredProcId), ModuleInfo, yes(ProcLabel)) :-
 	PredProcId = proc(PredId, ProcId),
-	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, PredAddr).
+	ProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 

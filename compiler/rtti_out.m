@@ -73,7 +73,8 @@
 
 :- implementation.
 
-:- import_module pseudo_type_info, llds, prog_out, c_util, options, globals.
+:- import_module pseudo_type_info, code_util, llds, prog_out, c_util.
+:- import_module options, globals.
 :- import_module string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -241,9 +242,13 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 		CtorRep, Solver, Init, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons, _Prettyprinter),
 		DeclSet0, DeclSet) -->
-	{ MaybeCodeAddrs = [Unify, Compare, Solver, Init] },
-	{ list__filter_map(pred(yes(CA)::in, CA::out) is semidet,
-		MaybeCodeAddrs, CodeAddrs) },
+	{ UnifyCA   = make_maybe_code_addr(Unify) },
+	{ CompareCA = make_maybe_code_addr(Compare) },
+	{ SolverCA  = make_maybe_code_addr(Solver) },
+	{ InitCA    = make_maybe_code_addr(Init) },
+	{ MaybeCodeAddrs = [UnifyCA, CompareCA, SolverCA, InitCA] },
+	{ CodeAddrs = list__filter_map(func(yes(CA)) = CA is semidet,
+		MaybeCodeAddrs) },
 	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
 	output_functors_info_decl(RttiTypeId, FunctorsInfo,
 		DeclSet1, DeclSet2),
@@ -254,18 +259,18 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 	{ RttiTypeId = rtti_type_id(Module, Type, TypeArity) },
 	io__write_int(TypeArity),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Unify),
+	output_maybe_static_code_addr(UnifyCA),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Unify),
+	output_maybe_static_code_addr(UnifyCA),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Compare),
+	output_maybe_static_code_addr(CompareCA),
 	io__write_string(",\n\t"),
 	{ rtti__type_ctor_rep_to_string(CtorRep, CtorRepStr) },
 	io__write_string(CtorRepStr),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Solver),
+	output_maybe_static_code_addr(SolverCA),
 	io__write_string(",\n\t"),
-	output_maybe_static_code_addr(Init),
+	output_maybe_static_code_addr(InitCA),
 	io__write_string(",\n\t"""),
 	{ prog_out__sym_name_to_string(Module, ModuleName) },
 	c_util__output_quoted_string(ModuleName),
@@ -339,6 +344,11 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 	io__write_string("\n};\n").
 output_rtti_data_defn(pseudo_type_info(Pseudo), DeclSet0, DeclSet) -->
 	output_pseudo_type_info_defn(Pseudo, DeclSet0, DeclSet).
+
+:- func make_maybe_code_addr(maybe(rtti_proc_label)) = maybe(code_addr).
+make_maybe_code_addr(no) = no.
+make_maybe_code_addr(yes(ProcLabel)) = yes(CodeAddr) :-
+	code_util__make_entry_label_from_rtti(ProcLabel, no, CodeAddr).
 
 :- pred output_pseudo_type_info_defn(pseudo_type_info, decl_set, decl_set,
 		io__state, io__state).

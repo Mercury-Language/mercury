@@ -17,6 +17,7 @@
 
 :- import_module prog_data.
 :- import_module hlds_module, hlds_pred.
+:- import_module rtti.
 :- import_module mlds.
 :- import_module llds. % XXX for `code_model'.
 
@@ -137,6 +138,10 @@
 :- pred ml_gen_pred_label(module_info, pred_id, proc_id,
 		mlds__pred_label, mlds_module_name).
 :- mode ml_gen_pred_label(in, in, in, out, out) is det.
+
+:- pred ml_gen_pred_label_from_rtti(rtti_proc_label,
+		mlds__pred_label, mlds_module_name).
+:- mode ml_gen_pred_label_from_rtti(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -743,14 +748,17 @@ ml_gen_new_func_label(FuncLabel, FuncLabelRval) -->
 	% for a given procedure.
 	%
 ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule),
-	pred_info_name(PredInfo, PredName),
-	module_info_name(ModuleInfo, ThisModule),
+	RttiProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	ml_gen_pred_label_from_rtti(RttiProcLabel,
+		MLDS_PredLabel, MLDS_Module).
+
+ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
+	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,	
+		PredName, Arity, ArgTypes, _PredId, ProcId, IsImported,
+		_IsPseudoImported, _IsExported, IsSpecialPredInstance),
 	(
-		code_util__compiler_generated(PredInfo)
+		IsSpecialPredInstance = yes
 	->
-		pred_info_arg_types(PredInfo, ArgTypes),
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId, _),
@@ -784,7 +792,7 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 			% Work out which module supplies the code for
 			% the predicate.
 			ThisModule \= PredModule,
-			\+ pred_info_is_imported(PredInfo)
+			IsImported = no
 		->
 			% This predicate is a specialized version of 
 			% a pred from a `.opt' file.
@@ -794,8 +802,6 @@ ml_gen_pred_label(ModuleInfo, PredId, ProcId, MLDS_PredLabel, MLDS_Module) :-
 			% that it is defined in
 			MaybeDeclaringModule = no
 		),
-		pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-		pred_info_arity(PredInfo, Arity),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
 				PredName, Arity),
 		MLDS_Module = mercury_module_name_to_mlds(PredModule)

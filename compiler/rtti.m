@@ -11,11 +11,12 @@
 % The code to generate the structures is in type_ctor_info.m.
 % See also pseudo_type_info.m.
 %
-% Eventually, this module will be independent of whether we are compiling
-% to LLDS or MLDS. For the time being, it depends on LLDS.
-% See the XXX comment below.
+% This module is independent of whether we are compiling to LLDS or MLDS.
+% It is used as an intermediate data structure that we generate from the
+% HLDS, and which we can then convert to either LLDS or MLDS.
+% The LLDS actually incorporates this data structure unchanged.
 %
-% Author: zs.
+% Authors: zs, fjh.
 
 %-----------------------------------------------------------------------------%
 
@@ -23,9 +24,10 @@
 
 :- interface.
 
-:- import_module llds. % XXX for code_addr, which is used in type_ctor_infos
+:- import_module hlds_module, hlds_pred.
 :- import_module prog_data, pseudo_type_info.
-:- import_module list, std_util.
+
+:- import_module bool, list, std_util.
 
 	% For a given du type and a primary tag value, this says where,
 	% if anywhere, the secondary tag is.
@@ -281,11 +283,11 @@
 			% C type.
 
 			rtti_type_id,		% identifies the type ctor
-			maybe(code_addr),	% unify
-			maybe(code_addr),	% compare
+			maybe(rtti_proc_label),	% unify
+			maybe(rtti_proc_label),	% compare
 			type_ctor_rep,
-			maybe(code_addr),	% solver
-			maybe(code_addr),	% init
+			maybe(rtti_proc_label),	% solver
+			maybe(rtti_proc_label),	% init
 			int,			% RTTI version number
 			int,			% num of ptags used if ctor_rep
 						% is DU or DUUSEREQ
@@ -293,7 +295,7 @@
 			type_ctor_functors_info,% the functor layout
 			type_ctor_layout_info,	% the layout table
 			maybe(rtti_name),	% the type's hash cons table
-			maybe(code_addr)	% prettyprinter
+			maybe(rtti_proc_label)	% prettyprinter
 		)
 	;	pseudo_type_info(pseudo_type_info)
 	.
@@ -315,6 +317,46 @@
 	;	pseudo_type_info(pseudo_type_info)
 	;	type_hashcons_pointer.
 
+	% The rtti_proc_label type holds all the information about a procedure
+	% that we need to compute the entry label for that procedure
+	% in the target language (the llds__code_addr or mlds__code_addr).
+:- type rtti_proc_label
+	--->	rtti_proc_label(
+			pred_or_func		::	pred_or_func,
+			this_module		::	module_name,
+			pred_module		::	module_name,
+			pred_name		::	string,
+			arity			::	arity,
+			arg_types		::	list(type),
+			pred_id			::	pred_id,
+			proc_id			::	proc_id,
+			%
+			% The following booleans hold values computed from the
+			% pred_info, using procedures
+			%	pred_info_is_imported/1,
+			%	pred_info_is_pseudo_imported/1,
+			%	pred_info_is_exported/1, and
+			%	pred_info_is_compiler_generated/1
+			% respectively.
+			% We store booleans here, rather than storing the
+			% pred_info, to avoid retaining a reference to the
+			% parts of the pred_info that we aren't interested in,
+			% so that those parts can be garbage collected.
+			% We use booleans rather than an import_status
+			% so that we can continue to use the above-mentioned
+			% abstract interfaces rather than hard-coding tests
+			% on the import_status.
+			%
+			is_imported			::	bool,
+			is_pseudo_imported		::	bool,
+			is_exported			::	bool,
+			is_special_pred_instance	::	bool
+		).
+
+	% Construct an rtti_proc_label for a given procedure.
+
+:- func rtti__make_proc_label(module_info, pred_id, proc_id) = rtti_proc_label.
+
 	% Return the C variable name of the RTTI data structure identified
 	% by the input arguments.
 	% XXX this should be in rtti_out.m
@@ -334,8 +376,28 @@
 
 :- implementation.
 
-:- import_module llds_out, hlds_data, type_util.
+:- import_module code_util.	% for code_util__compiler_defined
+:- import_module llds_out.	% for name_mangle and sym_name_mangle
+:- import_module hlds_data, type_util.
+
 :- import_module string, require.
+
+rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
+	module_info_name(ModuleInfo, ThisModule),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, PredModule),
+	pred_info_name(PredInfo, PredName),
+	pred_info_arity(PredInfo, Arity),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
+	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
+	IsExported = (pred_info_is_exported(PredInfo) -> yes ; no),
+	IsSpecialPredInstance =
+		(code_util__compiler_generated(PredInfo) -> yes ; no),
+	ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
+		PredName, Arity, ArgTypes, PredId, ProcId,
+		IsImported, IsPseudoImp, IsExported, IsSpecialPredInstance).
 
 rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 	rtti__mangle_rtti_type_id(RttiTypeId, ModuleName, TypeName, A_str),
@@ -434,7 +496,8 @@ rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str) :-
 		string__append_list([ModuleName, "__type_info_",
 			TypeName, "_", A_str, ATs_str], Str)
 	;
-		PseudoTypeInfo = higher_order_type_info(RttiTypeId, RealArity, ArgTypes),
+		PseudoTypeInfo = higher_order_type_info(RttiTypeId, RealArity,
+			ArgTypes),
 		rtti__mangle_rtti_type_id(RttiTypeId,
 			ModuleName, TypeName, _A_str),
 		ATs_str = pseudo_type_list_to_string(ArgTypes),
