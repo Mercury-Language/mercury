@@ -124,7 +124,6 @@ NU_LIBRARY_NLS = \
 	store.nu.nl
 NU_OVERRIDING_LIBRARY_NLS = map.nu.nl assoc_list.nu.nl array.nu.nl
 NU_DEBUG_LIBRARY_NLS = portray.nl debug.nl error.nl
-	
 
 NU_LIBRARY_NOS = $(NU_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
 NU_OVERRIDING_LIBRARY_NOS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
