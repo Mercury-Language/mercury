@@ -1,4 +1,4 @@
-% Copyright (C) 1999 INRIA/INSA de Rennes.
+% Copyright (C) 1999-2000 INRIA/INSA de Rennes.
 
 The software Morphine in its 0.2 release of December 1999, hereinafter referred
 to as " the software " has been designed and produced by Erwan Jahier and
@@ -16,7 +16,7 @@ National Computer and Automatics Institute - INRIA - Rennes Research Unit.
 	F-35043 Rennes Cedex.
 
 The software has been registered at the Agency for the Protection of Programmes
-(APP) under the number XXX
+(APP) under the number IDDN.FR.001.090030.OO.S.P.2000.000.10600
 
 This Software is a copyright INRIA/INSA - 1999.
 
@@ -47,7 +47,7 @@ Rennes.
 	F-35043 Rennes Cedex.
 
 Le LOGICIEL a été déposé à l'Agence pour la Protection des Programmes (APP)
-sous le numéro XXX
+sous le numéro IDDN.FR.001.090030.OO.S.P.2000.000.10600
 
 Ce Logiciel est couvert par le copyright  INRIA/INSA - 1999.
 
