@@ -938,8 +938,10 @@ abstractly_unify_inst_3(live, free,	bound(UniqY, List0), Real, M0,
 					bound(Uniq, List), det, M) :-
 	unify_uniq(live, Real, unique, UniqY, Uniq),
 		% since both are live, we must disallow free-free unifications
-	bound_inst_list_is_ground_or_any(List0, M),
-	( ( Uniq = unique ; Uniq = mostly_unique ) ->
+	bound_inst_list_is_ground_or_any(List0, M0),
+		% since both are live, we must make the result shared
+		% (unless it was already shared)
+	( ( UniqY = unique ; UniqY = mostly_unique ) ->
 		make_shared_bound_inst_list(List0, M0, List, M)
 	;
 		List = List0, M = M0
