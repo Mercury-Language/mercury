@@ -368,6 +368,17 @@ void sys_init_type_info_module_write_out_proc_statics(FILE *fp);
 	** type_ctor_infos.
 	*/
 
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_empty(private_builtin, __Unify__,   type_info,
+	1, 0, ""private_builtin.m"", 0, TRUE);
+MR_proc_static_compiler_empty(private_builtin, __Compare__, type_info,
+	1, 0, ""private_builtin.m"", 0, TRUE);
+MR_proc_static_compiler_empty(private_builtin, __Unify__,   typeclass_info,
+	1, 0, ""private_builtin.m"", 0, TRUE);
+MR_proc_static_compiler_empty(private_builtin, __Compare__, typeclass_info,
+	1, 0, ""private_builtin.m"", 0, TRUE);
+#endif
+
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
 	MR_TYPECTOR_REP_TYPECTORINFO,
 	mercury____Unify___private_builtin__type_info_1_0,
@@ -382,55 +393,98 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO);
 
+MR_define_extern_entry(mercury____Unify___private_builtin__type_info_1_0);
+MR_define_extern_entry(mercury____Compare___private_builtin__type_info_1_0);
+MR_define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+MR_define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+
 MR_BEGIN_MODULE(type_info_module)
 	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0);
 	MR_init_entry(mercury____Compare___private_builtin__type_info_1_0);
 	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 	MR_init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+#ifdef	MR_DEEP_PROFILING
+	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0_i1);
+	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0_i2);
+	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0_i3);
+	MR_init_entry(mercury____Unify___private_builtin__type_info_1_0_i4);
+	MR_init_entry(mercury____Compare___private_builtin__type_info_1_0_i1);
+	MR_init_entry(mercury____Compare___private_builtin__type_info_1_0_i2);
+	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0_i1);
+	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0_i2);
+	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0_i3);
+	MR_init_entry(mercury____Unify___private_builtin__typeclass_info_1_0_i4);
+	MR_init_entry(mercury____Compare___private_builtin__typeclass_info_1_0_i1);
+	MR_init_entry(mercury____Compare___private_builtin__typeclass_info_1_0_i2);
+#endif
 MR_BEGIN_CODE
-MR_define_entry(mercury____Unify___private_builtin__type_info_1_0);
-{
-	/*
-	** Unification for type_info.
-	**
-	** The two inputs are in the registers named by unify_input[12].
-	** The success/failure indication should go in unify_output.
-	*/
-	int	comp;
 
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
-	MR_restore_transient_registers();
-	MR_r1 = (comp == MR_COMPARE_EQUAL);
-	MR_proceed();
-}
+#define	proc_label	mercury____Unify___private_builtin__type_info_1_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
+				__Unify__, type_info, 1, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_info(		\
+					(MR_TypeInfo) MR_r1,		\
+					(MR_TypeInfo) MR_r2);		\
+				MR_restore_transient_registers();	\
+				MR_r1 = (comp == MR_COMPARE_EQUAL);	\
+			} while (0)
 
-MR_define_entry(mercury____Compare___private_builtin__type_info_1_0);
-{
-	/*
-	** Comparison for type_info:
-	**
-	** The two inputs are in the registers named by compare_input[12].
-	** The result should go in compare_output.
-	*/
-	int	comp;
+#include ""mercury_hand_unify_body.h""
 
-	MR_save_transient_registers();
-	comp = MR_compare_type_info((MR_TypeInfo) MR_r1, (MR_TypeInfo) MR_r2);
-	MR_restore_transient_registers();
-	MR_r1 = comp;
-	MR_proceed();
-}
+#undef	proc_label
+#undef	proc_static
+#undef	body_code
 
-MR_define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
-{
-	MR_fatal_error(""attempt to unify typeclass_info"");
-}
+#define	proc_label	mercury____Compare___private_builtin__type_info_1_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
+				__Compare__, type_info, 1, 0)
+#define	body_code	do {						\
+				int	comp;				\
+									\
+				MR_save_transient_registers();		\
+				comp = MR_compare_type_info(		\
+					(MR_TypeInfo) MR_r1,		\
+					(MR_TypeInfo) MR_r2);		\
+				MR_restore_transient_registers();	\
+				MR_r1 = comp;				\
+			} while (0)
 
-MR_define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
-{
-	MR_fatal_error(""attempt to compare typeclass_info"");
-}
+#include ""mercury_hand_compare_body.h""
+
+#undef	proc_label
+#undef	proc_static
+#undef	body_code
+
+#define	proc_label	mercury____Unify___private_builtin__typeclass_info_1_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
+				__Unify__, typeclass_info, 1, 0)
+#define	body_code	do {						\
+				MR_fatal_error(""attempt to unify typeclass_info""); \
+			} while (0)
+
+#include ""mercury_hand_unify_body.h""
+
+#undef	proc_label
+#undef	proc_static
+#undef	body_code
+
+#define	proc_label	mercury____Compare___private_builtin__typeclass_info_1_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin,	\
+				__Compare__, typeclass_info, 1, 0)
+#define	body_code	do {						\
+				MR_fatal_error(""attempt to compare typeclass_info""); \
+			} while (0)
+
+#include ""mercury_hand_compare_body.h""
+
+#undef	proc_label
+#undef	proc_static
+#undef	body_code
+
 MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
@@ -481,7 +535,18 @@ sys_init_type_info_module_init_type_tables(void)
 void
 sys_init_type_info_module_write_out_proc_statics(FILE *fp)
 {
-	/* no proc_statics to write out */
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin,
+			__Unify__, type_info, 1, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin,
+			__Compare__, type_info, 1, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin,
+			__Unify__, typeclass_info, 1, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin,
+			__Compare__, typeclass_info, 1, 0));
 }
 #endif
 
