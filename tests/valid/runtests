@@ -9,7 +9,7 @@ eval mmake $mmakeopts depend || exit 1
 eval mmake -k $mmakeopts check
 checkstatus=$?
 
-objs=`mmake $mmakeopts printobjs`
+objs=`eval mmake $mmakeopts printobjs`
 failed=""
 for obj in $objs
 do
