@@ -95,7 +95,7 @@
 	** when the semaphore is garbage collected.
 	*/
 #ifdef CONSERVATIVE_GC
-	GC_REGISTER_FINALIZER(sem, finalize_semaphore, NULL, NULL, NULL);
+	GC_REGISTER_FINALIZER(sem, ME_finalize_semaphore, NULL, NULL, NULL);
 #endif
 
 	Semaphore = (MR_Word) sem;
@@ -104,7 +104,7 @@
 
 :- pragma c_code("
 #ifdef CONSERVATIVE_GC
-  void finalize_semaphore(GC_PTR obj, GC_PTR cd)
+  void ME_finalize_semaphore(GC_PTR obj, GC_PTR cd)
   {
 	ME_Semaphore    *sem;
 
