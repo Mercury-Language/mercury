@@ -25,7 +25,7 @@
 :- interface.
 
 :- import_module llds.	% XXX for code_model
-:- import_module hlds_module, hlds_pred.
+:- import_module hlds_module, hlds_pred, hlds_data.
 :- import_module prog_data, pseudo_type_info.
 
 :- import_module bool, list, std_util.
@@ -299,6 +299,13 @@
 			maybe(rtti_proc_label)	% prettyprinter
 		)
 	;	pseudo_type_info(pseudo_type_info)
+	;	base_typeclass_info(
+			class_id,	% specifies class name & class arity
+			string,		% encodes the names and arities of the
+					% types in the instance declaration
+
+			base_typeclass_info
+		)
 	.
 
 :- type rtti_name
@@ -316,7 +323,39 @@
 	;	du_ptag_ordered_table
 	;	type_ctor_info
 	;	pseudo_type_info(pseudo_type_info)
+	;	base_typeclass_info(
+			class_id,	% specifies class name & class arity
+			string		% encodes the names and arities of the
+					% types in the instance declaration
+		)
 	;	type_hashcons_pointer.
+
+	% A base_typeclass_info holds information about a typeclass instance.
+	% See notes/type_class_transformation.html for details.
+:- type base_typeclass_info --->
+	base_typeclass_info(
+			% num_extra = num_unconstrained + num_constraints,
+			% where num_unconstrained is the number of
+			% unconstrained type variables from the head
+			% of the instance declaration.
+		num_extra :: int,
+			% num_constraints is the number of constraints
+			% on the instance declaration
+		num_constraints :: int,
+			% num_superclasses is the number of constraints
+			% on the typeclass declaration.
+		num_superclasses :: int,
+			% class_arity is the number of type variables
+			% in the head of the class declaration
+		class_arity :: int,
+			% num_methods is the number of procedures
+			% in the typeclass declaration
+		num_methods :: int,
+			% methods is a list of length num_methods
+			% containing the addresses of the methods
+			% for this instance declaration.
+		methods :: list(rtti_proc_label)
+	).
 
 	% convert a rtti_data to an rtti_type_id and an rtti_name.
 	% This calls error/1 if the argument is a type_var/1 rtti_data,
@@ -422,6 +461,9 @@ rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
 rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
+rtti_data_to_name(base_typeclass_info(_, _, _), _, _) :-
+	% there's no rtti_type_id associated with a base_typeclass_info
+	error("rtti_data_to_name: base_typeclass_info").
 rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
 		pseudo_type_info(PseudoTypeInfo)) :-
 	RttiTypeId = pti_get_rtti_type_id(PseudoTypeInfo).
@@ -431,6 +473,7 @@ pti_get_rtti_type_id(type_ctor_info(RttiTypeId)) = RttiTypeId.
 pti_get_rtti_type_id(type_info(RttiTypeId, _)) = RttiTypeId.
 pti_get_rtti_type_id(higher_order_type_info(RttiTypeId, _, _)) = RttiTypeId.
 pti_get_rtti_type_id(type_var(_)) = _ :-
+	% there's no rtti_type_id associated with a type_var
 	error("rtti_data_to_name: type_var").
 
 rtti_name_has_array_type(exist_locns(_))		= yes.
@@ -447,6 +490,7 @@ rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
 rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
 rtti_name_has_array_type(type_ctor_info)		= no.
 rtti_name_has_array_type(pseudo_type_info(_))		= no.
+rtti_name_has_array_type(base_typeclass_info(_, _))	= yes.
 rtti_name_has_array_type(type_hashcons_pointer)		= no.
 
 rtti_name_is_exported(exist_locns(_))		= no.
@@ -464,6 +508,7 @@ rtti_name_is_exported(du_ptag_ordered_table)    = no.
 rtti_name_is_exported(type_ctor_info)           = yes.
 rtti_name_is_exported(pseudo_type_info(Pseudo)) =
 	pseudo_type_info_is_exported(Pseudo).
+rtti_name_is_exported(base_typeclass_info(_, _)) = yes.
 rtti_name_is_exported(type_hashcons_pointer)    = no.
 
 :- func pseudo_type_info_is_exported(pseudo_type_info) = bool.
@@ -560,6 +605,15 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 	;
 		RttiName = pseudo_type_info(PseudoTypeInfo),
 		rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str)
+	;
+		RttiName = base_typeclass_info(ClassId, InstanceStr),
+		ClassId = class_id(ClassSym, ClassArity),
+		llds_out__sym_name_mangle(ClassSym, MangledClassString),
+		string__int_to_string(ClassArity, ArityString),
+		llds_out__name_mangle(InstanceStr, MangledTypeNames),
+		string__append_list(["base_typeclass_info_",
+			MangledClassString, "__arity", ArityString, "__",
+			MangledTypeNames], Str)
 	;
 		RttiName = type_hashcons_pointer,
 		string__append_list([ModuleName, "__hashcons_ptr_",

@@ -729,6 +729,11 @@ for high-level optimizations (but which is not yet used).
      and `export__get_pragma_exported_procs' to produce C code fragments
      which declare/define the C functions which are the interface stubs
      for procedures exported to C.
+
+<dt> generation of constants for RTTI data structures
+<dd> This could also be considered a part of code generation,
+     but for the LLDS back-end this is currently done as part
+     of the output phase (see below).
 </dl>
 
 <p>
@@ -852,11 +857,12 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
   associated with each declared type constructor that go into the static
   type_ctor_info data structure. If the type_ctor_gen_info structure is not
   eliminated as inaccessible, this module adds the corresponding type_ctor_info
-  structure to the LLDS.
+  structure to the RTTI data structures defined in rtti.m,
+  which are part of the LLDS.
 
 <li> base_typeclass_info.m generates the base_typeclass_info structures that 
   list the methods of a class for each instance declaration. These are added to
-  the LLDS.
+  the RTTI data structures, which are part of the LLDS.
 
 <li> stack_layout.m generates the stack_layout structures for
   accurate garbage collection. Tables are created from the data
@@ -895,12 +901,15 @@ intermediate representation.
 <h4> 4b. MLDS code generation </h4>
 <ul>
 <li> ml_code_gen.m converts HLDS code to MLDS.
-<li> ml_base_type_info.m generates MLDS declarations for the
-     base_type_info structures used for polymorphism.
+<li> type_ctor_info.m and base_typeclass_info.m generate
+     the RTTI data structures defined in rtti.m and pseudo_type_info.m
+     (those four modules are shared with the LLDS back-end)
+     and then mlds_to_rtti.m converts these to MLDS.
 </ul>
 
 <h4> 5b. MLDS transformations </h4>
 <ul>
+<li> ml_tailcall.m annotates the MLDS with information about tailcalls.
 <li> ml_elim_nested.m transforms the MLDS to eliminate nested functions.
 </ul>
 
@@ -1100,6 +1109,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-03-10 13:38:06 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-05-10 18:09:36 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>

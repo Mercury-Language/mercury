@@ -23,6 +23,7 @@
 
 :- interface.
 
+:- import_module hlds_data.
 :- import_module rtti, llds_out.
 :- import_module bool, io.
 
@@ -56,6 +57,11 @@
 :- pred output_rtti_addr_storage_type_name(rtti_type_id::in, rtti_name::in,
 	bool::in, io__state::di, io__state::uo) is det.
 
+	% the same as output_rtti_addr_storage_type_name,
+	% but for a base_typeclass_info.
+:- pred output_base_typeclass_info_storage_type_name(class_id::in, string::in,
+		bool::in, io__state::di, io__state::uo) is det.
+
         % Return true iff the given type of RTTI data structure includes
 	% code addresses.
 :- pred rtti_name_would_include_code_addr(rtti_name::in, bool::out) is det.
@@ -74,7 +80,7 @@
 
 :- import_module pseudo_type_info, code_util, llds, prog_out, c_util.
 :- import_module options, globals.
-:- import_module string, list, require, std_util.
+:- import_module int, string, list, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -341,12 +347,40 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 %	io__write_string(",\n\t"),
 %	output_maybe_static_code_addr(Prettyprinter),
 	io__write_string("\n};\n").
+output_rtti_data_defn(base_typeclass_info(ClassId, InstanceString,
+		BaseTypeClassInfo), DeclSet0, DeclSet) -->
+	output_base_typeclass_info_defn(ClassId, InstanceString,
+		BaseTypeClassInfo, DeclSet0, DeclSet).
 output_rtti_data_defn(pseudo_type_info(Pseudo), DeclSet0, DeclSet) -->
 	output_pseudo_type_info_defn(Pseudo, DeclSet0, DeclSet).
 
+:- pred output_base_typeclass_info_defn(class_id, string, base_typeclass_info,
+		decl_set, decl_set, io__state, io__state).
+:- mode output_base_typeclass_info_defn(in, in, in, in, out, di, uo) is det.
+
+output_base_typeclass_info_defn(ClassId, InstanceString,
+		base_typeclass_info(N1, N2, N3, N4, N5, Methods),
+		DeclSet0, DeclSet) -->
+	{ CodeAddrs = list__map(make_code_addr, Methods) },
+	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
+	io__write_string("\n"),
+	output_base_typeclass_info_storage_type_name(ClassId, InstanceString,
+		yes),
+	% XXX It would be nice to avoid generating redundant declarations
+	% of base_typeclass_infos, but currently we don't.
+	{ DeclSet1 = DeclSet },
+	io__write_string(" = {\n\t(Code *) "),
+	io__write_list([N1, N2, N3, N4, N5], ",\n\t(Code *) ", io__write_int),
+	io__write_string(",\n\t"),
+	io__write_list(CodeAddrs, ",\n\t", output_static_code_addr),
+	io__write_string("\n};\n").
+
 :- func make_maybe_code_addr(maybe(rtti_proc_label)) = maybe(code_addr).
 make_maybe_code_addr(no) = no.
-make_maybe_code_addr(yes(ProcLabel)) = yes(CodeAddr) :-
+make_maybe_code_addr(yes(ProcLabel)) = yes(make_code_addr(ProcLabel)).
+
+:- func make_code_addr(rtti_proc_label) = code_addr.
+make_code_addr(ProcLabel) = CodeAddr :-
 	code_util__make_entry_label_from_rtti(ProcLabel, no, CodeAddr).
 
 :- pred output_pseudo_type_info_defn(pseudo_type_info, decl_set, decl_set,
@@ -461,11 +495,34 @@ output_rtti_data_decl(RttiData, DeclSet0, DeclSet) -->
 		% so we don't need to declare them.
 		% Also rtti_data_to_name/3 does not handle this case.
 		{ DeclSet = DeclSet0 }
+	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+		% rtti_data_to_name/3 does not handle this case
+		output_base_typeclass_info_decl(ClassId,
+			InstanceStr, no, DeclSet0, DeclSet)
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
 		output_generic_rtti_data_decl(RttiTypeId, RttiName,
 			DeclSet0, DeclSet)
 	).
+
+:- pred output_base_typeclass_info_decl(class_id::in, string::in,
+		bool::in, decl_set::in, decl_set::out,
+		io__state::di, io__state::uo) is det.
+
+output_base_typeclass_info_decl(ClassId, InstanceStr,
+		BeingDefined, DeclSet0, DeclSet) -->
+	output_base_typeclass_info_storage_type_name(ClassId, InstanceStr,
+			BeingDefined),
+	io__write_string(";\n"),
+	% XXX It would be nice to avoid generating redundant declarations
+	% of base_typeclass_infos, but currently we don't.
+	{ DeclSet = DeclSet0 }.
+
+output_base_typeclass_info_storage_type_name(ClassId, InstanceStr,
+		BeingDefined) -->
+	output_rtti_name_storage_type_name(
+		output_base_typeclass_info_name(ClassId, InstanceStr),
+		base_typeclass_info(ClassId, InstanceStr), BeingDefined).
 
 %-----------------------------------------------------------------------------%
 
@@ -488,6 +545,15 @@ output_generic_rtti_data_defn_start(RttiTypeId, RttiName, DeclSet0, DeclSet) -->
 	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
 
 output_rtti_addr_storage_type_name(RttiTypeId, RttiName, BeingDefined) -->
+	output_rtti_name_storage_type_name(
+		output_rtti_addr(RttiTypeId, RttiName),
+		RttiName, BeingDefined).
+
+:- pred output_rtti_name_storage_type_name(
+	pred(io__state, io__state)::pred(di, uo) is det,
+	rtti_name::in, bool::in, io__state::di, io__state::uo) is det.
+
+output_rtti_name_storage_type_name(OutputName, RttiName, BeingDefined) -->
 	output_rtti_type_decl(RttiName),
 	{ rtti_name_linkage(RttiName, Linkage) },
 	globals__io_get_globals(Globals),
@@ -501,7 +567,7 @@ output_rtti_addr_storage_type_name(RttiTypeId, RttiName, BeingDefined) -->
 	{ rtti_name_c_type(RttiName, CType, Suffix) },
 	c_util__output_quoted_string(CType),
 	io__write_string(" "),
-	output_rtti_addr(RttiTypeId, RttiName),
+	OutputName,
 	io__write_string(Suffix).
 
 :- pred output_rtti_type_decl(rtti_name::in, io__state::di, io__state::uo)
@@ -568,8 +634,36 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		io__write_int(Arity),
 		io__write_string("_0);\n")
 	;
+		{ Data = base_typeclass_info(ClassName, ClassArity,
+			base_typeclass_info(_N1, _N2, _N3, _N4, _N5,
+				Methods)) }
+	->
+		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n"),
+			% the field number for the first method is 5,
+			% since the methods are stored after N1 .. N5,
+			% and fields are numbered from 0.
+		{ FirstFieldNum = 5 },
+		{ CodeAddrs = list__map(make_code_addr, Methods) },
+		output_init_method_pointers(FirstFieldNum, CodeAddrs,
+			ClassName, ClassArity),
+		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n")
+	;
 		[]
 	).
+
+:- pred output_init_method_pointers(int, list(code_addr), class_id, string,
+		io__state, io__state).
+:- mode output_init_method_pointers(in, in, in, in, di, uo) is det.
+
+output_init_method_pointers(_, [], _, _) --> [].
+output_init_method_pointers(FieldNum, [Arg|Args], ClassId, InstanceStr) -->
+	io__write_string("\t\t"),
+	io__write_string("MR_field(MR_mktag(0), "),
+	output_base_typeclass_info_name(ClassId, InstanceStr),
+	io__format(", %d) =\n\t\t\t", [i(FieldNum)]),
+	output_code_addr(Arg),
+	io__write_string(";\n"),
+	output_init_method_pointers(FieldNum + 1, Args, ClassId, InstanceStr).
 
 %-----------------------------------------------------------------------------%
 
@@ -627,6 +721,12 @@ output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
 		% so we don't need to declare them.
 		% Also rtti_data_to_name/3 does not handle this case.
 		{ DeclSet = DeclSet0 },
+		{ N = N0 }
+	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+		% rtti_data_to_name/3 does not handle this case,
+		% so we need to handle it here
+		output_base_typeclass_info_decl(ClassId, InstanceStr, no,
+			DeclSet0, DeclSet),
 		{ N = N0 }
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
@@ -691,6 +791,9 @@ output_addr_of_rtti_data(RttiData) -->
 		% rtti_data_to_name/3 does not handle this case
 		io__write_string("(MR_PseudoTypeInfo) "),
 		io__write_int(VarNum)
+	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+		% rtti_data_to_name/3 does not handle this case
+		output_base_typeclass_info_name(ClassId, InstanceStr)
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
 		output_addr_of_rtti_addr(RttiTypeId, RttiName)
@@ -788,11 +891,16 @@ output_exist_locns(Locns) -->
 	io__state::di, io__state::uo) is det.
 
 output_maybe_static_code_addr(yes(CodeAddr)) -->
+	output_static_code_addr(CodeAddr).
+output_maybe_static_code_addr(no) -->
+	io__write_string("NULL").
+
+:- pred output_static_code_addr(code_addr::in, io__state::di, io__state::uo)
+	is det.
+output_static_code_addr(CodeAddr) -->
 	io__write_string("MR_MAYBE_STATIC_CODE("),
 	output_code_addr(CodeAddr),
 	io__write_string(")").
-output_maybe_static_code_addr(no) -->
-	io__write_string("NULL").
 
 %-----------------------------------------------------------------------------%
 
@@ -809,6 +917,7 @@ rtti_name_would_include_code_addr(du_name_ordered_table,     no).
 rtti_name_would_include_code_addr(du_stag_ordered_table(_),  no).
 rtti_name_would_include_code_addr(du_ptag_ordered_table,     no).
 rtti_name_would_include_code_addr(type_ctor_info,            yes).
+rtti_name_would_include_code_addr(base_typeclass_info(_, _), yes).
 rtti_name_would_include_code_addr(pseudo_type_info(Pseudo),
 		pseudo_type_info_would_incl_code_addr(Pseudo)).
 rtti_name_would_include_code_addr(type_hashcons_pointer,     no).
@@ -839,6 +948,7 @@ rtti_name_c_type(du_stag_ordered_table(_), "MR_DuFunctorDesc *", "[]").
 rtti_name_c_type(du_ptag_ordered_table,    "MR_DuPtagLayout", "[]").
 rtti_name_c_type(type_ctor_info,           "struct MR_TypeCtorInfo_Struct",
 						"").
+rtti_name_c_type(base_typeclass_info(_, _), "Code *", "[]").
 rtti_name_c_type(pseudo_type_info(Pseudo), TypePrefix, TypeSuffix) :-
 	pseudo_type_info_name_c_type(Pseudo, TypePrefix, TypeSuffix).
 rtti_name_c_type(type_hashcons_pointer,    "union MR_TableNode_Union **", "").

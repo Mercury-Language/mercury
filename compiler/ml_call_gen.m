@@ -69,7 +69,7 @@
 :- import_module builtin_ops.
 :- import_module type_util, mode_util.
 
-:- import_module bool, string, std_util, term, varset, require, map.
+:- import_module bool, int, string, std_util, term, varset, require, map.
 
 %-----------------------------------------------------------------------------%
 %
@@ -79,6 +79,9 @@
 	%
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
+	%
+	% XXX For typeclass method calls, we do some unnecessary
+	% boxing/unboxing of the arguments.
 	%
 ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
@@ -125,8 +128,33 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 		{ FuncType = mlds__func_type(Params) },
 		{ FuncRval = unop(unbox(FuncType), lval(FuncLval)) }
 	;
-		{ GenericCall = class_method(_, _, _, _) },
-		{ sorry("type class methods") }
+		{ GenericCall = class_method(TypeClassInfoVar, MethodNum,
+			_ClassId, _PredName) },
+		%
+		% create the lval for the typeclass_info,
+		% which is also the closure in this case
+		%
+		ml_gen_var(TypeClassInfoVar, TypeClassInfoLval),
+		{ ClosureLval = TypeClassInfoLval },
+		%
+		% extract the base_typeclass_info from the typeclass_info
+		%
+		{ BaseTypeclassInfoFieldId =
+			offset(const(int_const(0))) },
+		{ BaseTypeclassInfoLval = field(yes(0),
+			lval(TypeClassInfoLval), BaseTypeclassInfoFieldId,
+			mlds__generic_type, ClosureArgType) },
+		%
+		% extract the method address from the base_typeclass_info
+		%
+		{ Offset = ml_base_typeclass_info_method_offset },
+		{ MethodFieldNum = MethodNum + Offset },
+		{ MethodFieldId = offset(const(int_const(MethodFieldNum))) },
+		{ FuncLval = field(yes(0), lval(BaseTypeclassInfoLval),
+			MethodFieldId,
+			mlds__generic_type, mlds__generic_type) },
+		{ FuncType = mlds__func_type(Params) },
+		{ FuncRval = unop(unbox(FuncType), lval(FuncLval)) }
 	;
 		{ GenericCall = aditi_builtin(_, _) },
 		{ sorry("Aditi builtins") }

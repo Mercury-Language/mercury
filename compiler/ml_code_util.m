@@ -315,6 +315,24 @@
 :- mode ml_declare_env_ptr_arg(out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Magic numbers relating to the representation of
+% typeclass_infos, base_typeclass_infos, and closures.
+%
+	% This function returns the offset to add to the argument
+	% number of a closure arg to get its field number.
+:- func ml_closure_arg_offset = int.
+
+	% This function returns the offset to add to the argument
+	% number of a typeclass_info arg to get its field number.
+:- func ml_typeclass_info_arg_offset = int.
+
+	% This function returns the offset to add to the method number
+	% for a type class method to get its field number within the
+	% base_typeclass_info.
+:- func ml_base_typeclass_info_method_offset = int.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % The `ml_gen_info' ADT.
@@ -366,6 +384,16 @@
 	% used when generating code for nondet procedures.
 :- pred ml_gen_info_new_func_label(ml_label_func, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_new_func_label(out, in, out) is det.
+
+	% Increase the function label counter by some
+	% amount which is presumed to be sufficient
+	% to ensure that if we start again with a fresh
+	% ml_gen_info and then call this function,
+	% we won't encounter any already-used function labels.
+	% (This is used when generating wrapper functions
+	% for type class methods.)
+:- pred ml_gen_info_bump_func_label(ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_bump_func_label(in, out) is det.
 
 	% Generate a new commit label number.
 	% This is used to give unique names to the labels
@@ -1271,6 +1299,9 @@ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 	Label = Info^func_label + 1.
 
+ml_gen_info_bump_func_label(Info,
+	Info^func_label := Info^func_label + 10000).
+
 ml_gen_info_new_commit_label(CommitLabel, Info,
 		Info^commit_label := CommitLabel) :-
 	CommitLabel = Info^commit_label + 1.
@@ -1320,6 +1351,43 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	;
 		error("select_output_vars: length mismatch")
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% This function returns the offset to add to the argument
+	% number of a closure arg to get its field number.
+	%	field 0 is the closure layout
+	%	field 1 is the closure address
+	%	field 2 is the number of arguments
+	%	field 3 is the 1st argument field
+	%	field 4 is the 2nd argument field,
+	%	etc.
+	% Hence the offset to add to the argument number
+	% to get the field number is 2.
+ml_closure_arg_offset = 2.
+
+	% This function returns the offset to add to the argument
+	% number of a typeclass_info arg to get its field number.
+	% The Nth extra argument to pass to the method is
+	% in field N of the typeclass_info, so the offset is zero.
+ml_typeclass_info_arg_offset = 0.
+
+	% This function returns the offset to add to the method number
+	% for a type class method to get its field number within the
+	% base_typeclass_info. 
+	%	field 0 is num_extra
+	%	field 1 is num_constraints
+	%	field 2 is num_superclasses
+	%	field 3 is class_arity
+	%	field 4 is num_methods
+	%	field 5 is the 1st method
+	%	field 6 is the 2nd method
+	%	etc.
+	%	(See the base_typeclass_info type in rtti.m or the
+	%	description in notes/type_class_transformation.html for
+	%	more information about the layout of base_typeclass_infos.)
+	% Hence the offset is 4.
+ml_base_typeclass_info_method_offset = 4.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

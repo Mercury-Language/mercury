@@ -8,9 +8,7 @@
 % Main author: fjh.
 
 % TODO:
-%	- RTTI (base_type_layout, base_type_functors,
-%		module_layout, proc_layout)
-%	- type classes (base_typeclass_info)
+%	- RTTI for debugging (module_layout, proc_layout, internal_layout)
 %	- trail ops
 %	- foreign language interfacing and inline target code
 %	- packages, classes and inheritance
@@ -33,7 +31,9 @@
 :- implementation.
 
 :- import_module llds.		% XXX needed for C interface types
-:- import_module llds_out.	% XXX needed for llds_out__name_mangle.
+:- import_module llds_out.	% XXX needed for llds_out__name_mangle,
+				% llds_out__sym_name_mangle, and
+				% llds_out__make_base_typeclass_info_name.
 :- import_module rtti.		% for rtti__addr_to_string.
 :- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module hlds_pred.	% for `pred_proc_id'.
@@ -663,13 +663,26 @@ mlds_output_param_type(_Name - Type) -->
 :- mode mlds_output_fully_qualified_name(in, di, uo) is det.
 
 mlds_output_fully_qualified_name(QualifiedName) -->
+	{ QualifiedName = qual(_ModuleName, Name) },
 	(
-		%
-		% don't module-qualify main/2
-		%
-		{ QualifiedName = qual(_ModuleName, Name) },
-		{ Name = function(PredLabel, _, _, _) },
-		{ PredLabel = pred(predicate, no, "main", 2) }
+		(
+			%
+			% don't module-qualify main/2
+			%
+			{ Name = function(PredLabel, _, _, _) },
+			{ PredLabel = pred(predicate, no, "main", 2) }
+		;
+			%
+			% don't module-qualify base_typeclass_infos
+			%
+			% We don't want to include the module name as part
+			% of the name if it is a base_typeclass_info, since
+			% we _want_ to cause a link error for overlapping
+			% instance decls, even if they are in a different
+			% module
+			%
+			{ Name = data(base_typeclass_info(_, _)) }
+		)
 	->
 		mlds_output_name(Name)
 	;
@@ -770,16 +783,17 @@ mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
 :- mode mlds_output_data_name(in, di, uo) is det.
 
 mlds_output_data_name(var(Name)) -->
-	{ llds_out__name_mangle(Name, MangledName) },
-	io__write_string(MangledName).
+	mlds_output_mangled_name(Name).
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
 mlds_output_data_name(rtti(RttiTypeId, RttiName)) -->
 	{ rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
-mlds_output_data_name(base_typeclass_info(_ClassId, _InstanceId)) -->
-	{ error("mlds_to_c.m: NYI: basetypeclass_info") }.
+mlds_output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
+        { llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
+		Name) },
+	io__write_string(Name).
 mlds_output_data_name(module_layout) -->
 	{ error("mlds_to_c.m: NYI: module_layout") }.
 mlds_output_data_name(proc_layout(_ProcLabel)) -->
@@ -1372,7 +1386,7 @@ mlds_output_stmt(Indent, _FuncInfo, atomic(AtomicStatement), Context) -->
 :- mode mlds_output_label_name(in, di, uo) is det.
 
 mlds_output_label_name(LabelName) -->
-	io__write_string(LabelName).
+	mlds_output_mangled_name(LabelName).
 
 :- pred mlds_output_atomic_stmt(indent, mlds__atomic_statement, mlds__context,
 				io__state, io__state).
@@ -1572,7 +1586,14 @@ mlds_output_lval(var(VarName)) -->
 :- mode mlds_output_var(in, di, uo) is det.
 
 mlds_output_var(VarName) -->
-	mlds_output_fully_qualified(VarName, io__write_string).
+	mlds_output_fully_qualified(VarName, mlds_output_mangled_name).
+
+:- pred mlds_output_mangled_name(string, io__state, io__state).
+:- mode mlds_output_mangled_name(in, di, uo) is det.
+
+mlds_output_mangled_name(Name) -->
+	{ llds_out__name_mangle(Name, MangledName) },
+	io__write_string(MangledName).
 
 :- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_bracketed_lval(in, di, uo) is det.
@@ -1900,8 +1921,24 @@ mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
 :- mode mlds_output_data_var_name(in, in, di, uo) is det.
 
 mlds_output_data_var_name(ModuleName, DataName) -->
-	mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName)),
-	io__write_string("__"),
+	(
+		%
+		% don't module-qualify base_typeclass_infos
+		%
+		% We don't want to include the module name as part
+		% of the name if it is a base_typeclass_info, since
+		% we _want_ to cause a link error for overlapping
+		% instance decls, even if they are in a different
+		% module
+		%
+		{ DataName = base_typeclass_info(_, _) }
+	->
+		[]
+	;
+		mlds_output_module_name(
+			mlds_module_name_to_sym_name(ModuleName)),
+		io__write_string("__")
+	),
 	mlds_output_data_name(DataName).
 
 %-----------------------------------------------------------------------------%

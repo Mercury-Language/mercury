@@ -91,6 +91,7 @@ typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtrArray[];
 typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtrArray[];
 typedef MR_DuPtagLayout			MR_DuPtagLayoutArray[];
 typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr[];
+typedef MR_Box				MR_BaseTypeclassInfo[];
 
 /*
 ** XXX Currently we hard-code the declarations of the first
@@ -195,6 +196,8 @@ extern const MR_TypeCtorInfo_Struct
 */
 extern const MR_TypeCtorInfo_Struct
 	mercury__tree234__tree234__type_ctor_info_tree234_2;
+extern const MR_TypeCtorInfo_Struct
+	mdb__declarative_execution__mdb__declarative_execution__type_ctor_info_trace_atom_0;
 bool mercury__tree234____Unify____tree234_2_0(
 	MR_Word key_type, MR_Word val_type, MR_Word x, MR_Word y); 
 void mercury__tree234____Compare____tree234_2_0(

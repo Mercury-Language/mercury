@@ -16,11 +16,11 @@
 
 :- module rtti_to_mlds.
 :- interface.
-:- import_module rtti, mlds, prog_data.
+:- import_module hlds_module, rtti, mlds.
 :- import_module list.
 
 	% return a list of MLDS definitions for the given rtti_data list.
-:- func rtti_data_list_to_mlds(module_name, list(rtti_data)) = mlds__defns.
+:- func rtti_data_list_to_mlds(module_info, list(rtti_data)) = mlds__defns.
 
 	% return a name, consisting only of alphabetic characters,
 	% that would be suitable for the type name for the type
@@ -28,15 +28,17 @@
 :- func mlds_rtti_type_name(rtti_name) = string.
 
 :- implementation.
-:- import_module pseudo_type_info, ml_code_util, prog_util, prog_out.
+:- import_module prog_data.
+:- import_module pseudo_type_info, prog_util, prog_out.
+:- import_module ml_code_util, ml_unify_gen.
 :- import_module bool, list, std_util, string, term, require.
 
-rtti_data_list_to_mlds(ModuleName, RttiDatas) =
-	list__condense(list__map(rtti_data_to_mlds(ModuleName), RttiDatas)).
+rtti_data_list_to_mlds(ModuleInfo, RttiDatas) =
+	list__condense(list__map(rtti_data_to_mlds(ModuleInfo), RttiDatas)).
 
 	% return a list of MLDS definitions for the given rtti_data.
-:- func rtti_data_to_mlds(module_name, rtti_data) = mlds__defns.
-rtti_data_to_mlds(ModuleName, RttiData) = MLDS_Defns :-
+:- func rtti_data_to_mlds(module_info, rtti_data) = mlds__defns.
+rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 	( RttiData = pseudo_type_info(type_var(_)) ->
 		% These just get represented as integers,
 		% so we don't need to define them.
@@ -46,14 +48,20 @@ rtti_data_to_mlds(ModuleName, RttiData) = MLDS_Defns :-
 		%
 		% Generate the name
 		%
-		rtti_data_to_name(RttiData, RttiTypeId, RttiName),
-		Name = data(rtti(RttiTypeId, RttiName)),
+		( RttiData = base_typeclass_info(ClassId, InstanceStr, _) ->
+			RttiName = base_typeclass_info(ClassId, InstanceStr),
+			Name = data(base_typeclass_info(ClassId, InstanceStr))
+		;
+			rtti_data_to_name(RttiData, RttiTypeId, RttiName),
+			Name = data(rtti(RttiTypeId, RttiName))
+		),
 
 		%
 		% Generate the context
 		%
 		% XXX the rtti_data ought to include a prog_context
-		% (the context of the corresponding type definition).
+		% (the context of the corresponding type or instance
+		% definition)
 		term__context_init(Context),
 		MLDS_Context = mlds__make_context(Context),
 
@@ -68,14 +76,16 @@ rtti_data_to_mlds(ModuleName, RttiData) = MLDS_Defns :-
 		% i.e. the type and the initializer
 		%
 		MLDS_Type = rtti_type(RttiName),
-		Initializer = gen_init_rtti_data_defn(RttiData, ModuleName),
+		module_info_name(ModuleInfo, ModuleName),
+		gen_init_rtti_data_defn(RttiData, ModuleName, ModuleInfo,
+			Initializer, ExtraDefns),
 		DefnBody = mlds__data(MLDS_Type, Initializer),
 
 		%
 		% put it all together
 		%
 		MLDS_Defn = mlds__defn(Name, MLDS_Context, Flags, DefnBody),
-		MLDS_Defns = [MLDS_Defn]
+		MLDS_Defns = [MLDS_Defn | ExtraDefns]
 	).
 
 
@@ -100,41 +110,46 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 
 	% Return an MLDS initializer for the given RTTI definition
 	% occurring in the given module.
-:- func gen_init_rtti_data_defn(rtti_data, module_name) = mlds__initializer.
+:- pred gen_init_rtti_data_defn(rtti_data, module_name, module_info,
+		mlds__initializer, list(mlds__defn)).
+:- mode gen_init_rtti_data_defn(in, in, in, out, out) is det.
 
-gen_init_rtti_data_defn(exist_locns(_RttiTypeId, _Ordinal, Locns), _) =
-	gen_init_array(gen_init_exist_locn, Locns).
+gen_init_rtti_data_defn(exist_locns(_RttiTypeId, _Ordinal, Locns), _, _,
+		Init, []) :-
+	Init = gen_init_array(gen_init_exist_locn, Locns).
 gen_init_rtti_data_defn(exist_info(RttiTypeId, _Ordinal, Plain, InTci, Tci,
-		Locns), ModuleName) =
-	init_struct([
+		Locns), ModuleName, _, Init, []) :-
+	Init = init_struct([
 		gen_init_int(Plain),
 		gen_init_int(InTci),
 		gen_init_int(Tci),
 		gen_init_rtti_name(ModuleName, RttiTypeId, Locns)
 	]).
-gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames), _) =
-	gen_init_array(gen_init_maybe(gen_init_string), MaybeNames).
+gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames), _, _,
+		Init, []) :-
+	Init = gen_init_array(gen_init_maybe(gen_init_string), MaybeNames).
 gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
-		ModuleName) =
-	gen_init_array(gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
+		ModuleName, _, Init, []) :-
+	Init = gen_init_array(
+		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 		ModuleName), Types).
 gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal),
-		_ModuleName) =
-	init_struct([
+		_, _, Init, []) :-
+	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_int(Ordinal)
 	]).
 gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType),
-		ModuleName) =
-	init_struct([
+		ModuleName, _, Init, []) :-
+	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
 			ModuleName, ArgType)
 	]).
 gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		Locn, Ordinal, Arity, ContainsVarBitVector, ArgTypes,
-		MaybeNames, MaybeExist), ModuleName) =
-	init_struct([
+		MaybeNames, MaybeExist), ModuleName, _, Init, []) :-
+	Init = init_struct([
 		gen_init_string(FunctorName),
 		gen_init_int(Arity),
 		gen_init_int(ContainsVarBitVector),
@@ -149,28 +164,28 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 			MaybeExist)
 	]).
 gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors),
-		ModuleName) =
-	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+		ModuleName, _, Init, []) :-
+	Init = gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
 gen_init_rtti_data_defn(enum_value_ordered_table(RttiTypeId, Functors),
-		ModuleName) =
-	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+		ModuleName, _, Init, []) :-
+	Init = gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
 gen_init_rtti_data_defn(du_name_ordered_table(RttiTypeId, Functors),
-		ModuleName) =
-	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+		ModuleName, _, Init, []) :-
+	Init = gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
 gen_init_rtti_data_defn(du_stag_ordered_table(RttiTypeId, _Ptag, Sharers),
-		ModuleName) =
-	gen_init_rtti_names_array(ModuleName, RttiTypeId, Sharers).
+		ModuleName, _, Init, []) :-
+	Init = gen_init_rtti_names_array(ModuleName, RttiTypeId, Sharers).
 gen_init_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
-		ModuleName) =
-	gen_init_array(gen_init_ptag_layout_defn(ModuleName, RttiTypeId),
+		ModuleName, _, Init, []) :-
+	Init = gen_init_array(gen_init_ptag_layout_defn(ModuleName, RttiTypeId),
 		PtagLayouts).
 gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		CtorRep, SolverProc, InitProc, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons,
-		_PrettyprinterProc), ModuleName) = Initializer :-
+		_PrettyprinterProc), ModuleName, _, Init, []) :-
 	RttiTypeId = rtti_type_id(TypeModule, Type, TypeArity),
 	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
-	Initializer = init_struct([
+	Init = init_struct([
 		gen_init_int(TypeArity),
 		gen_init_maybe_proc_id(UnifyProc),
 		gen_init_maybe_proc_id(UnifyProc),
@@ -185,7 +200,8 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		% We need to use `init_struct' here so that the initializers
 		% get enclosed in curly braces.
 		init_struct([
-			gen_init_functors_info(FunctorsInfo, ModuleName, RttiTypeId)
+			gen_init_functors_info(FunctorsInfo, ModuleName,
+				RttiTypeId)
 		]),
 		init_struct([
 			gen_init_layout_info(LayoutInfo, ModuleName, RttiTypeId)
@@ -199,8 +215,24 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		%	MaybeHashCons),
 		% gen_init_maybe_proc_id(PrettyprinterProc)
 	]).
-gen_init_rtti_data_defn(pseudo_type_info(Pseudo), ModuleName) =
-	gen_init_pseudo_type_info_defn(Pseudo, ModuleName).
+gen_init_rtti_data_defn(base_typeclass_info(_ClassId, _InstanceStr,
+		BaseTypeClassInfo), _ModuleName, ModuleInfo,
+		Init, ExtraDefns) :-
+	BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5,
+		Methods),
+	NumExtra = BaseTypeClassInfo^num_extra,
+	list__map_foldl(gen_init_method(ModuleInfo, NumExtra),
+		Methods, MethodInitializers, [], ExtraDefns),
+	Init = init_array([
+		gen_init_boxed_int(N1),
+		gen_init_boxed_int(N2),
+		gen_init_boxed_int(N3),
+		gen_init_boxed_int(N4),
+		gen_init_boxed_int(N5)
+		| MethodInitializers
+	]).
+gen_init_rtti_data_defn(pseudo_type_info(Pseudo), ModuleName, _, Init, []) :-
+	Init = gen_init_pseudo_type_info_defn(Pseudo, ModuleName).
 
 :- func gen_init_functors_info(type_ctor_functors_info, module_name,
 		rtti_type_id) = mlds__initializer.
@@ -306,6 +338,16 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 		SrcType = mlds__native_int_type,
 		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 			const(int_const(VarNum))))
+	; RttiData = base_typeclass_info(ClassId, InstanceString, _) ->
+		% rtti_data_to_name/3 does not handle this case
+		SrcType = rtti_type(base_typeclass_info(ClassId,
+			InstanceString)),
+		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+		MLDS_DataName = base_typeclass_info(ClassId, InstanceString),
+		DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
+		Rval = const(data_addr_const(DataAddr)),
+		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
+			Rval))
 	;
 		rtti_data_to_name(RttiData, RttiTypeId, RttiName),
 		Initializer = gen_init_cast_rtti_name(DestType,
@@ -338,8 +380,9 @@ gen_init_rtti_name(ModuleName, RttiTypeId, RttiName) =
 	rtti_name) = mlds__initializer.
 
 gen_init_cast_rtti_name(DestType, ModuleName, RttiTypeId, RttiName) =
-	% SrcType = rtti_type(RttiName), 
-	init_obj(unop(cast(DestType),
+		Initializer :-
+	SrcType = rtti_type(RttiName), 
+	Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 		gen_rtti_name(ModuleName, RttiTypeId, RttiName))).
 
 	% Generate the MLDS rval for an rtti_name.
@@ -363,10 +406,10 @@ gen_rtti_name(ThisModuleName, RttiTypeId0, RttiName) = Rval :-
 		RttiTypeId0 = rtti_type_id(RttiModuleName,
 			RttiTypeName, RttiTypeArity),
 		%
-		% Although the builtin types `int', `float', etc. are treated as part
-		% of the `builtin' module, for historical reasons they don't have
-		% any qualifiers at this point, so we need to add the `builtin'
-		% qualifier now.
+		% Although the builtin types `int', `float', etc. are treated
+		% as part of the `builtin' module, for historical reasons they
+		% don't have any qualifiers at this point, so we need to add
+		% the `builtin' qualifier now.
 		%
 		( RttiModuleName = unqualified("") ->
 			mercury_public_builtin_module(ModuleName),
@@ -396,6 +439,59 @@ gen_init_exist_locn(typeinfo_in_tci(SlotInCell, SlotInTci)) =
 	]).
 
 %-----------------------------------------------------------------------------%
+
+:- pred gen_init_method(module_info, int, rtti_proc_label, mlds__initializer,
+		list(mlds__defn), list(mlds__defn)).
+:- mode gen_init_method(in, in, in, out, in, out) is det.
+
+gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
+		ExtraDefns0, ExtraDefns) :-
+	%
+	% we can't store the address of the typeclass method directly in
+	% the base_typeclass_info; instead, we need to generate
+	% a wrapper function that extracts the NumExtra parameters
+	% it needs from the typeclass_info, and store the address
+	% of that wrapper function in the typeclass_info.
+	%
+	% Note that this means there are two levels of wrappers:
+	% the wrapper that we generate here calls the
+	% procedure introduced by check_typeclass.m,
+	% and that in turn calls the user's procedure.
+	% Hopefully the Mercury HLDS->HLDS inlining and/or
+	% the target code compiler will be able to optimize this...
+	%
+
+	%
+	% We start off by creating a fresh MLGenInfo here,
+	% using the pred_id and proc_id of the wrapped procedure.
+	% This requires considerable care.  We need to call
+	% ml_gen_info_bump_func_label to ensure that the
+	% function label allocated for the wrapper func
+	% does not overlap with any function labels used
+	% when generating code for the wrapped procedure.
+	%
+	PredId = RttiProcId^pred_id,
+	ProcId = RttiProcId^proc_id,
+	MLGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
+	ml_gen_info_bump_func_label(MLGenInfo0, MLGenInfo1),
+
+	%
+	% Now we can safely go ahead and generate the wrapper function
+	%
+	Offset = ml_typeclass_info_arg_offset,
+	term__context_init(Context),
+	ml_gen_closure_wrapper(PredId, ProcId, Offset, NumExtra,
+		Context, WrapperFuncRval, WrapperFuncType,
+		MLGenInfo1, MLGenInfo),
+	ml_gen_info_get_extra_defns(MLGenInfo, ExtraDefns1),
+	ExtraDefns = list__append(ExtraDefns1, ExtraDefns0),
+	
+	%
+	% The initializer for the method field of the base_typeclass_info
+	% is just the wrapper function's address, converted to
+	% mlds__generic_type (by boxing).
+	%
+	Init = init_obj(unop(box(WrapperFuncType), WrapperFuncRval)).
 
 :- func gen_init_proc_id(rtti_proc_label) = mlds__initializer.
 gen_init_proc_id(RttiProcId) = Init :-
@@ -474,6 +570,11 @@ gen_init_string(String) = init_obj(const(string_const(String))).
 
 gen_init_int(Int) = init_obj(const(int_const(Int))).
 
+:- func gen_init_boxed_int(int) = mlds__initializer.
+
+gen_init_boxed_int(Int) =
+	init_obj(unop(box(mlds__native_int_type), const(int_const(Int)))).
+
 %-----------------------------------------------------------------------------%
 
 mlds_rtti_type_name(exist_locns(_)) =		"DuExistLocnArray".
@@ -489,6 +590,7 @@ mlds_rtti_type_name(du_name_ordered_table) =	"DuFunctorDescPtrArray".
 mlds_rtti_type_name(du_stag_ordered_table(_)) =	"DuFunctorDescPtrArray".
 mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayoutArray".
 mlds_rtti_type_name(type_ctor_info) =		"TypeCtorInfo_Struct".
+mlds_rtti_type_name(base_typeclass_info(_, _)) = "BaseTypeclassInfo".
 mlds_rtti_type_name(pseudo_type_info(Pseudo)) =
 	mlds_pseudo_type_info_type_name(Pseudo).
 mlds_rtti_type_name(type_hashcons_pointer) =	"TableNodePtrPtr".

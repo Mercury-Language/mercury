@@ -4,9 +4,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module generates the LLDS code that defines global variables
-% to hold the base_typeclass_info structures of the typeclass instances defined
-% by the current module.
+% This module generates the RTTI data for the global variables (or constants)
+% that hold the base_typeclass_info structures of the typeclass instances
+% defined by the current module.
 %
 % See notes/type_class_transformation.html for a description of the various 
 % ways to represent type information, including a description of the
@@ -20,10 +20,10 @@
 
 :- interface.
 
-:- import_module hlds_module, list, llds, prog_data.
+:- import_module hlds_module, list, rtti, prog_data.
 
-:- pred base_typeclass_info__generate_llds(module_info, list(comp_gen_c_data)).
-:- mode base_typeclass_info__generate_llds(in, out) is det.
+:- pred base_typeclass_info__generate_rtti(module_info, list(rtti_data)).
+:- mode base_typeclass_info__generate_rtti(in, out) is det.
 
 	% Given a list of types, mangle the names so into a string which
 	% identifies them. The types must all have their top level functor
@@ -41,40 +41,40 @@
 
 %---------------------------------------------------------------------------%
 
-base_typeclass_info__generate_llds(ModuleInfo, CModules) :-
+base_typeclass_info__generate_rtti(ModuleInfo, RttiDataList) :-
 	module_info_name(ModuleInfo, ModuleName),
 	module_info_instances(ModuleInfo, InstanceTable),
 	map__to_assoc_list(InstanceTable, AllInstances),
 	base_typeclass_info__gen_infos_for_classes(AllInstances, ModuleName,
-		ModuleInfo, CModules).
+		ModuleInfo, RttiDataList).
 
 :- pred base_typeclass_info__gen_infos_for_classes(assoc_list(class_id,
 	list(hlds_instance_defn)), module_name, module_info,
-	list(comp_gen_c_data)).
+	list(rtti_data)).
 :- mode base_typeclass_info__gen_infos_for_classes(in, in, in, out) is det.
 
 base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo, []).
 base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, 
-		CModules) :-
+		RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(C, ModuleName,
-		ModuleInfo, CModules1),
+		ModuleInfo, RttiDataList1),
 	base_typeclass_info__gen_infos_for_classes(Cs, ModuleName,
-		ModuleInfo, CModules2),
+		ModuleInfo, RttiDataList2),
 	% XXX make it use an accumulator
-	list__append(CModules1, CModules2, CModules).
+	list__append(RttiDataList1, RttiDataList2, RttiDataList).
 
 	% XXX make it use an accumulator
 :- pred base_typeclass_info__gen_infos_for_instance_list(
 	pair(class_id, list(hlds_instance_defn)), module_name, module_info,
-	list(comp_gen_c_data)).
+	list(rtti_data)).
 :- mode base_typeclass_info__gen_infos_for_instance_list(in, in, in, out) 
 	is det.
 
 base_typeclass_info__gen_infos_for_instance_list(_ - [], _, _, []).
 base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is], 
-		ModuleName, ModuleInfo, CModules) :-
+		ModuleName, ModuleInfo, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
-		ModuleName, ModuleInfo, CModules1),
+		ModuleName, ModuleInfo, RttiDataList1),
 	InstanceDefn = hlds_instance_defn(ImportStatus, _TermContext,
 				InstanceConstraints, InstanceTypes, Body,
 				PredProcIds, _Varset, _SuperClassProofs),
@@ -84,128 +84,76 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 			% declaration originally came from _this_ module.
 		status_defined_in_this_module(ImportStatus, yes)
 	->
-
 		base_typeclass_info__make_instance_string(InstanceTypes, 
 			InstanceString),
-
-		DataName = base_typeclass_info(ClassId, InstanceString),
-
-		base_typeclass_info__gen_rvals_and_procs(PredProcIds,
+		base_typeclass_info__gen_body(PredProcIds,
 			InstanceTypes, InstanceConstraints, ModuleInfo, 
-			ClassId, Rvals, Procs),
-		
-			% XXX Need we always export it from the module?
-			% (Note that linkage/2 in llds_out.m assumes
-			% that we do.)
-		Status = yes,
-
-		CModule = comp_gen_c_data(ModuleName, DataName,
-			Status, Rvals, uniform(no), Procs),
-		CModules = [CModule | CModules1]
+			ClassId, BaseTypeClassInfo),
+		RttiData = base_typeclass_info(ClassId, InstanceString,
+			BaseTypeClassInfo),
+		RttiDataList = [RttiData | RttiDataList1]
 	;
 			% The instance decl is from another module,
 			% or is abstract, so we don't bother including it.
-		CModules = CModules1
+		RttiDataList = RttiDataList1
 	).
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_rvals_and_procs(maybe(list(hlds_class_proc)),
-	list(type), list(class_constraint), module_info, class_id,
-	list(maybe(rval)), list(pred_proc_id)).
-:- mode base_typeclass_info__gen_rvals_and_procs(in, in, in, in, in, 
-	out, out) is det.
+:- pred base_typeclass_info__gen_body(maybe(list(hlds_class_proc)),
+		list(type), list(class_constraint), module_info, class_id,
+		base_typeclass_info).
+:- mode base_typeclass_info__gen_body(in, in, in, in, in, out) is det.
 
-base_typeclass_info__gen_rvals_and_procs(no, _, _, _, _, [], []) :-
+base_typeclass_info__gen_body(no, _, _, _, _, _) :-
 	error("pred_proc_ids should have been filled in by check_typeclass.m").
-base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Types, Constraints,
-		ModuleInfo, ClassId, Rvals, PredProcIds) :-
-
-
+base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
+		ModuleInfo, ClassId, BaseTypeClassInfo) :-
 	term__vars_list(Types, TypeVars),
 	get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
 	list__length(Constraints, NumConstraints),
 	list__length(Unconstrained, NumUnconstrained),
-	NumExtraArg = yes(const(int_const(NumConstraints+NumUnconstrained))),
-	NumConstraintsArg = yes(const(int_const(NumConstraints))),
+	NumExtra = NumConstraints + NumUnconstrained,
 	ExtractPredProcId = lambda([HldsPredProc::in, PredProc::out] is det,
 		(
 			HldsPredProc = hlds_class_proc(PredId, ProcId),
 			PredProc = proc(PredId, ProcId)
 		)),
 	list__map(ExtractPredProcId, PredProcIds0, PredProcIds),
-	base_typeclass_info__construct_pred_addrs(PredProcIds, ModuleInfo,
-		PredAddrArgs),
+	base_typeclass_info__construct_proc_labels(PredProcIds, ModuleInfo,
+		ProcLabels),
 	base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
 			SuperClassCount, ClassArity),
-	list__length(PredAddrArgs, NumMethods),
-	NumMethodsArg = yes(const(int_const(NumMethods))),
-	Rvals = [ NumExtraArg, NumConstraintsArg, SuperClassCount, 
-			ClassArity, NumMethodsArg | PredAddrArgs ].
+	list__length(ProcLabels, NumMethods),
+	BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
+		SuperClassCount, ClassArity, NumMethods, ProcLabels).
 
-:- pred base_typeclass_info__construct_pred_addrs(list(pred_proc_id),
-	module_info, list(maybe(rval))).
-:- mode base_typeclass_info__construct_pred_addrs(in, in, out) is det.
+:- pred base_typeclass_info__construct_proc_labels(list(pred_proc_id),
+	module_info, list(rtti_proc_label)).
+:- mode base_typeclass_info__construct_proc_labels(in, in, out) is det.
 
-base_typeclass_info__construct_pred_addrs([], _, []).
-base_typeclass_info__construct_pred_addrs([proc(PredId, ProcId) | Procs],
-		ModuleInfo, [PredAddrArg | PredAddrArgs]) :-
-	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, PredAddr),
-	PredAddrArg = yes(const(code_addr_const(PredAddr))),
-	base_typeclass_info__construct_pred_addrs(Procs, ModuleInfo,
-		PredAddrArgs).
+base_typeclass_info__construct_proc_labels([], _, []).
+base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
+		ModuleInfo, [ProcLabel | ProcLabels]) :-
+	ProcLabel = rtti__make_proc_label(ModuleInfo, PredId, ProcId),
+	base_typeclass_info__construct_proc_labels(Procs, ModuleInfo,
+		ProcLabels).
 
 %----------------------------------------------------------------------------%
 
 :- pred base_typeclass_info__gen_superclass_count(class_id, module_info, 
-		maybe(rval), maybe(rval)).
+		int, int).
 :- mode base_typeclass_info__gen_superclass_count(in, in, out, out) is det.
 
 base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo, 
-		SuperArg, ArityArg) :-
+		NumSuperClasses, ClassArity) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
 			_, _, _, _),
-	list__length(SuperClassConstraints, NumSuper),
-	list__length(ClassVars, NumVars),
-	SuperArg = yes(const(int_const(NumSuper))),
-	ArityArg = yes(const(int_const(NumVars))).
+	list__length(SuperClassConstraints, NumSuperClasses),
+	list__length(ClassVars, ClassArity).
 
-%----------------------------------------------------------------------------%
-
-:- pred base_typeclass_info__gen_superclass_rvals(class_id, module_info, 
-		list(type), list(maybe(rval))).
-:- mode base_typeclass_info__gen_superclass_rvals(in, in, in, out) is det.
-
-base_typeclass_info__gen_superclass_rvals(ClassId, ModuleInfo, InstanceTypes,
-		SuperClassRvals) :-
-	module_info_classes(ModuleInfo, ClassTable),
-	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
-			_, _, _, _),
-	map__from_corresponding_lists(ClassVars, InstanceTypes, VarToType),
-	GetRval = lambda([Constraint::in, Rval::out] is det,
-		(
-			Constraint = constraint(ClassName, ClassTypes),
-			list__length(ClassTypes, Arity),
-			SuperClassId = class_id(ClassName, Arity),
-			term__vars_list(ClassTypes, SuperClassVars), 
-			map__apply_to_list(SuperClassVars, VarToType,
-				UsedInstanceTypes),
-			base_typeclass_info__make_instance_string(
-				UsedInstanceTypes, InstanceString),
-
-			DataName = base_typeclass_info(SuperClassId,
-					InstanceString),
-				% it doesn't matter which module the instance
-				% decl comes from
-			Module = unqualified("<unknown>"),
-			DataAddr = data_addr(Module, DataName),
-			Rval =  yes(const(data_addr_const(DataAddr)))
-		)),
-	list__map(GetRval, SuperClassConstraints, SuperClassRvals).
-	
 %----------------------------------------------------------------------------%
 
 	% Note that for historical reasons, builtin types

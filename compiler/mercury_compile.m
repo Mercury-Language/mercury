@@ -2056,8 +2056,10 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% rather than output_pass.
 	%
 	{ type_ctor_info__generate_rtti(HLDS0, TypeCtorRttiData) },
+	{ base_typeclass_info__generate_rtti(HLDS0, TypeClassInfoRttiData) },
 	{ list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables) },
-	{ base_typeclass_info__generate_llds(HLDS0, TypeClassInfos) },
+	{ list__map(llds__wrap_rtti_data, TypeClassInfoRttiData,
+		TypeClassInfos) },
 	{ stack_layout__generate_llds(HLDS0, HLDS, GlobalData,
 		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) },
 	%
@@ -2239,6 +2241,7 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
 	{ HLDS = HLDS53 },
+	mercury_compile__maybe_dump_hlds(HLDS, "99", "final"),
 
 	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
 	ml_code_gen(HLDS, MLDS0),
@@ -2246,40 +2249,45 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS0, "0", "initial"),
 
+	maybe_write_string(Verbose, "% Generating RTTI data...\n"),
+	{ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS10) },
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS10, "10", "rtti"),
+
 	% XXX this pass should be conditional on a compilation option
 
 	maybe_write_string(Verbose, "% Detecting tail calls...\n"),
-	ml_mark_tailcalls(MLDS0, MLDS1),
+	ml_mark_tailcalls(MLDS10, MLDS20),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS1, "1", "tailcalls"),
+	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls"),
 
 	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
 	( { NestedFuncs = no } ->
 		maybe_write_string(Verbose,
 			"% Flattening nested functions...\n"),
-		ml_elim_nested(MLDS1, MLDS2)
+		ml_elim_nested(MLDS20, MLDS30)
 	;
-		{ MLDS2 = MLDS1 }
+		{ MLDS30 = MLDS20 }
 	),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS2, "2", "nested_funcs"),
+	mercury_compile__maybe_dump_mlds(MLDS30, "30", "nested_funcs"),
 
-	maybe_write_string(Verbose, "% Generating RTTI data...\n"),
-	{ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS2, MLDS) },
-	maybe_write_string(Verbose, "% done.\n"),
-	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS, "3", "rtti").
+	{ MLDS = MLDS30 },
+	mercury_compile__maybe_dump_mlds(MLDS, "99", "final").
 
 :- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).
 :- mode mercury_compile__mlds_gen_rtti_data(in, in, out) is det.
 
 mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 	type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
+	base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRtti),
+	list__append(TypeCtorRtti, TypeClassInfoRtti, RttiData),
+	RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
 	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
-	TypeCtorDefns = rtti_data_list_to_mlds(ModuleName, TypeCtorRtti),
-	list__append(TypeCtorDefns, Defns0, Defns),
+	list__append(RttiDefns, Defns0, Defns),
 	MLDS = mlds(ModuleName, ForeignCode, Imports, Defns).
 
 % The `--high-level-C' MLDS output pass

@@ -1063,10 +1063,10 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 %
-% Note: the types `tag', `base_data', and `reset_trail_reason' here are all
+% Note: the types `tag' and `reset_trail_reason' here are all
 % defined exactly the same as the ones in llds.m.  The definitions are
 % duplicated here because we don't want mlds.m to depend on llds.m.
-% (Alternatively, we could move all these definitions into a new module
+% (Alternatively, we could move both these definitions into a new module
 % imported by both mlds.m and llds.m, but these definitions are small enough
 % and simple enough that I don't think it is worth creating a new module
 % just for them.)
@@ -1074,18 +1074,6 @@ XXX Full exception handling support is not yet implemented.
 
 	% A tag should be a small non-negative integer.
 :- type tag == int.
-
-	% See the definition in llds.m for comments about the meaning
-	% of the `base_data' type.
-	% For some targets, the target language and runtime system might
-	% provide all the necessary information about type layouts,
-	% in which case we won't need to define the type_functors and
-	% type_layout stuff, and we may also be able to use the language's
-	% RTTI rather than defining the type_infos ourselves.
-:- type base_data
-	--->	info
-	;	functors
-	;	layout.
 
 	% see runtime/mercury_trail.h
 :- type reset_trail_reason

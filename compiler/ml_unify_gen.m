@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_data, hlds_goal.
+:- import_module hlds_pred, hlds_data, hlds_goal.
 :- import_module mlds, ml_code_util.
 :- import_module llds. % XXX for `code_model'
 
@@ -47,12 +47,34 @@
 		mlds__rval, ml_gen_info, ml_gen_info).
 :- mode ml_gen_tag_test(in, in, out, out, out, in, out) is det.
 
+	%
+	% ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
+	%	Context, WrapperFuncRval, WrapperFuncType):
+	%
+	% Generates a wrapper function which unboxes the input arguments,
+	% calls the specified procedure, passing it some extra arguments
+	% from the closure, and then boxes the output arguments.
+	% It adds the definition of this wrapper function to the extra_defns
+	% field in the ml_gen_info, and return the wrapper function's
+	% rval and type.
+	%
+	% The NumClosuresArgs parameter specifies how many arguments
+	% to extract from the closure.  The Offset parameter specifies
+	% the offset to add to the argument number to get the field
+	% number within the closure.  (Argument numbers start from 1,
+	% and field numbers start from 0.)
+	%
+:- pred ml_gen_closure_wrapper(pred_id, proc_id, int, int, prog_context,
+		mlds__rval, mlds__type, ml_gen_info, ml_gen_info).
+:- mode ml_gen_closure_wrapper(in, in, in, in, in, out, out,
+		in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_module, hlds_out, builtin_ops.
+:- import_module hlds_module, hlds_out, builtin_ops.
 :- import_module ml_call_gen, prog_util, type_util, mode_util.
 :- import_module rtti.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
@@ -267,8 +289,11 @@ ml_gen_construct_rep(base_typeclass_info_constant(ModuleName, ClassId,
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 	{ DataAddr = data_addr(MLDS_Module,
 		base_typeclass_info(ClassId, Instance)) },
+	ml_variable_type(Var, VarType),
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
-		const(data_addr_const(DataAddr)), Context) }.
+		unop(cast(mercury_type(VarType)),
+			const(data_addr_const(DataAddr))),
+		Context) }.
 
 ml_gen_construct_rep(tabling_pointer_constant(PredId, ProcId), _ConsId,
 		Var, Args, _ArgModes, Context, [], [MLDS_Statement]) -->
@@ -344,14 +369,15 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	% arguments and then calls the specified procedure,
 	% and put the address of the wrapper function in the closure.
 	%
-	% We insert the wrapper function in the extra_defns field
-	% in the ml_gen_info; ml_gen_proc will extract it and will
-	% insert it before the mlds__defn for the current procedure.
+	% ml_gen_closure_wrapper will insert the wrapper function in the
+	% extra_defns field in the ml_gen_info; ml_gen_proc will extract
+	% it and will insert it before the mlds__defn for the current
+	% procedure.
 	%
+	{ Offset = ml_closure_arg_offset },
 	{ list__length(ArgVars, NumArgs) },
-	ml_gen_closure_wrapper(PredId, ProcId, NumArgs, Type,
-		Context, WrapperFunc, WrapperFuncRval, WrapperFuncType),
-	ml_gen_info_add_extra_defn(WrapperFunc),
+	ml_gen_closure_wrapper(PredId, ProcId, Offset, NumArgs,
+		Context, WrapperFuncRval, WrapperFuncType),
 
 	%
 	% Generate rvals for the arguments
@@ -405,10 +431,13 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	{ MLDS_Statements = [MLDS_Statement] }.
 
 %-----------------------------------------------------------------------------%
+
 	%
 	% ml_gen_closure_wrapper:
-	% Generate a wrapper function which unboxes the input arguments,
-	% calls the specified procedure, and then boxes the output arguments.
+	% 	see comment in interface section for details.
+	% 
+	% This is used to create wrappers both for ordinary closures and
+	% also for type class methods.
 	%
 	% The generated function will be of the following form:
 	%
@@ -420,7 +449,9 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	%		/* declarations needed for converting output args */
 	%		Arg2Type conv_arg2;
 	%		...
+	% #if MODEL_SEMI
 	%		bool succeeded;
+	% #endif
 	%		
 	%		closure = closure_arg; 	/* XXX should add cast */
 	%
@@ -473,14 +504,8 @@ ml_gen_construct_rep(pred_closure_tag(PredId, ProcId, EvalMethod), _ConsId,
 	%			foo_1);
 	% #endif
 	%
-:- pred ml_gen_closure_wrapper(pred_id, proc_id, int, prog_type, prog_context,
-		mlds__defn, mlds__rval, mlds__type,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_closure_wrapper(in, in, in, in, in, out, out, out,
-		in, out) is det.
-
-ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
-		Context, WrapperFunc, WrapperFuncRval, WrapperFuncType) -->
+ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
+		Context, WrapperFuncRval, WrapperFuncType) -->
 	%
 	% grab the relevant information about the called procedure
 	%
@@ -585,11 +610,6 @@ ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
 	%		unbox(arg1), &unboxed_arg2, arg3, ...
 	%	);
 	%
-	% field 0 is the closure layout
-	% field 1 is the closure address
-	% field 2 is the number of arguments
-	% field 3 is the first argument field
-	{ Offset = 2 },
 	ml_gen_closure_field_lvals(ClosureLval, Offset, 1, NumClosureArgs,
 		ClosureArgLvals),
 	ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
@@ -635,8 +655,8 @@ ml_gen_closure_wrapper(PredId, ProcId, NumClosureArgs, _ClosureType,
 	ml_gen_new_func_label(WrapperFuncName, WrapperFuncRval),
 	ml_gen_label_func(WrapperFuncName, WrapperParams, Context,
 		WrapperFuncBody, WrapperFunc),
-	{ WrapperFuncType = mlds__func_type(WrapperParams) }.
-
+	{ WrapperFuncType = mlds__func_type(WrapperParams) },
+	ml_gen_info_add_extra_defn(WrapperFunc).
 
 :- func ml_gen_wrapper_head_var_names(int, int) = list(string).
 ml_gen_wrapper_head_var_names(Num, Max) = Names :-
@@ -845,7 +865,7 @@ ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
 :- mode ml_gen_det_deconstruct(in, in, in, in, in, out, out, in, out) is det.
 
 %	det (cannot_fail) deconstruction:
-%		<succeeded = (X => f(A1, A2, ...))>
+%		<do (X => f(A1, A2, ...))>
 % 	===>
 %		A1 = arg(X, f, 1);		% extract arguments
 %		A2 = arg(X, f, 2);
@@ -1093,7 +1113,7 @@ ml_gen_sub_unify(Mode, ArgLval, ArgType, FieldLval, FieldType, Context,
 :- mode ml_gen_semi_deconstruct(in, in, in, in, in, out, out, in, out) is det.
 
 %	semidet (can_fail) deconstruction:
-%		<X => f(A1, A2, ...)>
+%		<succeeded = (X => f(A1, A2, ...))>
 % 	===>
 %		<succeeded = (X => f(_, _, _, _))>	% tag test
 %		if (succeeded) {

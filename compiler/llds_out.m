@@ -182,6 +182,12 @@
 :- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
 :- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
 
+	% output the name for base_typeclass_info,
+	% with the appropriate "mercury_data_" prefix.
+
+:- pred output_base_typeclass_info_name(class_id, string, io__state, io__state).
+:- mode output_base_typeclass_info_name(in, in, di, uo) is det.
+
 	% Convert a label to a string description of the stack layout
 	% structure of that label.
 
@@ -656,14 +662,6 @@ output_c_data_init_list([Data | Datas]) -->
 	->
 		rtti_out__init_rtti_data_if_nec(RttiData)
 	;
-		{ Data = comp_gen_c_data(ModuleName, DataName, _, ArgRvals,
-			_, _) },
-		{ DataName = base_typeclass_info(_ClassName, _ClassArity) }
-	->
-		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n"),
-		output_init_method_pointers(1, ArgRvals, DataName, ModuleName),
-		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n")
-	;
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
@@ -676,23 +674,6 @@ output_c_data_init_list([Data | Datas]) -->
 		[]
 	),
 	output_c_data_init_list(Datas).
-
-:- pred output_init_method_pointers(int, list(maybe(rval)), data_name, module_name,
-	io__state, io__state).
-:- mode output_init_method_pointers(in, in, in, in, di, uo) is det.
-
-output_init_method_pointers(_, [], _, _) --> [].
-output_init_method_pointers(ArgNum, [Arg|Args], DataName, ModuleName) -->
-	( { Arg = yes(const(code_addr_const(CodeAddr))) } ->
-		io__write_string("\t\t"),
-		output_data_addr(ModuleName, DataName),
-		io__format(".f%d =\n\t\t\t", [i(ArgNum)]),
-		output_code_addr(CodeAddr),
-		io__write_string(";\n")
-	;
-		[]
-	),
-	output_init_method_pointers(ArgNum + 1, Args, DataName, ModuleName).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
@@ -2934,21 +2915,28 @@ c_data_const_string(Globals, InclCodeAddr, ConstStr) :-
 
 output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 		LaterIndent) -->
-	{ data_name_linkage(DataVarName, Linkage) },
-	globals__io_get_globals(Globals),
-	{ c_data_linkage_string(Globals, Linkage, BeingDefined, LinkageStr) },
-	io__write_string(LinkageStr),
+	( { DataVarName = base_typeclass_info(ClassId, Instance) } ->
+		output_base_typeclass_info_storage_type_name(
+			ClassId, Instance, no)
+	;
+		{ data_name_linkage(DataVarName, Linkage) },
+		globals__io_get_globals(Globals),
+		{ c_data_linkage_string(Globals, Linkage, BeingDefined,
+			LinkageStr) },
+		io__write_string(LinkageStr),
 
-	{ data_name_would_include_code_address(DataVarName, InclCodeAddr) },
-	{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
-	io__write_string(ConstStr),
+		{ data_name_would_include_code_address(DataVarName,
+			InclCodeAddr) },
+		{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
+		io__write_string(ConstStr),
 
-	io__write_string("struct "),
-	output_data_addr(ModuleName, DataVarName),
-	io__write_string("_struct\n"),
-	io__write_string(LaterIndent),
-	io__write_string("\t"),
-	output_data_addr(ModuleName, DataVarName).
+		io__write_string("struct "),
+		output_data_addr(ModuleName, DataVarName),
+		io__write_string("_struct\n"),
+		io__write_string(LaterIndent),
+		io__write_string("\t"),
+		output_data_addr(ModuleName, DataVarName)
+	).
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
@@ -3265,11 +3253,7 @@ output_data_addr(ModuleName, VarName) -->
 			% instance decls, even if they are in a different
 			% module
 		{ VarName = base_typeclass_info(ClassId, TypeNames) },
-		{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames,
-			Str) },
-		io__write_string(mercury_data_prefix),
-		io__write_string("__"),
-		io__write_string(Str)
+		output_base_typeclass_info_name(ClassId, TypeNames)
 	;
 		{ VarName = module_layout },
 		io__write_string(mercury_data_prefix),
@@ -4230,6 +4214,12 @@ llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
 	llds_out__name_mangle(TypeNames, MangledTypeNames),
 	string__append_list(["base_typeclass_info_", MangledClassString,
 		"__arity", ArityString, "__", MangledTypeNames], Str).
+
+output_base_typeclass_info_name(ClassId, TypeNames) -->
+	{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames, Str) },
+	io__write_string(mercury_data_prefix),
+	io__write_string("__"),
+	io__write_string(Str).
 
 %-----------------------------------------------------------------------------%
 
