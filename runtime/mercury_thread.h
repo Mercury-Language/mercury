@@ -57,11 +57,8 @@
 	** predicates which are not thread-safe.
 	** See the comments below.
 	*/
-  #define MR_OBTAIN_GLOBAL_C_LOCK(where)	MR_LOCK(&MR_global_lock, \
-							(where));
-
-  #define MR_RELEASE_GLOBAL_C_LOCK(where)	MR_UNLOCK(&MR_global_lock, \
-							(where));
+  #define MR_OBTAIN_GLOBAL_LOCK(where)	MR_LOCK(&MR_global_lock, (where))
+  #define MR_RELEASE_GLOBAL_LOCK(where)	MR_UNLOCK(&MR_global_lock, (where))
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_GETSPECIFIC(key) 	({		\

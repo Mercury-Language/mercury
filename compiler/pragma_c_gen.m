@@ -389,10 +389,10 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	;
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
-		string__append_list(["\tMR_OBTAIN_GLOBAL_C_LOCK(""",
+		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			Name, """);\n"], ObtainLockStr),
 		ObtainLock = pragma_c_raw_code(ObtainLockStr),
-		string__append_list(["\tMR_RELEASE_GLOBAL_C_LOCK(""",
+		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
 			Name, """);\n"], ReleaseLockStr),
 		ReleaseLock = pragma_c_raw_code(ReleaseLockStr)
 	},
