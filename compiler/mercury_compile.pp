@@ -28,6 +28,7 @@
 :- import_module cse_detection, polymorphism, garbage_out, shapes.
 :- import_module liveness, det_analysis, follow_code, follow_vars, live_vars.
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
+:- import_module prof.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module getopt, options, globals.
@@ -1272,6 +1273,7 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 		{ bool__not(FoundModeError, Proceed2) },
 
 		mercury_compile__make_dependency_graph(HLDS3, HLDS3a),
+		mercury_compile__maybe_output_prof_call_graph(HLDS3a),
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
@@ -1376,6 +1378,37 @@ mercury_compile__make_dependency_graph(ModuleInfo0, ModuleInfo) -->
 		[]
 	).
 	
+
+        % Output's the file <module_name>.prof, which contains the static
+        % call graph in terms of label names, if the profiling flag enabled.
+:- pred mercury_compile__maybe_output_prof_call_graph(module_info,
+						        io__state, io__state).
+:- mode mercury_compile__maybe_output_prof_call_graph(in, di, uo) is det.
+
+mercury_compile__maybe_output_prof_call_graph(ModuleInfo) -->
+        globals__io_lookup_bool_option(profiling, Profiling),
+        (
+                { Profiling = yes }
+        ->
+                globals__io_lookup_bool_option(verbose, Verbose),
+                maybe_write_string(Verbose, "% Output profiling call graph..."),
+                maybe_flush_output(Verbose),
+                { module_info_name(ModuleInfo, Name) },
+                { string__append(Name, ".prof", WholeName) },
+                io__tell(WholeName, Res),
+                (
+                        { Res = ok }
+                ->
+                        dependency_graph__write_prof_dependency_graph(ModuleInfo),
+                        io__told
+               ;
+                        report_error("unable to write profiling static call graph")
+                ),
+                maybe_write_string(Verbose, "done.\n")
+        ;
+                []
+        ).
+
 
 :- pred mercury_compile__maybe_polymorphism(module_info, module_info,
 	io__state, io__state).
@@ -1772,11 +1805,12 @@ mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 		maybe_write_string(Verbose,
 			"% Doing optimizations...\n"),
 		maybe_flush_output(Verbose),
-		optimize__main(LLDS0, LLDS),
+		optimize__main(LLDS0, LLDS1),
 		maybe_write_string(Verbose, "% done.\n")
 	;
-		{ LLDS = LLDS0 }
-	).
+		{ LLDS1 = LLDS0 }
+	),
+	prof__main(LLDS1, LLDS).
 
 %-----------------------------------------------------------------------------%
 
@@ -1868,10 +1902,12 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId, ModuleInfo,
 		Shapes0, Shapes, Proc0),
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
-		optimize__proc(Proc0, Proc)
+		optimize__proc(Proc0, Proc1)
 	;
-		{ Proc = Proc0 }
-	).
+		{ Proc1 = Proc0 }
+	),
+	prof__proc(Proc1, Proc).
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

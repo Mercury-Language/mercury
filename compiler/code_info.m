@@ -536,6 +536,8 @@ code_info__get_next_label_number(N) -->
 
 %---------------------------------------------------------------------------%
 
+	% Any changes made to this predicate must be reflected in changes to 
+	% dependency_graph__make_entry_label/8.
 code_info__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) -->
 	code_info__get_globals(Globals),
 	code_info__get_pred_id(CurPredId),

@@ -26,6 +26,12 @@
 						io__state, io__state).
 :- mode dependency_graph__write_dependency_graph(in, di, uo) is det.
 
+	% Output a form of the static call graph to a file for use by the
+	% profiler.
+:- pred dependency_graph__write_prof_dependency_graph(module_info,
+						io__state, io__state).
+:- mode dependency_graph__write_prof_dependency_graph(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -33,6 +39,8 @@
 :- import_module list, map, set, prog_io, std_util.
 :- import_module mode_util, int, term, require, string.
 :- import_module varset, mercury_to_mercury, relation.
+:- import_module globals, options, code_util.
+:- import_module llds.
 
 %-----------------------------------------------------------------------------%
 
@@ -353,3 +361,126 @@ dependency_graph__write_clique([PredId - ProcId | Rest], ModuleInfo) -->
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+% dependency_graph__write_prof_dependency_graph:
+%	Output's the static call graph of the current module in the form of
+%		CallerLabel (\t) CalleeLabel
+%
+dependency_graph__write_prof_dependency_graph(ModuleInfo) -->
+	{ module_info_dependency_info(ModuleInfo, DepInfo) },
+	{ dependency_info__get_dependency_graph(DepInfo, DepGraph) },
+	{ relation__effective_domain(DepGraph, DomSet) },
+	{ set__to_sorted_list(DomSet, DomList) },
+	dependency_graph__write_prof_dependency_graph_2(DomList, DepGraph,
+			ModuleInfo).
+
+:- pred dependency_graph__write_prof_dependency_graph_2(list(pred_proc_id),
+		dependency_graph, module_info, io__state, io__state).
+:- mode dependency_graph__write_prof_dependency_graph_2(in, in, in, di, uo) 
+		is det.
+
+% dependency_graph__write_prof_dependency_graph_2:
+% 	Scan's through list of caller's, then call's next predicate to get
+%	callee's
+dependency_graph__write_prof_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
+dependency_graph__write_prof_dependency_graph_2([Node|Nodes], DepGraph, 
+			ModuleInfo) -->
+	{ relation__lookup_from(DepGraph, Node, SuccSet) },
+	{ set__to_sorted_list(SuccSet, SuccList) },
+	dependency_graph__write_prof_dependency_graph_3(SuccList, Node, DepGraph, 
+				ModuleInfo),
+	dependency_graph__write_prof_dependency_graph_2(Nodes, DepGraph, 
+				ModuleInfo).
+
+
+% dependency_graph__write_prof_dependency_graph_3:
+%	Process all the callee's of a node.
+%	XXX We should only make the Caller label once and then pass it around.
+:- pred dependency_graph__write_prof_dependency_graph_3(list(pred_proc_id),
+		pred_proc_id, dependency_graph, module_info, 
+		io__state, io__state).
+:- mode dependency_graph__write_prof_dependency_graph_3(in, in, in, in, 
+				di, uo) is det.
+
+dependency_graph__write_prof_dependency_graph_3([], _Node, _DepGraph, 
+				_ModuleInfo) -->
+	[].
+dependency_graph__write_prof_dependency_graph_3([S|Ss], Node, DepGraph, 
+				ModuleInfo) -->
+	{ Node = PPredId - PProcId }, % Caller
+	{ S    = CPredId - CProcId }, % Callee
+	dependency_graph__output_label(ModuleInfo, PPredId, PProcId, 
+			CPredId, CProcId),
+	io__write_string("\t"),
+	dependency_graph__output_label(ModuleInfo, CPredId, CProcId,
+			CPredId, CProcId),
+	io__write_string("\n"),
+	dependency_graph__write_prof_dependency_graph_3(Ss, Node, DepGraph, 
+					ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+
+% dependency_graph__output_label:
+%	Prints out the label corresponding to PredId and ProcId.  
+%	CurPredId and CurProcId refer to the parent caller of the current 
+%	predicate(Hack needed so that we can call code_util to build the 
+%	correct type of label).
+%
+:- pred dependency_graph__output_label(module_info, pred_id, proc_id, pred_id,
+                        proc_id, io__state, io__state).
+:- mode dependency_graph__output_label(in, in, in, in, in, di, uo) is det.
+
+dependency_graph__output_label(ModuleInfo, PredId, ProcId, CurPredId, 
+								CurProcId) -->
+	dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId,
+                        CurPredId, CurProcId, Address),
+        (
+                { Address = label(local(ProcLabela)) }
+        ->
+                output_label(local(ProcLabela))
+        ;
+                { Address = imported(ProcLabelb) }
+        ->
+                output_proc_label(ProcLabelb)
+        ;
+                { Address = label(exported(ProcLabelc)) }
+        ->
+                output_label(exported(ProcLabelc))
+        ;
+                { error("dependency_graph__output_label: Label not of type local or imported or exported\n") }
+        ).
+
+
+%-----------------------------------------------------------------------------%
+
+	% dependency_graph__make_entry_label:
+	%	Almost identical to code_info__make_entry_label.
+	%	Calls the same predicates in code_util.  So any changes here
+	%	must be reflected in code_info__make_entry_label.
+:- pred dependency_graph__make_entry_label(module_info, pred_id, proc_id, 
+			pred_id, proc_id, code_addr, io__state, io__state).
+:- mode dependency_graph__make_entry_label(in, in, in, in, in, out, di, uo)
+			is det.
+
+dependency_graph__make_entry_label(ModuleInfo, PredId, ProcId, 
+					CurPredId, CurProcId, PredAddress) -->
+        globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	{
+        module_info_preds(ModuleInfo, Preds),
+        map__lookup(Preds, PredId, PredInfo),
+        (
+                (       pred_info_is_imported(PredInfo)
+                ;       ProcsPerFunc \= 0,
+                        \+ (PredId = CurPredId, ProcId = CurProcId)
+                )
+        ->
+                code_util__make_proc_label(ModuleInfo,
+                                                PredId, ProcId, ProcLabel),
+                PredAddress = imported(ProcLabel)
+        ;
+                code_util__make_local_entry_label(ModuleInfo,
+                                                        PredId, ProcId, Label),
+                PredAddress = label(Label)
+        )
+        }.

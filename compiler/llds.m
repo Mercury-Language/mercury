@@ -280,6 +280,12 @@
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.
 
+
+	% Output a proc label (used for building static call graph for prof).
+
+:- pred output_proc_label(proc_label, io__state, io__state).
+:- mode output_proc_label(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -963,6 +969,7 @@ output_code_addr_decls(imported(ProcLabel)) -->
 
 maybe_output_update_prof_counter(Label) -->
 	(
+		% XXX All the label's should be local.
 		{ Label = local(ProcLabel, _, exported) }
 	->
 		{ Label2 = exported(ProcLabel) },
@@ -1187,11 +1194,7 @@ output_label(local(ProcLabel, Num, _)) -->
 	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).
 
-:- pred output_proc_label(proc_label, io__state, io__state).
-:- mode output_proc_label(in, di, uo) is det.
-
 	% XXX we need to do something with the module name.
-
 output_proc_label(proc(_Module, Pred0, Arity, ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),

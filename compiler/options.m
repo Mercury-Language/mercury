@@ -78,6 +78,7 @@
 		;	link
 		;	line_numbers
 		;	mod_comments
+		;	profiling
 	% Code generation options
 		;	trad_passes
 		;	lazy_code
@@ -184,7 +185,8 @@ option_defaults_2(output_option, [
 	verbose_dump_hlds	-	bool(no),
 	generate_code		-	bool(no),
 	line_numbers		-	bool(no),
-	mod_comments		-	bool(no)
+	mod_comments		-	bool(no),
+	profiling		-	bool(no)
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
@@ -262,7 +264,7 @@ short_option('m', 			modecheck).
 short_option('M', 			generate_dependencies).
 short_option('N', 			debug_modes).
 short_option('O', 			c_optimize).
-short_option('p', 			polymorphism).
+short_option('p', 			profiling).
 short_option('P', 			convert_to_mercury).
 short_option('S', 			statistics).
 short_option('s', 			grade).
@@ -344,6 +346,7 @@ long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
 long_option("optimize-vnrepeat",	optimize_vnrepeat).
 long_option("optimise-vnrepeat",	optimize_vnrepeat).
+long_option("profiling",		profiling).
 long_option("pred-value-number",	pred_value_number).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
@@ -432,11 +435,12 @@ options_help -->
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
-
+	io__write_string("\t--profiling\n"),
+	io__write_string("\t\tOutput to file <module>.prof the profiling info\n"),
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t--no-trad-passes\n"),
 	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
-	io__write_string("\t-p-, --no-polymorphism\n"),
+	io__write_string("\t--no-polymorphism\n"),
 	io__write_string("\t\tDon't handle polymorphic types.\n"),
 	io__write_string("\t\t(Generates slightly more efficient code, but stops\n"),
 	io__write_string("\t\t(polymorphism from working except in special cases.)\n"),
