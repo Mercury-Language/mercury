@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997, 2000 The University of Melbourne.
+** Copyright (C) 1997, 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ MR_hash_float(MR_Float f)
 void
 MR_sprintf_float(char *buf, MR_Float f)
 {
-	MR_Float round = 0.0;
+	MR_Float round_trip = 0.0;
 	int 	 i = MR_FLT_MIN_PRECISION;
 
 	/*
@@ -79,9 +79,9 @@ MR_sprintf_float(char *buf, MR_Float f)
 			*/
 			break;
 		}
-		sscanf(buf, MR_FLT_FMT, &round);
+		sscanf(buf, MR_FLT_FMT, &round_trip);
 		i++;
-	} while (round != f);
+	} while (round_trip != f);
 
     return;
 }
