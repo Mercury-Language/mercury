@@ -262,7 +262,7 @@ warn_no_exports(ModuleName) -->
 		{ ExportWarning = yes }
 	->
 		report_warning(ModuleName, 1,
-			"Interface does not export anything."),
+			"interface does not export anything."),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		(
 			{ VerboseErrors = yes }
@@ -779,7 +779,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 		ModuleName, ".ints : $(", ModuleName, ".dates)\n\n",
 		ModuleName, ".int3s : $(", ModuleName, ".date3s)\n\n",
-		ModuleName, ".opts : $(", ModuleName, ".opdates)\n\n"
+		ModuleName, ".opts : $(", ModuleName, ".optdates)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
