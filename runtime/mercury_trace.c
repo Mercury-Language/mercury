@@ -77,15 +77,18 @@ typedef	enum {
 	MR_NO_INTERACT
 } MR_trace_interact;
 
-void	MR_trace_display(MR_trace_interact interact,
-		const MR_stack_layout_entry *layout,
-		MR_trace_port port, int seqno, int depth, const char *path);
-void	MR_trace_browse(int var_count, const MR_stack_layout_vars *var_info);
-void	MR_trace_browse_var(char *name, const MR_stack_layout_var *var);
-int	MR_trace_get_cmd(void);
-void	MR_trace_help(void);
+static void	MR_trace_display(MR_trace_interact interact,
+			const MR_stack_layout_entry *layout,
+			MR_trace_port port, int seqno, int depth,
+			const char *path);
+static void	MR_trace_browse(int var_count,
+			const MR_stack_layout_vars *var_info);
+static void	MR_trace_browse_var(char *name,
+			const MR_stack_layout_var *var);
+static int	MR_trace_get_cmd(void);
+static void	MR_trace_help(void);
 
-#define	port_is_final(port)	(port == MR_PORT_EXIT || port == MR_PORT_FAIL)
+#define	MR_port_is_final(port)	(port == MR_PORT_EXIT || port == MR_PORT_FAIL)
 
 /*
 ** This function is called from compiled code whenever an event to be traced
@@ -109,7 +112,8 @@ MR_trace(const Word *layout_word, MR_trace_port port,
 			break;
 
 		case MR_CMD_JUMP:
-			if (MR_trace_seqno == seqno && port_is_final(port)) {
+			if (MR_trace_seqno == seqno && MR_port_is_final(port))
+			{
 				interact = MR_INTERACT;
 			} else {
 				interact = MR_NO_INTERACT;
@@ -121,7 +125,8 @@ MR_trace(const Word *layout_word, MR_trace_port port,
 			break;
 
 		case MR_CMD_SKIP:
-			if (MR_trace_seqno == seqno && port_is_final(port)) {
+			if (MR_trace_seqno == seqno && MR_port_is_final(port))
+			{
 				MR_trace_display(MR_INTERACT, layout,
 					port, seqno, depth, path);
 			}
@@ -146,7 +151,8 @@ MR_trace(const Word *layout_word, MR_trace_port port,
 	}
 }
 
-void MR_trace_display(MR_trace_interact interact,
+static void
+MR_trace_display(MR_trace_interact interact,
 	const MR_stack_layout_entry *layout,
 	MR_trace_port port, int seqno, int depth, const char *path)
 {
@@ -261,9 +267,9 @@ void MR_trace_display(MR_trace_interact interact,
 				break;
 
 			case 'j':
-				if (port_is_final(port)) {
-					fprintf(stderr, "mtrace: cannot jump");
-					fprintf(stderr, " from this port\n");
+				if (MR_port_is_final(port)) {
+					fprintf(stderr, "mtrace: cannot jump"
+							" from this port\n");
 					continue;
 				} else {
 					MR_trace_cmd = MR_CMD_JUMP;
@@ -282,16 +288,16 @@ void MR_trace_display(MR_trace_interact interact,
 						layout->MR_sle_out_arg_count,
 						&layout->MR_sle_out_arg_info);
 				} else {
-					fprintf(stderr, "mtrace: cannot print");
-					fprintf(stderr, " from this port\n");
+					fprintf(stderr, "mtrace: cannot print"
+							" from this port\n");
 				}
 
 				continue;
 
 			case 's':
-				if (port_is_final(port)) {
-					fprintf(stderr, "mtrace: cannot skip");
-					fprintf(stderr, " from this port\n");
+				if (MR_port_is_final(port)) {
+					fprintf(stderr, "mtrace: cannot skip"
+							" from this port\n");
 					continue;
 				} else {
 					MR_trace_cmd = MR_CMD_SKIP;
@@ -302,8 +308,8 @@ void MR_trace_display(MR_trace_interact interact,
 
 			case EOF:
 			case 'a':
-				fprintf(stderr, "mtrace: are you sure");
-				fprintf(stderr, " you want to abort? ");
+				fprintf(stderr, "mtrace: are you sure"
+						" you want to abort? ");
 
 				if (MR_trace_get_cmd() == 'y') {
 					MR_trace_cmd = MR_CMD_ABORT;
@@ -321,9 +327,9 @@ void MR_trace_display(MR_trace_interact interact,
 	}
 }
 
-Word	saved_regs[MAX_FAKE_REG];
+static Word	MR_saved_regs[MAX_FAKE_REG];
 
-void
+static void
 MR_trace_browse(int var_count, const MR_stack_layout_vars *vars)
 {
 	int	i;
@@ -336,14 +342,17 @@ MR_trace_browse(int var_count, const MR_stack_layout_vars *vars)
 
 	/*
 	** In the process of browsing, we call Mercury code,
-	** which may clobber the contents of the control registers
-	** and the contents of the gp registers up to r<maxreg>.
+	** which may clobber the contents of the registers,
+	** both the control registers and the general purpose registers.
 	** We must therefore save and restore these.
-	** XXX The value of maxreg ought to be given to us by the compiler
-	** through a parameter to MR_trace; for the time being, we use 10.
+	**
+	** Some are in real machine registers; others in the fake_reg array.
 	*/
 
-	save_regs_to_mem(saved_regs);
+	save_regs_to_mem(MR_saved_regs);
+	for (i = NUM_REAL_REGS; i < MAX_FAKE_REG; i++)
+		MR_saved_regs[i] = fake_reg[i];
+
 	for (i = 0; i < var_count; i++) {
 		if (vars->MR_slvs_names != NULL &&
 				vars->MR_slvs_names[i] != NULL)
@@ -354,13 +363,15 @@ MR_trace_browse(int var_count, const MR_stack_layout_vars *vars)
 		MR_trace_browse_var(name, &vars->MR_slvs_pairs[i]);
 	}
 
-	restore_regs_from_mem(saved_regs);
+	restore_regs_from_mem(MR_saved_regs);
+	for (i = NUM_REAL_REGS; i < MAX_FAKE_REG; i++)
+		 fake_reg[i] = MR_saved_regs[i];
 }
 
 /* if you want to debug this code, you may want to set this var to 1 */
 static	int	MR_trace_print_locn = 0;
 
-void
+static void
 MR_trace_browse_var(char *name, const MR_stack_layout_var *var)
 {
 	Integer			locn;
@@ -385,7 +396,7 @@ MR_trace_browse_var(char *name, const MR_stack_layout_var *var)
 		case MR_LVAL_TYPE_R:
 			if (MR_trace_print_locn)
 				printf("r%d", locn_num);
-			value = saved_reg(saved_regs, locn_num);
+			value = saved_reg(MR_saved_regs, locn_num);
 			print_value = TRUE;
 			break;
 
@@ -450,8 +461,9 @@ MR_trace_browse_var(char *name, const MR_stack_layout_var *var)
 		/*
 		** XXX It would be nice if we could call an exported C
 		** function version of the browser predicate, and thus
-		** avoid going through call_engine, but that causes the
-		** Mercury code in the browser to clobber part of the C stack.
+		** avoid going through call_engine, but for some unknown
+		** reason, that seems to cause the Mercury code in the
+		** browser to clobber part of the C stack.
 		*/
 
 		r1 = (Word) var->MR_slv_shape->MR_sls_type;
@@ -462,7 +474,7 @@ MR_trace_browse_var(char *name, const MR_stack_layout_var *var)
 	printf("\n");
 }
 
-int
+static int
 MR_trace_get_cmd(void)
 {
 	int	cmd;
@@ -478,15 +490,15 @@ MR_trace_get_cmd(void)
 	return cmd;
 }
 
-void
+static void
 MR_trace_help(void)
 {
-	fprintf(stderr, "valid commands are:\n");
-	fprintf(stderr, " a: abort the current execution.\n");
-	fprintf(stderr, " c: continue to end, not printing the trace.\n");
-	fprintf(stderr, " d: continue to end, printing the trace.\n");
-	fprintf(stderr, " n: go to the next trace event.\n");
-	fprintf(stderr, " s: skip the current call, not printing trace.\n");
-	fprintf(stderr, " j: jump to end of current call, printing trace.\n");
-	fprintf(stderr, " p: print the variables live at this point.\n");
+	fprintf(stderr, "valid commands are:\n"
+			" a: abort the current execution.\n"
+			" c: continue to end, not printing the trace.\n"
+			" d: continue to end, printing the trace.\n"
+			" n: go to the next trace event.\n"
+			" s: skip the current call, not printing trace.\n"
+			" j: jump to end of current call, printing trace.\n"
+			" p: print the variables live at this point.\n");
 }

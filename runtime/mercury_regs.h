@@ -129,11 +129,12 @@
 		r(n), \
 		fake_reg[virtual_reg_map[(n) - 1]])
 
-/* saved_reg(save_area, n) accesses the given save area instead of fake_reg */
+/* saved_reg(save_area, n) is like virtual_reg, except in that */
+/* it accesses the given save area instead of the machine regs and fake_reg */
 
 #define saved_reg(save_area, n)	\
 	LVALUE_COND((n) > MAX_REAL_REG, \
-		r(n), \
+		save_area[(n) + NUM_SPECIAL_REG - 1], \
 		save_area[virtual_reg_map[(n) - 1]])
 
 /*
@@ -144,6 +145,7 @@
 ** getting or setting one or two registers?
 ** Currently they're buggy for n>32 and are not used except for debugging.
 */
+
 extern	Word	get_reg(int);
 extern	Word	set_reg(int, Word);
 
