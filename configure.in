@@ -597,18 +597,23 @@ BITS_PER_WORD=$mercury_cv_bits_per_word
 AC_SUBST(BITS_PER_WORD)
 #-----------------------------------------------------------------------------#
 #
-# For Irix 5, gcc labels don't work with shared libraries.
+# For Irix 5, gcc labels don't work with shared libraries,
+# so if we're using gcc labels, we need to use non-shared libraries,
+# which means passing -non_shared and -mno-abicalls and also setting
+# LIBRARY_PATH.
 # For x86, gcc global registers only work with -fno-builtin
 # and -fno-omit-frame-pointer.
+#
+# NB. Any changes here may also require changes to scripts/mgnuc.in.
 #
 save_CC="$CC"
 save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
-CFLAGS_FOR_GOTOS=
+CFLAGS_FOR_GOTOS=-fno-defer-pop
 case "$host" in
 	mips-sgi-irix5.*)
 		CC="$CC -non_shared -mno-abicalls"
-		CFLAGS_FOR_GOTOS="-non_shared -mno-abicalls"
+		CFLAGS_FOR_GOTOS="-fno-defer-pop -non_shared -mno-abicalls"
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
 		;;
