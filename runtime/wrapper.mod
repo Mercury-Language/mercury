@@ -208,7 +208,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 
 	for (;;) {
 		/* skip leading whitespace */
-		while(isspace(*s)) {
+		while(isspace((unsigned char)*s)) {
 			s++;
 		}
 
@@ -237,7 +237,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			s++;
 		} else {
 			/* ordinary white-space delimited arg */
-			while(*s != '\0' && !isspace(*s)) {
+			while(*s != '\0' && !isspace((unsigned char)*s)) {
 				if (*s == '\\')
 					s++;
 				args_len++; s++;
@@ -260,7 +260,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	d = args;
 	for(i = 0; i < argc; i++) {
 		/* skip leading whitespace */
-		while(isspace(*s)) {
+		while(isspace((unsigned char)*s)) {
 			s++;
 		}
 
@@ -284,7 +284,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			s++;
 		} else {
 			/* ordinary white-space delimited arg */
-			while(*s != '\0' && !isspace(*s)) {
+			while(*s != '\0' && !isspace((unsigned char)*s)) {
 				if (*s == '\\')
 					s++;
 				*d++ = *s++;
