@@ -195,7 +195,8 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		{ Module = Module0 }
 	; { ModuleDefn = external(name_arity(Name, Arity)) } ->
 		{ Status = Status0 },
-		module_mark_as_external(Name, Arity, Context, Module0, Module)
+		module_mark_as_external(Name, Arity, predicate, Context,
+			Module0, Module)
 	;
 		{ Status = Status0 },
 		{ Module = Module0 },
@@ -331,11 +332,12 @@ add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_mark_as_external(sym_name, int, term__context,
+:- pred module_mark_as_external(sym_name, int, pred_or_func, term__context,
 			module_info, module_info, io__state, io__state).
-:- mode module_mark_as_external(in, in, in, in, out, di, uo) is det.
+:- mode module_mark_as_external(in, in, in, in, in, out, di, uo) is det.
 
-module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
+module_mark_as_external(PredName, Arity, PredOrFunc, Context,
+		Module0, Module) -->
 	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
@@ -346,7 +348,7 @@ module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
 		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
 		{ module_info_incr_errors(Module0, Module) },
-		undefined_pred_error(PredName, Arity, Context,	
+		undefined_pred_error(PredName, Arity, PredOrFunc, Context,	
 			"`external' declaration")
 	).
 
@@ -818,7 +820,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ PredId = PredId0 }
 	;
 		% XXX we should record each error using module_info_incr_errors
-		undefined_pred_error(PredName, Arity, MContext,	
+		undefined_pred_error(PredName, Arity, PredOrFunc, MContext,	
 			"mode declaration"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, MContext,
@@ -835,7 +837,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		{ MaybeDet = no }
 	->
 		( { pred_info_is_exported(PredInfo0) } ->
-			unspecified_det_error(PredName, Arity, MContext)
+			unspecified_det_error(PredName, Arity, PredOrFunc,
+				MContext)
 		;
 			globals__io_lookup_bool_option(warn_missing_det_decls,
 				ShouldWarn),
@@ -843,7 +846,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 				{ ShouldWarn = yes }
 			->
 				unspecified_det_warning(PredName, Arity,
-					MContext)
+					PredOrFunc, MContext)
 			;
 				[]
 			)
@@ -1012,7 +1015,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-		undefined_pred_error(PredName, Arity, Context, "clause"),
+		undefined_pred_error(PredName, Arity, PredOrFunc, Context,
+			"clause"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
 				PredOrFunc,
@@ -1025,7 +1029,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	( { pred_info_is_imported(PredInfo0) } ->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
-		clause_for_imported_pred_error(PredName, Arity, Context)
+		clause_for_imported_pred_error(PredName, Arity, PredOrFunc, 
+			Context)
 	;
 		{ pred_info_get_goal_type(PredInfo0, pragmas) }
 	->
@@ -1055,7 +1060,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		% warn about singleton variables 
 		maybe_warn_singletons(VarSet, PredName/Arity, Goal),
 		% warn about variables with overlapping scopes
-		maybe_warn_overlap(Warnings, VarSet, PredName/Arity)
+		maybe_warn_overlap(Warnings, VarSet, PredOrFunc, PredName/Arity)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1088,6 +1093,10 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 
 module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context, 
 			ModuleInfo0, ModuleInfo) --> 
+		% XXX we should allow pragma c_code for functions as well
+		% as for predicates, but currently we don't
+	{ PredOrFunc = predicate },
+
 		% print out a progress message
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
@@ -1096,9 +1105,9 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 	( 
 		{ VeryVerbose = yes } 
 	->
-		io__write_string("% Processing pragma (c_code) for pred `"),
-		hlds_out__write_pred_call_id(PredName/Arity),
-		io__write_string("'...\n")
+		io__write_string("% Processing pragma (c_code) for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("...\n")
 	;
 		[]
 	),
@@ -1115,11 +1124,11 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
-		undefined_pred_error(PredName, Arity, Context, 
+		undefined_pred_error(PredName, Arity, PredOrFunc, Context, 
 				"pragma (c_code)"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
-				predicate,
+				PredOrFunc,
 				PredId, PredicateTable1) }
 	),
 		% Lookup the pred_info for this pred,
@@ -1133,18 +1142,18 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
-		io__write_string("for imported pred `"),
-		hlds_out__write_pred_call_id(PredName/Arity),
-		io__write_string("'.\n")
+		io__write_string("for imported "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string(".\n")
 	;	
 		{ pred_info_get_goal_type(PredInfo0, clauses) }
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
 		io__write_string("Error: pragma(c_code, ...) declaration "),
-		io__write_string("for pred `"),
-		hlds_out__write_pred_call_id(PredName/Arity),
-		io__write_string("'\n"),
+		io__write_string("for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  with clauses preceding.\n")
 	;
@@ -1272,33 +1281,34 @@ get_matching_procedure([P|Procs], Modes, OurProcId) :-
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-:- pred maybe_warn_overlap(list(quant_warning), varset, pred_call_id,
+:- pred maybe_warn_overlap(list(quant_warning), varset,
+				pred_or_func, pred_call_id,
 				io__state, io__state).
-:- mode maybe_warn_overlap(in, in, in, di, uo) is det.
+:- mode maybe_warn_overlap(in, in, in, in, di, uo) is det.
 
-maybe_warn_overlap(Warnings, VarSet, PredCallId) -->
+maybe_warn_overlap(Warnings, VarSet, PredOrFunc, PredCallId) -->
 	globals__io_lookup_bool_option(warn_overlapping_scopes,
 			WarnOverlappingScopes),
 	( { WarnOverlappingScopes = yes } ->
-		warn_overlap(Warnings, VarSet, PredCallId)
+		warn_overlap(Warnings, VarSet, PredOrFunc, PredCallId)
 	;	
 		[]
 	).
 
 
-:- pred warn_overlap(list(quant_warning), varset, pred_call_id,
+:- pred warn_overlap(list(quant_warning), varset, pred_or_func, pred_call_id,
 				io__state, io__state).
-:- mode warn_overlap(in, in, in, di, uo) is det.
+:- mode warn_overlap(in, in, in, in, di, uo) is det.
 
-warn_overlap([], _, _) --> [].
-warn_overlap([Warn|Warns], VarSet, PredCallId) -->
+warn_overlap([], _, _, _) --> [].
+warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 	{ Warn = warn_overlap(Vars, Context) },
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 	prog_out__write_context(Context),
-	io__write_string(StdErr, "In clause for predicate `"),
-	hlds_out__write_pred_call_id(PredCallId),
-	io__write_string(StdErr, "':\n"),
+	io__write_string(StdErr, "In clause for "),
+	hlds_out__write_call_id(PredOrFunc, PredCallId),
+	io__write_string(StdErr, ":\n"),
 	prog_out__write_context(Context),
 	( { Vars = [Var] } ->
 		io__write_string(StdErr, "  Warning: variable `"),
@@ -1312,7 +1322,7 @@ warn_overlap([Warn|Warns], VarSet, PredCallId) -->
 		report_warning(StdErr, "  each have overlapping scopes.\n")
 	),
 	io__set_output_stream(OldStream, _),
-	warn_overlap(Warns, VarSet, PredCallId).
+	warn_overlap(Warns, VarSet, PredOrFunc, PredCallId).
 
 %-----------------------------------------------------------------------------%
 
@@ -1507,9 +1517,9 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 			io__write_string("' do not occur in C code\n")
 		),
 		prog_out__write_context(Context),
-		io__write_string("  in pragma(c_code, ...) for predicate `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("'.\n"),
+		io__write_string("  in pragma(c_code, ...) for "),
+		hlds_out__write_call_id(predicate, PredCallId),
+		io__write_string(".\n"),
 		io__set_output_stream(OldStream, _)
 	).
 
@@ -2302,73 +2312,65 @@ multiple_def_error(Name, Arity, DefType, Context, OrigContext) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred undefined_pred_error(sym_name, int, term__context, string,
-				io__state, io__state).
-:- mode undefined_pred_error(in, in, in, in, di, uo) is det.
+:- pred undefined_pred_error(sym_name, int, pred_or_func, term__context,
+				string, io__state, io__state).
+:- mode undefined_pred_error(in, in, in, in, in, di, uo) is det.
 
-undefined_pred_error(Name, Arity, Context, Description) -->
+undefined_pred_error(Name, Arity, PredOrFunc, Context, Description) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("Error: "),
 	io__write_string(Description),
-	io__write_string(" for `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("' without preceding pred declaration\n").
+	io__write_string(" for "),
+	hlds_out__write_call_id(PredOrFunc, Name/Arity),
+	io__write_string(" without preceding pred declaration\n").
 
-:- pred unspecified_det_warning(sym_name, int, term__context, 
+:- pred unspecified_det_warning(sym_name, arity, pred_or_func, term__context, 
 				io__state, io__state).
-:- mode unspecified_det_warning(in, in, in, di, uo) is det.
+:- mode unspecified_det_warning(in, in, in, in, di, uo) is det.
 
-unspecified_det_warning(Name, Arity, Context) -->
+unspecified_det_warning(Name, Arity, PredOrFunc, Context) -->
 	prog_out__write_context(Context),
-	report_warning("Warning: no determinism declaration for local predicate\n"),
+	report_warning("Warning: no determinism declaration for local\n"),
 	prog_out__write_context(Context),
-	io__write_string("  `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'.\n"),
+	io__write_string("  "),
+	hlds_out__write_call_id(PredOrFunc, Name/Arity),
+	io__write_string(".\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  (The determinism of this predicate will be automatically\n"),
+		io__write_string("  (The determinism of this predicate or function will be\n"),
 		prog_out__write_context(Context),
-		io__write_string("  inferred by the compiler. To suppress this warning, use\n"),
+		io__write_string("  automatically inferred by the compiler. To suppress this\n"),
 		prog_out__write_context(Context),
-		io__write_string("  the `--no-warn-missing-det-decls' option.)\n")
+		io__write_string("  warning, use the `--no-warn-missing-det-decls' option.)\n")
 	;
 		[]
 	).
 
-:- pred unspecified_det_error(sym_name, int, term__context, 
+:- pred unspecified_det_error(sym_name, arity, pred_or_func, term__context,
 				io__state, io__state).
-:- mode unspecified_det_error(in, in, in, di, uo) is det.
+:- mode unspecified_det_error(in, in, in, in, di, uo) is det.
 
-unspecified_det_error(Name, Arity, Context) -->
+unspecified_det_error(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
-	io__write_string("Error: no determinism declaration for exported pred\n"),
+	io__write_string("Error: no determinism declaration for exported\n"),
 	prog_out__write_context(Context),
-	io__write_string("  `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'\n").
+	io__write_string("  "),
+	hlds_out__write_call_id(PredOrFunc, Name/Arity),
+	io__write_string(".\n").
 
-:- pred clause_for_imported_pred_error(sym_name, int, term__context, 
-				io__state, io__state).
-:- mode clause_for_imported_pred_error(in, in, in, di, uo) is det.
+:- pred clause_for_imported_pred_error(sym_name, arity, pred_or_func,
+				term__context, io__state, io__state).
+:- mode clause_for_imported_pred_error(in, in, in, in, di, uo) is det.
 
-clause_for_imported_pred_error(Name, Arity, Context) -->
+clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
-	io__write_string("Error: clause for imported pred `"),
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'.\n").
+	io__write_string("Error: clause for imported "),
+	hlds_out__write_call_id(PredOrFunc, Name/Arity),
+	io__write_string(".\n").
 
 :- pred unqualified_pred_error(sym_name, int, term__context,
 				io__state, io__state).
@@ -2377,11 +2379,12 @@ clause_for_imported_pred_error(Name, Arity, Context) -->
 unqualified_pred_error(PredName, Arity, Context) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
-	io__write_string("Error: An unqualified predicate name `"),
+	io__write_string("Internal error: an unqualified predicate name `"),
 	prog_out__write_sym_name(PredName),
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("'.\n"),
-	io__write_string("\t\tShould have been qualified by prog_io.m.\n").
+	prog_out__write_context(Context),
+	io__write_string("  should have been qualified by prog_io.m.\n").
 
 %-----------------------------------------------------------------------------%
