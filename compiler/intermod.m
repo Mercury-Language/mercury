@@ -37,7 +37,7 @@
 :- interface.
 
 :- import_module io, bool.
-:- import_module hlds_module, modules.
+:- import_module hlds_module, modules, prog_io, prog_data.
 
 :- pred intermod__write_optfile(module_info, module_info,
 				io__state, io__state).
@@ -55,6 +55,28 @@
 		io__state, io__state).
 :- mode intermod__adjust_pred_import_status(in, out, di, uo) is det.
 
+:- type opt_file_type
+	--->	opt
+	;	trans_opt
+	.
+
+	% intermod__update_error_status(OptFileType, FileName, Error, Messages,
+	% 	Status0, Status)
+	%
+	% Work out whether any fatal errors have occurred while reading
+	% `.opt' files, updating Status0 if there were fatal errors.
+	%
+	% A missing `.opt' file is only a fatal error if
+	% `--warn-missing-opt-files --halt-at-warn' was passed
+	% the compiler.
+	%
+	% Syntax errors in `.opt' files are always fatal.
+	%
+	% This is also used by trans_opt.m for reading `.trans_opt' files.
+:- pred intermod__update_error_status(opt_file_type, string, module_error,
+		message_list, bool, bool, io__state, io__state).
+:- mode intermod__update_error_status(in, in, in, in, in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -66,7 +88,7 @@
 :- import_module code_util, globals, goal_util, term, varset.
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
 :- import_module mercury_to_mercury, mode_util, modules.
-:- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
+:- import_module options, passes_aux, prog_out, prog_util.
 :- import_module special_pred, typecheck, type_util, instmap, (inst).
 
 %-----------------------------------------------------------------------------%
@@ -1731,27 +1753,37 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 read_optimization_interfaces([], Items, Items, Error, Error) --> [].
 read_optimization_interfaces([Import | Imports],
 		Items0, Items, Error0, Error) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	maybe_write_string(VeryVerbose,
-			"% Reading optimization interface for module"),
-	maybe_write_string(VeryVerbose, " `"),
-	{ prog_out__sym_name_to_string(Import, ImportString) },
-	maybe_write_string(VeryVerbose, ImportString),
-	maybe_write_string(VeryVerbose, "'... "),
-	maybe_flush_output(VeryVerbose),
-	maybe_write_string(VeryVerbose, "% done.\n"),
+	( { Import = qualified(_, _) } ->
+		% XXX Don't read in optimization interfaces for
+		% nested modules, because we also need to read in
+		% the `.int0' file for the parent modules.
+		% Reading them in may cause problems because the
+		% `.int0' files duplicate information in the `.int'
+		% files.
+		{ Error1 = Error0 },
+		{ Items2 = Items0 }
+	;
+		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+		maybe_write_string(VeryVerbose,
+				"% Reading optimization interface for module"),
+		maybe_write_string(VeryVerbose, " `"),
+		{ prog_out__sym_name_to_string(Import, ImportString) },
+		maybe_write_string(VeryVerbose, ImportString),
+		maybe_write_string(VeryVerbose, "'... "),
+		maybe_flush_output(VeryVerbose),
+		maybe_write_string(VeryVerbose, "% done.\n"),
 
-	module_name_to_file_name(Import, ".opt", no, FileName),
-	prog_io__read_opt_file(FileName, Import, yes,
-			ModuleError, Messages, Items1),
-	update_error_status(FileName, ModuleError, Messages, Error0, Error1),
-	{ list__append(Items0, Items1, Items2) },
+		module_name_to_file_name(Import, ".opt", no, FileName),
+		prog_io__read_opt_file(FileName, Import, yes,
+				ModuleError, Messages, Items1),
+		update_error_status(opt, FileName, ModuleError, Messages,
+				Error0, Error1),
+		{ list__append(Items0, Items1, Items2) }
+	),
 	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
 
-:- pred update_error_status(string::in, module_error::in, message_list::in, 
-		bool::in, bool::out, io__state::di, io__state::uo) is det.
-
-update_error_status(FileName, ModuleError, Messages, Error0, Error1) -->
+update_error_status(FileType, FileName, ModuleError, Messages,
+		Error0, Error1) -->
 	(
 		{ ModuleError = no },
 		{ Error1 = Error0 }
@@ -1761,7 +1793,14 @@ update_error_status(FileName, ModuleError, Messages, Error0, Error1) -->
 		{ Error1 = yes }
 	;
 		{ ModuleError = fatal },
-		globals__io_lookup_bool_option(warn_missing_opt_files, DoWarn),
+		{
+			FileType = opt,
+			WarningOption = warn_missing_opt_files
+		;
+			FileType = trans_opt,
+			WarningOption = warn_missing_trans_opt_files
+		},
+		globals__io_lookup_bool_option(WarningOption, DoWarn),
 		( { DoWarn = yes } ->
 			io__write_string("Warning: cannot open `"),
 			io__write_string(FileName),

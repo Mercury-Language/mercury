@@ -62,6 +62,7 @@ OTHER_SOURCES= \
 	int64.m \
 	intermod_impure.m \
 	intermod_lambda.m \
+	intermod_nested_module.m \
 	intermod_nested_uniq.m \
 	intermod_quote.m \
 	intermod_test.m \
@@ -184,6 +185,8 @@ MCFLAGS-intermod_impure		= --intermodule-optimization
 MCFLAGS-intermod_impure2	= --intermodule-optimization
 MCFLAGS-intermod_lambda		= --intermodule-optimization
 MCFLAGS-intermod_lambda2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module	= --intermodule-optimization
+MCFLAGS-intermod_nested_module2	= --intermodule-optimization
 MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
 MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
 MCFLAGS-intermod_quote		= --intermodule-optimization
@@ -201,6 +204,9 @@ MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 MCFLAGS-zero_arity		= --infer-modes
+
+# XXX mmake should automatically handle this dependency.
+intermod_nested_module2.date: intermod_nested_module2.date0
 
 check:	objs aditi_update.err
 

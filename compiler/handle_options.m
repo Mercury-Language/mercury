@@ -256,6 +256,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
+	option_implies(check_termination, warn_missing_trans_opt_files,
+		bool(yes)),
 	option_implies(make_transitive_opt_interface, transitive_optimization,
 		bool(yes)),
 	option_implies(transitive_optimization, intermodule_optimization,

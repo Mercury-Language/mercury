@@ -2490,6 +2490,10 @@ used in the interface.
 Warn about @samp{.opt} files that cannot be opened.
 
 @sp 1
+@item --warn-missing-trans-opt-files
+Warn about @samp{.trans_opt} files that cannot be opened.
+
+@sp 1
 @item --warn-non-stratification
 Warn about possible non-stratification of the predicates/functions in the
 module.

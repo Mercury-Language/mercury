@@ -55,6 +55,7 @@
 		;	warn_unused_args
 		;	warn_interface_imports
 		;	warn_missing_opt_files
+		;	warn_missing_trans_opt_files
 		;	warn_missing_trans_opt_deps
 		;	warn_non_stratification
 		;	warn_simple_code
@@ -411,6 +412,7 @@ option_defaults_2(warning_option, [
 	warn_interface_imports	-	bool(yes),
 	warn_non_stratification -	bool(no),
 	warn_missing_opt_files  -	bool(yes),
+	warn_missing_trans_opt_files -	bool(no),
 	warn_missing_trans_opt_deps  -	bool(yes),
 	warn_simple_code	-	bool(yes),
 	warn_duplicate_calls	-	bool(no),
@@ -762,6 +764,7 @@ long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
 long_option("warn-non-stratification",	warn_non_stratification).
 long_option("warn-missing-opt-files",	warn_missing_opt_files).
+long_option("warn-missing-trans-opt-files",	warn_missing_trans_opt_files).
 long_option("warn-missing-trans-opt-deps",	warn_missing_trans_opt_deps).
 long_option("warn-simple-code",		warn_simple_code).
 long_option("warn-duplicate-calls",	warn_duplicate_calls).
@@ -1167,6 +1170,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_nothing_exported	-	bool(Enable),
 			warn_interface_imports	-	bool(Enable),
 			warn_missing_opt_files	-	bool(Enable),
+			warn_missing_trans_opt_files -	bool(Enable),
 			warn_missing_trans_opt_deps -	bool(Enable),
 			warn_simple_code	-	bool(Enable),
 			warn_missing_module_name -	bool(Enable),
@@ -1419,6 +1423,9 @@ options_help_warning -->
 		"\twhich are not used in the interface.",
 		"--no-warn-missing-opt-files",
 		"\tDisable warnings about `.opt' files which cannot be opened.",
+		"--warn-missing-trans-opt-files",
+		"\tEnable warnings about `.trans_opt' files which cannot",
+		"\tbe opened.",
 		"--no-warn-missing-trans-opt-deps",
 		"\tDisable warnings produced when the information required",
 		"\tto allow `.trans_opt' files to be read when creating other",

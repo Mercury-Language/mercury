@@ -70,7 +70,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, mercury_to_mercury.
+:- import_module intermod, hlds_pred, mercury_to_mercury.
 :- import_module prog_io, globals, code_util.
 :- import_module passes_aux, prog_out, options, termination.
 
@@ -218,23 +218,9 @@ read_trans_opt_files([Import | Imports],
 
 	maybe_write_string(VeryVerbose, " done.\n"),
 
-	update_error_status(ModuleError, Messages, Error0, Error1),
+	intermod__update_error_status(trans_opt, FileName, ModuleError,
+		Messages, Error0, Error1),
+
 	{ list__append(Items0, Items1, Items2) },
 	read_trans_opt_files(Imports, Items2, Items, Error1, Error).
 
-:- pred update_error_status(module_error, message_list, 
-	bool, bool, io__state, io__state).
-:- mode update_error_status(in, in, in, out, di, uo) is det.
-
-update_error_status(ModuleError, Messages, Error0, Error1) -->
-	(
-		{ ModuleError = no },
-		{ Error1 = Error0 }
-	;
-		{ ModuleError = yes },
-		prog_out__write_messages(Messages),
-		{ Error1 = yes }
-	;
-		{ ModuleError = fatal },
-		{ Error1 = yes }	
-	).
