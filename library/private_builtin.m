@@ -455,7 +455,7 @@ static int MR_SECTAG_LOCAL				= 1;
 static int MR_SECTAG_REMOTE				= 2;
 static int MR_SECTAG_VARIABLE				= 3;
 
-static int
+static MR_bool
 __Unify____type_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
@@ -463,7 +463,7 @@ __Unify____type_info_1_0(
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____typeclass_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
@@ -471,7 +471,7 @@ __Unify____typeclass_info_1_0(
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____base_typeclass_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
@@ -479,7 +479,7 @@ __Unify____base_typeclass_info_1_0(
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____type_ctor_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
@@ -515,7 +515,7 @@ __Compare____base_typeclass_info_1_0(
 	mercury::runtime::Errors::SORRY(S""compare for base_typeclass_info"");
 }
 
-static int
+static MR_bool
 do_unify__type_ctor_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
@@ -525,7 +525,7 @@ do_unify__type_ctor_info_1_0(
 		dynamic_cast<MR_Word>(y));
 }
 
-static int
+static MR_bool
 do_unify__type_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
@@ -535,7 +535,7 @@ do_unify__type_info_1_0(
 		dynamic_cast<MR_Word>(y));
 }
 
-static int
+static MR_bool
 do_unify__typeclass_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
@@ -545,7 +545,7 @@ do_unify__typeclass_info_1_0(
 		dynamic_cast<MR_Word>(y));
 }
 
-static int
+static MR_bool
 do_unify__base_typeclass_info_1_0(
 	MR_Word type_info, MR_Box x, MR_Box y)
 {
@@ -1012,7 +1012,7 @@ reclaim_heap_nondet_pragma_foreign_code :-
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0,
 	MR_TYPECTOR_REP_HP) 
 
-static int
+static MR_bool
 __Unify__private_builtin__heap_pointer_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -1028,7 +1028,7 @@ __Compare__private_builtin__heap_pointer_0_0(
 		""called compare/3 for type `private_builtin:heap_pointer'"");
 }
 
-static int
+static MR_bool
 do_unify__heap_pointer_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -1047,13 +1047,13 @@ do_compare__heap_pointer_0_0(
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, ref, 1,
 	MR_TYPECTOR_REP_REFERENCE) 
 
-static int
+static MR_bool
 __Unify__private_builtin__ref_1_0(MR_Word type_info, MR_Word x, MR_Word y)
 {
 	return x == y;
 }
 
-static int
+static MR_bool
 do_unify__ref_1_0(MR_Word type_info, MR_Box x, MR_Box y)
 {
 	return x == y;

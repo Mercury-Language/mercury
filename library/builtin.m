@@ -569,32 +569,32 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, func, 0, MR_TYPECTOR_REP_FUNC)
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, pred, 0, MR_TYPECTOR_REP_PRED) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE) 
 
-static int
+static MR_bool
 __Unify____int_0_0(MR_Integer x, MR_Integer y)
 {
 	return x == y;
 }
 
-static int
+static MR_bool
 __Unify____string_0_0(MR_String x, MR_String y)
 {
 	return System::String::Equals(x, y);
 }
 
-static int
+static MR_bool
 __Unify____character_0_0(MR_Char x, MR_Char y)
 {
 	return x == y;
 }
 
-static int
+static MR_bool
 __Unify____float_0_0(MR_Float x, MR_Float y)
 {
 	/* XXX what should this function do when x and y are both NaNs? */
 	return x == y;
 }
 
-static int
+static MR_bool
 __Unify____void_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -602,7 +602,7 @@ __Unify____void_0_0(MR_Word x, MR_Word y)
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____c_pointer_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -610,7 +610,7 @@ __Unify____c_pointer_0_0(MR_Word x, MR_Word y)
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____func_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -618,7 +618,7 @@ __Unify____func_0_0(MR_Word x, MR_Word y)
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____pred_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -626,7 +626,7 @@ __Unify____pred_0_0(MR_Word x, MR_Word y)
 	return 0;
 }
 
-static int
+static MR_bool
 __Unify____tuple_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -725,7 +725,7 @@ __Compare____tuple_0_0(MR_Word_Ref result,
 ** These are just wrappers which call the unboxed version.
 */
 
-static int
+static MR_bool
 do_unify__int_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____int_0_0(
@@ -733,7 +733,7 @@ do_unify__int_0_0(MR_Box x, MR_Box y)
 		System::Convert::ToInt32(y)); 
 }
 
-static int
+static MR_bool
 do_unify__string_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____string_0_0(
@@ -741,7 +741,7 @@ do_unify__string_0_0(MR_Box x, MR_Box y)
 		dynamic_cast<MR_String>(y));
 }
 
-static int
+static MR_bool
 do_unify__float_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____float_0_0(
@@ -749,7 +749,7 @@ do_unify__float_0_0(MR_Box x, MR_Box y)
 		System::Convert::ToDouble(y)); 
 }
 
-static int
+static MR_bool
 do_unify__character_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____character_0_0(
@@ -757,7 +757,7 @@ do_unify__character_0_0(MR_Box x, MR_Box y)
 		System::Convert::ToChar(y)); 
 }
 
-static int
+static MR_bool
 do_unify__void_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -765,7 +765,7 @@ do_unify__void_0_0(MR_Box x, MR_Box y)
 	return 0;
 }
 
-static int
+static MR_bool
 do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::builtin__cpp_code::mercury_code::__Unify____c_pointer_0_0(
@@ -773,7 +773,7 @@ do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
 		dynamic_cast<MR_Word>(y)); 
 }
 
-static int
+static MR_bool
 do_unify__func_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -781,7 +781,7 @@ do_unify__func_0_0(MR_Box x, MR_Box y)
 	return 0;
 }
 
-static int
+static MR_bool
 do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
@@ -789,7 +789,7 @@ do_unify__pred_0_0(MR_Box x, MR_Box y)
 	return 0;
 }
 
-static int
+static MR_bool
 do_unify__tuple_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(

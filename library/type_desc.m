@@ -221,7 +221,7 @@ special___Unify___type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 	return 0;
 }
 
-static int
+static MR_bool
 do_unify__type_ctor_desc_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_ctor_desc_0_0(
@@ -267,7 +267,7 @@ special___Unify___type_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
 }
 
-static int
+static MR_bool
 do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
 	return mercury::type_desc__cpp_code::mercury_code::__Unify____type_desc_0_0(
