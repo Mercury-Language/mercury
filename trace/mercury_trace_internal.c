@@ -28,6 +28,7 @@
 #include "mercury_trace_readline.h"
 
 #include "mdb.browse.h"
+#include "mdb.program_representation.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1741,8 +1742,6 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("help", "help");
 		}
 	} else if (streq(words[0], "proc_body")) {
-		extern const struct MR_TypeCtorInfo_Struct
-			mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0;
 		const MR_Stack_Layout_Entry	*entry;
 
 		entry = event_info->MR_event_sll->MR_sll_entry;
@@ -1751,7 +1750,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				"current procedure has no body info\n");
 		} else {
 			MR_trace_browse_internal(
-				(MR_Word) &mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0,
+				ML_goal_rep_type(),
 				entry->MR_sle_proc_rep,
 				MR_BROWSE_CALLER_PRINT,
 				MR_BROWSE_DEFAULT_FORMAT);

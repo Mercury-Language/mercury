@@ -33,7 +33,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, std_util.
 
 	% A representation of the goal we execute.  These need to be
 	% generated statically and stored inside the executable.
@@ -125,6 +125,16 @@
 	;	cc_multidet_rep
 	;	erroneous_rep
 	;	failure_rep.
+
+	% Returns type_of(_ `with_type` goal_rep), for use in C code.
+:- func goal_rep_type = type_desc.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- pragma export(goal_rep_type = out, "ML_goal_rep_type").
+goal_rep_type = type_of(_ `with_type` goal_rep).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
