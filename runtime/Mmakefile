@@ -28,6 +28,7 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 # All the headers in $(HDRS) should be syntactically well-formed
 # header files, unlike the headers in $(BODY_HDRS).
+# All the headers in $(HDRS) must also be in C (not C++).
 
 #		  keep this list in alphabetical order, please
 HDRS		=	\
@@ -59,7 +60,6 @@ HDRS		=	\
 			mercury_label.h		\
 			mercury_layout_util.h	\
 			mercury_library_types.h	\
-			mercury_mcpp.h		\
 			mercury_memory.h	\
 			mercury_memory_zones.h	\
 			mercury_memory_handlers.h	\
@@ -110,6 +110,9 @@ MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/pa_regs.h	\
 			machdeps/rs6000_regs.h
 
+# MCPP_HDRS are header files in Microsoft's Managed extensions for C++
+
+MCPP_HDRS	=	mercury_mcpp.h		
 
 #		  keep this list in alphabetical order, please
 CFILES		= 	\
@@ -363,8 +366,10 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_headers
-install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) \
+		$(MCPP_HDRS) install_dirs
 	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+	cp `vpath_find $(MCPP_HDRS)` $(INSTALL_INC_DIR)
 	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
