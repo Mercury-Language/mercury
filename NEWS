@@ -487,3 +487,8 @@ Changes to the Mercury implementation:
 * XXX remove the X debugger command
 
 * We've made the MERCURY_OPTIONS environment variable somewhat easier to use.
+
+* Mtags is now able to produce tags for typeclass declarations.  It is
+  also able to produce tags files in the extended format supported by
+  recent versions of Vim and Elvis.  Do `mtags --help' for more
+  information.
