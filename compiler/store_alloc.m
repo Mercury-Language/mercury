@@ -122,21 +122,16 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, Follow0, ModuleInfo,
 		set__difference(Liveness, Liveness0, OutputVars),
 		set__to_sorted_list(OutputVars, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, Follow, StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo1)
+		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo)
 	;
 		goal_is_branched(Goal)
 	->
 		set__to_sorted_list(Liveness, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, Follow, StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo1)
+		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo)
 	;
-		goal_info_set_store_map(GoalInfo0, no, GoalInfo1)
-	),
-		% mark the nondet live variables as
-		% being live on continuation after the failure of this goal
-	goal_info_nondet_lives(GoalInfo1, NondetLives),
-	ContLives = yes(NondetLives),
-	goal_info_set_cont_lives(GoalInfo1, ContLives, GoalInfo).
+		goal_info_set_store_map(GoalInfo0, no, GoalInfo)
+	).
 
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
