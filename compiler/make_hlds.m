@@ -4351,25 +4351,12 @@ unravel_unification(term__variable(X), RHS,
 						MQInfo0, MQInfo1),
 		{ qual_info_set_mq_info(Info0, MQInfo1, Info1) },
 		{ Det = Det1 },
-		{ make_fresh_arg_vars(Vars1, VarSet0, Vars, VarSet1) },
 		{ term__coerce(GoalTerm1, GoalTerm) },
-		{ parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2) },
-		{ map__init(Substitution) },
-		transform_goal(ParsedGoal, VarSet2, Substitution,
-				HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head, no,
-			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
-
-			 % quantification will reduce this down to
-			 % the proper set of nonlocal arguments.
-		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
-		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
-		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
-
-		{ create_atomic_unification(X,
-			lambda_goal(predicate, LambdaNonLocals, Vars, 
-				Modes, Det, HLDS_Goal),
-			Context, MainContext, SubContext, Goal) }
+		{ parse_goal(GoalTerm, VarSet0, ParsedGoal, VarSet1) },
+		build_lambda_expression(X, predicate, Vars1,
+			Modes, Det, ParsedGoal, VarSet1,
+			Context, MainContext, SubContext, Goal, VarSet,
+			Info1, Info)
 	;
 	    {
 		% handle higher-order dcg pred expressions -
@@ -4384,30 +4371,17 @@ unravel_unification(term__variable(X), RHS,
 	->
 		{ qual_info_get_mq_info(Info0, MQInfo0) },
 		module_qual__qualify_lambda_mode_list(Modes0, Modes, Context,
-			MQInfo0, MQInfo1),
+						MQInfo0, MQInfo1),
 		{ qual_info_set_mq_info(Info0, MQInfo1, Info1) },
 		{ term__coerce(GoalTerm0, GoalTerm) },
 		{ parse_dcg_pred_goal(GoalTerm, VarSet0,
 			ParsedGoal, DCG0, DCGn, VarSet1) },
 		{ list__append(Vars0, [term__variable(DCG0),
 				term__variable(DCGn)], Vars1) },
-		{ make_fresh_arg_vars(Vars1, VarSet1, Vars, VarSet2) },
-		{ map__init(Substitution) },
-		transform_goal(ParsedGoal, VarSet2, Substitution,
-			HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head, no,
-			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
-
-			 % quantification will reduce this down to
-			 % the proper set of nonlocal arguments.
-		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
-		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
-		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
-
-		{ create_atomic_unification(X,
-			lambda_goal(predicate, LambdaNonLocals, Vars, 
-				Modes, Det, HLDS_Goal),
-			Context, MainContext, SubContext, Goal) }
+		build_lambda_expression(X, predicate, Vars1,
+			Modes, Det, ParsedGoal, VarSet1,
+			Context, MainContext, SubContext, Goal, VarSet,
+			Info1, Info)
 	;
 	    {
 		% handle higher-order func expressions -
@@ -4431,25 +4405,12 @@ unravel_unification(term__variable(X), RHS,
 						MQInfo0, MQInfo1),
 		{ qual_info_set_mq_info(Info0, MQInfo1, Info1) },
 		{ Det = Det1 },
-		{ make_fresh_arg_vars(Vars1, VarSet0, Vars, VarSet1) },
 		{ term__coerce(GoalTerm1, GoalTerm) },
-		{ parse_goal(GoalTerm, VarSet1, ParsedGoal, VarSet2) },
-		{ map__init(Substitution) },
-		transform_goal(ParsedGoal, VarSet2, Substitution,
-				HLDS_Goal0, VarSet3, Info1, Info2),
-		insert_arg_unifications(Vars, Vars1, Context, head, no,
-			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
-
-			 % quantification will reduce this down to
-			 % the proper set of nonlocal arguments.
-		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
-		{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
-		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
-
-		{ create_atomic_unification(X,
-			lambda_goal(function, LambdaNonLocals, Vars, 
-				Modes, Det, HLDS_Goal),
-			Context, MainContext, SubContext, Goal) }
+		{ parse_goal(GoalTerm, VarSet0, ParsedGoal, VarSet1) },
+		build_lambda_expression(X, function, Vars1,
+			Modes, Det, ParsedGoal, VarSet1,
+			Context, MainContext, SubContext, Goal, VarSet,
+			Info1, Info)
 	;
 		% handle if-then-else expressions
 		{   F = term__atom("else"),
@@ -4552,6 +4513,36 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	{ goal_to_conj_list(Goal1, ConjList1) },
 	{ list__append(ConjList0, ConjList1, ConjList) },
 	{ conj_list_to_goal(ConjList, GoalInfo, Goal) }.
+
+:- pred build_lambda_expression(prog_var, pred_or_func, list(prog_term),
+		list(mode), determinism, goal, prog_varset,
+		prog_context, unify_main_context, unify_sub_contexts,
+		hlds_goal, prog_varset, qual_info, qual_info,
+		io__state, io__state).
+:- mode build_lambda_expression(in, in, in, in, in, in, in,
+		in, in, in, out, out, in, out, di, uo) is det.
+
+build_lambda_expression(X, PredOrFunc, Vars1, Modes, Det, ParsedGoal, VarSet1,
+		Context, MainContext, SubContext, Goal, VarSet,
+		Info1, Info) -->
+	{ make_fresh_arg_vars(Vars1, VarSet1, Vars, VarSet2) },
+	{ map__init(Substitution) },
+	transform_goal(ParsedGoal, VarSet2, Substitution,
+			HLDS_Goal0, VarSet3, Info1, Info2),
+	insert_arg_unifications(Vars, Vars1, Context, head, no,
+		HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
+
+		 % quantification will reduce this down to
+		 % the proper set of nonlocal arguments.
+	{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
+	{ set__delete_list(LambdaGoalVars0, Vars, LambdaGoalVars1) },
+
+	{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
+
+	{ create_atomic_unification(X,
+		lambda_goal(PredOrFunc, LambdaNonLocals, Vars, 
+			Modes, Det, HLDS_Goal),
+		Context, MainContext, SubContext, Goal) }.
 
 	% create the hlds_goal for a unification which cannot be
 	% further simplified, filling in all the as yet
