@@ -324,7 +324,8 @@ term__type_to_term(Val, Term) :-
 term__type_to_term_2(Univ, Term) :-
 	term__context_init(Context),
 	(
-		num_functors(univ_type(Univ)) < 0
+		% NU-Prolog barfs on `num_functors(univ_type(Univ)) < 0'
+		num_functors(univ_type(Univ)) = N, N < 0
 	->
 		( univ_to_type(Univ, Int) ->
 			Term = term__functor(term__integer(Int), [], Context)
