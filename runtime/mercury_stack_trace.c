@@ -58,18 +58,18 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 #ifndef MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
 #else
-	Label			*label;
-	MR_Stack_Layout_Label	*layout;
-	MR_Stack_Layout_Entry	*entry_layout;
-	const char		*result;
+	const MR_Internal		*label;
+	const MR_Stack_Layout_Label	*layout;
+	const MR_Stack_Layout_Entry	*entry_layout;
+	const char			*result;
 
 	fprintf(stderr, "Stack dump follows:\n");
 
-	label = lookup_label_addr(success_pointer);
+	label = MR_lookup_internal_by_addr(success_pointer);
 	if (label == NULL) {
 		fprintf(stderr, "internal label not found\n");
 	} else {
-		layout = (MR_Stack_Layout_Label *) label->e_layout;
+		layout = label->i_layout;
 		entry_layout = layout->MR_sll_entry;
 		result = MR_dump_stack_from_layout(stderr, entry_layout,
 			det_stack_pointer, current_frame);
