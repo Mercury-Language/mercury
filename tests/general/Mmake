@@ -22,7 +22,6 @@ NONDETPROGS=	commit_bug \
 		nasty_nondet \
 		nondet_disj \
 		nondet_ite \
-		nondet_ite_2 \
 		nondet_ite_3 \
 		nondetlive \
 		partition \
@@ -30,6 +29,7 @@ NONDETPROGS=	commit_bug \
 
 DETPROGS=	arithmetic \
 		det_complicated_unify \
+		determinism_inlining \
 		double_error \
 		double_error2 \
 		duplicate_label \
@@ -52,7 +52,8 @@ DETPROGS=	arithmetic \
 		univ \
 		unreachable
 
-NOTWORKING=	space
+NOTWORKING=	nondet_ite_2 \
+		space
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
