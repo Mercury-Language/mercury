@@ -22,37 +22,37 @@
 %-----------------------------------------------------------------------------%
 
 :- pred char_to_int(character, int).
-:- mode char_to_int(input, output).
-:- mode char_to_int(output, input).
+:- mode char_to_int(in, out).
+:- mode char_to_int(out, in).
 	% Convert a character to it's corresponding numerical code.
 
 :- pred to_upper(character, character).
-:- mode to_upper(input, output).
+:- mode to_upper(in, out).
 	% Convert a character to uppercase.
 
 :- pred to_lower(character, character).
-:- mode to_lower(input, output).
+:- mode to_lower(in, out).
 	% Convert a character to lowercase.
 
 :- pred is_upper(character).
-:- mode is_upper(input).
+:- mode is_upper(in).
 	% True iff the character is an uppercase letter.
 
 :- pred is_alpha(character).
-:- mode is_alpha(input).
+:- mode is_alpha(in).
 	% True iff the character is a letter.
 
 :- pred is_digit(character).
-:- mode is_digit(input).
+:- mode is_digit(in).
 	% True iff the character is a decimal digit.
 
 :- pred is_lower(character).
-:- mode is_lower(input).
+:- mode is_lower(in).
 	% True iff the character is a lowercase letter.
 
 :- pred upper_lower(character, character).
-:- mode upper_lower(input, output).
-:- mode upper_lower(output, input).
+:- mode upper_lower(in, out).
+:- mode upper_lower(out, in).
 	% upper_lower(Upper, Lower) is true iff
 	% Upper is an upper-case letter and Lower is the corresponding
 	% lower-case letter.
