@@ -340,7 +340,7 @@ options_help -->
 	io__write_string("\t--no-peephole-jump-opt\n"),
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
 	io__write_string("\t--no-peephole-label-elim\n"),
-	io__write_string("\t\tDisable eliminatation of useless labels\n"),
+	io__write_string("\t\tDisable elimination of useless labels\n"),
 	io__write_string("\t--peephole-value-number\n"),
 	io__write_string("\t\tPerform value numbering\n"),
 	io__write_string("\t--no-static-ground-terms\n"),

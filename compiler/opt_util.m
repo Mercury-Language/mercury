@@ -14,8 +14,14 @@
 :- pred opt_util__skip_comments(list(instruction), list(instruction)).
 :- mode opt_util__skip_comments(in, out) is det.
 
+:- pred opt_util__skip_comments_livevals(list(instruction), list(instruction)).
+:- mode opt_util__skip_comments_livevals(in, out) is det.
+
 :- pred opt_util__skip_comments_labels(list(instruction), list(instruction)).
 :- mode opt_util__skip_comments_labels(in, out) is det.
+
+:- pred opt_util__skip_comments_livevals_labels(list(instruction), list(instruction)).
+:- mode opt_util__skip_comments_livevals_labels(in, out) is det.
 
 	% Find the next modframe if it is guaranteed to be reached from here
 
@@ -37,6 +43,12 @@
 
 :- pred opt_util__is_proceed_next(list(instruction), list(instruction)).
 :- mode opt_util__is_proceed_next(in, out) is semidet.
+
+	% Remove the livevals instruction from the list returned by
+	% opt_util__is_proceed_next.
+
+:- pred opt_util__proceed_no_livevals(list(instruction), list(instruction)).
+:- mode opt_util__proceed_no_livevals(in, out) is semidet.
 
 	% Check whether an instruction can possibly branch away.
 
@@ -80,11 +92,31 @@ opt_util__skip_comments(Instrs0, Instrs) :-
 		Instrs = Instrs0
 	).
 
+opt_util__skip_comments_livevals(Instrs0, Instrs) :-
+	( Instrs0 = [comment(_) - _ | Instrs1] ->
+		opt_util__skip_comments(Instrs1, Instrs)
+	; Instrs0 = [livevals(_) - _ | Instrs1] ->
+		opt_util__skip_comments_livevals(Instrs1, Instrs)
+	;
+		Instrs = Instrs0
+	).
+
 opt_util__skip_comments_labels(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		opt_util__skip_comments_labels(Instrs1, Instrs)
 	; Instrs0 = [label(_) - _ | Instrs1] ->
 		opt_util__skip_comments_labels(Instrs1, Instrs)
+	;
+		Instrs = Instrs0
+	).
+
+opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
+	( Instrs0 = [comment(_) - _ | Instrs1] ->
+		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
+	; Instrs0 = [livevals(_) - _ | Instrs1] ->
+		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
+	; Instrs0 = [label(_) - _ | Instrs1] ->
+		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
 	;
 		Instrs = Instrs0
 	).
@@ -111,6 +143,9 @@ opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	Instr = Uinstr - _Comment,
 	( Uinstr = comment(_) ->
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
+	; Uinstr = livevals(_) ->
+		% this is questionable
+		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
 	; Uinstr = label(NextLabel) ->
 		( Label = NextLabel ->
 			Remainder = Moreinstr
@@ -130,9 +165,16 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 	Instrs3 = [Instr3 | Instrs4],
 	Instr3 = decr_sp(_) - _,
 	opt_util__skip_comments_labels(Instrs4, Instrs5),
-	Instrs5 = [Instr5 | _],
-	Instr5 = goto(succip) - _,
-	Instrs_between = [Instr1, Instr3].
+	Instrs5 = [Instr5 | Instrs6],
+	Instr5 = livevals(_) - _,
+	opt_util__skip_comments_labels(Instrs6, Instrs7),
+	Instrs7 = [Instr7 | _],
+	Instr7 = goto(succip) - _,
+	Instrs_between = [Instr1, Instr3, Instr5].
+
+opt_util__proceed_no_livevals(Instrs0, Instrs) :-
+	Instrs0 = [I1, I2, _I3],
+	Instrs = [I1, I2].
 
 opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).

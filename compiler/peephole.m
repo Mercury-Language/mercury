@@ -122,7 +122,29 @@ peephole__short_circuit(Instrs0, Instrs, Mod) :-
 	map__init(Procmap0),
 	peephole__jumpopt_build_maps(Instrs0, Jumpmap0, Jumpmap,
 		Procmap0, Procmap),
+	% peephole__print_procmap(Procmap),
 	peephole__jumpopt_instr_list(Instrs0, Jumpmap, Procmap, Instrs, Mod).
+
+:- pred peephole__print_procmap(procmap).
+:- mode peephole__print_procmap(in) is det.
+
+peephole__print_procmap(Procmap) :-
+	write('Procmap:'),
+	nl,
+	map__to_assoc_list(Procmap, Assoclist),
+	peephole__print_proclist(Assoclist).
+
+:- pred peephole__print_proclist(list(pair(label, list(instruction)))).
+:- mode peephole__print_proclist(in) is det.
+
+peephole__print_proclist([]).
+peephole__print_proclist([Label - Instrs | Assoclist]) :-
+	nl,
+	write(Label),
+	write(' maps to '),
+	write(Instrs),
+	nl,
+	peephole__print_proclist(Assoclist).
 
 :- pred peephole__jumpopt_build_maps(list(instruction), jumpmap, jumpmap,
 	procmap, procmap).
@@ -132,7 +154,7 @@ peephole__jumpopt_build_maps([], Jumpmap, Jumpmap, Procmap, Procmap).
 peephole__jumpopt_build_maps([Instr - _Comment|Instrs],
 		Jumpmap0, Jumpmap, Procmap0, Procmap) :-
 	( Instr = label(Label) ->
-		opt_util__skip_comments(Instrs, Instrs1),
+		opt_util__skip_comments_livevals(Instrs, Instrs1),
 		( Instrs1 = [Nextinstr | _] ->
 			% write('label '),
 			% write(Label),
@@ -174,19 +196,13 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Jumpmap, Procmap,
 	->
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
-		( map__search(Procmap, Destlabel, Between) ->
-			list__append(Between, [goto(Proc) - Redirect],
-				Newinstrs),
-			Mod0 = yes
+		( Retlabel = Destlabel ->
+			Newinstrs = [Instr0],
+			Mod0 = no
 		;
-			( Retlabel = Destlabel ->
-				Newinstrs = [Instr0],
-				Mod0 = no
-			;
-				Newinstrs = [call(Proc, label(Destlabel))
-						- Redirect],
-				Mod0 = yes
-			)
+			Newinstrs = [call(Proc, label(Destlabel))
+					- Redirect],
+			Mod0 = yes
 		)
 	; Uinstr0 = goto(label(Targetlabel)) ->
 		( Moreinstrs0 = [label(Targetlabel) - _|_] ->
@@ -323,14 +339,17 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions, Mod) :-
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
 	%					succip = ...
-	%					decr_sp(X)
+	%					decr_sp(N)
+	%	livevals(L1)			livevals(L1)
 	%	call(Foo, &&ret);		tailcall(Foo)
 	%       <comments, labels>		<comments, labels>
 	%     ret:			=>    ret:
 	%       <comments, labels>		<comments, labels>
 	%	succip = ...			succip = ...
 	%       <comments, labels>		<comments, labels>
-	%	decr_sp(X)			decr_sp(X)
+	%	decr_sp(N)			decr_sp(N)
+	%       <comments, labels>		<comments, labels>
+	%	livevals(L2)			decr_sp(L2)
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 	%
@@ -338,15 +357,17 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions, Mod) :-
 	% code, since the label might be branched to from elsewhere.
 	% If it isn't, label elimination will get rid of it later.
 	%
-	% Actually, this optimization should never be executed; by the
-	% time we get here, it should already have been done in jumpopt.
+	% I have some doubt about the validity of using L1 unchanged.
 
-peephole__opt_instr_2(call(CodeAddress, label(ContLabel)), Comment, Instrs0,
-			Instrs) :-
-	opt_util__is_this_label_next(ContLabel, Instrs0, Instrs1),
-	opt_util__is_proceed_next(Instrs1, Instrs_to_proceed),
-	list__append(Instrs_to_proceed,
-		[goto(CodeAddress) - Comment | Instrs0], Instrs).
+peephole__opt_instr_2(livevals(Livevals), Comment, Instrs0, Instrs) :-
+	opt_util__skip_comments(Instrs0, Instrs1),
+	Instrs1 = [call(CodeAddress, label(ContLabel)) - Comment2 | Instrs2],
+	opt_util__is_this_label_next(ContLabel, Instrs2, Instrs3),
+	opt_util__is_proceed_next(Instrs3, Instrs_to_proceed),
+	opt_util__proceed_no_livevals(Instrs_to_proceed, Instrs_to_insert),
+	list__append(Instrs_to_insert,
+		[livevals(Livevals) - Comment2,
+		goto(CodeAddress) - Comment | Instrs0], Instrs).
 
 	% if a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the
@@ -390,7 +411,7 @@ peephole__opt_instr_2(goto(label(Label)), _Comment, Instrs0, Instrs) :-
 	%     next:
 
 peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, Instrs0, Instrs) :-
-	opt_util__skip_comments(Instrs0, Instrs1),
+	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
 		opt_util__is_this_label_next(Target, Instrs2, _),
 		code_util__neg_rval(Rval, NotRval),
