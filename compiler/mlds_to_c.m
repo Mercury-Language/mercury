@@ -124,7 +124,7 @@ mlds_output_hdr_file(Indent, MLDS) -->
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
 		% Get the foreign code for C
-	{ ForeignCode = map__lookup(AllForeignCode, c) },
+	{ ForeignCode = mlds_get_c_foreign_code(AllForeignCode) },
 	mlds_output_c_hdr_decls(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	%
 	% The header file must contain _definitions_ of all public types,
@@ -197,7 +197,7 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_src_imports(Indent, Imports), io__nl,
 
 		% Get the foreign code for C
-	{ ForeignCode = map__lookup(AllForeignCode, c) },
+	{ ForeignCode = mlds_get_c_foreign_code(AllForeignCode) },
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
 	%
 	% The public types have already been defined in the
@@ -368,6 +368,19 @@ mlds_output_grade_var -->
 		"/* ensure everything is compiled with the same grade */\n"),
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
+
+:- func mlds_get_c_foreign_code(map(foreign_language, mlds__foreign_code))
+		= mlds__foreign_code.
+
+	% Get the foreign code for C
+mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
+	( map__search(AllForeignCode, c, ForeignCode0) ->
+		ForeignCode = ForeignCode0
+	;
+		% this can occur when compiling to a non-C target
+		% using "--mlds-dump all"
+		ForeignCode = foreign_code([], [], [])
+	).
 
 %-----------------------------------------------------------------------------%
 
