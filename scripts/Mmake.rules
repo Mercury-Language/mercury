@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne.
+# Copyright (C) 1995-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -89,6 +89,9 @@ ifeq ($(MMAKE_USE_MMC_MAKE),no)
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# javac doesn't create the destination directory for class files
+	# so we must create it manually
+	-[ -d $(classes_subdir) ] || mkdir $(classes_subdir)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
 	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
@@ -106,6 +109,9 @@ endif
 %.depend :
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	# javac doesn't create the destination directory for class files
+	# so we must create it manually
+	-[ -d $(classes_subdir) ] || mkdir $(classes_subdir)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
 	-[ -d Mercury/date0s ] || mkdir Mercury/date0s
@@ -236,12 +242,17 @@ $(rlos_subdir)%.rlo : %.m
 
 # Java back-end
 
-# XXX Need to fix this rule to work properly with --use-subdirs,
-#    i.e. put the .class file in the $(classes_subdir) directory
-#    (since javac doesn't have a `-o' option to name the object file,
-#    we may need to use `mv' to move it?)
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+$(classes_subdir)%.class: $(javas_subdir)%.java
+	$(JAVAC) -d $(classes_subdir) $<
+
+else
+
 $(classes_subdir)%.class: $(javas_subdir)%.java
 	$(JAVAC) $<
+
+endif
 
 # When smart recompilation finds that a module does not need to be
 # recompiled, it only touches the `.java_date' file.

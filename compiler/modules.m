@@ -3947,6 +3947,13 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".classes = "),
 	write_compact_dependencies_list(Modules, "$(classes_subdir)", ".class",
 					Basis, DepStream),
+	io__write_string(DepStream, " "),
+	% The Java compiler creates a .class file for each class
+	% within the original .java file.  The filenames of all
+	% these can be matched with `module\$*.class', hence the
+	% "\\$$*.class" below.
+	write_compact_dependencies_list(Modules, "$(classes_subdir)",
+					"\\$$*.class", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),

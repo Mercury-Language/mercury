@@ -653,9 +653,30 @@ compile_java_file(ErrorStream, JavaFile, Succeeded) -->
 	;
 		Target_DebugOpt = ""
 	},
+
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	globals__io_lookup_string_option(fullarch, FullArch),
+ 	globals__io_get_globals(Globals),
+	( { UseSubdirs = yes } ->
+		{ UseGradeSubdirs = yes ->
+			grade_directory_component(Globals, Grade),
+			DirName = "Mercury"/Grade/FullArch/"Mercury"/"classs"
+		;
+			DirName = "Mercury"/"classs"
+		},
+		% javac won't create the destination directory for
+		% class files, so we need to do it.
+		make_directory(DirName),
+		% Set destination directory for class files.
+		{ DestDir = "-d " ++ DirName ++ " " }
+	;
+		{ DestDir = "" }
+	),
+
 	% Be careful with the order here!  Some options may override others.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list([JavaCompiler, " ", InclOpt,
+	{ string__append_list([JavaCompiler, " ", InclOpt, DestDir,
 		Target_DebugOpt, JAVAFLAGS, JavaFile], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
