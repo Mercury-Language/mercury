@@ -1297,11 +1297,12 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	;	purity(purity)
 	;	aliasing
 	;	max_stack_size(int)
-	;	terminates(terminates).
+	;	terminates(terminates)
+	;	ordinary_despite_detism.
 
-:- pred parse_pragma_foreign_proc_attributes_term(foreign_language, string,
-		term, maybe1(pragma_foreign_proc_attributes)).
-:- mode parse_pragma_foreign_proc_attributes_term(in, in, in, out) is det.
+:- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
+	string::in, term::in, maybe1(pragma_foreign_proc_attributes)::out)
+	is det.
 
 parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		MaybeAttributes) :-
@@ -1347,7 +1348,8 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 			list__member(Conflict1, AttrList),
 			list__member(Conflict2, AttrList)
 		->
-			MaybeAttributes = error("conflicting attributes in attribute list", Term)
+			MaybeAttributes = error("conflicting attributes " ++
+				"in attribute list", Term)
 		;
 			list__foldl(
 				process_attribute,
@@ -1356,15 +1358,16 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 				ForeignLanguage, Attributes, Term)
 		)
 	;
-		ErrMsg = "expecting a foreign proc attribute or list of attributes",
+		ErrMsg = "expecting a foreign proc attribute " ++
+			"or list of attributes",
 		MaybeAttributes = error(ErrMsg, Term)
 	).
 
 	% Update the pragma_foreign_proc_attributes according to the given
 	% collected_pragma_foreign_proc_attribute.
 :- pred process_attribute(collected_pragma_foreign_proc_attribute::in,
-		pragma_foreign_proc_attributes::in,
-		pragma_foreign_proc_attributes::out) is det.
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
 
 process_attribute(may_call_mercury(MayCallMercury), !Attrs) :-
 	set_may_call_mercury(MayCallMercury, !Attrs).
@@ -1378,6 +1381,8 @@ process_attribute(terminates(Terminates), !Attrs) :-
 	set_terminates(Terminates, !Attrs).
 process_attribute(max_stack_size(Size), !Attrs) :-
 	add_extra_attribute(max_stack_size(Size), !Attrs).
+process_attribute(ordinary_despite_detism, !Attrs) :-
+	set_ordinary_despite_detism(yes, !Attrs).
 
 	% Aliasing is currently ignored in the main branch compiler.
 process_attribute(aliasing, Attrs, Attrs).
@@ -1403,14 +1408,11 @@ check_required_attributes(il, Attrs, Term) = Res :-
 	).
 check_required_attributes(java, Attrs, _Term) = ok(Attrs).
 
-:- pred parse_pragma_foreign_proc_attributes_term0(term,
-		list(collected_pragma_foreign_proc_attribute)).
-:- mode parse_pragma_foreign_proc_attributes_term0(in, out) is semidet.
+:- pred parse_pragma_foreign_proc_attributes_term0(term::in,
+	list(collected_pragma_foreign_proc_attribute)::out) is semidet.
 
 parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
-	(
-		parse_single_pragma_foreign_proc_attribute(Term, Flag)
-	->
+	( parse_single_pragma_foreign_proc_attribute(Term, Flag) ->
 		Flags = [Flag]
 	;
 		(
@@ -1424,9 +1426,8 @@ parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
 		)
 	).
 
-:- pred parse_single_pragma_foreign_proc_attribute(term,
-		collected_pragma_foreign_proc_attribute).
-:- mode parse_single_pragma_foreign_proc_attribute(in, out) is semidet.
+:- pred parse_single_pragma_foreign_proc_attribute(term::in,
+	collected_pragma_foreign_proc_attribute::out) is semidet.
 
 parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 	( parse_may_call_mercury(Term, MayCallMercury) ->
@@ -1443,12 +1444,13 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 		Flag = purity(Purity)
 	; parse_terminates(Term, Terminates) ->
 		Flag = terminates(Terminates)
+	; parse_ordinary_despite_detism(Term) ->
+		Flag = ordinary_despite_detism
 	;
 		fail
 	).
 
-:- pred parse_may_call_mercury(term, may_call_mercury).
-:- mode parse_may_call_mercury(in, out) is semidet.
+:- pred parse_may_call_mercury(term::in, may_call_mercury::out) is semidet.
 
 parse_may_call_mercury(term__functor(term__atom("recursive"), [], _),
 	may_call_mercury).
@@ -1459,16 +1461,14 @@ parse_may_call_mercury(term__functor(term__atom("may_call_mercury"), [], _),
 parse_may_call_mercury(term__functor(term__atom("will_not_call_mercury"), [],
 	_), will_not_call_mercury).
 
-:- pred parse_threadsafe(term, thread_safe).
-:- mode parse_threadsafe(in, out) is semidet.
+:- pred parse_threadsafe(term::in, thread_safe::out) is semidet.
 
 parse_threadsafe(term__functor(term__atom("thread_safe"), [], _),
 	thread_safe).
 parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
 	not_thread_safe).
 
-:- pred parse_tabled_for_io(term, tabled_for_io).
-:- mode parse_tabled_for_io(in, out) is semidet.
+:- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
 
 parse_tabled_for_io(term__functor(term__atom(Str), [], _), TabledForIo) :-
 	(
@@ -1489,8 +1489,7 @@ parse_tabled_for_io(term__functor(term__atom(Str), [], _), TabledForIo) :-
 	% These attributes are used for aliasing on the reuse branch,
 	% and ignoring them allows the main branch compiler to compile
 	% the reuse branch.
-:- pred parse_aliasing(term).
-:- mode parse_aliasing(in) is semidet.
+:- pred parse_aliasing(term::in) is semidet.
 
 parse_aliasing(term__functor(term__atom("no_aliasing"), [], _)).
 parse_aliasing(term__functor(term__atom("unknown_aliasing"), [], _)).
@@ -1516,51 +1515,57 @@ parse_terminates(term__functor(term__atom("terminates"), [], _),
 parse_terminates(term__functor(term__atom("does_not_terminate"), [], _),
 		does_not_terminate).
 
+:- pred parse_ordinary_despite_detism(term::in) is semidet.
+
+parse_ordinary_despite_detism(
+		term__functor(term__atom("ordinary_despite_detism"), [], _)).
+
 % parse a pragma foreign_code declaration
 
-:- pred parse_pragma_foreign_code(module_name, pragma_foreign_proc_attributes,
-	term, pragma_foreign_code_impl, varset, maybe1(item)).
-:- mode parse_pragma_foreign_code(in, in, in, in, in, out) is det.
+:- pred parse_pragma_foreign_code(module_name::in,
+	pragma_foreign_proc_attributes::in, term::in,
+	pragma_foreign_code_impl::in, varset::in, maybe1(item)::out) is det.
 
 parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
-	PragmaImpl, VarSet0, Result) :-
-    parse_pred_or_func_and_args(yes(ModuleName), PredAndVarsTerm0,
-	PredAndVarsTerm0, "`:- pragma c_code' declaration", PredAndArgsResult),
-    (
-	PredAndArgsResult = ok(PredName, VarList0 - MaybeRetTerm),
+		PragmaImpl, VarSet0, Result) :-
+	parse_pred_or_func_and_args(yes(ModuleName), PredAndVarsTerm0,
+		PredAndVarsTerm0, "`:- pragma c_code' declaration",
+		PredAndArgsResult),
 	(
-	    % is this a function or a predicate?
-	    MaybeRetTerm = yes(FuncResultTerm0)
-	->
-	    % function
-	    PredOrFunc = function,
-	    list__append(VarList0, [FuncResultTerm0], VarList)
-	;
-	    % predicate
-	    PredOrFunc = predicate,
-	    VarList = VarList0
-	),
-	parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars, Error),
-	(
-	    Error = no,
-	    varset__coerce(VarSet0, VarSet),
-	    Result = ok(pragma(foreign_proc(Flags, PredName,
-		    PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
-	;
-	    Error = yes(ErrorMessage),
-	    Result = error(ErrorMessage, PredAndVarsTerm0)
+		PredAndArgsResult = ok(PredName, VarList0 - MaybeRetTerm),
+		(
+			% is this a function or a predicate?
+			MaybeRetTerm = yes(FuncResultTerm0)
+		->
+			% function
+			PredOrFunc = function,
+			list__append(VarList0, [FuncResultTerm0], VarList)
+		;
+			% predicate
+			PredOrFunc = predicate,
+			VarList = VarList0
+		),
+		parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars,
+			Error),
+		(
+			Error = no,
+			varset__coerce(VarSet0, VarSet),
+			Result = ok(pragma(foreign_proc(Flags, PredName,
+				PredOrFunc, PragmaVars, VarSet, PragmaImpl)))
+		;
+			Error = yes(ErrorMessage),
+			Result = error(ErrorMessage, PredAndVarsTerm0)
 
-	)
-    ;
-	PredAndArgsResult = error(Msg, Term),
-	Result = error(Msg, Term)
-    ).
+		)
+	;
+		PredAndArgsResult = error(Msg, Term),
+		Result = error(Msg, Term)
+	).
 
 	% parse the variable list in the pragma c code declaration.
 	% The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
-:- pred parse_pragma_c_code_varlist(varset, list(term),
-		list(pragma_var), maybe(string)).
-:- mode parse_pragma_c_code_varlist(in, in, out, out) is det.
+:- pred parse_pragma_c_code_varlist(varset::in, list(term)::in,
+	list(pragma_var)::out, maybe(string)::out) is det.
 
 parse_pragma_c_code_varlist(_, [], [], no).
 parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
@@ -1589,49 +1594,52 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 			% if the variable wasn't in the varset it must be an
 			% underscore variable.
 			PragmaVars = [],	% return any old junk for that.
-			Error = yes(
-"sorry, not implemented: anonymous `_' variable in pragma c_code")
+			Error = yes("sorry, not implemented: anonymous " ++
+				"`_' variable in pragma c_code")
 		)
 	;
 		PragmaVars = [],	% return any old junk in PragmaVars
 		Error = yes("arguments not in form 'Var :: mode'")
 	).
 
-:- pred parse_tabling_pragma(module_name, string, eval_method, list(term),
-		term, maybe1(item)).
-:- mode parse_tabling_pragma(in, in, in, in, in, out) is det.
+:- pred parse_tabling_pragma(module_name::in, string::in, eval_method::in,
+	list(term)::in, term::in, maybe1(item)::out) is det.
 
 parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 		ErrorTerm, Result) :-
-    (
-        PragmaTerms = [PredAndModesTerm0]
-    ->
-	string__append_list(["`:- pragma ", PragmaName, "' declaration"],
-		ParseMsg),
-	parse_arity_or_modes(ModuleName, PredAndModesTerm0,
-		ErrorTerm, ParseMsg, ArityModesResult),
-        (
-	    ArityModesResult = ok(arity_or_modes(PredName,
-		Arity, MaybePredOrFunc, MaybeModes)),
-            Result = ok(pragma(tabled(TablingType, PredName, Arity,
-                MaybePredOrFunc, MaybeModes)))
+	(
+		PragmaTerms = [PredAndModesTerm0]
+	->
+		string__append_list(["`:- pragma ", PragmaName,
+			"' declaration"], ParseMsg),
+		parse_arity_or_modes(ModuleName, PredAndModesTerm0,
+			ErrorTerm, ParseMsg, ArityModesResult),
+		(
+			ArityModesResult = ok(arity_or_modes(PredName,
+				Arity, MaybePredOrFunc, MaybeModes)),
+			Result = ok(pragma(tabled(TablingType, PredName, Arity,
+				MaybePredOrFunc, MaybeModes)))
+		;
+			ArityModesResult = error(Msg, Term),
+			Result = error(Msg, Term)
+		)
 	;
-	    ArityModesResult = error(Msg, Term),
-	    Result = error(Msg, Term)
-	)
-    ;
-	string__append_list(["wrong number of arguments in `:- pragma ",
-            PragmaName, "' declaration"], ErrorMessage),
-        Result = error(ErrorMessage, ErrorTerm)
-    ).
+		string__append_list(
+			["wrong number of arguments in `:- pragma ",
+			PragmaName, "' declaration"], ErrorMessage),
+		Result = error(ErrorMessage, ErrorTerm)
+	).
 
 :- type arity_or_modes
-	--->	arity_or_modes(sym_name, arity,
-			maybe(pred_or_func), maybe(list(mode))).
+	--->	arity_or_modes(
+			sym_name,
+			arity,
+			maybe(pred_or_func),
+			maybe(list(mode))
+		).
 
-:- pred parse_arity_or_modes(module_name, term, term,
-		string, maybe1(arity_or_modes)).
-:- mode parse_arity_or_modes(in, in, in, in, out) is det.
+:- pred parse_arity_or_modes(module_name::in, term::in, term::in,
+	string::in, maybe1(arity_or_modes)::out) is det.
 
 parse_arity_or_modes(ModuleName, PredAndModesTerm0,
 		ErrorTerm, ErrorMsg, Result) :-

@@ -860,9 +860,10 @@
 :- func thread_safe(pragma_foreign_proc_attributes) = thread_safe.
 :- func purity(pragma_foreign_proc_attributes) = purity.
 :- func terminates(pragma_foreign_proc_attributes) = terminates.
-:- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
 :- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
 :- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
+:- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
+:- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
 :- func extra_attributes(pragma_foreign_proc_attributes)
 	= pragma_foreign_proc_extra_attributes.
 
@@ -891,6 +892,10 @@
 	pragma_foreign_proc_attributes::out) is det.
 
 :- pred set_legacy_purity_behaviour(bool::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_ordinary_despite_detism(bool::in,
 	pragma_foreign_proc_attributes::in,
 	pragma_foreign_proc_attributes::out) is det.
 
@@ -1580,13 +1585,15 @@
 				% pragma c_code and pragma import purity
 				% if legacy_purity_behaviour is `yes'
 			legacy_purity_behaviour	:: bool,
+			ordinary_despite_detism	:: bool,
 			extra_attributes	::
 				list(pragma_foreign_proc_extra_attribute)
 		).
 
 default_attributes(Language) =
 	attributes(Language, may_call_mercury, not_thread_safe,
-		not_tabled_for_io, impure, depends_on_mercury_calls, no, []).
+		not_tabled_for_io, impure, depends_on_mercury_calls,
+		no, no, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1602,13 +1609,16 @@ set_terminates(Terminates, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ terminates := Terminates.
 set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
+set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
+	Attrs = Attrs0 ^ ordinary_despite_detism := OrdinaryDespiteDetism.
 
 attributes_to_strings(Attrs) = StringList :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
 	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-			Purity,	Terminates, _LegacyBehaviour, ExtraAttributes),
+		Purity,	Terminates, _LegacyBehaviour, OrdinaryDespiteDetism,
+		ExtraAttributes),
 	(
 		MayCallMercury = may_call_mercury,
 		MayCallMercuryStr = "may_call_mercury"
@@ -1656,8 +1666,16 @@ attributes_to_strings(Attrs) = StringList :-
 		Terminates = depends_on_mercury_calls,
 		TerminatesStrList = []
 	),
+	(
+		OrdinaryDespiteDetism = yes,
+		OrdinaryDespiteDetismStrList = ["ordinary_despite_detism"]
+	;
+		OrdinaryDespiteDetism = no,
+		OrdinaryDespiteDetismStrList = []
+	),
 	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
 			PurityStrList] ++ TerminatesStrList ++
+			OrdinaryDespiteDetismStrList ++
 		list__map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,

@@ -2386,8 +2386,15 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 		)
 	;
 		CodeModel = model_non,
-		error("ml_gen_ordinary_pragma_foreign_proc: " ++
-			"unexpected code model")
+		OrdinaryDespiteDetism = ordinary_despite_detism(Attributes),
+		(
+			OrdinaryDespiteDetism = no,
+			error("ml_gen_ordinary_pragma_foreign_proc: " ++
+				"unexpected code model")
+		;
+			OrdinaryDespiteDetism = yes,
+			OrdinaryKind = kind_semi
+		)
 	),
 	(
 		Lang = c,
