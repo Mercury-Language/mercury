@@ -793,16 +793,8 @@ code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
 	code_util__count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
 	CTMin is CMin + TMin,
 	CTMax is CMax + TMax,
-	( CTMin < EMin ->
-		Min = CTMin
-	;
-		Min = EMin
-	),
-	( CTMax > EMax ->
-		Max = CTMax
-	;
-		Max = EMax
-	).
+	int__min(CTMin, EMin, Min),
+	int__max(CTMax, EMax, Max).
 
 :- pred code_util__count_recursive_calls_conj(list(hlds__goal),
 	pred_id, proc_id, int, int, int, int).
@@ -834,16 +826,8 @@ code_util__count_recursive_calls_disj([Goal | Goals], PredId, ProcId,
 			Min0, Max0),
 		code_util__count_recursive_calls_disj(Goals, PredId, ProcId,
 			Min1, Max1),
-		( Min0 < Min1 ->
-			Min = Min0
-		;
-			Min = Min1
-		),
-		( Max1 > Max0 ->
-			Max = Max1
-		;
-			Max = Max0
-		)
+		int__min(Min0, Min1, Min),
+		int__max(Max0, Max1, Max)
 	).
 
 :- pred code_util__count_recursive_calls_cases(list(case),
@@ -862,14 +846,6 @@ code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 			Min0, Max0),
 		code_util__count_recursive_calls_cases(Cases, PredId, ProcId,
 			Min1, Max1),
-		( Min0 < Min1 ->
-			Min = Min0
-		;
-			Min = Min1
-		),
-		( Max1 > Max0 ->
-			Max = Max1
-		;
-			Max = Max0
-		)
+		int__min(Min0, Min1, Min),
+		int__max(Max0, Max1, Max)
 	).

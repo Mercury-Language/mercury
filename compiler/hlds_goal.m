@@ -183,12 +183,12 @@
 :- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
 
-	% Originally we classified predicates according to whether they
-	% were "builtin" or not.  But in fact there are two sorts of
-	% "builtin" predicates - those that we open-code using inline
-	% instructions (e.g. arithmetic predicates), and those which
-	% are still "internal", but for which we generate a call to an
-	% out-of-line procedure (e.g. call/N).
+	% There may be two sorts of "builtin" predicates - those that we
+	% open-code using inline instructions (e.g. arithmetic predicates),
+	% and those which are still "internal", but for which we generate
+	% a call to an out-of-line procedure. At the moment there are no
+	% builtins of the second sort, although we used to handle call/N
+	% that wayay.
 
 :- type builtin_state	--->	inline_builtin
 			;	out_of_line_builtin

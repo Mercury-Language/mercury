@@ -857,13 +857,14 @@ initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 	%	DCG = value2
 	% )
 	%
-	% detect_liveness_in_goal working on the then-part will put DCG
-	% into the post-death set, because the then-part cannot succeed
-	% and thus cannot the lifetime of DCG is over at that point.
+	% When working working on the goal representing the then-part,
+	% detect_liveness_in_goal will put DCG into its post-death set,
+	% because the then-part cannot succeed and thus the lifetime of DCG
+	% is over at the end of the then-part.
 	%
 	% Later, at the end of the processing of the if-then-else, we will
-	% then put DCG into the post-birth set, since it would have to be
-	% produced by the then-part if it ever terminated.
+	% then put DCG into the post-birth set of the then-part, since it
+	% would have to be produced by the then-part if it ever terminated.
 	%
 	% Rather than end up with DCG in both the post-death and post-birth
 	% sets, which can cause problems if they are applied in the wrong
