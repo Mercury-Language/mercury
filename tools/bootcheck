@@ -47,16 +47,16 @@ root=`/bin/pwd`
 /bin/rm -fr stage2/*
 mkdir stage2/compiler
 mkdir stage2/library
-cp compiler/*.m stage2/compiler
-cp compiler/Mmake* stage2/compiler
-cp library/*.m stage2/library
-cp library/Mmake* stage2/library
+ln -s $root/compiler/*.m stage2/compiler
+ln -s $root/compiler/Mmake* stage2/compiler
+ln -s $root/library/*.m stage2/library
+ln -s $root/library/Mmake* stage2/library
 ln -s $root/boehm_gc stage2/boehm_gc
 ln -s $root/doc stage2/doc
 ln -s $root/runtime stage2/runtime
 ln -s $root/scripts stage2/scripts
 ln -s $root/util stage2/util
-cp Mmake* stage2
+ln -s $root/Mmake* stage2
 
 MERCURY_COMPILER=$root/compiler/mercury_compile
 export MERCURY_COMPILER
@@ -128,16 +128,16 @@ fi
 /bin/rm -fr stage3/*
 mkdir stage3/compiler
 mkdir stage3/library
-cp compiler/*.m stage3/compiler
-cp compiler/Mmake* stage3/compiler
-cp library/*.m stage3/library
-cp library/Mmake* stage3/library
+ln -s $root/compiler/*.m stage3/compiler
+ln -s $root/compiler/Mmake* stage3/compiler
+ln -s $root/library/*.m stage3/library
+ln -s $root/library/Mmake* stage3/library
 ln -s $root/boehm_gc stage3/boehm_gc
 ln -s $root/doc stage3/doc
 ln -s $root/runtime stage3/runtime
 ln -s $root/scripts stage3/scripts
 ln -s $root/util stage3/util
-cp Mmake* stage3
+ln -s $root/Mmake* stage3
 
 MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 export MERCURY_COMPILER
