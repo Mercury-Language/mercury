@@ -33,7 +33,7 @@ taken when releasing a new version of Mercury.
 
 <li> Update the WWW documentation in the `w3' directory.
      Note that the sources for these HTML documents are in the files named
-     include/*.inc files.
+     include/*.inc and *.php3.
      <ul>
      <li> For minor releases, update release.html with a new entry about
 	  this release (put it at the top of the page), and provide a
@@ -47,15 +47,19 @@ taken when releasing a new version of Mercury.
 
 	  <dt> release-VERSION-bugs.html
 	  <dd> Any outstanding bugs for this release.
+	       This should be the same as the BUGS file.
 
 	  <dt> release-VERSION-contents.html
 	  <dd> The contents of this distribution.
+	       This should be the same as in the RELEASE_NOTES file.
 
           </dl>
-	  You will also need to update release.html.   Move the old
-	  information in release.html to old-release.html. Modify
-	  release.html to refer to the new html files you have created,
-	  and change the links to download the release. 
+	  You will need to add these new files to the list in the Makefile.
+	  You will also need to update release.html and
+	  current-release-bugs.html.
+	  Move the old information in release.html to old-release.html.
+	  Modify release.html to refer to the new html files you have
+	  created, and change the links to download the release. 
 
      <li> Don't commit your changes to the main branch yet, because
 	  otherwise it would be installed on the WWW pages overnight.
@@ -100,6 +104,8 @@ taken when releasing a new version of Mercury.
       with the resulting binaries going in
       /home/mercury/public/test_mercury/test_dirs/$HOST/mercury-latest-{un,}stable.
 
+<li>  Make sure to test the binary distributions!
+
 <li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
       to the main /pub/mercury directory on the Mercury ftp site
       ftp://ftp.mercury.cs.mu.oz.au/pub/mercury.
@@ -110,7 +116,7 @@ taken when releasing a new version of Mercury.
     automatically mirror the Mercury ftp site at ftp.mercury.cs.mu.oz.au
     on a nightly basis (or thereabouts).  But in case
     anything should need changing, the person to contact there is
-    Yiorgos Adamopoulos (adamo@dblab.ece.ntua.gr) and/or ftpam@ntua.gr. <p>
+    Yiorgos Adamopoulos (adamo@dblab.ece.ntua.gr) and/or ftpadm@ntua.gr. <p>
 
     For the Stonybrook mirror, email Konstantinos Sagonas (Kostis.Sagonas@cs.kuleuven.ac.be)
     to tell him to copy them to ftp://ftp.cs.sunysb.edu/pub/XSB/mercury. <p>
@@ -158,6 +164,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-12-13 15:44:23 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-12-21 09:42:03 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
