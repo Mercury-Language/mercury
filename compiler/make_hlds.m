@@ -52,7 +52,8 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification, shapes.
-:- import_module code_util, unify_proc, type_util, mercury_to_mercury.
+:- import_module code_util, unify_proc, special_pred, type_util.
+:- import_module mercury_to_mercury.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -884,8 +885,6 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 	% Warn about variables which occur only once but don't start with
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
-	%
-	% XXX contexts are not valid at this point
 	%
 :- pred maybe_warn_singletons(varset, pred_call_id, hlds__goal,
 				io__state, io__state).

@@ -74,7 +74,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module type_util, list, map, require, std_util.
+:- import_module type_util, special_pred, list, map, require, std_util.
 
 %---------------------------------------------------------------------------%
 
@@ -110,32 +110,8 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 		module_info_preds(ModuleInfo, Preds),
 		map__lookup(Preds, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
-		% XXX  This is a kludge!
-		% For compiler-generated type-specific predicates,
-		% we should really store the type as a separate
-		% field in pred_info.
-		% Instead we use some nasty hacks:
-		% for __Index__(...TypeInfos..., T, int)
-		% and __Type_To_Term__(...TypeInfos..., T, term)
-		% we use the type of the second last argument,
-		% and for __Compare__(...TypeInfos..., comparison_result, T, T)
-		% __Unify__(...TypeInfos..., T, T), and
-		% __Term_To_Type__(...TypeInfos..., term, T) we use the
-		% type of the last argument.
 		(
-			( PredName = "__Index__"
-			; PredName = "__Type_To_Term__"
-			),
-			list__reverse(ArgTypes, [_, Type | _]),
-			type_to_type_id(Type, TypeId0, _)
-		->
-			TypeId = TypeId0
-		;
-			( PredName = "__Unify__"
-			; PredName = "__Compare__"
-			; PredName = "__Term_To_Type__"
-			),
-			list__reverse(ArgTypes, [Type | _]),
+			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId0, _)
 		->
 			TypeId = TypeId0

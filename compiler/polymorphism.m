@@ -89,7 +89,7 @@
 :- implementation.
 :- import_module int, string, list, set, map, term, varset, std_util, require.
 :- import_module prog_io, type_util, mode_util, quantification.
-:- import_module code_util, unify_proc, prog_util, make_hlds.
+:- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
 
 %-----------------------------------------------------------------------------%
 
@@ -301,19 +301,10 @@ polymorphism__process_goal_2( call(PredId0, ProcId0, ArgVars0,
 		{ Name0 = unqualified(PredName0) },
 		{ list__length(ArgVars0, Arity) },
 		{ special_pred_name_arity(SpecialPredId, PredName0, 
-						_, Arity) },
+						MangledPredName, Arity) },
 		=(poly_info(_, VarTypes, _, _TypeInfoMap, ModuleInfo)),
-		% XXX this is a bit of a kludge: for term_to_type/2, the
-		% argument which specifies the type is the second-last, for all
-		% the others special predicates it is the last argument.
-		% There is similar code in code_util.m -
-		% they should both be fixed after benyi commits his changes.
-		( { SpecialPredId = term_to_type } ->
-			{ list__reverse(ArgVars0, [XVar | _]) }
-		;
-			{ list__reverse(ArgVars0, [_, XVar | _]) }
-		),
-		{ map__lookup(VarTypes, XVar, Type) },
+		{ special_pred_get_type(MangledPredName, ArgVars0, MainVar) },
+		{ map__lookup(VarTypes, MainVar, Type) },
 		{ Type \= term__variable(_) }
 	    ->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },

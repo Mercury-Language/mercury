@@ -47,7 +47,7 @@
 :- module unify_proc.
 :- interface.
 :- import_module std_util, io, list.
-:- import_module prog_io, hlds, llds.
+:- import_module prog_io, hlds, llds, special_pred.
 
 :- type unify_requests.
 
@@ -1034,7 +1034,7 @@ unify_proc__generate_du_term_to_type_recursive(
 			V1 = term__atom(V4),
 			V4 = "empty",
 			V2 = [],
-			term__context(V3),
+			term__context_init(V3),
 			Term = term__functor(V1, V2, V3)
 		;
 			X = tree(Key, Val, L, R),
@@ -1049,7 +1049,7 @@ unify_proc__generate_du_term_to_type_recursive(
 			V8 = [],
 			V1 = term__atom(V4),
 			V4 = "tree",
-			term__context(V3),
+			term__context_init(V3),
 			Term = term__functor(V1, V2, V3).
 		).
 */

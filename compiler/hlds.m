@@ -25,7 +25,7 @@
 :- interface.
 :- import_module float, int, string, list, set, map, std_util, relation.
 :- import_module varset, term.
-:- import_module prog_io, llds.
+:- import_module prog_io, llds, special_pred.
 
 :- implementation.
 :- import_module prog_util, mode_util, unify_proc, shapes, require.
@@ -133,40 +133,14 @@
 :- type liveness	--->	live
 			;	dead.
 
+%-----------------------------------------------------------------------------%
+
 :- pred determinism_components(determinism, can_fail, soln_count).
 :- mode determinism_components(in, out, out) is det.
 :- mode determinism_components(out, in, in) is det.
 
 :- pred determinism_to_code_model(determinism, code_model).
 :- mode determinism_to_code_model(in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- type special_pred_map	==	map(special_pred, pred_id).
-
-:- type special_pred		==	pair(special_pred_id, type_id).
-
-:- type special_pred_id
-	--->	unify
-	;	index
-	;	compare
-	;	term_to_type
-	;	type_to_term.
-
-:- pred special_pred_info(special_pred_id, type, string, list(type),
-			list(mode), determinism).
-:- mode special_pred_info(in, in, out, out, out, out) is det.
-
-:- pred special_pred_name_arity(special_pred_id, string, string, int).
-:- mode special_pred_name_arity(in, out, out, out) is det.
-:- mode special_pred_name_arity(out, in, out, in) is semidet.
-:- mode special_pred_name_arity(out, out, in, in) is semidet.
-
-:- pred special_pred_mode_num(special_pred_id, int).
-:- mode special_pred_mode_num(in, out) is det.
-
-:- pred special_pred_list(list(special_pred_id)).
-:- mode special_pred_list(out) is det.
 
 :- implementation.
 
@@ -184,69 +158,9 @@ determinism_to_code_model(multidet,  model_non).
 determinism_to_code_model(erroneous, model_det).
 determinism_to_code_model(failure,   model_semi).
 
-special_pred_list([unify, index, compare]).
-
-% **** Replace the above definition of special_pred_list with the following ****
-% **** to have term_to_type and type_to_term as special preds also.	    ****
-% special_pred_list([unify, index, compare, term_to_type, type_to_term]).
-
-special_pred_name_arity(unify, "unify", "__Unify__", 2).
-special_pred_name_arity(index, "index", "__Index__", 2).
-special_pred_name_arity(compare, "compare", "__Compare__", 3).
-special_pred_name_arity(type_to_term, "type_to_term", "__Type_To_Term__", 2).
-special_pred_name_arity(term_to_type, "term_to_type", "__Term_To_Type__", 2).
-
-special_pred_mode_num(unify, 0).
-special_pred_mode_num(index, 10000).
-special_pred_mode_num(compare, 10000).
-special_pred_mode_num(type_to_term, 10000).
-special_pred_mode_num(term_to_type, 0).
-
-special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
-	in_mode(In),
-	in_mode(In2).
-		% we use `In2' to work around a bug with --static-ground-terms
-		% which causes a duplicate label in the generated C code
-
-special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
-	term__context_init(Context),
-	IntType = term__functor(term__atom("int"), [], Context),
-	in_mode(In),
-	out_mode(Out).
-
-special_pred_info(compare, Type,
-		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
-	term__context_init(Context),
-	ResType = term__functor(term__atom("comparison_result"), [], Context),
-	in_mode(In),
-	in_mode(In2),
-	out_mode(Out).
-
-special_pred_info(term_to_type, Type,
-		"__Term_To_Type__", [TermType, Type], [In, Out], semidet) :-
-	term__context_init(Context),
-	TermType = term__functor(term__atom("term"), [], Context),
-	in_mode(In),
-	out_mode(Out).
-
-special_pred_info(type_to_term, Type,
-		"__Type_To_Term__", [Type, TermType], [In, Out], det) :-
-	term__context_init(Context),
-	TermType = term__functor(term__atom("term"), [], Context),
-	in_mode(In),
-	out_mode(Out).
-
-:- pred in_mode((mode)::out) is det.
-
-in_mode(user_defined_mode(unqualified("in"), [])).
-
-:- pred out_mode((mode)::out) is det.
-
-out_mode(user_defined_mode(unqualified("out"), [])).
+%-----------------------------------------------------------------------------%
 
 :- interface.
-
-%-----------------------------------------------------------------------------%
 
 :- type shape_id	==	pair(type, inst).
 
