@@ -169,9 +169,9 @@
 :- func make_dependency_list(list(module_name), module_target_type) =
 		list(dependency_file).
 
-:- func target_extension(globals, module_target_type) = string.
+:- func target_extension(globals, module_target_type) = maybe(string).
 :- mode target_extension(in, in) = out is det.
-:- mode target_extension(in, out) = in is nondet.
+:- mode target_extension(in, out) = in(bound(yes(ground))) is nondet.
 
 :- pred linked_target_file_name(module_name, linked_target_type, file_name,
 		io__state, io__state).
@@ -462,12 +462,12 @@ write_error_char(FullOutputStream, PartialOutputStream, LineLimit,
 get_timestamp_file_timestamp(ModuleName - FileType,
 		MaybeTimestamp, Info0, Info) -->
 	globals__io_get_globals(Globals),
-	{ TimestampExt = timestamp_extension(Globals, FileType) ->
-		Ext = TimestampExt	
+	( { TimestampExt = timestamp_extension(Globals, FileType) } ->
+		module_name_to_file_name(ModuleName,
+			TimestampExt, no, FileName)
 	;
-		Ext = target_extension(Globals, FileType)
-	},
-	module_name_to_file_name(ModuleName, Ext, no, FileName),
+		module_target_to_file_name(ModuleName, FileType, no, FileName)
+	),
 
 	% We should only ever look for timestamp files
 	% in the current directory. Timestamp files are
@@ -558,13 +558,20 @@ get_file_name(Search, ModuleName - FileType, FileName, Info0, Info) -->
 	;
 		{ Info = Info0 },
 		globals__io_get_globals(Globals),
-		{ Ext = target_extension(Globals, FileType) },
-		( { Search = yes } ->
-			module_name_to_search_file_name(ModuleName,
-				Ext, FileName)
+		{ MaybeExt = target_extension(Globals, FileType) },
+		(
+			{ MaybeExt = yes(Ext) },
+			( { Search = yes } ->
+				module_name_to_search_file_name(ModuleName,
+					Ext, FileName)
+			;
+				module_name_to_file_name(ModuleName,
+					Ext, no, FileName)
+			)
 		;
-			module_name_to_file_name(ModuleName,
-				Ext, no, FileName)
+			{ MaybeExt = no },
+			module_target_to_file_name(ModuleName, FileType,
+				no, Search, FileName)
 		)
 	).
 
@@ -629,8 +636,8 @@ remove_target_file(ModuleName - FileType, Info0, Info) -->
 
 remove_target_file(ModuleName, FileType, Info0, Info) -->
 	globals__io_get_globals(Globals),
-	remove_file(ModuleName, target_extension(Globals, FileType),
-		Info0, Info1),
+	module_target_to_file_name(ModuleName, FileType, no, FileName),
+	remove_file(FileName, Info0, Info1),
 	( { TimestampExt = timestamp_extension(Globals, FileType) } ->
 		remove_file(ModuleName, TimestampExt, Info1, Info)
 	;
@@ -653,68 +660,32 @@ make_target_list(Ks, V) = list__map((func(K) = K - V), Ks).
 make_dependency_list(ModuleNames, FileType) =
 	list__map((func(Module) = target(Module - FileType)), ModuleNames).
 
-target_extension(_, source) = ".m".
-target_extension(_, errors) = ".err".
-target_extension(_, private_interface) = ".int0".
-target_extension(_, long_interface) = ".int".
-target_extension(_, short_interface) = ".int2".
-target_extension(_, unqualified_short_interface) = ".int3".
-target_extension(_, intermodule_interface) = ".opt".
-target_extension(_, aditi_code) = ".rlo".
-target_extension(_, c_header(mih)) = ".mih".
-target_extension(_, c_header(mh)) = ".mh".
-target_extension(_, c_code) = ".c".
-target_extension(_, il_code) = ".il".
-target_extension(_, il_asm) = ".dll". % XXX ".exe" if the module contains main.
-target_extension(_, java_code) = ".java".
-target_extension(_, asm_code(non_pic)) = ".s".
-target_extension(_, asm_code(link_with_pic)) = ".s".
-target_extension(_, asm_code(pic)) = ".pic_s".
-target_extension(Globals, object_code(PIC)) = Ext :-
+target_extension(_, source) = yes(".m").
+target_extension(_, errors) = yes(".err").
+target_extension(_, private_interface) = yes(".int0").
+target_extension(_, long_interface) = yes(".int").
+target_extension(_, short_interface) = yes(".int2").
+target_extension(_, unqualified_short_interface) = yes(".int3").
+target_extension(_, intermodule_interface) = yes(".opt").
+target_extension(_, aditi_code) = yes(".rlo").
+target_extension(_, c_header(mih)) = yes(".mih").
+target_extension(_, c_header(mh)) = yes(".mh").
+target_extension(_, c_code) = yes(".c").
+target_extension(_, il_code) = yes(".il").
+
+	% XXX ".exe" if the module contains main.
+target_extension(_, il_asm) = yes(".dll").
+target_extension(_, java_code) = yes(".java").
+target_extension(_, asm_code(non_pic)) = yes(".s").
+target_extension(_, asm_code(link_with_pic)) = yes(".s").
+target_extension(_, asm_code(pic)) = yes(".pic_s").
+target_extension(Globals, object_code(PIC)) = yes(Ext) :-
 	maybe_pic_object_file_extension(Globals, PIC, Ext).
 
-		% Note we use the bogus extension "bogus ext" so that
-		% the reverse mode of this function remains nondet.
-target_extension(_, foreign_object(PIC, c)) = "bogus ext" :-
-	( PIC = pic
-	; PIC = link_with_pic
-	; PIC = non_pic
-	),
-	unexpected(this_file, "C foreign_object").
-target_extension(_, foreign_object(PIC, csharp)) = "bogus ext" :-
-	( PIC = pic
-	; PIC = link_with_pic
-	; PIC = non_pic
-	),
-	unexpected(this_file, "C# foreign_object").
-target_extension(_, foreign_object(PIC, managed_cplusplus)) = "bogus ext" :-
-	( PIC = pic
-	; PIC = link_with_pic
-	; PIC = non_pic
-	),
-	unexpected(this_file, "MC++ foreign_object").
-target_extension(_, foreign_object(PIC, il)) = "bogus ext" :-
-	( PIC = pic
-	; PIC = link_with_pic
-	; PIC = non_pic
-	),
-	unexpected(this_file, "il foreign_object").
-target_extension(_, foreign_object(PIC, java)) = "bogus ext" :-
-	( PIC = pic
-	; PIC = link_with_pic
-	; PIC = non_pic
-	),
-	unexpected(this_file, "Java foreign_object").
-target_extension(_, foreign_il_asm(c)) = "bogus ext" :-
-	unexpected(this_file, "C foreign_il_asm").
-target_extension(_, foreign_il_asm(java)) = "bogus ext" :-
-	unexpected(this_file, "Java foreign_il_asm").
-
-target_extension(_, foreign_il_asm(csharp)) = ".dll".
-target_extension(_, foreign_il_asm(managed_cplusplus)) = ".dll".
-target_extension(_, foreign_il_asm(il)) = ".dll".
-target_extension(Globals, factt_object(PIC)) = Ext :-
-	maybe_pic_object_file_extension(Globals, PIC, Ext).
+	% These all need to be handled as special cases.
+target_extension(_, foreign_object(_, _)) = no.
+target_extension(_, foreign_il_asm(_)) = no.
+target_extension(_, fact_table_object(_, _)) = no.
 
 linked_target_file_name(ModuleName, executable, FileName) -->
 	globals__io_lookup_string_option(executable_file_extension, Ext),
@@ -725,6 +696,68 @@ linked_target_file_name(ModuleName, static_library, FileName) -->
 linked_target_file_name(ModuleName, shared_library, FileName) -->
 	globals__io_lookup_string_option(shared_library_extension, Ext),
 	module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
+
+:- pred module_target_to_file_name(module_name::in, module_target_type::in,
+		bool::in, file_name::out, io__state::di, io__state::uo) is det.
+
+module_target_to_file_name(ModuleName, TargetType, MkDir, FileName) -->
+	module_target_to_file_name(ModuleName, TargetType,
+		MkDir, no, FileName).
+
+:- pred module_target_to_search_file_name(module_name::in,
+		module_target_type::in, file_name::out,
+		io__state::di, io__state::uo) is det.
+
+module_target_to_search_file_name(ModuleName, TargetType, FileName) -->
+	module_target_to_file_name(ModuleName, TargetType, no, yes, FileName).
+
+:- pred module_target_to_file_name(module_name::in, module_target_type::in,
+		bool::in, bool::in, file_name::out,
+		io__state::di, io__state::uo) is det.
+
+module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName) -->
+    globals__io_get_globals(Globals),
+    { target_extension(Globals, TargetType) = MaybeExt },
+    (
+	{ MaybeExt = yes(Ext) },
+	( { Search = yes } ->
+		module_name_to_search_file_name(ModuleName,
+			Ext, FileName)
+	;		
+		module_name_to_file_name(ModuleName,
+			Ext, MkDir, FileName)
+	)
+    ;
+	{ MaybeExt = no },
+	( { TargetType = foreign_object(PIC, Lang) } ->
+		(
+			{ ForeignModuleName = foreign_language_module_name(
+					ModuleName, Lang) }
+		->
+			module_target_to_file_name(ForeignModuleName,
+				object_code(PIC), MkDir, Search, FileName)
+		;
+			{ error("module_target_to_file_name_2") }
+		)
+	; { TargetType = foreign_il_asm(Lang) } ->
+		(
+			{ ForeignModuleName = foreign_language_module_name(
+					ModuleName, Lang) }
+		->
+			module_target_to_file_name(ForeignModuleName,
+				il_asm, MkDir, Search, FileName)
+		;
+			{ error("module_target_to_file_name_2") }
+		)
+	; { TargetType = fact_table_object(PIC, FactFile) } ->
+		maybe_pic_object_file_extension(PIC, Ext),
+		fact_table_file_name(ModuleName, FactFile, Ext,
+			MkDir, FileName)
+	;
+		{ error("module_target_to_file_name_2") }
+	)
+    ).
+
 
 	% Note that we need a timestamp file for `.err' files because
 	% errors are written to the `.err' file even when writing interfaces.
@@ -765,7 +798,7 @@ search_for_file_type(asm_code(_)) = no.
 search_for_file_type(object_code(_)) = no.
 search_for_file_type(foreign_object(_, _)) = no.
 search_for_file_type(foreign_il_asm(_)) = no.
-search_for_file_type(factt_object(_)) = no.
+search_for_file_type(fact_table_object(_, _)) = no.
 
 target_is_grade_or_arch_dependent(Target) :-
 	target_is_grade_or_arch_dependent(Target, yes).
@@ -791,7 +824,7 @@ target_is_grade_or_arch_dependent(asm_code(_), yes).
 target_is_grade_or_arch_dependent(object_code(_), yes).
 target_is_grade_or_arch_dependent(foreign_object(_, _), yes).
 target_is_grade_or_arch_dependent(foreign_il_asm(_), yes).
-target_is_grade_or_arch_dependent(factt_object(_), yes).
+target_is_grade_or_arch_dependent(fact_table_object(_, _), yes).
 
 %-----------------------------------------------------------------------------%
 
@@ -825,25 +858,9 @@ debug_file_msg(TargetFile, Msg) -->
 write_dependency_file(target(TargetFile)) --> write_target_file(TargetFile).
 write_dependency_file(file(FileName, _)) --> io__write_string(FileName).
 
-write_target_file(ModuleName0 - FileType) -->
-	( { FileType = factt_object(_) } ->
-		io__write_string("fact table object files for ")
-	;
-		[]
-	),
-	{
-		( FileType = foreign_il_asm(Lang)
-		; FileType = foreign_object(_, Lang)
-		),
-		ForeignName = foreign_language_module_name(ModuleName0, Lang)
-	->
-		ModuleName = ForeignName
-	;
-		ModuleName = ModuleName0
-	},
-	prog_out__write_sym_name(ModuleName),
-	globals__io_get_globals(Globals),
-	io__write_string(target_extension(Globals, FileType)).
+write_target_file(ModuleName - FileType) -->
+	module_target_to_file_name(ModuleName, FileType, no, FileName),
+	io__write_string(FileName).
 
 maybe_make_linked_target_message(TargetFile) -->
 	verbose_msg(

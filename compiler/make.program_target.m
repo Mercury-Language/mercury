@@ -196,12 +196,13 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info) -->
 	% tables exist.
 	%
 	( { CompilationTarget = c ; CompilationTarget = asm } ->
-		{ Imports ^ fact_table_deps \= [] ->
-			ObjectTargets = [target(ModuleName - factt_object(PIC))
-					| ForeignObjectTargets]
-		;
-			ObjectTargets = ForeignObjectTargets
-		}
+		{ FactObjectTargets = list__map(
+			(func(FactFile) =
+				target(ModuleName -
+					fact_table_object(PIC, FactFile))
+			),
+			Imports ^ fact_table_deps) },
+		{ ObjectTargets = FactObjectTargets ++ ForeignObjectTargets }
 	;
 		{ ObjectTargets = ForeignObjectTargets }
 	).
@@ -994,26 +995,21 @@ make_module_clean(ModuleName, !Info) -->
 		), FactTableFiles, !Info),
 
 	{ CCodeModule = foreign_language_module_name(ModuleName, c) },
-	remove_file(CCodeModule, ".c", !Info),
+	remove_target_file(CCodeModule, c_code, !Info),
 
 	%
 	% Remove object and assembler files.
 	%
 	list__foldl2(
 	    (pred(PIC::in, !.Info::in, !:Info::out, di, uo) is det -->
-		globals__io_get_globals(Globals),
-		{ ObjExt = target_extension(Globals, object_code(PIC)) },
-		{ AsmExt = target_extension(Globals, asm_code(PIC)) },
 		remove_target_file(ModuleName, object_code(PIC), !Info),
 		remove_target_file(ModuleName, asm_code(PIC), !Info),
-		remove_file(CCodeModule, ObjExt, !Info),
-		remove_file(CCodeModule, AsmExt, !Info),
+		remove_target_file(ModuleName, foreign_object(PIC, c), !Info),
 		list__foldl2(
 		    (pred(FactTableFile::in, !.Info::in, !:Info::out,
 				di, uo) is det -->
-			fact_table_file_name(ModuleName, FactTableFile,
-				ObjExt, no, FactTableObjFile),
-			remove_file(FactTableObjFile, !Info)
+			remove_target_file(ModuleName,
+				fact_table_object(PIC, FactTableFile), !Info)
 		    ), FactTableFiles, !Info)
 	    ),
 	    [pic, link_with_pic, non_pic], !Info),
@@ -1024,14 +1020,15 @@ make_module_clean(ModuleName, !Info) -->
 	{ CSharpModule = foreign_language_module_name(ModuleName, csharp) },
 	remove_file(CSharpModule, foreign_language_file_extension(csharp),
 		!Info),
-	remove_file(CSharpModule, ".dll", !Info),
+	remove_target_file(CSharpModule, foreign_il_asm(csharp), !Info),
 	
 	{ McppModule = foreign_language_module_name(ModuleName,
 				managed_cplusplus) },
 	remove_file(McppModule,
 		foreign_language_file_extension(managed_cplusplus),
 		!Info),
-	remove_file(McppModule, ".dll", !Info).
+	remove_target_file(McppModule, foreign_il_asm(managed_cplusplus),
+		!Info).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
 		io__state::di, io__state::uo) is det.

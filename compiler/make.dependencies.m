@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,7 +207,7 @@ target_dependencies(_, foreign_il_asm(_)) =
 	]).
 target_dependencies(Globals, foreign_object(PIC, _)) =
 	get_foreign_deps(Globals, PIC).
-target_dependencies(Globals, factt_object(PIC)) =
+target_dependencies(Globals, fact_table_object(PIC, _)) =
 	get_foreign_deps(Globals, PIC).
 
 :- func get_foreign_deps(globals, pic) = find_module_deps(dependency_file).

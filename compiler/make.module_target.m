@@ -371,27 +371,17 @@ build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang), _,
 					Imports, ForeignCodeFile),
 			Succeeded).
 
-build_target_2(ModuleName, fact_table_code_to_object_code(PIC), _,
-		Imports, _, ErrorStream, Succeeded, Info, Info) -->
-	list__map_foldl(fact_table_foreign_code_file(ModuleName, PIC),
-			Imports ^ fact_table_deps, FactTableForeignCodes),
-	{ CompileTargetCode =
-	    (pred(Succeeded1::out, di, uo) is det -->
-		list__map_foldl(compile_foreign_code_file(ErrorStream, PIC,
-				Imports),
-			FactTableForeignCodes, ForeignCodeSucceeded),
-		{
-			\+ list__member(no, ForeignCodeSucceeded)
-		->
-			Succeeded1 = yes
-		;
-			Succeeded1 = no
-		}
-	    ) },
+build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
+		_, Imports, _, ErrorStream, Succeeded, Info, Info) -->
+	fact_table_foreign_code_file(ModuleName, PIC, FactTableFile,
+		FactTableForeignCode),
 
 	% Run the compilation in a child process so it can
 	% be killed if an interrupt arrives.
-	call_in_forked_process(CompileTargetCode, Succeeded).
+	call_in_forked_process(
+			compile_foreign_code_file(ErrorStream, PIC,
+					Imports, FactTableForeignCode),
+			Succeeded).
 
 :- pred build_object_code(module_name::in, compilation_target::in, pic::in,
 	io__output_stream::in, module_imports::in, bool::out,
@@ -644,8 +634,8 @@ compilation_task(_, foreign_il_asm(Lang)) =
 	foreign_code_to_object_code(non_pic, Lang) - [].
 compilation_task(_, foreign_object(PIC, Lang)) =
 	foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
-compilation_task(_, factt_object(PIC)) =
-	fact_table_code_to_object_code(PIC) - get_pic_flags(PIC).
+compilation_task(_, fact_table_object(PIC, FactTable)) =
+	fact_table_code_to_object_code(PIC, FactTable) - get_pic_flags(PIC).
 
 :- func get_pic_flags(pic) = list(string).
 
@@ -808,31 +798,20 @@ touched_files(TargetFile, foreign_code_to_object_code(PIC, Lang),
 	foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile),
 	{ ForeignObjectFile = ForeignCodeFile ^ object_file }.
 
-touched_files(TargetFile, fact_table_code_to_object_code(PIC),
-		[TargetFile], ForeignObjectFiles, Info0, Info) -->
+touched_files(TargetFile, fact_table_code_to_object_code(PIC, FactTableName),
+		[TargetFile], [FactTableObjectFile], Info, Info) -->
 	{ TargetFile = ModuleName - _ },
-	get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
-	{ MaybeImports = yes(Imports0) ->
-		Imports = Imports0
-	;
-		% This error should have been caught earlier.
-		% We shouldn't be attempting to build a target
-		% if we couldn't find the dependencies for the
-		% module.
-		unexpected(this_file, "touched_files: no module dependencies")
-	},
-	list__map_foldl(fact_table_foreign_code_file(ModuleName, PIC),
-			Imports ^ fact_table_deps, FactTableForeignCodes),
-	{ ForeignObjectFiles = list__map((func(F) = F ^ object_file),
-			FactTableForeignCodes) }.
+	globals__io_get_globals(Globals),
+	{ ObjExt = get_object_extension(Globals, PIC) },
+	fact_table_file_name(ModuleName, FactTableName, ObjExt, yes,
+		FactTableObjectFile).
 
 external_foreign_code_files(PIC, Imports, ForeignFiles) -->
 	%
 	% Find externally compiled foreign code files for
 	% `:- pragma foreign_proc' declarations.
 	%
-	globals__io_get_globals(Globals),
-	{ ObjExt = target_extension(Globals, object_code(PIC)) },
+	maybe_pic_object_file_extension(PIC, ObjExt),
 	globals__io_get_target(CompilationTarget),
 	{ ModuleName = Imports ^ module_name },
 	(

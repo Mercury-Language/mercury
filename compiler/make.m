@@ -143,7 +143,7 @@
 			% `--target c' and `--target asm'.
 	;	target_code_to_object_code(pic)
 	;	foreign_code_to_object_code(pic, foreign_language)
-	;	fact_table_code_to_object_code(pic)
+	;	fact_table_code_to_object_code(pic, file_name)
 	.
 
 :- type module_compilation_task_type
@@ -174,7 +174,7 @@
 	;	object_code(pic)
 	;	foreign_il_asm(foreign_language)
 	;	foreign_object(pic, foreign_language)
-	;	factt_object(pic)
+	;	fact_table_object(pic, file_name)
 	.
 
 :- type c_header_type
@@ -318,11 +318,8 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 	solutions(
 	    (pred(TargetFile0::out) is nondet :-
 		(
-			Suffix = target_extension(Globals,
-				ModuleTargetType),
-			% Allowing these will cause multiple solutions,
-			% which will cause classification to fail.
-			ModuleTargetType \= factt_object(_)
+			yes(Suffix) = target_extension(Globals,
+				ModuleTargetType)
 		->
 			ModuleNameStr = ModuleNameStr0,
 			TargetType0 = module_target(ModuleTargetType)
@@ -348,7 +345,8 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 			TargetType0 = linked_target(executable)
 		;
 			string__append(Suffix1, "s", Suffix),
-			Suffix1 = target_extension(Globals, ModuleTargetType),
+			yes(Suffix1) = target_extension(Globals,
+						ModuleTargetType),
 
 			% Not yet implemented. `build_all' targets
 			% are only used by tools/bootcheck, so it
