@@ -31,7 +31,7 @@
 
 :- interface.
 
-:- import_module io.
+:- import_module io, int, integer.
 
 :- include_module posix__closedir.
 :- include_module posix__dup.
@@ -67,6 +67,18 @@
 
 	% Inodes.
 :- type ino_t ---> ino(int).
+
+	% Link counts.
+:- type nlink_t ---> nlink(int).
+
+	% File offsets.
+:- type off_t ---> off(integer).
+
+	% Block counts.
+:- type blkcnt_t ---> blkcnt(integer).
+
+	% Block size.
+:- type blksize_t ---> blksize(int).
 
 	% Process identifiers.
 :- type pid_t ---> pid(int).

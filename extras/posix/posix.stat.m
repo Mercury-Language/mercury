@@ -12,7 +12,7 @@
 
 :- interface.
 
-:- import_module int, string, time.
+:- import_module string, time.
 
 :- type file_type
     --->    file
@@ -30,13 +30,13 @@
 :- func ino(stat) = ino_t.
 :- func mode(stat) = mode_t.
 :- func file_type(stat) = file_type.
-:- func nlink(stat) = int.
+:- func nlink(stat) = nlink_t.
 :- func uid(stat) = uid_t.
 :- func gid(stat) = gid_t.
 :- func rdev(stat) = dev_t.
-:- func size(stat) = int.
-:- func blksize(stat) = int.
-:- func blocks(stat) = int.
+:- func size(stat) = off_t.
+:- func blksize(stat) = blksize_t.
+:- func blocks(stat) = blkcnt_t.
 :- func atime(stat) = time_t.
 :- func mtime(stat) = time_t.
 :- func ctime(stat) = time_t.
@@ -150,7 +150,11 @@ file_type(Stat) =
 	[will_not_call_mercury, thread_safe],
 	"Rdev = ((struct stat *)S)->st_rdev; ").
 
-:- pragma c_code(size(S::in) = (Size::out),
+size(S) = off(integer(size0(S))).
+
+:- func size0(stat) = int.
+
+:- pragma c_code(size0(S::in) = (Size::out),
 	[will_not_call_mercury, thread_safe],
 	"Size = ((struct stat *)S)->st_size; ").
 
@@ -158,7 +162,11 @@ file_type(Stat) =
 	[will_not_call_mercury, thread_safe],
 	"Blksize = ((struct stat *)S)->st_blksize; ").
 
-:- pragma c_code(blocks(S::in) = (Blocks::out),
+blocks(S) = blkcnt(integer(blocks0(S))).
+
+:- func blocks0(stat) = int.
+
+:- pragma c_code(blocks0(S::in) = (Blocks::out),
 	[will_not_call_mercury, thread_safe],
 	"Blocks = ((struct stat *)S)->st_blocks; ").
 
