@@ -1156,7 +1156,7 @@ ulimit -S -t unlimited
 	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
-	if [ -d gcc/. && -d mercury-gcc/. ]; then
+	if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
 		cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
 		cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
 	else	
@@ -1184,7 +1184,7 @@ case $status in
 	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
 	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
 	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
-	if [ -d gcc/. && -d mercury-gcc/. ]; then
+	if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
 		cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
 		cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
 	else	
