@@ -266,10 +266,6 @@ then
 		fi
 	fi
 
-	# this is only for a transition period,
-	# until all stage1 dirs have been removed
-	/bin/rm -fr stage1
-
 	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
 	MERCURY_INT_DIR=$root/stage2/library
