@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -63,18 +63,19 @@ typedef Word ** AnswerBlock;
 
 #ifdef CONSERVATIVE_GC
 
-#define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
+  #define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
 	do {								\
 		(*((AnswerBlock)ABlock))[Offset] = Value;		\
 	} while(0)
 
 #else /* not CONSERVATIVE_GC */
 
-#define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
+  #define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
 	do {								\
 	   	save_transient_registers();				\
 		(*((AnswerBlock)ABlock))[Offset] = 			\
-			deep_copy(Value, &TypeInfo, NULL, NULL);	\
+			deep_copy(Value, (Word *) (Word) &TypeInfo,	\
+				NULL, NULL);				\
 		restore_transient_registers();		  		\
 	} while(0)
 
@@ -83,28 +84,29 @@ typedef Word ** AnswerBlock;
 
 #ifdef CONSERVATIVE_GC
 
-#define table_allocate(Size)						\
+  #define table_allocate(Size)						\
 	GC_malloc(Size);
 
-#define table_reallocate(Pointer, Size)					\
+  #define table_reallocate(Pointer, Size)				\
 	GC_realloc(Pointer, Size);
 
-#define table_free(Pointer)						\
+  #define table_free(Pointer)						\
 	GC_free(Pointer);
 
-#define MR_table_list_cons(h, t) list_cons((h),(t))
+  #define MR_table_list_cons(h, t) list_cons((h),(t))
 
 #else /* not CONSERVATIVE_GC */
 
-#define table_allocate(Size)                                            \
+  #define table_allocate(Size)						\
 	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), NULL)
-#define table_reallocate(Pointer, Size)					\
+  #define table_reallocate(Pointer, Size)				\
 	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), NULL)
-#define table_free(Pointer)						\
+  #define table_free(Pointer)						\
 	fatal_error("Sorry, not implemented: tabling in non-GC grades")
 
-#define MR_table_list_cons(h, t)					\
-	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), NULL)
+  #define MR_table_list_cons(h, t)					\
+	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(Word)0)
 
 #endif /* CONSERVATIVE_GC */
 

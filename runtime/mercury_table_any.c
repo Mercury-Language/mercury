@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,17 +85,16 @@ MR_table_type(Word *type_info, Word data, TrieNode table)
                         break;
 
                     case TYPELAYOUT_UNIV_VALUE:
-                    {
                         table = (Word**) MR_TABLE_TYPE_INFO(table,
                             data_value[UNIV_OFFSET_FOR_TYPEINFO]);
                         table = (Word**) MR_TABLE_ANY(table,
                             data_value[UNIV_OFFSET_FOR_TYPEINFO],
                             data_value[UNIV_OFFSET_FOR_DATA]);
                         break;
-                    }
+
                     case TYPELAYOUT_PREDICATE_VALUE:
                     {
-                           Word args = data_value[0];
+                        Word args = data_value[0];
 
                         table = (Word **) MR_TABLE_WORD(table, args);
                         table = (Word **) MR_TABLE_WORD(table, data_value[1]);
@@ -113,8 +112,8 @@ MR_table_type(Word *type_info, Word data, TrieNode table)
 
                     case TYPELAYOUT_ARRAY_VALUE:
                     {
-                           MR_ArrayType *array;
-                            Integer array_size;        
+                        MR_ArrayType *array;
+                        Integer array_size;        
         
                         array = (MR_ArrayType *) data_value;
                         array_size = array->size;

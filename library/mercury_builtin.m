@@ -1286,7 +1286,7 @@ table_loopcheck_error(Message) :-
 :- pragma c_code(table_save_char_ans(T::in, Offset::in, C::in), 
 		will_not_call_mercury, "
 	MR_TABLE_SAVE_ANSWER(Offset, T, C,
-		mercury_data___base_type_info_char_0);
+		mercury_data___base_type_info_character_0);
 ").
 
 :- pragma c_code(table_save_string_ans(T::in, Offset::in, S::in), 
@@ -1623,7 +1623,8 @@ Declare_label(mercury__table_resume_1_0_ChangeLoop);
 Declare_label(mercury__table_resume_1_0_ChangeLoopDone);
 Declare_label(mercury__table_resume_1_0_SolutionsListLoop);
 Declare_label(mercury__table_resume_1_0_AnsListLoop);
-Declare_label(mercury__table_resume_1_0_AnsListLoopDone);
+Declare_label(mercury__table_resume_1_0_AnsListLoopDone1);
+Declare_label(mercury__table_resume_1_0_AnsListLoopDone2);
 Declare_label(mercury__table_resume_1_0_SkipAns);
 Declare_label(mercury__table_resume_1_0_RedoPoint);
 
@@ -1635,7 +1636,8 @@ BEGIN_MODULE(table_resume_module)
 	init_label_sl(mercury__table_resume_1_0_ChangeLoopDone);
 	init_label_sl(mercury__table_resume_1_0_SolutionsListLoop);
 	init_label_sl(mercury__table_resume_1_0_AnsListLoop);
-	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone);
+	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone1);
+	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone2);
 	init_label_sl(mercury__table_resume_1_0_SkipAns);
 	init_label_sl(mercury__table_resume_1_0_RedoPoint);
 BEGIN_CODE

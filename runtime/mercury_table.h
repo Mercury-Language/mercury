@@ -1,11 +1,16 @@
 /*
-** Copyright (C) 1993-1995, 1997 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
 ** mercury_table.h - defines the interface to the hash table module.
+**
+** Note that this module has nothing to do with the implementating
+** of the "tabling" pragmas such as `pragma memo' -- the implementation
+** of those features uses Tries, not hash tables, and is defined
+** in mercury_tabling.h.
 */
 
 #ifndef	MERCURY_TABLE_H
