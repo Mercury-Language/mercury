@@ -59,6 +59,8 @@ extern	void	MR_print_detstackptr(FILE *fp, const Word *s);
 extern	void	printnondstack(const Word *s);
 extern	void	MR_printnondstackptr(const Word *s);
 extern	void	MR_print_nondstackptr(FILE *fp, const Word *s);
+extern	void	MR_print_heapptr(FILE *fp, const Word *s);
+extern	void	MR_print_label(FILE *fp, /* const */ Code *w);
 extern	void	printlabel(/* const */ Code *w);
 
 #if __GNUC__
