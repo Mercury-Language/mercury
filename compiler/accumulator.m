@@ -1671,6 +1671,16 @@ assoc_fact(unqualified("int"), "*", 3, [In, In, Out], ModuleInfo,
 	mode_is_input(ModuleInfo, In),
 	mode_is_output(ModuleInfo, Out).
 
+assoc_fact(unqualified("list"), "append", 3, [TypeInfoIn, In, In, Out], 
+		ModuleInfo, [TypeInfo, A, B, C], 
+		[TypeInfo, B, A, C], PossibleStaticVars, yes) :-
+	set__list_to_set([A, B], PossibleStaticVars),
+	mode_is_input(ModuleInfo, TypeInfoIn),
+	mode_is_input(ModuleInfo, In),
+	mode_is_output(ModuleInfo, Out).
+
+
+
 /* XXX introducing accumulators for floating point numbers can be bad.
 assoc_fact(unqualified("float"), "+", 3, [In, In, Out], ModuleInfo, 
 		[A, B, C], [A, B, C], PossibleStaticVars, no) :-
@@ -1684,15 +1694,6 @@ assoc_fact(unqualified("float"), "*", 3, [In, In, Out], ModuleInfo,
 	mode_is_input(ModuleInfo, In),
 	mode_is_output(ModuleInfo, Out).
 */
-
-assoc_fact(unqualified("list"), "append", 3, [TypeInfoIn, In, In, Out], 
-		ModuleInfo, [TypeInfo, A, B, C], 
-		[TypeInfo, B, A, C], PossibleStaticVars, yes) :-
-	set__list_to_set([A, B], PossibleStaticVars),
-	mode_is_input(ModuleInfo, TypeInfoIn),
-	mode_is_input(ModuleInfo, In),
-	mode_is_output(ModuleInfo, Out).
-
 /*
 	XXX this no longer works, because set__insert isn't associative.
 
