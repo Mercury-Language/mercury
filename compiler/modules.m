@@ -1238,6 +1238,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
 		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
+		"\t-rm -f $(", ModuleName, ".pic_os) ",
+						ModuleName, "_init.pic_o\n",
 		"\t-rm -f $(", ModuleName, ".trans_opt_dates)\n",
 		"\t-rm -f $(", ModuleName, ".trans_opts)\n",
 		"\t-rm -f $(", ModuleName, ".profs)\n",
