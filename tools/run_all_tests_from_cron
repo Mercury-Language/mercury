@@ -87,37 +87,34 @@ case "$BRANCH" in
 			*)	BRANCH=latest ;;
 		esac
 		;;
-	    hg)
-		#
-		# For these hosts:
-		# On odd-numbered days, test the release branch.
-		# On even-numbered days, test the main branch.
-		#
-		case $DAY in
-			*[13579]) BRANCH=$release_branch ;;
-			*)	  BRANCH=latest ;;
-		esac
-		;;
-	    aral)
+	    aral|jupiter)
+	    	# jupiter is currrently the rotd host, so only
+		# test the main branch on it.
 		#
 		# Aral has limited disk space, and not having to expend it
 		# on the release branch helps conserve it.
 		#
-	    	BRANCH=latest
+		BRANCH=latest
+	   	;; 
+	   earth|saskervoy|ceres)
+		# On odd-numbered days, test the release branch
+		# On even-numbered days, test the main branch
+		case $DAY in
+			*[13579]) BRANCH=latest ;;
+			*)	  BRANCH=release ;;
+		esac
 		;;
-	    *)
-		# #
-		# # For the remaining hosts, do the reverse:
-		# # On odd-numbered days, test the main branch.
-		# # On even-numbered days, test the release branch.
-		# #
-		# case $DAY in
-		# 	*[13579]) BRANCH=latest ;;
-		# 	*)	  BRANCH=$release_branch ;;
-		# esac
+	   almery|ascolais|swordfish)
+		# On these hosts do the opposite.
+		case $DAY in
+			*[13579]) BRANCH=release ;;
+			*)	  BRANCH=latest ;;
+		esac
+		;;
 
-		# While the release branch is inactive, test only the latest.
-	    	BRANCH=latest
+	    *)
+	    	# On anything else just test the main branch.
+		BRANCH=latest
 		;;
         esac
         ;;
