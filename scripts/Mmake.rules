@@ -126,7 +126,7 @@ main_target: $(MAIN_TARGET)
 	$(RM_C) $*.c
 
 %.dir/*.o: %.m
-	$(MC) -s$(GRADE) $(MCGFLAGS) -c --split-c-files $<
+	$(MCS) -s$(GRADE) $(MCSFLAGS) $<
 
 #-----------------------------------------------------------------------------#
 

@@ -23,6 +23,7 @@ DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 
 MC		= mc
+MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c
 MCD		= $(MC) --generate-dependencies
 MCI		= $(MC) --make-interface
@@ -30,6 +31,7 @@ MCFLAGS		=
 MCIFLAGS	= $(MCFLAGS)
 MCDFLAGS	= $(MCFLAGS)
 MCGFLAGS	= $(MCFLAGS)
+MCSFLAGS	= $(MCFLAGS)
 
 #
 # The following variables hold the names of various programs and
