@@ -15,19 +15,14 @@
 	% constructor.
 	% 
 	% For other types, we use the bottom two bits of the word as a
-	% tag.  If there are four or less alternatives, then we just
-	% use this two-bit tag to distinguish between them.
-	% 
-	% Otherwise, we split the constructors into constants and
-	% functors, and assign tag zero to all the constants.  If there
-	% is more than one constant, we distinguished between the
-	% different constants by the value of the rest of the word.
-	% Then we assign one tag bit each to the first two functors (or
-	% the first three functors, if there weren't any constants),
-	% and the remaining functors all get the last remaining two-bit
-	% tag.   These functors are distinguished by a secondary tag
-	% which is the first word of the argument vector for those
-	% functors.
+	% tag.  We split the constructors into constants and functors,
+	% and assign tag zero to the constants (if any).  If there is
+	% more than one constant, we distinguish between the different
+	% constants by the value of the rest of the word.  Then we
+	% assign one tag bit each to the first few functors.  The
+	% remaining functors all get the last remaining two-bit tag.
+	% These functors are distinguished by a secondary tag which is
+	% the first word of the argument vector for those functors.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -73,19 +68,13 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
 	;
 		IsEnum = no,
-		list__length(Ctors, NumCtors),
 		max_num_tags(NumTagBits, MaxNumTags),
 		MaxTag is MaxNumTags - 1,
-		( NumCtors =< MaxNumTags ->
-			assign_simple_tags(Ctors, 0, MaxTag, CtorTags0,
-					CtorTags)
-		;
-			split_constructors(Ctors, Constants, Functors),
-			assign_constant_tags(Constants, MaxTag, CtorTags0,
+		split_constructors(Ctors, Constants, Functors),
+		assign_constant_tags(Constants, CtorTags0,
 					CtorTags1, NextTag),
-			assign_simple_tags(Functors, NextTag, MaxTag, CtorTags1,
+		assign_simple_tags(Functors, NextTag, MaxTag, CtorTags1,
 					CtorTags)
-		)
 	).
 
 :- pred adjust_num_tag_bits(tags_method, int, int).
@@ -108,24 +97,20 @@ assign_enum_constants([Name - Args | Rest], Val, CtorTags0, CtorTags) :-
 	Val1 is Val + 1,
 	assign_enum_constants(Rest, Val1, CtorTags1, CtorTags).
 
-:- pred assign_constant_tags(list(constructor), int, cons_tag_values,
+:- pred assign_constant_tags(list(constructor), cons_tag_values,
 				cons_tag_values, int).
-:- mode assign_constant_tags(in, in, in, out, out) is det.
+:- mode assign_constant_tags(in, in, out, out) is det.
 
-	% If there's no constants, don't do anything.
-	% If there's one constant, allocate it the first simple tag (zero).
-	% If there's more than one constant, allocate them all complicated
-	% tags with the first simple tag as the primary tag, and
-	% different secondary tags starting from zero.
+	% If there's no constants, don't do anything.  Otherwise,
+	% allocate the first tag for the constants, and give
+	% them all complicated tags with the that tag as the
+	% primary tag, and different secondary tags starting from
+	% zero.
 
-assign_constant_tags(Constants, MaxTag, CtorTags0, CtorTags1, NextTag) :-
+assign_constant_tags(Constants, CtorTags0, CtorTags1, NextTag) :-
 	( Constants = [] ->
 		NextTag = 0,
 		CtorTags1 = CtorTags0
-	; Constants = [_] ->
-		NextTag = 1,
-		assign_simple_tags(Constants, 0, MaxTag, CtorTags0,
-			CtorTags1)
 	;
 		NextTag = 1,
 		assign_complicated_constant_tags(Constants,
