@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -151,11 +151,9 @@
 :- type external_request
 	---> external_request(string).
 
-:- pred parse__read_command(string, command, io__state, io__state).
-:- mode parse__read_command(in, out, di, uo) is det.
+:- pred parse__read_command(string::in, command::out, io::di, io::uo) is det.
 
-:- pred parse__read_command_external(command, io__state, io__state).
-:- mode parse__read_command_external(out, di, uo) is det.
+:- pred parse__read_command_external(command::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -176,32 +174,34 @@
 	;	name(string)
 	;	unknown(char).
 
-parse__read_command(Prompt, Command) -->
-	util__trace_get_command(Prompt, Line),
-	{ string__words(char__is_whitespace, Line) = Words },
-	( { parse(Words, Command2) } ->
-		{ Command = Command2 }
+parse__read_command(Prompt, Command, !IO) :-
+	util__trace_get_command(Prompt, Line, !IO),
+	string__words(char__is_whitespace, Line) = Words,
+	( parse(Words, Command2) ->
+		Command = Command2
 	;
-		{ Command = unknown }
+		Command = unknown
 	).
 
-parse__read_command_external(Command) -->
-	io__read(Result),
-	( { Result = ok(external_request(StringToParse)) } ->
-		{ string__words(char__is_whitespace, StringToParse) = Words },
-		( { parse(Words, Command2) } ->
-			{ Command = Command2 }
+parse__read_command_external(Command, !IO) :-
+	io__read(Result, !IO),
+	(
+		Result = ok(external_request(StringToParse)),
+		string__words(char__is_whitespace, StringToParse) = Words,
+		( parse(Words, Command2) ->
+			Command = Command2
 		;
-			{ Command = unknown }
+			Command = unknown
 		)
-	; { Result = eof } ->
-		{ Command = quit }
 	;
-		{ Command = unknown }
+		Result = eof,
+		Command = quit
+	;
+		Result = error(_, _),
+		Command = unknown
 	).
 
-:- pred lexer_words(list(string), list(token)).
-:- mode lexer_words(in, out) is det.
+:- pred lexer_words(list(string)::in, list(token)::out) is det.
 
 lexer_words([], []).
 lexer_words([Word | Words], Tokens) :-
@@ -209,15 +209,13 @@ lexer_words([Word | Words], Tokens) :-
 	lexer_words(Words, WordsTokens),
 	list__append(WordTokens, WordsTokens, Tokens).
 
-:- pred lexer_word(string, list(token)).
-:- mode lexer_word(in, out) is det.
+:- pred lexer_word(string::in, list(token)::out) is det.
 
 lexer_word(Word, Tokens) :-
 	string__to_char_list(Word, Chars),
 	lexer_word_chars(Chars, Tokens).
 
-:- pred lexer_word_chars(list(char), list(token)).
-:- mode lexer_word_chars(in, out) is det.
+:- pred lexer_word_chars(list(char)::in, list(token)::out) is det.
 
 lexer_word_chars([], []).
 lexer_word_chars([C | Cs], Toks) :-
@@ -247,8 +245,7 @@ lexer_word_chars([C | Cs], Toks) :-
 		lexer_word_chars(Cs, Toks2)
 	).
 
-:- pred lexer_dots(list(char), list(token)).
-:- mode lexer_dots(in, out) is det.
+:- pred lexer_dots(list(char)::in, list(token)::out) is det.
 
 lexer_dots([], []).
 lexer_dots([C | Cs], Toks) :-
@@ -262,16 +259,14 @@ lexer_dots([C | Cs], Toks) :-
 		Toks = [Tok | Toks2]
 	).
 
-:- pred dig_to_int(char, int).
-:- mode dig_to_int(in, out) is det.
+:- pred dig_to_int(char::in, int::out) is det.
 
 dig_to_int(C, N) :-
 	char__to_int('0', Zero),
 	char__to_int(C, CN),
 	N = CN - Zero.
 
-:- pred lexer_num(int, list(char), list(token)).
-:- mode lexer_num(in, in, out) is det.
+:- pred lexer_num(int::in, list(char)::in, list(token)::out) is det.
 
 lexer_num(N, Cs, Toks) :-
 	list__takewhile(char__is_digit, Cs, Digits, Rest),
@@ -279,8 +274,7 @@ lexer_num(N, Cs, Toks) :-
 	Toks = [num(Num) | Toks2],
 	lexer_word_chars(Rest, Toks2).
 
-:- pred digits_to_int_acc(int, list(char), int).
-:- mode digits_to_int_acc(in, in, out) is det.
+:- pred digits_to_int_acc(int::in, list(char)::in, int::out) is det.
 
 digits_to_int_acc(Acc, [], Acc).
 digits_to_int_acc(Acc, [C | Cs], Num) :-
@@ -288,8 +282,7 @@ digits_to_int_acc(Acc, [C | Cs], Num) :-
 	Acc2 = 10 * Acc + D,
 	digits_to_int_acc(Acc2, Cs, Num).
 
-:- pred lexer_name(char, list(char), list(token)).
-:- mode lexer_name(in, in, out) is det.
+:- pred lexer_name(char::in, list(char)::in, list(token)::out) is det.
 
 lexer_name(C, Cs, Toks) :-
 	list__takewhile(char__is_alnum_or_underscore, Cs, Letters, Rest),
@@ -299,8 +292,7 @@ lexer_name(C, Cs, Toks) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred parse(list(string), command).
-:- mode parse(in, out) is semidet.
+:- pred parse(list(string)::in, command::out) is semidet.
 
 parse(Words, Command) :-
 	(
@@ -443,8 +435,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
 		fail
 	).
 
-:- pred parse_path(list(token), path).
-:- mode parse_path(in, out) is semidet.
+:- pred parse_path(list(token)::in, path::out) is semidet.
 
 	% SICStus is forgiving in the syntax of paths, hence so are we.
 	% XXX: Be less forgiving?
@@ -457,8 +448,7 @@ parse_path([Token | Tokens], Path) :-
 		parse_dirs([Token | Tokens], Dirs)
 	).
 
-:- pred parse_dirs(list(token), list(dir)).
-:- mode parse_dirs(in, out) is semidet.
+:- pred parse_dirs(list(token)::in, list(dir)::out) is semidet.
 
 parse_dirs([], []).
 parse_dirs([Token | Tokens], Dirs) :-
@@ -485,8 +475,7 @@ parse_dirs([Token | Tokens], Dirs) :-
 		parse_dirs(Tokens, Dirs)
 	).
 
-:- pred parse_setting(list(token), setting).
-:- mode parse_setting(in, out) is semidet.
+:- pred parse_setting(list(token)::in, setting::out) is semidet.
 
 parse_setting([Token | Tokens], Setting) :-
 	( Token = name("depth") ->
@@ -600,8 +589,7 @@ setting_option_defaults(pretty,		bool(no)).
 
 % The commented out code is not currently used.
 
-% :- pred show_command(command, io__state, io__state).
-% :- mode show_command(in, di, uo) is det.
+% :- pred show_command(command::in, io::di, io::uo) is det.
 % 
 % show_command(ls(Path)) -->
 % 	io__write_string("ls "),
@@ -644,8 +632,7 @@ setting_option_defaults(pretty,		bool(no)).
 % show_command(unknown) -->
 % 	io__write_string("unknown\n").
 % 
-% :- pred show_path(path, io__state, io__state).
-% :- mode show_path(in, di, uo) is det.
+% :- pred show_path(path::in, io::di, io::uo) is det.
 % 
 % show_path(root_rel(Dirs)) -->
 % 	io__write_string("/"),
@@ -653,8 +640,7 @@ setting_option_defaults(pretty,		bool(no)).
 % show_path(dot_rel(Dirs)) -->
 % 	show_dirs(Dirs).
 % 
-% :- pred show_dirs(list(dir), io__state, io__state).
-% :- mode show_dirs(in, di, uo) is det.
+% :- pred show_dirs(list(dir)::in, io::di, io::uo) is det.
 % 
 % show_dirs([]) -->
 % 	io__nl.
@@ -670,8 +656,7 @@ setting_option_defaults(pretty,		bool(no)).
 % 	io__write_string("../"),
 % 	show_dirs(Dirs).
 % 
-% :- pred show_setting(setting, io__state, io__state).
-% :- mode show_setting(in, di, uo) is det.
+% :- pred show_setting(setting::in, io::di, io::uo) is det.
 % 
 % show_setting(depth(Depth)) -->
 % 	io__write_string("depth "),
@@ -698,8 +683,7 @@ setting_option_defaults(pretty,		bool(no)).
 % 	io__write_int(N),
 % 	io__nl.
 % 
-% :- pred show_format(portray_format, io__state, io__state).
-% :- mode show_format(in, di, uo) is det.
+% :- pred show_format(portray_format::in, io::di, io::uo) is det.
 % 
 % show_format(flat) -->
 % 	io__write_string("flat").

@@ -92,18 +92,18 @@ util__is_predicate(function) = no.
 util__is_function(predicate) = no.
 util__is_function(function) = yes.
 
-util__trace_getline(Prompt, Result) -->
-	io__input_stream(MdbIn),
-	io__output_stream(MdbOut),
-	util__trace_getline(Prompt, Result, MdbIn, MdbOut).
+util__trace_getline(Prompt, Result, !IO) :-
+	io__input_stream(MdbIn, !IO),
+	io__output_stream(MdbOut, !IO),
+	util__trace_getline(Prompt, Result, MdbIn, MdbOut, !IO).
 
-util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
-	call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success),
-	{ Success \= 0 ->
+util__trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
+	call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO),
+	( Success \= 0 ->
 		Result = ok(Line)
 	;
 		Result = eof
-	}.
+	).
 
 :- pred call_trace_getline(input_stream::in, output_stream::in, string::in,
 	string::out, int::out, io__state::di, io__state::uo) is det.
@@ -149,13 +149,13 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	IO = IO0;
 ").
 
-call_trace_getline(_, _, _, _, _) -->
-	{ private_builtin__sorry("mdb__util__call_trace_getline") }.
+call_trace_getline(_, _, _, _, _, !IO) :-
+	private_builtin__sorry("mdb__util__call_trace_getline").
 
-util__trace_get_command(Prompt, Result) -->
-	io__input_stream(MdbIn),
-	io__output_stream(MdbOut),
-	util__trace_get_command(Prompt, Result, MdbIn, MdbOut).
+util__trace_get_command(Prompt, Result, !IO) :-
+	io__input_stream(MdbIn, !IO),
+	io__output_stream(MdbOut, !IO),
+	util__trace_get_command(Prompt, Result, MdbIn, MdbOut, !IO).
 
 :- pragma foreign_proc("C",
 	util__trace_get_command(Prompt::in, Line::out, MdbIn::in,
@@ -181,8 +181,8 @@ util__trace_get_command(Prompt, Result) -->
 	State = State0;
 ").
 
-util__trace_get_command(_, _, _, _) -->
-	{ private_builtin__sorry("mdb__util__trace_get_command/6") }.
+util__trace_get_command(_, _, _, _, !IO) :-
+	private_builtin__sorry("mdb__util__trace_get_command/6").
 
 util__zip_with(Pred, XXs, YYs, Zipped) :-
 	( (XXs = [], YYs = []) ->

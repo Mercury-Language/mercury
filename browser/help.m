@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,17 +46,17 @@
 	% Print the top-level help nodes. This should give an overview
 	% of the main topics for which help is available.
 :- pred help__help(help__system::in, io__output_stream::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Print the help node at the given path. If there is none,
 	% print the top-level nodes.
 :- pred help__path(help__system::in, help__path::in, io__output_stream::in,
-	help__res::out, io__state::di, io__state::uo) is det.
+	help__res::out, io::di, io::uo) is det.
 
 	% Print all help nodes with the given name. If there are none,
 	% print the top-level nodes.
 :- pred help__name(help__system::in, string::in, io__output_stream::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -165,82 +165,81 @@ help__insert_into_entry_list([Head | Tail], Index, Name, Node, List) :-
 
 %-----------------------------------------------------------------------------%
 
-help__help(Sys, Stream) -->
-	help__print_entry_list(Sys, Stream).
+help__help(Sys, Stream, !IO) :-
+	help__print_entry_list(Sys, Stream, !IO).
 
-help__name(Sys, Name, Stream) -->
-	help__search_entry_list(Sys, Name, 0, Count, Stream),
-	( { Count = 0 } ->
-		io__write_string("There is no such help topic.\n"),
-		help__help(Sys, Stream)
+help__name(Sys, Name, Stream, !IO) :-
+	help__search_entry_list(Sys, Name, 0, Count, Stream, !IO),
+	( Count = 0 ->
+		io__write_string("There is no such help topic.\n", !IO),
+		help__help(Sys, Stream, !IO)
 	;
-		[]
+		true
 	).
 
 :- pred help__search_entry_list(list(help__entry)::in, string::in,
-	int::in, int::out, io__output_stream::in,
-	io__state::di, io__state::uo) is det.
+	int::in, int::out, io__output_stream::in, io::di, io::uo) is det.
 
-help__search_entry_list([], _, C, C, _) --> [].
-help__search_entry_list([Entry | Tail], Name, C0, C, Stream) -->
-	{ Entry = entry(_, EntryName, Node) },
-	( { Name = EntryName } ->
+help__search_entry_list([], _, !C, _, !IO).
+help__search_entry_list([Entry | Tail], Name, !C, Stream, !IO) :-
+	Entry = entry(_, EntryName, Node),
+	( Name = EntryName ->
 		% We print this node, but don't search its children.
-		help__print_node(Node, Stream),
-		{ C = C0 + 1 }
+		help__print_node(Node, Stream, !IO),
+		!:C = !.C + 1
 	;
-		help__search_node(Node, Name, C0, C1, Stream),
-		help__search_entry_list(Tail, Name, C1, C, Stream)
+		help__search_node(Node, Name, !C, Stream, !IO),
+		help__search_entry_list(Tail, Name, !C, Stream, !IO)
 	).
 
 :- pred help__search_node(help__node::in, string::in, int::in, int::out,
-	io__output_stream::in, io__state::di, io__state::uo) is det.
+	io__output_stream::in, io::di, io::uo) is det.
 
-help__search_node(node(_, SubNodes), Name, C0, C, Stream) -->
-	help__search_entry_list(SubNodes, Name, C0, C, Stream).
+help__search_node(node(_, SubNodes), Name, !C, Stream, !IO) :-
+	help__search_entry_list(SubNodes, Name, !C, Stream, !IO).
 
-help__path(Entries, Path, Stream, Result) -->
-	( { Path = [Step] } ->
-		( { help__one_path_step(Entries, Step, Entry) } ->
-			{ Entry = entry(_, _, EntryNode) },
-			{ EntryNode = node(Text, _) },
-			io__write_string(Stream, Text),
-			{ Result = help__ok }
+help__path(Entries, Path, Stream, Result, !IO) :-
+	(
+		Path = [Step | Tail],
+		( help__one_path_step(Entries, Step, Entry) ->
+			Entry = entry(_, _, EntryNode),
+			(
+				Tail = [],
+				EntryNode = node(Text, _),
+				io__write_string(Stream, Text, !IO),
+				Result = help__ok
+			;
+				Tail = [_ | _],
+				EntryNode = node(_, SubEntries),
+				help__path(SubEntries, Tail, Stream, Result,
+					!IO)
+			)
 		;
-			{ string__append_list(["error at path component """,
-				Step, """"], Msg) },
-			{ Result = help__error(Msg) }
-		)
-	; { Path = [Step | Tail] } ->
-		( { help__one_path_step(Entries, Step, Entry) } ->
-			{ Entry = entry(_, _, EntryNode) },
-			{ EntryNode = node(_, SubEntries) },
-			help__path(SubEntries, Tail, Stream, Result)
-		;
-			{ string__append_list(["error at path component """,
-				Step, """"], Msg) },
-			{ Result = help__error(Msg) }
+			string__append_list(["error at path component """,
+				Step, """"], Msg),
+			Result = help__error(Msg)
 		)
 	;
-		{ Result = help__error("the path does not go that deep") }
+		Path = [],
+		Result = help__error("the path does not go that deep")
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred help__print_entry_list(list(help__entry)::in, io__output_stream::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-help__print_entry_list([], _) --> [].
-help__print_entry_list([entry(_, _, Node) | Nodes], Stream) -->
-	help__print_node(Node, Stream),
-	help__print_entry_list(Nodes, Stream).
+help__print_entry_list([], _, !IO).
+help__print_entry_list([entry(_, _, Node) | Nodes], Stream, !IO) :-
+	help__print_node(Node, Stream, !IO),
+	help__print_entry_list(Nodes, Stream, !IO).
 
 :- pred help__print_node(help__node::in, io__output_stream::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-help__print_node(node(Text, _Nodes), Stream) -->
-	io__write_string(Stream, Text).
-	% XXX help__print_entry_list(Nodes, Stream).
+help__print_node(node(Text, _Nodes), Stream, !IO) :-
+	io__write_string(Stream, Text, !IO).
+	% XXX help__print_entry_list(Nodes, Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 

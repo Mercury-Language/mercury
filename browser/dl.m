@@ -27,11 +27,11 @@
 
 % interface to the C function dlopen()
 :- pred dl__open(string::in, (mode)::in, scope::in, dl__result(handle)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 % low-level interface to the C function dlsym() -- returns a c_pointer.
 :- pred dl__sym(handle::in, string::in, dl__result(c_pointer)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 % high-level interface to the C function dlsym().
 % This version returns a higher-order predicate or function term.
@@ -51,7 +51,7 @@
 % or `char' is not supported.
 
 :- pred dl__mercury_sym(handle::in, mercury_proc::in, dl__result(T)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 % interface to the C function dlclose()
 %
@@ -61,7 +61,7 @@
 % because if you do reference code or static data from the dynamically
 % linked module after dl__close has been called, then the behaviour is
 % undefined (and probably harmful!).
-% 
+%
 % This can be difficult to ensure.  You need to make sure that you
 % don't keep any references to the higher-order terms return by dl__sym.
 % Furthermore you need to make sure that you don't keep any references
@@ -74,9 +74,8 @@
 %
 % (Note that using builtin__copy/2, to make copies rather than
 % keeping references, is *not* guaranteed to work in all cases.)
-% 
-:- pred dl__close(handle::in, dl__result::out,
-	io__state::di, io__state::uo) is det.
+%
+:- pred dl__close(handle::in, dl__result::out, io::di, io::uo) is det.
 
 :- implementation.
 :- import_module std_util, require, string, list, int.
@@ -97,27 +96,29 @@
 :- pragma foreign_proc("C",
 	is_null(Pointer::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
-"SUCCESS_INDICATOR = ((void *) Pointer == NULL)").
+"
+	SUCCESS_INDICATOR = ((void *) Pointer == NULL)
+").
+
 is_null(_) :-
 	private_builtin__sorry("dl__is_null").
 
-open(FileName, Mode, Scope, Result) -->
-	dlopen(FileName, Mode, Scope, Pointer),
-	( { is_null(Pointer) } ->
-		dlerror(ErrorMsg),
-		{ Result = error(ErrorMsg) }
+open(FileName, Mode, Scope, Result, !IO) :-
+	dlopen(FileName, Mode, Scope, Pointer, !IO),
+	( is_null(Pointer) ->
+		dlerror(ErrorMsg, !IO),
+		Result = error(ErrorMsg)
 	;
-		{ Result = ok(handle(Pointer)) }
+		Result = ok(handle(Pointer))
 	).
 
-/*
-** Note that dlopen() may call startup code (e.g. constructors for global
-** variables in C++) which may end up calling Mercury, so it's not safe
-** to declare this as `will_not_call_mercury'.
-*/
+% Note that dlopen() may call startup code (e.g. constructors for global
+% variables in C++) which may end up calling Mercury, so it's not safe
+% to declare this as `will_not_call_mercury'.
 
 :- pred dlopen(string::in, (mode)::in, scope::in, c_pointer::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
 	dlopen(FileName::in, Mode::in, Scope::in, Result::out,
 		_IO0::di, _IO::uo),
@@ -135,16 +136,17 @@ open(FileName, Mode, Scope, Result) -->
 	Result = (MR_Word) NULL;
 #endif
 }").
-dlopen(_, _, _, _) -->
-	{ private_builtin__sorry("dl__dlopen") }.
 
-mercury_sym(Handle, MercuryProc0, Result) -->
-	{ check_proc_spec_matches_result_type(Result, _,
-		MercuryProc0, MercuryProc1) },
-	{ check_type_is_supported(Result, _, MercuryProc1, MercuryProc) },
-	{ MangledName = proc_name_mangle(MercuryProc) },
-	sym(Handle, MangledName, Result0),
-	{
+dlopen(_, _, _, _, !IO) :-
+	private_builtin__sorry("dl__dlopen").
+
+mercury_sym(Handle, MercuryProc0, Result, !IO) :-
+	check_proc_spec_matches_result_type(Result, _,
+		MercuryProc0, MercuryProc1),
+	check_type_is_supported(Result, _, MercuryProc1, MercuryProc),
+	MangledName = proc_name_mangle(MercuryProc),
+	sym(Handle, MangledName, Result0, !IO),
+	(
 		Result0 = error(Msg),
 		Result = error(Msg)
 	;
@@ -152,7 +154,7 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		private_builtin__unsafe_type_cast(make_closure(Address),
 			Closure),
 		Result = ok(Closure)
-	}.
+	).
 
 :- pragma foreign_decl("C",
 "
@@ -162,7 +164,6 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 	% Convert the given procedure address to a closure.
 :- func make_closure(c_pointer) = c_pointer.
 
-make_closure(_) = _ :- private_builtin__sorry("dl__make_closure").
 :- pragma foreign_proc("C", make_closure(ProcAddr::in) = (Closure::out),
 	[will_not_call_mercury, promise_pure],
 "{
@@ -170,6 +171,9 @@ make_closure(_) = _ :- private_builtin__sorry("dl__make_closure").
 	Closure = (MR_Word) MR_make_closure((MR_Code *) ProcAddr);
 	MR_restore_transient_hp();
 }").
+
+make_closure(_) = _ :-
+	private_builtin__sorry("dl__make_closure").
 
 %
 % Check that the result type matches the information
@@ -248,8 +252,10 @@ check_proc_spec_matches_result_type(_Result, Value, Proc0, Proc) :-
 % XXX this doesn't catch the case of no_tag types that
 % end up being equivalent to `float' or `char'.
 %
+
 :- pred check_type_is_supported(dl__result(T)::unused, T::unused,
-		mercury_proc::in, mercury_proc::out) is det.
+	mercury_proc::in, mercury_proc::out) is det.
+
 check_type_is_supported(_Result, Value, Proc0, Proc) :-
 	(
 		high_level_code,
@@ -263,7 +269,8 @@ check_type_is_supported(_Result, Value, Proc0, Proc) :-
 		),
 		type_ctor_module_name(ArgTypeCtor) = "builtin"
 	->
-		error("sorry, not implemented: dl__mercury_sym for procedure with argument type `float' or `char'")
+		error("sorry, not implemented: dl__mercury_sym " ++
+			"for procedure with argument type `float' or `char'")
 	;
 		high_level_code,
 		% The generic wrapper only works for procedures with up to
@@ -273,22 +280,24 @@ check_type_is_supported(_Result, Value, Proc0, Proc) :-
 		% so we can only support 18 other arguments.
 		type_ctor_arity(type_ctor(type_of(Value))) > 18
 	->
-		error("sorry, not implemented: dl__mercury_sym for procedure with more than 18 arguments")
+		error("sorry, not implemented: dl__mercury_sym " ++
+			"for procedure with more than 18 arguments")
 	;
 		Proc = Proc0
 	).
 
-sym(handle(Handle), Name, Result) -->
-	dlsym(Handle, Name, Pointer),
-	( { is_null(Pointer) } ->
-		dlerror(ErrorMsg),
-		{ Result = error(ErrorMsg) }
+sym(handle(Handle), Name, Result, !IO) :-
+	dlsym(Handle, Name, Pointer, !IO),
+	( is_null(Pointer) ->
+		dlerror(ErrorMsg, !IO),
+		Result = error(ErrorMsg)
 	;
-		{ Result = ok(Pointer) }
+		Result = ok(Pointer)
 	).
 
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
 	dlsym(Handle::in, Name::in, Pointer::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -299,14 +308,16 @@ sym(handle(Handle), Name, Result) -->
 	Pointer = (MR_Word) NULL;
 #endif
 }").
-dlsym(_, _, _) -->
-	{ private_builtin__sorry("dl__dlsym") }.
 
-:- pred dlerror(string::out, io__state::di, io__state::uo) is det.
+dlsym(_, _, _, !IO) :-
+	private_builtin__sorry("dl__dlsym").
+
+:- pred dlerror(string::out, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
 	dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io], "
-{
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
 	const char *msg;
 
 #if defined(MR_HAVE_DLFCN_H) && defined(MR_HAVE_DLERROR)
@@ -319,20 +330,21 @@ dlsym(_, _, _) -->
 
 	MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
-dlerror(_) -->
-	{ private_builtin__sorry("dl__dlerror") }.
 
-close(handle(Handle), Result) -->
-	dlclose(Handle), 
-	dlerror(ErrorMsg),
-	{ Result = (if ErrorMsg = "" then ok else error(ErrorMsg)) }.
+dlerror(_, !IO) :-
+	private_builtin__sorry("dl__dlerror").
 
-/*
-** Note that dlclose() may call finalization code (e.g. destructors for global
-** variables in C++) which may end up calling Mercury, so it's not safe
-** to declare this as `will_not_call_mercury'.
-*/
-:- pred dlclose(c_pointer::in, io__state::di, io__state::uo) is det.
+close(handle(Handle), Result, !IO) :-
+	dlclose(Handle, !IO),
+	dlerror(ErrorMsg, !IO),
+	Result = (if ErrorMsg = "" then ok else error(ErrorMsg)).
+
+% Note that dlclose() may call finalization code (e.g. destructors for global
+% variables in C++) which may end up calling Mercury, so it's not safe
+% to declare this as `will_not_call_mercury'.
+
+:- pred dlclose(c_pointer::in, io::di, io::uo) is det.
+
 :- pragma foreign_proc("C",
 	dlclose(Handle::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io],
@@ -341,8 +353,8 @@ close(handle(Handle), Result) -->
 	dlclose((void *) Handle);
 #endif
 ").
-dlclose(_) -->
-	{ private_builtin__sorry("dl__dlclose") }.
+dlclose(_, !IO) :-
+	private_builtin__sorry("dl__dlclose").
 
 %-----------------------------------------------------------------------------%
 
@@ -357,6 +369,7 @@ dlclose(_) -->
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
 high_level_code :-
 	private_builtin__sorry("dl__high_level_code").
 
