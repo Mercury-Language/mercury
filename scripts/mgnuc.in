@@ -38,6 +38,7 @@ case "$CC" in
 
 # Note: we do not enable the following gcc warnings:
 # -Wredundant-decls	causes too many complaints in system header files
+# -Wtraditional		we don't care about compatibility with pre-ANSI C
 # -Wconversion		really only intended to help people using \`unprotoize'
 # -Waggregate-return	not useful, IMHO
 
@@ -46,6 +47,8 @@ case "$CC" in
 # -pedantic		causes unsuppressable warnings about LVALUE_CAST()
 # -Wnested-externs	causes unsuppressable warnings about callentry()
 # -Wid-clash-31 	causes warnings about entry_mercury__xxx ...
+#              		we don't care about compatibility with C compilers
+#			that have short fixed limits on identifier length
 # -Wenum-clash 		is for C++ only
 # -Wunused		causes various spurious warnings
 
