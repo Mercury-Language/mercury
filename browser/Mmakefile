@@ -51,7 +51,7 @@ MCTOI	=	$(M_ENV) $(MC) --make-trans-opt
 MCG	=	$(M_ENV) $(MC) --compile-to-c
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUCFLAGS =	$(DLL_CFLAGS)
 LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
 LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\

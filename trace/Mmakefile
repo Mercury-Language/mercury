@@ -21,7 +21,7 @@ M_ENV		= MERCURY_ALL_C_INCL_DIRS="\
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
 		  "
-CFLAGS		= -g $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+CFLAGS		= -g $(DLL_CFLAGS)
 MGNUC		= $(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= --no-ansi
 

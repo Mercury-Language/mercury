@@ -35,13 +35,11 @@ MCTOI	=	$(M_ENV) $(MC) --make-transitive-optimization-interface
 MCG	=	$(M_ENV) $(MC) --compile-to-c
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)"
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
 C2INIT	=	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
                 MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
-MLLIBS  =	$(EXTRA_MLLIBS) \
-		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
+MLFLAGS =	--mercury-libs none
+MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).a \
 		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).a \
 		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).a ` \
