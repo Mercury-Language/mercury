@@ -965,8 +965,8 @@ qualify_pragma(owner(SymName, Arity, Owner), owner(SymName, Arity, Owner),
 		Info, Info) --> [].
 qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
 		Info, Info) --> [].
-qualify_pragma(promise_semipure(SymName, Arity), promise_pure(SymName, Arity),
-		Info, Info) --> [].
+qualify_pragma(promise_semipure(SymName, Arity), 
+		promise_semipure(SymName, Arity), Info, Info) --> [].
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term), 
 		termination_info(PredOrFunc, SymName, ModeList, Args, Term), 
 		Info0, Info) --> 
