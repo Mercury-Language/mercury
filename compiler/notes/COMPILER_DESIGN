@@ -442,12 +442,14 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
   type constructor. These are added to the LLDS.
 
 * base_type_layout.m generates the base_type_layout structures that give
-  information on how to interpret values of a given type. The base_type_layout
-  structure of each declared type constructor are added to the LLDS.
+  information on how to interpret values of a given type. It also
+  creates base_type_functors structures that give information on 
+  the functors of a given type. The base_type_layout and base_type_functors
+  structures of each declared type constructor are added to the LLDS.
 
 * llds_common.m extracts static terms from the main body of the LLDS, and
   puts them at the front. If a static term originally appeared several times,
-  it will now appear as a single tatic term with multiple references to it.
+  it will now appear as a single static term with multiple references to it.
 
 * Final generation of C code is done in llds_out.m.
 
