@@ -7,6 +7,13 @@
 # library/Mmake - this is the main part of the Makefile
 # for building the Mercury libraries.
 
+#-----------------------------------------------------------------------------#
+# These need to be defined before we include Mmake.common,
+# so that they can be overridden in Mmake.params.
+EXTRA_LDFLAGS =
+EXTRA_LDLIBS =
+#-----------------------------------------------------------------------------#
+
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
 
