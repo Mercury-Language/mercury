@@ -65,3 +65,4 @@
 :- type free_unique == any.
 :- type ground_unique == any.
 
+:- type int == integer.
