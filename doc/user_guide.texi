@@ -602,7 +602,7 @@ to pass to the Mercury compiler, linker, and other tools
 
 @item MCFLAGS and EXTRA_MCFLAGS
 @vindex MCFLAGS
-@vindex EXTRA_CFLAGS
+@vindex EXTRA_MCFLAGS
 Options to pass to the Mercury compiler.
 (Note that compilation model options should be
 specified in @code{GRADEFLAGS}, not in @code{MCFLAGS}.)
