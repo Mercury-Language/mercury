@@ -682,12 +682,7 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, Proc) -->
-	globals__io_lookup_bool_option(excess_assign, ExcessAssign),
-	( { ExcessAssign = yes } ->
-		{ excess_assignments_proc(ProcInfo0, ModuleInfo0, ProcInfo1) }
-	;
-		{ ProcInfo1 = ProcInfo0 }
-	),
+	{ ProcInfo1 = ProcInfo0 },
 	globals__io_lookup_bool_option(follow_code, FollowCode),
 	globals__io_lookup_bool_option(prev_code, PrevCode),
 	( { FollowCode = yes ; PrevCode = yes } ->
