@@ -40,7 +40,7 @@ clean:
 
 distclean: clean
 	cd scripts; for file in *.in; do rm -f `basename $file .in`; done
-	-rm -f Mmake.common runtime/conf.h
+	-rm -f Mmake.common runtime/conf.h bindist/bindist.build_vars
 	-rm -f config.cache config.status config.log
 
 maintainer-clean:
