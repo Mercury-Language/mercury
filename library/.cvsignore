@@ -28,6 +28,7 @@ library.nu.nl
 mer_std.init
 mer_std.dep
 mer_std.dv
+mer_std
 library.dep
 library.dv
 Mercury
