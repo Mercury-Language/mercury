@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,17 +24,50 @@
 % (An option can have as many names as you like, long or short.)
 % You must provide a predicate `option_default(Option, OptionData)'
 % which specifies both the type and the default value for every option.
-% We support five different option types: bool, int, string, maybe_string
-% (which have either a value of `no' or `yes(string)'), and
-% "accumulating" (which accumulates a list of strings).
-% For the first four option types, if there are multiple occurrences
+% You may optionally provide a predicate `special_handler(Option,
+% SpecialData, OptionTable, MaybeOptionTable)' for handling special
+% option types.  (See below.)
+%
+% We support the following "simple" option types:
+%
+%	- bool
+%	- int
+%	- maybe_int (which have a value of `no' or `yes(int)')
+%	- string
+%	- maybe_string (which have a value of `no' or `yes(string)')
+%
+% We also support one "accumulating" option type:
+%
+%	- accumulating (which accumulates a list of strings)
+%
+% And the following "special" option types:
+%
+%	- special
+%	- bool_special
+%	- int_special
+%	- string_special
+%
+% For the "simple" option types, if there are multiple occurrences
 % of the same option on the command-line, then the last (right-most)
 % occurrence will take precedence.  For "accumulating" options,
 % multiple occurrences will be appended together into a list.
-% Single-character boolean or maybe-string options can be negated by
-% following them with another `-', e.g. `-x-' will negate the `-x' option.
-% Long boolean or maybe-string options can be negated by preceding them with
-% `--no-', e.g. `--no-foo' will negate the `--foo' option.
+%
+% The "special" option types are handled by a special option handler
+% (see `special_handler' below), which may perform arbitrary
+% modifications to the option_table.  For example, an option which
+% is not yet implemented could be handled by a special handler which
+% produces an error report, or an option which is a synonym for a
+% set of more "primitive" options could be handled by a special
+% handler which sets those "primitive" options.
+%
+% It is an error to use a "special" option for which there is no
+% handler, or for which the handler fails.
+%
+% Single-character boolean (i.e. bool or bool_special) or maybe_*
+% options can be negated by following them with another `-', e.g. `-x-'
+% will negate the `-x' option.  Long boolean or maybe_* options can be
+% negated by preceding them with `--no-', e.g. `--no-foo' will negate
+% the `--foo' option.
 
 :- module getopt.
 :- interface.
