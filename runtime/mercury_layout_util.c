@@ -154,17 +154,16 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 		name = MR_name_if_present(vars, i);
 		var = &vars->MR_slvs_pairs[i];
 
-		/*
-		** XXX The printing of type_infos is buggy at the moment
-		** due to the fake arity of private_builtin:typeinfo/1.
-		**
-		** XXX The printing of large data structures is painful
-		** at the moment due to the lack of a true browser.
-		*/
-
 		if (! MR_get_type_and_value_filtered(var, saved_regs,
 			name, type_params, &type_info, &value))
 		{
+			/*
+			** "variables" representing the saved values of
+			** succip, hp etc, which are the "variables" for which
+			** get_type_and_value fails, are not of interest to
+			** the user.
+			*/
+
 			continue;
 		}
 
@@ -296,7 +295,7 @@ MR_lookup_live_lval_base(MR_Live_Lval locn, Word *saved_regs,
 			baseaddr = MR_lookup_live_lval_base(sublocn,
 					saved_regs, base_sp, base_curfr,
 					succeeded);
-			if (! succeeded) {
+			if (! *succeeded) {
 				break;
 			}
 			value = MR_typeclass_info_superclass_info(baseaddr,
