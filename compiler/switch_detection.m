@@ -17,25 +17,26 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module io, list.
+:- import_module bool, io, list.
 
-:- pred detect_switches(module_info, module_info, io__state, io__state).
-:- mode detect_switches(in, out, di, uo) is det.
+:- pred detect_switches(module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-:- pred detect_switches_in_proc(proc_id, pred_id, module_info, module_info).
-:- mode detect_switches_in_proc(in, in, in, out) is det.
+:- pred detect_switches_in_proc(proc_id::in, pred_id::in,
+	module_info::in, module_info::out) is det.
 
 	% find_bind_var(Var, ProcessUnify, Goal0, Goals, Subst0, Subst,
-	%		Result0, Result, Continue):
+	%		Result0, Result, FoundDeconstruct):
 	% 	Used by both switch_detection and cse_detection.
 	%	Searches through `Goal0' looking for the first deconstruction
 	%	unification with `Var' or an alias of `Var'.
 	%	If a deconstruction unification of the variable is found,
 	%	`ProcessUnify' is called to handle it and searching is stopped.
 	%	If not, `Result' is set to `Result0'.
-:- pred find_bind_var(prog_var, process_unify(Result, Info), hlds_goal,
-		hlds_goal, Result, Result, Info, Info).
-:- mode find_bind_var(in, in(process_unify), in, out, in, out, in, out) is det.
+:- pred find_bind_var(prog_var::in,
+	process_unify(Result, Info)::in(process_unify),
+	hlds_goal::in, hlds_goal::out, Result::in, Result::out,
+	Info::in, Info::out, bool::out) is det.
 
 :- type process_unify(Result, Info) ==
 	pred(prog_var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
@@ -49,7 +50,7 @@
 :- import_module hlds_goal, hlds_data, prog_data, instmap, inst_match.
 :- import_module modes, mode_util, type_util, det_util.
 :- import_module passes_aux, term.
-:- import_module bool, char, int, assoc_list, map, set, std_util, require.
+:- import_module char, int, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -406,7 +407,7 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList) :-
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
 partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
 	find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
-		Goal0, Goal, no, MaybeFunctor, unit, _),
+		Goal0, Goal, no, MaybeFunctor, unit, _, _),
 	(
 		MaybeFunctor = yes(Functor),
 		Left1 = Left0,
@@ -449,28 +450,44 @@ find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 %-----------------------------------------------------------------------------%
 
 find_bind_var(Var, ProcessUnify, Goal0, Goal,
-		Result0, Result, Info0, Info) :-
+		Result0, Result, Info0, Info, FoundDeconstruct) :-
 	map__init(Substitution),
 	find_bind_var(Var, ProcessUnify, Goal0, Goal, Substitution,
-		_, Result0, Result, Info0, Info, _).
+		_, Result0, Result, Info0, Info, DeconstructSearch),
+	(
+		DeconstructSearch = before_deconstruct,
+		FoundDeconstruct = no
+	;
+		DeconstructSearch = found_deconstruct,
+		FoundDeconstruct = yes
+	;
+		DeconstructSearch = given_up_search,
+		FoundDeconstruct = no
+	).
 
-:- pred find_bind_var(prog_var, process_unify(Result, Info), hlds_goal,
-		hlds_goal, prog_substitution, prog_substitution, Result, Result,
-		Info, Info, bool).
-:- mode find_bind_var(in, in(process_unify), in, out, in,
-	out, in, out, in, out, out) is det.
+:- type deconstruct_search
+	--->	before_deconstruct
+	;	found_deconstruct
+	;	given_up_search.
 
-find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
-		Substitution, Result0, Result, Info0, Info, Continue) :-
+:- pred find_bind_var(prog_var::in,
+	process_unify(Result, Info)::in(process_unify),
+	hlds_goal::in, hlds_goal::out,
+	prog_substitution::in, prog_substitution::out, Result::in, Result::out,
+	Info::in, Info::out, deconstruct_search::out) is det.
+
+find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
+		Substitution0, Substitution, Result0, Result, Info0, Info,
+		FoundDeconstruct) :-
 	( Goal0 = some(Vars, CanRemove, SubGoal0) ->
 		find_bind_var(Var, ProcessUnify, SubGoal0, SubGoal,
 			Substitution0, Substitution, Result0, Result,
-			Info0, Info, Continue),
+			Info0, Info, FoundDeconstruct),
 		Goal = some(Vars, CanRemove, SubGoal) - GoalInfo
 	; Goal0 = conj(SubGoals0) ->
 		conj_find_bind_var(Var, ProcessUnify, SubGoals0, SubGoals,
 			Substitution0, Substitution, Result0, Result,
-			Info0, Info, Continue),
+			Info0, Info, FoundDeconstruct),
 		Goal = conj(SubGoals) - GoalInfo
 	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
 		(
@@ -488,11 +505,11 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 			call(ProcessUnify, Var, Goal0 - GoalInfo, Goals,
 				Result0, Result, Info0, Info),
 			conj_list_to_goal(Goals, GoalInfo, Goal),
-			Continue = no,
+			FoundDeconstruct = found_deconstruct,
 			Substitution = Substitution0
 		;
 			Goal = Goal0 - GoalInfo,
-			Continue = yes,
+			FoundDeconstruct = before_deconstruct,
 			% otherwise abstractly interpret the unification
 			Result = Result0,
 			Info = Info0,
@@ -508,33 +525,33 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal, Substitution0,
 		Substitution = Substitution0,
 		Result = Result0,
 		Info = Info0,
-		Continue = no
+		FoundDeconstruct = given_up_search
 	).
 
-:- pred conj_find_bind_var(prog_var, process_unify(Result, Info), 
-		list(hlds_goal), list(hlds_goal), prog_substitution,
-		prog_substitution, Result, Result, Info, Info, bool).
-:- mode conj_find_bind_var(in, in(process_unify), in, out,
-	in, out, in, out, in, out, out) is det.
+:- pred conj_find_bind_var(prog_var::in,
+	process_unify(Result, Info)::in(process_unify), 
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	prog_substitution::in, prog_substitution::out, Result::in, Result::out,
+	Info::in, Info::out, deconstruct_search::out) is det.
 
 conj_find_bind_var(_Var, _, [], [], Substitution, Substitution,
-		Result, Result, Info, Info, yes).
+		Result, Result, Info, Info, before_deconstruct).
 conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 		Substitution0, Substitution, Result0, Result,
-		Info0, Info, Continue) :-
+		Info0, Info, FoundDeconstruct) :-
 	find_bind_var(Var, ProcessUnify, Goal0, Goal, Substitution0,
 		Substitution1, Result0, Result1,
-		Info0, Info1, Continue1),
-	( Continue1 = no ->
-		Continue = no,
+		Info0, Info1, FoundDeconstruct1),
+	( FoundDeconstruct1 = before_deconstruct ->
+		conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
+			Substitution1, Substitution, Result1, Result,
+			Info1, Info, FoundDeconstruct)
+	;
+		FoundDeconstruct = FoundDeconstruct1,
 		Goals = Goals0,
 		Substitution = Substitution1,
 		Result = Result1,
 		Info = Info1
-	;
-		conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
-			Substitution1, Substitution, Result1, Result,
-			Info1, Info, Continue)
 	).
 
 %-----------------------------------------------------------------------------%
