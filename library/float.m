@@ -539,16 +539,15 @@ is_nan_or_inf(Float) :-
 	; is_inf(Float)
 	).
 
-:- pragma promise_pure(is_nan/1).
 :- pragma foreign_proc(c,
 	is_nan(Flt::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
 :- pragma foreign_proc(il,
 	is_nan(Flt::in),
-	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+	[will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
 "
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsNaN(float64)
@@ -556,21 +555,20 @@ is_nan_or_inf(Float) :-
 ").
 :- pragma foreign_proc("Java",
 	is_nan(Flt::in),
-	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	succeeded = java.lang.Double.isNaN(Flt);
 ").
 
-:- pragma promise_pure(is_inf/1).
 :- pragma foreign_proc(c,
 	is_inf(Flt::in),
-	[will_not_call_mercury, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
 :- pragma foreign_proc(il,
 	is_inf(Flt::in),
-	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+	[will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
 "
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsInfinity(float64)
@@ -578,7 +576,7 @@ is_nan_or_inf(Float) :-
 ").
 :- pragma foreign_proc("Java",
 	is_inf(Flt::in),
-	[will_not_call_mercury, thread_safe, max_stack_size(1)],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	succeeded = java.lang.Double.isInfinite(Flt);
 ").

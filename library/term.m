@@ -377,19 +377,6 @@
 :- pred term__term_to_type_with_int_instead_of_char(term(U)::in, T::out)
 	is semidet.
 
-	% term__compare(Comparison, Term1, Term2, Bindings) is true iff
-	% there is a binding of Comparison to <, =, or > such
-	% that the binding holds for the two ground terms Term1
-	% and Term2 with respect to the bindings in Bindings.
-	% Fails if Term1 or Term2 is not ground (with respect to
-	% the bindings in Bindings).
-	%
-	% BEWARE: This predicate is being phased out, because the comparison
-	% does *not* ignore the term__contexts in the terms.
-:- pragma obsolete(term__compare/4).
-:- pred term__compare(comparison_result::out, term(T)::in, term(T)::in,
-	substitution(T)::in) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1086,15 +1073,6 @@ term__is_ground_2([]).
 term__is_ground_2([Term | Terms]) :-
 	term__is_ground(Term),
 	term__is_ground_2(Terms).
-
-%-----------------------------------------------------------------------------%
-
-term__compare(Cmp, Term1, Term2, Bindings) :-
-	term__apply_rec_substitution(Term1, Bindings, TermA),
-	term__is_ground(TermA, Bindings),
-	term__apply_rec_substitution(Term2, Bindings, TermB),
-	term__is_ground(TermB, Bindings),
-	compare(Cmp, TermA, TermB).
 
 %-----------------------------------------------------------------------------%
 

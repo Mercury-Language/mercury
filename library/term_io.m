@@ -117,11 +117,6 @@
 	% Like term_io__write_escaped_char, but return the result in a string.
 :- func term_io__escaped_string(string) = string.
 
-	% `term_io__quote_single_char' is the old (misleading) name for
-	% `term_io__write_escaped_char'. Use the latter instead.
-:- pragma obsolete(term_io__quote_single_char/3).
-:- pred term_io__quote_single_char(char::in, io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -585,9 +580,6 @@ term_io__escaped_string(String) =
 
 term_io__add_escaped_char(Char, String0) = String :-
 	String = string__append(String0, string__char_to_string(Char)).
-
-term_io__quote_single_char(Char, !IO) :-
-	term_io__write_escaped_char(Char, !IO).
 
 	% Note: the code here is similar to code in
 	% compiler/mercury_to_mercury.m; any changes here

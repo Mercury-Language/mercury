@@ -886,7 +886,6 @@ string__from_char_list(CharList, Str) :-
 % :- mode string__to_char_list(in, uo) is det.
 % :- mode string__to_char_list(uo, in) is det.
 
-:- pragma promise_pure(string__to_char_list/2).
 :- pragma foreign_proc("C",
 	string__to_char_list(Str::in, CharList::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
@@ -940,6 +939,7 @@ string__from_char_list(CharList, Str) :-
 	Str[size] = '\\0';
 }").
 
+:- pragma promise_pure(string__to_char_list/2).
 string__to_char_list(Str::in, CharList::out) :-
 	string__to_char_list_2(Str, 0, CharList).
 string__to_char_list(Str::uo, CharList::in) :-
