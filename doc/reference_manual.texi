@@ -1646,7 +1646,8 @@ whether the goal can fail without producing a solution,
 and the maximum number of solutions of the goal (0, 1, or more).
 If the inference process below reports that a goal can succeed more than once,
 but the goal generates no outputs that are visible from outside the goal,
-the final determinism of the goal
+and the goal is not impure (@pxref{Impurity}),
+then the final determinism of the goal
 will be based on the goal succeeding at most once,
 since the compiler will implicitly prune away any duplicate solutions.
 

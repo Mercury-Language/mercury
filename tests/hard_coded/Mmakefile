@@ -51,6 +51,7 @@ PROGS=	\
 	ho_solns \
 	ho_univ_to_type \
 	impossible_unify \
+	impure_prune \
 	integer_test \
 	merge_and_remove_dups \
 	minint_bug \

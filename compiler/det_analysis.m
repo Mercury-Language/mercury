@@ -119,7 +119,7 @@
 
 :- implementation.
 
-:- import_module prog_data, det_report.
+:- import_module prog_data, det_report, purity.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.
@@ -294,10 +294,14 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 
-	% If a goal has no output variables, then the goal is in
-	% single-solution context
+	% If a pure or semipure goal has no output variables,
+	% then the goal is in single-solution context
 
-	( det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, DetInfo) ->
+	(
+		det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap,
+			DetInfo),
+		\+ goal_info_is_impure(GoalInfo0)
+	->
 		OutputVars = no,
 		SolnContext = first_soln
 	;
