@@ -7684,18 +7684,24 @@ get_new_tvars([TVar | TVars], VarSet, TVarSet0, TVarSet,
 		TVarSet2 = TVarSet0,
 		TVarNameMap1 = TVarNameMap0
 	;
-		varset__lookup_name(VarSet, TVar, TVarName),
-		( map__search(TVarNameMap0, TVarName, TVarSetVar) ->
-			map__det_insert(TVarRenaming0, TVar, TVarSetVar,
-						TVarRenaming1),
-			TVarSet2 = TVarSet0,
-			TVarNameMap1 = TVarNameMap0
+		( varset__search_name(VarSet, TVar, TVarName) ->
+			( map__search(TVarNameMap0, TVarName, TVarSetVar) ->
+				map__det_insert(TVarRenaming0, TVar,
+						TVarSetVar, TVarRenaming1),
+				TVarSet2 = TVarSet0,
+				TVarNameMap1 = TVarNameMap0
+			;
+				varset__new_var(TVarSet0, NewTVar, TVarSet1),
+				varset__name_var(TVarSet1, NewTVar,
+						TVarName, TVarSet2),
+				map__det_insert(TVarNameMap0, TVarName,
+						NewTVar, TVarNameMap1),
+				map__det_insert(TVarRenaming0, TVar, NewTVar,
+						TVarRenaming1)
+			)
 		;
-			varset__new_var(TVarSet0, NewTVar, TVarSet1),
-			varset__name_var(TVarSet1, NewTVar,
-					TVarName, TVarSet2),
-			map__det_insert(TVarNameMap0, TVarName, NewTVar,
-					TVarNameMap1),
+			TVarNameMap1 = TVarNameMap0,
+			varset__new_var(TVarSet0, NewTVar, TVarSet2),
 			map__det_insert(TVarRenaming0, TVar, NewTVar,
 					TVarRenaming1)
 		)
