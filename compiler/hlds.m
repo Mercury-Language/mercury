@@ -64,7 +64,7 @@
 
 :- type module_info	--->	module(
 					string,		% module name
-					c_header_info,	
+					c_code_info,	
 					predicate_table,
 					unify_requests,
 					special_pred_map,
@@ -98,10 +98,10 @@
 					term__context
 				).
 
-:- type c_header_info 	==	list(c_header_lines).
-
-:- type c_header_lines	--->	string  - term__context.
-
+:- type c_code_info 	--->	c_code_info(
+					c_header_info,
+					c_body_info
+				).
 :- implementation.
 
 :- type proc_info	--->	procedure(
@@ -487,7 +487,7 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 	
 		% C code from a pragma(c_code, ...) decl.
 	;	pragma_c_code(
-			c_code,		% The C code to do the work
+			string,		% The C code to do the work
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
@@ -911,6 +911,12 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 :- pred module_info_set_c_header(module_info, c_header_info, module_info).
 :- mode module_info_set_c_header(in, in, out) is det.
 
+:- pred module_info_get_c_body_code(module_info, c_body_info).
+:- mode module_info_get_c_body_code(in, out) is det.
+
+:- pred module_info_set_c_body_code(module_info, c_body_info, module_info).
+:- mode module_info_set_c_body_code(in, in, out) is det.
+
 :- pred module_info_get_predicate_table(module_info, predicate_table).
 :- mode module_info_get_predicate_table(in, out) is det.
 
@@ -1073,10 +1079,10 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, module(Name, C_Header, PredicateTable, Requests, 
+module_info_init(Name, module(Name, C_Code_Info, PredicateTable, Requests, 
 				UnifyPredMap, Shapes, Types, Insts, Modes, 
 				Ctors, DepInfo, 0, 0)) :-
-	C_Header = [],
+	C_Code_Info = c_code_info([], []),
 	predicate_table_init(PredicateTable),
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
@@ -1096,11 +1102,24 @@ module_info_name(ModuleInfo, Name) :-
 	ModuleInfo = module(Name, _, _, _, _, _, _, _, _, _, _, _, _).
 
 module_info_get_c_header(ModuleInfo, C_Header) :-
-	ModuleInfo = module(_, C_Header, _, _, _, _, _, _, _, _, _, _, _).
+	ModuleInfo = module(_, C_Code_Info, _, _, _, _, _, _, _, _, _, _, _),
+	C_Code_Info = c_code_info(C_Header, _).
 
 module_info_set_c_header(ModuleInfo1, C_Header, ModuleInfo2) :-
-	ModuleInfo1 = module(A, _, C, D, E, F, G, H, I, J, K, L, M),
-	ModuleInfo2 = module(A, C_Header, C, D, E, F, G, H, I, J, K, L, M).
+	ModuleInfo1 = module(A, C_Code_Info0, C, D, E, F, G, H, I, J, K, L, M),
+	C_Code_Info0 = c_code_info(_C_Header0, C_Body),
+	C_Code_Info = c_code_info(C_Header, C_Body),
+	ModuleInfo2 = module(A, C_Code_Info, C, D, E, F, G, H, I, J, K, L, M).
+
+module_info_get_c_body_code(ModuleInfo, C_Body) :-
+	ModuleInfo = module(_, C_Code_Info, _, _, _, _, _, _, _, _, _, _, _),
+	C_Code_Info = c_code_info(_, C_Body).
+
+module_info_set_c_body_code(ModuleInfo1, C_Body, ModuleInfo2) :-
+	ModuleInfo1 = module(A, C_Code_Info0, C, D, E, F, G, H, I, J, K, L, M),
+	C_Code_Info0 = c_code_info(C_Header, _C_Body0),
+	C_Code_Info = c_code_info(C_Header, C_Body),
+	ModuleInfo2 = module(A, C_Code_Info, C, D, E, F, G, H, I, J, K, L, M).
 
 module_info_get_predicate_table(ModuleInfo, PredicateTable) :-
 	ModuleInfo = module(_, _, PredicateTable, _, _, _, _, _, _, _, _, _, _).

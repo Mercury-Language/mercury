@@ -25,11 +25,29 @@
 			;	model_semi		% just functional
 			;	model_non.		% not functional
 
-:- type c_file		--->	c_file(string, list(string), list(c_module)).
-			%	filename, c header code, modules
+:- type c_file		--->	c_file(
+					string,		% filename
+					c_header_info,
+					list(c_module)
+				).
 
-:- type c_module	--->	c_module(string, list(c_procedure)).
-			%	module name, code
+:- type c_header_info 	==	list(c_header_code).
+:- type c_body_info 	==	list(c_body_code).
+
+:- type c_header_code	==	pair(string, term__context).
+:- type c_body_code	==	pair(string, term__context).
+
+:- type c_module
+		% a bunch of low-level C code
+	--->	c_module(
+			string,			% module name
+			list(c_procedure) 	% code
+		)
+		% some C code from a pragma(c_code) declaration
+	;	c_code(
+			string,			% C code
+			term__context		% source code location
+		).
 
 :- type c_procedure	--->	c_procedure(string, int, llds__proc_id,
 						list(instruction)).
@@ -302,19 +320,20 @@
 
 :- implementation.
 :- import_module char, require, globals, options.
-:- import_module exprn_aux.
+:- import_module exprn_aux, prog_out.
 
 %-----------------------------------------------------------------------------%
 
-output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
+output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
+		{ C_File = c_file(BaseName, C_HeaderInfo, Modules) },
 		{ string__append(BaseName, ".dir", ObjDirName) },
 		make_directory(ObjDirName),
 		output_c_file_init(BaseName, Modules),
-		output_c_file_list(Modules, 1, BaseName, C_HeaderLines)
+		output_c_file_list(Modules, 1, BaseName, C_HeaderInfo)
 	;
-		output_single_c_file(c_file(BaseName, C_HeaderLines, Modules))
+		output_single_c_file(C_File)
 	).
 
 :- pred make_directory(string, io__state, io__state).
@@ -325,7 +344,7 @@ make_directory(DirName) -->
 		Command) },
 	io__call_system(Command, _Result).
 
-:- pred output_c_file_list(list(c_module), int, string, list(string),
+:- pred output_c_file_list(list(c_module), int, string, list(c_header_code),
 				io__state, io__state).
 :- mode output_c_file_list(in, in, in, in, di, uo) is det.
 
@@ -451,6 +470,8 @@ output_c_module_init_list(BaseName, Modules) -->
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
+output_c_module_init_list_2([c_code(_, _) | Ms], A, B, C, D, E) -->
+	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 		Calls0, MaxCalls, InitFunc0, InitFunc) -->
 	( { Calls0 > MaxCalls } ->
@@ -465,12 +486,19 @@ output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 		{ InitFunc1 = InitFunc0 },
 		{ Calls1 is Calls0 + 1 }
 	),
-	io__write_string("\t{ extern void "),
-	output_module_name(ModuleName),
-	io__write_string("(void);\n"),
-	io__write_string("\t  "),
-	output_module_name(ModuleName),
-	io__write_string("(); }\n"),
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = yes } ->
+		io__write_string("\t{ extern ModuleFunc "),
+		output_module_name(ModuleName),
+		io__write_string("(void);\n"),
+		io__write_string("\t  "),
+		output_module_name(ModuleName),
+		io__write_string("(); }\n")
+	;
+		io__write_string("\t"),
+		output_module_name(ModuleName),
+		io__write_string("();\n")
+	),
 	output_c_module_init_list_2(Ms, BaseName,
 		Calls1, MaxCalls, InitFunc1, InitFunc).
 
@@ -526,6 +554,18 @@ output_c_module_list([M|Ms]) -->
 :- pred output_c_module(c_module, io__state, io__state).
 :- mode output_c_module(in, di, uo) is det.
 
+output_c_module(c_code(C_Code, Context)) -->
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		io__write_string("/* "),
+		prog_out__write_context(Context),
+		io__write_string(" pragma(c_code) */\n")
+	;
+		[]
+	),
+	io__write_string(C_Code),
+	io__write_string("\n").
+
 output_c_module(c_module(ModuleName, Procedures)) -->
 	{ gather_labels(Procedures, Labels) },
 	io__write_string("\n"),
@@ -545,20 +585,30 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 	% output_c_header_include_lines reverses the list of c header lines
 	% and passes them to output_c_header_include_lines_2 which outputs them.
 	% The list must be reversed since they are inserted in reverse order
-:- pred output_c_header_include_lines(list(string), io__state, io__state).
+:- pred output_c_header_include_lines(list(c_header_code),
+					io__state, io__state).
 :- mode output_c_header_include_lines(in, di, uo) is det.
 
 output_c_header_include_lines(Headers) -->
 	{ list__reverse(Headers, RevHeaders) },
 	output_c_header_include_lines_2(RevHeaders).
 
-:- pred output_c_header_include_lines_2(list(string), io__state, io__state).
+:- pred output_c_header_include_lines_2(list(c_header_code),
+					io__state, io__state).
 :- mode output_c_header_include_lines_2(in, di, uo) is det.
 
 output_c_header_include_lines_2([]) --> 
 	[].
-output_c_header_include_lines_2([H|Hs]) -->
-	io__write_string(H),
+output_c_header_include_lines_2([Code - Context|Hs]) -->
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		io__write_string("/* "),
+		prog_out__write_context(Context),
+		io__write_string(" pragma(c_code) */\n")
+	;
+		[]
+	),
+	io__write_string(Code),
 	io__write_string("\n"),
 	output_c_header_include_lines_2(Hs).
 

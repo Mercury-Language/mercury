@@ -142,9 +142,12 @@ add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
 		Context, Module).
 
-add_item_decl(pragma(Pragma), Context, Status, Module0, Status,
-	Module) -->
+add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 	(
+		{ Pragma  = c_code(C_Body_Code) },
+		{ module_add_c_body_code(C_Body_Code, Context,
+			Module0, Module) }
+	;
 		{ Pragma  = c_header_code(C_Header) },
 		{ module_add_c_header(C_Header, Context, Module0, Module) }
 	;
@@ -973,9 +976,19 @@ module_add_c_header(C_Header, Context, Module0, Module) :-
 	C_HeaderIndex1 = [C_Header - Context|C_HeaderIndex0],
 	module_info_set_c_header(Module0, C_HeaderIndex1, Module).
 	
+:- pred module_add_c_body_code(string, term__context, module_info, module_info).
+:- mode module_add_c_body_code(in, in, in, out) is det.
+
+module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
+	module_info_get_c_header(Module0, C_Body_List0),
+		% store the c headers in reverse order and reverse them later
+		% for efficiency
+	C_Body_List = [C_Body_Code - Context | C_Body_List0],
+	module_info_set_c_body_code(Module0, C_Body_List, Module).
+	
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(sym_name, list(pragma_var), varset, c_code, 
+:- pred module_add_pragma_c_code(sym_name, list(pragma_var), varset, string, 
 	term__context, module_info, module_info, io__state, io__state).
 :- mode module_add_pragma_c_code(in, in, in, in, in, in, out, di, uo) is det.
 
@@ -1611,7 +1624,7 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 % hlds__goal.
 
 :- pred clauses_info_add_pragma_c_code(clauses_info, pred_id, proc_id, varset, 
-		list(pragma_var), c_code, term__context, clauses_info,
+		list(pragma_var), string, term__context, clauses_info,
 		hlds__goal) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, out, 
 		out) is det.

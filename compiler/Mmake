@@ -67,6 +67,12 @@ sicstus: mercury_compile.sicstus
 
 #-----------------------------------------------------------------------------#
 
+mercury_compile.opt: $(mercury_compile.ms)
+	$(MC) --optimize-value-number --split-c-files \
+		-o mercury_compile.opt $(mercury_compile.ms)
+
+#-----------------------------------------------------------------------------#
+
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
@@ -75,6 +81,8 @@ mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 
 mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
 mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
+
+mercury_compile_init.c: $(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
@@ -104,6 +112,11 @@ dates		:
 .PHONY: os cs
 os: $(mercury_compile.os) mercury_compile_init.o
 cs: $(mercury_compile.cs) mercury_compile_init.c
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f tags mercury_compile.stats mercury_compile.opt
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

@@ -116,9 +116,10 @@
 			;	erroneous
 			;	failure.
 
-:- type pragma --->		c_header_code(c_header_code)
+:- type pragma --->		c_header_code(string)
+			;	c_code(string)
 			;	c_code(sym_name, 
-					list(pragma_var), varset, c_code)
+					list(pragma_var), varset, string)
 				% PredName, Vars/Mode, VarNames, C Code
 			;	inline(sym_name, int).
 				% Predname, Arity
@@ -127,9 +128,6 @@
 			  	% variable, name, mode
 				% we explicitly store the name because we
 				% need the real name in code_gen
-
-:- type c_header_code == string.
-:- type c_code == string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1693,8 +1691,8 @@ parse_mode_decl_pred_2(_ModuleName, error(Term, Reason), _, _, _,
 
 
 %-----------------------------------------------------------------------------%
-	% parse the pragma declaration. (At the moment, the only pragmas 
-	% supported are c_header_code and c_code). It fails if the arguments
+	% parse the pragma declaration. 
+	% It fails if the arguments
 	% to the declaration were empty (ie. a pragma dec. with arity 0).
 :- pred parse_pragma(varset, list(term), maybe1(item)).
 :- mode parse_pragma(in, in, out) is semidet.
@@ -1719,13 +1717,25 @@ parse_pragma(VarSet, Pragma, Result) :-
 		    PragmaType)
         )
     ; 
-    	PragmaType = term__functor(term__atom("c_code"),[], _) 
+    	PragmaType = term__functor(term__atom("c_code"), [], _) 
     ->
 	(
-    	PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
+    	    PragmaTerms = [Just_C_Code_Term]
 	->
 	    (
-    	        PredAndVarsTerm =term__functor(term__atom(PredName), VarList, _)
+		Just_C_Code_Term = term__functor(term__string(Just_C_Code), [],
+			_)
+	    ->
+	        Result = ok(pragma(c_code(Just_C_Code)))
+	    ;
+		Result = error("Expected string for C code", Just_C_Code_Term)
+	    )
+	;
+    	    PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
+	->
+	    (
+    	        PredAndVarsTerm = term__functor(term__atom(PredName), VarList,
+			_)
 	    ->
 		(
                     C_CodeTerm = term__functor(term__string(C_Code), [], _)

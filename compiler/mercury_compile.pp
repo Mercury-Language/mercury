@@ -1480,28 +1480,29 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{ module_info_get_c_header(HLDS, C_Header0) },
-	{ get_c_header_code(C_Header0, C_HeaderCode) },
+	{ module_info_get_c_header(HLDS, C_HeaderCode) },
+	{ module_info_get_c_body_code(HLDS, C_BodyCode0) },
+	{ get_c_body_code(C_BodyCode0, C_BodyCode) },
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
 		% we store all the procs in a single function.
-		{ ModuleList = [c_module(ModName, Procedures)] }
+		{ ModuleList0 = [c_module(ModName, Procedures)] }
 	;
 		{ list__chunk(Procedures, ProcsPerFunc, ChunkList) },
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
-			ModuleList) }
+			ModuleList0) }
 	),
+	{ list__append(C_BodyCode, ModuleList0, ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 
 
-:- pred get_c_header_code(c_header_info, list(string)).
-:- mode get_c_header_code(in, out) is det.
+:- pred get_c_body_code(c_body_info, list(c_module)).
+:- mode get_c_body_code(in, out) is det.
 
-get_c_header_code([], []).
-get_c_header_code([Header - _Context | HeadersAndContexts],
-			[Header | Headers]) :-
-	get_c_header_code(HeadersAndContexts, Headers).
-
+get_c_body_code([], []).
+get_c_body_code([Code - Context | CodesAndContexts],
+			[c_code(Code, Context) | C_Modules]) :-
+	get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
 	list(c_module)).
@@ -1658,14 +1659,20 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		string__append_list(["-I", C_INCL, " "], InclOpt)
 	},
+	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
+	{ Split_C_Files = yes ->
+		SplitOpt = "-DSPLIT_C_FILES "
+	;
+		SplitOpt = ""
+	},
 	globals__io_lookup_bool_option(gcc_global_registers, GCC_Regs),
 	( { GCC_Regs = yes } ->
-		{ RegOpt = " -DUSE_GCC_GLOBAL_REGISTERS " },
 		globals__io_lookup_string_option(cflags_for_regs,
-			CFLAGS_FOR_REGS)
+			CFLAGS_FOR_REGS),
+		{ RegOpt = " -DUSE_GCC_GLOBAL_REGISTERS " }
 	;
-		{ RegOpt = "" },
-		{ CFLAGS_FOR_REGS = "" }
+		{ CFLAGS_FOR_REGS = "" },
+		{ RegOpt = "" }
 	),
 	globals__io_lookup_bool_option(gcc_non_local_gotos, GCC_Gotos),
 	( { GCC_Gotos = yes } ->
@@ -1736,8 +1743,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		WarningOpt = ""
 	},
-	{ string__append_list([CC, " ", InclOpt, CFLAGS_FOR_REGS, RegOpt,
-		CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
+	{ string__append_list([CC, " ", InclOpt, SplitOpt,
+		CFLAGS_FOR_REGS, RegOpt, CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
 		OptimizeOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },

@@ -95,9 +95,12 @@ garbage_out__do_garbage_out(ShapeInfo, c_file(Name, _C_Header, Modules)) -->
 garbage_out__create_cont_list([], []).
 garbage_out__create_cont_list([M |Ms], C_List) :-
         garbage_out__create_cont_list(Ms, Cs),
-	M = c_module(_ModName, C_Procs),
-        garbage_out__create_cont_list_2(C_Procs, C),
-	list__append(C, Cs, C_List).
+	( M = c_module(_ModName, C_Procs),
+          garbage_out__create_cont_list_2(C_Procs, C),
+	  list__append(C, Cs, C_List)
+	; M = c_code(_, _),
+	  C_List = Cs
+	).
 
 %-----------------------------------------------------------------------------%
 % Create the list of continuations.
