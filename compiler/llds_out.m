@@ -467,7 +467,7 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
 		prog_out__write_context(Context),
-		io__write_string(" pragma(c_code) */\n")
+		io__write_string(" pragma c_code */\n")
 	;
 		[]
 	),

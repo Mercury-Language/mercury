@@ -1123,7 +1123,7 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 hlds_out__write_goal_2(pragma_c_code(_, _, _, ArgVars, ArgNames, _,
 			PragmaCode), _, _, _, Indent, Follow, _) -->
 	hlds_out__write_indent(Indent),
-	io__write_string("$pragma(c_code, ["),
+	io__write_string("$pragma_c_code(["),
 	hlds_out__write_varnum_list(ArgVars),
 	io__write_string("], ["),
 	{ get_pragma_c_var_names(ArgNames, Names) },

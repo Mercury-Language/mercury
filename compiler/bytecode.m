@@ -1220,9 +1220,10 @@ output_float(Val) -->
 :- pred float_to_float64_bytes(float::in, 
 		int::out, int::out, int::out, int::out, 
 		int::out, int::out, int::out, int::out) is det.
-:- pragma(c_code, 
+:- pragma c_code(
 	float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out, B3::out,
 		B4::out, B5::out, B6::out, B7::out),
+	will_not_call_mercury,
 	"
 
 	{

@@ -59,7 +59,7 @@
 						% Used by dead_proc_elim.
 		)
 
-		% some C code from a pragma(c_code) declaration
+		% some C code from a `pragma c_code' declaration
 	;	c_code(
 			string,			% C code
 			term__context		% source code location

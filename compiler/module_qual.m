@@ -627,7 +627,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 		Info = Info2
 	}.
 
-	% Qualify the modes in a pragma(c_code, ...) decl.
+	% Qualify the modes in a pragma c_code(...) decl.
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 

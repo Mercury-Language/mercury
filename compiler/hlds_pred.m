@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,13 +107,13 @@
 
 	% The type of goals that have been given for a pred.
 
-:- type goal_type 	--->	pragmas		% pragma(c_code, ...)
+:- type goal_type 	--->	pragmas		% pragma c_code(...)
 			;	clauses		
 			;	none.
 
 	% Note: `liveness' and `liveness_info' record liveness in the sense
 	% used by code generation.  This is *not* the same thing as the notion
-	% of liveness used by mode analysis!  See compiler/notes/GLOSSARY.
+	% of liveness used by mode analysis!  See compiler/notes/glossary.html.
 
 :- type liveness_info	==	set(var).	% The live variables
 
@@ -229,8 +229,8 @@
 				% will terminate for all (finite?) input
 	;	does_not_terminate
 				% States that this predicate does not
-				% terminate.  This is useful for pragma c
-				% code, which the compiler assumes to be
+				% terminate.  This is useful for pragma
+				% c_code, which the compiler assumes to be
 				% terminating.
 	;	check_termination
 				% The user requires the compiler to guarantee
@@ -370,15 +370,15 @@
 :- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
 :- mode pred_info_set_goal_type(in, in, out) is det.
 
-	% Succeeds if there was a `:- pragma(inline, ...)' declaration
+	% Succeeds if there was a `:- pragma inline(...)' declaration
 	% for this predicate. Note that the compiler may decide
-	% to inline a predicate even if there was no pragma(inline, ...)
+	% to inline a predicate even if there was no pragma inline(...)
 	% declaration for that predicate.
 
 :- pred pred_info_requested_inlining(pred_info).
 :- mode pred_info_requested_inlining(in) is semidet.
 
-	% Succeeds if there was a `:- pragma(no_inline, ...)' declaration
+	% Succeeds if there was a `:- pragma no_inline(...)' declaration
 	% for this predicate.
 
 :- pred pred_info_requested_no_inlining(pred_info).
@@ -495,7 +495,7 @@ invalid_proc_id(-1).
 					% or in the variable type assignments
 			goal_type,	% whether the goals seen so far for
 					% this pred are clauses, 
-					% pragma(c_code, ...) decs, or none
+					% pragma c_code(...) decs, or none
 			pred_markers,	% various boolean flags
 			pred_or_func,	% whether this "predicate" was really
 					% a predicate or a function

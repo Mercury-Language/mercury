@@ -152,7 +152,7 @@
 					% information.
 		)
 
-		% C code from a pragma(c_code, ...) decl.
+		% C code from a pragma c_code(...) decl.
 
 	;	pragma_c_code(
 			may_call_mercury,

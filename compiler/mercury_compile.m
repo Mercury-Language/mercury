@@ -314,7 +314,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, DontWriteDFile,
 		globals__io_lookup_bool_option(make_optimization_interface,
 			MakeOptInt),
 		( { Intermod = yes, MakeOptInt = no } ->
-			% Eliminate unnecessary clauses from `.opt' files.
+			% Eliminate unnecessary clauses from `.opt' files,
+			% to speed up compilation.
 			{ dead_pred_elim(HLDS0, HLDS1) }
 		;
 			{ HLDS1 = HLDS0 }

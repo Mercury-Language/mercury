@@ -445,7 +445,7 @@ traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 traverse_goal(_, class_method_call(PredVar,_,Args,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
-% handle pragma(c_code, ...) - pragma_c_code uses all its args
+% handle pragma c_code(...) - pragma_c_code uses all its args
 traverse_goal(_, pragma_c_code(_, _, _, Args, _, _, _), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, Args, UseInf).
 
