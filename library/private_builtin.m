@@ -594,7 +594,7 @@ trailed_nondet_pragma_foreign_code :-
 
 :- implementation.
 
-% unsafe_type_cast is a builtin; the compiler generates inline code for it
+:- external(unsafe_type_cast/2).
 
 unused :-
 	( semidet_succeed ->
