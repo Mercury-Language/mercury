@@ -341,6 +341,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 
 :- pred no_implicit_alias_target(lval::in) is semidet.
 
+no_implicit_alias_target(temp(_, _)).
 no_implicit_alias_target(reg(_, _)).
 no_implicit_alias_target(stackvar(_)).
 no_implicit_alias_target(framevar(_)).
