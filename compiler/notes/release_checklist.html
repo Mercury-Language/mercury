@@ -22,6 +22,10 @@ taken when releasing a new version of Mercury.
 	variable names, type names, struct/enum tags or macros) that do not
 	begin with MR_.
 	<li>
+	When replacing detstackvars with MR_stackvars and framevars with
+	MR_framevars, make sure that the distinction between stackvars
+	starting at 1 and framevars starting at 0 is erased.
+	<li>
 	Make sure nondet pragma C codes, tabling and the debugger
 	are documented.
 	</ol>
@@ -135,6 +139,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-07-09 04:35:30 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-07-10 00:29:26 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
