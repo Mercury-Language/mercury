@@ -23,6 +23,8 @@ Usage: $0 [options] <cvs log message file> <patch file>
 Options:
 	-d <dirname>, --directory <dirname>
 		Run the tests in directory <dirname>.
+	-S <megabytes>, --space <megabytes>
+		Require this amount of free disk space.
 	--gcc
 		Test the GCC-based native code back-end.
 		(XXX not yet implemented)
@@ -31,15 +33,17 @@ Options:
 	-g <CVSROOT>, --gcc-repository <CVSROOT>
 		Use the specified CVS repository for checking out GCC.
 	--branch <branch>
-		Use the specified branch tag for checking out mercury.
+		Use the specified branch tag for checking out the \`mercury'
+		and \`tests' directories from the Mercury CVS repository.
 	--gcc-branch <branch>
 		Use the specified branch tag for checking out GCC.
+	--mercury-gcc-branch <branch>
+		Use the specified branch tag for checking out the
+		\`mercury-gcc' directory from the Mercury CVS repository.
 	--configure <configure-options>
 		Use the specified options when configuring mercury.
 	--gcc-configure <configure-options>
 		Use the specified options when configuring GCC.
-	-S <megabytes>, --space <megabytes>
-		Require this amount of free disk space.
 	-b <bootcheck-options>, --bootcheck <bootcheck-options>
 		Bootcheck with the specified options, in addition
 		the standard bootchecks (asm_fast.gc & hlc.gc).
@@ -77,7 +81,7 @@ disk_space_required=300
 do_gcc=false
 
 # CVS Repositories
-gcc_cvsroot=:pserver:guest@gcc.gnu.org:/cvs/gcc
+gcc_cvsroot=:pserver:anoncvs@gcc.gnu.org:/cvs/gcc
 mercury_cvsroot=/home/mercury1/repository
 if [ -d "$mercury_cvsroot/." ]; then
 	:
@@ -88,10 +92,11 @@ fi
 # CVS branches
 branch=
 gcc_branch=
+mercury_gcc_branch=
 
 # Configure options
 configure_opts=
-gcc_configure_opts="--enable-checking --languages=c,mercury"
+gcc_configure_opts="--enable-checking --enable-languages=c,mercury"
 
 # A "#"-separated list of bootchecks to run.
 bootchecks="--grade asm_fast.gc # --grade hlc.gc".
@@ -105,6 +110,7 @@ commit=true
 #
 
 parse_options() {
+    orig_command="$0 $*"
     while [ $# -gt 0 ]; do
 	case "$1" in
 	-t|--title)
@@ -113,7 +119,7 @@ parse_options() {
 		title="` expr $1 : '-t\(.*\)' `"; ;;
 
 	--gcc)
-		do_gcc=true; shift ;;
+		do_gcc=true ;;
 
 	-d|--directory)
 		test_root="$2"; shift ;;
@@ -135,6 +141,9 @@ parse_options() {
 
 	--gcc-branch)
 		gcc_branch="-r$2"; shift ;;
+
+	--mercury-gcc-branch)
+		mercury_gcc_branch="-r$2"; shift ;;
 
 	--configure)
 		configure_opts="$2"; shift ;;
@@ -207,11 +216,12 @@ release_lock() {
 #-----------------------------------------------------------------------------#
 
 die() {
+	host="`hostname -f 2>&1`"
 	msg="
-*** check_patch failed:
+*** submit_patch failed:
 *** $@
 
-Log file in $test_dir/OUTPUT.
+Log file in $test_dir/OUTPUT on host $host.
 
 Leaving the build directory $test_dir intact in case
 you need to use it to debug the problem.
@@ -255,14 +265,35 @@ check_disk_space() {
 
 #-----------------------------------------------------------------------------#
 
+apply_patch() {
+	# We want the patch to apply properly regardless of whether it
+	# includes "mercury/" prefixes on the file names for the files in
+	# the "mercury" and "tests" directories.
+	# So (1) we cd to the mercury directory before applying the patch,
+	# so that it works if the "mercury/" prefix is omitted
+	# but (2) we add a symlink "mercury" -> "."
+	# so that it works if the prefix is included
+	# and (3) we also add symlinks "gcc" -> "../gcc", 
+	cd mercury				|| die "cd mercury failed"
+	ln -s . mercury				|| die "ln -s failed"
+	ln -s ../tests tests			|| die "ln -s failed"
+	ln -s ../gcc gcc			|| die "ln -s failed"
+	ln -s ../mercury-gcc mercury-gcc	|| die "ln -s failed"
+	patch -p0 < ../PATCH			|| die "applying patch failed"
+	rm mercury tests gcc mercury-gcc	|| die "can't remove symlinks"
+	cd ..					|| die "cd .. failed"
+}
+
+#-----------------------------------------------------------------------------#
+
 do_cvs_add_remove() {
-	comm -13 ../FILES.old ../FILES.new > ../FILES.added   || die "comm"
-	comm -23 ../FILES.old ../FILES.new > ../FILES.removed || die "comm"
-	if [ -s ../FILES.added ]; then
-		cvs add `cat ../FILES.added` || die "cvs add failed"
+	comm -13 FILES.old FILES.new > FILES.added   || die "comm"
+	comm -23 FILES.old FILES.new > FILES.removed || die "comm"
+	if [ -s FILES.added ]; then
+		cvs add `cat FILES.added`	|| die "cvs add failed"
 	fi
-	if [ -s ../FILES.removed ]; then
-		cvs remove `cat ../FILES.removed` || die "cvs remove failed"
+	if [ -s FILES.removed ]; then
+		cvs remove `cat FILES.removed`	|| die "cvs remove failed"
 	fi
 	return 0
 }
@@ -297,28 +328,56 @@ main() {
 	cp $patchfile $test_dir/PATCH	|| die "error copying $patchfile"
 	cp $logmessage $test_dir/CVSLOG	|| die "error copying $logmessage"
 	cd $test_dir			|| die "cd $test_dir failed"
+	case $do_gcc in true)
+		CVSROOT=$gcc_cvsroot
+		export CVSROOT
+		cvs checkout $gcc_branch gcc || die "GCC cvs checkout failed"
+		CVSROOT=$mercury_cvsroot
+		export CVSROOT
+		cvs checkout $mercury_gcc_branch mercury-gcc \
+					|| die "mercury-gcc checkout"
+		(cd gcc/gcc && ln -s ../../mercury-gcc mercury)
+		(cd gcc/gcc/mercury && ln -s ../mercury mercury)
+		;;
+	esac
         CVSROOT=$mercury_cvsroot
 	export CVSROOT
 	cvs checkout $branch mercury	|| die "cvs checkout mercury failed"
-	cd mercury			|| die "cd mercury failed"
 	cvs checkout $branch tests	|| die "cvs checkout tests failed"
-	find . | sort > ../FILES.old
-	patch -p0 < ../PATCH		|| die "applying patch failed"
-	find . | sort > ../FILES.new
+	> FILES.old FILES.new
+	find . | sort > FILES.old
+	apply_patch			|| die "apply_patch failed"
+	find . | sort > FILES.new
 	do_cvs_add_remove		|| die "do_cvs_add_remove failed"
+	cd mercury			|| die "cd mercury failed"
 	autoconf			|| die "autoconf failed"
 	sh configure --prefix=$test_dir/install $configure_opts \
 					|| die "configure failed"
+	case $do_gcc in true)
+		cd ../gcc		|| die "cd ../gcc failed"
+		sh configure --prefix=$test_dir/install $gcc_configure_opts \
+					|| die "gcc configure failed"
+		make			|| die "gcc make failed"
+		cd ../mercury		|| die "cd ../mercury failed"
+		;;
+	esac
 	make				|| die "make failed"
 	do_bootchecks			|| die "do_bootchecks failed"
+	case $do_gcc in true)
+		cd ../gcc		|| die "cd ../gcc failed"
+		make -k check		|| die "gcc make -k check failed"
+		cd ../mercury		|| die "cd ../mercury failed"
+		;;
+	esac
 	case $commit in true)
 		cvs commit -m"`cat ../CVSLOG`" || die "cvs commit failed"
 		;;
 	esac
 	cd ..				|| die "cd .."
-	rm -rf mercury			|| die "rm -rf mercury failed"
-    } > $test_dir/OUTPUT 2>&1
+	rm -rf mercury tests mercury-gcc gcc || die "rm -rf failed"
+    } </dev/null > $test_dir/OUTPUT 2>&1
     release_lock
+    set +x
     succeed
     exit 0
 }
