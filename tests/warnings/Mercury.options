@@ -39,5 +39,6 @@ MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
 	# to make sure that it is enabled otherwise the tests will fail.
 MCFLAGS-pragma_term_conflict = --enable-termination
 MCFLAGS-term_indirect_warning = --check-termination
+MCFLAGS-foreign_term_invalid = --enable-termination
 
 MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all

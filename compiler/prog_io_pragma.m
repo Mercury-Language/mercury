@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1213,7 +1213,8 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	;	tabled_for_io(tabled_for_io)
 	;	purity(purity)
 	;	aliasing
-	;	max_stack_size(int).
+	;	max_stack_size(int)
+	;	terminates(terminates).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language, string,
 		term, maybe1(pragma_foreign_proc_attributes)).
@@ -1247,7 +1248,12 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 			tabled_for_io(not_tabled_for_io),
 		purity(pure) - purity(impure),
 		purity(pure) - purity(semipure),
-		purity(semipure) - purity(impure)
+		purity(semipure) - purity(impure),
+		terminates(terminates) - terminates(does_not_terminate),
+		terminates(depends_on_mercury_calls) - 
+			terminates(terminates),
+		terminates(depends_on_mercury_calls) - 
+			terminates(does_not_terminate)
 	],
 	(
 		parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
@@ -1285,6 +1291,8 @@ process_attribute(tabled_for_io(TabledForIO), !Attrs) :-
 	set_tabled_for_io(TabledForIO, !Attrs).
 process_attribute(purity(Pure), !Attrs) :-
 	set_purity(Pure, !Attrs).
+process_attribute(terminates(Terminates), !Attrs) :-
+	set_terminates(Terminates, !Attrs).
 process_attribute(max_stack_size(Size), !Attrs) :-
 	add_extra_attribute(max_stack_size(Size), !Attrs).
 
@@ -1350,6 +1358,8 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 		Flag = max_stack_size(Size)
 	; parse_purity_promise(Term, Purity) ->
 		Flag = purity(Purity)
+	; parse_terminates(Term, Terminates) ->
+		Flag = terminates(Terminates)
 	;
 		fail
 	).
@@ -1415,6 +1425,13 @@ parse_purity_promise(term__functor(term__atom("promise_pure"), [], _),
 		(pure)).
 parse_purity_promise(term__functor(term__atom("promise_semipure"), [], _),
 		(semipure)).
+
+:- pred parse_terminates(term::in, terminates::out) is semidet.
+
+parse_terminates(term__functor(term__atom("terminates"), [], _),
+		terminates).
+parse_terminates(term__functor(term__atom("does_not_terminate"), [], _),
+		does_not_terminate).
 
 % parse a pragma foreign_code declaration
 

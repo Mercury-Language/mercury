@@ -5549,6 +5549,13 @@ compiler are as follows:
 
 @table @asis
 
+@item @samp{terminates}/@samp{does_not_terminate}
+This attribute specifies the termination properties of the given predicate
+or function definition.  It is equivalent to the corresponding 
+@samp{pragma terminates} or @samp{pragma does_not_terminate} declaration.
+If omitted, the termination property of the procedure is determined by the
+value of the @samp{may_call_mercury}/@samp{will_not_call_mercury} attribute.
+See @ref{Termination analysis} for more details.
 @item @samp{max_stack_size(Size)}
 This attribute declares the maximum stack usage of a particular piece of
 code.  The unit that @samp{Size} is measured in depends upon foreign language
@@ -8488,7 +8495,7 @@ pragma defined on them will have their termination checked, and if
 termination cannot be proved, the compiler will emit an error message
 detailing the reason that termination could not be proved.
 
-The option @samp{--check-termination} option, which may be abbreviated
+The option @samp{--check-termination}, which may be abbreviated
 to @samp{--check-term} or @samp{--chk-term}, forces the compiler to
 check the termination of all predicates in the module.  
 It is common for the compiler to be unable to prove termination of some
@@ -8507,14 +8514,19 @@ intermodule optimization is not enabled.  Unless intermodule
 optimization is enabled, the compiler must assume that any imported
 predicate may not terminate.  
 
-Currently the compiler assumes that all procedures defined using the C
-interface (@samp{pragma c_code}) terminate for all input.
-If this is not the case, a @samp{pragma does_not_terminate} declaration
-should be used to inform the compiler that this C code may not terminate.
+By default, the compiler assumes that a procedure defined
+using the foreign language interface will terminate for all input
+if it does not call Mercury.  If it does call Mercury then by default
+the compiler will assume that it may not terminate.
+
+The foreign code attributes @samp{terminates}/@samp{does_not_terminate}
+may be used to force the compiler to treat a foreign_proc as 
+terminating/non-terminating irrespective of whether it calls Mercury.
+As a matter of style, it is preferable to use foreign code attributes
+for foreign_procs rather than the termination pragmas described below.
 
 The following declarations can be used to inform the compiler of the
-termination properties of a predicate or function, or to force the
-compiler to prove termination of a given predicate or function. 
+termination properties of a predicate or function.
 
 @example
 :- pragma terminates(@var{Name}/@var{Arity}).
@@ -8533,10 +8545,9 @@ any other predicates that are mutually recursive with it.
 @end example
 
 This declaration may be used to inform the compiler that this predicate
-does not necessarily terminate.  This is useful for procedures defined
-using the C interface, which the compiler assumes to terminate by
-default.  This declaration affects not only the predicate specified
-but also any other predicates that are mutually recursive with it.  
+may not terminate.  This declaration affects not only the predicate
+specified but also any other predicates that are mutually recursive
+with it.
 
 @example
 :- pragma check_termination(@var{Name}/@var{Arity}).

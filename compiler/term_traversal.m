@@ -195,7 +195,7 @@ traverse_goal_2(if_then_else(_, Cond, Then, Else), _, Params, !Info) :-
 	traverse_goal(Else, Params, !.Info, ElseInfo),
 	combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
 
-traverse_goal_2(foreign_proc(_, CallPredId, CallProcId, Args, _,_,_),
+traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _,_,_),
 		GoalInfo, Params, !Info) :-
 	params_get_module_info(Params, Module),
 	module_info_pred_proc_info(Module, CallPredId, CallProcId, _,
@@ -203,7 +203,19 @@ traverse_goal_2(foreign_proc(_, CallPredId, CallProcId, Args, _,_,_),
 	proc_info_argmodes(CallProcInfo, CallArgModes),
 	partition_call_args(Module, CallArgModes, Args, _InVars, OutVars),
 	goal_info_get_context(GoalInfo, Context),
-	error_if_intersect(OutVars, Context, pragma_foreign_code, !Info).
+		
+	( is_termination_known(Module, proc(CallPredId, CallProcId)) ->
+		error_if_intersect(OutVars, Context, pragma_foreign_code,
+			!Info)
+	;
+		( attributes_imply_termination(Attributes) ->
+			error_if_intersect(OutVars, Context,
+				pragma_foreign_code, !Info)
+		;
+			add_error(Context, does_not_term_pragma(CallPredId),
+				Params, !Info)
+		)
+	).
 
 traverse_goal_2(generic_call(_, _, _, _), GoalInfo, Params, !Info) :-
 	%

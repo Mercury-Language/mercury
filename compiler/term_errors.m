@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,9 +112,14 @@
 	;	does_not_term_pragma(pred_id)
 			% The given procedure has a does_not_terminate pragma.
 	
-	;	inconsistent_annotations.
+	;	inconsistent_annotations
 			% The pragma terminates/does_not_terminate declarations
 			% for the procedures in this SCC are inconsistent. 
+
+	;	does_not_term_foreign(pred_proc_id).
+			% The procedure contains foreign code that may
+			% make calls back to Mercury.  By default such
+			% code is assumed to be non-terminating.
 
 :- type term_errors__error == pair(prog_context, termination_error).
 
@@ -445,6 +450,11 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 
 term_errors__description(inconsistent_annotations, _, _, Pieces, no) :-
 	Pieces = [words("The termination pragmas are inconsistent.")].
+
+term_errors__description(does_not_term_foreign(_), _, _, Pieces, no) :-
+	Piece1 = words("It contains foreign code that"),
+	Piece2 = words("may make one or more calls back to Mercury."),
+	Pieces = [Piece1, Piece2].
 
 %----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -821,6 +821,7 @@
 :- func may_call_mercury(pragma_foreign_proc_attributes) = may_call_mercury.
 :- func thread_safe(pragma_foreign_proc_attributes) = thread_safe.
 :- func purity(pragma_foreign_proc_attributes) = purity.
+:- func terminates(pragma_foreign_proc_attributes) = terminates.
 :- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
 :- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
 :- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
@@ -844,6 +845,10 @@
 	pragma_foreign_proc_attributes::out) is det.
 
 :- pred set_purity(purity::in,
+	pragma_foreign_proc_attributes::in,
+	pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_terminates(terminates::in,
 	pragma_foreign_proc_attributes::in,
 	pragma_foreign_proc_attributes::out) is det.
 
@@ -882,6 +887,22 @@
 		% we explicitly store the name because we need the real
 		% name in code_gen
 
+	% This type specifies the termination property of a procedure
+	% defined using pragma c_code or pragma foreign_proc.
+:- type terminates
+	--->	terminates
+			% The foreign code will terminate for all input.
+			% (assuming any input streams are finite).
+	
+	;	does_not_terminate
+			% The foreign code will not necessarily terminate for
+			% some (possibly all) input. 
+	
+	;	depends_on_mercury_calls.
+			% The termination of the foreign code depends
+			% on whether the code makes calls back to Mercury
+			% (See termination.m for details).
+	
 :- type pragma_foreign_proc_extra_attribute
 	--->	max_stack_size(int).
 
@@ -1345,6 +1366,7 @@
 				% there is some special case behaviour for
 				% pragma c_code and pragma import purity
 				% if legacy_purity_behaviour is `yes'
+			terminates		:: terminates,
 			legacy_purity_behaviour	:: bool,
 			extra_attributes	::
 				list(pragma_foreign_proc_extra_attribute)
@@ -1352,7 +1374,7 @@
 
 default_attributes(Language) =
 	attributes(Language, may_call_mercury, not_thread_safe,
-		not_tabled_for_io, impure, no, []).
+		not_tabled_for_io, impure, depends_on_mercury_calls, no, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1364,6 +1386,8 @@ set_tabled_for_io(TabledForIo, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
 set_purity(Purity, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ purity := Purity.
+set_terminates(Terminates, Attrs0, Attrs) :-
+	Attrs = Attrs0 ^ terminates := Terminates.
 set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
 	Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
 
@@ -1372,7 +1396,7 @@ attributes_to_strings(Attrs) = StringList :-
 	% in the attribute list -- the foreign language specifier string
 	% is at the start of the pragma.
 	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-			Purity,	_LegacyBehaviour, ExtraAttributes),
+			Purity,	Terminates, _LegacyBehaviour, ExtraAttributes),
 	(
 		MayCallMercury = may_call_mercury,
 		MayCallMercuryStr = "may_call_mercury"
@@ -1410,8 +1434,18 @@ attributes_to_strings(Attrs) = StringList :-
 		Purity = (impure),
 		PurityStrList = []
 	),
+	(
+		Terminates = terminates,
+		TerminatesStrList = ["terminates"]
+	;
+		Terminates = does_not_terminate,
+		TerminatesStrList = ["does_not_terminate"]
+	;
+		Terminates = depends_on_mercury_calls,
+		TerminatesStrList = []
+	),
 	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
-			PurityStrList] ++
+			PurityStrList] ++ TerminatesStrList ++
 		list__map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,

@@ -22,7 +22,6 @@
 % Science. Springer, 1997.  A more detailed version is available for
 % download from http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz
 %
-% Currently, this implementation assumes that all c_code terminates.
 % It also fails to prove termination for any predicate that involves higher
 % order calls.
 %
@@ -133,7 +132,10 @@ termination__pass(!Module, !IO) :-
 	module_info_ensure_dependency_info(!Module),
 	module_info_dependency_info(!.Module, DepInfo),
 	hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-		
+
+		% Set the termination status of foreign_procs.
+	check_foreign_code_attributes(SCCs, !Module, !IO),	
+	
 		% Ensure that termination pragmas for a proc. do conflict
 		% with termination pragmas for other procs. in the same SCC. 
 	check_pragmas_are_consistent(SCCs, !Module, !IO),
@@ -147,6 +149,108 @@ termination__pass(!Module, !IO) :-
 	;
 		true	
 	).
+
+%----------------------------------------------------------------------------%
+%
+% Handle foreign code attributes.
+%
+
+% Set the termination status for any procedures implemented using the
+% foreign language interface.  If the terminates/does_not_terminate
+% attribute has been set then we set the termination status of the procedure
+% accordingly.  Otherwise the procedure is considered to be terminating
+% if it does not call Mercury and non-terminating if it does.
+%
+% We also check that the foreign code attributes do not conflict with any
+% termination pragmas that have been supplied for the procedure.
+
+:- pred check_foreign_code_attributes(list(list(pred_proc_id))::in, 
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+check_foreign_code_attributes(SCCs, !Module, !IO) :-
+	list__foldl2(check_foreign_code_attributes_2, SCCs, !Module, !IO).
+
+:- pred check_foreign_code_attributes_2(list(pred_proc_id)::in, module_info::in,
+	module_info::out, io::di, io::uo) is det.
+
+	% This case shouldn't happen.
+check_foreign_code_attributes_2([], _, _, _, _) :-
+	unexpected(this_file, "check_foreign_code_attributes_2/5: empty SCC.").
+check_foreign_code_attributes_2([PPId], !Module, !IO) :-
+	module_info_pred_proc_info(!.Module, PPId, PredInfo, ProcInfo0),
+	(
+		proc_info_goal(ProcInfo0, Goal),
+		fst(Goal) = foreign_proc(Attributes, _, _, _, _, _, _)
+	->
+		proc_info_get_maybe_termination_info(ProcInfo0, 
+			MaybeTermination),
+		proc_info_context(ProcInfo0, Context),
+		(
+			MaybeTermination = no,
+			( attributes_imply_termination(Attributes) ->
+				proc_info_set_maybe_termination_info(
+					yes(cannot_loop), ProcInfo0, ProcInfo)
+			;
+				TermErr = Context - does_not_term_foreign(PPId),
+				proc_info_set_maybe_termination_info(
+					yes(can_loop([TermErr])), ProcInfo0,
+					ProcInfo)
+			)
+		;
+			% If there was a `pragma terminates' declaration
+			% for this procedure then check that the foreign
+			% code attributes do not contradict this.
+			MaybeTermination = yes(cannot_loop),
+			( terminates(Attributes) = does_not_terminate ->
+				TermErr = Context - inconsistent_annotations,
+				proc_info_set_maybe_termination_info(
+					yes(can_loop([TermErr])), ProcInfo0,
+					ProcInfo),
+				error_util__describe_one_proc_name(!.Module,
+					PPId, ProcName),
+				Piece1 = words("has a `pragma terminates'"),
+				Piece2 = words("declaration but also has the"),
+				Piece3 = words("`does_not_terminate' foreign"),
+				Piece4 = words("code attribute set."),
+				Components = [words("Warning:"),
+					fixed(ProcName), Piece1, Piece2,
+					Piece3, Piece4],
+				error_util__report_warning(Context, 0, 
+					Components, !IO)
+			;
+				ProcInfo = ProcInfo0
+			)
+		;
+			% In this case there was a `pragma does_not_terminate'
+			% declaration - check that the foreign code attribute
+			% does not contradict this.
+			MaybeTermination = yes(can_loop(TermErrs0)),
+			( terminates(Attributes) = terminates ->
+			    TermErr = Context - inconsistent_annotations,
+			    TermErrs = [TermErr | TermErrs0 ],
+			    proc_info_set_maybe_termination_info(
+			        yes(can_loop(TermErrs)),
+			        ProcInfo0, ProcInfo),
+			    error_util__describe_one_proc_name(!.Module,
+			        PPId, ProcName),
+			    Piece1 = words("has a `pragma does_not_terminate'"),
+			    Piece2 = words("declaration but also has the"),
+			    Piece3 = words("`terminates' foreign code"),
+			    Piece4 = words("attribute set."),
+			    Components = [words("Warning:"), fixed(ProcName),
+				Piece1, Piece2, Piece3, Piece4],
+			    error_util__report_warning(Context, 0, Components,
+			        !IO)
+			;
+			    ProcInfo = ProcInfo0
+			)
+		),
+		module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo,
+			!Module)
+	;
+		true 		
+	).		
+check_foreign_code_attributes_2([_, _ | _], !Module, !IO).
 
 %----------------------------------------------------------------------------%
 % Check that any user-supplied termination information (from pragma
@@ -248,13 +352,6 @@ check_procs_known_term(Status, [PPId | PPIds], Module) :-
 		PPIdStatus = can_loop(_)
 	),
 	check_procs_known_term(Status, PPIds, Module).
-
-	% Succeeds iff the termination status of a procedure is known.
-:- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
-
-is_termination_known(Module, PPId) :-
-	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
-	proc_info_get_maybe_termination_info(ProcInfo, yes(_)).	
 
 %----------------------------------------------------------------------------%
 

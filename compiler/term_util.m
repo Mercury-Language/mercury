@@ -132,12 +132,19 @@
 :- pred lookup_proc_arg_size_info(module_info::in, pred_proc_id::in,
 	maybe(arg_size_info)::out) is det.
 
-% Succeeds if one or more variables in the list are higher order.
-
+	% Succeeds if one or more variables in the list are higher order.
 :- pred horder_vars(list(prog_var)::in , map(prog_var, type)::in) is semidet.
 
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
 	prog_context::out) is det.
+
+	% Succeeds if the termination status of a procedure is known.	
+:- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
+	
+	% Succeeds if the foreign proc attributes imply that a procedure
+	% is terminating.
+:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in) 
+	is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -354,6 +361,20 @@ add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
 add_context_to_arg_size_info(yes(infinite), Context,
 		yes(infinite([Context - imported_pred]))).
+
+%-----------------------------------------------------------------------------%
+
+is_termination_known(Module, PPId) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, yes(_)).
+
+attributes_imply_termination(Attributes) :-
+	(
+		terminates(Attributes) = terminates
+	;
+		terminates(Attributes) = depends_on_mercury_calls,
+		may_call_mercury(Attributes) = will_not_call_mercury
+	).
 
 %-----------------------------------------------------------------------------%
 

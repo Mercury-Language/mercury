@@ -6,6 +6,7 @@ THIS_DIR = warnings
 
 COMPILE_PROGS=	\
 	arg_order_rearrangment \
+	foreign_term_invalid \
 	pragma_term_conflict \
 	term_indirect_warning \
 	warn_dead_procs

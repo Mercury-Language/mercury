@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -779,6 +779,8 @@
 
 :- pred purity_to_markers(purity::in, pred_markers::out) is det.
 
+:- pred terminates_to_markers(terminates::in, pred_markers::out) is det.
+
 :- pred pred_info_get_markers(pred_info::in, pred_markers::out) is det.
 
 :- pred pred_info_set_markers(pred_markers::in, pred_info::in, pred_info::out)
@@ -1289,6 +1291,10 @@ pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
 purity_to_markers(pure, []).
 purity_to_markers(semipure, [semipure]).
 purity_to_markers(impure, [impure]).
+
+terminates_to_markers(terminates, [terminates]).
+terminates_to_markers(does_not_terminate, [does_not_terminate]).
+terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_markers(PredInfo, PredInfo ^ markers).
 
