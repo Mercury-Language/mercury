@@ -30,6 +30,10 @@
 		;	update_module(pred(
 				proc_info, proc_info,
 				module_info, module_info))
+		;	update_module_io(pred(
+				pred_id, proc_id, proc_info, proc_info,
+				module_info, module_info,
+				io__state, io__state))
 		;	update_module_cookie(pred(
 				pred_id, proc_id, proc_info, proc_info,
 				T, T, module_info, module_info),
@@ -40,6 +44,8 @@
 		;	update_proc_error(pred(in, in, in, out, in, out,
 				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
+		;	update_module_io(pred(in, in, in, out,
+				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
 				in, out) is det, ground)
 		)).
@@ -139,6 +145,11 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
 		Task1 = Task0,
 		State9 = State0
+	;
+		Task0 = update_module_io(Closure),
+		call(Closure, PredId, ProcId, Proc0, Proc,
+			ModuleInfo0, ModuleInfo8, State0, State9),
+		Task1 = Task0
 	;
 		Task0 = update_proc(Closure),
 		call(Closure, Proc0, ModuleInfo0, Proc),

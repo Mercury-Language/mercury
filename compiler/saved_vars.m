@@ -28,22 +28,24 @@
 :- import_module hlds_module, hlds_pred.
 :- import_module io.
 
-:- pred saved_vars_proc(pred_id, proc_id, module_info, proc_info, proc_info,
-	io__state, io__state).
-:- mode saved_vars_proc(in, in, in, in, out, di, uo) is det.
+:- pred saved_vars_proc(pred_id, proc_id, proc_info, proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode saved_vars_proc(in, in, in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
+:- import_module mode_util.
 :- import_module bool, list, set, map, std_util, varset.
 
 %-----------------------------------------------------------------------------%
 
-saved_vars_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
+saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
+		ModuleInfo0, ModuleInfo) -->
 	write_proc_progress_message("% Minimizing saved vars in ",
-		PredId, ProcId, ModuleInfo),
+		PredId, ProcId, ModuleInfo0),
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	{ proc_info_variables(ProcInfo0, Varset0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
@@ -58,7 +60,10 @@ saved_vars_proc(PredId, ProcId, ModuleInfo, ProcInfo0, ProcInfo) -->
 
 	% recompute the nonlocals for each goal
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
-		VarTypes1, Goal, Varset, VarTypes, _Warnings) },
+		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
+	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
+	{ recompute_instmap_delta(no, Goal2, Goal, InstMap0, 
+		ModuleInfo0, ModuleInfo) },
 
 	% hlds_out__write_goal(Goal, ModuleInfo, Varset, 0, ""),
 

@@ -770,20 +770,22 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		ProcInfo1, ProcInfo2, _, _),
 	globals__io_lookup_bool_option(optimize_saved_vars, SavedVars),
 	( { SavedVars = yes } ->
-		saved_vars_proc(PredId, ProcId, ModuleInfo1,
-			ProcInfo2, ProcInfo3)
+		saved_vars_proc(PredId, ProcId, ProcInfo2, ProcInfo3,
+			ModuleInfo2, ModuleInfo3)
 	;
-		{ ProcInfo3 = ProcInfo2 }
+		{ ProcInfo3 = ProcInfo2 },
+		{ ModuleInfo3 = ModuleInfo2 }
 	),
-	detect_liveness_proc(PredId, ProcId, ModuleInfo2, ProcInfo3, ProcInfo4),
-	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo2, ProcInfo5) },
-	{ store_alloc_in_proc(ProcInfo5, ModuleInfo2, ProcInfo6) },
-	{ module_info_get_shapes(ModuleInfo2, Shapes0) },
-	{ module_info_get_cell_count(ModuleInfo2, CellCount0) },
-	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo2,
+	detect_liveness_proc(PredId, ProcId, ModuleInfo3,
+		ProcInfo3, ProcInfo4),
+	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo3, ProcInfo5) },
+	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
+	{ module_info_get_shapes(ModuleInfo3, Shapes0) },
+	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3,
 		Shapes0, CellCount0, Shapes, CellCount, Proc0),
-	{ module_info_set_shapes(ModuleInfo2, Shapes, ModuleInfo3) },
-	{ module_info_set_cell_count(ModuleInfo3, CellCount, ModuleInfo) },
+	{ module_info_set_shapes(ModuleInfo3, Shapes, ModuleInfo4) },
+	{ module_info_set_cell_count(ModuleInfo4, CellCount, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, Proc)
@@ -1259,7 +1261,7 @@ mercury_compile__maybe_saved_vars(HLDS0, Verbose, Stats, HLDS) -->
 	( { SavedVars = yes } ->
 		maybe_write_string(Verbose, "% Reordering to minimize variable saves...\n"),
 		maybe_flush_output(Verbose),
-		process_all_nonimported_procs(update_proc_io(
+		process_all_nonimported_procs(update_module_io(
 			saved_vars_proc), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
