@@ -889,10 +889,17 @@ ml_gen_goal_expr(generic_call(_, _, _, _), _, _, _, _) -->
 	% XXX not yet implemented
 	{ sorry("higher-order and class-method calls") }.
 
-ml_gen_goal_expr(call(PredId, ProcId, ArgVars, _, _, _PredName), CodeModel,
-		Context, MLDS_Decls, MLDS_Statements) -->
-	ml_gen_call(PredId, ProcId, ArgVars, CodeModel, Context,
-		MLDS_Decls, MLDS_Statements).
+ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _PredName),
+		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
+	(
+		{ BuiltinState = not_builtin }
+	->
+		ml_gen_call(PredId, ProcId, ArgVars, CodeModel, Context,
+			MLDS_Decls, MLDS_Statements)
+	;
+		ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
+			MLDS_Decls, MLDS_Statements)
+	).
 
 ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
@@ -1012,6 +1019,270 @@ ml_gen_arg_list(Vars, Modes, InputRvals, OutputLvals) -->
 :- func ml_gen_mem_addr(mlds__lval) = mlds__rval.
 ml_gen_mem_addr(Lval) =
 	(if Lval = mem_ref(Rval) then Rval else mem_addr(Lval)).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for builtins
+%
+
+:- pred ml_gen_builtin(pred_id, proc_id, list(prog_var), code_model,
+		prog_context, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_builtin(in, in, in, in, in, out, out, in, out) is det.
+
+ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	
+	ml_gen_var_list(ArgVars, ArgLvals),
+
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{
+		ml_translate_builtin(ModuleName, PredName,
+			ProcId, ArgLvals, MaybeTest0, MaybeAssign0)
+	->
+		MaybeTest = MaybeTest0,
+		MaybeAssign = MaybeAssign0
+	;
+		error("ml_gen_builtin: unknown builtin predicate")
+	},
+	(
+		{ CodeModel = model_det },
+		(
+			{ MaybeTest = no },
+			{ MaybeAssign = yes(Lval - Rval) }
+		->
+			{ MLDS_Statement = ml_gen_assign(Lval, Rval,
+				Context) }
+		;
+			{ error("Malformed det builtin predicate") }
+		)
+	;
+		{ CodeModel = model_semi },
+		(
+			{ MaybeTest = yes(Test) },
+			{ MaybeAssign = no }
+		->
+			ml_gen_set_success(Test, Context, MLDS_Statement)
+		;
+			{ error("Malformed semi builtin predicate") }
+		)
+	;
+		{ CodeModel = model_non },
+		{ error("Nondet builtin predicate") }
+	),
+	{ MLDS_Statements = [MLDS_Statement] },
+	{ MLDS_Decls = [] }.
+
+	% Given a module name, a predicate name, a proc_id and a list of
+	% the lvals for the arguments, find out if that procedure of that
+	% predicate is an inline builtin. If yes, the last two arguments
+	% return two things:
+	%
+	% - an rval to execute as a test if the builtin is semidet; or
+	%
+	% - an rval to assign to an lval if the builtin is det.
+	%
+	% Exactly one of these will be present.
+	%
+	% XXX this is not great interface design -
+	% better to return a discriminated union than
+	% returning two maybes.  But I kept it this way so that
+	% the code stays similar to code_util__translate_builtin.
+
+:- pred ml_translate_builtin(module_name, string, proc_id, list(mlds__lval),
+		maybe(mlds__rval), maybe(pair(mlds__lval, mlds__rval))).
+:- mode ml_translate_builtin(in, in, in, in, out, out) is semidet.
+
+ml_translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
+		TestOp, AssignmentOp) :-
+	proc_id_to_int(ProcId, ProcInt),
+	% -- not yet:
+	% FullyQualifiedModule = qualified(unqualified("std"), ModuleName),
+	FullyQualifiedModule = unqualified(ModuleName),
+	ml_translate_builtin_2(ModuleName, PredName, ProcInt, Args,
+		TestOp, AssignmentOp).
+
+:- pred ml_translate_builtin_2(string, string, int, list(mlds__lval),
+	maybe(mlds__rval), maybe(pair(mlds__lval, mlds__rval))).
+:- mode ml_translate_builtin_2(in, in, in, in, out, out) is semidet.
+
+% WARNING: any changes here may need to be duplicated in
+% code_util__translate_builtin_2 and vice versa.
+
+ml_translate_builtin_2("private_builtin", "unsafe_type_cast", 0,
+		[X, Y], no, yes(Y - lval(X))).
+ml_translate_builtin_2("builtin", "unsafe_promise_unique", 0,
+		[X, Y], no, yes(Y - lval(X))).
+
+ml_translate_builtin_2("private_builtin", "builtin_int_gt", 0, [X, Y],
+	yes(binop((>), lval(X), lval(Y))), no).
+ml_translate_builtin_2("private_builtin", "builtin_int_lt", 0, [X, Y],
+	yes(binop((<), lval(X), lval(Y))), no).
+
+ml_translate_builtin_2("int", "builtin_plus", 0, [X, Y, Z],
+	no, yes(Z - binop((+), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_plus", 1, [X, Y, Z],
+	no, yes(X - binop((-), lval(Z), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_plus", 2, [X, Y, Z],
+	no, yes(Y - binop((-), lval(Z), lval(X)))).
+ml_translate_builtin_2("int", "+", 0, [X, Y, Z],
+	no, yes(Z - binop((+), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "+", 1, [X, Y, Z],
+	no, yes(X - binop((-), lval(Z), lval(Y)))).
+ml_translate_builtin_2("int", "+", 2, [X, Y, Z],
+	no, yes(Y - binop((-), lval(Z), lval(X)))).
+ml_translate_builtin_2("int", "builtin_minus", 0, [X, Y, Z],
+	no, yes(Z - binop((-), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_minus", 1, [X, Y, Z],
+	no, yes(X - binop((+), lval(Y), lval(Z)))).
+ml_translate_builtin_2("int", "builtin_minus", 2, [X, Y, Z],
+	no, yes(Y - binop((-), lval(X), lval(Z)))).
+ml_translate_builtin_2("int", "-", 0, [X, Y, Z],
+	no, yes(Z - binop((-), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "-", 1, [X, Y, Z],
+	no, yes(X - binop((+), lval(Y), lval(Z)))).
+ml_translate_builtin_2("int", "-", 2, [X, Y, Z],
+	no, yes(Y - binop((-), lval(X), lval(Z)))).
+ml_translate_builtin_2("int", "builtin_times", 0, [X, Y, Z],
+	no, yes(Z - binop((*), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_times", 1, [X, Y, Z],
+	no, yes(X - binop((/), lval(Z), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_times", 2, [X, Y, Z],
+	no, yes(Y - binop((/), lval(Z), lval(X)))).
+ml_translate_builtin_2("int", "*", 0, [X, Y, Z],
+	no, yes(Z - binop((*), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "*", 1, [X, Y, Z],
+	no, yes(X - binop((/), lval(Z), lval(Y)))).
+ml_translate_builtin_2("int", "*", 2, [X, Y, Z],
+	no, yes(Y - binop((/), lval(Z), lval(X)))).
+ml_translate_builtin_2("int", "builtin_div", 0, [X, Y, Z],
+	no, yes(Z - binop((/), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_div", 1, [X, Y, Z],
+	no, yes(X - binop((*), lval(Y), lval(Z)))).
+ml_translate_builtin_2("int", "builtin_div", 2, [X, Y, Z],
+	no, yes(Y - binop((/), lval(X), lval(Z)))).
+ml_translate_builtin_2("int", "//", 0, [X, Y, Z],
+	no, yes(Z - binop((/), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "//", 1, [X, Y, Z],
+	no, yes(X - binop((*), lval(Y), lval(Z)))).
+ml_translate_builtin_2("int", "//", 2, [X, Y, Z],
+	no, yes(Y - binop((/), lval(X), lval(Z)))).
+ml_translate_builtin_2("int", "builtin_mod", 0, [X, Y, Z],
+	no, yes(Z - binop((mod), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "rem", 0, [X, Y, Z],
+	no, yes(Z - binop((mod), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_left_shift", 0, [X, Y, Z],
+	no, yes(Z - binop((<<), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "unchecked_left_shift", 0, [X, Y, Z],
+	no, yes(Z - binop((<<), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_right_shift", 0, [X, Y, Z],
+	no, yes(Z - binop((>>), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "unchecked_right_shift", 0, [X, Y, Z],
+	no, yes(Z - binop((>>), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_bit_and", 0, [X, Y, Z],
+	no, yes(Z - binop((&), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "/\\", 0, [X, Y, Z],
+	no, yes(Z - binop((&), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_bit_or", 0, [X, Y, Z],
+	no, yes(Z - binop(('|'), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "\\/", 0, [X, Y, Z],
+	no, yes(Z - binop(('|'), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_bit_xor", 0, [X, Y, Z],
+	no, yes(Z - binop((^), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "^", 0, [X, Y, Z],
+	no, yes(Z - binop((^), lval(X), lval(Y)))).
+ml_translate_builtin_2("int", "builtin_unary_plus", 0, [X, Y],
+	no, yes(Y - lval(X))).
+ml_translate_builtin_2("int", "+", 0, [X, Y],
+	no, yes(Y - lval(X))).
+ml_translate_builtin_2("int", "builtin_unary_minus", 0, [X, Y],
+	no, yes(Y - binop((-), const(int_const(0)), lval(X)))).
+ml_translate_builtin_2("int", "-", 0, [X, Y],
+	no, yes(Y - binop((-), const(int_const(0)), lval(X)))).
+ml_translate_builtin_2("int", "builtin_bit_neg", 0, [X, Y],
+	no, yes(Y - unop(bitwise_complement, lval(X)))).
+ml_translate_builtin_2("int", "\\", 0, [X, Y],
+	no, yes(Y - unop(bitwise_complement, lval(X)))).
+ml_translate_builtin_2("int", ">", 0, [X, Y],
+	yes(binop((>), lval(X), lval(Y))), no).
+ml_translate_builtin_2("int", "<", 0, [X, Y],
+	yes(binop((<), lval(X), lval(Y))), no).
+ml_translate_builtin_2("int", ">=", 0, [X, Y],
+	yes(binop((>=), lval(X), lval(Y))), no).
+ml_translate_builtin_2("int", "=<", 0, [X, Y],
+	yes(binop((<=), lval(X), lval(Y))), no).
+
+ml_translate_builtin_2("float", "builtin_float_plus", 0, [X, Y, Z],
+	no, yes(Z - binop(float_plus, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_plus", 1, [X, Y, Z],
+	no, yes(X - binop(float_minus, lval(Z), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_plus", 2, [X, Y, Z],
+	no, yes(Y - binop(float_minus, lval(Z), lval(X)))).
+ml_translate_builtin_2("float", "+", 0, [X, Y, Z],
+	no, yes(Z - binop(float_plus, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "+", 1, [X, Y, Z],
+	no, yes(X - binop(float_minus, lval(Z), lval(Y)))).
+ml_translate_builtin_2("float", "+", 2, [X, Y, Z],
+	no, yes(Y - binop(float_minus, lval(Z), lval(X)))).
+ml_translate_builtin_2("float", "builtin_float_minus", 0, [X, Y, Z],
+	no, yes(Z - binop(float_minus, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_minus", 1, [X, Y, Z],
+	no, yes(X - binop(float_plus, lval(Y), lval(Z)))).
+ml_translate_builtin_2("float", "builtin_float_minus", 2, [X, Y, Z],
+	no, yes(Y - binop(float_minus, lval(X), lval(Z)))).
+ml_translate_builtin_2("float", "-", 0, [X, Y, Z],
+	no, yes(Z - binop(float_minus, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "-", 1, [X, Y, Z],
+	no, yes(X - binop(float_plus, lval(Y), lval(Z)))).
+ml_translate_builtin_2("float", "-", 2, [X, Y, Z],
+	no, yes(Y - binop(float_minus, lval(X), lval(Z)))).
+ml_translate_builtin_2("float", "builtin_float_times", 0, [X, Y, Z],
+	no, yes(Z - binop(float_times, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_times", 1, [X, Y, Z],
+	no, yes(X - binop(float_divide, lval(Z), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_times", 2, [X, Y, Z],
+	no, yes(Y - binop(float_divide, lval(Z), lval(X)))).
+ml_translate_builtin_2("float", "*", 0, [X, Y, Z],
+	no, yes(Z - binop(float_times, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "*", 1, [X, Y, Z],
+	no, yes(X - binop(float_divide, lval(Z), lval(Y)))).
+ml_translate_builtin_2("float", "*", 2, [X, Y, Z],
+	no, yes(Y - binop(float_divide, lval(Z), lval(X)))).
+ml_translate_builtin_2("float", "builtin_float_divide", 0, [X, Y, Z],
+	no, yes(Z - binop(float_divide, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "builtin_float_divide", 1, [X, Y, Z],
+	no, yes(X - binop(float_times, lval(Y), lval(Z)))).
+ml_translate_builtin_2("float", "builtin_float_divide", 2, [X, Y, Z],
+	no, yes(Y - binop(float_divide, lval(X), lval(Z)))).
+ml_translate_builtin_2("float", "/", 0, [X, Y, Z],
+	no, yes(Z - binop(float_divide, lval(X), lval(Y)))).
+ml_translate_builtin_2("float", "/", 1, [X, Y, Z],
+	no, yes(X - binop(float_times, lval(Y), lval(Z)))).
+ml_translate_builtin_2("float", "/", 2, [X, Y, Z],
+	no, yes(Y - binop(float_divide, lval(X), lval(Z)))).
+ml_translate_builtin_2("float", "+", 0, [X, Y],
+	no, yes(Y - lval(X))).
+ml_translate_builtin_2("float", "-", 0, [X, Y],
+	no, yes(Y - binop(float_minus, const(float_const(0.0)), lval(X)))).
+ml_translate_builtin_2("float", "builtin_float_gt", 0, [X, Y],
+	yes(binop(float_gt, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", ">", 0, [X, Y],
+	yes(binop(float_gt, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", "builtin_float_lt", 0, [X, Y],
+	yes(binop(float_lt, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", "<", 0, [X, Y],
+	yes(binop(float_lt, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", "builtin_float_ge", 0, [X, Y],
+	yes(binop(float_ge, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", ">=", 0, [X, Y],
+	yes(binop(float_ge, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", "builtin_float_le", 0, [X, Y],
+	yes(binop(float_le, lval(X), lval(Y))), no).
+ml_translate_builtin_2("float", "=<", 0, [X, Y],
+	yes(binop(float_le, lval(X), lval(Y))), no).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2491,6 +2762,18 @@ ml_gen_block(VarDecls, Statements, Context) =
 			mlds__make_context(Context))
 	).
 		
+	% Generate a list of the mlds__lvals corresponding to a
+	% given list of prog_vars.
+	%
+:- pred ml_gen_var_list(list(prog_var), list(mlds__lval),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_var_list(in, out, in, out) is det.
+
+ml_gen_var_list([], []) --> [].
+ml_gen_var_list([Var | Vars], [Lval | Lvals]) -->
+	ml_gen_var(Var, Lval),
+	ml_gen_var_list(Vars, Lvals).
+
 	% Generate the mlds__lval corresponding to a given prog_var.
 	%
 :- pred ml_gen_var(prog_var, mlds__lval, ml_gen_info, ml_gen_info).

@@ -585,10 +585,10 @@ mlds_output_decl_flags(Flags) -->
 :- pred mlds_output_access(access, io__state, io__state).
 :- mode mlds_output_access(in, di, uo) is det.
 
-mlds_output_access(public)    --> io__write_string("/* public: */ ").
+mlds_output_access(public)    --> [].
 mlds_output_access(private)   --> io__write_string("/* private: */ ").
 mlds_output_access(protected) --> io__write_string("/* protected: */ ").
-mlds_output_access(default)   --> [].
+mlds_output_access(default)   --> io__write_string("/* default access */ ").
 
 :- pred mlds_output_per_instance(per_instance, io__state, io__state).
 :- mode mlds_output_per_instance(in, di, uo) is det.
@@ -1063,13 +1063,14 @@ XXX broken for C == minint
 	).
 
 :- pred mlds_output_binary_op(binary_op, io__state, io__state).
-:- mode mlds_output_binary_op(in, di, uo) is erroneous.
+:- mode mlds_output_binary_op(in, di, uo) is det.
 
-mlds_output_binary_op(_Op) -->
-	{ error("NYI 7") }.
-	% XXX
-	% { c_util__binary_op(Op, OpStr) },
-	% io__write_string(OpStr).
+mlds_output_binary_op(Op) -->
+	( { c_util__binary_infix_op(Op, OpStr) } ->
+		io__write_string(OpStr)
+	;
+		{ error("mlds_output_binary_op: invalid binary operator") }
+	).
 
 :- pred mlds_output_rval_const(mlds__rval_const, io__state, io__state).
 :- mode mlds_output_rval_const(in, di, uo) is det.

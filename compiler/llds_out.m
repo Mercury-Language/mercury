@@ -3877,46 +3877,20 @@ llds_out__quote_c_string(String, QuotedString) :-
 :- mode output_binary_op(in, di, uo) is det.
 
 output_binary_op(Op) -->
-	{ llds_out__binary_op_to_string(Op, String) },
-	io__write_string(String).
+	( { c_util__binary_infix_op(Op, String) } ->
+		io__write_string(String)
+	;
+		{ error("llds_out.m: invalid binary operator") }
+	).
 
-llds_out__binary_op_to_string(+, "+").
-llds_out__binary_op_to_string(-, "-").
-llds_out__binary_op_to_string(*, "*").
-llds_out__binary_op_to_string(/, "/").
-llds_out__binary_op_to_string(<<, "<<").
-llds_out__binary_op_to_string(>>, ">>").
-llds_out__binary_op_to_string(&, "&").
-llds_out__binary_op_to_string('|', "|").
-llds_out__binary_op_to_string(^, "^").
-llds_out__binary_op_to_string(mod, "%").
-llds_out__binary_op_to_string(eq, "==").
-llds_out__binary_op_to_string(ne, "!=").
-llds_out__binary_op_to_string(and, "&&").
-llds_out__binary_op_to_string(or, "||").
-llds_out__binary_op_to_string(<, "<").
-llds_out__binary_op_to_string(>, ">").
-llds_out__binary_op_to_string(<=, "<=").
-llds_out__binary_op_to_string(>=, ">=").
-	% The following is just for debugging purposes -
-	% string operators are not output as `str_eq', etc.
-llds_out__binary_op_to_string(array_index, "array_index").
-llds_out__binary_op_to_string(str_eq, "str_eq").
-llds_out__binary_op_to_string(str_ne, "str_ne").
-llds_out__binary_op_to_string(str_lt, "str_lt").
-llds_out__binary_op_to_string(str_gt, "str_gt").
-llds_out__binary_op_to_string(str_le, "str_le").
-llds_out__binary_op_to_string(str_ge, "str_ge").
-llds_out__binary_op_to_string(float_eq, "float_eq").
-llds_out__binary_op_to_string(float_ne, "float_ne").
-llds_out__binary_op_to_string(float_lt, "float_lt").
-llds_out__binary_op_to_string(float_gt, "float_gt").
-llds_out__binary_op_to_string(float_le, "float_le").
-llds_out__binary_op_to_string(float_ge, "float_ge").
-llds_out__binary_op_to_string(float_plus, "float_plus").
-llds_out__binary_op_to_string(float_minus, "float_minus").
-llds_out__binary_op_to_string(float_times, "float_times").
-llds_out__binary_op_to_string(float_divide, "float_divide").
+llds_out__binary_op_to_string(Op, Name) :-
+	( c_util__binary_infix_op(Op, Name0) ->
+		Name = Name0
+	;
+		% The following is just for debugging purposes -
+		% string operators are not output as `str_eq', etc.
+		functor(Op, Name, _)
+	).
 
 %-----------------------------------------------------------------------------%
 
