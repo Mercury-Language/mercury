@@ -57,9 +57,9 @@ public class Constants
 	// that because neither alternatives seem to define field names we
 	// can reference from IL.
 
-    public static int MR_TYPECTOR_REP_ENUM 			= MR_TYPECTOR_REP_ENUM_val;
-    public static int MR_TYPECTOR_REP_ENUM_USEREQ 	= MR_TYPECTOR_REP_ENUM_USEREQ_val;
-    public static int MR_TYPECTOR_REP_DU			= MR_TYPECTOR_REP_DU_val;
+    public static int MR_TYPECTOR_REP_ENUM 			= 0;
+    public static int MR_TYPECTOR_REP_ENUM_USEREQ 	= 1;
+    public static int MR_TYPECTOR_REP_DU			= 2;
     public static int MR_TYPECTOR_REP_DU_USEREQ		= 3;
     public static int MR_TYPECTOR_REP_NOTAG			= 4;
     public static int MR_TYPECTOR_REP_NOTAG_USEREQ	= 5;
