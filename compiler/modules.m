@@ -1109,9 +1109,16 @@ make_directory(DirName, Result) -->
 
 make_symlink(LinkTarget, LinkName, Result) -->
 	io__output_stream(ErrorStream),
-	{ string__format("rm -f %s && ln -s %s %s",
-		[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
-	invoke_shell_command(ErrorStream, verbose, Command, Result).
+	globals__io_lookup_bool_option(use_symlinks, SymLinks),
+	(
+		{ SymLinks = yes },
+		{ string__format("rm -f %s && ln -s %s %s",
+			[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
+		invoke_shell_command(ErrorStream, verbose, Command, Result)
+	;
+		{ SymLinks = no },
+		{ Result = no }
+	).
 
 copy_file(Source, Destination, Res) -->
 	io__open_binary_input(Source, SourceRes),
@@ -4465,13 +4472,13 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			fi; \\
 		done
 		# The following is needed to support the `--use-subdirs' option
-		# We try using `ln -s', but if that fails, then we just use
+		# We try using `$(LN_S)', but if that fails, then we just use
 		# `$(INSTALL)'.
 		for ext in int int2 int3", Int0Str, OptStr,
 				TransOptStr, DepStr, "; do \\
 			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
 			rm -f ""$$dir""; \\
-			ln -s .. ""$$dir"" || { \\
+			$(LN_S) .. ""$$dir"" || { \\
 				{ [ -d ""$$dir"" ] || \\
 					$(INSTALL_MKDIR) ""$$dir""; } && \\
 				$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext \\
@@ -4507,12 +4514,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			fi; \\
 		done
 		# The following is needed to support the `--use-subdirs' option
-		# We try using `ln -s', but if that fails, then we just use
+		# We try using `$(LN_S)', but if that fails, then we just use
 		# `$(INSTALL)'.
 		for ext in ", OptStr, TransOptStr, "; do \\
 			dir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\
 			rm -f ""$$dir""; \\
-			ln -s .. ""$$dir"" || { \\
+			$(LN_S) .. ""$$dir"" || { \\
 				{ [ -d ""$$dir"" ] || \\
 					$(INSTALL_MKDIR) ""$$dir""; } && \\
 				$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\
@@ -4565,10 +4572,10 @@ else
 			$(INSTALL) $$hdr $(INSTALL_GRADE_INC_DIR); \\
 		done
 		# The following is needed to support the `--use-subdirs' option
-		# We try using `ln -s', but if that fails, then we just use
+		# We try using `$(LN_S)', but if that fails, then we just use
 		# `$(INSTALL)'.
 		rm -f $(INSTALL_GRADE_INC_SUBDIR)
-		ln -s .. $(INSTALL_GRADE_INC_SUBDIR) || { \\
+		$(LN_S) .. $(INSTALL_GRADE_INC_SUBDIR) || { \\
 			{ [ -d $(INSTALL_GRADE_INC_SUBDIR) ] || \\
 				$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_SUBDIR); \\
 			} && \\
@@ -4576,7 +4583,7 @@ else
 				$(INSTALL_GRADE_INC_SUBDIR); \\
 		} || exit 1
 		rm -f $(INSTALL_INT_DIR)/Mercury/mihs
-		ln -s .. $(INSTALL_INT_DIR)/Mercury/mihs || { \\
+		$(LN_S) .. $(INSTALL_INT_DIR)/Mercury/mihs || { \\
 			{ [ -d $(INSTALL_INT_DIR)/Mercury/mihs ] || \\
 				$(INSTALL_MKDIR) \\
 					$(INSTALL_INT_DIR)/Mercury/mihs; \\

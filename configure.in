@@ -617,6 +617,24 @@ AC_SUBST(FIX_PATH_FOR_CC)
 AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
+# If we're producing a Win32 version of the compiler, don't use symlinks
+# when installing. The generated compiler executable will not be able to
+# follow them.
+MMC_USE_SYMLINKS_OPT=
+LN_S="ln -s"
+case "$host" in
+    *cygwin*)
+	case "$CC" in
+	    # cl is the Microsoft C compiler
+	    *gcc*-mno-cygwin* | *cl* | *CL*)
+		MMC_USE_SYMLINKS_OPT=--no-use-symlinks
+		LN_S=false ;;
+	esac ;;
+esac
+AC_SUBST(LN_S)
+AC_SUBST(MMC_USE_SYMLINKS_OPT)
+
+#-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
 # 
 MERCURY_CHECK_DOTNET

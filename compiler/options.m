@@ -632,6 +632,7 @@
 		;	extra_init_command
 		;	pre_link_command
 		;	install_prefix
+		;	use_symlinks
 		;	mercury_configuration_directory
 		;	mercury_configuration_directory_special
 		;	install_command
@@ -1240,6 +1241,7 @@ option_defaults_2(build_system_option, [
 	pre_link_command	-	maybe_string(no),
 	extra_init_command	-	maybe_string(no),
 	install_prefix		-	string("/usr/local/"),
+	use_symlinks		-	bool(yes),
 
 	% If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
 	% must also be set.  This invariant is maintained by the
@@ -1899,6 +1901,7 @@ long_option("mercury-config-dir",
 				mercury_configuration_directory_special).
 long_option("install-prefix",		install_prefix).
 long_option("install-command",		install_command).
+long_option("use-symlinks",		use_symlinks).
 long_option("library-grade",		libgrades).
 long_option("libgrade",			libgrades).
 long_option("options-file",		options_files).
@@ -3925,6 +3928,11 @@ options_help_build_system -->
 		"\tare substituted as for the `--pre-link-command' option.",
 		"--install-prefix <dir>",
 		"\tThe directory under which to install Mercury libraries.",
+		
+		% --use-symlinks is only used by Mercury.config.
+		% It controls whether the build system should attempt
+		% to use symlinks.
+
 		"--install-command <command>",
 		"\tSpecify the command to use to install the files in",
 		"\tMercury libraries. The given command will be invoked as",

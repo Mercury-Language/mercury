@@ -740,6 +740,12 @@ LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#
 
+# The command to use to make symlinks, `false' if we shouldn't use
+# symlinks (e.g. because Windows executables don't understand them).
+LN_S			= @LN_S@
+
+#-----------------------------------------------------------------------------#
+
 # We need to use $(empty_string) here to prevent Make from truncating
 # any trailing spaces in @OBJFILE_OPT@
 empty_string=
