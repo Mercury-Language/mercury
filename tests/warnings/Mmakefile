@@ -33,6 +33,11 @@ MCFLAGS-duplicate_call		= --warn-duplicate-calls
 MCFLAGS-unused_args_test	= --warn-unused-args
 MCFLAGS-unused_import		= --warn-interface-imports
 MCFLAGS-inference_test		= --infer-all
+MCFLAGS-infinite_recursion	= --excess-assign --common-struct
+					# we need to explicitly enable those
+					# optimizations because some of the
+					# infinite recursion warnings don't
+					# show up at lower optimization levels
 
 #-----------------------------------------------------------------------------#
 
