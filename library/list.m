@@ -154,7 +154,6 @@
 	%	
 :- pred list__insert(T, list(T), list(T)).
 :- mode list__insert(in, in, in) is semidet.
-:- mode list__insert(in, in, out) is nondet.
 :- mode list__insert(out, out, in) is nondet.
 :- mode list__insert(in, in, out) is multi.
 
