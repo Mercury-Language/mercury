@@ -219,6 +219,9 @@ But as well as bug fixes, there are a few minor improvements:
 NEWS since release 0.7.3:
 -------------------------
 
+* Mode inference can now infer "mostly-unique" modes as well as
+  "unique" modes.
+
 * Array bounds checking can now be disabled.
 
   To disable array bounds checking, you must compile with
