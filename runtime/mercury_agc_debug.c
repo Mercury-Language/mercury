@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -51,7 +51,7 @@ MR_agc_dump_roots(MR_RootList roots)
 		** the saved registers).
 		*/
 		MR_restore_registers();
-		MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG, saved_regs);
+		MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs);
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
 		MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
@@ -61,7 +61,7 @@ MR_agc_dump_roots(MR_RootList roots)
 		fflush(NULL);
 		fprintf(stderr, "\n");
 
-		MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG, saved_regs);
+		MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs);
 		MR_save_registers();
 		roots = roots->next;
 	}
@@ -250,7 +250,7 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 	** not live yet for any call except the top one.
 	*/
 	MR_restore_registers();
-	MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG, saved_regs);
+	MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs);
 	if (top_frame) {
 		current_regs = saved_regs;
 	} else {
@@ -261,7 +261,9 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 
 	for (i = 0; i < long_var_count; i++) {
 		fprintf(stderr, "%-12s\t", "");
-		MR_print_proc_id(stderr, label_layout->MR_sll_entry);
+		if (MR_PROC_LAYOUT_HAS_PROC_ID(label_layout->MR_sll_entry)) {
+			MR_print_proc_id(stderr, label_layout->MR_sll_entry);
+		}
 
 		dump_long_value(MR_long_desc_var_locn(label_layout, i),
 			heap_zone, stack_pointer, current_frame, top_frame);
@@ -292,7 +294,9 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 
 	for (; i < short_var_count; i++) {
 		fprintf(stderr, "%-12s\t", "");
-		MR_print_proc_id(stderr, label_layout->MR_sll_entry);
+		if (MR_PROC_LAYOUT_HAS_PROC_ID(label_layout->MR_sll_entry)) {
+			MR_print_proc_id(stderr, label_layout->MR_sll_entry);
+		}
 
 		dump_short_value(MR_short_desc_var_locn(label_layout, i),
 			heap_zone, stack_pointer, current_frame, top_frame);
@@ -322,9 +326,9 @@ dump_live_variables(const MR_Label_Layout *label_layout,
 	}
 
 
-	MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG, saved_regs);
+	MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs);
 	MR_save_registers();
-	free(type_params);
+	MR_free(type_params);
 }
 
 static void
