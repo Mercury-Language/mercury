@@ -96,7 +96,7 @@ install_scripts:
 	cp $(INSTALL_SCRIPTS) $(INSTALL_BINDIR)
 	for file in $(INSTALL_SCRIPTS); do \
 		base=`basename $$file`; \
-		chmod +w $(INSTALL_BINDIR)/$$base ;\
+		chmod u+w $(INSTALL_BINDIR)/$$base ;\
 	done
 	@echo "-- Done."
 
