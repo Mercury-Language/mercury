@@ -874,7 +874,7 @@ unused :-
 #endif
 		subgoal->status = MR_SUBGOAL_INACTIVE;
 		subgoal->leader = NULL;
-		subgoal->followers = make(struct MR_SubgoalListNode);
+		subgoal->followers = MR_GC_NEW(struct MR_SubgoalListNode);
 		subgoal->followers->item = subgoal;
 		subgoal->followers->next = NULL;
 		subgoal->followers_tail = &(subgoal->followers->next);
