@@ -134,9 +134,7 @@ by UseGC.  GC is an alias for UseGC, unless GC_NAME_CONFLICT is defined.
 #include "gc.h"
 
 #ifndef THINK_CPLUS
-#  define GC_cdecl
-#else
-#  define GC_cdecl _cdecl
+#define _cdecl
 #endif
 
 #if ! defined( GC_NO_OPERATOR_NEW_ARRAY ) \
@@ -165,18 +163,14 @@ class gc {public:
     	/* Must be redefined here, since the other overloadings	*/
     	/* hide the global definition.				*/
     inline void operator delete( void* obj );
-#   ifndef __BORLANDC__  /* Confuses the Borland compiler. */
-      inline void operator delete( void*, void* );
-#   endif
+    inline void operator delete( void*, void* );
 
 #ifdef GC_OPERATOR_NEW_ARRAY
     inline void* operator new[]( size_t size );
     inline void* operator new[]( size_t size, GCPlacement gcp );
     inline void* operator new[]( size_t size, void *p );
     inline void operator delete[]( void* obj );
-#   ifndef __BORLANDC__
-      inline void gc::operator delete[]( void*, void* );
-#   endif
+    inline void gc::operator delete[]( void*, void* );
 #endif /* GC_OPERATOR_NEW_ARRAY */
     };    
     /*
@@ -188,7 +182,7 @@ class gc_cleanup: virtual public gc {public:
     inline gc_cleanup();
     inline virtual ~gc_cleanup();
 private:
-    inline static void GC_cdecl cleanup( void* obj, void* clientData );};
+    inline static void _cdecl cleanup( void* obj, void* clientData );};
     /*
     Instances of classes derived from "gc_cleanup" will be allocated
     in the collected heap by default.  When the collector discovers an
@@ -282,9 +276,7 @@ inline void* gc::operator new( size_t size, void *p ) {
 inline void gc::operator delete( void* obj ) {
     GC_FREE( obj );}
     
-#ifndef __BORLANDC__
-  inline void gc::operator delete( void*, void* ) {}
-#endif
+inline void gc::operator delete( void*, void* ) {}
 
 #ifdef GC_OPERATOR_NEW_ARRAY
 
@@ -300,15 +292,13 @@ inline void* gc::operator new[]( size_t size, void *p ) {
 inline void gc::operator delete[]( void* obj ) {
     gc::operator delete( obj );}
 
-#ifndef __BORLANDC__
-  inline void gc::operator delete[]( void*, void* ) {}
-#endif
+inline void gc::operator delete[]( void*, void* ) {}
     
 #endif /* GC_OPERATOR_NEW_ARRAY */
 
 
 inline gc_cleanup::~gc_cleanup() {
-    GC_register_finalizer_ignore_self( GC_base(this), 0, 0, 0, 0 );}
+    GC_REGISTER_FINALIZER_IGNORE_SELF( GC_base(this), 0, 0, 0, 0 );}
 
 inline void gc_cleanup::cleanup( void* obj, void* displ ) {
     ((gc_cleanup*) ((char*) obj + (ptrdiff_t) displ))->~gc_cleanup();}
