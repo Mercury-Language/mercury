@@ -68,7 +68,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top Mercury Library Reference Manual - BETA TEST version, July 1995
+@top Mercury Library Reference Manual
 @end ifinfo
 
 The Mercury standard library contains a variety of modules which we

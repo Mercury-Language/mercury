@@ -76,7 +76,7 @@ into another language, under the above conditions for modified versions.
 
 @ifinfo
 @node Top,,, (mercury)
-@top The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
+@top The Mercury Frequently Asked Questions list
 @menu
 * Programming::     Common programming errors
 * Unimplemented::   Problems caused by unimplemented Mercury features
