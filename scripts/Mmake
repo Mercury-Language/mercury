@@ -21,6 +21,13 @@ SICSTUS_SCRIPTS = mcs msc msl msp
 
 #-----------------------------------------------------------------------------#
 
+.SUFFIXES: .in
+
+.in:
+	cd ..; CONFIG_FILES=scripts/$@ CONFIG_HEADERS= ./config.status
+
+#-----------------------------------------------------------------------------#
+
 .PHONY: all
 all: $(SCRIPTS) $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS)
 
