@@ -1563,9 +1563,11 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	    {
 		%       #endif
 		%		MR_COMMIT_TYPE ref;
+		%
 		%		void success() {
 		%			MR_DO_COMMIT(ref);
 		%		}
+		%
 		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
 		%			succeeded = FALSE;
@@ -1599,29 +1601,9 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
 		{ DoCommitStatement = 
 			mlds__statement(DoCommitStmt, MLDS_Context) },
-		=(MLDSGenInfo),
-		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-		{ module_info_globals(ModuleInfo, Globals) },
-		{ globals__get_target(Globals, Target) },
-		{ Target = il ->
-				% XXX would be a good performance thing
-				% to re-use the same pre-allocated commit
-				% object over and over again, instead of
-				% allocating them each time.
-			NewCommitObject = mlds__statement(
-				atomic(new_object(CommitRefLval, no,
-					mlds__commit_type, no, no, [], [])),
-					MLDS_Context),
-			DoCommitBody = ml_gen_block([], 
-				[NewCommitObject,
-				DoCommitStatement],
-				Context)
-		;
-			DoCommitBody = DoCommitStatement
-		},
 		/* pop nesting level */
 		ml_gen_nondet_label_func(SuccessFuncLabel, Context,
-			DoCommitBody, SuccessFunc),
+			DoCommitStatement, SuccessFunc),
 
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,

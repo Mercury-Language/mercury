@@ -1266,38 +1266,44 @@ statement_to_il(statement(goto(Label), Context), Instrs) -->
 			br(label_target(Label))
 		]) }.
 
-statement_to_il(statement(do_commit(Ref), Context), Instrs) -->
+statement_to_il(statement(do_commit(_Ref), Context), Instrs) -->
 
 	% For commits, we use exception handling.
 	%
-	% We generate code of the following form:
-	% 
-	% 	<load exception rval -- should be of a special commit type>
-	% 	throw
+	% For a do_commit instruction, we generate code equivalent 
+	% to the following C++/C#/Java code:
 	%
+	%	throw new mercury::runtime::Commit();
+	%
+	% In IL the code looks like this:
+	% 
+	%	newobj  instance void
+	%		['mercury']'mercury'.'runtime'.'Commit'::.ctor()
+	% 	throw
 	% 
 
-	load(Ref, RefLoadInstrs),
+	{ NewObjInstr = newobj_constructor(il_commit_class_name) },
 	{ Instrs = tree__list([
 			context_node(Context),
 			comment_node("do_commit/1"),
-			RefLoadInstrs,
+			instr_node(NewObjInstr),
 			instr_node(throw)
 		]) }.
 
-statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal), 
+statement_to_il(statement(try_commit(_Ref, GoalToTry, CommitHandlerGoal), 
 		Context), Instrs) -->
 
 	% For commits, we use exception handling.
 	%
-	% We generate code of the following form:
+	% For try_commit instructions, we generate IL code
+	% of the following form:
 	%
 	% 	.try {	
-	%		GoalToTry
+	%		<GoalToTry>
 	%		leave label1
 	% 	} catch commit_type {
 	%		pop	// discard the exception object
-	% 		CommitHandlerGoal
+	% 		<CommitHandlerGoal>
 	%		leave label1
 	% 	}
 	% 	label1:
@@ -1309,9 +1315,7 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 	statement_to_il(CommitHandlerGoal, HandlerInstrsTree),
 	il_info_make_next_label(DoneLabel),
 
-	{ rval_to_type(lval(Ref), MLDSRefType) },
-	DataRep =^ il_data_rep,
-	{ ClassName = mlds_type_to_ilds_class_name(DataRep, MLDSRefType) },
+	{ ClassName = il_commit_class_name },
 	{ Instrs = tree__list([
 		context_node(Context),
 		comment_node("try_commit/3"),
