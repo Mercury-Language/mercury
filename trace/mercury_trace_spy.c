@@ -31,6 +31,7 @@
 #if defined(MR_HAVE_SNPRINTF) || defined(MR_HAVE__SNPRINTF)
   #define MR_HAVE_A_SNPRINTF
 #endif
+
 const char      *MR_spy_when_names[] =
 {
     "all",
@@ -64,13 +65,13 @@ int             MR_most_recent_spy_point = -1;
 */
 
 typedef struct {
-    const MR_Proc_Layout        *spy_proc;
-    MR_Spy_Point                *spy_points;
+    const MR_Proc_Layout    *spy_proc;
+    MR_Spy_Point            *spy_points;
 } MR_Spied_Proc;
 
-static  MR_Spied_Proc   *MR_spied_procs;
-static  int             MR_spied_proc_next = 0;
-static  int             MR_spied_proc_max = 0;
+static  MR_Spied_Proc       *MR_spied_procs;
+static  int                 MR_spied_proc_next = 0;
+static  int                 MR_spied_proc_max = 0;
 
 /* The initial size of the spied procs table. */
 #define MR_INIT_SPIED_PROCS 10
@@ -87,9 +88,9 @@ typedef struct {
     int                     spy_point_num;
 } MR_Spied_Label;
 
-static  MR_Spied_Label  *MR_spied_labels;
-static  int     MR_spied_label_next = 0;
-static  int     MR_spied_label_max = 0;
+static  MR_Spied_Label      *MR_spied_labels;
+static  int                 MR_spied_label_next = 0;
+static  int                 MR_spied_label_max = 0;
 
 /* The initial size of the spied labels table. */
 #define MR_INIT_SPIED_LABELS    10
@@ -313,24 +314,25 @@ MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
 
         if (point->spy_ignore_count > 0) {
             switch (point->spy_ignore_when) {
-            case MR_SPY_DONT_IGNORE:
-                break;
 
-            case MR_SPY_IGNORE_ENTRY:
-                if (port == MR_PORT_CALL) {
-                    --point->spy_ignore_count;
-                }
-                break;
+                case MR_SPY_DONT_IGNORE:
+                    break;
 
-            case MR_SPY_IGNORE_INTERFACE:
-                if (MR_port_is_interface(port)) {
-                    --point->spy_ignore_count;
-                }
-                break;
+                case MR_SPY_IGNORE_ENTRY:
+                    if (port == MR_PORT_CALL) {
+                        --point->spy_ignore_count;
+                    }
+                    break;
 
-            default:
-                MR_fatal_error("MR_update_enabled_action: "
-                    "invalid ignore_when");
+                case MR_SPY_IGNORE_INTERFACE:
+                    if (MR_port_is_interface(port)) {
+                        --point->spy_ignore_count;
+                    }
+                    break;
+
+                default:
+                    MR_fatal_error("MR_update_enabled_action: "
+                        "invalid ignore_when");
             }
         }
     }
@@ -343,8 +345,7 @@ int
 MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
     MR_Spy_Ignore_When ignore_when, int ignore_count,
     const MR_Proc_Layout *entry, const MR_Label_Layout *label,
-    MR_Spy_Print_List print_list,
-    const char **problem)
+    MR_Spy_Print_List print_list, const char **problem)
 {
     MR_Spy_Point    *point;
     int             point_slot;
@@ -405,7 +406,8 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
 {
     MR_Spy_Point    *point;
     int             point_slot;
-    int             old_size, new_size;
+    int             old_size;
+    int             new_size;
     char            *filename;
 
     *problem = NULL;
@@ -464,8 +466,7 @@ MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
     point->spy_filename   = filename;
     point->spy_linenumber = linenumber;
 
-    MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *,
-        MR_INIT_SPY_POINTS);
+    MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *, MR_INIT_SPY_POINTS);
     MR_spy_points[point_slot] = point;
     MR_spy_point_next++;
 
@@ -768,8 +769,10 @@ MR_bool
 MR_save_spy_points(FILE *fp, FILE *err_fp)
 {
     MR_Spy_Point    *point;
-    int     i;
+    int             i;
+    int             spy_point_num;
 
+    spy_point_num = 0;
     for (i = 0; i < MR_spy_point_next; i++) {
         if (! MR_spy_points[i]->spy_exists) {
             continue;
@@ -787,33 +790,28 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                 break;
 
             default:
-                fprintf(err_fp, "internal error: "
-                    "unknown spy action\n");
+                fprintf(err_fp, "internal error: unknown spy action\n");
                 return MR_TRUE;
         }
 
         if (point->spy_ignore_count > 0) {
             switch (point->spy_ignore_when) {
                 case MR_SPY_IGNORE_INTERFACE:
-                    fprintf(fp, " -I%d",
-                        point->spy_ignore_count);
+                    fprintf(fp, " -I%d", point->spy_ignore_count);
                     break;
 
                 case MR_SPY_IGNORE_ENTRY:
-                    fprintf(fp, " -E%d",
-                        point->spy_ignore_count);
+                    fprintf(fp, " -E%d", point->spy_ignore_count);
                     break;
 
                 default:
-                    MR_fatal_error("MR_save_spy_points: "
-                        "invalid ignore_when");
+                    MR_fatal_error("MR_save_spy_points: invalid ignore_when");
             }
         }
 
         switch (point->spy_when) {
             case MR_SPY_LINENO:
-                fprintf(fp, "%s:%d\n",
-                    point->spy_filename,
+                fprintf(fp, "%s:%d\n", point->spy_filename,
                     point->spy_linenumber);
                 break;
 
@@ -844,14 +842,72 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
                 return MR_TRUE;
         }
 
-        if (point->spy_print_list != NULL) {
-            /* XXX */
-            fprintf(fp, "\n");
-        }
-
         if (!point->spy_enabled) {
             fprintf(fp, "disable\n");
         }
+
+        if (point->spy_print_list != NULL) {
+            MR_Spy_Print_List   list;
+            MR_Spy_Print        node;
+
+            list = point->spy_print_list;
+            for (; list != NULL; list = list->pl_next) {
+                node = list->pl_cur;
+
+                fprintf(fp, "break_print -e");
+                if (! node->p_warn) {
+                    fprintf(fp, " -n");
+                }
+
+                switch (node->p_format) {
+                    case MR_BROWSE_FORMAT_FLAT:
+                        fprintf(fp, " -f");
+                        break;
+
+                    case MR_BROWSE_FORMAT_RAW_PRETTY:
+                        /* -p is the closest approximation */
+                        fprintf(fp, " -p");
+                        break;
+
+                    case MR_BROWSE_FORMAT_PRETTY:
+                        fprintf(fp, " -p");
+                        break;
+
+                    case MR_BROWSE_FORMAT_VERBOSE:
+                        fprintf(fp, " -v");
+                        break;
+
+                    case MR_BROWSE_DEFAULT_FORMAT:
+                        break;
+
+                    default:
+                        MR_fatal_error("invalid node->p_format");
+                        break;
+                }
+
+                switch (node->p_what) {
+                    case MR_SPY_PRINT_GOAL:
+                        fprintf(fp, " goal");
+                        break;
+
+                    case MR_SPY_PRINT_ALL:
+                        fprintf(fp, " all");
+                        break;
+
+                    case MR_SPY_PRINT_ONE:
+                        fprintf(fp, " %s", node->p_name);
+                        break;
+
+                    default:
+                        MR_fatal_error("invalid node->p_name");
+                        break;
+                }
+
+                fprintf(fp, "\n");
+            }
+        }
+
+        spy_point_num++;
     }
 
     return MR_FALSE;
