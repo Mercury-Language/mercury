@@ -849,7 +849,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 		{ Id = Id0 },
 		( { mq_info_get_report_error_flag(Info0, yes) } ->
 			{ mq_info_get_error_context(Info0, ErrorContext) },
-			report_multiply_defined(ErrorContext, Id0, TypeOfId,
+			report_ambiguous_match(ErrorContext, Id0, TypeOfId,
 						Modules),
 			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
 			{ mq_info_incr_errors(Info1, Info) }
@@ -905,10 +905,10 @@ report_undefined(ErrorContext - Context, Id, IdType) -->
 
 	% Report an error where a type, inst or mode had multiple possible
 	% matches.
-:- pred report_multiply_defined(error_context::in, id::in, id_type::in,
+:- pred report_ambiguous_match(error_context::in, id::in, id_type::in,
 		list(module_name)::in, io__state::di, io__state::uo) is det.
 
-report_multiply_defined(ErrorContext - Context, Id, IdType, Modules) -->
+report_ambiguous_match(ErrorContext - Context, Id, IdType, Modules) -->
 	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
