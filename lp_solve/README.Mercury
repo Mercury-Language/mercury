@@ -1,2 +1,0 @@
-lp_solve is a linear programming solver that is used by the
-Mercury compiler's termination analysis.
