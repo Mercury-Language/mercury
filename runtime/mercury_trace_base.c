@@ -41,6 +41,7 @@ ENDINIT
 void		(*MR_trace_shutdown)(void) = NULL;
 
 MR_bool		MR_trace_enabled = MR_FALSE;
+MR_bool		MR_trace_ever_enabled = MR_FALSE;
 MR_Unsigned	MR_trace_call_seqno = 0;
 MR_Unsigned	MR_trace_call_depth = 0;
 MR_Unsigned	MR_trace_event_number = 0;

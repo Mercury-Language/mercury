@@ -128,6 +128,15 @@ extern	void	(*MR_trace_shutdown)(void);
 extern	MR_bool		MR_trace_enabled;
 
 /*
+** MR_trace_ever_enabled will keep the same value throughout the execution of
+** the entire program after being set in mercury_wrapper.c to the same value
+** as MR_trace_enabled. Unlike MR_trace_enabled, it is never reset, so one can
+** use its value to test whether tracing was ever enabled.
+*/
+
+extern	MR_bool		MR_trace_ever_enabled;
+
+/*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
 ** procedure assigns the current value of this counter as the sequence number
 ** of that invocation and increments the counter. This and retry are the only

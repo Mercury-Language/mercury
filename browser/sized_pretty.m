@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -168,13 +168,13 @@
 	% Converts the term in Univ to a string that fits into Lines lines
 	% of width LineWidth. It may throw an exception or cause a runtime
 	% abort if the term in question has no canonical representation.
-:- pred sized_pretty__univ_to_string_line(univ::in, int::in, int::in,
-	string::out) is cc_multi.
+:- pred sized_pretty__univ_to_string_line(browser_db::in, univ::in,
+	int::in, int::in, string::out) is cc_multi.
 
 	% The same as sized_pretty__univ_to_string_line, except works on
 	% browser_terms.
-:- pred sized_pretty__browser_term_to_string_line(browser_term::in,
-	int::in, int::in, string::out) is cc_multi.
+:- pred sized_pretty__browser_term_to_string_line(browser_db::in,
+	browser_term::in, int::in, int::in, string::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
@@ -247,9 +247,9 @@
 		%	  each argument,
 		%	- adjusted measurement of available space,
 		%	- adjusted measure parameter(s).
-	pred measured_split(browser_term::in, MeasureParams::in, T::in,
-		int::in, bool::in, T::out, maybe(T)::out, T::out,
-		MeasureParams::out) is cc_multi
+	pred measured_split(browser_db::in, browser_term::in,
+		MeasureParams::in, T::in, int::in, bool::in, T::out,
+		maybe(T)::out, T::out, MeasureParams::out) is cc_multi
 ].
 
 %---------------------------------------------------------------------------%
@@ -263,14 +263,15 @@
 	% given a limit of character_count(LineWidth - 1) instead of
 	% character_count(LineWidth - 3).
 
-sized_pretty__univ_to_string_line(Univ, LineWidth, Lines, String) :-
-	sized_pretty__browser_term_to_string_line(plain_term(Univ),
+sized_pretty__univ_to_string_line(BrowserDb, Univ, LineWidth, Lines, String) :-
+	sized_pretty__browser_term_to_string_line(BrowserDb, plain_term(Univ),
 		LineWidth, Lines, String).
 
-sized_pretty__browser_term_to_string_line(BrowserTerm, LineWidth, Lines,
-		String) :-
+sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
+		LineWidth, Lines, String) :-
 	Params = measure_params(LineWidth),
-	functor_browser_term_cc(BrowserTerm, _Functor, Arity, _MaybeReturn),
+	functor_browser_term_cc(BrowserDb, BrowserTerm,
+		_Functor, Arity, _MaybeReturn),
 	(
 		Arity \= 0,
 		Lines \= 0,
@@ -281,7 +282,7 @@ sized_pretty__browser_term_to_string_line(BrowserTerm, LineWidth, Lines,
 	;
 		Limit = line_count(Lines)
 	),
-	annotate_with_size(BrowserTerm, Params, Limit, AnnotTerm),
+	annotate_with_size(BrowserDb, BrowserTerm, Params, Limit, AnnotTerm),
 	Doc = to_doc_sized(AnnotTerm),
 	String = pprint__to_string(LineWidth, Doc).
 
@@ -293,36 +294,36 @@ sized_pretty__browser_term_to_string_line(BrowserTerm, LineWidth, Lines,
 	% further. 
 	% In the Second pass the space is evenly distributed between
 	% the terms and therefore the subterms are deconstructed evenly.
-:- pred annotate_with_size(browser_term::in, MeasureParams::in, T::in,
-	size_annotated_term(T)::out) is cc_multi
+:- pred annotate_with_size(browser_db::in, browser_term::in, MeasureParams::in,
+	T::in, size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
 
-annotate_with_size(BrowserTerm, Params, Limit, SizedTerm2) :-
-	first_pass(BrowserTerm, Params, Limit, SizedTerm1),
-	second_pass(SizedTerm1, Params, Limit, SizedTerm2).
+annotate_with_size(BrowserDb, BrowserTerm, Params, Limit, SizedTerm2) :-
+	first_pass(BrowserDb, BrowserTerm, Params, Limit, SizedTerm1),
+	second_pass(BrowserDb, SizedTerm1, Params, Limit, SizedTerm2).
 
 %---------------------------------------------------------------------------%
 	
-:- pred first_pass(browser_term::in, MeasureParams::in, T::in,
+:- pred first_pass(browser_db::in, browser_term::in, MeasureParams::in, T::in,
 	size_annotated_term(T)::out) is cc_multi
 	<= measure_with_params(T, MeasureParams).
 
-first_pass(BrowserTerm, Params, Limit, Size) :-
+first_pass(BrowserDb, BrowserTerm, Params, Limit, Size) :-
 	MaxFunctors = maximum_functors(Limit, Params),
-	limited_deconstruct_browser_term_cc(BrowserTerm, MaxFunctors,
-			MaybeFunctorArityArgs, _MaybeReturn),
+	limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm,
+		MaxFunctors, MaybeFunctorArityArgs, _MaybeReturn),
 	(
-		MaybeFunctorArityArgs = yes({Functor, Arity, Args})
-	->
-		measured_split(BrowserTerm, Params, Limit, Arity, yes,
-			FunctorSize, MaybeInitArgLimit, NewLimit, NewParams),
+		MaybeFunctorArityArgs = yes({Functor, Arity, Args}),
+		measured_split(BrowserDb, BrowserTerm, Params, Limit,
+			Arity, yes, FunctorSize, MaybeInitArgLimit,
+			NewLimit, NewParams),
 		( (Arity \= 0, MaybeInitArgLimit = no) ->
 			Exact0 = no
 		;
 			Exact0 = yes
 		),
-		annotate_args_with_size(Args, MaybeInitArgLimit, NewParams,
-			NewLimit, FunctorSize, SoFar, Exact0, Exact,
+		annotate_args_with_size(BrowserDb, Args, MaybeInitArgLimit,
+			NewParams, NewLimit, FunctorSize, SoFar, Exact0, Exact,
 			MaybeArgSizes),
 		(
 			Exact = no,
@@ -334,20 +335,21 @@ first_pass(BrowserTerm, Params, Limit, Size) :-
 				MaybeArgSizes)
 		)
 	;
+		MaybeFunctorArityArgs = no,
 		Size = at_least(BrowserTerm, zero_measure, not_deconstructed)
 	).
 
 %---------------------------------------------------------------------------%
 
 	% annotating the arguments.
-:- pred annotate_args_with_size(list(univ)::in, maybe(T)::in,
+:- pred annotate_args_with_size(browser_db::in, list(univ)::in, maybe(T)::in,
 	MeasureParams::in, T::in, T::in, T::out, bool::in, bool::out, 
 	size_annotated_args(T)::out) is cc_multi <= measure_with_params(T, 
 	MeasureParams).
 
-annotate_args_with_size([], _, _, _, SoFar, SoFar, Exact, Exact, []).
-annotate_args_with_size([Arg | Args], MaybeInitArgLimit, Params, Limit,
-		SoFar0, SoFar, Exact0, Exact,
+annotate_args_with_size(_, [], _, _, _, SoFar, SoFar, Exact, Exact, []).
+annotate_args_with_size(BrowserDb, [Arg | Args], MaybeInitArgLimit, Params,
+		Limit, SoFar0, SoFar, Exact0, Exact,
 		[MaybeArgSize | MaybeArgSizes]) :-
 	(
 		MaybeInitArgLimit = yes(InitArgLimit),
@@ -357,7 +359,8 @@ annotate_args_with_size([Arg | Args], MaybeInitArgLimit, Params, Limit,
 			AppliedArgLimit = max_measure(InitArgLimit,
 				subtract_measures(Limit, SoFar0, Params))
 		),
-		first_pass(plain_term(Arg), Params, AppliedArgLimit, Size),
+		first_pass(BrowserDb, plain_term(Arg), Params,
+			AppliedArgLimit, Size),
 		MaybeArgSize = yes(InitArgLimit - Size),
 		extract_size_from_annotation(Size) = ArgSize,
 		SoFar1 = add_measures(SoFar0, ArgSize, Params),
@@ -379,8 +382,8 @@ annotate_args_with_size([Arg | Args], MaybeInitArgLimit, Params, Limit,
 	;
 		Exact2 = Exact1
 	),
-	annotate_args_with_size(Args, MaybeInitArgLimit, Params, Limit,
-		SoFar1, SoFar, Exact2, Exact, MaybeArgSizes).
+	annotate_args_with_size(BrowserDb, Args, MaybeInitArgLimit, Params,
+		Limit, SoFar1, SoFar, Exact2, Exact, MaybeArgSizes).
 
 %---------------------------------------------------------------------------%
 
@@ -407,11 +410,11 @@ extract_browser_term_from_annotation(at_least(BrowserTerm, _, _)) =
 	% the other terms which could take up more than their share.
 	% If a term can be fully printed within the given space,
 	% ("exact" type) then the Term is not altered.
-:- pred second_pass(size_annotated_term(T)::in, MeasureParams::in, T::in,
-	size_annotated_term(T)::out) is cc_multi 
+:- pred second_pass(browser_db::in, size_annotated_term(T)::in,
+	MeasureParams::in, T::in, size_annotated_term(T)::out) is cc_multi 
 	<= measure_with_params(T, MeasureParams).
 
-second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
+second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
 	(
     		OldSizeTerm = exact(_BrowserTerm, _Size, _,
 			_Arity, _MaybeArgs),
@@ -422,18 +425,20 @@ second_pass(OldSizeTerm, Params, Limit, NewSizeTerm) :-
 	;
     		OldSizeTerm = at_least(BrowserTerm, _Size,
 			deconstructed(Functor, Arity,MaybeArgs)),
-		measured_split(BrowserTerm, Params, Limit, Arity, yes, FSize,
-			MaybeInitLimit, NewLimit, NewParams),
+		measured_split(BrowserDb, BrowserTerm, Params, Limit, Arity,
+			yes, FSize, MaybeInitLimit, NewLimit, NewParams),
 		( MaybeInitLimit = yes(InitLimit) ->
 	    		check_args(NewParams, MaybeArgs, InitLimit, Passed, 
 				FSize, Used),
 			LeftOver = add_measures(subtract_measures(NewLimit, 
 			  	Used, Params), FSize, Params),
-	    		measured_split(BrowserTerm, Params, LeftOver,
-				Arity - Passed, no, _, MaybeSplitLimit, _, _),
+	    		measured_split(BrowserDb, BrowserTerm, Params,
+				LeftOver, Arity - Passed, no, _,
+				MaybeSplitLimit, _, _),
 	    		( MaybeSplitLimit = yes(SplitLimit) ->
-	        		process_args(NewParams, MaybeArgs, InitLimit,
-					SplitLimit, NewArgs, NewSize0),
+	        		process_args(BrowserDb, NewParams, MaybeArgs,
+					InitLimit, SplitLimit,
+					NewArgs, NewSize0),
 				NewSize = add_measures(FSize, NewSize0, 
 					NewParams),
 				Result0 = list__map(check_if_exact, NewArgs),
@@ -499,12 +504,12 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, Used0, Used) :-
 	% but the terms which do not obey the limit or not fully 
 	% represented would be annoted again with a new limit
 	% (SplitLimit). The rest of the terms are left alone.
-:- pred process_args(MeasureParams::in, size_annotated_args(T)::in, T::in, 
-	T::in, size_annotated_args(T)::out, T::out) is cc_multi <= 
-	measure_with_params(T, MeasureParams).
+:- pred process_args(browser_db::in, MeasureParams::in,
+	size_annotated_args(T)::in, T::in, T::in, size_annotated_args(T)::out,
+	T::out) is cc_multi <= measure_with_params(T, MeasureParams).
 
-process_args(_, [], _, _, [], zero_measure).
-process_args(Params, [HeadArg | Rest], ArgLimit, SplitLimit, 
+process_args(_, _, [], _, _, [], zero_measure).
+process_args(BrowserDb, Params, [HeadArg | Rest], ArgLimit, SplitLimit, 
 		[NewHeadArg | NewRest], SizeOut) :-
     	( HeadArg = yes(X) ->
 		X = _ - STerm,
@@ -521,8 +526,8 @@ process_args(Params, [HeadArg | Rest], ArgLimit, SplitLimit,
 			NewHeadArg = HeadArg
 		;
 			NewHeadArg = yes(pair(SplitLimit, NewSTerm)),
-			annotate_with_size(BrowserTerm, Params, SplitLimit,
-				NewSTerm)
+			annotate_with_size(BrowserDb, BrowserTerm, Params,
+				SplitLimit, NewSTerm)
 		)
     	;
 		NewHeadArg = no
@@ -533,7 +538,8 @@ process_args(Params, [HeadArg | Rest], ArgLimit, SplitLimit,
     	;
 		SizeOut = RestSize
     	),
-    	process_args(Params, Rest, ArgLimit, SplitLimit, NewRest, RestSize).
+    	process_args(BrowserDb, Params, Rest, ArgLimit, SplitLimit,
+		NewRest, RestSize).
 
 %---------------------------------------------------------------------------%
 
@@ -642,12 +648,12 @@ max_functor_count(functor_count(A), functor_count(B)) = functor_count(Max) :-
 
 zero_functor_count = functor_count(0).
 	
-:- pred functor_count_split(browser_term::in, no_measure_params::in,
-	functor_count::in, int::in, bool::in, functor_count::out,
-	maybe(functor_count)::out, functor_count::out, no_measure_params::out)
-	is cc_multi.
+:- pred functor_count_split(browser_db::in, browser_term::in,
+	no_measure_params::in, functor_count::in, int::in, bool::in,
+	functor_count::out, maybe(functor_count)::out, functor_count::out,
+	no_measure_params::out) is cc_multi.
 
-functor_count_split(_, Params, functor_count(Limit), Arity, _,
+functor_count_split(_, _, Params, functor_count(Limit), Arity, _,
 		functor_count(1), MaybeArgLimit, functor_count(Limit),
 		Params) :-
 	( Arity = 0 ->
@@ -674,7 +680,7 @@ functor_count_split(_, Params, functor_count(Limit), Arity, _,
 	func(add_measures/3) is add_functor_count,
 	func(subtract_measures/3) is subtract_functor_count,
 	func(maximum_functors/2) is maximum_functor_count,
-	pred(measured_split/9) is functor_count_split
+	pred(measured_split/10) is functor_count_split
 ].
 
 %---------------------------------------------------------------------------%
@@ -715,15 +721,15 @@ max_char_count(char_count(A), char_count(B)) = char_count(Max) :-
 
 zero_char_count = char_count(0).
 
-:- pred char_count_split(browser_term::in, no_measure_params::in,
-	char_count::in, int::in, bool::in, char_count::out,
-	maybe(char_count)::out, char_count::out, no_measure_params::out)
-	is cc_multi.
+:- pred char_count_split(browser_db::in, browser_term::in,
+	no_measure_params::in, char_count::in, int::in, bool::in,
+	char_count::out, maybe(char_count)::out, char_count::out,
+	no_measure_params::out) is cc_multi.
 
-char_count_split(BrowserTerm, Params, char_count(Limit), Arity, Check, 
-		char_count(FunctorSize), MaybeArgLimit, char_count(Limit),
-		Params) :-
-	deconstruct_browser_term_cc(BrowserTerm, Functor, _, Args,
+char_count_split(BrowserDb, BrowserTerm, Params, char_count(Limit), Arity,
+		Check, char_count(FunctorSize), MaybeArgLimit,
+		char_count(Limit), Params) :-
+	deconstruct_browser_term_cc(BrowserDb, BrowserTerm, Functor, _, Args,
 		MaybeReturn),
 	( Check = yes ->
 		get_arg_length(Args, TotalLength, _)
@@ -760,7 +766,7 @@ char_count_split(BrowserTerm, Params, char_count(Limit), Arity, Check,
         func(add_measures/3) is add_char_count,
         func(subtract_measures/3) is subtract_char_count,
 	func(maximum_functors/2) is maximum_char_count,
-        pred(measured_split/9) is char_count_split
+        pred(measured_split/10) is char_count_split
 ].
 
 %---------------------------------------------------------------------------%
@@ -887,16 +893,17 @@ zero_size_count = character_count(0).
 
 	% We assume that all arguments have to be on separate lines, or 
 	% the whole term should be printed on a single line.
-:- pred size_count_split(browser_term::in, measure_params::in, size_count::in,
-	int::in, bool::in, size_count::out, maybe(size_count)::out,
-	size_count::out, measure_params::out) is cc_multi.
+:- pred size_count_split(browser_db::in, browser_term::in, measure_params::in,
+	size_count::in, int::in, bool::in, size_count::out,
+	maybe(size_count)::out, size_count::out, measure_params::out)
+	is cc_multi.
 
-size_count_split(BrowserTerm, Params, Limit, Arity, Check, FunctorSize, 
-		MaybeArgLimit, NewLimit, NewParams) :-
+size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
+		FunctorSize, MaybeArgLimit, NewLimit, NewParams) :-
 	% LineWidth is length of the line in which the functor is printed.
 	Params = measure_params(LineWidth),
-	deconstruct_browser_term_cc(BrowserTerm, Functor, ActualArity, Args,
-		MaybeReturn),
+	deconstruct_browser_term_cc(BrowserDb, BrowserTerm,
+		Functor, ActualArity, Args, MaybeReturn),
 	FSize = string__length(Functor) + 2 * (ActualArity),
 	( Check = yes ->
 		get_arg_length(Args, TotalLength, MaxArgLength),
@@ -985,7 +992,7 @@ size_count_split(BrowserTerm, Params, Limit, Arity, Check, FunctorSize,
 	func(add_measures/3) is add_size_count,
 	func(subtract_measures/3) is subtract_size_count,
 	func(maximum_functors/2) is maximum_size_count,
-	pred(measured_split/9) is size_count_split
+	pred(measured_split/10) is size_count_split
 ].
 
 %---------------------------------------------------------------------------%

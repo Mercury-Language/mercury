@@ -1,0 +1,18 @@
+echo on
+register --quiet
+context none
+table_io allow
+table_io start
+break io_stream_test__test
+continue
+print *
+finish -n
+print *
+print
+dd -a
+print 1-2
+p io 1-2
+no
+yes
+yes
+c -n -S

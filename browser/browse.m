@@ -519,7 +519,9 @@ portray_flat(Debugger, BrowserTerm, Params) -->
 	( { RemainingSize >= 0 } ->
 		portray_flat_write_browser_term(BrowserTerm)
 	;
-		{ browser_term_to_string(BrowserTerm, Params ^ size,
+		io__get_stream_db(StreamDb),
+		{ BrowserDb = browser_db(StreamDb) },
+		{ browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
 			Params ^ depth, Str) },
 		write_string_debugger(Debugger, Str)
 	).
@@ -559,7 +561,9 @@ portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 portray_verbose(Debugger, BrowserTerm, Params) -->
-	{ browser_term_to_string_verbose(BrowserTerm, Params ^ size,
+	io__get_stream_db(StreamDb),
+	{ BrowserDb = browser_db(StreamDb) },
+	{ browser_term_to_string_verbose(BrowserDb, BrowserTerm, Params ^ size,
 		Params ^ depth, Params ^ width, Params ^ lines, Str) },
 	write_string_debugger(Debugger, Str).
 
@@ -575,7 +579,9 @@ portray_raw_pretty(Debugger, BrowserTerm, Params) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 portray_pretty(Debugger, BrowserTerm, Params) -->
-	{ sized_pretty__browser_term_to_string_line(BrowserTerm,
+	io__get_stream_db(StreamDb),
+	{ BrowserDb = browser_db(StreamDb) },
+	{ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
 		Params ^ width, Params ^ lines, Str) },
 	write_string_debugger(Debugger, Str).
 
@@ -635,44 +641,44 @@ browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
 % Single-line representation of a term.
 %
 
-:- pred browser_term_to_string(browser_term::in, int::in, int::in,
-	string::out) is cc_multi.
+:- pred browser_term_to_string(browser_db::in, browser_term::in,
+	int::in, int::in, string::out) is cc_multi.
 
-browser_term_to_string(BrowserTerm, MaxSize, MaxDepth, Str) :-
+browser_term_to_string(BrowserDb, BrowserTerm, MaxSize, MaxDepth, Str) :-
 	CurSize = 0,
 	CurDepth = 0,
-	browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, _NewSize,
-		MaxDepth, CurDepth, Str).
+	browser_term_to_string_2(BrowserDb, BrowserTerm,
+		MaxSize, CurSize, _NewSize, MaxDepth, CurDepth, Str).
 
 	% Note: When the size limit is reached, we simply display
 	% further subterms compressed.  This is consistent with the
 	% User's Guide, which describes the size limit as a "suggested
 	% maximum".
-:- pred browser_term_to_string_2(browser_term::in, int::in, int::in, int::out,
-	int::in, int::in, string::out) is cc_multi.
+:- pred browser_term_to_string_2(browser_db::in, browser_term::in,
+	int::in, int::in, int::out, int::in, int::in, string::out) is cc_multi.
 
-browser_term_to_string_2(BrowserTerm, MaxSize, CurSize, NewSize,
+browser_term_to_string_2(BrowserDb, BrowserTerm, MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Str) :-
-	limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
-			MaybeFunctorArityArgs, MaybeReturn),
+	limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm, MaxSize,
+		MaybeFunctorArityArgs, MaybeReturn),
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
 		MaybeFunctorArityArgs = yes({Functor, _Arity, Args})
 	->
-		browser_term_to_string_3(Functor, Args, MaybeReturn,
+		browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
 			MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Str)
 	;
-		browser_term_compress(BrowserTerm, Str),
+		browser_term_compress(BrowserDb, BrowserTerm, Str),
 		NewSize = CurSize
 	).
 
-:- pred browser_term_to_string_3(string::in, list(univ)::in, maybe(univ)::in,
-	int::in, int::in, int::out, int::in, int::in, string::out) is cc_multi.
+:- pred browser_term_to_string_3(browser_db::in, string::in,
+	list(univ)::in, maybe(univ)::in, int::in, int::in, int::out,
+	int::in, int::in, string::out) is cc_multi.
 
-browser_term_to_string_3(Functor, Args, MaybeReturn, MaxSize, Size0, Size,
-	MaxDepth, Depth0, Str) :-
-
+browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
+		MaxSize, Size0, Size, MaxDepth, Depth0, Str) :-
 	(
 		Functor = "[|]",
 		Args = [ListHead, ListTail],
@@ -683,10 +689,10 @@ browser_term_to_string_3(Functor, Args, MaybeReturn, MaxSize, Size0, Size,
 		% element of the list.
 		Size1 = Size0 + 1,
 		Depth1 = Depth0 + 1,
-		browser_term_to_string_2(plain_term(ListHead), MaxSize,
-			Size1, Size2, MaxDepth, Depth1, HeadStr),
-		list_tail_to_string_list(ListTail, MaxSize, Size2, Size,
-			MaxDepth, Depth1, TailStrs),
+		browser_term_to_string_2(BrowserDb, plain_term(ListHead),
+			MaxSize, Size1, Size2, MaxDepth, Depth1, HeadStr),
+		list_tail_to_string_list(BrowserDb, ListTail,
+			MaxSize, Size2, Size, MaxDepth, Depth1, TailStrs),
 		list__append(TailStrs, ["]"], Strs),
 		string__append_list(["[", HeadStr | Strs], Str)
 	;
@@ -699,13 +705,14 @@ browser_term_to_string_3(Functor, Args, MaybeReturn, MaxSize, Size0, Size,
 	;
 		Size1 = Size0 + 1,
 		Depth1 = Depth0 + 1,
-		args_to_string_list(Args, MaxSize, Size1, Size2, MaxDepth,
-			Depth1, ArgStrs),
+		args_to_string_list(BrowserDb, Args, MaxSize, Size1, Size2,
+			MaxDepth, Depth1, ArgStrs),
 		BracketedArgsStr = bracket_string_list(ArgStrs),
 		(
 			MaybeReturn = yes(Return),
-			browser_term_to_string_2(plain_term(Return), MaxSize,
-				Size2, Size, MaxDepth, Depth1, ReturnStr),
+			browser_term_to_string_2(BrowserDb, plain_term(Return),
+				MaxSize, Size2, Size, MaxDepth, Depth1,
+				ReturnStr),
 			string__append_list([Functor, BracketedArgsStr,
 				" = ", ReturnStr], Str)
 		;
@@ -715,20 +722,20 @@ browser_term_to_string_3(Functor, Args, MaybeReturn, MaxSize, Size0, Size,
 		)
 	).
 
-:- pred list_tail_to_string_list(univ::in, int::in, int::in, int::out, int::in,
-	int::in, list(string)::out) is cc_multi.
+:- pred list_tail_to_string_list(browser_db::in, univ::in,
+	int::in, int::in, int::out, int::in, int::in, list(string)::out)
+	is cc_multi.
 
-list_tail_to_string_list(TailUniv, MaxSize, Size0, Size, MaxDepth, Depth0,
-	TailStrs) :-
+list_tail_to_string_list(BrowserDb, TailUniv, MaxSize, Size0, Size,
+		MaxDepth, Depth0, TailStrs) :-
 
 	% We want the limit to be at least two to ensure that the limited
 	% deconstruct won't fail for any list term.
 	Limit = max(MaxSize, 2),
-	limited_deconstruct_browser_term_cc(plain_term(TailUniv),
-			Limit, MaybeFunctorArityArgs, MaybeReturn),
+	limited_deconstruct_browser_term_cc(BrowserDb, plain_term(TailUniv),
+		Limit, MaybeFunctorArityArgs, MaybeReturn),
 	(
-		MaybeFunctorArityArgs = yes({Functor, _Arity, Args})
-	->
+		MaybeFunctorArityArgs = yes({Functor, _Arity, Args}),
 		(
 			Functor = "[]",
 			Args = [],
@@ -745,11 +752,12 @@ list_tail_to_string_list(TailUniv, MaxSize, Size0, Size, MaxDepth, Depth0,
 				Size0 < MaxSize,
 				Depth0 < MaxDepth
 			->
-				browser_term_to_string_2(plain_term(ListHead),
-					MaxSize, Size0, Size1, MaxDepth, Depth0,
-					HeadStr),
-				list_tail_to_string_list(ListTail, MaxSize,
-					Size1, Size, MaxDepth, Depth0,
+				browser_term_to_string_2(BrowserDb,
+					plain_term(ListHead),
+					MaxSize, Size0, Size1,
+					MaxDepth, Depth0, HeadStr),
+				list_tail_to_string_list(BrowserDb, ListTail,
+					MaxSize, Size1, Size, MaxDepth, Depth0,
 					TailStrs0),
 				TailStrs = [", ", HeadStr | TailStrs0]
 			;
@@ -761,35 +769,40 @@ list_tail_to_string_list(TailUniv, MaxSize, Size0, Size, MaxDepth, Depth0,
 				Size0 < MaxSize,
 				Depth0 < MaxDepth
 			->
-				browser_term_to_string_3(Functor, Args,
-					MaybeReturn, MaxSize, Size0, Size,
+				browser_term_to_string_3(BrowserDb,
+					Functor, Args, MaybeReturn,
+					MaxSize, Size0, Size,
 					MaxDepth, Depth0, TailStr),
 				TailStrs = [" | ", TailStr]
 			;
 				Size = Size0,
-				browser_term_compress(plain_term(TailUniv),
+				browser_term_compress(BrowserDb,
+					plain_term(TailUniv),
 					TailCompressedStr),
 				TailStrs = [" | ", TailCompressedStr]
 			)
 		)
 	;
+		MaybeFunctorArityArgs = no,
 		Size = Size0,
-		browser_term_compress(plain_term(TailUniv), TailCompressedStr),
+		browser_term_compress(BrowserDb, plain_term(TailUniv),
+			TailCompressedStr),
 		TailStrs = [" | ", TailCompressedStr]
 	).
 
-:- pred args_to_string_list(list(univ)::in, int::in, int::in, int::out,
-	int::in, int::in, list(string)::out) is cc_multi.
+:- pred args_to_string_list(browser_db::in, list(univ)::in,
+	int::in, int::in, int::out, int::in, int::in, list(string)::out)
+	is cc_multi.
 
-args_to_string_list([], _MaxSize, CurSize, NewSize,
+args_to_string_list(_BrowserDb, [], _MaxSize, CurSize, NewSize,
 		_MaxDepth, _CurDepth, Strs) :-
 	Strs = [],
 	NewSize = CurSize.
-args_to_string_list([Univ | Univs], MaxSize, CurSize, NewSize,
+args_to_string_list(BrowserDb, [Univ | Univs], MaxSize, CurSize, NewSize,
 		MaxDepth, CurDepth, Strs) :-
-	browser_term_to_string_2(plain_term(Univ), MaxSize, CurSize, NewSize1,
-		MaxDepth, CurDepth, Str),
-	args_to_string_list(Univs, MaxSize, NewSize1, NewSize,
+	browser_term_to_string_2(BrowserDb, plain_term(Univ),
+		MaxSize, CurSize, NewSize1, MaxDepth, CurDepth, Str),
+	args_to_string_list(BrowserDb, Univs, MaxSize, NewSize1, NewSize,
 		MaxDepth, CurDepth, RestStrs),
 	Strs = [Str | RestStrs].
 
@@ -817,10 +830,11 @@ comma_string_list(Args) = Str :-
 		string__append_list([S1, ", ", Rest], Str)
 	).
 
-:- pred browser_term_compress(browser_term::in, string::out) is cc_multi.
+:- pred browser_term_compress(browser_db::in, browser_term::in, string::out)
+	is cc_multi.
 
-browser_term_compress(BrowserTerm, Str) :-
-	functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc),
+browser_term_compress(BrowserDb, BrowserTerm, Str) :-
+	functor_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity, IsFunc),
 	( Arity = 0 ->
 		Str = Functor
 	;
@@ -859,24 +873,25 @@ browser_term_to_string_raw_pretty(synthetic_term(Functor, Args, MaybeReturn),
 % Numbering makes it easier to change to subterms.
 %
 
-:- pred browser_term_to_string_verbose(browser_term::in, int::in, int::in,
-	int::in, int::in, string::out) is cc_multi.
+:- pred browser_term_to_string_verbose(browser_db::in, browser_term::in,
+	int::in, int::in, int::in, int::in, string::out) is cc_multi.
 
-browser_term_to_string_verbose(BrowserTerm, MaxSize, MaxDepth, X, Y, Str) :-
+browser_term_to_string_verbose(BrowserDb, BrowserTerm, MaxSize, MaxDepth,
+		X, Y, Str) :-
 	CurSize = 0,
 	CurDepth = 0,
-	browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize,
-		_NewSize, MaxDepth, CurDepth, Frame),
+	browser_term_to_string_verbose_2(BrowserDb, BrowserTerm,
+		MaxSize, CurSize, _NewSize, MaxDepth, CurDepth, Frame),
 	frame__clip(X-Y, Frame, ClippedFrame),
 	unlines(ClippedFrame, Str).
 
-:- pred browser_term_to_string_verbose_2(browser_term::in, int::in, int::in,
-	int::out, int::in, int::in, frame::out) is cc_multi.
+:- pred browser_term_to_string_verbose_2(browser_db::in, browser_term::in,
+	int::in, int::in, int::out, int::in, int::in, frame::out) is cc_multi.
 
-browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Frame) :-
-	limited_deconstruct_browser_term_cc(BrowserTerm, MaxSize,
-			MaybeFunctorArityArgs, MaybeReturn),
+browser_term_to_string_verbose_2(BrowserDb, BrowserTerm,
+		MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Frame) :-
+	limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm, MaxSize,
+		MaybeFunctorArityArgs, MaybeReturn),
 	(
 		CurSize < MaxSize,
 		CurDepth < MaxDepth,
@@ -893,36 +908,39 @@ browser_term_to_string_verbose_2(BrowserTerm, MaxSize, CurSize, NewSize,
 		CurSize1 = CurSize + 1,
 		CurDepth1 = CurDepth + 1,
 		ArgNum = 1,
-		args_to_string_verbose_list(Args, ArgNum, MaxSize, CurSize1,
-			NewSize, MaxDepth, CurDepth1, ArgsFrame),
+		args_to_string_verbose_list(BrowserDb, Args, ArgNum,
+			MaxSize, CurSize1, NewSize, MaxDepth, CurDepth1,
+			ArgsFrame),
 		frame__vglue([Functor], ArgsFrame, Frame)
 	;
-		browser_term_compress(BrowserTerm, Line),
+		browser_term_compress(BrowserDb, BrowserTerm, Line),
 		Frame = [Line],
 		NewSize = CurSize
 	).
 
-:- pred args_to_string_verbose_list(list(univ)::in, int::in, int::in,
-	int::in, int::out, int::in, int::in, frame::out) is cc_multi.
+:- pred args_to_string_verbose_list(browser_db::in, list(univ)::in,
+	int::in, int::in, int::in, int::out, int::in, int::in, frame::out)
+	is cc_multi.
 
-args_to_string_verbose_list([], _ArgNum, _MaxSize, CurSize, NewSize,
-		_MaxDepth, _CurDepth, []) :-
+args_to_string_verbose_list(_BrowserDb, [], _ArgNum,
+		_MaxSize, CurSize, NewSize, _MaxDepth, _CurDepth, []) :-
 	NewSize = CurSize.
-args_to_string_verbose_list([Univ], ArgNum, MaxSize, CurSize, NewSize,
-		MaxDepth, CurDepth, Frame) :-
-	browser_term_to_string_verbose_2(plain_term(Univ), MaxSize,
+args_to_string_verbose_list(BrowserDb, [Univ], ArgNum,
+		MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Frame) :-
+	browser_term_to_string_verbose_2(BrowserDb, plain_term(Univ), MaxSize,
 		CurSize, NewSize, MaxDepth, CurDepth, TreeFrame),
 	% XXX: ArgNumS must have fixed length 2.
 	string__int_to_string(ArgNum, ArgNumS),
 	string__append_list([ArgNumS, "-"], LastBranchS),
 	frame__hglue([LastBranchS], TreeFrame, Frame).
-args_to_string_verbose_list([Univ1, Univ2 | Univs], ArgNum, MaxSize,
+args_to_string_verbose_list(BrowserDb, [Univ1, Univ2 | Univs], ArgNum, MaxSize,
 		CurSize, NewSize, MaxDepth, CurDepth, Frame) :-
-	browser_term_to_string_verbose_2(plain_term(Univ1), MaxSize, CurSize,
-		NewSize1, MaxDepth, CurDepth, TreeFrame),
+	browser_term_to_string_verbose_2(BrowserDb, plain_term(Univ1),
+		MaxSize, CurSize, NewSize1, MaxDepth, CurDepth, TreeFrame),
 	ArgNum1 = ArgNum + 1,
-	args_to_string_verbose_list([Univ2 | Univs], ArgNum1, MaxSize,
-		NewSize1, NewSize2, MaxDepth, CurDepth, RestTreesFrame),
+	args_to_string_verbose_list(BrowserDb, [Univ2 | Univs], ArgNum1,
+		MaxSize, NewSize1, NewSize2, MaxDepth, CurDepth,
+		RestTreesFrame),
 	NewSize = NewSize2,
 	% XXX: ArgNumS must have fixed length 2.
 	string__int_to_string(ArgNum, ArgNumS),

@@ -29,11 +29,12 @@ DECLARATIVE_PROGS=		\
 	ho5			\
 	if_then_else		\
 	input_term_dep		\
+	io_stream_test		\
 	ite_2			\
 	lpe_example		\
 	mapinit			\
-	neg_conj		\
 	negation		\
+	neg_conj		\
 	oracle_db		\
 	output_term_dep		\
 	pd			\
@@ -203,6 +204,10 @@ input_term_dep.out: input_term_dep input_term_dep.inp
 	$(MDB_STD) ./input_term_dep < input_term_dep.inp \
 		> input_term_dep.out 2>&1
 
+io_stream_test.out: io_stream_test io_stream_test.inp
+	$(MDB_STD) ./io_stream_test < io_stream_test.inp \
+		> io_stream_test.out 2>&1
+
 ite_2.out: ite_2 ite_2.inp
 	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1
 
@@ -255,11 +260,11 @@ solutions.out: solutions solutions.$(INP)
 
 special_term_dep.out: special_term_dep special_term_dep.inp
 	$(MDB_STD) ./special_term_dep < special_term_dep.inp \
-			> special_term_dep.out 2>&1
+		> special_term_dep.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
-			> tabled_read_decl.out 2>&1
+		> tabled_read_decl.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

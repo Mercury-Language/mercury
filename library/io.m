@@ -24,7 +24,7 @@
 
 :- module io.
 :- interface.
-:- import_module bool, char, string, std_util, list, time, deconstruct.
+:- import_module bool, char, string, std_util, list, map, time, deconstruct.
 
 %-----------------------------------------------------------------------------%
 
@@ -60,6 +60,41 @@
 :- type io__binary_output_stream	==	io__binary_stream.
 
 :- type io__binary_stream.
+
+:- type stream_mode	--->	input
+			;	output
+			;	append.
+
+:- type stream_content	--->	text
+			;	binary
+			;	preopen.
+
+:- type stream_source	--->	file(string)	% the file name
+			;	stdin
+			;	stdout
+			;	stderr.
+
+:- type stream_info
+	--->	stream(
+			stream_id		:: int,
+			stream_mode		:: stream_mode,
+			stream_content		:: stream_content,
+			stream_source		:: stream_source
+		).
+
+:- type maybe_stream_info
+	--->	stream(
+			maybe_stream_id		:: int,
+			maybe_stream_mode	:: stream_mode,
+			maybe_stream_content	:: stream_content,
+			maybe_stream_source	:: stream_source
+		)
+	;	unknown_stream.
+
+	% a unique identifier for an IO stream
+:- type io__stream_id.
+
+:- type io__stream_db ==	map(io__stream_id, stream_info).
 
 	% Various types used for the result from the access predicates
 
@@ -1084,6 +1119,35 @@
 
 %-----------------------------------------------------------------------------%
 
+% Predicates for managing the stream info database.
+
+:- pred io__get_stream_db(io__stream_db::out, io__state::di, io__state::uo)
+	is det.
+% Retrieves the database mapping streams to the information we have
+% about those streams.
+
+:- func io__input_stream_info(io__stream_db, io__input_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified input
+%	stream in the given stream database.
+
+:- func io__output_stream_info(io__stream_db, io__output_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified output
+%	stream in the given stream database.
+
+:- func io__binary_input_stream_info(io__stream_db, io__binary_input_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified binary input
+%	stream in the given stream database.
+
+:- func io__binary_output_stream_info(io__stream_db, io__binary_output_stream)
+	= io__maybe_stream_info.
+%	Returns the information associated with the specified binary output
+%	stream in the given stream database.
+
+%-----------------------------------------------------------------------------%
+
 % Global state predicates.
 
 :- pred io__progname(string, string, io__state, io__state).
@@ -1533,16 +1597,19 @@
 	% for cases such as `type_name(main)'.
 
 :- pragma foreign_decl("C", "
-	extern MR_Word		ML_io_stream_names;
+	extern MR_Word		ML_io_stream_db;
 	extern MR_Word		ML_io_user_globals;
+	extern int		ML_next_stream_id;
 	#if 0
 	  extern MR_Word	ML_io_ops_table;
 	#endif
 ").
 
 :- pragma foreign_code("C", "
-	MR_Word			ML_io_stream_names;
+	MR_Word			ML_io_stream_db;
 	MR_Word			ML_io_user_globals;
+	/* a counter used to generate unique stream ids */
+	int			ML_next_stream_id;
 	#if 0
 	  MR_Word		ML_io_ops_table;
 	#endif
@@ -1577,7 +1644,6 @@
 ").
 
 
-:- type io__stream_names ==	map(io__stream_id, string).
 :- type io__stream_putback ==	map(io__stream_id, list(char)).
 
 :- type io__input_stream ==	io__stream.
@@ -1585,23 +1651,14 @@
 
 :- type io__binary_stream ==	io__stream.
 
-:- type io__stream == c_pointer.
+:- type io__stream --->		io__stream(c_pointer).
+:- pragma foreign_type("C", io__stream, "MercuryFilePtr").
+:- pragma foreign_type("il", io__stream, "class [mscorlib]System.Object[]").
 
 	% a unique identifier for an IO stream
 :- type io__stream_id == int.
 
 :- func io__get_stream_id(io__stream) = io__stream_id.
-
-/*
- * In NU-Prolog: 
- *	io__stream	--->	stream(int, int)
- *			;	user_input
- *			;	user_output
- *			;	user_error.
- * In C:
- *	io__stream	==	pointer to MercuryFile (which is defined
- *				in runtime/mercury_library_types.h)
- */
 
 	% This inter-language stuff is tricky.
 	% We communicate via ints rather than via io__result_codes because
@@ -1631,18 +1688,6 @@
 %		Command.  Returns Status = 127 and Message on failure.
 %		Otherwise returns the raw exit status from the system()
 %		call.
-
-:- pred io__do_open_binary(string, string, int, io__input_stream,
-			io__state, io__state).
-:- mode io__do_open_binary(in, in, out, out, di, uo) is det.
-:- pred io__do_open_text(string, string, int, io__input_stream,
-			io__state, io__state).
-:- mode io__do_open_text(in, in, out, out, di, uo) is det.
-%	io__do_open_binary(File, Mode, ResultCode, Stream, IO0, IO1):
-%	io__do_open_text(File, Mode, ResultCode, Stream, IO0, IO1):
-%		Attempts to open a file in the specified mode.
-%		The Mode is a string suitable for passing to fopen().
-%		Result is 0 for success, -1 for failure.
 
 :- semipure pred io__getenv(string, string).
 :- mode io__getenv(in, out) is semidet.
@@ -1843,7 +1888,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 
 	Res = 0;
 	for (i = 0; char_code != '\\n'; ) {
-		char_code = mercury_getc((MercuryFile *) File);
+		char_code = mercury_getc(File);
 		if (char_code == EOF) {
 			if (i == 0) {
 				Res = -1;
@@ -2090,10 +2135,8 @@ io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
 	io__clear_err(Stream::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *f = (MercuryFile *) Stream;
-
-	if (MR_IS_FILE_STREAM(*f)) {
-		clearerr(MR_file(*f));
+	if (MR_IS_FILE_STREAM(*Stream)) {
+		clearerr(MR_file(*Stream));
 	} else {
 		/* Not a file stream so do nothing */
 	}
@@ -2130,10 +2173,8 @@ io__check_err(Stream, Res) -->
 	ferror(Stream::in, RetVal::out, RetStr::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *f = (MercuryFile *) Stream;
-
-	if (MR_IS_FILE_STREAM(*f)) {
-		RetVal = ferror(MR_file(*f));
+	if (MR_IS_FILE_STREAM(*Stream)) {
+		RetVal = ferror(MR_file(*Stream));
 	} else {
 		RetVal = -1;
 	}
@@ -2263,20 +2304,20 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 #ifdef MR_HAVE_SYS_STAT_H
 	#include <sys/stat.h>
 #endif
-#include ""mercury_types.h"" /* for MR_Integer */
+#include ""mercury_types.h""		/* for MR_Integer */
+#include ""mercury_library_types.h""	/* for MercuryFilePtr */
 ").
 
 :- pragma foreign_proc("C",
 	io__stream_file_size(Stream::in, Size::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *f = (MercuryFile *) Stream;
 #if defined(MR_HAVE_FSTAT) && \
     (defined(MR_HAVE_FILENO) || defined(fileno)) && \
     defined(S_ISREG)
 	struct stat s;
-	if (MR_IS_FILE_STREAM(*f)) {
-		if (fstat(fileno(MR_file(*f)), &s) == 0 &&
+	if (MR_IS_FILE_STREAM(*Stream)) {
+		if (fstat(fileno(MR_file(*Stream)), &s) == 0 &&
 				S_ISREG(s.st_mode))
 		{
 			Size = s.st_size;
@@ -3051,13 +3092,12 @@ io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 		    Size::in, Buffer::buffer_uo, Pos::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *f = (MercuryFile *) Stream;
-	int items_read;
+	int		items_read;
 
 	MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
 	MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
 
-	items_read = MR_READ(*f, Buffer0 + Pos0, Size - Pos0);
+	items_read = MR_READ(*Stream, Buffer0 + Pos0, Size - Pos0);
 
 	Buffer = Buffer0;
 	Pos = Pos0 + items_read;
@@ -3498,6 +3538,11 @@ io__do_write_univ(NonCanon, Univ, Priority) -->
 		io__write_type_desc(TypeDesc)
 	; { univ_to_type(Univ, TypeCtorDesc) } ->
 		io__write_type_ctor_desc(TypeCtorDesc)
+	; { univ_to_type(Univ, Stream) } ->
+		io__get_stream_db(StreamDb),
+		{ io__maybe_stream_info(StreamDb, Stream) = StreamInfo },
+		{ type_to_univ(StreamInfo, StreamInfoUniv) },
+		io__do_write_univ(NonCanon, StreamInfoUniv, Priority)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
 	;
@@ -3860,60 +3905,66 @@ io__convert_read_result(error(Error, _Line), error(io_error(Error))).
 % stream predicates
 
 io__open_input(FileName, Result) -->
-	io__do_open_text(FileName, "r", Result0, NewStream),
+	io__do_open_text(FileName, "r", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, input, text, file(FileName)))
 	;
 		io__make_err_msg("can't open input file: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_output(FileName, Result) -->
-	io__do_open_text(FileName, "w", Result0, NewStream),
+	io__do_open_text(FileName, "w", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, output, text, file(FileName)))
 	;
 		io__make_err_msg("can't open output file: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_append(FileName, Result) -->
-	io__do_open_text(FileName, "a", Result0, NewStream),
+	io__do_open_text(FileName, "a", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, append, text, file(FileName)))
 	;
 		io__make_err_msg("can't append to file: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_input(FileName, Result) -->
-	io__do_open_binary(FileName, "rb", Result0, NewStream),
+	io__do_open_binary(FileName, "rb", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, input, binary, file(FileName)))
 	;
 		io__make_err_msg("can't open input file: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_output(FileName, Result) -->
-	io__do_open_binary(FileName, "wb", Result0, NewStream),
+	io__do_open_binary(FileName, "wb", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, output, binary, file(FileName)))
 	;
 		io__make_err_msg("can't open output file: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
 
 io__open_binary_append(FileName, Result) -->
-	io__do_open_binary(FileName, "ab", Result0, NewStream),
+	io__do_open_binary(FileName, "ab", Result0, OpenCount, NewStream),
 	( { Result0 \= -1 } ->
 		{ Result = ok(NewStream) },
-		io__insert_stream_name(NewStream, FileName)
+		io__insert_stream_info(NewStream,
+			stream(OpenCount, append, binary, file(FileName)))
 	;
 		io__make_err_msg("can't append to file: ", Msg),
 		{ Result = error(io_error(Msg)) }
@@ -4030,67 +4081,146 @@ io__binary_output_stream_name(Stream, Name) -->
 :- mode io__stream_name(in, out, di, uo) is det.
 
 io__stream_name(Stream, Name) -->
-	io__get_stream_names(StreamNames),
-	{ map__search(StreamNames, get_stream_id(Stream), Name1) ->
-		Name = Name1
+	io__stream_info(Stream, MaybeInfo),
+	{
+		MaybeInfo = yes(Info),
+		Info = stream(_, _, _, Source),
+		Name = source_name(Source)
 	;
+		MaybeInfo = no,
 		Name = "<stream name unavailable>"
-	},
-	io__set_stream_names(StreamNames).
+	}.
 
-:- pred io__get_stream_names(io__stream_names, io__state, io__state).
-:- mode io__get_stream_names(out, di, uo) is det.
+:- pred io__stream_info(io__stream::in, maybe(stream_info)::out,
+	io__state::di, io__state::uo) is det.
 
-:- pred io__set_stream_names(io__stream_names, io__state, io__state).
-:- mode io__set_stream_names(in, di, uo) is det.
+io__stream_info(Stream, MaybeInfo) -->
+	io__get_stream_db(StreamDb),
+	{ map__search(StreamDb, get_stream_id(Stream), Info) ->
+		MaybeInfo = yes(Info)
+	;
+		MaybeInfo = no
+	}.
+
+io__input_stream_info(StreamDb, Stream) =
+	io__maybe_stream_info(StreamDb, Stream).
+
+io__output_stream_info(StreamDb, Stream) =
+	io__maybe_stream_info(StreamDb, Stream).
+
+io__binary_input_stream_info(StreamDb, Stream) =
+	io__maybe_stream_info(StreamDb, Stream).
+
+io__binary_output_stream_info(StreamDb, Stream) =
+	io__maybe_stream_info(StreamDb, Stream).
+
+:- func io__maybe_stream_info(io__stream_db, io__stream) = maybe_stream_info.
+
+io__maybe_stream_info(StreamDb, Stream) = Info :-
+	( map__search(StreamDb, get_stream_id(Stream), Info0) ->
+		Info0 = stream(Id, Mode, Content, Source),
+		Info  = stream(Id, Mode, Content, Source)
+	;
+		Info  = unknown_stream
+	).
+
+:- func maybe_source_name(maybe(stream_info)) = string.
+
+maybe_source_name(MaybeInfo) = Name :-
+	(
+		MaybeInfo = yes(Info),
+		Info = stream(_, _, _, Source),
+		Name = source_name(Source)
+	;
+		MaybeInfo = no,
+		Name = "<stream name unavailable>"
+	).
+
+:- func source_name(stream_source) = string.
+
+source_name(file(Name)) = Name.
+source_name(stdin) = "<standard input>".
+source_name(stdout) = "<standard output>".
+source_name(stderr) = "<standard error>".
 
 :- pragma foreign_proc("C", 
-	io__get_stream_names(StreamNames::out, IO0::di, IO::uo), 
+	io__get_stream_db(StreamDb::out, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	StreamNames = ML_io_stream_names;
+	StreamDb = ML_io_stream_db;
 	MR_update_io(IO0, IO);
 ").
 
+:- pred io__set_stream_db(io__stream_db::in, io__state::di, io__state::uo)
+	is det.
+
 :- pragma foreign_proc("C", 
-	io__set_stream_names(StreamNames::in, IO0::di, IO::uo), 
+	io__set_stream_db(StreamDb::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	ML_io_stream_names = StreamNames;
+	ML_io_stream_db = StreamDb;
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++", 
-	io__get_stream_names(StreamNames::out, IO0::di, IO::uo), 
+	io__get_stream_db(StreamDb::out, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	StreamNames = ML_io_stream_names;
+	StreamDb = ML_io_stream_db;
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++", 
-	io__set_stream_names(StreamNames::in, IO0::di, IO::uo), 
+	io__set_stream_db(StreamDb::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	ML_io_stream_names = StreamNames;
+	ML_io_stream_db = StreamDb;
 	MR_update_io(IO0, IO);
 ").
 
-:- pred io__delete_stream_name(io__stream, io__state, io__state).
-:- mode io__delete_stream_name(in, di, uo) is det.
+%-----------------------------------------------------------------------------%
 
-io__delete_stream_name(Stream) -->
-	io__get_stream_names(StreamNames0),
-	{ map__delete(StreamNames0, get_stream_id(Stream), StreamNames) },
-	io__set_stream_names(StreamNames).
+:- pred io__insert_stream_info(io__stream::in, stream_info::in,
+	io__state::di, io__state::uo) is det.
 
-:- pred io__insert_stream_name(io__stream, string, io__state, io__state).
-:- mode io__insert_stream_name(in, in, di, uo) is det.
+io__insert_stream_info(Stream, Name) -->
+	io__get_stream_db(StreamDb0),
+	{ map__set(StreamDb0, get_stream_id(Stream), Name, StreamDb) },
+	io__set_stream_db(StreamDb).
 
-io__insert_stream_name(Stream, Name) -->
-	io__get_stream_names(StreamNames0),
-	{ map__set(StreamNames0, get_stream_id(Stream), Name, StreamNames) },
-	io__set_stream_names(StreamNames).
+:- pred io__maybe_delete_stream_info(io__stream::in,
+	io__state::di, io__state::uo) is det.
+
+io__maybe_delete_stream_info(Stream) -->
+	io__may_delete_stream_info(MayDeleteStreamInfo),
+	( { MayDeleteStreamInfo \= 0 } ->
+		io__get_stream_db(StreamDb0),
+		{ map__delete(StreamDb0, get_stream_id(Stream), StreamDb) },
+		io__set_stream_db(StreamDb)
+	;
+		[]
+	).
+
+% Return an integer that is nonzero if and only if we should delete
+% the information we have about stream when that stream is closed.
+% The debugger may need this information in order to display the stream id
+% in a user-friendly manner even after the stream is closed (e.g. after
+% performing a retry after the close), so if debugging is enabled, we
+% hang on to the stream info until the end of the execution. This is a
+% space leak, but one that is acceptable in a program being debugged.
+
+:- pred io__may_delete_stream_info(int::out,
+	io__state::di, io__state::uo) is det.
+
+:- pragma foreign_proc("C",
+	io__may_delete_stream_info(MayDelete::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+	MayDelete = !MR_trace_ever_enabled;
+	IO = IO0;
+").
+
+io__may_delete_stream_info(1, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -4163,7 +4293,7 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 	** for accurate GC we embed an ID in the MercuryFile
 	** and retrieve it here.
 	*/
-	Id = ((MercuryFile *) Stream)->id;
+	Id = (Stream)->id;
 #endif
 ").
 
@@ -4247,10 +4377,10 @@ io__report_stats(Selector) -->
 :- pragma export(io__init_state(di, uo), "ML_io_init_state").
 
 io__init_state -->
-	io__gc_init(type_of(StreamNames), type_of(Globals)),
-	{ map__init(StreamNames) },
+	io__gc_init(type_of(StreamDb), type_of(Globals)),
+	{ map__init(StreamDb) },
 	{ type_to_univ("<globals>", Globals) },
-	io__set_stream_names(StreamNames),
+	io__set_stream_db(StreamDb),
 	io__set_op_table(ops__init_mercury_op_table),
 	io__set_globals(Globals),
 	io__insert_std_stream_names.
@@ -4272,20 +4402,20 @@ io__finalize_state -->
 :- mode io__gc_init(in, in, di, uo) is det.
 
 :- pragma foreign_proc("C", 
-	io__gc_init(StreamNamesType::in, UserGlobalsType::in, IO0::di, IO::uo),
+	io__gc_init(StreamDbType::in, UserGlobalsType::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
 #ifdef MR_CONSERVATIVE_GC
 	GC_INIT();
 #endif
-	MR_add_root(&ML_io_stream_names, (MR_TypeInfo) StreamNamesType);
+	MR_add_root(&ML_io_stream_db, (MR_TypeInfo) StreamDbType);
 	MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++", 
-	io__gc_init(_StreamNamesType::in, _UserGlobalsType::in,
+	io__gc_init(_StreamDbType::in, _UserGlobalsType::in,
 		IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
@@ -4299,11 +4429,11 @@ io__gc_init(_, _) --> [].
 
 io__insert_std_stream_names -->
 	io__stdin_stream(Stdin),
-	io__insert_stream_name(Stdin, "<standard input>"),
+	io__insert_stream_info(Stdin, stream(0, input, preopen, stdin)),
 	io__stdout_stream(Stdout),
-	io__insert_stream_name(Stdout, "<standard output>"),
+	io__insert_stream_info(Stdout, stream(1, output, preopen, stdout)),
 	io__stderr_stream(Stderr),
-	io__insert_stream_name(Stderr, "<standard error>").
+	io__insert_stream_info(Stderr, stream(1, output, preopen, stderr)).
 
 io__call_system(Command, Result) -->
 	io__call_system_return_signal(Command, Result0),
@@ -4418,14 +4548,14 @@ extern MercuryFile *mercury_current_binary_output;
 #define MR_update_io(r_src, r_dest)	((r_dest) = (r_src))
 
 void 		mercury_init_io(void);
-MercuryFile*	mercury_open(const char *filename, const char *openmode);
-void		mercury_io_error(MercuryFile* mf, const char *format, ...);
-void		mercury_output_error(MercuryFile* mf);
-void		mercury_print_string(MercuryFile* mf, const char *s);
-void		mercury_print_binary_string(MercuryFile* mf, const char *s);
-int		mercury_getc(MercuryFile* mf);
-void		mercury_close(MercuryFile* mf);
-int		ML_fprintf(MercuryFile* mf, const char *format, ...);
+MercuryFilePtr	mercury_open(const char *filename, const char *openmode);
+void		mercury_io_error(MercuryFilePtr mf, const char *format, ...);
+void		mercury_output_error(MercuryFilePtr mf);
+void		mercury_print_string(MercuryFilePtr mf, const char *s);
+void		mercury_print_binary_string(MercuryFilePtr mf, const char *s);
+int		mercury_getc(MercuryFilePtr mf);
+void		mercury_close(MercuryFilePtr mf);
+int		ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
 
 
@@ -4492,10 +4622,10 @@ MercuryFile mercury_stderr;
 MercuryFile mercury_stdin_binary;
 MercuryFile mercury_stdout_binary;
 
-MercuryFile *mercury_current_text_input = &mercury_stdin;
-MercuryFile *mercury_current_text_output = &mercury_stdout;
-MercuryFile *mercury_current_binary_input = &mercury_stdin_binary;
-MercuryFile *mercury_current_binary_output = &mercury_stdout_binary;
+MercuryFilePtr mercury_current_text_input = &mercury_stdin;
+MercuryFilePtr mercury_current_text_output = &mercury_stdout;
+MercuryFilePtr mercury_current_binary_input = &mercury_stdin_binary;
+MercuryFilePtr mercury_current_binary_output = &mercury_stdout_binary;
 
 void
 mercury_init_io(void)
@@ -4537,8 +4667,8 @@ mercury_init_io(void)
 
 static MR_MercuryFile
 mercury_file_init(System::IO::Stream *stream,
-		System::IO::TextReader *reader, System::IO::TextWriter *writer,
-		ML_file_encoding_kind file_encoding)
+	System::IO::TextReader *reader, System::IO::TextWriter *writer,
+	ML_file_encoding_kind file_encoding)
 {
 	MR_MercuryFile mf = new MR_MercuryFileStruct();
 	mf->stream = stream;
@@ -4588,14 +4718,16 @@ static System::Exception *MR_io_exception;
 
 :- pragma foreign_code("C", "
 
-MercuryFile*
+MercuryFilePtr
 mercury_open(const char *filename, const char *openmode)
 {
-	MercuryFile *mf;
+	MercuryFilePtr mf;
 	FILE *f;
 
 	f = fopen(filename, openmode);
-	if (!f) return NULL;
+	if (f == NULL) {
+		return NULL;
+	}
 	mf = MR_GC_NEW(MercuryFile);
 	MR_mercuryfile_init(f, 1, mf);
 	return mf;
@@ -4668,7 +4800,7 @@ throw_io_error(Message) :- throw(io_error(Message)).
 :- pragma foreign_code("C", "
 
 void
-mercury_io_error(MercuryFile* mf, const char *format, ...)
+mercury_io_error(MercuryFilePtr mf, const char *format, ...)
 {
 	va_list args;
 	char message[5000];
@@ -4695,7 +4827,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 :- pragma foreign_code("C", "
 
 void
-mercury_output_error(MercuryFile *mf)
+mercury_output_error(MercuryFilePtr mf)
 {
 	mercury_io_error(mf, ""error writing to output file: %s"",
 		strerror(errno));
@@ -4706,7 +4838,7 @@ mercury_output_error(MercuryFile *mf)
 :- pragma foreign_code("C", "
 
 void
-mercury_print_string(MercuryFile* mf, const char *s)
+mercury_print_string(MercuryFilePtr mf, const char *s)
 {
 	if (ML_fprintf(mf, ""%s"", s) < 0) {
 		mercury_output_error(mf);
@@ -4789,7 +4921,7 @@ mercury_print_string(MR_MercuryFile mf, MR_String s)
 :- pragma foreign_code("C", "
 
 void
-mercury_print_binary_string(MercuryFile* mf, const char *s)
+mercury_print_binary_string(MercuryFilePtr mf, const char *s)
 {
 	if (ML_fprintf(mf, ""%s"", s) < 0) {
 		mercury_output_error(mf);
@@ -4801,7 +4933,7 @@ mercury_print_binary_string(MercuryFile* mf, const char *s)
 :- pragma foreign_code("C", "
 
 int
-mercury_getc(MercuryFile* mf)
+mercury_getc(MercuryFilePtr mf)
 {
 	int c = MR_GETCH(*mf);
 	if (c == '\\n') {
@@ -5062,7 +5194,7 @@ static const MercuryFile MR_closed_stream = {
 #endif /* MR_NEW_MERCURYFILE_STRUCT */
 
 void
-mercury_close(MercuryFile* mf)
+mercury_close(MercuryFilePtr mf)
 {
 	if (MR_CLOSE(*mf) < 0) {
 		mercury_io_error(mf, ""error closing file: %s"",
@@ -5164,7 +5296,7 @@ mercury_close(MR_MercuryFile mf)
 :- pragma foreign_code("C", "
 
 int
-ML_fprintf(MercuryFile* mf, const char *format, ...)
+ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 {
 	int rc;
 	va_list args;
@@ -5184,7 +5316,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	CharCode = mercury_getc((MercuryFile *) File);
+	CharCode = mercury_getc(File);
 	MR_update_io(IO0, IO);
 ").
 
@@ -5192,7 +5324,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	io__read_byte_val(File::in, ByteVal::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	ByteVal = mercury_getc((MercuryFile *) File);
+	ByteVal = mercury_getc(File);
 	MR_update_io(IO0, IO);
 ").
 
@@ -5200,7 +5332,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile* mf = (MercuryFile *) File;
+	MercuryFilePtr mf = File;
 	if (Character == '\\n') {
 		MR_line_number(*mf)--;
 	}
@@ -5215,7 +5347,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile* mf = (MercuryFile *) File;
+	MercuryFilePtr mf = File;
 	/* XXX should work even if ungetc() fails */
 	if (MR_UNGETCH(*mf, Character) == EOF) {
 		mercury_io_error(mf, ""io__putback_byte: ungetc failed"");
@@ -5458,14 +5590,14 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
-	MercuryFile *stream = (MercuryFile *) Stream;
+
 	/* XXX should check for failure */
 	/* XXX should also check if the stream is seekable */
-	if (MR_IS_FILE_STREAM(*stream)) {
-		fseek(MR_file(*stream), Off, seek_flags[Flag]);
+	if (MR_IS_FILE_STREAM(*Stream)) {
+		fseek(MR_file(*Stream), Off, seek_flags[Flag]);
 	} else {
-		mercury_io_error(stream,
-				""io__seek_binary_2: unseekable stream"");
+		mercury_io_error(Stream,
+			""io__seek_binary_2: unseekable stream"");
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5474,13 +5606,12 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__binary_stream_offset(Stream::in, Offset::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
 	/* XXX should check for failure */
 	/* XXX should check if the stream is tellable */
-	if (MR_IS_FILE_STREAM(*stream)) {
-		Offset = ftell(MR_file(*stream));
+	if (MR_IS_FILE_STREAM(*Stream)) {
+		Offset = ftell(MR_file(*Stream));
 	} else {
-		mercury_io_error(stream,
+		mercury_io_error(Stream,
 			""io__binary_stream_offset: untellable stream"");
 	}
 	MR_update_io(IO0, IO);
@@ -5492,8 +5623,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe], 
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	mercury_print_string(stream, Message);
+	mercury_print_string(Stream, Message);
 	MR_update_io(IO0, IO);
 }").
 
@@ -5501,12 +5631,11 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe], 
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	if (MR_PUTCH(*stream, Character) < 0) {
-		mercury_output_error(stream);
+	if (MR_PUTCH(*Stream, Character) < 0) {
+		mercury_output_error(Stream);
 	}
 	if (Character == '\\n') {
-		MR_line_number(*stream)++;
+		MR_line_number(*Stream)++;
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5515,9 +5644,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	if (ML_fprintf(stream, ""%ld"", (long) Val) < 0) {
-		mercury_output_error(stream);
+	if (ML_fprintf(Stream, ""%ld"", (long) Val) < 0) {
+		mercury_output_error(Stream);
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5526,11 +5654,10 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_float(Stream::in, Val::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
 	char buf[MR_SPRINTF_FLOAT_BUF_SIZE];
 	MR_sprintf_float(buf, Val);
-	if (ML_fprintf(stream, ""%s"", buf) < 0) {
-		mercury_output_error(stream);
+	if (ML_fprintf(Stream, ""%s"", buf) < 0) {
+		mercury_output_error(Stream);
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5539,10 +5666,9 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
 	/* call putc with a strictly non-negative byte-sized integer */
-	if (MR_PUTCH(*stream, (int) ((unsigned char) Byte)) < 0) {
-		mercury_output_error(stream);
+	if (MR_PUTCH(*Stream, (int) ((unsigned char) Byte)) < 0) {
+		mercury_output_error(Stream);
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5551,8 +5677,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	mercury_print_binary_string(stream, Message);
+	mercury_print_binary_string(Stream, Message);
 	MR_update_io(IO0, IO);
 }").
 
@@ -5560,9 +5685,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__flush_output(Stream::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	if (MR_FLUSH(*stream) < 0) {
-		mercury_output_error(stream);
+	if (MR_FLUSH(*Stream) < 0) {
+		mercury_output_error(Stream);
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5571,9 +5695,8 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__flush_binary_output(Stream::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	if (MR_FLUSH(*stream) < 0) {
-		mercury_output_error(stream);
+	if (MR_FLUSH(*Stream) < 0) {
+		mercury_output_error(Stream);
 	}
 	MR_update_io(IO0, IO);
 }").
@@ -5680,7 +5803,7 @@ io__write_float(Stream, Float) -->
 	io__stdin_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) &mercury_stdin;
+	Stream = &mercury_stdin;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5688,7 +5811,7 @@ io__write_float(Stream, Float) -->
 	io__stdout_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) &mercury_stdout;
+	Stream = &mercury_stdout;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5696,7 +5819,7 @@ io__write_float(Stream, Float) -->
 	io__stderr_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) &mercury_stderr;
+	Stream = &mercury_stderr;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5704,7 +5827,7 @@ io__write_float(Stream, Float) -->
 	io__stdin_binary_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) &mercury_stdin_binary;
+	Stream = &mercury_stdin_binary;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5712,7 +5835,7 @@ io__write_float(Stream, Float) -->
 	io__stdout_binary_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) &mercury_stdout_binary;
+	Stream = &mercury_stdout_binary;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5720,7 +5843,7 @@ io__write_float(Stream, Float) -->
 	io__input_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	Stream = (MR_Word) mercury_current_text_input;
+	Stream = mercury_current_text_input;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5728,7 +5851,7 @@ io__write_float(Stream, Float) -->
 	io__output_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	Stream = (MR_Word) mercury_current_text_output;
+	Stream = mercury_current_text_output;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5736,7 +5859,7 @@ io__write_float(Stream, Float) -->
 	io__binary_input_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	Stream = (MR_Word) mercury_current_binary_input;
+	Stream = mercury_current_binary_input;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5744,7 +5867,7 @@ io__write_float(Stream, Float) -->
 	io__binary_output_stream(Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	Stream = (MR_Word) mercury_current_binary_output;
+	Stream = mercury_current_binary_output;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5760,8 +5883,7 @@ io__write_float(Stream, Float) -->
 	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	LineNum = MR_line_number(*stream);
+	LineNum = MR_line_number(*Stream);
 	MR_update_io(IO0, IO);
 }").
 
@@ -5777,8 +5899,7 @@ io__write_float(Stream, Float) -->
 	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	MR_line_number(*stream) = LineNum;
+	MR_line_number(*Stream) = LineNum;
 	MR_update_io(IO0, IO);
 }").
 
@@ -5794,8 +5915,7 @@ io__write_float(Stream, Float) -->
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	LineNum = MR_line_number(*stream);
+	LineNum = MR_line_number(*Stream);
 	MR_update_io(IO0, IO);
 }").
 
@@ -5811,8 +5931,7 @@ io__write_float(Stream, Float) -->
 	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MercuryFile *stream = (MercuryFile *) Stream;
-	MR_line_number(*stream) = LineNum;
+	MR_line_number(*Stream) = LineNum;
 	MR_update_io(IO0, IO);
 }").
 
@@ -5828,8 +5947,8 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	OutStream = (MR_Word) mercury_current_text_input;
-	mercury_current_text_input = (MercuryFile *) NewStream;
+	OutStream = mercury_current_text_input;
+	mercury_current_text_input = NewStream;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5837,8 +5956,8 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	OutStream = (MR_Word) mercury_current_text_output;
-	mercury_current_text_output = (MercuryFile *) NewStream;
+	OutStream = mercury_current_text_output;
+	mercury_current_text_output = NewStream;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5847,8 +5966,8 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 		IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	OutStream = (MR_Word) mercury_current_binary_input;
-	mercury_current_binary_input = (MercuryFile *) NewStream;
+	OutStream = mercury_current_binary_input;
+	mercury_current_binary_input = NewStream;
 	MR_update_io(IO0, IO);
 ").
 
@@ -5857,8 +5976,8 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 		IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	OutStream = (MR_Word) mercury_current_binary_output;
-	mercury_current_binary_output = (MercuryFile *) NewStream;
+	OutStream = mercury_current_binary_output;
+	mercury_current_binary_output = NewStream;
 	MR_update_io(IO0, IO);
 ").
 
@@ -6053,66 +6172,81 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 
 /* stream open/close predicates */
 
-% io__do_open(File, Mode, ResultCode, Stream, IO0, IO1).
-%	Attempts to open a file in the specified mode.
-%	ResultCode is 0 for success, -1 for failure.
+%	io__do_open_binary(File, Mode, ResultCode, StreamId, Stream, IO0, IO):
+%	io__do_open_text(File, Mode, ResultCode, StreamId, Stream, IO0, IO):
+%		Attempts to open a file in the specified mode.
+%		The Mode is a string suitable for passing to fopen().
+%		Result is 0 for success, -1 for failure.
+%		StreamId is a unique integer identifying the open.
+%		Both StreamId and Stream are valid only if Result == 0.
+
+:- pred io__do_open_binary(string::in, string::in, int::out, int::out,
+	io__input_stream::out, io__state::di, io__state::uo) is det.
+
+:- pred io__do_open_text(string::in, string::in, int::out, int::out,
+	io__input_stream::out, io__state::di, io__state::uo) is det.
+
 :- pragma foreign_proc("C",
 	io__do_open_text(FileName::in, Mode::in, ResultCode::out,
-		Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) mercury_open(FileName, Mode);
-	ResultCode = (Stream ? 0 : -1);
+	Stream = mercury_open(FileName, Mode);
+	ResultCode = (Stream != NULL ? 0 : -1);
+	StreamId = (Stream != NULL ? ML_next_stream_id++ : -1);
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C",
 	io__do_open_binary(FileName::in, Mode::in, ResultCode::out,
-		Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	Stream = (MR_Word) mercury_open(FileName, Mode);
-	ResultCode = (Stream ? 0 : -1);
+	Stream = mercury_open(FileName, Mode);
+	ResultCode = (Stream != NULL ? 0 : -1);
+	StreamId = (Stream != NULL ? ML_next_stream_id++ : -1);
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++",
 	io__do_open_text(FileName::in, Mode::in, ResultCode::out,
-		Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	MR_MercuryFile mf = mercury_open(FileName, Mode,
 		ML_default_text_encoding);
 	MR_c_pointer_to_word(Stream, mf);
 	ResultCode = (mf ? 0 : -1);
+	StreamId = (mf ? mf->id : -1);
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++",
 	io__do_open_binary(FileName::in, Mode::in, ResultCode::out,
-		Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
 	MR_MercuryFile mf = mercury_open(FileName, Mode, ML_raw_binary);
 	MR_c_pointer_to_word(Stream, mf);
 	ResultCode = (mf ? 0 : -1);
+	StreamId = (mf ? mf->id : -1);
 	MR_update_io(IO0, IO);
 ").
 
 io__close_input(Stream) -->
-	io__delete_stream_name(Stream),
+	io__maybe_delete_stream_info(Stream),
 	io__close_stream(Stream).
 
 io__close_output(Stream) -->
-	io__delete_stream_name(Stream),
+	io__maybe_delete_stream_info(Stream),
 	io__close_stream(Stream).
 
 io__close_binary_input(Stream) -->
-	io__delete_stream_name(Stream),
+	io__maybe_delete_stream_info(Stream),
 	io__close_stream(Stream).
 
 io__close_binary_output(Stream) -->
-	io__delete_stream_name(Stream),
+	io__maybe_delete_stream_info(Stream),
 	io__close_stream(Stream).
 
 :- pred io__close_stream(stream::in, io__state::di, io__state::uo) is det.
@@ -6121,7 +6255,7 @@ io__close_binary_output(Stream) -->
 	io__close_stream(Stream::in, IO0::di, IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	mercury_close((MercuryFile *) Stream);
+	mercury_close(Stream);
 	MR_update_io(IO0, IO);
 ").
 

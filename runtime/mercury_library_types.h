@@ -147,4 +147,6 @@
 
 #endif	/* MR_NEW_MERCURYFILE_STRUCT */
 
+typedef MercuryFile	*MercuryFilePtr;
+
 #endif /* not MERCURY_LIBRARY_TYPES_H */

@@ -299,11 +299,11 @@ void	(*MR_library_initializer)(void);
 void	(*MR_library_finalizer)(void);
 		/* normally ML_io_finalize_state (io__finalize_state/2) */
 
-void	(*MR_io_stderr_stream)(MR_Word *);
-void	(*MR_io_stdout_stream)(MR_Word *);
-void	(*MR_io_stdin_stream)(MR_Word *);
+void	(*MR_io_stderr_stream)(MercuryFilePtr *);
+void	(*MR_io_stdout_stream)(MercuryFilePtr *);
+void	(*MR_io_stdin_stream)(MercuryFilePtr *);
 void	(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
-void	(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
+void	(*MR_io_print_to_stream)(MR_Word, MercuryFilePtr, MR_Word);
 
 void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer,
 		MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
@@ -1153,6 +1153,7 @@ process_options(int argc, char **argv)
 
 		case 'D':
 			MR_trace_enabled = MR_TRUE;
+			MR_trace_ever_enabled = MR_TRUE;
 
 			if (MR_streq(MR_optarg, "i"))
 				MR_trace_handler = MR_TRACE_INTERNAL;

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 :- module mdb__browser_info.
 
 :- interface.
-:- import_module bool, list, std_util.
+:- import_module bool, list, std_util, io.
 
 :- type browser_term
 	--->	plain_term(
@@ -155,26 +155,35 @@
 %---------------------------------------------------------------------------%
 
 % These three predicates are like the deconstruct, limited_deconstruct
-% and functor procedures in deconstruct, except they implicitly specify
-% include_details_cc and they work on browser_terms instead of plain terms.
+% and functor procedures in deconstruct, except
+%
+% - they implicitly specify include_details_cc, and
+% - they work on browser_terms instead of plain terms.
+%
 % The latter difference requires them to have an extra argument (the last).
 % For deconstruct and limited_deconstruct, this returns the return value
 % if the browser term represents a function call. For functor, it says
 % whether the browser term represents a function call.
 
-:- pred deconstruct_browser_term_cc(browser_term::in,
+:- type browser_db
+	--->	browser_db(
+			browser_stream_db	:: io__stream_db
+		).
+
+:- pred deconstruct_browser_term_cc(browser_db::in, browser_term::in,
 	string::out, int::out, list(univ)::out, maybe(univ)::out) is cc_multi.
 
-:- pred limited_deconstruct_browser_term_cc(browser_term::in, int::in,
-	maybe({string, int, list(univ)})::out, maybe(univ)::out) is cc_multi.
+:- pred limited_deconstruct_browser_term_cc(browser_db::in, browser_term::in,
+	int::in, maybe({string, int, list(univ)})::out, maybe(univ)::out)
+	is cc_multi.
 
-:- pred functor_browser_term_cc(browser_term::in, string::out, int::out,
-	bool::out) is cc_multi.
+:- pred functor_browser_term_cc(browser_db::in, browser_term::in, string::out,
+	int::out, bool::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module deconstruct, require.
+:- import_module deconstruct, require, io.
 
 :- pragma export(browser_info__init_persistent_state(out),
 		"ML_BROWSE_init_persistent_state").
@@ -501,22 +510,25 @@ browser_persistent_state_type(type_of(State)) :-
 
 %---------------------------------------------------------------------------%
 
-deconstruct_browser_term_cc(BrowserTerm, Functor, Arity, Args, MaybeReturn) :-
+deconstruct_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity,
+		Args, MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		deconstruct_cc(univ_value(Univ), Functor, Arity, Args),
+		deconstruct__deconstruct(pretty_value(BrowserDb, Univ),
+			include_details_cc, Functor, Arity, Args),
 		MaybeReturn = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
 		list__length(Args, Arity)
 	).
 
-limited_deconstruct_browser_term_cc(BrowserTerm, Limit, MaybeFunctorArityArgs,
-		MaybeReturn) :-
+limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm, Limit,
+		MaybeFunctorArityArgs, MaybeReturn) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		std_util__limited_deconstruct_cc(univ_value(Univ), Limit,
-				MaybeFunctorArityArgs),
+		deconstruct__limited_deconstruct_cc(
+			pretty_value(BrowserDb, Univ), Limit,
+			MaybeFunctorArityArgs),
 		MaybeReturn = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
@@ -524,10 +536,11 @@ limited_deconstruct_browser_term_cc(BrowserTerm, Limit, MaybeFunctorArityArgs,
 		MaybeFunctorArityArgs = yes({Functor, Arity, Args})
 	).
 
-functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc) :-
+functor_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity, IsFunc) :-
 	(
 		BrowserTerm = plain_term(Univ),
-		functor(univ_value(Univ), include_details_cc, Functor, Arity),
+		deconstruct__functor(pretty_value(BrowserDb, Univ),
+			include_details_cc, Functor, Arity),
 		IsFunc = no
 	;
 		BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
@@ -540,5 +553,29 @@ functor_browser_term_cc(BrowserTerm, Functor, Arity, IsFunc) :-
 			IsFunc = no
 		)
 	).
+
+:- some [T] func pretty_value(browser_db, univ) = T.
+
+pretty_value(BrowserDb, Univ0) = Value :-
+	( univ_to_type(Univ0, InputStream) ->
+		io__input_stream_info(BrowserDb ^ browser_stream_db,
+			InputStream) = InputStreamInfo,
+		type_to_univ(InputStreamInfo, Univ)
+	; univ_to_type(Univ0, OutputStream) ->
+		io__output_stream_info(BrowserDb ^ browser_stream_db,
+			OutputStream) = OutputStreamInfo,
+		type_to_univ(OutputStreamInfo, Univ)
+	; univ_to_type(Univ0, BinaryInputStream) ->
+		io__binary_input_stream_info(BrowserDb ^ browser_stream_db,
+			BinaryInputStream) = BinaryInputStreamInfo,
+		type_to_univ(BinaryInputStreamInfo, Univ)
+	; univ_to_type(Univ0, BinaryOutputStream) ->
+		io__binary_output_stream_info(BrowserDb ^ browser_stream_db,
+			BinaryOutputStream) = BinaryOutputStreamInfo,
+		type_to_univ(BinaryOutputStreamInfo, Univ)
+	;
+		Univ = Univ0
+	),
+	Value = univ_value(Univ).
 
 %---------------------------------------------------------------------------%
