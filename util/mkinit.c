@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-2003 The University of Melbourne.
+** Copyright (C) 1995-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -18,13 +18,15 @@
 
 /*---------------------------------------------------------------------------*/
 
+#include	"mercury_conf.h"
+#include	"mercury_std.h"
+#include	"getopt.h"
+
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-
-#include	"mercury_conf.h"
 
 #ifdef MR_HAVE_SYS_STAT_H
   #include	<sys/stat.h>
@@ -33,9 +35,6 @@
 #ifdef MR_HAVE_UNISTD_H
   #include	<unistd.h>
 #endif
-
-#include	"getopt.h"
-#include	"mercury_std.h"
 
 /* --- adjustable limits --- */
 #define	MAXCALLS	40	/* maximum number of calls per function */

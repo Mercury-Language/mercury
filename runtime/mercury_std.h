@@ -12,6 +12,14 @@
 #ifndef MERCURY_STD_H
 #define MERCURY_STD_H
 
+/*
+** We include mercury_regs.h to ensure we define any global register variables
+** before any functions, even if the system libraries we include below it
+** define any functions.
+*/
+
+#include "mercury_regs.h"
+
 #include <stdlib.h>	/* for size_t */
 #include <assert.h>	/* for assert() */
 #include <errno.h>	/* for EINTR */

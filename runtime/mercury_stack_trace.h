@@ -7,8 +7,9 @@
 #ifndef MERCURY_STACK_TRACE_H
 #define MERCURY_STACK_TRACE_H
 
-#include <stdio.h>
+#include "mercury_regs.h"
 #include "mercury_stack_layout.h"
+#include <stdio.h>
 
 /*
 ** mercury_stack_trace.h -

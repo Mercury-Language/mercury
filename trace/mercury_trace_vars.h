@@ -47,13 +47,13 @@
 #ifndef	MERCURY_TRACE_VARS_H
 #define	MERCURY_TRACE_VARS_H
 
-#include <stdio.h>
 #include "mercury_types.h"		/* for MR_Word etc         */
 #include "mercury_stack_layout.h"	/* for MR_Label_Layout etc */
 #include "mercury_type_info.h"		/* for MR_TypeInfo         */
 #include "mercury_trace_base.h"		/* for MR_Trace_Port       */
 #include "mercury_trace_browse.h"	/* for MR_Browser          */
 #include "mercury_trace_completion.h"	/* for MR_Completer_List   */
+#include <stdio.h>
 
 typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000, 2002-2003 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,10 +12,11 @@
 #ifndef MERCURY_LIBRARY_TYPES_H
 #define MERCURY_LIBRARY_TYPES_H
 
-#include <stdio.h>		/* for `FILE' */
-#include <stdarg.h>		/* for `va_list' */
+#include "mercury_regs.h"	/* must include before system headers */
 #include "mercury_types.h"	/* for `MR_Word' and `MR_Integer' */
 #include "mercury_std.h"	/* for MR_VARIABLE_SIZED */
+#include <stdio.h>		/* for `FILE' */
+#include <stdarg.h>		/* for `va_list' */
 
 /*
 ** The C `MercuryFile' type is used for the Mercury `io__stream' type
