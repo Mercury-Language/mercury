@@ -153,7 +153,7 @@ Mmake will include that file in its automatically-generated
 Makefile.  The @samp{Mmake} file can override the default values of
 various variables used by Mmake's builtin rules, listed below,
 or it can add additional rules, dependencies, and actions.
-@{mmake allows you to build more than one program in the same directory.
+@samp{mmake} allows you to build more than one program in the same directory.
 
 Mmake's builtin rules are defined by the file 
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules} (where @var{prefix} is
@@ -193,7 +193,7 @@ rather than calling main/2.
 @item @var{main-module}.sicstus
 Compiles and links @var{main-module} using SICStus Prolog.
 
-@item @var{main-module}.sicstus
+@item @var{main-module}.sicstus.debug
 Compiles and links @var{main-module} using SICStus Prolog.
 The resulting executable will start up in the SICStus Prolog interpreter
 rather than calling main/2.
