@@ -92,6 +92,12 @@
 #define	MR_list_empty()		((Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
 #define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_TAG_CONS, \
 					create2((head),(tail))))
+#define	MR_list_empty_msg(proclabel)	\
+				((Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
+#define	MR_list_cons_msg(head,tail,proclabel) \
+				((Word) MR_mkword(MR_TAG_CONS, \
+					MR_create2_msg((head),(tail), \
+						proclabel, "list:list/1")))
 
 #else
 
@@ -104,6 +110,15 @@
 #define	MR_list_cons(head,tail)	((Word) MR_mkword(MR_mktag(0), \
 					create3(MR_RAW_TAG_CONS, \
 						(head), (tail))))
+#define	MR_list_empty_msg(proclabel) \
+				((Word) MR_mkword(MR_mktag(0), \
+					MR_create1_msg(MR_RAW_TAG_NIL, \
+						proclabel, "list:list/1")))
+#define	MR_list_cons_msg(head,tail,proclabel) \
+				((Word) MR_mkword(MR_mktag(0), \
+					MR_create3_msg(MR_RAW_TAG_CONS, \
+						(head), (tail), \
+						proclabel, "list:list/1")))
 
 #endif
 

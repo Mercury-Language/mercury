@@ -1608,10 +1608,11 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
 	const char *p = Str + strlen(Str);
-	IntList = MR_list_empty();
+	IntList = MR_list_empty_msg(mercury__string__to_int_list_2_0);
 	while (p > Str) {
 		p--;
-		IntList = MR_list_cons((UnsignedChar) *p, IntList);
+		IntList = MR_list_cons_msg((UnsignedChar) *p, IntList,
+			mercury__string__to_int_list_2_0);
 	}
 }").
 

@@ -133,24 +133,24 @@
 #endif /* not CONSERVATIVE_GC */
   
 #ifdef	PROFILE_MEMORY
-  #define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
+  #define MR_maybe_record_allocation(count, proclabel, type)		\
+	MR_record_allocation((count), ENTRY(proclabel), 		\
+		MR_STRINGIFY(proclabel), (type))
+#else
+  #define MR_maybe_record_allocation(count, proclabel, type)		\
+  	((void) 0)
+#endif
+  	
+#define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
 	(								\
-		MR_record_allocation((count), ENTRY(proclabel), 	\
-			MR_STRINGIFY(proclabel), (type)),		\
+		MR_maybe_record_allocation((count), proclabel, (type)),	\
 		tag_incr_hp((dest), (tag), (count))			\
 	)
-  #define tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) 	\
+#define tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) 	\
 	(								\
-		MR_record_allocation((count), ENTRY(proclabel), 	\
-			MR_STRINGIFY(proclabel), (type)),		\
+		MR_maybe_record_allocation((count), proclabel, (type)),	\
 		tag_incr_hp_atomic((dest), (tag), (count))		\
 	)
-#else /* not PROFILE_MEMORY */
-  #define tag_incr_hp_msg(dest, tag, count, proclabel, type) \
-		tag_incr_hp((dest), (tag), (count))
-  #define tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) \
-		tag_incr_hp_atomic((dest), (tag), (count))
-#endif /* not PROFILE_MEMORY */
 
 /*
 ** The incr_hp*() macros are defined in terms of the tag_incr_hp*() macros.
@@ -174,8 +174,7 @@
 ** gcc's expression statements in the code below.
 */
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
+/* used only by hand-written code not by the automatically generated code */
 #define create1(w1)						\
 	(							\
 		hp_alloc(1),					\
@@ -184,8 +183,7 @@
 		/* return */ (Word) (MR_hp - 1)			\
 	)
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
+/* used only by hand-written code not by the automatically generated code */
 #define create2(w1, w2)						\
 	(							\
 		hp_alloc(2),					\
@@ -195,8 +193,7 @@
 		/* return */ (Word) (MR_hp - 2)			\
 	)
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
+/* used only by hand-written code not by the automatically generated code */
 #define create3(w1, w2, w3)					\
 	(							\
 		hp_alloc(3),					\
@@ -206,24 +203,36 @@
 		/* return */ (Word) (MR_hp - 3)			\
 	)
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define create2_bf(w1)						\
-	(							\
-		MR_hp = MR_hp + 2,				\
-		MR_hp[-2] = (Word) (w1),			\
-		heap_overflow_check(),				\
-		/* return */ (Word) (MR_hp - 2)			\
+/* used only by hand-written code not by the automatically generated code */
+#define MR_create1_msg(w1,proclabel,type)				\
+	(								\
+		MR_maybe_record_allocation(1, proclabel, (type)),	\
+		hp_alloc(1),						\
+		MR_hp[-1] = (Word) (w1),				\
+		debugcr1(MR_hp[-1], MR_hp),				\
+		/* return */ (Word) (MR_hp - 1)				\
 	)
 
-/* used only by the hand-written example programs */
-/* not by the automatically generated code */
-#define create2_fb(w2)						\
-	(							\
-		MR_hp = MR_hp + 2,				\
-		MR_hp[-1] = (Word) (w2),			\
-		heap_overflow_check(),				\
-		/* return */ (Word) (MR_hp - 2)			\
+/* used only by hand-written code not by the automatically generated code */
+#define MR_create2_msg(w1, w2, proclabel, type)				\
+	(								\
+		MR_maybe_record_allocation(2, proclabel, (type)),	\
+		hp_alloc(2),						\
+		MR_hp[-2] = (Word) (w1),				\
+		MR_hp[-1] = (Word) (w2),				\
+		debugcr2(MR_hp[-2], MR_hp[-1], MR_hp),			\
+		/* return */ (Word) (MR_hp - 2)				\
+	)
+
+/* used only by hand-written code not by the automatically generated code */
+#define MR_create3_msg(w1, w2, w3, proclabel, type)			\
+	(								\
+		MR_maybe_record_allocation(3, proclabel, (type)),	\
+		hp_alloc(3),						\
+		MR_hp[-3] = (Word) (w1),				\
+		MR_hp[-2] = (Word) (w2),				\
+		MR_hp[-1] = (Word) (w3),				\
+		/* return */ (Word) (MR_hp - 3)				\
 	)
 
 /*

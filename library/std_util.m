@@ -2728,7 +2728,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	Arity = info.arity;
 
 		/* Build argument list */
-	Arguments = MR_list_empty();
+	Arguments = MR_list_empty_msg(mercury__std_util__deconstruct_4_0);
 	i = info.arity;
 
 	while (--i >= 0) {
@@ -2739,7 +2739,8 @@ det_argument(Type, ArgumentIndex) = Argument :-
 			""std_util:univ/0"");
 
 			/* Join the argument to the front of the list */
-		Arguments = MR_list_cons(Argument, Arguments);
+		Arguments = MR_list_cons_msg(Argument, Arguments,
+			mercury__std_util__deconstruct_4_0);
 
 			/* Fill in the arguments */
 		arg_pseudo_type_info = info.type_info_vector[i];
