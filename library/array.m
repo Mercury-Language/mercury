@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,13 +12,21 @@
 % Array indices start at zero.
 
 % By default, the array__set and array__lookup procedures will check
-% for bounds errors.  But for maximum performance, it is possible to
-% disable the checking by compiling with `--intermodule-optimization'
+% for bounds errors.  But for better performance, it is possible to
+% disable some of the checking by compiling with `--intermodule-optimization'
 % and with the C macro symbol `ML_OMIT_ARRAY_BOUNDS_CHECKS'
 % defined, e.g. by using `MCFLAGS=--intermodule-optimization' and
 % `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmakefile,
 % or by compiling with the command
 % `mmc --intermodule-optimization --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS'.
+%
+% For maximum performance, all bounds checking can be disabled by
+% recompiling this module using `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS'
+% or `mmc --cflags -DML_OMIT_ARRAY_BOUNDS_CHECKS' as above. You can
+% either recompile the entire library, or just copy `array.m' to your
+% application's source directory and link with it directly instead of as
+% part of the library.
+%
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
