@@ -472,9 +472,10 @@
 			int,		% Counter for the local labels used
 					% by this procedure.
 			varset,		% The variables in this procedure.
-			stack_slots,	% The storage allocations for the
-					% live variables at the end of the
-					% current switch.
+			stack_slots,	% The map giving the stack slot
+					% to be used for each variable
+					% that will ever need to be stored
+					% on the stack.
 			pred_id,	% The label of the current predicate.
 			proc_id,	% The label of the current procedure.
 			int,		% Counter for cells in this proc.
@@ -490,6 +491,7 @@
 					% after this goal
 			stack(map(var, lval)),
 					% Store Map - where to put things
+					% at the ends of branched structures.
 			code_model,	% The model of the current procedure
 			instmap,	% insts of variables
 			pair(int),	% The current and maximum (respectively)
