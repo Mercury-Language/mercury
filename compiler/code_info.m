@@ -791,8 +791,11 @@ code_info__expr_is_constant(const(Const)) -->
 			{ true }
 		;
 			code_info__get_globals(Globals),
-			{ globals__lookup_bool_option(Globals,
+			( { globals__lookup_bool_option(Globals,
 				gcc_non_local_gotos, no) }
+			; { globals__lookup_bool_option(Globals,
+				asm_labels, yes) }
+			)
 		)
 	;
 		{ true }
