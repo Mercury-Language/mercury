@@ -270,9 +270,9 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Previnstr,
 				)
 			)
 		;
-			error("target label not in instmap")
-			% Newinstrs = [Instr0],
-			% Mod0 = no
+			% error("target label not in instmap")
+			Newinstrs = [Instr0],
+			Mod0 = no
 		)
 	; Uinstr0 = computed_goto(Index, LabelList0) ->
 		peephole__short_labels(LabelList0, Instmap, LabelList, Mod0),
