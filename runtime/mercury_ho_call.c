@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_call
+ENDINIT
+*/
+/*
 ** Copyright (C) 1995-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -26,11 +30,39 @@
 
 #include "imp.h"
 
-BEGIN_MODULE(call_module)
+Define_extern_entry(do_call_det_closure);
+Declare_label(det_closure_return);
+Define_extern_entry(do_call_semidet_closure);
+Declare_label(semidet_closure_return);
+Define_extern_entry(do_call_nondet_closure);
+Declare_label(nondet_closure_return);
+Define_extern_entry(mercury__unify_2_0);
+Define_extern_entry(mercury__index_2_0);
+Declare_label(mercury__index_2_0_i1);
+Define_extern_entry(mercury__compare_3_0);
+Define_extern_entry(mercury__compare_3_1);
+Define_extern_entry(mercury__compare_3_2);
+Define_extern_entry(mercury__compare_3_3);
+Declare_label(mercury__compare_3_0_i1);
 
+BEGIN_MODULE(call_module)
+	init_entry(do_call_det_closure);
+	init_label(det_closure_return);
+	init_entry(do_call_semidet_closure);
+	init_label(semidet_closure_return);
+	init_entry(do_call_nondet_closure);
+	init_label(nondet_closure_return);
+	init_entry(mercury__unify_2_0);
+	init_entry(mercury__index_2_0);
+	init_label(mercury__index_2_0_i1);
+	init_entry(mercury__compare_3_0);
+	init_entry(mercury__compare_3_1);
+	init_entry(mercury__compare_3_2);
+	init_entry(mercury__compare_3_3);
+	init_label(mercury__compare_3_0_i1);
 BEGIN_CODE
 
-do_call_det_closure:
+Define_entry(do_call_det_closure);
 {
 	Word	closure;
 	int	i, num_in_args, num_extra_args;
@@ -64,7 +96,7 @@ do_call_det_closure:
 	call((Code *) field(0, closure, 1), LABEL(det_closure_return),
 		LABEL(do_call_det_closure));
 }
-det_closure_return:
+Define_label(det_closure_return);
 {
 	int	i, num_in_args, num_out_args;
 
@@ -86,7 +118,7 @@ det_closure_return:
 	proceed();
 }
 
-do_call_semidet_closure:
+Define_entry(do_call_semidet_closure);
 {
 	Word	closure;
 	int	i, num_in_args, num_extra_args;
@@ -136,7 +168,7 @@ do_call_semidet_closure:
 	call((Code *) field(0, closure, 1), LABEL(semidet_closure_return),
 		LABEL(do_call_semidet_closure));
 }
-semidet_closure_return:
+Define_label(semidet_closure_return);
 {
 	int	i, num_in_args, num_out_args;
 
@@ -158,7 +190,7 @@ semidet_closure_return:
 	proceed();
 }
 
-do_call_nondet_closure:
+Define_entry(do_call_nondet_closure);
 {
 	Word	closure;
 	int	i, num_in_args, num_extra_args;
@@ -193,7 +225,7 @@ do_call_nondet_closure:
 	call((Code *) field(0, closure, 1), LABEL(nondet_closure_return),
 		LABEL(do_call_nondet_closure));
 }
-nondet_closure_return:
+Define_label(nondet_closure_return);
 {
 	int	i, num_in_args, num_out_args;
 
@@ -231,7 +263,7 @@ nondet_closure_return:
 ** start either in r1 or r2 depending on the argument passing convention.
 */
 
-mercury__unify_2_0:
+Define_entry(mercury__unify_2_0);
 {
 	Code	*unify_pred;	/* address of the unify pred for this type */
 	int	type_arity;	/* number of type_info args */
@@ -292,7 +324,7 @@ mercury__unify_2_0:
 ** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
-mercury__index_2_0:
+Define_entry(mercury__index_2_0);
 {
 	Code	*index_pred;	/* address of the index pred for this type */
 	int	type_arity;	/* number of type_info args */
@@ -339,7 +371,7 @@ mercury__index_2_0:
 ** Since mod2c declares this label, we must define it,
 ** even though it is not needed with COMPACT_ARGS.
 */
-mercury__index_2_0_i1:
+Define_label(mercury__index_2_0_i1);
 {
 #ifdef	COMPACT_ARGS
 	fatal_error("mercury__index_2_0_i1 reached in COMPACT_ARGS mode");
@@ -379,25 +411,25 @@ mercury__index_2_0_i1:
 ** routine a tail call, and we do so. With the simple convention, we can't.
 */
 
-mercury__compare_3_0:
+Define_entry(mercury__compare_3_0);
 #ifdef PROFILE_CALLS
 {
 	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_0));
 }
 #endif
-mercury__compare_3_1:
+Define_entry(mercury__compare_3_1);
 #ifdef PROFILE_CALLS
 {
 	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_1));
 }
 #endif
-mercury__compare_3_2:
+Define_entry(mercury__compare_3_2);
 #ifdef PROFILE_CALLS
 {
 	tailcall(ENTRY(mercury__compare_3_3), LABEL(mercury__compare_3_2));
 }
 #endif
-mercury__compare_3_3:
+Define_entry(mercury__compare_3_3);
 {
 	Code	*compare_pred;	/* address of the compare pred for this type */
 	int	type_arity;	/* number of type_info args */
@@ -448,7 +480,7 @@ mercury__compare_3_3:
 ** Since mod2c declares this label, we must define it,
 ** even though it is not needed with COMPACT_ARGS.
 */
-mercury__compare_3_0_i1:
+Define_label(mercury__compare_3_0_i1);
 {
 #ifdef	COMPACT_ARGS
 	fatal_error("mercury__compare_3_0_i1 reached in COMPACT_ARGS mode");
@@ -462,5 +494,8 @@ mercury__compare_3_0_i1:
 	proceed();
 #endif
 }
-
 END_MODULE
+void mercury_sys_init_call(void); /* suppress gcc warning */
+void mercury_sys_init_call(void) {
+	call_module();
+}

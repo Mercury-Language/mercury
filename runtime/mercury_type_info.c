@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_type_info
+ENDINIT
+*/
+/*
 ** Copyright (C) 1995-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -111,35 +115,47 @@ Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
 Declare_label(mercury__builtin_compare_pred_3_0_i4);
 
-BEGIN_MODULE(mercury__builtin_unify_pred_module)
+Define_extern_entry(mercury__builtin_unify_pred_2_0);
 
+BEGIN_MODULE(mercury__builtin_unify_pred_module)
+	init_entry(mercury__builtin_unify_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
-mercury__builtin_unify_pred_2_0:
+Define_entry(mercury__builtin_unify_pred_2_0);
 	incr_sp_push_msg(2, "mercury_builtin:builtin_unify_pred");
 	fatal_error("attempted unification of higher-order terms");
 END_MODULE
 
 
-BEGIN_MODULE(mercury__builtin_index_pred_module)
+Define_extern_entry(mercury__builtin_index_pred_2_0);
 
+BEGIN_MODULE(mercury__builtin_index_pred_module)
+	init_entry(mercury__builtin_index_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_index_pred'/2 in mode 0 */
-mercury__builtin_index_pred_2_0:
+Define_entry(mercury__builtin_index_pred_2_0);
 	r1 = (Integer) -1;
 	proceed();
 END_MODULE
 
-BEGIN_MODULE(mercury__builtin_compare_pred_module)
+Define_extern_entry(mercury__builtin_compare_pred_3_0);
 
+BEGIN_MODULE(mercury__builtin_compare_pred_module)
+	init_entry(mercury__builtin_compare_pred_3_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
-mercury__builtin_compare_pred_3_0:
+Define_entry(mercury__builtin_compare_pred_3_0);
 	incr_sp_push_msg(2, "mercury_builtin:builtin_compare_pred");
 	fatal_error("attempted comparison of higher-order terms");
 END_MODULE
 
 /*---------------------------------------------------------------------------*/
+void mercury_sys_init_type_info(void); /* suppress gcc warning */
+void mercury_sys_init_type_info(void) {
+	mercury__builtin_unify_pred_module();
+	mercury__builtin_index_pred_module();
+	mercury__builtin_compare_pred_module();
+}

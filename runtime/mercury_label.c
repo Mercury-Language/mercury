@@ -12,7 +12,7 @@
 #include	<stdio.h>
 #include	<string.h>
 
-#include	"conf.h"
+#include	"mercury_conf.h"
 
 #include	"label.h"
 

@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_context
+ENDINIT
+*/
+/*
 ** Copyright (C) 1995-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -6,7 +10,7 @@
 
 /* context.mod - handles multithreading stuff. */
 
-#include "imp.h"
+#include "mercury_imp.h"
 
 #include <stdio.h>
 #include <unistd.h>		/* for getpid() and fork() */
@@ -14,8 +18,8 @@
 #include <signal.h>
 #endif
 
-#include "context.h"
-#include "engine.h"	/* for `memdebug' */
+#include "mercury_context.h"
+#include "mercury_engine.h"	/* for `memdebug' */
 
 Context	*this_context;
 static Context	*free_context_list = NULL;
@@ -108,3 +112,6 @@ flounder(void)
 	fatal_error("computation floundered");
 }
 
+void mercury_sys_init_context(void); /* suppress gcc warning */
+void mercury_sys_init_context(void) {
+}

@@ -12,7 +12,7 @@
 #ifndef MERCURY_TYPES_H
 #define MERCURY_TYPES_H
 
-#include "conf.h"
+#include "mercury_conf.h"
 
 /* 
 ** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*)

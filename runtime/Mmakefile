@@ -22,32 +22,87 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 #-----------------------------------------------------------------------------#
 
 #		  keep this list in alphabetical order, please
-HDRS		= calls.h conf.h context.h \
-		  deep_copy.h dlist.h debug.h dummy.h \
-		  engine.h getopt.h goto.h heap.h imp.h init.h label.h \
-		  memory.h mercury_float.h mercury_grade.h \
-		  mercury_string.h mercury_trace.h mercury_trail.h \
-		  mercury_types.h misc.h \
-		  overflow.h prof.h prof_mem.h regorder.h regs.h \
-		  spinlock.h std.h stacks.h \
-		  table.h tags.h timing.h type_info.h wrapper.h \
-		  $(LIBMER_DLL_H)
+HDRS		=	\
+		  	mercury_engine.h	\
+			mercury_getopt.h	\
+			mercury_goto.h		\
+			mercury_heap.h		\
+			mercury_imp.h		\
+			mercury_init.h		\
+			mercury_label.h		\
+			mercury_memory.h	\
+			mercury_accurate_gc.h	\
+			mercury_calls.h		\
+			mercury_conf.h		\
+			mercury_context.h	\
+			mercury_debug.h		\
+			mercury_deep_copy.h	\
+			mercury_dummy.h		\
+			mercury_dlist.h		\
+			mercury_float.h		\
+			mercury_string.h	\
+			mercury_trace.h		\
+			mercury_trail.h		\
+			mercury_types.h		\
+			mercury_misc.h		\
+			mercury_overflow.h	\
+			mercury_prof.h		\
+			mercury_prof_mem.h	\
+			mercury_regorder.h	\
+			mercury_regs.h		\
+			mercury_spinlock.h	\
+			mercury_std.h		\
+			mercury_stacks.h	\
+			mercury_table.h		\
+			mercury_tags.h		\
+			mercury_timing.h	\
+			mercury_type_info.h	\
+			mercury_wrapper.h	\
+			$(LIBMER_DLL_H)
+
 # Note that `libmer_globals.h' cannot be part of $(HDR),
 # since it depends on libmer_def.a, and $(OBJ) : $(HDR) would create a
 # circular dependency.
 
 
-MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
-		  machdeps/mips_regs.h machdeps/sparc_regs.h \
-		  machdeps/alpha_regs.h machdeps/pa_regs.h \
-		  machdeps/rs6000_regs.h
-MODS		= engine.mod wrapper.mod call.mod context.mod type_info.mod
-MOD_CS		= engine.c wrapper.c call.c context.c type_info.c
+MACHHDRS	= 	machdeps/no_regs.h	\
+			machdeps/i386_regs.h	\
+			machdeps/mips_regs.h	\
+			machdeps/sparc_regs.h	\
+			machdeps/alpha_regs.h	\
+			machdeps/pa_regs.h	\
+			machdeps/rs6000_regs.h
+
+
+# XXX .mod support is being removed. This will soon disappear.
+MODS		= 
+MOD_CS		= 
 MOD_OS		= $(MOD_CS:.c=.o)
-ORIG_CS		= deep_copy.c dlist.c dummy.c label.c \
-		  memory.c misc.c regs.c table.c timing.c prof.c prof_mem.c \
-		  spinlock.c mercury_float.c mercury_grade.c mercury_trace.c \
-		  mercury_trail.c
+
+#		  keep this list in alphabetical order, please
+ORIG_CS		= 	mercury_context.c	\
+			mercury_deep_copy.c	\
+			mercury_dlist.c		\
+			mercury_dummy.c		\
+			mercury_engine.c	\
+			mercury_float.c		\
+			mercury_grade.c		\
+			mercury_ho_call.c	\
+			mercury_label.c		\
+			mercury_memory.c	\
+			mercury_misc.c		\
+			mercury_prof.c		\
+			mercury_prof_mem.c	\
+			mercury_regs.c		\
+			mercury_spinlock.c	\
+			mercury_table.c		\
+			mercury_timing.c	\
+			mercury_trace.c		\
+			mercury_trail.c 	\
+			mercury_type_info.c	\
+			mercury_wrapper.c
+
+ORIG_OS		= $(ORIG_CS:.c=.o)
 ORIG_OS		= $(ORIG_CS:.c=.o)
 OBJS		= $(MOD_OS) $(ORIG_OS)
 PIC_OBJS	= $(OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
@@ -96,8 +151,8 @@ libmer.so: $(PIC_OBJS)
 		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 
-runtime.init: $(MOD_CS)
-	cat `vpath_find $(MOD_CS)` | grep '^INIT ' > runtime.init
+runtime.init: $(ORIG_CS)
+	cat `vpath_find $(ORIG_CS)` | grep '^INIT ' > runtime.init
 
 conf.h.date: $(MERCURY_DIR)/config.status conf.h.in
 	CONFIG_FILES= CONFIG_HEADERS=conf.h $(MERCURY_DIR)/config.status
@@ -161,13 +216,11 @@ clean: clean_o clean_mod_c
 
 .PHONY: clean_o
 clean_o:
-	rm -f *.o *.pic_o
+	rm -f $(MOD_OS) $(OBJS) $(PIC_OBJS) 
 
 .PHONY: clean_mod_c
 clean_mod_c:
-	for file in *.mod; do \
-		rm -f `basename $$file .mod`.c; \
-	done
+	rm -f $(MOD_OS)
 
 realclean:
 	rm -f libmer.a libmer.so runtime.init

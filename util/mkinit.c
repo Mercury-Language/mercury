@@ -24,7 +24,7 @@
 #include	<ctype.h>
 #include	<errno.h>
 #include	"getopt.h"
-#include	"conf.h"
+#include	"mercury_conf.h"
 #include	"std.h"
 
 /* --- adjustable limits --- */

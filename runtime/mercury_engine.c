@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_engine
+ENDINIT
+*/
+/*
 ** Copyright (C) 1993-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -386,29 +390,42 @@ terminate_engine(void)
 
 /*---------------------------------------------------------------------------*/
 
-BEGIN_MODULE(special_labels_module)
+Define_extern_entry(do_redo);
+Define_extern_entry(do_fail);
+Define_extern_entry(do_succeed);
+Define_extern_entry(do_last_succeed);
+Define_extern_entry(do_not_reached);
 
+BEGIN_MODULE(special_labels_module)
+	init_entry(do_redo);
+	init_entry(do_fail);
+	init_entry(do_succeed);
+	init_entry(do_last_succeed);
+	init_entry(do_not_reached);
 BEGIN_CODE
 
-do_redo:
+Define_entry(do_redo);
 	redo();
 
-do_fail:
+Define_entry(do_fail);
 	fail();
 
-do_succeed:
+Define_entry(do_succeed);
 	succeed();
 
-do_last_succeed:
+Define_entry(do_last_succeed);
 	succeed_discard();
 
-do_not_reached:
+Define_entry(do_not_reached);
 	printf("reached not_reached\n");
 	exit(1);
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;
 #endif
-
 END_MODULE
 
 /*---------------------------------------------------------------------------*/
+void mercury_sys_init_engine(void); /* suppress gcc warning */
+void mercury_sys_init_engine(void) {
+	special_labels_module();
+}

@@ -33,7 +33,7 @@
   #include "libmer_dll.h"
 #endif
 #include "regs.h"	/* must come first, due to global register vars */
-#include "conf.h"	/* must come second */
+#include "mercury_conf.h"	/* must come second */
 
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*

@@ -20,7 +20,7 @@ dnl MERCURY_MSG(MESSAGE)
 define(MERCURY_MSG,
 [echo $1 1>&AC_FD_MSG])
 #-----------------------------------------------------------------------------#
-AC_INIT(runtime/wrapper.mod)
+AC_INIT(runtime/mercury_wrapper.c)
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -39,7 +39,7 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	exit
 fi
 #-----------------------------------------------------------------------------#
-AC_CONFIG_HEADER(runtime/conf.h)
+AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 AC_CANONICAL_HOST
 FULLARCH="$host"
@@ -210,7 +210,7 @@ AC_SUBST(CC)
 CFLAGS="-O"
 
 # we also need to add the appropriate `-I' options so that the test programs
-# can do #include "memory.h"
+# can #include various Mercury runtime headers.
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
 AC_PROG_CPP
 AC_C_CROSS
@@ -1079,10 +1079,10 @@ if test $HAVE_ASM_LABELS = 1; then
 	AC_DEFINE(HAVE_ASM_LABELS)
 fi
 #-----------------------------------------------------------------------------#
-# We need to ensure that runtime/conf.h exists, since some of the
+# We need to ensure that runtime/mercury_conf.h exists, since some of the
 # programs we attempt to compile below indirectly include it.
-test -f runtime/conf.h || {
-	cat > runtime/conf.h <<EOF
+test -f runtime/mercury_conf.h || {
+	cat > runtime/mercury_conf.h <<EOF
 #define WORD_TYPE $WORD_TYPE
 EOF
 }
@@ -1093,8 +1093,8 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_TRY_RUN([
 	#define USE_GCC_NONLOCAL_GOTOS
 	#define USE_GCC_GLOBAL_REGISTERS
-	#include "regs.h"
-	#include "memory.h"
+	#include "mercury_regs.h"
+	#include "mercury_memory.h"
 	changequote(<<,>>) 
 	Word fake_reg[MAX_FAKE_REG];
 	changequote([,]) 
@@ -1154,8 +1154,8 @@ AC_MSG_CHECKING(whether we can use global registers without gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
 #define USE_GCC_GLOBAL_REGISTERS
-#include "regs.h"
-#include "memory.h"
+#include "mercury_regs.h"
+#include "mercury_memory.h"
 changequote(<<,>>) 
 Word fake_reg[MAX_FAKE_REG];
 changequote([,]) 
@@ -1443,7 +1443,8 @@ case "$host" in
 		#
 		# If you *do* use `-fpic', you must also use `-DPIC'.
 		#
-		# See runtime/goto.h for the code that handles PIC on SPARCs.
+		# See runtime/mercury_goto.h for the code that handles PIC
+		# on SPARCs.
 		# Note that mixing PIC and non-PIC code is fine on SPARCs
 		# (though it doesn't work on x86s, due to the use of `ebx'
 		# in runtime/machdeps/i386_regs.h).
@@ -1551,8 +1552,8 @@ scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
-if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
-	touch runtime/conf.h.date
+if test "$CONFIG_HEADERS" = "runtime/mercury_conf.h"; then
+	touch runtime/mercury_conf.h.date
 fi
 # conftest.junk is used to avoid a warning if there
 # are no files in the list passed to chmod

@@ -1,4 +1,8 @@
 /*
+INIT mercury_sys_init_wrapper
+ENDINIT
+*/
+/*
 ** Copyright (C) 1994-1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -825,11 +829,19 @@ print_register_usage_counts(void)
 } /* end print_register_usage_counts() */
 #endif
 
-BEGIN_MODULE(interpreter_module)
+Define_extern_entry(do_interpreter);
+Declare_label(global_success);
+Declare_label(global_fail);
+Declare_label(all_done);
 
+BEGIN_MODULE(interpreter_module)
+	init_entry(do_interpreter);
+	init_label(global_success);
+	init_label(global_fail);
+	init_label(all_done);
 BEGIN_CODE
 
-do_interpreter:
+Define_entry(do_interpreter);
 	push(MR_hp);
 	push(MR_succip);
 	push(MR_maxfr);
@@ -845,7 +857,7 @@ do_interpreter:
 
 	noprof_call(program_entry_point, LABEL(global_success));
 
-global_success:
+Define_label(global_success);
 #ifndef	SPEED
 	if (finaldebug) {
 		save_transient_registers();
@@ -860,7 +872,7 @@ global_success:
 	else
 		GOTO_LABEL(all_done);
 
-global_fail:
+Define_label(global_fail);
 #ifndef	SPEED
 	if (finaldebug) {
 		save_transient_registers();
@@ -871,7 +883,7 @@ global_fail:
 	}
 #endif
 
-all_done:
+Define_label(all_done);
 #ifdef  PROFILE_TIME
 	prof_turn_off_time_profiling();
 	prof_output_addr_table();
@@ -895,7 +907,6 @@ all_done:
 #ifndef	USE_GCC_NONLOCAL_GOTOS
 	return 0;
 #endif
-
 END_MODULE
 
 /*---------------------------------------------------------------------------*/
@@ -928,3 +939,7 @@ mercury_runtime_terminate(void)
 }
 
 /*---------------------------------------------------------------------------*/
+void mercury_sys_init_wrapper(void); /* suppress gcc warning */
+void mercury_sys_init_wrapper(void) {
+	interpreter_module();
+}

@@ -4,19 +4,5 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/*
-** File: dummy.h 
-** Author: fjh
-**
-** Global variables and functions used purely for the purpose
-** of suppressing over-zealous compiler optimizations.
-*/
+#include "mercury_dummy.h"
 
-#ifndef	DUMMY_H
-#define	DUMMY_H
-
-extern	void	dummy_function_call(void);
-extern	void	*global_pointer;
-extern	void	*global_pointer_2;
-
-#endif

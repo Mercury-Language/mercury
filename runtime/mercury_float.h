@@ -9,7 +9,7 @@
 #ifndef MERCURY_FLOAT_H
 #define MERCURY_FLOAT_H
 
-#include "conf.h"		/* for BOXED_FLOAT */
+#include "mercury_conf.h"	/* for BOXED_FLOAT */
 #include "mercury_types.h"	/* for `Word' */
 
 #ifdef USE_SINGLE_PREC_FLOAT
