@@ -97,8 +97,7 @@
 
 :- func error_util__describe_sym_name(sym_name) = string.
 
-:- func error_util__describe_sym_name_and_arity(sym_name_and_arity) =
-			string.
+:- func error_util__describe_sym_name_and_arity(sym_name_and_arity) = string.
 
 	% Append a punctuation character to a message, avoiding unwanted
 	% line splitting between the message and the punctuation.
@@ -114,7 +113,6 @@
 :- pred report_error_num_args(maybe(pred_or_func), int, list(int),
 		io__state, io__state).
 :- mode report_error_num_args(in, in, in, di, uo) is det.
-
 
 	% sorry(ModuleName, Message)
 	% Call error/1 with a "Sorry, not implemented" message.
