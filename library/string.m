@@ -96,6 +96,9 @@
 :- pred string__float_to_string(float, string).
 :- mode string__float_to_string(in, uo) is det.
 %	Convert an float to a string.
+%	The resulting float will be in the form that it was printed using
+%	the format string "%#.<prec>g" where <prec> is the required precision
+%	needed to represent the string.
 
 :- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
@@ -1829,13 +1832,66 @@ format_char(_, _) = _ :-
 :- pragma foreign_proc("C",
 	string__float_to_string(Flt::in, Str::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
+	/*
+	** For efficiency reasons we duplicate the C implementation
+	** of string__lowlevel_float_to_string
+	*/
+	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
+	ML_sprintf_float(buf, Flt);
+	MR_make_aligned_string_copy(Str, buf);
+}").
+
+	% XXX The unsafe_promise_unique is needed because in
+	% string__float_to_string_2 the call to string__to_float doesn't
+	% have a (ui, out) mode hence the output string cannot be unique.
+string__float_to_string(Float, unsafe_promise_unique(String)) :-
+	String = string__float_to_string_2(min_precision, Float).
+
+:- func string__float_to_string_2(int, float) = (string) is det.
+
+string__float_to_string_2(Prec, Float) = String :-
+	string__format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp),
+	( Prec = max_precision ->
+		String = Tmp
+	;
+		( string__to_float(Tmp, Float) ->
+			String = Tmp
+		;
+			String = float_to_string_2(Prec + 1, Float)
+		)
+	).
+
+	% We assume that on non-C backends that we are using double
+	% precision floats.
+:- func min_precision = int.
+min_precision = 15.
+
+:- func max_precision = int.
+max_precision = 17.
+
+% string__lowlevel_float_to_string differs from string__float_to_string in
+% that it must be implemented in a foreign language as this is the predicate
+% string__format uses to get the initial string representation of a float.
+% Also while its output must represent the float to sufficient precision, it
+% doesn't need to be in *exactly* the same format as if was formated with
+% "%#.<prec>g".
+:- pred string__lowlevel_float_to_string(float, string).
+:- mode string__lowlevel_float_to_string(in, uo) is det.
+
+:- pragma foreign_proc("C",
+	string__lowlevel_float_to_string(Flt::in, Str::uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "{
+	/*
+	** Note any changes here will require the same changes in
+	** string__float_to_string.
+	*/
 	char buf[ML_SPRINTF_FLOAT_BUF_SIZE];
 	ML_sprintf_float(buf, Flt);
 	MR_make_aligned_string_copy(Str, buf);
 }").
 
 :- pragma foreign_proc("C#",
-	string__float_to_string(FloatVal::in, FloatString::uo),
+	string__lowlevel_float_to_string(FloatVal::in, FloatString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe], "
 
 		// The R format string prints the double out such that it
@@ -1846,10 +1902,10 @@ format_char(_, _) = _ :-
 	FloatString = FloatVal.ToString(""R"");
 ").
 
-string__float_to_string(_, _) :-
+string__lowlevel_float_to_string(_, _) :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("string__float_to_string").
+	private_builtin__sorry("string__lowlevel_float_to_string").
 
 :- pragma foreign_decl(c, "
 #ifdef MR_USE_SINGLE_PREC_FLOAT
