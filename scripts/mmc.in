@@ -35,6 +35,9 @@ case "$MERCURY_INT_DIR" in
 	;;
 esac
 
+MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
+SHARED_LIBS="@SHARED_LIBS_SH@"
+
 DEFAULT_MERCURY_LINKAGE=${MERCURY_LINKAGE=@DEFAULT_LINKAGE@}
 export DEFAULT_MERCURY_LINKAGE
 
@@ -44,11 +47,19 @@ export DEFAULT_MERCURY_LINKAGE
 #
 # The default optimization level should be after
 # all the options that describe the machine configuration.
+#
+# XXX Add --linker-trace-flags "@LDFLAGS_FOR_TRACE@" and
+#	--shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@"
+#	once those options are accepted everywhere.
 DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		$MERCURY_ALL_MC_C_INCL_DIRS \
 		--cc \"${MERCURY_C_COMPILER=@CC@}\" \
 		--grade \"${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}\" \
+		--cflags-for-ansi \"@CFLAGS_FOR_ANSI@\" \
+		--cflags-for-optimization \"@CFLAGS_FOR_OPT@\" \
+		--cflags-for-warnings \"@CFLAGS_FOR_WARNINGS@\" \
 		--cflags-for-threads \"@CFLAGS_FOR_THREADS@\" \
+		--cflags-for-debug \"@CFLAGS_FOR_DEBUG@\" \
 		--cflags-for-regs \"@CFLAGS_FOR_REGS@\" \
 		--cflags-for-gotos \"@CFLAGS_FOR_GOTOS@\" \
 		--cflags-for-pic \"@CFLAGS_FOR_PIC@\" \
@@ -63,6 +74,25 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--create-archive-command-output-flag \"@AR_LIBFILE_OPT@\" \
 		--create-archive-command-flags \"@ARFLAGS@\" \
 		--ranlib-command \"@RANLIB@\" \
+		--link-executable-command \"@LINK_EXE@\" \
+		--link-shared-lib-command \"@LINK_SHARED_OBJ@\" \
+		--trace-libs \"@TRACE_LIBS_SYSTEM@\" \
+		--thread-libs \"@THREAD_LIBS@\" \
+		--shared-libs \"$SHARED_LIBS\" \
+		--math-lib \"$MATH_LIB\" \
+		--readline-libs \"@READLINE_LIBRARIES@\" \
+		--linker-thread-flags \"@LDFLAGS_FOR_THREADS@\" \
+		--shlib-linker-thread-flags \"@LD_LIBFLAGS_FOR_THREADS@\" \
+		--linker-static-flags \"@LD_STATIC_FLAGS@\" \
+		--linker-strip-flag \"@LD_STRIP_FLAG@\" \
+		--linker-debug-flags \"@LDFLAGS_FOR_DEBUG@\" \
+		--shlib-linker-debug-flags \"@LD_LIBFLAGS_FOR_DEBUG@\" \
+		--linker-rpath-flag \"@EXE_RPATH_OPT@\" \
+		--linker-rpath-separator \"@EXE_RPATH_SEP@\" \
+		--shlib-linker-rpath-flag \"@SHLIB_RPATH_OPT@\" \
+		--shlib-linker-rpath-separator \"@SHLIB_RPATH_SEP@\" \
+		--linker-allow-undefined-flag \"@ALLOW_UNDEFINED@\" \
+		--linker-error-undefined-flag \"@ERROR_UNDEFINED@\" \
 		--fullarch \"@FULLARCH@\" \
 		--install-prefix \"@prefix@\" \
 		@LIBGRADE_OPTS@ \
@@ -74,6 +104,7 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--dotnet-library-version \"@MS_DOTNET_LIBRARY_VERSION@\" \
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
+		@MCFLAGS_FOR_CC@ \
 		${MERCURY_DEFAULT_OPT_LEVEL=-O2} \
 		$STDLIB_DIR_OPT \
 		$CONFIG_DIR_OPT \

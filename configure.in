@@ -512,6 +512,8 @@ AC_EGREP_CPP(yes,
 
 AC_CHECK_PROG(CYGPATH, cygpath, cygpath -w, echo)
 
+LDFLAGS_FOR_TRACE=
+LD_LIBFLAGS_FOR_TRACE=
 if test "$ac_microsoft" = "yes" ; then
 	# Use MS-style file names and command-line options
 	OBJ_SUFFIX="obj"
@@ -525,6 +527,9 @@ if test "$ac_microsoft" = "yes" ; then
 	AR="lib"
 	ARFLAGS=""
 	AR_LIBFILE_OPT="/OUT:"
+
+	LDFLAGS_FOR_DEBUG="/DEBUG"
+	LD_LIBFLAGS_FOR_DEBUG="/DEBUG"
 
 	USING_MICROSOFT_CL_COMPILER="yes"
 
@@ -550,6 +555,21 @@ else
 	ARFLAGS="cr"
 	AR_LIBFILE_OPT=""
 
+	LDFLAGS_FOR_DEBUG="-g"
+	LD_LIBFLAGS_FOR_DEBUG="-g"
+
+	#
+	# On Linux ELF, `-rdynamic' is needed to make symbols
+	# exported for use in code linked in with dlopen(),
+	# which is used for interactive queries in the
+	# Mercury debugger.
+	#
+	case $FULLARCH in
+		*-linux*aout) ;; # no special options needed
+		*-linux*)
+			LDFLAGS_FOR_TRACE="-rdynamic" ;;
+	esac
+
 	USING_MICROSOFT_CL_COMPILER="no"
 
 	FIX_PATH_FOR_CC=echo
@@ -574,6 +594,10 @@ AC_SUBST(OBJFILE_OPT)
 AC_SUBST(AR)
 AC_SUBST(ARFLAGS)
 AC_SUBST(AR_LIBFILE_OPT)
+AC_SUBST(LDFLAGS_FOR_DEBUG)
+AC_SUBST(LD_LIBFLAGS_FOR_DEBUG)
+AC_SUBST(LDFLAGS_FOR_TRACE)
+AC_SUBST(LD_LIBFLAGS_FOR_TRACE)
 AC_SUBST(USING_MICROSOFT_CL_COMPILER)
 AC_SUBST(OBJ_SUFFIX)
 AC_SUBST(LIB_SUFFIX)
@@ -2049,24 +2073,43 @@ fi
 # options to tell (a) the Mercury runtime & library
 # (b) the boehm collector and (c) the C library
 # that they need to be thread-safe.
+#
+# For Linux, Irix, Solaris, and HPUX,
+# the thread-enabled version of the Boehm
+# collector contains a reference to dlopen(), so
+# if threads are enabled, we need to link with the
+# appropriate extra library for that (-ldl on Linux
+# and Solaris, -lrt on HPUX, and nothing on Irix).
+# XXX That should only be done if conservative GC
+#     is enabled.
+#
+# Note that changes here may require changes in scripts/ml.in.
+LDFLAGS_FOR_THREADS=
+LD_LIBFLAGS_FOR_THREADS=
 case "$host" in
 	*solaris*)
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
 			-D_SOLARIS_PTHREADS -DGC_SOLARIS_PTHREADS -D_REENTRANT"
+		THREAD_LIBS="-lpthread -ldl"
 		;;
 
 	*linux*)
-		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
-			-D_THREAD_SAFE -D_REENTRANT"
 		# Note that for old versions of Linux / glibc,
 		# you may also need to make sure that you don't
 		# pass -ansi to gcc.
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
+			-D_THREAD_SAFE -D_REENTRANT"
+		THREAD_LIBS="-lpthread -ldl"
 		;;
 
 	*cygwin*)
+		THREAD_LIBS=""
 		case "$CC" in
 			*cl* | *CL*)	# cl is the Microsoft C compiler
-				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD" ;;
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD"
+				LDFLAGS_FOR_THREADS="/MD"
+				LD_LIBFLAGS_FOR_THREADS="/MD"
+				;;
 			*)
 				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE" ;;
 		esac
@@ -2079,13 +2122,21 @@ case "$host" in
 ###	# XXX is this fixed in the Boehm collector now?
 ###	*-osf*)
 ###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
+###		THREAD_LIBS="-lpthreads -lmach -lc_r"
 ###		;;
+
+###	# The threads stuff on HPUX is not yet enabled because
+###	# we don't have an HPUX box to test it on.
+###	*hpux*)    
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE" # XXX incomplete
+###		THREAD_LIBS="-lpthread -lrt" ;;
 
 ###	# The threads stuff on IRIX is not yet enabled because
 ###	# we don't have an IRIX box to test it on.
 ###	# (XXX perhaps we should enable it anyway, so it is easier to test?)
 ###	*irix*)
 ###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DIRIX_THREADS"
+###		THREAD_LIBS="-lpthread"
 ###		;;
 
 	*)	
@@ -2097,6 +2148,9 @@ case "$host" in
 		;;
 esac
 AC_SUBST(CFLAGS_FOR_THREADS)
+AC_SUBST(THREAD_LIBS)
+AC_SUBST(LDFLAGS_FOR_THREADS)
+AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 
 #-----------------------------------------------------------------------------#
 
@@ -2647,8 +2701,12 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 
 # set up some default values that should work on most systems
 # see Mmake.common.in for documentation on the meaning of these variables
+LINK_EXE=$CC
+LD_STRIP_FLAG="-s"
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
+LD_DEBUG_FLAGS="-g"
+LD_LIB_DEBUG_FLAGS="-g"
 if test "$GCC" = "yes"; then
 	SHARED_LIBS="\`$CC -print-libgcc-file-name\` \$(MATH_LIB) -lc"
 	SHARED_LIBS_SH="\`$CC -print-libgcc-file-name\` \$MATH_LIB -lc"
@@ -2713,6 +2771,8 @@ case "$host" in
 			AC_MSG_RESULT(no)
 			;;
 		esac
+		# Shared libraries are not the default on x86 systems that
+		# use ELF -- see README.Linux
 		DEFAULT_LINKAGE=static
 		;;
 	m68*-linux|m68*-linux-gnu)
@@ -2887,6 +2947,116 @@ case "$host" in
 esac
 
 #-----------------------------------------------------------------------------#
+# Note that changes here may require changes in scripts/mgnuc.in.
+
+case "$CC" in
+    *gcc*)
+	COMPILER=gcc
+	CFLAGS_FOR_ANSI="-ansi"
+
+	# For a full list of the other gcc warnings that we don't
+	# enable, and why, see scripts/mgnuc.in.
+	CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
+
+	CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
+	CFLAGS_FOR_DEBUG="-g"
+	MCFLAGS_FOR_CC=
+	;;
+    *lcc*)
+	COMPILER=lcc
+	CFLAGS_FOR_ANSI=
+
+	# turn off all warnings due to spurious warnings.
+	CFLAGS_FOR_WARNINGS="-w"
+
+	CFLAGS_FOR_OPT=
+	CFLAGS_FOR_DEBUG="-g"
+	MCFLAGS_FOR_CC=
+	;;
+    *cl* | *CL*)
+	COMPILER=cl
+	CFLAGS_FOR_ANSI=
+	CFLAGS_FOR_WARNINGS=
+	CFLAGS_FOR_OPT=
+	CFLAGS_FOR_DEBUG="/Zi"
+
+	# Using the MSVC compiler implies that we must use a maximum jump
+	# table size of 512 to avoid a fixed limit in the compiler.
+	MCFLAGS_FOR_CC="--max-jump-table-size 512"
+	;;
+    cc* | */cc*)
+	COMPILER=cc
+	CFLAGS_FOR_ANSI=
+	CFLAGS_FOR_OPT="-O"
+	CFLAGS_FOR_WARNINGS=
+	CFLAGS_FOR_DEBUG="-g"
+	MCFLAGS_FOR_CC=
+	;;
+    *)
+	COMPILER=unknown
+	CFLAGS_FOR_ANSI=
+	CFLAGS_FOR_OPT="-O"
+	CFLAGS_FOR_WARNINGS=
+	CFLAGS_FOR_DEBUG="-g"
+	MCFLAGS_FOR_CC=
+	;;
+esac
+
+AC_SUBST(CFLAGS_FOR_ANSI)
+AC_SUBST(CFLAGS_FOR_WARNINGS)
+AC_SUBST(CFLAGS_FOR_OPT)
+AC_SUBST(CFLAGS_FOR_DEBUG)
+AC_SUBST(MCFLAGS_FOR_CC)
+
+#-----------------------------------------------------------------------------#
+# Work out how to link statically.
+# Note that changes here may require changes in scripts/ml.in.
+
+LD_STATIC_FLAGS=
+case $COMPILER in gcc|lcc)
+	LD_STATIC_FLAGS=-static
+	;;
+esac
+case $FULLARCH in
+	*-linux*)
+		# On Linux, if we're linking statically, we need to
+		# pass `-defsym _DYNAMIC=0' to the linker, to avoid
+		# undefined references to _DYNAMIC in
+		# boehm_gc/dyn_load.c.
+		# (We might eventually need similar treatment
+		# for other OSs too)
+		case $COMPILER in
+		gcc)
+			LD_STATIC_FLAGS="-static \
+				-Wl-defsym -Wl_DYNAMIC=0"
+			;;
+		lcc)
+			LD_STATIC_FLAGS="-static \
+				-Wl,-defsym -Wl,_DYNAMIC=0"
+			;;
+		esac
+		;;
+	alpha*-dec-osf*)
+		case $COMPILER in cc)
+			LD_STATIC_FLAGS=-non_shared
+			;;
+		esac
+		;;
+	*-sun-solaris*)
+		case $COMPILER in cc)
+			LD_STATIC_FLAGS="-B static"
+			;;
+		esac
+		;;
+esac
+case "$LD_STATIC_FLAGS" in "")
+	AC_MSG_WARN(
+[\`mmc --linkage static' and \`ml --static' not implemented with
+****	this C compiler (\`$CC').])
+esac
+
+
+#-----------------------------------------------------------------------------#
 
 case "$host" in
 	*-cygwin*)
@@ -2899,6 +3069,10 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+AC_SUBST(LINK_EXE)
+AC_SUBST(LD_STRIP_FLAG)
+AC_SUBST(LD_STATIC_FLAGS)
+AC_SUBST(DEFAULT_LINKAGE)
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(LINK_SHARED_OBJ_SH)
 AC_SUBST(ERROR_UNDEFINED)
@@ -3257,6 +3431,9 @@ if test "$mercury_cv_enable_dynamic_link" = "yes"; then
 	# restore old value of LIBS
 	LIBS="$save_LIBS"
 fi
+
+TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY"
+AC_SUBST(TRACE_LIBS_SYSTEM)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether to enable the new MercuryFile struct)

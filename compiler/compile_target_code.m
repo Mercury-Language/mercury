@@ -377,16 +377,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	globals__io_lookup_string_option(cc, CC),
 	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
-	
-	{ string__sub_string_search(CC, "gcc", _) ->
-		CompilerType = gcc
-	; string__sub_string_search(CC, "lcc", _) ->
-		CompilerType = lcc
-	; string__sub_string_search(string__to_lower(CC), "cl", _) ->
-		CompilerType = cl
-	;
-		CompilerType = unknown
-	},
 
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
 	globals__io_lookup_bool_option(split_c_files, SplitCFiles),
@@ -551,19 +541,12 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		StackTraceOpt = ""
 	},
 	globals__io_lookup_bool_option(target_debug, Target_Debug),
-	{ Target_Debug = yes ->
-		( CompilerType = gcc,
-			Target_DebugOpt = "-g "
-		; CompilerType = lcc,
-			Target_DebugOpt = "-g "
-		; CompilerType = cl,
-			Target_DebugOpt = "/Zi "
-		; CompilerType = unknown,
-			Target_DebugOpt = "-g "
-		)
+	( { Target_Debug = yes } ->
+		globals__io_lookup_string_option(cflags_for_debug,
+			Target_DebugOpt)
 	;
-		Target_DebugOpt = ""
-	},
+		{ Target_DebugOpt = "" }
+	),
 	globals__io_lookup_bool_option(low_level_debug, LL_Debug),
 	{ LL_Debug = yes ->
 		LL_DebugOpt = "-DMR_LOW_LEVEL_DEBUG "
@@ -595,50 +578,38 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		TypeLayoutOpt = ""
 	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
-	{ C_optimize = yes ->
-		( CompilerType = gcc ->
-			OptimizeOpt = "-O2 -fomit-frame-pointer "
-		; CompilerType = lcc ->
-			OptimizeOpt = ""
-		;
-			OptimizeOpt = "-O "
-		)
+	( { C_optimize = yes } ->
+		globals__io_lookup_string_option(cflags_for_optimization,
+			OptimizeOpt)
 	;
-		OptimizeOpt = ""
-	},
+		{ OptimizeOpt = "" }
+	),
+	globals__io_lookup_bool_option(ansi_c, Ansi),
+	( { Ansi = yes } ->
+		globals__io_lookup_string_option(cflags_for_ansi, AnsiOpt)
+	;
+		{ AnsiOpt = "" }
+	),
 	globals__io_lookup_bool_option(inline_alloc, InlineAlloc),
 	{ InlineAlloc = yes ->
 		InlineAllocOpt = "-DMR_INLINE_ALLOC -DSILENT "
 	;
 		InlineAllocOpt = ""
 	},
-	{ CompilerType = gcc ->
-		% We don't enable `-Wpointer-arith', because it causes
-		% too many complaints in system header files.
-		% This is fixed in gcc 3.0, though, so at some
-		% point we should re-enable this.
-		%
-		% If --inline-alloc is enabled, don't enable missing-prototype
-		% warnings, since gc_inline.h is missing lots of prototypes.
-		%
-		% For a full list of the other gcc warnings that we don't
-		% enable, and why, see scripts/mgnuc.in.
-		( InlineAlloc = yes ->
-			WarningOpt = "-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
-		;
-			WarningOpt = "-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
-		)
-	; CompilerType = lcc ->
-		WarningOpt = "-w "
+	globals__io_lookup_bool_option(warn_target_code, Warn),
+	( { Warn = yes } ->
+		globals__io_lookup_string_option(cflags_for_warnings,
+			WarningOpt)
 	;
-		WarningOpt = ""
-	},
+		{ WarningOpt = "" }
+	),
+
 	% Be careful with the order here!  Some options override others,
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
 	% Also be careful that each option is separated by spaces.
 	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
-		SplitOpt, OptimizeOpt,
+		SplitOpt, " ", OptimizeOpt, " ",
 		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
@@ -648,7 +619,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		Target_DebugOpt, LL_DebugOpt,
 		DeclDebugOpt, RequireTracingOpt, StackTraceOpt,
 		UseTrailOpt, ReserveTagOpt, MinimalModelOpt, TypeLayoutOpt,
-		InlineAllocOpt, WarningOpt, CFLAGS,
+		InlineAllocOpt, " ", AnsiOpt, " ", WarningOpt, " ", CFLAGS,
 		" -c ", C_File, " ", NameObjectFile, O_File], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
@@ -880,6 +851,9 @@ make_init_obj_file(ErrorStream,
 	make_init_obj_file(ErrorStream,
 		MustCompile, ModuleName, ModuleNames, Result).
 
+% WARNING: The code here duplicates the functionality of scripts/c2init.in.
+% Any changes there may also require changes here, and vice versa.
+
 :- pred make_init_obj_file(io__output_stream, bool,
 	module_name, list(module_name), maybe(file_name),
 	io__state, io__state).
@@ -892,16 +866,8 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_write_string(Verbose, "% Creating initialization file...\n"),
 
-	globals__io_get_trace_level(TraceLevel),
-	{ given_trace_level_is_none(TraceLevel) = no ->
-		TraceOpt = "--trace "
-	;
-		TraceOpt = ""
-	},
 	globals__io_get_globals(Globals),
 	{ compute_grade(Globals, Grade) },
-
-	standard_library_directory_option(StdLibOpt),
 
 	get_object_code_type(executable, PIC),
 	maybe_pic_object_file_extension(PIC, ObjExt),
@@ -917,28 +883,65 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	    ), ModuleNames, CFileNameList),
 	{ join_string_list(CFileNameList, "", "", " ", CFileNames) },
 
-	globals__io_lookup_accumulating_option(link_flags, LinkFlagsList),
-	{ join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },
-
 	globals__io_lookup_accumulating_option(init_file_directories,
 		InitFileDirsList),
 	{ join_quoted_string_list(InitFileDirsList,
 		"-I ", "", " ", InitFileDirs) },
 
-	globals__io_lookup_accumulating_option(init_files, InitFileNamesList),
+
+	globals__io_lookup_accumulating_option(init_files, InitFileNamesList0),
+	globals__io_lookup_accumulating_option(trace_init_files,
+			TraceInitFileNamesList0),
+	globals__io_lookup_maybe_string_option(
+		mercury_standard_library_directory, MaybeStdLibDir),
+	(
+		{ MaybeStdLibDir = yes(StdLibDir) },
+		{ InitFileNamesList1 = [StdLibDir/"modules"/"mer_rt.init",
+				StdLibDir/"modules"/"mer_std.init" |
+				InitFileNamesList0] },
+		{ TraceInitFileNamesList =
+				[StdLibDir/"modules"/"mer_browser.init" |
+				TraceInitFileNamesList0] }
+	;
+		{ MaybeStdLibDir = no },
+		{ InitFileNamesList1 = InitFileNamesList0 },
+		{ TraceInitFileNamesList = TraceInitFileNamesList0 }
+	),
+
+	globals__io_get_trace_level(TraceLevel),
+	( { given_trace_level_is_none(TraceLevel) = no } ->
+		{ TraceOpt = "-t" },
+		{ InitFileNamesList =
+			InitFileNamesList1 ++ TraceInitFileNamesList }
+	;
+		{ TraceOpt = "" },
+		{ InitFileNamesList = InitFileNamesList1 }
+	),
 	{ join_quoted_string_list(InitFileNamesList,
 		"", "", " ", InitFileNames) },
 
-	globals__io_lookup_accumulating_option(trace_init_files,
-		TraceInitFileNamesList),
-	{ join_quoted_string_list(TraceInitFileNamesList, "--trace-init-file ",
-		"", " ", TraceInitFileNames) },
+	globals__io_lookup_accumulating_option(runtime_flags,
+		RuntimeFlagsList),
+	{ join_quoted_string_list(RuntimeFlagsList, "-r ",
+		"", " ", RuntimeFlags) },
 
+	globals__io_lookup_bool_option(extra_initialization_functions,
+		ExtraInits),
+	{ ExtraInitsOpt = ( ExtraInits = yes -> "-x" ; "" ) },
+
+	globals__io_lookup_bool_option(main, Main),
+	{ NoMainOpt = ( Main = no -> "-l" ; "" ) },
+
+	globals__io_lookup_bool_option(aditi, Aditi),
+	{ AditiOpt = ( Aditi = yes -> "-a" ; "" ) },
+
+	globals__io_lookup_string_option(mkinit_command, Mkinit),
 	{ TmpInitCFileName = InitCFileName ++ ".tmp" },
 	{ MkInitCmd = string__append_list(
-		["c2init --grade ", Grade, " ", TraceOpt, StdLibOpt, LinkFlags,
-		" --init-c-file ", TmpInitCFileName, " ", InitFileDirs, " ",
-		TraceInitFileNames, " ", InitFileNames, " ", CFileNames]) },
+		[Mkinit,  " -g ", Grade, " ", TraceOpt, " ", ExtraInitsOpt,
+		" ", NoMainOpt, " ", AditiOpt, " ", RuntimeFlags,
+		" -o ", TmpInitCFileName, " ", InitFileDirs,
+		" ", InitFileNames, " ", CFileNames]) },
 	invoke_shell_command(ErrorStream, verbose, MkInitCmd, MkInitOK0),
 	maybe_report_stats(Stats),
 	( { MkInitOK0 = yes } ->
@@ -994,53 +997,123 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	    { Result = no }
 	).
 
+% WARNING: The code here duplicates the functionality of scripts/ml.in.
+% Any changes there may also require changes here, and vice versa.
 link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	globals__io_get_trace_level(TraceLevel),
-	{ given_trace_level_is_none(TraceLevel) = no ->
-		TraceOpt = "--trace "
-	;
-		TraceOpt = ""
-	},
-	globals__io_get_globals(Globals),
-	{ compute_grade(Globals, Grade) },
-
 	maybe_write_string(Verbose, "% Linking...\n"),
+	globals__io_lookup_string_option(library_extension, LibExt),
+	globals__io_lookup_string_option(shared_library_extension,
+		SharedLibExt),
+	globals__io_lookup_string_option(executable_file_extension, ExeExt),
 	( { LinkTargetType = static_library } ->
-	    	globals__io_lookup_string_option(library_extension, Ext),
-		module_name_to_lib_file_name("lib", ModuleName, Ext,
+		{ Ext = LibExt },
+		module_name_to_lib_file_name("lib", ModuleName, LibExt,
 			yes, OutputFileName),
 		create_archive(ErrorStream, OutputFileName, ObjectsList,
 			LinkSucceeded)
 	;
-		( { LinkTargetType = shared_library } ->
-			{ SharedLibOpt = "--make-shared-lib " },
+		(
+			{ LinkTargetType = shared_library },
+			{ CommandOpt = link_shared_lib_command },
+			{ RpathFlagOpt = shlib_linker_rpath_flag },
+			{ RpathSepOpt = shlib_linker_rpath_separator },
 			{ LDFlagsOpt = ld_libflags },
-			globals__io_lookup_string_option(
-				shared_library_extension, Ext),
+			{ ThreadFlagsOpt = shlib_linker_thread_flags },
+			{ DebugFlagsOpt = shlib_linker_debug_flags },
+			{ TraceFlagsOpt = shlib_linker_trace_flags },
+			globals__io_lookup_bool_option(allow_undefined,
+				AllowUndef),
+			( { AllowUndef = yes } ->
+				globals__io_lookup_string_option(
+					linker_allow_undefined_flag, UndefOpt)
+			;
+				globals__io_lookup_string_option(
+					linker_error_undefined_flag, UndefOpt)
+			),
+			{ Ext = SharedLibExt },
 			module_name_to_lib_file_name("lib", ModuleName,
 				Ext, yes, OutputFileName)
 		;
-			{ SharedLibOpt = "" },
+			{ LinkTargetType = static_library },
+			{ error("compile_target_code__link") }
+		;
+			{ LinkTargetType = executable },
+			{ CommandOpt = link_executable_command },
+			{ RpathFlagOpt = linker_rpath_flag },
+			{ RpathSepOpt = linker_rpath_separator },
 			{ LDFlagsOpt = ld_flags },
-			globals__io_lookup_string_option(
-				executable_file_extension, Ext),
+			{ ThreadFlagsOpt = linker_thread_flags },
+			{ DebugFlagsOpt = linker_debug_flags },
+			{ TraceFlagsOpt = linker_trace_flags },
+			{ UndefOpt = "" },
+			{ Ext = ExeExt },
 			module_name_to_file_name(ModuleName, Ext,
 				yes, OutputFileName)
 		),
-		globals__io_lookup_bool_option(target_debug, Target_Debug),
-		{ Target_Debug = yes ->
-			Target_Debug_Opt = "--no-strip "
+
+		%
+		% Should the executable be stripped?
+		%
+		globals__io_lookup_bool_option(strip, Strip),
+		( { LinkTargetType = executable, Strip = yes } ->
+			globals__io_lookup_string_option(linker_strip_flag,
+				StripOpt)
 		;
-			Target_Debug_Opt = ""
-		},
-		standard_library_directory_option(StdLibOpt),
+			{ StripOpt = "" }
+		),
+
+		globals__io_lookup_bool_option(target_debug, TargetDebug),
+		( { TargetDebug = yes } ->
+			globals__io_lookup_string_option(DebugFlagsOpt,
+				DebugOpts)
+		;
+			{ DebugOpts = "" }
+		),
+
+		%
+		% Should the executable be statically linked?
+		%
+		globals__io_lookup_string_option(linkage, Linkage),
+		( { LinkTargetType = executable, Linkage = "static" } ->
+			globals__io_lookup_string_option(linker_static_flags,
+				StaticOpts)
+		;
+			{ StaticOpts = "" }
+		),
+
+		%
+		% Are the thread libraries needed?
+		%
+		use_thread_libs(UseThreadLibs),
+		( { UseThreadLibs = yes } ->
+			globals__io_lookup_string_option(ThreadFlagsOpt,
+				ThreadOpts)
+		;
+			{ ThreadOpts = "" }
+		),
+
+		%
+		% Find the Mercury standard libraries.
+		%
+		globals__io_lookup_maybe_string_option(
+			mercury_standard_library_directory, MaybeStdLibDir),
+		(
+			{ MaybeStdLibDir = yes(StdLibDir) },
+			get_mercury_std_libs(StdLibDir, MercuryStdLibs)
+		;
+			{ MaybeStdLibDir = no },
+			{ MercuryStdLibs = "" }
+		),
+
+		%
+		% Find which system libraries are needed.
+		%
+		get_system_libs(LinkTargetType, SystemLibs),
+
 		{ join_string_list(ObjectsList, "", "", " ", Objects) },
-		globals__io_lookup_accumulating_option(link_flags,
-				LinkFlagsList),
-		{ join_string_list(LinkFlagsList, "", "", " ", LinkFlags) },
 		globals__io_lookup_accumulating_option(LDFlagsOpt,
 				LDFlagsList),
 		{ join_string_list(LDFlagsList, "", "", " ", LDFlags) },
@@ -1049,12 +1122,39 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				LinkLibraryDirectoriesList),
 		{ join_quoted_string_list(LinkLibraryDirectoriesList, "-L", "",
 				" ", LinkLibraryDirectories) },
-		globals__io_lookup_accumulating_option(
+
+		%
+		% Set up the runtime library path.
+		%
+		(
+			{ SharedLibExt \= LibExt },
+			{ Linkage = "shared" ; LinkTargetType = shared_library }
+		->
+			globals__io_lookup_accumulating_option(
 				runtime_link_library_directories,
-				RuntimeLinkLibraryDirectoriesList),
-		{ join_quoted_string_list(RuntimeLinkLibraryDirectoriesList,
-				"-R", "", " ",
-				RuntimeLinkLibraryDirectories) },
+				RpathDirs),
+			( { RpathDirs = [] } ->
+				{ RpathOpts = "" }
+			;
+				globals__io_lookup_string_option(RpathSepOpt,
+					RpathSep),
+				globals__io_lookup_string_option(RpathFlagOpt,
+					RpathFlag),
+				{ RpathOpts0 = string__join_list(RpathSep,
+					RpathDirs) },
+				{ RpathOpts = RpathFlag ++ RpathOpts0 }
+			)
+		;
+			{ RpathOpts = "" }
+		),
+
+		globals__io_get_trace_level(TraceLevel),
+		( { given_trace_level_is_none(TraceLevel) = yes } ->
+			{ TraceOpts = "" }
+		;
+			globals__io_lookup_string_option(TraceFlagsOpt,
+				TraceOpts )
+		),
 
 		%
 		% Pass either `-llib' or `PREFIX/lib/GRADE/FULLARCH/liblib.a',
@@ -1065,6 +1165,8 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				mercury_library_directories,
 				MercuryLibDirs0),
 		globals__io_lookup_string_option(fullarch, FullArch),
+		globals__io_get_globals(Globals),
+		{ compute_grade(Globals, Grade) },
 		{ MercuryLibDirs = list__map(
 				(func(LibDir) = LibDir/"lib"/Grade/FullArch),
 				MercuryLibDirs0) },
@@ -1078,33 +1180,30 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 			{ join_quoted_string_list(LinkLibrariesList,
 				"", "", " ", LinkLibraries) },
 
-			globals__io_lookup_string_option(linkage, Linkage),
-			{ LinkageOpt = "--" ++ Linkage },
-			globals__io_lookup_maybe_string_option(
-				mercury_standard_library_directory,
-				MaybeStdLibDir),
-			globals__io_lookup_string_option(mercury_linkage,
-				MercuryLinkage),
-			{ MaybeStdLibDir = yes(_),
-				MercuryLinkageOpt =
-					"--mercury-libs " ++ MercuryLinkage
-			; MaybeStdLibDir = no,
-				MercuryLinkageOpt = ""
-			},
-
 			% Note that LDFlags may contain `-l' options
 			% so it should come after Objects.
+			globals__io_lookup_string_option(CommandOpt, Command),
 			{ string__append_list(
-				["ml --grade ", Grade, " ", SharedLibOpt,
-				Target_Debug_Opt, TraceOpt, StdLibOpt,
-				LinkageOpt, " ", MercuryLinkageOpt, " ",
-				LinkFlags, " ", LinkLibraryDirectories, " ",
-				RuntimeLinkLibraryDirectories,
-				" -- -o ", OutputFileName, " ", Objects, " ",
-				LDFlags, " ", LinkLibraries],
+				[Command, " ", UndefOpt, " ", StripOpt,
+				" ", DebugOpts, " ", StaticOpts, " ",
+				ThreadOpts, " ", TraceOpts, " ",
+				LinkLibraryDirectories, " ", RpathOpts,
+				" -o ", OutputFileName, " ", Objects, " ",
+				LDFlags, " ", LinkLibraries, " ",
+				MercuryStdLibs, " ", SystemLibs],
 				LinkCmd) },
+
+			globals__io_lookup_bool_option(demangle, Demangle),
+			( { Demangle = yes } ->
+				globals__io_lookup_string_option(
+					demangle_command, DemamngleCmd),
+				{ MaybeDemangleCmd = yes(DemamngleCmd) }
+			;
+				{ MaybeDemangleCmd = no }
+			),
+
 			invoke_shell_command(ErrorStream, verbose_commands,
-				LinkCmd, LinkSucceeded)
+				LinkCmd, MaybeDemangleCmd, LinkSucceeded)
 		;
 			{ LibrariesSucceeded = no },
 			{ LinkSucceeded = no }
@@ -1137,6 +1236,145 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 	;
 		{ Succeeded = LinkSucceeded }
 	).
+
+	% Find the standard Mercury libraries, and the system
+	% libraries needed by them.
+:- pred get_mercury_std_libs(dir_name::in, string::out,
+		io__state::di, io__state::uo) is det.
+
+get_mercury_std_libs(StdLibDir, StdLibs) -->
+	globals__io_lookup_string_option(fullarch, FullArch),
+	globals__io_get_gc_method(GCMethod),
+	globals__io_lookup_string_option(library_extension, LibExt),
+	globals__io_get_globals(Globals),
+	{ compute_grade(Globals, Grade) },
+
+	%
+	% GC libraries.
+	%
+	(
+		{ GCMethod = none },
+		{ StaticGCLibs = "" },
+		{ SharedGCLibs = "" }
+	;
+		{ GCMethod = boehm },
+		globals__io_lookup_bool_option(profile_time, ProfTime),
+		globals__io_lookup_bool_option(profile_deep, ProfDeep),
+		{ ( ProfTime = yes ; ProfDeep = yes ) ->
+			GCGrade0 = "gc_prof"
+		;
+			GCGrade0 = "gc"
+		},
+		globals__io_lookup_bool_option(parallel, Parallel),
+		{ Parallel = yes ->
+			GCGrade = "par_" ++ GCGrade0
+		;
+			GCGrade = GCGrade0
+		},
+		{ SharedGCLibs = "-l" ++ GCGrade },
+		{ StaticGCLibs =
+			StdLibDir/"lib"/FullArch/("lib" ++ GCGrade ++ LibExt) }
+	;
+		{ GCMethod = mps },
+		{ SharedGCLibs = "-lmps" },
+		{ StaticGCLibs =
+			StdLibDir/"lib"/FullArch/("libmps" ++ LibExt) }
+	;
+		{ GCMethod = accurate },
+		{ StaticGCLibs = "" },
+		{ SharedGCLibs = "" }
+	),
+
+	%
+	% Trace libraries.
+	%
+	globals__io_get_trace_level(TraceLevel),
+	( { given_trace_level_is_none(TraceLevel) = yes } ->
+		{ StaticTraceLibs = "" },
+		{ SharedTraceLibs = "" }
+	;
+		{ StaticTraceLibs =
+			StdLibDir/"lib"/Grade/FullArch/
+				("libmer_trace" ++ LibExt) ++
+			" " ++
+			StdLibDir/"lib"/Grade/FullArch/
+				("libmer_browser" ++ LibExt) },
+		{ SharedTraceLibs = "-lmer_trace -lmer_browser" }
+	),
+
+	globals__io_lookup_string_option(mercury_linkage, MercuryLinkage),
+	{ MercuryLinkage = "static" ->
+	    StdLibs = string__join_list(" ",
+		[StaticTraceLibs,
+		StdLibDir/"lib"/Grade/FullArch/("libmer_std" ++ LibExt),
+		StdLibDir/"lib"/Grade/FullArch/("libmer_rt" ++ LibExt),
+		StaticGCLibs])
+	; MercuryLinkage = "shared" ->
+	    StdLibs = string__join_list(" ",
+		[SharedTraceLibs, "-lmer_std -lmer_rt", SharedGCLibs])
+	;
+		error("unknown linkage " ++ MercuryLinkage)
+	}.
+
+:- pred get_system_libs(linked_target_type::in, string::out,
+		io__state::di, io__state::uo) is det.
+
+get_system_libs(TargetType, SystemLibs) -->
+	%
+	% System libraries used when tracing.
+	%
+	globals__io_get_trace_level(TraceLevel),
+	( { given_trace_level_is_none(TraceLevel) = yes } ->
+		{ SystemTraceLibs = "" }
+	;
+		globals__io_lookup_string_option(trace_libs, SystemTraceLibs0),
+		globals__io_lookup_bool_option(use_readline, UseReadline),
+		( { UseReadline = yes } ->
+			globals__io_lookup_string_option(readline_libs,
+				ReadlineLibs),
+			{ SystemTraceLibs =
+				SystemTraceLibs0 ++ " " ++ ReadlineLibs }
+		;
+			{ SystemTraceLibs = SystemTraceLibs0 }
+		)
+	),
+
+	%
+	% Thread libraries
+	%
+	use_thread_libs(UseThreadLibs),
+	( { UseThreadLibs = yes } ->
+		globals__io_lookup_string_option(thread_libs, ThreadLibs)
+	;
+		{ ThreadLibs = "" }
+	),
+
+	%
+	% Other system libraries.
+	%
+	(
+		{ TargetType = shared_library },
+		globals__io_lookup_string_option(shared_libs, OtherSystemLibs)
+	;
+		{ TargetType = static_library },
+		{ error("compile_target_code__get_std_libs: static library") }
+	;
+		{ TargetType = executable },
+		globals__io_lookup_string_option(math_lib, OtherSystemLibs)
+	),	
+
+	{ SystemLibs = string__join_list(" ",
+			[SystemTraceLibs, OtherSystemLibs, ThreadLibs]) }.
+
+:- pred use_thread_libs(bool::out, io__state::di, io__state::uo) is det.
+
+use_thread_libs(UseThreadLibs) -->
+	globals__io_lookup_bool_option(parallel, Parallel),
+	globals__io_get_gc_method(GCMethod),
+	{ UseThreadLibs =
+		( ( Parallel = yes ; GCMethod = mps ) -> yes ; no ) }.
+
+%-----------------------------------------------------------------------------%
 
 :- pred process_link_library(list(dir_name), string, string, bool, bool,
 		io__state, io__state).

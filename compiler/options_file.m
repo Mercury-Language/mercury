@@ -766,7 +766,6 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	;	ilasm_flags
 	;	csharp_flags
 	;	mcpp_flags
-	;	ml_flags
 	;	ml_objs
 	;	ml_libs
 	;	ld_flags
@@ -788,7 +787,7 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 options_variable_types =
 	[grade_flags, linkage, mercury_linkage, mmc_flags, c_flags, java_flags,
 	ilasm_flags, csharp_flags, mcpp_flags,
-	ml_objs, lib_dirs, ml_flags, ld_flags,
+	ml_objs, lib_dirs, ld_flags,
 	libraries, ml_libs, c2init_args,
 	lib_grades, install_prefix].
 
@@ -801,7 +800,6 @@ options_variable_name(java_flags) = "JAVACFLAGS".
 options_variable_name(ilasm_flags) = "MS_ILASM_FLAGS".
 options_variable_name(mcpp_flags) = "MS_CL_FLAGS".
 options_variable_name(csharp_flags) = "MS_CSC_FLAGS".
-options_variable_name(ml_flags) = "MLFLAGS".
 options_variable_name(ml_objs) = "MLOBJS".
 options_variable_name(ml_libs) = "MLLIBS".
 options_variable_name(ld_flags) = "LDFLAGS".
@@ -823,7 +821,6 @@ options_variable_type_is_target_specific(java_flags) = yes.
 options_variable_type_is_target_specific(ilasm_flags) = yes.
 options_variable_type_is_target_specific(mcpp_flags) = yes.
 options_variable_type_is_target_specific(csharp_flags) = yes.
-options_variable_type_is_target_specific(ml_flags) = yes.
 options_variable_type_is_target_specific(ml_objs) = yes.
 options_variable_type_is_target_specific(ml_libs) = yes.
 options_variable_type_is_target_specific(ld_flags) = yes.
@@ -879,7 +876,6 @@ mmc_option_type(java_flags) = option([], "--java-flag").
 mmc_option_type(ilasm_flags) = option([], "--ilasm-flag").
 mmc_option_type(mcpp_flags) = option([], "--mcpp-flag").
 mmc_option_type(csharp_flags) = option([], "--csharp-flag").
-mmc_option_type(ml_flags) = option([], "--link-flag").
 mmc_option_type(ml_objs) = option([], "--link-object").
 mmc_option_type(ml_libs) = mmc_flags.
 mmc_option_type(ld_flags) = option([], "--ld-flag").

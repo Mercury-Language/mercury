@@ -266,15 +266,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
-	% Using the MSVC compiler implies that we must use a maximum jump
-	% table size of 512 to avoid a fixed limit in the compiler.
-	globals__io_lookup_string_option(cc, CC),
-	( { string__sub_string_search(string__to_lower(CC), "cl", _) } ->
-		globals__io_set_option(max_jump_table_size, int(512))
-	;
-		[]
-	),
-
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(
@@ -634,6 +625,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		Error = no
 	},
 
+	option_implies(target_debug, strip, bool(no)),
+
 	% --decl-debug is an extension of --debug
 	option_implies(decl_debug, require_tracing, bool(yes)),
 	option_implies(decl_debug, stack_trace, bool(yes)),
@@ -945,6 +938,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	globals__io_lookup_string_option(fullarch, FullArch),
+
 	%
 	% Add the standard library directory.
 	%
@@ -958,7 +953,23 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 				OptionTable2, StdLibDir),
 			Globals3) },
 		{ unsafe_promise_unique(Globals3, Globals4) },
-		globals__io_set_globals(Globals4)
+		globals__io_set_globals(Globals4),
+
+		%
+		% Add `-L' and `-R' options for the location
+		% of the GC libraries. 
+		%
+		globals__io_lookup_accumulating_option(
+			link_library_directories, LinkLibDirs0),
+		globals__io_set_option(link_library_directories,
+			accumulating(
+				[StdLibDir/"lib"/FullArch | LinkLibDirs0])),
+
+		globals__io_lookup_accumulating_option(
+			runtime_link_library_directories, Rpath0),
+		globals__io_set_option(runtime_link_library_directories,
+			accumulating([StdLibDir/"lib"/FullArch | Rpath0]))
+
 	;
 		[]
 	),
@@ -984,7 +995,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%
 	globals__io_lookup_accumulating_option(mercury_library_directories,
 		MercuryLibDirs),
-	globals__io_lookup_string_option(fullarch, FullArch),
 	globals__io_get_globals(Globals),
 	{ grade_directory_component(Globals, GradeString) },
 	(
@@ -993,6 +1003,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			(func(MercuryLibDir) =
 				MercuryLibDir/"lib"/GradeString/FullArch
 			), MercuryLibDirs) },
+
 		globals__io_lookup_accumulating_option(
 			link_library_directories, LinkLibDirs),
 		globals__io_set_option(link_library_directories,

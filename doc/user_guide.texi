@@ -4207,6 +4207,12 @@ Warn about any directly recursive calls that are not tail recursive.
 This option also requires @samp{--high-level-code}.
 
 @sp 1
+@item --no-warn-target-code
+@findex --no-warn-target-code
+Disable warnings from the compiler used to process the
+target code (e.g. gcc).
+
+@sp 1
 @item --no-warn-up-to-date
 @findex --no-warn-up-to-date
 @findex --warn-up-to-date
@@ -4500,6 +4506,18 @@ Write Aditi-RL bytecode to @file{@var{module}.rlo} and do not compile to C
 @findex --output-grade-string
 Compute from the rest of the option settings the canonical grade
 string and print it on the standard output.
+
+@sp 1
+@item --output-link-command
+@findex --output-link-command
+Print the command used to link executables to the
+standard output.
+
+@sp 1
+@item --output-shared-lib-link-command
+@findex --output-shared-lib-link-command
+Print the command used to link shared libraries to the
+standard output.
 @end table
 
 @node Auxiliary output options
@@ -6429,15 +6447,23 @@ environment variable to a sequence of @samp{--c-include-directory} options.
 @cindex C debugging
 @cindex Debugging the generated C code
 Pass the @samp{-g} flag to the C compiler, to enable debugging
-of the generated C code, and also pass @samp{--no-strip} to the Mercury
-linker, to tell it not to strip the C debugging information.
+of the generated C code, and also disable stripping of C debugging
+information from the executable.
 Since the generated C code is very low-level, this option is not likely
 to be useful to anyone except the Mercury implementors, except perhaps
 for debugging code that uses Mercury's C interface extensively.
 
+@sp 1
 @item --no-c-optimize
 @findex --no-c-optimize
 Don't enable the C compiler's optimizations.
+
+@sp 1
+@item --no-ansi-c
+@findex --no-ansi-c
+Don't specify to the C compiler that the ANSI dialect
+of C should be used.  Use the full contents of system
+headers, rather than the ANSI subset.
 
 @sp 1
 @item --inline-alloc
@@ -6508,26 +6534,13 @@ first module on the command line, but without the @samp{.m} extension.)
 This option is ignored by @samp{mmc --make}.
 
 @sp 1
-@item --ml-flags @var{options}
-@itemx --link-flags @var{options}
-@itemx --ml-flag @var{option}
-@findex --link-flags
-@findex --ml-flags
-@findex --ml-flag
-@cindex Link options
-@cindex Linker options
-Specify options to be passed to @samp{ml}, the Mercury linker.
-@samp{--ml-flag} should be used for single words which need
-to be quoted when passed to the shell.
-
-@sp 1
 @item --ld-flags @var{options}
 @item --ld-flags @var{option}
 @findex --ld-flags
 @findex --ld-flag
 Specify options to be passed to the command
-invoked by ml to link an executable.
-Use @code{ml --print-link-command} to find out
+invoked by mmc to link an executable.
+Use @code{mmc --output-link-command} to find out
 which command is used.
 @samp{--ld-flag} should be used for single words which need
 to be quoted when passed to the shell.
@@ -6538,8 +6551,8 @@ to be quoted when passed to the shell.
 @findex --ld-libflags
 @findex --ld-libflag
 Specify options to be passed to the command
-invoked by ml to link a shared library.
-Use @code{ml --print-shared-lib-link-command}
+invoked by mmc to link a shared library.
+Use @code{mmc --output-shared-lib-link-command}
 to find out which command is used.
 @samp{--ld-libflag} should be used for single words which need
 to be quoted when passed to the shell.
@@ -6569,11 +6582,13 @@ to search for shared libraries at runtime.
 @cindex Libraries, linking with
 Link with the specified library.
 
+@sp 1
 @item --link-object @var{object}
 @findex --link-object
 @cindex Object files, linking with
 Link with the specified object file.
 
+@sp 1
 @item --mld @var{directory}
 @itemx --mercury-library-directory @var{directory}
 @findex --mld
@@ -6586,6 +6601,7 @@ This will add @samp{--search-directory}, @samp{--library-directory},
 @samp{--init-file-directory} and @samp{--c-include-directory}
 options as needed.  @xref{Using libraries}.
 
+@sp 1
 @item --ml @var{library}
 @itemx --mercury-library @var{library}
 @findex --ml
@@ -6593,6 +6609,7 @@ options as needed.  @xref{Using libraries}.
 @cindex Libraries, linking with
 Link with the specified Mercury library.  @xref{Using libraries}.
 
+@sp 1
 @item --mercury-standard-library-directory @var{directory}
 @itemx --mercury-stdlib-dir @var{directory}
 @findex --mercury-standard-library-directory
@@ -6601,6 +6618,7 @@ Search @var{directory} for the Mercury standard library.
 Implies @samp{--mercury-library-directory @var{directory}}
 and @samp{--mercury-configuration-directory @var{directory}}.
 
+@sp 1
 @item --no-mercury-standard-library-directory
 @itemx --no-mercury-stdlib-dir
 @findex --no-mercury-standard-library-directory
@@ -6608,16 +6626,19 @@ and @samp{--mercury-configuration-directory @var{directory}}.
 Don't use the Mercury standard library.
 Implies @samp{--no-mercury-configuration-directory}.
 
+@sp 1
 @item --init-file-directory @var{directory}
 @findex --init-file-directory
 Append @var{directory} to the list of directories to
 be searched for @samp{.init} files by @samp{c2init}.
 
+@sp 1
 @item --init-file @var{file}
 @findex --init-file
 Append @var{file} to the list of @samp{.init} files
 to be passed to @samp{c2init}.
 
+@sp 1
 @item --trace-init-file @var{file}
 @findex --trace-init-file
 Append @var{file} to the list of @samp{.init} files
@@ -6635,6 +6656,48 @@ Shared libraries are always linked with @samp{--linkage shared}.
 Specify whether to use shared or static linking when
 linking an executable with Mercury libraries.
 Shared libraries are always linked with @samp{--mercury-linkage shared}.
+
+@sp 1
+@item --no-strip
+@findex --no-strip
+Don't strip executables.
+
+@sp 1
+@item --no-demangle
+@findex --no-demangle
+Don't pipe link errors through the Mercury demangler.
+
+@sp 1
+@item --no-main
+@findex --no-main
+Don't generate a C main() function.  The user's code must
+provide a main() function.
+
+@sp 1
+@item --allow-undefined
+@findex --allow-undefined
+Allow undefined symbols in shared libraries.
+
+@sp 1
+@item --no-use-readline
+@findex --no-use-readline
+Disable use of the readline library in the debugger.
+
+@sp 1
+@item --runtime-flags @var{flags}
+@findex --runtime-flags
+Specify flags to pass to the Mercury runtime.
+
+@sp 1
+@item --extra-initialization-functions
+@itemx --extra-inits
+@findex --extra-initialization-functions
+@findex --extra-inits
+Search @samp{.c} files for extra initialization functions.
+(This may be necessary if the C files contain
+hand-coded C code with @samp{INIT} comments, rather than
+containing only C code that was automatically generated
+by the Mercury compiler.)
 
 @end table
 

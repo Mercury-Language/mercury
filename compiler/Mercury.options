@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002 University of Melbourne.
+# Copyright (C) 2002-2003 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -17,11 +17,17 @@ CFLAGS-aditi_backend.rl_code=-O1
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi
+
 # If intermodule optimization is enabled, we also need to use `--no-ansi'
 # for the following modules, because they import process_util.
 MGNUCFLAGS-make.module_dep_file = --no-ansi
 MGNUCFLAGS-make.module_target = --no-ansi
 MGNUCFLAGS-make.program_target = --no-ansi
+
+MCFLAGS-libs.process_util = --no-ansi-c
+MGFLAGS-make.module_dep_file = --no-ansi-c
+MCFLAGS-make.module_target = --no-ansi-c
+MCFLAGS-make.program_target = --no-ansi-c
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.

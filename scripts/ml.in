@@ -13,6 +13,11 @@
 # Usage: see below.
 #
 # Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE, ...
+#
+# *************************************************************************
+# *** IMPORTANT NOTE: any changes to this file may also require similar ***
+# *** changes to compiler/compile_target_code.m and configure.in        ***
+# *************************************************************************
 
 Usage="\
 Name: ml - Mercury Linker
@@ -39,6 +44,13 @@ LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ_SH@"}
 SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 FIX_PATH_FOR_LINKER=${MERCURY_PATH_FOR_LINKER="@FIX_PATH_FOR_CC@"}
+LD_STATIC_FLAGS="@LD_STATIC_FLAGS@"
+LDFLAGS_FOR_THREADS="@LDFLAGS_FOR_THREADS@"
+LDFLAGS_FOR_TRACE="@LDFLAGS_FOR_TRACE@"
+LD_LIBFLAGS_FOR_THREADS="@LD_LIBFLAGS_FOR_THREADS@"
+THREAD_LIBS="@THREAD_LIBS@"
+TRACE_LIBS_SYSTEM="@TRACE_LIBS_SYSTEM@"
+
 TMPDIR=${TMPDIR=/tmp}
 MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
 # Note: the setting of SHARED_LIBS needs to come after the setting of MATH_LIB,
@@ -70,12 +82,6 @@ case "$CC" in
 	;;
 esac
 
-# On some systems (Solaris for exemple), we need libraries to be able to 
-# use sockets. The name of the needed libraries is determined by autoconf
-# and passed through this variable.
-SOCKET_LIBRARY="@SOCKET_LIBRARY@"
-NSL_LIBRARY="@NSL_LIBRARY@"
-
 # Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
 DL_LIBRARY="@DL_LIBRARY@"
 
@@ -83,8 +89,8 @@ DL_LIBRARY="@DL_LIBRARY@"
 READLINE_LIBRARIES="@READLINE_LIBRARIES@"
 
 # If you change these, you will also need to change Mmake.workspace,
-# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
-# and tools/linear.
+# compiler/compile_target_code.m, scripts/c2init.in, tools/bootcheck,
+# tools/binary, tools/binary_step and tools/linear.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
@@ -146,49 +152,7 @@ esac
 # Defaults have been set, now set options.
 
 case $all_libs in static)
-	case $COMPILER in gcc|lcc)
-		MAYBE_STATIC_OPT=-static
-		;;
-	esac
-	case $FULLARCH in
-		*-linux*)
-			# On Linux, if we're linking statically, we need to
-			# pass `-defsym _DYNAMIC=0' to the linker, to avoid
-			# undefined references to _DYNAMIC in
-			# boehm_gc/dyn_load.c.
-			# (We might eventually need similar treatment
-			# for other OSs too)
-			case $COMPILER in
-	 		gcc)
-				MAYBE_STATIC_OPT="-static \
-					-Wl-defsym -Wl_DYNAMIC=0"
-				;;
-			lcc)
-				MAYBE_STATIC_OPT="-static \
-					-Wl,-defsym -Wl,_DYNAMIC=0"
-				;;
-			esac
-			;;
-		alpha*-dec-osf*)
-			case $COMPILER in cc)
-				MAYBE_STATIC_OPT=-non_shared
-				;;
-			esac
-			;;
-		*-sun-solaris*)
-			case $COMPILER in cc)
-				MAYBE_STATIC_OPT="-B static"
-				;;
-			esac
-			;;
-	esac
-	case "$MAYBE_STATIC_OPT" in "")
-		echo "ml: warning: \`--static' ignored, since I don't" 1>&2
-		echo "	know how to enable static linking with this" 1>&2
-		echo "	C compiler (\`$CC')." 1>&2
-		echo "	Using \`--mercury-libs static' instead." 1>&2
-		;;
-	esac
+	MAYBE_STATIC_OPT=$LD_STATIC_FLAGS
 esac
 
 #
@@ -249,8 +213,7 @@ esac
 
 case $trace in
 	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME"
-		TRACE_LIBS_SYSTEM="$SOCKET_LIBRARY $NSL_LIBRARY $DL_LIBRARY \
-			$READLINE_LIBRARIES"
+		TRACE_LIBS_SYSTEM="$TRACE_LIBS_SYSTEM $READLINE_LIBRARIES"
 		TRACE_STATIC_LIBS="\
 		  `$FIX_PATH_FOR_LINKER \
 		    $LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.@LIB_SUFFIX@` \
@@ -284,37 +247,10 @@ case $thread_safe in true)
 	use_thread_libs=true ;;
 esac
 
-case $use_thread_libs in
-	true)
-		# For Linux, Irix, Solaris, and HPUX,
-		# the thread-enabled version of the Boehm
-		# collector contains a reference to dlopen(), so 
-		# if threads are enabled, we need to link with the
-		# appropriate extra library for that (-ldl on Linux
-		# and Solaris, -lrt on HPUX, and nothing on Irix).
-		# XXX That should only be done if conservative GC
-		#     is enabled.
-
-		case "$FULLARCH" in
- 		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
-		*-linux*)	THREAD_LIBS="-lpthread -ldl" ;;
-		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
-		### We don't yet support threads on HPUX and IRIX
-		### *-hpux*)	THREAD_LIBS="-lpthread -lrt" ;;
-		### *-irix*)	THREAD_LIBS="-lpthread" ;;
-		*cygwin*)
-			case $COMPILER in
-				cl)	ARCH_OPTS="/MD"
-					;;
-
-			esac
-			;;
-		*)		echo "$0: warning: don't know which" \
-					"library to use for pthreads" 1>&2
-				THREAD_LIBS=""
-				;;
-		esac ;;
-	false)	THREAD_LIBS="" ;;
+case $use_thread_libs.$make_shared_lib in
+	true.false)	ARCH_OPTS=$LDFLAGS_FOR_THREADS ;;
+	true.true)	ARCH_OPTS=$LD_LIBFLAGS_FOR_THREADS ;;
+	false.*)	THREAD_LIBS="" ;;
 esac
 
 case $make_shared_lib in
@@ -327,6 +263,9 @@ case $make_shared_lib in
 	RPATH_OPT="$SHLIB_RPATH_OPT"
 	RPATH_SEP="$SHLIB_RPATH_SEP"
 	STDLIBS="$SHARED_LIBS $THREAD_LIBS"
+	case $trace in true)
+		ARCH_OPTS="$ARCH_OPTS $LD_LIBFLAGS_FOR_TRACE"
+	esac
 	;;
     false)
 	LINKER="$CC"
@@ -334,6 +273,9 @@ case $make_shared_lib in
 	RPATH_OPT="$EXE_RPATH_OPT"
 	RPATH_SEP="$EXE_RPATH_SEP"
 	STDLIBS="$MATH_LIB $THREAD_LIBS"
+	case $trace in true)
+		ARCH_OPTS="$ARCH_OPTS $LDFLAGS_FOR_TRACE"
+	esac
 	;;
 esac
 
@@ -415,36 +357,6 @@ case $EXT_FOR_SHARED_LIB in so)
 	;;
 esac
 
-case $FULLARCH in
-    #
-    # On Irix 5, grades `fast' and `jump' only work in non_shared mode.
-    #
-    *-sgi-irix5*)
-	case $non_local_gotos in
-	    true)
-		ARCH_OPTS=-non_shared
-		NONSHARED_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
-		LIBRARY_PATH="$NONSHARED_PATH:$LIBRARY_PATH"
-		export LIBRARY_PATH
-		;;
-	esac
-	;;
-    #
-    # On Linux ELF, `-rdynamic' is needed to make symbols
-    # exported for use in code linked in with dlopen(),
-    # which is used for interactive queries in the
-    # Mercury debugger.
-    #
-    *-linux*aout*)
-	# Linux a.out -- no special options needed
-	;;
-    *-linux*)
-	# Linux ELF -- need to add `-rdynamic' if using the debugger
-	case $trace in true)
-		ARCH_OPTS=-rdynamic
-	esac
-	;;
-esac
 
 case "$MKFIFO" in
     none) demangle=false ;;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,6 +191,8 @@ about unbound type variables.
 					% interest to the user.
 	.
 
+	% invoke_shell_command(ErrorStream, Verbosity, Command, Succeeded)
+	%
 	% Invoke a shell script.
 	% Both standard and error output will go to the
 	% specified output stream.
@@ -198,11 +200,35 @@ about unbound type variables.
 	command_verbosity::in, string::in, bool::out,
 	io__state::di, io__state::uo) is det.
 
+	% invoke_shell_command(ErrorStream, Verbosity, Command,
+	%		ProcessOutput, Succeeded)
+	%
+	% Invoke a shell script.
+	% Both standard and error output will go to the
+	% specified output stream after being piped through
+	% `ProcessOutput'.
+:- pred invoke_shell_command(io__output_stream::in,
+	command_verbosity::in, string::in, maybe(string)::in, bool::out,
+	io__state::di, io__state::uo) is det.
+
+	% invoke_system_command(ErrorStream, Verbosity, Command, Succeeded)
+	%
 	% Invoke an executable.
 	% Both standard and error output will go to the
 	% specified output stream.
 :- pred invoke_system_command(io__output_stream::in,
 	command_verbosity::in, string::in, bool::out,
+	io__state::di, io__state::uo) is det.
+
+	% invoke_system_command(ErrorStream, Verbosity, Command,
+	%		ProcessOutput, Succeeded)
+	%
+	% Invoke an executable.
+	% Both standard and error output will go to the
+	% specified output stream after being piped through
+	% `ProcessOutput'.
+:- pred invoke_system_command(io__output_stream::in,
+	command_verbosity::in, string::in, maybe(string)::in, bool::out,
 	io__state::di, io__state::uo) is det.
 
 	% Make a command string, which needs to be invoked in a shell
@@ -460,10 +486,19 @@ maybe_set_exit_status(yes) --> [].
 maybe_set_exit_status(no) --> io__set_exit_status(1).
 
 invoke_shell_command(ErrorStream, Verbosity, Command0, Succeeded) -->
+	invoke_shell_command(ErrorStream, Verbosity, Command0, no, Succeeded).
+
+invoke_shell_command(ErrorStream, Verbosity, Command0,
+		ProcessOutput, Succeeded) -->
 	{ make_command_string(Command0, forward, Command) },
-	invoke_system_command(ErrorStream, Verbosity, Command, Succeeded).
+	invoke_system_command(ErrorStream, Verbosity, Command,
+		ProcessOutput, Succeeded).
 
 invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
+	invoke_system_command(ErrorStream, Verbosity, Command, no, Succeeded).
+
+invoke_system_command(ErrorStream, Verbosity, Command,
+		MaybeProcessOutput, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	(
 		{ Verbosity = verbose },
@@ -495,11 +530,11 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 		{ Result = ok(exited(Status)) },
 		maybe_write_string(PrintCommand, "% done.\n"),
 		( { Status = 0 } ->
-			{ Succeeded = yes }
+			{ CommandSucceeded = yes }
 		;
 			% The command should have produced output
 			% describing the error.
-			{ Succeeded = no }
+			{ CommandSucceeded = no }
 		)
 	;
 		{ Result = ok(signalled(Signal)) },
@@ -509,17 +544,60 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 		raise_signal(Signal),
 		report_error(ErrorStream, "system command received signal "
 					++ int_to_string(Signal) ++ "."),
-		{ Succeeded = no }
+		{ CommandSucceeded = no }
 	;
 		{ Result = error(Error) },
 		report_error(ErrorStream, io__error_message(Error)),
-		{ Succeeded = no }
+		{ CommandSucceeded = no }
 	),
+
+	(
+		{ MaybeProcessOutput = yes(ProcessOutput) },
+		io__make_temp(ProcessedTmpFile),
+		io__call_system_return_signal(
+			string__append_list([ProcessOutput, " < ",
+				TmpFile, " > ", ProcessedTmpFile, " 2>&1"]),
+				ProcessOutputResult),
+		io__remove_file(TmpFile, _),
+		(
+			{ ProcessOutputResult =
+				ok(exited(ProcessOutputStatus)) },
+			maybe_write_string(PrintCommand, "% done.\n"),
+			( { ProcessOutputStatus = 0 } ->
+				{ ProcessOutputSucceeded = yes }
+			;
+				% The command should have produced output
+				% describing the error.
+				{ ProcessOutputSucceeded = no }
+			)
+		;
+			{ ProcessOutputResult =
+				ok(signalled(ProcessOutputSignal)) },
+			% Make sure the current process gets the signal. Some
+			% systems (e.g. Linux) ignore SIGINT during a call to
+			% system().
+			raise_signal(ProcessOutputSignal),
+			report_error(ErrorStream,
+				"system command received signal "
+				++ int_to_string(ProcessOutputSignal) ++ "."),
+			{ ProcessOutputSucceeded = no }
+		;
+			{ ProcessOutputResult = error(ProcessOutputError) },
+			report_error(ErrorStream,
+				io__error_message(ProcessOutputError)),
+			{ ProcessOutputSucceeded = no }
+		)
+	;
+		{ MaybeProcessOutput = no },
+		{ ProcessOutputSucceeded = yes },
+		{ ProcessedTmpFile = TmpFile }
+	),
+	{ Succeeded = CommandSucceeded `and` ProcessOutputSucceeded },
 
 	%
 	% Write the output to the error stream.
 	%
-	io__open_input(TmpFile, TmpFileRes),
+	io__open_input(ProcessedTmpFile, TmpFileRes),
 	(
 		{ TmpFileRes = ok(TmpFileStream) },
 		io__input_stream_foldl_io(TmpFileStream,
@@ -538,7 +616,7 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 		report_error(ErrorStream, "error opening command output: "
 				++ io__error_message(TmpFileError))
 	),
-	io__remove_file(TmpFile, _).
+	io__remove_file(ProcessedTmpFile, _).
 
 make_command_string(String0, QuoteType, String) :-
 	( use_win32 ->

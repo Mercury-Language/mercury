@@ -73,9 +73,9 @@ MPS_GC_OBJ_DIR=$(MPS_GC_DIR)/$(MPS_PFM)/$(MPS_VARIETY)
 # have just a ".init" suffix. (The trace library does not have a .init file,
 # since it contains no Mercury code.)
 #
-# If you change these, you will also need to change scripts/ml.in,
-# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
-# and tools/linear.
+# If you change these, you will also need to change
+# compiler/compile_target_code.m, scripts/ml.in, scripts/c2init.in,
+# tools/bootcheck, tools/binary, tools/binary_step and tools/linear.
 RT_LIB_NAME = mer_rt
 STD_LIB_NAME = mer_std
 TRACE_LIB_NAME = mer_trace
@@ -196,10 +196,12 @@ LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
 		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(BROWSER_DIR)
 
 MLFLAGS +=	$(LIB_DIR_OPTS)
+MCFLAGS +=	$(LIB_DIR_OPTS)
 MLLIBS +=	$(LINK_LIB_OPTS)
 
 ifeq ($(SET_RPATH),yes)
 MLFLAGS += $(LIB_DIR_OPTS:-L%=-R%)
+MCFLAGS += $(LIB_DIR_OPTS:-L%=-R%)
 endif
 
 endif # LINK_STATIC != yes

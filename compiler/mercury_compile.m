@@ -204,6 +204,9 @@ main_2(no, OptionArgs, Args, Link) -->
 	globals__io_lookup_bool_option(generate_source_file_mapping,
 		GenerateMapping),
 	globals__io_lookup_bool_option(output_grade_string, OutputGrade),
+	globals__io_lookup_bool_option(output_link_command, OutputLinkCommand),
+	globals__io_lookup_bool_option(output_shared_lib_link_command,
+		OutputShLibLinkCommand),
 	globals__io_lookup_bool_option(filenames_from_stdin,
 		FileNamesFromStdin),
 	globals__io_lookup_bool_option(make, Make),
@@ -217,6 +220,18 @@ main_2(no, OptionArgs, Args, Link) -->
 		{ compute_grade(Globals, Grade) },
 		io__stdout_stream(Stdout),
 		io__write_string(Stdout, Grade),
+		io__write_string(Stdout, "\n")
+	; { OutputLinkCommand = yes } ->
+		globals__io_lookup_string_option(link_executable_command,
+			LinkCommand),
+		io__stdout_stream(Stdout),
+		io__write_string(Stdout, LinkCommand),
+		io__write_string(Stdout, "\n")
+	; { OutputShLibLinkCommand = yes } ->
+		globals__io_lookup_string_option(link_shared_lib_command,
+			LinkCommand),
+		io__stdout_stream(Stdout),
+		io__write_string(Stdout, LinkCommand),
 		io__write_string(Stdout, "\n")
 	; { GenerateMapping = yes } ->
 		source_file_map__write_source_file_map(Args)

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne.
+# Copyright (C) 1995-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -11,6 +11,10 @@
 # This script outputs an appropriate init.c, given the .c files.
 # Type `c2init --help' for usage message.
 #
+# *************************************************************************
+# *** IMPORTANT NOTE: any changes to this file may also require similar ***
+# *** changes to compiler/compile_target_code.m                         ***
+# *************************************************************************
 
 Usage="\
 Name:	c2init - Create Mercury initialization file.
@@ -25,9 +29,9 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
-# If you change these, you will also need to change Mmake.workspace
-# scripts/ml.in, tools/bootcheck, tools/binary, tools/binary_step and
-# tools/linear.
+# If you change these, you will also need to change Mmake.workspace,
+# compiler/compile_target_code.m, scripts/ml.in, tools/bootcheck,
+# tools/binary, tools/binary_step and tools/linear.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace

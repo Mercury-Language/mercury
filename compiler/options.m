@@ -559,8 +559,6 @@
 
 	% Link options
 		;	output_file_name
-		;	link_flags
-		;	quoted_link_flag
 		;	ld_flags
 		;	quoted_ld_flag
 		;	ld_libflags
@@ -613,6 +611,8 @@
 		;	linker_strip_flag
 		;	linker_debug_flags
 		;	shlib_linker_debug_flags
+		;	linker_trace_flags
+		;	shlib_linker_trace_flags
 		;	linker_rpath_flag
 		;	linker_rpath_separator
 		;	shlib_linker_rpath_flag
@@ -1156,8 +1156,6 @@ option_defaults_2(link_option, [
 					% if the output_file_name is an empty
 					% string, we use the name of the first
 					% module on the command line
-	link_flags		-	accumulating([]),
-	quoted_link_flag	-	string_special,
 	ld_flags		-	accumulating([]),
 	quoted_ld_flag		-	string_special,
 	ld_libflags		-	accumulating([]),
@@ -1212,6 +1210,8 @@ option_defaults_2(link_option, [
 	readline_libs -			string(""),
 	linker_debug_flags -		string("-g"),
 	shlib_linker_debug_flags -	string("-g"),
+	linker_trace_flags -		string("-g"),
+	shlib_linker_trace_flags -	string("-g"),
 	linker_thread_flags -		string(""),
 	shlib_linker_thread_flags -	string(""),
 	linker_static_flags -		string("-static"),
@@ -1813,10 +1813,6 @@ long_option("csharp-flag",		quoted_csharp_flag).
 
 % link options
 long_option("output-file",		output_file_name).
-long_option("link-flags",		link_flags).
-long_option("link-flag",		quoted_link_flag).
-long_option("ml-flags",			link_flags).
-long_option("ml-flag",			quoted_link_flag).
 long_option("ld-flags",			ld_flags).
 long_option("ld-flag",			quoted_ld_flag).
 long_option("ld-libflags",		ld_libflags).
@@ -1866,6 +1862,8 @@ long_option("math-lib",			math_lib).
 long_option("readline-libs",		readline_libs).
 long_option("linker-debug-flags",  	linker_debug_flags).
 long_option("shlib-linker-debug-flags",	shlib_linker_debug_flags).
+long_option("linker-trace-flags",  	linker_trace_flags).
+long_option("shlib-linker-trace-flags",	shlib_linker_trace_flags).
 long_option("linker-thread-flags",	linker_thread_flags).
 long_option("shlib-linker-thread-flags", shlib_linker_thread_flags).
 long_option("linker-static-flags",	linker_static_flags).
@@ -2069,9 +2067,6 @@ special_handler(quoted_mcpp_flag, string(Flag),
 special_handler(quoted_csharp_flag, string(Flag),
 			OptionTable0, ok(OptionTable)) :-
 	handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_link_flag, string(Flag),
-			OptionTable0, ok(OptionTable)) :-
-	handle_quoted_flag(link_flags, Flag, OptionTable0, OptionTable).
 special_handler(quoted_ld_flag, string(Flag),
 			OptionTable0, ok(OptionTable)) :-
 	handle_quoted_flag(ld_flags, Flag, OptionTable0, OptionTable).
@@ -2476,12 +2471,10 @@ options_help_warning -->
 		"\tThis requires --high-level-code.",
 		"--no-warn-up-to-date",
 		"\tDon't warn if targets specified on the command line",
-		"\twith `--make' are already up to date."
-		/* NYI
+		"\twith `--make' are already up to date.",
 		"--no-warn-target-code",
 		"\tDisable warnings from the compiler used to process the",
 		"\ttarget code (e.g. gcc)."
-		*/
 	]).
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
@@ -2607,15 +2600,13 @@ options_help_output -->
 		"--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
-		"\toutput."
-		/* NYI	
+		"\toutput.",
 		"--output-link-command",
 		"\tPrint the command used to link executables to the",
 		"\tstandard output.",
 		"--output-shared-lib-link-command",
 		"\tPrint the command used to link shared libraries to the",
 		"\tstandard output."
-		*/
 	]).
 
 :- pred options_help_aux_output(io__state::di, io__state::uo) is det.
@@ -3680,12 +3671,10 @@ options_help_target_code_compilation -->
 		"--no-c-optimize",
 		"\tDon't enable the C compiler's optimizations.",
 
-		/* NYI
 		"--no-ansi-c",
 		"\tDon't specify to the C compiler that the ANSI dialect",
 		"\tof C should be used.  Use the full contents of system",
 		"\theaders, rather than the ANSI subset.",
-		*/
 
 		"--c-debug",
 		"\tEnable debugging of the generated C code.",
@@ -3832,9 +3821,8 @@ options_help_link -->
 		"\tbe passed to c2init.",
 		"--trace-init-file <init-file>",
 		"\tAppend <init-file> to the list of `.init' files to",
-		"\tbe passed to c2init when tracing is enabled."
+		"\tbe passed to c2init when tracing is enabled.",
 
-		/* NYI 
 		"--no-strip",
 		"\tDon't strip executables.",
 		"--no-demangle",
@@ -3854,7 +3842,6 @@ options_help_link -->
 		"\thand-coded C code with `INIT' comments, rather than",
 		"\tcontaining only C code that was automatically generated",
 		"\tby the Mercury compiler.)"
-		*/
 
 		% The --shared-library-extension,
 		% --library-extension, --executable-file-extension
