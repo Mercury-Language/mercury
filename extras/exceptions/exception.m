@@ -471,13 +471,96 @@ wrap_exception(Exception, exception(Exception)).
 
 :- pragma c_code("
 
+Define_extern_entry(exception_handler_do_fail);
+
+/*
+** MR_trace_throw():
+**	Unwind the stack as far as possible, until we reach a frame
+**	with an exception handler.  As we go, invoke
+**	`MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
+**	to signal to the debugger that that procedure has exited via
+**	an exception.  This allows to user to use the `retry' command
+**	to restart a goal which exited via an exception.
+**
+**	Note that if MR_STACK_TRACE is not defined, then we may not be
+**	able to traverse the stack all the way; in that case, we just
+**	print a warning and then continue.  It might be better to just
+**	`#ifdef' out all this code (and the code in builtin_throw which
+**	calls it) if MR_STACK_TRACE is not defined.
+*/
+
+#define WARNING(msg)							\\
+	fprintf(stderr, ""mdb: warning: %s\\n""				\\
+		""This may result in some exception events\\n""		\\
+		""being omitted from the trace.\\n"", (msg))
+
+static Code *
+MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
+	Word *current_frame)
+{
+	const MR_Internal		*label;
+	const MR_Stack_Layout_Label	*return_label_layout;
+
+	/*
+	** Find the layout info for the stack frame pointed to by MR_succip
+	*/
+	label = MR_lookup_internal_by_addr(success_pointer);
+	if (label == NULL) {
+		WARNING(""internal label not found\\n"");
+		return NULL;
+	}
+	return_label_layout = label->i_layout;
+
+	while (return_label_layout != NULL) {
+		const MR_Stack_Layout_Entry	*entry_layout;
+		Code 				*MR_jumpaddr;
+		MR_Stack_Walk_Step_Result	result;
+		const char			*problem;
+
+		/*
+		** check if we've reached a frame with an exception handler
+		*/
+		entry_layout = return_label_layout->MR_sll_entry;
+		if (!MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)
+		    && MR_redoip_slot(current_frame) ==
+			ENTRY(exception_handler_do_fail))
+		{
+			return NULL;
+		}
+
+		/*
+		** invoke MR_trace() to trace the exception
+		*/
+		MR_jumpaddr = MR_trace(return_label_layout, MR_PORT_EXCEPTION,
+			"""", 0);
+		if (MR_jumpaddr != NULL) {
+			return MR_jumpaddr;
+		}
+
+		/*
+		** unwind the stacks back to the previous stack frame
+		*/
+		result = MR_stack_walk_step(entry_layout, &return_label_layout,
+			&det_stack_pointer, &current_frame, &problem);
+		if (result != STEP_OK) {
+			WARNING(problem);
+			return NULL;
+		}
+		restore_transient_registers();
+		MR_sp = det_stack_pointer;
+		MR_curfr = current_frame;
+		save_transient_registers();
+	}
+	return NULL;
+}
+
 enum CodeModel { MODEL_DET, MODEL_SEMI, MODEL_NON };
 
 /* swap the heap with the solutions heap */
 #define swap_heaps()							\\
 {									\\
 	/* save the current heap */					\\
-	Word *swap_heaps_temp_hp = hp;					\\
+	Word *swap_heaps_temp_hp = MR_hp;				\\
 	MemoryZone *swap_heaps_temp_hp_zone = MR_heap_zone;		\\
 									\\
 	/* set heap to solutions heap */				\\
@@ -503,14 +586,14 @@ typedef struct Exception_Handler_Frame_struct {
 	Word ticket_counter;
 #endif
 #ifndef CONSERVATIVE_GC
-	Word heap_ptr;
-	Word solns_heap_ptr;
-	Word heap_zone;
+	Word *heap_ptr;
+	Word *solns_heap_ptr;
+	MemoryZone *heap_zone;
 #endif
 } Exception_Handler_Frame;
 
-#define FRAMEVARS \
-	(((Exception_Handler_Frame *) (curfr - NONDET_FIXED_SIZE)) - 1)
+#define FRAMEVARS \\
+	(((Exception_Handler_Frame *) (MR_curfr - MR_NONDET_FIXED_SIZE)) - 1)
 
 Define_extern_entry(mercury__exception__builtin_catch_3_0); /* det */
 Define_extern_entry(mercury__exception__builtin_catch_3_1); /* semidet */
@@ -521,75 +604,88 @@ Define_extern_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 
 Define_extern_entry(mercury__exception__builtin_throw_1_0);
 
-Define_extern_entry(exception_handler_do_fail);
-
 /* the following are defined in runtime/mercury_ho_call.c */
 Declare_entry(do_call_det_closure);
 Declare_entry(do_call_semidet_closure);
 Declare_entry(do_call_nondet_closure);
 
-Declare_label(mercury__exception__builtin_catch_3_2_i1);
+/* the following is defined in runtime/mercury_trace_base.c */
+Declare_entry(MR_do_trace_redo_fail);
+
 Declare_label(mercury__exception__builtin_catch_3_2_i2);
-Declare_label(mercury__exception__builtin_catch_3_3_i1);
 Declare_label(mercury__exception__builtin_catch_3_3_i2);
-Declare_label(mercury__exception__builtin_catch_3_5_i1);
 Declare_label(mercury__exception__builtin_catch_3_5_i2);
 #ifdef MR_USE_TRAIL
   Declare_label(mercury__exception__builtin_catch_3_5_i3);
 #endif
-#ifndef COMPACT_ARGS
-  Declare_label(mercury__exception__builtin_throw_1_0_i1);
-  Declare_label(mercury__exception__builtin_throw_1_0_i2);
-  Declare_label(mercury__exception__builtin_throw_1_0_i3);
+Declare_label(mercury__exception__builtin_throw_1_0_i1);
+
+#ifdef COMPACT_ARGS
+  #define BUILTIN_THROW_STACK_SIZE 1
+#else
+  #define BUILTIN_THROW_STACK_SIZE 2
 #endif
 
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_1)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_2)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_3)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_4)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_5)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_throw_1_0)
-MR_MAKE_STACK_LAYOUT_ENTRY(exception_handler_do_fail)
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury__exception__builtin_catch_3_0)
 
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_2, 1)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_2, 2)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_3, 1)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_3, 2)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_5, 1)
-MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_5, 2)
+/*
+** MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn, pred_or_func,
+**			module, name, arity, mode)                         
+*/
+/* do we need one for exception_handler_do_fail? */
+
+MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
+        MR_DETISM_DET, BUILTIN_THROW_STACK_SIZE, MR_LIVE_LVAL_STACKVAR(1),
+        MR_PREDICATE, ""exception"", ""builtin_throw"", 1, 0);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
+#ifndef COMPACT_ARGS
+  MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 2);
+  MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 3);
+#endif
+
+/*
+** The following procedures all allocate their stack frames on
+** the nondet stack, so for the purposes of doing stack traces
+** we say they have MR_DETISM_NON, even though they are not
+** actually nondet.
+*/ 
+MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_2,
+	MR_DETISM_NON,	/* really cc_multi; also used for det */
+	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 2);
+MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_3,
+	MR_DETISM_NON,	/* really cc_nondet; also used for semidet */
+	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 3);
+MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_5,
+	MR_DETISM_NON,	/* ; also used for multi */
+	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 5);
+
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 1);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 2);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 1);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 2);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 1);
+MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 2);
 #ifdef MR_USE_TRAIL
-  MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_catch_3_5, 3)
-#endif
-#ifndef COMPACT_ARGS
-  MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_throw_1_0, 1)
-  MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_throw_1_0, 2)
-  MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__builtin_throw_1_0, 3)
+  MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 3);
 #endif
 
 BEGIN_MODULE(exceptions_module)
 	init_entry(mercury__exception__builtin_catch_3_0);
 	init_entry(mercury__exception__builtin_catch_3_1);
-	init_entry(mercury__exception__builtin_catch_3_2);
-	init_entry(mercury__exception__builtin_catch_3_3);
+	init_entry_sl(mercury__exception__builtin_catch_3_2);
+	init_entry_sl(mercury__exception__builtin_catch_3_3);
 	init_entry(mercury__exception__builtin_catch_3_4);
-	init_entry(mercury__exception__builtin_catch_3_5);
-	init_label(mercury__exception__builtin_catch_3_2_i1);
-	init_label(mercury__exception__builtin_catch_3_2_i2);
-	init_label(mercury__exception__builtin_catch_3_3_i1);
-	init_label(mercury__exception__builtin_catch_3_3_i2);
-	init_label(mercury__exception__builtin_catch_3_5_i1);
-	init_label(mercury__exception__builtin_catch_3_5_i2);
+	init_entry_sl(mercury__exception__builtin_catch_3_5);
+	init_label_sl(mercury__exception__builtin_catch_3_2_i2);
+	init_label_sl(mercury__exception__builtin_catch_3_3_i2);
+	init_label_sl(mercury__exception__builtin_catch_3_5_i2);
 #ifdef MR_USE_TRAIL
 	init_label(mercury__exception__builtin_catch_3_5_i3);
 #endif
 	init_entry(mercury__exception__builtin_throw_1_0);
-#ifndef COMPACT_ARGS
 	init_label(mercury__exception__builtin_throw_1_0_i1);
-	init_label(mercury__exception__builtin_throw_1_0_i2);
-	init_label(mercury__exception__builtin_throw_1_0_i3);
-#endif
 	init_entry(exception_handler_do_fail);
 BEGIN_CODE
 
@@ -650,8 +746,7 @@ Define_entry(mercury__exception__builtin_catch_3_2); /* cc_multi */
 	** can avoid this by creating a second frame above the special
 	** frame.)
 	*/
-	succip = LABEL(mercury__exception__builtin_catch_3_2_i1);
-	mkframe(""builtin_catch_2/1 [model_det]"", 0, ENTRY(do_fail));
+	mktempframe(ENTRY(do_fail));
 
 	/*
 	** Now call `Goal(Result)'.
@@ -674,9 +769,6 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
-	succeed_discard();
-
-Define_label(mercury__exception__builtin_catch_3_2_i1);
 	succeed_discard();
 
 /*
@@ -747,8 +839,7 @@ Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	** can avoid this by creating a second frame above the special
 	** frame.)
 	*/
-	succip = LABEL(mercury__exception__builtin_catch_3_3_i1);
-	mkframe(""builtin_catch_2/1 [model_semi]"", 0, ENTRY(do_fail));
+	mktempframe(ENTRY(do_fail));
 
 	/*
 	** Now call `Goal(Result)'.
@@ -779,9 +870,6 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
-	succeed_discard();
-
-Define_label(mercury__exception__builtin_catch_3_3_i1);
 	succeed_discard();
 
 /*
@@ -842,12 +930,10 @@ Define_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 	** can avoid this by creating a second frame above the special
 	** frame.)
 	*/
-	succip = LABEL(mercury__exception__builtin_catch_3_5_i1);
 #ifdef MR_USE_TRAIL
-	mkframe(""builtin_catch_2/1 [nondet]"", 0,
-		LABEL(mercury__exception__builtin_catch_3_5_i3));
+	mktempframe(LABEL(mercury__exception__builtin_catch_3_5_i3));
 #else
-	mkframe(""builtin_catch_2/1 [nondet]"", 0, ENTRY(do_fail));
+	mktempframe(ENTRY(do_fail));
 #endif
 
 	/*
@@ -876,9 +962,6 @@ Define_label(mercury__exception__builtin_catch_3_5_i2);
 	*/
 	succeed();
 
-Define_label(mercury__exception__builtin_catch_3_5_i1);
-	succeed();
-
 #ifdef MR_USE_TRAIL
 Define_label(mercury__exception__builtin_catch_3_5_i3);
 	MR_discard_ticket();
@@ -900,25 +983,38 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	enum CodeModel catch_code_model;
 
 	/*
+	** let the debugger trace exception throwing
+	*/
+	if (MR_trace_enabled) {
+		Code *MR_jumpaddr;
+		save_transient_registers();
+		MR_jumpaddr = MR_trace_throw(MR_succip, MR_sp, MR_curfr);
+		restore_transient_registers();
+		if (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);
+	}
+
+	/*
 	** Search the nondet stack for an exception handler,
 	** i.e. a frame whose redoip is `exception_handler_do_fail'
 	** (one created by `builtin_catch').
 	** N.B.  We search down the `succfr' chain, not the `prevfr' chain;
 	** this ensures that we only find handlers installed by our callers,
 	** not handlers installed by procedures that we called but which
-	** are still on the nondet stack because they choice points behind.
+	** are still on the nondet stack because they left choice points
+	** behind.
 	*/
-	do {
-		MR_curfr = cursuccfr;
+	while (MR_redoip_slot(MR_curfr) != ENTRY(exception_handler_do_fail)) {
+		MR_curfr = MR_succfr_slot(MR_curfr);
 		if (MR_curfr < MR_CONTEXT(nondetstack_zone)->min) {
 			fatal_error(""builtin_throw/1: uncaught exception"");
 		}
-	} while (curredoip != ENTRY(exception_handler_do_fail));
+
+	}
 
 	/*
 	** Save the handler we found, and reset the det stack top.
 	*/
-	MR_succip = cursuccip;
+	MR_succip = MR_succip_slot(MR_curfr);
 	catch_code_model = FRAMEVARS->code_model;
 	handler = FRAMEVARS->handler;	
 	MR_sp = FRAMEVARS->stack_ptr;	/* reset the det stack pointer */
@@ -962,8 +1058,8 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	*/
 	assert(FRAMEVARS->heap_ptr <= FRAMEVARS->heap_zone->top);
 	save_transient_registers();
-	exception = deep_copy(exception,
-		(Word *) (Word) &mercury_data_std_util__base_type_info_univ_0,
+	exception = deep_copy((Word *) exception,
+		(Word *) &mercury_data_std_util__base_type_info_univ_0,
 		FRAMEVARS->heap_ptr, FRAMEVARS->heap_zone->top);
 	restore_transient_registers();
 
@@ -977,8 +1073,8 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	/* deep_copy the exception back to the ordinary heap */
 	assert(FRAMEVARS->solns_heap_ptr <= MR_solutions_heap_zone->top);
 	save_transient_registers();
-	exception = deep_copy(exception,
-		(Word *) (Word) &mercury_data_std_util__base_type_info_univ_0,
+	exception = deep_copy((Word *) exception,
+		(Word *) &mercury_data_std_util__base_type_info_univ_0,
 		saved_solns_heap_ptr, MR_solutions_heap_zone->top);
 	restore_transient_registers();
 
@@ -1013,7 +1109,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** and reset the nondet stack top.  (This must be done last,
 	** since it invalidates all the framevars.)
 	*/
-	MR_maxfr = curprevfr;
+	MR_maxfr = MR_prevfr_slot(MR_curfr);
 	MR_curfr = MR_maxfr;
 
 	/*
@@ -1036,7 +1132,8 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 		tailcall(ENTRY(do_call_det_closure), 
 			ENTRY(mercury__exception__builtin_throw_1_0));
 	}
-	push(succip);
+	incr_sp_push_msg(1, ""builtin_throw/1"");
+	MR_stackvar(1) = (Word) MR_succip;
 	call(ENTRY(do_call_det_closure), 
 		LABEL(mercury__exception__builtin_throw_1_0_i1),
 		ENTRY(mercury__exception__builtin_throw_1_0));
@@ -1046,13 +1143,15 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 	/* we've just returned from do_call_det_closure */
 	r2 = r1;
 	r1 = TRUE;
-	succip = (Code *) pop();
+	MR_succip = (Code *) MR_stackvar(1);
+	decr_sp_pop_msg(1);
 	proceed();
 
 #else /* not COMPACT_ARGS */
 
-	push(succip);
-	push(catch_code_model);
+	incr_sp_push_msg(2, ""builtin_throw/1"");
+	MR_stackvar(1) = (Word) MR_succip;
+	MR_stackvar(2) = catch_code_model;
 	call(ENTRY(do_call_det_closure), 
 		LABEL(mercury__exception__builtin_throw_1_0_i1)),
 		ENTRY(mercury__exception__builtin_throw_1_0));
@@ -1060,13 +1159,14 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 Define_label(mercury__exception__builtin_throw_1_0_i1);
 	update_prof_current_proc(LABEL(mercury__exception__builtin_throw_1_0));
 	/* we've just returned from do_call_det_closure */
-	catch_code_model = pop();
+	catch_code_model = MR_stackvar(2);
 	if (catch_code_model == MODEL_SEMI) {
 		r5 = r1;
 	else {
 		r4 = r1;
 	}
-	succip = (Code *) pop();
+	MR_succip = (Code *) MR_stackvar(1);
+	decr_sp_pop_msg(2);
 	proceed();
 
 #endif /* not COMPACT_ARGS */

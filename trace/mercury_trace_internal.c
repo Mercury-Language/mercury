@@ -514,7 +514,10 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
-			if (port == MR_PORT_FAIL || port == MR_PORT_REDO) {
+			if (port == MR_PORT_FAIL ||
+			    port == MR_PORT_REDO ||
+			    port == MR_PORT_EXCEPTION)
+			{
 				cmd->MR_trace_cmd = MR_CMD_RESUME_FORWARD;
 				goto return_stop_interacting;
 			} else {
@@ -2385,6 +2388,10 @@ MR_trace_print_port(MR_Trace_Port port)
 
 		case MR_PORT_PRAGMA_LATER:
 			printf("LATR ");
+			break;
+
+		case MR_PORT_EXCEPTION:
+			printf("EXCP ");
 			break;
 
 		default:

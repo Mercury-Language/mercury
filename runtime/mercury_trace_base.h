@@ -34,7 +34,8 @@ typedef	enum {
 	MR_PORT_DISJ,
 	MR_PORT_SWITCH,
 	MR_PORT_PRAGMA_FIRST,
-	MR_PORT_PRAGMA_LATER
+	MR_PORT_PRAGMA_LATER,
+	MR_PORT_EXCEPTION
 } MR_Trace_Port;
 
 #define MR_trace_incr_seq()		((Word) ++MR_trace_call_seqno)

@@ -53,7 +53,7 @@
 	% The kinds of external ports for which the code we generate will
 	% call MR_trace. The redo port is not on this list, because for that
 	% port the code that calls MR_trace is not in compiler-generated code,
-	% but in the runtime system.
+	% but in the runtime system.  Likewise for the exception port.
 :- type external_trace_port
 	--->	call
 	;	exit

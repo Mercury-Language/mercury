@@ -30,10 +30,10 @@
 **
 ** If MR_trace_cmd == MR_CMD_FINISH, the event handler will stop at the next
 ** event that specifies the procedure invocation whose call number is in
-** MR_trace_stop_seqno and whose port is EXIT or FAIL.
+** MR_trace_stop_seqno and whose port is EXIT or FAIL or EXCEPTION.
 **
 ** If MR_trace_cmd == MR_CMD_RESUME_FORWARD, the event handler will stop at
-** the next event of any call whose port is *not* REDO or FAIL.
+** the next event of any call whose port is *not* REDO or FAIL or EXCEPTION.
 **
 ** If MR_trace_cmd == MR_CMD_RETURN, the event handler will stop at
 ** the next event of any call whose port is *not* EXIT.
@@ -83,9 +83,11 @@ typedef struct {
 } MR_Trace_Cmd_Info;
 
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
-					(port) == MR_PORT_FAIL)
+					 (port) == MR_PORT_FAIL || \
+					 (port) == MR_PORT_EXCEPTION)
 
-#define	MR_port_is_interface(port)	((port) < MR_PORT_FAIL)
+#define	MR_port_is_interface(port)	((port) < MR_PORT_FAIL || \
+					 (port) == MR_PORT_EXCEPTION)
 
 #define	MR_port_is_entry(port)		((port) == MR_PORT_CALL)
 

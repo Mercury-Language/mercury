@@ -56,6 +56,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	switch
 	;	nondet_pragma_first
 	;	nondet_pragma_later
+	;	exception
 	.
 
 :- type goal_path_string == string.
