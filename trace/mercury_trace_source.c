@@ -36,12 +36,33 @@
 /*
 ** When sent to a vim server, this string puts vim into "normal" mode.
 ** This has much the same effect as ESC, except that there is no bell if
-** already in normal mode.
+** already in normal mode.  We send this before most of the other
+** commands to ensure that they are interpreted correctly.
 **
 ** See the vim help page for ctrl-\_ctrl-n (type ':he ** ctrl-\\_ctrl-n'
 ** in vim).
 */
-#define MR_SOURCE_SERVER_RESET_STRING           "\034\016"
+#define MR_SOURCE_SERVER_RESET_STRING           "<C-\\><C-N>"
+
+/*
+** These vim commands split the screen, move to the top window, and
+** move down one window, respectively.
+*/
+#define MR_SOURCE_SERVER_SPLIT_STRING		"<C-W>s"
+#define MR_SOURCE_SERVER_TOP_STRING		"<C-W>t"
+#define MR_SOURCE_SERVER_DOWN_STRING		"<C-W>j"
+
+/*
+** This vim command centres the current window on the cursor.
+*/
+#define MR_SOURCE_SERVER_CENTRE_STRING		"z."
+
+/*
+** This is the command we use to quit the server.  We have to close *all*
+** windows, just in case we are in split screen mode.  This won't quit if
+** the user has modified any file, which is just as well.
+*/
+#define MR_SOURCE_SERVER_QUIT_STRING		":qall<CR>"
 
 /*
 ** The name used for the server will start with this basename.
@@ -78,6 +99,15 @@ static const char *MR_trace_source_check_server_cmd(const char *server_cmd,
 */
 static const char *MR_trace_source_check_server(const char *server_cmd,
 		const char *server_name, bool verbose);
+
+/*
+** Tell the server to jump to the given file and line.  If the server has
+** multiple windows open, use the current window.  If successful, returns
+** NULL, otherwise returns an error message.
+*/
+static const char *MR_trace_source_jump(const char *server_cmd,
+		const char *server_name, const char *filename, int lineno,
+		bool verbose);
 
 /*
 ** Send the given key sequence to the vim server.  Returns the status
@@ -172,6 +202,7 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 	** 2) check that server is valid;
 	** 3) start a server with a unique name;
 	** 4) wait until the server is found;
+	** 5) (if required) split the window.
 	*/
 
 	msg = MR_trace_source_check_display();
@@ -264,9 +295,23 @@ MR_trace_source_open_server(MR_Trace_Source_Server *server,
 		*/
 		MR_free(server->server_name);
 		server->server_name = NULL;
+		return msg;
 	}
 
-	return msg;
+	if (server->split) {
+		/* Split the window. */
+		status = MR_trace_source_send(real_server_cmd,
+				server->server_name,
+				MR_SOURCE_SERVER_RESET_STRING
+				MR_SOURCE_SERVER_SPLIT_STRING,
+				verbose);
+		if (status != 0) {
+			server->split = FALSE;
+			return "warning: unable to split source window";
+		}
+	}
+
+	return NULL;
 }
 
 const char *
@@ -307,12 +352,22 @@ MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
 
 const char *
 MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
-		int lineno, bool verbose)
+		int lineno, const char *parent_filename, int parent_lineno,
+		bool verbose)
 {
 	const char	*real_server_cmd;
 	const char	*msg;
-	char		system_call[MR_SYSCALL_BUFFER_SIZE];
 	int		status;
+	bool		have_parent;
+	bool		have_current;
+
+	have_parent = strdiff(parent_filename, "") && parent_lineno != 0;
+	have_current = strdiff(filename, "") && lineno != 0;
+
+	if (!have_parent && !have_current) {
+		/* No point continuing. */
+		return NULL;
+	}
 
 	if (server->server_cmd != NULL) {
 		real_server_cmd = server->server_cmd;
@@ -321,17 +376,109 @@ MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
 	}
 
 	msg = MR_trace_source_check_server(real_server_cmd,
-			server->server_name, FALSE);
+			server->server_name, verbose);
 	if (msg != NULL) {
 		return msg;
 	}
+
+	if (server->split) {
+		/*
+		** When in split mode, we open two windows on the vim
+		** server, a primary window and the secondary window.  The
+		** primary window displays what would normally be shown in
+		** non-split mode.
+		**
+		** If there is no parent context (e.g. at internal events)
+		** we leave the secondary window alone.
+		**
+		** If we have a parent context it will be displayed in the
+		** primary window, so in this case we show the current
+		** context in the secondary window.
+		**
+		** The primary window is the one second from the top (which
+		** will usually be the bottom window).  The secondary window
+		** is at the top.
+		*/
+
+		if (have_parent && have_current) {
+			/* Move to the secondary (top) window. */
+			status = MR_trace_source_send(real_server_cmd,
+					server->server_name,
+					MR_SOURCE_SERVER_RESET_STRING
+					MR_SOURCE_SERVER_TOP_STRING,
+					verbose);
+			if (status != 0) {
+				return "warning: source synchronisation failed";
+			}
+
+			msg = MR_trace_source_jump(real_server_cmd,
+					server->server_name, filename, lineno,
+					verbose);
+			if (msg != NULL) {
+				return msg;
+			}
+
+			/* Move down one window to the primary. */
+			status = MR_trace_source_send(real_server_cmd,
+					server->server_name,
+					MR_SOURCE_SERVER_RESET_STRING
+					MR_SOURCE_SERVER_DOWN_STRING,
+					verbose);
+			if (status != 0) {
+				return "warning: source synchronisation failed";
+			}
+		} else {
+			/*
+			** Move to the primary (second from top) window.
+			*/
+			status = MR_trace_source_send(real_server_cmd,
+					server->server_name,
+					MR_SOURCE_SERVER_RESET_STRING
+					MR_SOURCE_SERVER_TOP_STRING
+					MR_SOURCE_SERVER_DOWN_STRING,
+					verbose);
+			if (status != 0) {
+				return "warning: source synchronisation failed";
+			}
+		}
+	}
+
+	/*
+	** We show the parent context if we can, since if both are present
+	** the parent context is usually more interesting.  Otherwise we
+	** show the current context.
+	*/
+	if (have_parent) {
+		msg = MR_trace_source_jump(real_server_cmd,
+				server->server_name, parent_filename,
+				parent_lineno, verbose);
+		if (msg != NULL) {
+			return msg;
+		}
+	} else {
+		msg = MR_trace_source_jump(real_server_cmd,
+				server->server_name, filename, lineno,
+				verbose);
+		if (msg != NULL) {
+			return msg;
+		}
+	}
+
+	return NULL;
+}
+
+static const char *
+MR_trace_source_jump(const char *server_cmd, const char *server_name,
+		const char *filename, int lineno, bool verbose)
+{
+	char		system_call[MR_SYSCALL_BUFFER_SIZE];
+	int		status;
 
 	/*
 	** Point the source server to the given context.
 	*/
 	sprintf(system_call, "%s --servername \"%s\" --remote '+%d' %s",
-			real_server_cmd, server->server_name, lineno,
-			filename);
+			server_cmd, server_name, lineno, filename);
 	status = MR_verbose_system_call(system_call, verbose);
 	if (status != 0) {
 		return "warning: source synchronisation failed";
@@ -341,12 +488,10 @@ MR_trace_source_sync(MR_Trace_Source_Server *server, const char *filename,
 	** Center the current line in the vim window.  We need to put
 	** the server in normal mode, just in case the user has changed
 	** mode since the previous command was sent.
-	**
-	** Avoid echoing the command even if --verbose is set, because
-	** the control characters may interfere with the terminal.
 	*/
-	status = MR_trace_source_send(real_server_cmd, server->server_name,
-			MR_SOURCE_SERVER_RESET_STRING "z.", FALSE);
+	status = MR_trace_source_send(server_cmd, server_name,
+			MR_SOURCE_SERVER_RESET_STRING
+			MR_SOURCE_SERVER_CENTRE_STRING, verbose);
 	if (status != 0) {
 		return "warning: source synchronisation failed";
 	}
@@ -372,17 +517,9 @@ MR_trace_source_close(MR_Trace_Source_Server *server, bool verbose)
 		return msg;
 	}
 
-	/*
-	** We first send "Ctrl-\ Ctrl-N", which guarantees we get back to
-	** "normal" mode without beeping, followed by ":q\n" which should
-	** quit.  This won't quit if the user has modified the file, which
-	** is just as well.
-	**
-	** Avoid echoing the command even if --verbose is set, because
-	** the control characters may interfere with the terminal.
-	*/
 	MR_trace_source_send(real_server_cmd, server->server_name,
-			MR_SOURCE_SERVER_RESET_STRING ":q\n", FALSE);
+			MR_SOURCE_SERVER_RESET_STRING
+			MR_SOURCE_SERVER_QUIT_STRING, verbose);
 
 #if 0
 	/*

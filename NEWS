@@ -134,6 +134,11 @@ Changes to the Mercury standard library:
   have functions.
 
 Changes to the Mercury implementation:
+
+* We've added a 'view' command to `mdb', which opens a `vim' window and
+  in it displays the current source location, updated at each event.  This
+  requires X11 and a version of `vim' with the `clientserver' feature
+  enabled.
   
 * The Mercury compiler can now perform smart recompilation, enabled by the
   `--smart-recompilation' option. With smart recompilation, when the

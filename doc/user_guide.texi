@@ -2385,14 +2385,14 @@ the default is to affect all formats.
 In the case that the format itself is being set,
 these options are ignored.
 @sp 1
-@item view [-v] [-f] [-w @var{window-cmd}] [-s @var{server-cmd}] [-n @var{server-name}] [-t @var{timeout}]
+@item view [-vf2] [-w @var{window-cmd}] [-s @var{server-cmd}] [-n @var{server-name}] [-t @var{timeout}]
 @itemx view -c [-v] [-s @var{server-cmd}] [-n @var{server-name}]
 @kindex view (mdb command)
 Opens a new window displaying the source code,
 at the location of the current event.
 As mdb stops at new events,
 the window is updated to track through the source code.
-This requires a version of @samp{vim}
+This requires X11 and a version of @samp{vim}
 compiled with the client/server option enabled.
 @sp 1
 The debugger only updates one window at a time.
@@ -2413,6 +2413,21 @@ This is useful to find out what is wrong if the server does not start.
 The option @samp{-f} (or @samp{--force})
 stops the command from aborting if there is already a window open.
 Instead it attempts to close that window first.
+@sp 1
+The option @samp{-2} (or @samp{--split-screen})
+starts the vim server with two windows,
+which allows both the callee as well as the caller
+to be displayed at interface events.
+The lower window shows what would normally be seen
+if the split-screen option was not used,
+which at interface events is the caller.
+At these events,
+the upper window shows the callee definition.
+At internal events,
+the lower window shows the associated source,
+and the view in the upper window
+(which is not interesting at these events)
+remains unchanged.
 @sp 1
 The option @samp{-w} (or @samp{--window-command}) specifies
 the command to open a new window.

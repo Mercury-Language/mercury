@@ -186,7 +186,7 @@ static	void	MR_print_unsigned_var(FILE *fp, const char *var,
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
 static	const char *MR_trace_new_source_window(const char *window_cmd,
 			const char *server_cmd, const char *server_name,
-			int timeout, bool force, bool verbose);
+			int timeout, bool force, bool verbose, bool split);
 static	void	MR_trace_maybe_sync_source_window(MR_Event_Info *event_info,
 			bool verbose);
 static	void	MR_trace_maybe_close_source_window(bool verbose);
@@ -220,9 +220,9 @@ static	bool	MR_trace_options_param_set(MR_Word *print_set,
 			const char *item);
 static	bool	MR_trace_options_view(const char **window_cmd,
 			const char **server_cmd, const char **server_name,
-			int *timeout, bool *force, bool *verbose, bool *close,
-			char ***words, int *word_count, const char *cat,
-			const char*item);
+			int *timeout, bool *force, bool *verbose, bool *split,
+			bool *close, char ***words, int *word_count,
+			const char *cat, const char*item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -1160,13 +1160,14 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		int			timeout = 8;	/* seconds */
 		bool			force = FALSE;
 		bool			verbose = FALSE;
+		bool			split = FALSE;
 		bool			close = FALSE;
 		const char		*msg;
 
 		if (! MR_trace_options_view(&window_cmd, &server_cmd,
 				&server_name, &timeout, &force, &verbose,
-				&close, &words, &word_count, "browsing",
-				"view"))
+				&split, &close, &words, &word_count,
+				"browsing", "view"))
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count != 1) {
@@ -1176,7 +1177,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			msg = MR_trace_new_source_window(window_cmd,
 					server_cmd, server_name, timeout,
-					force, verbose);
+					force, verbose, split);
 			if (msg != NULL) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: %s.\n", msg);
@@ -2387,7 +2388,8 @@ MR_parse_source_locn(char *word, const char **file, int *line)
 */
 static const char *
 MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
-		const char *server_name, int timeout, bool force, bool verbose)
+		const char *server_name, int timeout, bool force, bool verbose,
+		bool split)
 {
 	const char	*msg;
 
@@ -2402,6 +2404,7 @@ MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
 		}
 	}
 
+	MR_trace_source_server.split = split;
 	if (server_cmd != NULL) {
 		MR_trace_source_server.server_cmd = MR_copy_string(server_cmd);
 	} else {
@@ -2444,6 +2447,8 @@ MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, bool verbose)
 	const MR_Label_Layout	*parent;
 	const char		*filename;
 	int			lineno;
+	const char		*parent_filename;
+	int			parent_lineno;
 	const char		*problem; /* not used */
 	MR_Word			*base_sp, *base_curfr;
 	const char		*msg;
@@ -2451,10 +2456,13 @@ MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, bool verbose)
 	if (MR_trace_source_server.server_name != NULL) {
 		lineno = 0;
 		filename = "";
+		parent_lineno = 0;
+		parent_filename = "";
 
 		/*
-		** At interface ports we use the parent context if we can.
-		** Otherwise, we use the current context.
+		** At interface ports we send both the parent context and
+		** the current context.  Otherwise, we just send the current
+		** context.
 		*/
 		if (MR_port_is_interface(event_info->MR_trace_port)) {
 			base_sp = MR_saved_sp(event_info->MR_saved_regs);
@@ -2462,8 +2470,8 @@ MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, bool verbose)
 			parent = MR_find_nth_ancestor(event_info->MR_event_sll,
 				1, &base_sp, &base_curfr, &problem);
 			if (parent != NULL) {
-				(void) MR_find_context(parent, &filename,
-					&lineno);
+				(void) MR_find_context(parent,
+					&parent_filename, &parent_lineno);
 			}
 		}
 
@@ -2473,7 +2481,8 @@ MR_trace_maybe_sync_source_window(MR_Event_Info *event_info, bool verbose)
 		}
 
 		msg = MR_trace_source_sync(&MR_trace_source_server, filename,
-				lineno, verbose);
+				lineno, parent_filename, parent_lineno,
+				verbose);
 		if (msg != NULL) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: %s.\n", msg);
@@ -2964,25 +2973,26 @@ static struct MR_option MR_trace_view_opts[] =
 	{ "timeout",		MR_required_argument,	NULL,	't' },
 	{ "force",		MR_no_argument,		NULL,	'f' },
 	{ "verbose",		MR_no_argument,		NULL,	'v' },
+	{ "split-screen",	MR_no_argument,		NULL,	'2' },
 	{ NULL,			MR_no_argument,		NULL,	0 }
 };
 
 static bool
 MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 		const char **server_name, int *timeout, bool *force,
-		bool *verbose, bool *close, char ***words, int *word_count,
-		const char *cat, const char *item)
+		bool *verbose, bool *split, bool *close, char ***words,
+		int *word_count, const char *cat, const char *item)
 {
 	int	c;
 	bool	no_close = FALSE;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "cw:s:n:t:fv",
+	while ((c = MR_getopt_long(*word_count, *words, "cw:s:n:t:fv2",
 			MR_trace_view_opts, NULL)) != EOF)
 	{
 		/*
 		** Option '-c' is mutually incompatible with '-f', '-t',
-		** '-s', '-n' and '-w'.
+		** '-s', '-n', '-w' and '-2'.
 		*/
 		switch (c) {
 
@@ -3042,6 +3052,15 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 
 			case 'v':
 				*verbose = TRUE;
+				break;
+
+			case '2':
+				if (*close) {
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*split = TRUE;
+				no_close = TRUE;
 				break;
 
 			default:

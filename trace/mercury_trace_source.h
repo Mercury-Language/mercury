@@ -28,10 +28,13 @@
 ** 			is no server.
 ** 	server_cmd	Command to run to start the server, or connect
 ** 			to it, or NULL if to use the default of "vim".
+**	split		Is the server in split screen mode?  If so, we
+**			show both the parent and current contexts.
 */
 typedef struct {
 	char		*server_name;
 	char		*server_cmd;
+	bool		split;
 } MR_Trace_Source_Server;
 
 /*
@@ -72,7 +75,8 @@ const char *MR_trace_source_attach(MR_Trace_Source_Server *server,
 ** problems.
 */
 const char *MR_trace_source_sync(MR_Trace_Source_Server *server,
-		const char *filename, int lineno, bool verbose);
+		const char *filename, int lineno, const char *parent_filename,
+		int parent_lineno, bool verbose);
 
 /*
 ** Close a server if possible.  If the server appears to be still
