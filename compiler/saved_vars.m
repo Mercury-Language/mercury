@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -208,6 +208,7 @@ ok_to_duplicate(keep_this_commit) = no.
 ok_to_duplicate(preserve_backtrack_into) = no.
 ok_to_duplicate(hide_debug_event) = no.
 ok_to_duplicate(tailcall) = no.
+ok_to_duplicate(keep_constant_binding) = no.
 
 % Divide a list of goals into an initial subsequence of goals that
 % construct constants, and all other goals.

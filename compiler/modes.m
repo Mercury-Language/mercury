@@ -190,7 +190,8 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module check_hlds__mode_info, hlds__hlds_data.
+:- import_module check_hlds__mode_info.
+:- import_module hlds__hlds_data.
 
 	% Modecheck a unification.
 
@@ -1193,9 +1194,43 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 		error("modecheck_goal_expr: class_method_call")
 	;
 		GenericCall = unsafe_cast,
-		modecheck_builtin_cast(Modes0, Args0, Args, Det, ExtraGoals,
+		(
+			goal_info_has_feature(GoalInfo0,
+				keep_constant_binding),
+			mode_info_get_instmap(!.ModeInfo, InstMap),
+			(
+				Args0 = [Arg1Prime, _Arg2Prime],
+				Modes0 = [Mode1Prime, Mode2Prime]
+			->
+				Arg1 = Arg1Prime,
+				Mode1 = Mode1Prime,
+				Mode2 = Mode2Prime
+			;
+				error("modecheck_goal_expr: bad unsafe_cast")
+			),
+			Mode1 = in_mode,
+			Mode2 = out_mode,
+			instmap__lookup_var(InstMap, Arg1, Inst1),
+			Inst1 = bound(Unique, [functor(ConsId, [])]),
+			mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+			module_info_types(ModuleInfo, TypeTable),
+			mode_info_get_var_types(!.ModeInfo, VarTypes),
+			map__lookup(VarTypes, Arg1, ArgType1),
+			type_to_ctor_and_args(ArgType1, ArgTypeCtor1, _),
+			map__lookup(TypeTable, ArgTypeCtor1, CtorDefn),
+			get_type_defn_body(CtorDefn, Body),
+			ConsTagValues = Body ^ du_type_cons_tag_values,
+			map__lookup(ConsTagValues, ConsId, ConsTag),
+			ConsTag = shared_local_tag(_, LocalTag)
+		->
+			BoundInst = functor(int_const(LocalTag), []),
+			NewMode2 = (free -> bound(Unique, [BoundInst])),
+			Modes = [Mode1, NewMode2]
+		;
+			Modes = Modes0
+		),
+		modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals,
 			!ModeInfo),
-		Modes = Modes0,
 		AllArgs0 = Args0,
 		AllArgs = Args
 	;

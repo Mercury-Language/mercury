@@ -680,23 +680,22 @@ unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		ModuleInfo, ClauseInfo) :-
 	special_pred_interface(SpecialPredId, Type, ArgTypes, _Modes, _Det),
-	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
+	unify_proc__info_init(ModuleInfo, Info0),
 	unify_proc__make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1,
-		Args, VarTypeInfo0, VarTypeInfo1),
+		Args, Info0, Info1),
 	( SpecialPredId = unify, Args = [H1, H2] ->
 		unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
-			H1, H2, Context, Clauses, VarTypeInfo1, VarTypeInfo)
+			H1, H2, Context, Clauses, Info1, Info)
 	; SpecialPredId = index, Args = [X, Index] ->
 		unify_proc__generate_index_clauses(ModuleInfo, TypeBody,
-			X, Index, Context, Clauses, VarTypeInfo1, VarTypeInfo)
+			X, Index, Context, Clauses, Info1, Info)
 	; SpecialPredId = compare, Args = [Res, X, Y] ->
 		unify_proc__generate_compare_clauses(ModuleInfo, Type,
-			TypeBody, Res, X, Y, Context, Clauses,
-			VarTypeInfo1, VarTypeInfo)
+			TypeBody, Res, X, Y, Context, Clauses, Info1, Info)
 	;
 		error("unknown special pred")
 	),
-	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
+	unify_proc__info_extract(Info, VarSet, Types),
 	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
@@ -1193,23 +1192,15 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 %	__Unify__(X, Y) :-
 %		(
 %			X = a1,
-% #if 0
 %			Y = X
 %			% Actually, to avoid infinite recursion,
 %			% the above unification is done as type int:
 %			%	CastX = unsafe_cast(X) `with_type` int,
 %			%	CastY = unsafe_cast(Y) `with_type` int,
 %			%	CastX = CastY
-% #else
-%			Y = a1
-% #endif
 %		;
 %			X = a2,
-% #if 0
 %			Y = X	% Likewise, done as type int
-% #else
-%			Y = a2
-% #endif
 %		;
 %			X = b(X1),
 %			Y = b(Y2),
@@ -1226,21 +1217,20 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 %			X3 = Y3
 %		).
 %
-% Note that in the disjuncts handling constants, we want to unify Y with X
-% (as shown in the "#if 0 ... #else" parts), not with the constant
-% (as shown in the "#else" ... "#endif" parts).
-% Doing this allows dupelim to take the code fragments implementing
-% the switch arms for constants and eliminate all but one of them.
+% Note that in the disjuncts handling constants, we want to unify Y with X,
+% not with the constant. Doing this allows dupelim to take the code fragments
+% implementing the switch arms for constants and eliminate all but one of them.
 % This can be a significant code size saving for types with lots of constants,
 % such as the one representing Aditi bytecodes, which can lead to significant
 % reductions in C compilation time.
-% XXX But the optimization doesn't work, because it breaks determinism
-% analysis.  In particular, if X and Y both have insts `bound(a2)', then
-% determinism analysis will infer that the unification can't fail and thus
-% that the procedure is det, but casting to int loses the binding information,
-% and so mode and determinism analysis can't tell that CastX = CastY is det.
-% (See e.g. tests/general/det_complicated_unify2.m.)
-% Hence this optimization is currently disabled.
+%
+% The keep_constant_binding feature on the cast goals is there to ask
+% mode analysis to copy any known bound inst on the cast-from variable
+% to the cast-to variable. This is necessary to keep determinism analysis
+% working for modes in which the inputs of the unify predicate are known
+% to be bound to the same constant, modes whose determinism should therefore
+% be inferred to be det. (tests/general/det_complicated_unify2.m tests
+% this case.)
 
 :- pred unify_proc__generate_du_unify_clauses(list(constructor)::in,
 	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
@@ -1253,8 +1243,6 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
 	list__length(ArgTypes, FunctorArity),
 	FunctorConsId = cons(FunctorName, FunctorArity),
 	(
-		% XXX This optimization disabled, see XXX comment above.
-		semidet_fail,
 		ArgTypes = [],
 		can_compare_constants_as_ints(!.Info) = yes
 	->
@@ -1265,8 +1253,10 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
 			!Info),
 		unify_proc__info_new_named_var(int_type, "CastY", CastY,
 			!Info),
-		generate_unsafe_cast(X, CastX, Context, CastXGoal),
-		generate_unsafe_cast(Y, CastY, Context, CastYGoal),
+		generate_unsafe_cast(X, CastX, Context, CastXGoal0),
+		generate_unsafe_cast(Y, CastY, Context, CastYGoal0),
+		goal_add_feature(CastXGoal0, keep_constant_binding, CastXGoal),
+		goal_add_feature(CastYGoal0, keep_constant_binding, CastYGoal),
 		create_atomic_unification(CastY, var(CastX), Context,
 			explicit, [], UnifyY_Goal),
 		GoalList = [UnifyX_Goal, CastXGoal, CastYGoal, UnifyY_Goal]
