@@ -1354,6 +1354,8 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
 
 	case MR_EVAL_METHOD_TABLE_IO:
 	case MR_EVAL_METHOD_TABLE_IO_DECL:
+	case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
+	case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
 		return;
 	}
 

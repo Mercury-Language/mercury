@@ -246,7 +246,8 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 	% make sure the code model is valid given the eval method
 	{ proc_info_eval_method(ProcInfo0, EvalMethod) },
 	( 
-		{ valid_determinism_for_eval_method(EvalMethod, InferredDetism) }
+		{ valid_determinism_for_eval_method(EvalMethod,
+			InferredDetism) = yes }
 	->
 		{
 		    proc_info_set_eval_method(ProcInfo0, EvalMethod, ProcInfo),
@@ -259,7 +260,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 	;
 		{ proc_info_context(ProcInfo0, Context) },
 		prog_out__write_context(Context),
-		{ eval_method_to_string(EvalMethod, EvalMethodS) },
+		{ EvalMethodS = eval_method_to_string(EvalMethod) },
 		io__write_string("Error: `pragma "),
 		io__write_string(EvalMethodS),
 		io__write_string("' declaration not allowed for procedure\n"),
@@ -284,7 +285,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 
 get_valid_dets(EvalMethod, Detism) :-
 	determinism(Detism),
-	valid_determinism_for_eval_method(EvalMethod, Detism).
+	valid_determinism_for_eval_method(EvalMethod, Detism) = yes.
 
 	% generate all the possible determinisms
 :- pred determinism(determinism).

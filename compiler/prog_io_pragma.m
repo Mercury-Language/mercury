@@ -1144,6 +1144,16 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
 		thread_safe(thread_safe) - 
 			thread_safe(not_thread_safe),
 		tabled_for_io(tabled_for_io) - 
+			tabled_for_io(tabled_for_io_unitize),
+		tabled_for_io(tabled_for_io) - 
+			tabled_for_io(tabled_for_descendant_io),
+		tabled_for_io(tabled_for_io) - 
+			tabled_for_io(not_tabled_for_io),
+		tabled_for_io(tabled_for_io_unitize) - 
+			tabled_for_io(tabled_for_descendant_io),
+		tabled_for_io(tabled_for_io_unitize) - 
+			tabled_for_io(not_tabled_for_io),
+		tabled_for_io(tabled_for_descendant_io) - 
 			tabled_for_io(not_tabled_for_io),
 		purity(pure) - purity(impure),
 		purity(pure) - purity(semipure),
@@ -1278,10 +1288,20 @@ parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
 :- pred parse_tabled_for_io(term, tabled_for_io).
 :- mode parse_tabled_for_io(in, out) is semidet.
 
-parse_tabled_for_io(term__functor(term__atom("tabled_for_io"), [], _),
-	tabled_for_io).
-parse_tabled_for_io(term__functor(term__atom("not_tabled_for_io"), [], _),
-	not_tabled_for_io).
+parse_tabled_for_io(term__functor(term__atom(Str), [], _), TabledForIo) :-
+	(
+		Str = "tabled_for_io",
+		TabledForIo = tabled_for_io
+	;
+		Str = "tabled_for_io_unitize",
+		TabledForIo = tabled_for_io_unitize
+	;
+		Str = "tabled_for_descendant_io",
+		TabledForIo = tabled_for_descendant_io
+	;
+		Str = "not_tabled_for_io",
+		TabledForIo = not_tabled_for_io
+	).
 
 	% XXX For the moment we just ignore the following attributes.
 	% These attributes are used for aliasing on the reuse branch,
@@ -1293,7 +1313,6 @@ parse_tabled_for_io(term__functor(term__atom("not_tabled_for_io"), [], _),
 parse_aliasing(term__functor(term__atom("no_aliasing"), [], _)).
 parse_aliasing(term__functor(term__atom("unknown_aliasing"), [], _)).
 parse_aliasing(term__functor(term__atom("alias"), [_Types, _Alias], _)).
-
 
 :- pred parse_max_stack_size(term::in, int::out) is semidet.
 

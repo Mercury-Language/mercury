@@ -439,6 +439,18 @@ table_simple_mark_as_inactive(_) :-
 
 :- pred table_io_copy_io_state(io__state::di, io__state::uo) is det.
 
+	% Calls to these predicates bracket the code of foreign_procs with
+	% the tabled_for_io_unitize annotation. The left bracket procedure
+	% returns the current value of MR_trace_enabled, and then turns off
+	% both MR_trace_enabled and MR_io_tabling_enabled. (We don't need to
+	% save MR_io_tabling_enabled because we only get to this code if it
+	% contains true.) The right bracket code takes the value returned by
+	% the left bracket as input and restores both globals to the values
+	% they had before the call to the left bracket.
+
+:- impure pred table_io_left_bracket_unitized_goal(int::out) is det.
+:- impure pred table_io_right_bracket_unitized_goal(int::in) is det.
+
 	% N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
@@ -564,6 +576,23 @@ table_simple_mark_as_inactive(_) :-
 	[will_not_call_mercury, promise_pure],
 "
 	S = S0;
+").
+
+:- pragma foreign_proc("C",
+	table_io_left_bracket_unitized_goal(TraceEnabled::out),
+	[will_not_call_mercury],
+"
+	TraceEnabled = MR_trace_enabled;
+	MR_trace_enabled = MR_FALSE;
+	MR_io_tabling_enabled = MR_FALSE;
+").
+
+:- pragma foreign_proc("C",
+	table_io_right_bracket_unitized_goal(TraceEnabled::in),
+	[will_not_call_mercury],
+"
+	MR_io_tabling_enabled = MR_TRUE;
+	MR_trace_enabled = TraceEnabled;
 ").
 
 table_io_in_range(_, _, _) :-

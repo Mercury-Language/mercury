@@ -2785,12 +2785,10 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 
 	% Check if the given evaluation method is allowed with
 	% the given determinism.
-:- pred valid_determinism_for_eval_method(eval_method, determinism).
-:- mode valid_determinism_for_eval_method(in, in) is semidet.
+:- func valid_determinism_for_eval_method(eval_method, determinism) = bool.
 
 	% Convert an evaluation method to a string.
-:- pred eval_method_to_string(eval_method, string).
-:- mode eval_method_to_string(in, out) is det.
+:- func eval_method_to_string(eval_method) = string.
 
 	% Return true if the given evaluation method requires a
 	% stratification check.
@@ -2815,71 +2813,81 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 
 	% Return the change a given evaluation method can do to a given
 	% determinism.
-:- pred eval_method_change_determinism(eval_method, determinism,
-		determinism).
-:- mode eval_method_change_determinism(in, in, out) is det.
+:- func eval_method_change_determinism(eval_method, determinism) = determinism.
 
 :- implementation.
 
 :- import_module check_hlds__det_analysis.
 
-valid_determinism_for_eval_method(eval_normal, _).
-valid_determinism_for_eval_method(eval_loop_check, _).
-valid_determinism_for_eval_method(eval_table_io, _) :-
+valid_determinism_for_eval_method(eval_normal, _) = yes.
+valid_determinism_for_eval_method(eval_loop_check, _) = yes.
+valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
 	error("valid_determinism_for_eval_method called after tabling phase").
-valid_determinism_for_eval_method(eval_memo, _).
-valid_determinism_for_eval_method(eval_minimal, Determinism) :-
-	determinism_components(Determinism, can_fail, _).
+valid_determinism_for_eval_method(eval_memo, _) = yes.
+valid_determinism_for_eval_method(eval_minimal, Determinism) = Valid :-
+	( determinism_components(Determinism, can_fail, _) ->
+		Valid = yes
+	;
+		Valid = no
+	).
 
-eval_method_to_string(eval_normal,		"normal").
-eval_method_to_string(eval_loop_check,		"loop_check").
-eval_method_to_string(eval_table_io,		"table_io").
-eval_method_to_string(eval_table_io_decl,	"table_io_decl").
-eval_method_to_string(eval_memo,		"memo").
-eval_method_to_string(eval_minimal, 		"minimal_model").
+eval_method_to_string(eval_normal) =		"normal".
+eval_method_to_string(eval_loop_check) =	"loop_check".
+eval_method_to_string(eval_memo) =		"memo".
+eval_method_to_string(eval_minimal) = 		"minimal_model".
+eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
+	(
+                IsDecl = table_io_decl,
+                DeclStr = "decl, "
+        ;
+                IsDecl = table_io_proc,
+                DeclStr = "proc, "
+        ),
+        (
+                IsUnitize = table_io_unitize,
+                UnitizeStr = "unitize"
+        ;
+                IsUnitize = table_io_alone,
+                UnitizeStr = "alone"
+        ),
+	Str = "table_io(" ++ DeclStr ++ UnitizeStr ++ ")".
 
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
-eval_method_needs_stratification(eval_table_io) = no.
-eval_method_needs_stratification(eval_table_io_decl) = no.
+eval_method_needs_stratification(eval_table_io(_, _)) = no.
 eval_method_needs_stratification(eval_memo) = no.
 eval_method_needs_stratification(eval_minimal) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
-eval_method_has_per_proc_tabling_pointer(eval_table_io) = no.
-eval_method_has_per_proc_tabling_pointer(eval_table_io_decl) = no.
+eval_method_has_per_proc_tabling_pointer(eval_table_io(_, _)) = no.
 eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_minimal) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
-eval_method_requires_tabling_transform(eval_table_io) = yes.
-eval_method_requires_tabling_transform(eval_table_io_decl) = yes.
+eval_method_requires_tabling_transform(eval_table_io(_, _)) = yes.
 eval_method_requires_tabling_transform(eval_memo) = yes.
 eval_method_requires_tabling_transform(eval_minimal) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
-eval_method_requires_ground_args(eval_table_io) = yes.
-eval_method_requires_ground_args(eval_table_io_decl) = yes.
+eval_method_requires_ground_args(eval_table_io(_, _)) = yes.
 eval_method_requires_ground_args(eval_memo) = yes.
 eval_method_requires_ground_args(eval_minimal) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
-eval_method_destroys_uniqueness(eval_table_io) = no.
-eval_method_destroys_uniqueness(eval_table_io_decl) = no.
+eval_method_destroys_uniqueness(eval_table_io(_, _)) = no.
 eval_method_destroys_uniqueness(eval_memo) = yes.
 eval_method_destroys_uniqueness(eval_minimal) = yes.
 
-eval_method_change_determinism(eval_normal, Detism, Detism).
-eval_method_change_determinism(eval_loop_check, Detism, Detism).
-eval_method_change_determinism(eval_table_io, Detism, Detism).
-eval_method_change_determinism(eval_table_io_decl, Detism, Detism).
-eval_method_change_determinism(eval_memo, Detism, Detism).
-eval_method_change_determinism(eval_minimal, Det0, Det) :-
-	det_conjunction_detism(semidet, Det0, Det).
+eval_method_change_determinism(eval_normal, Detism) = Detism.
+eval_method_change_determinism(eval_loop_check, Detism) = Detism.
+eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
+eval_method_change_determinism(eval_memo, Detism) = Detism.
+eval_method_change_determinism(eval_minimal, Detism0) = Detism :-
+	det_conjunction_detism(semidet, Detism0, Detism).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -22,6 +22,7 @@ RETRY_PROGS = \
 	queens				\
 	retry				\
 	tabled_read			\
+	tabled_read_unitize		\
 	tabled_read_decl
 
 NONRETRY_PROGS = \
@@ -57,6 +58,7 @@ MLFLAGS-completion = --runtime-flags --force-readline
 MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
+MCFLAGS-tabled_read_unitize = --trace-table-io
 MCFLAGS-tabled_read_decl = --trace-table-io-decl
 # By default, we reclaim heap on failure in non-Boehm-gc grades.
 # The extra stack slots required for this reclamation cause spurious
@@ -292,6 +294,12 @@ shallow.out: shallow shallow.inp
 
 tabled_read.out: tabled_read tabled_read.inp tabled_read.data
 	$(MDB) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
+
+tabled_read_unitize.out: tabled_read_unitize.data
+
+tabled_read_unitize.out: tabled_read_unitize tabled_read_unitize.inp
+	$(MDB) ./tabled_read_unitize < tabled_read_unitize.inp \
+		> tabled_read_unitize.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
 	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \

@@ -2298,7 +2298,7 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
 report_eval_method_requires_ground_args(ProcInfo, ModuleInfo0, ModuleInfo) -->
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	{ EvalMethodS = eval_method_to_string(EvalMethod) },
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	prog_out__write_context(Context),
 	io__write_string("Sorry, not implemented: `pragma "),
@@ -2326,7 +2326,7 @@ report_eval_method_requires_ground_args(ProcInfo, ModuleInfo0, ModuleInfo) -->
 report_eval_method_destroys_uniqueness(ProcInfo, ModuleInfo0, ModuleInfo) -->
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
 	{ proc_info_context(ProcInfo, Context) },
-	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	{ EvalMethodS = eval_method_to_string(EvalMethod) },
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	prog_out__write_context(Context),
 	io__write_string("Error: `pragma "),

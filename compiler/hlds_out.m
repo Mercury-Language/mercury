@@ -3505,10 +3505,23 @@ hlds_out__write_eval_method(eval_memo) -->
 	io__write_string("memo").
 hlds_out__write_eval_method(eval_minimal) -->
 	io__write_string("minimal").
-hlds_out__write_eval_method(eval_table_io) -->
-	io__write_string("table_io").
-hlds_out__write_eval_method(eval_table_io_decl) -->
-	io__write_string("table_io_decl").
+hlds_out__write_eval_method(eval_table_io(IsDecl, IsUnitize)) -->
+	io__write_string("table_io("),
+	(
+		{ IsDecl = table_io_decl },
+		io__write_string("decl, ")
+	;
+		{ IsDecl = table_io_proc },
+		io__write_string("proc, ")
+	),
+	(
+		{ IsUnitize = table_io_unitize },
+		io__write_string("unitize")
+	;
+		{ IsUnitize = table_io_alone },
+		io__write_string("alone")
+	),
+	io__write_string(")").
 
 %-----------------------------------------------------------------------------%
 

@@ -720,9 +720,25 @@ write_maybe_slot_num(no) -->
 eval_method_to_c_string(eval_normal) =	      "MR_EVAL_METHOD_NORMAL".
 eval_method_to_c_string(eval_loop_check) =    "MR_EVAL_METHOD_LOOP_CHECK".
 eval_method_to_c_string(eval_memo) =          "MR_EVAL_METHOD_MEMO".
-eval_method_to_c_string(eval_table_io) =      "MR_EVAL_METHOD_TABLE_IO".
-eval_method_to_c_string(eval_table_io_decl) = "MR_EVAL_METHOD_TABLE_IO_DECL".
 eval_method_to_c_string(eval_minimal) =	      "MR_EVAL_METHOD_MINIMAL".
+eval_method_to_c_string(eval_table_io(Decl, Unitize)) = Str :-
+	(
+		Decl = table_io_proc,
+		Unitize = table_io_alone,
+		Str = "MR_EVAL_METHOD_TABLE_IO"
+	;
+		Decl = table_io_proc,
+		Unitize = table_io_unitize,
+		Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE"
+	;
+		Decl = table_io_decl,
+		Unitize = table_io_alone,
+		Str = "MR_EVAL_METHOD_TABLE_IO_DECL"
+	;
+		Decl = table_io_decl,
+		Unitize = table_io_unitize,
+		Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL"
+	).
 
 :- pred output_proc_layout_head_var_nums(proc_label::in, list(int)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.

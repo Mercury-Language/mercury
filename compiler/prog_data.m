@@ -345,18 +345,34 @@
 % Stuff for tabling pragmas
 %
 
-	% The evaluation method that should be used for a pred.
+	% The evaluation method that should be used for a procedure.
 	% Ignored for Aditi procedures.
 :- type eval_method
 	--->	eval_normal		% normal mercury 
 					% evaluation
 	;	eval_loop_check		% loop check only
 	;	eval_memo		% memoing + loop check 
-	;	eval_table_io		% memoing I/O actions for debugging
-	;	eval_table_io_decl	% memoing I/O actions for declarative
-					% debugging
+	;	eval_table_io(		% memoing I/O actions for debugging
+			table_io_is_decl,
+			table_io_is_unitize
+		)
 	;	eval_minimal.		% minimal model 
 					% evaluation 
+
+:- type table_io_is_decl
+	--->	table_io_decl		% The procedure is tabled for
+					% declarative debugging.
+	;	table_io_proc.		% The procedure is tabled only for
+					% procedural debugging.
+
+:- type table_io_is_unitize
+	--->	table_io_unitize	% The procedure is tabled for I/O
+					% together with its Mercury
+					% descendants.
+	;	table_io_alone.		% The procedure is tabled for I/O
+					% by itself; it can have no Mercury
+					% descendants.
+
 %
 % Stuff for the `aditi_index' pragma
 %
@@ -651,14 +667,15 @@
 
 :- type tabled_for_io
 	--->	not_tabled_for_io
-	;	tabled_for_io.
+	;	tabled_for_io
+	;	tabled_for_io_unitize
+	;	tabled_for_descendant_io.
 
 :- type pragma_var    
 	--->	pragma_var(prog_var, string, mode).
 	  	% variable, name, mode
 		% we explicitly store the name because we need the real
 		% name in code_gen
-
 
 :- type pragma_foreign_proc_extra_attribute
 	--->	max_stack_size(int).
@@ -1125,7 +1142,6 @@ set_purity(Attrs0, Purity, Attrs) :-
 set_legacy_purity_behaviour(Attrs0, Legacy, Attrs) :-
 	Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
 
-
 attributes_to_strings(Attrs, StringList) :-
 	% We ignore Lang because it isn't an attribute that you can put
 	% in the attribute list -- the foreign language specifier string
@@ -1149,6 +1165,12 @@ attributes_to_strings(Attrs, StringList) :-
 	(
 		TabledForIO = tabled_for_io,
 		TabledForIOStr = "tabled_for_io"
+	;
+		TabledForIO = tabled_for_io_unitize,
+		TabledForIOStr = "tabled_for_io_unitize"
+	;
+		TabledForIO = tabled_for_descendant_io,
+		TabledForIOStr = "tabled_for_descendant_io"
 	;
 		TabledForIO = not_tabled_for_io,
 		TabledForIOStr = "not_tabled_for_io"

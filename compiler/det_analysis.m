@@ -289,7 +289,7 @@ det_infer_proc(PredId, ProcId, ModuleInfo0, ModuleInfo, Globals,
 
 		% Now see if the evaluation model can change the detism
 	proc_info_eval_method(Proc0, EvalMethod),
-	eval_method_change_determinism(EvalMethod, Detism2, Detism),		
+	Detism = eval_method_change_determinism(EvalMethod, Detism2),		
 			
 		% Save the newly inferred information
 	proc_info_set_goal(Proc0, Goal, Proc1),

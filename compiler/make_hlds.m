@@ -754,7 +754,7 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 			{ module_info_incr_errors(Module0, Module) },
 			prog_out__write_context(Context),
 			io__write_string("Error: `:- pragma "),
-			{ eval_method_to_string(Type, EvalMethodS) },
+			{ EvalMethodS = eval_method_to_string(Type) },
 			io__write_string(EvalMethodS),
 			io__write_string(
 "' declaration requires the type_ctor_layout\n"),
@@ -4616,7 +4616,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc, 
 		MaybeModes, Status, Context, ModuleInfo0, ModuleInfo) --> 
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
- 	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+ 	{ EvalMethodS = eval_method_to_string(EvalMethod) },
 		
 	% Find out if we are tabling a predicate or a function 
 	(
@@ -4693,7 +4693,7 @@ module_add_pragma_tabled_2(EvalMethod, PredName, Arity0, MaybePredOrFunc,
 	{ adjust_func_arity(PredOrFunc, Arity0, Arity) },
 		
 		% print out a progress message
-	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	{ EvalMethodS = eval_method_to_string(EvalMethod) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( 
 		{ VeryVerbose = yes }

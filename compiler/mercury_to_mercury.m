@@ -549,7 +549,7 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete")
 	;
 		{ Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode) },
-		{ eval_method_to_string(Type, TypeS) },
+		{ TypeS = eval_method_to_string(Type) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, TypeS)
 	;
 		{ Pragma = type_spec(_, _, _, _, _, _, _, _) },
@@ -3769,18 +3769,9 @@ output_class_id(class_id(Name, Arity)) -->
 
 :- pred output_eval_method(eval_method::in, string::di, string::uo) is det.
 
-output_eval_method(eval_normal) -->
-	output_string("eval_normal").
-output_eval_method(eval_loop_check) -->
-	output_string("eval_loop_check").
-output_eval_method(eval_memo) -->
-	output_string("eval_memo").
-output_eval_method(eval_table_io) -->
-	output_string("eval_table_io").
-output_eval_method(eval_table_io_decl) -->
-	output_string("eval_table_io_decl").
-output_eval_method(eval_minimal) -->
-	output_string("eval_minimal").
+output_eval_method(EvalMethod) -->
+	output_string("eval_"),
+	output_string(eval_method_to_string(EvalMethod)).
 
 :- pred output_lambda_eval_method(lambda_eval_method::in,
 	string::di, string::uo) is det.
