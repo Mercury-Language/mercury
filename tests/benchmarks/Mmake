@@ -20,8 +20,18 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
-	tak query
+PROGS=	\
+	cqueens \
+	crypt \
+	deriv \
+	deriv2 \
+	nrev \
+	poly \
+	primes \
+	qsort \
+	queens \
+	query \
+	tak
 
 DEPENDS=$(PROGS:%=%.depend)
 DEPS=	$(PROGS:%=%.dep)
