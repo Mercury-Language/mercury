@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -275,15 +275,15 @@
 ** where <clobbers> is an indication to gcc of what gets clobbered.
 */
 #ifdef INLINE_ASM_FIXUP_REGS
-#define ASM_FIXUP_REGS					\
+  #define ASM_FIXUP_REGS				\
 	__asm__ __volatile__(				\
 		INLINE_ASM_FIXUP_REGS			\
 	);
-#define NEED_ASM_FIXUP_REGS
+  #define NEED_ASM_FIXUP_REGS
 #else
-#define ASM_FIXUP_REGS
-#define INLINE_ASM_FIXUP_REGS
-#undef  NEED_ASM_FIXUP_REGS
+  #define ASM_FIXUP_REGS
+  #define INLINE_ASM_FIXUP_REGS
+  #undef  NEED_ASM_FIXUP_REGS
 #endif
 
 /*
