@@ -142,7 +142,7 @@ output_int(Writer, Bits, IntVal) -->
 	{ int__bits_per_int(IntBits) },
 	{ 
 		Bits < IntBits,
-		int__pow(2, Bits, MaxVal),
+		int__pow(2, Bits - 1, MaxVal),
 		( IntVal >= MaxVal
 		; IntVal < -MaxVal
 		)
