@@ -93,6 +93,7 @@ check_headers:
 		echo "#include \"$$file\"" > tmp.c; \
 		$(MGNUC) $(MGNUCFLAGS) -c tmp.c || exit 1; \
 	done
+	rm -f tmp.c
 
 #-----------------------------------------------------------------------------#
 

@@ -5,4 +5,5 @@ wrapper.c
 call.c
 solutions.c
 math_rt.c
+context.c
 runtime.init
