@@ -320,7 +320,7 @@ throw(Exception) = _ :-
 	throw(Exception).
 
 rethrow(exception(Univ)) :-
-	builtin_throw(Univ).
+	throw_impl(Univ).
 
 rethrow(ExceptionResult) = _ :-
 	rethrow(ExceptionResult).
