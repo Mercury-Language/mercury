@@ -339,9 +339,10 @@ attempt_transform(ProcId, ProcInfo0, PredId, PredInfo, DoLCO,
 
 	standardize(Goal0, Goal),
 
-	identify_goal_type(PredId, ProcId, Goal, TopLevel, Base, Rec),
+	identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
+			TopLevel, Base, BaseInstMap, Rec, RecInstMap),
 
-	C = initialize_goal_store(Rec, Base, InitialInstMap),
+	C = initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap),
 
 	identify_recursive_calls(PredId, ProcId, C, RecCallIds),
 
@@ -445,9 +446,11 @@ standardize(Goal0, Goal) :-
 	% transformation doesn't depend on what is in the base case.
 	%
 :- pred identify_goal_type(pred_id::in, proc_id::in, hlds_goal::in,
-		top_level::out, hlds_goals::out, hlds_goals::out) is semidet.
+		instmap::in, top_level::out, hlds_goals::out, instmap::out,
+		hlds_goals::out, instmap::out) is semidet.
 
-identify_goal_type(PredId, ProcId, Goal, Type, Base, Rec) :-
+identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
+		Type, Base, BaseInstMap, Rec, RecInstMap) :-
 	(
 		Goal = switch(_Var, _CanFail, Cases, _StoreMap) - _GoalInfo,
 		Cases = [case(_IdA, GoalA), case(_IdB, GoalB)],
@@ -466,6 +469,64 @@ identify_goal_type(PredId, ProcId, Goal, Type, Base, Rec) :-
 			Type = switch_base_rec,
 			Base = GoalAList,
 			Rec = GoalBList
+		;
+			fail
+		),
+		BaseInstMap = InitialInstMap,
+		RecInstMap = InitialInstMap
+	;
+		Goal = disj(Goals, _StoreMap) - _GoalInfo,
+		Goals = [GoalA, GoalB],
+		goal_to_conj_list(GoalA, GoalAList),
+		goal_to_conj_list(GoalB, GoalBList)
+	->
+		(
+			is_recursive_case(GoalAList, proc(PredId, ProcId))
+		->
+			Type = disj_rec_base,
+			Base = GoalBList,
+			Rec = GoalAList
+		;
+			is_recursive_case(GoalBList, proc(PredId, ProcId))
+		->
+			Type = disj_base_rec,
+			Base = GoalAList,
+			Rec = GoalBList
+		;
+			fail
+		),
+		BaseInstMap = InitialInstMap,
+		RecInstMap = InitialInstMap
+	;
+		Goal = if_then_else(_Vars, If, Then, Else, _StoreMap) -
+				_GoalInfo,
+
+		If = _IfGoal - IfGoalInfo,
+		goal_info_get_instmap_delta(IfGoalInfo, IfInstMapDelta),
+
+		goal_to_conj_list(Then, GoalAList),
+		goal_to_conj_list(Else, GoalBList)
+	->
+		(
+			is_recursive_case(GoalAList, proc(PredId, ProcId))
+		->
+			Type = ite_rec_base,
+			Base = GoalBList,
+			Rec = GoalAList,
+
+			BaseInstMap = InitialInstMap,
+			instmap__apply_instmap_delta(InitialInstMap,
+					IfInstMapDelta, RecInstMap)
+		;
+			is_recursive_case(GoalBList, proc(PredId, ProcId))
+		->
+			Type = ite_base_rec,
+			Base = GoalAList,
+			Rec = GoalBList,
+
+			RecInstMap = InitialInstMap,
+			instmap__apply_instmap_delta(InitialInstMap,
+					IfInstMapDelta, BaseInstMap)
 		;
 			fail
 		)
@@ -502,14 +563,15 @@ is_recursive_case(Goals, proc(PredId, ProcId)) :-
 	%
 	% Initialise the goal_store, which will hold the C_{a,b} goals.
 	%
-:- func initialize_goal_store(hlds_goals, hlds_goals, instmap) = goal_store.
+:- func initialize_goal_store(hlds_goals, instmap,
+		hlds_goals, instmap) = goal_store.
 
-initialize_goal_store(Rec, Base, InitialInstMap) = C :-
+initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
 	goal_store__init(C0),
-	list__foldl(store(rec), Rec, store_info(1, InitialInstMap, C0), 
+	list__foldl(store(rec), Rec, store_info(1, RecInstMap, C0), 
 			store_info(_, _, C1)),
 	list__foldl(store(base), Base,
-			store_info(1, InitialInstMap, C1), 
+			store_info(1, BaseInstMap, C1), 
 			store_info(_, _, C)).
 
 	%
@@ -1523,7 +1585,12 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 	Substs = substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
 			_UpdateSubst),
 	list__map(map__lookup(AccVarSubst), Accs0, Accs),
-	HeadVars = HeadVars0 `append` Accs,
+
+		% We place the extra accumulator variables at the start,
+		% because placing them at the end breaks the convention
+		% that the last variable of a function is the output
+		% variable.
+	HeadVars = Accs `append` HeadVars0,
 
 		% XXX we don't want to use the inst of the var as it can
 		% be more specific than it should be. ie int_const(1)
@@ -1533,7 +1600,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 	Inst = ground(shared, no),
 	inst_lists_to_mode_list([Inst], [Inst], Mode),
 	list__duplicate(list__length(Accs), list__det_head(Mode), AccModes),
-	HeadModes = HeadModes0 `append` AccModes,
+	HeadModes = AccModes `append` HeadModes0,
 
 	list__map(map__lookup(VarTypes), Accs, AccTypes),
 
@@ -1571,7 +1638,7 @@ acc_pred_info(NewTypes, NewProcInfo, PredInfo, NewProcId, NewPredInfo) :-
 	term__context_line(Context, Line),
 	Counter = 0,
 
-	list__append(Types0, NewTypes, Types),
+	Types = NewTypes `append` Types0,
 
 	make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
 		Line, Counter, SymName),
@@ -1624,7 +1691,7 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
 	OrigCall = call(_PredId, _ProcId, Args, Builtin, Context, _Name) - GI,
-	Call = call(AccPredId, AccProcId, Args `append` Accs,
+	Call = call(AccPredId, AccProcId, Accs `append` Args,
 			Builtin, Context, AccName) - GI.
 
 	%

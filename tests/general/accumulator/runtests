@@ -22,8 +22,9 @@ checkstatus=$?
 cat *.res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
-    grep -h "% mode.*AccFrom" *hlds*acc* | sed -e 's/number//' \
-        | sed -e 's/ of predicate//g' > I.$$
+    grep -h "% mode.*AccFrom" *hlds*acc* | \
+   	 sed -e 's/number//' -e 's/ of predicate//' -e 's/ of function//' \
+	 -e 's,__[0-9]*__[0-9]*/,/,' > I.$$
     diff -u INTRODUCED I.$$ > INTRODUCED.diff
     rm -f I.$$
 

@@ -1358,6 +1358,7 @@ opt_level(3, _, [
 	optimize_higher_order	-	bool(yes),
 	deforestation		-	bool(yes),
 	constant_propagation	-	bool(yes),
+	introduce_accumulators	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
 

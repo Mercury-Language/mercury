@@ -84,4 +84,3 @@ yield_skip_to_the_end:
 
 call_back_to_mercury(Goal) -->
 	call(Goal).
-
