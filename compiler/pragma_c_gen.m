@@ -76,7 +76,7 @@
 %
 % and the <check of r1> is of the form
 %
-%	if (!r1) GOTO_LABEL(fail_label);
+%	if (!r1) MR_GOTO_LABEL(fail_label);
 %
 % The code we generate for nondet pragma_c_code assumes that this code is
 % the only thing between the procedure prolog and epilog; such pragma_c_codes
@@ -162,7 +162,7 @@
 %	#define SUCCEED_LAST()	goto calllastsuccesslabel
 %	#define FAIL()		fail()
 %	{ <the user-written call c code> }
-%	GOTO_LABEL(xxx_i2)
+%	MR_GOTO_LABEL(xxx_i2)
 % callsuccesslabel: /* see note (4) below */
 %	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
@@ -188,7 +188,7 @@
 %	#define SUCCEED_LAST()	goto retrylastsuccesslabel
 %	#define FAIL()		fail()
 %	{ <the user-written retry c code> }
-%	GOTO_LABEL(xxx_i2)
+%	MR_GOTO_LABEL(xxx_i2)
 % retrysuccesslabel: /* see note (4) below */
 %	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
@@ -847,7 +847,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		SharedLastSuccessLabel = "MR_shared_success_last:\n",
 
 		llds_out__get_label(SharedLabel, yes, LabelStr),
-		string__format("\tGOTO_LABEL(%s);\n", [s(LabelStr)],
+		string__format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
 			GotoSharedLabel),
 
 		CallDecls = [SaveStructDecl | Decls],
