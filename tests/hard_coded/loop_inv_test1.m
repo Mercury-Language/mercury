@@ -11,6 +11,11 @@
 % This test checks that we do loop invariant hoisting for
 % invariant goals which have no input arguments.
 
+% XXX We do not yet pass this test case, because the loop invariant 
+%     pass has some code which explicitly disables the optimization
+%     if there are no input arguments. (Why???)
+%     This should be very easy to fix.
+
 :- module loop_inv_test1.
 :- interface.
 :- import_module io.
@@ -35,7 +40,7 @@ main -->
         io__print("input error"), io__nl
     ).
 
-/* Test that we can do ordinary loop hoisting:
+/* Test that we can do ordinary loop hoisting, for a goal with no inputs.
    p/1 will abort if called twice. */
 :- pred loop1(int::in, int::in, int::out) is det.
 loop1(N, Acc0, Acc) :-
@@ -47,25 +52,21 @@ loop1(N, Acc0, Acc) :-
         loop1(N - 1, Acc1, Acc)
     ).
 
-/* Test that we can do loop hoisting for calls which occur in
-   different branches of an if-then-else: q/1 will abort if called twice. */
+/* Test that we can do ordinary loop hoisting for a goal with no inputs,
+   in the particular case where the invariant goal is an inline foreign_proc.
+   q/1 will abort if called twice. */
 :- pred loop2(int::in, int::in, int::out) is det.
 loop2(N, Acc0, Acc) :-
     ( N =< 0 ->
         Acc = Acc0
     ;
-        ( r(N, 3) ->
-            q(X),
-            Acc1 = Acc0 * 2 + X + 1
-        ;
-            q(X),
-            Acc1 = Acc0 * 2 + X
-        ),
+        q(X),
+        Acc1 = Acc0 + X,
         loop2(N - 1, Acc1, Acc)
     ).
 
-% :- pragma no_inline(p/1).
-% :- pragma no_inline(q/1).
+:- pragma inline(p/1).
+:- pragma no_inline(q/1).
 
 :- pred p(int::out) is det.
 :- pragma foreign_proc("C", p(X::out),
@@ -115,9 +116,5 @@ loop2(N, Acc0, Acc) :-
 
     X = 53;
 ").
-
-:- pragma no_inline(r/2).
-:- pred r(int::in, int::in) is semidet.
-r(X, Y) :- X > Y.
 
 %-----------------------------------------------------------------------------%

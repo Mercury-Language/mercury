@@ -100,6 +100,7 @@ ORDINARY_PROGS=	\
 	intermod_pragma_clause \
 	intermod_type_qual \
 	join_list \
+	loop_inv_test \
 	mapped_module \
 	merge_and_remove_dups \
 	minint_bug \
@@ -294,8 +295,10 @@ endif
 #     top of library/float.m.
 #
 # XXX loop_inv_test0, loop_inv_test1, loop_inv_test2:
-#     loop invariant optimization is not properly optimizing these cases.
-#
+#     These test cases test some more sophisticated cases of loop invariant
+#     optimization which are current loop_inv pass is not capable of
+#     optimizing.
+#     
 # XXX var_not_found -- mode error in automatically generated unification
 #		predicate.  This test uses partially instantiated modes,
 #		which are not yet fully supported.

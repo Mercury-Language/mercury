@@ -8,7 +8,11 @@
 % be called once, but if loop invariant hoisting doesn't work,
 % these procedures will abort.
 
-% This test checks that we do the basics of loop invariant hoisting.
+% This test checks that we can do loop invariant hoisting for
+% calls which occur in different branches of an if-then-else.
+
+% XXX we do not yet pass this test case (see XXX comment below).
+%     Should be easy to fix??
 
 :- module loop_inv_test0.
 :- interface.
@@ -50,6 +54,11 @@ loop1(N, Inv, Acc0, Acc) :-
 
 /* Test that we can do loop hoisting for calls which occur in
    different branches of an if-then-else: q/1 will abort if called twice. */
+% XXX currently loop invariant hoisting does NOT optimize this case,
+%     because the variable `X' gets renamed to two different variables
+%     for the two different scopes in which it occurs, and then loop
+%     invariant hoisting is not smart enough to notice that the two calls
+%     are the same.
 :- pred loop2(int::in, int::in, int::in, int::out) is det.
 loop2(N, Inv, Acc0, Acc) :-
     ( N =< 0 ->
