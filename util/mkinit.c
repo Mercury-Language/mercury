@@ -178,12 +178,6 @@ static const char main_func[] =
 	"}\n"
 	;
 
-
-static const char if_need_to_init[] = 
-	"#if defined(MR_NEED_INITIALIZATION_CODE)\n\n"
-	;
-
-
 /* --- function prototypes --- */
 static	void parse_options(int argc, char *argv[]);
 static	void usage(void);
@@ -315,8 +309,6 @@ output_sub_init_functions(void)
 {
 	int filenum;
 
-	fputs(if_need_to_init, stdout);
-
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
 
@@ -324,8 +316,7 @@ output_sub_init_functions(void)
 		process_file(files[filenum]);
 	}
 
-	fputs("}\n", stdout);
-	fputs("\n#endif\n\n", stdout);
+	fputs("}\n\n", stdout);
 }
 
 static void 
@@ -336,12 +327,9 @@ output_main_init_function(void)
 	fputs("static void init_modules(void)\n", stdout);
 	fputs("{\n", stdout);
 
-	fputs(if_need_to_init, stdout);
-
 	for (i = 0; i <= num_modules; i++) {
 		printf("\tinit_modules_%d();\n", i);
 	}
-	fputs("#endif\n", stdout);
 
 	fputs("}\n", stdout);
 }

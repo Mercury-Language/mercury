@@ -18,6 +18,7 @@
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
 #define	detstackvar(n)	(MR_sp[-n])
+#define	saved_detstackvar(save_area, n)	(MR_saved_sp(save_area)[-n])
 
 #define	incr_sp_push_msg(n, msg)				\
 			(					\
@@ -99,6 +100,8 @@
 #define	cursuccip	bt_succip(MR_curfr)
 #define	cursuccfr	bt_succfr(MR_curfr)
 #define	framevar(n)	bt_var(MR_curfr,n)
+
+#define	saved_framevar(save_area, n)	bt_var(MR_saved_curfr(save_area), n)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 

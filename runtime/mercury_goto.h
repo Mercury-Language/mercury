@@ -18,12 +18,12 @@
 #define entry(label) paste(_entry_,label)
 #define skip(label) paste(skip_,label)
 
-#ifdef MR_USE_STACK_LAYOUTS
+#if defined(MR_USE_STACK_LAYOUTS)
   #define MR_STACK_LAYOUT(label)        (Word *) (Word) \
 	&(paste(mercury_data__layout__,label))
 #else
-  #define MR_STACK_LAYOUT(label) (Word *) NULL
-#endif /* MR_USE_STACK_LAYOUTS */
+  #define MR_STACK_LAYOUT(label)	(Word *) NULL
+#endif
 
 
 /*
@@ -63,7 +63,6 @@
   #define make_entry(n, a, l)		/* nothing */
   #define make_entry_sl(n, a, l)	/* nothing */
 #endif
-
 
 #ifdef SPLIT_C_FILES
 #define MODULE_STATIC_OR_EXTERN extern

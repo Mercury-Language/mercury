@@ -123,7 +123,7 @@
 ** MR_DEBUG_NONDET_STACK
 **	Include a "name" field in the nondet stack frames.
 **	(Since this affects binary compatibility,
-**	This is a "compilation model" option which affects the grade.)
+**	this is a "compilation model" option which affects the grade.)
 */
 
 /*
@@ -181,19 +181,20 @@
 #ifdef MR_USE_STACK_LAYOUTS
   #error "MR_USE_STACK_LAYOUTS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC)
+#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_STACK_TRACE_THIS_MODULE)
   #define MR_USE_STACK_LAYOUTS
 #endif
 
 /*
 ** MR_INSERT_LABELS     -- labels need to be inserted into the label table. 
 **			   (this also means the initialization code needs
-**			   to be run).
+**			   to be run some time before the first use of the
+**			   label table).
 */
 #ifdef MR_INSERT_LABELS
   #error "MR_INSERT_LABELS should not be defined on the command line"
 #endif
-#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS)
+#if defined(MR_STACK_TRACE) || defined(NATIVE_GC) || defined(MR_DEBUG_GOTOS) || defined(MR_STACK_TRACE_THIS_MODULE)
   #define MR_INSERT_LABELS
 #endif
 
@@ -209,20 +210,35 @@
 #endif
 
 /*
-** MR_NEED_INITIALIZATION_CODE -- the module specific initialization code
-**				  is needed (doesn't actually run the code,
-**				  however).
+** MR_NEED_INITIALIZATION_AT_START -- the module specific initialization code
+**				      must be run before any Mercury code
+**				      is run.
 **
 ** You need to run initialization code for grades without static
 ** code addresses, for profiling, and any time you need to insert
 ** labels into the label table.
 */
-#ifdef MR_NEED_INITIALIZATION_CODE
-  #error "NEED_INITIALIZATION_CODE should not be defined on the command line"
+#ifdef MR_NEED_INITIALIZATION_AT_START
+  #error "MR_NEED_INITIALIZATION_AT_START should not be defined on the command line"
 #endif
 #if !defined(MR_STATIC_CODE_ADDRESSES) || defined(PROFILE_CALLS) \
-	|| defined(DEBUG_LABELS) || defined(MR_INSERT_LABELS)
-  #define MR_NEED_INITIALIZATION_CODE
+	|| defined(PROFILE_TIME) || defined(DEBUG_LABELS)
+  #define MR_NEED_INITIALIZATION_AT_START
+#endif
+
+/*
+** MR_MAY_NEED_INITIALIZATION -- the module specific initialization code
+**				 may be needed, either at start or later.
+**
+** You need to run initialization code for grades without static
+** code addresses, for profiling, and any time you need to insert
+** labels into the label table.
+*/
+#ifdef MR_MAY_NEED_INITIALIZATION
+  #error "MR_MAY_NEED_INITIALIZATION should not be defined on the command line"
+#endif
+#if defined(MR_NEED_INITIALIZATION_AT_START) || defined(MR_INSERT_LABELS)
+  #define MR_MAY_NEED_INITIALIZATION
 #endif
 
 /*---------------------------------------------------------------------------*/

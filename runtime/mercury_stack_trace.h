@@ -7,6 +7,8 @@
 #ifndef MERCURY_STACK_TRACE_H
 #define MERCURY_STACK_TRACE_H
 
+#include "mercury_stack_layout.h"
+
 /*
 ** mercury_stack_trace.h -
 **	Definitions for use by the stack tracing.
@@ -21,7 +23,7 @@
 ** 	stack.
 ** 	NOTE: MR_dump_stack will assume that the succip is for the
 ** 	topmost stack frame.  If you call MR_dump_stack from some
-** 	pragma c_code that may not be the case.
+** 	pragma c_code, that may not be the case.
 ** 	Due to some optimizations (or lack thereof) the MR_dump_stack call 
 ** 	may end up inside code that has a stack frame allocated, but
 ** 	that has a succip for the previous stack frame.
@@ -35,7 +37,30 @@
 ** 	using `:- external'.
 */
 
-extern void MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
-		Word *current_frame);
+extern	void		MR_dump_stack(Code *success_pointer,
+				Word *det_stack_pointer,
+				Word *current_frame);
+
+/*
+** MR_dump_stack_from_layout:
+**	This function does the same job and makes the same assumptions
+**	as MR_dump_stack, but instead of the succip, it takes the entry
+**	layout of the current procedure as input. It also takes a parameter
+**	that tells it where to put the stack dump. If the entire stack
+**	was printed successfully, the return value is NULL; otherwise,
+**	it is a string indicating why the dump was cut short.
+*/
+
+extern	const char	*MR_dump_stack_from_layout(FILE *fp,
+				MR_Stack_Layout_Entry *entry_layout,
+				Word *det_stack_pointer, Word *current_frame);
+
+/*
+** MR_stack_trace_bottom should be set to the address of global_success,
+** the label main/2 goes to on success. Stack dumps terminate when they
+** reach a stack frame whose saved succip slot contains this address.
+*/
+
+Code	*MR_stack_trace_bottom;
 
 #endif /* MERCURY_STACK_TRACE_H */
