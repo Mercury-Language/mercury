@@ -170,7 +170,7 @@ main(Args) -->
 	gc_init(_IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-#ifdef MR_CONSERVATIVE_GC
+#ifdef MR_BOEHM_GC
 	/*
 	** Explicitly force the initial heap size to be at least 4 Mb.
 	**
@@ -2497,7 +2497,7 @@ mercury_compile__maybe_add_heap_ops(HLDS0, Verbose, Stats, HLDS) -->
 		SemidetReclaim),
 	globals__io_lookup_bool_option(reclaim_heap_on_nondet_failure,
 		NondetReclaim),
-	( { GC = conservative } ->
+	( { gc_is_conservative(GC) = yes } ->
 		% we can't do heap reclamation with conservative GC
 		{ HLDS = HLDS0 }
 	; { SemidetReclaim = no, NondetReclaim = no } ->

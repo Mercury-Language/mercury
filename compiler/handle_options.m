@@ -240,7 +240,7 @@ postprocess_options(ok(OptionTable), Error) -->
                     { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
             )
         ;
-            { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+            { Error = yes("Invalid GC option (must be `none', `conservative', `boehm', `mps' or `accurate')") }
 	)
     ;
         { Error = yes("Invalid target option (must be `c', `asm', `il', or `java')") }
@@ -258,8 +258,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
-	% --gc conservative implies --no-reclaim-heap-*
-	( { GC_Method = conservative } ->
+	% Conservative GC implies --no-reclaim-heap-*
+	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(
 			reclaim_heap_on_semidet_failure, bool(no)),
 		globals__io_set_option(
@@ -1476,7 +1476,8 @@ grade_component_table("java", gcc_ext, [
 grade_component_table("par", par, [parallel - bool(yes)]).
 
 	% GC components
-grade_component_table("gc", gc, [gc - string("conservative")]).
+grade_component_table("gc", gc, [gc - string("boehm")]).
+grade_component_table("mps", gc, [gc - string("mps")]).
 grade_component_table("agc", gc, [gc - string("accurate")]).
 
 	% Profiling components

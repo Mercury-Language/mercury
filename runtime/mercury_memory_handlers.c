@@ -110,6 +110,14 @@ static	MR_Word	*get_curfr_from_context(void *the_context);
 
 #define STDERR 2
 
+/*
+** Note that we cannot assume that the memory zones
+** have been initialized here, since MR_setup_signals()
+** gets called before MR_init_memory_zones().
+** However, the code here will work fine if
+** used_memory_zones is null.
+*/
+
 static MR_bool 
 try_munprotect(void *addr, void *context)
 {

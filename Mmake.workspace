@@ -20,12 +20,12 @@
 # the installed library directory.
 #
 # Setting LINK_BOEHM_GC_ONLY to `yes' causes only the boehm_gc directory
-# to be included in MLFLAGS, MLLIBS and CFLAGS.
+# (and/or the mps_gc directory) to be included in MLFLAGS, MLLIBS and CFLAGS.
 
-# Setting LINK_RUNTIME_ONLY to `yes' causes only the boehm_gc and runtime
+# Setting LINK_RUNTIME_ONLY to `yes' causes only the *_gc and runtime
 # directories to be included in MLFLAGS, MLLIBS and CFLAGS.
 
-# Setting LINK_STDLIB_ONLY to `yes' causes only the boehm_gc, runtime
+# Setting LINK_STDLIB_ONLY to `yes' causes only the *_gc, runtime
 # and library directories to be included in MLFLAGS, MLLIBS and CFLAGS.
 
 #-----------------------------------------------------------------------------#
@@ -51,8 +51,20 @@ LIBRARY_DIR = $(WORKSPACE)/library
 TRACE_DIR = $(WORKSPACE)/trace
 BROWSER_DIR = $(WORKSPACE)/browser
 BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
+MPS_GC_DIR = $(WORKSPACE)/mps_gc/code
 COMPILER_DIR = $(WORKSPACE)/compiler
 UTIL_DIR = $(WORKSPACE)/util
+
+# Specify the MPS "platform"
+# E.g. lii4gc means Linux, i486, gcc
+MPS_PFM = lii4gc
+
+# Specify the MPS "variety"
+# E.g. "hi" means "hot internal" (production version),
+# "ci" means "cold internal" (version with extra debugging checks)
+MPS_VARIETY = hi
+
+MPS_GC_OBJ_DIR=$(MPS_GC_DIR)/$(MPS_PFM)/$(MPS_VARIETY)
 
 # The names of the various libraries.
 # The archives and shared object objects have a "lib" prefix and a ".a" or
@@ -98,7 +110,7 @@ MLFLAGS +=	--no-mercury-stdlib-dir
 #
 # Work out the C include directories.
 #
-C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
+C_INCL_DIRS =	-I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include -I$(MPS_GC_DIR)
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 C_INCL_DIRS +=	-I$(RUNTIME_DIR)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
@@ -125,6 +137,7 @@ STATIC_GC_LIBS_0 = 						\
 		*.par*.gc*)	echo $(BOEHM_GC_DIR)/libpar_gc.$A ;; \
 		*.gc*.prof*)	echo $(BOEHM_GC_DIR)/libgc_prof.$A ;; \
 		*.gc*)		echo $(BOEHM_GC_DIR)/libgc.$A ;; \
+		*.mps*)		echo $(MPS_GC_OBJ_DIR)/mps.$A ;; \
 	    esac						\
 	`
 STATIC_GC_LIBS = $(shell echo $(STATIC_GC_LIBS_0))
@@ -136,6 +149,7 @@ SHARED_GC_LIBS_0 =						\
 		*.par*.gc*)	echo -lpar_gc ;;		\
 		*.gc*.prof*)	echo -lgc_prof ;;		\
 		*.gc*)		echo -lgc ;;			\
+		*.mps*)		echo $(MPS_GC_OBJ_DIR)/mps.$A ;; \
 	    esac						\
 	`
 SHARED_GC_LIBS = $(shell echo $(SHARED_GC_LIBS_0))
@@ -176,8 +190,8 @@ endif
 
 LINK_LIB_OPTS = $(LINK_TRACE_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
 			$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS) 
-LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) \
-			-L$(TRACE_DIR) -L$(BROWSER_DIR)
+LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(MPS_GC_DIR) -L$(RUNTIME_DIR) \
+		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(BROWSER_DIR)
 
 MLFLAGS +=	$(LIB_DIR_OPTS)
 MLLIBS +=	$(LINK_LIB_OPTS)

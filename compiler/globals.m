@@ -51,8 +51,15 @@
 	% 
 :- type gc_method
 	--->	none
-	;	conservative
+	;	boehm
+	;	mps
 	;	accurate.
+
+	% Returns yes if the GC method is conservative,
+	% i.e. if it is `boehm' or `mps'.
+	% Conservative GC methods don't support heap
+	% reclamation on failure.
+:- func gc_is_conservative(gc_method) = bool.
 
 :- type tags_method
 	--->	none
@@ -242,7 +249,9 @@ convert_foreign_language_2("c sharp", csharp).
 convert_foreign_language_2("il", il).
 
 convert_gc_method("none", none).
-convert_gc_method("conservative", conservative).
+convert_gc_method("conservative", boehm).
+convert_gc_method("boehm", boehm).
+convert_gc_method("mps", mps).
 convert_gc_method("accurate", accurate).
 
 convert_tags_method("none", none).
@@ -253,6 +262,11 @@ convert_termination_norm("simple", simple).
 convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
+
+gc_is_conservative(boehm) = yes.
+gc_is_conservative(mps) = yes.
+gc_is_conservative(none) = no.
+gc_is_conservative(accurate) = no.
 
 %-----------------------------------------------------------------------------%
 

@@ -98,7 +98,9 @@
   #define MR_GRADE_PART_3	MR_GRADE_PART_2
 #endif
 
-#ifdef MR_CONSERVATIVE_GC
+#if defined(MR_MPS_GC)
+  #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _mps)
+#elif defined(MR_BOEHM_GC) || defined(MR_CONSERVATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
 #elif defined(MR_NATIVE_GC)
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _agc)
@@ -322,7 +324,10 @@ extern const char MR_GRADE_VAR;
 #else
   #define MR_GRADE_OPT_PART_3	MR_GRADE_OPT_PART_2
 #endif
-#ifdef MR_CONSERVATIVE_GC
+
+#if defined(MR_MPS_GC)
+  #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".mps"
+#elif defined(MR_BOEHM_GC) || defined(MR_CONSERVATIVE_GC)
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".gc"
 #elif defined(MR_NATIVE_GC)
   #define MR_GRADE_OPT_PART_4	MR_GRADE_OPT_PART_3 ".agc"

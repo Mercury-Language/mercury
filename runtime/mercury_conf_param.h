@@ -45,7 +45,9 @@
 ** MR_USE_GCC_GLOBAL_REGISTERS
 ** MR_USE_GCC_NONLOCAL_GOTOS
 ** MR_USE_ASM_LABELS
-** MR_CONSERVATIVE_GC
+** MR_CONSERVATIVE_GC (= boehm_gc *or* MPS)
+** MR_BOEHM_GC
+** MR_MPS_GC
 ** MR_NATIVE_GC		[not yet working]
 ** MR_NO_TYPE_LAYOUT
 ** MR_BOXED_FLOAT
@@ -389,6 +391,24 @@
 ** You must make sure that you don't test the value of any of these parameters
 ** before its conditional definition.
 */
+
+/*
+** Both the Boehm collector and the MPS collector are conservative.
+** (Well, actually MPS supports a wide spectrum of methods, including
+** fully conservative, partly conservative (mostly copying),
+** and fully type-accurate collection; but currently we're using
+** the conservative collector part of MPS.)
+**
+** If MR_CONSERVATIVE_GC is defined without specifying which
+** collector to use, then default to using the Boehm collector.
+*/
+#if defined(MR_BOEHM_GC) || defined(MR_MPS_GC)
+  #ifndef MR_CONSERVATIVE_GC
+  #define MR_CONSERVATIVE_GC
+  #endif
+#elif defined(MR_CONSERVATIVE_GC)
+  #define MR_BOEHM_GC
+#endif
 
 /*
 ** Static code addresses are available unless using gcc non-local gotos,

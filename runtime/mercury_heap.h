@@ -9,6 +9,7 @@
 #ifndef MERCURY_HEAP_H
 #define MERCURY_HEAP_H
 
+#include "mercury_conf.h"		/* for MR_CONSERVATIVE_GC */
 #include "mercury_types.h"		/* for `MR_Word' */
 #include "mercury_context.h"		/* for min_heap_reclamation_point() */
 #include "mercury_heap_profile.h"	/* for MR_record_allocation() */
@@ -20,7 +21,12 @@
 
 #ifdef MR_CONSERVATIVE_GC
 
-  #include "gc.h"
+  #ifdef MR_MPS_GC
+    #include "mercury_mps.h"
+  #endif
+  #ifdef MR_BOEHM_GC
+    #include "gc.h"
+  #endif
 
   #define MR_tag_incr_hp_n(dest, tag, count) 				\
 	((dest) = (MR_Word) MR_mkword((tag),				\

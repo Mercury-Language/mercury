@@ -221,7 +221,6 @@ MR_init_memory(void)
 #endif
 
 	MR_init_zones();
-	MR_setup_signals();
 
 	if (MR_memdebug) {
 		MR_debug_memory();
@@ -285,7 +284,7 @@ MR_copy_string(const char *s)
 ** These routines allocate memory that will be scanned by the
 ** conservative garbage collector.
 **
-** XXX This is inefficient.  If MR_CONSERVATIVE_GC is enabled,
+** XXX This is inefficient.  If MR_BOEHM_GC is enabled,
 ** we should set `GC_oom_fn' (see boehm_gc/gc.h) rather than
 ** testing the return value from GC_MALLOC() or GC_MALLOC_UNCOLLECTABLE().
 */

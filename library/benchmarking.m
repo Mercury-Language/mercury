@@ -220,6 +220,21 @@ ML_report_stats(void)
 	*/
 
 #ifdef MR_CONSERVATIVE_GC
+  #ifdef MR_MPS_GC
+  	{
+		size_t committed, spare;
+
+		committed = mps_arena_committed(mercury_mps_arena);
+		spare = mps_arena_spare_committed(mercury_mps_arena);
+
+		fprintf(stderr, 
+			""\\nHeap in use: %.3fk, spare: %.3fk, total: %.3fk"",
+			(committed - spare) / 1024.0,
+			spare / 1024.0,
+			committed / 1024.0);
+	}
+  #endif /* MR_MPS_GC */
+  #ifdef MR_BOEHM_GC
 	fprintf(stderr, 
 		""\\n#GCs: %lu, ""
 		""Heap used since last GC: %.3fk, Total used: %.3fk"",
@@ -227,12 +242,13 @@ ML_report_stats(void)
 		GC_get_bytes_since_gc() / 1024.0,
 		GC_get_heap_size() / 1024.0
 	);
-#else
+  #endif
+#else /* !MR_CONSERVATIVE_GC */
 	fprintf(stderr, 
 		""\\nHeap: %.3fk"",
 		((char *) MR_hp - (char *) eng->MR_eng_heap_zone->min) / 1024.0
 	);
-#endif
+#endif /* !MR_CONSERVATIVE_GC */
 
 #ifdef	MR_MPROF_PROFILE_MEMORY
 

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2001 The University of Melbourne.
+# Copyright (C) 1997-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -73,7 +73,7 @@
 	--gc)
 		shift
 		case "$1" in
-			accurate|conservative|none)
+			accurate|conservative|boehm|mps|none)
 				gc_method=$1 ;;
 			*)
 				echo "$0: invalid gc method \`$1'" 1>&2
@@ -319,8 +319,11 @@
 				agc)
 					gc_method=accurate
 					;;
+				mps)
+					gc_method=mps
+					;;
 				gc)
-					gc_method=conservative
+					gc_method=boehm
 					;;
 				nogc)
 					gc_method=none

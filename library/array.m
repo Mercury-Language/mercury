@@ -1028,7 +1028,7 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 	** deallocate the storage for it
 	*/
 #ifdef MR_CONSERVATIVE_GC
-	GC_free(old_array);
+	GC_FREE(old_array);
 #endif
 }
 ").
@@ -1100,7 +1100,7 @@ ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
 	** deallocate the storage for it
 	*/
 #ifdef MR_CONSERVATIVE_GC
-	GC_free(old_array);
+	GC_FREE(old_array);
 #endif
 }
 ").

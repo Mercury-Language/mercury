@@ -208,6 +208,8 @@ case "$GRADE" in
 		gc_grade=gc_prof ;;
 	*.gc*)
 		gc_grade=gc ;;
+	*.mps*)
+		gc_grade=mps ;;
 	*)
 		gc_grade=nogc ;;
 esac
@@ -256,6 +258,9 @@ case $strip in
 	false)  STRIP_OPTS="" ;;
 esac
 
+case $gc_method in mps)
+	use_thread_libs=true ;;
+esac
 case $thread_safe in true)
 	use_thread_libs=true ;;
 esac

@@ -41,8 +41,8 @@ extern	int	mercury_main(int argc, char **argv);
 ** mercury_init() is defined in the <module>_init.c file.
 **
 ** The `argc' and `argv' parameters are as for main() in C.
-** The `stack_bottom' parameter should be the address of a variable
-** on the C stack.  The conservative garbage collector treats that
+** The `stack_bottom' parameter should be the address of a (word-aligned)
+** variable on the C stack.  The conservative garbage collector treats that
 ** address as the start of the stack, so anything older than that
 ** address won't get scanned; don't store pointers to GC'ed memory
 ** in local variables that are older than that.
@@ -51,7 +51,7 @@ extern	int	mercury_main(int argc, char **argv);
 ** collector, sets some global variables, and then calls
 ** mercury_runtime_init().
 */
-extern	void	mercury_init(int argc, char **argv, char *stack_bottom);
+extern	void	mercury_init(int argc, char **argv, void *stack_bottom);
 
 /*
 ** mercury_call_main() is defined in the <module>_init.c file.
@@ -88,7 +88,12 @@ extern	int	mercury_terminate(void);
 #include "mercury_type_info.h"	/* for MR_TypeCtorInfo_Struct */
 
 #ifdef MR_CONSERVATIVE_GC
-  #include "gc.h"
+  #ifdef MR_MPS_GC
+    #include "mercury_mps.h"	/* for GC_INIT(), GC_stack_bottom */
+  #endif
+  #ifdef MR_BOEHM_GC
+    #include "gc.h"		/* for GC_INIT(), GC_stack_bottom */
+  #endif
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE

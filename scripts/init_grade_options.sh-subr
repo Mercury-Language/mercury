@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2001 The University of Melbourne.
+# Copyright (C) 1997-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -30,7 +30,7 @@ Grade options:
 	--gcc-global-registers
 	-H, --high-level-code
 	--parallel
-	--gc {conservative, accurate, none}
+	--gc {boehm, mps, accurate, none}
 	-p, --profiling
 	--profile-calls
 	--profile-time
@@ -58,7 +58,7 @@ asm_labels=true
 non_local_gotos=true
 global_regs=true
 thread_safe=false
-gc_method=conservative
+gc_method=boehm
 profile_time=false
 profile_calls=false
 profile_memory=false

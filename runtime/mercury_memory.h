@@ -25,8 +25,14 @@
 #include "mercury_types.h"	/* for MR_Word */
 #include "mercury_std.h"	/* for MR_bool */
 #include "mercury_conf.h"	/* for MR_CONSERVATIVE_GC, etc. */
-#ifdef MR_CONSERVATIVE_GC
-  #include "gc.h"		/* for GC_FREE */
+
+#if defined(MR_CONSERVATIVE_GC)
+  #if defined(MR_MPS_GC)
+    #include "mercury_mps.h"	/* for GC_FREE */
+  #endif
+  #if defined(MR_BOEHM_GC)
+    #include "gc.h"		/* for GC_FREE */
+  #endif
 #endif
 
 /*

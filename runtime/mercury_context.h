@@ -52,6 +52,7 @@
 #include "mercury_memory.h"		/* for MR_MemoryZone */
 #include "mercury_thread.h"		/* for MercuryLock */
 #include "mercury_goto.h"		/* for MR_GOTO() */
+#include "mercury_conf.h"		/* for MR_CONSERVATIVE_GC */
 
 #ifdef	MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)	x

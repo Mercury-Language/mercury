@@ -11,6 +11,7 @@
 
 #include "mercury_types.h"	/* for `MR_Word' */
 #include "mercury_type_info.h"	/* for `MR_TypeInfo' */
+#include "mercury_conf.h"	/* for `MR_CONSERVATIVE_GC' */
 
 /*
 ** MR_deep_copy:

@@ -72,7 +72,7 @@ CFILES		= 	\
 # whose changes don't usually require a make clean but which nevertheless
 # require the trace library to be recompiled.
 RUNTIME_HDRS	=	\
-			../runtime/mercury_stack_layout.h
+			$(RUNTIME_DIR)/mercury_stack_layout.h
 
 OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
@@ -145,7 +145,7 @@ lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
 cs: $(CFILES)
 
 tags: $(CFILES) $(HDRS)
-	ctags $(CFILES) $(HDRS) ../runtime/*.c ../runtime/*.h
+	ctags $(CFILES) $(HDRS) $(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h
 
 #-----------------------------------------------------------------------------#
 #
@@ -153,9 +153,11 @@ tags: $(CFILES) $(HDRS)
 # and object files to make sure that they conform with our coding standards.
 #
 
+# This should match the definition of HEADER_CLEAN_FILTER in
+# runtime/Mmakefile.  See the documentation there.
 HEADER_CLEAN_FILTER = \
-	grep -v -e '^MR_' -e '^GC_' -e '^MERCURY_' | \
-	fgrep -v -x -f ../runtime/RESERVED_MACRO_NAMES
+	grep -v -e '^MR_' -e '^MERCURY_' -e '^MPS_' -e '^mps_' -e '^GC_' | \
+	fgrep -v -x -f $(RUNTIME_DIR)/RESERVED_MACRO_NAMES
 
 .PHONY: check_headers_self_contained
 check_headers_self_contained: $(HDR_CHECK_OBJS)

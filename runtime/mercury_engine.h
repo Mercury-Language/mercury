@@ -27,6 +27,7 @@
 #include "mercury_goto.h"		/* for `MR_define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
 #include "mercury_context.h"		/* for MR_Context, MR_IF_USE_TRAIL */
+#include "mercury_conf.h"		/* for MR_CONSERVATIVE_GC */
 
 /*---------------------------------------------------------------------------*/
 

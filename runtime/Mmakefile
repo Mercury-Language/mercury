@@ -195,7 +195,7 @@ LDLIBS		= $(SHARED_GC_LIBS)
 
 THREADLIBS	= \
 		` case "$(GRADE)" in					\
-		    *.par*) echo "-lpthread" ;;				\
+		    *.par*|*.mps*) echo "-lpthread" ;;			\
 		  esac							\
 		`
 
@@ -321,8 +321,19 @@ tags: $(CFILES) $(HDRS) $(BODY_HDRS)
 # and object files to make sure that they conform with our coding standards.
 #
 
+# Macro names must normally start with one of the prefixes associated
+# with the different components of our system:
+# 	`MR_' or `MERCURY_' for stuff in the Mercury runtime implementation
+# 		(the `runtime' and `trace' directories)
+# 	`GC_' for stuff in the Boehm et al conservative garbage collector
+# 		(the `boehm_gc' directory)
+# 	`MPS_' or `mps_' for stuff in the Memory Pool System toolkit
+# 		(the `mps_gc' directory, if present -- note that this
+# 		is in a separate CVS module and is not included in the
+# 		normal Mercury source distributions)
+# Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file.
 HEADER_CLEAN_FILTER = \
-	grep -v -e '^MR_' -e '^GC_' -e '^MERCURY_' | \
+	grep -v -e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_' | \
 	fgrep -v -x -f RESERVED_MACRO_NAMES
 
 .PHONY: check_headers_self_contained

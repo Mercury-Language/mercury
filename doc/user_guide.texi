@@ -445,7 +445,7 @@ with the @samp{--heap-size} option.
 @node Using Mmake
 @chapter Using Mmake
 @pindex mmake
-@pindex make: see Mmake
+@pindex make --- see Mmake
 @cindex Building programs
 @cindex Recompiling
 
@@ -4487,7 +4487,10 @@ and grade modifier; they are followed by descriptions of those options.
 @code{--target java --high-level-code}.
 
 @item @samp{.gc}
-@code{--gc conservative}.
+@code{--gc boehm}.
+
+@item @samp{.mps}
+@code{--gc mps}
 
 @item @samp{.agc}
 @code{--gc accurate}.
@@ -4712,17 +4715,25 @@ has a small effect on the execution speed.
 @end ignore
 
 @sp 1
-@item @code{--gc @{none, conservative, accurate@}}
-@itemx @code{--garbage-collection @{none, conservative, accurate@}}
+@item @code{--gc @{none, conservative, boehm, mps, accurate@}}
+@itemx @code{--garbage-collection @{none, conservative, boehm, mps, accurate@}}
 @cindex Garbage collection
 @cindex Conservative garbage collection
+@cindex Boehm (et al) conservative garbage collector
+@cindex MPS conservative garbage collector
+@cindex Memory Pool System conservative garbage collector
 @cindex Accurate garbage collection
 @findex --gc
 @findex --garbage-collection
 Specify which method of garbage collection to use.
-Grades containing @samp{.gc} use @samp{--gc conservative},
+Grades containing @samp{.gc} use @samp{--gc boehm},
+grades containing @samp{.mps} use @samp{--gc mps},
 other grades use @samp{--gc none}.
 @samp{accurate} is not yet implemented.
+@samp{conservative} or @samp{boehm} is Hans Boehm et al's conservative
+garbage collector.
+@samp{mps} is another conservative collector based on Ravenbrook Limited's 
+MPS (Memory Pool System) kit.
 This option is ignored by the IL and Java back-ends, which always use
 the underlying IL or Java implementation's garbage collector.
 
@@ -5829,7 +5840,7 @@ Don't enable the C compiler's optimizations.
 Inline calls to @samp{GC_malloc()}.
 This can improve performance a fair bit,
 but may significantly increase code size.
-This option has no effect if @samp{--gc conservative}
+This option has no effect if @samp{--gc boehm}
 is not set or if the C compiler is not GNU C.
 
 @sp 1

@@ -400,6 +400,18 @@ mercury_runtime_init(int argc, char **argv)
 	}
 #endif
 
+	/*
+	** This must be done before MR_init_conservative_GC(),
+	** to ensure that the GC's signal handler gets installed
+	** after our signal handler.  This is needed because
+	** our signal handler assumes that signals which it can't
+	** handle are fatal.
+	*/
+#if 1 /* XXX still some problems with this for MPS? -fjh */
+/* #ifndef MR_MPS_GC */
+	MR_setup_signals();
+#endif
+
 #ifdef MR_CONSERVATIVE_GC
 	MR_init_conservative_GC();
 #endif
@@ -520,9 +532,20 @@ mercury_runtime_init(int argc, char **argv)
 } /* end runtime_mercury_init() */
 
 #ifdef MR_CONSERVATIVE_GC
+
+  #ifdef MR_MPS_GC
+    MR_bool GC_quiet = MR_TRUE;
+  #endif
+
 void
 MR_init_conservative_GC(void)
 {
+  #ifdef MR_MPS_GC
+
+	mercury_mps_init(MR_heap_size * 1024, !GC_quiet);
+
+  #else /* MR_BOEHM_GC */
+
 	/*
 	** sometimes mercury apps fail the GC_is_visible() test.
 	** dyn_load.c traverses the entire address space and registers
@@ -564,6 +587,8 @@ MR_init_conservative_GC(void)
 			GC_REGISTER_DISPLACEMENT(i);
 		}
 	}
+
+  #endif /* MR_BOEHM_GC */
 }
 #endif /* MR_CONSERVATIVE_GC */
 
@@ -1181,7 +1206,7 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'x':
-#ifdef MR_CONSERVATIVE_GC
+#ifdef MR_BOEHM_GC
 			GC_dont_gc = MR_TRUE;
 #endif
 

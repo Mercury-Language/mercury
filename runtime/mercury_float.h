@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
+** Copyright (C) 1995-1997, 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,7 +9,7 @@
 #ifndef MERCURY_FLOAT_H
 #define MERCURY_FLOAT_H
 
-#include "mercury_conf.h"	/* for MR_BOXED_FLOAT */
+#include "mercury_conf.h"	/* for MR_BOXED_FLOAT, MR_CONSERVATIVE_GC */
 #include "mercury_types.h"	/* for `MR_Word' */
 
 #ifdef MR_USE_SINGLE_PREC_FLOAT

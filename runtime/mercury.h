@@ -36,9 +36,14 @@
 #include "mercury_misc.h"		/* for MR_fatal_error() */
 
 #ifdef MR_CONSERVATIVE_GC
-  #include "gc.h"
-  #ifdef MR_INLINE_ALLOC
-    #include "gc_inl.h"
+  #ifdef MR_MPS_GC
+    #include "mercury_mps.h"
+  #endif
+  #ifdef MR_BOEHM_GC
+    #include "gc.h"
+    #ifdef MR_INLINE_ALLOC
+      #include "gc_inl.h"
+    #endif
   #endif
 #else
   #include "mercury_regs.h"		/* for MR_hp */
