@@ -1819,10 +1819,11 @@ mercury_infix_op("or").		/* NU-Prolog */
 mercury_infix_op("and").	/* NU-Prolog */
 mercury_infix_op("=").
 mercury_infix_op("=..").
-mercury_infix_op("=:=").
+mercury_infix_op("=:=").	/* Prolog */
 mercury_infix_op("==").		/* Prolog (also for constraints, in svar.m) */
+mercury_infix_op("\\=").	/* Prolog */
 mercury_infix_op("\\==").	/* Prolog */
-mercury_infix_op("=\\=").
+mercury_infix_op("=\\=").	/* Prolog */
 mercury_infix_op(">").
 mercury_infix_op(">=").
 mercury_infix_op("<").
@@ -1858,6 +1859,7 @@ mercury_unary_prefix_op("-").
 mercury_unary_prefix_op(":-").
 mercury_unary_prefix_op("::").
 mercury_unary_prefix_op("?-").
+mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
@@ -1878,6 +1880,7 @@ mercury_unary_prefix_op("once").
 mercury_unary_prefix_op("pragma").
 mercury_unary_prefix_op("pred").
 mercury_unary_prefix_op("pure").
+mercury_unary_prefix_op("rule").	/* NU-Prolog */
 mercury_unary_prefix_op("sorted").
 mercury_unary_prefix_op("spy").
 mercury_unary_prefix_op("type").
