@@ -511,7 +511,7 @@ add_item_decl_pass_2(func(_TypeVarSet, _InstVarSet, _ExistQVars, FuncName,
 			FuncName, Arity, PredIds) }
 	->
 		{ predicate_table_get_preds(PredTable0, Preds0) },
-		{ maybe_add_default_modes(PredIds, Preds0, Preds) },
+		{ maybe_add_default_func_modes(PredIds, Preds0, Preds) },
 		{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 		{ module_info_set_predicate_table(Module0, PredTable, Module) }
 	;
@@ -527,8 +527,34 @@ add_item_decl_pass_2(inst_defn(_, _, _), _, Status, Module, Status, Module)
 		--> [].
 add_item_decl_pass_2(mode_defn(_, _, _), _, Status, Module, Status, Module)
 		--> [].
-add_item_decl_pass_2(pred(_, _, _, _, _, _, _, _, _), _, Status, Module, Status,
-		Module) --> [].
+add_item_decl_pass_2(pred(_, _, _, PredName, TypesAndModes, MaybeDet, _, _, _),
+		_, Status, Module0, Status, Module) -->
+	%
+	% Add a mode for a predicate with no arguments
+	% for which the determinism is not declared.
+	%
+	( { TypesAndModes = [], MaybeDet = no } ->
+		{ module_info_get_predicate_table(Module0, PredTable0) },
+		(
+			{ predicate_table_search_pred_sym_arity(PredTable0,
+				PredName, 0, [PredId]) }
+		->
+			{ module_info_pred_info(Module0, PredId, PredInfo0) },
+			maybe_add_default_zero_arity_pred_mode(PredInfo0,
+				PredInfo, MaybeProcId),
+			{ MaybeProcId = yes(_) ->
+				module_info_set_pred_info(Module0, PredId,
+					PredInfo, Module)
+			;
+				Module = Module0
+			}
+		;
+			{ error("make_hlds.m: can't find pred declaration") }
+		)
+	;
+		{ Module = Module0 }
+	).
+
 add_item_decl_pass_2(pred_mode(_, _, _, _, _), _, Status, Module, Status,
 		Module) --> [].
 add_item_decl_pass_2(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
@@ -1998,7 +2024,16 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 		Purity, ClassContext, Markers, Context, DeclStatus, NeedQual, 
 		predicate, Module1),
 	(
-		{ MaybeModes = yes(Modes) }
+		{ MaybeModes = yes(Modes) },
+
+		% For predicates with no arguments, if the determinism
+		% is not declared a mode is not added. If there is no separate
+		% mode declaration for the predicate, one will be added by
+		% add_item_list_decls_pass_2.
+		\+ {
+			Modes = [],
+			MaybeDet = no
+		}	
 	->
 		module_add_mode(Module1, InstVarSet, PredName, Modes, MaybeDet,
 			Cond, Status, Context, predicate, PredProcId, Module),
@@ -2199,6 +2234,9 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 
 	% Go through the list of class methods, looking for functions without
 	% mode declarations.
+	% 
+	% Default modes are not added for zero arity class method predicates
+	% because the determinism must be specified for class methods.
 :- pred add_default_class_method_func_modes(class_interface, 
 	list(maybe(pair(pred_id, proc_id))), 
 	list(maybe(pair(pred_id, proc_id))), module_info, module_info).
@@ -2228,7 +2266,8 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 				ModuleName, Func, FuncArity, [PredId])
 		->
 			module_info_pred_info(Module0, PredId, PredInfo0),
-			maybe_add_default_mode(PredInfo0, PredInfo, MaybeProc),
+			maybe_add_default_func_mode(PredInfo0,
+				PredInfo, MaybeProc),
 			(
 				MaybeProc = no,
 				PredProcIds1 = PredProcIds0,
@@ -2650,20 +2689,38 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 
+	module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
+		PredInfo, ProcId),
+	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
+	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		ModuleInfo) },
+	{ PredProcId = PredId - ProcId }.
+
+:- pred module_do_add_mode(pred_info, arity, list(mode), maybe(determinism),
+		prog_context, pred_info, proc_id, io__state, io__state).
+:- mode module_do_add_mode(in, in, in, in, in, out, out, di, uo) is det.
+
+module_do_add_mode(PredInfo0, Arity, Modes, MaybeDet, MContext,
+		PredInfo, ProcId) -->
 		% check that the determinism was specified
 	(
 		{ MaybeDet = no }
 	->
 		{ pred_info_import_status(PredInfo0, ImportStatus) },
+		{ pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) },
+		{ pred_info_module(PredInfo0, PredModule) },
+		{ pred_info_name(PredInfo0, PredName) },
+		{ PredSymName = qualified(PredModule, PredName) },
 		( { status_is_exported(ImportStatus, yes) } ->
-			unspecified_det_for_exported(PredName, Arity,
+			unspecified_det_for_exported(PredSymName, Arity,
 				PredOrFunc, MContext)
 		;
 			globals__io_lookup_bool_option(infer_det, InferDet),
 			(
 				{ InferDet = no }
 			->
-				unspecified_det_for_local(PredName, Arity,
+				unspecified_det_for_local(PredSymName, Arity,
 					PredOrFunc, MContext)
 			;
 				[]
@@ -2676,12 +2733,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% add the mode declaration to the pred_info for this procedure.
 	{ ArgLives = no },
 	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
-		MaybeDet, MContext, address_is_not_taken, PredInfo, ProcId) },
-	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
-	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
-	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
-		ModuleInfo) },
-	{ PredProcId = PredId - ProcId }.
+		MaybeDet, MContext, address_is_not_taken, PredInfo, ProcId) }.
 
 	% Whenever there is a clause or mode declaration for an undeclared
 	% predicate, we add an implicit declaration
@@ -2737,6 +2789,27 @@ next_mode_id(Procs, _MaybeDet, ModeId) :-
 	map__to_assoc_list(Procs, List),
 	list__length(List, ModeInt),
 	proc_id_to_int(ModeId, ModeInt).
+
+:- pred maybe_add_default_zero_arity_pred_mode(pred_info, pred_info,
+		maybe(proc_id), io__state, io__state).
+:- mode maybe_add_default_zero_arity_pred_mode(in, out, out, di, uo) is det.
+
+maybe_add_default_zero_arity_pred_mode(PredInfo0, PredInfo, MaybeProcId) -->
+	(
+		{ pred_info_arity(PredInfo0, 0) },
+		{ pred_info_procedures(PredInfo0, Procs0) },
+		{ map__is_empty(Procs0) }
+	->
+		{ Modes = [] },
+		{ MaybeDet = no },
+		{ pred_info_context(PredInfo0, MContext) },
+		module_do_add_mode(PredInfo0, 0, Modes, MaybeDet, MContext,
+			PredInfo, ProcId), 
+		{ MaybeProcId = yes(ProcId) }
+	;
+		{ PredInfo = PredInfo0 },
+		{ MaybeProcId = no }
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2870,13 +2943,13 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ ModuleInfo = ModuleInfo0 },
 		{ Info = Info0 }
 	;
-		{
-		pred_info_clauses_info(PredInfo1, Clauses0),
-		pred_info_typevarset(PredInfo1, TVarSet0),
-		maybe_add_default_mode(PredInfo1, PredInfo2, _),
-		pred_info_procedures(PredInfo2, Procs),
-		map__keys(Procs, ModeIds)
-		},
+		{ pred_info_clauses_info(PredInfo1, Clauses0) },
+		{ pred_info_typevarset(PredInfo1, TVarSet0) },
+		{ maybe_add_default_func_mode(PredInfo1, PredInfo2a, _) },
+		maybe_add_default_zero_arity_pred_mode(PredInfo2a,
+			PredInfo2, _),
+		{ pred_info_procedures(PredInfo2, Procs) },
+		{ map__keys(Procs, ModeIds) },
 		clauses_info_add_clause(Clauses0, PredId, ModeIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context,
 			IsAssertion, Goal,

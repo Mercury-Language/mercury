@@ -35,14 +35,14 @@
 :- mode copy_clauses_to_proc(in, in, in, out) is det.
 
 	% Before copying the clauses to the procs, we need to add
-	% a default mode of `:- mode foo(in, in, ..., in) = out.'
+	% a default mode of `:- mode foo(in, in, ..., in) = out is det.'
 	% for functions that don't have an explicit mode declaration.
 
-:- pred maybe_add_default_modes(list(pred_id), pred_table, pred_table).
-:- mode maybe_add_default_modes(in, in, out) is det.
+:- pred maybe_add_default_func_modes(list(pred_id), pred_table, pred_table).
+:- mode maybe_add_default_func_modes(in, in, out) is det.
 
-:- pred maybe_add_default_mode(pred_info, pred_info, maybe(proc_id)).
-:- mode maybe_add_default_mode(in, out, out) is det.
+:- pred maybe_add_default_func_mode(pred_info, pred_info, maybe(proc_id)).
+:- mode maybe_add_default_func_mode(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,14 +52,14 @@
 :- import_module globals.
 :- import_module bool, int, set, map.
 
-maybe_add_default_modes([], Preds, Preds).
-maybe_add_default_modes([PredId | PredIds], Preds0, Preds) :-
+maybe_add_default_func_modes([], Preds, Preds).
+maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
-	maybe_add_default_mode(PredInfo0, PredInfo, _),
+	maybe_add_default_func_mode(PredInfo0, PredInfo, _),
 	map__det_update(Preds0, PredId, PredInfo, Preds1),
-	maybe_add_default_modes(PredIds, Preds1, Preds).
+	maybe_add_default_func_modes(PredIds, Preds1, Preds).
 
-maybe_add_default_mode(PredInfo0, PredInfo, MaybeProcId) :-
+maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	( 

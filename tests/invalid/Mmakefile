@@ -80,10 +80,11 @@ SOURCES= \
 
 MCFLAGS-aditi_update_errors =	--aditi
 MCFLAGS-aditi_update_mode_errors = --aditi
-MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-any_mode	=	--infer-types
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
+MCFLAGS-missing_det_decls = --no-infer-det
 MCFLAGS-missing_interface_import = --make-interface
+MCFLAGS-multisoln_func	=	--infer-types
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-sub_c = 		--verbose-error-messages
 

@@ -4,12 +4,6 @@ duplicate_modes.m:  1: Warning: interface for module `duplicate_modes' does not 
 		`:- import_module' in its interface section(s).
 		This would normally be a `:- pred', `:- func', `:- type',
 		`:- inst' or `:- mode' declaration.
-duplicate_modes.m:003: In mode declarations for predicate `duplicate_modes:p/0':
-duplicate_modes.m:003:   error: duplicate mode declaration.
-duplicate_modes.m:003:   Modes `p is det'
-duplicate_modes.m:003:   and `p'
-duplicate_modes.m:003:   are indistinguishable.
-duplicate_modes.m:004:   Here is the conflicting mode declaration.
 duplicate_modes.m:008: In mode declarations for predicate `duplicate_modes:q/2':
 duplicate_modes.m:008:   error: duplicate mode declaration.
 duplicate_modes.m:008:   Modes `q(in, out) is det'

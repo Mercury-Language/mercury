@@ -567,14 +567,12 @@ check_base_relation(Context, PredInfo, Builtin, CallId) -->
 %-----------------------------------------------------------------------------%
 
 	% 
-	% Add a default mode for functions if none was specified, and
-	% ensure that all constructors occurring in predicate mode 
+	% Ensure that all constructors occurring in predicate mode 
 	% declarations are module qualified.
 	% 
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
-	{ maybe_add_default_mode(PredInfo0, PredInfo1, _) },
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
-		PredInfo1, PredInfo).
+		PredInfo0, PredInfo).
 
 	%
 	% For ill-typed preds, we just need to set the modes up correctly

@@ -113,7 +113,8 @@ OTHER_SOURCES= \
 	uniq_mode_inf_bug.m \
 	unreachable_code.m \
 	unused_args_test2.m \
-	vn_float.m
+	vn_float.m \
+	zero_arity.m
 
 # Code generation is not yet implemented for Aditi updates,
 # so don't attempt to compile to C.
