@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred type_desc_test:main/2-0 (det) type_desc_test.m:21
+      E1:     C1  1 CALL pred type_desc_test:main/2-0 (det) type_desc_test.m:21
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -9,33 +9,33 @@ mdb> break get_type_desc
 mdb> break get_type_ctor_desc
  1: + stop  interface func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> continue
-       3:      3  3 CALL func type_desc_test:get_type_desc/1-0 (det)
+      E2:     C2  3 CALL func type_desc_test:get_type_desc/1-0 (det)
 mdb> finish
-       4:      3  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
+      E3:     C2  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
 mdb> print *
        Val (arg 1)            	[1, 2]
        HeadVar__2             	list:list(int)
 mdb> continue
 type_desc: list:list(int)
-       5:      4  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
+      E4:     C3  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> finish
-       6:      4  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
+      E5:     C3  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> print *
        TypeDesc (arg 1)       	list:list(int)
        HeadVar__2             	list:list/1
 mdb> continue
 type_ctor_desc: list:list/1
-       9:      6  3 CALL func type_desc_test:get_type_desc/1-0 (det)
+      E6:     C4  3 CALL func type_desc_test:get_type_desc/1-0 (det)
 mdb> finish
-      10:      6  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
+      E7:     C4  3 EXIT func type_desc_test:get_type_desc/1-0 (det)
 mdb> print *
        Val (arg 1)            	["one", "two", "three"]
        HeadVar__2             	list:list(string)
 mdb> continue
 type_desc: list:list(string)
-      11:      7  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
+      E8:     C5  3 CALL func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> finish
-      12:      7  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
+      E9:     C5  3 EXIT func type_desc_test:get_type_ctor_desc/1-0 (det)
 mdb> print *
        TypeDesc (arg 1)       	list:list(string)
        HeadVar__2             	list:list/1

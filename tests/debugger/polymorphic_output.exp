@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred polymorphic_output:main/2-0 (det) polymorphic_output.m:20
+      E1:     C1  1 CALL pred polymorphic_output:main/2-0 (det) polymorphic_output.m:20
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,7 +7,7 @@ Contexts will not be printed.
 mdb> b functor_names
  0: + stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> c
-       2:      2  2 CALL func polymorphic_output:functor_names/1-0 (det)
+      E2:     C2  2 CALL func polymorphic_output:functor_names/1-0 (det)
 mdb> delete 0
  0: E stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> p goal
@@ -38,15 +38,15 @@ mdb> set format flat
 mdb> browse goal
 browser> ^1
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
 browser> ^..^2
 error: cannot change to subterm
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
 browser> ^..^3
 error: cannot change to subterm
 browser> p
-two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
+two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
 browser> ^..^r
 browser> p
 '_'
@@ -56,5 +56,5 @@ mdb: there is no such procedure.
 mdb> c
 Uncaught Mercury exception:
 Software Error: det_arg: argument has wrong type
-Last trace event was event #7.
-Last trace event before the unhandled exception was event #4.
+Last trace event was event #E3.
+Last trace event before the unhandled exception was event #E4.

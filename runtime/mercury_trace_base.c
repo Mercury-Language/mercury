@@ -22,6 +22,7 @@ ENDINIT
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
+#include "mercury_hash_table.h"
 #include "mercury_layout_util.h" /* for MR_generate_proc_name_from_layout */
 #include "mercury_runtime_util.h"	/* for strerror() on some systems */
 #include "mercury_signal.h"	/* for MR_setup_signal() */
@@ -37,97 +38,16 @@ ENDINIT
   #include <sys/wait.h>		/* for the wait system call */
 #endif
 
-/*
-** Do we want to use the debugger within this process, or do want to use
-** the Opium-style trace analyzer debugger implemented by an external process.
-** This variable is set in mercury_wrapper.c and never modified afterwards.
-*/
-
-MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
-
-/*
-** Compiler generated tracing code will check whether MR_trace_enabled is true,
-** before calling MR_trace.
-**
-** MR_trace_enabled should keep the same value throughout the execution of
-** the entire program after being set in mercury_wrapper.c. There are two
-** exceptions to this. First, the Mercury routines called as part of the
-** functionality of the tracer itself (e.g. the term browser) should always be
-** executed with MR_trace_enabled set to MR_FALSE. Second, when a procedure
-** implemented in foreign code has the tabled_for_io_unitize annotation,
-** which means that it can both do I/O and call Mercury code, then we turn the
-** procedure and its descendants into a single unit by turning off tracing
-** within the descendants. This is required to prevent the I/O tabling problems
-** that could otherwise arise if we got retries from within the descendants.
-*/
-
-MR_bool		MR_trace_enabled = MR_FALSE;
-
 MR_bool		MR_have_mdb_window = MR_FALSE;
 pid_t		MR_mdb_window_pid = 0;
 
-/*
-** MR_trace_call_seqno counts distinct calls. The prologue of every
-** procedure assigns the current value of this counter as the sequence number
-** of that invocation and increments the counter. This and retry are the only
-** ways that MR_trace_call_seqno is modified.
-**
-** MR_trace_call_depth records the current depth of the call tree. The prologue
-** of every procedure assigns the current value of this variable plus one
-** as the depth of that invocation. Just before making a call, the caller
-** will set MR_trace_call_depth to its own remembered depth value. 
-** These and retry are the only ways in which MR_trace_call_depth is modified.
-**
-** Although neither MR_trace_call_seqno nor MR_trace_call_depth are used
-** directly in this module, the seqno and depth arguments of MR_trace
-** always derive their values from the saved values of these two global
-** variables.
-*/
-
+MR_bool		MR_trace_enabled = MR_FALSE;
 MR_Unsigned	MR_trace_call_seqno = 0;
 MR_Unsigned	MR_trace_call_depth = 0;
-
-/*
-** MR_trace_event_number is a simple counter of events. This is used in
-** two places: in the debugger for display to the user and for skipping
-** a given number of events, and when printing an abort message, so that
-** the programmer can zero in on the source of the problem more quickly.
-*/
-
 MR_Unsigned	MR_trace_event_number = 0;
-
-/*
-** MR_trace_from_full is a boolean that is set before every call;
-** it states whether the caller is being deep traced, or only shallow
-** traced. If the called code is shallow traced, it will generate
-** interface trace events only if MR_trace_from_full is true.
-** (It will never generate internal events.) If the called code is deep
-** traced, it will always generate all trace events, external and internal,
-** regardless of the setting of this variable on entry.
-**
-** The initial value is set to MR_TRUE to allow the programmer to gain
-** control in the debugger when main/2 is called.
-*/
-
 MR_bool		MR_trace_from_full = MR_TRUE;
-
-/*
-** MR_trace_unhide_events is a boolean. Normally, it is set to false, which
-** means that events that the compiler designates as hidden are really hidden
-** from the procedural debugger, being visible only when building the annotated
-** trace. When an mdb command intended for implementors only sets it to true,
-** hidden events will be visible to the procedural debugger too, i.e. the
-** hidden annotation on events will cease to be effective.
-**
-** The MR_trace_have_unhid_events is a boolean that is set to true whenever
-** MR_trace_unhide_events is set to true, and it is never reset to false.
-** MR_trace_have_unhid_events will therefore be true if the user has ever
-** unhidden events. The declarative debugger checks this flag and refuses
-** to perform if it is set, because if this flag has ever been set, then the
-** numbering of events may not be the same after a retry, which makes it
-** impossible to *reliably* find the event at which the "dd" command was issued
-** while building the annotated trace.
-*/
+MR_bool		MR_standardize_event_details = MR_FALSE;
+MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
 
 MR_bool		MR_trace_unhide_events = MR_FALSE;
 MR_bool		MR_trace_have_unhid_events = MR_FALSE;
@@ -175,6 +95,14 @@ const char	*MR_port_names[] =
 	"LATR",
 	"NONE",
 };
+
+static	const void	*MR_get_orig_number(const void *record);
+static	int		MR_hash_orig_number(const void *orig_number);
+static	MR_bool		MR_equal_orig_number(const void *orig_number1,
+				const void *orig_number2);
+static	MR_Unsigned	MR_standardize_num(MR_Unsigned num,
+				MR_Hash_Table *table_ptr, MR_bool *init_ptr,
+				int *next_ptr);
 
 MR_Code *
 MR_trace(const MR_Label_Layout *layout)
@@ -309,6 +237,91 @@ MR_trace_end(void)
 	MR_trace_enabled = MR_FALSE;
 }
 
+#define MR_STANDARD_HASH_TABLE_SIZE 1024
+
+typedef struct {
+	MR_Unsigned   MR_std_orig_number;
+	MR_Unsigned   MR_std_std_number;
+} MR_Standard_Hash_Record;
+
+static const void *
+MR_get_orig_number(const void *record)
+{
+	return (const void *)
+		((MR_Standard_Hash_Record *) record)->MR_std_orig_number;
+}
+
+static int
+MR_hash_orig_number(const void *orig_number)
+{
+	return (int) (((MR_Unsigned) orig_number)
+		% MR_STANDARD_HASH_TABLE_SIZE);
+}
+
+static MR_bool
+MR_equal_orig_number(const void *orig_number1, const void *orig_number2)
+{
+	return (MR_Unsigned) orig_number1 == (MR_Unsigned) orig_number2;
+}
+
+static MR_Hash_Table MR_standard_event_num_table = {
+	MR_STANDARD_HASH_TABLE_SIZE, NULL,
+	MR_get_orig_number, MR_hash_orig_number, MR_equal_orig_number
+};
+
+static MR_Hash_Table MR_standard_call_num_table = {
+	MR_STANDARD_HASH_TABLE_SIZE, NULL,
+	MR_get_orig_number, MR_hash_orig_number, MR_equal_orig_number
+};
+
+static MR_bool  MR_init_event_num_hash = MR_FALSE;
+static MR_bool  MR_init_call_num_hash = MR_FALSE;
+
+static int MR_next_std_event_num = 1;
+static int MR_next_std_call_num = 1;
+
+static MR_Unsigned
+MR_standardize_num(MR_Unsigned num, MR_Hash_Table *table_ptr,
+	MR_bool *init_ptr, int *next_ptr)
+{
+	const MR_Standard_Hash_Record	*record;
+	MR_Standard_Hash_Record		*new_record;
+	int				std_num;
+
+	if (! *init_ptr) {
+		*init_ptr = MR_TRUE;
+		MR_init_hash_table(*table_ptr);
+	}
+
+	record = MR_lookup_hash_table(*table_ptr, num);
+	if (record != NULL) {
+		return record->MR_std_std_number;
+	}
+
+	std_num = *next_ptr;
+	(*next_ptr)++;
+
+	new_record = MR_GC_NEW(MR_Standard_Hash_Record);
+	new_record->MR_std_orig_number = num;
+	new_record->MR_std_std_number = std_num;
+	(void) MR_insert_hash_table(*table_ptr, new_record);
+	return std_num;
+}
+
+MR_Unsigned
+MR_standardize_event_num(MR_Unsigned event_num)
+{
+	return MR_standardize_num(event_num, &MR_standard_event_num_table,
+		&MR_init_event_num_hash, &MR_next_std_event_num);
+}
+
+MR_Unsigned
+MR_standardize_call_num(MR_Unsigned call_num)
+{
+	return MR_standardize_num(call_num, &MR_standard_call_num_table,
+		&MR_init_call_num_hash, &MR_next_std_call_num);
+}
+
 void
 MR_trace_report(FILE *fp)
 {
@@ -318,8 +331,14 @@ MR_trace_report(FILE *fp)
 		** which implies that the user wants trace info on abort.
 		*/
 
-		fprintf(fp, "Last trace event was event #%ld.\n",
-			(long) MR_trace_event_number);
+		if (MR_standardize_event_details) {
+			fprintf(fp, "Last trace event was event #E%ld.\n",
+				(long) MR_standardize_event_num(
+					MR_trace_event_number));
+		} else {
+			fprintf(fp, "Last trace event was event #%ld.\n",
+				(long) MR_trace_event_number);
+		}
 
 #ifdef	MR_TRACE_HISTOGRAM
 		{
@@ -361,8 +380,14 @@ MR_trace_report_raw(int fd)
 		** which implies that the user wants trace info on abort.
 		*/
 
-		sprintf(buf, "Last trace event was event #%ld.\n",
-			(long) MR_trace_event_number);
+		if (MR_standardize_event_details) {
+			sprintf(buf, "Last trace event was event #E%ld.\n",
+				(long) MR_standardize_event_num(
+					MR_trace_event_number));
+		} else {
+			sprintf(buf, "Last trace event was event #%ld.\n",
+				(long) MR_trace_event_number);
+		}
 		write(fd, buf, strlen(buf));
 	}
 }

@@ -117,7 +117,7 @@ all_solutions.out: all_solutions all_solutions.inp
 	$(MDB) ./all_solutions < all_solutions.inp > all_solutions.out 2>&1
 
 breakpoints.out: breakpoints breakpoints.inp
-	$(MDB) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
+	$(MDB_STD) ./breakpoints < breakpoints.inp > breakpoints.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
@@ -128,7 +128,7 @@ browse_pretty.out: browse_pretty browse_pretty.inp
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
 browser_test.out: browser_test browser_test.inp
-	$(MDB) ./browser_test < browser_test.inp 2>&1 | \
+	$(MDB_STD) ./browser_test < browser_test.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browser_test.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
@@ -145,20 +145,13 @@ completion.out: completion completion.inp
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1
 
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-exception_value.out: exception_value exception_value.inp
-	$(MDB) ./exception_value < exception_value.inp 2>&1 | \
-		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
-		sed -e '/EXCP/s/).*/)/' > exception_value.out 2>&1
-
 # The exception_cmd, exception_vars, polymorphic_output and loopcheck tests
 # are supposed to return a non-zero exit status, since they exit by throwing
 # an exception. We strip the goal paths from their exception events, since
 # the exact goal paths are dependent on optimization level. The stripping
 # must be done outside the condition of the if-then-else.
 exception_cmd.out: exception_cmd exception_cmd.inp
-	if $(MDB) ./exception_cmd < exception_cmd.inp		\
+	if $(MDB_STD) ./exception_cmd < exception_cmd.inp		\
 		> exception_cmd.tmp 2>&1;			\
 	then							\
 		sed -e '/EXCP/s/).*/)/' < exception_cmd.tmp	\
@@ -172,8 +165,15 @@ exception_cmd.out: exception_cmd exception_cmd.inp
 		true;						\
 	fi
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+exception_value.out: exception_value exception_value.inp
+	$(MDB_STD) ./exception_value < exception_value.inp 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
+		sed -e '/EXCP/s/).*/)/' > exception_value.out 2>&1
+
 exception_vars.out: exception_vars exception_vars.inp
-	if $(MDB) ./exception_vars < exception_vars.inp		\
+	if $(MDB_STD) ./exception_vars < exception_vars.inp		\
 		> exception_vars.tmp 2>&1;			\
 	then							\
 		sed -e '/EXCP/s/).*/)/' < exception_vars.tmp	\
@@ -187,20 +187,23 @@ exception_vars.out: exception_vars exception_vars.inp
 		true;						\
 	fi
 
-polymorphic_output.out: polymorphic_output polymorphic_output.inp
-	if $(MDB) ./polymorphic_output < polymorphic_output.inp	\
-		> polymorphic_output.tmp 2>&1;			\
-	then							\
-		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
-			> polymorphic_output.out 2>&1;		\
-		rm polymorphic_output.tmp;			\
-		false;						\
-	else							\
-		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
-			> polymorphic_output.out 2>&1;		\
-		rm polymorphic_output.tmp;			\
-		true;						\
-	fi
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+existential_type_classes.out: existential_type_classes \
+			existential_type_classes.inp
+	$(MDB_STD) ./existential_type_classes < existential_type_classes.inp \
+		2>&1 | sed 's/string.m:[0-9]*/string.m:NNNN/g' \
+		> existential_type_classes.out
+
+field_names.out: field_names field_names.inp
+	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
+
+higher_order.out: higher_order higher_order.inp
+	$(MDB_STD) ./higher_order < higher_order.inp > higher_order.out 2>&1
+
+implied_instance.out: implied_instance implied_instance.inp
+	$(MDB) ./implied_instance < implied_instance.inp \
+		> implied_instance.out 2>&1
 
 loopcheck.out: loopcheck loopcheck.inp
 	if $(MDB) ./loopcheck < loopcheck.inp			\
@@ -219,25 +222,8 @@ loopcheck.out: loopcheck loopcheck.inp
 		true;						\
 	fi
 
-# We need to pipe the output through sed to avoid hard-coding dependencies on
-# particular line numbers in the standard library source code.
-existential_type_classes.out: existential_type_classes \
-			existential_type_classes.inp
-	$(MDB) ./existential_type_classes < existential_type_classes.inp 2>&1 | \
-		sed 's/string.m:[0-9]*/string.m:NNNN/g' > existential_type_classes.out
-
-field_names.out: field_names field_names.inp
-	$(MDB) ./field_names < field_names.inp > field_names.out 2>&1
-
-higher_order.out: higher_order higher_order.inp
-	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1
-
-implied_instance.out: implied_instance implied_instance.inp
-	$(MDB) ./implied_instance < implied_instance.inp \
-		> implied_instance.out 2>&1
-
 interpreter.out: interpreter interpreter.inp
-	$(MDB) ./interpreter interpreter.m < interpreter.inp \
+	$(MDB_STD) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1
 
 lval_desc_array.out: lval_desc_array lval_desc_array.inp
@@ -256,11 +242,26 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 	$(MDB) ./output_term_dep < output_term_dep.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > output_term_dep.out 2>&1
 
+polymorphic_output.out: polymorphic_output polymorphic_output.inp
+	if $(MDB_STD) ./polymorphic_output < polymorphic_output.inp	\
+		> polymorphic_output.tmp 2>&1;			\
+	then							\
+		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
+			> polymorphic_output.out 2>&1;		\
+		rm polymorphic_output.tmp;			\
+		false;						\
+	else							\
+		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
+			> polymorphic_output.out 2>&1;		\
+		rm polymorphic_output.tmp;			\
+		true;						\
+	fi
+
 print_goal.out: print_goal print_goal.inp
-	$(MDB) ./print_goal < print_goal.inp > print_goal.out 2>&1
+	$(MDB_STD) ./print_goal < print_goal.inp > print_goal.out 2>&1
 
 queens.out: queens queens.inp
-	$(MDB) ./queens < queens.inp > queens.out 2>&1
+	$(MDB_STD) ./queens < queens.inp > queens.out 2>&1
 
 queens_rep.out: queens_rep queens_rep.inp
 	$(MDB) ./queens_rep < queens_rep.inp > queens_rep.out 2>&1
@@ -287,20 +288,20 @@ shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
 
 tabled_read.out: tabled_read tabled_read.inp tabled_read.data
-	$(MDB) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
+	$(MDB_STD) ./tabled_read < tabled_read.inp > tabled_read.out 2>&1
 
 tabled_read_unitize.out: tabled_read_unitize.data
 
 tabled_read_unitize.out: tabled_read_unitize tabled_read_unitize.inp
-	$(MDB) ./tabled_read_unitize < tabled_read_unitize.inp \
+	$(MDB_STD) ./tabled_read_unitize < tabled_read_unitize.inp \
 		> tabled_read_unitize.out 2>&1
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
-	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \
+	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
 		> tabled_read_decl.out 2>&1
 
 type_desc_test.out: type_desc_test type_desc_test.inp
-	$(MDB) ./type_desc_test < type_desc_test.inp \
+	$(MDB_STD) ./type_desc_test < type_desc_test.inp \
 		> type_desc_test.out 2>&1
 
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.

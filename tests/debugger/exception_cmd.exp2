@@ -1,12 +1,12 @@
-       1:      1  1 CALL pred exception_cmd:main/2-0 (det) exception_cmd.m:12
+      E1:     C1  1 CALL pred exception_cmd:main/2-0 (det) exception_cmd.m:12
 mdb> echo on
 Command echo enabled.
 mdb> exception
-       5:      3  3 EXCP pred require:error/1-0 (erroneous)
+      E2:     C2  3 EXCP pred require:error/1-0 (erroneous)
 mdb> print *
        Message (arg 1)        	"oops"
 mdb> continue
 Uncaught Mercury exception:
 Software Error: oops
-Last trace event was event #9.
-Last trace event before the unhandled exception was event #4.
+Last trace event was event #E3.
+Last trace event before the unhandled exception was event #E4.

@@ -1047,6 +1047,8 @@ process_options(int argc, char **argv)
 				MR_calldebug    = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "d")) {
 				MR_detaildebug  = MR_TRUE;
+			} else if (MR_streq(MR_optarg, "e")) {
+				MR_standardize_event_details = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "f")) {
 				MR_finaldebug   = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "g")) {

@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred tabled_read_decl:main/2-0 (det) tabled_read_decl.m:17
+      E1:     C1  1 CALL pred tabled_read_decl:main/2-0 (det) tabled_read_decl.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -11,9 +11,9 @@ mdb> break tabled_read_decl__test
 mdb> table_io start
 io tabling started
 mdb> continue
-       8:      4  3 CALL pred tabled_read_decl:test/5-0 (det)
+      E2:     C2  3 CALL pred tabled_read_decl:test/5-0 (det)
 mdb> finish -n
-      35:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
+      E3:     C2  3 EXIT pred tabled_read_decl:test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
@@ -22,13 +22,13 @@ mdb> print *
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
-       8:      4  3 CALL pred tabled_read_decl:test/5-0 (det)
+      E2:     C2  3 CALL pred tabled_read_decl:test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
        DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> finish -n
-      35:      4  3 EXIT pred tabled_read_decl:test/5-0 (det)
+      E3:     C2  3 EXIT pred tabled_read_decl:test/5-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        SoFar (arg 2)          	0
@@ -38,9 +38,9 @@ mdb> break tabled_read_decl__poly_test
  1: + stop  interface pred tabled_read_decl:poly_test/6-0 (det)
 mdb> continue
 123
-      38:     13  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
+      E4:     C3  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
 mdb> finish -n
-      65:     13  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
+      E5:     C3  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        Unused (arg 2)         	['a', 'b', 'c']
@@ -50,9 +50,9 @@ mdb> print *
 mdb> retry
 Retry across I/O operations is not always safe.
 Are you sure you want to do it? y
-      38:     13  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
+      E4:     C3  3 CALL pred tabled_read_decl:poly_test/6-0 (det)
 mdb> finish -n
-      65:     13  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
+      E5:     C3  3 EXIT pred tabled_read_decl:poly_test/6-0 (det)
 mdb> print *
        Stream (arg 1)         	'<<c_pointer>>'
        Unused (arg 2)         	['a', 'b', 'c']
@@ -66,7 +66,7 @@ mdb> break part_2
  0: + stop  interface pred tabled_read_decl:part_2/3-0 (det)
 mdb> continue
 456
-      69:     22  2 CALL pred tabled_read_decl:part_2/3-0 (det)
+      E6:     C4  2 CALL pred tabled_read_decl:part_2/3-0 (det)
 mdb> table_io end
 io tabling ended
 mdb> print action 0

@@ -1,8 +1,8 @@
-       1:      1  1 CALL pred browser_test:main/2-0 (det) browser_test.m:11
+      E1:     C1  1 CALL pred browser_test:main/2-0 (det) browser_test.m:11
 mdb> echo on
 Command echo enabled.
 mdb> goto 3
-       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
+      E2:     C2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 mdb> set format pretty
 mdb> print *
        Data (arg 1)           	
@@ -97,8 +97,8 @@ mdb> print Data/1/2
 mdb> print 1^1^2^3
 mdb: the path 3 does not exist.
 mdb> retry
-       2:      2  2 CALL pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
+      E3:     C2  2 CALL pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 mdb> continue -a
-       3:      2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
+      E2:     C2  2 EXIT pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, small)), 6, small)).
-       4:      1  1 EXIT pred browser_test:main/2-0 (det) browser_test.m:11
+      E4:     C1  1 EXIT pred browser_test:main/2-0 (det) browser_test.m:11

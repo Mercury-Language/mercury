@@ -18,6 +18,7 @@
 #include "mercury_stack_layout.h"
 #include "mercury_debug.h"
 #include "mercury_array_macros.h"
+#include "mercury_trace_base.h"
 #include <stdio.h>
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -886,16 +887,32 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
     }
 
     if (print_details) {
+        unsigned long event_num;
+        unsigned long call_num;
+        unsigned long depth;
+
         if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
-            fprintf(fp, "%7lu %7lu %4lu ",
-                (unsigned long) MR_event_num_stackvar(base_sp) + 1,
-                (unsigned long) MR_call_num_stackvar(base_sp),
-                (unsigned long) MR_call_depth_stackvar(base_sp));
+            event_num = MR_event_num_stackvar(base_sp) + 1;
+            call_num = MR_call_num_stackvar(base_sp);
+            depth = MR_call_depth_stackvar(base_sp);
         } else {
-            fprintf(fp, "%7lu %7lu %4lu ",
-                (unsigned long) MR_event_num_framevar(base_curfr) + 1,
-                (unsigned long) MR_call_num_framevar(base_curfr),
-                (unsigned long) MR_call_depth_framevar(base_curfr));
+            event_num = MR_event_num_framevar(base_curfr) + 1;
+            call_num = MR_call_num_framevar(base_curfr);
+            depth = MR_call_depth_framevar(base_curfr);
+        }
+
+        if (MR_standardize_event_details) {
+            char    buf[64];    /* plenty big enough */
+
+            event_num = MR_standardize_event_num(event_num);
+            call_num = MR_standardize_call_num(call_num);
+            snprintf(buf, 64, "E%lu", event_num);
+            fprintf(fp, "%7s ", buf);
+            snprintf(buf, 64, "C%lu", call_num);
+            fprintf(fp, "%7s ", buf);
+            fprintf(fp, "%4lu ", depth);
+        } else {
+            fprintf(fp, "%7lu %7lu %4lu ", event_num, call_num, depth);
         }
     } else {
         /* ensure that the remaining columns line up */

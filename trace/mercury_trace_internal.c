@@ -4897,11 +4897,30 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 	filename = "";
 	parent_filename = "";
 
-	fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s",
-		(long) event_info->MR_event_number,
-		(long) event_info->MR_call_seqno,
-		(long) event_info->MR_call_depth,
-		MR_port_names[event_info->MR_trace_port]);
+	if (MR_standardize_event_details) {
+		char		buf[64];
+		MR_Unsigned	event_num;
+		MR_Unsigned	call_num;
+
+		event_num = MR_standardize_event_num(
+			event_info->MR_event_number);
+		call_num = MR_standardize_call_num(
+			event_info->MR_call_seqno);
+		snprintf(buf, 64, "E%ld", (long) event_num);
+		fprintf(MR_mdb_out, "%8s: ", buf);
+		snprintf(buf, 64, "C%ld", (long) call_num);
+		fprintf(MR_mdb_out, "%6s ", buf);
+		fprintf(MR_mdb_out, "%2ld %s",
+			(long) event_info->MR_call_depth,
+			MR_port_names[event_info->MR_trace_port]);
+	} else {
+		fprintf(MR_mdb_out, "%8ld: %6ld %2ld %s",
+			(long) event_info->MR_event_number,
+			(long) event_info->MR_call_seqno,
+			(long) event_info->MR_call_depth,
+			MR_port_names[event_info->MR_trace_port]);
+	}
+
 	/* the printf printed 24 characters */
 	indent = 24;
 

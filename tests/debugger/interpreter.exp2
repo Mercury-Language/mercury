@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred interpreter:main/2-0 (det) interpreter.m:34
+      E1:     C1  1 CALL pred interpreter:main/2-0 (det) interpreter.m:34
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -7,7 +7,7 @@ mdb> register --quiet
 mdb> 10 step
 Pure Prolog Interpreter.
 
-      11:      6  3 CALL pred interpreter:consult/5-0 (det)
+      E2:     C2  3 CALL pred interpreter:consult/5-0 (det)
 mdb> vars
         1 File (arg 1)
         2 Database0 (arg 2)
@@ -18,7 +18,7 @@ mdb> print *
        DCG_0 (arg 4)          	state('<<c_pointer>>')
 mdb> goto 30
 Consulting file `interpreter.m'...
-      30:     14  6 EXIT pred interpreter:database_assert_clause/4-0 (det)
+      E3:     C3  6 EXIT pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
        Database (arg 1)       	[]
        VarSet (arg 2)         	varset(var_supply(0), empty, empty)
@@ -32,12 +32,12 @@ mdb> print *
        Term (arg 3)           	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 22))
        HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [])
 mdb> 
-      31:     16  6 CALL pred interpreter:consult_until_eof/4-0 (det)
+      E4:     C4  6 CALL pred interpreter:consult_until_eof/4-0 (det)
 mdb> finish -n
-    1009:     16  6 EXIT pred interpreter:consult_until_eof/4-0 (det)
+      E5:     C4  6 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> 
-    1010:     13  5 EXIT pred interpreter:consult_until_eof_2/5-0 (det)
+      E6:     C5  5 EXIT pred interpreter:consult_until_eof_2/5-0 (det)
 mdb> 
-    1011:     11  4 EXIT pred interpreter:consult_until_eof/4-0 (det)
+      E7:     C6  4 EXIT pred interpreter:consult_until_eof/4-0 (det)
 mdb> continue
 ?- 

@@ -114,8 +114,92 @@ extern	pid_t	MR_mdb_window_pid;
 ** XXX They should probably be in MercuryEngine.
 */
 
+/*
+** Compiler generated tracing code will check whether MR_trace_enabled is true,
+** before calling MR_trace.
+**
+** MR_trace_enabled should keep the same value throughout the execution of
+** the entire program after being set in mercury_wrapper.c. There are two
+** exceptions to this. First, the Mercury routines called as part of the
+** functionality of the tracer itself (e.g. the term browser) should always be
+** executed with MR_trace_enabled set to MR_FALSE. Second, when a procedure
+** implemented in foreign code has the tabled_for_io_unitize annotation,
+** which means that it can both do I/O and call Mercury code, then we turn the
+** procedure and its descendants into a single unit by turning off tracing
+** within the descendants. This is required to prevent the I/O tabling problems
+** that could otherwise arise if we got retries from within the descendants.
+*/
+
+extern	MR_bool		MR_trace_enabled;
+
+/*
+** MR_trace_call_seqno counts distinct calls. The prologue of every
+** procedure assigns the current value of this counter as the sequence number
+** of that invocation and increments the counter. This and retry are the only
+** ways that MR_trace_call_seqno is modified.
+**
+** MR_trace_call_depth records the current depth of the call tree. The prologue
+** of every procedure assigns the current value of this variable plus one
+** as the depth of that invocation. Just before making a call, the caller
+** will set MR_trace_call_depth to its own remembered depth value. 
+** These and retry are the only ways in which MR_trace_call_depth is modified.
+**
+** Although neither MR_trace_call_seqno nor MR_trace_call_depth are used
+** directly in this module, the seqno and depth arguments of MR_trace
+** always derive their values from the saved values of these two global
+** variables.
+*/
+
 extern	MR_Unsigned	MR_trace_call_seqno;
 extern	MR_Unsigned	MR_trace_call_depth;
+
+/*
+** MR_trace_event_number is a simple counter of events. This is used in
+** two places: in the debugger for display to the user and for skipping
+** a given number of events, and when printing an abort message, so that
+** the programmer can zero in on the source of the problem more quickly.
+*/
+
+extern	MR_Unsigned	MR_trace_event_number;
+
+/*
+** MR_trace_from_full is a boolean that is set before every call;
+** it states whether the caller is being deep traced, or only shallow
+** traced. If the called code is shallow traced, it will generate
+** interface trace events only if MR_trace_from_full is true.
+** (It will never generate internal events.) If the called code is deep
+** traced, it will always generate all trace events, external and internal,
+** regardless of the setting of this variable on entry.
+**
+** The initial value is set to MR_TRUE to allow the programmer to gain
+** control in the debugger when main/2 is called.
+*/
+
+extern	MR_bool		MR_trace_from_full;
+
+/*
+** If set to true, MR_standardize_event_details modifies how functions that
+** print event numbers and call sequence numbers operate, making them
+** standardize these numbers. The Nth event number to be printed will be
+** printed as E<N> and the Nth call sequence number will be printed as C<N>
+** regardless of their actual values. This is intended to avoid hardcoding
+** concrete event and call numbers in the expected outputs of the debugger
+** test cases.
+**
+** The functions MR_standardize_event_num and MR_standardize_call_num implement
+** the standardization itself.
+*/
+
+extern	MR_bool		MR_standardize_event_details;
+
+extern	MR_Unsigned	MR_standardize_event_num(MR_Unsigned event_num);
+extern	MR_Unsigned	MR_standardize_call_num(MR_Unsigned call_num);
+
+/*
+** Do we want to use the debugger within this process, or do want to use
+** the Opium-style trace analyzer debugger implemented by an external process.
+** This variable is set in mercury_wrapper.c and never modified afterwards.
+*/
 
 typedef enum {
 	MR_TRACE_INTERNAL,
@@ -123,10 +207,24 @@ typedef enum {
 } MR_Trace_Type;
 
 extern	MR_Trace_Type	MR_trace_handler;
-extern	MR_bool		MR_trace_enabled;
 
-extern	MR_Unsigned	MR_trace_event_number;
-extern	MR_bool		MR_trace_from_full;
+/*
+** MR_trace_unhide_events is a boolean. Normally, it is set to false, which
+** means that events that the compiler designates as hidden are really hidden
+** from the procedural debugger, being visible only when building the annotated
+** trace. When an mdb command intended for implementors only sets it to true,
+** hidden events will be visible to the procedural debugger too, i.e. the
+** hidden annotation on events will cease to be effective.
+**
+** The MR_trace_have_unhid_events is a boolean that is set to true whenever
+** MR_trace_unhide_events is set to true, and it is never reset to false.
+** MR_trace_have_unhid_events will therefore be true if the user has ever
+** unhidden events. The declarative debugger checks this flag and refuses
+** to perform if it is set, because if this flag has ever been set, then the
+** numbering of events may not be the same after a retry, which makes it
+** impossible to *reliably* find the event at which the "dd" command was issued
+** while building the annotated trace.
+*/
 
 extern	MR_bool		MR_trace_unhide_events;
 extern	MR_bool		MR_trace_have_unhid_events;

@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred tabled_read_unitize:main/2-0 (det) tabled_read_unitize.m:17
+      E1:     C1  1 CALL pred tabled_read_unitize:main/2-0 (det) tabled_read_unitize.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -9,13 +9,13 @@ io tabling started
 mdb> break unitize
  0: + stop  interface pred tabled_read_unitize:unitize/4-0 (det)
 mdb> continue
-      37:     12  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
+      E2:     C2  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
 mdb> finish -a
-      38:     12  2 THEN pred tabled_read_unitize:unitize/4-0 (det) t;
-      39:     12  2 ELSE pred tabled_read_unitize:unitize/4-0 (det) t;c2;e;
-      40:     12  2 EXIT pred tabled_read_unitize:unitize/4-0 (det)
+      E3:     C2  2 THEN pred tabled_read_unitize:unitize/4-0 (det) t;
+      E4:     C2  2 ELSE pred tabled_read_unitize:unitize/4-0 (det) t;c2;e;
+      E5:     C2  2 EXIT pred tabled_read_unitize:unitize/4-0 (det)
 mdb> retry -f
-      37:     12  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
+      E2:     C2  2 CALL pred tabled_read_unitize:unitize/4-0 (det)
 mdb> continue -S
 123
 4506

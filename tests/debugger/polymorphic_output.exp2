@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred polymorphic_output:main/2-0 (det) polymorphic_output.m:20
+      E1:     C1  1 CALL pred polymorphic_output:main/2-0 (det) polymorphic_output.m:20
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,7 +7,7 @@ Contexts will not be printed.
 mdb> b functor_names
  0: + stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> c
-       4:      3  2 CALL func polymorphic_output:functor_names/1-0 (det)
+      E2:     C2  2 CALL func polymorphic_output:functor_names/1-0 (det)
 mdb> delete 0
  0: E stop  interface func polymorphic_output:functor_names/1-0 (det)
 mdb> p goal
@@ -54,17 +54,17 @@ browser> quit
 mdb> b std_util__det_arg
  0: + stop  interface func std_util:det_arg/2-0 (det)
 mdb> c
-       9:      6  4 CALL func std_util:det_arg/2-0 (det)
+      E3:     C3  4 CALL func std_util:det_arg/2-0 (det)
 mdb> P
        Type (arg 1)           	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
        Index (arg 2)          	3
 mdb> f
-      10:      6  4 EXCP func std_util:det_arg/2-0 (det)
+      E4:     C3  4 EXCP func std_util:det_arg/2-0 (det)
 mdb> P
        Type (arg 1)           	two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two/4)
        Index (arg 2)          	3
 mdb> c
 Uncaught Mercury exception:
 Software Error: det_arg: argument has wrong type
-Last trace event was event #15.
-Last trace event before the unhandled exception was event #9.
+Last trace event was event #E5.
+Last trace event before the unhandled exception was event #E3.

@@ -1819,10 +1819,19 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 			MR_succip = save_succip;
 			MR_trace_report(stderr);
 			if (exception_event_number > 0) {
-				fprintf(stderr, ""Last trace event before ""
-					""the unhandled exception was ""
-					""event #%ld.\\n"",
-					(long) exception_event_number);
+				if (MR_standardize_event_details) {
+					fprintf(stderr,
+						""Last trace event before ""
+						""the unhandled exception was ""
+						""event #E%ld.\\n"",
+						(long) MR_standardize_event_num( exception_event_number));
+				} else {
+					fprintf(stderr,
+						""Last trace event before ""
+						""the unhandled exception was ""
+						""event #%ld.\\n"",
+						(long) exception_event_number);
+				}
 			}
 			if (MR_trace_enabled) {
 				/*

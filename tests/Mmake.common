@@ -59,6 +59,11 @@ RUN_RECOMPILATION_TESTS=yes
 
 MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
+# Debugger test cases can standardize the reported event numbers and call
+# sequence numbers by using $(MDB_STD) instead of $(MDB) on the command line.
+
+MDB_STD = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB)
+
 #-----------------------------------------------------------------------------#
 
 # .PRECIOUS: %.c %.o %_init.c
