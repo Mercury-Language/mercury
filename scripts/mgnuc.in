@@ -332,8 +332,13 @@ esac
 use_msvcrt=@USE_MSVCRT@
 if test $use_msvcrt = "yes"; then
 	case $thread_safe in
-		true)	MSVCRT_OPTS="" ;;
-		false)	MSVCRT_OPTS="/DGC_NOT_DLL" ;;
+    # /MD states that we will use the MSVC runtime,
+    # the boehm_gc collector assumes that the collector
+    # has been built as a DLL if we are using the MSVC runtime
+    # so we need to define GC_NOT_DLL when the collector isn't
+    # built as a DLL.
+		true)	MSVCRT_OPTS="/MD" ;;
+		false)	MSVCRT_OPTS="/DGC_NOT_DLL /MD" ;;
 	esac
 else
 	MSVCRT_OPTS=""
