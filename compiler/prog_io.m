@@ -713,8 +713,6 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 				maybe1(type_defn)).
 :- mode parse_type_decl_type(in, in, in, out, out) is semidet.
 
-:- parse_type_decl_type(_, [A|B], _, _, _) when A and B.
-
 parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
 	/* get_condition(...), */
 	Condition = true,

@@ -1290,7 +1290,8 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		% This is the implied mode case.
 		% We do not yet handle implied modes for partially
 		% instantiated vars, since that would require
-		% doing a deep copy, and we don't know how to do that yet.
+		% doing a partially instantiated deep copy, and we
+		% don't know how to do that yet.
 		( inst_is_bound(ModuleInfo0, InitialInst) ->
 			% This is the case we can't handle
 			Var = Var0,

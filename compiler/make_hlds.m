@@ -2598,8 +2598,6 @@ insert_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 :- mode insert_arg_unifications_2(in, in, in, in, in, in, in, out,
 		out, in, out, di, uo) is det.
 
-:- insert_arg_unifications_2(A, B, _,_,_,_, _, _, _, _, _, _, _) when A and B.
-
 insert_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _) -->
 	{ error("insert_arg_unifications_2: length mismatch") }.
 insert_arg_unifications_2([_|_], [], _, _, _, _, _, _, _, _, _) -->
@@ -2654,8 +2652,6 @@ append_arg_unifications(HeadVars, Args, Context, ArgContext, Goal0, VarSet0,
 	list(hlds_goal), varset, qual_info, qual_info, io__state, io__state).
 :- mode append_arg_unifications_2(in, in, in, in, in, in, in,
 	out, out, in, out, di, uo) is det.
-
-:- append_arg_unifications_2(A, B, _,_,_, _, _, _, _, _, _, _, _) when A and B.
 
 append_arg_unifications_2([], [_|_], _, _, _, _, _, _, _, _, _) -->
 	{ error("append_arg_unifications_2: length mismatch") }.

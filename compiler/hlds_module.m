@@ -1182,8 +1182,6 @@ predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
 
 %-----------------------------------------------------------------------------%
 
-:- predicate_table_search_sym(_, X, _) when X. % NU-Prolog indexing.
-
 predicate_table_search_sym(PredicateTable, unqualified(Name), PredIdList) :-
 	predicate_table_search_name(PredicateTable, Name, PredIdList).
 predicate_table_search_sym(PredicateTable, qualified(Module, Name),
@@ -1191,8 +1189,6 @@ predicate_table_search_sym(PredicateTable, qualified(Module, Name),
 	predicate_table_search_module_name(PredicateTable, 
 		Module, Name, PredIdList),
 	PredIdList \= [].
-
-:- predicate_table_search_pred_sym(_, X, _) when X. % NU-Prolog indexing.
 
 predicate_table_search_pred_sym(PredicateTable, unqualified(Name), PredIdList)
 		:-
@@ -1202,8 +1198,6 @@ predicate_table_search_pred_sym(PredicateTable, qualified(Module, Name),
 	predicate_table_search_pred_module_name(PredicateTable, 
 		Module, Name, PredIdList),
 	PredIdList \= [].
-
-:- predicate_table_search_func_sym(_, X, _) when X. % NU-Prolog indexing.
 
 predicate_table_search_func_sym(PredicateTable, unqualified(Name), PredIdList)
 		:-
@@ -1219,8 +1213,6 @@ predicate_table_search_func_sym(PredicateTable, qualified(Module, Name),
 
 %-----------------------------------------------------------------------------%
 
-:- predicate_table_search_sym_arity(_, X, _, _) when X. % NU-Prolog indexing.
-
 predicate_table_search_sym_arity(PredicateTable, qualified(Module, Name),
 		Arity, PredIdList) :-
 	predicate_table_search_m_n_a(PredicateTable, Module, Name, Arity,
@@ -1230,8 +1222,6 @@ predicate_table_search_sym_arity(PredicateTable, unqualified(Name),
 	predicate_table_search_name_arity(PredicateTable, Name, Arity,
 		PredIdList).
 
-:- predicate_table_search_pred_sym_arity(_, X, _, _) when X.
-
 predicate_table_search_pred_sym_arity(PredicateTable, qualified(Module, Name),
 		Arity, PredIdList) :-
 	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
@@ -1240,8 +1230,6 @@ predicate_table_search_pred_sym_arity(PredicateTable, unqualified(Name),
 		Arity, PredIdList) :-
 	predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
 		PredIdList).
-
-:- predicate_table_search_func_sym_arity(_, X, _, _) when X.
 
 predicate_table_search_func_sym_arity(PredicateTable, qualified(Module, Name),
 		Arity, PredIdList) :-
@@ -1401,8 +1389,6 @@ predicate_table_search_func_m_n_a(PredicateTable, Module, FuncName, Arity,
 
 %-----------------------------------------------------------------------------%
 
-:- predicate_table_search_pf_m_n_a(_, X, _, _, _, _) when X.
-
 predicate_table_search_pf_m_n_a(PredicateTable, predicate, Module, Name, Arity,
 		PredIds) :-
 	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
@@ -1413,8 +1399,6 @@ predicate_table_search_pf_m_n_a(PredicateTable, function, Module, Name, Arity,
 	predicate_table_search_func_m_n_a(PredicateTable, Module, Name,
 			FuncArity, PredIds).
 
-:- predicate_table_search_pf_name_arity(_, X, _, _, _, _) when X.
-
 predicate_table_search_pf_name_arity(PredicateTable, predicate, Name, Arity,
 		PredIds) :-
 	predicate_table_search_pred_name_arity(PredicateTable, Name, Arity,
@@ -1424,8 +1408,6 @@ predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
 	FuncArity is Arity - 1,
 	predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
 			PredIds).
-
-:- predicate_table_search_pf_sym_arity(_, X, _, _, _) when X.
 
 predicate_table_search_pf_sym_arity(PredicateTable, PredOrFunc,
 		qualified(Module, Name), Arity, PredIdList) :-

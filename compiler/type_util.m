@@ -419,8 +419,6 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	% (the type variables that occur in the head of the clause),
 	% and because one day we might want to handle equivalent types.
 
-:- type_unify(X, Y, _, _, _) when X and Y.		% NU-Prolog indexing
-
 type_unify(term__variable(X), term__variable(Y), HeadTypeParams, Bindings0,
 		Bindings) :-
 	( list__member(Y, HeadTypeParams) ->

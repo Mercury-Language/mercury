@@ -377,8 +377,6 @@ mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
 		mercury_write_module_spec_list(ModuleNames)
 	).
 
-:- mercury_output_inst_defn(_, X, _, _, _) when X.	% NU-Prolog indexing
-
 mercury_output_inst_defn(VarSet, abstract_inst(Name, Args), Context) -->
 	io__write_string(":- inst ("),
 	{ construct_qualified_term(Name, Args, Context, InstTerm) },

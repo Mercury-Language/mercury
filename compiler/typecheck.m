@@ -1597,8 +1597,6 @@ checkpoint_tree_stats(Description, Tree) -->
 :- mode typecheck_unification(in, in, out, typecheck_info_di, 
 				typecheck_info_uo) is det.
 
-:- typecheck_unification(_, Y, _, _, _) when Y.
-
 typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
@@ -2721,8 +2719,6 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 :- pred convert_cons_defn_list(typecheck_info, list(hlds_cons_defn),
 				list(cons_type_info)).
 :- mode convert_cons_defn_list(typecheck_info_ui, in, out) is det.
-
-:- convert_cons_defn_list(_, L, _) when L.	% NU-Prolog indexing.
 
 convert_cons_defn_list(_TypeCheckInfo, [], []).
 convert_cons_defn_list(TypeCheckInfo, [X|Xs], [Y|Ys]) :-
