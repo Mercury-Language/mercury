@@ -97,7 +97,8 @@
 		;	auto_comments
 		;	show_dependency_graph
 		;	dump_hlds
-		;	verbose_dump_hlds
+		;	dump_hlds_alias
+		;	dump_hlds_options
 	% Language semantics options
 		;	reorder_conj
 		;	reorder_disj
@@ -381,7 +382,8 @@ option_defaults_2(aux_output_option, [
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
 	dump_hlds		-	accumulating([]),
-	verbose_dump_hlds	-	string("")
+	dump_hlds_alias		-	string(""),
+	dump_hlds_options	-	string("")
 ]).
 option_defaults_2(language_semantics_option, [
 	strict_sequential	-	special,
@@ -613,7 +615,7 @@ option_defaults_2(miscellaneous_option, [
 short_option('c', 			compile_only).
 short_option('C', 			compile_to_c).
 short_option('d', 			dump_hlds).
-short_option('D', 			verbose_dump_hlds).
+short_option('D', 			dump_hlds_alias).
 short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
 short_option('G', 			convert_to_goedel).
@@ -711,7 +713,8 @@ long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
-long_option("verbose-dump-hlds",	verbose_dump_hlds).
+long_option("dump-hlds-alias",		dump_hlds_alias).
+long_option("dump-hlds-options",	dump_hlds_options).
 
 % language semantics options
 long_option("reorder-conj",		reorder_conj).
@@ -1403,7 +1406,12 @@ options_help_aux_output -->
 		"\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
-		"-D, --verbose-dump-hlds <fields>",
+% This option is for developers only
+%		"-D, --dump-hlds-alias <dump-alias>",
+%		"\tWith `--dump-hlds', include extra detail in the dump.",
+%		"\tEach dump alias is shorthand for a set of option letters.",
+%		"\tThe list of aliases is in handle_options.m",
+		"--dump-hlds-options <options>",
 		"\tWith `--dump-hlds', include extra detail in the dump.",
 		"\tEach type of detail is included in the dump if its",
 		"\tcorresponding letter occurs in the option argument",

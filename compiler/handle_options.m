@@ -141,24 +141,44 @@ postprocess_options(ok(OptionTable), Error) -->
                         { Percent =< 100 }
                     ->
                         { map__lookup(OptionTable, termination_norm,
-                                TermNorm0) },
+                            TermNorm0) },
                         (
                             { TermNorm0 = string(TermNormStr) },
                             { convert_termination_norm(TermNormStr, TermNorm) }
                         ->
                             { map__lookup(OptionTable, trace, Trace) },
                             { map__lookup(OptionTable, require_tracing,
-			    	RequireTracingOpt) },
+                                RequireTracingOpt) },
                             (
                                 { Trace = string(TraceStr) },
                                 { RequireTracingOpt = bool(RequireTracing) },
                                 { convert_trace_level(TraceStr, RequireTracing,
-				    TraceLevel) }
+                                    TraceLevel) }
                             ->
-                                postprocess_options_2(OptionTable,
-                                    GC_Method, TagsMethod, ArgsMethod,
-                                    PrologDialect, TermNorm, TraceLevel),
-                                { Error = no }
+                                { map__lookup(OptionTable, dump_hlds_alias,
+                                    DumpAliasOption) },
+                                (
+                                    { DumpAliasOption = string(DumpAlias) },
+                                    { DumpAlias = "" }
+                                ->
+                                    postprocess_options_2(OptionTable,
+                                        GC_Method, TagsMethod, ArgsMethod,
+                                        PrologDialect, TermNorm, TraceLevel),
+                                    { Error = no }
+                                ;
+                                    { DumpAliasOption = string(DumpAlias) },
+                                    { convert_dump_alias(DumpAlias,
+                                        DumpOptions) }
+                                ->
+                                    { map__set(OptionTable, dump_hlds_options,
+                                        string(DumpOptions), NewOptionTable) },
+                                    postprocess_options_2(NewOptionTable,
+                                        GC_Method, TagsMethod, ArgsMethod,
+                                        PrologDialect, TermNorm, TraceLevel),
+                                    { Error = no }
+                                ;
+                                    { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
+                                )
                             ;
                                 { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces', `all', or `default').") }
                             )
@@ -263,15 +283,6 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
-
-	% -D all is really "all possible flag chars are in VerboseDump"
-	globals__io_lookup_string_option(verbose_dump_hlds, VerboseDump),
-	( { VerboseDump = "all" } ->
-		globals__io_set_option(verbose_dump_hlds,
-			string("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-	;
-		[]
-	),
 
 	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
 	% implies --use-trail.
@@ -697,3 +708,20 @@ split_grade_string_2(Chars, Components) :-
 char_is_not(A, B) :-
 	A \= B.
 
+%-----------------------------------------------------------------------------%
+
+% This predicate converts a symbolic name for a set of verbosity options
+% (a "dump alias") into the string consisting of those options' characters.
+%
+% The meanings of the option characters are documented by doc/user_guide.texi
+% and by compiler/hlds_out.m. The latter is more authoritative :-)
+%
+% You are welcome to add more aliases.
+
+:- pred convert_dump_alias(string, string).
+:- mode convert_dump_alias(in, out) is semidet.
+
+convert_dump_alias("ALL", "abcdfgilmnprstuvCIMPTU").
+convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
+convert_dump_alias("codegen", "dfnprsu").
+convert_dump_alias("vanessa", "ltuCIU").

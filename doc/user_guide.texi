@@ -1820,8 +1820,7 @@ The special stage name @samp{all} causes the dumping of all stages.
 Multiple dump options accumulate.
 
 @sp 1
-@item -D @var{fields}
-@itemx --verbose-dump-hlds @var{fields}
+@item --dump-hlds-options @var{options}
 With @samp{--dump-hlds}, include extra detail in the dump.
 Each type of detail is included in the dump
 if its corresponding letter occurs in the option argument.
@@ -1831,8 +1830,10 @@ b - builtin flags on calls,
 c - contexts of goals and types,
 d - determinism of goals,
 f - follow_vars sets of goals,
+g - goal feature lists,
 i - instmap deltas of goals,
 l - pred/mode ids and unify contexts of called predicates,
+m - mode information about clauses,
 n - nonlocal variables of goals,
 p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
@@ -1840,13 +1841,12 @@ s - store maps of goals,
 t - results of termination analysis,
 u - unification categories,
 v - variable numbers in variable names,
-T - type and typeclass information,
-M - mode and inst information,
 C - clause information,
-U - unify predicates,
-P - path information.
-The special argument value ``all''
-will cause the printing of all these fields.
+I - imported predicates,
+M - mode and inst information,
+P - path information,
+T - type and typeclass information,
+U - unify predicates.
 
 @end table
 
