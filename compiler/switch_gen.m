@@ -70,7 +70,13 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 		label(ElseLab) - "next case"
 	]) },
 		% generate the rest of the cases.
-	code_info__slap_code_info(CodeInfo),
+	(
+		{ Cases = [_|_] }
+	->
+		code_info__slap_code_info(CodeInfo)
+	;
+		{ true }
+	),
 	switch_gen__generate_det_cases(Cases, Var, Lval, EndLabel, CasesCode0),
 	{ CasesCode = tree(tree(TestCode, ThisCode),
 			tree(ElseLabel, CasesCode0)) }.

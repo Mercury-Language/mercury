@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_info, term.
+:- import_module hlds, llds.
 
 :- pred code_util__make_entry_label(module_info, pred_id, proc_id, code_addr).
 :- mode code_util__make_entry_label(in, in, in, out) is det.
@@ -28,9 +28,6 @@
 :- pred atom_to_operator(string, operator).
 :- mode atom_to_operator(in, out) is semidet.
 :- mode atom_to_operator(out, in) is det.
-
-:- pred is_to_op_and_vars(term, operator, var, var).
-:- mode is_to_op_and_vars(in, out, out, out) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -76,10 +73,4 @@ atom_to_operator(">=", (>=)).
 atom_to_operator("=<", (<=)).
 
 %-----------------------------------------------------------------------------%
-
-is_to_op_and_vars(Is, Op, X, Y) :-
-	Is = term__functor(term__atom(OpStr), [term__variable(X),
-							term__variable(Y)], _),
-	atom_to_operator(OpStr, Op).
-
 %-----------------------------------------------------------------------------%

@@ -75,7 +75,7 @@
 
 :- implementation.
 
-:- import_module map, int.
+:- import_module map, int, require.
 
 :- type group(T)	--->
 		group(
@@ -138,7 +138,14 @@ group__key_group(G, GK, S) :-
 
 group__remove_group(G0, GK, S, G) :-
 	group__get_sets(G0, Ss0),
-	map__remove(Ss0, GK, S, Ss),
+	(
+		map__remove(Ss0, GK, S1, Ss1)
+	->
+		S = S1,
+		Ss = Ss1
+	;
+		error("map__remove unexpectedly failed.")
+	),
 	group__get_elements(G0, Es0),
 	set__to_sorted_list(S, SL),
 	group__remove_elements(SL, Es0, Es),

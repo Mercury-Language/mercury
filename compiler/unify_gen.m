@@ -91,6 +91,17 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 	->
 		{ error("String tests unimplemented") }
 	;
+		{ Tag = int_constant(Int) }
+	->
+		{ TestCode = node([
+			test(lval(Lval), iconst(Int), Fail) -
+							"Integer test"
+		]) }
+	;
+		{ Tag = float_constant(_Float) }
+	->
+		{ error("Float tests unimplemented") }
+	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
 		{ TestCode = node([
@@ -113,7 +124,7 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 							"Test the tag word"
 		]) }
 	;
-		{ error("This should never happen") }
+		{ error("Unrecognised tag type in tag test.") }
 	),
 	{ Code = tree(VarCode, TestCode) }.
 
@@ -130,9 +141,19 @@ unify_gen__generate_tag_test(Var, ConsId, Code) -->
 unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	(
-		{ Tag = string_constant(_String) }
+		{ Tag = string_constant(String) }
 	->
-		{ error("String constructions unimplemented") }
+		{ Code = empty },
+		code_info__cache_expression(Var, sconst(String))
+	;
+		{ Tag = int_constant(Int) }
+	->
+		{ Code = empty },
+		code_info__cache_expression(Var, iconst(Int))
+	;
+		{ Tag = float_constant(_Float) }
+	->
+		{ error("Float constructions unimplemented") }
 	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
@@ -166,7 +187,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 				mkword(Bits1, mkbody(iconst(Num1)))),
 		{ Code = empty }
 	;
-		{ error("This should never happen") }
+		{ error("Unrecognised tag type in construction") }
 	).
 
 :- pred unify_gen__generate_cons_args(list(var), list(rval)).
@@ -214,6 +235,15 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	->
 		{ error("String deconstructions unimplemented") }
 	;
+		{ Tag = int_constant(_Int) }
+	->
+		{ Code = empty }	% If this is det, then we already
+					% know the value of the int.
+	;
+		{ Tag = float_constant(_Float) }
+	->
+		{ error("Float deconstructions unimplemented") }
+	;
 		{ Tag = simple_tag(SimpleTag) }
 	->
 		code_info__flush_variable(Var, CodeA),
@@ -238,7 +268,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	->
 		{ Code = empty } % if this is det, then nothing happens
 	;
-		{ error("This should never happen") }
+		{ error("Unrecognised tag in deconstruction") }
 	).
 
 %---------------------------------------------------------------------------%
