@@ -524,26 +524,39 @@ dead_proc_elim__examine_expr(bi_implication(_,_), _, _, _, _, _) :-
 	--->	elimination_info(
 			needed_map,	% collected usage counts 
 			module_info,	% ye olde module_info
-			pred_table	% table of predicates in this module:
+			pred_table,	% table of predicates in this module:
 					% preds and procs in this table
 					% may be eliminated
+			bool		% has anything changed
 		).
 			
 dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	module_info_preds(ModuleInfo0, PredTable0),
 
-	ElimInfo0 = elimination_info(Needed0, ModuleInfo0, PredTable0),
+	Changed0 = no,
+	ElimInfo0 = elimination_info(Needed0, ModuleInfo0,
+			PredTable0, Changed0),
 	list__foldl2(dead_proc_elim__eliminate_pred, PredIds, ElimInfo0, 
 		ElimInfo, State0, State),
-	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable),
+	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable, Changed),
 
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 	module_info_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos0),
 	dead_proc_elim__eliminate_base_gen_infos(TypeCtorGenInfos0, Needed,
 		TypeCtorGenInfos),
 	module_info_set_type_ctor_gen_infos(ModuleInfo2, TypeCtorGenInfos,
-		ModuleInfo).
+		ModuleInfo3),
+	(
+		Changed = yes,
+		% The dependency graph will still contain references to the
+		% eliminated procedures, so it must be rebuilt if it will
+		% be used later.
+		module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo)
+	;
+		Changed	= no,
+		ModuleInfo = ModuleInfo3
+	).
 
 		% eliminate any unused procedures for this pred
 
@@ -552,7 +565,7 @@ dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 :- mode dead_proc_elim__eliminate_pred(in, in, out, di, uo) is det.
 
 dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
-	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0),
+	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0, Changed0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
 	(
@@ -572,7 +585,8 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 		pred_info_procedures(PredInfo0, ProcTable0),
 		list__foldl2(dead_proc_elim__eliminate_proc(PredId, Keep, 
 			ElimInfo0),
-			ProcIds, ProcTable0, ProcTable, State0, State),
+			ProcIds, Changed0 - ProcTable0, Changed - ProcTable,
+			State0, State),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
@@ -580,6 +594,7 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 		% unoptimized opt_imported preds
 		Status = opt_imported
 	->
+		Changed = yes,
 		pred_info_procids(PredInfo0, ProcIds),
 		pred_info_procedures(PredInfo0, ProcTable0),
 			% Reduce memory usage by replacing the goals with 
@@ -610,20 +625,22 @@ dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
 	;
 		% This predicate is not defined in this module.
 		State = State0,
-		PredTable = PredTable0
+		PredTable = PredTable0,
+		Changed = Changed0
 	),
-	ElimInfo = elimination_info(Needed, ModuleInfo, PredTable).
+	ElimInfo = elimination_info(Needed, ModuleInfo, PredTable, Changed).
 
 
 		% eliminate a procedure, if unused
 
 :- pred dead_proc_elim__eliminate_proc(pred_id, maybe(proc_id), elim_info,
-	proc_id, proc_table, proc_table, io__state, io__state).
+	proc_id, pair(bool, proc_table), pair(bool, proc_table),
+	io__state, io__state).
 :- mode dead_proc_elim__eliminate_proc(in, in, in, in, in, out, di, uo) is det.
 
 dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId, 
-		ProcTable0, ProcTable) -->
-	{ ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable) },
+		Changed0 - ProcTable0, Changed - ProcTable) -->
+	{ ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable, _) },
 	(
 		% Keep the procedure if it is in the needed map
 		% or if it is to be kept because it is exported.
@@ -631,8 +648,10 @@ dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId,
 		; { Keep = yes(ProcId) }
 		)
 	->
-		{ ProcTable = ProcTable0 }
+		{ ProcTable = ProcTable0 },
+		{ Changed = Changed0 }
 	;
+		{ Changed = yes },
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			write_proc_progress_message(

@@ -21,6 +21,12 @@
 % in context.m) must be applied to all Aditi predicates. The magic sets
 % and context transformations are mutually exclusive.
 %
+% It is important that no optimization which could optimize away calls
+% to Aditi procedures (e.g. simplify.m) be run between magic.m and rl_gen.m.
+% If Aditi calls are removed, the code in dependency_graph.m which merges
+% the SCCs containing Aditi predicates could become confused about which
+% predicates can be compiled together.
+%
 %-----------------------------------------------------------------------------%
 % Short example:
 %
@@ -169,16 +175,38 @@
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module passes_aux, mode_util, (inst), instmap, rl_gen, rl.
 :- import_module globals, options, hlds_out, prog_out, goal_util, type_util.
-:- import_module polymorphism, quantification, saved_vars.
+:- import_module polymorphism, quantification, saved_vars, dead_proc_elim.
 
 :- import_module int, list, map, require, set, std_util, string, term, varset.
 :- import_module assoc_list, bool, simplify.
 
 magic__process_module(ModuleInfo0, ModuleInfo) -->
-	{ module_info_ensure_aditi_dependency_info(ModuleInfo0, ModuleInfo1) },
-	{ module_info_aditi_dependency_ordering(ModuleInfo1, Ordering) },
-	{ magic_info_init(ModuleInfo1, Info0) },
-	{ module_info_predids(ModuleInfo1, PredIds) },
+
+	%
+	% Run simplification on Aditi procedures, mainly to get rid of 
+	% nested explicit quantifications.
+	% 
+	globals__io_get_globals(Globals),
+	{ simplify__find_simplifications(no, Globals, Simplifications) },
+	process_matching_nonimported_procs(
+		update_module_io(
+			magic__ite_to_disj_and_simplify(Simplifications)),
+		_, hlds_pred__pred_info_is_aditi_relation,
+		ModuleInfo0, ModuleInfo1),
+
+	% We need to run dead_proc_elim before working out the
+	% Aditi dependency ordering because any calls from dead
+	% procedures could confuse the code to merge SCCs (because
+	% procedures called from multiple places are never merged).
+	%
+	% No optimizations which could optimize away calls to Aditi
+	% procedures (e.g. simplify.m) should be run after this is done.
+	dead_proc_elim(ModuleInfo1, ModuleInfo2),
+
+	{ module_info_ensure_aditi_dependency_info(ModuleInfo2, ModuleInfo3) },
+	{ module_info_aditi_dependency_ordering(ModuleInfo3, Ordering) },
+	{ magic_info_init(ModuleInfo3, Info0) },
+	{ module_info_predids(ModuleInfo3, PredIds) },
 	{ magic__process_imported_procs(PredIds, Info0, Info1) },
 	globals__io_lookup_bool_option(very_verbose, Verbose),
 
@@ -194,22 +222,79 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	list__foldl2(magic__process_scc, Ordering, Info3, Info4),
 	{ list__foldl(magic__update_pred_status, PredIds, Info4, Info5) },
 
-	{ magic_info_get_module_info(ModuleInfo2, Info5, Info) },
+	{ magic_info_get_module_info(ModuleInfo4, Info5, Info) },
 	{ magic_info_get_errors(Errors, Info, _) },
 	{ set__to_sorted_list(Errors, ErrorList) },
 	( { ErrorList = [] } ->
-		{ ModuleInfo3 = ModuleInfo2 }
+		{ ModuleInfo5 = ModuleInfo4 }
 	;
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 		magic_util__report_errors(ErrorList,
-			ModuleInfo2, VerboseErrors),
-		{ module_info_incr_errors(ModuleInfo2, ModuleInfo3) },
+			ModuleInfo4, VerboseErrors),
+		{ module_info_incr_errors(ModuleInfo4, ModuleInfo5) },
 		io__set_exit_status(1)
 	),
 
 		% New procedures were created, so the dependency_info
 		% is out of date.
-	{ module_info_clobber_dependency_info(ModuleInfo3, ModuleInfo) }.
+	{ module_info_clobber_dependency_info(ModuleInfo5, ModuleInfo) }.
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% Convert if-then-elses and switches to disjunctions,
+	% then run simplification to flatten goals and remove
+	% unnecessary existential quantifications.
+	%
+:- pred magic__ite_to_disj_and_simplify(list(simplification)::in, pred_id::in,
+	proc_id::in, proc_info::in, proc_info::out, module_info::in,
+	module_info::out, io__state::di, io__state::uo) is det.
+
+magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
+		ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_goal(ProcInfo0, Goal0) },
+
+	{ Goal0 = if_then_else(_Vars, Cond, Then, Else, _SM) - GoalInfo ->
+		goal_util__if_then_else_to_disjunction(Cond, Then, Else, 
+			GoalInfo, Disj),
+		Goal1 = Disj - GoalInfo,
+		proc_info_set_goal(ProcInfo0, Goal1, ProcInfo1),
+
+		% Requantify the goal to rename apart the variables
+		% in the copies of the condition.
+		requantify_proc(ProcInfo1, ProcInfo3),
+		ModuleInfo1 = ModuleInfo0
+	; Goal0 = switch(Var, _Canfail, Cases, _SM) - GoalInfo ->
+		proc_info_varset(ProcInfo0, VarSet0),
+		proc_info_vartypes(ProcInfo0, VarTypes0),
+		proc_info_get_initial_instmap(ProcInfo0, 
+			ModuleInfo0, InstMap),
+		% XXX check for existentially typed constructors first -
+		% they will cause an abort.
+		goal_util__switch_to_disjunction(Var, Cases,
+			InstMap, Disjuncts, VarSet0, VarSet1, 
+			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1),
+		proc_info_set_varset(ProcInfo0, VarSet1, ProcInfo1),
+		proc_info_set_vartypes(ProcInfo1, VarTypes1, ProcInfo2),
+		map__init(SM),
+		Goal1 = disj(Disjuncts, SM) - GoalInfo,
+		proc_info_set_goal(ProcInfo2, Goal1, ProcInfo3)
+	;
+		ProcInfo3 = ProcInfo0,
+		ModuleInfo1 = ModuleInfo0
+	},
+
+	simplify__proc(Simplifications, PredId, ProcId,
+		ModuleInfo1, ModuleInfo2, ProcInfo3, ProcInfo4),
+
+	%
+	% Run saved_vars so that constructions of constants are close
+	% to their uses, and constant attributes aren't unnecessarily
+	% added to relations. We should be more aggressive about this -
+	% constructions of constant compound terms should also be pushed.
+	%
+	saved_vars_proc(PredId, ProcId, ProcInfo4, ProcInfo,
+		ModuleInfo2, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1344,70 +1429,16 @@ magic__create_assignments(ModuleInfo, [Arg0 - Arg | ArgsAL],
 
 magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 	{ proc_info_goal(ProcInfo0, Goal0) },
-
-	%
-	% Convert if-then-elses and switches to disjunctions.
-	%
-	( { Goal0 = if_then_else(_Vars, Cond, Then, Else, _SM) - GoalInfo } ->
-		{ goal_util__if_then_else_to_disjunction(Cond, Then, Else, 
-			GoalInfo, Disj) },
-		{ Goal1 = Disj - GoalInfo },
-		{ ProcInfo2 = ProcInfo0 }
-	; { Goal0 = switch(Var, _Canfail, Cases, _SM) - GoalInfo } ->
-		{ proc_info_varset(ProcInfo0, VarSet0) },
-		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-		magic_info_get_module_info(ModuleInfo0),
-		{ proc_info_get_initial_instmap(ProcInfo0, 
-			ModuleInfo0, InstMap) },
-		% XXX check for existentially typed constructors first -
-		% they will cause an abort.
-		{ goal_util__switch_to_disjunction(Var, Cases,
-			InstMap, Disjuncts, VarSet0, VarSet1, 
-			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1) },
-		magic_info_set_module_info(ModuleInfo1),
-		{ proc_info_set_varset(ProcInfo0, VarSet1, ProcInfo1) },
-		{ proc_info_set_vartypes(ProcInfo1, VarTypes1, ProcInfo2) },
-		{ map__init(SM) },
-		{ Goal1 = disj(Disjuncts, SM) - GoalInfo }
-	;
-		{ Goal1 = Goal0 },
-		{ ProcInfo2 = ProcInfo0 }
-	),
-
-	{ proc_info_set_goal(ProcInfo2, Goal1, ProcInfo3) },
-
-	%
-	% Run simplification, mainly to get rid of 
-	% nested explicit quantifications.
-	% 
-	magic_info_get_module_info(ModuleInfo2),
-	{ module_info_globals(ModuleInfo2, Globals) },
-	{ simplify__find_simplifications(no, Globals, Simplifications) },
-	{ PredProcId = proc(PredId, ProcId) },
-	{ simplify__proc_2(Simplifications, PredId, ProcId, 
-		ModuleInfo2, ModuleInfo3, ProcInfo3, ProcInfo4, _) },
-
-	%
-	% Run saved_vars so that constructions of constants are close
-	% to their uses, and constant attributes aren't unnecessarily
-	% added to relations. We should be more aggressive about this -
-	% constructions of constant compound terms should also be pushed.
-	%
-	{ saved_vars_proc_no_io(PredId, ProcId, ProcInfo4, ProcInfo5,
-		ModuleInfo3, ModuleInfo4) },
-
-	{ proc_info_goal(ProcInfo5, Goal2) },
 	magic_info_set_curr_pred_proc_id(PredProcId),
 	magic_info_set_pred_info(PredInfo),
-	magic_info_set_proc_info(ProcInfo5),
-	magic_info_set_module_info(ModuleInfo4),
-	{ Goal2 = _ - GoalInfo2 },
-	{ goal_to_disj_list(Goal2, GoalList2) },
+	magic_info_set_proc_info(ProcInfo0),
+	{ Goal0 = _ - GoalInfo0 },
+	{ goal_to_disj_list(Goal0, GoalList0) },
 	list__map_foldl(magic__preprocess_disjunct, 
-			GoalList2, GoalList),
-	{ disj_list_to_goal(GoalList, GoalInfo2, Goal) },
-	magic_info_get_proc_info(ProcInfo6),
-	{ proc_info_set_goal(ProcInfo6, Goal, ProcInfo) }.
+			GoalList0, GoalList),
+	{ disj_list_to_goal(GoalList, GoalInfo0, Goal) },
+	magic_info_get_proc_info(ProcInfo1),
+	{ proc_info_set_goal(ProcInfo1, Goal, ProcInfo) }.
 
 	% Undo common structure elimination of higher-order terms in an
 	% attempt to avoid creating procedures with higher-order arguments

@@ -50,6 +50,9 @@
 	% negation or aggregation are merged into the parent SCC. This makes
 	% the low-level RL optimizations more effective while maintaining
 	% stratification. 
+	% dead_proc_elim.m should be be run before this is called
+	% to avoid missing some opportunities for merging where
+	% a procedure is called from a dead procedure.
 :- pred module_info_ensure_aditi_dependency_info(module_info, module_info).
 :- mode module_info_ensure_aditi_dependency_info(in, out) is det.
 
