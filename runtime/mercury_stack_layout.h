@@ -76,7 +76,7 @@ typedef	MR_int_least16_t	MR_Determinism;
 #define MR_DETISM_AT_MOST_ONE(d)	(((d) & 3) == 2)
 #define MR_DETISM_AT_MOST_MANY(d)	(((d) & 1) != 0)
 
-#define MR_DETISM_CAN_FAIL(d)		(((d) & 4) != 0)
+#define MR_DETISM_CAN_FAIL(d)		(((d) & 4) == 0)
 
 #define MR_DETISM_FIRST_SOLN(d)		(((d) & 8) != 0)
 
