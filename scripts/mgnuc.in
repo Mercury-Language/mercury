@@ -238,6 +238,14 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 			;;
 		esac
 		;;
+	i?86-*)
+		# the use of stack_pointer in the ASM_JUMP macro
+		# defined in runtime/goto.h causes lots of warnings
+		# about using possibly uninitialized variables;
+		# there's no easy way to supress them except by
+		# disabling the warning.
+		CHECK_OPTS="$CHECK_OPTS -Wno-uninitialized"
+		;;
 esac
 
 #
