@@ -29,7 +29,7 @@
 % This structure will always contain the following information:
 %
 %	code address		(Code *) - address of entry
-% 	succip stack location	(uint_least32_t) actually, type MR_Live_Lval
+% 	succip stack location	(uint_least32_t) actually, type MR_Long_Lval
 % 					(the location will be set to -1
 % 					if there is no succip available).
 % 	number of stack slots	(uint_least16_t)
