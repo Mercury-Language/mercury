@@ -127,17 +127,17 @@ ENDINIT
 #define	time_output	r7
 #endif
 
-Define_extern_entry(mercury__time__benchmark_nondet_5_0);
-Declare_label(mercury__time__benchmark_nondet_5_0_i1);
-Declare_label(mercury__time__benchmark_nondet_5_0_i2);
+Define_extern_entry(mercury__benchmarking__benchmark_nondet_5_0);
+Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
+Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 
 BEGIN_MODULE(benchmark_nondet_module)
-	init_entry(mercury__time__benchmark_nondet_5_0);
-	init_label(mercury__time__benchmark_nondet_5_0_i1);
-	init_label(mercury__time__benchmark_nondet_5_0_i2);
+	init_entry(mercury__benchmarking__benchmark_nondet_5_0);
+	init_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
+	init_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 BEGIN_CODE
 
-Define_entry(mercury__time__benchmark_nondet_5_0);
+Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 
 	/*
 	** Create a nondet stack frame. The contents of the slots:
@@ -154,7 +154,7 @@ Define_entry(mercury__time__benchmark_nondet_5_0);
 	*/
 
 	mkframe(""benchmark_nondet"", 6,
-		LABEL(mercury__time__benchmark_nondet_5_0_i2));
+		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i2));
 
 	framevar(0) = r3;
 	framevar(1) = r4;
@@ -176,16 +176,16 @@ Define_entry(mercury__time__benchmark_nondet_5_0);
 	{ 
 		Declare_entry(do_call_nondet_closure);
 		call(ENTRY(do_call_nondet_closure),
-			LABEL(mercury__time__benchmark_nondet_5_0_i1),
-			LABEL(mercury__time__benchmark_nondet_5_0));
+			LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
+			LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 	}
 
-Define_label(mercury__time__benchmark_nondet_5_0_i1);
+Define_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
 	/* we found a solution */
 	framevar(3) = framevar(3) + 1;
 	redo();
 
-Define_label(mercury__time__benchmark_nondet_5_0_i2);
+Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	/* no more solutions for this iteration, so mark it completed */
 	framevar(2) = framevar(2) - 1;
 	/* we can now reclaim memory by resetting the heap pointer */
@@ -203,8 +203,8 @@ Define_label(mercury__time__benchmark_nondet_5_0_i2);
 		{
 			Declare_entry(do_call_nondet_closure);
 			call(ENTRY(do_call_nondet_closure),
-				LABEL(mercury__time__benchmark_nondet_5_0_i1),
-				LABEL(mercury__time__benchmark_nondet_5_0));
+				LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
+				LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 		}
 	}
 
@@ -214,15 +214,15 @@ Define_label(mercury__time__benchmark_nondet_5_0_i2);
 	succeed_discard();
 END_MODULE
 
-Define_extern_entry(mercury__time__benchmark_det_5_0);
-Declare_label(mercury__time__benchmark_det_5_0_i1);
+Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
+Declare_label(mercury__benchmarking__benchmark_det_5_0_i1);
 
 BEGIN_MODULE(benchmark_det_module)
-	init_entry(mercury__time__benchmark_det_5_0);
-	init_label(mercury__time__benchmark_det_5_0_i1);
+	init_entry(mercury__benchmarking__benchmark_det_5_0);
+	init_label(mercury__benchmarking__benchmark_det_5_0_i1);
 BEGIN_CODE
 
-Define_entry(mercury__time__benchmark_det_5_0);
+Define_entry(mercury__benchmarking__benchmark_det_5_0);
 
 	/*
 	** Create a det stack frame. The contents of the slots:
@@ -260,11 +260,11 @@ Define_entry(mercury__time__benchmark_det_5_0);
 	{ 
 		Declare_entry(do_call_det_closure);
 		call(ENTRY(do_call_det_closure),
-			LABEL(mercury__time__benchmark_det_5_0_i1),
-			LABEL(mercury__time__benchmark_det_5_0));
+			LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
+			LABEL(mercury__benchmarking__benchmark_det_5_0));
 	}
 
-Define_label(mercury__time__benchmark_det_5_0_i1);
+Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	/* mark current iteration completed */
 	detstackvar(3) = detstackvar(3) - 1;
 	/* are there any other iterations? */
@@ -279,8 +279,8 @@ Define_label(mercury__time__benchmark_det_5_0_i1);
 		{ 
 			Declare_entry(do_call_det_closure);
 			call(ENTRY(do_call_det_closure),
-				LABEL(mercury__time__benchmark_det_5_0_i1),
-				LABEL(mercury__time__benchmark_det_5_0));
+				LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
+				LABEL(mercury__benchmarking__benchmark_det_5_0));
 		}
 	}
 
