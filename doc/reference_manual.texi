@@ -4251,7 +4251,7 @@ For example:
 :- typeclass showable(T) where [ func show(T) = string ].
 :- type showable_list
 	---> nil
-	;    some [T] (cons(T, list_of_any) => showable(T)).
+	;    some [T] (cons(T, showable_list) => showable(T)).
 
 % A different way of doing the same kind of thing, this
 % time using the standard type list(T).
