@@ -48,6 +48,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 :- type trace_port_type
 	--->	call
 	;	exit
+	;	redo
 	;	fail
 	;	ite_then
 	;	ite_else

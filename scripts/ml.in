@@ -207,6 +207,9 @@ EOF
     shift
 done
 
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
+
 # If you haven't set mercury_libs, set it to the default value
 # (shared on most systems). Note that if you have set all_libs,
 # it will also have set mercury_libs.
@@ -256,15 +259,6 @@ case $all_libs in static)
 			MAYBE_STATIC_OPT=-static
 			;;
 	esac
-esac
-
-#
-# .debug grade implies --use-trail
-#	(see comment in compiler/handle_options.m for rationale)
-#
-case $stack_trace,$require_tracing in
-	true,true)
-		use_trail=true ;;
 esac
 
 #

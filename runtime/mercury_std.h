@@ -36,9 +36,14 @@
 ** Hence we define `MR_' versions of these that do the cast -- you should
 ** make sure to always use the `MR_' versions rather than the standard ones.
 */
-#define	MR_isalnum(c)	isalnum((unsigned char) (c))
-#define	MR_isdigit(c)	isdigit((unsigned char) (c))
-#define	MR_isspace(c)	isspace((unsigned char) (c))
+
+#define	MR_isupper(c)		isupper((unsigned char) (c))
+#define	MR_islower(c)		islower((unsigned char) (c))
+#define	MR_isalpha(c)		isalpha((unsigned char) (c))
+#define	MR_isalnum(c)		isalnum((unsigned char) (c))
+#define	MR_isdigit(c)		isdigit((unsigned char) (c))
+#define	MR_isspace(c)		isspace((unsigned char) (c))
+#define	MR_isalnumunder(c)	(isalnum((unsigned char) (c)) || c == '_')
 
 #define streq(s1, s2)		(strcmp(s1, s2) == 0)
 #define strdiff(s1, s2)		(strcmp(s1, s2) != 0)

@@ -34,8 +34,12 @@
 :- pred llds_out__lval_to_string(lval, string).
 :- mode llds_out__lval_to_string(in, out) is semidet.
 
+	% Convert a register to a string description of that register.
+
 :- pred llds_out__reg_to_string(reg_type, int, string).
 :- mode llds_out__reg_to_string(in, in, out) is det.
+
+	% Convert a binary operator to a string description of that operator.
 
 :- pred llds_out__binary_op_to_string(binary_op, string).
 :- mode llds_out__binary_op_to_string(in, out) is det.
@@ -105,6 +109,12 @@
 
 :- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
 :- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
+
+	% Convert a label to a string description of the stack layout
+	% structure of that label.
+
+:- pred llds_out__make_stack_layout_name(label, string).
+:- mode llds_out__make_stack_layout_name(in, out) is det.
 
 	% Returns the name of the initialization function
 	% for a given module.
@@ -221,10 +231,10 @@ output_c_file_mercury_headers -->
 	io__write_string("#undef MR_USE_REDOFR\n"),
 	io__write_string("#define MR_USE_REDOFR\n"),
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
+	( { TraceLevel \= none } ->
 		io__write_string("#define MR_STACK_TRACE_THIS_MODULE\n"),
 		io__write_string("#include ""mercury_imp.h""\n"),
-		io__write_string("#include ""mercury_trace.h""\n")
+		io__write_string("#include ""mercury_trace_base.h""\n")
 	;
 		io__write_string("#include ""mercury_imp.h""\n")
 	).
@@ -1508,11 +1518,9 @@ output_gc_livevals(LiveVals) -->
 
 output_gc_livevals_2([]) --> [].
 output_gc_livevals_2([LiveInfo | LiveInfos]) -->
-	{ LiveInfo = live_lvalue(Lval, LiveValueType, Name, TypeParams) },
+	{ LiveInfo = live_lvalue(Lval, LiveValueType, TypeParams) },
 	io__write_string(" *\t"),
 	output_lval(Lval),
-	io__write_string("\t"),
-	io__write_string(Name),
 	io__write_string("\t"),
 	output_live_value_type(LiveValueType),
 	io__write_string("\t"),
@@ -1542,8 +1550,10 @@ output_live_value_type(redofr) --> io__write_string("MR_redofr").
 output_live_value_type(redoip) --> io__write_string("MR_redoip").
 output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(Type, Inst)) --> 
+output_live_value_type(var(_, Name, Type, Inst)) --> 
 	io__write_string("var("),
+	io__write_string(Name),
+	io__write_string(", "),
 	{ varset__init(NewVarset) },
 	mercury_output_term(Type, NewVarset, no),
 	io__write_string(", "),
@@ -2069,6 +2079,7 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 		{ UseMacro = no },
 		{ NeedDecl = yes }
 	).
+need_code_addr_decls(do_trace_redo_fail, yes) --> [].
 need_code_addr_decls(do_det_closure, yes) --> [].
 need_code_addr_decls(do_semidet_closure, yes) --> [].
 need_code_addr_decls(do_nondet_closure, yes) --> [].
@@ -2108,6 +2119,8 @@ output_code_addr_decls(do_fail) -->
 		io__write_string("do_fail"),
 		io__write_string(");\n")
 	).
+output_code_addr_decls(do_trace_redo_fail) -->
+	io__write_string("Declare_entry(MR_do_trace_redo_fail);\n").
 output_code_addr_decls(do_det_closure) -->
 	io__write_string("Declare_entry(do_call_det_closure);\n").
 output_code_addr_decls(do_semidet_closure) -->
@@ -2311,6 +2324,8 @@ output_goto(do_fail, _) -->
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_fail));\n")
 	).
+output_goto(do_trace_redo_fail, _) -->
+	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail));\n").
 output_goto(do_det_closure, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_call_det_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -2400,6 +2415,8 @@ output_code_addr(do_redo) -->
 	io__write_string("ENTRY(do_redo)").
 output_code_addr(do_fail) -->
 	io__write_string("ENTRY(do_fail)").
+output_code_addr(do_trace_redo_fail) -->
+	io__write_string("ENTRY(MR_do_trace_redo_fail)").
 output_code_addr(do_det_closure) -->
 	io__write_string("ENTRY(do_call_det_closure)").
 output_code_addr(do_semidet_closure) -->
@@ -2415,6 +2432,14 @@ output_code_addr(do_nondet_class_method) -->
 output_code_addr(do_not_reached) -->
 	io__write_string("ENTRY(do_not_reached)").
 
+	% The code should be kept in sync with output_data_addr/2 below.
+llds_out__make_stack_layout_name(Label, Name) :-
+	llds_out__get_label(Label, yes, LabelName),
+	string__append_list([
+		"mercury_data_",
+		"_layout__",
+		LabelName
+	], Name).
 
 	% Output a data address. 
 
@@ -2449,6 +2474,7 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string("__"),
 		io__write_string(Str)
 	;
+		% Keep this code in sync with make_stack_layout_name/3.
 		{ VarName = stack_layout(Label) },
 		io__write_string("_layout__"),
 		output_label(Label)
@@ -3086,14 +3112,13 @@ output_lval(stackvar(N)) -->
 	io__write_int(N),
 	io__write_string(")").
 output_lval(framevar(N)) -->
-	{ (N < 0) ->
+	{ (N =< 0) ->
 		error("frame var out of range")
 	;
 		true
 	},
 	io__write_string("MR_framevar("),
-	{ N1 is N + 1 },
-	io__write_int(N1),
+	io__write_int(N),
 	io__write_string(")").
 output_lval(succip) -->
 	io__write_string("succip").
@@ -3228,8 +3253,7 @@ llds_out__binary_op_to_string(float_divide, "float_divide").
 %-----------------------------------------------------------------------------%
 
 llds_out__lval_to_string(framevar(N), Description) :-
-	N1 is N + 1,
-	string__int_to_string(N1, N_String),
+	string__int_to_string(N, N_String),
 	string__append("MR_framevar(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 llds_out__lval_to_string(stackvar(N), Description) :-

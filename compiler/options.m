@@ -90,6 +90,10 @@
 	% Auxiliary output options
 		;	assume_gmake
 		;	trace
+		;	trace_internal
+		;	trace_return
+		;	trace_redo
+		;	trace_optimized
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -375,6 +379,10 @@ option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
+	trace_internal		-	bool(yes),
+	trace_return		-	bool(yes),
+	trace_redo		-	bool(yes),
+	trace_optimized		-	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -705,6 +713,11 @@ long_option("output-grade-string",	output_grade_string).
 % aux output options
 long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
+long_option("trace-internal",		trace_internal).
+long_option("trace-return",		trace_return).
+long_option("trace-redo",		trace_redo).
+long_option("trace-optimised",		trace_optimized).
+long_option("trace-optimized",		trace_optimized).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -746,11 +759,11 @@ long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
 long_option("debug",			debug).
+long_option("stack-trace",		stack_trace).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
-% long_option("stack-trace",		stack_trace).
 % long_option("require-tracing",	require_tracing).
-long_option("use-trail",		use_trail).
+% long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
@@ -1379,11 +1392,21 @@ options_help_aux_output -->
 		"\tWhen generating `.dep' files, generate Makefile",
 		"\tfragments that use only the features of standard make;",
 		"\tdo not assume the availability of GNU Make extensions.",
-		"--trace {minimum, interfaces, all, default}",
+		"--trace {minimum, shallow, deep, default}",
 		"\tGenerate code that includes the specified level", 
 		"\tof execution tracing.",
-		"\tSee the [XXX not yet written!] chapter of the",
-		"\tMercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
+		"--no-trace-internal",
+		"\tDo not generate code for internal events even if the trace",
+		"\tlevel is deep.",
+		"--no-trace-return",
+		"\tDo not generate trace information for call return sites.",
+		"\tPrevents the printing of the values of variables in ancestors",
+		"\tof the current call.",
+		"--no-trace-redo",
+		"\tDo not generate code to trace REDO events.",
+		"--trace-optimized",
+		"\tDo not disable optimizations that can change the trace.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",

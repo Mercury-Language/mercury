@@ -1,0 +1,12 @@
+source @DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdb_doc
+alias	s	step
+alias	g	goto
+alias	f	finish
+alias	r	retry
+alias	v	vars
+alias	p	print *
+alias	d	stack
+alias	c	continue
+alias	b	break
+alias	h	help
+alias	?	help

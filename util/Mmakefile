@@ -20,7 +20,7 @@ CFLAGS	= -I$(RUNTIME_DIR) $(EXTRA_CFLAGS) -O0
 # we need -I ../runtime for "mercury_getopt.h"
 # the -O0 is to get around a stupid compiler bug in gcc 2.7.2.3 on cyclone
 
-PROGS=mkinit mdemangle
+PROGS=mkinit mdemangle info_to_mdb
 
 #-----------------------------------------------------------------------------#
 

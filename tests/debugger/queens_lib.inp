@@ -1,87 +1,91 @@
-p *
+register --quiet
+echo on
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
-l 1
-p *
-l 2
-v
-p *
+print *
+level 1
+print *
+up 1
+vars
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
+print *
 
-p *
-C
+print *
+break print_list
+continue -aN
+continue -n -S

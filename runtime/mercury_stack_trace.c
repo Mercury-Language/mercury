@@ -54,6 +54,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 	fprintf(stderr, "Stack dump follows:\n");
 
+	do_init_modules();
 	label = MR_lookup_internal_by_addr(success_pointer);
 	if (label == NULL) {
 		fprintf(stderr, "internal label not found\n");
@@ -80,6 +81,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
 
+	do_init_modules();
 	MR_dump_stack_record_init();
 
 	stack_trace_sp = det_stack_pointer;
@@ -119,6 +121,7 @@ MR_find_nth_ancestor(const MR_Stack_Layout_Label *label_layout,
 	const MR_Stack_Layout_Label	*return_label_layout;
 	int				i;
 
+	do_init_modules();
 	*problem = NULL;
 	for (i = 0; i < ancestor_level && label_layout != NULL; i++) {
 		(void) MR_stack_walk_step(label_layout->MR_sll_entry,
@@ -171,7 +174,8 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 			return STEP_ERROR_AFTER;
 		}
 
-		success = (Code *) field(0, *stack_trace_sp_ptr, -number);
+		success = (Code *) MR_based_stackvar(*stack_trace_sp_ptr,
+					number);
 		*stack_trace_sp_ptr = *stack_trace_sp_ptr -
 			entry_layout->MR_sle_stack_slots;
 	} else {
@@ -202,6 +206,8 @@ void
 MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 {
 	int	frame_size;
+
+	do_init_modules();
 
 	/*
 	** Change the >= below to > if you don't want the trace to include
@@ -289,15 +295,44 @@ MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	fprintf(fp, "%9d ", start_level);
 
 	if (count > 1) {
-		fprintf(fp, " %3d*", count);
+		fprintf(fp, " %3d* ", count);
 	} else {
-		fprintf(fp, "%5s", "");
+		fprintf(fp, "%5s ", "");
 	}
 
-	fprintf(fp, " %s:%s/%ld-%ld (%s)\n",
+	MR_print_proc_id(fp, entry_layout, NULL);
+}
+
+void
+MR_print_proc_id_for_debugger(const MR_Stack_Layout_Entry *entry_layout)
+{
+	MR_print_proc_id(stdout, entry_layout, NULL);
+}
+
+void
+MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
+	const char *extra)
+{
+	/*
+	** The following should be a full identification of the procedure
+	** provided (a) there was no intermodule optimization and (b) we are
+	** not interested in the details of compiler-generated procedures.
+	**
+	** XXX We should make it work even if (a) and (b) are not true.
+	*/
+
+	fprintf(fp, "%s %s:%s/%ld-%ld (%s)",
+		entry_layout->MR_sle_pred_or_func == MR_PREDICATE ?
+			"pred" : "func",
 		entry_layout->MR_sle_def_module,
 		entry_layout->MR_sle_name,
 		(long) entry_layout->MR_sle_arity,
 		(long) entry_layout->MR_sle_mode,
 		detism_names[entry_layout->MR_sle_detism]);
+
+	if (extra != NULL) {
+		fprintf(fp, " %s\n", extra);
+	} else {
+		fprintf(fp, "\n");
+	}
 }

@@ -886,8 +886,19 @@ then
 		export PATH
 	fi
 
+	# We need to give tests/debugger access to the mdbrc and mdb_doc
+	# files in the doc and scripts directories, without hardcoding their
+	# pathnames. We must also compensate for scripts/mdbrc having hardcoded
+	# within it the *installed* pathname of mdb_doc and not its current
+	# pathname.
+	cat $root/doc/mdb_doc > $root/scripts/test_mdbrc
+	sed -e '/^source/d' $root/scripts/mdbrc >> $root/scripts/test_mdbrc
+	MERCURY_DEBUGGER_INIT=$root/scripts/test_mdbrc
+	export MERCURY_DEBUGGER_INIT
+
 	if test -d ../tests
 	then
+		cp $root/doc/mdb_command_test.inp ../tests/debugger
 		if test "$testdir" = ""
 		then
 			cd ../tests
@@ -900,6 +911,7 @@ then
 		cd $root
 	elif test -d tests
 	then
+		cp $root/doc/mdb_command_test.inp tests/debugger
 		if test "$testdir" = ""
 		then
 			cd tests

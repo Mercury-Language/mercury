@@ -57,6 +57,8 @@ NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
+DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
+AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 #-----------------------------------------------------------------------------#
 case "$host" in
 	mips-sgi-irix5.*)
@@ -823,7 +825,7 @@ if test "$mercury_cv_low_tag_bits" -lt 2; then
 	else
 		MERCURY_MSG("rebuilding with fewer tag bits")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_low_tag_bits" -gt 2; then
@@ -833,7 +835,7 @@ if test "$mercury_cv_low_tag_bits" -gt 2; then
 	else
 		MERCURY_MSG("rebuilding with extra tag bits")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 AC_DEFINE_UNQUOTED(LOW_TAG_BITS, $mercury_cv_low_tag_bits)
@@ -947,7 +949,7 @@ if test "$mercury_cv_unboxed_floats" = yes; then
 	else
 		MERCURY_MSG("rebuilding with unboxed floats")
 		MERCURY_MSG("installation may take longer than usual")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 fi
 if test "$mercury_cv_unboxed_floats" = yes; then
@@ -1414,7 +1416,7 @@ if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 		MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
 		MERCURY_MSG("compiler and library will be rebuilt with new grade")
 		MERCURY_MSG("installation may take a long time")
-		rm -f library/*.c compiler/*.c profiler/*.c
+		rm -f library/*.c compiler/*.c browser/*.c profiler/*.c
 	fi
 else
 	MERCURY_MSG("using \`GRADE=$GRADE' to compile the compiler")
@@ -1578,6 +1580,34 @@ AC_CACHE_VAL(mercury_cv_cannot_grok_asm_type_directive, [
 AC_MSG_RESULT($mercury_cv_cannot_grok_asm_type_directive)
 if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
 	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
+AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
+AC_TRY_RUN([
+changequote(<<,>>) 
+
+/* USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
+/* We define USE_GCC_NONLOCAL_GOTOS because some platforms (e.g. SPARCs) */
+/* cannot have USE_GCC_GLOBAL_REGISTERS without it. */
+#define	USE_GCC_GLOBAL_REGISTERS
+#define USE_GCC_NONLOCAL_GOTOS
+#include "mercury_imp.h"
+#include "trace/mercury_trace_spy.h"
+
+MR_Spy_Point	spied_procs[2];
+
+int main() {
+	spied_procs[1] = spied_procs[0];
+	exit(0);
+changequote([,]) 
+}],
+[mercury_cv_cannot_use_structure_assignment=no],
+[mercury_cv_cannot_use_structure_assignment=yes],
+[mercury_cv_cannot_use_structure_assignment=yes]))
+AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
+if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
+	AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
 fi
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
@@ -1750,15 +1780,17 @@ AC_SUBST(BOOTSTRAP_MC)
 top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
+FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
+AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
-scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
-scripts/mkfifo_using_mknod bindist/bindist.build_vars
+scripts/mdb scripts/mdbrc scripts/msc scripts/msl scripts/msp
+scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 for header in $CONFIG_HEADERS ; do
 	if test "$header" = "runtime/mercury_conf.h"; then

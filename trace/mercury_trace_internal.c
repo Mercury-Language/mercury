@@ -13,443 +13,1484 @@
 #include "mercury_imp.h"
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
-#include "mercury_trace_util.h"
-#include "mercury_std.h"
+#include "mercury_trace_alias.h"
+#include "mercury_trace_help.h"
+#include "mercury_trace_spy.h"
+#include "mercury_trace_tables.h"
+#include "mercury_layout_util.h"
+#include "mercury_array_macros.h"
+#include "mercury_getopt.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <errno.h>
 
-#define	MR_NAME_LEN		80
-#define	MR_MAX_SPY_POINTS	100
-#define	MR_LOG10_MAX_SPY_POINTS	20
+/* The initial size of the spy points table. */
+#define	MR_INIT_SPY_POINTS	10
 
-#define	MR_MAX_LINE_LEN		256
+/* The initial size of arrays of argument values. */
+#define	MR_INIT_ARG_COUNT	20
 
-typedef struct {
-	bool	enabled;
-	char	module_name[MR_NAME_LEN];
-	char	pred_name[MR_NAME_LEN];
-} MR_spy_point;
+/* The initial size of arrays of words. */
+#define	MR_INIT_WORD_COUNT	20
+
+/* The initial size of arrays of characters. */
+#define	MR_INIT_BUF_LEN		80
+
+/* The initial number of lines in documentation entries. */
+#define	MR_INIT_DOC_CHARS	800
+
+/* An upper bound on the maximum number of characters in a number. */
+/* If a number has more than this many chars, the user is in trouble. */
+#define	MR_NUMBER_LEN		80
+
+#define	MDBRC_FILENAME		".mdbrc"
+#define	DEFAULT_MDBRC_FILENAME	"mdbrc"
+
+/*
+** XXX We should consider whether all the static variables in this module
+** should be thread local.
+*/
+
+static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
+
+/*
+** The table of spy points, with counters saying which is the next free slot
+** and how many slots are allocated.
+*/
+
+static	MR_Spy_Point    	**MR_spy_points;
+static	int			MR_spy_point_next = 0;
+static	int			MR_spy_point_max  = 0;
+
+/*
+** These variables say (a) whether the printing of event sequences will pause
+** after each screenful of events, (b) how may events constitute a screenful
+** (although we count only events, not how many lines they take up), and (c)
+** how many events we have printed so far in this screenful.
+*/
+
+static	bool			MR_scroll_control = FALSE;
+static	int			MR_scroll_limit = 24;
+static	int			MR_scroll_next = 0;
+
+/*
+** We echo each command just as it is executed iff this variable is TRUE.
+*/
+
+static	bool			MR_echo_commands = FALSE;
+
+typedef struct MR_Line_Struct {
+	char			*MR_line_contents;
+	struct MR_Line_Struct	*MR_line_next;
+} MR_Line;
+
+static	MR_Line			*MR_line_head = NULL;
+static	MR_Line			*MR_line_tail = NULL;
+
+typedef struct MR_Event_Details_Struct {
+	int			MR_call_seqno;
+	int			MR_call_depth;
+	int			MR_event_number;
+} MR_Event_Details;
 
 typedef enum {
 	KEEP_INTERACTING,
 	STOP_INTERACTING
-} MR_next;
+} MR_Next;
 
-static	MR_spy_point	MR_spy_points[MR_MAX_SPY_POINTS];
-static	int		MR_next_spy_point = 0;
-
-static	bool		MR_echo_commands = FALSE;
-
-static	MR_next	MR_trace_debug_cmd(MR_trace_cmd_info *cmd,
+static	void	MR_trace_internal_ensure_init(void);
+static	bool	MR_trace_internal_init_from_env(const char *env_var);
+static	bool	MR_trace_internal_init_from_file(const char *filename);
+static	bool	MR_trace_internal_init_from_env_dir(const char *env_var,
+			const char *filename);
+static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			const MR_Stack_Layout_Label *layout,
-			MR_trace_port port, int seqno, int depth,
-			const char *path, int *ancestor_level);
+			Word *saved_regs, MR_Event_Details *event_details,
+			MR_Trace_Port port, int seqno, int depth,
+			const char *path, int *ancestor_level,
+			int *max_mr_num, Code **jumpaddr);
+static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
+			char ***words, int *word_count,
+			const char *cat, const char *item);
+static	bool	MR_trace_options_when_action(MR_Spy_When *when,
+			MR_Spy_Action *action, char ***words, int *word_count,
+			const char *cat, const char *item);
+static	bool	MR_trace_options_quiet(bool *verbose,
+			char ***words, int *word_count,
+			const char *cat, const char *item);
+static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
+			int *word_count, const char *cat, const char *item);
+static	void	MR_trace_retry(const MR_Stack_Layout_Label *layout,
+			Word *saved_regs, MR_Event_Details *event_details,
+			int seqno, int depth, int *max_mr_num,
+			Code **jumpaddr);
+static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
+			Word *saved_regs, const char *name, bool *succeeded);
+static	void	MR_trace_internal_add_spy_point(MR_Spy_When when,
+			MR_Spy_Action action,
+			const MR_Stack_Layout_Entry *entry,
+			const MR_Stack_Layout_Label *label);
+static	void	MR_print_spy_point(int i);
 static	void	MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout,
-			int ancestor_level);
+			Word *saved_regs, int ancestor_level);
+static	const char *MR_trace_browse_check_level(const MR_Stack_Layout_Label
+			*top_layout, Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-			int ancestor_level, int which_var);
+			Word *saved_regs, int ancestor_level, int which_var);
 static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
-			int ancestor_level);
+			Word *saved_regs, int ancestor_level);
 static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Var *var,
-			bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params);
-static	void	MR_trace_help(void);
 
+static	const char *MR_trace_read_help_text(void);
 static	bool	MR_trace_is_number(char *word, int *value);
 static	bool	MR_trace_is_number_prefix(char *word, char **suffix,
 			int *value);
-static	int	MR_trace_break_into_words(char line[], char *words[]);
-static	int	MR_trace_getline(FILE *file, char line[], int line_max);
+static	const char *MR_trace_parse_line(char *line,
+			char ***words, int *word_max, int *word_count);
+static	int	MR_trace_break_into_words(char *line,
+			char ***words_ptr, int *word_max_ptr);
+static	void	MR_trace_expand_aliases(char ***words,
+			int *word_max, int *word_count);
+static	bool	MR_trace_source(const char *filename);
+static	void	MR_trace_source_from_open_file(FILE *fp);
+static	char	*MR_trace_getline(const char *prompt, FILE *fp);
+static	char	*MR_trace_getline_queue(void);
+static	char	*MR_trace_getline_raw(FILE *fp);
+static	void	MR_insert_line_at_head(const char *line);
+static	void	MR_insert_line_at_tail(const char *line);
 
-static	void	MR_trace_print_port(MR_trace_port port);
-static	void	MR_trace_print_detism(Word detism);
+static	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
+			const MR_Stack_Layout_Label *layout, Word *saved_regs,
+			MR_Trace_Port port, int seqno, int depth,
+			const char *path, int *max_mr_num);
+static	void	MR_trace_event_print_internal_report(
+			const MR_Stack_Layout_Label *layout,
+			MR_Trace_Port port, int seqno, int depth,
+			const char *path);
+static	void	MR_trace_print_port(MR_Trace_Port port);
 
-void
-MR_trace_event_internal(MR_trace_cmd_info *cmd,
-	const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, int seqno, int depth, const char *path)
+static	bool	MR_trace_valid_command(const char *word);
+
+Code *
+MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
+	const MR_Stack_Layout_Label *layout, Word *saved_regs,
+	MR_Trace_Port port, int seqno, int depth,
+	const char *path, int *max_mr_num)
 {
-	int	i;
-	int	c;
-	int	count;
-	bool	count_given;
-	Word	saved_seqno;
-	Word	saved_depth;
-	Word	saved_event;
-	int	ancestor_level;
+	int			i;
+	int			c;
+	int			count;
+	bool			count_given;
+	int			ancestor_level;
+	Code			*jumpaddr;
+	char			*line;
+	MR_Next			res;
+	MR_Event_Details	event_details;
 
-	MR_trace_event_internal_report(layout, port, seqno, depth, path);
-
-	/* these globals can be overwritten when we call Mercury code */
-	saved_seqno = MR_trace_call_seqno;
-	saved_depth = MR_trace_call_depth;
-	saved_event = MR_trace_event_number;
-
-	/* by default, print variables from the current procedure */
-	ancestor_level = 0;
-
-	while (MR_trace_debug_cmd(cmd, layout, port, seqno, depth, path,
-			&ancestor_level) == KEEP_INTERACTING) {
-		; /* all the work is done in MR_trace_debug_cmd */
+	if (! interactive) {
+		return MR_trace_event_internal_report(cmd, layout, saved_regs,
+				port, seqno, depth, path, max_mr_num);
 	}
 
-	MR_trace_call_seqno = saved_seqno;
-	MR_trace_call_depth = saved_depth;
-	MR_trace_event_number = saved_event;
+	MR_trace_enabled = FALSE;
+	MR_trace_internal_ensure_init();
+
+	MR_trace_event_print_internal_report(layout, port, seqno, depth, path);
+
+	/*
+	** These globals can be overwritten when we call Mercury code,
+	** such as the term browser. We therefore save and restore them
+	** across calls to MR_trace_debug_cmd. However, we store the
+	** saved values in a structure that we pass to MR_trace_debug_cmd,
+	** to allow them to be modified by MR_trace_retry().
+	*/
+
+	event_details.MR_call_seqno = MR_trace_call_seqno;
+	event_details.MR_call_depth = MR_trace_call_depth;
+	event_details.MR_event_number = MR_trace_event_number;
+
+	/* by default, print variables from the current call */
+	ancestor_level = 0;
+
+	/* by default, return where we came from */
+	jumpaddr = NULL;
+
+	do {
+		line = MR_trace_getline("mdb> ", stdin);
+		res = MR_trace_debug_cmd(line, cmd, layout, saved_regs,
+				&event_details, port, seqno, depth, path,
+				&ancestor_level, max_mr_num, &jumpaddr);
+	} while (res == KEEP_INTERACTING);
+
+	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
+			(cmd->MR_trace_print_level != MR_PRINT_LEVEL_NONE);
+
+	MR_trace_call_seqno = event_details.MR_call_seqno;
+	MR_trace_call_depth = event_details.MR_call_depth;
+	MR_trace_event_number = event_details.MR_event_number;
+
+	MR_scroll_next = 0;
+	MR_trace_enabled = TRUE;
+	return jumpaddr;
 }
 
-static MR_next
-MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, int seqno, int depth, const char *path,
-	int *ancestor_level)
+static const char MR_trace_banner[] =
+"Melbourne Mercury Debugger, mdb version %s.\n\
+Copyright 1998 The University of Melbourne, Australia.\n\
+mdb is free software, covered by the GNU General Public License.\n\
+There is absolutely no warranty for mdb.\n";
+
+static void
+MR_trace_internal_ensure_init(void)
 {
-	char	line[MR_MAX_LINE_LEN];
-	char	count_buf[MR_MAX_LINE_LEN];
-	char	*raw_words[MR_MAX_LINE_LEN / 2 + 1];
-	char	**words;
-	char	raw_word_count;
-	char	word_count;
-	char	*s;
-	int	i, n;
+	static	bool	MR_trace_internal_initialized = FALSE;
 
-	printf("mtrace> ");
+	if (! MR_trace_internal_initialized) {
+		char	*env;
+		int	n;
 
-	if (MR_trace_getline(stdin, line, MR_MAX_LINE_LEN) == 0) {
+		if (getenv("MERCURY_SUPPRESS_MDB_BANNER") == NULL) {
+			printf(MR_trace_banner, MR_VERSION);
+		}
+
+		env = getenv("LINES");
+		if (env != NULL && MR_trace_is_number(env, &n)) {
+			MR_scroll_limit = n;
+		}
+
 		/*
-		** We got a line without even a newline character,
-		** which must mean that the user typed EOF.
+		** Look for an initialization file in the following places,
+		** in order:
+		** 
+		** - the file named by the MERCURY_DEBUGGER_INIT environment
+		**   variable, which can be set by the user
+		**
+		** - the file .mdbrc in the current directory
+		**
+		** - the file .mdbrc in the user's home directory
+		**
+		** - the file named by the DEFAULT_MERCURY_DEBUGGER_INIT
+		**   environment variable, which is set by the mdb script
+		**   to point to the system's default init script
+		**
+		** We stop as soon as we find and source one.
+		**
+		** XXX Several aspects of how we find these locations
+		** are too Unix specific.
+		*/
+
+		if (! (MR_trace_internal_init_from_env("MERCURY_DEBUGGER_INIT")
+		|| MR_trace_internal_init_from_file(MDBRC_FILENAME)
+		|| MR_trace_internal_init_from_env_dir("HOME", MDBRC_FILENAME)
+		|| MR_trace_internal_init_from_env(
+				"DEFAULT_MERCURY_DEBUGGER_INIT")))
+		{
+			printf("mdb: warning, "
+				"cannot find any initialization file.\n");
+		}
+
+		MR_trace_internal_initialized = TRUE;
+	}
+}
+
+static bool
+MR_trace_internal_init_from_env(const char *env_var)
+{
+	char	*init;
+
+	init = getenv(env_var);
+	if (init != NULL) {
+		return MR_trace_source(init);
+	} else {
+		return FALSE;
+	}
+}
+
+static bool
+MR_trace_internal_init_from_file(const char *filename)
+{
+	FILE	*fp;
+
+	if ((fp = fopen(filename, "r")) != NULL) {
+		MR_trace_source_from_open_file(fp);
+		fclose(fp);
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+
+static bool
+MR_trace_internal_init_from_env_dir(const char *env_var, const char *filename)
+{
+	char	*env;
+	char	*buf;
+	int	len;
+	FILE	*fp;
+
+	env = getenv(env_var);
+	if (env == NULL) {
+		return FALSE;
+	}
+
+	/* XXX This code is too Unix specific. */
+	buf = checked_malloc(strlen(env) + strlen(filename) + 2);
+	(void) strcpy(buf, env);
+	(void) strcat(buf, "/");
+	(void) strcat(buf, filename);
+	if ((fp = fopen(buf, "r")) != NULL) {
+		MR_trace_source_from_open_file(fp);
+		fclose(fp);
+		free(buf);
+		return TRUE;
+	} else {
+		free(buf);
+		return FALSE;
+	}
+}
+
+static MR_Next
+MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
+	const MR_Stack_Layout_Label *layout, Word *saved_regs,
+	MR_Event_Details *event_details, MR_Trace_Port port,
+	int seqno, int depth, const char *path,
+	int *ancestor_level, int *max_mr_num, Code **jumpaddr)
+{
+	char		**words;
+	char		**orig_words;
+	int		word_max;
+	int		word_count;
+	const char	*problem;
+	char		*semicolon;
+	int		i;
+	int		n;
+
+	if (line == NULL) {
+		/*
+		** We got an EOF.
 		** We arrange things so we don't have to treat this case
 		** specially in the command interpreter below.
 		*/
 
-		(void) strcpy(line, "a\n");
+		line = MR_copy_string("quit");
+	}
+
+	if ((semicolon = strchr(line, ';')) != NULL) {
+		/*
+		** The line contains at least two commands.
+		** Execute only the first command now; put the others
+		** back in the input to be processed later.
+		*/
+
+		*semicolon = '\0';
+		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
 	}
 
 	if (MR_echo_commands) {
 		fputs(line, stdout);
+		putc('\n', stdout);
 	}
 
-	/*
-	** Handle a possible number prefix on the first word on the line,
-	** separating it out into a word on its own.
-	*/
-
-	raw_word_count = MR_trace_break_into_words(line, raw_words + 1);
-
-	if (raw_word_count > 0 && MR_isdigit(*raw_words[1])) {
-		i = 0;
-		s = raw_words[1];
-		while (MR_isdigit(*s)) {
-			count_buf[i] = *s;
-			i++;
-			s++;
-		}
-
-		count_buf[i] = '\0';
-
-		if (*s == '\0') {
-			/* all of the first word constitutes a number */
-			/* exchange it with the command, if it exists */
-
-			if (raw_word_count > 1) {
-				s = raw_words[1];
-				raw_words[1] = raw_words[2];
-				raw_words[2] = s;
-			}
-
-			words = raw_words + 1;
-			word_count = raw_word_count;
-		} else {
-			/* only part of the first word constitutes a number */
-			/* put it in an extra word at the start */
-
-			raw_words[0] = count_buf;
-			raw_words[1] = s;
-			words = raw_words;
-			word_count = raw_word_count + 1;
-		}
-	} else {
-		words = raw_words + 1;
-		word_count = raw_word_count;
+	problem = MR_trace_parse_line(line, &words, &word_max, &word_count);
+	if (problem != NULL) {
+		printf("%s.\n", problem);
+		goto return_keep_interacting;
 	}
 
-	/*
-	** If the first word is a number, try to exchange it
-	** with the command word, to put the command word first.
-	*/
-
-	if (word_count > 1 && MR_trace_is_number(words[0], &n)
-			&& ! MR_trace_is_number(words[1], &n)) {
-		s = words[0];
-		words[0] = words[1];
-		words[1] = s;
-	}
+	MR_trace_expand_aliases(&words, &word_max, &word_count);
 
 	/*
 	** At this point, the first word_count members of the words
-	** array contain the command.
+	** array contain the command. We save the value of words for
+	** freeing just before return, since the variable words itself
+	** can be overwritten by option processing.
 	*/
 
-	cmd->MR_trace_print_intermediate = FALSE;
-
+	orig_words = words;
 	if (word_count == 0) {
 		cmd->MR_trace_cmd = MR_CMD_GOTO;
-		cmd->MR_trace_print_intermediate = FALSE;
 		cmd->MR_trace_stop_event = MR_trace_event_number + 1;
-		return STOP_INTERACTING;
+		cmd->MR_trace_strict = FALSE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		goto return_stop_interacting;
 	} else if (MR_trace_is_number(words[0], &n)) {
 		if (word_count == 1) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
-			cmd->MR_trace_print_intermediate = FALSE;
 			cmd->MR_trace_stop_event = MR_trace_event_number + n;
-			return STOP_INTERACTING;
+			cmd->MR_trace_strict = FALSE;
+			cmd->MR_trace_print_level = MR_default_print_level;
+			goto return_stop_interacting;
 		} else {
 			printf("One of the first two words "
 				"must be a command.\n");
 		}
-	} else if (streq(words[0], "S") || streq(words[0], "s")) {
-		if (word_count == 1) {
+	} else if (streq(words[0], "step")) {
+		cmd->MR_trace_strict = FALSE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "step"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
-			cmd->MR_trace_print_intermediate = streq(words[0], "S");
 			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
-			return STOP_INTERACTING;
+			goto return_stop_interacting;
 		} else if (word_count == 2
 				&& MR_trace_is_number(words[1], &n)) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
-			cmd->MR_trace_print_intermediate = streq(words[0], "S");
 			cmd->MR_trace_stop_event = MR_trace_event_number + n;
-			return STOP_INTERACTING;
+			goto return_stop_interacting;
 		} else {
-			printf("This command expects at most one argument,\n"
-				"which must be a number.\n");
+			MR_trace_help_cat_item("forward", "step");
 		}
-	} else if (streq(words[0], "g") || streq(words[0], "G")) {
-		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	} else if (streq(words[0], "goto")) {
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "goto"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+				{
 			if (MR_trace_event_number < n) {
 				cmd->MR_trace_cmd = MR_CMD_GOTO;
-				cmd->MR_trace_print_intermediate =
-					streq(words[0], "G");
 				cmd->MR_trace_stop_event = n;
-				return STOP_INTERACTING;
+				goto return_stop_interacting;
 			} else {
 				printf("The debugger cannot go "
 					"to a past event.\n");
 			}
 		} else {
-			printf("This command expects exactly one argument,\n");
-			printf("which must be a number.\n");
+			MR_trace_help_cat_item("forward", "goto");
 		}
-	} else if (streq(words[0], "f") || streq(words[0], "F")) {
-		if (word_count == 1) {
-			if (MR_port_is_final(port)) {
-				printf("This command is a no-op "
-					"from this port.\n");
+	} else if (streq(words[0], "finish")) {
+		int	stop_depth;
+
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "finish"))
+		{
+			; /* the usage message has already been printed */
+			goto return_keep_interacting;
+		} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+		{
+			stop_depth = depth - n;
+		} else if (word_count == 1) {
+			stop_depth = depth;
+		} else {
+			MR_trace_help_cat_item("forward", "finish");
+			goto return_keep_interacting;
+		}
+
+		if (depth == stop_depth && MR_port_is_final(port)) {
+			printf("This command is a no-op from this port.\n");
+		} else {
+			cmd->MR_trace_cmd = MR_CMD_FINISH;
+			cmd->MR_trace_stop_depth = stop_depth;
+			goto return_stop_interacting;
+		}
+	} else if (streq(words[0], "return")) {
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "return"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			if (port == MR_PORT_EXIT) {
+				cmd->MR_trace_cmd = MR_CMD_RETURN;
+				goto return_stop_interacting;
 			} else {
-				cmd->MR_trace_cmd = MR_CMD_FINISH;
-				cmd->MR_trace_print_intermediate =
-					streq(words[0], "F");
-				cmd->MR_trace_stop_seqno = seqno;
-				return STOP_INTERACTING;
+				printf("This command is a no-op from this port.\n");
 			}
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("forward", "return");
 		}
-	} else if (streq(words[0], "c") || streq(words[0], "C")) {
-		if (word_count == 1) {
+	} else if (streq(words[0], "forward")) {
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "forward"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			if (port == MR_PORT_FAIL || port == MR_PORT_REDO) {
+				cmd->MR_trace_cmd = MR_CMD_RESUME_FORWARD;
+				goto return_stop_interacting;
+			} else {
+				printf("This command is a no-op from this port.\n");
+			}
+		} else {
+			MR_trace_help_cat_item("forward", "forward");
+		}
+	} else if (streq(words[0], "mindepth")) {
+		int	newdepth;
+
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "mindepth"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2 &&
+				MR_trace_is_number(words[1], &newdepth))
+		{
+			cmd->MR_trace_cmd = MR_CMD_MIN_DEPTH;
+			cmd->MR_trace_stop_depth = newdepth;
+			goto return_stop_interacting;
+		} else {
+			MR_trace_help_cat_item("forward", "mindepth");
+		}
+	} else if (streq(words[0], "maxdepth")) {
+		int	newdepth;
+
+		cmd->MR_trace_strict = TRUE;
+		cmd->MR_trace_print_level = MR_default_print_level;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "maxdepth"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2 &&
+				MR_trace_is_number(words[1], &newdepth))
+		{
+			cmd->MR_trace_cmd = MR_CMD_MAX_DEPTH;
+			cmd->MR_trace_stop_depth = newdepth;
+			goto return_stop_interacting;
+		} else {
+			MR_trace_help_cat_item("forward", "maxdepth");
+		}
+	} else if (streq(words[0], "continue")) {
+		cmd->MR_trace_strict = FALSE;
+		cmd->MR_trace_print_level = (MR_Trace_Cmd_Type) -1;
+		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
+				"forward", "continue"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
 			cmd->MR_trace_cmd = MR_CMD_TO_END;
-			cmd->MR_trace_print_intermediate =
-				streq(words[0], "C");
-			return STOP_INTERACTING;
+			if (cmd->MR_trace_print_level ==
+					(MR_Trace_Cmd_Type) -1) {
+				/*
+				** The user did not specify the print level;
+				** select the intelligent default.
+				*/
+				if (cmd->MR_trace_strict) {
+					cmd->MR_trace_print_level =
+						MR_PRINT_LEVEL_NONE;
+				} else {
+					cmd->MR_trace_print_level =
+						MR_PRINT_LEVEL_SOME;
+				}
+			}
+			goto return_stop_interacting;
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("forward", "continue");
 		}
-	} else if (streq(words[0], "r") || streq(words[0], "R")) {
-		if (word_count == 1) {
-			cmd->MR_trace_cmd = MR_CMD_RESUME_FORWARD;
-			cmd->MR_trace_print_intermediate =
-				streq(words[0], "R");
-			return STOP_INTERACTING;
-		} else {
-			printf("This command expects no argument.\n");
-		}
-	} else if (streq(words[0], "l")) {
+	} else if (streq(words[0], "retry")) {
+		int	stop_depth;
+
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			*ancestor_level = n;
-			printf("Ancestor level set to %d\n", n);
+			stop_depth = depth - n;
+		} else if (word_count == 1) {
+			stop_depth = depth;
 		} else {
-			printf("This command expects one argument,\n");
-			printf("a number denoting an ancestor level.\n");
+			MR_trace_help_cat_item("backward", "retry");
+			goto return_keep_interacting;
 		}
-	} else if (streq(words[0], "v")) {
+
+		if (stop_depth == depth && MR_port_is_final(port)) {
+			MR_trace_retry(layout, saved_regs, event_details,
+				seqno, depth, max_mr_num, jumpaddr);
+
+			cmd->MR_trace_cmd = MR_CMD_GOTO;
+			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
+			cmd->MR_trace_strict = FALSE;
+			cmd->MR_trace_print_level = MR_default_print_level;
+			goto return_stop_interacting;
+		} else {
+			char	*retry_cmd;
+
+			/* Finish the call to be retried. */
+			cmd->MR_trace_cmd = MR_CMD_FINISH;
+			cmd->MR_trace_stop_depth = stop_depth;
+			cmd->MR_trace_strict = TRUE;
+			cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
+
+			/* Arrange to retry the call once it is finished. */
+			MR_insert_line_at_head("retry");
+			goto return_stop_interacting;
+		}
+	} else if (streq(words[0], "level")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			problem = MR_trace_browse_check_level(layout,
+					saved_regs, n);
+			if (problem == NULL) {
+				*ancestor_level = n;
+				printf("Ancestor level set to %d.\n",
+					*ancestor_level);
+			} else {
+				printf("%s.\n", problem);
+			}
+		} else {
+			MR_trace_help_cat_item("browsing", "level");
+		}
+	} else if (streq(words[0], "up")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			problem = MR_trace_browse_check_level(layout,
+					saved_regs, *ancestor_level + n);
+			if (problem == NULL) {
+				*ancestor_level += n;
+				printf("Ancestor level set to %d.\n",
+					*ancestor_level);
+			} else {
+				printf("%s.\n", problem);
+			}
+		} else if (word_count == 1) {
+			problem = MR_trace_browse_check_level(layout,
+					saved_regs, *ancestor_level + 1);
+			if (problem == NULL) {
+				*ancestor_level += 1;
+				printf("Ancestor level set to %d.\n",
+					*ancestor_level);
+			} else {
+				printf("%s.\n", problem);
+			}
+		} else {
+			MR_trace_help_cat_item("browsing", "up");
+		}
+	} else if (streq(words[0], "down")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			problem = MR_trace_browse_check_level(layout,
+					saved_regs, *ancestor_level - n);
+			if (problem == NULL) {
+				*ancestor_level -= n;
+				printf("Ancestor level set to %d.\n",
+					*ancestor_level);
+			} else {
+				printf("%s.\n", problem);
+			}
+		} else if (word_count == 1) {
+			problem = MR_trace_browse_check_level(layout,
+					saved_regs, *ancestor_level - 1);
+			if (problem == NULL) {
+				*ancestor_level -= 1;
+				printf("Ancestor level set to %d.\n",
+					*ancestor_level);
+			} else {
+				printf("%s.\n", problem);
+			}
+		} else {
+			MR_trace_help_cat_item("browsing", "down");
+		}
+	} else if (streq(words[0], "vars")) {
 		if (word_count == 1) {
-			MR_trace_list_vars(layout, *ancestor_level);
+			MR_trace_list_vars(layout, saved_regs,
+				*ancestor_level);
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("browsing", "vars");
 		}
-	} else if (streq(words[0], "p")) {
+	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
 			if (MR_trace_is_number(words[1], &n)) {
-				MR_trace_browse_one(layout, *ancestor_level, n);
+				MR_trace_browse_one(layout, saved_regs,
+					*ancestor_level, n);
 			} else if streq(words[1], "*") {
-				MR_trace_browse_all(layout, *ancestor_level);
+				MR_trace_browse_all(layout, saved_regs,
+					*ancestor_level);
 			} else {
-				printf("The argument of this command should be,\n");
-				printf("a variable number or a '*' indicating all variables.\n");
+				MR_trace_help_cat_item("browsing", "print");
 			}
 		} else {
-			printf("This command expects one argument,\n");
-			printf("a variable number or a '*' indicating all variables.\n");
+			MR_trace_help_cat_item("browsing", "print");
 		}
-	} else if (streq(words[0], "d")) {
+	} else if (streq(words[0], "stack")) {
 		if (word_count == 1) {
 			const char	*result;
 
 			do_init_modules();
 			result = MR_dump_stack_from_layout(stdout,
 					layout->MR_sll_entry,
-					MR_saved_sp(MR_saved_regs),
-					MR_saved_curfr(MR_saved_regs));
+					MR_saved_sp(saved_regs),
+					MR_saved_curfr(saved_regs));
 			if (result != NULL) {
-				printf("%s\n", result);
+				printf("%s.\n", result);
 			}
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("browsing", "stack");
 		}
-	} else if (streq(words[0], "D")) {
+	} else if (streq(words[0], "current")) {
+		if (word_count == 1) {
+			MR_trace_event_print_internal_report(layout, port,
+				seqno, depth, path);
+		} else {
+			MR_trace_help_cat_item("browsing", "current");
+		}
+	} else if (streq(words[0], "break")) {
+		MR_Proc_Spec	spec;
+		MR_Spy_When	when;
+		MR_Spy_Action	action;
+
+		if (word_count == 2 && streq(words[1], "info")) {
+			for (i = 0; i < MR_spy_point_next; i++) {
+				MR_print_spy_point(i);
+			}
+
+			goto return_keep_interacting;
+		}
+
+		when = MR_SPY_INTERFACE;
+		action = MR_SPY_STOP;
+		if (! MR_trace_options_when_action(&when, &action,
+				&words, &word_count, "breakpoint", "break"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2 && streq(words[1], "here")) {
+			MR_register_all_modules_and_procs(stdout, TRUE);
+			MR_trace_internal_add_spy_point(MR_SPY_SPECIFIC,
+				action, layout->MR_sll_entry, layout);
+		} else if (word_count == 2 &&
+				MR_parse_proc_spec(words[1], &spec))
+		{
+			const MR_Stack_Layout_Entry	*spy_proc;
+			bool				unique;
+
+			MR_register_all_modules_and_procs(stdout, TRUE);
+			spy_proc = MR_search_for_matching_procedure(&spec,
+					&unique);
+			if (spy_proc != NULL) {
+				if (unique) {
+					MR_trace_internal_add_spy_point(when,
+						action, spy_proc, NULL);
+				} else {
+					printf("Ambiguous procedure "
+						"specification. "
+						"The matches are:\n");
+					MR_process_matching_procedures(&spec,
+						MR_print_proc_id_for_debugger);
+				}
+			} else {
+				printf("There is no such procedure.\n");
+			}
+		} else {
+			MR_trace_help_cat_item("breakpoint", "break");
+		}
+	} else if (streq(words[0], "enable")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			if (0 <= n && n < MR_spy_point_next) {
+				MR_spy_points[n]->spy_enabled = TRUE;
+				MR_print_spy_point(n);
+			} else {
+				printf("Break point #%d does not exist.\n", n);
+			}
+		} else if (word_count == 2 && streq(words[1], "*")) {
+			for (i = 0; i < MR_spy_point_next; i++) {
+				MR_spy_points[i]->spy_enabled = TRUE;
+				MR_print_spy_point(n);
+			}
+
+			if (MR_spy_point_next == 0) {
+				printf("There no break points yet.\n");
+			}
+		} else {
+			MR_trace_help_cat_item("breakpoint", "enable");
+		}
+	} else if (streq(words[0], "disable")) {
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			if (0 <= n && n < MR_spy_point_next) {
+				MR_spy_points[n]->spy_enabled = FALSE;
+				MR_print_spy_point(n);
+			} else {
+				printf("Break point #%d does not exist.\n", n);
+			}
+		} else if (word_count == 2 && streq(words[1], "*")) {
+			for (i = 0; i < MR_spy_point_next; i++) {
+				MR_spy_points[i]->spy_enabled = FALSE;
+				MR_print_spy_point(n);
+			}
+
+			if (MR_spy_point_next == 0) {
+				printf("There no break points yet.\n");
+			}
+		} else {
+			MR_trace_help_cat_item("breakpoint", "disable");
+		}
+	} else if (streq(words[0], "register")) {
+		bool	verbose;
+
+		if (! MR_trace_options_quiet(&verbose, &words, &word_count,
+				"breakpoint", "register"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			MR_register_all_modules_and_procs(stdout, verbose);
+		} else {
+			MR_trace_help_cat_item("breakpoint", "register");
+		}
+	} else if (streq(words[0], "modules")) {
+		if (word_count == 1) {
+			MR_register_all_modules_and_procs(stdout, TRUE);
+			MR_dump_module_list(stdout);
+		} else {
+			MR_trace_help_cat_item("breakpoint", "modules");
+		}
+	} else if (streq(words[0], "procedures")) {
+		if (word_count == 2) {
+			MR_register_all_modules_and_procs(stdout, TRUE);
+			MR_dump_module_procs(stdout, words[1]);
+		} else {
+			MR_trace_help_cat_item("breakpoint", "procedures");
+		}
+	} else if (streq(words[0], "printlevel")) {
+		if (word_count == 2) {
+			if (streq(words[1], "none")) {
+				MR_default_print_level = MR_PRINT_LEVEL_NONE;
+				printf("Default print level set to `none'.\n");
+			} else if (streq(words[1], "some")) {
+				MR_default_print_level = MR_PRINT_LEVEL_SOME;
+				printf("Default print level set to `some'.\n");
+			} else if (streq(words[1], "all")) {
+				MR_default_print_level = MR_PRINT_LEVEL_ALL;
+				printf("Default print level set to `all'.\n");
+			} else {
+				MR_trace_help_cat_item("parameter",
+					"printlevel");
+			}
+		} else if (word_count == 1) {
+			printf("The default print level is ");
+			switch (MR_default_print_level) {
+				case MR_PRINT_LEVEL_NONE:
+					printf("`none'.\n");
+					break;
+				case MR_PRINT_LEVEL_SOME:
+					printf("`some'.\n");
+					break;
+				case MR_PRINT_LEVEL_ALL:
+					printf("`all'.\n");
+					break;
+				default:
+					MR_default_print_level =
+						MR_PRINT_LEVEL_SOME;
+					printf("invalid "
+						"(now set to `some').\n");
+					break;
+			}
+		} else {
+			MR_trace_help_cat_item("parameter", "printlevel");
+		}
+	} else if (streq(words[0], "scroll")) {
+		if (word_count == 2) {
+			if (streq(words[1], "off")) {
+				MR_scroll_control = FALSE;
+				printf("Scroll control disabled.\n");
+			} else if (streq(words[1], "on")) {
+				MR_scroll_control = TRUE;
+				printf("Scroll control enabled.\n");
+			} else if (MR_trace_is_number(words[1], &n)) {
+				MR_scroll_limit = n;
+				printf("Scroll window size set to %d.\n",
+					MR_scroll_limit);
+			} else {
+				MR_trace_help_cat_item("parameter", "scroll");
+			}
+		} else if (word_count == 1) {
+			printf("Scroll control is ");
+			if (MR_scroll_control) {
+				printf("on");
+			} else {
+				printf("off");
+			}
+			printf(", scroll window size is %d.\n",
+				MR_scroll_limit);
+		} else {
+			MR_trace_help_cat_item("parameter", "scroll");
+		}
+	} else if (streq(words[0], "echo")) {
+		if (word_count == 2) {
+			if (streq(words[1], "off")) {
+				MR_echo_commands = FALSE;
+				printf("Command echo disabled.\n");
+			} else if (streq(words[1], "on")) {
+				MR_echo_commands = TRUE;
+				printf("Command echo enabled.\n");
+			} else {
+				MR_trace_help_cat_item("parameter", "echo");
+			}
+		} else if (word_count == 1) {
+			printf("Command echo is ");
+			if (MR_echo_commands) {
+				printf("on.\n");
+			} else {
+				printf("off.\n");
+			}
+		} else {
+			MR_trace_help_cat_item("parameter", "echo");
+		}
+	} else if (streq(words[0], "alias")) {
+		if (word_count == 1) {
+			MR_trace_print_all_aliases(stdout);
+		} else if (word_count == 2) {
+			MR_trace_print_alias(stdout, words[1]);
+		} else {
+			if (MR_trace_valid_command(words[2])) {
+				MR_trace_add_alias(words[1],
+					words+2, word_count-2);
+				MR_trace_print_alias(stdout, words[1]);
+			} else {
+				printf("%s is not a valid command.\n",
+					words[2]);
+			}
+		}
+	} else if (streq(words[0], "unalias")) {
+		if (word_count == 2) {
+			if (MR_trace_remove_alias(words[1])) {
+				printf("Alias `%s' removed.\n", words[1]);
+			} else {
+				printf("Alias `%s' cannot be removed, "
+					"since it does not exist.\n",
+					words[1]);
+			}
+		} else {
+			MR_trace_help_cat_item("parameter", "unalias");
+		}
+	} else if (streq(words[0], "document_category")) {
+		int		slot;
+		const char	*msg;
+		const char	*help_text;
+
+		help_text = MR_trace_read_help_text();
+		if (word_count != 3) {
+			MR_trace_help_cat_item("help", "document_category");
+		} else if (! MR_trace_is_number(words[1], &slot)) {
+			MR_trace_help_cat_item("help", "document_category");
+		} else {
+			msg = MR_trace_add_cat(words[2], slot, help_text);
+			if (msg != NULL) {
+				printf("Document category `%s' not added: "
+					"%s.\n", words[2], msg);
+			}
+		}
+	} else if (streq(words[0], "document")) {
+		int		slot;
+		const char	*msg;
+		const char	*help_text;
+
+		help_text = MR_trace_read_help_text();
+		if (word_count != 4) {
+			MR_trace_help_cat_item("help", "document");
+		} else if (! MR_trace_is_number(words[2], &slot)) {
+			MR_trace_help_cat_item("help", "document");
+		} else {
+			msg = MR_trace_add_item(words[1], words[3], slot,
+				help_text);
+			if (msg != NULL) {
+				printf("Document item `%s' in category `%s' "
+					"not added: %s.\n",
+					words[3], words[1], msg);
+			}
+		}
+	} else if (streq(words[0], "help")) {
+		if (word_count == 1) {
+			MR_trace_help();
+		} else if (word_count == 2) {
+			MR_trace_help_word(words[1]);
+		} else if (word_count == 3) {
+			MR_trace_help_cat_item(words[1], words[2]);
+		} else {
+			MR_trace_help_cat_item("misc", "help");
+		}
+#ifdef	MR_TRACE_HISTOGRAM
+	} else if (streq(words[0], "histogram_all")) {
+		if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fprintf(stderr, "mdb: cannot open file `%s' "
+					"for output: %s.\n",
+					words[1], strerror(errno));
+			} else {
+				MR_trace_print_histogram(fp, "All-inclusive",
+					MR_trace_histogram_all,
+					MR_trace_histogram_hwm);
+				if (fclose(fp) != 0) {
+					fprintf(stderr, "mdb: error closing "
+						"file `%s': %s.\n",
+						words[1], strerror(errno));
+				}
+			}
+		} else {
+			MR_trace_help_cat_item("exp", "histogram_all");
+		}
+	} else if (streq(words[0], "histogram_exp")) {
+		if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fprintf(stderr, "mdb: cannot open file `%s' "
+					"for output: %s.\n",
+					words[1], strerror(errno));
+			} else {
+				MR_trace_print_histogram(fp, "Experimental",
+					MR_trace_histogram_exp,
+					MR_trace_histogram_hwm);
+				if (fclose(fp) != 0) {
+					fprintf(stderr, "mdb: error closing "
+						"file `%s': %s.\n",
+						words[1], strerror(errno));
+				}
+			}
+		} else {
+			MR_trace_help_cat_item("exp", "histogram_exp");
+		}
+	} else if (streq(words[0], "clear_histogram")) {
+		if (word_count == 1) {
+			for (i = 0; i <= MR_trace_histogram_hwm; i++) {
+				MR_trace_histogram_exp[i] = 0;
+			}
+		} else {
+			MR_trace_help_cat_item("exp", "clear_histogram");
+		}
+#endif	/* MR_TRACE_HISTOGRAM */
+	} else if (streq(words[0], "nondet_stack")) {
 		if (word_count == 1) {
 			do_init_modules();
 			MR_dump_nondet_stack_from_layout(stdout,
-				MR_saved_maxfr(MR_saved_regs));
+				MR_saved_maxfr(saved_regs));
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("developer", "nondet_stack");
 		}
-	} else if (streq(words[0], "X")) {
-		printf("sp = %p, curfr = %p, maxfr = %p\n",
-			MR_saved_sp(MR_saved_regs),
-			MR_saved_curfr(MR_saved_regs),
-			MR_saved_maxfr(MR_saved_regs));
-	} else if (streq(words[0], "toggle_echo")) {
-		MR_echo_commands = !MR_echo_commands;
-	} else if (streq(words[0], "b")) {
-		if (word_count != 3) {
-			printf("This command expects two arguments,\n");
-			printf("a module name and a predicate name.\n");
-		} else {
-			if (MR_next_spy_point >= MR_MAX_SPY_POINTS) {
-				printf("There is no room "
-					"for any more spy points.\n");
-			} else {
-				printf("%2d: %s %s:%s\n", MR_next_spy_point,
-					"+", words[1], words[2]);
-				strcpy(MR_spy_points[MR_next_spy_point]
-					.module_name, words[1]);
-				strcpy(MR_spy_points[MR_next_spy_point]
-					.pred_name, words[2]);
-				MR_spy_points[MR_next_spy_point].enabled
-					= TRUE;
-				MR_next_spy_point++;
-			}
-		}
-	} else if (streq(words[0], "?")) {
-		for (i = 0; i < MR_next_spy_point; i++) {
-			printf("%2d: %s %s:%s\n", i,
-				MR_spy_points[i].enabled ? "+" : "-",
-				MR_spy_points[i].module_name,
-				MR_spy_points[i].pred_name);
-		}
-	} else if (streq(words[0], "+")) {
-		if (word_count == 2) {
-			if (MR_trace_is_number(words[1], &n)) {
-				if (0 <= n && n < MR_next_spy_point) {
-					MR_spy_points[n].enabled = TRUE;
-					printf("%2d: %s %s:%s\n", n,
-						"+",
-						MR_spy_points[n].module_name,
-						MR_spy_points[n].pred_name);
-				} else {
-					printf("Break point #%d "
-						"does not exist.\n", n);
-				}
-			} else if (streq(words[1], "*")) {
-				for (i = 0; i < MR_next_spy_point; i++) {
-					MR_spy_points[i].enabled = TRUE;
-					printf("%2d: %s %s:%s\n", i,
-						"+",
-						MR_spy_points[i].module_name,
-						MR_spy_points[i].pred_name);
-				}
-			} else {
-				printf("The argument of this command must be "
-					"a break point number or a `*'.\n");
-			}
-		} else {
-			printf("This command expects one argument,\n");
-			printf("which must be a break point number "
-				"or a `*'.\n");
-		}
-	} else if (streq(words[0], "-")) {
-		if (word_count == 2) {
-			if (MR_trace_is_number(words[1], &n)) {
-				if (0 <= n && n < MR_next_spy_point) {
-					MR_spy_points[n].enabled = FALSE;
-					printf("%2d: %s %s:%s\n", n,
-						"-",
-						MR_spy_points[n].module_name,
-						MR_spy_points[n].pred_name);
-				} else {
-					printf("Break point #%d "
-						"does not exist.\n", n);
-				}
-			} else if (streq(words[1], "*")) {
-				for (i = 0; i < MR_next_spy_point; i++) {
-					MR_spy_points[i].enabled = FALSE;
-					printf("%2d: %s %s:%s\n", i,
-						"-",
-						MR_spy_points[i].module_name,
-						MR_spy_points[i].pred_name);
-				}
-			} else {
-				printf("The argument of this command must be "
-					"a break point number or a `*'.\n");
-			}
-		} else {
-			printf("This command expects one argument,\n");
-			printf("which must be a break point number "
-				"or a `*'.\n");
-		}
-	} else if (streq(words[0], "h")) {
-		if (word_count != 1) {
-			printf("This command expects no argument.\n");
-		}
-		MR_trace_help();
-	} else if (streq(words[0], "a")) {
+	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
-			printf("mtrace: are you sure you want to abort? ");
-			if (MR_trace_getline(stdin, line, MR_MAX_LINE_LEN)
-					== 0) {
-				/* This means the user input EOF. */
-				exit(0);
-			} else {
-				for (i = 0; MR_isspace(line[i]); i++)
-					;
+			printf("sp = %p, curfr = %p, maxfr = %p\n",
+				MR_saved_sp(saved_regs),
+				MR_saved_curfr(saved_regs),
+				MR_saved_maxfr(saved_regs));
+		} else {
+			MR_trace_help_cat_item("developer", "stack_regs");
+		}
+	} else if (streq(words[0], "source")) {
+		if (word_count == 2) {
+			/*
+			** If the source fails, the error message
+			** will have already been printed by MR_trace_source.
+			*/
+			(void) MR_trace_source(words[1]);
+		} else {
+			MR_trace_help_cat_item("misc", "source");
+		}
+	} else if (streq(words[0], "quit")) {
+		bool	confirmed;
 
-				if (line[i] == 'y' || line[i] == 'Y') {
-					exit(0);
+		confirmed = FALSE;
+		if (! MR_trace_options_confirmed(&confirmed,
+				&words, &word_count, "misc", "quit"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
+			if (! confirmed) {
+				char	*line2;
+
+				line2 = MR_trace_getline(
+					"mdb: are you sure you want to quit? ",
+					stdin);
+				if (line2 == NULL) {
+					/* This means the user input EOF. */
+					confirmed = TRUE;
+				} else {
+					i = 0;
+					while (line2[i] != '\0' &&
+							MR_isspace(line2[i]))
+					{
+						i++;
+					}
+
+					if (line2[i] == 'y' || line2[i] == 'Y')
+					{
+						confirmed = TRUE;
+					}
+
+					free(line2);
 				}
 			}
+
+			if (confirmed) {
+				exit(EXIT_SUCCESS);
+			}
 		} else {
-			printf("This command expects no argument.\n");
+			MR_trace_help_cat_item("misc", "quit");
 		}
 	} else {
-		printf("Command not recognized. "
-			"Give the command `h' for help.\n");
+		printf("Unknown command `%s'. "
+			"Give the command `help' for help.\n", words[0]);
 	}
 
+	/* fall through */
+return_keep_interacting:
+	free(line);
+	free(orig_words);
 	return KEEP_INTERACTING;
+
+return_stop_interacting:
+	free(line);
+	free(orig_words);
+	return STOP_INTERACTING;
+}
+
+static struct MR_option MR_trace_strict_print_opts[] =
+{
+	{ "all",	FALSE,	NULL,	'a' },
+	{ "none",	FALSE,	NULL,	'n' },
+	{ "some",	FALSE,	NULL,	's' },
+	{ "nostrict",	FALSE,	NULL,	'N' },
+	{ "strict",	FALSE,	NULL,	'S' }
+};
+
+static bool
+MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "NSans",
+			MR_trace_strict_print_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'N':
+				cmd->MR_trace_strict = FALSE;
+				break;
+
+			case 'S':
+				cmd->MR_trace_strict = TRUE;
+				break;
+
+			case 'a':
+				cmd->MR_trace_print_level = MR_PRINT_LEVEL_ALL;
+				break;
+
+			case 'n':
+				cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
+				break;
+
+			case 's':
+				cmd->MR_trace_print_level = MR_PRINT_LEVEL_SOME;
+				break;
+
+			default:
+				MR_trace_help_cat_item(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_when_action_opts[] =
+{
+	{ "all",	FALSE,	NULL,	'a' },
+	{ "entry",	FALSE,	NULL,	'e' },
+	{ "interface",	FALSE,	NULL,	'i' },
+	{ "print",	FALSE,	NULL,	'P' },
+	{ "stop",	FALSE,	NULL,	'S' }
+};
+
+static bool
+MR_trace_options_when_action(MR_Spy_When *when, MR_Spy_Action *action,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "PSaei",
+			MR_trace_when_action_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'a':
+				*when = MR_SPY_ALL;
+				break;
+
+			case 'e':
+				*when = MR_SPY_ENTRY;
+				break;
+
+			case 'i':
+				*when = MR_SPY_INTERFACE;
+				break;
+
+			case 'P':
+				*action = MR_SPY_PRINT;
+				break;
+
+			case 'S':
+				*action = MR_SPY_STOP;
+				break;
+
+			default:
+				MR_trace_help_cat_item(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static bool
+MR_trace_options_confirmed(bool *confirmed, char ***words, int *word_count,
+	const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt(*word_count, *words, "NYny")) != EOF) {
+		switch (c) {
+
+			case 'n':
+			case 'N':
+				*confirmed = FALSE;
+				break;
+
+			case 'y':
+			case 'Y':
+				*confirmed = TRUE;
+				break;
+
+			default:
+				MR_trace_help_cat_item(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_quiet_opts[] =
+{
+	{ "quiet",	FALSE,	NULL,	'q' },
+	{ "verbose",	FALSE,	NULL,	'v' }
+};
+
+static bool
+MR_trace_options_quiet(bool *verbose, char ***words, int *word_count,
+	const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "qv",
+			MR_trace_quiet_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'q':
+				*verbose = FALSE;
+				break;
+
+			case 'v':
+				*verbose = TRUE;
+				break;
+
+			default:
+				MR_trace_help_cat_item(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
 }
 
 static void
-MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, int ancestor_level)
+MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
+	MR_Event_Details *event_details, int seqno, int depth,
+	int *max_mr_num, Code **jumpaddr)
+{
+	const MR_Stack_Layout_Entry	*entry;
+	const MR_Stack_Layout_Label	*call_label;
+	const MR_Stack_Layout_Vars	*input_args;
+	Word				*args;
+	int				arg_max;
+	int				arg_num;
+	Word				arg_value;
+	int				i;
+	bool				succeeded;
+
+	entry = this_label->MR_sll_entry;
+	call_label = entry->MR_sle_call_label;
+
+	if (call_label->MR_sll_var_count < 0) {
+		printf("Cannot perform retry because information about "
+			"the input arguments is not available.\n");
+		return;
+	}
+
+	input_args = &call_label->MR_sll_var_info;
+
+	/*
+	** With the Boehm collector, args need not be considered a root, 
+	** since its contents are just copies of values from elsewhere,
+	** With the native collector, it need not be considered a root
+	** because its lifetime spans only this function, in which
+	** no native garbage collection can be triggered.
+	*/
+
+	args = NULL;
+	arg_max = 0;
+
+	for (i = 0; i < call_label->MR_sll_var_count; i++) {
+		arg_value = MR_trace_find_input_arg(this_label, saved_regs,
+				input_args->MR_slvs_names[i], &succeeded);
+
+		if (! succeeded) {
+			printf("Cannot perform retry because the values of "
+				"some input arguments are missing.\n");
+			return;
+		}
+
+		arg_num = MR_get_register_number(
+			input_args->MR_slvs_pairs[i].MR_slv_locn);
+		if (arg_num > 0) {
+			MR_ensure_big_enough(arg_num, arg, Word,
+				MR_INIT_ARG_COUNT);
+			args[arg_num] = arg_value;
+		} else {
+			fatal_error("illegal location for input argument");
+		}
+	}
+
+	MR_trace_call_seqno = seqno - 1;
+	MR_trace_call_depth = depth - 1;
+
+	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+		MR_Live_Lval	location;
+		Word		*this_frame;
+
+		/*
+		** We are at a final port, so both curfr and maxfr
+		** must already have been reset to their original values.
+		** We only need to set up the succip register for the "call",
+		** and then remove this frame from the det stack.
+		*/
+
+		location = entry->MR_sle_succip_locn;
+		if (MR_LIVE_LVAL_TYPE(location) != MR_LVAL_TYPE_STACKVAR) {
+			fatal_error("illegal location for stored succip");
+		}
+
+		this_frame = MR_saved_sp(saved_regs);
+		MR_saved_succip(saved_regs) = MR_based_stackvar(this_frame,
+						MR_LIVE_LVAL_NUMBER(location));
+		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
+		MR_trace_event_number = MR_event_num_stackvar(this_frame);
+	} else {
+		Word	*this_frame;
+
+		/*
+		** We are at a final port, so sp must already have been reset
+		** to its original value. We only need to set up the succip
+		** and curfr registers for the "call", and remove this frame,
+		** and any other frames above it, from the nondet stack.
+		*/
+
+		this_frame = MR_saved_curfr(saved_regs);
+
+		MR_saved_succip(saved_regs) = MR_succip_slot(this_frame);
+		MR_saved_curfr(saved_regs) = MR_succfr_slot(this_frame);
+		MR_saved_maxfr(saved_regs) = MR_prevfr_slot(this_frame);
+		MR_trace_event_number = MR_event_num_framevar(this_frame);
+	}
+
+	for (i = 1; i < arg_max; i++) {
+		saved_reg(saved_regs, i) = args[i];
+	}
+
+	if (args != NULL) {
+		free(args);
+	}
+
+	*max_mr_num = max(*max_mr_num, arg_max);
+	*jumpaddr = entry->MR_sle_code_addr;
+
+	/*
+	** Overriding MR_trace_call_seqno etc is not enough, because
+	** we will restore the values of those variables later. We must
+	** also override the saved copies.
+	*/
+
+	event_details->MR_call_seqno = MR_trace_call_seqno;
+	event_details->MR_call_depth = MR_trace_call_depth;
+	event_details->MR_event_number = MR_trace_event_number;
+}
+
+static Word
+MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
+	const char *name, bool *succeeded)
+{
+	const MR_Stack_Layout_Vars	*vars;
+	int				i;
+
+	vars = &label->MR_sll_var_info;
+	if (vars->MR_slvs_names == NULL) {
+		*succeeded = FALSE;
+		return 0;
+	}
+
+	for (i = 0; i < label->MR_sll_var_count; i++) {
+		if (streq(vars->MR_slvs_names[i], name)) {
+			return MR_lookup_live_lval_base(
+				vars->MR_slvs_pairs[i].MR_slv_locn, saved_regs,
+				MR_saved_sp(saved_regs),
+				MR_saved_curfr(saved_regs), succeeded);
+		}
+	}
+
+	*succeeded = FALSE;
+	return 0;
+}
+
+static void
+MR_trace_internal_add_spy_point(MR_Spy_When when, MR_Spy_Action action,
+	const MR_Stack_Layout_Entry *entry, const MR_Stack_Layout_Label *label)
+{
+	MR_Spy_Point	*spy_point;
+
+	MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *,
+		MR_INIT_SPY_POINTS);
+	spy_point = MR_add_spy_point(when, action, entry, label);
+	MR_spy_points[MR_spy_point_next] = spy_point;
+	MR_print_spy_point(MR_spy_point_next);
+	MR_spy_point_next++;
+}
+
+static void
+MR_print_spy_point(int spy_point_num)
+{
+	printf("%2d: %1s %-5s %9s ",
+		spy_point_num,
+		MR_spy_points[spy_point_num]->spy_enabled ? "+" : "-",
+		MR_spy_action_string(MR_spy_points[spy_point_num]->spy_action),
+		MR_spy_when_string(MR_spy_points[spy_point_num]->spy_when));
+	MR_print_proc_id_for_debugger(MR_spy_points[spy_point_num]->spy_proc);
+}
+
+static void
+MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, Word *saved_regs,
+	int ancestor_level)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
@@ -460,8 +1501,8 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, int ancestor_level)
 	int				i;
 	const char 			*problem;
 
-	base_sp = MR_saved_sp(MR_saved_regs);
-	base_curfr = MR_saved_curfr(MR_saved_regs);
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
 	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
 				&base_sp, &base_curfr, &problem);
 
@@ -472,10 +1513,10 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, int ancestor_level)
 
 	var_count = (int) level_layout->MR_sll_var_count;
 	if (var_count < 0) {
-		printf("mtrace: there is no information about live variables\n");
+		printf("mdb: there is no information about live variables\n");
 		return;
 	} else if (var_count == 0) {
-		printf("mtrace: there are no live variables\n");
+		printf("mdb: there are no live variables\n");
 		return;
 	}
 
@@ -485,21 +1526,40 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, int ancestor_level)
 	}
 }
 
+static const char *
+MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
+	Word *saved_regs, int ancestor_level)
+{
+	Word				*base_sp;
+	Word				*base_curfr;
+	const char 			*problem;
+
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
+	if (MR_find_nth_ancestor(top_layout, ancestor_level,
+			&base_sp, &base_curfr, &problem) == NULL)
+	{
+		return problem;
+	} else {
+		return NULL;
+	}
+}
+
 static void
 MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-	int ancestor_level, int which_var)
+	Word *saved_regs, int ancestor_level, int which_var)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
-	bool				saved_regs_valid;
+	Word				*valid_saved_regs;
 	int				var_count;
 	const MR_Stack_Layout_Vars	*vars;
 	const char 			*problem;
 
-	base_sp = MR_saved_sp(MR_saved_regs);
-	base_curfr = MR_saved_curfr(MR_saved_regs);
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
 	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
 				&base_sp, &base_curfr, &problem);
 
@@ -510,40 +1570,44 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 
 	var_count = (int) level_layout->MR_sll_var_count;
 	if (var_count < 0) {
-		printf("mtrace: there is no information about live variables\n");
+		printf("mdb: there is no information about live variables\n");
 		return;
 	} else if (which_var >= var_count) {
-		printf("mtrace: there is no such variable\n");
+		printf("mdb: there is no such variable\n");
 		return;
 	}
 
 	vars = &level_layout->MR_sll_var_info;
-	saved_regs_valid = (ancestor_level == 0);
+	if (ancestor_level == 0) {
+		valid_saved_regs = saved_regs;
+	} else {
+		valid_saved_regs = NULL;
+	}
 
-	type_params = MR_trace_materialize_typeinfos_base(vars,
-				saved_regs_valid, base_sp, base_curfr);
+	type_params = MR_materialize_typeinfos_base(vars,
+				valid_saved_regs, base_sp, base_curfr);
 	MR_trace_browse_var(MR_name_if_present(vars, which_var),
-		&vars->MR_slvs_pairs[which_var], saved_regs_valid,
+		&vars->MR_slvs_pairs[which_var], valid_saved_regs,
 		base_sp, base_curfr, type_params);
 	free(type_params);
 }
 
 static void 
 MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
-	int ancestor_level)
+	Word *saved_regs, int ancestor_level)
 {
 	const MR_Stack_Layout_Label	*level_layout;
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
-	bool				saved_regs_valid;
+	Word				*valid_saved_regs;
 	int				var_count;
 	const MR_Stack_Layout_Vars	*vars;
 	const char 			*problem;
 	int				i;
 
-	base_sp = MR_saved_sp(MR_saved_regs);
-	base_curfr = MR_saved_curfr(MR_saved_regs);
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
 	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
 				&base_sp, &base_curfr, &problem);
 
@@ -554,22 +1618,26 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 
 	var_count = (int) level_layout->MR_sll_var_count;
 	if (var_count < 0) {
-		printf("mtrace: there is no information about live variables\n");
+		printf("mdb: there is no information about live variables\n");
 		return;
 	} else if (var_count == 0) {
-		printf("mtrace: there are no live variables\n");
+		printf("mdb: there are no live variables\n");
 		return;
 	}
 
 	vars = &level_layout->MR_sll_var_info;
-	saved_regs_valid = (ancestor_level == 0);
+	if (ancestor_level == 0) {
+		valid_saved_regs = saved_regs;
+	} else {
+		valid_saved_regs = NULL;
+	}
 
-	type_params = MR_trace_materialize_typeinfos_base(vars,
-				saved_regs_valid, base_sp, base_curfr);
+	type_params = MR_materialize_typeinfos_base(vars,
+				valid_saved_regs, base_sp, base_curfr);
 
 	for (i = 0; i < var_count; i++) {
 		MR_trace_browse_var(MR_name_if_present(vars, i),
-			&vars->MR_slvs_pairs[i], saved_regs_valid,
+			&vars->MR_slvs_pairs[i], valid_saved_regs,
 			base_sp, base_curfr, type_params);
 	}
 
@@ -578,8 +1646,7 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 
 static void
 MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
-	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
-	Word *type_params)
+	Word *saved_regs, Word *base_sp, Word *base_curfr, Word *type_params)
 {
 	Word	value;
 	Word	type_info;
@@ -603,9 +1670,9 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	/* the variable names from the prompt. */
 
 	if (name != NULL) {
-		printf("%10s%-21s\t", "", name);
+		printf("%7s%-21s\t", "", name);
 	} else {
-		printf("%10s%-21s\t", "", "anonymous variable");
+		printf("%7s%-21s\t", "", "anonymous variable");
 	}
 
 	fflush(stdout);
@@ -616,38 +1683,53 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	** are not of interest to the user.
 	*/
 
-	if (MR_trace_get_type_and_value_base(var, saved_regs_valid,
+	if (MR_get_type_and_value_base(var, saved_regs,
 			base_sp, base_curfr, type_params, &type_info, &value))
 	{
 		printf("\t");
-
-		MR_trace_enabled = FALSE;
-		MR_trace_write_variable(type_info, value);
-		MR_trace_enabled = TRUE;
+		MR_write_variable(type_info, value);
 	}
 
 	printf("\n");
 }
 
-bool
-MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout)
+/*
+** Read lines until we find one that contains only "end".
+** Return the lines concatenated together.
+*/
+
+static const char *
+MR_trace_read_help_text(void)
 {
-	const	MR_Stack_Layout_Entry	*entry;
-	int				i;
+	char	*text;
+	char	*doc_chars = NULL;
+	int	doc_char_max = 0;
+	int	next_char_slot;
+	int	line_len;
+	int	i;
 
-	entry = layout->MR_sll_entry;
-
-	for (i = 0; i < MR_next_spy_point; i++) {
-		if (MR_spy_points[i].enabled
-		&& streq(MR_spy_points[i].pred_name,
-				entry->MR_sle_name)
-		&& streq(MR_spy_points[i].module_name,
-				entry->MR_sle_def_module)) {
-			return TRUE;
+	next_char_slot = 0;
+	while ((text = MR_trace_getline("cat> ", stdin)) != NULL) {
+		if (streq(text, "end")) {
+			free(text);
+			break;
 		}
+
+		line_len = strlen(text);
+		MR_ensure_big_enough(next_char_slot + line_len + 2,
+			doc_char, char, MR_INIT_DOC_CHARS);
+		for (i = 0; i < line_len; i++) {
+			doc_chars[next_char_slot + i] = text[i];
+		}
+
+		next_char_slot += line_len;
+		doc_chars[next_char_slot] = '\n';
+		next_char_slot += 1;
+		free(text);
 	}
 
-	return FALSE;
+	doc_chars[next_char_slot] = '\0';
+	return doc_chars;
 }
 
 /*
@@ -676,29 +1758,115 @@ MR_trace_is_number(char *word, int *value)
 
 /*
 ** Given a text line, break it up into words composed of non-space characters
-** separated by space characters. Make each word a NULL-terminated string
-** (overwriting some spaces in the line array in the process), return pointers
-** to them in the words array, and return the number of words in the return
-** value of the function.
+** separated by space characters. Make each word a NULL-terminated string,
+** overwriting some spaces in the line array in the process.
 **
-** This function assumes that the words array is as long as necessary.
-** This can be (and is) ensured by making the words array have one element
-** for every two characters in the line array (since you need at least one
-** non-space and one space or newline character per word).
+** If the first word is a number but the second is not, swap the two.
+** If the first word has a number prefix, separate it out.
 **
-** This function also assumes that line[] is guaranteed to have a white space
-** character (which will usually be a newline) just before the null character.
+** On return *words will point to an array of strings, with space for
+** *words_max strings. The number of strings (words) filled in will be
+** given by *word_count.
+**
+** The lifetime of the elements of the *words array expires when
+** the line array is freed or further modified or when MR_trace_parse_line
+** is called again, whichever comes first.
+**
+** The return value is NULL if everything went OK, and an error message
+** otherwise.
+*/
+
+static const char *
+MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
+{
+	char		**raw_words;
+	int		raw_word_max;
+	char		raw_word_count;
+	static char	count_buf[MR_NUMBER_LEN];
+	char		*s;
+	int		i;
+
+	/*
+	** Handle a possible number prefix on the first word on the line,
+	** separating it out into a word on its own.
+	*/
+
+	raw_word_count = MR_trace_break_into_words(line,
+				&raw_words, &raw_word_max);
+
+	if (raw_word_count > 0 && MR_isdigit(*raw_words[0])) {
+		i = 0;
+		s = raw_words[0];
+		while (MR_isdigit(*s)) {
+			if (i >= MR_NUMBER_LEN) {
+				return "too large a number";
+			}
+
+			count_buf[i] = *s;
+			i++;
+			s++;
+		}
+
+		count_buf[i] = '\0';
+
+		if (*s != '\0') {
+			/* Only part of the first word constitutes a number. */
+			/* Put it in an extra word at the start. */
+			MR_ensure_big_enough(raw_word_count, raw_word,
+				char **, MR_INIT_WORD_COUNT);
+
+			for (i = raw_word_count; i > 0; i--) {
+				raw_words[i] = raw_words[i-1];
+			}
+
+			raw_words[0] = count_buf;
+			raw_words[1] = s;
+			raw_word_count++;
+		}
+	}
+
+	/*
+	** If the first word is a number, try to exchange it
+	** with the command word, to put the command word first.
+	*/
+
+	if (raw_word_count > 1 && MR_trace_is_number(raw_words[0], &i)
+			&& ! MR_trace_is_number(raw_words[1], &i)) {
+		s = raw_words[0];
+		raw_words[0] = raw_words[1];
+		raw_words[1] = s;
+	}
+
+	*words = raw_words;
+	*word_max = raw_word_max;
+	*word_count = raw_word_count;
+	return NULL;
+}
+
+/*
+** Given a text line, break it up into words composed of non-space characters
+** separated by space characters. Make each word a NULL-terminated string,
+** overwriting some spaces in the line array in the process.
+**
+** On return *words will point to an array of strings, with space for
+** *words_max strings. The number of strings filled in will be given by
+** the return value.
 */
 
 static int
-MR_trace_break_into_words(char line[], char *words[])
+MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr)
 {
+	int	word_max;
+	char	**words;
 	int	token_number;
 	int	char_pos;
 	int	int_val;
 
 	token_number = 0;
 	char_pos = 0;
+
+	word_max = 0;
+	words = NULL;
 
 	/* each iteration of this loop processes one token, or end of line */
 	for (;;) {
@@ -707,59 +1875,289 @@ MR_trace_break_into_words(char line[], char *words[])
 		}
 
 		if (line[char_pos] == '\0') {
+			*words_ptr = words;
+			*word_max_ptr = word_max;
 			return token_number;
 		}
 
+		MR_ensure_big_enough(token_number, word, char **,
+			MR_INIT_WORD_COUNT);
 		words[token_number] = line + char_pos;
+
 		while (line[char_pos] != '\0' && !MR_isspace(line[char_pos])) {
 			char_pos++;
 		}
 
-		line[char_pos] = '\0';
-		char_pos++;
+		if (line[char_pos] != '\0') {
+			line[char_pos] = '\0';
+			char_pos++;
+		}
+
 		token_number++;
 	}
 }
 
+static void
+MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
+{
+	const char	*alias_key;
+	char		**alias_words;
+	int		alias_word_count;
+	int		alias_copy_start;
+	int		i;
+	int		n;
+
+	if (*word_count == 0) {
+		alias_key = "EMPTY";
+		alias_copy_start = 0;
+	} else if (MR_trace_is_number(*words[0], &n)) {
+		alias_key = "NUMBER";
+		alias_copy_start = 0;
+	} else {
+		alias_key = *words[0];
+		alias_copy_start = 1;
+	}
+
+	if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count))
+	{
+		MR_ensure_big_enough(alias_word_count, *word, const char *,
+			MR_INIT_WORD_COUNT);
+
+		/* Move the original words (except the alias key) up. */
+		for (i = *word_count - 1; i >= alias_copy_start; i--) {
+			*words[i + alias_word_count - alias_copy_start]
+				= *words[i];
+		}
+
+		/* Move the alias body to the words array. */
+		for (i = 0; i < alias_word_count; i++) {
+			*words[i] = alias_words[i];
+		}
+
+		*word_count += alias_word_count - alias_copy_start;
+	}
+}
+
+static bool
+MR_trace_source(const char *filename)
+{
+	FILE	*fp;
+
+	if ((fp = fopen(filename, "r")) != NULL) {
+		MR_trace_source_from_open_file(fp);
+		fclose(fp);
+		return TRUE;
+	} else {
+		printf("%s: %s.\n", filename, strerror(errno));
+		return FALSE;
+	}
+}
+
+static void
+MR_trace_source_from_open_file(FILE *fp)
+{
+	char	*line;
+
+	while ((line = MR_trace_getline_raw(fp)) != NULL) {
+		MR_insert_line_at_tail(line);
+	}
+}
+
 /*
-**	Read a line from a file. If the line does not fit in the array,
-**	read the whole line anyway but store only the first part.
-**	If the last line ends without a newline, insert it.
-**	Return the length of the (possibly truncated) line.
-**	This will be zero only if getline is called at EOF;
-**	it will be one only if line contains a single newline;
-**	otherwise it will contain a newline terminated string.
+** If there any lines waiting in the queue, return the first of these.
+** If not, print the prompt, read a line from the given file, and return it
+** in a malloc'd buffer holding the line (without the final newline).
+** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
+** occurs on an empty line, return NULL.
 */
 
-static int
-MR_trace_getline(FILE *file, char line[], int line_max)
+static char *
+MR_trace_getline(const char *prompt, FILE *fp)
 {
-	int	c, i;
+	char	*line;
+
+	line = MR_trace_getline_queue();
+	if (line != NULL) {
+		return line;
+	}
+
+	printf("%s", prompt);
+	fflush(stdout);
+
+	return MR_trace_getline_raw(fp);
+}
+
+/*
+** If there any lines waiting in the queue, return the first of these.
+*/
+
+static char *
+MR_trace_getline_queue(void)
+{
+	if (MR_line_head != NULL) {
+		MR_Line	*old;
+		char	*contents;
+
+		old = MR_line_head;
+		contents = MR_line_head->MR_line_contents;
+		MR_line_head = MR_line_head->MR_line_next;
+		if (MR_line_head == NULL) {
+			MR_line_tail = NULL;
+		}
+
+		free(old);
+		return contents;
+	} else {
+		return NULL;
+	}
+}
+
+/*
+**	Read a line from a file, and return a pointer to a malloc'd buffer
+**	holding the line (without the final newline). If EOF occurs on a
+**	nonempty line, treat the EOF as a newline; if EOF occurs on an empty
+**	line, return NULL.
+*/
+
+static char *
+MR_trace_getline_raw(FILE *fp)
+{
+	char	*contents;
+	int	content_max;
+	int	c;
+	int	i;
+
+	contents = NULL;
+	content_max = 0;
 
 	i = 0;
-	while ((c = getc(file)) != EOF && c != '\n') {
-		if (i < line_max-1) {
-			line[i++] = c;
-		}
+	while ((c = getc(fp)) != EOF && c != '\n') {
+		MR_ensure_big_enough(i, content, char, MR_INIT_BUF_LEN);
+		contents[i++] = c;
 	}
 
 	if (c == '\n' || i > 0) {
-		line[i++] = '\n';
+		MR_ensure_big_enough(i, content, char, MR_INIT_BUF_LEN);
+		contents[i] = '\0';
+		return contents;
+	} else {
+		free(contents);
+		return NULL;
+	}
+}
+
+static void
+MR_insert_line_at_head(const char *contents)
+{
+	MR_Line	*line;
+
+	line = checked_malloc(sizeof(MR_Line));
+	line->MR_line_contents = MR_copy_string(contents);
+	line->MR_line_next = MR_line_head;
+
+	MR_line_head = line;
+	if (MR_line_tail == NULL) {
+		MR_line_tail = MR_line_head;
+	}
+}
+
+static void
+MR_insert_line_at_tail(const char *contents)
+{
+	MR_Line	*line;
+	char	*copy;
+	int	len;
+
+	len = strlen(contents);
+	copy = checked_malloc(len + 1);
+	strcpy(copy, contents);
+
+	line = checked_malloc(sizeof(MR_Line));
+	line->MR_line_contents = copy;
+	line->MR_line_next = NULL;
+
+	if (MR_line_tail == NULL) {
+		MR_line_tail = line;
+		MR_line_head = line;
+	} else {
+		MR_line_tail->MR_line_next = line;
+		MR_line_tail = line;
+	}
+}
+
+static Code *
+MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
+	const MR_Stack_Layout_Label *layout, Word *saved_regs,
+	MR_Trace_Port port, int seqno, int depth, const char *path,
+	int *max_mr_num)
+{
+	char	*buf;
+	int	i;
+
+	/* We try to leave one line for the prompt itself. */
+	if (MR_scroll_control && MR_scroll_next >= MR_scroll_limit - 1) {
+	try_again:
+		buf = MR_trace_getline("--more-- ", stdin);
+		if (buf != NULL) {
+			for (i = 0; buf[i] != '\0' && MR_isspace(buf[i]); i++)
+				;
+			
+			if (buf[i] != '\0' && !MR_isspace(buf[i])) {
+				switch (buf[i]) {
+					case 'a':
+						cmd->MR_trace_print_level =
+							MR_PRINT_LEVEL_ALL;
+						break;
+
+					case 'n':
+						cmd->MR_trace_print_level =
+							MR_PRINT_LEVEL_NONE;
+						break;
+
+					case 's':
+						cmd->MR_trace_print_level =
+							MR_PRINT_LEVEL_SOME;
+						break;
+
+					case 'q':
+						free(buf);
+						return MR_trace_event_internal(
+								cmd, TRUE,
+								layout,
+								saved_regs,
+								port,
+								seqno, depth,
+								path,
+								max_mr_num);
+
+					default:
+						printf("unknown command, "
+							"try again\n");
+						free(buf);
+						goto try_again;
+				}
+			}
+
+			free(buf);
+		}
+
+		MR_scroll_next = 0;
 	}
 
-	line[i] = '\0';
-	return i;
+	MR_trace_event_print_internal_report(layout, port, seqno, depth, path);
+	MR_scroll_next++;
+
+	return NULL;
 }
 
 void
-MR_trace_event_internal_report(const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, int seqno, int depth, const char *path)
+MR_trace_event_print_internal_report(const MR_Stack_Layout_Label *layout,
+	MR_Trace_Port port, int seqno, int depth, const char *path)
 {
 	printf("%8ld: %6ld %2ld ",
 		(long) MR_trace_event_number, (long) seqno, (long) depth);
 
 	MR_trace_print_port(port);
-	MR_trace_print_detism(layout->MR_sll_entry->MR_sle_detism);
 
 	/*
 	** The following should be a full identification of the procedure
@@ -767,16 +2165,11 @@ MR_trace_event_internal_report(const MR_Stack_Layout_Label *layout,
 	** not interested in tracing compiler-generated procedures.
 	*/
 
-	printf("%s:%s/%ld-%ld %s\n",
-		layout->MR_sll_entry->MR_sle_def_module,
-		layout->MR_sll_entry->MR_sle_name,
-		(long) layout->MR_sll_entry->MR_sle_arity,
-		(long) layout->MR_sll_entry->MR_sle_mode,
-		path);
+	MR_print_proc_id(stdout, layout->MR_sll_entry, path);
 }
 
 static void
-MR_trace_print_port(MR_trace_port port)
+MR_trace_print_port(MR_Trace_Port port)
 {
 	switch (port) {
 		case MR_PORT_CALL:
@@ -785,6 +2178,10 @@ MR_trace_print_port(MR_trace_port port)
 
 		case MR_PORT_EXIT:
 			printf("EXIT ");
+			break;
+
+		case MR_PORT_REDO:
+			printf("REDO ");
 			break;
 
 		case MR_PORT_FAIL:
@@ -821,86 +2218,76 @@ MR_trace_print_port(MR_trace_port port)
 	}
 }
 
-static void
-MR_trace_print_detism(Word detism)
+typedef struct
 {
-	switch ((int) detism) {
-		case MR_DETISM_DET:
-			printf("DET   ");
-			break;
+	const char	*cat;
+	const char	*item;
+} MR_trace_cmd_cat_item;
 
-		case MR_DETISM_SEMI:
-			printf("SEMI  ");
-			break;
+static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
+{
+	/*
+	** The following block is mostly a verbatim copy of the file
+	** doc/mdb_command_list. We do not use a #include to avoid
+	** adding a dependency, and because we want to #ifdef the
+	** experimental commands.
+	*/
 
-		case MR_DETISM_NON:
-			printf("NON   ");
-			break;
+	{ "forward", "step" },
+	{ "forward", "goto" },
+	{ "forward", "finish" },
+	{ "forward", "return" },
+	{ "forward", "forward" },
+	{ "forward", "mindepth" },
+	{ "forward", "maxdepth" },
+	{ "forward", "continue" },
+	{ "backward", "retry" },
+	{ "browsing", "vars" },
+	{ "browsing", "print" },
+	{ "browsing", "stack" },
+	{ "browsing", "up" },
+	{ "browsing", "down" },
+	{ "browsing", "level" },
+	{ "browsing", "current" },
+	{ "breakpoint", "break" },
+	{ "breakpoint", "disable" },
+	{ "breakpoint", "enable" },
+	{ "breakpoint", "modules" },
+	{ "breakpoint", "procedures" },
+	{ "breakpoint", "register" },
+	{ "parameter", "printlevel" },
+	{ "parameter", "echo" },
+	{ "parameter", "scroll" },
+	{ "parameter", "alias" },
+	{ "parameter", "unalias" },
+	{ "help", "document_category" },
+	{ "help", "document" },
+	{ "help", "help" },
+#ifdef	MR_TRACE_HISTOGRAM
+	{ "exp", "histogram_all" },
+	{ "exp", "histogram_exp" },
+	{ "exp", "clear_histogram" },
+#endif
+	{ "developer", "nondet_stack" },
+	{ "developer", "stack_regs" },
+	{ "misc", "source" },
+	{ "misc", "quit" },
+	/* End of doc/mdb_command_list. */
+	{ NULL, "NUMBER" },
+	{ NULL, "EMPTY" },
+	{ NULL, NULL },
+};
 
-		case MR_DETISM_MULTI:
-			printf("MUL   ");
-			break;
+static bool
+MR_trace_valid_command(const char *word)
+{
+	int	i;
 
-		case MR_DETISM_ERRONEOUS:
-			printf("ERR   ");
-			break;
-
-		case MR_DETISM_FAILURE:
-			printf("FAIL  ");
-			break;
-
-		case MR_DETISM_CCNON:
-			printf("CCNON ");
-			break;
-
-		case MR_DETISM_CCMULTI:
-			printf("CCMUL ");
-			break;
-		
-		default:
-			printf("BAD DETERMINISM\n");
-			break;
+	for (i = 0; MR_trace_valid_command_list[i].item != NULL; i++) {
+		if (streq(MR_trace_valid_command_list[i].item, word)) {
+			return TRUE;
+		}
 	}
-}
 
-static void
-MR_trace_help(void)
-{
-	printf("valid commands are:\n"
-		"a, EOF:\t\t"
-		"\tabort the current execution.\n"
-		"b <module> <name>:"
-		"\tset a breakpoint on the predicate\n"
-		"\t\t\tor function <module>:<name>.\n"
-		"c:\t\t"
-		"\tcontinue to end of program, not printing the trace.\n"
-		"C:\t\t"
-		"\tcontinue to end of program, printing the trace.\n"
-		"f:\t\t"
-		"\tfinish this call, not printing the trace.\n"
-		"F:\t\t"
-		"\tfinish this call, printing the trace.\n"
-		"<N> g:\t\t"
-		"\tgo to event #N, not printing the trace.\n"
-		"<N> G:\t\t"
-		"\tgo to event #N, printing the trace.\n"
-		"v:\t\t"
-		"\tlist the names of the variables live at this point.\n"
-		"l <n>:\t\t"
-		"\tset ancestor level to <n>\n"
-		"p <n>:\t\t"
-		"\tprint variable #n (or all vars if <n> is '*')\n"
-		"r:\t\t"
-		"\tcontinue until forward execution is resumed.\n"
-		"[<N>] [s]:\t"
-		"\tskip N events, not printing the trace (default: N=1).\n"
-		"[<N>] S:\t"
-		"\tskip N events, printing the trace (default: N=1).\n"
-		"?:\t\t"
-		"\tlist all the breakpoints.\n"
-		"+ <N>:\t\t"
-		"\tenable breakpoint #N.\n"
-		"- <N>:\t\t"
-		"\tdisable breakpoint #N.\n"
-	);
+	return FALSE;
 }

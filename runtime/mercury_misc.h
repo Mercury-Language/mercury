@@ -65,9 +65,10 @@ extern	void	fatal_error(const char *msg, ...) NO_RETURN;
 
 /*
 ** We use our own version of memcpy because gcc recognises calls to the
-** standard memcpy and generates inline code for them. Unfortunately this
-** causes it to abort because it tries to use a register that we're already
-** reserved.
+** standard memcpy (even in things that do not mention memcpy by name, e.g.
+** structure assignments) and generates inline code for them. Unfortunately
+** this causes gcc to abort because it tries to use a register that we have
+** already reserved.
 ** XXX We should fix this eventually by using -fno-builtin since pragma
 ** c_code may call the builtin functions.
 */

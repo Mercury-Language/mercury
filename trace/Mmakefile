@@ -26,14 +26,22 @@ MOD2C		= $(SCRIPTS_DIR)/mod2c
 # keep this list in alphabetical order, please
 HDRS		=	\
 			mercury_trace.h			\
+			mercury_trace_alias.h		\
 			mercury_trace_external.h 	\
-			mercury_trace_internal.h
+			mercury_trace_help.h		\
+			mercury_trace_internal.h	\
+			mercury_trace_spy.h		\
+			mercury_trace_tables.h
 
 # keep this list in alphabetical order, please
 CFILES		= 	\
 			mercury_trace.c			\
+			mercury_trace_alias.c		\
 			mercury_trace_external.c 	\
-			mercury_trace_internal.c
+			mercury_trace_help.c		\
+			mercury_trace_internal.c	\
+			mercury_trace_spy.c		\
+			mercury_trace_tables.c
 
 OBJS		= $(CFILES:.c=.o)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))

@@ -754,6 +754,7 @@ opt_debug__dump_code_addr(do_succeed(Last), Str) :-
 	).
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
+opt_debug__dump_code_addr(do_trace_redo_fail, "do_trace_redo_fail").
 opt_debug__dump_code_addr(do_det_closure, "do_det_closure").
 opt_debug__dump_code_addr(do_semidet_closure, "do_semidet_closure").
 opt_debug__dump_code_addr(do_nondet_closure, "do_nondet_closure").

@@ -21,9 +21,6 @@
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, n)
 
 #define	detstackvar(n)			MR_based_stackvar(MR_sp, n)
-#define	based_detstackvar(base_sp, n)	MR_based_stackvar(base_sp, n)
-#define	saved_detstackvar(save_area, n)	\
-			MR_based_stackvar(MR_saved_sp(save_area), n)
 
 #define	incr_sp_push_msg(n, msg)				\
 			(					\
@@ -127,10 +124,6 @@
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr,n)
 #define	framevar(n)		MR_framevar(n+1)
-#define	based_framevar(base_curfr, n)	\
-			MR_based_framevar(base_curfr, n+1)
-#define	saved_framevar(save_area, n)	\
-			MR_based_framevar(MR_saved_curfr(save_area), n+1)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 

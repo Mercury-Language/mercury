@@ -2682,6 +2682,21 @@ det_argument(Type, ArgumentIndex) = Argument :-
 
 %-----------------------------------------------------------------------------%
 
+	% This predicate returns the type_info for the type std_util:type_info.
+	% It is intended for use from C code, since Mercury code can access
+	% this type_info easily enough even without this predicate.
+:- pred get_type_info_for_type_info(type_info).
+:- mode get_type_info_for_type_info(out) is det.
+
+:- pragma export(get_type_info_for_type_info(out),
+	"ML_get_type_info_for_type_info").
+
+get_type_info_for_type_info(TypeInfo) :-
+	Type = type_of(1),
+	TypeInfo = type_of(Type).
+
+%-----------------------------------------------------------------------------%
+
 % This is a generalization of unsorted_aggregate which allows the
 % iteration to stop before all solutions have been found.
 % NOT YET IMPLEMENTED

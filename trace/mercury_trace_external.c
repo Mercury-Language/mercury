@@ -26,7 +26,7 @@
 
 #include "mercury_trace.h"
 #include "mercury_trace_external.h"
-#include "mercury_trace_util.h"
+#include "mercury_layout_util.h"
 #include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -68,11 +68,11 @@ static void	MR_read_request_from_socket(
 			Integer *debugger_request_type_ptr);
 	
 static bool	MR_found_match(const MR_Stack_Layout_Label *layout,
-			MR_trace_port port, Unsigned seqno, Unsigned depth,
+			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 			/* XXX registers */
 			const char *path, Word search_data);
 static void	MR_output_current_slots(const MR_Stack_Layout_Label *layout,
-			MR_trace_port port, Unsigned seqno, Unsigned depth, 
+			MR_Trace_Port port, Unsigned seqno, Unsigned depth, 
 			const char *path);
 static void	MR_output_current_vars(Word var_list, Word string_list);
 static void	MR_output_current_nth_var(Word var);
@@ -80,9 +80,10 @@ static void	MR_output_current_live_var_names(Word var_names_list,
 						 Word type_list);
 static Word	MR_trace_make_var_names_list(
 			const MR_Stack_Layout_Label *layout);
-static Word	MR_trace_make_type_list(const MR_Stack_Layout_Label *layout);
+static Word	MR_trace_make_type_list(const MR_Stack_Layout_Label *layout,
+			Word *saved_regs);
 static Word	MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, 
-				      Word debugger_request);
+			Word *saved_regs, Word debugger_request);
 static int	MR_get_var_number(Word debugger_request);
 
 #if 0
@@ -320,9 +321,9 @@ MR_trace_final_external(void)
 }
 
 void
-MR_trace_event_external(MR_trace_cmd_info *cmd, 
-	const MR_Stack_Layout_Label *layout, MR_trace_port port,
-	Unsigned seqno, Unsigned depth, const char *path)
+MR_trace_event_external(MR_Trace_Cmd_Info *cmd, 
+	const MR_Stack_Layout_Label *layout, Word *saved_regs,
+	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
 {
 	static bool searching = FALSE;
 	static Word search_data;
@@ -370,9 +371,10 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 				}
 				var_names_list = 
 				  MR_trace_make_var_names_list(layout);
-				type_list = MR_trace_make_type_list(layout);
+				type_list = MR_trace_make_type_list(layout,
+						saved_regs);
 				MR_output_current_live_var_names(var_names_list,
-								 type_list);
+					type_list);
 				break;
 
 			case MR_REQUEST_CURRENT_VARS:
@@ -380,7 +382,7 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_CURRENT_VARS\n");
 				}
-				var_list = MR_trace_make_var_list(layout);
+				var_list = MR_make_var_list(layout, saved_regs);
 				var_names_list = 
 				  MR_trace_make_var_names_list(layout);
 				MR_output_current_vars(var_list, 
@@ -392,7 +394,7 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_NTH_CURRENT_VAR\n");
 				}
-				var = MR_trace_make_nth_var(layout, 
+				var = MR_trace_make_nth_var(layout, saved_regs,
 							    debugger_request);
 				MR_output_current_nth_var(var);
 				break;			
@@ -420,7 +422,7 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 
 static void
 MR_output_current_slots(const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, Unsigned seqno, Unsigned depth, const char *path)
+	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
 {
 	MR_DI_output_current_slots(
 		MR_trace_event_number,
@@ -477,7 +479,7 @@ MR_read_request_from_socket(
 
 static bool
 MR_found_match(const MR_Stack_Layout_Label *layout,
-	MR_trace_port port, Unsigned seqno, Unsigned depth,
+	MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 	/* XXX live vars */
 	const char *path, Word search_data)
 {
@@ -548,7 +550,7 @@ MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout)
 */
 
 static Word
-MR_trace_make_type_list(const MR_Stack_Layout_Label *layout)
+MR_trace_make_type_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 {
 	int 				var_count;
 	const MR_Stack_Layout_Vars 	*vars;
@@ -571,7 +573,7 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout)
 		name = MR_name_if_present(vars, i);
 		var = &vars->MR_slvs_pairs[i];
 
-		if (!MR_trace_get_type_filtered(var, name, &type_info))
+		if (! MR_get_type_filtered(var, saved_regs, name, &type_info))
 		{
 			continue;
 		}
@@ -591,7 +593,7 @@ MR_trace_make_type_list(const MR_Stack_Layout_Label *layout)
 */
 
 static Word
-MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, 
+MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 		      Word debugger_request)
 {
 	int 				var_number;
@@ -615,8 +617,8 @@ MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout,
 	incr_hp(univ, 2);
 
 
-	if (MR_trace_get_type_and_value_filtered(var, name, &type_info, 
-						     &value))
+	if (MR_get_type_and_value_filtered(var, saved_regs, name,
+			&type_info, &value))
 	{
 		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
 		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;

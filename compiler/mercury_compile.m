@@ -1145,7 +1145,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, PredId, ModuleInfo3, ProcInfo6) },
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
+	( { TraceLevel \= none } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
@@ -1177,18 +1177,10 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		write_proc_progress_message(
 			"% Generating call continuation information for ",
 				PredId, ProcId, ModuleInfo5),
-		{ globals__get_gc_method(Globals, GcMethod) },
-		{
-			( GcMethod = accurate
-			; trace_level_trace_returns(TraceLevel, yes)
-			)
-		->
-			WantReturnInfo = yes
-		;
-			WantReturnInfo = no
-		},
+		{ globals__want_return_layouts(Globals, WantReturnLayout) },
 		{ continuation_info__process_instructions(PredProcId,
-			Instructions, WantReturnInfo, ContInfo2, ContInfo3) },
+			Instructions, WantReturnLayout,
+			ContInfo2, ContInfo3) },
 		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
 			ModuleInfo) }
 	;
@@ -1794,7 +1786,7 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_trace_level(TraceLevel),
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
+	( { TraceLevel \= none } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
@@ -1846,19 +1838,10 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 		maybe_write_string(Verbose,
 			"% Generating call continuation information..."),
 		maybe_flush_output(Verbose),
-		globals__io_get_gc_method(GcMethod),
-		globals__io_get_trace_level(TraceLevel),
-		{
-			( GcMethod = accurate
-			; trace_level_trace_returns(TraceLevel, yes)
-			)
-		->
-			WantReturnInfo = yes
-		;
-			WantReturnInfo = no
-		},
+		globals__io_get_globals(Globals),
+		{ globals__want_return_layouts(Globals, WantReturnLayout) },
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0, WantReturnInfo,
+		{ continuation_info__process_llds(LLDS0, WantReturnLayout,
 			ContInfo0, ContInfo) },
 		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
 			ModuleInfo) },
@@ -2369,7 +2352,7 @@ mercury_compile__link_module_list(Modules) -->
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
 	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
 	    globals__io_get_trace_level(TraceLevel),
-	    { trace_level_trace_interface(TraceLevel, yes) ->
+	    { TraceLevel \= none ->
 		CmdPrefix = "c2init -t "
 	    ;
 		CmdPrefix = "c2init "

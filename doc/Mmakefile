@@ -47,7 +47,8 @@ DVIPS=dvips
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: info dvi html manpages # ps text
+all: info dvi html manpages mdb_doc mdb_command_list mdb_command_test.inp
+#all: ps text
 
 #-----------------------------------------------------------------------------#
 
@@ -90,6 +91,17 @@ mercury_faq.info: faq.texi
 	$(MAKEINFO) $<
 mercury_library.info: library.texi
 	$(MAKEINFO) $<
+
+#-----------------------------------------------------------------------------#
+
+mdb_doc: generate_mdb_doc mercury_user_guide.info mdb_categories
+	./generate_mdb_doc
+
+mdb_command_list: generate_mdb_command_list mdb_doc
+	./generate_mdb_command_list < mdb_doc > mdb_command_list
+
+mdb_command_test.inp: generate_mdb_command_test mdb_doc
+	./generate_mdb_command_test < mdb_doc > mdb_command_test.inp
 
 #-----------------------------------------------------------------------------#
 
@@ -155,7 +167,7 @@ doc.ps.tar.gz: ps
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_info install_html install_dvi install_manpages
+install: install_info install_html install_dvi install_manpages install_doc
 	# install_text install_ps
 
 .PHONY: install_info
@@ -188,6 +200,11 @@ install_manpages: manpages
 	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
 		mkdir -p $(INSTALL_MAN_DIR)/man1
 	cp *.1 $(INSTALL_MAN_DIR)/man1
+
+.PHONY: install_doc
+install_doc: mdb_doc
+	-[ -d $(INSTALL_DOC_DIR) ] || mkdir -p $(INSTALL_DOC_DIR)
+	cp mdb_doc $(INSTALL_DOC_DIR)
 
 # The uninstall rule here only removes the info files; the others
 # are removed by the top-level uninstall rule.

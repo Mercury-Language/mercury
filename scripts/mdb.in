@@ -1,0 +1,41 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+Help="\
+Name:	mdb - Mercury debugger
+Usage:	mdb <executable> [<options>]...
+Description:
+	The arguments of this command form a command line.
+	If the executable named by this command line is a Mercury program
+	compiled with debugging enabled (e.g. via the \`--debug' option),
+	or if it invokes such a program, then mdb will cause the program
+	to be executed under the supervision of the Mercury internal debugger.
+	Otherwise, mdb will execute the command line as if the mdb prefix
+	weren't there.
+Environment variables:
+	MERCURY_OPTIONS.
+"
+
+case $# in
+	0)	echo "Usage: mdb <executable> [<arg> ...]" 1>&2
+		exit 1;;
+esac
+
+case $1 in
+	--help)
+		echo "$Help"
+		exit 0;;
+esac
+
+MERCURY_OPTIONS="$MERCURY_OPTIONS -Di"
+export MERCURY_OPTIONS
+DEFAULT_MERCURY_DEBUGGER_INIT=@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdbrc
+export DEFAULT_MERCURY_DEBUGGER_INIT
+exec "$@"

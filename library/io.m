@@ -1034,7 +1034,7 @@
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
-:- import_module int, std_util, parser.
+:- import_module int, parser.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -1736,10 +1736,14 @@ io__write_many( Stream, [ f(F) | Rest ]) -->
 	io__write_float(Stream, F),
 	io__write_many(Stream, Rest).
 
+:- pragma export(io__print(in, in, di, uo), "ML_io_print_to_stream").
+
 io__print(Stream, Term) -->
 	io__set_output_stream(Stream, OrigStream),
 	io__print(Term),
 	io__set_output_stream(OrigStream, _Stream).
+
+:- pragma export(io__print(in, di, uo), "ML_io_print_to_cur_stream").
 
 io__print(Term) -->
 	% `string', `char' and `univ' are special cases for io__print
@@ -2456,6 +2460,30 @@ io__get_op_table(OpTable) -->
 io__set_op_table(_OpTable) --> [].
 
 %-----------------------------------------------------------------------------%
+
+% For use by the debugger:
+
+:- pred io__get_io_input_stream_type(type_info, io__state, io__state).
+:- mode io__get_io_input_stream_type(out, di, uo) is det.
+
+:- pragma export(io__get_io_input_stream_type(out, di, uo),
+	"ML_io_input_stream_type").
+
+io__get_io_input_stream_type(Type) -->
+	io__stdin_stream(Stream),
+	{ Type = type_of(Stream) }.
+
+:- pred io__get_io_output_stream_type(type_info, io__state, io__state).
+:- mode io__get_io_output_stream_type(out, di, uo) is det.
+
+:- pragma export(io__get_io_output_stream_type(out, di, uo),
+	"ML_io_output_stream_type").
+
+io__get_io_output_stream_type(Type) -->
+	io__stdout_stream(Stream),
+	{ Type = type_of(Stream) }.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 /*
@@ -2833,6 +2861,10 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 }").
 
 /* stream predicates */
+
+:- pragma export(io__stdin_stream(out, di, uo), "ML_io_stdin_stream").
+:- pragma export(io__stdout_stream(out, di, uo), "ML_io_stdout_stream").
+:- pragma export(io__stderr_stream(out, di, uo), "ML_io_stderr_stream").
 
 :- pragma c_code(io__stdin_stream(Stream::out, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "

@@ -83,6 +83,7 @@ how to build and debug Mercury programs.
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
                     program performance
 * Invocation::      List of options for the Mercury compiler
+* Debugging::       The Mercury debugger @samp{mdb}
 * Environment::     Environment variables used by the compiler and utilities
 * C compilers::     How to use a C compiler other than GNU C
 @end menu
@@ -1765,12 +1766,25 @@ fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
 This makes these files significantly larger.
 
-@item --trace @var{level}
+@item --trace-level @var{level}
 Generate code that includes the specified level of execution tracing.
 The @var{level} should be one of
-@samp{minimum}, @samp{interfaces} and @samp{all}.
-@c XXX should include a pointer here to the as-yet-unwritten
-@c section on debugging
+@samp{none}, @samp{shallow}, @samp{deep}, and @samp{default}.
+See @ref{Debugging}.
+
+@item --no-trace-internal
+Do not generate code for internal events even if the trace level is deep.
+
+@item --no-trace-return
+Do not generate trace information for call return sites.
+Prevents the printing of the values of variables in ancestors
+of the current call.
+
+@item --no-trace-redo
+Do not generate code for REDO events.
+
+@item --trace-optimized
+Do not disable optimizations that can change the trace.
 
 @item --generate-bytecode
 @c Output a bytecode version of the module
@@ -2167,13 +2181,8 @@ has a small effect on the execution speed.
 
 @sp 1
 @item @code{--debug} (grades: any grade containing @samp{.debug})
-Enable debugging.
-
-To try this out, compile your program with @samp{--debug},
-run @samp{mdb @var{program}}, and then type @samp{h}
-at the @samp{mdb} prompt.
-
-XXX We should document this in more detail.
+Enables the inclusion in the executable of code and data structures
+that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
 
 @sp 1
 @item @code{--args @{simple, compact@}}
@@ -2760,6 +2769,804 @@ Link with the specified library.
 @item --link-object @var{object}
 Link with the specified object file.
 
+@end table
+
+@node Debugging
+@chapter Debugging
+
+@menu
+* Tracing of Mercury programs::
+* Preparing a program for debugging::
+* Mercury debugger invocation::
+* Mercury debugger concepts::
+* Debugger commands::
+@end menu
+
+@c XXX
+This chapter of the user's guide is still under construction.
+
+@node Tracing of Mercury programs
+@section Tracing of Mercury programs
+
+The Mercury debugger is based on a modified version of the box model
+on which the four-port debuggers of most Prolog systems are based.
+Such debuggers abstract the execution of a program
+into a sequence, also called a @emph{trace},
+of execution events of various kinds.
+The four kinds of events supported by most Prolog systems (their @emph{ports})
+are
+
+@table @var
+@item call events
+A call event occurs just after a procedure has been called,
+and control has just reached the start of the body of the procedure.
+@item exit events
+An exit event occurs when a procedure call has succeeded,
+and control is about to return to its caller.
+@item redo events
+A redo event occurs when all computations
+to the right of a procedure call have failed,
+and control is about to return to this call
+to try to find alternative solutions.
+@item fail events
+A fail event occurs when a procedure call has run out of alternatives,
+and control is about to return to the rightmost computation to its left
+that still has possibly successful alternatives left.
+@end table
+
+Mercury also supports these four kinds of events,
+but not all events can occur for every procedure call.
+Which events can occur for a procedure call, and in what order,
+depend on the determinism of the procedure.
+The possible event sequences for procedures of the various determinisms
+are as follows.
+
+@table @var
+@item nondet procedures
+a call event, zero or more repeats of (exit event, redo event), and a fail event
+@item multi procedures
+a call event, one or more repeats of (exit event, redo event), and a fail event
+@item semidet and cc_nondet procedures
+a call event, and either an exit event or a fail event
+@item det and cc_multi procedures
+a call event and an exit event
+@item failure procedures
+a call event and a fail event
+@item erroneous procedures
+a call event
+@end table
+
+Besides the event types call, exit, redo and fail,
+which describe the @emph{interface} of a call,
+Mercury also supports several types of events
+that report on what is happening @emph{internal} to a call.
+Each of these internal event types has an associated parameter called a path.
+The internal event types are:
+
+@table @var
+@item then events
+A then event occurs when execution reaches
+the start of the then part of an if-then-else.
+The path associated with the event specifies which if-then-else this is.
+@item else events
+An else event occurs when execution reaches
+the start of the else part of an if-then-else.
+The path associated with the event specifies which if-then-else this is.
+@item disj events
+A disj event occurs when execution reaches
+the start of a disjunct in a disjunction.
+The path associated with the event specifies
+which disjunct of which disjunction this is.
+@item switch events
+A switch event occurs when execution reaches
+the start of one arm of a switch
+(a disjunction in which each disjunct unifies a bound variable
+with different function symbol).
+The path associated with the event specifies
+which arm of which switch this is.
+@c @item pragma_first
+@c @item pragma_later
+@end table
+
+A path is a sequence of path components separated by semicolons,
+Each path component is one of the following:
+
+@table @code
+@item c@var{num}
+The @var{num}'th conjunct of a conjunction.
+@item d@var{num}
+The @var{num}'th disjunct of a disjunction.
+@item s@var{num}
+The @var{num}'th arm of a switch.
+@item ?
+The condition of an if-then-else.
+@item t
+The then part of an if-then-else.
+@item e
+The else part of an if-then-else.
+@item ~
+The goal inside a negation.
+@item q
+The goal inside an existential quantification.
+@end table
+
+@node Preparing a program for debugging
+@section Preparing a program for debugging
+
+Mercury debugging works by embedding calls to the debugging system
+into the executable code of Mercury procedures,
+at the execution points that represent trace events.
+At each event, the debugging system decides
+whether to give control to the user,
+who can then examine the state of the computation and issue commands,
+or whether to give control back to the executable.
+
+@c XXX
+@c Most programs include 
+
+@c XXX
+@c Programmers can control 
+@c The fewer events are to be traced
+@c the smaller the size of the executable
+
+Every module can be compiled with one of several trace levels.
+
+@table @var
+@item trace level none
+A procedure compiled with trace level none
+will never generate any events.
+@item trace level deep
+A procedure compiled with trace level deep
+will always generate all the events requested by the user.
+@item trace level shallow
+A procedure compiled with trace level shallow
+will generate interface events
+if it is called from a procedure compiled with trace level deep,
+but it will not generate any events
+if it is called from a procedure compiled with trace level shallow.
+Which way it will behave
+if it is called from a procedure compiled with trace level none
+depends on whether its nearest ancestor whose trace level is not none
+has trace level deep or shallow.
+@end table
+
+@c XXX explain --trace
+@c XXX --debug and not --debug
+
+@table @var
+@item --trace minimum
+With --require-tracing, this sets the trace level to shallow;
+with --no-require-tracing, it sets the trace level to none.
+@item --trace shallow
+This always sets the trace level to shallow.
+@item --trace deep
+This always sets the trace level to deep.
+@item --trace default
+With --require-tracing, this sets the trace level to deep;
+with --no-require-tracing, it sets the trace level to none.
+@end table
+
+@c XXX c2init -i
+
+@node Mercury debugger invocation
+@section Mercury debugger invocation
+
+The executables of Mercury programs
+by default do not invoke the Mercury debugger
+even if some or all of their modules were compiled with some form of tracing,
+and even if the grade of the executable includes @code{debug}.
+This is similar to the behavior of executables
+created by the implementations of other languages;
+for example the executable of a C program compiled with -g
+does not autonomously invoke gdb or dbx etc when it is executed.
+
+@example
+mdb @var{prog} @var{arg1} ...
+@end example
+
+@c XXX more to come
+
+@node Mercury debugger concepts
+@section Mercury debugger concepts
+
+The operation of the Mercury debugger @samp{mdb}
+is based on the following concepts.
+
+@table @var
+@item break points
+The user may associate a break point
+with some events that occur inside a procedure;
+the invocation condition of the break point says which events these are.
+The four possible invocation conditions are:
+@sp 1
+@itemize @bullet
+@item
+the call event,
+@item
+all interface events,
+@item
+all events, and
+@item
+the event at a specific point in the procedure.
+@end itemize
+@sp 1
+The effect of a break point depends on the state of the break point.
+@sp 1
+@itemize @bullet
+@item
+If the state of the break point is @samp{stop},
+execution will stop and user interaction will start
+at any event within the procedure that matches the invocation conditions,
+unless the current debugger command has specifically disabled this behavior
+(see the concept @samp{strict commands} below).
+@sp 1
+@item
+If the state of the break point is @samp{print},
+the debugger will print any event within the procedure
+that matches the invocation conditions,
+unless the current debugger command has specifically disabled this behavior
+(see the concept @samp{print level} below).
+@end itemize
+@sp 1
+Neither of these will happen if the break point is disabled.
+@sp 1
+@item strict commands
+When a debugger command steps over some events
+without user interaction at those events,
+the @emph{strictness} of the command controls whether
+the debugger will stop execution and resume user interaction
+at events to which a break point with state @samp{stop} applies.
+By default, the debugger will stop at such events.
+However, if the debugger is executing a strict command,
+it will not stop at an event
+just because a break point in the stop state applies to it.
+@sp 1
+@item print level
+When a debugger command steps over some events
+without user interaction at those events,
+the @emph{print level} controls under what circumstances
+the stepped over events will be printed.
+@sp 1
+@itemize @bullet
+@item
+When the print level is @samp{none},
+none of the stepped over events will be printed.
+@sp 1
+@item
+When the print level is @samp{all},
+all the stepped over events will be printed.
+@sp 1
+@item
+When the print level is @samp{some},
+the debugger will print the event only if a break point applies to the event.
+@end itemize
+@sp 1
+Regardless of the print level, the debugger will print
+any event that causes execution to stop and user interaction to start.
+@sp 1
+@item default print level
+The debugger maintains a default print level.
+The initial value of this variable is @samp{some},
+but this value can be overridden by the user.
+@sp 1
+@item current environment
+Whenever execution stops at an event, the current environment
+is reset to refer to the stack frame of the call specified by the event.
+However, the @samp{up}, @samp{down} and @samp{level} commands can set the current environment
+to refer to one of the ancestors of the current call.
+This will then be the current environment until another of these commands
+changes the environment yet again or execution continues to another event.
+@sp 1
+@item procedure specification
+Some debugger commands, e.g. @samp{break},
+require a parameter that specifies a procedure.
+Such a procedure specification has
+the following components in the following order:
+@itemize @bullet
+@item
+An optional prefix of the form @samp{pred*} or @samp{func*}
+that specifies whether the procedure belongs to a predicate or a function.
+@item
+An optional prefix of the form @samp{@var{module}:} or @samp{@var{module}__}
+that specifies the name of the module that defines
+the predicate or function to which the procedure belongs.
+@item
+The name of the predicate or function to which the procedure belongs.
+@item
+An optional suffix of the form @samp{/@var{arity}}
+that specifies the arity of the predicate or function
+to which the procedure belongs.
+@item
+An optional suffix of the form @samp{-@var{modenum}}
+that specifies the mode number of the procedure
+within the predicate or function to which the procedure belongs.
+@end itemize
+@c @sp 1
+@c XXX interrupts:
+@c If the debugger receives an interrupt, it will stop at the next event
+@c regardless of what command it is executing at the time.
+@c (INTERRUPT HANDLING IS NOT YET IMPLEMENTED.)
+@end table
+
+@node Debugger commands
+@section Debugger commands
+
+When the debugger (as opposed to the program being debugged) is interacting
+with the user, the debugger prints a prompt and reads in a line of text,
+which it will interpret as its next command. Each command line consists
+of several words separated by white space. The first word is the name of
+the command, while any other words give options and/or parameters to the
+command.
+
+Some commands take a number as their first parameter.
+For such commands, users can type `@var{number} @var{command}'
+as well as `@var{command} @var{number}'.
+The debugger will internally transform the former into the latter,
+even if the number and the command are not separated by white space.
+
+@menu
+* Forward movement commands::
+* Backward movement commands::
+* Browsing commands::
+* Breakpoint commands::
+* Parameter commands::
+* Help commands::
+* Experimental commands::
+* Developer commands::
+* Miscellaneous commands::
+@end menu
+
+@node Forward movement commands
+@subsection Forward movement commands
+
+@table @code
+@item step [-NSans] [@var{num}]
+Steps forward @var{num} events.
+If this command is given at event @var{cur}, continues execution until
+event @var{cur} + @var{num}. The default value of @var{num} is 1.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is not strict, and it uses the default print level.
+@sp 1
+A command line containing only a number @var{num} is interpreted as
+if it were `step @var{num}'.
+@sp 1
+An empty command line is interpreted as `step 1'.
+@sp 1
+@item goto [-NSans] @var{num}
+Continues execution until the program reaches event number @var{num}.
+If the current event number is larger than @var{num}, it reports an error.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item finish [-NSans] [@var{num}]
+Continues execution until it reaches a final (EXIT or FAIL) port of
+the @var{num}'th ancestor of the call to which the current event refers.
+The default value of @var{num} is zero,
+which means skipping to the end of the current call.
+Reports an error if execution is already at the desired port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item return [-NSans]
+Continues the program until the program finished returning,
+i.e. until it reaches a port other than EXIT.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item forward [-NSans]
+Continues the program until the program resumes forward execution,
+i.e. until it reaches a port other than REDO or FAIL.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item mindepth [-NSans] @var{depth}
+Continues the program until the program reaches an event
+whose depth is at least @var{depth}.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item maxdepth [-NSans] @var{depth}
+Continues the program until the program reaches an event
+whose depth is at most @var{depth}.
+Reports an error if the current event already refers to such a port.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is strict, and it uses the default print level.
+@sp 1
+@item continue [-NSans]
+Continues execution until it reaches the end of the program.
+@sp 1
+The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
+@samp{-a} or @samp{--all} specify the print level to use
+for the duration of the command,
+while the options @samp{-S} or @samp{--strict}
+and @samp{-N} or @samp{--nostrict} specify
+the strictness of the command.
+@sp 1
+By default, this command is not strict. The print level used
+by the command by default depends on the final strictness level:
+if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
+@end table
+@sp 1
+@node Backward movement commands
+@subsection Backward movement commands
+@sp 1
+@table @code
+@item retry
+Restarts execution at the call port
+of the call corresponding to the current event.
+@sp 1
+The command will report an error unless
+the values of all the input arguments are available at the current port.
+(The compiler will keep the values
+of the input arguments of traced predicates as long as possible,
+but it cannot keep them beyond the point where they are destructively updated.)
+@c XXX THE EXCEPTION IS NOT YET IMPLEMENTED.
+@c The exception is values of type `io__state';
+@c the debugger can perform a retry if the only missing value is of
+@c type `io__state' (there can be only one io__state at any given time).
+@c @sp 1
+@c A retry in which the values of all input arguments are available
+@c works fine, provided that the predicates defined in C code that are
+@c called inside the repeated computation do not pose any problems.
+@c A retry in which a value of type `io__state' is missing has the
+@c following effects:
+@c @sp 1
+@c @itemize @bullet
+@c @item
+@c Any input and/or output actions in the repeated code will be repeated.
+@c @item
+@c Any file close actions in the repeated code
+@c for which the corresponding file open action is not also in the repeated code
+@c may cause later I/O actions referring to the file to fail.
+@c @item
+@c Any file open actions in the repeated code
+@c for which the corresponding file close action
+@c is not also in the repeated code
+@c may cause later file open actions to fail due to file descriptor leak.
+@c @end itemize
+@sp 1
+The debugger can perform a retry only from an exit or fail port;
+only at these ports does the debugger have enough information
+to figure out how to reset the stacks.
+If the debugger is not at such a port when a retry command is given,
+the debugger will continue forward execution
+until it reaches an exit or fail port of the call to be retried
+before it performs the retry.
+This may require a noticeable amount of time.
+@c XXX not yet
+@c and may result in the execution of I/O and/or other side-effects.
+@sp 1
+@item retry @var{num}
+Restarts execution at the call port of the call corresponding to
+the @var{num}'th ancestor of the call to which the current event belongs.
+For example, if @var{num} is 1, it restarts the parent of the current call.
+@end table
+@sp 1
+@node Browsing commands
+@subsection Browsing commands
+@sp 1
+@table @code
+@item vars
+Prints the names of all the known variables in the current environment,
+together with an ordinal number for each variable.
+@sp 1
+@item print @var{num}
+Prints the value of the variable with the given ordinal number
+in the current environment.
+@sp 1
+At the moment this command prints the entire value of the variable,
+even if this is very big. Later it will merely invoke a configurable
+dynamic term browser, which will eventually have its own sublanguage.
+@sp 1
+@item print *
+Prints the values of all the known variables in the current environment.
+@sp 1
+At the moment this command prints the entire value of every variable,
+even if this is very big. Later it will merely invoke a configurable
+dynamic term browser, which will eventually have its own sublanguage.
+@sp 1
+@item stack
+Prints the names of the ancestors of the call specified by the
+current event. If two or more ancestor calls are for the same
+predicate, the procedure identification will be printed once
+with the appropriate multiplicity annotation.
+@sp 1
+This command will report an error if there is no stack trace
+information available about any ancestor.
+@sp 1
+@item up [@var{num}]
+Sets the current environment to the stack frame
+of the @var{num}'th level ancestor of the current environment
+(the immediate caller is the first-level ancestor).
+@sp 1
+If @var{num} is not specified, the default value is one.
+@sp 1
+This command will report an error
+if the current environment doesn't have the required number of ancestors,
+or if there is no execution trace information about the requested ancestor,
+or if there is no stack trace information about any of the ancestors
+between the current environment and the requested ancestor.
+@sp 1
+@item down [@var{num}]
+Sets the current environment to the stack frame
+of the @var{num}'th level descendant of the current environment
+(the immediate caller is the first-level ancestor).
+@sp 1
+If @var{num} is not specified, the default value is one.
+@sp 1
+This command will report an error if the current environment
+doesn't have the required number of descendants.
+@sp 1
+@item level [@var{num}]
+Sets the current environment to the stack frame of the @var{num}'th
+level ancestor of the call to which the current event belongs.
+The zero'th ancestor is the call of the event itself.
+@sp 1
+@item current
+Prints the current event.
+This is useful if the details of the event,
+which were printed when control arrived at the event,
+have since scrolled off the screen.
+@end table
+@sp 1
+@node Breakpoint commands
+@subsection Breakpoint commands
+@sp 1
+@table @code
+@item break [-PSaei] @var{proc_spec}
+@c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
+Puts a break point on the specified procedure.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point,
+while the options @samp{-a} or @samp{--all},
+@samp{-e} or @samp{--entry}, and @samp{-i} or @samp{--interface}
+specify the invocation conditions of the break point.
+@sp 1
+By default, the action of the break point is @samp{stop},
+and its invocation condition is @samp{interface}.
+@sp 1
+@item break [-PS] here
+Puts a break point on the procedure referred to by the current event,
+with the invocation condition being the event at the current location
+in the procedure body.
+@sp 1
+The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
+specify the action to be taken at the break point.
+@sp 1
+By default, the initial state of the break point is @samp{stop}.
+@sp 1
+@item break info
+Lists the details and status of all break points.
+@sp 1
+@item disable @var{num}
+Disables the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item disable *
+Disables all break points.
+@sp 1
+@item enable @var{num}
+Enables the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item enable *
+Enables all break points.
+@sp 1
+@item modules
+Lists all the debuggable modules
+(i.e. modules that have debugging information).
+@sp 1
+@item procedures @var{module}
+Lists all the procedures in the debuggable module @var{module}.
+@sp 1
+@item register
+Registers all debuggable modules with the debugger.
+Has no effect if this registration has already been done.
+The debugger will perform this registration when creating breakpoints
+and when listing debuggable modules and/or procedures.
+@end table
+@sp 1
+@node Parameter commands
+@subsection Parameter commands
+@sp 1
+@table @code
+@item printlevel none
+Sets the default print level to @samp{none}.
+@sp 1
+@item printlevel some
+Sets the default print level to @samp{some}.
+@sp 1
+@item printlevel all
+Sets the default print level to @samp{all}.
+@sp 1
+@item printlevel
+Reports the current default print level.
+@sp 1
+@item echo on
+Turns on the echoing of commands.
+@sp 1
+@item echo off
+Turns off the echoing of commands.
+@sp 1
+@item echo
+Reports whether commands are being echoed or not.
+@sp 1
+@item scroll on
+Turns on user control over the scrolling of sequences of event reports.
+This means that every screenful of event reports
+will be followed by a @samp{--more--} prompt.
+You may type an empty line, which allows the debugger
+to continue to print the next screenful of event reports.
+By typing a line that starts with @samp{a}, @samp{s} or @samp{n},
+you can override the print level of the current command,
+setting it to @samp{all}, @samp{some} or @samp{none} respectively.
+By typing a line that starts with @samp{q},
+you can abort the current debugger command
+and get back control at the next event.
+@sp 1
+@item scroll off
+Turns off user control over the scrolling of sequences of event reports.
+@sp 1
+@item scroll @var{size}
+Sets the scroll window size to @var{size},
+which tells scroll control to stop and print a @samp{--more--} prompt
+after every @var{size - 1} events.
+The default value of @var{size}
+is the value of the @samp{LINES} environment variable,
+which should correspond to the number of lines available on the terminal.
+@sp 1
+@item scroll
+Reports whether user scroll control is enabled and what the window size is.
+@sp 1
+@item alias @var{name} @var{command} [@var{command_parameter} ...]
+Introduces @var{name} as an alias
+for the given command with the given parameters.
+Whenever a command line has @var{name} as its first word,
+the debugger will substitute the given command and parameters for this word
+before executing the command line.
+@sp 1
+If @var{command} is the upper-case word @samp{EMPTY},
+the debugger will substitute the given command and parameters
+whenever the user types in an empty command line.
+@sp 1
+@sp 1
+If @var{command} is the upper-case word @samp{NUMBER},
+the debugger will insert the given command and parameters
+before the command line
+whenever the user types in a command line that consists of a single number.
+@sp 1
+@item unalias @var{name}
+Removes any existing alias for @var{name}.
+@end table
+@sp 1
+@node Help commands
+@subsection Help commands
+@sp 1
+@table @code
+@item document_category @var{slot} @var{category}
+Create a new category of help items, named @var{category}.
+The summary text for the category is given by the lines following this command,
+up to but not including a line containing only the lower-case word @samp{end}.
+The list of category summaries printed in response to the command @samp{help}
+is ordered on the integer @var{slot} numbers of the categories involved.
+@sp 1
+@item document @var{category} @var{slot} @var{item}
+Create a new help item named @var{item} in the help category @var{category}.
+The text for the help item is given by the lines following this command,
+up to but not including a line containing only the lower-case word @samp{end}.
+The list of items printed in response to the command @samp{help @var{category}}
+is ordered on the integer @var{slot} numbers of the items involved.
+@sp 1
+@item help @var{category} @var{item}
+Prints help text about the item @var{item} in category @var{category}.
+@sp 1
+@item help @var{word}
+Prints help text about @var{word},
+which may be the name of a help category or a help item.
+@sp 1
+@item help
+Prints summary information about all the available help categories.
+@end table
+@sp 1
+@node Experimental commands
+@subsection Experimental commands
+@sp 1
+@table @code
+@item histogram_all @var{filename}
+Prints (to file @var{filename})
+a histogram that counts all events at various depths
+since the start of the program.
+This histogram is available
+only in some experimental versions of the Mercury runtime system.
+@sp 1
+@item histogram_exp @var{filename}
+Prints (to file @var{filename})
+a histogram that counts all events at various depths
+since the start of the program or since the histogram was last cleared.
+This histogram is available
+only in some experimental versions of the Mercury runtime system.
+@sp 1
+@item clear_histogram
+Clears the histogram printed by @samp{histogram_exp},
+i.e. sets the counts for all depths to zero.
+@end table
+@node Developer commands
+@subsection Developer commands
+@sp 1
+@table @code
+@item nondet_stack
+Prints the contents of the fixed slots of the frames on the nondet stack.
+@sp 1
+@item stack_regs
+Prints the contents of the virtual machine registers
+that point to the det and nondet stacks.
+@end table
+@node Miscellaneous commands
+@subsection Miscellaneous commands
+@sp 1
+@table @code
+@item source @var{filename}
+Executes the commands in the file named @var{filename}.
+@sp 1
+@item quit [-y]
+Quits the debugger and aborts the execution of the program.
+If the option @samp{-y} is not present, asks for confirmation first.
+Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
+@sp 1
+End-of-file on the debugger's input is considered a quit command.
 @end table
 
 @node Environment

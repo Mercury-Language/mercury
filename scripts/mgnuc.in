@@ -186,14 +186,8 @@ while : ; do
     shift
 done
 
-#
-# .debug grade implies --use-trail
-#	(see comment in compiler/handle_options.m for rationale)
-#
-case $stack_trace,$require_tracing in
-	true,true)
-		use_trail=true ;;
-esac
+# include the file `final_grade_options.sh-subr'
+@FINAL_GRADE_OPTIONS@
 
 #
 # convert mgnuc options into gcc options

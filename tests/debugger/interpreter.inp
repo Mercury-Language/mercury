@@ -1,13 +1,14 @@
-h
-10s
-v
-p *
-30 g
-p *
-F
-p *
+register --quiet
+echo on
+10 step
+vars
+print *
+goto 30
+print *
+finish -a
+print *
 
-f
+finish -n
 
 
-c
+continue
